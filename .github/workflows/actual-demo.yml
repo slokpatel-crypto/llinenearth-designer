@@ -31,8 +31,6 @@ jobs:
           exit 1
       - name: Capture real user journey
         run: node scripts/capture-actual-demo.mjs
-      - name: Convert recording to MP4
-        run: ffmpeg -y -i demo-output/actual-working-demo.webm -c:v libx264 -pix_fmt yuv420p -movflags +faststart demo-output/actual-working-demo.mp4
       - name: Upload actual demo artifact
         uses: actions/upload-artifact@v4
         with:
