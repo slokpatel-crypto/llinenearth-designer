@@ -1,0 +1,5 @@
+export const knowledgeSummary={version:"LE-KB-1.0.0",garments:12,fabrics:8,contexts:6,aesthetics:7};
+export const garments=["Tailored Pleated Trouser","Flat-Front Tailored Trouser","Wide-Leg Trouser","Drawstring Linen Trouser","Spread-Collar Dress Shirt","Oxford Button-Down Shirt","Camp-Collar Shirt","Band-Collar Shirt","Soft Single-Breasted Blazer","Structured Double-Breasted Blazer","Single-Breasted Two-Piece Suit","Dinner Suit / Tuxedo"];
+export const fabrics=["Light Plain-Weave Linen","Linen-Cotton Blend","Cotton Poplin","Oxford Cloth","Tropical Wool","Hopsack Wool","Wool Flannel","Cotton Seersucker"];
+export const contexts=["Business Office","Daytime Beach Wedding","Luxury Hotel Evening Wedding","Resort Dinner","Urban Smart Casual","Indian Festive Daytime"];
+export const aesthetics=["Quiet Luxury","Modern Classic","Italian-Inspired","British-Inspired","Resort Luxury","Contemporary Indian","Minimal"];
