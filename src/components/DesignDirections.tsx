@@ -11,18 +11,24 @@ export function DesignDirections({ brief, candidates, onEditContext, onRefine }:
   return (
     <section className="directionsStudio">
       <div className="directionsIntro">
-        <div><p className="eyebrow">PHASE 4 · DESIGNER ENGINE</p><h1>Three ways forward.</h1></div>
+        <div><p className="eyebrow">DESIGNER ENGINE · FABRIC + OCCASION INTELLIGENCE</p><h1>Three ways forward.</h1></div>
         <div className="directionBrief"><span>{brief.context.occasion}</span><i>·</i><span>{brief.context.venue}</span><i>·</i><span>{brief.context.aesthetic}</span><button onClick={onEditContext}>Edit brief</button></div>
       </div>
 
       <div className="directionGrid">
         {candidates.map((candidate) => {
           const active = candidate.id === selectedId;
+          const judge = candidate.fabricJudgement;
           return (
             <article className={`directionCard ${candidate.tier.toLowerCase()} ${active ? "selected" : ""}`} key={candidate.id}>
               <div className="directionTop"><div><span className="directionTier">{candidate.tier}</span><h2>{candidate.name}</h2></div><div className="directionScore"><strong>{candidate.scores.total}</strong><span>/100</span></div></div>
               <p className="directionConcept">{candidate.concept}</p>
               <div className="fabricRole"><span>YOUR FABRIC</span><p>{candidate.fabricUse}</p></div>
+              <div className={`fabricJudge ${judge.verdict}`}>
+                <div><span>FABRIC JUDGEMENT</span><strong>{judge.resolvedFabric?.name || "Unclassified fabric"}</strong><em>{judge.verdict} · {judge.overall}/100</em></div>
+                <div className="judgeScores"><p><span>Occasion</span><b>{judge.occasionFit}</b></p><p><span>Climate</span><b>{judge.climateFit}</b></p><p><span>Role</span><b>{judge.roleFit}</b></p></div>
+                <small>{judge.bestOutfitType}. {judge.reasons[1]}</small>
+              </div>
               <div className="garmentStack">
                 <div><span>SHIRT</span><strong>{candidate.garments.shirt}</strong></div>
                 <div><span>TROUSER</span><strong>{candidate.garments.trouser}</strong></div>
@@ -39,8 +45,8 @@ export function DesignDirections({ brief, candidates, onEditContext, onRefine }:
         })}
       </div>
 
-      {selected && <div className="selectedBar"><div><span className="micro">SELECTED</span><strong>{selected.name}</strong><p>{selected.tier} · {selected.aesthetic} · score {selected.scores.total}/100</p></div><button className="button light" onClick={() => onRefine(selected)}>Compare & refine →</button></div>}
-      <p className="engineNote">Phase 4 scores are explicit and reproducible. Phase 5 now preserves this selected direction as version DV-001 before any refinement can change it.</p>
+      {selected && <div className="selectedBar"><div><span className="micro">SELECTED</span><strong>{selected.name}</strong><p>{selected.tier} · {selected.aesthetic} · design {selected.scores.total}/100 · fabric {selected.fabricJudgement.overall}/100</p></div><button className="button light" onClick={() => onRefine(selected)}>Compare & refine →</button></div>}
+      <p className="engineNote">Fabric score is no longer image confidence alone. The Designer now evaluates fibre family, intended garment role, climate, formality and occasion before deciding whether the uploaded cloth should become a shirt, trouser, jacket, suit or Indian formal layer.</p>
     </section>
   );
 }
