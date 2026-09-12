@@ -2,26 +2,32 @@
 
 import { useEffect, useState } from "react";
 import { ContextConsultation } from "@/components/ContextConsultation";
+import { DesignDirections } from "@/components/DesignDirections";
 import { FabricStudio } from "@/components/FabricStudio";
-import type { ContextProfile, FabricSelection } from "@/lib/designer-types";
+import type { DesignCandidate } from "@/lib/designer-engine";
+import type { ContextProfile, DesignerBrief, FabricSelection } from "@/lib/designer-types";
 
-type Stage = "fabric" | "context" | "brief";
-const STORAGE_KEY = "llinen-earth-designer-session-v1";
+type Stage = "fabric" | "context" | "generating" | "directions" | "error";
+const STORAGE_KEY = "llinen-earth-designer-session-v2";
 
 export function DesignerJourney() {
   const [stage, setStage] = useState<Stage>("fabric");
   const [fabric, setFabric] = useState<FabricSelection | null>(null);
   const [context, setContext] = useState<ContextProfile | null>(null);
+  const [candidates, setCandidates] = useState<DesignCandidate[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const saved = JSON.parse(raw) as { stage?: Stage; fabric?: FabricSelection; context?: ContextProfile };
+        const saved = JSON.parse(raw) as { stage?: Stage; fabric?: FabricSelection; context?: ContextProfile; candidates?: DesignCandidate[] };
         if (saved.fabric) setFabric(saved.fabric);
         if (saved.context) setContext(saved.context);
-        if (saved.stage && saved.stage !== "fabric" && saved.fabric) setStage(saved.stage);
+        if (saved.candidates) setCandidates(saved.candidates);
+        if (saved.stage === "directions" && saved.fabric && saved.context && saved.candidates?.length) setStage("directions");
+        else if (saved.stage === "context" && saved.fabric) setStage("context");
       }
     } catch {}
     setHydrated(true);
@@ -29,40 +35,58 @@ export function DesignerJourney() {
 
   useEffect(() => {
     if (!hydrated) return;
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ stage, fabric, context }));
-  }, [stage, fabric, context, hydrated]);
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ stage, fabric, context, candidates }));
+  }, [stage, fabric, context, candidates, hydrated]);
 
   function acceptFabric(selection: FabricSelection) {
     setFabric(selection);
+    setCandidates([]);
     setStage("context");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function acceptContext(profile: ContextProfile) {
-    setContext(profile);
-    setStage("brief");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  async function generate(brief: DesignerBrief) {
+    setStage("generating");
+    setError(null);
+    try {
+      const response = await fetch("/api/designer/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(brief) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to create directions.");
+      setCandidates(data.candidates);
+      setStage("directions");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to create directions.");
+      setStage("error");
+    }
   }
 
-  if (!hydrated) return <section className="journeyLoading wrap"><span>Restoring your atelier session…</span></section>;
+  function acceptContext(profile: ContextProfile) {
+    if (!fabric) return;
+    setContext(profile);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    void generate({ fabric, context: profile });
+  }
 
+  if (!hydrated) return <section className="journeyLoading"><span>Restoring your atelier session…</span></section>;
   if (stage === "context" && fabric) return <ContextConsultation fabric={fabric} onComplete={acceptContext} onBack={() => setStage("fabric")} />;
 
-  if (stage === "brief" && fabric && context) {
-    return (
-      <section className="briefComplete">
-        <p className="eyebrow">PHASE 3 · CONTEXT COMPLETE</p>
-        <h1>Your design brief is ready.</h1>
-        <p>The fabric and context are now structured. Phase 4 will use this exact brief to construct and score distinct outfit directions.</p>
-        <div className="briefCompleteGrid">
-          <article><span>OCCASION</span><strong>{context.occasion}</strong><p>{context.venue} · {context.time} · {context.environment}</p></article>
-          <article><span>DIRECTION</span><strong>{context.aesthetic}</strong><p>{context.impression} · {context.fit} fit · {context.formality}</p></article>
-          <article><span>FABRIC</span><strong>{fabric.materialOverride || fabric.profile.observations.find((x) => x.label === "Likely material family")?.value}</strong><p>{fabric.profile.summary}</p></article>
-        </div>
-        <div className="actions"><button className="button" onClick={() => setStage("context")}>Edit context</button><button className="button light" disabled>Designer Engine · Phase 4</button></div>
-      </section>
-    );
-  }
+  if (stage === "generating") return (
+    <section className="designerThinking">
+      <p className="eyebrow">PHASE 4 · DESIGNER ENGINE</p>
+      <h1>Building the shortlist.</h1>
+      <div className="thinkingTrack"><i /></div>
+      <div className="thinkingSteps"><span>Reading fabric constraints</span><span>Balancing context</span><span>Building silhouettes</span><span>Scoring directions</span></div>
+    </section>
+  );
+
+  if (stage === "error" && fabric && context) return (
+    <section className="briefComplete">
+      <p className="eyebrow">DESIGNER ENGINE</p><h1>The brief is safe. The generation step needs another try.</h1><p>{error}</p>
+      <div className="actions"><button className="button" onClick={() => setStage("context")}>Edit context</button><button className="button light" onClick={() => void generate({ fabric, context })}>Try again</button></div>
+    </section>
+  );
+
+  if (stage === "directions" && fabric && context && candidates.length) return <DesignDirections brief={{ fabric, context }} candidates={candidates} onEditContext={() => setStage("context")} />;
 
   return <FabricStudio onContinue={acceptFabric} />;
 }
