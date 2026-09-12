@@ -23,7 +23,7 @@ const fabricIds = [...intelligence.matchAll(/id:\s*"(?:linen|linen-cotton|cotton
 
 if (wearIds < 27) throw new Error(`Fashion Brain regression: expected at least 27 wear types, found ${wearIds}`);
 if (fabricIds < 15) throw new Error(`Fashion Brain regression: expected at least 15 fabric families, found ${fabricIds}`);
-for (const token of ["TR / PV","TR-Wool","Bandhgala","Sherwani","Dinner Suit / Tuxedo","judgeFabricForBrief"]) {
+for (const token of ["TR/PV","TR-Wool","Bandhgala","Sherwani","Dinner Suit / Tuxedo","judgeFabricForBrief"]) {
   if (!intelligence.includes(token)) throw new Error(`Fashion Brain regression: missing ${token}`);
 }
 
