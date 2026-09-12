@@ -1,6 +1,6 @@
 # LLinen Earth Designer
 
-Current milestone: **Phase 5 — Compare, Refine & Versioning**.
+Current milestone: **Phase 6 — Visualization MVP**.
 
 Implemented:
 - premium dark editorial website foundation
@@ -9,9 +9,12 @@ Implemented:
 - Phase 2 fabric upload + structured analysis contract
 - Phase 3 progressive context consultation
 - Phase 4 deterministic Designer Engine with Safe / Elevated / Statement directions
-- Phase 5 side-by-side comparison, controlled refinement, component locks, undo/redo and immutable version history
-- final design lock with stable specification hash for Phase 6 visualization handoff
-- session-persistent fabric, context, candidates and refinement history
+- Phase 5 comparison, controlled refinement, locks, immutable versions and stable design specification hash
+- Phase 6 locked-spec visualization compiler
+- consistent front / back / construction-detail preview set on model `LE-MODEL-M01`
+- render validation signals and average cross-view consistency score
+- targeted per-view repair flow without changing the locked design
+- visualization session persistence and failure recovery
 
 Run locally:
 
@@ -22,7 +25,7 @@ npm run dev
 
 Open:
 - `http://localhost:3000` — home
-- `http://localhost:3000/designer` — fabric → context → directions → compare/refine/version
+- `http://localhost:3000/designer` — complete fabric → context → directions → refinement → visualization journey
 - `http://localhost:3000/knowledge` — Fashion Brain
 
-The current fabric analyzer remains a **development adapter**, not a production vision model. The Designer and Refinement engines intentionally keep canonical garment decisions, locks, deltas and scoring explicit and reproducible.
+The current fabric analyzer and Phase 6 renderer are deliberate **development adapters**. The Phase 6 SVG renderer proves the production architecture: the finalized design is compiled into a provider-neutral visualization specification, multi-view outputs stay tied to one `specHash`, validation is explicit, and failed views can be repaired locally. A production image-generation provider can replace the development renderer without changing the canonical design contract.

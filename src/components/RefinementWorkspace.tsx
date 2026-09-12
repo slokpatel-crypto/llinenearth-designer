@@ -17,7 +17,7 @@ function fieldValue(candidate: DesignCandidate, field: LockableField) {
   return candidate.garments[field];
 }
 
-export function RefinementWorkspace({ brief, initialCandidate, candidates, onBack }: { brief: DesignerBrief; initialCandidate: DesignCandidate; candidates: DesignCandidate[]; onBack: () => void }) {
+export function RefinementWorkspace({ brief, initialCandidate, candidates, onBack, onVisualize }: { brief: DesignerBrief; initialCandidate: DesignCandidate; candidates: DesignCandidate[]; onBack: () => void; onVisualize: (version: DesignVersion) => void }) {
   const storageKey = `llinen-earth-refinement-${initialCandidate.id}`;
   const [versions, setVersions] = useState<DesignVersion[]>([initialVersion(initialCandidate)]);
   const [index, setIndex] = useState(0);
@@ -125,7 +125,7 @@ export function RefinementWorkspace({ brief, initialCandidate, candidates, onBac
           </div>
 
           {current.delta.length > 0 && <div className="changePanel"><span className="micro">WHAT CHANGED IN {current.id}</span>{current.delta.map((d) => <div key={`${d.field}-${d.after}`}><strong>{d.field}</strong><p><del>{d.before}</del><span>→</span><ins>{d.after}</ins></p></div>)}</div>}
-          {current.finalized && <div className="finalizedPanel"><span>LOCKED DESIGN</span><strong>{current.specHash}</strong><p>This version is the source of truth for Phase 6 visualization. Refinements cannot silently change it.</p></div>}
+          {current.finalized && <div className="finalizedPanel"><span>LOCKED DESIGN</span><strong>{current.specHash}</strong><p>This exact version is the source of truth for visualization. Refinements cannot silently change it.</p></div>}
         </div>
 
         <aside className="refinePanel">
@@ -139,7 +139,7 @@ export function RefinementWorkspace({ brief, initialCandidate, candidates, onBac
 
           <div className="versionPanel"><div className="versionHead"><span className="micro">VERSION HISTORY</span><div><button disabled={index === 0} onClick={() => moveVersion(index - 1)}>Undo</button><button disabled={index >= versions.length - 1} onClick={() => moveVersion(index + 1)}>Redo</button></div></div>{versions.map((version, i) => <button className={i === index ? "versionItem active" : "versionItem"} key={version.id} onClick={() => moveVersion(i)}><span>{version.id}</span><strong>{version.reason}</strong><em>{version.delta.length ? `${version.delta.length} changes` : "baseline"}</em></button>)}</div>
 
-          {!current.finalized ? <button className="finalizeButton" onClick={finalize}><span>Lock this design</span><strong>Prepare for visualization →</strong></button> : <button className="finalizeButton done" disabled><span>Phase 5 complete</span><strong>{current.specHash}</strong></button>}
+          {!current.finalized ? <button className="finalizeButton" onClick={finalize}><span>Lock this design</span><strong>Prepare for visualization →</strong></button> : <button className="finalizeButton done visualizationReady" onClick={() => onVisualize(current)}><span>Phase 5 complete · {current.specHash}</span><strong>Visualize locked design →</strong></button>}
         </aside>
       </div>
       <p className="engineNote">Every refinement creates an immutable version delta. Undo returns to the exact previous specification, and locked components are excluded from subsequent changes.</p>
