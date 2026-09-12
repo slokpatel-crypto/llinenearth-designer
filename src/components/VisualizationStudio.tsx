@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { DesignerBrief } from "@/lib/designer-types";
 import type { DesignVersion } from "@/lib/refinement-engine";
+import { saveDesign } from "@/lib/saved-designs";
 import type { RenderSet, RenderView } from "@/lib/visualization-engine";
 
 const VIEW_ORDER: RenderView[] = ["front", "back", "detail"];
@@ -17,9 +19,12 @@ export function VisualizationStudio({ brief, version, renderSet, onRenderSetChan
   const [activeView, setActiveView] = useState<RenderView>("front");
   const [zoomed, setZoomed] = useState(false);
   const [repairing, setRepairing] = useState<RenderView | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const active = renderSet.renders.find((x) => x.view === activeView) || renderSet.renders[0];
   const average = useMemo(() => Math.round(renderSet.renders.reduce((sum, x) => sum + x.validation.overall, 0) / Math.max(1, renderSet.renders.length)), [renderSet]);
+  const front = renderSet.renders.find((x) => x.view === "front") || renderSet.renders[0];
 
   async function repair(view: RenderView) {
     setRepairing(view); setError(null);
@@ -33,11 +38,36 @@ export function VisualizationStudio({ brief, version, renderSet, onRenderSetChan
     } finally { setRepairing(null); }
   }
 
+  function saveCurrentDesign() {
+    saveDesign({ title: version.candidate.name, brief, version, renderSet });
+    setSaved(true);
+  }
+
+  async function copyDesignId() {
+    try {
+      await navigator.clipboard.writeText(`${version.candidate.name} · ${version.specHash} · ${renderSet.id}`);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {}
+  }
+
   return (
-    <section className="visualizationStudio">
+    <section className="visualizationStudio phase7Presentation">
       <div className="visualizationIntro">
-        <div><p className="eyebrow">PHASE 6 · VISUALIZATION MVP</p><h1>The locked design, seen from every required angle.</h1></div>
+        <div><p className="eyebrow">PHASE 7 · FINAL DESIGN EXPERIENCE</p><h1>Your design, resolved into one presentation.</h1></div>
         <div className="visualizationMeta"><span>{version.id}</span><strong>{version.specHash}</strong><button className="textButton" onClick={onBack}>Back to locked design</button></div>
+      </div>
+
+      <div className="finalHero">
+        <div className="finalHeroImage"><img src={front.src} alt={`${version.candidate.name} final visualization`} /><div className="finalHeroBadge"><span>LLINEN EARTH DESIGN</span><strong>{version.specHash}</strong></div></div>
+        <div className="finalHeroCopy">
+          <p className="eyebrow">{brief.context.occasion} · {brief.context.venue}</p>
+          <h2>{version.candidate.name}</h2>
+          <p className="finalConcept">{version.candidate.concept}</p>
+          <div className="finalContext"><span>{brief.context.time}</span><span>{brief.context.formality}</span><span>{brief.context.aesthetic}</span><span>{brief.context.fit}</span></div>
+          <div className="finalActions"><button className="primarySave" onClick={saveCurrentDesign}>{saved ? "Saved to your atelier" : "Save this design"}<span>→</span></button><button onClick={() => void copyDesignId()}>{copied ? "Design ID copied" : "Copy design ID"}</button>{saved && <Link href="/designs">View saved designs</Link>}</div>
+          <p className="finalTrust">Visualization is a design representation, not a guarantee of made-to-measure fit. The locked specification remains the source of truth.</p>
+        </div>
       </div>
 
       <div className="renderGrid">
@@ -73,11 +103,11 @@ export function VisualizationStudio({ brief, version, renderSet, onRenderSetChan
 
           <div className="repairCard"><span className="micro">TARGETED REPAIR</span><h3>Fix the view, not the whole outfit.</h3><p>If one angle fails, only that angle is regenerated. The locked design and other approved views stay untouched.</p><button disabled={!!repairing} onClick={() => void repair(active.view)}>{repairing === active.view ? "Repairing selected view…" : `Repair ${active.view} view`}<span>→</span></button>{active.repairCount > 0 && <small>{active.repairCount} repair pass{active.repairCount === 1 ? "" : "es"} applied to this view.</small>}{error && <p className="studioError">{error}</p>}</div>
 
-          <div className="providerNote"><strong>Development visualization adapter</strong><p>This phase proves the locked-spec compiler, multi-view state, validation and repair workflow using deterministic SVG previews. A production image-generation provider can replace the renderer without changing the design contract.</p></div>
+          <div className="providerNote"><strong>Development visualization adapter</strong><p>The current previews validate the locked-spec, multi-view and repair experience. A production image-generation provider can replace the renderer behind the same contract.</p></div>
         </aside>
       </div>
 
-      <div className="renderFooter"><div><span className="micro">CONTEXT</span><p>{brief.context.occasion} · {brief.context.venue} · {brief.context.time} · {brief.context.aesthetic}</p></div><div><span className="micro">NEXT</span><p>Phase 7 upgrades this into the full premium final-design experience, saved presentation and broader responsive UX.</p></div></div>
+      <div className="renderFooter"><div><span className="micro">CONTEXT</span><p>{brief.context.occasion} · {brief.context.venue} · {brief.context.time} · {brief.context.aesthetic}</p></div><div><span className="micro">PERSISTENCE</span><p>Save this final concept to your LLinen Earth atelier and return to the exact specification later.</p></div></div>
     </section>
   );
 }
