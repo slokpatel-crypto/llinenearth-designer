@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { DesignCandidate } from "@/lib/designer-engine";
 import type { DesignerBrief } from "@/lib/designer-types";
 
-export function DesignDirections({ brief, candidates, onEditContext }: { brief: DesignerBrief; candidates: DesignCandidate[]; onEditContext: () => void }) {
+export function DesignDirections({ brief, candidates, onEditContext, onRefine }: { brief: DesignerBrief; candidates: DesignCandidate[]; onEditContext: () => void; onRefine: (candidate: DesignCandidate) => void }) {
   const [selectedId, setSelectedId] = useState(candidates.find((x) => x.tier === "Elevated")?.id || candidates[0]?.id);
   const selected = candidates.find((x) => x.id === selectedId) || candidates[0];
 
@@ -39,8 +39,8 @@ export function DesignDirections({ brief, candidates, onEditContext }: { brief: 
         })}
       </div>
 
-      {selected && <div className="selectedBar"><div><span className="micro">SELECTED</span><strong>{selected.name}</strong><p>{selected.tier} · {selected.aesthetic} · score {selected.scores.total}/100</p></div><button className="button light" disabled>Compare & refine · Phase 5</button></div>}
-      <p className="engineNote">Phase 4 scores are explicit and reproducible. The engine currently uses curated deterministic rules so hard constraints remain testable; a model can later assist hypothesis generation without becoming the source of truth.</p>
+      {selected && <div className="selectedBar"><div><span className="micro">SELECTED</span><strong>{selected.name}</strong><p>{selected.tier} · {selected.aesthetic} · score {selected.scores.total}/100</p></div><button className="button light" onClick={() => onRefine(selected)}>Compare & refine →</button></div>}
+      <p className="engineNote">Phase 4 scores are explicit and reproducible. Phase 5 now preserves this selected direction as version DV-001 before any refinement can change it.</p>
     </section>
   );
 }

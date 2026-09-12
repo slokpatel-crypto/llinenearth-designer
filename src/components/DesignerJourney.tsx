@@ -4,17 +4,19 @@ import { useEffect, useState } from "react";
 import { ContextConsultation } from "@/components/ContextConsultation";
 import { DesignDirections } from "@/components/DesignDirections";
 import { FabricStudio } from "@/components/FabricStudio";
+import { RefinementWorkspace } from "@/components/RefinementWorkspace";
 import type { DesignCandidate } from "@/lib/designer-engine";
 import type { ContextProfile, DesignerBrief, FabricSelection } from "@/lib/designer-types";
 
-type Stage = "fabric" | "context" | "generating" | "directions" | "error";
-const STORAGE_KEY = "llinen-earth-designer-session-v2";
+type Stage = "fabric" | "context" | "generating" | "directions" | "refine" | "error";
+const STORAGE_KEY = "llinen-earth-designer-session-v3";
 
 export function DesignerJourney() {
   const [stage, setStage] = useState<Stage>("fabric");
   const [fabric, setFabric] = useState<FabricSelection | null>(null);
   const [context, setContext] = useState<ContextProfile | null>(null);
   const [candidates, setCandidates] = useState<DesignCandidate[]>([]);
+  const [selectedCandidate, setSelectedCandidate] = useState<DesignCandidate | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
@@ -22,11 +24,13 @@ export function DesignerJourney() {
     try {
       const raw = sessionStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const saved = JSON.parse(raw) as { stage?: Stage; fabric?: FabricSelection; context?: ContextProfile; candidates?: DesignCandidate[] };
+        const saved = JSON.parse(raw) as { stage?: Stage; fabric?: FabricSelection; context?: ContextProfile; candidates?: DesignCandidate[]; selectedCandidate?: DesignCandidate };
         if (saved.fabric) setFabric(saved.fabric);
         if (saved.context) setContext(saved.context);
         if (saved.candidates) setCandidates(saved.candidates);
-        if (saved.stage === "directions" && saved.fabric && saved.context && saved.candidates?.length) setStage("directions");
+        if (saved.selectedCandidate) setSelectedCandidate(saved.selectedCandidate);
+        if (saved.stage === "refine" && saved.fabric && saved.context && saved.candidates?.length && saved.selectedCandidate) setStage("refine");
+        else if (saved.stage === "directions" && saved.fabric && saved.context && saved.candidates?.length) setStage("directions");
         else if (saved.stage === "context" && saved.fabric) setStage("context");
       }
     } catch {}
@@ -35,12 +39,13 @@ export function DesignerJourney() {
 
   useEffect(() => {
     if (!hydrated) return;
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ stage, fabric, context, candidates }));
-  }, [stage, fabric, context, candidates, hydrated]);
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ stage, fabric, context, candidates, selectedCandidate }));
+  }, [stage, fabric, context, candidates, selectedCandidate, hydrated]);
 
   function acceptFabric(selection: FabricSelection) {
     setFabric(selection);
     setCandidates([]);
+    setSelectedCandidate(null);
     setStage("context");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -53,6 +58,7 @@ export function DesignerJourney() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to create directions.");
       setCandidates(data.candidates);
+      setSelectedCandidate(null);
       setStage("directions");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create directions.");
@@ -65,6 +71,12 @@ export function DesignerJourney() {
     setContext(profile);
     window.scrollTo({ top: 0, behavior: "smooth" });
     void generate({ fabric, context: profile });
+  }
+
+  function beginRefinement(candidate: DesignCandidate) {
+    setSelectedCandidate(candidate);
+    setStage("refine");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   if (!hydrated) return <section className="journeyLoading"><span>Restoring your atelier session…</span></section>;
@@ -86,7 +98,9 @@ export function DesignerJourney() {
     </section>
   );
 
-  if (stage === "directions" && fabric && context && candidates.length) return <DesignDirections brief={{ fabric, context }} candidates={candidates} onEditContext={() => setStage("context")} />;
+  if (stage === "refine" && fabric && context && candidates.length && selectedCandidate) return <RefinementWorkspace brief={{ fabric, context }} initialCandidate={selectedCandidate} candidates={candidates} onBack={() => setStage("directions")} />;
+
+  if (stage === "directions" && fabric && context && candidates.length) return <DesignDirections brief={{ fabric, context }} candidates={candidates} onEditContext={() => setStage("context")} onRefine={beginRefinement} />;
 
   return <FabricStudio onContinue={acceptFabric} />;
 }
