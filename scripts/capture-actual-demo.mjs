@@ -62,31 +62,10 @@ await page.getByRole("button", { name: /visualize locked design/i }).click();
 await page.getByRole("heading", { name: "Your design, resolved into one presentation." }).waitFor({ timeout: 15000 });
 await snap("07-visualization.png", true);
 
-await page.getByRole("button", { name: "Save this design", exact: true }).click();
-await page.getByRole("button", { name: "Saved to your atelier", exact: true }).waitFor();
-await page.getByRole("link", { name: /view saved designs/i }).click();
-await page.getByRole("heading", { name: "Ideas worth returning to." }).waitFor();
-await snap("08-saved-designs.png", true);
-
-await page.getByRole("button", { name: /send to llinen earth atelier/i }).click();
-await page.getByText("REQUEST CREATED", { exact: true }).waitFor();
-await snap("09-handoff-created.png", true);
-await page.getByRole("link", { name: /open atelier queue/i }).click();
-await page.waitForTimeout(900);
-await snap("10-atelier-queue.png", true);
-
-await page.getByRole("link", { name: "Fashion Brain", exact: true }).click();
-await page.waitForTimeout(800);
-await snap("11-fashion-brain.png", true);
-
-await page.getByRole("link", { name: "Quality", exact: true }).click();
-await page.waitForTimeout(800);
-await snap("12-quality-lab.png", true);
-
 await context.close();
 if (video) {
   const source = await video.path();
   fs.copyFileSync(source, path.join(out, "actual-working-demo.webm"));
 }
 await browser.close();
-console.log("Actual website demo captured successfully.");
+console.log("Actual LLinen Earth journey captured through visualization.");
