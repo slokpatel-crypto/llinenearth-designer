@@ -5,7 +5,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return <div className="siteShell">
     <header className="topbar wrap">
       <Link href="/" className="brand" aria-label="LLinen Earth home"><Image src="/brand/llinen-earth-logo.png" alt="LLinen Earth" width={1273} height={531} priority /></Link>
-      <nav aria-label="Primary navigation"><Link href="/designer">Designer</Link><Link href="/designs">Designs</Link><Link href="/knowledge">Fashion Brain</Link><Link href="/atelier">Atelier</Link></nav>
+      <nav aria-label="Primary navigation"><Link href="/designer">Designer</Link><Link href="/designs">Designs</Link><Link href="/knowledge">Fashion Brain</Link><Link href="/atelier">Atelier</Link><Link href="/quality">Quality</Link></nav>
       <Link className="navCta" href="/designer">Start designing</Link>
     </header>
     <main>{children}</main>
