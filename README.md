@@ -1,6 +1,6 @@
 # LLinen Earth Designer
 
-Current milestone: **Phase 4 — Designer Engine MVP**.
+Current milestone: **Phase 5 — Compare, Refine & Versioning**.
 
 Implemented:
 - premium dark editorial website foundation
@@ -9,8 +9,9 @@ Implemented:
 - Phase 2 fabric upload + structured analysis contract
 - Phase 3 progressive context consultation
 - Phase 4 deterministic Designer Engine with Safe / Elevated / Statement directions
-- explicit scoring, rationale and tradeoffs
-- session-persistent fabric, context and candidate state
+- Phase 5 side-by-side comparison, controlled refinement, component locks, undo/redo and immutable version history
+- final design lock with stable specification hash for Phase 6 visualization handoff
+- session-persistent fabric, context, candidates and refinement history
 
 Run locally:
 
@@ -21,7 +22,7 @@ npm run dev
 
 Open:
 - `http://localhost:3000` — home
-- `http://localhost:3000/designer` — fabric → context → designer directions
+- `http://localhost:3000/designer` — fabric → context → directions → compare/refine/version
 - `http://localhost:3000/knowledge` — Fashion Brain
 
-The current fabric analyzer is deliberately a **development adapter**, not a production vision model. Phase 4 likewise keeps canonical garment decisions and scoring explicit and reproducible; later model assistance can plug into the same structured contracts.
+The current fabric analyzer remains a **development adapter**, not a production vision model. The Designer and Refinement engines intentionally keep canonical garment decisions, locks, deltas and scoring explicit and reproducible.
