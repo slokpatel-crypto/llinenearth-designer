@@ -1,0 +1,42 @@
+name: Actual website demo
+
+on:
+  push:
+    branches: [actual-site-demo]
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm install --no-save playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Start website
+        run: |
+          npm start > /tmp/llinen-earth.log 2>&1 &
+          echo $! > /tmp/llinen-earth.pid
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:3000 >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/llinen-earth.log
+          exit 1
+      - name: Capture real user journey
+        run: node scripts/capture-actual-demo.mjs
+      - name: Convert recording to MP4
+        run: ffmpeg -y -i demo-output/actual-working-demo.webm -c:v libx264 -pix_fmt yuv420p -movflags +faststart demo-output/actual-working-demo.mp4
+      - name: Commit demo proof to branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add demo-output
+          git commit -m "Capture actual running website demo [skip ci]" || exit 0
+          git push origin HEAD:actual-site-demo
