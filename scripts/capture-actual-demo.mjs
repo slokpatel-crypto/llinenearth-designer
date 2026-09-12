@@ -20,6 +20,13 @@ async function snap(name, fullPage = false) {
   await page.waitForTimeout(700);
 }
 
+async function choose(text) {
+  const button = page.locator(".choiceGrid button").filter({ hasText: text }).first();
+  await button.waitFor();
+  await button.click();
+  await page.waitForTimeout(250);
+}
+
 await page.goto(base, { waitUntil: "networkidle" });
 await page.waitForTimeout(4300);
 await snap("01-home.png", true);
@@ -36,10 +43,7 @@ await materialLabel.locator("select").selectOption({ label: "Linen" });
 await snap("03-fabric-analysis.png", true);
 
 await page.getByRole("button", { name: /judge this fabric for my occasion/i }).click();
-for (const option of ["Wedding","Luxury hotel","Evening","Mostly indoor","Refined","Quiet confidence","Tailored","Modern Classic"]) {
-  await page.getByRole("button", { name: option, exact: true }).click();
-  await page.waitForTimeout(250);
-}
+for (const option of ["Wedding","Luxury hotel","Evening","Mostly indoor","Refined","Quiet confidence","Tailored","Modern Classic"]) await choose(option);
 
 await page.getByRole("heading", { name: "Three ways forward." }).waitFor({ timeout: 15000 });
 await snap("04-designer-directions.png", true);
