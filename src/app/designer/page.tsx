@@ -1,11 +1,11 @@
 import { AppShell } from "@/components/AppShell";
-import { FabricStudio } from "@/components/FabricStudio";
+import { DesignerJourney } from "@/components/DesignerJourney";
 
 export default function Designer() {
   return (
     <AppShell>
       <div className="wrap">
-        <FabricStudio />
+        <DesignerJourney />
       </div>
     </AppShell>
   );
