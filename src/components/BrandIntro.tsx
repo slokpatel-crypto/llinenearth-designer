@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { BRAND_LOGO_SRC } from "@/lib/brand-logo-data";
 
 export function BrandIntro() {
   const [show, setShow] = useState(true);
@@ -19,7 +20,7 @@ export function BrandIntro() {
     <div className={`brandIntro${reducedMotion ? " reducedMotion" : ""}`} aria-label="LLinen Earth opening brand animation">
       <div className="introGlow" />
       <div className="introCard">
-        <img src="/brand/llinen-earth-logo.png" alt="LLinen Earth" width="1273" height="531" />
+        <img src={BRAND_LOGO_SRC} alt="LLinen Earth" width="1273" height="531" />
       </div>
       <p>FABRIC · DESIGN · CRAFT</p>
     </div>
