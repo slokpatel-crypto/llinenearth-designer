@@ -1,24 +1,87 @@
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { knowledgeSummary } from "@/lib/knowledge";
+import { HomeVisualExplorer } from "@/components/HomeVisualExplorer";
 
-const refs = [
-  { img: "https://images.pexels.com/photos/6766385/pexels-photo-6766385.jpeg", title: "The atelier", copy: "Construction, proportion and material should read as one system." },
-  { img: "https://images.pexels.com/photos/6766382/pexels-photo-6766382.jpeg", title: "Measured, not generic", copy: "The digital experience stays rooted in tailoring craft." },
-  { img: "https://images.pexels.com/photos/6764999/pexels-photo-6764999.jpeg", title: "A modern menswear world", copy: "Quiet confidence rather than an AI-dashboard aesthetic." },
+const garmentCards = [
+  {
+    label: "Shirts",
+    number: "01",
+    image: "https://images.pexels.com/photos/6764950/pexels-photo-6764950.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    copy: "Collars, cuffs, fit and cloth character.",
+  },
+  {
+    label: "Trousers",
+    number: "02",
+    image: "https://images.pexels.com/photos/6766233/pexels-photo-6766233.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    copy: "Pleats, rise, taper, break and proportion.",
+  },
+  {
+    label: "Suits",
+    number: "03",
+    image: "https://images.pexels.com/photos/6764929/pexels-photo-6764929.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    copy: "Structure, lapel, stance and occasion logic.",
+  },
+  {
+    label: "Blazers",
+    number: "04",
+    image: "https://images.pexels.com/photos/6764919/pexels-photo-6764919.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    copy: "Soft tailoring through sharper formal layers.",
+  },
+];
+
+const editorialRefs = [
+  {
+    image: "https://images.pexels.com/photos/6765003/pexels-photo-6765003.jpeg?auto=compress&cs=tinysrgb&w=1400",
+    title: "Consultation before recommendation",
+    copy: "The system should feel like entering a private atelier, not filling a generic product form.",
+  },
+  {
+    image: "https://images.pexels.com/photos/6764999/pexels-photo-6764999.jpeg?auto=compress&cs=tinysrgb&w=1400",
+    title: "Craft stays visible",
+    copy: "Digital intelligence should still lead naturally toward fabric, fitting and tailoring.",
+  },
 ];
 
 export default function Home() {
-  const intelligenceCount = knowledgeSummary.garments + knowledgeSummary.fabrics + knowledgeSummary.contexts + knowledgeSummary.aesthetics;
   return <AppShell>
-    <section className="hero wrap"><div><p className="eyebrow">LLINEN EARTH · THE DIGITAL ATELIER</p><h1>Begin with fabric. End with a point of view.</h1><p className="lede">Upload a fabric, define the moment, let the Designer judge what that cloth should become, compare complete directions, refine only what matters, then carry the locked design into the physical atelier.</p><div className="actions"><Link className="button light" href="/designer">Start designing</Link><Link className="button" href="/knowledge">Explore wear & fabric library</Link></div><div className="meta"><span>Fabric-aware</span><span>Occasion-aware</span><span>Human-reviewed learning</span></div></div><div className="visual"><div className="mainPhoto" style={{ backgroundImage: `linear-gradient(180deg,rgba(5,9,17,.02),rgba(5,9,17,.76)),url('${refs[0].img}')` }} /><div className="detailPhoto" style={{ backgroundImage: `linear-gradient(180deg,rgba(5,9,17,.02),rgba(5,9,17,.64)),url('${refs[1].img}')` }} /><div className="insight"><span>FASHION BRAIN · V2</span><strong>{intelligenceCount}</strong><p>structured wear, fabric, context and aesthetic records.</p></div></div></section>
+    <section className="brandMasthead wrap">
+      <p>PREMIUM FABRICS · INTELLIGENT MENSWEAR · DIGITAL ATELIER</p>
+      <h1><span>LLinen</span> Earth</h1>
+      <div className="mastheadRule"><span>EST. FOR A NEW WAY TO DESIGN</span><i /></div>
+    </section>
 
-    <section className="premiumJourney wrap"><div className="sectionHead"><p className="eyebrow">THE EXPERIENCE</p><h2>Not a chatbot. A guided design process with a memory of every decision.</h2></div><div className="journeyRail"><article><span>01</span><h3>Read the fabric</h3><p>Classify material, then judge breathability, drape, structure and the garments it can credibly become.</p></article><article><span>02</span><h3>Set the context</h3><p>Occasion, venue, climate, formality, impression and fit shape the brief.</p></article><article><span>03</span><h3>Build the outfit</h3><p>Safe, Elevated and Statement directions assign the uploaded fabric to its best garment role.</p></article><article><span>04</span><h3>Refine & hand off</h3><p>Lock components, visualize, save, then pass the exact specification to the human atelier.</p></article></div></section>
+    <section className="homeHero wrap">
+      <div className="heroStatement">
+        <p className="eyebrow">THE DIGITAL ATELIER</p>
+        <h2>See the cloth.<br />See the possibilities.<br /><em>Then let the Designer judge.</em></h2>
+        <p className="homeHeroCopy">Explore shirts, trousers, suits and blazers visually on one consistent mannequin. When you want a complete answer instead of browsing, the Designer Engine combines your fabric, occasion and style intent into a considered outfit direction.</p>
+        <div className="actions"><Link className="button light" href="/designer">Enter Designer Engine</Link><Link className="button" href="#explore">Explore visually</Link></div>
+      </div>
+      <div className="heroEditorial" style={{ backgroundImage: "linear-gradient(180deg,rgba(2,7,17,.05),rgba(2,7,17,.82)),url('https://images.pexels.com/photos/6766385/pexels-photo-6766385.jpeg?auto=compress&cs=tinysrgb&w=1600')" }}>
+        <div className="heroEditorialTag"><span>01</span><p>Fabric first.<br />Proportion second.<br />Trend last.</p></div>
+        <div className="heroEditorialCaption"><span>LLINEN EARTH / ATELIER PRINCIPLE</span><strong>Cloth should decide what the garment can credibly become.</strong></div>
+      </div>
+    </section>
 
-    <section className="section wrap" id="garments"><div className="sectionHead"><p className="eyebrow">FASHION BRAIN · V2</p><h2>A system that understands what a garment is, what a fabric can do, and whether the occasion supports the combination.</h2></div><div className="stats"><Link href="/knowledge"><span>WEAR TYPES</span><strong>{knowledgeSummary.garments}</strong><p>Shirts, trousers, tailoring and Indian formalwear with construction signals.</p></Link><Link href="/knowledge" id="fabrics"><span>FABRICS</span><strong>{knowledgeSummary.fabrics}</strong><p>Linen, cotton, TR/PV, TR-Wool, wool and occasion-focused specialist fabrics.</p></Link><Link href="/knowledge"><span>CONTEXTS</span><strong>{knowledgeSummary.contexts}</strong><p>Occasion, venue, time, climate and formality logic.</p></Link><Link href="/knowledge"><span>AESTHETICS</span><strong>{knowledgeSummary.aesthetics}</strong><p>Designer identities encoded as measurable signals.</p></Link></div></section>
+    <section className="garmentWorld wrap">
+      <div className="sectionHead premiumHead"><p className="eyebrow">THE WARDROBE</p><h2>Four foundations. One visual language.</h2></div>
+      <div className="garmentColumns">{garmentCards.map((card) => <a href="#explore" key={card.label} className="garmentColumn" style={{ backgroundImage: `linear-gradient(180deg,rgba(3,9,18,.08),rgba(3,9,18,.9)),url('${card.image}')` }}>
+        <div className="garmentColumnTop"><span>{card.number}</span><b>EXPLORE →</b></div>
+        <div><h3>{card.label}</h3><p>{card.copy}</p></div>
+      </a>)}</div>
+    </section>
 
-    <section className="section wrap"><div className="sectionHead"><p className="eyebrow">VISUAL WORLD</p><h2>Tailoring craft, translated into a darker digital language.</h2></div><div className="refGrid">{refs.map((r, i) => <article key={r.title} className={i === 0 ? "ref wide" : "ref"} style={{ backgroundImage: `linear-gradient(180deg,rgba(6,11,20,.05),rgba(6,11,20,.9)),url('${r.img}')` }}><div><span>REFERENCE</span><h3>{r.title}</h3><p>{r.copy}</p></div></article>)}</div></section>
+    <section className="designerFeature wrap">
+      <div className="designerFeatureMark">AI</div>
+      <div className="designerFeatureCopy"><p className="eyebrow">HIGHLIGHTED EXPERIENCE</p><h2>Designer Engine</h2><p>Do not know which shirt, trouser, suit or blazer is right? Upload the cloth and describe the moment. The engine judges fabric suitability, formality, climate, silhouette and aesthetic before it proposes the complete outfit.</p><div className="designerSignals"><span>FABRIC JUDGEMENT</span><span>OCCASION LOGIC</span><span>OUTFIT DIRECTION</span><span>CONTROLLED REFINEMENT</span></div></div>
+      <div className="designerFeatureAction"><span>LET THE SYSTEM DECIDE</span><strong>Safe.<br />Elevated.<br />Statement.</strong><Link href="/designer">Start with your fabric <b>↗</b></Link></div>
+    </section>
 
-    <section className="section wrap" id="atelier"><div className="sectionHead"><p className="eyebrow">PHASE 0–9 · COMPLETE MVP SYSTEM</p><h2>The digital atelier, fashion intelligence, controlled visualization, human handoff and quality-learning loop now work as one architecture.</h2></div><div className="phase7Status"><div><span>PRODUCT STATUS</span><strong>All planned MVP phases complete. Quality gate and human-reviewed learning are active.</strong></div><Link href="/quality">Open quality lab →</Link></div></section>
+    <div className="wrap"><HomeVisualExplorer /></div>
+
+    <section className="editorialPair wrap">
+      {editorialRefs.map((item, index) => <article key={item.title} className={index === 0 ? "editorialCard tall" : "editorialCard"} style={{ backgroundImage: `linear-gradient(180deg,rgba(2,7,17,.03),rgba(2,7,17,.88)),url('${item.image}')` }}><div><span>ATELIER REFERENCE / 0{index + 1}</span><h3>{item.title}</h3><p>{item.copy}</p></div></article>)}
+      <article className="editorialManifesto"><span>LLINEN EARTH / POINT OF VIEW</span><h3>The website should help a customer understand the wardrobe before asking them to make a decision.</h3><p>Browse when you want clarity. Use the Designer when you want judgement. Move to the atelier when the design is ready to become real.</p><Link href="/knowledge">Open the fashion library →</Link></article>
+    </section>
   </AppShell>;
 }
