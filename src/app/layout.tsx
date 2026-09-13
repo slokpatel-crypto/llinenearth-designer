@@ -7,6 +7,7 @@ import "./mannequin-premium.css";
 import "./brand-intro-fix.css";
 import "./home-motion.css";
 import "./occasion-bridge.css";
+import "./gateway-v2.css";
 import { BrandIntro } from "@/components/BrandIntro";
 
 export const metadata: Metadata = {
