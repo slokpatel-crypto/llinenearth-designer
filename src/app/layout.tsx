@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./phase7.css";
 import "./phase9.css";
+import "./home-premium.css";
 import { BrandIntro } from "@/components/BrandIntro";
 
 export const metadata: Metadata = {
