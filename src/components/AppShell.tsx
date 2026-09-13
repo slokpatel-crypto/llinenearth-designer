@@ -1,15 +1,58 @@
 import Image from "next/image";
 import Link from "next/link";
+import { buildWhatsAppUrl } from "@/lib/whatsapp";
+
+const primaryLinks = [
+  ["Catalog", "/catalog"],
+  ["Design for me", "/designer-brief"],
+  ["Measurements", "/measurements"],
+  ["Contact", "/contact"],
+] as const;
+
+const secondaryLinks = [
+  ["Live Visual", "/visual"],
+  ["Saved Designs", "/designs"],
+  ["Fashion Brain", "/knowledge"],
+  ["Atelier", "/atelier"],
+] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  return <div className="siteShell">
-    <header className="topbar wrap">
-      <Link href="/" className="brand" aria-label="LLinen Earth home"><Image src="/brand/llinen-earth-logo.png" alt="LLinen Earth" width={1273} height={531} priority /></Link>
-      <nav aria-label="Primary navigation"><Link href="/visual">Live Visual</Link><Link className="designerNav" href="/designer-brief">Designer Engine</Link><Link href="/measurements">Measurements</Link><Link href="/designs">Designs</Link><Link href="/knowledge">Fashion Brain</Link><Link href="/atelier">Atelier</Link></nav>
-      <Link className="navCta" href="/designer-brief"><span>AI</span> Start designing</Link>
+  const whatsappHref = buildWhatsAppUrl({ topic: "Premium fabric and tailoring" });
+  return <div className="siteShell atelierShell">
+    <header className="atelierBrandBand">
+      <Link href="/" className="atelierBrand" aria-label="LLinen Earth home">
+        <Image src="/brand/llinen-earth-logo.png" alt="LLinen Earth" width={1273} height={531} priority />
+      </Link>
     </header>
-    <main>{children}</main>
-    <footer className="footer wrap"><span>LLinen Earth</span><span>Premium fabric. Considered design.</span></footer>
-    <nav className="mobileDock" aria-label="Mobile navigation"><Link href="/">Home</Link><Link href="/visual">Visual</Link><Link href="/designer-brief">Designer</Link><Link href="/measurements">Measure</Link><Link href="/atelier">Atelier</Link></nav>
+
+    <div className="atelierBody">
+      <aside className="atelierRail" aria-label="Site navigation">
+        <nav className="atelierRailPrimary">
+          {primaryLinks.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
+        </nav>
+        <div className="atelierRailDivider" />
+        <nav className="atelierRailSecondary">
+          {secondaryLinks.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
+        </nav>
+        <a className="atelierRailWhatsapp" href={whatsappHref} target="_blank" rel="noreferrer"><span>WA</span><div><small>ENQUIRE</small><strong>WhatsApp us</strong></div></a>
+      </aside>
+
+      <div className="atelierContent">
+        <main>{children}</main>
+        <footer className="atelierFooter wrap">
+          <div><strong>LLinen Earth</strong><span>Premium fabric. Considered tailoring.</span></div>
+          <nav aria-label="Footer navigation">
+            {primaryLinks.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
+            {secondaryLinks.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
+          </nav>
+        </footer>
+      </div>
+    </div>
+
+    <a className="floatingWhatsapp" href={whatsappHref} target="_blank" rel="noreferrer" aria-label="Enquire with LLinen Earth on WhatsApp"><span>WA</span><strong>WhatsApp</strong></a>
+
+    <nav className="atelierMobileDock" aria-label="Mobile primary navigation">
+      {primaryLinks.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
+    </nav>
   </div>;
 }
