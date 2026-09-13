@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { emptyMeasurementProfile, formatMeasure, fromCm, MEASUREMENT_STORAGE_KEY, measurementCoverage, toCm, type MeasurementProfile } from "@/lib/measurements";
 
 type Mode = "shirt" | "pants";
 type Field = { key: string; label: string; short: string; min: number; max: number; tip: string };
+
+const SCALE_MIN = 0.01;
+const SCALE_MAX = 100;
+const SCALE_STEP = 0.01;
 
 const shirtFields: Field[] = [
   { key:"neck",label:"Neck",short:"N",min:30,max:55,tip:"Wrap the tape around the base of the neck where the collar sits. Keep one finger under the tape." },
@@ -65,8 +69,10 @@ export function MeasurementStudio(){
   const activeField=fields.find(f=>f.key===active)||fields[0];
   const values=(mode==="shirt"?profile.shirt:profile.pants) as Record<string,number|undefined>;
   const current=values[activeField.key];
-  const currentDisplay=current==null?"":fromCm(current,unit).toFixed(1);
+  const sliderValue=current==null?SCALE_MIN:Math.min(SCALE_MAX,Math.max(SCALE_MIN,fromCm(current,unit)));
+  const selectedDisplay=current==null?"Not set":`${fromCm(current,unit).toFixed(2)} in`;
   const invalid=current!=null&&(current<activeField.min||current>activeField.max);
+  const scaleFill=((sliderValue-SCALE_MIN)/(SCALE_MAX-SCALE_MIN))*100;
 
   function setValue(key:string,display:string){
     const n=Number(display); const cm=Number.isFinite(n)&&n>0?toCm(n,unit):undefined;
@@ -79,7 +85,7 @@ export function MeasurementStudio(){
   ],[coverage.shirt,coverage.pants]);
 
   return <section className="measurementStudio">
-    <div className="measurementHero"><div><p className="eyebrow">TAILORING TOOL · BODY MEASUREMENTS</p><h1>Measure once. Design with proportion.</h1><p>Use a soft tailor&apos;s tape and enter body measurements in inches, not garment measurements. The Designer can use these values as fit guidance; final cutting should still be checked by a tailor.</p></div><div className="measurementSummary">{summary.map(([a,b])=><div key={a}><span>{a}</span><strong>{b}</strong></div>)}</div></div>
+    <div className="measurementHero"><div><p className="eyebrow">TAILORING TOOL · BODY MEASUREMENTS</p><h1>Measure once. Design with proportion.</h1><p>Use a soft tailor&apos;s tape and choose each body measurement on the scale in inches. The Designer can use these values as fit guidance; final cutting should still be checked by a tailor.</p></div><div className="measurementSummary">{summary.map(([a,b])=><div key={a}><span>{a}</span><strong>{b}</strong></div>)}</div></div>
 
     <div className="measurementTabs"><button className={mode==="shirt"?"active":""} onClick={()=>{setMode("shirt");setActive("neck")}}>Shirt measurements <span>{coverage.shirt}/8</span></button><button className={mode==="pants"?"active":""} onClick={()=>{setMode("pants");setActive("waist")}}>Pant measurements <span>{coverage.pants}/8</span></button><div className="unitToggle"><button className="active" disabled>INCH</button></div></div>
 
@@ -88,7 +94,15 @@ export function MeasurementStudio(){
       <div className="measureFields"><div className="measureFieldsHead"><div><span className="micro">STEP-BY-STEP</span><h2>{mode==="shirt"?"Shirt block":"Trouser block"}</h2></div><p>Tap a measurement to highlight exactly where it is taken.</p></div>
         <div className="measureList">{fields.map((field,index)=>{const v=values[field.key];const bad=v!=null&&(v<field.min||v>field.max);return <button key={field.key} className={`${active===field.key?"active":""} ${v?"filled":""}`} onClick={()=>setActive(field.key)}><span>{index+1}</span><div><strong>{field.label}</strong><small>{v?formatMeasure(v,unit):field.tip}</small></div><em>{v?"✓":"→"}</em>{bad&&<i>check</i>}</button>})}</div>
       </div>
-      <aside className="measureEntry"><span className="micro">NOW MEASURING</span><h2>{activeField.label}</h2><p>{activeField.tip}</p><label><span>Measurement</span><div><input inputMode="decimal" value={currentDisplay} onChange={e=>setValue(activeField.key,e.target.value)} placeholder="e.g. 40.0"/><b>in</b></div></label>{invalid&&<p className="measureWarning">This value is outside the usual tailoring range. Recheck the tape.</p>}<div className="measureRange"><span>Guide range</span><strong>{formatMeasure(activeField.min,unit)} – {formatMeasure(activeField.max,unit)}</strong></div><button className="measureSave" onClick={save}>{saved?"Measurements saved ✓":"Save measurements"}</button><Link href="/designer" className="measureDesignerLink" onClick={save}>Use in Designer Engine <span>→</span></Link><small className="measurePrivacy">Stored locally on this device. No body measurements are sent anywhere until a design request uses them.</small></aside>
+      <aside className="measureEntry"><span className="micro">NOW MEASURING</span><h2>{activeField.label}</h2><p>{activeField.tip}</p>
+        <div className="measurementScale">
+          <div className="measurementScaleHead"><span>SELECT ON SCALE</span><div className="measurementScaleValue"><strong>{selectedDisplay}</strong><small>0.01 inch precision</small></div></div>
+          <input className="measurementRangeInput" type="range" min={SCALE_MIN} max={SCALE_MAX} step={SCALE_STEP} value={sliderValue} onChange={e=>setValue(activeField.key,e.target.value)} aria-label={`${activeField.label} in inches`} style={{"--scale-fill":`${scaleFill}%`} as CSSProperties}/>
+          <div className="measurementScaleTicks" aria-hidden="true"><span>0.01</span><span>25</span><span>50</span><span>75</span><span>100 in</span></div>
+          <div className="measurementScaleMeta"><span>TAILORING GUIDE</span><strong>{formatMeasure(activeField.min,unit)} – {formatMeasure(activeField.max,unit)}</strong><p>The full selector runs from 0.01 to 100 inches. The highlighted guide range helps you catch an accidental selection.</p></div>
+        </div>
+        {invalid&&<p className="measureWarning">This value is outside the usual tailoring range. Recheck the tape and scale position.</p>}
+        <button className="measureSave" onClick={save}>{saved?"Measurements saved ✓":"Save measurements"}</button><Link href="/designer" className="measureDesignerLink" onClick={save}>Use in Designer Engine <span>→</span></Link><small className="measurePrivacy">Stored locally on this device. No body measurements are sent anywhere until a design request uses them.</small></aside>
     </div>
   </section>;
 }
