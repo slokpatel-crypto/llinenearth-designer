@@ -43,8 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div><strong>LLinen Earth</strong><span>Premium fabric. Considered tailoring.</span></div>
           <nav aria-label="Footer navigation">
             {primaryLinks.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
-            <Link href="/visual">Live Visual</Link>
-            <Link href="/atelier">Atelier</Link>
+            {secondaryLinks.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
           </nav>
         </footer>
       </div>
