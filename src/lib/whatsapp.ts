@@ -5,7 +5,9 @@ export type WhatsAppEnquiry = {
   details?: string;
 };
 
-export const WHATSAPP_BUSINESS_NUMBER = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "").replace(/\D/g, "");
+const DEFAULT_WHATSAPP_NUMBER = "919226338282";
+
+export const WHATSAPP_BUSINESS_NUMBER = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? DEFAULT_WHATSAPP_NUMBER).replace(/\D/g, "");
 export const WHATSAPP_NUMBER_CONFIGURED = WHATSAPP_BUSINESS_NUMBER.length >= 10;
 
 export function buildWhatsAppMessage(input: WhatsAppEnquiry = {}) {
