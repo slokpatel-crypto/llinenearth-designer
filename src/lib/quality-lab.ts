@@ -29,13 +29,14 @@ function briefFor(test: QualityCase): DesignerBrief {
       materialOverride: test.material,
       profile: {
         id:`TEST-${test.id}`,
-        source:"development_mock",
+        source:"development_visual_classifier",
         summary:"Quality benchmark fabric.",
         palette:["#17243a","#d8d0c0"],
+        alternatives:[{ family:test.material, confidence:.98, evidence:["Quality benchmark fixture"] }],
         cautions:[],
         observations:[
-          { label:"Likely material family", value:test.material, confidence:.98, confidenceLabel:"high", basis:"development_mock" },
-          { label:"Dominant color", value:"Navy", confidence:.98, confidenceLabel:"high", basis:"development_mock" },
+          { label:"Likely material family", value:test.material, confidence:.98, confidenceLabel:"high", basis:"development_visual_classifier" },
+          { label:"Dominant color", value:"Navy", confidence:.98, confidenceLabel:"high", basis:"development_visual_classifier" },
         ],
       },
     },
