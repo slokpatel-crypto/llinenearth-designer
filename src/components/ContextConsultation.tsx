@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ContextProfile, FabricSelection } from "@/lib/designer-types";
 
 type Key = keyof ContextProfile;
 type Question = { key: Key; kicker: string; title: string; note: string; options: string[] };
+const DRAFT_KEY = "llinen-earth-context-draft-v1";
 
 const baseQuestions: Question[] = [
   { key: "occasion", kicker: "OCCASION", title: "What are we dressing for?", note: "This sets the first formality and garment boundaries.", options: ["Wedding", "Business", "Resort / holiday", "Dinner / evening", "Smart casual", "Festive / cultural"] },
@@ -20,22 +21,66 @@ const baseQuestions: Question[] = [
 export function ContextConsultation({ fabric, onComplete, onBack }: { fabric: FabricSelection; onComplete: (profile: ContextProfile) => void; onBack: () => void }) {
   const [answers, setAnswers] = useState<Partial<ContextProfile>>({});
   const [index, setIndex] = useState(0);
+  const [draftReady, setDraftReady] = useState<ContextProfile | null>(null);
   const question = baseQuestions[index];
   const progress = Math.round(((index + 1) / baseQuestions.length) * 100);
 
   const fabricName = useMemo(() => fabric.materialOverride || fabric.profile.observations.find((x) => x.label === "Likely material family")?.value || "Your fabric", [fabric]);
 
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<ContextProfile>;
+      setAnswers(parsed);
+      const firstMissing = baseQuestions.findIndex((q) => !parsed[q.key]);
+      if (firstMissing === -1) setDraftReady(parsed as ContextProfile);
+      else setIndex(firstMissing);
+    } catch {}
+  }, []);
+
   function choose(value: string) {
     const next = { ...answers, [question.key]: value };
     setAnswers(next);
     if (index < baseQuestions.length - 1) setIndex((v) => v + 1);
-    else onComplete(next as ContextProfile);
+    else {
+      sessionStorage.removeItem(DRAFT_KEY);
+      onComplete(next as ContextProfile);
+    }
   }
 
   function edit(key: Key) {
     const nextIndex = baseQuestions.findIndex((q) => q.key === key);
     if (nextIndex >= 0) setIndex(nextIndex);
   }
+
+  function useDraft() {
+    if (!draftReady) return;
+    sessionStorage.removeItem(DRAFT_KEY);
+    onComplete(draftReady);
+  }
+
+  if (draftReady) return (
+    <section className="contextStudio contextDraftStudio">
+      <div className="contextTop">
+        <button className="textButton" onClick={onBack}>← Fabric profile</button>
+        <div className="contextProgress"><span style={{ width: "100%" }} /></div>
+        <span className="micro">BRIEF READY</span>
+      </div>
+      <div className="contextDraftReady">
+        <div className="contextDraftCopy">
+          <p className="eyebrow">OCCASION BRIEF RECOVERED</p>
+          <span className="micro">YOUR HOMEPAGE CONSULTATION</span>
+          <h1>We already know the moment.</h1>
+          <p>Your occasion requirements have been carried into the atelier. Combine them with <strong>{fabricName}</strong> and let the Designer Engine judge the complete outfit.</p>
+          <div className="actions"><button className="button" onClick={() => setDraftReady(null)}>Review / edit answers</button><button className="button light" onClick={useDraft}>Use this brief →</button></div>
+        </div>
+        <aside className="contextDraftGrid">
+          {baseQuestions.map((q) => <div key={q.key}><span>{q.kicker}</span><strong>{draftReady[q.key]}</strong></div>)}
+        </aside>
+      </div>
+    </section>
+  );
 
   return (
     <section className="contextStudio">
