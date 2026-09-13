@@ -9,6 +9,7 @@ import "./home-motion.css";
 import "./occasion-bridge.css";
 import "./gateway-v2.css";
 import "./visual-sharp.css";
+import "./designer-premium.css";
 import { BrandIntro } from "@/components/BrandIntro";
 
 export const metadata: Metadata = {
