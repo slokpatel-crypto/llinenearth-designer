@@ -40,8 +40,9 @@ export function AtelierMannequin({
   const shirtWidth = shirtStyle === "slim" ? 164 : shirtStyle === "cuban" ? 188 : 178;
   const shirtLeft = 300 - shirtWidth / 2;
   const shirtRight = 300 + shirtWidth / 2;
-  const waistLeft = shirtStyle === "relaxed" ? shirtLeft + 4 : shirtLeft + 18;
-  const waistRight = shirtStyle === "relaxed" ? shirtRight - 4 : shirtRight - 18;
+  const waistInset = shirtStyle === "slim" ? 24 : shirtStyle === "cuban" ? 9 : 18;
+  const waistLeft = shirtLeft + waistInset;
+  const waistRight = shirtRight - waistInset;
   const shirtBody = `M${shirtLeft} 276 Q300 244 ${shirtRight} 276 L${waistRight} 448 Q300 462 ${waistLeft} 448 Z`;
 
   const pant = (() => {
