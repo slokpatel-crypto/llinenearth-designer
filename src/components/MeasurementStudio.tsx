@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { emptyMeasurementProfile, formatMeasure, fromCm, MEASUREMENT_STORAGE_KEY, measurementCoverage, toCm, type MeasurementProfile, type MeasurementUnit } from "@/lib/measurements";
+import { emptyMeasurementProfile, formatMeasure, fromCm, MEASUREMENT_STORAGE_KEY, measurementCoverage, toCm, type MeasurementProfile } from "@/lib/measurements";
 
 type Mode = "shirt" | "pants";
 type Field = { key: string; label: string; short: string; min: number; max: number; tip: string };
@@ -60,36 +60,35 @@ export function MeasurementStudio(){
   const [active,setActive]=useState("neck");
   const [saved,setSaved]=useState(false);
 
-  useEffect(()=>{try{const raw=localStorage.getItem(MEASUREMENT_STORAGE_KEY);if(raw){const parsed=JSON.parse(raw) as MeasurementProfile;setProfile(parsed);}}catch{}},[]);
-  const unit=profile.unit; const fields=mode==="shirt"?shirtFields:pantFields; const coverage=measurementCoverage(profile);
+  useEffect(()=>{try{const raw=localStorage.getItem(MEASUREMENT_STORAGE_KEY);if(raw){const parsed=JSON.parse(raw) as MeasurementProfile;setProfile({...parsed,unit:"in"});}}catch{}},[]);
+  const unit="in" as const; const fields=mode==="shirt"?shirtFields:pantFields; const coverage=measurementCoverage(profile);
   const activeField=fields.find(f=>f.key===active)||fields[0];
   const values=(mode==="shirt"?profile.shirt:profile.pants) as Record<string,number|undefined>;
   const current=values[activeField.key];
-  const currentDisplay=current==null?"":fromCm(current,unit).toFixed(unit==="cm"?1:2);
+  const currentDisplay=current==null?"":fromCm(current,unit).toFixed(1);
   const invalid=current!=null&&(current<activeField.min||current>activeField.max);
 
-  function setUnit(next:MeasurementUnit){setProfile(p=>({...p,unit:next}));setSaved(false);}
   function setValue(key:string,display:string){
     const n=Number(display); const cm=Number.isFinite(n)&&n>0?toCm(n,unit):undefined;
-    setProfile(p=>({...p,[mode]:{...p[mode],[key]:cm},updatedAt:new Date().toISOString()}));setSaved(false);
+    setProfile(p=>({...p,unit:"in",[mode]:{...p[mode],[key]:cm},updatedAt:new Date().toISOString()}));setSaved(false);
   }
-  function save(){localStorage.setItem(MEASUREMENT_STORAGE_KEY,JSON.stringify(profile));setSaved(true);}
+  function save(){const inchProfile={...profile,unit:"in" as const};localStorage.setItem(MEASUREMENT_STORAGE_KEY,JSON.stringify(inchProfile));setProfile(inchProfile);setSaved(true);}
   const progress=mode==="shirt"?coverage.shirt:coverage.pants;
   const summary=useMemo(()=>[
-    ["Shirt",`${coverage.shirt}/8`],["Pants",`${coverage.pants}/8`],["Unit",unit.toUpperCase()]
-  ],[coverage.shirt,coverage.pants,unit]);
+    ["Shirt",`${coverage.shirt}/8`],["Pants",`${coverage.pants}/8`],["Unit","INCHES"]
+  ],[coverage.shirt,coverage.pants]);
 
   return <section className="measurementStudio">
-    <div className="measurementHero"><div><p className="eyebrow">TAILORING TOOL · BODY MEASUREMENTS</p><h1>Measure once. Design with proportion.</h1><p>Use a soft tailor&apos;s tape and enter body measurements, not garment measurements. The Designer can use these values as fit guidance; final cutting should still be checked by a tailor.</p></div><div className="measurementSummary">{summary.map(([a,b])=><div key={a}><span>{a}</span><strong>{b}</strong></div>)}</div></div>
+    <div className="measurementHero"><div><p className="eyebrow">TAILORING TOOL · BODY MEASUREMENTS</p><h1>Measure once. Design with proportion.</h1><p>Use a soft tailor&apos;s tape and enter body measurements in inches, not garment measurements. The Designer can use these values as fit guidance; final cutting should still be checked by a tailor.</p></div><div className="measurementSummary">{summary.map(([a,b])=><div key={a}><span>{a}</span><strong>{b}</strong></div>)}</div></div>
 
-    <div className="measurementTabs"><button className={mode==="shirt"?"active":""} onClick={()=>{setMode("shirt");setActive("neck")}}>Shirt measurements <span>{coverage.shirt}/8</span></button><button className={mode==="pants"?"active":""} onClick={()=>{setMode("pants");setActive("waist")}}>Pant measurements <span>{coverage.pants}/8</span></button><div className="unitToggle"><button className={unit==="cm"?"active":""} onClick={()=>setUnit("cm")}>CM</button><button className={unit==="in"?"active":""} onClick={()=>setUnit("in")}>IN</button></div></div>
+    <div className="measurementTabs"><button className={mode==="shirt"?"active":""} onClick={()=>{setMode("shirt");setActive("neck")}}>Shirt measurements <span>{coverage.shirt}/8</span></button><button className={mode==="pants"?"active":""} onClick={()=>{setMode("pants");setActive("waist")}}>Pant measurements <span>{coverage.pants}/8</span></button><div className="unitToggle"><button className="active" disabled>INCH</button></div></div>
 
     <div className="measurementWorkbench">
       <div className="measureVisual"><div className="measureVisualHead"><span>{mode==="shirt"?"SHIRT BODY MAP":"TROUSER BODY MAP"}</span><b>{progress}/8 captured</b></div><MeasureDiagram mode={mode} active={active}/><div className="measureTip"><span>{activeField.short}</span><div><strong>{activeField.label}</strong><p>{activeField.tip}</p></div></div></div>
       <div className="measureFields"><div className="measureFieldsHead"><div><span className="micro">STEP-BY-STEP</span><h2>{mode==="shirt"?"Shirt block":"Trouser block"}</h2></div><p>Tap a measurement to highlight exactly where it is taken.</p></div>
-        <div className="measureList">{fields.map((field,index)=>{const v=values[field.key];const bad=v!=null&&(v<field.min||v>field.max);return <button key={field.key} className={`${active===field.key?"active":""} ${v?"filled":""}`} onClick={()=>setActive(field.key)}><span>{String(index+1).padStart(2,"0")}</span><div><strong>{field.label}</strong><small>{v?formatMeasure(v,unit):field.tip}</small></div><em>{v?"✓":"→"}</em>{bad&&<i>check</i>}</button>})}</div>
+        <div className="measureList">{fields.map((field,index)=>{const v=values[field.key];const bad=v!=null&&(v<field.min||v>field.max);return <button key={field.key} className={`${active===field.key?"active":""} ${v?"filled":""}`} onClick={()=>setActive(field.key)}><span>{index+1}</span><div><strong>{field.label}</strong><small>{v?formatMeasure(v,unit):field.tip}</small></div><em>{v?"✓":"→"}</em>{bad&&<i>check</i>}</button>})}</div>
       </div>
-      <aside className="measureEntry"><span className="micro">NOW MEASURING</span><h2>{activeField.label}</h2><p>{activeField.tip}</p><label><span>Measurement</span><div><input inputMode="decimal" value={currentDisplay} onChange={e=>setValue(activeField.key,e.target.value)} placeholder={unit==="cm"?"e.g. 102.0":"e.g. 40.0"}/><b>{unit}</b></div></label>{invalid&&<p className="measureWarning">This value is outside the usual tailoring range. Recheck the tape or unit.</p>}<div className="measureRange"><span>Guide range</span><strong>{formatMeasure(activeField.min,unit)} – {formatMeasure(activeField.max,unit)}</strong></div><button className="measureSave" onClick={save}>{saved?"Measurements saved ✓":"Save measurements"}</button><Link href="/designer" className="measureDesignerLink" onClick={save}>Use in Designer Engine <span>→</span></Link><small className="measurePrivacy">Stored locally on this device. No body measurements are sent anywhere until a design request uses them.</small></aside>
+      <aside className="measureEntry"><span className="micro">NOW MEASURING</span><h2>{activeField.label}</h2><p>{activeField.tip}</p><label><span>Measurement</span><div><input inputMode="decimal" value={currentDisplay} onChange={e=>setValue(activeField.key,e.target.value)} placeholder="e.g. 40.0"/><b>in</b></div></label>{invalid&&<p className="measureWarning">This value is outside the usual tailoring range. Recheck the tape.</p>}<div className="measureRange"><span>Guide range</span><strong>{formatMeasure(activeField.min,unit)} – {formatMeasure(activeField.max,unit)}</strong></div><button className="measureSave" onClick={save}>{saved?"Measurements saved ✓":"Save measurements"}</button><Link href="/designer" className="measureDesignerLink" onClick={save}>Use in Designer Engine <span>→</span></Link><small className="measurePrivacy">Stored locally on this device. No body measurements are sent anywhere until a design request uses them.</small></aside>
     </div>
   </section>;
 }
