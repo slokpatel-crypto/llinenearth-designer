@@ -3,6 +3,7 @@ import "./globals.css";
 import "./phase7.css";
 import "./phase9.css";
 import "./home-premium.css";
+import "./mannequin-premium.css";
 import { BrandIntro } from "@/components/BrandIntro";
 
 export const metadata: Metadata = {
