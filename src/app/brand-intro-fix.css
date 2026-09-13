@@ -1,0 +1,10 @@
+/* Opening brand gate reliability fix.
+   The LLinen Earth logo must remain visible even when the visitor has reduced-motion enabled. */
+.brandIntro .introCard img{display:block;width:100%;height:auto;object-fit:contain}
+
+@media (prefers-reduced-motion: reduce){
+  .brandIntro{display:grid!important;animation:none!important;background:#000!important;opacity:1!important;visibility:visible!important}
+  .brandIntro.reducedMotion .introGlow{animation:none!important;opacity:.6!important}
+  .brandIntro.reducedMotion .introCard{animation:none!important;opacity:1!important;transform:none!important}
+  .brandIntro.reducedMotion p{animation:none!important;opacity:1!important}
+}
