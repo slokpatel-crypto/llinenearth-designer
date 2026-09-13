@@ -1,0 +1,121 @@
+name: Export Agent Handoff Snapshot
+
+on:
+  push:
+    branches:
+      - agent-handoff-export-20260913
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Build clean handoff folder
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="export/LLinen_Earth_GitHub_Snapshot"
+          mkdir -p "$ROOT"
+          rsync -a ./ "$ROOT/" \
+            --exclude '.git/' \
+            --exclude 'node_modules/' \
+            --exclude '.next/' \
+            --exclude 'export/' \
+            --exclude '.github/workflows/export-agent-handoff.yml'
+
+          cat > "$ROOT/AGENT_READ_ME_FIRST.md" <<'EOF'
+          # LLinen Earth — Current GitHub Handoff
+
+          This folder is a clean snapshot of the real LLinen Earth GitHub project for use with another coding/design agent.
+
+          ## Source of truth
+          - Repository: `slokpatel-crypto/llinenearth-designer`
+          - Branch captured: `main`
+          - Snapshot commit: `278c073b341646170a18f1e942cf414cb6c2ddaf`
+          - Framework: Next.js 15.5.x, React 19, TypeScript
+
+          ## Product direction
+          LLinen Earth is a premium menswear digital atelier. It has two separate primary experiences:
+          1. **AI Designer Engine** — guided occasion/context flow, fabric judgement, outfit direction, refinement and visualization.
+          2. **Live Garment Visual** — direct shirt/trouser/suit/blazer exploration with mannequin presentation and real fabric-photo mapping.
+
+          ## Current UX hierarchy
+          - Opening brand appearance first.
+          - Designer Engine is the primary/highest-value click target.
+          - Live Garment Visual is secondary but still prominent.
+          - The homepage should not become one long generic landing page.
+
+          ## Visual rules
+          - Premium dark navy/black digital-atelier feel.
+          - Main interactive accent: refined blue / ice-blue.
+          - Ivory/white is reserved for highest-value actions and contrast.
+          - Gold/yellow must be very restrained; do not use a permanent yellow underline for Designer Engine.
+          - Never introduce green into the LLinen Earth visual identity.
+          - Avoid a SaaS-dashboard look. Aim for luxury tailoring/editorial/product-photography quality.
+          - Motion should be premium and controlled: ambient light, subtle orbit/intelligence motion, selective shimmer, depth, reveal transitions.
+
+          ## Current key routes
+          - `/` — brand-first two-path entrance
+          - `/designer-brief` — occasion-led Designer Engine entry
+          - `/designer` — full fabric/design journey
+          - `/visual` — live garment visual + fabric mapping
+          - `/designs` — saved designs
+          - `/knowledge` — fashion intelligence library
+          - `/atelier` — atelier handoff/queue
+          - `/quality` — quality/benchmark lab
+
+          ## Important implementation areas
+          - `src/components/OccasionDesignerPreview.tsx`
+          - `src/components/HomeVisualExplorer.tsx`
+          - `src/components/DesignerJourney.tsx`
+          - `src/components/FabricStudio.tsx`
+          - `src/components/DesignDirections.tsx`
+          - `src/components/RefinementWorkspace.tsx`
+          - `src/components/VisualizationStudio.tsx`
+          - `src/lib/fashion-intelligence.ts`
+          - `src/lib/designer-engine.ts`
+          - `src/lib/refinement-engine.ts`
+          - `src/lib/visualization-engine.ts`
+
+          ## Production caveats
+          This is a strong MVP architecture, but some production integrations are still development adapters:
+          - Real computer-vision fabric analysis provider is not yet connected.
+          - Photorealistic AI image-generation provider is not yet connected; the current system still contains development/SVG rendering paths.
+          - Saved data, feedback and some handoff flows are local/session-storage based rather than a production multi-user database.
+          - Authentication and full production persistence are not complete.
+
+          Do not falsely present those integrations as production-complete.
+
+          ## How another agent should work
+          1. Read this file and `README.md` first.
+          2. Inspect the existing architecture before editing.
+          3. Do **not** rebuild the project from scratch.
+          4. Preserve existing working features unless explicitly asked to remove them.
+          5. Work on a separate branch.
+          6. Before merging, run:
+             - `npm install`
+             - `npm run quality`
+             - `npm run build`
+          7. Keep Designer Engine visually primary and Live Visual clearly separate.
+
+          ## Latest design intent
+          The Designer Engine should feel visually premium and high-value, with restrained blue/ivory interaction hierarchy, sophisticated motion, clearer click prioritization, and no stuck yellow Designer underline. The Live Visual should continue improving toward realistic cloth-on-form presentation, especially when an actual fabric photo is uploaded.
+          EOF
+
+          printf '%s\n' "Snapshot generated from GitHub main at commit 278c073b341646170a18f1e942cf414cb6c2ddaf" > "$ROOT/SNAPSHOT_COMMIT.txt"
+
+      - name: Upload handoff ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LLinen_Earth_GitHub_Snapshot_2026-09-13
+          path: export/LLinen_Earth_GitHub_Snapshot
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 7
