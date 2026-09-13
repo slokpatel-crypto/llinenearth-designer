@@ -1,6 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { BRAND_LOGO_SRC } from "@/lib/brand-logo-data";
 
 const primaryLinks = [
   ["Catalog", "/catalog"],
@@ -21,7 +21,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return <div className="siteShell atelierShell">
     <header className="atelierBrandBand">
       <Link href="/" className="atelierBrand" aria-label="LLinen Earth home">
-        <Image src="/brand/llinen-earth-logo.png" alt="LLinen Earth" width={1273} height={531} priority />
+        <img src={BRAND_LOGO_SRC} alt="LLinen Earth" width="1273" height="531" />
       </Link>
     </header>
 
