@@ -10,11 +10,11 @@ export type MeasurementProfile = {
 };
 
 export const MEASUREMENT_STORAGE_KEY = "llinen-earth-measurements-v1";
-export const emptyMeasurementProfile = (): MeasurementProfile => ({ version: 1, unit: "cm", shirt: {}, pants: {}, updatedAt: new Date().toISOString() });
+export const emptyMeasurementProfile = (): MeasurementProfile => ({ version: 1, unit: "in", shirt: {}, pants: {}, updatedAt: new Date().toISOString() });
 
 export function toCm(value: number, unit: MeasurementUnit) { return unit === "cm" ? value : value * 2.54; }
 export function fromCm(value: number, unit: MeasurementUnit) { return unit === "cm" ? value : value / 2.54; }
-export function formatMeasure(value: number | undefined, unit: MeasurementUnit) { return value == null ? "—" : `${fromCm(value,unit).toFixed(unit === "cm" ? 1 : 2)} ${unit}`; }
+export function formatMeasure(value: number | undefined, unit: MeasurementUnit) { return value == null ? "—" : `${fromCm(value,unit).toFixed(1)} ${unit === "in" ? "in" : "cm"}`; }
 
 export function measurementCoverage(profile?: MeasurementProfile | null) {
   if (!profile) return { shirt: 0, pants: 0, total: 0 };
