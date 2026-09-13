@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
+import { HomeMotion } from "@/components/HomeMotion";
 import { HomeVisualExplorer } from "@/components/HomeVisualExplorer";
+import { OccasionDesignerPreview } from "@/components/OccasionDesignerPreview";
 
 const garmentCards = [
   {
@@ -44,18 +46,20 @@ const editorialRefs = [
 
 export default function Home() {
   return <AppShell>
-    <section className="brandMasthead wrap">
+    <HomeMotion />
+
+    <section className="brandMasthead wrap" data-reveal>
       <p>PREMIUM FABRICS · INTELLIGENT MENSWEAR · DIGITAL ATELIER</p>
       <h1><span>LLinen</span> Earth</h1>
       <div className="mastheadRule"><span>EST. FOR A NEW WAY TO DESIGN</span><i /></div>
     </section>
 
-    <section className="homeHero wrap">
+    <section className="homeHero wrap" data-reveal>
       <div className="heroStatement">
         <p className="eyebrow">THE DIGITAL ATELIER</p>
         <h2>See the cloth.<br />See the possibilities.<br /><em>Then let the Designer judge.</em></h2>
         <p className="homeHeroCopy">Explore shirts, trousers, suits and blazers visually on one consistent mannequin. When you want a complete answer instead of browsing, the Designer Engine combines your fabric, occasion and style intent into a considered outfit direction.</p>
-        <div className="actions"><Link className="button light" href="/designer">Enter Designer Engine</Link><Link className="button" href="#explore">Explore visually</Link></div>
+        <div className="actions"><Link className="button light" href="/designer">Enter Designer Engine</Link><Link className="button" href="#occasion-designer">Design by occasion</Link><Link className="button" href="#explore">Explore visually</Link></div>
       </div>
       <div className="heroEditorial" style={{ backgroundImage: "linear-gradient(180deg,rgba(2,7,17,.05),rgba(2,7,17,.82)),url('https://images.pexels.com/photos/6766385/pexels-photo-6766385.jpeg?auto=compress&cs=tinysrgb&w=1600')" }}>
         <div className="heroEditorialTag"><span>01</span><p>Fabric first.<br />Proportion second.<br />Trend last.</p></div>
@@ -63,7 +67,7 @@ export default function Home() {
       </div>
     </section>
 
-    <section className="garmentWorld wrap">
+    <section className="garmentWorld wrap" data-reveal>
       <div className="sectionHead premiumHead"><p className="eyebrow">THE WARDROBE</p><h2>Four foundations. One visual language.</h2></div>
       <div className="garmentColumns">{garmentCards.map((card) => <a href="#explore" key={card.label} className="garmentColumn" style={{ backgroundImage: `linear-gradient(180deg,rgba(3,9,18,.08),rgba(3,9,18,.9)),url('${card.image}')` }}>
         <div className="garmentColumnTop"><span>{card.number}</span><b>EXPLORE →</b></div>
@@ -71,15 +75,23 @@ export default function Home() {
       </a>)}</div>
     </section>
 
-    <section className="designerFeature wrap">
+    <section className="designerFeature wrap" data-reveal>
       <div className="designerFeatureMark">AI</div>
       <div className="designerFeatureCopy"><p className="eyebrow">HIGHLIGHTED EXPERIENCE</p><h2>Designer Engine</h2><p>Do not know which shirt, trouser, suit or blazer is right? Upload the cloth and describe the moment. The engine judges fabric suitability, formality, climate, silhouette and aesthetic before it proposes the complete outfit.</p><div className="designerSignals"><span>FABRIC JUDGEMENT</span><span>OCCASION LOGIC</span><span>OUTFIT DIRECTION</span><span>CONTROLLED REFINEMENT</span></div></div>
-      <div className="designerFeatureAction"><span>LET THE SYSTEM DECIDE</span><strong>Safe.<br />Elevated.<br />Statement.</strong><Link href="/designer">Start with your fabric <b>↗</b></Link></div>
+      <div className="designerFeatureAction"><span>LET THE SYSTEM DECIDE</span><strong>Safe.<br />Elevated.<br />Statement.</strong><Link href="#occasion-designer">Start with the occasion <b>↘</b></Link><Link href="/designer">Start with your fabric <b>↗</b></Link></div>
     </section>
 
-    <div className="wrap"><HomeVisualExplorer /></div>
+    <div className="wrap"><OccasionDesignerPreview /></div>
 
-    <section className="editorialPair wrap">
+    <section className="wrap visualModuleIntro" data-reveal>
+      <p className="eyebrow">LIVE VISUAL BROWSER · KEEPING THE CURRENT MODULE</p>
+      <h2>Know what you want? Explore every garment directly.</h2>
+      <p>Switch garment type, style option and fabric tone on the same headless atelier form. This stays separate from the occasion-led Designer so customers can either browse or be guided.</p>
+    </section>
+
+    <div className="wrap" data-reveal><HomeVisualExplorer /></div>
+
+    <section className="editorialPair wrap" data-reveal>
       {editorialRefs.map((item, index) => <article key={item.title} className={index === 0 ? "editorialCard tall" : "editorialCard"} style={{ backgroundImage: `linear-gradient(180deg,rgba(2,7,17,.03),rgba(2,7,17,.88)),url('${item.image}')` }}><div><span>ATELIER REFERENCE / 0{index + 1}</span><h3>{item.title}</h3><p>{item.copy}</p></div></article>)}
       <article className="editorialManifesto"><span>LLINEN EARTH / POINT OF VIEW</span><h3>The website should help a customer understand the wardrobe before asking them to make a decision.</h3><p>Browse when you want clarity. Use the Designer when you want judgement. Move to the atelier when the design is ready to become real.</p><Link href="/knowledge">Open the fashion library →</Link></article>
     </section>
