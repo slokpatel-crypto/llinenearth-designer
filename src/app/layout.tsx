@@ -4,6 +4,7 @@ import "./phase7.css";
 import "./phase9.css";
 import "./home-premium.css";
 import "./mannequin-premium.css";
+import "./brand-intro-fix.css";
 import { BrandIntro } from "@/components/BrandIntro";
 
 export const metadata: Metadata = {
