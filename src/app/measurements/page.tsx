@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { MeasurementStudio } from "@/components/MeasurementStudio";
 import "./measurements.css";
+import "./scale-selector.css";
 
 export default function MeasurementsPage(){
   return <AppShell>
