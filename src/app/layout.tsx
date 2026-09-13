@@ -12,6 +12,7 @@ import "./visual-sharp.css";
 import "./designer-premium.css";
 import "./intelligence-v3.css";
 import "./business-conversion.css";
+import "./home-contact.css";
 import { BrandIntro } from "@/components/BrandIntro";
 
 export const metadata: Metadata = {

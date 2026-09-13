@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { HomeMotion } from "@/components/HomeMotion";
+import { buildWhatsAppUrl } from "@/lib/whatsapp";
 
 const designerRefs = [
   "https://images.pexels.com/photos/6766382/pexels-photo-6766382.jpeg?auto=compress&cs=tinysrgb&w=600",
@@ -13,7 +14,13 @@ const visualRefs = [
   "https://images.pexels.com/photos/6766385/pexels-photo-6766385.jpeg?auto=compress&cs=tinysrgb&w=600",
 ];
 
+const GOOGLE_BUSINESS_URL = "https://www.google.com/maps/search/?api=1&query=LLinen%20Earth%20Murlidhar%20Compound%2049%2F4%20Kalyan%20Rd%20behind%20Shiv%20Mandir%20near%20Masoom%20Hospital%20Bhiwandi%20Maharashtra";
+const INSTAGRAM_URL = "https://www.instagram.com/llinenearth.india/";
+const SHOP_ADDRESS = "Murlidhar Compound, 49/4, Kalyan Rd, behind Shiv Mandir, near Masoom Hospital, Bhiwandi, Maharashtra";
+
 export default function Home() {
+  const whatsappHref = buildWhatsAppUrl({ topic: "Premium fabric and tailoring enquiry from the website" });
+
   return <AppShell>
     <HomeMotion />
     <main className="gatewayHome">
@@ -55,6 +62,29 @@ export default function Home() {
       </section>
 
       <section className="gatewayFoot wrap" data-reveal><span>LLINEN EARTH / DIGITAL ATELIER</span><p>Designer for judgement. Live Visual for clarity. Atelier for execution.</p></section>
+
+      <section className="homeContactBand" data-reveal>
+        <div className="homeContactInner wrap">
+          <div className="homeContactIntro">
+            <p className="eyebrow">VISIT · MESSAGE · FOLLOW</p>
+            <h2>Continue the conversation beyond the screen.</h2>
+            <p>Visit LLinen Earth in Bhiwandi to see fabrics in person, message the team directly on WhatsApp, or follow the latest fabric and tailoring updates on Instagram.</p>
+          </div>
+          <div>
+            <div className="homeContactDetails">
+              <div className="homeContactRow"><span>WhatsApp</span><a href={whatsappHref} target="_blank" rel="noreferrer">+91 92263 38282</a></div>
+              <div className="homeContactRow"><span>Address</span><address>{SHOP_ADDRESS}</address></div>
+              <div className="homeContactRow"><span>Instagram</span><a href={INSTAGRAM_URL} target="_blank" rel="noreferrer">@llinenearth.india</a></div>
+            </div>
+            <div className="homeContactLinks">
+              <a className="homeContactPrimary" href={whatsappHref} target="_blank" rel="noreferrer"><span>WhatsApp enquiry</span><b>↗</b></a>
+              <a href={GOOGLE_BUSINESS_URL} target="_blank" rel="noreferrer"><span>Google Business</span><b>↗</b></a>
+              <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer"><span>Instagram</span><b>↗</b></a>
+            </div>
+            <p className="homeContactNote">Google Business opens the LLinen Earth location search in Google Maps.</p>
+          </div>
+        </div>
+      </section>
     </main>
   </AppShell>;
 }
