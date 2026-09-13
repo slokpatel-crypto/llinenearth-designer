@@ -1,5 +1,6 @@
 import type { DesignerBrief } from "@/lib/designer-types";
 import { fabricNameFromBrief, judgeFabricForBrief, type FabricJudgement, type WearFamily } from "@/lib/fashion-intelligence";
+import { measurementFitGuidance } from "@/lib/measurements";
 
 export type DirectionTier = "Safe" | "Elevated" | "Statement";
 export type ScoreBreakdown = { fabric: number; climate: number; occasion: number; aesthetic: number; coherence: number; originality: number; total: number };
@@ -14,25 +15,32 @@ export type DesignCandidate = {
   garments: { shirt: string; trouser: string; layer: string; footwear: string };
   palette: string[];
   reasons: string[];
+  fitGuidance: string[];
   tradeoff: string;
   scores: ScoreBreakdown;
 };
 
 function clamp(n: number) { return Math.max(0, Math.min(100, Math.round(n))); }
 function avg(values: number[]) { return clamp(values.reduce((a, b) => a + b, 0) / values.length); }
-
 function fabricFamily(brief: DesignerBrief) { return fabricNameFromBrief(brief); }
 function dominantColor(brief: DesignerBrief) { return brief.fabric.profile.observations.find((x) => x.label === "Dominant color")?.value || "Fabric-led neutral"; }
 
 function score(brief: DesignerBrief, tier: DirectionTier, climateFit: number, occasionFit: number, aestheticFit: number, coherence: number, fabricFit: number): ScoreBreakdown {
   const confidence = brief.fabric.profile.observations.reduce((s, x) => s + x.confidence, 0) / Math.max(1, brief.fabric.profile.observations.length);
+  const measurementBonus = brief.measurements ? 2 : 0;
   const fabric = clamp(fabricFit * .84 + confidence * 16);
   const originality = tier === "Safe" ? 70 : tier === "Elevated" ? 88 : 94;
-  const total = avg([fabric * 1.2, climateFit * 1.15, occasionFit * 1.2, aestheticFit, coherence * 1.15, originality * .75]);
+  const total = clamp(avg([fabric * 1.2, climateFit * 1.15, occasionFit * 1.2, aestheticFit, coherence * 1.15, originality * .75]) + measurementBonus);
   return { fabric, climate: climateFit, occasion: occasionFit, aesthetic: aestheticFit, coherence, originality, total };
 }
 
 function judgementFor(brief: DesignerBrief, role: WearFamily) { return judgeFabricForBrief(brief, role); }
+function fitNotes(brief: DesignerBrief, tier: DirectionTier) {
+  const measured = measurementFitGuidance(brief.measurements);
+  if (!measured.length) return [];
+  const silhouette = tier === "Safe" ? "Keep ease conservative and familiar." : tier === "Elevated" ? "Use the recorded block to create cleaner proportional taper and controlled volume." : "Keep the measurement block fixed while changing silhouette only through intentional volume and length.";
+  return [silhouette, ...measured].slice(0,4);
+}
 
 export function generateDesignerDirections(brief: DesignerBrief): DesignCandidate[] {
   const c = brief.context;
@@ -71,6 +79,7 @@ export function generateDesignerDirections(brief: DesignerBrief): DesignCandidat
       footwear: formal ? "Dark brown leather loafer / oxford" : resort ? "Suede loafer" : "Minimal leather loafer"
     }, palette: basePalette,
     reasons: [safeJudge.reasons[0], formal ? "Keeps the silhouette appropriate to the requested formality." : "Uses a familiar silhouette so the fabric remains the visual anchor.", hot ? "Avoids unnecessary structure for the warmer/outdoor setting." : "Allows enough structure for the setting without becoming ceremonial."],
+    fitGuidance: fitNotes(brief,"Safe"),
     tradeoff: safeJudge.verdict === "conditional" ? "The cloth can work, but construction must compensate for its climate/formality limits." : "The most dependable direction; it intentionally sacrifices some novelty.",
     scores: score(brief, "Safe", safeJudge.climateFit, safeJudge.occasionFit, c.aesthetic === "Modern Classic" ? 96 : 86, 93, safeJudge.overall)
   };
@@ -89,6 +98,7 @@ export function generateDesignerDirections(brief: DesignerBrief): DesignCandidat
       footwear: hot ? "Unlined suede loafer" : "Dark brown suede / leather loafer"
     }, palette: [...basePalette, hot ? "#e8e0d2" : "#17243a"].slice(0, 4),
     reasons: [elevatedJudge.reasons[0], "Pleated trousers add controlled volume and a more designer-led proportion.", hot ? "Soft construction protects breathability and keeps the outfit visually light." : "Material contrast adds depth without relying on loud colour."],
+    fitGuidance: fitNotes(brief,"Elevated"),
     tradeoff: elevatedJudge.verdict === "avoid" ? "The uploaded fabric should not be forced into the hero garment; use it as a smaller supporting component or choose a better fabric." : "Slightly more fashion-forward proportion than a conventional tailored look.",
     scores: score(brief, "Elevated", elevatedJudge.climateFit, elevatedJudge.occasionFit, 96, 96, elevatedJudge.overall)
   };
@@ -107,6 +117,7 @@ export function generateDesignerDirections(brief: DesignerBrief): DesignCandidat
       footwear: formal ? "Sleek black or deep brown leather" : festive ? "Dark leather loafer / refined Indian slip-on" : "Dark suede loafer"
     }, palette: [...basePalette, "#0a0f18"].slice(0, 4),
     reasons: [statementJudge.reasons[0], "The wider trouser changes the visual proportion enough to feel intentional and current.", hot ? "Structure is reduced because climate is treated as a hard constraint." : "A stronger jacket silhouette is viable because the setting can support it."],
+    fitGuidance: fitNotes(brief,"Statement"),
     tradeoff: statementJudge.verdict === "conditional" || statementJudge.verdict === "avoid" ? "This is visually strongest, but the uploaded cloth may need to move to a supporting role for technical credibility." : "The strongest silhouette; best for someone comfortable being visibly more directional.",
     scores: score(brief, "Statement", statementJudge.climateFit, statementJudge.occasionFit, 91, 88, statementJudge.overall)
   };

@@ -1,4 +1,5 @@
 import type { FabricProfile } from "@/lib/fabric-analysis";
+import type { MeasurementProfile } from "@/lib/measurements";
 
 export type FabricSelection = {
   profile: FabricProfile;
@@ -20,4 +21,5 @@ export type ContextProfile = {
 export type DesignerBrief = {
   fabric: FabricSelection;
   context: ContextProfile;
+  measurements?: MeasurementProfile;
 };

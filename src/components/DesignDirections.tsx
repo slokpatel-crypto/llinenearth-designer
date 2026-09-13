@@ -3,16 +3,18 @@
 import { useState } from "react";
 import type { DesignCandidate } from "@/lib/designer-engine";
 import type { DesignerBrief } from "@/lib/designer-types";
+import { measurementCoverage } from "@/lib/measurements";
 
 export function DesignDirections({ brief, candidates, onEditContext, onRefine }: { brief: DesignerBrief; candidates: DesignCandidate[]; onEditContext: () => void; onRefine: (candidate: DesignCandidate) => void }) {
   const [selectedId, setSelectedId] = useState(candidates.find((x) => x.tier === "Elevated")?.id || candidates[0]?.id);
   const selected = candidates.find((x) => x.id === selectedId) || candidates[0];
+  const coverage = measurementCoverage(brief.measurements);
 
   return (
     <section className="directionsStudio">
       <div className="directionsIntro">
-        <div><p className="eyebrow">DESIGNER ENGINE · FABRIC + OCCASION INTELLIGENCE</p><h1>Three ways forward.</h1></div>
-        <div className="directionBrief"><span>{brief.context.occasion}</span><i>·</i><span>{brief.context.venue}</span><i>·</i><span>{brief.context.aesthetic}</span><button onClick={onEditContext}>Edit brief</button></div>
+        <div><p className="eyebrow">DESIGNER ENGINE · FABRIC + OCCASION + FIT INTELLIGENCE</p><h1>Three ways forward.</h1></div>
+        <div className="directionBrief"><span>{brief.context.occasion}</span><i>·</i><span>{brief.context.venue}</span><i>·</i><span>{brief.context.aesthetic}</span>{coverage.total > 0 && <><i>·</i><span>{coverage.total}/16 measurements</span></>}<button onClick={onEditContext}>Edit brief</button></div>
       </div>
 
       <div className="directionGrid">
@@ -35,6 +37,7 @@ export function DesignDirections({ brief, candidates, onEditContext, onRefine }:
                 <div><span>LAYER</span><strong>{candidate.garments.layer}</strong></div>
                 <div><span>FOOTWEAR</span><strong>{candidate.garments.footwear}</strong></div>
               </div>
+              {candidate.fitGuidance.length > 0 && <div className="fitGuidance"><div className="fitGuidanceHead"><span>MEASUREMENT-AWARE FIT</span><b>{coverage.shirt}/8 shirt · {coverage.pants}/8 pants</b></div>{candidate.fitGuidance.map((note)=><p key={note}>{note}</p>)}</div>}
               <div className="directionPalette">{candidate.palette.map((color) => <i key={color} style={{ background: color }} title={color} />)}</div>
               <div className="whyBlock"><span>WHY IT WORKS</span>{candidate.reasons.map((reason) => <p key={reason}>{reason}</p>)}</div>
               <div className="tradeoff"><span>TRADEOFF</span><p>{candidate.tradeoff}</p></div>
@@ -45,8 +48,8 @@ export function DesignDirections({ brief, candidates, onEditContext, onRefine }:
         })}
       </div>
 
-      {selected && <div className="selectedBar"><div><span className="micro">SELECTED</span><strong>{selected.name}</strong><p>{selected.tier} · {selected.aesthetic} · design {selected.scores.total}/100 · fabric {selected.fabricJudgement.overall}/100</p></div><button className="button light" onClick={() => onRefine(selected)}>Compare & refine →</button></div>}
-      <p className="engineNote">Fabric score is no longer image confidence alone. The Designer now evaluates fibre family, intended garment role, climate, formality and occasion before deciding whether the uploaded cloth should become a shirt, trouser, jacket, suit or Indian formal layer.</p>
+      {selected && <div className="selectedBar"><div><span className="micro">SELECTED</span><strong>{selected.name}</strong><p>{selected.tier} · {selected.aesthetic} · design {selected.scores.total}/100 · fabric {selected.fabricJudgement.overall}/100{coverage.total > 0 ? ` · fit profile ${coverage.total}/16` : ""}</p></div><button className="button light" onClick={() => onRefine(selected)}>Compare & refine →</button></div>}
+      <p className="engineNote">The Designer now combines visual fabric signals, confirmed fibre family, intended garment role, climate, formality, occasion and optional body measurements before deciding how the outfit should be built.</p>
     </section>
   );
 }
