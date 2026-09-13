@@ -14,6 +14,7 @@ import "./intelligence-v3.css";
 import "./business-conversion.css";
 import "./home-contact.css";
 import "./homepage-editorial.css";
+import "./light-theme.css";
 import { BrandIntro } from "@/components/BrandIntro";
 
 export const metadata: Metadata = {
