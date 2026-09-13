@@ -1,0 +1,1 @@
+Temporary branch marker for the opening-logo reliability fix. This change makes the LLinen Earth brand intro always show the logo, including when reduced-motion preferences are enabled, while keeping motion restrained.
