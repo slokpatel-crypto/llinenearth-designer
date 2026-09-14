@@ -12,7 +12,7 @@ export type VisualizationSpec = {
   garments: DesignVersion["candidate"]["garments"];
   palette: string[];
   lockedFields: string[];
-  fabric: { material: string; tone: string; summary: string };
+  fabric: { material: string; tone: string; summary: string; swatchImageUrl?: string };
   context: DesignerBrief["context"];
 };
 export type VisualizationRender = {
@@ -22,15 +22,19 @@ export type VisualizationRender = {
   src: string;
   validation: { overall: number; signals: ValidationSignal[] };
   repairCount: number;
+  provider?: "development-svg" | "fashn-edit";
+  providerJobId?: string;
 };
 export type RenderSet = {
   id: string;
   designVersionId: string;
   specHash: string;
   modelId: string;
-  provider: "development-svg";
+  provider: "development-svg" | "fashn-edit";
   providerLabel: string;
-  status: "approved_preview";
+  status: "approved_preview" | "generated";
+  creditsUsed?: number;
+  providerJobIds?: string[];
   generatedAt: string;
   spec: VisualizationSpec;
   renders: VisualizationRender[];
@@ -55,6 +59,7 @@ export function compileVisualizationSpec(brief: DesignerBrief, version: DesignVe
       material: brief.fabric.materialOverride || observation(brief, "Likely material family", "Uploaded fabric"),
       tone: brief.fabric.toneOverride || observation(brief, "Dominant color", "Fabric-led neutral"),
       summary: brief.fabric.profile.summary,
+      swatchImageUrl: brief.fabric.source === "stock" ? brief.fabric.swatchImageUrl : undefined,
     },
     context: { ...brief.context },
   };
@@ -127,7 +132,7 @@ function validation(view: RenderView, repairCount = 0) {
 export function renderDevelopmentSet(brief: DesignerBrief, version: DesignVersion): RenderSet {
   const spec = compileVisualizationSpec(brief, version);
   const views: RenderView[] = ["front", "back", "detail"];
-  const renders = views.map((view) => ({ id: `${spec.specHash}-${view}`, view, label: view === "detail" ? "Construction detail" : `${view[0].toUpperCase()}${view.slice(1)} view`, src: renderSvg(spec, view), validation: validation(view), repairCount: 0 }));
+  const renders = views.map((view) => ({ id: `${spec.specHash}-${view}`, view, label: view === "detail" ? "Construction detail" : `${view[0].toUpperCase()}${view.slice(1)} view`, src: renderSvg(spec, view), validation: validation(view), repairCount: 0, provider: "development-svg" as const }));
   return { id: `RS-${spec.specHash}`, designVersionId: version.id, specHash: spec.specHash, modelId: spec.modelId, provider: "development-svg", providerLabel: "LLinen Earth development render adapter", status: "approved_preview", generatedAt: new Date().toISOString(), spec, renders };
 }
 
