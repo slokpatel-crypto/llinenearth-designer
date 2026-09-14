@@ -5,6 +5,9 @@ export type FabricSelection = {
   profile: FabricProfile;
   materialOverride?: string;
   toneOverride?: string;
+  source?: "upload" | "stock";
+  stockId?: string;
+  swatchImageUrl?: string;
 };
 
 export type ContextProfile = {
