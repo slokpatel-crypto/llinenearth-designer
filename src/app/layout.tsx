@@ -21,6 +21,26 @@ import { BrandIntro } from "@/components/BrandIntro";
 export const metadata: Metadata = {
   title: "LLinen Earth — AI Atelier",
   description: "A premium digital atelier for fabric-led menswear design.",
+  metadataBase: new URL("https://llinenearth-designer.vercel.app"),
+  icons: {
+    icon: "/brand/llinen-earth-logo.png",
+    apple: "/brand/llinen-earth-logo.png",
+  },
+  openGraph: {
+    title: "LLinen Earth — AI Atelier",
+    description: "A premium digital atelier for fabric-led menswear design.",
+    url: "https://llinenearth-designer.vercel.app",
+    siteName: "LLinen Earth",
+    images: [{ url: "/brand/llinen-earth-logo.png", width: 1273, height: 531 }],
+    locale: "en_IN",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "LLinen Earth — AI Atelier",
+    description: "A premium digital atelier for fabric-led menswear design.",
+    images: ["/brand/llinen-earth-logo.png"],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
