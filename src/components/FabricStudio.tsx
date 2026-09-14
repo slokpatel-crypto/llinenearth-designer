@@ -53,6 +53,8 @@ export function FabricStudio({ onContinue }: { onContinue?: (selection: FabricSe
   const [error, setError] = useState<string | null>(null);
   const [familyOverride, setFamilyOverride] = useState("");
   const [toneOverride, setToneOverride] = useState("");
+  const [aiConsent, setAiConsent] = useState(false);
+  const [analysisMode, setAnalysisMode] = useState<"claude_vision_v1" | "development_visual_classifier_v3" | null>(null);
 
   const fileMeta = useMemo(() => file ? `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)} MB` : null, [file]);
 
@@ -67,13 +69,32 @@ export function FabricStudio({ onContinue }: { onContinue?: (selection: FabricSe
   function onInput(event: ChangeEvent<HTMLInputElement>) { loadFile(event.target.files?.[0] ?? null); }
   function onDrop(event: DragEvent<HTMLLabelElement>) { event.preventDefault(); loadFile(event.dataTransfer.files?.[0] ?? null); }
 
+  function fileToBase64(target: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = String(reader.result || "");
+        // strip the "data:image/jpeg;base64," prefix — the API wants raw base64 only
+        resolve(result.slice(result.indexOf(",") + 1));
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(target);
+    });
+  }
+
   async function analyze() {
     if (!file) return;
     setStatus("analyzing"); setError(null);
     try {
       const visualSignals = await extractVisualSignals(file);
-      const response = await fetch("/api/fabric/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fileName: file.name, contentType: file.type, size: file.size, visualSignals }) });
-      const data = await response.json(); if (!response.ok) throw new Error(data.error || "Analysis failed."); setProfile(data.profile); setStatus("complete");
+      const payload: Record<string, unknown> = { fileName: file.name, contentType: file.type, size: file.size, visualSignals };
+      if (aiConsent) {
+        payload.aiConsent = true;
+        payload.imageBase64 = await fileToBase64(file);
+      }
+      const response = await fetch("/api/fabric/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const data = await response.json(); if (!response.ok) throw new Error(data.error || "Analysis failed.");
+      setProfile(data.profile); setAnalysisMode(data.mode ?? null); setStatus("complete");
     } catch (err) { setError(err instanceof Error ? err.message : "Analysis failed."); setStatus("error"); }
   }
 
@@ -84,13 +105,17 @@ export function FabricStudio({ onContinue }: { onContinue?: (selection: FabricSe
   return <section className="fabricStudio">
     <div className="studioIntro"><p className="eyebrow">FABRIC INTELLIGENCE · V3</p><h1>Start with the cloth.</h1><p>Upload one clear fabric photo. LLinen Earth now reads pixel-level color, contrast, micro-texture, edge density and directional weave cues before ranking the most likely fabric families. You still confirm fibre composition because a photo cannot chemically prove it.</p><div className="studioSteps" aria-label="Fabric design process"><span className="active">01 Upload</span><span>02 Visual scan</span><span>03 Confirm composition</span><span>04 Build brief</span></div></div>
 
-    <div className="studioGrid"><div className="fabricCanvas"><div className="canvasHead"><div><span className="micro">YOUR FABRIC</span><h2>{file ? "Fabric captured" : "Show us the material"}</h2></div><span className="privacyTag">Photo stays in your browser</span></div>
+    <div className="studioGrid"><div className="fabricCanvas"><div className="canvasHead"><div><span className="micro">YOUR FABRIC</span><h2>{file ? "Fabric captured" : "Show us the material"}</h2></div><span className="privacyTag">{aiConsent ? "Photo sent to AI for this scan" : "Photo stays in your browser"}</span></div>
       <label className={`uploadStage ${preview ? "hasImage" : ""}`} onDragOver={(e) => e.preventDefault()} onDrop={onDrop}><input type="file" accept="image/*" onChange={onInput} />{preview ? <><img src={preview} alt="Uploaded fabric preview" /><div className="uploadShade" /><div className="replaceHint">Click or drop another image to replace</div></> : <div className="uploadEmpty"><span className="uploadPlus">+</span><h3>Drop a fabric photo here</h3><p>or choose from your device · camera works on mobile</p><small>Best result: even light, cloth fills the frame, one small fold, no heavy filters.</small></div>}</label>
       <div className="captureGuide"><div><span>01</span><strong>Natural light</strong><p>Avoid strong yellow or blue lighting.</p></div><div><span>02</span><strong>Fill the frame</strong><p>Show enough surface to read weave and pattern.</p></div><div><span>03</span><strong>Keep one fold</strong><p>A small fold helps communicate drape.</p></div></div>
-      <div className="canvasActions"><div>{fileMeta ?? "PNG, JPG, WEBP · up to 10 MB"}</div><button className="button light" disabled={!file || status === "analyzing"} onClick={analyze}>{status === "analyzing" ? "Scanning weave…" : profile ? "Analyze again" : "Analyze fabric"}</button></div>{error && <p className="studioError">{error}</p>}
+      <label className="aiConsentRow" style={{ display: "flex", alignItems: "flex-start", gap: "10px", margin: "16px 0", fontSize: "13px", cursor: "pointer" }}>
+        <input type="checkbox" checked={aiConsent} onChange={(e) => setAiConsent(e.target.checked)} style={{ marginTop: "3px" }} />
+        <span>Let LLinen Earth&apos;s AI read the actual photo for a more accurate read. Your photo is sent to our AI provider for this one scan only and is not stored or used to train any model. Leave this off to keep the on-device estimate instead.</span>
+      </label>
+      <div className="canvasActions"><div>{fileMeta ?? "PNG, JPG, WEBP · up to 10 MB"}</div><button className="button light" disabled={!file || status === "analyzing"} onClick={analyze}>{status === "analyzing" ? (aiConsent ? "Asking the AI…" : "Scanning weave…") : profile ? "Analyze again" : "Analyze fabric"}</button></div>{error && <p className="studioError">{error}</p>}
     </div>
 
-    <aside className="analysisPanel"><div className="analysisHead"><div><span className="micro">FABRIC PROFILE</span><h2>{profile ? "Visual classifier result" : "Waiting for fabric"}</h2></div><span className={`analysisState ${status}`}>{status === "complete" ? "V3 estimated" : status === "analyzing" ? "Scanning" : "Not started"}</span></div>
+    <aside className="analysisPanel"><div className="analysisHead"><div><span className="micro">FABRIC PROFILE</span><h2>{profile ? (analysisMode === "claude_vision_v1" ? "AI vision result" : "Visual classifier result") : "Waiting for fabric"}</h2></div><span className={`analysisState ${status}`}>{status === "complete" ? (analysisMode === "claude_vision_v1" ? "AI estimated" : "V3 estimated") : status === "analyzing" ? "Scanning" : "Not started"}</span></div>
       {!profile ? <div className="analysisEmpty"><div className="orb" /><p>Your structured fabric profile will appear here.</p><ul><li>Ranked material-family matches</li><li>Actual image-derived color</li><li>Pattern and weave direction</li><li>Texture and drape proxy</li></ul></div> : <><p className="analysisSummary">{profile.summary}</p><div className="paletteRow">{profile.palette.map((color) => <span key={color} style={{ background: color }} title={color} />)}</div>
         {profile.alternatives?.length ? <div className="fabricMatches"><span className="micro">TOP VISUAL MATCHES</span>{profile.alternatives.slice(0,4).map((match,i)=><div className="fabricMatch" key={match.family}><b>{String(i+1).padStart(2,"0")}</b><div><strong>{match.family}</strong><small>{match.evidence[0] || "Visual structure match"}</small></div><em>{Math.round(match.confidence*100)}%</em></div>)}</div> : null}
         <div className="observationList">{profile.observations.map((item) => <div className="observation" key={item.label}><div><span>{item.label}</span><strong>{item.value}</strong></div><div className="confidence"><i style={{ width: `${Math.round(item.confidence * 100)}%` }} /><em>{Math.round(item.confidence * 100)}%</em></div></div>)}</div>

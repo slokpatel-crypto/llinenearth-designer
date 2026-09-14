@@ -23,12 +23,12 @@ export type FabricObservation = {
   value: string;
   confidence: number;
   confidenceLabel: Confidence;
-  basis: "visual_estimate" | "user_confirmed" | "development_visual_classifier";
+  basis: "visual_estimate" | "user_confirmed" | "development_visual_classifier" | "ai_vision_estimate";
 };
 
 export type FabricProfile = {
   id: string;
-  source: "development_visual_classifier";
+  source: "development_visual_classifier" | "claude_vision_v1";
   summary: string;
   observations: FabricObservation[];
   palette: string[];
@@ -36,6 +36,19 @@ export type FabricProfile = {
   visualSignals?: FabricVisualSignals;
   cautions: string[];
 };
+
+// Shared fibre-family vocabulary. Exported so the real AI analyzer (ai-fabric-analysis.ts)
+// scores against the exact same taxonomy as the development heuristic, keeping the two
+// interchangeable behind the same API contract.
+export const fabricFamilies = [
+  "Linen", "Linen-Cotton", "Cotton Poplin", "Oxford Cotton", "Cotton Twill",
+  "TR / Poly-Viscose Suiting", "TR-Wool / Poly-Viscose-Wool", "Tropical Wool",
+  "Hopsack Wool", "Wool Flannel", "Cotton Seersucker", "Denim", "Corduroy", "Velvet", "Silk Blend"
+] as const;
+
+export function confidenceLabelFromScore(score: number): Confidence {
+  return confidenceLabel(score);
+}
 
 export type FabricAnalysisInput = {
   fileName: string;
@@ -50,11 +63,7 @@ function confidenceLabel(score: number): Confidence {
   return "low";
 }
 
-const families = [
-  "Linen", "Linen-Cotton", "Cotton Poplin", "Oxford Cotton", "Cotton Twill",
-  "TR / Poly-Viscose Suiting", "TR-Wool / Poly-Viscose-Wool", "Tropical Wool",
-  "Hopsack Wool", "Wool Flannel", "Cotton Seersucker", "Denim", "Corduroy", "Velvet", "Silk Blend"
-] as const;
+const families = fabricFamilies;
 
 function clamp01(n: number) { return Math.max(0, Math.min(1, n)); }
 function closeness(value: number, target: number, spread = .3) { return clamp01(1 - Math.abs(value - target) / spread); }
