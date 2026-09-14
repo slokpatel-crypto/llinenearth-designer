@@ -28,7 +28,7 @@ export type FabricObservation = {
 
 export type FabricProfile = {
   id: string;
-  source: "development_visual_classifier" | "claude_vision_v1";
+  source: "development_visual_classifier" | "claude_vision_v1" | "stock_catalog";
   summary: string;
   observations: FabricObservation[];
   palette: string[];
