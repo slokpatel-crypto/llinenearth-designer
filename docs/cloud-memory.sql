@@ -1,20 +1,22 @@
 -- LLinen Earth cloud memory
 --
--- Canonical migration:
+-- Canonical production migration:
 --   supabase/migrations/20260920_style_events_hardening.sql
 --
--- Apply that migration to the Supabase project used by the website.
--- It creates/hardens public.style_events, enables RLS, revokes direct
--- browser access from anon/authenticated, and grants only SELECT/INSERT
--- to service_role for the server-side append/read workflow.
+-- Current schema contract: v2
+--
+-- The migration creates public.style_events as an append-only event ledger,
+-- enables RLS, removes direct anon/authenticated access, grants the server role
+-- only SELECT + INSERT, and installs server-only health/version RPCs.
 --
 -- Required Vercel server-only environment variables:
 --   SUPABASE_URL
---   SUPABASE_SECRET_KEY              (preferred)
---   SUPABASE_SERVICE_ROLE_KEY        (legacy fallback)
+--   SUPABASE_SECRET_KEY              (preferred modern server secret)
+--   SUPABASE_SERVICE_ROLE_KEY        (legacy fallback only)
 --   LLINEN_OPERATOR_SYNC_TOKEN
 --   LLINEN_OPERATOR_PASSWORD_HASH
 --   LLINEN_OPERATOR_SESSION_SECRET
+--   LLINEN_MEMORY_SESSION_SECRET
 --
 -- Public website clients never receive the elevated Supabase key.
 -- Next.js Route Handlers validate and persist events server-side.
@@ -22,18 +24,20 @@
 -- Desktop LLinen Earth OS:
 --   1. Pair /api/operator/sync with LLINEN_OPERATOR_SYNC_TOKEN.
 --   2. The token is stored in Windows Credential Manager.
---   3. Desktop pushes operator events and pulls website events.
---   4. Event IDs make sync idempotent; received_at + id is the pull cursor.
+--   3. Desktop pushes local operator events and pulls website events.
+--   4. Event IDs make uploads idempotent.
+--   5. received_at + id is the deterministic pull cursor.
+--   6. Pairing health verifies the cloud schema before real sync.
 --
--- Legacy minimal schema retained below only as reference.
-create table if not exists public.style_events (
-  id text primary key,
-  session_id text not null,
-  type text not null,
-  at timestamptz not null,
-  source text not null default 'style-director',
-  payload jsonb not null default '{}'::jsonb,
-  received_at timestamptz not null default now()
-);
-
-alter table public.style_events enable row level security;
+-- Verification after applying the migration:
+--   npm run cloud:check
+--
+-- That command validates:
+--   • style_events exists
+--   • RLS is enabled
+--   • anon/authenticated have no direct access
+--   • the server role has SELECT/INSERT only
+--   • schema version is exactly v2
+--
+-- Do not hand-edit production data in style_events. Business history is
+-- append-only; corrections should be new events.
