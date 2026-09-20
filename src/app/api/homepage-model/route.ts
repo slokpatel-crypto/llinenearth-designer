@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const OFFICIAL_FASHN_OUTPUT = /^https:\/\/(cdn|media)\.fashn\.ai\//i;
-const FALLBACK = "https://images.pexels.com/photos/769749/pexels-photo-769749.jpeg?auto=compress&cs=tinysrgb&w=1400";
+const FALLBACK = "/editorial/suit.webp";
 
 const HERO_PROMPT = [
   "Photorealistic full-body luxury menswear editorial photograph.",
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
   if (extraKeys.length) return NextResponse.json({ error: "Unsupported query." }, { status: 400 });
 
   const apiKey = process.env.FASHN_API_KEY;
-  if (!apiKey) return fallback(request, "FASHN_API_KEY missing");
+  if (!apiKey) return fallback(request, "FASHN_API_KEY missing", "not-configured");
 
   try {
     const client = new Fashn({ apiKey, timeout: 35_000, maxRetries: 2 });
@@ -52,16 +52,16 @@ export async function GET(request: Request) {
 
     const output = result.output?.[0];
     if (result.status !== "completed" || !output || !OFFICIAL_FASHN_OUTPUT.test(output)) {
-      return fallback(request, result.error?.message || `status ${result.status}`);
+      return fallback(request, result.error?.message || `status ${result.status}`, "generation-failed");
     }
 
     const image = await fetch(output, { cache: "no-store" });
-    if (!image.ok) return fallback(request, `image fetch HTTP ${image.status}`);
+    if (!image.ok) return fallback(request, `image fetch HTTP ${image.status}`, "output-fetch-failed");
     const type = image.headers.get("content-type") || "";
-    if (!type.toLowerCase().startsWith("image/")) return fallback(request, "non-image output");
+    if (!type.toLowerCase().startsWith("image/")) return fallback(request, "non-image output", "invalid-output");
 
     const bytes = await image.arrayBuffer();
-    if (bytes.byteLength > 16 * 1024 * 1024) return fallback(request, "output too large");
+    if (bytes.byteLength > 16 * 1024 * 1024) return fallback(request, "output too large", "output-too-large");
 
     return new Response(bytes, {
       status: 200,
@@ -73,6 +73,6 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    return fallback(request, error instanceof Error ? error.message : "unknown generation error");
+    return fallback(request, error instanceof Error ? error.message : "unknown generation error", "exception");
   }
 }
