@@ -1015,7 +1015,39 @@ async fn sync_from_cloud() -> Result<SyncResult, String> {
     .map_err(|e| e.to_string())?;
 
   let mut state = load_sync_state()?;
-  let mut known = load_events()?
+  let local_events = load_events()?;
+  let operator_events = local_events
+    .iter()
+    .filter(|event| event.source == "operator-desktop")
+    .cloned()
+    .collect::<Vec<_>>();
+  let mut pushed = 0usize;
+
+  for chunk in operator_events.chunks(200) {
+    let response = client
+      .post(&sync_url)
+      .bearer_auth(&token)
+      .json(&json!({ "events": chunk }))
+      .send()
+      .await
+      .map_err(|e| format!("Cloud upload failed: {e}"))?;
+
+    if response.status() == reqwest::StatusCode::UNAUTHORIZED {
+      return Err("Cloud sync authorization was rejected.".to_string());
+    }
+    if !response.status().is_success() {
+      return Err(format!("Cloud upload returned HTTP {}.", response.status()));
+    }
+
+    let result = response.json::<Value>().await.map_err(|e| e.to_string())?;
+    pushed += result
+      .get("accepted")
+      .and_then(Value::as_u64)
+      .map(|value| value as usize)
+      .unwrap_or(chunk.len());
+  }
+
+  let mut known = local_events
     .into_iter()
     .map(|event| event.id)
     .collect::<HashSet<_>>();
@@ -1063,10 +1095,11 @@ async fn sync_from_cloud() -> Result<SyncResult, String> {
     configured: true,
     imported,
     next_cursor: state.cursor,
-    message: if imported == 0 {
-      "Cloud memory is already up to date.".to_string()
-    } else {
-      format!("Imported {imported} new website events.")
+    message: match (pushed, imported) {
+      (0, 0) => "Cloud memory is already up to date.".to_string(),
+      (uploaded, 0) => format!("Reconciled {uploaded} local operator event(s) with cloud memory."),
+      (0, downloaded) => format!("Imported {downloaded} new cloud event(s)."),
+      (uploaded, downloaded) => format!("Reconciled {uploaded} local event(s) and imported {downloaded} new cloud event(s)."),
     },
   })
 }
