@@ -9,6 +9,10 @@ on:
       - "desktop/**"
       - ".github/workflows/build-llinen-earth-os.yml"
 
+concurrency:
+  group: llinen-earth-os-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   windows:
     runs-on: windows-latest
