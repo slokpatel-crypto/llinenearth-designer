@@ -87,6 +87,7 @@ const desktopOperationalContracts = [
     "desktopLockScreen",
     "Cloud ↔ PC",
   ]],
+  ["desktop/src/ErrorBoundary.tsx", ["export_system_report","Restart interface","No customer data is sent automatically"]],
   ["desktop/src/app.css", [
     "staffPriorityCard",
     "measurementPassport",
