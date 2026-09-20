@@ -33,7 +33,9 @@ const SESSION_TOKEN_PREFIX = "llinen-earth:memory-session:";
 const sessionTokenRequests = new Map<string,Promise<string|null>>();
 const MAX_BROWSER_EVENTS = 1200;
 const PENDING_KEY = "llinen-earth:style-cloud-pending:v1";
+const SYNCED_KEY = "llinen-earth:style-cloud-synced:v1";
 const MAX_PENDING_EVENTS = 600;
+const MAX_SYNCED_IDS = 1200;
 let cloudFlush: Promise<void> | null = null;
 
 function safeWindow() {
@@ -115,6 +117,23 @@ export function saveBridgeConfig(config: LocalBridgeConfig | null) {
   else w.sessionStorage.setItem(BRIDGE_KEY, JSON.stringify(config));
 }
 
+function readSyncedIds() {
+  const w = safeWindow();
+  if (!w) return new Set<string>();
+  try {
+    const parsed = JSON.parse(w.localStorage.getItem(SYNCED_KEY) || "[]");
+    return new Set<string>(Array.isArray(parsed) ? parsed.slice(-MAX_SYNCED_IDS) : []);
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function writeSyncedIds(ids:Set<string>) {
+  const w = safeWindow();
+  if (!w) return;
+  w.localStorage.setItem(SYNCED_KEY,JSON.stringify([...ids].slice(-MAX_SYNCED_IDS)));
+}
+
 function readPendingEvents(): StyleMemoryEvent[] {
   const w = safeWindow();
   if (!w) return [];
@@ -172,15 +191,30 @@ export async function flushPendingStyleMemoryEvents() {
   if (!w || cloudFlush) return cloudFlush || Promise.resolve();
 
   cloudFlush = (async()=>{
-    const pending = readPendingEvents();
+    const synced = readSyncedIds();
+    const pendingMap = new Map<string,StyleMemoryEvent>();
+
+    for (const event of readPendingEvents()) {
+      if (!synced.has(event.id)) pendingMap.set(event.id,event);
+    }
+
+    // Backfill browser-local records that may have been captured before cloud was configured.
+    for (const event of readBrowserStyleEvents().slice(-MAX_PENDING_EVENTS)) {
+      if (!synced.has(event.id)) pendingMap.set(event.id,event);
+    }
+
+    const pending = [...pendingMap.values()].slice(-MAX_PENDING_EVENTS);
     if (!pending.length) return;
 
     const remaining:StyleMemoryEvent[] = [];
     for (const event of pending) {
       const sent = await sendCloudEvent(event);
-      if (!sent) remaining.push(event);
+      if (sent) synced.add(event.id);
+      else remaining.push(event);
     }
+
     writePendingEvents(remaining);
+    writeSyncedIds(synced);
   })().finally(()=>{ cloudFlush = null; });
 
   return cloudFlush;
@@ -238,4 +272,5 @@ export function clearBrowserStyleEvents() {
   const w = safeWindow();
   w?.localStorage.removeItem(EVENT_KEY);
   w?.localStorage.removeItem(PENDING_KEY);
+  w?.localStorage.removeItem(SYNCED_KEY);
 }
