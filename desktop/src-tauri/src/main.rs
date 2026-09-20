@@ -1,4 +1,4 @@
-use chrono::Utc;
+use chrono::{Local, Utc};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -594,6 +594,83 @@ fn save_brain_actions(actions: &HashMap<String, BrainActionState>) -> Result<(),
   .map_err(|e| e.to_string())
 }
 
+fn build_backup_payload() -> Result<Value, String> {
+  let events = load_events()?;
+  let summary = aggregate(events.clone());
+  let inventory = get_fabric_inventory().ok();
+  let brain_actions = load_brain_actions().ok();
+  let sync_state = load_sync_state().ok();
+
+  Ok(json!({
+    "backupVersion": 2,
+    "createdAt": Utc::now().to_rfc3339(),
+    "events": events,
+    "summary": summary,
+    "inventory": inventory,
+    "brainActions": brain_actions,
+    "syncState": sync_state,
+  }))
+}
+
+fn write_backup_file(prefix: &str) -> Result<PathBuf, String> {
+  let root = ensure_vault()?;
+  let stamp = Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
+  let path = root.join("backups").join(format!("{prefix}{stamp}.json"));
+  let payload = build_backup_payload()?;
+  fs::write(
+    &path,
+    serde_json::to_string_pretty(&payload).map_err(|e| e.to_string())?,
+  ).map_err(|e| e.to_string())?;
+  verify_backup_file(&path)?;
+  Ok(path)
+}
+
+fn verify_backup_file(path: &Path) -> Result<(), String> {
+  let content = fs::read_to_string(path).map_err(|e| format!("Backup could not be read: {e}"))?;
+  let value = serde_json::from_str::<Value>(&content).map_err(|e| format!("Backup JSON is invalid: {e}"))?;
+  if value.get("createdAt").and_then(Value::as_str).is_none() {
+    return Err("Backup is missing createdAt.".to_string());
+  }
+  if !value.get("events").is_some_and(Value::is_array) {
+    return Err("Backup is missing the event ledger.".to_string());
+  }
+  if !value.get("summary").is_some_and(Value::is_object) {
+    return Err("Backup is missing the dashboard summary.".to_string());
+  }
+  Ok(())
+}
+
+fn prune_auto_backups(limit: usize) -> Result<(), String> {
+  let dir = ensure_vault()?.join("backups");
+  let mut files = fs::read_dir(&dir)
+    .map_err(|e| e.to_string())?
+    .filter_map(|entry| entry.ok().map(|item| item.path()))
+    .filter(|path| {
+      path.file_name()
+        .and_then(|value| value.to_str())
+        .is_some_and(|name| name.starts_with("llinen-earth-auto-") && name.ends_with(".json"))
+    })
+    .collect::<Vec<_>>();
+  files.sort();
+  if files.len() <= limit {
+    return Ok(());
+  }
+  let remove_count = files.len() - limit;
+  for path in files.into_iter().take(remove_count) {
+    let _ = fs::remove_file(path);
+  }
+  Ok(())
+}
+
+fn auto_backup_exists_today() -> Result<bool, String> {
+  let dir = ensure_vault()?.join("backups");
+  let prefix = format!("llinen-earth-auto-{}", Local::now().format("%Y-%m-%d"));
+  Ok(fs::read_dir(dir)
+    .map_err(|e| e.to_string())?
+    .filter_map(Result::ok)
+    .any(|entry| entry.file_name().to_string_lossy().starts_with(&prefix)))
+}
+
 fn directory_stats(path: &Path) -> (usize, u64, Option<String>) {
   let mut count = 0usize;
   let mut bytes = 0u64;
@@ -660,6 +737,10 @@ fn build_system_health() -> Result<SystemHealth, String> {
   let invalid_event_lines = invalid_event_line_count(&event_files);
 
   let (backup_count, backup_bytes, latest_backup) = directory_stats(&root.join("backups"));
+  let latest_backup_verified = latest_backup
+    .as_ref()
+    .is_some_and(|name| verify_backup_file(&root.join("backups").join(name)).is_ok());
+  let auto_backup_today = auto_backup_exists_today().unwrap_or(false);
   let latest_backup_at = latest_file_modified_at(&root.join("backups"));
   let (visual_count, visual_bytes, _) = directory_stats(&root.join("visuals"));
   let (marketing_briefs, _, _) = directory_stats(&root.join("marketing"));
@@ -674,6 +755,11 @@ fn build_system_health() -> Result<SystemHealth, String> {
   let mut issues = Vec::<String>::new();
   if backup_count == 0 {
     issues.push("No local backup has been created yet.".to_string());
+  } else if !latest_backup_verified {
+    issues.push("The newest local backup failed verification.".to_string());
+  }
+  if !auto_backup_today {
+    issues.push("Today's automatic backup has not been created yet.".to_string());
   } else if let Some(latest) = latest_backup_at.as_deref() {
     if let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(latest) {
       if Utc::now().signed_duration_since(parsed.with_timezone(&Utc)).num_days() >= 7 {
@@ -1492,33 +1578,34 @@ async fn sync_fabric_inventory() -> Result<SyncResult, String> {
 
 #[tauri::command]
 fn create_backup() -> Result<String, String> {
-  let root = ensure_vault()?;
-  let events = load_events()?;
-  let summary = aggregate(events.clone());
-  let inventory = get_fabric_inventory().ok();
-  let brain_actions = load_brain_actions().ok();
-  let sync_state = load_sync_state().ok();
-  let stamp = Utc::now().format("%Y-%m-%dT%H-%M-%S").to_string();
-  let path = root
-    .join("backups")
-    .join(format!("llinen-earth-memory-{stamp}.json"));
-
-  let payload = json!({
-    "createdAt": Utc::now().to_rfc3339(),
-    "events": events,
-    "summary": summary,
-    "inventory": inventory,
-    "brainActions": brain_actions,
-    "syncState": sync_state,
-  });
-
-  fs::write(
-    &path,
-    serde_json::to_string_pretty(&payload).map_err(|e| e.to_string())?,
-  )
-  .map_err(|e| e.to_string())?;
-
+  let path = write_backup_file("llinen-earth-memory-")?;
   Ok(path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+fn ensure_daily_backup() -> Result<String, String> {
+  if auto_backup_exists_today()? {
+    return Ok("Automatic backup already exists for today.".to_string());
+  }
+
+  let path = write_backup_file("llinen-earth-auto-")?;
+  prune_auto_backups(30)?;
+  Ok(format!("Automatic daily backup created: {}", path.to_string_lossy()))
+}
+
+#[tauri::command]
+fn verify_latest_backup() -> Result<String, String> {
+  let root = ensure_vault()?;
+  let backup_dir = root.join("backups");
+  let mut files = fs::read_dir(&backup_dir)
+    .map_err(|e| e.to_string())?
+    .filter_map(|entry| entry.ok().map(|item| item.path()))
+    .filter(|path| path.extension().and_then(|value| value.to_str()) == Some("json"))
+    .collect::<Vec<_>>();
+  files.sort();
+  let latest = files.pop().ok_or_else(|| "No JSON backup exists yet.".to_string())?;
+  verify_backup_file(&latest)?;
+  Ok(format!("Verified: {}", latest.to_string_lossy()))
 }
 
 #[tauri::command]
@@ -1747,6 +1834,8 @@ fn main() {
       sync_fabric_inventory,
       archive_visuals,
       create_backup,
+      ensure_daily_backup,
+      verify_latest_backup,
       sync_from_cloud
     ])
     .run(tauri::generate_context!())
