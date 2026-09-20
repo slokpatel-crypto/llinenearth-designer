@@ -482,7 +482,7 @@ export default function App() {
       note: currentOrder?.note || "",
     });
     const currentMeasurements = latestMeasurements(selectedSession);
-    setMeasurementUnit(currentMeasurements?.unit || "in");
+    setMeasurementUnit(currentMeasurements?.unit === "cm" ? "cm" : "in");
     setMeasurementNote(currentMeasurements?.note || "");
     setMeasurementDraft(Object.fromEntries(
       measurementFields.map(([key]) => {
