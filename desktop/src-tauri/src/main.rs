@@ -241,6 +241,7 @@ fn ensure_vault() -> Result<PathBuf, String> {
   fs::create_dir_all(root.join("inventory")).map_err(|e| e.to_string())?;
   fs::create_dir_all(root.join("brain")).map_err(|e| e.to_string())?;
   fs::create_dir_all(root.join("marketing")).map_err(|e| e.to_string())?;
+  fs::create_dir_all(root.join("job-cards")).map_err(|e| e.to_string())?;
   Ok(root)
 }
 
@@ -454,6 +455,27 @@ fn stored_lock_password() -> Option<String> {
   lock_entry().ok()?.get_password().ok().filter(|value| !value.is_empty())
 }
 
+fn html_escape(value: &str) -> String {
+  value
+    .replace('&', "&amp;")
+    .replace('<', "&lt;")
+    .replace('>', "&gt;")
+    .replace('"', "&quot;")
+    .replace('\'', "&#39;")
+}
+
+fn safe_filename(value: &str) -> String {
+  value
+    .chars()
+    .map(|ch| if ch.is_ascii_alphanumeric() { ch.to_ascii_lowercase() } else { '-' })
+    .collect::<String>()
+    .split('-')
+    .filter(|part| !part.is_empty())
+    .take(8)
+    .collect::<Vec<_>>()
+    .join("-")
+}
+
 fn constant_time_text_equal(left: &str, right: &str) -> bool {
   let a = left.as_bytes();
   let b = right.as_bytes();
@@ -656,6 +678,150 @@ fn build_system_health() -> Result<SystemHealth, String> {
 #[tauri::command]
 fn get_dashboard_summary() -> Result<DashboardSummary, String> {
   Ok(aggregate(load_events()?))
+}
+
+#[tauri::command]
+fn export_job_card(session_id: String) -> Result<String, String> {
+  let summary = aggregate(load_events()?);
+  let session = summary.sessions.into_iter()
+    .find(|session| session.session_id == session_id)
+    .ok_or_else(|| "Customer session not found.".to_string())?;
+
+  let mut order_status = String::new();
+  let mut due_date = String::new();
+  let mut order_note = String::new();
+  let mut order_value = 0.0f64;
+  let mut appointment_kind = String::new();
+  let mut appointment_date = String::new();
+  let mut appointment_status = String::new();
+  let mut appointment_note = String::new();
+  let mut measurement_unit = String::new();
+  let mut measurement_note = String::new();
+  let mut measurements = serde_json::Map::<String,Value>::new();
+  let mut payments = Vec::<(f64,String,String,String)>::new();
+
+  for event in &session.events {
+    match event.event_type.as_str() {
+      "order_status_changed" => {
+        order_status = event.payload.get("status").and_then(Value::as_str).unwrap_or("").to_string();
+        due_date = event.payload.get("dueDate").and_then(Value::as_str).unwrap_or("").to_string();
+        order_note = event.payload.get("note").and_then(Value::as_str).unwrap_or("").to_string();
+        order_value = event.payload.get("orderValue").and_then(Value::as_f64).unwrap_or(0.0);
+      }
+      "appointment_updated" => {
+        appointment_kind = event.payload.get("kind").and_then(Value::as_str).unwrap_or("").to_string();
+        appointment_date = event.payload.get("dateTime").and_then(Value::as_str).unwrap_or("").to_string();
+        appointment_status = event.payload.get("status").and_then(Value::as_str).unwrap_or("").to_string();
+        appointment_note = event.payload.get("note").and_then(Value::as_str).unwrap_or("").to_string();
+      }
+      "measurements_updated" => {
+        measurement_unit = event.payload.get("unit").and_then(Value::as_str).unwrap_or("in").to_string();
+        measurement_note = event.payload.get("note").and_then(Value::as_str).unwrap_or("").to_string();
+        measurements = event.payload.get("measurements")
+          .and_then(Value::as_object)
+          .cloned()
+          .unwrap_or_default();
+      }
+      "payment_logged" => {
+        let amount = event.payload.get("amount").and_then(Value::as_f64).unwrap_or(0.0);
+        let method = event.payload.get("method").and_then(Value::as_str).unwrap_or("other").to_string();
+        let note = event.payload.get("note").and_then(Value::as_str).unwrap_or("").to_string();
+        payments.push((amount,method,note,event.at.clone()));
+      }
+      _ => {}
+    }
+  }
+
+  let paid = payments.iter().map(|(amount,_,_,_)| *amount).sum::<f64>();
+  let balance = (order_value - paid).max(0.0);
+  let name = if session.customer.name.trim().is_empty() { "Customer" } else { session.customer.name.trim() };
+  let filename_base = {
+    let candidate = safe_filename(name);
+    if candidate.is_empty() { safe_filename(&session.session_id) } else { candidate }
+  };
+  let stamp = Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string();
+  let path = ensure_vault()?.join("job-cards").join(format!("{filename_base}_{stamp}.html"));
+
+  let measurements_html = if measurements.is_empty() {
+    "<p class=\"muted\">No measurements recorded.</p>".to_string()
+  } else {
+    measurements.iter().map(|(key,value)| {
+      let number = value.as_f64().map(|v| format!("{v:.2}")).unwrap_or_else(|| value.to_string());
+      format!("<div><span>{}</span><b>{} {}</b></div>", html_escape(key), html_escape(&number), html_escape(&measurement_unit))
+    }).collect::<Vec<_>>().join("")
+  };
+
+  let payments_html = if payments.is_empty() {
+    "<p class=\"muted\">No payments recorded.</p>".to_string()
+  } else {
+    payments.iter().rev().map(|(amount,method,note,at)| {
+      format!(
+        "<tr><td>₹{:.0}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+        amount,
+        html_escape(method),
+        html_escape(note),
+        html_escape(at)
+      )
+    }).collect::<Vec<_>>().join("")
+  };
+
+  let selected_look = session.selected_look.as_ref()
+    .map(|value| {
+      let title = value.get("title").and_then(Value::as_str).unwrap_or("");
+      let fabric = value.get("fabric").and_then(Value::as_str).unwrap_or("");
+      format!("{}{}", html_escape(title), if fabric.is_empty() { String::new() } else { format!(" · {}", html_escape(fabric)) })
+    })
+    .unwrap_or_else(|| "Not selected".to_string());
+
+  let html = format!(r#"<!doctype html>
+<html><head><meta charset="utf-8"><title>LLinen Earth Job Card</title>
+<style>
+body{{font-family:Arial,sans-serif;color:#102033;margin:36px;max-width:980px}}h1,h2{{font-family:Georgia,serif;font-weight:400}}header{{border-bottom:2px solid #102033;padding-bottom:18px;margin-bottom:22px}}header small{{letter-spacing:.18em}}.grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}}.box{{border:1px solid #d8d4cc;padding:12px}}.box small{{display:block;font-size:10px;letter-spacing:.12em;color:#777;margin-bottom:5px}}.measure{{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}}.measure div{{background:#f1eee8;padding:10px}}.measure span{{display:block;font-size:10px;color:#777;text-transform:capitalize}}table{{width:100%;border-collapse:collapse}}th,td{{border-bottom:1px solid #ddd;padding:9px;text-align:left;font-size:12px}}section{{margin-top:24px}}.muted{{color:#777}}.money{{font-size:22px;font-family:Georgia,serif}}footer{{margin-top:34px;border-top:1px solid #ddd;padding-top:12px;font-size:10px;color:#777}}@media print{{body{{margin:18mm}}}}
+</style></head><body>
+<header><small>LLINEN EARTH · TAILORING JOB CARD</small><h1>{}</h1><p>{}</p></header>
+<div class="grid">
+<div class="box"><small>PHONE</small><b>{}</b></div>
+<div class="box"><small>OCCASION</small><b>{}</b></div>
+<div class="box"><small>GARMENT</small><b>{}</b></div>
+<div class="box"><small>ORDER STAGE</small><b>{}</b></div>
+<div class="box"><small>DUE DATE</small><b>{}</b></div>
+<div class="box"><small>SELECTED LOOK / FABRIC</small><b>{}</b></div>
+</div>
+<section><h2>Order finance</h2><div class="grid">
+<div class="box"><small>ORDER VALUE</small><b class="money">₹{:.0}</b></div>
+<div class="box"><small>PAID</small><b class="money">₹{:.0}</b></div>
+<div class="box"><small>BALANCE</small><b class="money">₹{:.0}</b></div>
+</div></section>
+<section><h2>Measurements</h2><div class="measure">{}</div>{}</section>
+<section><h2>Next appointment</h2><div class="box"><b>{} · {} · {}</b><p>{}</p></div></section>
+<section><h2>Workroom notes</h2><div class="box"><p>{}</p><p>{}</p></div></section>
+<section><h2>Payment history</h2><table><thead><tr><th>Amount</th><th>Method</th><th>Note</th><th>Recorded</th></tr></thead><tbody>{}</tbody></table></section>
+<footer>Generated by LLinen Earth OS · {} · Session {}</footer>
+</body></html>"#,
+    html_escape(name),
+    html_escape(session.customer.note.trim()),
+    html_escape(session.customer.phone.trim()),
+    html_escape(session.answers.get("occasion").map(String::as_str).unwrap_or("")),
+    html_escape(session.answers.get("garment").map(String::as_str).unwrap_or("")),
+    html_escape(&order_status),
+    html_escape(&due_date),
+    selected_look,
+    order_value, paid, balance,
+    measurements_html,
+    if measurement_note.is_empty() { String::new() } else { format!("<p><b>Fit note:</b> {}</p>", html_escape(&measurement_note)) },
+    html_escape(&appointment_kind),
+    html_escape(&appointment_date),
+    html_escape(&appointment_status),
+    html_escape(&appointment_note),
+    html_escape(&order_note),
+    html_escape(session.customer.note.trim()),
+    payments_html,
+    html_escape(&Utc::now().to_rfc3339()),
+    html_escape(&session.session_id),
+  );
+
+  fs::write(&path, html).map_err(|e| e.to_string())?;
+  Ok(path.to_string_lossy().to_string())
 }
 
 #[tauri::command]
@@ -1496,6 +1662,7 @@ fn main() {
     .manage(SyncLock(Mutex::new(())))
     .invoke_handler(tauri::generate_handler![
       get_dashboard_summary,
+      export_job_card,
       get_desktop_lock_status,
       verify_desktop_lock,
       set_desktop_lock,
