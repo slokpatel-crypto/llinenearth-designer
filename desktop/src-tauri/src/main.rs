@@ -197,9 +197,11 @@ struct SystemHealth {
   event_files: usize,
   event_records: usize,
   event_bytes: u64,
+  invalid_event_lines: usize,
   backup_count: usize,
   backup_bytes: u64,
   latest_backup: Option<String>,
+  latest_backup_at: Option<String>,
   visual_count: usize,
   visual_bytes: u64,
   marketing_briefs: usize,
@@ -618,6 +620,36 @@ fn directory_stats(path: &Path) -> (usize, u64, Option<String>) {
   (count, bytes, latest.map(|(_, name)| name))
 }
 
+fn latest_file_modified_at(path: &Path) -> Option<String> {
+  let entries = fs::read_dir(path).ok()?;
+  let latest = entries
+    .flatten()
+    .filter_map(|entry| {
+      let meta = entry.metadata().ok()?;
+      if !meta.is_file() { return None; }
+      Some(meta.modified().ok()?)
+    })
+    .max()?;
+  Some(chrono::DateTime::<Utc>::from(latest).to_rfc3339())
+}
+
+fn invalid_event_line_count(paths: &[PathBuf]) -> usize {
+  let mut invalid = 0usize;
+  for path in paths {
+    let Ok(file) = fs::File::open(path) else {
+      invalid += 1;
+      continue;
+    };
+    for line in BufReader::new(file).lines().map_while(Result::ok) {
+      if line.trim().is_empty() { continue; }
+      if serde_json::from_str::<EventRecord>(&line).is_err() {
+        invalid += 1;
+      }
+    }
+  }
+  invalid
+}
+
 fn build_system_health() -> Result<SystemHealth, String> {
   let root = ensure_vault()?;
   let events = load_events()?;
@@ -625,8 +657,10 @@ fn build_system_health() -> Result<SystemHealth, String> {
   let event_bytes = event_files.iter()
     .filter_map(|path| fs::metadata(path).ok().map(|meta| meta.len()))
     .sum::<u64>();
+  let invalid_event_lines = invalid_event_line_count(&event_files);
 
   let (backup_count, backup_bytes, latest_backup) = directory_stats(&root.join("backups"));
+  let latest_backup_at = latest_file_modified_at(&root.join("backups"));
   let (visual_count, visual_bytes, _) = directory_stats(&root.join("visuals"));
   let (marketing_briefs, _, _) = directory_stats(&root.join("marketing"));
   let (job_cards, _, _) = directory_stats(&root.join("job-cards"));
@@ -640,6 +674,15 @@ fn build_system_health() -> Result<SystemHealth, String> {
   let mut issues = Vec::<String>::new();
   if backup_count == 0 {
     issues.push("No local backup has been created yet.".to_string());
+  } else if let Some(latest) = latest_backup_at.as_deref() {
+    if let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(latest) {
+      if Utc::now().signed_duration_since(parsed.with_timezone(&Utc)).num_days() >= 7 {
+        issues.push("The latest local backup is more than 7 days old.".to_string());
+      }
+    }
+  }
+  if invalid_event_lines > 0 {
+    issues.push(format!("{invalid_event_lines} malformed local event record(s) were detected."));
   }
   if inventory.fabrics.iter().any(|fabric| fabric.status == "unverified") {
     issues.push(format!(
@@ -649,6 +692,14 @@ fn build_system_health() -> Result<SystemHealth, String> {
   }
   if !sync_configured {
     issues.push("Cloud sync is not paired on this PC.".to_string());
+  } else if let Some(last_sync) = sync_state.last_synced_at.as_deref() {
+    if let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(last_sync) {
+      if Utc::now().signed_duration_since(parsed.with_timezone(&Utc)).num_hours() >= 24 {
+        issues.push("Cloud sync has not completed successfully in the last 24 hours.".to_string());
+      }
+    }
+  } else {
+    issues.push("Cloud sync is paired but has never completed successfully.".to_string());
   }
   if events.is_empty() {
     issues.push("No customer journey events are stored locally yet.".to_string());
@@ -659,9 +710,11 @@ fn build_system_health() -> Result<SystemHealth, String> {
     event_files: event_files.len(),
     event_records: events.len(),
     event_bytes,
+    invalid_event_lines,
     backup_count,
     backup_bytes,
     latest_backup,
+    latest_backup_at,
     visual_count,
     visual_bytes,
     marketing_briefs,
@@ -968,14 +1021,16 @@ fn export_system_report() -> Result<String, String> {
     health.issues.iter().map(|issue| format!("- {issue}")).collect::<Vec<_>>().join("\n")
   };
   let report = format!(
-    "# LLinen Earth OS — System Report\n\nGenerated: {}\n\n## Local vault\n- Path: {}\n- Event records: {} across {} daily files\n- Event bytes: {}\n- Backups: {}\n- Latest backup: {}\n- Visual files: {}\n- Visual bytes: {}\n- Marketing briefs: {}\n- Job cards: {}\n- Brain action decisions: {}\n\n## Inventory\n- Entries: {}\n- Unverified: {}\n- Operator overrides: {}\n\n## Cloud sync\n- Paired: {}\n- Last synced: {}\n- Cursor present: {}\n\n## Current warnings\n{}\n",
+    "# LLinen Earth OS — System Report\n\nGenerated: {}\n\n## Local vault\n- Path: {}\n- Event records: {} across {} daily files\n- Event bytes: {}\n- Invalid event lines: {}\n- Backups: {}\n- Latest backup: {}\n- Latest backup time: {}\n- Visual files: {}\n- Visual bytes: {}\n- Marketing briefs: {}\n- Job cards: {}\n- Brain action decisions: {}\n\n## Inventory\n- Entries: {}\n- Unverified: {}\n- Operator overrides: {}\n\n## Cloud sync\n- Paired: {}\n- Last synced: {}\n- Cursor present: {}\n\n## Current warnings\n{}\n",
     Utc::now().to_rfc3339(),
     health.vault_path,
     health.event_records,
     health.event_files,
     health.event_bytes,
+    health.invalid_event_lines,
     health.backup_count,
     health.latest_backup.as_deref().unwrap_or("None"),
+    health.latest_backup_at.as_deref().unwrap_or("Never"),
     health.visual_count,
     health.visual_bytes,
     health.marketing_briefs,
