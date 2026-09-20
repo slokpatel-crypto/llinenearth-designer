@@ -222,6 +222,32 @@ export default function App() {
     [summary],
   );
 
+
+
+  const selectedFabric = useMemo(
+    () => inventory.fabrics.find((fabric) => fabric.id === selectedFabricId) || inventory.fabrics[0] || null,
+    [inventory, selectedFabricId],
+  );
+
+  const fabricLines = useMemo(
+    () => ["All", ...Array.from(new Set(inventory.fabrics.map((fabric) => fabric.line))).sort()],
+    [inventory],
+  );
+
+  const fabricSignals = useMemo(() => {
+    const signals = new Map<string, { interest: number; whatsapp: number; sales: number }>();
+    for (const session of summary?.sessions || []) {
+      const fabricId = String(session.selectedLook?.fabricId || "");
+      if (!fabricId) continue;
+      const current = signals.get(fabricId) || { interest: 0, whatsapp: 0, sales: 0 };
+      current.interest += 1;
+      if (hasEvent(session, "whatsapp_clicked")) current.whatsapp += 1;
+      if (hasEvent(session, "sale_logged")) current.sales += 1;
+      signals.set(fabricId, current);
+    }
+    return signals;
+  }, [summary]);
+
   const analytics = useMemo(() => {
     const sessions = summary?.sessions || [];
     const total = sessions.length;
@@ -316,30 +342,6 @@ export default function App() {
       insights,
     };
   }, [summary, inventory, fabricSignals, attention]);
-
-  const selectedFabric = useMemo(
-    () => inventory.fabrics.find((fabric) => fabric.id === selectedFabricId) || inventory.fabrics[0] || null,
-    [inventory, selectedFabricId],
-  );
-
-  const fabricLines = useMemo(
-    () => ["All", ...Array.from(new Set(inventory.fabrics.map((fabric) => fabric.line))).sort()],
-    [inventory],
-  );
-
-  const fabricSignals = useMemo(() => {
-    const signals = new Map<string, { interest: number; whatsapp: number; sales: number }>();
-    for (const session of summary?.sessions || []) {
-      const fabricId = String(session.selectedLook?.fabricId || "");
-      if (!fabricId) continue;
-      const current = signals.get(fabricId) || { interest: 0, whatsapp: 0, sales: 0 };
-      current.interest += 1;
-      if (hasEvent(session, "whatsapp_clicked")) current.whatsapp += 1;
-      if (hasEvent(session, "sale_logged")) current.sales += 1;
-      signals.set(fabricId, current);
-    }
-    return signals;
-  }, [summary]);
 
   const filteredFabrics = useMemo(() => {
     const query = inventorySearch.trim().toLowerCase();
