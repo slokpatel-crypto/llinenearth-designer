@@ -119,9 +119,11 @@ type SystemHealth = {
   eventFiles: number;
   eventRecords: number;
   eventBytes: number;
+  invalidEventLines: number;
   backupCount: number;
   backupBytes: number;
   latestBackup?: string | null;
+  latestBackupAt?: string | null;
   visualCount: number;
   visualBytes: number;
   marketingBriefs: number;
@@ -2260,13 +2262,13 @@ export default function App() {
                     </div>
                     <code>{systemHealth?.vaultPath || summary?.vaultPath || "Loading local vault…"}</code>
                     <div className="memoryInventory">
-                      <span><b>Customer events</b><small>{systemHealth?.eventRecords || 0} append-only records · {bytes(systemHealth?.eventBytes || 0)}</small></span>
+                      <span><b>Customer events</b><small>{systemHealth?.eventRecords || 0} append-only records · {bytes(systemHealth?.eventBytes || 0)} · {systemHealth?.invalidEventLines || 0} malformed</small></span>
                       <span><b>Inventory</b><small>{systemHealth?.inventoryCount || inventory.fabrics.length} entries · {systemHealth?.inventoryOverrides || 0} operator stock updates</small></span>
                       <span><b>Visual archive</b><small>{systemHealth?.visualCount || 0} trusted local image files</small></span>
                       <span><b>Marketing</b><small>{systemHealth?.marketingBriefs || 0} exported creative brief(s)</small></span>
                       <span><b>Job cards</b><small>{systemHealth?.jobCards || 0} printable tailoring card(s)</small></span>
                       <span><b>AI Brain</b><small>{systemHealth?.brainActions || 0} persistent action decision(s)</small></span>
-                      <span><b>Backups</b><small>{systemHealth?.backupCount || 0} snapshot(s) · latest {systemHealth?.latestBackup || "none"}</small></span>
+                      <span><b>Backups</b><small>{systemHealth?.backupCount || 0} snapshot(s) · {systemHealth?.latestBackupAt ? `last ${ago(systemHealth.latestBackupAt)} ago` : "none yet"}</small></span>
                     </div>
                   </article>
 
