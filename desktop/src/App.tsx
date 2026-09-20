@@ -212,6 +212,15 @@ export default function App() {
     [summary],
   );
 
+  const visuals = useMemo(
+    () => (summary?.sessions || [])
+      .flatMap((session) => session.events
+        .filter((event) => event.type === "render_completed")
+        .map((event) => ({ session, event })))
+      .sort((a, b) => new Date(b.event.at).getTime() - new Date(a.event.at).getTime()),
+    [summary],
+  );
+
   const selectedFabric = useMemo(
     () => inventory.fabrics.find((fabric) => fabric.id === selectedFabricId) || inventory.fabrics[0] || null,
     [inventory, selectedFabricId],
@@ -457,6 +466,7 @@ export default function App() {
                activeNav === "Leads" ? <>Intent first.<br/><em>Follow up at the right moment.</em></> :
                activeNav === "Orders" ? <>From intent to value.<br/><em>Know what converted.</em></> :
                activeNav === "Fabrics" ? <>Know every colour.<br/><em>Know what is moving.</em></> :
+               activeNav === "Visuals" ? <>See what customers saw.<br/><em>Connect imagery to intent.</em></> :
                titleCase(activeNav)}
             </h1>
           </div>
@@ -699,7 +709,53 @@ export default function App() {
             </motion.section>
           )}
 
-          {!["Today", "Customers", "Leads", "Orders", "Fabrics"].includes(activeNav) && (
+          {activeNav === "Visuals" && (
+            <motion.section key="visuals" className="visualWorkspace" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <div className="visualMain">
+                <div className="visualMetrics">
+                  <article><small>GENERATED</small><strong>{visuals.length}</strong><span>All recorded renders</span></article>
+                  <article><small>PHOTOREAL</small><strong>{visuals.filter(({ event }) => String(event.payload?.mode || "") === "photo").length}</strong><span>FASHN customer-facing visuals</span></article>
+                  <article><small>WHATSAPP AFTER VISUAL</small><strong>{visuals.filter(({ session }) => hasEvent(session, "whatsapp_clicked")).length}</strong><span>Visual journeys that moved forward</span></article>
+                  <article className="accent"><small>SALES AFTER VISUAL</small><strong>{visuals.filter(({ session }) => hasEvent(session, "sale_logged")).length}</strong><span>Recorded conversions</span></article>
+                </div>
+
+                <article className="card visualLibrary">
+                  <div className="cardHead">
+                    <div><small>VISUAL LIBRARY</small><h2>Every generated look, tied to its customer journey.</h2></div>
+                    <span>{visuals.length} records</span>
+                  </div>
+                  {visuals.length ? <div className="visualGrid">
+                    {visuals.map(({ session, event }) => {
+                      const imageUrl = String(event.payload?.imageUrl || "");
+                      const fabric = String(event.payload?.fabric || session.selectedLook?.fabric || "Fabric not recorded");
+                      const provider = String(event.payload?.provider || "LLinen Earth renderer");
+                      return <button key={event.id} className="visualCard" onClick={() => setSelected(session.sessionId)}>
+                        <span className="visualMedia">
+                          {imageUrl.startsWith("https://") ? <img src={imageUrl} alt={String(event.payload?.label || "Generated LLinen Earth look")} /> : <i><b>LE</b><small>{String(event.payload?.mode || "preview").toUpperCase()}</small></i>}
+                          <em>{String(event.payload?.mode || "preview") === "photo" ? "PHOTOREAL" : "PREVIEW"}</em>
+                        </span>
+                        <span className="visualCopy">
+                          <small>{session.customer.name || session.answers.occasion || "Anonymous customer"}</small>
+                          <b>{fabric}</b>
+                          <span>{provider}</span>
+                          <i>{ago(event.at)} · {hasEvent(session, "sale_logged") ? "SALE ✓" : hasEvent(session, "whatsapp_clicked") ? "WHATSAPP ↗" : intentLabel(session)}</i>
+                        </span>
+                      </button>;
+                    })}
+                  </div> : <div className="empty tall">Generated visuals will appear here as Style Director sessions are recorded and synced.</div>}
+                </article>
+              </div>
+              <aside className="visualDetail">
+                <AnimatePresence mode="wait">{customerEditor}</AnimatePresence>
+                <article className="card visualPolicy">
+                  <div className="cardHead"><div><small>LOCAL ARCHIVE</small><h2>PC visual memory.</h2></div><span>NEXT</span></div>
+                  <p>Photoreal images are now linked to the customer record. The next native step copies approved remote visuals into the LLinen Earth hard-drive vault so important work is not dependent on a temporary image URL.</p>
+                </article>
+              </aside>
+            </motion.section>
+          )}
+
+          {!["Today", "Customers", "Leads", "Orders", "Fabrics", "Visuals"].includes(activeNav) && (
             <motion.section key={activeNav} className="placeholder" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <span>NEXT MODULE</span><h2>{activeNav}</h2><p>The desktop foundation, Customers and Leads are now functional. This module is intentionally waiting for its real data workflow rather than showing fake controls.</p>
             </motion.section>
