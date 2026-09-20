@@ -16,7 +16,7 @@ Apply:
 supabase/migrations/20260920_style_events_hardening.sql
 ```
 
-The expected contract is **schema v4**.
+The expected contract is **schema v5**.
 
 It creates an append-only `public.style_events` ledger and server-only diagnostic RPCs.
 
@@ -81,6 +81,7 @@ The desktop then:
 - uploads local operator events
 - syncs operator-only Measurement Passport updates
 - syncs payment/deposit amounts and payment method labels only; never card numbers or payment credentials
+- syncs appointment/trial scheduling as operator-only business events
 - pulls website/customer events
 - uses event IDs for idempotency
 - uses a deterministic `received_at + id` cursor
