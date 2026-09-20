@@ -29,6 +29,8 @@ export type LocalBridgeConfig = {
 
 const EVENT_KEY = "llinen-earth:style-memory:v1";
 const BRIDGE_KEY = "llinen-earth:local-bridge:v1";
+const SESSION_TOKEN_PREFIX = "llinen-earth:memory-session:";
+const sessionTokenRequests = new Map<string,Promise<string|null>>();
 const MAX_BROWSER_EVENTS = 1200;
 
 function safeWindow() {
@@ -38,6 +40,47 @@ function safeWindow() {
 export function createStyleSessionId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return `LE-${crypto.randomUUID()}`;
   return `LE-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function readSessionToken(sessionId:string) {
+  const w = safeWindow();
+  if (!w) return null;
+  return w.sessionStorage.getItem(`${SESSION_TOKEN_PREFIX}${sessionId}`);
+}
+
+async function ensureSessionToken(sessionId:string) {
+  const existing = readSessionToken(sessionId);
+  if (existing) return existing;
+
+  const inFlight = sessionTokenRequests.get(sessionId);
+  if (inFlight) return inFlight;
+
+  const request = (async()=>{
+    try {
+      const response = await fetch("/api/memory/session",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({sessionId}),
+        cache:"no-store",
+      });
+      if (!response.ok) return null;
+      const data = await response.json() as {token?:string};
+      if (!data.token) return null;
+      safeWindow()?.sessionStorage.setItem(`${SESSION_TOKEN_PREFIX}${sessionId}`,data.token);
+      return data.token;
+    } catch {
+      return null;
+    } finally {
+      sessionTokenRequests.delete(sessionId);
+    }
+  })();
+
+  sessionTokenRequests.set(sessionId,request);
+  return request;
+}
+
+export async function prepareStyleMemorySession(sessionId:string) {
+  return ensureSessionToken(sessionId);
 }
 
 export function readBrowserStyleEvents(): StyleMemoryEvent[] {
@@ -71,9 +114,16 @@ export function saveBridgeConfig(config: LocalBridgeConfig | null) {
 
 async function mirrorToCloud(event: StyleMemoryEvent) {
   try {
+    const headers: Record<string,string> = { "content-type": "application/json" };
+    if (event.source === "style-director") {
+      const token = await ensureSessionToken(event.sessionId);
+      if (!token) return;
+      headers["x-llinen-memory-token"] = token;
+    }
+
     await fetch("/api/memory/event", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers,
       body: JSON.stringify(event),
       keepalive: true,
     });
