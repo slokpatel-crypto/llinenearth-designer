@@ -43,10 +43,24 @@ export default function Home() {
   return <AppShell>
     <HomeMotion />
     <main className="gatewayHome">
-      <section className="gatewayBrand wrap" data-reveal>
-        <p>PREMIUM FABRICS · INTELLIGENT MENSWEAR · DIGITAL ATELIER</p>
-        <h1><span>LLinen</span> Earth</h1>
-        <div className="gatewayLine"><span>FABRIC FIRST · DESIGN WITH INTENT</span><i /></div>
+      <section className="gatewayBrand gatewayBrandHero wrap" data-reveal>
+        <div className="gatewayBrandCopy">
+          <p>PREMIUM FABRICS · INTELLIGENT MENSWEAR · DIGITAL ATELIER</p>
+          <h1><span>LLinen</span> Earth</h1>
+          <p className="gatewayHeroStatement">Cloth, judged on a real body.</p>
+          <p className="gatewayHeroSub">Start with your occasion and instinct. LLinen Earth narrows the direction, connects it to real fabric, and lets you see the look with photoreal fashion rendering.</p>
+          <div className="gatewayHeroActions">
+            <Link href="/style-director">Enter Style Director <b>↗</b></Link>
+            <Link href="/visual">Open Live Visual <b>↗</b></Link>
+          </div>
+          <div className="gatewayLine"><span>FABRIC FIRST · DESIGN WITH INTENT</span><i /></div>
+        </div>
+        <div className="gatewayHeroModel" aria-label="Photoreal LLinen Earth menswear model">
+          <div className="gatewayHeroGlow" />
+          <img src="/api/homepage-model" alt="Photoreal menswear model styled for LLinen Earth" fetchPriority="high" />
+          <div className="gatewayHeroBadge"><span>AI ATELIER MODEL</span><b>FASHN · PHOTOREAL</b></div>
+          <div className="gatewayHeroCaption"><span>REALISTIC SILHOUETTE</span><i/> <span>FABRIC-LED STYLING</span></div>
+        </div>
       </section>
 
       <section className="gatewayIntro wrap" data-reveal>
