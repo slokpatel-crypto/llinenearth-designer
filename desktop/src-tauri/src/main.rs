@@ -662,6 +662,102 @@ fn update_customer(session_id: String, name: String, phone: String, note: String
 }
 
 #[tauri::command]
+fn create_walkin_customer(
+  name: String,
+  phone: String,
+  note: String,
+  occasion: String,
+  garment: String,
+) -> Result<String, String> {
+  let clean_name = name.trim();
+  let clean_phone = phone.trim();
+  if clean_name.is_empty() && clean_phone.is_empty() {
+    return Err("Add at least a customer name or phone number.".to_string());
+  }
+
+  let session_id = format!("walkin-{}", Utc::now().timestamp_micros());
+  append_operator_event(
+    session_id.clone(),
+    "session_started",
+    json!({ "entry": "walk-in", "source": "operator-desktop" }),
+  )?;
+  append_operator_event(
+    session_id.clone(),
+    "customer_updated",
+    json!({ "name": clean_name, "phone": clean_phone, "note": note.trim() }),
+  )?;
+
+  if !occasion.trim().is_empty() {
+    append_operator_event(
+      session_id.clone(),
+      "answer_selected",
+      json!({ "step": "occasion", "value": occasion.trim() }),
+    )?;
+  }
+
+  if !garment.trim().is_empty() {
+    append_operator_event(
+      session_id.clone(),
+      "answer_selected",
+      json!({ "step": "garment", "value": garment.trim() }),
+    )?;
+  }
+
+  append_operator_event(
+    session_id.clone(),
+    "visit_logged",
+    json!({ "status": "walk-in", "source": "operator-desktop" }),
+  )?;
+
+  Ok(session_id)
+}
+
+#[tauri::command]
+fn set_order_status(
+  session_id: String,
+  status: String,
+  due_date: String,
+  note: String,
+) -> Result<(), String> {
+  const ALLOWED: [&str; 9] = [
+    "quoted",
+    "measurement",
+    "deposit",
+    "cutting",
+    "tailoring",
+    "trial",
+    "ready",
+    "collected",
+    "cancelled",
+  ];
+
+  if !ALLOWED.contains(&status.as_str()) {
+    return Err("Unsupported order status.".to_string());
+  }
+
+  let clean_due = due_date.trim();
+  if !clean_due.is_empty() {
+    let valid = clean_due.len() == 10
+      && clean_due.chars().enumerate().all(|(index, ch)| {
+        if index == 4 || index == 7 { ch == '-' } else { ch.is_ascii_digit() }
+      });
+    if !valid {
+      return Err("Due date must use YYYY-MM-DD.".to_string());
+    }
+  }
+
+  append_operator_event(
+    session_id,
+    "order_status_changed",
+    json!({
+      "status": status,
+      "dueDate": clean_due,
+      "note": note.trim().chars().take(1000).collect::<String>(),
+    }),
+  )
+}
+
+#[tauri::command]
 fn set_lead_status(session_id: String, status: String) -> Result<(), String> {
   const ALLOWED: [&str; 6] = ["new", "contacted", "visit-booked", "won", "lost", "follow-up"];
   if !ALLOWED.contains(&status.as_str()) {
@@ -986,6 +1082,8 @@ fn main() {
       update_brain_action,
       record_outcome,
       update_customer,
+      create_walkin_customer,
+      set_order_status,
       set_lead_status,
       get_fabric_inventory,
       update_fabric_inventory,
