@@ -1,8 +1,9 @@
 use chrono::Utc;
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
-  collections::HashMap,
+  collections::{HashMap, HashSet},
   fs::{self, OpenOptions},
   io::{BufRead, BufReader, Write},
   path::{Path, PathBuf},
@@ -22,6 +23,15 @@ struct EventRecord {
   payload: Value,
 }
 
+#[derive(Debug, Clone, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct CustomerMeta {
+  name: String,
+  phone: String,
+  note: String,
+  lead_status: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SessionRecord {
@@ -31,6 +41,7 @@ struct SessionRecord {
   answers: HashMap<String, String>,
   selected_look: Option<Value>,
   sale: Option<Value>,
+  customer: CustomerMeta,
   events: Vec<EventRecord>,
 }
 
@@ -52,6 +63,32 @@ struct DashboardSummary {
   totals: Totals,
   counts: HashMap<String, usize>,
   sessions: Vec<SessionRecord>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SyncResult {
+  configured: bool,
+  imported: usize,
+  next_cursor: Option<String>,
+  message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct SyncState {
+  cursor: Option<String>,
+  last_synced_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SyncFeed {
+  #[serde(default)]
+  events: Vec<EventRecord>,
+  next_cursor: Option<String>,
+  #[serde(default)]
+  has_more: bool,
 }
 
 fn vault_root() -> PathBuf {
@@ -77,6 +114,7 @@ fn ensure_vault() -> Result<PathBuf, String> {
   fs::create_dir_all(root.join("backups")).map_err(|e| e.to_string())?;
   fs::create_dir_all(root.join("visuals")).map_err(|e| e.to_string())?;
   fs::create_dir_all(root.join("imports")).map_err(|e| e.to_string())?;
+  fs::create_dir_all(root.join("sync")).map_err(|e| e.to_string())?;
   Ok(root)
 }
 
@@ -119,6 +157,15 @@ fn number_from_payload(payload: &Value, key: &str) -> Option<f64> {
     .and_then(|value| value.as_f64().or_else(|| value.as_str()?.parse::<f64>().ok()))
 }
 
+fn string_from_payload(payload: &Value, key: &str) -> Option<String> {
+  payload
+    .get(key)
+    .and_then(Value::as_str)
+    .map(str::trim)
+    .filter(|value| !value.is_empty())
+    .map(ToOwned::to_owned)
+}
+
 fn aggregate(events: Vec<EventRecord>) -> DashboardSummary {
   let root = vault_root();
   let mut counts = HashMap::<String, usize>::new();
@@ -135,6 +182,7 @@ fn aggregate(events: Vec<EventRecord>) -> DashboardSummary {
       answers: HashMap::new(),
       selected_look: None,
       sale: None,
+      customer: CustomerMeta::default(),
       events: Vec::new(),
     });
 
@@ -158,9 +206,30 @@ fn aggregate(events: Vec<EventRecord>) -> DashboardSummary {
       session.selected_look = Some(event.payload.clone());
     }
 
+    if event.event_type == "customer_updated" {
+      if let Some(value) = string_from_payload(&event.payload, "name") {
+        session.customer.name = value;
+      }
+      if let Some(value) = string_from_payload(&event.payload, "phone") {
+        session.customer.phone = value;
+      }
+      if let Some(value) = string_from_payload(&event.payload, "note") {
+        session.customer.note = value;
+      }
+    }
+
+    if event.event_type == "lead_status_changed" {
+      if let Some(value) = string_from_payload(&event.payload, "status") {
+        session.customer.lead_status = value;
+      }
+    }
+
     if event.event_type == "sale_logged" {
       totals.revenue += number_from_payload(&event.payload, "amount").unwrap_or(0.0);
       session.sale = Some(event.payload.clone());
+      if session.customer.lead_status.is_empty() {
+        session.customer.lead_status = "won".to_string();
+      }
     }
 
     session.events.push(event);
@@ -196,6 +265,37 @@ fn append_event(event: &EventRecord) -> Result<(), String> {
   writeln!(file, "{line}").map_err(|e| e.to_string())
 }
 
+fn load_sync_state() -> Result<SyncState, String> {
+  let root = ensure_vault()?;
+  let path = root.join("sync").join("state.json");
+  if !path.exists() {
+    return Ok(SyncState::default());
+  }
+  let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
+  serde_json::from_str(&content).map_err(|e| e.to_string())
+}
+
+fn save_sync_state(state: &SyncState) -> Result<(), String> {
+  let root = ensure_vault()?;
+  let path = root.join("sync").join("state.json");
+  fs::write(
+    path,
+    serde_json::to_string_pretty(state).map_err(|e| e.to_string())?,
+  )
+  .map_err(|e| e.to_string())
+}
+
+fn append_operator_event(session_id: String, event_type: &str, payload: Value) -> Result<(), String> {
+  append_event(&EventRecord {
+    id: format!("EV-{}", Utc::now().timestamp_micros()),
+    session_id,
+    event_type: event_type.to_string(),
+    at: Utc::now().to_rfc3339(),
+    source: "operator-desktop".to_string(),
+    payload,
+  })
+}
+
 #[tauri::command]
 fn get_dashboard_summary() -> Result<DashboardSummary, String> {
   Ok(aggregate(load_events()?))
@@ -207,21 +307,35 @@ fn record_outcome(session_id: String, kind: String, amount: Option<f64>) -> Resu
     return Err("Unsupported outcome type.".to_string());
   }
 
-  let now = Utc::now().to_rfc3339();
   let payload = if kind == "sale_logged" {
     json!({ "amount": amount.unwrap_or(0.0), "currency": "INR", "source": "desktop" })
   } else {
     json!({ "status": "visited", "source": "desktop" })
   };
 
-  append_event(&EventRecord {
-    id: format!("EV-{}", Utc::now().timestamp_millis()),
+  append_operator_event(session_id, &kind, payload)
+}
+
+#[tauri::command]
+fn update_customer(session_id: String, name: String, phone: String, note: String) -> Result<(), String> {
+  append_operator_event(
     session_id,
-    event_type: kind,
-    at: now,
-    source: "operator-desktop".to_string(),
-    payload,
-  })
+    "customer_updated",
+    json!({
+      "name": name.trim(),
+      "phone": phone.trim(),
+      "note": note.trim(),
+    }),
+  )
+}
+
+#[tauri::command]
+fn set_lead_status(session_id: String, status: String) -> Result<(), String> {
+  const ALLOWED: [&str; 6] = ["new", "contacted", "visit-booked", "won", "lost", "follow-up"];
+  if !ALLOWED.contains(&status.as_str()) {
+    return Err("Unsupported lead status.".to_string());
+  }
+  append_operator_event(session_id, "lead_status_changed", json!({ "status": status }))
 }
 
 #[tauri::command]
@@ -249,12 +363,93 @@ fn create_backup() -> Result<String, String> {
   Ok(path.to_string_lossy().to_string())
 }
 
+#[tauri::command]
+async fn sync_from_cloud() -> Result<SyncResult, String> {
+  let sync_url = std::env::var("LLINEN_EARTH_SYNC_URL")
+    .unwrap_or_else(|_| "https://llinenearth-designer.vercel.app/api/operator/sync".to_string());
+  let token = match std::env::var("LLINEN_OPERATOR_SYNC_TOKEN") {
+    Ok(value) if !value.trim().is_empty() => value,
+    _ => {
+      return Ok(SyncResult {
+        configured: false,
+        imported: 0,
+        next_cursor: None,
+        message: "Cloud sync is not paired on this PC yet.".to_string(),
+      })
+    }
+  };
+
+  let client = Client::builder()
+    .timeout(std::time::Duration::from_secs(30))
+    .build()
+    .map_err(|e| e.to_string())?;
+
+  let mut state = load_sync_state()?;
+  let mut known = load_events()?
+    .into_iter()
+    .map(|event| event.id)
+    .collect::<HashSet<_>>();
+  let mut imported = 0usize;
+
+  for _ in 0..20 {
+    let mut request = client
+      .get(&sync_url)
+      .bearer_auth(&token)
+      .query(&[("limit", "500")]);
+
+    if let Some(cursor) = state.cursor.as_deref() {
+      request = request.query(&[("cursor", cursor)]);
+    }
+
+    let response = request.send().await.map_err(|e| format!("Cloud sync failed: {e}"))?;
+    if response.status() == reqwest::StatusCode::UNAUTHORIZED {
+      return Err("Cloud sync authorization was rejected.".to_string());
+    }
+    if !response.status().is_success() {
+      return Err(format!("Cloud sync returned HTTP {}.", response.status()));
+    }
+
+    let feed = response.json::<SyncFeed>().await.map_err(|e| e.to_string())?;
+
+    for event in feed.events {
+      if known.insert(event.id.clone()) {
+        append_event(&event)?;
+        imported += 1;
+      }
+    }
+
+    if let Some(cursor) = feed.next_cursor {
+      state.cursor = Some(cursor);
+    }
+    state.last_synced_at = Some(Utc::now().to_rfc3339());
+    save_sync_state(&state)?;
+
+    if !feed.has_more {
+      break;
+    }
+  }
+
+  Ok(SyncResult {
+    configured: true,
+    imported,
+    next_cursor: state.cursor,
+    message: if imported == 0 {
+      "Cloud memory is already up to date.".to_string()
+    } else {
+      format!("Imported {imported} new website events.")
+    },
+  })
+}
+
 fn main() {
   tauri::Builder::default()
     .invoke_handler(tauri::generate_handler![
       get_dashboard_summary,
       record_outcome,
-      create_backup
+      update_customer,
+      set_lead_status,
+      create_backup,
+      sync_from_cloud
     ])
     .run(tauri::generate_context!())
     .expect("error while running LLinen Earth OS");
