@@ -986,6 +986,31 @@ export default function App() {
     <div className="card empty tall">Choose a customer journey to inspect it.</div>
   );
 
+  const orderEditor = selectedSession ? (
+    <motion.article key={`order-${selectedSession.sessionId}`} className="card orderEditor" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}>
+      <div className="cardHead">
+        <div><small>TAILORING / ORDER</small><h2>{latestOrder(selectedSession) ? titleCase(latestOrder(selectedSession)?.status || "") : "Start workflow"}</h2></div>
+        <span>{latestOrder(selectedSession)?.dueDate || "No due date"}</span>
+      </div>
+      <div className="orderStageRail">
+        {orderStatuses.map((stage) => {
+          const current = latestOrder(selectedSession)?.status;
+          const currentIndex = current ? orderStatuses.indexOf(current) : -1;
+          const stageIndex = orderStatuses.indexOf(stage);
+          const completed = current !== "cancelled" && currentIndex >= 0 && stageIndex <= currentIndex;
+          return <button key={stage} className={orderDraft.status === stage ? "active" : completed ? "complete" : ""} onClick={() => setOrderDraft((draft) => ({ ...draft, status: stage }))}>
+            <i>{completed ? "✓" : stageIndex + 1}</i><span>{titleCase(stage)}</span>
+          </button>;
+        })}
+      </div>
+      <div className="orderFields">
+        <label><small>DUE DATE</small><input type="date" value={orderDraft.dueDate} onChange={(e) => setOrderDraft((draft) => ({ ...draft, dueDate: e.target.value }))} /></label>
+        <label><small>WORKROOM NOTE</small><textarea value={orderDraft.note} onChange={(e) => setOrderDraft((draft) => ({ ...draft, note: e.target.value }))} placeholder="Alteration, trial, delivery or tailoring note…" /></label>
+        <button onClick={() => void saveOrderStatus()}>Save order stage</button>
+      </div>
+    </motion.article>
+  ) : null;
+
   function sessionRows(rows: SessionRecord[], leadMode = false) {
     return (
       <div className="sessionTable richTable">
@@ -1145,12 +1170,25 @@ export default function App() {
               <div className="card moduleList">
                 <div className="cardHead">
                   <div><small>CUSTOMER MEMORY</small><h2>{summary?.totals.sessions || 0} recorded journeys.</h2></div>
-                  <span>{(summary?.sessions || []).filter((s) => s.customer.name).length} identified</span>
+                  <div className="customerHeadActions"><span>{(summary?.sessions || []).filter((s) => s.customer.name).length} identified</span><button onClick={() => setShowWalkin((value) => !value)}>{showWalkin ? "Close" : "+ Add walk-in"}</button></div>
                 </div>
+                <AnimatePresence>
+                  {showWalkin && <motion.div className="walkinPanel" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
+                    <div className="walkinFields">
+                      <label><small>NAME</small><input value={walkinDraft.name} onChange={(e)=>setWalkinDraft((v)=>({...v,name:e.target.value}))} placeholder="Customer name" /></label>
+                      <label><small>PHONE</small><input value={walkinDraft.phone} onChange={(e)=>setWalkinDraft((v)=>({...v,phone:e.target.value}))} placeholder="Phone / WhatsApp" /></label>
+                      <label><small>OCCASION</small><input value={walkinDraft.occasion} onChange={(e)=>setWalkinDraft((v)=>({...v,occasion:e.target.value}))} placeholder="Wedding, Work, Everyday…" /></label>
+                      <label><small>GARMENT</small><select value={walkinDraft.garment} onChange={(e)=>setWalkinDraft((v)=>({...v,garment:e.target.value}))}><option value="">Choose</option><option value="shirt">Shirt</option><option value="trouser">Trouser</option><option value="suit">Suit</option><option value="blazer">Blazer</option></select></label>
+                      <label className="wide"><small>NOTE</small><textarea value={walkinDraft.note} onChange={(e)=>setWalkinDraft((v)=>({...v,note:e.target.value}))} placeholder="Budget, fit preference, requirement…" /></label>
+                    </div>
+                    <button className="walkinSave" onClick={() => void createWalkin()}>Add walk-in customer</button>
+                  </motion.div>}
+                </AnimatePresence>
+                <div className="customerSearch"><input value={customerSearch} onChange={(e)=>setCustomerSearch(e.target.value)} placeholder="Search name, phone, occasion, garment or fabric…" /><span>{filteredCustomers.length} shown</span></div>
                 <div className="tableHeader"><span>Customer / session</span><span>Interest</span><span>Status</span><span>Value</span><span>Last</span></div>
-                {sessionRows(summary?.sessions || [])}
+                {sessionRows(filteredCustomers)}
               </div>
-              <aside className="moduleDetail"><AnimatePresence mode="wait">{customerEditor}</AnimatePresence></aside>
+              <aside className="moduleDetail"><AnimatePresence mode="wait">{customerEditor}</AnimatePresence>{orderEditor}</aside>
             </motion.section>
           )}
 
@@ -1169,7 +1207,7 @@ export default function App() {
                 <div className="tableHeader"><span>Lead</span><span>Interest</span><span>Status</span><span>Look / value</span><span>Last</span></div>
                 {sessionRows(leads, true)}
               </div>
-              <aside className="moduleDetail"><AnimatePresence mode="wait">{customerEditor}</AnimatePresence></aside>
+              <aside className="moduleDetail"><AnimatePresence mode="wait">{customerEditor}</AnimatePresence>{orderEditor}</aside>
             </motion.section>
           )}
 
@@ -1178,18 +1216,30 @@ export default function App() {
             <motion.section key="orders" className="moduleGrid" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <div className="card moduleList">
                 <div className="cardHead">
-                  <div><small>CONFIRMED BUSINESS</small><h2>{orders.length} recorded sales.</h2></div>
-                  <span>{money(summary?.totals.revenue || 0)} total</span>
+                  <div><small>TAILORING PIPELINE</small><h2>{orders.length} active or recorded order journeys.</h2></div>
+                  <span>{money(summary?.totals.revenue || 0)} recorded revenue</span>
                 </div>
                 <div className="leadSummary orderSummary">
-                  <span><b>{orders.length}</b><small>Orders</small></span>
-                  <span><b>{orders.length ? money((summary?.totals.revenue || 0) / orders.length) : money(0)}</b><small>Average value</small></span>
-                  <span><b>{summary?.totals.sessions ? Math.round((orders.length / summary.totals.sessions) * 100) : 0}%</b><small>Session → sale</small></span>
+                  <span><b>{orders.filter((s)=>!["collected","cancelled"].includes(latestOrder(s)?.status || "")).length}</b><small>Active</small></span>
+                  <span><b>{orders.filter((s)=>latestOrder(s)?.status === "ready").length}</b><small>Ready</small></span>
+                  <span><b>{orders.filter((s)=>latestOrder(s)?.status === "collected").length}</b><small>Collected</small></span>
                 </div>
-                <div className="tableHeader"><span>Customer / session</span><span>Garment</span><span>Status</span><span>Sale value</span><span>Last</span></div>
-                {sessionRows(orders)}
+                <div className="orderTableHeader"><span>Customer</span><span>Garment</span><span>Tailoring stage</span><span>Due</span><span>Value</span></div>
+                <div className="orderTable">
+                  {orders.map((session)=>{
+                    const order=latestOrder(session);
+                    return <button key={session.sessionId} className={selectedSession?.sessionId===session.sessionId?"selected":""} onClick={()=>setSelected(session.sessionId)}>
+                      <span><b>{session.customer.name || "Anonymous customer"}</b><small>{session.customer.phone || shortId(session.sessionId)}</small></span>
+                      <span>{titleCase(session.answers.garment || "—")}</span>
+                      <span><em className={`orderPill order-${order?.status || "sale"}`}>{order ? titleCase(order.status) : "Sale recorded"}</em></span>
+                      <span>{order?.dueDate || "—"}</span>
+                      <span>{saleValue(session) ? money(saleValue(session)) : "—"} ↗</span>
+                    </button>;
+                  })}
+                  {!orders.length && <div className="empty tall">No tailoring orders yet. Select a customer and start their order workflow.</div>}
+                </div>
               </div>
-              <aside className="moduleDetail"><AnimatePresence mode="wait">{customerEditor}</AnimatePresence></aside>
+              <aside className="moduleDetail"><AnimatePresence mode="wait">{customerEditor}</AnimatePresence>{orderEditor}</aside>
             </motion.section>
           )}
 
