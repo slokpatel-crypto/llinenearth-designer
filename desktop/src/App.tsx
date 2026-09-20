@@ -286,6 +286,22 @@ export default function App() {
     }
   }
 
+  async function quietReconcile() {
+    if (!syncPairing?.configured) return;
+    try {
+      const result = await invoke<SyncResult>("sync_from_cloud");
+      if (!result.configured) return;
+      const [data, health] = await Promise.all([
+        invoke<DashboardSummary>("get_dashboard_summary"),
+        invoke<SystemHealth>("get_system_health"),
+      ]);
+      setSummary(data);
+      setSystemHealth(health);
+    } catch {
+      // Manual sync surfaces errors. Background reconciliation stays quiet.
+    }
+  }
+
   useEffect(() => {
     void refresh();
     void loadInventory();
@@ -296,31 +312,16 @@ export default function App() {
 
   useEffect(() => {
     if (!syncPairing?.configured) return;
-    let cancelled = false;
 
-    async function quietSync() {
-      try {
-        const result = await invoke<SyncResult>("sync_from_cloud");
-        if (!result.configured || cancelled) return;
-        const [data, health] = await Promise.all([
-          invoke<DashboardSummary>("get_dashboard_summary"),
-          invoke<SystemHealth>("get_system_health"),
-        ]);
-        if (!cancelled) {
-          setSummary(data);
-          setSystemHealth(health);
-        }
-      } catch {
-        // Manual sync surfaces errors. Background sync stays quiet.
-      }
-    }
+    const first = window.setTimeout(() => void quietReconcile(), 2500);
+    const interval = window.setInterval(() => void quietReconcile(), 5 * 60 * 1000);
+    const onFocus = () => void quietReconcile();
+    window.addEventListener("focus", onFocus);
 
-    const first = window.setTimeout(() => void quietSync(), 2500);
-    const interval = window.setInterval(() => void quietSync(), 5 * 60 * 1000);
     return () => {
-      cancelled = true;
       window.clearTimeout(first);
       window.clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
     };
   }, [syncPairing?.configured]);
 
@@ -753,6 +754,7 @@ export default function App() {
     });
     setSaleAmount("");
     await refresh();
+    void quietReconcile();
   }
 
   async function saveCustomer() {
@@ -765,6 +767,7 @@ export default function App() {
     });
     setStatus("Customer details saved locally");
     await refresh();
+    void quietReconcile();
   }
 
   async function createWalkin() {
@@ -782,6 +785,7 @@ export default function App() {
       await loadSystemHealth();
       setSelected(sessionId);
       setStatus("Walk-in customer added to local memory");
+      void quietReconcile();
     } catch (error) {
       setStatus(`Could not add walk-in: ${String(error)}`);
     }
@@ -799,6 +803,7 @@ export default function App() {
       await refresh();
       await loadSystemHealth();
       setStatus(`Order moved to ${titleCase(orderDraft.status)}`);
+      void quietReconcile();
     } catch (error) {
       setStatus(`Order update failed: ${String(error)}`);
     }
@@ -812,6 +817,7 @@ export default function App() {
     });
     setStatus(`Lead moved to ${titleCase(nextStatus)}`);
     await refresh();
+    void quietReconcile();
   }
 
   async function backup() {
