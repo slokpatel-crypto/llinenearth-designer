@@ -55,15 +55,15 @@ export default function Home() {
       </section>
 
       <section className="gatewayChoices wrap" data-reveal>
-        <Link href="/designer-brief" className="gatewayCard gatewayDesigner">
+        <Link href="/style-director" className="gatewayCard gatewayDesigner">
           <div className="gatewayImage gatewayImageDesigner" />
-          <div className="gatewayCardTop"><span>01</span><b>AI DESIGNER ENGINE</b></div>
+          <div className="gatewayCardTop"><span>01</span><b>STYLE DIRECTOR</b></div>
           <div className="gatewayVisualStrip" aria-hidden="true">{designerRefs.map((src,index)=><div key={src} className="gatewayMini" style={{backgroundImage:`url('${src}')`}} data-index={index}/>)}</div>
           <div className="gatewayCardCopy">
             <p className="eyebrow">GUIDED DESIGN</p><h3>Find the right outfit for the moment.</h3>
             <p>Occasion, venue, time, climate, formality, impression, fit and aesthetic are narrowed before the cloth is judged.</p>
             <div className="gatewaySignals"><span>OCCASION</span><span>FABRIC</span><span>FIT</span><span>OUTFIT</span></div>
-            <strong>Start Designer <i>↗</i></strong>
+            <strong>Enter Style Director <i>↗</i></strong>
           </div>
         </Link>
 
