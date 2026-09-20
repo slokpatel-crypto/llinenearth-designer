@@ -74,6 +74,21 @@ type InventoryView = {
   fabrics: FabricInventoryItem[];
 };
 
+type BrainActionState = {
+  status: "open" | "watching" | "done" | "dismissed";
+  note: string;
+  updatedAt: string;
+};
+
+type BrainSignal = {
+  id: string;
+  level: "priority" | "opportunity" | "watch" | "info";
+  title: string;
+  evidence: string;
+  action: string;
+  module: "Leads" | "Fabrics" | "Visuals" | "Analytics" | "Customers" | "Orders";
+};
+
 const nav = ["Today", "Customers", "Leads", "Orders", "Fabrics", "Visuals", "Marketing", "Analytics", "AI Brain", "Memory"];
 const leadStatuses = ["new", "follow-up", "contacted", "visit-booked", "won", "lost"];
 
@@ -144,6 +159,9 @@ export default function App() {
   const [inventorySyncing, setInventorySyncing] = useState(false);
   const [archivingVisuals, setArchivingVisuals] = useState(false);
   const [fabricDraft, setFabricDraft] = useState({ status: "in-stock", quantity: "", note: "" });
+  const [brainActions, setBrainActions] = useState<Record<string, BrainActionState>>({});
+  const [brainQuery, setBrainQuery] = useState("");
+  const [brainAnswer, setBrainAnswer] = useState("Ask about demand, leads, fabrics, visuals, revenue or what needs attention.");
 
   async function refresh() {
     try {
@@ -166,9 +184,18 @@ export default function App() {
     }
   }
 
+  async function loadBrainActions() {
+    try {
+      setBrainActions(await invoke<Record<string, BrainActionState>>("get_brain_actions"));
+    } catch (error) {
+      setStatus(`Brain action memory unavailable: ${String(error)}`);
+    }
+  }
+
   useEffect(() => {
     void refresh();
     void loadInventory();
+    void loadBrainActions();
   }, []);
 
   const selectedSession = useMemo(
@@ -343,6 +370,98 @@ export default function App() {
     };
   }, [summary, inventory, fabricSignals, attention]);
 
+  const brain = useMemo(() => {
+    const unverified = inventory.fabrics.filter((fabric) => fabric.status === "unverified");
+    const riskyTopFabrics = analytics.topFabrics.filter((ranked) => {
+      const fabric = inventory.fabrics.find((item) => item.id === ranked.id);
+      return fabric && ["unverified", "low", "out"].includes(fabric.status);
+    });
+    const topOccasion = analytics.occasions[0];
+    const topGarment = analytics.garments[0];
+    const identified = (summary?.sessions || []).filter((session) => session.customer.name).length;
+    const signals: BrainSignal[] = [];
+
+    if (attention.length) signals.push({
+      id: "follow-up-leads",
+      level: "priority",
+      title: `${attention.length} customer${attention.length === 1 ? "" : "s"} showed intent but have no outcome`,
+      evidence: `They reached WhatsApp and are still open. ${attention.filter((session) => hasEvent(session, "visit_logged")).length} also have a store-visit signal.`,
+      action: "Open the lead queue, contact the oldest high-intent customer first, then record contacted / visit / won / lost.",
+      module: "Leads",
+    });
+
+    if (riskyTopFabrics.length) signals.push({
+      id: "demand-stock-risk",
+      level: "priority",
+      title: "Popular fabric demand is touching uncertain stock",
+      evidence: riskyTopFabrics.slice(0, 3).map((fabric) => fabric.label).join(" · "),
+      action: "Verify physical stock and metres before these colours are promoted or recommended confidently.",
+      module: "Fabrics",
+    });
+
+    if (unverified.length) signals.push({
+      id: "verify-legacy-stock",
+      level: "watch",
+      title: `${unverified.length} website swatches still need shop verification`,
+      evidence: "These colours came from the older LLinen Earth website and are deliberately not assumed to be physically available.",
+      action: "Work through the highest-demand lines first and mark each colour In Stock, Low or Out.",
+      module: "Fabrics",
+    });
+
+    if (analytics.total >= 3 && analytics.visualWhatsappRate > analytics.nonVisualWhatsappRate) signals.push({
+      id: "visual-signal",
+      level: "opportunity",
+      title: "Visual journeys are progressing further in the current sample",
+      evidence: `${analytics.visualWhatsappRate}% of visual journeys reached WhatsApp vs ${analytics.nonVisualWhatsappRate}% without a recorded visual.`,
+      action: "Use photoreal visuals consistently for high-intent customers and keep measuring; this is correlation, not proof of causation.",
+      module: "Visuals",
+    });
+
+    if (topOccasion && topOccasion.label !== "Unknown") signals.push({
+      id: "top-occasion",
+      level: "opportunity",
+      title: `${topOccasion.label} is the strongest recorded occasion signal`,
+      evidence: `${topOccasion.value} of ${analytics.total} recorded journeys selected this occasion. Top garment: ${topGarment?.label || "not enough data"}.`,
+      action: "Use this as a content and merchandising signal, then compare whether it also converts into WhatsApp and sales.",
+      module: "Analytics",
+    });
+
+    if (analytics.total && analytics.whatsappRate > analytics.saleRate + 20) signals.push({
+      id: "conversion-gap",
+      level: "watch",
+      title: "There is a meaningful gap between enquiry and recorded sale",
+      evidence: `WhatsApp rate is ${analytics.whatsappRate}% while recorded sale rate is ${analytics.saleRate}%.`,
+      action: "Review follow-up speed, store-visit handling and whether staff are consistently logging final outcomes.",
+      module: "Leads",
+    });
+
+    if (analytics.total >= 5 && identified / analytics.total < 0.5) signals.push({
+      id: "identity-gap",
+      level: "info",
+      title: "Many valuable journeys are still anonymous",
+      evidence: `${identified} of ${analytics.total} recorded journeys currently have a customer name.`,
+      action: "Capture name/phone only at a natural high-intent moment such as save, WhatsApp or fitting—not before the customer receives value.",
+      module: "Customers",
+    });
+
+    if (!signals.length) signals.push({
+      id: "collect-more-data",
+      level: "info",
+      title: "The Brain is still collecting evidence",
+      evidence: `${analytics.total} journey${analytics.total === 1 ? "" : "s"} recorded so far.`,
+      action: "Keep using Style Director and logging outcomes. The Brain will become more useful as real customer behavior accumulates.",
+      module: "Analytics",
+    });
+
+    const open = signals.filter((signal) => !["done", "dismissed"].includes(brainActions[signal.id]?.status || "open"));
+    const top = open[0] || signals[0];
+    const brief = analytics.total === 0
+      ? "No customer journeys are recorded yet. Your first priority is collecting real Style Director and shop outcome data."
+      : `You have ${analytics.total} recorded customer journey${analytics.total === 1 ? "" : "s"}, ${attention.length} unresolved high-intent lead${attention.length === 1 ? "" : "s"}, and ${money(summary?.totals.revenue || 0)} in logged revenue. ${top ? `The strongest current action is: ${top.title}.` : ""}`;
+
+    return { signals, open, brief, topOccasion, topGarment };
+  }, [analytics, attention, inventory, summary, brainActions]);
+
   const filteredFabrics = useMemo(() => {
     const query = inventorySearch.trim().toLowerCase();
     return inventory.fabrics.filter((fabric) => {
@@ -452,6 +571,35 @@ export default function App() {
       setStatus(`Visual archive failed: ${String(error)}`);
     } finally {
       setArchivingVisuals(false);
+    }
+  }
+
+  async function updateBrainAction(actionId: string, nextStatus: BrainActionState["status"]) {
+    await invoke("update_brain_action", { actionId, status: nextStatus, note: brainActions[actionId]?.note || "" });
+    await loadBrainActions();
+    setStatus(`Brain action marked ${titleCase(nextStatus)}`);
+  }
+
+  function askBrain() {
+    const query = brainQuery.trim().toLowerCase();
+    if (!query) return;
+    if (/attention|priority|today|next|do first/.test(query)) {
+      const top = brain.open[0] || brain.signals[0];
+      setBrainAnswer(top ? `${top.title}. ${top.evidence} Recommended action: ${top.action}` : brain.brief);
+    } else if (/fabric|colour|color|stock/.test(query)) {
+      const top = analytics.topFabrics[0];
+      const unverified = inventory.fabrics.filter((fabric) => fabric.status === "unverified").length;
+      setBrainAnswer(top ? `The strongest recorded fabric signal is ${top.label} with ${top.interest} selection(s), ${top.whatsapp} WhatsApp journey(s) and ${top.sales} recorded sale(s). ${unverified} inventory entries are still unverified.` : `No customer fabric ranking exists yet. ${unverified} inventory entries are still unverified.`);
+    } else if (/lead|whatsapp|follow/.test(query)) {
+      setBrainAnswer(`${attention.length} high-intent lead(s) currently reached WhatsApp without a recorded final outcome. The session-to-WhatsApp rate is ${analytics.whatsappRate}%.`);
+    } else if (/sale|revenue|money|order/.test(query)) {
+      setBrainAnswer(`Recorded revenue is ${money(summary?.totals.revenue || 0)} from ${summary?.totals.sales || 0} sale(s). Average recorded order value is ${money(analytics.averageOrder)} and session-to-sale conversion is ${analytics.saleRate}%.`);
+    } else if (/visual|render|fashn|photo/.test(query)) {
+      setBrainAnswer(`Recorded visual journeys reached WhatsApp at ${analytics.visualWhatsappRate}% versus ${analytics.nonVisualWhatsappRate}% for journeys without a recorded visual. Treat this as a directional association, not proof that visuals caused the difference.`);
+    } else if (/occasion|garment|demand|popular/.test(query)) {
+      setBrainAnswer(`Top recorded occasion is ${brain.topOccasion?.label || "not enough data"} (${brain.topOccasion?.value || 0} journey(s)); top garment is ${brain.topGarment?.label || "not enough data"} (${brain.topGarment?.value || 0} journey(s)).`);
+    } else {
+      setBrainAnswer(`${brain.brief} Ask specifically about leads, fabrics, visuals, revenue, demand, or what needs attention for a more targeted answer.`);
     }
   }
 
@@ -578,6 +726,7 @@ export default function App() {
                activeNav === "Fabrics" ? <>Know every colour.<br/><em>Know what is moving.</em></> :
                activeNav === "Visuals" ? <>See what customers saw.<br/><em>Connect imagery to intent.</em></> :
                activeNav === "Analytics" ? <>See the signal.<br/><em>Know where to act.</em></> :
+               activeNav === "AI Brain" ? <>Think across the business.<br/><em>Turn signals into action.</em></> :
                titleCase(activeNav)}
             </h1>
           </div>
@@ -968,7 +1117,78 @@ export default function App() {
           )}
 
 
-          {!["Today", "Customers", "Leads", "Orders", "Fabrics", "Visuals", "Analytics"].includes(activeNav) && (
+
+          {activeNav === "AI Brain" && (
+            <motion.section key="ai-brain" className="brainWorkspace" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <article className="brainBrief">
+                <div className="brainOrb"><span>LE</span><i /></div>
+                <div><small>LOCAL BUSINESS INTELLIGENCE</small><h2>Morning brief.</h2><p>{brain.brief}</p></div>
+                <span className="brainMode">LOCAL · NO CLOUD LLM REQUIRED</span>
+              </article>
+
+              <div className="brainGrid">
+                <div className="brainMain">
+                  <article className="card">
+                    <div className="cardHead">
+                      <div><small>ACTION QUEUE</small><h2>What the system thinks deserves attention.</h2></div>
+                      <span>{brain.open.length} active</span>
+                    </div>
+                    <div className="brainSignals">
+                      {brain.signals.map((signal) => {
+                        const actionState = brainActions[signal.id]?.status || "open";
+                        return <article key={signal.id} className={`brainSignal brain-${signal.level} brain-state-${actionState}`}>
+                          <div className="brainSignalTop">
+                            <span className="brainSignalType">{signal.level.toUpperCase()}</span>
+                            <span className="brainSignalState">{titleCase(actionState)}</span>
+                          </div>
+                          <h3>{signal.title}</h3>
+                          <p><b>Evidence</b>{signal.evidence}</p>
+                          <p><b>Next action</b>{signal.action}</p>
+                          <div className="brainSignalActions">
+                            <button onClick={() => setActiveNav(signal.module)}>Open {signal.module}</button>
+                            <button className={actionState === "watching" ? "active" : ""} onClick={() => void updateBrainAction(signal.id, "watching")}>Watch</button>
+                            <button className={actionState === "done" ? "active" : ""} onClick={() => void updateBrainAction(signal.id, "done")}>Done</button>
+                            <button onClick={() => void updateBrainAction(signal.id, "dismissed")}>Dismiss</button>
+                          </div>
+                        </article>;
+                      })}
+                    </div>
+                  </article>
+                </div>
+
+                <aside className="brainSide">
+                  <article className="card brainAsk">
+                    <div className="cardHead"><div><small>ASK THE BRAIN</small><h2>Ask a business question.</h2></div><span>LOCAL</span></div>
+                    <p>This first Brain answers from the records on your PC. It does not invent outside market facts.</p>
+                    <textarea value={brainQuery} onChange={(e) => setBrainQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askBrain(); } }} placeholder="What needs attention today?&#10;Which fabric is most popular?&#10;How are visuals performing?" />
+                    <button onClick={askBrain}>Ask LLinen Brain ↗</button>
+                    <div className="brainAnswer"><small>ANSWER</small><p>{brainAnswer}</p></div>
+                  </article>
+
+                  <article className="card brainEvidence">
+                    <div className="cardHead"><div><small>EVIDENCE BASE</small><h2>What the Brain can see.</h2></div></div>
+                    <div className="brainEvidenceGrid">
+                      <span><b>{analytics.total}</b><small>customer journeys</small></span>
+                      <span><b>{leads.length}</b><small>intent records</small></span>
+                      <span><b>{inventory.fabrics.length}</b><small>fabric entries</small></span>
+                      <span><b>{visuals.length}</b><small>visual records</small></span>
+                      <span><b>{summary?.totals.sales || 0}</b><small>sales</small></span>
+                      <span><b>{money(summary?.totals.revenue || 0)}</b><small>revenue</small></span>
+                    </div>
+                    <p>Recommendations are based on the data you record. Missing staff outcomes, anonymous sessions, or unverified stock reduce confidence.</p>
+                  </article>
+
+                  <article className="card brainPrinciple">
+                    <small>DESIGN PRINCIPLE</small>
+                    <blockquote>Evidence first. Recommendation second. Never pretend weak data is certainty.</blockquote>
+                  </article>
+                </aside>
+              </div>
+            </motion.section>
+          )}
+
+
+          {!["Today", "Customers", "Leads", "Orders", "Fabrics", "Visuals", "Analytics", "AI Brain"].includes(activeNav) && (
             <motion.section key={activeNav} className="placeholder" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <span>NEXT MODULE</span><h2>{activeNav}</h2><p>The desktop foundation, Customers and Leads are now functional. This module is intentionally waiting for its real data workflow rather than showing fake controls.</p>
             </motion.section>
