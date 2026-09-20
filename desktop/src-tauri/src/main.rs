@@ -157,6 +157,14 @@ struct InventoryView {
   fabrics: Vec<FabricInventoryItem>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct BrainActionState {
+  status: String,
+  note: String,
+  updated_at: String,
+}
+
 fn vault_root() -> PathBuf {
   if let Ok(custom) = std::env::var("LLINEN_EARTH_DATA_DIR") {
     let path = PathBuf::from(custom);
@@ -182,6 +190,7 @@ fn ensure_vault() -> Result<PathBuf, String> {
   fs::create_dir_all(root.join("imports")).map_err(|e| e.to_string())?;
   fs::create_dir_all(root.join("sync")).map_err(|e| e.to_string())?;
   fs::create_dir_all(root.join("inventory")).map_err(|e| e.to_string())?;
+  fs::create_dir_all(root.join("brain")).map_err(|e| e.to_string())?;
   Ok(root)
 }
 
@@ -393,9 +402,59 @@ fn save_inventory_overrides(overrides: &HashMap<String, InventoryOverride>) -> R
   .map_err(|e| e.to_string())
 }
 
+fn brain_actions_path() -> Result<PathBuf, String> {
+  Ok(ensure_vault()?.join("brain").join("actions.json"))
+}
+
+fn load_brain_actions() -> Result<HashMap<String, BrainActionState>, String> {
+  let path = brain_actions_path()?;
+  if !path.exists() {
+    return Ok(HashMap::new());
+  }
+  let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
+  serde_json::from_str(&content).map_err(|e| e.to_string())
+}
+
+fn save_brain_actions(actions: &HashMap<String, BrainActionState>) -> Result<(), String> {
+  let path = brain_actions_path()?;
+  fs::write(
+    path,
+    serde_json::to_string_pretty(actions).map_err(|e| e.to_string())?,
+  )
+  .map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn get_dashboard_summary() -> Result<DashboardSummary, String> {
   Ok(aggregate(load_events()?))
+}
+
+#[tauri::command]
+fn get_brain_actions() -> Result<HashMap<String, BrainActionState>, String> {
+  load_brain_actions()
+}
+
+#[tauri::command]
+fn update_brain_action(action_id: String, status: String, note: String) -> Result<(), String> {
+  const ALLOWED: [&str; 4] = ["open", "watching", "done", "dismissed"];
+  if !ALLOWED.contains(&status.as_str()) {
+    return Err("Unsupported brain action status.".to_string());
+  }
+  let clean_id = action_id.trim();
+  if clean_id.is_empty() || clean_id.len() > 120 || !clean_id.chars().all(|ch| ch.is_ascii_alphanumeric() || ch == '-' || ch == '_') {
+    return Err("Invalid brain action id.".to_string());
+  }
+
+  let mut actions = load_brain_actions()?;
+  actions.insert(
+    clean_id.to_string(),
+    BrainActionState {
+      status,
+      note: note.trim().chars().take(800).collect(),
+      updated_at: Utc::now().to_rfc3339(),
+    },
+  );
+  save_brain_actions(&actions)
 }
 
 #[tauri::command]
@@ -740,6 +799,8 @@ fn main() {
   tauri::Builder::default()
     .invoke_handler(tauri::generate_handler![
       get_dashboard_summary,
+      get_brain_actions,
+      update_brain_action,
       record_outcome,
       update_customer,
       set_lead_status,
