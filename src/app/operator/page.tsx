@@ -19,6 +19,9 @@ type Session = {
   answers: Record<string,string>;
   selectedLook?: Record<string,unknown> | null;
   sale?: Record<string,unknown> | null;
+  customer?: {name:string;phone:string;note:string};
+  leadStatus?: string;
+  order?: {status:string;dueDate:string;note:string} | null;
 };
 
 type BridgeSummary = {
@@ -46,12 +49,24 @@ function aggregate(events:StyleMemoryEvent[]) {
     counts[event.type] = (counts[event.type] || 0) + 1;
     const current = map.get(event.sessionId) || {
       sessionId:event.sessionId, firstAt:event.at, lastAt:event.at, events:[], answers:{}, selectedLook:null, sale:null,
+      customer:{name:"",phone:"",note:""}, leadStatus:"", order:null,
     };
     current.lastAt = event.at;
     current.events.push(event);
     if (event.type === "answer_selected" && event.payload?.step) current.answers[String(event.payload.step)] = String(event.payload.value ?? "");
     if (event.type === "look_selected") current.selectedLook = event.payload || null;
     if (event.type === "sale_logged") current.sale = event.payload || null;
+    if (event.type === "customer_updated") current.customer = {
+      name:String(event.payload?.name || current.customer?.name || ""),
+      phone:String(event.payload?.phone || current.customer?.phone || ""),
+      note:String(event.payload?.note || current.customer?.note || ""),
+    };
+    if (event.type === "lead_status_changed") current.leadStatus = String(event.payload?.status || "");
+    if (event.type === "order_status_changed") current.order = {
+      status:String(event.payload?.status || ""),
+      dueDate:String(event.payload?.dueDate || ""),
+      note:String(event.payload?.note || ""),
+    };
     map.set(event.sessionId,current);
   }
   const sessions = [...map.values()].sort((a,b)=>new Date(b.lastAt).getTime()-new Date(a.lastAt).getTime());
@@ -250,7 +265,7 @@ export default function OperatorPage() {
             <div className="panelHead"><div><small>ATTENTION QUEUE</small><h2>People worth following up.</h2></div><span>{attention.length} open</span></div>
             {attention.length ? <div className="attentionList">
               {attention.map((session)=><button key={session.sessionId} onClick={()=>setSelectedId(session.sessionId)}>
-                <i>!</i><div><strong>{label(session.answers.occasion)} · {label(session.answers.mood)}</strong><small>{session.selectedLook?.fabric ? String(session.selectedLook.fabric) : "Look selected"} · WhatsApp clicked · no sale logged</small></div><span>{relativeTime(session.lastAt)} ↗</span>
+                <i>!</i><div><strong>{session.customer?.name || label(session.answers.occasion)} · {label(session.answers.mood)}</strong><small>{session.selectedLook?.fabric ? String(session.selectedLook.fabric) : "Look selected"} · {session.leadStatus ? session.leadStatus.replaceAll("-"," ") + " · " : ""}WhatsApp clicked · no sale logged</small></div><span>{relativeTime(session.lastAt)} ↗</span>
               </button>)}
             </div> : <div className="empty"><b>No follow-up signals yet.</b><span>When a customer clicks WhatsApp but no sale is recorded, they appear here.</span></div>}
           </article>
@@ -260,8 +275,8 @@ export default function OperatorPage() {
             {sessions.length ? <div className="sessionTable">
               <div className="tableRow tableHeader"><span>Customer intent</span><span>Hero</span><span>Colour</span><span>Last signal</span></div>
               {sessions.slice(0,12).map((session)=><button className={selected?.sessionId===session.sessionId?"tableRow active":"tableRow"} key={session.sessionId} onClick={()=>setSelectedId(session.sessionId)}>
-                <span><b>{label(session.answers.occasion)}</b><small>{label(session.answers.mood)} · {label(session.answers.time)}</small></span>
-                <span>{label(session.answers.garment)}</span><span>{label(session.answers.colorDirection)}</span><span>{relativeTime(session.lastAt)} ↗</span>
+                <span><b>{session.customer?.name || label(session.answers.occasion)}</b><small>{session.customer?.phone || `${label(session.answers.mood)} · ${label(session.answers.time)}`}</small></span>
+                <span>{label(session.answers.garment)}</span><span>{session.order?.status ? session.order.status.replaceAll("-"," ") : label(session.answers.colorDirection)}</span><span>{relativeTime(session.lastAt)} ↗</span>
               </button>)}
             </div> : <div className="empty large"><b>No customer memory yet.</b><span>Use Style Director on this device; its journey will appear here automatically.</span></div>}
           </article>
@@ -269,9 +284,12 @@ export default function OperatorPage() {
 
         <aside className="operatorSide">
           <article className="panel detailPanel">
-            <div className="panelHead"><div><small>CUSTOMER STORY</small><h2>{selected ? label(selected.answers.occasion) : "Select a session"}</h2></div>{selected&&<span>{relativeTime(selected.lastAt)}</span>}</div>
+            <div className="panelHead"><div><small>CUSTOMER STORY</small><h2>{selected ? (selected.customer?.name || label(selected.answers.occasion)) : "Select a session"}</h2></div>{selected&&<span>{relativeTime(selected.lastAt)}</span>}</div>
             {selected ? <>
               <div className="storyChips">
+                {selected.customer?.phone && <span><small>phone</small><b>{selected.customer.phone}</b></span>}
+                {selected.leadStatus && <span><small>lead status</small><b>{selected.leadStatus.replaceAll("-"," ")}</b></span>}
+                {selected.order?.status && <span><small>order</small><b>{selected.order.status.replaceAll("-"," ")}{selected.order.dueDate ? ` · ${selected.order.dueDate}` : ""}</b></span>}
                 {Object.entries(selected.answers).map(([key,value])=><span key={key}><small>{key}</small><b>{value}</b></span>)}
               </div>
               {selected.selectedLook && <div className="selectedLook"><small>SELECTED LOOK</small><strong>{String(selected.selectedLook.title || "Look selected")}</strong><span>{String(selected.selectedLook.fabric || "")}</span></div>}
