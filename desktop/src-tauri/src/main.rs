@@ -2,6 +2,8 @@ use chrono::Utc;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+const SEED_INVENTORY: &str = include_str!("../resources/seed-inventory.json");
+
 use std::{
   collections::{HashMap, HashSet},
   fs::{self, OpenOptions},
@@ -436,15 +438,11 @@ fn set_lead_status(session_id: String, status: String) -> Result<(), String> {
 #[tauri::command]
 fn get_fabric_inventory() -> Result<InventoryView, String> {
   let feed_path = inventory_feed_path()?;
-  if !feed_path.exists() {
-    return Ok(InventoryView {
-      generated_at: None,
-      cached_at: None,
-      fabrics: Vec::new(),
-    });
-  }
-
-  let content = fs::read_to_string(feed_path).map_err(|e| e.to_string())?;
+  let content = if feed_path.exists() {
+    fs::read_to_string(feed_path).map_err(|e| e.to_string())?
+  } else {
+    SEED_INVENTORY.to_string()
+  };
   let feed = serde_json::from_str::<InventoryFeed>(&content).map_err(|e| e.to_string())?;
   let overrides = load_inventory_overrides()?;
   let cached_at = fs::read_to_string(inventory_cache_meta_path()?)
