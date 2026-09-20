@@ -30,6 +30,15 @@ type BridgeSummary = {
   lastEventAt?: string | null;
 };
 
+type CloudSummary = {
+  configured: boolean;
+  truncated?: boolean;
+  totals?: { sessions:number; renders:number; whatsapp:number; sales:number };
+  counts?: Record<string,number>;
+  sessions?: Session[];
+  lastEventAt?: string | null;
+};
+
 function aggregate(events:StyleMemoryEvent[]) {
   const map = new Map<string,Session>();
   const counts:Record<string,number> = {};
@@ -82,12 +91,33 @@ export default function OperatorPage() {
   const [saleAmount,setSaleAmount] = useState("");
   const [message,setMessage] = useState("");
   const [loggingOut,setLoggingOut] = useState(false);
+  const [cloud,setCloud] = useState<CloudSummary|null>(null);
+  const [cloudState,setCloudState] = useState<"loading"|"live"|"unconfigured"|"error">("loading");
 
   useEffect(()=>{
     setBrowserEvents(readBrowserStyleEvents());
     const saved = readBridgeConfig();
     if (saved) { setBridgeUrl(saved.url); setBridgeToken(saved.token); }
+    void loadCloud();
   },[]);
+
+  async function loadCloud() {
+    setCloudState("loading");
+    try {
+      const response = await fetch("/api/operator/cloud-summary?days=60",{cache:"no-store"});
+      const data = await response.json();
+      if (response.status === 401) {
+        window.location.href = "/operator/login";
+        return;
+      }
+      if (!response.ok) throw new Error(data.error || "Cloud memory could not be read.");
+      setCloud(data);
+      setCloudState(data.configured ? "live" : "unconfigured");
+    } catch (error) {
+      setCloudState("error");
+      setMessage(error instanceof Error ? error.message : "Cloud memory could not be read.");
+    }
+  }
 
   async function connectBridge() {
     setMessage("");
@@ -134,9 +164,12 @@ export default function OperatorPage() {
   }
 
   const local = useMemo(()=>aggregate(browserEvents),[browserEvents]);
-  const sessions = bridge?.sessions?.length ? bridge.sessions : local.sessions;
-  const totals = bridge?.totals || local.totals;
-  const counts = bridge?.counts || local.counts;
+  const usingBridge = bridgeState === "paired" && Boolean(bridge?.sessions);
+  const usingCloud = !usingBridge && cloudState === "live" && Boolean(cloud?.sessions);
+  const sessions = usingBridge ? (bridge?.sessions || []) : usingCloud ? (cloud?.sessions || []) : local.sessions;
+  const totals = usingBridge ? (bridge?.totals || local.totals) : usingCloud ? (cloud?.totals || local.totals) : local.totals;
+  const counts = usingBridge ? (bridge?.counts || local.counts) : usingCloud ? (cloud?.counts || local.counts) : local.counts;
+  const recordSource = usingBridge ? "LOCAL PC VAULT" : usingCloud ? "CLOUD MEMORY" : "THIS BROWSER";
   const selected = sessions.find((s)=>s.sessionId===selectedId) || sessions[0] || null;
 
   useEffect(()=>{
@@ -177,7 +210,7 @@ export default function OperatorPage() {
         </div>
         <div className="operatorStatus">
           <span className={bridgeState==="paired"?"live":""}><i/>{bridgeState==="paired"?"LOCAL VAULT PAIRED":"LOCAL VAULT NOT PAIRED"}</span>
-          <span><i className="amber"/>CLOUD MEMORY NEXT</span>
+          <span className={cloudState==="live"?"live":""}><i className={cloudState==="live"?"":"amber"}/>{cloudState==="live"?"CLOUD MEMORY LIVE":cloudState==="unconfigured"?"CLOUD NOT CONFIGURED":cloudState==="error"?"CLOUD ERROR":"CHECKING CLOUD"}</span>
           <button className="operatorLogout" onClick={logout} disabled={loggingOut}>{loggingOut?"SIGNING OUT…":"SIGN OUT"}</button>
         </div>
       </header>
@@ -209,7 +242,7 @@ export default function OperatorPage() {
           </article>
 
           <article className="panel">
-            <div className="panelHead"><div><small>RECENT SESSIONS</small><h2>Every customer story, compressed.</h2></div><button className="textButton" onClick={refreshBrowser}>Refresh device records</button></div>
+            <div className="panelHead"><div><small>RECENT SESSIONS · {recordSource}</small><h2>Every customer story, compressed.</h2></div><button className="textButton" onClick={()=>{refreshBrowser();void loadCloud();}}>Refresh records</button></div>
             {sessions.length ? <div className="sessionTable">
               <div className="tableRow tableHeader"><span>Customer intent</span><span>Hero</span><span>Colour</span><span>Last signal</span></div>
               {sessions.slice(0,12).map((session)=><button className={selected?.sessionId===session.sessionId?"tableRow active":"tableRow"} key={session.sessionId} onClick={()=>setSelectedId(session.sessionId)}>
@@ -246,7 +279,7 @@ export default function OperatorPage() {
             <label>Pairing token<input value={bridgeToken} onChange={(e)=>setBridgeToken(e.target.value)} type="password" placeholder="Paste token from bridge terminal" /></label>
             <div className="vaultActions"><button onClick={connectBridge}>Pair / refresh</button><button onClick={createBackup} disabled={bridgeState!=="paired"}>Create backup</button></div>
             {bridge?.dataDirectory && <code>{bridge.dataDirectory}</code>}
-            <div className="vaultFacts"><span><b>Local browser capture</b> Active on this device</span><span><b>Hard-drive mirror</b> {bridgeState==="paired"?"Connected":"Waiting"}</span><span><b>Public-site cloud intake</b> Next layer</span></div>
+            <div className="vaultFacts"><span><b>Local browser capture</b> Active on this device</span><span><b>Hard-drive mirror</b> {bridgeState==="paired"?"Connected":"Waiting"}</span><span><b>Cloud memory</b> {cloudState==="live"?`Live · ${cloud?.totals?.sessions || 0} sessions`:cloudState==="unconfigured"?"Waiting for database credentials":cloudState==="error"?"Connection error":"Checking"}</span></div>
           </article>
         </aside>
       </section>
