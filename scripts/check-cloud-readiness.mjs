@@ -19,6 +19,7 @@ const legacy = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 const key = secret || legacy;
 const syncToken = process.env.LLINEN_OPERATOR_SYNC_TOKEN?.trim();
 const sessionSecret = process.env.LLINEN_OPERATOR_SESSION_SECRET?.trim();
+const memorySessionSecret = process.env.LLINEN_MEMORY_SESSION_SECRET?.trim();
 const passwordHash = process.env.LLINEN_OPERATOR_PASSWORD_HASH?.trim();
 
 console.log("LLinen Earth cloud readiness\n");
@@ -50,6 +51,9 @@ else ok("Desktop sync token is configured.");
 
 if (!sessionSecret || sessionSecret.length < 32) fail("LLINEN_OPERATOR_SESSION_SECRET is missing or too short.");
 else ok("Operator session signing secret is configured.");
+
+if (!memorySessionSecret || memorySessionSecret.length < 32) fail("LLINEN_MEMORY_SESSION_SECRET is missing or too short.");
+else ok("Public memory session signing secret is configured.");
 
 if (!passwordHash?.startsWith("scrypt-v1$")) fail("LLINEN_OPERATOR_PASSWORD_HASH is missing or not a supported scrypt hash.");
 else ok("Operator password hash is configured.");
