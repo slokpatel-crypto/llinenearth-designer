@@ -62,7 +62,7 @@ type FabricInventoryItem = {
   sourceDocument: string;
   sourcePage: number;
   sourceInStock: boolean;
-  status: "in-stock" | "low" | "out";
+  status: "unverified" | "in-stock" | "low" | "out";
   quantityMeters?: number | null;
   note: string;
   updatedAt: string;
@@ -616,7 +616,7 @@ export default function App() {
               <div className="fabricMain">
                 <div className="fabricMetrics">
                   <article><small>STRUCTURED COLOURS</small><strong>{inventory.fabrics.length}</strong><span>{fabricLines.length - 1} fabric lines</span></article>
-                  <article><small>LOW STOCK</small><strong>{inventory.fabrics.filter((fabric) => fabric.status === "low").length}</strong><span>Needs operator attention</span></article>
+                  <article><small>UNVERIFIED</small><strong>{inventory.fabrics.filter((fabric) => fabric.status === "unverified").length}</strong><span>Website colours awaiting stock check</span></article>\n                  <article><small>LOW STOCK</small><strong>{inventory.fabrics.filter((fabric) => fabric.status === "low").length}</strong><span>Needs operator attention</span></article>
                   <article><small>OUT OF STOCK</small><strong>{inventory.fabrics.filter((fabric) => fabric.status === "out").length}</strong><span>Hidden from confident selling</span></article>
                   <article className="accent"><small>CUSTOMER SIGNALS</small><strong>{Array.from(fabricSignals.values()).reduce((sum, signal) => sum + signal.interest, 0)}</strong><span>Selected fabric directions</span></article>
                 </div>
@@ -642,7 +642,7 @@ export default function App() {
                       {filteredFabrics.map((fabric) => {
                         const signal = fabricSignals.get(fabric.id) || { interest: 0, whatsapp: 0, sales: 0 };
                         return <button key={fabric.id} className={selectedFabric?.id === fabric.id ? "fabricTile selected" : "fabricTile"} onClick={() => setSelectedFabricId(fabric.id)}>
-                          <span className="fabricSwatch" style={{ background: fabric.hex }} />
+                          <span className="fabricSwatch" style={fabric.swatchImageUrl.startsWith("http") ? { backgroundImage: `url("${fabric.swatchImageUrl}")` } : { background: fabric.hex }} />
                           <span className="fabricTileBody">
                             <small>{fabric.line}</small>
                             <b>{fabric.colorName}</b>
@@ -659,7 +659,7 @@ export default function App() {
 
               <aside className="fabricDetail">
                 {selectedFabric ? <motion.article key={selectedFabric.id} className="card fabricEditor" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }}>
-                  <div className="fabricHeroSwatch" style={{ background: selectedFabric.hex }}><span>{selectedFabric.hex}</span></div>
+                  <div className="fabricHeroSwatch" style={selectedFabric.swatchImageUrl.startsWith("http") ? { backgroundImage: `url("${selectedFabric.swatchImageUrl}")` } : { background: selectedFabric.hex }}><span>{selectedFabric.sourceDocument === "llinenearth.com" ? "Website swatch" : selectedFabric.hex}</span></div>
                   <div className="cardHead">
                     <div><small>{selectedFabric.line}</small><h2>{selectedFabric.colorName}</h2></div>
                     <span>{selectedFabric.pattern}</span>
@@ -675,7 +675,7 @@ export default function App() {
                   <div className="inventoryEditor">
                     <small>SHOP INVENTORY STATUS</small>
                     <div className="stockButtons">
-                      {["in-stock", "low", "out"].map((value) => <button key={value} className={fabricDraft.status === value ? "active" : ""} onClick={() => setFabricDraft((draft) => ({ ...draft, status: value }))}>{titleCase(value)}</button>)}
+                      {["unverified", "in-stock", "low", "out"].map((value) => <button key={value} className={fabricDraft.status === value ? "active" : ""} onClick={() => setFabricDraft((draft) => ({ ...draft, status: value }))}>{titleCase(value)}</button>)}
                     </div>
                     <label><span>Metres available</span><input inputMode="decimal" value={fabricDraft.quantity} onChange={(e) => setFabricDraft((draft) => ({ ...draft, quantity: e.target.value }))} placeholder="e.g. 18.5" /></label>
                     <label><span>Operator note</span><textarea value={fabricDraft.note} onChange={(e) => setFabricDraft((draft) => ({ ...draft, note: e.target.value }))} placeholder="Supplier, roll location, reorder note…" /></label>
