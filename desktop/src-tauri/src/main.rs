@@ -922,7 +922,7 @@ async fn save_sync_pairing(sync_url: String, token: String) -> Result<SyncPairin
 
   let ready = health.get("ok").and_then(Value::as_bool).unwrap_or(false)
     && health.get("cloudConfigured").and_then(Value::as_bool).unwrap_or(false)
-    && health.get("schemaVersion").and_then(Value::as_i64) == Some(2);
+    && health.get("schemaVersion").and_then(Value::as_i64) == Some(5);
 
   if !ready {
     return Err("The sync server is reachable, but the LLinen cloud schema is not production-ready.".to_string());
