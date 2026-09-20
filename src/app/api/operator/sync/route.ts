@@ -15,6 +15,7 @@ const OPERATOR_EVENT_TYPES = new Set([
   "visit_logged",
   "sale_logged",
   "operator_note",
+  "measurements_updated",
 ]);
 
 function authorized(request: Request) {
@@ -92,6 +93,26 @@ function cleanOperatorPayload(type: string, input: unknown) {
 
   if (type === "operator_note") {
     return { note: text(payload.note, 1000) };
+  }
+
+  if (type === "measurements_updated") {
+    const unit = text(payload.unit, 2);
+    if (unit !== "in" && unit !== "cm") return null;
+    const raw = payload.measurements && typeof payload.measurements === "object"
+      ? payload.measurements as Record<string,unknown>
+      : {};
+    const allowed = new Set(["neck","chest","waist","seat","shoulder","sleeve","shirtLength","trouserWaist","outseam","inseam","thigh","bottom"]);
+    const max = unit === "cm" ? 300 : 120;
+    const measurements: Record<string,number> = {};
+
+    for (const [key, rawValue] of Object.entries(raw)) {
+      if (!allowed.has(key)) continue;
+      const value = Number(rawValue);
+      if (!Number.isFinite(value) || value <= 0 || value > max) return null;
+      measurements[key] = Math.round(value * 100) / 100;
+    }
+    if (!Object.keys(measurements).length) return null;
+    return { unit, measurements, note: text(payload.note, 1000) };
   }
 
   return null;
@@ -204,7 +225,7 @@ export async function GET(request: Request) {
       }
 
       const version = Number(await response.json());
-      if (version !== 2) {
+      if (version !== 3) {
         return NextResponse.json(
           { error: `Unsupported cloud schema version ${version}.`, paired: true, cloudConfigured: true, schemaVersion: version },
           { status: 503, headers: { "cache-control": "private, no-store, max-age=0" } },
