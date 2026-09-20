@@ -91,6 +91,70 @@ struct SyncFeed {
   has_more: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FabricRecord {
+  id: String,
+  family: String,
+  line: String,
+  color_name: String,
+  hex: String,
+  swatch_image_url: String,
+  #[serde(default)]
+  suitable_for: Vec<String>,
+  pattern: String,
+  composition_note: Option<String>,
+  source_document: String,
+  source_page: u32,
+  in_stock: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct InventoryFeed {
+  generated_at: String,
+  #[serde(default)]
+  fabrics: Vec<FabricRecord>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct InventoryOverride {
+  status: String,
+  quantity_meters: Option<f64>,
+  note: String,
+  updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FabricInventoryItem {
+  id: String,
+  family: String,
+  line: String,
+  color_name: String,
+  hex: String,
+  swatch_image_url: String,
+  suitable_for: Vec<String>,
+  pattern: String,
+  composition_note: Option<String>,
+  source_document: String,
+  source_page: u32,
+  source_in_stock: bool,
+  status: String,
+  quantity_meters: Option<f64>,
+  note: String,
+  updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct InventoryView {
+  generated_at: Option<String>,
+  cached_at: Option<String>,
+  fabrics: Vec<FabricInventoryItem>,
+}
+
 fn vault_root() -> PathBuf {
   if let Ok(custom) = std::env::var("LLINEN_EARTH_DATA_DIR") {
     let path = PathBuf::from(custom);
@@ -115,6 +179,7 @@ fn ensure_vault() -> Result<PathBuf, String> {
   fs::create_dir_all(root.join("visuals")).map_err(|e| e.to_string())?;
   fs::create_dir_all(root.join("imports")).map_err(|e| e.to_string())?;
   fs::create_dir_all(root.join("sync")).map_err(|e| e.to_string())?;
+  fs::create_dir_all(root.join("inventory")).map_err(|e| e.to_string())?;
   Ok(root)
 }
 
@@ -296,6 +361,36 @@ fn append_operator_event(session_id: String, event_type: &str, payload: Value) -
   })
 }
 
+fn inventory_feed_path() -> Result<PathBuf, String> {
+  Ok(ensure_vault()?.join("inventory").join("current.json"))
+}
+
+fn inventory_cache_meta_path() -> Result<PathBuf, String> {
+  Ok(ensure_vault()?.join("inventory").join("cache-meta.json"))
+}
+
+fn inventory_overrides_path() -> Result<PathBuf, String> {
+  Ok(ensure_vault()?.join("inventory").join("overrides.json"))
+}
+
+fn load_inventory_overrides() -> Result<HashMap<String, InventoryOverride>, String> {
+  let path = inventory_overrides_path()?;
+  if !path.exists() {
+    return Ok(HashMap::new());
+  }
+  let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
+  serde_json::from_str(&content).map_err(|e| e.to_string())
+}
+
+fn save_inventory_overrides(overrides: &HashMap<String, InventoryOverride>) -> Result<(), String> {
+  let path = inventory_overrides_path()?;
+  fs::write(
+    path,
+    serde_json::to_string_pretty(overrides).map_err(|e| e.to_string())?,
+  )
+  .map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn get_dashboard_summary() -> Result<DashboardSummary, String> {
   Ok(aggregate(load_events()?))
@@ -339,10 +434,135 @@ fn set_lead_status(session_id: String, status: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn get_fabric_inventory() -> Result<InventoryView, String> {
+  let feed_path = inventory_feed_path()?;
+  if !feed_path.exists() {
+    return Ok(InventoryView {
+      generated_at: None,
+      cached_at: None,
+      fabrics: Vec::new(),
+    });
+  }
+
+  let content = fs::read_to_string(feed_path).map_err(|e| e.to_string())?;
+  let feed = serde_json::from_str::<InventoryFeed>(&content).map_err(|e| e.to_string())?;
+  let overrides = load_inventory_overrides()?;
+  let cached_at = fs::read_to_string(inventory_cache_meta_path()?)
+    .ok()
+    .and_then(|value| serde_json::from_str::<Value>(&value).ok())
+    .and_then(|value| value.get("cachedAt").and_then(Value::as_str).map(ToOwned::to_owned));
+
+  let fabrics = feed.fabrics.into_iter().map(|fabric| {
+    let override_item = overrides.get(&fabric.id).cloned().unwrap_or_else(|| InventoryOverride {
+      status: if fabric.in_stock { "in-stock".to_string() } else { "out".to_string() },
+      quantity_meters: None,
+      note: String::new(),
+      updated_at: String::new(),
+    });
+
+    FabricInventoryItem {
+      id: fabric.id,
+      family: fabric.family,
+      line: fabric.line,
+      color_name: fabric.color_name,
+      hex: fabric.hex,
+      swatch_image_url: fabric.swatch_image_url,
+      suitable_for: fabric.suitable_for,
+      pattern: fabric.pattern,
+      composition_note: fabric.composition_note,
+      source_document: fabric.source_document,
+      source_page: fabric.source_page,
+      source_in_stock: fabric.in_stock,
+      status: override_item.status,
+      quantity_meters: override_item.quantity_meters,
+      note: override_item.note,
+      updated_at: override_item.updated_at,
+    }
+  }).collect();
+
+  Ok(InventoryView {
+    generated_at: Some(feed.generated_at),
+    cached_at,
+    fabrics,
+  })
+}
+
+#[tauri::command]
+fn update_fabric_inventory(
+  fabric_id: String,
+  status: String,
+  quantity_meters: Option<f64>,
+  note: String,
+) -> Result<(), String> {
+  const ALLOWED: [&str; 3] = ["in-stock", "low", "out"];
+  if !ALLOWED.contains(&status.as_str()) {
+    return Err("Unsupported inventory status.".to_string());
+  }
+  if quantity_meters.is_some_and(|value| value < 0.0) {
+    return Err("Quantity cannot be negative.".to_string());
+  }
+
+  let mut overrides = load_inventory_overrides()?;
+  overrides.insert(
+    fabric_id,
+    InventoryOverride {
+      status,
+      quantity_meters,
+      note: note.trim().to_string(),
+      updated_at: Utc::now().to_rfc3339(),
+    },
+  );
+  save_inventory_overrides(&overrides)
+}
+
+#[tauri::command]
+async fn sync_fabric_inventory() -> Result<SyncResult, String> {
+  let inventory_url = std::env::var("LLINEN_EARTH_INVENTORY_URL")
+    .unwrap_or_else(|_| "https://llinenearth-designer.vercel.app/api/inventory".to_string());
+
+  let client = Client::builder()
+    .timeout(std::time::Duration::from_secs(30))
+    .build()
+    .map_err(|e| e.to_string())?;
+
+  let response = client
+    .get(&inventory_url)
+    .send()
+    .await
+    .map_err(|e| format!("Inventory sync failed: {e}"))?;
+
+  if !response.status().is_success() {
+    return Err(format!("Inventory feed returned HTTP {}.", response.status()));
+  }
+
+  let body = response.text().await.map_err(|e| e.to_string())?;
+  let feed = serde_json::from_str::<InventoryFeed>(&body).map_err(|e| format!("Inventory feed was invalid: {e}"))?;
+  let count = feed.fabrics.len();
+
+  fs::write(inventory_feed_path()?, body).map_err(|e| e.to_string())?;
+  fs::write(
+    inventory_cache_meta_path()?,
+    serde_json::to_string_pretty(&json!({
+      "cachedAt": Utc::now().to_rfc3339(),
+      "source": inventory_url,
+      "fabrics": count,
+    })).map_err(|e| e.to_string())?,
+  ).map_err(|e| e.to_string())?;
+
+  Ok(SyncResult {
+    configured: true,
+    imported: count,
+    next_cursor: None,
+    message: format!("Inventory refreshed: {count} structured fabric colours cached on this PC."),
+  })
+}
+
+#[tauri::command]
 fn create_backup() -> Result<String, String> {
   let root = ensure_vault()?;
   let events = load_events()?;
   let summary = aggregate(events.clone());
+  let inventory = get_fabric_inventory().ok();
   let stamp = Utc::now().format("%Y-%m-%dT%H-%M-%S").to_string();
   let path = root
     .join("backups")
@@ -352,6 +572,7 @@ fn create_backup() -> Result<String, String> {
     "createdAt": Utc::now().to_rfc3339(),
     "events": events,
     "summary": summary,
+    "inventory": inventory,
   });
 
   fs::write(
@@ -448,6 +669,9 @@ fn main() {
       record_outcome,
       update_customer,
       set_lead_status,
+      get_fabric_inventory,
+      update_fabric_inventory,
+      sync_fabric_inventory,
       create_backup,
       sync_from_cloud
     ])
