@@ -1,0 +1,2571 @@
+{
+  "generatedAt": "bundled-seed-v1",
+  "fabrics": [
+    {
+      "id": "linen-plain-60-sky-blue",
+      "family": "Linen",
+      "line": "Linen Plain 60 Lea",
+      "colorName": "Sky Blue",
+      "hex": "#839197",
+      "swatchImageUrl": "/fabrics/plain-60-01.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "Linen plain colors 60lea.pdf",
+      "sourcePage": 1,
+      "inStock": true
+    },
+    {
+      "id": "linen-plain-60-peach",
+      "family": "Linen",
+      "line": "Linen Plain 60 Lea",
+      "colorName": "Peach",
+      "hex": "#A58F7F",
+      "swatchImageUrl": "/fabrics/plain-60-02.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "Linen plain colors 60lea.pdf",
+      "sourcePage": 2,
+      "inStock": true
+    },
+    {
+      "id": "linen-plain-60-stresa",
+      "family": "Linen",
+      "line": "Linen Plain 60 Lea",
+      "colorName": "Stresa",
+      "hex": "#4A5659",
+      "swatchImageUrl": "/fabrics/plain-60-03.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "Linen plain colors 60lea.pdf",
+      "sourcePage": 3,
+      "inStock": true
+    },
+    {
+      "id": "linen-plain-60-boulder-gray",
+      "family": "Linen",
+      "line": "Linen Plain 60 Lea",
+      "colorName": "Boulder Gray",
+      "hex": "#4F4D50",
+      "swatchImageUrl": "/fabrics/plain-60-04.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "Linen plain colors 60lea.pdf",
+      "sourcePage": 4,
+      "inStock": true
+    },
+    {
+      "id": "linen-plain-60-oyster-pink",
+      "family": "Linen",
+      "line": "Linen Plain 60 Lea",
+      "colorName": "Oyster Pink",
+      "hex": "#9D8286",
+      "swatchImageUrl": "/fabrics/plain-60-05.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "Linen plain colors 60lea.pdf",
+      "sourcePage": 5,
+      "inStock": true
+    },
+    {
+      "id": "linen-plain-60-khakhi",
+      "family": "Linen",
+      "line": "Linen Plain 60 Lea",
+      "colorName": "Khakhi",
+      "hex": "#928776",
+      "swatchImageUrl": "/fabrics/plain-60-06.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "Linen plain colors 60lea.pdf",
+      "sourcePage": 6,
+      "inStock": true
+    },
+    {
+      "id": "linen-plain-60-jute-black",
+      "family": "Linen",
+      "line": "Linen Plain 60 Lea",
+      "colorName": "Black - Jute Feel",
+      "hex": "#403D43",
+      "swatchImageUrl": "/fabrics/plain-60-07.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain / jute feel",
+      "compositionNote": null,
+      "sourceDocument": "Linen plain colors 60lea.pdf",
+      "sourcePage": 7,
+      "inStock": true
+    },
+    {
+      "id": "linen-plain-60-jute-maroon",
+      "family": "Linen",
+      "line": "Linen Plain 60 Lea",
+      "colorName": "Maroon - Jute Feel",
+      "hex": "#753745",
+      "swatchImageUrl": "/fabrics/plain-60-08.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain / jute feel",
+      "compositionNote": null,
+      "sourceDocument": "Linen plain colors 60lea.pdf",
+      "sourcePage": 8,
+      "inStock": true
+    },
+    {
+      "id": "linen-plain-60-jute-offwhite",
+      "family": "Linen",
+      "line": "Linen Plain 60 Lea",
+      "colorName": "Offwhite - Jute Feel",
+      "hex": "#A19C97",
+      "swatchImageUrl": "/fabrics/plain-60-09.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain / jute feel",
+      "compositionNote": null,
+      "sourceDocument": "Linen plain colors 60lea.pdf",
+      "sourcePage": 9,
+      "inStock": true
+    },
+    {
+      "id": "linen-plain-60-saffron",
+      "family": "Linen",
+      "line": "Linen Plain 60 Lea",
+      "colorName": "Saffron",
+      "hex": "#B0522D",
+      "swatchImageUrl": "/fabrics/plain-60-10.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "Linen plain colors 60lea.pdf",
+      "sourcePage": 10,
+      "inStock": true
+    },
+    {
+      "id": "linen-plain-60-dijon-yellow",
+      "family": "Linen",
+      "line": "Linen Plain 60 Lea",
+      "colorName": "Dijon Yellow",
+      "hex": "#BDA56A",
+      "swatchImageUrl": "/fabrics/plain-60-11.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "Linen plain colors 60lea.pdf",
+      "sourcePage": 11,
+      "inStock": true
+    },
+    {
+      "id": "linen-plain-60-light-green",
+      "family": "Linen",
+      "line": "Linen Plain 60 Lea",
+      "colorName": "Light Green",
+      "hex": "#7FAE66",
+      "swatchImageUrl": "/fabrics/plain-60-12.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "Linen plain colors 60lea.pdf",
+      "sourcePage": 12,
+      "inStock": true
+    },
+    {
+      "id": "linen-plain-60-light-grey",
+      "family": "Linen",
+      "line": "Linen Plain 60 Lea",
+      "colorName": "Light Grey",
+      "hex": "#98979B",
+      "swatchImageUrl": "/fabrics/plain-60-13.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "Linen plain colors 60lea.pdf",
+      "sourcePage": 13,
+      "inStock": true
+    },
+    {
+      "id": "linen-print-60-01",
+      "family": "Linen",
+      "line": "Linen Print 60 Lea",
+      "colorName": "Printed Linen 01",
+      "hex": "#5C7085",
+      "swatchImageUrl": "/fabrics/print-60-1.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Botanical print",
+      "compositionNote": null,
+      "sourceDocument": "Linen Print 60lea.pdf",
+      "sourcePage": 1,
+      "inStock": true
+    },
+    {
+      "id": "linen-print-60-02",
+      "family": "Linen",
+      "line": "Linen Print 60 Lea",
+      "colorName": "Printed Linen 02",
+      "hex": "#A7A3A2",
+      "swatchImageUrl": "/fabrics/print-60-2.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Geometric medallion print",
+      "compositionNote": null,
+      "sourceDocument": "Linen Print 60lea.pdf",
+      "sourcePage": 2,
+      "inStock": true
+    },
+    {
+      "id": "linen-print-60-03",
+      "family": "Linen",
+      "line": "Linen Print 60 Lea",
+      "colorName": "Printed Linen 03",
+      "hex": "#B1B1AF",
+      "swatchImageUrl": "/fabrics/print-60-3.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Leaf print",
+      "compositionNote": null,
+      "sourceDocument": "Linen Print 60lea.pdf",
+      "sourcePage": 3,
+      "inStock": true
+    },
+    {
+      "id": "linen-print-60-04",
+      "family": "Linen",
+      "line": "Linen Print 60 Lea",
+      "colorName": "Printed Linen 04",
+      "hex": "#8B6868",
+      "swatchImageUrl": "/fabrics/print-60-4.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Floral print",
+      "compositionNote": null,
+      "sourceDocument": "Linen Print 60lea.pdf",
+      "sourcePage": 4,
+      "inStock": true
+    },
+    {
+      "id": "linen-print-60-05",
+      "family": "Linen",
+      "line": "Linen Print 60 Lea",
+      "colorName": "Printed Linen 05",
+      "hex": "#B6988E",
+      "swatchImageUrl": "/fabrics/print-60-5.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Block-inspired print",
+      "compositionNote": null,
+      "sourceDocument": "Linen Print 60lea.pdf",
+      "sourcePage": 5,
+      "inStock": true
+    },
+    {
+      "id": "linen-print-60-06",
+      "family": "Linen",
+      "line": "Linen Print 60 Lea",
+      "colorName": "Printed Linen 06",
+      "hex": "#A9A9A5",
+      "swatchImageUrl": "/fabrics/print-60-6.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Botanical print",
+      "compositionNote": null,
+      "sourceDocument": "Linen Print 60lea.pdf",
+      "sourcePage": 6,
+      "inStock": true
+    },
+    {
+      "id": "linen-print-60-07",
+      "family": "Linen",
+      "line": "Linen Print 60 Lea",
+      "colorName": "Printed Linen 07",
+      "hex": "#A29E9C",
+      "swatchImageUrl": "/fabrics/print-60-7.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Geometric mosaic print",
+      "compositionNote": null,
+      "sourceDocument": "Linen Print 60lea.pdf",
+      "sourcePage": 7,
+      "inStock": true
+    },
+    {
+      "id": "linen-print-60-08",
+      "family": "Linen",
+      "line": "Linen Print 60 Lea",
+      "colorName": "Printed Linen 08",
+      "hex": "#A59D97",
+      "swatchImageUrl": "/fabrics/print-60-8.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Chevron print",
+      "compositionNote": null,
+      "sourceDocument": "Linen Print 60lea.pdf",
+      "sourcePage": 8,
+      "inStock": true
+    },
+    {
+      "id": "printed-linen-blend-01",
+      "family": "Linen",
+      "line": "Printed Linen Blend",
+      "colorName": "Printed Linen Blend 01",
+      "hex": "#8E8375",
+      "swatchImageUrl": "/fabrics/printed-blend-1.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Heritage floral print",
+      "compositionNote": "Linen blend - exact fibre percentages not supplied",
+      "sourceDocument": "Printed linen blend fabric.pdf",
+      "sourcePage": 1,
+      "inStock": true
+    },
+    {
+      "id": "printed-linen-blend-02",
+      "family": "Linen",
+      "line": "Printed Linen Blend",
+      "colorName": "Printed Linen Blend 02",
+      "hex": "#767677",
+      "swatchImageUrl": "/fabrics/printed-blend-2.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Abstract print",
+      "compositionNote": "Linen blend - exact fibre percentages not supplied",
+      "sourceDocument": "Printed linen blend fabric.pdf",
+      "sourcePage": 2,
+      "inStock": true
+    },
+    {
+      "id": "printed-linen-blend-03",
+      "family": "Linen",
+      "line": "Printed Linen Blend",
+      "colorName": "Printed Linen Blend 03",
+      "hex": "#969690",
+      "swatchImageUrl": "/fabrics/printed-blend-3.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Micro floral print",
+      "compositionNote": "Linen blend - exact fibre percentages not supplied",
+      "sourceDocument": "Printed linen blend fabric.pdf",
+      "sourcePage": 3,
+      "inStock": true
+    },
+    {
+      "id": "printed-linen-blend-04",
+      "family": "Linen",
+      "line": "Printed Linen Blend",
+      "colorName": "Printed Linen Blend 04",
+      "hex": "#8E8F8D",
+      "swatchImageUrl": "/fabrics/printed-blend-4.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Tonal botanical print",
+      "compositionNote": "Linen blend - exact fibre percentages not supplied",
+      "sourceDocument": "Printed linen blend fabric.pdf",
+      "sourcePage": 4,
+      "inStock": true
+    },
+    {
+      "id": "printed-linen-blend-05",
+      "family": "Linen",
+      "line": "Printed Linen Blend",
+      "colorName": "Printed Linen Blend 05",
+      "hex": "#8E8F8E",
+      "swatchImageUrl": "/fabrics/printed-blend-5.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Floral print",
+      "compositionNote": "Linen blend - exact fibre percentages not supplied",
+      "sourceDocument": "Printed linen blend fabric.pdf",
+      "sourcePage": 5,
+      "inStock": true
+    },
+    {
+      "id": "printed-linen-blend-06",
+      "family": "Linen",
+      "line": "Printed Linen Blend",
+      "colorName": "Printed Linen Blend 06",
+      "hex": "#767072",
+      "swatchImageUrl": "/fabrics/printed-blend-6.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Floral print",
+      "compositionNote": "Linen blend - exact fibre percentages not supplied",
+      "sourceDocument": "Printed linen blend fabric.pdf",
+      "sourcePage": 6,
+      "inStock": true
+    },
+    {
+      "id": "printed-linen-blend-07",
+      "family": "Linen",
+      "line": "Printed Linen Blend",
+      "colorName": "Printed Linen Blend 07",
+      "hex": "#888984",
+      "swatchImageUrl": "/fabrics/printed-blend-7.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Geometric floral print",
+      "compositionNote": "Linen blend - exact fibre percentages not supplied",
+      "sourceDocument": "Printed linen blend fabric.pdf",
+      "sourcePage": 7,
+      "inStock": true
+    },
+    {
+      "id": "printed-linen-blend-08",
+      "family": "Linen",
+      "line": "Printed Linen Blend",
+      "colorName": "Printed Linen Blend 08",
+      "hex": "#9B989B",
+      "swatchImageUrl": "/fabrics/printed-blend-8.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Botanical print",
+      "compositionNote": "Linen blend - exact fibre percentages not supplied",
+      "sourceDocument": "Printed linen blend fabric.pdf",
+      "sourcePage": 8,
+      "inStock": true
+    },
+    {
+      "id": "linen-suiting-dark-grey",
+      "family": "Linen",
+      "line": "Linen Suiting",
+      "colorName": "Dark Grey",
+      "hex": "#69696C",
+      "swatchImageUrl": "/fabrics/suiting-01.webp",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "linen suiting.pdf",
+      "sourcePage": 1,
+      "inStock": true
+    },
+    {
+      "id": "linen-suiting-orchid",
+      "family": "Linen",
+      "line": "Linen Suiting",
+      "colorName": "Orchid",
+      "hex": "#9A5C8D",
+      "swatchImageUrl": "/fabrics/suiting-02.webp",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "linen suiting.pdf",
+      "sourcePage": 2,
+      "inStock": true
+    },
+    {
+      "id": "linen-suiting-denim-blue",
+      "family": "Linen",
+      "line": "Linen Suiting",
+      "colorName": "Denim Blue",
+      "hex": "#6B7493",
+      "swatchImageUrl": "/fabrics/suiting-03.webp",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "linen suiting.pdf",
+      "sourcePage": 3,
+      "inStock": true
+    },
+    {
+      "id": "linen-suiting-slate-gray",
+      "family": "Linen",
+      "line": "Linen Suiting",
+      "colorName": "Slate Gray",
+      "hex": "#929195",
+      "swatchImageUrl": "/fabrics/suiting-04.webp",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "linen suiting.pdf",
+      "sourcePage": 4,
+      "inStock": true
+    },
+    {
+      "id": "linen-suiting-charcoal-grey",
+      "family": "Linen",
+      "line": "Linen Suiting",
+      "colorName": "Charcoal Grey",
+      "hex": "#7E8082",
+      "swatchImageUrl": "/fabrics/suiting-05.webp",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "linen suiting.pdf",
+      "sourcePage": 5,
+      "inStock": true
+    },
+    {
+      "id": "linen-suiting-charcoal-oak-wood",
+      "family": "Linen",
+      "line": "Linen Suiting",
+      "colorName": "Charcoal Oak Wood",
+      "hex": "#65615D",
+      "swatchImageUrl": "/fabrics/suiting-06.webp",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "linen suiting.pdf",
+      "sourcePage": 6,
+      "inStock": true
+    },
+    {
+      "id": "linen-suiting-light-cream",
+      "family": "Linen",
+      "line": "Linen Suiting",
+      "colorName": "Light Cream",
+      "hex": "#AAA69B",
+      "swatchImageUrl": "/fabrics/suiting-07.webp",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "linen suiting.pdf",
+      "sourcePage": 7,
+      "inStock": true
+    },
+    {
+      "id": "linen-suiting-chambray-blue-01",
+      "family": "Linen",
+      "line": "Linen Suiting",
+      "colorName": "Chambray Blue 01",
+      "hex": "#7D818D",
+      "swatchImageUrl": "/fabrics/suiting-08.webp",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "linen suiting.pdf",
+      "sourcePage": 8,
+      "inStock": true
+    },
+    {
+      "id": "linen-suiting-taupe-beige",
+      "family": "Linen",
+      "line": "Linen Suiting",
+      "colorName": "Taupe Beige",
+      "hex": "#B6B3B1",
+      "swatchImageUrl": "/fabrics/suiting-09.webp",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "linen suiting.pdf",
+      "sourcePage": 9,
+      "inStock": true
+    },
+    {
+      "id": "linen-suiting-perfect-taupe",
+      "family": "Linen",
+      "line": "Linen Suiting",
+      "colorName": "Perfect Taupe",
+      "hex": "#A89E94",
+      "swatchImageUrl": "/fabrics/suiting-10.webp",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "linen suiting.pdf",
+      "sourcePage": 10,
+      "inStock": true
+    },
+    {
+      "id": "linen-suiting-platinum",
+      "family": "Linen",
+      "line": "Linen Suiting",
+      "colorName": "Platinum",
+      "hex": "#A4A2A1",
+      "swatchImageUrl": "/fabrics/suiting-11.webp",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "linen suiting.pdf",
+      "sourcePage": 11,
+      "inStock": true
+    },
+    {
+      "id": "linen-suiting-beige",
+      "family": "Linen",
+      "line": "Linen Suiting",
+      "colorName": "Beige",
+      "hex": "#B1A68E",
+      "swatchImageUrl": "/fabrics/suiting-12.webp",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "linen suiting.pdf",
+      "sourcePage": 12,
+      "inStock": true
+    },
+    {
+      "id": "linen-suiting-baby-pink",
+      "family": "Linen",
+      "line": "Linen Suiting",
+      "colorName": "Baby Pink",
+      "hex": "#A69C9C",
+      "swatchImageUrl": "/fabrics/suiting-13.webp",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "linen suiting.pdf",
+      "sourcePage": 13,
+      "inStock": true
+    },
+    {
+      "id": "linen-suiting-turkish-rose",
+      "family": "Linen",
+      "line": "Linen Suiting",
+      "colorName": "Turkish Rose",
+      "hex": "#8B7871",
+      "swatchImageUrl": "/fabrics/suiting-14.webp",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "linen suiting.pdf",
+      "sourcePage": 14,
+      "inStock": true
+    },
+    {
+      "id": "linen-suiting-muted-cool-gray",
+      "family": "Linen",
+      "line": "Linen Suiting",
+      "colorName": "Muted Cool Gray",
+      "hex": "#9E9C9E",
+      "swatchImageUrl": "/fabrics/suiting-15.webp",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "linen suiting.pdf",
+      "sourcePage": 15,
+      "inStock": true
+    },
+    {
+      "id": "linen-suiting-chambray-blue-02",
+      "family": "Linen",
+      "line": "Linen Suiting",
+      "colorName": "Chambray Blue 02",
+      "hex": "#8D8F96",
+      "swatchImageUrl": "/fabrics/suiting-16.webp",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Plain",
+      "compositionNote": null,
+      "sourceDocument": "linen suiting.pdf",
+      "sourcePage": 16,
+      "inStock": true
+    },
+    {
+      "id": "formal-shirting-01",
+      "family": "Linen",
+      "line": "Linen Formal Shirting 60/75 Lea",
+      "colorName": "Formal Shirting 01",
+      "hex": "#908C88",
+      "swatchImageUrl": "/fabrics/formal-shirts-01.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Stripe",
+      "compositionNote": null,
+      "sourceDocument": "linen 60 and 75 lea formal shirts.pdf",
+      "sourcePage": 1,
+      "inStock": true
+    },
+    {
+      "id": "formal-shirting-02",
+      "family": "Linen",
+      "line": "Linen Formal Shirting 60/75 Lea",
+      "colorName": "Formal Shirting 02",
+      "hex": "#949293",
+      "swatchImageUrl": "/fabrics/formal-shirts-02.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Windowpane check",
+      "compositionNote": null,
+      "sourceDocument": "linen 60 and 75 lea formal shirts.pdf",
+      "sourcePage": 2,
+      "inStock": true
+    },
+    {
+      "id": "formal-shirting-03",
+      "family": "Linen",
+      "line": "Linen Formal Shirting 60/75 Lea",
+      "colorName": "Formal Shirting 03",
+      "hex": "#548589",
+      "swatchImageUrl": "/fabrics/formal-shirts-03.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Stripe",
+      "compositionNote": null,
+      "sourceDocument": "linen 60 and 75 lea formal shirts.pdf",
+      "sourcePage": 3,
+      "inStock": true
+    },
+    {
+      "id": "formal-shirting-04",
+      "family": "Linen",
+      "line": "Linen Formal Shirting 60/75 Lea",
+      "colorName": "Formal Shirting 04",
+      "hex": "#9DA79D",
+      "swatchImageUrl": "/fabrics/formal-shirts-04.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Check",
+      "compositionNote": null,
+      "sourceDocument": "linen 60 and 75 lea formal shirts.pdf",
+      "sourcePage": 4,
+      "inStock": true
+    },
+    {
+      "id": "formal-shirting-05",
+      "family": "Linen",
+      "line": "Linen Formal Shirting 60/75 Lea",
+      "colorName": "Formal Shirting 05",
+      "hex": "#A2A4AE",
+      "swatchImageUrl": "/fabrics/formal-shirts-05.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Check",
+      "compositionNote": null,
+      "sourceDocument": "linen 60 and 75 lea formal shirts.pdf",
+      "sourcePage": 5,
+      "inStock": true
+    },
+    {
+      "id": "formal-shirting-06",
+      "family": "Linen",
+      "line": "Linen Formal Shirting 60/75 Lea",
+      "colorName": "Formal Shirting 06",
+      "hex": "#A7A3A0",
+      "swatchImageUrl": "/fabrics/formal-shirts-06.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Check",
+      "compositionNote": null,
+      "sourceDocument": "linen 60 and 75 lea formal shirts.pdf",
+      "sourcePage": 6,
+      "inStock": true
+    },
+    {
+      "id": "formal-shirting-07",
+      "family": "Linen",
+      "line": "Linen Formal Shirting 60/75 Lea",
+      "colorName": "Formal Shirting 07",
+      "hex": "#818B7E",
+      "swatchImageUrl": "/fabrics/formal-shirts-07.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Micro check",
+      "compositionNote": null,
+      "sourceDocument": "linen 60 and 75 lea formal shirts.pdf",
+      "sourcePage": 7,
+      "inStock": true
+    },
+    {
+      "id": "formal-shirting-08",
+      "family": "Linen",
+      "line": "Linen Formal Shirting 60/75 Lea",
+      "colorName": "Formal Shirting 08",
+      "hex": "#A8A6A5",
+      "swatchImageUrl": "/fabrics/formal-shirts-08.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Stripe",
+      "compositionNote": null,
+      "sourceDocument": "linen 60 and 75 lea formal shirts.pdf",
+      "sourcePage": 8,
+      "inStock": true
+    },
+    {
+      "id": "formal-shirting-09",
+      "family": "Linen",
+      "line": "Linen Formal Shirting 60/75 Lea",
+      "colorName": "Formal Shirting 09",
+      "hex": "#ACAAAA",
+      "swatchImageUrl": "/fabrics/formal-shirts-09.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Fine stripe",
+      "compositionNote": null,
+      "sourceDocument": "linen 60 and 75 lea formal shirts.pdf",
+      "sourcePage": 9,
+      "inStock": true
+    },
+    {
+      "id": "formal-shirting-10",
+      "family": "Linen",
+      "line": "Linen Formal Shirting 60/75 Lea",
+      "colorName": "Formal Shirting 10",
+      "hex": "#A3A1A2",
+      "swatchImageUrl": "/fabrics/formal-shirts-10.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Stripe",
+      "compositionNote": null,
+      "sourceDocument": "linen 60 and 75 lea formal shirts.pdf",
+      "sourcePage": 10,
+      "inStock": true
+    },
+    {
+      "id": "formal-shirting-11",
+      "family": "Linen",
+      "line": "Linen Formal Shirting 60/75 Lea",
+      "colorName": "Formal Shirting 11",
+      "hex": "#908F94",
+      "swatchImageUrl": "/fabrics/formal-shirts-11.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Windowpane check",
+      "compositionNote": null,
+      "sourceDocument": "linen 60 and 75 lea formal shirts.pdf",
+      "sourcePage": 11,
+      "inStock": true
+    },
+    {
+      "id": "formal-shirting-12",
+      "family": "Linen",
+      "line": "Linen Formal Shirting 60/75 Lea",
+      "colorName": "Formal Shirting 12",
+      "hex": "#7B7F8A",
+      "swatchImageUrl": "/fabrics/formal-shirts-12.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Textured check",
+      "compositionNote": null,
+      "sourceDocument": "linen 60 and 75 lea formal shirts.pdf",
+      "sourcePage": 12,
+      "inStock": true
+    },
+    {
+      "id": "formal-shirting-13",
+      "family": "Linen",
+      "line": "Linen Formal Shirting 60/75 Lea",
+      "colorName": "Formal Shirting 13",
+      "hex": "#3D81D6",
+      "swatchImageUrl": "/fabrics/formal-shirts-13.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Pinstripe",
+      "compositionNote": null,
+      "sourceDocument": "linen 60 and 75 lea formal shirts.pdf",
+      "sourcePage": 13,
+      "inStock": true
+    },
+    {
+      "id": "formal-shirting-14",
+      "family": "Linen",
+      "line": "Linen Formal Shirting 60/75 Lea",
+      "colorName": "Formal Shirting 14",
+      "hex": "#9F9D98",
+      "swatchImageUrl": "/fabrics/formal-shirts-14.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Check",
+      "compositionNote": null,
+      "sourceDocument": "linen 60 and 75 lea formal shirts.pdf",
+      "sourcePage": 14,
+      "inStock": true
+    },
+    {
+      "id": "formal-shirting-15",
+      "family": "Linen",
+      "line": "Linen Formal Shirting 60/75 Lea",
+      "colorName": "Formal Shirting 15",
+      "hex": "#A4A398",
+      "swatchImageUrl": "/fabrics/formal-shirts-15.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Windowpane check",
+      "compositionNote": null,
+      "sourceDocument": "linen 60 and 75 lea formal shirts.pdf",
+      "sourcePage": 15,
+      "inStock": true
+    },
+    {
+      "id": "formal-shirting-16",
+      "family": "Linen",
+      "line": "Linen Formal Shirting 60/75 Lea",
+      "colorName": "Formal Shirting 16",
+      "hex": "#98937C",
+      "swatchImageUrl": "/fabrics/formal-shirts-16.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Check",
+      "compositionNote": null,
+      "sourceDocument": "linen 60 and 75 lea formal shirts.pdf",
+      "sourcePage": 16,
+      "inStock": true
+    },
+    {
+      "id": "formal-shirting-17",
+      "family": "Linen",
+      "line": "Linen Formal Shirting 60/75 Lea",
+      "colorName": "Formal Shirting 17",
+      "hex": "#AC2E58",
+      "swatchImageUrl": "/fabrics/formal-shirts-17.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Windowpane check",
+      "compositionNote": null,
+      "sourceDocument": "linen 60 and 75 lea formal shirts.pdf",
+      "sourcePage": 17,
+      "inStock": true
+    },
+    {
+      "id": "formal-shirting-18",
+      "family": "Linen",
+      "line": "Linen Formal Shirting 60/75 Lea",
+      "colorName": "Formal Shirting 18",
+      "hex": "#848D78",
+      "swatchImageUrl": "/fabrics/formal-shirts-18.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Micro check",
+      "compositionNote": null,
+      "sourceDocument": "linen 60 and 75 lea formal shirts.pdf",
+      "sourcePage": 18,
+      "inStock": true
+    },
+    {
+      "id": "formal-shirting-19",
+      "family": "Linen",
+      "line": "Linen Formal Shirting 60/75 Lea",
+      "colorName": "Formal Shirting 19",
+      "hex": "#99988D",
+      "swatchImageUrl": "/fabrics/formal-shirts-19.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Stripe",
+      "compositionNote": null,
+      "sourceDocument": "linen 60 and 75 lea formal shirts.pdf",
+      "sourcePage": 19,
+      "inStock": true
+    },
+    {
+      "id": "formal-shirting-20",
+      "family": "Linen",
+      "line": "Linen Formal Shirting 60/75 Lea",
+      "colorName": "Formal Shirting 20",
+      "hex": "#9E9C9B",
+      "swatchImageUrl": "/fabrics/formal-shirts-20.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Stripe",
+      "compositionNote": null,
+      "sourceDocument": "linen 60 and 75 lea formal shirts.pdf",
+      "sourcePage": 20,
+      "inStock": true
+    },
+    {
+      "id": "formal-shirting-21",
+      "family": "Linen",
+      "line": "Linen Formal Shirting 60/75 Lea",
+      "colorName": "Formal Shirting 21",
+      "hex": "#9E9A9A",
+      "swatchImageUrl": "/fabrics/formal-shirts-21.webp",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Check",
+      "compositionNote": null,
+      "sourceDocument": "linen 60 and 75 lea formal shirts.pdf",
+      "sourcePage": 21,
+      "inStock": true
+    },
+    {
+      "id": "legacy-60lea-plain-img-5369",
+      "family": "Linen",
+      "line": "60 Lea Plain · Legacy Website",
+      "colorName": "60 Lea Plain · IMG_5369",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/60lea-plain/IMG_5369.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 1,
+      "inStock": false
+    },
+    {
+      "id": "legacy-60lea-plain-img-5372",
+      "family": "Linen",
+      "line": "60 Lea Plain · Legacy Website",
+      "colorName": "60 Lea Plain · IMG_5372",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/60lea-plain/IMG_5372.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 2,
+      "inStock": false
+    },
+    {
+      "id": "legacy-60lea-plain-img-5374",
+      "family": "Linen",
+      "line": "60 Lea Plain · Legacy Website",
+      "colorName": "60 Lea Plain · IMG_5374",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/60lea-plain/IMG_5374.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 3,
+      "inStock": false
+    },
+    {
+      "id": "legacy-60lea-plain-img-5376",
+      "family": "Linen",
+      "line": "60 Lea Plain · Legacy Website",
+      "colorName": "60 Lea Plain · IMG_5376",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/60lea-plain/IMG_5376.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 4,
+      "inStock": false
+    },
+    {
+      "id": "legacy-60lea-plain-img-5378",
+      "family": "Linen",
+      "line": "60 Lea Plain · Legacy Website",
+      "colorName": "60 Lea Plain · IMG_5378",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/60lea-plain/IMG_5378.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 5,
+      "inStock": false
+    },
+    {
+      "id": "legacy-60lea-plain-img-5379",
+      "family": "Linen",
+      "line": "60 Lea Plain · Legacy Website",
+      "colorName": "60 Lea Plain · IMG_5379",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/60lea-plain/IMG_5379.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 6,
+      "inStock": false
+    },
+    {
+      "id": "legacy-60lea-formals-img-5479",
+      "family": "Linen",
+      "line": "60 Lea Formals · Legacy Website",
+      "colorName": "60 Lea Formals · IMG_5479",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/60lea-formals/IMG_5479.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 1,
+      "inStock": false
+    },
+    {
+      "id": "legacy-60lea-formals-img-5489",
+      "family": "Linen",
+      "line": "60 Lea Formals · Legacy Website",
+      "colorName": "60 Lea Formals · IMG_5489",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/60lea-formals/IMG_5489.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 2,
+      "inStock": false
+    },
+    {
+      "id": "legacy-60lea-formals-img-5490",
+      "family": "Linen",
+      "line": "60 Lea Formals · Legacy Website",
+      "colorName": "60 Lea Formals · IMG_5490",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/60lea-formals/IMG_5490.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 3,
+      "inStock": false
+    },
+    {
+      "id": "legacy-60lea-formals-img-5494",
+      "family": "Linen",
+      "line": "60 Lea Formals · Legacy Website",
+      "colorName": "60 Lea Formals · IMG_5494",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/60lea-formals/IMG_5494.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 4,
+      "inStock": false
+    },
+    {
+      "id": "legacy-60lea-formals-img-5503",
+      "family": "Linen",
+      "line": "60 Lea Formals · Legacy Website",
+      "colorName": "60 Lea Formals · IMG_5503",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/60lea-formals/IMG_5503.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 5,
+      "inStock": false
+    },
+    {
+      "id": "legacy-60lea-formals-img-5511",
+      "family": "Linen",
+      "line": "60 Lea Formals · Legacy Website",
+      "colorName": "60 Lea Formals · IMG_5511",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/60lea-formals/IMG_5511.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 6,
+      "inStock": false
+    },
+    {
+      "id": "legacy-60lea-formals-img-5523",
+      "family": "Linen",
+      "line": "60 Lea Formals · Legacy Website",
+      "colorName": "60 Lea Formals · IMG_5523",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/60lea-formals/IMG_5523.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 7,
+      "inStock": false
+    },
+    {
+      "id": "legacy-60lea-formals-img-5525",
+      "family": "Linen",
+      "line": "60 Lea Formals · Legacy Website",
+      "colorName": "60 Lea Formals · IMG_5525",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/60lea-formals/IMG_5525.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 8,
+      "inStock": false
+    },
+    {
+      "id": "legacy-60lea-formals-img-5543",
+      "family": "Linen",
+      "line": "60 Lea Formals · Legacy Website",
+      "colorName": "60 Lea Formals · IMG_5543",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/60lea-formals/IMG_5543.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 9,
+      "inStock": false
+    },
+    {
+      "id": "legacy-60lea-formals-img-5553",
+      "family": "Linen",
+      "line": "60 Lea Formals · Legacy Website",
+      "colorName": "60 Lea Formals · IMG_5553",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/60lea-formals/IMG_5553.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 10,
+      "inStock": false
+    },
+    {
+      "id": "legacy-60lea-formals-img-5554",
+      "family": "Linen",
+      "line": "60 Lea Formals · Legacy Website",
+      "colorName": "60 Lea Formals · IMG_5554",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/60lea-formals/IMG_5554.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 11,
+      "inStock": false
+    },
+    {
+      "id": "legacy-60lea-formals-img-5558",
+      "family": "Linen",
+      "line": "60 Lea Formals · Legacy Website",
+      "colorName": "60 Lea Formals · IMG_5558",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/60lea-formals/IMG_5558.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 12,
+      "inStock": false
+    },
+    {
+      "id": "legacy-75lea-formals-img-5147",
+      "family": "Linen",
+      "line": "75 Lea Formals · Legacy Website",
+      "colorName": "75 Lea Formals · IMG_5147",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/75-lea-formals/IMG_5147.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 1,
+      "inStock": false
+    },
+    {
+      "id": "legacy-75lea-formals-img-5148",
+      "family": "Linen",
+      "line": "75 Lea Formals · Legacy Website",
+      "colorName": "75 Lea Formals · IMG_5148",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/75-lea-formals/IMG_5148.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 2,
+      "inStock": false
+    },
+    {
+      "id": "legacy-75lea-formals-img-5155",
+      "family": "Linen",
+      "line": "75 Lea Formals · Legacy Website",
+      "colorName": "75 Lea Formals · IMG_5155",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/75-lea-formals/IMG_5155.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 3,
+      "inStock": false
+    },
+    {
+      "id": "legacy-75lea-formals-img-5156",
+      "family": "Linen",
+      "line": "75 Lea Formals · Legacy Website",
+      "colorName": "75 Lea Formals · IMG_5156",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/75-lea-formals/IMG_5156.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 4,
+      "inStock": false
+    },
+    {
+      "id": "legacy-75lea-formals-img-5203",
+      "family": "Linen",
+      "line": "75 Lea Formals · Legacy Website",
+      "colorName": "75 Lea Formals · IMG_5203",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/75-lea-formals/IMG_5203.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 5,
+      "inStock": false
+    },
+    {
+      "id": "legacy-75lea-formals-img-5206",
+      "family": "Linen",
+      "line": "75 Lea Formals · Legacy Website",
+      "colorName": "75 Lea Formals · IMG_5206",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/75-lea-formals/IMG_5206.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 6,
+      "inStock": false
+    },
+    {
+      "id": "legacy-75lea-formals-img-5214",
+      "family": "Linen",
+      "line": "75 Lea Formals · Legacy Website",
+      "colorName": "75 Lea Formals · IMG_5214",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/75-lea-formals/IMG_5214.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 7,
+      "inStock": false
+    },
+    {
+      "id": "legacy-75lea-formals-img-5287",
+      "family": "Linen",
+      "line": "75 Lea Formals · Legacy Website",
+      "colorName": "75 Lea Formals · IMG_5287",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/75-lea-formals/IMG_5287.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 8,
+      "inStock": false
+    },
+    {
+      "id": "legacy-75lea-formals-img-5296",
+      "family": "Linen",
+      "line": "75 Lea Formals · Legacy Website",
+      "colorName": "75 Lea Formals · IMG_5296",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/75-lea-formals/IMG_5296.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 9,
+      "inStock": false
+    },
+    {
+      "id": "legacy-75lea-formals-img-5298",
+      "family": "Linen",
+      "line": "75 Lea Formals · Legacy Website",
+      "colorName": "75 Lea Formals · IMG_5298",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/75-lea-formals/IMG_5298.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 10,
+      "inStock": false
+    },
+    {
+      "id": "legacy-75lea-formals-img-5301",
+      "family": "Linen",
+      "line": "75 Lea Formals · Legacy Website",
+      "colorName": "75 Lea Formals · IMG_5301",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/75-lea-formals/IMG_5301.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 11,
+      "inStock": false
+    },
+    {
+      "id": "legacy-75lea-formals-img-5318",
+      "family": "Linen",
+      "line": "75 Lea Formals · Legacy Website",
+      "colorName": "75 Lea Formals · IMG_5318",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/75-lea-formals/IMG_5318.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Formal weave / pattern",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 12,
+      "inStock": false
+    },
+    {
+      "id": "legacy-cotton-plain-img-5994",
+      "family": "Cotton",
+      "line": "Cotton Plain · Legacy Website",
+      "colorName": "Cotton Plain · IMG_5994",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/cotton-plain/IMG_5994.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 1,
+      "inStock": false
+    },
+    {
+      "id": "legacy-cotton-plain-img-5996",
+      "family": "Cotton",
+      "line": "Cotton Plain · Legacy Website",
+      "colorName": "Cotton Plain · IMG_5996",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/cotton-plain/IMG_5996.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 2,
+      "inStock": false
+    },
+    {
+      "id": "legacy-cotton-plain-img-5997",
+      "family": "Cotton",
+      "line": "Cotton Plain · Legacy Website",
+      "colorName": "Cotton Plain · IMG_5997",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/cotton-plain/IMG_5997.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 3,
+      "inStock": false
+    },
+    {
+      "id": "legacy-cotton-plain-img-5998",
+      "family": "Cotton",
+      "line": "Cotton Plain · Legacy Website",
+      "colorName": "Cotton Plain · IMG_5998",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/cotton-plain/IMG_5998.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 4,
+      "inStock": false
+    },
+    {
+      "id": "legacy-cotton-plain-img-6001",
+      "family": "Cotton",
+      "line": "Cotton Plain · Legacy Website",
+      "colorName": "Cotton Plain · IMG_6001",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/cotton-plain/IMG_6001.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 5,
+      "inStock": false
+    },
+    {
+      "id": "legacy-cotton-plain-img-6002",
+      "family": "Cotton",
+      "line": "Cotton Plain · Legacy Website",
+      "colorName": "Cotton Plain · IMG_6002",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/cotton-plain/IMG_6002.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Plain",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 6,
+      "inStock": false
+    },
+    {
+      "id": "legacy-cotton-print-img-5676",
+      "family": "Cotton",
+      "line": "Cotton Print · Legacy Website",
+      "colorName": "Cotton Print · IMG_5676",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/cotton-print/IMG_5676.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Print",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 1,
+      "inStock": false
+    },
+    {
+      "id": "legacy-cotton-print-img-5687",
+      "family": "Cotton",
+      "line": "Cotton Print · Legacy Website",
+      "colorName": "Cotton Print · IMG_5687",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/cotton-print/IMG_5687.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Print",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 2,
+      "inStock": false
+    },
+    {
+      "id": "legacy-cotton-print-img-5688",
+      "family": "Cotton",
+      "line": "Cotton Print · Legacy Website",
+      "colorName": "Cotton Print · IMG_5688",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/cotton-print/IMG_5688.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Print",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 3,
+      "inStock": false
+    },
+    {
+      "id": "legacy-cotton-print-img-5690",
+      "family": "Cotton",
+      "line": "Cotton Print · Legacy Website",
+      "colorName": "Cotton Print · IMG_5690",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/cotton-print/IMG_5690.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Print",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 4,
+      "inStock": false
+    },
+    {
+      "id": "legacy-cotton-print-img-5695",
+      "family": "Cotton",
+      "line": "Cotton Print · Legacy Website",
+      "colorName": "Cotton Print · IMG_5695",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/cotton-print/IMG_5695.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Print",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 5,
+      "inStock": false
+    },
+    {
+      "id": "legacy-cotton-print-img-5712",
+      "family": "Cotton",
+      "line": "Cotton Print · Legacy Website",
+      "colorName": "Cotton Print · IMG_5712",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/cotton-print/IMG_5712.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Print",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 6,
+      "inStock": false
+    },
+    {
+      "id": "legacy-cotton-print-img-5723",
+      "family": "Cotton",
+      "line": "Cotton Print · Legacy Website",
+      "colorName": "Cotton Print · IMG_5723",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/cotton-print/IMG_5723.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Print",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 7,
+      "inStock": false
+    },
+    {
+      "id": "legacy-cotton-print-img-5724",
+      "family": "Cotton",
+      "line": "Cotton Print · Legacy Website",
+      "colorName": "Cotton Print · IMG_5724",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/cotton-print/IMG_5724.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Print",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 8,
+      "inStock": false
+    },
+    {
+      "id": "legacy-cotton-print-img-5732",
+      "family": "Cotton",
+      "line": "Cotton Print · Legacy Website",
+      "colorName": "Cotton Print · IMG_5732",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/cotton-print/IMG_5732.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Print",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 9,
+      "inStock": false
+    },
+    {
+      "id": "legacy-cotton-print-img-5735",
+      "family": "Cotton",
+      "line": "Cotton Print · Legacy Website",
+      "colorName": "Cotton Print · IMG_5735",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/cotton-print/IMG_5735.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Print",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 10,
+      "inStock": false
+    },
+    {
+      "id": "legacy-cotton-print-img-5738",
+      "family": "Cotton",
+      "line": "Cotton Print · Legacy Website",
+      "colorName": "Cotton Print · IMG_5738",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/cotton-print/IMG_5738.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Print",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 11,
+      "inStock": false
+    },
+    {
+      "id": "legacy-cotton-print-img-5759",
+      "family": "Cotton",
+      "line": "Cotton Print · Legacy Website",
+      "colorName": "Cotton Print · IMG_5759",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/cotton-print/IMG_5759.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Print",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 12,
+      "inStock": false
+    },
+    {
+      "id": "legacy-cotton-print-img-5760",
+      "family": "Cotton",
+      "line": "Cotton Print · Legacy Website",
+      "colorName": "Cotton Print · IMG_5760",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/cotton-print/IMG_5760.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Print",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 13,
+      "inStock": false
+    },
+    {
+      "id": "legacy-cotton-print-img-5763",
+      "family": "Cotton",
+      "line": "Cotton Print · Legacy Website",
+      "colorName": "Cotton Print · IMG_5763",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/cotton-print/IMG_5763.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Print",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 14,
+      "inStock": false
+    },
+    {
+      "id": "legacy-digital-print-img-5075",
+      "family": "Digital Print",
+      "line": "Digital Print · Legacy Website",
+      "colorName": "Digital Print · IMG_5075",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/digital-print/IMG_5075.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Print",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 1,
+      "inStock": false
+    },
+    {
+      "id": "legacy-digital-print-img-5078",
+      "family": "Digital Print",
+      "line": "Digital Print · Legacy Website",
+      "colorName": "Digital Print · IMG_5078",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/digital-print/IMG_5078.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Print",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 2,
+      "inStock": false
+    },
+    {
+      "id": "legacy-digital-print-img-5079",
+      "family": "Digital Print",
+      "line": "Digital Print · Legacy Website",
+      "colorName": "Digital Print · IMG_5079",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/digital-print/IMG_5079.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Print",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 3,
+      "inStock": false
+    },
+    {
+      "id": "legacy-digital-print-img-5087",
+      "family": "Digital Print",
+      "line": "Digital Print · Legacy Website",
+      "colorName": "Digital Print · IMG_5087",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/digital-print/IMG_5087.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Print",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 4,
+      "inStock": false
+    },
+    {
+      "id": "legacy-digital-print-img-5093",
+      "family": "Digital Print",
+      "line": "Digital Print · Legacy Website",
+      "colorName": "Digital Print · IMG_5093",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/digital-print/IMG_5093.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Print",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 5,
+      "inStock": false
+    },
+    {
+      "id": "legacy-digital-print-img-5096",
+      "family": "Digital Print",
+      "line": "Digital Print · Legacy Website",
+      "colorName": "Digital Print · IMG_5096",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/digital-print/IMG_5096.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Print",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 6,
+      "inStock": false
+    },
+    {
+      "id": "legacy-digital-print-img-5120",
+      "family": "Digital Print",
+      "line": "Digital Print · Legacy Website",
+      "colorName": "Digital Print · IMG_5120",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/digital-print/IMG_5120.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Print",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 7,
+      "inStock": false
+    },
+    {
+      "id": "legacy-linen-suiting-img-5570",
+      "family": "Linen",
+      "line": "Linen Suiting · Legacy Website",
+      "colorName": "Linen Suiting · IMG_5570",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/linen-suiting/IMG_5570.JPG",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 1,
+      "inStock": false
+    },
+    {
+      "id": "legacy-linen-suiting-img-5573",
+      "family": "Linen",
+      "line": "Linen Suiting · Legacy Website",
+      "colorName": "Linen Suiting · IMG_5573",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/linen-suiting/IMG_5573.JPG",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 2,
+      "inStock": false
+    },
+    {
+      "id": "legacy-linen-suiting-img-5575",
+      "family": "Linen",
+      "line": "Linen Suiting · Legacy Website",
+      "colorName": "Linen Suiting · IMG_5575",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/linen-suiting/IMG_5575.JPG",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 3,
+      "inStock": false
+    },
+    {
+      "id": "legacy-linen-suiting-img-5583",
+      "family": "Linen",
+      "line": "Linen Suiting · Legacy Website",
+      "colorName": "Linen Suiting · IMG_5583",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/linen-suiting/IMG_5583.JPG",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 4,
+      "inStock": false
+    },
+    {
+      "id": "legacy-linen-suiting-img-5594",
+      "family": "Linen",
+      "line": "Linen Suiting · Legacy Website",
+      "colorName": "Linen Suiting · IMG_5594",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/linen-suiting/IMG_5594.JPG",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 5,
+      "inStock": false
+    },
+    {
+      "id": "legacy-linen-suiting-img-5599",
+      "family": "Linen",
+      "line": "Linen Suiting · Legacy Website",
+      "colorName": "Linen Suiting · IMG_5599",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/linen-suiting/IMG_5599.JPG",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 6,
+      "inStock": false
+    },
+    {
+      "id": "legacy-linen-suiting-img-5602",
+      "family": "Linen",
+      "line": "Linen Suiting · Legacy Website",
+      "colorName": "Linen Suiting · IMG_5602",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/linen-suiting/IMG_5602.JPG",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 7,
+      "inStock": false
+    },
+    {
+      "id": "legacy-linen-suiting-img-5619",
+      "family": "Linen",
+      "line": "Linen Suiting · Legacy Website",
+      "colorName": "Linen Suiting · IMG_5619",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/linen-suiting/IMG_5619.JPG",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 8,
+      "inStock": false
+    },
+    {
+      "id": "legacy-linen-suiting-img-5622",
+      "family": "Linen",
+      "line": "Linen Suiting · Legacy Website",
+      "colorName": "Linen Suiting · IMG_5622",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/linen-suiting/IMG_5622.JPG",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 9,
+      "inStock": false
+    },
+    {
+      "id": "legacy-linen-suiting-img-5636",
+      "family": "Linen",
+      "line": "Linen Suiting · Legacy Website",
+      "colorName": "Linen Suiting · IMG_5636",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/linen-suiting/IMG_5636.JPG",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 10,
+      "inStock": false
+    },
+    {
+      "id": "legacy-linen-suiting-img-5674",
+      "family": "Linen",
+      "line": "Linen Suiting · Legacy Website",
+      "colorName": "Linen Suiting · IMG_5674",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/linen-suiting/IMG_5674.JPG",
+      "suitableFor": [
+        "trouser",
+        "suit",
+        "blazer"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 11,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5809",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5809",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5809.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 1,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5814",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5814",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5814.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 2,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5821",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5821",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5821.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 3,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5825",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5825",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5825.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 4,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5842",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5842",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5842.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 5,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5844",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5844",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5844.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 6,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5846",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5846",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5846.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 7,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5849",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5849",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5849.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 8,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5850",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5850",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5850.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 9,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5856",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5856",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5856.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 10,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5870",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5870",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5870.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 11,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5894",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5894",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5894.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 12,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5900",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5900",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5900.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 13,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5921",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5921",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5921.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 14,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5922",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5922",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5922.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 15,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5926",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5926",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5926.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 16,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5930",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5930",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5930.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 17,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5935",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5935",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5935.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 18,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5941",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5941",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5941.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 19,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5943",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5943",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5943.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 20,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5946",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5946",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5946.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 21,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5979",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5979",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5979.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 22,
+      "inStock": false
+    },
+    {
+      "id": "legacy-luxurious-cotton-img-5984",
+      "family": "Cotton",
+      "line": "Luxurious Cotton · Legacy Website",
+      "colorName": "Luxurious Cotton · IMG_5984",
+      "hex": "#8A8178",
+      "swatchImageUrl": "https://llinenearth.com/products/luxurious-cotton/IMG_5984.JPG",
+      "suitableFor": [
+        "shirt"
+      ],
+      "pattern": "Website swatch",
+      "compositionNote": "Imported from llinenearth.com legacy gallery. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      "sourceDocument": "llinenearth.com",
+      "sourcePage": 23,
+      "inStock": false
+    }
+  ]
+}
