@@ -125,6 +125,7 @@ type SystemHealth = {
   visualCount: number;
   visualBytes: number;
   marketingBriefs: number;
+  jobCards: number;
   brainActions: number;
   inventoryCount: number;
   unverifiedInventory: number;
@@ -2177,6 +2178,7 @@ export default function App() {
                       <span><b>Inventory</b><small>{systemHealth?.inventoryCount || inventory.fabrics.length} entries · {systemHealth?.inventoryOverrides || 0} operator stock updates</small></span>
                       <span><b>Visual archive</b><small>{systemHealth?.visualCount || 0} trusted local image files</small></span>
                       <span><b>Marketing</b><small>{systemHealth?.marketingBriefs || 0} exported creative brief(s)</small></span>
+                      <span><b>Job cards</b><small>{systemHealth?.jobCards || 0} printable tailoring card(s)</small></span>
                       <span><b>AI Brain</b><small>{systemHealth?.brainActions || 0} persistent action decision(s)</small></span>
                       <span><b>Backups</b><small>{systemHealth?.backupCount || 0} snapshot(s) · latest {systemHealth?.latestBackup || "none"}</small></span>
                     </div>
