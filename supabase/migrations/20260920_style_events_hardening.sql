@@ -38,7 +38,8 @@ alter table public.style_events
       'operator_note',
       'customer_updated',
       'lead_status_changed',
-      'order_status_changed'
+      'order_status_changed',
+      'measurements_updated'
     )
   );
 
@@ -85,7 +86,7 @@ stable
 security invoker
 set search_path = public
 as $$
-  select 2;
+  select 3;
 $$;
 
 revoke all on function public.llinen_cloud_schema_version() from public;
@@ -104,7 +105,7 @@ security invoker
 set search_path = public, pg_catalog
 as $$
   select jsonb_build_object(
-    'schemaVersion', 2,
+    'schemaVersion', 3,
     'tableExists', to_regclass('public.style_events') is not null,
     'rlsEnabled', coalesce((
       select c.relrowsecurity
