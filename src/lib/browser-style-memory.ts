@@ -153,7 +153,15 @@ async function sendCloudEvent(event:StyleMemoryEvent) {
       body: JSON.stringify(event),
       keepalive: true,
     });
-    return response.ok || response.status === 409;
+    if (response.status === 409) return true;
+    if (!response.ok) return false;
+
+    try {
+      const result = await response.json() as { stored?: boolean };
+      return result.stored === true;
+    } catch {
+      return false;
+    }
   } catch {
     return false;
   }
