@@ -1,6 +1,6 @@
 -- LLinen Earth cloud memory — production hardening
 -- Append-only event ledger used by the public website and LLinen Earth OS.
--- Safe to re-run.
+-- This migration is the canonical bootstrap for a new LLinen Earth Supabase project.
 
 begin;
 
@@ -14,7 +14,6 @@ create table if not exists public.style_events (
   received_at timestamptz not null default now()
 );
 
--- Keep the Data API surface narrow even if an application bug submits malformed data.
 alter table public.style_events
   drop constraint if exists style_events_id_shape,
   add constraint style_events_id_shape check (length(id) between 1 and 160);
@@ -65,12 +64,12 @@ create index if not exists style_events_received_id_idx
 
 alter table public.style_events enable row level security;
 
--- The browser never talks to this table directly.
--- Route Handlers validate events, then use a server-only elevated Supabase key.
+-- Public browser roles never query this table directly.
+-- Next.js validates events and writes through a server-only elevated key.
 revoke all on table public.style_events from anon;
 revoke all on table public.style_events from authenticated;
 
--- Keep the elevated server role append/read only. It does not need update/delete.
+-- The elevated role is append/read only: no mutation of historical records.
 revoke all on table public.style_events from service_role;
 grant select, insert on table public.style_events to service_role;
 
@@ -83,13 +82,48 @@ language sql
 stable
 security invoker
 set search_path = public
-as $
-  select 1;
-$;
+as $$
+  select 2;
+$$;
 
 revoke all on function public.llinen_cloud_schema_version() from public;
 revoke all on function public.llinen_cloud_schema_version() from anon;
 revoke all on function public.llinen_cloud_schema_version() from authenticated;
 grant execute on function public.llinen_cloud_schema_version() to service_role;
+
+-- Server-only diagnostic used by npm run cloud:check and desktop pairing.
+-- It verifies the permissions that matter for the event ledger without exposing
+-- customer rows or payloads.
+create or replace function public.llinen_cloud_health()
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_catalog
+as $$
+  select jsonb_build_object(
+    'schemaVersion', 2,
+    'tableExists', to_regclass('public.style_events') is not null,
+    'rlsEnabled', coalesce((
+      select c.relrowsecurity
+      from pg_class c
+      join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relname = 'style_events'
+    ), false),
+    'anonSelect', has_table_privilege('anon', 'public.style_events', 'select'),
+    'anonInsert', has_table_privilege('anon', 'public.style_events', 'insert'),
+    'authenticatedSelect', has_table_privilege('authenticated', 'public.style_events', 'select'),
+    'authenticatedInsert', has_table_privilege('authenticated', 'public.style_events', 'insert'),
+    'serviceSelect', has_table_privilege('service_role', 'public.style_events', 'select'),
+    'serviceInsert', has_table_privilege('service_role', 'public.style_events', 'insert'),
+    'serviceUpdate', has_table_privilege('service_role', 'public.style_events', 'update'),
+    'serviceDelete', has_table_privilege('service_role', 'public.style_events', 'delete')
+  );
+$$;
+
+revoke all on function public.llinen_cloud_health() from public;
+revoke all on function public.llinen_cloud_health() from anon;
+revoke all on function public.llinen_cloud_health() from authenticated;
+grant execute on function public.llinen_cloud_health() to service_role;
 
 commit;
