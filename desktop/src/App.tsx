@@ -124,6 +124,8 @@ type SystemHealth = {
   backupBytes: number;
   latestBackup?: string | null;
   latestBackupAt?: string | null;
+  latestBackupVerified: boolean;
+  autoBackupToday: boolean;
   visualCount: number;
   visualBytes: number;
   marketingBriefs: number;
@@ -298,6 +300,7 @@ export default function App() {
   const [marketingExporting, setMarketingExporting] = useState<string | null>(null);
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
   const [systemReporting, setSystemReporting] = useState(false);
+  const [backupVerifying, setBackupVerifying] = useState(false);
   const [showWalkin, setShowWalkin] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
   const [walkinDraft, setWalkinDraft] = useState({ name: "", phone: "", occasion: "", garment: "", note: "" });
@@ -468,8 +471,17 @@ export default function App() {
     void refresh();
     void loadInventory();
     void loadBrainActions();
-    void loadSystemHealth();
     void loadSyncPairing();
+    void (async () => {
+      try {
+        const result = await invoke<string>("ensure_daily_backup");
+        if (!result.includes("already exists")) setStatus(result);
+      } catch (error) {
+        setStatus(`Automatic backup failed: ${String(error)}`);
+      } finally {
+        await loadSystemHealth();
+      }
+    })();
   }, [unlocked]);
 
   useEffect(() => {
@@ -1223,6 +1235,19 @@ export default function App() {
       await loadSystemHealth();
     } catch (error) {
       setStatus(`Backup failed: ${String(error)}`);
+    }
+  }
+
+  async function verifyLatestBackup() {
+    setBackupVerifying(true);
+    try {
+      const result = await invoke<string>("verify_latest_backup");
+      setStatus(result);
+      await loadSystemHealth();
+    } catch (error) {
+      setStatus(`Backup verification failed: ${String(error)}`);
+    } finally {
+      setBackupVerifying(false);
     }
   }
 
@@ -2317,6 +2342,7 @@ export default function App() {
                   <article className="card memoryActions">
                     <div className="cardHead"><div><small>MAINTENANCE</small><h2>Protect the record.</h2></div></div>
                     <button onClick={() => void backup()}><span>Create full backup</span><b>↗</b></button>
+                    <button onClick={() => void verifyLatestBackup()} disabled={backupVerifying}><span>{backupVerifying ? "Verifying backup…" : "Verify latest backup"}</span><b>✓</b></button>
                     <button onClick={() => void archiveVisuals()} disabled={archivingVisuals}><span>{archivingVisuals ? "Archiving visuals…" : "Archive trusted visuals"}</span><b>↗</b></button>
                     <button onClick={() => void syncInventory()} disabled={inventorySyncing}><span>{inventorySyncing ? "Refreshing inventory…" : "Refresh inventory cache"}</span><b>↗</b></button>
                     <button onClick={() => void exportSystemReport()} disabled={systemReporting}><span>{systemReporting ? "Exporting report…" : "Export system report"}</span><b>↗</b></button>
