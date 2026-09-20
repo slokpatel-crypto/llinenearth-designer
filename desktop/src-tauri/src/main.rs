@@ -968,7 +968,7 @@ fn export_system_report() -> Result<String, String> {
     health.issues.iter().map(|issue| format!("- {issue}")).collect::<Vec<_>>().join("\n")
   };
   let report = format!(
-    "# LLinen Earth OS — System Report\n\nGenerated: {}\n\n## Local vault\n- Path: {}\n- Event records: {} across {} daily files\n- Event bytes: {}\n- Backups: {}\n- Latest backup: {}\n- Visual files: {}\n- Visual bytes: {}\n- Marketing briefs: {}\n- Brain action decisions: {}\n\n## Inventory\n- Entries: {}\n- Unverified: {}\n- Operator overrides: {}\n\n## Cloud sync\n- Paired: {}\n- Last synced: {}\n- Cursor present: {}\n\n## Current warnings\n{}\n",
+    "# LLinen Earth OS — System Report\n\nGenerated: {}\n\n## Local vault\n- Path: {}\n- Event records: {} across {} daily files\n- Event bytes: {}\n- Backups: {}\n- Latest backup: {}\n- Visual files: {}\n- Visual bytes: {}\n- Marketing briefs: {}\n- Job cards: {}\n- Brain action decisions: {}\n\n## Inventory\n- Entries: {}\n- Unverified: {}\n- Operator overrides: {}\n\n## Cloud sync\n- Paired: {}\n- Last synced: {}\n- Cursor present: {}\n\n## Current warnings\n{}\n",
     Utc::now().to_rfc3339(),
     health.vault_path,
     health.event_records,
