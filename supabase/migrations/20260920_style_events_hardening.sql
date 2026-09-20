@@ -44,7 +44,9 @@ alter table public.style_events
 
 alter table public.style_events
   drop constraint if exists style_events_source_shape,
-  add constraint style_events_source_shape check (length(source) between 1 and 48);
+  add constraint style_events_source_shape check (
+    source in ('style-director', 'operator', 'operator-desktop')
+  );
 
 alter table public.style_events
   drop constraint if exists style_events_payload_object,
