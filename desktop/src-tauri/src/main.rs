@@ -636,15 +636,36 @@ fn write_backup_file(prefix: &str) -> Result<PathBuf, String> {
 fn verify_backup_file(path: &Path) -> Result<(), String> {
   let content = fs::read_to_string(path).map_err(|e| format!("Backup could not be read: {e}"))?;
   let value = serde_json::from_str::<Value>(&content).map_err(|e| format!("Backup JSON is invalid: {e}"))?;
-  if value.get("createdAt").and_then(Value::as_str).is_none() {
-    return Err("Backup is missing createdAt.".to_string());
+
+  if value.get("backupVersion").and_then(Value::as_i64) != Some(2) {
+    return Err("Backup version is missing or unsupported.".to_string());
   }
-  if !value.get("events").is_some_and(Value::is_array) {
-    return Err("Backup is missing the event ledger.".to_string());
+
+  let created_at = value.get("createdAt").and_then(Value::as_str)
+    .ok_or_else(|| "Backup is missing createdAt.".to_string())?;
+  chrono::DateTime::parse_from_rfc3339(created_at)
+    .map_err(|_| "Backup createdAt timestamp is invalid.".to_string())?;
+
+  let events = value.get("events").and_then(Value::as_array)
+    .ok_or_else(|| "Backup is missing the event ledger.".to_string())?;
+  for (index, event) in events.iter().enumerate() {
+    serde_json::from_value::<EventRecord>(event.clone())
+      .map_err(|e| format!("Backup event {} is invalid: {e}", index + 1))?;
   }
+
   if !value.get("summary").is_some_and(Value::is_object) {
     return Err("Backup is missing the dashboard summary.".to_string());
   }
+  if !value.get("inventory").is_some_and(Value::is_object) {
+    return Err("Backup is missing the inventory snapshot.".to_string());
+  }
+  if !value.get("brainActions").is_some_and(Value::is_object) {
+    return Err("Backup is missing AI Brain action memory.".to_string());
+  }
+  if !value.get("syncState").is_some_and(Value::is_object) {
+    return Err("Backup is missing cloud sync state.".to_string());
+  }
+
   Ok(())
 }
 
