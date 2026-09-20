@@ -637,7 +637,7 @@ async fn save_sync_pairing(sync_url: String, token: String) -> Result<SyncPairin
   let response = client
     .get(&url)
     .bearer_auth(clean_token)
-    .query(&[("limit","1")])
+    .query(&[("health","1")])
     .send()
     .await
     .map_err(|e| format!("Could not reach the sync endpoint: {e}"))?;
