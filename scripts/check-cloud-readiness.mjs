@@ -83,10 +83,10 @@ if (url && key) {
         fail("Cloud health RPC is missing. Apply the latest Supabase migration.");
       } else {
         const health = await healthResponse.json();
-        if (Number(health?.schemaVersion) !== 2) {
+        if (Number(health?.schemaVersion) !== 3) {
           fail(`Unsupported cloud schema version: ${String(health?.schemaVersion)}`);
         } else {
-          ok("Hardened LLinen cloud schema v2 is installed.");
+          ok("Hardened LLinen cloud schema v3 is installed.");
         }
 
         if (!health?.tableExists) fail("style_events table is missing.");
