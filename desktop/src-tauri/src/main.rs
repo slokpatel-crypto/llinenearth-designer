@@ -200,6 +200,7 @@ struct SystemHealth {
   sync_configured: bool,
   sync_cursor: Option<String>,
   last_synced_at: Option<String>,
+  last_pushed_at: Option<String>,
   issues: Vec<String>,
 }
 
@@ -604,6 +605,7 @@ fn build_system_health() -> Result<SystemHealth, String> {
     sync_configured,
     sync_cursor: sync_state.cursor,
     last_synced_at: sync_state.last_synced_at,
+    last_pushed_at: sync_state.last_pushed_at,
     issues,
   })
 }
