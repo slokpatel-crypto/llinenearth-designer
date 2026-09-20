@@ -81,6 +81,7 @@ export default function OperatorPage() {
   const [selectedId,setSelectedId] = useState<string|null>(null);
   const [saleAmount,setSaleAmount] = useState("");
   const [message,setMessage] = useState("");
+  const [loggingOut,setLoggingOut] = useState(false);
 
   useEffect(()=>{
     setBrowserEvents(readBrowserStyleEvents());
@@ -121,6 +122,15 @@ export default function OperatorPage() {
 
   function refreshBrowser() {
     setBrowserEvents(readBrowserStyleEvents());
+  }
+
+  async function logout() {
+    setLoggingOut(true);
+    try {
+      await fetch("/api/operator/logout",{method:"POST"});
+    } finally {
+      window.location.href = "/operator/login";
+    }
   }
 
   const local = useMemo(()=>aggregate(browserEvents),[browserEvents]);
@@ -168,6 +178,7 @@ export default function OperatorPage() {
         <div className="operatorStatus">
           <span className={bridgeState==="paired"?"live":""}><i/>{bridgeState==="paired"?"LOCAL VAULT PAIRED":"LOCAL VAULT NOT PAIRED"}</span>
           <span><i className="amber"/>CLOUD MEMORY NEXT</span>
+          <button className="operatorLogout" onClick={logout} disabled={loggingOut}>{loggingOut?"SIGNING OUT…":"SIGN OUT"}</button>
         </div>
       </header>
 
