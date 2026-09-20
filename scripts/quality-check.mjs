@@ -38,9 +38,11 @@ console.log(`Quality gate passed: ${wearIds} wear types, ${fabricIds} fabric fam
 const securityContracts = [
   ["src/middleware.ts", ["verifyOperatorSession","/operator/login","X-Frame-Options","Content-Security-Policy"]],
   ["src/app/api/memory/event/route.ts", ["verifyMemorySessionToken","getSupabaseAdminConfig","PUBLIC_TYPES","OPERATOR_TYPES"]],
-  ["src/app/api/operator/sync/route.ts", ["timingSafeEqual","supabaseAdminHeaders","received_at.asc,id.asc"]],
+  ["src/app/api/operator/sync/route.ts", ["timingSafeEqual","supabaseAdminHeaders","received_at.asc,id.asc","cleanOperatorPayload","schemaVersion"]],
   ["src/lib/browser-style-memory.ts", ["x-llinen-memory-token","/api/memory/session"]],
   ["src/lib/supabase-admin.ts", ["SUPABASE_SECRET_KEY","SUPABASE_SERVICE_ROLE_KEY","sb_secret_"]],
+  ["src/app/operator/page.tsx", ["verifyOperatorSession","redirect","force-dynamic"]],
+  ["supabase/migrations/20260920_style_events_hardening.sql", ["llinen_cloud_health","select 2;","revoke all on table public.style_events from anon","grant select, insert on table public.style_events to service_role"]],
 ];
 
 for (const [file,tokens] of securityContracts) {
