@@ -24,6 +24,7 @@ type Session = {
   order?: {status:string;dueDate:string;note:string;orderValue:number} | null;
   measurements?: {unit:string;values:Record<string,number>;note:string;at:string} | null;
   payments?: Array<{amount:number;method:string;note:string;at:string}>;
+  appointment?: {kind:string;dateTime:string;status:string;note:string;at:string} | null;
 };
 
 type BridgeSummary = {
@@ -51,7 +52,7 @@ function aggregate(events:StyleMemoryEvent[]) {
     counts[event.type] = (counts[event.type] || 0) + 1;
     const current = map.get(event.sessionId) || {
       sessionId:event.sessionId, firstAt:event.at, lastAt:event.at, events:[], answers:{}, selectedLook:null, sale:null,
-      customer:{name:"",phone:"",note:""}, leadStatus:"", order:null, measurements:null, payments:[],
+      customer:{name:"",phone:"",note:""}, leadStatus:"", order:null, measurements:null, payments:[], appointment:null,
     };
     current.lastAt = event.at;
     current.events.push(event);
@@ -78,6 +79,15 @@ function aggregate(events:StyleMemoryEvent[]) {
         note:String(event.payload?.note || ""),
         at:event.at,
       }];
+    }
+    if (event.type === "appointment_updated") {
+      current.appointment = {
+        kind:String(event.payload?.kind || "fitting"),
+        dateTime:String(event.payload?.dateTime || ""),
+        status:String(event.payload?.status || "scheduled"),
+        note:String(event.payload?.note || ""),
+        at:event.at,
+      };
     }
     if (event.type === "measurements_updated") {
       const raw = event.payload?.measurements;
@@ -322,6 +332,7 @@ export default function OperatorClient() {
                 {selected.customer?.phone && <span><small>phone</small><b>{selected.customer.phone}</b></span>}
                 {selected.leadStatus && <span><small>lead status</small><b>{selected.leadStatus.replaceAll("-"," ")}</b></span>}
                 {selected.order?.status && <span><small>order</small><b>{selected.order.status.replaceAll("-"," ")}{selected.order.dueDate ? ` · ${selected.order.dueDate}` : ""}</b></span>}
+                {selected.appointment && <span><small>appointment</small><b>{selected.appointment.kind.replaceAll("-"," ")} · {selected.appointment.status}{selected.appointment.dateTime ? ` · ${selected.appointment.dateTime.replace("T"," ")}` : ""}</b></span>}
                 {selected.order?.orderValue ? <span><small>order value</small><b>{inr(selected.order.orderValue)}</b></span> : null}
                 {(selected.payments?.length || 0) > 0 && <span><small>paid</small><b>{inr((selected.payments || []).reduce((sum,payment)=>sum+payment.amount,0))}</b></span>}
                 {selected.order?.orderValue ? <span><small>balance</small><b>{inr(Math.max(0,selected.order.orderValue-(selected.payments || []).reduce((sum,payment)=>sum+payment.amount,0)))}</b></span> : null}
