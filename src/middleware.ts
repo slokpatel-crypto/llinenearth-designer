@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
+import { OPERATOR_COOKIE, verifyOperatorSession } from "./lib/operator-session";
 
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
