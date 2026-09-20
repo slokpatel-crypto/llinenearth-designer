@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { AnimatePresence, motion } from "motion/react";
 import type { StyleDirectorAnswers, StyleDirectorLook } from "@/lib/style-director-agent";
 import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
 import "./style-director.css";
@@ -111,7 +112,8 @@ export default function StyleDirectorPage() {
 
       <div className="directorProgress"><span style={{width:`${progress}%`}} /></div>
 
-      {!complete && <section className="directorJourney">
+      <AnimatePresence mode="wait" initial={false}>
+      {!complete && <motion.section key={step.key} className="directorJourney" initial={{opacity:0,y:18}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-12}} transition={{duration:.32,ease:[.2,.8,.2,1]}}>
         <div className="directorIntro">
           <p>{step.eyebrow} · {String(index+1).padStart(2,"0")}/{String(steps.length).padStart(2,"0")}</p>
           <h1>{index===0 ? <>No forms.<br/><em>Just instinct.</em></> : step.title}</h1>
@@ -121,12 +123,12 @@ export default function StyleDirectorPage() {
 
         <div className="directorOptions">
           {step.options.map((option)=>(
-            <button key={option.value} onClick={()=>choose(option.value)} disabled={loading} className="directorOption">
+            <motion.button key={option.value} onClick={()=>choose(option.value)} disabled={loading} className="directorOption" initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} whileHover={{y:-5}} whileTap={{scale:.985}} transition={{duration:.24}}>
               <i>{option.symbol}</i>
               <strong>{option.label}</strong>
               <small>{option.hint}</small>
               <b>↗</b>
-            </button>
+            </motion.button>
           ))}
         </div>
 
@@ -135,9 +137,9 @@ export default function StyleDirectorPage() {
           <div>{Object.entries(answers).map(([key,value])=><p key={key}><small>{key}</small><b>{String(value)}</b></p>)}</div>
         </aside>
         {loading && <div className="directorLoading"><i/><span>Reading the moment, cloth and proportion…</span></div>}
-      </section>}
+      </motion.section>}
 
-      {complete && selectedLook && <section className="directorResults">
+      {complete && selectedLook && <motion.section key="results" className="directorResults" initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-12}} transition={{duration:.4,ease:[.2,.8,.2,1]}}>
         <div className="resultHeader">
           <div><p>YOUR THREE DIRECTIONS</p><h1>Not recommendations.<br/><em>Three different versions of you.</em></h1></div>
           <span>Built from your choices + live LLinen Earth fabric stock.</span>
@@ -149,7 +151,7 @@ export default function StyleDirectorPage() {
           </button>)}
         </div>
 
-        <div className="lookStage">
+        <motion.div key={selectedLook.id} className="lookStage" initial={{opacity:0,x:14}} animate={{opacity:1,x:0}} transition={{duration:.3,ease:[.2,.8,.2,1]}}>
           <div className="lookVisual" style={{"--fabric":selectedLook.fabric.hex} as React.CSSProperties}>
             {heroRender ? <img src={heroRender.src} alt={heroRender.label} /> : <>
               <div className="abstractLook"><i/><i/><i/></div>
@@ -177,8 +179,9 @@ export default function StyleDirectorPage() {
             </div>
             <p className="tradeoff"><b>Director note:</b> {selectedLook.candidate.tradeoff}</p>
           </div>
-        </div>
-      </section>}
+        </motion.div>
+      </motion.section>}
+      </AnimatePresence>
 
       {error && <div className="directorError">{error}<button onClick={()=>setError("")}>×</button></div>}
     </main>
