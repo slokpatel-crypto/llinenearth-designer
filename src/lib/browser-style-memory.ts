@@ -32,6 +32,9 @@ const BRIDGE_KEY = "llinen-earth:local-bridge:v1";
 const SESSION_TOKEN_PREFIX = "llinen-earth:memory-session:";
 const sessionTokenRequests = new Map<string,Promise<string|null>>();
 const MAX_BROWSER_EVENTS = 1200;
+const PENDING_KEY = "llinen-earth:style-cloud-pending:v1";
+const MAX_PENDING_EVENTS = 600;
+let cloudFlush: Promise<void> | null = null;
 
 function safeWindow() {
   return typeof window !== "undefined" ? window : null;
@@ -112,24 +115,72 @@ export function saveBridgeConfig(config: LocalBridgeConfig | null) {
   else w.sessionStorage.setItem(BRIDGE_KEY, JSON.stringify(config));
 }
 
-async function mirrorToCloud(event: StyleMemoryEvent) {
+function readPendingEvents(): StyleMemoryEvent[] {
+  const w = safeWindow();
+  if (!w) return [];
   try {
-    const headers: Record<string,string> = { "content-type": "application/json" };
-    if (event.source === "style-director") {
-      const token = await ensureSessionToken(event.sessionId);
-      if (!token) return;
-      headers["x-llinen-memory-token"] = token;
-    }
+    const parsed = JSON.parse(w.localStorage.getItem(PENDING_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed.slice(-MAX_PENDING_EVENTS) : [];
+  } catch {
+    return [];
+  }
+}
 
-    await fetch("/api/memory/event", {
+function writePendingEvents(events:StyleMemoryEvent[]) {
+  const w = safeWindow();
+  if (!w) return;
+  w.localStorage.setItem(PENDING_KEY,JSON.stringify(events.slice(-MAX_PENDING_EVENTS)));
+}
+
+function enqueueCloudEvent(event:StyleMemoryEvent) {
+  const pending = readPendingEvents();
+  if (!pending.some((item)=>item.id===event.id)) pending.push(event);
+  writePendingEvents(pending);
+}
+
+async function sendCloudEvent(event:StyleMemoryEvent) {
+  const headers: Record<string,string> = { "content-type": "application/json" };
+  if (event.source === "style-director") {
+    const token = await ensureSessionToken(event.sessionId);
+    if (!token) return false;
+    headers["x-llinen-memory-token"] = token;
+  }
+
+  try {
+    const response = await fetch("/api/memory/event", {
       method: "POST",
       headers,
       body: JSON.stringify(event),
       keepalive: true,
     });
+    return response.ok || response.status === 409;
   } catch {
-    // Local browser memory remains available if cloud intake is unavailable.
+    return false;
   }
+}
+
+export async function flushPendingStyleMemoryEvents() {
+  const w = safeWindow();
+  if (!w || cloudFlush) return cloudFlush || Promise.resolve();
+
+  cloudFlush = (async()=>{
+    const pending = readPendingEvents();
+    if (!pending.length) return;
+
+    const remaining:StyleMemoryEvent[] = [];
+    for (const event of pending) {
+      const sent = await sendCloudEvent(event);
+      if (!sent) remaining.push(event);
+    }
+    writePendingEvents(remaining);
+  })().finally(()=>{ cloudFlush = null; });
+
+  return cloudFlush;
+}
+
+async function mirrorToCloud(event: StyleMemoryEvent) {
+  enqueueCloudEvent(event);
+  await flushPendingStyleMemoryEvents();
 }
 
 async function mirrorToBridge(event: StyleMemoryEvent) {
@@ -176,5 +227,7 @@ export function recordStyleMemoryEvent(
 }
 
 export function clearBrowserStyleEvents() {
-  safeWindow()?.localStorage.removeItem(EVENT_KEY);
+  const w = safeWindow();
+  w?.localStorage.removeItem(EVENT_KEY);
+  w?.localStorage.removeItem(PENDING_KEY);
 }
