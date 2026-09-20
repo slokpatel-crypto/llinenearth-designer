@@ -16,6 +16,7 @@ const OPERATOR_EVENT_TYPES = new Set([
   "sale_logged",
   "operator_note",
   "measurements_updated",
+  "payment_logged",
 ]);
 
 function authorized(request: Request) {
@@ -78,7 +79,9 @@ function cleanOperatorPayload(type: string, input: unknown) {
     if (!["quoted","measurement","deposit","cutting","tailoring","trial","ready","collected","cancelled"].includes(status)) return null;
     const dueDate = text(payload.dueDate, 10);
     if (dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return null;
-    return { status, dueDate, note: text(payload.note, 1000) };
+    const orderValue = payload.orderValue == null ? null : Number(payload.orderValue);
+    if (orderValue != null && (!Number.isFinite(orderValue) || orderValue < 0 || orderValue > 100_000_000)) return null;
+    return { status, dueDate, note: text(payload.note, 1000), orderValue };
   }
 
   if (type === "visit_logged") {
@@ -113,6 +116,19 @@ function cleanOperatorPayload(type: string, input: unknown) {
     }
     if (!Object.keys(measurements).length) return null;
     return { unit, measurements, note: text(payload.note, 1000) };
+  }
+
+  if (type === "payment_logged") {
+    const amount = Number(payload.amount ?? 0);
+    const method = text(payload.method, 20);
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 100_000_000) return null;
+    if (!["cash","upi","card","bank","other"].includes(method)) return null;
+    return {
+      amount: Math.round(amount * 100) / 100,
+      currency: "INR",
+      method,
+      note: text(payload.note, 500),
+    };
   }
 
   return null;
@@ -225,7 +241,7 @@ export async function GET(request: Request) {
       }
 
       const version = Number(await response.json());
-      if (version !== 3) {
+      if (version !== 4) {
         return NextResponse.json(
           { error: `Unsupported cloud schema version ${version}.`, paired: true, cloudConfigured: true, schemaVersion: version },
           { status: 503, headers: { "cache-control": "private, no-store, max-age=0" } },
