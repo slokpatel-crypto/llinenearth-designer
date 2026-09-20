@@ -2,6 +2,7 @@ use chrono::Utc;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use tokio::sync::Mutex;
 const SEED_INVENTORY: &str = include_str!("../resources/seed-inventory.json");
 
 use std::{
@@ -10,6 +11,8 @@ use std::{
   io::{BufRead, BufReader, Write},
   path::{Path, PathBuf},
 };
+
+struct SyncLock(Mutex<()>);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -1129,7 +1132,8 @@ async fn archive_visuals() -> Result<SyncResult, String> {
 }
 
 #[tauri::command]
-async fn sync_from_cloud() -> Result<SyncResult, String> {
+async fn sync_from_cloud(sync_lock: tauri::State<'_, SyncLock>) -> Result<SyncResult, String> {
+  let _sync_guard = sync_lock.0.lock().await;
   let sync_url = current_sync_url()?;
   let token = match load_sync_token() {
     Some(value) => value,
@@ -1248,6 +1252,7 @@ async fn sync_from_cloud() -> Result<SyncResult, String> {
 
 fn main() {
   tauri::Builder::default()
+    .manage(SyncLock(Mutex::new(())))
     .invoke_handler(tauri::generate_handler![
       get_dashboard_summary,
       get_sync_pairing_status,
