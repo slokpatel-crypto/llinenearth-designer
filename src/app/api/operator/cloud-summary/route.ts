@@ -21,6 +21,9 @@ type Session = {
   answers: Record<string,string>;
   selectedLook: Record<string,unknown> | null;
   sale: Record<string,unknown> | null;
+  customer: {name:string;phone:string;note:string};
+  leadStatus: string;
+  order: {status:string;dueDate:string;note:string} | null;
 };
 
 function aggregate(events: CloudEvent[]) {
@@ -37,6 +40,9 @@ function aggregate(events: CloudEvent[]) {
       answers: {},
       selectedLook: null,
       sale: null,
+      customer: {name:"",phone:"",note:""},
+      leadStatus: "",
+      order: null,
     };
 
     if (event.at < current.firstAt) current.firstAt = event.at;
@@ -48,6 +54,23 @@ function aggregate(events: CloudEvent[]) {
     }
     if (event.type === "look_selected") current.selectedLook = event.payload;
     if (event.type === "sale_logged") current.sale = event.payload;
+    if (event.type === "customer_updated") {
+      current.customer = {
+        name: String(event.payload.name || current.customer.name || ""),
+        phone: String(event.payload.phone || current.customer.phone || ""),
+        note: String(event.payload.note || current.customer.note || ""),
+      };
+    }
+    if (event.type === "lead_status_changed") {
+      current.leadStatus = String(event.payload.status || "");
+    }
+    if (event.type === "order_status_changed") {
+      current.order = {
+        status: String(event.payload.status || ""),
+        dueDate: String(event.payload.dueDate || ""),
+        note: String(event.payload.note || ""),
+      };
+    }
     map.set(event.sessionId,current);
   }
 
