@@ -16,7 +16,7 @@ Apply:
 supabase/migrations/20260920_style_events_hardening.sql
 ```
 
-The expected contract is **schema v2**.
+The expected contract is **schema v3**.
 
 It creates an append-only `public.style_events` ledger and server-only diagnostic RPCs.
 
@@ -79,6 +79,7 @@ The token is saved in Windows Credential Manager, not in the LLinen Earth data f
 The desktop then:
 
 - uploads local operator events
+- syncs operator-only Measurement Passport updates
 - pulls website/customer events
 - uses event IDs for idempotency
 - uses a deterministic `received_at + id` cursor
