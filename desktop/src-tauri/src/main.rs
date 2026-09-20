@@ -202,6 +202,8 @@ struct SystemHealth {
   backup_bytes: u64,
   latest_backup: Option<String>,
   latest_backup_at: Option<String>,
+  latest_backup_verified: bool,
+  auto_backup_today: bool,
   visual_count: usize,
   visual_bytes: u64,
   marketing_briefs: usize,
@@ -801,6 +803,8 @@ fn build_system_health() -> Result<SystemHealth, String> {
     backup_bytes,
     latest_backup,
     latest_backup_at,
+    latest_backup_verified,
+    auto_backup_today,
     visual_count,
     visual_bytes,
     marketing_briefs,
@@ -1107,7 +1111,7 @@ fn export_system_report() -> Result<String, String> {
     health.issues.iter().map(|issue| format!("- {issue}")).collect::<Vec<_>>().join("\n")
   };
   let report = format!(
-    "# LLinen Earth OS — System Report\n\nGenerated: {}\n\n## Local vault\n- Path: {}\n- Event records: {} across {} daily files\n- Event bytes: {}\n- Invalid event lines: {}\n- Backups: {}\n- Latest backup: {}\n- Latest backup time: {}\n- Visual files: {}\n- Visual bytes: {}\n- Marketing briefs: {}\n- Job cards: {}\n- Brain action decisions: {}\n\n## Inventory\n- Entries: {}\n- Unverified: {}\n- Operator overrides: {}\n\n## Cloud sync\n- Paired: {}\n- Last synced: {}\n- Cursor present: {}\n\n## Current warnings\n{}\n",
+    "# LLinen Earth OS — System Report\n\nGenerated: {}\n\n## Local vault\n- Path: {}\n- Event records: {} across {} daily files\n- Event bytes: {}\n- Invalid event lines: {}\n- Backups: {}\n- Latest backup: {}\n- Latest backup time: {}\n- Latest backup verified: {}\n- Automatic backup today: {}\n- Visual files: {}\n- Visual bytes: {}\n- Marketing briefs: {}\n- Job cards: {}\n- Brain action decisions: {}\n\n## Inventory\n- Entries: {}\n- Unverified: {}\n- Operator overrides: {}\n\n## Cloud sync\n- Paired: {}\n- Last synced: {}\n- Cursor present: {}\n\n## Current warnings\n{}\n",
     Utc::now().to_rfc3339(),
     health.vault_path,
     health.event_records,
@@ -1117,6 +1121,8 @@ fn export_system_report() -> Result<String, String> {
     health.backup_count,
     health.latest_backup.as_deref().unwrap_or("None"),
     health.latest_backup_at.as_deref().unwrap_or("Never"),
+    if health.latest_backup_verified { "Yes" } else { "No" },
+    if health.auto_backup_today { "Yes" } else { "No" },
     health.visual_count,
     health.visual_bytes,
     health.marketing_briefs,
