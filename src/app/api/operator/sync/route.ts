@@ -102,6 +102,36 @@ export async function GET(request: Request) {
   }
 
   const incomingUrl = new URL(request.url);
+
+  if (incomingUrl.searchParams.get("health") === "1") {
+    try {
+      const response = await fetch(`${cloud.url}/rest/v1/rpc/llinen_cloud_schema_version`, {
+        method: "POST",
+        headers: {
+          ...supabaseAdminHeaders(cloud),
+          "content-type": "application/json",
+        },
+        body: "{}",
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        console.error("[operator/sync health]", response.status, (await response.text()).slice(0,300));
+        return NextResponse.json({ error: "Cloud schema is not ready. Apply the latest Supabase migration." }, { status: 503 });
+      }
+
+      const version = Number(await response.json());
+      if (version !== 1) {
+        return NextResponse.json({ error: `Unsupported cloud schema version ${version}.` }, { status: 503 });
+      }
+
+      return NextResponse.json({ ok: true, schemaVersion: version });
+    } catch (error) {
+      console.error("[operator/sync health]", error);
+      return NextResponse.json({ error: "Cloud health check failed." }, { status: 503 });
+    }
+  }
+
   const cursor = incomingUrl.searchParams.get("cursor");
   const limit = Math.min(1000, Math.max(1, Number(incomingUrl.searchParams.get("limit") || 500)));
 
