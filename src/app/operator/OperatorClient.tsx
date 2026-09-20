@@ -21,8 +21,9 @@ type Session = {
   sale?: Record<string,unknown> | null;
   customer?: {name:string;phone:string;note:string};
   leadStatus?: string;
-  order?: {status:string;dueDate:string;note:string} | null;
+  order?: {status:string;dueDate:string;note:string;orderValue:number} | null;
   measurements?: {unit:string;values:Record<string,number>;note:string;at:string} | null;
+  payments?: Array<{amount:number;method:string;note:string;at:string}>;
 };
 
 type BridgeSummary = {
@@ -50,7 +51,7 @@ function aggregate(events:StyleMemoryEvent[]) {
     counts[event.type] = (counts[event.type] || 0) + 1;
     const current = map.get(event.sessionId) || {
       sessionId:event.sessionId, firstAt:event.at, lastAt:event.at, events:[], answers:{}, selectedLook:null, sale:null,
-      customer:{name:"",phone:"",note:""}, leadStatus:"", order:null, measurements:null,
+      customer:{name:"",phone:"",note:""}, leadStatus:"", order:null, measurements:null, payments:[],
     };
     current.lastAt = event.at;
     current.events.push(event);
@@ -67,7 +68,17 @@ function aggregate(events:StyleMemoryEvent[]) {
       status:String(event.payload?.status || ""),
       dueDate:String(event.payload?.dueDate || ""),
       note:String(event.payload?.note || ""),
+      orderValue:Number(event.payload?.orderValue || 0) || 0,
     };
+    if (event.type === "payment_logged") {
+      const amount = Number(event.payload?.amount || 0);
+      current.payments = [...(current.payments || []),{
+        amount:Number.isFinite(amount) ? amount : 0,
+        method:String(event.payload?.method || "other"),
+        note:String(event.payload?.note || ""),
+        at:event.at,
+      }];
+    }
     if (event.type === "measurements_updated") {
       const raw = event.payload?.measurements;
       const values:Record<string,number> = {};
@@ -101,6 +112,10 @@ function aggregate(events:StyleMemoryEvent[]) {
 
 function label(value?:string) {
   return value || "Not chosen";
+}
+
+function inr(value:number) {
+  return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",maximumFractionDigits:0}).format(value || 0);
 }
 
 function relativeTime(iso:string) {
@@ -307,6 +322,9 @@ export default function OperatorClient() {
                 {selected.customer?.phone && <span><small>phone</small><b>{selected.customer.phone}</b></span>}
                 {selected.leadStatus && <span><small>lead status</small><b>{selected.leadStatus.replaceAll("-"," ")}</b></span>}
                 {selected.order?.status && <span><small>order</small><b>{selected.order.status.replaceAll("-"," ")}{selected.order.dueDate ? ` · ${selected.order.dueDate}` : ""}</b></span>}
+                {selected.order?.orderValue ? <span><small>order value</small><b>{inr(selected.order.orderValue)}</b></span> : null}
+                {(selected.payments?.length || 0) > 0 && <span><small>paid</small><b>{inr((selected.payments || []).reduce((sum,payment)=>sum+payment.amount,0))}</b></span>}
+                {selected.order?.orderValue ? <span><small>balance</small><b>{inr(Math.max(0,selected.order.orderValue-(selected.payments || []).reduce((sum,payment)=>sum+payment.amount,0)))}</b></span> : null}
                 {Object.entries(selected.answers).map(([key,value])=><span key={key}><small>{key}</small><b>{value}</b></span>)}
               </div>
               {selected.selectedLook && <div className="selectedLook"><small>SELECTED LOOK</small><strong>{String(selected.selectedLook.title || "Look selected")}</strong><span>{String(selected.selectedLook.fabric || "")}</span></div>}
