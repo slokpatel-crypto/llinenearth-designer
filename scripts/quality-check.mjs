@@ -33,3 +33,33 @@ for (const token of ["Safe","Elevated","Statement","fabricJudgement"]) {
 }
 
 console.log(`Quality gate passed: ${wearIds} wear types, ${fabricIds} fabric families, complete Phase 0–9 route contract.`);
+
+
+const securityContracts = [
+  ["src/middleware.ts", ["verifyOperatorSession","/operator/login","X-Frame-Options","Content-Security-Policy"]],
+  ["src/app/api/memory/event/route.ts", ["verifyMemorySessionToken","getSupabaseAdminConfig","PUBLIC_TYPES","OPERATOR_TYPES"]],
+  ["src/app/api/operator/sync/route.ts", ["timingSafeEqual","supabaseAdminHeaders","received_at.asc,id.asc"]],
+  ["src/lib/browser-style-memory.ts", ["x-llinen-memory-token","/api/memory/session"]],
+  ["src/lib/supabase-admin.ts", ["SUPABASE_SECRET_KEY","SUPABASE_SERVICE_ROLE_KEY","sb_secret_"]],
+];
+
+for (const [file,tokens] of securityContracts) {
+  const content = fs.readFileSync(file,"utf8");
+  for (const token of tokens) {
+    if (!content.includes(token)) throw new Error(`Security regression: ${file} missing ${token}`);
+  }
+}
+
+const envExample = fs.readFileSync(".env.example","utf8");
+for (const secretName of [
+  "SUPABASE_SECRET_KEY",
+  "LLINEN_OPERATOR_SYNC_TOKEN",
+  "LLINEN_OPERATOR_PASSWORD_HASH",
+  "LLINEN_OPERATOR_SESSION_SECRET",
+  "LLINEN_MEMORY_SESSION_SECRET",
+]) {
+  if (!envExample.includes(`${secretName}=`)) throw new Error(`Deployment regression: .env.example missing ${secretName}`);
+  if (envExample.includes(`NEXT_PUBLIC_${secretName}`)) throw new Error(`Secret exposure regression: ${secretName} must remain server-only`);
+}
+
+console.log("Security gate passed: operator auth, signed public memory, Supabase admin isolation, deterministic sync cursor.");
