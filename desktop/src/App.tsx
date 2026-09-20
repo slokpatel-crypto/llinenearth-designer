@@ -222,6 +222,101 @@ export default function App() {
     [summary],
   );
 
+  const analytics = useMemo(() => {
+    const sessions = summary?.sessions || [];
+    const total = sessions.length;
+    const whatsappSessions = sessions.filter((session) => hasEvent(session, "whatsapp_clicked"));
+    const saleSessions = sessions.filter((session) => hasEvent(session, "sale_logged"));
+    const visualSessions = sessions.filter((session) => hasEvent(session, "render_completed"));
+    const nonVisualSessions = sessions.filter((session) => !hasEvent(session, "render_completed"));
+    const visualWhatsapp = visualSessions.filter((session) => hasEvent(session, "whatsapp_clicked")).length;
+    const nonVisualWhatsapp = nonVisualSessions.filter((session) => hasEvent(session, "whatsapp_clicked")).length;
+
+    const percent = (part: number, whole: number) => whole ? Math.round((part / whole) * 100) : 0;
+    const countBy = (key: keyof SessionRecord["answers"]) => {
+      const counts = new Map<string, number>();
+      for (const session of sessions) {
+        const value = session.answers[key] || "Unknown";
+        counts.set(value, (counts.get(value) || 0) + 1);
+      }
+      return Array.from(counts.entries()).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
+    };
+    const revenueBy = (key: keyof SessionRecord["answers"]) => {
+      const counts = new Map<string, number>();
+      for (const session of saleSessions) {
+        const value = session.answers[key] || "Unknown";
+        counts.set(value, (counts.get(value) || 0) + saleValue(session));
+      }
+      return Array.from(counts.entries()).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
+    };
+
+    const topFabrics = Array.from(fabricSignals.entries())
+      .map(([id, signal]) => {
+        const fabric = inventory.fabrics.find((item) => item.id === id);
+        return {
+          id,
+          label: fabric?.colorName || id,
+          line: fabric?.line || "Unknown line",
+          hex: fabric?.hex || "#8A8178",
+          ...signal,
+        };
+      })
+      .sort((a, b) => b.interest - a.interest || b.sales - a.sales)
+      .slice(0, 6);
+
+    const hotStockRisks = topFabrics.filter((fabric) => {
+      const item = inventory.fabrics.find((candidate) => candidate.id === fabric.id);
+      return item && fabric.interest > 0 && (item.status === "low" || item.status === "out" || item.status === "unverified");
+    });
+
+    const insights: Array<{ level: "watch" | "good" | "info"; title: string; text: string }> = [];
+    const waRate = percent(whatsappSessions.length, total);
+    const saleRate = percent(saleSessions.length, total);
+    const visualRate = percent(visualWhatsapp, visualSessions.length);
+    const nonVisualRate = percent(nonVisualWhatsapp, nonVisualSessions.length);
+
+    if (attention.length > 0) insights.push({
+      level: "watch",
+      title: `${attention.length} high-intent lead${attention.length === 1 ? "" : "s"} need follow-up`,
+      text: "These journeys reached WhatsApp but do not have a recorded sale or lost outcome yet.",
+    });
+    if (hotStockRisks.length > 0) insights.push({
+      level: "watch",
+      title: "Demand is touching uncertain stock",
+      text: `${hotStockRisks.length} currently popular fabric${hotStockRisks.length === 1 ? "" : "s"} are low, out or still unverified.`,
+    });
+    if (visualSessions.length >= 3) insights.push({
+      level: visualRate >= nonVisualRate ? "good" : "info",
+      title: `Visual journeys reached WhatsApp at ${visualRate}%`,
+      text: `Journeys without a recorded visual reached WhatsApp at ${nonVisualRate}%. This is descriptive, not proof that the visual caused the difference.`,
+    });
+    if (saleSessions.length > 0) insights.push({
+      level: "good",
+      title: `${money(summary?.totals.revenue || 0)} in recorded revenue`,
+      text: `${saleRate}% of recorded style sessions currently end in a logged sale. Keep staff outcome logging consistent for this number to become more reliable.`,
+    });
+    if (total < 20) insights.push({
+      level: "info",
+      title: "Analytics are still early",
+      text: `Only ${total} customer journey${total === 1 ? "" : "s"} are recorded. Use the patterns as signals, not firm business conclusions yet.`,
+    });
+
+    return {
+      total,
+      whatsappRate: waRate,
+      saleRate,
+      averageOrder: saleSessions.length ? (summary?.totals.revenue || 0) / saleSessions.length : 0,
+      visualWhatsappRate: visualRate,
+      nonVisualWhatsappRate: nonVisualRate,
+      occasions: countBy("occasion"),
+      garments: countBy("garment"),
+      colors: countBy("colorDirection"),
+      revenueByGarment: revenueBy("garment"),
+      topFabrics,
+      insights,
+    };
+  }, [summary, inventory, fabricSignals, attention]);
+
   const selectedFabric = useMemo(
     () => inventory.fabrics.find((fabric) => fabric.id === selectedFabricId) || inventory.fabrics[0] || null,
     [inventory, selectedFabricId],
@@ -480,6 +575,7 @@ export default function App() {
                activeNav === "Orders" ? <>From intent to value.<br/><em>Know what converted.</em></> :
                activeNav === "Fabrics" ? <>Know every colour.<br/><em>Know what is moving.</em></> :
                activeNav === "Visuals" ? <>See what customers saw.<br/><em>Connect imagery to intent.</em></> :
+               activeNav === "Analytics" ? <>See the signal.<br/><em>Know where to act.</em></> :
                titleCase(activeNav)}
             </h1>
           </div>
@@ -769,7 +865,108 @@ export default function App() {
             </motion.section>
           )}
 
-          {!["Today", "Customers", "Leads", "Orders", "Fabrics", "Visuals"].includes(activeNav) && (
+
+          {activeNav === "Analytics" && (
+            <motion.section key="analytics" className="analyticsWorkspace" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <div className="analyticsMetrics">
+                <article><small>SESSION → WHATSAPP</small><strong>{analytics.whatsappRate}%</strong><span>{summary?.totals.whatsapp || 0} intent actions from {analytics.total} sessions</span></article>
+                <article><small>SESSION → SALE</small><strong>{analytics.saleRate}%</strong><span>{summary?.totals.sales || 0} recorded conversions</span></article>
+                <article><small>AVERAGE ORDER</small><strong>{money(analytics.averageOrder)}</strong><span>Based on recorded sale values</span></article>
+                <article className="accent"><small>RECORDED REVENUE</small><strong>{money(summary?.totals.revenue || 0)}</strong><span>Operator-confirmed outcomes</span></article>
+              </div>
+
+              <div className="analyticsGrid">
+                <div className="analyticsMain">
+                  <article className="card decisionCard">
+                    <div className="cardHead">
+                      <div><small>DECISION ROOM</small><h2>What deserves attention now.</h2></div>
+                      <span>{analytics.insights.length} signals</span>
+                    </div>
+                    <div className="insightList">
+                      {analytics.insights.map((insight, index) => (
+                        <div key={`${insight.title}-${index}`} className={`insight insight-${insight.level}`}>
+                          <i>{insight.level === "watch" ? "!" : insight.level === "good" ? "✓" : "i"}</i>
+                          <span><b>{insight.title}</b><small>{insight.text}</small></span>
+                        </div>
+                      ))}
+                      {!analytics.insights.length && <div className="empty">More customer activity is needed before useful patterns can be shown.</div>}
+                    </div>
+                  </article>
+
+                  <article className="card analyticsPanel">
+                    <div className="cardHead"><div><small>DEMAND MIX</small><h2>What customers are asking for.</h2></div><span>All recorded sessions</span></div>
+                    <div className="demandColumns">
+                      {[
+                        ["Occasion", analytics.occasions],
+                        ["Garment", analytics.garments],
+                        ["Colour direction", analytics.colors],
+                      ].map(([title, rows]) => {
+                        const typedRows = rows as Array<{label:string;value:number}>;
+                        const max = Math.max(1, ...typedRows.map((row) => row.value));
+                        return <div className="demandGroup" key={String(title)}>
+                          <small>{String(title).toUpperCase()}</small>
+                          {typedRows.slice(0, 6).map((row) => <div className="rankBar" key={row.label}>
+                            <span><b>{row.label}</b><em>{row.value}</em></span>
+                            <i><motion.u initial={{ width: 0 }} animate={{ width: `${Math.max(4, (row.value / max) * 100)}%` }} transition={{ duration: .5 }} /></i>
+                          </div>)}
+                        </div>;
+                      })}
+                    </div>
+                  </article>
+
+                  <article className="card analyticsPanel">
+                    <div className="cardHead"><div><small>FABRIC INTELLIGENCE</small><h2>What is attracting interest.</h2></div><span>Selection → WhatsApp → sale</span></div>
+                    <div className="fabricRanking">
+                      {analytics.topFabrics.map((fabric, index) => <button key={fabric.id} onClick={() => { setSelectedFabricId(fabric.id); setActiveNav("Fabrics"); }}>
+                        <span className="rankNumber">{String(index + 1).padStart(2, "0")}</span>
+                        <i className="rankSwatch" style={{ background: fabric.hex }} />
+                        <span className="rankName"><b>{fabric.label}</b><small>{fabric.line}</small></span>
+                        <span><b>{fabric.interest}</b><small>selected</small></span>
+                        <span><b>{fabric.whatsapp}</b><small>WhatsApp</small></span>
+                        <span><b>{fabric.sales}</b><small>sales</small></span>
+                      </button>)}
+                      {!analytics.topFabrics.length && <div className="empty">Fabric rankings will appear after customers select Style Director looks.</div>}
+                    </div>
+                  </article>
+                </div>
+
+                <aside className="analyticsSide">
+                  <article className="card analyticsPanel">
+                    <div className="cardHead"><div><small>VISUAL SIGNAL</small><h2>Do visual journeys move further?</h2></div></div>
+                    <div className="compareRates">
+                      <div><span><b>{analytics.visualWhatsappRate}%</b><small>Visual → WhatsApp</small></span><i><u style={{ width: `${analytics.visualWhatsappRate}%` }} /></i></div>
+                      <div><span><b>{analytics.nonVisualWhatsappRate}%</b><small>No visual → WhatsApp</small></span><i><u style={{ width: `${analytics.nonVisualWhatsappRate}%` }} /></i></div>
+                    </div>
+                    <p className="analyticsNote">This compares recorded journeys. It does not claim that generating a visual caused the customer to move forward.</p>
+                  </article>
+
+                  <article className="card analyticsPanel">
+                    <div className="cardHead"><div><small>REVENUE MIX</small><h2>Which garment types are converting value.</h2></div></div>
+                    <div className="revenueRows">
+                      {analytics.revenueByGarment.slice(0, 6).map((row) => {
+                        const max = Math.max(1, ...analytics.revenueByGarment.map((item) => item.value));
+                        return <div key={row.label}><span><b>{titleCase(row.label)}</b><em>{money(row.value)}</em></span><i><u style={{ width: `${Math.max(4, (row.value / max) * 100)}%` }} /></i></div>;
+                      })}
+                      {!analytics.revenueByGarment.length && <div className="empty">Record sale values to see revenue by garment.</div>}
+                    </div>
+                  </article>
+
+                  <article className="card analyticsPanel dataQuality">
+                    <div className="cardHead"><div><small>DATA QUALITY</small><h2>How much should you trust this view?</h2></div></div>
+                    <div>
+                      <span><b>{analytics.total}</b><small>journeys</small></span>
+                      <span><b>{(summary?.sessions || []).filter((s) => s.customer.name).length}</b><small>identified</small></span>
+                      <span><b>{summary?.totals.sales || 0}</b><small>sales logged</small></span>
+                    </div>
+                    <p>{analytics.total < 20 ? "Early signal stage — useful for observation, not strong conclusions." : analytics.total < 100 ? "Growing evidence — directional patterns are becoming useful." : "Mature evidence base — still check for staff logging gaps before making major decisions."}</p>
+                  </article>
+                </aside>
+              </div>
+            </motion.section>
+          )}
+
+
+          {!["Today", "Customers", "Leads", "Orders", "Fabrics", "Visuals", "Analytics"].includes(activeNav) && (
             <motion.section key={activeNav} className="placeholder" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <span>NEXT MODULE</span><h2>{activeNav}</h2><p>The desktop foundation, Customers and Leads are now functional. This module is intentionally waiting for its real data workflow rather than showing fake controls.</p>
             </motion.section>
