@@ -22,6 +22,7 @@ type Session = {
   customer?: {name:string;phone:string;note:string};
   leadStatus?: string;
   order?: {status:string;dueDate:string;note:string} | null;
+  measurements?: {unit:string;values:Record<string,number>;note:string;at:string} | null;
 };
 
 type BridgeSummary = {
@@ -49,7 +50,7 @@ function aggregate(events:StyleMemoryEvent[]) {
     counts[event.type] = (counts[event.type] || 0) + 1;
     const current = map.get(event.sessionId) || {
       sessionId:event.sessionId, firstAt:event.at, lastAt:event.at, events:[], answers:{}, selectedLook:null, sale:null,
-      customer:{name:"",phone:"",note:""}, leadStatus:"", order:null,
+      customer:{name:"",phone:"",note:""}, leadStatus:"", order:null, measurements:null,
     };
     current.lastAt = event.at;
     current.events.push(event);
@@ -67,6 +68,22 @@ function aggregate(events:StyleMemoryEvent[]) {
       dueDate:String(event.payload?.dueDate || ""),
       note:String(event.payload?.note || ""),
     };
+    if (event.type === "measurements_updated") {
+      const raw = event.payload?.measurements;
+      const values:Record<string,number> = {};
+      if (raw && typeof raw === "object") {
+        for (const [key,value] of Object.entries(raw as Record<string,unknown>)) {
+          const number = Number(value);
+          if (Number.isFinite(number)) values[key] = number;
+        }
+      }
+      current.measurements = {
+        unit:String(event.payload?.unit || "in"),
+        values,
+        note:String(event.payload?.note || ""),
+        at:event.at,
+      };
+    }
     map.set(event.sessionId,current);
   }
   const sessions = [...map.values()].sort((a,b)=>new Date(b.lastAt).getTime()-new Date(a.lastAt).getTime());
@@ -293,6 +310,13 @@ export default function OperatorClient() {
                 {Object.entries(selected.answers).map(([key,value])=><span key={key}><small>{key}</small><b>{value}</b></span>)}
               </div>
               {selected.selectedLook && <div className="selectedLook"><small>SELECTED LOOK</small><strong>{String(selected.selectedLook.title || "Look selected")}</strong><span>{String(selected.selectedLook.fabric || "")}</span></div>}
+              {selected.measurements && <div className="webMeasurementPassport">
+                <div><small>MEASUREMENT PASSPORT</small><b>{selected.measurements.unit === "cm" ? "CENTIMETRES" : "INCHES"} · {relativeTime(selected.measurements.at)}</b></div>
+                <div className="webMeasurementGrid">
+                  {Object.entries(selected.measurements.values).map(([key,value])=><span key={key}><small>{key.replace(/([A-Z])/g," $1")}</small><b>{value} {selected.measurements?.unit}</b></span>)}
+                </div>
+                {selected.measurements.note && <p><b>FIT NOTE</b>{selected.measurements.note}</p>}
+              </div>}
               <div className="timeline">
                 {selected.events.slice(-8).reverse().map((event)=><p key={event.id}><i/><span><b>{event.type.replaceAll("_"," ")}</b><small>{relativeTime(event.at)}</small></span></p>)}
               </div>
