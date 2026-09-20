@@ -583,6 +583,82 @@ fn create_backup() -> Result<String, String> {
 }
 
 #[tauri::command]
+async fn archive_visuals() -> Result<SyncResult, String> {
+  const MAX_IMAGE_BYTES: usize = 12 * 1024 * 1024;
+  let root = ensure_vault()?;
+  let visual_dir = root.join("visuals");
+  let client = Client::builder()
+    .timeout(std::time::Duration::from_secs(35))
+    .build()
+    .map_err(|e| e.to_string())?;
+
+  let mut archived = 0usize;
+  let mut skipped = 0usize;
+
+  for event in load_events()?.into_iter().filter(|event| event.event_type == "render_completed") {
+    let Some(raw_url) = event.payload.get("imageUrl").and_then(Value::as_str) else {
+      skipped += 1;
+      continue;
+    };
+
+    let url = reqwest::Url::parse(raw_url).map_err(|_| "A stored visual URL was invalid.".to_string())?;
+    let trusted_host = matches!(url.host_str(), Some("cdn.fashn.ai") | Some("media.fashn.ai"));
+    if url.scheme() != "https" || !trusted_host {
+      skipped += 1;
+      continue;
+    }
+
+    let safe_event = event.id.chars()
+      .filter(|ch| ch.is_ascii_alphanumeric() || *ch == '-' || *ch == '_')
+      .collect::<String>();
+    let target = visual_dir.join(format!("{safe_event}.jpg"));
+    if target.exists() {
+      continue;
+    }
+
+    let response = client.get(url).send().await.map_err(|e| format!("Visual archive download failed: {e}"))?;
+    if !response.status().is_success() {
+      skipped += 1;
+      continue;
+    }
+
+    let is_image = response.headers()
+      .get(reqwest::header::CONTENT_TYPE)
+      .and_then(|value| value.to_str().ok())
+      .is_some_and(|value| value.to_ascii_lowercase().starts_with("image/"));
+    if !is_image {
+      skipped += 1;
+      continue;
+    }
+
+    if response.content_length().is_some_and(|size| size as usize > MAX_IMAGE_BYTES) {
+      skipped += 1;
+      continue;
+    }
+
+    let bytes = response.bytes().await.map_err(|e| e.to_string())?;
+    if bytes.len() > MAX_IMAGE_BYTES {
+      skipped += 1;
+      continue;
+    }
+
+    fs::write(&target, &bytes).map_err(|e| e.to_string())?;
+    archived += 1;
+  }
+
+  Ok(SyncResult {
+    configured: true,
+    imported: archived,
+    next_cursor: None,
+    message: if archived == 0 {
+      format!("Visual archive is up to date. {skipped} record(s) had no downloadable photoreal file.")
+    } else {
+      format!("Archived {archived} photoreal visual(s) to {}.", visual_dir.to_string_lossy())
+    },
+  })
+}
+
+#[tauri::command]
 async fn sync_from_cloud() -> Result<SyncResult, String> {
   let sync_url = std::env::var("LLINEN_EARTH_SYNC_URL")
     .unwrap_or_else(|_| "https://llinenearth-designer.vercel.app/api/operator/sync".to_string());
@@ -670,6 +746,7 @@ fn main() {
       get_fabric_inventory,
       update_fabric_inventory,
       sync_fabric_inventory,
+      archive_visuals,
       create_backup,
       sync_from_cloud
     ])
