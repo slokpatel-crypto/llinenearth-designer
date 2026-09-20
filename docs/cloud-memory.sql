@@ -3,7 +3,7 @@
 -- Canonical production migration:
 --   supabase/migrations/20260920_style_events_hardening.sql
 --
--- Current schema contract: v2
+-- Current schema contract: v3
 --
 -- The migration creates public.style_events as an append-only event ledger,
 -- enables RLS, removes direct anon/authenticated access, grants the server role
@@ -37,7 +37,7 @@
 --   • RLS is enabled
 --   • anon/authenticated have no direct access
 --   • the server role has SELECT/INSERT only
---   • schema version is exactly v2
+--   • schema version is exactly v3
 --
 -- Do not hand-edit production data in style_events. Business history is
 -- append-only; corrections should be new events.
