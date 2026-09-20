@@ -191,6 +191,7 @@ fn ensure_vault() -> Result<PathBuf, String> {
   fs::create_dir_all(root.join("sync")).map_err(|e| e.to_string())?;
   fs::create_dir_all(root.join("inventory")).map_err(|e| e.to_string())?;
   fs::create_dir_all(root.join("brain")).map_err(|e| e.to_string())?;
+  fs::create_dir_all(root.join("marketing")).map_err(|e| e.to_string())?;
   Ok(root)
 }
 
@@ -427,6 +428,33 @@ fn save_brain_actions(actions: &HashMap<String, BrainActionState>) -> Result<(),
 #[tauri::command]
 fn get_dashboard_summary() -> Result<DashboardSummary, String> {
   Ok(aggregate(load_events()?))
+}
+
+#[tauri::command]
+fn export_marketing_brief(title: String, content: String) -> Result<String, String> {
+  let clean_title = title.trim();
+  if clean_title.is_empty() {
+    return Err("Marketing brief title is required.".to_string());
+  }
+  if content.len() > 50_000 {
+    return Err("Marketing brief is too large.".to_string());
+  }
+
+  let slug = clean_title
+    .chars()
+    .map(|ch| if ch.is_ascii_alphanumeric() { ch.to_ascii_lowercase() } else { '-' })
+    .collect::<String>()
+    .split('-')
+    .filter(|part| !part.is_empty())
+    .take(10)
+    .collect::<Vec<_>>()
+    .join("-");
+
+  let stamp = Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string();
+  let filename = format!("{}_{}.md", if slug.is_empty() { "campaign-brief" } else { &slug }, stamp);
+  let path = ensure_vault()?.join("marketing").join(filename);
+  fs::write(&path, content).map_err(|e| e.to_string())?;
+  Ok(path.to_string_lossy().to_string())
 }
 
 #[tauri::command]
@@ -799,6 +827,7 @@ fn main() {
   tauri::Builder::default()
     .invoke_handler(tauri::generate_handler![
       get_dashboard_summary,
+      export_marketing_brief,
       get_brain_actions,
       update_brain_action,
       record_outcome,
