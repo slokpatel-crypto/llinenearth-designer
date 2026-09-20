@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "local-memory": "node scripts/llinen-local-bridge.mjs",
-    "operator-password": "node scripts/hash-operator-password.mjs"
+    "operator-password": "node scripts/hash-operator-password.mjs",
+    "production-secrets": "node scripts/generate-production-secrets.mjs"
   },
   "dependencies": {
     "fashn": "^0.15.0",
