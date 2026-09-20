@@ -203,6 +203,7 @@ struct SystemHealth {
   visual_count: usize,
   visual_bytes: u64,
   marketing_briefs: usize,
+  job_cards: usize,
   brain_actions: usize,
   inventory_count: usize,
   unverified_inventory: usize,
@@ -628,6 +629,7 @@ fn build_system_health() -> Result<SystemHealth, String> {
   let (backup_count, backup_bytes, latest_backup) = directory_stats(&root.join("backups"));
   let (visual_count, visual_bytes, _) = directory_stats(&root.join("visuals"));
   let (marketing_briefs, _, _) = directory_stats(&root.join("marketing"));
+  let (job_cards, _, _) = directory_stats(&root.join("job-cards"));
 
   let inventory = get_fabric_inventory()?;
   let overrides = load_inventory_overrides()?;
@@ -663,6 +665,7 @@ fn build_system_health() -> Result<SystemHealth, String> {
     visual_count,
     visual_bytes,
     marketing_briefs,
+    job_cards,
     brain_actions: brain_actions.len(),
     inventory_count: inventory.fabrics.len(),
     unverified_inventory: inventory.fabrics.iter().filter(|fabric| fabric.status == "unverified").count(),
@@ -976,6 +979,7 @@ fn export_system_report() -> Result<String, String> {
     health.visual_count,
     health.visual_bytes,
     health.marketing_briefs,
+    health.job_cards,
     health.brain_actions,
     health.inventory_count,
     health.unverified_inventory,
