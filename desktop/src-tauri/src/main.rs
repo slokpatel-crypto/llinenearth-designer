@@ -1021,6 +1021,7 @@ fn set_order_status(
   status: String,
   due_date: String,
   note: String,
+  order_value: Option<f64>,
 ) -> Result<(), String> {
   const ALLOWED: [&str; 9] = [
     "quoted",
@@ -1043,6 +1044,12 @@ fn set_order_status(
     return Err("Due date must be a valid YYYY-MM-DD date.".to_string());
   }
 
+  let clean_order_value = match order_value {
+    Some(value) if value.is_finite() && value >= 0.0 && value <= 100_000_000.0 => Some((value * 100.0).round() / 100.0),
+    Some(_) => return Err("Order value is outside the allowed range.".to_string()),
+    None => None,
+  };
+
   append_operator_event(
     session_id,
     "order_status_changed",
@@ -1050,6 +1057,35 @@ fn set_order_status(
       "status": status,
       "dueDate": clean_due,
       "note": note.trim().chars().take(1000).collect::<String>(),
+      "orderValue": clean_order_value,
+    }),
+  )
+}
+
+#[tauri::command]
+fn record_payment(
+  session_id: String,
+  amount: f64,
+  method: String,
+  note: String,
+) -> Result<(), String> {
+  if !amount.is_finite() || amount <= 0.0 || amount > 100_000_000.0 {
+    return Err("Payment amount is outside the allowed range.".to_string());
+  }
+
+  const METHODS: [&str; 5] = ["cash", "upi", "card", "bank", "other"];
+  if !METHODS.contains(&method.as_str()) {
+    return Err("Unsupported payment method.".to_string());
+  }
+
+  append_operator_event(
+    session_id,
+    "payment_logged",
+    json!({
+      "amount": (amount * 100.0).round() / 100.0,
+      "currency": "INR",
+      "method": method,
+      "note": note.trim().chars().take(500).collect::<String>(),
     }),
   )
 }
@@ -1431,6 +1467,7 @@ fn main() {
       create_walkin_customer,
       save_measurements,
       set_order_status,
+      record_payment,
       set_lead_status,
       get_fabric_inventory,
       update_fabric_inventory,
