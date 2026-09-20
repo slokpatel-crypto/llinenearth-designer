@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { AnimatePresence, motion } from "motion/react";
 import type { StyleDirectorAnswers, StyleDirectorLook } from "@/lib/style-director-agent";
-import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
+import { createStyleSessionId, flushPendingStyleMemoryEvents, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
 import "./style-director.css";
 
 type StepKey = keyof StyleDirectorAnswers;
@@ -112,6 +112,19 @@ export default function StyleDirectorPage() {
   const heroRender = useMemo(()=>renderSet?.renders?.find((r)=>r.view==="front") ?? renderSet?.renders?.[0], [renderSet]);
   useEffect(()=>{
     recordStyleMemoryEvent(sessionId,"session_started",{experience:"style-director-v1"});
+
+    const flush = () => void flushPendingStyleMemoryEvents();
+    const visibility = () => {
+      if (document.visibilityState === "visible") flush();
+    };
+
+    flush();
+    window.addEventListener("online",flush);
+    document.addEventListener("visibilitychange",visibility);
+    return () => {
+      window.removeEventListener("online",flush);
+      document.removeEventListener("visibilitychange",visibility);
+    };
   },[sessionId]);
 
   const whatsapp = selectedLook ? `https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919226338282"}?text=${encodeURIComponent(`Hi LLinen Earth, I created “${selectedLook.title}” in the Style Director. Fabric: ${selectedLook.fabric.line} — ${selectedLook.fabric.colorName}. I’d like to explore this look in store.`)}` : "#";
