@@ -1063,6 +1063,52 @@ fn set_order_status(
 }
 
 #[tauri::command]
+fn set_appointment(
+  session_id: String,
+  kind: String,
+  date_time: String,
+  status: String,
+  note: String,
+) -> Result<(), String> {
+  const KINDS: [&str; 5] = ["consultation", "fitting", "trial", "pickup", "delivery"];
+  const STATUSES: [&str; 3] = ["scheduled", "completed", "cancelled"];
+
+  if !KINDS.contains(&kind.as_str()) {
+    return Err("Unsupported appointment type.".to_string());
+  }
+  if !STATUSES.contains(&status.as_str()) {
+    return Err("Unsupported appointment status.".to_string());
+  }
+
+  let clean_date = date_time.trim();
+  if status == "scheduled" {
+    let valid = clean_date.len() == 16
+      && clean_date.chars().enumerate().all(|(index, ch)| {
+        match index {
+          4 | 7 => ch == '-',
+          10 => ch == 'T',
+          13 => ch == ':',
+          _ => ch.is_ascii_digit(),
+        }
+      });
+    if !valid {
+      return Err("Appointment date/time must use YYYY-MM-DDTHH:MM.".to_string());
+    }
+  }
+
+  append_operator_event(
+    session_id,
+    "appointment_updated",
+    json!({
+      "kind": kind,
+      "dateTime": if status == "scheduled" { clean_date } else { clean_date },
+      "status": status,
+      "note": note.trim().chars().take(600).collect::<String>(),
+    }),
+  )
+}
+
+#[tauri::command]
 fn record_payment(
   session_id: String,
   amount: f64,
@@ -1468,6 +1514,7 @@ fn main() {
       save_measurements,
       set_order_status,
       record_payment,
+      set_appointment,
       set_lead_status,
       get_fabric_inventory,
       update_fabric_inventory,
