@@ -152,7 +152,23 @@ export default function App() {
     [summary],
   );
 
-  const leads = useMemo(\n    () =>\n      (summary?.sessions || []).filter((session) =>\n        Boolean(session.customer.name) ||\n        Boolean(session.customer.leadStatus) ||\n        hasEvent(session, "render_completed") ||\n        hasEvent(session, "whatsapp_clicked") ||\n        hasEvent(session, "visit_logged") ||\n        hasEvent(session, "sale_logged"),\n      ),\n    [summary],\n  );\n\n  const orders = useMemo(\n    () => (summary?.sessions || []).filter((session) => hasEvent(session, "sale_logged")),\n    [summary],\n  );
+  const leads = useMemo(
+    () =>
+      (summary?.sessions || []).filter((session) =>
+        Boolean(session.customer.name) ||
+        Boolean(session.customer.leadStatus) ||
+        hasEvent(session, "render_completed") ||
+        hasEvent(session, "whatsapp_clicked") ||
+        hasEvent(session, "visit_logged") ||
+        hasEvent(session, "sale_logged"),
+      ),
+    [summary],
+  );
+
+  const orders = useMemo(
+    () => (summary?.sessions || []).filter((session) => hasEvent(session, "sale_logged")),
+    [summary],
+  );
 
   async function logOutcome(kind: "visit_logged" | "sale_logged") {
     if (!selectedSession) return;
@@ -327,7 +343,9 @@ export default function App() {
             <h1>
               {activeNav === "Today" ? <>Know what happened.<br/><em>Know what to do next.</em></> :
                activeNav === "Customers" ? <>Every customer.<br/><em>One continuous story.</em></> :
-               activeNav === "Leads" ? <>Intent first.<br/><em>Follow up at the right moment.</em></> :\n               activeNav === "Orders" ? <>From intent to value.<br/><em>Know what converted.</em></> :\n               titleCase(activeNav)}
+               activeNav === "Leads" ? <>Intent first.<br/><em>Follow up at the right moment.</em></> :
+               activeNav === "Orders" ? <>From intent to value.<br/><em>Know what converted.</em></> :
+               titleCase(activeNav)}
             </h1>
           </div>
           <div className="topActions">
@@ -480,7 +498,8 @@ export default function App() {
               <aside className="moduleDetail"><AnimatePresence mode="wait">{customerEditor}</AnimatePresence></aside>
             </motion.section>
           )}
-\n          {!["Today", "Customers", "Leads", "Orders"].includes(activeNav) && (
+
+          {!["Today", "Customers", "Leads", "Orders"].includes(activeNav) && (
             <motion.section key={activeNav} className="placeholder" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <span>NEXT MODULE</span><h2>{activeNav}</h2><p>The desktop foundation, Customers and Leads are now functional. This module is intentionally waiting for its real data workflow rather than showing fake controls.</p>
             </motion.section>
