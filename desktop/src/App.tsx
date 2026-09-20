@@ -139,6 +139,20 @@ type SystemHealth = {
 const nav = ["Today", "Customers", "Leads", "Orders", "Fabrics", "Visuals", "Marketing", "Analytics", "AI Brain", "Memory"];
 const leadStatuses = ["new", "follow-up", "contacted", "visit-booked", "won", "lost"];
 const orderStatuses = ["quoted", "measurement", "deposit", "cutting", "tailoring", "trial", "ready", "collected", "cancelled"];
+const measurementFields = [
+  ["neck", "Neck"],
+  ["chest", "Chest"],
+  ["waist", "Waist"],
+  ["seat", "Seat / Hip"],
+  ["shoulder", "Shoulder"],
+  ["sleeve", "Sleeve"],
+  ["shirtLength", "Shirt length"],
+  ["trouserWaist", "Trouser waist"],
+  ["outseam", "Outseam"],
+  ["inseam", "Inseam"],
+  ["thigh", "Thigh"],
+  ["bottom", "Bottom"],
+] as const;
 
 function money(value: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value || 0);
@@ -215,6 +229,19 @@ function latestOrder(session?: SessionRecord | null) {
   };
 }
 
+function latestMeasurements(session?: SessionRecord | null) {
+  const event = session?.events.slice().reverse().find((item) => item.type === "measurements_updated");
+  if (!event) return null;
+  const raw = event.payload?.measurements;
+  const measurements = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+  return {
+    unit: String(event.payload?.unit || "in") === "cm" ? "cm" : "in",
+    note: String(event.payload?.note || ""),
+    at: event.at,
+    measurements,
+  };
+}
+
 export default function App() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -251,6 +278,10 @@ export default function App() {
   const [lockCurrentPassword, setLockCurrentPassword] = useState("");
   const [lockNewPassword, setLockNewPassword] = useState("");
   const [lockSaving, setLockSaving] = useState(false);
+  const [measurementUnit, setMeasurementUnit] = useState<"in" | "cm">("in");
+  const [measurementNote, setMeasurementNote] = useState("");
+  const [measurementDraft, setMeasurementDraft] = useState<Record<string,string>>({});
+  const [measurementSaving, setMeasurementSaving] = useState(false);
 
   async function refresh() {
     try {
@@ -450,6 +481,15 @@ export default function App() {
       dueDate: currentOrder?.dueDate || "",
       note: currentOrder?.note || "",
     });
+    const currentMeasurements = latestMeasurements(selectedSession);
+    setMeasurementUnit(currentMeasurements?.unit || "in");
+    setMeasurementNote(currentMeasurements?.note || "");
+    setMeasurementDraft(Object.fromEntries(
+      measurementFields.map(([key]) => {
+        const value = currentMeasurements?.measurements?.[key];
+        return [key, typeof value === "number" || typeof value === "string" ? String(value) : ""];
+      }),
+    ));
   }, [selectedSession?.sessionId, selectedSession?.customer.name, selectedSession?.customer.phone, selectedSession?.customer.note]);
 
   const attention = useMemo(
@@ -917,6 +957,42 @@ export default function App() {
     }
   }
 
+  async function saveMeasurementPassport() {
+    if (!selectedSession) return;
+    const measurements = Object.fromEntries(
+      Object.entries(measurementDraft)
+        .filter(([, value]) => value.trim() !== "")
+        .map(([key, value]) => [key, Number(value)]),
+    );
+
+    if (!Object.keys(measurements).length) {
+      setStatus("Add at least one measurement before saving.");
+      return;
+    }
+    if (Object.values(measurements).some((value) => !Number.isFinite(value) || value <= 0)) {
+      setStatus("Check the measurement values before saving.");
+      return;
+    }
+
+    setMeasurementSaving(true);
+    try {
+      await invoke("save_measurements", {
+        sessionId: selectedSession.sessionId,
+        unit: measurementUnit,
+        measurements,
+        note: measurementNote,
+      });
+      await refresh();
+      await loadSystemHealth();
+      setStatus(`Measurement passport saved in ${measurementUnit === "in" ? "inches" : "centimetres"}.`);
+      void quietReconcile();
+    } catch (error) {
+      setStatus(`Measurement save failed: ${String(error)}`);
+    } finally {
+      setMeasurementSaving(false);
+    }
+  }
+
   async function changeLeadStatus(nextStatus: string) {
     if (!selectedSession) return;
     await invoke("set_lead_status", {
@@ -1208,6 +1284,23 @@ export default function App() {
         <label><small>DUE DATE</small><input type="date" value={orderDraft.dueDate} onChange={(e) => setOrderDraft((draft) => ({ ...draft, dueDate: e.target.value }))} /></label>
         <label><small>WORKROOM NOTE</small><textarea value={orderDraft.note} onChange={(e) => setOrderDraft((draft) => ({ ...draft, note: e.target.value }))} placeholder="Alteration, trial, delivery or tailoring note…" /></label>
         <button onClick={() => void saveOrderStatus()}>Save order stage</button>
+      </div>
+      <div className="measurementPassport">
+        <div className="measurementHead">
+          <div><small>MEASUREMENT PASSPORT</small><b>{latestMeasurements(selectedSession) ? `Updated ${ago(latestMeasurements(selectedSession)?.at)} ago` : "No measurements saved yet"}</b></div>
+          <div className="measurementUnit">
+            <button className={measurementUnit === "in" ? "active" : ""} onClick={() => setMeasurementUnit("in")}>IN</button>
+            <button className={measurementUnit === "cm" ? "active" : ""} onClick={() => setMeasurementUnit("cm")}>CM</button>
+          </div>
+        </div>
+        <div className="measurementGrid">
+          {measurementFields.map(([key,label]) => <label key={key}>
+            <small>{label.toUpperCase()}</small>
+            <div><input inputMode="decimal" value={measurementDraft[key] || ""} onChange={(event)=>setMeasurementDraft((draft)=>({...draft,[key]:event.target.value.replace(/[^0-9.]/g,"")}))} placeholder="—" /><span>{measurementUnit}</span></div>
+          </label>)}
+        </div>
+        <label className="measurementNote"><small>FIT / POSTURE NOTE</small><textarea value={measurementNote} onChange={(event)=>setMeasurementNote(event.target.value)} placeholder="Forward shoulder, preferred ease, alteration history, posture note…" /></label>
+        <button className="saveMeasurements" onClick={() => void saveMeasurementPassport()} disabled={measurementSaving}>{measurementSaving ? "Saving…" : "Save measurement passport"}</button>
       </div>
     </motion.article>
   ) : null;
