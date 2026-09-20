@@ -28,7 +28,9 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "msi"],
+    "targets": [
+      "nsis"
+    ],
     "shortDescription": "Private LLinen Earth operator intelligence and local memory system",
     "longDescription": "LLinen Earth OS combines customer intent, style activity, follow-up, outcomes and a controlled local business memory vault."
   }
