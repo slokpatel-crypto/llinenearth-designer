@@ -107,18 +107,28 @@ export async function GET(request: Request) {
 
   const params = new URLSearchParams({
     select: "id,session_id,type,at,source,payload,received_at",
-    order: "received_at.asc",
+    order: "received_at.asc,id.asc",
     limit: String(limit),
   });
-  if (cursor) params.set("received_at", `gt.${cursor}`);
+
+  if (cursor) {
+    const separator = cursor.lastIndexOf("|");
+    if (separator > 0) {
+      const time = cursor.slice(0, separator);
+      const id = cursor.slice(separator + 1);
+      params.set("or", `(received_at.gt.${time},and(received_at.eq.${time},id.gt.${id}))`);
+    } else {
+      // Backward compatibility with the first desktop builds, which stored only received_at.
+      params.set("received_at", `gt.${cursor}`);
+    }
+  }
 
   try {
     const response = await fetch(
       `${cloud.url}/rest/v1/style_events?${params.toString()}`,
       {
         headers: {
-          apikey: cloud.key,
-          authorization: `Bearer ${cloud.key}`,
+          ...supabaseAdminHeaders(cloud),
           accept: "application/json",
         },
         cache: "no-store",
@@ -152,7 +162,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       events,
-      nextCursor: rows.at(-1)?.received_at || cursor || null,
+      nextCursor: rows.length
+        ? `${rows.at(-1)?.received_at}|${rows.at(-1)?.id}`
+        : cursor || null,
       hasMore: rows.length === limit,
     });
   } catch (error) {
