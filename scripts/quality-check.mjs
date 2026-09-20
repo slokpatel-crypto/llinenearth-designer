@@ -85,7 +85,7 @@ const desktopOperationalContracts = [
     "NEXT APPOINTMENT",
     "Export job card",
     "desktopLockScreen",
-    "Cloud ↔ PC",
+    "sync_from_cloud",
   ]],
   ["desktop/src/ErrorBoundary.tsx", ["export_system_report","Restart interface","No customer data is sent automatically"]],
   ["desktop/src/app.css", [
