@@ -70,6 +70,8 @@ export default function StyleDirectorPage() {
       setLooks(data.looks);
       setSelected(0);
       recordStyleMemoryEvent(sessionId,"looks_generated",{looks:data.looks.map((look:StyleDirectorLook)=>({id:look.id,title:look.title,fabricId:look.fabric.id,fabric:look.fabric.colorName,tier:look.candidate.tier}))});
+      const firstLook = data.looks?.[0] as StyleDirectorLook | undefined;
+      if (firstLook) recordStyleMemoryEvent(sessionId,"look_selected",{lookId:firstLook.id,title:firstLook.title,fabricId:firstLook.fabric.id,fabric:firstLook.fabric.colorName,automatic:true});
     } catch(e) {
       setError(e instanceof Error ? e.message : "Could not create looks.");
     } finally { setLoading(false); }
