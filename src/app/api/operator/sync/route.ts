@@ -27,6 +27,76 @@ function authorized(request: Request) {
   return a.length === b.length && timingSafeEqual(a,b);
 }
 
+function text(value: unknown, max: number) {
+  return String(value ?? "").trim().slice(0, max);
+}
+
+function cleanOperatorPayload(type: string, input: unknown) {
+  const payload = input && typeof input === "object" ? input as Record<string,unknown> : {};
+
+  if (type === "session_started") {
+    return {
+      entry: text(payload.entry, 40),
+      source: "operator-desktop",
+    };
+  }
+
+  if (type === "answer_selected") {
+    const step = text(payload.step, 60);
+    const value = text(payload.value, 240);
+    if (!step || !value) return null;
+    return { step, value };
+  }
+
+  if (type === "look_selected") {
+    return {
+      lookId: text(payload.lookId, 120),
+      title: text(payload.title, 180),
+      fabricId: text(payload.fabricId, 160),
+      fabric: text(payload.fabric, 220),
+      automatic: Boolean(payload.automatic),
+    };
+  }
+
+  if (type === "customer_updated") {
+    return {
+      name: text(payload.name, 120),
+      phone: text(payload.phone, 40),
+      note: text(payload.note, 1000),
+    };
+  }
+
+  if (type === "lead_status_changed") {
+    const status = text(payload.status, 40);
+    if (!["new","contacted","visit-booked","won","lost","follow-up"].includes(status)) return null;
+    return { status };
+  }
+
+  if (type === "order_status_changed") {
+    const status = text(payload.status, 40);
+    if (!["quoted","measurement","deposit","cutting","tailoring","trial","ready","collected","cancelled"].includes(status)) return null;
+    const dueDate = text(payload.dueDate, 10);
+    if (dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return null;
+    return { status, dueDate, note: text(payload.note, 1000) };
+  }
+
+  if (type === "visit_logged") {
+    return { status: "visited" };
+  }
+
+  if (type === "sale_logged") {
+    const amount = Number(payload.amount ?? 0);
+    if (!Number.isFinite(amount) || amount < 0 || amount > 100_000_000) return null;
+    return { amount, currency: "INR" };
+  }
+
+  if (type === "operator_note") {
+    return { note: text(payload.note, 1000) };
+  }
+
+  return null;
+}
+
 function cleanOperatorEvent(input: unknown) {
   if (!input || typeof input !== "object") return null;
   const body = input as Record<string,unknown>;
@@ -38,8 +108,8 @@ function cleanOperatorEvent(input: unknown) {
   const parsed = new Date(String(body.at || ""));
   if (Number.isNaN(parsed.getTime())) return null;
 
-  const payload = body.payload && typeof body.payload === "object" ? body.payload : {};
-  if (JSON.stringify(payload).length > 16_000) return null;
+  const payload = cleanOperatorPayload(type, body.payload);
+  if (!payload) return null;
 
   return {
     id,
