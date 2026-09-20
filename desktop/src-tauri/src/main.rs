@@ -756,7 +756,11 @@ fn record_outcome(session_id: String, kind: String, amount: Option<f64>) -> Resu
   }
 
   let payload = if kind == "sale_logged" {
-    json!({ "amount": amount.unwrap_or(0.0), "currency": "INR", "source": "desktop" })
+    let sale_amount = amount.unwrap_or(0.0);
+    if !sale_amount.is_finite() || sale_amount < 0.0 || sale_amount > 100_000_000.0 {
+      return Err("Sale amount is invalid.".to_string());
+    }
+    json!({ "amount": sale_amount, "currency": "INR", "source": "desktop" })
   } else {
     json!({ "status": "visited", "source": "desktop" })
   };
@@ -852,14 +856,8 @@ fn set_order_status(
   }
 
   let clean_due = due_date.trim();
-  if !clean_due.is_empty() {
-    let valid = clean_due.len() == 10
-      && clean_due.chars().enumerate().all(|(index, ch)| {
-        if index == 4 || index == 7 { ch == '-' } else { ch.is_ascii_digit() }
-      });
-    if !valid {
-      return Err("Due date must use YYYY-MM-DD.".to_string());
-    }
+  if !clean_due.is_empty() && chrono::NaiveDate::parse_from_str(clean_due, "%Y-%m-%d").is_err() {
+    return Err("Due date must be a valid YYYY-MM-DD date.".to_string());
   }
 
   append_operator_event(
