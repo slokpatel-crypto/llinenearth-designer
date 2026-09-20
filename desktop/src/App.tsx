@@ -103,11 +103,44 @@ type MarketingCampaign = {
   fabricId?: string;
 };
 
+type SystemHealth = {
+  vaultPath: string;
+  eventFiles: number;
+  eventRecords: number;
+  eventBytes: number;
+  backupCount: number;
+  backupBytes: number;
+  latestBackup?: string | null;
+  visualCount: number;
+  visualBytes: number;
+  marketingBriefs: number;
+  brainActions: number;
+  inventoryCount: number;
+  unverifiedInventory: number;
+  inventoryOverrides: number;
+  syncConfigured: boolean;
+  syncCursor?: string | null;
+  lastSyncedAt?: string | null;
+  issues: string[];
+};
+
 const nav = ["Today", "Customers", "Leads", "Orders", "Fabrics", "Visuals", "Marketing", "Analytics", "AI Brain", "Memory"];
 const leadStatuses = ["new", "follow-up", "contacted", "visit-booked", "won", "lost"];
 
 function money(value: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value || 0);
+}
+
+function bytes(value: number) {
+  if (!value) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  let amount = value;
+  let unit = 0;
+  while (amount >= 1024 && unit < units.length - 1) {
+    amount /= 1024;
+    unit += 1;
+  }
+  return `${amount >= 10 || unit === 0 ? amount.toFixed(0) : amount.toFixed(1)} ${units[unit]}`;
 }
 
 function ago(iso?: string) {
@@ -177,6 +210,8 @@ export default function App() {
   const [brainQuery, setBrainQuery] = useState("");
   const [brainAnswer, setBrainAnswer] = useState("Ask about demand, leads, fabrics, visuals, revenue or what needs attention.");
   const [marketingExporting, setMarketingExporting] = useState<string | null>(null);
+  const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
+  const [systemReporting, setSystemReporting] = useState(false);
 
   async function refresh() {
     try {
@@ -207,10 +242,19 @@ export default function App() {
     }
   }
 
+  async function loadSystemHealth() {
+    try {
+      setSystemHealth(await invoke<SystemHealth>("get_system_health"));
+    } catch (error) {
+      setStatus(`System health unavailable: ${String(error)}`);
+    }
+  }
+
   useEffect(() => {
     void refresh();
     void loadInventory();
     void loadBrainActions();
+    void loadSystemHealth();
   }, []);
 
   const selectedSession = useMemo(
@@ -650,6 +694,7 @@ export default function App() {
     try {
       const file = await invoke<string>("create_backup");
       setStatus(`Backup created: ${file}`);
+      await loadSystemHealth();
     } catch (error) {
       setStatus(`Backup failed: ${String(error)}`);
     }
@@ -660,7 +705,10 @@ export default function App() {
     try {
       const result = await invoke<SyncResult>("sync_from_cloud");
       setStatus(result.message);
-      if (result.configured) await refresh();
+      if (result.configured) {
+        await refresh();
+        await loadSystemHealth();
+      }
     } catch (error) {
       setStatus(`Cloud sync failed: ${String(error)}`);
     } finally {
@@ -674,6 +722,7 @@ export default function App() {
       const result = await invoke<SyncResult>("sync_fabric_inventory");
       setStatus(result.message);
       await loadInventory();
+      await loadSystemHealth();
     } catch (error) {
       setStatus(`Inventory sync failed: ${String(error)}`);
     } finally {
@@ -698,10 +747,24 @@ export default function App() {
     try {
       const result = await invoke<SyncResult>("archive_visuals");
       setStatus(result.message);
+      await loadSystemHealth();
     } catch (error) {
       setStatus(`Visual archive failed: ${String(error)}`);
     } finally {
       setArchivingVisuals(false);
+    }
+  }
+
+  async function exportSystemReport() {
+    setSystemReporting(true);
+    try {
+      const path = await invoke<string>("export_system_report");
+      setStatus(`System report exported: ${path}`);
+      await loadSystemHealth();
+    } catch (error) {
+      setStatus(`System report failed: ${String(error)}`);
+    } finally {
+      setSystemReporting(false);
     }
   }
 
@@ -902,6 +965,7 @@ export default function App() {
                activeNav === "Marketing" ? <>Market what matters.<br/><em>Turn demand into creative.</em></> :
                activeNav === "Analytics" ? <>See the signal.<br/><em>Know where to act.</em></> :
                activeNav === "AI Brain" ? <>Think across the business.<br/><em>Turn signals into action.</em></> :
+               activeNav === "Memory" ? <>Own the record.<br/><em>Know your business data is safe.</em></> :
                titleCase(activeNav)}
             </h1>
           </div>
@@ -1442,7 +1506,88 @@ export default function App() {
           )}
 
 
-          {!["Today", "Customers", "Leads", "Orders", "Fabrics", "Visuals", "Marketing", "Analytics", "AI Brain"].includes(activeNav) && (
+
+          {activeNav === "Memory" && (
+            <motion.section key="memory" className="memoryWorkspace" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <div className="memoryMetrics">
+                <article><small>EVENT RECORDS</small><strong>{systemHealth?.eventRecords || 0}</strong><span>{systemHealth?.eventFiles || 0} daily ledger file(s)</span></article>
+                <article><small>BACKUPS</small><strong>{systemHealth?.backupCount || 0}</strong><span>{bytes(systemHealth?.backupBytes || 0)} stored</span></article>
+                <article><small>LOCAL VISUALS</small><strong>{systemHealth?.visualCount || 0}</strong><span>{bytes(systemHealth?.visualBytes || 0)} archived</span></article>
+                <article className="accent"><small>SYSTEM WARNINGS</small><strong>{systemHealth?.issues.length || 0}</strong><span>{systemHealth?.issues.length ? "Needs attention" : "Local vault looks healthy"}</span></article>
+              </div>
+
+              <div className="memoryGrid">
+                <div className="memoryMain">
+                  <article className="card memoryVault">
+                    <div className="cardHead">
+                      <div><small>LOCAL VAULT</small><h2>Your business record lives here.</h2></div>
+                      <span className={systemHealth?.issues.length ? "memoryWarn" : "good"}>{systemHealth?.issues.length ? "● CHECK" : "● HEALTHY"}</span>
+                    </div>
+                    <code>{systemHealth?.vaultPath || summary?.vaultPath || "Loading local vault…"}</code>
+                    <div className="memoryInventory">
+                      <span><b>Customer events</b><small>{systemHealth?.eventRecords || 0} append-only records · {bytes(systemHealth?.eventBytes || 0)}</small></span>
+                      <span><b>Inventory</b><small>{systemHealth?.inventoryCount || inventory.fabrics.length} entries · {systemHealth?.inventoryOverrides || 0} operator stock updates</small></span>
+                      <span><b>Visual archive</b><small>{systemHealth?.visualCount || 0} trusted local image files</small></span>
+                      <span><b>Marketing</b><small>{systemHealth?.marketingBriefs || 0} exported creative brief(s)</small></span>
+                      <span><b>AI Brain</b><small>{systemHealth?.brainActions || 0} persistent action decision(s)</small></span>
+                      <span><b>Backups</b><small>{systemHealth?.backupCount || 0} snapshot(s) · latest {systemHealth?.latestBackup || "none"}</small></span>
+                    </div>
+                  </article>
+
+                  <article className="card eventLedger">
+                    <div className="cardHead">
+                      <div><small>EVENT LEDGER</small><h2>What the system remembers.</h2></div>
+                      <span>{Object.values(summary?.counts || {}).reduce((sum, count) => sum + count, 0)} events</span>
+                    </div>
+                    <div className="eventCountGrid">
+                      {Object.entries(summary?.counts || {}).sort((a,b)=>b[1]-a[1]).map(([event,count]) => (
+                        <span key={event}><b>{count}</b><small>{titleCase(event)}</small></span>
+                      ))}
+                      {!Object.keys(summary?.counts || {}).length && <div className="empty">No customer events recorded yet.</div>}
+                    </div>
+                  </article>
+
+                  <article className="card memoryWarnings">
+                    <div className="cardHead"><div><small>INTEGRITY CHECK</small><h2>What still needs fixing.</h2></div><span>{systemHealth?.issues.length || 0} warnings</span></div>
+                    <div className="memoryIssueList">
+                      {(systemHealth?.issues || []).map((issue,index)=><div key={`${issue}-${index}`}><i>!</i><span>{issue}</span></div>)}
+                      {!systemHealth?.issues.length && <div className="memoryOkay"><i>✓</i><span>No current local-vault warnings detected.</span></div>}
+                    </div>
+                  </article>
+                </div>
+
+                <aside className="memorySide">
+                  <article className="card syncCard">
+                    <div className="cardHead"><div><small>CLOUD ↔ PC</small><h2>Sync status.</h2></div><span className={systemHealth?.syncConfigured ? "good" : "memoryWarn"}>{systemHealth?.syncConfigured ? "● PAIRED" : "● LOCAL ONLY"}</span></div>
+                    <div className="syncFacts">
+                      <span><small>PAIRING</small><b>{systemHealth?.syncConfigured ? "Private token configured" : "Not paired yet"}</b></span>
+                      <span><small>LAST SYNC</small><b>{systemHealth?.lastSyncedAt ? ago(systemHealth.lastSyncedAt) + " ago" : "Never"}</b></span>
+                      <span><small>CURSOR</small><b>{systemHealth?.syncCursor ? "Incremental sync ready" : "No cloud cursor"}</b></span>
+                    </div>
+                    <button onClick={() => void syncCloud()} disabled={syncing}>{syncing ? "Syncing…" : "Sync cloud now"}</button>
+                  </article>
+
+                  <article className="card memoryActions">
+                    <div className="cardHead"><div><small>MAINTENANCE</small><h2>Protect the record.</h2></div></div>
+                    <button onClick={() => void backup()}><span>Create full backup</span><b>↗</b></button>
+                    <button onClick={() => void archiveVisuals()} disabled={archivingVisuals}><span>{archivingVisuals ? "Archiving visuals…" : "Archive trusted visuals"}</span><b>↗</b></button>
+                    <button onClick={() => void syncInventory()} disabled={inventorySyncing}><span>{inventorySyncing ? "Refreshing inventory…" : "Refresh inventory cache"}</span><b>↗</b></button>
+                    <button onClick={() => void exportSystemReport()} disabled={systemReporting}><span>{systemReporting ? "Exporting report…" : "Export system report"}</span><b>↗</b></button>
+                    <button onClick={() => { void refresh(); void loadInventory(); void loadBrainActions(); void loadSystemHealth(); }}><span>Recheck local vault</span><b>↻</b></button>
+                  </article>
+
+                  <article className="card memoryPolicy">
+                    <small>DATA PRINCIPLE</small>
+                    <h3>Local first. Cloud when needed.</h3>
+                    <p>The desktop app only manages the LLinen Earth business vault. Customer website activity can sync into it, but the public website does not receive arbitrary access to your PC or other personal folders.</p>
+                  </article>
+                </aside>
+              </div>
+            </motion.section>
+          )}
+
+
+          {!["Today", "Customers", "Leads", "Orders", "Fabrics", "Visuals", "Marketing", "Analytics", "AI Brain", "Memory"].includes(activeNav) && (
             <motion.section key={activeNav} className="placeholder" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <span>NEXT MODULE</span><h2>{activeNav}</h2><p>The desktop foundation, Customers and Leads are now functional. This module is intentionally waiting for its real data workflow rather than showing fake controls.</p>
             </motion.section>
