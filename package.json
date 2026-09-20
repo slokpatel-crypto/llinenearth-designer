@@ -10,7 +10,9 @@
     "local-memory": "node scripts/llinen-local-bridge.mjs",
     "operator-password": "node scripts/hash-operator-password.mjs",
     "production-secrets": "node scripts/generate-production-secrets.mjs",
-    "cloud:check": "node scripts/check-cloud-readiness.mjs"
+    "cloud:check": "node scripts/check-cloud-readiness.mjs",
+    "release:check": "node scripts/release-readiness.mjs",
+    "release:check:live": "node scripts/release-readiness.mjs --live"
   },
   "dependencies": {
     "fashn": "^0.15.0",
