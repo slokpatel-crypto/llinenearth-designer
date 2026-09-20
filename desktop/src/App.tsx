@@ -242,6 +242,25 @@ function paymentTotal(session?: SessionRecord | null) {
   },0);
 }
 
+function latestAppointment(session?: SessionRecord | null) {
+  const event = session?.events.slice().reverse().find((item) => item.type === "appointment_updated");
+  if (!event) return null;
+  return {
+    kind: String(event.payload?.kind || "fitting"),
+    dateTime: String(event.payload?.dateTime || ""),
+    status: String(event.payload?.status || "scheduled"),
+    note: String(event.payload?.note || ""),
+    at: event.at,
+  };
+}
+
+function prettyDateTime(value?: string) {
+  if (!value) return "Not scheduled";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString("en-IN",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
+}
+
 function latestMeasurements(session?: SessionRecord | null) {
   const event = session?.events.slice().reverse().find((item) => item.type === "measurements_updated");
   if (!event) return null;
@@ -282,6 +301,8 @@ export default function App() {
   const [orderDraft, setOrderDraft] = useState({ status: "measurement", dueDate: "", note: "", orderValue: "" });
   const [paymentDraft, setPaymentDraft] = useState({ amount: "", method: "upi", note: "" });
   const [paymentSaving, setPaymentSaving] = useState(false);
+  const [appointmentDraft, setAppointmentDraft] = useState({ kind: "fitting", dateTime: "", status: "scheduled", note: "" });
+  const [appointmentSaving, setAppointmentSaving] = useState(false);
   const [syncPairing, setSyncPairing] = useState<SyncPairingStatus | null>(null);
   const [syncPairingUrl, setSyncPairingUrl] = useState("https://llinenearth-designer.vercel.app/api/operator/sync");
   const [syncPairingToken, setSyncPairingToken] = useState("");
@@ -497,6 +518,13 @@ export default function App() {
       note: currentOrder?.note || "",
       orderValue: currentOrder?.orderValue ? String(currentOrder.orderValue) : "",
     });
+    const currentAppointment = latestAppointment(selectedSession);
+    setAppointmentDraft({
+      kind: currentAppointment?.kind || "fitting",
+      dateTime: currentAppointment?.dateTime || "",
+      status: currentAppointment?.status || "scheduled",
+      note: currentAppointment?.note || "",
+    });
     const currentMeasurements = latestMeasurements(selectedSession);
     setMeasurementUnit(currentMeasurements?.unit === "cm" ? "cm" : "in");
     setMeasurementNote(currentMeasurements?.note || "");
@@ -550,6 +578,28 @@ export default function App() {
       session.sessionId,
     ].join(" ").toLowerCase().includes(query));
   }, [summary, customerSearch]);
+
+  const upcomingAppointments = useMemo(() => {
+    const now = Date.now();
+    return (summary?.sessions || [])
+      .map((session)=>({ session, appointment: latestAppointment(session) }))
+      .filter((entry)=>entry.appointment?.status === "scheduled" && entry.appointment.dateTime)
+      .map((entry)=>({ ...entry, when: new Date(entry.appointment!.dateTime).getTime() }))
+      .filter((entry)=>Number.isFinite(entry.when) && entry.when >= now - 60_000)
+      .sort((a,b)=>a.when-b.when)
+      .slice(0,6);
+  }, [summary]);
+
+  const overdueOrders = useMemo(() => {
+    const today = new Date();
+    const floor = new Date(today.getFullYear(),today.getMonth(),today.getDate()).getTime();
+    return orders.filter((session)=>{
+      const order = latestOrder(session);
+      if (!order?.dueDate || ["collected","cancelled"].includes(order.status)) return false;
+      const due = new Date(`${order.dueDate}T00:00`).getTime();
+      return Number.isFinite(due) && due < floor;
+    }).sort((a,b)=>(latestOrder(a)?.dueDate || "").localeCompare(latestOrder(b)?.dueDate || ""));
+  }, [orders]);
 
   const visuals = useMemo(
     () => (summary?.sessions || [])
@@ -974,6 +1024,33 @@ export default function App() {
     }
   }
 
+  async function saveAppointment() {
+    if (!selectedSession) return;
+    if (appointmentDraft.status === "scheduled" && !appointmentDraft.dateTime) {
+      setStatus("Choose an appointment date and time.");
+      return;
+    }
+
+    setAppointmentSaving(true);
+    try {
+      await invoke("set_appointment", {
+        sessionId: selectedSession.sessionId,
+        kind: appointmentDraft.kind,
+        dateTime: appointmentDraft.dateTime,
+        status: appointmentDraft.status,
+        note: appointmentDraft.note,
+      });
+      await refresh();
+      await loadSystemHealth();
+      setStatus(`${titleCase(appointmentDraft.kind)} appointment saved.`);
+      void quietReconcile();
+    } catch (error) {
+      setStatus(`Appointment could not be saved: ${String(error)}`);
+    } finally {
+      setAppointmentSaving(false);
+    }
+  }
+
   async function recordOrderPayment() {
     if (!selectedSession) return;
     const amount = Number(paymentDraft.amount);
@@ -1353,6 +1430,23 @@ export default function App() {
           {paymentEvents(selectedSession).slice().reverse().map((event)=><div key={event.id}><span><b>{money(Number(event.payload?.amount || 0))}</b><small>{titleCase(String(event.payload?.method || "other"))} · {ago(event.at)} ago</small></span><em>{String(event.payload?.note || "")}</em></div>)}
         </div>}
       </div>
+      <div className="appointmentPanel">
+        <div className="appointmentHead">
+          <div><small>NEXT APPOINTMENT</small><b>{latestAppointment(selectedSession) ? `${titleCase(latestAppointment(selectedSession)?.kind || "")} · ${prettyDateTime(latestAppointment(selectedSession)?.dateTime)}` : "Not scheduled"}</b></div>
+          {latestAppointment(selectedSession) && <span className={`appointmentState appointment-${latestAppointment(selectedSession)?.status}`}>{titleCase(latestAppointment(selectedSession)?.status || "")}</span>}
+        </div>
+        <div className="appointmentFields">
+          <select value={appointmentDraft.kind} onChange={(event)=>setAppointmentDraft((draft)=>({...draft,kind:event.target.value}))}>
+            <option value="consultation">Consultation</option><option value="fitting">Fitting</option><option value="trial">Trial</option><option value="pickup">Pickup</option><option value="delivery">Delivery</option>
+          </select>
+          <input type="datetime-local" value={appointmentDraft.dateTime} onChange={(event)=>setAppointmentDraft((draft)=>({...draft,dateTime:event.target.value}))} />
+          <select value={appointmentDraft.status} onChange={(event)=>setAppointmentDraft((draft)=>({...draft,status:event.target.value}))}>
+            <option value="scheduled">Scheduled</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <input className="appointmentNote" value={appointmentDraft.note} onChange={(event)=>setAppointmentDraft((draft)=>({...draft,note:event.target.value}))} placeholder="Appointment note…" />
+        <button onClick={() => void saveAppointment()} disabled={appointmentSaving}>{appointmentSaving ? "Saving…" : "Save appointment"}</button>
+      </div>
       <div className="measurementPassport">
         <div className="measurementHead">
           <div><small>MEASUREMENT PASSPORT</small><b>{latestMeasurements(selectedSession) ? `Updated ${ago(latestMeasurements(selectedSession)?.at)} ago` : "No measurements saved yet"}</b></div>
@@ -1529,6 +1623,27 @@ export default function App() {
                             <em>{ago(session.lastAt)} ↗</em>
                           </button>
                         ))}
+                    </div>
+                  </motion.article>
+
+                  <motion.article layout className="card scheduleCard">
+                    <div className="cardHead">
+                      <div><small>SCHEDULE & DEADLINES</small><h2>Who needs the shop’s attention next.</h2></div>
+                      <span>{upcomingAppointments.length} upcoming · {overdueOrders.length} overdue</span>
+                    </div>
+                    <div className="scheduleSplit">
+                      <div>
+                        <small>UPCOMING APPOINTMENTS</small>
+                        {upcomingAppointments.length ? upcomingAppointments.map(({session,appointment})=><button key={session.sessionId} onClick={()=>{setSelected(session.sessionId);setActiveNav("Orders");}}>
+                          <span><b>{session.customer.name || session.answers.occasion || "Customer"}</b><small>{titleCase(appointment?.kind || "fitting")} · {prettyDateTime(appointment?.dateTime)}</small></span><em>↗</em>
+                        </button>) : <div className="scheduleEmpty">Nothing scheduled yet.</div>}
+                      </div>
+                      <div>
+                        <small>OVERDUE ORDERS</small>
+                        {overdueOrders.length ? overdueOrders.slice(0,6).map((session)=><button key={session.sessionId} className="overdue" onClick={()=>{setSelected(session.sessionId);setActiveNav("Orders");}}>
+                          <span><b>{session.customer.name || "Customer order"}</b><small>{titleCase(latestOrder(session)?.status || "")} · due {latestOrder(session)?.dueDate}</small></span><em>!</em>
+                        </button>) : <div className="scheduleEmpty">No overdue active orders.</div>}
+                      </div>
                     </div>
                   </motion.article>
 
