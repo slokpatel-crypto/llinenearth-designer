@@ -303,6 +303,7 @@ export default function App() {
   const [paymentSaving, setPaymentSaving] = useState(false);
   const [appointmentDraft, setAppointmentDraft] = useState({ kind: "fitting", dateTime: "", status: "scheduled", note: "" });
   const [appointmentSaving, setAppointmentSaving] = useState(false);
+  const [jobCardExporting, setJobCardExporting] = useState(false);
   const [syncPairing, setSyncPairing] = useState<SyncPairingStatus | null>(null);
   const [syncPairingUrl, setSyncPairingUrl] = useState("https://llinenearth-designer.vercel.app/api/operator/sync");
   const [syncPairingToken, setSyncPairingToken] = useState("");
@@ -1024,6 +1025,20 @@ export default function App() {
     }
   }
 
+  async function exportJobCard() {
+    if (!selectedSession) return;
+    setJobCardExporting(true);
+    try {
+      const path = await invoke<string>("export_job_card", { sessionId: selectedSession.sessionId });
+      setStatus(`Job card exported: ${path}`);
+      await loadSystemHealth();
+    } catch (error) {
+      setStatus(`Job card export failed: ${String(error)}`);
+    } finally {
+      setJobCardExporting(false);
+    }
+  }
+
   async function saveAppointment() {
     if (!selectedSession) return;
     if (appointmentDraft.status === "scheduled" && !appointmentDraft.dateTime) {
@@ -1389,7 +1404,10 @@ export default function App() {
     <motion.article key={`order-${selectedSession.sessionId}`} className="card orderEditor" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}>
       <div className="cardHead">
         <div><small>TAILORING / ORDER</small><h2>{latestOrder(selectedSession) ? titleCase(latestOrder(selectedSession)?.status || "") : "Start workflow"}</h2></div>
-        <span>{latestOrder(selectedSession)?.dueDate || "No due date"}</span>
+        <div className="orderHeadActions">
+          <span>{latestOrder(selectedSession)?.dueDate || "No due date"}</span>
+          <button onClick={() => void exportJobCard()} disabled={jobCardExporting}>{jobCardExporting ? "Exporting…" : "Export job card ↗"}</button>
+        </div>
       </div>
       <div className="orderStageRail">
         {orderStatuses.map((stage) => {
