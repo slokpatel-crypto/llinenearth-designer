@@ -103,6 +103,12 @@ type MarketingCampaign = {
   fabricId?: string;
 };
 
+type SyncPairingStatus = {
+  configured: boolean;
+  url: string;
+  credentialStore: string;
+};
+
 type SystemHealth = {
   vaultPath: string;
   eventFiles: number;
@@ -228,6 +234,10 @@ export default function App() {
   const [customerSearch, setCustomerSearch] = useState("");
   const [walkinDraft, setWalkinDraft] = useState({ name: "", phone: "", occasion: "", garment: "", note: "" });
   const [orderDraft, setOrderDraft] = useState({ status: "measurement", dueDate: "", note: "" });
+  const [syncPairing, setSyncPairing] = useState<SyncPairingStatus | null>(null);
+  const [syncPairingUrl, setSyncPairingUrl] = useState("https://llinenearth-designer.vercel.app/api/operator/sync");
+  const [syncPairingToken, setSyncPairingToken] = useState("");
+  const [pairingSaving, setPairingSaving] = useState(false);
 
   async function refresh() {
     try {
@@ -266,12 +276,53 @@ export default function App() {
     }
   }
 
+  async function loadSyncPairing() {
+    try {
+      const pairing = await invoke<SyncPairingStatus>("get_sync_pairing_status");
+      setSyncPairing(pairing);
+      setSyncPairingUrl(pairing.url);
+    } catch (error) {
+      setStatus(`Cloud pairing status unavailable: ${String(error)}`);
+    }
+  }
+
   useEffect(() => {
     void refresh();
     void loadInventory();
     void loadBrainActions();
     void loadSystemHealth();
+    void loadSyncPairing();
   }, []);
+
+  useEffect(() => {
+    if (!syncPairing?.configured) return;
+    let cancelled = false;
+
+    async function quietSync() {
+      try {
+        const result = await invoke<SyncResult>("sync_from_cloud");
+        if (!result.configured || cancelled) return;
+        const [data, health] = await Promise.all([
+          invoke<DashboardSummary>("get_dashboard_summary"),
+          invoke<SystemHealth>("get_system_health"),
+        ]);
+        if (!cancelled) {
+          setSummary(data);
+          setSystemHealth(health);
+        }
+      } catch {
+        // Manual sync surfaces errors. Background sync stays quiet.
+      }
+    }
+
+    const first = window.setTimeout(() => void quietSync(), 2500);
+    const interval = window.setInterval(() => void quietSync(), 5 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(first);
+      window.clearInterval(interval);
+    };
+  }, [syncPairing?.configured]);
 
   const selectedSession = useMemo(
     () => summary?.sessions.find((session) => session.sessionId === selected) || summary?.sessions[0] || null,
@@ -786,6 +837,42 @@ export default function App() {
       setStatus(`Cloud sync failed: ${String(error)}`);
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function pairCloud() {
+    setPairingSaving(true);
+    try {
+      const pairing = await invoke<SyncPairingStatus>("save_sync_pairing", {
+        syncUrl: syncPairingUrl,
+        token: syncPairingToken,
+      });
+      setSyncPairing(pairing);
+      setSyncPairingUrl(pairing.url);
+      setSyncPairingToken("");
+      await loadSystemHealth();
+      setStatus(`Cloud pairing saved securely in ${pairing.credentialStore}.`);
+      await syncCloud();
+    } catch (error) {
+      setStatus(`Cloud pairing failed: ${String(error)}`);
+    } finally {
+      setPairingSaving(false);
+    }
+  }
+
+  async function clearCloudPairing() {
+    setPairingSaving(true);
+    try {
+      const pairing = await invoke<SyncPairingStatus>("clear_sync_pairing");
+      setSyncPairing(pairing);
+      setSyncPairingUrl(pairing.url);
+      setSyncPairingToken("");
+      await loadSystemHealth();
+      setStatus("Cloud pairing cleared from this PC.");
+    } catch (error) {
+      setStatus(`Could not clear cloud pairing: ${String(error)}`);
+    } finally {
+      setPairingSaving(false);
     }
   }
 
@@ -1681,13 +1768,22 @@ export default function App() {
 
                 <aside className="memorySide">
                   <article className="card syncCard">
-                    <div className="cardHead"><div><small>CLOUD ↔ PC</small><h2>Sync status.</h2></div><span className={systemHealth?.syncConfigured ? "good" : "memoryWarn"}>{systemHealth?.syncConfigured ? "● PAIRED" : "● LOCAL ONLY"}</span></div>
+                    <div className="cardHead"><div><small>CLOUD ↔ PC</small><h2>Secure pairing.</h2></div><span className={systemHealth?.syncConfigured ? "good" : "memoryWarn"}>{systemHealth?.syncConfigured ? "● PAIRED" : "● LOCAL ONLY"}</span></div>
                     <div className="syncFacts">
-                      <span><small>PAIRING</small><b>{systemHealth?.syncConfigured ? "Private token configured" : "Not paired yet"}</b></span>
+                      <span><small>PAIRING</small><b>{systemHealth?.syncConfigured ? `Stored in ${syncPairing?.credentialStore || "secure credential store"}` : "Not paired yet"}</b></span>
                       <span><small>LAST SYNC</small><b>{systemHealth?.lastSyncedAt ? ago(systemHealth.lastSyncedAt) + " ago" : "Never"}</b></span>
-                      <span><small>CURSOR</small><b>{systemHealth?.syncCursor ? "Incremental sync ready" : "No cloud cursor"}</b></span>
+                      <span><small>MODE</small><b>{systemHealth?.syncConfigured ? "Automatic every 5 min + manual" : "Local records only"}</b></span>
                     </div>
-                    <button onClick={() => void syncCloud()} disabled={syncing}>{syncing ? "Syncing…" : "Sync cloud now"}</button>
+                    <div className="syncPairForm">
+                      <label><small>SYNC ENDPOINT</small><input value={syncPairingUrl} onChange={(event)=>setSyncPairingUrl(event.target.value)} spellCheck={false} /></label>
+                      <label><small>PRIVATE PAIRING TOKEN</small><input type="password" value={syncPairingToken} onChange={(event)=>setSyncPairingToken(event.target.value)} placeholder={syncPairing?.configured ? "Stored securely — paste only to replace" : "Paste the server sync token"} /></label>
+                      <p>The token is stored in Windows Credential Manager, not in the LLinen Earth data files.</p>
+                      <div>
+                        <button onClick={() => void pairCloud()} disabled={pairingSaving || !syncPairingToken}>{pairingSaving ? "Saving…" : syncPairing?.configured ? "Replace pairing" : "Pair this PC"}</button>
+                        {syncPairing?.configured && <button className="secondarySyncButton" onClick={() => void clearCloudPairing()} disabled={pairingSaving}>Clear</button>}
+                      </div>
+                    </div>
+                    <button className="manualSyncButton" onClick={() => void syncCloud()} disabled={syncing || !systemHealth?.syncConfigured}>{syncing ? "Syncing…" : "Sync cloud now"}</button>
                   </article>
 
                   <article className="card memoryActions">
