@@ -25,6 +25,7 @@ type Session = {
   customer: {name:string;phone:string;note:string};
   leadStatus: string;
   order: {status:string;dueDate:string;note:string} | null;
+  measurements: {unit:string;values:Record<string,number>;note:string;at:string} | null;
 };
 
 function aggregate(events: CloudEvent[]) {
@@ -44,6 +45,7 @@ function aggregate(events: CloudEvent[]) {
       customer: {name:"",phone:"",note:""},
       leadStatus: "",
       order: null,
+      measurements: null,
     };
 
     if (event.at < current.firstAt) current.firstAt = event.at;
@@ -70,6 +72,22 @@ function aggregate(events: CloudEvent[]) {
         status: String(event.payload.status || ""),
         dueDate: String(event.payload.dueDate || ""),
         note: String(event.payload.note || ""),
+      };
+    }
+    if (event.type === "measurements_updated") {
+      const raw = event.payload.measurements;
+      const values: Record<string,number> = {};
+      if (raw && typeof raw === "object") {
+        for (const [key,value] of Object.entries(raw as Record<string,unknown>)) {
+          const number = Number(value);
+          if (Number.isFinite(number)) values[key] = number;
+        }
+      }
+      current.measurements = {
+        unit: String(event.payload.unit || "in"),
+        values,
+        note: String(event.payload.note || ""),
+        at: event.at,
       };
     }
     map.set(event.sessionId,current);
