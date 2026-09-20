@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
+import { verifyMemorySessionToken } from "@/lib/memory-session";
 
 const PUBLIC_TYPES = new Set([
   "session_started",
@@ -106,6 +107,13 @@ export async function POST(request:Request) {
     const event = clean(body,operatorAuthorized);
     if (!event) {
       return NextResponse.json({error:"Invalid or unauthorized memory event."},{status:operatorAuthorized?400:403});
+    }
+
+    if (PUBLIC_TYPES.has(event.type)) {
+      const token = request.headers.get("x-llinen-memory-token");
+      if (!verifyMemorySessionToken(event.session_id,token)) {
+        return NextResponse.json({error:"Invalid memory session."},{status:403});
+      }
     }
 
     const cloud = getSupabaseAdminConfig();
