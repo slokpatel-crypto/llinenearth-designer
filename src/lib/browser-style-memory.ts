@@ -66,6 +66,19 @@ export function saveBridgeConfig(config: LocalBridgeConfig | null) {
   else w.sessionStorage.setItem(BRIDGE_KEY, JSON.stringify(config));
 }
 
+async function mirrorToCloud(event: StyleMemoryEvent) {
+  try {
+    await fetch("/api/memory/event", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(event),
+      keepalive: true,
+    });
+  } catch {
+    // Local browser memory remains available if cloud intake is unavailable.
+  }
+}
+
 async function mirrorToBridge(event: StyleMemoryEvent) {
   const config = readBridgeConfig();
   if (!config) return;
@@ -103,6 +116,7 @@ export function recordStyleMemoryEvent(
     const events = readBrowserStyleEvents();
     events.push(event);
     w.localStorage.setItem(EVENT_KEY, JSON.stringify(events.slice(-MAX_BROWSER_EVENTS)));
+    void mirrorToCloud(event);
     void mirrorToBridge(event);
   }
   return event;
