@@ -65,3 +65,42 @@ for (const secretName of [
 }
 
 console.log("Security gate passed: operator auth, signed public memory, Supabase admin isolation, deterministic sync cursor.");
+
+
+const desktopOperationalContracts = [
+  ["desktop/src-tauri/src/main.rs", [
+    "LOCK_KEYRING_USER",
+    "SyncLock",
+    "save_measurements",
+    "record_payment",
+    "set_appointment",
+    "export_job_card",
+    "invalid_event_line_count",
+    "latest_file_modified_at",
+  ]],
+  ["desktop/src/App.tsx", [
+    "STAFF PRIORITY BOARD",
+    "MEASUREMENT PASSPORT",
+    "PAYMENT HISTORY",
+    "NEXT APPOINTMENT",
+    "Export job card",
+    "desktopLockScreen",
+    "Cloud ↔ PC",
+  ]],
+  ["desktop/src/app.css", [
+    "staffPriorityCard",
+    "measurementPassport",
+    "paymentLedger",
+    "appointmentPanel",
+    "desktopLockScreen",
+  ]],
+];
+
+for (const [file,tokens] of desktopOperationalContracts) {
+  const content = fs.readFileSync(file,"utf8");
+  for (const token of tokens) {
+    if (!content.includes(token)) throw new Error(`Desktop regression: ${file} missing ${token}`);
+  }
+}
+
+console.log("Desktop gate passed: lock, sync serialization, tailoring workflow, finance, appointments, job cards and vault health checks.");
