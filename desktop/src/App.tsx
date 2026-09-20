@@ -221,12 +221,25 @@ function saleValue(session?: SessionRecord | null) {
 function latestOrder(session?: SessionRecord | null) {
   const event = session?.events.slice().reverse().find((item) => item.type === "order_status_changed");
   if (!event) return null;
+  const rawValue = event.payload?.orderValue;
   return {
     status: String(event.payload?.status || ""),
     dueDate: String(event.payload?.dueDate || ""),
     note: String(event.payload?.note || ""),
+    orderValue: typeof rawValue === "number" ? rawValue : Number(rawValue) || 0,
     at: event.at,
   };
+}
+
+function paymentEvents(session?: SessionRecord | null) {
+  return (session?.events || []).filter((event) => event.type === "payment_logged");
+}
+
+function paymentTotal(session?: SessionRecord | null) {
+  return paymentEvents(session).reduce((sum,event)=>{
+    const amount = Number(event.payload?.amount || 0);
+    return sum + (Number.isFinite(amount) ? amount : 0);
+  },0);
 }
 
 function latestMeasurements(session?: SessionRecord | null) {
@@ -266,7 +279,9 @@ export default function App() {
   const [showWalkin, setShowWalkin] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
   const [walkinDraft, setWalkinDraft] = useState({ name: "", phone: "", occasion: "", garment: "", note: "" });
-  const [orderDraft, setOrderDraft] = useState({ status: "measurement", dueDate: "", note: "" });
+  const [orderDraft, setOrderDraft] = useState({ status: "measurement", dueDate: "", note: "", orderValue: "" });
+  const [paymentDraft, setPaymentDraft] = useState({ amount: "", method: "upi", note: "" });
+  const [paymentSaving, setPaymentSaving] = useState(false);
   const [syncPairing, setSyncPairing] = useState<SyncPairingStatus | null>(null);
   const [syncPairingUrl, setSyncPairingUrl] = useState("https://llinenearth-designer.vercel.app/api/operator/sync");
   const [syncPairingToken, setSyncPairingToken] = useState("");
@@ -480,6 +495,7 @@ export default function App() {
       status: currentOrder?.status || "measurement",
       dueDate: currentOrder?.dueDate || "",
       note: currentOrder?.note || "",
+      orderValue: currentOrder?.orderValue ? String(currentOrder.orderValue) : "",
     });
     const currentMeasurements = latestMeasurements(selectedSession);
     setMeasurementUnit(currentMeasurements?.unit === "cm" ? "cm" : "in");
@@ -947,6 +963,7 @@ export default function App() {
         status: orderDraft.status,
         dueDate: orderDraft.dueDate,
         note: orderDraft.note,
+        orderValue: orderDraft.orderValue === "" ? null : Number(orderDraft.orderValue),
       });
       await refresh();
       await loadSystemHealth();
@@ -954,6 +971,34 @@ export default function App() {
       void quietReconcile();
     } catch (error) {
       setStatus(`Order update failed: ${String(error)}`);
+    }
+  }
+
+  async function recordOrderPayment() {
+    if (!selectedSession) return;
+    const amount = Number(paymentDraft.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setStatus("Enter a valid payment amount.");
+      return;
+    }
+
+    setPaymentSaving(true);
+    try {
+      await invoke("record_payment", {
+        sessionId: selectedSession.sessionId,
+        amount,
+        method: paymentDraft.method,
+        note: paymentDraft.note,
+      });
+      setPaymentDraft({ amount: "", method: paymentDraft.method, note: "" });
+      await refresh();
+      await loadSystemHealth();
+      setStatus(`${money(amount)} payment recorded.`);
+      void quietReconcile();
+    } catch (error) {
+      setStatus(`Payment could not be recorded: ${String(error)}`);
+    } finally {
+      setPaymentSaving(false);
     }
   }
 
@@ -1281,9 +1326,32 @@ export default function App() {
         })}
       </div>
       <div className="orderFields">
+        <label><small>ORDER VALUE</small><div className="moneyField"><span>₹</span><input inputMode="decimal" value={orderDraft.orderValue} onChange={(e) => setOrderDraft((draft) => ({ ...draft, orderValue: e.target.value.replace(/[^0-9.]/g,"") }))} placeholder="Total agreed value" /></div></label>
         <label><small>DUE DATE</small><input type="date" value={orderDraft.dueDate} onChange={(e) => setOrderDraft((draft) => ({ ...draft, dueDate: e.target.value }))} /></label>
         <label><small>WORKROOM NOTE</small><textarea value={orderDraft.note} onChange={(e) => setOrderDraft((draft) => ({ ...draft, note: e.target.value }))} placeholder="Alteration, trial, delivery or tailoring note…" /></label>
         <button onClick={() => void saveOrderStatus()}>Save order stage</button>
+      </div>
+      <div className="paymentLedger">
+        <div className="paymentSummary">
+          <span><small>ORDER VALUE</small><b>{money(latestOrder(selectedSession)?.orderValue || 0)}</b></span>
+          <span><small>PAID</small><b>{money(paymentTotal(selectedSession))}</b></span>
+          <span><small>BALANCE</small><b>{money(Math.max(0,(latestOrder(selectedSession)?.orderValue || 0)-paymentTotal(selectedSession)))}</b></span>
+        </div>
+        <div className="paymentEntry">
+          <small>RECORD PAYMENT</small>
+          <div>
+            <label><span>₹</span><input inputMode="decimal" value={paymentDraft.amount} onChange={(event)=>setPaymentDraft((draft)=>({...draft,amount:event.target.value.replace(/[^0-9.]/g,"")}))} placeholder="Amount" /></label>
+            <select value={paymentDraft.method} onChange={(event)=>setPaymentDraft((draft)=>({...draft,method:event.target.value}))}>
+              <option value="upi">UPI</option><option value="cash">Cash</option><option value="card">Card</option><option value="bank">Bank transfer</option><option value="other">Other</option>
+            </select>
+          </div>
+          <input value={paymentDraft.note} onChange={(event)=>setPaymentDraft((draft)=>({...draft,note:event.target.value}))} placeholder="Optional payment note / reference (no card details)" />
+          <button onClick={() => void recordOrderPayment()} disabled={paymentSaving || !paymentDraft.amount}>{paymentSaving ? "Saving…" : "Record payment"}</button>
+        </div>
+        {paymentEvents(selectedSession).length > 0 && <div className="paymentHistory">
+          <small>PAYMENT HISTORY</small>
+          {paymentEvents(selectedSession).slice().reverse().map((event)=><div key={event.id}><span><b>{money(Number(event.payload?.amount || 0))}</b><small>{titleCase(String(event.payload?.method || "other"))} · {ago(event.at)} ago</small></span><em>{String(event.payload?.note || "")}</em></div>)}
+        </div>}
       </div>
       <div className="measurementPassport">
         <div className="measurementHead">
