@@ -142,6 +142,51 @@ type SystemHealth = {
 };
 
 const nav = ["Today", "Customers", "Leads", "Orders", "Fabrics", "Visuals", "Marketing", "Analytics", "AI Brain", "Memory"];
+
+const operatorTour = [
+  {
+    module: "Today",
+    eyebrow: "01 · START HERE",
+    title: "Run the shop from the priority board.",
+    body: "Open Today first. The top DO NEXT card is the clearest staff instruction for overdue orders, appointments, balances or warm leads.",
+    tip: "Finish the highest-priority action before browsing reports.",
+  },
+  {
+    module: "Customers",
+    eyebrow: "02 · CUSTOMER",
+    title: "Keep one continuous customer story.",
+    body: "Search before creating a new walk-in. Add name, phone and a short useful note, then keep the same customer record through enquiry, fitting and collection.",
+    tip: "Avoid duplicate customer records; the history is more valuable when it stays together.",
+  },
+  {
+    module: "Orders",
+    eyebrow: "03 · TAILORING",
+    title: "Move the order, not just the conversation.",
+    body: "Use the order stages in sequence. Save measurements, due date, appointment, payment and workroom notes so every staff member can see the same current state.",
+    tip: "Before a trial or pickup, check measurement notes and outstanding balance.",
+  },
+  {
+    module: "Fabrics",
+    eyebrow: "04 · STOCK",
+    title: "Website colour is not the same as verified stock.",
+    body: "Imported LLinen Earth website swatches begin as unverified. Physically confirm the roll, metres and availability before marking a colour In Stock or promoting it.",
+    tip: "Verify high-demand fabrics first so recommendations stay trustworthy.",
+  },
+  {
+    module: "Marketing",
+    eyebrow: "05 · GROWTH",
+    title: "Turn real demand into creative work.",
+    body: "Marketing uses customer behaviour, fabric demand and stock status to generate campaign directions and exportable creative briefs.",
+    tip: "Do not boost a specific cloth until its physical stock is verified.",
+  },
+  {
+    module: "Memory",
+    eyebrow: "06 · SAFETY",
+    title: "Protect the business record.",
+    body: "Memory shows backups, cloud pairing and data health. The system creates daily backups, but staff should still check that the latest backup is verified.",
+    tip: "If Recovery Readiness says CHECK, resolve it before the day ends.",
+  },
+] as const;
 const leadStatuses = ["new", "follow-up", "contacted", "visit-booked", "won", "lost"];
 const orderStatuses = ["quoted", "measurement", "deposit", "cutting", "tailoring", "trial", "ready", "collected", "cancelled"];
 const measurementFields = [
@@ -326,6 +371,8 @@ export default function App() {
   const [measurementNote, setMeasurementNote] = useState("");
   const [measurementDraft, setMeasurementDraft] = useState<Record<string,string>>({});
   const [measurementSaving, setMeasurementSaving] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourIndex, setTourIndex] = useState(0);
 
   async function refresh() {
     try {
@@ -465,6 +512,13 @@ export default function App() {
 
   useEffect(() => {
     void loadDesktopLockStatus();
+    try {
+      if (window.localStorage.getItem("llinen-earth-operator-tour-v1") !== "done") {
+        setTourOpen(true);
+      }
+    } catch {
+      // A guide button remains available if local storage is unavailable.
+    }
   }, []);
 
   useEffect(() => {
@@ -1455,6 +1509,33 @@ export default function App() {
     }
   }
 
+  function openOperatorTour(index = 0) {
+    const safeIndex = Math.max(0, Math.min(index, operatorTour.length - 1));
+    setTourIndex(safeIndex);
+    setActiveNav(operatorTour[safeIndex].module);
+    setTourOpen(true);
+  }
+
+  function moveOperatorTour(direction: -1 | 1) {
+    const next = tourIndex + direction;
+    if (next < 0) return;
+    if (next >= operatorTour.length) {
+      finishOperatorTour();
+      return;
+    }
+    setTourIndex(next);
+    setActiveNav(operatorTour[next].module);
+  }
+
+  function finishOperatorTour() {
+    setTourOpen(false);
+    try {
+      window.localStorage.setItem("llinen-earth-operator-tour-v1", "done");
+    } catch {
+      // Tour completion does not depend on persistent browser storage.
+    }
+  }
+
   const funnel = [
     ["Started", summary?.counts.session_started || 0],
     ["Looks", summary?.counts.looks_generated || 0],
@@ -1699,12 +1780,44 @@ export default function App() {
             </h1>
           </div>
           <div className="topActions">
+            <button className="guideButton" onClick={() => openOperatorTour(tourIndex)}>Guide</button>
             {lockStatus?.configured && <button onClick={lockDesktopNow}>Lock</button>}
             <button onClick={() => void syncCloud()} disabled={syncing}>{syncing ? "Syncing…" : "Sync cloud"}</button>
             <button onClick={() => void refresh()}>Refresh</button>
             <button className="primary" onClick={() => void backup()}>Create backup</button>
           </div>
         </header>
+
+        <AnimatePresence>
+          {tourOpen && (
+            <motion.aside
+              className="operatorCoach"
+              initial={{ opacity: 0, y: 18, scale: .985 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: .985 }}
+              transition={{ duration: .2 }}
+              aria-label="LLinen Earth operator guide"
+            >
+              <div className="coachProgress">
+                <span><i style={{ width: `${((tourIndex + 1) / operatorTour.length) * 100}%` }} /></span>
+                <small>{tourIndex + 1} / {operatorTour.length}</small>
+              </div>
+              <div className="coachCopy">
+                <small>{operatorTour[tourIndex].eyebrow}</small>
+                <h2>{operatorTour[tourIndex].title}</h2>
+                <p>{operatorTour[tourIndex].body}</p>
+                <div className="coachTip"><b>REMEMBER</b><span>{operatorTour[tourIndex].tip}</span></div>
+              </div>
+              <div className="coachActions">
+                <button className="coachQuiet" onClick={finishOperatorTour}>Skip guide</button>
+                <div>
+                  <button onClick={() => moveOperatorTour(-1)} disabled={tourIndex === 0}>Back</button>
+                  <button className="coachPrimary" onClick={() => moveOperatorTour(1)}>{tourIndex === operatorTour.length - 1 ? "Finish" : "Next"}</button>
+                </div>
+              </div>
+            </motion.aside>
+          )}
+        </AnimatePresence>
 
         <AnimatePresence mode="wait">
           {activeNav === "Today" && (
