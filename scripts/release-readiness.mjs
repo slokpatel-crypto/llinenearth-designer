@@ -43,6 +43,9 @@ requireTokens("src/app/api/homepage-model/route.ts", [
   "X-LLinen-Render",
   "/editorial/suit.webp",
 ]);
+requireTokens("desktop/src-tauri/tauri.conf.json", ["\"version\": \"1.0.0\"", "\"productName\": \"LLinen Earth OS\""]);
+requireTokens("desktop/package.json", ["\"version\": \"1.0.0\""]);
+requireTokens("desktop/src-tauri/Cargo.toml", ["version = \"1.0.0\""]);
 requireTokens("desktop/src/App.tsx", [
   "Ctrl K",
   "+ New walk-in",
