@@ -75,16 +75,37 @@ if (url && key) {
       const rows = await response.json();
       ok(`style_events is reachable (${rows.length ? "existing data found" : "table is empty"}).`);
 
-      const versionResponse = await fetch(
-        `${url.replace(/\/$/, "")}/rest/v1/rpc/llinen_cloud_schema_version`,
+      const healthResponse = await fetch(
+        `${url.replace(/\/$/, "")}/rest/v1/rpc/llinen_cloud_health`,
         { method: "POST", headers: { ...headers, "content-type": "application/json" }, body: "{}" },
       );
-      if (!versionResponse.ok) {
-        fail("Cloud schema version RPC is missing. Apply the latest Supabase migration.");
+      if (!healthResponse.ok) {
+        fail("Cloud health RPC is missing. Apply the latest Supabase migration.");
       } else {
-        const version = await versionResponse.json();
-        if (Number(version) !== 1) fail(`Unsupported cloud schema version: ${String(version)}`);
-        else ok("Hardened LLinen cloud schema v1 is installed.");
+        const health = await healthResponse.json();
+        if (Number(health?.schemaVersion) !== 2) {
+          fail(`Unsupported cloud schema version: ${String(health?.schemaVersion)}`);
+        } else {
+          ok("Hardened LLinen cloud schema v2 is installed.");
+        }
+
+        if (!health?.tableExists) fail("style_events table is missing.");
+        else ok("style_events table exists.");
+
+        if (!health?.rlsEnabled) fail("RLS is not enabled on style_events.");
+        else ok("RLS is enabled.");
+
+        if (health?.anonSelect || health?.anonInsert) fail("anon still has direct style_events access.");
+        else ok("anon has no direct style_events access.");
+
+        if (health?.authenticatedSelect || health?.authenticatedInsert) fail("authenticated role still has direct style_events access.");
+        else ok("authenticated role has no direct style_events access.");
+
+        if (!health?.serviceSelect || !health?.serviceInsert) fail("Server role is missing SELECT/INSERT on style_events.");
+        else ok("Server role has required SELECT/INSERT.");
+
+        if (health?.serviceUpdate || health?.serviceDelete) fail("Server role can mutate/delete historical events.");
+        else ok("Server role cannot UPDATE/DELETE the append-only ledger.");
       }
     }
   } catch (error) {
