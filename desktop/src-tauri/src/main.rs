@@ -650,8 +650,20 @@ async fn save_sync_pairing(sync_url: String, token: String) -> Result<SyncPairin
   if response.status() == reqwest::StatusCode::UNAUTHORIZED {
     return Err("The server rejected this pairing token.".to_string());
   }
-  if !response.status().is_success() && response.status() != reqwest::StatusCode::SERVICE_UNAVAILABLE {
-    return Err(format!("Sync endpoint returned HTTP {}.", response.status()));
+
+  let status = response.status();
+  let health = response.json::<Value>().await.map_err(|e| format!("Invalid sync health response: {e}"))?;
+  if !status.is_success() {
+    let detail = health.get("error").and_then(Value::as_str).unwrap_or("Cloud sync is not ready.");
+    return Err(format!("{detail} (HTTP {status})"));
+  }
+
+  let ready = health.get("ok").and_then(Value::as_bool).unwrap_or(false)
+    && health.get("cloudConfigured").and_then(Value::as_bool).unwrap_or(false)
+    && health.get("schemaVersion").and_then(Value::as_i64) == Some(2);
+
+  if !ready {
+    return Err("The sync server is reachable, but the LLinen cloud schema is not production-ready.".to_string());
   }
 
   sync_entry()?.set_password(clean_token).map_err(|e| e.to_string())?;
