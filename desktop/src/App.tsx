@@ -49,6 +49,31 @@ type SyncResult = {
   message: string;
 };
 
+type FabricInventoryItem = {
+  id: string;
+  family: string;
+  line: string;
+  colorName: string;
+  hex: string;
+  swatchImageUrl: string;
+  suitableFor: string[];
+  pattern: string;
+  compositionNote?: string | null;
+  sourceDocument: string;
+  sourcePage: number;
+  sourceInStock: boolean;
+  status: "in-stock" | "low" | "out";
+  quantityMeters?: number | null;
+  note: string;
+  updatedAt: string;
+};
+
+type InventoryView = {
+  generatedAt?: string | null;
+  cachedAt?: string | null;
+  fabrics: FabricInventoryItem[];
+};
+
 const nav = ["Today", "Customers", "Leads", "Orders", "Fabrics", "Visuals", "Marketing", "Analytics", "AI Brain", "Memory"];
 const leadStatuses = ["new", "follow-up", "contacted", "visit-booked", "won", "lost"];
 
@@ -112,6 +137,12 @@ export default function App() {
   const [activeNav, setActiveNav] = useState("Today");
   const [syncing, setSyncing] = useState(false);
   const [customerDraft, setCustomerDraft] = useState({ name: "", phone: "", note: "" });
+  const [inventory, setInventory] = useState<InventoryView>({ fabrics: [] });
+  const [selectedFabricId, setSelectedFabricId] = useState<string | null>(null);
+  const [inventorySearch, setInventorySearch] = useState("");
+  const [inventoryLine, setInventoryLine] = useState("All");
+  const [inventorySyncing, setInventorySyncing] = useState(false);
+  const [fabricDraft, setFabricDraft] = useState({ status: "in-stock", quantity: "", note: "" });
 
   async function refresh() {
     try {
@@ -124,8 +155,19 @@ export default function App() {
     }
   }
 
+  async function loadInventory() {
+    try {
+      const data = await invoke<InventoryView>("get_fabric_inventory");
+      setInventory(data);
+      setSelectedFabricId((current) => current && data.fabrics.some((fabric) => fabric.id === current) ? current : data.fabrics[0]?.id || null);
+    } catch (error) {
+      setStatus(`Inventory unavailable: ${String(error)}`);
+    }
+  }
+
   useEffect(() => {
     void refresh();
+    void loadInventory();
   }, []);
 
   const selectedSession = useMemo(
@@ -169,6 +211,50 @@ export default function App() {
     () => (summary?.sessions || []).filter((session) => hasEvent(session, "sale_logged")),
     [summary],
   );
+
+  const selectedFabric = useMemo(
+    () => inventory.fabrics.find((fabric) => fabric.id === selectedFabricId) || inventory.fabrics[0] || null,
+    [inventory, selectedFabricId],
+  );
+
+  const fabricLines = useMemo(
+    () => ["All", ...Array.from(new Set(inventory.fabrics.map((fabric) => fabric.line))).sort()],
+    [inventory],
+  );
+
+  const fabricSignals = useMemo(() => {
+    const signals = new Map<string, { interest: number; whatsapp: number; sales: number }>();
+    for (const session of summary?.sessions || []) {
+      const fabricId = String(session.selectedLook?.fabricId || "");
+      if (!fabricId) continue;
+      const current = signals.get(fabricId) || { interest: 0, whatsapp: 0, sales: 0 };
+      current.interest += 1;
+      if (hasEvent(session, "whatsapp_clicked")) current.whatsapp += 1;
+      if (hasEvent(session, "sale_logged")) current.sales += 1;
+      signals.set(fabricId, current);
+    }
+    return signals;
+  }, [summary]);
+
+  const filteredFabrics = useMemo(() => {
+    const query = inventorySearch.trim().toLowerCase();
+    return inventory.fabrics.filter((fabric) => {
+      const lineMatch = inventoryLine === "All" || fabric.line === inventoryLine;
+      const searchMatch = !query || [fabric.colorName, fabric.line, fabric.pattern, ...fabric.suitableFor]
+        .join(" ")
+        .toLowerCase()
+        .includes(query);
+      return lineMatch && searchMatch;
+    });
+  }, [inventory, inventoryLine, inventorySearch]);
+
+  useEffect(() => {
+    setFabricDraft({
+      status: selectedFabric?.status || "in-stock",
+      quantity: selectedFabric?.quantityMeters == null ? "" : String(selectedFabric.quantityMeters),
+      note: selectedFabric?.note || "",
+    });
+  }, [selectedFabric?.id, selectedFabric?.status, selectedFabric?.quantityMeters, selectedFabric?.note]);
 
   async function logOutcome(kind: "visit_logged" | "sale_logged") {
     if (!selectedSession) return;
@@ -223,6 +309,31 @@ export default function App() {
     } finally {
       setSyncing(false);
     }
+  }
+
+  async function syncInventory() {
+    setInventorySyncing(true);
+    try {
+      const result = await invoke<SyncResult>("sync_fabric_inventory");
+      setStatus(result.message);
+      await loadInventory();
+    } catch (error) {
+      setStatus(`Inventory sync failed: ${String(error)}`);
+    } finally {
+      setInventorySyncing(false);
+    }
+  }
+
+  async function saveFabric() {
+    if (!selectedFabric) return;
+    await invoke("update_fabric_inventory", {
+      fabricId: selectedFabric.id,
+      status: fabricDraft.status,
+      quantityMeters: fabricDraft.quantity === "" ? null : Number(fabricDraft.quantity),
+      note: fabricDraft.note,
+    });
+    setStatus(`${selectedFabric.colorName} inventory saved locally`);
+    await loadInventory();
   }
 
   const funnel = [
@@ -345,6 +456,7 @@ export default function App() {
                activeNav === "Customers" ? <>Every customer.<br/><em>One continuous story.</em></> :
                activeNav === "Leads" ? <>Intent first.<br/><em>Follow up at the right moment.</em></> :
                activeNav === "Orders" ? <>From intent to value.<br/><em>Know what converted.</em></> :
+               activeNav === "Fabrics" ? <>Know every colour.<br/><em>Know what is moving.</em></> :
                titleCase(activeNav)}
             </h1>
           </div>
@@ -499,7 +611,95 @@ export default function App() {
             </motion.section>
           )}
 
-          {!["Today", "Customers", "Leads", "Orders"].includes(activeNav) && (
+          {activeNav === "Fabrics" && (
+            <motion.section key="fabrics" className="fabricWorkspace" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <div className="fabricMain">
+                <div className="fabricMetrics">
+                  <article><small>STRUCTURED COLOURS</small><strong>{inventory.fabrics.length}</strong><span>{fabricLines.length - 1} fabric lines</span></article>
+                  <article><small>LOW STOCK</small><strong>{inventory.fabrics.filter((fabric) => fabric.status === "low").length}</strong><span>Needs operator attention</span></article>
+                  <article><small>OUT OF STOCK</small><strong>{inventory.fabrics.filter((fabric) => fabric.status === "out").length}</strong><span>Hidden from confident selling</span></article>
+                  <article className="accent"><small>CUSTOMER SIGNALS</small><strong>{Array.from(fabricSignals.values()).reduce((sum, signal) => sum + signal.interest, 0)}</strong><span>Selected fabric directions</span></article>
+                </div>
+
+                <article className="card fabricCatalog">
+                  <div className="cardHead">
+                    <div><small>FABRIC LIBRARY</small><h2>Stock and demand on one surface.</h2></div>
+                    <button className="smallAction" onClick={() => void syncInventory()} disabled={inventorySyncing}>{inventorySyncing ? "Syncing…" : "Refresh from website"}</button>
+                  </div>
+                  <div className="fabricFilters">
+                    <input value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} placeholder="Search colour, line, pattern or garment…" />
+                    <select value={inventoryLine} onChange={(e) => setInventoryLine(e.target.value)}>
+                      {fabricLines.map((line) => <option key={line}>{line}</option>)}
+                    </select>
+                    <span>{filteredFabrics.length} shown</span>
+                  </div>
+                  {inventory.fabrics.length === 0 ? (
+                    <div className="empty tall">
+                      No structured inventory has been cached on this PC yet. Press <b>Refresh from website</b> once the inventory feed is live.
+                    </div>
+                  ) : (
+                    <div className="fabricGrid">
+                      {filteredFabrics.map((fabric) => {
+                        const signal = fabricSignals.get(fabric.id) || { interest: 0, whatsapp: 0, sales: 0 };
+                        return <button key={fabric.id} className={selectedFabric?.id === fabric.id ? "fabricTile selected" : "fabricTile"} onClick={() => setSelectedFabricId(fabric.id)}>
+                          <span className="fabricSwatch" style={{ background: fabric.hex }} />
+                          <span className="fabricTileBody">
+                            <small>{fabric.line}</small>
+                            <b>{fabric.colorName}</b>
+                            <em>{fabric.pattern} · {fabric.suitableFor.join(" / ")}</em>
+                            <span className="fabricSignal"><i>{signal.interest}</i> selected <i>{signal.sales}</i> sales</span>
+                          </span>
+                          <span className={`stockPill stock-${fabric.status}`}>{titleCase(fabric.status)}</span>
+                        </button>;
+                      })}
+                    </div>
+                  )}
+                </article>
+              </div>
+
+              <aside className="fabricDetail">
+                {selectedFabric ? <motion.article key={selectedFabric.id} className="card fabricEditor" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }}>
+                  <div className="fabricHeroSwatch" style={{ background: selectedFabric.hex }}><span>{selectedFabric.hex}</span></div>
+                  <div className="cardHead">
+                    <div><small>{selectedFabric.line}</small><h2>{selectedFabric.colorName}</h2></div>
+                    <span>{selectedFabric.pattern}</span>
+                  </div>
+
+                  <div className="fabricFacts">
+                    <span><small>SUITABLE FOR</small><b>{selectedFabric.suitableFor.join(" · ")}</b></span>
+                    <span><small>CATALOGUE</small><b>{selectedFabric.sourceDocument} · p{selectedFabric.sourcePage}</b></span>
+                    <span><small>INTEREST</small><b>{fabricSignals.get(selectedFabric.id)?.interest || 0} selections</b></span>
+                    <span><small>CONVERTED</small><b>{fabricSignals.get(selectedFabric.id)?.sales || 0} sales</b></span>
+                  </div>
+
+                  <div className="inventoryEditor">
+                    <small>SHOP INVENTORY STATUS</small>
+                    <div className="stockButtons">
+                      {["in-stock", "low", "out"].map((value) => <button key={value} className={fabricDraft.status === value ? "active" : ""} onClick={() => setFabricDraft((draft) => ({ ...draft, status: value }))}>{titleCase(value)}</button>)}
+                    </div>
+                    <label><span>Metres available</span><input inputMode="decimal" value={fabricDraft.quantity} onChange={(e) => setFabricDraft((draft) => ({ ...draft, quantity: e.target.value }))} placeholder="e.g. 18.5" /></label>
+                    <label><span>Operator note</span><textarea value={fabricDraft.note} onChange={(e) => setFabricDraft((draft) => ({ ...draft, note: e.target.value }))} placeholder="Supplier, roll location, reorder note…" /></label>
+                    <button className="saveFabric" onClick={() => void saveFabric()}>Save inventory</button>
+                  </div>
+
+                  <div className="fabricDemand">
+                    <small>WHY THIS MATTERS</small>
+                    <p>{(fabricSignals.get(selectedFabric.id)?.interest || 0) > 0
+                      ? `Customers have selected this colour ${fabricSignals.get(selectedFabric.id)?.interest || 0} time(s). ${fabricSignals.get(selectedFabric.id)?.whatsapp || 0} reached WhatsApp and ${fabricSignals.get(selectedFabric.id)?.sales || 0} became recorded sales.`
+                      : "No customer selection signal yet. The system will update this automatically as Style Director activity is synced."}</p>
+                  </div>
+                </motion.article> : <div className="card empty tall">Sync inventory and choose a fabric colour.</div>}
+
+                <article className="card legacyInventory">
+                  <div className="cardHead"><div><small>LLINENEARTH.COM</small><h2>Legacy website sources.</h2></div><span>8 categories</span></div>
+                  <p>The importer is scanning the existing public website for additional swatches. New website-only colours stay separate until their image/name can be verified, so we do not pollute inventory with guessed colours.</p>
+                  <div className="legacyLines">{["60 Lea Plain","60 Lea Formals","75 Lea Formals","Cotton Plain","Cotton Print","Digital Print","Linen Suiting","Luxurious Cotton"].map((line)=><span key={line}>{line}<i>↗</i></span>)}</div>
+                </article>
+              </aside>
+            </motion.section>
+          )}
+
+          {!["Today", "Customers", "Leads", "Orders", "Fabrics"].includes(activeNav) && (
             <motion.section key={activeNav} className="placeholder" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <span>NEXT MODULE</span><h2>{activeNav}</h2><p>The desktop foundation, Customers and Leads are now functional. This module is intentionally waiting for its real data workflow rather than showing fake controls.</p>
             </motion.section>
