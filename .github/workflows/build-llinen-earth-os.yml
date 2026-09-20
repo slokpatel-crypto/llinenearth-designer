@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - main
       - feature/style-director-agent
     paths:
       - "desktop/**"
