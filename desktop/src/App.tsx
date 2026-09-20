@@ -126,6 +126,7 @@ type SystemHealth = {
 
 const nav = ["Today", "Customers", "Leads", "Orders", "Fabrics", "Visuals", "Marketing", "Analytics", "AI Brain", "Memory"];
 const leadStatuses = ["new", "follow-up", "contacted", "visit-booked", "won", "lost"];
+const orderStatuses = ["quoted", "measurement", "deposit", "cutting", "tailoring", "trial", "ready", "collected", "cancelled"];
 
 function money(value: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value || 0);
@@ -191,6 +192,17 @@ function saleValue(session?: SessionRecord | null) {
   return 0;
 }
 
+function latestOrder(session?: SessionRecord | null) {
+  const event = session?.events.slice().reverse().find((item) => item.type === "order_status_changed");
+  if (!event) return null;
+  return {
+    status: String(event.payload?.status || ""),
+    dueDate: String(event.payload?.dueDate || ""),
+    note: String(event.payload?.note || ""),
+    at: event.at,
+  };
+}
+
 export default function App() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -212,6 +224,10 @@ export default function App() {
   const [marketingExporting, setMarketingExporting] = useState<string | null>(null);
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
   const [systemReporting, setSystemReporting] = useState(false);
+  const [showWalkin, setShowWalkin] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [walkinDraft, setWalkinDraft] = useState({ name: "", phone: "", occasion: "", garment: "", note: "" });
+  const [orderDraft, setOrderDraft] = useState({ status: "measurement", dueDate: "", note: "" });
 
   async function refresh() {
     try {
@@ -268,6 +284,12 @@ export default function App() {
       phone: selectedSession?.customer.phone || "",
       note: selectedSession?.customer.note || "",
     });
+    const currentOrder = latestOrder(selectedSession);
+    setOrderDraft({
+      status: currentOrder?.status || "measurement",
+      dueDate: currentOrder?.dueDate || "",
+      note: currentOrder?.note || "",
+    });
   }, [selectedSession?.sessionId, selectedSession?.customer.name, selectedSession?.customer.phone, selectedSession?.customer.note]);
 
   const attention = useMemo(
@@ -295,9 +317,23 @@ export default function App() {
   );
 
   const orders = useMemo(
-    () => (summary?.sessions || []).filter((session) => hasEvent(session, "sale_logged")),
+    () => (summary?.sessions || []).filter((session) => hasEvent(session, "sale_logged") || hasEvent(session, "order_status_changed")),
     [summary],
   );
+
+  const filteredCustomers = useMemo(() => {
+    const query = customerSearch.trim().toLowerCase();
+    if (!query) return summary?.sessions || [];
+    return (summary?.sessions || []).filter((session) => [
+      session.customer.name,
+      session.customer.phone,
+      session.answers.occasion,
+      session.answers.garment,
+      session.answers.colorDirection,
+      String(session.selectedLook?.fabric || ""),
+      session.sessionId,
+    ].join(" ").toLowerCase().includes(query));
+  }, [summary, customerSearch]);
 
   const visuals = useMemo(
     () => (summary?.sessions || [])
@@ -678,6 +714,43 @@ export default function App() {
     });
     setStatus("Customer details saved locally");
     await refresh();
+  }
+
+  async function createWalkin() {
+    try {
+      const sessionId = await invoke<string>("create_walkin_customer", {
+        name: walkinDraft.name,
+        phone: walkinDraft.phone,
+        occasion: walkinDraft.occasion,
+        garment: walkinDraft.garment,
+        note: walkinDraft.note,
+      });
+      setWalkinDraft({ name: "", phone: "", occasion: "", garment: "", note: "" });
+      setShowWalkin(false);
+      await refresh();
+      await loadSystemHealth();
+      setSelected(sessionId);
+      setStatus("Walk-in customer added to local memory");
+    } catch (error) {
+      setStatus(`Could not add walk-in: ${String(error)}`);
+    }
+  }
+
+  async function saveOrderStatus() {
+    if (!selectedSession) return;
+    try {
+      await invoke("set_order_status", {
+        sessionId: selectedSession.sessionId,
+        status: orderDraft.status,
+        dueDate: orderDraft.dueDate,
+        note: orderDraft.note,
+      });
+      await refresh();
+      await loadSystemHealth();
+      setStatus(`Order moved to ${titleCase(orderDraft.status)}`);
+    } catch (error) {
+      setStatus(`Order update failed: ${String(error)}`);
+    }
   }
 
   async function changeLeadStatus(nextStatus: string) {
