@@ -127,6 +127,7 @@ type SystemHealth = {
   syncConfigured: boolean;
   syncCursor?: string | null;
   lastSyncedAt?: string | null;
+  lastPushedAt?: string | null;
   issues: string[];
 };
 
