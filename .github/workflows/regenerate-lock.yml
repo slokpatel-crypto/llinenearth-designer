@@ -1,4 +1,5 @@
 name: Regenerate root npm lockfile
+# Temporary production-lock generator; remove after committing the artifact.
 
 on:
   push:
