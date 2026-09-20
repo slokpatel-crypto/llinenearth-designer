@@ -85,7 +85,19 @@ export default function StyleDirectorPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not create the visual.");
       setRenderSet(data.renderSet);
-      recordStyleMemoryEvent(sessionId,"render_completed",{mode,lookId:selectedLook.id,provider:data.renderSet?.providerLabel || data.renderSet?.provider || "development"});
+      const front = data.renderSet?.renders?.find((render:{view?:string;src?:string})=>render.view==="front") ?? data.renderSet?.renders?.[0];
+      const imageUrl = typeof front?.src === "string" && /^https:\/\/(cdn|media)\.fashn\.ai\//i.test(front.src) ? front.src : undefined;
+      recordStyleMemoryEvent(sessionId,"render_completed",{
+        mode,
+        lookId:selectedLook.id,
+        fabricId:selectedLook.fabric.id,
+        fabric:selectedLook.fabric.colorName,
+        line:selectedLook.fabric.line,
+        provider:data.renderSet?.providerLabel || data.renderSet?.provider || "development",
+        imageUrl,
+        label:front?.label || "Generated visual",
+        generatedAt:data.renderSet?.generatedAt || new Date().toISOString(),
+      });
     } catch(e) {
       setError(e instanceof Error ? e.message : "Could not create the visual.");
     } finally { setRendering(null); }
