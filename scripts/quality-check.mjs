@@ -77,6 +77,8 @@ const desktopOperationalContracts = [
     "export_job_card",
     "invalid_event_line_count",
     "latest_file_modified_at",
+    "latest_backup_verified",
+    "auto_backup_today",
   ]],
   ["desktop/src/App.tsx", [
     "STAFF PRIORITY BOARD",
