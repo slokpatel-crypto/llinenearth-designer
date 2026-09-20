@@ -962,6 +962,60 @@ fn create_walkin_customer(
 }
 
 #[tauri::command]
+fn save_measurements(
+  session_id: String,
+  unit: String,
+  measurements: HashMap<String, f64>,
+  note: String,
+) -> Result<(), String> {
+  if unit != "in" && unit != "cm" {
+    return Err("Measurement unit must be in or cm.".to_string());
+  }
+
+  const ALLOWED: [&str; 12] = [
+    "neck",
+    "chest",
+    "waist",
+    "seat",
+    "shoulder",
+    "sleeve",
+    "shirtLength",
+    "trouserWaist",
+    "outseam",
+    "inseam",
+    "thigh",
+    "bottom",
+  ];
+
+  let max = if unit == "cm" { 300.0 } else { 120.0 };
+  let mut clean = serde_json::Map::new();
+
+  for (key, value) in measurements {
+    if !ALLOWED.contains(&key.as_str()) {
+      continue;
+    }
+    if !value.is_finite() || value <= 0.0 || value > max {
+      return Err(format!("Measurement {key} is outside the allowed range."));
+    }
+    clean.insert(key, json!((value * 100.0).round() / 100.0));
+  }
+
+  if clean.is_empty() {
+    return Err("Add at least one measurement before saving.".to_string());
+  }
+
+  append_operator_event(
+    session_id,
+    "measurements_updated",
+    json!({
+      "unit": unit,
+      "measurements": Value::Object(clean),
+      "note": note.trim().chars().take(1000).collect::<String>(),
+    }),
+  )
+}
+
+#[tauri::command]
 fn set_order_status(
   session_id: String,
   status: String,
@@ -1375,6 +1429,7 @@ fn main() {
       record_outcome,
       update_customer,
       create_walkin_customer,
+      save_measurements,
       set_order_status,
       set_lead_status,
       get_fabric_inventory,
