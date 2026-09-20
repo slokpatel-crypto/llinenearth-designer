@@ -7,7 +7,8 @@
     "quality": "node scripts/quality-check.mjs",
     "build": "next build",
     "start": "next start",
-    "local-memory": "node scripts/llinen-local-bridge.mjs"
+    "local-memory": "node scripts/llinen-local-bridge.mjs",
+    "operator-password": "node scripts/hash-operator-password.mjs"
   },
   "dependencies": {
     "fashn": "^0.15.0",
