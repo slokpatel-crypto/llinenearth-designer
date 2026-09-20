@@ -77,4 +77,19 @@ grant select, insert on table public.style_events to service_role;
 comment on table public.style_events is
   'LLinen Earth append-only customer/operator event ledger. Browser access is intentionally denied.';
 
+create or replace function public.llinen_cloud_schema_version()
+returns integer
+language sql
+stable
+security invoker
+set search_path = public
+as $
+  select 1;
+$;
+
+revoke all on function public.llinen_cloud_schema_version() from public;
+revoke all on function public.llinen_cloud_schema_version() from anon;
+revoke all on function public.llinen_cloud_schema_version() from authenticated;
+grant execute on function public.llinen_cloud_schema_version() to service_role;
+
 commit;
