@@ -624,6 +624,7 @@ export default function App() {
       level: "urgent" | "today" | "follow-up" | "money";
       title: string;
       note: string;
+      action: string;
       sessionId: string;
       module: "Orders" | "Leads";
     }> = [];
@@ -637,6 +638,7 @@ export default function App() {
         level: "urgent",
         title: `${session.customer.name || "Customer order"} is overdue`,
         note: `${titleCase(order?.status || "Order")} · due ${order?.dueDate || "earlier"}`,
+        action: "Contact the customer and workroom now. Confirm the revised completion plan.",
         sessionId: session.sessionId,
         module: "Orders",
       });
@@ -649,6 +651,7 @@ export default function App() {
         level: "today",
         title: `${titleCase(appointment?.kind || "Appointment")} · ${session.customer.name || "Customer"}`,
         note: `${prettyDateTime(appointment?.dateTime)}${appointment?.note ? ` · ${appointment.note}` : ""}`,
+        action: "Open the order, review measurements and prepare before the appointment.",
         sessionId: session.sessionId,
         module: "Orders",
       });
@@ -662,6 +665,7 @@ export default function App() {
         level: "follow-up",
         title: `Follow up · ${session.customer.name || session.answers.occasion || "Warm lead"}`,
         note: `WhatsApp intent ${ago(session.lastAt)} ago · ${String(session.selectedLook?.fabric || "look selected")}`,
+        action: "Follow up now with one clear decision question, then record the outcome.",
         sessionId: session.sessionId,
         module: "Leads",
       });
@@ -678,6 +682,7 @@ export default function App() {
         level: "money",
         title: `${money(balance)} balance · ${session.customer.name || "Customer"}`,
         note: `${titleCase(order.status)} · order value ${money(order.orderValue)}`,
+        action: "Confirm final fit or collection, then collect and record the outstanding payment.",
         sessionId: session.sessionId,
         module: "Orders",
       });
@@ -1742,8 +1747,12 @@ export default function App() {
                     {staffPriorities.length ? <div className="staffPriorityList">
                       {staffPriorities.map((item)=><button key={item.id} className={`staffPriority staff-${item.level}`} onClick={()=>{setSelected(item.sessionId);setActiveNav(item.module);}}>
                         <i>{item.level === "urgent" ? "!" : item.level === "today" ? "◷" : item.level === "money" ? "₹" : "↗"}</i>
-                        <span><b>{item.title}</b><small>{item.note}</small></span>
-                        <em>{item.module}</em>
+                        <span>
+                          <b>{item.title}</b>
+                          <small>{item.note}</small>
+                          <strong className="staffNext"><u>DO NEXT</u>{item.action}</strong>
+                        </span>
+                        <em>{item.module} →</em>
                       </button>)}
                     </div> : <div className="staffPriorityClear"><i>✓</i><span><b>No urgent staff actions.</b><small>Appointments, overdue orders, warm leads and balances are clear.</small></span></div>}
                   </motion.article>
