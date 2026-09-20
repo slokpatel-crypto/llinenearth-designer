@@ -2293,7 +2293,7 @@ export default function App() {
                       <span><b>Marketing</b><small>{systemHealth?.marketingBriefs || 0} exported creative brief(s)</small></span>
                       <span><b>Job cards</b><small>{systemHealth?.jobCards || 0} printable tailoring card(s)</small></span>
                       <span><b>AI Brain</b><small>{systemHealth?.brainActions || 0} persistent action decision(s)</small></span>
-                      <span><b>Backups</b><small>{systemHealth?.backupCount || 0} snapshot(s) · {systemHealth?.latestBackupAt ? `last ${ago(systemHealth.latestBackupAt)} ago` : "none yet"}</small></span>
+                      <span><b>Backups</b><small>{systemHealth?.backupCount || 0} snapshot(s) · {systemHealth?.latestBackupAt ? `last ${ago(systemHealth.latestBackupAt)} ago` : "none yet"} · {systemHealth?.latestBackupVerified ? "verified" : "not verified"}</small></span>
                     </div>
                   </article>
 
@@ -2341,6 +2341,10 @@ export default function App() {
 
                   <article className="card memoryActions">
                     <div className="cardHead"><div><small>MAINTENANCE</small><h2>Protect the record.</h2></div></div>
+                    <div className="backupStatusStrip">
+                      <span className={systemHealth?.autoBackupToday ? "ok" : "warn"}><i>{systemHealth?.autoBackupToday ? "✓" : "!"}</i><b>{systemHealth?.autoBackupToday ? "Today’s automatic backup exists" : "No automatic backup for today yet"}</b></span>
+                      <span className={systemHealth?.latestBackupVerified ? "ok" : "warn"}><i>{systemHealth?.latestBackupVerified ? "✓" : "!"}</i><b>{systemHealth?.latestBackupVerified ? "Latest backup passed verification" : "Latest backup has not passed verification"}</b></span>
+                    </div>
                     <button onClick={() => void backup()}><span>Create full backup</span><b>↗</b></button>
                     <button onClick={() => void verifyLatestBackup()} disabled={backupVerifying}><span>{backupVerifying ? "Verifying backup…" : "Verify latest backup"}</span><b>✓</b></button>
                     <button onClick={() => void archiveVisuals()} disabled={archivingVisuals}><span>{archivingVisuals ? "Archiving visuals…" : "Archive trusted visuals"}</span><b>↗</b></button>
