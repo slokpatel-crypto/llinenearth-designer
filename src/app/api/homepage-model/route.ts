@@ -18,17 +18,29 @@ const HERO_PROMPT = [
   "No text, no logo, no props, no extra people, no cropped feet, no surreal styling."
 ].join(" ");
 
-function fallback(request: Request, reason: string) {
-  console.warn("[homepage-model] fallback", reason);
-  return NextResponse.redirect(new URL(FALLBACK, request.url), 307);
+function fallback(request: Request, reason: string, code: string) {
+  console.warn("[homepage-model] fallback", code, reason);
+  const response = NextResponse.redirect(new URL(FALLBACK, request.url), 307);
+  response.headers.set("X-LLinen-Render", "fallback");
+  response.headers.set("X-LLinen-Fallback", code);
+  response.headers.set("Cache-Control", "private, no-store, max-age=0");
+  return response;
 }
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
+  const apiKey = process.env.FASHN_API_KEY;
+
+  if (url.searchParams.get("status") === "1") {
+    return NextResponse.json(
+      { configured: Boolean(apiKey), provider: "fashn", model: "model-create" },
+      { headers: { "Cache-Control": "private, no-store, max-age=0" } },
+    );
+  }
+
   const extraKeys = [...url.searchParams.keys()].filter((key) => key !== "_vercel_share");
   if (extraKeys.length) return NextResponse.json({ error: "Unsupported query." }, { status: 400 });
 
-  const apiKey = process.env.FASHN_API_KEY;
   if (!apiKey) return fallback(request, "FASHN_API_KEY missing", "not-configured");
 
   try {
