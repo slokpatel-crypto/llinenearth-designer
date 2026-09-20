@@ -83,6 +83,20 @@ struct SyncState {
   last_synced_at: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct SyncConfig {
+  url: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SyncPairingStatus {
+  configured: bool,
+  url: String,
+  credential_store: String,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SyncFeed {
@@ -385,6 +399,68 @@ fn save_sync_state(state: &SyncState) -> Result<(), String> {
   .map_err(|e| e.to_string())
 }
 
+const DEFAULT_SYNC_URL: &str = "https://llinenearth-designer.vercel.app/api/operator/sync";
+const SYNC_KEYRING_SERVICE: &str = "LLinen Earth OS";
+const SYNC_KEYRING_USER: &str = "cloud-sync-token";
+
+fn sync_config_path() -> Result<PathBuf, String> {
+  Ok(ensure_vault()?.join("sync").join("config.json"))
+}
+
+fn load_sync_config() -> Result<SyncConfig, String> {
+  let path = sync_config_path()?;
+  if !path.exists() {
+    return Ok(SyncConfig { url: DEFAULT_SYNC_URL.to_string() });
+  }
+  let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
+  let mut config = serde_json::from_str::<SyncConfig>(&content).map_err(|e| e.to_string())?;
+  if config.url.trim().is_empty() {
+    config.url = DEFAULT_SYNC_URL.to_string();
+  }
+  Ok(config)
+}
+
+fn save_sync_config(config: &SyncConfig) -> Result<(), String> {
+  let path = sync_config_path()?;
+  fs::write(
+    path,
+    serde_json::to_string_pretty(config).map_err(|e| e.to_string())?,
+  )
+  .map_err(|e| e.to_string())
+}
+
+fn sync_entry() -> Result<keyring::Entry, String> {
+  keyring::Entry::new(SYNC_KEYRING_SERVICE, SYNC_KEYRING_USER).map_err(|e| e.to_string())
+}
+
+fn load_sync_token() -> Option<String> {
+  if let Ok(value) = std::env::var("LLINEN_OPERATOR_SYNC_TOKEN") {
+    if !value.trim().is_empty() {
+      return Some(value);
+    }
+  }
+  sync_entry().ok()?.get_password().ok().filter(|value| !value.trim().is_empty())
+}
+
+fn current_sync_url() -> Result<String, String> {
+  if let Ok(value) = std::env::var("LLINEN_EARTH_SYNC_URL") {
+    if !value.trim().is_empty() {
+      return Ok(value);
+    }
+  }
+  Ok(load_sync_config()?.url)
+}
+
+fn validate_sync_url(value: &str) -> Result<String, String> {
+  let parsed = reqwest::Url::parse(value.trim()).map_err(|_| "Sync URL is invalid.".to_string())?;
+  let host = parsed.host_str().unwrap_or("");
+  let local = host == "127.0.0.1" || host == "localhost";
+  if parsed.scheme() != "https" && !(local && parsed.scheme() == "http") {
+    return Err("Cloud sync requires HTTPS, except localhost development.".to_string());
+  }
+  Ok(parsed.to_string())
+}
+
 fn append_operator_event(session_id: String, event_type: &str, payload: Value) -> Result<(), String> {
   append_event(&EventRecord {
     id: format!("EV-{}", Utc::now().timestamp_micros()),
@@ -490,8 +566,7 @@ fn build_system_health() -> Result<SystemHealth, String> {
   let overrides = load_inventory_overrides()?;
   let brain_actions = load_brain_actions()?;
   let sync_state = load_sync_state().unwrap_or_default();
-  let sync_configured = std::env::var("LLINEN_OPERATOR_SYNC_TOKEN")
-    .is_ok_and(|value| !value.trim().is_empty());
+  let sync_configured = load_sync_token().is_some();
 
   let mut issues = Vec::<String>::new();
   if backup_count == 0 {
@@ -535,6 +610,46 @@ fn build_system_health() -> Result<SystemHealth, String> {
 #[tauri::command]
 fn get_dashboard_summary() -> Result<DashboardSummary, String> {
   Ok(aggregate(load_events()?))
+}
+
+#[tauri::command]
+fn get_sync_pairing_status() -> Result<SyncPairingStatus, String> {
+  Ok(SyncPairingStatus {
+    configured: load_sync_token().is_some(),
+    url: current_sync_url()?,
+    credential_store: "Windows Credential Manager".to_string(),
+  })
+}
+
+#[tauri::command]
+fn save_sync_pairing(sync_url: String, token: String) -> Result<SyncPairingStatus, String> {
+  let url = validate_sync_url(&sync_url)?;
+  let clean_token = token.trim();
+  if clean_token.len() < 24 {
+    return Err("Use a long private sync token (at least 24 characters).".to_string());
+  }
+
+  sync_entry()?.set_password(clean_token).map_err(|e| e.to_string())?;
+  save_sync_config(&SyncConfig { url: url.clone() })?;
+
+  Ok(SyncPairingStatus {
+    configured: true,
+    url,
+    credential_store: "Windows Credential Manager".to_string(),
+  })
+}
+
+#[tauri::command]
+fn clear_sync_pairing() -> Result<SyncPairingStatus, String> {
+  if let Ok(entry) = sync_entry() {
+    let _ = entry.delete_credential();
+  }
+  save_sync_config(&SyncConfig { url: DEFAULT_SYNC_URL.to_string() })?;
+  Ok(SyncPairingStatus {
+    configured: false,
+    url: DEFAULT_SYNC_URL.to_string(),
+    credential_store: "Windows Credential Manager".to_string(),
+  })
 }
 
 #[tauri::command]
@@ -995,11 +1110,10 @@ async fn archive_visuals() -> Result<SyncResult, String> {
 
 #[tauri::command]
 async fn sync_from_cloud() -> Result<SyncResult, String> {
-  let sync_url = std::env::var("LLINEN_EARTH_SYNC_URL")
-    .unwrap_or_else(|_| "https://llinenearth-designer.vercel.app/api/operator/sync".to_string());
-  let token = match std::env::var("LLINEN_OPERATOR_SYNC_TOKEN") {
-    Ok(value) if !value.trim().is_empty() => value,
-    _ => {
+  let sync_url = current_sync_url()?;
+  let token = match load_sync_token() {
+    Some(value) => value,
+    None => {
       return Ok(SyncResult {
         configured: false,
         imported: 0,
@@ -1108,6 +1222,9 @@ fn main() {
   tauri::Builder::default()
     .invoke_handler(tauri::generate_handler![
       get_dashboard_summary,
+      get_sync_pairing_status,
+      save_sync_pairing,
+      clear_sync_pairing,
       get_system_health,
       export_system_report,
       export_marketing_brief,
