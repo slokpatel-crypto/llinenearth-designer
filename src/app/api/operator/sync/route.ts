@@ -17,6 +17,7 @@ const OPERATOR_EVENT_TYPES = new Set([
   "operator_note",
   "measurements_updated",
   "payment_logged",
+  "appointment_updated",
 ]);
 
 function authorized(request: Request) {
@@ -131,6 +132,21 @@ function cleanOperatorPayload(type: string, input: unknown) {
     };
   }
 
+  if (type === "appointment_updated") {
+    const kind = text(payload.kind, 24);
+    const status = text(payload.status, 20);
+    const dateTime = text(payload.dateTime, 16);
+    if (!["consultation","fitting","trial","pickup","delivery"].includes(kind)) return null;
+    if (!["scheduled","completed","cancelled"].includes(status)) return null;
+    if (status === "scheduled" && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dateTime)) return null;
+    return {
+      kind,
+      status,
+      dateTime,
+      note: text(payload.note, 600),
+    };
+  }
+
   return null;
 }
 
@@ -241,7 +257,7 @@ export async function GET(request: Request) {
       }
 
       const version = Number(await response.json());
-      if (version !== 4) {
+      if (version !== 5) {
         return NextResponse.json(
           { error: `Unsupported cloud schema version ${version}.`, paired: true, cloudConfigured: true, schemaVersion: version },
           { status: 503, headers: { "cache-control": "private, no-store, max-age=0" } },
