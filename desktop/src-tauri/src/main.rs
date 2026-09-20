@@ -247,6 +247,7 @@ fn ensure_vault() -> Result<PathBuf, String> {
   fs::create_dir_all(root.join("brain")).map_err(|e| e.to_string())?;
   fs::create_dir_all(root.join("marketing")).map_err(|e| e.to_string())?;
   fs::create_dir_all(root.join("job-cards")).map_err(|e| e.to_string())?;
+  fs::create_dir_all(root.join("exports")).map_err(|e| e.to_string())?;
   Ok(root)
 }
 
@@ -458,6 +459,11 @@ fn lock_entry() -> Result<keyring::Entry, String> {
 
 fn stored_lock_password() -> Option<String> {
   lock_entry().ok()?.get_password().ok().filter(|value| !value.is_empty())
+}
+
+fn csv_cell(value: &str) -> String {
+  let escaped = value.replace('"', """");
+  format!(""{escaped}"")
 }
 
 fn html_escape(value: &str) -> String {
@@ -824,6 +830,121 @@ fn build_system_health() -> Result<SystemHealth, String> {
 #[tauri::command]
 fn get_dashboard_summary() -> Result<DashboardSummary, String> {
   Ok(aggregate(load_events()?))
+}
+
+#[tauri::command]
+fn export_customers_csv() -> Result<String, String> {
+  let summary = aggregate(load_events()?);
+  let root = ensure_vault()?;
+  let stamp = Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string();
+  let path = root.join("exports").join(format!("customers_{stamp}.csv"));
+
+  let mut rows = vec!["session_id,name,phone,occasion,garment,color_direction,lead_status,last_activity,note".to_string()];
+  for session in summary.sessions {
+    rows.push([
+      csv_cell(&session.session_id),
+      csv_cell(&session.customer.name),
+      csv_cell(&session.customer.phone),
+      csv_cell(session.answers.get("occasion").map(String::as_str).unwrap_or("")),
+      csv_cell(session.answers.get("garment").map(String::as_str).unwrap_or("")),
+      csv_cell(session.answers.get("colorDirection").map(String::as_str).unwrap_or("")),
+      csv_cell(&session.customer.lead_status),
+      csv_cell(&session.last_at),
+      csv_cell(&session.customer.note),
+    ].join(","));
+  }
+
+  fs::write(&path, rows.join("\n")).map_err(|e| e.to_string())?;
+  Ok(path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+fn export_orders_csv() -> Result<String, String> {
+  let summary = aggregate(load_events()?);
+  let root = ensure_vault()?;
+  let stamp = Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string();
+  let path = root.join("exports").join(format!("orders_{stamp}.csv"));
+
+  let mut rows = vec!["session_id,customer,phone,garment,status,due_date,order_value,paid,balance,appointment_type,appointment_time,appointment_status".to_string()];
+
+  for session in summary.sessions {
+    let mut status = String::new();
+    let mut due_date = String::new();
+    let mut order_value = 0.0f64;
+    let mut paid = 0.0f64;
+    let mut appointment_type = String::new();
+    let mut appointment_time = String::new();
+    let mut appointment_status = String::new();
+
+    for event in &session.events {
+      match event.event_type.as_str() {
+        "order_status_changed" => {
+          status = event.payload.get("status").and_then(Value::as_str).unwrap_or("").to_string();
+          due_date = event.payload.get("dueDate").and_then(Value::as_str).unwrap_or("").to_string();
+          order_value = event.payload.get("orderValue").and_then(Value::as_f64).unwrap_or(order_value);
+        }
+        "payment_logged" => {
+          paid += event.payload.get("amount").and_then(Value::as_f64).unwrap_or(0.0);
+        }
+        "appointment_updated" => {
+          appointment_type = event.payload.get("kind").and_then(Value::as_str).unwrap_or("").to_string();
+          appointment_time = event.payload.get("dateTime").and_then(Value::as_str).unwrap_or("").to_string();
+          appointment_status = event.payload.get("status").and_then(Value::as_str).unwrap_or("").to_string();
+        }
+        _ => {}
+      }
+    }
+
+    if status.is_empty() && order_value <= 0.0 && paid <= 0.0 {
+      continue;
+    }
+
+    let balance = (order_value - paid).max(0.0);
+    rows.push([
+      csv_cell(&session.session_id),
+      csv_cell(&session.customer.name),
+      csv_cell(&session.customer.phone),
+      csv_cell(session.answers.get("garment").map(String::as_str).unwrap_or("")),
+      csv_cell(&status),
+      csv_cell(&due_date),
+      format!("{order_value:.2}"),
+      format!("{paid:.2}"),
+      format!("{balance:.2}"),
+      csv_cell(&appointment_type),
+      csv_cell(&appointment_time),
+      csv_cell(&appointment_status),
+    ].join(","));
+  }
+
+  fs::write(&path, rows.join("\n")).map_err(|e| e.to_string())?;
+  Ok(path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+fn export_inventory_csv() -> Result<String, String> {
+  let inventory = get_fabric_inventory()?;
+  let root = ensure_vault()?;
+  let stamp = Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string();
+  let path = root.join("exports").join(format!("inventory_{stamp}.csv"));
+
+  let mut rows = vec!["id,family,line,color_name,status,quantity_meters,pattern,suitable_for,source,note".to_string()];
+  for fabric in inventory.fabrics {
+    rows.push([
+      csv_cell(&fabric.id),
+      csv_cell(&fabric.family),
+      csv_cell(&fabric.line),
+      csv_cell(&fabric.color_name),
+      csv_cell(&fabric.status),
+      fabric.quantity_meters.map(|value| format!("{value:.2}")).unwrap_or_default(),
+      csv_cell(&fabric.pattern),
+      csv_cell(&fabric.suitable_for.join(" | ")),
+      csv_cell(&fabric.source_document),
+      csv_cell(&fabric.note),
+    ].join(","));
+  }
+
+  fs::write(&path, rows.join("\n")).map_err(|e| e.to_string())?;
+  Ok(path.to_string_lossy().to_string())
 }
 
 #[tauri::command]
@@ -1814,6 +1935,9 @@ fn main() {
     .manage(SyncLock(Mutex::new(())))
     .invoke_handler(tauri::generate_handler![
       get_dashboard_summary,
+      export_customers_csv,
+      export_orders_csv,
+      export_inventory_csv,
       export_job_card,
       get_desktop_lock_status,
       verify_desktop_lock,
