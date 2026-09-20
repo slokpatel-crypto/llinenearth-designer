@@ -45,6 +45,13 @@ function rateLimit(request:Request) {
   return current.count > 90;
 }
 
+const ANSWER_STEPS = new Set(["occasion","mood","time","climate","garment","colorDirection"]);
+const RENDER_MODES = new Set(["preview","photo"]);
+
+function text(value:unknown,max=160) {
+  return String(value ?? "").trim().slice(0,max);
+}
+
 function cleanPayload(type:string, input:unknown) {
   const payload = input && typeof input === "object" ? input as Record<string,unknown> : {};
 
@@ -59,11 +66,86 @@ function cleanPayload(type:string, input:unknown) {
   }
 
   if (type === "operator_note") {
-    return { note: String(payload.note || "").slice(0,1000) };
+    return { note: text(payload.note,1000) };
   }
 
-  if (JSON.stringify(payload).length > 16_000) return null;
-  return payload;
+  if (type === "session_started") {
+    return { experience: text(payload.experience,80) || "style-director" };
+  }
+
+  if (type === "answer_selected") {
+    const step = text(payload.step,40);
+    const value = text(payload.value,120);
+    if (!ANSWER_STEPS.has(step) || !value) return null;
+    return { step, value };
+  }
+
+  if (type === "looks_generated") {
+    const rawLooks = Array.isArray(payload.looks) ? payload.looks.slice(0,3) : [];
+    const looks = rawLooks.map((raw)=>{
+      const look = raw && typeof raw === "object" ? raw as Record<string,unknown> : {};
+      return {
+        id: text(look.id,120),
+        title: text(look.title,120),
+        fabricId: text(look.fabricId,120),
+        fabric: text(look.fabric,120),
+        tier: text(look.tier,40),
+      };
+    }).filter((look)=>look.id && look.fabricId);
+    return { looks };
+  }
+
+  if (type === "look_selected") {
+    const lookId = text(payload.lookId,120);
+    const fabricId = text(payload.fabricId,120);
+    if (!lookId || !fabricId) return null;
+    return {
+      lookId,
+      title: text(payload.title,120),
+      fabricId,
+      fabric: text(payload.fabric,120),
+      automatic: Boolean(payload.automatic),
+    };
+  }
+
+  if (type === "render_requested") {
+    const mode = text(payload.mode,20);
+    if (!RENDER_MODES.has(mode)) return null;
+    return {
+      mode,
+      lookId: text(payload.lookId,120),
+      fabricId: text(payload.fabricId,120),
+    };
+  }
+
+  if (type === "render_completed") {
+    const mode = text(payload.mode,20);
+    if (!RENDER_MODES.has(mode)) return null;
+    const rawImage = text(payload.imageUrl,600);
+    const imageUrl = /^https:\/\/(cdn|media)\.fashn\.ai\//i.test(rawImage) ? rawImage : undefined;
+    const generated = new Date(text(payload.generatedAt,80));
+    return {
+      mode,
+      lookId: text(payload.lookId,120),
+      fabricId: text(payload.fabricId,120),
+      fabric: text(payload.fabric,120),
+      line: text(payload.line,160),
+      provider: text(payload.provider,80),
+      ...(imageUrl ? { imageUrl } : {}),
+      label: text(payload.label,120),
+      generatedAt: Number.isNaN(generated.getTime()) ? undefined : generated.toISOString(),
+    };
+  }
+
+  if (type === "whatsapp_clicked") {
+    return {
+      lookId: text(payload.lookId,120),
+      fabricId: text(payload.fabricId,120),
+      fabric: text(payload.fabric,120),
+    };
+  }
+
+  return null;
 }
 
 function clean(body:IncomingEvent, operatorAuthorized:boolean) {
@@ -76,6 +158,11 @@ function clean(body:IncomingEvent, operatorAuthorized:boolean) {
 
   const parsedAt = new Date(body.at || Date.now());
   if (Number.isNaN(parsedAt.getTime())) return null;
+
+  if (PUBLIC_TYPES.has(type)) {
+    const drift = parsedAt.getTime() - Date.now();
+    if (drift > 10 * 60_000 || drift < -30 * 86_400_000) return null;
+  }
 
   const payload = cleanPayload(type,body.payload);
   if (!payload) return null;
