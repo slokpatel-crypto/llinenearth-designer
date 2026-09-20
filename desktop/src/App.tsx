@@ -300,6 +300,7 @@ export default function App() {
   const [marketingExporting, setMarketingExporting] = useState<string | null>(null);
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
   const [systemReporting, setSystemReporting] = useState(false);
+  const [dataExporting, setDataExporting] = useState<"customers" | "orders" | "inventory" | null>(null);
   const [backupVerifying, setBackupVerifying] = useState(false);
   const [showWalkin, setShowWalkin] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
@@ -1342,6 +1343,20 @@ export default function App() {
     }
   }
 
+  async function exportBusinessCsv(kind: "customers" | "orders" | "inventory") {
+    setDataExporting(kind);
+    try {
+      const command = kind === "customers" ? "export_customers_csv" : kind === "orders" ? "export_orders_csv" : "export_inventory_csv";
+      const path = await invoke<string>(command);
+      setStatus(`${titleCase(kind)} CSV exported: ${path}`);
+      await loadSystemHealth();
+    } catch (error) {
+      setStatus(`${titleCase(kind)} export failed: ${String(error)}`);
+    } finally {
+      setDataExporting(null);
+    }
+  }
+
   async function exportSystemReport() {
     setSystemReporting(true);
     try {
@@ -2350,6 +2365,14 @@ export default function App() {
                     <button onClick={() => void archiveVisuals()} disabled={archivingVisuals}><span>{archivingVisuals ? "Archiving visuals…" : "Archive trusted visuals"}</span><b>↗</b></button>
                     <button onClick={() => void syncInventory()} disabled={inventorySyncing}><span>{inventorySyncing ? "Refreshing inventory…" : "Refresh inventory cache"}</span><b>↗</b></button>
                     <button onClick={() => void exportSystemReport()} disabled={systemReporting}><span>{systemReporting ? "Exporting report…" : "Export system report"}</span><b>↗</b></button>
+                    <div className="portableExports">
+                      <small>PORTABLE CSV EXPORTS</small>
+                      <div>
+                        <button onClick={() => void exportBusinessCsv("customers")} disabled={Boolean(dataExporting)}>{dataExporting === "customers" ? "Exporting…" : "Customers CSV"}</button>
+                        <button onClick={() => void exportBusinessCsv("orders")} disabled={Boolean(dataExporting)}>{dataExporting === "orders" ? "Exporting…" : "Orders CSV"}</button>
+                        <button onClick={() => void exportBusinessCsv("inventory")} disabled={Boolean(dataExporting)}>{dataExporting === "inventory" ? "Exporting…" : "Inventory CSV"}</button>
+                      </div>
+                    </div>
                     <button onClick={() => { void refresh(); void loadInventory(); void loadBrainActions(); void loadSystemHealth(); }}><span>Recheck local vault</span><b>↻</b></button>
                   </article>
 
