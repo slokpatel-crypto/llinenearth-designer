@@ -1,12 +1,11 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import "./login.css";
 
 export default function OperatorLoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [password,setPassword] = useState("");
   const [error,setError] = useState("");
   const [loading,setLoading] = useState(false);
@@ -23,7 +22,7 @@ export default function OperatorLoginPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to sign in.");
-      const next = searchParams.get("next");
+      const next = new URLSearchParams(window.location.search).get("next");
       router.replace(next?.startsWith("/operator") ? next : "/operator");
       router.refresh();
     } catch (cause) {
