@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import type { StyleDirectorAnswers, StyleDirectorLook } from "@/lib/style-director-agent";
+import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
 import "./style-director.css";
 
 type StepKey = keyof StyleDirectorAnswers;
@@ -37,6 +38,7 @@ const steps: Array<{ key: StepKey; eyebrow: string; title: string; note: string;
 ];
 
 export default function StyleDirectorPage() {
+  const [sessionId] = useState(createStyleSessionId);
   const [index,setIndex] = useState(0);
   const [answers,setAnswers] = useState<Partial<StyleDirectorAnswers>>({});
   const [looks,setLooks] = useState<StyleDirectorLook[]>([]);
@@ -54,6 +56,7 @@ export default function StyleDirectorPage() {
     const next = {...answers,[step.key]:value} as Partial<StyleDirectorAnswers>;
     setAnswers(next);
     setError("");
+    recordStyleMemoryEvent(sessionId,"answer_selected",{step:step.key,value});
     if (index < steps.length - 1) {
       setIndex((n)=>n+1);
       return;
@@ -65,6 +68,7 @@ export default function StyleDirectorPage() {
       if (!response.ok) throw new Error(data.error || "Could not create looks.");
       setLooks(data.looks);
       setSelected(0);
+      recordStyleMemoryEvent(sessionId,"looks_generated",{looks:data.looks.map((look:StyleDirectorLook)=>({id:look.id,title:look.title,fabricId:look.fabric.id,fabric:look.fabric.colorName,tier:look.candidate.tier}))});
     } catch(e) {
       setError(e instanceof Error ? e.message : "Could not create looks.");
     } finally { setLoading(false); }
@@ -73,12 +77,14 @@ export default function StyleDirectorPage() {
   async function visualize(mode:"preview"|"photo") {
     if (!selectedLook) return;
     setRendering(mode); setError("");
+    recordStyleMemoryEvent(sessionId,"render_requested",{mode,lookId:selectedLook.id,fabricId:selectedLook.fabric.id});
     try {
       const endpoint = mode === "photo" ? "/api/visualization/fashn" : "/api/visualization/render";
       const response = await fetch(endpoint,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({brief:selectedLook.brief,version:selectedLook.version})});
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not create the visual.");
       setRenderSet(data.renderSet);
+      recordStyleMemoryEvent(sessionId,"render_completed",{mode,lookId:selectedLook.id,provider:data.renderSet?.providerLabel || data.renderSet?.provider || "development"});
     } catch(e) {
       setError(e instanceof Error ? e.message : "Could not create the visual.");
     } finally { setRendering(null); }
@@ -89,6 +95,10 @@ export default function StyleDirectorPage() {
   }
 
   const heroRender = useMemo(()=>renderSet?.renders?.find((r)=>r.view==="front") ?? renderSet?.renders?.[0], [renderSet]);
+  useEffect(()=>{
+    recordStyleMemoryEvent(sessionId,"session_started",{experience:"style-director-v1"});
+  },[sessionId]);
+
   const whatsapp = selectedLook ? `https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919226338282"}?text=${encodeURIComponent(`Hi LLinen Earth, I created “${selectedLook.title}” in the Style Director. Fabric: ${selectedLook.fabric.line} — ${selectedLook.fabric.colorName}. I’d like to explore this look in store.`)}` : "#";
 
   return <AppShell>
@@ -134,7 +144,7 @@ export default function StyleDirectorPage() {
         </div>
 
         <div className="lookTabs">
-          {looks.map((look,i)=><button className={selected===i?"active":""} onClick={()=>{setSelected(i);setRenderSet(null);}} key={look.id}>
+          {looks.map((look,i)=><button className={selected===i?"active":""} onClick={()=>{setSelected(i);setRenderSet(null);recordStyleMemoryEvent(sessionId,"look_selected",{lookId:look.id,title:look.title,fabricId:look.fabric.id,fabric:look.fabric.colorName});}} key={look.id}>
             <span>0{i+1}</span><strong>{look.title}</strong><small>{look.fabric.colorName}</small>
           </button>)}
         </div>
@@ -163,7 +173,7 @@ export default function StyleDirectorPage() {
             <div className="directorActions">
               <button onClick={()=>visualize("preview")} disabled={Boolean(rendering)}>{rendering==="preview"?"Building…":"See mannequin"} <b>↗</b></button>
               <button className="photoAction" onClick={()=>visualize("photo")} disabled={Boolean(rendering)}>{rendering==="photo"?"Rendering…":"Make photoreal"} <b>✦</b></button>
-              <a href={whatsapp} target="_blank" rel="noreferrer">Book this look <b>↗</b></a>
+              <a href={whatsapp} target="_blank" rel="noreferrer" onClick={()=>recordStyleMemoryEvent(sessionId,"whatsapp_clicked",{lookId:selectedLook.id,fabricId:selectedLook.fabric.id,fabric:selectedLook.fabric.colorName})}>Book this look <b>↗</b></a>
             </div>
             <p className="tradeoff"><b>Director note:</b> {selectedLook.candidate.tradeoff}</p>
           </div>
