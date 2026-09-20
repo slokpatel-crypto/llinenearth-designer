@@ -74,6 +74,18 @@ if (url && key) {
     } else {
       const rows = await response.json();
       ok(`style_events is reachable (${rows.length ? "existing data found" : "table is empty"}).`);
+
+      const versionResponse = await fetch(
+        `${url.replace(/\/$/, "")}/rest/v1/rpc/llinen_cloud_schema_version`,
+        { method: "POST", headers: { ...headers, "content-type": "application/json" }, body: "{}" },
+      );
+      if (!versionResponse.ok) {
+        fail("Cloud schema version RPC is missing. Apply the latest Supabase migration.");
+      } else {
+        const version = await versionResponse.json();
+        if (Number(version) !== 1) fail(`Unsupported cloud schema version: ${String(version)}`);
+        else ok("Hardened LLinen cloud schema v1 is installed.");
+      }
     }
   } catch (error) {
     fail(`Supabase request failed: ${error instanceof Error ? error.message : String(error)}`);
