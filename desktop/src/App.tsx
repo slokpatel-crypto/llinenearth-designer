@@ -1833,6 +1833,7 @@ export default function App() {
             </h1>
           </div>
           <div className="topActions">
+            <button className="newWalkinButton" onClick={() => { setActiveNav("Customers"); setShowWalkin(true); }}>+ New walk-in</button>
             <button className="commandButton" onClick={() => setCommandOpen(true)}>Search <kbd>Ctrl K</kbd></button>
             <button className="guideButton" onClick={() => openOperatorTour(tourIndex)}>Guide</button>
             {lockStatus?.configured && <button onClick={lockDesktopNow}>Lock</button>}
