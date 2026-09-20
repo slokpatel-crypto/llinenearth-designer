@@ -101,24 +101,19 @@ export async function GET(request: Request) {
   const cloud = getSupabaseAdminConfig();
 
   if (incomingUrl.searchParams.get("health") === "1") {
-    const response = NextResponse.json({
-      ok: true,
-      paired: true,
-      cloudConfigured: Boolean(cloud),
-      mode: "bidirectional-event-sync",
-    }, { status: cloud ? 200 : 503 });
-    response.headers.set("cache-control", "private, no-store, max-age=0");
-    return response;
-  }
+    if (!cloud) {
+      return NextResponse.json(
+        {
+          ok: true,
+          paired: true,
+          cloudConfigured: false,
+          mode: "bidirectional-event-sync",
+          schemaVersion: null,
+        },
+        { status: 503, headers: { "cache-control": "private, no-store, max-age=0" } },
+      );
+    }
 
-  if (!cloud) {
-    return NextResponse.json(
-      { error: "Cloud memory is not configured." },
-      { status: 503, headers: { "cache-control": "private, no-store, max-age=0" } },
-    );
-  }
-
-  if (incomingUrl.searchParams.get("health") === "1") {
     try {
       const response = await fetch(`${cloud.url}/rest/v1/rpc/llinen_cloud_schema_version`, {
         method: "POST",
@@ -132,19 +127,38 @@ export async function GET(request: Request) {
 
       if (!response.ok) {
         console.error("[operator/sync health]", response.status, (await response.text()).slice(0,300));
-        return NextResponse.json({ error: "Cloud schema is not ready. Apply the latest Supabase migration." }, { status: 503 });
+        return NextResponse.json(
+          { error: "Cloud schema is not ready. Apply the latest Supabase migration.", paired: true, cloudConfigured: true },
+          { status: 503, headers: { "cache-control": "private, no-store, max-age=0" } },
+        );
       }
 
       const version = Number(await response.json());
       if (version !== 1) {
-        return NextResponse.json({ error: `Unsupported cloud schema version ${version}.` }, { status: 503 });
+        return NextResponse.json(
+          { error: `Unsupported cloud schema version ${version}.`, paired: true, cloudConfigured: true, schemaVersion: version },
+          { status: 503, headers: { "cache-control": "private, no-store, max-age=0" } },
+        );
       }
 
-      return NextResponse.json({ ok: true, schemaVersion: version });
+      return NextResponse.json(
+        { ok: true, paired: true, cloudConfigured: true, mode: "bidirectional-event-sync", schemaVersion: version },
+        { headers: { "cache-control": "private, no-store, max-age=0" } },
+      );
     } catch (error) {
       console.error("[operator/sync health]", error);
-      return NextResponse.json({ error: "Cloud health check failed." }, { status: 503 });
+      return NextResponse.json(
+        { error: "Cloud health check failed.", paired: true, cloudConfigured: true },
+        { status: 503, headers: { "cache-control": "private, no-store, max-age=0" } },
+      );
     }
+  }
+
+  if (!cloud) {
+    return NextResponse.json(
+      { error: "Cloud memory is not configured." },
+      { status: 503, headers: { "cache-control": "private, no-store, max-age=0" } },
+    );
   }
 
   const cursor = incomingUrl.searchParams.get("cursor");
