@@ -1,1 +1,25 @@
-{"name":"llinenearth-designer","private":true,"version":"1.0.0","scripts":{"dev":"next dev","quality":"node scripts/quality-check.mjs","build":"next build","start":"next start"},"dependencies":{"fashn":"^0.15.0","next":"15.5.24","react":"19.1.0","react-dom":"19.1.0","sharp":"^0.34.4"},"devDependencies":{"@types/node":"22.10.0","@types/react":"19.0.3","@types/react-dom":"19.0.2","typescript":"5.9.2"}}
+{
+  "name": "llinenearth-designer",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "next dev",
+    "quality": "node scripts/quality-check.mjs",
+    "build": "next build",
+    "start": "next start",
+    "local-memory": "node scripts/llinen-local-bridge.mjs"
+  },
+  "dependencies": {
+    "fashn": "^0.15.0",
+    "next": "15.5.24",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "sharp": "^0.34.4"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.0",
+    "@types/react": "19.0.3",
+    "@types/react-dom": "19.0.2",
+    "typescript": "5.9.2"
+  }
+}
