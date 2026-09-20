@@ -454,7 +454,7 @@ fn get_fabric_inventory() -> Result<InventoryView, String> {
 
   let fabrics = feed.fabrics.into_iter().map(|fabric| {
     let override_item = overrides.get(&fabric.id).cloned().unwrap_or_else(|| InventoryOverride {
-      status: if fabric.in_stock { "in-stock".to_string() } else { "out".to_string() },
+      status: if fabric.source_document == "llinenearth.com" { "unverified".to_string() } else if fabric.in_stock { "in-stock".to_string() } else { "out".to_string() },
       quantity_meters: None,
       note: String::new(),
       updated_at: String::new(),
@@ -494,7 +494,7 @@ fn update_fabric_inventory(
   quantity_meters: Option<f64>,
   note: String,
 ) -> Result<(), String> {
-  const ALLOWED: [&str; 3] = ["in-stock", "low", "out"];
+  const ALLOWED: [&str; 4] = ["unverified", "in-stock", "low", "out"];
   if !ALLOWED.contains(&status.as_str()) {
     return Err("Unsupported inventory status.".to_string());
   }
