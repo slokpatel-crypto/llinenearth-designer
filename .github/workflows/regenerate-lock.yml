@@ -1,0 +1,30 @@
+name: Regenerate root npm lockfile
+
+on:
+  push:
+    branches:
+      - feature/style-director-agent
+    paths:
+      - .github/workflows/regenerate-lock.yml
+
+permissions:
+  contents: read
+
+jobs:
+  lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Generate lockfile
+        run: npm install --package-lock-only --ignore-scripts --no-fund --no-audit
+      - name: Verify clean install
+        run: npm ci --ignore-scripts --no-fund --no-audit
+      - uses: actions/upload-artifact@v4
+        with:
+          name: root-package-lock
+          path: package-lock.json
+          if-no-files-found: error
