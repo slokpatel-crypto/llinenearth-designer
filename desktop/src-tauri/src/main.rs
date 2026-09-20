@@ -81,6 +81,7 @@ struct SyncResult {
 struct SyncState {
   cursor: Option<String>,
   last_synced_at: Option<String>,
+  last_pushed_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -1132,7 +1133,10 @@ async fn sync_from_cloud() -> Result<SyncResult, String> {
   let local_events = load_events()?;
   let operator_events = local_events
     .iter()
-    .filter(|event| event.source == "operator-desktop")
+    .filter(|event| {
+      event.source == "operator-desktop"
+        && state.last_pushed_at.as_ref().is_none_or(|cursor| event.at > *cursor)
+    })
     .cloned()
     .collect::<Vec<_>>();
   let mut pushed = 0usize;
@@ -1159,6 +1163,11 @@ async fn sync_from_cloud() -> Result<SyncResult, String> {
       .and_then(Value::as_u64)
       .map(|value| value as usize)
       .unwrap_or(chunk.len());
+  }
+
+  if let Some(last) = operator_events.iter().map(|event| event.at.clone()).max() {
+    state.last_pushed_at = Some(last);
+    save_sync_state(&state)?;
   }
 
   let mut known = local_events
