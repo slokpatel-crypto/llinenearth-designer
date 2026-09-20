@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
+import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 
 export const runtime = "nodejs";
 
@@ -98,9 +99,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
+  const cloud = getSupabaseAdminConfig();
+  if (!cloud) {
     return NextResponse.json({ configured: false, ...aggregate([]) });
   }
 
@@ -121,10 +121,9 @@ export async function GET(request: Request) {
         offset: String(offset),
       });
 
-      const response = await fetch(`${url.replace(/\/$/,"")}/rest/v1/style_events?${params.toString()}`, {
+      const response = await fetch(`${cloud.url}/rest/v1/style_events?${params.toString()}`, {
         headers: {
-          apikey: key,
-          authorization: `Bearer ${key}`,
+          ...supabaseAdminHeaders(cloud),
           accept: "application/json",
         },
         cache: "no-store",
