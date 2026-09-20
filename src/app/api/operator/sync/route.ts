@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const OPERATOR_EVENT_TYPES = new Set([
   "session_started",
@@ -96,12 +97,26 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
+  const incomingUrl = new URL(request.url);
   const cloud = getSupabaseAdminConfig();
-  if (!cloud) {
-    return NextResponse.json({ error: "Cloud memory is not configured." }, { status: 503 });
+
+  if (incomingUrl.searchParams.get("health") === "1") {
+    const response = NextResponse.json({
+      ok: true,
+      paired: true,
+      cloudConfigured: Boolean(cloud),
+      mode: "bidirectional-event-sync",
+    }, { status: cloud ? 200 : 503 });
+    response.headers.set("cache-control", "private, no-store, max-age=0");
+    return response;
   }
 
-  const incomingUrl = new URL(request.url);
+  if (!cloud) {
+    return NextResponse.json(
+      { error: "Cloud memory is not configured." },
+      { status: 503, headers: { "cache-control": "private, no-store, max-age=0" } },
+    );
+  }
 
   if (incomingUrl.searchParams.get("health") === "1") {
     try {
