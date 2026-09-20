@@ -10,6 +10,12 @@ export function BrandIntro() {
   useEffect(() => {
     const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     setReducedMotion(prefersReduced);
+    const seen = window.sessionStorage.getItem("llinen-earth:intro-shown:v1");
+    if (prefersReduced || seen) {
+      setShow(false);
+      return;
+    }
+    window.sessionStorage.setItem("llinen-earth:intro-shown:v1", "1");
     const timer = window.setTimeout(() => setShow(false), 3600);
     return () => window.clearTimeout(timer);
   }, []);
