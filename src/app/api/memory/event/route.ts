@@ -43,6 +43,27 @@ function rateLimit(request:Request) {
   return current.count > 90;
 }
 
+function cleanPayload(type:string, input:unknown) {
+  const payload = input && typeof input === "object" ? input as Record<string,unknown> : {};
+
+  if (type === "sale_logged") {
+    const amount = Number(payload.amount ?? 0);
+    if (!Number.isFinite(amount) || amount < 0 || amount > 100_000_000) return null;
+    return { amount, currency: "INR" };
+  }
+
+  if (type === "visit_logged") {
+    return { status: "visited" };
+  }
+
+  if (type === "operator_note") {
+    return { note: String(payload.note || "").slice(0,1000) };
+  }
+
+  if (JSON.stringify(payload).length > 16_000) return null;
+  return payload;
+}
+
 function clean(body:IncomingEvent, operatorAuthorized:boolean) {
   const type = String(body.type || "");
   const sessionId = String(body.sessionId || "").slice(0,140);
@@ -54,8 +75,8 @@ function clean(body:IncomingEvent, operatorAuthorized:boolean) {
   const parsedAt = new Date(body.at || Date.now());
   if (Number.isNaN(parsedAt.getTime())) return null;
 
-  const payload = body.payload && typeof body.payload === "object" ? body.payload : {};
-  if (JSON.stringify(payload).length > 16_000) return null;
+  const payload = cleanPayload(type,body.payload);
+  if (!payload) return null;
 
   return {
     id:String(body.id || `EV-${Date.now()}`).slice(0,160),
