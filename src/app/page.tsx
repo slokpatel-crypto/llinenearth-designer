@@ -43,10 +43,24 @@ export default function Home() {
   return <AppShell>
     <HomeMotion />
     <main className="gatewayHome">
-      <section className="gatewayBrand wrap" data-reveal>
-        <p>PREMIUM FABRICS · INTELLIGENT MENSWEAR · DIGITAL ATELIER</p>
-        <h1><span>LLinen</span> Earth</h1>
-        <div className="gatewayLine"><span>FABRIC FIRST · DESIGN WITH INTENT</span><i /></div>
+      <section className="gatewayBrand gatewayBrandHero wrap" data-reveal>
+        <div className="gatewayBrandCopy">
+          <p>PREMIUM FABRICS · INTELLIGENT MENSWEAR · DIGITAL ATELIER</p>
+          <h1><span>LLinen</span> Earth</h1>
+          <p className="gatewayHeroStatement">Cloth, judged on a real body.</p>
+          <p className="gatewayHeroSub">Start with your occasion and instinct. LLinen Earth narrows the direction, connects it to real fabric, and lets you see the look with photoreal fashion rendering.</p>
+          <div className="gatewayHeroActions">
+            <Link href="/style-director">Enter Style Director <b>↗</b></Link>
+            <Link href="/visual">Open Live Visual <b>↗</b></Link>
+          </div>
+          <div className="gatewayLine"><span>FABRIC FIRST · DESIGN WITH INTENT</span><i /></div>
+        </div>
+        <div className="gatewayHeroModel" aria-label="Photoreal LLinen Earth menswear model">
+          <div className="gatewayHeroGlow" />
+          <img src="/api/homepage-model" alt="Photoreal menswear model styled for LLinen Earth" fetchPriority="high" decoding="async" />
+          <div className="gatewayHeroBadge"><span>AI ATELIER MODEL</span><b>FASHN · PHOTOREAL</b></div>
+          <div className="gatewayHeroCaption"><span>REALISTIC SILHOUETTE</span><i/> <span>FABRIC-LED STYLING</span></div>
+        </div>
       </section>
 
       <section className="gatewayIntro wrap" data-reveal>
@@ -55,15 +69,15 @@ export default function Home() {
       </section>
 
       <section className="gatewayChoices wrap" data-reveal>
-        <Link href="/designer-brief" className="gatewayCard gatewayDesigner">
+        <Link href="/style-director" className="gatewayCard gatewayDesigner">
           <div className="gatewayImage gatewayImageDesigner" />
-          <div className="gatewayCardTop"><span>01</span><b>AI DESIGNER ENGINE</b></div>
+          <div className="gatewayCardTop"><span>01</span><b>STYLE DIRECTOR</b></div>
           <div className="gatewayVisualStrip" aria-hidden="true">{designerRefs.map((src,index)=><div key={src} className="gatewayMini" style={{backgroundImage:`url('${src}')`}} data-index={index}/>)}</div>
           <div className="gatewayCardCopy">
             <p className="eyebrow">GUIDED DESIGN</p><h3>Find the right outfit for the moment.</h3>
             <p>Occasion, venue, time, climate, formality, impression, fit and aesthetic are narrowed before the cloth is judged.</p>
             <div className="gatewaySignals"><span>OCCASION</span><span>FABRIC</span><span>FIT</span><span>OUTFIT</span></div>
-            <strong>Start Designer <i>↗</i></strong>
+            <strong>Enter Style Director <i>↗</i></strong>
           </div>
         </Link>
 

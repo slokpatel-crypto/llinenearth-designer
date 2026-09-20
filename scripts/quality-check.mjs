@@ -33,3 +33,80 @@ for (const token of ["Safe","Elevated","Statement","fabricJudgement"]) {
 }
 
 console.log(`Quality gate passed: ${wearIds} wear types, ${fabricIds} fabric families, complete Phase 0–9 route contract.`);
+
+
+const securityContracts = [
+  ["src/middleware.ts", ["verifyOperatorSession","/operator/login","X-Frame-Options","Content-Security-Policy"]],
+  ["src/app/api/memory/event/route.ts", ["verifyMemorySessionToken","getSupabaseAdminConfig","PUBLIC_TYPES","OPERATOR_TYPES"]],
+  ["src/app/api/operator/sync/route.ts", ["timingSafeEqual","supabaseAdminHeaders","received_at.asc,id.asc","cleanOperatorPayload","schemaVersion","measurements_updated","payment_logged","appointment_updated"]],
+  ["src/lib/browser-style-memory.ts", ["x-llinen-memory-token","/api/memory/session"]],
+  ["src/lib/supabase-admin.ts", ["SUPABASE_SECRET_KEY","SUPABASE_SERVICE_ROLE_KEY","sb_secret_"]],
+  ["src/app/operator/page.tsx", ["verifyOperatorSession","redirect","force-dynamic"]],
+  ["supabase/migrations/20260920_style_events_hardening.sql", ["llinen_cloud_health","select 5;","revoke all on table public.style_events from anon","grant select, insert on table public.style_events to service_role"]],
+];
+
+for (const [file,tokens] of securityContracts) {
+  const content = fs.readFileSync(file,"utf8");
+  for (const token of tokens) {
+    if (!content.includes(token)) throw new Error(`Security regression: ${file} missing ${token}`);
+  }
+}
+
+const envExample = fs.readFileSync(".env.example","utf8");
+for (const secretName of [
+  "SUPABASE_SECRET_KEY",
+  "LLINEN_OPERATOR_SYNC_TOKEN",
+  "LLINEN_OPERATOR_PASSWORD_HASH",
+  "LLINEN_OPERATOR_SESSION_SECRET",
+  "LLINEN_MEMORY_SESSION_SECRET",
+]) {
+  if (!envExample.includes(`${secretName}=`)) throw new Error(`Deployment regression: .env.example missing ${secretName}`);
+  if (envExample.includes(`NEXT_PUBLIC_${secretName}`)) throw new Error(`Secret exposure regression: ${secretName} must remain server-only`);
+}
+
+console.log("Security gate passed: operator auth, signed public memory, Supabase admin isolation, deterministic sync cursor.");
+
+
+const desktopOperationalContracts = [
+  ["desktop/src-tauri/src/main.rs", [
+    "LOCK_KEYRING_USER",
+    "SyncLock",
+    "save_measurements",
+    "record_payment",
+    "set_appointment",
+    "export_job_card",
+    "invalid_event_line_count",
+    "latest_file_modified_at",
+    "latest_backup_verified",
+    "auto_backup_today",
+  ]],
+  ["desktop/src/App.tsx", [
+    "STAFF PRIORITY BOARD",
+    "DO NEXT",
+    "staffNext",
+    "MEASUREMENT PASSPORT",
+    "PAYMENT HISTORY",
+    "NEXT APPOINTMENT",
+    "Export job card",
+    "desktopLockScreen",
+    "sync_from_cloud",
+  ]],
+  ["desktop/src/ErrorBoundary.tsx", ["export_system_report","Restart interface","No customer data is sent automatically"]],
+  ["desktop/src/app.css", [
+    "staffPriorityCard",
+    "staffNext",
+    "measurementPassport",
+    "paymentLedger",
+    "appointmentPanel",
+    "desktopLockScreen",
+  ]],
+];
+
+for (const [file,tokens] of desktopOperationalContracts) {
+  const content = fs.readFileSync(file,"utf8");
+  for (const token of tokens) {
+    if (!content.includes(token)) throw new Error(`Desktop regression: ${file} missing ${token}`);
+  }
+}
+
+console.log("Desktop gate passed: action-first Today board, lock, sync serialization, tailoring workflow, finance, appointments, job cards and vault health checks.");

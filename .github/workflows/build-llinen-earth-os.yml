@@ -1,0 +1,69 @@
+name: Build LLinen Earth OS
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/style-director-agent
+    paths:
+      - "desktop/**"
+      - ".github/workflows/build-llinen-earth-os.yml"
+
+concurrency:
+  group: llinen-earth-os-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: desktop
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Validate desktop frontend
+        run: npm run build
+
+      - name: Generate app icons
+        run: npm run tauri icon app-icon.svg
+
+      - name: Build Windows desktop app
+        run: npm run desktop:build
+
+      - name: Create installer checksum
+        shell: pwsh
+        run: |
+          $installers = Get-ChildItem "src-tauri/target/release/bundle/nsis/*.exe"
+          if (-not $installers) {
+            throw "No NSIS installer was produced."
+          }
+          $lines = foreach ($installer in $installers) {
+            $hash = (Get-FileHash $installer.FullName -Algorithm SHA256).Hash.ToLower()
+            "$hash  $($installer.Name)"
+          }
+          $lines | Set-Content "src-tauri/target/release/bundle/nsis/SHA256SUMS.txt"
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: LLinen-Earth-OS-Windows
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            desktop/src-tauri/target/release/bundle/nsis/*.exe
+            desktop/src-tauri/target/release/bundle/nsis/SHA256SUMS.txt

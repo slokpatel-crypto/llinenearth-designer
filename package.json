@@ -1,1 +1,36 @@
-{"name":"llinenearth-designer","private":true,"version":"1.0.0","scripts":{"dev":"next dev","quality":"node scripts/quality-check.mjs","build":"next build","start":"next start"},"dependencies":{"fashn":"^0.15.0","next":"15.5.24","react":"19.1.0","react-dom":"19.1.0","sharp":"^0.34.4"},"devDependencies":{"@types/node":"22.10.0","@types/react":"19.0.3","@types/react-dom":"19.0.2","typescript":"5.9.2"}}
+{
+  "name": "llinenearth-designer",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "next dev",
+    "quality": "node scripts/quality-check.mjs",
+    "build": "next build",
+    "start": "next start",
+    "local-memory": "node scripts/llinen-local-bridge.mjs",
+    "operator-password": "node scripts/hash-operator-password.mjs",
+    "production-secrets": "node scripts/generate-production-secrets.mjs",
+    "cloud:check": "node scripts/check-cloud-readiness.mjs"
+  },
+  "dependencies": {
+    "fashn": "^0.15.0",
+    "next": "15.5.24",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "motion": "^12.23.12",
+    "sharp": "0.35.4"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.0",
+    "@types/react": "19.0.3",
+    "@types/react-dom": "19.0.2",
+    "typescript": "5.9.2"
+  },
+  "overrides": {
+    "postcss": "8.5.28"
+  },
+  "optionalDependencies": {
+    "@img/sharp-linux-x64": "0.35.4",
+    "@img/sharp-libvips-linux-x64": "1.3.3"
+  }
+}
