@@ -1,5 +1,17 @@
 import { NextResponse } from "next/server";
 
+const OPERATOR_EVENT_TYPES = new Set([
+  "session_started",
+  "answer_selected",
+  "look_selected",
+  "customer_updated",
+  "lead_status_changed",
+  "order_status_changed",
+  "visit_logged",
+  "sale_logged",
+  "operator_note",
+]);
+
 function authorized(request: Request) {
   const configured = process.env.LLINEN_OPERATOR_SYNC_TOKEN;
   if (!configured) return false;
@@ -7,14 +19,85 @@ function authorized(request: Request) {
   return supplied === `Bearer ${configured}`;
 }
 
+function cloudConfig() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return url && key ? { url: url.replace(/\/$/, ""), key } : null;
+}
+
+function cleanOperatorEvent(input: unknown) {
+  if (!input || typeof input !== "object") return null;
+  const body = input as Record<string,unknown>;
+  const id = String(body.id || "").slice(0,160);
+  const sessionId = String(body.sessionId || body.session_id || "").slice(0,140);
+  const type = String(body.type || "");
+  if (!id || !sessionId || !OPERATOR_EVENT_TYPES.has(type)) return null;
+
+  const parsed = new Date(String(body.at || ""));
+  if (Number.isNaN(parsed.getTime())) return null;
+
+  const payload = body.payload && typeof body.payload === "object" ? body.payload : {};
+  if (JSON.stringify(payload).length > 16_000) return null;
+
+  return {
+    id,
+    session_id: sessionId,
+    type,
+    at: parsed.toISOString(),
+    source: "operator-desktop",
+    payload,
+  };
+}
+
+export async function POST(request: Request) {
+  if (!authorized(request)) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  const cloud = cloudConfig();
+  if (!cloud) {
+    return NextResponse.json({ error: "Cloud memory is not configured." }, { status: 503 });
+  }
+
+  try {
+    const body = await request.json() as { events?: unknown[] };
+    const incoming = Array.isArray(body.events) ? body.events.slice(0,250) : [];
+    const events = incoming.map(cleanOperatorEvent).filter(Boolean);
+    if (!events.length) {
+      return NextResponse.json({ accepted: 0, stored: 0 });
+    }
+
+    const response = await fetch(`${cloud.url}/rest/v1/style_events`, {
+      method: "POST",
+      headers: {
+        apikey: cloud.key,
+        authorization: `Bearer ${cloud.key}`,
+        "content-type": "application/json",
+        prefer: "return=minimal,resolution=ignore-duplicates",
+      },
+      body: JSON.stringify(events),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      console.error("[operator/sync POST] Supabase write failed", response.status, (await response.text()).slice(0,300));
+      return NextResponse.json({ error: "Cloud memory could not be updated." }, { status: 502 });
+    }
+
+    return NextResponse.json({ accepted: events.length, stored: events.length });
+  } catch (error) {
+    console.error("[operator/sync POST]", error);
+    return NextResponse.json({ error: "Unable to upload operator events." }, { status: 500 });
+  }
+}
+
 export async function GET(request: Request) {
   if (!authorized(request)) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceKey) {
+  const cloud = cloudConfig();
+  if (!cloud) {
     return NextResponse.json({ error: "Cloud memory is not configured." }, { status: 503 });
   }
 
@@ -31,11 +114,11 @@ export async function GET(request: Request) {
 
   try {
     const response = await fetch(
-      `${supabaseUrl.replace(/\/$/, "")}/rest/v1/style_events?${params.toString()}`,
+      `${cloud.url}/rest/v1/style_events?${params.toString()}`,
       {
         headers: {
-          apikey: serviceKey,
-          authorization: `Bearer ${serviceKey}`,
+          apikey: cloud.key,
+          authorization: `Bearer ${cloud.key}`,
           accept: "application/json",
         },
         cache: "no-store",
@@ -43,7 +126,7 @@ export async function GET(request: Request) {
     );
 
     if (!response.ok) {
-      console.error("[operator/sync] Supabase read failed", response.status, (await response.text()).slice(0, 300));
+      console.error("[operator/sync GET] Supabase read failed", response.status, (await response.text()).slice(0,300));
       return NextResponse.json({ error: "Cloud memory could not be read." }, { status: 502 });
     }
 
@@ -73,7 +156,7 @@ export async function GET(request: Request) {
       hasMore: rows.length === limit,
     });
   } catch (error) {
-    console.error("[operator/sync]", error);
+    console.error("[operator/sync GET]", error);
     return NextResponse.json({ error: "Cloud sync is temporarily unavailable." }, { status: 500 });
   }
 }
