@@ -12,7 +12,8 @@ export type StyleMemoryEventType =
   | "customer_updated"
   | "lead_status_changed"
   | "order_status_changed"
-  | "measurements_updated";
+  | "measurements_updated"
+  | "payment_logged";
 
 export type StyleMemoryEvent = {
   id: string;
