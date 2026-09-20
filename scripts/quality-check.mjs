@@ -82,6 +82,8 @@ const desktopOperationalContracts = [
   ]],
   ["desktop/src/App.tsx", [
     "STAFF PRIORITY BOARD",
+    "DO NEXT",
+    "staffNext",
     "MEASUREMENT PASSPORT",
     "PAYMENT HISTORY",
     "NEXT APPOINTMENT",
@@ -92,6 +94,7 @@ const desktopOperationalContracts = [
   ["desktop/src/ErrorBoundary.tsx", ["export_system_report","Restart interface","No customer data is sent automatically"]],
   ["desktop/src/app.css", [
     "staffPriorityCard",
+    "staffNext",
     "measurementPassport",
     "paymentLedger",
     "appointmentPanel",
@@ -106,4 +109,4 @@ for (const [file,tokens] of desktopOperationalContracts) {
   }
 }
 
-console.log("Desktop gate passed: lock, sync serialization, tailoring workflow, finance, appointments, job cards and vault health checks.");
+console.log("Desktop gate passed: action-first Today board, lock, sync serialization, tailoring workflow, finance, appointments, job cards and vault health checks.");
