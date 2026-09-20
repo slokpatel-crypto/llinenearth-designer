@@ -886,7 +886,8 @@ export default function App() {
               <div className="fabricMain">
                 <div className="fabricMetrics">
                   <article><small>STRUCTURED COLOURS</small><strong>{inventory.fabrics.length}</strong><span>{fabricLines.length - 1} fabric lines</span></article>
-                  <article><small>UNVERIFIED</small><strong>{inventory.fabrics.filter((fabric) => fabric.status === "unverified").length}</strong><span>Website colours awaiting stock check</span></article>\n                  <article><small>LOW STOCK</small><strong>{inventory.fabrics.filter((fabric) => fabric.status === "low").length}</strong><span>Needs operator attention</span></article>
+                  <article><small>UNVERIFIED</small><strong>{inventory.fabrics.filter((fabric) => fabric.status === "unverified").length}</strong><span>Website colours awaiting stock check</span></article>
+                  <article><small>LOW STOCK</small><strong>{inventory.fabrics.filter((fabric) => fabric.status === "low").length}</strong><span>Needs operator attention</span></article>
                   <article><small>OUT OF STOCK</small><strong>{inventory.fabrics.filter((fabric) => fabric.status === "out").length}</strong><span>Hidden from confident selling</span></article>
                   <article className="accent"><small>CUSTOMER SIGNALS</small><strong>{Array.from(fabricSignals.values()).reduce((sum, signal) => sum + signal.interest, 0)}</strong><span>Selected fabric directions</span></article>
                 </div>
