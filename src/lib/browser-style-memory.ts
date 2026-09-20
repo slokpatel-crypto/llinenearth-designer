@@ -8,14 +8,17 @@ export type StyleMemoryEventType =
   | "whatsapp_clicked"
   | "visit_logged"
   | "sale_logged"
-  | "operator_note";
+  | "operator_note"
+  | "customer_updated"
+  | "lead_status_changed"
+  | "order_status_changed";
 
 export type StyleMemoryEvent = {
   id: string;
   sessionId: string;
   type: StyleMemoryEventType;
   at: string;
-  source: "style-director" | "operator";
+  source: "style-director" | "operator" | "operator-desktop";
   payload?: Record<string, unknown>;
 };
 
