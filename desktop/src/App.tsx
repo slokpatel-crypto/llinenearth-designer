@@ -89,6 +89,20 @@ type BrainSignal = {
   module: "Leads" | "Fabrics" | "Visuals" | "Analytics" | "Customers" | "Orders";
 };
 
+type MarketingCampaign = {
+  id: string;
+  lane: "Promote" | "Test" | "Fix first";
+  title: string;
+  objective: string;
+  evidence: string;
+  hook: string;
+  format: string;
+  visualDirection: string;
+  cta: string;
+  guardrail: string;
+  fabricId?: string;
+};
+
 const nav = ["Today", "Customers", "Leads", "Orders", "Fabrics", "Visuals", "Marketing", "Analytics", "AI Brain", "Memory"];
 const leadStatuses = ["new", "follow-up", "contacted", "visit-booked", "won", "lost"];
 
@@ -162,6 +176,7 @@ export default function App() {
   const [brainActions, setBrainActions] = useState<Record<string, BrainActionState>>({});
   const [brainQuery, setBrainQuery] = useState("");
   const [brainAnswer, setBrainAnswer] = useState("Ask about demand, leads, fabrics, visuals, revenue or what needs attention.");
+  const [marketingExporting, setMarketingExporting] = useState<string | null>(null);
 
   async function refresh() {
     try {
@@ -462,6 +477,122 @@ export default function App() {
     return { signals, open, brief, topOccasion, topGarment };
   }, [analytics, attention, inventory, summary, brainActions]);
 
+  const marketing = useMemo(() => {
+    const campaigns: MarketingCampaign[] = [];
+    const topFabric = analytics.topFabrics[0];
+    const topFabricRecord = topFabric ? inventory.fabrics.find((fabric) => fabric.id === topFabric.id) : null;
+    const secondFabric = analytics.topFabrics[1];
+    const topOccasion = analytics.occasions.find((row) => row.label !== "Unknown");
+    const topGarment = analytics.garments.find((row) => row.label !== "Unknown");
+    const topColor = analytics.colors.find((row) => row.label !== "Unknown");
+
+    if (topOccasion && topGarment) {
+      campaigns.push({
+        id: "demand-hero",
+        lane: "Promote",
+        title: `${topOccasion.label} · ${titleCase(topGarment.label)} story`,
+        objective: "Turn the strongest recorded customer intent into a high-confidence reel.",
+        evidence: `${topOccasion.value} journey(s) selected ${topOccasion.label}; ${topGarment.value} selected ${titleCase(topGarment.label)}.`,
+        hook: `“Going to a ${topOccasion.label.toLowerCase()}? Start with the fabric, not the outfit.”`,
+        format: "18–25 sec Reel · 3-act transformation",
+        visualDirection: `Open on fabric texture → cut to tailoring detail → finish on a full ${titleCase(topGarment.label)} look. Keep the edit premium and controlled, not hyper-fast.`,
+        cta: "Try your occasion in Style Director / Visit LLinen Earth",
+        guardrail: "Use only fabrics that are verified In Stock before showing a specific colour.",
+      });
+    }
+
+    if (topFabric) {
+      const safeToPush = topFabricRecord?.status === "in-stock";
+      campaigns.push({
+        id: "top-fabric",
+        lane: safeToPush ? "Promote" : "Fix first",
+        title: `${topFabric.label} · demand spotlight`,
+        objective: safeToPush ? "Promote a fabric customers are already choosing." : "Resolve stock uncertainty before spending reach on this fabric.",
+        evidence: `${topFabric.interest} selection(s), ${topFabric.whatsapp} WhatsApp journey(s), ${topFabric.sales} recorded sale(s). Stock: ${titleCase(topFabricRecord?.status || "unknown")}.`,
+        hook: safeToPush ? `“This is the colour customers keep stopping on.”` : `“Do not promote yet — verify this colour first.”`,
+        format: safeToPush ? "12–18 sec macro-to-look Reel" : "Internal stock verification task",
+        visualDirection: safeToPush ? "Extreme fabric macro, hand drape, then one clean tailored look using the exact swatch." : "Physically locate the roll, confirm metres and update the Fabrics module.",
+        cta: safeToPush ? "See it in-store / Build a look with this fabric" : "No public CTA until stock is confirmed",
+        guardrail: safeToPush ? "Show the exact real swatch, not a similar colour." : "Do not advertise unverified, low or out-of-stock fabric as available.",
+        fabricId: topFabric.id,
+      });
+    }
+
+    if (visuals.length) {
+      campaigns.push({
+        id: "visual-proof",
+        lane: analytics.total >= 10 ? "Promote" : "Test",
+        title: "From swatch to look · visual proof",
+        objective: "Demonstrate that LLinen Earth can help customers imagine fabric as a finished outfit.",
+        evidence: `${visuals.length} visual(s) recorded; visual journeys currently reach WhatsApp at ${analytics.visualWhatsappRate}%.`,
+        hook: "“A fabric roll is hard to imagine. So we stopped asking you to imagine it.”",
+        format: "15–20 sec screen + fabric Reel",
+        visualDirection: "Real fabric close-up → Style Director choice → photoreal render → matching physical swatch in hand. Clearly label generated imagery as visualization.",
+        cta: "Send us your occasion / Try Style Director",
+        guardrail: "Do not imply an AI visualization is a photograph of a finished garment. Keep the real swatch visible.",
+      });
+    }
+
+    if (attention.length) {
+      campaigns.push({
+        id: "lead-recovery",
+        lane: "Fix first",
+        title: "Recover warm enquiries before buying more reach",
+        objective: "Convert existing high-intent conversations before increasing acquisition.",
+        evidence: `${attention.length} WhatsApp-intent customer${attention.length === 1 ? "" : "s"} have no final outcome recorded.`,
+        hook: "Internal follow-up, not public content.",
+        format: "1:1 WhatsApp follow-up · personal, not broadcast",
+        visualDirection: "Use the customer’s selected look/fabric as context. Keep the message short and specific.",
+        cta: "Offer a fitting, swatch viewing, or answer one clear decision blocker.",
+        guardrail: "Respect customer consent and do not spam unresolved leads.",
+      });
+    }
+
+    if (secondFabric || topColor) {
+      const testName = secondFabric?.label || topColor?.label || "secondary direction";
+      campaigns.push({
+        id: "creative-test",
+        lane: "Test",
+        title: `${testName} · controlled creative test`,
+        objective: "Test a second creative direction without confusing it with the current strongest signal.",
+        evidence: secondFabric ? `${secondFabric.interest} selection(s) make this the next fabric signal after the leader.` : `${topColor?.value || 0} journey(s) chose this colour direction.`,
+        hook: `“Same tailoring. Different energy.”`,
+        format: "A/B Reel pair · same edit, different fabric direction",
+        visualDirection: "Keep model, framing, duration and CTA consistent. Change only the fabric/colour direction so the result is interpretable.",
+        cta: "Which direction would you wear?",
+        guardrail: "Treat social engagement as a creative signal, not proof of purchase intent.",
+        fabricId: secondFabric?.id,
+      });
+    }
+
+    campaigns.push({
+      id: "brand-education",
+      lane: "Test",
+      title: "Fabric First · brand authority",
+      objective: "Teach why fabric choice changes the final garment and reinforce LLinen Earth’s positioning.",
+      evidence: `${inventory.fabrics.length} fabric entries and ${fabricLines.length - 1} lines are already structured in the system.`,
+      hook: "“Most people choose the shirt first. A tailor looks at the cloth first.”",
+      format: "20–30 sec educational Reel",
+      visualDirection: "One fabric property per reel: weave, drape, weight, breathability or pattern scale. Use macro shots and a finished silhouette.",
+      cta: "Save this before choosing your next fabric",
+      guardrail: "Make technical claims only when they are supported by the actual fabric specification.",
+    });
+
+    const promote = campaigns.filter((campaign) => campaign.lane === "Promote");
+    const test = campaigns.filter((campaign) => campaign.lane === "Test");
+    const fix = campaigns.filter((campaign) => campaign.lane === "Fix first");
+
+    const calendarSource = [...promote, ...test].filter((campaign) => campaign.format.includes("Reel"));
+    const calendar = [
+      { day: "MON", campaign: calendarSource[0] || campaigns[0], purpose: "Strongest demand signal" },
+      { day: "WED", campaign: calendarSource[1] || campaigns[1] || campaigns[0], purpose: "Second creative angle" },
+      { day: "FRI", campaign: calendarSource[2] || campaigns[2] || campaigns[0], purpose: "Education / proof" },
+      { day: "SUN", campaign: calendarSource[3] || calendarSource[0] || campaigns[0], purpose: "Retest or strongest performer" },
+    ];
+
+    return { campaigns, promote, test, fix, calendar };
+  }, [analytics, inventory, attention, visuals, fabricLines]);
+
   const filteredFabrics = useMemo(() => {
     const query = inventorySearch.trim().toLowerCase();
     return inventory.fabrics.filter((fabric) => {
@@ -578,6 +709,49 @@ export default function App() {
     await invoke("update_brain_action", { actionId, status: nextStatus, note: brainActions[actionId]?.note || "" });
     await loadBrainActions();
     setStatus(`Brain action marked ${titleCase(nextStatus)}`);
+  }
+
+  async function exportCampaign(campaign: MarketingCampaign) {
+    setMarketingExporting(campaign.id);
+    try {
+      const content = [
+        `# LLinen Earth Campaign Brief — ${campaign.title}`,
+        "",
+        `Generated: ${new Date().toLocaleString("en-IN")}`,
+        `Decision lane: ${campaign.lane}`,
+        "",
+        "## Objective",
+        campaign.objective,
+        "",
+        "## Why now / evidence",
+        campaign.evidence,
+        "",
+        "## Hook",
+        campaign.hook,
+        "",
+        "## Format",
+        campaign.format,
+        "",
+        "## Visual direction",
+        campaign.visualDirection,
+        "",
+        "## CTA",
+        campaign.cta,
+        "",
+        "## Guardrail",
+        campaign.guardrail,
+        "",
+        "## Production note",
+        "Use the exact LLinen Earth fabric/swatches referenced in the operator system. Keep generated imagery clearly presented as visualization when applicable.",
+      ].join("\n");
+
+      const path = await invoke<string>("export_marketing_brief", { title: campaign.title, content });
+      setStatus(`Marketing brief exported: ${path}`);
+    } catch (error) {
+      setStatus(`Marketing export failed: ${String(error)}`);
+    } finally {
+      setMarketingExporting(null);
+    }
   }
 
   function askBrain() {
@@ -725,6 +899,7 @@ export default function App() {
                activeNav === "Orders" ? <>From intent to value.<br/><em>Know what converted.</em></> :
                activeNav === "Fabrics" ? <>Know every colour.<br/><em>Know what is moving.</em></> :
                activeNav === "Visuals" ? <>See what customers saw.<br/><em>Connect imagery to intent.</em></> :
+               activeNav === "Marketing" ? <>Market what matters.<br/><em>Turn demand into creative.</em></> :
                activeNav === "Analytics" ? <>See the signal.<br/><em>Know where to act.</em></> :
                activeNav === "AI Brain" ? <>Think across the business.<br/><em>Turn signals into action.</em></> :
                titleCase(activeNav)}
@@ -1018,6 +1193,84 @@ export default function App() {
           )}
 
 
+
+          {activeNav === "Marketing" && (
+            <motion.section key="marketing" className="marketingWorkspace" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <div className="marketingMetrics">
+                <article className="promote"><small>PROMOTE</small><strong>{marketing.promote.length}</strong><span>Signals ready to amplify</span></article>
+                <article className="test"><small>TEST</small><strong>{marketing.test.length}</strong><span>Controlled creative experiments</span></article>
+                <article className="fix"><small>FIX FIRST</small><strong>{marketing.fix.length}</strong><span>Operational issues before spend</span></article>
+                <article className="accent"><small>CONTENT EVIDENCE</small><strong>{analytics.total}</strong><span>Recorded customer journeys</span></article>
+              </div>
+
+              <div className="marketingGrid">
+                <div className="marketingMain">
+                  <article className="card marketingBoard">
+                    <div className="cardHead">
+                      <div><small>CAMPAIGN BOARD</small><h2>Ideas ranked by business evidence.</h2></div>
+                      <span>{marketing.campaigns.length} active briefs</span>
+                    </div>
+                    <div className="campaignGrid">
+                      {marketing.campaigns.map((campaign) => {
+                        const fabric = campaign.fabricId ? inventory.fabrics.find((item) => item.id === campaign.fabricId) : null;
+                        return <article key={campaign.id} className={`campaignCard lane-${campaign.lane.toLowerCase().replace(" ","-")}`}>
+                          <div className="campaignTop">
+                            <span>{campaign.lane.toUpperCase()}</span>
+                            {fabric && <i className="campaignSwatch" style={fabric.swatchImageUrl.startsWith("http") ? { backgroundImage: `url("${fabric.swatchImageUrl}")` } : { background: fabric.hex }} />}
+                          </div>
+                          <h3>{campaign.title}</h3>
+                          <p className="campaignObjective">{campaign.objective}</p>
+                          <div className="campaignEvidence"><small>WHY NOW</small><p>{campaign.evidence}</p></div>
+                          <div className="campaignHook"><small>HOOK</small><blockquote>{campaign.hook}</blockquote></div>
+                          <dl>
+                            <div><dt>FORMAT</dt><dd>{campaign.format}</dd></div>
+                            <div><dt>VISUAL</dt><dd>{campaign.visualDirection}</dd></div>
+                            <div><dt>CTA</dt><dd>{campaign.cta}</dd></div>
+                            <div><dt>CHECK</dt><dd>{campaign.guardrail}</dd></div>
+                          </dl>
+                          <div className="campaignActions">
+                            {campaign.fabricId && <button onClick={() => { setSelectedFabricId(campaign.fabricId || null); setActiveNav("Fabrics"); }}>Open fabric</button>}
+                            <button className="primaryCampaignAction" onClick={() => void exportCampaign(campaign)} disabled={marketingExporting === campaign.id}>{marketingExporting === campaign.id ? "Exporting…" : "Export creative brief ↗"}</button>
+                          </div>
+                        </article>;
+                      })}
+                    </div>
+                  </article>
+                </div>
+
+                <aside className="marketingSide">
+                  <article className="card marketingCalendar">
+                    <div className="cardHead"><div><small>7-DAY SPRINT</small><h2>A simple publishing rhythm.</h2></div><span>4 slots</span></div>
+                    <div className="calendarRows">
+                      {marketing.calendar.map((slot) => <div key={slot.day}>
+                        <span>{slot.day}</span>
+                        <p><b>{slot.campaign?.title || "Hold"}</b><small>{slot.purpose}</small></p>
+                      </div>)}
+                    </div>
+                    <p className="marketingNote">The schedule is a planning suggestion, not a claim about the best posting day or time. Use your Instagram performance data once connected.</p>
+                  </article>
+
+                  <article className="card marketingRules">
+                    <div className="cardHead"><div><small>SPEND RULES</small><h2>Protect the brand and budget.</h2></div></div>
+                    <div>
+                      <span><i>01</i><p><b>Don’t boost unavailable cloth.</b><small>Verify stock before promoting a specific swatch.</small></p></span>
+                      <span><i>02</i><p><b>Test one variable at a time.</b><small>Keep model/edit/CTA stable when comparing fabric directions.</small></p></span>
+                      <span><i>03</i><p><b>Recover warm leads first.</b><small>Unresolved WhatsApp intent is more valuable than another generic impression.</small></p></span>
+                      <span><i>04</i><p><b>Separate attention from sales.</b><small>Views and likes are creative signals; orders are business outcomes.</small></p></span>
+                    </div>
+                  </article>
+
+                  <article className="card marketingPulse">
+                    <small>THIS WEEK’S ANGLE</small>
+                    <h3>{marketing.promote[0]?.title || marketing.test[0]?.title || "Collect more customer signal"}</h3>
+                    <p>{marketing.promote[0]?.evidence || marketing.test[0]?.evidence || "Use Style Director and record outcomes so Marketing Intelligence has real evidence to work with."}</p>
+                  </article>
+                </aside>
+              </div>
+            </motion.section>
+          )}
+
+
           {activeNav === "Analytics" && (
             <motion.section key="analytics" className="analyticsWorkspace" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <div className="analyticsMetrics">
@@ -1189,7 +1442,7 @@ export default function App() {
           )}
 
 
-          {!["Today", "Customers", "Leads", "Orders", "Fabrics", "Visuals", "Analytics", "AI Brain"].includes(activeNav) && (
+          {!["Today", "Customers", "Leads", "Orders", "Fabrics", "Visuals", "Marketing", "Analytics", "AI Brain"].includes(activeNav) && (
             <motion.section key={activeNav} className="placeholder" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <span>NEXT MODULE</span><h2>{activeNav}</h2><p>The desktop foundation, Customers and Leads are now functional. This module is intentionally waiting for its real data workflow rather than showing fake controls.</p>
             </motion.section>
