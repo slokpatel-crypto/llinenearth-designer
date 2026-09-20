@@ -1,6 +1,31 @@
--- LLinen Earth cloud memory table
--- Run in the Supabase SQL editor for the project used by the website.
-
+-- LLinen Earth cloud memory
+--
+-- Canonical migration:
+--   supabase/migrations/20260920_style_events_hardening.sql
+--
+-- Apply that migration to the Supabase project used by the website.
+-- It creates/hardens public.style_events, enables RLS, revokes direct
+-- browser access from anon/authenticated, and grants only SELECT/INSERT
+-- to service_role for the server-side append/read workflow.
+--
+-- Required Vercel server-only environment variables:
+--   SUPABASE_URL
+--   SUPABASE_SECRET_KEY              (preferred)
+--   SUPABASE_SERVICE_ROLE_KEY        (legacy fallback)
+--   LLINEN_OPERATOR_SYNC_TOKEN
+--   LLINEN_OPERATOR_PASSWORD_HASH
+--   LLINEN_OPERATOR_SESSION_SECRET
+--
+-- Public website clients never receive the elevated Supabase key.
+-- Next.js Route Handlers validate and persist events server-side.
+--
+-- Desktop LLinen Earth OS:
+--   1. Pair /api/operator/sync with LLINEN_OPERATOR_SYNC_TOKEN.
+--   2. The token is stored in Windows Credential Manager.
+--   3. Desktop pushes operator events and pulls website events.
+--   4. Event IDs make sync idempotent; received_at + id is the pull cursor.
+--
+-- Legacy minimal schema retained below only as reference.
 create table if not exists public.style_events (
   id text primary key,
   session_id text not null,
@@ -11,12 +36,4 @@ create table if not exists public.style_events (
   received_at timestamptz not null default now()
 );
 
-create index if not exists style_events_session_idx on public.style_events (session_id, at);
-create index if not exists style_events_type_idx on public.style_events (type, at desc);
-create index if not exists style_events_received_idx on public.style_events (received_at desc);
-
 alter table public.style_events enable row level security;
-
--- No anonymous/browser read or write policy is intentionally created.
--- The Next.js server route writes with SUPABASE_SERVICE_ROLE_KEY.
--- Before exposing operator cloud reads, add operator authentication at the application layer.
