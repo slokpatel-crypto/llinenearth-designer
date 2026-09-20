@@ -14,6 +14,13 @@ use std::{
 
 struct SyncLock(Mutex<()>);
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DesktopLockStatus {
+  configured: bool,
+  credential_store: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct EventRecord {
@@ -407,6 +414,7 @@ fn save_sync_state(state: &SyncState) -> Result<(), String> {
 const DEFAULT_SYNC_URL: &str = "https://llinenearth-designer.vercel.app/api/operator/sync";
 const SYNC_KEYRING_SERVICE: &str = "LLinen Earth OS";
 const SYNC_KEYRING_USER: &str = "cloud-sync-token";
+const LOCK_KEYRING_USER: &str = "desktop-lock-password";
 
 fn sync_config_path() -> Result<PathBuf, String> {
   Ok(ensure_vault()?.join("sync").join("config.json"))
@@ -436,6 +444,38 @@ fn save_sync_config(config: &SyncConfig) -> Result<(), String> {
 
 fn sync_entry() -> Result<keyring::Entry, String> {
   keyring::Entry::new(SYNC_KEYRING_SERVICE, SYNC_KEYRING_USER).map_err(|e| e.to_string())
+}
+
+fn lock_entry() -> Result<keyring::Entry, String> {
+  keyring::Entry::new(SYNC_KEYRING_SERVICE, LOCK_KEYRING_USER).map_err(|e| e.to_string())
+}
+
+fn stored_lock_password() -> Option<String> {
+  lock_entry().ok()?.get_password().ok().filter(|value| !value.is_empty())
+}
+
+fn constant_time_text_equal(left: &str, right: &str) -> bool {
+  let a = left.as_bytes();
+  let b = right.as_bytes();
+  if a.len() != b.len() {
+    return false;
+  }
+  let mut diff = 0u8;
+  for (x, y) in a.iter().zip(b.iter()) {
+    diff |= x ^ y;
+  }
+  diff == 0
+}
+
+fn validate_lock_password(value: &str) -> Result<(), String> {
+  let length = value.chars().count();
+  if length < 6 {
+    return Err("Desktop lock password must be at least 6 characters.".to_string());
+  }
+  if length > 128 {
+    return Err("Desktop lock password is too long.".to_string());
+  }
+  Ok(())
 }
 
 fn load_sync_token() -> Option<String> {
@@ -616,6 +656,59 @@ fn build_system_health() -> Result<SystemHealth, String> {
 #[tauri::command]
 fn get_dashboard_summary() -> Result<DashboardSummary, String> {
   Ok(aggregate(load_events()?))
+}
+
+#[tauri::command]
+fn get_desktop_lock_status() -> Result<DesktopLockStatus, String> {
+  Ok(DesktopLockStatus {
+    configured: stored_lock_password().is_some(),
+    credential_store: "Windows Credential Manager".to_string(),
+  })
+}
+
+#[tauri::command]
+fn verify_desktop_lock(password: String) -> Result<bool, String> {
+  let Some(stored) = stored_lock_password() else {
+    return Ok(true);
+  };
+  Ok(constant_time_text_equal(&stored, &password))
+}
+
+#[tauri::command]
+fn set_desktop_lock(current_password: String, new_password: String) -> Result<DesktopLockStatus, String> {
+  validate_lock_password(&new_password)?;
+
+  if let Some(stored) = stored_lock_password() {
+    if !constant_time_text_equal(&stored, &current_password) {
+      return Err("Current desktop lock password is incorrect.".to_string());
+    }
+  }
+
+  lock_entry()?.set_password(&new_password).map_err(|e| e.to_string())?;
+  Ok(DesktopLockStatus {
+    configured: true,
+    credential_store: "Windows Credential Manager".to_string(),
+  })
+}
+
+#[tauri::command]
+fn clear_desktop_lock(password: String) -> Result<DesktopLockStatus, String> {
+  let Some(stored) = stored_lock_password() else {
+    return Ok(DesktopLockStatus {
+      configured: false,
+      credential_store: "Windows Credential Manager".to_string(),
+    });
+  };
+
+  if !constant_time_text_equal(&stored, &password) {
+    return Err("Desktop lock password is incorrect.".to_string());
+  }
+
+  lock_entry()?.delete_credential().map_err(|e| e.to_string())?;
+  Ok(DesktopLockStatus {
+    configured: false,
+    credential_store: "Windows Credential Manager".to_string(),
+  })
 }
 
 #[tauri::command]
@@ -1267,6 +1360,10 @@ fn main() {
     .manage(SyncLock(Mutex::new(())))
     .invoke_handler(tauri::generate_handler![
       get_dashboard_summary,
+      get_desktop_lock_status,
+      verify_desktop_lock,
+      set_desktop_lock,
+      clear_desktop_lock,
       get_sync_pairing_status,
       save_sync_pairing,
       clear_sync_pairing,
