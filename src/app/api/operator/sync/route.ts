@@ -1,4 +1,8 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
+import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
+
+export const runtime = "nodejs";
 
 const OPERATOR_EVENT_TYPES = new Set([
   "session_started",
@@ -13,16 +17,13 @@ const OPERATOR_EVENT_TYPES = new Set([
 ]);
 
 function authorized(request: Request) {
-  const configured = process.env.LLINEN_OPERATOR_SYNC_TOKEN;
-  if (!configured) return false;
+  const configured = process.env.LLINEN_OPERATOR_SYNC_TOKEN?.trim();
   const supplied = request.headers.get("authorization");
-  return supplied === `Bearer ${configured}`;
-}
-
-function cloudConfig() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  return url && key ? { url: url.replace(/\/$/, ""), key } : null;
+  if (!configured || !supplied?.startsWith("Bearer ")) return false;
+  const candidate = supplied.slice(7);
+  const a = Buffer.from(configured);
+  const b = Buffer.from(candidate);
+  return a.length === b.length && timingSafeEqual(a,b);
 }
 
 function cleanOperatorEvent(input: unknown) {
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const cloud = cloudConfig();
+  const cloud = getSupabaseAdminConfig();
   if (!cloud) {
     return NextResponse.json({ error: "Cloud memory is not configured." }, { status: 503 });
   }
@@ -70,8 +71,7 @@ export async function POST(request: Request) {
     const response = await fetch(`${cloud.url}/rest/v1/style_events`, {
       method: "POST",
       headers: {
-        apikey: cloud.key,
-        authorization: `Bearer ${cloud.key}`,
+        ...supabaseAdminHeaders(cloud),
         "content-type": "application/json",
         prefer: "return=minimal,resolution=ignore-duplicates",
       },
@@ -96,7 +96,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const cloud = cloudConfig();
+  const cloud = getSupabaseAdminConfig();
   if (!cloud) {
     return NextResponse.json({ error: "Cloud memory is not configured." }, { status: 503 });
   }
