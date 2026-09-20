@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
+import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 
 const PUBLIC_TYPES = new Set([
   "session_started",
@@ -107,17 +108,15 @@ export async function POST(request:Request) {
       return NextResponse.json({error:"Invalid or unauthorized memory event."},{status:operatorAuthorized?400:403});
     }
 
-    const url = process.env.SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !key) {
+    const cloud = getSupabaseAdminConfig();
+    if (!cloud) {
       return NextResponse.json({stored:false,provider:"not_configured"},{status:202});
     }
 
-    const response = await fetch(`${url.replace(/\/$/,"")}/rest/v1/style_events`,{
+    const response = await fetch(`${cloud.url}/rest/v1/style_events`,{
       method:"POST",
       headers:{
-        apikey:key,
-        authorization:`Bearer ${key}`,
+        ...supabaseAdminHeaders(cloud),
         "content-type":"application/json",
         prefer:"return=minimal,resolution=ignore-duplicates",
       },
