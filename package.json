@@ -17,7 +17,7 @@
     "next": "15.5.24",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "sharp": "^0.34.4",
+    "sharp": "0.35.4",
     "motion": "^12.23.12"
   },
   "devDependencies": {
@@ -25,5 +25,8 @@
     "@types/react": "19.0.3",
     "@types/react-dom": "19.0.2",
     "typescript": "5.9.2"
+  },
+  "overrides": {
+    "postcss": "8.5.28"
   }
 }
