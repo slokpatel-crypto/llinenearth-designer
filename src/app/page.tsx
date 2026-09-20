@@ -57,7 +57,7 @@ export default function Home() {
         </div>
         <div className="gatewayHeroModel" aria-label="Photoreal LLinen Earth menswear model">
           <div className="gatewayHeroGlow" />
-          <img src="/api/homepage-model" alt="Photoreal menswear model styled for LLinen Earth" fetchPriority="high" />
+          <img src="/api/homepage-model" alt="Photoreal menswear model styled for LLinen Earth" fetchPriority="high" decoding="async" />
           <div className="gatewayHeroBadge"><span>AI ATELIER MODEL</span><b>FASHN · PHOTOREAL</b></div>
           <div className="gatewayHeroCaption"><span>REALISTIC SILHOUETTE</span><i/> <span>FABRIC-LED STYLING</span></div>
         </div>
