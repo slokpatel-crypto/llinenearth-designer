@@ -373,6 +373,8 @@ export default function App() {
   const [measurementSaving, setMeasurementSaving] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
   const [tourIndex, setTourIndex] = useState(0);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [commandQuery, setCommandQuery] = useState("");
 
   async function refresh() {
     try {
@@ -553,6 +555,19 @@ export default function App() {
       window.removeEventListener("focus", onFocus);
     };
   }, [unlocked, syncPairing?.configured]);
+
+  useEffect(() => {
+    if (!unlocked) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setCommandOpen((open) => !open);
+      }
+      if (event.key === "Escape") setCommandOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [unlocked]);
 
   useEffect(() => {
     if (!unlocked || !lockStatus?.configured) return;
@@ -1509,6 +1524,44 @@ export default function App() {
     }
   }
 
+  const commandResults = useMemo(() => {
+    const query = commandQuery.trim().toLowerCase();
+    const moduleRows = nav.map((module) => ({
+      type: "module" as const,
+      id: `module-${module}`,
+      title: module,
+      subtitle: module === "Today" ? "Staff priorities and today’s work" : `Open ${module}`,
+      module,
+    }));
+    const customerRows = (summary?.sessions || []).map((session) => ({
+      type: "customer" as const,
+      id: `customer-${session.sessionId}`,
+      title: session.customer.name || session.customer.phone || session.answers.occasion || "Anonymous customer",
+      subtitle: [session.customer.phone, session.answers.garment, titleCase(inferredStage(session))].filter(Boolean).join(" · "),
+      module: "Customers",
+      sessionId: session.sessionId,
+    }));
+    const fabricRows = inventory.fabrics.map((fabric) => ({
+      type: "fabric" as const,
+      id: `fabric-${fabric.id}`,
+      title: fabric.colorName,
+      subtitle: `${fabric.line} · ${titleCase(fabric.status)}`,
+      module: "Fabrics",
+      fabricId: fabric.id,
+    }));
+    const all = [...moduleRows, ...customerRows, ...fabricRows];
+    if (!query) return all.slice(0, 12);
+    return all.filter((row) => `${row.title} ${row.subtitle} ${row.module}`.toLowerCase().includes(query)).slice(0, 18);
+  }, [commandQuery, summary, inventory]);
+
+  function chooseCommand(result: typeof commandResults[number]) {
+    setActiveNav(result.module);
+    if (result.type === "customer") setSelected(result.sessionId);
+    if (result.type === "fabric") setSelectedFabricId(result.fabricId);
+    setCommandOpen(false);
+    setCommandQuery("");
+  }
+
   function openOperatorTour(index = 0) {
     const safeIndex = Math.max(0, Math.min(index, operatorTour.length - 1));
     setTourIndex(safeIndex);
@@ -1780,6 +1833,7 @@ export default function App() {
             </h1>
           </div>
           <div className="topActions">
+            <button className="commandButton" onClick={() => setCommandOpen(true)}>Search <kbd>Ctrl K</kbd></button>
             <button className="guideButton" onClick={() => openOperatorTour(tourIndex)}>Guide</button>
             {lockStatus?.configured && <button onClick={lockDesktopNow}>Lock</button>}
             <button onClick={() => void syncCloud()} disabled={syncing}>{syncing ? "Syncing…" : "Sync cloud"}</button>
@@ -1787,6 +1841,39 @@ export default function App() {
             <button className="primary" onClick={() => void backup()}>Create backup</button>
           </div>
         </header>
+
+        <AnimatePresence>
+          {commandOpen && (
+            <motion.div className="commandBackdrop" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onMouseDown={() => setCommandOpen(false)}>
+              <motion.section className="commandCenter" initial={{opacity:0,y:-14,scale:.985}} animate={{opacity:1,y:0,scale:1}} exit={{opacity:0,y:-8,scale:.99}} onMouseDown={(event)=>event.stopPropagation()}>
+                <div className="commandSearch">
+                  <span>⌕</span>
+                  <input
+                    autoFocus
+                    value={commandQuery}
+                    onChange={(event)=>setCommandQuery(event.target.value)}
+                    placeholder="Find customer, phone, fabric or module…"
+                    onKeyDown={(event)=>{
+                      if (event.key === "Enter" && commandResults[0]) chooseCommand(commandResults[0]);
+                    }}
+                  />
+                  <kbd>ESC</kbd>
+                </div>
+                <div className="commandResults">
+                  {commandResults.map((result)=>(
+                    <button key={result.id} onClick={()=>chooseCommand(result)}>
+                      <i>{result.type === "customer" ? "C" : result.type === "fabric" ? "F" : "→"}</i>
+                      <span><b>{result.title}</b><small>{result.subtitle}</small></span>
+                      <em>{result.module}</em>
+                    </button>
+                  ))}
+                  {!commandResults.length && <div className="commandEmpty">No matching customer, fabric or module.</div>}
+                </div>
+                <footer><span>Enter opens first result</span><span>Ctrl K opens anywhere</span></footer>
+              </motion.section>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <AnimatePresence>
           {tourOpen && (
