@@ -603,6 +603,78 @@ export default function App() {
     }).sort((a,b)=>(latestOrder(a)?.dueDate || "").localeCompare(latestOrder(b)?.dueDate || ""));
   }, [orders]);
 
+  const staffPriorities = useMemo(() => {
+    const rows: Array<{
+      id: string;
+      level: "urgent" | "today" | "follow-up" | "money";
+      title: string;
+      note: string;
+      sessionId: string;
+      module: "Orders" | "Leads";
+    }> = [];
+    const now = Date.now();
+    const next24h = now + 24 * 60 * 60 * 1000;
+
+    for (const session of overdueOrders.slice(0, 6)) {
+      const order = latestOrder(session);
+      rows.push({
+        id: `overdue-${session.sessionId}`,
+        level: "urgent",
+        title: `${session.customer.name || "Customer order"} is overdue`,
+        note: `${titleCase(order?.status || "Order")} · due ${order?.dueDate || "earlier"}`,
+        sessionId: session.sessionId,
+        module: "Orders",
+      });
+    }
+
+    for (const { session, appointment, when } of upcomingAppointments) {
+      if (when > next24h) continue;
+      rows.push({
+        id: `appointment-${session.sessionId}`,
+        level: "today",
+        title: `${titleCase(appointment?.kind || "Appointment")} · ${session.customer.name || "Customer"}`,
+        note: `${prettyDateTime(appointment?.dateTime)}${appointment?.note ? ` · ${appointment.note}` : ""}`,
+        sessionId: session.sessionId,
+        module: "Orders",
+      });
+    }
+
+    for (const session of attention) {
+      const last = new Date(session.lastAt).getTime();
+      if (Number.isFinite(last) && now - last < 12 * 60 * 60 * 1000) continue;
+      rows.push({
+        id: `lead-${session.sessionId}`,
+        level: "follow-up",
+        title: `Follow up · ${session.customer.name || session.answers.occasion || "Warm lead"}`,
+        note: `WhatsApp intent ${ago(session.lastAt)} ago · ${String(session.selectedLook?.fabric || "look selected")}`,
+        sessionId: session.sessionId,
+        module: "Leads",
+      });
+    }
+
+    for (const session of orders) {
+      const order = latestOrder(session);
+      if (!order?.orderValue || ["cancelled"].includes(order.status)) continue;
+      const balance = Math.max(0, order.orderValue - paymentTotal(session));
+      if (balance <= 0) continue;
+      if (!["ready", "collected", "trial"].includes(order.status)) continue;
+      rows.push({
+        id: `balance-${session.sessionId}`,
+        level: "money",
+        title: `${money(balance)} balance · ${session.customer.name || "Customer"}`,
+        note: `${titleCase(order.status)} · order value ${money(order.orderValue)}`,
+        sessionId: session.sessionId,
+        module: "Orders",
+      });
+    }
+
+    const rank = { urgent: 0, today: 1, money: 2, "follow-up": 3 } as const;
+    return rows
+      .sort((a,b)=>rank[a.level]-rank[b.level])
+      .filter((row,index,array)=>array.findIndex((candidate)=>candidate.id===row.id)===index)
+      .slice(0, 10);
+  }, [overdueOrders, upcomingAppointments, attention, orders]);
+
   const visuals = useMemo(
     () => (summary?.sessions || [])
       .flatMap((session) => session.events
@@ -1612,6 +1684,20 @@ export default function App() {
 
               <div className="contentGrid">
                 <div className="mainColumn">
+                  <motion.article layout className="card staffPriorityCard">
+                    <div className="cardHead">
+                      <div><small>STAFF PRIORITY BOARD</small><h2>What should happen first.</h2></div>
+                      <span>{staffPriorities.length} action{staffPriorities.length === 1 ? "" : "s"}</span>
+                    </div>
+                    {staffPriorities.length ? <div className="staffPriorityList">
+                      {staffPriorities.map((item)=><button key={item.id} className={`staffPriority staff-${item.level}`} onClick={()=>{setSelected(item.sessionId);setActiveNav(item.module);}}>
+                        <i>{item.level === "urgent" ? "!" : item.level === "today" ? "◷" : item.level === "money" ? "₹" : "↗"}</i>
+                        <span><b>{item.title}</b><small>{item.note}</small></span>
+                        <em>{item.module}</em>
+                      </button>)}
+                    </div> : <div className="staffPriorityClear"><i>✓</i><span><b>No urgent staff actions.</b><small>Appointments, overdue orders, warm leads and balances are clear.</small></span></div>}
+                  </motion.article>
+
                   <motion.article layout className="card funnelCard">
                     <div className="cardHead">
                       <div><small>CUSTOMER JOURNEY</small><h2>Where interest becomes business.</h2></div>
