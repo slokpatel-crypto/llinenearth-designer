@@ -623,11 +623,30 @@ fn get_sync_pairing_status() -> Result<SyncPairingStatus, String> {
 }
 
 #[tauri::command]
-fn save_sync_pairing(sync_url: String, token: String) -> Result<SyncPairingStatus, String> {
+async fn save_sync_pairing(sync_url: String, token: String) -> Result<SyncPairingStatus, String> {
   let url = validate_sync_url(&sync_url)?;
   let clean_token = token.trim();
   if clean_token.len() < 24 {
     return Err("Use a long private sync token (at least 24 characters).".to_string());
+  }
+
+  let client = Client::builder()
+    .timeout(std::time::Duration::from_secs(15))
+    .build()
+    .map_err(|e| e.to_string())?;
+  let response = client
+    .get(&url)
+    .bearer_auth(clean_token)
+    .query(&[("limit","1")])
+    .send()
+    .await
+    .map_err(|e| format!("Could not reach the sync endpoint: {e}"))?;
+
+  if response.status() == reqwest::StatusCode::UNAUTHORIZED {
+    return Err("The server rejected this pairing token.".to_string());
+  }
+  if !response.status().is_success() && response.status() != reqwest::StatusCode::SERVICE_UNAVAILABLE {
+    return Err(format!("Sync endpoint returned HTTP {}.", response.status()));
   }
 
   sync_entry()?.set_password(clean_token).map_err(|e| e.to_string())?;
