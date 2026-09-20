@@ -182,12 +182,26 @@ export default function OperatorPage() {
     return whatsapp && !sale;
   }).slice(0,5);
 
-  function logOutcome(type:"visit_logged"|"sale_logged") {
+  async function logOutcome(type:"visit_logged"|"sale_logged") {
     if (!selected) return;
     const payload = type === "sale_logged" ? {amount:saleAmount ? Number(saleAmount) : undefined,currency:"INR"} : {status:"visited"};
-    recordStyleMemoryEvent(selected.sessionId,type,payload,"operator");
+    const event = recordStyleMemoryEvent(selected.sessionId,type,payload,"operator");
     setSaleAmount("");
     refreshBrowser();
+
+    if (cloudState === "live") {
+      try {
+        await fetch("/api/memory/event",{
+          method:"POST",
+          headers:{"content-type":"application/json"},
+          body:JSON.stringify(event),
+        });
+        await loadCloud();
+      } catch {
+        // Browser/local memory remains the fallback if cloud refresh fails.
+      }
+    }
+
     setMessage(type === "sale_logged" ? "Sale outcome saved." : "Store visit saved.");
   }
 
@@ -266,8 +280,8 @@ export default function OperatorPage() {
               </div>
               <div className="outcomeBox">
                 <small>REAL-WORLD OUTCOME</small>
-                <button onClick={()=>logOutcome("visit_logged")}>Mark store visit</button>
-                <div><span>₹</span><input value={saleAmount} onChange={(e)=>setSaleAmount(e.target.value)} inputMode="numeric" placeholder="Sale amount" /><button onClick={()=>logOutcome("sale_logged")}>Save sale</button></div>
+                <button onClick={()=>void logOutcome("visit_logged")}>Mark store visit</button>
+                <div><span>₹</span><input value={saleAmount} onChange={(e)=>setSaleAmount(e.target.value)} inputMode="numeric" placeholder="Sale amount" /><button onClick={()=>void logOutcome("sale_logged")}>Save sale</button></div>
               </div>
             </> : <div className="empty"><span>Choose a customer session to see the full story.</span></div>}
           </article>
