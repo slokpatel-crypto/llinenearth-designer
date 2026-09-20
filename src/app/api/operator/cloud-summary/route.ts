@@ -24,8 +24,9 @@ type Session = {
   sale: Record<string,unknown> | null;
   customer: {name:string;phone:string;note:string};
   leadStatus: string;
-  order: {status:string;dueDate:string;note:string} | null;
+  order: {status:string;dueDate:string;note:string;orderValue:number} | null;
   measurements: {unit:string;values:Record<string,number>;note:string;at:string} | null;
+  payments: Array<{amount:number;method:string;note:string;at:string}>;
 };
 
 function aggregate(events: CloudEvent[]) {
@@ -46,6 +47,7 @@ function aggregate(events: CloudEvent[]) {
       leadStatus: "",
       order: null,
       measurements: null,
+      payments: [],
     };
 
     if (event.at < current.firstAt) current.firstAt = event.at;
@@ -72,7 +74,17 @@ function aggregate(events: CloudEvent[]) {
         status: String(event.payload.status || ""),
         dueDate: String(event.payload.dueDate || ""),
         note: String(event.payload.note || ""),
+        orderValue: Number(event.payload.orderValue || 0) || 0,
       };
+    }
+    if (event.type === "payment_logged") {
+      const amount = Number(event.payload.amount || 0);
+      current.payments.push({
+        amount: Number.isFinite(amount) ? amount : 0,
+        method: String(event.payload.method || "other"),
+        note: String(event.payload.note || ""),
+        at: event.at,
+      });
     }
     if (event.type === "measurements_updated") {
       const raw = event.payload.measurements;
