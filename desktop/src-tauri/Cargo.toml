@@ -1,6 +1,6 @@
 [package]
 name = "llinen-earth-os"
-version = "0.1.0"
+version = "1.0.0"
 description = "LLinen Earth private operator system"
 authors = ["LLinen Earth"]
 edition = "2021"
