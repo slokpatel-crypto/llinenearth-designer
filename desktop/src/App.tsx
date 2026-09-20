@@ -10,6 +10,13 @@ type EventRecord = {
   payload?: Record<string, unknown>;
 };
 
+type CustomerMeta = {
+  name: string;
+  phone: string;
+  note: string;
+  leadStatus: string;
+};
+
 type SessionRecord = {
   sessionId: string;
   firstAt: string;
@@ -17,6 +24,7 @@ type SessionRecord = {
   answers: Record<string, string>;
   selectedLook?: Record<string, unknown> | null;
   sale?: Record<string, unknown> | null;
+  customer: CustomerMeta;
   events: EventRecord[];
 };
 
@@ -34,7 +42,15 @@ type DashboardSummary = {
   sessions: SessionRecord[];
 };
 
+type SyncResult = {
+  configured: boolean;
+  imported: number;
+  nextCursor?: string | null;
+  message: string;
+};
+
 const nav = ["Today", "Customers", "Leads", "Orders", "Fabrics", "Visuals", "Marketing", "Analytics", "AI Brain", "Memory"];
+const leadStatuses = ["new", "follow-up", "contacted", "visit-booked", "won", "lost"];
 
 function money(value: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value || 0);
@@ -52,7 +68,40 @@ function ago(iso?: string) {
 }
 
 function titleCase(input: string) {
-  return input.replaceAll("_", " ").replace(/\b\w/g, (m) => m.toUpperCase());
+  return input.replaceAll("_", " ").replaceAll("-", " ").replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function shortId(value: string) {
+  return value.length > 13 ? `${value.slice(0, 6)}…${value.slice(-4)}` : value;
+}
+
+function hasEvent(session: SessionRecord, type: string) {
+  return session.events.some((event) => event.type === type);
+}
+
+function inferredStage(session: SessionRecord) {
+  if (session.customer.leadStatus) return session.customer.leadStatus;
+  if (hasEvent(session, "sale_logged")) return "won";
+  if (hasEvent(session, "visit_logged")) return "visit-booked";
+  if (hasEvent(session, "whatsapp_clicked")) return "follow-up";
+  if (hasEvent(session, "render_completed")) return "new";
+  return "browsing";
+}
+
+function intentLabel(session: SessionRecord) {
+  if (hasEvent(session, "sale_logged")) return "Sale";
+  if (hasEvent(session, "visit_logged")) return "Visited";
+  if (hasEvent(session, "whatsapp_clicked")) return "WhatsApp";
+  if (hasEvent(session, "render_completed")) return "Visual";
+  if (hasEvent(session, "look_selected")) return "Look selected";
+  return "Browsing";
+}
+
+function saleValue(session?: SessionRecord | null) {
+  const raw = session?.sale?.amount;
+  if (typeof raw === "number") return raw;
+  if (typeof raw === "string") return Number(raw) || 0;
+  return 0;
 }
 
 export default function App() {
@@ -61,12 +110,14 @@ export default function App() {
   const [saleAmount, setSaleAmount] = useState("");
   const [status, setStatus] = useState("Opening local memory…");
   const [activeNav, setActiveNav] = useState("Today");
+  const [syncing, setSyncing] = useState(false);
+  const [customerDraft, setCustomerDraft] = useState({ name: "", phone: "", note: "" });
 
   async function refresh() {
     try {
       const data = await invoke<DashboardSummary>("get_dashboard_summary");
       setSummary(data);
-      setSelected((current) => current || data.sessions[0]?.sessionId || null);
+      setSelected((current) => current && data.sessions.some((session) => session.sessionId === current) ? current : data.sessions[0]?.sessionId || null);
       setStatus("Local memory connected");
     } catch (error) {
       setStatus(`Desktop memory unavailable: ${String(error)}`);
@@ -82,13 +133,35 @@ export default function App() {
     [selected, summary],
   );
 
+  useEffect(() => {
+    setCustomerDraft({
+      name: selectedSession?.customer.name || "",
+      phone: selectedSession?.customer.phone || "",
+      note: selectedSession?.customer.note || "",
+    });
+  }, [selectedSession?.sessionId, selectedSession?.customer.name, selectedSession?.customer.phone, selectedSession?.customer.note]);
+
   const attention = useMemo(
     () =>
       (summary?.sessions || []).filter((session) => {
-        const whatsapp = session.events.some((event) => event.type === "whatsapp_clicked");
-        const sale = session.events.some((event) => event.type === "sale_logged");
-        return whatsapp && !sale;
+        const whatsapp = hasEvent(session, "whatsapp_clicked");
+        const sale = hasEvent(session, "sale_logged");
+        const lost = inferredStage(session) === "lost";
+        return whatsapp && !sale && !lost;
       }),
+    [summary],
+  );
+
+  const leads = useMemo(
+    () =>
+      (summary?.sessions || []).filter((session) =>
+        Boolean(session.customer.name) ||
+        Boolean(session.customer.leadStatus) ||
+        hasEvent(session, "render_completed") ||
+        hasEvent(session, "whatsapp_clicked") ||
+        hasEvent(session, "visit_logged") ||
+        hasEvent(session, "sale_logged"),
+      ),
     [summary],
   );
 
@@ -103,12 +176,47 @@ export default function App() {
     await refresh();
   }
 
+  async function saveCustomer() {
+    if (!selectedSession) return;
+    await invoke("update_customer", {
+      sessionId: selectedSession.sessionId,
+      name: customerDraft.name,
+      phone: customerDraft.phone,
+      note: customerDraft.note,
+    });
+    setStatus("Customer details saved locally");
+    await refresh();
+  }
+
+  async function changeLeadStatus(nextStatus: string) {
+    if (!selectedSession) return;
+    await invoke("set_lead_status", {
+      sessionId: selectedSession.sessionId,
+      status: nextStatus,
+    });
+    setStatus(`Lead moved to ${titleCase(nextStatus)}`);
+    await refresh();
+  }
+
   async function backup() {
     try {
       const file = await invoke<string>("create_backup");
       setStatus(`Backup created: ${file}`);
     } catch (error) {
       setStatus(`Backup failed: ${String(error)}`);
+    }
+  }
+
+  async function syncCloud() {
+    setSyncing(true);
+    try {
+      const result = await invoke<SyncResult>("sync_from_cloud");
+      setStatus(result.message);
+      if (result.configured) await refresh();
+    } catch (error) {
+      setStatus(`Cloud sync failed: ${String(error)}`);
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -121,6 +229,89 @@ export default function App() {
     ["Sale", summary?.counts.sale_logged || 0],
   ] as const;
   const funnelMax = Math.max(1, ...funnel.map(([, value]) => value));
+
+  const customerEditor = selectedSession ? (
+    <motion.article
+      key={selectedSession.sessionId}
+      className="card detailCard"
+      initial={{ opacity: 0, x: 14 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -10 }}
+      transition={{ duration: 0.24 }}
+    >
+      <div className="cardHead">
+        <div>
+          <small>CUSTOMER STORY</small>
+          <h2>{selectedSession.customer.name || selectedSession.answers.occasion || "Anonymous session"}</h2>
+        </div>
+        <span>{ago(selectedSession.lastAt)}</span>
+      </div>
+
+      <div className="contactForm">
+        <label><small>NAME</small><input value={customerDraft.name} onChange={(e) => setCustomerDraft((v) => ({ ...v, name: e.target.value }))} placeholder="Add customer name" /></label>
+        <label><small>PHONE</small><input value={customerDraft.phone} onChange={(e) => setCustomerDraft((v) => ({ ...v, phone: e.target.value }))} placeholder="Add phone / WhatsApp" /></label>
+        <label className="wide"><small>NOTE</small><textarea value={customerDraft.note} onChange={(e) => setCustomerDraft((v) => ({ ...v, note: e.target.value }))} placeholder="Fit, budget, date, follow-up note…" /></label>
+        <button onClick={() => void saveCustomer()}>Save customer</button>
+      </div>
+
+      <div className="leadStatusBlock">
+        <small>LEAD STATUS</small>
+        <div>
+          {leadStatuses.map((leadStatus) => (
+            <button key={leadStatus} className={inferredStage(selectedSession) === leadStatus ? "active" : ""} onClick={() => void changeLeadStatus(leadStatus)}>
+              {titleCase(leadStatus)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="chips">
+        {Object.entries(selectedSession.answers).map(([key, value]) => <span key={key}><small>{key}</small><b>{value}</b></span>)}
+      </div>
+
+      {selectedSession.selectedLook && (
+        <div className="look">
+          <small>SELECTED LOOK</small>
+          <strong>{String(selectedSession.selectedLook.title || "Selected direction")}</strong>
+          <span>{String(selectedSession.selectedLook.fabric || "")}</span>
+        </div>
+      )}
+
+      <div className="timeline">
+        {selectedSession.events.slice(-10).reverse().map((event) => (
+          <div key={event.id}><i/><span><b>{titleCase(event.type)}</b><small>{ago(event.at)}</small></span></div>
+        ))}
+      </div>
+
+      <div className="outcome">
+        <small>REAL-WORLD OUTCOME</small>
+        <button onClick={() => void logOutcome("visit_logged")}>Mark store visit</button>
+        <div><span>₹</span><input value={saleAmount} onChange={(e) => setSaleAmount(e.target.value)} placeholder="Sale amount" inputMode="numeric"/><button onClick={() => void logOutcome("sale_logged")}>Save sale</button></div>
+      </div>
+    </motion.article>
+  ) : (
+    <div className="card empty tall">Choose a customer journey to inspect it.</div>
+  );
+
+  function sessionRows(rows: SessionRecord[], leadMode = false) {
+    return (
+      <div className="sessionTable richTable">
+        {rows.map((session) => (
+          <button key={session.sessionId} className={selectedSession?.sessionId === session.sessionId ? "selected" : ""} onClick={() => setSelected(session.sessionId)}>
+            <span>
+              <b>{session.customer.name || session.answers.occasion || "Anonymous journey"}</b>
+              <small>{session.customer.phone || shortId(session.sessionId)}</small>
+            </span>
+            <span><b className="tableStrong">{session.answers.garment || "—"}</b><small>{session.answers.colorDirection || "—"}</small></span>
+            <span><em className={`stageTag stage-${inferredStage(session)}`}>{titleCase(inferredStage(session))}</em><small>{intentLabel(session)}</small></span>
+            <span>{saleValue(session) ? money(saleValue(session)) : leadMode ? String(session.selectedLook?.fabric || "—") : ago(session.lastAt)}</span>
+            <span>{ago(session.lastAt)} ↗</span>
+          </button>
+        ))}
+        {!rows.length && <div className="empty tall">No matching customer journeys yet.</div>}
+      </div>
+    );
+  }
 
   return (
     <div className="osShell">
@@ -144,16 +335,22 @@ export default function App() {
         <header className="topbar">
           <div>
             <small>LLINEN EARTH OS / {activeNav.toUpperCase()}</small>
-            <h1>{activeNav === "Today" ? <>Know what happened.<br/><em>Know what to do next.</em></> : titleCase(activeNav)}</h1>
+            <h1>
+              {activeNav === "Today" ? <>Know what happened.<br/><em>Know what to do next.</em></> :
+               activeNav === "Customers" ? <>Every customer.<br/><em>One continuous story.</em></> :
+               activeNav === "Leads" ? <>Intent first.<br/><em>Follow up at the right moment.</em></> :
+               titleCase(activeNav)}
+            </h1>
           </div>
           <div className="topActions">
+            <button onClick={() => void syncCloud()} disabled={syncing}>{syncing ? "Syncing…" : "Sync cloud"}</button>
             <button onClick={() => void refresh()}>Refresh</button>
             <button className="primary" onClick={() => void backup()}>Create backup</button>
           </div>
         </header>
 
         <AnimatePresence mode="wait">
-          {activeNav === "Today" ? (
+          {activeNav === "Today" && (
             <motion.section
               key="today"
               initial={{ opacity: 0, y: 12 }}
@@ -209,9 +406,9 @@ export default function App() {
                     <div className="leadList">
                       {attention.length === 0 ? <div className="empty">No unresolved WhatsApp-intent customers yet.</div> :
                         attention.slice(0, 6).map((session) => (
-                          <button key={session.sessionId} onClick={() => setSelected(session.sessionId)}>
+                          <button key={session.sessionId} onClick={() => { setSelected(session.sessionId); setActiveNav("Leads"); }}>
                             <span className="alertMark">!</span>
-                            <span><b>{session.answers.occasion || "Style session"} · {session.answers.mood || "Intent captured"}</b><small>{String(session.selectedLook?.fabric || "Look selected")} · no sale logged</small></span>
+                            <span><b>{session.customer.name || session.answers.occasion || "Style session"} · {session.answers.mood || "Intent captured"}</b><small>{String(session.selectedLook?.fabric || "Look selected")} · {titleCase(inferredStage(session))}</small></span>
                             <em>{ago(session.lastAt)} ↗</em>
                           </button>
                         ))}
@@ -222,69 +419,63 @@ export default function App() {
                     <div className="cardHead">
                       <div><small>RECENT SESSIONS</small><h2>Every customer story, compressed.</h2></div>
                     </div>
-                    <div className="sessionTable">
-                      {(summary?.sessions || []).slice(0, 12).map((session) => (
-                        <button key={session.sessionId} className={selectedSession?.sessionId === session.sessionId ? "selected" : ""} onClick={() => setSelected(session.sessionId)}>
-                          <span><b>{session.answers.occasion || "Unfinished journey"}</b><small>{session.answers.mood || "—"} · {session.answers.time || "—"}</small></span>
-                          <span>{session.answers.garment || "—"}</span>
-                          <span>{session.answers.colorDirection || "—"}</span>
-                          <span>{ago(session.lastAt)} ↗</span>
-                        </button>
-                      ))}
-                      {!summary?.sessions.length && <div className="empty tall">No sessions yet. Website activity will sync here once cloud memory is connected.</div>}
-                    </div>
+                    {sessionRows((summary?.sessions || []).slice(0, 12))}
                   </motion.article>
                 </div>
 
                 <aside className="detailColumn">
-                  <AnimatePresence mode="wait">
-                    <motion.article
-                      key={selectedSession?.sessionId || "empty"}
-                      className="card detailCard"
-                      initial={{ opacity: 0, x: 14 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -10 }}
-                      transition={{ duration: 0.24 }}
-                    >
-                      <div className="cardHead">
-                        <div><small>CUSTOMER STORY</small><h2>{selectedSession?.answers.occasion || "Select a session"}</h2></div>
-                        <span>{ago(selectedSession?.lastAt)}</span>
-                      </div>
-                      {selectedSession ? (
-                        <>
-                          <div className="chips">
-                            {Object.entries(selectedSession.answers).map(([key, value]) => <span key={key}><small>{key}</small><b>{value}</b></span>)}
-                          </div>
-                          {selectedSession.selectedLook && <div className="look"><small>SELECTED LOOK</small><strong>{String(selectedSession.selectedLook.title || "Selected direction")}</strong><span>{String(selectedSession.selectedLook.fabric || "")}</span></div>}
-                          <div className="timeline">
-                            {selectedSession.events.slice(-8).reverse().map((event) => <div key={event.id}><i/><span><b>{titleCase(event.type)}</b><small>{ago(event.at)}</small></span></div>)}
-                          </div>
-                          <div className="outcome">
-                            <small>REAL-WORLD OUTCOME</small>
-                            <button onClick={() => void logOutcome("visit_logged")}>Mark store visit</button>
-                            <div><span>₹</span><input value={saleAmount} onChange={(e) => setSaleAmount(e.target.value)} placeholder="Sale amount" inputMode="numeric"/><button onClick={() => void logOutcome("sale_logged")}>Save sale</button></div>
-                          </div>
-                        </>
-                      ) : <div className="empty tall">Choose a session to inspect its full journey.</div>}
-                    </motion.article>
-                  </AnimatePresence>
-
+                  <AnimatePresence mode="wait">{customerEditor}</AnimatePresence>
                   <motion.article layout className="card vaultCard">
                     <div className="cardHead"><div><small>MEMORY VAULT</small><h2>Stored on this PC.</h2></div><span className="good">● LIVE</span></div>
-                    <p>Your desktop app reads and writes only the LLinen Earth business vault managed by the native app.</p>
+                    <p>The desktop app owns the local LLinen Earth business vault. Cloud website activity can be imported without giving the web app access to your files.</p>
                     <code>{summary?.vaultPath || "Preparing vault…"}</code>
                     <div className="vaultRows">
                       <span><b>Customer events</b> Append-only records</span>
                       <span><b>Backups</b> Local snapshots</span>
-                      <span><b>Cloud sync</b> Ready for secure connection</span>
+                      <span><b>Cloud sync</b> Token-protected import</span>
                     </div>
                   </motion.article>
                 </aside>
               </div>
             </motion.section>
-          ) : (
+          )}
+
+          {activeNav === "Customers" && (
+            <motion.section key="customers" className="moduleGrid" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <div className="card moduleList">
+                <div className="cardHead">
+                  <div><small>CUSTOMER MEMORY</small><h2>{summary?.totals.sessions || 0} recorded journeys.</h2></div>
+                  <span>{(summary?.sessions || []).filter((s) => s.customer.name).length} identified</span>
+                </div>
+                <div className="tableHeader"><span>Customer / session</span><span>Interest</span><span>Status</span><span>Value</span><span>Last</span></div>
+                {sessionRows(summary?.sessions || [])}
+              </div>
+              <aside className="moduleDetail"><AnimatePresence mode="wait">{customerEditor}</AnimatePresence></aside>
+            </motion.section>
+          )}
+
+          {activeNav === "Leads" && (
+            <motion.section key="leads" className="moduleGrid" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <div className="card moduleList">
+                <div className="cardHead">
+                  <div><small>INTENT QUEUE</small><h2>{leads.length} journeys worth watching.</h2></div>
+                  <span>{attention.length} need follow-up</span>
+                </div>
+                <div className="leadSummary">
+                  <span><b>{leads.filter((s) => hasEvent(s, "whatsapp_clicked") && !hasEvent(s, "sale_logged")).length}</b><small>WhatsApp, no sale</small></span>
+                  <span><b>{leads.filter((s) => hasEvent(s, "visit_logged") && !hasEvent(s, "sale_logged")).length}</b><small>Visited, no sale</small></span>
+                  <span><b>{leads.filter((s) => hasEvent(s, "sale_logged")).length}</b><small>Won</small></span>
+                </div>
+                <div className="tableHeader"><span>Lead</span><span>Interest</span><span>Status</span><span>Look / value</span><span>Last</span></div>
+                {sessionRows(leads, true)}
+              </div>
+              <aside className="moduleDetail"><AnimatePresence mode="wait">{customerEditor}</AnimatePresence></aside>
+            </motion.section>
+          )}
+
+          {!["Today", "Customers", "Leads"].includes(activeNav) && (
             <motion.section key={activeNav} className="placeholder" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <span>MODULE</span><h2>{activeNav}</h2><p>This module is reserved in the desktop information architecture. The Today dashboard and Memory foundation are the first fully functional layer.</p>
+              <span>NEXT MODULE</span><h2>{activeNav}</h2><p>The desktop foundation, Customers and Leads are now functional. This module is intentionally waiting for its real data workflow rather than showing fake controls.</p>
             </motion.section>
           )}
         </AnimatePresence>
