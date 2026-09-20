@@ -35,7 +35,7 @@ for (const path of [
   "package-lock.json",
 ]) requireFile(path);
 
-requireTokens("src/app/page.tsx", ["/api/homepage-model", "/designer", "/visualize"]);
+requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/visual"]);
 requireTokens("src/app/api/homepage-model/route.ts", [
   "FASHN_API_KEY",
   "model-create",
