@@ -165,6 +165,29 @@ struct BrainActionState {
   updated_at: String,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SystemHealth {
+  vault_path: String,
+  event_files: usize,
+  event_records: usize,
+  event_bytes: u64,
+  backup_count: usize,
+  backup_bytes: u64,
+  latest_backup: Option<String>,
+  visual_count: usize,
+  visual_bytes: u64,
+  marketing_briefs: usize,
+  brain_actions: usize,
+  inventory_count: usize,
+  unverified_inventory: usize,
+  inventory_overrides: usize,
+  sync_configured: bool,
+  sync_cursor: Option<String>,
+  last_synced_at: Option<String>,
+  issues: Vec<String>,
+}
+
 fn vault_root() -> PathBuf {
   if let Ok(custom) = std::env::var("LLINEN_EARTH_DATA_DIR") {
     let path = PathBuf::from(custom);
@@ -425,9 +448,134 @@ fn save_brain_actions(actions: &HashMap<String, BrainActionState>) -> Result<(),
   .map_err(|e| e.to_string())
 }
 
+fn directory_stats(path: &Path) -> (usize, u64, Option<String>) {
+  let mut count = 0usize;
+  let mut bytes = 0u64;
+  let mut latest: Option<(std::time::SystemTime, String)> = None;
+
+  let Ok(entries) = fs::read_dir(path) else {
+    return (0, 0, None);
+  };
+
+  for entry in entries.flatten() {
+    let entry_path = entry.path();
+    let Ok(meta) = entry.metadata() else { continue; };
+    if !meta.is_file() { continue; }
+    count += 1;
+    bytes = bytes.saturating_add(meta.len());
+    if let Ok(modified) = meta.modified() {
+      let name = entry_path.file_name().and_then(|value| value.to_str()).unwrap_or("file").to_string();
+      if latest.as_ref().is_none_or(|(time, _)| modified > *time) {
+        latest = Some((modified, name));
+      }
+    }
+  }
+
+  (count, bytes, latest.map(|(_, name)| name))
+}
+
+fn build_system_health() -> Result<SystemHealth, String> {
+  let root = ensure_vault()?;
+  let events = load_events()?;
+  let event_files = event_files(&root.join("events"))?;
+  let event_bytes = event_files.iter()
+    .filter_map(|path| fs::metadata(path).ok().map(|meta| meta.len()))
+    .sum::<u64>();
+
+  let (backup_count, backup_bytes, latest_backup) = directory_stats(&root.join("backups"));
+  let (visual_count, visual_bytes, _) = directory_stats(&root.join("visuals"));
+  let (marketing_briefs, _, _) = directory_stats(&root.join("marketing"));
+
+  let inventory = get_fabric_inventory()?;
+  let overrides = load_inventory_overrides()?;
+  let brain_actions = load_brain_actions()?;
+  let sync_state = load_sync_state().unwrap_or_default();
+  let sync_configured = std::env::var("LLINEN_OPERATOR_SYNC_TOKEN")
+    .is_ok_and(|value| !value.trim().is_empty());
+
+  let mut issues = Vec::<String>::new();
+  if backup_count == 0 {
+    issues.push("No local backup has been created yet.".to_string());
+  }
+  if inventory.fabrics.iter().any(|fabric| fabric.status == "unverified") {
+    issues.push(format!(
+      "{} fabric entries are still unverified.",
+      inventory.fabrics.iter().filter(|fabric| fabric.status == "unverified").count()
+    ));
+  }
+  if !sync_configured {
+    issues.push("Cloud sync is not paired on this PC.".to_string());
+  }
+  if events.is_empty() {
+    issues.push("No customer journey events are stored locally yet.".to_string());
+  }
+
+  Ok(SystemHealth {
+    vault_path: root.to_string_lossy().to_string(),
+    event_files: event_files.len(),
+    event_records: events.len(),
+    event_bytes,
+    backup_count,
+    backup_bytes,
+    latest_backup,
+    visual_count,
+    visual_bytes,
+    marketing_briefs,
+    brain_actions: brain_actions.len(),
+    inventory_count: inventory.fabrics.len(),
+    unverified_inventory: inventory.fabrics.iter().filter(|fabric| fabric.status == "unverified").count(),
+    inventory_overrides: overrides.len(),
+    sync_configured,
+    sync_cursor: sync_state.cursor,
+    last_synced_at: sync_state.last_synced_at,
+    issues,
+  })
+}
+
 #[tauri::command]
 fn get_dashboard_summary() -> Result<DashboardSummary, String> {
   Ok(aggregate(load_events()?))
+}
+
+#[tauri::command]
+fn get_system_health() -> Result<SystemHealth, String> {
+  build_system_health()
+}
+
+#[tauri::command]
+fn export_system_report() -> Result<String, String> {
+  let health = build_system_health()?;
+  let root = ensure_vault()?;
+  let stamp = Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string();
+  let path = root.join("backups").join(format!("llinen-earth-system-report-{stamp}.md"));
+  let issues = if health.issues.is_empty() {
+    "- No current integrity warnings.".to_string()
+  } else {
+    health.issues.iter().map(|issue| format!("- {issue}")).collect::<Vec<_>>().join("\n")
+  };
+  let report = format!(
+    "# LLinen Earth OS — System Report\n\nGenerated: {}\n\n## Local vault\n- Path: {}\n- Event records: {} across {} daily files\n- Event bytes: {}\n- Backups: {}\n- Latest backup: {}\n- Visual files: {}\n- Visual bytes: {}\n- Marketing briefs: {}\n- Brain action decisions: {}\n\n## Inventory\n- Entries: {}\n- Unverified: {}\n- Operator overrides: {}\n\n## Cloud sync\n- Paired: {}\n- Last synced: {}\n- Cursor present: {}\n\n## Current warnings\n{}\n",
+    Utc::now().to_rfc3339(),
+    health.vault_path,
+    health.event_records,
+    health.event_files,
+    health.event_bytes,
+    health.backup_count,
+    health.latest_backup.as_deref().unwrap_or("None"),
+    health.visual_count,
+    health.visual_bytes,
+    health.marketing_briefs,
+    health.brain_actions,
+    health.inventory_count,
+    health.unverified_inventory,
+    health.inventory_overrides,
+    if health.sync_configured { "Yes" } else { "No" },
+    health.last_synced_at.as_deref().unwrap_or("Never"),
+    if health.sync_cursor.is_some() { "Yes" } else { "No" },
+    issues,
+  );
+  fs::write(&path, report).map_err(|e| e.to_string())?;
+  Ok(path.to_string_lossy().to_string())
 }
 
 #[tauri::command]
@@ -648,6 +796,8 @@ fn create_backup() -> Result<String, String> {
   let events = load_events()?;
   let summary = aggregate(events.clone());
   let inventory = get_fabric_inventory().ok();
+  let brain_actions = load_brain_actions().ok();
+  let sync_state = load_sync_state().ok();
   let stamp = Utc::now().format("%Y-%m-%dT%H-%M-%S").to_string();
   let path = root
     .join("backups")
@@ -658,6 +808,8 @@ fn create_backup() -> Result<String, String> {
     "events": events,
     "summary": summary,
     "inventory": inventory,
+    "brainActions": brain_actions,
+    "syncState": sync_state,
   });
 
   fs::write(
@@ -827,6 +979,8 @@ fn main() {
   tauri::Builder::default()
     .invoke_handler(tauri::generate_handler![
       get_dashboard_summary,
+      get_system_health,
+      export_system_report,
       export_marketing_brief,
       get_brain_actions,
       update_brain_action,
