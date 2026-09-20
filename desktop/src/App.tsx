@@ -706,6 +706,14 @@ export default function App() {
     [inventory, selectedFabricId],
   );
 
+  const recoveryReady = Boolean(
+    systemHealth &&
+    systemHealth.backupCount > 0 &&
+    systemHealth.latestBackupVerified &&
+    systemHealth.invalidEventLines === 0 &&
+    systemHealth.autoBackupToday
+  );
+
   const fabricLines = useMemo(
     () => ["All", ...Array.from(new Set(inventory.fabrics.map((fabric) => fabric.line))).sort()],
     [inventory],
@@ -2290,7 +2298,11 @@ export default function App() {
                 <article><small>EVENT RECORDS</small><strong>{systemHealth?.eventRecords || 0}</strong><span>{systemHealth?.eventFiles || 0} daily ledger file(s)</span></article>
                 <article><small>BACKUPS</small><strong>{systemHealth?.backupCount || 0}</strong><span>{bytes(systemHealth?.backupBytes || 0)} stored</span></article>
                 <article><small>LOCAL VISUALS</small><strong>{systemHealth?.visualCount || 0}</strong><span>{bytes(systemHealth?.visualBytes || 0)} archived</span></article>
-                <article className="accent"><small>SYSTEM WARNINGS</small><strong>{systemHealth?.issues.length || 0}</strong><span>{systemHealth?.issues.length ? "Needs attention" : "Local vault looks healthy"}</span></article>
+                <article className={recoveryReady ? "recoveryMetric ready" : "recoveryMetric"}>
+                  <small>RECOVERY READINESS</small>
+                  <strong>{recoveryReady ? "READY" : "CHECK"}</strong>
+                  <span>{recoveryReady ? "Verified backup + clean event ledger" : "Resolve backup or data-integrity warnings"}</span>
+                </article>
               </div>
 
               <div className="memoryGrid">
@@ -2327,6 +2339,10 @@ export default function App() {
 
                   <article className="card memoryWarnings">
                     <div className="cardHead"><div><small>INTEGRITY CHECK</small><h2>What still needs fixing.</h2></div><span>{systemHealth?.issues.length || 0} warnings</span></div>
+                    <div className={recoveryReady ? "recoveryBanner ready" : "recoveryBanner"}>
+                      <i>{recoveryReady ? "✓" : "!"}</i>
+                      <span><b>{recoveryReady ? "Recovery-ready" : "Recovery not fully ready"}</b><small>{recoveryReady ? "The newest backup passed structural verification, today’s automatic backup exists, and the local event ledger has no malformed records." : "Use the maintenance controls to create/verify a backup and resolve integrity warnings before relying on disaster recovery."}</small></span>
+                    </div>
                     <div className="memoryIssueList">
                       {(systemHealth?.issues || []).map((issue,index)=><div key={`${issue}-${index}`}><i>!</i><span>{issue}</span></div>)}
                       {!systemHealth?.issues.length && <div className="memoryOkay"><i>✓</i><span>No current local-vault warnings detected.</span></div>}
