@@ -142,6 +142,7 @@ export default function App() {
   const [inventorySearch, setInventorySearch] = useState("");
   const [inventoryLine, setInventoryLine] = useState("All");
   const [inventorySyncing, setInventorySyncing] = useState(false);
+  const [archivingVisuals, setArchivingVisuals] = useState(false);
   const [fabricDraft, setFabricDraft] = useState({ status: "in-stock", quantity: "", note: "" });
 
   async function refresh() {
@@ -343,6 +344,18 @@ export default function App() {
     });
     setStatus(`${selectedFabric.colorName} inventory saved locally`);
     await loadInventory();
+  }
+
+  async function archiveVisuals() {
+    setArchivingVisuals(true);
+    try {
+      const result = await invoke<SyncResult>("archive_visuals");
+      setStatus(result.message);
+    } catch (error) {
+      setStatus(`Visual archive failed: ${String(error)}`);
+    } finally {
+      setArchivingVisuals(false);
+    }
   }
 
   const funnel = [
@@ -748,8 +761,9 @@ export default function App() {
               <aside className="visualDetail">
                 <AnimatePresence mode="wait">{customerEditor}</AnimatePresence>
                 <article className="card visualPolicy">
-                  <div className="cardHead"><div><small>LOCAL ARCHIVE</small><h2>PC visual memory.</h2></div><span>NEXT</span></div>
-                  <p>Photoreal images are now linked to the customer record. The next native step copies approved remote visuals into the LLinen Earth hard-drive vault so important work is not dependent on a temporary image URL.</p>
+                  <div className="cardHead"><div><small>LOCAL ARCHIVE</small><h2>PC visual memory.</h2></div><span>TRUSTED HOSTS ONLY</span></div>
+                  <p>Photoreal FASHN images can be copied into the LLinen Earth hard-drive vault so important work is not dependent on a remote image URL. Other hosts are ignored.</p>
+                  <button className="smallAction archiveAction" onClick={() => void archiveVisuals()} disabled={archivingVisuals}>{archivingVisuals ? "Archiving…" : "Archive visuals to PC"}</button>
                 </article>
               </aside>
             </motion.section>
