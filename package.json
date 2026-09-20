@@ -9,7 +9,8 @@
     "start": "next start",
     "local-memory": "node scripts/llinen-local-bridge.mjs",
     "operator-password": "node scripts/hash-operator-password.mjs",
-    "production-secrets": "node scripts/generate-production-secrets.mjs"
+    "production-secrets": "node scripts/generate-production-secrets.mjs",
+    "cloud:check": "node scripts/check-cloud-readiness.mjs"
   },
   "dependencies": {
     "fashn": "^0.15.0",
