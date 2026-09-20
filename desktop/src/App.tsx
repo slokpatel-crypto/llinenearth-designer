@@ -109,6 +109,11 @@ type SyncPairingStatus = {
   credentialStore: string;
 };
 
+type DesktopLockStatus = {
+  configured: boolean;
+  credentialStore: string;
+};
+
 type SystemHealth = {
   vaultPath: string;
   eventFiles: number;
@@ -239,6 +244,13 @@ export default function App() {
   const [syncPairingUrl, setSyncPairingUrl] = useState("https://llinenearth-designer.vercel.app/api/operator/sync");
   const [syncPairingToken, setSyncPairingToken] = useState("");
   const [pairingSaving, setPairingSaving] = useState(false);
+  const [lockStatus, setLockStatus] = useState<DesktopLockStatus | null>(null);
+  const [unlocked, setUnlocked] = useState(false);
+  const [unlockPassword, setUnlockPassword] = useState("");
+  const [lockError, setLockError] = useState("");
+  const [lockCurrentPassword, setLockCurrentPassword] = useState("");
+  const [lockNewPassword, setLockNewPassword] = useState("");
+  const [lockSaving, setLockSaving] = useState(false);
 
   async function refresh() {
     try {
@@ -287,6 +299,79 @@ export default function App() {
     }
   }
 
+  async function loadDesktopLockStatus() {
+    try {
+      const current = await invoke<DesktopLockStatus>("get_desktop_lock_status");
+      setLockStatus(current);
+      if (!current.configured) setUnlocked(true);
+    } catch (error) {
+      setLockError(`Desktop lock unavailable: ${String(error)}`);
+    }
+  }
+
+  async function unlockDesktop() {
+    setLockError("");
+    try {
+      const valid = await invoke<boolean>("verify_desktop_lock", { password: unlockPassword });
+      if (!valid) {
+        setLockError("Incorrect desktop password.");
+        return;
+      }
+      setUnlockPassword("");
+      setUnlocked(true);
+    } catch (error) {
+      setLockError(`Could not unlock LLinen Earth OS: ${String(error)}`);
+    }
+  }
+
+  function lockDesktopNow() {
+    if (!lockStatus?.configured) return;
+    setUnlocked(false);
+    setUnlockPassword("");
+    setSummary(null);
+    setSelected(null);
+    setInventory({ fabrics: [] });
+    setBrainActions({});
+    setSystemHealth(null);
+    setStatus("Desktop locked");
+  }
+
+  async function saveDesktopLock() {
+    setLockSaving(true);
+    setLockError("");
+    try {
+      const next = await invoke<DesktopLockStatus>("set_desktop_lock", {
+        currentPassword: lockCurrentPassword,
+        newPassword: lockNewPassword,
+      });
+      setLockStatus(next);
+      setLockCurrentPassword("");
+      setLockNewPassword("");
+      setStatus(`Desktop lock enabled using ${next.credentialStore}.`);
+    } catch (error) {
+      setLockError(String(error));
+    } finally {
+      setLockSaving(false);
+    }
+  }
+
+  async function removeDesktopLock() {
+    setLockSaving(true);
+    setLockError("");
+    try {
+      const next = await invoke<DesktopLockStatus>("clear_desktop_lock", { password: lockCurrentPassword });
+      setLockStatus(next);
+      setLockCurrentPassword("");
+      setLockNewPassword("");
+      setUnlocked(true);
+      setStatus("Desktop lock removed from this PC.");
+    } catch (error) {
+      setLockError(String(error));
+    } finally {
+      setLockSaving(false);
+    }
+  }
+
   async function quietReconcile() {
     if (!syncPairing?.configured) return;
     try {
@@ -304,15 +389,20 @@ export default function App() {
   }
 
   useEffect(() => {
+    void loadDesktopLockStatus();
+  }, []);
+
+  useEffect(() => {
+    if (!unlocked) return;
     void refresh();
     void loadInventory();
     void loadBrainActions();
     void loadSystemHealth();
     void loadSyncPairing();
-  }, []);
+  }, [unlocked]);
 
   useEffect(() => {
-    if (!syncPairing?.configured) return;
+    if (!unlocked || !syncPairing?.configured) return;
 
     const first = window.setTimeout(() => void quietReconcile(), 2500);
     const interval = window.setInterval(() => void quietReconcile(), 5 * 60 * 1000);
@@ -324,7 +414,24 @@ export default function App() {
       window.clearInterval(interval);
       window.removeEventListener("focus", onFocus);
     };
-  }, [syncPairing?.configured]);
+  }, [unlocked, syncPairing?.configured]);
+
+  useEffect(() => {
+    if (!unlocked || !lockStatus?.configured) return;
+
+    let idleTimer = window.setTimeout(lockDesktopNow, 15 * 60 * 1000);
+    const reset = () => {
+      window.clearTimeout(idleTimer);
+      idleTimer = window.setTimeout(lockDesktopNow, 15 * 60 * 1000);
+    };
+    const events: Array<keyof WindowEventMap> = ["pointerdown", "keydown", "touchstart"];
+    events.forEach((event) => window.addEventListener(event, reset, { passive: true }));
+
+    return () => {
+      window.clearTimeout(idleTimer);
+      events.forEach((event) => window.removeEventListener(event, reset));
+    };
+  }, [unlocked, lockStatus?.configured]);
 
   const selectedSession = useMemo(
     () => summary?.sessions.find((session) => session.sessionId === selected) || summary?.sessions[0] || null,
@@ -1125,6 +1232,35 @@ export default function App() {
     );
   }
 
+  if (!lockStatus) {
+    return <main className="desktopLockScreen">
+      <section className="desktopLockPanel desktopLockLoading">
+        <div className="desktopLockBrand"><span>LE</span><div><b>LLINEN EARTH</b><small>OPERATOR SYSTEM</small></div></div>
+        <i className="desktopLockPulse" />
+        <p>{lockError || "Checking private desktop access…"}</p>
+      </section>
+    </main>;
+  }
+
+  if (lockStatus.configured && !unlocked) {
+    return <main className="desktopLockScreen">
+      <motion.section className="desktopLockPanel" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="desktopLockBrand"><span>LE</span><div><b>LLINEN EARTH</b><small>PRIVATE OPERATOR SYSTEM</small></div></div>
+        <div className="desktopLockCopy">
+          <small>DESKTOP LOCK</small>
+          <h1>Business memory.<br/><em>Private on this PC.</em></h1>
+          <p>Unlock to access customers, tailoring orders, sales, analytics and local business memory.</p>
+        </div>
+        <form onSubmit={(event) => { event.preventDefault(); void unlockDesktop(); }}>
+          <label><small>PASSWORD</small><input type="password" value={unlockPassword} onChange={(event)=>setUnlockPassword(event.target.value)} autoComplete="current-password" autoFocus /></label>
+          <button disabled={!unlockPassword}>Unlock LLinen Earth OS ↗</button>
+          {lockError && <p className="desktopLockError">{lockError}</p>}
+        </form>
+        <footer>Protected by Windows Credential Manager · Local vault remains on this PC</footer>
+      </motion.section>
+    </main>;
+  }
+
   return (
     <div className="osShell">
       <aside className="sidebar">
@@ -1162,6 +1298,7 @@ export default function App() {
             </h1>
           </div>
           <div className="topActions">
+            {lockStatus?.configured && <button onClick={lockDesktopNow}>Lock</button>}
             <button onClick={() => void syncCloud()} disabled={syncing}>{syncing ? "Syncing…" : "Sync cloud"}</button>
             <button onClick={() => void refresh()}>Refresh</button>
             <button className="primary" onClick={() => void backup()}>Create backup</button>
@@ -1800,6 +1937,23 @@ export default function App() {
                     <button onClick={() => void syncInventory()} disabled={inventorySyncing}><span>{inventorySyncing ? "Refreshing inventory…" : "Refresh inventory cache"}</span><b>↗</b></button>
                     <button onClick={() => void exportSystemReport()} disabled={systemReporting}><span>{systemReporting ? "Exporting report…" : "Export system report"}</span><b>↗</b></button>
                     <button onClick={() => { void refresh(); void loadInventory(); void loadBrainActions(); void loadSystemHealth(); }}><span>Recheck local vault</span><b>↻</b></button>
+                  </article>
+
+                  <article className="card desktopSecurity">
+                    <div className="cardHead">
+                      <div><small>DESKTOP ACCESS</small><h2>{lockStatus?.configured ? "Protected on this PC." : "Add a local app lock."}</h2></div>
+                      <span className={lockStatus?.configured ? "good" : "memoryWarn"}>{lockStatus?.configured ? "● LOCK ON" : "● LOCK OFF"}</span>
+                    </div>
+                    <p>The password is kept in {lockStatus?.credentialStore || "Windows Credential Manager"}, not inside the LLinen Earth vault or cloud.</p>
+                    {lockStatus?.configured && <label><small>CURRENT PASSWORD</small><input type="password" value={lockCurrentPassword} onChange={(event)=>setLockCurrentPassword(event.target.value)} autoComplete="current-password" /></label>}
+                    <label><small>{lockStatus?.configured ? "NEW PASSWORD" : "CREATE PASSWORD"}</small><input type="password" value={lockNewPassword} onChange={(event)=>setLockNewPassword(event.target.value)} autoComplete="new-password" placeholder="Minimum 6 characters" /></label>
+                    {lockError && <p className="desktopSecurityError">{lockError}</p>}
+                    <div className="desktopSecurityActions">
+                      <button onClick={() => void saveDesktopLock()} disabled={lockSaving || lockNewPassword.length < 6}>{lockSaving ? "Saving…" : lockStatus?.configured ? "Change lock" : "Enable lock"}</button>
+                      {lockStatus?.configured && <button onClick={lockDesktopNow}>Lock now</button>}
+                      {lockStatus?.configured && <button className="dangerGhost" onClick={() => void removeDesktopLock()} disabled={lockSaving || !lockCurrentPassword}>Remove</button>}
+                    </div>
+                    <small className="desktopIdleNote">When enabled, LLinen Earth OS locks after 15 minutes without keyboard/touch activity.</small>
                   </article>
 
                   <article className="card memoryPolicy">
