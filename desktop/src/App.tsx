@@ -336,6 +336,7 @@ export default function App() {
   const [selectedFabricId, setSelectedFabricId] = useState<string | null>(null);
   const [inventorySearch, setInventorySearch] = useState("");
   const [inventoryLine, setInventoryLine] = useState("All");
+  const [inventoryStatus, setInventoryStatus] = useState("All");
   const [inventorySyncing, setInventorySyncing] = useState(false);
   const [archivingVisuals, setArchivingVisuals] = useState(false);
   const [fabricDraft, setFabricDraft] = useState({ status: "in-stock", quantity: "", note: "" });
@@ -1112,15 +1113,31 @@ export default function App() {
 
   const filteredFabrics = useMemo(() => {
     const query = inventorySearch.trim().toLowerCase();
-    return inventory.fabrics.filter((fabric) => {
-      const lineMatch = inventoryLine === "All" || fabric.line === inventoryLine;
-      const searchMatch = !query || [fabric.colorName, fabric.line, fabric.pattern, ...fabric.suitableFor]
-        .join(" ")
-        .toLowerCase()
-        .includes(query);
-      return lineMatch && searchMatch;
-    });
-  }, [inventory, inventoryLine, inventorySearch]);
+    const auditRank = (fabric: FabricInventoryItem) => {
+      if (fabric.status === "unverified") return fabric.sourceInStock ? 0 : 1;
+      if (fabric.status === "low") return 2;
+      if (fabric.status === "out") return 3;
+      return 4;
+    };
+
+    return inventory.fabrics
+      .filter((fabric) => {
+        const lineMatch = inventoryLine === "All" || fabric.line === inventoryLine;
+        const statusMatch = inventoryStatus === "All" || fabric.status === inventoryStatus;
+        const searchMatch = !query || [fabric.colorName, fabric.line, fabric.pattern, ...fabric.suitableFor]
+          .join(" ")
+          .toLowerCase()
+          .includes(query);
+        return lineMatch && statusMatch && searchMatch;
+      })
+      .sort((a, b) => {
+        const rankDifference = auditRank(a) - auditRank(b);
+        if (rankDifference) return rankDifference;
+        const demandDifference = (fabricSignals.get(b.id)?.interest || 0) - (fabricSignals.get(a.id)?.interest || 0);
+        if (demandDifference) return demandDifference;
+        return a.colorName.localeCompare(b.colorName);
+      });
+  }, [inventory, inventoryLine, inventoryStatus, inventorySearch, fabricSignals]);
 
   useEffect(() => {
     setFabricDraft({
@@ -2136,6 +2153,13 @@ export default function App() {
                     <select value={inventoryLine} onChange={(e) => setInventoryLine(e.target.value)}>
                       {fabricLines.map((line) => <option key={line}>{line}</option>)}
                     </select>
+                    <select value={inventoryStatus} onChange={(e) => setInventoryStatus(e.target.value)}>
+                      <option value="All">All stock states</option>
+                      <option value="unverified">Needs verification</option>
+                      <option value="in-stock">In stock</option>
+                      <option value="low">Low stock</option>
+                      <option value="out">Out of stock</option>
+                    </select>
                     <span>{filteredFabrics.length} shown</span>
                   </div>
                   {inventory.fabrics.length === 0 ? (
@@ -2173,6 +2197,7 @@ export default function App() {
                   <div className="fabricFacts">
                     <span><small>SUITABLE FOR</small><b>{selectedFabric.suitableFor.join(" · ")}</b></span>
                     <span><small>CATALOGUE</small><b>{selectedFabric.sourceDocument} · p{selectedFabric.sourcePage}</b></span>
+                    <span><small>SOURCE SIGNAL</small><b>{selectedFabric.sourceInStock ? "Catalogue marked available" : "Catalogue-only / unavailable"}</b></span>
                     <span><small>INTEREST</small><b>{fabricSignals.get(selectedFabric.id)?.interest || 0} selections</b></span>
                     <span><small>CONVERTED</small><b>{fabricSignals.get(selectedFabric.id)?.sales || 0} sales</b></span>
                   </div>
