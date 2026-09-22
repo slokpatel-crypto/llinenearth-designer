@@ -3,10 +3,12 @@
 This is the final release sequence. Do not mark a stage complete until its verification passes.
 
 ## 1. Code baseline
-- [ ] `main` contains the Style Director, Live Visual, Operator Desk and LLinen Earth OS.
-- [ ] GitHub CI is green.
-- [ ] `npm run release:check` passes.
-- [ ] Production dependency audit has no high/critical vulnerabilities.
+- [x] `main` contains the Style Director, Live Visual, Operator Desk and LLinen Earth OS.
+- [x] GitHub CI is green.
+- [x] `npm run release:check` passes.
+- [x] Production dependency audit has no high/critical vulnerabilities.
+
+Verified on 2026-09-22 against `main` commit `c11eb2994f1306b8aa87266ea2f2eef6044606ae`; GitHub Actions CI run `35528804411` completed successfully and the CI workflow includes the high-level production dependency audit plus release readiness gate.
 
 ## 2. Customer website
 - [ ] Vercel production deployment points to the latest `main` commit.
