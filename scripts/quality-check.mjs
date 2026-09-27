@@ -9,6 +9,12 @@ const required = [
   "src/components/DesignerLab.tsx",
   "src/app/designer-lab/designer-lab.css",
   "src/app/api/designer-lab/generate/route.ts",
+  "src/app/operator/designer-data/designer-data.css",
+  "src/app/operator/designer-data/DesignerDataClient.tsx",
+  "src/app/operator/designer-data/page.tsx",
+  "src/app/api/operator/designer-data/route.ts",
+  "src/lib/designer-fabric-metadata.ts",
+  "src/lib/designer-fabric-metadata-types.ts",
   "src/lib/designer-safe-fallback.ts",
   "src/lib/designer-telemetry.ts",
   "src/lib/refinement-engine.ts",
@@ -124,6 +130,19 @@ for (const token of ["rankStockPairings","findApprovedSafeFallback","recordPhase
 }
 
 console.log("Designer Lab gate passed: isolated stock browser, compact brief and shared ranked Designer output.");
+
+const fabricMetadata = fs.readFileSync("src/lib/designer-fabric-metadata.ts","utf8");
+for (const token of ["designer_fabric_metadata","loadDesignerFabricMetadata","applyDesignerFabricMetadataToStock","availability === \"unavailable\""]) {
+  if (!fabricMetadata.includes(token)) throw new Error(`Verified fabric metadata regression: missing ${token}`);
+}
+const designerDataDesk = fs.readFileSync("src/app/operator/designer-data/DesignerDataClient.tsx","utf8");
+for (const token of ["Designer Data Desk","Physical availability","Verified GSM","Formality score","Save verified metadata"]) {
+  if (!designerDataDesk.includes(token)) throw new Error(`Designer Data Desk regression: missing ${token}`);
+}
+const memoryEventRoute = fs.readFileSync("src/app/api/memory/event/route.ts","utf8");
+if (!memoryEventRoute.includes("designer_fabric_metadata")) throw new Error("Verified fabric metadata events are not sanitized.");
+console.log("Designer calibration gate passed: protected verified metadata desk, audit events and runtime stock overlays.");
+
 
 
 
