@@ -8,8 +8,57 @@ import type { StockPairingPublic } from "@/lib/shirt-pant-designer";
 
 export function DesignDirections({ brief, candidates, stockPairing, onEditContext, onRefine }: { brief: DesignerBrief; candidates: DesignCandidate[]; stockPairing?: StockPairingPublic | null; onEditContext: () => void; onRefine: (candidate: DesignCandidate) => void }) {
   const [selectedId, setSelectedId] = useState(candidates.find((x) => x.tier === "Elevated")?.id || candidates[0]?.id);
+  const [pairFeedback, setPairFeedback] = useState<"up" | "down" | null>(null);
+  const [feedbackSync, setFeedbackSync] = useState<"idle" | "saving" | "saved" | "local">("idle");
   const selected = candidates.find((x) => x.id === selectedId) || candidates[0];
   const coverage = measurementCoverage(brief.measurements);
+
+  async function submitPairFeedback(value: "up" | "down") {
+    if (!stockPairing) return;
+    setPairFeedback(value);
+    setFeedbackSync("saving");
+    try {
+      if (!brief.sessionId) throw new Error("No designer session");
+      const sessionResponse = await fetch("/api/memory/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: brief.sessionId }),
+      });
+      if (!sessionResponse.ok) throw new Error("Feedback sync unavailable");
+      const session = await sessionResponse.json() as { token?: string };
+      if (!session.token) throw new Error("Feedback token unavailable");
+
+      const eventResponse = await fetch("/api/memory/event", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-llinen-memory-token": session.token,
+        },
+        body: JSON.stringify({
+          id: `EV-DESIGNER-FEEDBACK-${crypto.randomUUID()}`,
+          sessionId: brief.sessionId,
+          type: "look_selected",
+          at: new Date().toISOString(),
+          payload: {
+            lookId: stockPairing.id,
+            title: "Phase 1 shirt-pant stock pairing",
+            fabricId: stockPairing.shirt.id,
+            fabric: stockPairing.trouser.id,
+            automatic: false,
+            feedback: value,
+            rulesVersion: stockPairing.rulesVersion,
+          },
+        }),
+      });
+      const event = await eventResponse.json() as { stored?: boolean };
+      setFeedbackSync(eventResponse.ok && event.stored ? "saved" : "local");
+    } catch {
+      try {
+        sessionStorage.setItem(`llinen-designer-feedback:${stockPairing.id}`, value);
+      } catch {}
+      setFeedbackSync("local");
+    }
+  }
 
   return (
     <section className="directionsStudio">
@@ -38,6 +87,14 @@ export function DesignDirections({ brief, candidates, stockPairing, onEditContex
           <span>{stockPairing.occasionBand} · {stockPairing.relationship}</span>
           <p>{stockPairing.forced ? stockPairing.customerReason : "The rules found a candidate, but the confidence is below the safe threshold. No combination is being forced until LLinen Earth approves the fallback choice."}</p>
           <small>Rule set {stockPairing.rulesVersion} · taste defaults remain provisional until your styling sheet is approved.</small>
+          <div className="stockPairingFeedback">
+            <span>Does this pairing feel right for LLinen Earth?</span>
+            <div>
+              <button className={pairFeedback === "up" ? "active" : ""} onClick={() => void submitPairFeedback("up")} disabled={feedbackSync === "saving"} aria-pressed={pairFeedback === "up"}>Yes</button>
+              <button className={pairFeedback === "down" ? "active" : ""} onClick={() => void submitPairFeedback("down")} disabled={feedbackSync === "saving"} aria-pressed={pairFeedback === "down"}>No</button>
+            </div>
+            {pairFeedback && <em>{feedbackSync === "saved" ? "Recorded for rule review." : feedbackSync === "saving" ? "Recording…" : "Kept for this session; cloud logging will activate when connected."}</em>}
+          </div>
         </div>
       </section>}
 
