@@ -184,7 +184,7 @@ console.log("Cloud health gate passed: deployment can verify schema v5 without e
 const designerLabPageInstall = fs.readFileSync("src/app/designer-lab/page.tsx","utf8");
 if (!designerLabPageInstall.includes("/designer-lab.webmanifest")) throw new Error("Designer Lab install manifest is not linked.");
 const designerLabClientInstall = fs.readFileSync("src/components/DesignerLab.tsx","utf8");
-for (const token of ["/api/system/cloud-health","serviceWorker.register","CLOUD LIVE","LOCAL MODE"]) {
+for (const token of ["/api/system/cloud-health","serviceWorker.register","beforeinstallprompt","Install app","CLOUD LIVE","LOCAL MODE"]) {
   if (!designerLabClientInstall.includes(token)) throw new Error(`Designer Lab install/cloud regression: missing ${token}`);
 }
 const brandIntro = fs.readFileSync("src/components/BrandIntro.tsx","utf8");
