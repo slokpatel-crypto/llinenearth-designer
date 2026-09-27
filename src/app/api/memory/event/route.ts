@@ -99,12 +99,17 @@ function cleanPayload(type:string, input:unknown) {
     const lookId = text(payload.lookId,120);
     const fabricId = text(payload.fabricId,120);
     if (!lookId || !fabricId) return null;
+    const feedback = text(payload.feedback,12);
+    if (feedback && feedback !== "up" && feedback !== "down") return null;
     return {
       lookId,
       title: text(payload.title,120),
       fabricId,
       fabric: text(payload.fabric,120),
       automatic: Boolean(payload.automatic),
+      ...(feedback ? { feedback } : {}),
+      feedbackReason: text(payload.feedbackReason,240),
+      rulesVersion: text(payload.rulesVersion,80),
     };
   }
 
