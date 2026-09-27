@@ -25,6 +25,7 @@ export function DesignerJourney() {
   const [measurements, setMeasurements] = useState<MeasurementProfile | null>(null);
   const [candidates, setCandidates] = useState<DesignCandidate[]>([]);
   const [stockPairing, setStockPairing] = useState<StockPairingPublic | null>(null);
+  const [stockPairings, setStockPairings] = useState<StockPairingPublic[]>([]);
   const [sessionId, setSessionId] = useState("");
   const [selectedCandidate, setSelectedCandidate] = useState<DesignCandidate | null>(null);
   const [finalVersion, setFinalVersion] = useState<DesignVersion | null>(null);
@@ -36,11 +37,12 @@ export function DesignerJourney() {
     try {
       const raw = sessionStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const saved = JSON.parse(raw) as { stage?: Stage; fabric?: FabricSelection; context?: ContextProfile; candidates?: DesignCandidate[]; stockPairing?: StockPairingPublic | null; selectedCandidate?: DesignCandidate; finalVersion?: DesignVersion; renderSet?: RenderSet };
+        const saved = JSON.parse(raw) as { stage?: Stage; fabric?: FabricSelection; context?: ContextProfile; candidates?: DesignCandidate[]; stockPairing?: StockPairingPublic | null; stockPairings?: StockPairingPublic[]; selectedCandidate?: DesignCandidate; finalVersion?: DesignVersion; renderSet?: RenderSet };
         if (saved.fabric) setFabric(saved.fabric);
         if (saved.context) setContext(saved.context);
         if (saved.candidates) setCandidates(saved.candidates);
         if (saved.stockPairing) setStockPairing(saved.stockPairing);
+        if (saved.stockPairings) setStockPairings(saved.stockPairings);
         if (saved.selectedCandidate) setSelectedCandidate(saved.selectedCandidate);
         if (saved.finalVersion) setFinalVersion(saved.finalVersion);
         if (saved.renderSet) setRenderSet(saved.renderSet);
@@ -63,8 +65,8 @@ export function DesignerJourney() {
 
   useEffect(() => {
     if (!hydrated) return;
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ stage, fabric, context, candidates, stockPairing, selectedCandidate, finalVersion, renderSet }));
-  }, [stage, fabric, context, candidates, stockPairing, selectedCandidate, finalVersion, renderSet, hydrated]);
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ stage, fabric, context, candidates, stockPairing, stockPairings, selectedCandidate, finalVersion, renderSet }));
+  }, [stage, fabric, context, candidates, stockPairing, stockPairings, selectedCandidate, finalVersion, renderSet, hydrated]);
 
   function refreshMeasurements() {
     try {
@@ -77,7 +79,7 @@ export function DesignerJourney() {
   }
 
   function acceptFabric(selection: FabricSelection) {
-    setFabric(selection); setCandidates([]); setStockPairing(null); setSelectedCandidate(null); setFinalVersion(null); setRenderSet(null); setStage("context");
+    setFabric(selection); setCandidates([]); setStockPairing(null); setStockPairings([]); setSelectedCandidate(null); setFinalVersion(null); setRenderSet(null); setStage("context");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -89,7 +91,7 @@ export function DesignerJourney() {
       const response = await fetch("/api/designer/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(enrichedBrief) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to create directions.");
-      setCandidates(data.candidates); setStockPairing(data.stockPairing ?? null); setSelectedCandidate(null); setFinalVersion(null); setRenderSet(null); setStage("directions");
+      setCandidates(data.candidates); setStockPairing(data.stockPairing ?? null); setStockPairings(Array.isArray(data.stockPairings) ? data.stockPairings : (data.stockPairing ? [data.stockPairing] : [])); setSelectedCandidate(null); setFinalVersion(null); setRenderSet(null); setStage("directions");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create directions."); setStage("error");
     }
@@ -134,7 +136,7 @@ export function DesignerJourney() {
 
   if (stage === "refine" && currentBrief && candidates.length && selectedCandidate) return <RefinementWorkspace brief={currentBrief} initialCandidate={selectedCandidate} candidates={candidates} onBack={() => setStage("directions")} onVisualize={(version) => void visualize(version)} />;
 
-  if (stage === "directions" && currentBrief && candidates.length) return <DesignDirections brief={currentBrief} candidates={candidates} stockPairing={stockPairing} onEditContext={() => setStage("context")} onRefine={beginRefinement} />;
+  if (stage === "directions" && currentBrief && candidates.length) return <DesignDirections brief={currentBrief} candidates={candidates} stockPairing={stockPairing} stockPairings={stockPairings} onEditContext={() => setStage("context")} onRefine={beginRefinement} />;
 
   return <FabricStudio onContinue={acceptFabric} />;
 }
