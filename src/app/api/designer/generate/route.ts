@@ -6,6 +6,7 @@ import { findApprovedSafeFallback } from "@/lib/designer-safe-fallback";
 import {
   publicStockPairing,
   recommendStockPairing,
+  rankStockPairings,
   SHIRT_PANT_RULESET_VERSION,
 } from "@/lib/shirt-pant-designer";
 
@@ -17,14 +18,25 @@ export async function POST(request: Request) {
     }
 
     const candidates = generateDesignerDirections(brief);
-    const primaryStockEvaluation = recommendStockPairing(brief);
+    const rankedStock = rankStockPairings(brief);
+    const primaryStockEvaluation = rankedStock.find((item)=>item.mode === "Elevated")
+      || rankedStock[0]
+      || recommendStockPairing(brief);
     const approvedFallback = await findApprovedSafeFallback(brief, primaryStockEvaluation);
     const stockEvaluation = approvedFallback || primaryStockEvaluation;
-    const telemetry = await recordPhase1Recommendation(brief, stockEvaluation);
+    const visibleRanked = approvedFallback
+      ? [approvedFallback,...rankedStock.filter((item)=>item.id !== approvedFallback.id)].slice(0,3)
+      : rankedStock.length
+        ? rankedStock.slice(0,3)
+        : stockEvaluation
+          ? [stockEvaluation]
+          : [];
+    const telemetry = await recordPhase1Recommendation(brief, stockEvaluation,visibleRanked);
 
     return NextResponse.json({
       candidates,
       stockPairing: publicStockPairing(stockEvaluation),
+      stockPairings: visibleRanked.map(publicStockPairing),
       engine: "phase4_rules_v1",
       stockEngine: stockEvaluation ? SHIRT_PANT_RULESET_VERSION : null,
       telemetry: telemetry.provider,
