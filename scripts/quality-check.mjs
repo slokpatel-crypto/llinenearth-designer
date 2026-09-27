@@ -18,6 +18,10 @@ const required = [
   "src/app/operator/designer-qa/DesignerQaClient.tsx",
   "src/app/operator/designer-qa/page.tsx",
   "src/app/api/operator/designer-qa/route.ts",
+  "src/app/operator/designer-insights/designer-insights.css",
+  "src/app/operator/designer-insights/DesignerInsightsClient.tsx",
+  "src/app/operator/designer-insights/page.tsx",
+  "src/app/api/operator/designer-insights/route.ts",
   "src/lib/designer-fabric-metadata.ts",
   "src/lib/designer-fabric-metadata-types.ts",
   "src/lib/designer-safe-fallback.ts",
@@ -157,6 +161,17 @@ for (const token of ["Designer QA Desk","TOTAL TEST CASES","AVG CONFIDENCE","HEL
   if (!designerQaUi.includes(token)) throw new Error(`Designer QA UI regression: missing ${token}`);
 }
 console.log("Designer QA gate passed: multi-context stock stress test, data coverage, rule pressure and weak-case triage.");
+
+const designerInsightsApi = fs.readFileSync("src/app/api/operator/designer-insights/route.ts","utf8");
+for (const token of ["designer-phase1-shirt-pant","feedbackUp","feedbackDown","safeFallbacks","ruleWarnings","pairingStats"]) {
+  if (!designerInsightsApi.includes(token)) throw new Error(`Designer evidence regression: missing ${token}`);
+}
+const designerInsightsUi = fs.readFileSync("src/app/operator/designer-insights/DesignerInsightsClient.tsx","utf8");
+for (const token of ["Designer Evidence","MODE EVIDENCE","RULE EVIDENCE","PAIRING EVIDENCE","does not self-tune"]) {
+  if (!designerInsightsUi.includes(token)) throw new Error(`Designer evidence UI regression: missing ${token}`);
+}
+console.log("Designer evidence gate passed: feedback/review analytics are observable without automatic weight changes.");
+
 
 
 
