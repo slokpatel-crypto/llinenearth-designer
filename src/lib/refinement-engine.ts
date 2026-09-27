@@ -1,5 +1,6 @@
 import type { DesignCandidate } from "@/lib/designer-engine";
 import type { DesignerBrief } from "@/lib/designer-types";
+import type { StockPairingPublic } from "@/lib/shirt-pant-designer";
 
 export type LockableField = "shirt" | "trouser" | "layer" | "footwear" | "aesthetic" | "palette";
 export type ChangeDelta = { field: LockableField; before: string; after: string };
@@ -14,6 +15,7 @@ export type DesignVersion = {
   createdAt: string;
   finalized: boolean;
   specHash?: string;
+  stockPairing?: StockPairingPublic;
 };
 
 const ALTERNATE_TROUSERS = ["Tailored Pleated Trouser", "Flat-Front Tailored Trouser", "Wide-Leg Trouser", "Drawstring Linen Trouser"];
@@ -125,12 +127,12 @@ export function refineDesign(brief: DesignerBrief, source: DesignCandidate, inst
   return { candidate, delta, summary: delta.length ? `${delta.length} controlled change${delta.length === 1 ? "" : "s"} applied.` : "No unlocked field matched this refinement." };
 }
 
-export function initialVersion(candidate: DesignCandidate): DesignVersion {
-  return { id: "DV-001", parentId: null, candidate: copy(candidate), lockedFields: [], delta: [], reason: `Selected ${candidate.tier} direction`, createdAt: new Date().toISOString(), finalized: false };
+export function initialVersion(candidate: DesignCandidate, stockPairing?: StockPairingPublic): DesignVersion {
+  return { id: "DV-001", parentId: null, candidate: copy(candidate), lockedFields: [], delta: [], reason: `Selected ${candidate.tier} direction`, createdAt: new Date().toISOString(), finalized: false, stockPairing };
 }
 
 export function nextVersion(parent: DesignVersion, result: RefinementResult, locks: LockableField[], number: number, reason: string): DesignVersion {
-  return { id: `DV-${String(number).padStart(3, "0")}`, parentId: parent.id, candidate: result.candidate, lockedFields: [...locks], delta: result.delta, reason, createdAt: new Date().toISOString(), finalized: false };
+  return { id: `DV-${String(number).padStart(3, "0")}`, parentId: parent.id, candidate: result.candidate, lockedFields: [...locks], delta: result.delta, reason, createdAt: new Date().toISOString(), finalized: false, stockPairing: parent.stockPairing };
 }
 
 function stableHash(input: string) {
@@ -141,6 +143,6 @@ function stableHash(input: string) {
 
 export function finalizeVersion(version: DesignVersion): DesignVersion {
   const c = version.candidate;
-  const canonical = JSON.stringify({ id: version.id, garments: c.garments, aesthetic: c.aesthetic, palette: c.palette, locks: version.lockedFields });
+  const canonical = JSON.stringify({ id: version.id, garments: c.garments, aesthetic: c.aesthetic, palette: c.palette, locks: version.lockedFields, stockPairing: version.stockPairing ? { id: version.stockPairing.id, shirtId: version.stockPairing.shirt.id, trouserId: version.stockPairing.trouser.id, rulesVersion: version.stockPairing.rulesVersion } : null });
   return { ...version, finalized: true, specHash: `LE-${stableHash(canonical)}` };
 }
