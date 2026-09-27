@@ -10,6 +10,7 @@ function safeText(value: unknown, max = 180) {
 export async function recordPhase1Recommendation(
   brief: DesignerBrief,
   evaluation: StockPairingEvaluation | null,
+  ranked: StockPairingEvaluation[] = [],
 ) {
   if (!evaluation || !brief.sessionId) return { stored: false, provider: "not_applicable" as const };
 
@@ -56,6 +57,18 @@ export async function recordPhase1Recommendation(
         humanApprovedFallback: Boolean(evaluation.humanApprovedFallback),
         customerReason: evaluation.customerReason,
       },
+      alternatives: ranked.slice(0,3).map((item)=>({
+        pairingId:item.id,
+        mode:item.mode || "Primary",
+        rankScore:item.rankScore ?? item.confidenceScore,
+        shirtId:item.shirt.id,
+        shirtName:item.shirt.colorName,
+        trouserId:item.trouser.id,
+        trouserName:item.trouser.colorName,
+        confidenceScore:item.confidenceScore,
+        relationship:item.relationship,
+        customerReason:item.customerReason,
+      })),
       rules: evaluation.rules.map((rule) => ({
         id: rule.id,
         status: rule.status,
