@@ -14,6 +14,10 @@ const required = [
   "src/app/operator/designer-data/DesignerDataClient.tsx",
   "src/app/operator/designer-data/page.tsx",
   "src/app/api/operator/designer-data/route.ts",
+  "src/app/operator/designer-qa/designer-qa.css",
+  "src/app/operator/designer-qa/DesignerQaClient.tsx",
+  "src/app/operator/designer-qa/page.tsx",
+  "src/app/api/operator/designer-qa/route.ts",
   "src/lib/designer-fabric-metadata.ts",
   "src/lib/designer-fabric-metadata-types.ts",
   "src/lib/designer-safe-fallback.ts",
@@ -143,6 +147,17 @@ for (const token of ["Designer Data Desk","Physical availability","Verified GSM"
 const memoryEventRoute = fs.readFileSync("src/app/api/memory/event/route.ts","utf8");
 if (!memoryEventRoute.includes("designer_fabric_metadata")) throw new Error("Verified fabric metadata events are not sanitized.");
 console.log("Designer calibration gate passed: protected verified metadata desk, audit events and runtime stock overlays.");
+
+const designerQaApi = fs.readFileSync("src/app/api/operator/designer-qa/route.ts","utf8");
+for (const token of ["SCENARIOS","rankStockPairings","warningCounts","weakCases","coverage"]) {
+  if (!designerQaApi.includes(token)) throw new Error(`Designer QA regression: missing ${token}`);
+}
+const designerQaUi = fs.readFileSync("src/app/operator/designer-qa/DesignerQaClient.tsx","utf8");
+for (const token of ["Designer QA Desk","TOTAL TEST CASES","AVG CONFIDENCE","HELD / REVIEW","DATA COVERAGE","RULE PRESSURE","WEAK CASES"]) {
+  if (!designerQaUi.includes(token)) throw new Error(`Designer QA UI regression: missing ${token}`);
+}
+console.log("Designer QA gate passed: multi-context stock stress test, data coverage, rule pressure and weak-case triage.");
+
 
 
 
