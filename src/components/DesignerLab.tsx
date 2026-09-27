@@ -60,12 +60,22 @@ export function DesignerLab() {
   const [sessionId,setSessionId] = useState("");
   const [feedback,setFeedback] = useState<"up"|"down"|null>(null);
   const [feedbackState,setFeedbackState] = useState<"idle"|"saving"|"saved"|"unavailable">("idle");
+  const [cloudStatus,setCloudStatus] = useState<"checking"|"live"|"local">("checking");
 
   useEffect(()=>{
     void fetch("/api/designer-lab/catalog",{cache:"no-store"})
       .then((response)=>response.ok ? response.json() : Promise.reject(new Error("catalog unavailable")))
       .then((payload:{fabrics?:LabFabric[]})=>{ if (Array.isArray(payload.fabrics) && payload.fabrics.length) setCatalog(payload.fabrics); })
       .catch(()=>{});
+
+    void fetch("/api/system/cloud-health",{cache:"no-store"})
+      .then((response)=>response.json())
+      .then((payload:{healthy?:boolean})=>setCloudStatus(payload.healthy ? "live" : "local"))
+      .catch(()=>setCloudStatus("local"));
+
+    if ("serviceWorker" in navigator) {
+      void navigator.serviceWorker.register("/designer-lab-sw.js",{scope:"/designer-lab/"}).catch(()=>{});
+    }
   },[]);
 
   const lines = useMemo(()=>["All collections",...Array.from(new Set(
@@ -212,6 +222,7 @@ export function DesignerLab() {
         <span>STRUCTURED CATALOGUE</span>
         <span>SHIRT + TROUSER</span>
         <span>{catalog.filter((item)=>item.inStock).length} FABRICS</span>
+        <span className={`labCloudStatus ${cloudStatus}`}>{cloudStatus === "live" ? "CLOUD LIVE" : cloudStatus === "checking" ? "CLOUD CHECK…" : "LOCAL MODE"}</span>
       </div>
       <button onClick={reset}>New design</button>
     </header>
