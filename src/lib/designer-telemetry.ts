@@ -48,6 +48,7 @@ export async function recordPhase1Recommendation(
         trouserLine: evaluation.trouser.line,
         trouserPattern: evaluation.trouser.pattern,
         confidenceScore: evaluation.confidenceScore,
+        brandAffinity: evaluation.brandAffinity,
         occasionBand: evaluation.occasionBand,
         relationship: evaluation.relationship,
         forced: evaluation.forced,
