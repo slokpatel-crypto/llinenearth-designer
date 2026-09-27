@@ -229,7 +229,7 @@ export function DesignerLab() {
       {results.length ? <>
         <div className="labResultGrid">
           {results.map((pair)=><button key={pair.id} className={chosen?.id===pair.id?"labResultCard selected": "labResultCard"} onClick={()=>setChosenId(pair.id)}>
-            <div className="labResultTop"><span>{pair.mode || "Direction"}</span><strong>{pair.rankScore ?? pair.confidenceScore}<small>/100</small></strong></div>
+            <div className="labResultTop"><span>{pair.forced ? (pair.mode || "Direction") : "Held for review"}</span><strong>{pair.rankScore ?? pair.confidenceScore}<small>/100</small></strong></div>
             <div className="labPairVisual">
               <div><span><Image fill sizes="180px" src={pair.shirt.swatchImageUrl} alt={pair.shirt.colorName} /></span><small>SHIRT</small><b>{pair.shirt.colorName}</b><em>{pair.shirt.line}</em></div>
               <i>+</i>
@@ -237,8 +237,8 @@ export function DesignerLab() {
             </div>
             <div className="labResultReason">
               <small>{pair.occasionBand} · {pair.relationship}</small>
-              <p>{pair.customerReason}</p>
-              {pair.modeReason && <em>{pair.modeReason}</em>}
+              <p>{pair.forced ? pair.customerReason : "This is the closest stock pairing the engine found, but it is below the safe confidence threshold and should be reviewed before use."}</p>
+              {pair.modeReason && pair.forced && <em>{pair.modeReason}</em>}
             </div>
           </button>)}
         </div>
@@ -246,7 +246,7 @@ export function DesignerLab() {
         {chosen && <div className="labChosen">
           <div>
             <span>SELECTED DIRECTION</span>
-            <h3>{chosen.mode || "Designer direction"}</h3>
+            <h3>{chosen.forced ? (chosen.mode || "Designer direction") : "Held for review"}</h3>
             <p>{chosen.shirt.colorName} shirt + {chosen.trouser.colorName} trouser</p>
           </div>
           <div className="labChosenFacts">
@@ -255,7 +255,7 @@ export function DesignerLab() {
             <span><small>Occasion band</small><b>{chosen.occasionBand}</b></span>
             <span><small>Rule set</small><b>{chosen.rulesVersion}</b></span>
           </div>
-          <p>{chosen.customerReason}</p>
+          <p>{chosen.forced ? chosen.customerReason : "The engine is deliberately not presenting this pairing as approved. Review the combination or change the brief/fabric before using it."}</p>
         </div>}
       </> : <div className="labNoResult"><strong>No safe direction was forced.</strong><p>The engine held the result because the available stock did not clear the current confidence/rule threshold for this brief.</p></div>}
     </section>}
