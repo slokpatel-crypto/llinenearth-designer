@@ -66,6 +66,31 @@ function cleanPayload(type:string, input:unknown) {
   }
 
   if (type === "operator_note") {
+    const subtype = text(payload.subtype,80);
+    if (subtype === "designer_pairing_review") {
+      const decision = text(payload.decision,40);
+      if (!["approve","wrong","safe_fallback"].includes(decision)) return null;
+      const pairingId = text(payload.pairingId,220);
+      const shirtId = text(payload.shirtId,140);
+      const trouserId = text(payload.trouserId,140);
+      const occasionBand = text(payload.occasionBand,40);
+      const rulesVersion = text(payload.rulesVersion,80);
+      if (!pairingId || !shirtId || !trouserId || !occasionBand || !rulesVersion) return null;
+      return {
+        subtype,
+        decision,
+        pairingId,
+        shirtId,
+        trouserId,
+        shirtName: text(payload.shirtName,120),
+        trouserName: text(payload.trouserName,120),
+        occasionBand,
+        rulesVersion,
+        confidenceScore: Math.max(0,Math.min(100,Number(payload.confidenceScore || 0) || 0)),
+        reason: text(payload.reason,500),
+        note: text(payload.note,1000),
+      };
+    }
     return { note: text(payload.note,1000) };
   }
 
