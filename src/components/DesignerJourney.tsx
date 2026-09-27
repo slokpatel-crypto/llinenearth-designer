@@ -28,6 +28,7 @@ export function DesignerJourney() {
   const [stockPairings, setStockPairings] = useState<StockPairingPublic[]>([]);
   const [sessionId, setSessionId] = useState("");
   const [selectedCandidate, setSelectedCandidate] = useState<DesignCandidate | null>(null);
+  const [selectedStockPairing, setSelectedStockPairing] = useState<StockPairingPublic | null>(null);
   const [finalVersion, setFinalVersion] = useState<DesignVersion | null>(null);
   const [renderSet, setRenderSet] = useState<RenderSet | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,13 +38,14 @@ export function DesignerJourney() {
     try {
       const raw = sessionStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const saved = JSON.parse(raw) as { stage?: Stage; fabric?: FabricSelection; context?: ContextProfile; candidates?: DesignCandidate[]; stockPairing?: StockPairingPublic | null; stockPairings?: StockPairingPublic[]; selectedCandidate?: DesignCandidate; finalVersion?: DesignVersion; renderSet?: RenderSet };
+        const saved = JSON.parse(raw) as { stage?: Stage; fabric?: FabricSelection; context?: ContextProfile; candidates?: DesignCandidate[]; stockPairing?: StockPairingPublic | null; stockPairings?: StockPairingPublic[]; selectedCandidate?: DesignCandidate; selectedStockPairing?: StockPairingPublic | null; finalVersion?: DesignVersion; renderSet?: RenderSet };
         if (saved.fabric) setFabric(saved.fabric);
         if (saved.context) setContext(saved.context);
         if (saved.candidates) setCandidates(saved.candidates);
         if (saved.stockPairing) setStockPairing(saved.stockPairing);
         if (saved.stockPairings) setStockPairings(saved.stockPairings);
         if (saved.selectedCandidate) setSelectedCandidate(saved.selectedCandidate);
+        if (saved.selectedStockPairing) setSelectedStockPairing(saved.selectedStockPairing);
         if (saved.finalVersion) setFinalVersion(saved.finalVersion);
         if (saved.renderSet) setRenderSet(saved.renderSet);
         if (saved.stage === "visualization" && saved.fabric && saved.context && saved.finalVersion && saved.renderSet) setStage("visualization");
@@ -65,8 +67,8 @@ export function DesignerJourney() {
 
   useEffect(() => {
     if (!hydrated) return;
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ stage, fabric, context, candidates, stockPairing, stockPairings, selectedCandidate, finalVersion, renderSet }));
-  }, [stage, fabric, context, candidates, stockPairing, stockPairings, selectedCandidate, finalVersion, renderSet, hydrated]);
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ stage, fabric, context, candidates, stockPairing, stockPairings, selectedCandidate, selectedStockPairing, finalVersion, renderSet }));
+  }, [stage, fabric, context, candidates, stockPairing, stockPairings, selectedCandidate, selectedStockPairing, finalVersion, renderSet, hydrated]);
 
   function refreshMeasurements() {
     try {
@@ -79,7 +81,7 @@ export function DesignerJourney() {
   }
 
   function acceptFabric(selection: FabricSelection) {
-    setFabric(selection); setCandidates([]); setStockPairing(null); setStockPairings([]); setSelectedCandidate(null); setFinalVersion(null); setRenderSet(null); setStage("context");
+    setFabric(selection); setCandidates([]); setStockPairing(null); setStockPairings([]); setSelectedCandidate(null); setSelectedStockPairing(null); setFinalVersion(null); setRenderSet(null); setStage("context");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -91,7 +93,7 @@ export function DesignerJourney() {
       const response = await fetch("/api/designer/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(enrichedBrief) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to create directions.");
-      setCandidates(data.candidates); setStockPairing(data.stockPairing ?? null); setStockPairings(Array.isArray(data.stockPairings) ? data.stockPairings : (data.stockPairing ? [data.stockPairing] : [])); setSelectedCandidate(null); setFinalVersion(null); setRenderSet(null); setStage("directions");
+      setCandidates(data.candidates); setStockPairing(data.stockPairing ?? null); setStockPairings(Array.isArray(data.stockPairings) ? data.stockPairings : (data.stockPairing ? [data.stockPairing] : [])); setSelectedCandidate(null); setSelectedStockPairing(null); setFinalVersion(null); setRenderSet(null); setStage("directions");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create directions."); setStage("error");
     }
@@ -102,8 +104,8 @@ export function DesignerJourney() {
     setContext(profile); window.scrollTo({ top: 0, behavior: "smooth" }); void generate({ sessionId: sessionId || undefined, fabric, context: profile, measurements: measurements || undefined });
   }
 
-  function beginRefinement(candidate: DesignCandidate) {
-    setSelectedCandidate(candidate); setFinalVersion(null); setRenderSet(null); setStage("refine"); window.scrollTo({ top: 0, behavior: "smooth" });
+  function beginRefinement(candidate: DesignCandidate, pairing?: StockPairingPublic | null) {
+    setSelectedCandidate(candidate); setSelectedStockPairing(pairing || null); setFinalVersion(null); setRenderSet(null); setStage("refine"); window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function visualize(version: DesignVersion) {
@@ -134,7 +136,7 @@ export function DesignerJourney() {
 
   if (stage === "visualization" && currentBrief && finalVersion && renderSet) return <VisualizationStudio brief={currentBrief} version={finalVersion} renderSet={renderSet} onRenderSetChange={setRenderSet} onBack={() => setStage("refine")} />;
 
-  if (stage === "refine" && currentBrief && candidates.length && selectedCandidate) return <RefinementWorkspace brief={currentBrief} initialCandidate={selectedCandidate} candidates={candidates} onBack={() => setStage("directions")} onVisualize={(version) => void visualize(version)} />;
+  if (stage === "refine" && currentBrief && candidates.length && selectedCandidate) return <RefinementWorkspace brief={currentBrief} initialCandidate={selectedCandidate} candidates={candidates} stockPairing={selectedStockPairing} onBack={() => setStage("directions")} onVisualize={(version) => void visualize(version)} />;
 
   if (stage === "directions" && currentBrief && candidates.length) return <DesignDirections brief={currentBrief} candidates={candidates} stockPairing={stockPairing} stockPairings={stockPairings} onEditContext={() => setStage("context")} onRefine={beginRefinement} />;
 
