@@ -22,6 +22,7 @@ export type ContextProfile = {
 };
 
 export type DesignerBrief = {
+  sessionId?: string;
   fabric: FabricSelection;
   context: ContextProfile;
   measurements?: MeasurementProfile;
