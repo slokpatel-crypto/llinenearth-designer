@@ -275,9 +275,11 @@ export default function OperatorClient() {
   const counts = usingBridge ? (bridge?.counts || local.counts) : usingCloud ? (cloud?.counts || local.counts) : local.counts;
   const recordSource = usingBridge ? "LOCAL PC VAULT" : usingCloud ? "CLOUD MEMORY" : "THIS BROWSER";
   const selected = sessions.find((s)=>s.sessionId===selectedId) || sessions[0] || null;
-  const designerRecommendation = phase1Recommendation(selected);
+  const cloudSelected = selected ? (cloud?.sessions || []).find((session)=>session.sessionId===selected.sessionId) || null : null;
+  const designerReviewSession = cloudSelected || selected;
+  const designerRecommendation = phase1Recommendation(designerReviewSession);
   const designerOutput = designerRecommendation?.output || null;
-  const latestReview = latestDesignerReview(selected,designerOutput?.pairingId || "");
+  const latestReview = latestDesignerReview(designerReviewSession,designerOutput?.pairingId || "");
 
   useEffect(()=>{
     if (!selectedId && sessions[0]) setSelectedId(sessions[0].sessionId);
