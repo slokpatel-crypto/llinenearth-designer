@@ -35,6 +35,7 @@ function aggregate(events: CloudEvent[]) {
   const counts:Record<string,number> = {};
 
   for (const event of events) {
+    if (event.type === "operator_note" && event.payload?.subtype === "designer_fabric_metadata") continue;
     counts[event.type] = (counts[event.type] || 0) + 1;
     const current = map.get(event.sessionId) || {
       sessionId: event.sessionId,
