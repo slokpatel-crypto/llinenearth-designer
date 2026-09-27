@@ -1,7 +1,8 @@
 import { FABRIC_STOCK, type FabricColorway } from "@/lib/fabric-stock";
 import type { DesignerBrief } from "@/lib/designer-types";
+import { brandSeedAffinity, scoreLlinenEarthPairing, type PairingMode } from "@/lib/llinen-earth-taste";
 
-export const SHIRT_PANT_RULESET_VERSION = "shirt-pant-basic-v1";
+export const SHIRT_PANT_RULESET_VERSION = "shirt-pant-ranked-v2";
 export const LOW_CONFIDENCE_THRESHOLD = 68;
 
 export type OccasionBand = "Casual" | "Smart-Casual" | "Semi-Formal" | "Formal" | "Formal-Event";
@@ -32,6 +33,9 @@ export type StockPairingPublic = {
   forced: boolean;
   needsHumanFallback: boolean;
   humanApprovedFallback?: boolean;
+  mode?: PairingMode;
+  modeReason?: string;
+  rankScore?: number;
   dataWarnings: string[];
 };
 
@@ -160,35 +164,6 @@ function colorRule(shirt: FabricColorway, trouser: FabricColorway) {
   };
 }
 
-function brandSeedAffinity(shirt: FabricColorway, trouser: FabricColorway) {
-  const shirtColor = hsl(shirt.hex);
-  const trouserColor = hsl(trouser.hex);
-  const shirtName = shirt.colorName.toLowerCase();
-  const trouserName = trouser.colorName.toLowerCase();
-  const shirtPattern = patternScale(shirt.pattern);
-
-  const lightBlueShirt = (
-    (shirtColor.h >= 185 && shirtColor.h <= 235 && shirtColor.l >= 0.42)
-    || /sky blue|chambray|pale blue|light blue/.test(shirtName)
-  );
-  const whiteEcruShirt = /white|offwhite|cream|ecru/.test(shirtName) || (shirtColor.s < 0.12 && shirtColor.l > 0.72);
-  const warmLightTrouser = /cream|beige|taupe|stone|oak|tobacco|brown/.test(trouserName)
-    || (trouserColor.s < 0.25 && trouserColor.l > 0.52);
-  const darkNeutralTrouser = /charcoal|dark grey|dark gray|slate/.test(trouserName)
-    || (trouserColor.s < 0.16 && trouserColor.l < 0.5);
-  const oliveTrouser = /olive|khaki|khakhi/.test(trouserName)
-    || (trouserColor.h >= 65 && trouserColor.h <= 115 && trouserColor.s >= 0.12 && trouserColor.s <= 0.5);
-
-  if (lightBlueShirt && warmLightTrouser) return 10;
-  if (lightBlueShirt && darkNeutralTrouser) return 8;
-  if (oliveTrouser && whiteEcruShirt) return 10;
-  if (oliveTrouser && lightBlueShirt) return 9;
-  if (oliveTrouser && shirtPattern === "fine") return 7;
-  if (isNeutral(shirtColor) || isNeutral(trouserColor)) return 5;
-  if (hueDistance(shirtColor.h,trouserColor.h) <= 34) return 4;
-  return 3;
-}
-
 function customerReason(relationship: string, shirt: FabricColorway, trouser: FabricColorway) {
   const shirtScale = patternScale(shirt.pattern);
   if (shirtScale === "bold") {
@@ -261,7 +236,13 @@ function evaluatePair(shirt: FabricColorway, trouser: FabricColorway, brief: Des
   const confidenceScore = clamp(100 - ruleDeduction - dataDeduction);
   const forced = confidenceScore >= LOW_CONFIDENCE_THRESHOLD;
   const id = `PAIR-${shirt.id}--${trouser.id}--${SHIRT_PANT_RULESET_VERSION}`;
-  const brandAffinity = brandSeedAffinity(shirt,trouser);
+  const brandAffinity = brandSeedAffinity({
+    shirtColorName: shirt.colorName,
+    shirtHex: shirt.hex,
+    shirtPattern,
+    trouserColorName: trouser.colorName,
+    trouserHex: trouser.hex,
+  });
   const reasoningText = `${rules.map((rule) => `${rule.id} ${rule.status.toUpperCase()}: ${rule.reason}`).join(" ")} BRAND-SEED: ${brandAffinity}/10 soft affinity.`;
 
   return {
@@ -323,33 +304,92 @@ export function publicStockPairing(evaluation: StockPairingEvaluation | null): S
   return publicData;
 }
 
-export function recommendStockPairing(brief: DesignerBrief): StockPairingEvaluation | null {
+function evaluatedStockPairs(brief: DesignerBrief) {
   const stockId = brief.fabric.stockId;
-  if (!stockId) return null;
+  if (!stockId) return [] as StockPairingEvaluation[];
   const anchor = FABRIC_STOCK.find((fabric) => fabric.id === stockId && fabric.inStock);
-  if (!anchor) return null;
+  if (!anchor) return [] as StockPairingEvaluation[];
 
   const anchorIsShirt = anchor.suitableFor.includes("shirt");
   const anchorIsTrouser = anchor.suitableFor.includes("trouser");
-  if (!anchorIsShirt && !anchorIsTrouser) return null;
+  if (!anchorIsShirt && !anchorIsTrouser) return [] as StockPairingEvaluation[];
 
   const opposite = FABRIC_STOCK.filter((fabric) => {
     if (!fabric.inStock || fabric.id === anchor.id) return false;
     return anchorIsShirt ? fabric.suitableFor.includes("trouser") : fabric.suitableFor.includes("shirt");
   });
 
-  const evaluations = opposite.map((candidate) =>
+  return opposite.map((candidate) =>
     anchorIsShirt ? evaluatePair(anchor, candidate, brief) : evaluatePair(candidate, anchor, brief),
   );
+}
 
-  evaluations.sort((a, b) => {
-    if (b.confidenceScore !== a.confidenceScore) return b.confidenceScore - a.confidenceScore;
-    if (b.brandAffinity !== a.brandAffinity) return b.brandAffinity - a.brandAffinity;
-    const aPattern = patternScale(a.shirt.pattern) === "solid" ? 1 : 0;
-    const bPattern = patternScale(b.shirt.pattern) === "solid" ? 1 : 0;
-    if (bPattern !== aPattern) return bPattern - aPattern;
-    return a.id.localeCompare(b.id);
-  });
+function baseSort(a: StockPairingEvaluation, b: StockPairingEvaluation) {
+  if (b.confidenceScore !== a.confidenceScore) return b.confidenceScore - a.confidenceScore;
+  if (b.brandAffinity !== a.brandAffinity) return b.brandAffinity - a.brandAffinity;
+  const aPattern = patternScale(a.shirt.pattern) === "solid" ? 1 : 0;
+  const bPattern = patternScale(b.shirt.pattern) === "solid" ? 1 : 0;
+  if (bPattern !== aPattern) return bPattern - aPattern;
+  return a.id.localeCompare(b.id);
+}
 
+function hasHighRuleWarning(evaluation: StockPairingEvaluation) {
+  return evaluation.rules.some((rule) => rule.status === "warn" && rule.penalty === "high");
+}
+
+export function rankStockPairings(brief: DesignerBrief): StockPairingEvaluation[] {
+  const evaluations = evaluatedStockPairs(brief);
+  if (!evaluations.length) return [];
+
+  const eligible = evaluations
+    .filter((evaluation) => evaluation.confidenceScore >= LOW_CONFIDENCE_THRESHOLD && !hasHighRuleWarning(evaluation))
+    .sort(baseSort);
+
+  if (!eligible.length) return [];
+
+  const modes: PairingMode[] = ["Elevated","Safe","Statement"];
+  const chosen: StockPairingEvaluation[] = [];
+  const used = new Set<string>();
+
+  for (const mode of modes) {
+    const ranked = eligible
+      .filter((evaluation) => !used.has(evaluation.id))
+      .map((evaluation) => {
+        const taste = scoreLlinenEarthPairing(mode,{
+          relationship:evaluation.relationship,
+          shirtColorName:evaluation.shirt.colorName,
+          shirtHex:evaluation.shirt.hex,
+          shirtPattern:patternScale(evaluation.shirt.pattern),
+          trouserColorName:evaluation.trouser.colorName,
+          trouserHex:evaluation.trouser.hex,
+          trouserPattern:patternScale(evaluation.trouser.pattern),
+          confidenceScore:evaluation.confidenceScore,
+          brief,
+        });
+        return {evaluation,taste};
+      })
+      .sort((a,b)=>b.taste.score-a.taste.score || baseSort(a.evaluation,b.evaluation));
+
+    const top = ranked[0];
+    if (!top) continue;
+    used.add(top.evaluation.id);
+    chosen.push({
+      ...top.evaluation,
+      mode,
+      modeReason:top.taste.reason,
+      rankScore:top.taste.score,
+    });
+  }
+
+  return chosen;
+}
+
+export function recommendStockPairing(brief: DesignerBrief): StockPairingEvaluation | null {
+  const ranked = rankStockPairings(brief);
+  const elevated = ranked.find((item)=>item.mode === "Elevated");
+  if (elevated) return elevated;
+  if (ranked[0]) return ranked[0];
+
+  const evaluations = evaluatedStockPairs(brief).sort(baseSort);
   return evaluations[0] || null;
 }
