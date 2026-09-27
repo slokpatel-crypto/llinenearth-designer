@@ -9,6 +9,7 @@ import type { StockPairingPublic } from "@/lib/shirt-pant-designer";
 type GarmentFilter = "all" | "shirt" | "trouser";
 type LabFabric = FabricColorway & { availability?: "unknown"|"available"|"unavailable"; verifiedAt?: string };
 type LabState = "idle" | "designing" | "results" | "error";
+type InstallPromptEvent = Event & { prompt:()=>Promise<void>; userChoice:Promise<{outcome:"accepted"|"dismissed"}> };
 
 const OCCASIONS = ["Business","Dinner / evening","Wedding","Smart casual","Resort / holiday","Festive / cultural"];
 const FORMALITIES = ["Relaxed","Smart relaxed","Refined","Formal","Ceremonial / evening formal"];
@@ -61,6 +62,7 @@ export function DesignerLab() {
   const [feedback,setFeedback] = useState<"up"|"down"|null>(null);
   const [feedbackState,setFeedbackState] = useState<"idle"|"saving"|"saved"|"unavailable">("idle");
   const [cloudStatus,setCloudStatus] = useState<"checking"|"live"|"local">("checking");
+  const [installPrompt,setInstallPrompt] = useState<InstallPromptEvent|null>(null);
 
   useEffect(()=>{
     void fetch("/api/designer-lab/catalog",{cache:"no-store"})
@@ -77,6 +79,22 @@ export function DesignerLab() {
       void navigator.serviceWorker.register("/designer-lab-sw.js",{scope:"/designer-lab/"}).catch(()=>{});
     }
   },[]);
+
+  useEffect(()=>{
+    const capture=(event:Event)=>{
+      event.preventDefault();
+      setInstallPrompt(event as InstallPromptEvent);
+    };
+    window.addEventListener("beforeinstallprompt",capture);
+    return ()=>window.removeEventListener("beforeinstallprompt",capture);
+  },[]);
+
+  async function installApp(){
+    if(!installPrompt)return;
+    await installPrompt.prompt();
+    await installPrompt.userChoice.catch(()=>({outcome:"dismissed" as const}));
+    setInstallPrompt(null);
+  }
 
   const lines = useMemo(()=>["All collections",...Array.from(new Set(
     catalog.filter((item)=>item.inStock).map((item)=>item.line)
@@ -224,7 +242,7 @@ export function DesignerLab() {
         <span>{catalog.filter((item)=>item.inStock).length} FABRICS</span>
         <span className={`labCloudStatus ${cloudStatus}`}>{cloudStatus === "live" ? "CLOUD LIVE" : cloudStatus === "checking" ? "CLOUD CHECK…" : "LOCAL MODE"}</span>
       </div>
-      <button onClick={reset}>New design</button>
+      <div className="labHeaderActions">{installPrompt && <button onClick={()=>void installApp()}>Install app</button>}<button onClick={reset}>New design</button></div>
     </header>
 
     <section className="labHero">
