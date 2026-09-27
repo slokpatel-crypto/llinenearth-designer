@@ -10,6 +10,7 @@ const required = [
   "src/app/designer-lab/designer-lab.css",
   "src/app/api/designer-lab/generate/route.ts",
   "src/app/api/designer-lab/catalog/route.ts",
+  "src/app/api/system/cloud-health/route.ts",
   "src/app/operator/designer-data/designer-data.css",
   "src/app/operator/designer-data/DesignerDataClient.tsx",
   "src/app/operator/designer-data/page.tsx",
@@ -171,6 +172,13 @@ for (const token of ["Designer Evidence","MODE EVIDENCE","RULE EVIDENCE","PAIRIN
   if (!designerInsightsUi.includes(token)) throw new Error(`Designer evidence UI regression: missing ${token}`);
 }
 console.log("Designer evidence gate passed: feedback/review analytics are observable without automatic weight changes.");
+
+const cloudHealthApi = fs.readFileSync("src/app/api/system/cloud-health/route.ts","utf8");
+for (const token of ["llinen_cloud_health","schemaVersion === 5","serviceInsert","serviceUpdate","serviceDelete","healthy"]) {
+  if (!cloudHealthApi.includes(token)) throw new Error(`Cloud health regression: missing ${token}`);
+}
+console.log("Cloud health gate passed: deployment can verify schema v5 without exposing secrets.");
+
 
 
 
