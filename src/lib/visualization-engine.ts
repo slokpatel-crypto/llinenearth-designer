@@ -13,6 +13,7 @@ export type VisualizationSpec = {
   palette: string[];
   lockedFields: string[];
   fabric: { material: string; tone: string; summary: string; swatchImageUrl?: string };
+  stockPairing?: DesignVersion["stockPairing"];
   context: DesignerBrief["context"];
 };
 export type VisualizationRender = {
@@ -61,6 +62,7 @@ export function compileVisualizationSpec(brief: DesignerBrief, version: DesignVe
       summary: brief.fabric.profile.summary,
       swatchImageUrl: brief.fabric.source === "stock" ? brief.fabric.swatchImageUrl : undefined,
     },
+    stockPairing: version.stockPairing ? { ...version.stockPairing, shirt: { ...version.stockPairing.shirt }, trouser: { ...version.stockPairing.trouser } } : undefined,
     context: { ...brief.context },
   };
 }
@@ -77,6 +79,8 @@ function renderSvg(spec: VisualizationSpec, view: RenderView, repairCount = 0) {
   const base = safeColor(spec.palette[0], "#d9d0c2");
   const secondary = safeColor(spec.palette[1], "#24344c");
   const accent = safeColor(spec.palette[2], "#756552");
+  const shirtColor = safeColor(spec.stockPairing?.shirt.hex, base);
+  const trouserColor = safeColor(spec.stockPairing?.trouser.hex, accent);
   const dark = "#07101b";
   const layerVisible = !spec.garments.layer.toLowerCase().includes("no jacket");
   const back = view === "back";
@@ -86,7 +90,7 @@ function renderSvg(spec: VisualizationSpec, view: RenderView, repairCount = 0) {
   if (detail) {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1120" viewBox="0 0 900 1120">
       <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#07101b"/><stop offset="1" stop-color="#142239"/></linearGradient><pattern id="weave" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M0 4H20M0 12H20" stroke="#fff" stroke-opacity=".075"/><path d="M4 0V20M12 0V20" stroke="#000" stroke-opacity=".12"/></pattern></defs>
-      <rect width="900" height="1120" fill="url(#bg)"/><rect x="92" y="92" width="716" height="716" rx="3" fill="${base}"/><rect x="92" y="92" width="716" height="716" fill="url(#weave)"/>
+      <rect width="900" height="1120" fill="url(#bg)"/><rect x="92" y="92" width="716" height="716" rx="3" fill="${shirtColor}"/><rect x="92" y="92" width="716" height="716" fill="url(#weave)"/>
       <path d="M190 620 C315 500 365 340 445 225 C500 350 555 500 710 620" fill="none" stroke="${secondary}" stroke-width="24" stroke-linecap="round" opacity=".94"/>
       <path d="M310 175 L445 322 L590 175" fill="none" stroke="${dark}" stroke-width="14" opacity=".82"/>
       <circle cx="448" cy="452" r="9" fill="${accent}"/><circle cx="448" cy="494" r="9" fill="${accent}"/>
@@ -100,9 +104,9 @@ function renderSvg(spec: VisualizationSpec, view: RenderView, repairCount = 0) {
 
   const jacketFront = layerVisible ? `<path d="M300 365 L395 312 L450 370 L505 312 L600 365 L565 720 L335 720 Z" fill="${secondary}"/><path d="M395 312 L450 470 L505 312" fill="none" stroke="${base}" stroke-width="11" opacity=".85"/><path d="M450 472 V705" stroke="#101927" stroke-width="5"/><circle cx="466" cy="520" r="8" fill="${accent}"/><circle cx="466" cy="575" r="8" fill="${accent}"/>` : "";
   const jacketBack = layerVisible ? `<path d="M300 365 L395 314 L450 336 L505 314 L600 365 L565 720 L335 720 Z" fill="${secondary}"/><path d="M450 338 V710" stroke="#fff" stroke-opacity=".12" stroke-width="4"/><path d="M426 670 L450 718 L474 670" fill="none" stroke="${accent}" stroke-width="4"/>` : "";
-  const shirt = `<path d="M332 366 L400 315 L450 350 L500 315 L568 366 L545 700 L355 700 Z" fill="${base}"/><path d="M400 315 L450 402 L500 315" fill="none" stroke="${dark}" stroke-width="9"/>`;
-  const trousers = `<path d="M357 690 L447 690 L432 1002 L338 1002 Z" fill="${accent}"/><path d="M453 690 L543 690 L562 1002 L468 1002 Z" fill="${accent}"/><path d="M450 692 V990" stroke="#000" stroke-opacity=".22" stroke-width="3"/>`;
-  const arms = `<rect x="264" y="365" width="72" height="408" rx="34" fill="${layerVisible ? secondary : base}" transform="rotate(5 300 365)"/><rect x="564" y="365" width="72" height="408" rx="34" fill="${layerVisible ? secondary : base}" transform="rotate(-5 600 365)"/>`;
+  const shirt = `<path d="M332 366 L400 315 L450 350 L500 315 L568 366 L545 700 L355 700 Z" fill="${shirtColor}"/><path d="M400 315 L450 402 L500 315" fill="none" stroke="${dark}" stroke-width="9"/>`;
+  const trousers = `<path d="M357 690 L447 690 L432 1002 L338 1002 Z" fill="${trouserColor}"/><path d="M453 690 L543 690 L562 1002 L468 1002 Z" fill="${trouserColor}"/><path d="M450 692 V990" stroke="#000" stroke-opacity=".22" stroke-width="3"/>`;
+  const arms = `<rect x="264" y="365" width="72" height="408" rx="34" fill="${layerVisible ? secondary : shirtColor}" transform="rotate(5 300 365)"/><rect x="564" y="365" width="72" height="408" rx="34" fill="${layerVisible ? secondary : shirtColor}" transform="rotate(-5 600 365)"/>`;
   const silhouette = back ? `${shirt}${jacketBack}${trousers}${arms}` : `${shirt}${jacketFront}${trousers}${arms}`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1120" viewBox="0 0 900 1120">
     <defs><radialGradient id="bg"><stop stop-color="#182945"/><stop offset="1" stop-color="#05090f"/></radialGradient></defs>
