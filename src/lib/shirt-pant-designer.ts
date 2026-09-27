@@ -31,6 +31,7 @@ export type StockPairingPublic = {
   relationship: string;
   forced: boolean;
   needsHumanFallback: boolean;
+  humanApprovedFallback?: boolean;
   dataWarnings: string[];
 };
 
@@ -264,6 +265,23 @@ function evaluatePair(shirt: FabricColorway, trouser: FabricColorway, brief: Des
     rules,
     reasoningText,
     provisionalTasteModel: true,
+  };
+}
+
+export function evaluateStockPairByIds(brief: DesignerBrief, shirtId: string, trouserId: string): StockPairingEvaluation | null {
+  const shirt = FABRIC_STOCK.find((fabric) => fabric.id === shirtId && fabric.inStock && fabric.suitableFor.includes("shirt"));
+  const trouser = FABRIC_STOCK.find((fabric) => fabric.id === trouserId && fabric.inStock && fabric.suitableFor.includes("trouser"));
+  if (!shirt || !trouser) return null;
+  return evaluatePair(shirt, trouser, brief);
+}
+
+export function approveHumanFallback(evaluation: StockPairingEvaluation): StockPairingEvaluation {
+  return {
+    ...evaluation,
+    forced: true,
+    needsHumanFallback: false,
+    humanApprovedFallback: true,
+    customerReason: `${evaluation.customerReason} This pairing is also on LLinen Earth's approved safe-fallback list for this formality band.`,
   };
 }
 
