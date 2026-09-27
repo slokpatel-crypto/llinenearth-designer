@@ -6,7 +6,7 @@ import type { DesignerBrief } from "@/lib/designer-types";
 import { measurementCoverage } from "@/lib/measurements";
 import type { StockPairingPublic } from "@/lib/shirt-pant-designer";
 
-export function DesignDirections({ brief, candidates, stockPairing, stockPairings = [], onEditContext, onRefine }: { brief: DesignerBrief; candidates: DesignCandidate[]; stockPairing?: StockPairingPublic | null; stockPairings?: StockPairingPublic[]; onEditContext: () => void; onRefine: (candidate: DesignCandidate) => void }) {
+export function DesignDirections({ brief, candidates, stockPairing, stockPairings = [], onEditContext, onRefine }: { brief: DesignerBrief; candidates: DesignCandidate[]; stockPairing?: StockPairingPublic | null; stockPairings?: StockPairingPublic[]; onEditContext: () => void; onRefine: (candidate: DesignCandidate, pairing?: StockPairingPublic | null) => void }) {
   const [selectedId, setSelectedId] = useState(candidates.find((x) => x.tier === "Elevated")?.id || candidates[0]?.id);
   const rankedStockPairings = stockPairings.length ? stockPairings : stockPairing ? [stockPairing] : [];
   const [selectedPairId, setSelectedPairId] = useState(stockPairing?.id || rankedStockPairings[0]?.id || "");
@@ -79,7 +79,7 @@ export function DesignDirections({ brief, candidates, stockPairing, stockPairing
         </div>
 
         {rankedStockPairings.length > 1 && <div className="stockPairingRanks">
-          {rankedStockPairings.map((pair)=><button key={pair.id} className={pair.id === selectedStockPairing.id ? "active" : ""} onClick={()=>setSelectedPairId(pair.id)}>
+          {rankedStockPairings.map((pair)=><button key={pair.id} className={pair.id === selectedStockPairing.id ? "active" : ""} onClick={()=>{setSelectedPairId(pair.id);const match=candidates.find((candidate)=>candidate.tier===pair.mode);if(match)setSelectedId(match.id);}}>
             <span>{pair.mode || "Direction"}</span>
             <strong>{pair.shirt.colorName} + {pair.trouser.colorName}</strong>
             <small>{pair.relationship} · {pair.rankScore ?? pair.confidenceScore}/100 fit</small>
@@ -139,13 +139,13 @@ export function DesignDirections({ brief, candidates, stockPairing, stockPairing
               <div className="whyBlock"><span>WHY IT WORKS</span>{candidate.reasons.map((reason) => <p key={reason}>{reason}</p>)}</div>
               <div className="tradeoff"><span>TRADEOFF</span><p>{candidate.tradeoff}</p></div>
               <div className="scoreStrip"><div><span>Fabric</span><b>{candidate.scores.fabric}</b></div><div><span>Climate</span><b>{candidate.scores.climate}</b></div><div><span>Occasion</span><b>{candidate.scores.occasion}</b></div><div><span>Aesthetic</span><b>{candidate.scores.aesthetic}</b></div></div>
-              <button className={active ? "selectDirection active" : "selectDirection"} onClick={() => setSelectedId(candidate.id)}>{active ? "Selected direction" : "Choose this direction"}<span>→</span></button>
+              <button className={active ? "selectDirection active" : "selectDirection"} onClick={() => { setSelectedId(candidate.id); const pair=rankedStockPairings.find((item)=>item.mode===candidate.tier); if(pair)setSelectedPairId(pair.id); }}>{active ? "Selected direction" : "Choose this direction"}<span>→</span></button>
             </article>
           );
         })}
       </div>
 
-      {selected && <div className="selectedBar"><div><span className="micro">SELECTED</span><strong>{selected.name}</strong><p>{selected.tier} · {selected.aesthetic} · design {selected.scores.total}/100 · fabric {selected.fabricJudgement.overall}/100{coverage.total > 0 ? ` · fit profile ${coverage.total}/16` : ""}</p></div><button className="button light" onClick={() => onRefine(selected)}>Compare & refine →</button></div>}
+      {selected && <div className="selectedBar"><div><span className="micro">SELECTED</span><strong>{selected.name}</strong><p>{selected.tier} · {selected.aesthetic} · design {selected.scores.total}/100 · fabric {selected.fabricJudgement.overall}/100{coverage.total > 0 ? ` · fit profile ${coverage.total}/16` : ""}</p></div><button className="button light" onClick={() => onRefine(selected,selectedStockPairing)}>Compare & refine →</button></div>}
       <p className="engineNote">The Designer now combines visual fabric signals, confirmed fibre family, intended garment role, climate, formality, occasion and optional body measurements before deciding how the outfit should be built.</p>
     </section>
   );
