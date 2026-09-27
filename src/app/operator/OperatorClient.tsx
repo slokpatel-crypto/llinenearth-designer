@@ -149,6 +149,9 @@ type DesignerPairingOutput = {
   trouserLine:string;
   trouserPattern:string;
   confidenceScore:number;
+  mode?:string;
+  modeReason?:string;
+  rankScore?:number;
   occasionBand:string;
   relationship:string;
   forced:boolean;
@@ -357,6 +360,7 @@ export default function OperatorClient() {
       occasionBand:designerOutput.occasionBand,
       rulesVersion:designerRecommendation.rulesVersion,
       confidenceScore:designerOutput.confidenceScore,
+      mode:designerOutput.mode || "",
       reason,
       note:decision === "safe_fallback"
         ? "Approved as an LLinen Earth safe fallback for this formality band."
@@ -448,7 +452,7 @@ export default function OperatorClient() {
                 <i>{output?.needsHumanFallback ? "!" : "?"}</i>
                 <div>
                   <strong>{output?.shirtName || output?.shirtId} + {output?.trouserName || output?.trouserId}</strong>
-                  <small>{output?.occasionBand} · {output?.relationship} · {output?.confidenceScore}/100</small>
+                  <small>{output?.mode ? `${output.mode} · ` : ""}{output?.occasionBand} · {output?.relationship} · {output?.confidenceScore}/100</small>
                 </div>
                 <span>{output?.needsHumanFallback ? "Needs fallback" : "Unreviewed"} ↗</span>
               </button>)}
@@ -484,7 +488,7 @@ export default function OperatorClient() {
               {selected.selectedLook && <div className="selectedLook"><small>SELECTED LOOK</small><strong>{String(selected.selectedLook.title || "Look selected")}</strong><span>{String(selected.selectedLook.fabric || "")}</span></div>}
               {designerRecommendation && designerOutput && <div className="designerReviewPanel">
                 <div className="designerReviewHead">
-                  <div><small>DESIGNER PHASE 1 REVIEW</small><strong>{designerOutput.shirtName || designerOutput.shirtId} + {designerOutput.trouserName || designerOutput.trouserId}</strong></div>
+                  <div><small>DESIGNER PHASE 1 REVIEW{designerOutput.mode ? ` · ${designerOutput.mode.toUpperCase()}` : ""}</small><strong>{designerOutput.shirtName || designerOutput.shirtId} + {designerOutput.trouserName || designerOutput.trouserId}</strong></div>
                   <b>{designerOutput.confidenceScore}<span>/100</span></b>
                 </div>
                 <div className="designerReviewFacts">
