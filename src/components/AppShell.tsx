@@ -4,13 +4,14 @@ import { BRAND_LOGO_SRC } from "@/lib/brand-logo-data";
 
 const primaryLinks = [
   ["Catalog", "/catalog"],
+  ["Designer", "/designer-studio"],
   ["Style Director", "/style-director"],
   ["Measurements", "/measurements"],
   ["Contact", "/contact"],
 ] as const;
 
 const secondaryLinks = [
-  ["Live Visual", "/visual"],
+  ["Live Model", "/designer-studio#designerPhotoTitle"],
   ["Classic Designer", "/designer-brief"],
   ["Saved Designs", "/designs"],
   ["Fashion Brain", "/knowledge"],

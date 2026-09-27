@@ -150,6 +150,8 @@ export default function OperatorClient() {
   const [loggingOut,setLoggingOut] = useState(false);
   const [cloud,setCloud] = useState<CloudSummary|null>(null);
   const [cloudState,setCloudState] = useState<"loading"|"live"|"unconfigured"|"error">("loading");
+  const [flaggingId,setFlaggingId] = useState<string|null>(null);
+  const [flagReason,setFlagReason] = useState("");
 
   useEffect(()=>{
     setBrowserEvents(readBrowserStyleEvents());
@@ -228,6 +230,11 @@ export default function OperatorClient() {
   const counts = usingBridge ? (bridge?.counts || local.counts) : usingCloud ? (cloud?.counts || local.counts) : local.counts;
   const recordSource = usingBridge ? "LOCAL PC VAULT" : usingCloud ? "CLOUD MEMORY" : "THIS BROWSER";
   const selected = sessions.find((s)=>s.sessionId===selectedId) || sessions[0] || null;
+  const designerEvents = [...new Map([...sessions.flatMap((session)=>session.events),...browserEvents]
+    .filter((event)=>event.type.startsWith("designer_"))
+    .map((event)=>[event.id,event])).values()];
+  const designerDecisions = designerEvents.filter((event)=>event.type === "designer_recommendation")
+    .sort((a,b)=>b.at.localeCompare(a.at)).slice(0,8);
 
   useEffect(()=>{
     if (!selectedId && sessions[0]) setSelectedId(sessions[0].sessionId);
@@ -260,6 +267,21 @@ export default function OperatorClient() {
     }
 
     setMessage(type === "sale_logged" ? "Sale outcome saved." : "Store visit saved.");
+  }
+
+  async function flagDesignerDecision(event:StyleMemoryEvent) {
+    if (!flagReason.trim() || flagReason.trim().length < 8) {
+      setMessage("Please explain what the stylist would change (at least 8 characters).");
+      return;
+    }
+    try {
+      recordStyleMemoryEvent(event.sessionId,"designer_override",{recommendationId:event.id,reason:flagReason.trim()},"operator");
+      refreshBrowser();
+      setFlaggingId(null);
+      setFlagReason("");
+      setMessage("Stylist correction saved on this device and queued for cloud sync.");
+      if (cloudState === "live") void loadCloud();
+    } catch { setMessage("Could not save the correction on this device."); }
   }
 
   const funnel = [
@@ -295,6 +317,29 @@ export default function OperatorClient() {
 
       <section className="operatorGrid">
         <div className="operatorMain">
+          <article className="panel">
+            <div className="panelHead"><div><small>DESIGNER REVIEW</small><h2>Check the judgement, then correct it.</h2></div><span>{designerDecisions.length} recent · {counts.designer_preview_opened || 0} outfit sketches</span></div>
+            {designerDecisions.length ? <div className="designerReviewList">{designerDecisions.map((event)=>{
+              const payload = event.payload || {};
+              const input = payload.input && typeof payload.input === "object" ? payload.input as Record<string,unknown> : {};
+              const corrected = designerEvents.find((item)=>item.type === "designer_override" && item.payload?.recommendationId === event.id);
+              const feedback = designerEvents.filter((item)=>item.type === "designer_feedback" && item.payload?.recommendationId === event.id);
+              const previewed = designerEvents.some((item)=>item.type === "designer_preview_opened" && item.payload?.recommendationId === event.id);
+              const rules = Array.isArray(payload.rules) ? payload.rules as Array<{id:string;status:string;explanation:string}> : [];
+              const output = payload.output && typeof payload.output === "object" ? payload.output as Record<string,unknown> : {};
+              return <div className="designerReviewItem" key={event.id}>
+                <span>{String(input.shirtId || "Shirt")} + {String(input.pantId || "Trouser")} · {String(input.occasion || "Occasion")}</span>
+                <small>{String(payload.status || "unverified")} · confidence {String(payload.confidenceScore ?? "?")} · rules {String(payload.ruleSetVersion || "unversioned")} · {relativeTime(event.at)}</small>
+                <details><summary>Decision and rule trace</summary><p>Suggested cut: {String(output.collar || "unknown")} + {String(output.trouser || "unknown")} · {String(output.button || "button unconfirmed")}</p><p>{String(payload.reasoningText || "No trace available")}</p><p>Customer feedback: {feedback.length ? feedback.map((item)=>String(item.payload?.rating || "?")).join(", ") : "none yet"}</p><p>Outfit sketch opened: {previewed ? "yes" : "no"}</p><p>Flagged rules: {rules.filter((item)=>item.status === "flag").map((item)=>`${item.id}: ${item.explanation}`).join(" · ") || "none"}</p></details>
+                {corrected ? <p><b>Stylist correction:</b> {String(corrected.payload?.reason || "Flagged")}</p> : flaggingId === event.id ? <div className="designerReviewOverride">
+                  <label htmlFor={`designer-override-${event.id}`}>What should change?</label>
+                  <textarea id={`designer-override-${event.id}`} value={flagReason} onChange={(change)=>setFlagReason(change.target.value)} maxLength={1000} />
+                  <button onClick={()=>void flagDesignerDecision(event)}>Save correction</button><button onClick={()=>setFlaggingId(null)}>Cancel</button>
+                </div> : <button className="textButton" onClick={()=>{setFlaggingId(event.id);setFlagReason("");}}>Flag as wrong</button>}
+              </div>;
+            })}</div> : <div className="empty"><b>No Designer decisions yet.</b><span>Assess a pairing in Designer; recent rule traces appear here.</span></div>}
+          </article>
+
           <article className="panel funnelPanel">
             <div className="panelHead"><div><small>JOURNEY</small><h2>Where interest is becoming business.</h2></div><b>{totals.sessions ? Math.round((totals.whatsapp/totals.sessions)*100) : 0}% <span>session → WhatsApp</span></b></div>
             <div className="funnel">

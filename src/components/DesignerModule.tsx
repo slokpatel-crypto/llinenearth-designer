@@ -1,0 +1,272 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import {
+  DESIGNER_PANTS, DESIGNER_REVIEWED_PAIRING, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES,
+  designerStyleForOccasion, designerTasteAlternative,
+  type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerRecommendation, type DesignerStyle, type OccasionTier,
+} from "@/lib/designer/engine";
+import { planDesignerDirections, suggestDesignerRepairs, type DesignerDirection } from "@/lib/designer/planner";
+import { DESIGNER_ARCHIVE_IMAGES, DESIGNER_RESEARCH } from "@/lib/designer/research";
+import { constructionNotes } from "@/lib/designer/photo-preview";
+import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
+import { PhotoOutfitPreview } from "@/components/PhotoOutfitPreview";
+
+const OCCASIONS: OccasionTier[] = ["Casual", "Smart-Casual", "Semi-Formal", "Formal"];
+const CLIMATES: DesignerClimate[] = ["Not specified", "Hot / humid", "Cool", "Air-conditioned"];
+const INTENTIONS: DesignerIntention[] = ["Understated", "Balanced", "Expressive"];
+const SESSION_KEY = "llinen-earth:designer-session:v1";
+const SAVED_KEY = "llinen-earth:designer-saved:v1";
+type SavedDirection = { shirtId: string; pantId: string; occasion: OccasionTier; style: DesignerStyle };
+
+const MAIN_DETAILS = [
+  ["collar", "Shirt collar"], ["shirtFit", "Shirt fit"],
+  ["trouser", "Trouser shape"], ["rise", "Trouser rise"],
+] as const;
+const MORE_DETAILS = [
+  ["cuff", "Shirt cuff"], ["placket", "Shirt placket"],
+  ["waistband", "Trouser waistband"], ["break", "Trouser break"],
+  ["button", "Button material"],
+] as const;
+
+function safeStyle(value: unknown, occasion: OccasionTier): DesignerStyle {
+  const style = designerStyleForOccasion(occasion);
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const raw = value as Record<string, unknown>;
+    for (const key of Object.keys(style) as Array<keyof DesignerStyle>) {
+      if (typeof raw[key] === "string" && DESIGNER_STYLE_CHOICES[key].includes(raw[key])) style[key] = raw[key];
+    }
+  }
+  return style;
+}
+
+function sameDirection(a: SavedDirection, b: SavedDirection) {
+  return a.shirtId === b.shirtId && a.pantId === b.pantId && a.occasion === b.occasion
+    && JSON.stringify(a.style) === JSON.stringify(b.style);
+}
+
+function designerSession() {
+  try {
+    const existing = sessionStorage.getItem(SESSION_KEY);
+    if (existing) return existing;
+    const created = createStyleSessionId();
+    sessionStorage.setItem(SESSION_KEY, created);
+    return created;
+  } catch { return createStyleSessionId(); }
+}
+
+export function DesignerModule() {
+  const [shirtId, setShirtId] = useState(DESIGNER_SHIRTS.find((item) => item.id === DESIGNER_REVIEWED_PAIRING.shirtId)?.id ?? DESIGNER_SHIRTS[0]?.id ?? "");
+  const [pantId, setPantId] = useState(DESIGNER_PANTS.find((item) => item.id === DESIGNER_REVIEWED_PAIRING.pantId)?.id ?? DESIGNER_PANTS[0]?.id ?? "");
+  const [occasion, setOccasion] = useState<OccasionTier>(DESIGNER_REVIEWED_PAIRING.occasion);
+  const [style, setStyle] = useState<DesignerStyle>(() => designerStyleForOccasion(DESIGNER_REVIEWED_PAIRING.occasion));
+  const [climate, setClimate] = useState<DesignerClimate>("Not specified");
+  const [intention, setIntention] = useState<DesignerIntention>("Balanced");
+  const [recommendation, setRecommendation] = useState<DesignerRecommendation | null>(null);
+  const [directions, setDirections] = useState<DesignerDirection[]>([]);
+  const [recommendationId, setRecommendationId] = useState<string | null>(null);
+  const [response, setResponse] = useState<"up" | "down" | "saved" | null>(null);
+  const [saved, setSaved] = useState<SavedDirection[]>([]);
+  const shirt = useMemo(() => DESIGNER_SHIRTS.find((item) => item.id === shirtId), [shirtId]);
+  const pant = useMemo(() => DESIGNER_PANTS.find((item) => item.id === pantId), [pantId]);
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(SAVED_KEY) || "[]") as unknown;
+      if (Array.isArray(stored)) setSaved(stored.filter((item): item is { shirtId: string; pantId: string; occasion: OccasionTier; style?: unknown } =>
+        !!item && typeof item === "object" && typeof item.shirtId === "string" && typeof item.pantId === "string"
+        && OCCASIONS.includes(item.occasion) && DESIGNER_SHIRTS.some((fabric) => fabric.id === item.shirtId)
+        && DESIGNER_PANTS.some((fabric) => fabric.id === item.pantId),
+      ).slice(0, 30).map((item) => ({ ...item, style: safeStyle(item.style, item.occasion) })));
+    } catch { /* Saved looks are optional. */ }
+  }, []);
+
+  function assess(nextStyle: DesignerStyle = style) {
+    if (!shirt || !pant) return;
+    const context: DesignerContext = { climate, intention };
+    const proposals = planDesignerDirections(shirt, pant, occasion, nextStyle, context);
+    const result = proposals[0].recommendation;
+    setStyle({ ...nextStyle });
+    setDirections(proposals);
+    setRecommendation(result);
+    setRecommendationId(null);
+    setResponse(null);
+    try {
+      const event = recordStyleMemoryEvent(designerSession(), "designer_recommendation", {
+        shirtId, pantId, occasion, style: nextStyle, input: { shirtId, pantId, occasion, style: nextStyle, context }, rules: result.rules,
+        confidenceScore: result.confidenceScore, designFitScore: result.designFitScore,
+        materialEvidence: result.materialEvidence, formality: result.formality,
+        output: result.style, reasoningText: result.internalReason,
+        status: result.status, ruleSetVersion: result.ruleSetVersion,
+      });
+      setRecommendationId(event.id);
+    } catch { /* The direction still works when event storage is unavailable. */ }
+  }
+
+  function giveFeedback(rating: "up" | "down" | "saved") {
+    if (!recommendation || !recommendationId) return;
+    if (rating === "saved") {
+      try {
+        const item = { shirtId, pantId, occasion, style: { ...style } };
+        const next = [item, ...saved.filter((entry) => !sameDirection(item, entry))].slice(0, 30);
+        localStorage.setItem(SAVED_KEY, JSON.stringify(next));
+        setSaved(next);
+      } catch { return; }
+    }
+    try { recordStyleMemoryEvent(designerSession(), "designer_feedback", { recommendationId, rating }); }
+    catch { return; }
+    setResponse(rating);
+  }
+
+  function changeStyle(key: keyof DesignerStyle, value: string) {
+    setStyle((current) => ({ ...current, [key]: value }));
+    setRecommendation(null);
+    setRecommendationId(null);
+  }
+
+  return <div className="newDesigner">
+    <header className="newDesignerHero">
+      <div className="newDesignerHeroCopy">
+        <span className="newDesignerKicker">LLINEN EARTH / THE DESIGN STUDIO</span>
+        <h1>Designer<span className="newDesignerHeroDot">.</span></h1>
+        <p className="newDesignerHeroLead">A designer begins with the cloth, then considers the person and the moment.</p>
+        <p>Choose real catalogue swatches, shape the shirt and trousers, and see why the pairing works or needs a second look.</p>
+        <div className="newDesignerHeroIndex"><span>01 / Observe</span><span>02 / Compose</span><span>03 / Verify</span></div>
+        <span className="newDesignerCount">{DESIGNER_SHIRTS.length} shirting references · {DESIGNER_PANTS.length} trouser references</span>
+      </div>
+      <figure className="newDesignerHeroArt">
+        <div className="newDesignerArchiveFrame"><img src="/designer/studio-pleated.webp" alt="Faceless studio mannequin in a shirt and tailored trousers" /></div>
+        <div className="newDesignerHeroFabric"><img src={shirt?.image} alt="LLinen Earth selected shirting fabric" /><span>THE CLOTH / SHIRT</span></div>
+        <div className="newDesignerHeroFabric second"><img src={pant?.image} alt="LLinen Earth selected trouser fabric" /><span>THE CLOTH / TROUSER</span></div>
+        <figcaption>Studio model prepared once for Designer. Choose two fabrics below to see the live composition.</figcaption>
+      </figure>
+    </header>
+
+    <div className="newDesignerBody">
+      <section className="newDesignerSelections" aria-labelledby="designerChoose">
+        <div className="newDesignerSectionHead"><span>01 / THE MATERIALS</span><h2 id="designerChoose">Start with the cloth.</h2></div>
+        <div className="newDesignerFabricGrid">
+          <article className="newDesignerFabric">
+            <div className="newDesignerSwatch" style={{ backgroundColor: shirt?.hex || "#172339" }}>
+              {shirt && <img src={shirt.image} alt={`${shirt.name} shirting fabric swatch`} loading="lazy" />}
+            </div>
+            <label htmlFor="designer-shirt">Shirt fabric</label>
+            <select id="designer-shirt" value={shirtId} onChange={(event) => { setShirtId(event.target.value); setRecommendation(null); setRecommendationId(null); }}>
+              {DESIGNER_SHIRTS.map((fabric) => <option key={fabric.id} value={fabric.id}>{fabric.line} · {fabric.name}</option>)}
+            </select>
+            <small>{shirt?.patternType} · {shirt?.source}</small>
+          </article>
+          <article className="newDesignerFabric">
+            <div className="newDesignerSwatch" style={{ backgroundColor: pant?.hex || "#172339" }}>
+              {pant && <img src={pant.image} alt={`${pant.name} trouser fabric swatch`} loading="lazy" />}
+            </div>
+            <label htmlFor="designer-pant">Trouser fabric</label>
+            <select id="designer-pant" value={pantId} onChange={(event) => { setPantId(event.target.value); setRecommendation(null); setRecommendationId(null); }}>
+              {DESIGNER_PANTS.map((fabric) => <option key={fabric.id} value={fabric.id}>{fabric.line} · {fabric.name}</option>)}
+            </select>
+            <small>{pant?.patternType} · {pant?.source}</small>
+          </article>
+        </div>
+        <a className="newDesignerJump" href="#designerPhotoTitle">See these fabrics on the live model ↘</a>
+
+        <fieldset className="newDesignerOccasions">
+          <legend>02 / WHERE WILL YOU WEAR IT?</legend>
+          <div>{OCCASIONS.map((option) => <label key={option} className={option === occasion ? "selected" : ""}>
+            <input type="radio" name="designerOccasion" value={option} checked={option === occasion}
+              onChange={() => { setOccasion(option); setStyle(designerStyleForOccasion(option)); setRecommendation(null); setRecommendationId(null); }} />{option}
+          </label>)}</div>
+        </fieldset>
+        <div className="newDesignerContext">
+          <label>Climate at the event
+            <select value={climate} onChange={(event) => { setClimate(event.target.value as DesignerClimate); setRecommendation(null); }}>
+              {CLIMATES.map((option) => <option key={option}>{option}</option>)}
+            </select>
+          </label>
+          <label>How should it feel visually?
+            <select value={intention} onChange={(event) => { setIntention(event.target.value as DesignerIntention); setRecommendation(null); }}>
+              {INTENTIONS.map((option) => <option key={option}>{option}</option>)}
+            </select>
+          </label>
+          <small>Expression changes the order of cut ideas. Climate is checked only against verified physical cloth.</small>
+        </div>
+        <div className="newDesignerStyleBlock">
+          <div className="newDesignerSectionHead"><span>03 / THE CUT</span><h2>Shape the two garments.</h2></div>
+          <div className="newDesignerStyleGrid">{MAIN_DETAILS.map(([key, label]) => <label key={key}>{label}
+            <select value={style[key]} onChange={(event) => changeStyle(key, event.target.value)}>
+              {DESIGNER_STYLE_CHOICES[key].map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>)}</div>
+          <details className="newDesignerMore"><summary>More tailoring details</summary><div className="newDesignerStyleGrid">{MORE_DETAILS.map(([key, label]) => <label key={key}>{label}
+            <select value={style[key]} onChange={(event) => changeStyle(key, event.target.value)}>
+              {DESIGNER_STYLE_CHOICES[key].map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>)}</div></details>
+          <div className="newDesignerConstruction" aria-label="Selected garment construction">
+            {constructionNotes(style).map((detail) => <article key={detail.title}>
+              <span>{detail.title.toUpperCase()} / CUT REFERENCE</span>
+              <strong>{detail.name}</strong>
+              <p>{detail.description}</p>
+              <a href={detail.source} target="_blank" rel="noopener noreferrer">{detail.sourceLabel} ↗</a>
+            </article>)}
+          </div>
+        </div>
+        <button className="newDesignerAction" type="button" disabled={!shirt || !pant} onClick={() => assess()}>Assess this pairing <span aria-hidden="true">↗</span></button>
+        <p className="newDesignerFootnote">Catalogue images guide colour and pattern. Fabric weight, drape, opacity and current metres need confirmation in store.</p>
+        {saved.length > 0 && <details className="newDesignerChecks"><summary>Saved directions on this device ({saved.length})</summary><ul>{saved.map((item, index) => <li key={`${item.shirtId}/${item.pantId}/${item.occasion}/${index}`}><button type="button" className="newDesignerSavedLink" onClick={() => {
+          setShirtId(item.shirtId); setPantId(item.pantId); setOccasion(item.occasion); setStyle({ ...item.style }); setRecommendation(null); setRecommendationId(null);
+        }}>{DESIGNER_SHIRTS.find((fabric) => fabric.id === item.shirtId)?.name} + {DESIGNER_PANTS.find((fabric) => fabric.id === item.pantId)?.name} · {item.style.trouser} · {item.occasion}</button></li>)}</ul></details>}
+      </section>
+
+      <div className="newDesignerRight">
+      {shirt && pant && <PhotoOutfitPreview shirt={shirt} pant={pant} style={style} />}
+      <section className="newDesignerOutcome" aria-live="polite" aria-label="Designer recommendation">
+        {!recommendation ? <div className="newDesignerEmpty"><span>04 / DESIGN DIRECTION</span><h2>Give the fabrics a purpose.</h2><p>Choose cloth, occasion and cut, then ask Designer to assess the outfit.</p></div> : <>
+          <div className="newDesignerSectionHead"><span>04 / DESIGN DIRECTION</span><h2>{recommendation.status === "needs_review" ? "This pairing needs a closer look." : "A direction worth exploring."}</h2></div>
+          <p className="newDesignerReason">{recommendation.shortReason}</p>
+          <div className="newDesignerSignals" aria-label="Design reasoning and fabric evidence">
+            <div><span>DESIGN READ</span><strong>{recommendation.status === "preliminary" ? "Promising" : "Review"}</strong><small>{recommendation.rules.filter((item) => item.status === "flag").length} pairing and cut checks flagged; every direction remains provisional.</small></div>
+            <div><span>PHYSICAL CLOTH CHECK</span><strong>{recommendation.materialEvidence.verified}/{recommendation.materialEvidence.total}</strong><small>Material facts confirmed across both cloths. We check the rolls before making a garment.</small></div>
+          </div>
+          <div className="newDesignerDetails">
+            <div><span>SHIRT</span><strong>{recommendation.style.collar}</strong><small>{recommendation.style.shirtFit} · {recommendation.style.cuff} · {recommendation.style.placket}</small></div>
+            <div><span>TROUSERS</span><strong>{recommendation.style.trouser}</strong><small>{recommendation.style.rise} · {recommendation.style.waistband} · {recommendation.style.break}</small></div>
+          </div>
+          <p className="newDesignerProvisional">{recommendation.status === "preliminary" ? "A preliminary direction. We would check the actual fabric before confirming the cut." : "This is your proposed cut, pending a LLinen Earth stylist's review."}</p>
+          {directions.length > 1 && <div className="newDesignerDirections"><h3>Different cuts for the same cloth</h3><p>These are design sketches, subject to the same fabric and stock checks.</p>
+            {directions.slice(1).map((direction) => <article key={direction.id}>
+              <strong>{direction.name}</strong><p>{direction.proposition}</p>
+              <small>{direction.changes.join(" · ")}</small>
+              <button type="button" onClick={() => assess(direction.recommendation.style)}>Assess this cut</button>
+            </article>)}
+          </div>}
+          {suggestDesignerRepairs(recommendation).length > 0 && <div className="newDesignerRepairs"><h3>What would improve this look?</h3><ul>
+            {suggestDesignerRepairs(recommendation).map((repair) => <li key={repair.label}>{repair.label}{repair.patch && <button type="button" onClick={() => assess({ ...recommendation.style, ...repair.patch })}>Try this change</button>}</li>)}
+          </ul></div>}
+          {designerTasteAlternative(recommendation) && <div className="newDesignerTasteAlternative">
+            <strong>Another colour direction to explore</strong>
+            <p>Sky Blue shirting with Beige linen suiting was approved as a semi-formal colour idea. Its physical stock and tailoring details still need checking.</p>
+            <button type="button" onClick={() => {
+              setShirtId(DESIGNER_REVIEWED_PAIRING.shirtId); setPantId(DESIGNER_REVIEWED_PAIRING.pantId);
+              setStyle(designerStyleForOccasion("Semi-Formal")); setRecommendation(null); setRecommendationId(null);
+            }}>Try this colour direction</button>
+          </div>}
+          <details className="newDesignerChecks"><summary>What needs checking in store</summary><ul>{recommendation.confirmationsNeeded.map((item) => <li key={item}>{item}</li>)}</ul></details>
+          <details className="newDesignerChecks"><summary>Which material facts are still missing?</summary><ul>{recommendation.materialEvidence.missing.map((item) => <li key={item}>{item}</li>)}</ul></details>
+          {recommendationId && <div className="newDesignerFeedback"><span>Does this direction feel right?</span><div>
+            <button type="button" onClick={() => giveFeedback("up")} aria-pressed={response === "up"}>Helpful</button>
+            <button type="button" onClick={() => giveFeedback("down")} aria-pressed={response === "down"}>Needs work</button>
+            {recommendation.status === "preliminary" && <button type="button" onClick={() => giveFeedback("saved")} aria-pressed={response === "saved"}>Save on this device</button>}
+          </div>{response && <small>{response === "saved" ? "Saved on this device." : "Thanks. Your feedback is recorded on this device."}</small>}</div>}
+        </>}
+      </section>
+      </div>
+    </div>
+    <section className="newDesignerNotebook" aria-labelledby="designerNotebook">
+      <div className="newDesignerNotebookHead"><span>FROM THE DESIGN DESK / SOURCES</span><h2 id="designerNotebook">An eye informed by history. <em>A judgment grounded in cloth.</em></h2><p>Museum garments, costume design and runway thinking broaden the questions we ask. They never certify a photographed swatch or replace your own taste.</p></div>
+      <div className="newDesignerNotebookBody">
+        <figure className="newDesignerNotebookImage"><img src={DESIGNER_ARCHIVE_IMAGES[1].image} alt="Public domain museum photograph of an embroidered eighteenth-century silk and linen waistcoat" loading="lazy" /><figcaption><a href={DESIGNER_ARCHIVE_IMAGES[1].source} target="_blank" rel="noopener noreferrer">{DESIGNER_ARCHIVE_IMAGES[1].title}</a><span>{DESIGNER_ARCHIVE_IMAGES[1].credit} · Archive reference, never a stock item</span></figcaption></figure>
+        <div className="newDesignerResearchList">{DESIGNER_RESEARCH.map((item, index) => <article key={item.url}><span>0{index + 1} / {item.kind}</span><h3><a href={item.url} target="_blank" rel="noopener noreferrer">{item.title} ↗</a></h3><p>{item.lesson}</p><small>{item.publisher}</small></article>)}</div>
+      </div>
+    </section>
+  </div>;
+}

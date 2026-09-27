@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import "./check-designer.mjs";
 
 const required = [
   "src/lib/fashion-intelligence.ts",

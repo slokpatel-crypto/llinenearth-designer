@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { verifyMemorySessionToken } from "@/lib/memory-session";
+import { DESIGNER_PANTS, DESIGNER_SHIRTS, evaluateDesignerCombo, type DesignerStyleOverrides, type OccasionTier } from "@/lib/designer/engine";
 
 const PUBLIC_TYPES = new Set([
   "session_started",
@@ -12,12 +13,16 @@ const PUBLIC_TYPES = new Set([
   "render_requested",
   "render_completed",
   "whatsapp_clicked",
+  "designer_recommendation",
+  "designer_preview_opened",
+  "designer_feedback",
 ]);
 
 const OPERATOR_TYPES = new Set([
   "visit_logged",
   "sale_logged",
   "operator_note",
+  "designer_override",
 ]);
 
 type IncomingEvent = {
@@ -54,6 +59,51 @@ function text(value:unknown,max=160) {
 
 function cleanPayload(type:string, input:unknown) {
   const payload = input && typeof input === "object" ? input as Record<string,unknown> : {};
+
+  if (type === "designer_recommendation") {
+    const shirtId = text(payload.shirtId,120);
+    const pantId = text(payload.pantId,120);
+    const occasion = text(payload.occasion,40) as OccasionTier;
+    const shirt = DESIGNER_SHIRTS.find((item)=>item.id === shirtId);
+    const pant = DESIGNER_PANTS.find((item)=>item.id === pantId);
+    if (!shirt || !pant || !["Casual","Smart-Casual","Semi-Formal","Formal"].includes(occasion)) return null;
+    if (payload.style !== undefined && (!payload.style || typeof payload.style !== "object" || Array.isArray(payload.style))) return null;
+    let result: ReturnType<typeof evaluateDesignerCombo>;
+    try { result = evaluateDesignerCombo(shirt,pant,occasion,payload.style as DesignerStyleOverrides | undefined); }
+    catch { return null; }
+    return {
+      input:{shirtId,pantId,occasion,style:result.style}, ruleSetVersion:result.ruleSetVersion,
+      rules:result.rules, confidenceScore:result.confidenceScore,
+      formality:result.formality, status:result.status,
+      output:result.style, reasoningText:result.internalReason,
+    };
+  }
+
+  if (type === "designer_feedback") {
+    const recommendationId = text(payload.recommendationId,160);
+    const rating = text(payload.rating,20);
+    if (!/^EV-[a-zA-Z0-9-]{8,120}$/.test(recommendationId) || !["up","down","saved"].includes(rating)) return null;
+    return {recommendationId,rating};
+  }
+
+  if (type === "designer_preview_opened") {
+    const recommendationId = text(payload.recommendationId,160);
+    const shirtId = text(payload.shirtId,120);
+    const pantId = text(payload.pantId,120);
+    const occasion = text(payload.occasion,40);
+    if (!/^EV-[a-zA-Z0-9-]{8,120}$/.test(recommendationId)
+      || !DESIGNER_SHIRTS.some((item)=>item.id === shirtId)
+      || !DESIGNER_PANTS.some((item)=>item.id === pantId)
+      || !["Casual","Smart-Casual","Semi-Formal","Formal"].includes(occasion)) return null;
+    return {recommendationId,shirtId,pantId,occasion,kind:"illustrative_swatch_sketch"};
+  }
+
+  if (type === "designer_override") {
+    const recommendationId = text(payload.recommendationId,160);
+    const reason = text(payload.reason,1000);
+    if (!/^EV-[a-zA-Z0-9-]{8,120}$/.test(recommendationId) || reason.length < 8) return null;
+    return {recommendationId,reason};
+  }
 
   if (type === "sale_logged") {
     const amount = Number(payload.amount ?? 0);

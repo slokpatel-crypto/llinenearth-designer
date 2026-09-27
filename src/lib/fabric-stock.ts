@@ -14,6 +14,7 @@ export interface FabricColorway {
   compositionNote?: string;
   sourceDocument: string;
   sourcePage: number;
+  // Legacy catalogue-visibility flag. It does not verify physical inventory.
   inStock: boolean;
 }
 

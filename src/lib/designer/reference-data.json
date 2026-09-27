@@ -1,0 +1,803 @@
+{
+  "_meta": {
+    "source": "Shirt_Pant_Designer_Module_Datasheet.xlsx",
+    "status": "provisional until LLinen_Earth_Styling_Reference.xlsx is supplied and reconciled"
+  },
+  "sheets": {
+    "Shirt_Collar": [
+      {
+        "Collar_Type": "Spread Collar",
+        "Description": "Wide angle between points, accommodates a full tie knot",
+        "Formality_Score": 4,
+        "Best_Occasion": "Formal, Semi-formal",
+        "Pairs_Well_With": "Tie, blazer, structured jacket",
+        "Notes": "Most versatile formal-leaning collar"
+      },
+      {
+        "Collar_Type": "Cutaway Collar",
+        "Description": "Extreme wide spread, points almost horizontal",
+        "Formality_Score": 5,
+        "Best_Occasion": "Formal",
+        "Pairs_Well_With": "Tie (Windsor knot), formal suiting",
+        "Notes": "Most formal collar; needs a wide tie knot to balance"
+      },
+      {
+        "Collar_Type": "Point (Standard) Collar",
+        "Description": "Narrow spread, classic proportions",
+        "Formality_Score": 3,
+        "Best_Occasion": "Semi-formal, Business-casual",
+        "Pairs_Well_With": "Tie or open collar",
+        "Notes": "Safest all-round default collar"
+      },
+      {
+        "Collar_Type": "Button-Down Collar",
+        "Description": "Points fastened to the shirt body with small buttons",
+        "Formality_Score": 2,
+        "Best_Occasion": "Casual, Smart-casual",
+        "Pairs_Well_With": "Chinos, no tie, blazer optional",
+        "Notes": "Preppy/Ivy-league heritage feel"
+      },
+      {
+        "Collar_Type": "Mandarin / Band Collar",
+        "Description": "Short stand-up band, no fold, no tie possible",
+        "Formality_Score": 3,
+        "Best_Occasion": "Casual, Ethnic-fusion, Semi-formal event",
+        "Pairs_Well_With": "Nehru jacket, bandhgala, fusion trousers",
+        "Notes": "Strong heritage/ethnic-fusion signal"
+      },
+      {
+        "Collar_Type": "Club Collar",
+        "Description": "Rounded collar points",
+        "Formality_Score": 3,
+        "Best_Occasion": "Semi-formal, Vintage-styled casual",
+        "Pairs_Well_With": "Knit tie, waistcoat",
+        "Notes": "Retro/vintage aesthetic"
+      },
+      {
+        "Collar_Type": "Wing Collar",
+        "Description": "Stand-up collar with folded-down points",
+        "Formality_Score": 5,
+        "Best_Occasion": "Formal event (black tie)",
+        "Pairs_Well_With": "Bow tie, tuxedo, sherwani",
+        "Notes": "Reserve for events only, not everyday formal"
+      }
+    ],
+    "Shirt_Cuff": [
+      {
+        "Cuff_Type": "French / Double Cuff",
+        "Description": "Folded back on itself, fastened with cufflinks",
+        "Formality_Score": 5,
+        "Best_Occasion": "Formal",
+        "Notes": "Pair only with formal/cutaway or spread collar"
+      },
+      {
+        "Cuff_Type": "Barrel Cuff (2-button)",
+        "Description": "Single layer, two buttons for adjustable fit",
+        "Formality_Score": 3,
+        "Best_Occasion": "Semi-formal, Business-casual",
+        "Notes": "Most common all-purpose cuff"
+      },
+      {
+        "Cuff_Type": "Barrel Cuff (1-button)",
+        "Description": "Single layer, one button",
+        "Formality_Score": 2,
+        "Best_Occasion": "Casual, Semi-formal",
+        "Notes": "Slightly more relaxed than 2-button"
+      },
+      {
+        "Cuff_Type": "Convertible Cuff",
+        "Description": "Works as barrel with button or French with cufflinks",
+        "Formality_Score": 4,
+        "Best_Occasion": "Formal or Semi-formal (flexible)",
+        "Notes": "Good for a capsule shirt meant to cover both registers"
+      },
+      {
+        "Cuff_Type": "Rounded/Soft Cuff",
+        "Description": "Barrel cuff with a rounded rather than angular edge",
+        "Formality_Score": 2,
+        "Best_Occasion": "Casual",
+        "Notes": "Softer, more relaxed silhouette"
+      }
+    ],
+    "Shirt_Placket_Pocket_Fit": [
+      {
+        "Element_Group": "Placket",
+        "Type": "Standard (visible stitch)",
+        "Description": "Regular front placket with visible topstitching",
+        "Formality_Score": 3,
+        "Notes": "Default, all-purpose"
+      },
+      {
+        "Element_Group": "Placket",
+        "Type": "Hidden / Fly-front",
+        "Description": "Buttons concealed behind a fabric fold",
+        "Formality_Score": 5,
+        "Notes": "Cleanest formal look, no visible buttons"
+      },
+      {
+        "Element_Group": "Placket",
+        "Type": "Contrast Placket",
+        "Description": "Placket in a second color/fabric",
+        "Formality_Score": 1,
+        "Notes": "Fashion-forward, casual only"
+      },
+      {
+        "Element_Group": "Pocket",
+        "Type": "No Pocket",
+        "Description": "Clean chest, no patch pocket",
+        "Formality_Score": 4,
+        "Notes": "Formal default"
+      },
+      {
+        "Element_Group": "Pocket",
+        "Type": "Single Patch Pocket",
+        "Description": "One chest pocket, standard",
+        "Formality_Score": 2,
+        "Notes": "Business-casual / casual default"
+      },
+      {
+        "Element_Group": "Pocket",
+        "Type": "Flap Pocket",
+        "Description": "Patch pocket with a buttoned flap",
+        "Formality_Score": 2,
+        "Notes": "Casual, safari/utility-inspired"
+      },
+      {
+        "Element_Group": "Fit",
+        "Type": "Slim Fit",
+        "Description": "Close to body through chest and waist",
+        "Notes": "Best on lean/athletic builds; note in body-type field, not a formality signal"
+      },
+      {
+        "Element_Group": "Fit",
+        "Type": "Regular / Classic Fit",
+        "Description": "Standard ease through body",
+        "Notes": "Safe universal default"
+      },
+      {
+        "Element_Group": "Fit",
+        "Type": "Relaxed Fit",
+        "Description": "Generous ease, straight body",
+        "Notes": "Best for heavier builds or humid-climate comfort"
+      },
+      {
+        "Element_Group": "Sleeve",
+        "Type": "Full Sleeve",
+        "Description": "Long sleeve, standard",
+        "Notes": "Default for formal/semi-formal"
+      },
+      {
+        "Element_Group": "Sleeve",
+        "Type": "Half Sleeve",
+        "Description": "Short sleeve",
+        "Notes": "Casual only; never pair with French cuff"
+      },
+      {
+        "Element_Group": "Sleeve",
+        "Type": "Roll-up Styled",
+        "Description": "Full sleeve cut/finished to roll neatly to the forearm",
+        "Notes": "Smart-casual signature look"
+      }
+    ],
+    "Pant_Trouser_Types": [
+      {
+        "Trouser_Type": "Formal Trouser (Flat-front)",
+        "Description": "Flat front, tailored leg, creased",
+        "Formality_Score": 5,
+        "Best_Occasion": "Formal",
+        "Notes": "Standard formal-suiting trouser"
+      },
+      {
+        "Trouser_Type": "Pleated Trouser",
+        "Description": "One or two front pleats for ease through hip/thigh",
+        "Formality_Score": 4,
+        "Best_Occasion": "Formal, Semi-formal",
+        "Notes": "Classic tailoring; more forgiving fit than flat-front"
+      },
+      {
+        "Trouser_Type": "Chino",
+        "Description": "Cotton twill, soft structure, tapered leg",
+        "Formality_Score": 2,
+        "Best_Occasion": "Smart-casual, Business-casual",
+        "Notes": "Most versatile casual-to-semi-formal bridge piece"
+      },
+      {
+        "Trouser_Type": "Cotton Drill Trouser",
+        "Description": "Sturdy cotton weave, casual finish",
+        "Formality_Score": 1,
+        "Best_Occasion": "Casual",
+        "Notes": "Everyday casual wear"
+      },
+      {
+        "Trouser_Type": "Cropped / Ankle-length Trouser",
+        "Description": "Break sits above the ankle",
+        "Formality_Score": 3,
+        "Best_Occasion": "Semi-formal, Fashion-forward",
+        "Notes": "Modern silhouette; pair with no-show socks or bare ankle"
+      },
+      {
+        "Trouser_Type": "Cargo Trouser",
+        "Description": "Utility pockets on thigh, relaxed leg",
+        "Formality_Score": 1,
+        "Best_Occasion": "Casual",
+        "Notes": "Not recommended for shirting/suiting pairing catalog unless streetwear line"
+      },
+      {
+        "Trouser_Type": "Jean-cut Trouser (suiting fabric)",
+        "Description": "5-pocket jean silhouette cut in shirting/suiting cloth",
+        "Formality_Score": 2,
+        "Best_Occasion": "Casual, Smart-casual",
+        "Notes": "Fashion-forward hybrid piece"
+      },
+      {
+        "Trouser_Type": "Jodhpuri / Churidar-style Trouser",
+        "Description": "Fitted through calf and ankle, heritage tailoring",
+        "Formality_Score": 4,
+        "Best_Occasion": "Semi-formal, Festive, Formal-ethnic",
+        "Notes": "Pair with band-collar shirt or bandhgala for heritage looks"
+      },
+      {
+        "Trouser_Type": "Wide-leg / Relaxed Drape Trouser",
+        "Description": "Fuller leg, soft drape, fashion-forward",
+        "Formality_Score": 3,
+        "Best_Occasion": "Semi-formal, Fashion-forward",
+        "Notes": "Best with lighter, fluid fabrics"
+      }
+    ],
+    "Pant_Rise_Waistband_Break": [
+      {
+        "Element_Group": "Rise",
+        "Type": "Low Rise",
+        "Description": "Waistband sits below natural waist",
+        "Best_Occasion": "Casual",
+        "Notes": "Streetwear-leaning"
+      },
+      {
+        "Element_Group": "Rise",
+        "Type": "Mid Rise",
+        "Description": "Waistband at natural waist",
+        "Best_Occasion": "All-purpose",
+        "Notes": "Safe default for most builds"
+      },
+      {
+        "Element_Group": "Rise",
+        "Type": "High Rise",
+        "Description": "Waistband above natural waist",
+        "Best_Occasion": "Formal, Heritage tailoring",
+        "Notes": "Classic tailored silhouette, elongates the leg line"
+      },
+      {
+        "Element_Group": "Waistband",
+        "Type": "Plain / Clean Front",
+        "Description": "No belt loops, side-adjuster or extension closure",
+        "Best_Occasion": "Formal",
+        "Notes": "Cleanest formal finish, worn without a belt"
+      },
+      {
+        "Element_Group": "Waistband",
+        "Type": "Belt Loops",
+        "Description": "Standard loops for a belt",
+        "Best_Occasion": "All-purpose",
+        "Notes": "Most common; belt color should match footwear"
+      },
+      {
+        "Element_Group": "Waistband",
+        "Type": "Side-Adjuster Tabs",
+        "Description": "Buckle tabs at each hip instead of a belt",
+        "Best_Occasion": "Formal",
+        "Notes": "Traditional formal trouser finish"
+      },
+      {
+        "Element_Group": "Waistband",
+        "Type": "Drawstring / Elastic",
+        "Description": "Soft closure, no rigid waistband",
+        "Best_Occasion": "Casual, Fusion/ethnic",
+        "Notes": "Comfort-first, ethnic-fusion friendly"
+      },
+      {
+        "Element_Group": "Break",
+        "Type": "No Break",
+        "Description": "Hem sits at the top of the shoe, no fold",
+        "Best_Occasion": "Semi-formal, Modern-formal",
+        "Notes": "Contemporary tailored look"
+      },
+      {
+        "Element_Group": "Break",
+        "Type": "Slight Break",
+        "Description": "Hem just touches the shoe, minimal fold",
+        "Best_Occasion": "Formal, Semi-formal",
+        "Notes": "Classic safe default"
+      },
+      {
+        "Element_Group": "Break",
+        "Type": "Full Break",
+        "Description": "Fabric folds noticeably over the shoe",
+        "Best_Occasion": "Formal (traditional)",
+        "Notes": "More traditional/conservative silhouette"
+      },
+      {
+        "Element_Group": "Break",
+        "Type": "Cropped / Above-ankle",
+        "Description": "Hem sits above the ankle bone",
+        "Best_Occasion": "Semi-formal, Fashion-forward",
+        "Notes": "Pair with no-show socks"
+      }
+    ],
+    "Color_Palette": [
+      {
+        "Color_Name": "White",
+        "Color_Family": "Neutral",
+        "Tone": "Light",
+        "Formality_Score": 5,
+        "Best_Season": "All-season",
+        "Pairs_Well_With": "Everything",
+        "Notes": "Most versatile anchor color, works for every occasion tier"
+      },
+      {
+        "Color_Name": "Ivory / Off-white",
+        "Color_Family": "Neutral",
+        "Tone": "Light",
+        "Formality_Score": 4,
+        "Best_Season": "All-season",
+        "Pairs_Well_With": "Navy, charcoal, olive, tan",
+        "Notes": "Softer than pure white, heritage-toned"
+      },
+      {
+        "Color_Name": "Sky Blue",
+        "Color_Family": "Blue",
+        "Tone": "Light",
+        "Formality_Score": 4,
+        "Best_Season": "Summer, All-season",
+        "Pairs_Well_With": "Navy, grey, tan, white",
+        "Notes": "Classic business-casual to formal staple"
+      },
+      {
+        "Color_Name": "Navy",
+        "Color_Family": "Blue",
+        "Tone": "Dark",
+        "Formality_Score": 5,
+        "Best_Season": "All-season",
+        "Pairs_Well_With": "White, sky blue, grey, tan, mustard",
+        "Notes": "Most versatile dark anchor after charcoal"
+      },
+      {
+        "Color_Name": "Charcoal Grey",
+        "Color_Family": "Neutral",
+        "Tone": "Dark",
+        "Formality_Score": 5,
+        "Best_Season": "All-season, Winter-leaning",
+        "Pairs_Well_With": "White, sky blue, burgundy, navy",
+        "Notes": "Primary formal anchor color"
+      },
+      {
+        "Color_Name": "Light Grey",
+        "Color_Family": "Neutral",
+        "Tone": "Light",
+        "Formality_Score": 4,
+        "Best_Season": "Summer, All-season",
+        "Pairs_Well_With": "Navy, maroon, mustard",
+        "Notes": "Softer formal alternative to charcoal"
+      },
+      {
+        "Color_Name": "Black",
+        "Color_Family": "Neutral",
+        "Tone": "Dark",
+        "Formality_Score": 4,
+        "Best_Season": "All-season",
+        "Pairs_Well_With": "White, grey",
+        "Notes": "Most formal-event color; can read severe for daily formal wear"
+      },
+      {
+        "Color_Name": "Beige / Khaki",
+        "Color_Family": "Earth-tone",
+        "Tone": "Light-Medium",
+        "Formality_Score": 3,
+        "Best_Season": "Summer, All-season",
+        "Pairs_Well_With": "Navy, olive, brown, white",
+        "Notes": "Core smart-casual color"
+      },
+      {
+        "Color_Name": "Olive",
+        "Color_Family": "Earth-tone",
+        "Tone": "Medium-Dark",
+        "Formality_Score": 2,
+        "Best_Season": "Autumn, All-season",
+        "Pairs_Well_With": "Beige, white, mustard, tan",
+        "Notes": "Casual/utility-leaning"
+      },
+      {
+        "Color_Name": "Tan / Camel",
+        "Color_Family": "Earth-tone",
+        "Tone": "Medium",
+        "Formality_Score": 3,
+        "Best_Season": "Autumn, All-season",
+        "Pairs_Well_With": "Navy, white, charcoal",
+        "Notes": "Warm neutral, pairs with almost anything"
+      },
+      {
+        "Color_Name": "Brown",
+        "Color_Family": "Earth-tone",
+        "Tone": "Medium-Dark",
+        "Formality_Score": 3,
+        "Best_Season": "Autumn, Winter",
+        "Pairs_Well_With": "Sky blue, beige, cream",
+        "Notes": "Traditional tailoring color"
+      },
+      {
+        "Color_Name": "Maroon / Wine",
+        "Color_Family": "Jewel-tone",
+        "Tone": "Dark",
+        "Formality_Score": 4,
+        "Best_Season": "Winter, Festive",
+        "Pairs_Well_With": "Charcoal, grey, white, navy",
+        "Notes": "Semi-formal to festive accent"
+      },
+      {
+        "Color_Name": "Burgundy",
+        "Color_Family": "Jewel-tone",
+        "Tone": "Dark",
+        "Formality_Score": 4,
+        "Best_Season": "Winter, Festive",
+        "Pairs_Well_With": "Grey, navy, cream",
+        "Notes": "Rich accent for semi-formal/festive"
+      },
+      {
+        "Color_Name": "Teal",
+        "Color_Family": "Jewel-tone",
+        "Tone": "Medium-Dark",
+        "Formality_Score": 3,
+        "Best_Season": "All-season",
+        "Pairs_Well_With": "Grey, cream, navy",
+        "Notes": "Distinctive smart-casual to semi-formal accent"
+      },
+      {
+        "Color_Name": "Mustard",
+        "Color_Family": "Earth-tone",
+        "Tone": "Medium",
+        "Formality_Score": 2,
+        "Best_Season": "Autumn, Festive",
+        "Pairs_Well_With": "Navy, charcoal, olive",
+        "Notes": "Strong accent, use as one bold element only"
+      },
+      {
+        "Color_Name": "Rust",
+        "Color_Family": "Earth-tone",
+        "Tone": "Medium-Dark",
+        "Formality_Score": 2,
+        "Best_Season": "Autumn, Festive",
+        "Pairs_Well_With": "Beige, olive, cream",
+        "Notes": "Heritage/festive accent tone"
+      },
+      {
+        "Color_Name": "Pastel Pink",
+        "Color_Family": "Pastel",
+        "Tone": "Light",
+        "Formality_Score": 3,
+        "Best_Season": "Summer, Spring",
+        "Pairs_Well_With": "Navy, grey, white",
+        "Notes": "Business-casual to semi-formal accent"
+      },
+      {
+        "Color_Name": "Lavender",
+        "Color_Family": "Pastel",
+        "Tone": "Light",
+        "Formality_Score": 3,
+        "Best_Season": "Summer, Spring",
+        "Pairs_Well_With": "Charcoal, navy, grey",
+        "Notes": "Semi-formal accent, softer alternative to pink"
+      },
+      {
+        "Color_Name": "Mint Green",
+        "Color_Family": "Pastel",
+        "Tone": "Light",
+        "Formality_Score": 2,
+        "Best_Season": "Summer",
+        "Pairs_Well_With": "Beige, navy, white",
+        "Notes": "Casual to smart-casual only"
+      }
+    ],
+    "Fabric_Weave_Texture_Weight": [
+      {
+        "Weave_Type": "Plain Weave",
+        "Texture": "Crisp, smooth",
+        "Typical_Weight_Class": "Light-Medium",
+        "Fiber_Examples": "Cotton, Linen, Linen-cotton",
+        "Best_Garment": "Shirt",
+        "Notes": "Simplest weave, most versatile"
+      },
+      {
+        "Weave_Type": "Poplin",
+        "Texture": "Crisp, fine, slight sheen",
+        "Typical_Weight_Class": "Light",
+        "Fiber_Examples": "Cotton",
+        "Best_Garment": "Shirt",
+        "Notes": "Classic formal shirting weave"
+      },
+      {
+        "Weave_Type": "Oxford",
+        "Texture": "Soft, textured, basket-weave",
+        "Typical_Weight_Class": "Medium",
+        "Fiber_Examples": "Cotton",
+        "Best_Garment": "Shirt",
+        "Notes": "Casual/button-down collar territory"
+      },
+      {
+        "Weave_Type": "Twill",
+        "Texture": "Diagonal rib, structured drape",
+        "Typical_Weight_Class": "Medium-Heavy",
+        "Fiber_Examples": "Cotton, TR-wool, Wool",
+        "Best_Garment": "Pant, Shirt",
+        "Notes": "Strong, durable, good structure for trousers"
+      },
+      {
+        "Weave_Type": "Herringbone",
+        "Texture": "Textured, subtle V-pattern",
+        "Typical_Weight_Class": "Medium-Heavy",
+        "Fiber_Examples": "Wool, TR-wool blend",
+        "Best_Garment": "Pant, Blazer (future)",
+        "Notes": "Semi-formal to formal texture interest"
+      },
+      {
+        "Weave_Type": "Dobby",
+        "Texture": "Fine woven geometric texture",
+        "Typical_Weight_Class": "Light-Medium",
+        "Fiber_Examples": "Cotton",
+        "Best_Garment": "Shirt",
+        "Notes": "Subtle pattern-through-texture, formal-safe"
+      },
+      {
+        "Weave_Type": "Chambray",
+        "Texture": "Soft, lightly textured, denim-like look",
+        "Typical_Weight_Class": "Light-Medium",
+        "Fiber_Examples": "Cotton",
+        "Best_Garment": "Shirt",
+        "Notes": "Casual, relaxed alternative to plain blue shirting"
+      },
+      {
+        "Weave_Type": "Linen Weave",
+        "Texture": "Slubby, breathable, relaxed drape",
+        "Typical_Weight_Class": "Light",
+        "Fiber_Examples": "Linen, Linen-cotton",
+        "Best_Garment": "Shirt, Pant",
+        "Notes": "Signature warm-weather texture, wrinkles are expected/intentional"
+      },
+      {
+        "Weave_Type": "Worsted Wool Weave",
+        "Texture": "Smooth, fine, crisp drape",
+        "Typical_Weight_Class": "Medium-Heavy",
+        "Fiber_Examples": "Wool, TR-wool",
+        "Best_Garment": "Pant (formal)",
+        "Notes": "Premium formal-trouser weave"
+      }
+    ],
+    "Pattern_Types": [
+      {
+        "Pattern_Type": "Solid",
+        "Pattern_Scale": "None",
+        "Formality_Score": 5,
+        "Best_Occasion": "All",
+        "Notes": "Safest, most formal-flexible option; the universal pairing partner"
+      },
+      {
+        "Pattern_Type": "Pin Stripe",
+        "Pattern_Scale": "Fine",
+        "Formality_Score": 5,
+        "Best_Occasion": "Formal",
+        "Notes": "Classic formal stripe, subtle at a distance"
+      },
+      {
+        "Pattern_Type": "Candy Stripe",
+        "Pattern_Scale": "Medium",
+        "Formality_Score": 3,
+        "Best_Occasion": "Semi-formal, Business-casual",
+        "Notes": "More visible/casual than pin stripe"
+      },
+      {
+        "Pattern_Type": "Bold Stripe",
+        "Pattern_Scale": "Bold",
+        "Formality_Score": 2,
+        "Best_Occasion": "Casual, Fashion-forward",
+        "Notes": "Use as the single patterned element in a combo"
+      },
+      {
+        "Pattern_Type": "Gingham Check",
+        "Pattern_Scale": "Fine-Medium",
+        "Formality_Score": 2,
+        "Best_Occasion": "Casual, Smart-casual",
+        "Notes": "Classic casual check"
+      },
+      {
+        "Pattern_Type": "Windowpane Check",
+        "Pattern_Scale": "Medium",
+        "Formality_Score": 3,
+        "Best_Occasion": "Semi-formal, Business-casual",
+        "Notes": "More refined than gingham"
+      },
+      {
+        "Pattern_Type": "Tattersall Check",
+        "Pattern_Scale": "Fine-Medium",
+        "Formality_Score": 3,
+        "Best_Occasion": "Semi-formal",
+        "Notes": "Traditional heritage check"
+      },
+      {
+        "Pattern_Type": "Houndstooth",
+        "Pattern_Scale": "Medium-Bold",
+        "Formality_Score": 3,
+        "Best_Occasion": "Semi-formal",
+        "Notes": "Distinctive texture-pattern hybrid"
+      },
+      {
+        "Pattern_Type": "Geometric / Fusion Print",
+        "Pattern_Scale": "Bold",
+        "Formality_Score": 1,
+        "Best_Occasion": "Casual, Festive-fusion",
+        "Notes": "Ethnic-fusion or fashion-forward only"
+      },
+      {
+        "Pattern_Type": "Floral Print",
+        "Pattern_Scale": "Medium-Bold",
+        "Formality_Score": 1,
+        "Best_Occasion": "Casual, Resort/Festive",
+        "Notes": "Seasonal/occasion-specific, not core formal wardrobe"
+      }
+    ],
+    "Button_Types": [
+      {
+        "Button_Material": "Mother-of-Pearl",
+        "Description": "Natural shell button, subtle sheen",
+        "Formality_Score": 5,
+        "Best_Occasion": "Formal, Semi-formal",
+        "Color_Matching_Rule": "Always tonal to the fabric, never contrast"
+      },
+      {
+        "Button_Material": "Corozo (vegetable ivory)",
+        "Description": "Natural matte button from tagua nut",
+        "Formality_Score": 4,
+        "Best_Occasion": "Semi-formal, Smart-casual",
+        "Color_Matching_Rule": "Tonal or subtle contrast"
+      },
+      {
+        "Button_Material": "Horn",
+        "Description": "Natural horn, slight variation in grain",
+        "Formality_Score": 4,
+        "Best_Occasion": "Semi-formal, Heritage",
+        "Color_Matching_Rule": "Tonal; grain variation is a feature not a flaw"
+      },
+      {
+        "Button_Material": "Plastic / Resin",
+        "Description": "Standard manufactured button",
+        "Formality_Score": 2,
+        "Best_Occasion": "Casual",
+        "Color_Matching_Rule": "Tonal for basics, contrast acceptable for fashion pieces"
+      },
+      {
+        "Button_Material": "Metal / Contrast",
+        "Description": "Metal or brightly colored accent button",
+        "Formality_Score": 1,
+        "Best_Occasion": "Casual, Fashion-forward",
+        "Color_Matching_Rule": "Deliberate contrast only, never on formal shirts"
+      }
+    ],
+    "Multi_Fabric_Accent_Rules": [
+      {
+        "Rule_ID": "MF-1",
+        "Rule_Name": "Role Compatibility",
+        "Applies_To": "Base + Accent fabric pair",
+        "Description": "An accent fabric must be tagged Accent-safe or Both; never use a Base-only heavy suiting cloth as a small trim.",
+        "Example": "Charcoal wool base body + ivory poplin accent collar/cuff"
+      },
+      {
+        "Rule_ID": "MF-2",
+        "Rule_Name": "Weight Compatibility",
+        "Applies_To": "Base + Accent fabric pair",
+        "Description": "Accent fabric weight should be equal to or lighter than the base fabric weight class, never heavier.",
+        "Example": "Light poplin accent on a medium-weight oxford base — allowed; reverse is not"
+      },
+      {
+        "Rule_ID": "MF-3",
+        "Rule_Name": "Color Contrast Minimum",
+        "Applies_To": "Base + Accent fabric pair",
+        "Description": "Accent color should differ from base by at least one tone step (light/medium/dark) or be a genuinely contrasting family, or the accent reads as a construction flaw rather than a design choice.",
+        "Example": "Navy base with white contrast collar/cuff"
+      },
+      {
+        "Rule_ID": "MF-4",
+        "Rule_Name": "Pattern Load Limit",
+        "Applies_To": "Base + Accent fabric pair",
+        "Description": "If the base fabric carries a pattern, the accent should be solid. Only one patterned element per garment.",
+        "Example": "Striped base body + solid contrast placket"
+      },
+      {
+        "Rule_ID": "MF-5",
+        "Rule_Name": "Placement Hierarchy",
+        "Applies_To": "Base + Accent fabric pair",
+        "Description": "Collar and cuff accents read as the most formal-safe placement; placket and pocket accents read more casual/fashion-forward.",
+        "Example": "Collar+cuff contrast = business-casual safe; placket+pocket contrast = casual only"
+      }
+    ],
+    "Occasion_Formality_Bands": [
+      {
+        "Occasion_Tier": "Casual",
+        "Score_Band": "1.0 - 2.0",
+        "Description": "Relaxed fit and fabric tolerance, bold color/pattern allowed, texture contrast encouraged",
+        "Typical_Use_Case": "Weekend wear, informal outings"
+      },
+      {
+        "Occasion_Tier": "Smart-Casual",
+        "Score_Band": "2.0 - 2.8",
+        "Description": "One formal element (e.g. tailored trouser) paired with one relaxed element (e.g. soft-collar shirt)",
+        "Typical_Use_Case": "Casual Friday, dinner out, travel"
+      },
+      {
+        "Occasion_Tier": "Semi-Formal",
+        "Score_Band": "2.8 - 3.8",
+        "Description": "Structured fit both pieces, moderate color harmony, limited pattern",
+        "Typical_Use_Case": "Office, semi-formal events, festive-smart"
+      },
+      {
+        "Occasion_Tier": "Formal",
+        "Score_Band": "3.8 - 4.6",
+        "Description": "Tight color harmony (tonal/neutral), matched or near-matched weight, minimal pattern clash tolerance",
+        "Typical_Use_Case": "Business formal, formal events"
+      },
+      {
+        "Occasion_Tier": "Formal-Event",
+        "Score_Band": "4.6 - 5.0",
+        "Description": "Strictest tier: reserved elements (wing collar, cutaway, French cuff), monochrome-leaning",
+        "Typical_Use_Case": "Black-tie, weddings (groom/formal role), ceremonial"
+      }
+    ],
+    "Shirt_Pant_Combo_Rules": [
+      {
+        "Rule_ID": "CR-1",
+        "Rule_Name": "Formality Alignment",
+        "Logic": "abs(Shirt_Formality_Score - Pant_Formality_Score) should be <= 1.0 for Semi-formal/Formal tiers, <= 2.0 for Casual/Smart-casual",
+        "Penalty_If_Violated": "High",
+        "Example": "Cutaway-collar formal shirt (5) + cargo trouser (1) = fail"
+      },
+      {
+        "Rule_ID": "CR-2",
+        "Rule_Name": "Color Harmony",
+        "Logic": "Color pairing should be Tonal (same family, different shade), Neutral-anchor (one neutral + one color), or intentional Contrast; avoid two saturated Jewel-tone colors together",
+        "Penalty_If_Violated": "Medium",
+        "Example": "Maroon shirt + Teal trouser = flag for review"
+      },
+      {
+        "Rule_ID": "CR-3",
+        "Rule_Name": "Weight Matching",
+        "Logic": "Shirt and pant Weight_Class should be within one band of each other, unless flagged as an intentional texture-contrast look",
+        "Penalty_If_Violated": "Medium",
+        "Example": "Heavy worsted-wool trouser + ultra-light linen shirt = flag unless casual/layered tier"
+      },
+      {
+        "Rule_ID": "CR-4",
+        "Rule_Name": "Pattern Load",
+        "Logic": "Max one Bold or Medium-Bold pattern across the whole combo; the other piece must be Solid or Fine pattern",
+        "Penalty_If_Violated": "High",
+        "Example": "Bold-stripe shirt + Houndstooth trouser = fail"
+      },
+      {
+        "Rule_ID": "CR-5",
+        "Rule_Name": "Season Consistency",
+        "Logic": "Best_Season tags of shirt fabric, pant fabric, and colors should overlap by at least one season, or All-season",
+        "Penalty_If_Violated": "Low",
+        "Example": "Heavy winter-wool trouser + summer linen shirt = flag"
+      },
+      {
+        "Rule_ID": "CR-6",
+        "Rule_Name": "Accent Fabric Validity",
+        "Logic": "If either garment uses a second (accent) fabric, it must satisfy all Multi_Fabric_Accent_Rules (MF-1 to MF-5)",
+        "Penalty_If_Violated": "High",
+        "Example": "See Multi_Fabric_Accent_Rules sheet"
+      },
+      {
+        "Rule_ID": "CR-7",
+        "Rule_Name": "Button/Trim Consistency",
+        "Logic": "Button_Material formality score should be within 1 point of the shirt's own Formality_Score",
+        "Penalty_If_Violated": "Low",
+        "Example": "Formal cutaway-collar shirt (5) with plastic buttons (2) = flag"
+      }
+    ]
+  }
+}

@@ -8,5 +8,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "media.fashn.ai" },
     ],
   },
+  async redirects() {
+    return [{ source: "/visual", destination: "/designer-studio#designerPhotoTitle", permanent: false }];
+  },
 };
 export default nextConfig;
