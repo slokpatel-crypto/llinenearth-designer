@@ -1,6 +1,10 @@
 import type { FabricProfile } from "@/lib/fabric-analysis";
 
 export type GarmentKind = "shirt" | "trouser" | "suit" | "blazer";
+export type FabricWeightClass = "Light" | "Medium" | "Heavy";
+export type FabricSeason = "Spring" | "Summer" | "Autumn" | "Winter" | "All-season";
+export type FabricDrape = "fluid" | "soft" | "medium" | "structured";
+export type FabricRoleTag = "base_safe" | "accent_safe";
 
 export interface FabricColorway {
   id: string;
@@ -12,6 +16,15 @@ export interface FabricColorway {
   suitableFor: GarmentKind[];
   pattern: string;
   compositionNote?: string;
+  yarnCountLea?: number[];
+  weightGsm?: number;
+  weightClass?: FabricWeightClass;
+  weave?: string;
+  texture?: string;
+  drape?: FabricDrape;
+  seasonTags?: FabricSeason[];
+  formalityScore?: number;
+  roleTags?: FabricRoleTag[];
   sourceDocument: string;
   sourcePage: number;
   inStock: boolean;
@@ -19,6 +32,13 @@ export interface FabricColorway {
 
 const shirt: GarmentKind[] = ["shirt"];
 const suiting: GarmentKind[] = ["trouser", "suit", "blazer"];
+
+function yarnCountFromLine(line:string) {
+  const match = line.match(/(\d+)(?:\/(\d+))?\s*Lea/i);
+  if (!match) return undefined;
+  const counts = [Number(match[1]),match[2] ? Number(match[2]) : NaN].filter(Number.isFinite);
+  return counts.length ? counts : undefined;
+}
 
 function stock(
   id: string,
@@ -42,6 +62,7 @@ function stock(
     suitableFor,
     pattern,
     compositionNote,
+    yarnCountLea: yarnCountFromLine(line),
     sourceDocument,
     sourcePage,
     inStock: true,
@@ -151,10 +172,14 @@ export function fabricProfileFromStock(fabric: FabricColorway): FabricProfile {
       { label: "Dominant color", value: fabric.colorName, confidence: 1, confidenceLabel: "high", basis },
       { label: "Pattern structure", value: fabric.pattern, confidence: 1, confidenceLabel: "high", basis },
       { label: "Stock line", value: fabric.line, confidence: 1, confidenceLabel: "high", basis },
+      ...(fabric.yarnCountLea?.length ? [{ label: "Catalogue yarn count", value: `${fabric.yarnCountLea.join("/")} Lea`, confidence: 1, confidenceLabel: "high" as const, basis }] : []),
       { label: "Catalogue reference", value: `${fabric.sourceDocument} · page ${fabric.sourcePage}`, confidence: 1, confidenceLabel: "high", basis },
     ],
     palette: [fabric.hex, adjustHex(fabric.hex, -28), adjustHex(fabric.hex, 28), adjustHex(fabric.hex, 56)],
     alternatives: [{ family: fabric.family, confidence: 1, evidence: ["Selected from LLinen Earth stock."] }],
-    cautions: [fabric.compositionNote || "The fabric family and color are taken from the supplied LLinen Earth catalogue; final tone can vary slightly with screen and lighting."],
+    cautions: [
+      fabric.compositionNote || "The fabric family and color are taken from the supplied LLinen Earth catalogue; final tone can vary slightly with screen and lighting.",
+      ...(!fabric.weightGsm ? ["Exact GSM is not recorded for this swatch; Lea yarn count must not be treated as fabric weight."] : []),
+    ],
   };
 }
