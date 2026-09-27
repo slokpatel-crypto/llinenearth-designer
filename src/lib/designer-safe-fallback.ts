@@ -78,7 +78,7 @@ export async function findApprovedSafeFallback(
       approved.push(approveHumanFallback(evaluation));
     }
 
-    approved.sort((a,b) => b.confidenceScore - a.confidenceScore || a.id.localeCompare(b.id));
+    approved.sort((a,b) => b.confidenceScore - a.confidenceScore || b.brandAffinity - a.brandAffinity || a.id.localeCompare(b.id));
     return approved[0] || null;
   } catch (error) {
     console.error("[designer/fallback] review lookup failed", error);
