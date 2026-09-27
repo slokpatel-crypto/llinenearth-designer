@@ -8,6 +8,7 @@ const required = [
   "src/app/designer-lab/page.tsx",
   "src/components/DesignerLab.tsx",
   "src/app/designer-lab/designer-lab.css",
+  "src/app/api/designer-lab/generate/route.ts",
   "src/lib/designer-safe-fallback.ts",
   "src/lib/designer-telemetry.ts",
   "src/lib/refinement-engine.ts",
@@ -111,11 +112,17 @@ for (const token of ["stockPairingContextDataUri","TOP HALF","BOTTOM HALF","pair
 console.log("Stock-pair continuity gate passed: verified-data schema, refinement lock, spec hash, preview colors and two-swatch FASHN context.");
 
 const designerLab = fs.readFileSync("src/components/DesignerLab.tsx","utf8");
-for (const token of ["DESIGNER LAB","Choose the cloth","Give it a situation","Designer output","stockPairings","Ask the Designer","FABRIC_STOCK"]) {
+for (const token of ["DESIGNER LAB","Choose the cloth","Give it a situation","Designer output","stockPairings","Ask the Designer","FABRIC_STOCK","/api/designer-lab/generate"]) {
   if (!designerLab.includes(token)) throw new Error(`Designer Lab regression: missing ${token}`);
 }
 const designerLabPage = fs.readFileSync("src/app/designer-lab/page.tsx","utf8");
 if (!designerLabPage.includes("DesignerLab")) throw new Error("Designer Lab route regression: page is not wired to the Lab component.");
+
+const designerLabApi = fs.readFileSync("src/app/api/designer-lab/generate/route.ts","utf8");
+for (const token of ["rankStockPairings","findApprovedSafeFallback","recordPhase1Recommendation","designer-lab-v1"]) {
+  if (!designerLabApi.includes(token)) throw new Error(`Designer Lab API regression: missing ${token}`);
+}
+
 console.log("Designer Lab gate passed: isolated stock browser, compact brief and shared ranked Designer output.");
 
 
