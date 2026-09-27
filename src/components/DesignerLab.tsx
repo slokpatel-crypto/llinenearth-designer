@@ -146,7 +146,7 @@ export function DesignerLab() {
         <b>DESIGNER LAB</b>
       </div>
       <div className="labHeaderMeta">
-        <span>REAL STOCK</span>
+        <span>STRUCTURED CATALOGUE</span>
         <span>SHIRT + TROUSER</span>
         <span>{FABRIC_STOCK.filter((item)=>item.inStock).length} FABRICS</span>
       </div>
@@ -156,13 +156,13 @@ export function DesignerLab() {
     <section className="labHero">
       <p>DESIGNER WORKSPACE / V1</p>
       <h1>Choose cloth.<br/>See what the Designer would do.</h1>
-      <span>No marketing journey. No extra screens. Real LLinen Earth fabrics in, ranked outfit directions out.</span>
+      <span>No marketing journey. No extra screens. Verified catalogue references in, ranked outfit directions out.</span>
     </section>
 
     <section className="labWorkspace">
       <div className="labSectionHead">
         <div><span>01</span><h2>Choose the cloth</h2></div>
-        <p>Select the fabric you want the Designer to treat as the anchor.</p>
+        <p>Select the catalogue fabric you want the Designer to treat as the anchor. Physical shelf availability can be verified separately.</p>
       </div>
 
       <div className="labFabricTools">
