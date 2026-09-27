@@ -138,6 +138,51 @@ function relativeTime(iso:string) {
   return `${Math.floor(hours/24)}d ago`;
 }
 
+type DesignerPairingOutput = {
+  pairingId:string;
+  shirtId:string;
+  shirtName:string;
+  shirtLine:string;
+  shirtPattern:string;
+  trouserId:string;
+  trouserName:string;
+  trouserLine:string;
+  trouserPattern:string;
+  confidenceScore:number;
+  occasionBand:string;
+  relationship:string;
+  forced:boolean;
+  needsHumanFallback:boolean;
+  humanApprovedFallback?:boolean;
+  customerReason:string;
+};
+
+function phase1Recommendation(session:Session|null) {
+  if (!session) return null;
+  const event = [...session.events].reverse().find((item)=>
+    item.type === "looks_generated" && item.payload?.experience === "designer-phase1-shirt-pant"
+  );
+  if (!event?.payload) return null;
+  const output = event.payload.output;
+  if (!output || typeof output !== "object") return null;
+  return {
+    event,
+    rulesVersion:String(event.payload.rulesVersion || ""),
+    input:(event.payload.input && typeof event.payload.input === "object" ? event.payload.input : {}) as Record<string,unknown>,
+    output:output as DesignerPairingOutput,
+    rules:Array.isArray(event.payload.rules) ? event.payload.rules as Array<Record<string,unknown>> : [],
+  };
+}
+
+function latestDesignerReview(session:Session|null, pairingId:string) {
+  if (!session || !pairingId) return null;
+  return [...session.events].reverse().find((item)=>
+    item.type === "operator_note" &&
+    item.payload?.subtype === "designer_pairing_review" &&
+    item.payload?.pairingId === pairingId
+  ) || null;
+}
+
 export default function OperatorClient() {
   const [browserEvents,setBrowserEvents] = useState<StyleMemoryEvent[]>([]);
   const [bridgeUrl,setBridgeUrl] = useState("http://127.0.0.1:4317");
@@ -150,6 +195,8 @@ export default function OperatorClient() {
   const [loggingOut,setLoggingOut] = useState(false);
   const [cloud,setCloud] = useState<CloudSummary|null>(null);
   const [cloudState,setCloudState] = useState<"loading"|"live"|"unconfigured"|"error">("loading");
+  const [designerReviewReason,setDesignerReviewReason] = useState("");
+  const [designerReviewSaving,setDesignerReviewSaving] = useState(false);
 
   useEffect(()=>{
     setBrowserEvents(readBrowserStyleEvents());
@@ -228,6 +275,9 @@ export default function OperatorClient() {
   const counts = usingBridge ? (bridge?.counts || local.counts) : usingCloud ? (cloud?.counts || local.counts) : local.counts;
   const recordSource = usingBridge ? "LOCAL PC VAULT" : usingCloud ? "CLOUD MEMORY" : "THIS BROWSER";
   const selected = sessions.find((s)=>s.sessionId===selectedId) || sessions[0] || null;
+  const designerRecommendation = phase1Recommendation(selected);
+  const designerOutput = designerRecommendation?.output || null;
+  const latestReview = latestDesignerReview(selected,designerOutput?.pairingId || "");
 
   useEffect(()=>{
     if (!selectedId && sessions[0]) setSelectedId(sessions[0].sessionId);
@@ -260,6 +310,60 @@ export default function OperatorClient() {
     }
 
     setMessage(type === "sale_logged" ? "Sale outcome saved." : "Store visit saved.");
+  }
+
+  async function logDesignerReview(decision:"approve"|"wrong"|"safe_fallback") {
+    if (!selected || !designerRecommendation || !designerOutput) return;
+    const reason = designerReviewReason.trim();
+    if (decision === "wrong" && reason.length < 3) {
+      setMessage("Add a short reason before flagging this pairing as wrong.");
+      return;
+    }
+
+    setDesignerReviewSaving(true);
+    const event = recordStyleMemoryEvent(selected.sessionId,"operator_note",{
+      subtype:"designer_pairing_review",
+      decision,
+      pairingId:designerOutput.pairingId,
+      shirtId:designerOutput.shirtId,
+      trouserId:designerOutput.trouserId,
+      shirtName:designerOutput.shirtName,
+      trouserName:designerOutput.trouserName,
+      occasionBand:designerOutput.occasionBand,
+      rulesVersion:designerRecommendation.rulesVersion,
+      confidenceScore:designerOutput.confidenceScore,
+      reason,
+      note:decision === "safe_fallback"
+        ? "Approved as an LLinen Earth safe fallback for this formality band."
+        : decision === "wrong"
+          ? "Operator rejected the designer pairing."
+          : "Operator approved the designer pairing.",
+    },"operator");
+    refreshBrowser();
+
+    try {
+      if (cloudState === "live") {
+        const response = await fetch("/api/memory/event",{
+          method:"POST",
+          headers:{"content-type":"application/json"},
+          body:JSON.stringify(event),
+        });
+        if (!response.ok && response.status !== 202) throw new Error("Cloud review write failed.");
+        await loadCloud();
+      }
+      setDesignerReviewReason("");
+      setMessage(
+        decision === "safe_fallback"
+          ? "Pairing approved as a safe fallback."
+          : decision === "wrong"
+            ? "Pairing flagged as wrong with your reason."
+            : "Pairing approved for review history."
+      );
+    } catch {
+      setMessage("Review saved locally; cloud memory will receive it when available.");
+    } finally {
+      setDesignerReviewSaving(false);
+    }
   }
 
   const funnel = [
@@ -339,6 +443,31 @@ export default function OperatorClient() {
                 {Object.entries(selected.answers).map(([key,value])=><span key={key}><small>{key}</small><b>{value}</b></span>)}
               </div>
               {selected.selectedLook && <div className="selectedLook"><small>SELECTED LOOK</small><strong>{String(selected.selectedLook.title || "Look selected")}</strong><span>{String(selected.selectedLook.fabric || "")}</span></div>}
+              {designerRecommendation && designerOutput && <div className="designerReviewPanel">
+                <div className="designerReviewHead">
+                  <div><small>DESIGNER PHASE 1 REVIEW</small><strong>{designerOutput.shirtName || designerOutput.shirtId} + {designerOutput.trouserName || designerOutput.trouserId}</strong></div>
+                  <b>{designerOutput.confidenceScore}<span>/100</span></b>
+                </div>
+                <div className="designerReviewFacts">
+                  <span><small>shirt</small><b>{designerOutput.shirtLine || designerOutput.shirtId}</b><em>{designerOutput.shirtPattern}</em></span>
+                  <span><small>trouser</small><b>{designerOutput.trouserLine || designerOutput.trouserId}</b><em>{designerOutput.trouserPattern}</em></span>
+                  <span><small>band</small><b>{designerOutput.occasionBand}</b><em>{designerOutput.relationship}</em></span>
+                </div>
+                <p>{designerOutput.customerReason}</p>
+                <div className="designerRuleStrip">
+                  {designerRecommendation.rules.map((rule,index)=><span key={String(rule.id || index)} className={String(rule.status || "unknown")}><b>{String(rule.id || "CR")}</b>{String(rule.status || "unknown")}</span>)}
+                </div>
+                {latestReview && <div className="designerLatestReview"><b>LATEST REVIEW · {String(latestReview.payload?.decision || "").replaceAll("_"," ")}</b><span>{String(latestReview.payload?.reason || latestReview.payload?.note || "")}</span></div>}
+                <label>Why approve or reject this pairing?
+                  <textarea value={designerReviewReason} onChange={(e)=>setDesignerReviewReason(e.target.value)} placeholder="Example: trouser is too cool/flat for this shirt, or this is a dependable formal fallback." />
+                </label>
+                <div className="designerReviewActions">
+                  <button onClick={()=>void logDesignerReview("approve")} disabled={designerReviewSaving}>Approve pairing</button>
+                  <button className="wrong" onClick={()=>void logDesignerReview("wrong")} disabled={designerReviewSaving}>Flag wrong</button>
+                  <button className="fallback" onClick={()=>void logDesignerReview("safe_fallback")} disabled={designerReviewSaving}>Set safe fallback</button>
+                </div>
+                <small className="designerReviewFoot">Safe fallback approvals only apply to {designerRecommendation.rulesVersion} and this formality band. A newer review supersedes an older one.</small>
+              </div>}
               {selected.measurements && <div className="webMeasurementPassport">
                 <div><small>MEASUREMENT PASSPORT</small><b>{selected.measurements.unit === "cm" ? "CENTIMETRES" : "INCHES"} · {relativeTime(selected.measurements.at)}</b></div>
                 <div className="webMeasurementGrid">
