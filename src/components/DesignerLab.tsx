@@ -1,12 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FABRIC_STOCK, fabricProfileFromStock, type FabricColorway } from "@/lib/fabric-stock";
 import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import type { StockPairingPublic } from "@/lib/shirt-pant-designer";
 
 type GarmentFilter = "all" | "shirt" | "trouser";
+type LabFabric = FabricColorway & { availability?: "unknown"|"available"|"unavailable"; verifiedAt?: string };
 type LabState = "idle" | "designing" | "results" | "error";
 
 const OCCASIONS = ["Business","Dinner / evening","Wedding","Smart casual","Resort / holiday","Festive / cultural"];
@@ -44,7 +45,8 @@ export function DesignerLab() {
   const [filter,setFilter] = useState<GarmentFilter>("all");
   const [search,setSearch] = useState("");
   const [line,setLine] = useState("All collections");
-  const [selected,setSelected] = useState<FabricColorway | null>(null);
+  const [catalog,setCatalog] = useState<LabFabric[]>(FABRIC_STOCK);
+  const [selected,setSelected] = useState<LabFabric | null>(null);
   const [occasion,setOccasion] = useState("Dinner / evening");
   const [formality,setFormality] = useState("Refined");
   const [time,setTime] = useState("Evening");
@@ -59,13 +61,20 @@ export function DesignerLab() {
   const [feedback,setFeedback] = useState<"up"|"down"|null>(null);
   const [feedbackState,setFeedbackState] = useState<"idle"|"saving"|"saved"|"unavailable">("idle");
 
+  useEffect(()=>{
+    void fetch("/api/designer-lab/catalog",{cache:"no-store"})
+      .then((response)=>response.ok ? response.json() : Promise.reject(new Error("catalog unavailable")))
+      .then((payload:{fabrics?:LabFabric[]})=>{ if (Array.isArray(payload.fabrics) && payload.fabrics.length) setCatalog(payload.fabrics); })
+      .catch(()=>{});
+  },[]);
+
   const lines = useMemo(()=>["All collections",...Array.from(new Set(
-    FABRIC_STOCK.filter((item)=>item.inStock).map((item)=>item.line)
-  )).sort()],[]);
+    catalog.filter((item)=>item.inStock).map((item)=>item.line)
+  )).sort()],[catalog]);
 
   const visible = useMemo(()=>{
     const q = search.trim().toLowerCase();
-    return FABRIC_STOCK.filter((fabric)=>{
+    return catalog.filter((fabric)=>{
       if (!fabric.inStock) return false;
       if (filter === "shirt" && !fabric.suitableFor.includes("shirt")) return false;
       if (filter === "trouser" && !fabric.suitableFor.includes("trouser")) return false;
@@ -73,7 +82,7 @@ export function DesignerLab() {
       if (!q) return true;
       return [fabric.colorName,fabric.line,fabric.pattern,fabric.family].some((value)=>value.toLowerCase().includes(q));
     });
-  },[filter,line,search]);
+  },[catalog,filter,line,search]);
 
   async function design() {
     if (!selected) return;
@@ -202,7 +211,7 @@ export function DesignerLab() {
       <div className="labHeaderMeta">
         <span>STRUCTURED CATALOGUE</span>
         <span>SHIRT + TROUSER</span>
-        <span>{FABRIC_STOCK.filter((item)=>item.inStock).length} FABRICS</span>
+        <span>{catalog.filter((item)=>item.inStock).length} FABRICS</span>
       </div>
       <button onClick={reset}>New design</button>
     </header>
@@ -236,7 +245,7 @@ export function DesignerLab() {
             <small>{category(fabric)}</small>
             <strong>{fabric.colorName}</strong>
             <em>{fabric.pattern}</em>
-            <i>{fabric.line}</i>
+            <i>{fabric.line}</i>{fabric.availability === "available" && <u>PHYSICALLY VERIFIED</u>}
           </span>
         </button>)}
       </div>
