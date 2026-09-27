@@ -3,6 +3,9 @@ import fs from "node:fs";
 const required = [
   "src/lib/fashion-intelligence.ts",
   "src/lib/designer-engine.ts",
+  "src/lib/shirt-pant-designer.ts",
+  "src/lib/designer-safe-fallback.ts",
+  "src/lib/designer-telemetry.ts",
   "src/lib/refinement-engine.ts",
   "src/lib/visualization-engine.ts",
   "src/lib/handoff.ts",
@@ -33,6 +36,40 @@ for (const token of ["Safe","Elevated","Statement","fabricJudgement"]) {
 }
 
 console.log(`Quality gate passed: ${wearIds} wear types, ${fabricIds} fabric families, complete Phase 0–9 route contract.`);
+
+const phase1Designer = fs.readFileSync("src/lib/shirt-pant-designer.ts","utf8");
+for (const token of [
+  "SHIRT_PANT_RULESET_VERSION",
+  "LOW_CONFIDENCE_THRESHOLD",
+  '"CR-1"',
+  '"CR-2"',
+  '"CR-3"',
+  '"CR-4"',
+  '"CR-5"',
+  '"CR-6"',
+  '"CR-7"',
+  "evaluateStockPairByIds",
+  "approveHumanFallback",
+]) {
+  if (!phase1Designer.includes(token)) throw new Error(`Phase-1 Designer regression: missing ${token}`);
+}
+
+const phase1Fallback = fs.readFileSync("src/lib/designer-safe-fallback.ts","utf8");
+for (const token of ["designer_pairing_review","safe_fallback","SHIRT_PANT_RULESET_VERSION","hasBlockingRule"]) {
+  if (!phase1Fallback.includes(token)) throw new Error(`Phase-1 fallback regression: missing ${token}`);
+}
+
+const phase1Telemetry = fs.readFileSync("src/lib/designer-telemetry.ts","utf8");
+for (const token of ["designer-phase1-shirt-pant","rulesVersion","reasoningText","confidenceScore"]) {
+  if (!phase1Telemetry.includes(token)) throw new Error(`Phase-1 telemetry regression: missing ${token}`);
+}
+
+const operatorDesk = fs.readFileSync("src/app/operator/OperatorClient.tsx","utf8");
+for (const token of ["DESIGNER PHASE 1 REVIEW","Approve pairing","Flag wrong","Set safe fallback","designer_pairing_review"]) {
+  if (!operatorDesk.includes(token)) throw new Error(`Operator review regression: missing ${token}`);
+}
+
+console.log("Phase-1 Designer gate passed: CR-1–CR-7, low-confidence guard, audit trace, operator overrides and version-scoped safe fallbacks.");
 
 
 const securityContracts = [
