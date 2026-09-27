@@ -11,6 +11,8 @@ const required = [
   "src/app/api/designer-lab/generate/route.ts",
   "src/app/api/designer-lab/catalog/route.ts",
   "src/app/api/system/cloud-health/route.ts",
+  "public/designer-lab-sw.js",
+  "public/designer-lab.webmanifest",
   "src/app/operator/designer-data/designer-data.css",
   "src/app/operator/designer-data/DesignerDataClient.tsx",
   "src/app/operator/designer-data/page.tsx",
@@ -178,6 +180,19 @@ for (const token of ["llinen_cloud_health","schemaVersion === 5","serviceInsert"
   if (!cloudHealthApi.includes(token)) throw new Error(`Cloud health regression: missing ${token}`);
 }
 console.log("Cloud health gate passed: deployment can verify schema v5 without exposing secrets.");
+
+const designerLabPageInstall = fs.readFileSync("src/app/designer-lab/page.tsx","utf8");
+if (!designerLabPageInstall.includes("/designer-lab.webmanifest")) throw new Error("Designer Lab install manifest is not linked.");
+const designerLabClientInstall = fs.readFileSync("src/components/DesignerLab.tsx","utf8");
+for (const token of ["/api/system/cloud-health","serviceWorker.register","CLOUD LIVE","LOCAL MODE"]) {
+  if (!designerLabClientInstall.includes(token)) throw new Error(`Designer Lab install/cloud regression: missing ${token}`);
+}
+const brandIntro = fs.readFileSync("src/components/BrandIntro.tsx","utf8");
+for (const token of ["/designer-lab","/operator","internalTool"]) {
+  if (!brandIntro.includes(token)) throw new Error(`Brand intro internal-route regression: missing ${token}`);
+}
+console.log("Designer Lab shell gate passed: no intro on internal tools, cloud state visible, install manifest/service worker present.");
+
 
 
 
