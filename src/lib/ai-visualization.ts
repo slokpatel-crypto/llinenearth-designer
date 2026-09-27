@@ -55,17 +55,46 @@ async function mannequinPngDataUri(src: string) {
   return `data:image/png;base64,${png.toString("base64")}`;
 }
 
-async function stockSwatchDataUri(swatchImageUrl?: string) {
+async function stockSwatchBuffer(swatchImageUrl?: string) {
   if (!swatchImageUrl?.startsWith("/fabrics/") || !/^[a-zA-Z0-9/_-]+\.webp$/.test(swatchImageUrl)) return undefined;
   const fabricRoot = path.resolve(process.cwd(), "public", "fabrics");
   const filePath = path.resolve(process.cwd(), "public", swatchImageUrl.slice(1));
   if (!filePath.startsWith(`${fabricRoot}${path.sep}`)) return undefined;
   try {
-    const bytes = await readFile(filePath);
-    return `data:image/webp;base64,${bytes.toString("base64")}`;
+    return await readFile(filePath);
   } catch {
     return undefined;
   }
+}
+
+async function stockSwatchDataUri(swatchImageUrl?: string) {
+  const bytes = await stockSwatchBuffer(swatchImageUrl);
+  return bytes ? `data:image/webp;base64,${bytes.toString("base64")}` : undefined;
+}
+
+async function stockPairingContextDataUri(spec: VisualizationSpec) {
+  const pair = spec.stockPairing;
+  if (!pair) return stockSwatchDataUri(spec.fabric.swatchImageUrl);
+
+  const [shirt,trouser] = await Promise.all([
+    stockSwatchBuffer(pair.shirt.swatchImageUrl),
+    stockSwatchBuffer(pair.trouser.swatchImageUrl),
+  ]);
+  if (!shirt && !trouser) return stockSwatchDataUri(spec.fabric.swatchImageUrl);
+  if (!shirt || !trouser) {
+    const bytes = shirt || trouser;
+    return bytes ? `data:image/webp;base64,${bytes.toString("base64")}` : undefined;
+  }
+
+  const shirtPanel = await sharp(shirt).resize({width:768,height:384,fit:"cover"}).toBuffer();
+  const trouserPanel = await sharp(trouser).resize({width:768,height:384,fit:"cover"}).toBuffer();
+  const board = await sharp({
+    create:{width:768,height:768,channels:3,background:{r:245,g:242,b:236}},
+  }).composite([
+    {input:shirtPanel,left:0,top:0},
+    {input:trouserPanel,left:0,top:384},
+  ]).jpeg({quality:92}).toBuffer();
+  return `data:image/jpeg;base64,${board.toString("base64")}`;
 }
 
 function lockedOutfit(spec: VisualizationSpec, fabricUse?: string) {
@@ -77,12 +106,18 @@ function lockedOutfit(spec: VisualizationSpec, fabricUse?: string) {
     `Footwear: ${safe(spec.garments.footwear)}.`,
     `Aesthetic: ${safe(spec.aesthetic)}.`,
     `Fabric: ${safe(spec.fabric.material)}, ${safe(spec.fabric.tone)}. ${safe(spec.fabric.summary, 420)}`,
+    spec.stockPairing ? `Locked stock pair: shirt ${safe(spec.stockPairing.shirt.colorName)} (${safe(spec.stockPairing.shirt.line)}); trouser ${safe(spec.stockPairing.trouser.colorName)} (${safe(spec.stockPairing.trouser.line)}).` : "",
     fabricUse ? `Fabric placement: ${safe(fabricUse, 420)}` : "",
   ].filter(Boolean).join(" ");
 }
 
 function frontPrompt(spec: VisualizationSpec, fabricUse: string) {
-  return `Transform this flat outfit reference into a premium photorealistic full-body menswear catalogue photograph. Use one elegant faceless male atelier mannequin with realistic Indian menswear proportions, a smooth matte warm-neutral resin head, no eyes, no facial features and no hair. Straight front view, relaxed arms, natural tailoring drape, accurate seams and construction, soft directional studio lighting, seamless deep navy studio background, clean luxury e-commerce styling. Preserve the exact garment combination, silhouette and palette from the source. ${lockedOutfit(spec, fabricUse)} ${spec.fabric.swatchImageUrl ? "Use the supplied fabric-context image for the cloth's exact visible color, weave, slub and print character; do not copy its background or framing." : "Render the described cloth honestly without inventing a loud print."} No text, logos, props, extra garments, human face or cropped limbs.`;
+  const fabricInstruction = spec.stockPairing
+    ? "The supplied fabric-context image is a two-panel reference: TOP HALF is the exact shirt fabric and BOTTOM HALF is the exact trouser fabric. Keep these two fabrics distinct and map each only to its named garment. Preserve their visible color, weave/slub and print character; do not blend the two panels or copy the board framing."
+    : spec.fabric.swatchImageUrl
+      ? "Use the supplied fabric-context image for the cloth's exact visible color, weave, slub and print character; do not copy its background or framing."
+      : "Render the described cloth honestly without inventing a loud print.";
+  return `Transform this flat outfit reference into a premium photorealistic full-body menswear catalogue photograph. Use one elegant faceless male atelier mannequin with realistic Indian menswear proportions, a smooth matte warm-neutral resin head, no eyes, no facial features and no hair. Straight front view, relaxed arms, natural tailoring drape, accurate seams and construction, soft directional studio lighting, seamless deep navy studio background, clean luxury e-commerce styling. Preserve the exact garment combination, silhouette and palette from the source. ${lockedOutfit(spec, fabricUse)} ${fabricInstruction} No text, logos, props, extra garments, human face or cropped limbs.`;
 }
 
 function viewPrompt(spec: VisualizationSpec, view: RenderView) {
@@ -126,7 +161,7 @@ export async function renderFashnFront(brief: DesignerBrief, version: DesignVers
   const front = base.renders.find((render) => render.view === "front");
   if (!front) throw new FashnVisualizationError("The front mannequin reference is missing.", "invalid_source");
   const source = await mannequinPngDataUri(front.src);
-  const swatch = await stockSwatchDataUri(base.spec.fabric.swatchImageUrl);
+  const swatch = await stockPairingContextDataUri(base.spec);
   const generated = await runEdit(source, frontPrompt(base.spec, version.candidate.fabricUse), swatch);
   return {
     ...base,
@@ -155,7 +190,7 @@ export async function renderFashnView(set: RenderSet, view: RenderView, brief: D
   if (!front || !OFFICIAL_FASHN_OUTPUT.test(front.src)) {
     throw new FashnVisualizationError("Generate the photorealistic front view first.", "invalid_source");
   }
-  const swatch = await stockSwatchDataUri(canonical.spec.fabric.swatchImageUrl);
+  const swatch = await stockPairingContextDataUri(canonical.spec);
   const generated = await runEdit(front.src, viewPrompt(canonical.spec, view), swatch);
   const repaired = repairDevelopmentRender({ ...set, spec: canonical.spec }, view);
   return {
