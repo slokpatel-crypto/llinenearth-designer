@@ -55,6 +55,9 @@ export function DesignerLab() {
   const [results,setResults] = useState<StockPairingPublic[]>([]);
   const [error,setError] = useState("");
   const [chosenId,setChosenId] = useState("");
+  const [sessionId,setSessionId] = useState("");
+  const [feedback,setFeedback] = useState<"up"|"down"|null>(null);
+  const [feedbackState,setFeedbackState] = useState<"idle"|"saving"|"saved"|"unavailable">("idle");
 
   const lines = useMemo(()=>["All collections",...Array.from(new Set(
     FABRIC_STOCK.filter((item)=>item.inStock).map((item)=>item.line)
@@ -90,8 +93,13 @@ export function DesignerLab() {
       aesthetic,
     };
 
+    const nextSessionId = `LE-LAB-${crypto.randomUUID()}`;
+    setSessionId(nextSessionId);
+    setFeedback(null);
+    setFeedbackState("idle");
+
     const brief:DesignerBrief = {
-      sessionId:`LE-LAB-${crypto.randomUUID()}`,
+      sessionId:nextSessionId,
       fabric:{
         profile:fabricProfileFromStock(selected),
         materialOverride:selected.family,
@@ -132,12 +140,58 @@ export function DesignerLab() {
     setSelected(null);
     setResults([]);
     setChosenId("");
+    setSessionId("");
+    setFeedback(null);
+    setFeedbackState("idle");
     setState("idle");
     setSearch("");
     window.scrollTo({top:0,behavior:"smooth"});
   }
 
   const chosen = results.find((item)=>item.id === chosenId) || results[0] || null;
+  async function submitFeedback(value:"up"|"down") {
+    if (!chosen || !sessionId) return;
+    setFeedback(value);
+    setFeedbackState("saving");
+    try {
+      const sessionResponse = await fetch("/api/memory/session",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({sessionId}),
+      });
+      if (!sessionResponse.ok) throw new Error("Memory session unavailable");
+      const session = await sessionResponse.json() as {token?:string};
+      if (!session.token) throw new Error("Memory token unavailable");
+
+      const eventResponse = await fetch("/api/memory/event",{
+        method:"POST",
+        headers:{
+          "content-type":"application/json",
+          "x-llinen-memory-token":session.token,
+        },
+        body:JSON.stringify({
+          id:`EV-DESIGNER-LAB-FEEDBACK-${crypto.randomUUID()}`,
+          sessionId,
+          type:"look_selected",
+          at:new Date().toISOString(),
+          payload:{
+            lookId:chosen.id,
+            title:`Designer Lab ${chosen.mode || "direction"}`,
+            fabricId:chosen.shirt.id,
+            fabric:chosen.trouser.id,
+            automatic:false,
+            feedback:value,
+            rulesVersion:chosen.rulesVersion,
+          },
+        }),
+      });
+      const result = await eventResponse.json() as {stored?:boolean};
+      setFeedbackState(eventResponse.ok && result.stored ? "saved" : "unavailable");
+    } catch {
+      setFeedbackState("unavailable");
+    }
+  }
+
 
   return <main className="designerLab">
     <header className="labHeader">
@@ -256,6 +310,11 @@ export function DesignerLab() {
             <span><small>Rule set</small><b>{chosen.rulesVersion}</b></span>
           </div>
           <p>{chosen.forced ? chosen.customerReason : "The engine is deliberately not presenting this pairing as approved. Review the combination or change the brief/fabric before using it."}</p>
+          <div className="labFeedback">
+            <span>Does this output feel right?</span>
+            <div><button className={feedback==="up"?"active":""} onClick={()=>void submitFeedback("up")} disabled={feedbackState==="saving"}>Looks right</button><button className={feedback==="down"?"active":""} onClick={()=>void submitFeedback("down")} disabled={feedbackState==="saving"}>Wrong</button></div>
+            {feedback && <em>{feedbackState==="saved"?"Recorded for Designer review.":feedbackState==="saving"?"Recording…":"Cloud memory is not active yet; feedback will become persistent after Supabase is connected."}</em>}
+          </div>
         </div>}
       </> : <div className="labNoResult"><strong>No safe direction was forced.</strong><p>The engine held the result because the available stock did not clear the current confidence/rule threshold for this brief.</p></div>}
     </section>}
