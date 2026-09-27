@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { DesignerBrief } from "@/lib/designer-types";
 import { recordPhase1Recommendation } from "@/lib/designer-telemetry";
 import { findApprovedSafeFallback } from "@/lib/designer-safe-fallback";
+import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
 import {
   publicStockPairing,
   rankStockPairings,
@@ -16,12 +17,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "A real LLinen Earth stock fabric and design context are required." }, { status: 400 });
     }
 
-    const ranked = rankStockPairings(brief);
+    const metadata = await loadDesignerFabricMetadata();
+    const stock = applyDesignerFabricMetadataToStock(metadata);
+    const ranked = rankStockPairings(brief,stock);
     const primary = ranked.find((item)=>item.mode === "Elevated")
       || ranked[0]
-      || recommendStockPairing(brief);
+      || recommendStockPairing(brief,stock);
 
-    const approvedFallback = await findApprovedSafeFallback(brief,primary);
+    const approvedFallback = await findApprovedSafeFallback(brief,primary,stock);
     const finalPrimary = approvedFallback || primary;
     const visible = approvedFallback
       ? [approvedFallback,...ranked.filter((item)=>item.id !== approvedFallback.id)].slice(0,3)
