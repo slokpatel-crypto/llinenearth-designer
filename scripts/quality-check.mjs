@@ -85,6 +85,29 @@ for (const token of ["DESIGNER PHASE 1 REVIEW","Approve pairing","Flag wrong","S
 
 console.log("Phase-1 Designer gate passed: CR-1–CR-7, low-confidence guard, audit trace, operator overrides and version-scoped safe fallbacks.");
 
+const fabricStock = fs.readFileSync("src/lib/fabric-stock.ts","utf8");
+for (const token of ["weightGsm","weightClass","seasonTags","formalityScore","yarnCountLea","Lea yarn count must not be treated as fabric weight"]) {
+  if (!fabricStock.includes(token)) throw new Error(`Fabric intelligence regression: missing ${token}`);
+}
+
+const refinementEngine = fs.readFileSync("src/lib/refinement-engine.ts","utf8");
+for (const token of ["stockPairing","shirtId","trouserId","specHash"]) {
+  if (!refinementEngine.includes(token)) throw new Error(`Stock-pair refinement regression: missing ${token}`);
+}
+
+const visualizationEngine = fs.readFileSync("src/lib/visualization-engine.ts","utf8");
+for (const token of ["stockPairing","shirtColor","trouserColor"]) {
+  if (!visualizationEngine.includes(token)) throw new Error(`Stock-pair visualization regression: missing ${token}`);
+}
+
+const aiVisualization = fs.readFileSync("src/lib/ai-visualization.ts","utf8");
+for (const token of ["stockPairingContextDataUri","TOP HALF","BOTTOM HALF","pair.shirt.swatchImageUrl","pair.trouser.swatchImageUrl"]) {
+  if (!aiVisualization.includes(token)) throw new Error(`Two-fabric FASHN regression: missing ${token}`);
+}
+
+console.log("Stock-pair continuity gate passed: verified-data schema, refinement lock, spec hash, preview colors and two-swatch FASHN context.");
+
+
 
 const securityContracts = [
   ["src/middleware.ts", ["verifyOperatorSession","/operator/login","X-Frame-Options","Content-Security-Policy"]],
