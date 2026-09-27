@@ -97,3 +97,19 @@ It reports:
 - a filterable weak-case table ordered to put held and lowest-confidence cases first.
 
 The QA Desk uses the same calibrated catalogue overlay as the customer-facing recommendation path, so an operator can move directly between `/operator/designer-qa` and `/operator/designer-data` to fix missing facts and rerun the matrix.
+
+
+## Designer Evidence
+
+A protected route at `/operator/designer-insights` turns real usage into observable evidence without allowing the system to self-tune.
+
+When cloud memory is available, it reports:
+- recommendation count;
+- customer Looks right / Wrong feedback;
+- operator approve / wrong / safe-fallback decisions;
+- Safe / Elevated / Statement evidence;
+- CR-1 through CR-7 warning frequency;
+- pairings with the strongest negative signal;
+- active rules-version counts.
+
+This page is intentionally descriptive. It does not modify weights, rules or taste preferences automatically. Any calibration remains a human-reviewed change after enough real evidence exists.
