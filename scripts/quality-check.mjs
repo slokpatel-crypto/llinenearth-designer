@@ -50,6 +50,7 @@ for (const token of [
   '"CR-7"',
   "evaluateStockPairByIds",
   "approveHumanFallback",
+  "brandSeedAffinity",
 ]) {
   if (!phase1Designer.includes(token)) throw new Error(`Phase-1 Designer regression: missing ${token}`);
 }
