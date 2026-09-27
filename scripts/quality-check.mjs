@@ -4,6 +4,7 @@ const required = [
   "src/lib/fashion-intelligence.ts",
   "src/lib/designer-engine.ts",
   "src/lib/shirt-pant-designer.ts",
+  "src/lib/llinen-earth-taste.ts",
   "src/lib/designer-safe-fallback.ts",
   "src/lib/designer-telemetry.ts",
   "src/lib/refinement-engine.ts",
@@ -51,8 +52,20 @@ for (const token of [
   "evaluateStockPairByIds",
   "approveHumanFallback",
   "brandSeedAffinity",
+  "rankStockPairings",
+  "scoreLlinenEarthPairing",
 ]) {
   if (!phase1Designer.includes(token)) throw new Error(`Phase-1 Designer regression: missing ${token}`);
+}
+
+const tasteModel = fs.readFileSync("src/lib/llinen-earth-taste.ts","utf8");
+for (const token of ["Safe","Elevated","Statement","contextBias","brandSeedAffinity","scoreLlinenEarthPairing"]) {
+  if (!tasteModel.includes(token)) throw new Error(`LLinen Earth taste regression: missing ${token}`);
+}
+
+const designerDirectionsUi = fs.readFileSync("src/components/DesignDirections.tsx","utf8");
+for (const token of ["stockPairings","REAL LLINEN EARTH STOCK · RANKED DESIGNER DIRECTIONS","Three ways to wear the fabric."]) {
+  if (!designerDirectionsUi.includes(token)) throw new Error(`Ranked stock UI regression: missing ${token}`);
 }
 
 const phase1Fallback = fs.readFileSync("src/lib/designer-safe-fallback.ts","utf8");
