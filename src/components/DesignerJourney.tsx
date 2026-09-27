@@ -12,9 +12,11 @@ import type { MeasurementProfile } from "@/lib/measurements";
 import { MEASUREMENT_STORAGE_KEY } from "@/lib/measurements";
 import type { DesignVersion } from "@/lib/refinement-engine";
 import type { RenderSet } from "@/lib/visualization-engine";
+import type { StockPairingPublic } from "@/lib/shirt-pant-designer";
 
 type Stage = "fabric" | "context" | "generating" | "directions" | "refine" | "visualizing" | "visualization" | "visualization-error" | "error";
 const STORAGE_KEY = "llinen-earth-designer-session-v4";
+const SESSION_ID_KEY = "llinen-earth-designer-id-v1";
 
 export function DesignerJourney() {
   const [stage, setStage] = useState<Stage>("fabric");
@@ -22,6 +24,8 @@ export function DesignerJourney() {
   const [context, setContext] = useState<ContextProfile | null>(null);
   const [measurements, setMeasurements] = useState<MeasurementProfile | null>(null);
   const [candidates, setCandidates] = useState<DesignCandidate[]>([]);
+  const [stockPairing, setStockPairing] = useState<StockPairingPublic | null>(null);
+  const [sessionId, setSessionId] = useState("");
   const [selectedCandidate, setSelectedCandidate] = useState<DesignCandidate | null>(null);
   const [finalVersion, setFinalVersion] = useState<DesignVersion | null>(null);
   const [renderSet, setRenderSet] = useState<RenderSet | null>(null);
@@ -32,10 +36,11 @@ export function DesignerJourney() {
     try {
       const raw = sessionStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const saved = JSON.parse(raw) as { stage?: Stage; fabric?: FabricSelection; context?: ContextProfile; candidates?: DesignCandidate[]; selectedCandidate?: DesignCandidate; finalVersion?: DesignVersion; renderSet?: RenderSet };
+        const saved = JSON.parse(raw) as { stage?: Stage; fabric?: FabricSelection; context?: ContextProfile; candidates?: DesignCandidate[]; stockPairing?: StockPairingPublic | null; selectedCandidate?: DesignCandidate; finalVersion?: DesignVersion; renderSet?: RenderSet };
         if (saved.fabric) setFabric(saved.fabric);
         if (saved.context) setContext(saved.context);
         if (saved.candidates) setCandidates(saved.candidates);
+        if (saved.stockPairing) setStockPairing(saved.stockPairing);
         if (saved.selectedCandidate) setSelectedCandidate(saved.selectedCandidate);
         if (saved.finalVersion) setFinalVersion(saved.finalVersion);
         if (saved.renderSet) setRenderSet(saved.renderSet);
@@ -44,6 +49,12 @@ export function DesignerJourney() {
         else if (saved.stage === "directions" && saved.fabric && saved.context && saved.candidates?.length) setStage("directions");
         else if (saved.stage === "context" && saved.fabric) setStage("context");
       }
+      let designerId = sessionStorage.getItem(SESSION_ID_KEY);
+      if (!designerId) {
+        designerId = `LE-DESIGNER-${crypto.randomUUID()}`;
+        sessionStorage.setItem(SESSION_ID_KEY, designerId);
+      }
+      setSessionId(designerId);
       const measureRaw = localStorage.getItem(MEASUREMENT_STORAGE_KEY);
       if (measureRaw) setMeasurements(JSON.parse(measureRaw) as MeasurementProfile);
     } catch {}
@@ -52,8 +63,8 @@ export function DesignerJourney() {
 
   useEffect(() => {
     if (!hydrated) return;
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ stage, fabric, context, candidates, selectedCandidate, finalVersion, renderSet }));
-  }, [stage, fabric, context, candidates, selectedCandidate, finalVersion, renderSet, hydrated]);
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ stage, fabric, context, candidates, stockPairing, selectedCandidate, finalVersion, renderSet }));
+  }, [stage, fabric, context, candidates, stockPairing, selectedCandidate, finalVersion, renderSet, hydrated]);
 
   function refreshMeasurements() {
     try {
@@ -66,7 +77,7 @@ export function DesignerJourney() {
   }
 
   function acceptFabric(selection: FabricSelection) {
-    setFabric(selection); setCandidates([]); setSelectedCandidate(null); setFinalVersion(null); setRenderSet(null); setStage("context");
+    setFabric(selection); setCandidates([]); setStockPairing(null); setSelectedCandidate(null); setFinalVersion(null); setRenderSet(null); setStage("context");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -74,11 +85,11 @@ export function DesignerJourney() {
     setStage("generating"); setError(null);
     try {
       const latestMeasurements = refreshMeasurements();
-      const enrichedBrief: DesignerBrief = { ...brief, measurements: latestMeasurements || undefined };
+      const enrichedBrief: DesignerBrief = { ...brief, sessionId: sessionId || brief.sessionId, measurements: latestMeasurements || undefined };
       const response = await fetch("/api/designer/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(enrichedBrief) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to create directions.");
-      setCandidates(data.candidates); setSelectedCandidate(null); setFinalVersion(null); setRenderSet(null); setStage("directions");
+      setCandidates(data.candidates); setStockPairing(data.stockPairing ?? null); setSelectedCandidate(null); setFinalVersion(null); setRenderSet(null); setStage("directions");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create directions."); setStage("error");
     }
@@ -86,7 +97,7 @@ export function DesignerJourney() {
 
   function acceptContext(profile: ContextProfile) {
     if (!fabric) return;
-    setContext(profile); window.scrollTo({ top: 0, behavior: "smooth" }); void generate({ fabric, context: profile, measurements: measurements || undefined });
+    setContext(profile); window.scrollTo({ top: 0, behavior: "smooth" }); void generate({ sessionId: sessionId || undefined, fabric, context: profile, measurements: measurements || undefined });
   }
 
   function beginRefinement(candidate: DesignCandidate) {
@@ -106,7 +117,7 @@ export function DesignerJourney() {
     }
   }
 
-  const currentBrief = fabric && context ? { fabric, context, measurements: measurements || undefined } : null;
+  const currentBrief = fabric && context ? { sessionId: sessionId || undefined, fabric, context, measurements: measurements || undefined } : null;
 
   if (!hydrated) return <section className="journeyLoading"><span>Restoring your atelier session…</span></section>;
   if (stage === "context" && fabric) return <ContextConsultation fabric={fabric} onComplete={acceptContext} onBack={() => setStage("fabric")} />;
@@ -123,7 +134,7 @@ export function DesignerJourney() {
 
   if (stage === "refine" && currentBrief && candidates.length && selectedCandidate) return <RefinementWorkspace brief={currentBrief} initialCandidate={selectedCandidate} candidates={candidates} onBack={() => setStage("directions")} onVisualize={(version) => void visualize(version)} />;
 
-  if (stage === "directions" && currentBrief && candidates.length) return <DesignDirections brief={currentBrief} candidates={candidates} onEditContext={() => setStage("context")} onRefine={beginRefinement} />;
+  if (stage === "directions" && currentBrief && candidates.length) return <DesignDirections brief={currentBrief} candidates={candidates} stockPairing={stockPairing} onEditContext={() => setStage("context")} onRefine={beginRefinement} />;
 
   return <FabricStudio onContinue={acceptFabric} />;
 }
