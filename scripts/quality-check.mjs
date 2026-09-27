@@ -9,6 +9,7 @@ const required = [
   "src/components/DesignerLab.tsx",
   "src/app/designer-lab/designer-lab.css",
   "src/app/api/designer-lab/generate/route.ts",
+  "src/app/api/designer-lab/catalog/route.ts",
   "src/app/operator/designer-data/designer-data.css",
   "src/app/operator/designer-data/DesignerDataClient.tsx",
   "src/app/operator/designer-data/page.tsx",
@@ -118,7 +119,7 @@ for (const token of ["stockPairingContextDataUri","TOP HALF","BOTTOM HALF","pair
 console.log("Stock-pair continuity gate passed: verified-data schema, refinement lock, spec hash, preview colors and two-swatch FASHN context.");
 
 const designerLab = fs.readFileSync("src/components/DesignerLab.tsx","utf8");
-for (const token of ["DESIGNER LAB","Choose the cloth","Give it a situation","Designer output","stockPairings","Ask the Designer","FABRIC_STOCK","/api/designer-lab/generate","Held for review","Looks right","Wrong","look_selected"]) {
+for (const token of ["DESIGNER LAB","Choose the cloth","Give it a situation","Designer output","stockPairings","Ask the Designer","FABRIC_STOCK","/api/designer-lab/generate","/api/designer-lab/catalog","Held for review","Looks right","Wrong","look_selected"]) {
   if (!designerLab.includes(token)) throw new Error(`Designer Lab regression: missing ${token}`);
 }
 const designerLabPage = fs.readFileSync("src/app/designer-lab/page.tsx","utf8");
