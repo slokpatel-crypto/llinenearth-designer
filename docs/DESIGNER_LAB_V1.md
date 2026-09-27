@@ -72,3 +72,28 @@ These values are stored as append-only `designer_fabric_metadata` operator event
 An `unavailable` physical status removes that fabric from future server-side recommendations. Verified formality/weight/season data replaces the corresponding provisional/unknown rule inputs. If metadata is absent, the engine continues to report uncertainty rather than inventing a value.
 
 The Data Desk deliberately requires live cloud memory before saving because server-side recommendations cannot reuse browser-only calibration data.
+
+
+## Designer QA Desk
+
+A second protected operator route at `/operator/designer-qa` stress-tests the deterministic Designer before production use.
+
+The QA matrix runs every active shirt/trouser anchor through six representative contexts:
+- Business · daytime
+- Smart casual · city
+- Dinner · evening
+- Wedding · hotel
+- Resort · hot weather
+- Festive · evening
+
+It reports:
+- total test cases;
+- average confidence;
+- held/review cases;
+- no-result cases;
+- average number of ranked directions;
+- CR-1 through CR-7 warning pressure;
+- physical-stock / weight / season / formality / drape data coverage;
+- a filterable weak-case table ordered to put held and lowest-confidence cases first.
+
+The QA Desk uses the same calibrated catalogue overlay as the customer-facing recommendation path, so an operator can move directly between `/operator/designer-qa` and `/operator/designer-data` to fix missing facts and rerun the matrix.
