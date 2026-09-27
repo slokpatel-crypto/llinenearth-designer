@@ -302,9 +302,9 @@ function evaluatePair(shirt: FabricColorway, trouser: FabricColorway, brief: Des
   };
 }
 
-export function evaluateStockPairByIds(brief: DesignerBrief, shirtId: string, trouserId: string): StockPairingEvaluation | null {
-  const shirt = FABRIC_STOCK.find((fabric) => fabric.id === shirtId && fabric.inStock && fabric.suitableFor.includes("shirt"));
-  const trouser = FABRIC_STOCK.find((fabric) => fabric.id === trouserId && fabric.inStock && fabric.suitableFor.includes("trouser"));
+export function evaluateStockPairByIds(brief: DesignerBrief, shirtId: string, trouserId: string, stock: FabricColorway[] = FABRIC_STOCK): StockPairingEvaluation | null {
+  const shirt = stock.find((fabric) => fabric.id === shirtId && fabric.inStock && fabric.suitableFor.includes("shirt"));
+  const trouser = stock.find((fabric) => fabric.id === trouserId && fabric.inStock && fabric.suitableFor.includes("trouser"));
   if (!shirt || !trouser) return null;
   return evaluatePair(shirt, trouser, brief);
 }
@@ -325,17 +325,17 @@ export function publicStockPairing(evaluation: StockPairingEvaluation | null): S
   return publicData;
 }
 
-function evaluatedStockPairs(brief: DesignerBrief) {
+function evaluatedStockPairs(brief: DesignerBrief, stock: FabricColorway[] = FABRIC_STOCK) {
   const stockId = brief.fabric.stockId;
   if (!stockId) return [] as StockPairingEvaluation[];
-  const anchor = FABRIC_STOCK.find((fabric) => fabric.id === stockId && fabric.inStock);
+  const anchor = stock.find((fabric) => fabric.id === stockId && fabric.inStock);
   if (!anchor) return [] as StockPairingEvaluation[];
 
   const anchorIsShirt = anchor.suitableFor.includes("shirt");
   const anchorIsTrouser = anchor.suitableFor.includes("trouser");
   if (!anchorIsShirt && !anchorIsTrouser) return [] as StockPairingEvaluation[];
 
-  const opposite = FABRIC_STOCK.filter((fabric) => {
+  const opposite = stock.filter((fabric) => {
     if (!fabric.inStock || fabric.id === anchor.id) return false;
     return anchorIsShirt ? fabric.suitableFor.includes("trouser") : fabric.suitableFor.includes("shirt");
   });
@@ -358,8 +358,8 @@ function hasHighRuleWarning(evaluation: StockPairingEvaluation) {
   return evaluation.rules.some((rule) => rule.status === "warn" && rule.penalty === "high");
 }
 
-export function rankStockPairings(brief: DesignerBrief): StockPairingEvaluation[] {
-  const evaluations = evaluatedStockPairs(brief);
+export function rankStockPairings(brief: DesignerBrief, stock: FabricColorway[] = FABRIC_STOCK): StockPairingEvaluation[] {
+  const evaluations = evaluatedStockPairs(brief,stock);
   if (!evaluations.length) return [];
 
   const eligible = evaluations
@@ -405,12 +405,12 @@ export function rankStockPairings(brief: DesignerBrief): StockPairingEvaluation[
   return chosen;
 }
 
-export function recommendStockPairing(brief: DesignerBrief): StockPairingEvaluation | null {
-  const ranked = rankStockPairings(brief);
+export function recommendStockPairing(brief: DesignerBrief, stock: FabricColorway[] = FABRIC_STOCK): StockPairingEvaluation | null {
+  const ranked = rankStockPairings(brief,stock);
   const elevated = ranked.find((item)=>item.mode === "Elevated");
   if (elevated) return elevated;
   if (ranked[0]) return ranked[0];
 
-  const evaluations = evaluatedStockPairs(brief).sort(baseSort);
+  const evaluations = evaluatedStockPairs(brief,stock).sort(baseSort);
   return evaluations[0] || null;
 }
