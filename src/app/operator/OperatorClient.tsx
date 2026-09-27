@@ -336,6 +336,10 @@ export default function OperatorClient() {
   async function logDesignerReview(decision:"approve"|"wrong"|"safe_fallback") {
     if (!selected || !designerRecommendation || !designerOutput) return;
     const reason = designerReviewReason.trim();
+    if (decision === "safe_fallback" && cloudState !== "live") {
+      setMessage("Cloud memory must be live before a safe fallback can be activated.");
+      return;
+    }
     if (decision === "wrong" && reason.length < 3) {
       setMessage("Add a short reason before flagging this pairing as wrong.");
       return;
@@ -499,9 +503,9 @@ export default function OperatorClient() {
                 <div className="designerReviewActions">
                   <button onClick={()=>void logDesignerReview("approve")} disabled={designerReviewSaving}>Approve pairing</button>
                   <button className="wrong" onClick={()=>void logDesignerReview("wrong")} disabled={designerReviewSaving}>Flag wrong</button>
-                  <button className="fallback" onClick={()=>void logDesignerReview("safe_fallback")} disabled={designerReviewSaving}>Set safe fallback</button>
+                  <button className="fallback" onClick={()=>void logDesignerReview("safe_fallback")} disabled={designerReviewSaving || cloudState !== "live"}>Set safe fallback</button>
                 </div>
-                <small className="designerReviewFoot">Safe fallback approvals only apply to {designerRecommendation.rulesVersion} and this formality band. A newer review supersedes an older one.</small>
+                <small className="designerReviewFoot">Safe fallback approvals only apply to {designerRecommendation.rulesVersion} and this formality band. A newer review supersedes an older one. {cloudState === "live" ? "Cloud memory is live, so approved fallbacks can be reused by the Designer." : "Connect cloud memory before activating a reusable fallback."}</small>
               </div>}
               {selected.measurements && <div className="webMeasurementPassport">
                 <div><small>MEASUREMENT PASSPORT</small><b>{selected.measurements.unit === "cm" ? "CENTIMETRES" : "INCHES"} · {relativeTime(selected.measurements.at)}</b></div>
