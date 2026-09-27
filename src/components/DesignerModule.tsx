@@ -7,7 +7,7 @@ import {
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerRecommendation, type DesignerStyle, type OccasionTier,
 } from "@/lib/designer/engine";
 import { planDesignerDirections, suggestDesignerRepairs, type DesignerDirection } from "@/lib/designer/planner";
-import { DESIGNER_ARCHIVE_IMAGES, DESIGNER_RESEARCH } from "@/lib/designer/research";
+import { DESIGNER_FASHION_FACTS, DESIGNER_RESEARCH } from "@/lib/designer/research";
 import { constructionNotes } from "@/lib/designer/photo-preview";
 import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
 import { PhotoOutfitPreview } from "@/components/PhotoOutfitPreview";
@@ -17,6 +17,7 @@ const CLIMATES: DesignerClimate[] = ["Not specified", "Hot / humid", "Cool", "Ai
 const INTENTIONS: DesignerIntention[] = ["Understated", "Balanced", "Expressive"];
 const SESSION_KEY = "llinen-earth:designer-session:v1";
 const SAVED_KEY = "llinen-earth:designer-saved:v1";
+const FACT_INTERVAL_MS = 15_000;
 type SavedDirection = { shirtId: string; pantId: string; occasion: OccasionTier; style: DesignerStyle };
 
 const MAIN_DETAILS = [
@@ -67,6 +68,9 @@ export function DesignerModule() {
   const [recommendationId, setRecommendationId] = useState<string | null>(null);
   const [response, setResponse] = useState<"up" | "down" | "saved" | null>(null);
   const [saved, setSaved] = useState<SavedDirection[]>([]);
+  const [factIndex, setFactIndex] = useState(0);
+  const [factPlaying, setFactPlaying] = useState(true);
+  const fact = DESIGNER_FASHION_FACTS[factIndex];
   const shirt = useMemo(() => DESIGNER_SHIRTS.find((item) => item.id === shirtId), [shirtId]);
   const pant = useMemo(() => DESIGNER_PANTS.find((item) => item.id === pantId), [pantId]);
 
@@ -80,6 +84,20 @@ export function DesignerModule() {
       ).slice(0, 30).map((item) => ({ ...item, style: safeStyle(item.style, item.occasion) })));
     } catch { /* Saved looks are optional. */ }
   }, []);
+
+  useEffect(() => {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (reducedMotion.matches) setFactPlaying(false);
+    const handleMotionPreference = (event: MediaQueryListEvent) => setFactPlaying(!event.matches);
+    reducedMotion.addEventListener("change", handleMotionPreference);
+    return () => reducedMotion.removeEventListener("change", handleMotionPreference);
+  }, []);
+
+  useEffect(() => {
+    if (!factPlaying) return;
+    const timer = window.setTimeout(() => setFactIndex((index) => (index + 1) % DESIGNER_FASHION_FACTS.length), FACT_INTERVAL_MS);
+    return () => window.clearTimeout(timer);
+  }, [factIndex, factPlaying]);
 
   function assess(nextStyle: DesignerStyle = style) {
     if (!shirt || !pant) return;
@@ -262,9 +280,25 @@ export function DesignerModule() {
       </div>
     </div>
     <section className="newDesignerNotebook" aria-labelledby="designerNotebook">
-      <div className="newDesignerNotebookHead"><span>FROM THE DESIGN DESK / SOURCES</span><h2 id="designerNotebook">An eye informed by history. <em>A judgment grounded in cloth.</em></h2><p>Museum garments, costume design and runway thinking broaden the questions we ask. They never certify a photographed swatch or replace your own taste.</p></div>
+      <div className="newDesignerNotebookHead"><span>FROM THE DESIGN DESK / SOURCES</span><h2 id="designerNotebook">An eye informed by history. <em>A judgment grounded in cloth.</em></h2><p>A new fashion thought every 15 seconds. Explore how colour, movement and fabric shape a look, then return to your own cloth and occasion.</p></div>
       <div className="newDesignerNotebookBody">
-        <figure className="newDesignerNotebookImage"><img src={DESIGNER_ARCHIVE_IMAGES[1].image} alt="Public domain museum photograph of an embroidered eighteenth-century silk and linen waistcoat" loading="lazy" /><figcaption><a href={DESIGNER_ARCHIVE_IMAGES[1].source} target="_blank" rel="noopener noreferrer">{DESIGNER_ARCHIVE_IMAGES[1].title}</a><span>{DESIGNER_ARCHIVE_IMAGES[1].credit} · Archive reference, never a stock item</span></figcaption></figure>
+        <section className="newDesignerFactCard" aria-label="Rotating fashion facts" aria-live="off">
+          <div className="newDesignerFactTop"><span>FASHION NOTE / 15 SEC</span><span>{String(factIndex + 1).padStart(2, "0")} / {String(DESIGNER_FASHION_FACTS.length).padStart(2, "0")}</span></div>
+          <div className="newDesignerFactCopy" key={factIndex}>
+            <span className="newDesignerFactCategory">{fact.category}</span>
+            <h3>{fact.title}</h3>
+            <p>{fact.detail}</p>
+            <a href={fact.url} target="_blank" rel="noopener noreferrer">Read the source · {fact.source} ↗</a>
+          </div>
+          <nav className="newDesignerFactControls" aria-label="Fashion fact controls">
+            <div className="newDesignerFactDots">{DESIGNER_FASHION_FACTS.map((item, index) => <button key={item.title} type="button" aria-label={`Show fact ${index + 1}: ${item.title}`} aria-pressed={index === factIndex} onClick={() => setFactIndex(index)} />)}</div>
+            <div className="newDesignerFactButtons">
+              <button type="button" aria-label="Previous fashion fact" onClick={() => setFactIndex((index) => (index - 1 + DESIGNER_FASHION_FACTS.length) % DESIGNER_FASHION_FACTS.length)}>←</button>
+              <button type="button" aria-label="Next fashion fact" onClick={() => setFactIndex((index) => (index + 1) % DESIGNER_FASHION_FACTS.length)}>→</button>
+              <button type="button" aria-label={factPlaying ? "Pause automatic fashion facts" : "Resume automatic fashion facts"} aria-pressed={!factPlaying} onClick={() => setFactPlaying((playing) => !playing)}>{factPlaying ? "Pause" : "Resume"}</button>
+            </div>
+          </nav>
+        </section>
         <div className="newDesignerResearchList">{DESIGNER_RESEARCH.map((item, index) => <article key={item.url}><span>0{index + 1} / {item.kind}</span><h3><a href={item.url} target="_blank" rel="noopener noreferrer">{item.title} ↗</a></h3><p>{item.lesson}</p><small>{item.publisher}</small></article>)}</div>
       </div>
     </section>

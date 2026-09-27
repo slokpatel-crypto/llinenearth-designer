@@ -28,17 +28,37 @@ export const DESIGNER_RESEARCH = [
   },
 ] as const;
 
-// The Met marks each linked object Public Domain and releases its Open Access
-// images under CC0. These are editorial references, not LLinen Earth stock.
-export const DESIGNER_ARCHIVE_IMAGES = [
+// Short, attributed notes for the rotating design-desk panel. These are
+// editorial facts, not claims about LLinen Earth stock or fabric performance.
+export const DESIGNER_FASHION_FACTS = [
   {
-    title: "Suit, American, ca. 1880", medium: "Wool and linen",
-    image: "https://collectionapi.metmuseum.org/api/collection/v1/iiif/82456/343668/main-image",
-    source: "https://www.metmuseum.org/art/collection/search/82456", credit: "The Metropolitan Museum of Art · CC0",
+    category: "COLOUR / HISTORY", title: "Pink once signalled power.",
+    detail: "In 1700s Europe, men wore pink as a sign of wealth and status. The meaning of a colour changes with its time and place.",
+    source: "V&A · Colour in menswear", url: "https://www.vam.ac.uk/articles/in-the-pink-colour-in-menswear",
   },
   {
-    title: "Waistcoat, European, late 18th century", medium: "Silk and linen",
-    image: "https://collectionapi.metmuseum.org/api/collection/v1/iiif/83317/316995/main-image",
-    source: "https://www.metmuseum.org/art/collection/search/83317", credit: "The Metropolitan Museum of Art · CC0",
+    category: "COLOUR / SOUTH ASIA", title: "Pink was never just one thing.",
+    detail: "In South Asia, pink has remained a unisex colour; the V&A records a richly coloured courtly angarkha as one example.",
+    source: "V&A · Colour in menswear", url: "https://www.vam.ac.uk/articles/in-the-pink-colour-in-menswear",
+  },
+  {
+    category: "MENSWEAR / TIME", title: "Colour keeps coming back.",
+    detail: "After a relatively restrained period in nineteenth-century menswear, vivid colour returned in the 1960s and 1970s.",
+    source: "V&A · Colour in menswear", url: "https://www.vam.ac.uk/articles/in-the-pink-colour-in-menswear",
+  },
+  {
+    category: "SILHOUETTE / MOVEMENT", title: "A silhouette can move.",
+    detail: "For a 2025 Homme Plissé collection, Issey Miyake designed volume that shifts with the air and with how a garment is fastened.",
+    source: "Issey Miyake · Spring Summer 2025", url: "https://eu.isseymiyake.com/blogs/news/17671",
+  },
+  {
+    category: "FABRIC / AIRFLOW", title: "Breathability has a test.",
+    detail: "Air permeability can be measured with a textile test. A photo of a swatch alone cannot tell us how air passes through it.",
+    source: "ISO · 9237 air permeability", url: "https://www.iso.org/standard/16869.html",
+  },
+  {
+    category: "COLOUR / VIEWING", title: "Screens change the read.",
+    detail: "Even comparing two digital colours depends on viewing conditions. Confirm the physical cloth before making a final colour call.",
+    source: "CIE · Colour differences in images", url: "https://cie.co.at/publications/methods-evaluating-colour-differences-images",
   },
 ] as const;
