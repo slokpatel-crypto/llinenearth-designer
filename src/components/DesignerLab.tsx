@@ -104,7 +104,7 @@ export function DesignerLab() {
     };
 
     try {
-      const response = await fetch("/api/designer/generate",{
+      const response = await fetch("/api/designer-lab/generate",{
         method:"POST",
         headers:{"content-type":"application/json"},
         body:JSON.stringify(brief),
