@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { DesignerBrief } from "@/lib/designer-types";
+import { FABRIC_STOCK, type FabricColorway } from "@/lib/fabric-stock";
 import {
   approveHumanFallback,
   evaluateStockPairByIds,
@@ -25,6 +26,7 @@ function hasBlockingRule(evaluation: StockPairingEvaluation) {
 export async function findApprovedSafeFallback(
   brief: DesignerBrief,
   primary: StockPairingEvaluation | null,
+  stock: FabricColorway[] = FABRIC_STOCK,
 ): Promise<StockPairingEvaluation | null> {
   if (!primary?.needsHumanFallback) return null;
 
@@ -73,7 +75,7 @@ export async function findApprovedSafeFallback(
       const trouserId = safe(payload.trouserId, 140);
       if (!shirtId || !trouserId) continue;
 
-      const evaluation = evaluateStockPairByIds(brief, shirtId, trouserId);
+      const evaluation = evaluateStockPairByIds(brief, shirtId, trouserId,stock);
       if (!evaluation || hasBlockingRule(evaluation)) continue;
       approved.push(approveHumanFallback(evaluation));
     }
