@@ -274,7 +274,11 @@ export default function OperatorClient() {
   const totals = usingBridge ? (bridge?.totals || local.totals) : usingCloud ? (cloud?.totals || local.totals) : local.totals;
   const counts = usingBridge ? (bridge?.counts || local.counts) : usingCloud ? (cloud?.counts || local.counts) : local.counts;
   const recordSource = usingBridge ? "LOCAL PC VAULT" : usingCloud ? "CLOUD MEMORY" : "THIS BROWSER";
-  const selected = sessions.find((s)=>s.sessionId===selectedId) || sessions[0] || null;
+  const selected = sessions.find((s)=>s.sessionId===selectedId)
+    || (cloud?.sessions || []).find((s)=>s.sessionId===selectedId)
+    || sessions[0]
+    || cloud?.sessions?.[0]
+    || null;
   const cloudSelected = selected ? (cloud?.sessions || []).find((session)=>session.sessionId===selected.sessionId) || null : null;
   const designerReviewSession = cloudSelected || selected;
   const designerRecommendation = phase1Recommendation(designerReviewSession);
@@ -290,6 +294,21 @@ export default function OperatorClient() {
     const sale = session.events.some((event)=>event.type==="sale_logged");
     return whatsapp && !sale;
   }).slice(0,5);
+
+  const designerReviewSessions = (cloud?.sessions?.length ? cloud.sessions : sessions);
+  const designerReviewQueue = designerReviewSessions.map((session)=>{
+    const recommendation = phase1Recommendation(session);
+    const output = recommendation?.output || null;
+    const review = latestDesignerReview(session,output?.pairingId || "");
+    return {session,recommendation,output,review};
+  }).filter((item)=>item.output && (!item.review || item.output.needsHumanFallback))
+    .sort((a,b)=>{
+      const aNeeds = a.output?.needsHumanFallback ? 0 : 1;
+      const bNeeds = b.output?.needsHumanFallback ? 0 : 1;
+      if (aNeeds !== bNeeds) return aNeeds-bNeeds;
+      return Number(a.output?.confidenceScore || 0)-Number(b.output?.confidenceScore || 0);
+    })
+    .slice(0,8);
 
   async function logOutcome(type:"visit_logged"|"sale_logged") {
     if (!selected) return;
@@ -416,6 +435,20 @@ export default function OperatorClient() {
                 <i>!</i><div><strong>{session.customer?.name || label(session.answers.occasion)} · {label(session.answers.mood)}</strong><small>{session.selectedLook?.fabric ? String(session.selectedLook.fabric) : "Look selected"} · {session.leadStatus ? session.leadStatus.replaceAll("-"," ") + " · " : ""}WhatsApp clicked · no sale logged</small></div><span>{relativeTime(session.lastAt)} ↗</span>
               </button>)}
             </div> : <div className="empty"><b>No follow-up signals yet.</b><span>When a customer clicks WhatsApp but no sale is recorded, they appear here.</span></div>}
+          </article>
+
+          <article className="panel designerQueuePanel">
+            <div className="panelHead"><div><small>DESIGNER REVIEW QUEUE</small><h2>Pairings that need your eye.</h2></div><span>{designerReviewQueue.length} open</span></div>
+            {designerReviewQueue.length ? <div className="designerQueueList">
+              {designerReviewQueue.map(({session,output})=><button key={`${session.sessionId}:${output?.pairingId}`} onClick={()=>setSelectedId(session.sessionId)}>
+                <i>{output?.needsHumanFallback ? "!" : "?"}</i>
+                <div>
+                  <strong>{output?.shirtName || output?.shirtId} + {output?.trouserName || output?.trouserId}</strong>
+                  <small>{output?.occasionBand} · {output?.relationship} · {output?.confidenceScore}/100</small>
+                </div>
+                <span>{output?.needsHumanFallback ? "Needs fallback" : "Unreviewed"} ↗</span>
+              </button>)}
+            </div> : <div className="empty"><b>No designer reviews waiting.</b><span>Low-confidence or unreviewed Phase-1 pairings will appear here automatically.</span></div>}
           </article>
 
           <article className="panel">
