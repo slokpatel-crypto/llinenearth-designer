@@ -38,6 +38,7 @@ export type StockPairingPublic = {
 export type StockPairingEvaluation = StockPairingPublic & {
   rules: ComboRuleResult[];
   reasoningText: string;
+  brandAffinity: number;
   provisionalTasteModel: true;
 };
 
@@ -159,6 +160,35 @@ function colorRule(shirt: FabricColorway, trouser: FabricColorway) {
   };
 }
 
+function brandSeedAffinity(shirt: FabricColorway, trouser: FabricColorway) {
+  const shirtColor = hsl(shirt.hex);
+  const trouserColor = hsl(trouser.hex);
+  const shirtName = shirt.colorName.toLowerCase();
+  const trouserName = trouser.colorName.toLowerCase();
+  const shirtPattern = patternScale(shirt.pattern);
+
+  const lightBlueShirt = (
+    (shirtColor.h >= 185 && shirtColor.h <= 235 && shirtColor.l >= 0.42)
+    || /sky blue|chambray|pale blue|light blue/.test(shirtName)
+  );
+  const whiteEcruShirt = /white|offwhite|cream|ecru/.test(shirtName) || (shirtColor.s < 0.12 && shirtColor.l > 0.72);
+  const warmLightTrouser = /cream|beige|taupe|stone|oak|tobacco|brown/.test(trouserName)
+    || (trouserColor.s < 0.25 && trouserColor.l > 0.52);
+  const darkNeutralTrouser = /charcoal|dark grey|dark gray|slate/.test(trouserName)
+    || (trouserColor.s < 0.16 && trouserColor.l < 0.5);
+  const oliveTrouser = /olive|khaki|khakhi/.test(trouserName)
+    || (trouserColor.h >= 65 && trouserColor.h <= 115 && trouserColor.s >= 0.12 && trouserColor.s <= 0.5);
+
+  if (lightBlueShirt && warmLightTrouser) return 10;
+  if (lightBlueShirt && darkNeutralTrouser) return 8;
+  if (oliveTrouser && whiteEcruShirt) return 10;
+  if (oliveTrouser && lightBlueShirt) return 9;
+  if (oliveTrouser && shirtPattern === "fine") return 7;
+  if (isNeutral(shirtColor) || isNeutral(trouserColor)) return 5;
+  if (hueDistance(shirtColor.h,trouserColor.h) <= 34) return 4;
+  return 3;
+}
+
 function customerReason(relationship: string, shirt: FabricColorway, trouser: FabricColorway) {
   const shirtScale = patternScale(shirt.pattern);
   if (shirtScale === "bold") {
@@ -231,7 +261,8 @@ function evaluatePair(shirt: FabricColorway, trouser: FabricColorway, brief: Des
   const confidenceScore = clamp(100 - ruleDeduction - dataDeduction);
   const forced = confidenceScore >= LOW_CONFIDENCE_THRESHOLD;
   const id = `PAIR-${shirt.id}--${trouser.id}--${SHIRT_PANT_RULESET_VERSION}`;
-  const reasoningText = rules.map((rule) => `${rule.id} ${rule.status.toUpperCase()}: ${rule.reason}`).join(" ");
+  const brandAffinity = brandSeedAffinity(shirt,trouser);
+  const reasoningText = `${rules.map((rule) => `${rule.id} ${rule.status.toUpperCase()}: ${rule.reason}`).join(" ")} BRAND-SEED: ${brandAffinity}/10 soft affinity.`;
 
   return {
     id,
@@ -264,6 +295,7 @@ function evaluatePair(shirt: FabricColorway, trouser: FabricColorway, brief: Des
     ],
     rules,
     reasoningText,
+    brandAffinity,
     provisionalTasteModel: true,
   };
 }
@@ -287,7 +319,7 @@ export function approveHumanFallback(evaluation: StockPairingEvaluation): StockP
 
 export function publicStockPairing(evaluation: StockPairingEvaluation | null): StockPairingPublic | null {
   if (!evaluation) return null;
-  const { rules: _rules, reasoningText: _reasoningText, provisionalTasteModel: _provisionalTasteModel, ...publicData } = evaluation;
+  const { rules: _rules, reasoningText: _reasoningText, brandAffinity: _brandAffinity, provisionalTasteModel: _provisionalTasteModel, ...publicData } = evaluation;
   return publicData;
 }
 
@@ -312,6 +344,7 @@ export function recommendStockPairing(brief: DesignerBrief): StockPairingEvaluat
 
   evaluations.sort((a, b) => {
     if (b.confidenceScore !== a.confidenceScore) return b.confidenceScore - a.confidenceScore;
+    if (b.brandAffinity !== a.brandAffinity) return b.brandAffinity - a.brandAffinity;
     const aPattern = patternScale(a.shirt.pattern) === "solid" ? 1 : 0;
     const bPattern = patternScale(b.shirt.pattern) === "solid" ? 1 : 0;
     if (bPattern !== aPattern) return bPattern - aPattern;
