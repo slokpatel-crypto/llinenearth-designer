@@ -415,7 +415,7 @@ export default function OperatorClient() {
         <div className="operatorStatus">
           <span className={bridgeState==="paired"?"live":""}><i/>{bridgeState==="paired"?"LOCAL VAULT PAIRED":"LOCAL VAULT NOT PAIRED"}</span>
           <span className={cloudState==="live"?"live":""}><i className={cloudState==="live"?"":"amber"}/>{cloudState==="live"?"CLOUD MEMORY LIVE":cloudState==="unconfigured"?"CLOUD NOT CONFIGURED":cloudState==="error"?"CLOUD ERROR":"CHECKING CLOUD"}</span>
-          <a className="operatorLogout" href="/operator/designer-qa">DESIGNER QA</a><a className="operatorLogout" href="/operator/designer-data">DESIGNER DATA</a><button className="operatorLogout" onClick={logout} disabled={loggingOut}>{loggingOut?"SIGNING OUT…":"SIGN OUT"}</button>
+          <a className="operatorLogout" href="/operator/designer-insights">DESIGNER EVIDENCE</a><a className="operatorLogout" href="/operator/designer-qa">DESIGNER QA</a><a className="operatorLogout" href="/operator/designer-data">DESIGNER DATA</a><button className="operatorLogout" onClick={logout} disabled={loggingOut}>{loggingOut?"SIGNING OUT…":"SIGN OUT"}</button>
         </div>
       </header>
 
