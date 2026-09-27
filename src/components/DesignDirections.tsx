@@ -4,8 +4,9 @@ import { useState } from "react";
 import type { DesignCandidate } from "@/lib/designer-engine";
 import type { DesignerBrief } from "@/lib/designer-types";
 import { measurementCoverage } from "@/lib/measurements";
+import type { StockPairingPublic } from "@/lib/shirt-pant-designer";
 
-export function DesignDirections({ brief, candidates, onEditContext, onRefine }: { brief: DesignerBrief; candidates: DesignCandidate[]; onEditContext: () => void; onRefine: (candidate: DesignCandidate) => void }) {
+export function DesignDirections({ brief, candidates, stockPairing, onEditContext, onRefine }: { brief: DesignerBrief; candidates: DesignCandidate[]; stockPairing?: StockPairingPublic | null; onEditContext: () => void; onRefine: (candidate: DesignCandidate) => void }) {
   const [selectedId, setSelectedId] = useState(candidates.find((x) => x.tier === "Elevated")?.id || candidates[0]?.id);
   const selected = candidates.find((x) => x.id === selectedId) || candidates[0];
   const coverage = measurementCoverage(brief.measurements);
@@ -16,6 +17,29 @@ export function DesignDirections({ brief, candidates, onEditContext, onRefine }:
         <div><p className="eyebrow">DESIGNER ENGINE · FABRIC + OCCASION + FIT INTELLIGENCE</p><h1>Three ways forward.</h1></div>
         <div className="directionBrief"><span>{brief.context.occasion}</span><i>·</i><span>{brief.context.venue}</span><i>·</i><span>{brief.context.aesthetic}</span>{coverage.total > 0 && <><i>·</i><span>{coverage.total}/16 measurements</span></>}<button onClick={onEditContext}>Edit brief</button></div>
       </div>
+
+      {stockPairing && <section className={`stockPairingPanel ${stockPairing.forced ? "ready" : "review"}`}>
+        <div className="stockPairingHead">
+          <div><p className="eyebrow">PHASE 1 · REAL LLINEN EARTH STOCK</p><h2>{stockPairing.forced ? "A grounded shirt–trouser pairing." : "A possible pairing — held for review."}</h2></div>
+          <div className="stockPairingScore"><strong>{stockPairing.confidenceScore}</strong><span>/100 confidence</span></div>
+        </div>
+        <div className="stockPairingPieces">
+          <article>
+            <img src={stockPairing.shirt.swatchImageUrl} alt={`${stockPairing.shirt.colorName} shirt fabric`} />
+            <div><span>SHIRT</span><strong>{stockPairing.shirt.colorName}</strong><small>{stockPairing.shirt.line} · {stockPairing.shirt.pattern}</small></div>
+          </article>
+          <i aria-hidden="true">+</i>
+          <article>
+            <img src={stockPairing.trouser.swatchImageUrl} alt={`${stockPairing.trouser.colorName} trouser fabric`} />
+            <div><span>TROUSER</span><strong>{stockPairing.trouser.colorName}</strong><small>{stockPairing.trouser.line} · {stockPairing.trouser.pattern}</small></div>
+          </article>
+        </div>
+        <div className="stockPairingReason">
+          <span>{stockPairing.occasionBand} · {stockPairing.relationship}</span>
+          <p>{stockPairing.forced ? stockPairing.customerReason : "The rules found a candidate, but the confidence is below the safe threshold. No combination is being forced until LLinen Earth approves the fallback choice."}</p>
+          <small>Rule set {stockPairing.rulesVersion} · taste defaults remain provisional until your styling sheet is approved.</small>
+        </div>
+      </section>}
 
       <div className="directionGrid">
         {candidates.map((candidate) => {
