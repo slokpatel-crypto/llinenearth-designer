@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { DesignCandidate } from "@/lib/designer-engine";
 import type { DesignerBrief } from "@/lib/designer-types";
 import { finalizeVersion, initialVersion, nextVersion, type DesignVersion, type LockableField, type RefinementResult } from "@/lib/refinement-engine";
+import type { StockPairingPublic } from "@/lib/shirt-pant-designer";
 
 const FIELDS: { key: LockableField; label: string }[] = [
   { key: "shirt", label: "Shirt" }, { key: "trouser", label: "Trouser" }, { key: "layer", label: "Layer" },
@@ -17,9 +18,9 @@ function fieldValue(candidate: DesignCandidate, field: LockableField) {
   return candidate.garments[field];
 }
 
-export function RefinementWorkspace({ brief, initialCandidate, candidates, onBack, onVisualize }: { brief: DesignerBrief; initialCandidate: DesignCandidate; candidates: DesignCandidate[]; onBack: () => void; onVisualize: (version: DesignVersion) => void }) {
-  const storageKey = `llinen-earth-refinement-${initialCandidate.id}`;
-  const [versions, setVersions] = useState<DesignVersion[]>([initialVersion(initialCandidate)]);
+export function RefinementWorkspace({ brief, initialCandidate, candidates, stockPairing, onBack, onVisualize }: { brief: DesignerBrief; initialCandidate: DesignCandidate; candidates: DesignCandidate[]; stockPairing?: StockPairingPublic | null; onBack: () => void; onVisualize: (version: DesignVersion) => void }) {
+  const storageKey = `llinen-earth-refinement-${initialCandidate.id}-${stockPairing?.id || "no-stock-pair"}`;
+  const [versions, setVersions] = useState<DesignVersion[]>([initialVersion(initialCandidate,stockPairing || undefined)]);
   const [index, setIndex] = useState(0);
   const [locks, setLocks] = useState<LockableField[]>([]);
   const [instruction, setInstruction] = useState("");
@@ -116,6 +117,13 @@ export function RefinementWorkspace({ brief, initialCandidate, candidates, onBac
         <div className="specPanel">
           <div className="specHead"><div><span className="micro">CURRENT VERSION · {current.id}</span><h2>{current.candidate.name}</h2></div><div className="directionScore"><strong>{current.candidate.scores.total}</strong><span>/100</span></div></div>
           <p className="directionConcept">{current.candidate.concept}</p>
+          {current.stockPairing && <div className="refineStockLock">
+            <div><span className="micro">REAL STOCK PAIR · LOCKED TO THIS DESIGN</span><strong>{current.stockPairing.mode || "Direction"} · {current.stockPairing.shirt.colorName} + {current.stockPairing.trouser.colorName}</strong><p>{current.stockPairing.customerReason}</p></div>
+            <div className="refineStockSwatches">
+              <span><img src={current.stockPairing.shirt.swatchImageUrl} alt="" /><b>Shirt</b><em>{current.stockPairing.shirt.colorName}</em></span>
+              <span><img src={current.stockPairing.trouser.swatchImageUrl} alt="" /><b>Trouser</b><em>{current.stockPairing.trouser.colorName}</em></span>
+            </div>
+          </div>}
 
           <div className="lockedSpec">
             {FIELDS.map(({ key, label }) => {
