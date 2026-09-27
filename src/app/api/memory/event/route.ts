@@ -87,6 +87,7 @@ function cleanPayload(type:string, input:unknown) {
         occasionBand,
         rulesVersion,
         confidenceScore: Math.max(0,Math.min(100,Number(payload.confidenceScore || 0) || 0)),
+        mode: text(payload.mode,40),
         reason: text(payload.reason,500),
         note: text(payload.note,1000),
       };
