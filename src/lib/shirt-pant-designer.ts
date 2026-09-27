@@ -43,7 +43,7 @@ export type StockPairingEvaluation = StockPairingPublic & {
   rules: ComboRuleResult[];
   reasoningText: string;
   brandAffinity: number;
-  provisionalTasteModel: true;
+  provisionalTasteModel: boolean;
 };
 
 type Hsl = { h: number; s: number; l: number };
@@ -174,8 +174,9 @@ function customerReason(relationship: string, shirt: FabricColorway, trouser: Fa
 
 function evaluatePair(shirt: FabricColorway, trouser: FabricColorway, brief: DesignerBrief): StockPairingEvaluation {
   const band = occasionBand(brief);
-  const shirtFormality = provisionalFormality(shirt);
-  const trouserFormality = provisionalFormality(trouser);
+  const shirtFormality = shirt.formalityScore ?? provisionalFormality(shirt);
+  const trouserFormality = trouser.formalityScore ?? provisionalFormality(trouser);
+  const provisionalFormalityUsed = shirt.formalityScore == null || trouser.formalityScore == null;
   const delta = Math.abs(shirtFormality - trouserFormality);
   const formalBand = band === "Semi-Formal" || band === "Formal" || band === "Formal-Event";
   const maxDelta = formalBand ? 1 : 2;
@@ -183,20 +184,30 @@ function evaluatePair(shirt: FabricColorway, trouser: FabricColorway, brief: Des
   const rules: ComboRuleResult[] = [];
   rules.push(
     delta <= maxDelta
-      ? result("CR-1", "Formality alignment", "pass", "none", `Provisional formality delta is ${delta.toFixed(1)}, within the ${maxDelta.toFixed(1)} limit for ${band}.`)
-      : result("CR-1", "Formality alignment", "warn", "high", `Provisional formality delta is ${delta.toFixed(1)}, above the ${maxDelta.toFixed(1)} limit for ${band}.`),
+      ? result("CR-1", "Formality alignment", "pass", "none", `${provisionalFormalityUsed ? "Current/provisional" : "Approved"} formality delta is ${delta.toFixed(1)}, within the ${maxDelta.toFixed(1)} limit for ${band}.`)
+      : result("CR-1", "Formality alignment", "warn", "high", `${provisionalFormalityUsed ? "Current/provisional" : "Approved"} formality delta is ${delta.toFixed(1)}, above the ${maxDelta.toFixed(1)} limit for ${band}.`),
   );
 
   const color = colorRule(shirt, trouser);
   rules.push(color.rule);
 
-  rules.push(result(
-    "CR-3",
-    "Weight matching",
-    "unknown",
-    "medium",
-    "Exact GSM / weight class is not supplied for these catalogue swatches, so the engine will not invent a weight verdict.",
-  ));
+  if (shirt.weightClass && trouser.weightClass) {
+    const weightIndex = {Light:0,Medium:1,Heavy:2} as const;
+    const weightDelta = Math.abs(weightIndex[shirt.weightClass]-weightIndex[trouser.weightClass]);
+    rules.push(
+      weightDelta <= 1
+        ? result("CR-3","Weight matching","pass","none",`Recorded weight classes are ${shirt.weightClass} and ${trouser.weightClass}, within one class.`)
+        : result("CR-3","Weight matching","warn","medium",`Recorded weight classes are ${shirt.weightClass} and ${trouser.weightClass}, creating a two-class seasonal/visual gap.`)
+    );
+  } else {
+    rules.push(result(
+      "CR-3",
+      "Weight matching",
+      "unknown",
+      "medium",
+      "Exact GSM / weight class is not supplied for both catalogue swatches, so the engine will not invent a weight verdict.",
+    ));
+  }
 
   const shirtPattern = patternScale(shirt.pattern);
   const trouserPattern = patternScale(trouser.pattern);
@@ -207,12 +218,20 @@ function evaluatePair(shirt: FabricColorway, trouser: FabricColorway, brief: Des
       : result("CR-4", "Pattern load", "pass", "none", "At most one piece carries a medium-or-strong pattern, so visual hierarchy stays clear."),
   );
 
-  const sameFamily = shirt.family.toLowerCase() === trouser.family.toLowerCase();
-  rules.push(
-    sameFamily
-      ? result("CR-5", "Season consistency", "pass", "none", "Both catalogue pieces share the same linen family; exact seasonal weight still needs physical-stock confirmation.")
-      : result("CR-5", "Season consistency", "unknown", "low", "Season overlap cannot be verified from the current catalogue metadata."),
-  );
+  const shirtSeasons = shirt.seasonTags || [];
+  const trouserSeasons = trouser.seasonTags || [];
+  if (shirtSeasons.length && trouserSeasons.length) {
+    const overlap = shirtSeasons.includes("All-season")
+      || trouserSeasons.includes("All-season")
+      || shirtSeasons.some((season)=>trouserSeasons.includes(season));
+    rules.push(
+      overlap
+        ? result("CR-5","Season consistency","pass","none","Recorded season tags overlap for the shirt and trouser.")
+        : result("CR-5","Season consistency","warn","low","Recorded season tags do not overlap; use only when the context intentionally explains the seasonal contrast.")
+    );
+  } else {
+    rules.push(result("CR-5","Season consistency","unknown","low","Season tags are not recorded for both catalogue swatches, so seasonal consistency remains unverified."));
+  }
 
   rules.push(result(
     "CR-6",
@@ -271,13 +290,15 @@ function evaluatePair(shirt: FabricColorway, trouser: FabricColorway, brief: Des
     forced,
     needsHumanFallback: !forced,
     dataWarnings: [
-      "Formality values are provisional LLinen Earth defaults until the taste sheet is approved.",
-      "Exact GSM / weight and button metadata are not yet present in the catalogue records.",
+      ...(provisionalFormalityUsed ? ["Formality uses current LLinen Earth provisional defaults until approved per-stock values are supplied."] : []),
+      ...(!shirt.weightClass || !trouser.weightClass ? ["Exact GSM / weight class is still missing for one or both catalogue swatches."] : []),
+      ...(!shirt.seasonTags?.length || !trouser.seasonTags?.length ? ["Season tags are still missing for one or both catalogue swatches."] : []),
+      "Button / trim metadata is garment-level and is not yet attached to this stock pairing.",
     ],
     rules,
     reasoningText,
     brandAffinity,
-    provisionalTasteModel: true,
+    provisionalTasteModel: provisionalFormalityUsed,
   };
 }
 
