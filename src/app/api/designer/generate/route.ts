@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { generateDesignerDirections } from "@/lib/designer-engine";
 import type { DesignerBrief } from "@/lib/designer-types";
 import { recordPhase1Recommendation } from "@/lib/designer-telemetry";
+import { findApprovedSafeFallback } from "@/lib/designer-safe-fallback";
 import {
   publicStockPairing,
   recommendStockPairing,
@@ -16,7 +17,9 @@ export async function POST(request: Request) {
     }
 
     const candidates = generateDesignerDirections(brief);
-    const stockEvaluation = recommendStockPairing(brief);
+    const primaryStockEvaluation = recommendStockPairing(brief);
+    const approvedFallback = await findApprovedSafeFallback(brief, primaryStockEvaluation);
+    const stockEvaluation = approvedFallback || primaryStockEvaluation;
     const telemetry = await recordPhase1Recommendation(brief, stockEvaluation);
 
     return NextResponse.json({
