@@ -28,6 +28,7 @@ for (const path of [
   "src/app/page.tsx",
   "src/app/api/homepage-model/route.ts",
   "src/components/MeasurementStudio.tsx",
+  "src/lib/designer/tailor-observations.ts",
   "src/app/measurements/page.tsx",
   "src/app/real-model/page.tsx",
   "public/designer/studio-tucked.webp",
@@ -137,6 +138,10 @@ requireTokens("src/lib/designer/fit-outcomes.ts", ["designer-fit-outcomes-v1","a
 requireTokens("src/app/api/designer/casebook/route.ts", ["aggregateFitOutcomes","fitOutcomes"]);
 requireTokens("src/app/operator/OperatorClient.tsx", ["FIRST-FITTING OUTCOME","designer_fit_outcome","saveFitOutcome"]);
 requireTokens("src/lib/designer/search.ts", ["fitOutcomeSignalFor","Reviewed first-fit"]);
+requireTokens("src/lib/designer/tailor-observations.ts", ["linen-earth-tailor-observations-v1","ShoulderBalance","PostureBalance","SeatBalance"]);
+requireTokens("src/components/MeasurementStudio.tsx", ["OPTIONAL / TAILOR OBSERVATIONS","MANUAL INPUT ONLY","TAILOR_OBSERVATION_STORAGE_KEY"]);
+requireTokens("src/lib/designer/fit-construction.ts", ["OBS-SHOULDER-SLOPING","OBS-POSTURE-FORWARD","OBS-SEAT-FULL","OBS-MOBILITY"]);
+requireTokens("src/components/DesignerModule.tsx", ["tailorObservationSummary","newDesignerTailorObservations","observations:tailorObservations"]);
 requireTokens("src/app/api/homepage-model/route.ts", [
   "FASHN_API_KEY",
   "model-create",
