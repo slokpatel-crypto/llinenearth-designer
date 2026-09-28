@@ -391,7 +391,6 @@ function drawCreativePattern(
 
 function drawCreativeDetails(
   target:CanvasRenderingContext2D,
-  photo:HTMLImageElement,
   creative:CreativePreviewSpec|undefined,
   tucked:boolean,
   shirtMask?:HTMLCanvasElement,
@@ -497,7 +496,7 @@ export function composePhotoOutfit(
     drawCreativePattern(context,creative,PHOTO_TUCKED_SHIRT_BODY_CLIP,masks.shirt);
     drawCreativePattern(context,creative,PHOTO_TUCKED_LEFT_SLEEVE_CLIP,masks.shirt);
     drawCreativePattern(context,creative,PHOTO_TUCKED_RIGHT_SLEEVE_CLIP,masks.shirt);
-    drawCreativeDetails(context,modelPhoto,creative,true,masks.shirt);
+    drawCreativeDetails(context,creative,true,masks.shirt);
 
     if (style.collarFinish === "Self-fabric") {
       drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined, "grayscale(1) brightness(3.05) contrast(.94)");
@@ -515,7 +514,7 @@ export function composePhotoOutfit(
     drawGarment(context, trouserPhoto, pantImage, pant, "", trouserMask);
     drawGarment(context, modelPhoto, shirtImage, shirt, "", shirtMask);
     drawCreativePattern(context,creative,"",shirtMask);
-    drawCreativeDetails(context,modelPhoto,creative,false,shirtMask);
+    drawCreativeDetails(context,creative,false,shirtMask);
     if (style.collarFinish !== "Self-fabric") drawWhiteDetail(context, modelPhoto, PHOTO_COLLAR_MASK);
     if (style.collarFinish === "White contrast collar + cuffs") drawWhiteDetail(context, modelPhoto, PHOTO_CUFF_MASK);
   }
