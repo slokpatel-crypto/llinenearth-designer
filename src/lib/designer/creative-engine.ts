@@ -364,9 +364,8 @@ function shiftedZone(zone:CreativeZone,offset:number):CreativeZone {
 function researchMutationSeed(signal:CreativeResearchSignal,operator:ResearchMutationOperator,index:number):Seed {
   const trace=researchTrace(signal);
   const family=signal.patternFamily==="none"?undefined:signal.patternFamily;
-  const destination=operator==="transfer" ? shiftedZone(signal.zone,3)
-    : operator==="counterpoint" ? shiftedZone(signal.zone,5)
-      : signal.zone;
+  const destination=operator==="transfer" ? shiftedZone(signal.zone,3) : signal.zone;
+  const counterZone=shiftedZone(signal.zone,5);
   const intensity=operator==="amplify" ? Math.min(100,Math.round(signal.intensity*1.42))
     : operator==="subtract" ? Math.max(12,Math.round(signal.intensity*.55))
       : operator==="scale-shift" ? Math.min(100,Math.round(signal.intensity*1.18))
@@ -378,7 +377,7 @@ function researchMutationSeed(signal:CreativeResearchSignal,operator:ResearchMut
       : operator==="subtract"
         ? "Remove secondary decoration and express the source principle through the smallest possible number of lines, planes or zones."
         : operator==="counterpoint"
-          ? `Keep the source move at ${signal.zone}, then create a quieter opposing response at ${destination} rather than a literal repeat.`
+          ? `Keep the source move at ${signal.zone}, then create a quieter opposing response at ${counterZone} rather than a literal repeat.`
           : "Change the scale relationship of the source move dramatically while preserving its logic and location.";
   const visualPurpose=operator==="transfer"
     ? "Tests whether the research mechanism survives when moved into a new garment function."
@@ -407,9 +406,9 @@ function researchMutationSeed(signal:CreativeResearchSignal,operator:ResearchMut
       ),
       ...(operator==="counterpoint" ? [treatment(
         `mutation-counter-${signal.id}`,
-        destination,
+        counterZone,
         "Counterpoint response",
-        `Use a restrained response at ${destination}; invert emphasis, spacing or edge direction without copying the primary move.`,
+        `Use a restrained response at ${counterZone}; invert emphasis, spacing or edge direction without copying the primary move.`,
         "Builds visual dialogue between two different garment zones.",
         Math.max(18,Math.round(signal.intensity*.48)),
         "atelier",
