@@ -349,14 +349,56 @@ for (const token of [
   if (!advancedSearch.includes(token)) throw new Error(`Designer advanced-search regression: missing ${token}`);
 }
 const advancedSearchUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["DESIGNER SEARCH / V3","Search catalogue","Keep shirt","Keep trouser","Open search","Why over my current choice?","Use this direction"]) {
+for (const token of ["DESIGNER SEARCH / V4","Search catalogue","Keep shirt","Keep trouser","Open search","Why over my current choice?","Use this direction","DECISION MATRIX","WHAT COULD CHANGE THE DECISION"]) {
   if (!advancedSearchUi.includes(token)) throw new Error(`Designer advanced-search UI regression: missing ${token}`);
 }
 const advancedSearchCss = fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
 for (const token of [".newDesignerSearch",".newDesignerSearchResults",".newDesignerSearchTier",".newDesignerSearchUse"]) {
   if (!advancedSearchCss.includes(token)) throw new Error(`Designer advanced-search styling regression: missing ${token}`);
 }
-console.log("Designer advanced-search gate passed: diversified catalogue search, hard-conflict exclusion and explainable alternatives protected.");
+console.log("Designer advanced-search V4 gate passed: diversified catalogue search, uncertainty-aware decision matrix, hard-conflict exclusion and explainable alternatives protected.");
+
+const creativeEngine = fs.readFileSync("src/lib/designer/creative-engine.ts","utf8");
+for (const token of [
+  "generateCreativeDirections","CreativeCriticId","aesthetic","originality","brand","menswear","construction",
+  "facets","Proportion","Hierarchy","Rhythm","Harmony","creativeLearningSignalFor","creativeResearch",
+  "researchSeed","maya-apparel-typicality-novelty","constraints-creative-patternmaking","engineered-print-3d-2d"
+]) {
+  if (!creativeEngine.includes(token)) throw new Error(`Designer V5 creative-engine regression: missing ${token}`);
+}
+const creativeLearning = fs.readFileSync("src/lib/designer/creative-learning.ts","utf8");
+for (const token of ["designer-creative-learning-v1","creativeFamilyFromConceptId","total<3","Math.max(-5","render_mismatch"]) {
+  if (!creativeLearning.includes(token)) throw new Error(`Designer V5 creative-learning regression: missing ${token}`);
+}
+const creativeResearch = fs.readFileSync("src/lib/designer/creative-research.ts","utf8");
+for (const token of ["designer-creative-research-v1","designer_creative_research","transformedIdea","patternFamily","active"]) {
+  if (!creativeResearch.includes(token)) throw new Error(`Designer V5 creative-research regression: missing ${token}`);
+}
+const researchPool = fs.readFileSync("src/lib/designer/fashion-research-source-pool.ts","utf8");
+for (const token of ["FASHION_RESEARCH_SOURCES","FASHION_RESEARCH_TOPICS","FASHION_RESEARCH_TARGETS","buildFashionResearchTargets","highAuthorityWebsites"]) {
+  if (!researchPool.includes(token)) throw new Error(`Designer V5 research-pool regression: missing ${token}`);
+}
+const sourceRows = (researchPool.match(/\{id:"[^"]+",name:/g) || []).length;
+const topicRows = (researchPool.match(/\{id:"[^"]+",query:/g) || []).length;
+if (sourceRows * topicRows < 1000) throw new Error(`Designer V5 research pool regression: expected >=1000 source-topic targets, found ${sourceRows * topicRows}`);
+const creativeUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
+for (const token of ["CREATIVE DESIGNER / V5","Imagine new designs","CRITIC PANEL","RESEARCH →","newDesignerCriticFacets","researchPool"]) {
+  if (!creativeUi.includes(token)) throw new Error(`Designer V5 creative UI regression: missing ${token}`);
+}
+const creativePreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+for (const token of ["creativeDirection","drawCreativePattern","Photoreal V5 render","VISUAL REVIEW / TEACH V5","CREATIVE_FEEDBACK_REASONS"]) {
+  if (!creativePreview.includes(token)) throw new Error(`Designer V5 visual loop regression: missing ${token}`);
+}
+const creativeRenderRoute = fs.readFileSync("src/app/api/designer/creative-render/route.ts","utf8");
+for (const token of ["renderCreativeFashnFront","assertFashnRateLimit","CreativeFashnRequest"]) {
+  if (!creativeRenderRoute.includes(token)) throw new Error(`Designer V5 photoreal route regression: missing ${token}`);
+}
+const researchDesk = fs.readFileSync("src/app/operator/designer-research/DesignerResearchClient.tsx","utf8");
+for (const token of ["Creative Research Desk","RESEARCH → DESIGN TRANSLATOR","Save research signal","Allow this reviewed signal to influence V5 now"]) {
+  if (!researchDesk.includes(token)) throw new Error(`Designer V5 research desk regression: missing ${token}`);
+}
+console.log(`Designer V5 creative-research gate passed: ${sourceRows * topicRows} source-topic discovery targets, multi-critic visual ranking, photoreal review and capped learning protected.`);
+
 
 
 const designerCasebook = fs.readFileSync("src/lib/designer/casebook.ts","utf8");
