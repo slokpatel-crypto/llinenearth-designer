@@ -699,7 +699,7 @@ export function DesignerModule() {
               <button className="newDesignerCreativeUse" type="button" onClick={()=>useCreativeDirection(direction)}>{activeCreative?.id===direction.id?"Selected creative direction":"Use this creative direction"}</button>
             </article>)}
           </div>}
-          <small className="newDesignerCreativeTruth">V5 is intentionally visual-first: aesthetic + originality carry 55% of the creative score, while construction is a 10% guardrail. Custom patterns and atelier details are design specifications at this stage; the current photo model renders the supported base cut until the visual synthesis layer is connected.</small>
+          <small className="newDesignerCreativeTruth">V5 is intentionally visual-first: aesthetic + originality carry 55% of the creative score, while construction is a 10% guardrail. Supported surface ideas now preview instantly on the studio model; geometry-changing details can be sent through the optional photoreal V5 synthesis pass.</small>
         </section>
 
         <div className="newDesignerStyleBlock">
@@ -751,7 +751,7 @@ export function DesignerModule() {
         <strong>{activeCreative.name}</strong>
         <p>{activeCreative.thesis}</p>
         <div>{activeCreative.treatments.slice(0,3).map((move)=><b key={move.id}>{move.zone.toUpperCase()} · {move.label}</b>)}{activeCreative.pattern&&<b>PATTERN · {activeCreative.pattern.name}</b>}</div>
-        <small>The mannequin below shows the supported base cut. These custom details remain attached to the design specification until visual synthesis is connected.</small>
+        <small>The mannequin below previews supported surface/detail changes immediately. Use the photoreal V5 render when the concept changes real geometry such as cuff depth, collar proportion or pocket shape.</small>
       </div>}
       {shirt && pant && <PhotoOutfitPreview shirt={shirt} pant={pant} style={style} creativeDirection={activeCreative} />}
       {fitCoverage.total > 0 && <div className="newDesignerFitModelNote"><span>FIT PROFILE LOADED · {fitCoverage.total}/16</span><p>Measurements inform tailoring guidance; this studio model remains a fixed visual reference.</p></div>}
