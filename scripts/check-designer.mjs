@@ -29,6 +29,9 @@ function load(file) {
 
 const {DESIGNER_SHIRTS,DESIGNER_PANTS,DESIGNER_REVIEWED_PAIRING,DESIGNER_STYLE_CHOICES,designerTasteAlternative,evaluateDesignerCombo} = load("src/lib/designer/engine.ts");
 const {planDesignerDirections,suggestDesignerRepairs} = load("src/lib/designer/planner.ts");
+const {assessFitConstruction} = load("src/lib/designer/fit-construction.ts");
+const {buildCanonicalGarmentSpec,canonicalGarmentSpecSummary} = load("src/lib/designer/garment-spec.ts");
+const {evaluateLinenEarthBrandLanguage} = load("src/lib/designer/brand-language.ts");
 const {designerStyleInsights} = load("src/lib/designer/style-insights.ts");
 const {DESIGNER_PHOTO_TEMPLATES,PHOTO_TUCKED_NECK_CLEAR,PHOTO_TUCKED_SHIRT_CLIP,PHOTO_TUCKED_SHIRT_BODY_CLIP,PHOTO_TUCKED_LEFT_SLEEVE_CLIP,PHOTO_TUCKED_RIGHT_SLEEVE_CLIP,PHOTO_TUCKED_TROUSER_CLIP,PHOTO_TUCKED_LEFT_TROUSER_CLIP,PHOTO_TUCKED_RIGHT_TROUSER_CLIP,photoTemplateForStyle,photoTemplateGaps} = load("src/lib/designer/photo-preview.ts");
 const sky = DESIGNER_SHIRTS.find((fabric)=>fabric.id === "linen-plain-60-sky-blue");
@@ -143,3 +146,45 @@ assert.equal(evaluateDesignerCombo({...sky,patternScale:"Bold"},{...beige,patter
 assert.equal(evaluateDesignerCombo({...sky,patternScale:"Medium"},{...beige,patternScale:"Medium"},"Casual").rules.find((rule)=>rule.id === "CR-4").status,"pass");
 assert.throws(()=>evaluateDesignerCombo(beige,sky,"Casual"));
 console.log(`Designer gate passed: ${DESIGNER_SHIRTS.length} catalogued shirt fabrics, ${DESIGNER_PANTS.length} trouser fabrics, garment-cut choices and uncertainty checks.`);
+
+
+const completeMeasurements = {
+  version:1, unit:"in",
+  shirt:{ neck:39.4,chest:101.6,waist:86.4,shoulder:45.7,sleeve:63.5,shirtLength:76.2,bicep:33,wrist:17.8 },
+  pants:{ waist:86.4,seat:101.6,thigh:58.4,frontRise:28,inseeam:undefined,inseam:81.3,outseam:106.7,knee:41.9,hem:40.6 },
+  updatedAt:"2026-09-28T00:00:00.000Z",
+};
+const completeFit = assessFitConstruction(completeMeasurements, preliminary.style, { climate:"Hot / humid", shirtFabric:sky, trouserFabric:beige });
+const completeBrand = evaluateLinenEarthBrandLanguage(sky,beige,preliminary.style,"Semi-Formal",{climate:"Hot / humid",intention:"Balanced"});
+const completeSpec = buildCanonicalGarmentSpec(preliminary, completeFit, completeMeasurements, completeBrand);
+assert.equal(completeSpec.version,"linen-earth-garment-spec-v1");
+assert.equal(completeSpec.fabrics.shirt.id,sky.id);
+assert.equal(completeSpec.fabrics.trouser.id,beige.id);
+assert.equal(completeSpec.shirt.fit,preliminary.style.shirtFit);
+assert.equal(completeSpec.trouser.shape,preliminary.style.trouser);
+assert(completeSpec.shirt.finishedTargets.some((item)=>item.label.includes("shirt chest")));
+assert(completeSpec.trouser.finishedTargets.some((item)=>item.label.includes("trouser waist")));
+assert.equal(completeSpec.readiness.tailoring,"tailor_review_required");
+assert.equal(completeSpec.readiness.materialVerification,"verification_required");
+assert.equal(canonicalGarmentSpecSummary(completeSpec).status,completeSpec.status);
+
+const missingFit = assessFitConstruction(null, preliminary.style, {});
+const missingSpec = buildCanonicalGarmentSpec(preliminary, missingFit, null, completeBrand);
+assert.equal(missingSpec.status,"draft");
+assert.equal(missingSpec.readiness.tailoring,"insufficient_measurements");
+assert.equal(missingSpec.shirt.finishedTargets.length,0);
+
+const seatHeavyMeasurements = {
+  ...completeMeasurements,
+  pants:{...completeMeasurements.pants,waist:80,seat:108},
+};
+const flatStyle = {...preliminary.style,trouser:"Formal Trouser (Flat-front)"};
+const flatRecommendation = evaluateDesignerCombo(sky,beige,"Semi-Formal",flatStyle);
+const conflictFit = assessFitConstruction(seatHeavyMeasurements, flatRecommendation.style, {trouserFabric:beige});
+const conflictSpec = buildCanonicalGarmentSpec(flatRecommendation, conflictFit, seatHeavyMeasurements, completeBrand);
+assert(conflictSpec.constructionChecks.some((item)=>item.id==="FIT-TROUSER-SEAT" && item.severity==="warning"));
+assert.equal(conflictSpec.status,"review_required");
+assert.equal(conflictSpec.readiness.visualization,"visual_review_required");
+assert(completeSpec.caveats.some((item)=>/not a cutting pattern/i.test(item)));
+
+console.log("Canonical garment spec gate passed: Designer decision, provisional finished targets, readiness and review conflicts stay synchronized.");
