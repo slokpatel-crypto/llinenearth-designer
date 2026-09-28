@@ -124,7 +124,7 @@ requireTokens("src/components/DesignerModule.tsx", [
   "DESIGNER SEARCH / V3","Search catalogue","Keep shirt","Keep trouser","Open search","Why over my current choice?","Use this direction"
 ]);
 requireTokens("src/lib/designer/casebook.ts", [
-  "designer-casebook-v1","designer_case_review","casebookSignalFor","total>=3","Math.min(6"
+  "designer-casebook-v1","designer_case_review","casebookSignalFor","total>=3","scale=6"
 ]);
 requireTokens("src/app/api/designer/casebook/route.ts", [
   "aggregateDesignerCasebook","source:\"eq.operator\"","type:\"eq.operator_note\"","select:\"type,source,payload\""
