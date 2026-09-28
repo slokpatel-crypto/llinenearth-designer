@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import "./check-designer.mjs";
 
 const required = [
   "src/lib/fashion-intelligence.ts",
@@ -11,6 +12,10 @@ const required = [
   "src/app/designs/page.tsx",
   "src/app/atelier/page.tsx",
   "src/app/quality/page.tsx",
+  "public/designer/studio-tucked.webp",
+  "src/lib/designer/photo-preview.ts",
+  "src/components/PhotoOutfitPreview.tsx",
+  "src/app/designer-studio/page.tsx",
 ];
 
 for (const file of required) {
@@ -139,3 +144,14 @@ for (const token of ["fabric must never spill","waistband in front of it","disti
 }
 
 console.log("Restored Designer model gate passed: Style Director visible, public nav cleaned, tucked garment boundaries protected.");
+
+
+const photoPreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_NECK_CLEAR","destination-in","masks.shirt","masks.pant"]) {
+  if (!photoPreview.includes(token)) throw new Error(`Real photographic Designer regression: PhotoOutfitPreview missing ${token}`);
+}
+const photoGeometry = fs.readFileSync("src/lib/designer/photo-preview.ts","utf8");
+for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_NECK_CLEAR","/designer/studio-tucked.webp"]) {
+  if (!photoGeometry.includes(token)) throw new Error(`Real photographic Designer regression: photo-preview missing ${token}`);
+}
+console.log("Real photographic Designer gate passed: hard garment boundaries, neck clear zone and tucked layering protected.");
