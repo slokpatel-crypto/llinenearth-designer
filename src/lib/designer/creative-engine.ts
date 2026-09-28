@@ -79,6 +79,8 @@ export type CreativeDirection = {
   learning:CreativeLearningSignal;
 };
 
+export type CreativeFreedom = "guided"|"exploratory"|"maximum";
+
 export type CreativeLabInput = {
   shirt:DesignerFabric;
   pant:DesignerFabric;
@@ -89,6 +91,7 @@ export type CreativeLabInput = {
   observations?:TailorObservationProfile|null;
   creativeLearning?:CreativeLearningBook|null;
   creativeResearch?:CreativeResearchLibrary|null;
+  researchFreedom?:CreativeFreedom;
   limit?:number;
 };
 
@@ -103,6 +106,27 @@ type Seed = {
 };
 
 const RESEARCH = {
+  divergent:{
+    id:"divergent-design-thinking",
+    sourceTitle:"The cognitive process of creative design: A perspective of divergent thinking",
+    sourceUrl:"https://www.sciencedirect.com/science/article/pii/S1871187123000366",
+    extractedPrinciple:"Creative design benefits from deliberate divergent exploration before converging on a small set of candidates.",
+    transformedInto:"Expand the design space aggressively first, then let critics narrow it later instead of filtering unusual ideas too early.",
+  },
+  antiFixation:{
+    id:"design-fixation-examples",
+    sourceTitle:"Fixation or inspiration? A meta-analytic review of examples in design",
+    sourceUrl:"https://www.sciencedirect.com/science/article/pii/S0142694X15000290",
+    extractedPrinciple:"Examples can improve novelty and quality but can also narrow the range of idea categories explored.",
+    transformedInto:"Use references as principles, then deliberately generate at least one design that changes category, zone or mechanism so the engine does not merely imitate the example.",
+  },
+  coevolution:{
+    id:"creative-design-coevolving-spaces",
+    sourceTitle:"Creativity and fixation in the real world",
+    sourceUrl:"https://www.sciencedirect.com/science/article/pii/S0142694X19300481",
+    extractedPrinciple:"Creative projects can evolve through multiple design spaces at different levels of detail rather than one linear solution path.",
+    transformedInto:"Explore surface, proportion, construction and silhouette as separate spaces, then recombine promising moves across them.",
+  },
   maya:{
     id:"maya-apparel-typicality-novelty",
     sourceTitle:"The MAYA principle as applied to apparel products",
@@ -281,6 +305,43 @@ function researchSeed(signal:CreativeResearchSignal):Seed {
 }
 
 const SEEDS:Seed[]=[
+  {
+    id:"divergent-zone-jump",
+    name:"Zone Jump",
+    thesis:"Move the source idea into a different garment zone so research becomes transformation rather than imitation.",
+    principle:RESEARCH.antiFixation,
+    treatments:()=>[
+      treatment("zone-jump-collar","collar","Transferred geometry","Borrow the logic of an edge, interruption or proportion idea but express it in collar geometry instead of the source location.","Breaks direct copying while preserving the underlying visual principle.",72,"experimental"),
+      treatment("zone-jump-trouser","waistband","Remote echo","Translate only a small fragment of the same logic into the waistband or side-adjuster area.","Creates a cross-garment relationship without repeating the same detail literally.",35,"atelier"),
+    ],
+  },
+  {
+    id:"multi-space-recombination",
+    name:"Multi-Space Recombination",
+    thesis:"Combine one surface idea, one proportion move and one construction shift, then let the critic decide which should dominate.",
+    principle:RESEARCH.coevolution,
+    treatments:()=>[
+      treatment("recombine-proportion","cuff","Proportion move","Change cuff depth or edge scale enough to alter the sleeve ending visibly.","Opens the proportion design space.",68,"experimental"),
+      treatment("recombine-construction","pocket","Construction move","Shift pocket geometry or seam direction independently from the cuff idea.","Opens a second design space without assuming the two ideas must match.",58,"experimental"),
+      treatment("recombine-quiet-axis","placket","Quiet axis","Keep the placket visually quiet to provide one stable reference.","Prevents multi-space exploration from collapsing into visual noise.",15,"supported"),
+    ],
+    pattern:(input)=>({
+      id:"multi-space-surface",name:"Interrupted Field",family:"placement",
+      layout:"Sparse line fragments increase around one outer body zone and disappear near the centre front.",
+      scale:"fine",coverage:26,palette:palette(input,"#EFE9E1"),placement:"Outer shirt body only; preserve centre front and collar as negative space.",
+      note:"Surface, proportion and construction are explored independently before final convergence.",
+    }),
+  },
+  {
+    id:"divergent-first",
+    name:"Divergent First",
+    thesis:"Generate a deliberately unfamiliar visual mechanism before asking whether it belongs in the final garment.",
+    principle:RESEARCH.divergent,
+    treatments:()=>[
+      treatment("divergent-fold-cuff","cuff","Folded cuff architecture","Use an asymmetric fold or stepped edge to create a new cuff silhouette rather than decorating a standard cuff.","Tests a new visual mechanism instead of another colour variation.",82,"experimental"),
+      treatment("divergent-side-line","shirt-body","Side-body line","Introduce one off-centre line or panel that changes with movement.","Creates a second spatial cue without repeating the cuff geometry.",52,"experimental"),
+    ],
+  },
   {
     id:"locked-code",
     name:"Locked Code",
@@ -651,23 +712,33 @@ function certaintyFor(recommendation:DesignerRecommendation,seed:Seed,treatments
   return round(recommendation.confidenceScore*.55+research*.20+buildKnown*100*.25-patternPenalty);
 }
 
-function hardBlocked(recommendation:DesignerRecommendation) {
+function hardBlocked(recommendation:DesignerRecommendation,freedom:CreativeFreedom) {
+  if(freedom==="maximum") return false;
+  if(freedom==="exploratory") {
+    return recommendation.rules.some((item)=>item.status==="flag"&&item.severity==="High"&&/safety|impossible|unavailable/i.test(item.title+" "+item.detail));
+  }
   return recommendation.formality.match===false || recommendation.rules.some((item)=>item.status==="flag"&&item.severity==="High");
 }
 
 function buildDirection(seed:Seed,input:CreativeLabInput,iteration:number,treatmentsOverride?:CreativeTreatment[],patternOverride?:CreativePattern,refinement:string[]=[],variant="core"):CreativeDirection|null {
   const style=safePatch(input,seed.patch);
   const recommendation=evaluateDesignerCombo(input.shirt,input.pant,input.occasion,style,undefined,input.context);
-  if(hardBlocked(recommendation)) return null;
+  const freedom=input.researchFreedom || "maximum";
+  if(hardBlocked(recommendation,freedom)) return null;
   const treatments=treatmentsOverride || seed.treatments(input);
   const pattern=patternOverride===undefined ? seed.pattern?.(input) : patternOverride;
   const {reads}=criticsFor(seed,input,style,treatments,pattern,recommendation);
   const learning=creativeLearningSignalFor(seed.id,input.creativeLearning);
-  const overall=round(scoreCritics(reads)+learning.score);
+  const freedom=input.researchFreedom || "maximum";
+  const researchExpansionBonus=freedom==="maximum"
+    ? Math.min(8,(pattern?3:0)+treatments.filter((item)=>item.buildability==="experimental").length*2+Math.max(0,treatments.length-1))
+    : freedom==="exploratory" ? 2 : 0;
+  const overall=round(scoreCritics(reads)+learning.score+researchExpansionBonus);
   const certainty=certaintyFor(recommendation,seed,treatments,pattern);
   const construction=reads.find((item)=>item.id==="construction")?.score ?? 0;
   const aesthetic=reads.find((item)=>item.id==="aesthetic")?.score ?? 0;
-  const risk:CreativeDirection["risk"]=construction<52?"high":certainty<58||aesthetic<62?"moderate":"low";
+  const ruleConflict=recommendation.formality.match===false || recommendation.rules.some((item)=>item.status==="flag"&&item.severity==="High");
+  const risk:CreativeDirection["risk"]=construction<52||ruleConflict?"high":certainty<58||aesthetic<62?"moderate":"low";
   return {
     id:`creative:${seed.id}:${variant}:v${iteration}`,name:seed.name,thesis:seed.thesis,baseStyle:style,recommendation,
     treatments,pattern,critics:reads,overall,certainty,risk,research:[seed.principle],iteration,refinement,
@@ -717,32 +788,46 @@ function signature(item:CreativeDirection) {
  * Construction remains a guardrail and receives only 10% of the creative score.
  */
 export function generateCreativeDirections(input:CreativeLabInput):CreativeDirection[] {
+  const freedom=input.researchFreedom || "maximum";
+  const learnedLimit=freedom==="maximum"?80:freedom==="exploratory"?40:24;
   const learnedSeeds=(input.creativeResearch?.signals || [])
     .filter((signal)=>signal.active && Boolean(signal.sourceUrl))
-    .slice(0,24)
+    .slice(0,learnedLimit)
     .map(researchSeed);
   const seedPool=[...SEEDS,...learnedSeeds];
 
-  // Explore two visual intensities for every research seed. This produces a
-  // broad internal concept population; only the strongest diverse results are shown.
+  // Maximum mode intentionally expands before it converges. Research is allowed
+  // to create radical candidates; critic scores and risk labels stay visible
+  // instead of acting as early blockers.
   const first=seedPool.flatMap((seed)=>{
-    const core=buildDirection(seed,input,1,undefined,undefined,[],"core");
-    const pushedTreatments=seed.treatments(input).map((item)=>({
-      ...item,
-      intensity:Math.min(100,Math.round(item.intensity*1.14)),
-    }));
+    const baseTreatments=seed.treatments(input);
     const basePattern=seed.pattern?.(input);
-    const pushedPattern=basePattern ? {
-      ...basePattern,
-      coverage:Math.min(58,basePattern.coverage+8),
-      note:`${basePattern.note} This exploration deliberately pushes coverage before the critic pass.`,
-    } : undefined;
-    const pushed=buildDirection(seed,input,1,pushedTreatments,pushedPattern,["Started from a deliberately stronger visual exploration."],"pushed");
-    return [{seed,direction:core},{seed,direction:pushed}];
+    const variants:Array<{name:string;scale:number;coverageDelta:number;note:string}>=[
+      {name:"core",scale:1,coverageDelta:0,note:""},
+      {name:"pushed",scale:1.16,coverageDelta:8,note:"Started from a deliberately stronger visual exploration."},
+      ...(freedom==="maximum"?[{name:"radical",scale:1.34,coverageDelta:16,note:"Maximum-research mode deliberately pushed the source principle beyond normal house defaults before critique."}]:[]),
+    ];
+    return variants.map((variant)=>{
+      const treatments=variant.name==="core" ? undefined : baseTreatments.map((item)=>({
+        ...item,
+        intensity:Math.min(100,Math.round(item.intensity*variant.scale)),
+        buildability:variant.name==="radical" && item.buildability==="supported" ? "atelier" as const : item.buildability,
+      }));
+      const pattern=basePattern && variant.name!=="core" ? {
+        ...basePattern,
+        coverage:Math.min(60,basePattern.coverage+variant.coverageDelta),
+        note:`${basePattern.note} ${variant.note}`.trim(),
+      } : variant.name==="core" ? undefined : basePattern;
+      return {
+        seed,
+        direction:buildDirection(seed,input,1,treatments,pattern,variant.note?[variant.note]:[],variant.name),
+      };
+    });
   }).filter((item):item is {seed:Seed;direction:CreativeDirection}=>Boolean(item.direction));
 
   first.sort((a,b)=>b.direction.overall-a.direction.overall);
-  const refined=first.slice(0,8).map(({seed,direction})=>refine(seed,input,direction));
+  const refineCount=freedom==="maximum"?Math.min(24,first.length):freedom==="exploratory"?Math.min(14,first.length):Math.min(8,first.length);
+  const refined=first.slice(0,refineCount).map(({seed,direction})=>refine(seed,input,direction));
   refined.sort((a,b)=>b.overall-a.overall || b.certainty-a.certainty);
 
   const output:CreativeDirection[]=[];
