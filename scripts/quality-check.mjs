@@ -12,6 +12,11 @@ const required = [
   "src/app/designs/page.tsx",
   "src/app/atelier/page.tsx",
   "src/app/quality/page.tsx",
+  "src/components/MeasurementStudio.tsx",
+  "src/app/measurements/scale-selector.css",
+  "src/app/measurements/measurements.css",
+  "src/app/measurements/page.tsx",
+  "src/app/real-model/page.tsx",
   "public/designer/studio-tucked.webp",
   "src/lib/designer/photo-preview.ts",
   "src/components/PhotoOutfitPreview.tsx",
@@ -129,7 +134,7 @@ const restoredShell = fs.readFileSync("src/components/AppShell.tsx","utf8");
 for (const forbidden of ["[\"Catalog\",","[\"Live Visual\",","[\"Classic Designer\",","[\"Saved Designs\",","[\"Fashion Brain\",","[\"Atelier\","]) {
   if (restoredShell.includes(forbidden)) throw new Error(`Navigation regression: public shell reintroduced ${forbidden}`);
 }
-for (const requiredLink of ["[\"Designer Studio\", \"/designer-studio\"]","[\"Style Director\", \"/style-director\"]"]) {
+for (const requiredLink of ["[\"Real Model Designer\", \"/real-model\"]","[\"Style Director\", \"/style-director\"]","[\"Measurements\", \"/measurements\"]"]) {
   if (!restoredShell.includes(requiredLink)) throw new Error(`Navigation regression: public shell missing ${requiredLink}`);
 }
 
@@ -165,7 +170,7 @@ console.log("Real Designer draft gate passed: fabric, context and tailoring stat
 
 
 const publicHome = fs.readFileSync("src/app/page.tsx","utf8");
-for (const token of ["/designer-studio","Open Designer","photographic Designer","Linen Earth"]) {
+for (const token of ["/real-model","Open Real Model Designer","photographic studio form","Linen Earth"]) {
   if (!publicHome.includes(token)) throw new Error(`Real Designer public-route regression: homepage missing ${token}`);
 }
 console.log("Real Designer route gate passed: public navigation points to the photographic Designer while the legacy dashboard remains available separately.");
@@ -200,3 +205,22 @@ for (const token of ['params.get("shirt")','params.get("pant")','params.get("sty
   if (!realModelDesignerHandoff.includes(token)) throw new Error(`Real-model Director loading regression: missing ${token}`);
 }
 console.log("Style Director real-model spec gate passed: full pair, cut, context and auto-assessment handoff protected.");
+
+
+const measurementPage = fs.readFileSync("src/app/measurements/page.tsx","utf8");
+for (const token of ["MEASUREMENT STUDIO","See exactly where","MeasurementStudio","blueprint"]) {
+  if (!measurementPage.includes(token)) throw new Error(`Measurement blueprint page regression: missing ${token}`);
+}
+const measurementStudio = fs.readFileSync("src/components/MeasurementStudio.tsx","utf8");
+for (const token of ["SHIRT BLUEPRINT","TROUSER BLUEPRINT","guide active","active===id","NECK","CHEST","INSEAM","OUTSEAM","/designer-studio"]) {
+  if (!measurementStudio.includes(token)) throw new Error(`Measurement blueprint interaction regression: missing ${token}`);
+}
+const measurementCss = fs.readFileSync("src/app/measurements/measurements.css","utf8");
+for (const token of [".measurementIntroBlueprint",".blueprintGrid",".draftDepth",".draftGarment",".guide.active",".measureBlueprintLegend"]) {
+  if (!measurementCss.includes(token)) throw new Error(`Measurement blueprint styling regression: missing ${token}`);
+}
+const realModelShortcut = fs.readFileSync("src/app/real-model/page.tsx","utf8");
+for (const token of ["redirect","/designer-studio"]) {
+  if (!realModelShortcut.includes(token)) throw new Error(`Real Model shortcut regression: missing ${token}`);
+}
+console.log("Measurement blueprint gate passed: the existing Measurements page now uses garment-specific blueprint guidance; Real Model remains a separate direct entry.");

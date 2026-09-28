@@ -51,7 +51,7 @@ export default function Home() {
           <p className="gatewayHeroSub">Start with your occasion and instinct. Linen Earth narrows the direction, connects it to real fabric, and lets you see the look with photoreal fashion rendering.</p>
           <div className="gatewayHeroActions">
             <Link href="/style-director">Enter Style Director <b>↗</b></Link>
-            <Link href="/designer-studio">Open Designer <b>↗</b></Link>
+            <Link href="/real-model">Open Real Model Designer <b>↗</b></Link>
           </div>
           <div className="gatewayLine"><span>FABRIC FIRST · DESIGN WITH INTENT</span><i /></div>
         </div>
@@ -81,15 +81,15 @@ export default function Home() {
           </div>
         </Link>
 
-        <Link href="/designer-studio" className="gatewayCard gatewayVisual">
+        <Link href="/real-model" className="gatewayCard gatewayVisual">
           <div className="gatewayImage gatewayImageVisual" />
-          <div className="gatewayCardTop"><span>02</span><b>DESIGNER</b></div>
+          <div className="gatewayCardTop"><span>02</span><b>REAL MODEL DESIGNER</b></div>
           <div className="gatewayVisualStrip" aria-hidden="true">{visualRefs.map((src,index)=><div key={src} className="gatewayMini" style={{backgroundImage:`url('${src}')`}} data-index={index}/>)}</div>
           <div className="gatewayCardCopy">
             <p className="eyebrow">FABRIC FIRST</p><h3>See your cloth on a consistent real-looking model.</h3>
             <p>Choose real Linen Earth shirting and trouser swatches, refine the cut, then inspect the cloth on the photographic studio form.</p>
             <div className="gatewaySignals"><span>SHIRT</span><span>TROUSER</span><span>CUT</span><span>MODEL</span></div>
-            <strong>Open Designer <i>↗</i></strong>
+            <strong>Open Real Model <i>↗</i></strong>
           </div>
         </Link>
       </section>

@@ -27,6 +27,9 @@ console.log(`LLinen Earth release readiness${live ? " (live)" : " (static)"}\n`)
 for (const path of [
   "src/app/page.tsx",
   "src/app/api/homepage-model/route.ts",
+  "src/components/MeasurementStudio.tsx",
+  "src/app/measurements/page.tsx",
+  "src/app/real-model/page.tsx",
   "public/designer/studio-tucked.webp",
   "src/lib/designer/photo-preview.ts",
   "src/components/PhotoOutfitPreview.tsx",
@@ -39,7 +42,7 @@ for (const path of [
   "package-lock.json",
 ]) requireFile(path);
 
-requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/visual"]);
+requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/visual", "/real-model", "Open Real Model Designer"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "PHOTO_TUCKED_SHIRT_CLIP",
   "PHOTO_TUCKED_TROUSER_CLIP",
@@ -53,6 +56,10 @@ requireTokens("src/lib/designer/photo-preview.ts", [
   "PHOTO_TUCKED_NECK_CLEAR",
   "/designer/studio-tucked.webp",
 ]);
+requireTokens("src/app/measurements/page.tsx", ["MeasurementStudio","MEASUREMENT STUDIO","See exactly where"]);
+requireTokens("src/components/MeasurementStudio.tsx", ["SHIRT BLUEPRINT","TROUSER BLUEPRINT","active===id","/designer-studio"]);
+requireTokens("src/app/real-model/page.tsx", ["redirect","/designer-studio"]);
+requireTokens("src/components/AppShell.tsx", ["Real Model Designer","/real-model","Measurements","/measurements"]);
 requireTokens("src/lib/style-director-agent.ts", ["StyleDirectorRealModelSpec","buildRealModelSpec","evaluateDesignerCombo","shirtName","pantName"]);
 requireTokens("src/app/style-director/page.tsx", ["Open Linen Earth Real Model Designer","REAL MODEL OUTFIT","#designerPhotoTitle"]);
 requireTokens("src/components/DesignerModule.tsx", ['params.get("shirt")','params.get("pant")','params.get("style")',"STYLE DIRECTOR RESULT"]);
