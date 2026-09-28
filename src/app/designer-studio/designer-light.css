@@ -362,3 +362,7 @@
 .newDesignerCreativeReviewReasons{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
 .newDesignerCreativeReviewReasons button{padding:5px 6px;font-size:6px}
 .newDesignerCreativeReview small{display:block;margin-top:7px;font-size:7px;line-height:1.4;color:#7d756e}
+
+.newDesignerResearchPoolStat{display:flex;flex-wrap:wrap;gap:7px 12px;align-items:center;margin-top:11px;padding:8px 10px;border-left:2px solid #9c735e;background:#fff}
+.newDesignerResearchPoolStat b{font-size:7px;letter-spacing:.12em;color:#7c503e}
+.newDesignerResearchPoolStat span{font-size:7px;line-height:1.4;color:#7b756e}
