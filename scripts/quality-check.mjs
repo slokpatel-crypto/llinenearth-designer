@@ -22,6 +22,7 @@ const required = [
   "src/lib/designer/fit-construction.ts",
   "src/lib/designer/constraint-negotiation.ts",
   "src/lib/designer/outcome-learning.ts",
+  "src/lib/designer/brand-language.ts",
   "src/components/PhotoOutfitPreview.tsx",
   "src/app/designer-studio/page.tsx",
 ];
@@ -245,7 +246,7 @@ for (const token of ["fit-construction-provisional-1","SHIRT_EASE","TROUSER_EASE
   if (!fitConstructionV2.includes(token)) throw new Error(`Fit Construction V2 regression: missing ${token}`);
 }
 const plannerV2 = fs.readFileSync("src/lib/designer/planner.ts","utf8");
-for (const token of ["MeasurementProfile","FitConstructionAssessment","assessFitConstruction","fitConstruction","item.recommendation.designFitScore * .68"]) {
+for (const token of ["MeasurementProfile","FitConstructionAssessment","assessFitConstruction","fitConstruction","item.recommendation.designFitScore * .58"]) {
   if (!plannerV2.includes(token)) throw new Error(`Fit-aware Designer planner regression: missing ${token}`);
 }
 const designerV2 = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
@@ -287,3 +288,22 @@ for (const token of ["DESIGNER LEARNING","Why directions are being rejected.","s
   if (!operatorLearning.includes(token)) throw new Error(`Operator Designer learning regression: missing ${token}`);
 }
 console.log("Designer outcome learning gate passed: structured rejection reasons, outfit snapshots and conservative operator learning summaries protected.");
+
+
+const brandLanguage = fs.readFileSync("src/lib/designer/brand-language.ts","utf8");
+for (const token of ["linen-earth-brand-language-provisional-1","evaluateLinenEarthBrandLanguage","One garment carries the visual interest","soft ranking signal","Keep one visual hero"]) {
+  if (!brandLanguage.includes(token)) throw new Error(`Linen Earth brand language regression: missing ${token}`);
+}
+const brandPlanner = fs.readFileSync("src/lib/designer/planner.ts","utf8");
+for (const token of ["BrandLanguageEvaluation","evaluateLinenEarthBrandLanguage","brandLanguage","item.recommendation.designFitScore * .58","item.fitConstruction?.fitScore ?? 70) * .32","item.brandLanguage?.score ?? 70) * .10"]) {
+  if (!brandPlanner.includes(token)) throw new Error(`Brand-aware Designer ranking regression: missing ${token}`);
+}
+const brandDesignerUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
+for (const token of ["LINEN EARTH READ","LINEN EARTH / BRAND LANGUAGE","WHAT FEELS RIGHT","WHAT WE WOULD EDIT","newDesignerDirectionBrand"]) {
+  if (!brandDesignerUi.includes(token)) throw new Error(`Linen Earth brand read UI regression: missing ${token}`);
+}
+const brandCss = fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
+for (const token of [".newDesignerBrandRead",".newDesignerBrandReadHead",".newDesignerDirectionBrand"]) {
+  if (!brandCss.includes(token)) throw new Error(`Linen Earth brand read styling regression: missing ${token}`);
+}
+console.log("Linen Earth brand language gate passed: soft taste remains visible and capped at 10% of alternative-cut ranking.");
