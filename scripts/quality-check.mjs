@@ -110,3 +110,32 @@ for (const [file,tokens] of desktopOperationalContracts) {
 }
 
 console.log("Desktop gate passed: action-first Today board, lock, sync serialization, tailoring workflow, finance, appointments, job cards and vault health checks.");
+
+
+const restoredStudio = fs.readFileSync("src/components/StudioDashboard.tsx","utf8");
+for (const token of ["AtelierMannequin","/style-director","FABRIC_STOCK","tucked","TUCKED SHIRT CONSTRUCTION"]) {
+  if (!restoredStudio.includes(token)) throw new Error(`Restored Designer regression: StudioDashboard missing ${token}`);
+}
+for (const forbidden of ["LNL-2024-09","Fabric Catalogue","Classic Designer","Saved Designs","Fashion Brain"]) {
+  if (restoredStudio.includes(forbidden)) throw new Error(`Restored Designer regression: StudioDashboard reintroduced ${forbidden}`);
+}
+
+const restoredShell = fs.readFileSync("src/components/AppShell.tsx","utf8");
+for (const forbidden of ["[\"Catalog\",","[\"Live Visual\",","[\"Classic Designer\",","[\"Saved Designs\",","[\"Fashion Brain\",","[\"Atelier\","]) {
+  if (restoredShell.includes(forbidden)) throw new Error(`Navigation regression: public shell reintroduced ${forbidden}`);
+}
+for (const requiredLink of ["[\"Designer Studio\", \"/designer\"]","[\"Style Director\", \"/style-director\"]"]) {
+  if (!restoredShell.includes(requiredLink)) throw new Error(`Navigation regression: public shell missing ${requiredLink}`);
+}
+
+const restoredMannequin = fs.readFileSync("src/components/AtelierMannequin.tsx","utf8");
+for (const token of ["tucked = true","const waistband","Split trouser construction","Hands must remain uncovered","shirtBottom = tucked"]) {
+  if (!restoredMannequin.includes(token)) throw new Error(`Tucked mannequin regression: missing ${token}`);
+}
+
+const restoredAi = fs.readFileSync("src/lib/ai-visualization.ts","utf8");
+for (const token of ["fabric must never spill","waistband in front of it","distinct trouser crotch seam"]) {
+  if (!restoredAi.includes(token)) throw new Error(`Photoreal garment-boundary regression: missing ${token}`);
+}
+
+console.log("Restored Designer model gate passed: Style Director visible, public nav cleaned, tucked garment boundaries protected.");
