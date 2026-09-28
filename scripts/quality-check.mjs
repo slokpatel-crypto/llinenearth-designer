@@ -185,3 +185,18 @@ for (const token of ["matchPhotographedOfficeModel","Point (Standard) Collar","B
   if (!realDesignerModule.includes(token)) throw new Error(`Photographed office preset regression: missing ${token}`);
 }
 console.log("Photographed office preset gate passed: the selected cut can be aligned exactly to the tucked model template.");
+
+
+const styleDirectorAgentHandoff = fs.readFileSync("src/lib/style-director-agent.ts","utf8");
+for (const token of ["StyleDirectorRealModelSpec","buildRealModelSpec","DESIGNER_SHIRTS","DESIGNER_PANTS","evaluateDesignerCombo","shirtName","pantName","style: best.style"]) {
+  if (!styleDirectorAgentHandoff.includes(token)) throw new Error(`Style Director real-model spec regression: missing ${token}`);
+}
+const styleDirectorUiHandoff = fs.readFileSync("src/app/style-director/page.tsx","utf8");
+for (const token of ["selectedLook.realModel","Open Linen Earth Real Model Designer","sourceTitle","sourceTier","sourceReason","#designerPhotoTitle","REAL MODEL OUTFIT"]) {
+  if (!styleDirectorUiHandoff.includes(token)) throw new Error(`Style Director real-model handoff regression: missing ${token}`);
+}
+const realModelDesignerHandoff = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
+for (const token of ['params.get("shirt")','params.get("pant")','params.get("style")',"sourceTitle","sourceTier","sourceReason","planDesignerDirections(routedShirtFabric","STYLE DIRECTOR RESULT"]) {
+  if (!realModelDesignerHandoff.includes(token)) throw new Error(`Real-model Director loading regression: missing ${token}`);
+}
+console.log("Style Director real-model spec gate passed: full pair, cut, context and auto-assessment handoff protected.");
