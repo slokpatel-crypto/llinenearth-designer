@@ -552,7 +552,7 @@ export function DesignerModule() {
 
         <section className="newDesignerSearch" aria-label="Advanced Designer catalogue search">
           <div className="newDesignerSearchHead">
-            <div><span>DESIGNER SEARCH / V3</span><strong>Ask the Designer to search beyond the current pair.</strong><p>It evaluates valid catalogue combinations against occasion, measurements, construction, verified cloth facts and Linen Earth design language.</p><small className="newDesignerCasebookState">{casebook?.totalReviews ? `CASEBOOK · ${casebook.totalReviews} reviewed · ${casebook.usableBuckets} usable patterns` : "CASEBOOK · collecting operator-reviewed cases"} · {fitOutcomes?.totalReviews ? `FIT OUTCOMES · ${fitOutcomes.totalReviews} reviewed · ${fitOutcomes.usableBuckets} usable patterns` : "FIT OUTCOMES · collecting first-fit evidence"}</small></div>
+            <div><span>DESIGNER SEARCH / V4</span><strong>Ask the Designer to search beyond the current pair.</strong><p>It now ranks complete outfit directions with a multi-objective decision matrix: compatibility, fit, block strategy, brand language, physical cloth evidence, controlled novelty and reviewed outcomes.</p><small className="newDesignerCasebookState">{casebook?.totalReviews ? `CASEBOOK · ${casebook.totalReviews} reviewed · ${casebook.usableBuckets} usable patterns` : "CASEBOOK · collecting operator-reviewed cases"} · {fitOutcomes?.totalReviews ? `FIT OUTCOMES · ${fitOutcomes.totalReviews} reviewed · ${fitOutcomes.usableBuckets} usable patterns` : "FIT OUTCOMES · collecting first-fit evidence"}</small></div>
             <button type="button" onClick={runAdvancedSearch} disabled={!shirt || !pant}>Search catalogue ↗</button>
           </div>
           <div className="newDesignerSearchScopes" role="group" aria-label="Designer search scope">
@@ -562,12 +562,24 @@ export function DesignerModule() {
           </div>
           {searchResults.length>0 && <div className="newDesignerSearchResults">
             {searchResults.map((result)=><article key={result.id} data-tier={result.tier.toLowerCase()}>
-              <div className="newDesignerSearchTier"><span>{result.tier.toUpperCase()}</span><strong>{result.searchScore}/100 search read</strong></div>
+              <div className="newDesignerSearchTier"><span>{result.tier.toUpperCase()}</span><strong>{result.searchScore}/100 decision read</strong></div>
               <div className="newDesignerSearchPair">
                 <div><img src={result.shirt.image} alt="" /><span>SHIRT</span><strong>{result.shirt.name}</strong><small>{result.shirt.line}</small></div>
                 <div><img src={result.pant.image} alt="" /><span>TROUSER</span><strong>{result.pant.name}</strong><small>{result.pant.line}</small></div>
               </div>
               <p className="newDesignerSearchCut">{result.style.shirtFit} · {result.style.shirtWear} · {result.style.trouser}</p>
+              <div className="newDesignerDecisionRead" data-risk={result.decision.risk}>
+                <div className="newDesignerDecisionHead"><span>DECISION MATRIX / V4</span><strong>{result.decision.overall}/100</strong><b>{result.decision.risk.toUpperCase()} RISK</b></div>
+                <div className="newDesignerDecisionMeta"><span>CERTAINTY {result.decision.certainty}/100</span>{result.decision.dominantStrengths.map((item)=><span key={item}>{item}</span>)}</div>
+                <details>
+                  <summary>Open decision matrix</summary>
+                  <div className="newDesignerDecisionGrid">{result.decision.dimensions.map((dimension)=><div key={dimension.id} data-status={dimension.status}>
+                    <span>{dimension.label}</span><strong>{Math.round(dimension.score)}</strong><small>{Math.round(dimension.weight*100)}% weight</small>
+                    <p>{dimension.evidence}</p>
+                  </div>)}</div>
+                  {result.decision.uncertainties.length>0 && <div className="newDesignerDecisionUncertainty"><span>WHAT COULD CHANGE THE DECISION</span>{result.decision.uncertainties.map((item)=><p key={item}>{item}</p>)}</div>}
+                </details>
+              </div>
               <div className="newDesignerSearchWhy"><span>WHY THIS DIRECTION</span>{result.reasons.slice(0,3).map((reason)=><p key={reason}>{reason}</p>)}</div>
               <details><summary>Why over my current choice?</summary>{result.comparison.map((item)=><p key={item}>{item}</p>)}</details>
               {result.tradeoffs.length>0 && <details><summary>Trade-offs / checks</summary>{result.tradeoffs.map((item)=><p key={item}>{item}</p>)}</details>}
@@ -575,7 +587,7 @@ export function DesignerModule() {
               <button className="newDesignerSearchUse" type="button" onClick={()=>useSearchResult(result)}>Use this direction</button>
             </article>)}
           </div>}
-          <small className="newDesignerSearchTruth">Search rankings are decision support, not a claim of objective fashion quality. Hard fit/construction conflicts are excluded; unverified physical cloth facts remain visible as trade-offs.</small>
+          <small className="newDesignerSearchTruth">Decision Matrix V4 is decision support, not a claim of objective fashion quality. Hard fit/construction conflicts are excluded first; uncertainty and missing physical cloth facts can lower certainty without being hidden.</small>
         </section>
 
         <div className="newDesignerStyleBlock">
