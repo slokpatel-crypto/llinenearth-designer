@@ -520,6 +520,22 @@ export function DesignerModule() {
     setFeedbackReason(null);
   }
 
+  function creativeStatus(direction:CreativeDirection) {
+    const aesthetic=direction.critics.find((item)=>item.id==="aesthetic")?.score || 0;
+    const originality=direction.critics.find((item)=>item.id==="originality")?.score || 0;
+    if(direction.explorationClass==="frontier") return "Frontier";
+    if(aesthetic>=82 && originality>=78) return "Strong";
+    if(originality>=84) return "Fresh";
+    return "Explore";
+  }
+
+  function creativeQuickTags(direction:CreativeDirection) {
+    const tags:string[]=[];
+    if(direction.pattern) tags.push(direction.pattern.name);
+    for(const move of direction.treatments.slice(0,2)) tags.push(move.label);
+    return tags.slice(0,3);
+  }
+
   function downloadGarmentSpec() {
     if (!garmentSpec) return;
     const summary = canonicalGarmentSpecSummary(garmentSpec);
@@ -539,23 +555,21 @@ export function DesignerModule() {
       <div className="newDesignerHeroCopy">
         <span className="newDesignerKicker">LINEN EARTH / THE DESIGN STUDIO</span>
         <h1>Designer<span className="newDesignerHeroDot">.</span></h1>
-        <p className="newDesignerHeroLead">A designer begins with the cloth, then considers the person and the moment.</p>
-        <p>Choose real catalogue swatches, shape the shirt and trousers, and see why the pairing works or needs a second look.</p>
-        <div className="newDesignerHeroIndex"><span>01 / Observe</span><span>02 / Compose</span><span>03 / Verify</span></div>
-        <span className="newDesignerCount">{shirtOptions.length} shirting references · {pantOptions.length} trouser references</span>
+        <p className="newDesignerHeroLead">Choose cloth. Create a look. See it instantly.</p>
+        <div className="newDesignerHeroIndex"><span>1 · CLOTH</span><span>2 · DESIGN</span><span>3 · PREVIEW</span></div>
       </div>
       <figure className="newDesignerHeroArt">
         <div className="newDesignerArchiveFrame"><img src="/designer/studio-pleated.webp" alt="Faceless studio mannequin in a shirt and tailored trousers" /></div>
         <div className="newDesignerHeroFabric"><img src={shirt?.image} alt="Linen Earth selected shirting fabric" /><span>THE CLOTH / SHIRT</span></div>
         <div className="newDesignerHeroFabric second"><img src={pant?.image} alt="Linen Earth selected trouser fabric" /><span>THE CLOTH / TROUSER</span></div>
-        <figcaption>Studio model prepared once for Designer. Choose two fabrics below to see the live composition.</figcaption>
+        <figcaption>Live outfit preview</figcaption>
       </figure>
     </header>
 
     <div className="newDesignerBody">
       <section className="newDesignerSelections" aria-labelledby="designerChoose">
         {directorHandoff && <div className="newDesignerHandoff"><span>STYLE DIRECTOR HANDOFF</span><strong>{directorHandoffTitle || "Your complete outfit direction is loaded."}</strong><p>{shirt?.name} shirt + {pant?.name} trousers · {style.shirtWear} · {style.trouser}. You can refine any detail below without rebuilding the look.</p></div>}
-        <div className="newDesignerSectionHead"><span>01 / THE MATERIALS</span><h2 id="designerChoose">Start with the cloth.</h2></div>
+        <div className="newDesignerSectionHead"><span>01 / CLOTH</span><h2 id="designerChoose">Choose your fabrics.</h2></div>
         <div className="newDesignerFabricGrid">
           <article className="newDesignerFabric">
             <div className="newDesignerSwatch" style={{ backgroundColor: shirt?.hex || "#172339" }}>
@@ -578,7 +592,7 @@ export function DesignerModule() {
             <small>{pant?.patternType} · {pant?.source}</small>
           </article>
         </div>
-        <a className="newDesignerJump" href="#designerPhotoTitle">See these fabrics on the live model ↘</a>
+        <a className="newDesignerJump" href="#designerPhotoTitle">Preview on model ↘</a>
 
         <fieldset className="newDesignerOccasions">
           <legend>02 / WHERE WILL YOU WEAR IT?</legend>
@@ -598,279 +612,165 @@ export function DesignerModule() {
               {INTENTIONS.map((option) => <option key={option}>{option}</option>)}
             </select>
           </label>
-          <small>Expression changes the order of cut ideas. Climate is checked only against verified physical cloth.</small>
+          <small>These help Designer shape the look.</small>
         </div>
 
-        <section className="newDesignerFitProfile" aria-label="Saved tailoring measurements">
-          <div className="newDesignerFitHead">
-            <div><span>FIT PROFILE / MEASUREMENTS</span><strong>{fitCoverage.total > 0 ? `${fitCoverage.total}/16 measurements loaded` : "No measurements loaded yet"}</strong></div>
-            <Link href="/measurements">{fitCoverage.total > 0 ? "Update measurements" : "Add measurements"} ↗</Link>
+        <section className="newDesignerFitCompact" aria-label="Saved tailoring measurements">
+          <div>
+            <span>MEASUREMENTS</span>
+            <strong>{fitCoverage.total > 0 ? `${fitCoverage.total}/16 loaded` : "Optional"}</strong>
           </div>
-          {measurementProfile && fitCoverage.total > 0 ? <>
-            <div className="newDesignerMeasureChips">
-              {measurementProfile.shirt.neck && <span>Neck <b>{formatMeasure(measurementProfile.shirt.neck, measurementProfile.unit)}</b></span>}
-              {measurementProfile.shirt.chest && <span>Chest <b>{formatMeasure(measurementProfile.shirt.chest, measurementProfile.unit)}</b></span>}
-              {measurementProfile.shirt.waist && <span>Shirt waist <b>{formatMeasure(measurementProfile.shirt.waist, measurementProfile.unit)}</b></span>}
-              {measurementProfile.pants.waist && <span>Trouser waist <b>{formatMeasure(measurementProfile.pants.waist, measurementProfile.unit)}</b></span>}
-              {measurementProfile.pants.seat && <span>Seat <b>{formatMeasure(measurementProfile.pants.seat, measurementProfile.unit)}</b></span>}
-              {measurementProfile.pants.inseam && <span>Inseam <b>{formatMeasure(measurementProfile.pants.inseam, measurementProfile.unit)}</b></span>}
-            </div>
-            {fitGuidance.length > 0 && <div className="newDesignerFitNotes"><span>TAILORING GUIDANCE</span><ul>{fitGuidance.map((note) => <li key={note}>{note}</li>)}</ul></div>}
-            {fitConstruction && <div className="newDesignerGarmentSpec">
-              <div className="newDesignerGarmentSpecHead"><span>FIT + CONSTRUCTION V2</span><strong>{fitConstruction.fitScore}/100 provisional compatibility</strong></div>
-              <div className="newDesignerGarmentTargets">
-                <article><span>SHIRT / FINISHED TARGETS</span>{fitConstruction.shirtTargets.slice(0,4).map((target) => <p key={target.label}><b>{target.label}</b><em>{formatFinishedRange(target,"in")}</em></p>)}</article>
-                <article><span>TROUSER / FINISHED TARGETS</span>{fitConstruction.trouserTargets.slice(0,4).map((target) => <p key={target.label}><b>{target.label}</b><em>{formatFinishedRange(target,"in")}</em></p>)}</article>
-              </div>
-              {fitConstruction.checks.some((item) => item.severity !== "info") && <div className="newDesignerConstructionChecks"><span>CONSTRUCTION CHECKS</span>{fitConstruction.checks.filter((item) => item.severity !== "info").slice(0,4).map((item) => <p key={item.id} data-severity={item.severity}>{item.message}</p>)}</div>}
-            </div>}
-            {blockStrategy && <div className="newDesignerBlockStrategy">
-              <div className="newDesignerBlockHead"><span>PATTERN BLOCK / V1</span><strong>{blockStrategy.score}/100 starting-block read</strong></div>
-              <div className="newDesignerBlockGrid">
-                <article><span>SHIRT BLOCK</span><strong>{blockStrategy.shirtBlock.replaceAll("-"," ")}</strong><p>{blockStrategy.summary[0]}</p></article>
-                <article><span>TROUSER BLOCK</span><strong>{blockStrategy.trouserBlock.replaceAll("-"," ")}</strong><p>{blockStrategy.summary[1]}</p></article>
-              </div>
-              {blockStrategy.adjustments.some((item)=>item.severity!=="info") && <div className="newDesignerBlockChecks">{blockStrategy.adjustments.filter((item)=>item.severity!=="info").slice(0,4).map((item)=><p key={item.id} data-severity={item.severity}><b>{item.area}</b>{item.message}</p>)}</div>}
-              {blockStrategy.suggestedPatch && <button type="button" onClick={()=>assess({...style,...blockStrategy.suggestedPatch})}>Try safer starting block ↗</button>}
-              <small>Starting-block strategy guides pattern selection and fitting review; it does not create a cutting pattern.</small>
-            </div>}
-            {observationCoverage > 0 && <div className="newDesignerTailorObservations">
-              <span>TAILOR OBSERVATIONS · {observationCoverage}/4</span>
-              {observationSummary.map((note)=><b key={note}>{note}</b>)}
-            </div>}
-            <p className="newDesignerFitTruth">These measurements and manual tailoring observations guide the proposed cut and tailoring conversation. Finished ranges are provisional house targets, not final cutting dimensions. The photographic mannequin is a fixed visual reference and is not resized to represent your body.</p>
-          </> : <p className="newDesignerFitTruth">Add measurements in the blueprint studio to carry proportion-aware tailoring notes into Designer. The visual mannequin remains a fixed reference.</p>}
+          <Link href="/measurements">{fitCoverage.total > 0 ? "Edit" : "Add"} ↗</Link>
+          {(fitCoverage.total > 0 || observationCoverage > 0) && <details className="newDesignerTechnicalDrawer">
+            <summary>Fit details</summary>
+            {fitGuidance.slice(0,3).map((note)=><p key={note}>{note}</p>)}
+            {fitConstruction && <p><b>Fit read:</b> {fitConstruction.fitScore}/100 · {fitConstruction.checks.filter((item)=>item.severity!=="info").length} checks</p>}
+            {blockStrategy && <p><b>Starting block:</b> {blockStrategy.shirtBlock.replaceAll("-"," ")} + {blockStrategy.trouserBlock.replaceAll("-"," ")}</p>}
+          </details>}
         </section>
 
-        <section className="newDesignerSearch" aria-label="Advanced Designer catalogue search">
-          <div className="newDesignerSearchHead">
-            <div><span>DESIGNER SEARCH / V4</span><strong>Ask the Designer to search beyond the current pair.</strong><p>It now ranks complete outfit directions with a multi-objective decision matrix: compatibility, fit, block strategy, brand language, physical cloth evidence, controlled novelty and reviewed outcomes.</p><small className="newDesignerCasebookState">{casebook?.totalReviews ? `CASEBOOK · ${casebook.totalReviews} reviewed · ${casebook.usableBuckets} usable patterns` : "CASEBOOK · collecting operator-reviewed cases"} · {fitOutcomes?.totalReviews ? `FIT OUTCOMES · ${fitOutcomes.totalReviews} reviewed · ${fitOutcomes.usableBuckets} usable patterns` : "FIT OUTCOMES · collecting first-fit evidence"}</small></div>
-            <button type="button" onClick={runAdvancedSearch} disabled={!shirt || !pant}>Search catalogue ↗</button>
+        <section className="newDesignerSearch newDesignerSimplePanel" aria-label="Designer catalogue search">
+          <div className="newDesignerSimpleHead">
+            <div><span>02 / QUICK DIRECTIONS</span><strong>Try another outfit direction.</strong></div>
+            <button type="button" onClick={runAdvancedSearch} disabled={!shirt || !pant}>Show options</button>
           </div>
           <div className="newDesignerSearchScopes" role="group" aria-label="Designer search scope">
             <button type="button" aria-pressed={searchScope==="keep_shirt"} onClick={()=>{setSearchScope("keep_shirt");setSearchResults([]);}}>Keep shirt</button>
             <button type="button" aria-pressed={searchScope==="keep_trouser"} onClick={()=>{setSearchScope("keep_trouser");setSearchResults([]);}}>Keep trouser</button>
-            <button type="button" aria-pressed={searchScope==="open"} onClick={()=>{setSearchScope("open");setSearchResults([]);}}>Open search</button>
+            <button type="button" aria-pressed={searchScope==="open"} onClick={()=>{setSearchScope("open");setSearchResults([]);}}>Change both</button>
           </div>
-          {searchResults.length>0 && <div className="newDesignerSearchResults">
-            {searchResults.map((result)=><article key={result.id} data-tier={result.tier.toLowerCase()}>
-              <div className="newDesignerSearchTier"><span>{result.tier.toUpperCase()}</span><strong>{result.searchScore}/100 decision read</strong></div>
-              <div className="newDesignerSearchPair">
-                <div><img src={result.shirt.image} alt="" /><span>SHIRT</span><strong>{result.shirt.name}</strong><small>{result.shirt.line}</small></div>
-                <div><img src={result.pant.image} alt="" /><span>TROUSER</span><strong>{result.pant.name}</strong><small>{result.pant.line}</small></div>
+          {searchResults.length>0 && <div className="newDesignerQuickResults">
+            {searchResults.slice(0,3).map((result)=><article key={result.id}>
+              <div className="newDesignerQuickFabricPair">
+                <img src={result.shirt.image} alt="" />
+                <img src={result.pant.image} alt="" />
               </div>
-              <p className="newDesignerSearchCut">{result.style.shirtFit} · {result.style.shirtWear} · {result.style.trouser}</p>
-              <div className="newDesignerDecisionRead" data-risk={result.decision.risk}>
-                <div className="newDesignerDecisionHead"><span>DECISION MATRIX / V4</span><strong>{result.decision.overall}/100</strong><b>{result.decision.risk.toUpperCase()} RISK</b></div>
-                <div className="newDesignerDecisionMeta"><span>CERTAINTY {result.decision.certainty}/100</span>{result.decision.dominantStrengths.map((item)=><span key={item}>{item}</span>)}</div>
-                <details>
-                  <summary>Open decision matrix</summary>
-                  <div className="newDesignerDecisionGrid">{result.decision.dimensions.map((dimension)=><div key={dimension.id} data-status={dimension.status}>
-                    <span>{dimension.label}</span><strong>{Math.round(dimension.score)}</strong><small>{Math.round(dimension.weight*100)}% weight</small>
-                    <p>{dimension.evidence}</p>
-                  </div>)}</div>
-                  {result.decision.uncertainties.length>0 && <div className="newDesignerDecisionUncertainty"><span>WHAT COULD CHANGE THE DECISION</span>{result.decision.uncertainties.map((item)=><p key={item}>{item}</p>)}</div>}
-                </details>
+              <div className="newDesignerQuickResultCopy">
+                <span>{result.tier}</span>
+                <strong>{result.shirt.name} + {result.pant.name}</strong>
+                <div>{result.decision.dominantStrengths.slice(0,3).map((item)=><b key={item}>{item}</b>)}</div>
               </div>
-              <div className="newDesignerSearchWhy"><span>WHY THIS DIRECTION</span>{result.reasons.slice(0,3).map((reason)=><p key={reason}>{reason}</p>)}</div>
-              <details><summary>Why over my current choice?</summary>{result.comparison.map((item)=><p key={item}>{item}</p>)}</details>
-              {result.tradeoffs.length>0 && <details><summary>Trade-offs / checks</summary>{result.tradeoffs.map((item)=><p key={item}>{item}</p>)}</details>}
-              <div className="newDesignerSearchSignals"><span>FIT {result.fitConstruction.fitScore}</span><span>BLOCK {result.blockStrategy.score}</span><span>BRAND {result.brandLanguage.score}</span><span>NOVELTY {result.noveltyScore}</span>{result.casebookSignal.evidence>=3 && <span>CASEBOOK {result.casebookSignal.score>0?"+":""}{result.casebookSignal.score}</span>}{result.fitOutcomeSignal.evidence>=3 && <span>FIRST FIT {result.fitOutcomeSignal.score>0?"+":""}{result.fitOutcomeSignal.score}</span>}</div>
-              <button className="newDesignerSearchUse" type="button" onClick={()=>useSearchResult(result)}>Use this direction</button>
+              <button type="button" onClick={()=>useSearchResult(result)}>Use look</button>
+              <details className="newDesignerTechnicalDrawer">
+                <summary>Why this works</summary>
+                {result.reasons.slice(0,3).map((reason)=><p key={reason}>{reason}</p>)}
+                <p><b>Internal read:</b> {result.decision.overall}/100 · certainty {result.decision.certainty}/100 · {result.decision.risk} risk</p>
+              </details>
             </article>)}
           </div>}
-          <small className="newDesignerSearchTruth">Decision Matrix V4 is decision support, not a claim of objective fashion quality. Hard fit/construction conflicts are excluded first; uncertainty and missing physical cloth facts can lower certainty without being hidden.</small>
         </section>
 
-        <section className="newDesignerCreative" aria-label="Creative Designer Lab V5">
-          <div className="newDesignerCreativeHead">
+        <section className="newDesignerCreative newDesignerVisualLab" aria-label="Creative Designer Lab V5">
+          <div className="newDesignerSimpleHead">
             <div>
-              <span>CREATIVE DESIGNER / V5</span>
-              <strong>Maximum research freedom. Converge only after exploration.</strong>
-              <p>V5 now treats most fashion rules as critic signals, not early blockers. Each curated research principle can be used directly, transferred to another garment zone, amplified, subtracted, counterpointed, scale-shifted, cross-source hybridized and radically pushed before the engine narrows the field.</p>
-              {researchPool && <div className="newDesignerResearchPoolStat"><b>{researchPool.targets.toLocaleString("en-IN")} RESEARCH TARGETS</b><span>{researchPool.websites} source websites · {researchPool.highAuthorityWebsites} primary/scholarly · {creativeResearch?.active || 0} curated signals active</span></div>}
+              <span>03 / CREATE</span>
+              <strong>Imagine new designs.</strong>
+              {researchPool && <small>{researchPool.targets.toLocaleString("en-IN")} research paths working in the background</small>}
             </div>
-            <button type="button" onClick={runCreativeLab} disabled={!shirt || !pant}>Imagine new designs ↗</button>
+            <button type="button" onClick={runCreativeLab} disabled={!shirt || !pant}>Create ideas ✦</button>
           </div>
-          <div className="newDesignerCreativeFlow" aria-label="Creative process">
-            <span>MAXIMUM DIVERGENCE</span><b>→</b><span>DIRECT + MUTATE + HYBRID + RADICAL</span><b>→</b><span>5 CRITICS</span><b>→</b><span>REFINE</span><b>→</b><span>TOP 5 · FRONTIER INCLUDED</span>
-          </div>
-          {creativeDirections.length>0 && <div className="newDesignerCreativeResults">
-            {creativeDirections.map((direction)=><article key={direction.id} data-active={activeCreative?.id===direction.id}>
-              <div className="newDesignerCreativeTitle">
-                <div><span>CONCEPT / {direction.iteration===2?"REFINED":"FIRST PASS"}</span><h3>{direction.name}</h3></div>
-                <div><strong>{direction.overall}</strong><small>creative read</small></div>
+          {creativeDirections.length===0 && <div className="newDesignerCreativeEmpty">
+            <div className="newDesignerSpark">✦</div>
+            <strong>Ready to explore</strong>
+            <span>V5 searches widely, then shows only its strongest ideas.</span>
+          </div>}
+          {creativeDirections.length>0 && <div className="newDesignerCreativeResults newDesignerVisualResults">
+            {creativeDirections.slice(0,5).map((direction)=><article key={direction.id} data-active={activeCreative?.id===direction.id}>
+              <button className="newDesignerCreativeVisual" type="button" onClick={()=>useCreativeDirection(direction)} data-pattern={direction.pattern?.family || "detail"} aria-label={`Preview ${direction.name}`}>
+                <img src={shirt?.image} alt="" />
+                <span className="newDesignerCreativeVisualOverlay" />
+                <b>{creativeStatus(direction)}</b>
+              </button>
+              <div className="newDesignerCreativeCardCopy">
+                <span>{direction.explorationClass==="frontier" ? "FRONTIER IDEA" : direction.pattern ? "PATTERN + DETAIL" : "DETAIL + PROPORTION"}</span>
+                <h3>{direction.name}</h3>
+                <div className="newDesignerCreativeTagRow">{creativeQuickTags(direction).map((tag)=><b key={tag}>{tag}</b>)}</div>
               </div>
-              <p className="newDesignerCreativeThesis">{direction.thesis}</p>
-              <div className="newDesignerCreativeMeta"><span>{direction.explorationClass.toUpperCase()}</span><span>RESEARCH USE {direction.researchUtilization}</span><span>{direction.constraintMode.toUpperCase()} FREEDOM</span><span>CERTAINTY {direction.certainty}</span><span>{direction.risk.toUpperCase()} RISK</span><span>{direction.treatments.length} DESIGN MOVES</span>{direction.pattern&&<span>NEW PATTERN</span>}{direction.learning.evidence>=3&&<span>HUMAN REVIEW {direction.learning.score>0?"+":""}{direction.learning.score}</span>}</div>
-              <div className="newDesignerCreativeMoves">
-                {direction.treatments.map((move)=><div key={move.id}>
-                  <span>{move.zone.toUpperCase()} · {move.buildability.toUpperCase()}</span>
-                  <strong>{move.label}</strong>
-                  <p>{move.instruction}</p>
-                  <small>{move.visualPurpose}</small>
-                </div>)}
-              </div>
-              {direction.pattern && <section className="newDesignerPatternConcept">
-                <span>GENERATED PATTERN / {direction.pattern.family.toUpperCase()}</span>
-                <strong>{direction.pattern.name}</strong>
-                <p>{direction.pattern.layout}</p>
-                <div><b>{direction.pattern.scale.toUpperCase()} SCALE</b><b>{direction.pattern.coverage}% COVERAGE</b><b>{direction.pattern.placement}</b></div>
-                <small>{direction.pattern.note}</small>
-              </section>}
-              <div className="newDesignerCritics">
-                <span>CRITIC PANEL</span>
-                {direction.critics.map((critic)=><div key={critic.id} data-verdict={critic.verdict}>
-                  <div><strong>{critic.label}</strong><b>{critic.score}</b></div>
-                  <p>{critic.rationale[0]}</p>
-                  {critic.facets && <div className="newDesignerCriticFacets">{critic.facets.map((facet)=><span key={facet.label}>{facet.label}<b>{facet.score}</b></span>)}</div>}
-                </div>)}
-              </div>
-              {direction.refinement.length>0 && <div className="newDesignerRefinement"><span>WHAT V5 CHANGED AFTER CRITIQUE</span>{direction.refinement.map((item)=><p key={item}>{item}</p>)}</div>}
-              {direction.learning.evidence>=3 && <div className="newDesignerCreativeLearning"><span>REVIEWED VISUAL EVIDENCE</span><p>{direction.learning.summary}</p><small>Influence is capped at ±5 points so prior taste does not stop experimentation.</small></div>}
-              <details className="newDesignerCreativeResearch"><summary>Research → idea trace</summary>{direction.research.map((item)=><div key={item.id}><strong>{item.sourceTitle}</strong><p>{item.extractedPrinciple}</p><small>{item.transformedInto}</small><a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">Source ↗</a></div>)}</details>
-              <button className="newDesignerCreativeUse" type="button" onClick={()=>useCreativeDirection(direction)}>{activeCreative?.id===direction.id?"Selected creative direction":"Use this creative direction"}</button>
+              <button className="newDesignerCreativeUse" type="button" onClick={()=>useCreativeDirection(direction)}>{activeCreative?.id===direction.id?"Selected":"Try this"}</button>
+              <details className="newDesignerTechnicalDrawer">
+                <summary>Design reasoning</summary>
+                <p>{direction.thesis}</p>
+                <div className="newDesignerMiniScores">
+                  {direction.critics.map((critic)=><span key={critic.id}>{critic.label.replace(" critic","")} <b>{Math.round(critic.score)}</b></span>)}
+                </div>
+                {direction.research.slice(0,2).map((item)=><p key={item.id}><b>{item.sourceTitle}:</b> {item.transformedInto}</p>)}
+              </details>
             </article>)}
           </div>}
-          <small className="newDesignerCreativeTruth">Maximum mode does not reject a concept just because it breaks normal formality or house conventions. Those conflicts stay visible as risk/critic evidence. Only later review, sampling and physical feasibility decide whether a frontier idea should be produced.</small>
         </section>
 
-        <div className="newDesignerStyleBlock">
-          <div className="newDesignerSectionHead"><span>03 / THE CUT</span><h2>Shape the two garments.</h2></div>
-          <div className="newDesignerModelPreset">
-            <div><span>PHOTO TEMPLATE / OFFICE</span><strong>Use the exact cut shown on the tucked studio model.</strong><p>Point collar · 1-button barrel cuff · tucked shirt · pleated straight trouser · mid rise · belt loops · slight break.</p></div>
-            <button type="button" onClick={matchPhotographedOfficeModel}>Match photographed office model</button>
+        <div className="newDesignerStyleBlock newDesignerSimplePanel">
+          <div className="newDesignerSimpleHead">
+            <div><span>04 / SHAPE</span><strong>Adjust the cut.</strong></div>
+            <button type="button" onClick={matchPhotographedOfficeModel}>Office preset</button>
           </div>
-          <div className="newDesignerStyleGrid">{MAIN_DETAILS.map(([key, label]) => <label key={key}>{label}
-            <select value={style[key]} onChange={(event) => changeStyle(key, event.target.value)}>
-              {DESIGNER_STYLE_CHOICES[key].map((option) => <option key={option} value={option}>{option}</option>)}
+          <div className="newDesignerStyleGrid newDesignerStyleGridCompact">{MAIN_DETAILS.slice(0,4).map(([key,label])=><label key={key}>{label}
+            <select value={style[key]} onChange={(event)=>changeStyle(key,event.target.value)}>
+              {DESIGNER_STYLE_CHOICES[key].map((option)=><option key={option} value={option}>{option}</option>)}
             </select>
           </label>)}</div>
-          {insights.length > 0 && <div className="newDesignerInsights" aria-label="Fabric-aware design notes">
-            <span className="newDesignerInsightsKicker">DESIGNER THINKING / FOR THIS CLOTH</span>
-            {insights.map((insight) => {
-              const action = insight.action;
-              return <article key={insight.title}>
-              <div><strong>{insight.title}</strong><p>{insight.explanation}</p><a href={insight.sourceUrl} target="_blank" rel="noopener noreferrer">{insight.source} ↗</a></div>
-              {action && <button type="button" onClick={() => applyStylePatch(action.patch)}>{action.label} ↗</button>}
-              </article>;
-            })}
-          </div>}
-          <details className="newDesignerMore"><summary>More tailoring details</summary><div className="newDesignerStyleGrid">{MORE_DETAILS.map(([key, label]) => <label key={key}>{label}
-            <select value={style[key]} onChange={(event) => changeStyle(key, event.target.value)}>
-              {DESIGNER_STYLE_CHOICES[key].map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-          </label>)}</div></details>
-          <div className="newDesignerConstruction" aria-label="Selected garment construction">
-            {constructionNotes(style).map((detail) => <article key={detail.title}>
-              <span>{detail.title.toUpperCase()} / CUT REFERENCE</span>
-              <strong>{detail.name}</strong>
-              <p>{detail.description}</p>
-              <a href={detail.source} target="_blank" rel="noopener noreferrer">{detail.sourceLabel} ↗</a>
-            </article>)}
-          </div>
+          <details className="newDesignerTechnicalDrawer">
+            <summary>More cut options</summary>
+            <div className="newDesignerStyleGrid">{[...MAIN_DETAILS.slice(4),...MORE_DETAILS].map(([key,label])=><label key={key}>{label}
+              <select value={style[key]} onChange={(event)=>changeStyle(key,event.target.value)}>
+                {DESIGNER_STYLE_CHOICES[key].map((option)=><option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>)}</div>
+          </details>
         </div>
         <div className="newDesignerDraftActions">
-          <button className="newDesignerAction" type="button" disabled={!shirt || !pant} onClick={() => assess()}>Assess this pairing <span aria-hidden="true">↗</span></button>
-          <button className="newDesignerReset" type="button" onClick={resetDraft}>Reset design</button>
+          <button className="newDesignerAction" type="button" disabled={!shirt || !pant} onClick={() => assess()}>Check this look ↗</button>
+          <button className="newDesignerReset" type="button" onClick={resetDraft}>Reset</button>
         </div>
-        <p className="newDesignerFootnote">Catalogue images guide colour and pattern. Fabric weight, drape, opacity and current metres need confirmation in store.</p>
       </section>
 
       <div className="newDesignerRight">
       {directorHandoff && <div className="newDesignerModelHandoff"><span>STYLE DIRECTOR RESULT {directorHandoffTier ? `· ${directorHandoffTier.toUpperCase()}` : ""}</span><strong>{directorHandoffTitle || "Selected direction"}</strong><p>{directorHandoffReason || "The selected fabrics and cut have been carried into the photographic model."}</p></div>}
-      {activeCreative && <div className="newDesignerCreativeHandoff">
-        <span>CREATIVE LAB V5 / SELECTED</span>
+      {activeCreative && <div className="newDesignerCreativeHandoff newDesignerCreativeHandoffCompact">
+        <span>SELECTED IDEA</span>
         <strong>{activeCreative.name}</strong>
-        <p>{activeCreative.thesis}</p>
-        <div>{activeCreative.treatments.slice(0,3).map((move)=><b key={move.id}>{move.zone.toUpperCase()} · {move.label}</b>)}{activeCreative.pattern&&<b>PATTERN · {activeCreative.pattern.name}</b>}</div>
-        <small>The mannequin below previews supported surface/detail changes immediately. Use the photoreal V5 render when the concept changes real geometry such as cuff depth, collar proportion or pocket shape.</small>
+        <div>{creativeQuickTags(activeCreative).map((tag)=><b key={tag}>{tag}</b>)}</div>
       </div>}
       {shirt && pant && <PhotoOutfitPreview shirt={shirt} pant={pant} style={style} creativeDirection={activeCreative} onCreativeFeedback={giveCreativeRenderFeedback} />}
       {fitCoverage.total > 0 && <div className="newDesignerFitModelNote"><span>FIT PROFILE LOADED · {fitCoverage.total}/16</span><p>Measurements inform tailoring guidance; this studio model remains a fixed visual reference.</p></div>}
-      <section className="newDesignerOutcome" aria-live="polite" aria-label="Designer recommendation">
-        {!recommendation ? <div className="newDesignerEmpty"><span>04 / DESIGN DIRECTION</span><h2>Give the fabrics a purpose.</h2><p>Choose cloth, occasion and cut, then ask Designer to assess the outfit.</p></div> : <>
-          <div className="newDesignerSectionHead"><span>04 / DESIGN DIRECTION</span><h2>{recommendation.status === "needs_review" ? "This pairing needs a closer look." : "A direction worth exploring."}</h2></div>
-          <p className="newDesignerReason">{recommendation.shortReason}</p>
-          <div className="newDesignerSignals" aria-label="Design reasoning and fabric evidence">
-            <div><span>DESIGN READ</span><strong>{recommendation.status === "preliminary" ? "Promising" : "Review"}</strong><small>{recommendation.rules.filter((item) => item.status === "flag").length} pairing and cut checks flagged; every direction remains provisional.</small></div>
-            <div><span>PHYSICAL CLOTH CHECK</span><strong>{recommendation.materialEvidence.verified}/{recommendation.materialEvidence.total}</strong><small>Material facts confirmed across both cloths. We check the rolls before making a garment.</small></div>
-            {brandLanguage && <div><span>LINEN EARTH READ</span><strong>{brandLanguage.score}/100</strong><small>{brandLanguage.mode} brand mode · soft taste signal only.</small></div>}
+      <section className="newDesignerOutcome newDesignerOutcomeCompact" aria-live="polite" aria-label="Designer recommendation">
+        {!recommendation ? <div className="newDesignerEmpty newDesignerEmptyCompact"><span>LOOK CHECK</span><strong>Preview first.</strong><p>When you like the direction, check the look.</p></div> : <>
+          <div className="newDesignerResultTop">
+            <span>{recommendation.status==="preliminary" ? "LOOKS PROMISING" : "REVIEW NEEDED"}</span>
+            <strong>{recommendation.shirt.name} + {recommendation.pant.name}</strong>
           </div>
-          <div className="newDesignerDetails">
-            <div><span>SHIRT</span><strong>{recommendation.style.collar}</strong><small>{recommendation.style.shirtWear} · {recommendation.style.collarFinish} · {recommendation.style.shirtFit} · {recommendation.style.cuff} · {recommendation.style.placket}</small></div>
-            <div><span>TROUSERS</span><strong>{recommendation.style.trouser}</strong><small>{recommendation.style.rise} · {recommendation.style.waistband} · {recommendation.style.break}</small></div>
+          <div className="newDesignerResultChips">
+            <b>{recommendation.style.shirtFit}</b>
+            <b>{recommendation.style.shirtWear}</b>
+            <b>{recommendation.style.trouser}</b>
+            {brandLanguage && <b>{brandLanguage.mode}</b>}
           </div>
-          <p className="newDesignerProvisional">{recommendation.status === "preliminary" ? "A preliminary direction. We would check the actual fabric before confirming the cut." : "This is your proposed cut, pending a Linen Earth stylist's review."}</p>
-          {garmentSpec && <section className="newDesignerCanonicalSpec" aria-label="Canonical garment specification">
-            <div className="newDesignerCanonicalSpecHead">
-              <div><span>GARMENT SPEC / V1</span><strong>{garmentSpec.status === "ready_for_tailor_review" ? "Ready for tailor review" : garmentSpec.status === "review_required" ? "Review required" : "Draft specification"}</strong></div>
-              <button type="button" onClick={downloadGarmentSpec}>Export spec JSON ↗</button>
+          <div className="newDesignerResultReasons">
+            {[recommendation.shortReason,...(brandLanguage?.strengths || [])].filter(Boolean).slice(0,3).map((item)=><span key={item}>✓ {item}</span>)}
+          </div>
+          {recommendationId && <div className="newDesignerFeedback newDesignerFeedbackCompact">
+            <span>Like this direction?</span><div>
+              <button type="button" onClick={()=>giveFeedback("up")} aria-pressed={response==="up"}>Yes</button>
+              <button type="button" onClick={()=>giveFeedback("down")} aria-pressed={response==="down"}>Change it</button>
             </div>
-            <div className="newDesignerCanonicalSpecGrid">
-              <article><span>SHIRT</span><strong>{garmentSpec.fabrics.shirt.name}</strong><p>{garmentSpec.shirt.fit} · {garmentSpec.shirt.collar} · {garmentSpec.shirt.wear}</p>{garmentSpec.shirt.finishedTargets.slice(0,3).map((item)=><small key={item.label}>{item.label}: {formatFinishedRange(item,"in")}</small>)}</article>
-              <article><span>TROUSER</span><strong>{garmentSpec.fabrics.trouser.name}</strong><p>{garmentSpec.trouser.shape} · {garmentSpec.trouser.rise} · {garmentSpec.trouser.break}</p>{garmentSpec.trouser.finishedTargets.slice(0,3).map((item)=><small key={item.label}>{item.label}: {formatFinishedRange(item,"in")}</small>)}</article>
-            </div>
-            <div className="newDesignerCanonicalReadiness">
-              <span>VISUAL / {garmentSpec.readiness.visualization.replaceAll("_"," ")}</span>
-              <span>TAILORING / {garmentSpec.readiness.tailoring.replaceAll("_"," ")}</span>
-              <span>MATERIAL / {garmentSpec.readiness.materialVerification.replaceAll("_"," ")}</span>
-              {garmentSpec.blockStrategy && <span>BLOCK / {garmentSpec.blockStrategy.shirtBlock.replaceAll("-"," ")} + {garmentSpec.blockStrategy.trouserBlock.replaceAll("-"," ")}</span>}
-            </div>
-            <p>This is the common Designer handoff for visualization and tailoring review. It is not a cutting pattern.</p>
-          </section>}
-          {brandLanguage && <section className="newDesignerBrandRead" aria-label="Linen Earth brand language">
-            <div className="newDesignerBrandReadHead"><span>LINEN EARTH / BRAND LANGUAGE</span><strong>{brandLanguage.mode} · {brandLanguage.score}/100</strong></div>
-            {brandLanguage.strengths.length>0 && <div><span>WHAT FEELS RIGHT</span>{brandLanguage.strengths.map((item)=><p key={item}>{item}</p>)}</div>}
-            {brandLanguage.cautions.length>0 && <div><span>WHAT WE WOULD EDIT</span>{brandLanguage.cautions.map((item)=><p key={item}>{item}</p>)}</div>}
-            <small>Brand language is a soft preference layer. Fit, construction, occasion and verified cloth evidence always take priority.</small>
-          </section>}
-          {negotiation && <section className={`newDesignerNegotiation ${negotiation.verdict}`} aria-label="Designer constraint negotiation">
-            <div className="newDesignerNegotiationHead"><span>DESIGNER NEGOTIATION</span><strong>{negotiation.headline}</strong></div>
-            <div className="newDesignerPreserve"><span>KEEP</span>{negotiation.preserve.slice(0,5).map((item)=><b key={item}>{item}</b>)}</div>
-            {negotiation.blockers.length>0 && <div className="newDesignerIssueGroup"><span>BLOCKING</span>{negotiation.blockers.slice(0,3).map((item)=><p key={item.id}>{item.message}</p>)}</div>}
-            {negotiation.tradeoffs.length>0 && <div className="newDesignerIssueGroup"><span>FIT / CONSTRUCTION</span>{negotiation.tradeoffs.slice(0,3).map((item)=><p key={item.id}>{item.message}</p>)}</div>}
-            {negotiation.missingFacts.length>0 && <div className="newDesignerIssueGroup"><span>NEEDS VERIFICATION</span>{negotiation.missingFacts.slice(0,3).map((item)=><p key={item.id}>{item.message}</p>)}</div>}
-            {negotiation.actions.length>0 && <div className="newDesignerNegotiationActions"><span>SMALLEST FIXES</span>{negotiation.actions.map((action)=><div key={action.id}>
-              <p>{action.label}</p>
-              {action.patch && <button type="button" onClick={()=>assess({...recommendation.style,...action.patch})}>Try this change</button>}
-              {action.route && <Link href={action.route}>Open measurements ↗</Link>}
-            </div>)}</div>}
-          </section>}
-          {directions.length > 1 && <div className="newDesignerDirections"><h3>Different cuts for the same cloth</h3><p>These are design sketches, subject to the same fabric and stock checks.</p>
-            {directions.slice(1).map((direction) => <article key={direction.id}>
-              <strong>{direction.name}</strong><p>{direction.proposition}</p>
-              <small>{direction.changes.join(" · ")}</small>
-              {direction.fitConstruction && <span className="newDesignerDirectionFit">FIT + CONSTRUCTION {direction.fitConstruction.fitScore}/100</span>}{direction.blockStrategy && <span className="newDesignerDirectionBlock">BLOCK {direction.blockStrategy.score}/100</span>}{direction.brandLanguage && <span className="newDesignerDirectionBrand">LINEN EARTH {direction.brandLanguage.score}/100</span>}
-              <button type="button" onClick={() => assess(direction.recommendation.style)}>Assess this cut</button>
-            </article>)}
           </div>}
-          {suggestDesignerRepairs(recommendation).length > 0 && <div className="newDesignerRepairs"><h3>What would improve this look?</h3><ul>
-            {suggestDesignerRepairs(recommendation).map((repair) => <li key={repair.label}>{repair.label}{repair.patch && <button type="button" onClick={() => assess({ ...recommendation.style, ...repair.patch })}>Try this change</button>}</li>)}
-          </ul></div>}
-          {designerTasteAlternative(recommendation) && <div className="newDesignerTasteAlternative">
-            <strong>Another colour direction to explore</strong>
-            <p>Sky Blue shirting with Beige linen suiting was approved as a semi-formal colour idea. Its physical stock and tailoring details still need checking.</p>
-            <button type="button" onClick={() => {
-              setShirtId(DESIGNER_REVIEWED_PAIRING.shirtId); setPantId(DESIGNER_REVIEWED_PAIRING.pantId);
-              setStyle(designerStyleForOccasion("Semi-Formal")); setRecommendation(null); setRecommendationId(null);
-            }}>Try this colour direction</button>
-          </div>}
-          <details className="newDesignerChecks"><summary>What needs checking in store</summary><ul>{recommendation.confirmationsNeeded.map((item) => <li key={item}>{item}</li>)}</ul></details>
-          <details className="newDesignerChecks"><summary>Which material facts are still missing?</summary><ul>{recommendation.materialEvidence.missing.map((item) => <li key={item}>{item}</li>)}</ul></details>
-          {recommendationId && <div className="newDesignerFeedback"><span>Does this direction feel right?</span><div>
-            <button type="button" onClick={() => giveFeedback("up")} aria-pressed={response === "up"}>Helpful</button>
-            <button type="button" onClick={() => giveFeedback("down")} aria-pressed={response === "down"}>Needs work</button>
-          </div>
-          {response === "down" && <div className="newDesignerFeedbackReasons"><span>WHAT NEEDS WORK?</span>{DESIGNER_FEEDBACK_REASONS.map(([value,label])=><button key={value} type="button" aria-pressed={feedbackReason===value} onClick={()=>giveFeedbackReason(value)}>{label}</button>)}</div>}
-          {response === "up" && <small>Thanks. This positive signal is recorded for Designer review.</small>}
-          {response === "down" && feedbackReason && <small>Thanks. The reason is recorded with this exact outfit and cut.</small>}</div>}
+          <details className="newDesignerTechnicalDrawer newDesignerAdvancedResult">
+            <summary>Technical details</summary>
+            <p><b>Design:</b> {recommendation.style.collar} · {recommendation.style.cuff} · {recommendation.style.placket}</p>
+            <p><b>Material check:</b> {recommendation.materialEvidence.verified}/{recommendation.materialEvidence.total} verified</p>
+            {fitConstruction && <p><b>Fit/construction:</b> {fitConstruction.fitScore}/100</p>}
+            {blockStrategy && <p><b>Starting block:</b> {blockStrategy.shirtBlock.replaceAll("-"," ")} + {blockStrategy.trouserBlock.replaceAll("-"," ")}</p>}
+            {negotiation?.blockers.slice(0,2).map((item)=><p key={item.id}>{item.message}</p>)}
+            {garmentSpec && <button type="button" onClick={downloadGarmentSpec}>Export garment spec ↗</button>}
+          </details>
         </>}
       </section>
       </div>
     </div>
-    <section className="newDesignerNotebook" aria-labelledby="designerNotebook">
-      <div className="newDesignerNotebookHead"><span>FROM THE DESIGN DESK / SOURCES</span><h2 id="designerNotebook">An eye informed by history. <em>A judgment grounded in cloth.</em></h2><p>A new fashion thought every 15 seconds. Explore how colour, movement and fabric shape a look, then return to your own cloth and occasion.</p></div>
+    <details className="newDesignerResearchDrawer">
+ aria-labelledby="designerNotebook">
+      <summary>Research & technical sources</summary>
+      <div className="newDesignerNotebookHead"><span>BACKEND RESEARCH</span><h2 id="designerNotebook">Research powering Designer</h2></div>
       <div className="newDesignerNotebookBody">
         <section className="newDesignerFactCard" aria-label="Rotating fashion facts" aria-live="off">
           <div className="newDesignerFactTop"><span>FASHION NOTE / 15 SEC</span><span>{String(factIndex + 1).padStart(2, "0")} / {String(DESIGNER_FASHION_FACTS.length).padStart(2, "0")}</span></div>
@@ -891,6 +791,6 @@ export function DesignerModule() {
         </section>
         <div className="newDesignerResearchList">{DESIGNER_RESEARCH.map((item, index) => <article key={item.url}><span>0{index + 1} / {item.kind}</span><h3><a href={item.url} target="_blank" rel="noopener noreferrer">{item.title} ↗</a></h3><p>{item.lesson}</p><small>{item.publisher}</small></article>)}</div>
       </div>
-    </section>
+    </details>
   </div>;
 }
