@@ -224,3 +224,14 @@ for (const token of ["redirect","/designer-studio"]) {
   if (!realModelShortcut.includes(token)) throw new Error(`Real Model shortcut regression: missing ${token}`);
 }
 console.log("Measurement blueprint gate passed: the existing Measurements page now uses garment-specific blueprint guidance; Real Model remains a separate direct entry.");
+
+
+const realDesignerMeasurements = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
+for (const token of ["MEASUREMENT_STORAGE_KEY","measurementCoverage","measurementFitGuidance","FIT PROFILE / MEASUREMENTS","Update measurements","photographic mannequin is a fixed visual reference","FIT PROFILE LOADED"]) {
+  if (!realDesignerMeasurements.includes(token)) throw new Error(`Designer measurement-fit regression: missing ${token}`);
+}
+const realDesignerMeasurementCss = fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
+for (const token of [".newDesignerFitProfile",".newDesignerMeasureChips",".newDesignerFitNotes",".newDesignerFitModelNote"]) {
+  if (!realDesignerMeasurementCss.includes(token)) throw new Error(`Designer measurement-fit styling regression: missing ${token}`);
+}
+console.log("Designer measurement-fit gate passed: saved blueprint measurements surface as tailoring guidance without pretending to resize the photographic model.");
