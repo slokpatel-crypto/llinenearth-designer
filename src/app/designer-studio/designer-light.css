@@ -538,3 +538,9 @@
   .newDesignerPhotoSummaryCompact{grid-template-columns:1fr 1fr!important}
   .newDesignerPhotoActionsCompact{grid-column:1/-1}
 }
+
+.newDesignerContextSimple{display:grid!important;grid-template-columns:1fr!important;gap:8px!important}
+.newDesignerContextSimple>label{max-width:100%!important}
+.newDesignerPreferenceDrawer{margin-top:0!important}
+.newDesignerPreferenceDrawer label{display:block;margin-top:8px;font-size:7px;color:#765f52}
+.newDesignerPreferenceDrawer select{width:100%;margin-top:5px}
