@@ -49,6 +49,7 @@ export type CreativeCriticRead = {
   score:number;
   verdict:"strong"|"review"|"weak";
   rationale:string[];
+  facets?:Array<{label:string;score:number}>;
 };
 
 export type CreativeResearchTrace = {
@@ -530,12 +531,32 @@ function criticsFor(
   const fit=assessFitConstruction(input.measurements,style,{climate:input.context.climate,shirtFabric:input.shirt,trouserFabric:input.pant,observations:input.observations});
   const brand=evaluateLinenEarthBrandLanguage(input.shirt,input.pant,style,input.occasion,input.context);
 
-  let aesthetic=76;
-  aesthetic+=zones>=2&&zones<=3?7:0;
-  aesthetic-=duplicateZones(treatments)*5;
-  aesthetic-=Math.max(0,load-125)*.18;
-  aesthetic+=pattern && pattern.coverage<=45?5:0;
-  aesthetic+=treatments.some((item)=>/quiet|protected|restrained/i.test(item.label+" "+item.instruction))?5:0;
+  const proportionFacet=clamp(
+    74
+    +(treatments.some((item)=>/proportion|depth|breadth|volume|length|scale/i.test(item.instruction+" "+item.visualPurpose))?10:0)
+    -(load>145?10:0)
+  );
+  const hierarchyFacet=clamp(
+    76
+    +(treatments.some((item)=>/quiet|protected|restrained|stable|anchor/i.test(item.label+" "+item.instruction))?11:0)
+    -(treatments.filter((item)=>item.intensity>=60).length>2?13:0)
+  );
+  const rhythmFacet=clamp(
+    72
+    +(pattern?8:0)
+    +(treatments.some((item)=>/repeat|echo|rhythm|line|spacing|axis/i.test(item.instruction+" "+item.visualPurpose))?9:0)
+    -duplicateZones(treatments)*4
+  );
+  const harmonyFacet=clamp(
+    77
+    +(zones>=2&&zones<=3?7:0)
+    -(load>135?8:0)
+    -(pattern && pattern.coverage>48?6:0)
+  );
+
+  let aesthetic=proportionFacet*.27+hierarchyFacet*.31+rhythmFacet*.20+harmonyFacet*.22;
+  aesthetic-=Math.max(0,load-150)*.12;
+  aesthetic+=pattern && pattern.coverage<=42?3:0;
   // Research on apparel aesthetics suggests novelty and complexity should not
   // both be maximized. High novelty is allowed, but only when another system is quiet.
   const complexity=treatments.length+(pattern?1:0)+Math.round(load/70);
@@ -572,24 +593,47 @@ function criticsFor(
 
   const reads:CreativeCriticRead[]=[
     {id:"aesthetic",label:"Aesthetic critic",score:round(aesthetic),verdict:verdict(aesthetic),rationale:[
-      load>125?"Visual load is high; preserve one dominant idea and quiet the secondary zones.":"The focal load stays controlled enough for the main idea to read.",
-      zones>=2?"Details relate across more than one zone, creating composition instead of a single isolated trick.":"The idea depends on one focal zone, so proportion must carry the result.",
+      hierarchyFacet<68?"Too many elements compete for attention; one focal system needs to lead.":"The concept has a readable focal hierarchy rather than equal emphasis everywhere.",
+      proportionFacet<68?"The relationship between detail scale and silhouette needs another pass.":"Detail scale and silhouette remain proportionally legible.",
+      rhythmFacet<68?"The visual rhythm is weak or repetitive without purpose.":"Repetition, spacing or echo creates a deliberate visual rhythm.",
+    ],facets:[
+      {label:"Proportion",score:round(proportionFacet)},
+      {label:"Hierarchy",score:round(hierarchyFacet)},
+      {label:"Rhythm",score:round(rhythmFacet)},
+      {label:"Harmony",score:round(harmonyFacet)},
     ]},
     {id:"originality",label:"Originality critic",score:round(originality),verdict:verdict(originality),rationale:[
-      pattern?"The surface logic is generated as a new placement/repeat proposal rather than selected from the stock pattern labels.":"Originality comes from garment detailing and proportion rather than a new surface repeat.",
+      pattern?"The surface logic is generated as a placement/repeat proposal rather than selected from the stock pattern labels.":"Originality comes from garment detailing and proportion rather than a new surface repeat.",
       experimental?"One element deliberately leaves the normal house vocabulary and needs human design review.":"The idea mutates familiar menswear codes without relying on random novelty.",
+      trouserNovelty>95?"Trouser novelty is high; preserve a recognisable tailoring anchor so difference reads as intentional.":"Typicality and novelty remain in a readable relationship.",
+    ],facets:[
+      {label:"Novelty",score:round(Math.min(100,54+zones*8+(pattern?15:0)+experimental*8))},
+      {label:"Typicality anchor",score:round(100-Math.min(70,(trouserNovelty+shirtNovelty)*.22))},
+      {label:"Transformation",score:round(62+(atelier+experimental)*8+(pattern?12:0))},
     ]},
     {id:"brand",label:"Linen Earth critic",score:round(brandScore),verdict:verdict(brandScore),rationale:[
       "Uses the existing Linen Earth brand-language evaluator as a soft signal, not a veto.",
       load>145?"The amount of visual activity risks overpowering the cloth.":"The treatment leaves enough quiet cloth for the fabric to remain visible.",
+    ],facets:[
+      {label:"House language",score:round(brand.score)},
+      {label:"Cloth visibility",score:round(100-Math.max(0,load-70)*.45)},
+      {label:"Restraint",score:round(92-Math.max(0,treatments.length-2)*10-(pattern&&pattern.coverage>42?8:0))},
     ]},
     {id:"menswear",label:"Menswear critic",score:round(menswear),verdict:verdict(menswear),rationale:[
       recommendation.formality.match===false?"The base cut conflicts with the selected occasion band.":"The underlying cut remains inside the current occasion grammar.",
       "Research is converted into a design principle rather than copied as a finished look.",
+    ],facets:[
+      {label:"Occasion code",score:round(recommendation.formality.score)},
+      {label:"Design fit",score:round(recommendation.designFitScore)},
+      {label:"Research translation",score:round(researchFit(seed,input))},
     ]},
     {id:"construction",label:"Construction critic",score:round(construction),verdict:verdict(construction),rationale:[
       experimental?"Experimental detail needs a toile/sample before approval.":atelier?"Atelier-level detailing needs pattern-maker review but is not treated as impossible.":"The main treatment stays close to supported construction.",
       "Construction is a guardrail with lower ranking weight; it does not dominate the visual decision.",
+    ],facets:[
+      {label:"Base fit",score:round(fit.fitScore)},
+      {label:"Pattern risk",score:round(92-experimental*24-atelier*7)},
+      {label:"Sample readiness",score:round(94-experimental*28-atelier*9-(pattern?.family==="placement"?6:0))},
     ]},
   ];
   return {reads,fit,brand};
