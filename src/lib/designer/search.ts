@@ -11,7 +11,7 @@ import {
 } from "@/lib/designer/engine";
 import { assessFitConstruction, type FitConstructionAssessment } from "@/lib/designer/fit-construction";
 import { evaluateLinenEarthBrandLanguage, type BrandLanguageEvaluation } from "@/lib/designer/brand-language";
-import { casebookSignalFor, type DesignerCasebook, type DesignerCasebookSignal } from "@/lib/designer/casebook";
+import { casebookCorrectionSignalFor, casebookSignalFor, type DesignerCasebook, type DesignerCasebookSignal } from "@/lib/designer/casebook";
 
 export type DesignerSearchScope = "keep_shirt" | "keep_trouser" | "open";
 export type DesignerSearchTier = "Safe" | "Elevated" | "Statement";
@@ -26,6 +26,7 @@ export type DesignerSearchResult = {
   fitConstruction: FitConstructionAssessment;
   brandLanguage: BrandLanguageEvaluation;
   casebookSignal: DesignerCasebookSignal;
+  correctionSignal: DesignerCasebookSignal;
   searchScore: number;
   noveltyScore: number;
   reasons: string[];
@@ -169,7 +170,7 @@ function candidateScore(
   fit:FitConstructionAssessment,
   brand:BrandLanguageEvaluation,
   novelty:number,
-  casebookScore=0,
+  humanMemoryScore=0,
 ) {
   const target=TARGET_NOVELTY[tier];
   const noveltyAlignment=Math.max(0,100-Math.abs(novelty-target)*1.5);
@@ -184,7 +185,7 @@ function candidateScore(
     brand.score*.17+
     material*.06+
     noveltyAlignment*noveltyWeight+
-    Math.max(-6,Math.min(6,casebookScore));
+    Math.max(-6,Math.min(6,humanMemoryScore));
   return Math.round(score*10)/10;
 }
 
@@ -196,6 +197,7 @@ function reasonsFor(
   brand:BrandLanguageEvaluation,
   novelty:number,
   casebookSignal?:DesignerCasebookSignal,
+  correctionSignal?:DesignerCasebookSignal,
 ) {
   const reasons:string[]=[];
   if(scope==="keep_shirt") reasons.push(`Keeps the selected ${recommendation.shirt.name} shirting and searches for a stronger companion trouser.`);
@@ -210,6 +212,7 @@ function reasonsFor(
   if(brand.score>=82 && brand.strengths[0]) reasons.push(brand.strengths[0]);
   if(novelty>=65 && tier==="Statement") reasons.push("The visual interest comes from proportion, pattern or contrast rather than stacking several loud ideas.");
   if(casebookSignal && casebookSignal.evidence>=3 && casebookSignal.score>=2) reasons.push(`Operator-reviewed casebook supports this direction: ${casebookSignal.summary}`);
+  if(correctionSignal && correctionSignal.evidence>=2 && correctionSignal.score>=2) reasons.push(`Human correction memory supports this replacement: ${correctionSignal.summary}`);
   return reasons.slice(0,4);
 }
 
@@ -279,6 +282,7 @@ export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearc
 
   for(const tier of tiers) {
     const style=styleForTier(tier,input.occasion,input.chosenStyle);
+    const currentForTier=currentMetrics(input,tier);
     const ranked:RankedCandidate[]=[];
     for(const shirt of shirts) {
       for(const pant of pants) {
@@ -288,12 +292,14 @@ export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearc
         const brand=evaluateLinenEarthBrandLanguage(shirt,pant,style,input.occasion,input.context);
         const novelty=noveltyScore(shirt,pant,style);
         const casebookSignal=casebookSignalFor(recommendation,input.casebook);
+        const correctionSignal=casebookCorrectionSignalFor(currentForTier.recommendation,recommendation,input.casebook);
+        const humanMemoryScore=Math.max(-6,Math.min(6,casebookSignal.score+correctionSignal.score));
         ranked.push({
           id:`${tier.toLowerCase()}:${shirt.id}:${pant.id}`,
-          tier,shirt,pant,style,recommendation,fitConstruction:fit,brandLanguage:brand,casebookSignal,
-          searchScore:candidateScore(tier,recommendation,fit,brand,novelty,casebookSignal.score),
+          tier,shirt,pant,style,recommendation,fitConstruction:fit,brandLanguage:brand,casebookSignal,correctionSignal,
+          searchScore:candidateScore(tier,recommendation,fit,brand,novelty,humanMemoryScore),
           noveltyScore:novelty,
-          reasons:reasonsFor(tier,scope,recommendation,fit,brand,novelty,casebookSignal),
+          reasons:reasonsFor(tier,scope,recommendation,fit,brand,novelty,casebookSignal,correctionSignal),
           tradeoffs:[
             ...tradeoffsFor(recommendation,fit,brand),
             ...(casebookSignal.evidence>=3 && casebookSignal.score<=-2 ? [`Operator-reviewed casebook caution: ${casebookSignal.summary}`] : []),
