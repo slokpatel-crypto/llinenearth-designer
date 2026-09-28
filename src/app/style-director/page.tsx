@@ -218,6 +218,11 @@ export default function StyleDirectorPage() {
               <p><small>FOOTWEAR</small><b>{selectedLook.candidate.garments.footwear}</b></p>
             </div>
             <div className="whyBlock"><small>WHY THIS WORKS</small>{selectedLook.why.slice(0,2).map((w,i)=><p key={i}><span>0{i+1}</span>{w}</p>)}</div>
+            {selectedLook.realModel && <div className="directorRealModelSpec">
+              <span>REAL MODEL OUTFIT</span>
+              <strong>{selectedLook.realModel.shirtName} shirt + {selectedLook.realModel.pantName} trousers</strong>
+              <p>{selectedLook.realModel.style.shirtWear} · {selectedLook.realModel.style.trouser} · {selectedLook.realModel.style.collar}</p>
+            </div>}
             <div className="directorActions">
               <button onClick={()=>visualize("preview")} disabled={Boolean(rendering)}>{rendering==="preview"?"Building…":"See mannequin"} <b>↗</b></button>
               <button className="photoAction" onClick={()=>visualize("photo")} disabled={Boolean(rendering)}>{rendering==="photo"?"Rendering…":"Make photoreal"} <b>✦</b></button>
