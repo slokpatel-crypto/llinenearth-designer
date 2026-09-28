@@ -457,6 +457,47 @@ function researchMutationSeed(signal:CreativeResearchSignal,operator:ResearchMut
   };
 }
 
+function diverseResearchSignals(signals:CreativeResearchSignal[],limit:number) {
+  const selected:CreativeResearchSignal[]=[];
+  const selectedIds=new Set<string>();
+  const groups=new Map<string,CreativeResearchSignal[]>();
+  for(const signal of signals) {
+    const key=[signal.sourceType,signal.zone,signal.patternFamily,signal.buildability].join("|");
+    const group=groups.get(key) || [];
+    group.push(signal);
+    groups.set(key,group);
+  }
+  for(const group of groups.values()) {
+    const signal=group[0];
+    if(signal && !selectedIds.has(signal.id)) {
+      selected.push(signal);
+      selectedIds.add(signal.id);
+      if(selected.length>=limit) return selected;
+    }
+  }
+  for(const signal of signals) {
+    if(selectedIds.has(signal.id)) continue;
+    selected.push(signal);
+    selectedIds.add(signal.id);
+    if(selected.length>=limit) break;
+  }
+  return selected;
+}
+
+function researchDistance(a:CreativeResearchSignal,b:CreativeResearchSignal) {
+  return (a.zone!==b.zone?4:0)
+    +(a.patternFamily!==b.patternFamily?3:0)
+    +(a.sourceType!==b.sourceType?2:0)
+    +(a.buildability!==b.buildability?1:0)
+    +(Boolean(a.secondaryZone)!==Boolean(b.secondaryZone)?1:0);
+}
+
+function distantPartner(signal:CreativeResearchSignal,signals:CreativeResearchSignal[]) {
+  return [...signals]
+    .filter((candidate)=>candidate.id!==signal.id)
+    .sort((a,b)=>researchDistance(signal,b)-researchDistance(signal,a) || a.id.localeCompare(b.id))[0];
+}
+
 function researchMutationSeeds(signals:CreativeResearchSignal[],limit:number):Seed[] {
   const operators:ResearchMutationOperator[]=["transfer","amplify","subtract","counterpoint","scale-shift"];
   const seeds:Seed[]=[];
@@ -1155,12 +1196,12 @@ function signature(item:CreativeDirection) {
 export function generateCreativeDirections(input:CreativeLabInput):CreativeDirection[] {
   const freedom=input.researchFreedom || "maximum";
   const learnedLimit=freedom==="maximum"?160:freedom==="exploratory"?60:24;
-  const activeSignals=(input.creativeResearch?.signals || [])
-    .filter((signal)=>signal.active && Boolean(signal.sourceUrl))
-    .slice(0,learnedLimit);
+  const allActiveSignals=(input.creativeResearch?.signals || [])
+    .filter((signal)=>signal.active && Boolean(signal.sourceUrl));
+  const activeSignals=diverseResearchSignals(allActiveSignals,learnedLimit);
   const learnedSeeds=activeSignals.map(researchSeed);
   const mutationSeeds=freedom==="maximum"
-    ? researchMutationSeeds(activeSignals,Math.min(32,activeSignals.length))
+    ? researchMutationSeeds(activeSignals,Math.min(40,activeSignals.length))
     : freedom==="exploratory"
       ? researchMutationSeeds(activeSignals,Math.min(10,activeSignals.length)).filter((_,index)=>index%2===0)
       : [];
@@ -1170,15 +1211,16 @@ export function generateCreativeDirections(input:CreativeLabInput):CreativeDirec
     // Keep this bounded: the system should broaden the search, not explode combinatorially.
     for(let i=0;i<Math.min(48,activeSignals.length);i+=1) {
       const a=activeSignals[i];
-      const b=activeSignals[(i*7+3)%activeSignals.length];
-      if(a.id===b.id) continue;
+      if(!a) continue;
+      const b=distantPartner(a,activeSignals);
+      if(!b) continue;
       hybridSeeds.push(hybridResearchSeed(a,b,i));
     }
   }
   const frontierSeeds=freedom==="maximum"
-    ? [...learnedSeeds,...hybridSeeds,...SEEDS].slice(0,60).map((seed,index)=>frontierCrossZoneSeed(seed,index))
+    ? [...mutationSeeds,...learnedSeeds,...hybridSeeds,...SEEDS].slice(0,72).map((seed,index)=>frontierCrossZoneSeed(seed,index))
     : [];
-  const seedPool=[...SEEDS,...learnedSeeds,...hybridSeeds,...frontierSeeds];
+  const seedPool=[...SEEDS,...learnedSeeds,...mutationSeeds,...hybridSeeds,...frontierSeeds];
 
   // Maximum mode intentionally expands before it converges. Every curated
   // research signal can be expressed directly, mutated through five design
@@ -1212,7 +1254,7 @@ export function generateCreativeDirections(input:CreativeLabInput):CreativeDirec
   }).filter((item):item is {seed:Seed;direction:CreativeDirection}=>Boolean(item.direction));
 
   first.sort((a,b)=>b.direction.overall-a.direction.overall);
-  const refineCount=freedom==="maximum"?Math.min(48,first.length):freedom==="exploratory"?Math.min(18,first.length):Math.min(8,first.length);
+  const refineCount=freedom==="maximum"?Math.min(64,first.length):freedom==="exploratory"?Math.min(18,first.length):Math.min(8,first.length);
   const refined=first.slice(0,refineCount).map(({seed,direction})=>refine(seed,input,direction));
   refined.sort((a,b)=>b.overall-a.overall || b.certainty-a.certainty);
 
