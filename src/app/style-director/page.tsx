@@ -31,7 +31,7 @@ const steps: Array<{ key: StepKey; eyebrow: string; title: string; note: string;
     {value:"shirt",label:"Shirt",hint:"Fabric close to the face",symbol:"♙"},{value:"trouser",label:"Trouser",hint:"Shape and proportion",symbol:"Ⅱ"},
     {value:"suit",label:"Suit",hint:"One complete statement",symbol:"♜"},{value:"blazer",label:"Blazer",hint:"Layered tailoring",symbol:"▰"}
   ]},
-  { key:"colorDirection", eyebrow:"THE COLOUR INSTINCT", title:"Which direction pulls you in?", note:"We’ll match this against real LLinen Earth stock.", options:[
+  { key:"colorDirection", eyebrow:"THE COLOUR INSTINCT", title:"Which direction pulls you in?", note:"We’ll match this against real Linen Earth stock.", options:[
     {value:"Light",label:"Light",hint:"Creams, soft neutrals",symbol:"□"},{value:"Earthy",label:"Earthy",hint:"Taupe, sand, warm tones",symbol:"◫"},
     {value:"Blue",label:"Blue",hint:"Sky to slate",symbol:"▧"},{value:"Dark",label:"Dark",hint:"Charcoal, black, deep tones",symbol:"■"},
     {value:"Surprise me",label:"Surprise me",hint:"Let the director choose",symbol:"✦"}
@@ -127,12 +127,12 @@ export default function StyleDirectorPage() {
     };
   },[sessionId]);
 
-  const whatsapp = selectedLook ? `https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919226338282"}?text=${encodeURIComponent(`Hi LLinen Earth, I created “${selectedLook.title}” in the Style Director. Fabric: ${selectedLook.fabric.line} — ${selectedLook.fabric.colorName}. I’d like to explore this look in store.`)}` : "#";
+  const whatsapp = selectedLook ? `https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919226338282"}?text=${encodeURIComponent(`Hi Linen Earth, I created “${selectedLook.title}” in the Style Director. Fabric: ${selectedLook.fabric.line} — ${selectedLook.fabric.colorName}. I’d like to explore this look in store.`)}` : "#";
 
   return <AppShell>
     <main className="director">
       <header className="directorTop">
-        <a href="/" className="directorBrand"><span>LE</span><b>LLINEN EARTH</b></a>
+        <a href="/" className="directorBrand"><span>LE</span><b>LINEN EARTH</b></a>
         <div className="directorMode"><i/> STYLE DIRECTOR / LIVE</div>
         <button onClick={reset}>Start over ↺</button>
       </header>
@@ -169,7 +169,7 @@ export default function StyleDirectorPage() {
       {complete && selectedLook && <motion.section key="results" className="directorResults" initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-12}} transition={{duration:.4,ease:[.2,.8,.2,1]}}>
         <div className="resultHeader">
           <div><p>YOUR THREE DIRECTIONS</p><h1>Not recommendations.<br/><em>Three different versions of you.</em></h1></div>
-          <span>Built from your choices + live LLinen Earth fabric stock.</span>
+          <span>Built from your choices + live Linen Earth fabric stock.</span>
         </div>
 
         <div className="lookTabs">
