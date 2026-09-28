@@ -792,7 +792,7 @@ function certaintyFor(recommendation:DesignerRecommendation,seed:Seed,treatments
 function hardBlocked(recommendation:DesignerRecommendation,freedom:CreativeFreedom) {
   if(freedom==="maximum") return false;
   if(freedom==="exploratory") {
-    return recommendation.rules.some((item)=>item.status==="flag"&&item.severity==="High"&&/safety|impossible|unavailable/i.test(item.title+" "+item.detail));
+    return recommendation.rules.some((item)=>item.status==="flag"&&item.severity==="High"&&/safety|impossible|unavailable/i.test(item.id+" "+item.explanation));
   }
   return recommendation.formality.match===false || recommendation.rules.some((item)=>item.status==="flag"&&item.severity==="High");
 }
