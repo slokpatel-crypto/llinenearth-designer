@@ -156,3 +156,22 @@
 .newDesignerConstructionChecks p[data-severity="warning"]{border-left-color:#b96c4f;color:#84533f}
 .newDesignerDirectionFit{display:inline-block;margin-top:8px;padding:4px 6px;border:1px solid #d1dce7;background:#f6f9fc;color:#315f8e;font-size:7px;letter-spacing:.09em}
 @media(max-width:620px){.newDesignerGarmentSpecHead{flex-direction:column}.newDesignerGarmentTargets{grid-template-columns:1fr}}
+
+.newDesignerNegotiation{margin:16px 0 0;padding:16px;border:1px solid #d9d0c4;background:#faf7f2}
+.newDesignerNegotiation.hold{border-color:#d9b6a8;background:#fff8f4}
+.newDesignerNegotiation.negotiate{border-color:#d8cbb7;background:#fdf9f1}
+.newDesignerNegotiation.provisional_ok{border-color:#cbdacb;background:#f7fbf7}
+.newDesignerNegotiationHead span,.newDesignerPreserve>span,.newDesignerIssueGroup>span,.newDesignerNegotiationActions>span{display:block;font-size:8px;letter-spacing:.15em;color:#9d654d;font-weight:700}
+.newDesignerNegotiationHead strong{display:block;margin-top:6px;font:400 17px/1.35 Georgia,serif;color:#27394d}
+.newDesignerPreserve{display:flex;flex-wrap:wrap;gap:6px;margin-top:13px}
+.newDesignerPreserve>span{width:100%;margin-bottom:1px}
+.newDesignerPreserve b{font-size:8px;font-weight:500;color:#4f5c68;border:1px solid #ded5ca;background:#fff;padding:6px 8px}
+.newDesignerIssueGroup{margin-top:14px;padding-top:12px;border-top:1px solid #e3dbd1}
+.newDesignerIssueGroup p{margin:7px 0 0;padding-left:10px;border-left:2px solid #c9d5df;font-size:9px;line-height:1.5;color:#5e6975}
+.newDesignerNegotiation.hold .newDesignerIssueGroup p{border-left-color:#b56a4f}
+.newDesignerNegotiationActions{margin-top:14px;padding-top:12px;border-top:1px solid #e3dbd1}
+.newDesignerNegotiationActions>div{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid #ebe4dc}
+.newDesignerNegotiationActions>div:last-child{border-bottom:0}
+.newDesignerNegotiationActions p{margin:0;font-size:9px;line-height:1.45;color:#5f6872}
+.newDesignerNegotiationActions button,.newDesignerNegotiationActions a{border:1px solid #b7c9db;background:#fff;color:#20578f;padding:7px 9px;font-size:8px;text-decoration:none;cursor:pointer;white-space:nowrap}
+@media(max-width:620px){.newDesignerNegotiationActions>div{grid-template-columns:1fr}.newDesignerNegotiationActions button,.newDesignerNegotiationActions a{justify-self:start}}
