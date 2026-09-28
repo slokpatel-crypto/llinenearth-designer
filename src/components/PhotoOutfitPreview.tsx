@@ -5,6 +5,8 @@ import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
 import {
   DESIGNER_PHOTO_TEMPLATES, PHOTO_COLLAR_MASK, PHOTO_CUFF_MASK, PHOTO_TUCKED_COLLAR_MASK, PHOTO_TUCKED_COLLAR_STAND_MASK,
   PHOTO_TUCKED_CUFF_MASK, PHOTO_TUCKED_NECK_CLEAR, PHOTO_TUCKED_SHIRT_CLIP, PHOTO_TUCKED_TROUSER_CLIP,
+  PHOTO_TUCKED_SHIRT_BODY_CLIP, PHOTO_TUCKED_LEFT_SLEEVE_CLIP, PHOTO_TUCKED_RIGHT_SLEEVE_CLIP,
+  PHOTO_TUCKED_LEFT_TROUSER_CLIP, PHOTO_TUCKED_RIGHT_TROUSER_CLIP,
   photoTemplateForStyle, photoTemplateGaps, previewFabricLabel,
 } from "@/lib/designer/photo-preview";
 
@@ -235,6 +237,7 @@ function drawGarment(
   target: CanvasRenderingContext2D, photo: CanvasImageSource,
   swatch: HTMLImageElement, fabric: DesignerFabric, path: string,
   mask?: HTMLCanvasElement, lightingFilter = "grayscale(1) brightness(1.3) contrast(1.04)",
+  placement: { offsetX?: number; offsetY?: number; scale?: number } = {},
 ) {
   const layer = document.createElement("canvas");
   layer.width = WIDTH;
@@ -245,7 +248,8 @@ function drawGarment(
   const tile = swatchTile(swatch, fabric);
   const pattern = context.createPattern(tile, "repeat");
   if (!pattern) throw new Error("Could not prepare the fabric pattern.");
-  pattern.setTransform(new DOMMatrix().scale(patternScaleForFabric(fabric)));
+  const scale = patternScaleForFabric(fabric) * (placement.scale ?? 1);
+  pattern.setTransform(new DOMMatrix().translate(placement.offsetX ?? 0, placement.offsetY ?? 0).scale(scale));
   context.fillStyle = pattern;
   context.fillRect(0, 0, WIDTH, HEIGHT);
 
@@ -268,7 +272,7 @@ function drawGarment(
 
   context.globalCompositeOperation = "destination-in";
   if (mask) context.drawImage(featherMaskInside(mask), 0, 0);
-  else {
+  if (path) {
     context.fillStyle = "#fff";
     context.fill(new Path2D(path));
   }
@@ -310,7 +314,9 @@ export function composePhotoOutfit(
     // A tucked shirt must physically sit behind the trouser waistband. Draw
     // the shirt first, then the trouser garment on top. This removes the
     // pasted-on band of shirt texture across the waist/fly/crotch.
-    drawGarment(context, modelPhoto, shirtImage, shirt, "", masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)");
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_SHIRT_BODY_CLIP, masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)", { offsetX: 0 });
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_LEFT_SLEEVE_CLIP, masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)", { offsetX: 11 });
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_RIGHT_SLEEVE_CLIP, masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)", { offsetX: -9 });
 
     if (style.collarFinish === "Self-fabric") {
       drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined, "grayscale(1) brightness(3.05) contrast(.94)");
@@ -320,7 +326,8 @@ export function composePhotoOutfit(
     }
     if (style.collarFinish === "White contrast collar + cuffs") drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_CUFF_MASK, undefined, 3.6);
 
-    drawGarment(context, modelPhoto, pantImage, pant, "", masks.pant, "grayscale(1) brightness(1.9) contrast(1.03)");
+    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_LEFT_TROUSER_CLIP, masks.pant, "grayscale(1) brightness(1.9) contrast(1.03)", { offsetX: 5 });
+    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_RIGHT_TROUSER_CLIP, masks.pant, "grayscale(1) brightness(1.9) contrast(1.03)", { offsetX: -5 });
   } else {
     const shirtMask = untuckedGarmentMasks(modelPhoto, template.shirtPath, DESIGNER_PHOTO_TEMPLATES.pleated.trouserPath).shirt;
     const trouserMask = untuckedGarmentMasks(trouserPhoto, template.shirtPath, template.trouserPath).pant;
