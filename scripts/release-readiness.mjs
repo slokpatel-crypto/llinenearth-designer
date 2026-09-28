@@ -38,6 +38,7 @@ for (const path of [
   "src/lib/designer/brand-language.ts",
   "src/components/PhotoOutfitPreview.tsx",
   "src/app/designer-studio/page.tsx",
+  "src/lib/designer/search.ts",
   "src/lib/designer/garment-spec.ts",
   "desktop/src/App.tsx",
   "desktop/src-tauri/tauri.conf.json",
@@ -112,6 +113,14 @@ requireTokens("src/components/DesignerModule.tsx", ['params.get("shirt")','param
 requireTokens("src/lib/designer/garment-spec.ts", ["linen-earth-garment-spec-v1","buildCanonicalGarmentSpec","finishedTargets","ready_for_tailor_review","not a cutting pattern"]);
 requireTokens("src/components/DesignerModule.tsx", ["GARMENT SPEC / V1","Export spec JSON","downloadGarmentSpec"]);
 requireTokens("src/app/api/memory/event/route.ts", ["garmentSpecInput","fitConstructionScore","brandLanguageScore","materialVerification"]);
+requireTokens("src/lib/designer/search.ts", [
+  "DesignerSearchScope","keep_shirt","keep_trouser","open",
+  "DesignerSearchTier","Safe","Elevated","Statement",
+  "searchDesignerCatalogue","explainWhyNotCurrentPair","hardBlocked","comparisonFor"
+]);
+requireTokens("src/components/DesignerModule.tsx", [
+  "DESIGNER SEARCH / V3","Search catalogue","Keep shirt","Keep trouser","Open search","Why over my current choice?","Use this direction"
+]);
 requireTokens("src/app/api/homepage-model/route.ts", [
   "FASHN_API_KEY",
   "model-create",
