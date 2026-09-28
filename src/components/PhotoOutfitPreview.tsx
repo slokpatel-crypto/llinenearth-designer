@@ -14,6 +14,7 @@ const WIDTH = 1024;
 const HEIGHT = 1536;
 const images = new Map<string, Promise<HTMLImageElement>>();
 const fabricTiles = new Map<string, HTMLCanvasElement>();
+const featheredMasks = new WeakMap<HTMLCanvasElement, HTMLCanvasElement>();
 const tuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
 const untuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
 
@@ -119,6 +120,9 @@ function patternScaleForFabric(fabric: DesignerFabric) {
 }
 
 function featherMaskInside(mask: HTMLCanvasElement, blurPx = 1.6) {
+  const cached = featheredMasks.get(mask);
+  if (cached) return cached;
+
   const feathered = document.createElement("canvas");
   feathered.width = WIDTH;
   feathered.height = HEIGHT;
@@ -134,6 +138,7 @@ function featherMaskInside(mask: HTMLCanvasElement, blurPx = 1.6) {
   context.globalCompositeOperation = "destination-in";
   context.drawImage(mask, 0, 0);
   context.globalCompositeOperation = "source-over";
+  featheredMasks.set(mask, feathered);
   return feathered;
 }
 
