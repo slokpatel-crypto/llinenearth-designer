@@ -6,6 +6,8 @@ import Fashn from "fashn";
 import sharp from "sharp";
 import type { DesignerBrief } from "@/lib/designer-types";
 import type { DesignVersion } from "@/lib/refinement-engine";
+import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
+import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import {
   repairDevelopmentRender,
   renderDevelopmentSet,
@@ -55,6 +57,21 @@ async function mannequinPngDataUri(src: string) {
   return `data:image/png;base64,${png.toString("base64")}`;
 }
 
+export type CreativeFashnRequest = {
+  shirt: Pick<DesignerFabric,"id"|"name"|"line"|"image"|"hex"|"patternType">;
+  pant: Pick<DesignerFabric,"id"|"name"|"line"|"image"|"hex"|"patternType">;
+  style: DesignerStyle;
+  creative: Pick<CreativeDirection,"id"|"name"|"thesis"|"treatments"|"pattern">;
+};
+
+export type CreativeFashnResult = {
+  image:string;
+  jobId:string;
+  creditsUsed:number;
+  conceptId:string;
+  generatedAt:string;
+};
+
 async function stockSwatchDataUri(swatchImageUrl?: string) {
   if (!swatchImageUrl?.startsWith("/fabrics/") || !/^[a-zA-Z0-9/_-]+\.webp$/.test(swatchImageUrl)) return undefined;
   const fabricRoot = path.resolve(process.cwd(), "public", "fabrics");
@@ -92,6 +109,88 @@ function viewPrompt(spec: VisualizationSpec, view: RenderView) {
       ? "Turn the same mannequin and outfit to a full-body three-quarter view, angled about 35 degrees."
       : "Refine this as a straight full-body front view.";
   return `${camera} Preserve the mannequin identity, garment construction, exact fabric appearance, colors, fit, footwear, deep navy studio background and lighting. ${lockedOutfit(spec)} Keep the head completely faceless and matte with no eyes, hair or human facial details. Preserve physically clean garment boundaries: no fabric bleeding onto neck, hands, background or the other garment; clean collar opening, clean cuff termination, distinct trouser crotch seam, and when tucked the waistband must visibly sit over the shirt hem. No text, logos, props, extra garments or cropped limbs.`;
+}
+
+async function publicImageDataUri(publicPath:string,allowedRootName:string) {
+  if(!publicPath.startsWith(`/${allowedRootName}/`) || !/^[a-zA-Z0-9/_-]+\.(webp|png|jpe?g)$/i.test(publicPath)) return undefined;
+  const root=path.resolve(process.cwd(),"public",allowedRootName);
+  const filePath=path.resolve(process.cwd(),"public",publicPath.slice(1));
+  if(!filePath.startsWith(`${root}${path.sep}`)) return undefined;
+  try {
+    const bytes=await readFile(filePath);
+    const ext=path.extname(filePath).toLowerCase();
+    const mime=ext===".png"?"image/png":ext===".webp"?"image/webp":"image/jpeg";
+    return {bytes,mime};
+  } catch {
+    return undefined;
+  }
+}
+
+async function creativeFabricContext(shirtImage:string,pantImage:string) {
+  const [shirt,pant]=await Promise.all([
+    publicImageDataUri(shirtImage,"fabrics"),
+    publicImageDataUri(pantImage,"fabrics"),
+  ]);
+  if(!shirt && !pant) return undefined;
+  try {
+    const placeholder=await sharp({
+      create:{width:500,height:620,channels:3,background:{r:218,g:212,b:202}},
+    }).jpeg().toBuffer();
+    const left=await sharp(shirt?.bytes || placeholder).resize(500,620,{fit:"cover"}).jpeg({quality:90}).toBuffer();
+    const right=await sharp(pant?.bytes || placeholder).resize(500,620,{fit:"cover"}).jpeg({quality:90}).toBuffer();
+    const joined=await sharp({
+      create:{width:1000,height:620,channels:3,background:{r:235,g:231,b:224}},
+    }).composite([
+      {input:left,left:0,top:0},
+      {input:right,left:500,top:0},
+    ]).jpeg({quality:90}).toBuffer();
+    return `data:image/jpeg;base64,${joined.toString("base64")}`;
+  } catch {
+    return undefined;
+  }
+}
+
+async function creativeModelDataUri(style:DesignerStyle) {
+  const source=style.shirtWear==="Tucked" ? "/designer/studio-tucked.webp"
+    : style.trouser==="Wide-leg / Relaxed Drape Trouser" ? "/designer/studio-wide.webp"
+      : "/designer/studio-pleated.webp";
+  const image=await publicImageDataUri(source,"designer");
+  if(!image) throw new FashnVisualizationError("The studio model reference is unavailable.","invalid_source");
+  return `data:${image.mime};base64,${image.bytes.toString("base64")}`;
+}
+
+function creativeConceptPrompt(input:CreativeFashnRequest) {
+  const safe=(value:unknown,limit=360)=>String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
+  const moves=input.creative.treatments.slice(0,6).map((move,index)=>
+    `${index+1}. ${safe(move.zone,40)} — ${safe(move.label,100)}: ${safe(move.instruction,320)} Visual purpose: ${safe(move.visualPurpose,180)}.`
+  ).join(" ");
+  const pattern=input.creative.pattern
+    ? `Generated surface concept: ${safe(input.creative.pattern.name,100)}. Family ${safe(input.creative.pattern.family,50)}, ${safe(input.creative.pattern.scale,40)} scale, about ${Math.max(0,Math.min(60,Number(input.creative.pattern.coverage)||0))}% intended coverage. Layout: ${safe(input.creative.pattern.layout,420)} Placement: ${safe(input.creative.pattern.placement,260)}. The image-context is split vertically: LEFT HALF is the exact shirt-fabric reference; RIGHT HALF is the exact trouser-fabric reference. Use the generated motif logic on the shirt only where specified, while preserving the underlying cloth colour and woven character.`
+    : "The image-context is split vertically: LEFT HALF is the exact shirt-fabric reference; RIGHT HALF is the exact trouser-fabric reference.";
+
+  return `Edit this existing premium menswear studio photograph into the selected Linen Earth Creative Lab concept. Preserve the same faceless male mannequin, pose, body proportions, camera angle, deep navy studio environment and realistic tailoring quality. Keep the outfit physically believable and premium, but the DESIGN APPEARANCE is the priority.
+
+Base shirt: ${safe(input.shirt.name)} ${safe(input.shirt.line)}, ${safe(input.shirt.patternType)}. Base trousers: ${safe(input.pant.name)} ${safe(input.pant.line)}, ${safe(input.pant.patternType)}.
+Supported base cut: ${safe(input.style.collar)}, ${safe(input.style.cuff)}, ${safe(input.style.placket)}, ${safe(input.style.shirtFit)}, ${safe(input.style.shirtWear)}, ${safe(input.style.trouser)}, ${safe(input.style.rise)}, ${safe(input.style.waistband)}, ${safe(input.style.break)}.
+
+Creative concept: ${safe(input.creative.name)}. Thesis: ${safe(input.creative.thesis,420)}.
+Design moves: ${moves}
+${pattern}
+
+Render the custom visual details, not merely their colours. If a move changes cuff depth, collar proportion, pocket geometry, panel placement, border position or line rhythm, visibly change that garment detail while keeping the rest controlled. Do not add random decorations that are not in the concept. Preserve natural seams, folds, drape and garment boundaries. Shirt fabric must never spill over the neck, hands, trouser waistband or background. Trouser fabric must remain inside the trouser silhouette. For a tucked shirt, the waistband must sit physically in front of the tucked shirt. Keep the mannequin fully faceless with no eyes, hair or facial features. No text, logos, props, extra garments or cropped limbs. Full-body front fashion-catalogue photograph.`;
+}
+
+export async function renderCreativeFashnFront(input:CreativeFashnRequest):Promise<CreativeFashnResult> {
+  const source=await creativeModelDataUri(input.style);
+  const context=await creativeFabricContext(input.shirt.image,input.pant.image);
+  const generated=await runEdit(source,creativeConceptPrompt(input),context);
+  return {
+    image:generated.output,
+    jobId:generated.jobId,
+    creditsUsed:generated.creditsUsed,
+    conceptId:input.creative.id,
+    generatedAt:new Date().toISOString(),
+  };
 }
 
 async function runEdit(image: string, prompt: string, imageContext?: string) {
