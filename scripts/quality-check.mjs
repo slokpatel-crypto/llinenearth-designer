@@ -362,7 +362,7 @@ const creativeEngine = fs.readFileSync("src/lib/designer/creative-engine.ts","ut
 for (const token of [
   "generateCreativeDirections","CreativeCriticId","aesthetic","originality","brand","menswear","construction",
   "facets","Proportion","Hierarchy","Rhythm","Harmony","creativeLearningSignalFor","creativeResearch",
-  "researchSeed","hybridResearchSeed","researchFreedom","maximum","researchUtilization","explorationClass",
+  "researchSeed","researchMutationSeeds","ResearchMutationOperator","hybridResearchSeed","researchFreedom","maximum","researchUtilization","explorationClass",
   "maya-apparel-typicality-novelty","constraints-creative-patternmaking","engineered-print-3d-2d",
   "design-fixation-examples","divergent-design-thinking","creative-design-coevolving-spaces",
   "frontierCrossZoneSeed","wrongness-tailoring-2026","tactile-dimensionality-2026","quiet-wild-balance-2026","formless-form-2026","craft-deviation-2026"
