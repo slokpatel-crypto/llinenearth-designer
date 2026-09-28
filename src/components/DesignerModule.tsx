@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   DESIGNER_PANTS, DESIGNER_REVIEWED_PAIRING, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES,
   designerStyleForOccasion, designerTasteAlternative,
-  type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerRecommendation, type DesignerStyle, type OccasionTier,
+  type DesignerClimate, type DesignerContext, type DesignerFabric, type DesignerIntention, type DesignerRecommendation, type DesignerStyle, type OccasionTier,
 } from "@/lib/designer/engine";
 import { planDesignerDirections, suggestDesignerRepairs, type DesignerDirection } from "@/lib/designer/planner";
 import { designerStyleInsights } from "@/lib/designer/style-insights";
@@ -44,6 +44,8 @@ function designerSession() {
 export function DesignerModule() {
   const [shirtId, setShirtId] = useState(DESIGNER_SHIRTS.find((item) => item.id === DESIGNER_REVIEWED_PAIRING.shirtId)?.id ?? DESIGNER_SHIRTS[0]?.id ?? "");
   const [pantId, setPantId] = useState(DESIGNER_PANTS.find((item) => item.id === DESIGNER_REVIEWED_PAIRING.pantId)?.id ?? DESIGNER_PANTS[0]?.id ?? "");
+  const [shirtOptions, setShirtOptions] = useState<DesignerFabric[]>(DESIGNER_SHIRTS);
+  const [pantOptions, setPantOptions] = useState<DesignerFabric[]>(DESIGNER_PANTS);
   const [occasion, setOccasion] = useState<OccasionTier>(DESIGNER_REVIEWED_PAIRING.occasion);
   const [style, setStyle] = useState<DesignerStyle>(() => designerStyleForOccasion(DESIGNER_REVIEWED_PAIRING.occasion));
   const [climate, setClimate] = useState<DesignerClimate>("Not specified");
@@ -60,9 +62,29 @@ export function DesignerModule() {
   const [directorHandoffTier, setDirectorHandoffTier] = useState("");
   const [directorHandoffReason, setDirectorHandoffReason] = useState("");
   const fact = DESIGNER_FASHION_FACTS[factIndex];
-  const shirt = useMemo(() => DESIGNER_SHIRTS.find((item) => item.id === shirtId), [shirtId]);
-  const pant = useMemo(() => DESIGNER_PANTS.find((item) => item.id === pantId), [pantId]);
+  const shirt = useMemo(() => shirtOptions.find((item) => item.id === shirtId), [shirtId, shirtOptions]);
+  const pant = useMemo(() => pantOptions.find((item) => item.id === pantId), [pantId, pantOptions]);
   const insights = shirt && pant ? designerStyleInsights(shirt, pant, occasion, style) : [];
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadCalibratedCatalogue() {
+      try {
+        const response = await fetch("/api/designer/catalog",{cache:"no-store"});
+        if (!response.ok) return;
+        const data = await response.json() as { shirts?: DesignerFabric[]; pants?: DesignerFabric[] };
+        if (cancelled) return;
+        const nextShirts = Array.isArray(data.shirts) && data.shirts.length ? data.shirts : DESIGNER_SHIRTS;
+        const nextPants = Array.isArray(data.pants) && data.pants.length ? data.pants : DESIGNER_PANTS;
+        setShirtOptions(nextShirts);
+        setPantOptions(nextPants);
+        setShirtId((current)=>nextShirts.some((item)=>item.id===current) ? current : (nextShirts[0]?.id || current));
+        setPantId((current)=>nextPants.some((item)=>item.id===current) ? current : (nextPants[0]?.id || current));
+      } catch { /* Static catalogue remains a safe fallback. */ }
+    }
+    void loadCalibratedCatalogue();
+    return () => { cancelled = true; };
+  },[]);
 
   useEffect(() => {
     try {
@@ -269,7 +291,7 @@ export function DesignerModule() {
         <p className="newDesignerHeroLead">A designer begins with the cloth, then considers the person and the moment.</p>
         <p>Choose real catalogue swatches, shape the shirt and trousers, and see why the pairing works or needs a second look.</p>
         <div className="newDesignerHeroIndex"><span>01 / Observe</span><span>02 / Compose</span><span>03 / Verify</span></div>
-        <span className="newDesignerCount">{DESIGNER_SHIRTS.length} shirting references · {DESIGNER_PANTS.length} trouser references</span>
+        <span className="newDesignerCount">{shirtOptions.length} shirting references · {pantOptions.length} trouser references</span>
       </div>
       <figure className="newDesignerHeroArt">
         <div className="newDesignerArchiveFrame"><img src="/designer/studio-pleated.webp" alt="Faceless studio mannequin in a shirt and tailored trousers" /></div>
@@ -290,7 +312,7 @@ export function DesignerModule() {
             </div>
             <label htmlFor="designer-shirt">Shirt fabric</label>
             <select id="designer-shirt" value={shirtId} onChange={(event) => { setShirtId(event.target.value); setRecommendation(null); setRecommendationId(null); }}>
-              {DESIGNER_SHIRTS.map((fabric) => <option key={fabric.id} value={fabric.id}>{fabric.line} · {fabric.name}</option>)}
+              {shirtOptions.map((fabric) => <option key={fabric.id} value={fabric.id}>{fabric.line} · {fabric.name}</option>)}
             </select>
             <small>{shirt?.patternType} · {shirt?.source}</small>
           </article>
@@ -300,7 +322,7 @@ export function DesignerModule() {
             </div>
             <label htmlFor="designer-pant">Trouser fabric</label>
             <select id="designer-pant" value={pantId} onChange={(event) => { setPantId(event.target.value); setRecommendation(null); setRecommendationId(null); }}>
-              {DESIGNER_PANTS.map((fabric) => <option key={fabric.id} value={fabric.id}>{fabric.line} · {fabric.name}</option>)}
+              {pantOptions.map((fabric) => <option key={fabric.id} value={fabric.id}>{fabric.line} · {fabric.name}</option>)}
             </select>
             <small>{pant?.patternType} · {pant?.source}</small>
           </article>

@@ -229,23 +229,30 @@ function patternProfile(pattern: string): { name: string; scale: DesignerFabric[
   return { name: pattern, scale: null };
 }
 
-function fromStock(fabric: FabricColorway): DesignerFabric {
+export function designerFabricFromStock(fabric: FabricColorway): DesignerFabric {
   const palette = namedColor(fabric.colorName);
   const pattern = patternProfile(fabric.pattern);
+  const drape: DesignerFabric["drape"] = fabric.drape === "structured" ? "Structured"
+    : fabric.drape === "medium" ? "Balanced"
+      : fabric.drape === "fluid" || fabric.drape === "soft" ? "Fluid" : null;
   return {
     id: fabric.id, name: fabric.colorName, line: fabric.line, image: fabric.swatchImageUrl, hex: fabric.hex,
     colorFamily: palette ? String(palette.Color_Family) : null,
     tone: palette && ["Light", "Medium", "Dark"].includes(String(palette.Tone))
       ? palette.Tone as DesignerFabric["tone"] : visualTone(fabric.hex),
-    formalityScore: typeof palette?.Formality_Score === "number" ? palette.Formality_Score : null,
+    formalityScore: typeof fabric.formalityScore === "number" ? fabric.formalityScore
+      : typeof palette?.Formality_Score === "number" ? palette.Formality_Score : null,
     patternType: pattern.name, patternScale: pattern.scale,
-    // A lea label describes yarn count. It is not a measured fabric GSM.
-    weightGsm: null, weightClass: null, bestSeason: null, roleTags: null,
-    weave: fabric.line === "Linen Plain 60 Lea" ? "Plain Weave" : null,
-    texture: null,
+    // A Lea label describes yarn count. Verified GSM/weight/season fields only arrive from the operator calibration ledger.
+    weightGsm: typeof fabric.weightGsm === "number" ? fabric.weightGsm : null,
+    weightClass: fabric.weightClass ?? null,
+    bestSeason: fabric.seasonTags?.length ? [...fabric.seasonTags] : null,
+    roleTags: fabric.roleTags?.length ? [...fabric.roleTags] : null,
+    weave: fabric.weave || (fabric.line === "Linen Plain 60 Lea" ? "Plain Weave" : null),
+    texture: fabric.texture || null,
     fiberContent: fabric.line.includes("Blend") ? null : fabric.family,
     confirmedAvailableMetres: null, colorVerified: false, patternScaleVerified: false,
-    fiberContentVerified: false, drape: null, opacity: null, comfortTags: null,
+    fiberContentVerified: false, drape, opacity: null, comfortTags: null,
     source: `${fabric.sourceDocument}, page ${fabric.sourcePage}`,
     allowedGarments: [
       ...(fabric.suitableFor.includes("shirt") ? ["shirt" as const] : []),
@@ -256,7 +263,7 @@ function fromStock(fabric: FabricColorway): DesignerFabric {
 
 // Only catalogued fabrics enter customer recommendations. The 91 imported
 // website gallery images are flagged inStock=false and lack verified details.
-export const DESIGNER_FABRICS = FABRIC_STOCK.filter((fabric) => fabric.inStock).map(fromStock);
+export const DESIGNER_FABRICS = FABRIC_STOCK.filter((fabric) => fabric.inStock).map(designerFabricFromStock);
 export const DESIGNER_SHIRTS = DESIGNER_FABRICS.filter((fabric) => fabric.allowedGarments.includes("shirt"));
 export const DESIGNER_PANTS = DESIGNER_FABRICS.filter((fabric) => fabric.allowedGarments.includes("pant"));
 

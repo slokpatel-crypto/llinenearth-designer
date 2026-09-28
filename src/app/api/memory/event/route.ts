@@ -109,6 +109,35 @@ function cleanPayload(type:string, input:unknown) {
   }
 
   if (type === "operator_note") {
+    const subtype = text(payload.subtype,80);
+    if (subtype === "designer_fabric_metadata") {
+      const fabricId = text(payload.fabricId,140);
+      const availability = text(payload.availability,20);
+      const weightClass = text(payload.weightClass,20);
+      const drape = text(payload.drape,20);
+      const weightGsmRaw = Number(payload.weightGsm);
+      const formalityRaw = Number(payload.formalityScore);
+      const seasonTags = Array.isArray(payload.seasonTags)
+        ? payload.seasonTags.map((item)=>text(item,30)).filter((item)=>["Spring","Summer","Autumn","Winter","All-season"].includes(item)).slice(0,5)
+        : [];
+      const roleTags = Array.isArray(payload.roleTags)
+        ? payload.roleTags.map((item)=>text(item,30)).filter((item)=>["base_safe","accent_safe"].includes(item)).slice(0,2)
+        : [];
+      if (!fabricId) return null;
+      return {
+        subtype, fabricId,
+        availability:["available","unavailable"].includes(availability) ? availability : "unknown",
+        weightGsm:Number.isFinite(weightGsmRaw) && weightGsmRaw >= 40 && weightGsmRaw <= 1000 ? Math.round(weightGsmRaw) : undefined,
+        weightClass:["Light","Medium","Heavy"].includes(weightClass) ? weightClass : undefined,
+        weave:text(payload.weave,100),
+        texture:text(payload.texture,100),
+        drape:["fluid","soft","medium","structured"].includes(drape) ? drape : undefined,
+        seasonTags,
+        formalityScore:Number.isFinite(formalityRaw) && formalityRaw >= 1 && formalityRaw <= 5 ? Math.round(formalityRaw*10)/10 : undefined,
+        roleTags,
+        note:text(payload.note,500),
+      };
+    }
     return { note: text(payload.note,1000) };
   }
 

@@ -3,7 +3,7 @@ import { generateDesignerDirections, type DesignCandidate } from "@/lib/designer
 import { finalizeVersion, initialVersion, type DesignVersion } from "@/lib/refinement-engine";
 import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import {
-  DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerStyleForOccasion, evaluateDesignerCombo,
+  DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerStyle, type OccasionTier,
 } from "@/lib/designer/engine";
 
@@ -107,8 +107,8 @@ function rankFabric(a: StyleDirectorAnswers, fabric: FabricColorway) {
   return score;
 }
 
-function chooseFabrics(a: StyleDirectorAnswers) {
-  const eligible = FABRIC_STOCK.filter((f) => f.inStock && f.suitableFor.includes(a.garment));
+function chooseFabrics(a: StyleDirectorAnswers, stock: FabricColorway[] = FABRIC_STOCK) {
+  const eligible = stock.filter((f) => f.inStock && f.suitableFor.includes(a.garment));
   return [...eligible].sort((x,y) => rankFabric(a,y) - rankFabric(a,x)).slice(0,3);
 }
 
@@ -170,15 +170,18 @@ function styleForDirectorCandidate(a: StyleDirectorAnswers, candidate: DesignCan
   return style;
 }
 
-function buildRealModelSpec(a: StyleDirectorAnswers, fabric: FabricColorway, candidate: DesignCandidate): StyleDirectorRealModelSpec | undefined {
+function buildRealModelSpec(
+  a: StyleDirectorAnswers, fabric: FabricColorway, candidate: DesignCandidate,
+  shirts = DESIGNER_SHIRTS, pants = DESIGNER_PANTS,
+): StyleDirectorRealModelSpec | undefined {
   if (a.garment !== "shirt" && a.garment !== "trouser") return undefined;
   const occasion = realModelOccasion(a);
   const context = realModelContext(a);
   const style = styleForDirectorCandidate(a, candidate);
-  const hero = (a.garment === "shirt" ? DESIGNER_SHIRTS : DESIGNER_PANTS).find((item) => item.id === fabric.id);
+  const hero = (a.garment === "shirt" ? shirts : pants).find((item) => item.id === fabric.id);
   if (!hero) return undefined;
 
-  const options = a.garment === "shirt" ? DESIGNER_PANTS : DESIGNER_SHIRTS;
+  const options = a.garment === "shirt" ? pants : shirts;
   const ranked = options.map((other) => {
     const shirt = a.garment === "shirt" ? hero : other;
     const pant = a.garment === "trouser" ? hero : other;
@@ -213,9 +216,12 @@ function nameFor(index: number, candidate: DesignCandidate) {
   return `${labels[index] || candidate.tier} · ${candidate.name}`;
 }
 
-export function createStyleDirectorLooks(answers: StyleDirectorAnswers): StyleDirectorLook[] {
+export function createStyleDirectorLooks(answers: StyleDirectorAnswers, stock: FabricColorway[] = FABRIC_STOCK): StyleDirectorLook[] {
   const context = contextFromAnswers(answers);
-  return chooseFabrics(answers).map((fabric, index) => {
+  const calibrated = stock.filter((fabric) => fabric.inStock).map(designerFabricFromStock);
+  const calibratedShirts = calibrated.filter((fabric) => fabric.allowedGarments.includes("shirt"));
+  const calibratedPants = calibrated.filter((fabric) => fabric.allowedGarments.includes("pant"));
+  return chooseFabrics(answers, stock).map((fabric, index) => {
     const brief: DesignerBrief = {
       fabric: {
         profile: fabricProfileFromStock(fabric),
@@ -245,7 +251,7 @@ export function createStyleDirectorLooks(answers: StyleDirectorAnswers): StyleDi
         candidate.reasons[0] || "The fabric and silhouette support the occasion.",
         candidate.tradeoff,
       ],
-      realModel: buildRealModelSpec(answers, fabric, candidate),
+      realModel: buildRealModelSpec(answers, fabric, candidate, calibratedShirts, calibratedPants),
     };
   });
 }
