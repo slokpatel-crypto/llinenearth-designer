@@ -120,7 +120,7 @@ export default function DesignerDataClient() {
   return <main className="designerData">
     <header className="dataHeader">
       <div><span>LLINEN EARTH / OPERATOR</span><h1>Designer Data Desk</h1><p>Only enter facts you have verified from supplier records, the cloth itself or your own merchandising decision.</p></div>
-      <div><b className={data.configured?"live":"offline"}>{data.configured?"CLOUD MEMORY LIVE":"CLOUD NOT CONFIGURED"}</b><Link href="/operator">Back to Operator Desk</Link></div>
+      <div><b className={data.configured?"live":"offline"}>{data.configured?"CLOUD MEMORY LIVE":"CLOUD NOT CONFIGURED"}</b><Link href="/operator/designer-research">Creative Research</Link><Link href="/operator">Back to Operator Desk</Link></div>
     </header>
 
     <section className="dataLayout">
