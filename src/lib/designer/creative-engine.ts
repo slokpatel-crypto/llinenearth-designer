@@ -12,6 +12,7 @@ import {
 } from "@/lib/designer/engine";
 import { assessFitConstruction } from "@/lib/designer/fit-construction";
 import { evaluateLinenEarthBrandLanguage } from "@/lib/designer/brand-language";
+import { creativeLearningSignalFor, type CreativeLearningBook, type CreativeLearningSignal } from "@/lib/designer/creative-learning";
 
 export type CreativeZone =
   | "collar" | "cuff" | "placket" | "shirt-body" | "pocket"
@@ -73,6 +74,7 @@ export type CreativeDirection = {
   iteration:number;
   refinement:string[];
   visualSummary:string[];
+  learning:CreativeLearningSignal;
 };
 
 export type CreativeLabInput = {
@@ -83,6 +85,7 @@ export type CreativeLabInput = {
   context:DesignerContext;
   measurements?:MeasurementProfile|null;
   observations?:TailorObservationProfile|null;
+  creativeLearning?:CreativeLearningBook|null;
   limit?:number;
 };
 
@@ -402,7 +405,8 @@ function buildDirection(seed:Seed,input:CreativeLabInput,iteration:number,treatm
   const treatments=treatmentsOverride || seed.treatments(input);
   const pattern=patternOverride===undefined ? seed.pattern?.(input) : patternOverride;
   const {reads}=criticsFor(seed,input,style,treatments,pattern,recommendation);
-  const overall=scoreCritics(reads);
+  const learning=creativeLearningSignalFor(seed.id,input.creativeLearning);
+  const overall=round(scoreCritics(reads)+learning.score);
   const certainty=certaintyFor(recommendation,seed,treatments,pattern);
   const construction=reads.find((item)=>item.id==="construction")?.score ?? 0;
   const aesthetic=reads.find((item)=>item.id==="aesthetic")?.score ?? 0;
@@ -414,6 +418,7 @@ function buildDirection(seed:Seed,input:CreativeLabInput,iteration:number,treatm
       ...treatments.slice(0,2).map((item)=>`${item.label}: ${item.visualPurpose}`),
       ...(pattern?[ `${pattern.name}: ${pattern.layout}` ]:[]),
     ].slice(0,3),
+    learning,
   };
 }
 
