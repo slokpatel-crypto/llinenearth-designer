@@ -1,7 +1,7 @@
 import type { FabricColorway } from "@/lib/fabric-stock";
 
 /**
- * 91 swatches discovered from LLinen Earth's existing public product galleries.
+ * 91 swatches discovered from Linen Earth's existing public product galleries.
  * They are included in operator inventory as unverified website stock and are not
  * automatically used by Style Director until the operator confirms them.
  */

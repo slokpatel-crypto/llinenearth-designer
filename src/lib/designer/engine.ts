@@ -88,7 +88,7 @@ export type DesignerAccent = {
 /**
  * The user confirmed there is no separate five-sheet styling reference named
  * in the original brief. The supplied 13-sheet datasheet is the working source;
- * its weights, presets and wording remain provisional until LLinen Earth
+ * its weights, presets and wording remain provisional until Linen Earth
  * approves them against real cloth.
  */
 export const DESIGNER_RULE_SET_VERSION = "shirt-pant-reference-provisional-5";
@@ -155,7 +155,7 @@ const names = (rows: NamedScore[], key: string) => rows.map((row) => String(row[
 const pantOptions = (group: string) => names(pantDetails.filter((row) => row.Element_Group === group), "Type");
 const shirtOptions = (group: string) => names(details.filter((row) => row.Element_Group === group), "Type");
 
-// All selectable details come from the supplied LLinen Earth taxonomy. Contrast
+// All selectable details come from the supplied Linen Earth taxonomy. Contrast
 // plackets need a second fabric and are withheld until accent rules are built.
 export const DESIGNER_STYLE_CHOICES: Record<keyof DesignerStyle, string[]> = {
   collar: names(collars.filter((row) => row.Collar_Type !== "Wing Collar"), "Collar_Type"),
@@ -182,7 +182,7 @@ function resolveStyle(occasion: OccasionTier, overrides?: DesignerStyleOverrides
   for (const [key, value] of Object.entries(overrides || {})) {
     if (!Object.hasOwn(DESIGNER_STYLE_CHOICES, key) || typeof value !== "string"
       || !DESIGNER_STYLE_CHOICES[key as keyof DesignerStyle].includes(value)) {
-      throw new Error("Choose a tailoring detail from the LLinen Earth reference.");
+      throw new Error("Choose a tailoring detail from the Linen Earth reference.");
     }
     style[key as keyof DesignerStyle] = value;
   }
@@ -475,7 +475,7 @@ export function evaluateDesignerCombo(shirt: DesignerFabric, pant: DesignerFabri
     ...(whiteContrast ? ["Choose and verify a separate white collar cloth; confirm its shade, weight, shrinkage and metres before cutting."] : []),
     ...(shirt.patternScale === null || pant.patternScale === null ? ["Check motif scale against a physical swatch."] : []),
     ...(accent && accentStatus !== "pass" ? ["Confirm accent role, weight, colour and placement with the physical cloth."] : []),
-    ...(needsReview ? ["Review the flagged pairing with a LLinen Earth stylist."] : []),
+    ...(needsReview ? ["Review the flagged pairing with a Linen Earth stylist."] : []),
   ];
   const shortReason = needsReview
     ? reviewLine(rules, occasion, whiteContrast)

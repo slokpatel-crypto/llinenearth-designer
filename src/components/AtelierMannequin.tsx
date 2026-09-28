@@ -58,7 +58,7 @@ export function AtelierMannequin({
   const modelTransform = threeQuarter ? "translate(20 0) skewY(-1)" : undefined;
 
   return (
-    <svg className={`atelierFullMannequin${compact ? " compact" : ""}`} viewBox="0 0 600 900" role="img" aria-label="LLinen Earth faceless atelier mannequin outfit preview">
+    <svg className={`atelierFullMannequin${compact ? " compact" : ""}`} viewBox="0 0 600 900" role="img" aria-label="Linen Earth faceless atelier mannequin outfit preview">
       <defs>
         <linearGradient id={`${id}-studio`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#8d7b66"/><stop offset=".55" stopColor="#71614f"/><stop offset="1" stopColor="#aa9983"/></linearGradient>
         <linearGradient id={`${id}-form`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#ffffff"/><stop offset=".42" stopColor="#ece8df"/><stop offset="1" stopColor="#cfc9bf"/></linearGradient>

@@ -6,15 +6,15 @@ export default function ContactPage() {
   return (
     <AppShell>
       <section className="businessHero contactHero wrap">
-        <p className="eyebrow">VISIT LLINEN EARTH · BHIWANDI</p>
+        <p className="eyebrow">VISIT LINEN EARTH · BHIWANDI</p>
         <h1>See the cloth. Feel the hand. Get the fit right.</h1>
-        <p>LLinen Earth is built around individual customers who want considered fabric and tailoring, not bulk ordering. Visit the shop in Bhiwandi to compare cloth in person, discuss the occasion and refine the final fit with the tailoring team.</p>
+        <p>Linen Earth is built around individual customers who want considered fabric and tailoring, not bulk ordering. Visit the shop in Bhiwandi to compare cloth in person, discuss the occasion and refine the final fit with the tailoring team.</p>
       </section>
 
       <section className="contactGrid wrap">
         <article className="contactVisitCard">
           <span className="micro">SHOP LOCATION</span>
-          <h2>LLinen Earth</h2>
+          <h2>Linen Earth</h2>
           <p className="contactAddress">Bhiwandi, Maharashtra, India</p>
           <p>Visit for fabric selection, personal styling direction, measurements and tailoring consultation.</p>
           <div className="contactVisitSteps"><div><b>01</b><span>Bring your occasion, reference or fabric requirement.</span></div><div><b>02</b><span>Compare fabric texture, drape and colour in person.</span></div><div><b>03</b><span>Finalize measurements, styling and tailoring direction.</span></div></div>

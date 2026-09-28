@@ -1,5 +1,5 @@
 // Curated reading for a human designer, never ingested as stock or as an
-// automatic LLinen Earth taste rule. Summaries below are our interpretation.
+// automatic Linen Earth taste rule. Summaries below are our interpretation.
 export const DESIGNER_RESEARCH = [
   {
     kind: "Fashion history", title: "Fashioning Masculinities", publisher: "V&A Museum",
@@ -29,7 +29,7 @@ export const DESIGNER_RESEARCH = [
 ] as const;
 
 // Short, attributed notes for the rotating design-desk panel. These are
-// editorial facts, not claims about LLinen Earth stock or fabric performance.
+// editorial facts, not claims about Linen Earth stock or fabric performance.
 export const DESIGNER_FASHION_FACTS = [
   {
     category: "COLOUR / HISTORY", title: "Pink once signalled power.",

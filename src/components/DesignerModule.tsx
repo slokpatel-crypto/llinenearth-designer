@@ -17,9 +17,7 @@ const OCCASIONS: OccasionTier[] = ["Casual", "Smart-Casual", "Semi-Formal", "For
 const CLIMATES: DesignerClimate[] = ["Not specified", "Hot / humid", "Cool", "Air-conditioned"];
 const INTENTIONS: DesignerIntention[] = ["Understated", "Balanced", "Expressive"];
 const SESSION_KEY = "llinen-earth:designer-session:v1";
-const SAVED_KEY = "llinen-earth:designer-saved:v1";
 const FACT_INTERVAL_MS = 15_000;
-type SavedDirection = { shirtId: string; pantId: string; occasion: OccasionTier; style: DesignerStyle };
 
 const MAIN_DETAILS = [
   ["shirtWear", "Shirt finish"], ["collar", "Shirt collar"],
@@ -31,22 +29,6 @@ const MORE_DETAILS = [
   ["waistband", "Trouser waistband"], ["break", "Trouser break"],
   ["button", "Button material"],
 ] as const;
-
-function safeStyle(value: unknown, occasion: OccasionTier): DesignerStyle {
-  const style = designerStyleForOccasion(occasion);
-  if (value && typeof value === "object" && !Array.isArray(value)) {
-    const raw = value as Record<string, unknown>;
-    for (const key of Object.keys(style) as Array<keyof DesignerStyle>) {
-      if (typeof raw[key] === "string" && DESIGNER_STYLE_CHOICES[key].includes(raw[key])) style[key] = raw[key];
-    }
-  }
-  return style;
-}
-
-function sameDirection(a: SavedDirection, b: SavedDirection) {
-  return a.shirtId === b.shirtId && a.pantId === b.pantId && a.occasion === b.occasion
-    && JSON.stringify(a.style) === JSON.stringify(b.style);
-}
 
 function designerSession() {
   try {
@@ -68,25 +50,13 @@ export function DesignerModule() {
   const [recommendation, setRecommendation] = useState<DesignerRecommendation | null>(null);
   const [directions, setDirections] = useState<DesignerDirection[]>([]);
   const [recommendationId, setRecommendationId] = useState<string | null>(null);
-  const [response, setResponse] = useState<"up" | "down" | "saved" | null>(null);
-  const [saved, setSaved] = useState<SavedDirection[]>([]);
+  const [response, setResponse] = useState<"up" | "down" | null>(null);
   const [factIndex, setFactIndex] = useState(0);
   const [factPlaying, setFactPlaying] = useState(true);
   const fact = DESIGNER_FASHION_FACTS[factIndex];
   const shirt = useMemo(() => DESIGNER_SHIRTS.find((item) => item.id === shirtId), [shirtId]);
   const pant = useMemo(() => DESIGNER_PANTS.find((item) => item.id === pantId), [pantId]);
   const insights = shirt && pant ? designerStyleInsights(shirt, pant, occasion, style) : [];
-
-  useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem(SAVED_KEY) || "[]") as unknown;
-      if (Array.isArray(stored)) setSaved(stored.filter((item): item is { shirtId: string; pantId: string; occasion: OccasionTier; style?: unknown } =>
-        !!item && typeof item === "object" && typeof item.shirtId === "string" && typeof item.pantId === "string"
-        && OCCASIONS.includes(item.occasion) && DESIGNER_SHIRTS.some((fabric) => fabric.id === item.shirtId)
-        && DESIGNER_PANTS.some((fabric) => fabric.id === item.pantId),
-      ).slice(0, 30).map((item) => ({ ...item, style: safeStyle(item.style, item.occasion) })));
-    } catch { /* Saved looks are optional. */ }
-  }, []);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -124,16 +94,8 @@ export function DesignerModule() {
     } catch { /* The direction still works when event storage is unavailable. */ }
   }
 
-  function giveFeedback(rating: "up" | "down" | "saved") {
+  function giveFeedback(rating: "up" | "down") {
     if (!recommendation || !recommendationId) return;
-    if (rating === "saved") {
-      try {
-        const item = { shirtId, pantId, occasion, style: { ...style } };
-        const next = [item, ...saved.filter((entry) => !sameDirection(item, entry))].slice(0, 30);
-        localStorage.setItem(SAVED_KEY, JSON.stringify(next));
-        setSaved(next);
-      } catch { return; }
-    }
     try { recordStyleMemoryEvent(designerSession(), "designer_feedback", { recommendationId, rating }); }
     catch { return; }
     setResponse(rating);
@@ -154,7 +116,7 @@ export function DesignerModule() {
   return <div className="newDesigner">
     <header className="newDesignerHero">
       <div className="newDesignerHeroCopy">
-        <span className="newDesignerKicker">LLINEN EARTH / THE DESIGN STUDIO</span>
+        <span className="newDesignerKicker">LINEN EARTH / THE DESIGN STUDIO</span>
         <h1>Designer<span className="newDesignerHeroDot">.</span></h1>
         <p className="newDesignerHeroLead">A designer begins with the cloth, then considers the person and the moment.</p>
         <p>Choose real catalogue swatches, shape the shirt and trousers, and see why the pairing works or needs a second look.</p>
@@ -163,8 +125,8 @@ export function DesignerModule() {
       </div>
       <figure className="newDesignerHeroArt">
         <div className="newDesignerArchiveFrame"><img src="/designer/studio-pleated.webp" alt="Faceless studio mannequin in a shirt and tailored trousers" /></div>
-        <div className="newDesignerHeroFabric"><img src={shirt?.image} alt="LLinen Earth selected shirting fabric" /><span>THE CLOTH / SHIRT</span></div>
-        <div className="newDesignerHeroFabric second"><img src={pant?.image} alt="LLinen Earth selected trouser fabric" /><span>THE CLOTH / TROUSER</span></div>
+        <div className="newDesignerHeroFabric"><img src={shirt?.image} alt="Linen Earth selected shirting fabric" /><span>THE CLOTH / SHIRT</span></div>
+        <div className="newDesignerHeroFabric second"><img src={pant?.image} alt="Linen Earth selected trouser fabric" /><span>THE CLOTH / TROUSER</span></div>
         <figcaption>Studio model prepared once for Designer. Choose two fabrics below to see the live composition.</figcaption>
       </figure>
     </header>
@@ -249,9 +211,6 @@ export function DesignerModule() {
         </div>
         <button className="newDesignerAction" type="button" disabled={!shirt || !pant} onClick={() => assess()}>Assess this pairing <span aria-hidden="true">↗</span></button>
         <p className="newDesignerFootnote">Catalogue images guide colour and pattern. Fabric weight, drape, opacity and current metres need confirmation in store.</p>
-        {saved.length > 0 && <details className="newDesignerChecks"><summary>Saved directions on this device ({saved.length})</summary><ul>{saved.map((item, index) => <li key={`${item.shirtId}/${item.pantId}/${item.occasion}/${index}`}><button type="button" className="newDesignerSavedLink" onClick={() => {
-          setShirtId(item.shirtId); setPantId(item.pantId); setOccasion(item.occasion); setStyle({ ...item.style }); setRecommendation(null); setRecommendationId(null);
-        }}>{DESIGNER_SHIRTS.find((fabric) => fabric.id === item.shirtId)?.name} + {DESIGNER_PANTS.find((fabric) => fabric.id === item.pantId)?.name} · {item.style.shirtWear} · {item.style.trouser} · {item.occasion}</button></li>)}</ul></details>}
       </section>
 
       <div className="newDesignerRight">
@@ -268,7 +227,7 @@ export function DesignerModule() {
             <div><span>SHIRT</span><strong>{recommendation.style.collar}</strong><small>{recommendation.style.shirtWear} · {recommendation.style.collarFinish} · {recommendation.style.shirtFit} · {recommendation.style.cuff} · {recommendation.style.placket}</small></div>
             <div><span>TROUSERS</span><strong>{recommendation.style.trouser}</strong><small>{recommendation.style.rise} · {recommendation.style.waistband} · {recommendation.style.break}</small></div>
           </div>
-          <p className="newDesignerProvisional">{recommendation.status === "preliminary" ? "A preliminary direction. We would check the actual fabric before confirming the cut." : "This is your proposed cut, pending a LLinen Earth stylist's review."}</p>
+          <p className="newDesignerProvisional">{recommendation.status === "preliminary" ? "A preliminary direction. We would check the actual fabric before confirming the cut." : "This is your proposed cut, pending a Linen Earth stylist's review."}</p>
           {directions.length > 1 && <div className="newDesignerDirections"><h3>Different cuts for the same cloth</h3><p>These are design sketches, subject to the same fabric and stock checks.</p>
             {directions.slice(1).map((direction) => <article key={direction.id}>
               <strong>{direction.name}</strong><p>{direction.proposition}</p>
@@ -292,8 +251,7 @@ export function DesignerModule() {
           {recommendationId && <div className="newDesignerFeedback"><span>Does this direction feel right?</span><div>
             <button type="button" onClick={() => giveFeedback("up")} aria-pressed={response === "up"}>Helpful</button>
             <button type="button" onClick={() => giveFeedback("down")} aria-pressed={response === "down"}>Needs work</button>
-            {recommendation.status === "preliminary" && <button type="button" onClick={() => giveFeedback("saved")} aria-pressed={response === "saved"}>Save on this device</button>}
-          </div>{response && <small>{response === "saved" ? "Saved on this device." : "Thanks. Your feedback is recorded on this device."}</small>}</div>}
+          </div>{response && <small>Thanks. Your feedback is recorded on this device.</small>}</div>}
         </>}
       </section>
       </div>

@@ -1,6 +1,3 @@
-import { LOGO_PART_0 } from "./brand-logo-parts/part0";
-import { LOGO_PART_1 } from "./brand-logo-parts/part1";
-import { LOGO_PART_2 } from "./brand-logo-parts/part2";
-import { LOGO_PART_3 } from "./brand-logo-parts/part3";
-
-export const BRAND_LOGO_SRC = `data:image/png;base64,${LOGO_PART_0}${LOGO_PART_1}${LOGO_PART_2}${LOGO_PART_3}`;
+// Serve the actual uploaded mark as an image asset. The old split data URL
+// could render as a broken image, leaving only its alt text in the header.
+export const BRAND_LOGO_SRC = "/brand/llinen-earth-logo.png";

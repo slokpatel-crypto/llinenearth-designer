@@ -63,7 +63,7 @@ export function StudioDashboard() {
 
   return <div className="linen-app">
     <header className="studio-header">
-      <div className="brand-lockup"><div className="brand-mark">L</div><div><strong>LLinen Earth</strong><span>DESIGNER STUDIO</span></div></div>
+      <div className="brand-lockup"><div className="brand-mark">L</div><div><strong>Linen Earth</strong><span>DESIGNER STUDIO</span></div></div>
       <nav className="mode-nav"><button className={mode === "studio" ? "active" : ""} onClick={() => setMode("studio")}>Designer Studio</button><button className={mode === "operator" ? "active" : ""} onClick={() => setMode("operator")}>Operator Lab</button><button className={mode === "catalog" ? "active" : ""} onClick={() => setMode("catalog")}>Fabric Catalogue</button></nav>
       <div className="admin-profile"><span className="profile-avatar">A</span><div><strong>Atelier Admin</strong><small>Operator</small></div><Icon name="chevron" /></div>
     </header>

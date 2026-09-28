@@ -146,7 +146,7 @@ export function fabricProfileFromStock(fabric: FabricColorway): FabricProfile {
   return {
     id: `STOCK-${fabric.id}`,
     source: "stock_catalog",
-    summary: `${fabric.colorName} from the ${fabric.line} range. This LLinen Earth stock reference is catalogued as ${fabric.pattern.toLowerCase()} linen.`,
+    summary: `${fabric.colorName} from the ${fabric.line} range. This Linen Earth stock reference is catalogued as ${fabric.pattern.toLowerCase()} linen.`,
     observations: [
       { label: "Likely material family", value: fabric.family, confidence: 1, confidenceLabel: "high", basis },
       { label: "Dominant color", value: fabric.colorName, confidence: 1, confidenceLabel: "high", basis },
@@ -155,7 +155,7 @@ export function fabricProfileFromStock(fabric: FabricColorway): FabricProfile {
       { label: "Catalogue reference", value: `${fabric.sourceDocument} · page ${fabric.sourcePage}`, confidence: 1, confidenceLabel: "high", basis },
     ],
     palette: [fabric.hex, adjustHex(fabric.hex, -28), adjustHex(fabric.hex, 28), adjustHex(fabric.hex, 56)],
-    alternatives: [{ family: fabric.family, confidence: 1, evidence: ["Selected from LLinen Earth stock."] }],
-    cautions: [fabric.compositionNote || "The fabric family and color are taken from the supplied LLinen Earth catalogue; final tone can vary slightly with screen and lighting."],
+    alternatives: [{ family: fabric.family, confidence: 1, evidence: ["Selected from Linen Earth stock."] }],
+    cautions: [fabric.compositionNote || "The fabric family and color are taken from the supplied Linen Earth catalogue; final tone can vary slightly with screen and lighting."],
   };
 }

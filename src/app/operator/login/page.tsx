@@ -34,7 +34,7 @@ export default function OperatorLoginPage() {
 
   return <main className="operatorLogin">
     <section className="operatorLoginPanel">
-      <div className="operatorLoginBrand"><span>LE</span><div><b>LLINEN EARTH</b><small>PRIVATE OPERATOR ACCESS</small></div></div>
+      <div className="operatorLoginBrand"><span>LE</span><div><b>LINEN EARTH</b><small>PRIVATE OPERATOR ACCESS</small></div></div>
       <div className="operatorLoginCopy">
         <p>OPERATOR DESK</p>
         <h1>Business memory.<br/><em>Private by design.</em></h1>

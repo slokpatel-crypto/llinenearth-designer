@@ -22,7 +22,7 @@ export default function Knowledge(){
     </section>
 
     {families.map((family)=><section className="librarySection wrap" id={family} key={family}>
-      <div className="libraryHead"><p className="eyebrow">WEAR TYPE LIBRARY</p><div><h2>{familyLabel[family]}</h2><p>Display visuals are controlled LLinen Earth type diagrams rather than copied fashion photography. They are designed to communicate silhouette and construction cues while the knowledge record holds the deeper rules.</p></div></div>
+      <div className="libraryHead"><p className="eyebrow">WEAR TYPE LIBRARY</p><div><h2>{familyLabel[family]}</h2><p>Display visuals are controlled Linen Earth type diagrams rather than copied fashion photography. They are designed to communicate silhouette and construction cues while the knowledge record holds the deeper rules.</p></div></div>
       <div className="wearGrid">{wearTypes.filter((wear)=>wear.family===family).map((wear)=><article className="wearCard" key={wear.id}>
         <WearTypeVisual wear={wear}/>
         <div className="wearCardCopy"><span>{wear.subtype} · formality {wear.formality}/100</span><h3>{wear.name}</h3><p>{wear.visual.note}</p><div className="wearTraits"><i>{wear.structure}</i>{wear.visual.collar&&<i>{wear.visual.collar}</i>}{wear.visual.lapel&&<i>{wear.visual.lapel}</i>}{wear.visual.rise&&<i>{wear.visual.rise} rise</i>}{typeof wear.visual.pleats==="number"&&<i>{wear.visual.pleats} pleat{wear.visual.pleats===1?"":"s"}</i>}</div></div>
@@ -36,7 +36,7 @@ export default function Knowledge(){
         <div className="meterGroup"><div className="meter"><span>Breathability</span><b><i style={{width:`${fabric.breathability}%`}}/></b><em>{fabric.breathability}</em></div><div className="meter"><span>Drape</span><b><i style={{width:`${fabric.drape}%`}}/></b><em>{fabric.drape}</em></div><div className="meter"><span>Structure</span><b><i style={{width:`${fabric.structure}%`}}/></b><em>{fabric.structure}</em></div><div className="meter"><span>Wrinkle resist.</span><b><i style={{width:`${fabric.wrinkleResistance}%`}}/></b><em>{fabric.wrinkleResistance}</em></div></div>
         <div className="fabricUses">{fabric.bestGarments.map((role)=><span key={role}>{familyLabel[role]}</span>)}</div><p className="fabricCaution">{fabric.cautions[0]}</p>
       </article>)}</div>
-      <p className="sourceNote"><strong>Knowledge policy:</strong> public fashion references can inform taxonomy and construction language, but LLinen Earth display assets are generated/owned type visuals unless a separate commercial licence is recorded. Fibre names and trade labels are never treated as a substitute for verified composition, weight and weave.</p>
+      <p className="sourceNote"><strong>Knowledge policy:</strong> public fashion references can inform taxonomy and construction language, but Linen Earth display assets are generated/owned type visuals unless a separate commercial licence is recorded. Fibre names and trade labels are never treated as a substitute for verified composition, weight and weave.</p>
     </section>
 
     <section className="librarySection wrap" id="matrix">

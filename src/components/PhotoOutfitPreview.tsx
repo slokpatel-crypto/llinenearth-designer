@@ -3,14 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
 import {
-  DESIGNER_PHOTO_TEMPLATES, PHOTO_COLLAR_MASK, PHOTO_CUFF_MASK, PHOTO_TUCKED_SHIRT_MASK,
-  PHOTO_TUCKED_WAIST_MASK, photoTemplateForStyle, photoTemplateGaps, previewFabricLabel,
+  DESIGNER_PHOTO_TEMPLATES, PHOTO_COLLAR_MASK, PHOTO_CUFF_MASK, PHOTO_TUCKED_COLLAR_MASK, PHOTO_TUCKED_COLLAR_STAND_MASK,
+  PHOTO_TUCKED_CUFF_MASK, photoTemplateForStyle, photoTemplateGaps, previewFabricLabel,
 } from "@/lib/designer/photo-preview";
 
 const WIDTH = 1024;
 const HEIGHT = 1536;
 const images = new Map<string, Promise<HTMLImageElement>>();
 const fabricTiles = new Map<string, HTMLCanvasElement>();
+const tuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
+const untuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
 
 function loadImage(url: string): Promise<HTMLImageElement> {
   const cached = images.get(url);
@@ -102,9 +104,92 @@ function swatchTile(image: HTMLImageElement, fabric: DesignerFabric): HTMLCanvas
   return tile;
 }
 
+function clamp(value: number) { return Math.max(0, Math.min(1, value)); }
+
+// The tucked photo has dark, cool shirting and warm trousers. Separate them
+// by their photographed colour, so cloth never spills onto arms, neck, the
+// studio set, or through the gap between the legs.
+function tuckedGarmentMasks(photo: HTMLImageElement) {
+  const cached = tuckedMasks.get(photo);
+  if (cached) return cached;
+  const source = document.createElement("canvas");
+  source.width = WIDTH; source.height = HEIGHT;
+  const context = source.getContext("2d", { willReadFrequently: true });
+  if (!context) throw new Error("Canvas is unavailable.");
+  context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
+  const pixels = context.getImageData(0, 0, WIDTH, HEIGHT).data;
+  const mask = (region: "shirt" | "pant") => {
+    const canvas = document.createElement("canvas");
+    canvas.width = WIDTH; canvas.height = HEIGHT;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas is unavailable.");
+    const data = ctx.createImageData(WIDTH, HEIGHT);
+    for (let y = 0; y < HEIGHT; y++) for (let x = 0; x < WIDTH; x++) {
+      if (region === "shirt" && (y < 188 || y > 705 || x < 270 || x > 748)) continue;
+      if (region === "pant" && (y < 541 || y > 1360 || x < 342 || x > 680)) continue;
+      const i = (y * WIDTH + x) * 4;
+      const red = pixels[i], green = pixels[i + 1], blue = pixels[i + 2];
+      const opacity = region === "shirt"
+        ? clamp((Math.min(green - red, blue - red - 1) - 1) / 4) * clamp((165 - Math.max(red, green, blue)) / 35)
+        : clamp((Math.min(red - green - 3, red - blue - 5)) / 7) * clamp((195 - red) / 12);
+      data.data[i] = 255;
+      data.data[i + 1] = 255;
+      data.data[i + 2] = 255;
+      data.data[i + 3] = Math.round(opacity * 255);
+    }
+    ctx.putImageData(data, 0, 0);
+    return canvas;
+  };
+  const result = { shirt: mask("shirt"), pant: mask("pant") };
+  tuckedMasks.set(photo, result);
+  return result;
+}
+
+// On the older neutral photograph the shirt, floor and trousers are similar
+// colours. Start with separate tight garment outlines, then use the source
+// brightness to discard the pale neck, floor and space between the legs.
+function untuckedGarmentMasks(photo: HTMLImageElement, shirtPath: string, pantPath: string) {
+  const cached = untuckedMasks.get(photo);
+  if (cached) return cached;
+  const source = document.createElement("canvas");
+  source.width = WIDTH; source.height = HEIGHT;
+  const sourceContext = source.getContext("2d", { willReadFrequently: true });
+  if (!sourceContext) throw new Error("Canvas is unavailable.");
+  sourceContext.drawImage(photo, 0, 0, WIDTH, HEIGHT);
+  const pixels = sourceContext.getImageData(0, 0, WIDTH, HEIGHT).data;
+  function prepare(path: string, region: "shirt" | "pant") {
+    const canvas = document.createElement("canvas");
+    canvas.width = WIDTH; canvas.height = HEIGHT;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) throw new Error("Canvas is unavailable.");
+    context.fillStyle = "white";
+    context.fill(new Path2D(path));
+    const result = context.getImageData(0, 0, WIDTH, HEIGHT);
+    for (let y = region === "shirt" ? 180 : 675; y < (region === "shirt" ? 716 : 1360); y++) {
+      for (let x = region === "shirt" ? 275 : 345; x < (region === "shirt" ? 743 : 681); x++) {
+        const i = (y * WIDTH + x) * 4;
+        if (!result.data[i + 3]) continue;
+        const luminance = (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
+        // The neutral cloth itself has bright folds. Only the neck opening
+        // needs skin rejection; the trouser mask rejects the pale floor gap.
+        if (region === "pant" || (y < 263 && x > 469 && x < 556)) {
+          const limit = region === "pant" ? 229 : 226;
+          result.data[i + 3] = Math.round(result.data[i + 3] * clamp((limit - luminance) / 20));
+        }
+      }
+    }
+    context.putImageData(result, 0, 0);
+    return canvas;
+  }
+  const result = { shirt: prepare(shirtPath, "shirt"), pant: prepare(pantPath, "pant") };
+  untuckedMasks.set(photo, result);
+  return result;
+}
+
 function drawGarment(
   target: CanvasRenderingContext2D, photo: CanvasImageSource,
   swatch: HTMLImageElement, fabric: DesignerFabric, path: string,
+  mask?: HTMLCanvasElement, lightingFilter = "grayscale(1) brightness(1.3) contrast(1.04)",
 ) {
   const layer = document.createElement("canvas");
   layer.width = WIDTH;
@@ -123,17 +208,20 @@ function drawGarment(
   // retains its photographed hue instead of turning dull or too dark, while
   // the model's creases and seams still shape the result.
   context.globalCompositeOperation = "multiply";
-  context.filter = "grayscale(1) brightness(1.3) contrast(1.04)";
+  context.filter = lightingFilter;
   context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
   context.filter = "none";
   context.globalCompositeOperation = "destination-in";
-  context.fillStyle = "#fff";
-  context.fill(new Path2D(path));
+  if (mask) context.drawImage(mask, 0, 0);
+  else {
+    context.fillStyle = "#fff";
+    context.fill(new Path2D(path));
+  }
   context.globalCompositeOperation = "source-over";
   target.drawImage(layer, 0, 0);
 }
 
-function drawWhiteDetail(target: CanvasRenderingContext2D, photo: HTMLImageElement, path: string) {
+function drawWhiteDetail(target: CanvasRenderingContext2D, photo: HTMLImageElement, path: string, mask?: HTMLCanvasElement, brightness = 1.38) {
   const layer = document.createElement("canvas");
   layer.width = WIDTH;
   layer.height = HEIGHT;
@@ -142,38 +230,13 @@ function drawWhiteDetail(target: CanvasRenderingContext2D, photo: HTMLImageEleme
   context.fillStyle = "#faf9f5";
   context.fillRect(0, 0, WIDTH, HEIGHT);
   context.globalCompositeOperation = "multiply";
-  context.filter = "grayscale(1) brightness(1.38) contrast(1.05)";
+  context.filter = `grayscale(1) brightness(${brightness}) contrast(1.05)`;
   context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
   context.filter = "none";
   context.globalCompositeOperation = "destination-in";
   context.fill(new Path2D(path));
+  if (mask) context.drawImage(mask, 0, 0);
   target.drawImage(layer, 0, 0);
-}
-
-function tuckedTrouserLighting(photo: HTMLImageElement): HTMLCanvasElement {
-  const lighting = document.createElement("canvas");
-  lighting.width = WIDTH;
-  lighting.height = HEIGHT;
-  const context = lighting.getContext("2d");
-  if (!context) throw new Error("Canvas is unavailable.");
-  context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
-  // Reuse the same mannequin's upper trouser folds for the waist that was
-  // hidden by the untucked hem in the original photograph.
-  const patch = document.createElement("canvas");
-  patch.width = 292;
-  patch.height = 125;
-  const patchContext = patch.getContext("2d");
-  if (!patchContext) throw new Error("Canvas is unavailable.");
-  patchContext.drawImage(photo, 365, 750, 292, 125, 0, 0, 292, 125);
-  const fade = patchContext.createLinearGradient(0, 0, 0, 125);
-  fade.addColorStop(0, "rgba(255,255,255,1)");
-  fade.addColorStop(.63, "rgba(255,255,255,1)");
-  fade.addColorStop(1, "rgba(255,255,255,0)");
-  patchContext.globalCompositeOperation = "destination-in";
-  patchContext.fillStyle = fade;
-  patchContext.fillRect(0, 0, 292, 125);
-  context.drawImage(patch, 365, 640);
-  return lighting;
 }
 
 export function composePhotoOutfit(
@@ -186,12 +249,25 @@ export function composePhotoOutfit(
   context.imageSmoothingQuality = "high";
   context.drawImage(modelPhoto, 0, 0, WIDTH, HEIGHT);
   const tucked = style.shirtWear === "Tucked";
-  const trouserLighting = tucked ? tuckedTrouserLighting(trouserPhoto) : trouserPhoto;
-  drawGarment(context, trouserLighting, pantImage, pant, template.trouserPath);
-  drawGarment(context, modelPhoto, shirtImage, shirt, tucked ? PHOTO_TUCKED_SHIRT_MASK : template.shirtPath);
-  if (tucked) drawGarment(context, trouserLighting, pantImage, pant, PHOTO_TUCKED_WAIST_MASK);
-  if (style.collarFinish !== "Self-fabric") drawWhiteDetail(context, modelPhoto, PHOTO_COLLAR_MASK);
-  if (style.collarFinish === "White contrast collar + cuffs") drawWhiteDetail(context, modelPhoto, PHOTO_CUFF_MASK);
+  if (tucked) {
+    const masks = tuckedGarmentMasks(modelPhoto);
+    drawGarment(context, modelPhoto, pantImage, pant, "", masks.pant, "grayscale(1) brightness(1.9) contrast(1.03)");
+    drawGarment(context, modelPhoto, shirtImage, shirt, "", masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)");
+    if (style.collarFinish === "Self-fabric") {
+      drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined, "grayscale(1) brightness(3.05) contrast(.94)");
+    } else {
+      drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_STAND_MASK, masks.shirt, 3.6);
+      drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_MASK, undefined, 3.6);
+    }
+    if (style.collarFinish === "White contrast collar + cuffs") drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_CUFF_MASK, masks.shirt, 3.6);
+  } else {
+    const shirtMask = untuckedGarmentMasks(modelPhoto, template.shirtPath, DESIGNER_PHOTO_TEMPLATES.pleated.trouserPath).shirt;
+    const trouserMask = untuckedGarmentMasks(trouserPhoto, template.shirtPath, template.trouserPath).pant;
+    drawGarment(context, trouserPhoto, pantImage, pant, "", trouserMask);
+    drawGarment(context, modelPhoto, shirtImage, shirt, "", shirtMask);
+    if (style.collarFinish !== "Self-fabric") drawWhiteDetail(context, modelPhoto, PHOTO_COLLAR_MASK);
+    if (style.collarFinish === "White contrast collar + cuffs") drawWhiteDetail(context, modelPhoto, PHOTO_CUFF_MASK);
+  }
 }
 
 export function PhotoOutfitPreview({ shirt, pant, style }: {
@@ -212,7 +288,7 @@ export function PhotoOutfitPreview({ shirt, pant, style }: {
     setReady(false);
     setError(false);
     Promise.all([
-      loadImage(DESIGNER_PHOTO_TEMPLATES.pleated.src), loadImage(template.src),
+      loadImage(tucked ? template.src : DESIGNER_PHOTO_TEMPLATES.pleated.src), loadImage(template.src),
       loadImage(shirt.image), loadImage(pant.image),
     ]).then(([modelPhoto, trouserPhoto, shirtImage, pantImage]) => {
         if (cancelled) return;
@@ -243,7 +319,7 @@ export function PhotoOutfitPreview({ shirt, pant, style }: {
 
   return <section className="newDesignerPhoto" aria-labelledby="designerPhotoTitle">
     <div className="newDesignerPhotoIntro">
-      <span>THE LIVE MODEL / 01</span>
+      <span>FABRIC PREVIEW / 01</span>
       <h2 id="designerPhotoTitle">See the cloth on a real-looking form.</h2>
       <p>The shirt and trouser fabrics update as you select them. This photo composition runs in your browser, with no AI render request per look.</p>
     </div>
@@ -260,9 +336,9 @@ export function PhotoOutfitPreview({ shirt, pant, style }: {
     </div>
     <div className="newDesignerPhotoAccuracy">
       <strong>What the photo shows</strong>
-      <p>Photographed point collar and barrel cuff, {tucked ? "an illustrative tucked waist" : "the original untucked hem"}, and {template.trouser} trousers with a {template.break.toLowerCase()}. {style.collarFinish !== "Self-fabric" && "The white collar fabric is visual only until a real cloth is chosen."}</p>
+      <p>Photographed point collar and barrel cuff, {tucked ? "a real photographed tucked waist with belt loops" : "the original untucked hem"}, and {template.trouser} trousers with a {template.break.toLowerCase()}. {style.collarFinish !== "Self-fabric" && "The white collar fabric is visual only until a real cloth is chosen."}</p>
       {gaps.length > 0 && <p className="newDesignerPhotoGap"><strong>Selected details awaiting their own photo template:</strong> {gaps.join(" · ")}.</p>}
-      <p>Colour, motif scale, drape and fit are illustrative until checked against the physical roll and a sewn sample. {tucked ? "The waist is composed from the existing photo; its actual rise and fastening need a tailored photo." : "The waistband stays hidden in this view."}</p>
+      <p>Colour, motif scale, drape and fit are illustrative until checked against the physical roll and a sewn sample. {tucked ? "The photographed waistband and belt loops stay the same for every fabric; other selected waist details need their own photo." : "The waistband stays hidden in this view."}</p>
     </div>
   </section>;
 }

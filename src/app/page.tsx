@@ -2,26 +2,21 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { HomeMotion } from "@/components/HomeMotion";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { BRAND_LOGO_SRC } from "@/lib/brand-logo-data";
 
 const designerRefs = [
   "https://images.pexels.com/photos/6766382/pexels-photo-6766382.jpeg?auto=compress&cs=tinysrgb&w=600",
   "https://images.pexels.com/photos/6765068/pexels-photo-6765068.jpeg?auto=compress&cs=tinysrgb&w=600",
   "https://images.pexels.com/photos/6765003/pexels-photo-6765003.jpeg?auto=compress&cs=tinysrgb&w=600",
 ];
-const visualRefs = [
-  "https://images.pexels.com/photos/6766236/pexels-photo-6766236.jpeg?auto=compress&cs=tinysrgb&w=600",
-  "https://images.pexels.com/photos/6765639/pexels-photo-6765639.jpeg?auto=compress&cs=tinysrgb&w=600",
-  "https://images.pexels.com/photos/6766385/pexels-photo-6766385.jpeg?auto=compress&cs=tinysrgb&w=600",
-];
-
 const garments = [
-  { name: "Shirts", image: "/editorial/shirt.webp", className: "editorialShirt", href: "/visual?garment=shirt", note: "Linen · Giza cotton · 100% cotton" },
-  { name: "Trousers", image: "/editorial/trouser.webp", className: "editorialTrouser", href: "/visual?garment=trouser", note: "Tailored balance · clean drape" },
-  { name: "Suits", image: "/editorial/suit.webp", className: "editorialSuit", href: "/visual?garment=suit", note: "Two-piece · occasion tailoring" },
-  { name: "Blazers", image: "/editorial/blazer.webp", className: "editorialBlazer", href: "/visual?garment=blazer", note: "Structured layering · sharp finish" },
+  { name: "Shirts", image: "/editorial/shirt.webp", className: "editorialShirt", href: "/designer-studio", note: "Linen · Giza cotton · 100% cotton" },
+  { name: "Trousers", image: "/editorial/trouser.webp", className: "editorialTrouser", href: "/designer-studio", note: "Tailored balance · clean drape" },
+  { name: "Suits", image: "/editorial/suit.webp", className: "editorialSuit", href: "/style-director", note: "Two-piece · occasion tailoring" },
+  { name: "Blazers", image: "/editorial/blazer.webp", className: "editorialBlazer", href: "/style-director", note: "Structured layering · sharp finish" },
 ] as const;
 
-const GOOGLE_BUSINESS_URL = "https://www.google.com/maps/search/?api=1&query=LLinen%20Earth%20Murlidhar%20Compound%2049%2F4%20Kalyan%20Rd%20behind%20Shiv%20Mandir%20near%20Masoom%20Hospital%20Bhiwandi%20Maharashtra";
+const GOOGLE_BUSINESS_URL = "https://www.google.com/maps/search/?api=1&query=Linen%20Earth%20Murlidhar%20Compound%2049%2F4%20Kalyan%20Rd%20behind%20Shiv%20Mandir%20near%20Masoom%20Hospital%20Bhiwandi%20Maharashtra";
 const INSTAGRAM_URL = "https://www.instagram.com/llinenearth.india/";
 const SHOP_ADDRESS = "Murlidhar Compound, 49/4, Kalyan Rd, behind Shiv Mandir, near Masoom Hospital, Bhiwandi, Maharashtra";
 
@@ -45,27 +40,27 @@ export default function Home() {
     <main className="gatewayHome">
       <section className="gatewayBrand gatewayBrandHero wrap" data-reveal>
         <div className="gatewayBrandCopy">
-          <p>PREMIUM FABRICS · INTELLIGENT MENSWEAR · DIGITAL ATELIER</p>
-          <h1><span>LLinen</span> Earth</h1>
+          <p>PREMIUM FABRICS · INTELLIGENT MENSWEAR · LINEN EARTH</p>
+          <h1 className="gatewayBrandMark"><img src={BRAND_LOGO_SRC} width="890" height="242" alt="Linen Earth" /></h1>
           <p className="gatewayHeroStatement">Cloth, judged on a real body.</p>
-          <p className="gatewayHeroSub">Start with your occasion and instinct. LLinen Earth narrows the direction, connects it to real fabric, and lets you see the look with photoreal fashion rendering.</p>
+          <p className="gatewayHeroSub">Start with your occasion and instinct. Linen Earth narrows the direction, connects it to real fabric, and lets you see the look with photoreal fashion rendering.</p>
           <div className="gatewayHeroActions">
             <Link href="/style-director">Enter Style Director <b>↗</b></Link>
-            <Link href="/visual">Open Live Visual <b>↗</b></Link>
+            <Link href="/designer-studio">Open Designer <b>↗</b></Link>
           </div>
           <div className="gatewayLine"><span>FABRIC FIRST · DESIGN WITH INTENT</span><i /></div>
         </div>
-        <div className="gatewayHeroModel" aria-label="Photoreal LLinen Earth menswear model">
+        <div className="gatewayHeroModel" aria-label="Photoreal Linen Earth menswear model">
           <div className="gatewayHeroGlow" />
-          <img src="/api/homepage-model" alt="Photoreal menswear model styled for LLinen Earth" fetchPriority="high" decoding="async" />
-          <div className="gatewayHeroBadge"><span>AI ATELIER MODEL</span><b>FASHN · PHOTOREAL</b></div>
+          <img src="/api/homepage-model" alt="Photoreal menswear model styled for Linen Earth" fetchPriority="high" decoding="async" />
+          <div className="gatewayHeroBadge"><span>LINEN EARTH MODEL</span><b>FABRIC · FIT · FORM</b></div>
           <div className="gatewayHeroCaption"><span>REALISTIC SILHOUETTE</span><i/> <span>FABRIC-LED STYLING</span></div>
         </div>
       </section>
 
       <section className="gatewayIntro wrap" data-reveal>
-        <div><p className="eyebrow">CHOOSE HOW YOU WANT TO DESIGN</p><h2>Two ways into the atelier.</h2></div>
-        <p>Use the Designer when you want LLinen Earth to decide what works for your occasion. Use Live Visual when you already know what you want and want to see garment, style and fabric clearly on the mannequin.</p>
+        <div><p className="eyebrow">CHOOSE HOW YOU WANT TO DESIGN</p><h2>Two ways to find your look.</h2></div>
+        <p>Start with real shirt and trouser cloth in Designer, or let Style Director guide you from occasion and taste toward an outfit.</p>
       </section>
 
       <section className="gatewayChoices wrap" data-reveal>
@@ -81,15 +76,15 @@ export default function Home() {
           </div>
         </Link>
 
-        <Link href="/visual" className="gatewayCard gatewayVisual">
+        <Link href="/designer-studio" className="gatewayCard gatewayVisual">
           <div className="gatewayImage gatewayImageVisual" />
-          <div className="gatewayCardTop"><span>02</span><b>LIVE GARMENT VISUAL</b></div>
-          <div className="gatewayVisualStrip" aria-hidden="true">{visualRefs.map((src,index)=><div key={src} className="gatewayMini" style={{backgroundImage:`url('${src}')`}} data-index={index}/>)}</div>
+          <div className="gatewayCardTop"><span>02</span><b>DESIGNER</b></div>
+          <div className="gatewayVisualStrip" aria-hidden="true">{designerRefs.map((src,index)=><div key={src} className="gatewayMini" style={{backgroundImage:`url('${src}')`}} data-index={index}/>)}</div>
           <div className="gatewayCardCopy">
-            <p className="eyebrow">VISUAL CLARITY</p><h3>See the garment before you decide.</h3>
-            <p>Choose shirt, trouser, suit or blazer, change styling details, and map a real fabric photograph onto the garment surface.</p>
-            <div className="gatewaySignals"><span>SHIRT</span><span>TROUSER</span><span>SUIT</span><span>BLAZER</span></div>
-            <strong>Open Live Visual <i>↗</i></strong>
+            <p className="eyebrow">FABRIC FIRST</p><h3>See your cloth as an outfit.</h3>
+            <p>Choose real shirting and trouser swatches, refine the collar and cut, then preview the combination on a consistent studio model.</p>
+            <div className="gatewaySignals"><span>SHIRT</span><span>TROUSER</span><span>COLOUR</span><span>CUT</span></div>
+            <strong>Open Designer <i>↗</i></strong>
           </div>
         </Link>
       </section>
@@ -98,7 +93,7 @@ export default function Home() {
         <div className="editorialGarmentGrid">
           {garments.map((garment) => (
             <Link href={garment.href} className={`editorialGarmentCard ${garment.className}`} key={garment.name}>
-              <img src={garment.image} alt={`${garment.name} by LLinen Earth`} />
+              <img src={garment.image} alt={`${garment.name} by Linen Earth`} />
               <div className="editorialGarmentShade" />
               <div className="editorialGarmentMeta"><small>{garment.note}</small></div>
               <div className="editorialGarmentAction"><h3>{garment.name}</h3><strong>Explore <b>↗</b></strong></div>
@@ -107,14 +102,14 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="gatewayFoot wrap" data-reveal><span>LLINEN EARTH / DIGITAL ATELIER</span><p>Designer for judgement. Live Visual for clarity. Atelier for execution.</p></section>
+      <section className="gatewayFoot wrap" data-reveal><span>LINEN EARTH / DESIGN STUDIO</span><p>Designer for cloth and cut. Style Director for a complete direction.</p></section>
 
       <section className="homeContactBand" data-reveal>
         <div className="homeContactInner wrap">
           <div className="homeContactIntro">
             <p className="eyebrow">VISIT · MESSAGE · FOLLOW</p>
             <h2>Continue the conversation beyond the screen.</h2>
-            <p>Visit LLinen Earth in Bhiwandi to see fabrics in person, message the team directly on WhatsApp, or follow the latest fabric and tailoring updates on Instagram.</p>
+            <p>Visit Linen Earth in Bhiwandi to see fabrics in person, message the team directly on WhatsApp, or follow the latest fabric and tailoring updates on Instagram.</p>
           </div>
           <div>
             <div className="homeContactDetails">
@@ -127,7 +122,7 @@ export default function Home() {
               <a href={GOOGLE_BUSINESS_URL} target="_blank" rel="noreferrer"><span className="contactLinkLabel"><PinIcon/>Google Business</span><b>↗</b></a>
               <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer"><span className="contactLinkLabel"><InstagramIcon/>Instagram</span><b>↗</b></a>
             </div>
-            <p className="homeContactNote">Google Business opens the LLinen Earth location search in Google Maps.</p>
+            <p className="homeContactNote">Google Business opens the Linen Earth location search in Google Maps.</p>
           </div>
         </div>
       </section>

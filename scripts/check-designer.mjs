@@ -30,7 +30,7 @@ function load(file) {
 const {DESIGNER_SHIRTS,DESIGNER_PANTS,DESIGNER_REVIEWED_PAIRING,DESIGNER_STYLE_CHOICES,designerTasteAlternative,evaluateDesignerCombo} = load("src/lib/designer/engine.ts");
 const {planDesignerDirections,suggestDesignerRepairs} = load("src/lib/designer/planner.ts");
 const {designerStyleInsights} = load("src/lib/designer/style-insights.ts");
-const {PHOTO_TUCKED_SHIRT_MASK,DESIGNER_PHOTO_TEMPLATES,photoTemplateGaps} = load("src/lib/designer/photo-preview.ts");
+const {DESIGNER_PHOTO_TEMPLATES,photoTemplateForStyle,photoTemplateGaps} = load("src/lib/designer/photo-preview.ts");
 const sky = DESIGNER_SHIRTS.find((fabric)=>fabric.id === "linen-plain-60-sky-blue");
 const beige = DESIGNER_PANTS.find((fabric)=>fabric.id === "linen-suiting-beige");
 const darkGrey = DESIGNER_PANTS.find((fabric)=>fabric.id === "linen-suiting-dark-grey");
@@ -51,8 +51,10 @@ assert.equal(preliminary.materialEvidence.verified,0,"A PDF swatch does not veri
 assert.equal(preliminary.materialEvidence.total,16);
 assert(preliminary.designFitScore > preliminary.materialEvidence.verified);
 assert.equal(preliminary.style.shirtWear,"Tucked","Semi-formal starts with a tucked shirt");
-assert.notEqual(PHOTO_TUCKED_SHIRT_MASK,DESIGNER_PHOTO_TEMPLATES.pleated.shirtPath);
-assert(photoTemplateGaps(preliminary.style,"pleated").some((gap)=>gap.includes("photo composite")));
+assert.equal(photoTemplateForStyle(preliminary.style),"tucked");
+assert.equal(DESIGNER_PHOTO_TEMPLATES.tucked.src,"/designer/studio-tucked.webp");
+assert(!photoTemplateGaps(preliminary.style,"tucked").some((gap)=>gap.includes("photo composite")));
+assert(photoTemplateGaps(preliminary.style,"tucked").includes("Side-Adjuster Tabs"));
 const untuckedFormal = evaluateDesignerCombo(sky,beige,"Formal",{shirtWear:"Untucked"});
 assert.equal(untuckedFormal.rules.find((item)=>item.id === "CUT-TUCK").status,"flag");
 assert.equal(untuckedFormal.status,"needs_review");

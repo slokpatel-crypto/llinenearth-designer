@@ -154,7 +154,7 @@ export function CustomerMeasurements() {
           {status && <p className="customerMeasureStatus">{status}</p>}
           <div className="customerMeasureActions">
             <button className="customerMeasureSave" onClick={saveProfile}>Save & use profile</button>
-            <Link href="/designer-brief">Continue to Design for me <span>→</span></Link>
+            <Link href="/designer-studio">Continue to Designer <span>→</span></Link>
           </div>
           <p className="customerMeasurePrivacy">MVP storage: profiles stay in this browser&apos;s localStorage on this device. They are not a production customer account or cloud record.</p>
         </div>

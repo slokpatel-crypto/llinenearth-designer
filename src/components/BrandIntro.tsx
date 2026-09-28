@@ -23,10 +23,10 @@ export function BrandIntro() {
   if (!show) return null;
 
   return (
-    <div className={`brandIntro${reducedMotion ? " reducedMotion" : ""}`} aria-label="LLinen Earth opening brand animation">
+    <div className={`brandIntro${reducedMotion ? " reducedMotion" : ""}`} aria-label="Linen Earth opening brand animation">
       <div className="introGlow" />
       <div className="introCard">
-        <img src={BRAND_LOGO_SRC} alt="LLinen Earth" width="1273" height="531" />
+        <img src={BRAND_LOGO_SRC} alt="Linen Earth logo" width="890" height="242" />
       </div>
       <p>FABRIC · DESIGN · CRAFT</p>
     </div>
