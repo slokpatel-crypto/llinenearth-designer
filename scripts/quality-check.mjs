@@ -446,7 +446,7 @@ for (const token of ["aggregateFitOutcomes","fitOutcomes","No raw"]) {
   if (!fitOutcomeApi.includes(token)) throw new Error(`Designer first-fit outcome regression: aggregate API missing ${token}`);
 }
 const fitOutcomeSearch = fs.readFileSync("src/lib/designer/search.ts","utf8");
-for (const token of ["fitOutcomeSignalFor","fitOutcomeProportionFromMeasurements","fitOutcomeScore","Reviewed first-fit"]) {
+for (const token of ["fitOutcomeSignalFor","fitOutcomeProportionFromMeasurements","fitOutcomeSignal.score","Reviewed first-fit"]) {
   if (!fitOutcomeSearch.includes(token)) throw new Error(`Designer first-fit outcome regression: search missing ${token}`);
 }
 const fitOutcomeOperator = fs.readFileSync("src/app/operator/OperatorClient.tsx","utf8");
