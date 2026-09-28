@@ -147,7 +147,7 @@ console.log("Restored Designer model gate passed: Style Director visible, public
 
 
 const photoPreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","PHOTO_TUCKED_LEFT_SLEEVE_CLIP","PHOTO_TUCKED_RIGHT_SLEEVE_CLIP","PHOTO_TUCKED_LEFT_TROUSER_CLIP","PHOTO_TUCKED_RIGHT_TROUSER_CLIP","destination-in","masks.shirt","masks.pant","featherMaskInside","patternScaleForFabric","placement.offsetX","soft-light","Inspect fit","Original model","Boundary QA"]) {
+for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","PHOTO_TUCKED_LEFT_SLEEVE_CLIP","PHOTO_TUCKED_RIGHT_SLEEVE_CLIP","PHOTO_TUCKED_LEFT_TROUSER_CLIP","PHOTO_TUCKED_RIGHT_TROUSER_CLIP","destination-in","masks.shirt","masks.pant","featherMaskInside","featheredMasks","patternScaleForFabric","placement.offsetX","soft-light","Inspect fit","Original model","Boundary QA"]) {
   if (!photoPreview.includes(token)) throw new Error(`Real photographic Designer regression: PhotoOutfitPreview missing ${token}`);
 }
 const photoGeometry = fs.readFileSync("src/lib/designer/photo-preview.ts","utf8");
@@ -179,3 +179,9 @@ for (const token of ["URLSearchParams(window.location.search)","routedAnchor","r
   if (!realDesignerModule.includes(token)) throw new Error(`Real Designer handoff regression: missing ${token}`);
 }
 console.log("Style Director handoff gate passed: context and real stock anchor transfer into photographic Designer.");
+
+
+for (const token of ["matchPhotographedOfficeModel","Point (Standard) Collar","Barrel Cuff (1-button)","Pleated Trouser","Belt Loops","Match photographed office model"]) {
+  if (!realDesignerModule.includes(token)) throw new Error(`Photographed office preset regression: missing ${token}`);
+}
+console.log("Photographed office preset gate passed: the selected cut can be aligned exactly to the tucked model template.");
