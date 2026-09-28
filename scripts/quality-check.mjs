@@ -26,6 +26,7 @@ const required = [
   "src/lib/designer/brand-language.ts",
   "src/components/PhotoOutfitPreview.tsx",
   "src/app/designer-studio/page.tsx",
+  "src/lib/designer/search.ts",
 ];
 
 for (const file of required) {
@@ -330,3 +331,24 @@ if (designerRecommendationSanitizer.includes("finishedTargets") || designerRecom
   throw new Error("Privacy regression: designer recommendation telemetry must not persist body or finished garment measurements.");
 }
 console.log("Canonical garment spec quality gate passed: one synchronized spec drives Designer output while measurement ranges stay local unless explicitly exported.");
+
+
+const advancedSearch = fs.readFileSync("src/lib/designer/search.ts","utf8");
+for (const token of [
+  "DesignerSearchScope","keep_shirt","keep_trouser","open",
+  "DesignerSearchTier","Safe","Elevated","Statement",
+  "searchDesignerCatalogue","explainWhyNotCurrentPair",
+  "hardBlocked","fitConstruction","brandLanguage","noveltyScore",
+  "comparisonFor","More of the material decision is supported by verified cloth metadata."
+]) {
+  if (!advancedSearch.includes(token)) throw new Error(`Designer advanced-search regression: missing ${token}`);
+}
+const advancedSearchUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
+for (const token of ["DESIGNER SEARCH / V3","Search catalogue","Keep shirt","Keep trouser","Open search","Why over my current choice?","Use this direction"]) {
+  if (!advancedSearchUi.includes(token)) throw new Error(`Designer advanced-search UI regression: missing ${token}`);
+}
+const advancedSearchCss = fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
+for (const token of [".newDesignerSearch",".newDesignerSearchResults",".newDesignerSearchTier",".newDesignerSearchUse"]) {
+  if (!advancedSearchCss.includes(token)) throw new Error(`Designer advanced-search styling regression: missing ${token}`);
+}
+console.log("Designer advanced-search gate passed: diversified catalogue search, hard-conflict exclusion and explainable alternatives protected.");
