@@ -66,6 +66,21 @@ function cleanPayload(type:string, input:unknown) {
     const occasion = text(payload.occasion,40);
     const style = payload.style && typeof payload.style === "object" && !Array.isArray(payload.style) ? payload.style : {};
     if (!shirtId || !pantId || !["Casual","Smart-Casual","Semi-Formal","Formal"].includes(occasion)) return null;
+    const garmentSpecInput = payload.garmentSpec && typeof payload.garmentSpec === "object" && !Array.isArray(payload.garmentSpec)
+      ? payload.garmentSpec as Record<string,unknown> : {};
+    const readinessInput = garmentSpecInput.readiness && typeof garmentSpecInput.readiness === "object" && !Array.isArray(garmentSpecInput.readiness)
+      ? garmentSpecInput.readiness as Record<string,unknown> : {};
+    const garmentSpec = {
+      version:text(garmentSpecInput.version,80),
+      status:text(garmentSpecInput.status,40),
+      fitConstructionScore:Number(garmentSpecInput.fitConstructionScore || 0),
+      brandLanguageScore:Number(garmentSpecInput.brandLanguageScore || 0),
+      readiness:{
+        visualization:text(readinessInput.visualization,60),
+        tailoring:text(readinessInput.tailoring,60),
+        materialVerification:text(readinessInput.materialVerification,60),
+      },
+    };
     return {
       shirtId, pantId, occasion, style,
       confidenceScore: Number(payload.confidenceScore || 0),
@@ -73,6 +88,7 @@ function cleanPayload(type:string, input:unknown) {
       status: text(payload.status,40),
       ruleSetVersion: text(payload.ruleSetVersion,100),
       reasoningText: text(payload.reasoningText,1200),
+      ...(garmentSpec.version ? { garmentSpec } : {}),
     };
   }
 
