@@ -110,6 +110,41 @@ type Seed = {
 };
 
 const RESEARCH = {
+  wrongness:{
+    id:"wrongness-tailoring-2026",
+    sourceTitle:"Hed Mayner Fall 2026 Menswear",
+    sourceUrl:"https://www.vogue.com/fashion-shows/fall-2026-menswear/hed-mayner",
+    extractedPrinciple:"Tailoring can become visually compelling when one expected relationship to the body is intentionally made 'wrong' while the garment remains coherent.",
+    transformedInto:"Permit deliberate proportion or construction dislocation—forward sleeve attitude, shifted body volume, displaced seams—without automatically correcting it back to conventional tailoring.",
+  },
+  tactileDimension:{
+    id:"tactile-dimensionality-2026",
+    sourceTitle:"Kith Fall 2026 Menswear",
+    sourceUrl:"https://www.vogue.com/fashion-shows/fall-2026-menswear/kith",
+    extractedPrinciple:"Texture, patina and dimensionality can carry novelty even when silhouette and colour stay controlled.",
+    transformedInto:"Let surface depth, edge hardware, stitched relief or tonal material contrast become the main design move instead of always changing cut.",
+  },
+  quietWild:{
+    id:"quiet-wild-balance-2026",
+    sourceTitle:"Feng Chen Wang Fall 2026 Menswear",
+    sourceUrl:"https://www.vogue.com/fashion-shows/fall-2026-menswear/feng-chen-wang",
+    extractedPrinciple:"A tailored look can hold opposing forces—quiet structure and expressive disruption—when each is given a clear role.",
+    transformedInto:"Build one disciplined tailoring anchor and one intentionally extreme counter-system rather than averaging both into a safe middle.",
+  },
+  bodyReframe:{
+    id:"formless-form-2026",
+    sourceTitle:"IM Men Fall 2026 Menswear",
+    sourceUrl:"https://www.vogue.com/fashion-shows/fall-2026-menswear/im-men",
+    extractedPrinciple:"Drape, oversized volume and unconventional fastening can redefine masculine elegance without relying on traditional fitted form.",
+    transformedInto:"Explore volume and fastening as independent design systems; allow a garment to create a new body outline rather than merely follow the torso.",
+  },
+  craftDeviation:{
+    id:"craft-deviation-2026",
+    sourceTitle:"McQueen × Huntsman tailoring collaboration",
+    sourceUrl:"https://www.vogue.com/article/inside-mcqueens-savile-row-reunion-with-huntsman",
+    extractedPrinciple:"High-level tailoring can deliberately depart from established construction methods when the visual concept requires a precise new silhouette.",
+    transformedInto:"Treat traditional tailoring technique as a toolkit, not a fixed boundary: preserve workmanship while permitting changed sleeve, pocket or coat geometry.",
+  },
   divergent:{
     id:"divergent-design-thinking",
     sourceTitle:"The cognitive process of creative design: A perspective of divergent thinking",
@@ -402,6 +437,57 @@ function frontierCrossZoneSeed(seed:Seed,index:number):Seed {
 }
 
 const SEEDS:Seed[]=[
+  {
+    id:"intentional-wrongness",
+    name:"Intentional Wrongness",
+    thesis:"Make one tailoring relationship deliberately 'wrong' enough to feel new, while keeping the rest exact.",
+    principle:RESEARCH.wrongness,
+    treatments:()=>[
+      treatment("wrong-sleeve-attitude","shirt-body","Forward sleeve attitude","Shift the apparent sleeve pitch and shoulder-to-sleeve flow slightly forward rather than following the expected vertical fall.","Changes the body's perceived stance without adding decoration.",88,"experimental"),
+      treatment("stable-neck-frame","collar","Stable neck frame","Keep the collar highly controlled and recognisable.","Creates a precise reference point against the displaced sleeve/body relationship.",16,"supported"),
+    ],
+  },
+  {
+    id:"tactile-relief",
+    name:"Tactile Relief",
+    thesis:"Create visual richness through depth and texture rather than another colour or print.",
+    principle:RESEARCH.tactileDimension,
+    treatments:()=>[
+      treatment("raised-cuff-relief","cuff","Raised cuff relief","Build a narrow stitched, corded or layered relief line near the cuff edge so light creates a physical shadow.","Adds dimensionality that changes with lighting and movement.",66,"atelier"),
+      treatment("tonal-placket-relief","placket","Tonal placket relief","Echo the relief more subtly along part of the placket with no colour contrast.","Creates a tactile rhythm without turning the garment graphic.",34,"atelier"),
+    ],
+  },
+  {
+    id:"quiet-wild",
+    name:"Quiet × Wild",
+    thesis:"Hold one side of the design very disciplined and let one other system become intentionally extreme.",
+    principle:RESEARCH.quietWild,
+    treatments:()=>[
+      treatment("quiet-tailored-anchor","collar","Quiet tailored anchor","Keep collar, centre front and shoulder line clean and exact.","Provides a conventional visual anchor.",12,"supported"),
+      treatment("wild-cuff-plane","cuff","Wild cuff plane","Extend, split, fold or layer the cuff geometry beyond normal proportions as the single expressive counter-system.","Creates deliberate tension instead of safe compromise.",94,"experimental"),
+    ],
+  },
+  {
+    id:"new-body-outline",
+    name:"New Body Outline",
+    thesis:"Let volume redraw the body rather than treating fit as the only valid silhouette.",
+    principle:RESEARCH.bodyReframe,
+    patch:{shirtFit:"Relaxed Fit",trouser:"Wide-leg / Relaxed Drape Trouser"},
+    treatments:()=>[
+      treatment("floating-side-volume","shirt-body","Floating side volume","Add controlled side-body volume or drape that separates from the torso before returning near the hem.","Creates a silhouette independent of the body's exact outline.",82,"experimental"),
+      treatment("unusual-fastening-axis","placket","Alternative fastening axis","Shift or partially offset the fastening path so it participates in the new volume structure.","Makes fastening part of silhouette architecture.",71,"experimental"),
+    ],
+  },
+  {
+    id:"craft-deviation",
+    name:"Craft Deviation",
+    thesis:"Use precise tailoring skill to execute geometry that traditional tailoring would normally avoid.",
+    principle:RESEARCH.craftDeviation,
+    treatments:()=>[
+      treatment("curved-sleeve-geometry","shirt-body","Curved sleeve geometry","Engineer a visibly curved sleeve path or rotated sleeve relationship while preserving a clean armhole finish.","Uses craftsmanship to support a new silhouette instead of forcing the idea back to a standard sleeve.",84,"experimental"),
+      treatment("high-pocket-shift","pocket","High pocket shift","Raise or curve the pocket position enough to alter the upper-body proportion.","Rebalances the visual centre of gravity.",62,"experimental"),
+    ],
+  },
   {
     id:"divergent-zone-jump",
     name:"Zone Jump",
