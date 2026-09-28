@@ -743,7 +743,11 @@ function criticsFor(
       recommendation.formality.match===false?"The base cut conflicts with the selected occasion band.":"The underlying cut remains inside the current occasion grammar.",
       "Research is converted into a design principle rather than copied as a finished look.",
     ],facets:[
-      {label:"Occasion code",score:round(recommendation.formality.score)},
+      {label:"Occasion code",score:round(
+        recommendation.formality.match===true ? 92
+          : recommendation.formality.match===false ? Math.max(18,58-Math.abs(recommendation.formality.delta ?? 1)*14)
+            : 58
+      )},
       {label:"Design fit",score:round(recommendation.designFitScore)},
       {label:"Research translation",score:round(researchFit(seed,input))},
     ]},
