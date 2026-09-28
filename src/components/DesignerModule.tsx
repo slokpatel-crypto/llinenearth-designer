@@ -17,6 +17,7 @@ import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measuremen
 import { assessFitConstruction, formatFinishedRange } from "@/lib/designer/fit-construction";
 import { buildDesignerNegotiation } from "@/lib/designer/constraint-negotiation";
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
+import { evaluateLinenEarthBrandLanguage } from "@/lib/designer/brand-language";
 
 const OCCASIONS: OccasionTier[] = ["Casual", "Smart-Casual", "Semi-Formal", "Formal"];
 const CLIMATES: DesignerClimate[] = ["Not specified", "Hot / humid", "Cool", "Air-conditioned"];
@@ -76,6 +77,7 @@ export function DesignerModule() {
   const fitGuidance = useMemo(() => measurementFitGuidance(measurementProfile), [measurementProfile]);
   const fitConstruction = useMemo(() => shirt && pant ? assessFitConstruction(measurementProfile, style, { climate, shirtFabric: shirt, trouserFabric: pant }) : null, [measurementProfile, style, climate, shirt, pant]);
   const negotiation = useMemo(() => recommendation ? buildDesignerNegotiation(recommendation, fitConstruction) : null, [recommendation, fitConstruction]);
+  const brandLanguage = useMemo(() => shirt && pant ? evaluateLinenEarthBrandLanguage(shirt,pant,style,occasion,{climate,intention}) : null, [shirt,pant,style,occasion,climate,intention]);
 
   useEffect(() => {
     try {
@@ -473,12 +475,19 @@ export function DesignerModule() {
           <div className="newDesignerSignals" aria-label="Design reasoning and fabric evidence">
             <div><span>DESIGN READ</span><strong>{recommendation.status === "preliminary" ? "Promising" : "Review"}</strong><small>{recommendation.rules.filter((item) => item.status === "flag").length} pairing and cut checks flagged; every direction remains provisional.</small></div>
             <div><span>PHYSICAL CLOTH CHECK</span><strong>{recommendation.materialEvidence.verified}/{recommendation.materialEvidence.total}</strong><small>Material facts confirmed across both cloths. We check the rolls before making a garment.</small></div>
+            {brandLanguage && <div><span>LINEN EARTH READ</span><strong>{brandLanguage.score}/100</strong><small>{brandLanguage.mode} brand mode · soft taste signal only.</small></div>}
           </div>
           <div className="newDesignerDetails">
             <div><span>SHIRT</span><strong>{recommendation.style.collar}</strong><small>{recommendation.style.shirtWear} · {recommendation.style.collarFinish} · {recommendation.style.shirtFit} · {recommendation.style.cuff} · {recommendation.style.placket}</small></div>
             <div><span>TROUSERS</span><strong>{recommendation.style.trouser}</strong><small>{recommendation.style.rise} · {recommendation.style.waistband} · {recommendation.style.break}</small></div>
           </div>
           <p className="newDesignerProvisional">{recommendation.status === "preliminary" ? "A preliminary direction. We would check the actual fabric before confirming the cut." : "This is your proposed cut, pending a Linen Earth stylist's review."}</p>
+          {brandLanguage && <section className="newDesignerBrandRead" aria-label="Linen Earth brand language">
+            <div className="newDesignerBrandReadHead"><span>LINEN EARTH / BRAND LANGUAGE</span><strong>{brandLanguage.mode} · {brandLanguage.score}/100</strong></div>
+            {brandLanguage.strengths.length>0 && <div><span>WHAT FEELS RIGHT</span>{brandLanguage.strengths.map((item)=><p key={item}>{item}</p>)}</div>}
+            {brandLanguage.cautions.length>0 && <div><span>WHAT WE WOULD EDIT</span>{brandLanguage.cautions.map((item)=><p key={item}>{item}</p>)}</div>}
+            <small>Brand language is a soft preference layer. Fit, construction, occasion and verified cloth evidence always take priority.</small>
+          </section>}
           {negotiation && <section className={`newDesignerNegotiation ${negotiation.verdict}`} aria-label="Designer constraint negotiation">
             <div className="newDesignerNegotiationHead"><span>DESIGNER NEGOTIATION</span><strong>{negotiation.headline}</strong></div>
             <div className="newDesignerPreserve"><span>KEEP</span>{negotiation.preserve.slice(0,5).map((item)=><b key={item}>{item}</b>)}</div>
@@ -495,7 +504,7 @@ export function DesignerModule() {
             {directions.slice(1).map((direction) => <article key={direction.id}>
               <strong>{direction.name}</strong><p>{direction.proposition}</p>
               <small>{direction.changes.join(" · ")}</small>
-              {direction.fitConstruction && <span className="newDesignerDirectionFit">FIT + CONSTRUCTION {direction.fitConstruction.fitScore}/100</span>}
+              {direction.fitConstruction && <span className="newDesignerDirectionFit">FIT + CONSTRUCTION {direction.fitConstruction.fitScore}/100</span>}{direction.brandLanguage && <span className="newDesignerDirectionBrand">LINEN EARTH {direction.brandLanguage.score}/100</span>}
               <button type="button" onClick={() => assess(direction.recommendation.style)}>Assess this cut</button>
             </article>)}
           </div>}

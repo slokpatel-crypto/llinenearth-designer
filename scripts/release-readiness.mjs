@@ -35,6 +35,7 @@ for (const path of [
   "src/lib/designer/fit-construction.ts",
   "src/lib/designer/constraint-negotiation.ts",
   "src/lib/designer/outcome-learning.ts",
+  "src/lib/designer/brand-language.ts",
   "src/components/PhotoOutfitPreview.tsx",
   "src/app/designer-studio/page.tsx",
   "desktop/src/App.tsx",
@@ -52,6 +53,17 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "PHOTO_TUCKED_NECK_CLEAR",
   "masks.shirt",
   "masks.pant",
+]);
+requireTokens("src/lib/designer/brand-language.ts", [
+  "linen-earth-brand-language-provisional-1",
+  "evaluateLinenEarthBrandLanguage",
+  "soft ranking signal",
+  "Keep one visual hero",
+]);
+requireTokens("src/lib/designer/planner.ts", [
+  "BrandLanguageEvaluation",
+  "brandLanguage",
+  "* .10",
 ]);
 requireTokens("src/lib/designer/outcome-learning.ts", [
   "DESIGNER_FEEDBACK_REASONS",

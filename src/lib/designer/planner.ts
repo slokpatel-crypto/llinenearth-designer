@@ -4,6 +4,7 @@ import {
 } from "@/lib/designer/engine";
 import type { MeasurementProfile } from "@/lib/measurements";
 import { assessFitConstruction, type FitConstructionAssessment } from "@/lib/designer/fit-construction";
+import { evaluateLinenEarthBrandLanguage, type BrandLanguageEvaluation } from "@/lib/designer/brand-language";
 
 export type DesignerDirection = {
   id: "selected" | "clean" | "heritage" | "movement";
@@ -12,6 +13,7 @@ export type DesignerDirection = {
   changes: string[];
   recommendation: DesignerRecommendation;
   fitConstruction?: FitConstructionAssessment;
+  brandLanguage?: BrandLanguageEvaluation;
 };
 
 type Candidate = Omit<DesignerDirection, "changes" | "recommendation"> & { patch: DesignerStyleOverrides };
@@ -57,18 +59,20 @@ export function planDesignerDirections(
 ): DesignerDirection[] {
   const selected = evaluateDesignerCombo(shirt, pant, occasion, chosen, undefined, context);
   const selectedFit = measurements ? assessFitConstruction(measurements, selected.style, { climate: context.climate, shirtFabric: shirt, trouserFabric: pant }) : undefined;
+  const selectedBrand = evaluateLinenEarthBrandLanguage(shirt,pant,selected.style,occasion,context);
   const directions: DesignerDirection[] = [{
     id: "selected", name: "Your direction", proposition: "The cloth and cut you chose, assessed together.",
-    changes: [], recommendation: selected, fitConstruction: selectedFit,
+    changes: [], recommendation: selected, fitConstruction: selectedFit, brandLanguage:selectedBrand,
   }];
   const seen = new Set([JSON.stringify(selected.style)]);
   const candidates = alternatives(occasion).map((candidate) => {
     const style = { ...chosen, ...candidate.patch };
     const recommendation = evaluateDesignerCombo(shirt, pant, occasion, style, undefined, context);
     const fitConstruction = measurements ? assessFitConstruction(measurements, recommendation.style, { climate: context.climate, shirtFabric: shirt, trouserFabric: pant }) : undefined;
+    const brandLanguage = evaluateLinenEarthBrandLanguage(shirt,pant,recommendation.style,occasion,context);
     const changes = (Object.keys(style) as Array<keyof DesignerStyle>)
       .filter((key) => chosen[key] !== style[key]).map((key) => `${key}: ${style[key]}`);
-    return { ...candidate, changes, recommendation, fitConstruction };
+    return { ...candidate, changes, recommendation, fitConstruction, brandLanguage };
   }).filter((candidate) => {
     const key = JSON.stringify(candidate.recommendation.style);
     if (!candidate.changes.length || seen.has(key)) return false;
@@ -80,11 +84,11 @@ export function planDesignerDirections(
   const priority = context.intention === "Expressive" ? ["movement", "heritage", "clean"]
     : context.intention === "Understated" ? ["clean", "heritage", "movement"] : ["heritage", "clean", "movement"];
   candidates.sort((a, b) => {
-    const score = (item: typeof a) => item.recommendation.designFitScore * .68 + (item.fitConstruction?.fitScore ?? 70) * .32;
+    const score = (item: typeof a) => item.recommendation.designFitScore * .58 + (item.fitConstruction?.fitScore ?? 70) * .32 + (item.brandLanguage?.score ?? 70) * .10;
     return score(b) - score(a) || priority.indexOf(a.id) - priority.indexOf(b.id);
   });
-  return [...directions, ...candidates.slice(0, 2).map(({ id, name, proposition, changes, recommendation, fitConstruction }) =>
-    ({ id, name, proposition, changes, recommendation, fitConstruction }))];
+  return [...directions, ...candidates.slice(0, 2).map(({ id, name, proposition, changes, recommendation, fitConstruction, brandLanguage }) =>
+    ({ id, name, proposition, changes, recommendation, fitConstruction, brandLanguage }))];
 }
 
 export type DesignerRepair = { label: string; patch?: DesignerStyleOverrides };
