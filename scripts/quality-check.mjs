@@ -448,7 +448,7 @@ for (const token of ["DesignerBlockStrategy","selectedBlock","blockStrategy:sele
   if (!designerPlannerBlocks.includes(token)) throw new Error(`Designer block planning regression: missing ${token}`);
 }
 const designerSearchBlocks = fs.readFileSync("src/lib/designer/search.ts","utf8");
-for (const token of ["blockStrategy: DesignerBlockStrategy","assessBlockStrategy","BLOCK","block.score"]) {
+for (const token of ["blockStrategy: DesignerBlockStrategy","assessBlockStrategy","blockStrategy:block","block.score"]) {
   if (!designerSearchBlocks.includes(token)) throw new Error(`Designer block-search regression: missing ${token}`);
 }
 const designerBlockUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
