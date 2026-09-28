@@ -32,6 +32,7 @@ for (const path of [
   "src/app/real-model/page.tsx",
   "public/designer/studio-tucked.webp",
   "src/lib/designer/photo-preview.ts",
+  "src/lib/designer/fit-construction.ts",
   "src/components/PhotoOutfitPreview.tsx",
   "src/app/designer-studio/page.tsx",
   "desktop/src/App.tsx",
@@ -49,6 +50,18 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "PHOTO_TUCKED_NECK_CLEAR",
   "masks.shirt",
   "masks.pant",
+]);
+requireTokens("src/lib/designer/fit-construction.ts", [
+  "fit-construction-provisional-1",
+  "assessFitConstruction",
+  "SHIRT_EASE",
+  "TROUSER_EASE",
+  "provisional_house_defaults",
+]);
+requireTokens("src/lib/designer/planner.ts", [
+  "FitConstructionAssessment",
+  "assessFitConstruction",
+  "fitConstruction",
 ]);
 requireTokens("src/lib/designer/photo-preview.ts", [
   "PHOTO_TUCKED_SHIRT_CLIP",

@@ -19,6 +19,7 @@ const required = [
   "src/app/real-model/page.tsx",
   "public/designer/studio-tucked.webp",
   "src/lib/designer/photo-preview.ts",
+  "src/lib/designer/fit-construction.ts",
   "src/components/PhotoOutfitPreview.tsx",
   "src/app/designer-studio/page.tsx",
 ];
@@ -235,3 +236,18 @@ for (const token of [".newDesignerFitProfile",".newDesignerMeasureChips",".newDe
   if (!realDesignerMeasurementCss.includes(token)) throw new Error(`Designer measurement-fit styling regression: missing ${token}`);
 }
 console.log("Designer measurement-fit gate passed: saved blueprint measurements surface as tailoring guidance without pretending to resize the photographic model.");
+
+
+const fitConstructionV2 = fs.readFileSync("src/lib/designer/fit-construction.ts","utf8");
+for (const token of ["fit-construction-provisional-1","SHIRT_EASE","TROUSER_EASE","assessFitConstruction","Finished collar circumference","Finished trouser seat","FIT-TROUSER-SEAT","CONTEXT-EASE","FABRIC-DRAPE-TROUSER","provisional_house_defaults"]) {
+  if (!fitConstructionV2.includes(token)) throw new Error(`Fit Construction V2 regression: missing ${token}`);
+}
+const plannerV2 = fs.readFileSync("src/lib/designer/planner.ts","utf8");
+for (const token of ["MeasurementProfile","FitConstructionAssessment","assessFitConstruction","fitConstruction","item.recommendation.designFitScore * .68"]) {
+  if (!plannerV2.includes(token)) throw new Error(`Fit-aware Designer planner regression: missing ${token}`);
+}
+const designerV2 = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
+for (const token of ["FIT + CONSTRUCTION V2","formatFinishedRange","newDesignerGarmentSpec","newDesignerDirectionFit","measurementProfile)"]) {
+  if (!designerV2.includes(token)) throw new Error(`Fit Construction V2 UI regression: missing ${token}`);
+}
+console.log("Fit Construction V2 gate passed: provisional ease ranges, finished-garment targets, construction checks and measurement-aware cut ranking protected.");

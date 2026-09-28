@@ -2,6 +2,8 @@ import {
   evaluateDesignerCombo, type DesignerContext, type DesignerFabric, type DesignerRecommendation,
   type DesignerStyle, type DesignerStyleOverrides, type OccasionTier,
 } from "@/lib/designer/engine";
+import type { MeasurementProfile } from "@/lib/measurements";
+import { assessFitConstruction, type FitConstructionAssessment } from "@/lib/designer/fit-construction";
 
 export type DesignerDirection = {
   id: "selected" | "clean" | "heritage" | "movement";
@@ -9,6 +11,7 @@ export type DesignerDirection = {
   proposition: string;
   changes: string[];
   recommendation: DesignerRecommendation;
+  fitConstruction?: FitConstructionAssessment;
 };
 
 type Candidate = Omit<DesignerDirection, "changes" | "recommendation"> & { patch: DesignerStyleOverrides };
@@ -50,20 +53,22 @@ function alternatives(occasion: OccasionTier): Candidate[] {
 /** The requested outfit always remains first. Other directions change only its cut. */
 export function planDesignerDirections(
   shirt: DesignerFabric, pant: DesignerFabric, occasion: OccasionTier,
-  chosen: DesignerStyle, context: DesignerContext,
+  chosen: DesignerStyle, context: DesignerContext, measurements?: MeasurementProfile | null,
 ): DesignerDirection[] {
   const selected = evaluateDesignerCombo(shirt, pant, occasion, chosen, undefined, context);
+  const selectedFit = measurements ? assessFitConstruction(measurements, selected.style, { climate: context.climate, shirtFabric: shirt, trouserFabric: pant }) : undefined;
   const directions: DesignerDirection[] = [{
     id: "selected", name: "Your direction", proposition: "The cloth and cut you chose, assessed together.",
-    changes: [], recommendation: selected,
+    changes: [], recommendation: selected, fitConstruction: selectedFit,
   }];
   const seen = new Set([JSON.stringify(selected.style)]);
   const candidates = alternatives(occasion).map((candidate) => {
     const style = { ...chosen, ...candidate.patch };
     const recommendation = evaluateDesignerCombo(shirt, pant, occasion, style, undefined, context);
+    const fitConstruction = measurements ? assessFitConstruction(measurements, recommendation.style, { climate: context.climate, shirtFabric: shirt, trouserFabric: pant }) : undefined;
     const changes = (Object.keys(style) as Array<keyof DesignerStyle>)
       .filter((key) => chosen[key] !== style[key]).map((key) => `${key}: ${style[key]}`);
-    return { ...candidate, changes, recommendation };
+    return { ...candidate, changes, recommendation, fitConstruction };
   }).filter((candidate) => {
     const key = JSON.stringify(candidate.recommendation.style);
     if (!candidate.changes.length || seen.has(key)) return false;
@@ -74,10 +79,12 @@ export function planDesignerDirections(
   });
   const priority = context.intention === "Expressive" ? ["movement", "heritage", "clean"]
     : context.intention === "Understated" ? ["clean", "heritage", "movement"] : ["heritage", "clean", "movement"];
-  candidates.sort((a, b) => b.recommendation.designFitScore - a.recommendation.designFitScore
-    || priority.indexOf(a.id) - priority.indexOf(b.id));
-  return [...directions, ...candidates.slice(0, 2).map(({ id, name, proposition, changes, recommendation }) =>
-    ({ id, name, proposition, changes, recommendation }))];
+  candidates.sort((a, b) => {
+    const score = (item: typeof a) => item.recommendation.designFitScore * .68 + (item.fitConstruction?.fitScore ?? 70) * .32;
+    return score(b) - score(a) || priority.indexOf(a.id) - priority.indexOf(b.id);
+  });
+  return [...directions, ...candidates.slice(0, 2).map(({ id, name, proposition, changes, recommendation, fitConstruction }) =>
+    ({ id, name, proposition, changes, recommendation, fitConstruction }))];
 }
 
 export type DesignerRepair = { label: string; patch?: DesignerStyleOverrides };
