@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { emptyMeasurementProfile, formatMeasure, fromCm, MEASUREMENT_STORAGE_KEY, measurementCoverage, toCm, type MeasurementProfile } from "@/lib/measurements";
 
 type Mode = "shirt" | "pants";
@@ -33,7 +33,7 @@ const pantFields: Field[] = [
 ];
 
 function MeasureDiagram({mode,active}:{mode:Mode;active:string}){
-  const Guide = ({id,children}:{id:string;children:React.ReactNode}) =>
+  const Guide = ({id,children}:{id:string;children:ReactNode}) =>
     <g className={active===id?"guide active":"guide"} data-measure={id}>{children}</g>;
 
   if(mode==="shirt") return <svg viewBox="0 0 440 560" className="measureFigure blueprintFigure" aria-label="Blueprint shirt measurement guide">
