@@ -19,6 +19,7 @@ import { buildDesignerNegotiation } from "@/lib/designer/constraint-negotiation"
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
 import { evaluateLinenEarthBrandLanguage } from "@/lib/designer/brand-language";
 import { buildCanonicalGarmentSpec, canonicalGarmentSpecSummary } from "@/lib/designer/garment-spec";
+import { searchDesignerCatalogue, type DesignerSearchResult, type DesignerSearchScope } from "@/lib/designer/search";
 
 const OCCASIONS: OccasionTier[] = ["Casual", "Smart-Casual", "Semi-Formal", "Formal"];
 const CLIMATES: DesignerClimate[] = ["Not specified", "Hot / humid", "Cool", "Air-conditioned"];
@@ -70,6 +71,8 @@ export function DesignerModule() {
   const [directorHandoffTier, setDirectorHandoffTier] = useState("");
   const [directorHandoffReason, setDirectorHandoffReason] = useState("");
   const [measurementProfile, setMeasurementProfile] = useState<MeasurementProfile | null>(null);
+  const [searchScope, setSearchScope] = useState<DesignerSearchScope>("keep_shirt");
+  const [searchResults, setSearchResults] = useState<DesignerSearchResult[]>([]);
   const fact = DESIGNER_FASHION_FACTS[factIndex];
   const shirt = useMemo(() => shirtOptions.find((item) => item.id === shirtId), [shirtId, shirtOptions]);
   const pant = useMemo(() => pantOptions.find((item) => item.id === pantId), [pantId, pantOptions]);
@@ -218,6 +221,10 @@ export function DesignerModule() {
   }, [draftReady, shirtId, pantId, occasion, climate, intention, style]);
 
   useEffect(() => {
+    setSearchResults([]);
+  },[shirtId,pantId,occasion,climate,intention]);
+
+  useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     if (reducedMotion.matches) setFactPlaying(false);
     const handleMotionPreference = (event: MediaQueryListEvent) => setFactPlaying(!event.matches);
@@ -244,7 +251,54 @@ export function DesignerModule() {
     setRecommendationId(null);
     setResponse(null);
     setFeedbackReason(null);
+    setSearchResults([]);
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+  }
+
+  function runAdvancedSearch() {
+    if (!shirt || !pant) return;
+    const results=searchDesignerCatalogue({
+      shirts:shirtOptions,
+      pants:pantOptions,
+      currentShirt:shirt,
+      currentPant:pant,
+      occasion,
+      chosenStyle:style,
+      context:{climate,intention},
+      measurements:measurementProfile,
+      scope:searchScope,
+    });
+    setSearchResults(results);
+  }
+
+  function useSearchResult(result:DesignerSearchResult) {
+    setShirtId(result.shirt.id);
+    setPantId(result.pant.id);
+    setStyle({...result.style});
+    setRecommendation(result.recommendation);
+    setDirections([]);
+    setSearchResults([]);
+    setResponse(null);
+    setFeedbackReason(null);
+    setRecommendationId(null);
+    try {
+      const spec=buildCanonicalGarmentSpec(result.recommendation,result.fitConstruction,measurementProfile,result.brandLanguage);
+      const event=recordStyleMemoryEvent(designerSession(),"designer_recommendation",{
+        shirtId:result.shirt.id,pantId:result.pant.id,occasion:result.recommendation.occasion,style:result.style,
+        input:{source:"advanced_catalogue_search",tier:result.tier,scope:searchScope,context:{climate,intention}},
+        rules:result.recommendation.rules,
+        confidenceScore:result.recommendation.confidenceScore,
+        designFitScore:result.recommendation.designFitScore,
+        materialEvidence:result.recommendation.materialEvidence,
+        formality:result.recommendation.formality,
+        output:result.style,
+        reasoningText:result.recommendation.internalReason,
+        status:result.recommendation.status,
+        ruleSetVersion:result.recommendation.ruleSetVersion,
+        garmentSpec:{version:spec.version,status:spec.status,fitConstructionScore:spec.decision.fitConstructionScore,brandLanguageScore:spec.decision.brandLanguageScore,readiness:spec.readiness},
+      });
+      setRecommendationId(event.id);
+    } catch { /* Search result remains usable when event storage is unavailable. */ }
   }
 
   function assess(nextStyle: DesignerStyle = style) {
@@ -443,6 +497,35 @@ export function DesignerModule() {
             <p className="newDesignerFitTruth">These measurements guide the proposed cut and tailoring conversation. Finished ranges are provisional house targets, not final cutting dimensions. The photographic mannequin is a fixed visual reference and is not resized to represent your body.</p>
           </> : <p className="newDesignerFitTruth">Add measurements in the blueprint studio to carry proportion-aware tailoring notes into Designer. The visual mannequin remains a fixed reference.</p>}
         </section>
+
+        <section className="newDesignerSearch" aria-label="Advanced Designer catalogue search">
+          <div className="newDesignerSearchHead">
+            <div><span>DESIGNER SEARCH / V3</span><strong>Ask the Designer to search beyond the current pair.</strong><p>It evaluates valid catalogue combinations against occasion, measurements, construction, verified cloth facts and Linen Earth design language.</p></div>
+            <button type="button" onClick={runAdvancedSearch} disabled={!shirt || !pant}>Search catalogue ↗</button>
+          </div>
+          <div className="newDesignerSearchScopes" role="group" aria-label="Designer search scope">
+            <button type="button" aria-pressed={searchScope==="keep_shirt"} onClick={()=>{setSearchScope("keep_shirt");setSearchResults([]);}}>Keep shirt</button>
+            <button type="button" aria-pressed={searchScope==="keep_trouser"} onClick={()=>{setSearchScope("keep_trouser");setSearchResults([]);}}>Keep trouser</button>
+            <button type="button" aria-pressed={searchScope==="open"} onClick={()=>{setSearchScope("open");setSearchResults([]);}}>Open search</button>
+          </div>
+          {searchResults.length>0 && <div className="newDesignerSearchResults">
+            {searchResults.map((result)=><article key={result.id} data-tier={result.tier.toLowerCase()}>
+              <div className="newDesignerSearchTier"><span>{result.tier.toUpperCase()}</span><strong>{result.searchScore}/100 search read</strong></div>
+              <div className="newDesignerSearchPair">
+                <div><img src={result.shirt.image} alt="" /><span>SHIRT</span><strong>{result.shirt.name}</strong><small>{result.shirt.line}</small></div>
+                <div><img src={result.pant.image} alt="" /><span>TROUSER</span><strong>{result.pant.name}</strong><small>{result.pant.line}</small></div>
+              </div>
+              <p className="newDesignerSearchCut">{result.style.shirtFit} · {result.style.shirtWear} · {result.style.trouser}</p>
+              <div className="newDesignerSearchWhy"><span>WHY THIS DIRECTION</span>{result.reasons.slice(0,3).map((reason)=><p key={reason}>{reason}</p>)}</div>
+              <details><summary>Why over my current choice?</summary>{result.comparison.map((item)=><p key={item}>{item}</p>)}</details>
+              {result.tradeoffs.length>0 && <details><summary>Trade-offs / checks</summary>{result.tradeoffs.map((item)=><p key={item}>{item}</p>)}</details>}
+              <div className="newDesignerSearchSignals"><span>FIT {result.fitConstruction.fitScore}</span><span>BRAND {result.brandLanguage.score}</span><span>NOVELTY {result.noveltyScore}</span></div>
+              <button className="newDesignerSearchUse" type="button" onClick={()=>useSearchResult(result)}>Use this direction</button>
+            </article>)}
+          </div>}
+          <small className="newDesignerSearchTruth">Search rankings are decision support, not a claim of objective fashion quality. Hard fit/construction conflicts are excluded; unverified physical cloth facts remain visible as trade-offs.</small>
+        </section>
+
         <div className="newDesignerStyleBlock">
           <div className="newDesignerSectionHead"><span>03 / THE CUT</span><h2>Shape the two garments.</h2></div>
           <div className="newDesignerModelPreset">
