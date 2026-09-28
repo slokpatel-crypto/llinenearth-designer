@@ -83,6 +83,7 @@ export type CreativeDirection = {
 };
 
 export type CreativeFreedom = "guided"|"exploratory"|"maximum";
+export type ResearchMutationOperator = "transfer"|"amplify"|"subtract"|"counterpoint"|"scale-shift";
 
 export type CreativeLabInput = {
   shirt:DesignerFabric;
@@ -351,6 +352,100 @@ function researchTrace(signal:CreativeResearchSignal):CreativeResearchTrace {
     extractedPrinciple:signal.principle,
     transformedInto:signal.transformedIdea,
   };
+}
+
+const CREATIVE_ZONES:CreativeZone[]=["collar","cuff","placket","shirt-body","pocket","waistband","pleat","trouser-leg"];
+
+function shiftedZone(zone:CreativeZone,offset:number):CreativeZone {
+  const index=CREATIVE_ZONES.indexOf(zone);
+  return CREATIVE_ZONES[(index+offset+CREATIVE_ZONES.length)%CREATIVE_ZONES.length] || zone;
+}
+
+function researchMutationSeed(signal:CreativeResearchSignal,operator:ResearchMutationOperator,index:number):Seed {
+  const trace=researchTrace(signal);
+  const family=signal.patternFamily==="none"?undefined:signal.patternFamily;
+  const destination=operator==="transfer" ? shiftedZone(signal.zone,3)
+    : operator==="counterpoint" ? shiftedZone(signal.zone,5)
+      : signal.zone;
+  const intensity=operator==="amplify" ? Math.min(100,Math.round(signal.intensity*1.42))
+    : operator==="subtract" ? Math.max(12,Math.round(signal.intensity*.55))
+      : operator==="scale-shift" ? Math.min(100,Math.round(signal.intensity*1.18))
+        : Math.min(100,Math.max(30,signal.intensity));
+  const operationInstruction=operator==="transfer"
+    ? `Transfer the source mechanism from ${signal.zone} into ${destination}; preserve the principle, not the original appearance.`
+    : operator==="amplify"
+      ? "Exaggerate the source principle until its geometry or placement becomes the primary visual signature."
+      : operator==="subtract"
+        ? "Remove secondary decoration and express the source principle through the smallest possible number of lines, planes or zones."
+        : operator==="counterpoint"
+          ? `Keep the source move at ${signal.zone}, then create a quieter opposing response at ${destination} rather than a literal repeat.`
+          : "Change the scale relationship of the source move dramatically while preserving its logic and location.";
+  const visualPurpose=operator==="transfer"
+    ? "Tests whether the research mechanism survives when moved into a new garment function."
+    : operator==="amplify"
+      ? "Finds the strongest version of the research idea before later convergence."
+      : operator==="subtract"
+        ? "Tests whether the idea becomes more sophisticated when almost everything non-essential is removed."
+        : operator==="counterpoint"
+          ? "Creates tension between two zones instead of simple repetition."
+          : "Tests proportion as a variable rather than treating the source scale as fixed.";
+
+  return {
+    id:`mutation-${operator}-${signal.id}-${index}`,
+    name:`${signal.title} / ${operator.replace("-"," ")}`,
+    thesis:`${signal.transformedIdea} Mutation: ${operationInstruction}`,
+    principle:trace,
+    treatments:()=>[
+      treatment(
+        `mutation-${operator}-${signal.id}`,
+        destination,
+        `${signal.treatmentLabel} / ${operator}`,
+        `${operationInstruction} Base mechanism: ${signal.treatmentInstruction}`,
+        visualPurpose,
+        intensity,
+        operator==="amplify"||operator==="transfer"||operator==="scale-shift" ? "experimental" : signal.buildability,
+      ),
+      ...(operator==="counterpoint" ? [treatment(
+        `mutation-counter-${signal.id}`,
+        destination,
+        "Counterpoint response",
+        `Use a restrained response at ${destination}; invert emphasis, spacing or edge direction without copying the primary move.`,
+        "Builds visual dialogue between two different garment zones.",
+        Math.max(18,Math.round(signal.intensity*.48)),
+        "atelier",
+      )] : []),
+    ],
+    pattern:family ? (input)=>({
+      id:`mutation-pattern-${operator}-${signal.id}`,
+      name:`${signal.patternName || signal.title} / ${operator}`,
+      family,
+      layout:operator==="scale-shift"
+        ? `Re-scale the motif progressively instead of holding one repeat size. ${signal.patternLayout || signal.transformedIdea}`
+        : operator==="subtract"
+          ? `Reduce the motif to its essential marks with much more negative space. ${signal.patternLayout || signal.transformedIdea}`
+          : signal.patternLayout || signal.transformedIdea,
+      scale:operator==="amplify" ? "medium" : operator==="subtract" ? "micro" : signal.patternScale || "fine",
+      coverage:operator==="amplify" ? Math.min(60,(signal.patternCoverage ?? 24)+18)
+        : operator==="subtract" ? Math.max(7,Math.round((signal.patternCoverage ?? 24)*.48))
+          : Math.max(8,Math.min(58,signal.patternCoverage ?? 24)),
+      palette:palette(input,"#EFE9E1"),
+      placement:operator==="transfer"
+        ? `Move pattern emphasis toward ${destination}; protect ${signal.zone} as a quieter reference zone.`
+        : signal.patternPlacement || `Use the pattern where it strengthens the ${destination} concept and preserve negative space elsewhere.`,
+      note:`Research mutation (${operator}) derived from ${signal.sourceUrl}; this is a transformed hypothesis, not a reproduction of the source.`,
+    }) : undefined,
+  };
+}
+
+function researchMutationSeeds(signals:CreativeResearchSignal[],limit:number):Seed[] {
+  const operators:ResearchMutationOperator[]=["transfer","amplify","subtract","counterpoint","scale-shift"];
+  const seeds:Seed[]=[];
+  for(let i=0;i<Math.min(limit,signals.length);i+=1) {
+    const signal=signals[i];
+    if(!signal) continue;
+    for(const operator of operators) seeds.push(researchMutationSeed(signal,operator,i));
+  }
+  return seeds;
 }
 
 function hybridResearchSeed(a:CreativeResearchSignal,b:CreativeResearchSignal,index:number):Seed {
@@ -1023,6 +1118,11 @@ export function generateCreativeDirections(input:CreativeLabInput):CreativeDirec
     .filter((signal)=>signal.active && Boolean(signal.sourceUrl))
     .slice(0,learnedLimit);
   const learnedSeeds=activeSignals.map(researchSeed);
+  const mutationSeeds=freedom==="maximum"
+    ? researchMutationSeeds(activeSignals,Math.min(32,activeSignals.length))
+    : freedom==="exploratory"
+      ? researchMutationSeeds(activeSignals,Math.min(10,activeSignals.length)).filter((_,index)=>index%2===0)
+      : [];
   const hybridSeeds:Seed[]=[];
   if(freedom==="maximum" && activeSignals.length>=2) {
     // Cross-pollinate distant research signals to avoid example fixation.
@@ -1039,8 +1139,10 @@ export function generateCreativeDirections(input:CreativeLabInput):CreativeDirec
     : [];
   const seedPool=[...SEEDS,...learnedSeeds,...hybridSeeds,...frontierSeeds];
 
-  // Maximum mode intentionally expands before it converges. Research is allowed
-  // to create radical candidates; critic scores and risk labels stay visible
+  // Maximum mode intentionally expands before it converges. Every curated
+  // research signal can be expressed directly, mutated through five design
+  // operators, cross-pollinated with a second source, then pushed through core,
+  // pushed and radical variants. Critic scores and risk labels stay visible
   // instead of acting as early blockers.
   const first=seedPool.flatMap((seed)=>{
     const baseTreatments=seed.treatments(input);
