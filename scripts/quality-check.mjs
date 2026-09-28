@@ -147,7 +147,7 @@ console.log("Restored Designer model gate passed: Style Director visible, public
 
 
 const photoPreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_NECK_CLEAR","destination-in","masks.shirt","masks.pant","featherMaskInside","patternScaleForFabric","soft-light","Inspect fit"]) {
+for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_NECK_CLEAR","destination-in","masks.shirt","masks.pant","featherMaskInside","patternScaleForFabric","soft-light","Inspect fit","Original model"]) {
   if (!photoPreview.includes(token)) throw new Error(`Real photographic Designer regression: PhotoOutfitPreview missing ${token}`);
 }
 const photoGeometry = fs.readFileSync("src/lib/designer/photo-preview.ts","utf8");
