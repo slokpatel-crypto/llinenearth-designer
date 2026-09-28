@@ -14,6 +14,7 @@ import { constructionNotes } from "@/lib/designer/photo-preview";
 import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
 import { PhotoOutfitPreview } from "@/components/PhotoOutfitPreview";
 import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, type MeasurementProfile } from "@/lib/measurements";
+import { assessFitConstruction, formatFinishedRange } from "@/lib/designer/fit-construction";
 
 const OCCASIONS: OccasionTier[] = ["Casual", "Smart-Casual", "Semi-Formal", "Formal"];
 const CLIMATES: DesignerClimate[] = ["Not specified", "Hot / humid", "Cool", "Air-conditioned"];
@@ -70,6 +71,7 @@ export function DesignerModule() {
   const insights = shirt && pant ? designerStyleInsights(shirt, pant, occasion, style) : [];
   const fitCoverage = useMemo(() => measurementCoverage(measurementProfile), [measurementProfile]);
   const fitGuidance = useMemo(() => measurementFitGuidance(measurementProfile), [measurementProfile]);
+  const fitConstruction = useMemo(() => shirt && pant ? assessFitConstruction(measurementProfile, style, { climate, shirtFabric: shirt, trouserFabric: pant }) : null, [measurementProfile, style, climate, shirt, pant]);
 
   useEffect(() => {
     try {
@@ -172,7 +174,8 @@ export function DesignerModule() {
         const routedPantFabric = DESIGNER_PANTS.find((item) => item.id === nextPantId);
         if (routedShirtFabric && routedPantFabric) {
           const context: DesignerContext = { climate: nextClimate, intention: nextIntention };
-          const proposals = planDesignerDirections(routedShirtFabric, routedPantFabric, nextOccasion, nextStyle, context);
+          const savedMeasurements = (() => { try { const raw = localStorage.getItem(MEASUREMENT_STORAGE_KEY); return raw ? JSON.parse(raw) as MeasurementProfile : null; } catch { return null; } })();
+          const proposals = planDesignerDirections(routedShirtFabric, routedPantFabric, nextOccasion, nextStyle, context, savedMeasurements);
           const result = proposals[0].recommendation;
           setDirections(proposals);
           setRecommendation(result);
@@ -237,7 +240,7 @@ export function DesignerModule() {
   function assess(nextStyle: DesignerStyle = style) {
     if (!shirt || !pant) return;
     const context: DesignerContext = { climate, intention };
-    const proposals = planDesignerDirections(shirt, pant, occasion, nextStyle, context);
+    const proposals = planDesignerDirections(shirt, pant, occasion, nextStyle, context, measurementProfile);
     const result = proposals[0].recommendation;
     setStyle({ ...nextStyle });
     setDirections(proposals);
@@ -379,7 +382,15 @@ export function DesignerModule() {
               {measurementProfile.pants.inseam && <span>Inseam <b>{formatMeasure(measurementProfile.pants.inseam, measurementProfile.unit)}</b></span>}
             </div>
             {fitGuidance.length > 0 && <div className="newDesignerFitNotes"><span>TAILORING GUIDANCE</span><ul>{fitGuidance.map((note) => <li key={note}>{note}</li>)}</ul></div>}
-            <p className="newDesignerFitTruth">These measurements guide the proposed cut and tailoring conversation. The photographic mannequin is a fixed visual reference and is not resized to represent your body.</p>
+            {fitConstruction && <div className="newDesignerGarmentSpec">
+              <div className="newDesignerGarmentSpecHead"><span>FIT + CONSTRUCTION V2</span><strong>{fitConstruction.fitScore}/100 provisional compatibility</strong></div>
+              <div className="newDesignerGarmentTargets">
+                <article><span>SHIRT / FINISHED TARGETS</span>{fitConstruction.shirtTargets.slice(0,4).map((target) => <p key={target.label}><b>{target.label}</b><em>{formatFinishedRange(target,"in")}</em></p>)}</article>
+                <article><span>TROUSER / FINISHED TARGETS</span>{fitConstruction.trouserTargets.slice(0,4).map((target) => <p key={target.label}><b>{target.label}</b><em>{formatFinishedRange(target,"in")}</em></p>)}</article>
+              </div>
+              {fitConstruction.checks.some((item) => item.severity !== "info") && <div className="newDesignerConstructionChecks"><span>CONSTRUCTION CHECKS</span>{fitConstruction.checks.filter((item) => item.severity !== "info").slice(0,4).map((item) => <p key={item.id} data-severity={item.severity}>{item.message}</p>)}</div>}
+            </div>}
+            <p className="newDesignerFitTruth">These measurements guide the proposed cut and tailoring conversation. Finished ranges are provisional house targets, not final cutting dimensions. The photographic mannequin is a fixed visual reference and is not resized to represent your body.</p>
           </> : <p className="newDesignerFitTruth">Add measurements in the blueprint studio to carry proportion-aware tailoring notes into Designer. The visual mannequin remains a fixed reference.</p>}
         </section>
         <div className="newDesignerStyleBlock">
@@ -445,6 +456,7 @@ export function DesignerModule() {
             {directions.slice(1).map((direction) => <article key={direction.id}>
               <strong>{direction.name}</strong><p>{direction.proposition}</p>
               <small>{direction.changes.join(" · ")}</small>
+              {direction.fitConstruction && <span className="newDesignerDirectionFit">FIT + CONSTRUCTION {direction.fitConstruction.fitScore}/100</span>}
               <button type="button" onClick={() => assess(direction.recommendation.style)}>Assess this cut</button>
             </article>)}
           </div>}
