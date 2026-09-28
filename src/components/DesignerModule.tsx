@@ -328,7 +328,7 @@ export function DesignerModule() {
     if (!shirt || !pant) return;
     const concepts=generateCreativeDirections({
       shirt,pant,occasion,style,context:{climate,intention},
-      measurements:measurementProfile,observations:tailorObservations,creativeLearning,creativeResearch,limit:3,
+      measurements:measurementProfile,observations:tailorObservations,creativeLearning,creativeResearch,researchFreedom:"maximum",limit:3,
     });
     setCreativeDirections(concepts);
     setActiveCreative(null);
@@ -686,14 +686,14 @@ export function DesignerModule() {
           <div className="newDesignerCreativeHead">
             <div>
               <span>CREATIVE DESIGNER / V5</span>
-              <strong>Imagine first. Critique second. Engineer third.</strong>
-              <p>The lab explores research-led design directions across silhouette, cuffs, collars, proportion, placement and surface-pattern ideas. Five critics compare the strongest concepts before refinement.</p>
+              <strong>Maximum research freedom. Converge only after exploration.</strong>
+              <p>V5 now treats most fashion rules as critic signals, not early blockers. It expands research into direct mutations, zone-transfers, radical variants and cross-source hybrids before narrowing to three deliberately different concepts.</p>
               {researchPool && <div className="newDesignerResearchPoolStat"><b>{researchPool.targets.toLocaleString("en-IN")} RESEARCH TARGETS</b><span>{researchPool.websites} source websites · {researchPool.highAuthorityWebsites} primary/scholarly · {creativeResearch?.active || 0} curated signals active</span></div>}
             </div>
             <button type="button" onClick={runCreativeLab} disabled={!shirt || !pant}>Imagine new designs ↗</button>
           </div>
           <div className="newDesignerCreativeFlow" aria-label="Creative process">
-            <span>RESEARCH</span><b>→</b><span>{creativeResearch?.active ? "BUILT-IN + CURATED EXPLORATIONS" : "30+ EXPLORATIONS"}</span><b>→</b><span>5 CRITICS</span><b>→</b><span>REFINE</span><b>→</b><span>TOP 3</span>
+            <span>RESEARCH</span><b>→</b><span>DIRECT + HYBRID + RADICAL</span><b>→</b><span>SOFT CRITICS</span><b>→</b><span>REFINE</span><b>→</b><span>BEST + ORIGINAL + FRONTIER</span>
           </div>
           {creativeDirections.length>0 && <div className="newDesignerCreativeResults">
             {creativeDirections.map((direction)=><article key={direction.id} data-active={activeCreative?.id===direction.id}>
@@ -702,7 +702,7 @@ export function DesignerModule() {
                 <div><strong>{direction.overall}</strong><small>creative read</small></div>
               </div>
               <p className="newDesignerCreativeThesis">{direction.thesis}</p>
-              <div className="newDesignerCreativeMeta"><span>CERTAINTY {direction.certainty}</span><span>{direction.risk.toUpperCase()} RISK</span><span>{direction.treatments.length} DESIGN MOVES</span>{direction.pattern&&<span>NEW PATTERN</span>}{direction.learning.evidence>=3&&<span>HUMAN REVIEW {direction.learning.score>0?"+":""}{direction.learning.score}</span>}</div>
+              <div className="newDesignerCreativeMeta"><span>{direction.explorationClass.toUpperCase()}</span><span>RESEARCH USE {direction.researchUtilization}</span><span>{direction.constraintMode.toUpperCase()} FREEDOM</span><span>CERTAINTY {direction.certainty}</span><span>{direction.risk.toUpperCase()} RISK</span><span>{direction.treatments.length} DESIGN MOVES</span>{direction.pattern&&<span>NEW PATTERN</span>}{direction.learning.evidence>=3&&<span>HUMAN REVIEW {direction.learning.score>0?"+":""}{direction.learning.score}</span>}</div>
               <div className="newDesignerCreativeMoves">
                 {direction.treatments.map((move)=><div key={move.id}>
                   <span>{move.zone.toUpperCase()} · {move.buildability.toUpperCase()}</span>
@@ -732,7 +732,7 @@ export function DesignerModule() {
               <button className="newDesignerCreativeUse" type="button" onClick={()=>useCreativeDirection(direction)}>{activeCreative?.id===direction.id?"Selected creative direction":"Use this creative direction"}</button>
             </article>)}
           </div>}
-          <small className="newDesignerCreativeTruth">V5 is intentionally visual-first: aesthetic + originality carry 55% of the creative score, while construction is a 10% guardrail. Supported surface ideas now preview instantly on the studio model; geometry-changing details can be sent through the optional photoreal V5 synthesis pass.</small>
+          <small className="newDesignerCreativeTruth">Maximum mode does not reject a concept just because it breaks normal formality or house conventions. Those conflicts stay visible as risk/critic evidence. Only later review, sampling and physical feasibility decide whether a frontier idea should be produced.</small>
         </section>
 
         <div className="newDesignerStyleBlock">
