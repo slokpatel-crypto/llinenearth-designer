@@ -746,6 +746,13 @@ export function DesignerModule() {
 
       <div className="newDesignerRight">
       {directorHandoff && <div className="newDesignerModelHandoff"><span>STYLE DIRECTOR RESULT {directorHandoffTier ? `· ${directorHandoffTier.toUpperCase()}` : ""}</span><strong>{directorHandoffTitle || "Selected direction"}</strong><p>{directorHandoffReason || "The selected fabrics and cut have been carried into the photographic model."}</p></div>}
+      {activeCreative && <div className="newDesignerCreativeHandoff">
+        <span>CREATIVE LAB V5 / SELECTED</span>
+        <strong>{activeCreative.name}</strong>
+        <p>{activeCreative.thesis}</p>
+        <div>{activeCreative.treatments.slice(0,3).map((move)=><b key={move.id}>{move.zone.toUpperCase()} · {move.label}</b>)}{activeCreative.pattern&&<b>PATTERN · {activeCreative.pattern.name}</b>}</div>
+        <small>The mannequin below shows the supported base cut. These custom details remain attached to the design specification until visual synthesis is connected.</small>
+      </div>}
       {shirt && pant && <PhotoOutfitPreview shirt={shirt} pant={pant} style={style} />}
       {fitCoverage.total > 0 && <div className="newDesignerFitModelNote"><span>FIT PROFILE LOADED · {fitCoverage.total}/16</span><p>Measurements inform tailoring guidance; this studio model remains a fixed visual reference.</p></div>}
       <section className="newDesignerOutcome" aria-live="polite" aria-label="Designer recommendation">
