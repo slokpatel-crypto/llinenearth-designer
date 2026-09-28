@@ -206,6 +206,46 @@ function cleanPayload(type:string, input:unknown) {
       };
     }
 
+    if (subtype === "designer_creative_research") {
+      const researchId=text(payload.researchId,140);
+      const title=text(payload.title,180);
+      const sourceUrl=text(payload.sourceUrl,500);
+      const sourceType=text(payload.sourceType,30);
+      const principle=text(payload.principle,700);
+      const transformedIdea=text(payload.transformedIdea,700);
+      const zone=text(payload.zone,40);
+      const secondaryZone=text(payload.secondaryZone,40);
+      const treatmentLabel=text(payload.treatmentLabel,140);
+      const treatmentInstruction=text(payload.treatmentInstruction,700);
+      const visualPurpose=text(payload.visualPurpose,500);
+      const intensityRaw=Number(payload.intensity);
+      const buildability=text(payload.buildability,30);
+      const patternFamily=text(payload.patternFamily,30);
+      const patternName=text(payload.patternName,140);
+      const patternLayout=text(payload.patternLayout,700);
+      const patternPlacement=text(payload.patternPlacement,400);
+      const patternScale=text(payload.patternScale,30);
+      const patternCoverageRaw=Number(payload.patternCoverage);
+      const note=text(payload.note,600);
+      const zones=new Set(["collar","cuff","placket","shirt-body","pocket","waistband","pleat","trouser-leg"]);
+      if(!researchId || !title || !principle || !transformedIdea || !zones.has(zone) || !treatmentLabel || !treatmentInstruction || !visualPurpose) return null;
+      if(secondaryZone && !zones.has(secondaryZone)) return null;
+      if(!["museum","designer","runway","tailoring","archive","operator"].includes(sourceType)) return null;
+      if(!["supported","atelier","experimental"].includes(buildability)) return null;
+      if(!["none","stripe","geometric","border","tonal","placement"].includes(patternFamily)) return null;
+      if(patternScale && !["micro","fine","medium"].includes(patternScale)) return null;
+      return {
+        subtype,researchId,title,sourceUrl,sourceType,principle,transformedIdea,zone,secondaryZone,
+        treatmentLabel,treatmentInstruction,visualPurpose,
+        intensity:Number.isFinite(intensityRaw)?Math.max(1,Math.min(100,Math.round(intensityRaw))):50,
+        buildability,patternFamily,patternName,patternLayout,patternPlacement,patternScale,
+        patternCoverage:Number.isFinite(patternCoverageRaw)?Math.max(0,Math.min(60,Math.round(patternCoverageRaw))):24,
+        active:Boolean(payload.active),
+        note,
+        createdAt:text(payload.createdAt,80),
+      };
+    }
+
     if (subtype === "designer_fabric_metadata") {
       const fabricId = text(payload.fabricId,140);
       const availability = text(payload.availability,20);
