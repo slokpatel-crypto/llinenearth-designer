@@ -11,6 +11,7 @@ import {
 } from "@/lib/designer/engine";
 import { assessFitConstruction, type FitConstructionAssessment } from "@/lib/designer/fit-construction";
 import { evaluateLinenEarthBrandLanguage, type BrandLanguageEvaluation } from "@/lib/designer/brand-language";
+import { casebookSignalFor, type DesignerCasebook, type DesignerCasebookSignal } from "@/lib/designer/casebook";
 
 export type DesignerSearchScope = "keep_shirt" | "keep_trouser" | "open";
 export type DesignerSearchTier = "Safe" | "Elevated" | "Statement";
@@ -24,6 +25,7 @@ export type DesignerSearchResult = {
   recommendation: DesignerRecommendation;
   fitConstruction: FitConstructionAssessment;
   brandLanguage: BrandLanguageEvaluation;
+  casebookSignal: DesignerCasebookSignal;
   searchScore: number;
   noveltyScore: number;
   reasons: string[];
@@ -41,6 +43,7 @@ export type DesignerSearchInput = {
   context: DesignerContext;
   measurements?: MeasurementProfile | null;
   scope?: DesignerSearchScope;
+  casebook?: DesignerCasebook | null;
 };
 
 type RankedCandidate = Omit<DesignerSearchResult,"comparison">;
@@ -166,6 +169,7 @@ function candidateScore(
   fit:FitConstructionAssessment,
   brand:BrandLanguageEvaluation,
   novelty:number,
+  casebookScore=0,
 ) {
   const target=TARGET_NOVELTY[tier];
   const noveltyAlignment=Math.max(0,100-Math.abs(novelty-target)*1.5);
@@ -179,7 +183,8 @@ function candidateScore(
     fit.fitScore*.18+
     brand.score*.17+
     material*.06+
-    noveltyAlignment*noveltyWeight;
+    noveltyAlignment*noveltyWeight+
+    Math.max(-6,Math.min(6,casebookScore));
   return Math.round(score*10)/10;
 }
 
@@ -190,6 +195,7 @@ function reasonsFor(
   fit:FitConstructionAssessment,
   brand:BrandLanguageEvaluation,
   novelty:number,
+  casebookSignal?:DesignerCasebookSignal,
 ) {
   const reasons:string[]=[];
   if(scope==="keep_shirt") reasons.push(`Keeps the selected ${recommendation.shirt.name} shirting and searches for a stronger companion trouser.`);
@@ -203,6 +209,7 @@ function reasonsFor(
   if(fit.fitScore>=85) reasons.push("The saved measurements support this cut with a strong provisional fit/construction score.");
   if(brand.score>=82 && brand.strengths[0]) reasons.push(brand.strengths[0]);
   if(novelty>=65 && tier==="Statement") reasons.push("The visual interest comes from proportion, pattern or contrast rather than stacking several loud ideas.");
+  if(casebookSignal && casebookSignal.evidence>=3 && casebookSignal.score>=2) reasons.push(`Operator-reviewed casebook supports this direction: ${casebookSignal.summary}`);
   return reasons.slice(0,4);
 }
 
@@ -280,13 +287,17 @@ export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearc
         if(hardBlocked(recommendation,fit)) continue;
         const brand=evaluateLinenEarthBrandLanguage(shirt,pant,style,input.occasion,input.context);
         const novelty=noveltyScore(shirt,pant,style);
+        const casebookSignal=casebookSignalFor(recommendation,input.casebook);
         ranked.push({
           id:`${tier.toLowerCase()}:${shirt.id}:${pant.id}`,
-          tier,shirt,pant,style,recommendation,fitConstruction:fit,brandLanguage:brand,
-          searchScore:candidateScore(tier,recommendation,fit,brand,novelty),
+          tier,shirt,pant,style,recommendation,fitConstruction:fit,brandLanguage:brand,casebookSignal,
+          searchScore:candidateScore(tier,recommendation,fit,brand,novelty,casebookSignal.score),
           noveltyScore:novelty,
-          reasons:reasonsFor(tier,scope,recommendation,fit,brand,novelty),
-          tradeoffs:tradeoffsFor(recommendation,fit,brand),
+          reasons:reasonsFor(tier,scope,recommendation,fit,brand,novelty,casebookSignal),
+          tradeoffs:[
+            ...tradeoffsFor(recommendation,fit,brand),
+            ...(casebookSignal.evidence>=3 && casebookSignal.score<=-2 ? [`Operator-reviewed casebook caution: ${casebookSignal.summary}`] : []),
+          ].slice(0,3),
         });
       }
     }
