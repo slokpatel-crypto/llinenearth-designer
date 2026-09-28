@@ -154,6 +154,9 @@ export default function OperatorClient() {
   const [loggingOut,setLoggingOut] = useState(false);
   const [cloud,setCloud] = useState<CloudSummary|null>(null);
   const [cloudState,setCloudState] = useState<"loading"|"live"|"unconfigured"|"error">("loading");
+  const [caseReason,setCaseReason] = useState("other");
+  const [caseNote,setCaseNote] = useState("");
+  const [caseSaving,setCaseSaving] = useState(false);
 
   useEffect(()=>{
     setBrowserEvents(readBrowserStyleEvents());
@@ -233,6 +236,12 @@ export default function OperatorClient() {
   const designerLearning = usingBridge ? (bridge?.designerLearning || local.designerLearning) : usingCloud ? (cloud?.designerLearning || local.designerLearning) : local.designerLearning;
   const recordSource = usingBridge ? "LOCAL PC VAULT" : usingCloud ? "CLOUD MEMORY" : "THIS BROWSER";
   const selected = sessions.find((s)=>s.sessionId===selectedId) || sessions[0] || null;
+  const selectedRecommendation = selected ? [...selected.events].reverse().find((event)=>event.type==="designer_recommendation") || null : null;
+  const selectedCaseReview = selected && selectedRecommendation
+    ? [...selected.events].reverse().find((event)=>event.type==="operator_note"
+      && event.payload?.subtype==="designer_case_review"
+      && event.payload?.recommendationId===selectedRecommendation.id) || null
+    : null;
 
   useEffect(()=>{
     if (!selectedId && sessions[0]) setSelectedId(sessions[0].sessionId);
@@ -265,6 +274,52 @@ export default function OperatorClient() {
     }
 
     setMessage(type === "sale_logged" ? "Sale outcome saved." : "Store visit saved.");
+  }
+
+  async function reviewDesignerCase(verdict:"approved"|"rejected") {
+    if (!selected || !selectedRecommendation) return;
+    const payload = selectedRecommendation.payload || {};
+    const shirtId = String(payload.shirtId || "");
+    const pantId = String(payload.pantId || "");
+    const occasion = String(payload.occasion || "");
+    const style = payload.style && typeof payload.style === "object" && !Array.isArray(payload.style)
+      ? payload.style as Record<string,unknown> : {};
+    if (!shirtId || !pantId || !occasion) {
+      setMessage("This recommendation does not contain enough structured data for case review.");
+      return;
+    }
+
+    setCaseSaving(true);
+    try {
+      const event = recordStyleMemoryEvent(selected.sessionId,"operator_note",{
+        subtype:"designer_case_review",
+        recommendationId:selectedRecommendation.id,
+        verdict,
+        shirtId,
+        pantId,
+        occasion,
+        style,
+        reason:caseReason,
+        note:caseNote,
+      },"operator");
+      refreshBrowser();
+
+      if (cloudState === "live") {
+        await fetch("/api/memory/event",{
+          method:"POST",
+          headers:{"content-type":"application/json"},
+          body:JSON.stringify(event),
+        });
+        await loadCloud();
+      }
+
+      setCaseNote("");
+      setMessage(`Designer case marked ${verdict}.`);
+    } catch {
+      setMessage("Designer case review could not be saved.");
+    } finally {
+      setCaseSaving(false);
+    }
   }
 
   const funnel = [
@@ -364,6 +419,26 @@ export default function OperatorClient() {
                   {Object.entries(selected.measurements.values).map(([key,value])=><span key={key}><small>{key.replace(/([A-Z])/g," $1")}</small><b>{value} {selected.measurements?.unit}</b></span>)}
                 </div>
                 {selected.measurements.note && <p><b>FIT NOTE</b>{selected.measurements.note}</p>}
+              </div>}
+              {selectedRecommendation && <div className="designerCaseReview">
+                <div className="designerCaseReviewHead">
+                  <div><small>DESIGNER CASE REVIEW</small><strong>{String(selectedRecommendation.payload?.occasion || "Outfit")} · {String(selectedRecommendation.payload?.shirtId || "shirt")} + {String(selectedRecommendation.payload?.pantId || "trouser")}</strong></div>
+                  <span data-verdict={String(selectedCaseReview?.payload?.verdict || "unreviewed")}>{selectedCaseReview ? String(selectedCaseReview.payload?.verdict || "reviewed").toUpperCase() : "UNREVIEWED"}</span>
+                </div>
+                <p>Only explicit operator reviews become Casebook evidence. A reviewed case can softly influence future search ranking but cannot override hard fit, construction or material rules.</p>
+                <label>Review reason
+                  <select value={caseReason} onChange={(event)=>setCaseReason(event.target.value)}>
+                    {DESIGNER_FEEDBACK_REASONS.map(([value,label])=><option key={value} value={value}>{label}</option>)}
+                    <option value="material_unknown">Material facts / verification</option>
+                  </select>
+                </label>
+                <label>Optional review note
+                  <textarea value={caseNote} onChange={(event)=>setCaseNote(event.target.value)} rows={2} placeholder="Why should this case be remembered?" />
+                </label>
+                <div className="designerCaseReviewActions">
+                  <button disabled={caseSaving} onClick={()=>void reviewDesignerCase("approved")}>Approve case</button>
+                  <button disabled={caseSaving} onClick={()=>void reviewDesignerCase("rejected")}>Reject case</button>
+                </div>
               </div>}
               <div className="timeline">
                 {selected.events.slice(-8).reverse().map((event)=><p key={event.id}><i/><span><b>{event.type.replaceAll("_"," ")}</b><small>{relativeTime(event.at)}</small></span></p>)}
