@@ -55,6 +55,7 @@ export function DesignerModule() {
   const [factIndex, setFactIndex] = useState(0);
   const [factPlaying, setFactPlaying] = useState(true);
   const [draftReady, setDraftReady] = useState(false);
+  const [directorHandoff, setDirectorHandoff] = useState(false);
   const fact = DESIGNER_FASHION_FACTS[factIndex];
   const shirt = useMemo(() => DESIGNER_SHIRTS.find((item) => item.id === shirtId), [shirtId]);
   const pant = useMemo(() => DESIGNER_PANTS.find((item) => item.id === pantId), [pantId]);
@@ -90,6 +91,7 @@ export function DesignerModule() {
       const routedIntention = params.get("intention") as DesignerIntention | null;
       const routedAnchor = params.get("anchor");
       const routedGarment = params.get("garment");
+      setDirectorHandoff(params.get("from") === "style-director");
 
       if (routedOccasion && OCCASIONS.includes(routedOccasion)) {
         nextOccasion = routedOccasion;
@@ -211,6 +213,7 @@ export function DesignerModule() {
 
     <div className="newDesignerBody">
       <section className="newDesignerSelections" aria-labelledby="designerChoose">
+        {directorHandoff && <div className="newDesignerHandoff"><span>STYLE DIRECTOR HANDOFF</span><strong>Your context and anchor cloth are loaded.</strong><p>You can now refine the second fabric and tailoring details on the real photographic model.</p></div>}
         <div className="newDesignerSectionHead"><span>01 / THE MATERIALS</span><h2 id="designerChoose">Start with the cloth.</h2></div>
         <div className="newDesignerFabricGrid">
           <article className="newDesignerFabric">
