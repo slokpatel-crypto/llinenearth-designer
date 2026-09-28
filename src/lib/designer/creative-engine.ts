@@ -824,21 +824,35 @@ function refine(seed:Seed,input:CreativeLabInput,first:CreativeDirection):Creati
   const aesthetic=first.critics.find((item)=>item.id==="aesthetic")?.score ?? 0;
   const brand=first.critics.find((item)=>item.id==="brand")?.score ?? 0;
   const construction=first.critics.find((item)=>item.id==="construction")?.score ?? 0;
+  const freedom=input.researchFreedom || "maximum";
 
-  if(aesthetic<78 && treatmentLoad(treatments,pattern)>110) {
-    treatments=treatments.map((item,index)=>index===0?item:{...item,intensity:Math.max(12,Math.round(item.intensity*.72))});
-    if(pattern && pattern.coverage>30) pattern={...pattern,coverage:Math.round(pattern.coverage*.78),note:`${pattern.note} Refinement reduced motif coverage to protect the focal hierarchy.`};
-    notes.push("Reduced secondary visual load so one idea leads.");
-  }
-  if(brand<74 && pattern && pattern.scale!=="micro") {
-    pattern={...pattern,scale:"micro",coverage:Math.min(pattern.coverage,32)};
-    notes.push("Tightened pattern scale to keep the cloth reading premium and controlled.");
-  }
-  if(construction<65) {
-    const experimentalIndex=treatments.findIndex((item)=>item.buildability==="experimental");
-    if(experimentalIndex>=0) {
-      treatments[experimentalIndex]={...treatments[experimentalIndex],buildability:"atelier",intensity:Math.max(40,treatments[experimentalIndex].intensity-12),instruction:`${treatments[experimentalIndex].instruction} Refine the geometry on a toile before committing.`};
-      notes.push("Converted the most experimental detail into an atelier-review version.");
+  if(freedom==="maximum") {
+    // In maximum-research mode critique is diagnostic, not a style police layer.
+    // Only rescue concepts that are collapsing visually; do not normalise unusual
+    // proportions, patterns or experimental construction merely because they are unfamiliar.
+    if(aesthetic<55 && treatmentLoad(treatments,pattern)>175) {
+      treatments=treatments.map((item,index)=>index===0?item:{...item,intensity:Math.max(18,Math.round(item.intensity*.88))});
+      if(pattern && pattern.coverage>54) pattern={...pattern,coverage:50,note:`${pattern.note} Coverage was reduced only enough to restore a readable focal hierarchy.`};
+      notes.push("Pulled back only the most competing secondary signals; the research-led idea remains intentionally strong.");
+    }
+    if(construction<52) notes.push("Kept the experimental geometry intact; require toile/sample engineering rather than simplifying the idea prematurely.");
+    if(brand<55) notes.push("House-language tension is preserved as an intentional frontier test instead of being edited away.");
+  } else {
+    if(aesthetic<78 && treatmentLoad(treatments,pattern)>110) {
+      treatments=treatments.map((item,index)=>index===0?item:{...item,intensity:Math.max(12,Math.round(item.intensity*.72))});
+      if(pattern && pattern.coverage>30) pattern={...pattern,coverage:Math.round(pattern.coverage*.78),note:`${pattern.note} Refinement reduced motif coverage to protect the focal hierarchy.`};
+      notes.push("Reduced secondary visual load so one idea leads.");
+    }
+    if(brand<74 && pattern && pattern.scale!=="micro") {
+      pattern={...pattern,scale:"micro",coverage:Math.min(pattern.coverage,32)};
+      notes.push("Tightened pattern scale to keep the cloth reading premium and controlled.");
+    }
+    if(construction<65) {
+      const experimentalIndex=treatments.findIndex((item)=>item.buildability==="experimental");
+      if(experimentalIndex>=0) {
+        treatments[experimentalIndex]={...treatments[experimentalIndex],buildability:"atelier",intensity:Math.max(40,treatments[experimentalIndex].intensity-12),instruction:`${treatments[experimentalIndex].instruction} Refine the geometry on a toile before committing.`};
+        notes.push("Converted the most experimental detail into an atelier-review version.");
+      }
     }
   }
   const variant=first.id.split(":")[2] || "core";
