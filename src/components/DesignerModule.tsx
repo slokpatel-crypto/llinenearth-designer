@@ -723,6 +723,7 @@ export function DesignerModule() {
                 {direction.critics.map((critic)=><div key={critic.id} data-verdict={critic.verdict}>
                   <div><strong>{critic.label}</strong><b>{critic.score}</b></div>
                   <p>{critic.rationale[0]}</p>
+                  {critic.facets && <div className="newDesignerCriticFacets">{critic.facets.map((facet)=><span key={facet.label}>{facet.label}<b>{facet.score}</b></span>)}</div>}
                 </div>)}
               </div>
               {direction.refinement.length>0 && <div className="newDesignerRefinement"><span>WHAT V5 CHANGED AFTER CRITIQUE</span>{direction.refinement.map((item)=><p key={item}>{item}</p>)}</div>}
