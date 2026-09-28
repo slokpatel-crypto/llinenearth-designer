@@ -129,24 +129,19 @@ export default function StyleDirectorPage() {
 
   const whatsapp = selectedLook ? `https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919226338282"}?text=${encodeURIComponent(`Hi Linen Earth, I created “${selectedLook.title}” in the Style Director. Fabric: ${selectedLook.fabric.line} — ${selectedLook.fabric.colorName}. I’d like to explore this look in store.`)}` : "#";
 
-  const designerHandoff = selectedLook && (selectedLook.fabric.suitableFor.includes("shirt") || selectedLook.fabric.suitableFor.includes("trouser"))
+  const designerHandoff = selectedLook?.realModel
     ? (() => {
-        const occasionMap: Record<string,string> = {
-          Wedding:"Formal", Work:"Semi-Formal", Date:"Smart-Casual",
-          Celebration:"Semi-Formal", Travel:"Casual", Everyday:"Smart-Casual",
-        };
-        const intentionMap: Record<string,string> = {
-          Quiet:"Understated", Sharp:"Balanced", Relaxed:"Balanced", Statement:"Expressive",
-        };
-        const climateMap: Record<string,string> = {
-          Hot:"Hot / humid", Indoor:"Air-conditioned", Mixed:"Not specified",
-        };
         const params = new URLSearchParams({
-          anchor:selectedLook.fabric.id,
-          garment:selectedLook.fabric.suitableFor.includes("shirt") ? "shirt" : "trouser",
-          occasion:occasionMap[String(answers.occasion)] || "Smart-Casual",
-          climate:climateMap[String(answers.climate)] || "Not specified",
-          intention:intentionMap[String(answers.mood)] || "Balanced",
+          shirt:selectedLook.realModel.shirtId,
+          pant:selectedLook.realModel.pantId,
+          occasion:selectedLook.realModel.occasion,
+          climate:selectedLook.realModel.climate,
+          intention:selectedLook.realModel.intention,
+          style:JSON.stringify(selectedLook.realModel.style),
+          sourceLook:selectedLook.id,
+          sourceTitle:selectedLook.title,
+          sourceTier:selectedLook.candidate.tier,
+          sourceReason:selectedLook.realModel.reason,
           from:"style-director",
         });
         return `/designer-studio?${params.toString()}`;
@@ -226,7 +221,7 @@ export default function StyleDirectorPage() {
             <div className="directorActions">
               <button onClick={()=>visualize("preview")} disabled={Boolean(rendering)}>{rendering==="preview"?"Building…":"See mannequin"} <b>↗</b></button>
               <button className="photoAction" onClick={()=>visualize("photo")} disabled={Boolean(rendering)}>{rendering==="photo"?"Rendering…":"Make photoreal"} <b>✦</b></button>
-              {designerHandoff && <a href={designerHandoff}>Open on real model <b>↗</b></a>}
+              {designerHandoff && <a href={designerHandoff} onClick={()=>recordStyleMemoryEvent(sessionId,"render_requested",{mode:"real-model-handoff",lookId:selectedLook.id,fabricId:selectedLook.fabric.id})}>Open Linen Earth Real Model Designer <b>↗</b></a>}
               <a href={whatsapp} target="_blank" rel="noreferrer" onClick={()=>recordStyleMemoryEvent(sessionId,"whatsapp_clicked",{lookId:selectedLook.id,fabricId:selectedLook.fabric.id,fabric:selectedLook.fabric.colorName})}>Book this look <b>↗</b></a>
             </div>
             <p className="tradeoff"><b>Director note:</b> {selectedLook.candidate.tradeoff}</p>
