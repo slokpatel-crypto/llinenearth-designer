@@ -51,6 +51,7 @@ function rateLimit(request:Request) {
 
 const ANSWER_STEPS = new Set(["occasion","mood","time","climate","garment","colorDirection"]);
 const RENDER_MODES = new Set(["preview","photo"]);
+const DESIGNER_FEEDBACK_REASONS = new Set(["color","too_bold","too_safe","fit_cut","trouser_shape","formality","fabric","construction","other"]);
 
 function text(value:unknown,max=160) {
   return String(value ?? "").trim().slice(0,max);
@@ -87,8 +88,21 @@ function cleanPayload(type:string, input:unknown) {
   if (type === "designer_feedback") {
     const recommendationId = text(payload.recommendationId,160);
     const rating = text(payload.rating,20);
+    const reason = text(payload.reason,40);
+    const styleInput = payload.style && typeof payload.style === "object" && !Array.isArray(payload.style)
+      ? payload.style as Record<string,unknown> : {};
+    const style = Object.fromEntries(Object.entries(styleInput).slice(0,16).map(([key,value])=>[text(key,40),text(value,100)]));
     if (!recommendationId || !["up","down","saved"].includes(rating)) return null;
-    return { recommendationId, rating };
+    if (reason && !DESIGNER_FEEDBACK_REASONS.has(reason)) return null;
+    return {
+      recommendationId, rating,
+      ...(reason ? { reason } : {}),
+      shirtId:text(payload.shirtId,120),
+      pantId:text(payload.pantId,120),
+      occasion:text(payload.occasion,40),
+      style,
+      note:text(payload.note,300),
+    };
   }
 
   if (type === "designer_override") {

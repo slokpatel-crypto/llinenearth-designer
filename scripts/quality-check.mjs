@@ -21,6 +21,7 @@ const required = [
   "src/lib/designer/photo-preview.ts",
   "src/lib/designer/fit-construction.ts",
   "src/lib/designer/constraint-negotiation.ts",
+  "src/lib/designer/outcome-learning.ts",
   "src/components/PhotoOutfitPreview.tsx",
   "src/app/designer-studio/page.tsx",
 ];
@@ -263,3 +264,26 @@ for (const token of ["DESIGNER NEGOTIATION","SMALLEST FIXES","newDesignerPreserv
   if (!designerNegotiationUi.includes(token)) throw new Error(`Designer negotiation UI regression: missing ${token}`);
 }
 console.log("Designer negotiation gate passed: blockers, verification gaps, fit trade-offs and smallest corrective actions protected.");
+
+
+const outcomeLearning = fs.readFileSync("src/lib/designer/outcome-learning.ts","utf8");
+for (const token of ["DESIGNER_FEEDBACK_REASONS","summarizeDesignerOutcomes","sufficientForLearning","topReason","too_bold","fit_cut","construction"]) {
+  if (!outcomeLearning.includes(token)) throw new Error(`Designer outcome learning regression: missing ${token}`);
+}
+const memoryEventRoute = fs.readFileSync("src/app/api/memory/event/route.ts","utf8");
+for (const token of ["DESIGNER_FEEDBACK_REASONS","payload.reason","shirtId:text(payload.shirtId","styleInput"]) {
+  if (!memoryEventRoute.includes(token)) throw new Error(`Structured Designer feedback API regression: missing ${token}`);
+}
+const outcomeDesignerUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
+for (const token of ["WHAT NEEDS WORK?","giveFeedbackReason","feedbackReason","DESIGNER_FEEDBACK_REASONS"]) {
+  if (!outcomeDesignerUi.includes(token)) throw new Error(`Structured Designer feedback UI regression: missing ${token}`);
+}
+const cloudSummaryLearning = fs.readFileSync("src/app/api/operator/cloud-summary/route.ts","utf8");
+for (const token of ["summarizeDesignerOutcomes","designerLearning"]) {
+  if (!cloudSummaryLearning.includes(token)) throw new Error(`Designer learning cloud summary regression: missing ${token}`);
+}
+const operatorLearning = fs.readFileSync("src/app/operator/OperatorClient.tsx","utf8");
+for (const token of ["DESIGNER LEARNING","Why directions are being rejected.","sufficientForLearning","designerLearningReasons"]) {
+  if (!operatorLearning.includes(token)) throw new Error(`Operator Designer learning regression: missing ${token}`);
+}
+console.log("Designer outcome learning gate passed: structured rejection reasons, outfit snapshots and conservative operator learning summaries protected.");

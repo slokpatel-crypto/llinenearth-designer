@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
+import { summarizeDesignerOutcomes } from "@/lib/designer/outcome-learning";
 
 export const runtime = "nodejs";
 
@@ -120,9 +121,12 @@ function aggregate(events: CloudEvent[]) {
     .map((session)=>({...session,events:session.events.sort((a,b)=>a.at.localeCompare(b.at))}))
     .sort((a,b)=>b.lastAt.localeCompare(a.lastAt));
 
+  const designerLearning = summarizeDesignerOutcomes(events);
+
   return {
     sessions,
     counts,
+    designerLearning,
     totals: {
       sessions: sessions.length,
       renders: counts.render_completed || 0,

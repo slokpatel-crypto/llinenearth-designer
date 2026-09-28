@@ -10,6 +10,7 @@ import {
   type StyleMemoryEvent,
 } from "@/lib/browser-style-memory";
 import "./operator.css";
+import { DESIGNER_FEEDBACK_REASONS, summarizeDesignerOutcomes, type DesignerOutcomeSummary } from "@/lib/designer/outcome-learning";
 
 type Session = {
   sessionId: string;
@@ -34,6 +35,7 @@ type BridgeSummary = {
   counts?: Record<string,number>;
   sessions?: Session[];
   lastEventAt?: string | null;
+  designerLearning?: DesignerOutcomeSummary;
 };
 
 type CloudSummary = {
@@ -43,6 +45,7 @@ type CloudSummary = {
   counts?: Record<string,number>;
   sessions?: Session[];
   lastEventAt?: string | null;
+  designerLearning?: DesignerOutcomeSummary;
 };
 
 function aggregate(events:StyleMemoryEvent[]) {
@@ -111,6 +114,7 @@ function aggregate(events:StyleMemoryEvent[]) {
   return {
     sessions,
     counts,
+    designerLearning:summarizeDesignerOutcomes(events),
     totals:{
       sessions:sessions.length,
       renders:counts.render_completed || 0,
@@ -226,6 +230,7 @@ export default function OperatorClient() {
   const sessions = usingBridge ? (bridge?.sessions || []) : usingCloud ? (cloud?.sessions || []) : local.sessions;
   const totals = usingBridge ? (bridge?.totals || local.totals) : usingCloud ? (cloud?.totals || local.totals) : local.totals;
   const counts = usingBridge ? (bridge?.counts || local.counts) : usingCloud ? (cloud?.counts || local.counts) : local.counts;
+  const designerLearning = usingBridge ? (bridge?.designerLearning || local.designerLearning) : usingCloud ? (cloud?.designerLearning || local.designerLearning) : local.designerLearning;
   const recordSource = usingBridge ? "LOCAL PC VAULT" : usingCloud ? "CLOUD MEMORY" : "THIS BROWSER";
   const selected = sessions.find((s)=>s.sessionId===selectedId) || sessions[0] || null;
 
@@ -302,6 +307,19 @@ export default function OperatorClient() {
               {funnel.map((item)=><div key={item.label}><span>{item.label}<b>{item.value}</b></span><i><em style={{width:`${Math.max(4,(item.value/funnelMax)*100)}%`}}/></i></div>)}
             </div>
             <p className="readThis"><b>Read this:</b> the biggest drop between two stages is where the operator should investigate first.</p>
+          </article>
+
+          <article className="panel designerLearningPanel">
+            <div className="panelHead"><div><small>DESIGNER LEARNING</small><h2>Why directions are being rejected.</h2></div><span>{designerLearning.total} rated</span></div>
+            <div className="designerLearningTotals">
+              <div><small>HELPFUL</small><strong>{designerLearning.positive}</strong></div>
+              <div><small>NEEDS WORK</small><strong>{designerLearning.negative}</strong></div>
+              <div><small>LEARNING STATE</small><strong>{designerLearning.sufficientForLearning ? "REVIEW SIGNAL" : "COLLECTING"}</strong></div>
+            </div>
+            <div className="designerLearningReasons">
+              {DESIGNER_FEEDBACK_REASONS.map(([key,label])=>designerLearning.reasonCounts[key] ? <div key={key}><span>{label}</span><b>{designerLearning.reasonCounts[key]}</b></div> : null)}
+            </div>
+            <p className="readThis"><b>Guardrail:</b> these counts do not automatically change Designer weights. Repeated signals are reviewed before any recalibration.</p>
           </article>
 
           <article className="panel">
