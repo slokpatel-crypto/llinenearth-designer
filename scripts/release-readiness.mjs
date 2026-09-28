@@ -129,10 +129,10 @@ requireTokens("src/lib/designer/search.ts", [
 ]);
 requireTokens("src/components/DesignerModule.tsx", [
   "DESIGNER SEARCH / V4","Search catalogue","Keep shirt","Keep trouser","Open search","Why over my current choice?","Use this direction",
-  "CREATIVE DESIGNER / V5","DIRECT + HYBRID + RADICAL","researchFreedom:\"maximum\"","RESEARCH USE"
+  "CREATIVE DESIGNER / V5","DIRECT + MUTATE + HYBRID + RADICAL","researchFreedom:\"maximum\"","RESEARCH USE"
 ]);
 requireTokens("src/lib/designer/creative-engine.ts", [
-  "generateCreativeDirections","hybridResearchSeed","researchFreedom","maximum","researchUtilization","explorationClass"
+  "generateCreativeDirections","researchMutationSeeds","hybridResearchSeed","researchFreedom","maximum","researchUtilization","explorationClass"
 ]);
 requireTokens("src/lib/designer/fashion-research-source-pool.ts", [
   "FASHION_RESEARCH_SOURCES","FASHION_RESEARCH_TOPICS","FASHION_RESEARCH_TARGETS","buildFashionResearchTargets"
