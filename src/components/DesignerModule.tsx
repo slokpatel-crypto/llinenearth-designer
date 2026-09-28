@@ -23,6 +23,17 @@ const INTENTIONS: DesignerIntention[] = ["Understated", "Balanced", "Expressive"
 const SESSION_KEY = "llinen-earth:designer-session:v1";
 const DRAFT_KEY = "linen-earth:real-designer-draft:v2";
 const FACT_INTERVAL_MS = 15_000;
+const DESIGNER_FEEDBACK_REASONS = [
+  ["color","Colour / contrast"],
+  ["too_bold","Too bold"],
+  ["too_safe","Too safe"],
+  ["fit_cut","Fit / cut"],
+  ["trouser_shape","Trouser shape"],
+  ["formality","Formality"],
+  ["fabric","Fabric choice"],
+  ["construction","Construction detail"],
+  ["other","Something else"],
+] as const;
 
 const MAIN_DETAILS = [
   ["shirtWear", "Shirt finish"], ["collar", "Shirt collar"],
@@ -58,6 +69,7 @@ export function DesignerModule() {
   const [directions, setDirections] = useState<DesignerDirection[]>([]);
   const [recommendationId, setRecommendationId] = useState<string | null>(null);
   const [response, setResponse] = useState<"up" | "down" | null>(null);
+  const [feedbackReason, setFeedbackReason] = useState<string | null>(null);
   const [factIndex, setFactIndex] = useState(0);
   const [factPlaying, setFactPlaying] = useState(true);
   const [draftReady, setDraftReady] = useState(false);
@@ -182,6 +194,7 @@ export function DesignerModule() {
           setDirections(proposals);
           setRecommendation(result);
           setResponse(null);
+    setFeedbackReason(null);
           try {
             const event = recordStyleMemoryEvent(designerSession(), "designer_recommendation", {
               shirtId:nextShirtId, pantId:nextPantId, occasion:nextOccasion, style:nextStyle,
@@ -236,6 +249,7 @@ export function DesignerModule() {
     setDirections([]);
     setRecommendationId(null);
     setResponse(null);
+    setFeedbackReason(null);
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   }
 
@@ -249,6 +263,7 @@ export function DesignerModule() {
     setRecommendation(result);
     setRecommendationId(null);
     setResponse(null);
+    setFeedbackReason(null);
     try {
       const event = recordStyleMemoryEvent(designerSession(), "designer_recommendation", {
         shirtId, pantId, occasion, style: nextStyle, input: { shirtId, pantId, occasion, style: nextStyle, context, measurementCoverage: fitCoverage, fitGuidance }, rules: result.rules,
@@ -263,9 +278,28 @@ export function DesignerModule() {
 
   function giveFeedback(rating: "up" | "down") {
     if (!recommendation || !recommendationId) return;
-    try { recordStyleMemoryEvent(designerSession(), "designer_feedback", { recommendationId, rating }); }
-    catch { return; }
     setResponse(rating);
+    setFeedbackReason(null);
+    if (rating === "down") return;
+    try {
+      recordStyleMemoryEvent(designerSession(), "designer_feedback", {
+        recommendationId, rating,
+        shirtId:recommendation.shirt.id, pantId:recommendation.pant.id,
+        occasion:recommendation.occasion, style:recommendation.style,
+      });
+    } catch { return; }
+  }
+
+  function giveFeedbackReason(reason:string) {
+    if (!recommendation || !recommendationId || response !== "down") return;
+    try {
+      recordStyleMemoryEvent(designerSession(), "designer_feedback", {
+        recommendationId, rating:"down", reason,
+        shirtId:recommendation.shirt.id, pantId:recommendation.pant.id,
+        occasion:recommendation.occasion, style:recommendation.style,
+      });
+    } catch { return; }
+    setFeedbackReason(reason);
   }
 
   function changeStyle(key: keyof DesignerStyle, value: string) {
@@ -300,6 +334,7 @@ export function DesignerModule() {
     setDirections([]);
     setRecommendationId(null);
     setResponse(null);
+    setFeedbackReason(null);
   }
 
   return <div className="newDesigner">
@@ -490,7 +525,10 @@ export function DesignerModule() {
           {recommendationId && <div className="newDesignerFeedback"><span>Does this direction feel right?</span><div>
             <button type="button" onClick={() => giveFeedback("up")} aria-pressed={response === "up"}>Helpful</button>
             <button type="button" onClick={() => giveFeedback("down")} aria-pressed={response === "down"}>Needs work</button>
-          </div>{response && <small>Thanks. Your feedback is recorded on this device.</small>}</div>}
+          </div>
+          {response === "down" && <div className="newDesignerFeedbackReasons"><span>WHAT NEEDS WORK?</span>{DESIGNER_FEEDBACK_REASONS.map(([value,label])=><button key={value} type="button" aria-pressed={feedbackReason===value} onClick={()=>giveFeedbackReason(value)}>{label}</button>)}</div>}
+          {response === "up" && <small>Thanks. This positive signal is recorded for Designer review.</small>}
+          {response === "down" && feedbackReason && <small>Thanks. The reason is recorded with this exact outfit and cut.</small>}</div>}
         </>}
       </section>
       </div>
