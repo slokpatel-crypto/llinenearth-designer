@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { aggregateDesignerCasebook } from "@/lib/designer/casebook";
+import { aggregateFitOutcomes } from "@/lib/designer/fit-outcomes";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,7 @@ export async function GET() {
     return NextResponse.json({
       configured:false,
       casebook:aggregateDesignerCasebook([]),
+      fitOutcomes:aggregateFitOutcomes([]),
     },{headers:{"cache-control":"no-store"}});
   }
 
@@ -38,17 +40,20 @@ export async function GET() {
     }
 
     const rows=await response.json() as CaseRow[];
-    const casebook=aggregateDesignerCasebook(rows.map((row)=>({
+    const events=rows.map((row)=>({
       type:row.type,
       source:row.source,
       payload:row.payload || {},
-    })));
+    }));
+    const casebook=aggregateDesignerCasebook(events);
+    const fitOutcomes=aggregateFitOutcomes(events);
 
-    // Only aggregate reviewed design signatures leave the server. No session
-    // identifiers, customer data or free-form operator notes are returned.
+    // Only aggregate reviewed design/fit signatures leave the server. No raw
+    // measurements, session identifiers, customer data or free-form notes are returned.
     return NextResponse.json({
       configured:true,
       casebook,
+      fitOutcomes,
     },{headers:{"cache-control":"no-store"}});
   } catch(error) {
     console.error("[designer/casebook]",error);
