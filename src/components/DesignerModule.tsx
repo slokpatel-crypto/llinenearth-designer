@@ -21,6 +21,7 @@ import { evaluateLinenEarthBrandLanguage } from "@/lib/designer/brand-language";
 import { buildCanonicalGarmentSpec, canonicalGarmentSpecSummary } from "@/lib/designer/garment-spec";
 import { searchDesignerCatalogue, type DesignerSearchResult, type DesignerSearchScope } from "@/lib/designer/search";
 import type { DesignerCasebook } from "@/lib/designer/casebook";
+import type { FitOutcomeBook } from "@/lib/designer/fit-outcomes";
 
 const OCCASIONS: OccasionTier[] = ["Casual", "Smart-Casual", "Semi-Formal", "Formal"];
 const CLIMATES: DesignerClimate[] = ["Not specified", "Hot / humid", "Cool", "Air-conditioned"];
@@ -75,6 +76,7 @@ export function DesignerModule() {
   const [searchScope, setSearchScope] = useState<DesignerSearchScope>("keep_shirt");
   const [searchResults, setSearchResults] = useState<DesignerSearchResult[]>([]);
   const [casebook, setCasebook] = useState<DesignerCasebook | null>(null);
+  const [fitOutcomes, setFitOutcomes] = useState<FitOutcomeBook | null>(null);
   const fact = DESIGNER_FASHION_FACTS[factIndex];
   const shirt = useMemo(() => shirtOptions.find((item) => item.id === shirtId), [shirtId, shirtOptions]);
   const pant = useMemo(() => pantOptions.find((item) => item.id === pantId), [pantId, pantOptions]);
@@ -101,8 +103,10 @@ export function DesignerModule() {
       try {
         const response=await fetch("/api/designer/casebook",{cache:"no-store"});
         if(!response.ok) return;
-        const data=await response.json() as {casebook?:DesignerCasebook};
-        if(!cancelled && data.casebook?.version==="designer-casebook-v1") setCasebook(data.casebook);
+        const data=await response.json() as {casebook?:DesignerCasebook;fitOutcomes?:FitOutcomeBook};
+        if(cancelled) return;
+        if(data.casebook?.version==="designer-casebook-v1") setCasebook(data.casebook);
+        if(data.fitOutcomes?.version==="designer-fit-outcomes-v1") setFitOutcomes(data.fitOutcomes);
       } catch { /* Casebook is optional; hard Designer rules continue without it. */ }
     }
     void loadCasebook();
@@ -284,6 +288,7 @@ export function DesignerModule() {
       measurements:measurementProfile,
       scope:searchScope,
       casebook,
+      fitOutcomes,
     });
     setSearchResults(results);
   }
@@ -517,7 +522,7 @@ export function DesignerModule() {
 
         <section className="newDesignerSearch" aria-label="Advanced Designer catalogue search">
           <div className="newDesignerSearchHead">
-            <div><span>DESIGNER SEARCH / V3</span><strong>Ask the Designer to search beyond the current pair.</strong><p>It evaluates valid catalogue combinations against occasion, measurements, construction, verified cloth facts and Linen Earth design language.</p><small className="newDesignerCasebookState">{casebook?.totalReviews ? `CASEBOOK · ${casebook.totalReviews} reviewed · ${casebook.usableBuckets} usable patterns` : "CASEBOOK · collecting operator-reviewed cases"}</small></div>
+            <div><span>DESIGNER SEARCH / V3</span><strong>Ask the Designer to search beyond the current pair.</strong><p>It evaluates valid catalogue combinations against occasion, measurements, construction, verified cloth facts and Linen Earth design language.</p><small className="newDesignerCasebookState">{casebook?.totalReviews ? `CASEBOOK · ${casebook.totalReviews} reviewed · ${casebook.usableBuckets} usable patterns` : "CASEBOOK · collecting operator-reviewed cases"} · {fitOutcomes?.totalReviews ? `FIT OUTCOMES · ${fitOutcomes.totalReviews} reviewed · ${fitOutcomes.usableBuckets} usable patterns` : "FIT OUTCOMES · collecting first-fit evidence"}</small></div>
             <button type="button" onClick={runAdvancedSearch} disabled={!shirt || !pant}>Search catalogue ↗</button>
           </div>
           <div className="newDesignerSearchScopes" role="group" aria-label="Designer search scope">
@@ -536,7 +541,7 @@ export function DesignerModule() {
               <div className="newDesignerSearchWhy"><span>WHY THIS DIRECTION</span>{result.reasons.slice(0,3).map((reason)=><p key={reason}>{reason}</p>)}</div>
               <details><summary>Why over my current choice?</summary>{result.comparison.map((item)=><p key={item}>{item}</p>)}</details>
               {result.tradeoffs.length>0 && <details><summary>Trade-offs / checks</summary>{result.tradeoffs.map((item)=><p key={item}>{item}</p>)}</details>}
-              <div className="newDesignerSearchSignals"><span>FIT {result.fitConstruction.fitScore}</span><span>BRAND {result.brandLanguage.score}</span><span>NOVELTY {result.noveltyScore}</span>{result.casebookSignal.evidence>=3 && <span>CASEBOOK {result.casebookSignal.score>0?"+":""}{result.casebookSignal.score}</span>}</div>
+              <div className="newDesignerSearchSignals"><span>FIT {result.fitConstruction.fitScore}</span><span>BRAND {result.brandLanguage.score}</span><span>NOVELTY {result.noveltyScore}</span>{result.casebookSignal.evidence>=3 && <span>CASEBOOK {result.casebookSignal.score>0?"+":""}{result.casebookSignal.score}</span>}{result.fitOutcomeSignal.evidence>=3 && <span>FIRST FIT {result.fitOutcomeSignal.score>0?"+":""}{result.fitOutcomeSignal.score}</span>}</div>
               <button className="newDesignerSearchUse" type="button" onClick={()=>useSearchResult(result)}>Use this direction</button>
             </article>)}
           </div>}

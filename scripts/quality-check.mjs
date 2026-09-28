@@ -21,6 +21,7 @@ const required = [
   "public/designer/studio-tucked.webp",
   "src/lib/designer/photo-preview.ts",
   "src/lib/designer/fit-construction.ts",
+  "src/lib/designer/fit-outcomes.ts",
   "src/lib/designer/constraint-negotiation.ts",
   "src/lib/designer/outcome-learning.ts",
   "src/lib/designer/brand-language.ts",
@@ -365,7 +366,7 @@ for (const token of [
   if (!designerCasebook.includes(token)) throw new Error(`Designer casebook regression: missing ${token}`);
 }
 const designerCasebookApi = fs.readFileSync("src/app/api/designer/casebook/route.ts","utf8");
-for (const token of ["aggregateDesignerCasebook","source:\"eq.operator\"","type:\"eq.operator_note\"","select:\"type,source,payload\"","cache-control","No session"]) {
+for (const token of ["aggregateDesignerCasebook","source:\"eq.operator\"","type:\"eq.operator_note\"","select:\"type,source,payload\"","cache-control","No raw"]) {
   if (!designerCasebookApi.includes(token)) throw new Error(`Designer casebook API regression: missing ${token}`);
 }
 for (const forbidden of ["session_id","sessionId","customerName","phone","email"]) {
@@ -384,3 +385,26 @@ for (const token of ["casebookSignalFor","casebookSignal.score","Math.max(-6","O
   if (!designerCaseSearch.includes(token)) throw new Error(`Designer casebook search regression: missing ${token}`);
 }
 console.log("Designer casebook gate passed: operator-reviewed cases are aggregate-only, thresholded and capped below hard Designer constraints.");
+
+
+const fitOutcomeModel = fs.readFileSync("src/lib/designer/fit-outcomes.ts","utf8");
+for (const token of ["designer-fit-outcomes-v1","clean_first_fit","minor_alteration","major_alteration","aggregateFitOutcomes","fitOutcomeSignalFor","total>=4"]) {
+  if (!fitOutcomeModel.includes(token)) throw new Error(`Designer first-fit outcome regression: fit-outcomes missing ${token}`);
+}
+const fitOutcomeMemory = fs.readFileSync("src/app/api/memory/event/route.ts","utf8");
+for (const token of ['subtype === "designer_fit_outcome"',"allowedAreas","clean_first_fit","major_alteration"]) {
+  if (!fitOutcomeMemory.includes(token)) throw new Error(`Designer first-fit outcome regression: memory route missing ${token}`);
+}
+const fitOutcomeApi = fs.readFileSync("src/app/api/designer/casebook/route.ts","utf8");
+for (const token of ["aggregateFitOutcomes","fitOutcomes","No raw"]) {
+  if (!fitOutcomeApi.includes(token)) throw new Error(`Designer first-fit outcome regression: aggregate API missing ${token}`);
+}
+const fitOutcomeSearch = fs.readFileSync("src/lib/designer/search.ts","utf8");
+for (const token of ["fitOutcomeSignalFor","fitOutcomeProportionFromMeasurements","fitOutcomeScore","Reviewed first-fit"]) {
+  if (!fitOutcomeSearch.includes(token)) throw new Error(`Designer first-fit outcome regression: search missing ${token}`);
+}
+const fitOutcomeOperator = fs.readFileSync("src/app/operator/OperatorClient.tsx","utf8");
+for (const token of ["FIRST-FITTING OUTCOME","saveFitOutcome","designer_fit_outcome","Clean first fit","Learning stores the cut/result category"]) {
+  if (!fitOutcomeOperator.includes(token)) throw new Error(`Designer first-fit outcome regression: operator UI missing ${token}`);
+}
+console.log("Designer first-fit outcome gate passed: reviewed post-fitting evidence is aggregate-only, privacy-preserving and capped below hard constraints.");

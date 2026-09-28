@@ -140,6 +140,29 @@ function cleanPayload(type:string, input:unknown) {
 
   if (type === "operator_note") {
     const subtype = text(payload.subtype,80);
+    if (subtype === "designer_fit_outcome") {
+      const recommendationId = text(payload.recommendationId,160);
+      const verdict = text(payload.verdict,40);
+      const occasion = text(payload.occasion,40);
+      const shirtFit = text(payload.shirtFit,120);
+      const trouser = text(payload.trouser,120);
+      const torso = text(payload.torso,30);
+      const seat = text(payload.seat,30);
+      const allowedAreas = new Set(["shirt_chest","shirt_waist","shirt_shoulder","shirt_sleeve","shirt_collar","trouser_waist","trouser_seat","trouser_thigh","trouser_rise","trouser_length"]);
+      const areas = Array.isArray(payload.areas)
+        ? payload.areas.map((item)=>text(item,40)).filter((item)=>allowedAreas.has(item)).slice(0,10)
+        : [];
+      if (!recommendationId || !shirtFit || !trouser) return null;
+      if (!["clean_first_fit","minor_alteration","major_alteration"].includes(verdict)) return null;
+      if (!["Casual","Smart-Casual","Semi-Formal","Formal"].includes(occasion)) return null;
+      if (!["tapered","balanced","straight","unknown"].includes(torso)) return null;
+      if (!["pronounced","balanced","unknown"].includes(seat)) return null;
+      return {
+        subtype,recommendationId,verdict,occasion,shirtFit,trouser,torso,seat,areas,
+        note:text(payload.note,500),
+      };
+    }
+
     if (subtype === "designer_case_review") {
       const recommendationId = text(payload.recommendationId,160);
       const verdict = text(payload.verdict,20);

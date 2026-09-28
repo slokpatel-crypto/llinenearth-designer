@@ -37,6 +37,7 @@ for (const path of [
   "src/lib/designer/outcome-learning.ts",
   "src/lib/designer/brand-language.ts",
   "src/components/PhotoOutfitPreview.tsx",
+  "src/lib/designer/fit-outcomes.ts",
   "src/app/designer-studio/page.tsx",
   "src/lib/designer/search.ts",
   "src/app/api/designer/casebook/route.ts",
@@ -132,6 +133,10 @@ requireTokens("src/app/api/designer/casebook/route.ts", [
 requireTokens("src/app/operator/OperatorClient.tsx", [
   "DESIGNER CASE REVIEW","Approve case","Reject case","designer_case_review"
 ]);
+requireTokens("src/lib/designer/fit-outcomes.ts", ["designer-fit-outcomes-v1","aggregateFitOutcomes","fitOutcomeSignalFor"]);
+requireTokens("src/app/api/designer/casebook/route.ts", ["aggregateFitOutcomes","fitOutcomes"]);
+requireTokens("src/app/operator/OperatorClient.tsx", ["FIRST-FITTING OUTCOME","designer_fit_outcome","saveFitOutcome"]);
+requireTokens("src/lib/designer/search.ts", ["fitOutcomeSignalFor","Reviewed first-fit"]);
 requireTokens("src/app/api/homepage-model/route.ts", [
   "FASHN_API_KEY",
   "model-create",

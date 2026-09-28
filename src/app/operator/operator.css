@@ -40,3 +40,13 @@
 .designerCaseReviewActions button+button{background:#fff;color:#7c433a;border-color:#cbaaa4}
 .designerCaseReviewActions button:disabled{opacity:.45;cursor:wait}
 @media(max-width:480px){.designerCaseReviewHead{flex-direction:column}.designerCaseReviewActions{grid-template-columns:1fr}}
+
+.designerFitOutcome{margin-top:14px;padding:16px;border:1px solid #d8cdbf;background:linear-gradient(145deg,#fbf8f2,#fff)}
+.designerFitOutcome>p{margin:10px 0 13px;color:#6f675f;font-size:10px;line-height:1.55}
+.designerFitOutcome label{display:block;margin-top:11px;font-size:8px;letter-spacing:.1em;color:#796d62}
+.designerFitOutcome select,.designerFitOutcome textarea{width:100%;margin-top:6px;border:1px solid #d9d1c7;background:#fff;color:#28384b;padding:9px 10px;font-size:10px}
+.designerFitAreas{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;padding:10px 0;border-top:1px solid #e9e1d8;border-bottom:1px solid #e9e1d8}
+.designerFitAreas small{width:100%;font-size:7px;letter-spacing:.14em;color:#9a684f}
+.designerFitAreas button{border:1px solid #d8cec2;background:#fff;color:#6b6259;padding:7px 9px;font-size:8px;cursor:pointer}
+.designerFitAreas button[aria-pressed="true"]{background:#1f456f;border-color:#1f456f;color:#fff}
+.designerFitPrivacy{display:block;margin-top:10px;color:#8b8177;font-size:8px;line-height:1.5}
