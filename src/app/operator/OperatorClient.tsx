@@ -157,6 +157,10 @@ export default function OperatorClient() {
   const [caseReason,setCaseReason] = useState("other");
   const [caseNote,setCaseNote] = useState("");
   const [caseSaving,setCaseSaving] = useState(false);
+  const [fitVerdict,setFitVerdict] = useState<"clean_first_fit"|"minor_alteration"|"major_alteration">("clean_first_fit");
+  const [fitAreas,setFitAreas] = useState<string[]>([]);
+  const [fitNote,setFitNote] = useState("");
+  const [fitSaving,setFitSaving] = useState(false);
 
   useEffect(()=>{
     setBrowserEvents(readBrowserStyleEvents());
@@ -242,6 +246,11 @@ export default function OperatorClient() {
       && event.payload?.subtype==="designer_case_review"
       && event.payload?.recommendationId===selectedRecommendation.id) || null
     : null;
+  const selectedFitOutcome = selected && selectedRecommendation
+    ? [...selected.events].reverse().find((event)=>event.type==="operator_note"
+      && event.payload?.subtype==="designer_fit_outcome"
+      && event.payload?.recommendationId===selectedRecommendation.id) || null
+    : null;
 
   useEffect(()=>{
     if (!selectedId && sessions[0]) setSelectedId(sessions[0].sessionId);
@@ -320,6 +329,60 @@ export default function OperatorClient() {
     } finally {
       setCaseSaving(false);
     }
+  }
+
+  async function saveFitOutcome() {
+    if (!selected || !selectedRecommendation) return;
+    const payload = selectedRecommendation.payload || {};
+    const occasion = String(payload.occasion || "");
+    const style = payload.style && typeof payload.style === "object" && !Array.isArray(payload.style)
+      ? payload.style as Record<string,unknown> : {};
+    const shirtFit = String(style.shirtFit || "");
+    const trouser = String(style.trouser || "");
+    if (!occasion || !shirtFit || !trouser) {
+      setMessage("This recommendation does not contain enough structured fit data.");
+      return;
+    }
+
+    setFitSaving(true);
+    try {
+      const event = recordStyleMemoryEvent(selected.sessionId,"operator_note",{
+        subtype:"designer_fit_outcome",
+        recommendationId:selectedRecommendation.id,
+        verdict:fitVerdict,
+        occasion,
+        shirtFit,
+        trouser,
+        // Keep raw customer measurements out of learning evidence. The fit
+        // outcome endpoint may later match a derived body-proportion bucket.
+        torso:"unknown",
+        seat:"unknown",
+        areas:fitVerdict==="clean_first_fit" ? [] : fitAreas,
+        note:fitNote,
+      },"operator");
+      refreshBrowser();
+
+      if (cloudState === "live") {
+        await fetch("/api/memory/event",{
+          method:"POST",
+          headers:{"content-type":"application/json"},
+          body:JSON.stringify(event),
+        });
+        await loadCloud();
+      }
+
+      setFitNote("");
+      setFitAreas([]);
+      setMessage("First-fitting outcome saved for reviewed Designer learning.");
+    } catch {
+      setMessage("First-fitting outcome could not be saved.");
+    } finally {
+      setFitSaving(false);
+    }
+  }
+
+  function toggleFitArea(area:string) {
+    setFitAreas((current)=>current.includes(area) ? current.filter((item)=>item!==area) : [...current,area]);
   }
 
   const funnel = [
@@ -439,6 +502,34 @@ export default function OperatorClient() {
                   <button disabled={caseSaving} onClick={()=>void reviewDesignerCase("approved")}>Approve case</button>
                   <button disabled={caseSaving} onClick={()=>void reviewDesignerCase("rejected")}>Reject case</button>
                 </div>
+              </div>}
+              {selectedRecommendation && <div className="designerFitOutcome">
+                <div className="designerCaseReviewHead">
+                  <div><small>FIRST-FITTING OUTCOME</small><strong>Teach Designer what happened after the garment was actually tried on.</strong></div>
+                  <span data-verdict={String(selectedFitOutcome?.payload?.verdict || "unreviewed")}>{selectedFitOutcome ? String(selectedFitOutcome.payload?.verdict || "reviewed").replaceAll("_"," ").toUpperCase() : "NOT RECORDED"}</span>
+                </div>
+                <p>This is stronger evidence than a click. It is aggregated by cut family and only receives a small ranking influence after repeated reviewed fittings.</p>
+                <label>First fitting result
+                  <select value={fitVerdict} onChange={(event)=>{setFitVerdict(event.target.value as typeof fitVerdict);if(event.target.value==="clean_first_fit") setFitAreas([]);}}>
+                    <option value="clean_first_fit">Clean first fit</option>
+                    <option value="minor_alteration">Minor alteration</option>
+                    <option value="major_alteration">Major alteration</option>
+                  </select>
+                </label>
+                {fitVerdict!=="clean_first_fit" && <div className="designerFitAreas">
+                  <small>WHAT NEEDED ALTERATION?</small>
+                  {[
+                    ["shirt_chest","Shirt chest"],["shirt_waist","Shirt waist"],["shirt_shoulder","Shoulder"],["shirt_sleeve","Sleeve"],["shirt_collar","Collar"],
+                    ["trouser_waist","Trouser waist"],["trouser_seat","Seat"],["trouser_thigh","Thigh"],["trouser_rise","Rise"],["trouser_length","Length"],
+                  ].map(([value,label])=><button key={value} type="button" aria-pressed={fitAreas.includes(value)} onClick={()=>toggleFitArea(value)}>{label}</button>)}
+                </div>}
+                <label>Optional fitting note
+                  <textarea value={fitNote} onChange={(event)=>setFitNote(event.target.value)} rows={2} placeholder="What changed at the fitting?" />
+                </label>
+                <div className="designerCaseReviewActions">
+                  <button disabled={fitSaving} onClick={()=>void saveFitOutcome()}>{fitSaving?"Saving…":"Save fitting outcome"}</button>
+                </div>
+                <small className="designerFitPrivacy">Learning stores the cut/result category and alteration areas, not raw body measurements.</small>
               </div>}
               <div className="timeline">
                 {selected.events.slice(-8).reverse().map((event)=><p key={event.id}><i/><span><b>{event.type.replaceAll("_"," ")}</b><small>{relativeTime(event.at)}</small></span></p>)}
