@@ -1,0 +1,88 @@
+/* Final customer-facing polish: keep the four public destinations clear and usable on phones. */
+@media(max-width:760px){
+  .atelierMobileDock{height:68px;left:8px;right:8px;bottom:8px;grid-template-columns:1.2fr 1fr 1fr .78fr;border-radius:14px;overflow:hidden}
+  .atelierMobileDock a{min-width:0;padding:7px 4px;font-size:7.5px;line-height:1.16;letter-spacing:.015em}
+  .atelierContent>main{padding-bottom:76px}
+  .floatingContactDock{right:10px;bottom:86px}
+  .floatingContactDock .floatingContact{border-radius:999px}
+
+  .gatewayBrandHero{padding-top:20px;gap:22px}
+  .gatewayBrandCopy{padding-top:18px}
+  .gatewayBrandHero h1{font-size:clamp(4.2rem,20vw,6.5rem);line-height:.82}
+  .gatewayHeroStatement{font-size:clamp(2.15rem,10vw,2.8rem);line-height:.98;margin-top:28px}
+  .gatewayHeroActions a{min-height:48px}
+  .gatewayHeroModel{height:500px}
+  .gatewayCard{min-height:520px}
+  .gatewayCardCopy{padding-bottom:30px}
+  .gatewayCardCopy>strong{min-height:48px}
+  .editorialGarmentGrid{grid-auto-rows:340px}
+  .editorialGarmentCard:nth-child(n){min-height:340px}
+  .editorialGarmentAction{align-items:flex-end}
+  .editorialGarmentAction strong{min-height:44px}
+
+  .director{padding-bottom:84px}
+  .directorTop{height:64px}
+  .directorJourney{padding-top:40px;padding-bottom:34px}
+  .directorIntro h1{font-size:44px;line-height:.94}
+  .directorIntro h2{font-size:29px}
+  .directorOption{min-height:108px}
+  .lookVisual{min-height:450px}
+  .lookCopy{padding-top:24px}
+  .lookCopy h2{font-size:40px}
+  .lookCopy h3{font-size:19px;margin-bottom:26px}
+  .directorActions{gap:8px}
+  .directorActions button,.directorActions a{width:100%;min-height:48px;display:flex;align-items:center;justify-content:space-between;text-align:left}
+  .swatchCard{width:124px;height:154px;right:14px;bottom:14px}
+
+  .newDesigner{padding-bottom:142px}
+  .newDesignerHero,.newDesignerBody,.newDesignerNotebook{width:min(calc(100% - 28px),620px)}
+  .newDesignerHero{padding-top:36px}
+  .newDesignerHero h1{font-size:clamp(4.3rem,19vw,6.1rem);line-height:.82}
+  .newDesignerPhotoStage{height:480px}
+  .newDesignerSelections,.newDesignerOutcome{padding:18px}
+  .newDesignerAction,.newDesignerReset{min-height:46px}
+  .newDesignerHandoff,.newDesignerModelHandoff{padding:13px 14px}
+
+  .measurementPage{padding-bottom:86px}
+  .measurementIntro{padding:24px 0 28px;gap:24px}
+  .measurementIntroCopy h1{font-size:clamp(3rem,14vw,4.15rem);line-height:.92}
+  .measurementIntroCopy>p:not(.eyebrow){margin-top:17px}
+  .measurementIntroBlueprint{min-height:280px}
+  .measurementIntroBlueprint svg{height:280px}
+  .measurementStatusBar>div:first-child strong{font-size:16px}
+  .measurementSummary div{padding:14px 11px}
+  .measurementTabs{position:sticky;top:0;z-index:10}
+  .measurementTabs>button{min-height:46px}
+  .measureVisual{padding:17px}
+  .measureBlueprintStage{min-height:390px}
+  .measureFigure{height:410px}
+  .measureFields{padding:22px}
+  .measureEntry{padding:22px}
+  .measureEntry h2{font-size:31px}
+  .measureSave,.measureDesignerLink{min-height:48px}
+}
+
+@media(max-width:420px){
+  .atelierMobileDock a{font-size:7px}
+  .gatewayHeroModel{height:445px}
+  .gatewayCard{min-height:490px}
+  .editorialGarmentGrid{grid-auto-rows:315px}
+  .editorialGarmentCard:nth-child(n){min-height:315px}
+  .directorJourney,.directorResults{padding-left:14px;padding-right:14px}
+  .directorIntro h1{font-size:40px}
+  .lookVisual{min-height:420px}
+  .newDesignerPhotoStage{height:445px}
+  .measurementIntroSteps{grid-template-columns:1fr}
+  .measurementIntroBlueprint{min-height:250px}
+  .measurementIntroBlueprint svg{height:250px}
+  .measureBlueprintStage{min-height:350px}
+  .measureFigure{height:370px}
+}
+
+@media(min-width:761px){
+  .gatewayHeroActions a,.directorActions button,.directorActions a,.measureSave,.measureDesignerLink{min-height:46px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .gatewayCard,.gatewayImage,.directorOption,.measureList button{transform:none!important}
+}

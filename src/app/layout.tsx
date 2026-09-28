@@ -17,6 +17,7 @@ import "./homepage-editorial.css";
 import "./light-theme.css";
 import "./outfit-studio.css";
 import "./contact-dock.css";
+import "./finish-polish.css";
 import { BrandIntro } from "@/components/BrandIntro";
 
 export const metadata: Metadata = {
