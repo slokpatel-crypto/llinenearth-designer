@@ -102,6 +102,27 @@ type Seed = {
 };
 
 const RESEARCH = {
+  maya:{
+    id:"maya-apparel-typicality-novelty",
+    sourceTitle:"The MAYA principle as applied to apparel products",
+    sourceUrl:"https://doi.org/10.1108/JFMM-09-2018-0116",
+    extractedPrinciple:"Apparel preference balances familiarity and novelty differently by garment category; shirts can support novelty more readily than pants and jackets.",
+    transformedInto:"Push original details more freely on shirts, while keeping trouser architecture recognizably tailored unless the entire silhouette is intentionally statement-led.",
+  },
+  constrainedCreativity:{
+    id:"constraints-creative-patternmaking",
+    sourceTitle:"Introducing restrictions to achieve unlimited creativity in the fashion design process",
+    sourceUrl:"https://doi.org/10.31274/itaa.17920",
+    extractedPrinciple:"Deliberate constraints can create productive creative search instead of simply reducing options.",
+    transformedInto:"Lock one familiar garment code, then force invention into a different zone so the idea has tension without becoming random.",
+  },
+  designGrammar:{
+    id:"garment-design-visual-grammar",
+    sourceTitle:"Garment design: visual design elements and principles",
+    sourceUrl:"https://www.sciencedirect.com/topics/engineering/garment-design",
+    extractedPrinciple:"Garment appearance emerges from interacting line, texture, silhouette, proportion, balance, emphasis, rhythm and harmony rather than any one detail.",
+    transformedInto:"Critique concepts as compositions: one focal point, controlled rhythm, proportional relationships and a coherent silhouette.",
+  },
   stripeSpacing:{
     id:"stripe-spacing-perception",
     sourceTitle:"The influence of striped clothing on visual body perception",
@@ -259,6 +280,26 @@ function researchSeed(signal:CreativeResearchSignal):Seed {
 }
 
 const SEEDS:Seed[]=[
+  {
+    id:"locked-code",
+    name:"Locked Code",
+    thesis:"Keep one menswear convention untouched and force the new idea to happen somewhere else.",
+    principle:RESEARCH.constrainedCreativity,
+    treatments:()=>[
+      treatment("locked-centre-front","placket","Locked centre front","Keep the centre-front placket conventional and visually quiet; do not use it as the novelty zone.","Creates a familiar anchor that makes a new secondary detail easier to read.",12,"supported"),
+      treatment("invented-cuff-plane","cuff","Invented cuff plane","Change cuff depth or edge geometry while preserving the familiar shirt body and centre front.","Concentrates invention in one controlled location rather than randomizing the whole shirt.",64,"experimental"),
+    ],
+  },
+  {
+    id:"maya-shirt",
+    name:"Familiar / New",
+    thesis:"Pair a recognisable tailored shirt structure with one clearly new visual code.",
+    principle:RESEARCH.maya,
+    treatments:()=>[
+      treatment("familiar-collar-anchor","collar","Familiar collar anchor","Keep the collar within a recognisable point/spread family so the face frame remains legible.","Provides typicality as a stable anchor.",18,"supported"),
+      treatment("novel-cuff-detail","cuff","Novel cuff detail","Introduce a new cuff proportion, border or layered edge as the primary novelty.","Places greater novelty in a shirt detail where the category can support it.",60,"atelier"),
+    ],
+  },
   {
     id:"graduated-stripe",
     name:"Graduated Stripe",
@@ -507,6 +548,13 @@ function criticsFor(
   let originality=54+zones*7+(pattern?13:0)+atelier*4+experimental*7;
   if(treatments.length===1&&!pattern) originality-=7;
   originality-=Math.max(0,treatments.length-3)*6;
+
+  const trouserNovelty=treatments.filter((item)=>["waistband","pleat","trouser-leg"].includes(item.zone)).reduce((sum,item)=>sum+item.intensity,0);
+  const shirtNovelty=treatments.filter((item)=>["collar","cuff","placket","shirt-body","pocket"].includes(item.zone)).reduce((sum,item)=>sum+item.intensity,0);
+  // MAYA evidence is category-sensitive: shirts can carry a more visible novelty
+  // signal, while trousers benefit from a stronger familiar tailoring anchor.
+  if(shirtNovelty>55 && trouserNovelty<45) originality+=3;
+  if(trouserNovelty>95 && shirtNovelty>80) aesthetic-=7;
 
   let brandScore=brand.score*.72+28;
   if(load>145) brandScore-=10;
