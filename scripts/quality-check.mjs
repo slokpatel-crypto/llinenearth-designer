@@ -163,7 +163,7 @@ console.log("Restored Designer model gate passed: Style Director visible, public
 
 
 const photoPreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","PHOTO_TUCKED_LEFT_SLEEVE_CLIP","PHOTO_TUCKED_RIGHT_SLEEVE_CLIP","PHOTO_TUCKED_LEFT_TROUSER_CLIP","PHOTO_TUCKED_RIGHT_TROUSER_CLIP","destination-in","masks.shirt","masks.pant","featherMaskInside","featheredMasks","patternScaleForFabric","placement.offsetX","soft-light","Inspect fit","Original model","Boundary QA"]) {
+for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","PHOTO_TUCKED_LEFT_SLEEVE_CLIP","PHOTO_TUCKED_RIGHT_SLEEVE_CLIP","PHOTO_TUCKED_LEFT_TROUSER_CLIP","PHOTO_TUCKED_RIGHT_TROUSER_CLIP","destination-in","masks.shirt","masks.pant","featherMaskInside","featheredMasks","patternScaleForFabric","placement.offsetX","soft-light","Zoom fit","Compare","Boundary QA"]) {
   if (!photoPreview.includes(token)) throw new Error(`Real photographic Designer regression: PhotoOutfitPreview missing ${token}`);
 }
 const photoGeometry = fs.readFileSync("src/lib/designer/photo-preview.ts","utf8");
@@ -174,7 +174,7 @@ console.log("Real photographic Designer gate passed: hard garment boundaries, ne
 
 
 const realDesignerModule = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["linen-earth:real-designer-draft:v2","draftReady","localStorage.setItem(DRAFT_KEY","resetDraft","Reset design"]) {
+for (const token of ["linen-earth:real-designer-draft:v2","draftReady","localStorage.setItem(DRAFT_KEY","resetDraft",">Reset<"]) {
   if (!realDesignerModule.includes(token)) throw new Error(`Real Designer draft regression: missing ${token}`);
 }
 console.log("Real Designer draft gate passed: fabric, context and tailoring state persist safely across refresh.");
