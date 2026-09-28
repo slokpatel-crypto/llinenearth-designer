@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { aggregateDesignerCasebook } from "@/lib/designer/casebook";
 import { aggregateFitOutcomes } from "@/lib/designer/fit-outcomes";
+import { aggregateCreativeLearning } from "@/lib/designer/creative-learning";
 
 export const runtime = "nodejs";
 
@@ -18,35 +19,50 @@ export async function GET() {
       configured:false,
       casebook:aggregateDesignerCasebook([]),
       fitOutcomes:aggregateFitOutcomes([]),
+      creativeLearning:aggregateCreativeLearning([]),
     },{headers:{"cache-control":"no-store"}});
   }
 
   try {
-    const params=new URLSearchParams({
+    const operatorParams=new URLSearchParams({
       select:"type,source,payload",
       source:"eq.operator",
       type:"eq.operator_note",
       order:"received_at.asc",
       limit:"3000",
     });
-    const response=await fetch(`${cloud.url}/rest/v1/style_events?${params.toString()}`,{
-      headers:{...supabaseAdminHeaders(cloud),accept:"application/json"},
-      cache:"no-store",
+    const feedbackParams=new URLSearchParams({
+      select:"type,source,payload",
+      source:"eq.style-director",
+      type:"eq.designer_feedback",
+      order:"received_at.asc",
+      limit:"3000",
     });
+    const [operatorResponse,feedbackResponse]=await Promise.all([
+      fetch(`${cloud.url}/rest/v1/style_events?${operatorParams.toString()}`,{
+        headers:{...supabaseAdminHeaders(cloud),accept:"application/json"},cache:"no-store",
+      }),
+      fetch(`${cloud.url}/rest/v1/style_events?${feedbackParams.toString()}`,{
+        headers:{...supabaseAdminHeaders(cloud),accept:"application/json"},cache:"no-store",
+      }),
+    ]);
 
-    if(!response.ok) {
-      console.error("[designer/casebook]",response.status,(await response.text()).slice(0,300));
+    if(!operatorResponse.ok || !feedbackResponse.ok) {
+      const failed=!operatorResponse.ok?operatorResponse:feedbackResponse;
+      console.error("[designer/casebook]",failed.status,(await failed.text()).slice(0,300));
       return NextResponse.json({error:"Designer casebook is temporarily unavailable."},{status:502});
     }
 
-    const rows=await response.json() as CaseRow[];
-    const events=rows.map((row)=>({
+    const operatorRows=await operatorResponse.json() as CaseRow[];
+    const feedbackRows=await feedbackResponse.json() as CaseRow[];
+    const events=[...operatorRows,...feedbackRows].map((row)=>({
       type:row.type,
       source:row.source,
       payload:row.payload || {},
     }));
     const casebook=aggregateDesignerCasebook(events);
     const fitOutcomes=aggregateFitOutcomes(events);
+    const creativeLearning=aggregateCreativeLearning(events);
 
     // Only aggregate reviewed design/fit signatures leave the server. No raw
     // measurements, session identifiers, customer data or free-form notes are returned.
@@ -54,6 +70,7 @@ export async function GET() {
       configured:true,
       casebook,
       fitOutcomes,
+      creativeLearning,
     },{headers:{"cache-control":"no-store"}});
   } catch(error) {
     console.error("[designer/casebook]",error);
