@@ -753,7 +753,7 @@ export function DesignerModule() {
         <div>{activeCreative.treatments.slice(0,3).map((move)=><b key={move.id}>{move.zone.toUpperCase()} · {move.label}</b>)}{activeCreative.pattern&&<b>PATTERN · {activeCreative.pattern.name}</b>}</div>
         <small>The mannequin below shows the supported base cut. These custom details remain attached to the design specification until visual synthesis is connected.</small>
       </div>}
-      {shirt && pant && <PhotoOutfitPreview shirt={shirt} pant={pant} style={style} />}
+      {shirt && pant && <PhotoOutfitPreview shirt={shirt} pant={pant} style={style} creativeDirection={activeCreative} />}
       {fitCoverage.total > 0 && <div className="newDesignerFitModelNote"><span>FIT PROFILE LOADED · {fitCoverage.total}/16</span><p>Measurements inform tailoring guidance; this studio model remains a fixed visual reference.</p></div>}
       <section className="newDesignerOutcome" aria-live="polite" aria-label="Designer recommendation">
         {!recommendation ? <div className="newDesignerEmpty"><span>04 / DESIGN DIRECTION</span><h2>Give the fabrics a purpose.</h2><p>Choose cloth, occasion and cut, then ask Designer to assess the outfit.</p></div> : <>
