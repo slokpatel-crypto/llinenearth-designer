@@ -4,6 +4,7 @@ import "./check-designer.mjs";
 const required = [
   "src/lib/fashion-intelligence.ts",
   "src/lib/designer-engine.ts",
+  "src/lib/designer/garment-spec.ts",
   "src/lib/refinement-engine.ts",
   "src/lib/visualization-engine.ts",
   "src/lib/handoff.ts",
@@ -307,3 +308,25 @@ for (const token of [".newDesignerBrandRead",".newDesignerBrandReadHead",".newDe
   if (!brandCss.includes(token)) throw new Error(`Linen Earth brand read styling regression: missing ${token}`);
 }
 console.log("Linen Earth brand language gate passed: soft taste remains visible and capped at 10% of alternative-cut ranking.");
+
+
+const canonicalGarmentSpecSource = fs.readFileSync("src/lib/designer/garment-spec.ts","utf8");
+for (const token of ["linen-earth-garment-spec-v1","buildCanonicalGarmentSpec","finishedTargets","ready_for_tailor_review","visual_review_required","verification_required","not a cutting pattern"]) {
+  if (!canonicalGarmentSpecSource.includes(token)) throw new Error(`Canonical garment spec regression: missing ${token}`);
+}
+const canonicalDesignerUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
+for (const token of ["buildCanonicalGarmentSpec","GARMENT SPEC / V1","Export spec JSON","downloadGarmentSpec","readiness.visualization"]) {
+  if (!canonicalDesignerUi.includes(token)) throw new Error(`Canonical garment spec UI regression: missing ${token}`);
+}
+const memoryEventSanitizer = fs.readFileSync("src/app/api/memory/event/route.ts","utf8");
+for (const token of ["garmentSpecInput","fitConstructionScore","brandLanguageScore","materialVerification"]) {
+  if (!memoryEventSanitizer.includes(token)) throw new Error(`Garment spec telemetry regression: missing ${token}`);
+}
+const designerRecommendationSanitizer = memoryEventSanitizer.slice(
+  memoryEventSanitizer.indexOf('if (type === "designer_recommendation")'),
+  memoryEventSanitizer.indexOf('if (type === "designer_preview_opened")')
+);
+if (designerRecommendationSanitizer.includes("finishedTargets") || designerRecommendationSanitizer.includes("bodyCm")) {
+  throw new Error("Privacy regression: designer recommendation telemetry must not persist body or finished garment measurements.");
+}
+console.log("Canonical garment spec quality gate passed: one synchronized spec drives Designer output while measurement ranges stay local unless explicitly exported.");
