@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
 import {
   DESIGNER_PHOTO_TEMPLATES, PHOTO_COLLAR_MASK, PHOTO_CUFF_MASK, PHOTO_TUCKED_COLLAR_MASK, PHOTO_TUCKED_COLLAR_STAND_MASK,
-  PHOTO_TUCKED_CUFF_MASK, photoTemplateForStyle, photoTemplateGaps, previewFabricLabel,
+  PHOTO_TUCKED_CUFF_MASK, PHOTO_TUCKED_NECK_CLEAR, PHOTO_TUCKED_SHIRT_CLIP, PHOTO_TUCKED_TROUSER_CLIP,
+  photoTemplateForStyle, photoTemplateGaps, previewFabricLabel,
 } from "@/lib/designer/photo-preview";
 
 const WIDTH = 1024;
@@ -138,6 +139,21 @@ function tuckedGarmentMasks(photo: HTMLImageElement) {
       data.data[i + 3] = Math.round(opacity * 255);
     }
     ctx.putImageData(data, 0, 0);
+
+    // Keep the adaptive colour mask for folds and antialiasing, but intersect
+    // it with the photographed garment silhouette so similar colours in the
+    // studio or mannequin can never receive fabric.
+    ctx.globalCompositeOperation = "destination-in";
+    ctx.fillStyle = "#fff";
+    ctx.fill(new Path2D(region === "shirt" ? PHOTO_TUCKED_SHIRT_CLIP : PHOTO_TUCKED_TROUSER_CLIP));
+
+    if (region === "shirt") {
+      // The collar is composited separately below. Clearing the photographed
+      // neck opening here prevents cloth from painting over the mannequin.
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.fill(new Path2D(PHOTO_TUCKED_NECK_CLEAR));
+    }
+    ctx.globalCompositeOperation = "source-over";
     return canvas;
   };
   const result = { shirt: mask("shirt"), pant: mask("pant") };
@@ -251,15 +267,21 @@ export function composePhotoOutfit(
   const tucked = style.shirtWear === "Tucked";
   if (tucked) {
     const masks = tuckedGarmentMasks(modelPhoto);
-    drawGarment(context, modelPhoto, pantImage, pant, "", masks.pant, "grayscale(1) brightness(1.9) contrast(1.03)");
+
+    // A tucked shirt must physically sit behind the trouser waistband. Draw
+    // the shirt first, then the trouser garment on top. This removes the
+    // pasted-on band of shirt texture across the waist/fly/crotch.
     drawGarment(context, modelPhoto, shirtImage, shirt, "", masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)");
+
     if (style.collarFinish === "Self-fabric") {
       drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined, "grayscale(1) brightness(3.05) contrast(.94)");
     } else {
-      drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_STAND_MASK, masks.shirt, 3.6);
+      drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_STAND_MASK, undefined, 3.6);
       drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_MASK, undefined, 3.6);
     }
-    if (style.collarFinish === "White contrast collar + cuffs") drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_CUFF_MASK, masks.shirt, 3.6);
+    if (style.collarFinish === "White contrast collar + cuffs") drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_CUFF_MASK, undefined, 3.6);
+
+    drawGarment(context, modelPhoto, pantImage, pant, "", masks.pant, "grayscale(1) brightness(1.9) contrast(1.03)");
   } else {
     const shirtMask = untuckedGarmentMasks(modelPhoto, template.shirtPath, DESIGNER_PHOTO_TEMPLATES.pleated.trouserPath).shirt;
     const trouserMask = untuckedGarmentMasks(trouserPhoto, template.shirtPath, template.trouserPath).pant;
