@@ -3,19 +3,13 @@ import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { BRAND_LOGO_SRC } from "@/lib/brand-logo-data";
 
 const primaryLinks = [
-  ["Catalog", "/catalog"],
+  ["Designer Studio", "/designer"],
   ["Style Director", "/style-director"],
   ["Measurements", "/measurements"],
   ["Contact", "/contact"],
 ] as const;
 
-const secondaryLinks = [
-  ["Live Visual", "/visual"],
-  ["Classic Designer", "/designer-brief"],
-  ["Saved Designs", "/designs"],
-  ["Fashion Brain", "/knowledge"],
-  ["Atelier", "/atelier"],
-] as const;
+const secondaryLinks: ReadonlyArray<readonly [string,string]> = [];
 
 const INSTAGRAM_URL = "https://www.instagram.com/llinenearth.india/";
 const GOOGLE_BUSINESS_URL = "https://www.google.com/maps/search/?api=1&query=LLinen%20Earth%20Murlidhar%20Compound%2049%2F4%20Kalyan%20Rd%20behind%20Shiv%20Mandir%20near%20Masoom%20Hospital%20Bhiwandi%20Maharashtra";
@@ -36,8 +30,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const whatsappHref = buildWhatsAppUrl({ topic: "Premium fabric and tailoring" });
   return <div className="siteShell atelierShell">
     <header className="atelierBrandBand">
-      <Link href="/" className="atelierBrand" aria-label="LLinen Earth home">
-        <img src={BRAND_LOGO_SRC} alt="LLinen Earth" width="1273" height="531" />
+      <Link href="/" className="atelierBrand" aria-label="Linen Earth home">
+        <img src={BRAND_LOGO_SRC} alt="Linen Earth" width="1273" height="531" />
       </Link>
     </header>
 
@@ -46,17 +40,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <nav className="atelierRailPrimary">
           {primaryLinks.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
         </nav>
-        <div className="atelierRailDivider" />
-        <nav className="atelierRailSecondary">
-          {secondaryLinks.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
-        </nav>
+        {secondaryLinks.length > 0 && <><div className="atelierRailDivider" /><nav className="atelierRailSecondary">{secondaryLinks.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}</nav></>}
         <a className="atelierRailWhatsapp" href={whatsappHref} target="_blank" rel="noreferrer"><span><WhatsAppIcon/></span><div><small>ENQUIRE</small><strong>WhatsApp us</strong></div></a>
       </aside>
 
       <div className="atelierContent">
         <main>{children}</main>
         <footer className="atelierFooter wrap">
-          <div><strong>LLinen Earth</strong><span>Premium fabric. Considered tailoring.</span></div>
+          <div><strong>Linen Earth</strong><span>Premium fabric. Considered tailoring.</span></div>
           <nav aria-label="Footer navigation">
             {primaryLinks.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
             {secondaryLinks.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
@@ -65,10 +56,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
     </div>
 
-    <div className="floatingContactDock" aria-label="LLinen Earth contact shortcuts">
-      <a className="floatingContact floatingWhatsapp" href={whatsappHref} target="_blank" rel="noreferrer" aria-label="Enquire with LLinen Earth on WhatsApp"><span><WhatsAppIcon/></span><strong>WhatsApp</strong></a>
-      <a className="floatingContact floatingInstagram" href={INSTAGRAM_URL} target="_blank" rel="noreferrer" aria-label="Open LLinen Earth Instagram"><span><InstagramIcon/></span><strong>Instagram</strong></a>
-      <a className="floatingContact floatingLocation" href={GOOGLE_BUSINESS_URL} target="_blank" rel="noreferrer" aria-label="Open LLinen Earth location in Google Maps"><span><PinIcon/></span><strong>Location</strong></a>
+    <div className="floatingContactDock" aria-label="Linen Earth contact shortcuts">
+      <a className="floatingContact floatingWhatsapp" href={whatsappHref} target="_blank" rel="noreferrer" aria-label="Enquire with Linen Earth on WhatsApp"><span><WhatsAppIcon/></span><strong>WhatsApp</strong></a>
+      <a className="floatingContact floatingInstagram" href={INSTAGRAM_URL} target="_blank" rel="noreferrer" aria-label="Open Linen Earth Instagram"><span><InstagramIcon/></span><strong>Instagram</strong></a>
+      <a className="floatingContact floatingLocation" href={GOOGLE_BUSINESS_URL} target="_blank" rel="noreferrer" aria-label="Open Linen Earth location in Google Maps"><span><PinIcon/></span><strong>Location</strong></a>
     </div>
 
     <nav className="atelierMobileDock" aria-label="Mobile primary navigation">
