@@ -362,7 +362,9 @@ const creativeEngine = fs.readFileSync("src/lib/designer/creative-engine.ts","ut
 for (const token of [
   "generateCreativeDirections","CreativeCriticId","aesthetic","originality","brand","menswear","construction",
   "facets","Proportion","Hierarchy","Rhythm","Harmony","creativeLearningSignalFor","creativeResearch",
-  "researchSeed","maya-apparel-typicality-novelty","constraints-creative-patternmaking","engineered-print-3d-2d"
+  "researchSeed","hybridResearchSeed","researchFreedom","maximum","researchUtilization","explorationClass",
+  "maya-apparel-typicality-novelty","constraints-creative-patternmaking","engineered-print-3d-2d",
+  "design-fixation-examples","divergent-design-thinking","creative-design-coevolving-spaces"
 ]) {
   if (!creativeEngine.includes(token)) throw new Error(`Designer V5 creative-engine regression: missing ${token}`);
 }
@@ -382,7 +384,7 @@ const sourceRows = (researchPool.match(/\{id:"[^"]+",name:/g) || []).length;
 const topicRows = (researchPool.match(/\{id:"[^"]+",query:/g) || []).length;
 if (sourceRows * topicRows < 1000) throw new Error(`Designer V5 research pool regression: expected >=1000 source-topic targets, found ${sourceRows * topicRows}`);
 const creativeUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["CREATIVE DESIGNER / V5","Imagine new designs","CRITIC PANEL","RESEARCH →","newDesignerCriticFacets","researchPool"]) {
+for (const token of ["CREATIVE DESIGNER / V5","Imagine new designs","CRITIC PANEL","RESEARCH →","newDesignerCriticFacets","researchPool","researchFreedom:\"maximum\"","RESEARCH USE","FRONTIER"]) {
   if (!creativeUi.includes(token)) throw new Error(`Designer V5 creative UI regression: missing ${token}`);
 }
 const creativePreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
@@ -397,7 +399,7 @@ const researchDesk = fs.readFileSync("src/app/operator/designer-research/Designe
 for (const token of ["Creative Research Desk","RESEARCH → DESIGN TRANSLATOR","Save research signal","Allow this reviewed signal to influence V5 now"]) {
   if (!researchDesk.includes(token)) throw new Error(`Designer V5 research desk regression: missing ${token}`);
 }
-console.log(`Designer V5 creative-research gate passed: ${sourceRows * topicRows} source-topic discovery targets, multi-critic visual ranking, photoreal review and capped learning protected.`);
+console.log(`Designer V5 creative-research gate passed: ${sourceRows * topicRows} source-topic discovery targets, maximum-freedom research synthesis, frontier reservation, multi-critic visual ranking, photoreal review and capped learning protected.`);
 
 
 
