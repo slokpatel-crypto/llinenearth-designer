@@ -175,7 +175,7 @@ const styleDirectorPage = fs.readFileSync("src/app/style-director/page.tsx","utf
 for (const token of ["designerHandoff","/designer-studio?","Open Linen Earth Real Model Designer","from:\"style-director\""]) {
   if (!styleDirectorPage.includes(token)) throw new Error(`Style Director handoff regression: missing ${token}`);
 }
-for (const token of ["URLSearchParams(window.location.search)","routedAnchor","routedGarment","directorHandoff","STYLE DIRECTOR HANDOFF"]) {
+for (const token of ["URLSearchParams(window.location.search)","routedShirt","routedPant","routedStyle","directorHandoff","STYLE DIRECTOR HANDOFF"]) {
   if (!realDesignerModule.includes(token)) throw new Error(`Real Designer handoff regression: missing ${token}`);
 }
 console.log("Style Director handoff gate passed: context, resolved stock pair and cut transfer into photographic Designer.");
