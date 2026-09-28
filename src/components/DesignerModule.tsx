@@ -687,13 +687,13 @@ export function DesignerModule() {
             <div>
               <span>CREATIVE DESIGNER / V5</span>
               <strong>Maximum research freedom. Converge only after exploration.</strong>
-              <p>V5 now treats most fashion rules as critic signals, not early blockers. It expands research into direct mutations, zone-transfers, radical variants and cross-source hybrids before narrowing to three deliberately different concepts.</p>
+              <p>V5 now treats most fashion rules as critic signals, not early blockers. Each curated research principle can be used directly, transferred to another garment zone, amplified, subtracted, counterpointed, scale-shifted, cross-source hybridized and radically pushed before the engine narrows the field.</p>
               {researchPool && <div className="newDesignerResearchPoolStat"><b>{researchPool.targets.toLocaleString("en-IN")} RESEARCH TARGETS</b><span>{researchPool.websites} source websites · {researchPool.highAuthorityWebsites} primary/scholarly · {creativeResearch?.active || 0} curated signals active</span></div>}
             </div>
             <button type="button" onClick={runCreativeLab} disabled={!shirt || !pant}>Imagine new designs ↗</button>
           </div>
           <div className="newDesignerCreativeFlow" aria-label="Creative process">
-            <span>RESEARCH</span><b>→</b><span>DIRECT + HYBRID + RADICAL</span><b>→</b><span>SOFT CRITICS</span><b>→</b><span>REFINE</span><b>→</b><span>BEST + ORIGINAL + FRONTIER</span>
+            <span>RESEARCH</span><b>→</b><span>DIRECT + MUTATE + HYBRID + RADICAL</span><b>→</b><span>SOFT CRITICS</span><b>→</b><span>REFINE</span><b>→</b><span>BEST + ORIGINAL + FRONTIER</span>
           </div>
           {creativeDirections.length>0 && <div className="newDesignerCreativeResults">
             {creativeDirections.map((direction)=><article key={direction.id} data-active={activeCreative?.id===direction.id}>
