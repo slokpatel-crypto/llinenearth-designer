@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import "./check-designer.mjs";
 
 const required = [
   "src/lib/fashion-intelligence.ts",
@@ -139,3 +140,14 @@ for (const token of ["fabric must never spill","waistband in front of it","disti
 }
 
 console.log("Restored Designer model gate passed: Style Director visible, public nav cleaned, tucked garment boundaries protected.");
+
+const realPhotoPreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_NECK_CLEAR","destination-in","masks.shirt","masks.pant"]) {
+  if (!realPhotoPreview.includes(token)) throw new Error(`Real-model preview regression: missing ${token}`);
+}
+const realPhotoMasks = fs.readFileSync("src/lib/designer/photo-preview.ts","utf8");
+for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_NECK_CLEAR","/designer/studio-tucked.webp"]) {
+  if (!realPhotoMasks.includes(token)) throw new Error(`Real-model mask regression: missing ${token}`);
+}
+console.log("Real-model photo gate passed: tucked shirt, neck, waistband and inner-leg boundaries protected.");
+
