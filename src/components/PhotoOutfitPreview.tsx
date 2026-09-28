@@ -348,6 +348,7 @@ export function PhotoOutfitPreview({ shirt, pant, style }: {
   const [error, setError] = useState(false);
   const [inspectFit, setInspectFit] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
+  const [showBoundaries, setShowBoundaries] = useState(false);
   const templateId = photoTemplateForStyle(style);
   const template = DESIGNER_PHOTO_TEMPLATES[templateId];
   const gaps = photoTemplateGaps(style, templateId);
@@ -396,6 +397,19 @@ export function PhotoOutfitPreview({ shirt, pant, style }: {
     <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`}>
       <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-label={`${previewFabricLabel(shirt, pant)}, ${style.shirtWear.toLowerCase()} with ${style.collarFinish.toLowerCase()}`} />
       {showOriginal && <img className="newDesignerPhotoOriginal" src={tucked ? template.src : DESIGNER_PHOTO_TEMPLATES.pleated.src} alt="Original photographed model template for comparison" />}
+      {showBoundaries && <svg className="newDesignerBoundaryQa" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-label="Garment boundary QA overlay">
+        {tucked ? <>
+          <path d={PHOTO_TUCKED_SHIRT_BODY_CLIP} className="shirtBoundary" />
+          <path d={PHOTO_TUCKED_LEFT_SLEEVE_CLIP} className="shirtBoundary" />
+          <path d={PHOTO_TUCKED_RIGHT_SLEEVE_CLIP} className="shirtBoundary" />
+          <path d={PHOTO_TUCKED_LEFT_TROUSER_CLIP} className="trouserBoundary" />
+          <path d={PHOTO_TUCKED_RIGHT_TROUSER_CLIP} className="trouserBoundary" />
+          <path d={PHOTO_TUCKED_NECK_CLEAR} className="clearBoundary" />
+        </> : <>
+          <path d={template.shirtPath} className="shirtBoundary" />
+          <path d={template.trouserPath} className="trouserBoundary" />
+        </>}
+      </svg>}
       <span className="newDesignerPhotoTag">FRONT / STUDIO MODEL</span>
       {error && <span className="newDesignerPhotoError" role="alert">Preview could not load. Check the local fabric images.</span>}
       {!ready && !error && <span className="newDesignerPhotoLoading">Preparing your look…</span>}
@@ -406,6 +420,7 @@ export function PhotoOutfitPreview({ shirt, pant, style }: {
       <div className="newDesignerPhotoActions">
         <button type="button" onClick={() => setShowOriginal((value) => !value)} disabled={!ready}>{showOriginal ? "Fabric preview" : "Original model"}</button>
         <button type="button" onClick={() => setInspectFit((value) => !value)} disabled={!ready}>{inspectFit ? "Full view" : "Inspect fit"}</button>
+        <button type="button" onClick={() => setShowBoundaries((value) => !value)} disabled={!ready} aria-pressed={showBoundaries}>{showBoundaries ? "Hide boundaries" : "Boundary QA"}</button>
         <button type="button" onClick={download} disabled={!ready}>Save preview PNG ↗</button>
       </div>
     </div>
