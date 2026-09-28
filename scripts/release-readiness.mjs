@@ -34,6 +34,7 @@ for (const path of [
   "src/lib/designer/photo-preview.ts",
   "src/lib/designer/fit-construction.ts",
   "src/lib/designer/constraint-negotiation.ts",
+  "src/lib/designer/outcome-learning.ts",
   "src/components/PhotoOutfitPreview.tsx",
   "src/app/designer-studio/page.tsx",
   "desktop/src/App.tsx",
@@ -51,6 +52,17 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "PHOTO_TUCKED_NECK_CLEAR",
   "masks.shirt",
   "masks.pant",
+]);
+requireTokens("src/lib/designer/outcome-learning.ts", [
+  "DESIGNER_FEEDBACK_REASONS",
+  "summarizeDesignerOutcomes",
+  "sufficientForLearning",
+  "topReason",
+]);
+requireTokens("src/app/api/memory/event/route.ts", [
+  "DESIGNER_FEEDBACK_REASONS",
+  "payload.reason",
+  "styleInput",
 ]);
 requireTokens("src/lib/designer/constraint-negotiation.ts", [
   "designer-negotiation-v1",
