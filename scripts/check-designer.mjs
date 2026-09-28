@@ -29,6 +29,8 @@ function load(file) {
 
 const {DESIGNER_SHIRTS,DESIGNER_PANTS,DESIGNER_REVIEWED_PAIRING,DESIGNER_STYLE_CHOICES,designerTasteAlternative,evaluateDesignerCombo} = load("src/lib/designer/engine.ts");
 const {planDesignerDirections,suggestDesignerRepairs} = load("src/lib/designer/planner.ts");
+const {designerStyleInsights} = load("src/lib/designer/style-insights.ts");
+const {PHOTO_TUCKED_SHIRT_MASK,DESIGNER_PHOTO_TEMPLATES,photoTemplateGaps} = load("src/lib/designer/photo-preview.ts");
 const sky = DESIGNER_SHIRTS.find((fabric)=>fabric.id === "linen-plain-60-sky-blue");
 const beige = DESIGNER_PANTS.find((fabric)=>fabric.id === "linen-suiting-beige");
 const darkGrey = DESIGNER_PANTS.find((fabric)=>fabric.id === "linen-suiting-dark-grey");
@@ -48,6 +50,25 @@ assert.match(preliminary.shortReason,/pleat/);
 assert.equal(preliminary.materialEvidence.verified,0,"A PDF swatch does not verify physical fabric facts");
 assert.equal(preliminary.materialEvidence.total,16);
 assert(preliminary.designFitScore > preliminary.materialEvidence.verified);
+assert.equal(preliminary.style.shirtWear,"Tucked","Semi-formal starts with a tucked shirt");
+assert.notEqual(PHOTO_TUCKED_SHIRT_MASK,DESIGNER_PHOTO_TEMPLATES.pleated.shirtPath);
+assert(photoTemplateGaps(preliminary.style,"pleated").some((gap)=>gap.includes("photo composite")));
+const untuckedFormal = evaluateDesignerCombo(sky,beige,"Formal",{shirtWear:"Untucked"});
+assert.equal(untuckedFormal.rules.find((item)=>item.id === "CUT-TUCK").status,"flag");
+assert.equal(untuckedFormal.status,"needs_review");
+assert(suggestDesignerRepairs(untuckedFormal).some((repair)=>repair.patch?.shirtWear === "Tucked"));
+const striped = DESIGNER_SHIRTS.find((fabric)=>fabric.id === "formal-shirting-13");
+assert(striped && /stripe/i.test(striped.patternType));
+const stripeNotes = designerStyleInsights(striped,beige,"Semi-Formal",preliminary.style);
+assert(stripeNotes.some((note)=>note.action?.patch.collarFinish === "White contrast collar"));
+assert(!designerStyleInsights(sky,beige,"Semi-Formal",preliminary.style).some((note)=>note.action?.patch.collarFinish));
+const contrastLook = evaluateDesignerCombo(striped,beige,"Semi-Formal",{collarFinish:"White contrast collar"});
+assert(designerStyleInsights(striped,beige,"Semi-Formal",contrastLook.style)
+  .some((note)=>note.action?.patch.collarFinish === "White contrast collar + cuffs"));
+assert.equal(contrastLook.status,"needs_review","A separate white cloth is not verified stock");
+assert.equal(contrastLook.materialEvidence.total,17);
+assert(contrastLook.materialEvidence.missing.some((item)=>item.includes("White contrast collar cloth")));
+assert.equal(contrastLook.rules.find((item)=>item.id === "DETAIL-WHITE-COLLAR").status,"unknown");
 const hot = {climate:"Hot / humid",intention:"Expressive"};
 const unknownClimate = evaluateDesignerCombo(sky,beige,"Semi-Formal",undefined,undefined,hot);
 assert.equal(unknownClimate.rules.find((item)=>item.id === "CONTEXT-CLIMATE").status,"unknown");

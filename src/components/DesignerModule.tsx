@@ -7,6 +7,7 @@ import {
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerRecommendation, type DesignerStyle, type OccasionTier,
 } from "@/lib/designer/engine";
 import { planDesignerDirections, suggestDesignerRepairs, type DesignerDirection } from "@/lib/designer/planner";
+import { designerStyleInsights } from "@/lib/designer/style-insights";
 import { DESIGNER_FASHION_FACTS, DESIGNER_RESEARCH } from "@/lib/designer/research";
 import { constructionNotes } from "@/lib/designer/photo-preview";
 import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
@@ -21,7 +22,8 @@ const FACT_INTERVAL_MS = 15_000;
 type SavedDirection = { shirtId: string; pantId: string; occasion: OccasionTier; style: DesignerStyle };
 
 const MAIN_DETAILS = [
-  ["collar", "Shirt collar"], ["shirtFit", "Shirt fit"],
+  ["shirtWear", "Shirt finish"], ["collar", "Shirt collar"],
+  ["collarFinish", "Collar cloth"], ["shirtFit", "Shirt fit"],
   ["trouser", "Trouser shape"], ["rise", "Trouser rise"],
 ] as const;
 const MORE_DETAILS = [
@@ -73,6 +75,7 @@ export function DesignerModule() {
   const fact = DESIGNER_FASHION_FACTS[factIndex];
   const shirt = useMemo(() => DESIGNER_SHIRTS.find((item) => item.id === shirtId), [shirtId]);
   const pant = useMemo(() => DESIGNER_PANTS.find((item) => item.id === pantId), [pantId]);
+  const insights = shirt && pant ? designerStyleInsights(shirt, pant, occasion, style) : [];
 
   useEffect(() => {
     try {
@@ -138,6 +141,12 @@ export function DesignerModule() {
 
   function changeStyle(key: keyof DesignerStyle, value: string) {
     setStyle((current) => ({ ...current, [key]: value }));
+    setRecommendation(null);
+    setRecommendationId(null);
+  }
+
+  function applyStylePatch(patch: Partial<DesignerStyle>) {
+    setStyle((current) => ({ ...current, ...patch }));
     setRecommendation(null);
     setRecommendationId(null);
   }
@@ -214,6 +223,16 @@ export function DesignerModule() {
               {DESIGNER_STYLE_CHOICES[key].map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </label>)}</div>
+          {insights.length > 0 && <div className="newDesignerInsights" aria-label="Fabric-aware design notes">
+            <span className="newDesignerInsightsKicker">DESIGNER THINKING / FOR THIS CLOTH</span>
+            {insights.map((insight) => {
+              const action = insight.action;
+              return <article key={insight.title}>
+              <div><strong>{insight.title}</strong><p>{insight.explanation}</p><a href={insight.sourceUrl} target="_blank" rel="noopener noreferrer">{insight.source} ↗</a></div>
+              {action && <button type="button" onClick={() => applyStylePatch(action.patch)}>{action.label} ↗</button>}
+              </article>;
+            })}
+          </div>}
           <details className="newDesignerMore"><summary>More tailoring details</summary><div className="newDesignerStyleGrid">{MORE_DETAILS.map(([key, label]) => <label key={key}>{label}
             <select value={style[key]} onChange={(event) => changeStyle(key, event.target.value)}>
               {DESIGNER_STYLE_CHOICES[key].map((option) => <option key={option} value={option}>{option}</option>)}
@@ -232,7 +251,7 @@ export function DesignerModule() {
         <p className="newDesignerFootnote">Catalogue images guide colour and pattern. Fabric weight, drape, opacity and current metres need confirmation in store.</p>
         {saved.length > 0 && <details className="newDesignerChecks"><summary>Saved directions on this device ({saved.length})</summary><ul>{saved.map((item, index) => <li key={`${item.shirtId}/${item.pantId}/${item.occasion}/${index}`}><button type="button" className="newDesignerSavedLink" onClick={() => {
           setShirtId(item.shirtId); setPantId(item.pantId); setOccasion(item.occasion); setStyle({ ...item.style }); setRecommendation(null); setRecommendationId(null);
-        }}>{DESIGNER_SHIRTS.find((fabric) => fabric.id === item.shirtId)?.name} + {DESIGNER_PANTS.find((fabric) => fabric.id === item.pantId)?.name} · {item.style.trouser} · {item.occasion}</button></li>)}</ul></details>}
+        }}>{DESIGNER_SHIRTS.find((fabric) => fabric.id === item.shirtId)?.name} + {DESIGNER_PANTS.find((fabric) => fabric.id === item.pantId)?.name} · {item.style.shirtWear} · {item.style.trouser} · {item.occasion}</button></li>)}</ul></details>}
       </section>
 
       <div className="newDesignerRight">
@@ -246,7 +265,7 @@ export function DesignerModule() {
             <div><span>PHYSICAL CLOTH CHECK</span><strong>{recommendation.materialEvidence.verified}/{recommendation.materialEvidence.total}</strong><small>Material facts confirmed across both cloths. We check the rolls before making a garment.</small></div>
           </div>
           <div className="newDesignerDetails">
-            <div><span>SHIRT</span><strong>{recommendation.style.collar}</strong><small>{recommendation.style.shirtFit} · {recommendation.style.cuff} · {recommendation.style.placket}</small></div>
+            <div><span>SHIRT</span><strong>{recommendation.style.collar}</strong><small>{recommendation.style.shirtWear} · {recommendation.style.collarFinish} · {recommendation.style.shirtFit} · {recommendation.style.cuff} · {recommendation.style.placket}</small></div>
             <div><span>TROUSERS</span><strong>{recommendation.style.trouser}</strong><small>{recommendation.style.rise} · {recommendation.style.waistband} · {recommendation.style.break}</small></div>
           </div>
           <p className="newDesignerProvisional">{recommendation.status === "preliminary" ? "A preliminary direction. We would check the actual fabric before confirming the cut." : "This is your proposed cut, pending a LLinen Earth stylist's review."}</p>

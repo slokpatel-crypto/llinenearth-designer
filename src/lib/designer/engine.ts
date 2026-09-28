@@ -52,9 +52,11 @@ export interface DesignerRecommendation {
   occasion: OccasionTier;
   style: {
     collar: string;
+    collarFinish: string;
     cuff: string;
     placket: string;
     shirtFit: string;
+    shirtWear: string;
     trouser: string;
     rise: string;
     waistband: string;
@@ -89,7 +91,7 @@ export type DesignerAccent = {
  * its weights, presets and wording remain provisional until LLinen Earth
  * approves them against real cloth.
  */
-export const DESIGNER_RULE_SET_VERSION = "shirt-pant-reference-provisional-4";
+export const DESIGNER_RULE_SET_VERSION = "shirt-pant-reference-provisional-5";
 
 // Owner approved the visual pairing for Semi-Formal use on 2026-09-27.
 // This approves neither physical availability nor the proposed garment details.
@@ -124,22 +126,26 @@ const bands = sheets.Occasion_Formality_Bands as Array<{ Occasion_Tier: string; 
 
 const PRESETS: Record<OccasionTier, DesignerRecommendation["style"]> = {
   Casual: {
-    collar: "Button-Down Collar", cuff: "Barrel Cuff (1-button)", placket: "Standard (visible stitch)",
+    collar: "Button-Down Collar", collarFinish: "Self-fabric", cuff: "Barrel Cuff (1-button)", placket: "Standard (visible stitch)",
+    shirtWear: "Untucked",
     shirtFit: "Regular / Classic Fit", trouser: "Wide-leg / Relaxed Drape Trouser",
     rise: "Mid Rise", waistband: "Belt Loops", break: "No Break", button: "Plastic / Resin",
   },
   "Smart-Casual": {
-    collar: "Point (Standard) Collar", cuff: "Barrel Cuff (1-button)", placket: "Standard (visible stitch)",
+    collar: "Point (Standard) Collar", collarFinish: "Self-fabric", cuff: "Barrel Cuff (1-button)", placket: "Standard (visible stitch)",
+    shirtWear: "Untucked",
     shirtFit: "Regular / Classic Fit", trouser: "Cropped / Ankle-length Trouser",
     rise: "Mid Rise", waistband: "Belt Loops", break: "Cropped / Above-ankle", button: "Plastic / Resin",
   },
   "Semi-Formal": {
-    collar: "Point (Standard) Collar", cuff: "Barrel Cuff (2-button)", placket: "Standard (visible stitch)",
+    collar: "Point (Standard) Collar", collarFinish: "Self-fabric", cuff: "Barrel Cuff (2-button)", placket: "Standard (visible stitch)",
+    shirtWear: "Tucked",
     shirtFit: "Regular / Classic Fit", trouser: "Pleated Trouser",
     rise: "Mid Rise", waistband: "Side-Adjuster Tabs", break: "Slight Break", button: "Corozo (vegetable ivory)",
   },
   Formal: {
-    collar: "Spread Collar", cuff: "French / Double Cuff", placket: "Hidden / Fly-front",
+    collar: "Spread Collar", collarFinish: "Self-fabric", cuff: "French / Double Cuff", placket: "Hidden / Fly-front",
+    shirtWear: "Tucked",
     shirtFit: "Regular / Classic Fit", trouser: "Formal Trouser (Flat-front)",
     rise: "High Rise", waistband: "Side-Adjuster Tabs", break: "Slight Break", button: "Mother-of-Pearl",
   },
@@ -153,9 +159,11 @@ const shirtOptions = (group: string) => names(details.filter((row) => row.Elemen
 // plackets need a second fabric and are withheld until accent rules are built.
 export const DESIGNER_STYLE_CHOICES: Record<keyof DesignerStyle, string[]> = {
   collar: names(collars.filter((row) => row.Collar_Type !== "Wing Collar"), "Collar_Type"),
+  collarFinish: ["Self-fabric", "White contrast collar", "White contrast collar + cuffs"],
   cuff: names(cuffs, "Cuff_Type"),
   placket: shirtOptions("Placket").filter((option) => option !== "Contrast Placket"),
   shirtFit: shirtOptions("Fit"),
+  shirtWear: ["Untucked", "Tucked"],
   trouser: names(trousers.filter((row) => !["Chino", "Cotton Drill Trouser"].includes(String(row.Trouser_Type))), "Trouser_Type"),
   rise: pantOptions("Rise"),
   waistband: pantOptions("Waistband"),
@@ -315,16 +323,18 @@ export function evaluateDesignerAccent(base: DesignerFabric, accent: DesignerFab
   ];
 }
 
-function reviewLine(rules: DesignerRuleResult[], occasion: OccasionTier): string {
+function reviewLine(rules: DesignerRuleResult[], occasion: OccasionTier, whiteContrast = false): string {
   const flagged = (id: string) => rules.some((item) => item.id === id && item.status === "flag");
   if (flagged("CUT-CUFF")) return "A French cuff needs a spread or cutaway collar; let us review this cut.";
   if (flagged("CUT-HEM")) return "A cropped trouser needs a matching hem length; let us review this cut.";
+  if (flagged("CUT-TUCK")) return "A tucked shirt will give this formal look a cleaner waistline.";
   if (flagged("CR-4")) return "Two prominent patterns compete here; one piece should be quieter.";
   if (flagged("FORMAL-PRINT")) return "The visible pattern reads too relaxed for this formal direction.";
   if (flagged("CR-1")) return "The shirt and trousers sit at different formality levels; let us refine the balance.";
   if (flagged("CUT-WAIST")) return "A soft waistband changes the formality of this look; let us review the finish.";
   if (flagged("CONTEXT-CLIMATE")) return "One cloth is marked unsuitable for the requested climate; let us find a better physical fabric.";
   if (flagged("CR-2")) return "We should compare these colours against the physical cloth before recommending them.";
+  if (whiteContrast) return "A white contrast collar could sharpen this direction once we verify the separate white fabric.";
   return `This ${occasion.toLowerCase()} direction needs a closer look at the cloth and cut.`;
 }
 
@@ -337,7 +347,9 @@ function directionLine(shirt: DesignerFabric, pant: DesignerFabric, style: Desig
     : style.trouser === "Formal Trouser (Flat-front)" ? "a flat front keeps the line crisp"
       : style.trouser === "Wide-leg / Relaxed Drape Trouser" ? "a fuller leg gives the silhouette more volume"
         : "the trouser line gives the outfit its shape";
-  return `${shirt.name} with ${pant.name} ${palette}; ${shape} for ${occasion.toLowerCase()} wear.`;
+  const shirtFinish = style.shirtWear === "Tucked" ? " A tucked shirt gives the waist a cleaner line." : "";
+  const contrastCollar = style.collarFinish !== "Self-fabric" ? " The white contrast detail is provisional until its cloth is selected." : "";
+  return `${shirt.name} with ${pant.name} ${palette}; ${shape} for ${occasion.toLowerCase()} wear.${shirtFinish}${contrastCollar}`;
 }
 
 export function evaluateDesignerCombo(shirt: DesignerFabric, pant: DesignerFabric, occasion: OccasionTier, overrides?: DesignerStyleOverrides, accent?: DesignerAccent, context: DesignerContext = DEFAULT_DESIGNER_CONTEXT): DesignerRecommendation {
@@ -429,6 +441,14 @@ export function evaluateDesignerCombo(shirt: DesignerFabric, pant: DesignerFabri
     occasion === "Formal" && style.waistband === "Drawstring / Elastic"
       ? "The reference places drawstring or elastic waistbands in casual looks."
       : "The waistband does not conflict with this occasion in the reference."));
+  const untuckedFormal = occasion === "Formal" && style.shirtWear === "Untucked";
+  rules.push(rule("CUT-TUCK", untuckedFormal ? "High" : "Low", untuckedFormal ? "flag" : "pass",
+    untuckedFormal ? "An untucked shirt breaks the clean waistline of this formal direction; try a tucked shirt with enough length to stay in place."
+      : "The selected shirt finish can be assessed with this occasion."));
+  const whiteContrast = style.collarFinish !== "Self-fabric";
+  rules.push(rule("DETAIL-WHITE-COLLAR", "Medium", whiteContrast ? "unknown" : "not_applicable",
+    whiteContrast ? "The white contrast collar needs a separate real fabric; shade, weight, shrinkage and availability are not documented."
+      : "No separate collar fabric is requested."));
   rules.push(rule("OCCASION", "Medium", bandMatch === null ? "unknown" : bandMatch ? "pass" : "flag",
     comboScore === null ? "The occasion formality band needs review." : `The provisional look scores ${comboScore.toFixed(1)} against the ${occasion} band of ${band[0]}–${band[1]}.`));
   if (occasion === "Formal" && ((shirtPatternScore !== null && shirtPatternScore < 4) || (pantPatternScore !== null && pantPatternScore < 4))) {
@@ -438,25 +458,32 @@ export function evaluateDesignerCombo(shirt: DesignerFabric, pant: DesignerFabri
   const fit = Math.max(0, 100 - rules.reduce((sum, item) => sum + (item.status === "flag" ? penalties[item.severity] : 0), 0));
   const unknownCount = rules.filter((item) => item.status === "unknown").length;
   const confidenceScore = Math.min(fit, Math.max(0, 100 - unknownCount * 9));
-  const needsReview = confidenceScore < 65 || bandMatch === false || climateStatus === "flag" || colorRelation === "unverified contrast"
+  const needsReview = confidenceScore < 65 || bandMatch === false || climateStatus === "flag" || colorRelation === "unverified contrast" || whiteContrast
     || (Boolean(accent) && accentStatus !== "pass")
     || rules.some((item) => item.status === "flag" && item.severity === "High");
+  const materialEvidence = designerMaterialEvidence(shirt, pant);
+  if (whiteContrast) {
+    materialEvidence.total += 1;
+    materialEvidence.missing.push("White contrast collar cloth: shade, weight, shrinkage and available metres");
+  }
   const confirmationsNeeded = [
     "Confirm current availability and required metres for both fabrics.",
     "Confirm GSM, opacity and drape before cutting; these are absent from the catalogue.",
     ...(context.climate !== "Not specified" && climateStatus !== "pass" ? ["Check air flow, thermal comfort and the chosen climate against both physical cloths."] : []),
     "Confirm the chosen fit and proportions against the wearer's measurements.",
+    ...(style.shirtWear === "Tucked" ? ["Confirm shirt body length, waist ease and the actual tuck against the wearer."] : []),
+    ...(whiteContrast ? ["Choose and verify a separate white collar cloth; confirm its shade, weight, shrinkage and metres before cutting."] : []),
     ...(shirt.patternScale === null || pant.patternScale === null ? ["Check motif scale against a physical swatch."] : []),
     ...(accent && accentStatus !== "pass" ? ["Confirm accent role, weight, colour and placement with the physical cloth."] : []),
     ...(needsReview ? ["Review the flagged pairing with a LLinen Earth stylist."] : []),
   ];
   const shortReason = needsReview
-    ? reviewLine(rules, occasion)
+    ? reviewLine(rules, occasion, whiteContrast)
     : directionLine(shirt, pant, style, colorRelation, occasion);
   return {
     shirt, pant, occasion, style,
     ...(accent ? { accent: { garment: accent.garment, fabricId: accent.fabric.id, placement: accent.placement } } : {}),
-    confidenceScore, designFitScore: fit, materialEvidence: designerMaterialEvidence(shirt, pant), context,
+    confidenceScore, designFitScore: fit, materialEvidence, context,
     formality: { shirt: shirtScore, pant: pantScore, delta, band, match: bandMatch }, status: needsReview ? "needs_review" : "preliminary",
     shortReason, rules, confirmationsNeeded, ruleSetVersion: DESIGNER_RULE_SET_VERSION,
     internalReason: rules.map((item) => `${item.id}: ${item.status} — ${item.explanation}`).join("\n"),

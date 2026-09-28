@@ -20,7 +20,8 @@ function alternatives(occasion: OccasionTier): Candidate[] {
     {
       id: "clean", name: "Clean line", proposition: "A quieter outline with a flat front and restrained shirt details.",
       patch: {
-        collar: formal ? "Spread Collar" : "Point (Standard) Collar", cuff: formal ? "French / Double Cuff" : "Barrel Cuff (2-button)",
+        collar: formal ? "Spread Collar" : "Point (Standard) Collar", collarFinish: "Self-fabric", cuff: formal ? "French / Double Cuff" : "Barrel Cuff (2-button)",
+        shirtWear: "Tucked",
         shirtFit: "Regular / Classic Fit", trouser: "Formal Trouser (Flat-front)",
         rise: formal ? "High Rise" : "Mid Rise", waistband: "Side-Adjuster Tabs", break: "Slight Break",
       },
@@ -28,7 +29,8 @@ function alternatives(occasion: OccasionTier): Candidate[] {
     {
       id: "heritage", name: "Tailored ease", proposition: "A pleat adds room through the upper leg while keeping a tailored finish.",
       patch: {
-        collar: formal ? "Spread Collar" : "Point (Standard) Collar", cuff: formal ? "French / Double Cuff" : "Barrel Cuff (2-button)",
+        collar: formal ? "Spread Collar" : "Point (Standard) Collar", collarFinish: "Self-fabric", cuff: formal ? "French / Double Cuff" : "Barrel Cuff (2-button)",
+        shirtWear: "Tucked",
         shirtFit: "Regular / Classic Fit", trouser: "Pleated Trouser", rise: "Mid Rise",
         waistband: "Side-Adjuster Tabs", break: "Slight Break",
       },
@@ -36,7 +38,8 @@ function alternatives(occasion: OccasionTier): Candidate[] {
     {
       id: "movement", name: "Relaxed proportion", proposition: "A fuller leg and a softer shirt shape make the silhouette more expressive.",
       patch: {
-        collar: relaxed ? "Button-Down Collar" : "Point (Standard) Collar", cuff: "Barrel Cuff (1-button)",
+        collar: relaxed ? "Button-Down Collar" : "Point (Standard) Collar", collarFinish: "Self-fabric", cuff: "Barrel Cuff (1-button)",
+        shirtWear: relaxed ? "Untucked" : "Tucked",
         shirtFit: "Relaxed Fit", trouser: "Wide-leg / Relaxed Drape Trouser", rise: "Mid Rise",
         waistband: "Belt Loops", break: "No Break",
       },
@@ -86,6 +89,7 @@ export function suggestDesignerRepairs(recommendation: DesignerRecommendation): 
   if (flagged("CUT-CUFF")) repairs.push({ label: "Pair the French cuff with a spread collar.", patch: { collar: "Spread Collar" } });
   if (flagged("CUT-HEM")) repairs.push({ label: "Give the cropped trouser a matching above-ankle hem.", patch: { break: "Cropped / Above-ankle" } });
   if (flagged("CUT-WAIST")) repairs.push({ label: "Use side adjusters for a cleaner formal waistband.", patch: { waistband: "Side-Adjuster Tabs" } });
+  if (flagged("CUT-TUCK")) repairs.push({ label: "Tuck the shirt for a clean formal waistline.", patch: { shirtWear: "Tucked" } });
   if (flagged("CR-4")) repairs.push({ label: "Try a solid or fine motif in one garment; confirm the substitute cloth in store." });
   if (flagged("FORMAL-PRINT")) repairs.push({ label: "Compare a quieter physical shirting or trouser swatch for this formal event." });
   if (flagged("CONTEXT-CLIMATE")) repairs.push({ label: "Check another verified fabric with comfort tags for this climate." });
