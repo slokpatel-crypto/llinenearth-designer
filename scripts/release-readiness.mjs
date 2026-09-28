@@ -129,7 +129,7 @@ requireTokens("src/lib/designer/search.ts", [
 ]);
 requireTokens("src/components/DesignerModule.tsx", [
   "DESIGNER SEARCH / V4","Search catalogue","Keep shirt","Keep trouser","Open search","Why over my current choice?","Use this direction",
-  "CREATIVE DESIGNER / V5","DIRECT + MUTATE + HYBRID + RADICAL","researchFreedom:\"maximum\"","RESEARCH USE"
+  "CREATIVE DESIGNER / V5","MAXIMUM DIVERGENCE","DIRECT + MUTATE + HYBRID + RADICAL","TOP 5","researchFreedom:\"maximum\"","RESEARCH USE"
 ]);
 requireTokens("src/lib/designer/creative-engine.ts", [
   "generateCreativeDirections","researchMutationSeeds","hybridResearchSeed","researchFreedom","maximum","researchUtilization","explorationClass"
