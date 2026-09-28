@@ -27,6 +27,8 @@ console.log(`LLinen Earth release readiness${live ? " (live)" : " (static)"}\n`)
 for (const path of [
   "src/app/page.tsx",
   "src/app/api/homepage-model/route.ts",
+  "src/components/MeasurementStudio.tsx",
+  "src/app/measurements/page.tsx",
   "public/designer/studio-tucked.webp",
   "src/lib/designer/photo-preview.ts",
   "src/components/PhotoOutfitPreview.tsx",
@@ -53,6 +55,8 @@ requireTokens("src/lib/designer/photo-preview.ts", [
   "PHOTO_TUCKED_NECK_CLEAR",
   "/designer/studio-tucked.webp",
 ]);
+requireTokens("src/app/measurements/page.tsx", ["MeasurementStudio","MEASUREMENT STUDIO","See exactly where"]);
+requireTokens("src/components/MeasurementStudio.tsx", ["SHIRT BLUEPRINT","TROUSER BLUEPRINT","active===id","/designer-studio"]);
 requireTokens("src/app/api/homepage-model/route.ts", [
   "FASHN_API_KEY",
   "model-create",
