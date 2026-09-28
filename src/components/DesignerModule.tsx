@@ -532,6 +532,16 @@ export function DesignerModule() {
               </div>
               {fitConstruction.checks.some((item) => item.severity !== "info") && <div className="newDesignerConstructionChecks"><span>CONSTRUCTION CHECKS</span>{fitConstruction.checks.filter((item) => item.severity !== "info").slice(0,4).map((item) => <p key={item.id} data-severity={item.severity}>{item.message}</p>)}</div>}
             </div>}
+            {blockStrategy && <div className="newDesignerBlockStrategy">
+              <div className="newDesignerBlockHead"><span>PATTERN BLOCK / V1</span><strong>{blockStrategy.score}/100 starting-block read</strong></div>
+              <div className="newDesignerBlockGrid">
+                <article><span>SHIRT BLOCK</span><strong>{blockStrategy.shirtBlock.replaceAll("-"," ")}</strong><p>{blockStrategy.summary[0]}</p></article>
+                <article><span>TROUSER BLOCK</span><strong>{blockStrategy.trouserBlock.replaceAll("-"," ")}</strong><p>{blockStrategy.summary[1]}</p></article>
+              </div>
+              {blockStrategy.adjustments.some((item)=>item.severity!=="info") && <div className="newDesignerBlockChecks">{blockStrategy.adjustments.filter((item)=>item.severity!=="info").slice(0,4).map((item)=><p key={item.id} data-severity={item.severity}><b>{item.area}</b>{item.message}</p>)}</div>}
+              {blockStrategy.suggestedPatch && <button type="button" onClick={()=>assess({...style,...blockStrategy.suggestedPatch})}>Try safer starting block ↗</button>}
+              <small>Starting-block strategy guides pattern selection and fitting review; it does not create a cutting pattern.</small>
+            </div>}
             {observationCoverage > 0 && <div className="newDesignerTailorObservations">
               <span>TAILOR OBSERVATIONS · {observationCoverage}/4</span>
               {observationSummary.map((note)=><b key={note}>{note}</b>)}
@@ -561,7 +571,7 @@ export function DesignerModule() {
               <div className="newDesignerSearchWhy"><span>WHY THIS DIRECTION</span>{result.reasons.slice(0,3).map((reason)=><p key={reason}>{reason}</p>)}</div>
               <details><summary>Why over my current choice?</summary>{result.comparison.map((item)=><p key={item}>{item}</p>)}</details>
               {result.tradeoffs.length>0 && <details><summary>Trade-offs / checks</summary>{result.tradeoffs.map((item)=><p key={item}>{item}</p>)}</details>}
-              <div className="newDesignerSearchSignals"><span>FIT {result.fitConstruction.fitScore}</span><span>BRAND {result.brandLanguage.score}</span><span>NOVELTY {result.noveltyScore}</span>{result.casebookSignal.evidence>=3 && <span>CASEBOOK {result.casebookSignal.score>0?"+":""}{result.casebookSignal.score}</span>}{result.fitOutcomeSignal.evidence>=3 && <span>FIRST FIT {result.fitOutcomeSignal.score>0?"+":""}{result.fitOutcomeSignal.score}</span>}</div>
+              <div className="newDesignerSearchSignals"><span>FIT {result.fitConstruction.fitScore}</span><span>BLOCK {result.blockStrategy.score}</span><span>BRAND {result.brandLanguage.score}</span><span>NOVELTY {result.noveltyScore}</span>{result.casebookSignal.evidence>=3 && <span>CASEBOOK {result.casebookSignal.score>0?"+":""}{result.casebookSignal.score}</span>}{result.fitOutcomeSignal.evidence>=3 && <span>FIRST FIT {result.fitOutcomeSignal.score>0?"+":""}{result.fitOutcomeSignal.score}</span>}</div>
               <button className="newDesignerSearchUse" type="button" onClick={()=>useSearchResult(result)}>Use this direction</button>
             </article>)}
           </div>}
@@ -641,6 +651,7 @@ export function DesignerModule() {
               <span>VISUAL / {garmentSpec.readiness.visualization.replaceAll("_"," ")}</span>
               <span>TAILORING / {garmentSpec.readiness.tailoring.replaceAll("_"," ")}</span>
               <span>MATERIAL / {garmentSpec.readiness.materialVerification.replaceAll("_"," ")}</span>
+              {garmentSpec.blockStrategy && <span>BLOCK / {garmentSpec.blockStrategy.shirtBlock.replaceAll("-"," ")} + {garmentSpec.blockStrategy.trouserBlock.replaceAll("-"," ")}</span>}
             </div>
             <p>This is the common Designer handoff for visualization and tailoring review. It is not a cutting pattern.</p>
           </section>}
@@ -666,7 +677,7 @@ export function DesignerModule() {
             {directions.slice(1).map((direction) => <article key={direction.id}>
               <strong>{direction.name}</strong><p>{direction.proposition}</p>
               <small>{direction.changes.join(" · ")}</small>
-              {direction.fitConstruction && <span className="newDesignerDirectionFit">FIT + CONSTRUCTION {direction.fitConstruction.fitScore}/100</span>}{direction.brandLanguage && <span className="newDesignerDirectionBrand">LINEN EARTH {direction.brandLanguage.score}/100</span>}
+              {direction.fitConstruction && <span className="newDesignerDirectionFit">FIT + CONSTRUCTION {direction.fitConstruction.fitScore}/100</span>}{direction.blockStrategy && <span className="newDesignerDirectionBlock">BLOCK {direction.blockStrategy.score}/100</span>}{direction.brandLanguage && <span className="newDesignerDirectionBrand">LINEN EARTH {direction.brandLanguage.score}/100</span>}
               <button type="button" onClick={() => assess(direction.recommendation.style)}>Assess this cut</button>
             </article>)}
           </div>}
