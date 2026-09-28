@@ -759,8 +759,22 @@ function criticsFor(
   return {reads,fit,brand};
 }
 
-function scoreCritics(reads:CreativeCriticRead[]) {
+function scoreCritics(reads:CreativeCriticRead[],freedom:CreativeFreedom) {
   const map=Object.fromEntries(reads.map((item)=>[item.id,item.score])) as Record<CreativeCriticId,number>;
+  if(freedom==="maximum") {
+    // Maximum-research mode intentionally gives the creative critics most of the
+    // influence. Brand, convention and construction still speak, but cannot dominate.
+    return round(
+      map.aesthetic*.35+
+      map.originality*.30+
+      map.brand*.10+
+      map.menswear*.13+
+      map.construction*.12
+    );
+  }
+  if(freedom==="exploratory") {
+    return round(map.aesthetic*.34+map.originality*.26+map.brand*.13+map.menswear*.16+map.construction*.11);
+  }
   return round(map.aesthetic*.32+map.originality*.23+map.brand*.16+map.menswear*.19+map.construction*.10);
 }
 
@@ -792,7 +806,7 @@ function buildDirection(seed:Seed,input:CreativeLabInput,iteration:number,treatm
   const researchExpansionBonus=freedom==="maximum"
     ? Math.min(8,(pattern?3:0)+treatments.filter((item)=>item.buildability==="experimental").length*2+Math.max(0,treatments.length-1))
     : freedom==="exploratory" ? 2 : 0;
-  const overall=round(scoreCritics(reads)+learning.score+researchExpansionBonus);
+  const overall=round(scoreCritics(reads,freedom)+learning.score+researchExpansionBonus);
   const certainty=certaintyFor(recommendation,seed,treatments,pattern);
   const construction=reads.find((item)=>item.id==="construction")?.score ?? 0;
   const aesthetic=reads.find((item)=>item.id==="aesthetic")?.score ?? 0;
