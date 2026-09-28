@@ -19,6 +19,25 @@ import { fitOutcomeProportionFromMeasurements, fitOutcomeSignalFor, type FitOutc
 export type DesignerSearchScope = "keep_shirt" | "keep_trouser" | "open";
 export type DesignerSearchTier = "Safe" | "Elevated" | "Statement";
 
+export type DesignerDecisionDimension = {
+  id: "compatibility" | "fit" | "block" | "brand" | "material" | "novelty" | "learning";
+  label: string;
+  score: number;
+  weight: number;
+  status: "strong" | "review" | "weak";
+  evidence: string;
+};
+
+export type DesignerDecisionRead = {
+  version: "designer-decision-v4";
+  overall: number;
+  certainty: number;
+  risk: "low" | "moderate" | "high";
+  dimensions: DesignerDecisionDimension[];
+  dominantStrengths: string[];
+  uncertainties: string[];
+};
+
 export type DesignerSearchResult = {
   id: string;
   tier: DesignerSearchTier;
@@ -31,6 +50,7 @@ export type DesignerSearchResult = {
   blockStrategy: DesignerBlockStrategy;
   casebookSignal: DesignerCasebookSignal;
   fitOutcomeSignal: FitOutcomeSignal;
+  decision: DesignerDecisionRead;
   searchScore: number;
   noveltyScore: number;
   reasons: string[];
@@ -170,33 +190,103 @@ function hardBlocked(recommendation:DesignerRecommendation,fit:FitConstructionAs
     || fit.checks.some((item)=>item.severity==="warning");
 }
 
-function candidateScore(
+function clampScore(value:number) {
+  return Math.max(0,Math.min(100,value));
+}
+
+function decisionStatus(score:number):DesignerDecisionDimension["status"] {
+  return score>=82 ? "strong" : score>=65 ? "review" : "weak";
+}
+
+function buildDecisionRead(
   tier:DesignerSearchTier,
   recommendation:DesignerRecommendation,
   fit:FitConstructionAssessment,
   brand:BrandLanguageEvaluation,
   block:DesignerBlockStrategy,
   novelty:number,
-  casebookScore=0,
-  fitOutcomeScore=0,
-) {
+  casebookSignal:DesignerCasebookSignal,
+  fitOutcomeSignal:FitOutcomeSignal,
+):DesignerDecisionRead {
   const target=TARGET_NOVELTY[tier];
-  const noveltyAlignment=Math.max(0,100-Math.abs(novelty-target)*1.5);
-  const material=evidenceScore(recommendation);
-  const confidenceWeight=tier==="Safe" ? .22 : .16;
-  const noveltyWeight=tier==="Statement" ? .15 : .10;
-  const designWeight=tier==="Safe" ? .27 : .31;
-  const score=
-    recommendation.designFitScore*designWeight+
-    recommendation.confidenceScore*confidenceWeight+
-    fit.fitScore*.16+
-    block.score*.10+
-    brand.score*.13+
-    material*.06+
-    noveltyAlignment*noveltyWeight+
-    Math.max(-6,Math.min(6,casebookScore))+
-    Math.max(-4,Math.min(4,fitOutcomeScore));
-  return Math.round(score*10)/10;
+  const noveltyAlignment=clampScore(100-Math.abs(novelty-target)*1.5);
+  const material=clampScore(evidenceScore(recommendation));
+  const learned=clampScore(
+    50+
+    Math.max(-6,Math.min(6,casebookSignal.score))*5+
+    Math.max(-4,Math.min(4,fitOutcomeSignal.score))*7
+  );
+
+  const raw=[
+    {
+      id:"compatibility" as const,label:"Rule fit",score:recommendation.designFitScore,weight:.28,
+      evidence:"Occasion, colour, pattern, construction and fabric compatibility rules.",
+    },
+    {
+      id:"fit" as const,label:"Fit + construction",score:fit.fitScore,weight:.18,
+      evidence:"Measurement-aware ease, proportion and construction checks.",
+    },
+    {
+      id:"block" as const,label:"Block strategy",score:block.score,weight:.10,
+      evidence:"Starting shirt and trouser block suitability for the recorded proportions.",
+    },
+    {
+      id:"brand" as const,label:"Linen Earth",score:brand.score,weight:.14,
+      evidence:"Soft brand-language alignment; never overrides hard fit or cloth constraints.",
+    },
+    {
+      id:"material" as const,label:"Cloth evidence",score:material,weight:.10,
+      evidence:"Share of physical fabric facts verified for the two selected cloths.",
+    },
+    {
+      id:"novelty" as const,label:"Novelty control",score:noveltyAlignment,weight:.12,
+      evidence:`How closely the visual energy matches the ${tier.toLowerCase()} direction.`,
+    },
+    {
+      id:"learning" as const,label:"Reviewed evidence",score:learned,weight:.08,
+      evidence:"Operator casebook and reviewed first-fit outcomes; neutral while evidence is sparse.",
+    },
+  ];
+
+  const dimensions:DesignerDecisionDimension[]=raw.map((item)=>({
+    ...item,score:Math.round(clampScore(item.score)*10)/10,status:decisionStatus(item.score),
+  }));
+  const weighted=dimensions.reduce((sum,item)=>sum+item.score*item.weight,0);
+  const learningCoverage=clampScore((casebookSignal.evidence+fitOutcomeSignal.evidence)*8);
+  const certainty=clampScore(
+    recommendation.confidenceScore*.70+
+    material*.20+
+    learningCoverage*.10
+  );
+  // Uncertainty can lower a ranking slightly, but never overwhelms the hard
+  // construction and fit rules that already decide whether a candidate enters search.
+  const uncertaintyPenalty=Math.max(0,65-certainty)*.12;
+  const overall=Math.round(clampScore(weighted-uncertaintyPenalty)*10)/10;
+
+  const sorted=[...dimensions].sort((a,b)=>b.score-a.score);
+  const dominantStrengths=sorted.filter((item)=>item.status==="strong").slice(0,2)
+    .map((item)=>`${item.label} ${Math.round(item.score)}/100`);
+  const uncertainties:string[]=[];
+  if(material<55) uncertainties.push("Physical cloth evidence is still incomplete; verify GSM, drape, opacity and available metres.");
+  if(recommendation.confidenceScore<70) uncertainties.push("Several Designer rules still depend on unverified or approximate inputs.");
+  if(casebookSignal.evidence<3 && fitOutcomeSignal.evidence<3) uncertainties.push("Reviewed operator and first-fit evidence is still too sparse to materially influence this direction.");
+  if(fit.fitScore<78) uncertainties.push("Measurement-aware fit/construction still needs review.");
+  if(block.score<75) uncertainties.push("The starting block needs more adjustment than the stronger alternatives.");
+  if(brand.score<70) uncertainties.push("The direction sits outside the current Linen Earth taste language, though hard rules still take priority.");
+
+  const risk:DesignerDecisionRead["risk"] =
+    certainty<50 || material<20 || recommendation.designFitScore<70 || fit.fitScore<70 ? "high"
+      : certainty<72 || uncertainties.length>=2 ? "moderate" : "low";
+
+  return {
+    version:"designer-decision-v4",
+    overall,
+    certainty:Math.round(certainty*10)/10,
+    risk,
+    dimensions,
+    dominantStrengths,
+    uncertainties:uncertainties.slice(0,3),
+  };
 }
 
 function reasonsFor(
@@ -316,10 +406,11 @@ export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearc
           style,
           proportion:fitOutcomeProportionFromMeasurements(input.measurements),
         },input.fitOutcomes);
+        const decision=buildDecisionRead(tier,recommendation,fit,brand,block,novelty,casebookSignal,fitOutcomeSignal);
         ranked.push({
           id:`${tier.toLowerCase()}:${shirt.id}:${pant.id}`,
-          tier,shirt,pant,style,recommendation,fitConstruction:fit,brandLanguage:brand,blockStrategy:block,casebookSignal,fitOutcomeSignal,
-          searchScore:candidateScore(tier,recommendation,fit,brand,block,novelty,casebookSignal.score,fitOutcomeSignal.score),
+          tier,shirt,pant,style,recommendation,fitConstruction:fit,brandLanguage:brand,blockStrategy:block,casebookSignal,fitOutcomeSignal,decision,
+          searchScore:decision.overall,
           noveltyScore:novelty,
           reasons:reasonsFor(tier,scope,recommendation,fit,brand,block,novelty,casebookSignal,fitOutcomeSignal),
           tradeoffs:[
