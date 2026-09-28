@@ -107,6 +107,35 @@ function swatchTile(image: HTMLImageElement, fabric: DesignerFabric): HTMLCanvas
 
 function clamp(value: number) { return Math.max(0, Math.min(1, value)); }
 
+function patternScaleForFabric(fabric: DesignerFabric) {
+  const pattern = fabric.patternType.toLowerCase();
+  if (pattern === "solid") return .82;
+  if (/micro|fine|pinstripe/.test(pattern)) return .9;
+  if (/stripe|check|windowpane/.test(pattern)) return 1.02;
+  if (/floral|botanical|leaf|geometric|mosaic|chevron|abstract|block/.test(pattern)) return 1.12;
+  return 1;
+}
+
+function featherMaskInside(mask: HTMLCanvasElement, blurPx = 1.6) {
+  const feathered = document.createElement("canvas");
+  feathered.width = WIDTH;
+  feathered.height = HEIGHT;
+  const context = feathered.getContext("2d");
+  if (!context) throw new Error("Canvas is unavailable.");
+
+  // Blur the alpha edge, then intersect it with the original mask. This makes
+  // the edge softer only on the garment side; no alpha is allowed to spread
+  // onto the mannequin, neck, studio floor or neighbouring garment.
+  context.filter = `blur(${blurPx}px)`;
+  context.drawImage(mask, 0, 0);
+  context.filter = "none";
+  context.globalCompositeOperation = "destination-in";
+  context.drawImage(mask, 0, 0);
+  context.globalCompositeOperation = "source-over";
+  return feathered;
+}
+
+
 // The tucked photo has dark, cool shirting and warm trousers. Separate them
 // by their photographed colour, so cloth never spills onto arms, neck, the
 // studio set, or through the gap between the legs.
@@ -216,7 +245,7 @@ function drawGarment(
   const tile = swatchTile(swatch, fabric);
   const pattern = context.createPattern(tile, "repeat");
   if (!pattern) throw new Error("Could not prepare the fabric pattern.");
-  pattern.setTransform(new DOMMatrix().scale(fabric.patternType === "Solid" ? .83 : 1.08));
+  pattern.setTransform(new DOMMatrix().scale(patternScaleForFabric(fabric)));
   context.fillStyle = pattern;
   context.fillRect(0, 0, WIDTH, HEIGHT);
 
@@ -226,9 +255,19 @@ function drawGarment(
   context.globalCompositeOperation = "multiply";
   context.filter = lightingFilter;
   context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
+
+  // Reintroduce a small amount of the photograph's high-level seam/fold
+  // information after recolouring. Grayscale + soft-light preserves garment
+  // construction without bringing the original cloth colour back.
+  context.filter = "grayscale(1) contrast(1.22) brightness(1.05)";
+  context.globalCompositeOperation = "soft-light";
+  context.globalAlpha = .24;
+  context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
+  context.globalAlpha = 1;
   context.filter = "none";
+
   context.globalCompositeOperation = "destination-in";
-  if (mask) context.drawImage(mask, 0, 0);
+  if (mask) context.drawImage(featherMaskInside(mask), 0, 0);
   else {
     context.fillStyle = "#fff";
     context.fill(new Path2D(path));
@@ -300,6 +339,7 @@ export function PhotoOutfitPreview({ shirt, pant, style }: {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(false);
+  const [inspectFit, setInspectFit] = useState(false);
   const templateId = photoTemplateForStyle(style);
   const template = DESIGNER_PHOTO_TEMPLATES[templateId];
   const gaps = photoTemplateGaps(style, templateId);
@@ -345,7 +385,7 @@ export function PhotoOutfitPreview({ shirt, pant, style }: {
       <h2 id="designerPhotoTitle">See the cloth on a real-looking form.</h2>
       <p>The shirt and trouser fabrics update as you select them. This photo composition runs in your browser, with no AI render request per look.</p>
     </div>
-    <div className="newDesignerPhotoStage">
+    <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`}>
       <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-label={`${previewFabricLabel(shirt, pant)}, ${style.shirtWear.toLowerCase()} with ${style.collarFinish.toLowerCase()}`} />
       <span className="newDesignerPhotoTag">FRONT / STUDIO MODEL</span>
       {error && <span className="newDesignerPhotoError" role="alert">Preview could not load. Check the local fabric images.</span>}
@@ -354,7 +394,10 @@ export function PhotoOutfitPreview({ shirt, pant, style }: {
     <div className="newDesignerPhotoSummary">
       <div><span>SHIRT CLOTH</span><strong>{shirt.name}</strong></div>
       <div><span>TROUSER CLOTH</span><strong>{pant.name}</strong></div>
-      <button type="button" onClick={download} disabled={!ready}>Save preview PNG ↗</button>
+      <div className="newDesignerPhotoActions">
+        <button type="button" onClick={() => setInspectFit((value) => !value)} disabled={!ready}>{inspectFit ? "Full view" : "Inspect fit"}</button>
+        <button type="button" onClick={download} disabled={!ready}>Save preview PNG ↗</button>
+      </div>
     </div>
     <div className="newDesignerPhotoAccuracy">
       <strong>What the photo shows</strong>
