@@ -157,6 +157,8 @@ export default function OperatorClient() {
   const [caseReason,setCaseReason] = useState("other");
   const [caseNote,setCaseNote] = useState("");
   const [caseSaving,setCaseSaving] = useState(false);
+  const [caseRecommendationId,setCaseRecommendationId] = useState("");
+  const [replacementRecommendationId,setReplacementRecommendationId] = useState("");
 
   useEffect(()=>{
     setBrowserEvents(readBrowserStyleEvents());
@@ -236,7 +238,10 @@ export default function OperatorClient() {
   const designerLearning = usingBridge ? (bridge?.designerLearning || local.designerLearning) : usingCloud ? (cloud?.designerLearning || local.designerLearning) : local.designerLearning;
   const recordSource = usingBridge ? "LOCAL PC VAULT" : usingCloud ? "CLOUD MEMORY" : "THIS BROWSER";
   const selected = sessions.find((s)=>s.sessionId===selectedId) || sessions[0] || null;
-  const selectedRecommendation = selected ? [...selected.events].reverse().find((event)=>event.type==="designer_recommendation") || null : null;
+  const designerRecommendations = selected ? selected.events.filter((event)=>event.type==="designer_recommendation") : [];
+  const selectedRecommendation = designerRecommendations.find((event)=>event.id===caseRecommendationId)
+    || designerRecommendations.at(-1) || null;
+  const replacementRecommendation = designerRecommendations.find((event)=>event.id===replacementRecommendationId) || null;
   const selectedCaseReview = selected && selectedRecommendation
     ? [...selected.events].reverse().find((event)=>event.type==="operator_note"
       && event.payload?.subtype==="designer_case_review"
@@ -246,6 +251,17 @@ export default function OperatorClient() {
   useEffect(()=>{
     if (!selectedId && sessions[0]) setSelectedId(sessions[0].sessionId);
   },[selectedId,sessions]);
+
+  useEffect(()=>{
+    if (!selected) {
+      setCaseRecommendationId("");
+      setReplacementRecommendationId("");
+      return;
+    }
+    const recommendations=selected.events.filter((event)=>event.type==="designer_recommendation");
+    setCaseRecommendationId(recommendations.at(-1)?.id || "");
+    setReplacementRecommendationId("");
+  },[selected?.sessionId]);
 
   const attention = sessions.filter((session)=>{
     const whatsapp = session.events.some((event)=>event.type==="whatsapp_clicked");
@@ -276,7 +292,7 @@ export default function OperatorClient() {
     setMessage(type === "sale_logged" ? "Sale outcome saved." : "Store visit saved.");
   }
 
-  async function reviewDesignerCase(verdict:"approved"|"rejected") {
+  async function reviewDesignerCase(verdict:"approved"|"rejected"|"adjusted") {
     if (!selected || !selectedRecommendation) return;
     const payload = selectedRecommendation.payload || {};
     const shirtId = String(payload.shirtId || "");
@@ -291,6 +307,31 @@ export default function OperatorClient() {
 
     setCaseSaving(true);
     try {
+      let replacement:Record<string,unknown> | undefined;
+      if (verdict === "adjusted") {
+        if (!replacementRecommendation || replacementRecommendation.id === selectedRecommendation.id) {
+          setMessage("Choose a different Designer recommendation as the preferred replacement.");
+          return;
+        }
+        const preferred = replacementRecommendation.payload || {};
+        const replacementShirtId = String(preferred.shirtId || "");
+        const replacementPantId = String(preferred.pantId || "");
+        const replacementOccasion = String(preferred.occasion || "");
+        const replacementStyle = preferred.style && typeof preferred.style === "object" && !Array.isArray(preferred.style)
+          ? preferred.style as Record<string,unknown> : {};
+        if (!replacementShirtId || !replacementPantId || !replacementOccasion) {
+          setMessage("The preferred replacement does not contain enough structured data.");
+          return;
+        }
+        replacement = {
+          recommendationId:replacementRecommendation.id,
+          shirtId:replacementShirtId,
+          pantId:replacementPantId,
+          occasion:replacementOccasion,
+          style:replacementStyle,
+        };
+      }
+
       const event = recordStyleMemoryEvent(selected.sessionId,"operator_note",{
         subtype:"designer_case_review",
         recommendationId:selectedRecommendation.id,
@@ -301,6 +342,7 @@ export default function OperatorClient() {
         style,
         reason:caseReason,
         note:caseNote,
+        ...(replacement ? {replacement} : {}),
       },"operator");
       refreshBrowser();
 
@@ -314,7 +356,8 @@ export default function OperatorClient() {
       }
 
       setCaseNote("");
-      setMessage(`Designer case marked ${verdict}.`);
+      setReplacementRecommendationId("");
+      setMessage(verdict === "adjusted" ? "Designer correction saved to Casebook." : `Designer case marked ${verdict}.`);
     } catch {
       setMessage("Designer case review could not be saved.");
     } finally {
@@ -426,18 +469,30 @@ export default function OperatorClient() {
                   <span data-verdict={String(selectedCaseReview?.payload?.verdict || "unreviewed")}>{selectedCaseReview ? String(selectedCaseReview.payload?.verdict || "reviewed").toUpperCase() : "UNREVIEWED"}</span>
                 </div>
                 <p>Only explicit operator reviews become Casebook evidence. A reviewed case can softly influence future search ranking but cannot override hard fit, construction or material rules.</p>
+                {designerRecommendations.length > 1 && <label>Recommendation to review
+                  <select value={selectedRecommendation.id} onChange={(event)=>{setCaseRecommendationId(event.target.value);setReplacementRecommendationId("");}}>
+                    {designerRecommendations.map((item,index)=><option key={item.id} value={item.id}>{index+1}. {String(item.payload?.occasion || "Outfit")} · {String(item.payload?.shirtId || "shirt")} + {String(item.payload?.pantId || "trouser")}</option>)}
+                  </select>
+                </label>}
                 <label>Review reason
                   <select value={caseReason} onChange={(event)=>setCaseReason(event.target.value)}>
                     {DESIGNER_FEEDBACK_REASONS.map(([value,label])=><option key={value} value={value}>{label}</option>)}
                     <option value="material_unknown">Material facts / verification</option>
                   </select>
                 </label>
+                {designerRecommendations.length > 1 && <label>Preferred replacement <span className="designerCaseOptional">only for an adjusted case</span>
+                  <select value={replacementRecommendationId} onChange={(event)=>setReplacementRecommendationId(event.target.value)}>
+                    <option value="">Choose another recommendation…</option>
+                    {designerRecommendations.filter((item)=>item.id!==selectedRecommendation.id).map((item,index)=><option key={item.id} value={item.id}>{index+1}. {String(item.payload?.occasion || "Outfit")} · {String(item.payload?.shirtId || "shirt")} + {String(item.payload?.pantId || "trouser")}</option>)}
+                  </select>
+                </label>}
                 <label>Optional review note
                   <textarea value={caseNote} onChange={(event)=>setCaseNote(event.target.value)} rows={2} placeholder="Why should this case be remembered?" />
                 </label>
                 <div className="designerCaseReviewActions">
                   <button disabled={caseSaving} onClick={()=>void reviewDesignerCase("approved")}>Approve case</button>
                   <button disabled={caseSaving} onClick={()=>void reviewDesignerCase("rejected")}>Reject case</button>
+                  <button className="adjusted" disabled={caseSaving || !replacementRecommendationId} onClick={()=>void reviewDesignerCase("adjusted")}>Save preferred replacement</button>
                 </div>
               </div>}
               <div className="timeline">
