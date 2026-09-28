@@ -20,6 +20,7 @@ const required = [
   "public/designer/studio-tucked.webp",
   "src/lib/designer/photo-preview.ts",
   "src/lib/designer/fit-construction.ts",
+  "src/lib/designer/constraint-negotiation.ts",
   "src/components/PhotoOutfitPreview.tsx",
   "src/app/designer-studio/page.tsx",
 ];
@@ -251,3 +252,14 @@ for (const token of ["FIT + CONSTRUCTION V2","formatFinishedRange","newDesignerG
   if (!designerV2.includes(token)) throw new Error(`Fit Construction V2 UI regression: missing ${token}`);
 }
 console.log("Fit Construction V2 gate passed: provisional ease ranges, finished-garment targets, construction checks and measurement-aware cut ranking protected.");
+
+
+const designerNegotiation = fs.readFileSync("src/lib/designer/constraint-negotiation.ts","utf8");
+for (const token of ["designer-negotiation-v1","buildDesignerNegotiation","hard_blocker","fit_tradeoff","smallest","TRY-PLEATED-BLOCK","MEASURE-SHIRT-LENGTH","VERIFY-TROUSER-DRAPE"]) {
+  if (!designerNegotiation.includes(token)) throw new Error(`Designer negotiation regression: missing ${token}`);
+}
+const designerNegotiationUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
+for (const token of ["DESIGNER NEGOTIATION","SMALLEST FIXES","newDesignerPreserve","buildDesignerNegotiation","Open measurements"]) {
+  if (!designerNegotiationUi.includes(token)) throw new Error(`Designer negotiation UI regression: missing ${token}`);
+}
+console.log("Designer negotiation gate passed: blockers, verification gaps, fit trade-offs and smallest corrective actions protected.");
