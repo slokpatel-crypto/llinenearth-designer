@@ -77,6 +77,9 @@ export type CreativeDirection = {
   refinement:string[];
   visualSummary:string[];
   learning:CreativeLearningSignal;
+  researchUtilization:number;
+  explorationClass:"balanced"|"research-led"|"frontier";
+  constraintMode:CreativeFreedom;
 };
 
 export type CreativeFreedom = "guided"|"exploratory"|"maximum";
@@ -100,6 +103,7 @@ type Seed = {
   name:string;
   thesis:string;
   principle:CreativeResearchTrace;
+  extraPrinciples?:CreativeResearchTrace[];
   patch?:DesignerStyleOverrides;
   treatments:(input:CreativeLabInput)=>CreativeTreatment[];
   pattern?:(input:CreativeLabInput)=>CreativePattern|undefined;
@@ -300,6 +304,61 @@ function researchSeed(signal:CreativeResearchSignal):Seed {
       palette:palette(input,"#F1ECE4"),
       placement:signal.patternPlacement || `Concentrate around ${signal.zone}; preserve a quiet field elsewhere.`,
       note:`Research-derived design hypothesis from ${signal.sourceUrl}. Sample and visually review before production.`,
+    }) : undefined,
+  };
+}
+
+function researchTrace(signal:CreativeResearchSignal):CreativeResearchTrace {
+  return {
+    id:signal.id,
+    sourceTitle:signal.title,
+    sourceUrl:signal.sourceUrl,
+    extractedPrinciple:signal.principle,
+    transformedInto:signal.transformedIdea,
+  };
+}
+
+function hybridResearchSeed(a:CreativeResearchSignal,b:CreativeResearchSignal,index:number):Seed {
+  const aPattern=a.patternFamily==="none"?undefined:a.patternFamily;
+  const bPattern=b.patternFamily==="none"?undefined:b.patternFamily;
+  const chosenPattern=aPattern ? a : bPattern ? b : undefined;
+  const family=chosenPattern?.patternFamily==="none"?undefined:chosenPattern?.patternFamily;
+  return {
+    id:`hybrid-${a.id}-${b.id}-${index}`,
+    name:`${a.title} × ${b.title}`,
+    thesis:`Cross-pollinate two research principles: ${a.transformedIdea} Then use ${b.transformedIdea.toLowerCase()} as the counter-move.`,
+    principle:researchTrace(a),
+    extraPrinciples:[researchTrace(b)],
+    treatments:()=>[
+      treatment(
+        `hybrid-${a.id}-primary`,
+        a.zone,
+        a.treatmentLabel,
+        a.treatmentInstruction,
+        a.visualPurpose,
+        Math.min(100,Math.max(45,a.intensity)),
+        a.buildability,
+      ),
+      treatment(
+        `hybrid-${b.id}-counter`,
+        b.zone===a.zone ? (b.secondaryZone || (a.zone==="cuff"?"shirt-body":"cuff")) : b.zone,
+        b.treatmentLabel,
+        b.treatmentInstruction,
+        b.visualPurpose,
+        Math.min(92,Math.max(36,Math.round(b.intensity*.84))),
+        b.buildability,
+      ),
+    ],
+    pattern:chosenPattern && family ? (input)=>({
+      id:`hybrid-pattern-${a.id}-${b.id}`,
+      name:chosenPattern.patternName || `${chosenPattern.title} field`,
+      family,
+      layout:chosenPattern.patternLayout || chosenPattern.transformedIdea,
+      scale:chosenPattern.patternScale || "fine",
+      coverage:Math.max(8,Math.min(52,chosenPattern.patternCoverage ?? 26)),
+      palette:palette(input,"#EFE9E1"),
+      placement:chosenPattern.patternPlacement || `Use the pattern only where it supports the ${chosenPattern.zone} idea; keep the second research move visually separate.`,
+      note:`Hybrid research concept derived from ${a.sourceUrl} and ${b.sourceUrl}; it must be visually reviewed as a new synthesis, not treated as a copied look.`,
     }) : undefined,
   };
 }
@@ -741,12 +800,20 @@ function buildDirection(seed:Seed,input:CreativeLabInput,iteration:number,treatm
   const risk:CreativeDirection["risk"]=construction<52||ruleConflict?"high":certainty<58||aesthetic<62?"moderate":"low";
   return {
     id:`creative:${seed.id}:${variant}:v${iteration}`,name:seed.name,thesis:seed.thesis,baseStyle:style,recommendation,
-    treatments,pattern,critics:reads,overall,certainty,risk,research:[seed.principle],iteration,refinement,
+    treatments,pattern,critics:reads,overall,certainty,risk,research:[seed.principle,...(seed.extraPrinciples || [])],iteration,refinement,
     visualSummary:[
       ...treatments.slice(0,2).map((item)=>`${item.label}: ${item.visualPurpose}`),
       ...(pattern?[ `${pattern.name}: ${pattern.layout}` ]:[]),
     ].slice(0,3),
     learning,
+    researchUtilization:round(
+      42
+      +Math.min(26,(1+(seed.extraPrinciples?.length || 0))*13)
+      +(pattern?10:0)
+      +Math.min(16,treatments.filter((item)=>item.buildability!=="supported").length*6)
+    ),
+    explorationClass:variant==="radical"?"frontier":(seed.extraPrinciples?.length||seed.id.startsWith("research-")||seed.id.startsWith("hybrid-"))?"research-led":"balanced",
+    constraintMode:freedom,
   };
 }
 
@@ -790,11 +857,22 @@ function signature(item:CreativeDirection) {
 export function generateCreativeDirections(input:CreativeLabInput):CreativeDirection[] {
   const freedom=input.researchFreedom || "maximum";
   const learnedLimit=freedom==="maximum"?80:freedom==="exploratory"?40:24;
-  const learnedSeeds=(input.creativeResearch?.signals || [])
+  const activeSignals=(input.creativeResearch?.signals || [])
     .filter((signal)=>signal.active && Boolean(signal.sourceUrl))
-    .slice(0,learnedLimit)
-    .map(researchSeed);
-  const seedPool=[...SEEDS,...learnedSeeds];
+    .slice(0,learnedLimit);
+  const learnedSeeds=activeSignals.map(researchSeed);
+  const hybridSeeds:Seed[]=[];
+  if(freedom==="maximum" && activeSignals.length>=2) {
+    // Cross-pollinate distant research signals to avoid example fixation.
+    // Keep this bounded: the system should broaden the search, not explode combinatorially.
+    for(let i=0;i<Math.min(24,activeSignals.length);i+=1) {
+      const a=activeSignals[i];
+      const b=activeSignals[(i*7+3)%activeSignals.length];
+      if(a.id===b.id) continue;
+      hybridSeeds.push(hybridResearchSeed(a,b,i));
+    }
+  }
+  const seedPool=[...SEEDS,...learnedSeeds,...hybridSeeds];
 
   // Maximum mode intentionally expands before it converges. Research is allowed
   // to create radical candidates; critic scores and risk labels stay visible
@@ -831,9 +909,31 @@ export function generateCreativeDirections(input:CreativeLabInput):CreativeDirec
   refined.sort((a,b)=>b.overall-a.overall || b.certainty-a.certainty);
 
   const output:CreativeDirection[]=[];
-  for(const item of refined) {
+  const limit=Math.max(1,input.limit||3);
+  const add=(item:CreativeDirection|undefined)=>{
+    if(!item || output.length>=limit) return;
     if(output.every((chosen)=>signature(chosen)!==signature(item))) output.push(item);
-    if(output.length>=(input.limit||3)) break;
+  };
+
+  // Do not let a single conservative aggregate score erase the research frontier.
+  add(refined[0]);
+  if(freedom==="maximum" && limit>1) {
+    add([...refined].sort((a,b)=>{
+      const ao=a.critics.find((x)=>x.id==="originality")?.score || 0;
+      const bo=b.critics.find((x)=>x.id==="originality")?.score || 0;
+      return bo-ao || b.researchUtilization-a.researchUtilization;
+    })[0]);
+  }
+  if(freedom==="maximum" && limit>2) {
+    add([...refined].sort((a,b)=>
+      (b.explorationClass==="frontier"?1:0)-(a.explorationClass==="frontier"?1:0)
+      || b.researchUtilization-a.researchUtilization
+      || b.overall-a.overall
+    )[0]);
+  }
+  for(const item of refined) {
+    add(item);
+    if(output.length>=limit) break;
   }
   return output;
 }
