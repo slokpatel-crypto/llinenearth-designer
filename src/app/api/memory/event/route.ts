@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { verifyMemorySessionToken } from "@/lib/memory-session";
+import { CREATIVE_FEEDBACK_REASONS } from "@/lib/designer/creative-learning";
 
 const PUBLIC_TYPES = new Set([
   "session_started",
@@ -52,6 +53,7 @@ function rateLimit(request:Request) {
 const ANSWER_STEPS = new Set(["occasion","mood","time","climate","garment","colorDirection"]);
 const RENDER_MODES = new Set(["preview","photo"]);
 const DESIGNER_FEEDBACK_REASONS = new Set(["color","too_bold","too_safe","fit_cut","trouser_shape","formality","fabric","construction","other"]);
+const CREATIVE_FEEDBACK_REASON_IDS = new Set(CREATIVE_FEEDBACK_REASONS.map(([id])=>id));
 
 function text(value:unknown,max=160) {
   return String(value ?? "").trim().slice(0,max);
@@ -108,8 +110,17 @@ function cleanPayload(type:string, input:unknown) {
     const styleInput = payload.style && typeof payload.style === "object" && !Array.isArray(payload.style)
       ? payload.style as Record<string,unknown> : {};
     const style = Object.fromEntries(Object.entries(styleInput).slice(0,16).map(([key,value])=>[text(key,40),text(value,100)]));
+    const creativeConceptId=text(payload.creativeConceptId,180);
+    const creativeFamilyId=text(payload.creativeFamilyId,120);
+    const creativeConceptName=text(payload.creativeConceptName,140);
+    const creativePatternId=text(payload.creativePatternId,140);
+    const creativeReason=text(payload.creativeReason,40);
+    const creativeMoveIds=Array.isArray(payload.creativeMoveIds)
+      ? payload.creativeMoveIds.map((item)=>text(item,120)).filter(Boolean).slice(0,8)
+      : [];
     if (!recommendationId || !["up","down","saved"].includes(rating)) return null;
     if (reason && !DESIGNER_FEEDBACK_REASONS.has(reason)) return null;
+    if (creativeReason && !CREATIVE_FEEDBACK_REASON_IDS.has(creativeReason as never)) return null;
     return {
       recommendationId, rating,
       ...(reason ? { reason } : {}),
@@ -117,6 +128,15 @@ function cleanPayload(type:string, input:unknown) {
       pantId:text(payload.pantId,120),
       occasion:text(payload.occasion,40),
       style,
+      ...(creativeConceptId ? {
+        creativeConceptId,
+        creativeFamilyId,
+        creativeConceptName,
+        creativePatternId,
+        creativeMoveIds,
+        creativeReason,
+        creativeRendered:Boolean(payload.creativeRendered),
+      } : {}),
       note:text(payload.note,300),
     };
   }
