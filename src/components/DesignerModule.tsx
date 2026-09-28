@@ -328,7 +328,7 @@ export function DesignerModule() {
     if (!shirt || !pant) return;
     const concepts=generateCreativeDirections({
       shirt,pant,occasion,style,context:{climate,intention},
-      measurements:measurementProfile,observations:tailorObservations,creativeLearning,creativeResearch,researchFreedom:"maximum",limit:3,
+      measurements:measurementProfile,observations:tailorObservations,creativeLearning,creativeResearch,researchFreedom:"maximum",limit:5,
     });
     setCreativeDirections(concepts);
     setActiveCreative(null);
