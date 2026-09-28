@@ -27,6 +27,10 @@ console.log(`LLinen Earth release readiness${live ? " (live)" : " (static)"}\n`)
 for (const path of [
   "src/app/page.tsx",
   "src/app/api/homepage-model/route.ts",
+  "src/app/designer-studio/page.tsx",
+  "src/components/PhotoOutfitPreview.tsx",
+  "src/lib/designer/photo-preview.ts",
+  "public/designer/studio-tucked.webp",
   "desktop/src/App.tsx",
   "desktop/src-tauri/tauri.conf.json",
   ".github/workflows/build-llinen-earth-os.yml",
@@ -35,7 +39,20 @@ for (const path of [
   "package-lock.json",
 ]) requireFile(path);
 
-requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/visual"]);
+requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/designer-studio"]);
+requireTokens("src/components/PhotoOutfitPreview.tsx", [
+  "PHOTO_TUCKED_SHIRT_CLIP",
+  "PHOTO_TUCKED_TROUSER_CLIP",
+  "PHOTO_TUCKED_NECK_CLEAR",
+  "masks.shirt",
+  "masks.pant",
+]);
+requireTokens("src/lib/designer/photo-preview.ts", [
+  "PHOTO_TUCKED_SHIRT_CLIP",
+  "PHOTO_TUCKED_TROUSER_CLIP",
+  "PHOTO_TUCKED_NECK_CLEAR",
+  "/designer/studio-tucked.webp",
+]);
 requireTokens("src/app/api/homepage-model/route.ts", [
   "FASHN_API_KEY",
   "model-create",
