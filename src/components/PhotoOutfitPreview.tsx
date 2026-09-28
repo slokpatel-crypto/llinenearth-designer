@@ -532,10 +532,20 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection }: {
   const [inspectFit, setInspectFit] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
   const [showBoundaries, setShowBoundaries] = useState(false);
+  const [creativeAi, setCreativeAi] = useState<{image:string;jobId:string;creditsUsed:number;conceptId:string;generatedAt:string}|null>(null);
+  const [creativeAiLoading, setCreativeAiLoading] = useState(false);
+  const [creativeAiError, setCreativeAiError] = useState("");
+  const [showCreativeAi, setShowCreativeAi] = useState(false);
   const templateId = photoTemplateForStyle(style);
   const template = DESIGNER_PHOTO_TEMPLATES[templateId];
   const gaps = photoTemplateGaps(style, templateId);
   const tucked = style.shirtWear === "Tucked";
+
+  useEffect(() => {
+    setCreativeAi(null);
+    setCreativeAiError("");
+    setShowCreativeAi(false);
+  },[creativeDirection?.id,shirt.id,pant.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -556,6 +566,38 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection }: {
       .catch(() => { if (!cancelled) { setReady(false); setError(true); } });
     return () => { cancelled = true; };
   }, [shirt, pant, template, tucked, style.collarFinish, creativeDirection]);
+
+  async function renderCreativePhotoreal() {
+    if(!creativeDirection || creativeAiLoading) return;
+    setCreativeAiLoading(true);
+    setCreativeAiError("");
+    try {
+      const response=await fetch("/api/designer/creative-render",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({
+          shirt:{id:shirt.id,name:shirt.name,line:shirt.line,image:shirt.image,hex:shirt.hex,patternType:shirt.patternType},
+          pant:{id:pant.id,name:pant.name,line:pant.line,image:pant.image,hex:pant.hex,patternType:pant.patternType},
+          style,
+          creative:{
+            id:creativeDirection.id,
+            name:creativeDirection.name,
+            thesis:creativeDirection.thesis,
+            treatments:creativeDirection.treatments,
+            pattern:creativeDirection.pattern,
+          },
+        }),
+      });
+      const data=await response.json() as {result?:{image:string;jobId:string;creditsUsed:number;conceptId:string;generatedAt:string};error?:string};
+      if(!response.ok || !data.result) throw new Error(data.error || "Photoreal render failed.");
+      setCreativeAi(data.result);
+      setShowCreativeAi(true);
+    } catch(error) {
+      setCreativeAiError(error instanceof Error ? error.message : "Photoreal render failed.");
+    } finally {
+      setCreativeAiLoading(false);
+    }
+  }
 
   function download() {
     const canvas = canvasRef.current;
@@ -579,6 +621,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection }: {
     </div>
     <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`}>
       <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-label={`${previewFabricLabel(shirt, pant)}, ${style.shirtWear.toLowerCase()} with ${style.collarFinish.toLowerCase()}`} />
+      {showCreativeAi && creativeAi && <img className="newDesignerPhotoAi" src={creativeAi.image} alt={`Photoreal V5 render of ${creativeDirection?.name || "selected creative concept"}`} />}
       {showOriginal && <img className="newDesignerPhotoOriginal" src={tucked ? template.src : DESIGNER_PHOTO_TEMPLATES.pleated.src} alt="Original photographed model template for comparison" />}
       {showBoundaries && <svg className="newDesignerBoundaryQa" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-label="Garment boundary QA overlay">
         {tucked ? <>
@@ -601,6 +644,8 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection }: {
       <div><span>SHIRT CLOTH</span><strong>{shirt.name}</strong></div>
       <div><span>TROUSER CLOTH</span><strong>{pant.name}</strong></div>
       <div className="newDesignerPhotoActions">
+        {creativeDirection && !creativeAi && <button type="button" onClick={renderCreativePhotoreal} disabled={!ready || creativeAiLoading}>{creativeAiLoading ? "Rendering V5…" : "Photoreal V5 render ↗"}</button>}
+        {creativeDirection && creativeAi && <button type="button" onClick={()=>setShowCreativeAi((value)=>!value)}>{showCreativeAi ? "Instant concept preview" : "Photoreal V5 render"}</button>}
         <button type="button" onClick={() => setShowOriginal((value) => !value)} disabled={!ready}>{showOriginal ? "Fabric preview" : "Original model"}</button>
         <button type="button" onClick={() => setInspectFit((value) => !value)} disabled={!ready}>{inspectFit ? "Full view" : "Inspect fit"}</button>
         <button type="button" onClick={() => setShowBoundaries((value) => !value)} disabled={!ready} aria-pressed={showBoundaries}>{showBoundaries ? "Hide boundaries" : "Boundary QA"}</button>
@@ -609,9 +654,11 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection }: {
     </div>
     {creativeDirection && <div className="newDesignerPhotoCreative">
       <span>CREATIVE CONCEPT PREVIEW / {creativeDirection.name.toUpperCase()}</span>
-      <strong>V5 is now drawing the supported parts of this invented design on the model.</strong>
-      {creativeCoverage.visible.length>0 && <p><b>Visible now:</b> {creativeCoverage.visible.join(" · ")}.</p>}
-      {creativeCoverage.specOnly.length>0 && <p><b>Still specification-only:</b> {creativeCoverage.specOnly.join(" · ")}. These need a new garment template or photoreal synthesis to change real geometry.</p>}
+      <strong>{creativeAi && showCreativeAi ? "Photoreal V5 synthesis is active for this concept." : "V5 is drawing the supported parts of this invented design on the model."}</strong>
+      {creativeCoverage.visible.length>0 && !showCreativeAi && <p><b>Visible now:</b> {creativeCoverage.visible.join(" · ")}.</p>}
+      {creativeCoverage.specOnly.length>0 && !showCreativeAi && <p><b>Still specification-only:</b> {creativeCoverage.specOnly.join(" · ")}. These need a new garment template or photoreal synthesis to change real geometry.</p>}
+      {creativeAi && <p><b>FASHN concept render:</b> {creativeAi.creditsUsed} credit{creativeAi.creditsUsed===1?"":"s"} used · generated from the selected V5 specification. Compare it against the instant preview before approving the design.</p>}
+      {creativeAiError && <p className="newDesignerCreativeRenderError"><b>Photoreal render:</b> {creativeAiError}</p>}
     </div>}
     <div className="newDesignerPhotoAccuracy">
       <strong>What the photo shows</strong>
