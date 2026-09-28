@@ -620,10 +620,9 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
   }
 
   return <section className="newDesignerPhoto" aria-labelledby="designerPhotoTitle">
-    <div className="newDesignerPhotoIntro">
-      <span>FABRIC PREVIEW / 01</span>
-      <h2 id="designerPhotoTitle">See the cloth on a real-looking form.</h2>
-      <p>The shirt and trouser fabrics update as you select them. This photo composition runs in your browser, with no AI render request per look.</p>
+    <div className="newDesignerPhotoIntro newDesignerPhotoIntroCompact">
+      <span>LIVE PREVIEW</span>
+      <h2 id="designerPhotoTitle">Your look.</h2>
     </div>
     <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`}>
       <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-label={`${previewFabricLabel(shirt, pant)}, ${style.shirtWear.toLowerCase()} with ${style.collarFinish.toLowerCase()}`} />
@@ -646,41 +645,44 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
       {error && <span className="newDesignerPhotoError" role="alert">Preview could not load. Check the local fabric images.</span>}
       {!ready && !error && <span className="newDesignerPhotoLoading">Preparing your look…</span>}
     </div>
-    <div className="newDesignerPhotoSummary">
-      <div><span>SHIRT CLOTH</span><strong>{shirt.name}</strong></div>
-      <div><span>TROUSER CLOTH</span><strong>{pant.name}</strong></div>
-      <div className="newDesignerPhotoActions">
-        {creativeDirection && !creativeAi && <button type="button" onClick={renderCreativePhotoreal} disabled={!ready || creativeAiLoading}>{creativeAiLoading ? "Rendering V5…" : "Photoreal V5 render ↗"}</button>}
-        {creativeDirection && creativeAi && <button type="button" onClick={()=>setShowCreativeAi((value)=>!value)}>{showCreativeAi ? "Instant concept preview" : "Photoreal V5 render"}</button>}
-        <button type="button" onClick={() => setShowOriginal((value) => !value)} disabled={!ready}>{showOriginal ? "Fabric preview" : "Original model"}</button>
-        <button type="button" onClick={() => setInspectFit((value) => !value)} disabled={!ready}>{inspectFit ? "Full view" : "Inspect fit"}</button>
-        <button type="button" onClick={() => setShowBoundaries((value) => !value)} disabled={!ready} aria-pressed={showBoundaries}>{showBoundaries ? "Hide boundaries" : "Boundary QA"}</button>
-        <button type="button" onClick={download} disabled={!ready}>Save preview PNG ↗</button>
+    <div className="newDesignerPhotoSummary newDesignerPhotoSummaryCompact">
+      <div><span>SHIRT</span><strong>{shirt.name}</strong></div>
+      <div><span>TROUSER</span><strong>{pant.name}</strong></div>
+      <div className="newDesignerPhotoActions newDesignerPhotoActionsCompact">
+        {creativeDirection && !creativeAi && <button className="primary" type="button" onClick={renderCreativePhotoreal} disabled={!ready || creativeAiLoading}>{creativeAiLoading ? "Rendering…" : "Photoreal render ✦"}</button>}
+        {creativeDirection && creativeAi && <button className="primary" type="button" onClick={()=>setShowCreativeAi((value)=>!value)}>{showCreativeAi ? "Instant preview" : "Photoreal render"}</button>}
+        <button type="button" onClick={() => setShowOriginal((value) => !value)} disabled={!ready}>{showOriginal ? "Show design" : "Compare"}</button>
+        <button type="button" onClick={download} disabled={!ready}>Save</button>
       </div>
     </div>
-    {creativeDirection && <div className="newDesignerPhotoCreative">
-      <span>CREATIVE CONCEPT PREVIEW / {creativeDirection.name.toUpperCase()}</span>
-      <strong>{creativeAi && showCreativeAi ? "Photoreal V5 synthesis is active for this concept." : "V5 is drawing the supported parts of this invented design on the model."}</strong>
-      {creativeCoverage.visible.length>0 && !showCreativeAi && <p><b>Visible now:</b> {creativeCoverage.visible.join(" · ")}.</p>}
-      {creativeCoverage.specOnly.length>0 && !showCreativeAi && <p><b>Still specification-only:</b> {creativeCoverage.specOnly.join(" · ")}. These need a new garment template or photoreal synthesis to change real geometry.</p>}
-      {creativeAi && <p><b>FASHN concept render:</b> {creativeAi.creditsUsed} credit{creativeAi.creditsUsed===1?"":"s"} used · generated from the selected V5 specification. Compare it against the instant preview before approving the design.</p>}
-      {creativeAi && onCreativeFeedback && <div className="newDesignerCreativeReview">
-        <span>VISUAL REVIEW / TEACH V5</span>
+    <details className="newDesignerTechnicalDrawer newDesignerPreviewTools">
+      <summary>Preview tools</summary>
+      <div>
+        <button type="button" onClick={() => setInspectFit((value) => !value)} disabled={!ready}>{inspectFit ? "Full view" : "Zoom fit"}</button>
+        <button type="button" onClick={() => setShowBoundaries((value) => !value)} disabled={!ready} aria-pressed={showBoundaries}>{showBoundaries ? "Hide boundaries" : "Boundary QA"}</button>
+      </div>
+    </details>
+    {creativeDirection && <div className="newDesignerPhotoCreative newDesignerPhotoCreativeCompact">
+      <span>SELECTED · {creativeDirection.name.toUpperCase()}</span>
+      <div className="newDesignerPhotoCreativeTags">
+        {creativeCoverage.visible.slice(0,2).map((item)=><b key={item}>{item}</b>)}
+        {creativeCoverage.specOnly.length>0 && <b>{creativeCoverage.specOnly.length} detail{creativeCoverage.specOnly.length===1?"":"s"} need photoreal render</b>}
+      </div>
+      {creativeAi && onCreativeFeedback && <div className="newDesignerCreativeReview newDesignerCreativeReviewCompact">
+        <span>DOES IT WORK?</span>
         <div>
-          <button type="button" aria-pressed={creativeReview==="up"} onClick={()=>{setCreativeReview("up");setCreativeReviewReason(null);onCreativeFeedback("up");}}>Strong direction</button>
-          <button type="button" aria-pressed={creativeReview==="down"} onClick={()=>{setCreativeReview("down");setCreativeReviewReason(null);onCreativeFeedback("down");}}>Needs redesign</button>
+          <button type="button" aria-pressed={creativeReview==="up"} onClick={()=>{setCreativeReview("up");setCreativeReviewReason(null);onCreativeFeedback("up");}}>Yes</button>
+          <button type="button" aria-pressed={creativeReview==="down"} onClick={()=>{setCreativeReview("down");setCreativeReviewReason(null);onCreativeFeedback("down");}}>Redesign</button>
         </div>
-        {creativeReview==="down" && <div className="newDesignerCreativeReviewReasons">{CREATIVE_FEEDBACK_REASONS.map(([id,label])=><button key={id} type="button" aria-pressed={creativeReviewReason===id} onClick={()=>{setCreativeReviewReason(id);onCreativeFeedback("down",id);}}>{label}</button>)}</div>}
-        {creativeReview==="up" && <small>This concept family receives a small positive learning signal after enough independent reviews.</small>}
-        {creativeReview==="down" && creativeReviewReason && <small>The redesign reason is stored with this exact creative family.</small>}
+        {creativeReview==="down" && <div className="newDesignerCreativeReviewReasons">{CREATIVE_FEEDBACK_REASONS.slice(0,6).map(([id,label])=><button key={id} type="button" aria-pressed={creativeReviewReason===id} onClick={()=>{setCreativeReviewReason(id);onCreativeFeedback("down",id);}}>{label}</button>)}</div>}
       </div>}
-      {creativeAiError && <p className="newDesignerCreativeRenderError"><b>Photoreal render:</b> {creativeAiError}</p>}
+      {creativeAiError && <p className="newDesignerCreativeRenderError">{creativeAiError}</p>}
     </div>}
-    <div className="newDesignerPhotoAccuracy">
-      <strong>What the photo shows</strong>
-      <p>Photographed point collar and barrel cuff, {tucked ? "a real photographed tucked waist with belt loops" : "the original untucked hem"}, and {template.trouser} trousers with a {template.break.toLowerCase()}. {style.collarFinish !== "Self-fabric" && "The white collar fabric is visual only until a real cloth is chosen."}</p>
-      {gaps.length > 0 && <p className="newDesignerPhotoGap"><strong>Selected details awaiting their own photo template:</strong> {gaps.join(" · ")}.</p>}
-      <p>Colour, motif scale, drape and fit are illustrative until checked against the physical roll and a sewn sample. {tucked ? "The photographed waistband and belt loops stay the same for every fabric; other selected waist details need their own photo." : "The waistband stays hidden in this view."}</p>
-    </div>
+    <details className="newDesignerTechnicalDrawer newDesignerPhotoAccuracyCompact">
+      <summary>Preview accuracy</summary>
+      <p>{tucked ? "Tucked studio template" : "Untucked studio template"} · {template.trouser} · {template.break.toLowerCase()}.</p>
+      {gaps.length > 0 && <p><b>Not yet exact:</b> {gaps.join(" · ")}.</p>}
+      <p>Final colour, drape and fit still need physical fabric / sample verification.</p>
+    </details>
   </section>;
 }
