@@ -14,6 +14,7 @@ import { constructionNotes } from "@/lib/designer/photo-preview";
 import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
 import { PhotoOutfitPreview } from "@/components/PhotoOutfitPreview";
 import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, type MeasurementProfile } from "@/lib/measurements";
+import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { assessFitConstruction, formatFinishedRange } from "@/lib/designer/fit-construction";
 import { buildDesignerNegotiation } from "@/lib/designer/constraint-negotiation";
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
@@ -73,6 +74,7 @@ export function DesignerModule() {
   const [directorHandoffTier, setDirectorHandoffTier] = useState("");
   const [directorHandoffReason, setDirectorHandoffReason] = useState("");
   const [measurementProfile, setMeasurementProfile] = useState<MeasurementProfile | null>(null);
+  const [tailorObservations, setTailorObservations] = useState<TailorObservationProfile | null>(null);
   const [searchScope, setSearchScope] = useState<DesignerSearchScope>("keep_shirt");
   const [searchResults, setSearchResults] = useState<DesignerSearchResult[]>([]);
   const [casebook, setCasebook] = useState<DesignerCasebook | null>(null);
@@ -83,7 +85,9 @@ export function DesignerModule() {
   const insights = shirt && pant ? designerStyleInsights(shirt, pant, occasion, style) : [];
   const fitCoverage = useMemo(() => measurementCoverage(measurementProfile), [measurementProfile]);
   const fitGuidance = useMemo(() => measurementFitGuidance(measurementProfile), [measurementProfile]);
-  const fitConstruction = useMemo(() => shirt && pant ? assessFitConstruction(measurementProfile, style, { climate, shirtFabric: shirt, trouserFabric: pant }) : null, [measurementProfile, style, climate, shirt, pant]);
+  const observationCoverage = useMemo(() => tailorObservationCoverage(tailorObservations), [tailorObservations]);
+  const observationSummary = useMemo(() => tailorObservationSummary(tailorObservations), [tailorObservations]);
+  const fitConstruction = useMemo(() => shirt && pant ? assessFitConstruction(measurementProfile, style, { climate, shirtFabric: shirt, trouserFabric: pant, observations: tailorObservations }) : null, [measurementProfile, style, climate, shirt, pant, tailorObservations]);
   const negotiation = useMemo(() => recommendation ? buildDesignerNegotiation(recommendation, fitConstruction) : null, [recommendation, fitConstruction]);
   const brandLanguage = useMemo(() => shirt && pant ? evaluateLinenEarthBrandLanguage(shirt,pant,style,occasion,{climate,intention}) : null, [shirt,pant,style,occasion,climate,intention]);
   const garmentSpec = useMemo(() => recommendation ? buildCanonicalGarmentSpec(recommendation, fitConstruction, measurementProfile, brandLanguage) : null, [recommendation, fitConstruction, measurementProfile, brandLanguage]);
@@ -95,6 +99,15 @@ export function DesignerModule() {
       const parsed = JSON.parse(raw) as MeasurementProfile;
       if (parsed?.version === 1) setMeasurementProfile(parsed);
     } catch { /* Saved measurements are optional; Designer remains usable without them. */ }
+  },[]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(TAILOR_OBSERVATION_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as TailorObservationProfile;
+      if (parsed?.version === 1) setTailorObservations(parsed);
+    } catch { /* Tailor observations are optional; Designer remains usable without them. */ }
   },[]);
 
   useEffect(() => {
@@ -206,7 +219,7 @@ export function DesignerModule() {
         if (routedShirtFabric && routedPantFabric) {
           const context: DesignerContext = { climate: nextClimate, intention: nextIntention };
           const savedMeasurements = (() => { try { const raw = localStorage.getItem(MEASUREMENT_STORAGE_KEY); return raw ? JSON.parse(raw) as MeasurementProfile : null; } catch { return null; } })();
-          const proposals = planDesignerDirections(routedShirtFabric, routedPantFabric, nextOccasion, nextStyle, context, savedMeasurements);
+          const proposals = planDesignerDirections(routedShirtFabric, routedPantFabric, nextOccasion, nextStyle, context, savedMeasurements, (() => { try { const raw = localStorage.getItem(TAILOR_OBSERVATION_STORAGE_KEY); return raw ? JSON.parse(raw) as TailorObservationProfile : null; } catch { return null; } })());
           const result = proposals[0].recommendation;
           setDirections(proposals);
           setRecommendation(result);
@@ -286,6 +299,7 @@ export function DesignerModule() {
       chosenStyle:style,
       context:{climate,intention},
       measurements:measurementProfile,
+      observations:tailorObservations,
       scope:searchScope,
       casebook,
       fitOutcomes,
@@ -326,7 +340,7 @@ export function DesignerModule() {
   function assess(nextStyle: DesignerStyle = style) {
     if (!shirt || !pant) return;
     const context: DesignerContext = { climate, intention };
-    const proposals = planDesignerDirections(shirt, pant, occasion, nextStyle, context, measurementProfile);
+    const proposals = planDesignerDirections(shirt, pant, occasion, nextStyle, context, measurementProfile, tailorObservations);
     const result = proposals[0].recommendation;
     setStyle({ ...nextStyle });
     setDirections(proposals);
@@ -516,7 +530,11 @@ export function DesignerModule() {
               </div>
               {fitConstruction.checks.some((item) => item.severity !== "info") && <div className="newDesignerConstructionChecks"><span>CONSTRUCTION CHECKS</span>{fitConstruction.checks.filter((item) => item.severity !== "info").slice(0,4).map((item) => <p key={item.id} data-severity={item.severity}>{item.message}</p>)}</div>}
             </div>}
-            <p className="newDesignerFitTruth">These measurements guide the proposed cut and tailoring conversation. Finished ranges are provisional house targets, not final cutting dimensions. The photographic mannequin is a fixed visual reference and is not resized to represent your body.</p>
+            {observationCoverage > 0 && <div className="newDesignerTailorObservations">
+              <span>TAILOR OBSERVATIONS · {observationCoverage}/4</span>
+              {observationSummary.map((note)=><b key={note}>{note}</b>)}
+            </div>}
+            <p className="newDesignerFitTruth">These measurements and manual tailoring observations guide the proposed cut and tailoring conversation. Finished ranges are provisional house targets, not final cutting dimensions. The photographic mannequin is a fixed visual reference and is not resized to represent your body.</p>
           </> : <p className="newDesignerFitTruth">Add measurements in the blueprint studio to carry proportion-aware tailoring notes into Designer. The visual mannequin remains a fixed reference.</p>}
         </section>
 
