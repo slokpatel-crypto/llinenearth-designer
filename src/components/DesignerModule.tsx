@@ -693,7 +693,7 @@ export function DesignerModule() {
             <button type="button" onClick={runCreativeLab} disabled={!shirt || !pant}>Imagine new designs ↗</button>
           </div>
           <div className="newDesignerCreativeFlow" aria-label="Creative process">
-            <span>MAXIMUM DIVERGENCE</span><b>→</b><span>DIRECT + MUTATE + HYBRID + RADICAL</span><b>→</b><span>5 CRITICS</span><b>→</b><span>REFINE</span><b>→</b><span>TOP 5</span>
+            <span>MAXIMUM DIVERGENCE</span><b>→</b><span>DIRECT + MUTATE + HYBRID + RADICAL</span><b>→</b><span>5 CRITICS</span><b>→</b><span>REFINE</span><b>→</b><span>TOP 5 · FRONTIER INCLUDED</span>
           </div>
           {creativeDirections.length>0 && <div className="newDesignerCreativeResults">
             {creativeDirections.map((direction)=><article key={direction.id} data-active={activeCreative?.id===direction.id}>
