@@ -123,8 +123,23 @@ export function fitOutcomeSignalFor(
   if(!book||book.totalReviews<3) return {score:0,evidence:book?.totalReviews||0,summary:"Post-fitting evidence is still collecting."};
   const key=fitOutcomeKey({occasion:input.occasion,shirtFit:input.style.shirtFit,trouser:input.style.trouser,torso:input.proportion.torso,seat:input.proportion.seat});
   const bucket=book.buckets.find((b)=>b.key===key&&b.total>=3);
-  if(!bucket) return {score:0,evidence:0,summary:"No sufficiently reviewed matching first-fit pattern exists yet."};
-  const quality=(bucket.clean + bucket.minor*.35 - bucket.major)/bucket.total;
-  const score=Math.max(-4,Math.min(4,Math.round(quality*4*10)/10));
-  return {score,evidence:bucket.total,summary:`${bucket.total} reviewed fittings: ${bucket.clean} clean first fits, ${bucket.minor} minor alterations, ${bucket.major} major alterations.`};
+  if(bucket) {
+    const quality=(bucket.clean + bucket.minor*.35 - bucket.major)/bucket.total;
+    const score=Math.max(-4,Math.min(4,Math.round(quality*4*10)/10));
+    return {score,evidence:bucket.total,summary:`${bucket.total} reviewed fittings: ${bucket.clean} clean first fits, ${bucket.minor} minor alterations, ${bucket.major} major alterations.`};
+  }
+
+  // If the exact body-proportion bucket is still sparse, a larger style-level
+  // sample may break ties only. It is deliberately capped below the exact signal.
+  const related=book.buckets.filter((b)=>b.occasion===input.occasion&&b.shirtFit===input.style.shirtFit&&b.trouser===input.style.trouser);
+  const clean=related.reduce((sum,b)=>sum+b.clean,0);
+  const minor=related.reduce((sum,b)=>sum+b.minor,0);
+  const major=related.reduce((sum,b)=>sum+b.major,0);
+  const total=clean+minor+major;
+  if(total>=4) {
+    const quality=(clean + minor*.35 - major)/total;
+    const score=Math.max(-2.5,Math.min(2.5,Math.round(quality*2.5*10)/10));
+    return {score,evidence:total,summary:`${total} reviewed fittings for this cut family: ${clean} clean first fits, ${minor} minor alterations, ${major} major alterations.`};
+  }
+  return {score:0,evidence:total,summary:"No sufficiently reviewed matching first-fit pattern exists yet."};
 }
