@@ -129,7 +129,7 @@ const restoredShell = fs.readFileSync("src/components/AppShell.tsx","utf8");
 for (const forbidden of ["[\"Catalog\",","[\"Live Visual\",","[\"Classic Designer\",","[\"Saved Designs\",","[\"Fashion Brain\",","[\"Atelier\","]) {
   if (restoredShell.includes(forbidden)) throw new Error(`Navigation regression: public shell reintroduced ${forbidden}`);
 }
-for (const requiredLink of ["[\"Designer Studio\", \"/designer\"]","[\"Style Director\", \"/style-director\"]"]) {
+for (const requiredLink of ["[\"Designer Studio\", \"/designer-studio\"]","[\"Style Director\", \"/style-director\"]"]) {
   if (!restoredShell.includes(requiredLink)) throw new Error(`Navigation regression: public shell missing ${requiredLink}`);
 }
 
@@ -162,3 +162,10 @@ for (const token of ["linen-earth:real-designer-draft:v2","draftReady","localSto
   if (!realDesignerModule.includes(token)) throw new Error(`Real Designer draft regression: missing ${token}`);
 }
 console.log("Real Designer draft gate passed: fabric, context and tailoring state persist safely across refresh.");
+
+
+const publicHome = fs.readFileSync("src/app/page.tsx","utf8");
+for (const token of ["/designer-studio","Open Designer","photographic Designer","Linen Earth"]) {
+  if (!publicHome.includes(token)) throw new Error(`Real Designer public-route regression: homepage missing ${token}`);
+}
+console.log("Real Designer route gate passed: public navigation points to the photographic Designer while the legacy dashboard remains available separately.");
