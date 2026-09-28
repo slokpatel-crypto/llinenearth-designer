@@ -66,22 +66,44 @@ export function DesignerModule() {
         shirtId?: string; pantId?: string; occasion?: OccasionTier; climate?: DesignerClimate;
         intention?: DesignerIntention; style?: Partial<DesignerStyle>;
       } | null;
-      if (!parsed) { setDraftReady(true); return; }
 
-      const nextOccasion = parsed.occasion && OCCASIONS.includes(parsed.occasion) ? parsed.occasion : occasion;
-      if (parsed.shirtId && DESIGNER_SHIRTS.some((item) => item.id === parsed.shirtId)) setShirtId(parsed.shirtId);
-      if (parsed.pantId && DESIGNER_PANTS.some((item) => item.id === parsed.pantId)) setPantId(parsed.pantId);
-      setOccasion(nextOccasion);
-      if (parsed.climate && CLIMATES.includes(parsed.climate)) setClimate(parsed.climate);
-      if (parsed.intention && INTENTIONS.includes(parsed.intention)) setIntention(parsed.intention);
+      let nextOccasion: OccasionTier = parsed?.occasion && OCCASIONS.includes(parsed.occasion) ? parsed.occasion : occasion;
+      let nextClimate: DesignerClimate = parsed?.climate && CLIMATES.includes(parsed.climate) ? parsed.climate : climate;
+      let nextIntention: DesignerIntention = parsed?.intention && INTENTIONS.includes(parsed.intention) ? parsed.intention : intention;
 
-      const nextStyle = designerStyleForOccasion(nextOccasion);
-      if (parsed.style) {
+      if (parsed?.shirtId && DESIGNER_SHIRTS.some((item) => item.id === parsed.shirtId)) setShirtId(parsed.shirtId);
+      if (parsed?.pantId && DESIGNER_PANTS.some((item) => item.id === parsed.pantId)) setPantId(parsed.pantId);
+
+      let nextStyle = designerStyleForOccasion(nextOccasion);
+      if (parsed?.style) {
         for (const key of Object.keys(DESIGNER_STYLE_CHOICES) as Array<keyof DesignerStyle>) {
           const value = parsed.style[key];
           if (typeof value === "string" && DESIGNER_STYLE_CHOICES[key].includes(value)) nextStyle[key] = value;
         }
       }
+
+      // A Style Director handoff intentionally overrides a saved draft so the
+      // user sees the context and anchor fabric they just chose.
+      const params = new URLSearchParams(window.location.search);
+      const routedOccasion = params.get("occasion") as OccasionTier | null;
+      const routedClimate = params.get("climate") as DesignerClimate | null;
+      const routedIntention = params.get("intention") as DesignerIntention | null;
+      const routedAnchor = params.get("anchor");
+      const routedGarment = params.get("garment");
+
+      if (routedOccasion && OCCASIONS.includes(routedOccasion)) {
+        nextOccasion = routedOccasion;
+        nextStyle = designerStyleForOccasion(routedOccasion);
+      }
+      if (routedClimate && CLIMATES.includes(routedClimate)) nextClimate = routedClimate;
+      if (routedIntention && INTENTIONS.includes(routedIntention)) nextIntention = routedIntention;
+
+      if (routedAnchor && routedGarment === "shirt" && DESIGNER_SHIRTS.some((item) => item.id === routedAnchor)) setShirtId(routedAnchor);
+      if (routedAnchor && routedGarment === "trouser" && DESIGNER_PANTS.some((item) => item.id === routedAnchor)) setPantId(routedAnchor);
+
+      setOccasion(nextOccasion);
+      setClimate(nextClimate);
+      setIntention(nextIntention);
       setStyle(nextStyle);
     } catch {
       localStorage.removeItem(DRAFT_KEY);
