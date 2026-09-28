@@ -3,7 +3,7 @@ import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { BRAND_LOGO_SRC } from "@/lib/brand-logo-data";
 
 const primaryLinks = [
-  ["Designer Studio", "/designer-studio"],
+  ["Real Model Designer", "/real-model"],
   ["Style Director", "/style-director"],
   ["Measurements", "/measurements"],
   ["Contact", "/contact"],
