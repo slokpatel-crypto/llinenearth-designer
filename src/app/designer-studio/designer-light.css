@@ -190,3 +190,18 @@
 .newDesignerBrandRead small{display:block;margin-top:14px;padding-top:11px;border-top:1px solid #e8dfd4;font-size:8px;line-height:1.5;color:#897d71}
 .newDesignerDirectionBrand{display:inline-block;margin:8px 0 0 6px;padding:4px 6px;border:1px solid #dcccbc;background:#fcf8f2;color:#8b5c43;font-size:7px;letter-spacing:.09em}
 @media(max-width:620px){.newDesignerBrandReadHead{flex-direction:column}.newDesignerDirectionBrand{margin-left:0}}
+
+.newDesignerCanonicalSpec{margin-top:16px;padding:17px;border:1px solid #d8cdbf;background:linear-gradient(145deg,#f9f6f0,#fff);box-shadow:0 12px 30px rgba(37,48,62,.04)}
+.newDesignerCanonicalSpecHead{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.newDesignerCanonicalSpecHead span,.newDesignerCanonicalSpecGrid article>span{display:block;font-size:8px;letter-spacing:.15em;color:#9d654d;font-weight:700}
+.newDesignerCanonicalSpecHead strong{display:block;margin-top:5px;font:400 18px/1.25 Georgia,serif;color:#24364e}
+.newDesignerCanonicalSpecHead button{border:1px solid #c9bbaa;background:#fff;color:#274d77;padding:9px 11px;font-size:9px;cursor:pointer}
+.newDesignerCanonicalSpecGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}
+.newDesignerCanonicalSpecGrid article{padding:13px;border:1px solid #e2d9ce;background:#fbf8f3}
+.newDesignerCanonicalSpecGrid strong{display:block;margin-top:6px;font:400 15px Georgia,serif;color:#26384d}
+.newDesignerCanonicalSpecGrid p{margin:5px 0 8px;font-size:9px;line-height:1.45;color:#746b62}
+.newDesignerCanonicalSpecGrid small{display:block;margin-top:4px;font-size:8px;line-height:1.45;color:#536476}
+.newDesignerCanonicalReadiness{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.newDesignerCanonicalReadiness span{border:1px solid #d9e2eb;background:#f5f9fd;padding:6px 8px;font-size:7px;letter-spacing:.08em;color:#4d6680;text-transform:uppercase}
+.newDesignerCanonicalSpec>p{margin:11px 0 0;font-size:8px;line-height:1.5;color:#8b8177}
+@media(max-width:620px){.newDesignerCanonicalSpecHead{flex-direction:column}.newDesignerCanonicalSpecHead button{width:100%}.newDesignerCanonicalSpecGrid{grid-template-columns:1fr}}
