@@ -340,6 +340,7 @@ export function PhotoOutfitPreview({ shirt, pant, style }: {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(false);
   const [inspectFit, setInspectFit] = useState(false);
+  const [showOriginal, setShowOriginal] = useState(false);
   const templateId = photoTemplateForStyle(style);
   const template = DESIGNER_PHOTO_TEMPLATES[templateId];
   const gaps = photoTemplateGaps(style, templateId);
@@ -387,6 +388,7 @@ export function PhotoOutfitPreview({ shirt, pant, style }: {
     </div>
     <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`}>
       <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-label={`${previewFabricLabel(shirt, pant)}, ${style.shirtWear.toLowerCase()} with ${style.collarFinish.toLowerCase()}`} />
+      {showOriginal && <img className="newDesignerPhotoOriginal" src={tucked ? template.src : DESIGNER_PHOTO_TEMPLATES.pleated.src} alt="Original photographed model template for comparison" />}
       <span className="newDesignerPhotoTag">FRONT / STUDIO MODEL</span>
       {error && <span className="newDesignerPhotoError" role="alert">Preview could not load. Check the local fabric images.</span>}
       {!ready && !error && <span className="newDesignerPhotoLoading">Preparing your look…</span>}
@@ -395,6 +397,7 @@ export function PhotoOutfitPreview({ shirt, pant, style }: {
       <div><span>SHIRT CLOTH</span><strong>{shirt.name}</strong></div>
       <div><span>TROUSER CLOTH</span><strong>{pant.name}</strong></div>
       <div className="newDesignerPhotoActions">
+        <button type="button" onClick={() => setShowOriginal((value) => !value)} disabled={!ready}>{showOriginal ? "Fabric preview" : "Original model"}</button>
         <button type="button" onClick={() => setInspectFit((value) => !value)} disabled={!ready}>{inspectFit ? "Full view" : "Inspect fit"}</button>
         <button type="button" onClick={download} disabled={!ready}>Save preview PNG ↗</button>
       </div>
