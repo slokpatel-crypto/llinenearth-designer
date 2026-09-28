@@ -253,7 +253,7 @@ for (const token of ["fit-construction-provisional-1","SHIRT_EASE","TROUSER_EASE
   if (!fitConstructionV2.includes(token)) throw new Error(`Fit Construction V2 regression: missing ${token}`);
 }
 const plannerV2 = fs.readFileSync("src/lib/designer/planner.ts","utf8");
-for (const token of ["MeasurementProfile","FitConstructionAssessment","assessFitConstruction","fitConstruction","item.recommendation.designFitScore * .58"]) {
+for (const token of ["MeasurementProfile","FitConstructionAssessment","assessFitConstruction","fitConstruction","item.recommendation.designFitScore * .50","item.fitConstruction?.fitScore ?? 70) * .25","item.blockStrategy?.score ?? 70) * .15"]) {
   if (!plannerV2.includes(token)) throw new Error(`Fit-aware Designer planner regression: missing ${token}`);
 }
 const designerV2 = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
@@ -302,7 +302,7 @@ for (const token of ["linen-earth-brand-language-provisional-1","evaluateLinenEa
   if (!brandLanguage.includes(token)) throw new Error(`Linen Earth brand language regression: missing ${token}`);
 }
 const brandPlanner = fs.readFileSync("src/lib/designer/planner.ts","utf8");
-for (const token of ["BrandLanguageEvaluation","evaluateLinenEarthBrandLanguage","brandLanguage","item.recommendation.designFitScore * .58","item.fitConstruction?.fitScore ?? 70) * .32","item.brandLanguage?.score ?? 70) * .10"]) {
+for (const token of ["BrandLanguageEvaluation","evaluateLinenEarthBrandLanguage","brandLanguage","item.recommendation.designFitScore * .50","item.fitConstruction?.fitScore ?? 70) * .25","item.blockStrategy?.score ?? 70) * .15","item.brandLanguage?.score ?? 70) * .10"]) {
   if (!brandPlanner.includes(token)) throw new Error(`Brand-aware Designer ranking regression: missing ${token}`);
 }
 const brandDesignerUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
