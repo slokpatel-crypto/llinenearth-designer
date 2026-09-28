@@ -24,7 +24,7 @@ export async function GET() {
       select:"type,source,payload",
       source:"eq.operator",
       type:"eq.operator_note",
-      order:"received_at.desc",
+      order:"received_at.asc",
       limit:"3000",
     });
     const response=await fetch(`${cloud.url}/rest/v1/style_events?${params.toString()}`,{
