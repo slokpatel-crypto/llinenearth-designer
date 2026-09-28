@@ -384,7 +384,7 @@ const sourceRows = (researchPool.match(/\{id:"[^"]+",name:/g) || []).length;
 const topicRows = (researchPool.match(/\{id:"[^"]+",query:/g) || []).length;
 if (sourceRows * topicRows < 1000) throw new Error(`Designer V5 research pool regression: expected >=1000 source-topic targets, found ${sourceRows * topicRows}`);
 const creativeUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["CREATIVE DESIGNER / V5","Imagine new designs","CRITIC PANEL","RESEARCH →","newDesignerCriticFacets","researchPool","researchFreedom:\"maximum\"","RESEARCH USE","FRONTIER"]) {
+for (const token of ["CREATIVE DESIGNER / V5","Imagine new designs","CRITIC PANEL","DIRECT + HYBRID + RADICAL","newDesignerCriticFacets","researchPool","researchFreedom:\"maximum\"","RESEARCH USE","FRONTIER"]) {
   if (!creativeUi.includes(token)) throw new Error(`Designer V5 creative UI regression: missing ${token}`);
 }
 const creativePreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
