@@ -345,3 +345,6 @@
 .newDesignerPhotoCreative>strong{display:block;margin-top:5px;font:400 14px/1.4 Georgia,serif;color:#294057}
 .newDesignerPhotoCreative>p{margin:7px 0 0;font-size:8px;line-height:1.5;color:#6e675f}
 .newDesignerPhotoCreative b{font-weight:700;color:#365b7e}
+
+.newDesignerPhotoAi{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:4;background:#0a1422}
+.newDesignerCreativeRenderError{color:#9b4f3d!important}
