@@ -57,7 +57,7 @@ requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/v
 requireTokens("src/lib/designer/block-strategy.ts", ["block-strategy-provisional-1","assessBlockStrategy","shaped-shirt","roomy-seat-block","suggestedPatch"]);
 requireTokens("src/lib/designer/planner.ts", ["DesignerBlockStrategy","blockStrategy:selectedBlock","item.blockStrategy?.score"]);
 requireTokens("src/lib/designer/search.ts", ["blockStrategy: DesignerBlockStrategy","assessBlockStrategy","block.score"]);
-requireTokens("src/components/DesignerModule.tsx", ["PATTERN BLOCK / V1","Try safer starting block","result.blockStrategy.score"]);
+requireTokens("src/components/DesignerModule.tsx", ["assessBlockStrategy","Starting block:","newDesignerTechnicalDrawer"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "PHOTO_TUCKED_SHIRT_CLIP",
   "PHOTO_TUCKED_TROUSER_CLIP",
@@ -118,9 +118,9 @@ requireTokens("src/app/real-model/page.tsx", ["redirect","/designer-studio"]);
 requireTokens("src/components/AppShell.tsx", ["Real Model Designer","/real-model","Measurements","/measurements"]);
 requireTokens("src/lib/style-director-agent.ts", ["StyleDirectorRealModelSpec","buildRealModelSpec","evaluateDesignerCombo","shirtName","pantName"]);
 requireTokens("src/app/style-director/page.tsx", ["Open Linen Earth Real Model Designer","REAL MODEL OUTFIT","#designerPhotoTitle"]);
-requireTokens("src/components/DesignerModule.tsx", ['params.get("shirt")','params.get("pant")','params.get("style")',"STYLE DIRECTOR RESULT"]);
+requireTokens("src/components/DesignerModule.tsx", ['params.get("shirt")','params.get("pant")','params.get("style")',"STYLE DIRECTOR"]);
 requireTokens("src/lib/designer/garment-spec.ts", ["linen-earth-garment-spec-v1","buildCanonicalGarmentSpec","finishedTargets","ready_for_tailor_review","not a cutting pattern"]);
-requireTokens("src/components/DesignerModule.tsx", ["GARMENT SPEC / V1","Export spec JSON","downloadGarmentSpec"]);
+requireTokens("src/components/DesignerModule.tsx", ["buildCanonicalGarmentSpec","Export garment spec","downloadGarmentSpec"]);
 requireTokens("src/app/api/memory/event/route.ts", ["garmentSpecInput","fitConstructionScore","brandLanguageScore","materialVerification"]);
 requireTokens("src/lib/designer/search.ts", [
   "DesignerSearchScope","keep_shirt","keep_trouser","open",
@@ -128,8 +128,8 @@ requireTokens("src/lib/designer/search.ts", [
   "searchDesignerCatalogue","explainWhyNotCurrentPair","hardBlocked","comparisonFor"
 ]);
 requireTokens("src/components/DesignerModule.tsx", [
-  "DESIGNER SEARCH / V4","Search catalogue","Keep shirt","Keep trouser","Open search","Why over my current choice?","Use this direction",
-  "CREATIVE DESIGNER / V5","MAXIMUM DIVERGENCE","DIRECT + MUTATE + HYBRID + RADICAL","TOP 5","researchFreedom:\"maximum\"","RESEARCH USE"
+  "OPTIONAL","Try different fabrics.","Show options","Keep shirt","Keep trouser","Change both","Why this works","Use look",
+  "03 / CREATE","Create ideas ✦","newDesignerCreativeVisual","Design reasoning","researchFreedom:\"maximum\"","FRONTIER IDEA"
 ]);
 requireTokens("src/lib/designer/creative-engine.ts", [
   "generateCreativeDirections","researchMutationSeeds","hybridResearchSeed","researchFreedom","maximum","researchUtilization","explorationClass"
@@ -155,7 +155,7 @@ requireTokens("src/lib/designer/search.ts", ["fitOutcomeSignalFor","Reviewed fir
 requireTokens("src/lib/designer/tailor-observations.ts", ["linen-earth-tailor-observations-v1","ShoulderBalance","PostureBalance","SeatBalance"]);
 requireTokens("src/components/MeasurementStudio.tsx", ["OPTIONAL / TAILOR OBSERVATIONS","MANUAL INPUT ONLY","TAILOR_OBSERVATION_STORAGE_KEY"]);
 requireTokens("src/lib/designer/fit-construction.ts", ["OBS-SHOULDER-SLOPING","OBS-POSTURE-FORWARD","OBS-SEAT-FULL","OBS-MOBILITY"]);
-requireTokens("src/components/DesignerModule.tsx", ["tailorObservationSummary","newDesignerTailorObservations","observations:tailorObservations"]);
+requireTokens("src/components/DesignerModule.tsx", ["tailorObservationSummary","observationCoverage","observations:tailorObservations"]);
 requireTokens("src/app/api/homepage-model/route.ts", [
   "FASHN_API_KEY",
   "model-create",
