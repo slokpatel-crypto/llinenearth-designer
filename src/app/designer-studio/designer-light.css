@@ -246,3 +246,20 @@
 .newDesignerTailorObservations{display:flex;flex-wrap:wrap;gap:6px;margin-top:13px;padding-top:12px;border-top:1px solid #e1d8ce}
 .newDesignerTailorObservations>span{width:100%;font-size:8px;letter-spacing:.14em;color:#9d654d;font-weight:700}
 .newDesignerTailorObservations b{font-size:8px;font-weight:500;color:#526171;border:1px solid #d9e2eb;background:#f6f9fc;padding:6px 8px}
+
+.newDesignerBlockStrategy{margin-top:12px;padding:14px 15px;border:1px solid #d6d0c7;background:linear-gradient(145deg,#fbf8f3,#fff)}
+.newDesignerBlockHead{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.newDesignerBlockHead span,.newDesignerBlockGrid article>span{display:block;font-size:8px;letter-spacing:.14em;color:#8b6a54;font-weight:700}
+.newDesignerBlockHead strong{font:400 14px/1.35 Georgia,serif;color:#2b3f54}
+.newDesignerBlockGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}
+.newDesignerBlockGrid article{padding:11px;border:1px solid #e2dbd2;background:#faf8f4}
+.newDesignerBlockGrid strong{display:block;margin-top:5px;font:400 14px/1.3 Georgia,serif;color:#24364e;text-transform:capitalize}
+.newDesignerBlockGrid p{margin:5px 0 0;font-size:9px;line-height:1.5;color:#746c64}
+.newDesignerBlockChecks{margin-top:10px;display:grid;gap:6px}
+.newDesignerBlockChecks p{margin:0;padding:8px 9px;border-left:2px solid #c3aa91;background:#fff;font-size:9px;line-height:1.45;color:#655d56}
+.newDesignerBlockChecks p[data-severity="warning"]{border-left-color:#b95d45;background:#fff7f4}
+.newDesignerBlockChecks b{display:block;margin-bottom:3px;font-size:7px;letter-spacing:.09em;color:#8d7059;text-transform:uppercase}
+.newDesignerBlockStrategy>button{margin-top:10px;border:1px solid #b9a895;background:#fff;color:#294661;padding:8px 10px;font-size:9px;cursor:pointer}
+.newDesignerBlockStrategy>small{display:block;margin-top:9px;font-size:8px;line-height:1.45;color:#90867c}
+.newDesignerDirectionBlock{display:inline-block;margin-top:8px;margin-left:5px;padding:4px 6px;border:1px solid #d8cfbf;background:#faf7f1;color:#7b624d;font-size:7px;letter-spacing:.09em}
+@media(max-width:620px){.newDesignerBlockHead{flex-direction:column}.newDesignerBlockGrid{grid-template-columns:1fr}}

@@ -16,6 +16,7 @@ import { PhotoOutfitPreview } from "@/components/PhotoOutfitPreview";
 import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, type MeasurementProfile } from "@/lib/measurements";
 import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { assessFitConstruction, formatFinishedRange } from "@/lib/designer/fit-construction";
+import { assessBlockStrategy } from "@/lib/designer/block-strategy";
 import { buildDesignerNegotiation } from "@/lib/designer/constraint-negotiation";
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
 import { evaluateLinenEarthBrandLanguage } from "@/lib/designer/brand-language";
@@ -88,9 +89,10 @@ export function DesignerModule() {
   const observationCoverage = useMemo(() => tailorObservationCoverage(tailorObservations), [tailorObservations]);
   const observationSummary = useMemo(() => tailorObservationSummary(tailorObservations), [tailorObservations]);
   const fitConstruction = useMemo(() => shirt && pant ? assessFitConstruction(measurementProfile, style, { climate, shirtFabric: shirt, trouserFabric: pant, observations: tailorObservations }) : null, [measurementProfile, style, climate, shirt, pant, tailorObservations]);
+  const blockStrategy = useMemo(() => shirt && pant ? assessBlockStrategy(measurementProfile, style, tailorObservations) : null, [measurementProfile, style, shirt, pant, tailorObservations]);
   const negotiation = useMemo(() => recommendation ? buildDesignerNegotiation(recommendation, fitConstruction) : null, [recommendation, fitConstruction]);
   const brandLanguage = useMemo(() => shirt && pant ? evaluateLinenEarthBrandLanguage(shirt,pant,style,occasion,{climate,intention}) : null, [shirt,pant,style,occasion,climate,intention]);
-  const garmentSpec = useMemo(() => recommendation ? buildCanonicalGarmentSpec(recommendation, fitConstruction, measurementProfile, brandLanguage) : null, [recommendation, fitConstruction, measurementProfile, brandLanguage]);
+  const garmentSpec = useMemo(() => recommendation ? buildCanonicalGarmentSpec(recommendation, fitConstruction, measurementProfile, brandLanguage, blockStrategy) : null, [recommendation, fitConstruction, measurementProfile, brandLanguage, blockStrategy]);
 
   useEffect(() => {
     try {
@@ -318,7 +320,7 @@ export function DesignerModule() {
     setFeedbackReason(null);
     setRecommendationId(null);
     try {
-      const spec=buildCanonicalGarmentSpec(result.recommendation,result.fitConstruction,measurementProfile,result.brandLanguage);
+      const spec=buildCanonicalGarmentSpec(result.recommendation,result.fitConstruction,measurementProfile,result.brandLanguage,result.blockStrategy);
       const event=recordStyleMemoryEvent(designerSession(),"designer_recommendation",{
         shirtId:result.shirt.id,pantId:result.pant.id,occasion:result.recommendation.occasion,style:result.style,
         input:{source:"advanced_catalogue_search",tier:result.tier,scope:searchScope,context:{climate,intention}},
@@ -331,7 +333,7 @@ export function DesignerModule() {
         reasoningText:result.recommendation.internalReason,
         status:result.recommendation.status,
         ruleSetVersion:result.recommendation.ruleSetVersion,
-        garmentSpec:{version:spec.version,status:spec.status,fitConstructionScore:spec.decision.fitConstructionScore,brandLanguageScore:spec.decision.brandLanguageScore,readiness:spec.readiness},
+        garmentSpec:{version:spec.version,status:spec.status,fitConstructionScore:spec.decision.fitConstructionScore,brandLanguageScore:spec.decision.brandLanguageScore,blockStrategyScore:spec.decision.blockStrategyScore,readiness:spec.readiness},
       });
       setRecommendationId(event.id);
     } catch { /* Search result remains usable when event storage is unavailable. */ }
@@ -349,7 +351,7 @@ export function DesignerModule() {
     setResponse(null);
     setFeedbackReason(null);
     try {
-      const spec = buildCanonicalGarmentSpec(result, proposals[0].fitConstruction, measurementProfile, proposals[0].brandLanguage);
+      const spec = buildCanonicalGarmentSpec(result, proposals[0].fitConstruction, measurementProfile, proposals[0].brandLanguage, proposals[0].blockStrategy);
       const event = recordStyleMemoryEvent(designerSession(), "designer_recommendation", {
         shirtId, pantId, occasion, style: nextStyle, input: { shirtId, pantId, occasion, style: nextStyle, context, measurementCoverage: fitCoverage, fitGuidance }, rules: result.rules,
         confidenceScore: result.confidenceScore, designFitScore: result.designFitScore,
@@ -358,7 +360,7 @@ export function DesignerModule() {
         status: result.status, ruleSetVersion: result.ruleSetVersion,
         garmentSpec: {
           version: spec.version, status: spec.status, fitConstructionScore: spec.decision.fitConstructionScore,
-          brandLanguageScore: spec.decision.brandLanguageScore, readiness: spec.readiness,
+          brandLanguageScore: spec.decision.brandLanguageScore, blockStrategyScore: spec.decision.blockStrategyScore, readiness: spec.readiness,
         },
       });
       setRecommendationId(event.id);
@@ -530,6 +532,16 @@ export function DesignerModule() {
               </div>
               {fitConstruction.checks.some((item) => item.severity !== "info") && <div className="newDesignerConstructionChecks"><span>CONSTRUCTION CHECKS</span>{fitConstruction.checks.filter((item) => item.severity !== "info").slice(0,4).map((item) => <p key={item.id} data-severity={item.severity}>{item.message}</p>)}</div>}
             </div>}
+            {blockStrategy && <div className="newDesignerBlockStrategy">
+              <div className="newDesignerBlockHead"><span>PATTERN BLOCK / V1</span><strong>{blockStrategy.score}/100 starting-block read</strong></div>
+              <div className="newDesignerBlockGrid">
+                <article><span>SHIRT BLOCK</span><strong>{blockStrategy.shirtBlock.replaceAll("-"," ")}</strong><p>{blockStrategy.summary[0]}</p></article>
+                <article><span>TROUSER BLOCK</span><strong>{blockStrategy.trouserBlock.replaceAll("-"," ")}</strong><p>{blockStrategy.summary[1]}</p></article>
+              </div>
+              {blockStrategy.adjustments.some((item)=>item.severity!=="info") && <div className="newDesignerBlockChecks">{blockStrategy.adjustments.filter((item)=>item.severity!=="info").slice(0,4).map((item)=><p key={item.id} data-severity={item.severity}><b>{item.area}</b>{item.message}</p>)}</div>}
+              {blockStrategy.suggestedPatch && <button type="button" onClick={()=>assess({...style,...blockStrategy.suggestedPatch})}>Try safer starting block ↗</button>}
+              <small>Starting-block strategy guides pattern selection and fitting review; it does not create a cutting pattern.</small>
+            </div>}
             {observationCoverage > 0 && <div className="newDesignerTailorObservations">
               <span>TAILOR OBSERVATIONS · {observationCoverage}/4</span>
               {observationSummary.map((note)=><b key={note}>{note}</b>)}
@@ -559,7 +571,7 @@ export function DesignerModule() {
               <div className="newDesignerSearchWhy"><span>WHY THIS DIRECTION</span>{result.reasons.slice(0,3).map((reason)=><p key={reason}>{reason}</p>)}</div>
               <details><summary>Why over my current choice?</summary>{result.comparison.map((item)=><p key={item}>{item}</p>)}</details>
               {result.tradeoffs.length>0 && <details><summary>Trade-offs / checks</summary>{result.tradeoffs.map((item)=><p key={item}>{item}</p>)}</details>}
-              <div className="newDesignerSearchSignals"><span>FIT {result.fitConstruction.fitScore}</span><span>BRAND {result.brandLanguage.score}</span><span>NOVELTY {result.noveltyScore}</span>{result.casebookSignal.evidence>=3 && <span>CASEBOOK {result.casebookSignal.score>0?"+":""}{result.casebookSignal.score}</span>}{result.fitOutcomeSignal.evidence>=3 && <span>FIRST FIT {result.fitOutcomeSignal.score>0?"+":""}{result.fitOutcomeSignal.score}</span>}</div>
+              <div className="newDesignerSearchSignals"><span>FIT {result.fitConstruction.fitScore}</span><span>BLOCK {result.blockStrategy.score}</span><span>BRAND {result.brandLanguage.score}</span><span>NOVELTY {result.noveltyScore}</span>{result.casebookSignal.evidence>=3 && <span>CASEBOOK {result.casebookSignal.score>0?"+":""}{result.casebookSignal.score}</span>}{result.fitOutcomeSignal.evidence>=3 && <span>FIRST FIT {result.fitOutcomeSignal.score>0?"+":""}{result.fitOutcomeSignal.score}</span>}</div>
               <button className="newDesignerSearchUse" type="button" onClick={()=>useSearchResult(result)}>Use this direction</button>
             </article>)}
           </div>}
@@ -639,6 +651,7 @@ export function DesignerModule() {
               <span>VISUAL / {garmentSpec.readiness.visualization.replaceAll("_"," ")}</span>
               <span>TAILORING / {garmentSpec.readiness.tailoring.replaceAll("_"," ")}</span>
               <span>MATERIAL / {garmentSpec.readiness.materialVerification.replaceAll("_"," ")}</span>
+              {garmentSpec.blockStrategy && <span>BLOCK / {garmentSpec.blockStrategy.shirtBlock.replaceAll("-"," ")} + {garmentSpec.blockStrategy.trouserBlock.replaceAll("-"," ")}</span>}
             </div>
             <p>This is the common Designer handoff for visualization and tailoring review. It is not a cutting pattern.</p>
           </section>}
@@ -664,7 +677,7 @@ export function DesignerModule() {
             {directions.slice(1).map((direction) => <article key={direction.id}>
               <strong>{direction.name}</strong><p>{direction.proposition}</p>
               <small>{direction.changes.join(" · ")}</small>
-              {direction.fitConstruction && <span className="newDesignerDirectionFit">FIT + CONSTRUCTION {direction.fitConstruction.fitScore}/100</span>}{direction.brandLanguage && <span className="newDesignerDirectionBrand">LINEN EARTH {direction.brandLanguage.score}/100</span>}
+              {direction.fitConstruction && <span className="newDesignerDirectionFit">FIT + CONSTRUCTION {direction.fitConstruction.fitScore}/100</span>}{direction.blockStrategy && <span className="newDesignerDirectionBlock">BLOCK {direction.blockStrategy.score}/100</span>}{direction.brandLanguage && <span className="newDesignerDirectionBrand">LINEN EARTH {direction.brandLanguage.score}/100</span>}
               <button type="button" onClick={() => assess(direction.recommendation.style)}>Assess this cut</button>
             </article>)}
           </div>}

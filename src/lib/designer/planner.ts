@@ -5,6 +5,7 @@ import {
 import type { MeasurementProfile } from "@/lib/measurements";
 import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { assessFitConstruction, type FitConstructionAssessment } from "@/lib/designer/fit-construction";
+import { assessBlockStrategy, type DesignerBlockStrategy } from "@/lib/designer/block-strategy";
 import { evaluateLinenEarthBrandLanguage, type BrandLanguageEvaluation } from "@/lib/designer/brand-language";
 
 export type DesignerDirection = {
@@ -15,6 +16,7 @@ export type DesignerDirection = {
   recommendation: DesignerRecommendation;
   fitConstruction?: FitConstructionAssessment;
   brandLanguage?: BrandLanguageEvaluation;
+  blockStrategy?: DesignerBlockStrategy;
 };
 
 type Candidate = Omit<DesignerDirection, "changes" | "recommendation"> & { patch: DesignerStyleOverrides };
@@ -61,9 +63,10 @@ export function planDesignerDirections(
   const selected = evaluateDesignerCombo(shirt, pant, occasion, chosen, undefined, context);
   const selectedFit = measurements ? assessFitConstruction(measurements, selected.style, { climate: context.climate, shirtFabric: shirt, trouserFabric: pant, observations }) : undefined;
   const selectedBrand = evaluateLinenEarthBrandLanguage(shirt,pant,selected.style,occasion,context);
+  const selectedBlock = measurements ? assessBlockStrategy(measurements, selected.style, observations) : undefined;
   const directions: DesignerDirection[] = [{
     id: "selected", name: "Your direction", proposition: "The cloth and cut you chose, assessed together.",
-    changes: [], recommendation: selected, fitConstruction: selectedFit, brandLanguage:selectedBrand,
+    changes: [], recommendation: selected, fitConstruction: selectedFit, brandLanguage:selectedBrand, blockStrategy:selectedBlock,
   }];
   const seen = new Set([JSON.stringify(selected.style)]);
   const candidates = alternatives(occasion).map((candidate) => {
@@ -71,9 +74,10 @@ export function planDesignerDirections(
     const recommendation = evaluateDesignerCombo(shirt, pant, occasion, style, undefined, context);
     const fitConstruction = measurements ? assessFitConstruction(measurements, recommendation.style, { climate: context.climate, shirtFabric: shirt, trouserFabric: pant, observations }) : undefined;
     const brandLanguage = evaluateLinenEarthBrandLanguage(shirt,pant,recommendation.style,occasion,context);
+    const blockStrategy = measurements ? assessBlockStrategy(measurements, recommendation.style, observations) : undefined;
     const changes = (Object.keys(style) as Array<keyof DesignerStyle>)
       .filter((key) => chosen[key] !== style[key]).map((key) => `${key}: ${style[key]}`);
-    return { ...candidate, changes, recommendation, fitConstruction, brandLanguage };
+    return { ...candidate, changes, recommendation, fitConstruction, brandLanguage, blockStrategy };
   }).filter((candidate) => {
     const key = JSON.stringify(candidate.recommendation.style);
     if (!candidate.changes.length || seen.has(key)) return false;
@@ -85,11 +89,11 @@ export function planDesignerDirections(
   const priority = context.intention === "Expressive" ? ["movement", "heritage", "clean"]
     : context.intention === "Understated" ? ["clean", "heritage", "movement"] : ["heritage", "clean", "movement"];
   candidates.sort((a, b) => {
-    const score = (item: typeof a) => item.recommendation.designFitScore * .58 + (item.fitConstruction?.fitScore ?? 70) * .32 + (item.brandLanguage?.score ?? 70) * .10;
+    const score = (item: typeof a) => item.recommendation.designFitScore * .50 + (item.fitConstruction?.fitScore ?? 70) * .25 + (item.blockStrategy?.score ?? 70) * .15 + (item.brandLanguage?.score ?? 70) * .10;
     return score(b) - score(a) || priority.indexOf(a.id) - priority.indexOf(b.id);
   });
-  return [...directions, ...candidates.slice(0, 2).map(({ id, name, proposition, changes, recommendation, fitConstruction, brandLanguage }) =>
-    ({ id, name, proposition, changes, recommendation, fitConstruction, brandLanguage }))];
+  return [...directions, ...candidates.slice(0, 2).map(({ id, name, proposition, changes, recommendation, fitConstruction, brandLanguage, blockStrategy }) =>
+    ({ id, name, proposition, changes, recommendation, fitConstruction, brandLanguage, blockStrategy }))];
 }
 
 export type DesignerRepair = { label: string; patch?: DesignerStyleOverrides };

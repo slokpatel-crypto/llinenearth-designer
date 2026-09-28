@@ -11,6 +11,7 @@ import {
   type OccasionTier,
 } from "@/lib/designer/engine";
 import { assessFitConstruction, type FitConstructionAssessment } from "@/lib/designer/fit-construction";
+import { assessBlockStrategy, type DesignerBlockStrategy } from "@/lib/designer/block-strategy";
 import { evaluateLinenEarthBrandLanguage, type BrandLanguageEvaluation } from "@/lib/designer/brand-language";
 import { casebookSignalFor, type DesignerCasebook, type DesignerCasebookSignal } from "@/lib/designer/casebook";
 import { fitOutcomeProportionFromMeasurements, fitOutcomeSignalFor, type FitOutcomeBook, type FitOutcomeSignal } from "@/lib/designer/fit-outcomes";
@@ -27,6 +28,7 @@ export type DesignerSearchResult = {
   recommendation: DesignerRecommendation;
   fitConstruction: FitConstructionAssessment;
   brandLanguage: BrandLanguageEvaluation;
+  blockStrategy: DesignerBlockStrategy;
   casebookSignal: DesignerCasebookSignal;
   fitOutcomeSignal: FitOutcomeSignal;
   searchScore: number;
@@ -173,6 +175,7 @@ function candidateScore(
   recommendation:DesignerRecommendation,
   fit:FitConstructionAssessment,
   brand:BrandLanguageEvaluation,
+  block:DesignerBlockStrategy,
   novelty:number,
   casebookScore=0,
   fitOutcomeScore=0,
@@ -186,8 +189,9 @@ function candidateScore(
   const score=
     recommendation.designFitScore*designWeight+
     recommendation.confidenceScore*confidenceWeight+
-    fit.fitScore*.18+
-    brand.score*.17+
+    fit.fitScore*.16+
+    block.score*.10+
+    brand.score*.13+
     material*.06+
     noveltyAlignment*noveltyWeight+
     Math.max(-6,Math.min(6,casebookScore))+
@@ -201,6 +205,7 @@ function reasonsFor(
   recommendation:DesignerRecommendation,
   fit:FitConstructionAssessment,
   brand:BrandLanguageEvaluation,
+  block:DesignerBlockStrategy,
   novelty:number,
   casebookSignal?:DesignerCasebookSignal,
   fitOutcomeSignal?:FitOutcomeSignal,
@@ -215,6 +220,7 @@ function reasonsFor(
   if(tier==="Statement") reasons.push("Uses one controlled source of novelty while preserving the hard fit and construction rules.");
 
   if(fit.fitScore>=85) reasons.push("The saved measurements support this cut with a strong provisional fit/construction score.");
+  if(block.score>=85) reasons.push(`The starting-block strategy is strong for the recorded proportions: ${block.shirtBlock} + ${block.trouserBlock}.`);
   if(brand.score>=82 && brand.strengths[0]) reasons.push(brand.strengths[0]);
   if(novelty>=65 && tier==="Statement") reasons.push("The visual interest comes from proportion, pattern or contrast rather than stacking several loud ideas.");
   if(casebookSignal && casebookSignal.evidence>=3 && casebookSignal.score>=2) reasons.push(`Operator-reviewed casebook supports this direction: ${casebookSignal.summary}`);
@@ -226,9 +232,11 @@ function tradeoffsFor(
   recommendation:DesignerRecommendation,
   fit:FitConstructionAssessment,
   brand:BrandLanguageEvaluation,
+  block:DesignerBlockStrategy,
 ) {
   const tradeoffs=[
     ...fit.checks.filter((item)=>item.severity==="review").map((item)=>item.message),
+    ...block.adjustments.filter((item)=>item.severity!=="info").map((item)=>item.message),
     ...recommendation.rules.filter((item)=>item.status==="unknown"&&item.severity!=="Low").map((item)=>item.explanation),
     ...brand.cautions,
   ];
@@ -240,7 +248,8 @@ function currentMetrics(input:DesignerSearchInput,tier:DesignerSearchTier) {
   const recommendation=evaluateDesignerCombo(input.currentShirt,input.currentPant,input.occasion,style,undefined,input.context);
   const fit=assessFitConstruction(input.measurements,style,{climate:input.context.climate,shirtFabric:input.currentShirt,trouserFabric:input.currentPant,observations:input.observations});
   const brand=evaluateLinenEarthBrandLanguage(input.currentShirt,input.currentPant,style,input.occasion,input.context);
-  return { recommendation,fit,brand,novelty:noveltyScore(input.currentShirt,input.currentPant,style) };
+  const block=assessBlockStrategy(input.measurements,style,input.observations);
+  return { recommendation,fit,brand,block,novelty:noveltyScore(input.currentShirt,input.currentPant,style) };
 }
 
 function comparisonFor(candidate:RankedCandidate,input:DesignerSearchInput) {
@@ -254,6 +263,9 @@ function comparisonFor(candidate:RankedCandidate,input:DesignerSearchInput) {
   }
   if(candidate.fitConstruction.fitScore>=current.fit.fitScore+5) {
     notes.push(`Better measurement-aware cut fit: ${candidate.fitConstruction.fitScore}/100 vs ${current.fit.fitScore}/100.`);
+  }
+  if(candidate.blockStrategy.score>=current.block.score+6) {
+    notes.push(`Stronger starting-block strategy: ${candidate.blockStrategy.score}/100 vs ${current.block.score}/100.`);
   }
   if(candidate.brandLanguage.score>=current.brand.score+6) {
     notes.push(`Closer to Linen Earth design language: ${candidate.brandLanguage.score}/100 vs ${current.brand.score}/100.`);
@@ -269,6 +281,7 @@ function comparisonFor(candidate:RankedCandidate,input:DesignerSearchInput) {
   const currentProblems=[
     ...current.recommendation.rules.filter((item)=>item.status==="flag").map((item)=>item.explanation),
     ...current.fit.checks.filter((item)=>item.severity==="warning"||item.severity==="review").map((item)=>item.message),
+    ...current.block.adjustments.filter((item)=>item.severity==="warning"||item.severity==="review").map((item)=>item.message),
   ];
   if(currentProblems[0]) notes.push(`The current direction still needs attention here: ${currentProblems[0]}`);
   return notes.slice(0,3);
@@ -295,6 +308,7 @@ export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearc
         const fit=assessFitConstruction(input.measurements,style,{climate:input.context.climate,shirtFabric:shirt,trouserFabric:pant,observations:input.observations});
         if(hardBlocked(recommendation,fit)) continue;
         const brand=evaluateLinenEarthBrandLanguage(shirt,pant,style,input.occasion,input.context);
+        const block=assessBlockStrategy(input.measurements,style,input.observations);
         const novelty=noveltyScore(shirt,pant,style);
         const casebookSignal=casebookSignalFor(recommendation,input.casebook);
         const fitOutcomeSignal=fitOutcomeSignalFor({
@@ -304,12 +318,12 @@ export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearc
         },input.fitOutcomes);
         ranked.push({
           id:`${tier.toLowerCase()}:${shirt.id}:${pant.id}`,
-          tier,shirt,pant,style,recommendation,fitConstruction:fit,brandLanguage:brand,casebookSignal,fitOutcomeSignal,
-          searchScore:candidateScore(tier,recommendation,fit,brand,novelty,casebookSignal.score,fitOutcomeSignal.score),
+          tier,shirt,pant,style,recommendation,fitConstruction:fit,brandLanguage:brand,blockStrategy:block,casebookSignal,fitOutcomeSignal,
+          searchScore:candidateScore(tier,recommendation,fit,brand,block,novelty,casebookSignal.score,fitOutcomeSignal.score),
           noveltyScore:novelty,
-          reasons:reasonsFor(tier,scope,recommendation,fit,brand,novelty,casebookSignal,fitOutcomeSignal),
+          reasons:reasonsFor(tier,scope,recommendation,fit,brand,block,novelty,casebookSignal,fitOutcomeSignal),
           tradeoffs:[
-            ...tradeoffsFor(recommendation,fit,brand),
+            ...tradeoffsFor(recommendation,fit,brand,block),
             ...(casebookSignal.evidence>=3 && casebookSignal.score<=-2 ? [`Operator-reviewed casebook caution: ${casebookSignal.summary}`] : []),
             ...(fitOutcomeSignal.evidence>=3 && fitOutcomeSignal.score<=-1.5 ? [`Reviewed first-fit caution: ${fitOutcomeSignal.summary}`] : []),
           ].slice(0,3),
@@ -341,11 +355,12 @@ export function explainWhyNotCurrentPair(input:DesignerSearchInput) {
     const current=currentMetrics(input,tier);
     const blockers=current.recommendation.rules.filter((item)=>item.status==="flag").map((item)=>item.explanation);
     const fitIssues=current.fit.checks.filter((item)=>item.severity!=="info").map((item)=>item.message);
+    const blockIssues=current.block.adjustments.filter((item)=>item.severity!=="info").map((item)=>item.message);
     const unknowns=current.recommendation.rules.filter((item)=>item.status==="unknown"&&item.severity!=="Low").map((item)=>item.explanation);
     return {
       tier,
       acceptable:!hardBlocked(current.recommendation,current.fit),
-      reasons:[...blockers,...fitIssues,...unknowns,...current.brand.cautions].filter((value,index,all)=>all.indexOf(value)===index).slice(0,5),
+      reasons:[...blockers,...fitIssues,...blockIssues,...unknowns,...current.brand.cautions].filter((value,index,all)=>all.indexOf(value)===index).slice(0,5),
     };
   });
 }
