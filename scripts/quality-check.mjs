@@ -366,7 +366,7 @@ for (const token of [
   if (!designerCasebook.includes(token)) throw new Error(`Designer casebook regression: missing ${token}`);
 }
 const designerCasebookApi = fs.readFileSync("src/app/api/designer/casebook/route.ts","utf8");
-for (const token of ["aggregateDesignerCasebook","source:\"eq.operator\"","type:\"eq.operator_note\"","select:\"type,source,payload\"","cache-control","No session"]) {
+for (const token of ["aggregateDesignerCasebook","source:\"eq.operator\"","type:\"eq.operator_note\"","select:\"type,source,payload\"","cache-control","No raw"]) {
   if (!designerCasebookApi.includes(token)) throw new Error(`Designer casebook API regression: missing ${token}`);
 }
 for (const forbidden of ["session_id","sessionId","customerName","phone","email"]) {
