@@ -15,6 +15,7 @@ import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-styl
 import { PhotoOutfitPreview } from "@/components/PhotoOutfitPreview";
 import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, type MeasurementProfile } from "@/lib/measurements";
 import { assessFitConstruction, formatFinishedRange } from "@/lib/designer/fit-construction";
+import { buildDesignerNegotiation } from "@/lib/designer/constraint-negotiation";
 
 const OCCASIONS: OccasionTier[] = ["Casual", "Smart-Casual", "Semi-Formal", "Formal"];
 const CLIMATES: DesignerClimate[] = ["Not specified", "Hot / humid", "Cool", "Air-conditioned"];
@@ -72,6 +73,7 @@ export function DesignerModule() {
   const fitCoverage = useMemo(() => measurementCoverage(measurementProfile), [measurementProfile]);
   const fitGuidance = useMemo(() => measurementFitGuidance(measurementProfile), [measurementProfile]);
   const fitConstruction = useMemo(() => shirt && pant ? assessFitConstruction(measurementProfile, style, { climate, shirtFabric: shirt, trouserFabric: pant }) : null, [measurementProfile, style, climate, shirt, pant]);
+  const negotiation = useMemo(() => recommendation ? buildDesignerNegotiation(recommendation, fitConstruction) : null, [recommendation, fitConstruction]);
 
   useEffect(() => {
     try {
@@ -452,6 +454,18 @@ export function DesignerModule() {
             <div><span>TROUSERS</span><strong>{recommendation.style.trouser}</strong><small>{recommendation.style.rise} · {recommendation.style.waistband} · {recommendation.style.break}</small></div>
           </div>
           <p className="newDesignerProvisional">{recommendation.status === "preliminary" ? "A preliminary direction. We would check the actual fabric before confirming the cut." : "This is your proposed cut, pending a Linen Earth stylist's review."}</p>
+          {negotiation && <section className={`newDesignerNegotiation ${negotiation.verdict}`} aria-label="Designer constraint negotiation">
+            <div className="newDesignerNegotiationHead"><span>DESIGNER NEGOTIATION</span><strong>{negotiation.headline}</strong></div>
+            <div className="newDesignerPreserve"><span>KEEP</span>{negotiation.preserve.slice(0,5).map((item)=><b key={item}>{item}</b>)}</div>
+            {negotiation.blockers.length>0 && <div className="newDesignerIssueGroup"><span>BLOCKING</span>{negotiation.blockers.slice(0,3).map((item)=><p key={item.id}>{item.message}</p>)}</div>}
+            {negotiation.tradeoffs.length>0 && <div className="newDesignerIssueGroup"><span>FIT / CONSTRUCTION</span>{negotiation.tradeoffs.slice(0,3).map((item)=><p key={item.id}>{item.message}</p>)}</div>}
+            {negotiation.missingFacts.length>0 && <div className="newDesignerIssueGroup"><span>NEEDS VERIFICATION</span>{negotiation.missingFacts.slice(0,3).map((item)=><p key={item.id}>{item.message}</p>)}</div>}
+            {negotiation.actions.length>0 && <div className="newDesignerNegotiationActions"><span>SMALLEST FIXES</span>{negotiation.actions.map((action)=><div key={action.id}>
+              <p>{action.label}</p>
+              {action.patch && <button type="button" onClick={()=>assess({...recommendation.style,...action.patch})}>Try this change</button>}
+              {action.route && <Link href={action.route}>Open measurements ↗</Link>}
+            </div>)}</div>}
+          </section>}
           {directions.length > 1 && <div className="newDesignerDirections"><h3>Different cuts for the same cloth</h3><p>These are design sketches, subject to the same fabric and stock checks.</p>
             {directions.slice(1).map((direction) => <article key={direction.id}>
               <strong>{direction.name}</strong><p>{direction.proposition}</p>
