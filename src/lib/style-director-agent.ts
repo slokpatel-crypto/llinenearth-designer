@@ -2,6 +2,10 @@ import { FABRIC_STOCK, fabricProfileFromStock, type FabricColorway } from "@/lib
 import { generateDesignerDirections, type DesignCandidate } from "@/lib/designer-engine";
 import { finalizeVersion, initialVersion, type DesignVersion } from "@/lib/refinement-engine";
 import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
+import {
+  DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerStyleForOccasion, evaluateDesignerCombo,
+  type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerStyle, type OccasionTier,
+} from "@/lib/designer/engine";
 
 export type StyleDirectorAnswers = {
   occasion: "Wedding" | "Work" | "Date" | "Celebration" | "Travel" | "Everyday";
@@ -10,6 +14,19 @@ export type StyleDirectorAnswers = {
   climate: "Hot" | "Indoor" | "Mixed";
   garment: "shirt" | "trouser" | "suit" | "blazer";
   colorDirection: "Light" | "Earthy" | "Blue" | "Dark" | "Surprise me";
+};
+
+export type StyleDirectorRealModelSpec = {
+  shirtId: string;
+  pantId: string;
+  occasion: OccasionTier;
+  climate: DesignerClimate;
+  intention: DesignerIntention;
+  style: DesignerStyle;
+  reason: string;
+  status: "preliminary" | "needs_review";
+  confidenceScore: number;
+  designFitScore: number;
 };
 
 export type StyleDirectorLook = {
@@ -21,6 +38,7 @@ export type StyleDirectorLook = {
   brief: DesignerBrief;
   version: DesignVersion;
   why: string[];
+  realModel?: StyleDirectorRealModelSpec;
 };
 
 function contextFromAnswers(a: StyleDirectorAnswers): ContextProfile {
@@ -92,6 +110,100 @@ function chooseFabrics(a: StyleDirectorAnswers) {
   return [...eligible].sort((x,y) => rankFabric(a,y) - rankFabric(a,x)).slice(0,3);
 }
 
+function realModelOccasion(a: StyleDirectorAnswers): OccasionTier {
+  if (a.occasion === "Wedding") return "Formal";
+  if (a.occasion === "Work" || a.occasion === "Celebration") return "Semi-Formal";
+  if (a.occasion === "Travel") return "Casual";
+  return "Smart-Casual";
+}
+
+function realModelContext(a: StyleDirectorAnswers): DesignerContext {
+  const climate: DesignerClimate = a.climate === "Hot" ? "Hot / humid"
+    : a.climate === "Indoor" ? "Air-conditioned" : "Not specified";
+  const intention: DesignerIntention = a.mood === "Quiet" ? "Understated"
+    : a.mood === "Statement" ? "Expressive" : "Balanced";
+  return { climate, intention };
+}
+
+function pickStyleChoice<K extends keyof DesignerStyle>(key: K, matcher: RegExp, fallback: DesignerStyle[K]) {
+  return (DESIGNER_STYLE_CHOICES[key].find((value) => matcher.test(value)) || fallback) as DesignerStyle[K];
+}
+
+function styleForDirectorCandidate(a: StyleDirectorAnswers, candidate: DesignCandidate): DesignerStyle {
+  const occasion = realModelOccasion(a);
+  const style = designerStyleForOccasion(occasion);
+  const shirt = candidate.garments.shirt.toLowerCase();
+  const trouser = candidate.garments.trouser.toLowerCase();
+
+  if (shirt.includes("spread")) {
+    style.collar = pickStyleChoice("collar", /spread/i, style.collar);
+    style.shirtWear = "Tucked";
+  } else if (shirt.includes("button-down") || shirt.includes("oxford")) {
+    style.collar = pickStyleChoice("collar", /button[- ]?down/i, style.collar);
+    style.shirtWear = occasion === "Formal" || occasion === "Semi-Formal" ? "Tucked" : "Untucked";
+  } else if (shirt.includes("camp")) {
+    style.collar = pickStyleChoice("collar", /camp|cuban/i, style.collar);
+    style.shirtWear = "Untucked";
+  } else if (shirt.includes("band")) {
+    style.collar = pickStyleChoice("collar", /band|mandarin/i, style.collar);
+  }
+
+  if (trouser.includes("wide")) {
+    style.trouser = pickStyleChoice("trouser", /wide|relaxed drape/i, style.trouser);
+    style.break = pickStyleChoice("break", /full break|no break/i, style.break);
+  } else if (trouser.includes("pleat")) {
+    style.trouser = pickStyleChoice("trouser", /pleated/i, style.trouser);
+    style.break = pickStyleChoice("break", /slight break/i, style.break);
+  } else if (trouser.includes("flat-front") || trouser.includes("flat front")) {
+    style.trouser = pickStyleChoice("trouser", /flat[- ]?front|formal trouser/i, style.trouser);
+  } else if (trouser.includes("drawstring")) {
+    style.waistband = pickStyleChoice("waistband", /drawstring|elastic/i, style.waistband);
+    style.trouser = pickStyleChoice("trouser", /wide|relaxed|pleated/i, style.trouser);
+  }
+
+  if (occasion === "Formal" || occasion === "Semi-Formal") {
+    style.shirtWear = "Tucked";
+    style.rise = pickStyleChoice("rise", /mid rise|high rise/i, style.rise);
+  }
+  return style;
+}
+
+function buildRealModelSpec(a: StyleDirectorAnswers, fabric: FabricColorway, candidate: DesignCandidate): StyleDirectorRealModelSpec | undefined {
+  if (a.garment !== "shirt" && a.garment !== "trouser") return undefined;
+  const occasion = realModelOccasion(a);
+  const context = realModelContext(a);
+  const style = styleForDirectorCandidate(a, candidate);
+  const hero = (a.garment === "shirt" ? DESIGNER_SHIRTS : DESIGNER_PANTS).find((item) => item.id === fabric.id);
+  if (!hero) return undefined;
+
+  const options = a.garment === "shirt" ? DESIGNER_PANTS : DESIGNER_SHIRTS;
+  const ranked = options.map((other) => {
+    const shirt = a.garment === "shirt" ? hero : other;
+    const pant = a.garment === "trouser" ? hero : other;
+    const recommendation = evaluateDesignerCombo(shirt, pant, occasion, style, undefined, context);
+    const hardFlags = recommendation.rules.filter((rule) => rule.status === "flag" && rule.severity === "High").length;
+    const mediumFlags = recommendation.rules.filter((rule) => rule.status === "flag" && rule.severity === "Medium").length;
+    const score = recommendation.designFitScore + recommendation.confidenceScore * .35 - hardFlags * 45 - mediumFlags * 12
+      - (recommendation.status === "needs_review" ? 8 : 0);
+    return { recommendation, score };
+  }).sort((x,y) => y.score - x.score || y.recommendation.designFitScore - x.recommendation.designFitScore);
+
+  const best = ranked[0]?.recommendation;
+  if (!best) return undefined;
+  return {
+    shirtId: best.shirt.id,
+    pantId: best.pant.id,
+    occasion,
+    climate: context.climate,
+    intention: context.intention,
+    style: best.style,
+    reason: best.shortReason,
+    status: best.status,
+    confidenceScore: best.confidenceScore,
+    designFitScore: best.designFitScore,
+  };
+}
+
 function nameFor(index: number, candidate: DesignCandidate) {
   const labels = ["Director's Pick", "Easy Win", "Push It"];
   return `${labels[index] || candidate.tier} · ${candidate.name}`;
@@ -129,6 +241,7 @@ export function createStyleDirectorLooks(answers: StyleDirectorAnswers): StyleDi
         candidate.reasons[0] || "The fabric and silhouette support the occasion.",
         candidate.tradeoff,
       ],
+      realModel: buildRealModelSpec(answers, fabric, candidate),
     };
   });
 }
