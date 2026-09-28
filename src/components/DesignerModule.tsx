@@ -601,18 +601,20 @@ export function DesignerModule() {
               onChange={() => { setOccasion(option); setStyle(designerStyleForOccasion(option)); setRecommendation(null); setRecommendationId(null); }} />{option}
           </label>)}</div>
         </fieldset>
-        <div className="newDesignerContext">
-          <label>Climate at the event
-            <select value={climate} onChange={(event) => { setClimate(event.target.value as DesignerClimate); setRecommendation(null); }}>
-              {CLIMATES.map((option) => <option key={option}>{option}</option>)}
-            </select>
-          </label>
-          <label>How should it feel visually?
+        <div className="newDesignerContext newDesignerContextSimple">
+          <label>Style mood
             <select value={intention} onChange={(event) => { setIntention(event.target.value as DesignerIntention); setRecommendation(null); }}>
               {INTENTIONS.map((option) => <option key={option}>{option}</option>)}
             </select>
           </label>
-          <small>These help Designer shape the look.</small>
+          <details className="newDesignerTechnicalDrawer newDesignerPreferenceDrawer">
+            <summary>More preferences</summary>
+            <label>Climate
+              <select value={climate} onChange={(event) => { setClimate(event.target.value as DesignerClimate); setRecommendation(null); }}>
+                {CLIMATES.map((option) => <option key={option}>{option}</option>)}
+              </select>
+            </label>
+          </details>
         </div>
 
         <section className="newDesignerFitCompact" aria-label="Saved tailoring measurements">
@@ -631,7 +633,7 @@ export function DesignerModule() {
 
         <section className="newDesignerSearch newDesignerSimplePanel" aria-label="Designer catalogue search">
           <div className="newDesignerSimpleHead">
-            <div><span>02 / QUICK DIRECTIONS</span><strong>Try another outfit direction.</strong></div>
+            <div><span>OPTIONAL</span><strong>Try different fabrics.</strong></div>
             <button type="button" onClick={runAdvancedSearch} disabled={!shirt || !pant}>Show options</button>
           </div>
           <div className="newDesignerSearchScopes" role="group" aria-label="Designer search scope">
@@ -701,7 +703,7 @@ export function DesignerModule() {
 
         <div className="newDesignerStyleBlock newDesignerSimplePanel">
           <div className="newDesignerSimpleHead">
-            <div><span>04 / SHAPE</span><strong>Adjust the cut.</strong></div>
+            <div><span>04 / SHAPE</span><strong>Adjust only what matters.</strong></div>
             <button type="button" onClick={matchPhotographedOfficeModel}>Office preset</button>
           </div>
           <div className="newDesignerStyleGrid newDesignerStyleGridCompact">{MAIN_DETAILS.slice(0,4).map(([key,label])=><label key={key}>{label}
