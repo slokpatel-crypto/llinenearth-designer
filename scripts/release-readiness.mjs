@@ -33,6 +33,7 @@ for (const path of [
   "public/designer/studio-tucked.webp",
   "src/lib/designer/photo-preview.ts",
   "src/lib/designer/fit-construction.ts",
+  "src/lib/designer/constraint-negotiation.ts",
   "src/components/PhotoOutfitPreview.tsx",
   "src/app/designer-studio/page.tsx",
   "desktop/src/App.tsx",
@@ -50,6 +51,13 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "PHOTO_TUCKED_NECK_CLEAR",
   "masks.shirt",
   "masks.pant",
+]);
+requireTokens("src/lib/designer/constraint-negotiation.ts", [
+  "designer-negotiation-v1",
+  "buildDesignerNegotiation",
+  "hard_blocker",
+  "fit_tradeoff",
+  "TRY-PLEATED-BLOCK",
 ]);
 requireTokens("src/lib/designer/fit-construction.ts", [
   "fit-construction-provisional-1",
