@@ -3,6 +3,7 @@ import {
   type DesignerStyle, type DesignerStyleOverrides, type OccasionTier,
 } from "@/lib/designer/engine";
 import type { MeasurementProfile } from "@/lib/measurements";
+import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { assessFitConstruction, type FitConstructionAssessment } from "@/lib/designer/fit-construction";
 import { evaluateLinenEarthBrandLanguage, type BrandLanguageEvaluation } from "@/lib/designer/brand-language";
 
@@ -55,10 +56,10 @@ function alternatives(occasion: OccasionTier): Candidate[] {
 /** The requested outfit always remains first. Other directions change only its cut. */
 export function planDesignerDirections(
   shirt: DesignerFabric, pant: DesignerFabric, occasion: OccasionTier,
-  chosen: DesignerStyle, context: DesignerContext, measurements?: MeasurementProfile | null,
+  chosen: DesignerStyle, context: DesignerContext, measurements?: MeasurementProfile | null, observations?: TailorObservationProfile | null,
 ): DesignerDirection[] {
   const selected = evaluateDesignerCombo(shirt, pant, occasion, chosen, undefined, context);
-  const selectedFit = measurements ? assessFitConstruction(measurements, selected.style, { climate: context.climate, shirtFabric: shirt, trouserFabric: pant }) : undefined;
+  const selectedFit = measurements ? assessFitConstruction(measurements, selected.style, { climate: context.climate, shirtFabric: shirt, trouserFabric: pant, observations }) : undefined;
   const selectedBrand = evaluateLinenEarthBrandLanguage(shirt,pant,selected.style,occasion,context);
   const directions: DesignerDirection[] = [{
     id: "selected", name: "Your direction", proposition: "The cloth and cut you chose, assessed together.",
@@ -68,7 +69,7 @@ export function planDesignerDirections(
   const candidates = alternatives(occasion).map((candidate) => {
     const style = { ...chosen, ...candidate.patch };
     const recommendation = evaluateDesignerCombo(shirt, pant, occasion, style, undefined, context);
-    const fitConstruction = measurements ? assessFitConstruction(measurements, recommendation.style, { climate: context.climate, shirtFabric: shirt, trouserFabric: pant }) : undefined;
+    const fitConstruction = measurements ? assessFitConstruction(measurements, recommendation.style, { climate: context.climate, shirtFabric: shirt, trouserFabric: pant, observations }) : undefined;
     const brandLanguage = evaluateLinenEarthBrandLanguage(shirt,pant,recommendation.style,occasion,context);
     const changes = (Object.keys(style) as Array<keyof DesignerStyle>)
       .filter((key) => chosen[key] !== style[key]).map((key) => `${key}: ${style[key]}`);

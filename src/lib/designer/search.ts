@@ -1,4 +1,5 @@
 import type { MeasurementProfile } from "@/lib/measurements";
+import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import {
   DESIGNER_STYLE_CHOICES,
   designerStyleForOccasion,
@@ -44,6 +45,7 @@ export type DesignerSearchInput = {
   chosenStyle: DesignerStyle;
   context: DesignerContext;
   measurements?: MeasurementProfile | null;
+  observations?: TailorObservationProfile | null;
   scope?: DesignerSearchScope;
   casebook?: DesignerCasebook | null;
   fitOutcomes?: FitOutcomeBook | null;
@@ -236,7 +238,7 @@ function tradeoffsFor(
 function currentMetrics(input:DesignerSearchInput,tier:DesignerSearchTier) {
   const style=styleForTier(tier,input.occasion,input.chosenStyle);
   const recommendation=evaluateDesignerCombo(input.currentShirt,input.currentPant,input.occasion,style,undefined,input.context);
-  const fit=assessFitConstruction(input.measurements,style,{climate:input.context.climate,shirtFabric:input.currentShirt,trouserFabric:input.currentPant});
+  const fit=assessFitConstruction(input.measurements,style,{climate:input.context.climate,shirtFabric:input.currentShirt,trouserFabric:input.currentPant,observations:input.observations});
   const brand=evaluateLinenEarthBrandLanguage(input.currentShirt,input.currentPant,style,input.occasion,input.context);
   return { recommendation,fit,brand,novelty:noveltyScore(input.currentShirt,input.currentPant,style) };
 }
@@ -290,7 +292,7 @@ export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearc
     for(const shirt of shirts) {
       for(const pant of pants) {
         const recommendation=evaluateDesignerCombo(shirt,pant,input.occasion,style,undefined,input.context);
-        const fit=assessFitConstruction(input.measurements,style,{climate:input.context.climate,shirtFabric:shirt,trouserFabric:pant});
+        const fit=assessFitConstruction(input.measurements,style,{climate:input.context.climate,shirtFabric:shirt,trouserFabric:pant,observations:input.observations});
         if(hardBlocked(recommendation,fit)) continue;
         const brand=evaluateLinenEarthBrandLanguage(shirt,pant,style,input.occasion,input.context);
         const novelty=noveltyScore(shirt,pant,style);

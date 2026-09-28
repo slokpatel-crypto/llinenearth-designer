@@ -1,5 +1,6 @@
 import type { MeasurementProfile } from "@/lib/measurements";
 import type { DesignerClimate, DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
+import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
 
 export type FitConstructionSeverity = "info" | "review" | "warning";
 export type RangeCm = { min: number; max: number };
@@ -105,11 +106,12 @@ export function assessFitConstruction(
     climate?: DesignerClimate;
     shirtFabric?: Pick<DesignerFabric,"drape"|"weightClass"|"weave"|"name"> | null;
     trouserFabric?: Pick<DesignerFabric,"drape"|"weightClass"|"weave"|"name"> | null;
+    observations?: TailorObservationProfile | null;
   } = {},
 ):FitConstructionAssessment {
   const caveats=[
     "Ease values are provisional Linen Earth house ranges, not final cutting measurements.",
-    "A tailor must verify posture, shoulder slope, armhole, seat balance and pattern/block adjustments before cutting.",
+    options.observations ? "Manual tailoring observations improve the fit read, but a tailor must still verify armhole, sleeve pitch and pattern/block adjustments before cutting." : "A tailor must verify posture, shoulder slope, armhole, seat balance and pattern/block adjustments before cutting.",
   ];
   if(!profile){
     return {
@@ -192,6 +194,39 @@ export function assessFitConstruction(
   }
   if(style.collar.includes("Spread")&&options.shirtFabric?.weightClass==="Heavy"){
     pushCheck(checks,"FABRIC-COLLAR","review","A heavy shirting can make a spread collar bulky; confirm collar construction and interlining on the real cloth.");
+  }
+
+  const observations=options.observations;
+  if(observations) {
+    if(observations.shoulderBalance==="sloping") {
+      pushCheck(checks,"OBS-SHOULDER-SLOPING","review","The recorded sloping shoulder balance needs a shoulder-slope and armhole check before sleeve pitch is finalized.");
+    } else if(observations.shoulderBalance==="square") {
+      pushCheck(checks,"OBS-SHOULDER-SQUARE","review","The recorded square shoulder balance needs the shoulder angle and armhole depth checked against the block before cutting.");
+    } else if(observations.shoulderBalance==="level") {
+      pushCheck(checks,"OBS-SHOULDER-LEVEL","info","No unusual shoulder-balance adjustment is indicated by the manual tailoring observation.");
+    }
+
+    if(observations.posture==="forward") {
+      pushCheck(checks,"OBS-POSTURE-FORWARD","review","The forward posture observation needs front/back balance and yoke length checked so the shirt does not pull backward at the neck.");
+    } else if(observations.posture==="erect") {
+      pushCheck(checks,"OBS-POSTURE-ERECT","review","The erect posture observation needs front/back length balance checked so excess cloth does not collect across the back.");
+    } else if(observations.posture==="balanced") {
+      pushCheck(checks,"OBS-POSTURE-BALANCED","info","No non-standard posture adjustment is indicated by the manual tailoring observation.");
+    }
+
+    if(observations.seatBalance==="full") {
+      if(tf==="flat") pushCheck(checks,"OBS-SEAT-FULL","warning","A full-seat observation adds risk to a very clean flat-front upper block. Compare a pleated or roomier block before approval.");
+      else pushCheck(checks,"OBS-SEAT-FULL","review","Allow enough back-rise and seat room for the recorded full-seat balance; verify the upper block at fitting.");
+    } else if(observations.seatBalance==="flat") {
+      if(tf==="wide"||tf==="pleated") pushCheck(checks,"OBS-SEAT-FLAT","review","A flat-seat observation may leave excess cloth in a fuller trouser block. Check back-rise shaping and seat suppression.");
+      else pushCheck(checks,"OBS-SEAT-FLAT","info","The cleaner trouser block is provisionally compatible with the recorded flat-seat balance.");
+    }
+
+    if(observations.mobilityPriority==="high"&&sf==="slim") {
+      pushCheck(checks,"OBS-MOBILITY","review","High mobility priority conflicts with aggressively reduced slim-fit ease. Preserve the slim visual line while keeping chest, bicep and armhole movement.");
+    } else if(observations.mobilityPriority==="high") {
+      pushCheck(checks,"OBS-MOBILITY","info","High mobility priority is recorded; keep the finished-garment range toward the roomier end of the provisional ease band.");
+    }
   }
 
   const warnings=checks.filter((item)=>item.severity==="warning").length;

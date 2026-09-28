@@ -242,3 +242,7 @@
 @media(max-width:560px){.newDesignerSearch{padding:14px}.newDesignerSearchScopes{display:grid;grid-template-columns:1fr}.newDesignerSearchScopes button{width:100%}.newDesignerSearchPair img{aspect-ratio:1.7/1}}
 
 .newDesignerCasebookState{display:block;margin-top:8px;color:#758497;font-size:7px;letter-spacing:.08em;text-transform:uppercase}
+
+.newDesignerTailorObservations{display:flex;flex-wrap:wrap;gap:6px;margin-top:13px;padding-top:12px;border-top:1px solid #e1d8ce}
+.newDesignerTailorObservations>span{width:100%;font-size:8px;letter-spacing:.14em;color:#9d654d;font-weight:700}
+.newDesignerTailorObservations b{font-size:8px;font-weight:500;color:#526171;border:1px solid #d9e2eb;background:#f6f9fc;padding:6px 8px}
