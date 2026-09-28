@@ -482,7 +482,6 @@ export function composePhotoOutfit(
   context.imageSmoothingQuality = "high";
   context.drawImage(modelPhoto, 0, 0, WIDTH, HEIGHT);
   const tucked = style.shirtWear === "Tucked";
-  const creativeCoverage = creativePreviewCoverage(creativeDirection || undefined);
   if (tucked) {
     const masks = tuckedGarmentMasks(modelPhoto);
 
@@ -540,6 +539,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection }: {
   const template = DESIGNER_PHOTO_TEMPLATES[templateId];
   const gaps = photoTemplateGaps(style, templateId);
   const tucked = style.shirtWear === "Tucked";
+  const creativeCoverage = creativePreviewCoverage(creativeDirection || undefined);
 
   useEffect(() => {
     setCreativeAi(null);
