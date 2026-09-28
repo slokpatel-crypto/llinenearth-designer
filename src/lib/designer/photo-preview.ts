@@ -25,6 +25,19 @@ export const PHOTO_TUCKED_COLLAR_MASK = "M 466 173 Q 451 184 447 203 L 447 249 L
 export const PHOTO_TUCKED_COLLAR_STAND_MASK = "M 463 172 L 490 215 L 481 227 L 446 192 Z M 556 172 L 530 215 L 542 227 L 582 192 Z";
 export const PHOTO_TUCKED_CUFF_MASK = "M 285 654 Q 312 649 338 663 L 335 698 L 289 700 Z M 679 662 Q 706 651 733 656 L 730 700 L 682 699 Z";
 
+// Hard photographic boundaries for the tucked studio template. These are not
+// garment illustrations: they only constrain the recolour operation to the
+// photographed cloth. Colour segmentation alone can pick up the warm studio
+// floor, neck shadows and the gap between the legs, which creates the cheap
+// "fabric sticker" effect. The colour mask is intersected with these paths.
+export const PHOTO_TUCKED_SHIRT_CLIP = "M 348 245 L 315 317 L 287 492 L 278 622 L 285 701 L 332 701 L 376 478 L 389 479 L 387 543 L 628 542 L 627 485 L 640 484 L 678 699 L 723 701 L 735 623 L 700 315 L 671 249 L 573 205 L 556 177 L 541 216 L 506 244 L 470 201 L 465 175 L 449 203 Z";
+export const PHOTO_TUCKED_NECK_CLEAR = "M 466 165 L 488 216 L 510 242 L 535 216 L 557 165 L 579 190 L 567 251 L 457 251 L 445 190 Z";
+
+// Split trouser construction keeps the photographed fly/waist joined while
+// preventing any textile fill from bridging the inner-leg opening.
+export const PHOTO_TUCKED_TROUSER_CLIP = "M 368 542 L 510 542 L 510 690 C 505 775 497 900 485 1030 L 478 1350 L 468 1380 L 418 1382 L 382 1365 L 368 1300 L 368 671 Z M 510 542 L 650 542 L 655 690 L 650 1040 L 646 1300 L 636 1352 L 594 1370 L 560 1350 L 548 1280 L 525 1030 C 518 900 513 775 510 690 Z";
+
+
 export const DESIGNER_PHOTO_TEMPLATES: Record<PhotoTemplate, {
   src: string;
   trouser: string;
