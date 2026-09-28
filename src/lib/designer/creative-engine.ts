@@ -363,6 +363,44 @@ function hybridResearchSeed(a:CreativeResearchSignal,b:CreativeResearchSignal,in
   };
 }
 
+
+function frontierCrossZoneSeed(seed:Seed,index:number):Seed {
+  const zoneCycle:CreativeZone[]=["collar","cuff","placket","shirt-body","pocket","waistband","pleat","trouser-leg"];
+  const sourceZone=zoneCycle[index%zoneCycle.length];
+  const targetZone=zoneCycle[(index*3+5)%zoneCycle.length];
+  return {
+    ...seed,
+    id:`frontier-${seed.id}-${index}`,
+    name:`${seed.name} / Frontier Transfer`,
+    thesis:`Push the source principle into a new design mechanism and zone before critique: ${seed.thesis}`,
+    treatments:(input)=>{
+      const original=seed.treatments(input);
+      const primary=original[0];
+      const secondary=original[1];
+      return [
+        treatment(
+          `frontier-${seed.id}-primary`,
+          targetZone,
+          `${primary?.label || seed.name} transfer`,
+          `${primary?.instruction || seed.thesis} Reinterpret the mechanism in the ${targetZone} zone rather than preserving the original location.`,
+          `${primary?.visualPurpose || seed.thesis} The purpose is retained while the physical expression changes category.`,
+          Math.min(100,Math.max(72,(primary?.intensity || 62)+14)),
+          "experimental",
+        ),
+        ...(secondary ? [treatment(
+          `frontier-${seed.id}-counter`,
+          sourceZone===targetZone?"shirt-body":sourceZone,
+          `${secondary.label} counterpoint`,
+          `${secondary.instruction} Treat this only as a counterpoint; it may contradict normal house restraint if the composition remains visually legible.`,
+          secondary.visualPurpose,
+          Math.min(96,Math.max(48,secondary.intensity+10)),
+          "experimental",
+        )] : []),
+      ];
+    },
+  };
+}
+
 const SEEDS:Seed[]=[
   {
     id:"divergent-zone-jump",
@@ -769,11 +807,11 @@ function scoreCritics(reads:CreativeCriticRead[],freedom:CreativeFreedom) {
     // Maximum-research mode intentionally gives the creative critics most of the
     // influence. Brand, convention and construction still speak, but cannot dominate.
     return round(
-      map.aesthetic*.35+
-      map.originality*.30+
-      map.brand*.10+
-      map.menswear*.13+
-      map.construction*.12
+      map.aesthetic*.38+
+      map.originality*.34+
+      map.brand*.06+
+      map.menswear*.08+
+      map.construction*.06
     );
   }
   if(freedom==="exploratory") {
@@ -807,7 +845,13 @@ function buildDirection(seed:Seed,input:CreativeLabInput,iteration:number,treatm
   const {reads}=criticsFor(seed,input,style,treatments,pattern,recommendation);
   const learning=creativeLearningSignalFor(seed.id,input.creativeLearning);
   const researchExpansionBonus=freedom==="maximum"
-    ? Math.min(8,(pattern?3:0)+treatments.filter((item)=>item.buildability==="experimental").length*2+Math.max(0,treatments.length-1))
+    ? Math.min(14,
+        (pattern?4:0)
+        +treatments.filter((item)=>item.buildability==="experimental").length*3
+        +Math.max(0,treatments.length-1)*1.5
+        +(seed.extraPrinciples?.length?3:0)
+        +(seed.id.startsWith("research-")||seed.id.startsWith("hybrid-")?2:0)
+      )
     : freedom==="exploratory" ? 2 : 0;
   const overall=round(scoreCritics(reads,freedom)+learning.score+researchExpansionBonus);
   const certainty=certaintyFor(recommendation,seed,treatments,pattern);
@@ -883,11 +927,12 @@ function signature(item:CreativeDirection) {
 /**
  * V5 Creative Lab.
  * It intentionally ranks visual/aesthetic and originality judgment above construction.
- * Construction remains a guardrail and receives only 10% of the creative score.
+ * In maximum-research mode, aesthetic + originality dominate; brand, convention
+ * and construction remain visible diagnostics rather than creative vetoes.
  */
 export function generateCreativeDirections(input:CreativeLabInput):CreativeDirection[] {
   const freedom=input.researchFreedom || "maximum";
-  const learnedLimit=freedom==="maximum"?80:freedom==="exploratory"?40:24;
+  const learnedLimit=freedom==="maximum"?160:freedom==="exploratory"?60:24;
   const activeSignals=(input.creativeResearch?.signals || [])
     .filter((signal)=>signal.active && Boolean(signal.sourceUrl))
     .slice(0,learnedLimit);
@@ -896,14 +941,17 @@ export function generateCreativeDirections(input:CreativeLabInput):CreativeDirec
   if(freedom==="maximum" && activeSignals.length>=2) {
     // Cross-pollinate distant research signals to avoid example fixation.
     // Keep this bounded: the system should broaden the search, not explode combinatorially.
-    for(let i=0;i<Math.min(24,activeSignals.length);i+=1) {
+    for(let i=0;i<Math.min(48,activeSignals.length);i+=1) {
       const a=activeSignals[i];
       const b=activeSignals[(i*7+3)%activeSignals.length];
       if(a.id===b.id) continue;
       hybridSeeds.push(hybridResearchSeed(a,b,i));
     }
   }
-  const seedPool=[...SEEDS,...learnedSeeds,...hybridSeeds];
+  const frontierSeeds=freedom==="maximum"
+    ? [...learnedSeeds,...hybridSeeds,...SEEDS].slice(0,60).map((seed,index)=>frontierCrossZoneSeed(seed,index))
+    : [];
+  const seedPool=[...SEEDS,...learnedSeeds,...hybridSeeds,...frontierSeeds];
 
   // Maximum mode intentionally expands before it converges. Research is allowed
   // to create radical candidates; critic scores and risk labels stay visible
@@ -935,7 +983,7 @@ export function generateCreativeDirections(input:CreativeLabInput):CreativeDirec
   }).filter((item):item is {seed:Seed;direction:CreativeDirection}=>Boolean(item.direction));
 
   first.sort((a,b)=>b.direction.overall-a.direction.overall);
-  const refineCount=freedom==="maximum"?Math.min(24,first.length):freedom==="exploratory"?Math.min(14,first.length):Math.min(8,first.length);
+  const refineCount=freedom==="maximum"?Math.min(48,first.length):freedom==="exploratory"?Math.min(18,first.length):Math.min(8,first.length);
   const refined=first.slice(0,refineCount).map(({seed,direction})=>refine(seed,input,direction));
   refined.sort((a,b)=>b.overall-a.overall || b.certainty-a.certainty);
 
