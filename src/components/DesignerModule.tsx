@@ -26,6 +26,7 @@ import { generateCreativeDirections, type CreativeDirection } from "@/lib/design
 import type { DesignerCasebook } from "@/lib/designer/casebook";
 import type { FitOutcomeBook } from "@/lib/designer/fit-outcomes";
 import { creativeFamilyFromConceptId, type CreativeLearningBook, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
+import type { CreativeResearchLibrary } from "@/lib/designer/creative-research";
 
 const OCCASIONS: OccasionTier[] = ["Casual", "Smart-Casual", "Semi-Formal", "Formal"];
 const CLIMATES: DesignerClimate[] = ["Not specified", "Hot / humid", "Cool", "Air-conditioned"];
@@ -85,6 +86,8 @@ export function DesignerModule() {
   const [casebook, setCasebook] = useState<DesignerCasebook | null>(null);
   const [fitOutcomes, setFitOutcomes] = useState<FitOutcomeBook | null>(null);
   const [creativeLearning, setCreativeLearning] = useState<CreativeLearningBook | null>(null);
+  const [creativeResearch, setCreativeResearch] = useState<CreativeResearchLibrary | null>(null);
+  const [researchPool, setResearchPool] = useState<{websites:number;topics:number;targets:number;highAuthorityWebsites:number}|null>(null);
   const fact = DESIGNER_FASHION_FACTS[factIndex];
   const shirt = useMemo(() => shirtOptions.find((item) => item.id === shirtId), [shirtId, shirtOptions]);
   const pant = useMemo(() => pantOptions.find((item) => item.id === pantId), [pantId, pantOptions]);
@@ -123,11 +126,13 @@ export function DesignerModule() {
       try {
         const response=await fetch("/api/designer/casebook",{cache:"no-store"});
         if(!response.ok) return;
-        const data=await response.json() as {casebook?:DesignerCasebook;fitOutcomes?:FitOutcomeBook;creativeLearning?:CreativeLearningBook};
+        const data=await response.json() as {casebook?:DesignerCasebook;fitOutcomes?:FitOutcomeBook;creativeLearning?:CreativeLearningBook;creativeResearch?:CreativeResearchLibrary;researchPool?:{websites:number;topics:number;targets:number;highAuthorityWebsites:number}};
         if(cancelled) return;
         if(data.casebook?.version==="designer-casebook-v1") setCasebook(data.casebook);
         if(data.fitOutcomes?.version==="designer-fit-outcomes-v1") setFitOutcomes(data.fitOutcomes);
         if(data.creativeLearning?.version==="designer-creative-learning-v1") setCreativeLearning(data.creativeLearning);
+        if(data.creativeResearch?.version==="designer-creative-research-v1") setCreativeResearch(data.creativeResearch);
+        if(data.researchPool?.targets) setResearchPool(data.researchPool);
       } catch { /* Casebook is optional; hard Designer rules continue without it. */ }
     }
     void loadCasebook();
@@ -323,7 +328,7 @@ export function DesignerModule() {
     if (!shirt || !pant) return;
     const concepts=generateCreativeDirections({
       shirt,pant,occasion,style,context:{climate,intention},
-      measurements:measurementProfile,observations:tailorObservations,creativeLearning,limit:3,
+      measurements:measurementProfile,observations:tailorObservations,creativeLearning,creativeResearch,limit:3,
     });
     setCreativeDirections(concepts);
     setActiveCreative(null);
@@ -682,12 +687,13 @@ export function DesignerModule() {
             <div>
               <span>CREATIVE DESIGNER / V5</span>
               <strong>Imagine first. Critique second. Engineer third.</strong>
-              <p>The lab explores 20 internal design directions from research principles, including new cuff, collar, proportion, placement and surface-pattern ideas. Five critics then compare the strongest concepts.</p>
+              <p>The lab explores research-led design directions across silhouette, cuffs, collars, proportion, placement and surface-pattern ideas. Five critics compare the strongest concepts before refinement.</p>
+              {researchPool && <div className="newDesignerResearchPoolStat"><b>{researchPool.targets.toLocaleString("en-IN")} RESEARCH TARGETS</b><span>{researchPool.websites} source websites · {researchPool.highAuthorityWebsites} primary/scholarly · {creativeResearch?.active || 0} curated signals active</span></div>}
             </div>
             <button type="button" onClick={runCreativeLab} disabled={!shirt || !pant}>Imagine new designs ↗</button>
           </div>
           <div className="newDesignerCreativeFlow" aria-label="Creative process">
-            <span>RESEARCH</span><b>→</b><span>20 EXPLORATIONS</span><b>→</b><span>5 CRITICS</span><b>→</b><span>REFINE</span><b>→</b><span>TOP 3</span>
+            <span>RESEARCH</span><b>→</b><span>{creativeResearch?.active ? "BUILT-IN + CURATED EXPLORATIONS" : "30+ EXPLORATIONS"}</span><b>→</b><span>5 CRITICS</span><b>→</b><span>REFINE</span><b>→</b><span>TOP 3</span>
           </div>
           {creativeDirections.length>0 && <div className="newDesignerCreativeResults">
             {creativeDirections.map((direction)=><article key={direction.id} data-active={activeCreative?.id===direction.id}>
