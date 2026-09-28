@@ -22,6 +22,7 @@ import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
 import { evaluateLinenEarthBrandLanguage } from "@/lib/designer/brand-language";
 import { buildCanonicalGarmentSpec, canonicalGarmentSpecSummary } from "@/lib/designer/garment-spec";
 import { searchDesignerCatalogue, type DesignerSearchResult, type DesignerSearchScope } from "@/lib/designer/search";
+import { generateCreativeDirections, type CreativeDirection } from "@/lib/designer/creative-engine";
 import type { DesignerCasebook } from "@/lib/designer/casebook";
 import type { FitOutcomeBook } from "@/lib/designer/fit-outcomes";
 
@@ -78,6 +79,8 @@ export function DesignerModule() {
   const [tailorObservations, setTailorObservations] = useState<TailorObservationProfile | null>(null);
   const [searchScope, setSearchScope] = useState<DesignerSearchScope>("keep_shirt");
   const [searchResults, setSearchResults] = useState<DesignerSearchResult[]>([]);
+  const [creativeDirections, setCreativeDirections] = useState<CreativeDirection[]>([]);
+  const [activeCreative, setActiveCreative] = useState<CreativeDirection | null>(null);
   const [casebook, setCasebook] = useState<DesignerCasebook | null>(null);
   const [fitOutcomes, setFitOutcomes] = useState<FitOutcomeBook | null>(null);
   const fact = DESIGNER_FASHION_FACTS[factIndex];
@@ -257,6 +260,8 @@ export function DesignerModule() {
 
   useEffect(() => {
     setSearchResults([]);
+    setCreativeDirections([]);
+    setActiveCreative(null);
   },[shirtId,pantId,occasion,climate,intention]);
 
   useEffect(() => {
@@ -287,6 +292,8 @@ export function DesignerModule() {
     setResponse(null);
     setFeedbackReason(null);
     setSearchResults([]);
+    setCreativeDirections([]);
+    setActiveCreative(null);
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   }
 
@@ -309,7 +316,59 @@ export function DesignerModule() {
     setSearchResults(results);
   }
 
+  function runCreativeLab() {
+    if (!shirt || !pant) return;
+    const concepts=generateCreativeDirections({
+      shirt,pant,occasion,style,context:{climate,intention},
+      measurements:measurementProfile,observations:tailorObservations,limit:3,
+    });
+    setCreativeDirections(concepts);
+    setActiveCreative(null);
+  }
+
+  function useCreativeDirection(direction:CreativeDirection) {
+    setStyle({...direction.baseStyle});
+    setRecommendation(direction.recommendation);
+    setDirections([]);
+    setSearchResults([]);
+    setActiveCreative(direction);
+    setResponse(null);
+    setFeedbackReason(null);
+    setRecommendationId(null);
+    try {
+      const event=recordStyleMemoryEvent(designerSession(),"designer_recommendation",{
+        shirtId:direction.recommendation.shirt.id,
+        pantId:direction.recommendation.pant.id,
+        occasion:direction.recommendation.occasion,
+        style:direction.baseStyle,
+        input:{
+          source:"creative_lab_v5",
+          conceptId:direction.id,
+          conceptName:direction.name,
+          thesis:direction.thesis,
+          treatments:direction.treatments,
+          pattern:direction.pattern || null,
+          critics:direction.critics,
+          overall:direction.overall,
+          certainty:direction.certainty,
+          context:{climate,intention},
+        },
+        rules:direction.recommendation.rules,
+        confidenceScore:direction.recommendation.confidenceScore,
+        designFitScore:direction.recommendation.designFitScore,
+        materialEvidence:direction.recommendation.materialEvidence,
+        formality:direction.recommendation.formality,
+        output:direction.baseStyle,
+        reasoningText:`${direction.thesis} Creative Lab V5 selected after multi-critic refinement.`,
+        status:direction.recommendation.status,
+        ruleSetVersion:direction.recommendation.ruleSetVersion,
+      });
+      setRecommendationId(event.id);
+    } catch { /* Creative concept remains usable if memory storage is unavailable. */ }
+  }
+
   function useSearchResult(result:DesignerSearchResult) {
+    setActiveCreative(null);
     setShirtId(result.shirt.id);
     setPantId(result.pant.id);
     setStyle({...result.style});
@@ -341,6 +400,7 @@ export function DesignerModule() {
 
   function assess(nextStyle: DesignerStyle = style) {
     if (!shirt || !pant) return;
+    setActiveCreative(null);
     const context: DesignerContext = { climate, intention };
     const proposals = planDesignerDirections(shirt, pant, occasion, nextStyle, context, measurementProfile, tailorObservations);
     const result = proposals[0].recommendation;
@@ -394,12 +454,14 @@ export function DesignerModule() {
   }
 
   function changeStyle(key: keyof DesignerStyle, value: string) {
+    setActiveCreative(null);
     setStyle((current) => ({ ...current, [key]: value }));
     setRecommendation(null);
     setRecommendationId(null);
   }
 
   function applyStylePatch(patch: Partial<DesignerStyle>) {
+    setActiveCreative(null);
     setStyle((current) => ({ ...current, ...patch }));
     setRecommendation(null);
     setRecommendationId(null);
@@ -588,6 +650,56 @@ export function DesignerModule() {
             </article>)}
           </div>}
           <small className="newDesignerSearchTruth">Decision Matrix V4 is decision support, not a claim of objective fashion quality. Hard fit/construction conflicts are excluded first; uncertainty and missing physical cloth facts can lower certainty without being hidden.</small>
+        </section>
+
+        <section className="newDesignerCreative" aria-label="Creative Designer Lab V5">
+          <div className="newDesignerCreativeHead">
+            <div>
+              <span>CREATIVE DESIGNER / V5</span>
+              <strong>Imagine first. Critique second. Engineer third.</strong>
+              <p>The lab explores 20 internal design directions from research principles, including new cuff, collar, proportion, placement and surface-pattern ideas. Five critics then compare the strongest concepts.</p>
+            </div>
+            <button type="button" onClick={runCreativeLab} disabled={!shirt || !pant}>Imagine new designs ↗</button>
+          </div>
+          <div className="newDesignerCreativeFlow" aria-label="Creative process">
+            <span>RESEARCH</span><b>→</b><span>20 EXPLORATIONS</span><b>→</b><span>5 CRITICS</span><b>→</b><span>REFINE</span><b>→</b><span>TOP 3</span>
+          </div>
+          {creativeDirections.length>0 && <div className="newDesignerCreativeResults">
+            {creativeDirections.map((direction)=><article key={direction.id} data-active={activeCreative?.id===direction.id}>
+              <div className="newDesignerCreativeTitle">
+                <div><span>CONCEPT / {direction.iteration===2?"REFINED":"FIRST PASS"}</span><h3>{direction.name}</h3></div>
+                <div><strong>{direction.overall}</strong><small>creative read</small></div>
+              </div>
+              <p className="newDesignerCreativeThesis">{direction.thesis}</p>
+              <div className="newDesignerCreativeMeta"><span>CERTAINTY {direction.certainty}</span><span>{direction.risk.toUpperCase()} RISK</span><span>{direction.treatments.length} DESIGN MOVES</span>{direction.pattern&&<span>NEW PATTERN</span>}</div>
+              <div className="newDesignerCreativeMoves">
+                {direction.treatments.map((move)=><div key={move.id}>
+                  <span>{move.zone.toUpperCase()} · {move.buildability.toUpperCase()}</span>
+                  <strong>{move.label}</strong>
+                  <p>{move.instruction}</p>
+                  <small>{move.visualPurpose}</small>
+                </div>)}
+              </div>
+              {direction.pattern && <section className="newDesignerPatternConcept">
+                <span>GENERATED PATTERN / {direction.pattern.family.toUpperCase()}</span>
+                <strong>{direction.pattern.name}</strong>
+                <p>{direction.pattern.layout}</p>
+                <div><b>{direction.pattern.scale.toUpperCase()} SCALE</b><b>{direction.pattern.coverage}% COVERAGE</b><b>{direction.pattern.placement}</b></div>
+                <small>{direction.pattern.note}</small>
+              </section>}
+              <div className="newDesignerCritics">
+                <span>CRITIC PANEL</span>
+                {direction.critics.map((critic)=><div key={critic.id} data-verdict={critic.verdict}>
+                  <div><strong>{critic.label}</strong><b>{critic.score}</b></div>
+                  <p>{critic.rationale[0]}</p>
+                </div>)}
+              </div>
+              {direction.refinement.length>0 && <div className="newDesignerRefinement"><span>WHAT V5 CHANGED AFTER CRITIQUE</span>{direction.refinement.map((item)=><p key={item}>{item}</p>)}</div>}
+              <details className="newDesignerCreativeResearch"><summary>Research → idea trace</summary>{direction.research.map((item)=><div key={item.id}><strong>{item.sourceTitle}</strong><p>{item.extractedPrinciple}</p><small>{item.transformedInto}</small><a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">Source ↗</a></div>)}</details>
+              <button className="newDesignerCreativeUse" type="button" onClick={()=>useCreativeDirection(direction)}>{activeCreative?.id===direction.id?"Selected creative direction":"Use this creative direction"}</button>
+            </article>)}
+          </div>}
+          <small className="newDesignerCreativeTruth">V5 is intentionally visual-first: aesthetic + originality carry 55% of the creative score, while construction is a 10% guardrail. Custom patterns and atelier details are design specifications at this stage; the current photo model renders the supported base cut until the visual synthesis layer is connected.</small>
         </section>
 
         <div className="newDesignerStyleBlock">
