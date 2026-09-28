@@ -141,3 +141,18 @@
 .newDesignerFitModelNote{margin:-1px 0 12px;padding:11px 13px;border:1px solid #d6e0ea;border-top:0;background:#f5f9fd}
 .newDesignerFitModelNote p{margin:4px 0 0;font-size:9px;line-height:1.5;color:#66778a}
 @media(max-width:620px){.newDesignerFitHead{flex-direction:column}.newDesignerFitHead a{align-self:flex-start}.newDesignerMeasureChips{gap:5px}.newDesignerMeasureChips span{font-size:8px;padding:7px 8px}}
+
+.newDesignerGarmentSpec{margin-top:15px;padding:14px 15px;border:1px solid #cfd9e4;background:#f5f9fd}
+.newDesignerGarmentSpecHead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.newDesignerGarmentSpecHead span,.newDesignerGarmentTargets article>span,.newDesignerConstructionChecks>span{display:block;font-size:8px;letter-spacing:.14em;color:#6f88a3;font-weight:700}
+.newDesignerGarmentSpecHead strong{font:400 14px/1.35 Georgia,serif;color:#194d84}
+.newDesignerGarmentTargets{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:13px}
+.newDesignerGarmentTargets article{border:1px solid #dbe4ed;background:#fff;padding:11px 12px}
+.newDesignerGarmentTargets p{display:flex;justify-content:space-between;gap:12px;margin:7px 0 0;font-size:8px;line-height:1.35;color:#5d6976}
+.newDesignerGarmentTargets b{font-weight:500}
+.newDesignerGarmentTargets em{font-style:normal;color:#174d85;white-space:nowrap}
+.newDesignerConstructionChecks{margin-top:12px;padding-top:11px;border-top:1px solid #d7e1eb}
+.newDesignerConstructionChecks p{margin:7px 0 0;padding-left:10px;border-left:2px solid #c9d9e7;font-size:9px;line-height:1.5;color:#617080}
+.newDesignerConstructionChecks p[data-severity="warning"]{border-left-color:#b96c4f;color:#84533f}
+.newDesignerDirectionFit{display:inline-block;margin-top:8px;padding:4px 6px;border:1px solid #d1dce7;background:#f6f9fc;color:#315f8e;font-size:7px;letter-spacing:.09em}
+@media(max-width:620px){.newDesignerGarmentSpecHead{flex-direction:column}.newDesignerGarmentTargets{grid-template-columns:1fr}}
