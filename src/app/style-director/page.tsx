@@ -144,7 +144,7 @@ export default function StyleDirectorPage() {
           sourceReason:selectedLook.realModel.reason,
           from:"style-director",
         });
-        return `/designer-studio?${params.toString()}`;
+        return `/designer-studio?${params.toString()}#designerPhotoTitle`;
       })()
     : null;
 
