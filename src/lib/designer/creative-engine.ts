@@ -212,6 +212,7 @@ function treatment(
 }
 
 function researchSeed(signal:CreativeResearchSignal):Seed {
+  const patternFamily = signal.patternFamily === "none" ? undefined : signal.patternFamily;
   return {
     id:`research-${signal.id}`,
     name:signal.title,
@@ -243,10 +244,10 @@ function researchSeed(signal:CreativeResearchSignal):Seed {
         signal.buildability==="experimental"?"atelier":signal.buildability,
       )] : []),
     ],
-    pattern:signal.patternFamily!=="none" ? (input)=>({
+    pattern:patternFamily ? (input)=>({
       id:`research-pattern-${signal.id}`,
       name:signal.patternName || signal.title,
-      family:signal.patternFamily,
+      family:patternFamily,
       layout:signal.patternLayout || signal.transformedIdea,
       scale:signal.patternScale || "fine",
       coverage:Math.max(0,Math.min(60,signal.patternCoverage ?? 24)),
