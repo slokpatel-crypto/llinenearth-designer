@@ -25,6 +25,7 @@ import { searchDesignerCatalogue, type DesignerSearchResult, type DesignerSearch
 import { generateCreativeDirections, type CreativeDirection } from "@/lib/designer/creative-engine";
 import type { DesignerCasebook } from "@/lib/designer/casebook";
 import type { FitOutcomeBook } from "@/lib/designer/fit-outcomes";
+import { creativeFamilyFromConceptId, type CreativeLearningBook, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
 
 const OCCASIONS: OccasionTier[] = ["Casual", "Smart-Casual", "Semi-Formal", "Formal"];
 const CLIMATES: DesignerClimate[] = ["Not specified", "Hot / humid", "Cool", "Air-conditioned"];
@@ -83,6 +84,7 @@ export function DesignerModule() {
   const [activeCreative, setActiveCreative] = useState<CreativeDirection | null>(null);
   const [casebook, setCasebook] = useState<DesignerCasebook | null>(null);
   const [fitOutcomes, setFitOutcomes] = useState<FitOutcomeBook | null>(null);
+  const [creativeLearning, setCreativeLearning] = useState<CreativeLearningBook | null>(null);
   const fact = DESIGNER_FASHION_FACTS[factIndex];
   const shirt = useMemo(() => shirtOptions.find((item) => item.id === shirtId), [shirtId, shirtOptions]);
   const pant = useMemo(() => pantOptions.find((item) => item.id === pantId), [pantId, pantOptions]);
@@ -121,10 +123,11 @@ export function DesignerModule() {
       try {
         const response=await fetch("/api/designer/casebook",{cache:"no-store"});
         if(!response.ok) return;
-        const data=await response.json() as {casebook?:DesignerCasebook;fitOutcomes?:FitOutcomeBook};
+        const data=await response.json() as {casebook?:DesignerCasebook;fitOutcomes?:FitOutcomeBook;creativeLearning?:CreativeLearningBook};
         if(cancelled) return;
         if(data.casebook?.version==="designer-casebook-v1") setCasebook(data.casebook);
         if(data.fitOutcomes?.version==="designer-fit-outcomes-v1") setFitOutcomes(data.fitOutcomes);
+        if(data.creativeLearning?.version==="designer-creative-learning-v1") setCreativeLearning(data.creativeLearning);
       } catch { /* Casebook is optional; hard Designer rules continue without it. */ }
     }
     void loadCasebook();
@@ -320,10 +323,32 @@ export function DesignerModule() {
     if (!shirt || !pant) return;
     const concepts=generateCreativeDirections({
       shirt,pant,occasion,style,context:{climate,intention},
-      measurements:measurementProfile,observations:tailorObservations,limit:3,
+      measurements:measurementProfile,observations:tailorObservations,creativeLearning,limit:3,
     });
     setCreativeDirections(concepts);
     setActiveCreative(null);
+  }
+
+  function giveCreativeRenderFeedback(rating:"up"|"down",creativeReason?:CreativeFeedbackReason) {
+    if(!activeCreative || !shirt || !pant) return;
+    try {
+      recordStyleMemoryEvent(designerSession(),"designer_feedback",{
+        recommendationId:recommendationId || activeCreative.id,
+        rating,
+        shirtId:shirt.id,
+        pantId:pant.id,
+        occasion,
+        style,
+        creativeConceptId:activeCreative.id,
+        creativeFamilyId:creativeFamilyFromConceptId(activeCreative.id),
+        creativeConceptName:activeCreative.name,
+        creativePatternId:activeCreative.pattern?.id || "",
+        creativeMoveIds:activeCreative.treatments.map((move)=>move.id),
+        creativeReason:creativeReason || "",
+        creativeRendered:true,
+        note:"Visual review of the photoreal V5 concept render.",
+      });
+    } catch { /* Creative review remains optional if memory storage is unavailable. */ }
   }
 
   function useCreativeDirection(direction:CreativeDirection) {
@@ -671,7 +696,7 @@ export function DesignerModule() {
                 <div><strong>{direction.overall}</strong><small>creative read</small></div>
               </div>
               <p className="newDesignerCreativeThesis">{direction.thesis}</p>
-              <div className="newDesignerCreativeMeta"><span>CERTAINTY {direction.certainty}</span><span>{direction.risk.toUpperCase()} RISK</span><span>{direction.treatments.length} DESIGN MOVES</span>{direction.pattern&&<span>NEW PATTERN</span>}</div>
+              <div className="newDesignerCreativeMeta"><span>CERTAINTY {direction.certainty}</span><span>{direction.risk.toUpperCase()} RISK</span><span>{direction.treatments.length} DESIGN MOVES</span>{direction.pattern&&<span>NEW PATTERN</span>}{direction.learning.evidence>=3&&<span>HUMAN REVIEW {direction.learning.score>0?"+":""}{direction.learning.score}</span>}</div>
               <div className="newDesignerCreativeMoves">
                 {direction.treatments.map((move)=><div key={move.id}>
                   <span>{move.zone.toUpperCase()} · {move.buildability.toUpperCase()}</span>
@@ -695,6 +720,7 @@ export function DesignerModule() {
                 </div>)}
               </div>
               {direction.refinement.length>0 && <div className="newDesignerRefinement"><span>WHAT V5 CHANGED AFTER CRITIQUE</span>{direction.refinement.map((item)=><p key={item}>{item}</p>)}</div>}
+              {direction.learning.evidence>=3 && <div className="newDesignerCreativeLearning"><span>REVIEWED VISUAL EVIDENCE</span><p>{direction.learning.summary}</p><small>Influence is capped at ±5 points so prior taste does not stop experimentation.</small></div>}
               <details className="newDesignerCreativeResearch"><summary>Research → idea trace</summary>{direction.research.map((item)=><div key={item.id}><strong>{item.sourceTitle}</strong><p>{item.extractedPrinciple}</p><small>{item.transformedInto}</small><a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">Source ↗</a></div>)}</details>
               <button className="newDesignerCreativeUse" type="button" onClick={()=>useCreativeDirection(direction)}>{activeCreative?.id===direction.id?"Selected creative direction":"Use this creative direction"}</button>
             </article>)}
@@ -753,7 +779,7 @@ export function DesignerModule() {
         <div>{activeCreative.treatments.slice(0,3).map((move)=><b key={move.id}>{move.zone.toUpperCase()} · {move.label}</b>)}{activeCreative.pattern&&<b>PATTERN · {activeCreative.pattern.name}</b>}</div>
         <small>The mannequin below previews supported surface/detail changes immediately. Use the photoreal V5 render when the concept changes real geometry such as cuff depth, collar proportion or pocket shape.</small>
       </div>}
-      {shirt && pant && <PhotoOutfitPreview shirt={shirt} pant={pant} style={style} creativeDirection={activeCreative} />}
+      {shirt && pant && <PhotoOutfitPreview shirt={shirt} pant={pant} style={style} creativeDirection={activeCreative} onCreativeFeedback={giveCreativeRenderFeedback} />}
       {fitCoverage.total > 0 && <div className="newDesignerFitModelNote"><span>FIT PROFILE LOADED · {fitCoverage.total}/16</span><p>Measurements inform tailoring guidance; this studio model remains a fixed visual reference.</p></div>}
       <section className="newDesignerOutcome" aria-live="polite" aria-label="Designer recommendation">
         {!recommendation ? <div className="newDesignerEmpty"><span>04 / DESIGN DIRECTION</span><h2>Give the fabrics a purpose.</h2><p>Choose cloth, occasion and cut, then ask Designer to assess the outfit.</p></div> : <>
