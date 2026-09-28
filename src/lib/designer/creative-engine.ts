@@ -146,6 +146,27 @@ const RESEARCH = {
     extractedPrinciple:"High-level tailoring can deliberately depart from established construction methods when the visual concept requires a precise new silhouette.",
     transformedInto:"Treat traditional tailoring technique as a toolkit, not a fixed boundary: preserve workmanship while permitting changed sleeve, pocket or coat geometry.",
   },
+  dynamicDrapeGeometry:{
+    id:"dynamic-drape-pattern-geometry",
+    sourceTitle:"Unified nonlinear dynamic model for dress dynamic drape and optimization of template structure design",
+    sourceUrl:"https://www.sciencedirect.com/science/article/pii/S0010448526000448",
+    extractedPrinciple:"Pattern geometry can materially change dynamic drape behavior even when the fabric itself is unchanged; the 2026 study demonstrates this on skirts.",
+    transformedInto:"Treat pattern geometry as a visual-motion variable. Translate the principle cautiously into menswear trousers and shirts, then validate on real menswear samples rather than assuming the skirt result transfers directly.",
+  },
+  seamDrape:{
+    id:"seam-position-drape",
+    sourceTitle:"Fabric and garment drape",
+    sourceUrl:"https://www.sciencedirect.com/topics/engineering/fabric-drape",
+    extractedPrinciple:"Seams, seam position and construction interact with fabric mechanics and can change the way a garment drapes.",
+    transformedInto:"Use seam placement as part of silhouette design: move or reshape a seam to intentionally redirect folds, shadow and hanging behavior rather than treating seams only as assembly lines.",
+  },
+  expertFitAttention:{
+    id:"expert-fit-attention-zones",
+    sourceTitle:"Visual analysis of apparel fit by experts and novices using eye tracking",
+    sourceUrl:"https://www.tandfonline.com/doi/full/10.1080/17569370.2020.1781375",
+    extractedPrinciple:"Experienced apparel evaluators distribute attention across fit-critical zones such as collar, waist, side seam, dart and armhole instead of judging the garment from one focal detail.",
+    transformedInto:"When reviewing a concept, inspect both the hero detail and neighboring structural zones so a dramatic cuff, collar or pattern does not hide a poor overall relationship.",
+  },
   divergent:{
     id:"divergent-design-thinking",
     sourceTitle:"The cognitive process of creative design: A perspective of divergent thinking",
@@ -583,6 +604,26 @@ const SEEDS:Seed[]=[
     ],
   },
   {
+    id:"motion-geometry",
+    name:"Motion Geometry",
+    thesis:"Design trouser movement through pattern geometry instead of relying only on softer fabric.",
+    principle:RESEARCH.dynamicDrapeGeometry,
+    treatments:()=>[
+      treatment("motion-leg-profile","trouser-leg","Motion leg profile","Change lower-leg volume and the longitudinal pattern profile so folds open and close more visibly during movement; preserve a clean standing silhouette as the reference state.","Makes movement itself part of the visual design language.",74,"experimental"),
+      treatment("motion-pleat-release","pleat","Directed pleat release","Use the pleat as a controlled release point for movement rather than a decorative crease.","Connects front architecture to dynamic drape.",53,"atelier"),
+    ],
+  },
+  {
+    id:"seam-sculpt",
+    name:"Seam Sculpt",
+    thesis:"Move a seam to redirect shadow and fold behavior, then let the cloth reveal the construction.",
+    principle:RESEARCH.seamDrape,
+    treatments:()=>[
+      treatment("seam-sculpt-line","trouser-leg","Sculpting seam","Shift a conventional trouser seam or introduce one controlled panel seam so the line guides where folds and shadows develop.","Uses construction to shape visual drape rather than merely assembling panels.",68,"experimental"),
+      treatment("seam-sculpt-upper","waistband","Quiet upper anchor","Keep waistband treatment restrained so the new seam remains the lower-body architectural idea.","Maintains a stable anchor above the moving seam line.",16,"supported"),
+    ],
+  },
+  {
     id:"divergent-zone-jump",
     name:"Zone Jump",
     thesis:"Move the source idea into a different garment zone so research becomes transformation rather than imitation.",
@@ -934,6 +975,7 @@ function criticsFor(
       hierarchyFacet<68?"Too many elements compete for attention; one focal system needs to lead.":"The concept has a readable focal hierarchy rather than equal emphasis everywhere.",
       proportionFacet<68?"The relationship between detail scale and silhouette needs another pass.":"Detail scale and silhouette remain proportionally legible.",
       rhythmFacet<68?"The visual rhythm is weak or repetitive without purpose.":"Repetition, spacing or echo creates a deliberate visual rhythm.",
+      "Final visual review should inspect the hero detail together with collar/armhole/waist/side-seam relationships rather than judging one isolated focal point.",
     ],facets:[
       {label:"Proportion",score:round(proportionFacet)},
       {label:"Hierarchy",score:round(hierarchyFacet)},
