@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
+import { AtelierMannequin } from "@/components/AtelierMannequin";
 
 type Mode = "studio" | "operator" | "catalog";
 type Tier = "safe" | "elevated" | "statement";
@@ -64,7 +66,7 @@ export function StudioDashboard() {
   return <div className="linen-app">
     <header className="studio-header">
       <div className="brand-lockup"><div className="brand-mark">L</div><div><strong>LLinen Earth</strong><span>DESIGNER STUDIO</span></div></div>
-      <nav className="mode-nav"><button className={mode === "studio" ? "active" : ""} onClick={() => setMode("studio")}>Designer Studio</button><button className={mode === "operator" ? "active" : ""} onClick={() => setMode("operator")}>Operator Lab</button><button className={mode === "catalog" ? "active" : ""} onClick={() => setMode("catalog")}>Fabric Catalogue</button></nav>
+      <nav className="mode-nav"><button className={mode === "studio" ? "active" : ""} onClick={() => setMode("studio")}>Designer Studio</button><Link href="/style-director">Style Director</Link><button className={mode === "operator" ? "active" : ""} onClick={() => setMode("operator")}>Operator Lab</button><button className={mode === "catalog" ? "active" : ""} onClick={() => setMode("catalog")}>Fabric Catalogue</button></nav>
       <div className="admin-profile"><span className="profile-avatar">A</span><div><strong>Atelier Admin</strong><small>Operator</small></div><Icon name="chevron" /></div>
     </header>
 
@@ -83,7 +85,19 @@ export function StudioDashboard() {
           <div className="workspace-title"><div><span className="eyebrow">RECOMMENDATION ENGINE · 01 / 03</span><h1>Build the look around <em>{selectedFabric.name}</em></h1><p>Shape a considered outfit from fabric first, then let the rule engine balance tone, weight, season and occasion.</p></div><div className="live-badge"><i /> Engine live <span>v4.2</span></div></div>
           <section className="visual-hub"><div className="hub-heading"><div><span className="section-kicker">VISUALIZER HUB</span><h2>Fabric pairing preview</h2></div><span className="hub-note">2D preview · 3D engine coming soon</span></div><div className="preview-grid">
             <div className="fabric-pair-preview"><div className="pair-label">BASE FABRIC</div><div className="pair-large-swatch" style={{ background: selectedFabric.color }}><span>{selectedFabric.name}</span></div><div className="pair-label second">RECOMMENDED PAIR</div><div className="pair-large-swatch pair-trouser" style={{ background: selectedTier === "statement" ? "#707762" : "#D5C3A4" }}><span>{selectedTier === "statement" ? "Olive Twill" : "Sand Beige Plain"}</span></div></div>
-            <div className="mannequin-empty"><div className="mannequin-outline"><div className="head" /><div className="torso" /><div className="legs" /></div><div><span className="coming-dot">3D</span><strong>3D Mannequin Visualization Engine</strong><small>Coming Soon · locked model identity</small></div></div>
+            <div className="studio-model-preview">
+              <div className="model-preview-badge"><span>LIVE MODEL</span><strong>Tucked office silhouette</strong></div>
+              <AtelierMannequin
+                compact
+                shirtColor={selectedFabric.role === "Shirt" ? selectedFabric.color : "#AFC9D4"}
+                trouserColor={selectedFabric.role === "Trouser" ? selectedFabric.color : selectedTier === "statement" ? "#707762" : selectedTier === "safe" ? "#D5C3A4" : "#C9B99F"}
+                shirtStyle="classic"
+                trouserStyle="straight"
+                layerStyle="none"
+                view="front"
+              />
+              <div className="model-preview-note">Real garment preview · clean tucked waist · same mannequin identity</div>
+            </div>
           </div></section>
           <div className="recommendations-head"><div><span className="section-kicker">CURATED OUTPUT</span><h2>Three ways to wear it</h2></div><span>Scored against your context</span></div>
           <section className="tier-grid">{(Object.keys(recommendations) as Tier[]).map(tier => <TierCard key={tier} tier={tier} active={selectedTier === tier} onSelect={() => setSelectedTier(tier)} />)}</section>
