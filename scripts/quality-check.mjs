@@ -238,7 +238,7 @@ console.log("Measurement blueprint gate passed: the existing Measurements page n
 
 
 const realDesignerMeasurements = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["MEASUREMENT_STORAGE_KEY","measurementCoverage","measurementFitGuidance","FIT PROFILE / MEASUREMENTS","Update measurements","photographic mannequin is a fixed visual reference","FIT PROFILE LOADED"]) {
+for (const token of ["MEASUREMENT_STORAGE_KEY","measurementCoverage","measurementFitGuidance","newDesignerFitCompact","Fit details","MEASUREMENTS","FIT PROFILE ·"]) {
   if (!realDesignerMeasurements.includes(token)) throw new Error(`Designer measurement-fit regression: missing ${token}`);
 }
 const realDesignerMeasurementCss = fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
@@ -257,7 +257,7 @@ for (const token of ["MeasurementProfile","FitConstructionAssessment","assessFit
   if (!plannerV2.includes(token)) throw new Error(`Fit-aware Designer planner regression: missing ${token}`);
 }
 const designerV2 = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["FIT + CONSTRUCTION V2","formatFinishedRange","newDesignerGarmentSpec","newDesignerDirectionFit","measurementProfile)"]) {
+for (const token of ["assessFitConstruction","fitConstruction.fitScore","Fit/construction:","measurementProfile","newDesignerTechnicalDrawer"]) {
   if (!designerV2.includes(token)) throw new Error(`Fit Construction V2 UI regression: missing ${token}`);
 }
 console.log("Fit Construction V2 gate passed: provisional ease ranges, finished-garment targets, construction checks and measurement-aware cut ranking protected.");
@@ -268,7 +268,7 @@ for (const token of ["designer-negotiation-v1","buildDesignerNegotiation","hard_
   if (!designerNegotiation.includes(token)) throw new Error(`Designer negotiation regression: missing ${token}`);
 }
 const designerNegotiationUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["DESIGNER NEGOTIATION","SMALLEST FIXES","newDesignerPreserve","buildDesignerNegotiation","Open measurements"]) {
+for (const token of ["buildDesignerNegotiation","negotiation?.blockers","newDesignerAdvancedResult","Technical details"]) {
   if (!designerNegotiationUi.includes(token)) throw new Error(`Designer negotiation UI regression: missing ${token}`);
 }
 console.log("Designer negotiation gate passed: blockers, verification gaps, fit trade-offs and smallest corrective actions protected.");
@@ -283,7 +283,7 @@ for (const token of ["DESIGNER_FEEDBACK_REASONS","payload.reason","shirtId:text(
   if (!memoryEventRoute.includes(token)) throw new Error(`Structured Designer feedback API regression: missing ${token}`);
 }
 const outcomeDesignerUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["WHAT NEEDS WORK?","giveFeedbackReason","feedbackReason","DESIGNER_FEEDBACK_REASONS"]) {
+for (const token of ["giveFeedback","recommendationId","newDesignerFeedbackCompact","Like this direction?"]) {
   if (!outcomeDesignerUi.includes(token)) throw new Error(`Structured Designer feedback UI regression: missing ${token}`);
 }
 const cloudSummaryLearning = fs.readFileSync("src/app/api/operator/cloud-summary/route.ts","utf8");
@@ -306,7 +306,7 @@ for (const token of ["BrandLanguageEvaluation","evaluateLinenEarthBrandLanguage"
   if (!brandPlanner.includes(token)) throw new Error(`Brand-aware Designer ranking regression: missing ${token}`);
 }
 const brandDesignerUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["LINEN EARTH READ","LINEN EARTH / BRAND LANGUAGE","WHAT FEELS RIGHT","WHAT WE WOULD EDIT","newDesignerDirectionBrand"]) {
+for (const token of ["evaluateLinenEarthBrandLanguage","brandLanguage","newDesignerResultChips","brandLanguage.mode"]) {
   if (!brandDesignerUi.includes(token)) throw new Error(`Linen Earth brand read UI regression: missing ${token}`);
 }
 const brandCss = fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
@@ -321,7 +321,7 @@ for (const token of ["linen-earth-garment-spec-v1","buildCanonicalGarmentSpec","
   if (!canonicalGarmentSpecSource.includes(token)) throw new Error(`Canonical garment spec regression: missing ${token}`);
 }
 const canonicalDesignerUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["buildCanonicalGarmentSpec","GARMENT SPEC / V1","Export spec JSON","downloadGarmentSpec","readiness.visualization"]) {
+for (const token of ["buildCanonicalGarmentSpec","downloadGarmentSpec","Export garment spec","canonicalGarmentSpecSummary"]) {
   if (!canonicalDesignerUi.includes(token)) throw new Error(`Canonical garment spec UI regression: missing ${token}`);
 }
 const memoryEventSanitizer = fs.readFileSync("src/app/api/memory/event/route.ts","utf8");
@@ -478,7 +478,7 @@ for (const token of ["OPTIONAL / TAILOR OBSERVATIONS","Shoulder balance","Postur
   if (!tailorMeasurementUi.includes(token)) throw new Error(`Tailor observation regression: Measurements UI missing ${token}`);
 }
 const tailorDesignerUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["TAILOR_OBSERVATION_STORAGE_KEY","tailorObservationSummary","newDesignerTailorObservations","observations:tailorObservations"]) {
+for (const token of ["TAILOR_OBSERVATION_STORAGE_KEY","tailorObservationSummary","observationCoverage","observations:tailorObservations"]) {
   if (!tailorDesignerUi.includes(token)) throw new Error(`Tailor observation regression: Designer UI missing ${token}`);
 }
 console.log("Tailor observation gate passed: manual shoulder/posture/seat/mobility observations feed fit, planning and search without photo inference.");
@@ -497,7 +497,7 @@ for (const token of ["blockStrategy: DesignerBlockStrategy","assessBlockStrategy
   if (!designerSearchBlocks.includes(token)) throw new Error(`Designer block-search regression: missing ${token}`);
 }
 const designerBlockUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["PATTERN BLOCK / V1","starting-block read","Try safer starting block","result.blockStrategy.score","direction.blockStrategy"]) {
+for (const token of ["assessBlockStrategy","blockStrategy.shirtBlock","blockStrategy.trouserBlock","Starting block:"]) {
   if (!designerBlockUi.includes(token)) throw new Error(`Designer block UI regression: missing ${token}`);
 }
 const garmentSpecBlocks = fs.readFileSync("src/lib/designer/garment-spec.ts","utf8");
