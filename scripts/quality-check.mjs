@@ -359,7 +359,7 @@ console.log("Designer advanced-search gate passed: diversified catalogue search,
 const designerCasebook = fs.readFileSync("src/lib/designer/casebook.ts","utf8");
 for (const token of [
   "designer-casebook-v1","designer_case_review","operator_note","event.source!==\"operator\"",
-  "total>=3","Math.min(6","signalFromCounts","casebookSignalFor",
+  "total>=3","scale=6","signalFromCounts","casebookSignalFor",
   "Casebook is still collecting reviewed outcomes."
 ]) {
   if (!designerCasebook.includes(token)) throw new Error(`Designer casebook regression: missing ${token}`);
