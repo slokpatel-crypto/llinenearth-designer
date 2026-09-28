@@ -1113,7 +1113,7 @@ function buildDirection(seed:Seed,input:CreativeLabInput,iteration:number,treatm
         +treatments.filter((item)=>item.buildability==="experimental").length*3
         +Math.max(0,treatments.length-1)*1.5
         +(seed.extraPrinciples?.length?3:0)
-        +(seed.id.startsWith("research-")||seed.id.startsWith("hybrid-")?2:0)
+        +(["research-","mutation-","hybrid-","frontier-"].some((prefix)=>seed.id.startsWith(prefix))?3:0)
       )
     : freedom==="exploratory" ? 2 : 0;
   const overall=round(scoreCritics(reads,freedom)+learning.score+researchExpansionBonus);
@@ -1131,12 +1131,19 @@ function buildDirection(seed:Seed,input:CreativeLabInput,iteration:number,treatm
     ].slice(0,3),
     learning,
     researchUtilization:round(
-      42
+      38
       +Math.min(26,(1+(seed.extraPrinciples?.length || 0))*13)
       +(pattern?10:0)
       +Math.min(16,treatments.filter((item)=>item.buildability!=="supported").length*6)
+      +(seed.id.startsWith("mutation-")?8:0)
+      +(seed.id.startsWith("hybrid-")?10:0)
+      +(seed.id.startsWith("frontier-")?12:0)
     ),
-    explorationClass:variant==="radical"?"frontier":(seed.extraPrinciples?.length||seed.id.startsWith("research-")||seed.id.startsWith("hybrid-"))?"research-led":"balanced",
+    explorationClass:variant==="radical"||seed.id.startsWith("frontier-")
+      ?"frontier"
+      :(seed.extraPrinciples?.length||["research-","mutation-","hybrid-"].some((prefix)=>seed.id.startsWith(prefix)))
+        ?"research-led"
+        :"balanced",
     constraintMode:freedom,
   };
 }
