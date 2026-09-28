@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { emptyMeasurementProfile, formatMeasure, fromCm, MEASUREMENT_STORAGE_KEY, measurementCoverage, toCm, type MeasurementProfile } from "@/lib/measurements";
+import { TAILOR_OBSERVATION_STORAGE_KEY, emptyTailorObservationProfile, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 
 type Mode = "shirt" | "pants";
 type Field = { key: string; label: string; short: string; min: number; max: number; tip: string };
@@ -141,8 +142,9 @@ export function MeasurementStudio(){
   const [mode,setMode]=useState<Mode>("shirt");
   const [active,setActive]=useState("neck");
   const [saved,setSaved]=useState(false);
+  const [observations,setObservations]=useState<TailorObservationProfile>(emptyTailorObservationProfile());
 
-  useEffect(()=>{try{const raw=localStorage.getItem(MEASUREMENT_STORAGE_KEY);if(raw){const parsed=JSON.parse(raw) as MeasurementProfile;setProfile({...parsed,unit:"in"});}}catch{}},[]);
+  useEffect(()=>{try{const raw=localStorage.getItem(MEASUREMENT_STORAGE_KEY);if(raw){const parsed=JSON.parse(raw) as MeasurementProfile;setProfile({...parsed,unit:"in"});}const observed=localStorage.getItem(TAILOR_OBSERVATION_STORAGE_KEY);if(observed){const parsed=JSON.parse(observed) as TailorObservationProfile;if(parsed?.version===1)setObservations(parsed);}}catch{}},[]);
   const unit="in" as const; const fields=mode==="shirt"?shirtFields:pantFields; const coverage=measurementCoverage(profile);
   const activeField=fields.find(f=>f.key===active)||fields[0];
   const values=(mode==="shirt"?profile.shirt:profile.pants) as Record<string,number|undefined>;
@@ -156,7 +158,7 @@ export function MeasurementStudio(){
     const n=Number(display); const cm=Number.isFinite(n)&&n>0?toCm(n,unit):undefined;
     setProfile(p=>({...p,unit:"in",[mode]:{...p[mode],[key]:cm},updatedAt:new Date().toISOString()}));setSaved(false);
   }
-  function save(){const inchProfile={...profile,unit:"in" as const};localStorage.setItem(MEASUREMENT_STORAGE_KEY,JSON.stringify(inchProfile));setProfile(inchProfile);setSaved(true);}
+  function save(){const now=new Date().toISOString();const inchProfile={...profile,unit:"in" as const,updatedAt:now};const observationProfile={...observations,updatedAt:now};localStorage.setItem(MEASUREMENT_STORAGE_KEY,JSON.stringify(inchProfile));localStorage.setItem(TAILOR_OBSERVATION_STORAGE_KEY,JSON.stringify(observationProfile));setProfile(inchProfile);setObservations(observationProfile);setSaved(true);}
   const progress=mode==="shirt"?coverage.shirt:coverage.pants;
   const summary=useMemo(()=>[
     ["Shirt",`${coverage.shirt}/8`],["Pants",`${coverage.pants}/8`],["Unit","INCHES"]
@@ -182,5 +184,49 @@ export function MeasurementStudio(){
         {invalid&&<p className="measureWarning">This value is outside the usual tailoring range. Recheck the tape and scale position.</p>}
         <button className="measureSave" onClick={save}>{saved?"Measurements saved ✓":"Save measurements"}</button><Link href="/designer-studio" className="measureDesignerLink" onClick={save}>Use in Designer <span>→</span></Link><small className="measurePrivacy">Stored locally on this device. No body measurements are sent anywhere until a design request uses them.</small></aside>
     </div>
+
+    <section className="tailorObservationPanel" aria-labelledby="tailorObservationTitle">
+      <div className="tailorObservationHead">
+        <div><span>OPTIONAL / TAILOR OBSERVATIONS</span><h2 id="tailorObservationTitle">Add what the tape cannot describe.</h2></div>
+        <p>Choose only what a tailor or customer can confidently observe. These notes help the Designer flag block adjustments; they are not inferred from photos.</p>
+      </div>
+      <div className="tailorObservationGrid">
+        <label>Shoulder balance
+          <select value={observations.shoulderBalance} onChange={(e)=>{setObservations((current)=>({...current,shoulderBalance:e.target.value as TailorObservationProfile["shoulderBalance"]}));setSaved(false);}}>
+            <option value="unknown">Not assessed</option>
+            <option value="level">Level / typical</option>
+            <option value="square">More square</option>
+            <option value="sloping">More sloping</option>
+          </select>
+          <small>Used to flag shoulder-angle and armhole checks.</small>
+        </label>
+        <label>Posture balance
+          <select value={observations.posture} onChange={(e)=>{setObservations((current)=>({...current,posture:e.target.value as TailorObservationProfile["posture"]}));setSaved(false);}}>
+            <option value="unknown">Not assessed</option>
+            <option value="balanced">Balanced</option>
+            <option value="erect">More erect</option>
+            <option value="forward">More forward</option>
+          </select>
+          <small>Used to flag front/back length and yoke balance checks.</small>
+        </label>
+        <label>Seat balance
+          <select value={observations.seatBalance} onChange={(e)=>{setObservations((current)=>({...current,seatBalance:e.target.value as TailorObservationProfile["seatBalance"]}));setSaved(false);}}>
+            <option value="unknown">Not assessed</option>
+            <option value="balanced">Balanced</option>
+            <option value="flat">Flatter seat</option>
+            <option value="full">Fuller seat</option>
+          </select>
+          <small>Used to flag back-rise and trouser upper-block checks.</small>
+        </label>
+        <label>Movement priority
+          <select value={observations.mobilityPriority} onChange={(e)=>{setObservations((current)=>({...current,mobilityPriority:e.target.value as TailorObservationProfile["mobilityPriority"]}));setSaved(false);}}>
+            <option value="standard">Standard</option>
+            <option value="high">High mobility</option>
+          </select>
+          <small>High mobility protects ease when a visually slim cut is selected.</small>
+        </label>
+      </div>
+      <div className="tailorObservationFoot"><span>MANUAL INPUT ONLY</span><p>Final pattern/block adjustments still require an in-person tailor check before cutting.</p><button type="button" onClick={save}>{saved?"Profile saved ✓":"Save fit profile"}</button></div>
+    </section>
   </section>;
 }
