@@ -3,6 +3,8 @@ import { MeasurementStudio } from "@/components/MeasurementStudio";
 import "./measurements.css";
 import "./scale-selector.css";
 
+// Standalone measurement experience: blueprint guidance replaces the previous Measurements page without changing the Designer sequence.
+
 export default function MeasurementsPage(){
   return <AppShell>
     <main className="measurementPage">
