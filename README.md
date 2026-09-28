@@ -40,3 +40,5 @@ Important terminology: in this project **TR/PV** means polyester–viscose/rayon
 The **planned MVP product architecture is complete**, but some production infrastructure intentionally remains provider-neutral rather than falsely simulated. The current fabric analyzer and visualization renderer are development adapters, and browser storage is used for saved designs, feedback and atelier handoffs. A production launch would replace those adapters with authenticated persistence, real store inventory/SKU integration, a selected vision provider, a photorealistic image-generation provider, observability and deployment configuration. Those can plug into the contracts already implemented without redesigning the Fashion Brain or Designer workflow.
 
 <!-- production redeploy trigger: 2026-09-28 retry-2 -->
+
+<!-- finish-flow deploy trigger: 2026-09-28 -->
