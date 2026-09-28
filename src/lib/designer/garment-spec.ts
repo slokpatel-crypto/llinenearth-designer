@@ -2,6 +2,7 @@ import type { MeasurementProfile } from "@/lib/measurements";
 import type { DesignerRecommendation } from "@/lib/designer/engine";
 import type { FitConstructionAssessment, FinishedTarget } from "@/lib/designer/fit-construction";
 import type { BrandLanguageEvaluation } from "@/lib/designer/brand-language";
+import type { DesignerBlockStrategy } from "@/lib/designer/block-strategy";
 
 export type CanonicalGarmentSpecStatus = "draft" | "review_required" | "ready_for_tailor_review";
 
@@ -20,6 +21,7 @@ export type CanonicalGarmentSpec = {
     designerRuleSetVersion: string;
     fitConstructionVersion: FitConstructionAssessment["version"] | null;
     measurementProfileVersion: MeasurementProfile["version"] | null;
+    blockStrategyVersion: DesignerBlockStrategy["version"] | null;
   };
   context: {
     occasion: DesignerRecommendation["occasion"];
@@ -64,7 +66,15 @@ export type CanonicalGarmentSpec = {
     confidenceScore: number;
     fitConstructionScore: number | null;
     brandLanguageScore: number | null;
+    blockStrategyScore: number | null;
   };
+  blockStrategy: {
+    shirtBlock: DesignerBlockStrategy["shirtBlock"];
+    trouserBlock: DesignerBlockStrategy["trouserBlock"];
+    torsoShape: DesignerBlockStrategy["torsoShape"];
+    seatShape: DesignerBlockStrategy["seatShape"];
+    adjustments: DesignerBlockStrategy["adjustments"];
+  } | null;
   constructionChecks: Array<{
     id: string;
     severity: "info" | "review" | "warning";
@@ -123,6 +133,7 @@ export function buildCanonicalGarmentSpec(
       designerRuleSetVersion: recommendation.ruleSetVersion,
       fitConstructionVersion: fit?.version ?? null,
       measurementProfileVersion: measurements?.version ?? null,
+      blockStrategyVersion: block?.version ?? null,
     },
     context: {
       occasion: recommendation.occasion,
@@ -167,7 +178,15 @@ export function buildCanonicalGarmentSpec(
       confidenceScore: recommendation.confidenceScore,
       fitConstructionScore: fit?.fitScore ?? null,
       brandLanguageScore: brand?.score ?? null,
+      blockStrategyScore: block?.score ?? null,
     },
+    blockStrategy: block ? {
+      shirtBlock: block.shirtBlock,
+      trouserBlock: block.trouserBlock,
+      torsoShape: block.torsoShape,
+      seatShape: block.seatShape,
+      adjustments: block.adjustments.map((item) => ({ ...item })),
+    } : null,
     constructionChecks: fitChecks.map((item) => ({ ...item })),
     unresolved,
     readiness: {
@@ -177,6 +196,7 @@ export function buildCanonicalGarmentSpec(
     },
     caveats: [
       ...(fit?.caveats ?? []),
+      ...(block?.caveats ?? []),
       "This specification coordinates Designer, visualization and tailoring review; it is not a cutting pattern.",
       "Verified physical cloth data takes precedence over catalogue-derived appearance.",
     ],
