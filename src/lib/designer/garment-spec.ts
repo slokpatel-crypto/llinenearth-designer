@@ -108,6 +108,7 @@ export function buildCanonicalGarmentSpec(
   fit: FitConstructionAssessment | null | undefined,
   measurements: MeasurementProfile | null | undefined,
   brand?: BrandLanguageEvaluation | null,
+  block?: DesignerBlockStrategy | null,
 ): CanonicalGarmentSpec {
   const materialMissing = recommendation.materialEvidence.missing;
   const fitChecks = fit?.checks ?? [];
