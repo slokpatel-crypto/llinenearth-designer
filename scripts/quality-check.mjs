@@ -368,7 +368,7 @@ const designerCasebookApi = fs.readFileSync("src/app/api/designer/casebook/route
 for (const token of ["aggregateDesignerCasebook","source:\"eq.operator\"","type:\"eq.operator_note\"","select:\"type,source,payload\"","cache-control","No session"]) {
   if (!designerCasebookApi.includes(token)) throw new Error(`Designer casebook API regression: missing ${token}`);
 }
-for (const forbidden of ["session_id","customer","phone","email"]) {
+for (const forbidden of ["session_id","sessionId","customerName","phone","email"]) {
   if (designerCasebookApi.includes(forbidden)) throw new Error(`Designer casebook privacy regression: aggregate API contains ${forbidden}`);
 }
 const designerCaseSanitizer = fs.readFileSync("src/app/api/memory/event/route.ts","utf8");
