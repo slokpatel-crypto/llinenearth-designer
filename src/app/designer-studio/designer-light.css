@@ -240,3 +240,5 @@
 .newDesignerSearchTruth{display:block;margin-top:12px;color:#978d82;font-size:8px;line-height:1.55}
 @media(max-width:1050px){.newDesignerSearchResults{grid-template-columns:1fr}.newDesignerSearchPair img{aspect-ratio:2.6/1}.newDesignerSearchHead{flex-direction:column}.newDesignerSearchHead>button{width:100%}}
 @media(max-width:560px){.newDesignerSearch{padding:14px}.newDesignerSearchScopes{display:grid;grid-template-columns:1fr}.newDesignerSearchScopes button{width:100%}.newDesignerSearchPair img{aspect-ratio:1.7/1}}
+
+.newDesignerCasebookState{display:block;margin-top:8px;color:#758497;font-size:7px;letter-spacing:.08em;text-transform:uppercase}

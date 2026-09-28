@@ -24,3 +24,19 @@
 .designerLearningReasons span{font-size:9px;color:#5f6872}
 .designerLearningReasons b{font-size:10px;color:#8f5b43}
 @media(max-width:720px){.designerLearningTotals{grid-template-columns:1fr}.designerLearningReasons div{padding:7px 8px}}
+
+.designerCaseReview{margin:14px 0 0;padding:14px;border:1px solid #d8d0c5;background:#fff;display:grid;gap:10px}
+.designerCaseReviewHead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.designerCaseReviewHead small{display:block;font-size:7px;letter-spacing:.14em;color:#8d765f}
+.designerCaseReviewHead strong{display:block;margin-top:4px;font:400 14px/1.35 Georgia,serif;color:#21364c}
+.designerCaseReviewHead>span{font-size:7px;letter-spacing:.12em;padding:5px 7px;border:1px solid #d8d0c5;background:#f7f3ed;color:#7b746c}
+.designerCaseReviewHead>span[data-verdict="approved"]{border-color:#b9d1bf;background:#eff7f1;color:#356744}
+.designerCaseReviewHead>span[data-verdict="rejected"]{border-color:#d9b9b2;background:#fbf1ef;color:#8c493e}
+.designerCaseReview>p{margin:0;color:#746d65;font-size:9px;line-height:1.5}
+.designerCaseReview label{display:grid;gap:5px;font-size:7px;letter-spacing:.1em;color:#81766a}
+.designerCaseReview select,.designerCaseReview textarea{border:1px solid #d8d0c5;background:#fbf8f3;color:#17293c;padding:9px;font:inherit;font-size:9px;resize:vertical}
+.designerCaseReviewActions{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.designerCaseReviewActions button{border:1px solid #233f5d;background:#233f5d;color:#fff;padding:9px;font-size:8px;cursor:pointer}
+.designerCaseReviewActions button+button{background:#fff;color:#7c433a;border-color:#cbaaa4}
+.designerCaseReviewActions button:disabled{opacity:.45;cursor:wait}
+@media(max-width:480px){.designerCaseReviewHead{flex-direction:column}.designerCaseReviewActions{grid-template-columns:1fr}}

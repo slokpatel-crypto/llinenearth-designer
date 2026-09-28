@@ -27,6 +27,8 @@ const required = [
   "src/components/PhotoOutfitPreview.tsx",
   "src/app/designer-studio/page.tsx",
   "src/lib/designer/search.ts",
+  "src/app/api/designer/casebook/route.ts",
+  "src/lib/designer/casebook.ts",
 ];
 
 for (const file of required) {
@@ -352,3 +354,33 @@ for (const token of [".newDesignerSearch",".newDesignerSearchResults",".newDesig
   if (!advancedSearchCss.includes(token)) throw new Error(`Designer advanced-search styling regression: missing ${token}`);
 }
 console.log("Designer advanced-search gate passed: diversified catalogue search, hard-conflict exclusion and explainable alternatives protected.");
+
+
+const designerCasebook = fs.readFileSync("src/lib/designer/casebook.ts","utf8");
+for (const token of [
+  "designer-casebook-v1","designer_case_review","operator_note","event.source!==\"operator\"",
+  "total>=3","scale=6","signalFromCounts","casebookSignalFor",
+  "Casebook is still collecting reviewed outcomes."
+]) {
+  if (!designerCasebook.includes(token)) throw new Error(`Designer casebook regression: missing ${token}`);
+}
+const designerCasebookApi = fs.readFileSync("src/app/api/designer/casebook/route.ts","utf8");
+for (const token of ["aggregateDesignerCasebook","source:\"eq.operator\"","type:\"eq.operator_note\"","select:\"type,source,payload\"","cache-control","No session"]) {
+  if (!designerCasebookApi.includes(token)) throw new Error(`Designer casebook API regression: missing ${token}`);
+}
+for (const forbidden of ["session_id","sessionId","customerName","phone","email"]) {
+  if (designerCasebookApi.includes(forbidden)) throw new Error(`Designer casebook privacy regression: aggregate API contains ${forbidden}`);
+}
+const designerCaseSanitizer = fs.readFileSync("src/app/api/memory/event/route.ts","utf8");
+for (const token of ['subtype === "designer_case_review"',"recommendationId","approved","rejected","material_unknown"]) {
+  if (!designerCaseSanitizer.includes(token)) throw new Error(`Designer case-review sanitizer regression: missing ${token}`);
+}
+const designerCaseOperator = fs.readFileSync("src/app/operator/OperatorClient.tsx","utf8");
+for (const token of ["DESIGNER CASE REVIEW","Approve case","Reject case","designer_case_review","Only explicit operator reviews become Casebook evidence"]) {
+  if (!designerCaseOperator.includes(token)) throw new Error(`Designer case-review operator regression: missing ${token}`);
+}
+const designerCaseSearch = fs.readFileSync("src/lib/designer/search.ts","utf8");
+for (const token of ["casebookSignalFor","casebookSignal.score","Math.max(-6","Operator-reviewed casebook"]) {
+  if (!designerCaseSearch.includes(token)) throw new Error(`Designer casebook search regression: missing ${token}`);
+}
+console.log("Designer casebook gate passed: operator-reviewed cases are aggregate-only, thresholded and capped below hard Designer constraints.");

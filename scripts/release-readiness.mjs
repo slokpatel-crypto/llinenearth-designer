@@ -39,6 +39,8 @@ for (const path of [
   "src/components/PhotoOutfitPreview.tsx",
   "src/app/designer-studio/page.tsx",
   "src/lib/designer/search.ts",
+  "src/app/api/designer/casebook/route.ts",
+  "src/lib/designer/casebook.ts",
   "src/lib/designer/garment-spec.ts",
   "desktop/src/App.tsx",
   "desktop/src-tauri/tauri.conf.json",
@@ -120,6 +122,15 @@ requireTokens("src/lib/designer/search.ts", [
 ]);
 requireTokens("src/components/DesignerModule.tsx", [
   "DESIGNER SEARCH / V3","Search catalogue","Keep shirt","Keep trouser","Open search","Why over my current choice?","Use this direction"
+]);
+requireTokens("src/lib/designer/casebook.ts", [
+  "designer-casebook-v1","designer_case_review","casebookSignalFor","total>=3","scale=6"
+]);
+requireTokens("src/app/api/designer/casebook/route.ts", [
+  "aggregateDesignerCasebook","source:\"eq.operator\"","type:\"eq.operator_note\"","select:\"type,source,payload\""
+]);
+requireTokens("src/app/operator/OperatorClient.tsx", [
+  "DESIGNER CASE REVIEW","Approve case","Reject case","designer_case_review"
 ]);
 requireTokens("src/app/api/homepage-model/route.ts", [
   "FASHN_API_KEY",

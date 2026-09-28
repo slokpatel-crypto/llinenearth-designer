@@ -140,6 +140,29 @@ function cleanPayload(type:string, input:unknown) {
 
   if (type === "operator_note") {
     const subtype = text(payload.subtype,80);
+    if (subtype === "designer_case_review") {
+      const recommendationId = text(payload.recommendationId,160);
+      const verdict = text(payload.verdict,20);
+      const shirtId = text(payload.shirtId,140);
+      const pantId = text(payload.pantId,140);
+      const occasion = text(payload.occasion,40);
+      const reason = text(payload.reason,80);
+      const styleInput = payload.style && typeof payload.style === "object" && !Array.isArray(payload.style)
+        ? payload.style as Record<string,unknown> : {};
+      const allowedStyleKeys = ["shirtFit","shirtWear","collar","trouser","rise","waistband","break"];
+      const style = Object.fromEntries(allowedStyleKeys
+        .map((key)=>[key,text(styleInput[key],120)] as const)
+        .filter(([,value])=>Boolean(value)));
+      if (!recommendationId || !shirtId || !pantId) return null;
+      if (!["approved","rejected"].includes(verdict)) return null;
+      if (!["Casual","Smart-Casual","Semi-Formal","Formal"].includes(occasion)) return null;
+      return {
+        subtype,recommendationId,verdict,shirtId,pantId,occasion,style,
+        reason:["color","too_bold","too_safe","fit_cut","trouser_shape","formality","fabric","construction","material_unknown","other"].includes(reason) ? reason : "other",
+        note:text(payload.note,500),
+      };
+    }
+
     if (subtype === "designer_fabric_metadata") {
       const fabricId = text(payload.fabricId,140);
       const availability = text(payload.availability,20);
