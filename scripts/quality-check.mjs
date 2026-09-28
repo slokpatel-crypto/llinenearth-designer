@@ -21,6 +21,7 @@ const required = [
   "public/designer/studio-tucked.webp",
   "src/lib/designer/photo-preview.ts",
   "src/lib/designer/fit-construction.ts",
+  "src/lib/designer/tailor-observations.ts",
   "src/lib/designer/fit-outcomes.ts",
   "src/lib/designer/constraint-negotiation.ts",
   "src/lib/designer/outcome-learning.ts",
@@ -408,3 +409,30 @@ for (const token of ["FIRST-FITTING OUTCOME","saveFitOutcome","designer_fit_outc
   if (!fitOutcomeOperator.includes(token)) throw new Error(`Designer first-fit outcome regression: operator UI missing ${token}`);
 }
 console.log("Designer first-fit outcome gate passed: reviewed post-fitting evidence is aggregate-only, privacy-preserving and capped below hard constraints.");
+
+
+const tailorObservations = fs.readFileSync("src/lib/designer/tailor-observations.ts","utf8");
+for (const token of ["linen-earth-tailor-observations-v1","ShoulderBalance","PostureBalance","SeatBalance","MobilityPriority","tailorObservationCoverage"]) {
+  if (!tailorObservations.includes(token)) throw new Error(`Tailor observation regression: model missing ${token}`);
+}
+const tailorFit = fs.readFileSync("src/lib/designer/fit-construction.ts","utf8");
+for (const token of ["observations?: TailorObservationProfile","OBS-SHOULDER-SLOPING","OBS-POSTURE-FORWARD","OBS-SEAT-FULL","OBS-MOBILITY"]) {
+  if (!tailorFit.includes(token)) throw new Error(`Tailor observation regression: fit engine missing ${token}`);
+}
+const tailorPlanner = fs.readFileSync("src/lib/designer/planner.ts","utf8");
+for (const token of ["TailorObservationProfile","observations?: TailorObservationProfile","observations })"]) {
+  if (!tailorPlanner.includes(token)) throw new Error(`Tailor observation regression: planner missing ${token}`);
+}
+const tailorSearch = fs.readFileSync("src/lib/designer/search.ts","utf8");
+for (const token of ["observations?: TailorObservationProfile","observations:input.observations"]) {
+  if (!tailorSearch.includes(token)) throw new Error(`Tailor observation regression: search missing ${token}`);
+}
+const tailorMeasurementUi = fs.readFileSync("src/components/MeasurementStudio.tsx","utf8");
+for (const token of ["OPTIONAL / TAILOR OBSERVATIONS","Shoulder balance","Posture balance","Seat balance","Movement priority","MANUAL INPUT ONLY","TAILOR_OBSERVATION_STORAGE_KEY"]) {
+  if (!tailorMeasurementUi.includes(token)) throw new Error(`Tailor observation regression: Measurements UI missing ${token}`);
+}
+const tailorDesignerUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
+for (const token of ["TAILOR_OBSERVATION_STORAGE_KEY","tailorObservationSummary","newDesignerTailorObservations","observations:tailorObservations"]) {
+  if (!tailorDesignerUi.includes(token)) throw new Error(`Tailor observation regression: Designer UI missing ${token}`);
+}
+console.log("Tailor observation gate passed: manual shoulder/posture/seat/mobility observations feed fit, planning and search without photo inference.");
