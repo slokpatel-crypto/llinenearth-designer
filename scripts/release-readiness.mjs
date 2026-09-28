@@ -38,6 +38,7 @@ for (const path of [
   "src/lib/designer/brand-language.ts",
   "src/components/PhotoOutfitPreview.tsx",
   "src/app/designer-studio/page.tsx",
+  "src/lib/designer/garment-spec.ts",
   "desktop/src/App.tsx",
   "desktop/src-tauri/tauri.conf.json",
   ".github/workflows/build-llinen-earth-os.yml",
@@ -108,6 +109,9 @@ requireTokens("src/components/AppShell.tsx", ["Real Model Designer","/real-model
 requireTokens("src/lib/style-director-agent.ts", ["StyleDirectorRealModelSpec","buildRealModelSpec","evaluateDesignerCombo","shirtName","pantName"]);
 requireTokens("src/app/style-director/page.tsx", ["Open Linen Earth Real Model Designer","REAL MODEL OUTFIT","#designerPhotoTitle"]);
 requireTokens("src/components/DesignerModule.tsx", ['params.get("shirt")','params.get("pant")','params.get("style")',"STYLE DIRECTOR RESULT"]);
+requireTokens("src/lib/designer/garment-spec.ts", ["linen-earth-garment-spec-v1","buildCanonicalGarmentSpec","finishedTargets","ready_for_tailor_review","not a cutting pattern"]);
+requireTokens("src/components/DesignerModule.tsx", ["GARMENT SPEC / V1","Export spec JSON","downloadGarmentSpec"]);
+requireTokens("src/app/api/memory/event/route.ts", ["garmentSpecInput","fitConstructionScore","brandLanguageScore","materialVerification"]);
 requireTokens("src/app/api/homepage-model/route.ts", [
   "FASHN_API_KEY",
   "model-create",
