@@ -193,6 +193,28 @@ export function DesignerModule() {
     setRecommendationId(null);
   }
 
+  function matchPhotographedOfficeModel() {
+    const next: DesignerStyle = {
+      ...designerStyleForOccasion("Semi-Formal"),
+      collar: "Point (Standard) Collar",
+      collarFinish: "Self-fabric",
+      cuff: "Barrel Cuff (1-button)",
+      placket: "Standard (visible stitch)",
+      shirtFit: "Regular / Classic Fit",
+      shirtWear: "Tucked",
+      trouser: "Pleated Trouser",
+      rise: "Mid Rise",
+      waistband: "Belt Loops",
+      break: "Slight Break",
+    };
+    setOccasion("Semi-Formal");
+    setStyle(next);
+    setRecommendation(null);
+    setDirections([]);
+    setRecommendationId(null);
+    setResponse(null);
+  }
+
   return <div className="newDesigner">
     <header className="newDesignerHero">
       <div className="newDesignerHeroCopy">
@@ -261,6 +283,10 @@ export function DesignerModule() {
         </div>
         <div className="newDesignerStyleBlock">
           <div className="newDesignerSectionHead"><span>03 / THE CUT</span><h2>Shape the two garments.</h2></div>
+          <div className="newDesignerModelPreset">
+            <div><span>PHOTO TEMPLATE / OFFICE</span><strong>Use the exact cut shown on the tucked studio model.</strong><p>Point collar · 1-button barrel cuff · tucked shirt · pleated straight trouser · mid rise · belt loops · slight break.</p></div>
+            <button type="button" onClick={matchPhotographedOfficeModel}>Match photographed office model</button>
+          </div>
           <div className="newDesignerStyleGrid">{MAIN_DETAILS.map(([key, label]) => <label key={key}>{label}
             <select value={style[key]} onChange={(event) => changeStyle(key, event.target.value)}>
               {DESIGNER_STYLE_CHOICES[key].map((option) => <option key={option} value={option}>{option}</option>)}
