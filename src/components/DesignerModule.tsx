@@ -18,6 +18,7 @@ import { assessFitConstruction, formatFinishedRange } from "@/lib/designer/fit-c
 import { buildDesignerNegotiation } from "@/lib/designer/constraint-negotiation";
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
 import { evaluateLinenEarthBrandLanguage } from "@/lib/designer/brand-language";
+import { buildCanonicalGarmentSpec, canonicalGarmentSpecSummary } from "@/lib/designer/garment-spec";
 
 const OCCASIONS: OccasionTier[] = ["Casual", "Smart-Casual", "Semi-Formal", "Formal"];
 const CLIMATES: DesignerClimate[] = ["Not specified", "Hot / humid", "Cool", "Air-conditioned"];
@@ -78,6 +79,7 @@ export function DesignerModule() {
   const fitConstruction = useMemo(() => shirt && pant ? assessFitConstruction(measurementProfile, style, { climate, shirtFabric: shirt, trouserFabric: pant }) : null, [measurementProfile, style, climate, shirt, pant]);
   const negotiation = useMemo(() => recommendation ? buildDesignerNegotiation(recommendation, fitConstruction) : null, [recommendation, fitConstruction]);
   const brandLanguage = useMemo(() => shirt && pant ? evaluateLinenEarthBrandLanguage(shirt,pant,style,occasion,{climate,intention}) : null, [shirt,pant,style,occasion,climate,intention]);
+  const garmentSpec = useMemo(() => recommendation ? buildCanonicalGarmentSpec(recommendation, fitConstruction, measurementProfile, brandLanguage) : null, [recommendation, fitConstruction, measurementProfile, brandLanguage]);
 
   useEffect(() => {
     try {
@@ -257,12 +259,17 @@ export function DesignerModule() {
     setResponse(null);
     setFeedbackReason(null);
     try {
+      const spec = buildCanonicalGarmentSpec(result, proposals[0].fitConstruction, measurementProfile, proposals[0].brandLanguage);
       const event = recordStyleMemoryEvent(designerSession(), "designer_recommendation", {
         shirtId, pantId, occasion, style: nextStyle, input: { shirtId, pantId, occasion, style: nextStyle, context, measurementCoverage: fitCoverage, fitGuidance }, rules: result.rules,
         confidenceScore: result.confidenceScore, designFitScore: result.designFitScore,
         materialEvidence: result.materialEvidence, formality: result.formality,
         output: result.style, reasoningText: result.internalReason,
         status: result.status, ruleSetVersion: result.ruleSetVersion,
+        garmentSpec: {
+          version: spec.version, status: spec.status, fitConstructionScore: spec.decision.fitConstructionScore,
+          brandLanguageScore: spec.decision.brandLanguageScore, readiness: spec.readiness,
+        },
       });
       setRecommendationId(event.id);
     } catch { /* The direction still works when event storage is unavailable. */ }
@@ -327,6 +334,20 @@ export function DesignerModule() {
     setRecommendationId(null);
     setResponse(null);
     setFeedbackReason(null);
+  }
+
+  function downloadGarmentSpec() {
+    if (!garmentSpec) return;
+    const summary = canonicalGarmentSpecSummary(garmentSpec);
+    const blob = new Blob([JSON.stringify({ ...garmentSpec, summary }, null, 2)], { type:"application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `linen-earth-garment-spec-${garmentSpec.fabrics.shirt.id}-${garmentSpec.fabrics.trouser.id}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
   }
 
   return <div className="newDesigner">
@@ -482,6 +503,22 @@ export function DesignerModule() {
             <div><span>TROUSERS</span><strong>{recommendation.style.trouser}</strong><small>{recommendation.style.rise} · {recommendation.style.waistband} · {recommendation.style.break}</small></div>
           </div>
           <p className="newDesignerProvisional">{recommendation.status === "preliminary" ? "A preliminary direction. We would check the actual fabric before confirming the cut." : "This is your proposed cut, pending a Linen Earth stylist's review."}</p>
+          {garmentSpec && <section className="newDesignerCanonicalSpec" aria-label="Canonical garment specification">
+            <div className="newDesignerCanonicalSpecHead">
+              <div><span>GARMENT SPEC / V1</span><strong>{garmentSpec.status === "ready_for_tailor_review" ? "Ready for tailor review" : garmentSpec.status === "review_required" ? "Review required" : "Draft specification"}</strong></div>
+              <button type="button" onClick={downloadGarmentSpec}>Export spec JSON ↗</button>
+            </div>
+            <div className="newDesignerCanonicalSpecGrid">
+              <article><span>SHIRT</span><strong>{garmentSpec.fabrics.shirt.name}</strong><p>{garmentSpec.shirt.fit} · {garmentSpec.shirt.collar} · {garmentSpec.shirt.wear}</p>{garmentSpec.shirt.finishedTargets.slice(0,3).map((item)=><small key={item.label}>{item.label}: {formatFinishedRange(item,"in")}</small>)}</article>
+              <article><span>TROUSER</span><strong>{garmentSpec.fabrics.trouser.name}</strong><p>{garmentSpec.trouser.shape} · {garmentSpec.trouser.rise} · {garmentSpec.trouser.break}</p>{garmentSpec.trouser.finishedTargets.slice(0,3).map((item)=><small key={item.label}>{item.label}: {formatFinishedRange(item,"in")}</small>)}</article>
+            </div>
+            <div className="newDesignerCanonicalReadiness">
+              <span>VISUAL / {garmentSpec.readiness.visualization.replaceAll("_"," ")}</span>
+              <span>TAILORING / {garmentSpec.readiness.tailoring.replaceAll("_"," ")}</span>
+              <span>MATERIAL / {garmentSpec.readiness.materialVerification.replaceAll("_"," ")}</span>
+            </div>
+            <p>This is the common Designer handoff for visualization and tailoring review. It is not a cutting pattern.</p>
+          </section>}
           {brandLanguage && <section className="newDesignerBrandRead" aria-label="Linen Earth brand language">
             <div className="newDesignerBrandReadHead"><span>LINEN EARTH / BRAND LANGUAGE</span><strong>{brandLanguage.mode} · {brandLanguage.score}/100</strong></div>
             {brandLanguage.strengths.length>0 && <div><span>WHAT FEELS RIGHT</span>{brandLanguage.strengths.map((item)=><p key={item}>{item}</p>)}</div>}
