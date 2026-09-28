@@ -16,6 +16,7 @@ import { PhotoOutfitPreview } from "@/components/PhotoOutfitPreview";
 import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, type MeasurementProfile } from "@/lib/measurements";
 import { assessFitConstruction, formatFinishedRange } from "@/lib/designer/fit-construction";
 import { buildDesignerNegotiation } from "@/lib/designer/constraint-negotiation";
+import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
 
 const OCCASIONS: OccasionTier[] = ["Casual", "Smart-Casual", "Semi-Formal", "Formal"];
 const CLIMATES: DesignerClimate[] = ["Not specified", "Hot / humid", "Cool", "Air-conditioned"];
@@ -23,17 +24,6 @@ const INTENTIONS: DesignerIntention[] = ["Understated", "Balanced", "Expressive"
 const SESSION_KEY = "llinen-earth:designer-session:v1";
 const DRAFT_KEY = "linen-earth:real-designer-draft:v2";
 const FACT_INTERVAL_MS = 15_000;
-const DESIGNER_FEEDBACK_REASONS = [
-  ["color","Colour / contrast"],
-  ["too_bold","Too bold"],
-  ["too_safe","Too safe"],
-  ["fit_cut","Fit / cut"],
-  ["trouser_shape","Trouser shape"],
-  ["formality","Formality"],
-  ["fabric","Fabric choice"],
-  ["construction","Construction detail"],
-  ["other","Something else"],
-] as const;
 
 const MAIN_DETAILS = [
   ["shirtWear", "Shirt finish"], ["collar", "Shirt collar"],
