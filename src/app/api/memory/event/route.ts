@@ -11,6 +11,10 @@ const PUBLIC_TYPES = new Set([
   "look_selected",
   "render_requested",
   "render_completed",
+  "designer_recommendation",
+  "designer_preview_opened",
+  "designer_feedback",
+  "designer_override",
   "whatsapp_clicked",
 ]);
 
@@ -54,6 +58,45 @@ function text(value:unknown,max=160) {
 
 function cleanPayload(type:string, input:unknown) {
   const payload = input && typeof input === "object" ? input as Record<string,unknown> : {};
+
+  if (type === "designer_recommendation") {
+    const shirtId = text(payload.shirtId,120);
+    const pantId = text(payload.pantId,120);
+    const occasion = text(payload.occasion,40);
+    const style = payload.style && typeof payload.style === "object" && !Array.isArray(payload.style) ? payload.style : {};
+    if (!shirtId || !pantId || !["Casual","Smart-Casual","Semi-Formal","Formal"].includes(occasion)) return null;
+    return {
+      shirtId, pantId, occasion, style,
+      confidenceScore: Number(payload.confidenceScore || 0),
+      designFitScore: Number(payload.designFitScore || 0),
+      status: text(payload.status,40),
+      ruleSetVersion: text(payload.ruleSetVersion,100),
+      reasoningText: text(payload.reasoningText,1200),
+    };
+  }
+
+  if (type === "designer_preview_opened") {
+    const recommendationId = text(payload.recommendationId,160);
+    const shirtId = text(payload.shirtId,120);
+    const pantId = text(payload.pantId,120);
+    const occasion = text(payload.occasion,40);
+    if (!recommendationId || !shirtId || !pantId || !occasion) return null;
+    return { recommendationId, shirtId, pantId, occasion, kind:"photographic_model_preview" };
+  }
+
+  if (type === "designer_feedback") {
+    const recommendationId = text(payload.recommendationId,160);
+    const rating = text(payload.rating,20);
+    if (!recommendationId || !["up","down","saved"].includes(rating)) return null;
+    return { recommendationId, rating };
+  }
+
+  if (type === "designer_override") {
+    const recommendationId = text(payload.recommendationId,160);
+    const reason = text(payload.reason,1000);
+    if (!recommendationId || reason.length < 4) return null;
+    return { recommendationId, reason };
+  }
 
   if (type === "sale_logged") {
     const amount = Number(payload.amount ?? 0);

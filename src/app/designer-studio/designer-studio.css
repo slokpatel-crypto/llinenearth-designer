@@ -1,0 +1,83 @@
+.newDesigner{width:min(1320px,calc(100% - 64px));margin:auto;padding:82px 0 110px;color:#eee8dc}
+.newDesignerHero{border-bottom:1px solid rgba(215,194,159,.3);padding-bottom:50px;margin-bottom:38px}
+.newDesignerKicker,.newDesignerCount,.newDesignerSectionHead>span,.newDesignerEmpty>span,.newDesignerOccasions legend,.newDesignerDetails span{font-size:10px;letter-spacing:.18em;color:#b8a27e}
+.newDesignerHero h1{font:400 clamp(4.8rem,9vw,9rem)/.9 Georgia,serif;letter-spacing:-.06em;margin:26px 0 18px}
+.newDesignerHero p{max-width:690px;color:#b2bbc9;font-size:17px;line-height:1.7;margin:0 0 26px}
+.newDesignerCount{color:#98a5b8;letter-spacing:.08em}
+.newDesignerBody{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(350px,.85fr);gap:18px;align-items:start}
+.newDesignerSelections,.newDesignerOutcome{background:rgba(9,19,33,.8);border:1px solid rgba(223,211,193,.16);padding:30px}
+.newDesignerOutcome{position:sticky;top:24px;min-height:600px}
+.newDesignerSectionHead h2,.newDesignerEmpty h2{font:400 clamp(2rem,3vw,3.2rem)/1.12 Georgia,serif;letter-spacing:-.04em;margin:13px 0 30px}
+.newDesignerFabricGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.newDesignerFabric{min-width:0;border:1px solid rgba(223,211,193,.13);padding:13px;background:#0c1829}
+.newDesignerSwatch{height:230px;overflow:hidden;margin-bottom:18px}
+.newDesignerSwatch img{width:100%;height:100%;object-fit:cover;display:block}
+.newDesignerFabric label{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#c7b38d;display:block;margin-bottom:9px}
+.newDesignerFabric select{width:100%;background:#07111f;color:#f0ece5;border:1px solid rgba(223,211,193,.28);padding:12px 10px;font:13px Arial,sans-serif}
+.newDesignerFabric small{display:block;color:#92a0b5;margin:10px 0 3px;font-size:11px;line-height:1.5}
+.newDesignerOccasions{border:0;padding:0;margin:34px 0 22px;min-width:0}
+.newDesignerOccasions legend{padding:0 0 16px}
+.newDesignerOccasions>div{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.newDesignerOccasions label{display:flex;align-items:center;justify-content:center;min-height:51px;text-align:center;border:1px solid rgba(223,211,193,.22);color:#bfc8d5;font-size:11px;cursor:pointer;padding:8px}
+.newDesignerOccasions label.selected{background:#e8decc;color:#0b1625;border-color:#e8decc}
+.newDesignerOccasions input{position:absolute;opacity:0;width:1px;height:1px}
+.newDesignerOccasions label:focus-within{outline:2px solid #dab87d;outline-offset:3px}
+.newDesignerContext{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;padding:18px 0 22px;border-top:1px solid rgba(223,211,193,.16)}
+.newDesignerContext label{display:grid;gap:8px;color:#c7b38d;font-size:11px;letter-spacing:.06em}
+.newDesignerContext select{min-width:0;width:100%;background:#07111f;color:#f0ece5;border:1px solid rgba(223,211,193,.28);padding:12px 10px;font:13px Arial,sans-serif}
+.newDesignerContext small{grid-column:1/-1;color:#aab4c1;font-size:11px;line-height:1.5}
+.newDesignerStyleBlock{border-top:1px solid rgba(223,211,193,.16);padding-top:28px;margin:26px 0 28px}
+.newDesignerStyleBlock .newDesignerSectionHead h2{margin-bottom:20px}
+.newDesignerStyleGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.newDesignerStyleGrid label{min-width:0;display:grid;gap:8px;color:#c7b38d;font-size:11px;letter-spacing:.06em}
+.newDesignerStyleGrid select{width:100%;min-width:0;background:#07111f;color:#f0ece5;border:1px solid rgba(223,211,193,.28);padding:12px 10px;font:13px Arial,sans-serif;letter-spacing:0}
+.newDesignerMore{margin-top:19px;color:#b9c4d1;font-size:12px}
+.newDesignerMore summary{cursor:pointer;color:#dfcbab}
+.newDesignerMore .newDesignerStyleGrid{margin-top:18px}
+.newDesignerAction{width:100%;display:flex;align-items:center;justify-content:space-between;background:#c7a977;color:#0c1726;border:0;padding:17px 20px;font-size:13px;cursor:pointer}
+.newDesignerAction:disabled{opacity:.5;cursor:not-allowed}
+.newDesignerFootnote,.newDesignerProvisional{color:#91a0b1;font-size:11px;line-height:1.6;margin:16px 0 0}
+.newDesignerEmpty{display:flex;flex-direction:column;justify-content:center;min-height:535px}
+.newDesignerEmpty p{font-size:14px;color:#92a0b2;line-height:1.7;max-width:350px;margin:0}
+.newDesignerReason{font:400 clamp(1.3rem,2vw,1.8rem)/1.46 Georgia,serif;color:#ede5d9;margin:0 0 31px}
+.newDesignerSignals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:25px}
+.newDesignerSignals>div{padding:15px;background:#0c1829;border:1px solid rgba(223,211,193,.16)}
+.newDesignerSignals span,.newDesignerSignals strong,.newDesignerSignals small{display:block}
+.newDesignerSignals span{color:#c7b38d;font-size:9px;letter-spacing:.13em}
+.newDesignerSignals strong{font:400 29px Georgia,serif;margin:8px 0}
+.newDesignerSignals small{color:#aab4c1;font-size:10px;line-height:1.55}
+.newDesignerDetails{border-top:1px solid rgba(223,211,193,.22);border-bottom:1px solid rgba(223,211,193,.22)}
+.newDesignerDetails>div{padding:24px 0}
+.newDesignerDetails>div+div{border-top:1px solid rgba(223,211,193,.13)}
+.newDesignerDetails span,.newDesignerDetails strong,.newDesignerDetails small{display:block}
+.newDesignerDetails strong{font:400 21px Georgia,serif;margin:9px 0}
+.newDesignerDetails small{font-size:12px;line-height:1.5;color:#a7b1bf}
+.newDesignerTasteAlternative{border:1px solid rgba(199,169,119,.3);padding:15px;margin-top:20px;color:#e8decc}
+.newDesignerTasteAlternative strong{font:400 17px Georgia,serif}
+.newDesignerTasteAlternative p{color:#aab4c1;font-size:11px;line-height:1.6}
+.newDesignerTasteAlternative button{color:#0c1726;background:#c7a977;border:0;padding:10px 13px;cursor:pointer}
+.newDesignerDirections,.newDesignerRepairs{margin-top:23px;padding-top:16px;border-top:1px solid rgba(223,211,193,.18)}
+.newDesignerDirections h3,.newDesignerRepairs h3{font:400 19px Georgia,serif;color:#ede5d9;margin:0 0 9px}
+.newDesignerDirections>p,.newDesignerDirections article p,.newDesignerRepairs li{color:#adb9c8;font-size:11px;line-height:1.6}
+.newDesignerDirections article{padding:13px 0;border-top:1px solid rgba(223,211,193,.13)}
+.newDesignerDirections article strong{color:#ead6b3;font:400 16px Georgia,serif}
+.newDesignerDirections article p{margin:7px 0}
+.newDesignerDirections article small{display:block;color:#91a0b1;line-height:1.5}
+.newDesignerDirections button,.newDesignerRepairs button{background:transparent;border:1px solid rgba(223,211,193,.3);color:#ead6b3;cursor:pointer;padding:8px 11px;margin-top:9px;font-size:11px}
+.newDesignerRepairs ul{margin:0;padding-left:17px}
+.newDesignerRepairs li+li{margin-top:7px}
+.newDesignerRepairs li button{display:block}
+.newDesignerChecks{border-top:1px solid rgba(223,211,193,.13);margin-top:25px;padding-top:19px;font-size:12px;color:#b9c4d1}
+.newDesignerChecks summary{cursor:pointer;color:#dfcbab}
+.newDesignerChecks ul{line-height:1.7;padding-left:20px}
+.newDesignerChecks a{color:#e8c995}
+.newDesignerSavedLink{background:none;border:0;color:#ead6b3;cursor:pointer;font:inherit;text-align:left;padding:4px 0}
+.newDesignerSavedLink:hover{text-decoration:underline}
+.newDesignerFeedback{border-top:1px solid rgba(223,211,193,.13);margin-top:24px;padding-top:21px;color:#b9c4d1;font-size:12px}
+.newDesignerFeedback>span,.newDesignerFeedback small{display:block}
+.newDesignerFeedback>div{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}
+.newDesignerFeedback button{background:transparent;border:1px solid rgba(223,211,193,.3);color:#ebe1d0;cursor:pointer;padding:9px 12px}
+.newDesignerFeedback button[aria-pressed="true"]{background:#e8decc;color:#0b1625}
+.newDesignerFeedback small{color:#91a0b1}
+@media(max-width:1000px){.newDesignerBody{grid-template-columns:1fr}.newDesignerOutcome{position:static;min-height:300px}.newDesignerEmpty{min-height:250px}}
+@media(max-width:620px){.newDesigner{width:calc(100% - 28px);padding:50px 0 80px}.newDesignerSelections,.newDesignerOutcome{padding:20px}.newDesignerFabricGrid,.newDesignerStyleGrid,.newDesignerContext,.newDesignerSignals{grid-template-columns:1fr}.newDesignerSwatch{height:220px}.newDesignerOccasions>div{grid-template-columns:repeat(2,1fr)}}

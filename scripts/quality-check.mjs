@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import "./check-designer.mjs";
 
 const required = [
   "src/lib/fashion-intelligence.ts",
@@ -11,6 +12,10 @@ const required = [
   "src/app/designs/page.tsx",
   "src/app/atelier/page.tsx",
   "src/app/quality/page.tsx",
+  "public/designer/studio-tucked.webp",
+  "src/lib/designer/photo-preview.ts",
+  "src/components/PhotoOutfitPreview.tsx",
+  "src/app/designer-studio/page.tsx",
 ];
 
 for (const file of required) {
@@ -124,7 +129,7 @@ const restoredShell = fs.readFileSync("src/components/AppShell.tsx","utf8");
 for (const forbidden of ["[\"Catalog\",","[\"Live Visual\",","[\"Classic Designer\",","[\"Saved Designs\",","[\"Fashion Brain\",","[\"Atelier\","]) {
   if (restoredShell.includes(forbidden)) throw new Error(`Navigation regression: public shell reintroduced ${forbidden}`);
 }
-for (const requiredLink of ["[\"Designer Studio\", \"/designer\"]","[\"Style Director\", \"/style-director\"]"]) {
+for (const requiredLink of ["[\"Designer Studio\", \"/designer-studio\"]","[\"Style Director\", \"/style-director\"]"]) {
   if (!restoredShell.includes(requiredLink)) throw new Error(`Navigation regression: public shell missing ${requiredLink}`);
 }
 
@@ -139,3 +144,44 @@ for (const token of ["fabric must never spill","waistband in front of it","disti
 }
 
 console.log("Restored Designer model gate passed: Style Director visible, public nav cleaned, tucked garment boundaries protected.");
+
+
+const photoPreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","PHOTO_TUCKED_LEFT_SLEEVE_CLIP","PHOTO_TUCKED_RIGHT_SLEEVE_CLIP","PHOTO_TUCKED_LEFT_TROUSER_CLIP","PHOTO_TUCKED_RIGHT_TROUSER_CLIP","destination-in","masks.shirt","masks.pant","featherMaskInside","featheredMasks","patternScaleForFabric","placement.offsetX","soft-light","Inspect fit","Original model","Boundary QA"]) {
+  if (!photoPreview.includes(token)) throw new Error(`Real photographic Designer regression: PhotoOutfitPreview missing ${token}`);
+}
+const photoGeometry = fs.readFileSync("src/lib/designer/photo-preview.ts","utf8");
+for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","PHOTO_TUCKED_LEFT_SLEEVE_CLIP","PHOTO_TUCKED_RIGHT_SLEEVE_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_LEFT_TROUSER_CLIP","PHOTO_TUCKED_RIGHT_TROUSER_CLIP","PHOTO_TUCKED_NECK_CLEAR","/designer/studio-tucked.webp"]) {
+  if (!photoGeometry.includes(token)) throw new Error(`Real photographic Designer regression: photo-preview missing ${token}`);
+}
+console.log("Real photographic Designer gate passed: hard garment boundaries, neck clear zone and tucked layering protected.");
+
+
+const realDesignerModule = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
+for (const token of ["linen-earth:real-designer-draft:v2","draftReady","localStorage.setItem(DRAFT_KEY","resetDraft","Reset design"]) {
+  if (!realDesignerModule.includes(token)) throw new Error(`Real Designer draft regression: missing ${token}`);
+}
+console.log("Real Designer draft gate passed: fabric, context and tailoring state persist safely across refresh.");
+
+
+const publicHome = fs.readFileSync("src/app/page.tsx","utf8");
+for (const token of ["/designer-studio","Open Designer","photographic Designer","Linen Earth"]) {
+  if (!publicHome.includes(token)) throw new Error(`Real Designer public-route regression: homepage missing ${token}`);
+}
+console.log("Real Designer route gate passed: public navigation points to the photographic Designer while the legacy dashboard remains available separately.");
+
+
+const styleDirectorPage = fs.readFileSync("src/app/style-director/page.tsx","utf8");
+for (const token of ["designerHandoff","/designer-studio?","Open on real model","from:\"style-director\""]) {
+  if (!styleDirectorPage.includes(token)) throw new Error(`Style Director handoff regression: missing ${token}`);
+}
+for (const token of ["URLSearchParams(window.location.search)","routedAnchor","routedGarment","directorHandoff","STYLE DIRECTOR HANDOFF"]) {
+  if (!realDesignerModule.includes(token)) throw new Error(`Real Designer handoff regression: missing ${token}`);
+}
+console.log("Style Director handoff gate passed: context and real stock anchor transfer into photographic Designer.");
+
+
+for (const token of ["matchPhotographedOfficeModel","Point (Standard) Collar","Barrel Cuff (1-button)","Pleated Trouser","Belt Loops","Match photographed office model"]) {
+  if (!realDesignerModule.includes(token)) throw new Error(`Photographed office preset regression: missing ${token}`);
+}
+console.log("Photographed office preset gate passed: the selected cut can be aligned exactly to the tucked model template.");

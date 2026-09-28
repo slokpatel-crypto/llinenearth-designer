@@ -1,0 +1,145 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import Module from "node:module";
+import ts from "typescript";
+
+// Load just the pure engine from TypeScript so the quality gate checks actual
+// decisions without a browser, external service, or a second test dependency.
+const cache = new Map();
+function load(file) {
+  const full = path.resolve(file);
+  if (cache.has(full)) return cache.get(full).exports;
+  if (full.endsWith(".json")) return JSON.parse(fs.readFileSync(full,"utf8"));
+  const source = fs.readFileSync(full,"utf8");
+  const code = ts.transpileModule(source, {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText;
+  const loaded = new Module(full);
+  loaded.filename = full;
+  loaded.paths = Module._nodeModulePaths(path.dirname(full));
+  cache.set(full,loaded);
+  const nativeRequire = loaded.require.bind(loaded);
+  loaded.require = (specifier) => {
+    if (specifier.startsWith("@/")) return load(path.resolve("src",specifier.slice(2)) + ".ts");
+    if (specifier.startsWith("./") && specifier.endsWith(".json")) return load(path.resolve(path.dirname(full),specifier));
+    return nativeRequire(specifier);
+  };
+  loaded._compile(code,full);
+  return loaded.exports;
+}
+
+const {DESIGNER_SHIRTS,DESIGNER_PANTS,DESIGNER_REVIEWED_PAIRING,DESIGNER_STYLE_CHOICES,designerTasteAlternative,evaluateDesignerCombo} = load("src/lib/designer/engine.ts");
+const {planDesignerDirections,suggestDesignerRepairs} = load("src/lib/designer/planner.ts");
+const {designerStyleInsights} = load("src/lib/designer/style-insights.ts");
+const {DESIGNER_PHOTO_TEMPLATES,PHOTO_TUCKED_NECK_CLEAR,PHOTO_TUCKED_SHIRT_CLIP,PHOTO_TUCKED_SHIRT_BODY_CLIP,PHOTO_TUCKED_LEFT_SLEEVE_CLIP,PHOTO_TUCKED_RIGHT_SLEEVE_CLIP,PHOTO_TUCKED_TROUSER_CLIP,PHOTO_TUCKED_LEFT_TROUSER_CLIP,PHOTO_TUCKED_RIGHT_TROUSER_CLIP,photoTemplateForStyle,photoTemplateGaps} = load("src/lib/designer/photo-preview.ts");
+const sky = DESIGNER_SHIRTS.find((fabric)=>fabric.id === "linen-plain-60-sky-blue");
+const beige = DESIGNER_PANTS.find((fabric)=>fabric.id === "linen-suiting-beige");
+const darkGrey = DESIGNER_PANTS.find((fabric)=>fabric.id === "linen-suiting-dark-grey");
+assert(sky && beige && darkGrey);
+assert.deepEqual([DESIGNER_REVIEWED_PAIRING.shirtId,DESIGNER_REVIEWED_PAIRING.pantId,DESIGNER_REVIEWED_PAIRING.occasion],
+  [sky.id,beige.id,"Semi-Formal"]);
+assert.equal(DESIGNER_REVIEWED_PAIRING.approval,"pairing_taste_only");
+assert.equal(darkGrey.colorFamily,null,"Dark Grey must not be mistaken for Light Grey");
+const preliminary = evaluateDesignerCombo(sky,beige,"Semi-Formal");
+assert.equal(preliminary.status,"preliminary");
+assert.equal(preliminary.rules.find((rule)=>rule.id === "CR-3").status,"unknown");
+assert.equal(preliminary.rules.find((rule)=>rule.id === "CR-5").status,"unknown");
+assert.equal(preliminary.shirt.weightGsm,null,"Yarn count must not masquerade as fabric GSM");
+assert.equal(preliminary.formality.match,true);
+assert.match(preliminary.shortReason,/contrast|tonal|anchor/);
+assert.match(preliminary.shortReason,/pleat/);
+assert.equal(preliminary.materialEvidence.verified,0,"A PDF swatch does not verify physical fabric facts");
+assert.equal(preliminary.materialEvidence.total,16);
+assert(preliminary.designFitScore > preliminary.materialEvidence.verified);
+assert.equal(preliminary.style.shirtWear,"Tucked","Semi-formal starts with a tucked shirt");
+assert.equal(photoTemplateForStyle(preliminary.style),"tucked");
+assert.equal(DESIGNER_PHOTO_TEMPLATES.tucked.src,"/designer/studio-tucked.webp");
+assert(PHOTO_TUCKED_SHIRT_BODY_CLIP.includes("M 351 244"),"Tucked shirt body must use the photographed hard boundary.");
+assert(PHOTO_TUCKED_LEFT_SLEEVE_CLIP.includes("M 351 244") && PHOTO_TUCKED_RIGHT_SLEEVE_CLIP.includes("M 669 244"),"Tucked shirt sleeves must be separate photographed panels.");
+assert(PHOTO_TUCKED_SHIRT_CLIP.includes(PHOTO_TUCKED_SHIRT_BODY_CLIP) && PHOTO_TUCKED_SHIRT_CLIP.includes(PHOTO_TUCKED_LEFT_SLEEVE_CLIP) && PHOTO_TUCKED_SHIRT_CLIP.includes(PHOTO_TUCKED_RIGHT_SLEEVE_CLIP),"Combined tucked shirt clip must contain body and both sleeves.");
+assert(PHOTO_TUCKED_LEFT_TROUSER_CLIP.includes("M 368 542") && PHOTO_TUCKED_RIGHT_TROUSER_CLIP.includes("M 510 542"),"Tucked trousers must be split around the inner-leg gap.");
+assert(PHOTO_TUCKED_TROUSER_CLIP.includes(PHOTO_TUCKED_LEFT_TROUSER_CLIP) && PHOTO_TUCKED_TROUSER_CLIP.includes(PHOTO_TUCKED_RIGHT_TROUSER_CLIP),"Combined trouser clip must contain both leg panels.");
+assert(PHOTO_TUCKED_NECK_CLEAR.includes("M 466 165"),"Tucked shirt must explicitly clear the mannequin neck.");
+const photoPreviewSource = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+assert(photoPreviewSource.includes("destination-in") && photoPreviewSource.includes("PHOTO_TUCKED_SHIRT_CLIP"),"Photo preview must intersect adaptive masks with hard photographed garment boundaries.");
+const shirtDraw = photoPreviewSource.indexOf("PHOTO_TUCKED_SHIRT_BODY_CLIP, masks.shirt");
+const pantDraw = photoPreviewSource.indexOf("PHOTO_TUCKED_LEFT_TROUSER_CLIP, masks.pant");
+assert(shirtDraw >= 0 && pantDraw > shirtDraw,"Tucked shirt panels must render before trouser panels so the waistband masks the shirt hem.");
+
+assert(!photoTemplateGaps(preliminary.style,"tucked").some((gap)=>gap.includes("photo composite")));
+assert(photoTemplateGaps(preliminary.style,"tucked").includes("Side-Adjuster Tabs"));
+const untuckedFormal = evaluateDesignerCombo(sky,beige,"Formal",{shirtWear:"Untucked"});
+assert.equal(untuckedFormal.rules.find((item)=>item.id === "CUT-TUCK").status,"flag");
+assert.equal(untuckedFormal.status,"needs_review");
+assert(suggestDesignerRepairs(untuckedFormal).some((repair)=>repair.patch?.shirtWear === "Tucked"));
+const striped = DESIGNER_SHIRTS.find((fabric)=>fabric.id === "formal-shirting-13");
+assert(striped && /stripe/i.test(striped.patternType));
+const stripeNotes = designerStyleInsights(striped,beige,"Semi-Formal",preliminary.style);
+assert(stripeNotes.some((note)=>note.action?.patch.collarFinish === "White contrast collar"));
+assert(!designerStyleInsights(sky,beige,"Semi-Formal",preliminary.style).some((note)=>note.action?.patch.collarFinish));
+const contrastLook = evaluateDesignerCombo(striped,beige,"Semi-Formal",{collarFinish:"White contrast collar"});
+assert(designerStyleInsights(striped,beige,"Semi-Formal",contrastLook.style)
+  .some((note)=>note.action?.patch.collarFinish === "White contrast collar + cuffs"));
+assert.equal(contrastLook.status,"needs_review","A separate white cloth is not verified stock");
+assert.equal(contrastLook.materialEvidence.total,17);
+assert(contrastLook.materialEvidence.missing.some((item)=>item.includes("White contrast collar cloth")));
+assert.equal(contrastLook.rules.find((item)=>item.id === "DETAIL-WHITE-COLLAR").status,"unknown");
+const hot = {climate:"Hot / humid",intention:"Expressive"};
+const unknownClimate = evaluateDesignerCombo(sky,beige,"Semi-Formal",undefined,undefined,hot);
+assert.equal(unknownClimate.rules.find((item)=>item.id === "CONTEXT-CLIMATE").status,"unknown");
+const verifiedClimate = evaluateDesignerCombo({...sky,comfortTags:["Hot / humid"]},{...beige,comfortTags:["Cool"]},"Semi-Formal",undefined,undefined,hot);
+assert.equal(verifiedClimate.rules.find((item)=>item.id === "CONTEXT-CLIMATE").status,"flag");
+assert.equal(verifiedClimate.status,"needs_review");
+const acceptableClimate = evaluateDesignerCombo({...sky,comfortTags:["Hot / humid"]},{...beige,comfortTags:["Hot / humid"]},"Semi-Formal",undefined,undefined,hot);
+assert.equal(acceptableClimate.rules.find((item)=>item.id === "CONTEXT-CLIMATE").status,"pass");
+const directionSet = planDesignerDirections(sky,beige,"Semi-Formal",preliminary.style,hot);
+assert.equal(directionSet[0].id,"selected","The customer's own choice must remain visible first");
+assert(directionSet.length >= 2 && directionSet.length <= 3);
+for(const direction of directionSet.slice(1)) {
+  assert.equal(direction.recommendation.shirt.id,sky.id);
+  assert.equal(direction.recommendation.pant.id,beige.id);
+  assert.equal(direction.recommendation.formality.match,true);
+  assert(!direction.recommendation.rules.some((item)=>item.status === "flag" && item.severity === "High"));
+}
+const alternate = evaluateDesignerCombo(sky,beige,"Semi-Formal",{collar:"Spread Collar",trouser:"Formal Trouser (Flat-front)"});
+assert.equal(alternate.style.collar,"Spread Collar");
+assert.equal(alternate.style.trouser,"Formal Trouser (Flat-front)");
+assert.notEqual(alternate.formality.shirt,preliminary.formality.shirt,"Changing the cut must change the decision");
+const tonalBlue = evaluateDesignerCombo(sky,{...beige,name:"Navy",colorFamily:"Blue",tone:"Dark"},"Semi-Formal");
+assert.equal(tonalBlue.rules.find((item)=>item.id === "CR-2").status,"pass");
+assert.match(tonalBlue.rules.find((item)=>item.id === "CR-2").explanation,/tonal/);
+assert.equal(evaluateDesignerCombo(sky,{...beige,colorFamily:null},"Semi-Formal").rules.find((item)=>item.id === "CR-2").status,"flag");
+const cuffConflict = evaluateDesignerCombo(sky,beige,"Semi-Formal",{collar:"Button-Down Collar",cuff:"French / Double Cuff"});
+assert.equal(cuffConflict.rules.find((item)=>item.id === "CUT-CUFF").status,"flag");
+assert.equal(cuffConflict.status,"needs_review");
+assert.match(cuffConflict.shortReason,/French cuff/);
+assert.deepEqual(suggestDesignerRepairs(cuffConflict)[0].patch,{collar:"Spread Collar"});
+assert.equal(evaluateDesignerCombo(sky,beige,"Formal",{collar:"Spread Collar",cuff:"French / Double Cuff"}).rules.find((item)=>item.id === "CUT-CUFF").status,"pass");
+assert.equal(evaluateDesignerCombo(sky,beige,"Smart-Casual",{trouser:"Cropped / Ankle-length Trouser",break:"Full Break"}).rules.find((item)=>item.id === "CUT-HEM").status,"flag");
+assert.equal(evaluateDesignerCombo(sky,beige,"Smart-Casual",{trouser:"Formal Trouser (Flat-front)",break:"Cropped / Above-ankle"}).rules.find((item)=>item.id === "CUT-HEM").status,"pass");
+assert.equal(evaluateDesignerCombo(sky,beige,"Formal",{waistband:"Drawstring / Elastic"}).rules.find((item)=>item.id === "CUT-WAIST").status,"flag");
+assert.equal(designerTasteAlternative(evaluateDesignerCombo(sky,darkGrey,"Semi-Formal"))?.approval,"pairing_taste_only");
+assert.equal(designerTasteAlternative(evaluateDesignerCombo(sky,darkGrey,"Casual")),null);
+const measuredShirt = {...sky,weightClass:"Light",bestSeason:["Summer"]};
+const measuredPant = {...beige,weightClass:"Heavy",bestSeason:["Winter"]};
+const measured = evaluateDesignerCombo(measuredShirt,measuredPant,"Semi-Formal");
+assert.equal(measured.rules.find((item)=>item.id === "CR-3").status,"flag");
+assert.equal(measured.rules.find((item)=>item.id === "CR-5").status,"flag");
+const accent = {garment:"shirt",fabric:{...beige,roleTags:["accent_safe"],weightClass:"Light",tone:"Dark",colorFamily:"Earth-tone"},placement:"cuff"};
+const accentDecision = evaluateDesignerCombo(measuredShirt,{...beige,weightClass:"Light",bestSeason:["All-season"]},"Semi-Formal",undefined,accent);
+assert.deepEqual(accentDecision.rules.filter((item)=>item.id.startsWith("MF-")).map((item)=>item.status),Array(5).fill("pass"));
+assert.equal(accentDecision.rules.find((item)=>item.id === "CR-6").status,"pass");
+const unmeasuredAccent = evaluateDesignerCombo(sky,beige,"Semi-Formal",undefined,{...accent,fabric:beige});
+assert.equal(unmeasuredAccent.rules.find((item)=>item.id === "CR-6").status,"unknown");
+assert.equal(unmeasuredAccent.status,"needs_review","Unverified accents must never look ready");
+assert(DESIGNER_STYLE_CHOICES.shirtFit.includes("Relaxed Fit"));
+assert(!DESIGNER_STYLE_CHOICES.trouser.includes("Cotton Drill Trouser"),"Linen suiting must not be described as cotton drill");
+assert.throws(()=>evaluateDesignerCombo(sky,beige,"Semi-Formal",{collar:"Invented Collar"}));
+assert.throws(()=>evaluateDesignerCombo(sky,beige,"Semi-Formal",{placket:"Contrast Placket"}));
+assert.equal(DESIGNER_SHIRTS.find((fabric)=>fabric.id === "printed-linen-blend-03").patternType,"Floral Print");
+
+const floral = DESIGNER_SHIRTS.find((fabric)=>fabric.id === "linen-print-60-04");
+assert.equal(evaluateDesignerCombo(floral,beige,"Formal").rules.find((rule)=>rule.id === "FORMAL-PRINT").status,"flag");
+assert.equal(evaluateDesignerCombo({...sky,patternScale:"Bold"},{...beige,patternScale:"Medium-Bold"},"Casual").rules.find((rule)=>rule.id === "CR-4").status,"flag");
+assert.equal(evaluateDesignerCombo({...sky,patternScale:"Medium"},{...beige,patternScale:"Medium"},"Casual").rules.find((rule)=>rule.id === "CR-4").status,"pass");
+assert.throws(()=>evaluateDesignerCombo(beige,sky,"Casual"));
+console.log(`Designer gate passed: ${DESIGNER_SHIRTS.length} catalogued shirt fabrics, ${DESIGNER_PANTS.length} trouser fabrics, garment-cut choices and uncertainty checks.`);
