@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   DESIGNER_PANTS, DESIGNER_REVIEWED_PAIRING, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES,
@@ -12,6 +13,7 @@ import { DESIGNER_FASHION_FACTS, DESIGNER_RESEARCH } from "@/lib/designer/resear
 import { constructionNotes } from "@/lib/designer/photo-preview";
 import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
 import { PhotoOutfitPreview } from "@/components/PhotoOutfitPreview";
+import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, type MeasurementProfile } from "@/lib/measurements";
 
 const OCCASIONS: OccasionTier[] = ["Casual", "Smart-Casual", "Semi-Formal", "Formal"];
 const CLIMATES: DesignerClimate[] = ["Not specified", "Hot / humid", "Cool", "Air-conditioned"];
@@ -61,10 +63,22 @@ export function DesignerModule() {
   const [directorHandoffTitle, setDirectorHandoffTitle] = useState("");
   const [directorHandoffTier, setDirectorHandoffTier] = useState("");
   const [directorHandoffReason, setDirectorHandoffReason] = useState("");
+  const [measurementProfile, setMeasurementProfile] = useState<MeasurementProfile | null>(null);
   const fact = DESIGNER_FASHION_FACTS[factIndex];
   const shirt = useMemo(() => shirtOptions.find((item) => item.id === shirtId), [shirtId, shirtOptions]);
   const pant = useMemo(() => pantOptions.find((item) => item.id === pantId), [pantId, pantOptions]);
   const insights = shirt && pant ? designerStyleInsights(shirt, pant, occasion, style) : [];
+  const fitCoverage = useMemo(() => measurementCoverage(measurementProfile), [measurementProfile]);
+  const fitGuidance = useMemo(() => measurementFitGuidance(measurementProfile), [measurementProfile]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(MEASUREMENT_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as MeasurementProfile;
+      if (parsed?.version === 1) setMeasurementProfile(parsed);
+    } catch { /* Saved measurements are optional; Designer remains usable without them. */ }
+  },[]);
 
   useEffect(() => {
     let cancelled = false;
@@ -232,7 +246,7 @@ export function DesignerModule() {
     setResponse(null);
     try {
       const event = recordStyleMemoryEvent(designerSession(), "designer_recommendation", {
-        shirtId, pantId, occasion, style: nextStyle, input: { shirtId, pantId, occasion, style: nextStyle, context }, rules: result.rules,
+        shirtId, pantId, occasion, style: nextStyle, input: { shirtId, pantId, occasion, style: nextStyle, context, measurementCoverage: fitCoverage, fitGuidance }, rules: result.rules,
         confidenceScore: result.confidenceScore, designFitScore: result.designFitScore,
         materialEvidence: result.materialEvidence, formality: result.formality,
         output: result.style, reasoningText: result.internalReason,
@@ -349,6 +363,25 @@ export function DesignerModule() {
           </label>
           <small>Expression changes the order of cut ideas. Climate is checked only against verified physical cloth.</small>
         </div>
+
+        <section className="newDesignerFitProfile" aria-label="Saved tailoring measurements">
+          <div className="newDesignerFitHead">
+            <div><span>FIT PROFILE / MEASUREMENTS</span><strong>{fitCoverage.total > 0 ? `${fitCoverage.total}/16 measurements loaded` : "No measurements loaded yet"}</strong></div>
+            <Link href="/measurements">{fitCoverage.total > 0 ? "Update measurements" : "Add measurements"} ↗</Link>
+          </div>
+          {measurementProfile && fitCoverage.total > 0 ? <>
+            <div className="newDesignerMeasureChips">
+              {measurementProfile.shirt.neck && <span>Neck <b>{formatMeasure(measurementProfile.shirt.neck, measurementProfile.unit)}</b></span>}
+              {measurementProfile.shirt.chest && <span>Chest <b>{formatMeasure(measurementProfile.shirt.chest, measurementProfile.unit)}</b></span>}
+              {measurementProfile.shirt.waist && <span>Shirt waist <b>{formatMeasure(measurementProfile.shirt.waist, measurementProfile.unit)}</b></span>}
+              {measurementProfile.pants.waist && <span>Trouser waist <b>{formatMeasure(measurementProfile.pants.waist, measurementProfile.unit)}</b></span>}
+              {measurementProfile.pants.seat && <span>Seat <b>{formatMeasure(measurementProfile.pants.seat, measurementProfile.unit)}</b></span>}
+              {measurementProfile.pants.inseam && <span>Inseam <b>{formatMeasure(measurementProfile.pants.inseam, measurementProfile.unit)}</b></span>}
+            </div>
+            {fitGuidance.length > 0 && <div className="newDesignerFitNotes"><span>TAILORING GUIDANCE</span><ul>{fitGuidance.map((note) => <li key={note}>{note}</li>)}</ul></div>}
+            <p className="newDesignerFitTruth">These measurements guide the proposed cut and tailoring conversation. The photographic mannequin is a fixed visual reference and is not resized to represent your body.</p>
+          </> : <p className="newDesignerFitTruth">Add measurements in the blueprint studio to carry proportion-aware tailoring notes into Designer. The visual mannequin remains a fixed reference.</p>}
+        </section>
         <div className="newDesignerStyleBlock">
           <div className="newDesignerSectionHead"><span>03 / THE CUT</span><h2>Shape the two garments.</h2></div>
           <div className="newDesignerModelPreset">
@@ -394,6 +427,7 @@ export function DesignerModule() {
       <div className="newDesignerRight">
       {directorHandoff && <div className="newDesignerModelHandoff"><span>STYLE DIRECTOR RESULT {directorHandoffTier ? `· ${directorHandoffTier.toUpperCase()}` : ""}</span><strong>{directorHandoffTitle || "Selected direction"}</strong><p>{directorHandoffReason || "The selected fabrics and cut have been carried into the photographic model."}</p></div>}
       {shirt && pant && <PhotoOutfitPreview shirt={shirt} pant={pant} style={style} />}
+      {fitCoverage.total > 0 && <div className="newDesignerFitModelNote"><span>FIT PROFILE LOADED · {fitCoverage.total}/16</span><p>Measurements inform tailoring guidance; this studio model remains a fixed visual reference.</p></div>}
       <section className="newDesignerOutcome" aria-live="polite" aria-label="Designer recommendation">
         {!recommendation ? <div className="newDesignerEmpty"><span>04 / DESIGN DIRECTION</span><h2>Give the fabrics a purpose.</h2><p>Choose cloth, occasion and cut, then ask Designer to assess the outfit.</p></div> : <>
           <div className="newDesignerSectionHead"><span>04 / DESIGN DIRECTION</span><h2>{recommendation.status === "needs_review" ? "This pairing needs a closer look." : "A direction worth exploring."}</h2></div>
