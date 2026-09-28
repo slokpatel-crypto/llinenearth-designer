@@ -169,3 +169,13 @@ for (const token of ["/designer-studio","Open Designer","photographic Designer",
   if (!publicHome.includes(token)) throw new Error(`Real Designer public-route regression: homepage missing ${token}`);
 }
 console.log("Real Designer route gate passed: public navigation points to the photographic Designer while the legacy dashboard remains available separately.");
+
+
+const styleDirectorPage = fs.readFileSync("src/app/style-director/page.tsx","utf8");
+for (const token of ["designerHandoff","/designer-studio?","Open on real model","from:\"style-director\""]) {
+  if (!styleDirectorPage.includes(token)) throw new Error(`Style Director handoff regression: missing ${token}`);
+}
+for (const token of ["URLSearchParams(window.location.search)","routedAnchor","routedGarment","directorHandoff","STYLE DIRECTOR HANDOFF"]) {
+  if (!realDesignerModule.includes(token)) throw new Error(`Real Designer handoff regression: missing ${token}`);
+}
+console.log("Style Director handoff gate passed: context and real stock anchor transfer into photographic Designer.");
