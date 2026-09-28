@@ -802,7 +802,6 @@ function buildDirection(seed:Seed,input:CreativeLabInput,iteration:number,treatm
   const pattern=patternOverride===undefined ? seed.pattern?.(input) : patternOverride;
   const {reads}=criticsFor(seed,input,style,treatments,pattern,recommendation);
   const learning=creativeLearningSignalFor(seed.id,input.creativeLearning);
-  const freedom=input.researchFreedom || "maximum";
   const researchExpansionBonus=freedom==="maximum"
     ? Math.min(8,(pattern?3:0)+treatments.filter((item)=>item.buildability==="experimental").length*2+Math.max(0,treatments.length-1))
     : freedom==="exploratory" ? 2 : 0;
