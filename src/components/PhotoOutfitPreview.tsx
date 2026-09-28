@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
+import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import {
   DESIGNER_PHOTO_TEMPLATES, PHOTO_COLLAR_MASK, PHOTO_CUFF_MASK, PHOTO_TUCKED_COLLAR_MASK, PHOTO_TUCKED_COLLAR_STAND_MASK,
   PHOTO_TUCKED_CUFF_MASK, PHOTO_TUCKED_NECK_CLEAR, PHOTO_TUCKED_SHIRT_CLIP, PHOTO_TUCKED_TROUSER_CLIP,
@@ -285,6 +286,174 @@ function drawGarment(
   target.drawImage(layer, 0, 0);
 }
 
+type CreativePreviewSpec = Pick<CreativeDirection,"id"|"name"|"treatments"|"pattern">;
+
+function creativeHas(creative:CreativePreviewSpec|undefined,id:string) {
+  return Boolean(creative?.treatments.some((item)=>item.id===id));
+}
+
+function clipCreativeLayer(
+  context:CanvasRenderingContext2D,
+  path:string,
+  mask?:HTMLCanvasElement,
+) {
+  context.globalCompositeOperation="destination-in";
+  if(mask) context.drawImage(featherMaskInside(mask),0,0);
+  if(path) {
+    context.fillStyle="#fff";
+    context.fill(new Path2D(path));
+  }
+  context.globalCompositeOperation="source-over";
+}
+
+function drawCreativePattern(
+  target:CanvasRenderingContext2D,
+  creative:CreativePreviewSpec|undefined,
+  path:string,
+  mask?:HTMLCanvasElement,
+) {
+  const pattern=creative?.pattern;
+  if(!pattern) return;
+  const layer=document.createElement("canvas");
+  layer.width=WIDTH; layer.height=HEIGHT;
+  const context=layer.getContext("2d");
+  if(!context) return;
+
+  const ink=pattern.palette[1] || "#f0ece4";
+  const shadow=pattern.palette[2] || "#26384d";
+  context.lineCap="round";
+  context.lineJoin="round";
+
+  if(pattern.id==="broken-rail-pattern") {
+    context.strokeStyle=ink;
+    context.globalAlpha=.48;
+    context.lineWidth=2.4;
+    context.setLineDash([34,18,12,24]);
+    for(let x=330;x<=700;x+=72) {
+      context.beginPath(); context.moveTo(x,210); context.lineTo(x,720); context.stroke();
+      context.beginPath(); context.moveTo(x+12,210); context.lineTo(x+12,720); context.stroke();
+    }
+    context.setLineDash([]);
+  } else if(pattern.id==="offset-grid-pattern") {
+    context.strokeStyle=ink;
+    context.globalAlpha=.34;
+    context.lineWidth=1.6;
+    context.setLineDash([28,6]);
+    for(let x=318;x<=714;x+=44){context.beginPath();context.moveTo(x,205);context.lineTo(x,730);context.stroke();}
+    context.setLineDash([42,10]);
+    for(let y=275;y<=700;y+=48){context.beginPath();context.moveTo(290,y);context.lineTo(735,y);context.stroke();}
+    context.setLineDash([]);
+  } else if(pattern.id==="negative-space-pattern") {
+    context.fillStyle=ink;
+    context.globalAlpha=.40;
+    for(let y=285;y<700;y+=26) {
+      for(let x=300;x<730;x+=25) {
+        const distance=Math.abs(x-512);
+        if(distance<105) continue;
+        const threshold=distance>165 ? 1 : 2;
+        if(((x+y)/25)%threshold<1) {
+          context.beginPath(); context.arc(x,y,distance>170?2.1:1.4,0,Math.PI*2); context.fill();
+        }
+      }
+    }
+  } else if(pattern.id==="drift-chevron-pattern") {
+    context.strokeStyle=ink;
+    context.globalAlpha=.36;
+    context.lineWidth=1.5;
+    for(let y=275;y<705;y+=30) {
+      for(let x=310;x<720;x+=34) {
+        const drift=((x-310)/410)*7;
+        context.save();
+        context.translate(x,y);
+        context.rotate(drift*Math.PI/180);
+        context.beginPath(); context.moveTo(-7,-3); context.lineTo(0,4); context.lineTo(7,-3); context.stroke();
+        context.restore();
+      }
+    }
+  } else if(pattern.id==="edge-code") {
+    // Edge Code is intentionally kept off the body; it is drawn on the cuffs
+    // after the base shirt so the placement concept stays local.
+    return;
+  } else {
+    context.strokeStyle=shadow;
+    context.globalAlpha=.22;
+    context.lineWidth=1.4;
+    for(let y=280;y<700;y+=34){context.beginPath();context.moveTo(300,y);context.lineTo(730,y);context.stroke();}
+  }
+
+  clipCreativeLayer(context,path,mask);
+  target.save();
+  target.globalCompositeOperation="multiply";
+  target.globalAlpha=.78;
+  target.drawImage(layer,0,0);
+  target.restore();
+}
+
+function drawCreativeDetails(
+  target:CanvasRenderingContext2D,
+  photo:HTMLImageElement,
+  creative:CreativePreviewSpec|undefined,
+  tucked:boolean,
+  shirtMask?:HTMLCanvasElement,
+) {
+  if(!creative) return;
+
+  if(creativeHas(creative,"tonal-panel")) {
+    const layer=document.createElement("canvas");
+    layer.width=WIDTH; layer.height=HEIGHT;
+    const ctx=layer.getContext("2d");
+    if(ctx) {
+      ctx.fillStyle="#17243a";
+      ctx.globalAlpha=.16;
+      ctx.beginPath();
+      ctx.moveTo(365,250); ctx.lineTo(430,228); ctx.lineTo(410,555); ctx.lineTo(382,548); ctx.closePath(); ctx.fill();
+      clipCreativeLayer(ctx,tucked?PHOTO_TUCKED_SHIRT_BODY_CLIP:"",shirtMask);
+      target.save(); target.globalCompositeOperation="multiply"; target.drawImage(layer,0,0); target.restore();
+    }
+  }
+
+  if(creativeHas(creative,"collar-line") && tucked) {
+    target.save();
+    target.strokeStyle="#f4f0e8";
+    target.lineWidth=4;
+    target.globalAlpha=.88;
+    target.stroke(new Path2D(PHOTO_TUCKED_COLLAR_MASK));
+    target.restore();
+  }
+
+  if(creative?.pattern?.id==="edge-code") {
+    const cuffPath=tucked?PHOTO_TUCKED_CUFF_MASK:PHOTO_CUFF_MASK;
+    const layer=document.createElement("canvas");
+    layer.width=WIDTH; layer.height=HEIGHT;
+    const ctx=layer.getContext("2d");
+    if(ctx) {
+      ctx.strokeStyle=creative.pattern.palette[1] || "#f1ece4";
+      ctx.lineWidth=2.3;
+      ctx.globalAlpha=.72;
+      ctx.setLineDash([10,6,3,7]);
+      for(const y of tucked?[665,678]:[674,688]) {
+        ctx.beginPath();ctx.moveTo(275,y);ctx.lineTo(342,y);ctx.moveTo(675,y);ctx.lineTo(738,y);ctx.stroke();
+      }
+      ctx.globalCompositeOperation="destination-in";
+      ctx.fill(new Path2D(cuffPath));
+      target.save();target.globalCompositeOperation="multiply";target.drawImage(layer,0,0);target.restore();
+    }
+  }
+}
+
+function creativePreviewCoverage(creative?:CreativePreviewSpec) {
+  if(!creative) return {visible:[] as string[],specOnly:[] as string[]};
+  const visible:string[]=[];
+  const specOnly:string[]=[];
+  if(creative.pattern) visible.push(`Surface preview · ${creative.pattern.name}`);
+  const partiallyVisible=new Set(["extended-white-cuff","quiet-collar-echo","tonal-panel","collar-line","border-cuff","direction-control"]);
+  for(const move of creative.treatments) {
+    if(partiallyVisible.has(move.id)) visible.push(move.label);
+    else specOnly.push(move.label);
+  }
+  return {visible:[...new Set(visible)],specOnly:[...new Set(specOnly)]};
+}
+
 function drawWhiteDetail(target: CanvasRenderingContext2D, photo: HTMLImageElement, path: string, mask?: HTMLCanvasElement, brightness = 1.38) {
   const layer = document.createElement("canvas");
   layer.width = WIDTH;
@@ -307,12 +476,14 @@ export function composePhotoOutfit(
   context: CanvasRenderingContext2D, modelPhoto: HTMLImageElement, trouserPhoto: HTMLImageElement,
   shirtImage: HTMLImageElement, pantImage: HTMLImageElement,
   shirt: DesignerFabric, pant: DesignerFabric, style: DesignerStyle,
+  creative?: CreativePreviewSpec,
 ) {
   const template = DESIGNER_PHOTO_TEMPLATES[photoTemplateForStyle(style)];
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
   context.drawImage(modelPhoto, 0, 0, WIDTH, HEIGHT);
   const tucked = style.shirtWear === "Tucked";
+  const creativeCoverage = creativePreviewCoverage(creativeDirection || undefined);
   if (tucked) {
     const masks = tuckedGarmentMasks(modelPhoto);
 
@@ -323,11 +494,16 @@ export function composePhotoOutfit(
     drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_LEFT_SLEEVE_CLIP, masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)", { offsetX: 11 });
     drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_RIGHT_SLEEVE_CLIP, masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)", { offsetX: -9 });
 
+    drawCreativePattern(context,creative,PHOTO_TUCKED_SHIRT_BODY_CLIP,masks.shirt);
+    drawCreativePattern(context,creative,PHOTO_TUCKED_LEFT_SLEEVE_CLIP,masks.shirt);
+    drawCreativePattern(context,creative,PHOTO_TUCKED_RIGHT_SLEEVE_CLIP,masks.shirt);
+    drawCreativeDetails(context,modelPhoto,creative,true,masks.shirt);
+
     if (style.collarFinish === "Self-fabric") {
       drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined, "grayscale(1) brightness(3.05) contrast(.94)");
     } else {
       drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_STAND_MASK, undefined, 3.6);
-      drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_MASK, undefined, 3.6);
+      if (!creativeHas(creative,"quiet-collar-echo")) drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_MASK, undefined, 3.6);
     }
     if (style.collarFinish === "White contrast collar + cuffs") drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_CUFF_MASK, undefined, 3.6);
 
@@ -338,15 +514,18 @@ export function composePhotoOutfit(
     const trouserMask = untuckedGarmentMasks(trouserPhoto, template.shirtPath, template.trouserPath).pant;
     drawGarment(context, trouserPhoto, pantImage, pant, "", trouserMask);
     drawGarment(context, modelPhoto, shirtImage, shirt, "", shirtMask);
+    drawCreativePattern(context,creative,"",shirtMask);
+    drawCreativeDetails(context,modelPhoto,creative,false,shirtMask);
     if (style.collarFinish !== "Self-fabric") drawWhiteDetail(context, modelPhoto, PHOTO_COLLAR_MASK);
     if (style.collarFinish === "White contrast collar + cuffs") drawWhiteDetail(context, modelPhoto, PHOTO_CUFF_MASK);
   }
 }
 
-export function PhotoOutfitPreview({ shirt, pant, style }: {
+export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection }: {
   shirt: DesignerFabric;
   pant: DesignerFabric;
   style: DesignerStyle;
+  creativeDirection?: CreativeDirection | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
@@ -371,13 +550,13 @@ export function PhotoOutfitPreview({ shirt, pant, style }: {
         const canvas = canvasRef.current;
         const context = canvas?.getContext("2d", { alpha: false });
         if (!canvas || !context) throw new Error("Canvas is unavailable.");
-        composePhotoOutfit(context, modelPhoto, trouserPhoto, shirtImage, pantImage, shirt, pant, style);
+        composePhotoOutfit(context, modelPhoto, trouserPhoto, shirtImage, pantImage, shirt, pant, style, creativeDirection || undefined);
         setError(false);
         setReady(true);
       })
       .catch(() => { if (!cancelled) { setReady(false); setError(true); } });
     return () => { cancelled = true; };
-  }, [shirt, pant, template, tucked, style.collarFinish]);
+  }, [shirt, pant, template, tucked, style.collarFinish, creativeDirection]);
 
   function download() {
     const canvas = canvasRef.current;
@@ -429,6 +608,12 @@ export function PhotoOutfitPreview({ shirt, pant, style }: {
         <button type="button" onClick={download} disabled={!ready}>Save preview PNG ↗</button>
       </div>
     </div>
+    {creativeDirection && <div className="newDesignerPhotoCreative">
+      <span>CREATIVE CONCEPT PREVIEW / {creativeDirection.name.toUpperCase()}</span>
+      <strong>V5 is now drawing the supported parts of this invented design on the model.</strong>
+      {creativeCoverage.visible.length>0 && <p><b>Visible now:</b> {creativeCoverage.visible.join(" · ")}.</p>}
+      {creativeCoverage.specOnly.length>0 && <p><b>Still specification-only:</b> {creativeCoverage.specOnly.join(" · ")}. These need a new garment template or photoreal synthesis to change real geometry.</p>}
+    </div>}
     <div className="newDesignerPhotoAccuracy">
       <strong>What the photo shows</strong>
       <p>Photographed point collar and barrel cuff, {tucked ? "a real photographed tucked waist with belt loops" : "the original untucked hem"}, and {template.trouser} trousers with a {template.break.toLowerCase()}. {style.collarFinish !== "Self-fabric" && "The white collar fabric is visual only until a real cloth is chosen."}</p>
