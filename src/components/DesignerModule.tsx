@@ -56,6 +56,9 @@ export function DesignerModule() {
   const [factPlaying, setFactPlaying] = useState(true);
   const [draftReady, setDraftReady] = useState(false);
   const [directorHandoff, setDirectorHandoff] = useState(false);
+  const [directorHandoffTitle, setDirectorHandoffTitle] = useState("");
+  const [directorHandoffTier, setDirectorHandoffTier] = useState("");
+  const [directorHandoffReason, setDirectorHandoffReason] = useState("");
   const fact = DESIGNER_FASHION_FACTS[factIndex];
   const shirt = useMemo(() => DESIGNER_SHIRTS.find((item) => item.id === shirtId), [shirtId]);
   const pant = useMemo(() => DESIGNER_PANTS.find((item) => item.id === pantId), [pantId]);
@@ -68,14 +71,13 @@ export function DesignerModule() {
         intention?: DesignerIntention; style?: Partial<DesignerStyle>;
       } | null;
 
+      let nextShirtId = parsed?.shirtId && DESIGNER_SHIRTS.some((item) => item.id === parsed.shirtId) ? parsed.shirtId : shirtId;
+      let nextPantId = parsed?.pantId && DESIGNER_PANTS.some((item) => item.id === parsed.pantId) ? parsed.pantId : pantId;
       let nextOccasion: OccasionTier = parsed?.occasion && OCCASIONS.includes(parsed.occasion) ? parsed.occasion : occasion;
       let nextClimate: DesignerClimate = parsed?.climate && CLIMATES.includes(parsed.climate) ? parsed.climate : climate;
       let nextIntention: DesignerIntention = parsed?.intention && INTENTIONS.includes(parsed.intention) ? parsed.intention : intention;
-
-      if (parsed?.shirtId && DESIGNER_SHIRTS.some((item) => item.id === parsed.shirtId)) setShirtId(parsed.shirtId);
-      if (parsed?.pantId && DESIGNER_PANTS.some((item) => item.id === parsed.pantId)) setPantId(parsed.pantId);
-
       let nextStyle = designerStyleForOccasion(nextOccasion);
+
       if (parsed?.style) {
         for (const key of Object.keys(DESIGNER_STYLE_CHOICES) as Array<keyof DesignerStyle>) {
           const value = parsed.style[key];
@@ -83,30 +85,74 @@ export function DesignerModule() {
         }
       }
 
-      // A Style Director handoff intentionally overrides a saved draft so the
-      // user sees the context and anchor fabric they just chose.
+      // A Style Director handoff is authoritative for this opening state. It
+      // carries the resolved shirt + trouser pair and the supported cut, so the
+      // photographed model opens as the Director's actual result.
       const params = new URLSearchParams(window.location.search);
-      const routedOccasion = params.get("occasion") as OccasionTier | null;
-      const routedClimate = params.get("climate") as DesignerClimate | null;
-      const routedIntention = params.get("intention") as DesignerIntention | null;
-      const routedAnchor = params.get("anchor");
-      const routedGarment = params.get("garment");
-      setDirectorHandoff(params.get("from") === "style-director");
+      const fromDirector = params.get("from") === "style-director";
+      setDirectorHandoff(fromDirector);
 
-      if (routedOccasion && OCCASIONS.includes(routedOccasion)) {
-        nextOccasion = routedOccasion;
-        nextStyle = designerStyleForOccasion(routedOccasion);
+      if (fromDirector) {
+        const routedOccasion = params.get("occasion") as OccasionTier | null;
+        const routedClimate = params.get("climate") as DesignerClimate | null;
+        const routedIntention = params.get("intention") as DesignerIntention | null;
+        const routedShirt = params.get("shirt");
+        const routedPant = params.get("pant");
+
+        if (routedOccasion && OCCASIONS.includes(routedOccasion)) {
+          nextOccasion = routedOccasion;
+          nextStyle = designerStyleForOccasion(routedOccasion);
+        }
+        if (routedClimate && CLIMATES.includes(routedClimate)) nextClimate = routedClimate;
+        if (routedIntention && INTENTIONS.includes(routedIntention)) nextIntention = routedIntention;
+        if (routedShirt && DESIGNER_SHIRTS.some((item) => item.id === routedShirt)) nextShirtId = routedShirt;
+        if (routedPant && DESIGNER_PANTS.some((item) => item.id === routedPant)) nextPantId = routedPant;
+
+        const routedStyle = params.get("style");
+        if (routedStyle) {
+          try {
+            const parsedStyle = JSON.parse(routedStyle) as Partial<DesignerStyle>;
+            for (const key of Object.keys(DESIGNER_STYLE_CHOICES) as Array<keyof DesignerStyle>) {
+              const value = parsedStyle[key];
+              if (typeof value === "string" && DESIGNER_STYLE_CHOICES[key].includes(value)) nextStyle[key] = value;
+            }
+          } catch { /* Invalid URL style data falls back to the occasion preset. */ }
+        }
+
+        setDirectorHandoffTitle(params.get("sourceTitle") || "Style Director result");
+        setDirectorHandoffTier(params.get("sourceTier") || "");
+        setDirectorHandoffReason(params.get("sourceReason") || "");
       }
-      if (routedClimate && CLIMATES.includes(routedClimate)) nextClimate = routedClimate;
-      if (routedIntention && INTENTIONS.includes(routedIntention)) nextIntention = routedIntention;
 
-      if (routedAnchor && routedGarment === "shirt" && DESIGNER_SHIRTS.some((item) => item.id === routedAnchor)) setShirtId(routedAnchor);
-      if (routedAnchor && routedGarment === "trouser" && DESIGNER_PANTS.some((item) => item.id === routedAnchor)) setPantId(routedAnchor);
-
+      setShirtId(nextShirtId);
+      setPantId(nextPantId);
       setOccasion(nextOccasion);
       setClimate(nextClimate);
       setIntention(nextIntention);
       setStyle(nextStyle);
+
+      if (fromDirector) {
+        const routedShirtFabric = DESIGNER_SHIRTS.find((item) => item.id === nextShirtId);
+        const routedPantFabric = DESIGNER_PANTS.find((item) => item.id === nextPantId);
+        if (routedShirtFabric && routedPantFabric) {
+          const context: DesignerContext = { climate: nextClimate, intention: nextIntention };
+          const proposals = planDesignerDirections(routedShirtFabric, routedPantFabric, nextOccasion, nextStyle, context);
+          const result = proposals[0].recommendation;
+          setDirections(proposals);
+          setRecommendation(result);
+          setResponse(null);
+          try {
+            const event = recordStyleMemoryEvent(designerSession(), "designer_recommendation", {
+              shirtId:nextShirtId, pantId:nextPantId, occasion:nextOccasion, style:nextStyle,
+              input:{ shirtId:nextShirtId, pantId:nextPantId, occasion:nextOccasion, style:nextStyle, context, source:"style-director" },
+              rules:result.rules, confidenceScore:result.confidenceScore, designFitScore:result.designFitScore,
+              materialEvidence:result.materialEvidence, formality:result.formality, output:result.style,
+              reasoningText:result.internalReason, status:result.status, ruleSetVersion:result.ruleSetVersion,
+            });
+            setRecommendationId(event.id);
+          } catch { /* The visual handoff still works if memory storage is unavailable. */ }
+        }
+      }
     } catch {
       localStorage.removeItem(DRAFT_KEY);
     } finally {
@@ -235,7 +281,7 @@ export function DesignerModule() {
 
     <div className="newDesignerBody">
       <section className="newDesignerSelections" aria-labelledby="designerChoose">
-        {directorHandoff && <div className="newDesignerHandoff"><span>STYLE DIRECTOR HANDOFF</span><strong>Your context and anchor cloth are loaded.</strong><p>You can now refine the second fabric and tailoring details on the real photographic model.</p></div>}
+        {directorHandoff && <div className="newDesignerHandoff"><span>STYLE DIRECTOR HANDOFF</span><strong>{directorHandoffTitle || "Your complete outfit direction is loaded."}</strong><p>{shirt?.name} shirt + {pant?.name} trousers · {style.shirtWear} · {style.trouser}. You can refine any detail below without rebuilding the look.</p></div>}
         <div className="newDesignerSectionHead"><span>01 / THE MATERIALS</span><h2 id="designerChoose">Start with the cloth.</h2></div>
         <div className="newDesignerFabricGrid">
           <article className="newDesignerFabric">
@@ -324,6 +370,7 @@ export function DesignerModule() {
       </section>
 
       <div className="newDesignerRight">
+      {directorHandoff && <div className="newDesignerModelHandoff"><span>STYLE DIRECTOR RESULT {directorHandoffTier ? `· ${directorHandoffTier.toUpperCase()}` : ""}</span><strong>{directorHandoffTitle || "Selected direction"}</strong><p>{directorHandoffReason || "The selected fabrics and cut have been carried into the photographic model."}</p></div>}
       {shirt && pant && <PhotoOutfitPreview shirt={shirt} pant={pant} style={style} />}
       <section className="newDesignerOutcome" aria-live="polite" aria-label="Designer recommendation">
         {!recommendation ? <div className="newDesignerEmpty"><span>04 / DESIGN DIRECTION</span><h2>Give the fabrics a purpose.</h2><p>Choose cloth, occasion and cut, then ask Designer to assess the outfit.</p></div> : <>
