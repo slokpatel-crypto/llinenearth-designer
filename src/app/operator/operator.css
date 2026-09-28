@@ -35,8 +35,8 @@
 .designerCaseReview>p{margin:0;color:#746d65;font-size:9px;line-height:1.5}
 .designerCaseReview label{display:grid;gap:5px;font-size:7px;letter-spacing:.1em;color:#81766a}
 .designerCaseReview select,.designerCaseReview textarea{border:1px solid #d8d0c5;background:#fbf8f3;color:#17293c;padding:9px;font:inherit;font-size:9px;resize:vertical}
-.designerCaseReviewActions{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.designerCaseReviewActions{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 .designerCaseReviewActions button{border:1px solid #233f5d;background:#233f5d;color:#fff;padding:9px;font-size:8px;cursor:pointer}
-.designerCaseReviewActions button+button{background:#fff;color:#7c433a;border-color:#cbaaa4}
+.designerCaseReviewActions button+button{background:#fff;color:#7c433a;border-color:#cbaaa4}.designerCaseReviewActions button.adjusted{color:#264f7b;border-color:#9fb5cc;background:#f3f7fb}.designerCaseOptional{font-size:7px;color:#9b9185;letter-spacing:0;text-transform:none;margin-left:5px}
 .designerCaseReviewActions button:disabled{opacity:.45;cursor:wait}
-@media(max-width:480px){.designerCaseReviewHead{flex-direction:column}.designerCaseReviewActions{grid-template-columns:1fr}}
+@media(max-width:650px){.designerCaseReviewActions{grid-template-columns:1fr}}@media(max-width:480px){.designerCaseReviewHead{flex-direction:column}}
