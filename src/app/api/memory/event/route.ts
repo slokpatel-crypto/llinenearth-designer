@@ -154,12 +154,40 @@ function cleanPayload(type:string, input:unknown) {
         .map((key)=>[key,text(styleInput[key],120)] as const)
         .filter(([,value])=>Boolean(value)));
       if (!recommendationId || !shirtId || !pantId) return null;
-      if (!["approved","rejected"].includes(verdict)) return null;
+      if (!["approved","rejected","adjusted"].includes(verdict)) return null;
       if (!["Casual","Smart-Casual","Semi-Formal","Formal"].includes(occasion)) return null;
+
+      let replacement:Record<string,unknown> | undefined;
+      if (verdict === "adjusted") {
+        const raw = payload.replacement;
+        if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+        const replacementInput = raw as Record<string,unknown>;
+        const replacementRecommendationId = text(replacementInput.recommendationId,160);
+        const replacementShirtId = text(replacementInput.shirtId,140);
+        const replacementPantId = text(replacementInput.pantId,140);
+        const replacementOccasion = text(replacementInput.occasion,40);
+        const replacementStyleInput = replacementInput.style && typeof replacementInput.style === "object" && !Array.isArray(replacementInput.style)
+          ? replacementInput.style as Record<string,unknown> : {};
+        const replacementStyle = Object.fromEntries(allowedStyleKeys
+          .map((key)=>[key,text(replacementStyleInput[key],120)] as const)
+          .filter(([,value])=>Boolean(value)));
+        if (!replacementRecommendationId || !replacementShirtId || !replacementPantId) return null;
+        if (!["Casual","Smart-Casual","Semi-Formal","Formal"].includes(replacementOccasion)) return null;
+        if (replacementRecommendationId === recommendationId) return null;
+        replacement = {
+          recommendationId:replacementRecommendationId,
+          shirtId:replacementShirtId,
+          pantId:replacementPantId,
+          occasion:replacementOccasion,
+          style:replacementStyle,
+        };
+      }
+
       return {
         subtype,recommendationId,verdict,shirtId,pantId,occasion,style,
         reason:["color","too_bold","too_safe","fit_cut","trouser_shape","formality","fabric","construction","material_unknown","other"].includes(reason) ? reason : "other",
         note:text(payload.note,500),
+        ...(replacement ? {replacement} : {}),
       };
     }
 
