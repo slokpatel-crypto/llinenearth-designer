@@ -725,14 +725,14 @@ export function DesignerModule() {
       </section>
 
       <div className="newDesignerRight">
-      {directorHandoff && <div className="newDesignerModelHandoff"><span>STYLE DIRECTOR RESULT {directorHandoffTier ? `· ${directorHandoffTier.toUpperCase()}` : ""}</span><strong>{directorHandoffTitle || "Selected direction"}</strong><p>{directorHandoffReason || "The selected fabrics and cut have been carried into the photographic model."}</p></div>}
+      {directorHandoff && <div className="newDesignerModelHandoff newDesignerModelHandoffCompact"><span>STYLE DIRECTOR</span><strong>{directorHandoffTitle || "Selected direction"}</strong></div>}
       {activeCreative && <div className="newDesignerCreativeHandoff newDesignerCreativeHandoffCompact">
         <span>SELECTED IDEA</span>
         <strong>{activeCreative.name}</strong>
         <div>{creativeQuickTags(activeCreative).map((tag)=><b key={tag}>{tag}</b>)}</div>
       </div>}
       {shirt && pant && <PhotoOutfitPreview shirt={shirt} pant={pant} style={style} creativeDirection={activeCreative} onCreativeFeedback={giveCreativeRenderFeedback} />}
-      {fitCoverage.total > 0 && <div className="newDesignerFitModelNote"><span>FIT PROFILE LOADED · {fitCoverage.total}/16</span><p>Measurements inform tailoring guidance; this studio model remains a fixed visual reference.</p></div>}
+      {fitCoverage.total > 0 && <div className="newDesignerFitModelNote newDesignerFitModelNoteCompact"><span>FIT PROFILE · {fitCoverage.total}/16</span></div>}
       <section className="newDesignerOutcome newDesignerOutcomeCompact" aria-live="polite" aria-label="Designer recommendation">
         {!recommendation ? <div className="newDesignerEmpty newDesignerEmptyCompact"><span>LOOK CHECK</span><strong>Preview first.</strong><p>When you like the direction, check the look.</p></div> : <>
           <div className="newDesignerResultTop">
@@ -767,8 +767,7 @@ export function DesignerModule() {
       </section>
       </div>
     </div>
-    <details className="newDesignerResearchDrawer">
- aria-labelledby="designerNotebook">
+    <details className="newDesignerResearchDrawer" aria-labelledby="designerNotebook">
       <summary>Research & technical sources</summary>
       <div className="newDesignerNotebookHead"><span>BACKEND RESEARCH</span><h2 id="designerNotebook">Research powering Designer</h2></div>
       <div className="newDesignerNotebookBody">
