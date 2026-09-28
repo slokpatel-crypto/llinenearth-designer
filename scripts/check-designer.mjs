@@ -30,7 +30,7 @@ function load(file) {
 const {DESIGNER_SHIRTS,DESIGNER_PANTS,DESIGNER_REVIEWED_PAIRING,DESIGNER_STYLE_CHOICES,designerTasteAlternative,evaluateDesignerCombo} = load("src/lib/designer/engine.ts");
 const {planDesignerDirections,suggestDesignerRepairs} = load("src/lib/designer/planner.ts");
 const {designerStyleInsights} = load("src/lib/designer/style-insights.ts");
-const {DESIGNER_PHOTO_TEMPLATES,photoTemplateForStyle,photoTemplateGaps} = load("src/lib/designer/photo-preview.ts");
+const {DESIGNER_PHOTO_TEMPLATES,PHOTO_TUCKED_NECK_CLEAR,PHOTO_TUCKED_SHIRT_CLIP,PHOTO_TUCKED_TROUSER_CLIP,photoTemplateForStyle,photoTemplateGaps} = load("src/lib/designer/photo-preview.ts");
 const sky = DESIGNER_SHIRTS.find((fabric)=>fabric.id === "linen-plain-60-sky-blue");
 const beige = DESIGNER_PANTS.find((fabric)=>fabric.id === "linen-suiting-beige");
 const darkGrey = DESIGNER_PANTS.find((fabric)=>fabric.id === "linen-suiting-dark-grey");
@@ -53,6 +53,15 @@ assert(preliminary.designFitScore > preliminary.materialEvidence.verified);
 assert.equal(preliminary.style.shirtWear,"Tucked","Semi-formal starts with a tucked shirt");
 assert.equal(photoTemplateForStyle(preliminary.style),"tucked");
 assert.equal(DESIGNER_PHOTO_TEMPLATES.tucked.src,"/designer/studio-tucked.webp");
+assert(PHOTO_TUCKED_SHIRT_CLIP.includes("M 348 245"),"Tucked shirt must use the photographed hard boundary.");
+assert(PHOTO_TUCKED_TROUSER_CLIP.includes("M 368 542") && PHOTO_TUCKED_TROUSER_CLIP.includes("M 510 542"),"Tucked trousers must be split around the inner-leg gap.");
+assert(PHOTO_TUCKED_NECK_CLEAR.includes("M 466 165"),"Tucked shirt must explicitly clear the mannequin neck.");
+const photoPreviewSource = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+assert(photoPreviewSource.includes("destination-in") && photoPreviewSource.includes("PHOTO_TUCKED_SHIRT_CLIP"),"Photo preview must intersect adaptive masks with hard photographed garment boundaries.");
+const shirtDraw = photoPreviewSource.indexOf('drawGarment(context, modelPhoto, shirtImage, shirt, "", masks.shirt');
+const pantDraw = photoPreviewSource.indexOf('drawGarment(context, modelPhoto, pantImage, pant, "", masks.pant');
+assert(shirtDraw >= 0 && pantDraw > shirtDraw,"Tucked shirt must render before trousers so the waistband masks the shirt hem.");
+
 assert(!photoTemplateGaps(preliminary.style,"tucked").some((gap)=>gap.includes("photo composite")));
 assert(photoTemplateGaps(preliminary.style,"tucked").includes("Side-Adjuster Tabs"));
 const untuckedFormal = evaluateDesignerCombo(sky,beige,"Formal",{shirtWear:"Untucked"});
