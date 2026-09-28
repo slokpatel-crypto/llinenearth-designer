@@ -255,7 +255,7 @@ console.log("Fit Construction V2 gate passed: provisional ease ranges, finished-
 
 
 const designerNegotiation = fs.readFileSync("src/lib/designer/constraint-negotiation.ts","utf8");
-for (const token of ["designer-negotiation-v1","buildDesignerNegotiation","hard_blocker","fit_tradeoff","smallest","TRY-PLEATED-BLOCK","MEASURE-SHIRT-LENGTH","VERIFY-TROUSER-DRAPE"]) {
+for (const token of ["designer-negotiation-v1","buildDesignerNegotiation","hard_blocker","fit_tradeoff","actions","TRY-PLEATED-BLOCK","MEASURE-SHIRT-LENGTH","VERIFY-TROUSER-DRAPE"]) {
   if (!designerNegotiation.includes(token)) throw new Error(`Designer negotiation regression: missing ${token}`);
 }
 const designerNegotiationUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
