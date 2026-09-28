@@ -84,20 +84,31 @@ export function AtelierMannequin({
         <path d="M184 528 q20 -12 40 0 l-7 30 q-16 20 -34 2z" fill={`url(#${id}-form)`}/><path d="M416 528 q-20 -12 -40 0 l7 30 q16 20 34 2z" fill={`url(#${id}-form)`}/>
         <path d="M220 803 h58 v30 h-79 q-10 -14 21 -30Z" fill="#f8f8f5" stroke="#c7c5c0"/><path d="M322 803 h58 q31 16 21 30 h-79Z" fill="#f8f8f5" stroke="#c7c5c0"/>
 
-        <g>
-          <path d={pant} fill={trouserFill}/><path d={pant} fill={`url(#${id}-clothLight)`} opacity=".65"/>
-          {!isBack && <><path d="M300 435V534" stroke="#2d2a26" strokeOpacity=".34"/><circle cx="300" cy="441" r="4" fill="#3b342c" opacity=".68"/>
-          <path d="M242 454 Q263 466 280 470 M358 454 Q337 466 320 470" stroke="#fff" strokeOpacity=".15" fill="none"/>
-          <path d="M257 452V760 M343 452V760" stroke="#111" strokeOpacity=".08"/>
-          {trouserStyle === "relaxed" || trouserStyle === "wide" ? <path d="M255 438 Q260 476 281 520 M345 438 Q340 476 319 520" stroke="#191715" strokeOpacity=".26" fill="none"/> : null}</>}
-        </g>
-
+        {/* Garment stacking matters: the tucked shirt is laid on the body first,
+            then the trouser waistband sits over it. This prevents the fabric
+            texture from bleeding over the waist/crotch seam. */}
         <g>
           <path d={shirtBody} fill={shirtFill}/><path d={shirtBody} fill={`url(#${id}-clothLight)`} opacity=".56"/>
           <path d={`M${shirtLeft} 286 Q194 310 203 365 L214 455 L244 448 L238 324Z`} fill={shirtFill}/><path d={`M${shirtRight} 286 Q406 310 397 365 L386 455 L356 448 L362 324Z`} fill={shirtFill}/>
+        </g>
+
+        <g>
+          <path d={pant} fill={trouserFill}/><path d={pant} fill={`url(#${id}-clothLight)`} opacity=".65"/>
+          {!isBack && <>
+            <path d="M214 428 Q300 414 386 428" stroke="#2d2a26" strokeOpacity=".48" strokeWidth="2" fill="none"/>
+            <path d="M300 435V534" stroke="#2d2a26" strokeOpacity=".34"/><circle cx="300" cy="441" r="4" fill="#3b342c" opacity=".68"/>
+            <path d="M242 454 Q263 466 280 470 M358 454 Q337 466 320 470" stroke="#fff" strokeOpacity=".15" fill="none"/>
+            <path d="M257 452V760 M343 452V760" stroke="#111" strokeOpacity=".08"/>
+            {trouserStyle === "relaxed" || trouserStyle === "wide" ? <path d="M255 438 Q260 476 281 520 M345 438 Q340 476 319 520" stroke="#191715" strokeOpacity=".26" fill="none"/> : null}
+          </>}
+        </g>
+
+        {/* Collar, placket and buttons are redrawn above the trouser layer so
+            the shirt reads as one tailored garment while its hem stays tucked. */}
+        <g>
           {!isBack && <>
             {shirtStyle === "mandarin" ? <path d="M273 268 Q300 280 327 268 L325 296 Q300 307 275 296Z" fill={shirtFill} stroke="#fff" strokeOpacity=".22"/> : shirtStyle === "cuban" ? <><path d="M254 270 L300 292 L270 326 L239 286Z" fill={shirtFill}/><path d="M346 270 L300 292 L330 326 L361 286Z" fill={shirtFill}/></> : <><path d="M258 267 L300 292 L274 322 L245 281Z" fill={shirtFill}/><path d="M342 267 L300 292 L326 322 L355 281Z" fill={shirtFill}/></>}
-            <path d="M300 292V444" stroke="#2b2926" strokeOpacity=".28"/>{[320,350,380,410].map(y=><circle key={y} cx="300" cy={y} r="2.5" fill="#554d43" opacity=".72"/>)}
+            <path d="M300 292V424" stroke="#2b2926" strokeOpacity=".28"/>{[320,350,380,410].map(y=><circle key={y} cx="300" cy={y} r="2.5" fill="#554d43" opacity=".72"/>)}
             {shirtStyle === "buttonDown" && <><circle cx="267" cy="296" r="2.3" fill="#554d43"/><circle cx="333" cy="296" r="2.3" fill="#554d43"/></>}
           </>}
         </g>
