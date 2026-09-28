@@ -17,6 +17,7 @@ const OCCASIONS: OccasionTier[] = ["Casual", "Smart-Casual", "Semi-Formal", "For
 const CLIMATES: DesignerClimate[] = ["Not specified", "Hot / humid", "Cool", "Air-conditioned"];
 const INTENTIONS: DesignerIntention[] = ["Understated", "Balanced", "Expressive"];
 const SESSION_KEY = "llinen-earth:designer-session:v1";
+const DRAFT_KEY = "linen-earth:real-designer-draft:v2";
 const FACT_INTERVAL_MS = 15_000;
 
 const MAIN_DETAILS = [
@@ -53,10 +54,50 @@ export function DesignerModule() {
   const [response, setResponse] = useState<"up" | "down" | null>(null);
   const [factIndex, setFactIndex] = useState(0);
   const [factPlaying, setFactPlaying] = useState(true);
+  const [draftReady, setDraftReady] = useState(false);
   const fact = DESIGNER_FASHION_FACTS[factIndex];
   const shirt = useMemo(() => DESIGNER_SHIRTS.find((item) => item.id === shirtId), [shirtId]);
   const pant = useMemo(() => DESIGNER_PANTS.find((item) => item.id === pantId), [pantId]);
   const insights = shirt && pant ? designerStyleInsights(shirt, pant, occasion, style) : [];
+
+  useEffect(() => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null") as {
+        shirtId?: string; pantId?: string; occasion?: OccasionTier; climate?: DesignerClimate;
+        intention?: DesignerIntention; style?: Partial<DesignerStyle>;
+      } | null;
+      if (!parsed) { setDraftReady(true); return; }
+
+      const nextOccasion = parsed.occasion && OCCASIONS.includes(parsed.occasion) ? parsed.occasion : occasion;
+      if (parsed.shirtId && DESIGNER_SHIRTS.some((item) => item.id === parsed.shirtId)) setShirtId(parsed.shirtId);
+      if (parsed.pantId && DESIGNER_PANTS.some((item) => item.id === parsed.pantId)) setPantId(parsed.pantId);
+      setOccasion(nextOccasion);
+      if (parsed.climate && CLIMATES.includes(parsed.climate)) setClimate(parsed.climate);
+      if (parsed.intention && INTENTIONS.includes(parsed.intention)) setIntention(parsed.intention);
+
+      const nextStyle = designerStyleForOccasion(nextOccasion);
+      if (parsed.style) {
+        for (const key of Object.keys(DESIGNER_STYLE_CHOICES) as Array<keyof DesignerStyle>) {
+          const value = parsed.style[key];
+          if (typeof value === "string" && DESIGNER_STYLE_CHOICES[key].includes(value)) nextStyle[key] = value;
+        }
+      }
+      setStyle(nextStyle);
+    } catch {
+      localStorage.removeItem(DRAFT_KEY);
+    } finally {
+      setDraftReady(true);
+    }
+  // Restore once; subsequent changes are persisted by the effect below.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ shirtId, pantId, occasion, climate, intention, style }));
+    } catch { /* Designer remains usable if browser storage is unavailable. */ }
+  }, [draftReady, shirtId, pantId, occasion, climate, intention, style]);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -71,6 +112,21 @@ export function DesignerModule() {
     const timer = window.setTimeout(() => setFactIndex((index) => (index + 1) % DESIGNER_FASHION_FACTS.length), FACT_INTERVAL_MS);
     return () => window.clearTimeout(timer);
   }, [factIndex, factPlaying]);
+
+  function resetDraft() {
+    const nextOccasion = DESIGNER_REVIEWED_PAIRING.occasion;
+    setShirtId(DESIGNER_REVIEWED_PAIRING.shirtId);
+    setPantId(DESIGNER_REVIEWED_PAIRING.pantId);
+    setOccasion(nextOccasion);
+    setClimate("Not specified");
+    setIntention("Balanced");
+    setStyle(designerStyleForOccasion(nextOccasion));
+    setRecommendation(null);
+    setDirections([]);
+    setRecommendationId(null);
+    setResponse(null);
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+  }
 
   function assess(nextStyle: DesignerStyle = style) {
     if (!shirt || !pant) return;
@@ -209,7 +265,10 @@ export function DesignerModule() {
             </article>)}
           </div>
         </div>
-        <button className="newDesignerAction" type="button" disabled={!shirt || !pant} onClick={() => assess()}>Assess this pairing <span aria-hidden="true">↗</span></button>
+        <div className="newDesignerDraftActions">
+          <button className="newDesignerAction" type="button" disabled={!shirt || !pant} onClick={() => assess()}>Assess this pairing <span aria-hidden="true">↗</span></button>
+          <button className="newDesignerReset" type="button" onClick={resetDraft}>Reset design</button>
+        </div>
         <p className="newDesignerFootnote">Catalogue images guide colour and pattern. Fabric weight, drape, opacity and current metres need confirmation in store.</p>
       </section>
 
