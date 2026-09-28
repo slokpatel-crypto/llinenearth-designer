@@ -13,6 +13,7 @@ import {
 import { assessFitConstruction } from "@/lib/designer/fit-construction";
 import { evaluateLinenEarthBrandLanguage } from "@/lib/designer/brand-language";
 import { creativeLearningSignalFor, type CreativeLearningBook, type CreativeLearningSignal } from "@/lib/designer/creative-learning";
+import type { CreativeResearchLibrary, CreativeResearchSignal } from "@/lib/designer/creative-research";
 
 export type CreativeZone =
   | "collar" | "cuff" | "placket" | "shirt-body" | "pocket"
@@ -86,6 +87,7 @@ export type CreativeLabInput = {
   measurements?:MeasurementProfile|null;
   observations?:TailorObservationProfile|null;
   creativeLearning?:CreativeLearningBook|null;
+  creativeResearch?:CreativeResearchLibrary|null;
   limit?:number;
 };
 
@@ -100,6 +102,55 @@ type Seed = {
 };
 
 const RESEARCH = {
+  stripeSpacing:{
+    id:"stripe-spacing-perception",
+    sourceTitle:"The influence of striped clothing on visual body perception",
+    sourceUrl:"https://journals.sagepub.com/doi/10.1177/20416695261441454",
+    extractedPrinciple:"Stripe spacing changes visual body perception; line direction alone is not enough to predict the effect.",
+    transformedInto:"Treat stripe spacing and interruption rhythm as design variables, not just horizontal-versus-vertical labels.",
+  },
+  complexity:{
+    id:"novelty-complexity-balance",
+    sourceTitle:"Too new or too complex? Apparel design evaluation",
+    sourceUrl:"https://doi.org/10.1108/JFMM-10-2016-0092",
+    extractedPrinciple:"Novelty and complexity interact; pushing both to the maximum can reduce aesthetic response.",
+    transformedInto:"When a concept is highly novel, quiet at least one secondary design system instead of stacking novelty everywhere.",
+  },
+  engineeredPrint:{
+    id:"engineered-print-3d-2d",
+    sourceTitle:"A new design concept: 3D to 2D textile pattern design for garments",
+    sourceUrl:"https://www.sciencedirect.com/science/article/pii/S0010448517300313",
+    extractedPrinciple:"Surface graphics can be designed on the three-dimensional garment first and then resolved back to pattern pieces for seam continuity.",
+    transformedInto:"Generate motifs around garment geometry and protected zones rather than treating the fabric as an infinite flat repeat.",
+  },
+  proportionSystem:{
+    id:"harmonic-proportion-tailoring",
+    sourceTitle:"Brunello Cucinelli Spring 2026 Menswear",
+    sourceUrl:"https://www.vogue.com/fashion-shows/spring-2026-menswear/brunello-cucinelli",
+    extractedPrinciple:"When lower-body volume expands, related upper-body details can change scale so the whole silhouette remains proportionally coherent.",
+    transformedInto:"Let collar breadth, cuff depth and trouser volume respond to each other as one proportion system.",
+  },
+  constructionShift:{
+    id:"construction-axis-shift",
+    sourceTitle:"Hed Mayner Fall 2026 Menswear",
+    sourceUrl:"https://www.vogue.com/fashion-shows/fall-2026-menswear/hed-mayner",
+    extractedPrinciple:"A familiar tailored garment can feel new when one construction axis is deliberately displaced.",
+    transformedInto:"Experiment with one shifted seam, pocket, sleeve or fastening axis while keeping the rest of the garment disciplined.",
+  },
+  foldArchitecture:{
+    id:"fold-architecture",
+    sourceTitle:"Setchu Spring 2026 Menswear",
+    sourceUrl:"https://www.vogue.com/fashion-shows/spring-2026-menswear/setchu",
+    extractedPrinciple:"Fold logic can become the architecture of a tailored garment rather than surface decoration.",
+    transformedInto:"Use one controlled fold or crease system as a structural signature in plackets, pockets or panels.",
+  },
+  visualAttention:{
+    id:"visual-attention-interaction",
+    sourceTitle:"Interaction of clothing design factors and visual attention",
+    sourceUrl:"https://doi.org/10.1108/JFMM-10-2021-0269",
+    extractedPrinciple:"Clothing features attract attention through their interaction and contrast, not only their isolated intensity.",
+    transformedInto:"Place contrast to create a deliberate path for the eye and suppress competing focal points.",
+  },
   framing:{
     id:"archive-framing",
     sourceTitle:"Fashioning Masculinities",
@@ -160,7 +211,114 @@ function treatment(
   return {id,zone,label,instruction,visualPurpose,intensity,buildability};
 }
 
+function researchSeed(signal:CreativeResearchSignal):Seed {
+  return {
+    id:`research-${signal.id}`,
+    name:signal.title,
+    thesis:signal.transformedIdea,
+    principle:{
+      id:signal.id,
+      sourceTitle:signal.title,
+      sourceUrl:signal.sourceUrl,
+      extractedPrinciple:signal.principle,
+      transformedInto:signal.transformedIdea,
+    },
+    treatments:()=>[
+      treatment(
+        `research-${signal.id}-primary`,
+        signal.zone,
+        signal.treatmentLabel,
+        signal.treatmentInstruction,
+        signal.visualPurpose,
+        signal.intensity,
+        signal.buildability,
+      ),
+      ...(signal.secondaryZone ? [treatment(
+        `research-${signal.id}-echo`,
+        signal.secondaryZone,
+        `${signal.treatmentLabel} echo`,
+        `Echo the primary idea at ${signal.secondaryZone} at lower intensity; do not create a second competing focal point.`,
+        "Build visual rhythm without duplicating the full treatment.",
+        Math.max(12,Math.round(signal.intensity*.42)),
+        signal.buildability==="experimental"?"atelier":signal.buildability,
+      )] : []),
+    ],
+    pattern:signal.patternFamily!=="none" ? (input)=>({
+      id:`research-pattern-${signal.id}`,
+      name:signal.patternName || signal.title,
+      family:signal.patternFamily,
+      layout:signal.patternLayout || signal.transformedIdea,
+      scale:signal.patternScale || "fine",
+      coverage:Math.max(0,Math.min(60,signal.patternCoverage ?? 24)),
+      palette:palette(input,"#F1ECE4"),
+      placement:signal.patternPlacement || `Concentrate around ${signal.zone}; preserve a quiet field elsewhere.`,
+      note:`Research-derived design hypothesis from ${signal.sourceUrl}. Sample and visually review before production.`,
+    }) : undefined,
+  };
+}
+
 const SEEDS:Seed[]=[
+  {
+    id:"graduated-stripe",
+    name:"Graduated Stripe",
+    thesis:"Use spacing changes to alter rhythm and apparent proportion instead of using a generic repeated stripe.",
+    principle:RESEARCH.stripeSpacing,
+    treatments:()=>[
+      treatment("graduated-stripe-field","shirt-body","Graduated stripe field","Keep stripe width fine while gradually opening the spacing toward the outer body; reset symmetrically around the centre front.","Creates controlled width and rhythm through spacing rather than loud colour.",46),
+    ],
+    pattern:(input)=>({
+      id:"graduated-stripe-pattern",name:"Graduated Rail",family:"stripe",
+      layout:"Fine vertical rails whose spacing slowly increases from centre front toward the side seams; no abrupt scale jumps.",
+      scale:"fine",coverage:36,palette:palette(input,"#EFE9E0"),placement:"Shirt body with collar and cuffs quieter than the body field.",
+      note:"Spacing logic is informed by stripe-perception research; final optical effect must be judged on a full-scale sample.",
+    }),
+  },
+  {
+    id:"seam-continuity",
+    name:"Seam Continuity",
+    thesis:"Design the motif around the three-dimensional shirt so the graphic appears to travel across panel boundaries.",
+    principle:RESEARCH.engineeredPrint,
+    treatments:()=>[
+      treatment("seam-continuity","shirt-body","Seam-aware motif","Place one directional motif so it appears to continue from front body toward side/back rather than restarting at each panel.","Makes the pattern belong to the garment architecture.",58,"atelier"),
+    ],
+    pattern:(input)=>({
+      id:"seam-continuity-pattern",name:"Continuous Field",family:"placement",
+      layout:"A sparse diagonal-to-vertical motif changes direction near the side body so visual flow can continue across sewn panels.",
+      scale:"fine",coverage:31,palette:palette(input,"#ECE6DD"),placement:"Engineered across body panels; keep collar, placket and cuff mostly clear.",
+      note:"Must be mapped to actual pattern pieces before printing; generic tiling is not acceptable for this concept.",
+    }),
+  },
+  {
+    id:"proportion-echo",
+    name:"Proportion Echo",
+    thesis:"Treat collar breadth, cuff depth and trouser volume as one connected proportion system.",
+    principle:RESEARCH.proportionSystem,
+    patch:{trouser:"Wide-leg / Relaxed Drape Trouser"},
+    treatments:()=>[
+      treatment("broader-collar-balance","collar","Broader collar balance","Increase visible collar breadth modestly when the trouser silhouette becomes substantially wider; keep point length controlled.","Prevents a wide lower silhouette from visually overpowering the face frame.",55,"atelier"),
+      treatment("cuff-scale-balance","cuff","Scaled cuff","Increase cuff depth slightly, but below the collar's visual importance.","Repeats the scale shift without turning the sleeve end into a competing statement.",34,"atelier"),
+    ],
+  },
+  {
+    id:"shifted-axis",
+    name:"Shifted Axis",
+    thesis:"Make one familiar tailored element intentionally off-axis while leaving the rest disciplined.",
+    principle:RESEARCH.constructionShift,
+    treatments:()=>[
+      treatment("shifted-front-pocket","pocket","Shifted pocket axis","Rotate or offset one pocket opening by a small controlled amount; keep the opposite side conventional or absent.","Introduces tension through construction rather than extra decoration.",66,"experimental"),
+      treatment("quiet-placket-axis","placket","Stable centre line","Keep the placket visually calm and straight.","Gives the eye a stable reference so the shifted detail reads as intentional.",16,"supported"),
+    ],
+  },
+  {
+    id:"fold-architecture",
+    name:"Fold Architecture",
+    thesis:"Use a fold as construction, not ornament.",
+    principle:RESEARCH.foldArchitecture,
+    treatments:()=>[
+      treatment("folded-placket","placket","Folded placket plane","Build one controlled fold beside or within the placket so light creates a second narrow plane without adding another colour.","Creates depth through garment geometry.",61,"experimental"),
+      treatment("fold-pocket-echo","pocket","Fold echo","Repeat only a smaller fold logic at the pocket opening.","Makes the construction language coherent.",28,"atelier"),
+    ],
+  },
   {
     id:"white-frame",
     name:"White Frame",
@@ -336,6 +494,12 @@ function criticsFor(
   aesthetic-=Math.max(0,load-125)*.18;
   aesthetic+=pattern && pattern.coverage<=45?5:0;
   aesthetic+=treatments.some((item)=>/quiet|protected|restrained/i.test(item.label+" "+item.instruction))?5:0;
+  // Research on apparel aesthetics suggests novelty and complexity should not
+  // both be maximized. High novelty is allowed, but only when another system is quiet.
+  const complexity=treatments.length+(pattern?1:0)+Math.round(load/70);
+  const noveltyBase=54+zones*7+(pattern?13:0)+atelier*4+experimental*7;
+  if(noveltyBase>82 && complexity>=5) aesthetic-=9;
+  else if(noveltyBase>76 && complexity<=4) aesthetic+=4;
   if(input.context.intention==="Understated" && load>95) aesthetic-=14;
   if(input.context.intention==="Expressive" && load<45) aesthetic-=9;
 
@@ -460,10 +624,15 @@ function signature(item:CreativeDirection) {
  * Construction remains a guardrail and receives only 10% of the creative score.
  */
 export function generateCreativeDirections(input:CreativeLabInput):CreativeDirection[] {
-  // Explore two visual intensities for every research seed. This gives the critic
-  // panel twenty internal concepts before refinement without asking an LLM to
-  // randomly improvise unsupported garment facts.
-  const first=SEEDS.flatMap((seed)=>{
+  const learnedSeeds=(input.creativeResearch?.signals || [])
+    .filter((signal)=>signal.active && Boolean(signal.sourceUrl))
+    .slice(0,24)
+    .map(researchSeed);
+  const seedPool=[...SEEDS,...learnedSeeds];
+
+  // Explore two visual intensities for every research seed. This produces a
+  // broad internal concept population; only the strongest diverse results are shown.
+  const first=seedPool.flatMap((seed)=>{
     const core=buildDirection(seed,input,1,undefined,undefined,[],"core");
     const pushedTreatments=seed.treatments(input).map((item)=>({
       ...item,
