@@ -349,14 +349,14 @@ for (const token of [
   if (!advancedSearch.includes(token)) throw new Error(`Designer advanced-search regression: missing ${token}`);
 }
 const advancedSearchUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["DESIGNER SEARCH / V4","Search catalogue","Keep shirt","Keep trouser","Open search","Why over my current choice?","Use this direction","DECISION MATRIX","WHAT COULD CHANGE THE DECISION"]) {
+for (const token of ["02 / QUICK DIRECTIONS","Show options","Keep shirt","Keep trouser","Change both","Why this works","Use look"]) {
   if (!advancedSearchUi.includes(token)) throw new Error(`Designer advanced-search UI regression: missing ${token}`);
 }
 const advancedSearchCss = fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
 for (const token of [".newDesignerSearch",".newDesignerSearchResults",".newDesignerSearchTier",".newDesignerSearchUse"]) {
   if (!advancedSearchCss.includes(token)) throw new Error(`Designer advanced-search styling regression: missing ${token}`);
 }
-console.log("Designer advanced-search V4 gate passed: diversified catalogue search, uncertainty-aware decision matrix, hard-conflict exclusion and explainable alternatives protected.");
+console.log("Designer advanced-search V4 gate passed: backend decision matrix preserved behind a simplified visual-first surface.");
 
 const creativeEngine = fs.readFileSync("src/lib/designer/creative-engine.ts","utf8");
 for (const token of [
@@ -385,11 +385,11 @@ const sourceRows = (researchPool.match(/\{id:"[^"]+",name:/g) || []).length;
 const topicRows = (researchPool.match(/\{id:"[^"]+",query:/g) || []).length;
 if (sourceRows * topicRows < 1000) throw new Error(`Designer V5 research pool regression: expected >=1000 source-topic targets, found ${sourceRows * topicRows}`);
 const creativeUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["CREATIVE DESIGNER / V5","Imagine new designs","CRITIC PANEL","MAXIMUM DIVERGENCE","TOP 5","newDesignerCriticFacets","researchPool","researchFreedom:\"maximum\"","RESEARCH USE","FRONTIER"]) {
+for (const token of ["03 / CREATE","Imagine new designs","Create ideas ✦","newDesignerCreativeVisual","newDesignerMiniScores","researchPool","researchFreedom:\"maximum\"","FRONTIER IDEA","Design reasoning"]) {
   if (!creativeUi.includes(token)) throw new Error(`Designer V5 creative UI regression: missing ${token}`);
 }
 const creativePreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-for (const token of ["creativeDirection","drawCreativePattern","Photoreal V5 render","VISUAL REVIEW / TEACH V5","CREATIVE_FEEDBACK_REASONS"]) {
+for (const token of ["creativeDirection","drawCreativePattern","Photoreal render ✦","DOES IT WORK?","CREATIVE_FEEDBACK_REASONS","Preview tools"]) {
   if (!creativePreview.includes(token)) throw new Error(`Designer V5 visual loop regression: missing ${token}`);
 }
 const creativeRenderRoute = fs.readFileSync("src/app/api/designer/creative-render/route.ts","utf8");
@@ -400,7 +400,7 @@ const researchDesk = fs.readFileSync("src/app/operator/designer-research/Designe
 for (const token of ["Creative Research Desk","RESEARCH → DESIGN TRANSLATOR","Save research signal","Allow this reviewed signal to influence V5 now"]) {
   if (!researchDesk.includes(token)) throw new Error(`Designer V5 research desk regression: missing ${token}`);
 }
-console.log(`Designer V5 creative-research gate passed: ${sourceRows * topicRows} source-topic discovery targets, maximum-freedom research synthesis, frontier reservation, multi-critic visual ranking, photoreal review and capped learning protected.`);
+console.log(`Designer V5 creative-research gate passed: ${sourceRows * topicRows} source-topic discovery targets, maximum-freedom research synthesis, simplified visual UI, photoreal review and capped learning protected.`);
 
 
 
