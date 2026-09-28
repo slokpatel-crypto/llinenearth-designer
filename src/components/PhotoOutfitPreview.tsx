@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
+import { CREATIVE_FEEDBACK_REASONS, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
 import {
   DESIGNER_PHOTO_TEMPLATES, PHOTO_COLLAR_MASK, PHOTO_CUFF_MASK, PHOTO_TUCKED_COLLAR_MASK, PHOTO_TUCKED_COLLAR_STAND_MASK,
   PHOTO_TUCKED_CUFF_MASK, PHOTO_TUCKED_NECK_CLEAR, PHOTO_TUCKED_SHIRT_CLIP, PHOTO_TUCKED_TROUSER_CLIP,
@@ -519,11 +520,12 @@ export function composePhotoOutfit(
   }
 }
 
-export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection }: {
+export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCreativeFeedback }: {
   shirt: DesignerFabric;
   pant: DesignerFabric;
   style: DesignerStyle;
   creativeDirection?: CreativeDirection | null;
+  onCreativeFeedback?: (rating:"up"|"down",reason?:CreativeFeedbackReason)=>void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
@@ -535,6 +537,8 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection }: {
   const [creativeAiLoading, setCreativeAiLoading] = useState(false);
   const [creativeAiError, setCreativeAiError] = useState("");
   const [showCreativeAi, setShowCreativeAi] = useState(false);
+  const [creativeReview, setCreativeReview] = useState<"up"|"down"|null>(null);
+  const [creativeReviewReason, setCreativeReviewReason] = useState<CreativeFeedbackReason|null>(null);
   const templateId = photoTemplateForStyle(style);
   const template = DESIGNER_PHOTO_TEMPLATES[templateId];
   const gaps = photoTemplateGaps(style, templateId);
@@ -545,6 +549,8 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection }: {
     setCreativeAi(null);
     setCreativeAiError("");
     setShowCreativeAi(false);
+    setCreativeReview(null);
+    setCreativeReviewReason(null);
   },[creativeDirection?.id,shirt.id,pant.id]);
 
   useEffect(() => {
@@ -658,6 +664,16 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection }: {
       {creativeCoverage.visible.length>0 && !showCreativeAi && <p><b>Visible now:</b> {creativeCoverage.visible.join(" · ")}.</p>}
       {creativeCoverage.specOnly.length>0 && !showCreativeAi && <p><b>Still specification-only:</b> {creativeCoverage.specOnly.join(" · ")}. These need a new garment template or photoreal synthesis to change real geometry.</p>}
       {creativeAi && <p><b>FASHN concept render:</b> {creativeAi.creditsUsed} credit{creativeAi.creditsUsed===1?"":"s"} used · generated from the selected V5 specification. Compare it against the instant preview before approving the design.</p>}
+      {creativeAi && onCreativeFeedback && <div className="newDesignerCreativeReview">
+        <span>VISUAL REVIEW / TEACH V5</span>
+        <div>
+          <button type="button" aria-pressed={creativeReview==="up"} onClick={()=>{setCreativeReview("up");setCreativeReviewReason(null);onCreativeFeedback("up");}}>Strong direction</button>
+          <button type="button" aria-pressed={creativeReview==="down"} onClick={()=>{setCreativeReview("down");setCreativeReviewReason(null);onCreativeFeedback("down");}}>Needs redesign</button>
+        </div>
+        {creativeReview==="down" && <div className="newDesignerCreativeReviewReasons">{CREATIVE_FEEDBACK_REASONS.map(([id,label])=><button key={id} type="button" aria-pressed={creativeReviewReason===id} onClick={()=>{setCreativeReviewReason(id);onCreativeFeedback("down",id);}}>{label}</button>)}</div>}
+        {creativeReview==="up" && <small>This concept family receives a small positive learning signal after enough independent reviews.</small>}
+        {creativeReview==="down" && creativeReviewReason && <small>The redesign reason is stored with this exact creative family.</small>}
+      </div>}
       {creativeAiError && <p className="newDesignerCreativeRenderError"><b>Photoreal render:</b> {creativeAiError}</p>}
     </div>}
     <div className="newDesignerPhotoAccuracy">
