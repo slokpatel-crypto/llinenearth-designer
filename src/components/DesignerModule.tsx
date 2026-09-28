@@ -16,6 +16,7 @@ import { PhotoOutfitPreview } from "@/components/PhotoOutfitPreview";
 import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, type MeasurementProfile } from "@/lib/measurements";
 import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { assessFitConstruction, formatFinishedRange } from "@/lib/designer/fit-construction";
+import { assessBlockStrategy } from "@/lib/designer/block-strategy";
 import { buildDesignerNegotiation } from "@/lib/designer/constraint-negotiation";
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
 import { evaluateLinenEarthBrandLanguage } from "@/lib/designer/brand-language";
@@ -88,9 +89,10 @@ export function DesignerModule() {
   const observationCoverage = useMemo(() => tailorObservationCoverage(tailorObservations), [tailorObservations]);
   const observationSummary = useMemo(() => tailorObservationSummary(tailorObservations), [tailorObservations]);
   const fitConstruction = useMemo(() => shirt && pant ? assessFitConstruction(measurementProfile, style, { climate, shirtFabric: shirt, trouserFabric: pant, observations: tailorObservations }) : null, [measurementProfile, style, climate, shirt, pant, tailorObservations]);
+  const blockStrategy = useMemo(() => shirt && pant ? assessBlockStrategy(measurementProfile, style, tailorObservations) : null, [measurementProfile, style, shirt, pant, tailorObservations]);
   const negotiation = useMemo(() => recommendation ? buildDesignerNegotiation(recommendation, fitConstruction) : null, [recommendation, fitConstruction]);
   const brandLanguage = useMemo(() => shirt && pant ? evaluateLinenEarthBrandLanguage(shirt,pant,style,occasion,{climate,intention}) : null, [shirt,pant,style,occasion,climate,intention]);
-  const garmentSpec = useMemo(() => recommendation ? buildCanonicalGarmentSpec(recommendation, fitConstruction, measurementProfile, brandLanguage) : null, [recommendation, fitConstruction, measurementProfile, brandLanguage]);
+  const garmentSpec = useMemo(() => recommendation ? buildCanonicalGarmentSpec(recommendation, fitConstruction, measurementProfile, brandLanguage, blockStrategy) : null, [recommendation, fitConstruction, measurementProfile, brandLanguage, blockStrategy]);
 
   useEffect(() => {
     try {
@@ -318,7 +320,7 @@ export function DesignerModule() {
     setFeedbackReason(null);
     setRecommendationId(null);
     try {
-      const spec=buildCanonicalGarmentSpec(result.recommendation,result.fitConstruction,measurementProfile,result.brandLanguage);
+      const spec=buildCanonicalGarmentSpec(result.recommendation,result.fitConstruction,measurementProfile,result.brandLanguage,result.blockStrategy);
       const event=recordStyleMemoryEvent(designerSession(),"designer_recommendation",{
         shirtId:result.shirt.id,pantId:result.pant.id,occasion:result.recommendation.occasion,style:result.style,
         input:{source:"advanced_catalogue_search",tier:result.tier,scope:searchScope,context:{climate,intention}},
@@ -331,7 +333,7 @@ export function DesignerModule() {
         reasoningText:result.recommendation.internalReason,
         status:result.recommendation.status,
         ruleSetVersion:result.recommendation.ruleSetVersion,
-        garmentSpec:{version:spec.version,status:spec.status,fitConstructionScore:spec.decision.fitConstructionScore,brandLanguageScore:spec.decision.brandLanguageScore,readiness:spec.readiness},
+        garmentSpec:{version:spec.version,status:spec.status,fitConstructionScore:spec.decision.fitConstructionScore,brandLanguageScore:spec.decision.brandLanguageScore,blockStrategyScore:spec.decision.blockStrategyScore,readiness:spec.readiness},
       });
       setRecommendationId(event.id);
     } catch { /* Search result remains usable when event storage is unavailable. */ }
@@ -349,7 +351,7 @@ export function DesignerModule() {
     setResponse(null);
     setFeedbackReason(null);
     try {
-      const spec = buildCanonicalGarmentSpec(result, proposals[0].fitConstruction, measurementProfile, proposals[0].brandLanguage);
+      const spec = buildCanonicalGarmentSpec(result, proposals[0].fitConstruction, measurementProfile, proposals[0].brandLanguage, proposals[0].blockStrategy);
       const event = recordStyleMemoryEvent(designerSession(), "designer_recommendation", {
         shirtId, pantId, occasion, style: nextStyle, input: { shirtId, pantId, occasion, style: nextStyle, context, measurementCoverage: fitCoverage, fitGuidance }, rules: result.rules,
         confidenceScore: result.confidenceScore, designFitScore: result.designFitScore,
@@ -358,7 +360,7 @@ export function DesignerModule() {
         status: result.status, ruleSetVersion: result.ruleSetVersion,
         garmentSpec: {
           version: spec.version, status: spec.status, fitConstructionScore: spec.decision.fitConstructionScore,
-          brandLanguageScore: spec.decision.brandLanguageScore, readiness: spec.readiness,
+          brandLanguageScore: spec.decision.brandLanguageScore, blockStrategyScore: spec.decision.blockStrategyScore, readiness: spec.readiness,
         },
       });
       setRecommendationId(event.id);
