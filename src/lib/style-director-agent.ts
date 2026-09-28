@@ -18,7 +18,9 @@ export type StyleDirectorAnswers = {
 
 export type StyleDirectorRealModelSpec = {
   shirtId: string;
+  shirtName: string;
   pantId: string;
+  pantName: string;
   occasion: OccasionTier;
   climate: DesignerClimate;
   intention: DesignerIntention;
@@ -192,7 +194,9 @@ function buildRealModelSpec(a: StyleDirectorAnswers, fabric: FabricColorway, can
   if (!best) return undefined;
   return {
     shirtId: best.shirt.id,
+    shirtName: best.shirt.name,
     pantId: best.pant.id,
+    pantName: best.pant.name,
     occasion,
     climate: context.climate,
     intention: context.intention,
