@@ -350,3 +350,15 @@
 .newDesignerCreativeRenderError{color:#9b4f3d!important}
 
 .newDesignerPhotoStage.inspectFit .newDesignerPhotoAi{transform:scale(1.42);transform-origin:50% 35%}
+
+.newDesignerCreativeLearning{margin-top:10px;padding:9px;border:1px solid #d8dfd3;background:#f7faf5}
+.newDesignerCreativeLearning>span,.newDesignerCreativeReview>span{display:block;font-size:7px;letter-spacing:.12em;color:#6b7f69;font-weight:700}
+.newDesignerCreativeLearning p{margin:5px 0 0;font-size:7px;line-height:1.45;color:#5d6b5b}
+.newDesignerCreativeLearning small{display:block;margin-top:5px;font-size:6px;line-height:1.4;color:#879084}
+.newDesignerCreativeReview{margin-top:10px;padding-top:9px;border-top:1px solid #eadfd5}
+.newDesignerCreativeReview>div:first-of-type{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.newDesignerCreativeReview button{border:1px solid #d6c8bc;background:#fff;color:#4f6174;padding:7px 8px;font-size:7px;cursor:pointer}
+.newDesignerCreativeReview button[aria-pressed="true"]{background:#1f3d5d;border-color:#1f3d5d;color:#fff}
+.newDesignerCreativeReviewReasons{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+.newDesignerCreativeReviewReasons button{padding:5px 6px;font-size:6px}
+.newDesignerCreativeReview small{display:block;margin-top:7px;font-size:7px;line-height:1.4;color:#7d756e}
