@@ -395,7 +395,7 @@ function hardBlocked(recommendation:DesignerRecommendation) {
   return recommendation.formality.match===false || recommendation.rules.some((item)=>item.status==="flag"&&item.severity==="High");
 }
 
-function buildDirection(seed:Seed,input:CreativeLabInput,iteration:number,treatmentsOverride?:CreativeTreatment[],patternOverride?:CreativePattern,refinement:string[]=[]):CreativeDirection|null {
+function buildDirection(seed:Seed,input:CreativeLabInput,iteration:number,treatmentsOverride?:CreativeTreatment[],patternOverride?:CreativePattern,refinement:string[]=[],variant="core"):CreativeDirection|null {
   const style=safePatch(input,seed.patch);
   const recommendation=evaluateDesignerCombo(input.shirt,input.pant,input.occasion,style,undefined,input.context);
   if(hardBlocked(recommendation)) return null;
@@ -408,7 +408,7 @@ function buildDirection(seed:Seed,input:CreativeLabInput,iteration:number,treatm
   const aesthetic=reads.find((item)=>item.id==="aesthetic")?.score ?? 0;
   const risk:CreativeDirection["risk"]=construction<52?"high":certainty<58||aesthetic<62?"moderate":"low";
   return {
-    id:`creative:${seed.id}:v${iteration}`,name:seed.name,thesis:seed.thesis,baseStyle:style,recommendation,
+    id:`creative:${seed.id}:${variant}:v${iteration}`,name:seed.name,thesis:seed.thesis,baseStyle:style,recommendation,
     treatments,pattern,critics:reads,overall,certainty,risk,research:[seed.principle],iteration,refinement,
     visualSummary:[
       ...treatments.slice(0,2).map((item)=>`${item.label}: ${item.visualPurpose}`),
@@ -441,7 +441,8 @@ function refine(seed:Seed,input:CreativeLabInput,first:CreativeDirection):Creati
       notes.push("Converted the most experimental detail into an atelier-review version.");
     }
   }
-  return buildDirection(seed,input,2,treatments,pattern,notes) || first;
+  const variant=first.id.split(":")[2] || "core";
+  return buildDirection(seed,input,2,treatments,pattern,notes,variant) || first;
 }
 
 function signature(item:CreativeDirection) {
@@ -454,8 +455,24 @@ function signature(item:CreativeDirection) {
  * Construction remains a guardrail and receives only 10% of the creative score.
  */
 export function generateCreativeDirections(input:CreativeLabInput):CreativeDirection[] {
-  const first=SEEDS.map((seed)=>({seed,direction:buildDirection(seed,input,1)}))
-    .filter((item):item is {seed:Seed;direction:CreativeDirection}=>Boolean(item.direction));
+  // Explore two visual intensities for every research seed. This gives the critic
+  // panel twenty internal concepts before refinement without asking an LLM to
+  // randomly improvise unsupported garment facts.
+  const first=SEEDS.flatMap((seed)=>{
+    const core=buildDirection(seed,input,1,undefined,undefined,[],"core");
+    const pushedTreatments=seed.treatments(input).map((item)=>({
+      ...item,
+      intensity:Math.min(100,Math.round(item.intensity*1.14)),
+    }));
+    const basePattern=seed.pattern?.(input);
+    const pushedPattern=basePattern ? {
+      ...basePattern,
+      coverage:Math.min(58,basePattern.coverage+8),
+      note:`${basePattern.note} This exploration deliberately pushes coverage before the critic pass.`,
+    } : undefined;
+    const pushed=buildDirection(seed,input,1,pushedTreatments,pushedPattern,["Started from a deliberately stronger visual exploration."],"pushed");
+    return [{seed,direction:core},{seed,direction:pushed}];
+  }).filter((item):item is {seed:Seed;direction:CreativeDirection}=>Boolean(item.direction));
 
   first.sort((a,b)=>b.direction.overall-a.direction.overall);
   const refined=first.slice(0,8).map(({seed,direction})=>refine(seed,input,direction));
