@@ -12,6 +12,10 @@ const required = [
   "src/app/designs/page.tsx",
   "src/app/atelier/page.tsx",
   "src/app/quality/page.tsx",
+  "src/components/MeasurementStudio.tsx",
+  "src/app/measurements/scale-selector.css",
+  "src/app/measurements/measurements.css",
+  "src/app/measurements/page.tsx",
   "public/designer/studio-tucked.webp",
   "src/lib/designer/photo-preview.ts",
   "src/components/PhotoOutfitPreview.tsx",
@@ -185,3 +189,18 @@ for (const token of ["matchPhotographedOfficeModel","Point (Standard) Collar","B
   if (!realDesignerModule.includes(token)) throw new Error(`Photographed office preset regression: missing ${token}`);
 }
 console.log("Photographed office preset gate passed: the selected cut can be aligned exactly to the tucked model template.");
+
+
+const measurementPage = fs.readFileSync("src/app/measurements/page.tsx","utf8");
+for (const token of ["MEASUREMENT STUDIO","See exactly where","MeasurementStudio","blueprint"]) {
+  if (!measurementPage.includes(token)) throw new Error(`Measurement blueprint page regression: missing ${token}`);
+}
+const measurementStudio = fs.readFileSync("src/components/MeasurementStudio.tsx","utf8");
+for (const token of ["SHIRT BLUEPRINT","TROUSER BLUEPRINT","guide active","active===id","NECK","CHEST","INSEAM","OUTSEAM","/designer-studio"]) {
+  if (!measurementStudio.includes(token)) throw new Error(`Measurement blueprint interaction regression: missing ${token}`);
+}
+const measurementCss = fs.readFileSync("src/app/measurements/measurements.css","utf8");
+for (const token of [".measurementIntroBlueprint",".blueprintGrid",".draftDepth",".draftGarment",".guide.active",".measureBlueprintLegend"]) {
+  if (!measurementCss.includes(token)) throw new Error(`Measurement blueprint styling regression: missing ${token}`);
+}
+console.log("Measurement blueprint gate passed: garment-specific pseudo-3D drafting view and active white measurement guides protected.");
