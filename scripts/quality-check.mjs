@@ -197,7 +197,7 @@ for (const token of ["URLSearchParams(window.location.search)","routedShirt","ro
 console.log("Style Director handoff gate passed: context, resolved stock pair and cut transfer into photographic Designer.");
 
 
-for (const token of ["matchPhotographedOfficeModel","Point (Standard) Collar","Barrel Cuff (1-button)","Pleated Trouser","Belt Loops","Match photographed office model"]) {
+for (const token of ["matchPhotographedOfficeModel","Point (Standard) Collar","Barrel Cuff (1-button)","Pleated Trouser","Belt Loops","Office preset"]) {
   if (!realDesignerModule.includes(token)) throw new Error(`Photographed office preset regression: missing ${token}`);
 }
 console.log("Photographed office preset gate passed: the selected cut can be aligned exactly to the tucked model template.");
