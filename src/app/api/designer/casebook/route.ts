@@ -3,6 +3,8 @@ import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-adm
 import { aggregateDesignerCasebook } from "@/lib/designer/casebook";
 import { aggregateFitOutcomes } from "@/lib/designer/fit-outcomes";
 import { aggregateCreativeLearning } from "@/lib/designer/creative-learning";
+import { aggregateCreativeResearch } from "@/lib/designer/creative-research";
+import { FASHION_RESEARCH_POOL_STATS } from "@/lib/designer/fashion-research-source-pool";
 
 export const runtime = "nodejs";
 
@@ -20,6 +22,8 @@ export async function GET() {
       casebook:aggregateDesignerCasebook([]),
       fitOutcomes:aggregateFitOutcomes([]),
       creativeLearning:aggregateCreativeLearning([]),
+      creativeResearch:aggregateCreativeResearch([]),
+      researchPool:FASHION_RESEARCH_POOL_STATS,
     },{headers:{"cache-control":"no-store"}});
   }
 
@@ -63,6 +67,7 @@ export async function GET() {
     const casebook=aggregateDesignerCasebook(events);
     const fitOutcomes=aggregateFitOutcomes(events);
     const creativeLearning=aggregateCreativeLearning(events);
+    const creativeResearch=aggregateCreativeResearch(events);
 
     // Only aggregate reviewed design/fit signatures leave the server. No raw
     // measurements, session identifiers, customer data or free-form notes are returned.
@@ -71,6 +76,8 @@ export async function GET() {
       casebook,
       fitOutcomes,
       creativeLearning,
+      creativeResearch,
+      researchPool:FASHION_RESEARCH_POOL_STATS,
     },{headers:{"cache-control":"no-store"}});
   } catch(error) {
     console.error("[designer/casebook]",error);
