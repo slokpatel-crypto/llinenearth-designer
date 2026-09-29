@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
+import { legacyBrandIdentifier, readBrandEnv } from "@/lib/runtime-compat";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,7 +22,7 @@ const OPERATOR_EVENT_TYPES = new Set([
 ]);
 
 function authorized(request: Request) {
-  const configured = process.env.LINEN_OPERATOR_SYNC_TOKEN?.trim();
+  const configured = readBrandEnv("LINEN_OPERATOR_SYNC_TOKEN");
   const supplied = request.headers.get("authorization");
   if (!configured || !supplied?.startsWith("Bearer ")) return false;
   const candidate = supplied.slice(7);
@@ -238,7 +239,7 @@ export async function GET(request: Request) {
     }
 
     try {
-      const response = await fetch(`${cloud.url}/rest/v1/rpc/linen_cloud_schema_version`, {
+      const callSchemaVersion = (rpcName:string) => fetch(`${cloud.url}/rest/v1/rpc/${rpcName}`, {
         method: "POST",
         headers: {
           ...supabaseAdminHeaders(cloud),
@@ -247,6 +248,10 @@ export async function GET(request: Request) {
         body: "{}",
         cache: "no-store",
       });
+      let response = await callSchemaVersion("linen_cloud_schema_version");
+      if (!response.ok && response.status === 404) {
+        response = await callSchemaVersion(legacyBrandIdentifier("linen_cloud_schema_version"));
+      }
 
       if (!response.ok) {
         console.error("[operator/sync health]", response.status, (await response.text()).slice(0,300));
