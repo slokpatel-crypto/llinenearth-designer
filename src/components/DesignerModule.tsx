@@ -27,6 +27,7 @@ import type { DesignerCasebook } from "@/lib/designer/casebook";
 import type { FitOutcomeBook } from "@/lib/designer/fit-outcomes";
 import { creativeFamilyFromConceptId, type CreativeLearningBook, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
 import type { CreativeResearchLibrary } from "@/lib/designer/creative-research";
+import { buildWhatsAppUrl } from "@/lib/whatsapp";
 
 const OCCASIONS: OccasionTier[] = ["Casual", "Smart-Casual", "Semi-Formal", "Formal"];
 const CLIMATES: DesignerClimate[] = ["Not specified", "Hot / humid", "Cool", "Air-conditioned"];
@@ -34,6 +35,32 @@ const INTENTIONS: DesignerIntention[] = ["Understated", "Balanced", "Expressive"
 const SESSION_KEY = "llinen-earth:designer-session:v1";
 const DRAFT_KEY = "linen-earth:real-designer-draft:v2";
 const FACT_INTERVAL_MS = 15_000;
+type ShirtFabricFilter = "All" | "Plain" | "Print" | "Blend" | "Formal";
+type PantFabricFilter = "All" | "Light" | "Medium" | "Dark";
+
+const SHIRT_FILTERS:ShirtFabricFilter[]=["All","Plain","Print","Blend","Formal"];
+const PANT_FILTERS:PantFabricFilter[]=["All","Light","Medium","Dark"];
+
+function customerFabricLine(line:string) {
+  return line
+    .replace(/\b\d+\s*lea\b/gi,"")
+    .replace(/\s{2,}/g," ")
+    .replace(/\s*[-·|]\s*$/,"")
+    .trim() || "Fabric collection";
+}
+
+function shirtFilterFor(fabric:DesignerFabric):Exclude<ShirtFabricFilter,"All"> {
+  const text=`${fabric.line} ${fabric.patternType}`.toLowerCase();
+  if(text.includes("formal")) return "Formal";
+  if(text.includes("blend")) return "Blend";
+  if(text.includes("print")) return "Print";
+  return "Plain";
+}
+
+function pantFilterFor(fabric:DesignerFabric):Exclude<PantFabricFilter,"All"> {
+  return fabric.tone || "Medium";
+}
+
 
 const MAIN_DETAILS = [
   ["shirtWear", "Shirt finish"], ["collar", "Shirt collar"],
@@ -88,9 +115,25 @@ export function DesignerModule() {
   const [creativeLearning, setCreativeLearning] = useState<CreativeLearningBook | null>(null);
   const [creativeResearch, setCreativeResearch] = useState<CreativeResearchLibrary | null>(null);
   const [researchPool, setResearchPool] = useState<{websites:number;topics:number;targets:number;highAuthorityWebsites:number}|null>(null);
+  const [shirtFilter,setShirtFilter]=useState<ShirtFabricFilter>("All");
+  const [pantFilter,setPantFilter]=useState<PantFabricFilter>("All");
   const fact = DESIGNER_FASHION_FACTS[factIndex];
   const shirt = useMemo(() => shirtOptions.find((item) => item.id === shirtId), [shirtId, shirtOptions]);
   const pant = useMemo(() => pantOptions.find((item) => item.id === pantId), [pantId, pantOptions]);
+  const visibleShirts=useMemo(()=>shirtFilter==="All" ? shirtOptions : shirtOptions.filter((item)=>shirtFilterFor(item)===shirtFilter),[shirtFilter,shirtOptions]);
+  const visiblePants=useMemo(()=>pantFilter==="All" ? pantOptions : pantOptions.filter((item)=>pantFilterFor(item)===pantFilter),[pantFilter,pantOptions]);
+  const designerWhatsAppHref=useMemo(()=>{
+    if(!shirt || !pant) return "#";
+    const creative=activeCreative ? `Creative direction: ${activeCreative.name}` : "";
+    const details=[
+      `Shirt: ${customerFabricLine(shirt.line)} — ${shirt.name}`,
+      `Trouser: ${customerFabricLine(pant.line)} — ${pant.name}`,
+      `Occasion: ${occasion}`,
+      `Style: ${style.collar}; ${style.cuff}; ${style.shirtFit}; ${style.shirtWear}; ${style.trouser}`,
+      creative,
+    ].filter(Boolean).join("\n");
+    return buildWhatsAppUrl({topic:"Designer Studio look",garment:"Shirt + trouser",details});
+  },[shirt,pant,occasion,style,activeCreative]);
   const insights = shirt && pant ? designerStyleInsights(shirt, pant, occasion, style) : [];
   const fitCoverage = useMemo(() => measurementCoverage(measurementProfile), [measurementProfile]);
   const fitGuidance = useMemo(() => measurementFitGuidance(measurementProfile), [measurementProfile]);
@@ -572,26 +615,45 @@ export function DesignerModule() {
         <div className="newDesignerSectionHead"><span>01 / CLOTH</span><h2 id="designerChoose">Choose your fabrics.</h2></div>
         <div className="newDesignerFabricGrid">
           <article className="newDesignerFabric">
-            <div className="newDesignerSwatch" style={{ backgroundColor: shirt?.hex || "#172339" }}>
-              {shirt && <img src={shirt.image} alt={`${shirt.name} shirting fabric swatch`} loading="lazy" />}
+            <div className="newDesignerFabricFilters" aria-label="Filter shirt fabrics">
+              {SHIRT_FILTERS.map((filter)=><button key={filter} type="button" className={shirtFilter===filter?"selected":""} aria-pressed={shirtFilter===filter} onClick={()=>{
+                setShirtFilter(filter);
+                const next=filter==="All"?shirtOptions:shirtOptions.filter((item)=>shirtFilterFor(item)===filter);
+                if(next.length && !next.some((item)=>item.id===shirtId)) setShirtId(next[0].id);
+                setRecommendation(null); setRecommendationId(null);
+              }}>{filter}</button>)}
             </div>
-            <label htmlFor="designer-shirt">Shirt fabric</label>
+            <div className="newDesignerSwatch" style={{ backgroundColor: shirt?.hex || "#172339" }}>
+              {shirt && <img src={shirt.image} alt={`${shirt.name} shirting fabric swatch`} loading="lazy" decoding="async" />}
+            </div>
+            <label htmlFor="designer-shirt">Shirt fabric <span>{visibleShirts.length} choices</span></label>
             <select id="designer-shirt" value={shirtId} onChange={(event) => { setShirtId(event.target.value); setRecommendation(null); setRecommendationId(null); }}>
-              {shirtOptions.map((fabric) => <option key={fabric.id} value={fabric.id}>{fabric.line} · {fabric.name}</option>)}
+              {visibleShirts.map((fabric) => <option key={fabric.id} value={fabric.id}>{customerFabricLine(fabric.line)} · {fabric.name}</option>)}
             </select>
-            <small>{shirt?.patternType} · {shirt?.source}</small>
+            <small>{shirt?.patternType} · {customerFabricLine(shirt?.line || "")}</small>
+            {shirt && /lea/i.test(shirt.line) && <details className="newDesignerFabricSpecs"><summary>ⓘ Fabric specs</summary><p><b>{shirt.line}</b> · “Lea” is a yarn-count term used in the textile trade; it stays here as a technical fabric reference.</p></details>}
           </article>
           <article className="newDesignerFabric">
-            <div className="newDesignerSwatch" style={{ backgroundColor: pant?.hex || "#172339" }}>
-              {pant && <img src={pant.image} alt={`${pant.name} trouser fabric swatch`} loading="lazy" />}
+            <div className="newDesignerFabricFilters" aria-label="Filter trouser fabrics">
+              {PANT_FILTERS.map((filter)=><button key={filter} type="button" className={pantFilter===filter?"selected":""} aria-pressed={pantFilter===filter} onClick={()=>{
+                setPantFilter(filter);
+                const next=filter==="All"?pantOptions:pantOptions.filter((item)=>pantFilterFor(item)===filter);
+                if(next.length && !next.some((item)=>item.id===pantId)) setPantId(next[0].id);
+                setRecommendation(null); setRecommendationId(null);
+              }}>{filter}</button>)}
             </div>
-            <label htmlFor="designer-pant">Trouser fabric</label>
+            <div className="newDesignerSwatch" style={{ backgroundColor: pant?.hex || "#172339" }}>
+              {pant && <img src={pant.image} alt={`${pant.name} trouser fabric swatch`} loading="lazy" decoding="async" />}
+            </div>
+            <label htmlFor="designer-pant">Trouser fabric <span>{visiblePants.length} choices</span></label>
             <select id="designer-pant" value={pantId} onChange={(event) => { setPantId(event.target.value); setRecommendation(null); setRecommendationId(null); }}>
-              {pantOptions.map((fabric) => <option key={fabric.id} value={fabric.id}>{fabric.line} · {fabric.name}</option>)}
+              {visiblePants.map((fabric) => <option key={fabric.id} value={fabric.id}>{customerFabricLine(fabric.line)} · {fabric.name}</option>)}
             </select>
-            <small>{pant?.patternType} · {pant?.source}</small>
+            <small>{pant?.patternType} · {pant?.tone || "Tone not classified"}</small>
+            {pant && /lea/i.test(pant.line) && <details className="newDesignerFabricSpecs"><summary>ⓘ Fabric specs</summary><p><b>{pant.line}</b> · “Lea” is a yarn-count term used in the textile trade; it stays here as a technical fabric reference.</p></details>}
           </article>
         </div>
+        <a className="newDesignerCreativeTeaser" href="#designerCreativeLab"><span>✦ CREATIVE LAB</span><strong>Your cloth can become 5 original design directions.</strong><b>Explore after occasion →</b></a>
         <a className="newDesignerJump" href="#designerPhotoTitle">Preview on model ↘</a>
 
         <fieldset className="newDesignerOccasions">
@@ -644,8 +706,8 @@ export function DesignerModule() {
           {searchResults.length>0 && <div className="newDesignerQuickResults">
             {searchResults.slice(0,3).map((result)=><article key={result.id}>
               <div className="newDesignerQuickFabricPair">
-                <img src={result.shirt.image} alt="" />
-                <img src={result.pant.image} alt="" />
+                <img src={result.shirt.image} alt="" loading="lazy" decoding="async" />
+                <img src={result.pant.image} alt="" loading="lazy" decoding="async" />
               </div>
               <div className="newDesignerQuickResultCopy">
                 <span>{result.tier}</span>
@@ -662,7 +724,7 @@ export function DesignerModule() {
           </div>}
         </section>
 
-        <section className="newDesignerCreative newDesignerVisualLab" aria-label="Creative Designer Lab V5">
+        <section id="designerCreativeLab" className="newDesignerCreative newDesignerVisualLab" aria-label="Creative Designer Lab V5">
           <div className="newDesignerSimpleHead">
             <div>
               <span>03 / CREATE</span>
@@ -679,7 +741,7 @@ export function DesignerModule() {
           {creativeDirections.length>0 && <div className="newDesignerCreativeResults newDesignerVisualResults">
             {creativeDirections.slice(0,5).map((direction)=><article key={direction.id} data-active={activeCreative?.id===direction.id}>
               <button className="newDesignerCreativeVisual" type="button" onClick={()=>useCreativeDirection(direction)} data-pattern={direction.pattern?.family || "detail"} aria-label={`Preview ${direction.name}`}>
-                <img src={shirt?.image} alt="" />
+                <img src={shirt?.image} alt="" loading="lazy" decoding="async" />
                 <span className="newDesignerCreativeVisualOverlay" />
                 <b>{creativeStatus(direction)}</b>
               </button>
@@ -724,6 +786,7 @@ export function DesignerModule() {
           <button className="newDesignerAction" type="button" disabled={!shirt || !pant} onClick={() => assess()}>Check this look ↗</button>
           <button className="newDesignerReset" type="button" onClick={resetDraft}>Reset</button>
         </div>
+        <div className="newDesignerTruthNearCta"><span>PREVIEW NOTE</span><p>Final colour, drape and fit still need physical fabric and sample verification in store.</p></div>
       </section>
 
       <div className="newDesignerRight">
@@ -750,6 +813,7 @@ export function DesignerModule() {
           <div className="newDesignerResultReasons">
             {[recommendation.shortReason,...(brandLanguage?.strengths || [])].filter(Boolean).slice(0,3).map((item)=><span key={item}>✓ {item}</span>)}
           </div>
+          <a className="newDesignerWhatsAppLook" href={designerWhatsAppHref} target="_blank" rel="noreferrer">WhatsApp this exact look <b>↗</b></a>
           {recommendationId && <div className="newDesignerFeedback newDesignerFeedbackCompact">
             <span>Like this direction?</span><div>
               <button type="button" onClick={()=>giveFeedback("up")} aria-pressed={response==="up"}>Yes</button>
