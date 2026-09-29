@@ -316,6 +316,17 @@ if (!designerEngineFabricIntelligence.includes('roleTags: fabric.roleTags?.lengt
 }
 console.log("Catalogue fabric intelligence gate passed: formal/casual catalogue role influences Designer ranking without inventing physical GSM, drape or accent safety.");
 
+const fabricAnalyzerSource = fs.readFileSync("src/lib/fabric-analyzer.ts","utf8");
+const fabricAnalyzerTaxonomy = fs.readFileSync("src/lib/fabric-analyzer-taxonomy.ts","utf8");
+for (const token of ['import "server-only"',"analyzeMenswearFabric","verifiedFacts","visualObservations","uncertainClaims","Never claim exact fiber composition"]) {
+  if (!fabricAnalyzerSource.includes(token)) throw new Error(`Private Fabric Analyzer regression: missing ${token}`);
+}
+for (const token of ["MENSWEAR_MATERIAL_TAXONOMY","MENSWEAR_PATTERN_TAXONOMY","MENSWEAR_COLOR_TAXONOMY","FABRIC_ANALYZER_EVIDENCE_RULES"]) {
+  if (!fabricAnalyzerTaxonomy.includes(token)) throw new Error(`Private Fabric Analyzer taxonomy regression: missing ${token}`);
+}
+if (realDesignerModule.includes("fabric-analyzer")) throw new Error("Fabric Analyzer privacy regression: customer Designer UI must not import the backend analyzer.");
+console.log("Private Fabric Analyzer gate passed: server-only visual analysis and menswear taxonomy remain backend-only.");
+
 const photoPreviewMultiView = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
 const selectedLookRenderRoute = fs.readFileSync("src/app/api/designer/look-render/route.ts","utf8");
 for (const token of ["PhotorealView","choosePhotorealView","three-quarter","Generate 3/4","photorealViews"]) {
