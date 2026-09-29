@@ -288,10 +288,13 @@ for (const token of ["fabricPairDiffers","Prefer genuinely different fabric pair
 console.log("One-line Designer gate passed: natural brief, stock search, fit context and three-direction handoff protected.");
 
 const designerEngineFabricIntelligence = fs.readFileSync("src/lib/designer/engine.ts","utf8");
-for (const token of ["catalogueStyleFormality","catalogueRoleTags","formal shirting","printed linen blend","base_safe","accent_safe"]) {
+for (const token of ["catalogueStyleFormality","formal shirting","printed linen blend"]) {
   if (!designerEngineFabricIntelligence.includes(token)) throw new Error(`Catalogue fabric intelligence regression: missing ${token}`);
 }
-console.log("Catalogue fabric intelligence gate passed: formal/casual catalogue role influences Designer ranking without inventing physical GSM or drape.");
+if (!designerEngineFabricIntelligence.includes('roleTags: fabric.roleTags?.length ? [...fabric.roleTags] : null')) {
+  throw new Error("Catalogue fabric intelligence regression: verified accent-role uncertainty must remain intact.");
+}
+console.log("Catalogue fabric intelligence gate passed: formal/casual catalogue role influences Designer ranking without inventing physical GSM, drape or accent safety.");
 
 const photoPreviewMultiView = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
 const selectedLookRenderRoute = fs.readFileSync("src/app/api/designer/look-render/route.ts","utf8");
