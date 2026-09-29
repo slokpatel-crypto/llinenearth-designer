@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "LLinen Earth OS",
+  "productName": "Linen Earth OS",
   "version": "1.0.0",
-  "identifier": "com.llinenearth.operator",
+  "identifier": "com.linenearth.operator",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "LLinen Earth OS",
+        "title": "Linen Earth OS",
         "width": 1440,
         "height": 920,
         "minWidth": 1180,
@@ -23,7 +23,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; connect-src 'self' https://llinenearth-designer.vercel.app https://*.vercel.app"
+      "csp": "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.vercel.app"
     }
   },
   "bundle": {
@@ -31,7 +31,7 @@
     "targets": [
       "nsis"
     ],
-    "shortDescription": "Private LLinen Earth operator intelligence and local memory system",
-    "longDescription": "LLinen Earth OS combines customer intent, style activity, follow-up, outcomes and a controlled local business memory vault."
+    "shortDescription": "Private Linen Earth operator intelligence and local memory system",
+    "longDescription": "Linen Earth OS combines customer intent, style activity, follow-up, outcomes and a controlled local business memory vault."
   }
 }
