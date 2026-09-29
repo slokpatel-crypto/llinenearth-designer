@@ -27,6 +27,12 @@ import {
   validateStyleSpecV2,
   type StyleSpecV2,
 } from "@/lib/designer/style-spec-v2";
+import {
+  bodyProfileFromMeasurements,
+  DEFAULT_BODY_PREVIEW_PROFILE,
+  validBodyPreviewProfile,
+  type BodyPreviewProfile,
+} from "@/lib/designer/body-profile";
 
 const OCCASIONS: OccasionTier[] = ["Casual", "Smart-Casual", "Semi-Formal", "Formal"];
 const CLIMATES: DesignerClimate[] = ["Not specified", "Hot / humid", "Cool", "Air-conditioned"];
@@ -117,6 +123,7 @@ export function DesignerModule() {
   const [style, setStyle] = useState<DesignerStyle>(() => designerStyleForOccasion(DESIGNER_REVIEWED_PAIRING.occasion));
   const [styleSpec,setStyleSpec]=useState<StyleSpecV2>(()=>fromLegacyStyle(designerStyleForOccasion(DESIGNER_REVIEWED_PAIRING.occasion)));
   const [previewMode,setPreviewMode]=useState<"photo"|"construction">("photo");
+  const [bodyProfile,setBodyProfile]=useState<BodyPreviewProfile>(DEFAULT_BODY_PREVIEW_PROFILE);
   const [climate, setClimate] = useState<DesignerClimate>("Not specified");
   const [intention, setIntention] = useState<DesignerIntention>("Balanced");
   const [recommendation, setRecommendation] = useState<DesignerRecommendation | null>(null);
@@ -227,7 +234,7 @@ export function DesignerModule() {
     try {
       const parsed = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null") as {
         shirtId?: string; pantId?: string; occasion?: OccasionTier; climate?: DesignerClimate;
-        intention?: DesignerIntention; style?: Partial<DesignerStyle>; styleSpec?: unknown; creative?: CreativeDirection | null;
+        intention?: DesignerIntention; style?: Partial<DesignerStyle>; styleSpec?: unknown; bodyProfile?: unknown; creative?: CreativeDirection | null;
         creativeVisualReview?: CreativeVisualCheck | null;
       } | null;
 
@@ -238,6 +245,7 @@ export function DesignerModule() {
       let nextIntention: DesignerIntention = parsed?.intention && INTENTIONS.includes(parsed.intention) ? parsed.intention : intention;
       let nextStyle = designerStyleForOccasion(nextOccasion);
       let nextStyleSpec:StyleSpecV2|undefined;
+      let nextBodyProfile:BodyPreviewProfile|undefined;
 
       if (parsed?.style) {
         for (const key of Object.keys(DESIGNER_STYLE_CHOICES) as Array<keyof DesignerStyle>) {
@@ -246,6 +254,7 @@ export function DesignerModule() {
         }
       }
       if(parsed?.styleSpec && validateStyleSpecV2(parsed.styleSpec)) nextStyleSpec=parsed.styleSpec;
+      if(parsed?.bodyProfile && validBodyPreviewProfile(parsed.bodyProfile)) nextBodyProfile=parsed.bodyProfile;
 
       // A Style Director handoff is authoritative for this opening state. It
       // carries the resolved shirt + trouser pair and the supported cut, so the
@@ -294,6 +303,7 @@ export function DesignerModule() {
       setIntention(nextIntention);
       setStyle(nextStyle);
       setStyleSpec(nextStyleSpec || fromLegacyStyle(nextStyle));
+      setBodyProfile(nextBodyProfile || DEFAULT_BODY_PREVIEW_PROFILE);
 
       if(!fromDirector && parsed?.creative &&
         parsed.creative.recommendation?.shirt?.id===nextShirtId &&
@@ -343,14 +353,19 @@ export function DesignerModule() {
   useEffect(() => {
     if (!draftReady) return;
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ shirtId, pantId, occasion, climate, intention, style, styleSpec, creative:activeCreative, creativeVisualReview }));
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ shirtId, pantId, occasion, climate, intention, style, styleSpec, bodyProfile, creative:activeCreative, creativeVisualReview }));
     } catch { /* Designer remains usable if browser storage is unavailable. */ }
-  }, [draftReady, shirtId, pantId, occasion, climate, intention, style, styleSpec, activeCreative, creativeVisualReview]);
+  }, [draftReady, shirtId, pantId, occasion, climate, intention, style, styleSpec, bodyProfile, activeCreative, creativeVisualReview]);
 
   useEffect(()=>{
     if(!draftReady) return;
     setStyleSpec((current)=>mergeLegacyIntoStyleSpec(current,style));
   },[draftReady,style]);
+
+  useEffect(()=>{
+    if(!measurementProfile) return;
+    setBodyProfile((current)=>current.source==="manual" ? current : bodyProfileFromMeasurements(measurementProfile,current));
+  },[measurementProfile]);
 
   useEffect(() => {
     if(!draftReady) return;
@@ -433,6 +448,7 @@ export function DesignerModule() {
     setStyle(resetStyle);
     setStyleSpec(fromLegacyStyle(resetStyle));
     setPreviewMode("photo");
+    setBodyProfile(DEFAULT_BODY_PREVIEW_PROFILE);
     setRecommendation(null);
     setAssessment(null);
     setRecommendationId(null);
@@ -1158,6 +1174,7 @@ export function DesignerModule() {
         pant={pant}
         style={style}
         styleSpec={styleSpec}
+        bodyProfile={bodyProfile}
         creativeDirection={activeCreative}
         onCreativeFeedback={giveCreativeRenderFeedback}
         autoRenderNonce={creativeAutoRenderNonce}
@@ -1189,6 +1206,8 @@ export function DesignerModule() {
         style={style}
         spec={styleSpec}
         onSpecChange={applyStyleSpec}
+        bodyProfile={bodyProfile}
+        onBodyProfileChange={setBodyProfile}
         occasion={occasion}
         climate={climate}
       />}
