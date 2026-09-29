@@ -626,6 +626,12 @@ export function DesignerModule() {
             <div className="newDesignerSwatch" style={{ backgroundColor: shirt?.hex || "#172339" }}>
               {shirt && <img src={shirt.image} alt={`${shirt.name} shirting fabric swatch`} loading="lazy" decoding="async" />}
             </div>
+            <div className="newDesignerFabricChoices" aria-label="Browse shirt fabrics">
+              {visibleShirts.map((fabric)=><button key={fabric.id} type="button" className={fabric.id===shirtId?"selected":""} aria-pressed={fabric.id===shirtId} onClick={()=>{setShirtId(fabric.id);setRecommendation(null);setRecommendationId(null);}}>
+                <img src={fabric.image} alt={`${fabric.name} shirt fabric`} loading="lazy" decoding="async" />
+                <span>{fabric.name}</span>
+              </button>)}
+            </div>
             <label htmlFor="designer-shirt">Shirt fabric <span>{visibleShirts.length} choices</span></label>
             <select id="designer-shirt" value={shirtId} onChange={(event) => { setShirtId(event.target.value); setRecommendation(null); setRecommendationId(null); }}>
               {visibleShirts.map((fabric) => <option key={fabric.id} value={fabric.id}>{customerFabricLine(fabric.line)} · {fabric.name}</option>)}
@@ -644,6 +650,12 @@ export function DesignerModule() {
             </div>
             <div className="newDesignerSwatch" style={{ backgroundColor: pant?.hex || "#172339" }}>
               {pant && <img src={pant.image} alt={`${pant.name} trouser fabric swatch`} loading="lazy" decoding="async" />}
+            </div>
+            <div className="newDesignerFabricChoices" aria-label="Browse trouser fabrics">
+              {visiblePants.map((fabric)=><button key={fabric.id} type="button" className={fabric.id===pantId?"selected":""} aria-pressed={fabric.id===pantId} onClick={()=>{setPantId(fabric.id);setRecommendation(null);setRecommendationId(null);}}>
+                <img src={fabric.image} alt={`${fabric.name} trouser fabric`} loading="lazy" decoding="async" />
+                <span>{fabric.name}</span>
+              </button>)}
             </div>
             <label htmlFor="designer-pant">Trouser fabric <span>{visiblePants.length} choices</span></label>
             <select id="designer-pant" value={pantId} onChange={(event) => { setPantId(event.target.value); setRecommendation(null); setRecommendationId(null); }}>
