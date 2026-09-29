@@ -1,7 +1,7 @@
 import type { SavedDesign } from "@/lib/saved-designs";
 import { fabricTypes, judgeFabricForBrief, type WearFamily } from "@/lib/fashion-intelligence";
 
-export const HANDOFF_KEY = "llinen-earth-atelier-handoffs-v1";
+export const HANDOFF_KEY = "linen-earth-atelier-handoffs-v1";
 export type HandoffStatus = "requested" | "in_review" | "fabric_check" | "ready_for_consultation";
 export type AtelierHandoff = {
   id: string;
