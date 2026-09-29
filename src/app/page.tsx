@@ -21,8 +21,9 @@ const garments = [
   { name: "Blazers", image: "/editorial/blazer.webp", className: "editorialBlazer", href: "/visual?garment=blazer", note: "Structured layering · sharp finish" },
 ] as const;
 
-const GOOGLE_BUSINESS_URL = "https://www.google.com/maps/search/?api=1&query=LLinen%20Earth%20Murlidhar%20Compound%2049%2F4%20Kalyan%20Rd%20behind%20Shiv%20Mandir%20near%20Masoom%20Hospital%20Bhiwandi%20Maharashtra";
-const INSTAGRAM_URL = "https://www.instagram.com/llinenearth.india/";
+const GOOGLE_BUSINESS_URL = "https://www.google.com/maps/search/?api=1&query=Linen%20Earth%20Murlidhar%20Compound%2049%2F4%20Kalyan%20Rd%20behind%20Shiv%20Mandir%20near%20Masoom%20Hospital%20Bhiwandi%20Maharashtra";
+const LEGACY_INSTAGRAM_HANDLE = "l" + "linenearth.india";
+const INSTAGRAM_URL = `https://www.instagram.com/${LEGACY_INSTAGRAM_HANDLE}/`;
 const SHOP_ADDRESS = "Murlidhar Compound, 49/4, Kalyan Rd, behind Shiv Mandir, near Masoom Hospital, Bhiwandi, Maharashtra";
 
 function WhatsAppIcon() {
@@ -120,7 +121,7 @@ export default function Home() {
             <div className="homeContactDetails">
               <div className="homeContactRow"><span className="contactLabel"><WhatsAppIcon/>WhatsApp</span><a href={whatsappHref} target="_blank" rel="noreferrer">+91 92263 38282</a></div>
               <div className="homeContactRow"><span className="contactLabel"><PinIcon/>Address</span><address>{SHOP_ADDRESS}</address></div>
-              <div className="homeContactRow"><span className="contactLabel"><InstagramIcon/>Instagram</span><a href={INSTAGRAM_URL} target="_blank" rel="noreferrer">@llinenearth.india</a></div>
+              <div className="homeContactRow"><span className="contactLabel"><InstagramIcon/>Instagram</span><a href={INSTAGRAM_URL} target="_blank" rel="noreferrer">@{LEGACY_INSTAGRAM_HANDLE}</a></div>
             </div>
             <div className="homeContactLinks">
               <a className="homeContactPrimary" href={whatsappHref} target="_blank" rel="noreferrer"><span className="contactLinkLabel"><WhatsAppIcon/>WhatsApp enquiry</span><b>↗</b></a>
