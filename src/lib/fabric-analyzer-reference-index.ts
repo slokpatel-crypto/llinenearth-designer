@@ -1073,7 +1073,7 @@ export const FABRIC_REFERENCE_SOURCES = [
   }
 ] as const;
 
-export const FABRIC_REFERENCE_INDEX_VERSION = "real-reference-v2" as const;
+export const FABRIC_REFERENCE_INDEX_VERSION = "real-reference-v3" as const;
 
 export const FABRIC_REFERENCE_COUNTS = {
   materials: REAL_MENSWEAR_MATERIAL_TERMS.length,
