@@ -30,6 +30,22 @@ import {
   storeFabricAnalysis,
 } from "@/lib/fabric-analyzer-store";
 
+import {
+  colorFamilies,
+  garmentUses,
+  occasions,
+  climateTags,
+  collarOptions,
+  cuffOptions,
+  shirtFitOptions,
+  trouserDirectionOptions,
+  patternStrategies,
+} from "@/lib/vocab";
+import {
+  adaptFabricProfileToV4,
+  type FabricAnalyzerProfileV4,
+} from "@/lib/fabric-intelligence-adapter";
+
 export type FabricAnalyzerContext = {
   fabricId?:string;
   imageUrl:string;
@@ -42,63 +58,7 @@ export type FabricAnalyzerContext = {
   notes?:string;
 };
 
-export type FabricAnalyzerProfile = {
-  version:"fabric-analyzer-v3";
-  observed:{
-    dominantColor:string;
-    colorFamily:string;
-    undertone:"warm"|"cool"|"neutral"|"uncertain";
-    depth:"very-light"|"light"|"mid"|"deep"|"very-deep";
-    saturation:"muted"|"soft"|"medium"|"rich"|"vivid";
-    secondaryColors:string[];
-    patternFamily:"solid"|"stripe"|"check"|"dot"|"botanical"|"floral"|"geometric"|"paisley"|"abstract"|"melange"|"textured"|"other";
-    patternScale:"none"|"fine"|"medium"|"bold";
-    patternDensity:"none"|"sparse"|"balanced"|"dense";
-    patternContrast:"low"|"medium"|"high";
-    orientation:"none"|"vertical"|"horizontal"|"grid"|"all-over"|"directional"|"uncertain";
-    visibleTexture:string[];
-    weaveAppearance:string[];
-    sheen:"matte"|"low"|"medium"|"high"|"uncertain";
-    visualWeight:"light-looking"|"medium-looking"|"heavy-looking"|"uncertain";
-  };
-  inferredStyle:{
-    personality:string[];
-    formality:1|2|3|4|5;
-    statementLevel:1|2|3|4|5;
-    bestGarments:string[];
-    bestOccasions:string[];
-    climateVisualFit:string[];
-    recommendedConstruction:{
-      collars:string[];
-      cuffs:string[];
-      shirtFits:string[];
-      trouserDirections:string[];
-    };
-    pairing:{
-      goodColorFamilies:string[];
-      avoidColorFamilies:string[];
-      goodPatternStrategy:string[];
-    };
-  };
-  confidence:{
-    color:number;
-    pattern:number;
-    texture:number;
-    styling:number;
-  };
-  evidence:{
-    verifiedFacts:string[];
-    visualObservations:string[];
-    uncertainClaims:string[];
-  };
-  references:{
-    materialTerms:string[];
-    patternTerms:string[];
-    colorTerms:string[];
-    sourceIds:string[];
-  };
-  summary:string;
-};
+export type FabricAnalyzerProfile = FabricAnalyzerProfileV4;
 
 const ALLOWED_HOSTS=[
   /^https:\/\/[^/]+\.vercel-storage\.com\//i,
@@ -140,12 +100,12 @@ function outputText(payload:unknown) {
 const schema={
   type:"object",
   properties:{
-    version:{type:"string",enum:["fabric-analyzer-v3"]},
+    version:{type:"string",enum:["fabric-analyzer-v4"]},
     observed:{
       type:"object",
       properties:{
         dominantColor:{type:"string",maxLength:80},
-        colorFamily:{type:"string",maxLength:60},
+        colorFamily:{type:"string",enum:colorFamilies.map((item)=>item.id)},
         undertone:{type:"string",enum:["warm","cool","neutral","uncertain"]},
         depth:{type:"string",enum:["very-light","light","mid","deep","very-deep"]},
         saturation:{type:"string",enum:["muted","soft","medium","rich","vivid"]},
@@ -169,16 +129,16 @@ const schema={
         personality:{type:"array",items:{type:"string",maxLength:60},maxItems:8},
         formality:{type:"integer",minimum:1,maximum:5},
         statementLevel:{type:"integer",minimum:1,maximum:5},
-        bestGarments:{type:"array",items:{type:"string",maxLength:60},maxItems:10},
-        bestOccasions:{type:"array",items:{type:"string",maxLength:80},maxItems:10},
-        climateVisualFit:{type:"array",items:{type:"string",maxLength:60},maxItems:8},
+        bestGarments:{type:"array",items:{type:"string",enum:garmentUses.map((item)=>item.id)},maxItems:10},
+        bestOccasions:{type:"array",items:{type:"string",enum:occasions.map((item)=>item.id)},maxItems:10},
+        climateVisualFit:{type:"array",items:{type:"string",enum:climateTags.map((item)=>item.id)},maxItems:8},
         recommendedConstruction:{
           type:"object",
           properties:{
-            collars:{type:"array",items:{type:"string",maxLength:60},maxItems:8},
-            cuffs:{type:"array",items:{type:"string",maxLength:60},maxItems:8},
-            shirtFits:{type:"array",items:{type:"string",maxLength:60},maxItems:6},
-            trouserDirections:{type:"array",items:{type:"string",maxLength:80},maxItems:8},
+            collars:{type:"array",items:{type:"string",enum:collarOptions.map((item)=>item.id)},maxItems:8},
+            cuffs:{type:"array",items:{type:"string",enum:cuffOptions.map((item)=>item.id)},maxItems:8},
+            shirtFits:{type:"array",items:{type:"string",enum:shirtFitOptions.map((item)=>item.id)},maxItems:6},
+            trouserDirections:{type:"array",items:{type:"string",enum:trouserDirectionOptions.map((item)=>item.id)},maxItems:8},
           },
           required:["collars","cuffs","shirtFits","trouserDirections"],
           additionalProperties:false,
@@ -186,9 +146,9 @@ const schema={
         pairing:{
           type:"object",
           properties:{
-            goodColorFamilies:{type:"array",items:{type:"string",maxLength:50},maxItems:10},
-            avoidColorFamilies:{type:"array",items:{type:"string",maxLength:50},maxItems:8},
-            goodPatternStrategy:{type:"array",items:{type:"string",maxLength:100},maxItems:8},
+            goodColorFamilies:{type:"array",items:{type:"string",enum:colorFamilies.map((item)=>item.id)},maxItems:10},
+            avoidColorFamilies:{type:"array",items:{type:"string",enum:colorFamilies.map((item)=>item.id)},maxItems:8},
+            goodPatternStrategy:{type:"array",items:{type:"string",enum:patternStrategies.map((item)=>item.id)},maxItems:8},
           },
           required:["goodColorFamilies","avoidColorFamilies","goodPatternStrategy"],
           additionalProperties:false,
@@ -322,6 +282,17 @@ Garment uses: ${MENSWEAR_GARMENT_USES.join(", ")}.
 Occasions: ${MENSWEAR_OCCASION_TAXONOMY.join(", ")}.
 Evidence discipline: ${FABRIC_ANALYZER_EVIDENCE_RULES.join(" ")}
 
+Closed output vocabulary (return IDs exactly, never rephrase them):
+Color families: ${colorFamilies.map((item)=>item.id).join(", ")}.
+Garment uses: ${garmentUses.map((item)=>item.id).join(", ")}.
+Occasions: ${occasions.map((item)=>item.id).join(", ")}.
+Climate tags: ${climateTags.map((item)=>item.id).join(", ")}.
+Designer collars: ${collarOptions.map((item)=>`${item.id}=${item.label}`).join("; ")}.
+Designer cuffs: ${cuffOptions.map((item)=>`${item.id}=${item.label}`).join("; ")}.
+Designer shirt fits: ${shirtFitOptions.map((item)=>`${item.id}=${item.label}`).join("; ")}.
+Designer trouser directions: ${trouserDirectionOptions.map((item)=>`${item.id}=${item.label}`).join("; ")}.
+Pattern strategies: ${patternStrategies.map((item)=>item.id).join(", ")}.
+
 Real-reference corpus ${FABRIC_REFERENCE_INDEX_VERSION}:
 - ${FABRIC_REFERENCE_COUNTS.materials} material/construction terms from real mills and textile authorities: ${REAL_MENSWEAR_MATERIAL_TERMS.join(", ")}.
 - ${FABRIC_REFERENCE_COUNTS.patterns} source-backed pattern/construction terms: ${REAL_MENSWEAR_PATTERN_TERMS.join(", ")}.
@@ -382,7 +353,9 @@ Known context, if any: ${declared || "No verified context supplied; rely only on
   const raw=await response.json() as unknown;
   const text=outputText(raw);
   if(!text) throw new Error("Fabric Analyzer returned no structured output.");
-  return validatedProfile(JSON.parse(text) as FabricAnalyzerProfile);
+  const adapted=adaptFabricProfileToV4(JSON.parse(text));
+  if(!adapted) throw new Error("Fabric Analyzer returned an unsupported schema version.");
+  return validatedProfile(adapted);
 }
 
 export type FabricAnalyzerRun = {
