@@ -64,6 +64,7 @@ export type DesignerSearchResult = {
   reasons: string[];
   tradeoffs: string[];
   comparison: string[];
+  fitAdaptation?: string;
 };
 
 export type DesignerSearchInput = {
@@ -163,6 +164,28 @@ function styleForTier(
     waistband:pick("waistband",/belt loops/i,base.waistband),
     break:pick("break",/no break/i,base.break),
     collarFinish:"Self-fabric",
+  };
+}
+
+function fitAdaptedStyle(
+  style:DesignerStyle,
+  measurements?:MeasurementProfile|null,
+  observations?:TailorObservationProfile|null,
+) {
+  const first=assessBlockStrategy(measurements,style,observations);
+  const patch=first.suggestedPatch;
+  if(!patch || !Object.keys(patch).length) return {style,reason:""};
+
+  const next={...style};
+  const changed:string[]=[];
+  for(const [key,value] of Object.entries(patch) as Array<[keyof DesignerStyle,string]>) {
+    if(!value || !DESIGNER_STYLE_CHOICES[key].includes(value) || next[key]===value) continue;
+    next[key]=value;
+    changed.push(key==="shirtFit" ? `shirt fit → ${value}` : key==="trouser" ? `trouser → ${value}` : `${String(key)} → ${value}`);
+  }
+  return {
+    style:next,
+    reason:changed.length ? `Fit-aware adjustment: ${changed.join("; ")} based on saved measurements/tailor observations.` : "",
   };
 }
 
@@ -453,7 +476,8 @@ function tradeoffsFor(
 }
 
 function currentMetrics(input:DesignerSearchInput,tier:DesignerSearchTier) {
-  const style=styleForTier(tier,input.occasion,input.chosenStyle);
+  const baseStyle=styleForTier(tier,input.occasion,input.chosenStyle);
+  const style=fitAdaptedStyle(baseStyle,input.measurements,input.observations).style;
   const recommendation=evaluateDesignerCombo(input.currentShirt,input.currentPant,input.occasion,style,undefined,input.context);
   const fit=assessFitConstruction(input.measurements,style,{climate:input.context.climate,shirtFabric:input.currentShirt,trouserFabric:input.currentPant,observations:input.observations});
   const brand=evaluateLinenEarthBrandLanguage(input.currentShirt,input.currentPant,style,input.occasion,input.context);
@@ -514,7 +538,9 @@ export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearc
   const rankedByTier=new Map<DesignerSearchTier,RankedCandidate[]>();
 
   for(const tier of tiers) {
-    const style=styleForTier(tier,input.occasion,input.chosenStyle);
+    const baseStyle=styleForTier(tier,input.occasion,input.chosenStyle);
+    const adapted=fitAdaptedStyle(baseStyle,input.measurements,input.observations);
+    const style=adapted.style;
     const ranked:RankedCandidate[]=[];
     for(const shirt of shirts) {
       for(const pant of pants) {
@@ -540,7 +566,8 @@ export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearc
           tier,shirt,pant,style,recommendation,fitConstruction:fit,brandLanguage:brand,blockStrategy:block,casebookSignal,fitOutcomeSignal,decision,
           searchScore:clampScore(decision.overall+briefScore+occasionScore),
           noveltyScore:novelty,
-          reasons:[...reasonsFor(tier,scope,recommendation,fit,brand,block,novelty,casebookSignal,fitOutcomeSignal),...(occasionReason?[occasionReason]:[]),...(briefReason?[briefReason]:[])].slice(0,4),
+          reasons:[...(adapted.reason?[adapted.reason]:[]),...reasonsFor(tier,scope,recommendation,fit,brand,block,novelty,casebookSignal,fitOutcomeSignal),...(occasionReason?[occasionReason]:[]),...(briefReason?[briefReason]:[])].slice(0,4),
+          ...(adapted.reason ? {fitAdaptation:adapted.reason} : {}),
           tradeoffs:[
             ...tradeoffsFor(recommendation,fit,brand,block),
             ...(casebookSignal.evidence>=3 && casebookSignal.score<=-2 ? [`Operator-reviewed casebook caution: ${casebookSignal.summary}`] : []),
