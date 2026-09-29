@@ -622,8 +622,14 @@
 .newDesignerBriefRead>span{font-size:6px;letter-spacing:.12em;color:#9b684f;font-weight:800;margin-right:2px}
 .newDesignerBriefRead>b{font-size:6px;font-weight:600;color:#516b80;border:1px solid #dde4e9;background:#fff;border-radius:999px;padding:4px 6px}
 .newDesignerBriefResults{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:10px}
-.newDesignerBriefResults>article{min-width:0;display:grid;grid-template-rows:auto 1fr auto;gap:8px;padding:8px;border:1px solid #e1d9cf;background:#fff;border-radius:11px}
-.newDesignerBriefPair{display:grid;grid-template-columns:1fr 1fr;gap:3px;height:64px;overflow:hidden;border-radius:7px;background:#eee8e1}
+.newDesignerBriefResults>article{min-width:0;display:grid;grid-template-rows:auto auto 1fr auto;gap:8px;padding:8px;border:1px solid #e1d9cf;background:#fff;border-radius:11px}
+.newDesignerBriefModel{position:relative;height:220px;overflow:hidden;border-radius:8px;background:#0a1726}
+.newDesignerBriefModel .directorExistingModel{position:absolute;inset:0;display:grid;place-items:center;overflow:hidden;background:#0a1726}
+.newDesignerBriefModel .directorExistingModel canvas{display:block;width:100%;height:100%;object-fit:cover}
+.newDesignerBriefModel .directorExistingModel[data-ready="false"] canvas{opacity:.32}
+.newDesignerBriefModel .directorExistingModelState{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;background:rgba(10,23,38,.78);color:#fff;padding:7px 9px;font-size:6px;letter-spacing:.09em;white-space:nowrap}
+.newDesignerBriefModel>span{position:absolute;left:7px;bottom:7px;z-index:3;background:rgba(255,255,255,.9);color:#33485d;padding:5px 6px;border-radius:999px;font-size:5.5px;letter-spacing:.1em;font-weight:800}
+.newDesignerBriefPair{display:grid;grid-template-columns:1fr 1fr;gap:3px;height:52px;overflow:hidden;border-radius:7px;background:#eee8e1}
 .newDesignerBriefPair img{display:block;width:100%;height:100%;object-fit:cover}
 .newDesignerBriefCopy{min-width:0}
 .newDesignerBriefCopy>span{display:block;font-size:5.5px;letter-spacing:.1em;color:#9b684f;font-weight:800}
@@ -637,6 +643,7 @@
   .newDesignerBriefHead>button{width:100%}
   .newDesignerBriefResults{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:3px}
   .newDesignerBriefResults>article{flex:0 0 78%;scroll-snap-align:start}
+  .newDesignerBriefModel{height:300px}
 }
 
 
