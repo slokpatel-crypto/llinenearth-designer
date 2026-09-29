@@ -260,6 +260,7 @@ console.log("Style Director real-model spec gate passed: full pair, cut, context
 
 const designerBriefRoute = fs.readFileSync("src/app/api/designer/brief/route.ts","utf8");
 const designerBriefEngine = fs.readFileSync("src/lib/designer/brief.ts","utf8");
+const designerSearch = fs.readFileSync("src/lib/designer/search.ts","utf8");
 for (const token of ["parseDesignerBrief","searchDesignerCatalogue","scope:\"open\"","tierOrder"]) {
   if (!designerBriefRoute.includes(token)) throw new Error(`One-line Designer route regression: missing ${token}`);
 }
