@@ -465,7 +465,7 @@ for (const token of ["creativeDirection","drawCreativePattern","Photoreal render
   if (!creativePreview.includes(token)) throw new Error(`Designer V5 visual loop regression: missing ${token}`);
 }
 const aiVisualization = fs.readFileSync("src/lib/ai-visualization.ts","utf8");
-for (const token of ["inspectCreativeRender","heroVisibility","boundaryIntegrity","protectedChange","CREATIVE_ZONE_BOXES","PROTECTED_RENDER_BOXES","Visual hierarchy contract","semanticCreativeRenderCheck","ai-gateway.vercel.sh/v1/responses","LINEN_VISUAL_CRITIC_MODEL","redesignReason","referenceDataUri","fabricContext","heroAccuracy","fabricFidelity","supportCompetition","Compare them rather than judging","renderCaution","learnedRenderEdit"]) {
+for (const token of ["inspectCreativeRender","heroVisibility","boundaryIntegrity","protectedChange","CREATIVE_ZONE_BOXES","PROTECTED_RENDER_BOXES","Visual hierarchy contract","semanticCreativeRenderCheck","ai-gateway.vercel.sh/v1/responses","LINEN_VISUAL_CRITIC_MODEL","openai/gpt-5.4","redesignReason","referenceDataUri","fabricContext","heroAccuracy","fabricFidelity","supportCompetition","Compare them rather than judging","renderCaution","learnedRenderEdit"]) {
   if (!aiVisualization.includes(token)) throw new Error(`Designer V5 render-inspection regression: missing ${token}`);
 }
 const creativeRenderRoute = fs.readFileSync("src/app/api/designer/creative-render/route.ts","utf8");
