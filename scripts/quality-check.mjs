@@ -31,6 +31,7 @@ const required = [
   "src/app/designer-studio/page.tsx",
   "src/lib/designer/search.ts",
   "src/app/api/designer/casebook/route.ts",
+  "src/app/api/designer/creative-inspect/route.ts",
   "src/lib/designer/casebook.ts",
   "src/app/brand/linen-earth-logo.png/route.ts",
 ];
