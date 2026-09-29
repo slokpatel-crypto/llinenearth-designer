@@ -526,6 +526,10 @@ export type CreativeVisualCheck = {
   boundaryIntegrity:number;
   protectedChange:number;
   notes:string[];
+  semanticAvailable:boolean;
+  semanticStatus?:"pass"|"review";
+  semanticIssue?:string;
+  redesignReason?:CreativeFeedbackReason;
 };
 
 export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCreativeFeedback, onCreativeInspection }: {
