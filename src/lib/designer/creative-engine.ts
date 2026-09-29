@@ -1148,7 +1148,8 @@ function buildDirection(seed:Seed,input:CreativeLabInput,iteration:number,treatm
       )
     : freedom==="exploratory" ? 2 : 0;
   const overall=round(scoreCritics(reads,freedom)+learning.score+researchExpansionBonus);
-  const certainty=certaintyFor(recommendation,seed,treatments,pattern);
+  const renderPenalty=learning.renderRisk==="high"?10:learning.renderRisk==="moderate"?4:0;
+  const certainty=round(certaintyFor(recommendation,seed,treatments,pattern)-renderPenalty);
   const construction=reads.find((item)=>item.id==="construction")?.score ?? 0;
   const aesthetic=reads.find((item)=>item.id==="aesthetic")?.score ?? 0;
   const ruleConflict=recommendation.formality.match===false || recommendation.rules.some((item)=>item.status==="flag"&&item.severity==="High");
