@@ -1,5 +1,5 @@
 export const FABRIC_INTELLIGENCE_WEIGHTS={
-  trust:{reviewed:1,highConfidence:.72,provisional:.28},
+  trust:{reviewed:1,highConfidence:.60,provisional:.28},
   targetFormality:{Casual:1.7,SmartCasual:2.7,SemiFormal:3.7,Formal:4.6},
   targetStatement:{Safe:1.7,Elevated:3,Statement:4.25},
   formality:{scale:7,base:2,range:3.5},
