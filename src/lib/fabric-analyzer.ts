@@ -59,6 +59,10 @@ export type FabricAnalyzerContext = {
   // Physical scale is owner/supplier data. The Analyzer never infers mm from pixels.
   swatchRealWidthMm?:number;
   repeatRealMm?:number;
+  verifiedGsm?:number;
+  verifiedDrape?:"Fluid"|"Balanced"|"Structured";
+  verifiedFiberContent?:string;
+  verifiedPhysicalSourceUrl?:string;
   // Internal server-generated evidence used for content fingerprinting and to
   // avoid fetching/measuring the same image twice in one analysis run.
   contentSha256?:string;
@@ -374,6 +378,9 @@ export async function analyzeMenswearFabric(rawInput:FabricAnalyzerContext):Prom
     input.supplierPatternName ? `Supplier pattern name: ${safeText(input.supplierPatternName,120)}.` : "",
     Number.isFinite(input.swatchRealWidthMm) ? `Owner/supplier-declared photographed swatch width: ${input.swatchRealWidthMm} mm.` : "",
     Number.isFinite(input.repeatRealMm) ? `Owner/supplier-declared pattern repeat: ${input.repeatRealMm} mm.` : "",
+    Number.isFinite(input.verifiedGsm) ? `VERIFIED physical GSM: ${input.verifiedGsm}, source ${safeText(input.verifiedPhysicalSourceUrl||input.sourcePageUrl||"owner supplied",500)}.` : "",
+    input.verifiedDrape ? `VERIFIED physical drape class: ${input.verifiedDrape}, source ${safeText(input.verifiedPhysicalSourceUrl||input.sourcePageUrl||"owner supplied",500)}.` : "",
+    input.verifiedFiberContent ? `VERIFIED fibre content: ${safeText(input.verifiedFiberContent,220)}, source ${safeText(input.verifiedPhysicalSourceUrl||input.sourcePageUrl||"owner supplied",500)}.` : "",
     input.notes ? `Additional context: ${safeText(input.notes,500)}.` : "",
     input.captureMeasurements?.macro ? "Macro capture supplied for texture/weave appearance." : "",
     input.captureMeasurements?.fold ? "Fold capture supplied for visual fall/structure appearance only." : "",
@@ -538,6 +545,12 @@ Statement 1=quiet base, 5=dominant hero fabric.`;
       color:Math.min(adapted.confidence.color,measuredConfidence),
       pattern:Math.min(adapted.confidence.pattern,measuredConfidence),
     },
+    verifiedPhysical:{
+      gsm:Number.isFinite(input.verifiedGsm) ? Math.max(20,Math.min(1000,Number(input.verifiedGsm))) : null,
+      drape:input.verifiedDrape || null,
+      fiberContent:input.verifiedFiberContent ? safeText(input.verifiedFiberContent,220) : null,
+      sourceUrl:safeText(input.verifiedPhysicalSourceUrl||input.sourcePageUrl,1800)||null,
+    },
     measured,
     imageQuality:measured.imageQuality,
     renderAssets:{
@@ -575,6 +588,9 @@ Statement 1=quiet base, 5=dominant hero fabric.`;
       "inferredStyle":"modelJudged",
       ...(input.declaredMaterial?{"evidence.declaredMaterial":"declared" as const}:{}),
       ...(input.declaredFabricType?{"evidence.declaredFabricType":"declared" as const}:{}),
+      ...(Number.isFinite(input.verifiedGsm)?{"verifiedPhysical.gsm":"declared" as const}:{}),
+      ...(input.verifiedDrape?{"verifiedPhysical.drape":"declared" as const}:{}),
+      ...(input.verifiedFiberContent?{"verifiedPhysical.fiberContent":"declared" as const}:{}),
       ...(Number.isFinite(input.repeatRealMm)||Number.isFinite(input.swatchRealWidthMm)
         ? {"measured.pattern.physicalScale":"declared" as const}:{}),
     },
