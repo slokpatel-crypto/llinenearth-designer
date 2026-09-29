@@ -1,4 +1,4 @@
-import reference from "../reference-data.json";
+import reference from "../reference-data.json" with { type: "json" };
 import type { GarmentOption, GarmentOptionGroup } from "./types.ts";
 
 type Row=Record<string,unknown>;
