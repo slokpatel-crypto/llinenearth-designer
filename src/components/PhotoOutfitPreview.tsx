@@ -674,7 +674,10 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
           <button type="button" aria-pressed={creativeReview==="up"} onClick={()=>{setCreativeReview("up");setCreativeReviewReason(null);onCreativeFeedback("up");}}>Yes</button>
           <button type="button" aria-pressed={creativeReview==="down"} onClick={()=>{setCreativeReview("down");setCreativeReviewReason(null);onCreativeFeedback("down");}}>Redesign</button>
         </div>
-        {creativeReview==="down" && <div className="newDesignerCreativeReviewReasons">{CREATIVE_FEEDBACK_REASONS.slice(0,6).map(([id,label])=><button key={id} type="button" aria-pressed={creativeReviewReason===id} onClick={()=>{setCreativeReviewReason(id);onCreativeFeedback("down",id);}}>{label}</button>)}</div>}
+        {creativeReview==="down" && <>
+          <small className="newDesignerCreativeReviewHint">Choose what failed. Designer will switch to a revised direction automatically.</small>
+          <div className="newDesignerCreativeReviewReasons">{CREATIVE_FEEDBACK_REASONS.slice(0,7).map(([id,label])=><button key={id} type="button" aria-pressed={creativeReviewReason===id} onClick={()=>{setCreativeReviewReason(id);onCreativeFeedback("down",id);}}>{label}</button>)}</div>
+        </>}
       </div>}
       {creativeAiError && <p className="newDesignerCreativeRenderError">{creativeAiError}</p>}
     </div>}
