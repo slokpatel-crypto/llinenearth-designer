@@ -439,7 +439,7 @@ export function DesignerModule() {
       setBriefInterpretation(data.interpretation);
       setBriefResults(Array.isArray(data.results)?data.results:[]);
       try {
-        recordStyleMemoryEvent(designerSession(),"designer_brief",{
+        recordStyleMemoryEvent(designerSession(),"designer_override",{
           brief:briefText.slice(0,500),
           occasion:data.interpretation.occasion,
           context:data.interpretation.context,
