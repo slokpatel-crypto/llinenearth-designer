@@ -164,6 +164,8 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", ["PhotorealView","chooseP
 requireTokens("src/lib/ai-visualization.ts", ["SelectedLookVisualCheck","inspectSelectedLookFashnOutput","repairSelectedLookFashnFront","assertFashnRepairRateLimit"]);
 requireTokens("src/app/api/designer/look-inspect/route.ts", ["inspectSelectedLookFashnOutput","cache-control","no-store"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["/api/designer/look-inspect","selectedCheck","Repair once","repairSelectedLook"]);
+requireTokens("src/lib/ai-visualization.ts", ['view:SelectedLookView="front"',"Expected camera/view:","three-quarter","side","back"]);
+requireTokens("src/components/PhotoOutfitPreview.tsx", ["activeSelectedCheck","inspectSelectedLook(data.result,view)","This camera view needs review"]);
 requireTokens("src/app/api/designer/look-download/route.ts", ["OFFICIAL_FASHN_OUTPUT","content-disposition","private, no-store"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["/api/designer/look-download","activeImage","encodeURIComponent(activeImage)"]);
 requireTokens("src/components/DesignerModule.tsx", [
