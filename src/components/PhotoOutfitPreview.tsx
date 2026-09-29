@@ -526,6 +526,7 @@ export type CreativeVisualCheck = {
   boundaryIntegrity:number;
   protectedChange:number;
   notes:string[];
+  evidenceAvailable:boolean;
   semanticAvailable:boolean;
   semanticStatus?:"pass"|"review";
   semanticIssue?:string;
@@ -709,9 +710,9 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
         {creativeCoverage.visible.slice(0,2).map((item)=><b key={item}>{item}</b>)}
         {creativeCoverage.specOnly.length>0 && <b>{creativeCoverage.specOnly.length} detail{creativeCoverage.specOnly.length===1?"":"s"} need photoreal render</b>}
       </div>
-      {creativeAi?.visualCheck && <div className="newDesignerRenderCheck" data-status={creativeAi.visualCheck.status}>
-        <span>{creativeAi.visualCheck.status==="pass" ? "VISUAL CHECK PASSED" : "VISUAL CHECK / REDESIGNING"}</span>
-        <p>{creativeAi.visualCheck.status==="pass" ? "The main design detail reads clearly and the garment boundaries remain stable." : "The render did not express the design cleanly enough, so V5 is moving to a revised direction."}</p>
+      {creativeAi?.visualCheck && <div className="newDesignerRenderCheck" data-status={creativeAi.visualCheck.evidenceAvailable ? creativeAi.visualCheck.status : "review"}>
+        <span>{!creativeAi.visualCheck.evidenceAvailable ? "VISUAL CHECK UNAVAILABLE" : creativeAi.visualCheck.status==="pass" ? "VISUAL CHECK PASSED" : "VISUAL CHECK / REDESIGNING"}</span>
+        <p>{!creativeAi.visualCheck.evidenceAvailable ? "Keep the render for manual review; V5 will not redesign from missing evidence." : creativeAi.visualCheck.status==="pass" ? "The main design detail reads clearly and the garment boundaries remain stable." : "The render did not express the design cleanly enough, so V5 is moving to a revised direction."}</p>
       </div>}
       {creativeAi && onCreativeFeedback && <div className="newDesignerCreativeReview newDesignerCreativeReviewCompact">
         <span>DOES IT WORK?</span>
