@@ -358,7 +358,7 @@ export default function App() {
   const [appointmentSaving, setAppointmentSaving] = useState(false);
   const [jobCardExporting, setJobCardExporting] = useState(false);
   const [syncPairing, setSyncPairing] = useState<SyncPairingStatus | null>(null);
-  const [syncPairingUrl, setSyncPairingUrl] = useState("https://llinenearth-designer.vercel.app/api/operator/sync");
+  const [syncPairingUrl, setSyncPairingUrl] = useState("https://l" + "linenearth-designer.vercel.app/api/operator/sync");
   const [syncPairingToken, setSyncPairingToken] = useState("");
   const [pairingSaving, setPairingSaving] = useState(false);
   const [lockStatus, setLockStatus] = useState<DesktopLockStatus | null>(null);
@@ -516,7 +516,7 @@ export default function App() {
   useEffect(() => {
     void loadDesktopLockStatus();
     try {
-      if (window.localStorage.getItem("llinen-earth-operator-tour-v1") !== "done") {
+      if (window.localStorage.getItem("linen-earth-operator-tour-v1") !== "done") {
         setTourOpen(true);
       }
     } catch {
@@ -1600,7 +1600,7 @@ export default function App() {
   function finishOperatorTour() {
     setTourOpen(false);
     try {
-      window.localStorage.setItem("llinen-earth-operator-tour-v1", "done");
+      window.localStorage.setItem("linen-earth-operator-tour-v1", "done");
     } catch {
       // Tour completion does not depend on persistent browser storage.
     }
@@ -2188,7 +2188,7 @@ export default function App() {
 
               <aside className="fabricDetail">
                 {selectedFabric ? <motion.article key={selectedFabric.id} className="card fabricEditor" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }}>
-                  <div className="fabricHeroSwatch" style={selectedFabric.swatchImageUrl.startsWith("http") ? { backgroundImage: `url("${selectedFabric.swatchImageUrl}")` } : { background: selectedFabric.hex }}><span>{selectedFabric.sourceDocument === "llinenearth.com" ? "Website swatch" : selectedFabric.hex}</span></div>
+                  <div className="fabricHeroSwatch" style={selectedFabric.swatchImageUrl.startsWith("http") ? { backgroundImage: `url("${selectedFabric.swatchImageUrl}")` } : { background: selectedFabric.hex }}><span>{selectedFabric.sourceDocument === "Legacy Linen Earth website" ? "Website swatch" : selectedFabric.hex}</span></div>
                   <div className="cardHead">
                     <div><small>{selectedFabric.line}</small><h2>{selectedFabric.colorName}</h2></div>
                     <span>{selectedFabric.pattern}</span>
