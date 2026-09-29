@@ -1,6 +1,8 @@
 import { FABRIC_STOCK, type FabricColorway } from "@/lib/fabric-stock";
 import reference from "./reference-data.json";
 import { optionsFor } from "./options/library.ts";
+import { fromLegacyStyle } from "./style-spec-v2.ts";
+import { evaluateCrossGarmentRules } from "./rules/evaluator.ts";
 
 export type OccasionTier = "Casual" | "Smart-Casual" | "Semi-Formal" | "Formal";
 export type RuleStatus = "pass" | "flag" | "unknown" | "not_applicable";
@@ -498,6 +500,31 @@ export function evaluateDesignerCombo(shirt: DesignerFabric, pant: DesignerFabri
   if (occasion === "Formal" && ((shirtPatternScore !== null && shirtPatternScore < 4) || (pantPatternScore !== null && pantPatternScore < 4))) {
     rules.push(rule("FORMAL-PRINT", "High", "flag", "A visible print reads too relaxed for the requested formal look."));
   }
+
+  const crossRules=evaluateCrossGarmentRules({
+    spec:fromLegacyStyle(style),
+    occasion,
+    climate:context.climate,
+    shirtPatternScale:shirt.patternScale,
+    pantPatternScale:pant.patternScale,
+    shirtWeightClass:shirt.weightClass,
+    pantWeightClass:pant.weightClass,
+    shirtDrapeVerified:Boolean(shirt.drape && shirt.weightGsm!==null),
+    pantDrapeVerified:Boolean(pant.drape && pant.weightGsm!==null),
+  });
+  for(const cross of crossRules) {
+    // CR-4 remains the compatibility identifier used by saved reports; the
+    // shared rule engine owns the equivalent pattern logic for StyleSpec v2,
+    // but we avoid double-counting it in the legacy recommendation score.
+    if(cross.ruleId==="CG-PATTERN-LOAD") continue;
+    rules.push(rule(
+      cross.ruleId,
+      cross.severity,
+      cross.effect==="bonus" ? "pass" : "flag",
+      cross.explanation,
+    ));
+  }
+
   const penalties = { High: 35, Medium: 16, Low: 7 } as const;
   const fit = Math.max(0, 100 - rules.reduce((sum, item) => sum + (item.status === "flag" ? penalties[item.severity] : 0), 0));
   const unknownCount = rules.filter((item) => item.status === "unknown").length;
