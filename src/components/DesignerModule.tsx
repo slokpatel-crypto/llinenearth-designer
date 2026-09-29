@@ -22,7 +22,7 @@ import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
 import { evaluateLinenEarthBrandLanguage } from "@/lib/designer/brand-language";
 import { buildCanonicalGarmentSpec, canonicalGarmentSpecSummary } from "@/lib/designer/garment-spec";
 import { searchDesignerCatalogue, type DesignerSearchResult, type DesignerSearchScope } from "@/lib/designer/search";
-import { generateCreativeDirections, type CreativeDirection } from "@/lib/designer/creative-engine";
+import { chooseCreativeRedesign, generateCreativeDirections, type CreativeDirection } from "@/lib/designer/creative-engine";
 import type { DesignerCasebook } from "@/lib/designer/casebook";
 import type { FitOutcomeBook } from "@/lib/designer/fit-outcomes";
 import { creativeFamilyFromConceptId, type CreativeLearningBook, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
@@ -397,6 +397,19 @@ export function DesignerModule() {
         note:"Visual review of the photoreal V5 concept render.",
       });
     } catch { /* Creative review remains optional if memory storage is unavailable. */ }
+
+    if(rating==="down" && creativeReason) {
+      const candidates=generateCreativeDirections({
+        shirt,pant,occasion,style,context:{climate,intention},
+        measurements:measurementProfile,observations:tailorObservations,
+        creativeLearning,creativeResearch,researchFreedom:"maximum",limit:12,
+      });
+      const redesign=chooseCreativeRedesign(candidates,activeCreative,creativeReason);
+      if(redesign) {
+        setCreativeDirections([redesign,...candidates.filter((item)=>item.id!==redesign.id)].slice(0,5));
+        useCreativeDirection(redesign);
+      }
+    }
   }
 
   function useCreativeDirection(direction:CreativeDirection) {
