@@ -1281,6 +1281,32 @@ function signature(item:CreativeDirection) {
   ].join("|");
 }
 
+function directionDiversity(direction:CreativeDirection) {
+  const hero=[...direction.treatments].sort((a,b)=>b.intensity-a.intensity)[0];
+  return {
+    heroZone:hero?.zone || "none",
+    patternFamily:direction.pattern?.family || "none",
+    researchIds:new Set(direction.research.map((item)=>item.id)),
+    class:direction.explorationClass,
+  };
+}
+
+function diversityBonus(candidate:CreativeDirection,chosen:CreativeDirection[]) {
+  if(!chosen.length) return 0;
+  const read=directionDiversity(candidate);
+  let bonus=0;
+  const zones=new Set(chosen.map((item)=>directionDiversity(item).heroZone));
+  const patterns=new Set(chosen.map((item)=>directionDiversity(item).patternFamily));
+  const classes=new Set(chosen.map((item)=>directionDiversity(item).class));
+  if(!zones.has(read.heroZone)) bonus+=12;
+  if(!patterns.has(read.patternFamily)) bonus+=read.patternFamily==="none"?3:10;
+  if(!classes.has(read.class)) bonus+=6;
+  const usedResearch=new Set(chosen.flatMap((item)=>item.research.map((research)=>research.id)));
+  const freshResearch=[...read.researchIds].filter((id)=>!usedResearch.has(id)).length;
+  bonus+=Math.min(12,freshResearch*5);
+  return bonus;
+}
+
 function pairwisePreference(a:CreativeDirection,b:CreativeDirection,freedom:CreativeFreedom) {
   const score=(item:CreativeDirection,id:CreativeCriticId)=>item.critics.find((critic)=>critic.id===id)?.score ?? 0;
   const weights:Record<CreativeCriticId,number>=freedom==="maximum"
@@ -1464,9 +1490,14 @@ export function generateCreativeDirections(input:CreativeLabInput):CreativeDirec
       || b.overall-a.overall
     )[0]);
   }
-  for(const item of tournamentRanked) {
-    add(item);
-    if(output.length>=limit) break;
+  while(output.length<limit) {
+    const candidate=[...tournamentRanked]
+      .filter((item)=>output.every((chosen)=>signature(chosen)!==signature(item)))
+      .sort((a,b)=>
+        (revisionMerit(b)+diversityBonus(b,output))-(revisionMerit(a)+diversityBonus(a,output))
+      )[0];
+    if(!candidate) break;
+    add(candidate);
   }
   return output;
 }
