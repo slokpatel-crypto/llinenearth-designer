@@ -1,6 +1,6 @@
-# LLinen Earth Designer
+# Linen Earth Designer
 
-Current milestone: **Phase 9 complete — all planned MVP phases 0–9 are implemented**.
+Current milestone: **Phase 10 in progress — Phase A shared closed vocabularies is complete and verified**.
 
 Implemented:
 - premium black / deep-navy editorial website foundation and official LLinen Earth brand intro
@@ -15,13 +15,15 @@ Implemented:
 - Phase 9 deterministic quality benchmark suite, CI quality gate, recoverable global error/loading states and human-reviewed learning loop
 - customer feedback capture on saved designs; feedback is queued for review and never mutates the Fashion Brain automatically
 - `/quality` dashboard showing benchmark health, Fashion Brain coverage, saved designs, handoffs and review queue
-- CI now runs `npm run quality` before the production Next.js build
+- Phase 10A shared closed vocabularies: stable colour/pattern/occasion/garment/Designer option IDs, Fabric Analyzer v4 closed enums, v3 adapter, exact-ID pairing and unit tests
+- CI now runs `npm run quality`, `npm test`, `npm run release:check`, then the production Next.js build
 
 Run locally:
 
 ```bash
 npm install
 npm run quality
+npm test
 npm run dev
 ```
 
