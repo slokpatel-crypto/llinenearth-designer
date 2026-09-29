@@ -9,7 +9,7 @@ export type MeasurementProfile = {
   updatedAt: string;
 };
 
-export const MEASUREMENT_STORAGE_KEY = "llinen-earth-measurements-v1";
+export const MEASUREMENT_STORAGE_KEY = "linen-earth-measurements-v1";
 export const emptyMeasurementProfile = (): MeasurementProfile => ({ version: 1, unit: "in", shirt: {}, pants: {}, updatedAt: new Date().toISOString() });
 
 export function toCm(value: number, unit: MeasurementUnit) { return unit === "cm" ? value : value * 2.54; }
