@@ -32,11 +32,24 @@ const required = [
   "src/lib/designer/search.ts",
   "src/app/api/designer/casebook/route.ts",
   "src/lib/designer/casebook.ts",
+  "src/app/brand/linen-earth-logo.png/route.ts",
 ];
 
 for (const file of required) {
   if (!fs.existsSync(file)) throw new Error(`Missing required Phase 0–9 file: ${file}`);
 }
+
+function sourceFiles(dir) {
+  return fs.readdirSync(dir,{withFileTypes:true}).flatMap((entry)=>{
+    const full=`${dir}/${entry.name}`;
+    if(entry.isDirectory()) return sourceFiles(full);
+    return /\.(?:ts|tsx|js|mjs|css|json|md)$/.test(entry.name) ? [full] : [];
+  });
+}
+const brandTypo=("l"+"linen").toLowerCase();
+const typoHits=sourceFiles("src").filter((file)=>fs.readFileSync(file,"utf8").toLowerCase().includes(brandTypo));
+if(typoHits.length) throw new Error(`Linen Earth brand spelling regression: double-L typo remains in ${typoHits.join(", ")}`);
+console.log("Linen Earth brand spelling gate passed: no double-L typo remains in src.");
 
 const intelligence = fs.readFileSync("src/lib/fashion-intelligence.ts","utf8");
 const wearIds = [...intelligence.matchAll(/id:\s*"(?:SH|TR|JK|SU|IN)-[^"]+"/g)].length;
