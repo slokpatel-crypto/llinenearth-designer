@@ -1,8 +1,9 @@
 import type { StyleSpecV2 } from "./style-spec-v2.ts";
 import { GARMENT_OPTION_LIBRARY, optionById } from "./options/library.ts";
 import type { RenderSupport } from "./options/types.ts";
+import type { BodyBuild, BodyPreviewProfile } from "./body-profile.ts";
 
-export type ModelBuild="slim"|"regular"|"athletic"|"broad";
+export type ModelBuild=BodyBuild;
 export type PreviewView="front"|"back";
 export type FabricRenderAsset={
   tileUrl:string;
@@ -31,6 +32,7 @@ export type ModelGeometry={
   shoePaths:string[];
   shirtHemY:number;
   waistY:number;
+  heightScale:number;
 };
 
 const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
@@ -38,7 +40,10 @@ const n=(value:unknown,fallback:number)=>typeof value==="number"&&Number.isFinit
 const param=(id:string,key:string,fallback:number)=>n(optionById(id)?.parameters[key],fallback);
 
 /** A construction drawing, never a cutting pattern or physical fit simulation. */
-export function modelGeometry(spec:StyleSpecV2,view:PreviewView="front",build:ModelBuild="regular"):ModelGeometry {
+export function modelGeometry(spec:StyleSpecV2,view:PreviewView="front",body:ModelBuild|BodyPreviewProfile="regular"):ModelGeometry {
+  const build:ModelBuild=typeof body==="string" ? body : body.build;
+  const heightCm=typeof body==="string" ? 178 : body.heightCm;
+  const heightScale=clamp(heightCm/178,.92,1.08);
   const buildDelta={slim:-8,regular:0,athletic:7,broad:16}[build];
   const ease=param(spec.shirt.fit,"chestEaseCm",spec.shirt.fit==="relaxed_fit"?20:14);
   const bodyHalf=clamp(84+(ease-14)*1.3+buildDelta,70,120);
@@ -100,7 +105,7 @@ export function modelGeometry(spec:StyleSpecV2,view:PreviewView="front",build:Mo
     headPath:"M 273 71 Q 271 27 320 25 Q 369 27 367 71 L 358 112 Q 344 139 320 140 Q 296 139 282 112 Z",
     handPaths:[`M 172 ${sleeveBottom+1} L 216 ${sleeveBottom+3} L 212 ${sleeveBottom+47} Q 187 ${sleeveBottom+67} 175 ${sleeveBottom+37} Z`,`M 424 ${sleeveBottom+3} L 468 ${sleeveBottom+1} L 465 ${sleeveBottom+37} Q 453 ${sleeveBottom+67} 428 ${sleeveBottom+47} Z`],
     shoePaths:[`M ${315-hem*2-3} ${bottomY-2} L 313 ${bottomY-2} L 313 926 Q ${315-hem*2-32} 939 ${315-hem*2-42} 923 Z`,`M 327 ${bottomY-2} L ${325+hem*2+3} ${bottomY-2} L ${325+hem*2+42} 923 Q ${325+hem*2+32} 939 327 926 Z`],
-    shirtHemY,waistY,
+    shirtHemY,waistY,heightScale,
   };
 }
 
