@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import {
-  CLIMATES,
   DESIGNER_STYLE_CHOICES,
-  INTENTIONS,
-  OCCASIONS,
   designerFabricFromStock,
+  type DesignerClimate,
   type DesignerContext,
+  type DesignerIntention,
   type DesignerStyle,
   type OccasionTier,
 } from "@/lib/designer/engine";
@@ -20,6 +19,10 @@ import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "
 
 export const runtime="nodejs";
 export const maxDuration=30;
+
+const OCCASIONS:OccasionTier[]=["Casual","Smart-Casual","Semi-Formal","Formal"];
+const CLIMATES:DesignerClimate[]=["Not specified","Hot / humid","Cool","Air-conditioned"];
+const INTENTIONS:DesignerIntention[]=["Understated","Balanced","Expressive"];
 
 const registry=(globalThis as typeof globalThis & {__linenCreativeGenerateRate?:Map<string,{at:number;count:number}>}).__linenCreativeGenerateRate ||= new Map<string,{at:number;count:number}>();
 
