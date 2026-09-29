@@ -1,3 +1,4 @@
+import { readBrandEnv } from "@/lib/runtime-compat";
 const COOKIE_NAME = "linen_operator_session";
 const SESSION_HOURS = 12;
 
@@ -26,7 +27,7 @@ function decodeJson<T>(value: string): T | null {
 }
 
 async function hmac(value: string) {
-  const secret = process.env.LINEN_OPERATOR_SESSION_SECRET;
+  const secret = readBrandEnv("LINEN_OPERATOR_SESSION_SECRET");
   if (!secret || secret.length < 32) return null;
   const key = await crypto.subtle.importKey(
     "raw",
