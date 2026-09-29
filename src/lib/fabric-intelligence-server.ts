@@ -21,15 +21,28 @@ function toIntelligence(row:BoundFabricAnalysis):DesignerFabricIntelligence|null
   const average=(confidence.color+confidence.pattern+confidence.texture+confidence.styling)/4;
   const reviewed=row.review_status==="approved" || row.review_status==="corrected";
   const hasReferences=Boolean(profile.references.sourceIds.length || profile.references.materialTerms.length || profile.references.patternTerms.length);
+  const imageQualityScore=profile.imageQuality?.score ?? profile.measured?.imageQuality.score ?? null;
+  const measuredAgreement=Boolean(
+    profile.measured
+    && imageQualityScore!==null
+    && imageQualityScore>=75
+    && profile.reviewNeeded.every((item)=>!/Measured\/model .* disagreement/i.test(item))
+  );
   const trust:DesignerFabricIntelligence["trust"]=reviewed
     ? "reviewed"
-    : average>=.78 && hasReferences && profile.reviewNeeded.length===0 ? "high-confidence" : "provisional";
+    : average>=.82 && measuredAgreement && hasReferences && profile.reviewNeeded.length===0 ? "high-confidence" : "provisional";
 
   return {
     profileId:row.id,
     analyzerVersion:row.analyzer_version,
     reviewStatus:row.review_status,
     trust,
+    measuredEvidence:{
+      imageQualityScore,
+      colorDeltaE:profile.measured?.colour.deltaE ?? null,
+      patternPhysicalScale:profile.measured?.pattern.physicalScaleStatus ?? null,
+      contentSha256:profile.measured?.contentSha256 ?? null,
+    },
     colorFamily:profile.observed.colorFamily,
     undertone:profile.observed.undertone,
     depth:profile.observed.depth,
