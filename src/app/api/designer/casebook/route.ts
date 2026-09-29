@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { aggregateDesignerCasebook } from "@/lib/designer/casebook";
 import { aggregateFitOutcomes } from "@/lib/designer/fit-outcomes";
-import { aggregateCreativeLearning } from "@/lib/designer/creative-learning";
-import { aggregateCreativeResearch } from "@/lib/designer/creative-research";
 import { FASHION_RESEARCH_POOL_STATS } from "@/lib/designer/fashion-research-source-pool";
 
 export const runtime = "nodejs";
@@ -21,8 +19,6 @@ export async function GET() {
       configured:false,
       casebook:aggregateDesignerCasebook([]),
       fitOutcomes:aggregateFitOutcomes([]),
-      creativeLearning:aggregateCreativeLearning([]),
-      creativeResearch:aggregateCreativeResearch([]),
       researchPool:FASHION_RESEARCH_POOL_STATS,
     },{headers:{"cache-control":"no-store"}});
   }
@@ -35,39 +31,23 @@ export async function GET() {
       order:"received_at.asc",
       limit:"3000",
     });
-    const feedbackParams=new URLSearchParams({
-      select:"type,source,payload",
-      source:"eq.style-director",
-      type:"eq.designer_feedback",
-      order:"received_at.asc",
-      limit:"3000",
+    const operatorResponse=await fetch(`${cloud.url}/rest/v1/style_events?${operatorParams.toString()}`,{
+      headers:{...supabaseAdminHeaders(cloud),accept:"application/json"},cache:"no-store",
     });
-    const [operatorResponse,feedbackResponse]=await Promise.all([
-      fetch(`${cloud.url}/rest/v1/style_events?${operatorParams.toString()}`,{
-        headers:{...supabaseAdminHeaders(cloud),accept:"application/json"},cache:"no-store",
-      }),
-      fetch(`${cloud.url}/rest/v1/style_events?${feedbackParams.toString()}`,{
-        headers:{...supabaseAdminHeaders(cloud),accept:"application/json"},cache:"no-store",
-      }),
-    ]);
 
-    if(!operatorResponse.ok || !feedbackResponse.ok) {
-      const failed=!operatorResponse.ok?operatorResponse:feedbackResponse;
-      console.error("[designer/casebook]",failed.status,(await failed.text()).slice(0,300));
+    if(!operatorResponse.ok) {
+      console.error("[designer/casebook]",operatorResponse.status,(await operatorResponse.text()).slice(0,300));
       return NextResponse.json({error:"Designer casebook is temporarily unavailable."},{status:502});
     }
 
     const operatorRows=await operatorResponse.json() as CaseRow[];
-    const feedbackRows=await feedbackResponse.json() as CaseRow[];
-    const events=[...operatorRows,...feedbackRows].map((row)=>({
+    const events=operatorRows.map((row)=>({
       type:row.type,
       source:row.source,
       payload:row.payload || {},
     }));
     const casebook=aggregateDesignerCasebook(events);
     const fitOutcomes=aggregateFitOutcomes(events);
-    const creativeLearning=aggregateCreativeLearning(events);
-    const creativeResearch=aggregateCreativeResearch(events);
 
     // Only aggregate reviewed design/fit signatures leave the server. No raw
     // measurements, session identifiers, customer data or free-form notes are returned.
@@ -75,8 +55,6 @@ export async function GET() {
       configured:true,
       casebook,
       fitOutcomes,
-      creativeLearning,
-      creativeResearch,
       researchPool:FASHION_RESEARCH_POOL_STATS,
     },{headers:{"cache-control":"no-store"}});
   } catch(error) {
