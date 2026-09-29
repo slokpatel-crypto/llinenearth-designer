@@ -520,12 +520,21 @@ export function composePhotoOutfit(
   }
 }
 
-export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCreativeFeedback }: {
+type CreativeVisualCheck = {
+  status:"pass"|"review";
+  heroVisibility:number;
+  boundaryIntegrity:number;
+  protectedChange:number;
+  notes:string[];
+};
+
+export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCreativeFeedback, onCreativeInspection }: {
   shirt: DesignerFabric;
   pant: DesignerFabric;
   style: DesignerStyle;
   creativeDirection?: CreativeDirection | null;
   onCreativeFeedback?: (rating:"up"|"down",reason?:CreativeFeedbackReason)=>void;
+  onCreativeInspection?: (check:CreativeVisualCheck)=>void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
@@ -533,7 +542,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
   const [inspectFit, setInspectFit] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
   const [showBoundaries, setShowBoundaries] = useState(false);
-  const [creativeAi, setCreativeAi] = useState<{image:string;jobId:string;creditsUsed:number;conceptId:string;generatedAt:string}|null>(null);
+  const [creativeAi, setCreativeAi] = useState<{image:string;jobId:string;creditsUsed:number;conceptId:string;generatedAt:string;visualCheck:CreativeVisualCheck}|null>(null);
   const [creativeAiLoading, setCreativeAiLoading] = useState(false);
   const [creativeAiError, setCreativeAiError] = useState("");
   const [showCreativeAi, setShowCreativeAi] = useState(false);
@@ -594,10 +603,11 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
           },
         }),
       });
-      const data=await response.json() as {result?:{image:string;jobId:string;creditsUsed:number;conceptId:string;generatedAt:string};error?:string};
+      const data=await response.json() as {result?:{image:string;jobId:string;creditsUsed:number;conceptId:string;generatedAt:string;visualCheck:CreativeVisualCheck};error?:string};
       if(!response.ok || !data.result) throw new Error(data.error || "Photoreal render failed.");
       setCreativeAi(data.result);
       setShowCreativeAi(true);
+      onCreativeInspection?.(data.result.visualCheck);
     } catch(error) {
       setCreativeAiError(error instanceof Error ? error.message : "Photoreal render failed.");
     } finally {
@@ -668,6 +678,14 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
         {creativeCoverage.visible.slice(0,2).map((item)=><b key={item}>{item}</b>)}
         {creativeCoverage.specOnly.length>0 && <b>{creativeCoverage.specOnly.length} detail{creativeCoverage.specOnly.length===1?"":"s"} need photoreal render</b>}
       </div>
+      {creativeAi && <div className="newDesignerRenderCheck" data-status={creativeAi.visualCheck.status}>
+        <span>AUTO VISUAL CHECK</span>
+        <div>
+          <b>Hero {creativeAi.visualCheck.heroVisibility}</b>
+          <b>Boundaries {creativeAi.visualCheck.boundaryIntegrity}</b>
+        </div>
+        <p>{creativeAi.visualCheck.notes[0]}</p>
+      </div>}
       {creativeAi && onCreativeFeedback && <div className="newDesignerCreativeReview newDesignerCreativeReviewCompact">
         <span>DOES IT WORK?</span>
         <div>
