@@ -1273,6 +1273,52 @@ function signature(item:CreativeDirection) {
   ].join("|");
 }
 
+function pairwisePreference(a:CreativeDirection,b:CreativeDirection,freedom:CreativeFreedom) {
+  const score=(item:CreativeDirection,id:CreativeCriticId)=>item.critics.find((critic)=>critic.id===id)?.score ?? 0;
+  const weights:Record<CreativeCriticId,number>=freedom==="maximum"
+    ? {aesthetic:.40,originality:.34,brand:.06,menswear:.08,construction:.12}
+    : freedom==="exploratory"
+      ? {aesthetic:.35,originality:.27,brand:.12,menswear:.14,construction:.12}
+      : {aesthetic:.32,originality:.23,brand:.16,menswear:.18,construction:.11};
+  let margin=0;
+  for(const id of ["aesthetic","originality","brand","menswear","construction"] as CreativeCriticId[]) {
+    const delta=score(a,id)-score(b,id);
+    // A tiny difference is not meaningful enough to count as a real preference.
+    if(Math.abs(delta)>=3) margin+=Math.sign(delta)*weights[id]*Math.min(16,Math.abs(delta));
+  }
+  const aHierarchy=criticFacetScore(a,"aesthetic","Hierarchy");
+  const bHierarchy=criticFacetScore(b,"aesthetic","Hierarchy");
+  if(Math.abs(aHierarchy-bHierarchy)>=4) margin+=Math.sign(aHierarchy-bHierarchy)*.55;
+  const aDistance=a.critics.find((critic)=>critic.id==="originality")?.facets?.find((facet)=>facet.label==="Source distance")?.score ?? 0;
+  const bDistance=b.critics.find((critic)=>critic.id==="originality")?.facets?.find((facet)=>facet.label==="Source distance")?.score ?? 0;
+  if(Math.abs(aDistance-bDistance)>=5) margin+=Math.sign(aDistance-bDistance)*.45;
+  if(a.risk!==b.risk) {
+    const riskValue={low:0,moderate:1,high:2};
+    margin+=(riskValue[b.risk]-riskValue[a.risk])*.35;
+  }
+  return margin;
+}
+
+function pairwiseTournament(items:CreativeDirection[],freedom:CreativeFreedom) {
+  const reads=items.map((item)=>({item,wins:0,losses:0,margin:0}));
+  for(let i=0;i<reads.length;i+=1) {
+    for(let j=i+1;j<reads.length;j+=1) {
+      const margin=pairwisePreference(reads[i].item,reads[j].item,freedom);
+      reads[i].margin+=margin;
+      reads[j].margin-=margin;
+      if(margin>0.18){reads[i].wins+=1;reads[j].losses+=1;}
+      else if(margin<-0.18){reads[j].wins+=1;reads[i].losses+=1;}
+    }
+  }
+  return reads
+    .sort((a,b)=>
+      (b.wins-b.losses)-(a.wins-a.losses)
+      || b.margin-a.margin
+      || revisionMerit(b.item)-revisionMerit(a.item)
+    )
+    .map((read)=>read.item);
+}
+
 /**
  * V5 Creative Lab.
  * It intentionally ranks visual/aesthetic and originality judgment above construction.
@@ -1342,7 +1388,7 @@ export function generateCreativeDirections(input:CreativeLabInput):CreativeDirec
   first.sort((a,b)=>b.direction.overall-a.direction.overall);
   const refineCount=freedom==="maximum"?Math.min(64,first.length):freedom==="exploratory"?Math.min(18,first.length):Math.min(8,first.length);
   const refined=first.slice(0,refineCount).map(({seed,direction})=>redesignLoop(seed,input,direction));
-  refined.sort((a,b)=>revisionMerit(b)-revisionMerit(a) || b.certainty-a.certainty);
+  const tournamentRanked=pairwiseTournament(refined,freedom);
 
   const output:CreativeDirection[]=[];
   const limit=Math.max(1,input.limit||3);
@@ -1352,22 +1398,22 @@ export function generateCreativeDirections(input:CreativeLabInput):CreativeDirec
   };
 
   // Do not let a single conservative aggregate score erase the research frontier.
-  add(refined[0]);
+  add(tournamentRanked[0]);
   if(freedom==="maximum" && limit>1) {
-    add([...refined].sort((a,b)=>{
+    add([...tournamentRanked].sort((a,b)=>{
       const ao=a.critics.find((x)=>x.id==="originality")?.score || 0;
       const bo=b.critics.find((x)=>x.id==="originality")?.score || 0;
       return bo-ao || b.researchUtilization-a.researchUtilization;
     })[0]);
   }
   if(freedom==="maximum" && limit>2) {
-    add([...refined].sort((a,b)=>
+    add([...tournamentRanked].sort((a,b)=>
       (b.explorationClass==="frontier"?1:0)-(a.explorationClass==="frontier"?1:0)
       || b.researchUtilization-a.researchUtilization
       || b.overall-a.overall
     )[0]);
   }
-  for(const item of refined) {
+  for(const item of tournamentRanked) {
     add(item);
     if(output.length>=limit) break;
   }
