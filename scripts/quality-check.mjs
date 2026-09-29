@@ -253,10 +253,33 @@ for (const token of ["selectedLook.realModel","Open Linen Earth Real Model Desig
   if (!styleDirectorUiHandoff.includes(token)) throw new Error(`Style Director real-model handoff regression: missing ${token}`);
 }
 const realModelDesignerHandoff = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ['params.get("shirt")','params.get("pant")','params.get("style")',"sourceTitle","sourceTier","sourceReason","planDesignerDirections(routedShirtFabric","STYLE DIRECTOR"]) {
+for (const token of ['params.get("shirt")','params.get("pant")','params.get("style")',"sourceTitle","sourceTier","sourceReason","requestLookAssessment({","STYLE DIRECTOR"]) {
   if (!realModelDesignerHandoff.includes(token)) throw new Error(`Real-model Director loading regression: missing ${token}`);
 }
 console.log("Style Director real-model spec gate passed: full pair, cut, context and auto-assessment handoff protected.");
+
+const designerBriefRoute = fs.readFileSync("src/app/api/designer/brief/route.ts","utf8");
+const designerBriefEngine = fs.readFileSync("src/lib/designer/brief.ts","utf8");
+for (const token of ["parseDesignerBrief","searchDesignerCatalogue","scope:\"open\"","tierOrder"]) {
+  if (!designerBriefRoute.includes(token)) throw new Error(`One-line Designer route regression: missing ${token}`);
+}
+for (const token of ["occasionFrom","climateFrom","intentionFrom","colorPreferences","preferredTier"]) {
+  if (!designerBriefEngine.includes(token)) throw new Error(`One-line Designer interpretation regression: missing ${token}`);
+}
+for (const token of ["/api/designer/brief","newDesignerBrief","Create 3 directions","one_line_designer_brief"]) {
+  if (!realDesignerModule.includes(token)) throw new Error(`One-line Designer UI regression: missing ${token}`);
+}
+console.log("One-line Designer gate passed: natural brief, stock search, fit context and three-direction handoff protected.");
+
+const photoPreviewMultiView = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+const selectedLookRenderRoute = fs.readFileSync("src/app/api/designer/look-render/route.ts","utf8");
+for (const token of ["PhotorealView","choosePhotorealView","three-quarter","Generate 3/4","photorealViews"]) {
+  if (!photoPreviewMultiView.includes(token)) throw new Error(`Photoreal multi-view UI regression: missing ${token}`);
+}
+for (const token of ["renderSelectedLookFashnView","frontImage","three-quarter","side","back"]) {
+  if (!selectedLookRenderRoute.includes(token)) throw new Error(`Photoreal multi-view route regression: missing ${token}`);
+}
+console.log("Photoreal multi-view gate passed: front, three-quarter, side and back generation paths protected.");
 
 
 const measurementPage = fs.readFileSync("src/app/measurements/page.tsx","utf8");
