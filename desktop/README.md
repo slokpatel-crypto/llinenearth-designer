@@ -1,19 +1,19 @@
-# LLinen Earth OS
+# Linen Earth OS
 
-Private Windows operator software for LLinen Earth.
+Private Windows operator software for Linen Earth.
 
 ## What this is
 
 The public website and the operator software are intentionally separate:
 
-- **Website**: customer-facing discovery, Style Director, real LLinen Earth fabric selection, FASHN visualization and enquiry.
-- **LLinen Earth OS**: private customers, leads, tailoring orders, measurements, payments, appointments, inventory, visuals, analytics, AI-assisted priorities and business memory.
+- **Website**: customer-facing discovery, Style Director, real Linen Earth fabric selection, FASHN visualization and enquiry.
+- **Linen Earth OS**: private customers, leads, tailoring orders, measurements, payments, appointments, inventory, visuals, analytics, AI-assisted priorities and business memory.
 
 The desktop app is built with **Tauri 2 + React + Motion**. Tauri owns the native Windows window and local data commands; React renders the operator interface; Motion is reserved for transitions that improve comprehension.
 
 ## Current operator modules
 
-LLinen Earth OS currently includes:
+Linen Earth OS currently includes:
 
 - Today dashboard and staff priority board
 - customer search and walk-in customer creation
@@ -41,17 +41,17 @@ LLinen Earth OS currently includes:
 By default the native app uses:
 
 ```text
-%USERPROFILE%\Documents\LLinenEarthData\
+%USERPROFILE%\Documents\LinenEarthData\
   events\
   backups\
   visuals\
   imports\
 ```
 
-Set `LLINEN_EARTH_DATA_DIR` before launching if the vault should live on another drive, for example:
+Set `LINEN_EARTH_DATA_DIR` before launching if the vault should live on another drive, for example:
 
 ```powershell
-$env:LLINEN_EARTH_DATA_DIR="D:\LLinenEarthData"
+$env:LINEN_EARTH_DATA_DIR="D:\LinenEarthData"
 ```
 
 The operator app stays local-first. Cloud sync adds a second event ledger; it does not expose the PC to inbound public access.
@@ -74,7 +74,7 @@ npm install
 npm run desktop:build
 ```
 
-The repository's **Build LLinen Earth OS** GitHub Actions workflow validates the desktop frontend, builds the Windows **NSIS .exe installer**, creates a SHA-256 checksum file and uploads both as the `LLinen-Earth-OS-Windows` workflow artifact.
+The repository's **Build Linen Earth OS** GitHub Actions workflow validates the desktop frontend, builds the Windows **NSIS .exe installer**, creates a SHA-256 checksum file and uploads both as the `Linen-Earth-OS-Windows` workflow artifact.
 
 The installer is currently unsigned, so Windows SmartScreen can warn until code signing is added.
 
@@ -86,7 +86,7 @@ After those are configured:
 
 1. Open **Memory → Cloud ↔ PC**.
 2. Enter `https://<production-domain>/api/operator/sync`.
-3. Paste the production `LLINEN_OPERATOR_SYNC_TOKEN`.
+3. Paste the production `LINEN_OPERATOR_SYNC_TOKEN`.
 4. Pair the PC and run the first manual sync.
 
 The sync token is stored in Windows Credential Manager. Only the non-secret endpoint and sync state remain in the local data vault.
