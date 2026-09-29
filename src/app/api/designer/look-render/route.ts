@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import {
   assertFashnRateLimit,
+  assertFashnRepairRateLimit,
   FashnVisualizationError,
   renderSelectedLookFashnFront,
   renderSelectedLookFashnView,
+  repairSelectedLookFashnFront,
   type SelectedLookFashnRequest,
   type SelectedLookView,
 } from "@/lib/ai-visualization";
@@ -26,8 +28,19 @@ export async function POST(request:Request) {
   try {
     const body=await request.json() as unknown;
     if(!valid(body)) return NextResponse.json({error:"Selected fabrics and a supported garment configuration are required."},{status:400});
-    const input=body as SelectedLookFashnRequest & {view?:SelectedLookView;frontImage?:string};
+    const input=body as SelectedLookFashnRequest & {
+      view?:SelectedLookView;
+      frontImage?:string;
+      previousImage?:string;
+      repairInstruction?:string;
+    };
     const view:SelectedLookView=["front","three-quarter","side","back"].includes(String(input.view)) ? input.view as SelectedLookView : "front";
+    const repairInstruction=String(input.repairInstruction||"").replace(/\s+/g," ").trim().slice(0,240);
+    if(view==="front" && repairInstruction) {
+      assertFashnRepairRateLimit(request);
+      const result=await repairSelectedLookFashnFront(input,String(input.previousImage||""),repairInstruction);
+      return NextResponse.json({result});
+    }
     assertFashnRateLimit(request);
     const result=view==="front"
       ? await renderSelectedLookFashnFront(input)
