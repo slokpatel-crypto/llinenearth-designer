@@ -167,14 +167,24 @@ export function buildCanonicalGarmentSpec(
   const reviewConstruction = fitChecks.some((item) => item.severity === "review");
   const insufficientMeasurements = !fit || fit.status === "insufficient_measurements";
   const hardDesignerFlag = recommendation.rules.some((item) => item.status === "flag" && item.severity === "High");
+  const creativeVisualReviewRequired = Boolean(
+    creative && (
+      !creativeVisualReview?.evidenceAvailable ||
+      creativeVisualReview.status !== "pass" ||
+      (creativeVisualReview.semanticAvailable && creativeVisualReview.semanticStatus === "review")
+    )
+  );
 
   const unresolved = [
     ...recommendation.confirmationsNeeded,
     ...fitChecks.filter((item) => item.severity !== "info").map((item) => item.message),
+    ...(creativeVisualReviewRequired ? [
+      creativeVisualReview?.semanticIssue || "Creative concept still needs a passing photoreal visual review."
+    ] : []),
   ].filter((value, index, all) => all.indexOf(value) === index);
 
   const status: CanonicalGarmentSpecStatus =
-    hardDesignerFlag || blockingConstruction ? "review_required"
+    hardDesignerFlag || blockingConstruction || creativeVisualReviewRequired ? "review_required"
       : insufficientMeasurements || reviewConstruction || materialMissing.length > 0 ? "draft"
         : "ready_for_tailor_review";
 
@@ -282,7 +292,7 @@ export function buildCanonicalGarmentSpec(
     constructionChecks: fitChecks.map((item) => ({ ...item })),
     unresolved,
     readiness: {
-      visualization: hardDesignerFlag || blockingConstruction ? "visual_review_required" : "supported_with_current_template",
+      visualization: hardDesignerFlag || blockingConstruction || creativeVisualReviewRequired ? "visual_review_required" : "supported_with_current_template",
       tailoring: insufficientMeasurements ? "insufficient_measurements" : "tailor_review_required",
       materialVerification: materialMissing.length ? "verification_required" : "verified",
     },
@@ -292,6 +302,7 @@ export function buildCanonicalGarmentSpec(
       "This specification coordinates Designer, visualization and tailoring review; it is not a cutting pattern.",
       "Verified physical cloth data takes precedence over catalogue-derived appearance.",
       ...(creative ? ["Creative treatments are design instructions for visualization and tailor/pattern-maker review; they are not production-ready pattern pieces."] : []),
+      ...(creativeVisualReviewRequired ? ["A creative concept is not visualization-ready until the rendered result passes the visual QA loop or receives explicit human review."] : []),
     ],
   };
 }
