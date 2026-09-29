@@ -531,6 +531,7 @@ export type CreativeVisualCheck = {
   semanticStatus?:"pass"|"review";
   semanticIssue?:string;
   redesignReason?:CreativeFeedbackReason;
+  improvement?:"improved"|"same"|"worse"|"not_applicable";
 };
 
 export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCreativeFeedback, onCreativeInspection, autoRenderNonce = 0, onCreativeRenderStart, renderRepairInstruction = "" }: {
@@ -546,6 +547,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastAutoRenderNonce = useRef(0);
+  const previousReviewedRender = useRef("");
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(false);
   const [inspectFit, setInspectFit] = useState(false);
@@ -571,6 +573,10 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
     setCreativeReviewReason(null);
   },[creativeDirection?.id,shirt.id,pant.id]);
 
+  useEffect(()=>{
+    previousReviewedRender.current="";
+  },[shirt.id,pant.id]);
+
   useEffect(() => {
     let cancelled = false;
     setReady(false);
@@ -593,7 +599,10 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
 
   async function renderCreativePhotoreal(origin:"manual"|"automatic"="manual") {
     if(!creativeDirection || creativeAiLoading) return;
-    if(origin==="manual") onCreativeRenderStart?.();
+    if(origin==="manual") {
+      previousReviewedRender.current="";
+      onCreativeRenderStart?.();
+    }
     setCreativeAiLoading(true);
     setCreativeAiError("");
     try {
@@ -627,6 +636,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
           headers:{"content-type":"application/json"},
           body:JSON.stringify({
             image:data.result.image,
+            previousImage:previousReviewedRender.current || undefined,
             shirt:{id:shirt.id,name:shirt.name,line:shirt.line,image:shirt.image,hex:shirt.hex,patternType:shirt.patternType},
             pant:{id:pant.id,name:pant.name,line:pant.line,image:pant.image,hex:pant.hex,patternType:pant.patternType},
             style,
@@ -642,6 +652,8 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
         const inspected=await inspectResponse.json() as {check?:CreativeVisualCheck};
         if(inspectResponse.ok && inspected.check) {
           setCreativeAi((current)=>current && current.conceptId===data.result?.conceptId ? {...current,visualCheck:inspected.check} : current);
+          if(inspected.check.status==="review") previousReviewedRender.current=data.result.image;
+          else previousReviewedRender.current="";
           onCreativeInspection?.(inspected.check);
         }
       } catch {
