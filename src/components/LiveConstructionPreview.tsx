@@ -6,7 +6,8 @@ import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2"
 import { optionsFor } from "@/lib/designer/options/library";
 import type { GarmentOptionGroup } from "@/lib/designer/options/types";
 import { evaluateCrossGarmentRules } from "@/lib/designer/rules/evaluator";
-import { liveCapabilities, modelGeometry, type FabricRenderAsset, type ModelBuild, type PreviewView } from "@/lib/designer/live-preview";
+import { liveCapabilities, modelGeometry, type FabricRenderAsset, type PreviewView } from "@/lib/designer/live-preview";
+import { BODY_HEIGHT_OPTIONS, BODY_SKIN_TONES, DEFAULT_BODY_PREVIEW_PROFILE, type BodyPreviewProfile } from "@/lib/designer/body-profile";
 import manifest from "../../public/fabric-tiles/manifest.json";
 
 const assets=manifest.assets as Record<string,FabricRenderAsset>;
@@ -20,7 +21,7 @@ const groups:Array<{title:string;fields:Array<[keyof StyleSpecV2["shirt"]|keyof 
 ];
 
 export function LiveConstructionPreview({
-  shirt,pant,style,occasion,climate,spec:controlledSpec,onSpecChange,
+  shirt,pant,style,occasion,climate,spec:controlledSpec,onSpecChange,bodyProfile:controlledBody,onBodyProfileChange,
 }:{
   shirt:DesignerFabric;
   pant:DesignerFabric;
@@ -29,6 +30,8 @@ export function LiveConstructionPreview({
   climate:DesignerClimate;
   spec?:StyleSpecV2;
   onSpecChange?:(next:StyleSpecV2)=>void;
+  bodyProfile?:BodyPreviewProfile;
+  onBodyProfileChange?:(next:BodyPreviewProfile)=>void;
 }) {
   const base=useMemo(()=>fromLegacyStyle(style),[style]);
   const [localSpec,setLocalSpec]=useState<StyleSpecV2>(base);
@@ -37,9 +40,10 @@ export function LiveConstructionPreview({
   },[base,controlledSpec]);
   const spec=controlledSpec || localSpec;
   const [view,setView]=useState<PreviewView>("front");
-  const [build,setBuild]=useState<ModelBuild>("regular");
+  const [localBody,setLocalBody]=useState<BodyPreviewProfile>(DEFAULT_BODY_PREVIEW_PROFILE);
+  const bodyProfile=controlledBody || localBody;
   const [showControls,setShowControls]=useState(false);
-  const geometry=useMemo(()=>modelGeometry(spec,view,build),[spec,view,build]);
+  const geometry=useMemo(()=>modelGeometry(spec,view,bodyProfile),[spec,view,bodyProfile]);
   const capabilities=useMemo(()=>liveCapabilities(spec),[spec]);
   const shirtAsset=assetFor(shirt),pantAsset=assetFor(pant);
   const rules=useMemo(()=>evaluateCrossGarmentRules({spec,occasion,climate,pantDrapeVerified:false}),[spec,occasion,climate]);
@@ -53,6 +57,11 @@ export function LiveConstructionPreview({
     (next[side] as Record<string,string>)[key]=id;
     if(onSpecChange) onSpecChange(next);
     else setLocalSpec(next);
+  }
+  function changeBody(patch:Partial<BodyPreviewProfile>) {
+    const next:BodyPreviewProfile={...bodyProfile,...patch,version:1,source:"manual"};
+    if(onBodyProfileChange) onBodyProfileChange(next);
+    else setLocalBody(next);
   }
   function tileSize(asset:FabricRenderAsset|null) {
     return asset?.tileRealWidthMm ? Math.max(25,Math.min(320,asset.tileRealWidthMm*.45)) : 112;
@@ -72,7 +81,7 @@ export function LiveConstructionPreview({
     <div className="liveConstructionStage">
       <svg viewBox="0 0 640 960" role="img" aria-label={`Approximate ${view} construction study of ${shirt.name} shirt with ${pant.name} trousers`}>
         <defs>
-          <linearGradient id="lcSkin" x1="0" x2="1" y1="0" y2="1"><stop stopColor="#ceb9a5"/><stop offset=".5" stopColor="#ab927e"/><stop offset="1" stopColor="#e0cbbb"/></linearGradient>
+          <linearGradient id="lcSkin" x1="0" x2="1" y1="0" y2="1"><stop stopColor={BODY_SKIN_TONES[bodyProfile.skinTone].light}/><stop offset=".5" stopColor={BODY_SKIN_TONES[bodyProfile.skinTone].mid}/><stop offset="1" stopColor={BODY_SKIN_TONES[bodyProfile.skinTone].deep}/></linearGradient>
           <linearGradient id="lcClothLight" x1="0" x2="1"><stop stopColor="#111827" stopOpacity=".24"/><stop offset=".23" stopColor="#fff" stopOpacity=".12"/><stop offset=".52" stopColor="#fff" stopOpacity=".03"/><stop offset=".83" stopColor="#111827" stopOpacity=".13"/><stop offset="1" stopColor="#0b1321" stopOpacity=".28"/></linearGradient>
           {([["shirt",shirtAsset,shirt],["pant",pantAsset,pant]] as const).map(([name,asset,fabric])=>{
             const size=tileSize(asset);
@@ -86,6 +95,7 @@ export function LiveConstructionPreview({
           </pattern>
         </defs>
         <ellipse cx="320" cy="931" rx="182" ry="15" fill="#1b2530" opacity=".09" />
+        <g transform={`translate(320 62) scale(1 ${geometry.heightScale}) translate(-320 -62)`}>
         {geometry.shoePaths.map((path,i)=><path key={`shoe-${i}`} d={path} fill="#302e2b" stroke="#232526" strokeWidth="2"/>)}
         <path d={geometry.neckPath} fill="url(#lcSkin)" stroke="#8c7a6e" strokeOpacity=".3"/>
         <path d={geometry.headPath} fill="url(#lcSkin)" stroke="#8c7a6e" strokeOpacity=".36" strokeWidth="2"/>
@@ -104,16 +114,23 @@ export function LiveConstructionPreview({
         {view==="front"&&<g fill="#e8dec9" stroke="#454440" strokeWidth=".8">
           {[244,278,312,346,380].filter((y)=>y<geometry.shirtHemY-10).map((y)=><circle key={y} cx="320" cy={y} r="2.8"/>)}
         </g>}
+        </g>
       </svg>
       <span className="liveConstructionTag">{view.toUpperCase()} / APPROXIMATE LIVE STUDY</span>
     </div>
     <div className="liveConstructionFoot">
       <div><strong>{shirt.name}</strong><span>Shirt cloth</span></div><div><strong>{pant.name}</strong><span>Trouser cloth</span></div>
-      <p>{scaleApproximate?"Pattern scale approximate · add owner swatch width/repeat measurements for true scale.":"Pattern scale uses owner-declared measurements."}</p>
+      <p>{scaleApproximate?"Pattern scale approximate · add owner swatch width/repeat measurements for true scale.":"Pattern scale uses owner-declared measurements."} Body preview: {bodyProfile.build}, {bodyProfile.heightCm} cm · {bodyProfile.source==="measurements"?"build informed by saved measurements":"visual approximation"}.</p>
     </div>
     <div className="liveConstructionToolbar">
-      <label>Model build <select value={build} onChange={(event)=>setBuild(event.target.value as ModelBuild)}>
+      <label>Body build <select value={bodyProfile.build} onChange={(event)=>changeBody({build:event.target.value as BodyPreviewProfile["build"]})}>
         <option value="slim">Slim</option><option value="regular">Regular</option><option value="athletic">Athletic</option><option value="broad">Broad</option>
+      </select></label>
+      <label>Height <select value={bodyProfile.heightCm} onChange={(event)=>changeBody({heightCm:Number(event.target.value)})}>
+        {BODY_HEIGHT_OPTIONS.map((item)=><option key={item.id} value={item.heightCm}>{item.label}</option>)}
+      </select></label>
+      <label>Skin tone <select value={bodyProfile.skinTone} onChange={(event)=>changeBody({skinTone:event.target.value as BodyPreviewProfile["skinTone"]})}>
+        {Object.entries(BODY_SKIN_TONES).map(([id,item])=><option key={id} value={id}>{item.label}</option>)}
       </select></label>
       <button type="button" onClick={()=>setShowControls((value)=>!value)} aria-expanded={showControls}>{showControls?"Close cut controls":"Explore shirt & trouser cuts"}</button>
     </div>
