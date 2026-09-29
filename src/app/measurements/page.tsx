@@ -12,7 +12,7 @@ export default function MeasurementsPage(){
         <div className="measurementIntroCopy">
           <p className="eyebrow">LINEN EARTH · MEASUREMENT STUDIO</p>
           <h1>Measure the garment.<br/><em>See exactly where.</em></h1>
-          <p>Choose a shirt or trouser measurement and the drafting model highlights the exact line to measure. The visual behaves like a tailoring blueprint: technical, dimensional and clear—without the weight of a real 3D engine.</p>
+          <p>Choose a shirt or trouser measurement and the drafting model highlights the exact line to measure. The visual behaves like a tailoring blueprint: technical, dimensional and clear—without the weight of a real 3D engine.</p><p className="measurementUnitNote">All measurement entries use <b>inches</b> with 0.01-inch precision.</p>
           <div className="measurementIntroSteps">
             <span><b>01</b> Choose garment</span>
             <span><b>02</b> Select measurement</span>
