@@ -564,6 +564,12 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
   const gaps = photoTemplateGaps(style, templateId);
   const tucked = style.shirtWear === "Tucked";
   const creativeCoverage = creativePreviewCoverage(creativeDirection || undefined);
+  const renderSignature=JSON.stringify({
+    shirt:shirt.id,
+    pant:pant.id,
+    style,
+    creative:creativeDirection?.id ?? null,
+  });
 
   useEffect(() => {
     setCreativeAi(null);
@@ -571,11 +577,11 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
     setShowCreativeAi(false);
     setCreativeReview(null);
     setCreativeReviewReason(null);
-  },[creativeDirection?.id,shirt.id,pant.id]);
+  },[renderSignature]);
 
   useEffect(()=>{
     previousReviewedRender.current="";
-  },[shirt.id,pant.id]);
+  },[renderSignature]);
 
   useEffect(() => {
     let cancelled = false;
@@ -597,8 +603,9 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
     return () => { cancelled = true; };
   }, [shirt, pant, template, tucked, style.collarFinish, creativeDirection]);
 
-  async function renderCreativePhotoreal(origin:"manual"|"automatic"="manual") {
-    if(!creativeDirection || creativeAiLoading) return;
+  async function renderPhotoreal(origin:"manual"|"automatic"="manual") {
+    if(creativeAiLoading) return;
+    if(origin==="automatic" && !creativeDirection) return;
     if(origin==="manual") {
       previousReviewedRender.current="";
       onCreativeRenderStart?.();
@@ -606,14 +613,14 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
     setCreativeAiLoading(true);
     setCreativeAiError("");
     try {
-      const response=await fetch("/api/designer/creative-render",{
+      const response=await fetch(creativeDirection ? "/api/designer/creative-render" : "/api/designer/look-render",{
         method:"POST",
         headers:{"content-type":"application/json"},
         body:JSON.stringify({
           shirt:{id:shirt.id,name:shirt.name,line:shirt.line,image:shirt.image,hex:shirt.hex,patternType:shirt.patternType},
           pant:{id:pant.id,name:pant.name,line:pant.line,image:pant.image,hex:pant.hex,patternType:pant.patternType},
           style,
-          creative:{
+          ...(creativeDirection ? {creative:{
             id:creativeDirection.id,
             name:creativeDirection.name,
             thesis:creativeDirection.thesis,
@@ -622,7 +629,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
             renderRisk:creativeDirection.learning.renderRisk,
             renderCaution:creativeDirection.learning.renderCaution,
             repairInstruction:renderRepairInstruction || undefined,
-          },
+          }} : {}),
         }),
       });
       const data=await response.json() as {result?:{image:string;jobId:string;creditsUsed:number;conceptId:string;generatedAt:string};error?:string};
@@ -630,7 +637,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
       setCreativeAi(data.result);
       setShowCreativeAi(true);
 
-      try {
+      if(creativeDirection) try {
         const inspectResponse=await fetch("/api/designer/creative-inspect",{
           method:"POST",
           headers:{"content-type":"application/json"},
@@ -669,7 +676,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
   useEffect(()=>{
     if(!autoRenderNonce || autoRenderNonce===lastAutoRenderNonce.current || !creativeDirection || !ready || creativeAiLoading) return;
     lastAutoRenderNonce.current=autoRenderNonce;
-    void renderCreativePhotoreal("automatic");
+    void renderPhotoreal("automatic");
   },[autoRenderNonce,creativeDirection?.id,ready]);
 
   function download() {
@@ -693,7 +700,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
     </div>
     <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`}>
       <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-label={`${previewFabricLabel(shirt, pant)}, ${style.shirtWear.toLowerCase()} with ${style.collarFinish.toLowerCase()}`} />
-      {showCreativeAi && creativeAi && <img className="newDesignerPhotoAi" src={creativeAi.image} alt={`Photoreal V5 render of ${creativeDirection?.name || "selected creative concept"}`} />}
+      {showCreativeAi && creativeAi && <img className="newDesignerPhotoAi" src={creativeAi.image} alt={creativeDirection ? `Photoreal V5 render of ${creativeDirection.name}` : `Photoreal render of ${shirt.name} with ${pant.name}`} />}
       {showOriginal && <img className="newDesignerPhotoOriginal" src={tucked ? template.src : DESIGNER_PHOTO_TEMPLATES.pleated.src} alt="Original photographed model template for comparison" />}
       {showBoundaries && <svg className="newDesignerBoundaryQa" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-label="Garment boundary QA overlay">
         {tucked ? <>
@@ -716,8 +723,8 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
       <div><span>SHIRT</span><strong>{shirt.name}</strong></div>
       <div><span>TROUSER</span><strong>{pant.name}</strong></div>
       <div className="newDesignerPhotoActions newDesignerPhotoActionsCompact">
-        {creativeDirection && !creativeAi && <button className="primary" type="button" onClick={()=>void renderCreativePhotoreal("manual")} disabled={!ready || creativeAiLoading}>{creativeAiLoading ? "Rendering…" : "Photoreal render ✦"}</button>}
-        {creativeDirection && creativeAi && <button className="primary" type="button" onClick={()=>setShowCreativeAi((value)=>!value)}>{showCreativeAi ? "Instant preview" : "Photoreal render"}</button>}
+        {!creativeAi && <button className="primary" type="button" onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading}>{creativeAiLoading ? "Rendering…" : "Photoreal render ✦"}</button>}
+        {creativeAi && <button className="primary" type="button" onClick={()=>setShowCreativeAi((value)=>!value)}>{showCreativeAi ? "Instant preview" : "Photoreal render"}</button>}
         <button type="button" onClick={() => setShowOriginal((value) => !value)} disabled={!ready}>{showOriginal ? "Show design" : "Compare"}</button>
         <button type="button" onClick={download} disabled={!ready}>Save</button>
       </div>
@@ -750,8 +757,8 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
           <div className="newDesignerCreativeReviewReasons">{CREATIVE_FEEDBACK_REASONS.slice(0,7).map(([id,label])=><button key={id} type="button" aria-pressed={creativeReviewReason===id} onClick={()=>{setCreativeReviewReason(id);onCreativeFeedback("down",id);}}>{label}</button>)}</div>
         </>}
       </div>}
-      {creativeAiError && <p className="newDesignerCreativeRenderError">{creativeAiError}</p>}
     </div>}
+    {creativeAiError && <p className="newDesignerCreativeRenderError">{creativeAiError}</p>}
     <details className="newDesignerTechnicalDrawer newDesignerPhotoAccuracyCompact">
       <summary>Preview accuracy</summary>
       <p>{tucked ? "Tucked studio template" : "Untucked studio template"} · {template.trouser} · {template.break.toLowerCase()}.</p>
