@@ -1,5 +1,5 @@
 {
-  "name": "llinenearth-designer",
+  "name": "linen-earth-designer",
   "private": true,
   "version": "1.0.0",
   "scripts": {
@@ -7,7 +7,7 @@
     "quality": "node scripts/quality-check.mjs",
     "build": "next build",
     "start": "next start",
-    "local-memory": "node scripts/llinen-local-bridge.mjs",
+    "local-memory": "node scripts/linen-local-bridge.mjs",
     "operator-password": "node scripts/hash-operator-password.mjs",
     "production-secrets": "node scripts/generate-production-secrets.mjs",
     "cloud:check": "node scripts/check-cloud-readiness.mjs",
