@@ -211,6 +211,91 @@ export async function reviewFabricAnalyzerProfile(input:{
   }
 }
 
+export type FabricAnalyzerBatchItem = {
+  fabricId?:string;
+  imageUrl?:string;
+  sourcePageUrl?:string;
+  sourceId?:string;
+  declaredMaterial?:string;
+  declaredFabricType?:string;
+  supplierColorName?:string;
+  supplierPatternName?:string;
+  notes?:string;
+  force?:boolean;
+};
+
+export async function enqueueFabricAnalyzerBatch(items:FabricAnalyzerBatchItem[]) {
+  if(!config()) return null;
+  const cleanItems=items.slice(0,500).map((item)=>({
+    fabricId:clean(item.fabricId,160),
+    imageUrl:clean(item.imageUrl,1800),
+    sourcePageUrl:clean(item.sourcePageUrl,1800),
+    sourceId:clean(item.sourceId,80),
+    declaredMaterial:clean(item.declaredMaterial,120),
+    declaredFabricType:clean(item.declaredFabricType,120),
+    supplierColorName:clean(item.supplierColorName,120),
+    supplierPatternName:clean(item.supplierPatternName,120),
+    notes:clean(item.notes,500),
+    force:item.force===true,
+  })).filter((item)=>item.imageUrl||item.sourcePageUrl);
+  if(!cleanItems.length) return null;
+  const rows=await rpc<Array<{batch_id:string;queued:number}>>("fabric_analyzer_batch_enqueue",{p_items:cleanItems});
+  return rows[0] || null;
+}
+
+export type ClaimedFabricAnalyzerJob = {
+  id:string;
+  batch_id:string;
+  fabric_id:string|null;
+  image_url:string|null;
+  source_page_url:string|null;
+  source_id:string|null;
+  declared_context:Record<string,unknown>;
+  force:boolean;
+  attempts:number;
+};
+
+export async function claimFabricAnalyzerJobs(limit=4):Promise<ClaimedFabricAnalyzerJob[]> {
+  if(!config()) return [];
+  try {
+    return await rpc<ClaimedFabricAnalyzerJob[]>("fabric_analyzer_jobs_claim",{
+      p_limit:Math.max(1,Math.min(8,Math.floor(limit)||4)),
+    });
+  } catch {
+    return [];
+  }
+}
+
+export async function finishFabricAnalyzerJob(input:{
+  jobId:string;
+  status:"complete"|"error";
+  profileId?:string|null;
+  error?:string;
+}) {
+  if(!config()) return false;
+  try {
+    return await rpc<boolean>("fabric_analyzer_job_finish",{
+      p_job_id:input.jobId,
+      p_status:input.status,
+      p_profile_id:input.profileId || null,
+      p_error:clean(input.error,1000),
+    });
+  } catch {
+    return false;
+  }
+}
+
+export async function loadFabricAnalyzerBatchStatus(batchId:string) {
+  if(!config()) return [];
+  try {
+    return await rpc<Array<{status:string;count:number|string}>>("fabric_analyzer_batch_status",{
+      p_batch_id:batchId,
+    });
+  } catch {
+    return [];
+  }
+}
+
 export type FabricAnalyzerStats = {
   profiles:number;
   pending_review:number;
