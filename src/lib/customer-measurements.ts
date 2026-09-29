@@ -19,7 +19,7 @@ export type CustomerMeasurementField = {
   guideMaxCm: number;
 };
 
-export const CUSTOMER_MEASUREMENTS_KEY = "llinen-earth-customer-measurements-v1";
+export const CUSTOMER_MEASUREMENTS_KEY = "linen-earth-customer-measurements-v1";
 
 export const customerMeasurementFields: CustomerMeasurementField[] = [
   { key: "chest", label: "Chest", required: true, guideMinCm: 75, guideMaxCm: 150 },
