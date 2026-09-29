@@ -347,6 +347,8 @@ export function DesignerModule() {
     context:DesignerContext;
     creative?:CreativeDirection|null;
     visualReview?:CreativeVisualCheck|null;
+    measurements?:MeasurementProfile|null;
+    observations?:TailorObservationProfile|null;
   }) {
     const response=await fetch("/api/designer/assess",{
       method:"POST",
@@ -357,8 +359,8 @@ export function DesignerModule() {
         occasion:input.occasion,
         style:input.style,
         context:input.context,
-        measurements:measurementProfile,
-        observations:tailorObservations,
+        measurements:input.measurements===undefined?measurementProfile:input.measurements,
+        observations:input.observations===undefined?tailorObservations:input.observations,
         creative:input.creative || undefined,
         creativeVisualReview:input.visualReview || undefined,
       }),
@@ -551,114 +553,145 @@ export function DesignerModule() {
     }
     setStyle({...direction.baseStyle});
     setRecommendation(direction.recommendation);
+    setAssessment(null);
     setSearchResults([]);
     setActiveCreative(direction);
     setResponse(null);
     setFeedbackReason(null);
     setRecommendationId(null);
-    try {
-      const creativeSpec=buildCanonicalGarmentSpec(
-        direction.recommendation,
-        assessFitConstruction(measurementProfile,direction.baseStyle,{climate,shirtFabric:direction.recommendation.shirt,trouserFabric:direction.recommendation.pant,observations:tailorObservations}),
-        measurementProfile,
-        evaluateLinenEarthBrandLanguage(direction.recommendation.shirt,direction.recommendation.pant,direction.baseStyle,direction.recommendation.occasion,{climate,intention}),
-        assessBlockStrategy(measurementProfile,direction.baseStyle,tailorObservations),
-        direction,
-      );
-      const event=recordStyleMemoryEvent(designerSession(),"designer_recommendation",{
-        shirtId:direction.recommendation.shirt.id,
-        pantId:direction.recommendation.pant.id,
-        occasion:direction.recommendation.occasion,
-        style:direction.baseStyle,
-        input:{
-          source:"creative_lab_v5",
-          conceptId:direction.id,
-          conceptName:direction.name,
-          thesis:direction.thesis,
-          treatments:direction.treatments,
-          pattern:direction.pattern || null,
-          critics:direction.critics,
-          overall:direction.overall,
-          certainty:direction.certainty,
-          context:{climate,intention},
-        },
-        rules:direction.recommendation.rules,
-        confidenceScore:direction.recommendation.confidenceScore,
-        designFitScore:direction.recommendation.designFitScore,
-        materialEvidence:direction.recommendation.materialEvidence,
-        formality:direction.recommendation.formality,
-        output:direction.baseStyle,
-        reasoningText:`${direction.thesis} Creative Lab V5 selected after multi-critic refinement.`,
-        status:direction.recommendation.status,
-        ruleSetVersion:direction.recommendation.ruleSetVersion,
-        garmentSpec:{
-          version:creativeSpec.version,
-          status:creativeSpec.status,
-          creativeConceptId:creativeSpec.creative?.conceptId || "",
-          creativeTreatmentCount:creativeSpec.creative?.treatments.length || 0,
-          creativePatternId:creativeSpec.creative?.pattern?.id || "",
-          readiness:creativeSpec.readiness,
-        },
-      });
-      setRecommendationId(event.id);
-    } catch { /* Creative concept remains usable if memory storage is unavailable. */ }
+
+    void requestLookAssessment({
+      shirtId:direction.recommendation.shirt.id,
+      pantId:direction.recommendation.pant.id,
+      occasion:direction.recommendation.occasion,
+      style:direction.baseStyle,
+      context:{climate,intention},
+      creative:direction,
+      visualReview:null,
+    }).then((next)=>{
+      applyServerAssessment(next);
+      try {
+        const event=recordStyleMemoryEvent(designerSession(),"designer_recommendation",{
+          shirtId:direction.recommendation.shirt.id,
+          pantId:direction.recommendation.pant.id,
+          occasion:direction.recommendation.occasion,
+          style:direction.baseStyle,
+          input:{
+            source:"creative_lab_v5",
+            conceptId:direction.id,
+            conceptName:direction.name,
+            thesis:direction.thesis,
+            treatments:direction.treatments,
+            pattern:direction.pattern || null,
+            context:{climate,intention},
+          },
+          rules:next.recommendation.rules,
+          confidenceScore:next.recommendation.confidenceScore,
+          designFitScore:next.recommendation.designFitScore,
+          materialEvidence:next.recommendation.materialEvidence,
+          formality:next.recommendation.formality,
+          output:direction.baseStyle,
+          reasoningText:`${direction.thesis} Creative Lab V5 selected after server-side critique and refinement.`,
+          status:next.recommendation.status,
+          ruleSetVersion:next.recommendation.ruleSetVersion,
+          garmentSpec:{
+            version:next.garmentSpec.version,
+            status:next.garmentSpec.status,
+            creativeConceptId:next.garmentSpec.creative?.conceptId || "",
+            creativeTreatmentCount:next.garmentSpec.creative?.treatments.length || 0,
+            creativePatternId:next.garmentSpec.creative?.pattern?.id || "",
+            readiness:next.garmentSpec.readiness,
+          },
+        });
+        setRecommendationId(event.id);
+      } catch { /* Creative concept remains usable if memory storage is unavailable. */ }
+    }).catch((error)=>setAssessmentError(error instanceof Error?error.message:"Designer assessment is unavailable."));
   }
 
   function useSearchResult(result:DesignerSearchOption) {
     setActiveCreative(null);
+    setCreativeVisualReview(null);
     setShirtId(result.shirt.id);
     setPantId(result.pant.id);
     setStyle({...result.style});
     setRecommendation(result.recommendation);
+    setAssessment(null);
     setSearchResults([]);
     setResponse(null);
     setFeedbackReason(null);
     setRecommendationId(null);
-    try {
-      const event=recordStyleMemoryEvent(designerSession(),"designer_recommendation",{
-        shirtId:result.shirt.id,pantId:result.pant.id,occasion:result.recommendation.occasion,style:result.style,
-        input:{source:"advanced_catalogue_search",tier:result.tier,scope:searchScope,context:{climate,intention}},
-        rules:result.recommendation.rules,
-        confidenceScore:result.recommendation.confidenceScore,
-        designFitScore:result.recommendation.designFitScore,
-        materialEvidence:result.recommendation.materialEvidence,
-        formality:result.recommendation.formality,
-        output:result.style,
-        reasoningText:result.recommendation.internalReason,
-        status:result.recommendation.status,
-        ruleSetVersion:result.recommendation.ruleSetVersion,
-      });
-      setRecommendationId(event.id);
-    } catch { /* Search result remains usable when event storage is unavailable. */ }
+
+    void requestLookAssessment({
+      shirtId:result.shirt.id,pantId:result.pant.id,occasion:result.recommendation.occasion,
+      style:result.style,context:{climate,intention},
+    }).then((next)=>{
+      applyServerAssessment(next);
+      try {
+        const event=recordStyleMemoryEvent(designerSession(),"designer_recommendation",{
+          shirtId:result.shirt.id,pantId:result.pant.id,occasion:result.recommendation.occasion,style:result.style,
+          input:{source:"advanced_catalogue_search",tier:result.tier,scope:searchScope,context:{climate,intention}},
+          rules:next.recommendation.rules,
+          confidenceScore:next.recommendation.confidenceScore,
+          designFitScore:next.recommendation.designFitScore,
+          materialEvidence:next.recommendation.materialEvidence,
+          formality:next.recommendation.formality,
+          output:result.style,
+          reasoningText:next.recommendation.internalReason,
+          status:next.recommendation.status,
+          ruleSetVersion:next.recommendation.ruleSetVersion,
+          garmentSpec:{version:next.garmentSpec.version,status:next.garmentSpec.status,readiness:next.garmentSpec.readiness},
+        });
+        setRecommendationId(event.id);
+      } catch { /* Search result remains usable when event storage is unavailable. */ }
+    }).catch((error)=>setAssessmentError(error instanceof Error?error.message:"Designer assessment is unavailable."));
   }
 
-  function assess(nextStyle: DesignerStyle = style) {
-    if (!shirt || !pant) return;
+  async function assess(nextStyle: DesignerStyle = style) {
+    if (!shirt || !pant || assessmentLoading) return;
     setActiveCreative(null);
-    const context: DesignerContext = { climate, intention };
-    const proposals = planDesignerDirections(shirt, pant, occasion, nextStyle, context, measurementProfile, tailorObservations);
-    const result = proposals[0].recommendation;
+    setCreativeVisualReview(null);
     setStyle({ ...nextStyle });
-    setDirections(proposals);
-    setRecommendation(result);
+    setAssessmentLoading(true);
+    setAssessmentError("");
     setRecommendationId(null);
     setResponse(null);
     setFeedbackReason(null);
+    const context:DesignerContext={climate,intention};
     try {
-      const spec = buildCanonicalGarmentSpec(result, proposals[0].fitConstruction, measurementProfile, proposals[0].brandLanguage, proposals[0].blockStrategy);
-      const event = recordStyleMemoryEvent(designerSession(), "designer_recommendation", {
-        shirtId, pantId, occasion, style: nextStyle, input: { shirtId, pantId, occasion, style: nextStyle, context, measurementCoverage: fitCoverage, fitGuidance }, rules: result.rules,
-        confidenceScore: result.confidenceScore, designFitScore: result.designFitScore,
-        materialEvidence: result.materialEvidence, formality: result.formality,
-        output: result.style, reasoningText: result.internalReason,
-        status: result.status, ruleSetVersion: result.ruleSetVersion,
-        garmentSpec: {
-          version: spec.version, status: spec.status, fitConstructionScore: spec.decision.fitConstructionScore,
-          brandLanguageScore: spec.decision.brandLanguageScore, blockStrategyScore: spec.decision.blockStrategyScore, readiness: spec.readiness,
-        },
+      const next=await requestLookAssessment({
+        shirtId:shirt.id,pantId:pant.id,occasion,style:nextStyle,context,
       });
-      setRecommendationId(event.id);
-    } catch { /* The direction still works when event storage is unavailable. */ }
+      applyServerAssessment(next);
+      try {
+        const event=recordStyleMemoryEvent(designerSession(),"designer_recommendation",{
+          shirtId:shirt.id,pantId:pant.id,occasion,style:nextStyle,
+          input:{shirtId:shirt.id,pantId:pant.id,occasion,style:nextStyle,context,measurementCoverage:fitCoverage,fitGuidance},
+          rules:next.recommendation.rules,
+          confidenceScore:next.recommendation.confidenceScore,
+          designFitScore:next.recommendation.designFitScore,
+          materialEvidence:next.recommendation.materialEvidence,
+          formality:next.recommendation.formality,
+          output:next.recommendation.style,
+          reasoningText:next.recommendation.internalReason,
+          status:next.recommendation.status,
+          ruleSetVersion:next.recommendation.ruleSetVersion,
+          garmentSpec:{
+            version:next.garmentSpec.version,status:next.garmentSpec.status,
+            fitConstructionScore:next.garmentSpec.decision.fitConstructionScore,
+            brandLanguageScore:next.garmentSpec.decision.brandLanguageScore,
+            blockStrategyScore:next.garmentSpec.decision.blockStrategyScore,
+            readiness:next.garmentSpec.readiness,
+          },
+        });
+        setRecommendationId(event.id);
+      } catch { /* The direction still works when event storage is unavailable. */ }
+    } catch(error) {
+      setAssessment(null);
+      setRecommendation(null);
+      setAssessmentError(error instanceof Error?error.message:"Designer assessment is unavailable.");
+    } finally {
+      setAssessmentLoading(false);
+    }
   }
 
   function giveFeedback(rating: "up" | "down") {
@@ -691,6 +724,7 @@ export function DesignerModule() {
     setActiveCreative(null);
     setStyle((current) => ({ ...current, [key]: value }));
     setRecommendation(null);
+    setAssessment(null);
     setRecommendationId(null);
   }
 
@@ -698,6 +732,7 @@ export function DesignerModule() {
     setActiveCreative(null);
     setStyle((current) => ({ ...current, ...patch }));
     setRecommendation(null);
+    setAssessment(null);
     setRecommendationId(null);
   }
 
@@ -718,6 +753,7 @@ export function DesignerModule() {
     setOccasion("Semi-Formal");
     setStyle(next);
     setRecommendation(null);
+    setAssessment(null);
     setRecommendationId(null);
     setResponse(null);
     setFeedbackReason(null);
