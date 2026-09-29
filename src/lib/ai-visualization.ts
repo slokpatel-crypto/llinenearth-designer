@@ -375,6 +375,7 @@ function gatewayOutputText(payload:unknown) {
 export async function inspectSelectedLookFashnOutput(
   outputUrl:string,
   input:SelectedLookFashnRequest,
+  view:SelectedLookView="front",
 ):Promise<SelectedLookVisualCheck> {
   const token=gatewayAuthToken();
   if(!token || !OFFICIAL_FASHN_OUTPUT.test(outputUrl)) {
@@ -398,6 +399,7 @@ export async function inspectSelectedLookFashnOutput(
   const prompt=[
     "You are a strict production QA inspector for a premium menswear visualizer.",
     "Judge render fidelity, not fashion taste. The customer already chose the outfit.",
+    `Expected camera/view: ${view}. The locked studio reference may be front-facing; allow only the camera/body rotation needed for this requested view while preserving mannequin identity and outfit.`,
     `Required shirt: ${input.shirt.name}; ${input.shirt.line}; ${input.shirt.patternType}.`,
     `Required trousers: ${input.pant.name}; ${input.pant.line}; ${input.pant.patternType}.`,
     `Required construction: ${input.style.collar}; ${input.style.cuff}; ${input.style.placket}; ${input.style.shirtFit}; ${input.style.shirtWear}; ${input.style.trouser}; ${input.style.rise}; ${input.style.waistband}; ${input.style.break}.`,
