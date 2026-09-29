@@ -75,6 +75,8 @@ export type SelectedLookFashnRequest = {
   style: DesignerStyle;
 };
 
+export type SelectedLookView = "front"|"three-quarter"|"side"|"back";
+
 export type CreativeRenderVisualCheck = {
   status:"pass"|"review";
   heroVisibility:number;
@@ -504,6 +506,24 @@ Exact construction: ${safe(input.style.collar)}, ${safe(input.style.cuff)}, ${sa
 This is a fidelity render, not a redesign. Do not invent contrast panels, embroidery, piping, extra pockets, extra seams, prints, logos or decorative details. Preserve the configured collar, cuffs, placket, shirt fit, tuck state, trouser shape, rise, waistband and break. Keep natural linen weave, realistic folds and tailoring structure. Shirt fabric must remain inside the shirt silhouette and must not spill over the neck, hands, trouser waistband or background. Trouser fabric must remain inside the trouser silhouette. For a tucked shirt, the waistband must sit physically in front of the tucked shirt. Keep the mannequin fully faceless with no eyes, hair or facial features. No text, props, extra garments or cropped limbs. Full-body front fashion-catalogue photograph.`;
 }
 
+function selectedLookViewPrompt(input:SelectedLookFashnRequest,view:Exclude<SelectedLookView,"front">) {
+  const safe=(value:unknown,limit=260)=>String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
+  const camera=view==="three-quarter"
+    ? "Rotate the same mannequin to a natural three-quarter catalogue angle, about 35 degrees from front."
+    : view==="side"
+      ? "Rotate the same mannequin to a clean full-body side profile."
+      : "Rotate the same mannequin to a clean full-body back view.";
+  return `Create the ${view} view of this exact Linen Earth outfit using the supplied front render as the identity and garment reference. ${camera}
+
+Do not redesign the outfit. Preserve the exact same faceless mannequin, body proportions, shirt fabric, trouser fabric, colour balance, weave character, collar, cuff, placket, shirt fit, tuck state, trouser shape, rise, waistband, break, shoes, lighting and deep navy studio environment.
+
+Shirt: ${safe(input.shirt.name)} ${safe(input.shirt.line)}, ${safe(input.shirt.patternType)}.
+Trousers: ${safe(input.pant.name)} ${safe(input.pant.line)}, ${safe(input.pant.patternType)}.
+Construction: ${safe(input.style.collar)}, ${safe(input.style.cuff)}, ${safe(input.style.placket)}, ${safe(input.style.shirtFit)}, ${safe(input.style.shirtWear)}, ${safe(input.style.trouser)}, ${safe(input.style.rise)}, ${safe(input.style.waistband)}, ${safe(input.style.break)}.
+
+Keep hard garment boundaries. Shirt fabric must not spill onto the neck, hands, waistband, trousers or background. Trouser fabric must remain inside the trouser silhouette. For a tucked shirt, preserve the waistband physically in front of the shirt. Keep the mannequin completely faceless. No text, logo, extra props, new garments or cropped limbs. Full-body premium menswear catalogue photograph.`;
+}
+
 function creativeConceptPrompt(input:CreativeFashnRequest) {
   const safe=(value:unknown,limit=360)=>String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
   const orderedMoves=[...input.creative.treatments].sort((a,b)=>b.intensity-a.intensity).slice(0,6);
@@ -563,6 +583,25 @@ export async function renderSelectedLookFashnFront(input:SelectedLookFashnReques
     jobId:generated.jobId,
     creditsUsed:generated.creditsUsed,
     conceptId:"selected-look",
+    generatedAt:new Date().toISOString(),
+  };
+}
+
+export async function renderSelectedLookFashnView(
+  input:SelectedLookFashnRequest,
+  frontImage:string,
+  view:Exclude<SelectedLookView,"front">,
+):Promise<CreativeFashnResult> {
+  if(!OFFICIAL_FASHN_OUTPUT.test(frontImage)) {
+    throw new FashnVisualizationError("Generate the photoreal front view first.", "invalid_source");
+  }
+  const context=await creativeFabricContext(input.shirt.image,input.pant.image);
+  const generated=await runEdit(frontImage,selectedLookViewPrompt(input,view),context);
+  return {
+    image:generated.output,
+    jobId:generated.jobId,
+    creditsUsed:generated.creditsUsed,
+    conceptId:`selected-look-${view}`,
     generatedAt:new Date().toISOString(),
   };
 }
