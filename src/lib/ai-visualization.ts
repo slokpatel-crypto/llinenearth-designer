@@ -9,6 +9,8 @@ import type { DesignVersion } from "@/lib/refinement-engine";
 import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import type { CreativeFeedbackReason } from "@/lib/designer/creative-learning";
+import type { StyleSpecV2 } from "@/lib/designer/style-spec-v2";
+import { styleSpecRenderSummary } from "@/lib/designer/style-spec-v2";
 import {
   repairDevelopmentRender,
   renderDevelopmentSet,
@@ -86,6 +88,9 @@ export type SelectedLookFashnRequest = {
   shirt: Pick<DesignerFabric,"id"|"name"|"line"|"image"|"hex"|"patternType">;
   pant: Pick<DesignerFabric,"id"|"name"|"line"|"image"|"hex"|"patternType">;
   style: DesignerStyle;
+  styleSpec?:StyleSpecV2;
+  locked?:boolean;
+  lookKey?:string;
 };
 
 export type SelectedLookView = "front"|"three-quarter"|"side"|"back";
@@ -122,6 +127,7 @@ export type CreativeFashnResult = {
   creditsUsed:number;
   conceptId:string;
   generatedAt:string;
+  cached?:boolean;
 };
 
 async function stockSwatchDataUri(swatchImageUrl?: string) {
@@ -402,7 +408,7 @@ export async function inspectSelectedLookFashnOutput(
     `Expected camera/view: ${view}. The locked studio reference may be front-facing; allow only the camera/body rotation needed for this requested view while preserving mannequin identity and outfit.`,
     `Required shirt: ${input.shirt.name}; ${input.shirt.line}; ${input.shirt.patternType}.`,
     `Required trousers: ${input.pant.name}; ${input.pant.line}; ${input.pant.patternType}.`,
-    `Required construction: ${input.style.collar}; ${input.style.cuff}; ${input.style.placket}; ${input.style.shirtFit}; ${input.style.shirtWear}; ${input.style.trouser}; ${input.style.rise}; ${input.style.waistband}; ${input.style.break}.`,
+    `Required construction: ${selectedLookConstruction(input)}.`,
     "Images are supplied in this order: GENERATED RENDER, LOCKED STUDIO MODEL, then SPLIT FABRIC CONTEXT when available (shirt left, trouser right).",
     "Check exact visible cloth colour/pattern/weave character, collar and cuff cleanliness, neck opening, hands, shirt/trouser boundary, tucked waistband layering, trouser silhouette, mannequin identity, background stability and synthesis artifacts.",
     "Do not fail minor natural drape variation. Review when cloth visibly bleeds onto skin/background/adjacent garment, the chosen construction is contradicted, fabric identity drifts materially, or the mannequin/background changes materially.",
@@ -619,6 +625,12 @@ async function semanticCreativeRenderCheck(
   };
 }
 
+function selectedLookConstruction(input:SelectedLookFashnRequest) {
+  return input.styleSpec
+    ? styleSpecRenderSummary(input.styleSpec)
+    : `${input.style.collar}; ${input.style.cuff}; ${input.style.placket}; ${input.style.shirtFit}; ${input.style.shirtWear}; ${input.style.trouser}; ${input.style.rise}; ${input.style.waistband}; ${input.style.break}`;
+}
+
 function selectedLookPrompt(input:SelectedLookFashnRequest) {
   const safe=(value:unknown,limit=360)=>String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
   return `Edit this existing premium menswear studio photograph into the exact Linen Earth outfit configured by the customer. Preserve the same faceless male mannequin, pose, body proportions, camera angle, studio lighting and deep navy environment.
@@ -627,7 +639,7 @@ The image-context is split vertically: LEFT HALF is the exact shirt-fabric refer
 
 Shirt: ${safe(input.shirt.name)} ${safe(input.shirt.line)}, ${safe(input.shirt.patternType)}.
 Trousers: ${safe(input.pant.name)} ${safe(input.pant.line)}, ${safe(input.pant.patternType)}.
-Exact construction: ${safe(input.style.collar)}, ${safe(input.style.cuff)}, ${safe(input.style.placket)}, ${safe(input.style.shirtFit)}, ${safe(input.style.shirtWear)}, ${safe(input.style.trouser)}, ${safe(input.style.rise)}, ${safe(input.style.waistband)}, ${safe(input.style.break)}.
+Exact locked construction: ${safe(selectedLookConstruction(input),900)}.
 
 This is a fidelity render, not a redesign. Do not invent contrast panels, embroidery, piping, extra pockets, extra seams, prints, logos or decorative details. Preserve the configured collar, cuffs, placket, shirt fit, tuck state, trouser shape, rise, waistband and break. Keep natural linen weave, realistic folds and tailoring structure. Shirt fabric must remain inside the shirt silhouette and must not spill over the neck, hands, trouser waistband or background. Trouser fabric must remain inside the trouser silhouette. For a tucked shirt, the waistband must sit physically in front of the tucked shirt. Keep the mannequin fully faceless with no eyes, hair or facial features. No text, props, extra garments or cropped limbs. Full-body front fashion-catalogue photograph.`;
 }
@@ -645,7 +657,7 @@ Do not redesign the outfit. Preserve the exact same faceless mannequin, body pro
 
 Shirt: ${safe(input.shirt.name)} ${safe(input.shirt.line)}, ${safe(input.shirt.patternType)}.
 Trousers: ${safe(input.pant.name)} ${safe(input.pant.line)}, ${safe(input.pant.patternType)}.
-Construction: ${safe(input.style.collar)}, ${safe(input.style.cuff)}, ${safe(input.style.placket)}, ${safe(input.style.shirtFit)}, ${safe(input.style.shirtWear)}, ${safe(input.style.trouser)}, ${safe(input.style.rise)}, ${safe(input.style.waistband)}, ${safe(input.style.break)}.
+Locked construction: ${safe(selectedLookConstruction(input),900)}.
 
 Keep hard garment boundaries. Shirt fabric must not spill onto the neck, hands, waistband, trousers or background. Trouser fabric must remain inside the trouser silhouette. For a tucked shirt, preserve the waistband physically in front of the shirt. Keep the mannequin completely faceless. No text, logo, extra props, new garments or cropped limbs. Full-body premium menswear catalogue photograph.`;
 }
@@ -700,17 +712,60 @@ Render the custom visual details as geometry and construction, not merely as col
 Protected zones that must not be recoloured or redesigned: ${protectedZones.join(", ")}. Do not add random decorations, embroidery, piping, pockets, seams, buttons or prints that are not in the concept. Preserve natural seams, folds, drape and hard garment boundaries. Shirt fabric must never spill over the neck, hands, trouser waistband or background. Trouser fabric must remain inside the trouser silhouette. For a tucked shirt, the waistband must sit physically in front of the tucked shirt. Keep the mannequin fully faceless with no eyes, hair or facial features. No text, logos, props, extra garments or cropped limbs. Full-body front fashion-catalogue photograph.`;
 }
 
+type SelectedRenderCacheEntry={result:CreativeFashnResult;createdAt:number};
+type SelectedRenderCache={items:Map<string,SelectedRenderCacheEntry>};
+const selectedRenderCache=(globalThis as typeof globalThis & {__linenSelectedRenderCache?:SelectedRenderCache}).__linenSelectedRenderCache
+  ||= {items:new Map<string,SelectedRenderCacheEntry>()};
+
+function selectedLookCacheKey(input:SelectedLookFashnRequest) {
+  return JSON.stringify({
+    shirt:input.shirt.id,
+    pant:input.pant.id,
+    style:input.style,
+    styleSpec:input.styleSpec||null,
+  });
+}
+
+function cachedSelectedRender(input:SelectedLookFashnRequest) {
+  const key=selectedLookCacheKey(input);
+  const entry=selectedRenderCache.items.get(key);
+  if(!entry) return null;
+  if(Date.now()-entry.createdAt>6*60*60_000) {
+    selectedRenderCache.items.delete(key);
+    return null;
+  }
+  selectedRenderCache.items.delete(key);
+  selectedRenderCache.items.set(key,entry);
+  return {...entry.result,cached:true};
+}
+
+function storeSelectedRender(input:SelectedLookFashnRequest,result:CreativeFashnResult) {
+  const key=selectedLookCacheKey(input);
+  selectedRenderCache.items.set(key,{result:{...result,cached:false},createdAt:Date.now()});
+  while(selectedRenderCache.items.size>32) {
+    const oldest=selectedRenderCache.items.keys().next().value;
+    if(!oldest) break;
+    selectedRenderCache.items.delete(oldest);
+  }
+}
+
 export async function renderSelectedLookFashnFront(input:SelectedLookFashnRequest):Promise<CreativeFashnResult> {
+  if(input.locked!==true) throw new FashnVisualizationError("Lock the final design before using the photoreal renderer.","invalid_source");
+  const cached=cachedSelectedRender(input);
+  if(cached) return cached;
   const source=await creativeModelDataUri(input.style);
   const context=await creativeFabricContext(input.shirt.image,input.pant.image);
   const generated=await runEdit(source,selectedLookPrompt(input),context);
-  return {
+  const result:CreativeFashnResult={
     image:generated.output,
     jobId:generated.jobId,
     creditsUsed:generated.creditsUsed,
     conceptId:"selected-look",
     generatedAt:new Date().toISOString(),
+    cached:false,
   };
+  storeSelectedRender(input,result);
+  return result;
 }
 
 
@@ -727,7 +782,7 @@ export async function repairSelectedLookFashnFront(
   const context=await creativeFabricContext(input.shirt.image,input.pant.image);
   const prompt=`Repair this existing Linen Earth photoreal render without redesigning it. QA defect to fix: ${instruction}
 
-Preserve the same faceless mannequin, pose, camera, body proportions, deep navy studio, shirt fabric, trouser fabric, footwear and every successful garment detail. Required construction remains ${input.style.collar}; ${input.style.cuff}; ${input.style.placket}; ${input.style.shirtFit}; ${input.style.shirtWear}; ${input.style.trouser}; ${input.style.rise}; ${input.style.waistband}; ${input.style.break}.
+Preserve the same faceless mannequin, pose, camera, body proportions, deep navy studio, shirt fabric, trouser fabric, footwear and every successful garment detail. Required construction remains ${selectedLookConstruction(input)}.
 
 Use the supplied split fabric context only to restore the exact shirt and trouser cloth appearance. Fix the cited defect locally. Do not add styling ideas, decorative seams, contrast panels, prints, logos, props or extra garments. Keep cloth off the neck, hands, background and neighbouring garment. If tucked, keep the waistband physically in front of the shirt. Full-body front catalogue photograph.`;
   const generated=await runEdit(previousImage,prompt,context);
