@@ -153,12 +153,12 @@ requireTokens("src/lib/designer/engine.ts", ["catalogueStyleFormality","formal s
 requireTokens("src/lib/fabric-analyzer.ts", ['import "server-only"',"analyzeMenswearFabric","verifiedFacts","visualObservations","uncertainClaims"]);
 requireTokens("src/lib/fabric-analyzer-taxonomy.ts", ["MENSWEAR_MATERIAL_TAXONOMY","MENSWEAR_PATTERN_TAXONOMY","MENSWEAR_COLOR_TAXONOMY","FABRIC_ANALYZER_EVIDENCE_RULES"]);
 requireTokens("src/lib/fabric-analyzer-reference-index.ts", ["REAL_MENSWEAR_MATERIAL_TERMS","REAL_MENSWEAR_PATTERN_TERMS","STANDARD_COLOR_REFERENCE_TERMS","FABRIC_REFERENCE_SOURCES","real-reference-v3"]);
-requireTokens("src/lib/fabric-analyzer.ts", ["fabric-analyzer-v4","FABRIC_REFERENCE_COUNTS","retainKnown","references:{","Real-reference corpus","REAL_MENSWEAR_FABRIC_EXAMPLES","REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT","Never copy composition","Closed output vocabulary"]);
+requireTokens("src/lib/fabric-analyzer.ts", ["fabric-analyzer-v4","FABRIC_REFERENCE_COUNTS","retainKnown","references:{","Retrieved real-reference subset","REAL_MENSWEAR_FABRIC_EXAMPLES","REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT","Never transfer composition","Closed output IDs"]);
 requireTokens("src/lib/fabric-analyzer-real-examples.ts", ["REAL_MENSWEAR_FABRIC_EXAMPLES","REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT","AUTO-GENERATED","source_id","composition","pattern_name"]);
 requireTokens("src/lib/fabric-analyzer-provenance-map.ts", ["FABRIC_REFERENCE_PROVENANCE","AUTO-GENERATED provenance map","source_id","materials","patterns","colors"]);
-requireTokens("src/lib/fabric-analyzer.ts", ["FABRIC_REFERENCE_PROVENANCE","sourceIdsForReferences","backend derives sourceIds"]);
+requireTokens("src/lib/fabric-analyzer.ts", ["FABRIC_REFERENCE_PROVENANCE","sourceIdsForReferences","backend derives source IDs"]);
 requireTokens("src/lib/fabric-analyzer-store.ts", ["fabricAnalysisFingerprint","loadStoredFabricAnalysis","storeFabricAnalysis","recordFabricAnalyzerCorrection","loadFabricAnalyzerLearningHints","fabric_analyzer_learning_summary","SUPABASE_SECRET_KEY"]);
-requireTokens("src/lib/fabric-analyzer.ts", ["analyzeMenswearFabricWithStore","loadFabricAnalyzerLearningHints","Reviewed correction learning:","reviewed corrections","never overrides explicit verified supplier facts"]);
+requireTokens("src/lib/fabric-analyzer.ts", ["analyzeMenswearFabricWithStore","loadFabricAnalyzerLearningHints","Reviewed correction learning:","reviewed corrections","Explicit supplier/owner facts outrank learned hints"]);
 requireFile("src/lib/fabric-intelligence-types.ts");
 requireFile("src/lib/fabric-intelligence-server.ts");
 requireFile("src/app/api/operator/fabric-analyzer/analyze/route.ts");
