@@ -1,0 +1,32 @@
+name: Export Linen Earth Source
+
+on:
+  push:
+    branches:
+      - source-export-20260929
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout current main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Stage source tree
+        shell: bash
+        run: |
+          mkdir -p linen-earth-project-main
+          rsync -a ./ linen-earth-project-main/             --exclude='.git'             --exclude='node_modules'             --exclude='.next'             --exclude='linen-earth-project-main'
+
+      - name: Upload source archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: linen-earth-project-main
+          path: linen-earth-project-main/
+          if-no-files-found: error
+          retention-days: 1
