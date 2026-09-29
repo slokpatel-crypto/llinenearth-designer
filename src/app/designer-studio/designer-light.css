@@ -602,3 +602,5 @@
 .newDesignerOptionalSearchRun:disabled{opacity:.4}
 
 /* production retry: visual-critic + research loop */
+
+.newDesignerSearchError{display:block;margin-top:8px;font-size:7px;line-height:1.4;color:#985b4b}
