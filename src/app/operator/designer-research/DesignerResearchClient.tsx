@@ -123,7 +123,24 @@ export default function DesignerResearchClient(){
   }
 
   async function analyzeResearchBatch(){
-    const candidates=filteredSources.slice(0,4);
+    const authorityWeight:Record<FashionResearchSource["authority"],number>={primary:4,scholarly:4,industry:2,editorial:1};
+    const categorySeen=new Set<string>();
+    const ranked=[...filteredSources].sort((a,b)=>
+      authorityWeight[b.authority]-authorityWeight[a.authority] || a.name.localeCompare(b.name)
+    );
+    const diverse:FashionResearchSource[]=[];
+    for(const source of ranked) {
+      if(!categorySeen.has(source.category)) {
+        diverse.push(source);
+        categorySeen.add(source.category);
+      }
+      if(diverse.length>=8) break;
+    }
+    for(const source of ranked) {
+      if(!diverse.includes(source)) diverse.push(source);
+      if(diverse.length>=8) break;
+    }
+    const candidates=diverse.slice(0,8);
     if(!candidates.length){setMessage("Discover or choose research sources first.");return;}
     setBatchAnalyzing(true); setMessage("");
     try{
@@ -263,7 +280,7 @@ export default function DesignerResearchClient(){
 
     <section className="researchLayout">
       <aside className="researchSources">
-        <div className="researchDiscoveryActions"><button className="researchDiscoverButton" type="button" onClick={()=>void discover1000()} disabled={discovering}>{discovering?"Discovering…":"Discover up to 1,000 websites"}</button><button className="researchBatchButton" type="button" onClick={()=>void analyzeResearchBatch()} disabled={batchAnalyzing||filteredSources.length===0}>{batchAnalyzing?"Synthesizing…":"Synthesize first 4 ✦"}</button></div>
+        <div className="researchDiscoveryActions"><button className="researchDiscoverButton" type="button" onClick={()=>void discover1000()} disabled={discovering}>{discovering?"Discovering…":"Discover up to 1,000 websites"}</button><button className="researchBatchButton" type="button" onClick={()=>void analyzeResearchBatch()} disabled={batchAnalyzing||filteredSources.length===0}>{batchAnalyzing?"Synthesizing…":"Synthesize 8 diverse sources ✦"}</button></div>
         <div className="researchSourceSearch"><input value={sourceSearch} onChange={(event)=>setSourceSearch(event.target.value)} placeholder="Search research source" /><span>{filteredSources.length}</span></div>
         <div className="researchTopicChips">{data.topics.map((topic)=><span key={topic.id}>{topic.id}</span>)}</div>
         <div className="researchSourceList">{filteredSources.map((source)=><button key={source.id} type="button" onClick={()=>useSource(source)}>
