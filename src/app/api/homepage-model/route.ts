@@ -21,8 +21,8 @@ const HERO_PROMPT = [
 function fallback(request: Request, reason: string, code: string) {
   console.warn("[homepage-model] fallback", code, reason);
   const response = NextResponse.redirect(new URL(FALLBACK, request.url), 307);
-  response.headers.set("X-LLinen-Render", "fallback");
-  response.headers.set("X-LLinen-Fallback", code);
+  response.headers.set("X-Linen-Render", "fallback");
+  response.headers.set("X-Linen-Fallback", code);
   response.headers.set("Cache-Control", "private, no-store, max-age=0");
   return response;
 }
@@ -81,7 +81,7 @@ export async function GET(request: Request) {
         "Content-Type": type,
         "Cache-Control": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000",
         "Vercel-CDN-Cache-Control": "public, s-maxage=604800, stale-while-revalidate=2592000",
-        "X-LLinen-Render": "fashn-model-create",
+        "X-Linen-Render": "fashn-model-create",
       },
     });
   } catch (error) {
