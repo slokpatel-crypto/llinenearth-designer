@@ -141,7 +141,7 @@ requireTokens("src/lib/designer/fashion-research-source-pool.ts", [
 ]);
 requireTokens("src/app/api/designer/creative-render/route.ts", ["renderCreativeFashnFront","CreativeFashnRequest"]);
 requireTokens("src/lib/ai-visualization.ts", ["inspectCreativeRender","heroVisibility","boundaryIntegrity","PROTECTED_RENDER_BOXES","Visual hierarchy contract"]);
-requireTokens("src/components/PhotoOutfitPreview.tsx", ["AUTO VISUAL CHECK","onCreativeInspection","newDesignerRenderCheck"]);
+requireTokens("src/components/PhotoOutfitPreview.tsx", ["VISUAL CHECK PASSED","onCreativeInspection","newDesignerRenderCheck"]);
 requireTokens("src/lib/designer/creative-learning.ts", ["renderMismatchReviews",'review.reason==="render_mismatch"']);
 requireTokens("src/app/operator/designer-research/DesignerResearchClient.tsx", ["Creative Research Desk","Save research signal"]);
 requireTokens("src/lib/designer/casebook.ts", [
