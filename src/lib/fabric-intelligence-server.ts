@@ -1,5 +1,6 @@
 import "server-only";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
+import { adaptFabricProfileToV4 } from "@/lib/fabric-intelligence-adapter";
 import { loadFabricAnalysesForFabricIds, type BoundFabricAnalysis } from "@/lib/fabric-analyzer-store";
 
 function clamp01(value:unknown) {
@@ -8,27 +9,28 @@ function clamp01(value:unknown) {
 }
 
 function toIntelligence(row:BoundFabricAnalysis):DesignerFabricIntelligence|null {
-  const profile=row.profile;
-  if(!profile || profile.version!=="fabric-analyzer-v3" || row.review_status==="rejected") return null;
+  if(row.review_status==="rejected") return null;
+  const profile=adaptFabricProfileToV4(row.profile);
+  if(!profile) return null;
   const confidence={
-    color:clamp01(profile.confidence?.color),
-    pattern:clamp01(profile.confidence?.pattern),
-    texture:clamp01(profile.confidence?.texture),
-    styling:clamp01(profile.confidence?.styling),
+    color:clamp01(profile.confidence.color),
+    pattern:clamp01(profile.confidence.pattern),
+    texture:clamp01(profile.confidence.texture),
+    styling:clamp01(profile.confidence.styling),
   };
   const average=(confidence.color+confidence.pattern+confidence.texture+confidence.styling)/4;
   const reviewed=row.review_status==="approved" || row.review_status==="corrected";
-  const hasReferences=Boolean(profile.references?.sourceIds?.length || profile.references?.materialTerms?.length || profile.references?.patternTerms?.length);
+  const hasReferences=Boolean(profile.references.sourceIds.length || profile.references.materialTerms.length || profile.references.patternTerms.length);
   const trust:DesignerFabricIntelligence["trust"]=reviewed
     ? "reviewed"
-    : average>=.78 && hasReferences ? "high-confidence" : "provisional";
+    : average>=.78 && hasReferences && profile.reviewNeeded.length===0 ? "high-confidence" : "provisional";
 
   return {
     profileId:row.id,
     analyzerVersion:row.analyzer_version,
     reviewStatus:row.review_status,
     trust,
-    colorFamily:String(profile.observed.colorFamily||"").slice(0,80),
+    colorFamily:profile.observed.colorFamily,
     undertone:profile.observed.undertone,
     depth:profile.observed.depth,
     saturation:profile.observed.saturation,
@@ -57,6 +59,7 @@ function toIntelligence(row:BoundFabricAnalysis):DesignerFabricIntelligence|null
       avoidColorFamilies:profile.inferredStyle.pairing.avoidColorFamilies.slice(0,8),
       goodPatternStrategy:profile.inferredStyle.pairing.goodPatternStrategy.slice(0,8),
     },
+    reviewNeeded:profile.reviewNeeded.slice(0,30),
     confidence,
     references:{
       materialTerms:profile.references.materialTerms.slice(0,8),
