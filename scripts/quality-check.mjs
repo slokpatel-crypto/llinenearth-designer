@@ -338,6 +338,13 @@ for (const token of ["/api/designer/look-inspect","selectedCheck","Repair once",
   if (!photoPreviewMultiView.includes(token)) throw new Error(`Selected-look QA UI regression: missing ${token}`);
 }
 console.log("Selected-look render QA gate passed: normal photoreal looks are inspected and allow one targeted repair without redesign.");
+for (const token of ["view:SelectedLookView=\"front\"","Expected camera/view:","three-quarter","side","back"]) {
+  if (!selectedLookRenderEngine.includes(token)) throw new Error(`Multi-view photoreal QA regression: missing ${token}`);
+}
+for (const token of ["activeSelectedCheck","inspectSelectedLook(data.result,view)","This camera view needs review"]) {
+  if (!photoPreviewMultiView.includes(token)) throw new Error(`Multi-view QA UI regression: missing ${token}`);
+}
+console.log("Photoreal multi-view QA gate passed: generated three-quarter, side and back views are checked for model, cloth and construction consistency.");
 const selectedLookDownload = fs.readFileSync("src/app/api/designer/look-download/route.ts","utf8");
 for (const token of ["OFFICIAL_FASHN_OUTPUT","content-disposition","private, no-store"]) {
   if (!selectedLookDownload.includes(token)) throw new Error(`Photoreal download regression: missing ${token}`);
