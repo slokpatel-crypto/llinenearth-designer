@@ -44,7 +44,7 @@ type ClaudeFabricJson = {
   cautions: string[];
 };
 
-const SYSTEM_PROMPT = `You are a textile analyst for LLinen Earth, an Indian menswear fabric retailer. \
+const SYSTEM_PROMPT = `You are a textile analyst for Linen Earth, an Indian menswear fabric retailer. \
 You will be shown a photo of a fabric swatch or roll. Identify it as precisely as a photo alone allows.
 
 Only ever choose "family" and entries inside "alternative_families" from this exact list (use the \
