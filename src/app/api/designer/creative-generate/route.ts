@@ -94,6 +94,8 @@ function validCurrent(value:unknown):value is CreativeDirection {
 
 export async function POST(request:Request) {
   if(rateLimited(request)) return NextResponse.json({error:"Creative generation is temporarily rate limited."},{status:429});
+  const contentLength=Number(request.headers.get("content-length")||0);
+  if(contentLength>650_000) return NextResponse.json({error:"Creative generation request is too large."},{status:413});
   try {
     const body=await request.json() as {
       mode?:unknown;
