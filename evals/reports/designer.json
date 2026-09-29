@@ -1,0 +1,11 @@
+{
+  "kind": "designer",
+  "generatedAt": "2026-09-29T16:48:35.958Z",
+  "status": "awaiting_owner_labels",
+  "labeledCases": 0,
+  "evaluatedCases": 0,
+  "top1AgreementPct": null,
+  "top3AgreementPct": null,
+  "ruleViolationPct": null,
+  "uniqueSuggestions": 0
+}

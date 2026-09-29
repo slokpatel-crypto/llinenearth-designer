@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
+import fabricTileManifest from "../../public/fabric-tiles/manifest.json";
 import { CREATIVE_FEEDBACK_REASONS, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
 import {
   DESIGNER_PHOTO_TEMPLATES, PHOTO_COLLAR_MASK, PHOTO_CUFF_MASK, PHOTO_TUCKED_COLLAR_MASK, PHOTO_TUCKED_COLLAR_STAND_MASK,
@@ -56,6 +57,16 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   return loading;
 }
 
+function loadFabricImage(fabric:DesignerFabric):Promise<HTMLImageElement> {
+  const stem=fabric.image.split("/").pop()?.match(/^([a-z0-9-]+)\.webp(?:\?.*)?$/i)?.[1];
+  return stem ? loadImage(`/fabric-tiles/${stem}.webp`).catch(()=>loadImage(fabric.image)) : loadImage(fabric.image);
+}
+function fabricOrientation(fabric:DesignerFabric) {
+  const stem=fabric.image.split("/").pop()?.replace(/\.webp(?:\?.*)?$/,"")||"";
+  const entry=(fabricTileManifest.assets as Record<string,{orientation:string}>)[stem];
+  return entry?.orientation==="horizontal"?90:0;
+}
+
 function swatchTile(image: HTMLImageElement, fabric: DesignerFabric): HTMLCanvasElement {
   const cached = fabricTiles.get(fabric.id);
   if (cached) {
@@ -72,6 +83,16 @@ function swatchTile(image: HTMLImageElement, fabric: DesignerFabric): HTMLCanvas
   context.imageSmoothingQuality = "high";
   context.fillStyle = fabric.hex;
   context.fillRect(0, 0, 320, 320);
+  if (image.src.includes("/fabric-tiles/")) {
+    // Prepared tiles omit captions and selvage; photo lighting remains in drawGarment.
+    context.drawImage(image,0,0,320,320);
+    fabricTiles.set(fabric.id,tile);
+    if(fabricTiles.size>12) {
+      const oldest=fabricTiles.keys().next().value;
+      if(oldest) fabricTiles.delete(oldest);
+    }
+    return tile;
+  }
 
   // Read the actual upper cloth field. The catalogue HEX is an approximate
   // fallback, not a substitute for the swatch colour and woven texture.
@@ -265,7 +286,7 @@ function drawGarment(
   target: CanvasRenderingContext2D, photo: CanvasImageSource,
   swatch: HTMLImageElement, fabric: DesignerFabric, path: string,
   mask?: HTMLCanvasElement, lightingFilter = "grayscale(1) brightness(1.3) contrast(1.04)",
-  placement: { offsetX?: number; offsetY?: number; scale?: number } = {},
+  placement: { offsetX?: number; offsetY?: number; scale?: number; rotationDeg?:number } = {},
 ) {
   const layer = document.createElement("canvas");
   layer.width = WIDTH;
@@ -277,7 +298,7 @@ function drawGarment(
   const pattern = context.createPattern(tile, "repeat");
   if (!pattern) throw new Error("Could not prepare the fabric pattern.");
   const scale = patternScaleForFabric(fabric) * (placement.scale ?? 1);
-  pattern.setTransform(new DOMMatrix().translate(placement.offsetX ?? 0, placement.offsetY ?? 0).scale(scale));
+  pattern.setTransform(new DOMMatrix().translate(placement.offsetX ?? 0, placement.offsetY ?? 0).rotate(fabricOrientation(fabric)+(placement.rotationDeg??0)).scale(scale));
   context.fillStyle = pattern;
   context.fillRect(0, 0, WIDTH, HEIGHT);
 
@@ -520,7 +541,7 @@ export function composePhotoOutfit(
     drawCreativeDetails(context,creative,true,masks.shirt);
 
     if (style.collarFinish === "Self-fabric") {
-      drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined, "grayscale(1) brightness(3.05) contrast(.94)");
+      drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined, "grayscale(1) brightness(3.05) contrast(.94)",{rotationDeg:90});
     } else {
       drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_STAND_MASK, undefined, 3.6);
       if (!creativeHas(creative,"quiet-collar-echo")) drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_MASK, undefined, 3.6);
@@ -560,8 +581,8 @@ export function StyleDirectorRealModelPreview({shirt,pant,style}:{
     Promise.all([
       loadImage(tucked ? template.src : DESIGNER_PHOTO_TEMPLATES.pleated.src),
       loadImage(template.src),
-      loadImage(shirt.image),
-      loadImage(pant.image),
+      loadFabricImage(shirt),
+      loadFabricImage(pant),
     ]).then(([modelPhoto,trouserPhoto,shirtImage,pantImage])=>{
       if(cancelled) return;
       const canvas=canvasRef.current;
@@ -662,7 +683,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
     setError(false);
     Promise.all([
       loadImage(tucked ? template.src : DESIGNER_PHOTO_TEMPLATES.pleated.src), loadImage(template.src),
-      loadImage(shirt.image), loadImage(pant.image),
+      loadFabricImage(shirt), loadFabricImage(pant),
     ]).then(([modelPhoto, trouserPhoto, shirtImage, pantImage]) => {
         if (cancelled) return;
         const canvas = canvasRef.current;

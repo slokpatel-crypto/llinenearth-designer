@@ -318,7 +318,7 @@ console.log("Catalogue fabric intelligence gate passed: formal/casual catalogue 
 
 const fabricAnalyzerSource = fs.readFileSync("src/lib/fabric-analyzer.ts","utf8");
 const fabricAnalyzerTaxonomy = fs.readFileSync("src/lib/fabric-analyzer-taxonomy.ts","utf8");
-for (const token of ['import "server-only"',"analyzeMenswearFabric","verifiedFacts","visualObservations","uncertainClaims","Never claim exact fiber composition"]) {
+for (const token of ['import "server-only"',"analyzeMenswearFabric","verifiedFacts","visualObservations","uncertainClaims","FABRIC_ANALYZER_EVIDENCE_RULES.join","Never claim exact fibre composition"]) {
   if (!fabricAnalyzerSource.includes(token)) throw new Error(`Private Fabric Analyzer regression: missing ${token}`);
 }
 for (const token of ["MENSWEAR_MATERIAL_TAXONOMY","MENSWEAR_PATTERN_TAXONOMY","MENSWEAR_COLOR_TAXONOMY","FABRIC_ANALYZER_EVIDENCE_RULES"]) {
@@ -332,7 +332,7 @@ for (const token of ["REAL_MENSWEAR_MATERIAL_TERMS","REAL_MENSWEAR_PATTERN_TERMS
   if (!fabricReferenceIndex.includes(token)) throw new Error(`Real-reference Fabric Analyzer regression: missing ${token}`);
 }
 const fabricAnalyzerExamples = fs.readFileSync("src/lib/fabric-analyzer-real-examples.ts","utf8");
-for (const token of ["fabric-analyzer-v4","FABRIC_REFERENCE_COUNTS","retainKnown","references:{","Real-reference corpus","REAL_MENSWEAR_FABRIC_EXAMPLES","REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT","Never copy composition","Closed output vocabulary","colorFamilies.map","collarOptions.map"]) {
+for (const token of ["fabric-analyzer-v4","FABRIC_REFERENCE_COUNTS","retainKnown","references:{","Retrieved real-reference subset","REAL_MENSWEAR_FABRIC_EXAMPLES","REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT","Never transfer composition","Closed output IDs","colorFamilies.map","collarOptions.map"]) {
   if (!fabricAnalyzerSource.includes(token)) throw new Error(`Fabric Analyzer V4 provenance regression: missing ${token}`);
 }
 for (const token of ["REAL_MENSWEAR_FABRIC_EXAMPLES","REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT","AUTO-GENERATED","source_id","composition","pattern_name"]) {
@@ -342,7 +342,7 @@ const fabricAnalyzerProvenance = fs.readFileSync("src/lib/fabric-analyzer-proven
 for (const token of ["FABRIC_REFERENCE_PROVENANCE","AUTO-GENERATED provenance map","source_id","materials","patterns","colors"]) {
   if (!fabricAnalyzerProvenance.includes(token)) throw new Error(`Fabric reference provenance regression: missing ${token}`);
 }
-for (const token of ["FABRIC_REFERENCE_PROVENANCE","sourceIdsForReferences","backend derives sourceIds"]) {
+for (const token of ["FABRIC_REFERENCE_PROVENANCE","sourceIdsForReferences","backend derives source IDs"]) {
   if (!fabricAnalyzerSource.includes(token)) throw new Error(`Fabric Analyzer provenance enforcement regression: missing ${token}`);
 }
 if (realDesignerModule.includes("fabric-analyzer-reference-index") || realDesignerModule.includes("fabric-analyzer-real-examples")) {
@@ -354,7 +354,7 @@ const fabricAnalyzerStore = fs.readFileSync("src/lib/fabric-analyzer-store.ts","
 for (const token of ["fabricAnalysisFingerprint","loadStoredFabricAnalysis","storeFabricAnalysis","recordFabricAnalyzerCorrection","loadFabricAnalyzerLearningHints","fabric_analyzer_learning_summary","SUPABASE_SECRET_KEY"]) {
   if (!fabricAnalyzerStore.includes(token)) throw new Error(`Fabric Analyzer private-store regression: missing ${token}`);
 }
-for (const token of ["analyzeMenswearFabricWithStore","loadFabricAnalyzerLearningHints","Reviewed correction learning:","reviewed corrections","never overrides explicit verified supplier facts"]) {
+for (const token of ["analyzeMenswearFabricWithStore","loadFabricAnalyzerLearningHints","Reviewed correction learning:","reviewed corrections","Explicit supplier/owner facts outrank learned hints"]) {
   if (!fabricAnalyzerSource.includes(token)) throw new Error(`Fabric Analyzer learning-loop regression: missing ${token}`);
 }
 if (realDesignerModule.includes("fabric-analyzer-store")) throw new Error("Fabric Analyzer privacy regression: profile storage/learning must remain server-only.");
