@@ -66,6 +66,7 @@ export default function DesignerResearchClient(){
   const [sourceSearch,setSourceSearch]=useState("");
   const [discoveredSources,setDiscoveredSources]=useState<FashionResearchSource[]>([]);
   const [discovering,setDiscovering]=useState(false);
+  const [analyzing,setAnalyzing]=useState(false);
 
   async function load(){
     const response=await fetch("/api/operator/designer-research",{cache:"no-store"});
@@ -110,6 +111,47 @@ export default function DesignerResearchClient(){
   function useSource(source:FashionResearchSource){
     const sourceType:Draft["sourceType"]=source.category==="museum"?"museum":source.category==="runway"?"runway":source.category==="menswear"?"tailoring":source.category==="academic"||source.category==="university"?"archive":"designer";
     setDraft((current)=>({...current,sourceUrl:source.baseUrl,sourceType,title:current.title || source.name}));
+  }
+
+  async function analyzeCurrentSource(){
+    if(!draft.sourceUrl.trim()){setMessage("Choose or enter a research source first.");return;}
+    setAnalyzing(true); setMessage("");
+    try{
+      const response=await fetch("/api/operator/designer-research/analyze",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({name:draft.title || "Research source",url:draft.sourceUrl,sourceType:draft.sourceType}),
+      });
+      if(response.status===401){window.location.href="/operator/login?next=/operator/designer-research";return;}
+      const result=await response.json() as {analysis?:Partial<Draft>&{sourceUrl?:string;sourceType?:Draft["sourceType"]};error?:string};
+      if(!response.ok || !result.analysis) throw new Error(result.error||"Research source could not be analyzed.");
+      const analysis=result.analysis;
+      setDraft((current)=>({
+        ...current,
+        title:String(analysis.title||current.title),
+        sourceUrl:String(analysis.sourceUrl||current.sourceUrl),
+        sourceType:(analysis.sourceType||current.sourceType) as Draft["sourceType"],
+        principle:String(analysis.principle||""),
+        transformedIdea:String(analysis.transformedIdea||""),
+        zone:(analysis.zone||current.zone) as Draft["zone"],
+        secondaryZone:String(analysis.secondaryZone||""),
+        treatmentLabel:String(analysis.treatmentLabel||""),
+        treatmentInstruction:String(analysis.treatmentInstruction||""),
+        visualPurpose:String(analysis.visualPurpose||""),
+        intensity:Number(analysis.intensity||50),
+        buildability:(analysis.buildability||"atelier") as Draft["buildability"],
+        patternFamily:(analysis.patternFamily||"none") as Draft["patternFamily"],
+        patternName:String(analysis.patternName||""),
+        patternLayout:String(analysis.patternLayout||""),
+        patternPlacement:String(analysis.patternPlacement||""),
+        patternScale:String(analysis.patternScale||"fine"),
+        patternCoverage:Number(analysis.patternCoverage||24),
+        note:String(analysis.note||""),
+      }));
+      setMessage("Research translated into a design principle. Review it, then activate it for V5.");
+    }catch(error){
+      setMessage(error instanceof Error?error.message:"Research source could not be analyzed.");
+    }finally{setAnalyzing(false);}
   }
 
   async function save(){
@@ -168,7 +210,7 @@ export default function DesignerResearchClient(){
       </aside>
 
       <section className="researchEditor">
-        <div className="researchEditorHead"><div><span>RESEARCH → DESIGN TRANSLATOR</span><h2>{draft.title || "New research signal"}</h2></div><button type="button" onClick={()=>setDraft(emptyDraft())}>New signal</button></div>
+        <div className="researchEditorHead"><div><span>RESEARCH → DESIGN TRANSLATOR</span><h2>{draft.title || "New research signal"}</h2></div><div className="researchEditorActions"><button type="button" disabled={analyzing||!draft.sourceUrl.trim()} onClick={()=>void analyzeCurrentSource()}>{analyzing?"Analyzing…":"Analyze source ✦"}</button><button type="button" onClick={()=>setDraft(emptyDraft())}>New signal</button></div></div>
 
         <div className="researchForm">
           <label><span>Research title</span><input value={draft.title} onChange={(e)=>setDraft({...draft,title:e.target.value})} placeholder="e.g. Stripe spacing and body perception" /></label>
