@@ -807,6 +807,14 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
   },[autoRenderNonce,creativeDirection?.id,ready]);
 
   function download() {
+    if(showCreativeAi && creativeAi) {
+      const activeImage=photorealView==="front" ? creativeAi.image : (photorealViews[photorealView]?.image || creativeAi.image);
+      const anchor=document.createElement("a");
+      const name=`linen-earth-${shirt.id}-${pant.id}-${photorealView}`;
+      anchor.href=`/api/designer/look-download?url=${encodeURIComponent(activeImage)}&name=${encodeURIComponent(name)}`;
+      anchor.click();
+      return;
+    }
     const canvas = canvasRef.current;
     if (!canvas || !ready) return;
     canvas.toBlob((blob) => {
