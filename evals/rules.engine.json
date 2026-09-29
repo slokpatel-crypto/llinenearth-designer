@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "purpose": "Deterministic engineering regression cases only. These are not owner taste labels and are not used to claim styling accuracy.",
+  "cases": [
+    {
+      "id": "high-rise-untucked",
+      "occasion": "Smart-Casual",
+      "climate": "Not specified",
+      "patch": {
+        "shirt": {
+          "wear": "untucked",
+          "length": "shirt_length_regular"
+        },
+        "pant": {
+          "rise": "extra_high_rise"
+        }
+      },
+      "expected": [
+        "CG-RISE-TUCK"
+      ],
+      "forbidden": []
+    },
+    {
+      "id": "korean-wide-long-top",
+      "occasion": "Smart-Casual",
+      "climate": "Not specified",
+      "patch": {
+        "shirt": {
+          "wear": "untucked",
+          "length": "shirt_length_regular",
+          "fit": "regular_classic_fit"
+        },
+        "pant": {
+          "fit": "korean_straight_wide"
+        }
+      },
+      "expected": [
+        "CG-WIDE-PROPORTION",
+        "CG-WIDE-DRAPE-VERIFY"
+      ],
+      "forbidden": []
+    },
+    {
+      "id": "camp-collar-tucked",
+      "occasion": "Casual",
+      "climate": "Hot / humid",
+      "patch": {
+        "shirt": {
+          "type": "camp_collar_resort",
+          "collar": "cuban_camp_collar",
+          "wear": "tucked"
+        }
+      },
+      "expected": [
+        "CG-CAMP-UNTUCKED"
+      ],
+      "forbidden": []
+    },
+    {
+      "id": "double-bold-pattern",
+      "occasion": "Casual",
+      "climate": "Not specified",
+      "patch": {},
+      "signals": {
+        "shirtPatternScale": "Bold",
+        "pantPatternScale": "Medium-Bold"
+      },
+      "expected": [
+        "CG-PATTERN-LOAD"
+      ],
+      "forbidden": []
+    },
+    {
+      "id": "formal-boxy",
+      "occasion": "Formal",
+      "climate": "Air-conditioned",
+      "patch": {
+        "shirt": {
+          "fit": "boxy_oversized"
+        }
+      },
+      "expected": [
+        "CG-BOXY-FORMALITY"
+      ],
+      "forbidden": []
+    },
+    {
+      "id": "formal-overshirt",
+      "occasion": "Formal",
+      "climate": "Cool",
+      "patch": {
+        "shirt": {
+          "type": "overshirt"
+        }
+      },
+      "expected": [
+        "CG-CASUAL-TOP-FORMAL"
+      ],
+      "forbidden": []
+    },
+    {
+      "id": "hot-heavy",
+      "occasion": "Smart-Casual",
+      "climate": "Hot / humid",
+      "patch": {},
+      "signals": {
+        "shirtWeightClass": "Heavy",
+        "pantWeightClass": "Heavy"
+      },
+      "expected": [
+        "CG-HOT-HEAVY"
+      ],
+      "forbidden": []
+    },
+    {
+      "id": "festive-band",
+      "occasion": "Semi-Formal",
+      "climate": "Air-conditioned",
+      "patch": {
+        "shirt": {
+          "type": "band_collar_shirt",
+          "collar": "mandarin_band_collar"
+        },
+        "pant": {
+          "type": "jodhpuri_churidar"
+        }
+      },
+      "expected": [
+        "CG-FESTIVE-BAND"
+      ],
+      "forbidden": [
+        "CG-CASUAL-TOP-FORMAL"
+      ]
+    },
+    {
+      "id": "clean-formal-baseline",
+      "occasion": "Formal",
+      "climate": "Air-conditioned",
+      "patch": {},
+      "expected": [],
+      "forbidden": [
+        "CG-CAMP-UNTUCKED",
+        "CG-WING-COLLAR",
+        "CG-BOXY-FORMALITY",
+        "CG-CASUAL-TOP-FORMAL",
+        "CG-PATTERN-LOAD"
+      ]
+    }
+  ]
+}
