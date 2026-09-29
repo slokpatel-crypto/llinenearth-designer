@@ -1,4 +1,4 @@
-import type { MeasurementProfile } from "@/lib/measurements";
+import type { MeasurementProfile } from "../measurements.ts";
 
 export type BodyBuild="slim"|"regular"|"athletic"|"broad";
 export type SkinToneId="warm_light"|"medium"|"tan"|"deep";
