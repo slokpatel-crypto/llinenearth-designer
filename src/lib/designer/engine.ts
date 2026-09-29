@@ -218,6 +218,40 @@ function visualTone(hex: string): DesignerFabric["tone"] {
   return lightness < 94 ? "Dark" : lightness > 169 ? "Light" : "Medium";
 }
 
+function catalogueStyleFormality(fabric:FabricColorway) {
+  const line=fabric.line.toLowerCase();
+  const pattern=fabric.pattern.toLowerCase();
+  // This is a styling taxonomy from the catalogue role, not a physical cloth
+  // measurement. Verified operator formality metadata still takes priority.
+  if(line.includes("formal shirting")) {
+    if(/pinstripe|fine stripe|stripe/.test(pattern)) return 4.15;
+    if(/windowpane|check/.test(pattern)) return 3.75;
+    return 4;
+  }
+  if(line.includes("linen suiting")) {
+    const name=fabric.colorName.toLowerCase();
+    if(/dark grey|charcoal|slate|platinum/.test(name)) return 4.05;
+    if(/beige|taupe|cream|chambray|denim blue/.test(name)) return 3.55;
+    return 3.15;
+  }
+  if(line.includes("linen plain")) {
+    if(/jute feel/.test(pattern) || /saffron|dijon|light green/.test(fabric.colorName.toLowerCase())) return 1.9;
+    return 2.55;
+  }
+  if(line.includes("printed linen blend")) return /micro|tonal/.test(pattern) ? 2.15 : 1.75;
+  if(line.includes("linen print")) return /micro|fine/.test(pattern) ? 2.05 : 1.65;
+  return null;
+}
+
+function catalogueRoleTags(fabric:FabricColorway):DesignerFabric["roleTags"] {
+  if(fabric.roleTags?.length) return [...fabric.roleTags];
+  const line=fabric.line.toLowerCase();
+  const pattern=fabric.pattern.toLowerCase();
+  if(line.includes("formal shirting") || line.includes("linen suiting") || (line.includes("linen plain") && /plain/.test(pattern))) return ["base_safe"];
+  if(line.includes("linen print") || line.includes("printed linen blend")) return ["accent_safe"];
+  return null;
+}
+
 function patternProfile(pattern: string): { name: string; scale: DesignerFabric["patternScale"] } {
   const label = pattern.toLowerCase();
   if (/^plain$|^solid$|plain\s*\/\s*jute/.test(label)) return { name: "Solid", scale: "None" };
@@ -241,13 +275,13 @@ export function designerFabricFromStock(fabric: FabricColorway): DesignerFabric 
     tone: palette && ["Light", "Medium", "Dark"].includes(String(palette.Tone))
       ? palette.Tone as DesignerFabric["tone"] : visualTone(fabric.hex),
     formalityScore: typeof fabric.formalityScore === "number" ? fabric.formalityScore
-      : typeof palette?.Formality_Score === "number" ? palette.Formality_Score : null,
+      : catalogueStyleFormality(fabric) ?? (typeof palette?.Formality_Score === "number" ? palette.Formality_Score : null),
     patternType: pattern.name, patternScale: pattern.scale,
     // A Lea label describes yarn count. Verified GSM/weight/season fields only arrive from the operator calibration ledger.
     weightGsm: typeof fabric.weightGsm === "number" ? fabric.weightGsm : null,
     weightClass: fabric.weightClass ?? null,
     bestSeason: fabric.seasonTags?.length ? [...fabric.seasonTags] : null,
-    roleTags: fabric.roleTags?.length ? [...fabric.roleTags] : null,
+    roleTags: catalogueRoleTags(fabric),
     weave: fabric.weave || (fabric.line === "Linen Plain 60 Lea" ? "Plain Weave" : null),
     texture: fabric.texture || null,
     fiberContent: fabric.line.includes("Blend") ? null : fabric.family,
