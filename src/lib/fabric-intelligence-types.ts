@@ -15,6 +15,12 @@ export type DesignerFabricIntelligence = {
   analyzerVersion:string;
   reviewStatus:"unreviewed"|"approved"|"corrected"|"rejected";
   trust:"reviewed"|"high-confidence"|"provisional";
+  measuredEvidence:{
+    imageQualityScore:number|null;
+    colorDeltaE:number|null;
+    patternPhysicalScale:"declared_repeat"|"declared_swatch_width"|"unknown"|null;
+    contentSha256:string|null;
+  };
   colorFamily:ColorFamilyId|null;
   undertone:"warm"|"cool"|"neutral"|"uncertain";
   depth:"very-light"|"light"|"mid"|"deep"|"very-deep";
