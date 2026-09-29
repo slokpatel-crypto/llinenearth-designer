@@ -726,7 +726,7 @@ function selectedLookCacheKey(input:SelectedLookFashnRequest) {
   });
 }
 
-function cachedSelectedRender(input:SelectedLookFashnRequest) {
+export function getCachedSelectedLookRender(input:SelectedLookFashnRequest) {
   const key=selectedLookCacheKey(input);
   const entry=selectedRenderCache.items.get(key);
   if(!entry) return null;
@@ -751,7 +751,7 @@ function storeSelectedRender(input:SelectedLookFashnRequest,result:CreativeFashn
 
 export async function renderSelectedLookFashnFront(input:SelectedLookFashnRequest):Promise<CreativeFashnResult> {
   if(input.locked!==true) throw new FashnVisualizationError("Lock the final design before using the photoreal renderer.","invalid_source");
-  const cached=cachedSelectedRender(input);
+  const cached=getCachedSelectedLookRender(input);
   if(cached) return cached;
   const source=await creativeModelDataUri(input.style);
   const context=await creativeFabricContext(input.shirt.image,input.pant.image);
