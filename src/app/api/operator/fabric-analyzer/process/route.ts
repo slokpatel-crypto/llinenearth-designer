@@ -60,6 +60,10 @@ async function processJob(job:ClaimedFabricAnalyzerJob) {
         notes:clean(declared.notes,500) || undefined,
         swatchRealWidthMm:Number.isFinite(Number(declared.swatchRealWidthMm)) ? Number(declared.swatchRealWidthMm) : undefined,
         repeatRealMm:Number.isFinite(Number(declared.repeatRealMm)) ? Number(declared.repeatRealMm) : undefined,
+        verifiedGsm:Number.isFinite(Number(declared.verifiedGsm)) ? Number(declared.verifiedGsm) : undefined,
+        verifiedDrape:["Fluid","Balanced","Structured"].includes(String(declared.verifiedDrape)) ? declared.verifiedDrape as FabricAnalyzerContext["verifiedDrape"] : undefined,
+        verifiedFiberContent:clean(declared.verifiedFiberContent,220) || undefined,
+        verifiedPhysicalSourceUrl:clean(declared.verifiedPhysicalSourceUrl,1800) || undefined,
       };
       const result=await analyzeMenswearFabricWithStore(input,{reuseReviewed:!job.force,persist:true});
       profileId=result.profileId;
