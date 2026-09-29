@@ -12,7 +12,9 @@
     "production-secrets": "node scripts/generate-production-secrets.mjs",
     "cloud:check": "node scripts/check-cloud-readiness.mjs",
     "release:check": "node scripts/release-readiness.mjs",
-    "release:check:live": "node scripts/release-readiness.mjs --live"
+    "release:check:live": "node scripts/release-readiness.mjs --live",
+    "fabric:sync-references": "node scripts/sync-fabric-reference-index.mjs",
+    "fabric:quality": "npm run quality && npm run release:check"
   },
   "dependencies": {
     "fashn": "^0.15.0",
