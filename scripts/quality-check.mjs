@@ -410,6 +410,10 @@ for(const token of ["verifyOperatorSession","OPERATOR_COOKIE","Not found.","same
   if(!legacyFabricAnalyze.includes(token)) throw new Error(`Legacy fabric analysis privacy regression: missing ${token}`);
 }
 console.log("Fabric Analyzer privacy gate passed: legacy and advanced analysis endpoints require operator authentication.");
+const fabricStudioMounts=sourceFiles("src").filter((path)=>path!=="src/components/FabricStudio.tsx")
+  .filter((path)=>fs.readFileSync(path,"utf8").includes("FabricStudio"));
+if(fabricStudioMounts.length) throw new Error(`Fabric Analyzer privacy regression: legacy FabricStudio is mounted by ${fabricStudioMounts.join(", ")}`);
+console.log("Fabric Analyzer UI gate passed: legacy FabricStudio remains unmounted from customer routes.");
 
 const calibrationSource=fs.readFileSync("src/lib/fabric-analyzer-calibration.ts","utf8");
 for(const token of ["runFabricAnalyzerCalibration","loadFabricAnalyzerCalibrationCases","recordFabricAnalyzerCalibration","formality range"]) {
