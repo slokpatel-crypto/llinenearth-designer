@@ -21,7 +21,7 @@ const OPERATOR_EVENT_TYPES = new Set([
 ]);
 
 function authorized(request: Request) {
-  const configured = process.env.LLINEN_OPERATOR_SYNC_TOKEN?.trim();
+  const configured = process.env.LINEN_OPERATOR_SYNC_TOKEN?.trim();
   const supplied = request.headers.get("authorization");
   if (!configured || !supplied?.startsWith("Bearer ")) return false;
   const candidate = supplied.slice(7);
@@ -238,7 +238,7 @@ export async function GET(request: Request) {
     }
 
     try {
-      const response = await fetch(`${cloud.url}/rest/v1/rpc/llinen_cloud_schema_version`, {
+      const response = await fetch(`${cloud.url}/rest/v1/rpc/linen_cloud_schema_version`, {
         method: "POST",
         headers: {
           ...supabaseAdminHeaders(cloud),
