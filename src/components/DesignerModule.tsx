@@ -127,13 +127,17 @@ export function DesignerModule() {
   const visiblePants=useMemo(()=>pantFilter==="All" ? pantOptions : pantOptions.filter((item)=>pantFilterFor(item)===pantFilter),[pantFilter,pantOptions]);
   const designerWhatsAppHref=useMemo(()=>{
     if(!shirt || !pant) return "#";
-    const creative=activeCreative ? `Creative direction: ${activeCreative.name}` : "";
+    const creative=activeCreative ? [
+      `Creative direction: ${activeCreative.name}`,
+      `Creative details: ${activeCreative.treatments.slice(0,3).map((move)=>move.label).join(" · ")}`,
+      ...(activeCreative.pattern ? [`Pattern concept: ${activeCreative.pattern.name} · ${activeCreative.pattern.placement}`] : []),
+    ] : [];
     const details=[
       `Shirt: ${customerFabricLine(shirt.line)} — ${shirt.name}`,
       `Trouser: ${customerFabricLine(pant.line)} — ${pant.name}`,
       `Occasion: ${occasion}`,
       `Style: ${style.collar}; ${style.cuff}; ${style.shirtFit}; ${style.shirtWear}; ${style.trouser}`,
-      creative,
+      ...creative,
     ].filter(Boolean).join("\n");
     return buildWhatsAppUrl({topic:"Designer Studio look",garment:"Shirt + trouser",details});
   },[shirt,pant,occasion,style,activeCreative]);
