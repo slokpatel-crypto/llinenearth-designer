@@ -6,8 +6,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const registry = (globalThis as typeof globalThis & {
-  __llinenOperatorLoginRate?: Map<string,{at:number;count:number}>
-}).__llinenOperatorLoginRate ||= new Map<string,{at:number;count:number}>();
+  __linenOperatorLoginRate?: Map<string,{at:number;count:number}>
+}).__linenOperatorLoginRate ||= new Map<string,{at:number;count:number}>();
 
 function json(body: unknown, init?: ResponseInit) {
   const response = NextResponse.json(body, init);
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     return json({ error: "Too many login attempts. Try again later." }, { status: 429 });
   }
 
-  if (!process.env.LLINEN_OPERATOR_PASSWORD_HASH || !process.env.LLINEN_OPERATOR_SESSION_SECRET) {
+  if (!process.env.LINEN_OPERATOR_PASSWORD_HASH || !process.env.LINEN_OPERATOR_SESSION_SECRET) {
     return json({ error: "Operator authentication is not configured." }, { status: 503 });
   }
 
