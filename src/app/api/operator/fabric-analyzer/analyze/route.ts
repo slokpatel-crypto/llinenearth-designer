@@ -60,6 +60,8 @@ export async function POST(request:Request) {
     const input:FabricAnalyzerContext={
       fabricId,
       imageUrl,
+      macroImageUrl:clean(body.macroImageUrl,1800) || undefined,
+      foldImageUrl:clean(body.foldImageUrl,1800) || undefined,
       sourcePageUrl:sourcePageUrl || undefined,
       sourceId:clean(body.sourceId,80) || undefined,
       declaredMaterial:clean(body.declaredMaterial,120) || undefined,
