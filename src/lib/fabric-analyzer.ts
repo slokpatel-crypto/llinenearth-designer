@@ -282,9 +282,54 @@ function fabricAnalyzerModelId() {
   return process.env.LINEN_FABRIC_ANALYZER_MODEL || "openai/gpt-5.4";
 }
 
-export async function analyzeMenswearFabric(input:FabricAnalyzerContext):Promise<FabricAnalyzerProfile> {
+function referenceExampleScore(example:(typeof REAL_MENSWEAR_FABRIC_EXAMPLES)[number],input:FabricAnalyzerContext,measured:FabricMeasuredData) {
+  const query=[
+    input.declaredMaterial,input.declaredFabricType,input.supplierColorName,input.supplierPatternName,input.notes,
+    measured.colour.mappedColorFamily,measured.pattern.orientation,measured.pattern.scale,
+  ].filter(Boolean).join(" ").toLowerCase();
+  const hay=[
+    example.manufacturer,example.product_name,example.composition,example.color_name,
+    example.pattern_name,example.construction_name,...(example.usage_tags||[]),
+  ].filter(Boolean).join(" ").toLowerCase();
+  const tokens=query.split(/[^a-z0-9]+/).filter((token)=>token.length>=4);
+  return tokens.reduce((score,token)=>score+(hay.includes(token)?1:0),0);
+}
+
+function relevantReferenceExamples(input:FabricAnalyzerContext,measured:FabricMeasuredData) {
+  return [...REAL_MENSWEAR_FABRIC_EXAMPLES]
+    .map((example)=>({example,score:referenceExampleScore(example,input,measured)}))
+    .sort((a,b)=>b.score-a.score || a.example.id.localeCompare(b.example.id))
+    .slice(0,8)
+    .map(({example})=>example);
+}
+
+function referenceTermsFromExamples(examples:ReturnType<typeof relevantReferenceExamples>) {
+  const materials=new Set<string>(),patterns=new Set<string>(),colors=new Set<string>();
+  const materialTerms=REAL_MENSWEAR_MATERIAL_TERMS.map((term)=>term.toLowerCase());
+  const patternTerms=REAL_MENSWEAR_PATTERN_TERMS.map((term)=>term.toLowerCase());
+  const colorTerms=STANDARD_COLOR_REFERENCE_TERMS.map((term)=>term.toLowerCase());
+  for(const example of examples) {
+    const hay=[example.composition,example.construction_name,example.product_name].filter(Boolean).join(" ").toLowerCase();
+    for(let i=0;i<materialTerms.length;i++) if(hay.includes(materialTerms[i])) materials.add(REAL_MENSWEAR_MATERIAL_TERMS[i]);
+    const patternHay=[example.pattern_name,example.construction_name,example.product_name].filter(Boolean).join(" ").toLowerCase();
+    for(let i=0;i<patternTerms.length;i++) if(patternHay.includes(patternTerms[i])) patterns.add(REAL_MENSWEAR_PATTERN_TERMS[i]);
+    const colorHay=String(example.color_name||"").toLowerCase();
+    for(let i=0;i<colorTerms.length;i++) if(colorHay.includes(colorTerms[i])) colors.add(STANDARD_COLOR_REFERENCE_TERMS[i]);
+  }
+  return {
+    materials:[...materials].slice(0,30),
+    patterns:[...patterns].slice(0,30),
+    colors:[...colors].slice(0,30),
+  };
+}
+
+export async function analyzeMenswearFabric(rawInput:FabricAnalyzerContext):Promise<FabricAnalyzerProfile> {
   const token=gatewayToken();
   if(!token) throw new Error("AI Gateway is not configured for Fabric Analyzer.");
+
+  const input=await prepareFabricMeasurement(rawInput);
+  const measured=input.measured;
+  if(!measured) throw new Error("Measured Fabric Analyzer evidence is unavailable.");
 
   const declared=[
     input.sourceId ? `Approved reference source ID: ${safeText(input.sourceId,80)}.` : "",
@@ -293,6 +338,8 @@ export async function analyzeMenswearFabric(input:FabricAnalyzerContext):Promise
     input.declaredFabricType ? `Declared fabric type: ${safeText(input.declaredFabricType,120)}.` : "",
     input.supplierColorName ? `Supplier color name: ${safeText(input.supplierColorName,120)}.` : "",
     input.supplierPatternName ? `Supplier pattern name: ${safeText(input.supplierPatternName,120)}.` : "",
+    Number.isFinite(input.swatchRealWidthMm) ? `Owner/supplier-declared photographed swatch width: ${input.swatchRealWidthMm} mm.` : "",
+    Number.isFinite(input.repeatRealMm) ? `Owner/supplier-declared pattern repeat: ${input.repeatRealMm} mm.` : "",
     input.notes ? `Additional context: ${safeText(input.notes,500)}.` : "",
   ].filter(Boolean).join(" ");
 
@@ -301,32 +348,42 @@ export async function analyzeMenswearFabric(input:FabricAnalyzerContext):Promise
     ? learningHints.map((hint)=>`${hint.field_path} => ${safeText(JSON.stringify(hint.corrected_value),160)} (${hint.samples} reviewed corrections)`).join("\n")
     : "No reviewed correction pattern has reached the learning threshold yet.";
 
+  const examples=relevantReferenceExamples(input,measured);
+  const terms=referenceTermsFromExamples(examples);
+  const measuredLine=[
+    `colour=${measured.colour.hex}`,
+    `LAB=${measured.colour.lab.l.toFixed(1)},${measured.colour.lab.a.toFixed(1)},${measured.colour.lab.b.toFixed(1)}`,
+    `mappedColorFamily=${measured.colour.mappedColorFamily}`,
+    `colorAnchorDeltaE=${measured.colour.deltaE}`,
+    `patternOrientation=${measured.pattern.orientation}`,
+    `repeatPeriodPx=${measured.pattern.repeatPeriodPx??"none"}`,
+    `stripeWidthPx=${measured.pattern.stripeWidthPx??"none"}`,
+    `repeatMm=${measured.pattern.repeatMm??"unknown"}`,
+    `stripeWidthMm=${measured.pattern.stripeWidthMm??"unknown"}`,
+    `patternContrastDeltaE=${measured.pattern.contrastDeltaE??"unknown"}`,
+    `patternDensity=${measured.pattern.density}`,
+    `patternScale=${measured.pattern.scale}`,
+    `physicalScaleStatus=${measured.pattern.physicalScaleStatus}`,
+    `imageQuality=${measured.imageQuality.score}/100`,
+  ].join("; ");
+
   const prompt=`You are the private Fabric Analyzer for a premium menswear Designer engine.
-Analyze the supplied fabric/swatches visually and produce a structured styling profile.
+Analyze the supplied fabric image and produce a structured styling profile.
 
-Important evidence rules:
-1. Separate VERIFIED FACTS supplied in context from what is only visually observed.
-2. Never claim exact fiber composition, GSM, thread count, Lea, shrinkage, breathability, stretch, softness, hand-feel or physical drape from an image unless explicitly supplied as a verified fact.
-3. Texture and weave from the image must be described as appearance only: e.g. "slub-looking", "twill-like", "open-weave appearance".
-4. Be useful for menswear design: shirt, trouser, blazer, suit, overshirt, jacket and occasion decisions.
-5. Pattern/formality judgments should account for scale, density, contrast, color depth and visual texture together.
-6. A visually strong fabric should normally receive simpler supporting garments/construction.
-7. Return calibrated confidence. If the image is ambiguous, lower confidence and state uncertainty rather than guessing.
-8. This is an internal analysis tool; do not write marketing copy.
+Evidence rules:
+1. Code-measured colour/pattern numbers below are authoritative for numeric/measurable fields. Do not override measured colour family, pattern scale, density, contrast or orientation with visual guesswork.
+2. Use vision for pattern family, weave/texture appearance, style personality, garment use and occasion fit.
+3. Separate VERIFIED declared facts from visual observations.
+4. Never claim exact fibre composition, GSM, thread count, Lea, shrinkage, breathability, stretch, softness, hand-feel or physical drape from pixels.
+5. Texture/weave descriptions must be appearance language such as "slub-looking" or "twill-like".
+6. Real-world millimetres exist only when physicalScaleStatus is declared_repeat or declared_swatch_width.
+7. Strong fabrics normally need quieter supporting garments. Return calibrated confidence and uncertainty.
+8. Internal analysis only; no marketing copy.
 
-Menswear interpretation scale:
-Formality 1 = relaxed/resort/casual; 2 = casual/smart-casual; 3 = smart-casual/semi-formal; 4 = business/formal; 5 = ceremonial/evening/high-formality.
-Statement level 1 = quiet base; 5 = dominant hero fabric.
+Measured code evidence:
+${measuredLine}
 
-Internal menswear taxonomy to ground classification:
-Materials/constructions: ${MENSWEAR_MATERIAL_TAXONOMY.join(", ")}.
-Patterns: ${MENSWEAR_PATTERN_TAXONOMY.join(", ")}.
-Shade families: ${MENSWEAR_COLOR_TAXONOMY.join(", ")}.
-Garment uses: ${MENSWEAR_GARMENT_USES.join(", ")}.
-Occasions: ${MENSWEAR_OCCASION_TAXONOMY.join(", ")}.
-Evidence discipline: ${FABRIC_ANALYZER_EVIDENCE_RULES.join(" ")}
-
-Closed output vocabulary (return IDs exactly, never rephrase them):
+Closed output IDs:
 Color families: ${colorFamilies.map((item)=>item.id).join(", ")}.
 Garment uses: ${garmentUses.map((item)=>item.id).join(", ")}.
 Occasions: ${occasions.map((item)=>item.id).join(", ")}.
@@ -336,44 +393,43 @@ Designer cuffs: ${cuffOptions.map((item)=>`${item.id}=${item.label}`).join("; ")
 Designer shirt fits: ${shirtFitOptions.map((item)=>`${item.id}=${item.label}`).join("; ")}.
 Designer trouser directions: ${trouserDirectionOptions.map((item)=>`${item.id}=${item.label}`).join("; ")}.
 Pattern strategies: ${patternStrategies.map((item)=>item.id).join(", ")}.
+Evidence discipline: ${FABRIC_ANALYZER_EVIDENCE_RULES.join(" ")}
 
-Real-reference corpus ${FABRIC_REFERENCE_INDEX_VERSION}:
-- ${FABRIC_REFERENCE_COUNTS.materials} material/construction terms from real mills and textile authorities: ${REAL_MENSWEAR_MATERIAL_TERMS.join(", ")}.
-- ${FABRIC_REFERENCE_COUNTS.patterns} source-backed pattern/construction terms: ${REAL_MENSWEAR_PATTERN_TERMS.join(", ")}.
-- ${FABRIC_REFERENCE_COUNTS.colors} standardized/reference color terms: ${STANDARD_COLOR_REFERENCE_TERMS.join(", ")}.
-- Source IDs available for provenance: ${FABRIC_REFERENCE_SOURCES.map((source)=>`${source.id}=${source.publisher}`).join("; ")}.
-- ${REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT} verified real-fabric examples from the source corpus:
-${REAL_MENSWEAR_FABRIC_EXAMPLES.map((example)=>[
-  example.manufacturer,
-  example.product_name,
+Retrieved real-reference subset from ${FABRIC_REFERENCE_INDEX_VERSION} (${FABRIC_REFERENCE_COUNTS.materials} material terms, ${FABRIC_REFERENCE_COUNTS.patterns} pattern terms, ${FABRIC_REFERENCE_COUNTS.colors} colour terms, ${REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT} total real examples):
+Candidate material terms: ${terms.materials.join(", ") || "none"}.
+Candidate pattern terms: ${terms.patterns.join(", ") || "none"}.
+Candidate colour terms: ${terms.colors.join(", ") || "none"}.
+Top relevant real-fabric anchors:
+${examples.map((example)=>[
+  example.id,example.manufacturer,example.product_name,
   example.composition ? `composition=${example.composition}` : "",
   example.color_name ? `color=${example.color_name}` : "",
   example.pattern_name ? `pattern=${example.pattern_name}` : "",
   example.construction_name ? `construction=${example.construction_name}` : "",
-  example.weight_gsm ? `weight=${example.weight_gsm}gsm` : "",
   example.usage_tags?.length ? `use=${example.usage_tags.join("/")}` : "",
   `source=${example.source_id}`,
 ].filter(Boolean).join(" | ")).join("\n")}
 
+Reference constraints:
+- References are vocabulary/role anchors only. Never transfer composition, GSM, physical drape or provenance from a similar-looking reference.
+- references.materialTerms/patternTerms/colorTerms may use only terms in the retrieved candidate lists above.
+- The backend derives source IDs from provenance; do not guess them.
+- Do not identify an uploaded fabric as a specific branded mill product unless explicitly declared.
+
 Reviewed correction learning:
 ${learnedGuidance}
 
-Learning rules:
-- Treat these only as aggregate correction signals from prior reviewed Analyzer outputs.
-- A learned signal may refine classification when the current image/context is similar, but it never overrides explicit verified supplier facts.
-- Do not extrapolate a correction to unrelated materials, colors or patterns.
-- When current visual evidence is weak or conflicts with a learned signal, lower confidence rather than forcing the learned answer.
+Learning constraints:
+- Aggregate corrections refine classification only when current evidence is similar.
+- Explicit supplier/owner facts outrank learned hints.
+- Weak/conflicting evidence lowers confidence; it never justifies invention.
 
-Reference rules:
-- Use references only when there is a defensible visual or declared-context match.
-- Do not claim that a fabric is a specific branded mill product unless that exact product is supplied as verified context.
-- references.materialTerms/patternTerms/colorTerms must contain only exact terms from the corpus above.
-- The backend derives sourceIds from its provenance map; do not rely on guessed source attribution.
-- A source-backed vocabulary match supports terminology, not unverified composition or provenance of the uploaded fabric.
-- Real-fabric examples are anchors for vocabulary, scale and menswear role only. Never copy composition, weight or provenance from a similar-looking example onto the uploaded fabric.
-- If a declared fact conflicts with visual resemblance to a reference example, preserve the declared fact and lower confidence in the visual match.
+Known verified/declared context:
+${declared || "No verified context supplied beyond the measured image evidence."}
 
-Known context, if any: ${declared || "No verified context supplied; rely only on visible evidence."}`;
+Menswear scale:
+Formality 1=relaxed/resort/casual, 2=casual/smart-casual, 3=smart-casual/semi-formal, 4=business/formal, 5=ceremonial/evening.
+Statement 1=quiet base, 5=dominant hero fabric.`;
 
   const response=await fetch("https://ai-gateway.vercel.sh/v1/responses",{
     method:"POST",
@@ -399,7 +455,71 @@ Known context, if any: ${declared || "No verified context supplied; rely only on
   if(!text) throw new Error("Fabric Analyzer returned no structured output.");
   const adapted=adaptFabricProfileToV4(JSON.parse(text));
   if(!adapted) throw new Error("Fabric Analyzer returned an unsupported schema version.");
-  return validatedProfile(adapted);
+
+  const modelColorFamily=adapted.observed.colorFamily;
+  const modelPatternScale=adapted.observed.patternScale;
+  const reviewNeeded=[...adapted.reviewNeeded];
+  if(modelColorFamily && modelColorFamily!==measured.colour.mappedColorFamily) {
+    reviewNeeded.push(`Measured/model colour disagreement: measured=${measured.colour.mappedColorFamily}, model=${modelColorFamily}`);
+  }
+  if(modelPatternScale!==measured.pattern.scale && measured.pattern.orientation!=="uncertain") {
+    reviewNeeded.push(`Measured/model pattern-scale disagreement: measured=${measured.pattern.scale}, model=${modelPatternScale}`);
+  }
+
+  const measuredConfidence=Math.max(.2,Math.min(1,measured.imageQuality.score/100));
+  const profile:FabricAnalyzerProfile={
+    ...adapted,
+    observed:{
+      ...adapted.observed,
+      dominantColor:measured.colour.hex,
+      colorFamily:measured.colour.mappedColorFamily,
+      patternScale:measured.pattern.scale,
+      patternDensity:measured.pattern.density,
+      patternContrast:measuredPatternContrast(measured.pattern.contrastDeltaE),
+      orientation:measured.pattern.orientation==="uncertain" ? adapted.observed.orientation : measured.pattern.orientation,
+    },
+    confidence:{
+      ...adapted.confidence,
+      color:Math.min(adapted.confidence.color,measuredConfidence),
+      pattern:Math.min(adapted.confidence.pattern,measuredConfidence),
+    },
+    measured,
+    imageQuality:measured.imageQuality,
+    renderAssets:{
+      tileUrl:null,
+      placeholderUrl:null,
+      tileWidthPx:null,
+      tileHeightPx:null,
+      repeatDetected:Boolean(measured.pattern.repeatPeriodPx),
+      renderAssetVersion:null,
+      scaleApproximate:measured.pattern.physicalScaleStatus==="unknown",
+    },
+    captureSet:[{
+      role:"flat",
+      imageUrl:input.imageUrl,
+      contentSha256:measured.contentSha256,
+    }],
+    provenanceByField:{
+      "measured.colour":"measured",
+      "measured.pattern":"measured",
+      "imageQuality":"measured",
+      "observed.colorFamily":"measured",
+      "observed.patternScale":"measured",
+      "observed.patternDensity":"measured",
+      "observed.patternContrast":"measured",
+      "observed.orientation":"measured",
+      "observed.patternFamily":"modelJudged",
+      "observed.visibleTexture":"modelJudged",
+      "observed.weaveAppearance":"modelJudged",
+      "inferredStyle":"modelJudged",
+      ...(input.declaredMaterial?{"evidence.declaredMaterial":"declared" as const}:{}),
+      ...(input.declaredFabricType?{"evidence.declaredFabricType":"declared" as const}:{}),
+      ...(Number.isFinite(input.repeatRealMm)||Number.isFinite(input.swatchRealWidthMm)
+        ? {"measured.pattern.physicalScale":"declared" as const}:{}),
+    },
+    reviewNeeded:[...new Set(reviewNeeded)].slice(0,40),
+  };
+  return validatedProfile(profile);
 }
 
 export type FabricAnalyzerRun = {
