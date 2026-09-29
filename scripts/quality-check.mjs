@@ -423,7 +423,7 @@ for (const token of [
   "chooseCreativeRedesign","visual_balance","render_mismatch",
   "absoluteFeasibilityBlock","literally unavailable or physically impossible",
   "pairwisePreference","pairwiseTournament","A tiny difference is not meaningful enough",
-  "refinementShortlist","sourceDistance","const shortlist=refinementShortlist"
+  "refinementShortlist","sourceDistance","const shortlist=refinementShortlist","family:\"tonal\"","Shadow Weft"
 ]) {
   if (!creativeEngine.includes(token)) throw new Error(`Designer V5 creative-engine regression: missing ${token}`);
 }
