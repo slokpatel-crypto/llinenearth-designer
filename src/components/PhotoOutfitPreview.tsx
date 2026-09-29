@@ -533,7 +533,7 @@ export type CreativeVisualCheck = {
   redesignReason?:CreativeFeedbackReason;
 };
 
-export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCreativeFeedback, onCreativeInspection, autoRenderNonce = 0, onCreativeRenderStart }: {
+export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCreativeFeedback, onCreativeInspection, autoRenderNonce = 0, onCreativeRenderStart, renderRepairInstruction = "" }: {
   shirt: DesignerFabric;
   pant: DesignerFabric;
   style: DesignerStyle;
@@ -542,6 +542,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
   onCreativeInspection?: (check:CreativeVisualCheck)=>void;
   autoRenderNonce?: number;
   onCreativeRenderStart?: ()=>void;
+  renderRepairInstruction?: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastAutoRenderNonce = useRef(0);
@@ -611,6 +612,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
             pattern:creativeDirection.pattern,
             renderRisk:creativeDirection.learning.renderRisk,
             renderCaution:creativeDirection.learning.renderCaution,
+            repairInstruction:renderRepairInstruction || undefined,
           },
         }),
       });
