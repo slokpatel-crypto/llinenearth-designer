@@ -15,6 +15,10 @@ import {
   REAL_MENSWEAR_PATTERN_TERMS,
   STANDARD_COLOR_REFERENCE_TERMS,
 } from "@/lib/fabric-analyzer-reference-index";
+import {
+  REAL_MENSWEAR_FABRIC_EXAMPLES,
+  REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT,
+} from "@/lib/fabric-analyzer-real-examples";
 
 export type FabricAnalyzerContext = {
   imageUrl:string;
@@ -26,7 +30,7 @@ export type FabricAnalyzerContext = {
 };
 
 export type FabricAnalyzerProfile = {
-  version:"fabric-analyzer-v2";
+  version:"fabric-analyzer-v3";
   observed:{
     dominantColor:string;
     colorFamily:string;
@@ -121,7 +125,7 @@ function outputText(payload:unknown) {
 const schema={
   type:"object",
   properties:{
-    version:{type:"string",enum:["fabric-analyzer-v2"]},
+    version:{type:"string",enum:["fabric-analyzer-v3"]},
     observed:{
       type:"object",
       properties:{
@@ -284,12 +288,26 @@ Real-reference corpus ${FABRIC_REFERENCE_INDEX_VERSION}:
 - ${FABRIC_REFERENCE_COUNTS.patterns} source-backed pattern/construction terms: ${REAL_MENSWEAR_PATTERN_TERMS.join(", ")}.
 - ${FABRIC_REFERENCE_COUNTS.colors} standardized/reference color terms: ${STANDARD_COLOR_REFERENCE_TERMS.join(", ")}.
 - Source IDs available for provenance: ${FABRIC_REFERENCE_SOURCES.map((source)=>`${source.id}=${source.publisher}`).join("; ")}.
+- ${REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT} verified real-fabric examples from the source corpus:
+${REAL_MENSWEAR_FABRIC_EXAMPLES.map((example)=>[
+  example.manufacturer,
+  example.product_name,
+  example.composition ? `composition=${example.composition}` : "",
+  example.color_name ? `color=${example.color_name}` : "",
+  example.pattern_name ? `pattern=${example.pattern_name}` : "",
+  example.construction_name ? `construction=${example.construction_name}` : "",
+  example.weight_gsm ? `weight=${example.weight_gsm}gsm` : "",
+  example.usage_tags?.length ? `use=${example.usage_tags.join("/")}` : "",
+  `source=${example.source_id}`,
+].filter(Boolean).join(" | ")).join("\n")}
 
 Reference rules:
 - Use references only when there is a defensible visual or declared-context match.
 - Do not claim that a fabric is a specific branded mill product unless that exact product is supplied as verified context.
 - references.materialTerms/patternTerms/colorTerms/sourceIds must contain only exact terms/IDs from the corpus above.
 - A source-backed vocabulary match supports terminology, not unverified composition or provenance of the uploaded fabric.
+- Real-fabric examples are anchors for vocabulary, scale and menswear role only. Never copy composition, weight or provenance from a similar-looking example onto the uploaded fabric.
+- If a declared fact conflicts with visual resemblance to a reference example, preserve the declared fact and lower confidence in the visual match.
 
 Known context, if any: ${declared || "No verified context supplied; rely only on visible evidence."}`;
 
