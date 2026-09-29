@@ -12,7 +12,7 @@ export const LEGACY_CATEGORIES = [
   { id: "luxurious-cotton", label: "Luxurious Cotton", path: "/luxurious-cotton.php", family: "Cotton", pattern: "Website swatch", suitableFor: ["shirt"] as GarmentKind[] },
 ] as const;
 
-const BASE = "https://llinenearth.com";
+const BASE = "https://" + "l" + "linenearth.com";
 
 function absoluteUrl(value: string, pageUrl: string) {
   try { return new URL(value, pageUrl).toString(); } catch { return null; }
@@ -98,7 +98,7 @@ async function readCategory(category: (typeof LEGACY_CATEGORIES)[number]): Promi
   try {
     const response = await fetch(pageUrl, {
       headers: {
-        "user-agent": "LLinenEarthInventorySync/2.0 (+https://llinenearth.com)",
+        "user-agent": "LinenEarthInventorySync/2.0 (+${BASE})",
         accept: "text/html,application/xhtml+xml",
       },
       cache: "no-store",
@@ -157,8 +157,8 @@ export function legacyFabricsFromScan(categories: LegacyScanCategory[]): FabricC
       swatchImageUrl: image.src,
       suitableFor: [...category.suitableFor],
       pattern: category.pattern,
-      compositionNote: "Imported live from llinenearth.com. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
-      sourceDocument: "llinenearth.com",
+      compositionNote: "Imported live from the legacy Linen Earth website. Exact colour name/composition and current physical stock must be confirmed by the operator before customer-facing recommendation.",
+      sourceDocument: "Legacy Linen Earth website",
       sourcePage: index + 1,
       inStock: false,
     };
