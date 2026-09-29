@@ -2,7 +2,7 @@ import type { DesignerBrief } from "@/lib/designer-types";
 import type { DesignVersion } from "@/lib/refinement-engine";
 import type { RenderSet } from "@/lib/visualization-engine";
 
-export const SAVED_DESIGNS_KEY = "llinen-earth-saved-designs-v1";
+export const SAVED_DESIGNS_KEY = "linen-earth-saved-designs-v1";
 
 export type SavedDesign = {
   id: string;
