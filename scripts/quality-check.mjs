@@ -496,7 +496,7 @@ for (const token of ["Creative Research Desk","RESEARCH → DESIGN TRANSLATOR","
 console.log(`Designer V5 creative-research gate passed: ${sourceRows * topicRows} source-topic discovery targets, maximum-freedom research synthesis, simplified visual UI, photoreal review and capped learning protected.`);
 
 const researchDiscovery=fs.readFileSync("src/lib/designer/research-source-discovery.ts","utf8");
-for(const token of ["discoverFashionWebsites","Q3661311","Q11828862","Q607081","Promise.allSettled","discoverRoute","All Wikidata fashion research discovery routes failed","slice(0,requested)"]) {
+for(const token of ["discoverFashionWebsites","Q3661311","Q11828862","Q607081","Q1505660","Q6297581","Q5436782","Q3501317","Q29583","Promise.allSettled","discoverRoute","All Wikidata fashion research discovery routes failed","slice(0,requested)","wikidata-fashion-magazine","wikidata-fashion-museum"]) {
   if(!researchDiscovery.includes(token)) throw new Error(`Research website discovery regression: missing ${token}`);
 }
 const researchAnalysis=fs.readFileSync("src/lib/designer/research-source-analysis.ts","utf8");
