@@ -381,7 +381,7 @@ export function DesignerModule() {
     setActiveCreative(null);
   }
 
-  function giveCreativeRenderFeedback(rating:"up"|"down",creativeReason?:CreativeFeedbackReason,visualCheck?:CreativeVisualCheck) {
+  function giveCreativeRenderFeedback(rating:"up"|"down"|"saved",creativeReason?:CreativeFeedbackReason,visualCheck?:CreativeVisualCheck) {
     if(!activeCreative || !shirt || !pant) return;
     try {
       recordStyleMemoryEvent(designerSession(),"designer_feedback",{
@@ -830,7 +830,11 @@ export function DesignerModule() {
         style={style}
         creativeDirection={activeCreative}
         onCreativeFeedback={giveCreativeRenderFeedback}
-        onCreativeInspection={(check)=>{ if(check.evidenceAvailable && check.status==="review" && activeCreative) giveCreativeRenderFeedback("down",check.redesignReason || "render_mismatch",check); }}
+        onCreativeInspection={(check)=>{
+          if(!check.evidenceAvailable || !activeCreative) return;
+          if(check.status==="review") giveCreativeRenderFeedback("down",check.redesignReason || "render_mismatch",check);
+          else giveCreativeRenderFeedback("saved",undefined,check);
+        }}
       />}
       {fitCoverage.total > 0 && <div className="newDesignerFitModelNote newDesignerFitModelNoteCompact"><span>FIT PROFILE · {fitCoverage.total}/16</span></div>}
       <section className="newDesignerOutcome newDesignerOutcomeCompact" aria-live="polite" aria-label="Designer recommendation">
