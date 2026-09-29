@@ -509,8 +509,9 @@
 .newDesignerPhotoCreativeCompact>strong,.newDesignerPhotoCreativeCompact>p{display:none!important}
 .newDesignerPhotoCreativeTags{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
 .newDesignerPhotoCreativeTags b{font-size:6px!important;font-weight:600!important;color:#506d85!important;background:#f0f5f7!important;border-radius:999px;padding:5px 7px}
-.newDesignerCreativeReviewCompact{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:8px!important}
+.newDesignerCreativeReviewCompact{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:8px!important;flex-wrap:wrap}
 .newDesignerCreativeReviewCompact>div:first-of-type{margin-top:0!important}
+.newDesignerCreativeReviewCompact .newDesignerCreativeReviewHint{width:100%;flex-basis:100%;margin-top:0}
 .newDesignerCreativeReviewCompact .newDesignerCreativeReviewReasons{width:100%;flex-basis:100%}
 .newDesignerPhotoAccuracyCompact{margin-top:8px!important}
 
