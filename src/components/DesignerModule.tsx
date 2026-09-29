@@ -21,10 +21,8 @@ import { buildDesignerNegotiation } from "@/lib/designer/constraint-negotiation"
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
 import { evaluateLinenEarthBrandLanguage } from "@/lib/designer/brand-language";
 import { buildCanonicalGarmentSpec, canonicalGarmentSpecSummary } from "@/lib/designer/garment-spec";
-import { searchDesignerCatalogue, type DesignerSearchResult, type DesignerSearchScope } from "@/lib/designer/search";
+import type { DesignerSearchScope, DesignerSearchTier } from "@/lib/designer/search";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
-import type { DesignerCasebook } from "@/lib/designer/casebook";
-import type { FitOutcomeBook } from "@/lib/designer/fit-outcomes";
 import { creativeFamilyFromConceptId, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 
@@ -36,6 +34,14 @@ const DRAFT_KEY = "linen-earth:real-designer-draft:v2";
 const FACT_INTERVAL_MS = 15_000;
 type ShirtFabricFilter = "All" | "Plain" | "Print" | "Blend" | "Formal";
 type PantFabricFilter = "All" | "Light" | "Medium" | "Dark";
+type DesignerSearchOption = {
+  id:string;
+  tier:DesignerSearchTier;
+  shirt:DesignerFabric;
+  pant:DesignerFabric;
+  style:DesignerStyle;
+  recommendation:DesignerRecommendation;
+};
 
 const SHIRT_FILTERS:ShirtFabricFilter[]=["All","Plain","Print","Blend","Formal"];
 const PANT_FILTERS:PantFabricFilter[]=["All","Light","Medium","Dark"];
@@ -106,12 +112,11 @@ export function DesignerModule() {
   const [measurementProfile, setMeasurementProfile] = useState<MeasurementProfile | null>(null);
   const [tailorObservations, setTailorObservations] = useState<TailorObservationProfile | null>(null);
   const [searchScope, setSearchScope] = useState<DesignerSearchScope>("keep_shirt");
-  const [searchResults, setSearchResults] = useState<DesignerSearchResult[]>([]);
+  const [searchResults, setSearchResults] = useState<DesignerSearchOption[]>([]);
+  const [searchLoading,setSearchLoading]=useState(false);
+  const [searchError,setSearchError]=useState("");
   const [creativeDirections, setCreativeDirections] = useState<CreativeDirection[]>([]);
   const [activeCreative, setActiveCreative] = useState<CreativeDirection | null>(null);
-  const [casebook, setCasebook] = useState<DesignerCasebook | null>(null);
-  const [fitOutcomes, setFitOutcomes] = useState<FitOutcomeBook | null>(null);
-  const [researchPool, setResearchPool] = useState<{websites:number;topics:number;targets:number;highAuthorityWebsites:number}|null>(null);
   const [creativeAutoNote,setCreativeAutoNote]=useState("");
   const [creativeAutoRetryCount,setCreativeAutoRetryCount]=useState(0);
   const [creativeAutoRenderNonce,setCreativeAutoRenderNonce]=useState(0);
@@ -168,23 +173,6 @@ export function DesignerModule() {
       const parsed = JSON.parse(raw) as TailorObservationProfile;
       if (parsed?.version === 1) setTailorObservations(parsed);
     } catch { /* Tailor observations are optional; Designer remains usable without them. */ }
-  },[]);
-
-  useEffect(() => {
-    let cancelled=false;
-    async function loadCasebook() {
-      try {
-        const response=await fetch("/api/designer/casebook",{cache:"no-store"});
-        if(!response.ok) return;
-        const data=await response.json() as {casebook?:DesignerCasebook;fitOutcomes?:FitOutcomeBook;researchPool?:{websites:number;topics:number;targets:number;highAuthorityWebsites:number}};
-        if(cancelled) return;
-        if(data.casebook?.version==="designer-casebook-v1") setCasebook(data.casebook);
-        if(data.fitOutcomes?.version==="designer-fit-outcomes-v1") setFitOutcomes(data.fitOutcomes);
-        if(data.researchPool?.targets) setResearchPool(data.researchPool);
-      } catch { /* Casebook is optional; hard Designer rules continue without it. */ }
-    }
-    void loadCasebook();
-    return ()=>{cancelled=true;};
   },[]);
 
   useEffect(() => {
@@ -375,23 +363,34 @@ export function DesignerModule() {
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   }
 
-  function runAdvancedSearch() {
-    if (!shirt || !pant) return;
-    const results=searchDesignerCatalogue({
-      shirts:shirtOptions,
-      pants:pantOptions,
-      currentShirt:shirt,
-      currentPant:pant,
-      occasion,
-      chosenStyle:style,
-      context:{climate,intention},
-      measurements:measurementProfile,
-      observations:tailorObservations,
-      scope:searchScope,
-      casebook,
-      fitOutcomes,
-    });
-    setSearchResults(results);
+  async function runAdvancedSearch() {
+    if (!shirt || !pant || searchLoading) return;
+    setSearchLoading(true);
+    setSearchError("");
+    try {
+      const response=await fetch("/api/designer/search",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({
+          shirtId:shirt.id,
+          pantId:pant.id,
+          occasion,
+          style,
+          context:{climate,intention},
+          scope:searchScope,
+          measurements:measurementProfile,
+          observations:tailorObservations,
+        }),
+      });
+      const data=await response.json() as {results?:DesignerSearchOption[];error?:string};
+      if(!response.ok) throw new Error(data.error || "Designer could not prepare alternatives.");
+      setSearchResults(Array.isArray(data.results)?data.results:[]);
+    } catch(error) {
+      setSearchResults([]);
+      setSearchError(error instanceof Error ? error.message : "Designer could not prepare alternatives.");
+    } finally {
+      setSearchLoading(false);
+    }
   }
 
   async function requestCreativeDirections(limit:number,current?:CreativeDirection,reason?:CreativeFeedbackReason) {
@@ -575,7 +574,7 @@ export function DesignerModule() {
     } catch { /* Creative concept remains usable if memory storage is unavailable. */ }
   }
 
-  function useSearchResult(result:DesignerSearchResult) {
+  function useSearchResult(result:DesignerSearchOption) {
     setActiveCreative(null);
     setShirtId(result.shirt.id);
     setPantId(result.pant.id);
@@ -587,7 +586,6 @@ export function DesignerModule() {
     setFeedbackReason(null);
     setRecommendationId(null);
     try {
-      const spec=buildCanonicalGarmentSpec(result.recommendation,result.fitConstruction,measurementProfile,result.brandLanguage,result.blockStrategy);
       const event=recordStyleMemoryEvent(designerSession(),"designer_recommendation",{
         shirtId:result.shirt.id,pantId:result.pant.id,occasion:result.recommendation.occasion,style:result.style,
         input:{source:"advanced_catalogue_search",tier:result.tier,scope:searchScope,context:{climate,intention}},
@@ -600,7 +598,6 @@ export function DesignerModule() {
         reasoningText:result.recommendation.internalReason,
         status:result.recommendation.status,
         ruleSetVersion:result.recommendation.ruleSetVersion,
-        garmentSpec:{version:spec.version,status:spec.status,fitConstructionScore:spec.decision.fitConstructionScore,brandLanguageScore:spec.decision.brandLanguageScore,blockStrategyScore:spec.decision.blockStrategyScore,readiness:spec.readiness},
       });
       setRecommendationId(event.id);
     } catch { /* Search result remains usable when event storage is unavailable. */ }
@@ -848,7 +845,8 @@ export function DesignerModule() {
               <button type="button" aria-pressed={searchScope==="keep_trouser"} onClick={()=>{setSearchScope("keep_trouser");setSearchResults([]);}}>Keep trouser</button>
               <button type="button" aria-pressed={searchScope==="open"} onClick={()=>{setSearchScope("open");setSearchResults([]);}}>Change both</button>
             </div>
-            <button className="newDesignerOptionalSearchRun" type="button" onClick={runAdvancedSearch} disabled={!shirt || !pant}>Show 3 options</button>
+            <button className="newDesignerOptionalSearchRun" type="button" onClick={()=>void runAdvancedSearch()} disabled={!shirt || !pant || searchLoading}>{searchLoading?"Finding…":"Show 3 options"}</button>
+            {searchError && <span className="newDesignerSearchError">{searchError}</span>}
             {searchResults.length>0 && <div className="newDesignerQuickResults">
               {searchResults.slice(0,3).map((result)=><article key={result.id}>
                 <div className="newDesignerQuickFabricPair">
@@ -870,7 +868,7 @@ export function DesignerModule() {
             <div>
               <span>03 / CREATE</span>
               <strong>Imagine new designs.</strong>
-              {researchPool && <small>Fashion research runs quietly in the background.</small>}
+              <small>Fashion research runs quietly in the background.</small>
             </div>
             <button type="button" onClick={()=>void runCreativeLab()} disabled={!shirt || !pant || creativeGenerating}>{creativeGenerating?"Creating…":"Create ideas ✦"}</button>
           </div>
