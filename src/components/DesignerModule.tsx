@@ -12,7 +12,7 @@ import { designerStyleInsights } from "@/lib/designer/style-insights";
 import { DESIGNER_FASHION_FACTS, DESIGNER_RESEARCH } from "@/lib/designer/research";
 import { constructionNotes } from "@/lib/designer/photo-preview";
 import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
-import { PhotoOutfitPreview } from "@/components/PhotoOutfitPreview";
+import { PhotoOutfitPreview, type CreativeVisualCheck } from "@/components/PhotoOutfitPreview";
 import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, type MeasurementProfile } from "@/lib/measurements";
 import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { assessFitConstruction, formatFinishedRange } from "@/lib/designer/fit-construction";
@@ -381,7 +381,7 @@ export function DesignerModule() {
     setActiveCreative(null);
   }
 
-  function giveCreativeRenderFeedback(rating:"up"|"down",creativeReason?:CreativeFeedbackReason) {
+  function giveCreativeRenderFeedback(rating:"up"|"down",creativeReason?:CreativeFeedbackReason,visualCheck?:CreativeVisualCheck) {
     if(!activeCreative || !shirt || !pant) return;
     try {
       recordStyleMemoryEvent(designerSession(),"designer_feedback",{
@@ -398,6 +398,7 @@ export function DesignerModule() {
         creativeMoveIds:activeCreative.treatments.map((move)=>move.id),
         creativeReason:creativeReason || "",
         creativeRendered:true,
+        ...(visualCheck?{creativeVisualCheck:visualCheck}:{}),
         note:"Visual review of the photoreal V5 concept render.",
       });
     } catch { /* Creative review remains optional if memory storage is unavailable. */ }
@@ -835,7 +836,7 @@ export function DesignerModule() {
         style={style}
         creativeDirection={activeCreative}
         onCreativeFeedback={giveCreativeRenderFeedback}
-        onCreativeInspection={(check)=>{ if(check.status==="review" && activeCreative) giveCreativeRenderFeedback("down","render_mismatch"); }}
+        onCreativeInspection={(check)=>{ if(check.status==="review" && activeCreative) giveCreativeRenderFeedback("down","render_mismatch",check); }}
       />}
       {fitCoverage.total > 0 && <div className="newDesignerFitModelNote newDesignerFitModelNoteCompact"><span>FIT PROFILE · {fitCoverage.total}/16</span></div>}
       <section className="newDesignerOutcome newDesignerOutcomeCompact" aria-live="polite" aria-label="Designer recommendation">
