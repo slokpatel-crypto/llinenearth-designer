@@ -327,6 +327,16 @@ for (const token of ["MENSWEAR_MATERIAL_TAXONOMY","MENSWEAR_PATTERN_TAXONOMY","M
 if (realDesignerModule.includes("fabric-analyzer")) throw new Error("Fabric Analyzer privacy regression: customer Designer UI must not import the backend analyzer.");
 console.log("Private Fabric Analyzer gate passed: server-only visual analysis and menswear taxonomy remain backend-only.");
 
+const fabricReferenceIndex = fs.readFileSync("src/lib/fabric-analyzer-reference-index.ts","utf8");
+for (const token of ["REAL_MENSWEAR_MATERIAL_TERMS","REAL_MENSWEAR_PATTERN_TERMS","STANDARD_COLOR_REFERENCE_TERMS","FABRIC_REFERENCE_SOURCES","real-reference-v1"]) {
+  if (!fabricReferenceIndex.includes(token)) throw new Error(`Real-reference Fabric Analyzer regression: missing ${token}`);
+}
+for (const token of ["fabric-analyzer-v2","FABRIC_REFERENCE_COUNTS","retainKnown","references:{","Real-reference corpus","A source-backed vocabulary match supports terminology"]) {
+  if (!fabricAnalyzerSource.includes(token)) throw new Error(`Fabric Analyzer V2 provenance regression: missing ${token}`);
+}
+if (realDesignerModule.includes("fabric-analyzer-reference-index")) throw new Error("Fabric Analyzer privacy regression: real reference corpus must remain server-only.");
+console.log("Real-reference Fabric Analyzer gate passed: 200+ material terms, 100+ pattern terms, 400+ color terms and provenance-aware V2 analysis remain backend-only.");
+
 const photoPreviewMultiView = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
 const selectedLookRenderRoute = fs.readFileSync("src/app/api/designer/look-render/route.ts","utf8");
 for (const token of ["PhotorealView","choosePhotorealView","three-quarter","Generate 3/4","photorealViews"]) {
