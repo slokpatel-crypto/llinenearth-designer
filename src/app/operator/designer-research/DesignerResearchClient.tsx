@@ -13,6 +13,13 @@ type Payload={
   topics:FashionResearchTopic[];
 };
 
+type DiscoveryPayload={
+  source:string;
+  requested:number;
+  discovered:number;
+  sources:FashionResearchSource[];
+};
+
 const ZONES=["collar","cuff","placket","shirt-body","pocket","waistband","pleat","trouser-leg"] as const;
 const SOURCE_TYPES=["museum","designer","runway","tailoring","archive","operator"] as const;
 const BUILDABILITY=["supported","atelier","experimental"] as const;
@@ -57,6 +64,8 @@ export default function DesignerResearchClient(){
   const [saving,setSaving]=useState(false);
   const [message,setMessage]=useState("");
   const [sourceSearch,setSourceSearch]=useState("");
+  const [discoveredSources,setDiscoveredSources]=useState<FashionResearchSource[]>([]);
+  const [discovering,setDiscovering]=useState(false);
 
   async function load(){
     const response=await fetch("/api/operator/designer-research",{cache:"no-store"});
@@ -68,10 +77,35 @@ export default function DesignerResearchClient(){
 
   useEffect(()=>{void load().catch((error)=>setMessage(error instanceof Error?error.message:"Unable to load research library."));},[]);
 
+  const combinedSources=useMemo(()=>{
+    const map=new Map<string,FashionResearchSource>();
+    for(const source of [...(data?.sources || []),...discoveredSources]) {
+      try {
+        const domain=new URL(source.baseUrl).hostname.toLowerCase().replace(/^www\./,"");
+        if(!map.has(domain)) map.set(domain,source);
+      } catch { /* Ignore malformed external research URLs. */ }
+    }
+    return [...map.values()];
+  },[data,discoveredSources]);
+
   const filteredSources=useMemo(()=>{
     const q=sourceSearch.trim().toLowerCase();
-    return (data?.sources || []).filter((source)=>!q || [source.name,source.baseUrl,source.category,source.authority].some((value)=>value.toLowerCase().includes(q)));
-  },[data,sourceSearch]);
+    return combinedSources.filter((source)=>!q || [source.name,source.baseUrl,source.category,source.authority].some((value)=>value.toLowerCase().includes(q)));
+  },[combinedSources,sourceSearch]);
+
+  async function discover1000(){
+    setDiscovering(true); setMessage("");
+    try{
+      const response=await fetch("/api/operator/designer-research/discover?limit=1000",{cache:"no-store"});
+      if(response.status===401){window.location.href="/operator/login?next=/operator/designer-research";return;}
+      const result=await response.json() as DiscoveryPayload&{error?:string};
+      if(!response.ok) throw new Error(result.error||"Website discovery failed.");
+      setDiscoveredSources(result.sources||[]);
+      setMessage(`Discovered ${result.discovered.toLocaleString("en-IN")} distinct official fashion/textile websites. They are available for research selection below.`);
+    }catch(error){
+      setMessage(error instanceof Error?error.message:"Website discovery failed.");
+    }finally{setDiscovering(false);}
+  }
 
   function useSource(source:FashionResearchSource){
     const sourceType:Draft["sourceType"]=source.category==="museum"?"museum":source.category==="runway"?"runway":source.category==="menswear"?"tailoring":source.category==="academic"||source.category==="university"?"archive":"designer";
@@ -117,14 +151,15 @@ export default function DesignerResearchClient(){
     </header>
 
     <section className="researchStats">
-      <article><span>SOURCE WEBSITES</span><strong>{data.pool.websites}</strong><p>Curated high-signal domains in the discovery pool.</p></article>
+      <article><span>CURATED WEBSITES</span><strong>{data.pool.websites}</strong><p>High-signal academic, museum, runway and industry domains.</p></article>
       <article><span>RESEARCH TARGETS</span><strong>{data.pool.targets.toLocaleString("en-IN")}</strong><p>Source × topic combinations spanning fashion and fashion science.</p></article>
       <article><span>HIGH AUTHORITY</span><strong>{data.pool.highAuthorityWebsites}</strong><p>Primary or scholarly sources.</p></article>
-      <article><span>ACTIVE SIGNALS</span><strong>{data.library.active}</strong><p>Reviewed principles currently allowed to influence V5.</p></article>
+      <article><span>DISCOVERED NOW</span><strong>{discoveredSources.length || "—"}</strong><p>Distinct official fashion/textile websites from live source discovery.</p></article>
     </section>
 
     <section className="researchLayout">
       <aside className="researchSources">
+        <button className="researchDiscoverButton" type="button" onClick={()=>void discover1000()} disabled={discovering}>{discovering?"Discovering…":"Discover up to 1,000 websites"}</button>
         <div className="researchSourceSearch"><input value={sourceSearch} onChange={(event)=>setSourceSearch(event.target.value)} placeholder="Search research source" /><span>{filteredSources.length}</span></div>
         <div className="researchTopicChips">{data.topics.map((topic)=><span key={topic.id}>{topic.id}</span>)}</div>
         <div className="researchSourceList">{filteredSources.map((source)=><button key={source.id} type="button" onClick={()=>useSource(source)}>
