@@ -350,6 +350,16 @@ if (realDesignerModule.includes("fabric-analyzer-reference-index") || realDesign
 }
 console.log("Real-reference Fabric Analyzer gate passed: 200+ material terms, 100+ pattern terms, 400+ color terms, real cloth examples and provenance-aware V3 analysis remain backend-only.");
 
+const fabricAnalyzerStore = fs.readFileSync("src/lib/fabric-analyzer-store.ts","utf8");
+for (const token of ["fabricAnalysisFingerprint","loadStoredFabricAnalysis","storeFabricAnalysis","recordFabricAnalyzerCorrection","loadFabricAnalyzerLearningHints","fabric_analyzer_learning_summary","SUPABASE_SECRET_KEY"]) {
+  if (!fabricAnalyzerStore.includes(token)) throw new Error(`Fabric Analyzer private-store regression: missing ${token}`);
+}
+for (const token of ["analyzeMenswearFabricWithStore","loadFabricAnalyzerLearningHints","Reviewed correction learning:","reviewed corrections","never overrides explicit verified supplier facts"]) {
+  if (!fabricAnalyzerSource.includes(token)) throw new Error(`Fabric Analyzer learning-loop regression: missing ${token}`);
+}
+if (realDesignerModule.includes("fabric-analyzer-store")) throw new Error("Fabric Analyzer privacy regression: profile storage/learning must remain server-only.");
+console.log("Fabric Analyzer learning gate passed: reviewed corrections can feed aggregate backend guidance without exposing the analyzer in customer UI.");
+
 const photoPreviewMultiView = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
 const selectedLookRenderRoute = fs.readFileSync("src/app/api/designer/look-render/route.ts","utf8");
 for (const token of ["PhotorealView","choosePhotorealView","three-quarter","Generate 3/4","photorealViews"]) {
