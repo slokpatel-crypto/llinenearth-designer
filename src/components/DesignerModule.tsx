@@ -7,20 +7,14 @@ import {
   designerStyleForOccasion, designerTasteAlternative,
   type DesignerClimate, type DesignerContext, type DesignerFabric, type DesignerIntention, type DesignerRecommendation, type DesignerStyle, type OccasionTier,
 } from "@/lib/designer/engine";
-import { planDesignerDirections, suggestDesignerRepairs, type DesignerDirection } from "@/lib/designer/planner";
-import { designerStyleInsights } from "@/lib/designer/style-insights";
 import { DESIGNER_FASHION_FACTS, DESIGNER_RESEARCH } from "@/lib/designer/research";
-import { constructionNotes } from "@/lib/designer/photo-preview";
 import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
 import { PhotoOutfitPreview, type CreativeVisualCheck } from "@/components/PhotoOutfitPreview";
 import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, type MeasurementProfile } from "@/lib/measurements";
 import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
-import { assessFitConstruction, formatFinishedRange } from "@/lib/designer/fit-construction";
-import { assessBlockStrategy } from "@/lib/designer/block-strategy";
-import { buildDesignerNegotiation } from "@/lib/designer/constraint-negotiation";
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
-import { evaluateLinenEarthBrandLanguage } from "@/lib/designer/brand-language";
-import { buildCanonicalGarmentSpec, canonicalGarmentSpecSummary } from "@/lib/designer/garment-spec";
+import { canonicalGarmentSpecSummary } from "@/lib/designer/garment-spec";
+import type { DesignerAssessmentResponse } from "@/lib/designer/assessment-types";
 import type { DesignerSearchScope, DesignerSearchTier } from "@/lib/designer/search";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import { creativeFamilyFromConceptId, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
@@ -98,7 +92,6 @@ export function DesignerModule() {
   const [climate, setClimate] = useState<DesignerClimate>("Not specified");
   const [intention, setIntention] = useState<DesignerIntention>("Balanced");
   const [recommendation, setRecommendation] = useState<DesignerRecommendation | null>(null);
-  const [directions, setDirections] = useState<DesignerDirection[]>([]);
   const [recommendationId, setRecommendationId] = useState<string | null>(null);
   const [response, setResponse] = useState<"up" | "down" | null>(null);
   const [feedbackReason, setFeedbackReason] = useState<string | null>(null);
@@ -115,6 +108,9 @@ export function DesignerModule() {
   const [searchResults, setSearchResults] = useState<DesignerSearchOption[]>([]);
   const [searchLoading,setSearchLoading]=useState(false);
   const [searchError,setSearchError]=useState("");
+  const [assessment,setAssessment]=useState<DesignerAssessmentResponse|null>(null);
+  const [assessmentLoading,setAssessmentLoading]=useState(false);
+  const [assessmentError,setAssessmentError]=useState("");
   const [creativeDirections, setCreativeDirections] = useState<CreativeDirection[]>([]);
   const [activeCreative, setActiveCreative] = useState<CreativeDirection | null>(null);
   const [creativeAutoNote,setCreativeAutoNote]=useState("");
@@ -146,16 +142,15 @@ export function DesignerModule() {
     ].filter(Boolean).join("\n");
     return buildWhatsAppUrl({topic:"Designer Studio look",garment:"Shirt + trouser",details});
   },[shirt,pant,occasion,style,activeCreative]);
-  const insights = shirt && pant ? designerStyleInsights(shirt, pant, occasion, style) : [];
   const fitCoverage = useMemo(() => measurementCoverage(measurementProfile), [measurementProfile]);
   const fitGuidance = useMemo(() => measurementFitGuidance(measurementProfile), [measurementProfile]);
   const observationCoverage = useMemo(() => tailorObservationCoverage(tailorObservations), [tailorObservations]);
   const observationSummary = useMemo(() => tailorObservationSummary(tailorObservations), [tailorObservations]);
-  const fitConstruction = useMemo(() => shirt && pant ? assessFitConstruction(measurementProfile, style, { climate, shirtFabric: shirt, trouserFabric: pant, observations: tailorObservations }) : null, [measurementProfile, style, climate, shirt, pant, tailorObservations]);
-  const blockStrategy = useMemo(() => shirt && pant ? assessBlockStrategy(measurementProfile, style, tailorObservations) : null, [measurementProfile, style, shirt, pant, tailorObservations]);
-  const negotiation = useMemo(() => recommendation ? buildDesignerNegotiation(recommendation, fitConstruction) : null, [recommendation, fitConstruction]);
-  const brandLanguage = useMemo(() => shirt && pant ? evaluateLinenEarthBrandLanguage(shirt,pant,style,occasion,{climate,intention}) : null, [shirt,pant,style,occasion,climate,intention]);
-  const garmentSpec = useMemo(() => recommendation ? buildCanonicalGarmentSpec(recommendation, fitConstruction, measurementProfile, brandLanguage, blockStrategy, activeCreative, creativeVisualReview) : null, [recommendation, fitConstruction, measurementProfile, brandLanguage, blockStrategy, activeCreative, creativeVisualReview]);
+  const fitConstruction=assessment?.fitConstruction || null;
+  const blockStrategy=assessment?.blockStrategy || null;
+  const negotiation=assessment?.negotiation || null;
+  const brandLanguage=assessment?.brandLanguage || null;
+  const garmentSpec=assessment?.garmentSpec || null;
 
   useEffect(() => {
     try {
@@ -279,23 +274,24 @@ export function DesignerModule() {
         const routedPantFabric = DESIGNER_PANTS.find((item) => item.id === nextPantId);
         if (routedShirtFabric && routedPantFabric) {
           const context: DesignerContext = { climate: nextClimate, intention: nextIntention };
-          const savedMeasurements = (() => { try { const raw = localStorage.getItem(MEASUREMENT_STORAGE_KEY); return raw ? JSON.parse(raw) as MeasurementProfile : null; } catch { return null; } })();
-          const proposals = planDesignerDirections(routedShirtFabric, routedPantFabric, nextOccasion, nextStyle, context, savedMeasurements, (() => { try { const raw = localStorage.getItem(TAILOR_OBSERVATION_STORAGE_KEY); return raw ? JSON.parse(raw) as TailorObservationProfile : null; } catch { return null; } })());
-          const result = proposals[0].recommendation;
-          setDirections(proposals);
-          setRecommendation(result);
-          setResponse(null);
-    setFeedbackReason(null);
-          try {
-            const event = recordStyleMemoryEvent(designerSession(), "designer_recommendation", {
-              shirtId:nextShirtId, pantId:nextPantId, occasion:nextOccasion, style:nextStyle,
-              input:{ shirtId:nextShirtId, pantId:nextPantId, occasion:nextOccasion, style:nextStyle, context, source:"style-director" },
-              rules:result.rules, confidenceScore:result.confidenceScore, designFitScore:result.designFitScore,
-              materialEvidence:result.materialEvidence, formality:result.formality, output:result.style,
-              reasoningText:result.internalReason, status:result.status, ruleSetVersion:result.ruleSetVersion,
-            });
-            setRecommendationId(event.id);
-          } catch { /* The visual handoff still works if memory storage is unavailable. */ }
+          void requestLookAssessment({
+            shirtId:nextShirtId,pantId:nextPantId,occasion:nextOccasion,style:nextStyle,context,
+          }).then((next)=>{
+            applyServerAssessment(next);
+            setResponse(null);
+            setFeedbackReason(null);
+            try {
+              const event = recordStyleMemoryEvent(designerSession(), "designer_recommendation", {
+                shirtId:nextShirtId,pantId:nextPantId,occasion:nextOccasion,style:nextStyle,
+                input:{shirtId:nextShirtId,pantId:nextPantId,occasion:nextOccasion,style:nextStyle,context,source:"style-director"},
+                rules:next.recommendation.rules,confidenceScore:next.recommendation.confidenceScore,designFitScore:next.recommendation.designFitScore,
+                materialEvidence:next.recommendation.materialEvidence,formality:next.recommendation.formality,output:next.recommendation.style,
+                reasoningText:next.recommendation.internalReason,status:next.recommendation.status,ruleSetVersion:next.recommendation.ruleSetVersion,
+                garmentSpec:{version:next.garmentSpec.version,status:next.garmentSpec.status,readiness:next.garmentSpec.readiness},
+              });
+              setRecommendationId(event.id);
+            } catch { /* The visual handoff still works if memory storage is unavailable. */ }
+          }).catch(()=>{ /* The handoff remains visually usable if assessment is unavailable. */ });
         }
       }
     } catch {
@@ -343,6 +339,41 @@ export function DesignerModule() {
     return () => window.clearTimeout(timer);
   }, [factIndex, factPlaying]);
 
+  async function requestLookAssessment(input:{
+    shirtId:string;
+    pantId:string;
+    occasion:OccasionTier;
+    style:DesignerStyle;
+    context:DesignerContext;
+    creative?:CreativeDirection|null;
+    visualReview?:CreativeVisualCheck|null;
+  }) {
+    const response=await fetch("/api/designer/assess",{
+      method:"POST",
+      headers:{"content-type":"application/json"},
+      body:JSON.stringify({
+        shirtId:input.shirtId,
+        pantId:input.pantId,
+        occasion:input.occasion,
+        style:input.style,
+        context:input.context,
+        measurements:measurementProfile,
+        observations:tailorObservations,
+        creative:input.creative || undefined,
+        creativeVisualReview:input.visualReview || undefined,
+      }),
+    });
+    const data=await response.json() as {assessment?:DesignerAssessmentResponse;error?:string};
+    if(!response.ok || !data.assessment) throw new Error(data.error || "Designer could not assess this look.");
+    return data.assessment;
+  }
+
+  function applyServerAssessment(next:DesignerAssessmentResponse) {
+    setAssessment(next);
+    setRecommendation(next.recommendation);
+    setAssessmentError("");
+  }
+
   function resetDraft() {
     const nextOccasion = DESIGNER_REVIEWED_PAIRING.occasion;
     setShirtId(DESIGNER_REVIEWED_PAIRING.shirtId);
@@ -352,7 +383,7 @@ export function DesignerModule() {
     setIntention("Balanced");
     setStyle(designerStyleForOccasion(nextOccasion));
     setRecommendation(null);
-    setDirections([]);
+    setAssessment(null);
     setRecommendationId(null);
     setResponse(null);
     setFeedbackReason(null);
@@ -520,7 +551,6 @@ export function DesignerModule() {
     }
     setStyle({...direction.baseStyle});
     setRecommendation(direction.recommendation);
-    setDirections([]);
     setSearchResults([]);
     setActiveCreative(direction);
     setResponse(null);
@@ -580,7 +610,6 @@ export function DesignerModule() {
     setPantId(result.pant.id);
     setStyle({...result.style});
     setRecommendation(result.recommendation);
-    setDirections([]);
     setSearchResults([]);
     setResponse(null);
     setFeedbackReason(null);
@@ -689,7 +718,6 @@ export function DesignerModule() {
     setOccasion("Semi-Formal");
     setStyle(next);
     setRecommendation(null);
-    setDirections([]);
     setRecommendationId(null);
     setResponse(null);
     setFeedbackReason(null);
