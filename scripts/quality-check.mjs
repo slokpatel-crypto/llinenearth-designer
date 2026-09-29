@@ -460,7 +460,7 @@ for (const token of ["03 / CREATE","Imagine new designs","Create ideas ✦","new
   if (!creativeUi.includes(token)) throw new Error(`Designer V5 creative UI regression: missing ${token}`);
 }
 const creativePreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-for (const token of ["creativeDirection","drawCreativePattern","Photoreal render ✦","DOES IT WORK?","CREATIVE_FEEDBACK_REASONS","Preview tools","AUTO VISUAL CHECK","onCreativeInspection","newDesignerRenderCheck"]) {
+for (const token of ["creativeDirection","drawCreativePattern","Photoreal render ✦","DOES IT WORK?","CREATIVE_FEEDBACK_REASONS","Preview tools","VISUAL CHECK PASSED","onCreativeInspection","newDesignerRenderCheck"]) {
   if (!creativePreview.includes(token)) throw new Error(`Designer V5 visual loop regression: missing ${token}`);
 }
 const aiVisualization = fs.readFileSync("src/lib/ai-visualization.ts","utf8");
