@@ -45,6 +45,14 @@ function emptyDraft():Draft {
   };
 }
 
+function sourceRole(source:FashionResearchSource):Draft["sourceType"] {
+  return source.category==="museum"?"museum"
+    : source.category==="runway"?"runway"
+      : source.category==="menswear"?"tailoring"
+        : source.category==="academic"||source.category==="university"?"archive"
+          : "designer";
+}
+
 function toDraft(signal:CreativeResearchSignal):Draft {
   return {
     researchId:signal.id,title:signal.title,sourceUrl:signal.sourceUrl,sourceType:signal.sourceType,
@@ -67,6 +75,8 @@ export default function DesignerResearchClient(){
   const [discoveredSources,setDiscoveredSources]=useState<FashionResearchSource[]>([]);
   const [discovering,setDiscovering]=useState(false);
   const [analyzing,setAnalyzing]=useState(false);
+  const [batchAnalyzing,setBatchAnalyzing]=useState(false);
+  const [batchDrafts,setBatchDrafts]=useState<Draft[]>([]);
 
   async function load(){
     const response=await fetch("/api/operator/designer-research",{cache:"no-store"});
@@ -109,8 +119,60 @@ export default function DesignerResearchClient(){
   }
 
   function useSource(source:FashionResearchSource){
-    const sourceType:Draft["sourceType"]=source.category==="museum"?"museum":source.category==="runway"?"runway":source.category==="menswear"?"tailoring":source.category==="academic"||source.category==="university"?"archive":"designer";
-    setDraft((current)=>({...current,sourceUrl:source.baseUrl,sourceType,title:current.title || source.name}));
+    setDraft((current)=>({...current,sourceUrl:source.baseUrl,sourceType:sourceRole(source),title:current.title || source.name}));
+  }
+
+  async function analyzeResearchBatch(){
+    const candidates=filteredSources.slice(0,4);
+    if(!candidates.length){setMessage("Discover or choose research sources first.");return;}
+    setBatchAnalyzing(true); setMessage("");
+    try{
+      const response=await fetch("/api/operator/designer-research/analyze-batch",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({sources:candidates.map((source)=>({name:source.name,url:source.baseUrl,sourceType:sourceRole(source)}))}),
+      });
+      if(response.status===401){window.location.href="/operator/login?next=/operator/designer-research";return;}
+      const result=await response.json() as {
+        completed?:number;
+        results?:Array<{source:{name:string;url:string;sourceType:Draft["sourceType"]};analysis?:Partial<Draft>;error?:string}>;
+        error?:string;
+      };
+      if(!response.ok) throw new Error(result.error||"Batch research synthesis failed.");
+      const drafts=(result.results||[]).flatMap((item)=>{
+        if(!item.analysis) return [];
+        const analysis=item.analysis;
+        return [{
+          ...emptyDraft(),
+          researchId:"research-"+crypto.randomUUID(),
+          title:String(analysis.title||item.source.name),
+          sourceUrl:String(analysis.sourceUrl||item.source.url),
+          sourceType:(analysis.sourceType||item.source.sourceType) as Draft["sourceType"],
+          principle:String(analysis.principle||""),
+          transformedIdea:String(analysis.transformedIdea||""),
+          zone:(analysis.zone||"shirt-body") as Draft["zone"],
+          secondaryZone:String(analysis.secondaryZone||""),
+          treatmentLabel:String(analysis.treatmentLabel||""),
+          treatmentInstruction:String(analysis.treatmentInstruction||""),
+          visualPurpose:String(analysis.visualPurpose||""),
+          intensity:Number(analysis.intensity||50),
+          buildability:(analysis.buildability||"atelier") as Draft["buildability"],
+          patternFamily:(analysis.patternFamily||"none") as Draft["patternFamily"],
+          patternName:String(analysis.patternName||""),
+          patternLayout:String(analysis.patternLayout||""),
+          patternPlacement:String(analysis.patternPlacement||""),
+          patternScale:String(analysis.patternScale||"fine"),
+          patternCoverage:Number(analysis.patternCoverage||24),
+          note:String(analysis.note||""),
+          active:true,
+        } satisfies Draft];
+      });
+      setBatchDrafts(drafts);
+      if(drafts[0]) setDraft(drafts[0]);
+      setMessage(`Synthesized ${drafts.length} research principle${drafts.length===1?"":"s"}. Review each before activation.`);
+    }catch(error){
+      setMessage(error instanceof Error?error.message:"Batch research synthesis failed.");
+    }finally{setBatchAnalyzing(false);}
   }
 
   async function analyzeCurrentSource(){
@@ -201,7 +263,7 @@ export default function DesignerResearchClient(){
 
     <section className="researchLayout">
       <aside className="researchSources">
-        <button className="researchDiscoverButton" type="button" onClick={()=>void discover1000()} disabled={discovering}>{discovering?"Discovering…":"Discover up to 1,000 websites"}</button>
+        <div className="researchDiscoveryActions"><button className="researchDiscoverButton" type="button" onClick={()=>void discover1000()} disabled={discovering}>{discovering?"Discovering…":"Discover up to 1,000 websites"}</button><button className="researchBatchButton" type="button" onClick={()=>void analyzeResearchBatch()} disabled={batchAnalyzing||filteredSources.length===0}>{batchAnalyzing?"Synthesizing…":"Synthesize first 4 ✦"}</button></div>
         <div className="researchSourceSearch"><input value={sourceSearch} onChange={(event)=>setSourceSearch(event.target.value)} placeholder="Search research source" /><span>{filteredSources.length}</span></div>
         <div className="researchTopicChips">{data.topics.map((topic)=><span key={topic.id}>{topic.id}</span>)}</div>
         <div className="researchSourceList">{filteredSources.map((source)=><button key={source.id} type="button" onClick={()=>useSource(source)}>
@@ -241,6 +303,15 @@ export default function DesignerResearchClient(){
 
         <div className="researchSave"><p>Runway/editorial sources are treated as inspiration. Scientific and primary sources can support physical/design claims, but no single source becomes a permanent rule automatically.</p><button type="button" disabled={saving||!data.configured} onClick={()=>void save()}>{saving?"Saving…":"Save research signal"}</button></div>
         {message && <div className="researchMessage">{message}</div>}
+
+        {batchDrafts.length>0 && <section className="researchBatchResults">
+          <div><span>NEW SYNTHESIS / REVIEW BEFORE ACTIVATING</span><strong>{batchDrafts.length} candidates</strong></div>
+          <div className="researchBatchGrid">{batchDrafts.map((candidate)=><button type="button" key={candidate.researchId} onClick={()=>setDraft(candidate)}>
+            <span>{candidate.sourceType.toUpperCase()} · {candidate.zone.toUpperCase()}</span>
+            <strong>{candidate.title}</strong>
+            <p>{candidate.transformedIdea}</p>
+          </button>)}</div>
+        </section>}
 
         <section className="researchLibrary">
           <div><span>CURATED LIBRARY</span><strong>{data.library.total} signals · {data.library.active} active</strong></div>
