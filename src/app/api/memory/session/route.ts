@@ -4,8 +4,8 @@ import { createMemorySessionToken, memorySessionConfigured } from "@/lib/memory-
 export const runtime = "nodejs";
 
 const registry = (globalThis as typeof globalThis & {
-  __llinenMemorySessionRate?: Map<string,{at:number;count:number}>
-}).__llinenMemorySessionRate ||= new Map<string,{at:number;count:number}>();
+  __linenMemorySessionRate?: Map<string,{at:number;count:number}>
+}).__linenMemorySessionRate ||= new Map<string,{at:number;count:number}>();
 
 function blocked(request: Request) {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
