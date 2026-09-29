@@ -408,7 +408,8 @@ for (const token of [
   "researchSeed","researchMutationSeeds","ResearchMutationOperator","hybridResearchSeed","researchFreedom","maximum","researchUtilization","explorationClass",
   "maya-apparel-typicality-novelty","constraints-creative-patternmaking","engineered-print-3d-2d",
   "design-fixation-examples","divergent-design-thinking","creative-design-coevolving-spaces",
-  "frontierCrossZoneSeed","wrongness-tailoring-2026","tactile-dimensionality-2026","quiet-wild-balance-2026","formless-form-2026","craft-deviation-2026"
+  "frontierCrossZoneSeed","wrongness-tailoring-2026","tactile-dimensionality-2026","quiet-wild-balance-2026","formless-form-2026","craft-deviation-2026",
+  "criticFacetScore","revisionMerit","redesignLoop","Visual critic protected one hero move"
 ]) {
   if (!creativeEngine.includes(token)) throw new Error(`Designer V5 creative-engine regression: missing ${token}`);
 }
