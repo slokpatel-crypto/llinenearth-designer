@@ -18,7 +18,7 @@ function fieldValue(candidate: DesignCandidate, field: LockableField) {
 }
 
 export function RefinementWorkspace({ brief, initialCandidate, candidates, onBack, onVisualize }: { brief: DesignerBrief; initialCandidate: DesignCandidate; candidates: DesignCandidate[]; onBack: () => void; onVisualize: (version: DesignVersion) => void }) {
-  const storageKey = `llinen-earth-refinement-${initialCandidate.id}`;
+  const storageKey = `linen-earth-refinement-${initialCandidate.id}`;
   const [versions, setVersions] = useState<DesignVersion[]>([initialVersion(initialCandidate)]);
   const [index, setIndex] = useState(0);
   const [locks, setLocks] = useState<LockableField[]>([]);
