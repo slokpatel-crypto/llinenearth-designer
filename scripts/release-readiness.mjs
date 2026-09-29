@@ -130,7 +130,7 @@ requireTokens("src/lib/designer/search.ts", [
   "searchDesignerCatalogue","explainWhyNotCurrentPair","hardBlocked","comparisonFor"
 ]);
 requireTokens("src/components/DesignerModule.tsx", [
-  "OPTIONAL","Try different fabrics.","Show options","Keep shirt","Keep trouser","Change both","Why this works","Use look",
+  "OPTIONAL","Try a different fabric pairing","Show 3 options","Keep shirt","Keep trouser","Change both","Use look","newDesignerOptionalSearch",
   "03 / CREATE","Create ideas ✦","newDesignerCreativeVisual","Design reasoning","researchFreedom:\"maximum\"","FRONTIER IDEA",
   "chooseCreativeRedesign","creativeAutoNote","onCreativeInspection"
 ]);
