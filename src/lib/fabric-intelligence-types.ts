@@ -1,0 +1,51 @@
+export type DesignerFabricIntelligence = {
+  profileId:string;
+  analyzerVersion:string;
+  reviewStatus:"unreviewed"|"approved"|"corrected"|"rejected";
+  trust:"reviewed"|"high-confidence"|"provisional";
+  colorFamily:string;
+  undertone:"warm"|"cool"|"neutral"|"uncertain";
+  depth:"very-light"|"light"|"mid"|"deep"|"very-deep";
+  saturation:"muted"|"soft"|"medium"|"rich"|"vivid";
+  patternFamily:"solid"|"stripe"|"check"|"dot"|"botanical"|"floral"|"geometric"|"paisley"|"abstract"|"melange"|"textured"|"other";
+  patternScale:"none"|"fine"|"medium"|"bold";
+  patternDensity:"none"|"sparse"|"balanced"|"dense";
+  patternContrast:"low"|"medium"|"high";
+  visibleTexture:string[];
+  weaveAppearance:string[];
+  sheen:"matte"|"low"|"medium"|"high"|"uncertain";
+  visualWeight:"light-looking"|"medium-looking"|"heavy-looking"|"uncertain";
+  personality:string[];
+  formality:1|2|3|4|5;
+  statementLevel:1|2|3|4|5;
+  bestGarments:string[];
+  bestOccasions:string[];
+  climateVisualFit:string[];
+  recommendedConstruction:{
+    collars:string[];
+    cuffs:string[];
+    shirtFits:string[];
+    trouserDirections:string[];
+  };
+  pairing:{
+    goodColorFamilies:string[];
+    avoidColorFamilies:string[];
+    goodPatternStrategy:string[];
+  };
+  confidence:{
+    color:number;
+    pattern:number;
+    texture:number;
+    styling:number;
+  };
+  references:{
+    materialTerms:string[];
+    patternTerms:string[];
+    colorTerms:string[];
+    sourceIds:string[];
+  };
+};
+
+export function fabricIntelligenceConfidence(value:DesignerFabricIntelligence) {
+  return (value.confidence.color+value.confidence.pattern+value.confidence.texture+value.confidence.styling)/4;
+}
