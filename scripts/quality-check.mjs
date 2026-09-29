@@ -377,7 +377,7 @@ if (designerRecommendationSanitizer.includes("finishedTargets") || designerRecom
 }
 console.log("Canonical garment spec quality gate passed: one synchronized spec drives Designer output while measurement ranges stay local unless explicitly exported.");
 const creativeGarmentSpec=fs.readFileSync("src/lib/designer/garment-spec.ts","utf8");
-for(const token of ["creative: {","conceptId:string","treatments:Array","pattern: {","Creative treatments are design instructions"]) {
+for(const token of ["creative: {","conceptId:string","treatments:Array","pattern: {","Creative treatments are design instructions","creativeVisualReviewRequired","passing photoreal visual review"]) {
   if(!creativeGarmentSpec.includes(token)) throw new Error(`Creative garment spec regression: missing ${token}`);
 }
 for(const token of ["activeCreative","buildCanonicalGarmentSpec(recommendation, fitConstruction, measurementProfile, brandLanguage, blockStrategy, activeCreative)","creativeTreatmentCount","creativePatternId"]) {
