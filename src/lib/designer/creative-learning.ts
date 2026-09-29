@@ -54,7 +54,7 @@ export function creativeFamilyFromConceptId(conceptId:string) {
 export function aggregateCreativeLearning(events:EventLike[]):CreativeLearningBook {
   // One latest response per recommendation + concept avoids repeated tapping
   // becoming stronger evidence than an independent review.
-  const latest=new Map<string,{familyId:string;rating:"up"|"down";reason?:CreativeFeedbackReason;renderQuality?:number}>();
+  const latest=new Map<string,{familyId:string;rating:"up"|"down"|"saved";reason?:CreativeFeedbackReason;renderQuality?:number}>();
   for(const event of events) {
     if(event.type!=="designer_feedback") continue;
     const p=event.payload || {};
@@ -63,18 +63,20 @@ export function aggregateCreativeLearning(events:EventLike[]):CreativeLearningBo
     const recommendationId=txt(p.recommendationId,180);
     const rating=txt(p.rating,20);
     const reason=txt(p.creativeReason,40) as CreativeFeedbackReason;
-    if(!conceptId || !familyId || !recommendationId || !["up","down"].includes(rating)) continue;
+    if(!conceptId || !familyId || !recommendationId || !["up","down","saved"].includes(rating)) continue;
     const check=p.creativeVisualCheck && typeof p.creativeVisualCheck==="object" && !Array.isArray(p.creativeVisualCheck)
       ? p.creativeVisualCheck as Record<string,unknown>
       : null;
     const hero=Math.max(0,Math.min(100,Number(check?.heroVisibility)||0));
     const boundaries=Math.max(0,Math.min(100,Number(check?.boundaryIntegrity)||0));
     const renderQuality=check ? Math.round((hero*.55+boundaries*.45)*10)/10 : undefined;
-    latest.set(`${recommendationId}::${conceptId}`,{
+    const key=`${recommendationId}::${conceptId}`;
+    const previous=latest.get(key);
+    latest.set(key,{
       familyId,
-      rating:rating as "up"|"down",
-      ...(REASONS.has(reason)?{reason}:{}),
-      ...(renderQuality!==undefined?{renderQuality}:{}),
+      rating:rating as "up"|"down"|"saved",
+      ...(REASONS.has(reason)?{reason}:previous?.reason?{reason:previous.reason}:{}),
+      ...(renderQuality!==undefined?{renderQuality}:previous?.renderQuality!==undefined?{renderQuality:previous.renderQuality}:{}),
     });
   }
 
@@ -93,6 +95,10 @@ export function aggregateCreativeLearning(events:EventLike[]):CreativeLearningBo
     if(review.renderQuality!==undefined) {
       current.renderQualityTotal+=review.renderQuality;
       current.renderQualitySamples+=1;
+    }
+    if(review.rating==="saved") {
+      buckets.set(review.familyId,current);
+      continue;
     }
     if(review.rating==="down" && review.reason==="render_mismatch") {
       current.reasons.render_mismatch+=1;
