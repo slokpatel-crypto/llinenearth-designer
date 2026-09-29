@@ -197,6 +197,76 @@ export async function reviewFabricAnalyzerProfile(input:{
   }
 }
 
+export type FabricAnalyzerStats = {
+  profiles:number;
+  pending_review:number;
+  approved:number;
+  corrected:number;
+  rejected:number;
+  bindings:number;
+  feedback:number;
+  source_groups:number;
+  material_terms:number;
+  pattern_terms:number;
+  color_terms:number;
+  real_examples:number;
+  relationships:number;
+  source_backed_relationships:number;
+  calibration_cases:number;
+};
+
+export async function loadFabricAnalyzerStats():Promise<FabricAnalyzerStats|null> {
+  if(!config()) return null;
+  try {
+    const rows=await rpc<FabricAnalyzerStats[]>("fabric_analyzer_stats",{});
+    return rows[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+export type FabricAnalyzerCalibrationCase = {
+  id:string;
+  source_id:string;
+  source_url:string;
+  expected:Record<string,unknown>;
+  notes:string;
+  last_profile_id:string|null;
+  last_score:number|null;
+  last_result:Record<string,unknown>;
+  last_run_at:string|null;
+};
+
+export async function loadFabricAnalyzerCalibrationCases(limit=12):Promise<FabricAnalyzerCalibrationCase[]> {
+  if(!config()) return [];
+  try {
+    return await rpc<FabricAnalyzerCalibrationCase[]>("fabric_analyzer_calibration_cases_get",{
+      p_limit:Math.max(1,Math.min(30,Math.floor(limit)||12)),
+    });
+  } catch {
+    return [];
+  }
+}
+
+export async function recordFabricAnalyzerCalibration(input:{
+  caseId:string;
+  profileId:string|null;
+  score:number;
+  result:Record<string,unknown>;
+}) {
+  if(!config()) return false;
+  try {
+    return await rpc<boolean>("fabric_analyzer_calibration_record",{
+      p_case_id:clean(input.caseId,160),
+      p_profile_id:input.profileId || null,
+      p_score:Math.max(0,Math.min(100,input.score)),
+      p_result:input.result,
+    });
+  } catch {
+    return false;
+  }
+}
+
 export async function loadFabricAnalyzerProfilesForReview(limit=50):Promise<BoundFabricAnalysis[]> {
   if(!config()) return [];
   try {
