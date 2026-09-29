@@ -15,7 +15,7 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("[LLinen Earth OS] desktop UI crash", error, info.componentStack);
+    console.error("[Linen Earth OS] desktop UI crash", error, info.componentStack);
   }
 
   private exportReport = async () => {
@@ -36,12 +36,12 @@ export default class ErrorBoundary extends Component<Props, State> {
         <section className="desktopRecoveryPanel">
           <div className="desktopLockBrand">
             <span>LE</span>
-            <div><b>LLINEN EARTH</b><small>OPERATOR SYSTEM</small></div>
+            <div><b>LINEN EARTH</b><small>OPERATOR SYSTEM</small></div>
           </div>
           <small className="desktopRecoveryEyebrow">INTERFACE RECOVERY</small>
           <h1>The window hit an unexpected error.</h1>
           <p>
-            Your local LLinen Earth vault has not been deleted. Restart the interface first.
+            Your local Linen Earth vault has not been deleted. Restart the interface first.
             If the issue repeats, export a system report before closing the app.
           </p>
           <div className="desktopRecoveryActions">
