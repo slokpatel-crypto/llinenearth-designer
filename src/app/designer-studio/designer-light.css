@@ -514,6 +514,7 @@
 .newDesignerCreativeReviewCompact .newDesignerCreativeReviewHint{width:100%;flex-basis:100%;margin-top:0}
 .newDesignerCreativeReviewCompact .newDesignerCreativeReviewReasons{width:100%;flex-basis:100%}
 .newDesignerPhotoAccuracyCompact{margin-top:8px!important}
+.newDesignerPhotoApproximation{margin:0;padding:8px 0 10px;color:#6f675e;font-size:10px;line-height:1.5;border-bottom:1px solid #e6e0d5}.newDesignerPhotoApproximation strong{color:#394c5c;font-weight:650}
 
 .newDesignerResearchDrawer{max-width:1500px;margin:18px auto 0;border:1px solid #ddd4cb;background:#fff;padding:11px 14px}
 .newDesignerResearchDrawer>summary{cursor:pointer;list-style:none;font-size:8px;letter-spacing:.12em;color:#6d7d8a}

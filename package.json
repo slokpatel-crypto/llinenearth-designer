@@ -3,9 +3,9 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "dev": "next dev",
+    "dev": "npm run fabric:tiles && next dev",
     "quality": "node scripts/quality-check.mjs",
-    "build": "next build",
+    "build": "npm run fabric:tiles && next build",
     "start": "next start",
     "local-memory": "node scripts/linen-local-bridge.mjs",
     "operator-password": "node scripts/hash-operator-password.mjs",
@@ -15,7 +15,10 @@
     "release:check:live": "node scripts/release-readiness.mjs --live",
     "fabric:sync-references": "node scripts/sync-fabric-reference-index.mjs",
     "fabric:quality": "npm run quality && npm run release:check",
-    "test": "node --experimental-strip-types --test tests/*.test.ts"
+    "fabric:tiles": "node --experimental-strip-types scripts/build-fabric-render-assets.mjs",
+    "eval:analyzer": "node --experimental-strip-types scripts/eval-phase10.mjs analyzer",
+    "eval:designer": "node --experimental-strip-types scripts/eval-phase10.mjs designer",
+    "test": "npm run fabric:tiles && node --experimental-strip-types --test tests/*.test.ts"
   },
   "dependencies": {
     "fashn": "^0.15.0",

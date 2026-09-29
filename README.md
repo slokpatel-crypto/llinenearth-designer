@@ -1,6 +1,6 @@
 # Linen Earth Designer
 
-Current milestone: **Phase 10 in progress — Phase A shared closed vocabularies is complete and verified**.
+Current milestone: **Phase 10 in progress — vocabulary and option/rule foundations are in place; a separate live construction study is available in Designer Studio**. See [Phase 10 progress](docs/PHASE_10_PROGRESS.md) for verified work and open acceptance checks.
 
 Implemented:
 - premium black / deep-navy editorial website foundation and official LLinen Earth brand intro
@@ -16,6 +16,7 @@ Implemented:
 - customer feedback capture on saved designs; feedback is queued for review and never mutates the Fashion Brain automatically
 - `/quality` dashboard showing benchmark health, Fashion Brain coverage, saved designs, handoffs and review queue
 - Phase 10A shared closed vocabularies: stable colour/pattern/occasion/garment/Designer option IDs, Fabric Analyzer v4 closed enums, v3 adapter, exact-ID pairing and unit tests
+- Phase 10 option library and provisional cross-garment rules; measured Analyzer v4 colour/pattern/quality evidence; 66 prepared fabric tiles and an approximate front/back cut study
 - CI now runs `npm run quality`, `npm test`, `npm run release:check`, then the production Next.js build
 
 Run locally:

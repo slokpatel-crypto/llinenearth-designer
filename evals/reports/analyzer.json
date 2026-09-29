@@ -1,0 +1,101 @@
+{
+  "kind": "analyzer",
+  "generatedAt": "2026-09-29T16:48:35.592Z",
+  "status": "awaiting_owner_labels",
+  "labeledCases": 0,
+  "evaluatedCases": 0,
+  "fields": {
+    "shadeFamily": {
+      "sampleSize": 0,
+      "accuracyPct": null,
+      "confusion": {}
+    },
+    "patternFamily": {
+      "sampleSize": 0,
+      "accuracyPct": null,
+      "confusion": {}
+    },
+    "patternScale": {
+      "sampleSize": 0,
+      "accuracyPct": null,
+      "confusion": {}
+    },
+    "patternContrast": {
+      "sampleSize": 0,
+      "accuracyPct": null,
+      "confusion": {}
+    },
+    "texture": {
+      "sampleSize": 0,
+      "accuracyPct": null,
+      "confusion": {}
+    },
+    "formality": {
+      "sampleSize": 0,
+      "accuracyPct": null,
+      "confusion": {}
+    },
+    "bestGarments": {
+      "sampleSize": 0,
+      "accuracyPct": null,
+      "confusion": {}
+    },
+    "bestOccasions": {
+      "sampleSize": 0,
+      "accuracyPct": null,
+      "confusion": {}
+    }
+  },
+  "colorDeltaE": {
+    "sampleSize": 0,
+    "median": null,
+    "p90": null
+  },
+  "calibration": [
+    {
+      "range": [
+        0,
+        0.2
+      ],
+      "total": 0,
+      "correct": 0,
+      "accuracyPct": null
+    },
+    {
+      "range": [
+        0.2,
+        0.4
+      ],
+      "total": 0,
+      "correct": 0,
+      "accuracyPct": null
+    },
+    {
+      "range": [
+        0.4,
+        0.6000000000000001
+      ],
+      "total": 0,
+      "correct": 0,
+      "accuracyPct": null
+    },
+    {
+      "range": [
+        0.6000000000000001,
+        0.8
+      ],
+      "total": 0,
+      "correct": 0,
+      "accuracyPct": null
+    },
+    {
+      "range": [
+        0.8,
+        1
+      ],
+      "total": 0,
+      "correct": 0,
+      "accuracyPct": null
+    }
+  ]
+}

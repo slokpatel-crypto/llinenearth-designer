@@ -1,0 +1,33 @@
+.liveConstructionMode{display:flex;gap:3px;padding:4px;background:#eae7e1;border:1px solid #ded9d1;margin-bottom:10px}
+.liveConstructionMode button{flex:1;border:0;background:transparent;color:#526070;font-size:11px;padding:11px 8px;cursor:pointer}
+.liveConstructionMode button[aria-pressed="true"]{background:#fff;color:#17243a;box-shadow:0 1px 7px #19223116;font-weight:700}
+.liveConstructionLoading{padding:30px;background:#eeeae4;color:#475569;font-size:12px}
+.liveConstruction{border:1px solid #e2ddd3;background:#faf9f6;color:#223146;box-shadow:0 18px 48px #16243b10}
+.liveConstructionHead{padding:23px 23px 16px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.liveConstructionHead span{font-size:9px;letter-spacing:.18em;color:#a75b43;font-weight:700}
+.liveConstructionHead h2{font:400 30px/1 Georgia,serif;letter-spacing:-.03em;margin:8px 0}
+.liveConstructionHead p{font-size:11px;line-height:1.5;color:#697689;max-width:430px;margin:0}
+.liveConstructionSwitches{display:flex;border:1px solid #d8d4cc;padding:2px;flex-shrink:0}
+.liveConstructionSwitches button{border:0;background:transparent;color:#526071;padding:8px 11px;font-size:10px;cursor:pointer}
+.liveConstructionSwitches button[aria-pressed="true"]{background:#1b2e47;color:white}
+.liveConstructionStage{position:relative;display:flex;justify-content:center;background:radial-gradient(ellipse at 52% 21%,#faf8f3,#e7e3db 76%);height:min(67vh,650px);min-height:480px;overflow:hidden}
+.liveConstructionStage svg{height:100%;width:100%;max-width:510px;display:block}
+.liveConstructionTag{position:absolute;top:13px;left:13px;background:#fffdf9e8;padding:7px 10px;font-size:9px;letter-spacing:.13em;color:#4f5e70}
+.liveConstructionFoot{padding:14px 20px;display:grid;grid-template-columns:1fr 1fr;gap:12px;border-top:1px solid #e2ddd3}
+.liveConstructionFoot strong,.liveConstructionFoot span{display:block}.liveConstructionFoot strong{font:400 16px Georgia,serif}.liveConstructionFoot span{font-size:10px;color:#81909b;margin-top:3px}
+.liveConstructionFoot p{grid-column:1/-1;margin:0;color:#945d42;font-size:10px;line-height:1.45}
+.liveConstructionToolbar{padding:12px 20px;border-top:1px solid #e2ddd3;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.liveConstructionToolbar label{font-size:11px;display:flex;align-items:center;gap:8px}
+.liveConstructionToolbar select,.liveConstructionOptions select{min-width:0;border:1px solid #d6d0c5;background:white;color:#223146;padding:8px 9px;font-size:11px}
+.liveConstructionToolbar button{border:1px solid #233752;background:#233752;color:white;padding:10px 12px;cursor:pointer;font-size:11px}
+.liveConstructionOptions{padding:12px 20px 20px;border-top:1px solid #e2ddd3}
+.liveConstructionOptions fieldset{border:0;padding:10px 0 15px;margin:0;border-bottom:1px solid #e7e0d6}
+.liveConstructionOptions legend{font:400 20px Georgia,serif;padding:4px 0 12px}
+.liveConstructionOptions fieldset>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.liveConstructionOptions label{font-size:10px;color:#596778;display:grid;gap:5px}
+.liveConstructionOptions label small{color:#9d775d;font-size:9px}
+.liveConstructionDraftNote{font-size:11px;line-height:1.5;color:#7d5b48}
+.liveConstructionVerdict{border-top:1px solid #e2ddd3;padding:15px 20px 20px;font-size:11px;line-height:1.55;color:#5a6878}
+.liveConstructionVerdict summary{cursor:pointer;font-weight:700;color:#21334b}
+.liveConstructionVerdict ul{padding-left:19px}.liveConstructionVerdict li{margin:9px 0}.liveConstructionVerdict b{color:#aa6045}
+@media(max-width:680px){.liveConstructionHead{align-items:start;flex-direction:column}.liveConstructionStage{min-height:420px;height:58vh}.liveConstructionOptions fieldset>div{grid-template-columns:1fr}.liveConstructionToolbar{align-items:stretch;flex-direction:column}.liveConstructionToolbar button{width:100%}}
