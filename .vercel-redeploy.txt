@@ -1,0 +1,2 @@
+Redeploy trigger for latest Linen Earth Designer main branch.
+Requested 2026-09-29 after one-line Designer occasion fix.
