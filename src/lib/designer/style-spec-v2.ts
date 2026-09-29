@@ -98,6 +98,90 @@ export function toLegacyStyle(spec:StyleSpecV2):DesignerStyle {
   };
 }
 
+export function mergeLegacyIntoStyleSpec(current:StyleSpecV2,style:DesignerStyle):StyleSpecV2 {
+  const prior=toLegacyStyle(current);
+  const base=fromLegacyStyle(style);
+  const next:StyleSpecV2={
+    ...current,
+    shirt:{...current.shirt},
+    pant:{...current.pant},
+    legacy:{...style},
+  };
+
+  if(style.collar!==prior.collar) next.shirt.collar=base.shirt.collar;
+  if(style.collarFinish!==prior.collarFinish) next.shirt.collarFinish=style.collarFinish;
+  if(style.cuff!==prior.cuff) next.shirt.cuff=base.shirt.cuff;
+  if(style.placket!==prior.placket) next.shirt.placket=base.shirt.placket;
+  if(style.shirtFit!==prior.shirtFit) next.shirt.fit=base.shirt.fit;
+  if(style.shirtWear!==prior.shirtWear) {
+    next.shirt.wear=base.shirt.wear;
+    next.shirt.length=base.shirt.length;
+    next.shirt.hem=base.shirt.hem;
+  }
+  if(style.button!==prior.button) next.shirt.button=base.shirt.button;
+  if(style.trouser!==prior.trouser) {
+    next.pant.type=base.pant.type;
+    next.pant.fit=base.pant.fit;
+    next.pant.pleat=base.pant.pleat;
+  }
+  if(style.rise!==prior.rise) next.pant.rise=base.pant.rise;
+  if(style.waistband!==prior.waistband) next.pant.waistband=base.pant.waistband;
+  if(style.break!==prior.break) next.pant.break=base.pant.break;
+  return next;
+}
+
+const STYLE_OPTION_GROUPS={
+  shirt:{
+    type:"shirt.type",collar:"shirt.collar",cuff:"shirt.cuff",placket:"shirt.placket",pocket:"shirt.pocket",
+    sleeve:"shirt.sleeve",fit:"shirt.fit",length:"shirt.length",hem:"shirt.hem",back:"shirt.back",button:"shirt.button",
+  },
+  pant:{
+    type:"pant.type",fit:"pant.fit",rise:"pant.rise",pleat:"pant.pleat",waistband:"pant.waistband",hem:"pant.hem",break:"pant.break",
+  },
+} as const;
+
+export function validateStyleSpecV2(value:unknown):value is StyleSpecV2 {
+  if(!value || typeof value!=="object") return false;
+  const spec=value as Partial<StyleSpecV2>;
+  if(spec.styleSchemaVersion!==2 || !spec.shirt || !spec.pant || !spec.legacy) return false;
+  if(!["tucked","untucked"].includes(String(spec.shirt.wear))) return false;
+  if(!["Self-fabric","White contrast collar","White contrast collar + cuffs"].includes(String(spec.shirt.collarFinish))) return false;
+  for(const [key,group] of Object.entries(STYLE_OPTION_GROUPS.shirt)) {
+    const id=String((spec.shirt as Record<string,unknown>)[key]||"");
+    const option=optionById(id);
+    if(!option || option.group!==group) return false;
+  }
+  for(const [key,group] of Object.entries(STYLE_OPTION_GROUPS.pant)) {
+    const id=String((spec.pant as Record<string,unknown>)[key]||"");
+    const option=optionById(id);
+    if(!option || option.group!==group) return false;
+  }
+  return true;
+}
+
+export function styleSpecRenderSummary(spec:StyleSpecV2) {
+  const label=(id:string)=>optionById(id)?.label || id.replaceAll("_"," ");
+  return [
+    `shirt type ${label(spec.shirt.type)}`,
+    `collar ${label(spec.shirt.collar)}`,
+    `cuff ${label(spec.shirt.cuff)}`,
+    `placket ${label(spec.shirt.placket)}`,
+    `sleeve ${label(spec.shirt.sleeve)}`,
+    `shirt fit ${label(spec.shirt.fit)}`,
+    `shirt length ${label(spec.shirt.length)}`,
+    `shirt hem ${label(spec.shirt.hem)}`,
+    `shirt back ${label(spec.shirt.back)}`,
+    `shirt wear ${spec.shirt.wear}`,
+    `trouser type ${label(spec.pant.type)}`,
+    `trouser fit ${label(spec.pant.fit)}`,
+    `rise ${label(spec.pant.rise)}`,
+    `pleats ${label(spec.pant.pleat)}`,
+    `waistband ${label(spec.pant.waistband)}`,
+    `hem ${label(spec.pant.hem)}`,
+    `break ${label(spec.pant.break)}`,
+  ].join("; ");
+}
+
 export function legacyStyleHashInput(style:DesignerStyle) {
   return JSON.stringify({
     collar:style.collar,
