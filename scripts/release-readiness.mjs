@@ -42,6 +42,8 @@ for (const path of [
   "src/lib/designer/fit-outcomes.ts",
   "src/app/designer-studio/page.tsx",
   "src/lib/designer/search.ts",
+  "src/lib/designer/evidence-context.ts",
+  "src/app/api/designer/search/route.ts",
   "src/app/api/designer/casebook/route.ts",
   "src/app/api/designer/creative-inspect/route.ts",
   "src/app/api/designer/creative-generate/route.ts",
@@ -136,8 +138,10 @@ requireTokens("src/lib/designer/search.ts", [
   "DesignerSearchTier","Safe","Elevated","Statement",
   "searchDesignerCatalogue","explainWhyNotCurrentPair","hardBlocked","comparisonFor"
 ]);
+requireTokens("src/lib/designer/evidence-context.ts", ["server-only","aggregateDesignerCasebook","aggregateFitOutcomes","loadDesignerEvidenceContext"]);
+requireTokens("src/app/api/designer/search/route.ts", ["searchDesignerCatalogue","loadDesignerEvidenceContext","loadDesignerFabricMetadata","safeMeasurements","safeObservations","__linenDesignerSearchRate"]);
 requireTokens("src/components/DesignerModule.tsx", [
-  "OPTIONAL","Try a different fabric pairing","Show 3 options","Keep shirt","Keep trouser","Change both","Use look","newDesignerOptionalSearch",
+  "OPTIONAL","Try a different fabric pairing","Show 3 options","Keep shirt","Keep trouser","Change both","Use look","newDesignerOptionalSearch","/api/designer/search","Finding…",
   "03 / CREATE","Create ideas ✦","newDesignerCreativeVisual","Design reasoning","FRONTIER IDEA",
   "/api/designer/creative-generate","requestCreativeDirections(12","creativeAutoNote","onCreativeInspection"
 ]);
