@@ -12,7 +12,7 @@ import {
 } from "@/lib/designer/engine";
 import { assessFitConstruction } from "@/lib/designer/fit-construction";
 import { evaluateLinenEarthBrandLanguage } from "@/lib/designer/brand-language";
-import { creativeLearningSignalFor, type CreativeLearningBook, type CreativeLearningSignal } from "@/lib/designer/creative-learning";
+import { creativeLearningSignalFor, type CreativeFeedbackReason, type CreativeLearningBook, type CreativeLearningSignal } from "@/lib/designer/creative-learning";
 import type { CreativeResearchLibrary, CreativeResearchSignal } from "@/lib/designer/creative-research";
 
 export type CreativeZone =
@@ -1366,3 +1366,41 @@ export function generateCreativeDirections(input:CreativeLabInput):CreativeDirec
   }
   return output;
 }
+
+function creativeCriticScore(direction:CreativeDirection,id:CreativeCriticId) {
+  return direction.critics.find((item)=>item.id===id)?.score ?? 0;
+}
+
+export function chooseCreativeRedesign(
+  candidates:CreativeDirection[],
+  current:CreativeDirection,
+  reason:CreativeFeedbackReason,
+):CreativeDirection|undefined {
+  const alternatives=candidates.filter((item)=>item.id!==current.id && signature(item)!==signature(current));
+  const pool=alternatives.length ? alternatives : candidates.filter((item)=>item.id!==current.id);
+  if(!pool.length) return undefined;
+
+  const score=(item:CreativeDirection)=>{
+    const aesthetic=creativeCriticScore(item,"aesthetic");
+    const originality=creativeCriticScore(item,"originality");
+    const construction=creativeCriticScore(item,"construction");
+    const hierarchy=criticFacetScore(item,"aesthetic","Hierarchy");
+    const harmony=criticFacetScore(item,"aesthetic","Harmony");
+    const rhythm=criticFacetScore(item,"aesthetic","Rhythm");
+    const proportion=criticFacetScore(item,"aesthetic","Proportion");
+    const distance=item.critics.find((critic)=>critic.id==="originality")?.facets?.find((facet)=>facet.label==="Source distance")?.score ?? 0;
+    const load=treatmentLoad(item.treatments,item.pattern);
+
+    if(reason==="visual_balance") return aesthetic*1.2+hierarchy*.8+harmony*.7-load*.08;
+    if(reason==="too_busy") return aesthetic+hierarchy*.8+harmony*.7+Math.max(0,160-load)*.35;
+    if(reason==="too_safe") return originality*1.35+item.researchUtilization*.55+(item.explorationClass==="frontier"?18:0)+aesthetic*.35;
+    if(reason==="pattern_detail") return (item.pattern?28:0)+originality*.75+rhythm*.9+item.researchUtilization*.35;
+    if(reason==="proportion") return proportion*1.45+aesthetic*.65+hierarchy*.35;
+    if(reason==="originality") return originality*1.4+distance*.8+item.researchUtilization*.45+(item.explorationClass==="frontier"?14:0);
+    if(reason==="render_mismatch") return item.certainty*.8+aesthetic*.75+construction*.35+(item.pattern?2:0);
+    return revisionMerit(item);
+  };
+
+  return [...pool].sort((a,b)=>score(b)-score(a))[0];
+}
+
