@@ -6,6 +6,42 @@ import "server-only";
  */
 export const REAL_MENSWEAR_FABRIC_EXAMPLES = [
   {
+    "id": "acorn-windermere-120",
+    "source_id": "acorn",
+    "manufacturer": "Acorn Fabrics",
+    "product_name": "Windermere 2/120s white solid fabric",
+    "source_url": "https://www.acornfabrics.com/shop/fabric-types/page/25/",
+    "composition": "",
+    "color_name": "White",
+    "pattern_name": "Solid",
+    "construction_name": "",
+    "weight_gsm": null,
+    "usage_tags": [
+      "shirt"
+    ],
+    "verified_facts": {
+      "yarn": "2/120s"
+    }
+  },
+  {
+    "id": "acorn-windsor-140",
+    "source_id": "acorn",
+    "manufacturer": "Acorn Fabrics",
+    "product_name": "Windsor 2/140s white solid fabric",
+    "source_url": "https://www.acornfabrics.com/shop/fabric-types/page/25/",
+    "composition": "",
+    "color_name": "White",
+    "pattern_name": "Solid",
+    "construction_name": "",
+    "weight_gsm": null,
+    "usage_tags": [
+      "shirt"
+    ],
+    "verified_facts": {
+      "yarn": "2/140s"
+    }
+  },
+  {
     "id": "dormeuil-191004",
     "source_id": "dormeuil",
     "manufacturer": "Dormeuil",
@@ -522,7 +558,7 @@ export const REAL_MENSWEAR_FABRIC_EXAMPLES = [
     "source_id": "soktas",
     "manufacturer": "SÖKTAŞ",
     "product_name": "Alex F46603/02",
-    "source_url": "https://shop.soktas.com/product-category/all-fabrics/checks/",
+    "source_url": "https://shop.soktas.com/",
     "composition": "",
     "color_name": "",
     "pattern_name": "Prince of Wales checks",
@@ -531,7 +567,9 @@ export const REAL_MENSWEAR_FABRIC_EXAMPLES = [
     "usage_tags": [
       "shirt"
     ],
-    "verified_facts": {}
+    "verified_facts": {
+      "collection": "Popular Fabrics"
+    }
   },
   {
     "id": "soktas-alta-f46611-01",
@@ -554,23 +592,26 @@ export const REAL_MENSWEAR_FABRIC_EXAMPLES = [
     "source_id": "soktas",
     "manufacturer": "SÖKTAŞ",
     "product_name": "Amelia Melange F69602/03",
-    "source_url": "https://shop.soktas.com/product-category/all-fabrics/checks/",
+    "source_url": "https://shop.soktas.com/",
     "composition": "",
     "color_name": "",
     "pattern_name": "Flannel checks",
-    "construction_name": "Flannel",
+    "construction_name": "",
     "weight_gsm": null,
     "usage_tags": [
-      "shirt"
+      "shirt",
+      "casual shirt"
     ],
-    "verified_facts": {}
+    "verified_facts": {
+      "collection": "Popular Fabrics"
+    }
   },
   {
     "id": "soktas-bishop-f55247-01",
     "source_id": "soktas",
     "manufacturer": "SÖKTAŞ",
     "product_name": "Bishop F55247/01",
-    "source_url": "https://shop.soktas.com/product-category/all-fabrics/checks/",
+    "source_url": "https://shop.soktas.com/",
     "composition": "",
     "color_name": "",
     "pattern_name": "Twill checks",
@@ -579,14 +620,34 @@ export const REAL_MENSWEAR_FABRIC_EXAMPLES = [
     "usage_tags": [
       "shirt"
     ],
-    "verified_facts": {}
+    "verified_facts": {
+      "description": "Finest twill checks"
+    }
+  },
+  {
+    "id": "soktas-fiji-f46636-04",
+    "source_id": "soktas",
+    "manufacturer": "SÖKTAŞ",
+    "product_name": "Fiji F46636/04",
+    "source_url": "https://shop.soktas.com/",
+    "composition": "",
+    "color_name": "",
+    "pattern_name": "Checks",
+    "construction_name": "",
+    "weight_gsm": null,
+    "usage_tags": [
+      "shirt"
+    ],
+    "verified_facts": {
+      "description": "Double twisted luxury checks"
+    }
   },
   {
     "id": "soktas-graf-f58207-01",
     "source_id": "soktas",
     "manufacturer": "SÖKTAŞ",
     "product_name": "Graf F58207/01",
-    "source_url": "https://shop.soktas.com/product-category/all-fabrics/checks/",
+    "source_url": "https://shop.soktas.com/",
     "composition": "",
     "color_name": "",
     "pattern_name": "Twill checks",
@@ -595,7 +656,27 @@ export const REAL_MENSWEAR_FABRIC_EXAMPLES = [
     "usage_tags": [
       "shirt"
     ],
-    "verified_facts": {}
+    "verified_facts": {
+      "description": "Finest twill checks"
+    }
+  },
+  {
+    "id": "soktas-graf-f62357-03",
+    "source_id": "soktas",
+    "manufacturer": "SÖKTAŞ",
+    "product_name": "Graf F62357/03",
+    "source_url": "https://shop.soktas.com/",
+    "composition": "",
+    "color_name": "",
+    "pattern_name": "Twill checks",
+    "construction_name": "Twill",
+    "weight_gsm": null,
+    "usage_tags": [
+      "shirt"
+    ],
+    "verified_facts": {
+      "description": "Finest twill checks"
+    }
   },
   {
     "id": "soktas-lazarra-f85475-01",
@@ -646,6 +727,24 @@ export const REAL_MENSWEAR_FABRIC_EXAMPLES = [
     "verified_facts": {}
   },
   {
+    "id": "soktas-leeds-f62392-02",
+    "source_id": "soktas",
+    "manufacturer": "SÖKTAŞ",
+    "product_name": "Leeds F62392/02",
+    "source_url": "https://shop.soktas.com/",
+    "composition": "",
+    "color_name": "",
+    "pattern_name": "Royal Oxford checks",
+    "construction_name": "Royal Oxford",
+    "weight_gsm": null,
+    "usage_tags": [
+      "shirt"
+    ],
+    "verified_facts": {
+      "description": "Finest royal oxford checks"
+    }
+  },
+  {
     "id": "soktas-linda-f80275-12",
     "source_id": "soktas",
     "manufacturer": "SÖKTAŞ",
@@ -693,6 +792,58 @@ export const REAL_MENSWEAR_FABRIC_EXAMPLES = [
     "usage_tags": [
       "shirt",
       "summer shirt"
+    ],
+    "verified_facts": {}
+  },
+  {
+    "id": "soktas-singapore-f92604-01",
+    "source_id": "soktas",
+    "manufacturer": "SÖKTAŞ",
+    "product_name": "Singapore Organic F92604/01",
+    "source_url": "https://shop.soktas.com/",
+    "composition": "Organic cotton",
+    "color_name": "",
+    "pattern_name": "",
+    "construction_name": "",
+    "weight_gsm": null,
+    "usage_tags": [
+      "shirt"
+    ],
+    "verified_facts": {
+      "description": "Organic fabric"
+    }
+  },
+  {
+    "id": "soktas-wessex-f74916-01",
+    "source_id": "soktas",
+    "manufacturer": "SÖKTAŞ",
+    "product_name": "Wessex F74916/01",
+    "source_url": "https://shop.soktas.com/",
+    "composition": "",
+    "color_name": "",
+    "pattern_name": "Flannel checks",
+    "construction_name": "Flannel",
+    "weight_gsm": null,
+    "usage_tags": [
+      "shirt",
+      "casual shirt"
+    ],
+    "verified_facts": {}
+  },
+  {
+    "id": "soktas-wessex-f74916-05",
+    "source_id": "soktas",
+    "manufacturer": "SÖKTAŞ",
+    "product_name": "Wessex F74916/05",
+    "source_url": "https://shop.soktas.com/",
+    "composition": "",
+    "color_name": "",
+    "pattern_name": "Flannel checks",
+    "construction_name": "Flannel",
+    "weight_gsm": null,
+    "usage_tags": [
+      "shirt",
+      "casual shirt"
     ],
     "verified_facts": {}
   },
@@ -808,6 +959,26 @@ export const REAL_MENSWEAR_FABRIC_EXAMPLES = [
     ],
     "verified_facts": {
       "weight_oz": 9
+    }
+  },
+  {
+    "id": "vbc-10-712-438",
+    "source_id": "vbc",
+    "manufacturer": "Vitale Barberis Canonico",
+    "product_name": "10.712/438",
+    "source_url": "https://vitalebarberiscanonico.com/collection/fabrics/10-712-438/",
+    "composition": "100% wool",
+    "color_name": "Brown",
+    "pattern_name": "Plain",
+    "construction_name": "Hopsack",
+    "weight_gsm": 280,
+    "usage_tags": [
+      "sports jacket"
+    ],
+    "verified_facts": {
+      "type": "21 Micron",
+      "season": "Spring/Summer",
+      "product_code": "10.712/438"
     }
   },
   {
