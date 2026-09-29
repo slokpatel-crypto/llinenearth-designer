@@ -661,7 +661,7 @@ for (const token of ["blockStrategy: DesignerBlockStrategy","assessBlockStrategy
   if (!designerSearchBlocks.includes(token)) throw new Error(`Designer block-search regression: missing ${token}`);
 }
 const designerBlockUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["assessBlockStrategy","blockStrategy.shirtBlock","blockStrategy.trouserBlock","Starting block:"]) {
+for (const token of ["blockStrategy=assessment?.blockStrategy","blockStrategy.shirtBlock","blockStrategy.trouserBlock","Starting block:","requestLookAssessment"]) {
   if (!designerBlockUi.includes(token)) throw new Error(`Designer block UI regression: missing ${token}`);
 }
 const garmentSpecBlocks = fs.readFileSync("src/lib/designer/garment-spec.ts","utf8");
