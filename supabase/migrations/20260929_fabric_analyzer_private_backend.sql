@@ -482,7 +482,11 @@ begin
         'macroImageUrl',left(trim(coalesce(item->>'macroImageUrl','')),1800),
         'foldImageUrl',left(trim(coalesce(item->>'foldImageUrl','')),1800),
         'swatchRealWidthMm',case when jsonb_typeof(item->'swatchRealWidthMm')='number' then item->'swatchRealWidthMm' else 'null'::jsonb end,
-        'repeatRealMm',case when jsonb_typeof(item->'repeatRealMm')='number' then item->'repeatRealMm' else 'null'::jsonb end
+        'repeatRealMm',case when jsonb_typeof(item->'repeatRealMm')='number' then item->'repeatRealMm' else 'null'::jsonb end,
+        'verifiedGsm',case when jsonb_typeof(item->'verifiedGsm')='number' then item->'verifiedGsm' else 'null'::jsonb end,
+        'verifiedDrape',case when item->>'verifiedDrape' in ('Fluid','Balanced','Structured') then item->>'verifiedDrape' else '' end,
+        'verifiedFiberContent',left(trim(coalesce(item->>'verifiedFiberContent','')),220),
+        'verifiedPhysicalSourceUrl',left(trim(coalesce(item->>'verifiedPhysicalSourceUrl','')),1800)
       ),
       coalesce((item->>'force')::boolean,false)
     );
