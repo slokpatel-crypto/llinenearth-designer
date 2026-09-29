@@ -40,11 +40,13 @@ function clean(value:unknown,limit:number) {
 export function fabricAnalysisFingerprint(input:FabricAnalyzerContext) {
   const canonical=JSON.stringify({
     imageUrl:clean(input.imageUrl,1800),
+    sourcePageUrl:clean(input.sourcePageUrl,1800),
+    sourceId:clean(input.sourceId,80),
     declaredMaterial:clean(input.declaredMaterial,120),
     declaredFabricType:clean(input.declaredFabricType,120),
     supplierColorName:clean(input.supplierColorName,120),
     supplierPatternName:clean(input.supplierPatternName,120),
-    notes:clean(input.notes,300),
+    notes:clean(input.notes,500),
   });
   return createHash("sha256").update(canonical).digest("hex");
 }
@@ -85,11 +87,13 @@ export async function storeFabricAnalysis(
     p_image_fingerprint:fabricAnalysisFingerprint(input),
     p_image_source:clean(input.imageUrl,1800),
     p_declared_context:{
+      sourcePageUrl:clean(input.sourcePageUrl,1800),
+      sourceId:clean(input.sourceId,80),
       declaredMaterial:clean(input.declaredMaterial,120),
       declaredFabricType:clean(input.declaredFabricType,120),
       supplierColorName:clean(input.supplierColorName,120),
       supplierPatternName:clean(input.supplierPatternName,120),
-      notes:clean(input.notes,300),
+      notes:clean(input.notes,500),
     },
     p_analyzer_version:ANALYZER_VERSION,
     p_model_id:clean(modelId,120),
