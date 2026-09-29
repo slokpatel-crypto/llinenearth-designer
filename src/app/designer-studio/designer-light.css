@@ -637,6 +637,7 @@
 .newDesignerBriefCopy>p{margin:4px 0 0;font-size:6.5px;line-height:1.35;color:#5e7080;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .newDesignerBriefCut{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .newDesignerBriefCut b{font-size:5.5px;font-weight:600;color:#536b82;border:1px solid #dce4eb;background:#f7fafc;border-radius:999px;padding:4px 5px}
+.newDesignerBriefFit{display:block;margin-top:6px;padding:5px 6px;border-left:2px solid #6f8b72;background:#f6faf5;color:#5f735e;font-size:5.5px;line-height:1.35;font-style:normal;font-weight:700;letter-spacing:.04em}
 .newDesignerBriefCopy>small{display:block;margin-top:6px;font-size:6px;line-height:1.4;color:#80766d}
 .newDesignerBriefResults>article>button{justify-self:start;padding:7px 9px}
 
