@@ -16,6 +16,7 @@ The quality gate initially failed on stale prose checks after the Analyzer v4 pr
 - `scripts/build-fabric-render-assets.mjs` creates 66 tile/placeholder pairs from the 66 catalogued fabric photos during test, development and build. Central cloth crops omit printed captions and selvage. Mirroring makes a continuous tile; it may mirror a print motif, so the output is labelled an approximation.
 - `public/fabric-tiles/manifest.json` tracks tile size, detected visual orientation, colour, and scale status. Every stock swatch currently has **unknown physical scale**. `scripts/fabric-scales.json` is empty until the owner measures swatches or repeats.
 - The default photographic preview now loads prepared cloth tiles with a source-photo fallback; this avoids putting printed swatch captions and broad photo folds on a garment.
+- The instant preview visibly marks pattern scale, fit and drape as approximate pending a physical sample.
 - A lazy-loaded **Live cut study** sits beside the existing photographic model on `/designer-studio`. It has separate shirt/pant areas, front/back views, shirt/collar/cuff/sleeve/fit/pocket/back controls, trouser fit/rise/pleat/waistband/hem controls, provisional rule reasons and per-option accuracy.
 - The photograph remains the default because the construction drawing is not photorealistic. Expanded study choices are explicitly not yet part of the saved look or AI render request.
 

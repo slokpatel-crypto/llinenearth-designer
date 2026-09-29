@@ -943,6 +943,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
         <button type="button" onClick={download} disabled={!ready}>Save</button>
       </div>
     </div>
+    {!showCreativeAi && <p className="newDesignerPhotoApproximation"><strong>Instant preview</strong> · Studio model; pattern scale, fit and drape are approximate until verified on a physical sample.</p>}
     {creativeAi && !creativeDirection && <div className="newDesignerPhotoViews" role="group" aria-label="Photoreal model views">
       {(["front","three-quarter","side","back"] as PhotorealView[]).map((view)=><button key={view} type="button" aria-pressed={photorealView===view} disabled={Boolean(photorealViewLoading)} onClick={()=>void choosePhotorealView(view)}>
         {photorealViewLoading===view ? "Rendering…" : view==="three-quarter" ? (photorealViews[view]?"3/4":"Generate 3/4") : view==="front" ? "Front" : photorealViews[view] ? view[0].toUpperCase()+view.slice(1) : "Generate "+view}
