@@ -56,6 +56,8 @@ async function processJob(job:ClaimedFabricAnalyzerJob) {
         supplierColorName:clean(declared.supplierColorName,120) || undefined,
         supplierPatternName:clean(declared.supplierPatternName,120) || undefined,
         notes:clean(declared.notes,500) || undefined,
+        swatchRealWidthMm:Number.isFinite(Number(declared.swatchRealWidthMm)) ? Number(declared.swatchRealWidthMm) : undefined,
+        repeatRealMm:Number.isFinite(Number(declared.repeatRealMm)) ? Number(declared.repeatRealMm) : undefined,
       };
       const result=await analyzeMenswearFabricWithStore(input,{reuseReviewed:!job.force,persist:true});
       profileId=result.profileId;
