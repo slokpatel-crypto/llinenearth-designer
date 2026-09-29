@@ -5,7 +5,7 @@ const VERSION = "v1";
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 function secret() {
-  const value = process.env.LLINEN_MEMORY_SESSION_SECRET?.trim();
+  const value = process.env.LINEN_MEMORY_SESSION_SECRET?.trim();
   return value && value.length >= 32 ? value : null;
 }
 
