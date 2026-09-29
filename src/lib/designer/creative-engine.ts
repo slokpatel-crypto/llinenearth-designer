@@ -1108,10 +1108,17 @@ function certaintyFor(recommendation:DesignerRecommendation,seed:Seed,treatments
 }
 
 function hardBlocked(recommendation:DesignerRecommendation,freedom:CreativeFreedom) {
+  const absoluteFeasibilityBlock=recommendation.rules.some((item)=>
+    item.status==="flag" &&
+    item.severity==="High" &&
+    /safety|impossible|unavailable|not[ -]?in[ -]?stock|cannot[ -]?be[ -]?constructed|invalid material/i.test(item.id+" "+item.explanation)
+  );
+  // Even maximum-research mode should not spend render/critique cycles on a
+  // literally unavailable or physically impossible base. Everything else,
+  // including unusual proportions and formality tension, stays open.
+  if(absoluteFeasibilityBlock) return true;
   if(freedom==="maximum") return false;
-  if(freedom==="exploratory") {
-    return recommendation.rules.some((item)=>item.status==="flag"&&item.severity==="High"&&/safety|impossible|unavailable/i.test(item.id+" "+item.explanation));
-  }
+  if(freedom==="exploratory") return false;
   return recommendation.formality.match===false || recommendation.rules.some((item)=>item.status==="flag"&&item.severity==="High");
 }
 
