@@ -203,6 +203,7 @@ export const REAL_MENSWEAR_MATERIAL_TERMS = [
   "undyed fabric",
   "velvet",
   "velvet cotton",
+  "Vicuña",
   "vicuña",
   "viscose-acetate lining",
   "voile",
@@ -216,6 +217,7 @@ export const REAL_MENSWEAR_MATERIAL_TERMS = [
   "woollen flannel",
   "worsted",
   "Worsted Classics",
+  "Worsted Flannel",
   "worsted flannel",
   "Yangir",
   "yarn-dyed linen",
@@ -1073,7 +1075,7 @@ export const FABRIC_REFERENCE_SOURCES = [
   }
 ] as const;
 
-export const FABRIC_REFERENCE_INDEX_VERSION = "real-reference-v3" as const;
+export const FABRIC_REFERENCE_INDEX_VERSION = "real-reference-v2" as const;
 
 export const FABRIC_REFERENCE_COUNTS = {
   materials: REAL_MENSWEAR_MATERIAL_TERMS.length,
