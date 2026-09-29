@@ -15,8 +15,8 @@ export async function POST(request: Request) {
     const metadata = await loadDesignerFabricMetadata();
     const stock = applyDesignerFabricMetadataToStock(metadata);
     const looks = createStyleDirectorLooks(body, stock);
-    if (!looks.length) return NextResponse.json({ error: "No matching LLinen Earth stock is available for this direction yet." }, { status: 404 });
-    return NextResponse.json({ looks, engine: "llinen-style-director-v2", calibratedFabrics: Object.keys(metadata).length });
+    if (!looks.length) return NextResponse.json({ error: "No matching Linen Earth stock is available for this direction yet." }, { status: 404 });
+    return NextResponse.json({ looks, engine: "linen-style-director-v2", calibratedFabrics: Object.keys(metadata).length });
   } catch (error) {
     console.error("[style-director]", error);
     return NextResponse.json({ error: "The style director could not build your looks right now." }, { status: 500 });
