@@ -71,6 +71,10 @@ export async function POST(request:Request) {
       notes:clean(body.notes,500) || undefined,
       swatchRealWidthMm:Number.isFinite(Number(body.swatchRealWidthMm)) ? Number(body.swatchRealWidthMm) : undefined,
       repeatRealMm:Number.isFinite(Number(body.repeatRealMm)) ? Number(body.repeatRealMm) : undefined,
+      verifiedGsm:Number.isFinite(Number(body.verifiedGsm)) ? Number(body.verifiedGsm) : undefined,
+      verifiedDrape:["Fluid","Balanced","Structured"].includes(String(body.verifiedDrape)) ? body.verifiedDrape as FabricAnalyzerContext["verifiedDrape"] : undefined,
+      verifiedFiberContent:clean(body.verifiedFiberContent,220) || undefined,
+      verifiedPhysicalSourceUrl:clean(body.verifiedPhysicalSourceUrl,1800) || undefined,
     };
 
     const run=await analyzeMenswearFabricWithStore(input,{reuseReviewed:!force,persist:true});
