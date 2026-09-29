@@ -251,6 +251,28 @@ function containsLoose(values:string[],target:string|null|undefined) {
   });
 }
 
+function occasionIntelligenceTokens(occasion:OccasionTier) {
+  if(occasion==="Formal") return ["formal","business","boardroom","ceremony","evening"];
+  if(occasion==="Semi-Formal") return ["semi formal","business","wedding","reception","event"];
+  if(occasion==="Smart-Casual") return ["smart casual","dinner","date","brunch","travel"];
+  return ["casual","weekend","resort","holiday","relaxed"];
+}
+
+function intelOccasionMatch(intel:DesignerFabricIntelligence,occasion:OccasionTier) {
+  const hay=intel.bestOccasions.join(" ").toLowerCase().replace(/[-/]/g," ");
+  return occasionIntelligenceTokens(occasion).some((token)=>hay.includes(token));
+}
+
+function patternSupportScore(primary:DesignerFabricIntelligence,companion:DesignerFabricIntelligence) {
+  const strategy=primary.pairing.goodPatternStrategy.join(" ").toLowerCase();
+  let score=0;
+  if(/solid|plain|quiet|restrained|simple/.test(strategy) && companion.patternFamily==="solid") score+=2.5;
+  if(/one pattern|single pattern|one hero|hero fabric/.test(strategy) && companion.statementLevel<=2) score+=2;
+  if(/tonal|low contrast/.test(strategy) && companion.patternContrast==="low") score+=1.5;
+  if(/fine|micro/.test(strategy) && companion.patternScale==="fine") score+=1.2;
+  return score;
+}
+
 function fabricIntelligenceAlignment(
   tier:DesignerSearchTier,
   occasion:OccasionTier,
@@ -291,6 +313,7 @@ function fabricIntelligenceAlignment(
     const statementFit=1-Math.min(1,Math.abs(intel.statementLevel-targetStatement[tier])/4);
     score+=(formalityFit*7-2)*w;
     score+=(statementFit*5-1.5)*w;
+    if(intelOccasionMatch(intel,occasion)) score+=3.2*w;
   }
 
   if(shirtIntel) {
@@ -317,8 +340,22 @@ function fabricIntelligenceAlignment(
 
   if(shirtIntel && pantIntel) {
     const pairWeight=Math.min(trustWeight(shirtIntel),trustWeight(pantIntel));
-    if(shirtIntel.statementLevel>=4 && pantIntel.statementLevel>=4) score-=7*pairWeight;
-    if(Math.max(shirtIntel.statementLevel,pantIntel.statementLevel)>=4 && Math.min(shirtIntel.statementLevel,pantIntel.statementLevel)<=2) score+=3*pairWeight;
+    if(shirtIntel.statementLevel>=4 && pantIntel.statementLevel>=4) score-=8*pairWeight;
+    if(Math.max(shirtIntel.statementLevel,pantIntel.statementLevel)>=4 && Math.min(shirtIntel.statementLevel,pantIntel.statementLevel)<=2) score+=4*pairWeight;
+
+    const bothPatterned=shirtIntel.patternFamily!=="solid" && pantIntel.patternFamily!=="solid";
+    const bothHighContrast=shirtIntel.patternContrast==="high" && pantIntel.patternContrast==="high";
+    const bothBold=shirtIntel.patternScale==="bold" && pantIntel.patternScale==="bold";
+    if(bothPatterned && (bothHighContrast || bothBold)) score-=7*pairWeight;
+    if(shirtIntel.patternFamily!=="solid" && pantIntel.patternFamily==="solid") score+=2.5*pairWeight;
+    if(shirtIntel.patternFamily==="solid" && pantIntel.patternFamily!=="solid") score+=1.5*pairWeight;
+
+    score+=patternSupportScore(shirtIntel,pantIntel)*pairWeight;
+    score+=patternSupportScore(pantIntel,shirtIntel)*pairWeight;
+
+    if(shirtIntel.sheen==="high" && pantIntel.sheen==="high") score-=2.5*pairWeight;
+    if(shirtIntel.visualWeight==="heavy-looking" && pantIntel.visualWeight==="light-looking") score-=1.5*pairWeight;
+    if(shirtIntel.visualWeight==="light-looking" && pantIntel.visualWeight==="heavy-looking") score-=1*pairWeight;
   }
 
   if(context?.climate && context.climate!=="Not specified") {
@@ -333,7 +370,7 @@ function fabricIntelligenceAlignment(
     }
   }
 
-  return Math.max(-18,Math.min(18,score));
+  return Math.max(-24,Math.min(24,score));
 }
 
 function preferenceAlignment(
