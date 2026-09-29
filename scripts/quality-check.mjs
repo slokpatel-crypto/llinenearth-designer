@@ -32,6 +32,7 @@ const required = [
   "src/lib/designer/search.ts",
   "src/app/api/designer/casebook/route.ts",
   "src/app/api/designer/creative-inspect/route.ts",
+  "src/app/api/designer/creative-generate/route.ts",
   "src/app/api/operator/designer-research/discover/route.ts",
   "src/app/api/operator/designer-research/analyze/route.ts",
   "src/app/api/operator/designer-research/analyze-batch/route.ts",
@@ -477,7 +478,7 @@ const sourceRows = (researchPool.match(/\{id:"[^"]+",name:/g) || []).length;
 const topicRows = (researchPool.match(/\{id:"[^"]+",query:/g) || []).length;
 if (sourceRows * topicRows < 1000) throw new Error(`Designer V5 research pool regression: expected >=1000 source-topic targets, found ${sourceRows * topicRows}`);
 const creativeUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["03 / CREATE","Imagine new designs","Create ideas ✦","newDesignerCreativeVisual","newDesignerMiniScores","researchPool","researchFreedom:\"maximum\"","FRONTIER IDEA","Design reasoning","chooseCreativeRedesign","limit:12","creativeAutoNote","render_mismatch","onCreativeInspection","severeHeuristicFailure","reliableReview"]) {
+for (const token of ["03 / CREATE","Imagine new designs","Create ideas ✦","newDesignerCreativeVisual","newDesignerMiniScores","researchPool","FRONTIER IDEA","Design reasoning","/api/designer/creative-generate","requestCreativeDirections(12","creativeAutoNote","render_mismatch","onCreativeInspection","severeHeuristicFailure","reliableReview"]) {
   if (!creativeUi.includes(token)) throw new Error(`Designer V5 creative UI regression: missing ${token}`);
 }
 const creativePreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
@@ -487,6 +488,13 @@ for (const token of ["creativeDirection","drawCreativePattern","Photoreal render
 const aiVisualization = fs.readFileSync("src/lib/ai-visualization.ts","utf8");
 for (const token of ["inspectCreativeRender","heroVisibility","boundaryIntegrity","protectedChange","CREATIVE_ZONE_BOXES","PROTECTED_RENDER_BOXES","Visual hierarchy contract","semanticCreativeRenderCheck","ai-gateway.vercel.sh/v1/responses","LINEN_VISUAL_CRITIC_MODEL","openai/gpt-5.4","redesignReason","referenceDataUri","fabricContext","heroAccuracy","fabricFidelity","supportCompetition","Compare them rather than judging","renderCaution","learnedRenderEdit","visualCriticModels","google/gemini-3-flash","semanticCheckNeedsReview","semanticCheckSevere","A second independent visual critic","Visual critics disagreed"]) {
   if (!aiVisualization.includes(token)) throw new Error(`Designer V5 render-inspection regression: missing ${token}`);
+}
+const creativeGenerateRoute = fs.readFileSync("src/app/api/designer/creative-generate/route.ts","utf8");
+for (const token of ["generateCreativeDirections","chooseCreativeRedesign","researchFreedom:\"maximum\"","loadDesignerFabricMetadata","__linenCreativeGenerateRate","slice(0,240)"]) {
+  if (!creativeGenerateRoute.includes(token)) throw new Error(`Designer V5 server-generation route regression: missing ${token}`);
+}
+if (realDesignerModule.includes("generateCreativeDirections({") || realDesignerModule.includes("chooseCreativeRedesign(")) {
+  throw new Error("Designer V5 architecture regression: heavy creative ranking returned to the customer UI bundle.");
 }
 const creativeRenderRoute = fs.readFileSync("src/app/api/designer/creative-render/route.ts","utf8");
 for (const token of ["renderCreativeFashnFront","assertFashnRateLimit","CreativeFashnRequest"]) {
