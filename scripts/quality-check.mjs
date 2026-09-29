@@ -263,8 +263,11 @@ const designerBriefEngine = fs.readFileSync("src/lib/designer/brief.ts","utf8");
 for (const token of ["parseDesignerBrief","searchDesignerCatalogue","scope:\"open\"","tierOrder"]) {
   if (!designerBriefRoute.includes(token)) throw new Error(`One-line Designer route regression: missing ${token}`);
 }
-for (const token of ["occasionFrom","climateFrom","intentionFrom","colorPreferences","preferredTier"]) {
+for (const token of ["occasionFrom","climateFrom","intentionFrom","colorPreferences","preferredTier","semi[-\\s]?formal","\\bformal\\b"]) {
   if (!designerBriefEngine.includes(token)) throw new Error(`One-line Designer interpretation regression: missing ${token}`);
+}
+for (const token of ["occasionFabricAlignment","formal shirting","printed linen blend","occasionScore"]) {
+  if (!designerSearch.includes(token)) throw new Error(`One-line Designer occasion separation regression: missing ${token}`);
 }
 for (const token of ["/api/designer/brief","newDesignerBrief","Create 3 directions","one_line_designer_brief"]) {
   if (!realDesignerModule.includes(token)) throw new Error(`One-line Designer UI regression: missing ${token}`);
