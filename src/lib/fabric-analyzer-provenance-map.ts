@@ -137,6 +137,11 @@ export const FABRIC_REFERENCE_PROVENANCE = {
       "type": "blend"
     },
     {
+      "term": "Cassimere twill",
+      "source_id": "harris-tweed-authority",
+      "type": "weave"
+    },
+    {
       "term": "Chinese silk",
       "source_id": "marzotto",
       "type": "fiber"
@@ -160,6 +165,11 @@ export const FABRIC_REFERENCE_PROVENANCE = {
       "term": "combed long-staple cotton",
       "source_id": "mileta",
       "type": "fiber"
+    },
+    {
+      "term": "common twill",
+      "source_id": "harris-tweed-authority",
+      "type": "weave"
     },
     {
       "term": "corduroy",
@@ -340,6 +350,16 @@ export const FABRIC_REFERENCE_PROVENANCE = {
       "term": "greige raw fabric",
       "source_id": "albiate1830",
       "type": "finish"
+    },
+    {
+      "term": "handwoven tweed",
+      "source_id": "harris-tweed-authority",
+      "type": "construction"
+    },
+    {
+      "term": "Harris Tweed",
+      "source_id": "harris-tweed-authority",
+      "type": "fabric_type"
     },
     {
       "term": "heavy Oxford",
@@ -742,6 +762,11 @@ export const FABRIC_REFERENCE_PROVENANCE = {
       "type": "fiber"
     },
     {
+      "term": "pure virgin wool",
+      "source_id": "harris-tweed-authority",
+      "type": "fiber"
+    },
+    {
       "term": "pure wool cloth",
       "source_id": "standeven",
       "type": "fiber"
@@ -1027,6 +1052,11 @@ export const FABRIC_REFERENCE_PROVENANCE = {
       "type": "construction"
     },
     {
+      "term": "two and two twill",
+      "source_id": "harris-tweed-authority",
+      "type": "weave"
+    },
+    {
       "term": "two-ply cotton yarn",
       "source_id": "mileta",
       "type": "yarn"
@@ -1307,6 +1337,11 @@ export const FABRIC_REFERENCE_PROVENANCE = {
       "term": "colored nepp effect",
       "source_id": "albiate1830",
       "family": "speckled texture"
+    },
+    {
+      "term": "common twill",
+      "source_id": "harris-tweed-authority",
+      "family": "twill"
     },
     {
       "term": "corduroy",
@@ -1754,6 +1789,11 @@ export const FABRIC_REFERENCE_PROVENANCE = {
       "family": "check"
     },
     {
+      "term": "two and two twill",
+      "source_id": "harris-tweed-authority",
+      "family": "twill"
+    },
+    {
       "term": "Two Tone Narrow Herringbone",
       "source_id": "standeven",
       "family": "herringbone"
@@ -1848,2077 +1888,2077 @@ export const FABRIC_REFERENCE_PROVENANCE = {
     {
       "term": "aliceblue",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "antiquewhite",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "aqua",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "aquamarine",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "azure",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "beige",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "bisque",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "black",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "black",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "blackish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "blackish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "blackish purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "blackish red",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "blanchedalmond",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "blue",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "blueviolet",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "bluish black",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "bluish gray",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "bluish white",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "brilliant blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "brilliant bluish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "brilliant green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "brilliant greenish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "brilliant greenish yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "brilliant orange",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "brilliant orange yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "brilliant purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "brilliant purplish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "brilliant purplish pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "brilliant violet",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "brilliant yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "brilliant yellow green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "brilliant yellowish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "brown",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "brownish black",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "brownish gray",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "brownish orange",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "brownish pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "burlywood",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "cadetblue",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "chartreuse",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "chocolate",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "coral",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "cornflowerblue",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "cornsilk",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "crimson",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "cyan",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "dark blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark bluish gray",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark bluish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark gray",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark grayish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark grayish brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark grayish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark grayish olive",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark grayish olive green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark grayish purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark grayish red",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark grayish reddish brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark grayish yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark grayish yellow brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark greenish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark greenish gray",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark greenish yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark olive",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark olive brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark olive green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark orange yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark purplish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark purplish gray",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark purplish pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark purplish red",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark red",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark reddish brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark reddish gray",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark reddish orange",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark reddish purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark violet",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark yellowish brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark yellowish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "dark yellowish pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "darkblue",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "darkcyan",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "darkgoldenrod",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "darkgray",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "darkgreen",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "darkgrey",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "darkkhaki",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "darkmagenta",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "darkolivegreen",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "darkorange",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "darkorchid",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "darkred",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "darksalmon",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "darkseagreen",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "darkslateblue",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "darkslategray",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "darkslategrey",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "darkturquoise",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "darkviolet",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "deep blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep bluish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep greenish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep greenish yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep olive green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep orange",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep orange yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep purplish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep purplish pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep purplish red",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep red",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep reddish brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep reddish orange",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep reddish purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep violet",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep yellow green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep yellowish brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep yellowish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deep yellowish pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "deeppink",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "deepskyblue",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "dimgray",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "dimgrey",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "dodgerblue",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "firebrick",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "floralwhite",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "forestgreen",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "fuchsia",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "gainsboro",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "ghostwhite",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "gold",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "goldenrod",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "gray",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "grayish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "grayish brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "grayish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "grayish greenish yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "grayish olive",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "grayish olive green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "grayish pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "grayish purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "grayish purplish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "grayish purplish pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "grayish purplish red",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "grayish red",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "grayish reddish brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "grayish reddish orange",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "grayish reddish purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "grayish violet",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "grayish yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "grayish yellow green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "grayish yellowish brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "grayish yellowish pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "green",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "greenish black",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "greenish gray",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "greenish white",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "greenyellow",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "grey",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "honeydew",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "hotpink",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "indianred",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "indigo",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "ivory",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "khaki",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "lavender",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "lavenderblush",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "lawngreen",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "lemonchiffon",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "light blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light bluish gray",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light bluish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light brownish gray",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light gray",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light grayish brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light grayish olive",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light grayish purplish red",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light grayish red",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light grayish reddish brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light grayish yellowish brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light greenish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light greenish gray",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light greenish yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light olive",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light olive brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light olive gray",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light orange",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light orange yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light purplish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light purplish gray",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light purplish pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light reddish brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light reddish purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light violet",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light yellow green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light yellowish brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light yellowish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "light yellowish pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "lightblue",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "lightcoral",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "lightcyan",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "lightgoldenrodyellow",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "lightgray",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "lightgreen",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "lightgrey",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "lightpink",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "lightsalmon",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "lightseagreen",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "lightskyblue",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "lightslategray",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "lightslategrey",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "lightsteelblue",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "lightyellow",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "lime",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "limegreen",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "linen",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "magenta",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "maroon",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "medium gray",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "mediumaquamarine",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "mediumblue",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "mediumorchid",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "mediumpurple",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "mediumseagreen",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "mediumslateblue",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "mediumspringgreen",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "mediumturquoise",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "mediumvioletred",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "midnightblue",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "mintcream",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "mistyrose",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "moccasin",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "moderate blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate bluish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate greenish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate greenish yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate olive",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate olive brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate olive green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate orange",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate orange yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate purplish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate purplish pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate purplish red",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate red",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate reddish brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate reddish orange",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate reddish purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate violet",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate yellow green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate yellowish brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate yellowish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "moderate yellowish pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "navajowhite",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "navy",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "oldlace",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "olive",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "olive black",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "olive gray",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "olivedrab",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "orange",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "orangered",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "orchid",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "pale blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "pale green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "pale greenish yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "pale orange yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "pale pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "pale purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "pale purplish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "pale purplish pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "pale reddish purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "pale violet",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "pale yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "pale yellow green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "pale yellowish pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "palegoldenrod",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "palegreen",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "paleturquoise",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "palevioletred",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "papayawhip",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "peachpuff",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "peru",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "pink",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "pinkish gray",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "pinkish white",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "plum",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "powderblue",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "purple",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "purplish black",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "purplish gray",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "purplish white",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "rebeccapurple",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "red",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "reddish black",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "reddish gray",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "rosybrown",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "royalblue",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "saddlebrown",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "salmon",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "sandybrown",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "seagreen",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "seashell",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "sienna",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "silver",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "skyblue",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "slateblue",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "slategray",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "slategrey",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "snow",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "springgreen",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "steelblue",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "strong blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong bluish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong greenish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong greenish yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong olive green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong orange",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong orange yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong purplish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong purplish pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong purplish red",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong red",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong reddish brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong reddish orange",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong reddish purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong violet",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong yellow green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong yellowish brown",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong yellowish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "strong yellowish pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "tan",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "teal",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "thistle",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "tomato",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "turquoise",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "very dark bluish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very dark green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very dark greenish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very dark purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very dark purplish red",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very dark red",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very dark reddish purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very dark yellowish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very deep purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very deep purplish red",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very deep red",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very deep reddish purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very deep yellowish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very light blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very light bluish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very light green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very light greenish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very light purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very light purplish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very light violet",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very light yellowish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very pale blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very pale green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very pale purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very pale purplish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "very pale violet",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "violet",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "vivid blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "vivid bluish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "vivid green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "vivid greenish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "vivid greenish yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "vivid orange",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "vivid orange yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "vivid pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "vivid purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "vivid purplish blue",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "vivid purplish red",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "vivid red",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "vivid reddish orange",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "vivid reddish purple",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "vivid violet",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "vivid yellow",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "vivid yellow green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "vivid yellowish green",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "vivid yellowish pink",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "wheat",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "white",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "white",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "whitesmoke",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "yellow",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "yellowgreen",
       "source_id": "w3c-css-color",
-      "system_name": "W3C CSS named colors"
+      "system": "W3C CSS named colors"
     },
     {
       "term": "yellowish gray",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     },
     {
       "term": "yellowish white",
       "source_id": "nist-iscc-nbs",
-      "system_name": "ISCC-NBS"
+      "system": "ISCC-NBS"
     }
   ]
 } as const;
