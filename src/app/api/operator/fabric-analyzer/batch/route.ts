@@ -24,6 +24,10 @@ type BatchItem={
   notes?:string;
   swatchRealWidthMm?:number;
   repeatRealMm?:number;
+  verifiedGsm?:number;
+  verifiedDrape?:"Fluid"|"Balanced"|"Structured";
+  verifiedFiberContent?:string;
+  verifiedPhysicalSourceUrl?:string;
   force?:boolean;
 };
 
@@ -76,6 +80,10 @@ async function runItem(item:BatchItem,index:number) {
       notes:clean(item.notes,500) || undefined,
       swatchRealWidthMm:Number.isFinite(Number(item.swatchRealWidthMm)) ? Number(item.swatchRealWidthMm) : undefined,
       repeatRealMm:Number.isFinite(Number(item.repeatRealMm)) ? Number(item.repeatRealMm) : undefined,
+      verifiedGsm:Number.isFinite(Number(item.verifiedGsm)) ? Number(item.verifiedGsm) : undefined,
+      verifiedDrape:["Fluid","Balanced","Structured"].includes(String(item.verifiedDrape)) ? item.verifiedDrape : undefined,
+      verifiedFiberContent:clean(item.verifiedFiberContent,220) || undefined,
+      verifiedPhysicalSourceUrl:clean(item.verifiedPhysicalSourceUrl,1800) || undefined,
     };
     const run=await analyzeMenswearFabricWithStore(input,{reuseReviewed:item.force!==true,persist:true});
     return {index,fabricId,ok:true,mode:"private-fabric-analyzer-v4",run};
