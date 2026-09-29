@@ -739,8 +739,11 @@ for (const token of ["03 / CREATE","Imagine new designs","Create ideas ✦","new
   if (!creativeUi.includes(token)) throw new Error(`Designer V5 creative UI regression: missing ${token}`);
 }
 const creativePreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-for (const token of ["creativeDirection","drawCreativePattern","Photoreal render ✦","DOES IT WORK?","CREATIVE_FEEDBACK_REASONS","Preview tools","VISUAL CHECK PASSED","onCreativeInspection","newDesignerRenderCheck"]) {
+for (const token of ["creativeDirection","drawCreativePattern","DOES IT WORK?","CREATIVE_FEEDBACK_REASONS","Preview tools","VISUAL CHECK PASSED","onCreativeInspection","newDesignerRenderCheck"]) {
   if (!creativePreview.includes(token)) throw new Error(`Designer V5 visual loop regression: missing ${token}`);
+}
+if(!creativePreview.includes("Render selected idea ✦") || !creativePreview.includes("Final photoreal ✦") || !creativePreview.includes("Lock final design")) {
+  throw new Error("Designer two-tier render regression: creative render and locked final-render controls must stay present.");
 }
 const aiVisualization = fs.readFileSync("src/lib/ai-visualization.ts","utf8");
 for (const token of ["inspectCreativeRender","heroVisibility","boundaryIntegrity","protectedChange","CREATIVE_ZONE_BOXES","PROTECTED_RENDER_BOXES","Visual hierarchy contract","semanticCreativeRenderCheck","ai-gateway.vercel.sh/v1/responses","LINEN_VISUAL_CRITIC_MODEL","openai/gpt-5.4","redesignReason","referenceDataUri","fabricContext","heroAccuracy","fabricFidelity","supportCompetition","Compare them rather than judging","renderCaution","learnedRenderEdit","visualCriticModels","google/gemini-3-flash","semanticCheckNeedsReview","semanticCheckSevere","A second independent visual critic","Visual critics disagreed","previousOutputUrl","improvement","PREVIOUS FAILED/REVIEW RENDER"]) {
