@@ -55,34 +55,29 @@ function discoveryFor(route:string):DiscoveredFashionWebsite["discovery"] {
   return "wikidata-clothing-industry";
 }
 
-export function fashionWebsiteDiscoveryQuery(limit=1200) {
-  const safeLimit=Math.max(50,Math.min(1500,Math.round(limit)));
+type DiscoveryRoute="fashion-house"|"clothing"|"textile";
+
+function queryFor(route:DiscoveryRoute,limit:number) {
+  const safeLimit=Math.max(50,Math.min(1200,Math.round(limit)));
+  const selector=route==="fashion-house"
+    ? "?item wdt:P31/wdt:P279* wd:Q3661311; wdt:P856 ?website."
+    : route==="textile"
+      ? "?item wdt:P452 wd:Q607081; wdt:P856 ?website."
+      : "?item wdt:P452 wd:Q11828862; wdt:P856 ?website.";
   return `
-SELECT DISTINCT ?item ?itemLabel ?website ?route WHERE {
-  {
-    ?item wdt:P31/wdt:P279* wd:Q3661311;
-          wdt:P856 ?website.
-    BIND("fashion-house" AS ?route)
-  }
-  UNION
-  {
-    ?item wdt:P452 wd:Q11828862;
-          wdt:P856 ?website.
-    BIND("clothing" AS ?route)
-  }
-  UNION
-  {
-    ?item wdt:P452 wd:Q607081;
-          wdt:P856 ?website.
-    BIND("textile" AS ?route)
-  }
+SELECT DISTINCT ?item ?itemLabel ?website WHERE {
+  ${selector}
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
 }
 LIMIT ${safeLimit}`.trim();
 }
 
-export async function discoverFashionWebsites(limit=1000):Promise<DiscoveredFashionWebsite[]> {
-  const query=fashionWebsiteDiscoveryQuery(Math.max(limit+200,1200));
+export function fashionWebsiteDiscoveryQuery(limit=1200) {
+  return queryFor("fashion-house",limit);
+}
+
+async function discoverRoute(route:DiscoveryRoute,limit:number):Promise<Binding[]> {
+  const query=queryFor(route,limit);
   const url=`${ENDPOINT}?format=json&query=${encodeURIComponent(query)}`;
   const response=await fetch(url,{
     headers:{
@@ -90,11 +85,31 @@ export async function discoverFashionWebsites(limit=1000):Promise<DiscoveredFash
       "user-agent":"LinenEarthDesignerResearch/1.0 (fashion research source discovery)",
     },
     cache:"no-store",
-    signal:AbortSignal.timeout(18_000),
+    signal:AbortSignal.timeout(16_000),
   });
-  if(!response.ok) throw new Error(`Wikidata discovery failed with ${response.status}.`);
+  if(!response.ok) throw new Error(`Wikidata ${route} discovery failed with ${response.status}.`);
   const payload=await response.json() as SparqlResponse;
-  const bindings=payload.results?.bindings || [];
+  return (payload.results?.bindings || []).map((row)=>({
+    ...row,
+    route:{value:route},
+  }));
+}
+
+export async function discoverFashionWebsites(limit=1000):Promise<DiscoveredFashionWebsite[]> {
+  const requested=Math.max(1,Math.min(1000,Math.round(limit)));
+  const routeLimits={
+    "fashion-house":Math.min(700,Math.max(250,requested)),
+    clothing:Math.min(1000,Math.max(500,requested)),
+    textile:Math.min(1000,Math.max(500,requested)),
+  } satisfies Record<DiscoveryRoute,number>;
+
+  const settled=await Promise.allSettled([
+    discoverRoute("fashion-house",routeLimits["fashion-house"]),
+    discoverRoute("clothing",routeLimits.clothing),
+    discoverRoute("textile",routeLimits.textile),
+  ]);
+  const bindings=settled.flatMap((result)=>result.status==="fulfilled"?result.value:[]);
+  if(!bindings.length) throw new Error("All Wikidata fashion research discovery routes failed.");
   const byDomain=new Map<string,DiscoveredFashionWebsite>();
 
   for(const row of bindings) {
@@ -125,5 +140,5 @@ export async function discoverFashionWebsites(limit=1000):Promise<DiscoveredFash
 
   return [...byDomain.values()]
     .sort((a,b)=>a.name.localeCompare(b.name))
-    .slice(0,Math.max(1,Math.min(1000,Math.round(limit))));
+    .slice(0,requested);
 }
