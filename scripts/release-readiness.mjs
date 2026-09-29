@@ -152,13 +152,39 @@ requireTokens("src/lib/designer/brief.ts", ["parseDesignerBrief","occasionFrom",
 requireTokens("src/lib/designer/engine.ts", ["catalogueStyleFormality","formal shirting","printed linen blend",'roleTags: fabric.roleTags?.length ? [...fabric.roleTags] : null']);
 requireTokens("src/lib/fabric-analyzer.ts", ['import "server-only"',"analyzeMenswearFabric","verifiedFacts","visualObservations","uncertainClaims"]);
 requireTokens("src/lib/fabric-analyzer-taxonomy.ts", ["MENSWEAR_MATERIAL_TAXONOMY","MENSWEAR_PATTERN_TAXONOMY","MENSWEAR_COLOR_TAXONOMY","FABRIC_ANALYZER_EVIDENCE_RULES"]);
-requireTokens("src/lib/fabric-analyzer-reference-index.ts", ["REAL_MENSWEAR_MATERIAL_TERMS","REAL_MENSWEAR_PATTERN_TERMS","STANDARD_COLOR_REFERENCE_TERMS","FABRIC_REFERENCE_SOURCES","real-reference-v1"]);
+requireTokens("src/lib/fabric-analyzer-reference-index.ts", ["REAL_MENSWEAR_MATERIAL_TERMS","REAL_MENSWEAR_PATTERN_TERMS","STANDARD_COLOR_REFERENCE_TERMS","FABRIC_REFERENCE_SOURCES","real-reference-v2"]);
 requireTokens("src/lib/fabric-analyzer.ts", ["fabric-analyzer-v3","FABRIC_REFERENCE_COUNTS","retainKnown","references:{","Real-reference corpus","REAL_MENSWEAR_FABRIC_EXAMPLES","REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT","Never copy composition"]);
 requireTokens("src/lib/fabric-analyzer-real-examples.ts", ["REAL_MENSWEAR_FABRIC_EXAMPLES","REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT","AUTO-GENERATED","source_id","composition","pattern_name"]);
 requireTokens("src/lib/fabric-analyzer-provenance-map.ts", ["FABRIC_REFERENCE_PROVENANCE","AUTO-GENERATED provenance map","source_id","materials","patterns","colors"]);
 requireTokens("src/lib/fabric-analyzer.ts", ["FABRIC_REFERENCE_PROVENANCE","sourceIdsForReferences","backend derives sourceIds"]);
 requireTokens("src/lib/fabric-analyzer-store.ts", ["fabricAnalysisFingerprint","loadStoredFabricAnalysis","storeFabricAnalysis","recordFabricAnalyzerCorrection","loadFabricAnalyzerLearningHints","fabric_analyzer_learning_summary","SUPABASE_SECRET_KEY"]);
 requireTokens("src/lib/fabric-analyzer.ts", ["analyzeMenswearFabricWithStore","loadFabricAnalyzerLearningHints","Reviewed correction learning:","reviewed corrections","never overrides explicit verified supplier facts"]);
+requireFile("src/lib/fabric-intelligence-types.ts");
+requireFile("src/lib/fabric-intelligence-server.ts");
+requireFile("src/app/api/operator/fabric-analyzer/analyze/route.ts");
+requireFile("src/app/api/operator/fabric-analyzer/batch/route.ts");
+requireFile("src/app/api/operator/fabric-analyzer/review/route.ts");
+requireFile("src/app/api/operator/fabric-analyzer/stats/route.ts");
+requireFile("src/app/api/operator/fabric-analyzer/calibrate/route.ts");
+requireFile("src/lib/fabric-analyzer-calibration.ts");
+requireTokens("src/lib/fabric-intelligence-types.ts", ["DesignerFabricIntelligence",'trust:"reviewed"|"high-confidence"|"provisional"',"recommendedConstruction","pairing"]);
+requireTokens("src/lib/fabric-intelligence-server.ts", ['import "server-only"',"loadDesignerFabricIntelligence","loadFabricAnalysesForFabricIds","high-confidence","reviewed"]);
+requireTokens("src/lib/designer/search.ts", ["fabricIntelligenceAlignment","fabricIntelligence?: Record<string,DesignerFabricIntelligence>","intelligenceScore"]);
+requireTokens("src/app/api/designer/brief/route.ts", ["loadDesignerFabricIntelligence","fabricIntelligence"]);
+requireTokens("src/app/api/designer/search/route.ts", ["loadDesignerFabricIntelligence","fabricIntelligence"]);
+requireTokens("src/app/api/style-director/route.ts", ["loadDesignerFabricIntelligence","fabricIntelligence"]);
+requireTokens("src/lib/style-director-agent.ts", ["directorIntelligenceScore","directorPairIntelligenceScore","DesignerFabricIntelligence"]);
+requireTokens("src/lib/fabric-analyzer-store.ts", ["fabric_analyzer_profile_bind","fabric_analyzer_profiles_for_fabrics","fabric_analyzer_profile_review","fabric_analyzer_feedback_apply","loadFabricAnalyzerProfilesForReview"]);
+for(const path of [
+  "src/app/api/operator/fabric-analyzer/analyze/route.ts",
+  "src/app/api/operator/fabric-analyzer/batch/route.ts",
+  "src/app/api/operator/fabric-analyzer/review/route.ts",
+  "src/app/api/operator/fabric-analyzer/stats/route.ts",
+  "src/app/api/operator/fabric-analyzer/calibrate/route.ts",
+]) requireTokens(path,["verifyOperatorSession"]);
+requireTokens("src/app/api/fabric/analyze/route.ts", ["verifyOperatorSession","OPERATOR_COOKIE","Not found.","sameOrigin"]);
+requireTokens("src/lib/fabric-analyzer-calibration.ts", ["runFabricAnalyzerCalibration","loadFabricAnalyzerCalibrationCases","recordFabricAnalyzerCalibration","formality range"]);
+
 requireTokens("src/lib/designer/search.ts", ["occasionFabricAlignment","formal shirting","printed linen blend","occasionScore","occasionPreferredShirts","strictOccasionFit","openShirts"]);
 requireTokens("src/app/api/designer/brief/route.ts", ["parseDesignerBrief","searchDesignerCatalogue",'scope:"open"',"tierOrder","safeMeasurements","safeObservations"]);
 requireTokens("src/components/DesignerModule.tsx", ["/api/designer/brief","Create 3 directions","one_line_designer_brief","newDesignerBrief","StyleDirectorRealModelPreview","newDesignerBriefModel","SAME LINEN EARTH MODEL","newDesignerBriefCut","Occasion match:"]);
