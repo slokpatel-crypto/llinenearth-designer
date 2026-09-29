@@ -394,11 +394,12 @@ export type FabricAnalyzerRun = {
 
 export async function analyzeMenswearReferencePage(
   pageUrl:string,
-  options:{persist?:boolean}={},
+  options:{persist?:boolean;fabricId?:string}={},
 ) {
   const reference=await resolveFabricReferencePage(pageUrl);
   if(!reference.imageUrl) throw new Error("Approved fabric reference page does not expose a trusted preview image.");
   const run=await analyzeMenswearFabricWithStore({
+    fabricId:options.fabricId,
     imageUrl:reference.imageUrl,
     sourcePageUrl:reference.canonicalUrl,
     sourceId:reference.sourceId || undefined,
