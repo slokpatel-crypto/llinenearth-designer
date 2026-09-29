@@ -610,6 +610,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
             treatments:creativeDirection.treatments,
             pattern:creativeDirection.pattern,
             renderRisk:creativeDirection.learning.renderRisk,
+            renderCaution:creativeDirection.learning.renderCaution,
           },
         }),
       });
