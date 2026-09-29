@@ -153,7 +153,7 @@ requireTokens("src/lib/designer/creative-learning.ts", ["renderMismatchReviews",
 requireTokens("src/app/operator/designer-research/DesignerResearchClient.tsx", ["Creative Research Desk","Save research signal","Discover up to 1,000 websites","Analyze source ✦"]);
 requireTokens("src/lib/designer/research-source-discovery.ts", ["discoverFashionWebsites","Q3661311","Q11828862","Q607081","Math.min(1000"]);
 requireTokens("src/lib/designer/research-source-analysis.ts", ["analyzeFashionResearchSource","safePublicUrl","linen_research_signal","Do not copy a finished garment","LINEN_RESEARCH_MODEL","google/gemini-3-flash"]);
-requireTokens("src/app/api/operator/designer-research/discover/route.ts", ["discoverFashionWebsites","limit=1000","Operator login required"]);
+requireTokens("src/app/api/operator/designer-research/discover/route.ts", ["discoverFashionWebsites",'searchParams.get("limit")||1000',"Operator login required"]);
 requireTokens("src/app/api/operator/designer-research/analyze/route.ts", ["analyzeFashionResearchSource","Operator login required","maxDuration=30"]);
 requireTokens("src/lib/designer/casebook.ts", [
   "designer-casebook-v1","designer_case_review","casebookSignalFor","total>=3","scale=6"
