@@ -133,7 +133,7 @@ export function renderDevelopmentSet(brief: DesignerBrief, version: DesignVersio
   const spec = compileVisualizationSpec(brief, version);
   const views: RenderView[] = ["front", "back", "detail"];
   const renders = views.map((view) => ({ id: `${spec.specHash}-${view}`, view, label: view === "detail" ? "Construction detail" : `${view[0].toUpperCase()}${view.slice(1)} view`, src: renderSvg(spec, view), validation: validation(view), repairCount: 0, provider: "development-svg" as const }));
-  return { id: `RS-${spec.specHash}`, designVersionId: version.id, specHash: spec.specHash, modelId: spec.modelId, provider: "development-svg", providerLabel: "LLinen Earth development render adapter", status: "approved_preview", generatedAt: new Date().toISOString(), spec, renders };
+  return { id: `RS-${spec.specHash}`, designVersionId: version.id, specHash: spec.specHash, modelId: spec.modelId, provider: "development-svg", providerLabel: "Linen Earth development render adapter", status: "approved_preview", generatedAt: new Date().toISOString(), spec, renders };
 }
 
 export function repairDevelopmentRender(set: RenderSet, view: RenderView): RenderSet {
