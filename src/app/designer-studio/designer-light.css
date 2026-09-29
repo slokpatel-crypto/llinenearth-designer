@@ -572,3 +572,9 @@
  .newDesignerFabricFilters button{flex:0 0 auto}
  .newDesignerCreativeTeaser{grid-template-columns:1fr}
 }
+
+.newDesignerFabricChoices{display:flex;gap:6px;overflow-x:auto;scroll-snap-type:x proximity;padding:8px 1px 4px;margin-bottom:7px;scrollbar-width:thin}
+.newDesignerFabricChoices button{flex:0 0 74px;scroll-snap-align:start;border:1px solid #dfd6cd;background:#fff;padding:4px;border-radius:9px;cursor:pointer;text-align:left;color:#43586b}
+.newDesignerFabricChoices button.selected,.newDesignerFabricChoices button[aria-pressed="true"]{border-color:#244d72;box-shadow:0 0 0 2px rgba(36,77,114,.10)}
+.newDesignerFabricChoices img{display:block;width:100%;height:56px;object-fit:cover;border-radius:6px;background:#ece7df}
+.newDesignerFabricChoices span{display:block;margin-top:4px;font-size:6px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
