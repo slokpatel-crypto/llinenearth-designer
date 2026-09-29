@@ -489,7 +489,7 @@ const sourceRows = (researchPool.match(/\{id:"[^"]+",name:/g) || []).length;
 const topicRows = (researchPool.match(/\{id:"[^"]+",query:/g) || []).length;
 if (sourceRows * topicRows < 1000) throw new Error(`Designer V5 research pool regression: expected >=1000 source-topic targets, found ${sourceRows * topicRows}`);
 const creativeUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["03 / CREATE","Imagine new designs","Create ideas ✦","newDesignerCreativeVisual","newDesignerMiniScores","researchPool","FRONTIER IDEA","Design reasoning","/api/designer/creative-generate","requestCreativeDirections(12","creativeAutoNote","render_mismatch","onCreativeInspection","severeHeuristicFailure","reliableReview","executionFailure","repairing the same design once","creativeAutoRetryCount>=2"]) {
+for (const token of ["03 / CREATE","Imagine new designs","Create ideas ✦","newDesignerCreativeVisual","newDesignerMiniScores","Fashion research runs quietly in the background.","FRONTIER IDEA","Design reasoning","/api/designer/creative-generate","requestCreativeDirections(12","creativeAutoNote","render_mismatch","onCreativeInspection","severeHeuristicFailure","reliableReview","executionFailure","repairing the same design once","creativeAutoRetryCount>=2"]) {
   if (!creativeUi.includes(token)) throw new Error(`Designer V5 creative UI regression: missing ${token}`);
 }
 const creativePreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
