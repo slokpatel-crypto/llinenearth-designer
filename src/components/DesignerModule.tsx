@@ -726,36 +726,30 @@ export function DesignerModule() {
           </details>}
         </section>
 
-        <section className="newDesignerSearch newDesignerSimplePanel" aria-label="Designer catalogue search">
-          <div className="newDesignerSimpleHead">
-            <div><span>OPTIONAL</span><strong>Try different fabrics.</strong></div>
-            <button type="button" onClick={runAdvancedSearch} disabled={!shirt || !pant}>Show options</button>
+        <details className="newDesignerSearch newDesignerSimplePanel newDesignerOptionalSearch" aria-label="Designer catalogue search">
+          <summary><span>OPTIONAL</span><strong>Try a different fabric pairing</strong><b>+</b></summary>
+          <div className="newDesignerOptionalSearchBody">
+            <div className="newDesignerSearchScopes" role="group" aria-label="Designer search scope">
+              <button type="button" aria-pressed={searchScope==="keep_shirt"} onClick={()=>{setSearchScope("keep_shirt");setSearchResults([]);}}>Keep shirt</button>
+              <button type="button" aria-pressed={searchScope==="keep_trouser"} onClick={()=>{setSearchScope("keep_trouser");setSearchResults([]);}}>Keep trouser</button>
+              <button type="button" aria-pressed={searchScope==="open"} onClick={()=>{setSearchScope("open");setSearchResults([]);}}>Change both</button>
+            </div>
+            <button className="newDesignerOptionalSearchRun" type="button" onClick={runAdvancedSearch} disabled={!shirt || !pant}>Show 3 options</button>
+            {searchResults.length>0 && <div className="newDesignerQuickResults">
+              {searchResults.slice(0,3).map((result)=><article key={result.id}>
+                <div className="newDesignerQuickFabricPair">
+                  <img src={result.shirt.image} alt="" loading="lazy" decoding="async" />
+                  <img src={result.pant.image} alt="" loading="lazy" decoding="async" />
+                </div>
+                <div className="newDesignerQuickResultCopy">
+                  <span>{result.tier}</span>
+                  <strong>{result.shirt.name} + {result.pant.name}</strong>
+                </div>
+                <button type="button" onClick={()=>useSearchResult(result)}>Use look</button>
+              </article>)}
+            </div>}
           </div>
-          <div className="newDesignerSearchScopes" role="group" aria-label="Designer search scope">
-            <button type="button" aria-pressed={searchScope==="keep_shirt"} onClick={()=>{setSearchScope("keep_shirt");setSearchResults([]);}}>Keep shirt</button>
-            <button type="button" aria-pressed={searchScope==="keep_trouser"} onClick={()=>{setSearchScope("keep_trouser");setSearchResults([]);}}>Keep trouser</button>
-            <button type="button" aria-pressed={searchScope==="open"} onClick={()=>{setSearchScope("open");setSearchResults([]);}}>Change both</button>
-          </div>
-          {searchResults.length>0 && <div className="newDesignerQuickResults">
-            {searchResults.slice(0,3).map((result)=><article key={result.id}>
-              <div className="newDesignerQuickFabricPair">
-                <img src={result.shirt.image} alt="" loading="lazy" decoding="async" />
-                <img src={result.pant.image} alt="" loading="lazy" decoding="async" />
-              </div>
-              <div className="newDesignerQuickResultCopy">
-                <span>{result.tier}</span>
-                <strong>{result.shirt.name} + {result.pant.name}</strong>
-                <div>{result.decision.dominantStrengths.slice(0,3).map((item)=><b key={item}>{item}</b>)}</div>
-              </div>
-              <button type="button" onClick={()=>useSearchResult(result)}>Use look</button>
-              <details className="newDesignerTechnicalDrawer">
-                <summary>Why this works</summary>
-                {result.reasons.slice(0,3).map((reason)=><p key={reason}>{reason}</p>)}
-                <p><b>Designer read:</b> {result.decision.risk==="low"?"Clean direction":result.decision.risk==="moderate"?"Worth reviewing":"Experimental direction"}.</p>
-              </details>
-            </article>)}
-          </div>}
-        </section>
+        </details>
 
         <section id="designerCreativeLab" className="newDesignerCreative newDesignerVisualLab" aria-label="Creative Designer Lab V5">
           <div className="newDesignerSimpleHead">
