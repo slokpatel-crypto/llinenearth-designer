@@ -7,9 +7,9 @@ export default function CatalogPage() {
   return (
     <AppShell>
       <section className="businessHero wrap">
-        <p className="eyebrow">LLINEN EARTH · GARMENT CATALOG</p>
+        <p className="eyebrow">LINEN EARTH · GARMENT CATALOG</p>
         <h1>Start with what you want made.</h1>
-        <p>Browse the garment category, see the fabrics LLinen Earth works with, then move into the Designer Engine, preview the garment, or enquire directly on WhatsApp.</p>
+        <p>Browse the garment category, see the fabrics Linen Earth works with, then move into the Designer Engine, preview the garment, or enquire directly on WhatsApp.</p>
       </section>
 
       <section className="catalogSection wrap">
