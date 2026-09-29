@@ -331,11 +331,17 @@ const fabricReferenceIndex = fs.readFileSync("src/lib/fabric-analyzer-reference-
 for (const token of ["REAL_MENSWEAR_MATERIAL_TERMS","REAL_MENSWEAR_PATTERN_TERMS","STANDARD_COLOR_REFERENCE_TERMS","FABRIC_REFERENCE_SOURCES","real-reference-v1"]) {
   if (!fabricReferenceIndex.includes(token)) throw new Error(`Real-reference Fabric Analyzer regression: missing ${token}`);
 }
-for (const token of ["fabric-analyzer-v2","FABRIC_REFERENCE_COUNTS","retainKnown","references:{","Real-reference corpus","A source-backed vocabulary match supports terminology"]) {
-  if (!fabricAnalyzerSource.includes(token)) throw new Error(`Fabric Analyzer V2 provenance regression: missing ${token}`);
+const fabricAnalyzerExamples = fs.readFileSync("src/lib/fabric-analyzer-real-examples.ts","utf8");
+for (const token of ["fabric-analyzer-v3","FABRIC_REFERENCE_COUNTS","retainKnown","references:{","Real-reference corpus","REAL_MENSWEAR_FABRIC_EXAMPLES","REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT","Never copy composition"]) {
+  if (!fabricAnalyzerSource.includes(token)) throw new Error(`Fabric Analyzer V3 provenance regression: missing ${token}`);
 }
-if (realDesignerModule.includes("fabric-analyzer-reference-index")) throw new Error("Fabric Analyzer privacy regression: real reference corpus must remain server-only.");
-console.log("Real-reference Fabric Analyzer gate passed: 200+ material terms, 100+ pattern terms, 400+ color terms and provenance-aware V2 analysis remain backend-only.");
+for (const token of ["REAL_MENSWEAR_FABRIC_EXAMPLES","REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT","AUTO-GENERATED","source_id","composition","pattern_name"]) {
+  if (!fabricAnalyzerExamples.includes(token)) throw new Error(`Real fabric-example corpus regression: missing ${token}`);
+}
+if (realDesignerModule.includes("fabric-analyzer-reference-index") || realDesignerModule.includes("fabric-analyzer-real-examples")) {
+  throw new Error("Fabric Analyzer privacy regression: real reference corpus must remain server-only.");
+}
+console.log("Real-reference Fabric Analyzer gate passed: 200+ material terms, 100+ pattern terms, 400+ color terms, real cloth examples and provenance-aware V3 analysis remain backend-only.");
 
 const photoPreviewMultiView = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
 const selectedLookRenderRoute = fs.readFileSync("src/app/api/designer/look-render/route.ts","utf8");
