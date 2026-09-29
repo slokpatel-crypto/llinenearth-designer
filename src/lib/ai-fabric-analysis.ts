@@ -32,11 +32,9 @@ type ClaudeFabricJson = {
   family_confidence: number; // 0-1
   alternative_families: { family: string; confidence: number }[];
   dominant_color_name: string;
-  dominant_hex: string;
   pattern: string;
   surface: string;
   drape: string;
-  estimated_weight_gsm: number | null;
   summary: string;
   cautions: string[];
 };
@@ -54,16 +52,14 @@ this shape:
   "family_confidence": number between 0 and 1,
   "alternative_families": [{ "family": string, "confidence": number between 0 and 1 }, ... up to 3],
   "dominant_color_name": short human color name e.g. "Slate blue",
-  "dominant_hex": "#rrggbb" best estimate of the dominant color,
   "pattern": short phrase e.g. "Solid with subtle slub texture",
   "surface": short phrase e.g. "Dry, visibly textured surface",
   "drape": short phrase e.g. "Likely soft, moderate structure",
-  "estimated_weight_gsm": integer estimate or null if genuinely not inferable from a photo,
   "summary": one or two plain sentences a customer would understand,
   "cautions": array of 1-2 short strings noting this is a visual estimate only, not a lab measurement
 }
 
-Be honest about uncertainty in the confidence numbers rather than defaulting to high confidence.`;
+Do not estimate numeric colour values, GSM, fibre percentages, shrinkage, stretch, hand-feel, or physical drape. Be honest about uncertainty in the confidence numbers rather than defaulting to high confidence.`;
 
 function extractJson(text: string): string {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
@@ -92,6 +88,9 @@ export class AiFabricAnalysisError extends Error {}
 
 export async function analyzeFabricWithClaude(input: AiFabricAnalysisInput): Promise<FabricProfile> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
+  if(process.env.LINEN_ENABLE_LEGACY_FABRIC_VISION!=="1") {
+    throw new AiFabricAnalysisError("Legacy fabric vision is disabled. Use the private measured Fabric Analyzer v4.");
+  }
   if (!apiKey) throw new AiFabricAnalysisError("ANTHROPIC_API_KEY is not configured.");
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -185,15 +184,8 @@ export async function analyzeFabricWithClaude(input: AiFabricAnalysisInput): Pro
         confidenceLabel: confidenceLabelFromScore(0.55),
         basis: "ai_vision_estimate",
       },
-      {
-        label: "Estimated weight",
-        value: parsed.estimated_weight_gsm ? `${parsed.estimated_weight_gsm} gsm (est.)` : "Not estimable from photo",
-        confidence: parsed.estimated_weight_gsm ? 0.45 : 0.2,
-        confidenceLabel: confidenceLabelFromScore(parsed.estimated_weight_gsm ? 0.45 : 0.2),
-        basis: "ai_vision_estimate",
-      },
     ],
-    palette: [parsed.dominant_hex],
+    palette: [],
     alternatives,
     cautions: parsed.cautions?.length
       ? parsed.cautions
