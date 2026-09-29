@@ -21,6 +21,9 @@ export type CreativeLearningBucket = {
   renderMismatch:number;
   renderQualityTotal:number;
   renderQualitySamples:number;
+  renderImproved:number;
+  renderSame:number;
+  renderWorse:number;
   reasons:Record<CreativeFeedbackReason,number>;
   renderReasons:Record<CreativeFeedbackReason,number>;
 };
@@ -56,7 +59,7 @@ export function creativeFamilyFromConceptId(conceptId:string) {
 export function aggregateCreativeLearning(events:EventLike[]):CreativeLearningBook {
   // One latest response per recommendation + concept avoids repeated tapping
   // becoming stronger evidence than an independent review.
-  const latest=new Map<string,{familyId:string;rating:"up"|"down"|"saved";reason?:CreativeFeedbackReason;renderQuality?:number;automaticVisual:boolean}>();
+  const latest=new Map<string,{familyId:string;rating:"up"|"down"|"saved";reason?:CreativeFeedbackReason;renderQuality?:number;automaticVisual:boolean;improvement?:"improved"|"same"|"worse"|"not_applicable"}>();
   for(const event of events) {
     if(event.type!=="designer_feedback") continue;
     const p=event.payload || {};
@@ -74,12 +77,14 @@ export function aggregateCreativeLearning(events:EventLike[]):CreativeLearningBo
     const renderQuality=check ? Math.round((hero*.55+boundaries*.45)*10)/10 : undefined;
     const key=`${recommendationId}::${conceptId}`;
     const previous=latest.get(key);
+    const improvement=txt(check?.improvement,20) as "improved"|"same"|"worse"|"not_applicable";
     latest.set(key,{
       familyId,
       rating:rating as "up"|"down"|"saved",
       ...(REASONS.has(reason)?{reason}:previous?.reason?{reason:previous.reason}:{}),
       ...(renderQuality!==undefined?{renderQuality}:previous?.renderQuality!==undefined?{renderQuality:previous.renderQuality}:{}),
       automaticVisual:Boolean(check?.evidenceAvailable) || previous?.automaticVisual || false,
+      ...(["improved","same","worse","not_applicable"].includes(improvement)?{improvement}:previous?.improvement?{improvement:previous.improvement}:{}),
     });
   }
 
@@ -87,7 +92,7 @@ export function aggregateCreativeLearning(events:EventLike[]):CreativeLearningBo
   let renderMismatchReviews=0;
   for(const review of latest.values()) {
     const current=buckets.get(review.familyId) || {
-      familyId:review.familyId,positive:0,negative:0,total:0,renderMismatch:0,renderQualityTotal:0,renderQualitySamples:0,
+      familyId:review.familyId,positive:0,negative:0,total:0,renderMismatch:0,renderQualityTotal:0,renderQualitySamples:0,renderImproved:0,renderSame:0,renderWorse:0,
       reasons:Object.fromEntries(CREATIVE_FEEDBACK_REASONS.map(([id])=>[id,0])) as Record<CreativeFeedbackReason,number>,
       renderReasons:Object.fromEntries(CREATIVE_FEEDBACK_REASONS.map(([id])=>[id,0])) as Record<CreativeFeedbackReason,number>,
     };
@@ -101,6 +106,9 @@ export function aggregateCreativeLearning(events:EventLike[]):CreativeLearningBo
       current.renderQualitySamples+=1;
     }
     if(review.automaticVisual) {
+      if(review.improvement==="improved") current.renderImproved+=1;
+      else if(review.improvement==="same") current.renderSame+=1;
+      else if(review.improvement==="worse") current.renderWorse+=1;
       if(review.rating==="down" && review.reason) {
         current.renderReasons[review.reason]+=1;
         if(review.reason==="render_mismatch") {
@@ -142,7 +150,12 @@ export function creativeLearningSignalFor(familyId:string,book?:CreativeLearning
   const bucket=book?.buckets.find((item)=>item.familyId===familyId);
   const renderEvidence=bucket?.renderQualitySamples || 0;
   const avgRenderQuality=renderEvidence ? (bucket!.renderQualityTotal/renderEvidence) : 100;
-  const renderRisk:CreativeLearningSignal["renderRisk"]=renderEvidence>=2 && avgRenderQuality<52 ? "high" : renderEvidence>=2 && avgRenderQuality<70 ? "moderate" : "low";
+  const repairFailures=(bucket?.renderSame || 0)+(bucket?.renderWorse || 0);
+  const repairSuccess=bucket?.renderImproved || 0;
+  const renderRisk:CreativeLearningSignal["renderRisk"]=
+    (renderEvidence>=2 && avgRenderQuality<52) || repairFailures>=2 ? "high"
+    : (renderEvidence>=2 && avgRenderQuality<70) || repairFailures>repairSuccess ? "moderate"
+      : "low";
   const renderCaution=bucket
     ? (Object.entries(bucket.renderReasons) as Array<[CreativeFeedbackReason,number]>).sort((a,b)=>b[1]-a[1]).find((entry)=>entry[1]>0)?.[0]
     : undefined;
