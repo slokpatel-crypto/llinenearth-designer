@@ -833,6 +833,13 @@ const SEEDS:Seed[]=[
       treatment("tonal-panel","shirt-body","Tonal shadow panel",`Add a narrow tonal panel 8-12% darker than the selected ${input.shirt.name} direction, running from shoulder toward the side seam.`,"Adds depth that appears only as the wearer moves.",46),
       treatment("self-cuff","cuff","Quiet cuff","Keep the cuff self-coloured and simple so the panel remains the idea.","Prevents competing accents.",18,"supported"),
     ],
+    pattern:(input)=>({
+      id:"tonal-shadow-field",name:"Shadow Weft",family:"tonal",
+      layout:"An ultra-low-contrast field built from elongated tonal marks that become slightly denser toward one side-body panel; no hard border and no obvious all-over repeat.",
+      scale:"micro",coverage:22,palette:[input.shirt.hex || "#D8D2C8","#C9C3BA","#E7E2DA"],
+      placement:"Shirt body only, concentrated beside the tonal panel; collar, placket and cuff stay nearly plain.",
+      note:"Designed to read first as fabric depth and only later as pattern. Sample under directional light before production.",
+    }),
   },
   {
     id:"offset-grid",
