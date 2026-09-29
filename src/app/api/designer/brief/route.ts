@@ -200,7 +200,10 @@ export async function POST(request:Request) {
         brief:parsed.original,
         occasion:parsed.occasion,
         context:parsed.context,
-        notes:parsed.interpretation,
+        notes:[
+          ...parsed.interpretation,
+          ...(presentation.some((item)=>item.fitAdaptation) ? ["saved measurements adjusted the recommended cut"] : []),
+        ],
       },
       results:presentation,
       engine:"linen-designer-brief-v2",
