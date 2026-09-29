@@ -869,8 +869,21 @@ export function DesignerModule() {
         onCreativeRenderStart={()=>{setCreativeAutoRetryCount(0);setCreativeAutoNote("");}}
         onCreativeInspection={(check)=>{
           if(!check.evidenceAvailable || !activeCreative) return;
-          if(check.status==="review") giveCreativeRenderFeedback("down",check.redesignReason || "render_mismatch",check);
-          else giveCreativeRenderFeedback("saved",undefined,check);
+          const severeHeuristicFailure=
+            check.heroVisibility<24 ||
+            check.boundaryIntegrity<55 ||
+            check.protectedChange>50;
+          const reliableReview=
+            check.status==="review" &&
+            (check.semanticAvailable ? check.semanticStatus==="review" : severeHeuristicFailure);
+          if(reliableReview) {
+            giveCreativeRenderFeedback("down",check.redesignReason || "render_mismatch",check);
+          } else {
+            giveCreativeRenderFeedback("saved",undefined,check);
+            if(check.status==="review" && !check.semanticAvailable) {
+              setCreativeAutoNote("Render QA found a possible issue, but evidence was not strong enough to spend another render automatically.");
+            }
+          }
         }}
       />}
       {fitCoverage.total > 0 && <div className="newDesignerFitModelNote newDesignerFitModelNoteCompact"><span>FIT PROFILE · {fitCoverage.total}/16</span></div>}
