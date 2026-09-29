@@ -76,7 +76,7 @@ const securityContracts = [
   ["src/lib/browser-style-memory.ts", ["x-linen-memory-token","/api/memory/session"]],
   ["src/lib/supabase-admin.ts", ["SUPABASE_SECRET_KEY","SUPABASE_SERVICE_ROLE_KEY","sb_secret_"]],
   ["src/app/operator/page.tsx", ["verifyOperatorSession","redirect","force-dynamic"]],
-  ["supabase/migrations/20260920_style_events_hardening.sql", ["llinen_cloud_health","select 5;","revoke all on table public.style_events from anon","grant select, insert on table public.style_events to service_role"]],
+  ["supabase/migrations/20260920_style_events_hardening.sql", ["linen_cloud_health","select 5;","revoke all on table public.style_events from anon","grant select, insert on table public.style_events to service_role"]],
 ];
 
 for (const [file,tokens] of securityContracts) {
@@ -89,10 +89,10 @@ for (const [file,tokens] of securityContracts) {
 const envExample = fs.readFileSync(".env.example","utf8");
 for (const secretName of [
   "SUPABASE_SECRET_KEY",
-  "LLINEN_OPERATOR_SYNC_TOKEN",
-  "LLINEN_OPERATOR_PASSWORD_HASH",
-  "LLINEN_OPERATOR_SESSION_SECRET",
-  "LLINEN_MEMORY_SESSION_SECRET",
+  "LINEN_OPERATOR_SYNC_TOKEN",
+  "LINEN_OPERATOR_PASSWORD_HASH",
+  "LINEN_OPERATOR_SESSION_SECRET",
+  "LINEN_MEMORY_SESSION_SECRET",
 ]) {
   if (!envExample.includes(`${secretName}=`)) throw new Error(`Deployment regression: .env.example missing ${secretName}`);
   if (envExample.includes(`NEXT_PUBLIC_${secretName}`)) throw new Error(`Secret exposure regression: ${secretName} must remain server-only`);
