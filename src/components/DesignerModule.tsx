@@ -472,10 +472,36 @@ export function DesignerModule() {
     } catch { /* Creative review remains optional if memory storage is unavailable. */ }
 
     if(rating==="down" && creativeReason) {
-      if(visualCheck && creativeAutoRetryCount>=1) {
-        setCreativeAutoNote("The revised render still needs review. Automatic rerender stopped after one retry to avoid wasting render credits.");
+      const repair=[visualCheck?.semanticIssue,...(visualCheck?.notes || [])]
+        .filter(Boolean)
+        .filter((value,index,all)=>all.indexOf(value)===index)
+        .slice(0,2)
+        .join(" ")
+        .slice(0,420);
+
+      const executionFailure=Boolean(visualCheck && (
+        creativeReason==="render_mismatch" ||
+        visualCheck.boundaryIntegrity<68 ||
+        visualCheck.protectedChange>38 ||
+        /artifact|boundary|fabric|bleed|spill|mismatch|not visually distinct|under-express/i.test(repair)
+      ));
+
+      // First fix a rendering failure without throwing away a strong design.
+      // Only change the concept when the failure is actually aesthetic/design-led
+      // or when one targeted render repair already failed.
+      if(visualCheck && executionFailure && creativeAutoRetryCount===0) {
+        setCreativeRenderRepair(repair || "Render the selected hero detail more literally while preserving fabric fidelity, garment boundaries and the locked studio model.");
+        setCreativeAutoNote("V5 found a rendering problem. It is repairing the same design once before changing the concept.");
+        setCreativeAutoRetryCount(1);
+        setCreativeAutoRenderNonce((nonce)=>nonce+1);
         return;
       }
+
+      if(visualCheck && creativeAutoRetryCount>=2) {
+        setCreativeAutoNote("The render still needs review. Automatic retries stopped to protect render credits.");
+        return;
+      }
+
       let candidates:CreativeDirection[]=[];
       let redesign:CreativeDirection|null=null;
       try {
@@ -489,15 +515,12 @@ export function DesignerModule() {
       if(redesign) {
         setCreativeDirections([redesign,...candidates.filter((item)=>item.id!==redesign.id)].slice(0,5));
         setCreativeAutoNote(visualCheck
-          ? "Visual check found a weak point. V5 revised the idea and is rendering it once more automatically."
+          ? "V5 changed the design direction after the visual critique and is checking one revised render."
           : "V5 revised the concept using your visual feedback.");
-        if(visualCheck) {
-          const repair=[visualCheck.semanticIssue,...visualCheck.notes].filter(Boolean).filter((value,index,all)=>all.indexOf(value)===index).slice(0,2).join(" ");
-          setCreativeRenderRepair(repair.slice(0,420));
-        }
+        setCreativeRenderRepair(visualCheck ? repair : "");
         useCreativeDirection(redesign,visualCheck?"automatic":"manual");
         if(visualCheck) {
-          setCreativeAutoRetryCount((count)=>count+1);
+          setCreativeAutoRetryCount((count)=>Math.min(2,count+1));
           setCreativeAutoRenderNonce((nonce)=>nonce+1);
         }
       }
