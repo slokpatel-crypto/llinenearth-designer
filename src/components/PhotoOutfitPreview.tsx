@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
+import type { StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import fabricTileManifest from "../../public/fabric-tiles/manifest.json";
 import { CREATIVE_FEEDBACK_REASONS, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
@@ -33,6 +34,7 @@ type PhotorealResult = {
   creditsUsed:number;
   conceptId:string;
   generatedAt:string;
+  cached?:boolean;
   visualCheck?:CreativeVisualCheck;
   selectedCheck?:SelectedLookVisualCheck;
 };
@@ -41,6 +43,7 @@ const fabricTiles = new Map<string, HTMLCanvasElement>();
 const featheredMasks = new WeakMap<HTMLCanvasElement, HTMLCanvasElement>();
 const tuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
 const untuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
+const selectedLookSessionCache=new Map<string,PhotorealResult>();
 
 function loadImage(url: string): Promise<HTMLImageElement> {
   const cached = images.get(url);
@@ -620,10 +623,11 @@ export type CreativeVisualCheck = {
   improvement?:"improved"|"same"|"worse"|"not_applicable";
 };
 
-export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCreativeFeedback, onCreativeInspection, autoRenderNonce = 0, onCreativeRenderStart, renderRepairInstruction = "" }: {
+export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, creativeDirection, onCreativeFeedback, onCreativeInspection, autoRenderNonce = 0, onCreativeRenderStart, renderRepairInstruction = "" }: {
   shirt: DesignerFabric;
   pant: DesignerFabric;
   style: DesignerStyle;
+  styleSpec?: StyleSpecV2;
   creativeDirection?: CreativeDirection | null;
   onCreativeFeedback?: (rating:"up"|"down",reason?:CreativeFeedbackReason)=>void;
   onCreativeInspection?: (check:CreativeVisualCheck)=>void;
@@ -647,6 +651,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
   const [photorealViews,setPhotorealViews]=useState<Partial<Record<Exclude<PhotorealView,"front">,PhotorealResult>>>({});
   const [photorealViewLoading,setPhotorealViewLoading]=useState<Exclude<PhotorealView,"front">|null>(null);
   const [selectedRepairCount,setSelectedRepairCount]=useState(0);
+  const [finalLocked,setFinalLocked]=useState(false);
   const [creativeReview, setCreativeReview] = useState<"up"|"down"|null>(null);
   const [creativeReviewReason, setCreativeReviewReason] = useState<CreativeFeedbackReason|null>(null);
   const templateId = photoTemplateForStyle(style);
@@ -658,6 +663,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
     shirt:shirt.id,
     pant:pant.id,
     style,
+    styleSpec:styleSpec||null,
     creative:creativeDirection?.id ?? null,
   });
 
@@ -669,6 +675,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
     setPhotorealViews({});
     setPhotorealViewLoading(null);
     setSelectedRepairCount(0);
+    setFinalLocked(false);
     setCreativeReview(null);
     setCreativeReviewReason(null);
   },[renderSignature]);
@@ -709,6 +716,8 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
             shirt:{id:shirt.id,name:shirt.name,line:shirt.line,image:shirt.image,hex:shirt.hex,patternType:shirt.patternType},
             pant:{id:pant.id,name:pant.name,line:pant.line,image:pant.image,hex:pant.hex,patternType:pant.patternType},
             style,
+            styleSpec,
+            locked:true,
           },
         }),
       });
@@ -731,6 +740,10 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
   async function renderPhotoreal(origin:"manual"|"automatic"="manual") {
     if(creativeAiLoading) return;
     if(origin==="automatic" && !creativeDirection) return;
+    if(!creativeDirection && !finalLocked) {
+      setCreativeAiError("Lock the final design before using the photoreal renderer.");
+      return;
+    }
     if(origin==="manual") {
       previousReviewedRender.current="";
       onCreativeRenderStart?.();
@@ -738,6 +751,18 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
     setCreativeAiLoading(true);
     setCreativeAiError("");
     try {
+      if(!creativeDirection) {
+        const cached=selectedLookSessionCache.get(renderSignature);
+        if(cached) {
+          setCreativeAi({...cached,cached:true});
+          setPhotorealView("front");
+          setPhotorealViews({});
+          setShowCreativeAi(true);
+          setCreativeAiLoading(false);
+          void inspectSelectedLook({...cached,cached:true});
+          return;
+        }
+      }
       const response=await fetch(creativeDirection ? "/api/designer/creative-render" : "/api/designer/look-render",{
         method:"POST",
         headers:{"content-type":"application/json"},
@@ -745,6 +770,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
           shirt:{id:shirt.id,name:shirt.name,line:shirt.line,image:shirt.image,hex:shirt.hex,patternType:shirt.patternType},
           pant:{id:pant.id,name:pant.name,line:pant.line,image:pant.image,hex:pant.hex,patternType:pant.patternType},
           style,
+          ...(!creativeDirection ? {styleSpec,locked:true,lookKey:renderSignature} : {}),
           ...(creativeDirection ? {creative:{
             id:creativeDirection.id,
             name:creativeDirection.name,
@@ -760,6 +786,14 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
       const data=await response.json() as {result?:{image:string;jobId:string;creditsUsed:number;conceptId:string;generatedAt:string};error?:string};
       if(!response.ok || !data.result) throw new Error(data.error || "Photoreal render failed.");
       setCreativeAi(data.result);
+      if(!creativeDirection) {
+        selectedLookSessionCache.set(renderSignature,data.result);
+        while(selectedLookSessionCache.size>8) {
+          const oldest=selectedLookSessionCache.keys().next().value;
+          if(!oldest) break;
+          selectedLookSessionCache.delete(oldest);
+        }
+      }
       setPhotorealView("front");
       setPhotorealViews({});
       setShowCreativeAi(true);
@@ -818,6 +852,9 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
           shirt:{id:shirt.id,name:shirt.name,line:shirt.line,image:shirt.image,hex:shirt.hex,patternType:shirt.patternType},
           pant:{id:pant.id,name:pant.name,line:pant.line,image:pant.image,hex:pant.hex,patternType:pant.patternType},
           style,
+          styleSpec,
+          locked:true,
+          lookKey:renderSignature,
         }),
       });
       const data=await response.json() as {result?:PhotorealResult;error?:string};
@@ -861,6 +898,9 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
           shirt:{id:shirt.id,name:shirt.name,line:shirt.line,image:shirt.image,hex:shirt.hex,patternType:shirt.patternType},
           pant:{id:pant.id,name:pant.name,line:pant.line,image:pant.image,hex:pant.hex,patternType:pant.patternType},
           style,
+          styleSpec,
+          locked:true,
+          lookKey:renderSignature,
         }),
       });
       const data=await response.json() as {result?:PhotorealResult;error?:string};
@@ -937,13 +977,18 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
       <div><span>SHIRT</span><strong>{shirt.name}</strong></div>
       <div><span>TROUSER</span><strong>{pant.name}</strong></div>
       <div className="newDesignerPhotoActions newDesignerPhotoActionsCompact">
-        {!creativeAi && <button className="primary" type="button" onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading}>{creativeAiLoading ? "Rendering…" : "Photoreal render ✦"}</button>}
-        {creativeAi && <button className="primary" type="button" onClick={()=>setShowCreativeAi((value)=>!value)}>{showCreativeAi ? "Instant preview" : "Photoreal render"}</button>}
+        {!creativeAi && !creativeDirection && !finalLocked && <button className="primary" type="button" onClick={()=>{setFinalLocked(true);setCreativeAiError("");}} disabled={!ready}>Lock final design</button>}
+        {!creativeAi && !creativeDirection && finalLocked && <button className="primary" type="button" onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading}>{creativeAiLoading ? "Rendering…" : "Final photoreal ✦"}</button>}
+        {!creativeAi && creativeDirection && <button className="primary" type="button" onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading}>{creativeAiLoading ? "Rendering…" : "Render selected idea ✦"}</button>}
+        {creativeAi && <button className="primary" type="button" onClick={()=>setShowCreativeAi((value)=>!value)}>{showCreativeAi ? "Instant preview" : "Photoreal render"}</button>
+        {!creativeAi && !creativeDirection && finalLocked && <button type="button" onClick={()=>setFinalLocked(false)} disabled={creativeAiLoading}>Unlock</button>}
         <button type="button" onClick={() => setShowOriginal((value) => !value)} disabled={!ready}>{showOriginal ? "Show design" : "Compare"}</button>
         <button type="button" onClick={download} disabled={!ready}>Save</button>
       </div>
     </div>
-    {!showCreativeAi && <p className="newDesignerPhotoApproximation"><strong>Instant preview</strong> · Studio model; pattern scale, fit and drape are approximate until verified on a physical sample.</p>}
+    {!showCreativeAi && <p className="newDesignerPhotoApproximation"><strong>Instant preview</strong> · Studio model; pattern scale, fit and drape are approximate until verified on a physical sample. FASHN is reserved for the locked final design.</p>}
+    {!creativeDirection && finalLocked && !creativeAi && <p className="newDesignerPhotoLock"><strong>FINAL DESIGN LOCKED</strong> · Any fabric or construction change automatically unlocks it before another AI render.</p>}
+    {creativeAi?.cached && <p className="newDesignerPhotoCache">Cached final render reused · no new FASHN generation was needed.</p>}
     {creativeAi && !creativeDirection && <div className="newDesignerPhotoViews" role="group" aria-label="Photoreal model views">
       {(["front","three-quarter","side","back"] as PhotorealView[]).map((view)=><button key={view} type="button" aria-pressed={photorealView===view} disabled={Boolean(photorealViewLoading)} onClick={()=>void choosePhotorealView(view)}>
         {photorealViewLoading===view ? "Rendering…" : view==="three-quarter" ? (photorealViews[view]?"3/4":"Generate 3/4") : view==="front" ? "Front" : photorealViews[view] ? view[0].toUpperCase()+view.slice(1) : "Generate "+view}
