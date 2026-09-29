@@ -47,6 +47,7 @@ for (const path of [
   "src/app/api/designer/brief/route.ts",
   "src/app/api/designer/look-render/route.ts",
   "src/app/api/designer/look-inspect/route.ts",
+  "src/app/api/designer/look-download/route.ts",
   "src/lib/designer/brief.ts",
   "src/app/api/designer/casebook/route.ts",
   "src/app/api/designer/creative-inspect/route.ts",
@@ -153,6 +154,8 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", ["PhotorealView","chooseP
 requireTokens("src/lib/ai-visualization.ts", ["SelectedLookVisualCheck","inspectSelectedLookFashnOutput","repairSelectedLookFashnFront","assertFashnRepairRateLimit"]);
 requireTokens("src/app/api/designer/look-inspect/route.ts", ["inspectSelectedLookFashnOutput","cache-control","no-store"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["/api/designer/look-inspect","selectedCheck","Repair once","repairSelectedLook"]);
+requireTokens("src/app/api/designer/look-download/route.ts", ["OFFICIAL_FASHN_OUTPUT","content-disposition","private, no-store"]);
+requireTokens("src/components/PhotoOutfitPreview.tsx", ["/api/designer/look-download","activeImage","encodeURIComponent(activeImage)"]);
 requireTokens("src/components/DesignerModule.tsx", [
   "OPTIONAL","Try a different fabric pairing","Show 3 options","Keep shirt","Keep trouser","Change both","Use look","newDesignerOptionalSearch","/api/designer/search","Finding…",
   "03 / CREATE","Create ideas ✦","newDesignerCreativeVisual","Design reasoning","FRONTIER IDEA",
