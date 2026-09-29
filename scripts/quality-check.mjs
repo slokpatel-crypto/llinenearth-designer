@@ -404,15 +404,26 @@ for (const token of [
 ]) {
   if (!advancedSearch.includes(token)) throw new Error(`Designer advanced-search regression: missing ${token}`);
 }
+const advancedSearchRoute = fs.readFileSync("src/app/api/designer/search/route.ts","utf8");
+for (const token of ["searchDesignerCatalogue","loadDesignerEvidenceContext","loadDesignerFabricMetadata","safeMeasurements","safeObservations","results.slice(0,3)","__linenDesignerSearchRate"]) {
+  if (!advancedSearchRoute.includes(token)) throw new Error(`Designer server-search regression: missing ${token}`);
+}
+const designerEvidenceContext = fs.readFileSync("src/lib/designer/evidence-context.ts","utf8");
+for (const token of ["server-only","aggregateDesignerCasebook","aggregateFitOutcomes","loadDesignerEvidenceContext"]) {
+  if (!designerEvidenceContext.includes(token)) throw new Error(`Designer evidence-context regression: missing ${token}`);
+}
 const advancedSearchUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["OPTIONAL","Try a different fabric pairing","Show 3 options","Keep shirt","Keep trouser","Change both","Use look","newDesignerOptionalSearch"]) {
+for (const token of ["OPTIONAL","Try a different fabric pairing","Show 3 options","Keep shirt","Keep trouser","Change both","Use look","newDesignerOptionalSearch","/api/designer/search","searchLoading","Finding…"]) {
   if (!advancedSearchUi.includes(token)) throw new Error(`Designer advanced-search UI regression: missing ${token}`);
 }
 const advancedSearchCss = fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
 for (const token of [".newDesignerSearch",".newDesignerSearchResults",".newDesignerSearchTier",".newDesignerSearchUse"]) {
   if (!advancedSearchCss.includes(token)) throw new Error(`Designer advanced-search styling regression: missing ${token}`);
 }
-console.log("Designer advanced-search V4 gate passed: backend decision matrix preserved behind a simplified visual-first surface.");
+if (advancedSearchUi.includes("searchDesignerCatalogue(") || advancedSearchUi.includes("casebookSignal") || advancedSearchUi.includes("fitOutcomeSignal")) {
+  throw new Error("Designer V4 architecture regression: ranking evidence or scoring returned to the customer UI.");
+}
+console.log("Designer advanced-search V4 gate passed: decision matrix and reviewed evidence stay server-side behind a simplified visual surface.");
 
 const retailDesignerUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
 for (const token of [
