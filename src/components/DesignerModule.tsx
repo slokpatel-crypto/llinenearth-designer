@@ -22,7 +22,7 @@ import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
 import { evaluateLinenEarthBrandLanguage } from "@/lib/designer/brand-language";
 import { buildCanonicalGarmentSpec, canonicalGarmentSpecSummary } from "@/lib/designer/garment-spec";
 import { searchDesignerCatalogue, type DesignerSearchResult, type DesignerSearchScope } from "@/lib/designer/search";
-import { chooseCreativeRedesign, generateCreativeDirections, type CreativeDirection } from "@/lib/designer/creative-engine";
+import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import type { DesignerCasebook } from "@/lib/designer/casebook";
 import type { FitOutcomeBook } from "@/lib/designer/fit-outcomes";
 import { creativeFamilyFromConceptId, type CreativeLearningBook, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
@@ -119,6 +119,7 @@ export function DesignerModule() {
   const [creativeAutoRetryCount,setCreativeAutoRetryCount]=useState(0);
   const [creativeAutoRenderNonce,setCreativeAutoRenderNonce]=useState(0);
   const [creativeVisualReview,setCreativeVisualReview]=useState<CreativeVisualCheck|null>(null);
+  const [creativeGenerating,setCreativeGenerating]=useState(false);
   const [shirtFilter,setShirtFilter]=useState<ShirtFabricFilter>("All");
   const [pantFilter,setPantFilter]=useState<PantFabricFilter>("All");
   const fact = DESIGNER_FASHION_FACTS[factIndex];
@@ -396,20 +397,57 @@ export function DesignerModule() {
     setSearchResults(results);
   }
 
-  function runCreativeLab() {
-    if (!shirt || !pant) return;
+  async function requestCreativeDirections(limit:number,current?:CreativeDirection,reason?:CreativeFeedbackReason) {
+    if(!shirt || !pant) return {concepts:[] as CreativeDirection[],redesign:null as CreativeDirection|null};
+    const researchPayload=creativeResearch ? {
+      ...creativeResearch,
+      signals:creativeResearch.signals.filter((signal)=>signal.active).slice(0,200),
+    } : null;
+    const learningPayload=creativeLearning ? {
+      ...creativeLearning,
+      buckets:creativeLearning.buckets.slice(0,200),
+    } : null;
+    const response=await fetch("/api/designer/creative-generate",{
+      method:"POST",
+      headers:{"content-type":"application/json"},
+      body:JSON.stringify({
+        mode:current && reason ? "redesign" : "generate",
+        shirtId:shirt.id,
+        pantId:pant.id,
+        occasion,
+        style,
+        context:{climate,intention},
+        limit,
+        creativeLearning:learningPayload,
+        creativeResearch:researchPayload,
+        ...(current?{current}:{}),
+        ...(reason?{reason}:{}),
+      }),
+    });
+    const data=await response.json() as {concepts?:CreativeDirection[];redesign?:CreativeDirection|null;error?:string};
+    if(!response.ok) throw new Error(data.error || "Creative Designer could not generate directions.");
+    return {concepts:Array.isArray(data.concepts)?data.concepts:[],redesign:data.redesign || null};
+  }
+
+  async function runCreativeLab() {
+    if (!shirt || !pant || creativeGenerating) return;
     setCreativeAutoRetryCount(0);
     setCreativeVisualReview(null);
     setCreativeAutoNote("");
-    const concepts=generateCreativeDirections({
-      shirt,pant,occasion,style,context:{climate,intention},
-      measurements:measurementProfile,observations:tailorObservations,creativeLearning,creativeResearch,researchFreedom:"maximum",limit:5,
-    });
-    setCreativeDirections(concepts);
-    setActiveCreative(null);
+    setCreativeGenerating(true);
+    try {
+      const {concepts}=await requestCreativeDirections(5);
+      setCreativeDirections(concepts);
+      setActiveCreative(null);
+      if(!concepts.length) setCreativeAutoNote("No creative direction cleared the current fabric and occasion checks.");
+    } catch(error) {
+      setCreativeAutoNote(error instanceof Error ? error.message : "Creative Designer could not generate directions.");
+    } finally {
+      setCreativeGenerating(false);
+    }
   }
 
-  function giveCreativeRenderFeedback(rating:"up"|"down"|"saved",creativeReason?:CreativeFeedbackReason,visualCheck?:CreativeVisualCheck) {
+  async function giveCreativeRenderFeedback(rating:"up"|"down"|"saved",creativeReason?:CreativeFeedbackReason,visualCheck?:CreativeVisualCheck) {
     if(!activeCreative || !shirt || !pant) return;
     try {
       recordStyleMemoryEvent(designerSession(),"designer_feedback",{
@@ -436,12 +474,16 @@ export function DesignerModule() {
         setCreativeAutoNote("The revised render still needs review. Automatic rerender stopped after one retry to avoid wasting render credits.");
         return;
       }
-      const candidates=generateCreativeDirections({
-        shirt,pant,occasion,style,context:{climate,intention},
-        measurements:measurementProfile,observations:tailorObservations,
-        creativeLearning,creativeResearch,researchFreedom:"maximum",limit:12,
-      });
-      const redesign=chooseCreativeRedesign(candidates,activeCreative,creativeReason);
+      let candidates:CreativeDirection[]=[];
+      let redesign:CreativeDirection|null=null;
+      try {
+        const generated=await requestCreativeDirections(12,activeCreative,creativeReason);
+        candidates=generated.concepts;
+        redesign=generated.redesign;
+      } catch(error) {
+        setCreativeAutoNote(error instanceof Error ? error.message : "V5 could not prepare a redesign.");
+        return;
+      }
       if(redesign) {
         setCreativeDirections([redesign,...candidates.filter((item)=>item.id!==redesign.id)].slice(0,5));
         setCreativeAutoNote(visualCheck
@@ -815,7 +857,7 @@ export function DesignerModule() {
               <strong>Imagine new designs.</strong>
               {researchPool && <small>Fashion research runs quietly in the background.</small>}
             </div>
-            <button type="button" onClick={runCreativeLab} disabled={!shirt || !pant}>Create ideas ✦</button>
+            <button type="button" onClick={()=>void runCreativeLab()} disabled={!shirt || !pant || creativeGenerating}>{creativeGenerating?"Creating…":"Create ideas ✦"}</button>
           </div>
           {creativeAutoNote && <div className="newDesignerAutoRevision"><span>V5 REDESIGN</span><strong>{creativeAutoNote}</strong></div>}
           {creativeDirections.length===0 && <div className="newDesignerCreativeEmpty">
