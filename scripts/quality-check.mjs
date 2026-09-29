@@ -293,6 +293,14 @@ for (const token of ["/api/designer/look-inspect","selectedCheck","Repair once",
   if (!photoPreviewMultiView.includes(token)) throw new Error(`Selected-look QA UI regression: missing ${token}`);
 }
 console.log("Selected-look render QA gate passed: normal photoreal looks are inspected and allow one targeted repair without redesign.");
+const selectedLookDownload = fs.readFileSync("src/app/api/designer/look-download/route.ts","utf8");
+for (const token of ["OFFICIAL_FASHN_OUTPUT","content-disposition","private, no-store"]) {
+  if (!selectedLookDownload.includes(token)) throw new Error(`Photoreal download regression: missing ${token}`);
+}
+for (const token of ["/api/designer/look-download","activeImage","encodeURIComponent(activeImage)"]) {
+  if (!photoPreviewMultiView.includes(token)) throw new Error(`Photoreal save UI regression: missing ${token}`);
+}
+console.log("Photoreal save gate passed: Save exports the active trusted photoreal view instead of the hidden instant canvas.");
 
 
 const measurementPage = fs.readFileSync("src/app/measurements/page.tsx","utf8");
