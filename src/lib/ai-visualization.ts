@@ -25,7 +25,7 @@ export class FashnVisualizationError extends Error {
 }
 
 type RateRegistry = { lastByIp: Map<string, number> };
-const rateRegistry = (globalThis as typeof globalThis & { __llinenFashnRate?: RateRegistry }).__llinenFashnRate
+const rateRegistry = (globalThis as typeof globalThis & { __linenFashnRate?: RateRegistry }).__linenFashnRate
   ||= { lastByIp: new Map<string, number>() };
 
 export function assertFashnRateLimit(request: Request) {
