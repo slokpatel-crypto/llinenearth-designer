@@ -1,5 +1,6 @@
 import type { MeasurementProfile } from "@/lib/measurements";
 import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
+import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import {
   DESIGNER_STYLE_CHOICES,
   designerStyleForOccasion,
@@ -81,6 +82,7 @@ export type DesignerSearchInput = {
   casebook?: DesignerCasebook | null;
   fitOutcomes?: FitOutcomeBook | null;
   preference?: DesignerSearchPreference | null;
+  fabricIntelligence?: Record<string,DesignerFabricIntelligence> | null;
 };
 
 type RankedCandidate = Omit<DesignerSearchResult,"comparison">;
@@ -234,6 +236,104 @@ function searchableFabric(fabric:DesignerFabric) {
     fabric.name,fabric.line,fabric.colorFamily,fabric.tone,fabric.patternType,
     fabric.weave,fabric.texture,fabric.fiberContent,...(fabric.bestSeason || []),
   ].filter(Boolean).join(" ").toLowerCase();
+}
+
+function normalizeIntelligenceToken(value:unknown) {
+  return String(value??"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+}
+
+function containsLoose(values:string[],target:string|null|undefined) {
+  const needle=normalizeIntelligenceToken(target);
+  if(!needle) return false;
+  return values.some((value)=>{
+    const hay=normalizeIntelligenceToken(value);
+    return hay===needle || hay.includes(needle) || needle.includes(hay);
+  });
+}
+
+function fabricIntelligenceAlignment(
+  tier:DesignerSearchTier,
+  occasion:OccasionTier,
+  style:DesignerStyle,
+  shirt:DesignerFabric,
+  pant:DesignerFabric,
+  map?:Record<string,DesignerFabricIntelligence>|null,
+  context?:DesignerContext,
+) {
+  if(!map) return 0;
+  const shirtIntel=map[shirt.id];
+  const pantIntel=map[pant.id];
+  if(!shirtIntel && !pantIntel) return 0;
+
+  const targetFormality:Record<OccasionTier,number>={
+    Casual:1.7,
+    "Smart-Casual":2.7,
+    "Semi-Formal":3.7,
+    Formal:4.6,
+  };
+  const targetStatement:Record<DesignerSearchTier,number>={
+    Safe:1.7,
+    Elevated:3,
+    Statement:4.25,
+  };
+  const trustWeight=(value:DesignerFabricIntelligence|undefined)=>{
+    if(!value) return 0;
+    if(value.trust==="reviewed") return 1;
+    if(value.trust==="high-confidence") return .72;
+    return .28;
+  };
+
+  let score=0;
+  for(const intel of [shirtIntel,pantIntel]) {
+    if(!intel) continue;
+    const w=trustWeight(intel);
+    const formalityFit=1-Math.min(1,Math.abs(intel.formality-targetFormality[occasion])/3.5);
+    const statementFit=1-Math.min(1,Math.abs(intel.statementLevel-targetStatement[tier])/4);
+    score+=(formalityFit*7-2)*w;
+    score+=(statementFit*5-1.5)*w;
+  }
+
+  if(shirtIntel) {
+    const w=trustWeight(shirtIntel);
+    if(shirtIntel.bestGarments.some((value)=>/shirt|overshirt/i.test(value))) score+=3*w;
+    if(containsLoose(shirtIntel.recommendedConstruction.collars,style.collar)) score+=2.2*w;
+    if(containsLoose(shirtIntel.recommendedConstruction.cuffs,style.cuff)) score+=1.7*w;
+    if(containsLoose(shirtIntel.recommendedConstruction.shirtFits,style.shirtFit)) score+=1.7*w;
+    if(pantIntel) {
+      if(containsLoose(shirtIntel.pairing.goodColorFamilies,pantIntel.colorFamily)) score+=5*w;
+      if(containsLoose(shirtIntel.pairing.avoidColorFamilies,pantIntel.colorFamily)) score-=8*w;
+    }
+  }
+
+  if(pantIntel) {
+    const w=trustWeight(pantIntel);
+    if(pantIntel.bestGarments.some((value)=>/trouser|pant|suit/i.test(value))) score+=3*w;
+    if(containsLoose(pantIntel.recommendedConstruction.trouserDirections,style.trouser)) score+=2.4*w;
+    if(shirtIntel) {
+      if(containsLoose(pantIntel.pairing.goodColorFamilies,shirtIntel.colorFamily)) score+=4*w;
+      if(containsLoose(pantIntel.pairing.avoidColorFamilies,shirtIntel.colorFamily)) score-=7*w;
+    }
+  }
+
+  if(shirtIntel && pantIntel) {
+    const pairWeight=Math.min(trustWeight(shirtIntel),trustWeight(pantIntel));
+    if(shirtIntel.statementLevel>=4 && pantIntel.statementLevel>=4) score-=7*pairWeight;
+    if(Math.max(shirtIntel.statementLevel,pantIntel.statementLevel)>=4 && Math.min(shirtIntel.statementLevel,pantIntel.statementLevel)<=2) score+=3*pairWeight;
+  }
+
+  if(context?.climate && context.climate!=="Not specified") {
+    const climate=context.climate.toLowerCase();
+    for(const intel of [shirtIntel,pantIntel]) {
+      if(!intel) continue;
+      const w=trustWeight(intel);
+      const tags=intel.climateVisualFit.join(" ").toLowerCase();
+      if(climate.includes("hot") && /hot|warm|humid|summer/.test(tags)) score+=2*w;
+      if(climate.includes("cool") && /cool|cold|winter/.test(tags)) score+=2*w;
+      if(climate.includes("air-conditioned") && /indoor|air|all season|all-season/.test(tags)) score+=1*w;
+    }
+  }
+
+  return Math.max(-18,Math.min(18,score));
 }
 
 function preferenceAlignment(
@@ -559,12 +659,13 @@ export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearc
         const decision=buildDecisionRead(tier,recommendation,fit,brand,block,novelty,casebookSignal,fitOutcomeSignal);
         const briefScore=preferenceAlignment(tier,shirt,pant,input.preference);
         const occasionScore=occasionFabricAlignment(input.occasion,shirt,pant);
+        const intelligenceScore=fabricIntelligenceAlignment(tier,input.occasion,style,shirt,pant,input.fabricIntelligence,input.context);
         const briefReason=preferenceReason(tier,shirt,pant,input.preference);
         const occasionReason=occasionFabricReason(input.occasion,shirt);
         ranked.push({
           id:`${tier.toLowerCase()}:${shirt.id}:${pant.id}`,
           tier,shirt,pant,style,recommendation,fitConstruction:fit,brandLanguage:brand,blockStrategy:block,casebookSignal,fitOutcomeSignal,decision,
-          searchScore:clampScore(decision.overall+briefScore+occasionScore),
+          searchScore:clampScore(decision.overall+briefScore+occasionScore+intelligenceScore),
           noveltyScore:novelty,
           reasons:[...(adapted.reason?[adapted.reason]:[]),...reasonsFor(tier,scope,recommendation,fit,brand,block,novelty,casebookSignal,fitOutcomeSignal),...(occasionReason?[occasionReason]:[]),...(briefReason?[briefReason]:[])].slice(0,4),
           ...(adapted.reason ? {fitAdaptation:adapted.reason} : {}),
