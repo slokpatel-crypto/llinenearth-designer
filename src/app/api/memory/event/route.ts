@@ -35,8 +35,8 @@ type IncomingEvent = {
 };
 
 const registry = (globalThis as typeof globalThis & {
-  __llinenMemoryRate?: Map<string,{at:number;count:number}>
-}).__llinenMemoryRate ||= new Map<string,{at:number;count:number}>();
+  __linenMemoryRate?: Map<string,{at:number;count:number}>
+}).__linenMemoryRate ||= new Map<string,{at:number;count:number}>();
 
 function rateLimit(request:Request) {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -405,7 +405,7 @@ export async function POST(request:Request) {
     }
 
     if (PUBLIC_TYPES.has(event.type)) {
-      const token = request.headers.get("x-llinen-memory-token");
+      const token = request.headers.get("x-linen-memory-token");
       if (!verifyMemorySessionToken(event.session_id,token)) {
         return NextResponse.json({error:"Invalid memory session."},{status:403});
       }
