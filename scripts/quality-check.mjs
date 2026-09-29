@@ -63,6 +63,15 @@ if(typoHits.length || typoPaths.length) {
 }
 console.log("Linen Earth brand spelling gate passed: no double-L typo remains in current repo text or tracked product paths.");
 
+const vercelConfig = JSON.parse(fs.readFileSync("vercel.json","utf8"));
+if (vercelConfig.ignoreCommand !== "node scripts/vercel-ignore.mjs") throw new Error("Vercel duplicate-build guard regression: ignoreCommand changed.");
+const vercelIgnore = fs.readFileSync("scripts/vercel-ignore.mjs","utf8");
+for (const token of ["VERCEL_PROJECT_ID","prj_b3rwwOl5OI0VV3qYyKXPFOloCllT","process.exit(0)","process.exit(1)"]) {
+  if (!vercelIgnore.includes(token)) throw new Error(`Vercel duplicate-build guard regression: missing ${token}`);
+}
+console.log("Vercel duplicate-build guard passed: only the primary Linen Earth web project is allowed to build from Git.");
+
+
 const intelligence = fs.readFileSync("src/lib/fashion-intelligence.ts","utf8");
 const wearIds = [...intelligence.matchAll(/id:\s*"(?:SH|TR|JK|SU|IN)-[^"]+"/g)].length;
 const fabricIds = [...intelligence.matchAll(/id:\s*"(?:linen|linen-cotton|cotton-poplin|oxford-cotton|cotton-twill|tr-pv|tr-wool|tropical-wool|hopsack-wool|wool-flannel|seersucker|denim|corduroy|velvet|silk-blend)"/g)].length;
