@@ -4,6 +4,7 @@ import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { verifyMemorySessionToken } from "@/lib/memory-session";
 import { CREATIVE_FEEDBACK_REASONS } from "@/lib/designer/creative-learning";
+import { legacyMemoryHeader } from "@/lib/runtime-compat";
 
 const PUBLIC_TYPES = new Set([
   "session_started",
@@ -405,7 +406,8 @@ export async function POST(request:Request) {
     }
 
     if (PUBLIC_TYPES.has(event.type)) {
-      const token = request.headers.get("x-linen-memory-token");
+      const headerName = "x-linen-memory-token";
+      const token = request.headers.get(headerName) || request.headers.get(legacyMemoryHeader(headerName));
       if (!verifyMemorySessionToken(event.session_id,token)) {
         return NextResponse.json({error:"Invalid memory session."},{status:403});
       }
