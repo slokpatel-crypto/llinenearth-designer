@@ -412,6 +412,10 @@ export function DesignerModule() {
     setResponse(null);
     setFeedbackReason(null);
     setSearchResults([]);
+    setBriefText("");
+    setBriefResults([]);
+    setBriefInterpretation(null);
+    setBriefError("");
     setCreativeDirections([]);
     setActiveCreative(null);
     setCreativeAutoNote("");
@@ -681,6 +685,7 @@ export function DesignerModule() {
     setRecommendation(result.recommendation);
     setAssessment(null);
     setSearchResults([]);
+    setBriefResults([]);
     setResponse(null);
     setFeedbackReason(null);
     setRecommendationId(null);
