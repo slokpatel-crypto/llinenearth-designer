@@ -18,6 +18,7 @@ import { casebookSignalFor, type DesignerCasebook, type DesignerCasebookSignal }
 import { fitOutcomeProportionFromMeasurements, fitOutcomeSignalFor, type FitOutcomeBook, type FitOutcomeSignal } from "@/lib/designer/fit-outcomes";
 
 import { colorFamilyPairSignal, optionIdForLabel } from "@/lib/vocab";
+import { FABRIC_INTELLIGENCE_WEIGHTS as FIW } from "@/lib/designer/weights";
 
 export type DesignerSearchScope = "keep_shirt" | "keep_trouser" | "open";
 export type DesignerSearchTier = "Safe" | "Elevated" | "Statement";
@@ -254,12 +255,13 @@ function intelOccasionMatch(intel:DesignerFabricIntelligence,occasion:OccasionTi
 
 function patternSupportScore(primary:DesignerFabricIntelligence,companion:DesignerFabricIntelligence) {
   const strategy=new Set(primary.pairing.goodPatternStrategy);
+  const w=FIW.patternStrategy;
   let score=0;
-  if(strategy.has("solid_support") && companion.patternFamily==="solid") score+=2.5;
-  if(strategy.has("single_hero_pattern") && companion.statementLevel<=2) score+=2;
-  if(strategy.has("tonal_low_contrast") && companion.patternContrast==="low") score+=1.5;
-  if(strategy.has("fine_scale_only") && companion.patternScale==="fine") score+=1.2;
-  if(strategy.has("no_competing_pattern") && companion.patternFamily!=="solid") score-=2.5;
+  if(strategy.has("solid_support") && companion.patternFamily==="solid") score+=w.solidSupport;
+  if(strategy.has("single_hero_pattern") && companion.statementLevel<=2) score+=w.singleHero;
+  if(strategy.has("tonal_low_contrast") && companion.patternContrast==="low") score+=w.tonalLowContrast;
+  if(strategy.has("fine_scale_only") && companion.patternScale==="fine") score+=w.fineScale;
+  if(strategy.has("no_competing_pattern") && companion.patternFamily!=="solid") score+=w.noCompeting;
   return score;
 }
 
@@ -278,80 +280,80 @@ function fabricIntelligenceAlignment(
   if(!shirtIntel && !pantIntel) return 0;
 
   const targetFormality:Record<OccasionTier,number>={
-    Casual:1.7,
-    "Smart-Casual":2.7,
-    "Semi-Formal":3.7,
-    Formal:4.6,
+    Casual:FIW.targetFormality.Casual,
+    "Smart-Casual":FIW.targetFormality.SmartCasual,
+    "Semi-Formal":FIW.targetFormality.SemiFormal,
+    Formal:FIW.targetFormality.Formal,
   };
   const targetStatement:Record<DesignerSearchTier,number>={
-    Safe:1.7,
-    Elevated:3,
-    Statement:4.25,
+    Safe:FIW.targetStatement.Safe,
+    Elevated:FIW.targetStatement.Elevated,
+    Statement:FIW.targetStatement.Statement,
   };
   const trustWeight=(value:DesignerFabricIntelligence|undefined)=>{
     if(!value) return 0;
-    if(value.trust==="reviewed") return 1;
-    if(value.trust==="high-confidence") return .72;
-    return .28;
+    if(value.trust==="reviewed") return FIW.trust.reviewed;
+    if(value.trust==="high-confidence") return FIW.trust.highConfidence;
+    return FIW.trust.provisional;
   };
 
   let score=0;
   for(const intel of [shirtIntel,pantIntel]) {
     if(!intel) continue;
     const w=trustWeight(intel);
-    const formalityFit=1-Math.min(1,Math.abs(intel.formality-targetFormality[occasion])/3.5);
-    const statementFit=1-Math.min(1,Math.abs(intel.statementLevel-targetStatement[tier])/4);
-    score+=(formalityFit*7-2)*w;
-    score+=(statementFit*5-1.5)*w;
-    if(intelOccasionMatch(intel,occasion)) score+=3.2*w;
+    const formalityFit=1-Math.min(1,Math.abs(intel.formality-targetFormality[occasion])/FIW.formality.range);
+    const statementFit=1-Math.min(1,Math.abs(intel.statementLevel-targetStatement[tier])/FIW.statement.range);
+    score+=(formalityFit*FIW.formality.scale-FIW.formality.base)*w;
+    score+=(statementFit*FIW.statement.scale-FIW.statement.base)*w;
+    if(intelOccasionMatch(intel,occasion)) score+=FIW.occasionMatch*w;
   }
 
   if(shirtIntel) {
     const w=trustWeight(shirtIntel);
-    if(shirtIntel.bestGarments.some((value)=>value==="shirt"||value==="overshirt")) score+=3*w;
+    if(shirtIntel.bestGarments.some((value)=>value==="shirt"||value==="overshirt")) score+=FIW.garmentRole*w;
     const collarId=optionIdForLabel("collar",style.collar);
     const cuffId=optionIdForLabel("cuff",style.cuff);
     const fitId=optionIdForLabel("shirtFit",style.shirtFit);
-    if(collarId && shirtIntel.recommendedConstruction.collars.includes(collarId)) score+=2.2*w;
-    if(cuffId && shirtIntel.recommendedConstruction.cuffs.includes(cuffId)) score+=1.7*w;
-    if(fitId && shirtIntel.recommendedConstruction.shirtFits.includes(fitId)) score+=1.7*w;
+    if(collarId && shirtIntel.recommendedConstruction.collars.includes(collarId)) score+=FIW.recommended.collar*w;
+    if(cuffId && shirtIntel.recommendedConstruction.cuffs.includes(cuffId)) score+=FIW.recommended.cuff*w;
+    if(fitId && shirtIntel.recommendedConstruction.shirtFits.includes(fitId)) score+=FIW.recommended.shirtFit*w;
     if(pantIntel?.colorFamily) {
       const colorSignal=colorFamilyPairSignal(shirtIntel.pairing.goodColorFamilies,shirtIntel.pairing.avoidColorFamilies,pantIntel.colorFamily);
-      if(colorSignal>0) score+=5*w;
-      if(colorSignal<0) score-=8*w;
+      if(colorSignal>0) score+=FIW.colorPair.shirtGood*w;
+      if(colorSignal<0) score+=FIW.colorPair.shirtAvoid*w;
     }
   }
 
   if(pantIntel) {
     const w=trustWeight(pantIntel);
-    if(pantIntel.bestGarments.some((value)=>value==="trouser"||value==="chino"||value==="suit")) score+=3*w;
+    if(pantIntel.bestGarments.some((value)=>value==="trouser"||value==="chino"||value==="suit")) score+=FIW.garmentRole*w;
     const trouserId=optionIdForLabel("trouser",style.trouser);
-    if(trouserId && pantIntel.recommendedConstruction.trouserDirections.includes(trouserId)) score+=2.4*w;
+    if(trouserId && pantIntel.recommendedConstruction.trouserDirections.includes(trouserId)) score+=FIW.recommended.trouser*w;
     if(shirtIntel?.colorFamily) {
       const colorSignal=colorFamilyPairSignal(pantIntel.pairing.goodColorFamilies,pantIntel.pairing.avoidColorFamilies,shirtIntel.colorFamily);
-      if(colorSignal>0) score+=4*w;
-      if(colorSignal<0) score-=7*w;
+      if(colorSignal>0) score+=FIW.colorPair.pantGood*w;
+      if(colorSignal<0) score+=FIW.colorPair.pantAvoid*w;
     }
   }
 
   if(shirtIntel && pantIntel) {
     const pairWeight=Math.min(trustWeight(shirtIntel),trustWeight(pantIntel));
-    if(shirtIntel.statementLevel>=4 && pantIntel.statementLevel>=4) score-=8*pairWeight;
-    if(Math.max(shirtIntel.statementLevel,pantIntel.statementLevel)>=4 && Math.min(shirtIntel.statementLevel,pantIntel.statementLevel)<=2) score+=4*pairWeight;
+    if(shirtIntel.statementLevel>=4 && pantIntel.statementLevel>=4) score+=FIW.statementPair.bothHigh*pairWeight;
+    if(Math.max(shirtIntel.statementLevel,pantIntel.statementLevel)>=4 && Math.min(shirtIntel.statementLevel,pantIntel.statementLevel)<=2) score+=FIW.statementPair.heroQuiet*pairWeight;
 
     const bothPatterned=shirtIntel.patternFamily!=="solid" && pantIntel.patternFamily!=="solid";
     const bothHighContrast=shirtIntel.patternContrast==="high" && pantIntel.patternContrast==="high";
     const bothBold=shirtIntel.patternScale==="bold" && pantIntel.patternScale==="bold";
-    if(bothPatterned && (bothHighContrast || bothBold)) score-=7*pairWeight;
-    if(shirtIntel.patternFamily!=="solid" && pantIntel.patternFamily==="solid") score+=2.5*pairWeight;
-    if(shirtIntel.patternFamily==="solid" && pantIntel.patternFamily!=="solid") score+=1.5*pairWeight;
+    if(bothPatterned && (bothHighContrast || bothBold)) score+=FIW.patternPair.bothStrong*pairWeight;
+    if(shirtIntel.patternFamily!=="solid" && pantIntel.patternFamily==="solid") score+=FIW.patternPair.shirtHeroSolidPant*pairWeight;
+    if(shirtIntel.patternFamily==="solid" && pantIntel.patternFamily!=="solid") score+=FIW.patternPair.solidShirtPantHero*pairWeight;
 
     score+=patternSupportScore(shirtIntel,pantIntel)*pairWeight;
     score+=patternSupportScore(pantIntel,shirtIntel)*pairWeight;
 
-    if(shirtIntel.sheen==="high" && pantIntel.sheen==="high") score-=2.5*pairWeight;
-    if(shirtIntel.visualWeight==="heavy-looking" && pantIntel.visualWeight==="light-looking") score-=1.5*pairWeight;
-    if(shirtIntel.visualWeight==="light-looking" && pantIntel.visualWeight==="heavy-looking") score-=1*pairWeight;
+    if(shirtIntel.sheen==="high" && pantIntel.sheen==="high") score+=FIW.sheen.bothHigh*pairWeight;
+    if(shirtIntel.visualWeight==="heavy-looking" && pantIntel.visualWeight==="light-looking") score+=FIW.visualWeight.heavyShirtLightPant*pairWeight;
+    if(shirtIntel.visualWeight==="light-looking" && pantIntel.visualWeight==="heavy-looking") score+=FIW.visualWeight.lightShirtHeavyPant*pairWeight;
   }
 
   if(context?.climate && context.climate!=="Not specified") {
@@ -360,13 +362,13 @@ function fabricIntelligenceAlignment(
       if(!intel) continue;
       const w=trustWeight(intel);
       const tags=new Set(intel.climateVisualFit);
-      if(climate.includes("hot") && (tags.has("hot_humid")||tags.has("hot_dry")||tags.has("warm"))) score+=2*w;
-      if(climate.includes("cool") && tags.has("cool")) score+=2*w;
-      if(climate.includes("air-conditioned") && (tags.has("air_conditioned")||tags.has("all_season"))) score+=1*w;
+      if(climate.includes("hot") && (tags.has("hot_humid")||tags.has("hot_dry")||tags.has("warm"))) score+=FIW.climate.hotMatch*w;
+      if(climate.includes("cool") && tags.has("cool")) score+=FIW.climate.coolMatch*w;
+      if(climate.includes("air-conditioned") && (tags.has("air_conditioned")||tags.has("all_season"))) score+=FIW.climate.airConditionedMatch*w;
     }
   }
 
-  return Math.max(-24,Math.min(24,score));
+  return Math.max(FIW.clamp.min,Math.min(FIW.clamp.max,score));
 }
 
 function preferenceAlignment(
