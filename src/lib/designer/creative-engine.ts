@@ -940,6 +940,19 @@ function researchFit(seed:Seed,input:CreativeLabInput) {
   return clamp(score);
 }
 
+function sourceDistance(seed:Seed,treatments:CreativeTreatment[],pattern?:CreativePattern) {
+  const zones=new Set(treatments.map((item)=>item.zone)).size;
+  let score=54;
+  if(seed.id.startsWith("mutation-")) score+=18;
+  if(seed.id.startsWith("hybrid-")) score+=22;
+  if(seed.id.startsWith("frontier-")) score+=20;
+  score+=Math.min(18,(seed.extraPrinciples?.length || 0)*8);
+  score+=Math.min(10,Math.max(0,zones-1)*5);
+  if(pattern) score+=5;
+  if(seed.id.startsWith("research-") && !(seed.extraPrinciples?.length)) score-=4;
+  return clamp(score);
+}
+
 function criticsFor(
   seed:Seed,input:CreativeLabInput,style:DesignerStyle,treatments:CreativeTreatment[],pattern:CreativePattern|undefined,
   recommendation:DesignerRecommendation,
@@ -986,9 +999,11 @@ function criticsFor(
   if(input.context.intention==="Understated" && load>95) aesthetic-=14;
   if(input.context.intention==="Expressive" && load<45) aesthetic-=9;
 
+  const referenceDistance=sourceDistance(seed,treatments,pattern);
   let originality=54+zones*7+(pattern?13:0)+atelier*4+experimental*7;
   if(treatments.length===1&&!pattern) originality-=7;
   originality-=Math.max(0,treatments.length-3)*6;
+  originality=originality*.74+referenceDistance*.26;
 
   const trouserNovelty=treatments.filter((item)=>["waistband","pleat","trouser-leg"].includes(item.zone)).reduce((sum,item)=>sum+item.intensity,0);
   const shirtNovelty=treatments.filter((item)=>["collar","cuff","placket","shirt-body","pocket"].includes(item.zone)).reduce((sum,item)=>sum+item.intensity,0);
@@ -1026,11 +1041,13 @@ function criticsFor(
     {id:"originality",label:"Originality critic",score:round(originality),verdict:verdict(originality),rationale:[
       pattern?"The surface logic is generated as a placement/repeat proposal rather than selected from the stock pattern labels.":"Originality comes from garment detailing and proportion rather than a new surface repeat.",
       experimental?"One element deliberately leaves the normal house vocabulary and needs human design review.":"The idea mutates familiar menswear codes without relying on random novelty.",
+      referenceDistance<62?"The concept is still too close to a single source mechanism; prefer mutation, cross-zone transfer or hybrid research before promotion.":"The source principle has been transformed far enough to read as a new design hypothesis.",
       trouserNovelty>95?"Trouser novelty is high; preserve a recognisable tailoring anchor so difference reads as intentional.":"Typicality and novelty remain in a readable relationship.",
     ],facets:[
       {label:"Novelty",score:round(Math.min(100,54+zones*8+(pattern?15:0)+experimental*8))},
       {label:"Typicality anchor",score:round(100-Math.min(70,(trouserNovelty+shirtNovelty)*.22))},
       {label:"Transformation",score:round(62+(atelier+experimental)*8+(pattern?12:0))},
+      {label:"Source distance",score:round(referenceDistance)},
     ]},
     {id:"brand",label:"Linen Earth critic",score:round(brandScore),verdict:verdict(brandScore),rationale:[
       "Uses the existing Linen Earth brand-language evaluator as a soft signal, not a veto.",
