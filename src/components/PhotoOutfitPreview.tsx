@@ -679,12 +679,8 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
         {creativeCoverage.specOnly.length>0 && <b>{creativeCoverage.specOnly.length} detail{creativeCoverage.specOnly.length===1?"":"s"} need photoreal render</b>}
       </div>
       {creativeAi && <div className="newDesignerRenderCheck" data-status={creativeAi.visualCheck.status}>
-        <span>AUTO VISUAL CHECK</span>
-        <div>
-          <b>Hero {creativeAi.visualCheck.heroVisibility}</b>
-          <b>Boundaries {creativeAi.visualCheck.boundaryIntegrity}</b>
-        </div>
-        <p>{creativeAi.visualCheck.notes[0]}</p>
+        <span>{creativeAi.visualCheck.status==="pass" ? "VISUAL CHECK PASSED" : "VISUAL CHECK / REDESIGNING"}</span>
+        <p>{creativeAi.visualCheck.status==="pass" ? "The main design detail reads clearly and the garment boundaries remain stable." : "The render did not express the design cleanly enough, so V5 is moving to a revised direction."}</p>
       </div>}
       {creativeAi && onCreativeFeedback && <div className="newDesignerCreativeReview newDesignerCreativeReviewCompact">
         <span>DOES IT WORK?</span>
