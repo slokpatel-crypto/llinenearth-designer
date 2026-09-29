@@ -22,7 +22,7 @@ function requireTokens(path, tokens) {
   }
 }
 
-console.log(`LLinen Earth release readiness${live ? " (live)" : " (static)"}\n`);
+console.log(`Linen Earth release readiness${live ? " (live)" : " (static)"}\n`);
 
 for (const path of [
   "src/app/page.tsx",
@@ -160,10 +160,10 @@ requireTokens("src/app/api/homepage-model/route.ts", [
   "FASHN_API_KEY",
   "model-create",
   "status",
-  "X-LLinen-Render",
+  "X-Linen-Render",
   "/editorial/suit.webp",
 ]);
-requireTokens("desktop/src-tauri/tauri.conf.json", ["\"version\": \"1.0.0\"", "\"productName\": \"LLinen Earth OS\""]);
+requireTokens("desktop/src-tauri/tauri.conf.json", ["\"version\": \"1.0.0\"", "\"productName\": \"Linen Earth OS\""]);
 requireTokens("desktop/package.json", ["\"version\": \"1.0.0\""]);
 requireTokens("desktop/src-tauri/Cargo.toml", ["version = \"1.0.0\""]);
 requireTokens("desktop/src/App.tsx", [
@@ -227,8 +227,8 @@ if (live) {
 }
 
 if (failed) {
-  console.error("\nLLinen Earth release is NOT ready.");
+  console.error("\nLinen Earth release is NOT ready.");
   process.exit(1);
 }
 
-console.log("\nLLinen Earth release foundation is ready.");
+console.log("\nLinen Earth release foundation is ready.");
