@@ -27,10 +27,15 @@ function pick<K extends keyof DesignerStyle>(key:K,matcher:RegExp,fallback:Desig
 }
 
 function occasionFrom(text:string):OccasionTier {
-  if(includesAny(text,["black tie","gala","formal dinner","board meeting","boardroom","ceremony","very formal"])) return "Formal";
-  if(includesAny(text,["business","meeting","office","work","client","presentation","interview","wedding","reception","engagement","festive","function"])) return "Semi-Formal";
-  if(includesAny(text,["date","dinner","party","cocktail","brunch","smart casual","smart-casual","event","travel","holiday","resort"])) return "Smart-Casual";
-  if(includesAny(text,["casual","weekend","everyday","coffee","outing"])) return "Casual";
+  const normalized=text.toLowerCase().replace(/[–—]/g,"-");
+  // Resolve compound phrases before their component words so "semi-formal"
+  // never collapses into Formal and "smart casual" never collapses into Casual.
+  if(/\bsmart[-\s]?casual\b|\bbusiness[-\s]?casual\b/.test(normalized)) return "Smart-Casual";
+  if(/\bsemi[-\s]?formal\b/.test(normalized)) return "Semi-Formal";
+  if(/\bblack[-\s]?tie\b|\bgala\b|\bformal\b|\bboardroom\b|\bceremony\b/.test(normalized)) return "Formal";
+  if(includesAny(normalized,["business","meeting","office","work","client","presentation","interview","wedding","reception","engagement","festive","function"])) return "Semi-Formal";
+  if(includesAny(normalized,["date","dinner","party","cocktail","brunch","event","travel","holiday","resort"])) return "Smart-Casual";
+  if(/\bcasual\b|\bweekend\b|\beveryday\b|\bcoffee\b|\bouting\b/.test(normalized)) return "Casual";
   return "Smart-Casual";
 }
 
