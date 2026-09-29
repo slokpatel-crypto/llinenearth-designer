@@ -243,15 +243,6 @@ function catalogueStyleFormality(fabric:FabricColorway) {
   return null;
 }
 
-function catalogueRoleTags(fabric:FabricColorway):DesignerFabric["roleTags"] {
-  if(fabric.roleTags?.length) return [...fabric.roleTags];
-  const line=fabric.line.toLowerCase();
-  const pattern=fabric.pattern.toLowerCase();
-  if(line.includes("formal shirting") || line.includes("linen suiting") || (line.includes("linen plain") && /plain/.test(pattern))) return ["base_safe"];
-  if(line.includes("linen print") || line.includes("printed linen blend")) return ["accent_safe"];
-  return null;
-}
-
 function patternProfile(pattern: string): { name: string; scale: DesignerFabric["patternScale"] } {
   const label = pattern.toLowerCase();
   if (/^plain$|^solid$|plain\s*\/\s*jute/.test(label)) return { name: "Solid", scale: "None" };
@@ -281,7 +272,7 @@ export function designerFabricFromStock(fabric: FabricColorway): DesignerFabric 
     weightGsm: typeof fabric.weightGsm === "number" ? fabric.weightGsm : null,
     weightClass: fabric.weightClass ?? null,
     bestSeason: fabric.seasonTags?.length ? [...fabric.seasonTags] : null,
-    roleTags: catalogueRoleTags(fabric),
+    roleTags: fabric.roleTags?.length ? [...fabric.roleTags] : null,
     weave: fabric.weave || (fabric.line === "Linen Plain 60 Lea" ? "Plain Weave" : null),
     texture: fabric.texture || null,
     fiberContent: fabric.line.includes("Blend") ? null : fabric.family,
