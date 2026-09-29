@@ -52,16 +52,11 @@ function canonicalUrlIdentity(value:unknown,limit=1800) {
 }
 
 export function fabricAnalysisFingerprint(input:FabricAnalyzerContext) {
-  const canonical=JSON.stringify({
-    imageUrl:canonicalUrlIdentity(input.imageUrl),
-    sourcePageUrl:canonicalUrlIdentity(input.sourcePageUrl),
-    sourceId:clean(input.sourceId,80),
-    declaredMaterial:clean(input.declaredMaterial,120),
-    declaredFabricType:clean(input.declaredFabricType,120),
-    supplierColorName:clean(input.supplierColorName,120),
-    supplierPatternName:clean(input.supplierPatternName,120),
-    notes:clean(input.notes,500),
-  });
+  const contentSha=clean(input.contentSha256,128);
+  const perceptualHash=clean(input.perceptualHash,64);
+  const canonical=contentSha
+    ? JSON.stringify({contentSha256:contentSha,perceptualHash})
+    : JSON.stringify({imageUrl:canonicalUrlIdentity(input.imageUrl)});
   return createHash("sha256").update(canonical).digest("hex");
 }
 
@@ -108,6 +103,10 @@ export async function storeFabricAnalysis(
       supplierColorName:clean(input.supplierColorName,120),
       supplierPatternName:clean(input.supplierPatternName,120),
       notes:clean(input.notes,500),
+      swatchRealWidthMm:Number.isFinite(input.swatchRealWidthMm)?input.swatchRealWidthMm:null,
+      repeatRealMm:Number.isFinite(input.repeatRealMm)?input.repeatRealMm:null,
+      contentSha256:clean(input.contentSha256,128),
+      perceptualHash:clean(input.perceptualHash,64),
     },
     p_analyzer_version:ANALYZER_VERSION,
     p_model_id:clean(modelId,120),
@@ -221,6 +220,8 @@ export type FabricAnalyzerBatchItem = {
   supplierColorName?:string;
   supplierPatternName?:string;
   notes?:string;
+  swatchRealWidthMm?:number;
+  repeatRealMm?:number;
   force?:boolean;
 };
 
@@ -236,6 +237,8 @@ export async function enqueueFabricAnalyzerBatch(items:FabricAnalyzerBatchItem[]
     supplierColorName:clean(item.supplierColorName,120),
     supplierPatternName:clean(item.supplierPatternName,120),
     notes:clean(item.notes,500),
+    swatchRealWidthMm:Number.isFinite(item.swatchRealWidthMm)?Number(item.swatchRealWidthMm):null,
+    repeatRealMm:Number.isFinite(item.repeatRealMm)?Number(item.repeatRealMm):null,
     force:item.force===true,
   })).filter((item)=>item.imageUrl||item.sourcePageUrl);
   if(!cleanItems.length) return null;
