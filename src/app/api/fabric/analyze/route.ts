@@ -1,4 +1,6 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { analyzeFabricDevelopment, type FabricVisualSignals } from "@/lib/fabric-analysis";
 import { analyzeFabricWithClaude, AiFabricAnalysisError } from "@/lib/ai-fabric-analysis";
 
@@ -12,7 +14,20 @@ function validSignalObject(value: unknown): value is FabricVisualSignals {
   return typeof v.dominantHex === "string" && numeric.every((key) => typeof v[key] === "number" && Number.isFinite(v[key]));
 }
 
+async function authorized() {
+  const jar=await cookies();
+  return verifyOperatorSession(jar.get(OPERATOR_COOKIE.name)?.value);
+}
+
+function sameOrigin(request:Request) {
+  const origin=request.headers.get("origin");
+  if(!origin) return true;
+  try{return new URL(origin).origin===new URL(request.url).origin;}catch{return false;}
+}
+
 export async function POST(request: Request) {
+  if(!await authorized()) return NextResponse.json({error:"Not found."},{status:404});
+  if(!sameOrigin(request)) return NextResponse.json({error:"Cross-site fabric analysis is not allowed."},{status:403});
   try {
     const body = await request.json();
     const { fileName, contentType, size, visualSignals, imageBase64, aiConsent } = body ?? {};
