@@ -1,0 +1,18 @@
+export const FABRIC_INTELLIGENCE_WEIGHTS={
+  trust:{reviewed:1,highConfidence:.72,provisional:.28},
+  targetFormality:{Casual:1.7,SmartCasual:2.7,SemiFormal:3.7,Formal:4.6},
+  targetStatement:{Safe:1.7,Elevated:3,Statement:4.25},
+  formality:{scale:7,base:2,range:3.5},
+  statement:{scale:5,base:1.5,range:4},
+  occasionMatch:3.2,
+  garmentRole:3,
+  recommended:{collar:2.2,cuff:1.7,shirtFit:1.7,trouser:2.4},
+  colorPair:{shirtGood:5,shirtAvoid:-8,pantGood:4,pantAvoid:-7},
+  statementPair:{bothHigh:-8,heroQuiet:4},
+  patternPair:{bothStrong:-7,shirtHeroSolidPant:2.5,solidShirtPantHero:1.5},
+  patternStrategy:{solidSupport:2.5,singleHero:2,tonalLowContrast:1.5,fineScale:1.2,noCompeting:-2.5},
+  sheen:{bothHigh:-2.5},
+  visualWeight:{heavyShirtLightPant:-1.5,lightShirtHeavyPant:-1},
+  climate:{hotMatch:2,coolMatch:2,airConditionedMatch:1},
+  clamp:{min:-24,max:24},
+} as const;
