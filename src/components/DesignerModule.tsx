@@ -213,7 +213,7 @@ export function DesignerModule() {
     try {
       const parsed = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null") as {
         shirtId?: string; pantId?: string; occasion?: OccasionTier; climate?: DesignerClimate;
-        intention?: DesignerIntention; style?: Partial<DesignerStyle>;
+        intention?: DesignerIntention; style?: Partial<DesignerStyle>; creative?: CreativeDirection | null;
       } | null;
 
       let nextShirtId = parsed?.shirtId && DESIGNER_SHIRTS.some((item) => item.id === parsed.shirtId) ? parsed.shirtId : shirtId;
@@ -276,6 +276,16 @@ export function DesignerModule() {
       setIntention(nextIntention);
       setStyle(nextStyle);
 
+      if(!fromDirector && parsed?.creative &&
+        parsed.creative.recommendation?.shirt?.id===nextShirtId &&
+        parsed.creative.recommendation?.pant?.id===nextPantId &&
+        parsed.creative.recommendation?.occasion===nextOccasion &&
+        Array.isArray(parsed.creative.treatments)) {
+        setActiveCreative(parsed.creative);
+        setCreativeDirections([parsed.creative]);
+        setRecommendation(parsed.creative.recommendation);
+      }
+
       if (fromDirector) {
         const routedShirtFabric = DESIGNER_SHIRTS.find((item) => item.id === nextShirtId);
         const routedPantFabric = DESIGNER_PANTS.find((item) => item.id === nextPantId);
@@ -312,16 +322,22 @@ export function DesignerModule() {
   useEffect(() => {
     if (!draftReady) return;
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ shirtId, pantId, occasion, climate, intention, style }));
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ shirtId, pantId, occasion, climate, intention, style, creative:activeCreative }));
     } catch { /* Designer remains usable if browser storage is unavailable. */ }
-  }, [draftReady, shirtId, pantId, occasion, climate, intention, style]);
+  }, [draftReady, shirtId, pantId, occasion, climate, intention, style, activeCreative]);
 
   useEffect(() => {
+    if(!draftReady) return;
+    const creativeStillMatches=activeCreative &&
+      activeCreative.recommendation.shirt.id===shirtId &&
+      activeCreative.recommendation.pant.id===pantId &&
+      activeCreative.recommendation.occasion===occasion;
+    if(creativeStillMatches) return;
     setSearchResults([]);
     setCreativeDirections([]);
     setActiveCreative(null);
     setCreativeAutoNote("");
-  },[shirtId,pantId,occasion,climate,intention]);
+  },[draftReady,shirtId,pantId,occasion,climate,intention]);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
