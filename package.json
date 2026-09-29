@@ -14,7 +14,8 @@
     "release:check": "node scripts/release-readiness.mjs",
     "release:check:live": "node scripts/release-readiness.mjs --live",
     "fabric:sync-references": "node scripts/sync-fabric-reference-index.mjs",
-    "fabric:quality": "npm run quality && npm run release:check"
+    "fabric:quality": "npm run quality && npm run release:check",
+    "test": "node --experimental-strip-types --test tests/*.test.ts"
   },
   "dependencies": {
     "fashn": "^0.15.0",
