@@ -279,7 +279,7 @@ for (const token of ["occasionFrom","climateFrom","intentionFrom","colorPreferen
 for (const token of ["occasionFabricAlignment","formal shirting","printed linen blend","occasionScore","occasionPreferredShirts","strictOccasionFit","openShirts"]) {
   if (!designerSearch.includes(token)) throw new Error(`One-line Designer occasion separation regression: missing ${token}`);
 }
-for (const token of ["/api/designer/brief","newDesignerBrief","Create 3 directions","one_line_designer_brief","StyleDirectorRealModelPreview","newDesignerBriefModel","SAME LINEN EARTH MODEL"]) {
+for (const token of ["/api/designer/brief","newDesignerBrief","Create 3 directions","one_line_designer_brief","StyleDirectorRealModelPreview","newDesignerBriefModel","SAME LINEN EARTH MODEL","newDesignerBriefCut","Occasion match:"]) {
   if (!realDesignerModule.includes(token)) throw new Error(`One-line Designer UI regression: missing ${token}`);
 }
 for (const token of ["fabricPairDiffers","Prefer genuinely different fabric pairs","occasionPreferredShirts"]) {
