@@ -1,5 +1,5 @@
-import { deltaE2000, srgbRgbToLab, type LabColor } from "@/lib/vocab/color-distance";
-import { nearestColorFamily } from "@/lib/vocab/colors";
+import { deltaE2000, srgbRgbToLab, type LabColor } from "./vocab/color-distance.ts";
+import { nearestColorFamily } from "./vocab/colors.ts";
 import type { FabricImageQuality, FabricPatternMeasurement, MeasuredPaletteEntry } from "./fabric-measurement-types";
 
 type Pixel={r:number;g:number;b:number;lab:LabColor};
