@@ -332,8 +332,8 @@ for (const token of ["REAL_MENSWEAR_MATERIAL_TERMS","REAL_MENSWEAR_PATTERN_TERMS
   if (!fabricReferenceIndex.includes(token)) throw new Error(`Real-reference Fabric Analyzer regression: missing ${token}`);
 }
 const fabricAnalyzerExamples = fs.readFileSync("src/lib/fabric-analyzer-real-examples.ts","utf8");
-for (const token of ["fabric-analyzer-v3","FABRIC_REFERENCE_COUNTS","retainKnown","references:{","Real-reference corpus","REAL_MENSWEAR_FABRIC_EXAMPLES","REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT","Never copy composition"]) {
-  if (!fabricAnalyzerSource.includes(token)) throw new Error(`Fabric Analyzer V3 provenance regression: missing ${token}`);
+for (const token of ["fabric-analyzer-v4","FABRIC_REFERENCE_COUNTS","retainKnown","references:{","Real-reference corpus","REAL_MENSWEAR_FABRIC_EXAMPLES","REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT","Never copy composition","Closed output vocabulary","colorFamilies.map","collarOptions.map"]) {
+  if (!fabricAnalyzerSource.includes(token)) throw new Error(`Fabric Analyzer V4 provenance regression: missing ${token}`);
 }
 for (const token of ["REAL_MENSWEAR_FABRIC_EXAMPLES","REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT","AUTO-GENERATED","source_id","composition","pattern_name"]) {
   if (!fabricAnalyzerExamples.includes(token)) throw new Error(`Real fabric-example corpus regression: missing ${token}`);
@@ -348,7 +348,7 @@ for (const token of ["FABRIC_REFERENCE_PROVENANCE","sourceIdsForReferences","bac
 if (realDesignerModule.includes("fabric-analyzer-reference-index") || realDesignerModule.includes("fabric-analyzer-real-examples")) {
   throw new Error("Fabric Analyzer privacy regression: real reference corpus must remain server-only.");
 }
-console.log("Real-reference Fabric Analyzer gate passed: 200+ material terms, 100+ pattern terms, 400+ color terms, real cloth examples and provenance-aware V3 analysis remain backend-only.");
+console.log("Real-reference Fabric Analyzer gate passed: source-backed corpus and closed-vocabulary V4 analysis remain backend-only.");
 
 const fabricAnalyzerStore = fs.readFileSync("src/lib/fabric-analyzer-store.ts","utf8");
 for (const token of ["fabricAnalysisFingerprint","loadStoredFabricAnalysis","storeFabricAnalysis","recordFabricAnalyzerCorrection","loadFabricAnalyzerLearningHints","fabric_analyzer_learning_summary","SUPABASE_SECRET_KEY"]) {
@@ -427,10 +427,32 @@ const referenceSyncScript=fs.readFileSync("scripts/sync-fabric-reference-index.m
 for(const token of ["fabric_analyzer_reference_snapshot","fabric-analyzer-reference-index.ts","fabric-analyzer-provenance-map.ts","fabric-analyzer-real-examples.ts"]) {
   if(!referenceSyncScript.includes(token)) throw new Error(`Fabric reference sync regression: missing ${token}`);
 }
-for(const token of ["occasionIntelligenceTokens","intelOccasionMatch","patternSupportScore","bothHighContrast","bothBold"]) {
+for(const token of ["OCCASION_INTELLIGENCE_IDS","intelOccasionMatch","patternSupportScore","colorFamilyPairSignal","optionIdForLabel","bothHighContrast","bothBold"]) {
   if(!designerSearch.includes(token)) throw new Error(`Analyzer pairing intelligence regression: missing ${token}`);
 }
+if(designerSearch.includes("containsLoose(")) throw new Error("Phase 10 vocabulary regression: Designer search reintroduced substring intelligence matching.");
 console.log("Fabric Analyzer completion gate passed: durable queueing, review priority, repeatable source sync and deep Designer pairing are protected.");
+for(const path of [
+  "src/lib/vocab/types.ts",
+  "src/lib/vocab/normalization.ts",
+  "src/lib/vocab/color-distance.ts",
+  "src/lib/vocab/colors.ts",
+  "src/lib/vocab/patterns.ts",
+  "src/lib/vocab/styling.ts",
+  "src/lib/vocab/designer-options.ts",
+  "src/lib/vocab/intelligence.ts",
+  "src/lib/fabric-intelligence-adapter.ts",
+  "tests/phase10-vocab.test.ts",
+]) {
+  if(!fs.existsSync(path)) throw new Error(`Phase 10 vocabulary foundation missing: ${path}`);
+}
+const vocabNormalize=fs.readFileSync("src/lib/vocab/normalization.ts","utf8");
+for(const token of ["normalizeToken","normalizeArray","reviewNeeded"]) if(!vocabNormalize.includes(token)) throw new Error(`Phase 10 vocab regression: missing ${token}`);
+const fabricAdapter=fs.readFileSync("src/lib/fabric-intelligence-adapter.ts","utf8");
+for(const token of ["fabric-analyzer-v3","fabric-analyzer-v4","adaptFabricProfileToV4","reviewNeeded"]) if(!fabricAdapter.includes(token)) throw new Error(`Phase 10 v3 adapter regression: missing ${token}`);
+const legacyDesignerEngine=fs.readFileSync("src/lib/designer-engine.ts","utf8");
+if(legacyDesignerEngine.includes('family.includes("tr")')) throw new Error("Phase 10 regression: legacy Designer reintroduced broad TR substring matching.");
+console.log("Phase 10A gate passed: closed vocabularies, exact-id pairing, v3 compatibility and legacy-family cleanup are protected.");
 const fabricAnalyzerMigration="supabase/migrations/20260929_fabric_analyzer_private_backend.sql";
 if(!fs.existsSync(fabricAnalyzerMigration)) throw new Error("Fabric Analyzer backend migration is missing.");
 const fabricAnalyzerMigrationSource=fs.readFileSync(fabricAnalyzerMigration,"utf8");
