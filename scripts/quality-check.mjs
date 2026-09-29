@@ -447,7 +447,7 @@ for (const token of [
   "frontierCrossZoneSeed","wrongness-tailoring-2026","tactile-dimensionality-2026","quiet-wild-balance-2026","formless-form-2026","craft-deviation-2026",
   "criticFacetScore","revisionMerit","redesignLoop","Visual critic protected one hero move",
   "sourceDistance","Source distance","too close to a single source mechanism",
-  "chooseCreativeRedesign","visual_balance","render_mismatch",
+  "chooseCreativeRedesign","creativeSeedFamily","repairFamilyBonus","visual_balance","render_mismatch",
   "absoluteFeasibilityBlock","literally unavailable or physically impossible",
   "pairwisePreference","pairwiseTournament","A tiny difference is not meaningful enough",
   "refinementShortlist","sourceDistance","const shortlist=refinementShortlist","family:\"tonal\"","Shadow Weft"
