@@ -140,7 +140,15 @@ export async function POST(request:Request) {
       fitOutcomes:evidence.fitOutcomes,
     });
 
-    return NextResponse.json({results:results.slice(0,3)},{headers:{"cache-control":"no-store"}});
+    const presentation=results.slice(0,3).map((result)=>({
+      id:result.id,
+      tier:result.tier,
+      shirt:result.shirt,
+      pant:result.pant,
+      style:result.style,
+      recommendation:result.recommendation,
+    }));
+    return NextResponse.json({results:presentation},{headers:{"cache-control":"no-store"}});
   } catch(error) {
     console.error("[designer/search]",error);
     return NextResponse.json({error:"Designer could not prepare alternative directions."},{status:500});
