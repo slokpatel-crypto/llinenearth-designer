@@ -295,6 +295,18 @@ for (const token of ["safeTasteProfile","personalizeBrief","learned preference:"
 }
 console.log("Local taste-profile gate passed: repeated non-sensitive Designer choices can personalize future briefs only after conservative evidence thresholds.");
 
+for (const token of ["fitAdaptedStyle","Fit-aware adjustment:","suggestedPatch","fitAdaptation"]) {
+  if (!designerSearch.includes(token)) throw new Error(`Measurement-to-cut intelligence regression: missing ${token}`);
+}
+const blockStrategySource = fs.readFileSync("src/lib/designer/block-strategy.ts","utf8");
+for (const token of ['patch.shirtFit = "Regular / Classic Fit"','patch.trouser = "Pleated Trouser"',"BLOCK-TORSO-STRAIGHT","BLOCK-SEAT-FLATFRONT"]) {
+  if (!blockStrategySource.includes(token)) throw new Error(`Fit patch regression: missing ${token}`);
+}
+for (const token of ["fitAdaptation","newDesignerBriefFit","FIT-AWARE"]) {
+  if (!realDesignerModule.includes(token)) throw new Error(`Fit-aware Designer UI regression: missing ${token}`);
+}
+console.log("Measurement-to-cut gate passed: saved proportions and tailor observations can alter the recommended starting cut, with the adjustment shown to the customer.");
+
 const designerEngineFabricIntelligence = fs.readFileSync("src/lib/designer/engine.ts","utf8");
 for (const token of ["catalogueStyleFormality","formal shirting","printed linen blend"]) {
   if (!designerEngineFabricIntelligence.includes(token)) throw new Error(`Catalogue fabric intelligence regression: missing ${token}`);
