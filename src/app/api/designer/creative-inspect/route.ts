@@ -8,6 +8,20 @@ import {
 export const runtime="nodejs";
 export const maxDuration=30;
 
+const inspectRegistry=(globalThis as typeof globalThis & {__linenCreativeInspectRate?:Map<string,{at:number;count:number}>}).__linenCreativeInspectRate ||= new Map<string,{at:number;count:number}>();
+
+function inspectRateLimited(request:Request) {
+  const ip=request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const now=Date.now();
+  const current=inspectRegistry.get(ip);
+  if(!current || now-current.at>60_000) {
+    inspectRegistry.set(ip,{at:now,count:1});
+    return false;
+  }
+  current.count+=1;
+  return current.count>12;
+}
+
 type InspectBody = CreativeFashnRequest & { image:string };
 
 function valid(body:unknown):body is InspectBody {
@@ -28,6 +42,7 @@ function valid(body:unknown):body is InspectBody {
 
 export async function POST(request:Request) {
   try {
+    if(inspectRateLimited(request)) return NextResponse.json({error:"Creative render inspection is temporarily rate limited."},{status:429});
     const body=await request.json() as unknown;
     if(!valid(body)) return NextResponse.json({error:"A generated render and its V5 concept specification are required."},{status:400});
     const check=await inspectCreativeFashnOutput(body.image,body);
