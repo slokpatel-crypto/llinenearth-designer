@@ -1,5 +1,6 @@
 import { FABRIC_STOCK, type FabricColorway } from "@/lib/fabric-stock";
 import reference from "./reference-data.json";
+import { legacyLabelsFor, optionsFor } from "./options/library.ts";
 
 export type OccasionTier = "Casual" | "Smart-Casual" | "Semi-Formal" | "Formal";
 export type RuleStatus = "pass" | "flag" | "unknown" | "not_applicable";
@@ -91,7 +92,7 @@ export type DesignerAccent = {
  * its weights, presets and wording remain provisional until Linen Earth
  * approves them against real cloth.
  */
-export const DESIGNER_RULE_SET_VERSION = "shirt-pant-reference-provisional-5";
+export const DESIGNER_RULE_SET_VERSION = "shirt-pant-reference-provisional-6";
 
 // Owner approved the visual pairing for Semi-Formal use on 2026-09-27.
 // This approves neither physical availability nor the proposed garment details.
@@ -152,23 +153,28 @@ const PRESETS: Record<OccasionTier, DesignerRecommendation["style"]> = {
 };
 
 const names = (rows: NamedScore[], key: string) => rows.map((row) => String(row[key]));
-const pantOptions = (group: string) => names(pantDetails.filter((row) => row.Element_Group === group), "Type");
-const shirtOptions = (group: string) => names(details.filter((row) => row.Element_Group === group), "Type");
 
-// All selectable details come from the supplied Linen Earth taxonomy. Contrast
-// plackets need a second fabric and are withheld until accent rules are built.
+function optionLabels(group:Parameters<typeof optionsFor>[0],legacyOnly=false) {
+  return optionsFor(group)
+    .filter((option)=>option.legacySelectable!==false && (!legacyOnly || Boolean(option.legacyLabel)))
+    .map((option)=>option.legacyLabel || option.label);
+}
+
+// Existing labels stay byte-for-byte stable, while the selectable library can
+// add new provisional construction options without editing this engine again.
+// Contrast plackets remain withheld because they require a verified accent cloth.
 export const DESIGNER_STYLE_CHOICES: Record<keyof DesignerStyle, string[]> = {
-  collar: names(collars.filter((row) => row.Collar_Type !== "Wing Collar"), "Collar_Type"),
+  collar: optionLabels("shirt.collar"),
   collarFinish: ["Self-fabric", "White contrast collar", "White contrast collar + cuffs"],
-  cuff: names(cuffs, "Cuff_Type"),
-  placket: shirtOptions("Placket").filter((option) => option !== "Contrast Placket"),
-  shirtFit: shirtOptions("Fit"),
+  cuff: optionLabels("shirt.cuff"),
+  placket: optionLabels("shirt.placket").filter((option) => option !== "Contrast Placket"),
+  shirtFit: optionLabels("shirt.fit"),
   shirtWear: ["Untucked", "Tucked"],
-  trouser: names(trousers.filter((row) => !["Chino", "Cotton Drill Trouser"].includes(String(row.Trouser_Type))), "Trouser_Type"),
-  rise: pantOptions("Rise"),
-  waistband: pantOptions("Waistband"),
-  break: pantOptions("Break"),
-  button: names(buttons, "Button_Material"),
+  trouser: optionLabels("pant.type",true),
+  rise: optionLabels("pant.rise"),
+  waistband: optionLabels("pant.waistband"),
+  break: optionLabels("pant.break"),
+  button: optionLabels("shirt.button",true),
 };
 
 export function designerStyleForOccasion(occasion: OccasionTier): DesignerStyle {
@@ -191,6 +197,11 @@ function resolveStyle(occasion: OccasionTier, overrides?: DesignerStyleOverrides
 
 function score(rows: NamedScore[], key: string, value: string): number | null {
   return rows.find((row) => row[key] === value)?.Formality_Score ?? null;
+}
+
+function optionFormality(group:Parameters<typeof optionsFor>[0],label:string) {
+  const option=optionsFor(group).find((item)=>(item.legacyLabel||item.label)===label);
+  return option?.formality ?? null;
 }
 
 function average(values: Array<number | null>): number | null {
@@ -390,11 +401,12 @@ export function evaluateDesignerCombo(shirt: DesignerFabric, pant: DesignerFabri
   }
   const style = resolveStyle(occasion, overrides);
   const shirtStructure = average([
-    score(collars, "Collar_Type", style.collar), score(cuffs, "Cuff_Type", style.cuff),
-    score(details.filter((row) => row.Element_Group === "Placket"), "Type", style.placket),
-    score(details.filter((row) => row.Element_Group === "Fit"), "Type", style.shirtFit),
+    score(collars, "Collar_Type", style.collar) ?? optionFormality("shirt.collar",style.collar),
+    score(cuffs, "Cuff_Type", style.cuff) ?? optionFormality("shirt.cuff",style.cuff),
+    score(details.filter((row) => row.Element_Group === "Placket"), "Type", style.placket) ?? optionFormality("shirt.placket",style.placket),
+    score(details.filter((row) => row.Element_Group === "Fit"), "Type", style.shirtFit) ?? optionFormality("shirt.fit",style.shirtFit),
   ]);
-  const pantStructure = score(trousers, "Trouser_Type", style.trouser);
+  const pantStructure = score(trousers, "Trouser_Type", style.trouser) ?? optionFormality("pant.type",style.trouser);
   const shirtPatternScore = score(patterns, "Pattern_Type", shirt.patternType);
   const pantPatternScore = score(patterns, "Pattern_Type", pant.patternType);
   const shirtColorScore = shirt.formalityScore;
