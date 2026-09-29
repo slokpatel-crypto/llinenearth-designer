@@ -13,7 +13,7 @@ function decodePart(value: string) {
 }
 
 export function verifyOperatorPassword(password: string) {
-  const stored = process.env.LLINEN_OPERATOR_PASSWORD_HASH;
+  const stored = process.env.LINEN_OPERATOR_PASSWORD_HASH;
   if (!stored || !password) return false;
   const [prefix, saltPart, hashPart, extra] = stored.split("$");
   if (prefix !== PREFIX || !saltPart || !hashPart || extra) return false;
