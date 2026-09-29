@@ -119,6 +119,7 @@ export function DesignerModule() {
   const [creativeAutoRetryCount,setCreativeAutoRetryCount]=useState(0);
   const [creativeAutoRenderNonce,setCreativeAutoRenderNonce]=useState(0);
   const [creativeVisualReview,setCreativeVisualReview]=useState<CreativeVisualCheck|null>(null);
+  const [creativeRenderRepair,setCreativeRenderRepair]=useState("");
   const [creativeGenerating,setCreativeGenerating]=useState(false);
   const [shirtFilter,setShirtFilter]=useState<ShirtFabricFilter>("All");
   const [pantFilter,setPantFilter]=useState<PantFabricFilter>("All");
@@ -341,6 +342,7 @@ export function DesignerModule() {
     setCreativeDirections([]);
     setActiveCreative(null);
     setCreativeVisualReview(null);
+    setCreativeRenderRepair("");
     setCreativeAutoNote("");
   },[draftReady,shirtId,pantId,occasion,climate,intention]);
 
@@ -489,6 +491,10 @@ export function DesignerModule() {
         setCreativeAutoNote(visualCheck
           ? "Visual check found a weak point. V5 revised the idea and is rendering it once more automatically."
           : "V5 revised the concept using your visual feedback.");
+        if(visualCheck) {
+          const repair=[visualCheck.semanticIssue,...visualCheck.notes].filter(Boolean).filter((value,index,all)=>all.indexOf(value)===index).slice(0,2).join(" ");
+          setCreativeRenderRepair(repair.slice(0,420));
+        }
         useCreativeDirection(redesign,visualCheck?"automatic":"manual");
         if(visualCheck) {
           setCreativeAutoRetryCount((count)=>count+1);
@@ -502,6 +508,7 @@ export function DesignerModule() {
     setCreativeVisualReview(null);
     if(origin==="manual") {
       setCreativeAutoRetryCount(0);
+      setCreativeRenderRepair("");
       setCreativeAutoNote("");
     }
     setStyle({...direction.baseStyle});
@@ -930,7 +937,8 @@ export function DesignerModule() {
         creativeDirection={activeCreative}
         onCreativeFeedback={giveCreativeRenderFeedback}
         autoRenderNonce={creativeAutoRenderNonce}
-        onCreativeRenderStart={()=>{setCreativeAutoRetryCount(0);setCreativeAutoNote("");}}
+        renderRepairInstruction={creativeRenderRepair}
+        onCreativeRenderStart={()=>{setCreativeAutoRetryCount(0);setCreativeRenderRepair("");setCreativeAutoNote("");}}
         onCreativeInspection={(check)=>{
           setCreativeVisualReview(check);
           if(!check.evidenceAvailable || !activeCreative) return;
