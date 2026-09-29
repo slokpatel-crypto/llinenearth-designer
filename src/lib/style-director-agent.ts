@@ -2,6 +2,7 @@ import { FABRIC_STOCK, fabricProfileFromStock, type FabricColorway } from "@/lib
 import { generateDesignerDirections, type DesignCandidate } from "@/lib/designer-engine";
 import { finalizeVersion, initialVersion, type DesignVersion } from "@/lib/refinement-engine";
 import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
+import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerStyle, type OccasionTier,
@@ -97,7 +98,87 @@ function colorScore(fabric: FabricColorway, direction: StyleDirectorAnswers["col
   return /beige|taupe|cream|khakhi|brown|oak|sand|jute|saffron/.test(name) ? 38 : (r > b && g > b ? 10 : 0);
 }
 
-function rankFabric(a: StyleDirectorAnswers, fabric: FabricColorway) {
+function intelligenceTrustWeight(value:DesignerFabricIntelligence|undefined) {
+  if(!value) return 0;
+  if(value.trust==="reviewed") return 1;
+  if(value.trust==="high-confidence") return .72;
+  return .28;
+}
+
+function directorIntelligenceScore(
+  a:StyleDirectorAnswers,
+  fabric:FabricColorway,
+  map?:Record<string,DesignerFabricIntelligence>|null,
+) {
+  const intel=map?.[fabric.id];
+  if(!intel) return 0;
+  const w=intelligenceTrustWeight(intel);
+  const targetFormality:Record<StyleDirectorAnswers["occasion"],number>={
+    Wedding:4.4,
+    Work:4,
+    Date:2.8,
+    Celebration:3.5,
+    Travel:1.8,
+    Everyday:2.3,
+  };
+  const targetStatement:Record<StyleDirectorAnswers["mood"],number>={
+    Quiet:1.5,
+    Sharp:2.8,
+    Relaxed:2.1,
+    Statement:4.4,
+  };
+  let score=0;
+  score+=(1-Math.min(1,Math.abs(intel.formality-targetFormality[a.occasion])/3.5))*14*w;
+  score+=(1-Math.min(1,Math.abs(intel.statementLevel-targetStatement[a.mood])/4))*10*w;
+
+  const use=intel.bestGarments.join(" ").toLowerCase();
+  if(a.garment==="shirt" && /shirt|overshirt/.test(use)) score+=7*w;
+  if(a.garment==="trouser" && /trouser|pant|suit/.test(use)) score+=7*w;
+  if(a.garment==="suit" && /suit|tailor/.test(use)) score+=7*w;
+  if(a.garment==="blazer" && /blazer|jacket|sport coat|suit/.test(use)) score+=7*w;
+
+  const climate=intel.climateVisualFit.join(" ").toLowerCase();
+  if(a.climate==="Hot" && /hot|warm|humid|summer/.test(climate)) score+=5*w;
+  if(a.climate==="Indoor" && /indoor|air|all[- ]?season/.test(climate)) score+=3*w;
+
+  if(a.colorDirection==="Light" && /very-light|light/.test(intel.depth)) score+=5*w;
+  if(a.colorDirection==="Dark" && /deep|very-deep/.test(intel.depth)) score+=5*w;
+  if(a.colorDirection==="Blue" && /blue|navy|teal|cyan/.test(intel.colorFamily.toLowerCase())) score+=6*w;
+  if(a.colorDirection==="Earthy" && /beige|brown|taupe|olive|rust|camel|tan|cream/.test(intel.colorFamily.toLowerCase())) score+=6*w;
+
+  return Math.max(-10,Math.min(32,score));
+}
+
+function directorPairIntelligenceScore(
+  shirtId:string,
+  pantId:string,
+  occasion:OccasionTier,
+  map?:Record<string,DesignerFabricIntelligence>|null,
+) {
+  const shirt=map?.[shirtId];
+  const pant=map?.[pantId];
+  if(!shirt && !pant) return 0;
+  const target:Record<OccasionTier,number>={Casual:1.7,"Smart-Casual":2.7,"Semi-Formal":3.7,Formal:4.6};
+  let score=0;
+  for(const intel of [shirt,pant]) {
+    if(!intel) continue;
+    const w=intelligenceTrustWeight(intel);
+    score+=(1-Math.min(1,Math.abs(intel.formality-target[occasion])/3.5))*8*w;
+  }
+  if(shirt && pant) {
+    const pairWeight=Math.min(intelligenceTrustWeight(shirt),intelligenceTrustWeight(pant));
+    const pantColor=pant.colorFamily.toLowerCase();
+    const shirtColor=shirt.colorFamily.toLowerCase();
+    if(shirt.pairing.goodColorFamilies.some((x)=>pantColor.includes(x.toLowerCase())||x.toLowerCase().includes(pantColor))) score+=5*pairWeight;
+    if(shirt.pairing.avoidColorFamilies.some((x)=>pantColor.includes(x.toLowerCase())||x.toLowerCase().includes(pantColor))) score-=8*pairWeight;
+    if(pant.pairing.goodColorFamilies.some((x)=>shirtColor.includes(x.toLowerCase())||x.toLowerCase().includes(shirtColor))) score+=4*pairWeight;
+    if(pant.pairing.avoidColorFamilies.some((x)=>shirtColor.includes(x.toLowerCase())||x.toLowerCase().includes(shirtColor))) score-=7*pairWeight;
+    if(shirt.statementLevel>=4 && pant.statementLevel>=4) score-=6*pairWeight;
+  }
+  return Math.max(-16,Math.min(18,score));
+}
+
+function rankFabric(a: StyleDirectorAnswers, fabric: FabricColorway, intelligence?:Record<string,DesignerFabricIntelligence>|null) {
   let score = 0;
   if (fabric.suitableFor.includes(a.garment)) score += 100;
   score += colorScore(fabric, a.colorDirection);
@@ -106,12 +187,17 @@ function rankFabric(a: StyleDirectorAnswers, fabric: FabricColorway) {
   if (a.mood === "Statement" && /print|orchid|rose|pink|maroon/i.test(`${fabric.line} ${fabric.colorName}`)) score += 20;
   if (a.mood === "Quiet" && /plain|cream|taupe|grey|gray|beige/i.test(`${fabric.line} ${fabric.colorName}`)) score += 18;
   if (a.time === "Evening" && /dark|charcoal|black|maroon|slate/i.test(fabric.colorName)) score += 16;
+  score += directorIntelligenceScore(a,fabric,intelligence);
   return score;
 }
 
-function chooseFabrics(a: StyleDirectorAnswers, stock: FabricColorway[] = FABRIC_STOCK) {
-  const eligible = stock.filter((f) => f.inStock && f.suitableFor.includes(a.garment));
-  return [...eligible].sort((x,y) => rankFabric(a,y) - rankFabric(a,x)).slice(0,3);
+function chooseFabrics(
+  a:StyleDirectorAnswers,
+  stock:FabricColorway[]=FABRIC_STOCK,
+  intelligence?:Record<string,DesignerFabricIntelligence>|null,
+) {
+  const eligible=stock.filter((f)=>f.inStock&&f.suitableFor.includes(a.garment));
+  return [...eligible].sort((x,y)=>rankFabric(a,y,intelligence)-rankFabric(a,x,intelligence)).slice(0,3);
 }
 
 function realModelOccasion(a: StyleDirectorAnswers): OccasionTier {
@@ -175,6 +261,7 @@ function styleForDirectorCandidate(a: StyleDirectorAnswers, candidate: DesignCan
 function buildRealModelSpec(
   a: StyleDirectorAnswers, fabric: FabricColorway, candidate: DesignCandidate,
   shirts = DESIGNER_SHIRTS, pants = DESIGNER_PANTS,
+  intelligence?:Record<string,DesignerFabricIntelligence>|null,
 ): StyleDirectorRealModelSpec | undefined {
   if (a.garment !== "shirt" && a.garment !== "trouser") return undefined;
   const occasion = realModelOccasion(a);
@@ -191,7 +278,8 @@ function buildRealModelSpec(
     const hardFlags = recommendation.rules.filter((rule) => rule.status === "flag" && rule.severity === "High").length;
     const mediumFlags = recommendation.rules.filter((rule) => rule.status === "flag" && rule.severity === "Medium").length;
     const score = recommendation.designFitScore + recommendation.confidenceScore * .35 - hardFlags * 45 - mediumFlags * 12
-      - (recommendation.status === "needs_review" ? 8 : 0);
+      - (recommendation.status === "needs_review" ? 8 : 0)
+      + directorPairIntelligenceScore(shirt.id,pant.id,occasion,intelligence);
     return { recommendation, score };
   }).sort((x,y) => y.score - x.score || y.recommendation.designFitScore - x.recommendation.designFitScore);
 
@@ -220,12 +308,16 @@ function nameFor(index: number, candidate: DesignCandidate) {
   return `${labels[index] || candidate.tier} · ${candidate.name}`;
 }
 
-export function createStyleDirectorLooks(answers: StyleDirectorAnswers, stock: FabricColorway[] = FABRIC_STOCK): StyleDirectorLook[] {
+export function createStyleDirectorLooks(
+  answers:StyleDirectorAnswers,
+  stock:FabricColorway[]=FABRIC_STOCK,
+  intelligence?:Record<string,DesignerFabricIntelligence>|null,
+):StyleDirectorLook[] {
   const context = contextFromAnswers(answers);
   const calibrated = stock.filter((fabric) => fabric.inStock).map(designerFabricFromStock);
   const calibratedShirts = calibrated.filter((fabric) => fabric.allowedGarments.includes("shirt"));
   const calibratedPants = calibrated.filter((fabric) => fabric.allowedGarments.includes("pant"));
-  return chooseFabrics(answers, stock).map((fabric, index) => {
+  return chooseFabrics(answers,stock,intelligence).map((fabric,index)=>{
     const brief: DesignerBrief = {
       fabric: {
         profile: fabricProfileFromStock(fabric),
@@ -255,7 +347,7 @@ export function createStyleDirectorLooks(answers: StyleDirectorAnswers, stock: F
         candidate.reasons[0] || "The fabric and silhouette support the occasion.",
         candidate.tradeoff,
       ],
-      realModel: buildRealModelSpec(answers, fabric, candidate, calibratedShirts, calibratedPants),
+      realModel: buildRealModelSpec(answers,fabric,candidate,calibratedShirts,calibratedPants,intelligence),
     };
   });
 }
