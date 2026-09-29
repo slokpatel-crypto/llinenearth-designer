@@ -1,4 +1,4 @@
-const COOKIE_NAME = "llinen_operator_session";
+const COOKIE_NAME = "linen_operator_session";
 const SESSION_HOURS = 12;
 
 function base64UrlEncode(bytes: Uint8Array) {
@@ -26,7 +26,7 @@ function decodeJson<T>(value: string): T | null {
 }
 
 async function hmac(value: string) {
-  const secret = process.env.LLINEN_OPERATOR_SESSION_SECRET;
+  const secret = process.env.LINEN_OPERATOR_SESSION_SECRET;
   if (!secret || secret.length < 32) return null;
   const key = await crypto.subtle.importKey(
     "raw",
