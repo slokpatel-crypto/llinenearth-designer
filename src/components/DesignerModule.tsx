@@ -32,7 +32,7 @@ import { buildWhatsAppUrl } from "@/lib/whatsapp";
 const OCCASIONS: OccasionTier[] = ["Casual", "Smart-Casual", "Semi-Formal", "Formal"];
 const CLIMATES: DesignerClimate[] = ["Not specified", "Hot / humid", "Cool", "Air-conditioned"];
 const INTENTIONS: DesignerIntention[] = ["Understated", "Balanced", "Expressive"];
-const SESSION_KEY = "llinen-earth:designer-session:v1";
+const SESSION_KEY = "linen-earth:designer-session:v1";
 const DRAFT_KEY = "linen-earth:real-designer-draft:v2";
 const FACT_INTERVAL_MS = 15_000;
 type ShirtFabricFilter = "All" | "Plain" | "Print" | "Blend" | "Formal";
