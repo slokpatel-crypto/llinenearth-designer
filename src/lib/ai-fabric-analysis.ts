@@ -6,13 +6,10 @@ import {
 } from "@/lib/fabric-analysis";
 
 // ---------------------------------------------------------------------------
-// Real fabric analysis via Claude vision.
+// Legacy private/operator fabric vision helper.
 //
-// This is a drop-in replacement for analyzeFabricDevelopment() in
-// fabric-analysis.ts: same FabricProfile return shape, so nothing downstream
-// (FabricStudio, designer-engine, refinement-engine, visualization-engine)
-// needs to change. The API route decides which one to call based on whether
-// ANTHROPIC_API_KEY is configured and an image was actually sent.
+// It preserves the old FabricProfile shape for internal compatibility.
+// Customer-facing Designer routes do not mount or expose this analysis flow.
 //
 // Cost note: this uses Haiku, not Sonnet/Opus — fabric classification is a
 // cheap, high-volume task and Haiku's vision quality is plenty for "what
