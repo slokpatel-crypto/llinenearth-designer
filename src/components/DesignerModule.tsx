@@ -863,8 +863,8 @@ export function DesignerModule() {
       <div className="newDesignerHeroCopy">
         <span className="newDesignerKicker">LINEN EARTH / THE DESIGN STUDIO</span>
         <h1>Designer<span className="newDesignerHeroDot">.</span></h1>
-        <p className="newDesignerHeroLead">Choose cloth. Create a look. See it instantly.</p>
-        <div className="newDesignerHeroIndex"><span>1 · CLOTH</span><span>2 · DESIGN</span><span>3 · PREVIEW</span></div>
+        <p className="newDesignerHeroLead">Describe the moment. Designer builds the outfit. Refine only what you want.</p>
+        <div className="newDesignerHeroIndex"><span>1 · TELL DESIGNER</span><span>2 · REFINE</span><span>3 · PREVIEW</span></div>
       </div>
       <figure className="newDesignerHeroArt">
         <div className="newDesignerArchiveFrame"><img src="/designer/studio-pleated.webp" alt="Faceless studio mannequin in a shirt and tailored trousers" /></div>
