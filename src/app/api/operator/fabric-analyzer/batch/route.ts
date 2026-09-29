@@ -13,6 +13,8 @@ export const maxDuration=60;
 type BatchItem={
   fabricId?:string;
   imageUrl?:string;
+  macroImageUrl?:string;
+  foldImageUrl?:string;
   sourcePageUrl?:string;
   sourceId?:string;
   declaredMaterial?:string;
@@ -63,6 +65,8 @@ async function runItem(item:BatchItem,index:number) {
     const input:FabricAnalyzerContext={
       fabricId,
       imageUrl,
+      macroImageUrl:clean(item.macroImageUrl,1800) || undefined,
+      foldImageUrl:clean(item.foldImageUrl,1800) || undefined,
       sourcePageUrl:sourcePageUrl || undefined,
       sourceId:clean(item.sourceId,80) || undefined,
       declaredMaterial:clean(item.declaredMaterial,120) || undefined,
