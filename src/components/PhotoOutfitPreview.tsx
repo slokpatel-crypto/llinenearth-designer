@@ -541,6 +541,50 @@ export function composePhotoOutfit(
   }
 }
 
+export function StyleDirectorRealModelPreview({shirt,pant,style}:{
+  shirt:DesignerFabric;
+  pant:DesignerFabric;
+  style:DesignerStyle;
+}) {
+  const canvasRef=useRef<HTMLCanvasElement>(null);
+  const [ready,setReady]=useState(false);
+  const [error,setError]=useState(false);
+  const templateId=photoTemplateForStyle(style);
+  const template=DESIGNER_PHOTO_TEMPLATES[templateId];
+  const tucked=style.shirtWear==="Tucked";
+
+  useEffect(()=>{
+    let cancelled=false;
+    setReady(false);
+    setError(false);
+    Promise.all([
+      loadImage(tucked ? template.src : DESIGNER_PHOTO_TEMPLATES.pleated.src),
+      loadImage(template.src),
+      loadImage(shirt.image),
+      loadImage(pant.image),
+    ]).then(([modelPhoto,trouserPhoto,shirtImage,pantImage])=>{
+      if(cancelled) return;
+      const canvas=canvasRef.current;
+      const context=canvas?.getContext("2d",{alpha:false});
+      if(!canvas || !context) throw new Error("Canvas is unavailable.");
+      composePhotoOutfit(context,modelPhoto,trouserPhoto,shirtImage,pantImage,shirt,pant,style);
+      setReady(true);
+      setError(false);
+    }).catch(()=>{
+      if(cancelled) return;
+      setReady(false);
+      setError(true);
+    });
+    return ()=>{cancelled=true;};
+  },[shirt,pant,template,tucked,style]);
+
+  return <div className="directorExistingModel" data-ready={ready?"true":"false"}>
+    <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-label={`Existing Linen Earth real model wearing ${shirt.name} shirt with ${pant.name} trousers`} />
+    {!ready && !error && <span className="directorExistingModelState">Dressing the existing model…</span>}
+    {error && <span className="directorExistingModelState">Real model preview unavailable.</span>}
+  </div>;
+}
+
 export type CreativeVisualCheck = {
   status:"pass"|"review";
   heroVisibility:number;
