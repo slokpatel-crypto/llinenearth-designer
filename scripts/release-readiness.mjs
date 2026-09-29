@@ -44,6 +44,7 @@ for (const path of [
   "src/lib/designer/search.ts",
   "src/app/api/designer/casebook/route.ts",
   "src/app/api/designer/creative-inspect/route.ts",
+  "src/app/api/designer/creative-generate/route.ts",
   "src/app/api/operator/designer-research/discover/route.ts",
   "src/app/api/operator/designer-research/analyze/route.ts",
   "src/app/api/operator/designer-research/analyze-batch/route.ts",
@@ -136,8 +137,8 @@ requireTokens("src/lib/designer/search.ts", [
 ]);
 requireTokens("src/components/DesignerModule.tsx", [
   "OPTIONAL","Try a different fabric pairing","Show 3 options","Keep shirt","Keep trouser","Change both","Use look","newDesignerOptionalSearch",
-  "03 / CREATE","Create ideas ✦","newDesignerCreativeVisual","Design reasoning","researchFreedom:\"maximum\"","FRONTIER IDEA",
-  "chooseCreativeRedesign","creativeAutoNote","onCreativeInspection"
+  "03 / CREATE","Create ideas ✦","newDesignerCreativeVisual","Design reasoning","FRONTIER IDEA",
+  "/api/designer/creative-generate","requestCreativeDirections(12","creativeAutoNote","onCreativeInspection"
 ]);
 requireTokens("src/lib/designer/creative-engine.ts", [
   "generateCreativeDirections","researchMutationSeeds","hybridResearchSeed","researchFreedom","maximum","researchUtilization","explorationClass",
@@ -146,6 +147,7 @@ requireTokens("src/lib/designer/creative-engine.ts", [
 requireTokens("src/lib/designer/fashion-research-source-pool.ts", [
   "FASHION_RESEARCH_SOURCES","FASHION_RESEARCH_TOPICS","FASHION_RESEARCH_TARGETS","buildFashionResearchTargets"
 ]);
+requireTokens("src/app/api/designer/creative-generate/route.ts", ["generateCreativeDirections","chooseCreativeRedesign","researchFreedom:\"maximum\"","loadDesignerFabricMetadata","__linenCreativeGenerateRate"]);
 requireTokens("src/app/api/designer/creative-render/route.ts", ["renderCreativeFashnFront","CreativeFashnRequest"]);
 requireTokens("src/app/api/designer/creative-inspect/route.ts", ["inspectCreativeFashnOutput","CreativeFashnRequest","maxDuration=30"]);
 requireTokens("src/lib/ai-visualization.ts", ["inspectCreativeRender","heroVisibility","boundaryIntegrity","PROTECTED_RENDER_BOXES","Visual hierarchy contract","semanticCreativeRenderCheck","ai-gateway.vercel.sh/v1/responses","LINEN_VISUAL_CRITIC_MODEL","openai/gpt-5.4","referenceDataUri","fabricContext","heroAccuracy","fabricFidelity","supportCompetition","visualCriticModels","google/gemini-3-flash"]);
