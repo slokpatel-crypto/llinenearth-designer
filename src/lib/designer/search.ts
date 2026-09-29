@@ -501,6 +501,10 @@ function signaturesDiffer(a:RankedCandidate,b:RankedCandidate) {
   return JSON.stringify(a.style)!==JSON.stringify(b.style);
 }
 
+function fabricPairDiffers(a:RankedCandidate,b:RankedCandidate) {
+  return a.shirt.id!==b.shirt.id || a.pant.id!==b.pant.id;
+}
+
 export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearchResult[] {
   const scope=input.scope || "keep_shirt";
   const openShirts=input.preference?.strictOccasionFit ? occasionPreferredShirts(input.shirts,input.occasion) : input.shirts;
@@ -554,7 +558,11 @@ export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearc
   const chosen:RankedCandidate[]=[];
   for(const tier of tiers) {
     const ranked=rankedByTier.get(tier) || [];
-    const candidate=ranked.find((item)=>chosen.every((picked)=>signaturesDiffer(item,picked))) || ranked[0];
+    // Prefer genuinely different fabric pairs across the three directions.
+    // A style-only variation is a fallback, not the default.
+    const candidate=ranked.find((item)=>chosen.every((picked)=>fabricPairDiffers(item,picked)))
+      || ranked.find((item)=>chosen.every((picked)=>signaturesDiffer(item,picked)))
+      || ranked[0];
     if(candidate) chosen.push(candidate);
   }
 
