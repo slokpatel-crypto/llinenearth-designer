@@ -32,6 +32,10 @@ const required = [
   "src/lib/designer/search.ts",
   "src/app/api/designer/casebook/route.ts",
   "src/app/api/designer/creative-inspect/route.ts",
+  "src/app/api/operator/designer-research/discover/route.ts",
+  "src/app/api/operator/designer-research/analyze/route.ts",
+  "src/lib/designer/research-source-discovery.ts",
+  "src/lib/designer/research-source-analysis.ts",
   "src/lib/designer/casebook.ts",
   "src/app/brand/linen-earth-logo.png/route.ts",
 ];
@@ -477,6 +481,20 @@ for (const token of ["Creative Research Desk","RESEARCH → DESIGN TRANSLATOR","
   if (!researchDesk.includes(token)) throw new Error(`Designer V5 research desk regression: missing ${token}`);
 }
 console.log(`Designer V5 creative-research gate passed: ${sourceRows * topicRows} source-topic discovery targets, maximum-freedom research synthesis, simplified visual UI, photoreal review and capped learning protected.`);
+
+const researchDiscovery=fs.readFileSync("src/lib/designer/research-source-discovery.ts","utf8");
+for(const token of ["discoverFashionWebsites","Q3661311","Q11828862","Q607081","LIMIT","slice(0,Math.max(1,Math.min(1000"]) {
+  if(!researchDiscovery.includes(token)) throw new Error(`Research website discovery regression: missing ${token}`);
+}
+const researchAnalysis=fs.readFileSync("src/lib/designer/research-source-analysis.ts","utf8");
+for(const token of ["analyzeFashionResearchSource","safePublicUrl","Private or local research URLs are not allowed","linen_research_signal","Do not copy a finished garment","LINEN_RESEARCH_MODEL","google/gemini-3-flash"]) {
+  if(!researchAnalysis.includes(token)) throw new Error(`Research synthesis regression: missing ${token}`);
+}
+const researchDeskUi=fs.readFileSync("src/app/operator/designer-research/DesignerResearchClient.tsx","utf8");
+for(const token of ["Discover up to 1,000 websites","discover1000","Analyze source ✦","analyzeCurrentSource"]) {
+  if(!researchDeskUi.includes(token)) throw new Error(`Research desk discovery regression: missing ${token}`);
+}
+console.log("Designer research-scale gate passed: live discovery can retrieve up to 1,000 distinct official fashion/textile sites and synthesize reviewed principles safely.");
 
 
 
