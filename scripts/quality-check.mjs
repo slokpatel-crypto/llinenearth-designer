@@ -40,16 +40,28 @@ for (const file of required) {
 }
 
 function sourceFiles(dir) {
+  if(!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir,{withFileTypes:true}).flatMap((entry)=>{
     const full=`${dir}/${entry.name}`;
     if(entry.isDirectory()) return sourceFiles(full);
-    return /\.(?:ts|tsx|js|mjs|css|json|md)$/.test(entry.name) ? [full] : [];
+    return /\.(?:ts|tsx|js|mjs|css|json|md|yml|yaml|toml|sql|example)$/.test(entry.name) ? [full] : [];
   });
 }
 const brandTypo=("l"+"linen").toLowerCase();
-const typoHits=sourceFiles("src").filter((file)=>fs.readFileSync(file,"utf8").toLowerCase().includes(brandTypo));
-if(typoHits.length) throw new Error(`Linen Earth brand spelling regression: double-L typo remains in ${typoHits.join(", ")}`);
-console.log("Linen Earth brand spelling gate passed: no double-L typo remains in src.");
+const repoBrandFiles=[
+  ...sourceFiles("src"),
+  ...sourceFiles("scripts"),
+  ...sourceFiles("desktop"),
+  ...sourceFiles(".github"),
+  ...sourceFiles("supabase"),
+  ".env.example","package.json","package-lock.json",
+].filter((file)=>fs.existsSync(file));
+const typoHits=repoBrandFiles.filter((file)=>fs.readFileSync(file,"utf8").toLowerCase().includes(brandTypo));
+const typoPaths=repoBrandFiles.filter((file)=>file.toLowerCase().includes(brandTypo));
+if(typoHits.length || typoPaths.length) {
+  throw new Error(`Linen Earth brand spelling regression: double-L typo remains in ${[...new Set([...typoHits,...typoPaths])].join(", ")}`);
+}
+console.log("Linen Earth brand spelling gate passed: no double-L typo remains in current repo text or tracked product paths.");
 
 const intelligence = fs.readFileSync("src/lib/fashion-intelligence.ts","utf8");
 const wearIds = [...intelligence.matchAll(/id:\s*"(?:SH|TR|JK|SU|IN)-[^"]+"/g)].length;
