@@ -65,6 +65,7 @@ export type CreativeFashnRequest = {
   creative: Pick<CreativeDirection,"id"|"name"|"thesis"|"treatments"|"pattern"> & {
     renderRisk?: "low"|"moderate"|"high";
     renderCaution?: CreativeFeedbackReason;
+    repairInstruction?: string;
   };
 };
 
@@ -502,6 +503,9 @@ function creativeConceptPrompt(input:CreativeFashnRequest) {
   const renderHierarchy=heroMove
     ? `Visual hierarchy contract: the clear focal move is ${safe(heroMove.label,100)} on the ${safe(heroMove.zone,40)}. Render it unmistakably. Supporting moves must remain visibly subordinate. Preserve quiet fabric around the focal detail so the concept reads in one glance. ${priorRenderCaution} ${learnedRenderEdit}`
     : `Keep one dominant visual idea and preserve quiet surrounding cloth. ${priorRenderCaution} ${learnedRenderEdit}`;
+  const repairInstruction=input.creative.repairInstruction
+    ? `Previous render QA correction: ${safe(input.creative.repairInstruction,420)}. Fix this exact rendering failure while preserving the concept, fabric references, pose and every unrelated successful detail. Do not make the design safer or more conventional to hide the failure.`
+    : "";
   const pattern=input.creative.pattern
     ? `Generated surface concept: ${safe(input.creative.pattern.name,100)}. Family ${safe(input.creative.pattern.family,50)}, ${safe(input.creative.pattern.scale,40)} scale, about ${Math.max(0,Math.min(60,Number(input.creative.pattern.coverage)||0))}% intended coverage. Layout: ${safe(input.creative.pattern.layout,420)} Placement: ${safe(input.creative.pattern.placement,260)}. The image-context is split vertically: LEFT HALF is the exact shirt-fabric reference; RIGHT HALF is the exact trouser-fabric reference. Use the generated motif logic on the shirt only where specified, while preserving the underlying cloth colour and woven character.`
     : "The image-context is split vertically: LEFT HALF is the exact shirt-fabric reference; RIGHT HALF is the exact trouser-fabric reference.";
@@ -513,6 +517,7 @@ Supported base cut: ${safe(input.style.collar)}, ${safe(input.style.cuff)}, ${sa
 
 Creative concept: ${safe(input.creative.name)}. Thesis: ${safe(input.creative.thesis,420)}.
 ${renderHierarchy}
+${repairInstruction}
 Design moves: ${moves}
 ${pattern}
 
