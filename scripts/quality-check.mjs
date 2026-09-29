@@ -413,8 +413,8 @@ const contactDockCss=fs.readFileSync("src/app/contact-dock.css","utf8");
 for(const token of ["@media(max-width:760px)",".floatingInstagram,.floatingContactDock .floatingLocation{display:none}","bottom:78px"]) {
   if(!contactDockCss.includes(token)) throw new Error(`Mobile contact-dock regression: missing ${token}`);
 }
-const measurementPage=fs.readFileSync("src/app/measurements/page.tsx","utf8");
-if(!measurementPage.includes("All measurement entries use <b>inches</b>")) throw new Error("Measurement-unit regression: inches are no longer explicit.");
+const measurementUnitPage=fs.readFileSync("src/app/measurements/page.tsx","utf8");
+if(!measurementUnitPage.includes("All measurement entries use <b>inches</b>")) throw new Error("Measurement-unit regression: inches are no longer explicit.");
 const layoutSource=fs.readFileSync("src/app/layout.tsx","utf8");
 for(const token of ["/brand/linen-earth-logo.png","SITE_URL","alternates: { canonical: SITE_URL }"]) {
   if(!layoutSource.includes(token)) throw new Error(`Metadata/brand asset regression: missing ${token}`);
