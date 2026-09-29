@@ -25,8 +25,7 @@ import { searchDesignerCatalogue, type DesignerSearchResult, type DesignerSearch
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import type { DesignerCasebook } from "@/lib/designer/casebook";
 import type { FitOutcomeBook } from "@/lib/designer/fit-outcomes";
-import { creativeFamilyFromConceptId, type CreativeLearningBook, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
-import type { CreativeResearchLibrary } from "@/lib/designer/creative-research";
+import { creativeFamilyFromConceptId, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 
 const OCCASIONS: OccasionTier[] = ["Casual", "Smart-Casual", "Semi-Formal", "Formal"];
@@ -112,8 +111,6 @@ export function DesignerModule() {
   const [activeCreative, setActiveCreative] = useState<CreativeDirection | null>(null);
   const [casebook, setCasebook] = useState<DesignerCasebook | null>(null);
   const [fitOutcomes, setFitOutcomes] = useState<FitOutcomeBook | null>(null);
-  const [creativeLearning, setCreativeLearning] = useState<CreativeLearningBook | null>(null);
-  const [creativeResearch, setCreativeResearch] = useState<CreativeResearchLibrary | null>(null);
   const [researchPool, setResearchPool] = useState<{websites:number;topics:number;targets:number;highAuthorityWebsites:number}|null>(null);
   const [creativeAutoNote,setCreativeAutoNote]=useState("");
   const [creativeAutoRetryCount,setCreativeAutoRetryCount]=useState(0);
@@ -179,12 +176,10 @@ export function DesignerModule() {
       try {
         const response=await fetch("/api/designer/casebook",{cache:"no-store"});
         if(!response.ok) return;
-        const data=await response.json() as {casebook?:DesignerCasebook;fitOutcomes?:FitOutcomeBook;creativeLearning?:CreativeLearningBook;creativeResearch?:CreativeResearchLibrary;researchPool?:{websites:number;topics:number;targets:number;highAuthorityWebsites:number}};
+        const data=await response.json() as {casebook?:DesignerCasebook;fitOutcomes?:FitOutcomeBook;researchPool?:{websites:number;topics:number;targets:number;highAuthorityWebsites:number}};
         if(cancelled) return;
         if(data.casebook?.version==="designer-casebook-v1") setCasebook(data.casebook);
         if(data.fitOutcomes?.version==="designer-fit-outcomes-v1") setFitOutcomes(data.fitOutcomes);
-        if(data.creativeLearning?.version==="designer-creative-learning-v1") setCreativeLearning(data.creativeLearning);
-        if(data.creativeResearch?.version==="designer-creative-research-v1") setCreativeResearch(data.creativeResearch);
         if(data.researchPool?.targets) setResearchPool(data.researchPool);
       } catch { /* Casebook is optional; hard Designer rules continue without it. */ }
     }
@@ -401,14 +396,6 @@ export function DesignerModule() {
 
   async function requestCreativeDirections(limit:number,current?:CreativeDirection,reason?:CreativeFeedbackReason) {
     if(!shirt || !pant) return {concepts:[] as CreativeDirection[],redesign:null as CreativeDirection|null};
-    const researchPayload=creativeResearch ? {
-      ...creativeResearch,
-      signals:creativeResearch.signals.filter((signal)=>signal.active).slice(0,200),
-    } : null;
-    const learningPayload=creativeLearning ? {
-      ...creativeLearning,
-      buckets:creativeLearning.buckets.slice(0,200),
-    } : null;
     const response=await fetch("/api/designer/creative-generate",{
       method:"POST",
       headers:{"content-type":"application/json"},
@@ -420,8 +407,6 @@ export function DesignerModule() {
         style,
         context:{climate,intention},
         limit,
-        creativeLearning:learningPayload,
-        creativeResearch:researchPayload,
         ...(current?{current}:{}),
         ...(reason?{reason}:{}),
       }),
