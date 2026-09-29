@@ -412,8 +412,8 @@ export function DesignerModule() {
       const redesign=chooseCreativeRedesign(candidates,activeCreative,creativeReason);
       if(redesign) {
         setCreativeDirections([redesign,...candidates.filter((item)=>item.id!==redesign.id)].slice(0,5));
-        setCreativeAutoNote(creativeReason==="render_mismatch"
-          ? "Render check found a mismatch. V5 moved to a revised direction automatically."
+        setCreativeAutoNote(visualCheck
+          ? "Visual check found a weak point. V5 moved to a revised direction automatically."
           : "V5 revised the concept using your visual feedback.");
         useCreativeDirection(redesign);
       }
