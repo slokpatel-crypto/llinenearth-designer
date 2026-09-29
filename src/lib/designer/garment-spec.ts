@@ -7,6 +7,18 @@ import type { CreativeDirection } from "@/lib/designer/creative-engine";
 
 export type CanonicalGarmentSpecStatus = "draft" | "review_required" | "ready_for_tailor_review";
 
+export type CanonicalCreativeVisualReview = {
+  status:"pass"|"review";
+  heroVisibility:number;
+  boundaryIntegrity:number;
+  protectedChange:number;
+  evidenceAvailable:boolean;
+  semanticAvailable:boolean;
+  semanticStatus?:"pass"|"review";
+  semanticIssue?:string;
+  redesignReason?:string;
+};
+
 export type CanonicalGarmentMeasurement = {
   label: string;
   bodyCm: number;
@@ -96,6 +108,7 @@ export type CanonicalGarmentSpec = {
       extractedPrinciple:string;
       transformedInto:string;
     }>;
+    visualReview:CanonicalCreativeVisualReview | null;
   } | null;
   decision: {
     designFitScore: number;
@@ -146,6 +159,7 @@ export function buildCanonicalGarmentSpec(
   brand?: BrandLanguageEvaluation | null,
   block?: DesignerBlockStrategy | null,
   creative?: CreativeDirection | null,
+  creativeVisualReview?: CanonicalCreativeVisualReview | null,
 ): CanonicalGarmentSpec {
   const materialMissing = recommendation.materialEvidence.missing;
   const fitChecks = fit?.checks ?? [];
@@ -239,6 +253,17 @@ export function buildCanonicalGarmentSpec(
         note:creative.pattern.note,
       } : null,
       research:creative.research.map((item)=>({...item})),
+      visualReview:creativeVisualReview ? {
+        status:creativeVisualReview.status,
+        heroVisibility:creativeVisualReview.heroVisibility,
+        boundaryIntegrity:creativeVisualReview.boundaryIntegrity,
+        protectedChange:creativeVisualReview.protectedChange,
+        evidenceAvailable:creativeVisualReview.evidenceAvailable,
+        semanticAvailable:creativeVisualReview.semanticAvailable,
+        semanticStatus:creativeVisualReview.semanticStatus,
+        semanticIssue:creativeVisualReview.semanticIssue,
+        redesignReason:creativeVisualReview.redesignReason,
+      } : null,
     } : null,
     decision: {
       designFitScore: recommendation.designFitScore,
