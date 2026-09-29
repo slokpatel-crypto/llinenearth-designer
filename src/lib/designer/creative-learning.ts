@@ -22,6 +22,7 @@ export type CreativeLearningBucket = {
   renderQualityTotal:number;
   renderQualitySamples:number;
   reasons:Record<CreativeFeedbackReason,number>;
+  renderReasons:Record<CreativeFeedbackReason,number>;
 };
 
 export type CreativeLearningBook = {
@@ -38,6 +39,7 @@ export type CreativeLearningSignal = {
   summary:string;
   renderRisk:"low"|"moderate"|"high";
   renderEvidence:number;
+  renderCaution?:CreativeFeedbackReason;
 };
 
 type EventLike={type:string;source?:string;payload?:Record<string,unknown>};
@@ -54,7 +56,7 @@ export function creativeFamilyFromConceptId(conceptId:string) {
 export function aggregateCreativeLearning(events:EventLike[]):CreativeLearningBook {
   // One latest response per recommendation + concept avoids repeated tapping
   // becoming stronger evidence than an independent review.
-  const latest=new Map<string,{familyId:string;rating:"up"|"down"|"saved";reason?:CreativeFeedbackReason;renderQuality?:number}>();
+  const latest=new Map<string,{familyId:string;rating:"up"|"down"|"saved";reason?:CreativeFeedbackReason;renderQuality?:number;automaticVisual:boolean}>();
   for(const event of events) {
     if(event.type!=="designer_feedback") continue;
     const p=event.payload || {};
@@ -77,6 +79,7 @@ export function aggregateCreativeLearning(events:EventLike[]):CreativeLearningBo
       rating:rating as "up"|"down"|"saved",
       ...(REASONS.has(reason)?{reason}:previous?.reason?{reason:previous.reason}:{}),
       ...(renderQuality!==undefined?{renderQuality}:previous?.renderQuality!==undefined?{renderQuality:previous.renderQuality}:{}),
+      automaticVisual:Boolean(check?.evidenceAvailable) || previous?.automaticVisual || false,
     });
   }
 
@@ -86,6 +89,7 @@ export function aggregateCreativeLearning(events:EventLike[]):CreativeLearningBo
     const current=buckets.get(review.familyId) || {
       familyId:review.familyId,positive:0,negative:0,total:0,renderMismatch:0,renderQualityTotal:0,renderQualitySamples:0,
       reasons:Object.fromEntries(CREATIVE_FEEDBACK_REASONS.map(([id])=>[id,0])) as Record<CreativeFeedbackReason,number>,
+      renderReasons:Object.fromEntries(CREATIVE_FEEDBACK_REASONS.map(([id])=>[id,0])) as Record<CreativeFeedbackReason,number>,
     };
 
     // A renderer failing to express the specification is not evidence that
@@ -96,14 +100,20 @@ export function aggregateCreativeLearning(events:EventLike[]):CreativeLearningBo
       current.renderQualityTotal+=review.renderQuality;
       current.renderQualitySamples+=1;
     }
-    if(review.rating==="saved") {
+    if(review.automaticVisual) {
+      if(review.rating==="down" && review.reason) {
+        current.renderReasons[review.reason]+=1;
+        if(review.reason==="render_mismatch") {
+          current.renderMismatch+=1;
+          renderMismatchReviews+=1;
+        }
+      }
+      // Automatic image inspection trains renderer reliability only. It does
+      // not become evidence that the underlying fashion idea is good or bad.
       buckets.set(review.familyId,current);
       continue;
     }
-    if(review.rating==="down" && review.reason==="render_mismatch") {
-      current.reasons.render_mismatch+=1;
-      current.renderMismatch+=1;
-      renderMismatchReviews+=1;
+    if(review.rating==="saved") {
       buckets.set(review.familyId,current);
       continue;
     }
@@ -133,9 +143,12 @@ export function creativeLearningSignalFor(familyId:string,book?:CreativeLearning
   const renderEvidence=bucket?.renderQualitySamples || 0;
   const avgRenderQuality=renderEvidence ? (bucket!.renderQualityTotal/renderEvidence) : 100;
   const renderRisk:CreativeLearningSignal["renderRisk"]=renderEvidence>=2 && avgRenderQuality<52 ? "high" : renderEvidence>=2 && avgRenderQuality<70 ? "moderate" : "low";
+  const renderCaution=bucket
+    ? (Object.entries(bucket.renderReasons) as Array<[CreativeFeedbackReason,number]>).sort((a,b)=>b[1]-a[1]).find((entry)=>entry[1]>0)?.[0]
+    : undefined;
   if(!bucket || bucket.total<3) {
     const renderNote=bucket?.reasons.render_mismatch ? ` ${bucket.reasons.render_mismatch} render mismatch review(s) are tracked separately from creative taste.` : "";
-    return {score:0,evidence:bucket?.total || 0,summary:`Creative review evidence is still sparse for this idea family.${renderNote}`,renderRisk,renderEvidence};
+    return {score:0,evidence:bucket?.total || 0,summary:`Creative review evidence is still sparse for this idea family.${renderNote}`,renderRisk,renderEvidence,...(renderCaution?{renderCaution}:{})};
   }
   // Human visual review is useful, but capped at +/-5 so it cannot erase
   // research, aesthetics, originality or hard construction checks.
@@ -148,5 +161,6 @@ export function creativeLearningSignalFor(familyId:string,book?:CreativeLearning
     summary:`${bucket.total} reviewed visual concepts in this family: ${bucket.positive} strong, ${bucket.negative} needs redesign.${reasonText}`,
     renderRisk,
     renderEvidence,
+    ...(renderCaution?{renderCaution}:{}),
   };
 }
