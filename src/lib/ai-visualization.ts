@@ -335,6 +335,25 @@ function gatewayOutputText(payload:unknown) {
   return "";
 }
 
+function semanticCheckNeedsReview(check:SemanticCreativeCheck) {
+  return check.status==="review" ||
+    check.hierarchy==="weak" ||
+    check.proportion==="weak" ||
+    check.fidelity==="weak" ||
+    check.heroAccuracy==="weak" ||
+    check.fabricFidelity==="weak" ||
+    check.boundary==="weak" ||
+    check.supportCompetition==="major" ||
+    check.artifact==="major";
+}
+
+function semanticCheckSevere(check:SemanticCreativeCheck) {
+  return check.heroAccuracy==="weak" ||
+    check.fabricFidelity==="weak" ||
+    check.boundary==="weak" ||
+    check.artifact==="major";
+}
+
 async function semanticCreativeRenderCheck(
   outputUrl:string,
   referenceDataUri:string,
@@ -379,7 +398,7 @@ async function semanticCreativeRenderCheck(
     additionalProperties:false,
   };
 
-  for(const model of visualCriticModels()) {
+  const runModel=async(model:string):Promise<SemanticCreativeCheck|null>=>{
     try {
       const response=await fetch("https://ai-gateway.vercel.sh/v1/responses",{
         method:"POST",
@@ -410,21 +429,50 @@ async function semanticCreativeRenderCheck(
         cache:"no-store",
         signal:AbortSignal.timeout(12_000),
       });
-      if(!response.ok) continue;
+      if(!response.ok) return null;
       const raw=await response.json() as unknown;
       const text=gatewayOutputText(raw);
-      if(!text) continue;
+      if(!text) return null;
       const parsed=JSON.parse(text) as SemanticCreativeCheck;
-      if(!["pass","review"].includes(parsed.status)) continue;
+      if(!["pass","review"].includes(parsed.status)) return null;
       return {
         ...parsed,
         issue:String(parsed.issue||"").replace(/\s+/g," ").trim().slice(0,140),
       };
     } catch {
-      // Try one alternate multimodal Gateway model before falling back to heuristic QA.
+      return null;
     }
+  };
+
+  const models=visualCriticModels();
+  const primary=await runModel(models[0]);
+  if(!primary && models[1]) return runModel(models[1]);
+  if(!primary) return null;
+  if(!semanticCheckNeedsReview(primary) || !models[1]) return primary;
+
+  // A second independent visual critic is only spent on a disputed/failed render.
+  // Two critics must agree on ordinary visual problems before we spend another FASHN render.
+  const secondary=await runModel(models[1]);
+  if(!secondary) return primary;
+  const primaryReview=semanticCheckNeedsReview(primary);
+  const secondaryReview=semanticCheckNeedsReview(secondary);
+  if(primaryReview && secondaryReview) {
+    const preferred=semanticCheckSevere(primary) && !semanticCheckSevere(secondary) ? primary
+      : semanticCheckSevere(secondary) && !semanticCheckSevere(primary) ? secondary
+        : primary;
+    return {
+      ...preferred,
+      status:"review",
+      issue:[primary.issue,secondary.issue].filter(Boolean).filter((value,index,all)=>all.indexOf(value)===index).join(" / ").slice(0,140),
+    };
   }
-  return null;
+  if(semanticCheckSevere(primary) && !secondaryReview) return primary;
+
+  return {
+    ...secondary,
+    status:"pass",
+    issue:"Visual critics disagreed; no automatic rerender without stronger evidence.",
+  };
 }
 
 function creativeConceptPrompt(input:CreativeFashnRequest) {
@@ -499,16 +547,7 @@ export async function inspectCreativeFashnOutput(
   const semantic=await semanticCreativeRenderCheck(outputUrl,source,fabricContext,input);
   if(!semantic) return heuristic;
 
-  const semanticNeedsReview=
-    semantic.status==="review" ||
-    semantic.hierarchy==="weak" ||
-    semantic.proportion==="weak" ||
-    semantic.fidelity==="weak" ||
-    semantic.heroAccuracy==="weak" ||
-    semantic.fabricFidelity==="weak" ||
-    semantic.boundary==="weak" ||
-    semantic.supportCompetition==="major" ||
-    semantic.artifact==="major";
+  const semanticNeedsReview=semanticCheckNeedsReview(semantic);
 
   const notes=[
     ...heuristic.notes,
