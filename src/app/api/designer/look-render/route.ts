@@ -10,6 +10,7 @@ import {
   type SelectedLookFashnRequest,
   type SelectedLookView,
 } from "@/lib/ai-visualization";
+import { loadDesignerFabricIntelligence } from "@/lib/fabric-intelligence-server";
 
 export const runtime="nodejs";
 export const maxDuration=60;
@@ -37,6 +38,27 @@ export async function POST(request:Request) {
     };
     const view:SelectedLookView=["front","three-quarter","side","back"].includes(String(input.view)) ? input.view as SelectedLookView : "front";
     if(input.locked!==true) return NextResponse.json({error:"Lock the final design before using the photoreal renderer."},{status:409});
+
+    // Never trust physical facts posted by the browser. Enrich the render only
+    // from the private Analyzer store, where mm/GSM/drape/fibre values exist
+    // only when supplied as verified owner/supplier evidence.
+    const intelligence=await loadDesignerFabricIntelligence([input.shirt.id,input.pant.id]);
+    const renderFacts=(fabricId:string)=>{
+      const value=intelligence[fabricId];
+      if(!value) return undefined;
+      return {
+        gsm:value.verifiedPhysical.gsm,
+        drape:value.verifiedPhysical.drape,
+        fiberContent:value.verifiedPhysical.fiberContent,
+        repeatMm:value.measuredEvidence.patternPhysicalScale==="unknown" ? null : value.measuredEvidence.repeatMm,
+        stripeWidthMm:value.measuredEvidence.patternPhysicalScale==="unknown" ? null : value.measuredEvidence.stripeWidthMm,
+        physicalScaleStatus:value.measuredEvidence.patternPhysicalScale,
+      };
+    };
+    input.renderEvidence={
+      shirt:renderFacts(input.shirt.id),
+      pant:renderFacts(input.pant.id),
+    };
     const repairInstruction=String(input.repairInstruction||"").replace(/\s+/g," ").trim().slice(0,240);
     if(view==="front" && repairInstruction) {
       assertFashnRepairRateLimit(request);
