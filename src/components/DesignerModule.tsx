@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import {
   DESIGNER_PANTS, DESIGNER_REVIEWED_PAIRING, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES,
@@ -11,10 +10,6 @@ import {
 import { DESIGNER_FASHION_FACTS, DESIGNER_RESEARCH } from "@/lib/designer/research";
 import { createStyleSessionId, readLocalDesignerTasteProfile, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
 import { PhotoOutfitPreview, StyleDirectorRealModelPreview, type CreativeVisualCheck } from "@/components/PhotoOutfitPreview";
-const LiveConstructionPreview=dynamic(()=>import("@/components/LiveConstructionPreview").then((module)=>module.LiveConstructionPreview),{
-  ssr:false,
-  loading:()=> <p className="liveConstructionLoading">Preparing the construction study…</p>,
-});
 import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, type MeasurementProfile } from "@/lib/measurements";
 import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
@@ -102,7 +97,6 @@ function designerSession() {
 }
 
 export function DesignerModule() {
-  const [previewMode,setPreviewMode]=useState<"photograph"|"construction">("photograph");
   const [shirtId, setShirtId] = useState(DESIGNER_SHIRTS.find((item) => item.id === DESIGNER_REVIEWED_PAIRING.shirtId)?.id ?? DESIGNER_SHIRTS[0]?.id ?? "");
   const [pantId, setPantId] = useState(DESIGNER_PANTS.find((item) => item.id === DESIGNER_REVIEWED_PAIRING.pantId)?.id ?? DESIGNER_PANTS[0]?.id ?? "");
   const [shirtOptions, setShirtOptions] = useState<DesignerFabric[]>(DESIGNER_SHIRTS);
@@ -1109,18 +1103,13 @@ export function DesignerModule() {
       </section>
 
       <div className="newDesignerRight">
-      {shirt && pant && <div className="liveConstructionMode" role="group" aria-label="Preview mode">
-        <button type="button" aria-pressed={previewMode==="photograph"} onClick={()=>setPreviewMode("photograph")}>Photographic model</button>
-        <button type="button" aria-pressed={previewMode==="construction"} onClick={()=>setPreviewMode("construction")}>Live cut study</button>
-      </div>}
       {directorHandoff && <div className="newDesignerModelHandoff newDesignerModelHandoffCompact"><span>STYLE DIRECTOR</span><strong>{directorHandoffTitle || "Selected direction"}</strong></div>}
       {activeCreative && <div className="newDesignerCreativeHandoff newDesignerCreativeHandoffCompact">
         <span>SELECTED IDEA</span>
         <strong>{activeCreative.name}</strong>
         <div>{creativeQuickTags(activeCreative).map((tag)=><b key={tag}>{tag}</b>)}</div>
       </div>}
-      {shirt && pant && previewMode==="construction" && <LiveConstructionPreview shirt={shirt} pant={pant} style={style} occasion={occasion} climate={climate}/>}
-      {shirt && pant && previewMode==="photograph" && <PhotoOutfitPreview
+      {shirt && pant && <PhotoOutfitPreview
         shirt={shirt}
         pant={pant}
         style={style}
