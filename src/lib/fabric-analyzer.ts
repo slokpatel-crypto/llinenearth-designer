@@ -7,6 +7,14 @@ import {
   MENSWEAR_OCCASION_TAXONOMY,
   MENSWEAR_PATTERN_TAXONOMY,
 } from "@/lib/fabric-analyzer-taxonomy";
+import {
+  FABRIC_REFERENCE_COUNTS,
+  FABRIC_REFERENCE_INDEX_VERSION,
+  FABRIC_REFERENCE_SOURCES,
+  REAL_MENSWEAR_MATERIAL_TERMS,
+  REAL_MENSWEAR_PATTERN_TERMS,
+  STANDARD_COLOR_REFERENCE_TERMS,
+} from "@/lib/fabric-analyzer-reference-index";
 
 export type FabricAnalyzerContext = {
   imageUrl:string;
@@ -18,7 +26,7 @@ export type FabricAnalyzerContext = {
 };
 
 export type FabricAnalyzerProfile = {
-  version:"fabric-analyzer-v1";
+  version:"fabric-analyzer-v2";
   observed:{
     dominantColor:string;
     colorFamily:string;
@@ -66,6 +74,12 @@ export type FabricAnalyzerProfile = {
     visualObservations:string[];
     uncertainClaims:string[];
   };
+  references:{
+    materialTerms:string[];
+    patternTerms:string[];
+    colorTerms:string[];
+    sourceIds:string[];
+  };
   summary:string;
 };
 
@@ -107,7 +121,7 @@ function outputText(payload:unknown) {
 const schema={
   type:"object",
   properties:{
-    version:{type:"string",enum:["fabric-analyzer-v1"]},
+    version:{type:"string",enum:["fabric-analyzer-v2"]},
     observed:{
       type:"object",
       properties:{
@@ -185,14 +199,47 @@ const schema={
       required:["verifiedFacts","visualObservations","uncertainClaims"],
       additionalProperties:false,
     },
+    references:{
+      type:"object",
+      properties:{
+        materialTerms:{type:"array",items:{type:"string",maxLength:100},maxItems:8},
+        patternTerms:{type:"array",items:{type:"string",maxLength:100},maxItems:8},
+        colorTerms:{type:"array",items:{type:"string",maxLength:100},maxItems:8},
+        sourceIds:{type:"array",items:{type:"string",maxLength:80},maxItems:10},
+      },
+      required:["materialTerms","patternTerms","colorTerms","sourceIds"],
+      additionalProperties:false,
+    },
     summary:{type:"string",maxLength:700},
   },
-  required:["version","observed","inferredStyle","confidence","evidence","summary"],
+  required:["version","observed","inferredStyle","confidence","evidence","references","summary"],
   additionalProperties:false,
 };
 
 function safeText(value:unknown,limit:number) {
   return String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
+}
+
+
+const materialReferenceSet=new Set<string>(REAL_MENSWEAR_MATERIAL_TERMS.map((value)=>value.toLowerCase()));
+const patternReferenceSet=new Set<string>(REAL_MENSWEAR_PATTERN_TERMS.map((value)=>value.toLowerCase()));
+const colorReferenceSet=new Set<string>(STANDARD_COLOR_REFERENCE_TERMS.map((value)=>value.toLowerCase()));
+const sourceReferenceSet=new Set<string>(FABRIC_REFERENCE_SOURCES.map((value)=>value.id));
+
+function retainKnown(values:string[],known:Set<string>) {
+  return [...new Set(values.filter((value)=>known.has(value.toLowerCase())))].slice(0,8);
+}
+
+function validatedProfile(profile:FabricAnalyzerProfile):FabricAnalyzerProfile {
+  return {
+    ...profile,
+    references:{
+      materialTerms:retainKnown(profile.references.materialTerms,materialReferenceSet),
+      patternTerms:retainKnown(profile.references.patternTerms,patternReferenceSet),
+      colorTerms:retainKnown(profile.references.colorTerms,colorReferenceSet),
+      sourceIds:[...new Set(profile.references.sourceIds.filter((id)=>sourceReferenceSet.has(id)))].slice(0,10),
+    },
+  };
 }
 
 export async function analyzeMenswearFabric(input:FabricAnalyzerContext):Promise<FabricAnalyzerProfile> {
@@ -232,6 +279,18 @@ Garment uses: ${MENSWEAR_GARMENT_USES.join(", ")}.
 Occasions: ${MENSWEAR_OCCASION_TAXONOMY.join(", ")}.
 Evidence discipline: ${FABRIC_ANALYZER_EVIDENCE_RULES.join(" ")}
 
+Real-reference corpus ${FABRIC_REFERENCE_INDEX_VERSION}:
+- ${FABRIC_REFERENCE_COUNTS.materials} material/construction terms from real mills and textile authorities: ${REAL_MENSWEAR_MATERIAL_TERMS.join(", ")}.
+- ${FABRIC_REFERENCE_COUNTS.patterns} source-backed pattern/construction terms: ${REAL_MENSWEAR_PATTERN_TERMS.join(", ")}.
+- ${FABRIC_REFERENCE_COUNTS.colors} standardized/reference color terms: ${STANDARD_COLOR_REFERENCE_TERMS.join(", ")}.
+- Source IDs available for provenance: ${FABRIC_REFERENCE_SOURCES.map((source)=>`${source.id}=${source.publisher}`).join("; ")}.
+
+Reference rules:
+- Use references only when there is a defensible visual or declared-context match.
+- Do not claim that a fabric is a specific branded mill product unless that exact product is supplied as verified context.
+- references.materialTerms/patternTerms/colorTerms/sourceIds must contain only exact terms/IDs from the corpus above.
+- A source-backed vocabulary match supports terminology, not unverified composition or provenance of the uploaded fabric.
+
 Known context, if any: ${declared || "No verified context supplied; rely only on visible evidence."}`;
 
   const response=await fetch("https://ai-gateway.vercel.sh/v1/responses",{
@@ -256,5 +315,5 @@ Known context, if any: ${declared || "No verified context supplied; rely only on
   const raw=await response.json() as unknown;
   const text=outputText(raw);
   if(!text) throw new Error("Fabric Analyzer returned no structured output.");
-  return JSON.parse(text) as FabricAnalyzerProfile;
+  return validatedProfile(JSON.parse(text) as FabricAnalyzerProfile);
 }
