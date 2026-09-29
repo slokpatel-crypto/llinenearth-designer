@@ -19,8 +19,10 @@ export type StyleDirectorAnswers = {
 export type StyleDirectorRealModelSpec = {
   shirtId: string;
   shirtName: string;
+  shirtFabric: ReturnType<typeof designerFabricFromStock>;
   pantId: string;
   pantName: string;
+  pantFabric: ReturnType<typeof designerFabricFromStock>;
   occasion: OccasionTier;
   climate: DesignerClimate;
   intention: DesignerIntention;
@@ -198,8 +200,10 @@ function buildRealModelSpec(
   return {
     shirtId: best.shirt.id,
     shirtName: best.shirt.name,
+    shirtFabric: best.shirt,
     pantId: best.pant.id,
     pantName: best.pant.name,
+    pantFabric: best.pant,
     occasion,
     climate: context.climate,
     intention: context.intention,
