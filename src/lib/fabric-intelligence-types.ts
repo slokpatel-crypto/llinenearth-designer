@@ -1,9 +1,21 @@
+import type {
+  ColorFamilyId,
+  GarmentUseId,
+  OccasionId,
+  ClimateTagId,
+  CollarOptionId,
+  CuffOptionId,
+  ShirtFitOptionId,
+  TrouserDirectionId,
+  PatternStrategyId,
+} from "@/lib/vocab";
+
 export type DesignerFabricIntelligence = {
   profileId:string;
   analyzerVersion:string;
   reviewStatus:"unreviewed"|"approved"|"corrected"|"rejected";
   trust:"reviewed"|"high-confidence"|"provisional";
-  colorFamily:string;
+  colorFamily:ColorFamilyId|null;
   undertone:"warm"|"cool"|"neutral"|"uncertain";
   depth:"very-light"|"light"|"mid"|"deep"|"very-deep";
   saturation:"muted"|"soft"|"medium"|"rich"|"vivid";
@@ -18,20 +30,21 @@ export type DesignerFabricIntelligence = {
   personality:string[];
   formality:1|2|3|4|5;
   statementLevel:1|2|3|4|5;
-  bestGarments:string[];
-  bestOccasions:string[];
-  climateVisualFit:string[];
+  bestGarments:GarmentUseId[];
+  bestOccasions:OccasionId[];
+  climateVisualFit:ClimateTagId[];
   recommendedConstruction:{
-    collars:string[];
-    cuffs:string[];
-    shirtFits:string[];
-    trouserDirections:string[];
+    collars:CollarOptionId[];
+    cuffs:CuffOptionId[];
+    shirtFits:ShirtFitOptionId[];
+    trouserDirections:TrouserDirectionId[];
   };
   pairing:{
-    goodColorFamilies:string[];
-    avoidColorFamilies:string[];
-    goodPatternStrategy:string[];
+    goodColorFamilies:ColorFamilyId[];
+    avoidColorFamilies:ColorFamilyId[];
+    goodPatternStrategy:PatternStrategyId[];
   };
+  reviewNeeded:string[];
   confidence:{
     color:number;
     pattern:number;
