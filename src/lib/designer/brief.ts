@@ -133,6 +133,7 @@ export function parseDesignerBrief(raw:string):ParsedDesignerBrief {
     avoidTokens:colors.avoid,
     preferredPattern:pattern,
     preferredTier:preferredTier(intention),
+    strictOccasionFit:true,
   };
 
   const interpretation=[
