@@ -71,6 +71,7 @@ export type CreativeRenderVisualCheck = {
   boundaryIntegrity:number;
   protectedChange:number;
   notes:string[];
+  evidenceAvailable:boolean;
   semanticAvailable:boolean;
   semanticStatus?:"pass"|"review";
   semanticIssue?:string;
@@ -270,6 +271,7 @@ async function inspectCreativeRender(
       boundaryIntegrity,
       protectedChange,
       notes:notes.length?notes:["The intended focal zone is visible and protected regions remain comparatively stable."],
+      evidenceAvailable:true,
       semanticAvailable:false,
     };
   } catch {
@@ -279,6 +281,7 @@ async function inspectCreativeRender(
       boundaryIntegrity:0,
       protectedChange:100,
       notes:["Automatic render inspection was unavailable; require manual visual review before approval."],
+      evidenceAvailable:false,
       semanticAvailable:false,
     };
   }
@@ -466,8 +469,9 @@ export async function inspectCreativeFashnOutput(
 
   return {
     ...heuristic,
-    status:heuristic.status==="review" || semanticNeedsReview ? "review" : "pass",
+    status:(heuristic.evidenceAvailable && heuristic.status==="review") || semanticNeedsReview ? "review" : "pass",
     notes,
+    evidenceAvailable:true,
     semanticAvailable:true,
     semanticStatus:semanticNeedsReview?"review":"pass",
     semanticIssue:semantic.issue,
