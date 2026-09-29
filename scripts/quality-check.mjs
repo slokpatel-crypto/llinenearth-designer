@@ -507,7 +507,7 @@ for(const token of ["discoverFashionWebsites","Q3661311","Q11828862","Q607081","
   if(!researchDiscovery.includes(token)) throw new Error(`Research website discovery regression: missing ${token}`);
 }
 const researchAnalysis=fs.readFileSync("src/lib/designer/research-source-analysis.ts","utf8");
-for(const token of ["analyzeFashionResearchSource","analyzeFashionResearchBatch","safePublicUrl","assertPublicResolution","node:dns/promises","Research source resolves to a private or local network address","Private or local research URLs are not allowed","linen_research_signal","Do not copy a finished garment","LINEN_RESEARCH_MODEL","google/gemini-3-flash"]) {
+for(const token of ["analyzeFashionResearchSource","analyzeFashionResearchBatch","safePublicUrl","resolvePublicAddress","pinnedPageRequest","node:https","node:dns/promises","Research source resolves to a private or local network address","Private or local research URLs are not allowed","linen_research_signal","Do not copy a finished garment","LINEN_RESEARCH_MODEL","google/gemini-3-flash"]) {
   if(!researchAnalysis.includes(token)) throw new Error(`Research synthesis regression: missing ${token}`);
 }
 const researchDeskUi=fs.readFileSync("src/app/operator/designer-research/DesignerResearchClient.tsx","utf8");
