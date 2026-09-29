@@ -15,7 +15,26 @@ import {
 const WIDTH = 1024;
 const HEIGHT = 1536;
 type PhotorealView = "front"|"three-quarter"|"side"|"back";
-type PhotorealResult = {image:string;jobId:string;creditsUsed:number;conceptId:string;generatedAt:string;visualCheck?:CreativeVisualCheck};
+type SelectedLookVisualCheck = {
+  available:boolean;
+  status:"pass"|"review";
+  fabricFidelity:"strong"|"review"|"weak";
+  boundary:"strong"|"review"|"weak";
+  construction:"strong"|"review"|"weak";
+  mannequinConsistency:"strong"|"review"|"weak";
+  artifact:"none"|"minor"|"major";
+  issue:string;
+  repairInstruction:string;
+};
+type PhotorealResult = {
+  image:string;
+  jobId:string;
+  creditsUsed:number;
+  conceptId:string;
+  generatedAt:string;
+  visualCheck?:CreativeVisualCheck;
+  selectedCheck?:SelectedLookVisualCheck;
+};
 const images = new Map<string, Promise<HTMLImageElement>>();
 const fabricTiles = new Map<string, HTMLCanvasElement>();
 const featheredMasks = new WeakMap<HTMLCanvasElement, HTMLCanvasElement>();
@@ -555,13 +574,14 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
   const [inspectFit, setInspectFit] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
   const [showBoundaries, setShowBoundaries] = useState(false);
-  const [creativeAi, setCreativeAi] = useState<{image:string;jobId:string;creditsUsed:number;conceptId:string;generatedAt:string;visualCheck?:CreativeVisualCheck}|null>(null);
+  const [creativeAi, setCreativeAi] = useState<PhotorealResult|null>(null);
   const [creativeAiLoading, setCreativeAiLoading] = useState(false);
   const [creativeAiError, setCreativeAiError] = useState("");
   const [showCreativeAi, setShowCreativeAi] = useState(false);
   const [photorealView,setPhotorealView]=useState<PhotorealView>("front");
   const [photorealViews,setPhotorealViews]=useState<Partial<Record<Exclude<PhotorealView,"front">,PhotorealResult>>>({});
   const [photorealViewLoading,setPhotorealViewLoading]=useState<Exclude<PhotorealView,"front">|null>(null);
+  const [selectedRepairCount,setSelectedRepairCount]=useState(0);
   const [creativeReview, setCreativeReview] = useState<"up"|"down"|null>(null);
   const [creativeReviewReason, setCreativeReviewReason] = useState<CreativeFeedbackReason|null>(null);
   const templateId = photoTemplateForStyle(style);
@@ -583,6 +603,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
     setPhotorealView("front");
     setPhotorealViews({});
     setPhotorealViewLoading(null);
+    setSelectedRepairCount(0);
     setCreativeReview(null);
     setCreativeReviewReason(null);
   },[renderSignature]);
@@ -610,6 +631,28 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
       .catch(() => { if (!cancelled) { setReady(false); setError(true); } });
     return () => { cancelled = true; };
   }, [shirt, pant, template, tucked, style.collarFinish, creativeDirection]);
+
+  async function inspectSelectedLook(result:PhotorealResult) {
+    try {
+      const response=await fetch("/api/designer/look-inspect",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({
+          image:result.image,
+          look:{
+            shirt:{id:shirt.id,name:shirt.name,line:shirt.line,image:shirt.image,hex:shirt.hex,patternType:shirt.patternType},
+            pant:{id:pant.id,name:pant.name,line:pant.line,image:pant.image,hex:pant.hex,patternType:pant.patternType},
+            style,
+          },
+        }),
+      });
+      const data=await response.json() as {check?:SelectedLookVisualCheck};
+      if(!response.ok || !data.check) return;
+      setCreativeAi((current)=>current?.image===result.image ? {...current,selectedCheck:data.check} : current);
+    } catch {
+      // A render remains usable when optional visual QA is unavailable.
+    }
+  }
 
   async function renderPhotoreal(origin:"manual"|"automatic"="manual") {
     if(creativeAiLoading) return;
@@ -647,6 +690,8 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
       setPhotorealViews({});
       setShowCreativeAi(true);
 
+      if(!creativeDirection) await inspectSelectedLook(data.result);
+
       if(creativeDirection) try {
         const inspectResponse=await fetch("/api/designer/creative-inspect",{
           method:"POST",
@@ -678,6 +723,39 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
       }
     } catch(error) {
       setCreativeAiError(error instanceof Error ? error.message : "Photoreal render failed.");
+    } finally {
+      setCreativeAiLoading(false);
+    }
+  }
+
+  async function repairSelectedLook() {
+    const check=creativeAi?.selectedCheck;
+    if(!creativeAi || creativeDirection || selectedRepairCount>=1 || !check?.available || check.status!=="review" || !check.repairInstruction || creativeAiLoading) return;
+    setCreativeAiLoading(true);
+    setCreativeAiError("");
+    try {
+      const response=await fetch("/api/designer/look-render",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({
+          view:"front",
+          previousImage:creativeAi.image,
+          repairInstruction:check.repairInstruction,
+          shirt:{id:shirt.id,name:shirt.name,line:shirt.line,image:shirt.image,hex:shirt.hex,patternType:shirt.patternType},
+          pant:{id:pant.id,name:pant.name,line:pant.line,image:pant.image,hex:pant.hex,patternType:pant.patternType},
+          style,
+        }),
+      });
+      const data=await response.json() as {result?:PhotorealResult;error?:string};
+      if(!response.ok || !data.result) throw new Error(data.error || "Photoreal repair failed.");
+      setCreativeAi(data.result);
+      setPhotorealView("front");
+      setPhotorealViews({});
+      setSelectedRepairCount(1);
+      setShowCreativeAi(true);
+      await inspectSelectedLook(data.result);
+    } catch(error) {
+      setCreativeAiError(error instanceof Error ? error.message : "Photoreal repair failed.");
     } finally {
       setCreativeAiLoading(false);
     }
@@ -782,6 +860,14 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
       {(["front","three-quarter","side","back"] as PhotorealView[]).map((view)=><button key={view} type="button" aria-pressed={photorealView===view} disabled={Boolean(photorealViewLoading)} onClick={()=>void choosePhotorealView(view)}>
         {photorealViewLoading===view ? "Rendering…" : view==="three-quarter" ? (photorealViews[view]?"3/4":"Generate 3/4") : view==="front" ? "Front" : photorealViews[view] ? view[0].toUpperCase()+view.slice(1) : "Generate "+view}
       </button>)}
+    </div>}
+    {creativeAi && !creativeDirection && creativeAi.selectedCheck && <div className="newDesignerSelectedQa" data-status={creativeAi.selectedCheck.available ? creativeAi.selectedCheck.status : "unavailable"}>
+      <div>
+        <span>{!creativeAi.selectedCheck.available ? "FRONT QA · MANUAL REVIEW" : creativeAi.selectedCheck.status==="pass" ? "FRONT QA · PASSED" : "FRONT QA · REPAIR SUGGESTED"}</span>
+        <strong>{creativeAi.selectedCheck.issue}</strong>
+      </div>
+      {creativeAi.selectedCheck.available && creativeAi.selectedCheck.status==="review" && selectedRepairCount<1 && creativeAi.selectedCheck.repairInstruction && <button type="button" onClick={()=>void repairSelectedLook()} disabled={creativeAiLoading}>{creativeAiLoading?"Repairing…":"Repair once ✦"}</button>}
+      {selectedRepairCount>=1 && <small>One targeted repair used. Review the result before generating again.</small>}
     </div>}
     <details className="newDesignerTechnicalDrawer newDesignerPreviewTools">
       <summary>Preview tools</summary>
