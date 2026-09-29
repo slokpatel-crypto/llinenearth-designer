@@ -8,7 +8,7 @@ import {
   type DesignerClimate, type DesignerContext, type DesignerFabric, type DesignerIntention, type DesignerRecommendation, type DesignerStyle, type OccasionTier,
 } from "@/lib/designer/engine";
 import { DESIGNER_FASHION_FACTS, DESIGNER_RESEARCH } from "@/lib/designer/research";
-import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
+import { createStyleSessionId, readLocalDesignerTasteProfile, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
 import { PhotoOutfitPreview, StyleDirectorRealModelPreview, type CreativeVisualCheck } from "@/components/PhotoOutfitPreview";
 import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, type MeasurementProfile } from "@/lib/measurements";
 import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
@@ -436,6 +436,7 @@ export function DesignerModule() {
           currentPantId:pant?.id,
           measurements:measurementProfile,
           observations:tailorObservations,
+          tasteProfile:readLocalDesignerTasteProfile(),
         }),
       });
       const data=await response.json() as {interpretation?:DesignerBriefInterpretation;results?:DesignerBriefOption[];error?:string};
