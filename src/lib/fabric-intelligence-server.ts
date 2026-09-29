@@ -1,5 +1,4 @@
 import "server-only";
-import type { DesignerFabric } from "@/lib/designer/engine";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import { loadFabricAnalysesForFabricIds, type BoundFabricAnalysis } from "@/lib/fabric-analyzer-store";
 
@@ -68,17 +67,15 @@ function toIntelligence(row:BoundFabricAnalysis):DesignerFabricIntelligence|null
   };
 }
 
-export async function attachFabricIntelligence<T extends DesignerFabric>(fabrics:T[]):Promise<T[]> {
-  if(!fabrics.length) return fabrics;
-  const rows=await loadFabricAnalysesForFabricIds(fabrics.map((fabric)=>fabric.id),{includeUnreviewed:true});
-  if(!rows.length) return fabrics;
-  const byId=new Map<string,DesignerFabricIntelligence>();
+export async function loadDesignerFabricIntelligence(
+  fabricIds:string[],
+):Promise<Record<string,DesignerFabricIntelligence>> {
+  if(!fabricIds.length) return {};
+  const rows=await loadFabricAnalysesForFabricIds(fabricIds,{includeUnreviewed:true});
+  const out:Record<string,DesignerFabricIntelligence>={};
   for(const row of rows) {
     const intelligence=toIntelligence(row);
-    if(intelligence) byId.set(row.fabric_id,intelligence);
+    if(intelligence) out[row.fabric_id]=intelligence;
   }
-  return fabrics.map((fabric)=>{
-    const intelligence=byId.get(fabric.id);
-    return intelligence ? {...fabric,intelligence} : fabric;
-  }) as T[];
+  return out;
 }
