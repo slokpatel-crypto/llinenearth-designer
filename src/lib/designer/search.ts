@@ -19,6 +19,13 @@ import { fitOutcomeProportionFromMeasurements, fitOutcomeSignalFor, type FitOutc
 export type DesignerSearchScope = "keep_shirt" | "keep_trouser" | "open";
 export type DesignerSearchTier = "Safe" | "Elevated" | "Statement";
 
+export type DesignerSearchPreference = {
+  wantedTokens:string[];
+  avoidTokens:string[];
+  preferredPattern?:"plain"|"stripe"|"check"|"print";
+  preferredTier?:DesignerSearchTier;
+};
+
 export type DesignerDecisionDimension = {
   id: "compatibility" | "fit" | "block" | "brand" | "material" | "novelty" | "learning";
   label: string;
@@ -71,6 +78,7 @@ export type DesignerSearchInput = {
   scope?: DesignerSearchScope;
   casebook?: DesignerCasebook | null;
   fitOutcomes?: FitOutcomeBook | null;
+  preference?: DesignerSearchPreference | null;
 };
 
 type RankedCandidate = Omit<DesignerSearchResult,"comparison">;
@@ -177,6 +185,50 @@ function noveltyScore(shirt:DesignerFabric,pant:DesignerFabric,style:DesignerSty
   if(/cutaway/i.test(style.collar)) score+=6;
   if(style.collarFinish!=="Self-fabric") score+=8;
   return Math.max(0,Math.min(100,score));
+}
+
+function searchableFabric(fabric:DesignerFabric) {
+  return [
+    fabric.name,fabric.line,fabric.colorFamily,fabric.tone,fabric.patternType,
+    fabric.weave,fabric.texture,fabric.fiberContent,...(fabric.bestSeason || []),
+  ].filter(Boolean).join(" ").toLowerCase();
+}
+
+function preferenceAlignment(
+  tier:DesignerSearchTier,
+  shirt:DesignerFabric,
+  pant:DesignerFabric,
+  preference?:DesignerSearchPreference|null,
+) {
+  if(!preference) return 0;
+  const hay=`${searchableFabric(shirt)} ${searchableFabric(pant)}`;
+  let score=0;
+  for(const token of preference.wantedTokens.slice(0,5)) if(hay.includes(token.toLowerCase())) score+=4;
+  for(const token of preference.avoidTokens.slice(0,5)) if(hay.includes(token.toLowerCase())) score-=9;
+
+  const patterns=`${shirt.patternType} ${pant.patternType}`.toLowerCase();
+  if(preference.preferredPattern==="plain" && /solid|plain/.test(patterns)) score+=7;
+  if(preference.preferredPattern==="stripe" && /stripe/.test(patterns)) score+=7;
+  if(preference.preferredPattern==="check" && /check|windowpane|gingham/.test(patterns)) score+=7;
+  if(preference.preferredPattern==="print" && /print|floral|geometric/.test(patterns)) score+=7;
+  if(preference.preferredTier===tier) score+=8;
+  return Math.max(-24,Math.min(20,score));
+}
+
+function preferenceReason(
+  tier:DesignerSearchTier,
+  shirt:DesignerFabric,
+  pant:DesignerFabric,
+  preference?:DesignerSearchPreference|null,
+) {
+  if(!preference) return "";
+  const hay=`${searchableFabric(shirt)} ${searchableFabric(pant)}`;
+  const matched=preference.wantedTokens.filter((token)=>hay.includes(token.toLowerCase())).slice(0,3);
+  const parts:string[]=[];
+  if(matched.length) parts.push(`matches your ${matched.join(", ")} colour direction`);
+  if(preference.preferredPattern) parts.push(`leans toward ${preference.preferredPattern} cloth`);
+  if(preference.preferredTier===tier) parts.push(`matches the requested ${tier.toLowerCase()} energy`);
+  return parts.length ? `Brief match: ${parts.join("; ")}.` : "";
 }
 
 function evidenceScore(recommendation:DesignerRecommendation) {
@@ -407,12 +459,14 @@ export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearc
           proportion:fitOutcomeProportionFromMeasurements(input.measurements),
         },input.fitOutcomes);
         const decision=buildDecisionRead(tier,recommendation,fit,brand,block,novelty,casebookSignal,fitOutcomeSignal);
+        const briefScore=preferenceAlignment(tier,shirt,pant,input.preference);
+        const briefReason=preferenceReason(tier,shirt,pant,input.preference);
         ranked.push({
           id:`${tier.toLowerCase()}:${shirt.id}:${pant.id}`,
           tier,shirt,pant,style,recommendation,fitConstruction:fit,brandLanguage:brand,blockStrategy:block,casebookSignal,fitOutcomeSignal,decision,
-          searchScore:decision.overall,
+          searchScore:clampScore(decision.overall+briefScore),
           noveltyScore:novelty,
-          reasons:reasonsFor(tier,scope,recommendation,fit,brand,block,novelty,casebookSignal,fitOutcomeSignal),
+          reasons:[...reasonsFor(tier,scope,recommendation,fit,brand,block,novelty,casebookSignal,fitOutcomeSignal),...(briefReason?[briefReason]:[])].slice(0,4),
           tradeoffs:[
             ...tradeoffsFor(recommendation,fit,brand,block),
             ...(casebookSignal.evidence>=3 && casebookSignal.score<=-2 ? [`Operator-reviewed casebook caution: ${casebookSignal.summary}`] : []),
