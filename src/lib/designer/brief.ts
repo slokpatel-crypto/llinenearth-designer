@@ -58,9 +58,9 @@ function colorPreferences(text:string) {
   const avoid:string[]=[];
   const lower=text.toLowerCase();
   for(const color of COLOR_TERMS) {
-    const avoidPattern=new RegExp("(?:no|avoid|without|not)\\\\s+(?:too\\\\s+)?"+color,"i");
+    const avoidPattern=new RegExp("(?:no|avoid|without|not)\\s+(?:too\\s+)?"+color,"i");
     if(avoidPattern.test(lower)) avoid.push(color);
-    else if(new RegExp("\\\\b"+color+"\\\\b","i").test(lower)) wanted.push(color);
+    else if(new RegExp("\\b"+color+"\\b","i").test(lower)) wanted.push(color);
   }
   return {wanted:[...new Set(wanted)],avoid:[...new Set(avoid)]};
 }
