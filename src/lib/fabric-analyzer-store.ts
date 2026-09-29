@@ -116,3 +116,33 @@ export async function recordFabricAnalyzerCorrection(input:{
   });
   return typeof result==="string" ? result : null;
 }
+
+
+export type FabricAnalyzerLearningHint = {
+  field_path:string;
+  corrected_value:unknown;
+  samples:number;
+};
+
+let learningCache:{at:number;hints:FabricAnalyzerLearningHint[]}|null=null;
+
+export async function loadFabricAnalyzerLearningHints():Promise<FabricAnalyzerLearningHint[]> {
+  if(!config()) return [];
+  const now=Date.now();
+  if(learningCache && now-learningCache.at<5*60_000) return learningCache.hints;
+  try {
+    const rows=await rpc<Array<{field_path:string;corrected_value:unknown;samples:number|string}>>(
+      "fabric_analyzer_learning_summary",
+      {p_min_samples:3},
+    );
+    const hints=rows.slice(0,80).map((row)=>({
+      field_path:clean(row.field_path,180),
+      corrected_value:row.corrected_value,
+      samples:Math.max(0,Math.min(10000,Number(row.samples)||0)),
+    })).filter((row)=>row.field_path && row.samples>=3);
+    learningCache={at:now,hints};
+    return hints;
+  } catch {
+    return [];
+  }
+}
