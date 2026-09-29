@@ -384,6 +384,13 @@ for(const token of ["activeCreative","buildCanonicalGarmentSpec(recommendation, 
   if(!realDesignerModule.includes(token)) throw new Error(`Creative garment export regression: missing ${token}`);
 }
 console.log("Creative garment spec gate passed: selected V5 treatments and pattern instructions survive export and event memory.");
+for(const token of ["CanonicalCreativeVisualReview","visualReview:CanonicalCreativeVisualReview","creativeVisualReview"]) {
+  if(!creativeGarmentSpec.includes(token)) throw new Error(`Creative visual-review export regression: missing ${token}`);
+}
+for(const token of ["creativeVisualReview","setCreativeVisualReview(check)","creativeVisualReview?: CreativeVisualCheck","creativeVisualReview }","activeCreative, creativeVisualReview"]) {
+  if(!realDesignerModule.includes(token)) throw new Error(`Creative render-QA persistence regression: missing ${token}`);
+}
+console.log("Creative render-QA export gate passed: visual inspection stays attached to the selected creative spec across refresh and export.");
 
 
 const advancedSearch = fs.readFileSync("src/lib/designer/search.ts","utf8");
