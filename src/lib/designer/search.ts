@@ -215,6 +215,54 @@ function preferenceAlignment(
   return Math.max(-24,Math.min(20,score));
 }
 
+function occasionFabricAlignment(
+  occasion:OccasionTier,
+  shirt:DesignerFabric,
+  pant:DesignerFabric,
+) {
+  const shirtText=searchableFabric(shirt);
+  const pantText=searchableFabric(pant);
+  const combined=`${shirtText} ${pantText}`;
+  let score=0;
+
+  if(occasion==="Formal") {
+    if(/formal shirting/.test(shirtText)) score+=24;
+    if(/pin stripe|fine stripe|solid|plain/.test(shirtText)) score+=10;
+    if(/botanical|floral|leaf|abstract|chevron|mosaic|printed linen blend|linen print/.test(shirtText)) score-=34;
+    if(shirt.tone==="Dark" || shirt.tone==="Medium") score+=4;
+    if(pant.tone==="Dark" || /charcoal|dark grey|slate|platinum/.test(pantText)) score+=7;
+  } else if(occasion==="Semi-Formal") {
+    if(/formal shirting/.test(shirtText)) score+=13;
+    if(/solid|plain|pin stripe|fine stripe|windowpane|micro check/.test(shirtText)) score+=7;
+    if(/botanical|floral|abstract|chevron|mosaic/.test(shirtText)) score-=16;
+    if(/charcoal|grey|gray|navy|blue|taupe|beige|platinum/.test(pantText)) score+=4;
+  } else if(occasion==="Smart-Casual") {
+    if(/linen plain|linen print|printed linen blend/.test(shirtText)) score+=10;
+    if(/formal shirting/.test(shirtText)) score-=5;
+    if(/stripe|check|print|solid|plain/.test(shirtText)) score+=4;
+    if(/cream|beige|taupe|blue|rose|orchid/.test(pantText)) score+=3;
+  } else {
+    if(/linen plain|linen print|printed linen blend/.test(shirtText)) score+=18;
+    if(/formal shirting/.test(shirtText)) score-=18;
+    if(/botanical|floral|leaf|abstract|chevron|mosaic|print/.test(shirtText)) score+=8;
+    if(/light|cream|beige|taupe|blue|rose|orchid/.test(combined)) score+=4;
+  }
+  return Math.max(-36,Math.min(36,score));
+}
+
+function occasionFabricReason(
+  occasion:OccasionTier,
+  shirt:DesignerFabric,
+) {
+  const text=searchableFabric(shirt);
+  if(occasion==="Formal" && /formal shirting/.test(text)) return "Occasion match: formal shirting is prioritized for a cleaner formal read.";
+  if(occasion==="Formal" && /solid|plain|pin stripe|fine stripe/.test(text)) return "Occasion match: restrained shirt pattern supports the formal brief.";
+  if(occasion==="Casual" && /linen plain|linen print|printed linen blend/.test(text)) return "Occasion match: relaxed Linen Earth shirting is prioritized for the casual brief.";
+  if(occasion==="Smart-Casual" && /linen plain|linen print|printed linen blend/.test(text)) return "Occasion match: the cloth keeps the look relaxed while still considered.";
+  if(occasion==="Semi-Formal" && /formal shirting/.test(text)) return "Occasion match: the shirt sits comfortably in a semi-formal direction.";
+  return "";
+}
+
 function preferenceReason(
   tier:DesignerSearchTier,
   shirt:DesignerFabric,
@@ -460,13 +508,15 @@ export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearc
         },input.fitOutcomes);
         const decision=buildDecisionRead(tier,recommendation,fit,brand,block,novelty,casebookSignal,fitOutcomeSignal);
         const briefScore=preferenceAlignment(tier,shirt,pant,input.preference);
+        const occasionScore=occasionFabricAlignment(input.occasion,shirt,pant);
         const briefReason=preferenceReason(tier,shirt,pant,input.preference);
+        const occasionReason=occasionFabricReason(input.occasion,shirt);
         ranked.push({
           id:`${tier.toLowerCase()}:${shirt.id}:${pant.id}`,
           tier,shirt,pant,style,recommendation,fitConstruction:fit,brandLanguage:brand,blockStrategy:block,casebookSignal,fitOutcomeSignal,decision,
-          searchScore:clampScore(decision.overall+briefScore),
+          searchScore:clampScore(decision.overall+briefScore+occasionScore),
           noveltyScore:novelty,
-          reasons:[...reasonsFor(tier,scope,recommendation,fit,brand,block,novelty,casebookSignal,fitOutcomeSignal),...(briefReason?[briefReason]:[])].slice(0,4),
+          reasons:[...reasonsFor(tier,scope,recommendation,fit,brand,block,novelty,casebookSignal,fitOutcomeSignal),...(occasionReason?[occasionReason]:[]),...(briefReason?[briefReason]:[])].slice(0,4),
           tradeoffs:[
             ...tradeoffsFor(recommendation,fit,brand,block),
             ...(casebookSignal.evidence>=3 && casebookSignal.score<=-2 ? [`Operator-reviewed casebook caution: ${casebookSignal.summary}`] : []),
