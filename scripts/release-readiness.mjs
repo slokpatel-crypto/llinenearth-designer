@@ -153,7 +153,7 @@ requireTokens("src/lib/designer/engine.ts", ["catalogueStyleFormality","formal s
 requireTokens("src/lib/fabric-analyzer.ts", ['import "server-only"',"analyzeMenswearFabric","verifiedFacts","visualObservations","uncertainClaims"]);
 requireTokens("src/lib/fabric-analyzer-taxonomy.ts", ["MENSWEAR_MATERIAL_TAXONOMY","MENSWEAR_PATTERN_TAXONOMY","MENSWEAR_COLOR_TAXONOMY","FABRIC_ANALYZER_EVIDENCE_RULES"]);
 requireTokens("src/lib/fabric-analyzer-reference-index.ts", ["REAL_MENSWEAR_MATERIAL_TERMS","REAL_MENSWEAR_PATTERN_TERMS","STANDARD_COLOR_REFERENCE_TERMS","FABRIC_REFERENCE_SOURCES","real-reference-v3"]);
-requireTokens("src/lib/fabric-analyzer.ts", ["fabric-analyzer-v3","FABRIC_REFERENCE_COUNTS","retainKnown","references:{","Real-reference corpus","REAL_MENSWEAR_FABRIC_EXAMPLES","REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT","Never copy composition"]);
+requireTokens("src/lib/fabric-analyzer.ts", ["fabric-analyzer-v4","FABRIC_REFERENCE_COUNTS","retainKnown","references:{","Real-reference corpus","REAL_MENSWEAR_FABRIC_EXAMPLES","REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT","Never copy composition","Closed output vocabulary"]);
 requireTokens("src/lib/fabric-analyzer-real-examples.ts", ["REAL_MENSWEAR_FABRIC_EXAMPLES","REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT","AUTO-GENERATED","source_id","composition","pattern_name"]);
 requireTokens("src/lib/fabric-analyzer-provenance-map.ts", ["FABRIC_REFERENCE_PROVENANCE","AUTO-GENERATED provenance map","source_id","materials","patterns","colors"]);
 requireTokens("src/lib/fabric-analyzer.ts", ["FABRIC_REFERENCE_PROVENANCE","sourceIdsForReferences","backend derives sourceIds"]);
@@ -191,11 +191,25 @@ requireTokens("src/app/api/fabric/analyze/route.ts", ["verifyOperatorSession","O
 requireTokens("src/lib/fabric-analyzer-calibration.ts", ["runFabricAnalyzerCalibration","loadFabricAnalyzerCalibrationCases","recordFabricAnalyzerCalibration","formality range"]);
 requireTokens("src/lib/fabric-analyzer.ts", ["reviewPriority","reviewReasons","reviewPriorityFor"]);
 requireTokens("scripts/sync-fabric-reference-index.mjs", ["fabric_analyzer_reference_snapshot","fabric-analyzer-reference-index.ts","fabric-analyzer-provenance-map.ts","fabric-analyzer-real-examples.ts"]);
-requireTokens("src/lib/designer/search.ts", ["occasionIntelligenceTokens","intelOccasionMatch","patternSupportScore","bothHighContrast","bothBold"]);
+requireTokens("src/lib/designer/search.ts", ["OCCASION_INTELLIGENCE_IDS","intelOccasionMatch","patternSupportScore","colorFamilyPairSignal","optionIdForLabel","bothHighContrast","bothBold"]);
 requireFile("supabase/migrations/20260929_fabric_analyzer_private_backend.sql");
 requireTokens("supabase/migrations/20260929_fabric_analyzer_private_backend.sql", ["private.fabric_analysis_profiles","private.fabric_analysis_bindings","fabric_analyzer_feedback_apply","fabric_analyzer_profiles_for_fabrics","fabric_analyzer_calibration_cases_get","service_role"]);
 
 requireTokens("src/lib/designer/search.ts", ["occasionFabricAlignment","formal shirting","printed linen blend","occasionScore","occasionPreferredShirts","strictOccasionFit","openShirts"]);
+requireFile("src/lib/vocab/types.ts");
+requireFile("src/lib/vocab/normalization.ts");
+requireFile("src/lib/vocab/color-distance.ts");
+requireFile("src/lib/vocab/colors.ts");
+requireFile("src/lib/vocab/patterns.ts");
+requireFile("src/lib/vocab/styling.ts");
+requireFile("src/lib/vocab/designer-options.ts");
+requireFile("src/lib/vocab/intelligence.ts");
+requireFile("src/lib/fabric-intelligence-adapter.ts");
+requireFile("tests/phase10-vocab.test.ts");
+requireTokens("src/lib/vocab/normalization.ts", ["normalizeToken","normalizeArray","reviewNeeded"]);
+requireTokens("src/lib/fabric-intelligence-adapter.ts", ["fabric-analyzer-v3","fabric-analyzer-v4","adaptFabricProfileToV4","reviewNeeded"]);
+requireTokens("src/lib/fabric-intelligence-server.ts", ["adaptFabricProfileToV4","reviewNeeded"]);
+requireTokens("src/lib/vocab/intelligence.ts", ["colorFamilyPairSignal"]);
 requireTokens("src/app/api/designer/brief/route.ts", ["parseDesignerBrief","searchDesignerCatalogue",'scope:"open"',"tierOrder","safeMeasurements","safeObservations"]);
 requireTokens("src/components/DesignerModule.tsx", ["/api/designer/brief","Create 3 directions","one_line_designer_brief","newDesignerBrief","StyleDirectorRealModelPreview","newDesignerBriefModel","SAME LINEN EARTH MODEL","newDesignerBriefCut","Occasion match:"]);
 requireTokens("src/lib/browser-style-memory.ts", ["readLocalDesignerTasteProfile","evidence<4","preferredTier","preferredShirtWear","preferredTrouser"]);
