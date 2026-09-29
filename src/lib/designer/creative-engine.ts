@@ -1319,6 +1319,49 @@ function pairwiseTournament(items:CreativeDirection[],freedom:CreativeFreedom) {
     .map((read)=>read.item);
 }
 
+function refinementShortlist(
+  items:Array<{seed:Seed;direction:CreativeDirection}>,
+  count:number,
+  freedom:CreativeFreedom,
+) {
+  const picked:Array<{seed:Seed;direction:CreativeDirection}>=[];
+  const seen=new Set<string>();
+  const add=(entry:{seed:Seed;direction:CreativeDirection}|undefined)=>{
+    if(!entry || picked.length>=count || seen.has(entry.direction.id)) return;
+    seen.add(entry.direction.id);
+    picked.push(entry);
+  };
+  const by=(read:(direction:CreativeDirection)=>number)=>
+    [...items].sort((a,b)=>read(b.direction)-read(a.direction));
+
+  const overall=by((item)=>item.overall);
+  const aesthetic=by((item)=>creativeCriticScore(item,"aesthetic"));
+  const originality=by((item)=>creativeCriticScore(item,"originality"));
+  const sourceDistance=by((item)=>item.critics.find((critic)=>critic.id==="originality")?.facets?.find((facet)=>facet.label==="Source distance")?.score ?? 0);
+  const research=by((item)=>item.researchUtilization+(item.explorationClass==="frontier"?18:0));
+
+  const lanes=freedom==="maximum"
+    ? [
+        [overall,.28],[aesthetic,.24],[originality,.24],[sourceDistance,.12],[research,.12],
+      ] as Array<[Array<{seed:Seed;direction:CreativeDirection}>,number]>
+    : [
+        [overall,.40],[aesthetic,.24],[originality,.18],[sourceDistance,.08],[research,.10],
+      ] as Array<[Array<{seed:Seed;direction:CreativeDirection}>,number]>;
+
+  for(const [lane,share] of lanes) {
+    const quota=Math.max(1,Math.round(count*share));
+    for(const entry of lane.slice(0,quota*2)) {
+      add(entry);
+      if(picked.length>=count || picked.filter((x)=>lane.includes(x)).length>=quota) break;
+    }
+  }
+  for(const entry of overall) {
+    add(entry);
+    if(picked.length>=count) break;
+  }
+  return picked;
+}
+
 /**
  * V5 Creative Lab.
  * It intentionally ranks visual/aesthetic and originality judgment above construction.
@@ -1385,9 +1428,9 @@ export function generateCreativeDirections(input:CreativeLabInput):CreativeDirec
     });
   }).filter((item):item is {seed:Seed;direction:CreativeDirection}=>Boolean(item.direction));
 
-  first.sort((a,b)=>b.direction.overall-a.direction.overall);
   const refineCount=freedom==="maximum"?Math.min(64,first.length):freedom==="exploratory"?Math.min(18,first.length):Math.min(8,first.length);
-  const refined=first.slice(0,refineCount).map(({seed,direction})=>redesignLoop(seed,input,direction));
+  const shortlist=refinementShortlist(first,refineCount,freedom);
+  const refined=shortlist.map(({seed,direction})=>redesignLoop(seed,input,direction));
   const tournamentRanked=pairwiseTournament(refined,freedom);
 
   const output:CreativeDirection[]=[];
