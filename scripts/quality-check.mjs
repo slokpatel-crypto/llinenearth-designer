@@ -463,7 +463,7 @@ for (const token of [
   if (!creativeEngine.includes(token)) throw new Error(`Designer V5 creative-engine regression: missing ${token}`);
 }
 const creativeLearning = fs.readFileSync("src/lib/designer/creative-learning.ts","utf8");
-for (const token of ["designer-creative-learning-v1","creativeFamilyFromConceptId","total<3","Math.max(-5","render_mismatch","renderMismatchReviews","review.reason===\"render_mismatch\""]) {
+for (const token of ["designer-creative-learning-v1","creativeFamilyFromConceptId","total<3","Math.max(-5","render_mismatch","renderMismatchReviews","review.reason===\"render_mismatch\"","renderImproved","renderSame","renderWorse","repairFailures","repairSuccess"]) {
   if (!creativeLearning.includes(token)) throw new Error(`Designer V5 creative-learning regression: missing ${token}`);
 }
 const creativeResearch = fs.readFileSync("src/lib/designer/creative-research.ts","utf8");
@@ -486,7 +486,7 @@ for (const token of ["creativeDirection","drawCreativePattern","Photoreal render
   if (!creativePreview.includes(token)) throw new Error(`Designer V5 visual loop regression: missing ${token}`);
 }
 const aiVisualization = fs.readFileSync("src/lib/ai-visualization.ts","utf8");
-for (const token of ["inspectCreativeRender","heroVisibility","boundaryIntegrity","protectedChange","CREATIVE_ZONE_BOXES","PROTECTED_RENDER_BOXES","Visual hierarchy contract","semanticCreativeRenderCheck","ai-gateway.vercel.sh/v1/responses","LINEN_VISUAL_CRITIC_MODEL","openai/gpt-5.4","redesignReason","referenceDataUri","fabricContext","heroAccuracy","fabricFidelity","supportCompetition","Compare them rather than judging","renderCaution","learnedRenderEdit","visualCriticModels","google/gemini-3-flash","semanticCheckNeedsReview","semanticCheckSevere","A second independent visual critic","Visual critics disagreed"]) {
+for (const token of ["inspectCreativeRender","heroVisibility","boundaryIntegrity","protectedChange","CREATIVE_ZONE_BOXES","PROTECTED_RENDER_BOXES","Visual hierarchy contract","semanticCreativeRenderCheck","ai-gateway.vercel.sh/v1/responses","LINEN_VISUAL_CRITIC_MODEL","openai/gpt-5.4","redesignReason","referenceDataUri","fabricContext","heroAccuracy","fabricFidelity","supportCompetition","Compare them rather than judging","renderCaution","learnedRenderEdit","visualCriticModels","google/gemini-3-flash","semanticCheckNeedsReview","semanticCheckSevere","A second independent visual critic","Visual critics disagreed","previousOutputUrl","improvement","PREVIOUS FAILED/REVIEW RENDER"]) {
   if (!aiVisualization.includes(token)) throw new Error(`Designer V5 render-inspection regression: missing ${token}`);
 }
 const creativeGenerateRoute = fs.readFileSync("src/app/api/designer/creative-generate/route.ts","utf8");
@@ -501,7 +501,7 @@ for (const token of ["renderCreativeFashnFront","assertFashnRateLimit","Creative
   if (!creativeRenderRoute.includes(token)) throw new Error(`Designer V5 photoreal route regression: missing ${token}`);
 }
 const creativeInspectRoute = fs.readFileSync("src/app/api/designer/creative-inspect/route.ts","utf8");
-for (const token of ["inspectCreativeFashnOutput","inspectRateLimited","__linenCreativeInspectRate","temporarily rate limited"]) {
+for (const token of ["inspectCreativeFashnOutput","inspectRateLimited","__linenCreativeInspectRate","temporarily rate limited","previousImage"]) {
   if (!creativeInspectRoute.includes(token)) throw new Error(`Designer V5 visual-inspection route regression: missing ${token}`);
 }
 const researchDesk = fs.readFileSync("src/app/operator/designer-research/DesignerResearchClient.tsx","utf8");
