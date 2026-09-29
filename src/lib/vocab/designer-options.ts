@@ -47,8 +47,11 @@ export const designerOptionVocabs={
   trouser:trouserDirectionOptions,
 } as const;
 
-export function optionIdForLabel(group:DesignerOptionGroup,label:string) {
-  const vocab=designerOptionVocabs[group];
+export function optionIdForLabel<G extends DesignerOptionGroup>(
+  group:G,
+  label:string,
+):VocabId<(typeof designerOptionVocabs)[G]>|null {
+  const vocab=designerOptionVocabs[group] as readonly VocabEntry[];
   const hit=vocab.find((item)=>item.label===label);
-  return hit?.id ?? null;
+  return (hit?.id as VocabId<(typeof designerOptionVocabs)[G]>|undefined) ?? null;
 }
