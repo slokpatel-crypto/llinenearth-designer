@@ -49,6 +49,8 @@ async function processJob(job:ClaimedFabricAnalyzerJob) {
       const input:FabricAnalyzerContext={
         fabricId:job.fabric_id || undefined,
         imageUrl:job.image_url,
+        macroImageUrl:clean(declared.macroImageUrl,1800) || undefined,
+        foldImageUrl:clean(declared.foldImageUrl,1800) || undefined,
         sourcePageUrl:job.source_page_url || undefined,
         sourceId:job.source_id || undefined,
         declaredMaterial:clean(declared.declaredMaterial,120) || undefined,
