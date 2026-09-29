@@ -1,5 +1,5 @@
-import type { LabColor } from "@/lib/vocab/color-distance";
-import type { ColorFamilyId } from "@/lib/vocab/colors";
+import type { LabColor } from "./vocab/color-distance.ts";
+import type { ColorFamilyId } from "./vocab/colors.ts";
 
 export type MeasuredPaletteEntry={
   hex:string;
