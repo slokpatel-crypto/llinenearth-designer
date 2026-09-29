@@ -20,6 +20,8 @@ type BatchItem={
   supplierColorName?:string;
   supplierPatternName?:string;
   notes?:string;
+  swatchRealWidthMm?:number;
+  repeatRealMm?:number;
   force?:boolean;
 };
 
@@ -68,9 +70,11 @@ async function runItem(item:BatchItem,index:number) {
       supplierColorName:clean(item.supplierColorName,120) || undefined,
       supplierPatternName:clean(item.supplierPatternName,120) || undefined,
       notes:clean(item.notes,500) || undefined,
+      swatchRealWidthMm:Number.isFinite(Number(item.swatchRealWidthMm)) ? Number(item.swatchRealWidthMm) : undefined,
+      repeatRealMm:Number.isFinite(Number(item.repeatRealMm)) ? Number(item.repeatRealMm) : undefined,
     };
     const run=await analyzeMenswearFabricWithStore(input,{reuseReviewed:item.force!==true,persist:true});
-    return {index,fabricId,ok:true,mode:"private-fabric-analyzer-v3",run};
+    return {index,fabricId,ok:true,mode:"private-fabric-analyzer-v4",run};
   } catch(error) {
     return {index,fabricId:clean(item.fabricId,160)||undefined,ok:false,error:error instanceof Error?error.message:"Analysis failed."};
   }
