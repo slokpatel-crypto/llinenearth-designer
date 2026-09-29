@@ -92,6 +92,24 @@ export type SelectedLookFashnRequest = {
   style: DesignerStyle;
   styleSpec?:StyleSpecV2;
   bodyProfile?:BodyPreviewProfile;
+  renderEvidence?:{
+    shirt?:{
+      gsm:number|null;
+      drape:"Fluid"|"Balanced"|"Structured"|null;
+      fiberContent:string|null;
+      repeatMm:number|null;
+      stripeWidthMm:number|null;
+      physicalScaleStatus:"declared_repeat"|"declared_swatch_width"|"unknown"|null;
+    };
+    pant?:{
+      gsm:number|null;
+      drape:"Fluid"|"Balanced"|"Structured"|null;
+      fiberContent:string|null;
+      repeatMm:number|null;
+      stripeWidthMm:number|null;
+      physicalScaleStatus:"declared_repeat"|"declared_swatch_width"|"unknown"|null;
+    };
+  };
   locked?:boolean;
   lookKey?:string;
 };
@@ -413,6 +431,7 @@ export async function inspectSelectedLookFashnOutput(
     `Required trousers: ${input.pant.name}; ${input.pant.line}; ${input.pant.patternType}.`,
     `Required construction: ${selectedLookConstruction(input)}.`,
     `Required body/model: ${input.bodyProfile ? bodyProfileRenderSummary(input.bodyProfile) : "preserve existing proportions and skin tone"}.`,
+    `Verified physical evidence: ${selectedLookPhysicalEvidence(input)}.`,
     "Images are supplied in this order: GENERATED RENDER, LOCKED STUDIO MODEL, then SPLIT FABRIC CONTEXT when available (shirt left, trouser right).",
     "Check exact visible cloth colour/pattern/weave character, collar and cuff cleanliness, neck opening, hands, shirt/trouser boundary, tucked waistband layering, trouser silhouette, mannequin identity, background stability and synthesis artifacts.",
     "Do not fail minor natural drape variation. Review when cloth visibly bleeds onto skin/background/adjacent garment, the chosen construction is contradicted, fabric identity drifts materially, or the mannequin/background changes materially.",
@@ -629,6 +648,21 @@ async function semanticCreativeRenderCheck(
   };
 }
 
+function selectedLookPhysicalEvidence(input:SelectedLookFashnRequest) {
+  const line=(label:string,value:SelectedLookFashnRequest["renderEvidence"] extends infer R ? any : never)=>{
+    if(!value) return `${label}: no verified physical evidence; do not invent GSM, fibre or real drape.`;
+    const facts:string[]=[];
+    if(Number.isFinite(value.gsm)) facts.push(`${value.gsm} GSM verified`);
+    if(value.drape) facts.push(`${value.drape} drape class verified`);
+    if(value.fiberContent) facts.push(`verified fibre ${value.fiberContent}`);
+    if(Number.isFinite(value.repeatMm)) facts.push(`verified pattern repeat ${value.repeatMm} mm`);
+    if(Number.isFinite(value.stripeWidthMm)) facts.push(`verified stripe width ${value.stripeWidthMm} mm`);
+    if(value.physicalScaleStatus==="unknown") facts.push("physical pattern scale is unverified");
+    return `${label}: ${facts.length?facts.join(", "):"no verified physical evidence; do not invent physical properties"}.`;
+  };
+  return [line("shirt",input.renderEvidence?.shirt),line("trouser",input.renderEvidence?.pant)].join(" ");
+}
+
 function selectedLookConstruction(input:SelectedLookFashnRequest) {
   return input.styleSpec
     ? styleSpecRenderSummary(input.styleSpec)
@@ -645,6 +679,8 @@ Shirt: ${safe(input.shirt.name)} ${safe(input.shirt.line)}, ${safe(input.shirt.p
 Trousers: ${safe(input.pant.name)} ${safe(input.pant.line)}, ${safe(input.pant.patternType)}.
 Exact locked construction: ${safe(selectedLookConstruction(input),900)}.
 Body/model target: ${input.bodyProfile ? safe(bodyProfileRenderSummary(input.bodyProfile),220) : "preserve the existing model proportions and exposed skin tone"}.
+Verified render evidence: ${safe(selectedLookPhysicalEvidence(input),700)}.
+When a repeat or stripe width is verified, preserve its apparent scale consistently across the garment and across future views. If physical scale is unknown, do not make an exact-scale claim.
 
 This is a fidelity render, not a redesign. Do not invent contrast panels, embroidery, piping, extra pockets, extra seams, prints, logos or decorative details. Preserve the configured collar, cuffs, placket, shirt fit, tuck state, trouser shape, rise, waistband and break. Keep natural linen weave, realistic folds and tailoring structure. Shirt fabric must remain inside the shirt silhouette and must not spill over the neck, hands, trouser waistband or background. Trouser fabric must remain inside the trouser silhouette. For a tucked shirt, the waistband must sit physically in front of the tucked shirt. Keep the mannequin fully faceless with no eyes, hair or facial features. No text, props, extra garments or cropped limbs. Full-body front fashion-catalogue photograph.`;
 }
@@ -664,6 +700,8 @@ Shirt: ${safe(input.shirt.name)} ${safe(input.shirt.line)}, ${safe(input.shirt.p
 Trousers: ${safe(input.pant.name)} ${safe(input.pant.line)}, ${safe(input.pant.patternType)}.
 Locked construction: ${safe(selectedLookConstruction(input),900)}.
 Body/model target: ${input.bodyProfile ? safe(bodyProfileRenderSummary(input.bodyProfile),220) : "preserve the existing model proportions and exposed skin tone"}.
+Verified render evidence: ${safe(selectedLookPhysicalEvidence(input),700)}.
+Preserve any verified repeat/stripe scale from the approved front render; never invent a physical scale when it is unknown.
 
 Keep hard garment boundaries. Shirt fabric must not spill onto the neck, hands, waistband, trousers or background. Trouser fabric must remain inside the trouser silhouette. For a tucked shirt, preserve the waistband physically in front of the shirt. Keep the mannequin completely faceless. No text, logo, extra props, new garments or cropped limbs. Full-body premium menswear catalogue photograph.`;
 }
@@ -730,6 +768,7 @@ function selectedLookCacheKey(input:SelectedLookFashnRequest) {
     style:input.style,
     styleSpec:input.styleSpec||null,
     bodyProfile:input.bodyProfile||null,
+    renderEvidence:input.renderEvidence||null,
   });
 }
 
