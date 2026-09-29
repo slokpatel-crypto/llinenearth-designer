@@ -900,7 +900,10 @@ export function DesignerModule() {
                 <span>0{result.rank} · {result.tier.toUpperCase()}</span>
                 <strong>{result.title}</strong>
                 <p>{result.shirt.name} + {result.pant.name}</p>
-                <small>{result.reasons.find((reason)=>reason.startsWith("Brief match:")) || result.reasons[0] || "Built from current Linen Earth stock."}</small>
+                <div className="newDesignerBriefCut">
+                  <b>{result.style.shirtWear}</b><b>{result.style.collar}</b><b>{result.style.trouser}</b>
+                </div>
+                <small>{result.reasons.find((reason)=>reason.startsWith("Occasion match:")) || result.reasons.find((reason)=>reason.startsWith("Brief match:")) || result.reasons[0] || "Built from current Linen Earth stock."}</small>
               </div>
               <button type="button" onClick={()=>{
                 if(!briefInterpretation) return;
