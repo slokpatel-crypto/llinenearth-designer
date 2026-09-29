@@ -43,6 +43,7 @@ for (const path of [
   "src/app/designer-studio/page.tsx",
   "src/lib/designer/search.ts",
   "src/app/api/designer/casebook/route.ts",
+  "src/app/api/designer/creative-inspect/route.ts",
   "src/lib/designer/casebook.ts",
   "src/lib/designer/garment-spec.ts",
   "desktop/src/App.tsx",
@@ -141,6 +142,7 @@ requireTokens("src/lib/designer/fashion-research-source-pool.ts", [
   "FASHION_RESEARCH_SOURCES","FASHION_RESEARCH_TOPICS","FASHION_RESEARCH_TARGETS","buildFashionResearchTargets"
 ]);
 requireTokens("src/app/api/designer/creative-render/route.ts", ["renderCreativeFashnFront","CreativeFashnRequest"]);
+requireTokens("src/app/api/designer/creative-inspect/route.ts", ["inspectCreativeFashnOutput","CreativeFashnRequest","maxDuration=30"]);
 requireTokens("src/lib/ai-visualization.ts", ["inspectCreativeRender","heroVisibility","boundaryIntegrity","PROTECTED_RENDER_BOXES","Visual hierarchy contract"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["VISUAL CHECK PASSED","onCreativeInspection","newDesignerRenderCheck"]);
 requireTokens("src/lib/designer/creative-learning.ts", ["renderMismatchReviews",'review.reason==="render_mismatch"',"renderRisk","renderQualitySamples"]);
