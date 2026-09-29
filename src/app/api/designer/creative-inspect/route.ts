@@ -1,0 +1,43 @@
+import { NextResponse } from "next/server";
+import {
+  FashnVisualizationError,
+  inspectCreativeFashnOutput,
+  type CreativeFashnRequest,
+} from "@/lib/ai-visualization";
+
+export const runtime="nodejs";
+export const maxDuration=30;
+
+type InspectBody = CreativeFashnRequest & { image:string };
+
+function valid(body:unknown):body is InspectBody {
+  if(!body || typeof body!=="object") return false;
+  const value=body as Partial<InspectBody>;
+  return Boolean(
+    typeof value.image==="string" &&
+    value.image.length<1000 &&
+    value.shirt?.id && value.shirt?.image &&
+    value.pant?.id && value.pant?.image &&
+    value.style?.collar && value.style?.cuff &&
+    value.creative?.id && value.creative?.name &&
+    Array.isArray(value.creative?.treatments) &&
+    value.creative.treatments.length>0 &&
+    value.creative.treatments.length<=8
+  );
+}
+
+export async function POST(request:Request) {
+  try {
+    const body=await request.json() as unknown;
+    if(!valid(body)) return NextResponse.json({error:"A generated render and its V5 concept specification are required."},{status:400});
+    const check=await inspectCreativeFashnOutput(body.image,body);
+    return NextResponse.json({check});
+  } catch(error) {
+    if(error instanceof FashnVisualizationError) {
+      const status=error.code==="invalid_source"?400:502;
+      return NextResponse.json({error:error.message},{status});
+    }
+    console.error("[designer/creative-inspect]",error);
+    return NextResponse.json({error:"Creative render inspection could not be completed."},{status:500});
+  }
+}
