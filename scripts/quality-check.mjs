@@ -34,6 +34,7 @@ const required = [
   "src/app/api/designer/creative-inspect/route.ts",
   "src/app/api/operator/designer-research/discover/route.ts",
   "src/app/api/operator/designer-research/analyze/route.ts",
+  "src/app/api/operator/designer-research/analyze-batch/route.ts",
   "src/lib/designer/research-source-discovery.ts",
   "src/lib/designer/research-source-analysis.ts",
   "src/lib/designer/casebook.ts",
@@ -487,11 +488,11 @@ for(const token of ["discoverFashionWebsites","Q3661311","Q11828862","Q607081","
   if(!researchDiscovery.includes(token)) throw new Error(`Research website discovery regression: missing ${token}`);
 }
 const researchAnalysis=fs.readFileSync("src/lib/designer/research-source-analysis.ts","utf8");
-for(const token of ["analyzeFashionResearchSource","safePublicUrl","Private or local research URLs are not allowed","linen_research_signal","Do not copy a finished garment","LINEN_RESEARCH_MODEL","google/gemini-3-flash"]) {
+for(const token of ["analyzeFashionResearchSource","analyzeFashionResearchBatch","safePublicUrl","Private or local research URLs are not allowed","linen_research_signal","Do not copy a finished garment","LINEN_RESEARCH_MODEL","google/gemini-3-flash"]) {
   if(!researchAnalysis.includes(token)) throw new Error(`Research synthesis regression: missing ${token}`);
 }
 const researchDeskUi=fs.readFileSync("src/app/operator/designer-research/DesignerResearchClient.tsx","utf8");
-for(const token of ["Discover up to 1,000 websites","discover1000","Analyze source ✦","analyzeCurrentSource"]) {
+for(const token of ["Discover up to 1,000 websites","discover1000","Analyze source ✦","analyzeCurrentSource","Synthesize first 4 ✦","analyzeResearchBatch","NEW SYNTHESIS / REVIEW BEFORE ACTIVATING"]) {
   if(!researchDeskUi.includes(token)) throw new Error(`Research desk discovery regression: missing ${token}`);
 }
 console.log("Designer research-scale gate passed: live discovery can retrieve up to 1,000 distinct official fashion/textile sites and synthesize reviewed principles safely.");
