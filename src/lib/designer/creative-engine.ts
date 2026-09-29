@@ -1475,6 +1475,11 @@ function creativeCriticScore(direction:CreativeDirection,id:CreativeCriticId) {
   return direction.critics.find((item)=>item.id===id)?.score ?? 0;
 }
 
+function creativeSeedFamily(direction:CreativeDirection) {
+  const parts=direction.id.split(":");
+  return parts[0]==="creative" && parts[1] ? parts[1] : direction.id;
+}
+
 export function chooseCreativeRedesign(
   candidates:CreativeDirection[],
   current:CreativeDirection,
@@ -1484,7 +1489,14 @@ export function chooseCreativeRedesign(
   const pool=alternatives.length ? alternatives : candidates.filter((item)=>item.id!==current.id);
   if(!pool.length) return undefined;
 
+  const currentFamily=creativeSeedFamily(current);
   const score=(item:CreativeDirection)=>{
+    const sameFamily=creativeSeedFamily(item)===currentFamily;
+    const repairFamilyBonus=["visual_balance","too_busy","pattern_detail","proportion","render_mismatch"].includes(reason)
+      ? (sameFamily?24:0)
+      : ["too_safe","originality"].includes(reason)
+        ? (sameFamily?-12:0)
+        : 0;
     const aesthetic=creativeCriticScore(item,"aesthetic");
     const originality=creativeCriticScore(item,"originality");
     const construction=creativeCriticScore(item,"construction");
@@ -1495,14 +1507,14 @@ export function chooseCreativeRedesign(
     const distance=item.critics.find((critic)=>critic.id==="originality")?.facets?.find((facet)=>facet.label==="Source distance")?.score ?? 0;
     const load=treatmentLoad(item.treatments,item.pattern);
 
-    if(reason==="visual_balance") return aesthetic*1.2+hierarchy*.8+harmony*.7-load*.08;
-    if(reason==="too_busy") return aesthetic+hierarchy*.8+harmony*.7+Math.max(0,160-load)*.35;
-    if(reason==="too_safe") return originality*1.35+item.researchUtilization*.55+(item.explorationClass==="frontier"?18:0)+aesthetic*.35;
-    if(reason==="pattern_detail") return (item.pattern?28:0)+originality*.75+rhythm*.9+item.researchUtilization*.35;
-    if(reason==="proportion") return proportion*1.45+aesthetic*.65+hierarchy*.35;
-    if(reason==="originality") return originality*1.4+distance*.8+item.researchUtilization*.45+(item.explorationClass==="frontier"?14:0);
-    if(reason==="render_mismatch") return item.certainty*.8+aesthetic*.75+construction*.35+(item.pattern?2:0);
-    return revisionMerit(item);
+    if(reason==="visual_balance") return repairFamilyBonus+aesthetic*1.2+hierarchy*.8+harmony*.7-load*.08;
+    if(reason==="too_busy") return repairFamilyBonus+aesthetic+hierarchy*.8+harmony*.7+Math.max(0,160-load)*.35;
+    if(reason==="too_safe") return repairFamilyBonus+originality*1.35+item.researchUtilization*.55+(item.explorationClass==="frontier"?18:0)+aesthetic*.35;
+    if(reason==="pattern_detail") return repairFamilyBonus+(item.pattern?28:0)+originality*.75+rhythm*.9+item.researchUtilization*.35+(item.pattern?.family===current.pattern?.family?8:0);
+    if(reason==="proportion") return repairFamilyBonus+proportion*1.45+aesthetic*.65+hierarchy*.35;
+    if(reason==="originality") return repairFamilyBonus+originality*1.4+distance*.8+item.researchUtilization*.45+(item.explorationClass==="frontier"?14:0);
+    if(reason==="render_mismatch") return repairFamilyBonus+item.certainty*.8+aesthetic*.75+construction*.35+(item.pattern?2:0);
+    return repairFamilyBonus+revisionMerit(item);
   };
 
   return [...pool].sort((a,b)=>score(b)-score(a))[0];
