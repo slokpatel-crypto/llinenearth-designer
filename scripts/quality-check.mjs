@@ -321,7 +321,7 @@ for (const token of ["MeasurementProfile","FitConstructionAssessment","assessFit
   if (!plannerV2.includes(token)) throw new Error(`Fit-aware Designer planner regression: missing ${token}`);
 }
 const designerV2 = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["assessFitConstruction","Tailoring checks are active","Fit/construction:","measurementProfile","newDesignerTechnicalDrawer"]) {
+for (const token of ["fitConstruction=assessment?.fitConstruction","Tailoring checks are active","Fit/construction:","measurementProfile","newDesignerTechnicalDrawer","requestLookAssessment"]) {
   if (!designerV2.includes(token)) throw new Error(`Fit Construction V2 UI regression: missing ${token}`);
 }
 console.log("Fit Construction V2 gate passed: provisional ease ranges, finished-garment targets, construction checks and measurement-aware cut ranking protected.");
@@ -332,7 +332,7 @@ for (const token of ["designer-negotiation-v1","buildDesignerNegotiation","hard_
   if (!designerNegotiation.includes(token)) throw new Error(`Designer negotiation regression: missing ${token}`);
 }
 const designerNegotiationUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["buildDesignerNegotiation","negotiation?.blockers","newDesignerAdvancedResult","Technical details"]) {
+for (const token of ["negotiation=assessment?.negotiation","negotiation?.blockers","newDesignerAdvancedResult","Technical details"]) {
   if (!designerNegotiationUi.includes(token)) throw new Error(`Designer negotiation UI regression: missing ${token}`);
 }
 console.log("Designer negotiation gate passed: blockers, verification gaps, fit trade-offs and smallest corrective actions protected.");
@@ -370,11 +370,11 @@ for (const token of ["BrandLanguageEvaluation","evaluateLinenEarthBrandLanguage"
   if (!brandPlanner.includes(token)) throw new Error(`Brand-aware Designer ranking regression: missing ${token}`);
 }
 const brandDesignerUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["evaluateLinenEarthBrandLanguage","brandLanguage","newDesignerResultChips","brandLanguage.mode"]) {
+for (const token of ["brandLanguage=assessment?.brandLanguage","brandLanguage","newDesignerResultChips","brandLanguage.mode"]) {
   if (!brandDesignerUi.includes(token)) throw new Error(`Linen Earth brand read UI regression: missing ${token}`);
 }
 const brandCss = fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
-for (const token of [".newDesignerBrandRead",".newDesignerBrandReadHead",".newDesignerDirectionBrand"]) {
+for (const token of [".newDesignerResultChips",".newDesignerOutcomeCompact"]) {
   if (!brandCss.includes(token)) throw new Error(`Linen Earth brand read styling regression: missing ${token}`);
 }
 console.log("Linen Earth brand language gate passed: soft taste remains visible and capped at 10% of alternative-cut ranking.");
@@ -385,7 +385,7 @@ for (const token of ["linen-earth-garment-spec-v1","buildCanonicalGarmentSpec","
   if (!canonicalGarmentSpecSource.includes(token)) throw new Error(`Canonical garment spec regression: missing ${token}`);
 }
 const canonicalDesignerUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["buildCanonicalGarmentSpec","downloadGarmentSpec","Export garment spec","canonicalGarmentSpecSummary"]) {
+for (const token of ["garmentSpec=assessment?.garmentSpec","downloadGarmentSpec","Export garment spec","canonicalGarmentSpecSummary"]) {
   if (!canonicalDesignerUi.includes(token)) throw new Error(`Canonical garment spec UI regression: missing ${token}`);
 }
 const memoryEventSanitizer = fs.readFileSync("src/app/api/memory/event/route.ts","utf8");
@@ -404,7 +404,11 @@ const creativeGarmentSpec=fs.readFileSync("src/lib/designer/garment-spec.ts","ut
 for(const token of ["creative: {","conceptId:string","treatments:Array","pattern: {","Creative treatments are design instructions","creativeVisualReviewRequired","passing photoreal visual review"]) {
   if(!creativeGarmentSpec.includes(token)) throw new Error(`Creative garment spec regression: missing ${token}`);
 }
-for(const token of ["activeCreative","buildCanonicalGarmentSpec(recommendation, fitConstruction, measurementProfile, brandLanguage, blockStrategy, activeCreative, creativeVisualReview)","creativeTreatmentCount","creativePatternId"]) {
+const designerAssessmentRoute = fs.readFileSync("src/app/api/designer/assess/route.ts","utf8");
+for(const token of ["buildCanonicalGarmentSpec","creative","visualReview","fitConstruction","brandLanguage","blockStrategy"]) {
+  if(!designerAssessmentRoute.includes(token)) throw new Error(`Creative garment assessment regression: missing ${token}`);
+}
+for(const token of ["activeCreative","creativeTreatmentCount","creativePatternId","garmentSpec=assessment?.garmentSpec"]) {
   if(!realDesignerModule.includes(token)) throw new Error(`Creative garment export regression: missing ${token}`);
 }
 console.log("Creative garment spec gate passed: selected V5 treatments and pattern instructions survive export and event memory.");
@@ -440,7 +444,7 @@ for (const token of ["OPTIONAL","Try a different fabric pairing","Show 3 options
   if (!advancedSearchUi.includes(token)) throw new Error(`Designer advanced-search UI regression: missing ${token}`);
 }
 const advancedSearchCss = fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
-for (const token of [".newDesignerSearch",".newDesignerSearchResults",".newDesignerSearchTier",".newDesignerSearchUse"]) {
+for (const token of [".newDesignerOptionalSearch",".newDesignerQuickResults",".newDesignerSearchScopes",".newDesignerOptionalSearchRun"]) {
   if (!advancedSearchCss.includes(token)) throw new Error(`Designer advanced-search styling regression: missing ${token}`);
 }
 if (advancedSearchUi.includes("searchDesignerCatalogue(") || advancedSearchUi.includes("casebookSignal") || advancedSearchUi.includes("fitOutcomeSignal")) {
