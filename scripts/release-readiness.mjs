@@ -143,7 +143,7 @@ requireTokens("src/lib/designer/fashion-research-source-pool.ts", [
 ]);
 requireTokens("src/app/api/designer/creative-render/route.ts", ["renderCreativeFashnFront","CreativeFashnRequest"]);
 requireTokens("src/app/api/designer/creative-inspect/route.ts", ["inspectCreativeFashnOutput","CreativeFashnRequest","maxDuration=30"]);
-requireTokens("src/lib/ai-visualization.ts", ["inspectCreativeRender","heroVisibility","boundaryIntegrity","PROTECTED_RENDER_BOXES","Visual hierarchy contract"]);
+requireTokens("src/lib/ai-visualization.ts", ["inspectCreativeRender","heroVisibility","boundaryIntegrity","PROTECTED_RENDER_BOXES","Visual hierarchy contract","semanticCreativeRenderCheck","ai-gateway.vercel.sh/v1/responses","LINEN_VISUAL_CRITIC_MODEL"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["VISUAL CHECK PASSED","onCreativeInspection","newDesignerRenderCheck"]);
 requireTokens("src/lib/designer/creative-learning.ts", ["renderMismatchReviews",'review.reason==="render_mismatch"',"renderRisk","renderQualitySamples"]);
 requireTokens("src/app/operator/designer-research/DesignerResearchClient.tsx", ["Creative Research Desk","Save research signal"]);
@@ -201,6 +201,8 @@ requireTokens(".env.example", [
   "LINEN_OPERATOR_PASSWORD_HASH=",
   "LINEN_OPERATOR_SESSION_SECRET=",
   "LINEN_MEMORY_SESSION_SECRET=",
+  "AI_GATEWAY_API_KEY=",
+  "LINEN_VISUAL_CRITIC_MODEL=",
 ]);
 
 if (!failed) ok("Static website, desktop, cloud and installer release contracts are intact.");
