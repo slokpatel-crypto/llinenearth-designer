@@ -28,9 +28,9 @@ export async function POST(request:Request) {
 
   try {
     const body=await request.json() as {sources?:unknown};
-    const sources=Array.isArray(body?.sources)?body.sources.filter(validSource).slice(0,4):[];
-    if(!sources.length) return NextResponse.json({error:"Choose up to four public research sources."},{status:400});
-    const results=await analyzeFashionResearchBatch(sources,4);
+    const sources=Array.isArray(body?.sources)?body.sources.filter(validSource).slice(0,8):[];
+    if(!sources.length) return NextResponse.json({error:"Choose up to eight public research sources."},{status:400});
+    const results=await analyzeFashionResearchBatch(sources,8);
     return NextResponse.json({
       requested:sources.length,
       completed:results.filter((item)=>Boolean(item.analysis)).length,
