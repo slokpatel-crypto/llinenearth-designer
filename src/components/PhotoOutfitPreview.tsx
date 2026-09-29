@@ -676,13 +676,14 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
     return () => { cancelled = true; };
   }, [shirt, pant, template, tucked, style.collarFinish, creativeDirection]);
 
-  async function inspectSelectedLook(result:PhotorealResult) {
+  async function inspectSelectedLook(result:PhotorealResult,view:PhotorealView="front") {
     try {
       const response=await fetch("/api/designer/look-inspect",{
         method:"POST",
         headers:{"content-type":"application/json"},
         body:JSON.stringify({
           image:result.image,
+          view,
           look:{
             shirt:{id:shirt.id,name:shirt.name,line:shirt.line,image:shirt.image,hex:shirt.hex,patternType:shirt.patternType},
             pant:{id:pant.id,name:pant.name,line:pant.line,image:pant.image,hex:pant.hex,patternType:pant.patternType},
@@ -692,7 +693,15 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
       });
       const data=await response.json() as {check?:SelectedLookVisualCheck};
       if(!response.ok || !data.check) return;
-      setCreativeAi((current)=>current?.image===result.image ? {...current,selectedCheck:data.check} : current);
+      if(view==="front") {
+        setCreativeAi((current)=>current?.image===result.image ? {...current,selectedCheck:data.check} : current);
+      } else {
+        setPhotorealViews((current)=>{
+          const existing=current[view];
+          if(!existing || existing.image!==result.image) return current;
+          return {...current,[view]:{...existing,selectedCheck:data.check}};
+        });
+      }
     } catch {
       // A render remains usable when optional visual QA is unavailable.
     }
@@ -837,6 +846,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
       if(!response.ok || !data.result) throw new Error(data.error || "Photoreal view failed.");
       setPhotorealViews((current)=>({...current,[view]:data.result}));
       setPhotorealView(view);
+      await inspectSelectedLook(data.result,view);
     } catch(error) {
       setCreativeAiError(error instanceof Error ? error.message : "Photoreal view failed.");
     } finally {
@@ -871,6 +881,10 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
       window.setTimeout(() => URL.revokeObjectURL(url), 30000);
     }, "image/png");
   }
+
+  const activeSelectedCheck=photorealView==="front"
+    ? creativeAi?.selectedCheck
+    : photorealViews[photorealView]?.selectedCheck;
 
   return <section className="newDesignerPhoto" aria-labelledby="designerPhotoTitle">
     <div className="newDesignerPhotoIntro newDesignerPhotoIntroCompact">
@@ -913,13 +927,18 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
         {photorealViewLoading===view ? "Rendering…" : view==="three-quarter" ? (photorealViews[view]?"3/4":"Generate 3/4") : view==="front" ? "Front" : photorealViews[view] ? view[0].toUpperCase()+view.slice(1) : "Generate "+view}
       </button>)}
     </div>}
-    {creativeAi && !creativeDirection && creativeAi.selectedCheck && <div className="newDesignerSelectedQa" data-status={creativeAi.selectedCheck.available ? creativeAi.selectedCheck.status : "unavailable"}>
+    {creativeAi && !creativeDirection && activeSelectedCheck && <div className="newDesignerSelectedQa" data-status={activeSelectedCheck.available ? activeSelectedCheck.status : "unavailable"}>
       <div>
-        <span>{!creativeAi.selectedCheck.available ? "FRONT QA · MANUAL REVIEW" : creativeAi.selectedCheck.status==="pass" ? "FRONT QA · PASSED" : "FRONT QA · REPAIR SUGGESTED"}</span>
-        <strong>{creativeAi.selectedCheck.issue}</strong>
+        <span>{!activeSelectedCheck.available
+          ? `${photorealView.toUpperCase()} QA · MANUAL REVIEW`
+          : activeSelectedCheck.status==="pass"
+            ? `${photorealView.toUpperCase()} QA · PASSED`
+            : photorealView==="front" ? "FRONT QA · REPAIR SUGGESTED" : `${photorealView.toUpperCase()} QA · REVIEW`}</span>
+        <strong>{activeSelectedCheck.issue}</strong>
       </div>
-      {creativeAi.selectedCheck.available && creativeAi.selectedCheck.status==="review" && selectedRepairCount<1 && creativeAi.selectedCheck.repairInstruction && <button type="button" onClick={()=>void repairSelectedLook()} disabled={creativeAiLoading}>{creativeAiLoading?"Repairing…":"Repair once ✦"}</button>}
-      {selectedRepairCount>=1 && <small>One targeted repair used. Review the result before generating again.</small>}
+      {photorealView==="front" && activeSelectedCheck.available && activeSelectedCheck.status==="review" && selectedRepairCount<1 && activeSelectedCheck.repairInstruction && <button type="button" onClick={()=>void repairSelectedLook()} disabled={creativeAiLoading}>{creativeAiLoading?"Repairing…":"Repair once ✦"}</button>}
+      {photorealView==="front" && selectedRepairCount>=1 && <small>One targeted repair used. Review the result before generating again.</small>}
+      {photorealView!=="front" && activeSelectedCheck.status==="review" && <small>This camera view needs review; the approved front outfit remains unchanged.</small>}
     </div>}
     <details className="newDesignerTechnicalDrawer newDesignerPreviewTools">
       <summary>Preview tools</summary>
