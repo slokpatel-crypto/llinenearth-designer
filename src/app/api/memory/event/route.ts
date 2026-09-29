@@ -151,6 +151,9 @@ function cleanPayload(type:string, input:unknown) {
             semanticStatus:text((payload.creativeVisualCheck as Record<string,unknown>).semanticStatus,20),
             semanticIssue:text((payload.creativeVisualCheck as Record<string,unknown>).semanticIssue,160),
             redesignReason:text((payload.creativeVisualCheck as Record<string,unknown>).redesignReason,40),
+            improvement:["improved","same","worse","not_applicable"].includes(text((payload.creativeVisualCheck as Record<string,unknown>).improvement,20))
+              ? text((payload.creativeVisualCheck as Record<string,unknown>).improvement,20)
+              : "not_applicable",
           }
         } : {}),
       } : {}),
