@@ -2,7 +2,7 @@ import type { DesignerFabric, DesignerStyle } from "./engine";
 import reference from "./reference-data.json";
 
 /**
- * The photos are reusable mannequin templates, not pictures of finished LLinen
+ * The photos are reusable mannequin templates, not pictures of finished Linen
  * Earth garments. A garment region is recoloured locally from a catalogue
  * swatch; each new cut requires a real matching photo and an aligned mask.
  */
