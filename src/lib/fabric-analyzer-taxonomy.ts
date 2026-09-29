@@ -10,7 +10,7 @@ export const MENSWEAR_MATERIAL_TAXONOMY = [
 ] as const;
 
 export const MENSWEAR_PATTERN_TAXONOMY = [
-  "solid/plain","pinstripe","chalk stripe","candy stripe","awning stripe","hairline stripe"," Bengal stripe",
+  "solid/plain","pinstripe","chalk stripe","candy stripe","awning stripe","hairline stripe","Bengal stripe",
   "windowpane","gingham","tattersall","glen check/prince of wales","houndstooth","micro check","madras check",
   "polka dot","paisley","floral","botanical/leaf","geometric","abstract","chevron","ikat-style","melange/heather",
   "herringbone motif","birdseye","nailhead","sharkskin effect","jacquard motif","tonal texture"
