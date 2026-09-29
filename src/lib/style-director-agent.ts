@@ -131,20 +131,19 @@ function directorIntelligenceScore(
   score+=(1-Math.min(1,Math.abs(intel.formality-targetFormality[a.occasion])/3.5))*14*w;
   score+=(1-Math.min(1,Math.abs(intel.statementLevel-targetStatement[a.mood])/4))*10*w;
 
-  const use=intel.bestGarments.join(" ").toLowerCase();
-  if(a.garment==="shirt" && /shirt|overshirt/.test(use)) score+=7*w;
-  if(a.garment==="trouser" && /trouser|pant|suit/.test(use)) score+=7*w;
-  if(a.garment==="suit" && /suit|tailor/.test(use)) score+=7*w;
-  if(a.garment==="blazer" && /blazer|jacket|sport coat|suit/.test(use)) score+=7*w;
+  if(a.garment==="shirt" && (intel.bestGarments.includes("shirt")||intel.bestGarments.includes("overshirt"))) score+=7*w;
+  if(a.garment==="trouser" && (intel.bestGarments.includes("trouser")||intel.bestGarments.includes("chino")||intel.bestGarments.includes("suit"))) score+=7*w;
+  if(a.garment==="suit" && intel.bestGarments.includes("suit")) score+=7*w;
+  if(a.garment==="blazer" && (intel.bestGarments.includes("blazer")||intel.bestGarments.includes("jacket")||intel.bestGarments.includes("suit"))) score+=7*w;
 
-  const climate=intel.climateVisualFit.join(" ").toLowerCase();
-  if(a.climate==="Hot" && /hot|warm|humid|summer/.test(climate)) score+=5*w;
-  if(a.climate==="Indoor" && /indoor|air|all[- ]?season/.test(climate)) score+=3*w;
+  const climate=new Set(intel.climateVisualFit);
+  if(a.climate==="Hot" && (climate.has("hot_humid")||climate.has("hot_dry")||climate.has("warm"))) score+=5*w;
+  if(a.climate==="Indoor" && (climate.has("air_conditioned")||climate.has("all_season"))) score+=3*w;
 
-  if(a.colorDirection==="Light" && /very-light|light/.test(intel.depth)) score+=5*w;
-  if(a.colorDirection==="Dark" && /deep|very-deep/.test(intel.depth)) score+=5*w;
-  if(a.colorDirection==="Blue" && /blue|navy|teal|cyan/.test(intel.colorFamily.toLowerCase())) score+=6*w;
-  if(a.colorDirection==="Earthy" && /beige|brown|taupe|olive|rust|camel|tan|cream/.test(intel.colorFamily.toLowerCase())) score+=6*w;
+  if(a.colorDirection==="Light" && (intel.depth==="very-light"||intel.depth==="light")) score+=5*w;
+  if(a.colorDirection==="Dark" && (intel.depth==="deep"||intel.depth==="very-deep")) score+=5*w;
+  if(a.colorDirection==="Blue" && intel.colorFamily==="blue_family") score+=6*w;
+  if(a.colorDirection==="Earthy" && ["neutral_warm","brown_family","green_family","orange_family"].includes(intel.colorFamily||"")) score+=6*w;
 
   return Math.max(-10,Math.min(32,score));
 }
@@ -167,12 +166,12 @@ function directorPairIntelligenceScore(
   }
   if(shirt && pant) {
     const pairWeight=Math.min(intelligenceTrustWeight(shirt),intelligenceTrustWeight(pant));
-    const pantColor=pant.colorFamily.toLowerCase();
-    const shirtColor=shirt.colorFamily.toLowerCase();
-    if(shirt.pairing.goodColorFamilies.some((x)=>pantColor.includes(x.toLowerCase())||x.toLowerCase().includes(pantColor))) score+=5*pairWeight;
-    if(shirt.pairing.avoidColorFamilies.some((x)=>pantColor.includes(x.toLowerCase())||x.toLowerCase().includes(pantColor))) score-=8*pairWeight;
-    if(pant.pairing.goodColorFamilies.some((x)=>shirtColor.includes(x.toLowerCase())||x.toLowerCase().includes(shirtColor))) score+=4*pairWeight;
-    if(pant.pairing.avoidColorFamilies.some((x)=>shirtColor.includes(x.toLowerCase())||x.toLowerCase().includes(shirtColor))) score-=7*pairWeight;
+    const pantColor=pant.colorFamily;
+    const shirtColor=shirt.colorFamily;
+    if(pantColor && shirt.pairing.goodColorFamilies.includes(pantColor)) score+=5*pairWeight;
+    if(pantColor && shirt.pairing.avoidColorFamilies.includes(pantColor)) score-=8*pairWeight;
+    if(shirtColor && pant.pairing.goodColorFamilies.includes(shirtColor)) score+=4*pairWeight;
+    if(shirtColor && pant.pairing.avoidColorFamilies.includes(shirtColor)) score-=7*pairWeight;
     if(shirt.statementLevel>=4 && pant.statementLevel>=4) score-=6*pairWeight;
   }
   return Math.max(-16,Math.min(18,score));
