@@ -720,7 +720,7 @@ export function DesignerModule() {
           {(fitCoverage.total > 0 || observationCoverage > 0) && <details className="newDesignerTechnicalDrawer">
             <summary>Fit details</summary>
             {fitGuidance.slice(0,3).map((note)=><p key={note}>{note}</p>)}
-            {fitConstruction && <p><b>Fit read:</b> {fitConstruction.fitScore}/100 · {fitConstruction.checks.filter((item)=>item.severity!=="info").length} checks</p>}
+            {fitConstruction && <p><b>Fit read:</b> Tailoring checks are active for this cut.</p>}
             {blockStrategy && <p><b>Starting block:</b> {blockStrategy.shirtBlock.replaceAll("-"," ")} + {blockStrategy.trouserBlock.replaceAll("-"," ")}</p>}
           </details>}
         </section>
@@ -750,7 +750,7 @@ export function DesignerModule() {
               <details className="newDesignerTechnicalDrawer">
                 <summary>Why this works</summary>
                 {result.reasons.slice(0,3).map((reason)=><p key={reason}>{reason}</p>)}
-                <p><b>Internal read:</b> {result.decision.overall}/100 · certainty {result.decision.certainty}/100 · {result.decision.risk} risk</p>
+                <p><b>Designer read:</b> {result.decision.risk==="low"?"Clean direction":result.decision.risk==="moderate"?"Worth reviewing":"Experimental direction"}.</p>
               </details>
             </article>)}
           </div>}
@@ -761,7 +761,7 @@ export function DesignerModule() {
             <div>
               <span>03 / CREATE</span>
               <strong>Imagine new designs.</strong>
-              {researchPool && <small>{researchPool.targets.toLocaleString("en-IN")} research paths working in the background</small>}
+              {researchPool && <small>Fashion research runs quietly in the background.</small>}
             </div>
             <button type="button" onClick={runCreativeLab} disabled={!shirt || !pant}>Create ideas ✦</button>
           </div>
@@ -788,7 +788,7 @@ export function DesignerModule() {
                 <summary>Design reasoning</summary>
                 <p>{direction.thesis}</p>
                 <div className="newDesignerMiniScores">
-                  {direction.critics.map((critic)=><span key={critic.id}>{critic.label.replace(" critic","")} <b>{Math.round(critic.score)}</b></span>)}
+                  <span>Visual balance checked</span><span>Originality checked</span><span>Construction checked</span>
                 </div>
                 {direction.research.slice(0,2).map((item)=><p key={item.id}><b>{item.sourceTitle}:</b> {item.transformedInto}</p>)}
               </details>
@@ -863,8 +863,8 @@ export function DesignerModule() {
           <details className="newDesignerTechnicalDrawer newDesignerAdvancedResult">
             <summary>Technical details</summary>
             <p><b>Design:</b> {recommendation.style.collar} · {recommendation.style.cuff} · {recommendation.style.placket}</p>
-            <p><b>Material check:</b> {recommendation.materialEvidence.verified}/{recommendation.materialEvidence.total} verified</p>
-            {fitConstruction && <p><b>Fit/construction:</b> {fitConstruction.fitScore}/100</p>}
+            <p><b>Material:</b> {recommendation.materialEvidence.verified>0?"Verified fabric information is included.":"Physical fabric verification is still needed."}</p>
+            {fitConstruction && <p><b>Fit/construction:</b> Tailoring checks are active.</p>}
             {blockStrategy && <p><b>Starting block:</b> {blockStrategy.shirtBlock.replaceAll("-"," ")} + {blockStrategy.trouserBlock.replaceAll("-"," ")}</p>}
             {negotiation?.blockers.slice(0,2).map((item)=><p key={item.id}>{item.message}</p>)}
             {garmentSpec && <button type="button" onClick={downloadGarmentSpec}>Export garment spec ↗</button>}
