@@ -47,7 +47,7 @@ for (const path of [
   "src/lib/designer/garment-spec.ts",
   "desktop/src/App.tsx",
   "desktop/src-tauri/tauri.conf.json",
-  ".github/workflows/build-llinen-earth-os.yml",
+  ".github/workflows/build-linen-earth-os.yml",
   "supabase/migrations/20260920_style_events_hardening.sql",
   ".env.example",
   "package-lock.json",
@@ -173,7 +173,7 @@ requireTokens("desktop/src/App.tsx", [
   "MEASUREMENT PASSPORT",
   "PAYMENT HISTORY",
 ]);
-requireTokens(".github/workflows/build-llinen-earth-os.yml", [
+requireTokens(".github/workflows/build-linen-earth-os.yml", [
   "npm run desktop:build",
   "SHA256SUMS.txt",
   "actions/upload-artifact@v4",
