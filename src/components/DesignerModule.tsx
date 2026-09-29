@@ -118,6 +118,7 @@ export function DesignerModule() {
   const [creativeAutoNote,setCreativeAutoNote]=useState("");
   const [creativeAutoRetryCount,setCreativeAutoRetryCount]=useState(0);
   const [creativeAutoRenderNonce,setCreativeAutoRenderNonce]=useState(0);
+  const [creativeVisualReview,setCreativeVisualReview]=useState<CreativeVisualCheck|null>(null);
   const [shirtFilter,setShirtFilter]=useState<ShirtFabricFilter>("All");
   const [pantFilter,setPantFilter]=useState<PantFabricFilter>("All");
   const fact = DESIGNER_FASHION_FACTS[factIndex];
@@ -150,7 +151,7 @@ export function DesignerModule() {
   const blockStrategy = useMemo(() => shirt && pant ? assessBlockStrategy(measurementProfile, style, tailorObservations) : null, [measurementProfile, style, shirt, pant, tailorObservations]);
   const negotiation = useMemo(() => recommendation ? buildDesignerNegotiation(recommendation, fitConstruction) : null, [recommendation, fitConstruction]);
   const brandLanguage = useMemo(() => shirt && pant ? evaluateLinenEarthBrandLanguage(shirt,pant,style,occasion,{climate,intention}) : null, [shirt,pant,style,occasion,climate,intention]);
-  const garmentSpec = useMemo(() => recommendation ? buildCanonicalGarmentSpec(recommendation, fitConstruction, measurementProfile, brandLanguage, blockStrategy, activeCreative) : null, [recommendation, fitConstruction, measurementProfile, brandLanguage, blockStrategy, activeCreative]);
+  const garmentSpec = useMemo(() => recommendation ? buildCanonicalGarmentSpec(recommendation, fitConstruction, measurementProfile, brandLanguage, blockStrategy, activeCreative, creativeVisualReview) : null, [recommendation, fitConstruction, measurementProfile, brandLanguage, blockStrategy, activeCreative, creativeVisualReview]);
 
   useEffect(() => {
     try {
@@ -214,6 +215,7 @@ export function DesignerModule() {
       const parsed = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null") as {
         shirtId?: string; pantId?: string; occasion?: OccasionTier; climate?: DesignerClimate;
         intention?: DesignerIntention; style?: Partial<DesignerStyle>; creative?: CreativeDirection | null;
+        creativeVisualReview?: CreativeVisualCheck | null;
       } | null;
 
       let nextShirtId = parsed?.shirtId && DESIGNER_SHIRTS.some((item) => item.id === parsed.shirtId) ? parsed.shirtId : shirtId;
@@ -284,6 +286,7 @@ export function DesignerModule() {
         setActiveCreative(parsed.creative);
         setCreativeDirections([parsed.creative]);
         setRecommendation(parsed.creative.recommendation);
+        if(parsed.creativeVisualReview?.evidenceAvailable) setCreativeVisualReview(parsed.creativeVisualReview);
       }
 
       if (fromDirector) {
@@ -322,9 +325,9 @@ export function DesignerModule() {
   useEffect(() => {
     if (!draftReady) return;
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ shirtId, pantId, occasion, climate, intention, style, creative:activeCreative }));
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ shirtId, pantId, occasion, climate, intention, style, creative:activeCreative, creativeVisualReview }));
     } catch { /* Designer remains usable if browser storage is unavailable. */ }
-  }, [draftReady, shirtId, pantId, occasion, climate, intention, style, activeCreative]);
+  }, [draftReady, shirtId, pantId, occasion, climate, intention, style, activeCreative, creativeVisualReview]);
 
   useEffect(() => {
     if(!draftReady) return;
@@ -336,6 +339,7 @@ export function DesignerModule() {
     setSearchResults([]);
     setCreativeDirections([]);
     setActiveCreative(null);
+    setCreativeVisualReview(null);
     setCreativeAutoNote("");
   },[draftReady,shirtId,pantId,occasion,climate,intention]);
 
@@ -395,6 +399,7 @@ export function DesignerModule() {
   function runCreativeLab() {
     if (!shirt || !pant) return;
     setCreativeAutoRetryCount(0);
+    setCreativeVisualReview(null);
     setCreativeAutoNote("");
     const concepts=generateCreativeDirections({
       shirt,pant,occasion,style,context:{climate,intention},
@@ -452,6 +457,7 @@ export function DesignerModule() {
   }
 
   function useCreativeDirection(direction:CreativeDirection,origin:"manual"|"automatic"="manual") {
+    setCreativeVisualReview(null);
     if(origin==="manual") {
       setCreativeAutoRetryCount(0);
       setCreativeAutoNote("");
@@ -884,6 +890,7 @@ export function DesignerModule() {
         autoRenderNonce={creativeAutoRenderNonce}
         onCreativeRenderStart={()=>{setCreativeAutoRetryCount(0);setCreativeAutoNote("");}}
         onCreativeInspection={(check)=>{
+          setCreativeVisualReview(check);
           if(!check.evidenceAvailable || !activeCreative) return;
           const severeHeuristicFailure=
             check.heroVisibility<24 ||
