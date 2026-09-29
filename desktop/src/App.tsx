@@ -169,7 +169,7 @@ const operatorTour = [
     module: "Fabrics",
     eyebrow: "04 · STOCK",
     title: "Website colour is not the same as verified stock.",
-    body: "Imported LLinen Earth website swatches begin as unverified. Physically confirm the roll, metres and availability before marking a colour In Stock or promoting it.",
+    body: "Imported Linen Earth website swatches begin as unverified. Physically confirm the roll, metres and availability before marking a colour In Stock or promoting it.",
     tip: "Verify high-demand fabrics first so recommendations stay trustworthy.",
   },
   {
@@ -445,7 +445,7 @@ export default function App() {
       setUnlockPassword("");
       setUnlocked(true);
     } catch (error) {
-      setLockError(`Could not unlock LLinen Earth OS: ${String(error)}`);
+      setLockError(`Could not unlock Linen Earth OS: ${String(error)}`);
     }
   }
 
@@ -936,7 +936,7 @@ export default function App() {
       id: "verify-legacy-stock",
       level: "watch",
       title: `${unverified.length} website swatches still need shop verification`,
-      evidence: "These colours came from the older LLinen Earth website and are deliberately not assumed to be physically available.",
+      evidence: "These colours came from the older Linen Earth website and are deliberately not assumed to be physically available.",
       action: "Work through the highest-demand lines first and mark each colour In Stock, Low or Out.",
       module: "Fabrics",
     });
@@ -1014,7 +1014,7 @@ export default function App() {
         hook: `“Going to a ${topOccasion.label.toLowerCase()}? Start with the fabric, not the outfit.”`,
         format: "18–25 sec Reel · 3-act transformation",
         visualDirection: `Open on fabric texture → cut to tailoring detail → finish on a full ${titleCase(topGarment.label)} look. Keep the edit premium and controlled, not hyper-fast.`,
-        cta: "Try your occasion in Style Director / Visit LLinen Earth",
+        cta: "Try your occasion in Style Director / Visit Linen Earth",
         guardrail: "Use only fabrics that are verified In Stock before showing a specific colour.",
       });
     }
@@ -1041,7 +1041,7 @@ export default function App() {
         id: "visual-proof",
         lane: analytics.total >= 10 ? "Promote" : "Test",
         title: "From swatch to look · visual proof",
-        objective: "Demonstrate that LLinen Earth can help customers imagine fabric as a finished outfit.",
+        objective: "Demonstrate that Linen Earth can help customers imagine fabric as a finished outfit.",
         evidence: `${visuals.length} visual(s) recorded; visual journeys currently reach WhatsApp at ${analytics.visualWhatsappRate}%.`,
         hook: "“A fabric roll is hard to imagine. So we stopped asking you to imagine it.”",
         format: "15–20 sec screen + fabric Reel",
@@ -1087,7 +1087,7 @@ export default function App() {
       id: "brand-education",
       lane: "Test",
       title: "Fabric First · brand authority",
-      objective: "Teach why fabric choice changes the final garment and reinforce LLinen Earth’s positioning.",
+      objective: "Teach why fabric choice changes the final garment and reinforce Linen Earth’s positioning.",
       evidence: `${inventory.fabrics.length} fabric entries and ${fabricLines.length - 1} lines are already structured in the system.`,
       hook: "“Most people choose the shirt first. A tailor looks at the cloth first.”",
       format: "20–30 sec educational Reel",
@@ -1479,7 +1479,7 @@ export default function App() {
     setMarketingExporting(campaign.id);
     try {
       const content = [
-        `# LLinen Earth Campaign Brief — ${campaign.title}`,
+        `# Linen Earth Campaign Brief — ${campaign.title}`,
         "",
         `Generated: ${new Date().toLocaleString("en-IN")}`,
         `Decision lane: ${campaign.lane}`,
@@ -1506,7 +1506,7 @@ export default function App() {
         campaign.guardrail,
         "",
         "## Production note",
-        "Use the exact LLinen Earth fabric/swatches referenced in the operator system. Keep generated imagery clearly presented as visualization when applicable.",
+        "Use the exact Linen Earth fabric/swatches referenced in the operator system. Keep generated imagery clearly presented as visualization when applicable.",
       ].join("\n");
 
       const path = await invoke<string>("export_marketing_brief", { title: campaign.title, content });
@@ -1787,7 +1787,7 @@ export default function App() {
   if (!lockStatus) {
     return <main className="desktopLockScreen">
       <section className="desktopLockPanel desktopLockLoading">
-        <div className="desktopLockBrand"><span>LE</span><div><b>LLINEN EARTH</b><small>OPERATOR SYSTEM</small></div></div>
+        <div className="desktopLockBrand"><span>LE</span><div><b>LINEN EARTH</b><small>OPERATOR SYSTEM</small></div></div>
         <i className="desktopLockPulse" />
         <p>{lockError || "Checking private desktop access…"}</p>
       </section>
@@ -1797,7 +1797,7 @@ export default function App() {
   if (lockStatus.configured && !unlocked) {
     return <main className="desktopLockScreen">
       <motion.section className="desktopLockPanel" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="desktopLockBrand"><span>LE</span><div><b>LLINEN EARTH</b><small>PRIVATE OPERATOR SYSTEM</small></div></div>
+        <div className="desktopLockBrand"><span>LE</span><div><b>LINEN EARTH</b><small>PRIVATE OPERATOR SYSTEM</small></div></div>
         <div className="desktopLockCopy">
           <small>DESKTOP LOCK</small>
           <h1>Business memory.<br/><em>Private on this PC.</em></h1>
@@ -1805,7 +1805,7 @@ export default function App() {
         </div>
         <form onSubmit={(event) => { event.preventDefault(); void unlockDesktop(); }}>
           <label><small>PASSWORD</small><input type="password" value={unlockPassword} onChange={(event)=>setUnlockPassword(event.target.value)} autoComplete="current-password" autoFocus /></label>
-          <button disabled={!unlockPassword}>Unlock LLinen Earth OS ↗</button>
+          <button disabled={!unlockPassword}>Unlock Linen Earth OS ↗</button>
           {lockError && <p className="desktopLockError">{lockError}</p>}
         </form>
         <footer>Protected by Windows Credential Manager · Local vault remains on this PC</footer>
@@ -1816,7 +1816,7 @@ export default function App() {
   return (
     <div className="osShell">
       <aside className="sidebar">
-        <div className="brandMark"><span>LE</span><div><b>LLINEN EARTH</b><small>OPERATOR SYSTEM</small></div></div>
+        <div className="brandMark"><span>LE</span><div><b>LINEN EARTH</b><small>OPERATOR SYSTEM</small></div></div>
         <nav>
           {nav.map((item) => (
             <button key={item} className={activeNav === item ? "active" : ""} onClick={() => setActiveNav(item)}>
@@ -1834,7 +1834,7 @@ export default function App() {
       <main className="workspace">
         <header className="topbar">
           <div>
-            <small>LLINEN EARTH OS / {activeNav.toUpperCase()}</small>
+            <small>LINEN EARTH OS / {activeNav.toUpperCase()}</small>
             <h1>
               {activeNav === "Today" ? <>Know what happened.<br/><em>Know what to do next.</em></> :
                activeNav === "Customers" ? <>Every customer.<br/><em>One continuous story.</em></> :
@@ -1901,7 +1901,7 @@ export default function App() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: .985 }}
               transition={{ duration: .2 }}
-              aria-label="LLinen Earth operator guide"
+              aria-label="Linen Earth operator guide"
             >
               <div className="coachProgress">
                 <span><i style={{ width: `${((tourIndex + 1) / operatorTour.length) * 100}%` }} /></span>
@@ -2041,7 +2041,7 @@ export default function App() {
                   <AnimatePresence mode="wait">{customerEditor}</AnimatePresence>
                   <motion.article layout className="card vaultCard">
                     <div className="cardHead"><div><small>MEMORY VAULT</small><h2>Stored on this PC.</h2></div><span className="good">● LIVE</span></div>
-                    <p>The desktop app owns the local LLinen Earth business vault. Cloud website activity can be imported without giving the web app access to your files.</p>
+                    <p>The desktop app owns the local Linen Earth business vault. Cloud website activity can be imported without giving the web app access to your files.</p>
                     <code>{summary?.vaultPath || "Preparing vault…"}</code>
                     <div className="vaultRows">
                       <span><b>Customer events</b> Append-only records</span>
@@ -2221,7 +2221,7 @@ export default function App() {
                 </motion.article> : <div className="card empty tall">Sync inventory and choose a fabric colour.</div>}
 
                 <article className="card legacyInventory">
-                  <div className="cardHead"><div><small>LLINENEARTH.COM</small><h2>Legacy website sources.</h2></div><span>8 categories</span></div>
+                  <div className="cardHead"><div><small>LINENEARTH.COM</small><h2>Legacy website sources.</h2></div><span>8 categories</span></div>
                   <p>The importer is scanning the existing public website for additional swatches. New website-only colours stay separate until their image/name can be verified, so we do not pollute inventory with guessed colours.</p>
                   <div className="legacyLines">{["60 Lea Plain","60 Lea Formals","75 Lea Formals","Cotton Plain","Cotton Print","Digital Print","Linen Suiting","Luxurious Cotton"].map((line)=><span key={line}>{line}<i>↗</i></span>)}</div>
                 </article>
@@ -2248,10 +2248,10 @@ export default function App() {
                     {visuals.map(({ session, event }) => {
                       const imageUrl = String(event.payload?.imageUrl || "");
                       const fabric = String(event.payload?.fabric || session.selectedLook?.fabric || "Fabric not recorded");
-                      const provider = String(event.payload?.provider || "LLinen Earth renderer");
+                      const provider = String(event.payload?.provider || "Linen Earth renderer");
                       return <button key={event.id} className="visualCard" onClick={() => setSelected(session.sessionId)}>
                         <span className="visualMedia">
-                          {imageUrl.startsWith("https://") ? <img src={imageUrl} alt={String(event.payload?.label || "Generated LLinen Earth look")} /> : <i><b>LE</b><small>{String(event.payload?.mode || "preview").toUpperCase()}</small></i>}
+                          {imageUrl.startsWith("https://") ? <img src={imageUrl} alt={String(event.payload?.label || "Generated Linen Earth look")} /> : <i><b>LE</b><small>{String(event.payload?.mode || "preview").toUpperCase()}</small></i>}
                           <em>{String(event.payload?.mode || "preview") === "photo" ? "PHOTOREAL" : "PREVIEW"}</em>
                         </span>
                         <span className="visualCopy">
@@ -2269,7 +2269,7 @@ export default function App() {
                 <AnimatePresence mode="wait">{customerEditor}</AnimatePresence>
                 <article className="card visualPolicy">
                   <div className="cardHead"><div><small>LOCAL ARCHIVE</small><h2>PC visual memory.</h2></div><span>TRUSTED HOSTS ONLY</span></div>
-                  <p>Photoreal FASHN images can be copied into the LLinen Earth hard-drive vault so important work is not dependent on a remote image URL. Other hosts are ignored.</p>
+                  <p>Photoreal FASHN images can be copied into the Linen Earth hard-drive vault so important work is not dependent on a remote image URL. Other hosts are ignored.</p>
                   <button className="smallAction archiveAction" onClick={() => void archiveVisuals()} disabled={archivingVisuals}>{archivingVisuals ? "Archiving…" : "Archive visuals to PC"}</button>
                 </article>
               </aside>
@@ -2499,7 +2499,7 @@ export default function App() {
                     <div className="cardHead"><div><small>ASK THE BRAIN</small><h2>Ask a business question.</h2></div><span>LOCAL</span></div>
                     <p>This first Brain answers from the records on your PC. It does not invent outside market facts.</p>
                     <textarea value={brainQuery} onChange={(e) => setBrainQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askBrain(); } }} placeholder="What needs attention today?&#10;Which fabric is most popular?&#10;How are visuals performing?" />
-                    <button onClick={askBrain}>Ask LLinen Brain ↗</button>
+                    <button onClick={askBrain}>Ask Linen Brain ↗</button>
                     <div className="brainAnswer"><small>ANSWER</small><p>{brainAnswer}</p></div>
                   </article>
 
@@ -2596,7 +2596,7 @@ export default function App() {
                     <div className="syncPairForm">
                       <label><small>SYNC ENDPOINT</small><input value={syncPairingUrl} onChange={(event)=>setSyncPairingUrl(event.target.value)} spellCheck={false} /></label>
                       <label><small>PRIVATE PAIRING TOKEN</small><input type="password" value={syncPairingToken} onChange={(event)=>setSyncPairingToken(event.target.value)} placeholder={syncPairing?.configured ? "Stored securely — paste only to replace" : "Paste the server sync token"} /></label>
-                      <p>The token is stored in Windows Credential Manager, not in the LLinen Earth data files.</p>
+                      <p>The token is stored in Windows Credential Manager, not in the Linen Earth data files.</p>
                       <div>
                         <button onClick={() => void pairCloud()} disabled={pairingSaving || !syncPairingToken}>{pairingSaving ? "Saving…" : syncPairing?.configured ? "Replace pairing" : "Pair this PC"}</button>
                         {syncPairing?.configured && <button className="secondarySyncButton" onClick={() => void clearCloudPairing()} disabled={pairingSaving}>Clear</button>}
@@ -2632,7 +2632,7 @@ export default function App() {
                       <div><small>DESKTOP ACCESS</small><h2>{lockStatus?.configured ? "Protected on this PC." : "Add a local app lock."}</h2></div>
                       <span className={lockStatus?.configured ? "good" : "memoryWarn"}>{lockStatus?.configured ? "● LOCK ON" : "● LOCK OFF"}</span>
                     </div>
-                    <p>The password is kept in {lockStatus?.credentialStore || "Windows Credential Manager"}, not inside the LLinen Earth vault or cloud.</p>
+                    <p>The password is kept in {lockStatus?.credentialStore || "Windows Credential Manager"}, not inside the Linen Earth vault or cloud.</p>
                     {lockStatus?.configured && <label><small>CURRENT PASSWORD</small><input type="password" value={lockCurrentPassword} onChange={(event)=>setLockCurrentPassword(event.target.value)} autoComplete="current-password" /></label>}
                     <label><small>{lockStatus?.configured ? "NEW PASSWORD" : "CREATE PASSWORD"}</small><input type="password" value={lockNewPassword} onChange={(event)=>setLockNewPassword(event.target.value)} autoComplete="new-password" placeholder="Minimum 6 characters" /></label>
                     {lockError && <p className="desktopSecurityError">{lockError}</p>}
@@ -2641,13 +2641,13 @@ export default function App() {
                       {lockStatus?.configured && <button onClick={lockDesktopNow}>Lock now</button>}
                       {lockStatus?.configured && <button className="dangerGhost" onClick={() => void removeDesktopLock()} disabled={lockSaving || !lockCurrentPassword}>Remove</button>}
                     </div>
-                    <small className="desktopIdleNote">When enabled, LLinen Earth OS locks after 15 minutes without keyboard/touch activity.</small>
+                    <small className="desktopIdleNote">When enabled, Linen Earth OS locks after 15 minutes without keyboard/touch activity.</small>
                   </article>
 
                   <article className="card memoryPolicy">
                     <small>DATA PRINCIPLE</small>
                     <h3>Local first. Cloud when needed.</h3>
-                    <p>The desktop app only manages the LLinen Earth business vault. Customer website activity can sync into it, but the public website does not receive arbitrary access to your PC or other personal folders.</p>
+                    <p>The desktop app only manages the Linen Earth business vault. Customer website activity can sync into it, but the public website does not receive arbitrary access to your PC or other personal folders.</p>
                   </article>
                 </aside>
               </div>
