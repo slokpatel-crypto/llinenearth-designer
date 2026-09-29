@@ -17,7 +17,7 @@ import { evaluateLinenEarthBrandLanguage, type BrandLanguageEvaluation } from "@
 import { casebookSignalFor, type DesignerCasebook, type DesignerCasebookSignal } from "@/lib/designer/casebook";
 import { fitOutcomeProportionFromMeasurements, fitOutcomeSignalFor, type FitOutcomeBook, type FitOutcomeSignal } from "@/lib/designer/fit-outcomes";
 
-import { optionIdForLabel } from "@/lib/vocab";
+import { colorFamilyPairSignal, optionIdForLabel } from "@/lib/vocab";
 
 export type DesignerSearchScope = "keep_shirt" | "keep_trouser" | "open";
 export type DesignerSearchTier = "Safe" | "Elevated" | "Statement";
@@ -316,8 +316,9 @@ function fabricIntelligenceAlignment(
     if(cuffId && shirtIntel.recommendedConstruction.cuffs.includes(cuffId)) score+=1.7*w;
     if(fitId && shirtIntel.recommendedConstruction.shirtFits.includes(fitId)) score+=1.7*w;
     if(pantIntel?.colorFamily) {
-      if(shirtIntel.pairing.goodColorFamilies.includes(pantIntel.colorFamily)) score+=5*w;
-      if(shirtIntel.pairing.avoidColorFamilies.includes(pantIntel.colorFamily)) score-=8*w;
+      const colorSignal=colorFamilyPairSignal(shirtIntel.pairing.goodColorFamilies,shirtIntel.pairing.avoidColorFamilies,pantIntel.colorFamily);
+      if(colorSignal>0) score+=5*w;
+      if(colorSignal<0) score-=8*w;
     }
   }
 
@@ -327,8 +328,9 @@ function fabricIntelligenceAlignment(
     const trouserId=optionIdForLabel("trouser",style.trouser);
     if(trouserId && pantIntel.recommendedConstruction.trouserDirections.includes(trouserId)) score+=2.4*w;
     if(shirtIntel?.colorFamily) {
-      if(pantIntel.pairing.goodColorFamilies.includes(shirtIntel.colorFamily)) score+=4*w;
-      if(pantIntel.pairing.avoidColorFamilies.includes(shirtIntel.colorFamily)) score-=7*w;
+      const colorSignal=colorFamilyPairSignal(pantIntel.pairing.goodColorFamilies,pantIntel.pairing.avoidColorFamilies,shirtIntel.colorFamily);
+      if(colorSignal>0) score+=4*w;
+      if(colorSignal<0) score-=7*w;
     }
   }
 
