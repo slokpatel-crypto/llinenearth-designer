@@ -11,6 +11,7 @@ import {
 import { searchDesignerCatalogue, type DesignerSearchScope } from "@/lib/designer/search";
 import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
 import { loadDesignerEvidenceContext } from "@/lib/designer/evidence-context";
+import { loadDesignerFabricIntelligence } from "@/lib/fabric-intelligence-server";
 import type { MeasurementProfile } from "@/lib/measurements";
 import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
 
@@ -119,6 +120,7 @@ export async function POST(request:Request) {
     ]);
     const stock=applyDesignerFabricMetadataToStock(metadata).filter((fabric)=>fabric.inStock);
     const fabrics=stock.map(designerFabricFromStock);
+    const fabricIntelligence=await loadDesignerFabricIntelligence(fabrics.map((fabric)=>fabric.id));
     const shirts=fabrics.filter((fabric)=>fabric.allowedGarments.includes("shirt"));
     const pants=fabrics.filter((fabric)=>fabric.allowedGarments.includes("pant"));
     const currentShirt=shirts.find((fabric)=>fabric.id===shirtId);
@@ -138,6 +140,7 @@ export async function POST(request:Request) {
       scope,
       casebook:evidence.casebook,
       fitOutcomes:evidence.fitOutcomes,
+      fabricIntelligence,
     });
 
     const presentation=results.slice(0,3).map((result)=>({
