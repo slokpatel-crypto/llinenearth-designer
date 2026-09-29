@@ -19,7 +19,15 @@ export type DesignerFabricIntelligence = {
     imageQualityScore:number|null;
     colorDeltaE:number|null;
     patternPhysicalScale:"declared_repeat"|"declared_swatch_width"|"unknown"|null;
+    repeatMm:number|null;
+    stripeWidthMm:number|null;
     contentSha256:string|null;
+  };
+  verifiedPhysical:{
+    gsm:number|null;
+    drape:"Fluid"|"Balanced"|"Structured"|null;
+    fiberContent:string|null;
+    sourceUrl:string|null;
   };
   colorFamily:ColorFamilyId|null;
   undertone:"warm"|"cool"|"neutral"|"uncertain";
