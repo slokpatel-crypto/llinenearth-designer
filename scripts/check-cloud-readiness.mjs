@@ -17,12 +17,14 @@ const url = process.env.SUPABASE_URL?.trim();
 const secret = process.env.SUPABASE_SECRET_KEY?.trim();
 const legacy = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 const key = secret || legacy;
-const syncToken = process.env.LLINEN_OPERATOR_SYNC_TOKEN?.trim();
-const sessionSecret = process.env.LLINEN_OPERATOR_SESSION_SECRET?.trim();
-const memorySessionSecret = process.env.LLINEN_MEMORY_SESSION_SECRET?.trim();
-const passwordHash = process.env.LLINEN_OPERATOR_PASSWORD_HASH?.trim();
+const readBrandEnv = (name) => process.env[name]?.trim() || process.env[`L${name}`]?.trim() || "";
+const legacyBrandIdentifier = (name) => `l${name}`;
+const syncToken = readBrandEnv("LINEN_OPERATOR_SYNC_TOKEN");
+const sessionSecret = readBrandEnv("LINEN_OPERATOR_SESSION_SECRET");
+const memorySessionSecret = readBrandEnv("LINEN_MEMORY_SESSION_SECRET");
+const passwordHash = readBrandEnv("LINEN_OPERATOR_PASSWORD_HASH");
 
-console.log("LLinen Earth cloud readiness\n");
+console.log("Linen Earth cloud readiness\n");
 
 if (!url) {
   fail("SUPABASE_URL is missing.");
@@ -46,16 +48,16 @@ if (!key) {
   warn("Plan to migrate to SUPABASE_SECRET_KEY before legacy service_role keys are retired.");
 }
 
-if (!syncToken || syncToken.length < 24) fail("LLINEN_OPERATOR_SYNC_TOKEN is missing or too short.");
+if (!syncToken || syncToken.length < 24) fail("LINEN_OPERATOR_SYNC_TOKEN is missing or too short.");
 else ok("Desktop sync token is configured.");
 
-if (!sessionSecret || sessionSecret.length < 32) fail("LLINEN_OPERATOR_SESSION_SECRET is missing or too short.");
+if (!sessionSecret || sessionSecret.length < 32) fail("LINEN_OPERATOR_SESSION_SECRET is missing or too short.");
 else ok("Operator session signing secret is configured.");
 
-if (!memorySessionSecret || memorySessionSecret.length < 32) fail("LLINEN_MEMORY_SESSION_SECRET is missing or too short.");
+if (!memorySessionSecret || memorySessionSecret.length < 32) fail("LINEN_MEMORY_SESSION_SECRET is missing or too short.");
 else ok("Public memory session signing secret is configured.");
 
-if (!passwordHash?.startsWith("scrypt-v1$")) fail("LLINEN_OPERATOR_PASSWORD_HASH is missing or not a supported scrypt hash.");
+if (!passwordHash?.startsWith("scrypt-v1$")) fail("LINEN_OPERATOR_PASSWORD_HASH is missing or not a supported scrypt hash.");
 else ok("Operator password hash is configured.");
 
 if (url && key) {
@@ -75,10 +77,14 @@ if (url && key) {
       const rows = await response.json();
       ok(`style_events is reachable (${rows.length ? "existing data found" : "table is empty"}).`);
 
-      const healthResponse = await fetch(
-        `${url.replace(/\/$/, "")}/rest/v1/rpc/llinen_cloud_health`,
+      const callHealth = (rpcName) => fetch(
+        `${url.replace(/\/$/, "")}/rest/v1/rpc/${rpcName}`,
         { method: "POST", headers: { ...headers, "content-type": "application/json" }, body: "{}" },
       );
+      let healthResponse = await callHealth("linen_cloud_health");
+      if (!healthResponse.ok && healthResponse.status === 404) {
+        healthResponse = await callHealth(legacyBrandIdentifier("linen_cloud_health"));
+      }
       if (!healthResponse.ok) {
         fail("Cloud health RPC is missing. Apply the latest Supabase migration.");
       } else {
@@ -86,7 +92,7 @@ if (url && key) {
         if (Number(health?.schemaVersion) !== 5) {
           fail(`Unsupported cloud schema version: ${String(health?.schemaVersion)}`);
         } else {
-          ok("Hardened LLinen cloud schema v5 is installed.");
+          ok("Hardened Linen cloud schema v5 is installed.");
         }
 
         if (!health?.tableExists) fail("style_events table is missing.");
@@ -114,7 +120,7 @@ if (url && key) {
 }
 
 if (!process.exitCode) {
-  console.log("\nCloud foundation is ready for website ↔ LLinen Earth OS sync.");
+  console.log("\nCloud foundation is ready for website ↔ Linen Earth OS sync.");
 } else {
   console.log("\nCloud foundation is not production-ready yet.");
 }
