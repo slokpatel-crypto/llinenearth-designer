@@ -338,6 +338,13 @@ for (const token of ["fabric-analyzer-v3","FABRIC_REFERENCE_COUNTS","retainKnown
 for (const token of ["REAL_MENSWEAR_FABRIC_EXAMPLES","REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT","AUTO-GENERATED","source_id","composition","pattern_name"]) {
   if (!fabricAnalyzerExamples.includes(token)) throw new Error(`Real fabric-example corpus regression: missing ${token}`);
 }
+const fabricAnalyzerProvenance = fs.readFileSync("src/lib/fabric-analyzer-provenance-map.ts","utf8");
+for (const token of ["FABRIC_REFERENCE_PROVENANCE","AUTO-GENERATED provenance map","source_id","materials","patterns","colors"]) {
+  if (!fabricAnalyzerProvenance.includes(token)) throw new Error(`Fabric reference provenance regression: missing ${token}`);
+}
+for (const token of ["FABRIC_REFERENCE_PROVENANCE","sourceIdsForReferences","backend derives sourceIds"]) {
+  if (!fabricAnalyzerSource.includes(token)) throw new Error(`Fabric Analyzer provenance enforcement regression: missing ${token}`);
+}
 if (realDesignerModule.includes("fabric-analyzer-reference-index") || realDesignerModule.includes("fabric-analyzer-real-examples")) {
   throw new Error("Fabric Analyzer privacy regression: real reference corpus must remain server-only.");
 }
