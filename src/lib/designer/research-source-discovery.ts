@@ -8,7 +8,15 @@ export type DiscoveredFashionWebsite = {
   authority:FashionResearchSource["authority"];
   wikidataId:string;
   domain:string;
-  discovery:"wikidata-fashion-house"|"wikidata-clothing-industry"|"wikidata-textile-industry";
+  discovery:
+    |"wikidata-fashion-house"
+    |"wikidata-clothing-industry"
+    |"wikidata-textile-industry"
+    |"wikidata-textile-manufacturing"
+    |"wikidata-fashion-magazine"
+    |"wikidata-fashion-museum"
+    |"wikidata-fashion-designer"
+    |"wikidata-fashion-design";
 };
 
 type Binding={
@@ -42,20 +50,38 @@ function slug(value:string) {
 }
 
 function categoryFor(route:string):DiscoveredFashionWebsite["category"] {
-  return route==="textile" ? "materials" : "industry";
+  if(route==="textile" || route==="textile-manufacturing") return "materials";
+  if(route==="fashion-magazine") return "runway";
+  if(route==="fashion-museum") return "museum";
+  return "industry";
 }
 
 function authorityFor(route:string):DiscoveredFashionWebsite["authority"] {
-  return route==="fashion-house" ? "industry" : "primary";
+  if(route==="fashion-magazine") return "editorial";
+  if(route==="fashion-house" || route==="fashion-designer") return "industry";
+  return "primary";
 }
 
 function discoveryFor(route:string):DiscoveredFashionWebsite["discovery"] {
   if(route==="fashion-house") return "wikidata-fashion-house";
   if(route==="textile") return "wikidata-textile-industry";
+  if(route==="textile-manufacturing") return "wikidata-textile-manufacturing";
+  if(route==="fashion-magazine") return "wikidata-fashion-magazine";
+  if(route==="fashion-museum") return "wikidata-fashion-museum";
+  if(route==="fashion-designer") return "wikidata-fashion-designer";
+  if(route==="fashion-design") return "wikidata-fashion-design";
   return "wikidata-clothing-industry";
 }
 
-type DiscoveryRoute="fashion-house"|"clothing"|"textile";
+type DiscoveryRoute=
+  |"fashion-house"
+  |"clothing"
+  |"textile"
+  |"textile-manufacturing"
+  |"fashion-magazine"
+  |"fashion-museum"
+  |"fashion-designer"
+  |"fashion-design";
 
 function queryFor(route:DiscoveryRoute,limit:number) {
   const safeLimit=Math.max(50,Math.min(1200,Math.round(limit)));
@@ -63,7 +89,17 @@ function queryFor(route:DiscoveryRoute,limit:number) {
     ? "?item wdt:P31/wdt:P279* wd:Q3661311; wdt:P856 ?website."
     : route==="textile"
       ? "?item wdt:P452 wd:Q607081; wdt:P856 ?website."
-      : "?item wdt:P452 wd:Q11828862; wdt:P856 ?website.";
+      : route==="textile-manufacturing"
+        ? "?item wdt:P452 wd:Q1505660; wdt:P856 ?website."
+        : route==="fashion-magazine"
+          ? "?item wdt:P31/wdt:P279* wd:Q6297581; wdt:P856 ?website."
+          : route==="fashion-museum"
+            ? "?item wdt:P31/wdt:P279* wd:Q5436782; wdt:P856 ?website."
+            : route==="fashion-designer"
+              ? "?item wdt:P106 wd:Q3501317; wdt:P856 ?website."
+              : route==="fashion-design"
+                ? "?item wdt:P101 wd:Q29583; wdt:P856 ?website."
+                : "?item wdt:P452 wd:Q11828862; wdt:P856 ?website.";
   return `
 SELECT DISTINCT ?item ?itemLabel ?website WHERE {
   ${selector}
@@ -100,13 +136,23 @@ export async function discoverFashionWebsites(limit=1000):Promise<DiscoveredFash
   const routeLimits={
     "fashion-house":Math.min(700,Math.max(250,requested)),
     clothing:Math.min(1000,Math.max(500,requested)),
-    textile:Math.min(1000,Math.max(500,requested)),
+    textile:Math.min(1000,Math.max(400,requested)),
+    "textile-manufacturing":Math.min(1000,Math.max(400,requested)),
+    "fashion-magazine":Math.min(500,Math.max(150,Math.ceil(requested*.35))),
+    "fashion-museum":Math.min(400,Math.max(120,Math.ceil(requested*.25))),
+    "fashion-designer":Math.min(900,Math.max(400,requested)),
+    "fashion-design":Math.min(700,Math.max(250,Math.ceil(requested*.6))),
   } satisfies Record<DiscoveryRoute,number>;
 
   const settled=await Promise.allSettled([
     discoverRoute("fashion-house",routeLimits["fashion-house"]),
     discoverRoute("clothing",routeLimits.clothing),
     discoverRoute("textile",routeLimits.textile),
+    discoverRoute("textile-manufacturing",routeLimits["textile-manufacturing"]),
+    discoverRoute("fashion-magazine",routeLimits["fashion-magazine"]),
+    discoverRoute("fashion-museum",routeLimits["fashion-museum"]),
+    discoverRoute("fashion-designer",routeLimits["fashion-designer"]),
+    discoverRoute("fashion-design",routeLimits["fashion-design"]),
   ]);
   const bindings=settled.flatMap((result)=>result.status==="fulfilled"?result.value:[]);
   if(!bindings.length) throw new Error("All Wikidata fashion research discovery routes failed.");
@@ -133,7 +179,17 @@ export async function discoverFashionWebsites(limit=1000):Promise<DiscoveredFash
       domain,
       discovery:discoveryFor(route),
     };
-    if(!current || (current.discovery!=="wikidata-fashion-house" && candidate.discovery==="wikidata-fashion-house")) {
+    const priority:Record<DiscoveredFashionWebsite["discovery"],number>={
+      "wikidata-fashion-museum":8,
+      "wikidata-fashion-magazine":7,
+      "wikidata-textile-manufacturing":6,
+      "wikidata-textile-industry":5,
+      "wikidata-fashion-design":4,
+      "wikidata-fashion-house":3,
+      "wikidata-fashion-designer":2,
+      "wikidata-clothing-industry":1,
+    };
+    if(!current || priority[candidate.discovery]>priority[current.discovery]) {
       byDomain.set(domain,candidate);
     }
   }
