@@ -328,7 +328,7 @@ if (realDesignerModule.includes("fabric-analyzer")) throw new Error("Fabric Anal
 console.log("Private Fabric Analyzer gate passed: server-only visual analysis and menswear taxonomy remain backend-only.");
 
 const fabricReferenceIndex = fs.readFileSync("src/lib/fabric-analyzer-reference-index.ts","utf8");
-for (const token of ["REAL_MENSWEAR_MATERIAL_TERMS","REAL_MENSWEAR_PATTERN_TERMS","STANDARD_COLOR_REFERENCE_TERMS","FABRIC_REFERENCE_SOURCES","real-reference-v1"]) {
+for (const token of ["REAL_MENSWEAR_MATERIAL_TERMS","REAL_MENSWEAR_PATTERN_TERMS","STANDARD_COLOR_REFERENCE_TERMS","FABRIC_REFERENCE_SOURCES","real-reference-v2"]) {
   if (!fabricReferenceIndex.includes(token)) throw new Error(`Real-reference Fabric Analyzer regression: missing ${token}`);
 }
 const fabricAnalyzerExamples = fs.readFileSync("src/lib/fabric-analyzer-real-examples.ts","utf8");
@@ -359,6 +359,62 @@ for (const token of ["analyzeMenswearFabricWithStore","loadFabricAnalyzerLearnin
 }
 if (realDesignerModule.includes("fabric-analyzer-store")) throw new Error("Fabric Analyzer privacy regression: profile storage/learning must remain server-only.");
 console.log("Fabric Analyzer learning gate passed: reviewed corrections can feed aggregate backend guidance without exposing the analyzer in customer UI.");
+
+const fabricIntelligenceTypes=fs.readFileSync("src/lib/fabric-intelligence-types.ts","utf8");
+const fabricIntelligenceServer=fs.readFileSync("src/lib/fabric-intelligence-server.ts","utf8");
+for(const token of ["DesignerFabricIntelligence","trust:\"reviewed\"|\"high-confidence\"|\"provisional\"","recommendedConstruction","pairing"]) {
+  if(!fabricIntelligenceTypes.includes(token)) throw new Error(`Fabric Intelligence type regression: missing ${token}`);
+}
+for(const token of ['import "server-only"',"loadDesignerFabricIntelligence","loadFabricAnalysesForFabricIds","high-confidence","reviewed"]) {
+  if(!fabricIntelligenceServer.includes(token)) throw new Error(`Fabric Intelligence server regression: missing ${token}`);
+}
+for(const token of ["fabricIntelligenceAlignment","fabricIntelligence?: Record<string,DesignerFabricIntelligence>","intelligenceScore"]) {
+  if(!designerSearch.includes(token)) throw new Error(`Designer Fabric Intelligence ranking regression: missing ${token}`);
+}
+for(const path of ["src/app/api/designer/brief/route.ts","src/app/api/designer/search/route.ts","src/app/api/style-director/route.ts"]) {
+  const source=fs.readFileSync(path,"utf8");
+  if(!source.includes("loadDesignerFabricIntelligence")) throw new Error(`Private Fabric Intelligence integration regression: ${path} no longer loads server-side intelligence.`);
+}
+const styleDirectorAgentIntelligence=fs.readFileSync("src/lib/style-director-agent.ts","utf8");
+for(const token of ["directorIntelligenceScore","directorPairIntelligenceScore","DesignerFabricIntelligence"]) {
+  if(!styleDirectorAgentIntelligence.includes(token)) throw new Error(`Style Director Fabric Intelligence regression: missing ${token}`);
+}
+for(const path of ["src/components/DesignerModule.tsx","src/app/style-director/page.tsx"]) {
+  const source=fs.readFileSync(path,"utf8");
+  if(source.includes("fabric-intelligence-server") || source.includes("fabric-analyzer-store") || source.includes("fabric-analyzer-reference-index")) {
+    throw new Error(`Fabric Intelligence privacy regression: backend internals leaked into customer UI at ${path}.`);
+  }
+}
+console.log("Fabric Intelligence integration gate passed: Analyzer output affects Designer ranking server-side without entering customer payloads.");
+
+const analyzerStoreSource=fs.readFileSync("src/lib/fabric-analyzer-store.ts","utf8");
+for(const token of ["fabric_analyzer_profile_bind","fabric_analyzer_profiles_for_fabrics","fabric_analyzer_profile_review","fabric_analyzer_feedback_apply","loadFabricAnalyzerProfilesForReview"]) {
+  if(!analyzerStoreSource.includes(token)) throw new Error(`Fabric Analyzer workflow regression: missing ${token}`);
+}
+const analyzerOperatorRoutes=[
+  "src/app/api/operator/fabric-analyzer/analyze/route.ts",
+  "src/app/api/operator/fabric-analyzer/batch/route.ts",
+  "src/app/api/operator/fabric-analyzer/review/route.ts",
+  "src/app/api/operator/fabric-analyzer/stats/route.ts",
+  "src/app/api/operator/fabric-analyzer/calibrate/route.ts",
+];
+for(const path of analyzerOperatorRoutes) {
+  if(!fs.existsSync(path)) throw new Error(`Private Fabric Analyzer operator route missing: ${path}`);
+  const source=fs.readFileSync(path,"utf8");
+  if(!source.includes("verifyOperatorSession")) throw new Error(`Fabric Analyzer operator auth regression: ${path}`);
+}
+const legacyFabricAnalyze=fs.readFileSync("src/app/api/fabric/analyze/route.ts","utf8");
+for(const token of ["verifyOperatorSession","OPERATOR_COOKIE","Not found.","sameOrigin"]) {
+  if(!legacyFabricAnalyze.includes(token)) throw new Error(`Legacy fabric analysis privacy regression: missing ${token}`);
+}
+console.log("Fabric Analyzer privacy gate passed: legacy and advanced analysis endpoints require operator authentication.");
+
+const calibrationSource=fs.readFileSync("src/lib/fabric-analyzer-calibration.ts","utf8");
+for(const token of ["runFabricAnalyzerCalibration","loadFabricAnalyzerCalibrationCases","recordFabricAnalyzerCalibration","formality range"]) {
+  if(!calibrationSource.includes(token)) throw new Error(`Fabric Analyzer calibration regression: missing ${token}`);
+}
+console.log("Fabric Analyzer calibration gate passed: source-backed reference cases can continuously measure Analyzer accuracy.");
+
 
 const photoPreviewMultiView = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
 const selectedLookRenderRoute = fs.readFileSync("src/app/api/designer/look-render/route.ts","utf8");
