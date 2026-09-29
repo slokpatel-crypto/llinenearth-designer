@@ -590,3 +590,13 @@
 .newDesignerAutoRevision{margin-top:10px;padding:10px 11px;border:1px solid #d7e2ea;background:#f7fafc;border-radius:10px}
 .newDesignerAutoRevision span{display:block;font-size:6px;letter-spacing:.12em;color:#37658a;font-weight:800}
 .newDesignerAutoRevision strong{display:block;margin-top:4px;font-size:8px;line-height:1.4;color:#40586c}
+
+.newDesignerOptionalSearch>summary{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;cursor:pointer;list-style:none}
+.newDesignerOptionalSearch>summary::-webkit-details-marker{display:none}
+.newDesignerOptionalSearch>summary span{font-size:6px;letter-spacing:.12em;color:#9a6a53;font-weight:800}
+.newDesignerOptionalSearch>summary strong{font:400 14px/1.3 Georgia,serif;color:#294158}
+.newDesignerOptionalSearch>summary b{font-size:14px;font-weight:400;color:#6f8190}
+.newDesignerOptionalSearch[open]>summary b{transform:rotate(45deg)}
+.newDesignerOptionalSearchBody{margin-top:10px;padding-top:10px;border-top:1px solid #ebe4dc}
+.newDesignerOptionalSearchRun{margin-top:8px;border:0;background:#203d5b;color:#fff;border-radius:999px;padding:8px 11px;font-size:7px;cursor:pointer}
+.newDesignerOptionalSearchRun:disabled{opacity:.4}
