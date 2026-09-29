@@ -384,7 +384,7 @@ for (const token of [
   if (!advancedSearch.includes(token)) throw new Error(`Designer advanced-search regression: missing ${token}`);
 }
 const advancedSearchUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["OPTIONAL","Try different fabrics.","Show options","Keep shirt","Keep trouser","Change both","Why this works","Use look"]) {
+for (const token of ["OPTIONAL","Try a different fabric pairing","Show 3 options","Keep shirt","Keep trouser","Change both","Use look","newDesignerOptionalSearch"]) {
   if (!advancedSearchUi.includes(token)) throw new Error(`Designer advanced-search UI regression: missing ${token}`);
 }
 const advancedSearchCss = fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
