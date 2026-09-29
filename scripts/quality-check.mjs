@@ -409,6 +409,19 @@ const whatsappHelper = fs.readFileSync("src/lib/whatsapp.ts","utf8");
 if (!whatsappHelper.includes("Hi Linen Earth")) throw new Error("WhatsApp brand regression: enquiry copy is not using Linen Earth.");
 console.log("Designer retail UX gate passed: filtered visual fabric browsing, retail labels, creative teaser, dynamic WhatsApp context and nearby verification note protected.");
 
+const contactDockCss=fs.readFileSync("src/app/contact-dock.css","utf8");
+for(const token of ["@media(max-width:760px)",".floatingInstagram,.floatingContactDock .floatingLocation{display:none}","bottom:78px"]) {
+  if(!contactDockCss.includes(token)) throw new Error(`Mobile contact-dock regression: missing ${token}`);
+}
+const measurementPage=fs.readFileSync("src/app/measurements/page.tsx","utf8");
+if(!measurementPage.includes("All measurement entries use <b>inches</b>")) throw new Error("Measurement-unit regression: inches are no longer explicit.");
+const layoutSource=fs.readFileSync("src/app/layout.tsx","utf8");
+for(const token of ["/brand/linen-earth-logo.png","SITE_URL","alternates: { canonical: SITE_URL }"]) {
+  if(!layoutSource.includes(token)) throw new Error(`Metadata/brand asset regression: missing ${token}`);
+}
+console.log("Designer trust/mobile gate passed: measurement units, corrected social metadata/logo path and mobile dock separation protected.");
+
+
 
 const creativeEngine = fs.readFileSync("src/lib/designer/creative-engine.ts","utf8");
 for (const token of [
