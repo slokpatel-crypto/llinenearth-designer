@@ -43,10 +43,8 @@ export function deltaE2000(x:LabColor,y:LabColor) {
   return Math.sqrt(l*l+c*c+h*h+rt*c*h);
 }
 
-export function srgbHexToLab(hex:string):LabColor|null {
-  const clean=hex.trim().replace(/^#/,"");
-  if(!/^[0-9a-f]{6}$/i.test(clean)) return null;
-  const rgb=[0,2,4].map((i)=>Number.parseInt(clean.slice(i,i+2),16)/255)
+export function srgbRgbToLab(r8:number,g8:number,b8:number):LabColor {
+  const rgb=[r8,g8,b8].map((value)=>Math.max(0,Math.min(255,value))/255)
     .map((v)=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
   const [r,g,b]=rgb;
   let x=(r*.4124564+g*.3575761+b*.1804375)/.95047;
@@ -55,4 +53,14 @@ export function srgbHexToLab(hex:string):LabColor|null {
   const f=(v:number)=>v>.008856?Math.cbrt(v):(7.787*v)+(16/116);
   x=f(x);y=f(y);z=f(z);
   return {l:116*y-16,a:500*(x-y),b:200*(y-z)};
+}
+
+export function srgbHexToLab(hex:string):LabColor|null {
+  const clean=hex.trim().replace(/^#/,"");
+  if(!/^[0-9a-f]{6}$/i.test(clean)) return null;
+  return srgbRgbToLab(
+    Number.parseInt(clean.slice(0,2),16),
+    Number.parseInt(clean.slice(2,4),16),
+    Number.parseInt(clean.slice(4,6),16),
+  );
 }
