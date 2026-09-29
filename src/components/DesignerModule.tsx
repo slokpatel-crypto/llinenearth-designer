@@ -444,9 +444,10 @@ export function DesignerModule() {
       setBriefResults(Array.isArray(data.results)?data.results:[]);
       try {
         recordStyleMemoryEvent(designerSession(),"designer_override",{
-          brief:briefText.slice(0,500),
+          briefLength:briefText.trim().length,
           occasion:data.interpretation.occasion,
           context:data.interpretation.context,
+          interpretation:data.interpretation.notes,
           resultIds:(data.results || []).map((item)=>item.id),
         });
       } catch { /* Brief remains usable if memory storage is unavailable. */ }
@@ -698,7 +699,7 @@ export function DesignerModule() {
       try {
         const event=recordStyleMemoryEvent(designerSession(),"designer_recommendation",{
           shirtId:result.shirt.id,pantId:result.pant.id,occasion:nextOccasion,style:result.style,
-          input:{source:source?.name || "advanced_catalogue_search",tier:result.tier,scope:source?.name?"open":searchScope,context:nextContext,brief:source?.name?briefText.slice(0,500):undefined},
+          input:{source:source?.name || "advanced_catalogue_search",tier:result.tier,scope:source?.name?"open":searchScope,context:nextContext,briefInterpreted:Boolean(source?.name)},
           rules:next.recommendation.rules,
           confidenceScore:next.recommendation.confidenceScore,
           designFitScore:next.recommendation.designFitScore,
