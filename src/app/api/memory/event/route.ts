@@ -78,6 +78,9 @@ function cleanPayload(type:string, input:unknown) {
       status:text(garmentSpecInput.status,40),
       fitConstructionScore:Number(garmentSpecInput.fitConstructionScore || 0),
       brandLanguageScore:Number(garmentSpecInput.brandLanguageScore || 0),
+      creativeConceptId:text(garmentSpecInput.creativeConceptId,180),
+      creativeTreatmentCount:Math.max(0,Math.min(12,Math.round(Number(garmentSpecInput.creativeTreatmentCount)||0))),
+      creativePatternId:text(garmentSpecInput.creativePatternId,140),
       readiness:{
         visualization:text(readinessInput.visualization,60),
         tailoring:text(readinessInput.tailoring,60),
