@@ -20,6 +20,10 @@ import {
   REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT,
 } from "@/lib/fabric-analyzer-real-examples";
 import { FABRIC_REFERENCE_PROVENANCE } from "@/lib/fabric-analyzer-provenance-map";
+import {
+  loadStoredFabricAnalysis,
+  storeFabricAnalysis,
+} from "@/lib/fabric-analyzer-store";
 
 export type FabricAnalyzerContext = {
   imageUrl:string;
@@ -260,6 +264,10 @@ function validatedProfile(profile:FabricAnalyzerProfile):FabricAnalyzerProfile {
   };
 }
 
+function fabricAnalyzerModelId() {
+  return process.env.LINEN_FABRIC_ANALYZER_MODEL || "openai/gpt-5.4";
+}
+
 export async function analyzeMenswearFabric(input:FabricAnalyzerContext):Promise<FabricAnalyzerProfile> {
   const token=gatewayToken();
   if(!token) throw new Error("AI Gateway is not configured for Fabric Analyzer.");
@@ -330,7 +338,7 @@ Known context, if any: ${declared || "No verified context supplied; rely only on
     method:"POST",
     headers:{authorization:`Bearer ${token}`,"content-type":"application/json"},
     body:JSON.stringify({
-      model:(process.env.LINEN_FABRIC_ANALYZER_MODEL || "openai/gpt-5.4"),
+      model:fabricAnalyzerModelId(),
       input:[{
         role:"user",
         content:[
@@ -349,4 +357,46 @@ Known context, if any: ${declared || "No verified context supplied; rely only on
   const text=outputText(raw);
   if(!text) throw new Error("Fabric Analyzer returned no structured output.");
   return validatedProfile(JSON.parse(text) as FabricAnalyzerProfile);
+}
+
+export type FabricAnalyzerRun = {
+  profile:FabricAnalyzerProfile;
+  profileId:string|null;
+  cached:boolean;
+  reviewStatus:"unreviewed"|"approved"|"corrected"|"rejected"|null;
+};
+
+export async function analyzeMenswearFabricWithStore(
+  input:FabricAnalyzerContext,
+  options:{reuseReviewed?:boolean;persist?:boolean}={},
+):Promise<FabricAnalyzerRun> {
+  const reuseReviewed=options.reuseReviewed!==false;
+  const persist=options.persist!==false;
+
+  if(reuseReviewed) {
+    try {
+      const stored=await loadStoredFabricAnalysis(input);
+      if(stored && (stored.review_status==="approved" || stored.review_status==="corrected")) {
+        return {
+          profile:validatedProfile(stored.profile),
+          profileId:stored.id,
+          cached:true,
+          reviewStatus:stored.review_status,
+        };
+      }
+    } catch {
+      // Analysis remains usable when the private store is temporarily unavailable.
+    }
+  }
+
+  const profile=await analyzeMenswearFabric(input);
+  let profileId:string|null=null;
+  if(persist) {
+    try {
+      profileId=await storeFabricAnalysis(input,profile,fabricAnalyzerModelId());
+    } catch {
+      // Never block analysis because persistence failed.
+    }
+  }
+  return {profile,profileId,cached:false,reviewStatus:profileId?"unreviewed":null};
 }
