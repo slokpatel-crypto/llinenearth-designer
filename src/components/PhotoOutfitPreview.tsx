@@ -542,7 +542,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
   const [inspectFit, setInspectFit] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
   const [showBoundaries, setShowBoundaries] = useState(false);
-  const [creativeAi, setCreativeAi] = useState<{image:string;jobId:string;creditsUsed:number;conceptId:string;generatedAt:string;visualCheck:CreativeVisualCheck}|null>(null);
+  const [creativeAi, setCreativeAi] = useState<{image:string;jobId:string;creditsUsed:number;conceptId:string;generatedAt:string;visualCheck?:CreativeVisualCheck}|null>(null);
   const [creativeAiLoading, setCreativeAiLoading] = useState(false);
   const [creativeAiError, setCreativeAiError] = useState("");
   const [showCreativeAi, setShowCreativeAi] = useState(false);
@@ -603,11 +603,37 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
           },
         }),
       });
-      const data=await response.json() as {result?:{image:string;jobId:string;creditsUsed:number;conceptId:string;generatedAt:string;visualCheck:CreativeVisualCheck};error?:string};
+      const data=await response.json() as {result?:{image:string;jobId:string;creditsUsed:number;conceptId:string;generatedAt:string};error?:string};
       if(!response.ok || !data.result) throw new Error(data.error || "Photoreal render failed.");
       setCreativeAi(data.result);
       setShowCreativeAi(true);
-      onCreativeInspection?.(data.result.visualCheck);
+
+      try {
+        const inspectResponse=await fetch("/api/designer/creative-inspect",{
+          method:"POST",
+          headers:{"content-type":"application/json"},
+          body:JSON.stringify({
+            image:data.result.image,
+            shirt:{id:shirt.id,name:shirt.name,line:shirt.line,image:shirt.image,hex:shirt.hex,patternType:shirt.patternType},
+            pant:{id:pant.id,name:pant.name,line:pant.line,image:pant.image,hex:pant.hex,patternType:pant.patternType},
+            style,
+            creative:{
+              id:creativeDirection.id,
+              name:creativeDirection.name,
+              thesis:creativeDirection.thesis,
+              treatments:creativeDirection.treatments,
+              pattern:creativeDirection.pattern,
+            },
+          }),
+        });
+        const inspected=await inspectResponse.json() as {check?:CreativeVisualCheck};
+        if(inspectResponse.ok && inspected.check) {
+          setCreativeAi((current)=>current && current.conceptId===data.result?.conceptId ? {...current,visualCheck:inspected.check} : current);
+          onCreativeInspection?.(inspected.check);
+        }
+      } catch {
+        // The photoreal result remains usable when automatic inspection is unavailable.
+      }
     } catch(error) {
       setCreativeAiError(error instanceof Error ? error.message : "Photoreal render failed.");
     } finally {
@@ -678,7 +704,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
         {creativeCoverage.visible.slice(0,2).map((item)=><b key={item}>{item}</b>)}
         {creativeCoverage.specOnly.length>0 && <b>{creativeCoverage.specOnly.length} detail{creativeCoverage.specOnly.length===1?"":"s"} need photoreal render</b>}
       </div>
-      {creativeAi && <div className="newDesignerRenderCheck" data-status={creativeAi.visualCheck.status}>
+      {creativeAi?.visualCheck && <div className="newDesignerRenderCheck" data-status={creativeAi.visualCheck.status}>
         <span>{creativeAi.visualCheck.status==="pass" ? "VISUAL CHECK PASSED" : "VISUAL CHECK / REDESIGNING"}</span>
         <p>{creativeAi.visualCheck.status==="pass" ? "The main design detail reads clearly and the garment boundaries remain stable." : "The render did not express the design cleanly enough, so V5 is moving to a revised direction."}</p>
       </div>}
