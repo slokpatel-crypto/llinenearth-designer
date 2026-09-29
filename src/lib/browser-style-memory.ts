@@ -34,13 +34,13 @@ export type LocalBridgeConfig = {
   token: string;
 };
 
-const EVENT_KEY = "llinen-earth:style-memory:v1";
-const BRIDGE_KEY = "llinen-earth:local-bridge:v1";
-const SESSION_TOKEN_PREFIX = "llinen-earth:memory-session:";
+const EVENT_KEY = "linen-earth:style-memory:v1";
+const BRIDGE_KEY = "linen-earth:local-bridge:v1";
+const SESSION_TOKEN_PREFIX = "linen-earth:memory-session:";
 const sessionTokenRequests = new Map<string,Promise<string|null>>();
 const MAX_BROWSER_EVENTS = 1200;
-const PENDING_KEY = "llinen-earth:style-cloud-pending:v1";
-const SYNCED_KEY = "llinen-earth:style-cloud-synced:v1";
+const PENDING_KEY = "linen-earth:style-cloud-pending:v1";
+const SYNCED_KEY = "linen-earth:style-cloud-synced:v1";
 const MAX_PENDING_EVENTS = 600;
 const MAX_SYNCED_IDS = 1200;
 let cloudFlush: Promise<void> | null = null;
@@ -169,7 +169,7 @@ async function sendCloudEvent(event:StyleMemoryEvent) {
   if (event.source === "style-director") {
     const token = await ensureSessionToken(event.sessionId);
     if (!token) return false;
-    headers["x-llinen-memory-token"] = token;
+    headers["x-linen-memory-token"] = token;
   }
 
   try {
