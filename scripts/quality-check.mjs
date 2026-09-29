@@ -376,6 +376,14 @@ if (designerRecommendationSanitizer.includes("finishedTargets") || designerRecom
   throw new Error("Privacy regression: designer recommendation telemetry must not persist body or finished garment measurements.");
 }
 console.log("Canonical garment spec quality gate passed: one synchronized spec drives Designer output while measurement ranges stay local unless explicitly exported.");
+const creativeGarmentSpec=fs.readFileSync("src/lib/designer/garment-spec.ts","utf8");
+for(const token of ["creative: {","conceptId:string","treatments:Array","pattern: {","Creative treatments are design instructions"]) {
+  if(!creativeGarmentSpec.includes(token)) throw new Error(`Creative garment spec regression: missing ${token}`);
+}
+for(const token of ["activeCreative","buildCanonicalGarmentSpec(recommendation, fitConstruction, measurementProfile, brandLanguage, blockStrategy, activeCreative)","creativeTreatmentCount","creativePatternId"]) {
+  if(!realDesignerModule.includes(token)) throw new Error(`Creative garment export regression: missing ${token}`);
+}
+console.log("Creative garment spec gate passed: selected V5 treatments and pattern instructions survive export and event memory.");
 
 
 const advancedSearch = fs.readFileSync("src/lib/designer/search.ts","utf8");
