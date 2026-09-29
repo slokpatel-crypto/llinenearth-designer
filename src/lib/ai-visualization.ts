@@ -309,6 +309,15 @@ function gatewayAuthToken() {
   return process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || "";
 }
 
+function visualCriticModels() {
+  const configured=(process.env.LINEN_VISUAL_CRITIC_MODEL || "").trim();
+  return [...new Set([
+    ...(configured?[configured]:[]),
+    "openai/gpt-5.4",
+    "google/gemini-3-flash",
+  ])].slice(0,2);
+}
+
 function gatewayOutputText(payload:unknown) {
   if(!payload || typeof payload!=="object") return "";
   const value=payload as Record<string,unknown>;
@@ -370,49 +379,52 @@ async function semanticCreativeRenderCheck(
     additionalProperties:false,
   };
 
-  try {
-    const response=await fetch("https://ai-gateway.vercel.sh/v1/responses",{
-      method:"POST",
-      headers:{
-        authorization:`Bearer ${token}`,
-        "content-type":"application/json",
-      },
-      body:JSON.stringify({
-        model:process.env.LINEN_VISUAL_CRITIC_MODEL || "openai/gpt-5.4",
-        input:[{
-          role:"user",
-          content:[
-            {type:"input_text",text:prompt},
-            {type:"input_image",image_url:outputUrl,detail:"auto"},
-            {type:"input_image",image_url:referenceDataUri,detail:"auto"},
-            ...(fabricContext?[{type:"input_image",image_url:fabricContext,detail:"auto"}]:[]),
-          ],
-        }],
-        text:{
-          format:{
-            type:"json_schema",
-            name:"linen_creative_render_critic",
-            strict:true,
-            schema,
-          },
+  for(const model of visualCriticModels()) {
+    try {
+      const response=await fetch("https://ai-gateway.vercel.sh/v1/responses",{
+        method:"POST",
+        headers:{
+          authorization:`Bearer ${token}`,
+          "content-type":"application/json",
         },
-      }),
-      cache:"no-store",
-      signal:AbortSignal.timeout(18_000),
-    });
-    if(!response.ok) return null;
-    const raw=await response.json() as unknown;
-    const text=gatewayOutputText(raw);
-    if(!text) return null;
-    const parsed=JSON.parse(text) as SemanticCreativeCheck;
-    if(!["pass","review"].includes(parsed.status)) return null;
-    return {
-      ...parsed,
-      issue:String(parsed.issue||"").replace(/\s+/g," ").trim().slice(0,140),
-    };
-  } catch {
-    return null;
+        body:JSON.stringify({
+          model,
+          input:[{
+            role:"user",
+            content:[
+              {type:"input_text",text:prompt},
+              {type:"input_image",image_url:outputUrl,detail:"auto"},
+              {type:"input_image",image_url:referenceDataUri,detail:"auto"},
+              ...(fabricContext?[{type:"input_image",image_url:fabricContext,detail:"auto"}]:[]),
+            ],
+          }],
+          text:{
+            format:{
+              type:"json_schema",
+              name:"linen_creative_render_critic",
+              strict:true,
+              schema,
+            },
+          },
+        }),
+        cache:"no-store",
+        signal:AbortSignal.timeout(12_000),
+      });
+      if(!response.ok) continue;
+      const raw=await response.json() as unknown;
+      const text=gatewayOutputText(raw);
+      if(!text) continue;
+      const parsed=JSON.parse(text) as SemanticCreativeCheck;
+      if(!["pass","review"].includes(parsed.status)) continue;
+      return {
+        ...parsed,
+        issue:String(parsed.issue||"").replace(/\s+/g," ").trim().slice(0,140),
+      };
+    } catch {
+      // Try one alternate multimodal Gateway model before falling back to heuristic QA.
+    }
   }
+  return null;
 }
 
 function creativeConceptPrompt(input:CreativeFashnRequest) {
