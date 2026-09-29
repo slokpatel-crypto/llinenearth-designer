@@ -214,7 +214,7 @@ console.log("Real photographic Designer gate passed: hard garment boundaries, ne
 
 
 const realDesignerModule = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["linen-earth:real-designer-draft:v2","draftReady","localStorage.setItem(DRAFT_KEY","resetDraft",">Reset<"]) {
+for (const token of ["linen-earth:real-designer-draft:v2","draftReady","localStorage.setItem(DRAFT_KEY","creative:activeCreative","parsed?.creative","creativeStillMatches","resetDraft",">Reset<"]) {
   if (!realDesignerModule.includes(token)) throw new Error(`Real Designer draft regression: missing ${token}`);
 }
 console.log("Real Designer draft gate passed: fabric, context and tailoring state persist safely across refresh.");
