@@ -87,7 +87,7 @@ export function generateDesignerDirections(brief: DesignerBrief): DesignCandidat
   const elevatedLayer = festive ? "Bandhgala / Jodhpuri Jacket" : formal || evening ? "Soft Single-Breasted Blazer" : resort ? "Tailored Overshirt" : "Soft Single-Breasted Blazer";
   const elevated: DesignCandidate = {
     id: "DIR-ELEVATED-01", tier: "Elevated", name: resort ? "Riviera Tailoring" : festive ? "Modern Ceremony" : "The Considered Line",
-    concept: "The recommended LLinen Earth balance: the fabric is assigned to the garment role it can perform best, then proportion and supporting materials are built around it.",
+    concept: "The recommended Linen Earth balance: the fabric is assigned to the garment role it can perform best, then proportion and supporting materials are built around it.",
     aesthetic: c.aesthetic === "Minimal" ? "Quiet Luxury" : c.aesthetic,
     fabricUse: `Use the uploaded fabric as the ${roleLabel[elevatedRole]}; support it with quieter materials instead of repeating it across the whole outfit.`,
     fabricJudgement: elevatedJudge,
