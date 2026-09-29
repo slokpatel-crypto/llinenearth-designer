@@ -4,6 +4,7 @@ import { parseDesignerBrief } from "@/lib/designer/brief";
 import { searchDesignerCatalogue, type DesignerSearchTier } from "@/lib/designer/search";
 import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
 import { loadDesignerEvidenceContext } from "@/lib/designer/evidence-context";
+import { loadDesignerFabricIntelligence } from "@/lib/fabric-intelligence-server";
 import type { MeasurementProfile } from "@/lib/measurements";
 import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
 
@@ -150,6 +151,7 @@ export async function POST(request:Request) {
     ]);
     const stock=applyDesignerFabricMetadataToStock(metadata).filter((fabric)=>fabric.inStock);
     const fabrics=stock.map(designerFabricFromStock);
+    const fabricIntelligence=await loadDesignerFabricIntelligence(fabrics.map((fabric)=>fabric.id));
     const shirts=fabrics.filter((fabric)=>fabric.allowedGarments.includes("shirt"));
     const pants=fabrics.filter((fabric)=>fabric.allowedGarments.includes("pant"));
     if(!shirts.length || !pants.length) return NextResponse.json({error:"The current Linen Earth stock does not contain enough shirt and trouser fabrics."},{status:409});
@@ -177,6 +179,7 @@ export async function POST(request:Request) {
       casebook:evidence.casebook,
       fitOutcomes:evidence.fitOutcomes,
       preference:parsed.preference,
+      fabricIntelligence,
     });
 
     const order=tierOrder(parsed.preference.preferredTier);
