@@ -1,16 +1,10 @@
 import "server-only";
 import {
   FABRIC_ANALYZER_EVIDENCE_RULES,
-  MENSWEAR_COLOR_TAXONOMY,
-  MENSWEAR_GARMENT_USES,
-  MENSWEAR_MATERIAL_TAXONOMY,
-  MENSWEAR_OCCASION_TAXONOMY,
-  MENSWEAR_PATTERN_TAXONOMY,
 } from "@/lib/fabric-analyzer-taxonomy";
 import {
   FABRIC_REFERENCE_COUNTS,
   FABRIC_REFERENCE_INDEX_VERSION,
-  FABRIC_REFERENCE_SOURCES,
   REAL_MENSWEAR_MATERIAL_TERMS,
   REAL_MENSWEAR_PATTERN_TERMS,
   STANDARD_COLOR_REFERENCE_TERMS,
@@ -566,11 +560,14 @@ export async function analyzeMenswearReferencePage(
 }
 
 export async function analyzeMenswearFabricWithStore(
-  input:FabricAnalyzerContext,
+  rawInput:FabricAnalyzerContext,
   options:{reuseReviewed?:boolean;persist?:boolean}={},
 ):Promise<FabricAnalyzerRun> {
   const reuseReviewed=options.reuseReviewed!==false;
   const persist=options.persist!==false;
+  // Content measurement comes first so cache identity follows the actual image
+  // bytes rather than URL query parameters, notes, or other mutable context.
+  const input=await prepareFabricMeasurement(rawInput);
 
   if(reuseReviewed) {
     try {
