@@ -22,7 +22,7 @@ const SOURCE_HOSTS=new Set(
 function isTrustedSourceHost(hostname:string) {
   const host=normalizedHost(hostname);
   for(const sourceHost of SOURCE_HOSTS) {
-    if(host===sourceHost || host.endsWith(\`.${sourceHost}\`)) return true;
+    if(host===sourceHost || host.endsWith(`.${sourceHost}`)) return true;
   }
   return false;
 }
@@ -64,8 +64,8 @@ function decodeHtml(value:string) {
 function meta(html:string,key:string,attribute:"property"|"name"="property") {
   const escaped=key.replace(/[.*+?^$()|[\]\\]/g,"\\$&");
   const patterns=[
-    new RegExp(\`<meta[^>]+${attribute}=["']${escaped}["'][^>]+content=["']([^"']+)["'][^>]*>\`,"i"),
-    new RegExp(\`<meta[^>]+content=["']([^"']+)["'][^>]+${attribute}=["']${escaped}["'][^>]*>\`,"i"),
+    new RegExp(`<meta[^>]+${attribute}=["']${escaped}["'][^>]+content=["']([^"']+)["'][^>]*>`,"i"),
+    new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+${attribute}=["']${escaped}["'][^>]*>`,"i"),
   ];
   for(const pattern of patterns) {
     const match=html.match(pattern);
@@ -109,7 +109,7 @@ export async function resolveFabricReferencePage(pageUrl:string):Promise<Resolve
     cache:"no-store",
     signal:AbortSignal.timeout(15_000),
   });
-  if(!response.ok) throw new Error(\`Fabric reference page returned HTTP ${response.status}.\`);
+  if(!response.ok) throw new Error(`Fabric reference page returned HTTP ${response.status}.`);
   if(!isTrustedFabricReferenceUrl(response.url)) throw new Error("Fabric reference page redirected outside the approved source registry.");
 
   const contentType=response.headers.get("content-type") || "";
@@ -131,7 +131,7 @@ export async function resolveFabricReferencePage(pageUrl:string):Promise<Resolve
   const source=FABRIC_REFERENCE_SOURCES.find((item)=>{
     try {
       const sourceHost=normalizedHost(new URL(item.url).hostname);
-      return host===sourceHost || host.endsWith(\`.${sourceHost}\`);
+      return host===sourceHost || host.endsWith(`.${sourceHost}`);
     } catch {
       return false;
     }
