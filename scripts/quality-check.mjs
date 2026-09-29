@@ -328,7 +328,7 @@ if (realDesignerModule.includes("fabric-analyzer")) throw new Error("Fabric Anal
 console.log("Private Fabric Analyzer gate passed: server-only visual analysis and menswear taxonomy remain backend-only.");
 
 const fabricReferenceIndex = fs.readFileSync("src/lib/fabric-analyzer-reference-index.ts","utf8");
-for (const token of ["REAL_MENSWEAR_MATERIAL_TERMS","REAL_MENSWEAR_PATTERN_TERMS","STANDARD_COLOR_REFERENCE_TERMS","FABRIC_REFERENCE_SOURCES","real-reference-v2"]) {
+for (const token of ["REAL_MENSWEAR_MATERIAL_TERMS","REAL_MENSWEAR_PATTERN_TERMS","STANDARD_COLOR_REFERENCE_TERMS","FABRIC_REFERENCE_SOURCES","real-reference-v3"]) {
   if (!fabricReferenceIndex.includes(token)) throw new Error(`Real-reference Fabric Analyzer regression: missing ${token}`);
 }
 const fabricAnalyzerExamples = fs.readFileSync("src/lib/fabric-analyzer-real-examples.ts","utf8");
@@ -388,7 +388,7 @@ for(const path of ["src/components/DesignerModule.tsx","src/app/style-director/p
 console.log("Fabric Intelligence integration gate passed: Analyzer output affects Designer ranking server-side without entering customer payloads.");
 
 const analyzerStoreSource=fs.readFileSync("src/lib/fabric-analyzer-store.ts","utf8");
-for(const token of ["fabric_analyzer_profile_bind","fabric_analyzer_profiles_for_fabrics","fabric_analyzer_profile_review","fabric_analyzer_feedback_apply","loadFabricAnalyzerProfilesForReview"]) {
+for(const token of ["fabric_analyzer_profile_bind","fabric_analyzer_profiles_for_fabrics","fabric_analyzer_profile_review","fabric_analyzer_feedback_apply","loadFabricAnalyzerProfilesForReview","enqueueFabricAnalyzerBatch","claimFabricAnalyzerJobs","finishFabricAnalyzerJob","loadFabricAnalyzerStats","canonicalUrlIdentity"]) {
   if(!analyzerStoreSource.includes(token)) throw new Error(`Fabric Analyzer workflow regression: missing ${token}`);
 }
 const analyzerOperatorRoutes=[
@@ -397,6 +397,8 @@ const analyzerOperatorRoutes=[
   "src/app/api/operator/fabric-analyzer/review/route.ts",
   "src/app/api/operator/fabric-analyzer/stats/route.ts",
   "src/app/api/operator/fabric-analyzer/calibrate/route.ts",
+  "src/app/api/operator/fabric-analyzer/queue/route.ts",
+  "src/app/api/operator/fabric-analyzer/process/route.ts",
 ];
 for(const path of analyzerOperatorRoutes) {
   if(!fs.existsSync(path)) throw new Error(`Private Fabric Analyzer operator route missing: ${path}`);
@@ -414,6 +416,17 @@ for(const token of ["runFabricAnalyzerCalibration","loadFabricAnalyzerCalibratio
   if(!calibrationSource.includes(token)) throw new Error(`Fabric Analyzer calibration regression: missing ${token}`);
 }
 console.log("Fabric Analyzer calibration gate passed: source-backed reference cases can continuously measure Analyzer accuracy.");
+for(const token of ["reviewPriority","reviewReasons","reviewPriorityFor","No real-reference material or pattern term was matched"]) {
+  if(!fabricAnalyzerSource.includes(token)) throw new Error(`Fabric Analyzer review-priority regression: missing ${token}`);
+}
+const referenceSyncScript=fs.readFileSync("scripts/sync-fabric-reference-index.mjs","utf8");
+for(const token of ["fabric_analyzer_reference_snapshot","fabric-analyzer-reference-index.ts","fabric-analyzer-provenance-map.ts","fabric-analyzer-real-examples.ts"]) {
+  if(!referenceSyncScript.includes(token)) throw new Error(`Fabric reference sync regression: missing ${token}`);
+}
+for(const token of ["occasionIntelligenceTokens","intelOccasionMatch","patternSupportScore","bothHighContrast","bothBold"]) {
+  if(!designerSearch.includes(token)) throw new Error(`Analyzer pairing intelligence regression: missing ${token}`);
+}
+console.log("Fabric Analyzer completion gate passed: durable queueing, review priority, repeatable source sync and deep Designer pairing are protected.");
 const fabricAnalyzerMigration="supabase/migrations/20260929_fabric_analyzer_private_backend.sql";
 if(!fs.existsSync(fabricAnalyzerMigration)) throw new Error("Fabric Analyzer backend migration is missing.");
 const fabricAnalyzerMigrationSource=fs.readFileSync(fabricAnalyzerMigration,"utf8");
