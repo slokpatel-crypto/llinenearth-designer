@@ -79,6 +79,12 @@ export type FabricAnalyzerProfileV4 = {
     colorTerms:string[];
     sourceIds:string[];
   };
+  verifiedPhysical:{
+    gsm:number|null;
+    drape:"Fluid"|"Balanced"|"Structured"|null;
+    fiberContent:string|null;
+    sourceUrl:string|null;
+  };
   measured:FabricMeasuredData|null;
   imageQuality:FabricImageQuality|null;
   renderAssets:{
@@ -196,6 +202,13 @@ export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|nu
       patternTerms:arr(references.patternTerms,8),
       colorTerms:arr(references.colorTerms,8),
       sourceIds:arr(references.sourceIds,10),
+    },
+    verifiedPhysical:{
+      gsm:Number.isFinite(Number(obj(root.verifiedPhysical).gsm)) ? Math.max(20,Math.min(1000,Number(obj(root.verifiedPhysical).gsm))) : null,
+      drape:["Fluid","Balanced","Structured"].includes(String(obj(root.verifiedPhysical).drape))
+        ? String(obj(root.verifiedPhysical).drape) as "Fluid"|"Balanced"|"Structured" : null,
+      fiberContent:str(obj(root.verifiedPhysical).fiberContent,220)||null,
+      sourceUrl:str(obj(root.verifiedPhysical).sourceUrl,1800)||null,
     },
     measured:root.measured && typeof root.measured==="object" ? root.measured as FabricMeasuredData : null,
     imageQuality:root.imageQuality && typeof root.imageQuality==="object" ? root.imageQuality as FabricImageQuality : null,
