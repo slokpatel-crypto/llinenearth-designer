@@ -186,11 +186,30 @@ create table if not exists private.fabric_analyzer_calibration_cases (
   created_at timestamptz not null default now()
 );
 
+create table if not exists private.fabric_analysis_jobs (
+  id uuid primary key default gen_random_uuid(),
+  batch_id uuid not null,
+  fabric_id text,
+  image_url text,
+  source_page_url text,
+  source_id text,
+  declared_context jsonb not null default '{}'::jsonb,
+  force boolean not null default false,
+  status text not null default 'queued' check (status in ('queued','running','complete','error')),
+  attempts integer not null default 0,
+  profile_id uuid references private.fabric_analysis_profiles(id) on delete set null,
+  error_message text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create index if not exists fabric_style_relationships_subject_idx on private.fabric_style_relationships(subject_type,subject_id,predicate);
 create index if not exists fabric_style_relationships_object_idx on private.fabric_style_relationships(object_type,object_id);
 create index if not exists fabric_analysis_bindings_fabric_idx on private.fabric_analysis_bindings(fabric_id,updated_at desc);
 create index if not exists fabric_analysis_feedback_profile_idx on private.fabric_analysis_feedback(profile_id,created_at desc);
 create index if not exists fabric_analysis_profiles_review_idx on private.fabric_analysis_profiles(review_status,updated_at desc);
+create index if not exists fabric_analysis_jobs_batch_idx on private.fabric_analysis_jobs(batch_id,status,created_at);
+create index if not exists fabric_analysis_jobs_status_idx on private.fabric_analysis_jobs(status,created_at);
 
 alter table private.fabric_knowledge_sources enable row level security;
 alter table private.fabric_material_knowledge enable row level security;
@@ -206,6 +225,7 @@ alter table private.fabric_analysis_profiles enable row level security;
 alter table private.fabric_analysis_feedback enable row level security;
 alter table private.fabric_analysis_bindings enable row level security;
 alter table private.fabric_analyzer_calibration_cases enable row level security;
+alter table private.fabric_analysis_jobs enable row level security;
 
 revoke all on schema private from public,anon,authenticated;
 revoke all on all tables in schema private from public,anon,authenticated;
@@ -427,9 +447,82 @@ returns jsonb language sql security definer set search_path='public','private' a
       'id',id,'source_id',source_id,'manufacturer',manufacturer,'product_name',product_name,'source_url',source_url,
       'composition',composition,'color_name',color_name,'pattern_name',pattern_name,'construction_name',construction_name,
       'weight_gsm',weight_gsm,'usage_tags',usage_tags,'verified_facts',verified_facts
-    ) order by manufacturer,product_name),'[]'::jsonb) from private.fabric_reference_examples)
+    ) order by manufacturer,product_name),'[]'::jsonb) from private.fabric_reference_examples),
+    'provenance',jsonb_build_object(
+      'materials',(select coalesce(jsonb_agg(jsonb_build_object('term',term,'source_id',source_id,'type',term_type) order by lower(term),source_id),'[]'::jsonb) from private.fabric_material_reference_terms),
+      'patterns',(select coalesce(jsonb_agg(jsonb_build_object('term',term,'source_id',source_id,'family',family) order by lower(term),source_id),'[]'::jsonb) from private.fabric_pattern_reference_terms),
+      'colors',(select coalesce(jsonb_agg(jsonb_build_object('term',color_name,'source_id',source_id,'system',system_name) order by lower(color_name),source_id),'[]'::jsonb) from private.fabric_color_reference_terms)
+    )
   );
-$$;
+$;
+
+create or replace function public.fabric_analyzer_batch_enqueue(p_items jsonb)
+returns table(batch_id uuid,queued integer)
+language plpgsql security definer set search_path='public','private' as $
+declare v_batch uuid:=gen_random_uuid(); v_count integer:=0; item jsonb;
+begin
+  if jsonb_typeof(p_items)<>'array' then raise exception 'items must be an array'; end if;
+  if jsonb_array_length(p_items)<1 or jsonb_array_length(p_items)>500 then raise exception 'batch size must be 1..500'; end if;
+  for item in select value from jsonb_array_elements(p_items)
+  loop
+    if coalesce(length(trim(item->>'imageUrl')),0)=0 and coalesce(length(trim(item->>'sourcePageUrl')),0)=0 then continue; end if;
+    insert into private.fabric_analysis_jobs(batch_id,fabric_id,image_url,source_page_url,source_id,declared_context,force)
+    values(
+      v_batch,
+      nullif(left(trim(coalesce(item->>'fabricId','')),160),''),
+      nullif(left(trim(coalesce(item->>'imageUrl','')),1800),''),
+      nullif(left(trim(coalesce(item->>'sourcePageUrl','')),1800),''),
+      nullif(left(trim(coalesce(item->>'sourceId','')),80),''),
+      jsonb_build_object(
+        'declaredMaterial',left(trim(coalesce(item->>'declaredMaterial','')),120),
+        'declaredFabricType',left(trim(coalesce(item->>'declaredFabricType','')),120),
+        'supplierColorName',left(trim(coalesce(item->>'supplierColorName','')),120),
+        'supplierPatternName',left(trim(coalesce(item->>'supplierPatternName','')),120),
+        'notes',left(trim(coalesce(item->>'notes','')),500)
+      ),
+      coalesce((item->>'force')::boolean,false)
+    );
+    v_count:=v_count+1;
+  end loop;
+  return query select v_batch,v_count;
+end;
+$;
+
+create or replace function public.fabric_analyzer_jobs_claim(p_limit integer default 4)
+returns table(id uuid,batch_id uuid,fabric_id text,image_url text,source_page_url text,source_id text,declared_context jsonb,force boolean,attempts integer)
+language plpgsql security definer set search_path='public','private' as $
+begin
+  return query
+  with picked as (
+    select j.id from private.fabric_analysis_jobs j
+    where j.status='queued' or (j.status='running' and j.updated_at<now()-interval '10 minutes' and j.attempts<3)
+    order by j.created_at for update skip locked
+    limit greatest(1,least(coalesce(p_limit,4),8))
+  ), updated as (
+    update private.fabric_analysis_jobs j
+    set status='running',attempts=j.attempts+1,updated_at=now(),error_message=''
+    from picked where j.id=picked.id returning j.*
+  )
+  select u.id,u.batch_id,u.fabric_id,u.image_url,u.source_page_url,u.source_id,u.declared_context,u.force,u.attempts from updated u;
+end;
+$;
+
+create or replace function public.fabric_analyzer_job_finish(p_job_id uuid,p_status text,p_profile_id uuid default null,p_error text default '')
+returns boolean language plpgsql security definer set search_path='public','private' as $
+begin
+  if p_status not in ('complete','error') then raise exception 'unsupported status'; end if;
+  update private.fabric_analysis_jobs
+  set status=p_status,profile_id=p_profile_id,error_message=left(coalesce(p_error,''),1000),updated_at=now()
+  where id=p_job_id;
+  return found;
+end;
+$;
+
+create or replace function public.fabric_analyzer_batch_status(p_batch_id uuid)
+returns table(status text,count bigint)
+language sql security definer set search_path='public','private' as $
+  select j.status,count(*) from private.fabric_analysis_jobs j where j.batch_id=p_batch_id group by j.status order by j.status;
+$;
 
 do $$
 declare fn regprocedure;
@@ -447,7 +540,11 @@ begin
     'public.fabric_analyzer_stats()'::regprocedure,
     'public.fabric_analyzer_calibration_cases_get(integer)'::regprocedure,
     'public.fabric_analyzer_calibration_record(text,uuid,numeric,jsonb)'::regprocedure,
-    'public.fabric_analyzer_reference_snapshot()'::regprocedure
+    'public.fabric_analyzer_reference_snapshot()'::regprocedure,
+    'public.fabric_analyzer_batch_enqueue(jsonb)'::regprocedure,
+    'public.fabric_analyzer_jobs_claim(integer)'::regprocedure,
+    'public.fabric_analyzer_job_finish(uuid,text,uuid,text)'::regprocedure,
+    'public.fabric_analyzer_batch_status(uuid)'::regprocedure
   ]
   loop
     execute format('revoke all on function %s from public, anon, authenticated',fn);
