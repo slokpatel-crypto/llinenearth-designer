@@ -13,8 +13,8 @@ import {
   generateCreativeDirections,
   type CreativeDirection,
 } from "@/lib/designer/creative-engine";
-import type { CreativeFeedbackReason, CreativeLearningBook } from "@/lib/designer/creative-learning";
-import type { CreativeResearchLibrary } from "@/lib/designer/creative-research";
+import type { CreativeFeedbackReason } from "@/lib/designer/creative-learning";
+import { loadDesignerCreativeContext } from "@/lib/designer/creative-context";
 import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
 
 export const runtime="nodejs";
@@ -52,34 +52,6 @@ function validContext(value:unknown):value is DesignerContext {
   return Boolean(input.climate && CLIMATES.includes(input.climate) && input.intention && INTENTIONS.includes(input.intention));
 }
 
-function safeLearning(value:unknown):CreativeLearningBook|null {
-  if(!value || typeof value!=="object" || Array.isArray(value)) return null;
-  const input=value as Partial<CreativeLearningBook>;
-  if(input.version!=="designer-creative-learning-v1" || !Array.isArray(input.buckets)) return null;
-  return {
-    version:"designer-creative-learning-v1",
-    totalReviews:Number(input.totalReviews)||0,
-    renderMismatchReviews:Number(input.renderMismatchReviews)||0,
-    usableFamilies:Number(input.usableFamilies)||0,
-    buckets:input.buckets.slice(0,240),
-  };
-}
-
-function safeResearch(value:unknown):CreativeResearchLibrary|null {
-  if(!value || typeof value!=="object" || Array.isArray(value)) return null;
-  const input=value as Partial<CreativeResearchLibrary>;
-  if(input.version!=="designer-creative-research-v1" || !Array.isArray(input.signals)) return null;
-  const signals=input.signals
-    .filter((signal)=>signal && typeof signal==="object" && signal.active && typeof signal.id==="string" && typeof signal.sourceUrl==="string")
-    .slice(0,240);
-  return {
-    version:"designer-creative-research-v1",
-    total:signals.length,
-    active:signals.length,
-    signals,
-  };
-}
-
 function validReason(value:unknown):value is CreativeFeedbackReason {
   return ["visual_balance","too_busy","too_safe","pattern_detail","proportion","originality","render_mismatch","other"].includes(String(value));
 }
@@ -108,8 +80,6 @@ export async function POST(request:Request) {
       style?:unknown;
       context?:unknown;
       limit?:unknown;
-      creativeLearning?:unknown;
-      creativeResearch?:unknown;
       current?:unknown;
       reason?:unknown;
     };
@@ -128,11 +98,12 @@ export async function POST(request:Request) {
     if(!shirt || !pant) return NextResponse.json({error:"The selected fabrics are no longer available in the current Designer catalogue."},{status:409});
 
     const limit=Math.max(1,Math.min(12,Math.round(Number(body.limit)||5)));
-    const creativeLearning=safeLearning(body.creativeLearning);
-    const creativeResearch=safeResearch(body.creativeResearch);
+    const creativeContext=await loadDesignerCreativeContext();
     const input={
       shirt,pant,occasion,style:body.style,context:body.context,
-      creativeLearning,creativeResearch,researchFreedom:"maximum" as const,
+      creativeLearning:creativeContext.learning,
+      creativeResearch:creativeContext.research,
+      researchFreedom:"maximum" as const,
       limit:body.mode==="redesign"?Math.max(12,limit):limit,
     };
     const concepts=generateCreativeDirections(input);
