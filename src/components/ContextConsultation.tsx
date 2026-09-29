@@ -5,7 +5,7 @@ import type { ContextProfile, FabricSelection } from "@/lib/designer-types";
 
 type Key = keyof ContextProfile;
 type Question = { key: Key; kicker: string; title: string; note: string; options: string[] };
-const DRAFT_KEY = "llinen-earth-context-draft-v1";
+const DRAFT_KEY = "linen-earth-context-draft-v1";
 
 const baseQuestions: Question[] = [
   { key: "occasion", kicker: "OCCASION", title: "What are we dressing for?", note: "This sets the first formality and garment boundaries.", options: ["Wedding", "Business", "Resort / holiday", "Dinner / evening", "Smart casual", "Festive / cultural"] },
