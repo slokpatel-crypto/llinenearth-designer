@@ -390,7 +390,24 @@ export type FabricAnalyzerRun = {
   profileId:string|null;
   cached:boolean;
   reviewStatus:"unreviewed"|"approved"|"corrected"|"rejected"|null;
+  reviewPriority:"low"|"normal"|"high";
+  reviewReasons:string[];
 };
+
+function reviewPriorityFor(profile:FabricAnalyzerProfile) {
+  const average=(profile.confidence.color+profile.confidence.pattern+profile.confidence.texture+profile.confidence.styling)/4;
+  const reasons:string[]=[];
+  if(average<.62) reasons.push("Overall Analyzer confidence is low.");
+  if(profile.confidence.pattern<.62) reasons.push("Pattern classification needs human review.");
+  if(profile.confidence.texture<.58) reasons.push("Texture/weave appearance is uncertain.");
+  if(profile.evidence.uncertainClaims.length>=4) reasons.push("Several claims are explicitly uncertain.");
+  if(!profile.references.materialTerms.length && !profile.references.patternTerms.length) reasons.push("No real-reference material or pattern term was matched.");
+  const priority:FabricAnalyzerRun["reviewPriority"]=
+    average<.58 || profile.confidence.pattern<.5 || profile.evidence.uncertainClaims.length>=6 ? "high"
+      : average>=.82 && profile.evidence.uncertainClaims.length<=1 ? "low"
+        : "normal";
+  return {priority,reasons:reasons.slice(0,4)};
+}
 
 export async function analyzeMenswearReferencePage(
   pageUrl:string,
@@ -422,11 +439,15 @@ export async function analyzeMenswearFabricWithStore(
     try {
       const stored=await loadStoredFabricAnalysis(input);
       if(stored && (stored.review_status==="approved" || stored.review_status==="corrected")) {
+        const profile=validatedProfile(stored.profile);
+        const review=reviewPriorityFor(profile);
         return {
-          profile:validatedProfile(stored.profile),
+          profile,
           profileId:stored.id,
           cached:true,
           reviewStatus:stored.review_status,
+          reviewPriority:review.priority,
+          reviewReasons:review.reasons,
         };
       }
     } catch {
@@ -443,5 +464,13 @@ export async function analyzeMenswearFabricWithStore(
       // Never block analysis because persistence failed.
     }
   }
-  return {profile,profileId,cached:false,reviewStatus:profileId?"unreviewed":null};
+  const review=reviewPriorityFor(profile);
+  return {
+    profile,
+    profileId,
+    cached:false,
+    reviewStatus:profileId?"unreviewed":null,
+    reviewPriority:review.priority,
+    reviewReasons:review.reasons,
+  };
 }
