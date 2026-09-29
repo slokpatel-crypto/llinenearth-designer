@@ -1148,19 +1148,53 @@ function buildDirection(seed:Seed,input:CreativeLabInput,iteration:number,treatm
   };
 }
 
-function refine(seed:Seed,input:CreativeLabInput,first:CreativeDirection):CreativeDirection {
+function criticFacetScore(direction:CreativeDirection,criticId:CreativeCriticId,label:string) {
+  return direction.critics.find((item)=>item.id===criticId)?.facets?.find((facet)=>facet.label===label)?.score ?? 0;
+}
+
+function refine(seed:Seed,input:CreativeLabInput,first:CreativeDirection,iteration=2):CreativeDirection {
   let treatments=first.treatments.map((item)=>({...item}));
   let pattern=first.pattern?{...first.pattern,palette:[...first.pattern.palette]}:undefined;
   const notes:string[]=[];
   const aesthetic=first.critics.find((item)=>item.id==="aesthetic")?.score ?? 0;
   const brand=first.critics.find((item)=>item.id==="brand")?.score ?? 0;
   const construction=first.critics.find((item)=>item.id==="construction")?.score ?? 0;
+  const proportion=criticFacetScore(first,"aesthetic","Proportion");
+  const hierarchy=criticFacetScore(first,"aesthetic","Hierarchy");
+  const rhythm=criticFacetScore(first,"aesthetic","Rhythm");
+  const harmony=criticFacetScore(first,"aesthetic","Harmony");
   const freedom=input.researchFreedom || "maximum";
 
   if(freedom==="maximum") {
-    // In maximum-research mode critique is diagnostic, not a style police layer.
-    // Only rescue concepts that are collapsing visually; do not normalise unusual
-    // proportions, patterns or experimental construction merely because they are unfamiliar.
+    // Maximum mode keeps the frontier idea, but the critic is allowed to edit
+    // supporting signals so unusual work still reads as intentional rather than noisy.
+    if(hierarchy<72 && treatments.length>1) {
+      const hero=Math.max(...treatments.map((item)=>item.intensity));
+      let keptHero=false;
+      treatments=treatments.map((item)=>{
+        if(!keptHero && item.intensity===hero){keptHero=true;return item;}
+        return {...item,intensity:Math.max(16,Math.round(item.intensity*.84))};
+      });
+      if(pattern && pattern.coverage>44) pattern={...pattern,coverage:Math.max(34,pattern.coverage-8),note:`${pattern.note} Secondary coverage reduced after hierarchy critique.`};
+      notes.push("Visual critic protected one hero move and quietened competing secondary signals.");
+    }
+    if(proportion<70 && treatments.length) {
+      const ordered=[...treatments].sort((a,b)=>b.intensity-a.intensity);
+      const heroId=ordered[0]?.id;
+      treatments=treatments.map((item)=>item.id===heroId
+        ? {...item,intensity:Math.min(100,item.intensity+6)}
+        : {...item,intensity:Math.max(18,Math.round(item.intensity*.92))});
+      notes.push("Rebalanced hero-to-supporting detail scale to strengthen proportion.");
+    }
+    if(harmony<70 && treatmentLoad(treatments,pattern)>150) {
+      treatments=treatments.map((item,index)=>index===0?item:{...item,intensity:Math.max(18,Math.round(item.intensity*.90))});
+      if(pattern && pattern.coverage>50) pattern={...pattern,coverage:46,note:`${pattern.note} Coverage tuned after harmony critique.`};
+      notes.push("Reduced total visual load without removing the research-led concept.");
+    }
+    if(rhythm<66 && pattern && pattern.coverage<24) {
+      pattern={...pattern,coverage:Math.min(34,pattern.coverage+8),note:`${pattern.note} Repeat visibility increased to create a clearer visual rhythm.`};
+      notes.push("Strengthened the repeated surface signal so the idea reads as rhythm, not isolated decoration.");
+    }
     if(aesthetic<55 && treatmentLoad(treatments,pattern)>175) {
       treatments=treatments.map((item,index)=>index===0?item:{...item,intensity:Math.max(18,Math.round(item.intensity*.88))});
       if(pattern && pattern.coverage>54) pattern={...pattern,coverage:50,note:`${pattern.note} Coverage was reduced only enough to restore a readable focal hierarchy.`};
@@ -1187,11 +1221,32 @@ function refine(seed:Seed,input:CreativeLabInput,first:CreativeDirection):Creati
     }
   }
   const variant=first.id.split(":")[2] || "core";
-  return buildDirection(seed,input,2,treatments,pattern,notes,variant) || first;
+  return buildDirection(seed,input,iteration,treatments,pattern,[...first.refinement,...notes],variant) || first;
+}
+
+function revisionMerit(direction:CreativeDirection) {
+  const aesthetic=direction.critics.find((item)=>item.id==="aesthetic")?.score ?? 0;
+  const originality=direction.critics.find((item)=>item.id==="originality")?.score ?? 0;
+  const hierarchy=criticFacetScore(direction,"aesthetic","Hierarchy");
+  const proportion=criticFacetScore(direction,"aesthetic","Proportion");
+  const riskPenalty=direction.risk==="high"?8:direction.risk==="moderate"?3:0;
+  return direction.overall+aesthetic*.18+originality*.08+hierarchy*.05+proportion*.05-riskPenalty;
+}
+
+function redesignLoop(seed:Seed,input:CreativeLabInput,first:CreativeDirection) {
+  const pass2=refine(seed,input,first,2);
+  const pass3=refine(seed,input,pass2,3);
+  return [first,pass2,pass3].sort((a,b)=>revisionMerit(b)-revisionMerit(a))[0];
 }
 
 function signature(item:CreativeDirection) {
-  return [item.baseStyle.collar,item.baseStyle.cuff,item.pattern?.family||"none",...item.treatments.map((t)=>t.zone)].join("|");
+  return [
+    item.baseStyle.collar,
+    item.baseStyle.cuff,
+    item.pattern?.family||"none",
+    item.pattern?.scale||"none",
+    ...item.treatments.map((t)=>`${t.zone}:${t.id}:${Math.round(t.intensity/10)*10}`)
+  ].join("|");
 }
 
 /**
@@ -1262,8 +1317,8 @@ export function generateCreativeDirections(input:CreativeLabInput):CreativeDirec
 
   first.sort((a,b)=>b.direction.overall-a.direction.overall);
   const refineCount=freedom==="maximum"?Math.min(64,first.length):freedom==="exploratory"?Math.min(18,first.length):Math.min(8,first.length);
-  const refined=first.slice(0,refineCount).map(({seed,direction})=>refine(seed,input,direction));
-  refined.sort((a,b)=>b.overall-a.overall || b.certainty-a.certainty);
+  const refined=first.slice(0,refineCount).map(({seed,direction})=>redesignLoop(seed,input,direction));
+  refined.sort((a,b)=>revisionMerit(b)-revisionMerit(a) || b.certainty-a.certainty);
 
   const output:CreativeDirection[]=[];
   const limit=Math.max(1,input.limit||3);
