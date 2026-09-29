@@ -520,7 +520,7 @@ export function composePhotoOutfit(
   }
 }
 
-type CreativeVisualCheck = {
+export type CreativeVisualCheck = {
   status:"pass"|"review";
   heroVisibility:number;
   boundaryIntegrity:number;
