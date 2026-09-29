@@ -3,6 +3,7 @@ import type { DesignerRecommendation } from "@/lib/designer/engine";
 import type { FitConstructionAssessment, FinishedTarget } from "@/lib/designer/fit-construction";
 import type { BrandLanguageEvaluation } from "@/lib/designer/brand-language";
 import type { DesignerBlockStrategy } from "@/lib/designer/block-strategy";
+import type { CreativeDirection } from "@/lib/designer/creative-engine";
 
 export type CanonicalGarmentSpecStatus = "draft" | "review_required" | "ready_for_tailor_review";
 
@@ -61,6 +62,41 @@ export type CanonicalGarmentSpec = {
     break: string;
     finishedTargets: CanonicalGarmentMeasurement[];
   };
+  creative: {
+    conceptId:string;
+    name:string;
+    thesis:string;
+    explorationClass:CreativeDirection["explorationClass"];
+    iteration:number;
+    researchUtilization:number;
+    treatments:Array<{
+      id:string;
+      zone:string;
+      label:string;
+      instruction:string;
+      visualPurpose:string;
+      intensity:number;
+      buildability:string;
+    }>;
+    pattern: {
+      id:string;
+      name:string;
+      family:string;
+      layout:string;
+      scale:string;
+      coverage:number;
+      palette:string[];
+      placement:string;
+      note:string;
+    } | null;
+    research:Array<{
+      id:string;
+      sourceTitle:string;
+      sourceUrl:string;
+      extractedPrinciple:string;
+      transformedInto:string;
+    }>;
+  } | null;
   decision: {
     designFitScore: number;
     confidenceScore: number;
@@ -109,6 +145,7 @@ export function buildCanonicalGarmentSpec(
   measurements: MeasurementProfile | null | undefined,
   brand?: BrandLanguageEvaluation | null,
   block?: DesignerBlockStrategy | null,
+  creative?: CreativeDirection | null,
 ): CanonicalGarmentSpec {
   const materialMissing = recommendation.materialEvidence.missing;
   const fitChecks = fit?.checks ?? [];
@@ -174,6 +211,35 @@ export function buildCanonicalGarmentSpec(
       break: recommendation.style.break,
       finishedTargets: (fit?.trouserTargets ?? []).map(target),
     },
+    creative: creative ? {
+      conceptId:creative.id,
+      name:creative.name,
+      thesis:creative.thesis,
+      explorationClass:creative.explorationClass,
+      iteration:creative.iteration,
+      researchUtilization:creative.researchUtilization,
+      treatments:creative.treatments.map((item)=>({
+        id:item.id,
+        zone:item.zone,
+        label:item.label,
+        instruction:item.instruction,
+        visualPurpose:item.visualPurpose,
+        intensity:item.intensity,
+        buildability:item.buildability,
+      })),
+      pattern:creative.pattern ? {
+        id:creative.pattern.id,
+        name:creative.pattern.name,
+        family:creative.pattern.family,
+        layout:creative.pattern.layout,
+        scale:creative.pattern.scale,
+        coverage:creative.pattern.coverage,
+        palette:[...creative.pattern.palette],
+        placement:creative.pattern.placement,
+        note:creative.pattern.note,
+      } : null,
+      research:creative.research.map((item)=>({...item})),
+    } : null,
     decision: {
       designFitScore: recommendation.designFitScore,
       confidenceScore: recommendation.confidenceScore,
@@ -200,6 +266,7 @@ export function buildCanonicalGarmentSpec(
       ...(block?.caveats ?? []),
       "This specification coordinates Designer, visualization and tailoring review; it is not a cutting pattern.",
       "Verified physical cloth data takes precedence over catalogue-derived appearance.",
+      ...(creative ? ["Creative treatments are design instructions for visualization and tailor/pattern-maker review; they are not production-ready pattern pieces."] : []),
     ],
   };
 }
