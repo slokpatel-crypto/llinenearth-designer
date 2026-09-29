@@ -120,7 +120,7 @@ export async function recordFabricAnalyzerCorrection(input:{
   reason?:string;
 }) {
   if(!config()) return null;
-  const result=await rpc<string>("fabric_analyzer_feedback_insert",{
+  const result=await rpc<string>("fabric_analyzer_feedback_apply",{
     p_profile_id:input.profileId,
     p_field_path:clean(input.fieldPath,180),
     p_previous_value:input.previousValue ?? null,
