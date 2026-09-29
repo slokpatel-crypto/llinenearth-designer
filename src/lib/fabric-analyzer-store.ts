@@ -100,7 +100,16 @@ export async function storeFabricAnalysis(
     p_profile:profile,
     p_confidence:profile.confidence,
   });
-  return typeof result==="string" ? result : null;
+  const profileId=typeof result==="string" ? result : null;
+  const fabricId=clean(input.fabricId,160);
+  if(profileId && fabricId) {
+    try {
+      await rpc<boolean>("fabric_analyzer_profile_bind",{p_fabric_id:fabricId,p_profile_id:profileId});
+    } catch {
+      // A profile remains useful even if an optional stock binding fails.
+    }
+  }
+  return profileId;
 }
 
 export async function recordFabricAnalyzerCorrection(input:{
@@ -146,6 +155,54 @@ export async function loadFabricAnalyzerLearningHints():Promise<FabricAnalyzerLe
     })).filter((row)=>row.field_path && row.samples>=3);
     learningCache={at:now,hints};
     return hints;
+  } catch {
+    return [];
+  }
+}
+
+
+export type BoundFabricAnalysis = StoredFabricAnalysis & {fabric_id:string};
+
+export async function loadFabricAnalysesForFabricIds(
+  fabricIds:string[],
+  options:{includeUnreviewed?:boolean}={},
+):Promise<BoundFabricAnalysis[]> {
+  if(!config()) return [];
+  const ids=[...new Set(fabricIds.map((id)=>clean(id,160)).filter(Boolean))].slice(0,500);
+  if(!ids.length) return [];
+  try {
+    return await rpc<BoundFabricAnalysis[]>("fabric_analyzer_profiles_for_fabrics",{
+      p_fabric_ids:ids,
+      p_include_unreviewed:options.includeUnreviewed!==false,
+    });
+  } catch {
+    return [];
+  }
+}
+
+export async function reviewFabricAnalyzerProfile(input:{
+  profileId:string;
+  status:"unreviewed"|"approved"|"corrected"|"rejected";
+  notes?:string;
+}) {
+  if(!config()) return false;
+  try {
+    return await rpc<boolean>("fabric_analyzer_profile_review",{
+      p_profile_id:input.profileId,
+      p_status:input.status,
+      p_notes:clean(input.notes,1200),
+    });
+  } catch {
+    return false;
+  }
+}
+
+export async function loadFabricAnalyzerProfilesForReview(limit=50):Promise<BoundFabricAnalysis[]> {
+  if(!config()) return [];
+  try {
+    return await rpc<BoundFabricAnalysis[]>("fabric_analyzer_profiles_for_review",{
+      p_limit:Math.max(1,Math.min(200,Math.floor(limit)||50)),
+    });
   } catch {
     return [];
   }
