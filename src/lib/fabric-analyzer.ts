@@ -31,6 +31,7 @@ import {
 } from "@/lib/fabric-analyzer-store";
 
 export type FabricAnalyzerContext = {
+  fabricId?:string;
   imageUrl:string;
   sourcePageUrl?:string;
   sourceId?:string;
