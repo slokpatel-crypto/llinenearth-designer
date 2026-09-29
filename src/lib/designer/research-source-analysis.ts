@@ -196,3 +196,24 @@ export async function analyzeFashionResearchSource(input:ResearchSourceAnalysisI
   }
   throw new Error("Research synthesis could not produce a reliable structured principle.");
 }
+
+
+export type BatchResearchAnalysis = {
+  source:ResearchSourceAnalysisInput;
+  analysis?:ResearchSourceAnalysisResult;
+  error?:string;
+};
+
+export async function analyzeFashionResearchBatch(
+  inputs:ResearchSourceAnalysisInput[],
+  limit=4,
+):Promise<BatchResearchAnalysis[]> {
+  const selected=inputs
+    .filter((item,index,array)=>array.findIndex((candidate)=>candidate.url===item.url)===index)
+    .slice(0,Math.max(1,Math.min(4,Math.round(limit))));
+  const settled=await Promise.allSettled(selected.map((input)=>analyzeFashionResearchSource(input)));
+  return settled.map((result,index)=>result.status==="fulfilled"
+    ? {source:selected[index],analysis:result.value}
+    : {source:selected[index],error:result.reason instanceof Error?result.reason.message:"Research synthesis failed."}
+  );
+}
