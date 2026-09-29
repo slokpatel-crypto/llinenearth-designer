@@ -22,7 +22,7 @@ function inspectRateLimited(request:Request) {
   return current.count>12;
 }
 
-type InspectBody = CreativeFashnRequest & { image:string };
+type InspectBody = CreativeFashnRequest & { image:string; previousImage?:string };
 
 function valid(body:unknown):body is InspectBody {
   if(!body || typeof body!=="object") return false;
@@ -30,6 +30,7 @@ function valid(body:unknown):body is InspectBody {
   return Boolean(
     typeof value.image==="string" &&
     value.image.length<1000 &&
+    (value.previousImage===undefined || (typeof value.previousImage==="string" && value.previousImage.length<1000)) &&
     value.shirt?.id && value.shirt?.image &&
     value.pant?.id && value.pant?.image &&
     value.style?.collar && value.style?.cuff &&
@@ -45,7 +46,7 @@ export async function POST(request:Request) {
     if(inspectRateLimited(request)) return NextResponse.json({error:"Creative render inspection is temporarily rate limited."},{status:429});
     const body=await request.json() as unknown;
     if(!valid(body)) return NextResponse.json({error:"A generated render and its V5 concept specification are required."},{status:400});
-    const check=await inspectCreativeFashnOutput(body.image,body);
+    const check=await inspectCreativeFashnOutput(body.image,body,body.previousImage);
     return NextResponse.json({check});
   } catch(error) {
     if(error instanceof FashnVisualizationError) {
