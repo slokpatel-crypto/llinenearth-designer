@@ -11,6 +11,8 @@ import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import type { CreativeFeedbackReason } from "@/lib/designer/creative-learning";
 import type { StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import { styleSpecRenderSummary } from "@/lib/designer/style-spec-v2";
+import type { BodyPreviewProfile } from "@/lib/designer/body-profile";
+import { bodyProfileRenderSummary } from "@/lib/designer/body-profile";
 import {
   repairDevelopmentRender,
   renderDevelopmentSet,
@@ -89,6 +91,7 @@ export type SelectedLookFashnRequest = {
   pant: Pick<DesignerFabric,"id"|"name"|"line"|"image"|"hex"|"patternType">;
   style: DesignerStyle;
   styleSpec?:StyleSpecV2;
+  bodyProfile?:BodyPreviewProfile;
   locked?:boolean;
   lookKey?:string;
 };
@@ -409,6 +412,7 @@ export async function inspectSelectedLookFashnOutput(
     `Required shirt: ${input.shirt.name}; ${input.shirt.line}; ${input.shirt.patternType}.`,
     `Required trousers: ${input.pant.name}; ${input.pant.line}; ${input.pant.patternType}.`,
     `Required construction: ${selectedLookConstruction(input)}.`,
+    `Required body/model: ${input.bodyProfile ? bodyProfileRenderSummary(input.bodyProfile) : "preserve existing proportions and skin tone"}.`,
     "Images are supplied in this order: GENERATED RENDER, LOCKED STUDIO MODEL, then SPLIT FABRIC CONTEXT when available (shirt left, trouser right).",
     "Check exact visible cloth colour/pattern/weave character, collar and cuff cleanliness, neck opening, hands, shirt/trouser boundary, tucked waistband layering, trouser silhouette, mannequin identity, background stability and synthesis artifacts.",
     "Do not fail minor natural drape variation. Review when cloth visibly bleeds onto skin/background/adjacent garment, the chosen construction is contradicted, fabric identity drifts materially, or the mannequin/background changes materially.",
@@ -640,6 +644,7 @@ The image-context is split vertically: LEFT HALF is the exact shirt-fabric refer
 Shirt: ${safe(input.shirt.name)} ${safe(input.shirt.line)}, ${safe(input.shirt.patternType)}.
 Trousers: ${safe(input.pant.name)} ${safe(input.pant.line)}, ${safe(input.pant.patternType)}.
 Exact locked construction: ${safe(selectedLookConstruction(input),900)}.
+Body/model target: ${input.bodyProfile ? safe(bodyProfileRenderSummary(input.bodyProfile),220) : "preserve the existing model proportions and exposed skin tone"}.
 
 This is a fidelity render, not a redesign. Do not invent contrast panels, embroidery, piping, extra pockets, extra seams, prints, logos or decorative details. Preserve the configured collar, cuffs, placket, shirt fit, tuck state, trouser shape, rise, waistband and break. Keep natural linen weave, realistic folds and tailoring structure. Shirt fabric must remain inside the shirt silhouette and must not spill over the neck, hands, trouser waistband or background. Trouser fabric must remain inside the trouser silhouette. For a tucked shirt, the waistband must sit physically in front of the tucked shirt. Keep the mannequin fully faceless with no eyes, hair or facial features. No text, props, extra garments or cropped limbs. Full-body front fashion-catalogue photograph.`;
 }
@@ -658,6 +663,7 @@ Do not redesign the outfit. Preserve the exact same faceless mannequin, body pro
 Shirt: ${safe(input.shirt.name)} ${safe(input.shirt.line)}, ${safe(input.shirt.patternType)}.
 Trousers: ${safe(input.pant.name)} ${safe(input.pant.line)}, ${safe(input.pant.patternType)}.
 Locked construction: ${safe(selectedLookConstruction(input),900)}.
+Body/model target: ${input.bodyProfile ? safe(bodyProfileRenderSummary(input.bodyProfile),220) : "preserve the existing model proportions and exposed skin tone"}.
 
 Keep hard garment boundaries. Shirt fabric must not spill onto the neck, hands, waistband, trousers or background. Trouser fabric must remain inside the trouser silhouette. For a tucked shirt, preserve the waistband physically in front of the shirt. Keep the mannequin completely faceless. No text, logo, extra props, new garments or cropped limbs. Full-body premium menswear catalogue photograph.`;
 }
@@ -723,6 +729,7 @@ function selectedLookCacheKey(input:SelectedLookFashnRequest) {
     pant:input.pant.id,
     style:input.style,
     styleSpec:input.styleSpec||null,
+    bodyProfile:input.bodyProfile||null,
   });
 }
 
@@ -782,7 +789,7 @@ export async function repairSelectedLookFashnFront(
   const context=await creativeFabricContext(input.shirt.image,input.pant.image);
   const prompt=`Repair this existing Linen Earth photoreal render without redesigning it. QA defect to fix: ${instruction}
 
-Preserve the same faceless mannequin, pose, camera, body proportions, deep navy studio, shirt fabric, trouser fabric, footwear and every successful garment detail. Required construction remains ${selectedLookConstruction(input)}.
+Preserve the same faceless mannequin, pose, camera, body proportions, exposed skin tone, deep navy studio, shirt fabric, trouser fabric, footwear and every successful garment detail. Required construction remains ${selectedLookConstruction(input)}. Body/model target remains ${input.bodyProfile ? bodyProfileRenderSummary(input.bodyProfile) : "the existing model"}.
 
 Use the supplied split fabric context only to restore the exact shirt and trouser cloth appearance. Fix the cited defect locally. Do not add styling ideas, decorative seams, contrast panels, prints, logos, props or extra garments. Keep cloth off the neck, hands, background and neighbouring garment. If tucked, keep the waistband physically in front of the shirt. Full-body front catalogue photograph.`;
   const generated=await runEdit(previousImage,prompt,context);
