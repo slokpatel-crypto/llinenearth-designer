@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { DESIGNER_REVIEWED_PAIRING, designerFabricFromStock } from "@/lib/designer/engine";
+import { DESIGNER_REVIEWED_PAIRING, DESIGNER_STYLE_CHOICES, designerFabricFromStock } from "@/lib/designer/engine";
 import { parseDesignerBrief } from "@/lib/designer/brief";
 import { searchDesignerCatalogue, type DesignerSearchTier } from "@/lib/designer/search";
 import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
@@ -63,6 +63,57 @@ function safeObservations(value:unknown):TailorObservationProfile|null {
   };
 }
 
+type SafeTasteProfile = {
+  evidence:number;
+  preferredTier?:DesignerSearchTier;
+  preferredShirtWear?:"Tucked"|"Untucked";
+  preferredTrouser?:string;
+};
+
+function safeTasteProfile(value:unknown):SafeTasteProfile|null {
+  if(!value || typeof value!=="object" || Array.isArray(value)) return null;
+  const input=value as Record<string,unknown>;
+  if(Number(input.version)!==1) return null;
+  const evidence=Math.max(0,Math.min(100,Math.floor(Number(input.evidence)||0)));
+  if(evidence<4) return {evidence};
+  const tier=String(input.preferredTier||"");
+  const wear=String(input.preferredShirtWear||"");
+  const trouser=String(input.preferredTrouser||"").slice(0,100);
+  return {
+    evidence,
+    ...(tier==="Safe"||tier==="Elevated"||tier==="Statement" ? {preferredTier:tier} : {}),
+    ...(wear==="Tucked"||wear==="Untucked" ? {preferredShirtWear:wear} : {}),
+    ...(DESIGNER_STYLE_CHOICES.trouser.includes(trouser) ? {preferredTrouser:trouser} : {}),
+  };
+}
+
+function personalizeBrief(parsed:ReturnType<typeof parseDesignerBrief>,taste:SafeTasteProfile|null) {
+  if(!taste || taste.evidence<4) return parsed;
+  const style={...parsed.style};
+  const preference={...parsed.preference};
+  const interpretation=[...parsed.interpretation];
+  const text=parsed.original.toLowerCase();
+  const explicitEnergy=/\b(quiet|understated|minimal|subtle|bold|statement|expressive|stand out|standout|not boring|creative|distinctive)\b/.test(text);
+  const explicitWear=/\b(tucked|untucked)\b/.test(text);
+  const explicitTrouser=/\b(pleat|pleated|flat[- ]?front|wide[- ]?leg|relaxed trouser|cropped|ankle[- ]?length)\b/.test(text);
+  const learned:string[]=[];
+
+  if(taste.preferredTier && !explicitEnergy) {
+    preference.preferredTier=taste.preferredTier;
+    learned.push(`${taste.preferredTier.toLowerCase()} energy`);
+  }
+  if(taste.preferredShirtWear && !explicitWear) {
+    style.shirtWear=taste.preferredShirtWear;
+    learned.push(`${taste.preferredShirtWear.toLowerCase()} shirt`);
+  }
+  if(taste.preferredTrouser && !explicitTrouser) {
+    style.trouser=taste.preferredTrouser;
+    learned.push(taste.preferredTrouser.toLowerCase());
+  }
+  if(learned.length) interpretation.push(`learned preference: ${learned.join(", ")}`);
+  return {...parsed,style,preference,interpretation};
+}
+
 function tierOrder(preferred:DesignerSearchTier|undefined) {
   if(preferred==="Safe") return ["Safe","Elevated","Statement"] as DesignerSearchTier[];
   if(preferred==="Statement") return ["Statement","Elevated","Safe"] as DesignerSearchTier[];
@@ -87,11 +138,12 @@ export async function POST(request:Request) {
       currentPantId?:unknown;
       measurements?:unknown;
       observations?:unknown;
+      tasteProfile?:unknown;
     };
     const brief=String(body.brief||"").replace(/\s+/g," ").trim().slice(0,500);
     if(brief.length<5) return NextResponse.json({error:"Tell Designer where you are going and how you want the outfit to feel."},{status:400});
 
-    const parsed=parseDesignerBrief(brief);
+    const parsed=personalizeBrief(parseDesignerBrief(brief),safeTasteProfile(body.tasteProfile));
     const [metadata,evidence]=await Promise.all([
       loadDesignerFabricMetadata(),
       loadDesignerEvidenceContext(),
@@ -150,7 +202,7 @@ export async function POST(request:Request) {
         notes:parsed.interpretation,
       },
       results:presentation,
-      engine:"linen-designer-brief-v1",
+      engine:"linen-designer-brief-v2",
     },{headers:{"cache-control":"no-store"}});
   } catch(error) {
     console.error("[designer/brief]",error);
