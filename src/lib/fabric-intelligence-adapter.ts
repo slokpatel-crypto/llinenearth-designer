@@ -20,6 +20,9 @@ import {
   type TrouserDirectionId,
   type PatternStrategyId,
 } from "./vocab/index.ts";
+import type { FabricMeasuredData, FabricImageQuality } from "./fabric-measurement-types.ts";
+
+export type FabricFieldProvenance="measured"|"modelJudged"|"declared"|"reviewed";
 
 export type FabricAnalyzerProfileV4 = {
   version:"fabric-analyzer-v4";
@@ -76,6 +79,23 @@ export type FabricAnalyzerProfileV4 = {
     colorTerms:string[];
     sourceIds:string[];
   };
+  measured:FabricMeasuredData|null;
+  imageQuality:FabricImageQuality|null;
+  renderAssets:{
+    tileUrl:string|null;
+    placeholderUrl:string|null;
+    tileWidthPx:number|null;
+    tileHeightPx:number|null;
+    repeatDetected:boolean;
+    renderAssetVersion:string|null;
+    scaleApproximate:boolean;
+  };
+  captureSet:Array<{
+    role:"flat"|"macro"|"fold";
+    imageUrl:string;
+    contentSha256:string|null;
+  }>;
+  provenanceByField:Record<string,FabricFieldProvenance>;
   reviewNeeded:string[];
   summary:string;
 };
@@ -177,6 +197,29 @@ export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|nu
       colorTerms:arr(references.colorTerms,8),
       sourceIds:arr(references.sourceIds,10),
     },
+    measured:root.measured && typeof root.measured==="object" ? root.measured as FabricMeasuredData : null,
+    imageQuality:root.imageQuality && typeof root.imageQuality==="object" ? root.imageQuality as FabricImageQuality : null,
+    renderAssets:{
+      tileUrl:str(obj(root.renderAssets).tileUrl,1800)||null,
+      placeholderUrl:str(obj(root.renderAssets).placeholderUrl,1800)||null,
+      tileWidthPx:Number.isFinite(Number(obj(root.renderAssets).tileWidthPx))?Number(obj(root.renderAssets).tileWidthPx):null,
+      tileHeightPx:Number.isFinite(Number(obj(root.renderAssets).tileHeightPx))?Number(obj(root.renderAssets).tileHeightPx):null,
+      repeatDetected:Boolean(obj(root.renderAssets).repeatDetected),
+      renderAssetVersion:str(obj(root.renderAssets).renderAssetVersion,80)||null,
+      scaleApproximate:obj(root.renderAssets).scaleApproximate!==false,
+    },
+    captureSet:Array.isArray(root.captureSet)
+      ? root.captureSet.slice(0,3).map((item)=>{
+        const value=obj(item);
+        const role=enumValue(value.role,["flat","macro","fold"] as const,"flat");
+        return {role,imageUrl:str(value.imageUrl,1800),contentSha256:str(value.contentSha256,100)||null};
+      }).filter((item)=>item.imageUrl)
+      : [],
+    provenanceByField:Object.fromEntries(
+      Object.entries(obj(root.provenanceByField))
+        .filter(([,value])=>["measured","modelJudged","declared","reviewed"].includes(String(value)))
+        .map(([key,value])=>[key,String(value) as FabricFieldProvenance]),
+    ),
     reviewNeeded:[...new Set([...(Array.isArray(root.reviewNeeded)?arr(root.reviewNeeded,30):[]),...reviewNeeded])],
     summary:str(root.summary,700),
   };
