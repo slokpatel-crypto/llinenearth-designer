@@ -7,7 +7,7 @@ import { randomBytes } from "node:crypto";
 
 const PORT = Number(process.env.LINEN_BRIDGE_PORT || 4317);
 const HOST = "127.0.0.1";
-const DATA_DIR = path.resolve(process.env.LINEN_EARTH_DATA_DIR || path.join(os.homedir(), "LlinenEarthData"));
+const DATA_DIR = path.resolve(process.env.LINEN_EARTH_DATA_DIR || path.join(os.homedir(), "LinenEarthData"));
 const EVENTS_DIR = path.join(DATA_DIR, "events");
 const BACKUPS_DIR = path.join(DATA_DIR, "backups");
 const TOKEN = process.env.LINEN_LOCAL_BRIDGE_TOKEN || randomBytes(24).toString("hex");
