@@ -281,6 +281,19 @@ for (const token of ["renderSelectedLookFashnView","frontImage","three-quarter",
 }
 console.log("Photoreal multi-view gate passed: front, three-quarter, side and back generation paths protected.");
 
+const selectedLookQaRoute = fs.readFileSync("src/app/api/designer/look-inspect/route.ts","utf8");
+const selectedLookRenderEngine = fs.readFileSync("src/lib/ai-visualization.ts","utf8");
+for (const token of ["inspectSelectedLookFashnOutput","SelectedLookVisualCheck","repairSelectedLookFashnFront","assertFashnRepairRateLimit"]) {
+  if (!selectedLookRenderEngine.includes(token)) throw new Error(`Selected-look render QA regression: missing ${token}`);
+}
+for (const token of ["inspectSelectedLookFashnOutput","cache-control","no-store"]) {
+  if (!selectedLookQaRoute.includes(token)) throw new Error(`Selected-look QA route regression: missing ${token}`);
+}
+for (const token of ["/api/designer/look-inspect","selectedCheck","Repair once","repairSelectedLook"]) {
+  if (!photoPreviewMultiView.includes(token)) throw new Error(`Selected-look QA UI regression: missing ${token}`);
+}
+console.log("Selected-look render QA gate passed: normal photoreal looks are inspected and allow one targeted repair without redesign.");
+
 
 const measurementPage = fs.readFileSync("src/app/measurements/page.tsx","utf8");
 for (const token of ["MEASUREMENT STUDIO","See exactly where","MeasurementStudio","blueprint"]) {
