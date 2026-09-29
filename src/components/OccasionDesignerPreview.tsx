@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { ContextProfile } from "@/lib/designer-types";
 
-const DRAFT_KEY = "llinen-earth-context-draft-v1";
+const DRAFT_KEY = "linen-earth-context-draft-v1";
 
 type Key = keyof ContextProfile;
 type Question = { key: Key; kicker: string; title: string; note: string; options: string[] };
