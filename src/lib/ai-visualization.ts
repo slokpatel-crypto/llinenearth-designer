@@ -86,30 +86,27 @@ export type CreativeFashnRequest = {
   };
 };
 
+export type SelectedLookFabricRenderEvidence={
+  gsm:number|null;
+  drape:"Fluid"|"Balanced"|"Structured"|null;
+  fiberContent:string|null;
+  repeatMm:number|null;
+  stripeWidthMm:number|null;
+  physicalScaleStatus:"declared_repeat"|"declared_swatch_width"|"unknown"|null;
+};
+
+export type SelectedLookRenderEvidence={
+  shirt?:SelectedLookFabricRenderEvidence;
+  pant?:SelectedLookFabricRenderEvidence;
+};
+
 export type SelectedLookFashnRequest = {
   shirt: Pick<DesignerFabric,"id"|"name"|"line"|"image"|"hex"|"patternType">;
   pant: Pick<DesignerFabric,"id"|"name"|"line"|"image"|"hex"|"patternType">;
   style: DesignerStyle;
   styleSpec?:StyleSpecV2;
   bodyProfile?:BodyPreviewProfile;
-  renderEvidence?:{
-    shirt?:{
-      gsm:number|null;
-      drape:"Fluid"|"Balanced"|"Structured"|null;
-      fiberContent:string|null;
-      repeatMm:number|null;
-      stripeWidthMm:number|null;
-      physicalScaleStatus:"declared_repeat"|"declared_swatch_width"|"unknown"|null;
-    };
-    pant?:{
-      gsm:number|null;
-      drape:"Fluid"|"Balanced"|"Structured"|null;
-      fiberContent:string|null;
-      repeatMm:number|null;
-      stripeWidthMm:number|null;
-      physicalScaleStatus:"declared_repeat"|"declared_swatch_width"|"unknown"|null;
-    };
-  };
+  renderEvidence?:SelectedLookRenderEvidence;
   locked?:boolean;
   lookKey?:string;
 };
@@ -649,7 +646,7 @@ async function semanticCreativeRenderCheck(
 }
 
 function selectedLookPhysicalEvidence(input:SelectedLookFashnRequest) {
-  const line=(label:string,value:SelectedLookFashnRequest["renderEvidence"] extends infer R ? any : never)=>{
+  const line=(label:string,value:SelectedLookFabricRenderEvidence|undefined)=>{
     if(!value) return `${label}: no verified physical evidence; do not invent GSM, fibre or real drape.`;
     const facts:string[]=[];
     if(Number.isFinite(value.gsm)) facts.push(`${value.gsm} GSM verified`);
