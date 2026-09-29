@@ -45,6 +45,8 @@ import {
   adaptFabricProfileToV4,
   type FabricAnalyzerProfileV4,
 } from "@/lib/fabric-intelligence-adapter";
+import { measureFabricImageBytes } from "@/lib/fabric-measurement-server";
+import type { FabricMeasuredData } from "@/lib/fabric-measurement-types";
 
 export type FabricAnalyzerContext = {
   fabricId?:string;
@@ -56,6 +58,14 @@ export type FabricAnalyzerContext = {
   supplierColorName?:string;
   supplierPatternName?:string;
   notes?:string;
+  // Physical scale is owner/supplier data. The Analyzer never infers mm from pixels.
+  swatchRealWidthMm?:number;
+  repeatRealMm?:number;
+  // Internal server-generated evidence used for content fingerprinting and to
+  // avoid fetching/measuring the same image twice in one analysis run.
+  contentSha256?:string;
+  perceptualHash?:string;
+  measured?:FabricMeasuredData;
 };
 
 export type FabricAnalyzerProfile = FabricAnalyzerProfileV4;
@@ -74,6 +84,40 @@ function safeImageUrl(value:string,sourcePageUrl?:string) {
     throw new Error("Fabric Analyzer only accepts trusted HTTPS image sources.");
   }
   return url;
+}
+
+async function prepareFabricMeasurement(input:FabricAnalyzerContext):Promise<FabricAnalyzerContext> {
+  if(input.measured && input.contentSha256) return input;
+  const url=safeImageUrl(input.imageUrl,input.sourcePageUrl);
+  const response=await fetch(url,{
+    headers:{accept:"image/avif,image/webp,image/png,image/jpeg,*/*;q=.5"},
+    cache:"no-store",
+    signal:AbortSignal.timeout(12_000),
+  });
+  if(!response.ok) throw new Error(`Fabric image could not be fetched for measurement (${response.status}).`);
+  const announced=Number(response.headers.get("content-length")||0);
+  if(announced>12_000_000) throw new Error("Fabric image is too large for Analyzer measurement.");
+  const buffer=new Uint8Array(await response.arrayBuffer());
+  if(buffer.byteLength>12_000_000) throw new Error("Fabric image is too large for Analyzer measurement.");
+  const measured=await measureFabricImageBytes(buffer,{
+    swatchRealWidthMm:Number.isFinite(input.swatchRealWidthMm)?input.swatchRealWidthMm:undefined,
+    repeatRealMm:Number.isFinite(input.repeatRealMm)?input.repeatRealMm:undefined,
+  });
+  if(measured.imageQuality.score<40) {
+    const issues=measured.imageQuality.issues.join(", ") || "image_quality_low";
+    throw new Error(`Retake the fabric photo before analysis: ${issues}. Use a flat, sharp, evenly lit swatch image that fills the frame.`);
+  }
+  return {
+    ...input,
+    contentSha256:measured.contentSha256,
+    perceptualHash:measured.perceptualHash,
+    measured,
+  };
+}
+
+function measuredPatternContrast(value:number|null):FabricAnalyzerProfile["observed"]["patternContrast"] {
+  if(value===null) return "medium";
+  return value<10?"low":value<28?"medium":"high";
 }
 
 function gatewayToken() {
