@@ -80,6 +80,7 @@ export type CreativeRenderVisualCheck = {
   semanticStatus?:"pass"|"review";
   semanticIssue?:string;
   redesignReason?:CreativeFeedbackReason;
+  improvement?:"improved"|"same"|"worse"|"not_applicable";
 };
 
 export type CreativeFashnResult = {
@@ -303,6 +304,7 @@ type SemanticCreativeCheck = {
   supportCompetition:"none"|"minor"|"major";
   artifact:"none"|"minor"|"major";
   redesignReason:CreativeFeedbackReason;
+  improvement:"improved"|"same"|"worse"|"not_applicable";
   issue:string;
 };
 
@@ -360,6 +362,7 @@ async function semanticCreativeRenderCheck(
   referenceDataUri:string,
   fabricContext:string|undefined,
   input:CreativeFashnRequest,
+  previousOutputUrl?:string,
 ):Promise<SemanticCreativeCheck|null> {
   const token=gatewayAuthToken();
   if(!token || !OFFICIAL_FASHN_OUTPUT.test(outputUrl)) return null;
@@ -373,8 +376,12 @@ async function semanticCreativeRenderCheck(
     support.map((move)=>`Support move: ${move.zone} / ${move.label}. ${move.instruction}.`).join(" "),
     input.creative.pattern ? `Pattern: ${input.creative.pattern.name}; ${input.creative.pattern.layout}; placement: ${input.creative.pattern.placement}.` : "",
     `Base cut: ${input.style.collar}; ${input.style.cuff}; ${input.style.placket}; ${input.style.shirtFit}; ${input.style.shirtWear}; ${input.style.trouser}.`,
-    "You receive three visual references in this order: GENERATED RENDER, LOCKED STUDIO REFERENCE, then (when present) SPLIT FABRIC CONTEXT with shirt on the left and trouser on the right.",
-    "Compare them rather than judging the generated render in isolation.",
+    previousOutputUrl
+      ? "You receive four visual references in this order: CURRENT GENERATED RENDER, PREVIOUS FAILED/REVIEW RENDER, LOCKED STUDIO REFERENCE, then (when present) SPLIT FABRIC CONTEXT with shirt on the left and trouser on the right."
+      : "You receive three visual references in this order: GENERATED RENDER, LOCKED STUDIO REFERENCE, then (when present) SPLIT FABRIC CONTEXT with shirt on the left and trouser on the right.",
+    previousOutputUrl
+      ? "Compare the current render with the previous failed/review render. Reward a targeted fix only when the cited problem visibly improved without damaging fabric fidelity, boundaries or the hero hierarchy."
+      : "Compare them rather than judging the generated render in isolation.",
     "Check: (1) the hero detail is visibly and geometrically expressed, (2) proportion is intentional, (3) supporting details do not compete, (4) the render follows the supplied concept instead of normalizing it, (5) shirt/trouser fabric appearance remains faithful to the supplied swatches, (6) protected areas and garment boundaries remain stable relative to the locked studio reference, (7) there are no obvious synthesis artifacts.",
     "A concept may be unconventional and still pass. Fail it for unclear execution, fidelity loss, proportion failure, competing hierarchy, or rendering artifacts—not merely because it is unusual.",
     "If review is needed, choose the single most useful redesign reason. Keep issue under 140 characters."
@@ -393,9 +400,10 @@ async function semanticCreativeRenderCheck(
       supportCompetition:{type:"string",enum:["none","minor","major"]},
       artifact:{type:"string",enum:["none","minor","major"]},
       redesignReason:{type:"string",enum:["visual_balance","too_busy","too_safe","pattern_detail","proportion","originality","render_mismatch","other"]},
+      improvement:{type:"string",enum:["improved","same","worse","not_applicable"]},
       issue:{type:"string",maxLength:140},
     },
-    required:["status","hierarchy","proportion","fidelity","heroAccuracy","fabricFidelity","boundary","supportCompetition","artifact","redesignReason","issue"],
+    required:["status","hierarchy","proportion","fidelity","heroAccuracy","fabricFidelity","boundary","supportCompetition","artifact","redesignReason","improvement","issue"],
     additionalProperties:false,
   };
 
@@ -414,6 +422,7 @@ async function semanticCreativeRenderCheck(
             content:[
               {type:"input_text",text:prompt},
               {type:"input_image",image_url:outputUrl,detail:"auto"},
+              ...(previousOutputUrl?[{type:"input_image",image_url:previousOutputUrl,detail:"auto"}]:[]),
               {type:"input_image",image_url:referenceDataUri,detail:"auto"},
               ...(fabricContext?[{type:"input_image",image_url:fabricContext,detail:"auto"}]:[]),
             ],
@@ -542,15 +551,24 @@ export async function renderCreativeFashnFront(input:CreativeFashnRequest):Promi
 export async function inspectCreativeFashnOutput(
   outputUrl:string,
   input:CreativeFashnRequest,
+  previousOutputUrl?:string,
 ):Promise<CreativeRenderVisualCheck> {
   if(!OFFICIAL_FASHN_OUTPUT.test(outputUrl)) throw new FashnVisualizationError("Generated render URL is not trusted.","invalid_source");
+  if(previousOutputUrl && !OFFICIAL_FASHN_OUTPUT.test(previousOutputUrl)) throw new FashnVisualizationError("Previous render URL is not trusted.","invalid_source");
   const [source,fabricContext]=await Promise.all([
     creativeModelDataUri(input.style),
     creativeFabricContext(input.shirt.image,input.pant.image),
   ]);
   const heuristic=await inspectCreativeRender(source,outputUrl,input);
-  const semantic=await semanticCreativeRenderCheck(outputUrl,source,fabricContext,input);
-  if(!semantic) return heuristic;
+  const previousHeuristic=previousOutputUrl ? await inspectCreativeRender(source,previousOutputUrl,input) : null;
+  const semantic=await semanticCreativeRenderCheck(outputUrl,source,fabricContext,input,previousOutputUrl);
+  if(!semantic) {
+    if(!previousHeuristic?.evidenceAvailable) return {...heuristic,improvement:"not_applicable"};
+    const currentQuality=heuristic.heroVisibility+heuristic.boundaryIntegrity-heuristic.protectedChange;
+    const previousQuality=previousHeuristic.heroVisibility+previousHeuristic.boundaryIntegrity-previousHeuristic.protectedChange;
+    const delta=currentQuality-previousQuality;
+    return {...heuristic,improvement:delta>12?"improved":delta<-8?"worse":"same"};
+  }
 
   const semanticNeedsReview=semanticCheckNeedsReview(semantic);
 
@@ -568,6 +586,7 @@ export async function inspectCreativeFashnOutput(
     semanticStatus:semanticNeedsReview?"review":"pass",
     semanticIssue:semantic.issue,
     redesignReason:semanticNeedsReview ? semantic.redesignReason : undefined,
+    improvement:previousOutputUrl ? semantic.improvement : "not_applicable",
   };
 }
 
