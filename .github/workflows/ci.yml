@@ -19,5 +19,6 @@ jobs:
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
       - run: npm run quality
+      - run: npm test
       - run: npm run release:check
       - run: npm run build
