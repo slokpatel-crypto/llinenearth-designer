@@ -14,7 +14,7 @@ export default function VisualPage(){
     <section className="modulePageHero wrap">
       <p className="eyebrow">LIVE OUTFIT VISUAL · FULL LOOK</p>
       <h1>See shirt and trouser together.</h1>
-      <p>Choose from LLinen Earth shirting and suiting colours, change the shirt and trouser silhouette, and preview the finished combination on one consistent faceless atelier mannequin. Add a matching jacket when the customer wants to see the full suit.</p>
+      <p>Choose from Linen Earth shirting and suiting colours, change the shirt and trouser silhouette, and preview the finished combination on one consistent faceless atelier mannequin. Add a matching jacket when the customer wants to see the full suit.</p>
       <Link className="modulePageBack" href="/">← Back to the atelier entrance</Link>
     </section>
 
