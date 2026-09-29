@@ -11,7 +11,7 @@ export const WHATSAPP_BUSINESS_NUMBER = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER
 export const WHATSAPP_NUMBER_CONFIGURED = WHATSAPP_BUSINESS_NUMBER.length >= 10;
 
 export function buildWhatsAppMessage(input: WhatsAppEnquiry = {}) {
-  const lines = ["Hi LLinen Earth, I would like help with a premium tailoring enquiry."];
+  const lines = ["Hi Linen Earth, I would like help with a premium tailoring enquiry."];
   if (input.customerName) lines.push(`Customer: ${input.customerName}`);
   if (input.topic) lines.push(`Enquiry: ${input.topic}`);
   if (input.garment) lines.push(`Garment: ${input.garment}`);
