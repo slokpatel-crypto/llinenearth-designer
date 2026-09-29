@@ -44,17 +44,18 @@ function fitNotes(brief: DesignerBrief, tier: DirectionTier) {
 
 export function generateDesignerDirections(brief: DesignerBrief): DesignCandidate[] {
   const c = brief.context;
-  const family = fabricFamily(brief).toLowerCase();
+  const resolvedFabric=judgeFabricForBrief(brief).resolvedFabric;
+  const familyId=resolvedFabric?.id || null;
   const color = dominantColor(brief);
   const hot = c.environment.toLowerCase().includes("hot") || c.environment.toLowerCase().includes("outdoor") || c.venue.toLowerCase().includes("beach") || c.venue.toLowerCase().includes("garden");
   const formal = c.formality === "Formal" || c.formality.includes("Ceremonial") || (c.occasion === "Business" && c.venue.toLowerCase().includes("boardroom"));
   const evening = c.time === "Evening" || c.time === "Late night";
   const resort = c.occasion.includes("Resort") || c.venue.includes("Beach");
   const festive = c.occasion.includes("Festive") || c.occasion.includes("Wedding");
-  const linenLike = family.includes("linen");
-  const woolLike = family.includes("wool");
-  const cottonLike = family.includes("cotton");
-  const trLike = family.includes("tr") || family.includes("poly") || family.includes("viscose") || family.includes("rayon");
+  const linenLike=familyId==="linen" || familyId==="linen-cotton";
+  const woolLike=familyId==="tr-wool" || familyId==="tropical-wool" || familyId==="hopsack-wool" || familyId==="wool-flannel";
+  const cottonLike=familyId==="cotton-poplin" || familyId==="oxford-cotton" || familyId==="cotton-twill";
+  const trLike=familyId==="tr-pv" || familyId==="tr-wool";
 
   const safeRole: WearFamily = woolLike || trLike ? (formal ? "suit" : "trouser") : linenLike ? (resort ? "shirt" : "trouser") : cottonLike ? "shirt" : "trouser";
   const elevatedRole: WearFamily = woolLike || trLike ? (formal || evening ? "jacket" : "trouser") : linenLike ? (formal ? "jacket" : "trouser") : cottonLike ? "shirt" : safeRole;
