@@ -24,6 +24,7 @@ export type DesignerSearchPreference = {
   avoidTokens:string[];
   preferredPattern?:"plain"|"stripe"|"check"|"print";
   preferredTier?:DesignerSearchTier;
+  strictOccasionFit?:boolean;
 };
 
 export type DesignerDecisionDimension = {
@@ -163,6 +164,24 @@ function styleForTier(
     break:pick("break",/no break/i,base.break),
     collarFinish:"Self-fabric",
   };
+}
+
+function occasionPreferredShirts(shirts:DesignerFabric[],occasion:OccasionTier) {
+  const filtered=shirts.filter((shirt)=>{
+    const text=searchableFabric(shirt);
+    if(occasion==="Formal") {
+      if(/linen print|printed linen blend|botanical|floral|leaf|abstract|chevron|mosaic/.test(text)) return false;
+      return /formal shirting/.test(text) || (/linen plain/.test(text) && /blue|grey|gray|offwhite|black|stresa|boulder/.test(text));
+    }
+    if(occasion==="Semi-Formal") {
+      return /formal shirting|linen plain/.test(text) && !/jute feel|saffron|dijon|light green/.test(text);
+    }
+    if(occasion==="Casual") {
+      return /linen plain|linen print|printed linen blend/.test(text) && !/formal shirting/.test(text);
+    }
+    return /linen plain|linen print|printed linen blend|formal shirting/.test(text);
+  });
+  return filtered.length>=3 ? filtered : shirts;
 }
 
 function prominent(fabric:DesignerFabric) {
@@ -484,7 +503,8 @@ function signaturesDiffer(a:RankedCandidate,b:RankedCandidate) {
 
 export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearchResult[] {
   const scope=input.scope || "keep_shirt";
-  const shirts=scope==="keep_shirt" ? [input.currentShirt] : input.shirts;
+  const openShirts=input.preference?.strictOccasionFit ? occasionPreferredShirts(input.shirts,input.occasion) : input.shirts;
+  const shirts=scope==="keep_shirt" ? [input.currentShirt] : openShirts;
   const pants=scope==="keep_trouser" ? [input.currentPant] : input.pants;
   const tiers:DesignerSearchTier[]=["Safe","Elevated","Statement"];
   const rankedByTier=new Map<DesignerSearchTier,RankedCandidate[]>();
