@@ -533,15 +533,18 @@ export type CreativeVisualCheck = {
   redesignReason?:CreativeFeedbackReason;
 };
 
-export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCreativeFeedback, onCreativeInspection }: {
+export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCreativeFeedback, onCreativeInspection, autoRenderNonce = 0, onCreativeRenderStart }: {
   shirt: DesignerFabric;
   pant: DesignerFabric;
   style: DesignerStyle;
   creativeDirection?: CreativeDirection | null;
   onCreativeFeedback?: (rating:"up"|"down",reason?:CreativeFeedbackReason)=>void;
   onCreativeInspection?: (check:CreativeVisualCheck)=>void;
+  autoRenderNonce?: number;
+  onCreativeRenderStart?: ()=>void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const lastAutoRenderNonce = useRef(0);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(false);
   const [inspectFit, setInspectFit] = useState(false);
@@ -587,8 +590,9 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
     return () => { cancelled = true; };
   }, [shirt, pant, template, tucked, style.collarFinish, creativeDirection]);
 
-  async function renderCreativePhotoreal() {
+  async function renderCreativePhotoreal(origin:"manual"|"automatic"="manual") {
     if(!creativeDirection || creativeAiLoading) return;
+    if(origin==="manual") onCreativeRenderStart?.();
     setCreativeAiLoading(true);
     setCreativeAiError("");
     try {
@@ -647,6 +651,12 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
     }
   }
 
+  useEffect(()=>{
+    if(!autoRenderNonce || autoRenderNonce===lastAutoRenderNonce.current || !creativeDirection || !ready || creativeAiLoading) return;
+    lastAutoRenderNonce.current=autoRenderNonce;
+    void renderCreativePhotoreal("automatic");
+  },[autoRenderNonce,creativeDirection?.id,ready]);
+
   function download() {
     const canvas = canvasRef.current;
     if (!canvas || !ready) return;
@@ -691,7 +701,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
       <div><span>SHIRT</span><strong>{shirt.name}</strong></div>
       <div><span>TROUSER</span><strong>{pant.name}</strong></div>
       <div className="newDesignerPhotoActions newDesignerPhotoActionsCompact">
-        {creativeDirection && !creativeAi && <button className="primary" type="button" onClick={renderCreativePhotoreal} disabled={!ready || creativeAiLoading}>{creativeAiLoading ? "Rendering…" : "Photoreal render ✦"}</button>}
+        {creativeDirection && !creativeAi && <button className="primary" type="button" onClick={()=>void renderCreativePhotoreal("manual")} disabled={!ready || creativeAiLoading}>{creativeAiLoading ? "Rendering…" : "Photoreal render ✦"}</button>}
         {creativeDirection && creativeAi && <button className="primary" type="button" onClick={()=>setShowCreativeAi((value)=>!value)}>{showCreativeAi ? "Instant preview" : "Photoreal render"}</button>}
         <button type="button" onClick={() => setShowOriginal((value) => !value)} disabled={!ready}>{showOriginal ? "Show design" : "Compare"}</button>
         <button type="button" onClick={download} disabled={!ready}>Save</button>
