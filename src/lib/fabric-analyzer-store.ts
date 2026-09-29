@@ -2,7 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import type { FabricAnalyzerContext, FabricAnalyzerProfile } from "@/lib/fabric-analyzer";
 
-const ANALYZER_VERSION="fabric-analyzer-v3";
+const ANALYZER_VERSION="fabric-analyzer-v4";
 
 function config() {
   const url=(process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/,"");
