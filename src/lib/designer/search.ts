@@ -17,6 +17,8 @@ import { evaluateLinenEarthBrandLanguage, type BrandLanguageEvaluation } from "@
 import { casebookSignalFor, type DesignerCasebook, type DesignerCasebookSignal } from "@/lib/designer/casebook";
 import { fitOutcomeProportionFromMeasurements, fitOutcomeSignalFor, type FitOutcomeBook, type FitOutcomeSignal } from "@/lib/designer/fit-outcomes";
 
+import { optionIdForLabel } from "@/lib/vocab";
+
 export type DesignerSearchScope = "keep_shirt" | "keep_trouser" | "open";
 export type DesignerSearchTier = "Safe" | "Elevated" | "Statement";
 
@@ -238,38 +240,26 @@ function searchableFabric(fabric:DesignerFabric) {
   ].filter(Boolean).join(" ").toLowerCase();
 }
 
-function normalizeIntelligenceToken(value:unknown) {
-  return String(value??"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
-}
-
-function containsLoose(values:string[],target:string|null|undefined) {
-  const needle=normalizeIntelligenceToken(target);
-  if(!needle) return false;
-  return values.some((value)=>{
-    const hay=normalizeIntelligenceToken(value);
-    return hay===needle || hay.includes(needle) || needle.includes(hay);
-  });
-}
-
-function occasionIntelligenceTokens(occasion:OccasionTier) {
-  if(occasion==="Formal") return ["formal","business","boardroom","ceremony","evening"];
-  if(occasion==="Semi-Formal") return ["semi formal","business","wedding","reception","event"];
-  if(occasion==="Smart-Casual") return ["smart casual","dinner","date","brunch","travel"];
-  return ["casual","weekend","resort","holiday","relaxed"];
-}
+const OCCASION_INTELLIGENCE_IDS:Record<OccasionTier,ReadonlySet<string>>={
+  Formal:new Set(["boardroom_business_formal","black_tie_evening","cocktail_evening","wedding","reception"]),
+  "Semi-Formal":new Set(["office_business","interview","wedding","reception","festive","summer_event"]),
+  "Smart-Casual":new Set(["smart_casual_dinner","date","brunch","travel","summer_event"]),
+  Casual:new Set(["weekend_casual","resort_holiday","travel","brunch"]),
+};
 
 function intelOccasionMatch(intel:DesignerFabricIntelligence,occasion:OccasionTier) {
-  const hay=intel.bestOccasions.join(" ").toLowerCase().replace(/[-/]/g," ");
-  return occasionIntelligenceTokens(occasion).some((token)=>hay.includes(token));
+  const allowed=OCCASION_INTELLIGENCE_IDS[occasion];
+  return intel.bestOccasions.some((id)=>allowed.has(id));
 }
 
 function patternSupportScore(primary:DesignerFabricIntelligence,companion:DesignerFabricIntelligence) {
-  const strategy=primary.pairing.goodPatternStrategy.join(" ").toLowerCase();
+  const strategy=new Set(primary.pairing.goodPatternStrategy);
   let score=0;
-  if(/solid|plain|quiet|restrained|simple/.test(strategy) && companion.patternFamily==="solid") score+=2.5;
-  if(/one pattern|single pattern|one hero|hero fabric/.test(strategy) && companion.statementLevel<=2) score+=2;
-  if(/tonal|low contrast/.test(strategy) && companion.patternContrast==="low") score+=1.5;
-  if(/fine|micro/.test(strategy) && companion.patternScale==="fine") score+=1.2;
+  if(strategy.has("solid_support") && companion.patternFamily==="solid") score+=2.5;
+  if(strategy.has("single_hero_pattern") && companion.statementLevel<=2) score+=2;
+  if(strategy.has("tonal_low_contrast") && companion.patternContrast==="low") score+=1.5;
+  if(strategy.has("fine_scale_only") && companion.patternScale==="fine") score+=1.2;
+  if(strategy.has("no_competing_pattern") && companion.patternFamily!=="solid") score-=2.5;
   return score;
 }
 
@@ -318,23 +308,27 @@ function fabricIntelligenceAlignment(
 
   if(shirtIntel) {
     const w=trustWeight(shirtIntel);
-    if(shirtIntel.bestGarments.some((value)=>/shirt|overshirt/i.test(value))) score+=3*w;
-    if(containsLoose(shirtIntel.recommendedConstruction.collars,style.collar)) score+=2.2*w;
-    if(containsLoose(shirtIntel.recommendedConstruction.cuffs,style.cuff)) score+=1.7*w;
-    if(containsLoose(shirtIntel.recommendedConstruction.shirtFits,style.shirtFit)) score+=1.7*w;
-    if(pantIntel) {
-      if(containsLoose(shirtIntel.pairing.goodColorFamilies,pantIntel.colorFamily)) score+=5*w;
-      if(containsLoose(shirtIntel.pairing.avoidColorFamilies,pantIntel.colorFamily)) score-=8*w;
+    if(shirtIntel.bestGarments.some((value)=>value==="shirt"||value==="overshirt")) score+=3*w;
+    const collarId=optionIdForLabel("collar",style.collar);
+    const cuffId=optionIdForLabel("cuff",style.cuff);
+    const fitId=optionIdForLabel("shirtFit",style.shirtFit);
+    if(collarId && shirtIntel.recommendedConstruction.collars.includes(collarId)) score+=2.2*w;
+    if(cuffId && shirtIntel.recommendedConstruction.cuffs.includes(cuffId)) score+=1.7*w;
+    if(fitId && shirtIntel.recommendedConstruction.shirtFits.includes(fitId)) score+=1.7*w;
+    if(pantIntel?.colorFamily) {
+      if(shirtIntel.pairing.goodColorFamilies.includes(pantIntel.colorFamily)) score+=5*w;
+      if(shirtIntel.pairing.avoidColorFamilies.includes(pantIntel.colorFamily)) score-=8*w;
     }
   }
 
   if(pantIntel) {
     const w=trustWeight(pantIntel);
-    if(pantIntel.bestGarments.some((value)=>/trouser|pant|suit/i.test(value))) score+=3*w;
-    if(containsLoose(pantIntel.recommendedConstruction.trouserDirections,style.trouser)) score+=2.4*w;
-    if(shirtIntel) {
-      if(containsLoose(pantIntel.pairing.goodColorFamilies,shirtIntel.colorFamily)) score+=4*w;
-      if(containsLoose(pantIntel.pairing.avoidColorFamilies,shirtIntel.colorFamily)) score-=7*w;
+    if(pantIntel.bestGarments.some((value)=>value==="trouser"||value==="chino"||value==="suit")) score+=3*w;
+    const trouserId=optionIdForLabel("trouser",style.trouser);
+    if(trouserId && pantIntel.recommendedConstruction.trouserDirections.includes(trouserId)) score+=2.4*w;
+    if(shirtIntel?.colorFamily) {
+      if(pantIntel.pairing.goodColorFamilies.includes(shirtIntel.colorFamily)) score+=4*w;
+      if(pantIntel.pairing.avoidColorFamilies.includes(shirtIntel.colorFamily)) score-=7*w;
     }
   }
 
@@ -363,10 +357,10 @@ function fabricIntelligenceAlignment(
     for(const intel of [shirtIntel,pantIntel]) {
       if(!intel) continue;
       const w=trustWeight(intel);
-      const tags=intel.climateVisualFit.join(" ").toLowerCase();
-      if(climate.includes("hot") && /hot|warm|humid|summer/.test(tags)) score+=2*w;
-      if(climate.includes("cool") && /cool|cold|winter/.test(tags)) score+=2*w;
-      if(climate.includes("air-conditioned") && /indoor|air|all season|all-season/.test(tags)) score+=1*w;
+      const tags=new Set(intel.climateVisualFit);
+      if(climate.includes("hot") && (tags.has("hot_humid")||tags.has("hot_dry")||tags.has("warm"))) score+=2*w;
+      if(climate.includes("cool") && tags.has("cool")) score+=2*w;
+      if(climate.includes("air-conditioned") && (tags.has("air_conditioned")||tags.has("all_season"))) score+=1*w;
     }
   }
 
