@@ -25,11 +25,13 @@ export const REAL_MENSWEAR_MATERIAL_TERMS = [
   "cashmere cloth",
   "Cashmere Fleece",
   "Cashmerello",
+  "Cassimere twill",
   "Chinese silk",
   "Classic Flannel",
   "coating cloth",
   "colored nepps",
   "combed long-staple cotton",
+  "common twill",
   "corduroy",
   "corduroy cotton",
   "cotton",
@@ -65,6 +67,8 @@ export const REAL_MENSWEAR_MATERIAL_TERMS = [
   "Golden Fox",
   "GREENHILLS Super 180s",
   "greige raw fabric",
+  "handwoven tweed",
+  "Harris Tweed",
   "heavy Oxford",
   "heavy twill",
   "herringbone semi-plain",
@@ -138,6 +142,7 @@ export const REAL_MENSWEAR_MATERIAL_TERMS = [
   "printed fabric",
   "printed shirting",
   "pure silk",
+  "pure virgin wool",
   "pure wool cloth",
   "regenerative cotton",
   "Revenge Super 150s",
@@ -193,11 +198,11 @@ export const REAL_MENSWEAR_MATERIAL_TERMS = [
   "twill",
   "twill shirting",
   "Twill Soprano",
+  "two and two twill",
   "two-ply cotton yarn",
   "undyed fabric",
   "velvet",
   "velvet cotton",
-  "Vicuña",
   "vicuña",
   "viscose-acetate lining",
   "voile",
@@ -211,7 +216,6 @@ export const REAL_MENSWEAR_MATERIAL_TERMS = [
   "woollen flannel",
   "worsted",
   "Worsted Classics",
-  "Worsted Flannel",
   "worsted flannel",
   "Yangir",
   "yarn-dyed linen",
@@ -247,6 +251,7 @@ export const REAL_MENSWEAR_PATTERN_TERMS = [
   "Classic stripes",
   "Clip-spot",
   "colored nepp effect",
+  "common twill",
   "corduroy",
   "Country check",
   "Dobby",
@@ -326,6 +331,7 @@ export const REAL_MENSWEAR_PATTERN_TERMS = [
   "Tropical weave",
   "twill",
   "Twill checks",
+  "two and two twill",
   "Two Tone Narrow Herringbone",
   "Two Tone Twill",
   "Two Tone Wide Herringbone",
@@ -904,6 +910,12 @@ export const FABRIC_REFERENCE_SOURCES = [
     "url": "https://www.guabello.it/en/homepage/"
   },
   {
+    "id": "harris-tweed-authority",
+    "title": "Harris Tweed Authority",
+    "publisher": "Harris Tweed Authority",
+    "url": "https://www.harristweed.org/"
+  },
+  {
     "id": "holland-sherry",
     "title": "Holland & Sherry Apparel",
     "publisher": "Holland & Sherry",
@@ -1061,7 +1073,7 @@ export const FABRIC_REFERENCE_SOURCES = [
   }
 ] as const;
 
-export const FABRIC_REFERENCE_INDEX_VERSION = "real-reference-v2" as const;
+export const FABRIC_REFERENCE_INDEX_VERSION = "real-reference-v3" as const;
 
 export const FABRIC_REFERENCE_COUNTS = {
   materials: REAL_MENSWEAR_MATERIAL_TERMS.length,
