@@ -3,6 +3,7 @@ import {
   assertFashnRateLimit,
   assertFashnRepairRateLimit,
   FashnVisualizationError,
+  getCachedSelectedLookRender,
   renderSelectedLookFashnFront,
   renderSelectedLookFashnView,
   repairSelectedLookFashnFront,
@@ -35,17 +36,22 @@ export async function POST(request:Request) {
       repairInstruction?:string;
     };
     const view:SelectedLookView=["front","three-quarter","side","back"].includes(String(input.view)) ? input.view as SelectedLookView : "front";
+    if(input.locked!==true) return NextResponse.json({error:"Lock the final design before using the photoreal renderer."},{status:409});
     const repairInstruction=String(input.repairInstruction||"").replace(/\s+/g," ").trim().slice(0,240);
     if(view==="front" && repairInstruction) {
       assertFashnRepairRateLimit(request);
       const result=await repairSelectedLookFashnFront(input,String(input.previousImage||""),repairInstruction);
       return NextResponse.json({result});
     }
+    if(view==="front") {
+      const cached=getCachedSelectedLookRender(input);
+      if(cached) return NextResponse.json({result:cached},{headers:{"x-linen-render-cache":"hit"}});
+    }
     assertFashnRateLimit(request);
     const result=view==="front"
       ? await renderSelectedLookFashnFront(input)
       : await renderSelectedLookFashnView(input,String(input.frontImage||""),view);
-    return NextResponse.json({result});
+    return NextResponse.json({result},{headers:{"x-linen-render-cache":result.cached?"hit":"miss"}});
   } catch(error) {
     if(error instanceof FashnVisualizationError) {
       const status=error.code==="not_configured"?503:error.code==="invalid_source"?400:error.code==="rate_limited"?429:502;
