@@ -1,3 +1,5 @@
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import type { CreativeResearchSignal } from "@/lib/designer/creative-research";
 
 export type ResearchSourceAnalysisInput = {
@@ -31,23 +33,53 @@ function isPrivateIpv4(host:string) {
     (parts[0]===169 && parts[1]===254) ||
     (parts[0]===172 && parts[1]>=16 && parts[1]<=31) ||
     (parts[0]===192 && parts[1]===168) ||
-    parts[0]===0;
+    (parts[0]===100 && parts[1]>=64 && parts[1]<=127) ||
+    parts[0]===0 ||
+    parts[0]>=224;
+}
+
+function isPrivateIpv6(address:string) {
+  const host=address.toLowerCase().replace(/^\[|\]$/g,"");
+  if(host==="::1" || host==="::") return true;
+  if(host.startsWith("fc") || host.startsWith("fd")) return true; // fc00::/7
+  if(/^fe[89ab]/.test(host)) return true; // fe80::/10 link-local
+  if(host.startsWith("::ffff:")) return isPrivateIpv4(host.slice(7));
+  return false;
+}
+
+function isPrivateAddress(address:string) {
+  const version=isIP(address);
+  return version===4 ? isPrivateIpv4(address) : version===6 ? isPrivateIpv6(address) : false;
 }
 
 function safePublicUrl(value:string) {
   const url=new URL(value);
   if(!["http:","https:"].includes(url.protocol)) throw new Error("Only public HTTP(S) research URLs are allowed.");
   const host=url.hostname.toLowerCase().replace(/\.$/,"");
-  if(!host || host==="localhost" || host.endsWith(".local") || host.endsWith(".internal") || host==="::1" || host.startsWith("[") || isPrivateIpv4(host)) {
+  if(!host || host==="localhost" || host.endsWith(".local") || host.endsWith(".internal") || isPrivateAddress(host)) {
     throw new Error("Private or local research URLs are not allowed.");
   }
   url.username=""; url.password=""; url.hash="";
   return url;
 }
 
+async function assertPublicResolution(url:URL) {
+  const host=url.hostname.toLowerCase().replace(/\.$/,"");
+  if(isIP(host)) {
+    if(isPrivateAddress(host)) throw new Error("Private or local research URLs are not allowed.");
+    return;
+  }
+  const addresses=await lookup(host,{all:true,verbatim:true});
+  if(!addresses.length) throw new Error("Research source hostname could not be resolved.");
+  if(addresses.some((entry)=>isPrivateAddress(entry.address))) {
+    throw new Error("Research source resolves to a private or local network address.");
+  }
+}
+
 async function fetchPublicHtml(input:string) {
   let url=safePublicUrl(input);
   for(let hop=0;hop<4;hop+=1) {
+    await assertPublicResolution(url);
     const response=await fetch(url,{
       headers:{
         accept:"text/html,application/xhtml+xml;q=0.9,text/plain;q=0.7",
