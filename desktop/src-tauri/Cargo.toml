@@ -1,8 +1,8 @@
 [package]
-name = "llinen-earth-os"
+name = "linen-earth-os"
 version = "1.0.0"
-description = "LLinen Earth private operator system"
-authors = ["LLinen Earth"]
+description = "Linen Earth private operator system"
+authors = ["Linen Earth"]
 edition = "2021"
 
 [build-dependencies]
