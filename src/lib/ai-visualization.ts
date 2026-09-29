@@ -8,6 +8,7 @@ import type { DesignerBrief } from "@/lib/designer-types";
 import type { DesignVersion } from "@/lib/refinement-engine";
 import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
+import type { CreativeFeedbackReason } from "@/lib/designer/creative-learning";
 import {
   repairDevelopmentRender,
   renderDevelopmentSet,
@@ -70,6 +71,10 @@ export type CreativeRenderVisualCheck = {
   boundaryIntegrity:number;
   protectedChange:number;
   notes:string[];
+  semanticAvailable:boolean;
+  semanticStatus?:"pass"|"review";
+  semanticIssue?:string;
+  redesignReason?:CreativeFeedbackReason;
 };
 
 export type CreativeFashnResult = {
@@ -265,6 +270,7 @@ async function inspectCreativeRender(
       boundaryIntegrity,
       protectedChange,
       notes:notes.length?notes:["The intended focal zone is visible and protected regions remain comparatively stable."],
+      semanticAvailable:false,
     };
   } catch {
     return {
@@ -273,7 +279,118 @@ async function inspectCreativeRender(
       boundaryIntegrity:0,
       protectedChange:100,
       notes:["Automatic render inspection was unavailable; require manual visual review before approval."],
+      semanticAvailable:false,
     };
+  }
+}
+
+
+type SemanticCreativeCheck = {
+  status:"pass"|"review";
+  hierarchy:"strong"|"review"|"weak";
+  proportion:"strong"|"review"|"weak";
+  fidelity:"strong"|"review"|"weak";
+  artifact:"none"|"minor"|"major";
+  redesignReason:CreativeFeedbackReason;
+  issue:string;
+};
+
+function gatewayAuthToken() {
+  return process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || "";
+}
+
+function gatewayOutputText(payload:unknown) {
+  if(!payload || typeof payload!=="object") return "";
+  const value=payload as Record<string,unknown>;
+  if(typeof value.output_text==="string") return value.output_text;
+  const output=Array.isArray(value.output)?value.output:[];
+  for(const item of output) {
+    if(!item || typeof item!=="object") continue;
+    const content=Array.isArray((item as Record<string,unknown>).content)?(item as Record<string,unknown>).content as unknown[]:[];
+    for(const part of content) {
+      if(!part || typeof part!=="object") continue;
+      const p=part as Record<string,unknown>;
+      if(typeof p.text==="string") return p.text;
+    }
+  }
+  return "";
+}
+
+async function semanticCreativeRenderCheck(
+  outputUrl:string,
+  input:CreativeFashnRequest,
+):Promise<SemanticCreativeCheck|null> {
+  const token=gatewayAuthToken();
+  if(!token || !OFFICIAL_FASHN_OUTPUT.test(outputUrl)) return null;
+  const hero=[...input.creative.treatments].sort((a,b)=>b.intensity-a.intensity)[0];
+  const support=[...input.creative.treatments].sort((a,b)=>b.intensity-a.intensity).slice(1,4);
+  const prompt=[
+    "You are a diagnostic menswear visual critic. Judge only whether this rendered image expresses the supplied design specification clearly and coherently.",
+    "Do not decide whether the fashion is objectively good or bad. Do not reward conventionality merely because it is familiar.",
+    `Concept: ${input.creative.name}. Thesis: ${input.creative.thesis}`,
+    hero ? `Hero move: ${hero.zone} / ${hero.label}. ${hero.instruction}. Intended purpose: ${hero.visualPurpose}.` : "",
+    support.map((move)=>`Support move: ${move.zone} / ${move.label}. ${move.instruction}.`).join(" "),
+    input.creative.pattern ? `Pattern: ${input.creative.pattern.name}; ${input.creative.pattern.layout}; placement: ${input.creative.pattern.placement}.` : "",
+    `Base cut: ${input.style.collar}; ${input.style.cuff}; ${input.style.placket}; ${input.style.shirtFit}; ${input.style.shirtWear}; ${input.style.trouser}.`,
+    "Check: (1) hero detail is visually dominant enough, (2) proportions look intentional, (3) supporting details do not compete, (4) image follows the supplied concept rather than normalizing it, (5) there are no obvious garment-boundary or rendering artifacts.",
+    "If review is needed, choose the single most useful redesign reason. Keep issue under 140 characters."
+  ].filter(Boolean).join("\n");
+
+  const schema={
+    type:"object",
+    properties:{
+      status:{type:"string",enum:["pass","review"]},
+      hierarchy:{type:"string",enum:["strong","review","weak"]},
+      proportion:{type:"string",enum:["strong","review","weak"]},
+      fidelity:{type:"string",enum:["strong","review","weak"]},
+      artifact:{type:"string",enum:["none","minor","major"]},
+      redesignReason:{type:"string",enum:["visual_balance","too_busy","too_safe","pattern_detail","proportion","originality","render_mismatch","other"]},
+      issue:{type:"string",maxLength:140},
+    },
+    required:["status","hierarchy","proportion","fidelity","artifact","redesignReason","issue"],
+    additionalProperties:false,
+  };
+
+  try {
+    const response=await fetch("https://ai-gateway.vercel.sh/v1/responses",{
+      method:"POST",
+      headers:{
+        authorization:`Bearer ${token}`,
+        "content-type":"application/json",
+      },
+      body:JSON.stringify({
+        model:process.env.LINEN_VISUAL_CRITIC_MODEL || "openai/gpt-5.6-sol",
+        input:[{
+          role:"user",
+          content:[
+            {type:"input_text",text:prompt},
+            {type:"input_image",image_url:outputUrl,detail:"auto"},
+          ],
+        }],
+        text:{
+          format:{
+            type:"json_schema",
+            name:"linen_creative_render_critic",
+            strict:true,
+            schema,
+          },
+        },
+      }),
+      cache:"no-store",
+      signal:AbortSignal.timeout(18_000),
+    });
+    if(!response.ok) return null;
+    const raw=await response.json() as unknown;
+    const text=gatewayOutputText(raw);
+    if(!text) return null;
+    const parsed=JSON.parse(text) as SemanticCreativeCheck;
+    if(!["pass","review"].includes(parsed.status)) return null;
+    return {
+      ...parsed,
+      issue:String(parsed.issue||"").replace(/\s+/g," ").trim().slice(0,140),
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -329,8 +446,33 @@ export async function inspectCreativeFashnOutput(
   outputUrl:string,
   input:CreativeFashnRequest,
 ):Promise<CreativeRenderVisualCheck> {
+  if(!OFFICIAL_FASHN_OUTPUT.test(outputUrl)) throw new FashnVisualizationError("Generated render URL is not trusted.","invalid_source");
   const source=await creativeModelDataUri(input.style);
-  return inspectCreativeRender(source,outputUrl,input);
+  const heuristic=await inspectCreativeRender(source,outputUrl,input);
+  const semantic=await semanticCreativeRenderCheck(outputUrl,input);
+  if(!semantic) return heuristic;
+
+  const semanticNeedsReview=
+    semantic.status==="review" ||
+    semantic.hierarchy==="weak" ||
+    semantic.proportion==="weak" ||
+    semantic.fidelity==="weak" ||
+    semantic.artifact==="major";
+
+  const notes=[
+    ...heuristic.notes,
+    ...(semantic.issue?[semantic.issue]:[]),
+  ].slice(0,3);
+
+  return {
+    ...heuristic,
+    status:heuristic.status==="review" || semanticNeedsReview ? "review" : "pass",
+    notes,
+    semanticAvailable:true,
+    semanticStatus:semanticNeedsReview?"review":"pass",
+    semanticIssue:semantic.issue,
+    redesignReason:semanticNeedsReview ? semantic.redesignReason : undefined,
+  };
 }
 
 async function runEdit(image: string, prompt: string, imageContext?: string) {
