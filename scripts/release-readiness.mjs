@@ -183,16 +183,16 @@ requireTokens("supabase/migrations/20260920_style_events_hardening.sql", [
   "enable row level security",
   "grant select, insert on table public.style_events to service_role",
   "select 5;",
-  "llinen_cloud_health",
+  "linen_cloud_health",
 ]);
 requireTokens(".env.example", [
   "FASHN_API_KEY=",
   "SUPABASE_URL=",
   "SUPABASE_SECRET_KEY=",
-  "LLINEN_OPERATOR_SYNC_TOKEN=",
-  "LLINEN_OPERATOR_PASSWORD_HASH=",
-  "LLINEN_OPERATOR_SESSION_SECRET=",
-  "LLINEN_MEMORY_SESSION_SECRET=",
+  "LINEN_OPERATOR_SYNC_TOKEN=",
+  "LINEN_OPERATOR_PASSWORD_HASH=",
+  "LINEN_OPERATOR_SESSION_SECRET=",
+  "LINEN_MEMORY_SESSION_SECRET=",
 ]);
 
 if (!failed) ok("Static website, desktop, cloud and installer release contracts are intact.");
