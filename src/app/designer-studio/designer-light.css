@@ -638,3 +638,9 @@
   .newDesignerBriefResults{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:3px}
   .newDesignerBriefResults>article{flex:0 0 78%;scroll-snap-align:start}
 }
+
+
+.newDesignerPhotoViews{display:flex;gap:6px;flex-wrap:wrap;padding:10px 22px 12px;border-bottom:1px solid #e6e0d5;background:#fff}
+.newDesignerPhotoViews button{border:1px solid #d9d2ca;background:#faf8f5;color:#526779;border-radius:999px;padding:7px 9px;font-size:7px;cursor:pointer}
+.newDesignerPhotoViews button[aria-pressed="true"]{background:#203d5b;border-color:#203d5b;color:#fff}
+.newDesignerPhotoViews button:disabled{opacity:.45;cursor:not-allowed}
