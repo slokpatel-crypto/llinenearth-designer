@@ -137,6 +137,14 @@ function cleanPayload(type:string, input:unknown) {
         creativeMoveIds,
         creativeReason,
         creativeRendered:Boolean(payload.creativeRendered),
+        ...(payload.creativeVisualCheck && typeof payload.creativeVisualCheck==="object" && !Array.isArray(payload.creativeVisualCheck) ? {
+          creativeVisualCheck:{
+            status:text((payload.creativeVisualCheck as Record<string,unknown>).status,20)==="pass"?"pass":"review",
+            heroVisibility:Math.max(0,Math.min(100,Math.round(Number((payload.creativeVisualCheck as Record<string,unknown>).heroVisibility)||0))),
+            boundaryIntegrity:Math.max(0,Math.min(100,Math.round(Number((payload.creativeVisualCheck as Record<string,unknown>).boundaryIntegrity)||0))),
+            protectedChange:Math.max(0,Math.min(100,Math.round(Number((payload.creativeVisualCheck as Record<string,unknown>).protectedChange)||0))),
+          }
+        } : {}),
       } : {}),
       note:text(payload.note,300),
     };
