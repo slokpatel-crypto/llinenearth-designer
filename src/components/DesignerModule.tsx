@@ -314,6 +314,7 @@ export function DesignerModule() {
     setSearchResults([]);
     setCreativeDirections([]);
     setActiveCreative(null);
+    setCreativeAutoNote("");
   },[shirtId,pantId,occasion,climate,intention]);
 
   useEffect(() => {
@@ -346,6 +347,7 @@ export function DesignerModule() {
     setSearchResults([]);
     setCreativeDirections([]);
     setActiveCreative(null);
+    setCreativeAutoNote("");
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   }
 
@@ -781,7 +783,7 @@ export function DesignerModule() {
                 <h3>{direction.name}</h3>
                 <div className="newDesignerCreativeTagRow">{creativeQuickTags(direction).map((tag)=><b key={tag}>{tag}</b>)}</div>
               </div>
-              <button className="newDesignerCreativeUse" type="button" onClick={()=>useCreativeDirection(direction)}>{activeCreative?.id===direction.id?"Selected":"Try this"}</button>
+              <button className="newDesignerCreativeUse" type="button" onClick={()=>{setCreativeAutoNote("");useCreativeDirection(direction);}}>{activeCreative?.id===direction.id?"Selected":"Try this"}</button>
               <details className="newDesignerTechnicalDrawer">
                 <summary>Design reasoning</summary>
                 <p>{direction.thesis}</p>
