@@ -1,5 +1,5 @@
 /* Opening brand gate + top brand treatment.
-   Keep the uploaded LLinen Earth logo fully visible on the light site theme. */
+   Keep the uploaded Linen Earth logo fully visible on the light site theme. */
 .brandIntro{background:#fff!important}
 .brandIntro .introGlow{background:radial-gradient(circle,rgba(18,58,99,.12),transparent 68%)!important}
 .brandIntro .introCard{width:min(860px,90vw);background:transparent!important;box-shadow:none!important;overflow:visible}
