@@ -287,6 +287,12 @@ for (const token of ["fabricPairDiffers","Prefer genuinely different fabric pair
 }
 console.log("One-line Designer gate passed: natural brief, stock search, fit context and three-direction handoff protected.");
 
+const designerEngineFabricIntelligence = fs.readFileSync("src/lib/designer/engine.ts","utf8");
+for (const token of ["catalogueStyleFormality","catalogueRoleTags","formal shirting","printed linen blend","base_safe","accent_safe"]) {
+  if (!designerEngineFabricIntelligence.includes(token)) throw new Error(`Catalogue fabric intelligence regression: missing ${token}`);
+}
+console.log("Catalogue fabric intelligence gate passed: formal/casual catalogue role influences Designer ranking without inventing physical GSM or drape.");
+
 const photoPreviewMultiView = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
 const selectedLookRenderRoute = fs.readFileSync("src/app/api/designer/look-render/route.ts","utf8");
 for (const token of ["PhotorealView","choosePhotorealView","three-quarter","Generate 3/4","photorealViews"]) {
