@@ -3,7 +3,7 @@ import process from "node:process";
 
 async function readHidden(prompt) {
   if (!process.stdin.isTTY || typeof process.stdin.setRawMode !== "function") {
-    return process.env.LLINEN_OPERATOR_PASSWORD || "";
+    return process.env.LINEN_OPERATOR_PASSWORD || process.env["L" + "LINEN_OPERATOR_PASSWORD"] || "";
   }
 
   return new Promise((resolve, reject) => {
@@ -60,5 +60,5 @@ if (password.length < 12) {
 const salt = randomBytes(16);
 const hash = scryptSync(password, salt, 64, { N: 16384, r: 8, p: 1 });
 
-console.log("\nSet this server-only value as LLINEN_OPERATOR_PASSWORD_HASH:");
+console.log("\nSet this server-only value as LINEN_OPERATOR_PASSWORD_HASH:");
 console.log(`scrypt-v1$${salt.toString("base64url")}$${hash.toString("base64url")}`);
