@@ -286,6 +286,14 @@ for (const token of ["fabricPairDiffers","Prefer genuinely different fabric pair
   if (!designerSearch.includes(token)) throw new Error(`One-line Designer diversity regression: missing ${token}`);
 }
 console.log("One-line Designer gate passed: natural brief, stock search, fit context and three-direction handoff protected.");
+const browserTasteMemory = fs.readFileSync("src/lib/browser-style-memory.ts","utf8");
+for (const token of ["readLocalDesignerTasteProfile","evidence<4","preferredTier","preferredShirtWear","preferredTrouser"]) {
+  if (!browserTasteMemory.includes(token)) throw new Error(`Local Designer taste-profile regression: missing ${token}`);
+}
+for (const token of ["safeTasteProfile","personalizeBrief","learned preference:","linen-designer-brief-v2"]) {
+  if (!designerBriefRoute.includes(token)) throw new Error(`Personalized one-line Designer regression: missing ${token}`);
+}
+console.log("Local taste-profile gate passed: repeated non-sensitive Designer choices can personalize future briefs only after conservative evidence thresholds.");
 
 const designerEngineFabricIntelligence = fs.readFileSync("src/lib/designer/engine.ts","utf8");
 for (const token of ["catalogueStyleFormality","formal shirting","printed linen blend"]) {
