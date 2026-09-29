@@ -116,7 +116,8 @@ export function assessBlockStrategy(
   }
   if (torso === "straight" && slim) {
     add(adjustments, "BLOCK-TORSO-STRAIGHT", "shirt", "side seams", "review",
-      "A straight torso with a slim fit can create artificial waist suppression. Shape the side seams conservatively and verify comfort seated.");
+      "A straight torso with a slim fit can create artificial waist suppression. Start from the regular/classic fit and shape only after the first fitting.");
+    patch.shirtFit = "Regular / Classic Fit";
   }
 
   if (observations?.shoulderBalance === "sloping") {
