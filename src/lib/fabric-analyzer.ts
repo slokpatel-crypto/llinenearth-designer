@@ -52,6 +52,10 @@ export type FabricAnalyzerContext = {
   supplierColorName?:string;
   supplierPatternName?:string;
   notes?:string;
+  // Capture protocol: flat = colour/pattern measurement, macro = texture/weave appearance,
+  // fold = visual fall/structure only. Optional captures never create physical drape facts.
+  macroImageUrl?:string;
+  foldImageUrl?:string;
   // Physical scale is owner/supplier data. The Analyzer never infers mm from pixels.
   swatchRealWidthMm?:number;
   repeatRealMm?:number;
@@ -59,7 +63,14 @@ export type FabricAnalyzerContext = {
   // avoid fetching/measuring the same image twice in one analysis run.
   contentSha256?:string;
   perceptualHash?:string;
+  macroContentSha256?:string;
+  foldContentSha256?:string;
   measured?:FabricMeasuredData;
+  captureMeasurements?:{
+    macro?:FabricMeasuredData;
+    fold?:FabricMeasuredData;
+  };
+  captureWarnings?:string[];
 };
 
 export type FabricAnalyzerProfile = FabricAnalyzerProfileV4;
@@ -80,9 +91,12 @@ function safeImageUrl(value:string,sourcePageUrl?:string) {
   return url;
 }
 
-async function prepareFabricMeasurement(input:FabricAnalyzerContext):Promise<FabricAnalyzerContext> {
-  if(input.measured && input.contentSha256) return input;
-  const url=safeImageUrl(input.imageUrl,input.sourcePageUrl);
+async function measureCaptureUrl(
+  imageUrl:string,
+  sourcePageUrl:string|undefined,
+  physical?:{swatchRealWidthMm?:number;repeatRealMm?:number},
+) {
+  const url=safeImageUrl(imageUrl,sourcePageUrl);
   const response=await fetch(url,{
     headers:{accept:"image/avif,image/webp,image/png,image/jpeg,*/*;q=.5"},
     cache:"no-store",
@@ -93,19 +107,45 @@ async function prepareFabricMeasurement(input:FabricAnalyzerContext):Promise<Fab
   if(announced>12_000_000) throw new Error("Fabric image is too large for Analyzer measurement.");
   const buffer=new Uint8Array(await response.arrayBuffer());
   if(buffer.byteLength>12_000_000) throw new Error("Fabric image is too large for Analyzer measurement.");
-  const measured=await measureFabricImageBytes(buffer,{
+  return measureFabricImageBytes(buffer,physical);
+}
+
+async function prepareFabricMeasurement(input:FabricAnalyzerContext):Promise<FabricAnalyzerContext> {
+  if(input.measured && input.contentSha256) return input;
+  const measured=await measureCaptureUrl(input.imageUrl,input.sourcePageUrl,{
     swatchRealWidthMm:Number.isFinite(input.swatchRealWidthMm)?input.swatchRealWidthMm:undefined,
     repeatRealMm:Number.isFinite(input.repeatRealMm)?input.repeatRealMm:undefined,
   });
   if(measured.imageQuality.score<40) {
     const issues=measured.imageQuality.issues.join(", ") || "image_quality_low";
-    throw new Error(`Retake the fabric photo before analysis: ${issues}. Use a flat, sharp, evenly lit swatch image that fills the frame.`);
+    throw new Error(`Retake the flat fabric photo before analysis: ${issues}. Use a flat, sharp, evenly lit swatch image that fills the frame.`);
   }
+
+  const captureWarnings:string[]=[];
+  const captureMeasurements:NonNullable<FabricAnalyzerContext["captureMeasurements"]>={};
+  for(const [role,url] of [["macro",input.macroImageUrl],["fold",input.foldImageUrl]] as const) {
+    if(!url) continue;
+    try {
+      const capture=await measureCaptureUrl(url,input.sourcePageUrl);
+      if(capture.imageQuality.score<40) {
+        captureWarnings.push(`${role} capture quality is too low (${capture.imageQuality.issues.join(", ")||"image_quality_low"}); it was not used for visual evidence.`);
+        continue;
+      }
+      captureMeasurements[role]=capture;
+    } catch(error) {
+      captureWarnings.push(`${role} capture unavailable: ${error instanceof Error?error.message:"measurement failed"}`);
+    }
+  }
+
   return {
     ...input,
     contentSha256:measured.contentSha256,
     perceptualHash:measured.perceptualHash,
+    macroContentSha256:captureMeasurements.macro?.contentSha256,
+    foldContentSha256:captureMeasurements.fold?.contentSha256,
     measured,
+    captureMeasurements,
+    captureWarnings,
   };
 }
 
@@ -335,6 +375,8 @@ export async function analyzeMenswearFabric(rawInput:FabricAnalyzerContext):Prom
     Number.isFinite(input.swatchRealWidthMm) ? `Owner/supplier-declared photographed swatch width: ${input.swatchRealWidthMm} mm.` : "",
     Number.isFinite(input.repeatRealMm) ? `Owner/supplier-declared pattern repeat: ${input.repeatRealMm} mm.` : "",
     input.notes ? `Additional context: ${safeText(input.notes,500)}.` : "",
+    input.captureMeasurements?.macro ? "Macro capture supplied for texture/weave appearance." : "",
+    input.captureMeasurements?.fold ? "Fold capture supplied for visual fall/structure appearance only." : "",
   ].filter(Boolean).join(" ");
 
   const learningHints=await loadFabricAnalyzerLearningHints();
@@ -372,10 +414,18 @@ Evidence rules:
 5. Texture/weave descriptions must be appearance language such as "slub-looking" or "twill-like".
 6. Real-world millimetres exist only when physicalScaleStatus is declared_repeat or declared_swatch_width.
 7. Strong fabrics normally need quieter supporting garments. Return calibrated confidence and uncertainty.
-8. Internal analysis only; no marketing copy.
+8. Photo protocol image order is FLAT, then optional MACRO, then optional FOLD.
+9. Use the FLAT image for measured colour/pattern identity; the measured code evidence below is authoritative.
+10. Use MACRO only for texture/weave appearance. Use FOLD only for visual structure/fall appearance; never turn it into a physical drape coefficient, GSM, softness or hand-feel fact.
+11. Internal analysis only; no marketing copy.
 
 Measured code evidence:
 ${measuredLine}
+
+Capture protocol:
+FLAT: required and measured.
+MACRO: ${input.captureMeasurements?.macro ? `usable, quality ${input.captureMeasurements.macro.imageQuality.score}/100` : "not supplied/usable"}.
+FOLD: ${input.captureMeasurements?.fold ? `usable, quality ${input.captureMeasurements.fold.imageQuality.score}/100` : "not supplied/usable"}.
 
 Closed output IDs:
 Color families: ${colorFamilies.map((item)=>item.id).join(", ")}.
@@ -435,6 +485,12 @@ Statement 1=quiet base, 5=dominant hero fabric.`;
         content:[
           {type:"input_text",text:prompt},
           {type:"input_image",image_url:safeImageUrl(input.imageUrl,input.sourcePageUrl),detail:"high"},
+          ...(input.captureMeasurements?.macro && input.macroImageUrl
+            ? [{type:"input_image" as const,image_url:safeImageUrl(input.macroImageUrl,input.sourcePageUrl),detail:"high" as const}]
+            : []),
+          ...(input.captureMeasurements?.fold && input.foldImageUrl
+            ? [{type:"input_image" as const,image_url:safeImageUrl(input.foldImageUrl,input.sourcePageUrl),detail:"high" as const}]
+            : []),
         ],
       }],
       text:{format:{type:"json_schema",name:"linen_fabric_analyzer",strict:true,schema}},
@@ -452,7 +508,12 @@ Statement 1=quiet base, 5=dominant hero fabric.`;
 
   const modelColorFamily=adapted.observed.colorFamily;
   const modelPatternScale=adapted.observed.patternScale;
-  const reviewNeeded=[...adapted.reviewNeeded];
+  const reviewNeeded=[
+    ...adapted.reviewNeeded,
+    ...(input.captureWarnings||[]),
+    ...(!input.captureMeasurements?.macro ? ["Macro capture missing: texture/weave confidence remains photo-limited."] : []),
+    ...(!input.captureMeasurements?.fold ? ["Fold capture missing: visual fall/structure confidence remains photo-limited."] : []),
+  ];
   if(modelColorFamily && modelColorFamily!==measured.colour.mappedColorFamily) {
     reviewNeeded.push(`Measured/model colour disagreement: measured=${measured.colour.mappedColorFamily}, model=${modelColorFamily}`);
   }
@@ -488,11 +549,15 @@ Statement 1=quiet base, 5=dominant hero fabric.`;
       renderAssetVersion:null,
       scaleApproximate:measured.pattern.physicalScaleStatus==="unknown",
     },
-    captureSet:[{
-      role:"flat",
-      imageUrl:input.imageUrl,
-      contentSha256:measured.contentSha256,
-    }],
+    captureSet:[
+      {role:"flat",imageUrl:input.imageUrl,contentSha256:measured.contentSha256},
+      ...(input.captureMeasurements?.macro && input.macroImageUrl
+        ? [{role:"macro" as const,imageUrl:input.macroImageUrl,contentSha256:input.captureMeasurements.macro.contentSha256}]
+        : []),
+      ...(input.captureMeasurements?.fold && input.foldImageUrl
+        ? [{role:"fold" as const,imageUrl:input.foldImageUrl,contentSha256:input.captureMeasurements.fold.contentSha256}]
+        : []),
+    ],
     provenanceByField:{
       "measured.colour":"measured",
       "measured.pattern":"measured",
@@ -505,6 +570,8 @@ Statement 1=quiet base, 5=dominant hero fabric.`;
       "observed.patternFamily":"modelJudged",
       "observed.visibleTexture":"modelJudged",
       "observed.weaveAppearance":"modelJudged",
+      ...(input.captureMeasurements?.macro?{"capture.macro.textureEvidence":"measured" as const}:{}),
+      ...(input.captureMeasurements?.fold?{"capture.fold.visualFallEvidence":"measured" as const}:{}),
       "inferredStyle":"modelJudged",
       ...(input.declaredMaterial?{"evidence.declaredMaterial":"declared" as const}:{}),
       ...(input.declaredFabricType?{"evidence.declaredFabricType":"declared" as const}:{}),
