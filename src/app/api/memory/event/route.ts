@@ -143,6 +143,7 @@ function cleanPayload(type:string, input:unknown) {
             heroVisibility:Math.max(0,Math.min(100,Math.round(Number((payload.creativeVisualCheck as Record<string,unknown>).heroVisibility)||0))),
             boundaryIntegrity:Math.max(0,Math.min(100,Math.round(Number((payload.creativeVisualCheck as Record<string,unknown>).boundaryIntegrity)||0))),
             protectedChange:Math.max(0,Math.min(100,Math.round(Number((payload.creativeVisualCheck as Record<string,unknown>).protectedChange)||0))),
+            evidenceAvailable:Boolean((payload.creativeVisualCheck as Record<string,unknown>).evidenceAvailable),
             semanticAvailable:Boolean((payload.creativeVisualCheck as Record<string,unknown>).semanticAvailable),
             semanticStatus:text((payload.creativeVisualCheck as Record<string,unknown>).semanticStatus,20),
             semanticIssue:text((payload.creativeVisualCheck as Record<string,unknown>).semanticIssue,160),
