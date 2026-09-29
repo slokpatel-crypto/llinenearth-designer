@@ -61,7 +61,7 @@ export type CreativeFashnRequest = {
   shirt: Pick<DesignerFabric,"id"|"name"|"line"|"image"|"hex"|"patternType">;
   pant: Pick<DesignerFabric,"id"|"name"|"line"|"image"|"hex"|"patternType">;
   style: DesignerStyle;
-  creative: Pick<CreativeDirection,"id"|"name"|"thesis"|"treatments"|"pattern">;
+  creative: Pick<CreativeDirection,"id"|"name"|"thesis"|"treatments"|"pattern"> & {renderRisk?: "low"|"moderate"|"high"};
 };
 
 export type CreativeRenderVisualCheck = {
@@ -285,9 +285,14 @@ function creativeConceptPrompt(input:CreativeFashnRequest) {
     `${index+1}. ${index===0?"HERO":"SUPPORT"} / ${safe(move.zone,40)} — ${safe(move.label,100)}; intensity ${Math.max(1,Math.min(100,Number(move.intensity)||50))}/100; construction ${safe(move.buildability,30)}. Instruction: ${safe(move.instruction,360)} Visual purpose: ${safe(move.visualPurpose,200)}.`
   ).join(" ");
   const protectedZones=["face/head","hands","neck opening","trouser waistband over a tucked shirt","background","shoes"];
+  const priorRenderCaution=input.creative.renderRisk==="high"
+    ? "Previous renders of this idea family have often under-expressed the design. Make the HERO geometry unmistakable, simplify supporting changes, and preserve clean boundaries."
+    : input.creative.renderRisk==="moderate"
+      ? "This idea family has mixed render reliability. Prioritize the HERO geometry before any supporting surface treatment."
+      : "";
   const renderHierarchy=heroMove
-    ? `Visual hierarchy contract: the clear focal move is ${safe(heroMove.label,100)} on the ${safe(heroMove.zone,40)}. Render it unmistakably. Supporting moves must remain visibly subordinate. Preserve quiet fabric around the focal detail so the concept reads in one glance.`
-    : "Keep one dominant visual idea and preserve quiet surrounding cloth.";
+    ? `Visual hierarchy contract: the clear focal move is ${safe(heroMove.label,100)} on the ${safe(heroMove.zone,40)}. Render it unmistakably. Supporting moves must remain visibly subordinate. Preserve quiet fabric around the focal detail so the concept reads in one glance. ${priorRenderCaution}`
+    : `Keep one dominant visual idea and preserve quiet surrounding cloth. ${priorRenderCaution}`;
   const pattern=input.creative.pattern
     ? `Generated surface concept: ${safe(input.creative.pattern.name,100)}. Family ${safe(input.creative.pattern.family,50)}, ${safe(input.creative.pattern.scale,40)} scale, about ${Math.max(0,Math.min(60,Number(input.creative.pattern.coverage)||0))}% intended coverage. Layout: ${safe(input.creative.pattern.layout,420)} Placement: ${safe(input.creative.pattern.placement,260)}. The image-context is split vertically: LEFT HALF is the exact shirt-fabric reference; RIGHT HALF is the exact trouser-fabric reference. Use the generated motif logic on the shirt only where specified, while preserving the underlying cloth colour and woven character.`
     : "The image-context is split vertically: LEFT HALF is the exact shirt-fabric reference; RIGHT HALF is the exact trouser-fabric reference.";
