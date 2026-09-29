@@ -64,12 +64,21 @@ export type CreativeFashnRequest = {
   creative: Pick<CreativeDirection,"id"|"name"|"thesis"|"treatments"|"pattern">;
 };
 
+export type CreativeRenderVisualCheck = {
+  status:"pass"|"review";
+  heroVisibility:number;
+  boundaryIntegrity:number;
+  protectedChange:number;
+  notes:string[];
+};
+
 export type CreativeFashnResult = {
   image:string;
   jobId:string;
   creditsUsed:number;
   conceptId:string;
   generatedAt:string;
+  visualCheck:CreativeRenderVisualCheck;
 };
 
 async function stockSwatchDataUri(swatchImageUrl?: string) {
@@ -159,6 +168,116 @@ async function creativeModelDataUri(style:DesignerStyle) {
   return `data:${image.mime};base64,${image.bytes.toString("base64")}`;
 }
 
+type NormalizedBox={x:number;y:number;w:number;h:number};
+
+const CREATIVE_ZONE_BOXES:Record<string,NormalizedBox>={
+  collar:{x:.36,y:.10,w:.28,h:.12},
+  cuff:{x:.12,y:.34,w:.76,h:.19},
+  placket:{x:.45,y:.17,w:.10,h:.36},
+  "shirt-body":{x:.28,y:.17,w:.44,h:.38},
+  pocket:{x:.29,y:.22,w:.20,h:.18},
+  waistband:{x:.29,y:.48,w:.42,h:.10},
+  pleat:{x:.33,y:.53,w:.34,h:.22},
+  "trouser-leg":{x:.25,y:.51,w:.50,h:.43},
+};
+
+const PROTECTED_RENDER_BOXES:NormalizedBox[]=[
+  {x:.35,y:.00,w:.30,h:.12}, // faceless head / neck
+  {x:.00,y:.25,w:.18,h:.38}, // left hand / outer background
+  {x:.82,y:.25,w:.18,h:.38}, // right hand / outer background
+  {x:.00,y:.00,w:1,h:.07},   // upper background
+  {x:.00,y:.88,w:1,h:.12},   // floor / shoes
+];
+
+async function remoteImageBuffer(url:string) {
+  if(!OFFICIAL_FASHN_OUTPUT.test(url)) throw new FashnVisualizationError("Generated render URL is not trusted.","invalid_source");
+  const response=await fetch(url,{cache:"no-store"});
+  if(!response.ok) throw new FashnVisualizationError("Generated render could not be inspected.","generation_failed");
+  const contentType=response.headers.get("content-type")||"";
+  if(!/^image\//i.test(contentType)) throw new FashnVisualizationError("Generated render response is not an image.","generation_failed");
+  const bytes=Buffer.from(await response.arrayBuffer());
+  if(bytes.length>12_000_000) throw new FashnVisualizationError("Generated render is too large to inspect.","generation_failed");
+  return bytes;
+}
+
+async function normalizedRgb(input:Buffer|string) {
+  const source=typeof input==="string"
+    ? Buffer.from(input.split(",")[1]||"","base64")
+    : input;
+  const {data,info}=await sharp(source).resize(400,500,{fit:"fill"}).removeAlpha().raw().toBuffer({resolveWithObject:true});
+  return {data,width:info.width,height:info.height,channels:info.channels};
+}
+
+function boxDelta(
+  a:{data:Buffer;width:number;height:number;channels:number},
+  b:{data:Buffer;width:number;height:number;channels:number},
+  box:NormalizedBox,
+) {
+  const x0=Math.max(0,Math.floor(box.x*a.width));
+  const y0=Math.max(0,Math.floor(box.y*a.height));
+  const x1=Math.min(a.width,Math.ceil((box.x+box.w)*a.width));
+  const y1=Math.min(a.height,Math.ceil((box.y+box.h)*a.height));
+  let total=0,count=0;
+  for(let y=y0;y<y1;y+=2){
+    for(let x=x0;x<x1;x+=2){
+      const ai=(y*a.width+x)*a.channels;
+      const bi=(y*b.width+x)*b.channels;
+      total+=Math.abs(a.data[ai]-b.data[bi])+Math.abs(a.data[ai+1]-b.data[bi+1])+Math.abs(a.data[ai+2]-b.data[bi+2]);
+      count+=3;
+    }
+  }
+  return count ? total/(count*255) : 0;
+}
+
+async function inspectCreativeRender(
+  referenceDataUri:string,
+  outputUrl:string,
+  input:CreativeFashnRequest,
+):Promise<CreativeRenderVisualCheck> {
+  try {
+    const [reference,outputBytes]=await Promise.all([
+      normalizedRgb(referenceDataUri),
+      remoteImageBuffer(outputUrl),
+    ]);
+    const output=await normalizedRgb(outputBytes);
+    const ordered=[...input.creative.treatments].sort((a,b)=>b.intensity-a.intensity);
+    const hero=ordered[0];
+    const heroBox=CREATIVE_ZONE_BOXES[hero?.zone || "shirt-body"] || CREATIVE_ZONE_BOXES["shirt-body"];
+    const heroDelta=boxDelta(reference,output,heroBox);
+    const supportDeltas=ordered.slice(1,3).map((move)=>boxDelta(reference,output,CREATIVE_ZONE_BOXES[move.zone]||CREATIVE_ZONE_BOXES["shirt-body"]));
+    const protectedDelta=PROTECTED_RENDER_BOXES.reduce((sum,box)=>sum+boxDelta(reference,output,box),0)/PROTECTED_RENDER_BOXES.length;
+    const intendedDelta=Math.max(heroDelta,...supportDeltas,0.001);
+    const heroVisibility=Math.round(Math.min(100,heroDelta/.26*100));
+    const protectedChange=Math.round(Math.min(100,protectedDelta/.22*100));
+    const boundaryIntegrity=Math.round(Math.max(0,100-protectedChange));
+    const notes:string[]=[];
+
+    if(heroVisibility<38) notes.push(`The intended ${hero?.label || "hero detail"} is not visually distinct enough in the generated render.`);
+    if(protectedChange>34) notes.push("Protected areas changed too much relative to the locked studio reference; possible garment bleed or model/background drift.");
+    if(heroDelta<intendedDelta*.72 && supportDeltas.length) notes.push("A supporting detail appears stronger than the intended hero move.");
+    if(input.style.shirtWear==="Tucked") {
+      const waistDelta=boxDelta(reference,output,CREATIVE_ZONE_BOXES.waistband);
+      const shirtDelta=boxDelta(reference,output,CREATIVE_ZONE_BOXES["shirt-body"]);
+      if(waistDelta>shirtDelta*1.35) notes.push("The tucked waist region changed disproportionately; inspect waistband layering before approval.");
+    }
+    return {
+      status:notes.length ? "review" : "pass",
+      heroVisibility,
+      boundaryIntegrity,
+      protectedChange,
+      notes:notes.length?notes:["The intended focal zone is visible and protected regions remain comparatively stable."],
+    };
+  } catch {
+    return {
+      status:"review",
+      heroVisibility:0,
+      boundaryIntegrity:0,
+      protectedChange:100,
+      notes:["Automatic render inspection was unavailable; require manual visual review before approval."],
+    };
+  }
+}
+
 function creativeConceptPrompt(input:CreativeFashnRequest) {
   const safe=(value:unknown,limit=360)=>String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
   const orderedMoves=[...input.creative.treatments].sort((a,b)=>b.intensity-a.intensity).slice(0,6);
@@ -193,12 +312,14 @@ export async function renderCreativeFashnFront(input:CreativeFashnRequest):Promi
   const source=await creativeModelDataUri(input.style);
   const context=await creativeFabricContext(input.shirt.image,input.pant.image);
   const generated=await runEdit(source,creativeConceptPrompt(input),context);
+  const visualCheck=await inspectCreativeRender(source,generated.output,input);
   return {
     image:generated.output,
     jobId:generated.jobId,
     creditsUsed:generated.creditsUsed,
     conceptId:input.creative.id,
     generatedAt:new Date().toISOString(),
+    visualCheck,
   };
 }
 
