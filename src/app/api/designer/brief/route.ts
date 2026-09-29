@@ -192,6 +192,7 @@ export async function POST(request:Request) {
       recommendation:result.recommendation,
       reasons:result.reasons.slice(0,3),
       tradeoffs:result.tradeoffs.slice(0,2),
+      fitAdaptation:result.fitAdaptation || "",
     }));
 
     return NextResponse.json({
