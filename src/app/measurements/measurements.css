@@ -129,3 +129,5 @@
 .tailorObservationFoot button{border:1px solid #20568e;background:#20568e;color:#fff;padding:9px 12px;font-size:9px;cursor:pointer}
 @media(max-width:900px){.tailorObservationGrid{grid-template-columns:1fr 1fr}.tailorObservationHead{grid-template-columns:1fr}.tailorObservationFoot{grid-template-columns:1fr}.tailorObservationFoot button{justify-self:start}}
 @media(max-width:560px){.tailorObservationGrid{grid-template-columns:1fr}.tailorObservationPanel{padding:16px}}
+
+.measurementUnitNote{display:inline-block;margin-top:12px!important;padding:7px 9px;border:1px solid #d7e2ed;background:#f5f9fd;color:#315b82!important;font-size:9px!important;line-height:1.4!important}.measurementUnitNote b{font-weight:700}
