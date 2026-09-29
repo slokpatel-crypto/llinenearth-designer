@@ -443,12 +443,16 @@ const sourceRows = (researchPool.match(/\{id:"[^"]+",name:/g) || []).length;
 const topicRows = (researchPool.match(/\{id:"[^"]+",query:/g) || []).length;
 if (sourceRows * topicRows < 1000) throw new Error(`Designer V5 research pool regression: expected >=1000 source-topic targets, found ${sourceRows * topicRows}`);
 const creativeUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["03 / CREATE","Imagine new designs","Create ideas ✦","newDesignerCreativeVisual","newDesignerMiniScores","researchPool","researchFreedom:\"maximum\"","FRONTIER IDEA","Design reasoning","chooseCreativeRedesign","limit:12"]) {
+for (const token of ["03 / CREATE","Imagine new designs","Create ideas ✦","newDesignerCreativeVisual","newDesignerMiniScores","researchPool","researchFreedom:\"maximum\"","FRONTIER IDEA","Design reasoning","chooseCreativeRedesign","limit:12","creativeAutoNote","render_mismatch","onCreativeInspection"]) {
   if (!creativeUi.includes(token)) throw new Error(`Designer V5 creative UI regression: missing ${token}`);
 }
 const creativePreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-for (const token of ["creativeDirection","drawCreativePattern","Photoreal render ✦","DOES IT WORK?","CREATIVE_FEEDBACK_REASONS","Preview tools"]) {
+for (const token of ["creativeDirection","drawCreativePattern","Photoreal render ✦","DOES IT WORK?","CREATIVE_FEEDBACK_REASONS","Preview tools","AUTO VISUAL CHECK","onCreativeInspection","newDesignerRenderCheck"]) {
   if (!creativePreview.includes(token)) throw new Error(`Designer V5 visual loop regression: missing ${token}`);
+}
+const aiVisualization = fs.readFileSync("src/lib/ai-visualization.ts","utf8");
+for (const token of ["inspectCreativeRender","heroVisibility","boundaryIntegrity","protectedChange","CREATIVE_ZONE_BOXES","PROTECTED_RENDER_BOXES","Visual hierarchy contract"]) {
+  if (!aiVisualization.includes(token)) throw new Error(`Designer V5 render-inspection regression: missing ${token}`);
 }
 const creativeRenderRoute = fs.readFileSync("src/app/api/designer/creative-render/route.ts","utf8");
 for (const token of ["renderCreativeFashnFront","assertFashnRateLimit","CreativeFashnRequest"]) {
