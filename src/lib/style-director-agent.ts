@@ -3,6 +3,7 @@ import { generateDesignerDirections, type DesignCandidate } from "@/lib/designer
 import { finalizeVersion, initialVersion, type DesignVersion } from "@/lib/refinement-engine";
 import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
+import { colorFamilyPairSignal } from "@/lib/vocab";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerStyle, type OccasionTier,
@@ -168,10 +169,12 @@ function directorPairIntelligenceScore(
     const pairWeight=Math.min(intelligenceTrustWeight(shirt),intelligenceTrustWeight(pant));
     const pantColor=pant.colorFamily;
     const shirtColor=shirt.colorFamily;
-    if(pantColor && shirt.pairing.goodColorFamilies.includes(pantColor)) score+=5*pairWeight;
-    if(pantColor && shirt.pairing.avoidColorFamilies.includes(pantColor)) score-=8*pairWeight;
-    if(shirtColor && pant.pairing.goodColorFamilies.includes(shirtColor)) score+=4*pairWeight;
-    if(shirtColor && pant.pairing.avoidColorFamilies.includes(shirtColor)) score-=7*pairWeight;
+    const shirtPairSignal=colorFamilyPairSignal(shirt.pairing.goodColorFamilies,shirt.pairing.avoidColorFamilies,pantColor);
+    const pantPairSignal=colorFamilyPairSignal(pant.pairing.goodColorFamilies,pant.pairing.avoidColorFamilies,shirtColor);
+    if(shirtPairSignal>0) score+=5*pairWeight;
+    if(shirtPairSignal<0) score-=8*pairWeight;
+    if(pantPairSignal>0) score+=4*pairWeight;
+    if(pantPairSignal<0) score-=7*pairWeight;
     if(shirt.statementLevel>=4 && pant.statementLevel>=4) score-=6*pairWeight;
   }
   return Math.max(-16,Math.min(18,score));
