@@ -86,6 +86,7 @@ requireTokens("src/app/api/memory/event/route.ts", [
   "DESIGNER_FEEDBACK_REASONS",
   "payload.reason",
   "styleInput",
+  "creativeVisualCheck",
 ]);
 requireTokens("src/lib/designer/constraint-negotiation.ts", [
   "designer-negotiation-v1",
@@ -142,7 +143,7 @@ requireTokens("src/lib/designer/fashion-research-source-pool.ts", [
 requireTokens("src/app/api/designer/creative-render/route.ts", ["renderCreativeFashnFront","CreativeFashnRequest"]);
 requireTokens("src/lib/ai-visualization.ts", ["inspectCreativeRender","heroVisibility","boundaryIntegrity","PROTECTED_RENDER_BOXES","Visual hierarchy contract"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["VISUAL CHECK PASSED","onCreativeInspection","newDesignerRenderCheck"]);
-requireTokens("src/lib/designer/creative-learning.ts", ["renderMismatchReviews",'review.reason==="render_mismatch"']);
+requireTokens("src/lib/designer/creative-learning.ts", ["renderMismatchReviews",'review.reason==="render_mismatch"',"renderRisk","renderQualitySamples"]);
 requireTokens("src/app/operator/designer-research/DesignerResearchClient.tsx", ["Creative Research Desk","Save research signal"]);
 requireTokens("src/lib/designer/casebook.ts", [
   "designer-casebook-v1","designer_case_review","casebookSignalFor","total>=3","scale=6"
