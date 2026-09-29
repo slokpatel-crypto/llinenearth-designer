@@ -420,7 +420,8 @@ for (const token of [
   "frontierCrossZoneSeed","wrongness-tailoring-2026","tactile-dimensionality-2026","quiet-wild-balance-2026","formless-form-2026","craft-deviation-2026",
   "criticFacetScore","revisionMerit","redesignLoop","Visual critic protected one hero move",
   "sourceDistance","Source distance","too close to a single source mechanism",
-  "chooseCreativeRedesign","visual_balance","render_mismatch"
+  "chooseCreativeRedesign","visual_balance","render_mismatch",
+  "absoluteFeasibilityBlock","literally unavailable or physically impossible"
 ]) {
   if (!creativeEngine.includes(token)) throw new Error(`Designer V5 creative-engine regression: missing ${token}`);
 }
