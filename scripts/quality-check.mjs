@@ -490,11 +490,15 @@ for (const token of ["inspectCreativeRender","heroVisibility","boundaryIntegrity
   if (!aiVisualization.includes(token)) throw new Error(`Designer V5 render-inspection regression: missing ${token}`);
 }
 const creativeGenerateRoute = fs.readFileSync("src/app/api/designer/creative-generate/route.ts","utf8");
-for (const token of ["generateCreativeDirections","chooseCreativeRedesign","researchFreedom:\"maximum\"","loadDesignerFabricMetadata","__linenCreativeGenerateRate","slice(0,240)","contentLength>650_000"]) {
+for (const token of ["generateCreativeDirections","chooseCreativeRedesign","researchFreedom:\"maximum\"","loadDesignerFabricMetadata","loadDesignerCreativeContext","__linenCreativeGenerateRate","contentLength>650_000"]) {
   if (!creativeGenerateRoute.includes(token)) throw new Error(`Designer V5 server-generation route regression: missing ${token}`);
 }
-if (realDesignerModule.includes("generateCreativeDirections({") || realDesignerModule.includes("chooseCreativeRedesign(")) {
-  throw new Error("Designer V5 architecture regression: heavy creative ranking returned to the customer UI bundle.");
+if (realDesignerModule.includes("generateCreativeDirections({") || realDesignerModule.includes("chooseCreativeRedesign(") || realDesignerModule.includes("creativeLearning") || realDesignerModule.includes("creativeResearch")) {
+  throw new Error("Designer V5 architecture regression: creative intelligence returned to the customer UI bundle.");
+}
+const creativeContextLoader=fs.readFileSync("src/lib/designer/creative-context.ts","utf8");
+for(const token of ["server-only","aggregateCreativeLearning","aggregateCreativeResearch","source:\"eq.operator\"","source:\"eq.style-director\"","loadDesignerCreativeContext"]) {
+  if(!creativeContextLoader.includes(token)) throw new Error(`Designer creative-context regression: missing ${token}`);
 }
 const creativeRenderRoute = fs.readFileSync("src/app/api/designer/creative-render/route.ts","utf8");
 for (const token of ["renderCreativeFashnFront","assertFashnRateLimit","CreativeFashnRequest"]) {
