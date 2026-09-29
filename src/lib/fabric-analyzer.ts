@@ -21,6 +21,7 @@ import {
 } from "@/lib/fabric-analyzer-real-examples";
 import { FABRIC_REFERENCE_PROVENANCE } from "@/lib/fabric-analyzer-provenance-map";
 import {
+  loadFabricAnalyzerLearningHints,
   loadStoredFabricAnalysis,
   storeFabricAnalysis,
 } from "@/lib/fabric-analyzer-store";
@@ -280,6 +281,11 @@ export async function analyzeMenswearFabric(input:FabricAnalyzerContext):Promise
     input.notes ? `Additional context: ${safeText(input.notes,300)}.` : "",
   ].filter(Boolean).join(" ");
 
+  const learningHints=await loadFabricAnalyzerLearningHints();
+  const learnedGuidance=learningHints.length
+    ? learningHints.map((hint)=>`${hint.field_path} => ${safeText(JSON.stringify(hint.corrected_value),160)} (${hint.samples} reviewed corrections)`).join("\n")
+    : "No reviewed correction pattern has reached the learning threshold yet.";
+
   const prompt=`You are the private Fabric Analyzer for a premium menswear Designer engine.
 Analyze the supplied fabric/swatches visually and produce a structured styling profile.
 
@@ -322,6 +328,15 @@ ${REAL_MENSWEAR_FABRIC_EXAMPLES.map((example)=>[
   example.usage_tags?.length ? `use=${example.usage_tags.join("/")}` : "",
   `source=${example.source_id}`,
 ].filter(Boolean).join(" | ")).join("\n")}
+
+Reviewed correction learning:
+${learnedGuidance}
+
+Learning rules:
+- Treat these only as aggregate correction signals from prior reviewed Analyzer outputs.
+- A learned signal may refine classification when the current image/context is similar, but it never overrides explicit verified supplier facts.
+- Do not extrapolate a correction to unrelated materials, colors or patterns.
+- When current visual evidence is weak or conflicts with a learned signal, lower confidence rather than forcing the learned answer.
 
 Reference rules:
 - Use references only when there is a defensible visual or declared-context match.
