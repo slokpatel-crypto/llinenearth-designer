@@ -161,9 +161,15 @@ async function creativeModelDataUri(style:DesignerStyle) {
 
 function creativeConceptPrompt(input:CreativeFashnRequest) {
   const safe=(value:unknown,limit=360)=>String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
-  const moves=input.creative.treatments.slice(0,6).map((move,index)=>
-    `${index+1}. ${safe(move.zone,40)} — ${safe(move.label,100)}: ${safe(move.instruction,320)} Visual purpose: ${safe(move.visualPurpose,180)}.`
+  const orderedMoves=[...input.creative.treatments].sort((a,b)=>b.intensity-a.intensity).slice(0,6);
+  const heroMove=orderedMoves[0];
+  const moves=orderedMoves.map((move,index)=>
+    `${index+1}. ${index===0?"HERO":"SUPPORT"} / ${safe(move.zone,40)} — ${safe(move.label,100)}; intensity ${Math.max(1,Math.min(100,Number(move.intensity)||50))}/100; construction ${safe(move.buildability,30)}. Instruction: ${safe(move.instruction,360)} Visual purpose: ${safe(move.visualPurpose,200)}.`
   ).join(" ");
+  const protectedZones=["face/head","hands","neck opening","trouser waistband over a tucked shirt","background","shoes"];
+  const renderHierarchy=heroMove
+    ? `Visual hierarchy contract: the clear focal move is ${safe(heroMove.label,100)} on the ${safe(heroMove.zone,40)}. Render it unmistakably. Supporting moves must remain visibly subordinate. Preserve quiet fabric around the focal detail so the concept reads in one glance.`
+    : "Keep one dominant visual idea and preserve quiet surrounding cloth.";
   const pattern=input.creative.pattern
     ? `Generated surface concept: ${safe(input.creative.pattern.name,100)}. Family ${safe(input.creative.pattern.family,50)}, ${safe(input.creative.pattern.scale,40)} scale, about ${Math.max(0,Math.min(60,Number(input.creative.pattern.coverage)||0))}% intended coverage. Layout: ${safe(input.creative.pattern.layout,420)} Placement: ${safe(input.creative.pattern.placement,260)}. The image-context is split vertically: LEFT HALF is the exact shirt-fabric reference; RIGHT HALF is the exact trouser-fabric reference. Use the generated motif logic on the shirt only where specified, while preserving the underlying cloth colour and woven character.`
     : "The image-context is split vertically: LEFT HALF is the exact shirt-fabric reference; RIGHT HALF is the exact trouser-fabric reference.";
@@ -174,10 +180,13 @@ Base shirt: ${safe(input.shirt.name)} ${safe(input.shirt.line)}, ${safe(input.sh
 Supported base cut: ${safe(input.style.collar)}, ${safe(input.style.cuff)}, ${safe(input.style.placket)}, ${safe(input.style.shirtFit)}, ${safe(input.style.shirtWear)}, ${safe(input.style.trouser)}, ${safe(input.style.rise)}, ${safe(input.style.waistband)}, ${safe(input.style.break)}.
 
 Creative concept: ${safe(input.creative.name)}. Thesis: ${safe(input.creative.thesis,420)}.
+${renderHierarchy}
 Design moves: ${moves}
 ${pattern}
 
-Render the custom visual details, not merely their colours. If a move changes cuff depth, collar proportion, pocket geometry, panel placement, border position or line rhythm, visibly change that garment detail while keeping the rest controlled. Do not add random decorations that are not in the concept. Preserve natural seams, folds, drape and garment boundaries. Shirt fabric must never spill over the neck, hands, trouser waistband or background. Trouser fabric must remain inside the trouser silhouette. For a tucked shirt, the waistband must sit physically in front of the tucked shirt. Keep the mannequin fully faceless with no eyes, hair or facial features. No text, logos, props, extra garments or cropped limbs. Full-body front fashion-catalogue photograph.`;
+Render the custom visual details as geometry and construction, not merely as colour changes. First satisfy the HERO move exactly, then add supporting moves only where specified. If a move changes cuff depth, collar proportion, pocket geometry, panel placement, border position, fastening axis or line rhythm, visibly change that garment detail while keeping the rest controlled. Do not average an unconventional design back into a normal shirt or trouser.
+
+Protected zones that must not be recoloured or redesigned: ${protectedZones.join(", ")}. Do not add random decorations, embroidery, piping, pockets, seams, buttons or prints that are not in the concept. Preserve natural seams, folds, drape and hard garment boundaries. Shirt fabric must never spill over the neck, hands, trouser waistband or background. Trouser fabric must remain inside the trouser silhouette. For a tucked shirt, the waistband must sit physically in front of the tucked shirt. Keep the mannequin fully faceless with no eyes, hair or facial features. No text, logos, props, extra garments or cropped limbs. Full-body front fashion-catalogue photograph.`;
 }
 
 export async function renderCreativeFashnFront(input:CreativeFashnRequest):Promise<CreativeFashnResult> {
