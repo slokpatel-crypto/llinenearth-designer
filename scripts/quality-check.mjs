@@ -371,6 +371,24 @@ for (const token of [".newDesignerSearch",".newDesignerSearchResults",".newDesig
 }
 console.log("Designer advanced-search V4 gate passed: backend decision matrix preserved behind a simplified visual-first surface.");
 
+const retailDesignerUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
+for (const token of [
+  "newDesignerFabricFilters","newDesignerFabricChoices","Plain","Print","Blend","Formal",
+  "customerFabricLine","Fabric specs","Creative Lab","designerWhatsAppHref","WhatsApp this exact look",
+  "Final colour, drape and fit still need physical fabric and sample verification in store.",
+  'loading="lazy"'
+]) {
+  if (!retailDesignerUi.includes(token)) throw new Error(`Designer retail UX regression: missing ${token}`);
+}
+const retailDesignerCss = fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
+for (const token of [".newDesignerFabricFilters",".newDesignerFabricChoices",".newDesignerCreativeTeaser",".newDesignerTruthNearCta",".newDesignerWhatsAppLook"]) {
+  if (!retailDesignerCss.includes(token)) throw new Error(`Designer retail UX styling regression: missing ${token}`);
+}
+const whatsappHelper = fs.readFileSync("src/lib/whatsapp.ts","utf8");
+if (!whatsappHelper.includes("Hi Linen Earth")) throw new Error("WhatsApp brand regression: enquiry copy is not using Linen Earth.");
+console.log("Designer retail UX gate passed: filtered visual fabric browsing, retail labels, creative teaser, dynamic WhatsApp context and nearby verification note protected.");
+
+
 const creativeEngine = fs.readFileSync("src/lib/designer/creative-engine.ts","utf8");
 for (const token of [
   "generateCreativeDirections","CreativeCriticId","aesthetic","originality","brand","menswear","construction",
