@@ -258,6 +258,15 @@ for (const token of ['params.get("shirt")','params.get("pant")','params.get("sty
 }
 console.log("Style Director real-model spec gate passed: full pair, cut, context and auto-assessment handoff protected.");
 
+const styleDirectorRealModelPreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+for (const token of ["StyleDirectorRealModelPreview","Existing Linen Earth real model","composePhotoOutfit","DESIGNER_PHOTO_TEMPLATES"]) {
+  if (!styleDirectorRealModelPreview.includes(token)) throw new Error(`Style Director existing-model preview regression: missing ${token}`);
+}
+for (const token of ["StyleDirectorRealModelPreview","shirtFabric","pantFabric","Existing real model · live outfit"]) {
+  if (!styleDirectorUiHandoff.includes(token)) throw new Error(`Style Director existing-model UI regression: missing ${token}`);
+}
+console.log("Style Director existing-model gate passed: results reuse the same photographic model and selected outfit without creating a new model.");
+
 const designerBriefRoute = fs.readFileSync("src/app/api/designer/brief/route.ts","utf8");
 const designerBriefEngine = fs.readFileSync("src/lib/designer/brief.ts","utf8");
 const designerSearch = fs.readFileSync("src/lib/designer/search.ts","utf8");
