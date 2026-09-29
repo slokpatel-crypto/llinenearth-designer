@@ -644,3 +644,16 @@
 .newDesignerPhotoViews button{border:1px solid #d9d2ca;background:#faf8f5;color:#526779;border-radius:999px;padding:7px 9px;font-size:7px;cursor:pointer}
 .newDesignerPhotoViews button[aria-pressed="true"]{background:#203d5b;border-color:#203d5b;color:#fff}
 .newDesignerPhotoViews button:disabled{opacity:.45;cursor:not-allowed}
+
+
+.newDesignerSelectedQa{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 22px 12px;border-bottom:1px solid #e6e0d5;background:#f7faf7}
+.newDesignerSelectedQa[data-status="review"]{background:#fff8f4}
+.newDesignerSelectedQa[data-status="unavailable"]{background:#faf8f5}
+.newDesignerSelectedQa span{display:block;font-size:6px;letter-spacing:.12em;font-weight:800;color:#54705d}
+.newDesignerSelectedQa[data-status="review"] span{color:#9b684f}
+.newDesignerSelectedQa[data-status="unavailable"] span{color:#82766d}
+.newDesignerSelectedQa strong{display:block;margin-top:4px;font-size:7px;line-height:1.45;font-weight:500;color:#526679}
+.newDesignerSelectedQa button{border:0;background:#203d5b;color:#fff;border-radius:999px;padding:8px 10px;font-size:7px;cursor:pointer;white-space:nowrap}
+.newDesignerSelectedQa button:disabled{opacity:.45;cursor:not-allowed}
+.newDesignerSelectedQa small{grid-column:1/-1;font-size:6px;color:#80766d}
+@media(max-width:720px){.newDesignerSelectedQa{grid-template-columns:1fr}.newDesignerSelectedQa button{width:100%}}
