@@ -421,7 +421,8 @@ for (const token of [
   "criticFacetScore","revisionMerit","redesignLoop","Visual critic protected one hero move",
   "sourceDistance","Source distance","too close to a single source mechanism",
   "chooseCreativeRedesign","visual_balance","render_mismatch",
-  "absoluteFeasibilityBlock","literally unavailable or physically impossible"
+  "absoluteFeasibilityBlock","literally unavailable or physically impossible",
+  "pairwisePreference","pairwiseTournament","A tiny difference is not meaningful enough"
 ]) {
   if (!creativeEngine.includes(token)) throw new Error(`Designer V5 creative-engine regression: missing ${token}`);
 }
