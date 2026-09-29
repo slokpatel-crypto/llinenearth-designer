@@ -428,7 +428,7 @@ for (const token of [
   if (!creativeEngine.includes(token)) throw new Error(`Designer V5 creative-engine regression: missing ${token}`);
 }
 const creativeLearning = fs.readFileSync("src/lib/designer/creative-learning.ts","utf8");
-for (const token of ["designer-creative-learning-v1","creativeFamilyFromConceptId","total<3","Math.max(-5","render_mismatch","renderMismatchReviews","not evidence that the fashion idea itself is bad"]) {
+for (const token of ["designer-creative-learning-v1","creativeFamilyFromConceptId","total<3","Math.max(-5","render_mismatch","renderMismatchReviews","review.reason===\"render_mismatch\""]) {
   if (!creativeLearning.includes(token)) throw new Error(`Designer V5 creative-learning regression: missing ${token}`);
 }
 const creativeResearch = fs.readFileSync("src/lib/designer/creative-research.ts","utf8");
