@@ -54,17 +54,33 @@ function canonicalUrlIdentity(value:unknown,limit=1800) {
 export function fabricAnalysisFingerprint(input:FabricAnalyzerContext) {
   const contentSha=clean(input.contentSha256,128);
   const perceptualHash=clean(input.perceptualHash,64);
+  const evidence={
+      sourceId:clean(input.sourceId,80),
+      sourcePageUrl:canonicalUrlIdentity(input.sourcePageUrl),
+      declaredMaterial:clean(input.declaredMaterial,120),
+      declaredFabricType:clean(input.declaredFabricType,120),
+      supplierColorName:clean(input.supplierColorName,120),
+      supplierPatternName:clean(input.supplierPatternName,120),
+      swatchRealWidthMm:Number.isFinite(input.swatchRealWidthMm)?Number(input.swatchRealWidthMm):null,
+      repeatRealMm:Number.isFinite(input.repeatRealMm)?Number(input.repeatRealMm):null,
+      verifiedGsm:Number.isFinite(input.verifiedGsm)?Number(input.verifiedGsm):null,
+      verifiedDrape:clean(input.verifiedDrape,40),
+      verifiedFiberContent:clean(input.verifiedFiberContent,220),
+      verifiedPhysicalSourceUrl:canonicalUrlIdentity(input.verifiedPhysicalSourceUrl),
+    };
   const canonical=contentSha
     ? JSON.stringify({
       contentSha256:contentSha,
       perceptualHash,
       macroContentSha256:clean(input.macroContentSha256,128),
       foldContentSha256:clean(input.foldContentSha256,128),
+      evidence,
     })
     : JSON.stringify({
       imageUrl:canonicalUrlIdentity(input.imageUrl),
       macroImageUrl:canonicalUrlIdentity(input.macroImageUrl),
       foldImageUrl:canonicalUrlIdentity(input.foldImageUrl),
+      evidence,
     });
   return createHash("sha256").update(canonical).digest("hex");
 }
@@ -116,6 +132,10 @@ export async function storeFabricAnalysis(
       foldImageUrl:clean(input.foldImageUrl,1800),
       swatchRealWidthMm:Number.isFinite(input.swatchRealWidthMm)?input.swatchRealWidthMm:null,
       repeatRealMm:Number.isFinite(input.repeatRealMm)?input.repeatRealMm:null,
+      verifiedGsm:Number.isFinite(input.verifiedGsm)?input.verifiedGsm:null,
+      verifiedDrape:clean(input.verifiedDrape,40),
+      verifiedFiberContent:clean(input.verifiedFiberContent,220),
+      verifiedPhysicalSourceUrl:clean(input.verifiedPhysicalSourceUrl,1800),
       contentSha256:clean(input.contentSha256,128),
       perceptualHash:clean(input.perceptualHash,64),
       macroContentSha256:clean(input.macroContentSha256,128),
@@ -237,6 +257,10 @@ export type FabricAnalyzerBatchItem = {
   notes?:string;
   swatchRealWidthMm?:number;
   repeatRealMm?:number;
+  verifiedGsm?:number;
+  verifiedDrape?:"Fluid"|"Balanced"|"Structured";
+  verifiedFiberContent?:string;
+  verifiedPhysicalSourceUrl?:string;
   force?:boolean;
 };
 
@@ -256,6 +280,10 @@ export async function enqueueFabricAnalyzerBatch(items:FabricAnalyzerBatchItem[]
     notes:clean(item.notes,500),
     swatchRealWidthMm:Number.isFinite(item.swatchRealWidthMm)?Number(item.swatchRealWidthMm):null,
     repeatRealMm:Number.isFinite(item.repeatRealMm)?Number(item.repeatRealMm):null,
+    verifiedGsm:Number.isFinite(item.verifiedGsm)?Number(item.verifiedGsm):null,
+    verifiedDrape:["Fluid","Balanced","Structured"].includes(String(item.verifiedDrape))?String(item.verifiedDrape):"",
+    verifiedFiberContent:clean(item.verifiedFiberContent,220),
+    verifiedPhysicalSourceUrl:clean(item.verifiedPhysicalSourceUrl,1800),
     force:item.force===true,
   })).filter((item)=>item.imageUrl||item.sourcePageUrl);
   if(!cleanItems.length) return null;
