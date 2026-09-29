@@ -830,7 +830,7 @@ export function DesignerModule() {
         style={style}
         creativeDirection={activeCreative}
         onCreativeFeedback={giveCreativeRenderFeedback}
-        onCreativeInspection={(check)=>{ if(check.status==="review" && activeCreative) giveCreativeRenderFeedback("down",check.redesignReason || "render_mismatch",check); }}
+        onCreativeInspection={(check)=>{ if(check.evidenceAvailable && check.status==="review" && activeCreative) giveCreativeRenderFeedback("down",check.redesignReason || "render_mismatch",check); }}
       />}
       {fitCoverage.total > 0 && <div className="newDesignerFitModelNote newDesignerFitModelNoteCompact"><span>FIT PROFILE · {fitCoverage.total}/16</span></div>}
       <section className="newDesignerOutcome newDesignerOutcomeCompact" aria-live="polite" aria-label="Designer recommendation">
