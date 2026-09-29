@@ -419,7 +419,8 @@ for (const token of [
   "design-fixation-examples","divergent-design-thinking","creative-design-coevolving-spaces",
   "frontierCrossZoneSeed","wrongness-tailoring-2026","tactile-dimensionality-2026","quiet-wild-balance-2026","formless-form-2026","craft-deviation-2026",
   "criticFacetScore","revisionMerit","redesignLoop","Visual critic protected one hero move",
-  "sourceDistance","Source distance","too close to a single source mechanism"
+  "sourceDistance","Source distance","too close to a single source mechanism",
+  "chooseCreativeRedesign","visual_balance","render_mismatch"
 ]) {
   if (!creativeEngine.includes(token)) throw new Error(`Designer V5 creative-engine regression: missing ${token}`);
 }
@@ -439,7 +440,7 @@ const sourceRows = (researchPool.match(/\{id:"[^"]+",name:/g) || []).length;
 const topicRows = (researchPool.match(/\{id:"[^"]+",query:/g) || []).length;
 if (sourceRows * topicRows < 1000) throw new Error(`Designer V5 research pool regression: expected >=1000 source-topic targets, found ${sourceRows * topicRows}`);
 const creativeUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["03 / CREATE","Imagine new designs","Create ideas ✦","newDesignerCreativeVisual","newDesignerMiniScores","researchPool","researchFreedom:\"maximum\"","FRONTIER IDEA","Design reasoning"]) {
+for (const token of ["03 / CREATE","Imagine new designs","Create ideas ✦","newDesignerCreativeVisual","newDesignerMiniScores","researchPool","researchFreedom:\"maximum\"","FRONTIER IDEA","Design reasoning","chooseCreativeRedesign","limit:12"]) {
   if (!creativeUi.includes(token)) throw new Error(`Designer V5 creative UI regression: missing ${token}`);
 }
 const creativePreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
