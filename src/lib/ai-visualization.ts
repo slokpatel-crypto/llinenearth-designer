@@ -69,6 +69,12 @@ export type CreativeFashnRequest = {
   };
 };
 
+export type SelectedLookFashnRequest = {
+  shirt: Pick<DesignerFabric,"id"|"name"|"line"|"image"|"hex"|"patternType">;
+  pant: Pick<DesignerFabric,"id"|"name"|"line"|"image"|"hex"|"patternType">;
+  style: DesignerStyle;
+};
+
 export type CreativeRenderVisualCheck = {
   status:"pass"|"review";
   heroVisibility:number;
@@ -485,6 +491,19 @@ async function semanticCreativeRenderCheck(
   };
 }
 
+function selectedLookPrompt(input:SelectedLookFashnRequest) {
+  const safe=(value:unknown,limit=360)=>String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
+  return `Edit this existing premium menswear studio photograph into the exact Linen Earth outfit configured by the customer. Preserve the same faceless male mannequin, pose, body proportions, camera angle, studio lighting and deep navy environment.
+
+The image-context is split vertically: LEFT HALF is the exact shirt-fabric reference; RIGHT HALF is the exact trouser-fabric reference. Use those references only for their matching garments.
+
+Shirt: ${safe(input.shirt.name)} ${safe(input.shirt.line)}, ${safe(input.shirt.patternType)}.
+Trousers: ${safe(input.pant.name)} ${safe(input.pant.line)}, ${safe(input.pant.patternType)}.
+Exact construction: ${safe(input.style.collar)}, ${safe(input.style.cuff)}, ${safe(input.style.placket)}, ${safe(input.style.shirtFit)}, ${safe(input.style.shirtWear)}, ${safe(input.style.trouser)}, ${safe(input.style.rise)}, ${safe(input.style.waistband)}, ${safe(input.style.break)}.
+
+This is a fidelity render, not a redesign. Do not invent contrast panels, embroidery, piping, extra pockets, extra seams, prints, logos or decorative details. Preserve the configured collar, cuffs, placket, shirt fit, tuck state, trouser shape, rise, waistband and break. Keep natural linen weave, realistic folds and tailoring structure. Shirt fabric must remain inside the shirt silhouette and must not spill over the neck, hands, trouser waistband or background. Trouser fabric must remain inside the trouser silhouette. For a tucked shirt, the waistband must sit physically in front of the tucked shirt. Keep the mannequin fully faceless with no eyes, hair or facial features. No text, props, extra garments or cropped limbs. Full-body front fashion-catalogue photograph.`;
+}
+
 function creativeConceptPrompt(input:CreativeFashnRequest) {
   const safe=(value:unknown,limit=360)=>String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
   const orderedMoves=[...input.creative.treatments].sort((a,b)=>b.intensity-a.intensity).slice(0,6);
@@ -533,6 +552,19 @@ ${pattern}
 Render the custom visual details as geometry and construction, not merely as colour changes. First satisfy the HERO move exactly, then add supporting moves only where specified. If a move changes cuff depth, collar proportion, pocket geometry, panel placement, border position, fastening axis or line rhythm, visibly change that garment detail while keeping the rest controlled. Do not average an unconventional design back into a normal shirt or trouser.
 
 Protected zones that must not be recoloured or redesigned: ${protectedZones.join(", ")}. Do not add random decorations, embroidery, piping, pockets, seams, buttons or prints that are not in the concept. Preserve natural seams, folds, drape and hard garment boundaries. Shirt fabric must never spill over the neck, hands, trouser waistband or background. Trouser fabric must remain inside the trouser silhouette. For a tucked shirt, the waistband must sit physically in front of the tucked shirt. Keep the mannequin fully faceless with no eyes, hair or facial features. No text, logos, props, extra garments or cropped limbs. Full-body front fashion-catalogue photograph.`;
+}
+
+export async function renderSelectedLookFashnFront(input:SelectedLookFashnRequest):Promise<CreativeFashnResult> {
+  const source=await creativeModelDataUri(input.style);
+  const context=await creativeFabricContext(input.shirt.image,input.pant.image);
+  const generated=await runEdit(source,selectedLookPrompt(input),context);
+  return {
+    image:generated.output,
+    jobId:generated.jobId,
+    creditsUsed:generated.creditsUsed,
+    conceptId:"selected-look",
+    generatedAt:new Date().toISOString(),
+  };
 }
 
 export async function renderCreativeFashnFront(input:CreativeFashnRequest):Promise<CreativeFashnResult> {
