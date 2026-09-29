@@ -78,7 +78,6 @@ export type CreativeFashnResult = {
   creditsUsed:number;
   conceptId:string;
   generatedAt:string;
-  visualCheck:CreativeRenderVisualCheck;
 };
 
 async function stockSwatchDataUri(swatchImageUrl?: string) {
@@ -312,15 +311,21 @@ export async function renderCreativeFashnFront(input:CreativeFashnRequest):Promi
   const source=await creativeModelDataUri(input.style);
   const context=await creativeFabricContext(input.shirt.image,input.pant.image);
   const generated=await runEdit(source,creativeConceptPrompt(input),context);
-  const visualCheck=await inspectCreativeRender(source,generated.output,input);
   return {
     image:generated.output,
     jobId:generated.jobId,
     creditsUsed:generated.creditsUsed,
     conceptId:input.creative.id,
     generatedAt:new Date().toISOString(),
-    visualCheck,
   };
+}
+
+export async function inspectCreativeFashnOutput(
+  outputUrl:string,
+  input:CreativeFashnRequest,
+):Promise<CreativeRenderVisualCheck> {
+  const source=await creativeModelDataUri(input.style);
+  return inspectCreativeRender(source,outputUrl,input);
 }
 
 async function runEdit(image: string, prompt: string, imageContext?: string) {
