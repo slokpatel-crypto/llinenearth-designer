@@ -14,6 +14,8 @@ import {
 
 const WIDTH = 1024;
 const HEIGHT = 1536;
+type PhotorealView = "front"|"three-quarter"|"side"|"back";
+type PhotorealResult = {image:string;jobId:string;creditsUsed:number;conceptId:string;generatedAt:string;visualCheck?:CreativeVisualCheck};
 const images = new Map<string, Promise<HTMLImageElement>>();
 const fabricTiles = new Map<string, HTMLCanvasElement>();
 const featheredMasks = new WeakMap<HTMLCanvasElement, HTMLCanvasElement>();
@@ -557,6 +559,9 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
   const [creativeAiLoading, setCreativeAiLoading] = useState(false);
   const [creativeAiError, setCreativeAiError] = useState("");
   const [showCreativeAi, setShowCreativeAi] = useState(false);
+  const [photorealView,setPhotorealView]=useState<PhotorealView>("front");
+  const [photorealViews,setPhotorealViews]=useState<Partial<Record<Exclude<PhotorealView,"front">,PhotorealResult>>>({});
+  const [photorealViewLoading,setPhotorealViewLoading]=useState<Exclude<PhotorealView,"front">|null>(null);
   const [creativeReview, setCreativeReview] = useState<"up"|"down"|null>(null);
   const [creativeReviewReason, setCreativeReviewReason] = useState<CreativeFeedbackReason|null>(null);
   const templateId = photoTemplateForStyle(style);
@@ -575,6 +580,9 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
     setCreativeAi(null);
     setCreativeAiError("");
     setShowCreativeAi(false);
+    setPhotorealView("front");
+    setPhotorealViews({});
+    setPhotorealViewLoading(null);
     setCreativeReview(null);
     setCreativeReviewReason(null);
   },[renderSignature]);
@@ -635,6 +643,8 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
       const data=await response.json() as {result?:{image:string;jobId:string;creditsUsed:number;conceptId:string;generatedAt:string};error?:string};
       if(!response.ok || !data.result) throw new Error(data.error || "Photoreal render failed.");
       setCreativeAi(data.result);
+      setPhotorealView("front");
+      setPhotorealViews({});
       setShowCreativeAi(true);
 
       if(creativeDirection) try {
@@ -673,6 +683,45 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
     }
   }
 
+  async function choosePhotorealView(view:PhotorealView) {
+    if(!creativeAi || creativeDirection) return;
+    if(view==="front") {
+      setPhotorealView("front");
+      setCreativeAiError("");
+      return;
+    }
+    const existing=photorealViews[view];
+    if(existing) {
+      setPhotorealView(view);
+      setCreativeAiError("");
+      return;
+    }
+    if(photorealViewLoading) return;
+    setPhotorealViewLoading(view);
+    setCreativeAiError("");
+    try {
+      const response=await fetch("/api/designer/look-render",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({
+          view,
+          frontImage:creativeAi.image,
+          shirt:{id:shirt.id,name:shirt.name,line:shirt.line,image:shirt.image,hex:shirt.hex,patternType:shirt.patternType},
+          pant:{id:pant.id,name:pant.name,line:pant.line,image:pant.image,hex:pant.hex,patternType:pant.patternType},
+          style,
+        }),
+      });
+      const data=await response.json() as {result?:PhotorealResult;error?:string};
+      if(!response.ok || !data.result) throw new Error(data.error || "Photoreal view failed.");
+      setPhotorealViews((current)=>({...current,[view]:data.result}));
+      setPhotorealView(view);
+    } catch(error) {
+      setCreativeAiError(error instanceof Error ? error.message : "Photoreal view failed.");
+    } finally {
+      setPhotorealViewLoading(null);
+    }
+  }
+
   useEffect(()=>{
     if(!autoRenderNonce || autoRenderNonce===lastAutoRenderNonce.current || !creativeDirection || !ready || creativeAiLoading) return;
     lastAutoRenderNonce.current=autoRenderNonce;
@@ -700,7 +749,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
     </div>
     <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`}>
       <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-label={`${previewFabricLabel(shirt, pant)}, ${style.shirtWear.toLowerCase()} with ${style.collarFinish.toLowerCase()}`} />
-      {showCreativeAi && creativeAi && <img className="newDesignerPhotoAi" src={creativeAi.image} alt={creativeDirection ? `Photoreal V5 render of ${creativeDirection.name}` : `Photoreal render of ${shirt.name} with ${pant.name}`} />}
+      {showCreativeAi && creativeAi && <img className="newDesignerPhotoAi" src={photorealView==="front" ? creativeAi.image : (photorealViews[photorealView]?.image || creativeAi.image)} alt={creativeDirection ? `Photoreal V5 render of ${creativeDirection.name}` : `Photoreal ${photorealView} view of ${shirt.name} with ${pant.name}`} />}
       {showOriginal && <img className="newDesignerPhotoOriginal" src={tucked ? template.src : DESIGNER_PHOTO_TEMPLATES.pleated.src} alt="Original photographed model template for comparison" />}
       {showBoundaries && <svg className="newDesignerBoundaryQa" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="xMidYMid meet" aria-label="Garment boundary QA overlay">
         {tucked ? <>
@@ -729,6 +778,11 @@ export function PhotoOutfitPreview({ shirt, pant, style, creativeDirection, onCr
         <button type="button" onClick={download} disabled={!ready}>Save</button>
       </div>
     </div>
+    {creativeAi && !creativeDirection && <div className="newDesignerPhotoViews" role="group" aria-label="Photoreal model views">
+      {(["front","three-quarter","side","back"] as PhotorealView[]).map((view)=><button key={view} type="button" aria-pressed={photorealView===view} disabled={Boolean(photorealViewLoading)} onClick={()=>void choosePhotorealView(view)}>
+        {photorealViewLoading===view ? "Rendering…" : view==="three-quarter" ? (photorealViews[view]?"3/4":"Generate 3/4") : view==="front" ? "Front" : photorealViews[view] ? view[0].toUpperCase()+view.slice(1) : "Generate "+view}
+      </button>)}
+    </div>}
     <details className="newDesignerTechnicalDrawer newDesignerPreviewTools">
       <summary>Preview tools</summary>
       <div>
