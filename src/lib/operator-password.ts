@@ -1,5 +1,6 @@
 import "server-only";
 import { scryptSync, timingSafeEqual } from "node:crypto";
+import { readBrandEnv } from "@/lib/runtime-compat";
 
 const PREFIX = "scrypt-v1";
 const KEY_LENGTH = 64;
@@ -13,7 +14,7 @@ function decodePart(value: string) {
 }
 
 export function verifyOperatorPassword(password: string) {
-  const stored = process.env.LINEN_OPERATOR_PASSWORD_HASH;
+  const stored = readBrandEnv("LINEN_OPERATOR_PASSWORD_HASH");
   if (!stored || !password) return false;
   const [prefix, saltPart, hashPart, extra] = stored.split("$");
   if (prefix !== PREFIX || !saltPart || !hashPart || extra) return false;
