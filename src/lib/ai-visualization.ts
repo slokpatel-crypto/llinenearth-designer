@@ -38,6 +38,19 @@ export function assertFashnRateLimit(request: Request) {
   for (const [key, timestamp] of rateRegistry.lastByIp) if (now - timestamp > 10 * 60_000) rateRegistry.lastByIp.delete(key);
 }
 
+type RepairRateRegistry = { lastByIp: Map<string, number> };
+const repairRateRegistry = (globalThis as typeof globalThis & { __linenFashnRepairRate?: RepairRateRegistry }).__linenFashnRepairRate
+  ||= { lastByIp: new Map<string, number>() };
+
+export function assertFashnRepairRateLimit(request: Request) {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const now = Date.now();
+  const last = repairRateRegistry.lastByIp.get(ip) || 0;
+  if (now - last < 45_000) throw new FashnVisualizationError("Only one immediate render repair is allowed at a time.", "rate_limited");
+  repairRateRegistry.lastByIp.set(ip, now);
+  for (const [key, timestamp] of repairRateRegistry.lastByIp) if (now - timestamp > 10 * 60_000) repairRateRegistry.lastByIp.delete(key);
+}
+
 function fashnClient() {
   const apiKey = process.env.FASHN_API_KEY;
   if (!apiKey) throw new FashnVisualizationError("FASHN_API_KEY is not configured for this deployment.", "not_configured");
@@ -76,6 +89,18 @@ export type SelectedLookFashnRequest = {
 };
 
 export type SelectedLookView = "front"|"three-quarter"|"side"|"back";
+
+export type SelectedLookVisualCheck = {
+  available:boolean;
+  status:"pass"|"review";
+  fabricFidelity:"strong"|"review"|"weak";
+  boundary:"strong"|"review"|"weak";
+  construction:"strong"|"review"|"weak";
+  mannequinConsistency:"strong"|"review"|"weak";
+  artifact:"none"|"minor"|"major";
+  issue:string;
+  repairInstruction:string;
+};
 
 export type CreativeRenderVisualCheck = {
   status:"pass"|"review";
@@ -346,6 +371,105 @@ function gatewayOutputText(payload:unknown) {
   return "";
 }
 
+
+export async function inspectSelectedLookFashnOutput(
+  outputUrl:string,
+  input:SelectedLookFashnRequest,
+):Promise<SelectedLookVisualCheck> {
+  const token=gatewayAuthToken();
+  if(!token || !OFFICIAL_FASHN_OUTPUT.test(outputUrl)) {
+    return {
+      available:false,
+      status:"review",
+      fabricFidelity:"review",
+      boundary:"review",
+      construction:"review",
+      mannequinConsistency:"review",
+      artifact:"minor",
+      issue:"Automatic photoreal QA is unavailable; keep this render for manual review.",
+      repairInstruction:"",
+    };
+  }
+
+  const [referenceDataUri,fabricContext]=await Promise.all([
+    creativeModelDataUri(input.style),
+    creativeFabricContext(input.shirt.image,input.pant.image),
+  ]);
+  const prompt=[
+    "You are a strict production QA inspector for a premium menswear visualizer.",
+    "Judge render fidelity, not fashion taste. The customer already chose the outfit.",
+    \`Required shirt: \${input.shirt.name}; \${input.shirt.line}; \${input.shirt.patternType}.\`,
+    \`Required trousers: \${input.pant.name}; \${input.pant.line}; \${input.pant.patternType}.\`,
+    \`Required construction: \${input.style.collar}; \${input.style.cuff}; \${input.style.placket}; \${input.style.shirtFit}; \${input.style.shirtWear}; \${input.style.trouser}; \${input.style.rise}; \${input.style.waistband}; \${input.style.break}.\`,
+    "Images are supplied in this order: GENERATED RENDER, LOCKED STUDIO MODEL, then SPLIT FABRIC CONTEXT when available (shirt left, trouser right).",
+    "Check exact visible cloth colour/pattern/weave character, collar and cuff cleanliness, neck opening, hands, shirt/trouser boundary, tucked waistband layering, trouser silhouette, mannequin identity, background stability and synthesis artifacts.",
+    "Do not fail minor natural drape variation. Review when cloth visibly bleeds onto skin/background/adjacent garment, the chosen construction is contradicted, fabric identity drifts materially, or the mannequin/background changes materially.",
+    "If review is needed, give one concise repair instruction that fixes the rendering defect without redesigning the outfit. Keep issue and repairInstruction each under 180 characters."
+  ].join("\n");
+
+  const schema={
+    type:"object",
+    properties:{
+      status:{type:"string",enum:["pass","review"]},
+      fabricFidelity:{type:"string",enum:["strong","review","weak"]},
+      boundary:{type:"string",enum:["strong","review","weak"]},
+      construction:{type:"string",enum:["strong","review","weak"]},
+      mannequinConsistency:{type:"string",enum:["strong","review","weak"]},
+      artifact:{type:"string",enum:["none","minor","major"]},
+      issue:{type:"string",maxLength:180},
+      repairInstruction:{type:"string",maxLength:180},
+    },
+    required:["status","fabricFidelity","boundary","construction","mannequinConsistency","artifact","issue","repairInstruction"],
+    additionalProperties:false,
+  };
+
+  const model=visualCriticModels()[0];
+  try {
+    const response=await fetch("https://ai-gateway.vercel.sh/v1/responses",{
+      method:"POST",
+      headers:{authorization:\`Bearer \${token}\`,"content-type":"application/json"},
+      body:JSON.stringify({
+        model,
+        input:[{
+          role:"user",
+          content:[
+            {type:"input_text",text:prompt},
+            {type:"input_image",image_url:outputUrl,detail:"auto"},
+            {type:"input_image",image_url:referenceDataUri,detail:"auto"},
+            ...(fabricContext?[{type:"input_image",image_url:fabricContext,detail:"auto"}]:[]),
+          ],
+        }],
+        text:{format:{type:"json_schema",name:"linen_selected_look_qa",strict:true,schema}},
+      }),
+      cache:"no-store",
+      signal:AbortSignal.timeout(12_000),
+    });
+    if(!response.ok) throw new Error("visual QA unavailable");
+    const raw=await response.json() as unknown;
+    const text=gatewayOutputText(raw);
+    if(!text) throw new Error("visual QA empty");
+    const parsed=JSON.parse(text) as Omit<SelectedLookVisualCheck,"available">;
+    return {
+      ...parsed,
+      available:true,
+      issue:String(parsed.issue||"").replace(/\s+/g," ").trim().slice(0,180),
+      repairInstruction:String(parsed.repairInstruction||"").replace(/\s+/g," ").trim().slice(0,180),
+    };
+  } catch {
+    return {
+      available:false,
+      status:"review",
+      fabricFidelity:"review",
+      boundary:"review",
+      construction:"review",
+      mannequinConsistency:"review",
+      artifact:"minor",
+      issue:"Automatic photoreal QA is unavailable; keep this render for manual review.",
+      repairInstruction:"",
+    };
+  }
+}
+
 function semanticCheckNeedsReview(check:SemanticCreativeCheck) {
   return check.status==="review" ||
     check.hierarchy==="weak" ||
@@ -583,6 +707,33 @@ export async function renderSelectedLookFashnFront(input:SelectedLookFashnReques
     jobId:generated.jobId,
     creditsUsed:generated.creditsUsed,
     conceptId:"selected-look",
+    generatedAt:new Date().toISOString(),
+  };
+}
+
+
+export async function repairSelectedLookFashnFront(
+  input:SelectedLookFashnRequest,
+  previousImage:string,
+  repairInstruction:string,
+):Promise<CreativeFashnResult> {
+  if(!OFFICIAL_FASHN_OUTPUT.test(previousImage)) {
+    throw new FashnVisualizationError("A trusted photoreal front render is required before repair.","invalid_source");
+  }
+  const instruction=String(repairInstruction||"").replace(/\s+/g," ").trim().slice(0,240);
+  if(!instruction) throw new FashnVisualizationError("A focused QA repair instruction is required.","invalid_source");
+  const context=await creativeFabricContext(input.shirt.image,input.pant.image);
+  const prompt=\`Repair this existing Linen Earth photoreal render without redesigning it. QA defect to fix: \${instruction}
+
+Preserve the same faceless mannequin, pose, camera, body proportions, deep navy studio, shirt fabric, trouser fabric, footwear and every successful garment detail. Required construction remains \${input.style.collar}; \${input.style.cuff}; \${input.style.placket}; \${input.style.shirtFit}; \${input.style.shirtWear}; \${input.style.trouser}; \${input.style.rise}; \${input.style.waistband}; \${input.style.break}.
+
+Use the supplied split fabric context only to restore the exact shirt and trouser cloth appearance. Fix the cited defect locally. Do not add styling ideas, decorative seams, contrast panels, prints, logos, props or extra garments. Keep cloth off the neck, hands, background and neighbouring garment. If tucked, keep the waistband physically in front of the shirt. Full-body front catalogue photograph.\`;
+  const generated=await runEdit(previousImage,prompt,context);
+  return {
+    image:generated.output,
+    jobId:generated.jobId,
+    creditsUsed:generated.creditsUsed,
+    conceptId:"selected-look-repair",
     generatedAt:new Date().toISOString(),
   };
 }
