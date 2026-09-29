@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import {
   DESIGNER_PANTS, DESIGNER_REVIEWED_PAIRING, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES,
@@ -19,6 +20,13 @@ import type { DesignerSearchScope, DesignerSearchTier } from "@/lib/designer/sea
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import { creativeFamilyFromConceptId, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import {
+  fromLegacyStyle,
+  mergeLegacyIntoStyleSpec,
+  toLegacyStyle,
+  validateStyleSpecV2,
+  type StyleSpecV2,
+} from "@/lib/designer/style-spec-v2";
 
 const OCCASIONS: OccasionTier[] = ["Casual", "Smart-Casual", "Semi-Formal", "Formal"];
 const CLIMATES: DesignerClimate[] = ["Not specified", "Hot / humid", "Cool", "Air-conditioned"];
@@ -26,6 +34,10 @@ const INTENTIONS: DesignerIntention[] = ["Understated", "Balanced", "Expressive"
 const SESSION_KEY = "linen-earth:designer-session:v1";
 const DRAFT_KEY = "linen-earth:real-designer-draft:v2";
 const FACT_INTERVAL_MS = 15_000;
+const LiveConstructionPreview=dynamic(
+  ()=>import("@/components/LiveConstructionPreview").then((module)=>module.LiveConstructionPreview),
+  {ssr:false,loading:()=> <div className="newDesignerPreviewLoading">Loading construction preview…</div>},
+);
 type ShirtFabricFilter = "All" | "Plain" | "Print" | "Blend" | "Formal";
 type PantFabricFilter = "All" | "Light" | "Medium" | "Dark";
 type DesignerSearchOption = {
@@ -103,6 +115,8 @@ export function DesignerModule() {
   const [pantOptions, setPantOptions] = useState<DesignerFabric[]>(DESIGNER_PANTS);
   const [occasion, setOccasion] = useState<OccasionTier>(DESIGNER_REVIEWED_PAIRING.occasion);
   const [style, setStyle] = useState<DesignerStyle>(() => designerStyleForOccasion(DESIGNER_REVIEWED_PAIRING.occasion));
+  const [styleSpec,setStyleSpec]=useState<StyleSpecV2>(()=>fromLegacyStyle(designerStyleForOccasion(DESIGNER_REVIEWED_PAIRING.occasion)));
+  const [previewMode,setPreviewMode]=useState<"photo"|"construction">("photo");
   const [climate, setClimate] = useState<DesignerClimate>("Not specified");
   const [intention, setIntention] = useState<DesignerIntention>("Balanced");
   const [recommendation, setRecommendation] = useState<DesignerRecommendation | null>(null);
@@ -213,7 +227,7 @@ export function DesignerModule() {
     try {
       const parsed = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null") as {
         shirtId?: string; pantId?: string; occasion?: OccasionTier; climate?: DesignerClimate;
-        intention?: DesignerIntention; style?: Partial<DesignerStyle>; creative?: CreativeDirection | null;
+        intention?: DesignerIntention; style?: Partial<DesignerStyle>; styleSpec?: unknown; creative?: CreativeDirection | null;
         creativeVisualReview?: CreativeVisualCheck | null;
       } | null;
 
@@ -223,6 +237,7 @@ export function DesignerModule() {
       let nextClimate: DesignerClimate = parsed?.climate && CLIMATES.includes(parsed.climate) ? parsed.climate : climate;
       let nextIntention: DesignerIntention = parsed?.intention && INTENTIONS.includes(parsed.intention) ? parsed.intention : intention;
       let nextStyle = designerStyleForOccasion(nextOccasion);
+      let nextStyleSpec:StyleSpecV2|undefined;
 
       if (parsed?.style) {
         for (const key of Object.keys(DESIGNER_STYLE_CHOICES) as Array<keyof DesignerStyle>) {
@@ -230,6 +245,7 @@ export function DesignerModule() {
           if (typeof value === "string" && DESIGNER_STYLE_CHOICES[key].includes(value)) nextStyle[key] = value;
         }
       }
+      if(parsed?.styleSpec && validateStyleSpecV2(parsed.styleSpec)) nextStyleSpec=parsed.styleSpec;
 
       // A Style Director handoff is authoritative for this opening state. It
       // carries the resolved shirt + trouser pair and the supported cut, so the
@@ -237,6 +253,7 @@ export function DesignerModule() {
       const params = new URLSearchParams(window.location.search);
       const fromDirector = params.get("from") === "style-director";
       setDirectorHandoff(fromDirector);
+      if(fromDirector) nextStyleSpec=undefined;
 
       if (fromDirector) {
         const routedOccasion = params.get("occasion") as OccasionTier | null;
@@ -276,6 +293,7 @@ export function DesignerModule() {
       setClimate(nextClimate);
       setIntention(nextIntention);
       setStyle(nextStyle);
+      setStyleSpec(nextStyleSpec || fromLegacyStyle(nextStyle));
 
       if(!fromDirector && parsed?.creative &&
         parsed.creative.recommendation?.shirt?.id===nextShirtId &&
@@ -325,9 +343,14 @@ export function DesignerModule() {
   useEffect(() => {
     if (!draftReady) return;
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ shirtId, pantId, occasion, climate, intention, style, creative:activeCreative, creativeVisualReview }));
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ shirtId, pantId, occasion, climate, intention, style, styleSpec, creative:activeCreative, creativeVisualReview }));
     } catch { /* Designer remains usable if browser storage is unavailable. */ }
-  }, [draftReady, shirtId, pantId, occasion, climate, intention, style, activeCreative, creativeVisualReview]);
+  }, [draftReady, shirtId, pantId, occasion, climate, intention, style, styleSpec, activeCreative, creativeVisualReview]);
+
+  useEffect(()=>{
+    if(!draftReady) return;
+    setStyleSpec((current)=>mergeLegacyIntoStyleSpec(current,style));
+  },[draftReady,style]);
 
   useEffect(() => {
     if(!draftReady) return;
@@ -406,7 +429,10 @@ export function DesignerModule() {
     setOccasion(nextOccasion);
     setClimate("Not specified");
     setIntention("Balanced");
-    setStyle(designerStyleForOccasion(nextOccasion));
+    const resetStyle=designerStyleForOccasion(nextOccasion);
+    setStyle(resetStyle);
+    setStyleSpec(fromLegacyStyle(resetStyle));
+    setPreviewMode("photo");
     setRecommendation(null);
     setAssessment(null);
     setRecommendationId(null);
@@ -618,6 +644,7 @@ export function DesignerModule() {
       setCreativeAutoNote("");
     }
     setStyle({...direction.baseStyle});
+    setStyleSpec(fromLegacyStyle(direction.baseStyle));
     setRecommendation(direction.recommendation);
     setAssessment(null);
     setSearchResults([]);
@@ -685,6 +712,7 @@ export function DesignerModule() {
     setClimate(nextContext.climate);
     setIntention(nextContext.intention);
     setStyle({...result.style});
+    setStyleSpec(fromLegacyStyle(result.style));
     setRecommendation(result.recommendation);
     setAssessment(null);
     setSearchResults([]);
@@ -800,6 +828,17 @@ export function DesignerModule() {
     setRecommendationId(null);
   }
 
+  function applyStyleSpec(next:StyleSpecV2) {
+    setActiveCreative(null);
+    setStyleSpec(next);
+    setStyle(toLegacyStyle(next));
+    setRecommendation(null);
+    setAssessment(null);
+    setRecommendationId(null);
+    setResponse(null);
+    setFeedbackReason(null);
+  }
+
   function applyStylePatch(patch: Partial<DesignerStyle>) {
     setActiveCreative(null);
     setStyle((current) => ({ ...current, ...patch }));
@@ -824,6 +863,7 @@ export function DesignerModule() {
     };
     setOccasion("Semi-Formal");
     setStyle(next);
+    setStyleSpec(fromLegacyStyle(next));
     setRecommendation(null);
     setAssessment(null);
     setRecommendationId(null);
@@ -1109,10 +1149,15 @@ export function DesignerModule() {
         <strong>{activeCreative.name}</strong>
         <div>{creativeQuickTags(activeCreative).map((tag)=><b key={tag}>{tag}</b>)}</div>
       </div>}
-      {shirt && pant && <PhotoOutfitPreview
+      {shirt && pant && <div className="newDesignerRenderMode" role="group" aria-label="Preview mode">
+        <button type="button" aria-pressed={previewMode==="photo"} onClick={()=>setPreviewMode("photo")}>Studio preview</button>
+        <button type="button" aria-pressed={previewMode==="construction"} onClick={()=>setPreviewMode("construction")}>Live cut study</button>
+      </div>}
+      {shirt && pant && previewMode==="photo" && <PhotoOutfitPreview
         shirt={shirt}
         pant={pant}
         style={style}
+        styleSpec={styleSpec}
         creativeDirection={activeCreative}
         onCreativeFeedback={giveCreativeRenderFeedback}
         autoRenderNonce={creativeAutoRenderNonce}
@@ -1137,6 +1182,15 @@ export function DesignerModule() {
             }
           }
         }}
+      />}
+      {shirt && pant && previewMode==="construction" && <LiveConstructionPreview
+        shirt={shirt}
+        pant={pant}
+        style={style}
+        spec={styleSpec}
+        onSpecChange={applyStyleSpec}
+        occasion={occasion}
+        climate={climate}
       />}
       {fitCoverage.total > 0 && <div className="newDesignerFitModelNote newDesignerFitModelNoteCompact"><span>FIT PROFILE · {fitCoverage.total}/16</span></div>}
       <section className="newDesignerOutcome newDesignerOutcomeCompact" aria-live="polite" aria-label="Designer recommendation">
