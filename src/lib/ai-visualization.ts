@@ -62,7 +62,10 @@ export type CreativeFashnRequest = {
   shirt: Pick<DesignerFabric,"id"|"name"|"line"|"image"|"hex"|"patternType">;
   pant: Pick<DesignerFabric,"id"|"name"|"line"|"image"|"hex"|"patternType">;
   style: DesignerStyle;
-  creative: Pick<CreativeDirection,"id"|"name"|"thesis"|"treatments"|"pattern"> & {renderRisk?: "low"|"moderate"|"high"};
+  creative: Pick<CreativeDirection,"id"|"name"|"thesis"|"treatments"|"pattern"> & {
+    renderRisk?: "low"|"moderate"|"high";
+    renderCaution?: CreativeFeedbackReason;
+  };
 };
 
 export type CreativeRenderVisualCheck = {
@@ -425,9 +428,20 @@ function creativeConceptPrompt(input:CreativeFashnRequest) {
     : input.creative.renderRisk==="moderate"
       ? "This idea family has mixed render reliability. Prioritize the HERO geometry before any supporting surface treatment."
       : "";
+  const learnedRenderEdit=input.creative.renderCaution==="proportion"
+    ? "Prior attempts struggled with proportion. Preserve the intended scale relationship exactly; do not shrink or normalize the hero geometry."
+    : input.creative.renderCaution==="pattern_detail"
+      ? "Prior attempts lost the pattern/detail logic. Keep motif placement, scale and protected empty zones clearly visible."
+      : input.creative.renderCaution==="too_busy"
+        ? "Prior attempts became visually busy. Preserve the hero move and suppress any unrequested secondary decoration."
+        : input.creative.renderCaution==="visual_balance"
+          ? "Prior attempts lost visual balance. Keep the hero dominant while maintaining deliberate quiet space around it."
+          : input.creative.renderCaution==="render_mismatch"
+            ? "Prior attempts did not match the specification. Follow the written construction and placement instructions literally before adding realism."
+            : "";
   const renderHierarchy=heroMove
-    ? `Visual hierarchy contract: the clear focal move is ${safe(heroMove.label,100)} on the ${safe(heroMove.zone,40)}. Render it unmistakably. Supporting moves must remain visibly subordinate. Preserve quiet fabric around the focal detail so the concept reads in one glance. ${priorRenderCaution}`
-    : `Keep one dominant visual idea and preserve quiet surrounding cloth. ${priorRenderCaution}`;
+    ? `Visual hierarchy contract: the clear focal move is ${safe(heroMove.label,100)} on the ${safe(heroMove.zone,40)}. Render it unmistakably. Supporting moves must remain visibly subordinate. Preserve quiet fabric around the focal detail so the concept reads in one glance. ${priorRenderCaution} ${learnedRenderEdit}`
+    : `Keep one dominant visual idea and preserve quiet surrounding cloth. ${priorRenderCaution} ${learnedRenderEdit}`;
   const pattern=input.creative.pattern
     ? `Generated surface concept: ${safe(input.creative.pattern.name,100)}. Family ${safe(input.creative.pattern.family,50)}, ${safe(input.creative.pattern.scale,40)} scale, about ${Math.max(0,Math.min(60,Number(input.creative.pattern.coverage)||0))}% intended coverage. Layout: ${safe(input.creative.pattern.layout,420)} Placement: ${safe(input.creative.pattern.placement,260)}. The image-context is split vertically: LEFT HALF is the exact shirt-fabric reference; RIGHT HALF is the exact trouser-fabric reference. Use the generated motif logic on the shirt only where specified, while preserving the underlying cloth colour and woven character.`
     : "The image-context is split vertically: LEFT HALF is the exact shirt-fabric reference; RIGHT HALF is the exact trouser-fabric reference.";
