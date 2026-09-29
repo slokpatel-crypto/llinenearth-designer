@@ -115,6 +115,7 @@ export function DesignerModule() {
   const [creativeLearning, setCreativeLearning] = useState<CreativeLearningBook | null>(null);
   const [creativeResearch, setCreativeResearch] = useState<CreativeResearchLibrary | null>(null);
   const [researchPool, setResearchPool] = useState<{websites:number;topics:number;targets:number;highAuthorityWebsites:number}|null>(null);
+  const [creativeAutoNote,setCreativeAutoNote]=useState("");
   const [shirtFilter,setShirtFilter]=useState<ShirtFabricFilter>("All");
   const [pantFilter,setPantFilter]=useState<PantFabricFilter>("All");
   const fact = DESIGNER_FASHION_FACTS[factIndex];
@@ -369,6 +370,7 @@ export function DesignerModule() {
 
   function runCreativeLab() {
     if (!shirt || !pant) return;
+    setCreativeAutoNote("");
     const concepts=generateCreativeDirections({
       shirt,pant,occasion,style,context:{climate,intention},
       measurements:measurementProfile,observations:tailorObservations,creativeLearning,creativeResearch,researchFreedom:"maximum",limit:5,
@@ -407,6 +409,9 @@ export function DesignerModule() {
       const redesign=chooseCreativeRedesign(candidates,activeCreative,creativeReason);
       if(redesign) {
         setCreativeDirections([redesign,...candidates.filter((item)=>item.id!==redesign.id)].slice(0,5));
+        setCreativeAutoNote(creativeReason==="render_mismatch"
+          ? "Render check found a mismatch. V5 moved to a revised direction automatically."
+          : "V5 revised the concept using your visual feedback.");
         useCreativeDirection(redesign);
       }
     }
@@ -758,6 +763,7 @@ export function DesignerModule() {
             </div>
             <button type="button" onClick={runCreativeLab} disabled={!shirt || !pant}>Create ideas ✦</button>
           </div>
+          {creativeAutoNote && <div className="newDesignerAutoRevision"><span>V5 REDESIGN</span><strong>{creativeAutoNote}</strong></div>}
           {creativeDirections.length===0 && <div className="newDesignerCreativeEmpty">
             <div className="newDesignerSpark">✦</div>
             <strong>Ready to explore</strong>
@@ -821,7 +827,14 @@ export function DesignerModule() {
         <strong>{activeCreative.name}</strong>
         <div>{creativeQuickTags(activeCreative).map((tag)=><b key={tag}>{tag}</b>)}</div>
       </div>}
-      {shirt && pant && <PhotoOutfitPreview shirt={shirt} pant={pant} style={style} creativeDirection={activeCreative} onCreativeFeedback={giveCreativeRenderFeedback} />}
+      {shirt && pant && <PhotoOutfitPreview
+        shirt={shirt}
+        pant={pant}
+        style={style}
+        creativeDirection={activeCreative}
+        onCreativeFeedback={giveCreativeRenderFeedback}
+        onCreativeInspection={(check)=>{ if(check.status==="review" && activeCreative) giveCreativeRenderFeedback("down","render_mismatch"); }}
+      />}
       {fitCoverage.total > 0 && <div className="newDesignerFitModelNote newDesignerFitModelNoteCompact"><span>FIT PROFILE · {fitCoverage.total}/16</span></div>}
       <section className="newDesignerOutcome newDesignerOutcomeCompact" aria-live="polite" aria-label="Designer recommendation">
         {!recommendation ? <div className="newDesignerEmpty newDesignerEmptyCompact"><span>LOOK CHECK</span><strong>Preview first.</strong><p>When you like the direction, check the look.</p></div> : <>
