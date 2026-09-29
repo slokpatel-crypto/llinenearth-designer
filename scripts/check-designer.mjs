@@ -20,7 +20,7 @@ function load(file) {
   const nativeRequire = loaded.require.bind(loaded);
   loaded.require = (specifier) => {
     if (specifier.startsWith("@/")) return load(path.resolve("src",specifier.slice(2)) + ".ts");
-    if (specifier.startsWith("./") && specifier.endsWith(".json")) return load(path.resolve(path.dirname(full),specifier));
+    if ((specifier.startsWith("./") || specifier.startsWith("../")) && specifier.endsWith(".json")) return load(path.resolve(path.dirname(full),specifier));
     return nativeRequire(specifier);
   };
   loaded._compile(code,full);
