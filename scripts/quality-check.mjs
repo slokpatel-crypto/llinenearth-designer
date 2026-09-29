@@ -380,7 +380,7 @@ const creativeGarmentSpec=fs.readFileSync("src/lib/designer/garment-spec.ts","ut
 for(const token of ["creative: {","conceptId:string","treatments:Array","pattern: {","Creative treatments are design instructions","creativeVisualReviewRequired","passing photoreal visual review"]) {
   if(!creativeGarmentSpec.includes(token)) throw new Error(`Creative garment spec regression: missing ${token}`);
 }
-for(const token of ["activeCreative","buildCanonicalGarmentSpec(recommendation, fitConstruction, measurementProfile, brandLanguage, blockStrategy, activeCreative)","creativeTreatmentCount","creativePatternId"]) {
+for(const token of ["activeCreative","buildCanonicalGarmentSpec(recommendation, fitConstruction, measurementProfile, brandLanguage, blockStrategy, activeCreative, creativeVisualReview)","creativeTreatmentCount","creativePatternId"]) {
   if(!realDesignerModule.includes(token)) throw new Error(`Creative garment export regression: missing ${token}`);
 }
 console.log("Creative garment spec gate passed: selected V5 treatments and pattern instructions survive export and event memory.");
