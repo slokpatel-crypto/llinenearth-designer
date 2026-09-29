@@ -1,5 +1,4 @@
 import { FABRIC_STOCK, type FabricColorway } from "@/lib/fabric-stock";
-import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import reference from "./reference-data.json";
 
 export type OccasionTier = "Casual" | "Smart-Casual" | "Semi-Formal" | "Formal";
@@ -38,7 +37,6 @@ export interface DesignerFabric {
   comfortTags?: Exclude<DesignerClimate, "Not specified">[] | null;
   source: string;
   allowedGarments: Array<"shirt" | "pant">;
-  intelligence?: DesignerFabricIntelligence | null;
 }
 
 export interface DesignerRuleResult {
