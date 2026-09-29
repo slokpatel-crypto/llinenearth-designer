@@ -20,20 +20,23 @@ import "./contact-dock.css";
 import "./finish-polish.css";
 import { BrandIntro } from "@/components/BrandIntro";
 
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "https://linenearth.com")).replace(/\/$/,"");
+
 export const metadata: Metadata = {
   title: "Linen Earth — AI Atelier",
   description: "A premium digital atelier for fabric-led menswear design.",
-  metadataBase: new URL("https://llinenearth-designer.vercel.app"),
+  alternates: { canonical: SITE_URL },
+  metadataBase: new URL(SITE_URL),
   icons: {
-    icon: "/brand/llinen-earth-logo.png",
-    apple: "/brand/llinen-earth-logo.png",
+    icon: "/brand/linen-earth-logo.png",
+    apple: "/brand/linen-earth-logo.png",
   },
   openGraph: {
     title: "Linen Earth — AI Atelier",
     description: "A premium digital atelier for fabric-led menswear design.",
-    url: "https://llinenearth-designer.vercel.app",
+    url: SITE_URL,
     siteName: "Linen Earth",
-    images: [{ url: "/brand/llinen-earth-logo.png", width: 1273, height: 531 }],
+    images: [{ url: "/brand/linen-earth-logo.png", width: 1273, height: 531 }],
     locale: "en_IN",
     type: "website",
   },
@@ -41,7 +44,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Linen Earth — AI Atelier",
     description: "A premium digital atelier for fabric-led menswear design.",
-    images: ["/brand/llinen-earth-logo.png"],
+    images: ["/brand/linen-earth-logo.png"],
   },
 };
 
