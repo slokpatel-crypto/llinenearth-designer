@@ -37,10 +37,24 @@ function clean(value:unknown,limit:number) {
   return String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
 }
 
+
+function canonicalUrlIdentity(value:unknown,limit=1800) {
+  const raw=clean(value,limit);
+  if(!raw) return "";
+  try {
+    const url=new URL(raw);
+    // Signed CDN/cache-busting parameters can change while the underlying image
+    // stays identical. Fingerprint the stable origin + path identity.
+    return `${url.protocol}//${url.hostname.toLowerCase()}${url.pathname}`;
+  } catch {
+    return raw;
+  }
+}
+
 export function fabricAnalysisFingerprint(input:FabricAnalyzerContext) {
   const canonical=JSON.stringify({
-    imageUrl:clean(input.imageUrl,1800),
-    sourcePageUrl:clean(input.sourcePageUrl,1800),
+    imageUrl:canonicalUrlIdentity(input.imageUrl),
+    sourcePageUrl:canonicalUrlIdentity(input.sourcePageUrl),
     sourceId:clean(input.sourceId,80),
     declaredMaterial:clean(input.declaredMaterial,120),
     declaredFabricType:clean(input.declaredFabricType,120),
