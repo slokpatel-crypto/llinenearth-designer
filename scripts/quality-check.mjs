@@ -292,7 +292,7 @@ for (const token of ["MeasurementProfile","FitConstructionAssessment","assessFit
   if (!plannerV2.includes(token)) throw new Error(`Fit-aware Designer planner regression: missing ${token}`);
 }
 const designerV2 = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["assessFitConstruction","fitConstruction.fitScore","Fit/construction:","measurementProfile","newDesignerTechnicalDrawer"]) {
+for (const token of ["assessFitConstruction","Tailoring checks are active","Fit/construction:","measurementProfile","newDesignerTechnicalDrawer"]) {
   if (!designerV2.includes(token)) throw new Error(`Fit Construction V2 UI regression: missing ${token}`);
 }
 console.log("Fit Construction V2 gate passed: provisional ease ranges, finished-garment targets, construction checks and measurement-aware cut ranking protected.");
