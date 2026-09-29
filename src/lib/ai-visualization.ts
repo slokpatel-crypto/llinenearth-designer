@@ -378,7 +378,7 @@ async function semanticCreativeRenderCheck(
         "content-type":"application/json",
       },
       body:JSON.stringify({
-        model:process.env.LINEN_VISUAL_CRITIC_MODEL || "openai/gpt-5.6-sol",
+        model:process.env.LINEN_VISUAL_CRITIC_MODEL || "openai/gpt-5.4",
         input:[{
           role:"user",
           content:[
