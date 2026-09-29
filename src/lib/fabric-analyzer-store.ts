@@ -55,8 +55,17 @@ export function fabricAnalysisFingerprint(input:FabricAnalyzerContext) {
   const contentSha=clean(input.contentSha256,128);
   const perceptualHash=clean(input.perceptualHash,64);
   const canonical=contentSha
-    ? JSON.stringify({contentSha256:contentSha,perceptualHash})
-    : JSON.stringify({imageUrl:canonicalUrlIdentity(input.imageUrl)});
+    ? JSON.stringify({
+      contentSha256:contentSha,
+      perceptualHash,
+      macroContentSha256:clean(input.macroContentSha256,128),
+      foldContentSha256:clean(input.foldContentSha256,128),
+    })
+    : JSON.stringify({
+      imageUrl:canonicalUrlIdentity(input.imageUrl),
+      macroImageUrl:canonicalUrlIdentity(input.macroImageUrl),
+      foldImageUrl:canonicalUrlIdentity(input.foldImageUrl),
+    });
   return createHash("sha256").update(canonical).digest("hex");
 }
 
@@ -103,10 +112,14 @@ export async function storeFabricAnalysis(
       supplierColorName:clean(input.supplierColorName,120),
       supplierPatternName:clean(input.supplierPatternName,120),
       notes:clean(input.notes,500),
+      macroImageUrl:clean(input.macroImageUrl,1800),
+      foldImageUrl:clean(input.foldImageUrl,1800),
       swatchRealWidthMm:Number.isFinite(input.swatchRealWidthMm)?input.swatchRealWidthMm:null,
       repeatRealMm:Number.isFinite(input.repeatRealMm)?input.repeatRealMm:null,
       contentSha256:clean(input.contentSha256,128),
       perceptualHash:clean(input.perceptualHash,64),
+      macroContentSha256:clean(input.macroContentSha256,128),
+      foldContentSha256:clean(input.foldContentSha256,128),
     },
     p_analyzer_version:ANALYZER_VERSION,
     p_model_id:clean(modelId,120),
@@ -213,6 +226,8 @@ export async function reviewFabricAnalyzerProfile(input:{
 export type FabricAnalyzerBatchItem = {
   fabricId?:string;
   imageUrl?:string;
+  macroImageUrl?:string;
+  foldImageUrl?:string;
   sourcePageUrl?:string;
   sourceId?:string;
   declaredMaterial?:string;
@@ -230,6 +245,8 @@ export async function enqueueFabricAnalyzerBatch(items:FabricAnalyzerBatchItem[]
   const cleanItems=items.slice(0,500).map((item)=>({
     fabricId:clean(item.fabricId,160),
     imageUrl:clean(item.imageUrl,1800),
+    macroImageUrl:clean(item.macroImageUrl,1800),
+    foldImageUrl:clean(item.foldImageUrl,1800),
     sourcePageUrl:clean(item.sourcePageUrl,1800),
     sourceId:clean(item.sourceId,80),
     declaredMaterial:clean(item.declaredMaterial,120),
