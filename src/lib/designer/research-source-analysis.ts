@@ -1,4 +1,6 @@
 import { lookup } from "node:dns/promises";
+import { request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
 import { isIP } from "node:net";
 import type { CreativeResearchSignal } from "@/lib/designer/creative-research";
 
@@ -63,43 +65,82 @@ function safePublicUrl(value:string) {
   return url;
 }
 
-async function assertPublicResolution(url:URL) {
+type PublicAddress={address:string;family:4|6};
+
+async function resolvePublicAddress(url:URL):Promise<PublicAddress> {
   const host=url.hostname.toLowerCase().replace(/\.$/,"");
   if(isIP(host)) {
     if(isPrivateAddress(host)) throw new Error("Private or local research URLs are not allowed.");
-    return;
+    return {address:host,family:isIP(host) as 4|6};
   }
   const addresses=await lookup(host,{all:true,verbatim:true});
   if(!addresses.length) throw new Error("Research source hostname could not be resolved.");
   if(addresses.some((entry)=>isPrivateAddress(entry.address))) {
     throw new Error("Research source resolves to a private or local network address.");
   }
+  const selected=addresses.find((entry)=>entry.family===4) || addresses[0];
+  return {address:selected.address,family:selected.family as 4|6};
+}
+
+function pinnedPageRequest(url:URL,target:PublicAddress) {
+  return new Promise<{status:number;headers:Record<string,string|string[]|undefined>;body:string}>((resolve,reject)=>{
+    const secure=url.protocol==="https:";
+    const request=secure?httpsRequest:httpRequest;
+    const defaultPort=secure?"443":"80";
+    const port=url.port || defaultPort;
+    const hostHeader=port===defaultPort?url.hostname:`${url.hostname}:${port}`;
+    const req=request({
+      protocol:url.protocol,
+      hostname:target.address,
+      family:target.family,
+      port,
+      method:"GET",
+      path:`${url.pathname || "/"}${url.search}`,
+      servername:secure?url.hostname:undefined,
+      headers:{
+        host:hostHeader,
+        accept:"text/html,application/xhtml+xml;q=0.9,text/plain;q=0.7",
+        "user-agent":"LinenEarthDesignerResearch/1.0",
+        connection:"close",
+      },
+      timeout:9_000,
+    },(response)=>{
+      const chunks:Buffer[]=[];
+      let bytes=0;
+      response.on("data",(chunk:Buffer|string)=>{
+        const buffer=Buffer.isBuffer(chunk)?chunk:Buffer.from(chunk);
+        bytes+=buffer.length;
+        if(bytes<=520_000) chunks.push(buffer);
+        else response.destroy(new Error("Research source response exceeded the safe analysis limit."));
+      });
+      response.on("end",()=>{
+        const headers=Object.fromEntries(Object.entries(response.headers).map(([key,value])=>[key,value]));
+        resolve({status:response.statusCode || 0,headers,body:Buffer.concat(chunks).toString("utf8").slice(0,500_000)});
+      });
+    });
+    req.on("timeout",()=>req.destroy(new Error("Research source request timed out.")));
+    req.on("error",reject);
+    req.end();
+  });
 }
 
 async function fetchPublicHtml(input:string) {
   let url=safePublicUrl(input);
   for(let hop=0;hop<4;hop+=1) {
-    await assertPublicResolution(url);
-    const response=await fetch(url,{
-      headers:{
-        accept:"text/html,application/xhtml+xml;q=0.9,text/plain;q=0.7",
-        "user-agent":"LinenEarthDesignerResearch/1.0",
-      },
-      redirect:"manual",
-      cache:"no-store",
-      signal:AbortSignal.timeout(9_000),
-    });
+    const target=await resolvePublicAddress(url);
+    const response=await pinnedPageRequest(url,target);
     if([301,302,303,307,308].includes(response.status)) {
-      const location=response.headers.get("location");
+      const rawLocation=response.headers.location;
+      const location=Array.isArray(rawLocation)?rawLocation[0]:rawLocation;
       if(!location) throw new Error("Research source redirected without a location.");
       url=safePublicUrl(new URL(location,url).toString());
       continue;
     }
-    if(!response.ok) throw new Error(`Research source returned ${response.status}.`);
-    const type=response.headers.get("content-type")||"";
+    if(response.status<200 || response.status>=300) throw new Error(`Research source returned ${response.status}.`);
+    const rawType=response.headers["content-type"];
+    const type=Array.isArray(rawType)?rawType[0]||"":rawType||"";
     if(!/text\/html|application\/xhtml\+xml|text\/plain/i.test(type)) throw new Error("Research source did not return readable page text.");
-    const html=(await response.text()).slice(0,500_000);
-    return {html,url:url.toString()};
+    return {html:response.body,url:url.toString()};
   }
   throw new Error("Research source redirected too many times.");
 }
