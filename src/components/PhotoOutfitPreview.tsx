@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
 import type { StyleSpecV2 } from "@/lib/designer/style-spec-v2";
+import type { BodyPreviewProfile } from "@/lib/designer/body-profile";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import fabricTileManifest from "../../public/fabric-tiles/manifest.json";
 import { CREATIVE_FEEDBACK_REASONS, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
@@ -623,11 +624,12 @@ export type CreativeVisualCheck = {
   improvement?:"improved"|"same"|"worse"|"not_applicable";
 };
 
-export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, creativeDirection, onCreativeFeedback, onCreativeInspection, autoRenderNonce = 0, onCreativeRenderStart, renderRepairInstruction = "" }: {
+export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile, creativeDirection, onCreativeFeedback, onCreativeInspection, autoRenderNonce = 0, onCreativeRenderStart, renderRepairInstruction = "" }: {
   shirt: DesignerFabric;
   pant: DesignerFabric;
   style: DesignerStyle;
   styleSpec?: StyleSpecV2;
+  bodyProfile?: BodyPreviewProfile;
   creativeDirection?: CreativeDirection | null;
   onCreativeFeedback?: (rating:"up"|"down",reason?:CreativeFeedbackReason)=>void;
   onCreativeInspection?: (check:CreativeVisualCheck)=>void;
@@ -664,6 +666,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, creativeDire
     pant:pant.id,
     style,
     styleSpec:styleSpec||null,
+    bodyProfile:bodyProfile||null,
     creative:creativeDirection?.id ?? null,
   });
 
@@ -717,6 +720,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, creativeDire
             pant:{id:pant.id,name:pant.name,line:pant.line,image:pant.image,hex:pant.hex,patternType:pant.patternType},
             style,
             styleSpec,
+            bodyProfile,
             locked:true,
           },
         }),
@@ -770,7 +774,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, creativeDire
           shirt:{id:shirt.id,name:shirt.name,line:shirt.line,image:shirt.image,hex:shirt.hex,patternType:shirt.patternType},
           pant:{id:pant.id,name:pant.name,line:pant.line,image:pant.image,hex:pant.hex,patternType:pant.patternType},
           style,
-          ...(!creativeDirection ? {styleSpec,locked:true,lookKey:renderSignature} : {}),
+          ...(!creativeDirection ? {styleSpec,bodyProfile,locked:true,lookKey:renderSignature} : {}),
           ...(creativeDirection ? {creative:{
             id:creativeDirection.id,
             name:creativeDirection.name,
@@ -853,6 +857,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, creativeDire
           pant:{id:pant.id,name:pant.name,line:pant.line,image:pant.image,hex:pant.hex,patternType:pant.patternType},
           style,
           styleSpec,
+          bodyProfile,
           locked:true,
           lookKey:renderSignature,
         }),
@@ -899,6 +904,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, creativeDire
           pant:{id:pant.id,name:pant.name,line:pant.line,image:pant.image,hex:pant.hex,patternType:pant.patternType},
           style,
           styleSpec,
+          bodyProfile,
           locked:true,
           lookKey:renderSignature,
         }),
