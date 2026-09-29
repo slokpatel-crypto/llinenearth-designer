@@ -700,6 +700,43 @@ for(const token of ["/brand/linen-earth-logo.png","SITE_URL","alternates: { cano
 }
 console.log("Designer trust/mobile gate passed: measurement units, corrected social metadata/logo path and mobile dock separation protected.");
 
+const phase10DesignerUi=fs.readFileSync("src/components/DesignerModule.tsx","utf8");
+for(const token of ["styleSpec","mergeLegacyIntoStyleSpec","validateStyleSpecV2","LiveConstructionPreview","Studio preview","Live cut study","bodyProfile","bodyProfileFromMeasurements"]) {
+  if(!phase10DesignerUi.includes(token)) throw new Error(`Phase 10 canonical Designer regression: missing ${token}`);
+}
+const phase10StyleSpec=fs.readFileSync("src/lib/designer/style-spec-v2.ts","utf8");
+for(const token of ["STYLE_SCHEMA_VERSION=2","mergeLegacyIntoStyleSpec","validateStyleSpecV2","styleSpecRenderSummary"]) {
+  if(!phase10StyleSpec.includes(token)) throw new Error(`Phase 10 StyleSpec regression: missing ${token}`);
+}
+const phase10LivePreview=fs.readFileSync("src/components/LiveConstructionPreview.tsx","utf8");
+for(const token of ["onSpecChange","bodyProfile","onBodyProfileChange","BODY_HEIGHT_OPTIONS","BODY_SKIN_TONES"]) {
+  if(!phase10LivePreview.includes(token)) throw new Error(`Phase 10 live-preview regression: missing ${token}`);
+}
+const phase10Body=fs.readFileSync("src/lib/designer/body-profile.ts","utf8");
+for(const token of ["BodyPreviewProfile","bodyProfileFromMeasurements","validBodyPreviewProfile","bodyProfileRenderSummary"]) {
+  if(!phase10Body.includes(token)) throw new Error(`Phase 10 body-profile regression: missing ${token}`);
+}
+const phase10RenderRoute=fs.readFileSync("src/app/api/designer/look-render/route.ts","utf8");
+for(const token of ["input.locked!==true","getCachedSelectedLookRender","x-linen-render-cache"]) {
+  if(!phase10RenderRoute.includes(token)) throw new Error(`Phase 10 final-render regression: missing ${token}`);
+}
+const phase10Analyzer=fs.readFileSync("src/lib/fabric-analyzer.ts","utf8");
+for(const token of ["macroImageUrl","foldImageUrl","Photo protocol image order is FLAT","Macro capture missing","Fold capture missing","captureMeasurements"]) {
+  if(!phase10Analyzer.includes(token)) throw new Error(`Phase 10 photo-protocol regression: missing ${token}`);
+}
+const phase10AnalyzerStore=fs.readFileSync("src/lib/fabric-analyzer-store.ts","utf8");
+for(const token of ["macroContentSha256","foldContentSha256","macroImageUrl","foldImageUrl"]) {
+  if(!phase10AnalyzerStore.includes(token)) throw new Error(`Phase 10 Analyzer fingerprint regression: missing ${token}`);
+}
+const analyzerMigration=fs.readFileSync("supabase/migrations/20260929_fabric_analyzer_private_backend.sql","utf8");
+for(const token of ["fabric-analyzer-v4","macroImageUrl","foldImageUrl","swatchRealWidthMm","repeatRealMm"]) {
+  if(!analyzerMigration.includes(token)) throw new Error(`Phase 10 Analyzer migration regression: missing ${token}`);
+}
+if(/\bas \$\s*(?:\n|$)/m.test(analyzerMigration) || /\n\$;/.test(analyzerMigration)) {
+  throw new Error("Phase 10 Analyzer migration regression: malformed single-dollar function quoting remains.");
+}
+console.log("Phase 10 destination gate passed: canonical StyleSpec, live cut preview, measurement-aware body profile, final-only FASHN and flat/macro/fold Analyzer protocol are protected.");
+
 
 
 const creativeEngine = fs.readFileSync("src/lib/designer/creative-engine.ts","utf8");
