@@ -44,6 +44,10 @@ for (const path of [
   "src/lib/designer/search.ts",
   "src/app/api/designer/casebook/route.ts",
   "src/app/api/designer/creative-inspect/route.ts",
+  "src/app/api/operator/designer-research/discover/route.ts",
+  "src/app/api/operator/designer-research/analyze/route.ts",
+  "src/lib/designer/research-source-discovery.ts",
+  "src/lib/designer/research-source-analysis.ts",
   "src/lib/designer/casebook.ts",
   "src/lib/designer/garment-spec.ts",
   "desktop/src/App.tsx",
@@ -146,7 +150,11 @@ requireTokens("src/app/api/designer/creative-inspect/route.ts", ["inspectCreativ
 requireTokens("src/lib/ai-visualization.ts", ["inspectCreativeRender","heroVisibility","boundaryIntegrity","PROTECTED_RENDER_BOXES","Visual hierarchy contract","semanticCreativeRenderCheck","ai-gateway.vercel.sh/v1/responses","LINEN_VISUAL_CRITIC_MODEL","openai/gpt-5.4","referenceDataUri","fabricContext","heroAccuracy","fabricFidelity","supportCompetition","visualCriticModels","google/gemini-3-flash"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["VISUAL CHECK PASSED","onCreativeInspection","newDesignerRenderCheck"]);
 requireTokens("src/lib/designer/creative-learning.ts", ["renderMismatchReviews",'review.reason==="render_mismatch"',"renderRisk","renderQualitySamples"]);
-requireTokens("src/app/operator/designer-research/DesignerResearchClient.tsx", ["Creative Research Desk","Save research signal"]);
+requireTokens("src/app/operator/designer-research/DesignerResearchClient.tsx", ["Creative Research Desk","Save research signal","Discover up to 1,000 websites","Analyze source ✦"]);
+requireTokens("src/lib/designer/research-source-discovery.ts", ["discoverFashionWebsites","Q3661311","Q11828862","Q607081","Math.min(1000"]);
+requireTokens("src/lib/designer/research-source-analysis.ts", ["analyzeFashionResearchSource","safePublicUrl","linen_research_signal","Do not copy a finished garment","LINEN_RESEARCH_MODEL","google/gemini-3-flash"]);
+requireTokens("src/app/api/operator/designer-research/discover/route.ts", ["discoverFashionWebsites","limit=1000","Operator login required"]);
+requireTokens("src/app/api/operator/designer-research/analyze/route.ts", ["analyzeFashionResearchSource","Operator login required","maxDuration=30"]);
 requireTokens("src/lib/designer/casebook.ts", [
   "designer-casebook-v1","designer_case_review","casebookSignalFor","total>=3","scale=6"
 ]);
@@ -203,6 +211,7 @@ requireTokens(".env.example", [
   "LINEN_MEMORY_SESSION_SECRET=",
   "AI_GATEWAY_API_KEY=",
   "LINEN_VISUAL_CRITIC_MODEL=",
+  "LINEN_RESEARCH_MODEL=",
 ]);
 
 if (!failed) ok("Static website, desktop, cloud and installer release contracts are intact.");
