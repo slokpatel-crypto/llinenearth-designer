@@ -116,6 +116,8 @@ export function DesignerModule() {
   const [creativeResearch, setCreativeResearch] = useState<CreativeResearchLibrary | null>(null);
   const [researchPool, setResearchPool] = useState<{websites:number;topics:number;targets:number;highAuthorityWebsites:number}|null>(null);
   const [creativeAutoNote,setCreativeAutoNote]=useState("");
+  const [creativeAutoRetryCount,setCreativeAutoRetryCount]=useState(0);
+  const [creativeAutoRenderNonce,setCreativeAutoRenderNonce]=useState(0);
   const [shirtFilter,setShirtFilter]=useState<ShirtFabricFilter>("All");
   const [pantFilter,setPantFilter]=useState<PantFabricFilter>("All");
   const fact = DESIGNER_FASHION_FACTS[factIndex];
@@ -372,6 +374,7 @@ export function DesignerModule() {
 
   function runCreativeLab() {
     if (!shirt || !pant) return;
+    setCreativeAutoRetryCount(0);
     setCreativeAutoNote("");
     const concepts=generateCreativeDirections({
       shirt,pant,occasion,style,context:{climate,intention},
@@ -404,6 +407,10 @@ export function DesignerModule() {
     } catch { /* Creative review remains optional if memory storage is unavailable. */ }
 
     if(rating==="down" && creativeReason) {
+      if(visualCheck && creativeAutoRetryCount>=1) {
+        setCreativeAutoNote("The revised render still needs review. Automatic rerender stopped after one retry to avoid wasting render credits.");
+        return;
+      }
       const candidates=generateCreativeDirections({
         shirt,pant,occasion,style,context:{climate,intention},
         measurements:measurementProfile,observations:tailorObservations,
@@ -413,14 +420,22 @@ export function DesignerModule() {
       if(redesign) {
         setCreativeDirections([redesign,...candidates.filter((item)=>item.id!==redesign.id)].slice(0,5));
         setCreativeAutoNote(visualCheck
-          ? "Visual check found a weak point. V5 moved to a revised direction automatically."
+          ? "Visual check found a weak point. V5 revised the idea and is rendering it once more automatically."
           : "V5 revised the concept using your visual feedback.");
-        useCreativeDirection(redesign);
+        useCreativeDirection(redesign,visualCheck?"automatic":"manual");
+        if(visualCheck) {
+          setCreativeAutoRetryCount((count)=>count+1);
+          setCreativeAutoRenderNonce((nonce)=>nonce+1);
+        }
       }
     }
   }
 
-  function useCreativeDirection(direction:CreativeDirection) {
+  function useCreativeDirection(direction:CreativeDirection,origin:"manual"|"automatic"="manual") {
+    if(origin==="manual") {
+      setCreativeAutoRetryCount(0);
+      setCreativeAutoNote("");
+    }
     setStyle({...direction.baseStyle});
     setRecommendation(direction.recommendation);
     setDirections([]);
@@ -830,6 +845,8 @@ export function DesignerModule() {
         style={style}
         creativeDirection={activeCreative}
         onCreativeFeedback={giveCreativeRenderFeedback}
+        autoRenderNonce={creativeAutoRenderNonce}
+        onCreativeRenderStart={()=>{setCreativeAutoRetryCount(0);setCreativeAutoNote("");}}
         onCreativeInspection={(check)=>{
           if(!check.evidenceAvailable || !activeCreative) return;
           if(check.status==="review") giveCreativeRenderFeedback("down",check.redesignReason || "render_mismatch",check);
