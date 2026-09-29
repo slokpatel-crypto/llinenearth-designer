@@ -21,6 +21,10 @@ import {
 } from "@/lib/fabric-analyzer-real-examples";
 import { FABRIC_REFERENCE_PROVENANCE } from "@/lib/fabric-analyzer-provenance-map";
 import {
+  isTrustedFabricReferenceImageUrl,
+  resolveFabricReferencePage,
+} from "@/lib/fabric-reference-page";
+import {
   loadFabricAnalyzerLearningHints,
   loadStoredFabricAnalysis,
   storeFabricAnalysis,
@@ -28,6 +32,8 @@ import {
 
 export type FabricAnalyzerContext = {
   imageUrl:string;
+  sourcePageUrl?:string;
+  sourceId?:string;
   declaredMaterial?:string;
   declaredFabricType?:string;
   supplierColorName?:string;
@@ -99,9 +105,11 @@ const ALLOWED_HOSTS=[
   /^https:\/\/images\.unsplash\.com\//i,
 ];
 
-function safeImageUrl(value:string) {
+function safeImageUrl(value:string,sourcePageUrl?:string) {
   const url=value.trim();
-  if(!url || url.length>1800 || !ALLOWED_HOSTS.some((pattern)=>pattern.test(url))) {
+  const builtIn=url.length<=1800 && ALLOWED_HOSTS.some((pattern)=>pattern.test(url));
+  const official=url.length<=1800 && isTrustedFabricReferenceImageUrl(url,sourcePageUrl);
+  if(!url || (!builtIn && !official)) {
     throw new Error("Fabric Analyzer only accepts trusted HTTPS image sources.");
   }
   return url;
@@ -274,11 +282,13 @@ export async function analyzeMenswearFabric(input:FabricAnalyzerContext):Promise
   if(!token) throw new Error("AI Gateway is not configured for Fabric Analyzer.");
 
   const declared=[
+    input.sourceId ? `Approved reference source ID: ${safeText(input.sourceId,80)}.` : "",
+    input.sourcePageUrl ? `Approved source page: ${safeText(input.sourcePageUrl,500)}.` : "",
     input.declaredMaterial ? `Declared material: ${safeText(input.declaredMaterial,120)}.` : "",
     input.declaredFabricType ? `Declared fabric type: ${safeText(input.declaredFabricType,120)}.` : "",
     input.supplierColorName ? `Supplier color name: ${safeText(input.supplierColorName,120)}.` : "",
     input.supplierPatternName ? `Supplier pattern name: ${safeText(input.supplierPatternName,120)}.` : "",
-    input.notes ? `Additional context: ${safeText(input.notes,300)}.` : "",
+    input.notes ? `Additional context: ${safeText(input.notes,500)}.` : "",
   ].filter(Boolean).join(" ");
 
   const learningHints=await loadFabricAnalyzerLearningHints();
@@ -358,7 +368,7 @@ Known context, if any: ${declared || "No verified context supplied; rely only on
         role:"user",
         content:[
           {type:"input_text",text:prompt},
-          {type:"input_image",image_url:safeImageUrl(input.imageUrl),detail:"high"},
+          {type:"input_image",image_url:safeImageUrl(input.imageUrl,input.sourcePageUrl),detail:"high"},
         ],
       }],
       text:{format:{type:"json_schema",name:"linen_fabric_analyzer",strict:true,schema}},
@@ -380,6 +390,24 @@ export type FabricAnalyzerRun = {
   cached:boolean;
   reviewStatus:"unreviewed"|"approved"|"corrected"|"rejected"|null;
 };
+
+export async function analyzeMenswearReferencePage(
+  pageUrl:string,
+  options:{persist?:boolean}={},
+) {
+  const reference=await resolveFabricReferencePage(pageUrl);
+  if(!reference.imageUrl) throw new Error("Approved fabric reference page does not expose a trusted preview image.");
+  const run=await analyzeMenswearFabricWithStore({
+    imageUrl:reference.imageUrl,
+    sourcePageUrl:reference.canonicalUrl,
+    sourceId:reference.sourceId || undefined,
+    notes:[
+      reference.title ? `Official source title: ${reference.title}` : "",
+      reference.description ? `Official source description: ${reference.description}` : "",
+    ].filter(Boolean).join(". ").slice(0,500),
+  },{reuseReviewed:true,persist:options.persist!==false});
+  return {reference,run};
+}
 
 export async function analyzeMenswearFabricWithStore(
   input:FabricAnalyzerContext,
