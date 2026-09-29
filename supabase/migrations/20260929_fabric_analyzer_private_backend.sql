@@ -232,7 +232,7 @@ revoke all on all tables in schema private from public,anon,authenticated;
 
 create or replace function public.fabric_analyzer_profile_get(
   p_image_fingerprint text,
-  p_analyzer_version text default 'fabric-analyzer-v3'
+  p_analyzer_version text default 'fabric-analyzer-v4'
 )
 returns table(
   id uuid,image_fingerprint text,image_source text,declared_context jsonb,analyzer_version text,model_id text,
@@ -454,11 +454,11 @@ returns jsonb language sql security definer set search_path='public','private' a
       'colors',(select coalesce(jsonb_agg(jsonb_build_object('term',color_name,'source_id',source_id,'system',system_name) order by lower(color_name),source_id),'[]'::jsonb) from private.fabric_color_reference_terms)
     )
   );
-$;
+$$;
 
 create or replace function public.fabric_analyzer_batch_enqueue(p_items jsonb)
 returns table(batch_id uuid,queued integer)
-language plpgsql security definer set search_path='public','private' as $
+language plpgsql security definer set search_path='public','private' as $$
 declare v_batch uuid:=gen_random_uuid(); v_count integer:=0; item jsonb;
 begin
   if jsonb_typeof(p_items)<>'array' then raise exception 'items must be an array'; end if;
@@ -478,7 +478,11 @@ begin
         'declaredFabricType',left(trim(coalesce(item->>'declaredFabricType','')),120),
         'supplierColorName',left(trim(coalesce(item->>'supplierColorName','')),120),
         'supplierPatternName',left(trim(coalesce(item->>'supplierPatternName','')),120),
-        'notes',left(trim(coalesce(item->>'notes','')),500)
+        'notes',left(trim(coalesce(item->>'notes','')),500),
+        'macroImageUrl',left(trim(coalesce(item->>'macroImageUrl','')),1800),
+        'foldImageUrl',left(trim(coalesce(item->>'foldImageUrl','')),1800),
+        'swatchRealWidthMm',case when jsonb_typeof(item->'swatchRealWidthMm')='number' then item->'swatchRealWidthMm' else 'null'::jsonb end,
+        'repeatRealMm',case when jsonb_typeof(item->'repeatRealMm')='number' then item->'repeatRealMm' else 'null'::jsonb end
       ),
       coalesce((item->>'force')::boolean,false)
     );
@@ -486,11 +490,11 @@ begin
   end loop;
   return query select v_batch,v_count;
 end;
-$;
+$$;
 
 create or replace function public.fabric_analyzer_jobs_claim(p_limit integer default 4)
 returns table(id uuid,batch_id uuid,fabric_id text,image_url text,source_page_url text,source_id text,declared_context jsonb,force boolean,attempts integer)
-language plpgsql security definer set search_path='public','private' as $
+language plpgsql security definer set search_path='public','private' as $$
 begin
   return query
   with picked as (
@@ -505,10 +509,10 @@ begin
   )
   select u.id,u.batch_id,u.fabric_id,u.image_url,u.source_page_url,u.source_id,u.declared_context,u.force,u.attempts from updated u;
 end;
-$;
+$$;
 
 create or replace function public.fabric_analyzer_job_finish(p_job_id uuid,p_status text,p_profile_id uuid default null,p_error text default '')
-returns boolean language plpgsql security definer set search_path='public','private' as $
+returns boolean language plpgsql security definer set search_path='public','private' as $$
 begin
   if p_status not in ('complete','error') then raise exception 'unsupported status'; end if;
   update private.fabric_analysis_jobs
@@ -516,13 +520,13 @@ begin
   where id=p_job_id;
   return found;
 end;
-$;
+$$;
 
 create or replace function public.fabric_analyzer_batch_status(p_batch_id uuid)
 returns table(status text,count bigint)
-language sql security definer set search_path='public','private' as $
+language sql security definer set search_path='public','private' as $$
   select j.status,count(*) from private.fabric_analysis_jobs j where j.batch_id=p_batch_id group by j.status order by j.status;
-$;
+$$;
 
 do $$
 declare fn regprocedure;
