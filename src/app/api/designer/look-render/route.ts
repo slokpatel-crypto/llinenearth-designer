@@ -3,7 +3,9 @@ import {
   assertFashnRateLimit,
   FashnVisualizationError,
   renderSelectedLookFashnFront,
+  renderSelectedLookFashnView,
   type SelectedLookFashnRequest,
+  type SelectedLookView,
 } from "@/lib/ai-visualization";
 
 export const runtime="nodejs";
@@ -24,8 +26,12 @@ export async function POST(request:Request) {
   try {
     const body=await request.json() as unknown;
     if(!valid(body)) return NextResponse.json({error:"Selected fabrics and a supported garment configuration are required."},{status:400});
+    const input=body as SelectedLookFashnRequest & {view?:SelectedLookView;frontImage?:string};
+    const view:SelectedLookView=["front","three-quarter","side","back"].includes(String(input.view)) ? input.view as SelectedLookView : "front";
     assertFashnRateLimit(request);
-    const result=await renderSelectedLookFashnFront(body);
+    const result=view==="front"
+      ? await renderSelectedLookFashnFront(input)
+      : await renderSelectedLookFashnView(input,String(input.frontImage||""),view);
     return NextResponse.json({result});
   } catch(error) {
     if(error instanceof FashnVisualizationError) {
