@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { DesignerClimate, DesignerFabric, DesignerStyle, OccasionTier } from "@/lib/designer/engine";
 import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import { optionsFor } from "@/lib/designer/options/library";
@@ -19,12 +19,23 @@ const groups:Array<{title:string;fields:Array<[keyof StyleSpecV2["shirt"]|keyof 
   {title:"Trousers",fields:[["fit","pant.fit"],["rise","pant.rise"],["pleat","pant.pleat"],["waistband","pant.waistband"],["hem","pant.hem"],["break","pant.break"]]},
 ];
 
-export function LiveConstructionPreview({shirt,pant,style,occasion,climate}:{shirt:DesignerFabric;pant:DesignerFabric;style:DesignerStyle;occasion:OccasionTier;climate:DesignerClimate}) {
+export function LiveConstructionPreview({
+  shirt,pant,style,occasion,climate,spec:controlledSpec,onSpecChange,
+}:{
+  shirt:DesignerFabric;
+  pant:DesignerFabric;
+  style:DesignerStyle;
+  occasion:OccasionTier;
+  climate:DesignerClimate;
+  spec?:StyleSpecV2;
+  onSpecChange?:(next:StyleSpecV2)=>void;
+}) {
   const base=useMemo(()=>fromLegacyStyle(style),[style]);
-  const [draft,setDraft]=useState<{shirt:Partial<StyleSpecV2["shirt"]>;pant:Partial<StyleSpecV2["pant"]>}>({shirt:{},pant:{}});
-  const spec=useMemo<StyleSpecV2>(()=>({
-    ...base,shirt:{...base.shirt,...draft.shirt},pant:{...base.pant,...draft.pant},
-  }),[base,draft]);
+  const [localSpec,setLocalSpec]=useState<StyleSpecV2>(base);
+  useEffect(()=>{
+    if(!controlledSpec) setLocalSpec(base);
+  },[base,controlledSpec]);
+  const spec=controlledSpec || localSpec;
   const [view,setView]=useState<PreviewView>("front");
   const [build,setBuild]=useState<ModelBuild>("regular");
   const [showControls,setShowControls]=useState(false);
@@ -33,7 +44,15 @@ export function LiveConstructionPreview({shirt,pant,style,occasion,climate}:{shi
   const shirtAsset=assetFor(shirt),pantAsset=assetFor(pant);
   const rules=useMemo(()=>evaluateCrossGarmentRules({spec,occasion,climate,pantDrapeVerified:false}),[spec,occasion,climate]);
   function change(side:"shirt"|"pant",key:string,id:string) {
-    setDraft((before)=>({...before,[side]:{...before[side],[key]:id}}));
+    const next:StyleSpecV2={
+      ...spec,
+      shirt:{...spec.shirt},
+      pant:{...spec.pant},
+      legacy:{...spec.legacy},
+    };
+    (next[side] as Record<string,string>)[key]=id;
+    if(onSpecChange) onSpecChange(next);
+    else setLocalSpec(next);
   }
   function tileSize(asset:FabricRenderAsset|null) {
     return asset?.tileRealWidthMm ? Math.max(25,Math.min(320,asset.tileRealWidthMm*.45)) : 112;
@@ -107,7 +126,7 @@ export function LiveConstructionPreview({shirt,pant,style,occasion,climate}:{shi
           <small>Preview: approximate · tailoring approval needed</small>
         </label>)}
       </div></fieldset>)}
-      <p className="liveConstructionDraftNote">These expanded cut choices are a construction study. The saved Designer look still uses the main cut controls until the new spec is connected to saving and AI rendering.</p>
+      <p className="liveConstructionDraftNote">Expanded cut choices are saved with this Designer draft. Final photoreal rendering stays locked until you confirm the design.</p>
     </div>}
     <details className="liveConstructionVerdict"><summary>Styling reasons and accuracy</summary>
       {rules.length?<ul>{rules.slice(0,5).map((rule)=><li key={rule.ruleId}><b>{rule.effect.toUpperCase()}</b> {rule.explanation}</li>)}</ul>:<p>No cross-garment conflict from the provisional rules.</p>}
