@@ -24,6 +24,7 @@ export type CreativeLearningBucket = {
 export type CreativeLearningBook = {
   version:"designer-creative-learning-v1";
   totalReviews:number;
+  renderMismatchReviews:number;
   usableFamilies:number;
   buckets:CreativeLearningBucket[];
 };
@@ -66,11 +67,24 @@ export function aggregateCreativeLearning(events:EventLike[]):CreativeLearningBo
   }
 
   const buckets=new Map<string,CreativeLearningBucket>();
+  let renderMismatchReviews=0;
   for(const review of latest.values()) {
     const current=buckets.get(review.familyId) || {
       familyId:review.familyId,positive:0,negative:0,total:0,
       reasons:Object.fromEntries(CREATIVE_FEEDBACK_REASONS.map(([id])=>[id,0])) as Record<CreativeFeedbackReason,number>,
     };
+
+    // A renderer failing to express the specification is not evidence that
+    // the fashion idea itself is bad. Track that separately so automatic
+    // visual QA improves rendering without training the creative taste signal
+    // toward safer or more conventional concepts.
+    if(review.rating==="down" && review.reason==="render_mismatch") {
+      current.reasons.render_mismatch+=1;
+      renderMismatchReviews+=1;
+      buckets.set(review.familyId,current);
+      continue;
+    }
+
     if(review.rating==="up") current.positive+=1;
     else {
       current.negative+=1;
@@ -81,9 +95,11 @@ export function aggregateCreativeLearning(events:EventLike[]):CreativeLearningBo
   }
 
   const values=[...buckets.values()].sort((a,b)=>b.total-a.total || b.positive-a.positive);
+  const totalReviews=values.reduce((sum,item)=>sum+item.total,0);
   return {
     version:"designer-creative-learning-v1",
-    totalReviews:latest.size,
+    totalReviews,
+    renderMismatchReviews,
     usableFamilies:values.filter((item)=>item.total>=3).length,
     buckets:values,
   };
@@ -92,7 +108,8 @@ export function aggregateCreativeLearning(events:EventLike[]):CreativeLearningBo
 export function creativeLearningSignalFor(familyId:string,book?:CreativeLearningBook|null):CreativeLearningSignal {
   const bucket=book?.buckets.find((item)=>item.familyId===familyId);
   if(!bucket || bucket.total<3) {
-    return {score:0,evidence:bucket?.total || 0,summary:"Creative review evidence is still sparse for this idea family."};
+    const renderNote=bucket?.reasons.render_mismatch ? ` ${bucket.reasons.render_mismatch} render mismatch review(s) are tracked separately from creative taste.` : "";
+    return {score:0,evidence:bucket?.total || 0,summary:`Creative review evidence is still sparse for this idea family.${renderNote}`};
   }
   // Human visual review is useful, but capped at +/-5 so it cannot erase
   // research, aesthetics, originality or hard construction checks.
