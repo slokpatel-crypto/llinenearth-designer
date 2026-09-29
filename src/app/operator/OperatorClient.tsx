@@ -398,7 +398,7 @@ export default function OperatorClient() {
     <main className="operator">
       <header className="operatorHero">
         <div>
-          <p>LLINEN EARTH / OPERATOR DESK</p>
+          <p>LINEN EARTH / OPERATOR DESK</p>
           <h1>Know what happened.<br/><em>Know what to do next.</em></h1>
           <span>One screen for customer intent, visual activity, follow-up and local hard-drive memory.</span>
         </div>
