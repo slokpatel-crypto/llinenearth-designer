@@ -470,7 +470,7 @@ const sourceRows = (researchPool.match(/\{id:"[^"]+",name:/g) || []).length;
 const topicRows = (researchPool.match(/\{id:"[^"]+",query:/g) || []).length;
 if (sourceRows * topicRows < 1000) throw new Error(`Designer V5 research pool regression: expected >=1000 source-topic targets, found ${sourceRows * topicRows}`);
 const creativeUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["03 / CREATE","Imagine new designs","Create ideas ✦","newDesignerCreativeVisual","newDesignerMiniScores","researchPool","researchFreedom:\"maximum\"","FRONTIER IDEA","Design reasoning","chooseCreativeRedesign","limit:12","creativeAutoNote","render_mismatch","onCreativeInspection"]) {
+for (const token of ["03 / CREATE","Imagine new designs","Create ideas ✦","newDesignerCreativeVisual","newDesignerMiniScores","researchPool","researchFreedom:\"maximum\"","FRONTIER IDEA","Design reasoning","chooseCreativeRedesign","limit:12","creativeAutoNote","render_mismatch","onCreativeInspection","severeHeuristicFailure","reliableReview"]) {
   if (!creativeUi.includes(token)) throw new Error(`Designer V5 creative UI regression: missing ${token}`);
 }
 const creativePreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
@@ -484,6 +484,10 @@ for (const token of ["inspectCreativeRender","heroVisibility","boundaryIntegrity
 const creativeRenderRoute = fs.readFileSync("src/app/api/designer/creative-render/route.ts","utf8");
 for (const token of ["renderCreativeFashnFront","assertFashnRateLimit","CreativeFashnRequest"]) {
   if (!creativeRenderRoute.includes(token)) throw new Error(`Designer V5 photoreal route regression: missing ${token}`);
+}
+const creativeInspectRoute = fs.readFileSync("src/app/api/designer/creative-inspect/route.ts","utf8");
+for (const token of ["inspectCreativeFashnOutput","inspectRateLimited","__linenCreativeInspectRate","temporarily rate limited"]) {
+  if (!creativeInspectRoute.includes(token)) throw new Error(`Designer V5 visual-inspection route regression: missing ${token}`);
 }
 const researchDesk = fs.readFileSync("src/app/operator/designer-research/DesignerResearchClient.tsx","utf8");
 for (const token of ["Creative Research Desk","RESEARCH → DESIGN TRANSLATOR","Save research signal","Allow this reviewed signal to influence V5 now"]) {
