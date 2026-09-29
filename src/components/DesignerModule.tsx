@@ -146,7 +146,7 @@ export function DesignerModule() {
   const blockStrategy = useMemo(() => shirt && pant ? assessBlockStrategy(measurementProfile, style, tailorObservations) : null, [measurementProfile, style, shirt, pant, tailorObservations]);
   const negotiation = useMemo(() => recommendation ? buildDesignerNegotiation(recommendation, fitConstruction) : null, [recommendation, fitConstruction]);
   const brandLanguage = useMemo(() => shirt && pant ? evaluateLinenEarthBrandLanguage(shirt,pant,style,occasion,{climate,intention}) : null, [shirt,pant,style,occasion,climate,intention]);
-  const garmentSpec = useMemo(() => recommendation ? buildCanonicalGarmentSpec(recommendation, fitConstruction, measurementProfile, brandLanguage, blockStrategy) : null, [recommendation, fitConstruction, measurementProfile, brandLanguage, blockStrategy]);
+  const garmentSpec = useMemo(() => recommendation ? buildCanonicalGarmentSpec(recommendation, fitConstruction, measurementProfile, brandLanguage, blockStrategy, activeCreative) : null, [recommendation, fitConstruction, measurementProfile, brandLanguage, blockStrategy, activeCreative]);
 
   useEffect(() => {
     try {
@@ -445,6 +445,14 @@ export function DesignerModule() {
     setFeedbackReason(null);
     setRecommendationId(null);
     try {
+      const creativeSpec=buildCanonicalGarmentSpec(
+        direction.recommendation,
+        assessFitConstruction(measurementProfile,direction.baseStyle,{climate,shirtFabric:direction.recommendation.shirt,trouserFabric:direction.recommendation.pant,observations:tailorObservations}),
+        measurementProfile,
+        evaluateLinenEarthBrandLanguage(direction.recommendation.shirt,direction.recommendation.pant,direction.baseStyle,direction.recommendation.occasion,{climate,intention}),
+        assessBlockStrategy(measurementProfile,direction.baseStyle,tailorObservations),
+        direction,
+      );
       const event=recordStyleMemoryEvent(designerSession(),"designer_recommendation",{
         shirtId:direction.recommendation.shirt.id,
         pantId:direction.recommendation.pant.id,
@@ -471,6 +479,14 @@ export function DesignerModule() {
         reasoningText:`${direction.thesis} Creative Lab V5 selected after multi-critic refinement.`,
         status:direction.recommendation.status,
         ruleSetVersion:direction.recommendation.ruleSetVersion,
+        garmentSpec:{
+          version:creativeSpec.version,
+          status:creativeSpec.status,
+          creativeConceptId:creativeSpec.creative?.conceptId || "",
+          creativeTreatmentCount:creativeSpec.creative?.treatments.length || 0,
+          creativePatternId:creativeSpec.creative?.pattern?.id || "",
+          readiness:creativeSpec.readiness,
+        },
       });
       setRecommendationId(event.id);
     } catch { /* Creative concept remains usable if memory storage is unavailable. */ }
