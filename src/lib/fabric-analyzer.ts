@@ -1,4 +1,12 @@
 import "server-only";
+import {
+  FABRIC_ANALYZER_EVIDENCE_RULES,
+  MENSWEAR_COLOR_TAXONOMY,
+  MENSWEAR_GARMENT_USES,
+  MENSWEAR_MATERIAL_TAXONOMY,
+  MENSWEAR_OCCASION_TAXONOMY,
+  MENSWEAR_PATTERN_TAXONOMY,
+} from "@/lib/fabric-analyzer-taxonomy";
 
 export type FabricAnalyzerContext = {
   imageUrl:string;
@@ -215,6 +223,14 @@ Important evidence rules:
 Menswear interpretation scale:
 Formality 1 = relaxed/resort/casual; 2 = casual/smart-casual; 3 = smart-casual/semi-formal; 4 = business/formal; 5 = ceremonial/evening/high-formality.
 Statement level 1 = quiet base; 5 = dominant hero fabric.
+
+Internal menswear taxonomy to ground classification:
+Materials/constructions: ${MENSWEAR_MATERIAL_TAXONOMY.join(", ")}.
+Patterns: ${MENSWEAR_PATTERN_TAXONOMY.join(", ")}.
+Shade families: ${MENSWEAR_COLOR_TAXONOMY.join(", ")}.
+Garment uses: ${MENSWEAR_GARMENT_USES.join(", ")}.
+Occasions: ${MENSWEAR_OCCASION_TAXONOMY.join(", ")}.
+Evidence discipline: ${FABRIC_ANALYZER_EVIDENCE_RULES.join(" ")}
 
 Known context, if any: ${declared || "No verified context supplied; rely only on visible evidence."}`;
 
