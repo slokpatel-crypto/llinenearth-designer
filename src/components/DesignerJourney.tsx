@@ -14,7 +14,7 @@ import type { DesignVersion } from "@/lib/refinement-engine";
 import type { RenderSet } from "@/lib/visualization-engine";
 
 type Stage = "fabric" | "context" | "generating" | "directions" | "refine" | "visualizing" | "visualization" | "visualization-error" | "error";
-const STORAGE_KEY = "llinen-earth-designer-session-v4";
+const STORAGE_KEY = "linen-earth-designer-session-v4";
 
 export function DesignerJourney() {
   const [stage, setStage] = useState<Stage>("fabric");
