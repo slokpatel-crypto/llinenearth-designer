@@ -507,11 +507,11 @@ for(const token of ["discoverFashionWebsites","Q3661311","Q11828862","Q607081","
   if(!researchDiscovery.includes(token)) throw new Error(`Research website discovery regression: missing ${token}`);
 }
 const researchAnalysis=fs.readFileSync("src/lib/designer/research-source-analysis.ts","utf8");
-for(const token of ["analyzeFashionResearchSource","analyzeFashionResearchBatch","safePublicUrl","resolvePublicAddress","pinnedPageRequest","node:https","node:dns/promises","Research source resolves to a private or local network address","Private or local research URLs are not allowed","linen_research_signal","Do not copy a finished garment","LINEN_RESEARCH_MODEL","google/gemini-3-flash"]) {
+for(const token of ["analyzeFashionResearchSource","analyzeFashionResearchBatch","offset+=4","Math.min(8","safePublicUrl","resolvePublicAddress","pinnedPageRequest","node:https","node:dns/promises","Research source resolves to a private or local network address","Private or local research URLs are not allowed","linen_research_signal","Do not copy a finished garment","LINEN_RESEARCH_MODEL","google/gemini-3-flash"]) {
   if(!researchAnalysis.includes(token)) throw new Error(`Research synthesis regression: missing ${token}`);
 }
 const researchDeskUi=fs.readFileSync("src/app/operator/designer-research/DesignerResearchClient.tsx","utf8");
-for(const token of ["Discover up to 1,000 websites","discover1000","Analyze source ✦","analyzeCurrentSource","Synthesize first 4 ✦","analyzeResearchBatch","NEW SYNTHESIS / REVIEW BEFORE ACTIVATING"]) {
+for(const token of ["Discover up to 1,000 websites","discover1000","Analyze source ✦","analyzeCurrentSource","Synthesize 8 diverse sources ✦","analyzeResearchBatch","NEW SYNTHESIS / REVIEW BEFORE ACTIVATING"]) {
   if(!researchDeskUi.includes(token)) throw new Error(`Research desk discovery regression: missing ${token}`);
 }
 console.log("Designer research-scale gate passed: live discovery can retrieve up to 1,000 distinct official fashion/textile sites and synthesize reviewed principles safely.");
