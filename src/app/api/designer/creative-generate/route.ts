@@ -24,6 +24,10 @@ const OCCASIONS:OccasionTier[]=["Casual","Smart-Casual","Semi-Formal","Formal"];
 const CLIMATES:DesignerClimate[]=["Not specified","Hot / humid","Cool","Air-conditioned"];
 const INTENTIONS:DesignerIntention[]=["Understated","Balanced","Expressive"];
 
+const OCCASIONS:OccasionTier[]=["Casual","Smart-Casual","Semi-Formal","Formal"];
+const CLIMATES:DesignerClimate[]=["Not specified","Hot / humid","Cool","Air-conditioned"];
+const INTENTIONS:DesignerIntention[]=["Understated","Balanced","Expressive"];
+
 const registry=(globalThis as typeof globalThis & {__linenCreativeGenerateRate?:Map<string,{at:number;count:number}>}).__linenCreativeGenerateRate ||= new Map<string,{at:number;count:number}>();
 
 function rateLimited(request:Request) {
