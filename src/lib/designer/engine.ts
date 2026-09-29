@@ -1,5 +1,6 @@
 import { FABRIC_STOCK, type FabricColorway } from "@/lib/fabric-stock";
 import reference from "./reference-data.json";
+import { legacyLabelsFor } from "@/lib/designer/options/library";
 import { legacyLabelsFor, optionsFor } from "./options/library.ts";
 
 export type OccasionTier = "Casual" | "Smart-Casual" | "Semi-Formal" | "Formal";
@@ -164,18 +165,18 @@ function optionLabels(group:Parameters<typeof optionsFor>[0],legacyOnly=false) {
 // add new provisional construction options without editing this engine again.
 // Contrast plackets remain withheld because they require a verified accent cloth.
 export const DESIGNER_STYLE_CHOICES: Record<keyof DesignerStyle, string[]> = {
-  collar: optionLabels("shirt.collar"),
+  collar: legacyLabelsFor("shirt.collar"),
   collarFinish: ["Self-fabric", "White contrast collar", "White contrast collar + cuffs"],
-  cuff: optionLabels("shirt.cuff"),
-  placket: optionLabels("shirt.placket").filter((option) => option !== "Contrast Placket"),
-  shirtFit: optionLabels("shirt.fit"),
+  cuff: legacyLabelsFor("shirt.cuff"),
+  placket: legacyLabelsFor("shirt.placket"),
+  shirtFit: legacyLabelsFor("shirt.fit"),
   shirtWear: ["Untucked", "Tucked"],
-  trouser: optionLabels("pant.type",true),
-  rise: optionLabels("pant.rise"),
-  waistband: optionLabels("pant.waistband"),
-  break: optionLabels("pant.break"),
-  button: optionLabels("shirt.button",true),
-};
+  trouser: legacyLabelsFor("pant.type"),
+  rise: legacyLabelsFor("pant.rise"),
+  waistband: legacyLabelsFor("pant.waistband"),
+  break: legacyLabelsFor("pant.break"),
+  button: legacyLabelsFor("shirt.button"),
+}
 
 export function designerStyleForOccasion(occasion: OccasionTier): DesignerStyle {
   const preset = PRESETS[occasion];
