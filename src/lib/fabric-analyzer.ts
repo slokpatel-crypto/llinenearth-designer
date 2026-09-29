@@ -19,6 +19,7 @@ import {
   REAL_MENSWEAR_FABRIC_EXAMPLES,
   REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT,
 } from "@/lib/fabric-analyzer-real-examples";
+import { FABRIC_REFERENCE_PROVENANCE } from "@/lib/fabric-analyzer-provenance-map";
 
 export type FabricAnalyzerContext = {
   imageUrl:string;
@@ -228,20 +229,33 @@ function safeText(value:unknown,limit:number) {
 const materialReferenceSet=new Set<string>(REAL_MENSWEAR_MATERIAL_TERMS.map((value)=>value.toLowerCase()));
 const patternReferenceSet=new Set<string>(REAL_MENSWEAR_PATTERN_TERMS.map((value)=>value.toLowerCase()));
 const colorReferenceSet=new Set<string>(STANDARD_COLOR_REFERENCE_TERMS.map((value)=>value.toLowerCase()));
-const sourceReferenceSet=new Set<string>(FABRIC_REFERENCE_SOURCES.map((value)=>value.id));
 
 function retainKnown(values:string[],known:Set<string>) {
   return [...new Set(values.filter((value)=>known.has(value.toLowerCase())))].slice(0,8);
 }
 
+function sourceIdsForReferences(materialTerms:string[],patternTerms:string[],colorTerms:string[]) {
+  const materialSet=new Set(materialTerms.map((value)=>value.toLowerCase()));
+  const patternSet=new Set(patternTerms.map((value)=>value.toLowerCase()));
+  const colorSet=new Set(colorTerms.map((value)=>value.toLowerCase()));
+  const ids:string[]=[];
+  for(const item of FABRIC_REFERENCE_PROVENANCE.materials) if(materialSet.has(item.term.toLowerCase())) ids.push(item.source_id);
+  for(const item of FABRIC_REFERENCE_PROVENANCE.patterns) if(patternSet.has(item.term.toLowerCase())) ids.push(item.source_id);
+  for(const item of FABRIC_REFERENCE_PROVENANCE.colors) if(colorSet.has(item.term.toLowerCase())) ids.push(item.source_id);
+  return [...new Set(ids)].slice(0,10);
+}
+
 function validatedProfile(profile:FabricAnalyzerProfile):FabricAnalyzerProfile {
+  const materialTerms=retainKnown(profile.references.materialTerms,materialReferenceSet);
+  const patternTerms=retainKnown(profile.references.patternTerms,patternReferenceSet);
+  const colorTerms=retainKnown(profile.references.colorTerms,colorReferenceSet);
   return {
     ...profile,
     references:{
-      materialTerms:retainKnown(profile.references.materialTerms,materialReferenceSet),
-      patternTerms:retainKnown(profile.references.patternTerms,patternReferenceSet),
-      colorTerms:retainKnown(profile.references.colorTerms,colorReferenceSet),
-      sourceIds:[...new Set(profile.references.sourceIds.filter((id)=>sourceReferenceSet.has(id)))].slice(0,10),
+      materialTerms,
+      patternTerms,
+      colorTerms,
+      sourceIds:sourceIdsForReferences(materialTerms,patternTerms,colorTerms),
     },
   };
 }
@@ -304,7 +318,8 @@ ${REAL_MENSWEAR_FABRIC_EXAMPLES.map((example)=>[
 Reference rules:
 - Use references only when there is a defensible visual or declared-context match.
 - Do not claim that a fabric is a specific branded mill product unless that exact product is supplied as verified context.
-- references.materialTerms/patternTerms/colorTerms/sourceIds must contain only exact terms/IDs from the corpus above.
+- references.materialTerms/patternTerms/colorTerms must contain only exact terms from the corpus above.
+- The backend derives sourceIds from its provenance map; do not rely on guessed source attribution.
 - A source-backed vocabulary match supports terminology, not unverified composition or provenance of the uploaded fabric.
 - Real-fabric examples are anchors for vocabulary, scale and menswear role only. Never copy composition, weight or provenance from a similar-looking example onto the uploaded fabric.
 - If a declared fact conflicts with visual resemblance to a reference example, preserve the declared fact and lower confidence in the visual match.
