@@ -1,11 +1,12 @@
 import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { readBrandEnv } from "@/lib/runtime-compat";
 
 const VERSION = "v1";
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 function secret() {
-  const value = process.env.LINEN_MEMORY_SESSION_SECRET?.trim();
+  const value = readBrandEnv("LINEN_MEMORY_SESSION_SECRET");
   return value && value.length >= 32 ? value : null;
 }
 
