@@ -67,10 +67,12 @@ export async function POST(request:Request) {
       supplierColorName:clean(body.supplierColorName,120) || undefined,
       supplierPatternName:clean(body.supplierPatternName,120) || undefined,
       notes:clean(body.notes,500) || undefined,
+      swatchRealWidthMm:Number.isFinite(Number(body.swatchRealWidthMm)) ? Number(body.swatchRealWidthMm) : undefined,
+      repeatRealMm:Number.isFinite(Number(body.repeatRealMm)) ? Number(body.repeatRealMm) : undefined,
     };
 
     const run=await analyzeMenswearFabricWithStore(input,{reuseReviewed:!force,persist:true});
-    return json({mode:"private-fabric-analyzer-v3",run});
+    return json({mode:"private-fabric-analyzer-v4",run});
   } catch(error) {
     console.error("[operator/fabric-analyzer/analyze]",error);
     return json({error:error instanceof Error ? error.message : "Fabric Analyzer failed."},{status:400});
