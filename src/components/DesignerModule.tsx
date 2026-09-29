@@ -9,7 +9,7 @@ import {
 } from "@/lib/designer/engine";
 import { DESIGNER_FASHION_FACTS, DESIGNER_RESEARCH } from "@/lib/designer/research";
 import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
-import { PhotoOutfitPreview, type CreativeVisualCheck } from "@/components/PhotoOutfitPreview";
+import { PhotoOutfitPreview, StyleDirectorRealModelPreview, type CreativeVisualCheck } from "@/components/PhotoOutfitPreview";
 import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, type MeasurementProfile } from "@/lib/measurements";
 import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
@@ -888,9 +888,13 @@ export function DesignerModule() {
           {briefError && <span className="newDesignerSearchError">{briefError}</span>}
           {briefResults.length>0 && <div className="newDesignerBriefResults">
             {briefResults.map((result)=><article key={result.id}>
-              <div className="newDesignerBriefPair">
-                <img src={result.shirt.image} alt="" loading="lazy" decoding="async" />
-                <img src={result.pant.image} alt="" loading="lazy" decoding="async" />
+              <div className="newDesignerBriefModel">
+                <StyleDirectorRealModelPreview shirt={result.shirt} pant={result.pant} style={result.style} />
+                <span>SAME LINEN EARTH MODEL</span>
+              </div>
+              <div className="newDesignerBriefPair" aria-label="Selected fabric references">
+                <img src={result.shirt.image} alt={`${result.shirt.name} shirt fabric`} loading="lazy" decoding="async" />
+                <img src={result.pant.image} alt={`${result.pant.name} trouser fabric`} loading="lazy" decoding="async" />
               </div>
               <div className="newDesignerBriefCopy">
                 <span>0{result.rank} · {result.tier.toUpperCase()}</span>
