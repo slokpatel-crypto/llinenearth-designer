@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { AnimatePresence, motion } from "motion/react";
 import type { StyleDirectorAnswers, StyleDirectorLook } from "@/lib/style-director-agent";
+import { StyleDirectorRealModelPreview } from "@/components/PhotoOutfitPreview";
 import { createStyleSessionId, flushPendingStyleMemoryEvents, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
 import "./style-director.css";
 
@@ -199,11 +200,14 @@ export default function StyleDirectorPage() {
 
         <motion.div key={selectedLook.id} className="lookStage" initial={{opacity:0,x:14}} animate={{opacity:1,x:0}} transition={{duration:.3,ease:[.2,.8,.2,1]}}>
           <div className="lookVisual" style={{"--fabric":selectedLook.fabric.hex} as React.CSSProperties}>
-            {heroRender ? <img src={heroRender.src} alt={heroRender.label} /> : <>
+            {heroRender ? <img src={heroRender.src} alt={heroRender.label} /> : selectedLook.realModel ? <>
+              <StyleDirectorRealModelPreview shirt={selectedLook.realModel.shirtFabric} pant={selectedLook.realModel.pantFabric} style={selectedLook.realModel.style} />
+              <div className="swatchCard" style={{backgroundImage:`url('${selectedLook.fabric.swatchImageUrl}')`}}><span>REAL STOCK</span></div>
+            </> : <>
               <div className="abstractLook"><i/><i/><i/></div>
               <div className="swatchCard" style={{backgroundImage:`url('${selectedLook.fabric.swatchImageUrl}')`}}><span>REAL STOCK</span></div>
             </>}
-            <div className="visualBadge">{heroRender ? (renderSet?.providerLabel || "Rendered look") : "Concept view"}</div>
+            <div className="visualBadge">{heroRender ? (renderSet?.providerLabel || "Rendered look") : selectedLook.realModel ? "Existing real model · live outfit" : "Concept view"}</div>
           </div>
 
           <div className="lookCopy">
@@ -224,7 +228,7 @@ export default function StyleDirectorPage() {
               <p>{selectedLook.realModel.style.shirtWear} · {selectedLook.realModel.style.trouser} · {selectedLook.realModel.style.collar}</p>
             </div>}
             <div className="directorActions">
-              <button onClick={()=>visualize("preview")} disabled={Boolean(rendering)}>{rendering==="preview"?"Building…":"See mannequin"} <b>↗</b></button>
+              <button onClick={()=>visualize("preview")} disabled={Boolean(rendering)}>{rendering==="preview"?"Building…":"Generate alternate preview"} <b>↗</b></button>
               <button className="photoAction" onClick={()=>visualize("photo")} disabled={Boolean(rendering)}>{rendering==="photo"?"Rendering…":"Make photoreal"} <b>✦</b></button>
               {designerHandoff && <a href={designerHandoff} onClick={()=>recordStyleMemoryEvent(sessionId,"render_requested",{mode:"real-model-handoff",lookId:selectedLook.id,fabricId:selectedLook.fabric.id})}>Open Linen Earth Real Model Designer <b>↗</b></a>}
               <a href={whatsapp} target="_blank" rel="noreferrer" onClick={()=>recordStyleMemoryEvent(sessionId,"whatsapp_clicked",{lookId:selectedLook.id,fabricId:selectedLook.fabric.id,fabric:selectedLook.fabric.colorName})}>Book this look <b>↗</b></a>
