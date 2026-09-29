@@ -61,7 +61,7 @@ export function OutfitStudio() {
   const suiting = suitingFabrics[suitingIndex];
   const summary = useMemo(() => `${shirt.name} ${shirtStyles.find(x=>x.id===shirtStyle)?.name} + ${suiting.name} ${trouserStyles.find(x=>x.id===trouserStyle)?.name}${layerStyle === "none" ? "" : layerStyle === "suit" ? " + matching suit jacket" : " + blazer"}`, [shirt, suiting, shirtStyle, trouserStyle, layerStyle]);
 
-  return <section className="outfitStudio" aria-label="LLinen Earth full outfit fabric preview">
+  return <section className="outfitStudio" aria-label="Linen Earth full outfit fabric preview">
     <div className="outfitStudioIntro">
       <div><p className="eyebrow">FULL OUTFIT STUDIO · SAME MANNEQUIN</p><h2>Choose the cloth. See the finished combination.</h2></div>
       <p>This view is designed around one consistent faceless menswear mannequin. Pick a plain shirting fabric, a suiting fabric, and the silhouette. Shirt and trouser update together so the customer sees the outfit rather than isolated swatches.</p>
