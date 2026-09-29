@@ -398,9 +398,9 @@ export async function inspectSelectedLookFashnOutput(
   const prompt=[
     "You are a strict production QA inspector for a premium menswear visualizer.",
     "Judge render fidelity, not fashion taste. The customer already chose the outfit.",
-    \`Required shirt: \${input.shirt.name}; \${input.shirt.line}; \${input.shirt.patternType}.\`,
-    \`Required trousers: \${input.pant.name}; \${input.pant.line}; \${input.pant.patternType}.\`,
-    \`Required construction: \${input.style.collar}; \${input.style.cuff}; \${input.style.placket}; \${input.style.shirtFit}; \${input.style.shirtWear}; \${input.style.trouser}; \${input.style.rise}; \${input.style.waistband}; \${input.style.break}.\`,
+    `Required shirt: ${input.shirt.name}; ${input.shirt.line}; ${input.shirt.patternType}.`,
+    `Required trousers: ${input.pant.name}; ${input.pant.line}; ${input.pant.patternType}.`,
+    `Required construction: ${input.style.collar}; ${input.style.cuff}; ${input.style.placket}; ${input.style.shirtFit}; ${input.style.shirtWear}; ${input.style.trouser}; ${input.style.rise}; ${input.style.waistband}; ${input.style.break}.`,
     "Images are supplied in this order: GENERATED RENDER, LOCKED STUDIO MODEL, then SPLIT FABRIC CONTEXT when available (shirt left, trouser right).",
     "Check exact visible cloth colour/pattern/weave character, collar and cuff cleanliness, neck opening, hands, shirt/trouser boundary, tucked waistband layering, trouser silhouette, mannequin identity, background stability and synthesis artifacts.",
     "Do not fail minor natural drape variation. Review when cloth visibly bleeds onto skin/background/adjacent garment, the chosen construction is contradicted, fabric identity drifts materially, or the mannequin/background changes materially.",
@@ -427,7 +427,7 @@ export async function inspectSelectedLookFashnOutput(
   try {
     const response=await fetch("https://ai-gateway.vercel.sh/v1/responses",{
       method:"POST",
-      headers:{authorization:\`Bearer \${token}\`,"content-type":"application/json"},
+      headers:{authorization:`Bearer ${token}`,"content-type":"application/json"},
       body:JSON.stringify({
         model,
         input:[{
@@ -723,11 +723,11 @@ export async function repairSelectedLookFashnFront(
   const instruction=String(repairInstruction||"").replace(/\s+/g," ").trim().slice(0,240);
   if(!instruction) throw new FashnVisualizationError("A focused QA repair instruction is required.","invalid_source");
   const context=await creativeFabricContext(input.shirt.image,input.pant.image);
-  const prompt=\`Repair this existing Linen Earth photoreal render without redesigning it. QA defect to fix: \${instruction}
+  const prompt=`Repair this existing Linen Earth photoreal render without redesigning it. QA defect to fix: ${instruction}
 
-Preserve the same faceless mannequin, pose, camera, body proportions, deep navy studio, shirt fabric, trouser fabric, footwear and every successful garment detail. Required construction remains \${input.style.collar}; \${input.style.cuff}; \${input.style.placket}; \${input.style.shirtFit}; \${input.style.shirtWear}; \${input.style.trouser}; \${input.style.rise}; \${input.style.waistband}; \${input.style.break}.
+Preserve the same faceless mannequin, pose, camera, body proportions, deep navy studio, shirt fabric, trouser fabric, footwear and every successful garment detail. Required construction remains ${input.style.collar}; ${input.style.cuff}; ${input.style.placket}; ${input.style.shirtFit}; ${input.style.shirtWear}; ${input.style.trouser}; ${input.style.rise}; ${input.style.waistband}; ${input.style.break}.
 
-Use the supplied split fabric context only to restore the exact shirt and trouser cloth appearance. Fix the cited defect locally. Do not add styling ideas, decorative seams, contrast panels, prints, logos, props or extra garments. Keep cloth off the neck, hands, background and neighbouring garment. If tucked, keep the waistband physically in front of the shirt. Full-body front catalogue photograph.\`;
+Use the supplied split fabric context only to restore the exact shirt and trouser cloth appearance. Fix the cited defect locally. Do not add styling ideas, decorative seams, contrast panels, prints, logos, props or extra garments. Keep cloth off the neck, hands, background and neighbouring garment. If tucked, keep the waistband physically in front of the shirt. Full-body front catalogue photograph.`;
   const generated=await runEdit(previousImage,prompt,context);
   return {
     image:generated.output,
