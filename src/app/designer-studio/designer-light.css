@@ -600,3 +600,5 @@
 .newDesignerOptionalSearchBody{margin-top:10px;padding-top:10px;border-top:1px solid #ebe4dc}
 .newDesignerOptionalSearchRun{margin-top:8px;border:0;background:#203d5b;color:#fff;border-radius:999px;padding:8px 11px;font-size:7px;cursor:pointer}
 .newDesignerOptionalSearchRun:disabled{opacity:.4}
+
+/* production retry: visual-critic + research loop */
