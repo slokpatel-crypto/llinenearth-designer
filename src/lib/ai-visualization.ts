@@ -293,6 +293,10 @@ type SemanticCreativeCheck = {
   hierarchy:"strong"|"review"|"weak";
   proportion:"strong"|"review"|"weak";
   fidelity:"strong"|"review"|"weak";
+  heroAccuracy:"strong"|"review"|"weak";
+  fabricFidelity:"strong"|"review"|"weak";
+  boundary:"strong"|"review"|"weak";
+  supportCompetition:"none"|"minor"|"major";
   artifact:"none"|"minor"|"major";
   redesignReason:CreativeFeedbackReason;
   issue:string;
@@ -321,6 +325,8 @@ function gatewayOutputText(payload:unknown) {
 
 async function semanticCreativeRenderCheck(
   outputUrl:string,
+  referenceDataUri:string,
+  fabricContext:string|undefined,
   input:CreativeFashnRequest,
 ):Promise<SemanticCreativeCheck|null> {
   const token=gatewayAuthToken();
@@ -335,7 +341,10 @@ async function semanticCreativeRenderCheck(
     support.map((move)=>`Support move: ${move.zone} / ${move.label}. ${move.instruction}.`).join(" "),
     input.creative.pattern ? `Pattern: ${input.creative.pattern.name}; ${input.creative.pattern.layout}; placement: ${input.creative.pattern.placement}.` : "",
     `Base cut: ${input.style.collar}; ${input.style.cuff}; ${input.style.placket}; ${input.style.shirtFit}; ${input.style.shirtWear}; ${input.style.trouser}.`,
-    "Check: (1) hero detail is visually dominant enough, (2) proportions look intentional, (3) supporting details do not compete, (4) image follows the supplied concept rather than normalizing it, (5) there are no obvious garment-boundary or rendering artifacts.",
+    "You receive three visual references in this order: GENERATED RENDER, LOCKED STUDIO REFERENCE, then (when present) SPLIT FABRIC CONTEXT with shirt on the left and trouser on the right.",
+    "Compare them rather than judging the generated render in isolation.",
+    "Check: (1) the hero detail is visibly and geometrically expressed, (2) proportion is intentional, (3) supporting details do not compete, (4) the render follows the supplied concept instead of normalizing it, (5) shirt/trouser fabric appearance remains faithful to the supplied swatches, (6) protected areas and garment boundaries remain stable relative to the locked studio reference, (7) there are no obvious synthesis artifacts.",
+    "A concept may be unconventional and still pass. Fail it for unclear execution, fidelity loss, proportion failure, competing hierarchy, or rendering artifacts—not merely because it is unusual.",
     "If review is needed, choose the single most useful redesign reason. Keep issue under 140 characters."
   ].filter(Boolean).join("\n");
 
@@ -346,11 +355,15 @@ async function semanticCreativeRenderCheck(
       hierarchy:{type:"string",enum:["strong","review","weak"]},
       proportion:{type:"string",enum:["strong","review","weak"]},
       fidelity:{type:"string",enum:["strong","review","weak"]},
+      heroAccuracy:{type:"string",enum:["strong","review","weak"]},
+      fabricFidelity:{type:"string",enum:["strong","review","weak"]},
+      boundary:{type:"string",enum:["strong","review","weak"]},
+      supportCompetition:{type:"string",enum:["none","minor","major"]},
       artifact:{type:"string",enum:["none","minor","major"]},
       redesignReason:{type:"string",enum:["visual_balance","too_busy","too_safe","pattern_detail","proportion","originality","render_mismatch","other"]},
       issue:{type:"string",maxLength:140},
     },
-    required:["status","hierarchy","proportion","fidelity","artifact","redesignReason","issue"],
+    required:["status","hierarchy","proportion","fidelity","heroAccuracy","fabricFidelity","boundary","supportCompetition","artifact","redesignReason","issue"],
     additionalProperties:false,
   };
 
@@ -368,6 +381,8 @@ async function semanticCreativeRenderCheck(
           content:[
             {type:"input_text",text:prompt},
             {type:"input_image",image_url:outputUrl,detail:"auto"},
+            {type:"input_image",image_url:referenceDataUri,detail:"auto"},
+            ...(fabricContext?[{type:"input_image",image_url:fabricContext,detail:"auto"}]:[]),
           ],
         }],
         text:{
@@ -450,9 +465,12 @@ export async function inspectCreativeFashnOutput(
   input:CreativeFashnRequest,
 ):Promise<CreativeRenderVisualCheck> {
   if(!OFFICIAL_FASHN_OUTPUT.test(outputUrl)) throw new FashnVisualizationError("Generated render URL is not trusted.","invalid_source");
-  const source=await creativeModelDataUri(input.style);
+  const [source,fabricContext]=await Promise.all([
+    creativeModelDataUri(input.style),
+    creativeFabricContext(input.shirt.image,input.pant.image),
+  ]);
   const heuristic=await inspectCreativeRender(source,outputUrl,input);
-  const semantic=await semanticCreativeRenderCheck(outputUrl,input);
+  const semantic=await semanticCreativeRenderCheck(outputUrl,source,fabricContext,input);
   if(!semantic) return heuristic;
 
   const semanticNeedsReview=
@@ -460,6 +478,10 @@ export async function inspectCreativeFashnOutput(
     semantic.hierarchy==="weak" ||
     semantic.proportion==="weak" ||
     semantic.fidelity==="weak" ||
+    semantic.heroAccuracy==="weak" ||
+    semantic.fabricFidelity==="weak" ||
+    semantic.boundary==="weak" ||
+    semantic.supportCompetition==="major" ||
     semantic.artifact==="major";
 
   const notes=[
