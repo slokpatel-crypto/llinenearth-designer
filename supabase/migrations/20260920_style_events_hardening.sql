@@ -1,6 +1,6 @@
--- LLinen Earth cloud memory — production hardening
--- Append-only event ledger used by the public website and LLinen Earth OS.
--- This migration is the canonical bootstrap for a new LLinen Earth Supabase project.
+-- Linen Earth cloud memory — production hardening
+-- Append-only event ledger used by the public website and Linen Earth OS.
+-- This migration is the canonical bootstrap for a new Linen Earth Supabase project.
 
 begin;
 
@@ -79,9 +79,9 @@ revoke all on table public.style_events from service_role;
 grant select, insert on table public.style_events to service_role;
 
 comment on table public.style_events is
-  'LLinen Earth append-only customer/operator event ledger. Browser access is intentionally denied.';
+  'Linen Earth append-only customer/operator event ledger. Browser access is intentionally denied.';
 
-create or replace function public.llinen_cloud_schema_version()
+create or replace function public.linen_cloud_schema_version()
 returns integer
 language sql
 stable
@@ -91,15 +91,15 @@ as $$
   select 5;
 $$;
 
-revoke all on function public.llinen_cloud_schema_version() from public;
-revoke all on function public.llinen_cloud_schema_version() from anon;
-revoke all on function public.llinen_cloud_schema_version() from authenticated;
-grant execute on function public.llinen_cloud_schema_version() to service_role;
+revoke all on function public.linen_cloud_schema_version() from public;
+revoke all on function public.linen_cloud_schema_version() from anon;
+revoke all on function public.linen_cloud_schema_version() from authenticated;
+grant execute on function public.linen_cloud_schema_version() to service_role;
 
 -- Server-only diagnostic used by npm run cloud:check and desktop pairing.
 -- It verifies the permissions that matter for the event ledger without exposing
 -- customer rows or payloads.
-create or replace function public.llinen_cloud_health()
+create or replace function public.linen_cloud_health()
 returns jsonb
 language sql
 stable
@@ -126,9 +126,9 @@ as $$
   );
 $$;
 
-revoke all on function public.llinen_cloud_health() from public;
-revoke all on function public.llinen_cloud_health() from anon;
-revoke all on function public.llinen_cloud_health() from authenticated;
-grant execute on function public.llinen_cloud_health() to service_role;
+revoke all on function public.linen_cloud_health() from public;
+revoke all on function public.linen_cloud_health() from anon;
+revoke all on function public.linen_cloud_health() from authenticated;
+grant execute on function public.linen_cloud_health() to service_role;
 
 commit;
