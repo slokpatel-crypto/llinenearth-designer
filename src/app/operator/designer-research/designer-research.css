@@ -4,3 +4,19 @@
 
 .researchEditorActions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
 .researchEditorActions button:disabled{opacity:.45;cursor:default}
+
+.researchDiscoveryActions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}
+.researchDiscoveryActions .researchDiscoverButton{margin:0}
+.researchBatchButton{border:1px solid #9a715b;background:#fff8f2;color:#81553f;padding:10px 12px;font-size:8px;letter-spacing:.05em;cursor:pointer}
+.researchBatchButton:disabled{opacity:.45;cursor:default}
+.researchBatchResults{margin-top:18px;padding:14px;border:1px solid #ddcfbf;background:#fffaf5}
+.researchBatchResults>div:first-child{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.researchBatchResults>div:first-child span{font-size:7px;letter-spacing:.12em;color:#98634c;font-weight:800}
+.researchBatchResults>div:first-child strong{font:400 14px Georgia,serif;color:#294158}
+.researchBatchGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px}
+.researchBatchGrid button{border:1px solid #e4d9cd;background:#fff;text-align:left;padding:10px;cursor:pointer}
+.researchBatchGrid button:hover{border-color:#9a715b}
+.researchBatchGrid span{display:block;font-size:6px;letter-spacing:.1em;color:#9a6851}
+.researchBatchGrid strong{display:block;margin-top:5px;font:400 13px Georgia,serif;color:#294158}
+.researchBatchGrid p{margin:5px 0 0;font-size:7px;line-height:1.45;color:#716b65}
+@media(max-width:700px){.researchDiscoveryActions,.researchBatchGrid{grid-template-columns:1fr}}
