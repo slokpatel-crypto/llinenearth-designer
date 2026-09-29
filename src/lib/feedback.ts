@@ -1,4 +1,4 @@
-export const FEEDBACK_KEY = "llinen-earth-design-feedback-v1";
+export const FEEDBACK_KEY = "linen-earth-design-feedback-v1";
 
 export type FeedbackRating = "love" | "good" | "needs_work";
 export type DesignFeedback = {
