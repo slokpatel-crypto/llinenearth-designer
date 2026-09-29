@@ -414,6 +414,13 @@ for(const token of ["runFabricAnalyzerCalibration","loadFabricAnalyzerCalibratio
   if(!calibrationSource.includes(token)) throw new Error(`Fabric Analyzer calibration regression: missing ${token}`);
 }
 console.log("Fabric Analyzer calibration gate passed: source-backed reference cases can continuously measure Analyzer accuracy.");
+const fabricAnalyzerMigration="supabase/migrations/20260929_fabric_analyzer_private_backend.sql";
+if(!fs.existsSync(fabricAnalyzerMigration)) throw new Error("Fabric Analyzer backend migration is missing.");
+const fabricAnalyzerMigrationSource=fs.readFileSync(fabricAnalyzerMigration,"utf8");
+for(const token of ["private.fabric_analysis_profiles","private.fabric_analysis_bindings","fabric_analyzer_feedback_apply","fabric_analyzer_profiles_for_fabrics","fabric_analyzer_calibration_cases_get","service_role"]) {
+  if(!fabricAnalyzerMigrationSource.includes(token)) throw new Error(`Fabric Analyzer migration regression: missing ${token}`);
+}
+console.log("Fabric Analyzer migration gate passed: private corpus/profile/review/calibration backend is reproducible.");
 
 
 const photoPreviewMultiView = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
