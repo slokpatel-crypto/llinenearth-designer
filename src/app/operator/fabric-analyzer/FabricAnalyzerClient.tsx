@@ -89,6 +89,7 @@ const initial={
   verifiedDrape:"",
   verifiedFiberContent:"",
   verifiedPhysicalSourceUrl:"",
+  verifiedPhysicalEvidenceNote:"",
   notes:"",
 };
 
@@ -163,6 +164,7 @@ export default function FabricAnalyzerClient(){
   }),[directCaptures,form.imageUrl,form.macroImageUrl,form.foldImageUrl]);
   const captureCount=useMemo(()=>[effectiveCaptures.imageUrl,effectiveCaptures.macroImageUrl,effectiveCaptures.foldImageUrl].filter(Boolean).length,[effectiveCaptures]);
   const physicalCount=useMemo(()=>[form.verifiedGsm,form.verifiedDrape,form.verifiedFiberContent,form.repeatRealMm,form.swatchRealWidthMm].filter(Boolean).length,[form]);
+  const physicalProvenanceMissing=physicalCount>0 && !form.verifiedPhysicalSourceUrl.trim() && form.verifiedPhysicalEvidenceNote.trim().length<8;
 
   function field<K extends keyof typeof initial>(key:K,value:string){setForm((current)=>({...current,[key]:value}));}
   function directCapture(role:"flat"|"macro"|"fold",value:DirectFabricCapture|null){
@@ -292,12 +294,12 @@ export default function FabricAnalyzerClient(){
             <label><span>Verified GSM</span><input type="number" min="20" max="1000" value={form.verifiedGsm} onChange={(e)=>field("verifiedGsm",e.target.value)} /></label>
             <label><span>Verified drape</span><select value={form.verifiedDrape} onChange={(e)=>field("verifiedDrape",e.target.value)}><option value="">Unknown</option><option>Fluid</option><option>Balanced</option><option>Structured</option></select></label>
             <label className="wide"><span>Verified fibre content</span><input value={form.verifiedFiberContent} onChange={(e)=>field("verifiedFiberContent",e.target.value)} placeholder="Only from supplier/owner evidence" /></label>
-            <label className="wide"><span>Physical evidence source URL</span><input value={form.verifiedPhysicalSourceUrl} onChange={(e)=>field("verifiedPhysicalSourceUrl",e.target.value)} /></label>
+            <label className="wide"><span>Physical evidence source URL</span><input value={form.verifiedPhysicalSourceUrl} onChange={(e)=>field("verifiedPhysicalSourceUrl",e.target.value)} placeholder="HTTPS supplier record / specification page, when available" /></label><label className="wide"><span>Physical evidence note</span><textarea rows={2} value={form.verifiedPhysicalEvidenceNote} onChange={(e)=>field("verifiedPhysicalEvidenceNote",e.target.value)} placeholder="Required when no source URL: e.g. Owner measured repeat with ruler on roll 24B." /><small>Any supplied GSM, drape, fibre or millimetre measurement needs a source URL or this evidence note.</small></label>{physicalProvenanceMissing&&<p className="physicalProvenanceWarning">Add provenance for the supplied physical facts before running Analyzer.</p>}
           </div>
         </details>
 
         <label className="wide notes"><span>Operator notes</span><textarea rows={3} value={form.notes} onChange={(e)=>field("notes",e.target.value)} placeholder="Anything relevant to this exact fabric record" /></label>
-        <button className="analyzeButton" disabled={!effectiveCaptures.imageUrl||loading} onClick={()=>void analyze()}>{loading?"Measuring + analyzing…":"Run private Analyzer"}</button>
+        <button className="analyzeButton" disabled={!effectiveCaptures.imageUrl||loading||physicalProvenanceMissing} onClick={()=>void analyze()}>{loading?"Measuring + analyzing…":"Run private Analyzer"}</button>
       </article>
 
       <aside className="analyzerPanel analyzerResult">
