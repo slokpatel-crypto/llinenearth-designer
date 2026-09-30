@@ -10,7 +10,7 @@ import { FABRIC_STOCK } from "../src/lib/fabric-stock.ts";
 const sourceDir=path.resolve("public/fabrics");
 const outputDir=path.resolve("public/fabric-tiles");
 const declaredScalePath=path.resolve("scripts/fabric-scales.json");
-const version="fabric-tile-v1";
+const version="fabric-tile-v2";
 
 let declared={};
 try { declared=JSON.parse(await fs.readFile(declaredScalePath,"utf8")); }
@@ -46,19 +46,7 @@ for(const file of files) {
     }
     crop=await sharp(raw,{raw:{width:128,height:128,channels:3}}).png().toBuffer();
   }
-  const [normal,flopped,flipped,both]=await Promise.all([
-    crop,
-    sharp(crop).flop().png().toBuffer(),
-    sharp(crop).flip().png().toBuffer(),
-    sharp(crop).flip().flop().png().toBuffer(),
-  ]);
-  const tile=await sharp({create:{width:256,height:256,channels:3,background:"#ffffff"}})
-    .composite([
-      {input:normal,left:0,top:0},{input:flopped,left:128,top:0},
-      {input:flipped,left:0,top:128},{input:both,left:128,top:128},
-    ]).webp({quality:83,effort:5}).toBuffer();
   const stem=file.slice(0,-5);
-  await fs.writeFile(path.join(outputDir,`${stem}.webp`),tile);
   await sharp(crop).resize(24,24).webp({quality:60}).toFile(path.join(outputDir,`${stem}-placeholder.webp`));
 
   const {data}=await sharp(crop).resize(128,128).greyscale().raw().toBuffer({resolveWithObject:true});
@@ -83,6 +71,29 @@ for(const file of files) {
   } else if(/check|windowpane|plaid/.test(cataloguePattern)) orientation="grid";
   else orientation="uncertain";
   const repeatDetected=!isPlain && measured.repeatPeriodPx!==null && measured.repeatPeriodPx>=5 && /stripe|check/.test(cataloguePattern);
+  // Plain cloth benefits from mirror tiling because it suppresses fold/light
+  // seams without changing a visible motif. Patterned cloth must never be
+  // mirrored: mirroring can double stripes, reverse prints, and create false
+  // checks. Repeat the measured crop unchanged so motif direction remains true.
+  const [normal,flopped,flipped,both]=await Promise.all([
+    crop,
+    sharp(crop).flop().png().toBuffer(),
+    sharp(crop).flip().png().toBuffer(),
+    sharp(crop).flip().flop().png().toBuffer(),
+  ]);
+  const tileStrategy=isPlain?"mirrored_plain":"direction_preserving_repeat";
+  const tile=await sharp({create:{width:256,height:256,channels:3,background:"#ffffff"}})
+    .composite(isPlain
+      ? [
+        {input:normal,left:0,top:0},{input:flopped,left:128,top:0},
+        {input:flipped,left:0,top:128},{input:both,left:128,top:128},
+      ]
+      : [
+        {input:normal,left:0,top:0},{input:normal,left:128,top:0},
+        {input:normal,left:0,top:128},{input:normal,left:128,top:128},
+      ])
+    .webp({quality:86,effort:5}).toBuffer();
+  await fs.writeFile(path.join(outputDir,`${stem}.webp`),tile);
   const tileRealWidthMm=Number(scale.swatchRealWidthMm)>0
     ? Math.round(200*Number(scale.swatchRealWidthMm)*cropWidth/width)/100
     : Number(scale.repeatRealMm)>0 && repeatDetected && measured.repeatPeriodPx
@@ -102,6 +113,7 @@ for(const file of files) {
     swatchRealWidthMm:Number(scale.swatchRealWidthMm)>0?Number(scale.swatchRealWidthMm):null,
     tileRealWidthMm,
     renderAssetVersion:version,
+    tileStrategy,
   };
 }
 await fs.writeFile(path.join(outputDir,"manifest.json"),JSON.stringify(manifest,null,2)+"\n");
