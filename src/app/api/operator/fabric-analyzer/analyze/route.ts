@@ -6,6 +6,7 @@ import {
   type FabricAnalyzerContext,
 } from "@/lib/fabric-analyzer";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
+import { DIRECT_FABRIC_CAPTURE_MAX_CHARS, isDirectFabricCapture } from "@/lib/fabric-capture-input";
 
 export const runtime="nodejs";
 export const maxDuration=60;
@@ -35,7 +36,10 @@ function clean(value:unknown,limit:number) {
 
 function imageInput(value:unknown) {
   const raw=String(value??"").trim();
-  if(/^data:image\/(?:jpeg|png|webp);base64,/i.test(raw)) return raw.slice(0,1_600_000);
+  if(isDirectFabricCapture(raw)) {
+    if(raw.length>DIRECT_FABRIC_CAPTURE_MAX_CHARS) throw new Error("Direct fabric capture is too large.");
+    return raw;
+  }
   return clean(raw,1800);
 }
 
