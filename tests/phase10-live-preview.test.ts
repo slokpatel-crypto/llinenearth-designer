@@ -53,6 +53,23 @@ test("a short-sleeve, Korean-wide, high-rise study changes geometry and back vie
   assert.deepEqual(modelGeometry(expanded,"back","broad"),back);
 });
 
+test("front, three-quarter, side and back views use deterministic projection profiles",()=>{
+  const spec=fromLegacyStyle(legacy);
+  const front=modelGeometry(spec,"front");
+  const threeQuarter=modelGeometry(spec,"three-quarter");
+  const side=modelGeometry(spec,"side");
+  const back=modelGeometry(spec,"back");
+  assert.equal(front.viewScaleX,1);
+  assert.equal(back.viewScaleX,1);
+  assert(threeQuarter.viewScaleX<front.viewScaleX);
+  assert(side.viewScaleX<threeQuarter.viewScaleX);
+  assert(threeQuarter.viewShiftX>0);
+  assert(side.viewShiftX>threeQuarter.viewShiftX);
+  assert.notDeepEqual(side.seams,front.seams);
+  assert.deepEqual(modelGeometry(spec,"three-quarter"),threeQuarter);
+  assert.deepEqual(modelGeometry(spec,"side"),side);
+});
+
 test("option accuracy never claims physical exactness; button material is not shown",()=>{
   const capabilities=liveCapabilities(fromLegacyStyle(legacy));
   assert.equal(capabilities.point_standard_collar,"approximate");
