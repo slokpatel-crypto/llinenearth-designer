@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import manifest from "../public/fabric-tiles/manifest.json" with { type:"json" };
 import { FABRIC_STOCK } from "../src/lib/fabric-stock.ts";
 import { fromLegacyStyle } from "../src/lib/designer/style-spec-v2.ts";
-import { liveCapabilities, modelGeometry } from "../src/lib/designer/live-preview.ts";
+import { fabricTileSizePx, LIVE_APPROXIMATE_TILE_PX, LIVE_MODEL_PX_PER_MM, liveCapabilities, modelGeometry } from "../src/lib/designer/live-preview.ts";
 import { GARMENT_OPTION_LIBRARY } from "../src/lib/designer/options/library.ts";
 
 const legacy={
@@ -58,4 +58,24 @@ test("option accuracy never claims physical exactness; button material is not sh
   assert.equal(capabilities.plastic_resin,"none");
   assert.equal(Object.keys(capabilities).length,GARMENT_OPTION_LIBRARY.length);
   assert(!Object.values(capabilities).includes("exact"));
+});
+
+
+test("owner-declared millimetres map to a calibrated model-space tile size",()=>{
+  const declared={
+    tileUrl:"/fabric-tiles/test.webp",
+    placeholderUrl:"/fabric-tiles/test-placeholder.webp",
+    tileWidthPx:256,
+    tileHeightPx:256,
+    repeatDetected:true,
+    repeatPeriodPx:32,
+    orientation:"vertical" as const,
+    dominantHex:"#112233",
+    scaleApproximate:false,
+    tileRealWidthMm:120,
+    renderAssetVersion:"fabric-tile-v1",
+  };
+  assert.equal(fabricTileSizePx(null),LIVE_APPROXIMATE_TILE_PX);
+  assert.equal(fabricTileSizePx(declared),120*LIVE_MODEL_PX_PER_MM);
+  assert(fabricTileSizePx(declared)<LIVE_APPROXIMATE_TILE_PX);
 });
