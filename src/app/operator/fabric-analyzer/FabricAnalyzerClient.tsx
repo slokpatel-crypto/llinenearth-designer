@@ -207,7 +207,36 @@ export default function FabricAnalyzerClient(){
       if(!response.ok||!data.ok) throw new Error(data.error||"Profile review failed.");
       setMessage(`Profile marked ${status}.`);
       await Promise.all([loadStats(),loadQueue()]);
-    }catch(error){setMessage(error instanceof Error?error.message:"Profile review failed.");}
+      return true;
+    }catch(error){
+      setMessage(error instanceof Error?error.message:"Profile review failed.");
+      return false;
+    }
+  }
+
+  async function approveAndNext(profileId:string){
+    if(!await review(profileId,"approved")) return;
+    try{
+      const response=await fetch("/api/operator/designer-data",{cache:"no-store"});
+      if(response.status===401){window.location.href="/operator/login?next=/operator/fabric-analyzer";return;}
+      const payload=await response.json() as {fabrics?:Array<{
+        id:string;
+        colorName:string;
+        metadata?:{availability?:string};
+        evidence?:{priority?:number;gaps?:string[]};
+      }>;error?:string};
+      if(!response.ok) throw new Error(payload.error||"Evidence queue could not be refreshed.");
+      const next=(payload.fabrics||[])
+        .filter((fabric)=>fabric.id!==form.fabricId && fabric.metadata?.availability!=="unavailable" && Number(fabric.evidence?.priority||0)>0)
+        .sort((a,b)=>Number(b.evidence?.priority||0)-Number(a.evidence?.priority||0) || a.colorName.localeCompare(b.colorName))[0];
+      if(!next){
+        setMessage("Profile approved. No other fabric is currently waiting in the evidence-priority queue.");
+        return;
+      }
+      window.location.href=`/operator/fabric-analyzer?fabric=${encodeURIComponent(next.id)}`;
+    }catch(error){
+      setMessage(error instanceof Error?error.message:"Profile approved, but the next evidence fabric could not be opened.");
+    }
   }
 
   return <main className="analyzerDesk">
@@ -293,7 +322,7 @@ export default function FabricAnalyzerClient(){
           <div className="captures"><small>CAPTURES USED</small>{(run.profile.captureSet||[]).map((item)=><span key={item.role}>{item.role}<b>{item.contentSha256?"measured":"unmeasured"}</b></span>)}</div>
           <div className="summary"><small>ANALYZER SUMMARY</small><p>{run.profile.summary}</p></div>
           {!!run.reviewReasons?.length&&<div className="reviewReasons"><small>WHY REVIEW</small>{run.reviewReasons.map((item)=><p key={item}>{item}</p>)}</div>}
-          {run.profileId&&<div className="resultActions"><button onClick={()=>void review(run.profileId!,"approved")}>Approve profile</button><button onClick={()=>void review(run.profileId!,"rejected")}>Reject</button></div>}
+          {run.profileId&&<div className="resultActions resultActionsThree"><button onClick={()=>void review(run.profileId!,"approved")}>Approve profile</button><button onClick={()=>void approveAndNext(run.profileId!)}>Approve + next fabric</button><button onClick={()=>void review(run.profileId!,"rejected")}>Reject</button></div>}
         </>}
       </aside>
     </section>
