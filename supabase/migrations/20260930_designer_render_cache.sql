@@ -75,9 +75,6 @@ begin
     updated_at=now(),
     expires_at=excluded.expires_at;
 
-  delete from private.designer_render_cache
-  where expires_at < now() - interval '7 days';
-
   return true;
 end;
 $$;
