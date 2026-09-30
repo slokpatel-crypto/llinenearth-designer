@@ -52,6 +52,7 @@ Phase 10 is now materially beyond the original foundation brief.
 
 - 66 catalogue cloth assets are prepared at build time with placeholder-first loading.
 - Live fabric scale is calibrated against the model when real swatch/repeat millimetres are supplied; otherwise the UI explicitly labels scale approximate.
+- Reviewed/declared Analyzer repeat measurements now flow through the runtime Designer catalogue and can override an old approximate build-time tile scale immediately when the tile has a detected repeat; no fabric-tile rebuild is required for that calibration path.
 - `LiveConstructionPreview` uses deterministic SVG geometry and local state, so garment-option swaps do not require AI generation.
 - Front / 3/4 / Side / Back construction study uses the same selected cloth pair and deterministic approximate projection, and supports:
   - shirt type, collar, cuff, placket, sleeve, fit, length, hem, pocket, back, tucked/untucked state and button choice
