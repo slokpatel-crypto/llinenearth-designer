@@ -174,7 +174,7 @@ export default function FabricAnalyzerClient(){
         <h1>Fabric Analyzer Desk</h1>
         <p>Capture measurable cloth evidence first, then let the private model classify styling signals. Nothing here is exposed to customers.</p>
       </div>
-      <nav><Link href="/operator">Operator Desk</Link><Link href="/operator/designer-data">Designer Data</Link></nav>
+      <nav><Link href="/operator">Operator Desk</Link><Link href="/operator/designer-data">Designer Data</Link><Link href="/operator/fabric-ground-truth">Ground Truth</Link></nav>
     </header>
 
     <section className="analyzerPrivacy">
