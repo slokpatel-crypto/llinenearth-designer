@@ -19,7 +19,8 @@
     "eval:analyzer": "node --experimental-strip-types scripts/eval-phase10.mjs analyzer",
     "eval:designer": "node --experimental-strip-types scripts/eval-phase10.mjs designer",
     "test": "npm run fabric:tiles && node --experimental-strip-types --test tests/*.test.ts",
-    "eval:engine": "node --experimental-strip-types scripts/eval-phase10-engine.mjs"
+    "eval:engine": "node --experimental-strip-types scripts/eval-phase10-engine.mjs && npm run eval:designer-snapshots",
+    "eval:designer-snapshots": "node --experimental-strip-types scripts/eval-phase10-designer-snapshots.mjs"
   },
   "dependencies": {
     "fashn": "^0.15.0",
