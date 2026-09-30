@@ -69,6 +69,8 @@ type StatsPayload={
 
 type ScorecardPayload={
   configured:boolean;
+  explicitLabels:number;
+  backfilledLabels:number;
   minimumLabels:number;
   reportable:boolean;
   remaining:number;
@@ -291,7 +293,7 @@ export default function FabricGroundTruthClient(){
 
     <section className="truthScorecard" aria-label="Fabric Analyzer owner-labelled scorecard">
       <div className="truthScorecardHead"><div><span>OWNER-LABELLED ANALYZER AGREEMENT</span><strong>{scorecard?.reportable?"Reportable benchmark":"Building benchmark"}</strong></div><b>{scorecard?.uniqueFabrics ?? 0}/{scorecard?.minimumLabels ?? 40} fabrics</b></div>
-      {!scorecard?.reportable ? <div className="truthScorecardWaiting"><strong>{scorecard?.remaining ?? 40} more owner-labelled fabrics needed</strong><p>Percentages stay hidden until enough exact stock fabrics have a stored before/after label. Previously reviewed fabrics may need one fresh Ground Truth save to enter this scorecard.</p></div> : <div className="truthScorecardResults">
+      {!scorecard?.reportable ? <div className="truthScorecardWaiting"><strong>{scorecard?.remaining ?? 40} more owner-labelled fabrics needed</strong><p>Percentages stay hidden until enough exact stock fabrics have a before/after label. Reviewed history is backfilled when available; new reviews create explicit labels automatically.</p><small>{scorecard ? `${scorecard.explicitLabels} explicit · ${scorecard.backfilledLabels} historical labels` : ""}</small></div> : <div className="truthScorecardResults">
         <article><small>FIELD AGREEMENT</small><strong>{scorecard.fieldAgreementPercent ?? "—"}%</strong><span>{scorecard.fieldMatches}/{scorecard.fieldTotal} visual/styling fields unchanged</span></article>
         <article><small>EXACT PROFILE MATCH</small><strong>{scorecard.exactProfilePercent ?? "—"}%</strong><span>{scorecard.exactProfileMatches}/{scorecard.uniqueFabrics} fabrics needed no field correction</span></article>
         <article><small>CORRECTED FABRICS</small><strong>{scorecard.correctedFabrics}</strong><span>Owner changed at least one scored field</span></article>
