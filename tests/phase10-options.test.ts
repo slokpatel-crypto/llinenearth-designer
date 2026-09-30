@@ -24,6 +24,7 @@ test("option library is internally valid and expanded",()=>{
   assert(optionsFor("shirt.fit").some((item)=>item.id==="boxy_oversized"));
   assert(optionsFor("pant.fit").some((item)=>item.id==="korean_straight_wide"));
   assert(optionsFor("pant.rise").some((item)=>item.id==="extra_high_rise"));
+  assert.deepEqual(optionsFor("shirt.wear").map((item)=>item.id),["untucked","tucked"]);
   assert(GARMENT_OPTION_LIBRARY.every((item)=>item.formality!==null || Boolean(item.formalityNullReason)));
 });
 
