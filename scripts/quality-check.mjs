@@ -472,7 +472,7 @@ for(const token of ["groundTruth?.reviewedFabrics","groundTruth?.target"]) {
 }
 console.log("Ground Truth count gate passed: readiness counts unique stock-bound fabrics rather than raw profile rows.");
 const constructionApprovalClient=fs.readFileSync("src/app/operator/construction-approval/ConstructionApprovalClient.tsx","utf8");
-for(const token of ["summarizeConstructionReviews","reviewSummary.completionPercent","preferNextPending","await load(true,true)","Construction decisions completed"]) {
+for(const token of ["summarizeConstructionReviews","reviewSummary.completionPercent","preferNextPending","shouldAdvance=!selected.review && filter===\"pending\"","await load(true,shouldAdvance)","Construction decisions completed"]) {
   if(!constructionApprovalClient.includes(token)) throw new Error(`Construction review completion regression: missing ${token}`);
 }
 const constructionReviewSummary=fs.readFileSync("src/lib/designer/construction-review-summary.ts","utf8");
