@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
+import { validateVerifiedPhysicalEvidence } from "@/lib/physical-evidence-provenance";
 import {
   enqueueFabricAnalyzerBatch,
   loadFabricAnalyzerBatchStatus,
@@ -46,6 +47,7 @@ export async function POST(request:Request) {
     const body=await request.json() as {items?:FabricAnalyzerBatchItem[]};
     const items=Array.isArray(body.items)?body.items.slice(0,500):[];
     if(!items.length) return json({error:"Provide 1 to 500 backend analysis items."},{status:400});
+    for(const item of items) validateVerifiedPhysicalEvidence(item);
     const batch=await enqueueFabricAnalyzerBatch(items);
     if(!batch || batch.queued<1) return json({error:"No valid fabric items were queued."},{status:400});
     return json({engine:"private-fabric-analyzer-queue-v1",batchId:batch.batch_id,queued:batch.queued});
