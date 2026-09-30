@@ -64,6 +64,7 @@ export type FabricAnalyzerContext = {
   verifiedDrape?:"Fluid"|"Balanced"|"Structured";
   verifiedFiberContent?:string;
   verifiedPhysicalSourceUrl?:string;
+  verifiedPhysicalEvidenceNote?:string;
   // Internal server-generated evidence used for content fingerprinting and to
   // avoid fetching/measuring the same image twice in one analysis run.
   contentSha256?:string;
