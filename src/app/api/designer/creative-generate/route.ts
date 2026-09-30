@@ -16,6 +16,7 @@ import {
 import type { CreativeFeedbackReason } from "@/lib/designer/creative-learning";
 import { loadDesignerCreativeContext } from "@/lib/designer/creative-context";
 import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
+import { enrichDesignerFabricsWithIntelligence } from "@/lib/fabric-intelligence-server";
 
 export const runtime="nodejs";
 export const maxDuration=30;
@@ -92,7 +93,8 @@ export async function POST(request:Request) {
 
     const metadata=await loadDesignerFabricMetadata();
     const stock=applyDesignerFabricMetadataToStock(metadata).filter((fabric)=>fabric.inStock);
-    const fabrics=stock.map(designerFabricFromStock);
+    const baseFabrics=stock.map(designerFabricFromStock);
+    const {fabrics}=await enrichDesignerFabricsWithIntelligence(baseFabrics);
     const shirt=fabrics.find((fabric)=>fabric.id===shirtId && fabric.allowedGarments.includes("shirt"));
     const pant=fabrics.find((fabric)=>fabric.id===pantId && fabric.allowedGarments.includes("pant"));
     if(!shirt || !pant) return NextResponse.json({error:"The selected fabrics are no longer available in the current Designer catalogue."},{status:409});
