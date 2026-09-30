@@ -11,6 +11,7 @@ import {
   type SelectedLookView,
 } from "@/lib/ai-visualization";
 import { loadDesignerFabricIntelligence } from "@/lib/fabric-intelligence-server";
+import { loadDurableSelectedLookRender, storeDurableSelectedLookRender } from "@/lib/designer/render-cache";
 
 export const runtime="nodejs";
 export const maxDuration=60;
@@ -66,14 +67,24 @@ export async function POST(request:Request) {
       return NextResponse.json({result});
     }
     if(view==="front") {
-      const cached=getCachedSelectedLookRender(input);
-      if(cached) return NextResponse.json({result:cached},{headers:{"x-linen-render-cache":"hit"}});
+      const memoryCached=getCachedSelectedLookRender(input);
+      if(memoryCached) return NextResponse.json({result:memoryCached},{headers:{"x-linen-render-cache":"memory"}});
+      const durableCached=await loadDurableSelectedLookRender(input,"front");
+      if(durableCached) return NextResponse.json({result:durableCached},{headers:{"x-linen-render-cache":"durable"}});
+    } else {
+      const frontImage=String(input.frontImage||"");
+      if(!frontImage) return NextResponse.json({error:"Generate or load the locked front render before requesting another view."},{status:409});
+      const durableCached=await loadDurableSelectedLookRender(input,view,frontImage);
+      if(durableCached) return NextResponse.json({result:durableCached},{headers:{"x-linen-render-cache":"durable"}});
     }
+
     assertFashnRateLimit(request);
+    const frontImage=String(input.frontImage||"");
     const result=view==="front"
       ? await renderSelectedLookFashnFront(input)
-      : await renderSelectedLookFashnView(input,String(input.frontImage||""),view);
-    return NextResponse.json({result},{headers:{"x-linen-render-cache":result.cached?"hit":"miss"}});
+      : await renderSelectedLookFashnView(input,frontImage,view);
+    await storeDurableSelectedLookRender(input,result,view,view==="front"?undefined:frontImage);
+    return NextResponse.json({result},{headers:{"x-linen-render-cache":"miss"}});
   } catch(error) {
     if(error instanceof FashnVisualizationError) {
       const status=error.code==="not_configured"?503:error.code==="invalid_source"?400:error.code==="rate_limited"?429:502;
