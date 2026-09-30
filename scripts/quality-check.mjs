@@ -471,6 +471,11 @@ for(const token of ["groundTruth?.reviewedFabrics","groundTruth?.target"]) {
   if(!readinessClient.includes(token)) throw new Error(`Phase 10 unique Ground Truth readiness regression: missing ${token}`);
 }
 console.log("Ground Truth count gate passed: readiness counts unique stock-bound fabrics rather than raw profile rows.");
+const constructionApprovalClient=fs.readFileSync("src/app/operator/construction-approval/ConstructionApprovalClient.tsx","utf8");
+for(const token of ["approved+data.rejected","preferNextPending","await load(true,true)","Construction decisions completed"]) {
+  if(!constructionApprovalClient.includes(token)) throw new Error(`Construction review completion regression: missing ${token}`);
+}
+console.log("Construction review completion gate passed: approve/reject both complete review and the desk advances to the next pending option.");
 const groundTruthScorecard=fs.readFileSync("src/lib/fabric-ground-truth-scorecard.ts","utf8");
 const groundTruthScorecardRoute=fs.readFileSync("src/app/api/operator/fabric-ground-truth/scorecard/route.ts","utf8");
 for(const token of ["FABRIC_GROUND_TRUTH_VERSION","FABRIC_GROUND_TRUTH_FIELDS","scoreFabricGroundTruth","exactProfilePercent","fieldAgreementPercent"]) {
