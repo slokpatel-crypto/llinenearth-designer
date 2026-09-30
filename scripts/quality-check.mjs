@@ -471,6 +471,18 @@ for(const token of ["groundTruth?.reviewedFabrics","groundTruth?.target"]) {
   if(!readinessClient.includes(token)) throw new Error(`Phase 10 unique Ground Truth readiness regression: missing ${token}`);
 }
 console.log("Ground Truth count gate passed: readiness counts unique stock-bound fabrics rather than raw profile rows.");
+const groundTruthScorecard=fs.readFileSync("src/lib/fabric-ground-truth-scorecard.ts","utf8");
+const groundTruthScorecardRoute=fs.readFileSync("src/app/api/operator/fabric-ground-truth/scorecard/route.ts","utf8");
+for(const token of ["FABRIC_GROUND_TRUTH_VERSION","FABRIC_GROUND_TRUTH_FIELDS","scoreFabricGroundTruth","exactProfilePercent","fieldAgreementPercent"]) {
+  if(!groundTruthScorecard.includes(token)) throw new Error(`Analyzer Ground Truth scorecard regression: missing ${token}`);
+}
+for(const token of ["verifyOperatorSession","MIN_LABELS=40","loadFabricGroundTruthLabels","scoreFabricGroundTruth","reportable"]) {
+  if(!groundTruthScorecardRoute.includes(token)) throw new Error(`Analyzer Ground Truth scorecard route regression: missing ${token}`);
+}
+for(const token of ["fabric_ground_truth_label","fabric-ground-truth-v1","original","final"]) {
+  if(!groundTruthClient.includes(token)) throw new Error(`Analyzer Ground Truth label regression: missing ${token}`);
+}
+console.log("Analyzer Ground Truth scorecard gate passed: agreement stays owner-labelled and evidence-gated.");
 const fabricStudioMounts=sourceFiles("src").filter((path)=>path!=="src/components/FabricStudio.tsx")
   .filter((path)=>fs.readFileSync(path,"utf8").includes("FabricStudio"));
 if(fabricStudioMounts.length) throw new Error(`Fabric Analyzer privacy regression: legacy FabricStudio is mounted by ${fabricStudioMounts.join(", ")}`);
