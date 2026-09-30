@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import {
   inspectSelectedLookFashnOutput,
-  type SelectedLookFashnRequest,
   type SelectedLookView,
 } from "@/lib/ai-visualization";
+import { enrichSelectedLookEvidence, resolveSelectedLookRequest } from "@/lib/designer/selected-look-server";
 
 export const runtime="nodejs";
 export const maxDuration=30;
