@@ -17,7 +17,7 @@ export async function GET() {
   }
   const [database,bound]=await Promise.all([
     loadFabricAnalyzerStats(),
-    loadFabricAnalysesForFabricIds(FABRIC_STOCK.map((fabric)=>fabric.id),{includeUnreviewed:true}),
+    loadFabricAnalysesForFabricIds(FABRIC_STOCK.filter((fabric)=>fabric.inStock).map((fabric)=>fabric.id),{includeUnreviewed:true}),
   ]);
   const groundTruth=summarizeFabricGroundTruth(bound,50);
   return NextResponse.json({
