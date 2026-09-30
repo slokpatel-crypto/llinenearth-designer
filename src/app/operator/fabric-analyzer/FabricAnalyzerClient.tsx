@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import FabricAnalyzerBatchPanel from "./FabricAnalyzerBatchPanel";
 
 type StatsPayload={
   engine?:string;
@@ -285,8 +286,10 @@ export default function FabricAnalyzerClient(){
       </aside>
     </section>
 
+    <FabricAnalyzerBatchPanel onComplete={async()=>{await Promise.all([loadStats(),loadQueue()]);}} />
+
     <section className="reviewQueue analyzerPanel">
-      <div className="panelTitle"><span>03 / HUMAN REVIEW</span><h2>Analyzer review queue.</h2><button onClick={()=>void loadQueue()} disabled={queueLoading}>{queueLoading?"Refreshing…":"Refresh"}</button></div>
+      <div className="panelTitle"><span>04 / HUMAN REVIEW</span><h2>Analyzer review queue.</h2><button onClick={()=>void loadQueue()} disabled={queueLoading}>{queueLoading?"Refreshing…":"Refresh"}</button></div>
       {!queue.length ? <div className="emptyResult">No profiles are waiting for review.</div> : <div className="reviewRows">{queue.map((row)=><article key={row.id}>
         <div><small>{row.review_status.toUpperCase()}</small><strong>{row.profile?.observed?.dominantColor || "Fabric profile"}</strong><span>{nice(row.profile?.observed?.patternFamily)} · {new Date(row.updated_at||row.created_at).toLocaleString("en-IN")}</span></div>
         <p>{row.profile?.summary || "No summary."}</p>
