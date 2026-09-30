@@ -112,6 +112,8 @@ const pantDetails=pantDetailRows.map((row)=>{
 });
 
 const referenceOptions:GarmentOption[]=[
+  refOption({id:"untucked",group:"shirt.wear",label:"Untucked",description:"Shirt worn outside the trouser waistband.",formality:2,parameters:{tucked:false}}),
+  refOption({id:"tucked",group:"shirt.wear",label:"Tucked",description:"Shirt tucked into the trouser waistband.",formality:4,parameters:{tucked:true}}),
   ...fromSheet("Shirt_Collar","Collar_Type","shirt.collar",collarIds,(label)=>label!=="Wing Collar"),
   ...fromSheet("Shirt_Cuff","Cuff_Type","shirt.cuff",cuffIds),
   ...detailOptions,
