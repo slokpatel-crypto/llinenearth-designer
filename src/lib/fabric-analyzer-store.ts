@@ -37,6 +37,11 @@ function clean(value:unknown,limit:number) {
   return String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
 }
 
+function storedCaptureReference(value:unknown) {
+  const raw=String(value??"").trim();
+  return /^data:image\/(?:jpeg|png|webp);base64,/i.test(raw) ? "operator-direct-capture" : clean(raw,1800);
+}
+
 
 function canonicalUrlIdentity(value:unknown,limit=1800) {
   const raw=clean(value,limit);
@@ -119,7 +124,7 @@ export async function storeFabricAnalysis(
   if(!config()) return null;
   const result=await rpc<string>("fabric_analyzer_profile_upsert",{
     p_image_fingerprint:fabricAnalysisFingerprint(input),
-    p_image_source:clean(input.imageUrl,1800),
+    p_image_source:storedCaptureReference(input.imageUrl),
     p_declared_context:{
       sourcePageUrl:clean(input.sourcePageUrl,1800),
       sourceId:clean(input.sourceId,80),
@@ -128,8 +133,8 @@ export async function storeFabricAnalysis(
       supplierColorName:clean(input.supplierColorName,120),
       supplierPatternName:clean(input.supplierPatternName,120),
       notes:clean(input.notes,500),
-      macroImageUrl:clean(input.macroImageUrl,1800),
-      foldImageUrl:clean(input.foldImageUrl,1800),
+      macroImageUrl:storedCaptureReference(input.macroImageUrl),
+      foldImageUrl:storedCaptureReference(input.foldImageUrl),
       swatchRealWidthMm:Number.isFinite(input.swatchRealWidthMm)?input.swatchRealWidthMm:null,
       repeatRealMm:Number.isFinite(input.repeatRealMm)?input.repeatRealMm:null,
       verifiedGsm:Number.isFinite(input.verifiedGsm)?input.verifiedGsm:null,
