@@ -1,5 +1,7 @@
 import "server-only";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
+import type { DesignerFabric } from "@/lib/designer/engine";
+import { applyVerifiedPhysicalFabricEvidence } from "@/lib/fabric-intelligence-evidence";
 import { adaptFabricProfileToV4 } from "@/lib/fabric-intelligence-adapter";
 import { loadFabricAnalysesForFabricIds, type BoundFabricAnalysis } from "@/lib/fabric-analyzer-store";
 
@@ -100,4 +102,18 @@ export async function loadDesignerFabricIntelligence(
     if(intelligence) out[row.fabric_id]=intelligence;
   }
   return out;
+}
+
+
+export async function enrichDesignerFabricsWithIntelligence(
+  fabrics:DesignerFabric[],
+):Promise<{
+  fabrics:DesignerFabric[];
+  intelligence:Record<string,DesignerFabricIntelligence>;
+}> {
+  const intelligence=await loadDesignerFabricIntelligence(fabrics.map((fabric)=>fabric.id));
+  return {
+    fabrics:fabrics.map((fabric)=>applyVerifiedPhysicalFabricEvidence(fabric,intelligence[fabric.id])),
+    intelligence,
+  };
 }

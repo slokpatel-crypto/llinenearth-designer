@@ -15,6 +15,7 @@ import { evaluateLinenEarthBrandLanguage } from "@/lib/designer/brand-language";
 import { buildDesignerNegotiation } from "@/lib/designer/constraint-negotiation";
 import { buildCanonicalGarmentSpec, type CanonicalCreativeVisualReview } from "@/lib/designer/garment-spec";
 import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
+import { enrichDesignerFabricsWithIntelligence } from "@/lib/fabric-intelligence-server";
 import type { MeasurementProfile } from "@/lib/measurements";
 import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
@@ -158,7 +159,8 @@ export async function POST(request:Request) {
 
     const metadata=await loadDesignerFabricMetadata();
     const stock=applyDesignerFabricMetadataToStock(metadata).filter((fabric)=>fabric.inStock);
-    const fabrics=stock.map(designerFabricFromStock);
+    const baseFabrics=stock.map(designerFabricFromStock);
+    const {fabrics}=await enrichDesignerFabricsWithIntelligence(baseFabrics);
     const shirt=fabrics.find((fabric)=>fabric.id===shirtId && fabric.allowedGarments.includes("shirt"));
     const pant=fabrics.find((fabric)=>fabric.id===pantId && fabric.allowedGarments.includes("pant"));
     if(!shirt || !pant) return NextResponse.json({error:"The selected fabrics are no longer available in the current Designer catalogue."},{status:409});

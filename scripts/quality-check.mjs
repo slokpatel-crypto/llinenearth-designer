@@ -386,7 +386,9 @@ for(const token of ["fabricIntelligenceAlignment","fabricIntelligence?: Record<s
 }
 for(const path of ["src/app/api/designer/brief/route.ts","src/app/api/designer/search/route.ts","src/app/api/style-director/route.ts"]) {
   const source=fs.readFileSync(path,"utf8");
-  if(!source.includes("loadDesignerFabricIntelligence")) throw new Error(`Private Fabric Intelligence integration regression: ${path} no longer loads server-side intelligence.`);
+  if(!source.includes("loadDesignerFabricIntelligence") && !source.includes("enrichDesignerFabricsWithIntelligence")) {
+    throw new Error(`Private Fabric Intelligence integration regression: ${path} no longer loads/enriches server-side intelligence.`);
+  }
 }
 const styleDirectorAgentIntelligence=fs.readFileSync("src/lib/style-director-agent.ts","utf8");
 for(const token of ["directorIntelligenceScore","directorPairIntelligenceScore","DesignerFabricIntelligence"]) {
