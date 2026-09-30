@@ -226,6 +226,40 @@ function cleanPayload(type:string, input:unknown) {
       };
     }
 
+    if (subtype === "designer_benchmark_label") {
+      const version=text(payload.version,80);
+      const caseId=text(payload.caseId,80);
+      const choice=text(payload.choice,20);
+      const reason=text(payload.reason,80);
+      const occasion=text(payload.occasion,40);
+      const climate=text(payload.climate,40);
+      const intention=text(payload.intention,40);
+      const anchorShirtId=text(payload.anchorShirtId,140);
+      const anchorPantId=text(payload.anchorPantId,140);
+      const candidates=Array.isArray(payload.candidates)
+        ? payload.candidates.slice(0,3).map((raw)=>{
+          const item=raw && typeof raw==="object" ? raw as Record<string,unknown> : {};
+          return {
+            id:text(item.id,180),
+            tier:text(item.tier,30),
+            shirtId:text(item.shirtId,140),
+            pantId:text(item.pantId,140),
+          };
+        }).filter((item)=>item.id&&item.shirtId&&item.pantId)
+        : [];
+      if(version!=="designer-benchmark-v1" || !caseId || !["0","1","2","none"].includes(choice)) return null;
+      if(!["Casual","Smart-Casual","Semi-Formal","Formal"].includes(occasion)) return null;
+      if(!["Not specified","Hot / humid","Cool","Air-conditioned"].includes(climate)) return null;
+      if(!["Understated","Balanced","Expressive"].includes(intention)) return null;
+      if(!anchorShirtId || !anchorPantId || candidates.length<1) return null;
+      return {
+        subtype,version,caseId,choice,
+        reason:["best_balance","color","pattern","formality","fit_cut","originality","too_safe","too_bold","none_work","other"].includes(reason)?reason:"other",
+        occasion,climate,intention,anchorShirtId,anchorPantId,candidates,
+        note:text(payload.note,600),
+      };
+    }
+
     if (subtype === "designer_creative_research") {
       const researchId=text(payload.researchId,140);
       const title=text(payload.title,180);
