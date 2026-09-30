@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import sharp from "sharp";
-import { compareRenderMeasuredColors, worstRenderColorStatus } from "../src/lib/designer/render-fidelity-core.ts";
+import { compareRenderMeasuredColors, compareRenderMeasuredPatterns, worstRenderColorStatus, worstRenderPatternStatus } from "../src/lib/designer/render-fidelity-core.ts";
 
 async function outfitImage(shirt:string,pant:string) {
   const width=400,height=500;
@@ -38,4 +38,51 @@ test("missing measured target stays unavailable rather than inventing colour tru
   assert.equal(result.shirt.status,"unavailable");
   assert.equal(result.shirt.deltaE,null);
   assert.equal(worstRenderColorStatus(result),"strong");
+});
+
+
+async function stripedOutfit(orientation:"vertical"|"horizontal") {
+  const width=400,height=500;
+  const stripeSvg=(w:number,h:number,base:string,ink:string)=>{
+    const stripes=orientation==="vertical"
+      ? Array.from({length:Math.ceil(w/16)},(_,i)=>`<rect x="${i*16}" y="0" width="7" height="${h}" fill="${ink}"/>`).join("")
+      : Array.from({length:Math.ceil(h/16)},(_,i)=>`<rect x="0" y="${i*16}" width="${w}" height="7" fill="${ink}"/>`).join("");
+    return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect width="100%" height="100%" fill="${base}"/>${stripes}</svg>`);
+  };
+  return sharp({create:{width,height,channels:3,background:"#0a1628"}})
+    .composite([
+      {input:stripeSvg(160,150,"#D8D7D2","#30343A"),left:120,top:85},
+      {input:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="170" height="190"><rect width="170" height="190" fill="#817A73"/></svg>'),left:115,top:270},
+    ])
+    .png()
+    .toBuffer();
+}
+
+test("pattern guard confirms a clear vertical stripe when measured evidence expects vertical",async()=>{
+  const image=await stripedOutfit("vertical");
+  const result=await compareRenderMeasuredPatterns(image,"front",{
+    shirtOrientation:"vertical",pantOrientation:null,shirtContrastDeltaE:35,pantContrastDeltaE:null,
+  });
+  assert.equal(result.shirt.status,"strong");
+  assert.equal(result.shirt.observedOrientation,"vertical");
+  assert.equal(result.pant.status,"unavailable");
+  assert.equal(worstRenderPatternStatus(result),"strong");
+});
+
+test("pattern guard reviews or rejects an axis flip instead of silently passing it",async()=>{
+  const image=await stripedOutfit("horizontal");
+  const result=await compareRenderMeasuredPatterns(image,"front",{
+    shirtOrientation:"vertical",pantOrientation:null,shirtContrastDeltaE:35,pantContrastDeltaE:null,
+  });
+  assert(["review","weak"].includes(result.shirt.status));
+  assert.notEqual(result.shirt.status,"strong");
+});
+
+test("subtle low-contrast pattern evidence does not create a false hard check",async()=>{
+  const image=await stripedOutfit("horizontal");
+  const result=await compareRenderMeasuredPatterns(image,"front",{
+    shirtOrientation:"vertical",pantOrientation:null,shirtContrastDeltaE:4,pantContrastDeltaE:null,
+  });
+  assert.equal(result.shirt.status,"unavailable");
+  assert.equal(worstRenderPatternStatus(result),"unavailable");
 });
