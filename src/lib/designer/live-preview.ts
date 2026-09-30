@@ -35,6 +35,16 @@ export type ModelGeometry={
   heightScale:number;
 };
 
+export const LIVE_MODEL_REFERENCE_HEIGHT_PX=900;
+export const LIVE_MODEL_REFERENCE_HEIGHT_MM=1780;
+export const LIVE_MODEL_PX_PER_MM=LIVE_MODEL_REFERENCE_HEIGHT_PX/LIVE_MODEL_REFERENCE_HEIGHT_MM;
+export const LIVE_APPROXIMATE_TILE_PX=112;
+
+export function fabricTileSizePx(asset:FabricRenderAsset|null) {
+  if(!asset?.tileRealWidthMm || asset.tileRealWidthMm<=0) return LIVE_APPROXIMATE_TILE_PX;
+  return clamp(asset.tileRealWidthMm*LIVE_MODEL_PX_PER_MM,18,320);
+}
+
 const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
 const n=(value:unknown,fallback:number)=>typeof value==="number"&&Number.isFinite(value)?value:fallback;
 const param=(id:string,key:string,fallback:number)=>n(optionById(id)?.parameters[key],fallback);
