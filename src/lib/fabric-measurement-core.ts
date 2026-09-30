@@ -207,7 +207,12 @@ function averageRunWidth(series:number[]){
     else {runs.push(run);run=1;}
   }
   runs.push(run);
-  return runs.length>=2?mean(runs):null;
+  // Cropped/resampled garment regions often begin and end mid-stripe. Those
+  // two edge runs are partial and bias the average low, especially for wider
+  // repeats. Ignore them when there is enough interior evidence; keep the
+  // original fallback for very small samples.
+  const stableRuns=runs.length>=5 ? runs.slice(1,-1) : runs;
+  return stableRuns.length>=2?mean(stableRuns):null;
 }
 
 export function measurePattern(
