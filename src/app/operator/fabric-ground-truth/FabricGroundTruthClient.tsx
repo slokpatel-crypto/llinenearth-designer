@@ -191,6 +191,7 @@ export default function FabricGroundTruthClient(){
 
   const selected=rows.find((row)=>row.id===selectedId)||null;
   const selectedFabric=selected?.fabric_id ? catalog[selected.fabric_id] || null : null;
+  const hasTruthEdits=Boolean(selected && truth && JSON.stringify(toTruth(selected))!==JSON.stringify(truth));
   const retainedSourceImage=Boolean(selected?.image_source && /^https:\/\//i.test(selected.image_source));
   const reviewed=stats?.groundTruth?.reviewedFabrics ?? 0;
   const target=stats?.groundTruth?.target ?? 50;
@@ -201,6 +202,10 @@ export default function FabricGroundTruthClient(){
 
   async function submit(mode:"approve"|"correct"){
     if(!selected || !truth || saving) return;
+    if(mode==="approve" && hasTruthEdits){
+      setMessage("This profile has edited fields. Use Save corrections + approve so the stored profile and scorecard stay consistent.");
+      return;
+    }
     setSaving(true);setMessage("");
     try{
       const original=toTruth(selected);
@@ -358,7 +363,7 @@ export default function FabricGroundTruthClient(){
 
           <div className="truthGuardrail">
             <p><b>Physical facts stay separate.</b> This screen cannot invent GSM, fibre content, drape or millimetre scale. Those still require supplier/owner evidence in Fabric Analyzer / Designer Data.</p>
-            <div><button onClick={()=>void submit("approve")} disabled={saving}>{saving?"Saving…":"Approve as shown"}</button><button className="correct" onClick={()=>void submit("correct")} disabled={saving}>{saving?"Saving…":"Save corrections + approve"}</button></div>
+            <div><button onClick={()=>void submit("approve")} disabled={saving||hasTruthEdits}>{saving?"Saving…":hasTruthEdits?"Edits need correction save":"Approve as shown"}</button><button className="correct" onClick={()=>void submit("correct")} disabled={saving||!hasTruthEdits}>{saving?"Saving…":hasTruthEdits?"Save corrections + approve":"No corrections to save"}</button></div>
           </div>
         </>}
       </section>
