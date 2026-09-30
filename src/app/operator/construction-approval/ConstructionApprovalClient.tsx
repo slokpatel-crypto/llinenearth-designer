@@ -53,7 +53,7 @@ export default function ConstructionApprovalClient(){
   const [saving,setSaving]=useState(false);
   const [message,setMessage]=useState("");
 
-  async function load(keepSelection=true) {
+  async function load(keepSelection=true,preferNextPending=false) {
     const response=await fetch("/api/operator/construction-approval",{cache:"no-store"});
     if(response.status===401){
       window.location.href="/operator/login?next=/operator/construction-approval";
@@ -62,10 +62,11 @@ export default function ConstructionApprovalClient(){
     const next=await response.json() as Payload & {error?:string};
     if(!response.ok) throw new Error(next.error||"Construction approval data could not be loaded.");
     setData(next);
-    const target=keepSelection
+    const target=keepSelection && !preferNextPending
       ? next.options.find((item)=>item.id===selectedId)
       : null;
-    const fallback=target || next.options.find((item)=>!item.review) || next.options[0];
+    const pending=next.options.find((item)=>!item.review && item.id!==selectedId);
+    const fallback=(preferNextPending?pending:null) || target || next.options.find((item)=>!item.review) || next.options[0];
     if(fallback){
       setSelectedId(fallback.id);
       setNote(fallback.review?.note||"");
@@ -123,7 +124,7 @@ export default function ConstructionApprovalClient(){
       const result=await response.json() as {stored?:boolean;error?:string};
       if(!response.ok || !result.stored) throw new Error(result.error||"Construction review was not stored.");
       setMessage(status==="approved"?"Option approved for Linen Earth house offering.":"Option rejected from Linen Earth house offering.");
-      await load(true);
+      await load(true,true);
     }catch(error){
       setMessage(error instanceof Error?error.message:"Construction review could not be saved.");
     }finally{
@@ -153,7 +154,7 @@ export default function ConstructionApprovalClient(){
       <article className="approved"><small>APPROVED</small><strong>{data.approved}</strong></article>
       <article className="pending"><small>PENDING</small><strong>{data.pending}</strong></article>
       <article className="rejected"><small>REJECTED</small><strong>{data.rejected}</strong></article>
-      <div className="constructionProgress"><i style={{width:`${data.total?Math.round(data.approved/data.total*100):0}%`}}/></div>
+      <div className="constructionProgress" aria-label="Construction decisions completed"><i style={{width:`${data.total?Math.round((data.approved+data.rejected)/data.total*100):0}%`}}/></div>
     </section>
 
     <section className="constructionLayout">
