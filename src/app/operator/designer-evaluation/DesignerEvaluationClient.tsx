@@ -35,6 +35,34 @@ type Payload={
   candidates:Candidate[];
 };
 
+type Scorecard={
+  configured:boolean;
+  version:string;
+  reportable:boolean;
+  minimumTotalLabels:number;
+  minimumActionableLabels:number;
+  labeledCases:number;
+  actionableLabels:number;
+  noneLabels:number;
+  remainingTotal?:number;
+  remainingActionable?:number;
+  evaluated?:number;
+  unavailableTargets?:number;
+  top1?:{matches:number;total:number;percent:number|null};
+  top3?:{matches:number;total:number;percent:number|null};
+  currentRuleVersions?:string[];
+  labelRuleVersions?:string[];
+  byOccasion?:Array<{
+    occasion:string;
+    evaluated:number;
+    top1Matches:number;
+    top1Percent:number|null;
+    top3Matches:number;
+    top3Percent:number|null;
+  }>;
+  interpretation?:string;
+};
+
 const REASONS=[
   ["best_balance","Best overall balance"],
   ["color","Colour relationship"],
@@ -57,6 +85,8 @@ export default function DesignerEvaluationClient(){
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
   const [message,setMessage]=useState("");
+  const [scorecard,setScorecard]=useState<Scorecard|null>(null);
+  const [scorecardLoading,setScorecardLoading]=useState(false);
 
   async function load(target=index){
     setLoading(true);setMessage("");
@@ -121,6 +151,22 @@ export default function DesignerEvaluationClient(){
     }finally{setSaving(false);}
   }
 
+  async function runScorecard(){
+    if(scorecardLoading) return;
+    setScorecardLoading(true);setMessage("");
+    try{
+      const response=await fetch("/api/operator/designer-evaluation/scorecard",{cache:"no-store"});
+      if(response.status===401){window.location.href="/operator/login?next=/operator/designer-evaluation";return;}
+      const next=await response.json() as Scorecard & {error?:string};
+      if(!response.ok) throw new Error(next.error||"Designer scorecard could not be calculated.");
+      setScorecard(next);
+    }catch(error){
+      setMessage(error instanceof Error?error.message:"Designer scorecard could not be calculated.");
+    }finally{
+      setScorecardLoading(false);
+    }
+  }
+
   if(loading && !data) return <main className="designerEval"><div className="evalLoading">Preparing Designer benchmark…</div></main>;
   if(!data) return <main className="designerEval"><div className="evalLoading">{message||"Benchmark unavailable."}</div></main>;
 
@@ -134,6 +180,26 @@ export default function DesignerEvaluationClient(){
       <div><small>GROUND-TRUTH TARGET</small><strong>{data.labeledCases}<i>/ {data.totalCases}</i></strong><p>Current benchmark version: {data.version}</p></div>
       <div className="evalProgressBar"><i style={{width:`${data.totalCases?Math.round(data.labeledCases/data.totalCases*100):0}%`}}/></div>
       <div><small>CASE</small><strong>{String(data.index+1).padStart(2,"0")}<i>/ {data.totalCases}</i></strong></div>
+    </section>
+
+    <section className="evalScorecard" aria-label="Designer ground-truth scorecard">
+      <div className="evalScorecardHead">
+        <div><span>CURRENT ENGINE / GROUND TRUTH</span><strong>Owner-labelled agreement</strong><p>Percentages stay hidden until the benchmark has enough reviewed evidence.</p></div>
+        <button type="button" onClick={()=>void runScorecard()} disabled={scorecardLoading}>{scorecardLoading?"Calculating…":scorecard?"Refresh scorecard":"Run scorecard"}</button>
+      </div>
+      {scorecard&& !scorecard.reportable && <div className="evalScorecardWaiting">
+        <b>NOT ENOUGH GROUND TRUTH YET</b>
+        <span>{scorecard.labeledCases}/{scorecard.minimumTotalLabels} total labels · {scorecard.actionableLabels}/{scorecard.minimumActionableLabels} selected directions.</span>
+        <small>{Math.max(scorecard.remainingTotal||0,scorecard.remainingActionable||0)} more benchmark decisions are still needed before reporting agreement percentages.</small>
+      </div>}
+      {scorecard?.reportable && scorecard.top1 && scorecard.top3 && <div className="evalScorecardResults">
+        <article><small>TOP-1 AGREEMENT</small><strong>{scorecard.top1.percent ?? "—"}%</strong><span>{scorecard.top1.matches}/{scorecard.top1.total} owner-labelled directions</span></article>
+        <article><small>TOP-3 RETENTION</small><strong>{scorecard.top3.percent ?? "—"}%</strong><span>{scorecard.top3.matches}/{scorecard.top3.total} still present in current three</span></article>
+        <article><small>NONE-OF-THREE LABELS</small><strong>{scorecard.noneLabels}</strong><span>Kept separate from agreement accuracy</span></article>
+        <article><small>UNAVAILABLE TARGETS</small><strong>{scorecard.unavailableTargets ?? 0}</strong><span>Stock/case changed since labelling</span></article>
+        {scorecard.byOccasion&&scorecard.byOccasion.length>0&&<details><summary>Agreement by occasion</summary><div>{scorecard.byOccasion.map((row)=><p key={row.occasion}><b>{row.occasion}</b><span>Top-1 {row.top1Percent ?? "—"}% · Top-3 {row.top3Percent ?? "—"}% · n={row.evaluated}</span></p>)}</div></details>}
+        <p className="evalScorecardNote">{scorecard.interpretation}</p>
+      </div>}
     </section>
 
     <section className="evalCase">
