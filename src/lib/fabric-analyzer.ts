@@ -41,6 +41,7 @@ import {
 } from "@/lib/fabric-intelligence-adapter";
 import { measureFabricImageBytes } from "@/lib/fabric-measurement-server";
 import type { FabricMeasuredData } from "@/lib/fabric-measurement-types";
+import { directFabricCaptureBytes, storedFabricCaptureReference } from "@/lib/fabric-capture-input";
 
 export type FabricAnalyzerContext = {
   fabricId?:string;
@@ -87,10 +88,11 @@ const ALLOWED_HOSTS=[
 
 function safeImageUrl(value:string,sourcePageUrl?:string) {
   const url=value.trim();
+  if(directFabricCaptureBytes(url)) return url;
   const builtIn=url.length<=1800 && ALLOWED_HOSTS.some((pattern)=>pattern.test(url));
   const official=url.length<=1800 && isTrustedFabricReferenceImageUrl(url,sourcePageUrl);
   if(!url || (!builtIn && !official)) {
-    throw new Error("Fabric Analyzer only accepts trusted HTTPS image sources.");
+    throw new Error("Fabric Analyzer only accepts trusted HTTPS image sources or authenticated direct captures.");
   }
   return url;
 }
@@ -101,6 +103,8 @@ async function measureCaptureUrl(
   physical?:{swatchRealWidthMm?:number;repeatRealMm?:number},
 ) {
   const url=safeImageUrl(imageUrl,sourcePageUrl);
+  const direct=directFabricCaptureBytes(url);
+  if(direct) return measureFabricImageBytes(direct,physical);
   const response=await fetch(url,{
     headers:{accept:"image/avif,image/webp,image/png,image/jpeg,*/*;q=.5"},
     cache:"no-store",
@@ -563,12 +567,12 @@ Statement 1=quiet base, 5=dominant hero fabric.`;
       scaleApproximate:measured.pattern.physicalScaleStatus==="unknown",
     },
     captureSet:[
-      {role:"flat",imageUrl:input.imageUrl,contentSha256:measured.contentSha256},
+      {role:"flat",imageUrl:storedFabricCaptureReference(input.imageUrl),contentSha256:measured.contentSha256},
       ...(input.captureMeasurements?.macro && input.macroImageUrl
-        ? [{role:"macro" as const,imageUrl:input.macroImageUrl,contentSha256:input.captureMeasurements.macro.contentSha256}]
+        ? [{role:"macro" as const,imageUrl:storedFabricCaptureReference(input.macroImageUrl),contentSha256:input.captureMeasurements.macro.contentSha256}]
         : []),
       ...(input.captureMeasurements?.fold && input.foldImageUrl
-        ? [{role:"fold" as const,imageUrl:input.foldImageUrl,contentSha256:input.captureMeasurements.fold.contentSha256}]
+        ? [{role:"fold" as const,imageUrl:storedFabricCaptureReference(input.foldImageUrl),contentSha256:input.captureMeasurements.fold.contentSha256}]
         : []),
     ],
     provenanceByField:{

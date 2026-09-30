@@ -431,6 +431,19 @@ for(const token of ["verifyOperatorSession","OPERATOR_COOKIE","Not found.","same
   if(!legacyFabricAnalyze.includes(token)) throw new Error(`Legacy fabric analysis privacy regression: missing ${token}`);
 }
 console.log("Fabric Analyzer privacy gate passed: legacy and advanced analysis endpoints require operator authentication.");
+const directCaptureInput=fs.readFileSync("src/lib/fabric-capture-input.ts","utf8");
+const directCapturePicker=fs.readFileSync("src/app/operator/fabric-analyzer/FabricCapturePicker.tsx","utf8");
+const directCaptureRoute=fs.readFileSync("src/app/api/operator/fabric-analyzer/analyze/route.ts","utf8");
+for(const token of ["directFabricCaptureBytes","DIRECT_FABRIC_CAPTURE_MAX_BYTES","operator-direct-capture"]) {
+  if(!directCaptureInput.includes(token)) throw new Error(`Direct Fabric Analyzer capture regression: missing ${token}`);
+}
+for(const token of ["createImageBitmap","image/jpeg","850_000","Use photo from device"]) {
+  if(!directCapturePicker.includes(token)) throw new Error(`Direct Fabric Analyzer capture UI regression: missing ${token}`);
+}
+for(const token of ["DIRECT_FABRIC_CAPTURE_MAX_CHARS","isDirectFabricCapture","3_800_000"]) {
+  if(!directCaptureRoute.includes(token)) throw new Error(`Direct Fabric Analyzer route regression: missing ${token}`);
+}
+console.log("Direct Fabric Analyzer capture gate passed: authenticated local photos are compressed, bounded and never persisted as raw payloads.");
 const fabricStudioMounts=sourceFiles("src").filter((path)=>path!=="src/components/FabricStudio.tsx")
   .filter((path)=>fs.readFileSync(path,"utf8").includes("FabricStudio"));
 if(fabricStudioMounts.length) throw new Error(`Fabric Analyzer privacy regression: legacy FabricStudio is mounted by ${fabricStudioMounts.join(", ")}`);

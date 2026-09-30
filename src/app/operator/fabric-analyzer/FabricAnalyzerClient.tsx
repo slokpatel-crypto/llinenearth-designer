@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import FabricAnalyzerBatchPanel from "./FabricAnalyzerBatchPanel";
 import FabricAnalyzerCalibrationPanel from "./FabricAnalyzerCalibrationPanel";
+import FabricCapturePicker, { type DirectFabricCapture } from "./FabricCapturePicker";
 
 type StatsPayload={
   engine?:string;
@@ -96,6 +97,7 @@ function nice(value:string|undefined){return value?value.replaceAll("_"," "):"�
 
 export default function FabricAnalyzerClient(){
   const [form,setForm]=useState(initial);
+  const [directCaptures,setDirectCaptures]=useState<Record<"flat"|"macro"|"fold",DirectFabricCapture|null>>({flat:null,macro:null,fold:null});
   const [stats,setStats]=useState<StatsPayload|null>(null);
   const [run,setRun]=useState<AnalyzerRun|null>(null);
   const [queue,setQueue]=useState<ReviewRow[]>([]);
@@ -154,17 +156,26 @@ export default function FabricAnalyzerClient(){
     })();
   },[]);
 
-  const captureCount=useMemo(()=>[form.imageUrl,form.macroImageUrl,form.foldImageUrl].filter(Boolean).length,[form]);
+  const effectiveCaptures=useMemo(()=>({
+    imageUrl:directCaptures.flat?.dataUrl || form.imageUrl.trim(),
+    macroImageUrl:directCaptures.macro?.dataUrl || form.macroImageUrl.trim(),
+    foldImageUrl:directCaptures.fold?.dataUrl || form.foldImageUrl.trim(),
+  }),[directCaptures,form.imageUrl,form.macroImageUrl,form.foldImageUrl]);
+  const captureCount=useMemo(()=>[effectiveCaptures.imageUrl,effectiveCaptures.macroImageUrl,effectiveCaptures.foldImageUrl].filter(Boolean).length,[effectiveCaptures]);
   const physicalCount=useMemo(()=>[form.verifiedGsm,form.verifiedDrape,form.verifiedFiberContent,form.repeatRealMm,form.swatchRealWidthMm].filter(Boolean).length,[form]);
 
   function field<K extends keyof typeof initial>(key:K,value:string){setForm((current)=>({...current,[key]:value}));}
+  function directCapture(role:"flat"|"macro"|"fold",value:DirectFabricCapture|null){
+    setDirectCaptures((current)=>({...current,[role]:value}));
+  }
 
   async function analyze(){
-    if(!form.imageUrl.trim()||loading) return;
+    if(!effectiveCaptures.imageUrl||loading) return;
     setLoading(true);setMessage("");setRun(null);
     try{
       const body={
         ...form,
+        ...effectiveCaptures,
         swatchRealWidthMm:form.swatchRealWidthMm?Number(form.swatchRealWidthMm):undefined,
         repeatRealMm:form.repeatRealMm?Number(form.repeatRealMm):undefined,
         verifiedGsm:form.verifiedGsm?Number(form.verifiedGsm):undefined,
@@ -226,9 +237,9 @@ export default function FabricAnalyzerClient(){
       <article className="analyzerPanel analyzerForm">
         <div className="panelTitle"><span>01 / CAPTURE PROTOCOL</span><h2>Analyze one fabric.</h2><b>{captureCount}/3 captures</b></div>
         <div className="captureGrid">
-          <label className="wide"><span>Flat photo URL *</span><input value={form.imageUrl} onChange={(e)=>field("imageUrl",e.target.value)} placeholder="Trusted HTTPS image URL" /><small>Sharp, evenly lit and cloth filling the frame.</small></label>
-          <label><span>Macro photo URL</span><input value={form.macroImageUrl} onChange={(e)=>field("macroImageUrl",e.target.value)} placeholder="Optional macro texture photo" /></label>
-          <label><span>Fold photo URL</span><input value={form.foldImageUrl} onChange={(e)=>field("foldImageUrl",e.target.value)} placeholder="Optional fold / fall photo" /></label>
+          <label className="wide"><span>Flat capture *</span><input value={form.imageUrl} onChange={(e)=>field("imageUrl",e.target.value)} placeholder="Trusted HTTPS image URL (optional when using a local photo)" /><small>Sharp, evenly lit and cloth filling the frame. A local photo is compressed in your browser before the authenticated Analyzer request.</small><FabricCapturePicker role="flat" capture={directCaptures.flat} onChange={(value)=>directCapture("flat",value)} /></label>
+          <label><span>Macro capture</span><input value={form.macroImageUrl} onChange={(e)=>field("macroImageUrl",e.target.value)} placeholder="Trusted URL or optional local macro photo" /><FabricCapturePicker role="macro" capture={directCaptures.macro} onChange={(value)=>directCapture("macro",value)} /></label>
+          <label><span>Fold capture</span><input value={form.foldImageUrl} onChange={(e)=>field("foldImageUrl",e.target.value)} placeholder="Trusted URL or optional local fold photo" /><FabricCapturePicker role="fold" capture={directCaptures.fold} onChange={(value)=>directCapture("fold",value)} /></label>
         </div>
 
         <details open>
@@ -257,7 +268,7 @@ export default function FabricAnalyzerClient(){
         </details>
 
         <label className="wide notes"><span>Operator notes</span><textarea rows={3} value={form.notes} onChange={(e)=>field("notes",e.target.value)} placeholder="Anything relevant to this exact fabric record" /></label>
-        <button className="analyzeButton" disabled={!form.imageUrl.trim()||loading} onClick={()=>void analyze()}>{loading?"Measuring + analyzing…":"Run private Analyzer"}</button>
+        <button className="analyzeButton" disabled={!effectiveCaptures.imageUrl||loading} onClick={()=>void analyze()}>{loading?"Measuring + analyzing…":"Run private Analyzer"}</button>
       </article>
 
       <aside className="analyzerPanel analyzerResult">
