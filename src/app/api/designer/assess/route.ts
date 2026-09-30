@@ -18,6 +18,8 @@ import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "
 import type { MeasurementProfile } from "@/lib/measurements";
 import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
+import { toLegacyStyle, validateStyleSpecV2, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
+import { validBodyPreviewProfile, type BodyPreviewProfile } from "@/lib/designer/body-profile";
 
 export const runtime="nodejs";
 export const maxDuration=20;
@@ -136,6 +138,8 @@ export async function POST(request:Request) {
       pantId?:unknown;
       occasion?:unknown;
       style?:unknown;
+      styleSpec?:unknown;
+      bodyProfile?:unknown;
       context?:unknown;
       measurements?:unknown;
       observations?:unknown;
@@ -145,7 +149,10 @@ export async function POST(request:Request) {
     const shirtId=String(body.shirtId||"").slice(0,160);
     const pantId=String(body.pantId||"").slice(0,160);
     const occasion=String(body.occasion||"") as OccasionTier;
-    if(!shirtId || !pantId || !OCCASIONS.includes(occasion) || !validStyle(body.style) || !validContext(body.context)) {
+    const styleSpec=validateStyleSpecV2(body.styleSpec) ? body.styleSpec as StyleSpecV2 : null;
+    const bodyProfile=validBodyPreviewProfile(body.bodyProfile) ? body.bodyProfile as BodyPreviewProfile : null;
+    const resolvedStyle=styleSpec ? toLegacyStyle(styleSpec) : body.style;
+    if(!shirtId || !pantId || !OCCASIONS.includes(occasion) || !validStyle(resolvedStyle) || !validContext(body.context)) {
       return NextResponse.json({error:"A valid fabric pair, occasion and supported style are required."},{status:400});
     }
 
@@ -160,15 +167,15 @@ export async function POST(request:Request) {
     const observations=safeObservations(body.observations);
     const creative=safeCreative(body.creative);
     const visualReview=safeVisualReview(body.creativeVisualReview);
-    const recommendation=evaluateDesignerCombo(shirt,pant,occasion,body.style,undefined,body.context);
-    const fitConstruction=assessFitConstruction(measurements,body.style,{
+    const recommendation=evaluateDesignerCombo(shirt,pant,occasion,resolvedStyle,undefined,body.context);
+    const fitConstruction=assessFitConstruction(measurements,resolvedStyle,{
       climate:body.context.climate,
       shirtFabric:shirt,
       trouserFabric:pant,
       observations,
     });
-    const blockStrategy=assessBlockStrategy(measurements,body.style,observations);
-    const brandLanguage=evaluateLinenEarthBrandLanguage(shirt,pant,body.style,occasion,body.context);
+    const blockStrategy=assessBlockStrategy(measurements,resolvedStyle,observations);
+    const brandLanguage=evaluateLinenEarthBrandLanguage(shirt,pant,resolvedStyle,occasion,body.context);
     const negotiation=buildDesignerNegotiation(recommendation,fitConstruction);
     const garmentSpec=buildCanonicalGarmentSpec(
       recommendation,
@@ -178,6 +185,8 @@ export async function POST(request:Request) {
       blockStrategy,
       creative,
       visualReview,
+      styleSpec,
+      bodyProfile,
     );
 
     return NextResponse.json({
