@@ -89,10 +89,15 @@ export async function enrichSelectedLookEvidence(input:SelectedLookFashnRequest)
   const renderFacts=(fabricId:string)=>{
     const value=intelligence[fabricId];
     if(!value) return undefined;
+    const measuredVisualTrusted=(value.measuredEvidence.imageQualityScore ?? 0)>=75;
     return {
       gsm:value.verifiedPhysical.gsm,
       drape:value.verifiedPhysical.drape,
       fiberContent:value.verifiedPhysical.fiberContent,
+      measuredColorHex:measuredVisualTrusted ? value.measuredEvidence.measuredHex : null,
+      measurementQuality:value.measuredEvidence.imageQualityScore,
+      patternContrastDeltaE:measuredVisualTrusted ? value.measuredEvidence.patternContrastDeltaE : null,
+      patternOrientation:measuredVisualTrusted ? value.measuredEvidence.patternOrientation : null,
       repeatMm:value.measuredEvidence.patternPhysicalScale==="unknown" ? null : value.measuredEvidence.repeatMm,
       stripeWidthMm:value.measuredEvidence.patternPhysicalScale==="unknown" ? null : value.measuredEvidence.stripeWidthMm,
       physicalScaleStatus:value.measuredEvidence.patternPhysicalScale,
