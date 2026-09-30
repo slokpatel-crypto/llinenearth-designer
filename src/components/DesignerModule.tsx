@@ -410,6 +410,8 @@ export function DesignerModule() {
     visualReview?:CreativeVisualCheck|null;
     measurements?:MeasurementProfile|null;
     observations?:TailorObservationProfile|null;
+    styleSpec?:StyleSpecV2|null;
+    bodyProfile?:BodyPreviewProfile|null;
   }) {
     const response=await fetch("/api/designer/assess",{
       method:"POST",
@@ -419,6 +421,8 @@ export function DesignerModule() {
         pantId:input.pantId,
         occasion:input.occasion,
         style:input.style,
+        styleSpec:input.styleSpec===undefined?styleSpec:input.styleSpec,
+        bodyProfile:input.bodyProfile===undefined?bodyProfile:input.bodyProfile,
         context:input.context,
         measurements:input.measurements===undefined?measurementProfile:input.measurements,
         observations:input.observations===undefined?tailorObservations:input.observations,
