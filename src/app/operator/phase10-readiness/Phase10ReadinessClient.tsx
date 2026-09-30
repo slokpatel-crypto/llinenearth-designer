@@ -27,6 +27,13 @@ type AnalyzerStatsPayload={
     rejected:number;
     feedback:number;
   }|null;
+  groundTruth?:{
+    target:number;
+    reviewedFabrics:number;
+    pendingFabrics:number;
+    stockBoundProfiles:number;
+    remaining:number;
+  };
 };
 
 type ScorecardPayload={
@@ -139,9 +146,9 @@ export default function Phase10ReadinessClient(){
       : 0;
     const evidenceDone=Boolean(active && evidenceSignals.every((value)=>value>=active));
 
-    const analyzerDb=data.analyzer?.database;
-    const reviewed=(analyzerDb?.approved||0)+(analyzerDb?.corrected||0);
-    const analyzerTarget=50;
+    const groundTruth=data.analyzer?.groundTruth;
+    const reviewed=groundTruth?.reviewedFabrics||0;
+    const analyzerTarget=groundTruth?.target||50;
     const analyzerProgress=ratio(reviewed,analyzerTarget);
 
     const score=data.scorecard;
