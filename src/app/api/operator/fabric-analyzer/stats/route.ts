@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { loadFabricAnalysesForFabricIds, loadFabricAnalyzerStats } from "@/lib/fabric-analyzer-store";
 import { FABRIC_STOCK } from "@/lib/fabric-stock";
+import { summarizeFabricGroundTruth } from "@/lib/fabric-ground-truth-stats";
 import { FABRIC_REFERENCE_COUNTS } from "@/lib/fabric-analyzer-reference-index";
 import { REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT } from "@/lib/fabric-analyzer-real-examples";
 
@@ -18,15 +19,7 @@ export async function GET() {
     loadFabricAnalyzerStats(),
     loadFabricAnalysesForFabricIds(FABRIC_STOCK.map((fabric)=>fabric.id),{includeUnreviewed:true}),
   ]);
-  const reviewedFabrics=bound.filter((row)=>row.review_status==="approved" || row.review_status==="corrected").length;
-  const pendingFabrics=bound.filter((row)=>row.review_status==="unreviewed").length;
-  const groundTruth={
-    target:50,
-    reviewedFabrics,
-    pendingFabrics,
-    stockBoundProfiles:bound.length,
-    remaining:Math.max(0,50-reviewedFabrics),
-  };
+  const groundTruth=summarizeFabricGroundTruth(bound,50);
   return NextResponse.json({
     engine:"private-fabric-analyzer-v4",
     visibleOnCustomerWeb:false,
