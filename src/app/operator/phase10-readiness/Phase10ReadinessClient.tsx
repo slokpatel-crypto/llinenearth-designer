@@ -48,6 +48,15 @@ type ScorecardPayload={
   top3?:{percent:number|null};
 };
 
+type AnalyzerScorecardPayload={
+  reportable:boolean;
+  minimumLabels:number;
+  uniqueFabrics:number;
+  remaining:number;
+  fieldAgreementPercent:number|null;
+  exactProfilePercent:number|null;
+};
+
 type ConstructionPayload={
   total:number;
   approved:number;
@@ -74,6 +83,7 @@ type RenderCachePayload={
 type LoadState={
   designerData:DesignerDataPayload|null;
   analyzer:AnalyzerStatsPayload|null;
+  analyzerScorecard:AnalyzerScorecardPayload|null;
   scorecard:ScorecardPayload|null;
   construction:ConstructionPayload|null;
   device:DeviceQaPayload|null;
@@ -99,7 +109,7 @@ function ratio(value:number,total:number){return total>0?clamp(value/total*100):
 
 export default function Phase10ReadinessClient(){
   const [data,setData]=useState<LoadState>({
-    designerData:null,analyzer:null,scorecard:null,construction:null,device:null,renderCache:null,
+    designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,
   });
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
@@ -117,15 +127,16 @@ export default function Phase10ReadinessClient(){
   async function load(){
     setLoading(true);setMessage("");
     try{
-      const [designerData,analyzer,scorecard,construction,device,renderCache]=await Promise.all([
+      const [designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache]=await Promise.all([
         read<DesignerDataPayload>("/api/operator/designer-data"),
         read<AnalyzerStatsPayload>("/api/operator/fabric-analyzer/stats"),
+        read<AnalyzerScorecardPayload>("/api/operator/fabric-ground-truth/scorecard"),
         read<ScorecardPayload>("/api/operator/designer-evaluation/scorecard"),
         read<ConstructionPayload>("/api/operator/construction-approval"),
         read<DeviceQaPayload>("/api/operator/device-qa"),
         read<RenderCachePayload>("/api/operator/designer-render-cache/stats"),
       ]);
-      setData({designerData,analyzer,scorecard,construction,device,renderCache});
+      setData({designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache});
     }catch(error){
       setMessage(error instanceof Error?error.message:"Readiness data could not be loaded.");
     }finally{
@@ -147,9 +158,15 @@ export default function Phase10ReadinessClient(){
     const evidenceDone=Boolean(active && evidenceSignals.every((value)=>value>=active));
 
     const groundTruth=data.analyzer?.groundTruth;
+    const analyzerScore=data.analyzerScorecard;
     const reviewed=groundTruth?.reviewedFabrics||0;
     const analyzerTarget=groundTruth?.target||50;
-    const analyzerProgress=ratio(reviewed,analyzerTarget);
+    const analyzerLabelTarget=analyzerScore?.minimumLabels||40;
+    const analyzerProgress=Math.min(
+      ratio(reviewed,analyzerTarget),
+      ratio(analyzerScore?.uniqueFabrics||0,analyzerLabelTarget),
+    );
+    const analyzerDone=Boolean(reviewed>=analyzerTarget && analyzerScore?.reportable);
 
     const score=data.scorecard;
     const totalLabelTarget=score?.minimumTotalLabels||40;
@@ -188,12 +205,12 @@ export default function Phase10ReadinessClient(){
       {
         id:"analyzer-ground-truth",
         title:"Fabric Analyzer ground truth",
-        detail:reviewed>=analyzerTarget
-          ? "The suggested 50-fabric reviewed calibration set is complete."
-          : `${Math.max(0,analyzerTarget-reviewed)} more reviewed fabrics are needed before treating Analyzer accuracy as meaningful.`,
-        status:reviewed>=analyzerTarget?"done":groundTruth?"progress":"blocked",
+        detail:analyzerDone
+          ? `Reviewed-fabric target and owner-labelled agreement benchmark are both ready${analyzerScore?.fieldAgreementPercent!=null?` · field agreement ${analyzerScore.fieldAgreementPercent}%`:""}.`
+          : `${Math.max(0,analyzerTarget-reviewed)} reviewed-fabric slots and ${Math.max(0,analyzerLabelTarget-(analyzerScore?.uniqueFabrics||0))} scorecard labels remain before Analyzer agreement is reportable.`,
+        status:analyzerDone?"done":groundTruth||analyzerScore?"progress":"blocked",
         progress:analyzerProgress,
-        metric:`${reviewed}/${analyzerTarget} reviewed fabrics`,
+        metric:`${reviewed}/${analyzerTarget} reviewed · ${analyzerScore?.uniqueFabrics||0}/${analyzerLabelTarget} labelled`,
         href:"/operator/fabric-ground-truth",
         action:"Review fabrics",
         ownerDependent:true,

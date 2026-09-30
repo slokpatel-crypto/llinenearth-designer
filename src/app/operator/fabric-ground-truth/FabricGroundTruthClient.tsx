@@ -31,6 +31,7 @@ type AnalyzerProfile={
 type ReviewRow={
   fabric_id:string|null;
   id:string;
+  analyzer_version?:string;
   image_source:string;
   declared_context?:{
     verifiedGsm?:number|null;
@@ -64,6 +65,22 @@ type StatsPayload={
     stockBoundProfiles:number;
     remaining:number;
   };
+};
+
+type ScorecardPayload={
+  configured:boolean;
+  minimumLabels:number;
+  reportable:boolean;
+  remaining:number;
+  uniqueFabrics:number;
+  correctedFabrics:number;
+  exactProfileMatches:number;
+  exactProfilePercent:number|null;
+  fieldAgreementPercent:number|null;
+  fieldMatches:number;
+  fieldTotal:number;
+  perField:Array<{field:string;matches:number;total:number;percent:number|null}>;
+  interpretation:string;
 };
 
 type FabricCatalogRow={
@@ -112,6 +129,7 @@ function pct(value:number|undefined){return typeof value==="number"?`${Math.roun
 export default function FabricGroundTruthClient(){
   const [rows,setRows]=useState<ReviewRow[]>([]);
   const [stats,setStats]=useState<StatsPayload|null>(null);
+  const [scorecard,setScorecard]=useState<ScorecardPayload|null>(null);
   const [catalog,setCatalog]=useState<Record<string,FabricCatalogRow>>({});
   const [selectedId,setSelectedId]=useState("");
   const [truth,setTruth]=useState<TruthState|null>(null);
@@ -125,23 +143,26 @@ export default function FabricGroundTruthClient(){
   async function load(preferNext=false){
     setLoading(true);
     try{
-      const [queueResponse,statsResponse,catalogResponse]=await Promise.all([
+      const [queueResponse,statsResponse,catalogResponse,scorecardResponse]=await Promise.all([
         fetch("/api/operator/fabric-analyzer/review?limit=100&scope=all",{cache:"no-store"}),
         fetch("/api/operator/fabric-analyzer/stats",{cache:"no-store"}),
         fetch("/api/operator/designer-data",{cache:"no-store"}),
+        fetch("/api/operator/fabric-ground-truth/scorecard",{cache:"no-store"}),
       ]);
-      if(queueResponse.status===401 || statsResponse.status===401 || catalogResponse.status===401){
+      if(queueResponse.status===401 || statsResponse.status===401 || catalogResponse.status===401 || scorecardResponse.status===401){
         window.location.href="/operator/login?next=/operator/fabric-ground-truth";
         return;
       }
       const queue=await queueResponse.json() as {profiles?:ReviewRow[];error?:string};
       const stat=await statsResponse.json() as StatsPayload & {error?:string};
       const catalogue=await catalogResponse.json() as {fabrics?:FabricCatalogRow[];error?:string};
+      const score=await scorecardResponse.json() as ScorecardPayload & {error?:string};
       if(!queueResponse.ok) throw new Error(queue.error||"Ground-truth queue could not be loaded.");
       if(!statsResponse.ok) throw new Error(stat.error||"Analyzer stats could not be loaded.");
       if(!catalogResponse.ok) throw new Error(catalogue.error||"Fabric catalogue context could not be loaded.");
+      if(!scorecardResponse.ok) throw new Error(score.error||"Analyzer scorecard could not be loaded.");
       const nextRows=Array.isArray(queue.profiles)?queue.profiles:[];
-      setRows(nextRows);setStats(stat);
+      setRows(nextRows);setStats(stat);setScorecard(score);
       setCatalog(Object.fromEntries((catalogue.fabrics||[]).map((fabric)=>[fabric.id,fabric])));
 
       const current=nextRows.find((row)=>row.id===selectedId);
@@ -170,6 +191,7 @@ export default function FabricGroundTruthClient(){
 
   const selected=rows.find((row)=>row.id===selectedId)||null;
   const selectedFabric=selected?.fabric_id ? catalog[selected.fabric_id] || null : null;
+  const hasTruthEdits=Boolean(selected && truth && JSON.stringify(toTruth(selected))!==JSON.stringify(truth));
   const retainedSourceImage=Boolean(selected?.image_source && /^https:\/\//i.test(selected.image_source));
   const reviewed=stats?.groundTruth?.reviewedFabrics ?? 0;
   const target=stats?.groundTruth?.target ?? 50;
@@ -180,6 +202,10 @@ export default function FabricGroundTruthClient(){
 
   async function submit(mode:"approve"|"correct"){
     if(!selected || !truth || saving) return;
+    if(mode==="approve" && hasTruthEdits){
+      setMessage("This profile has edited fields. Use Save corrections + approve so the stored profile and scorecard stay consistent.");
+      return;
+    }
     setSaving(true);setMessage("");
     try{
       const original=toTruth(selected);
@@ -215,6 +241,32 @@ export default function FabricGroundTruthClient(){
       });
       const result=await response.json() as {ok?:boolean;error?:string;status?:string};
       if(!response.ok || !result.ok) throw new Error(result.error||"Ground-truth review could not be saved.");
+
+      if(selected.fabric_id){
+        const labelResponse=await fetch("/api/memory/event",{
+          method:"POST",
+          headers:{"content-type":"application/json"},
+          body:JSON.stringify({
+            id:`EV-FABRIC-GT-${crypto.randomUUID()}`,
+            sessionId:"FABRIC-GROUND-TRUTH",
+            type:"operator_note",
+            at:new Date().toISOString(),
+            payload:{
+              subtype:"fabric_ground_truth_label",
+              version:"fabric-ground-truth-v1",
+              fabricId:selected.fabric_id,
+              profileId:selected.id,
+              analyzerVersion:selected.analyzer_version||"",
+              original,
+              final:truth,
+              note:reason || (corrections.length?"Operator corrected Analyzer output.":"Operator approved Analyzer output as shown."),
+            },
+          }),
+        });
+        const labelResult=await labelResponse.json() as {stored?:boolean;error?:string};
+        if(!labelResponse.ok || !labelResult.stored) throw new Error(labelResult.error||"Review saved, but the ground-truth scorecard label could not be stored.");
+      }
+
       setMessage(corrections.length?`Saved ${corrections.length} ground-truth corrections.`:"Profile approved as ground truth.");
       await load(true);
     }catch(error){
@@ -235,6 +287,17 @@ export default function FabricGroundTruthClient(){
       <div className="truthBar"><i style={{width:`${Math.min(100,Math.round(reviewed/target*100))}%`}}/></div>
       <div><small>PENDING REVIEW</small><strong>{stats?.groundTruth?.pendingFabrics ?? rows.filter((row)=>row.review_status==="unreviewed" && Boolean(row.fabric_id)).length}</strong></div>
       <div><small>CORRECTIONS</small><strong>{stats?.database?.feedback ?? "—"}</strong></div>
+    </section>
+
+    <section className="truthScorecard" aria-label="Fabric Analyzer owner-labelled scorecard">
+      <div className="truthScorecardHead"><div><span>OWNER-LABELLED ANALYZER AGREEMENT</span><strong>{scorecard?.reportable?"Reportable benchmark":"Building benchmark"}</strong></div><b>{scorecard?.uniqueFabrics ?? 0}/{scorecard?.minimumLabels ?? 40} fabrics</b></div>
+      {!scorecard?.reportable ? <div className="truthScorecardWaiting"><strong>{scorecard?.remaining ?? 40} more owner-labelled fabrics needed</strong><p>Percentages stay hidden until enough exact stock fabrics have a stored before/after label. Previously reviewed fabrics may need one fresh Ground Truth save to enter this scorecard.</p></div> : <div className="truthScorecardResults">
+        <article><small>FIELD AGREEMENT</small><strong>{scorecard.fieldAgreementPercent ?? "—"}%</strong><span>{scorecard.fieldMatches}/{scorecard.fieldTotal} visual/styling fields unchanged</span></article>
+        <article><small>EXACT PROFILE MATCH</small><strong>{scorecard.exactProfilePercent ?? "—"}%</strong><span>{scorecard.exactProfileMatches}/{scorecard.uniqueFabrics} fabrics needed no field correction</span></article>
+        <article><small>CORRECTED FABRICS</small><strong>{scorecard.correctedFabrics}</strong><span>Owner changed at least one scored field</span></article>
+        <details><summary>Agreement by field</summary>{scorecard.perField.map((row)=><p key={row.field}><b>{row.field.replace(/([A-Z])/g," $1")}</b><span>{row.percent ?? "—"}% · {row.matches}/{row.total}</span></p>)}</details>
+        <p className="truthScorecardNote">{scorecard.interpretation}</p>
+      </div>}
     </section>
 
     <section className="truthLayout">
@@ -300,7 +363,7 @@ export default function FabricGroundTruthClient(){
 
           <div className="truthGuardrail">
             <p><b>Physical facts stay separate.</b> This screen cannot invent GSM, fibre content, drape or millimetre scale. Those still require supplier/owner evidence in Fabric Analyzer / Designer Data.</p>
-            <div><button onClick={()=>void submit("approve")} disabled={saving}>{saving?"Saving…":"Approve as shown"}</button><button className="correct" onClick={()=>void submit("correct")} disabled={saving}>{saving?"Saving…":"Save corrections + approve"}</button></div>
+            <div><button onClick={()=>void submit("approve")} disabled={saving||hasTruthEdits}>{saving?"Saving…":hasTruthEdits?"Edits need correction save":"Approve as shown"}</button><button className="correct" onClick={()=>void submit("correct")} disabled={saving||!hasTruthEdits}>{saving?"Saving…":hasTruthEdits?"Save corrections + approve":"No corrections to save"}</button></div>
           </div>
         </>}
       </section>

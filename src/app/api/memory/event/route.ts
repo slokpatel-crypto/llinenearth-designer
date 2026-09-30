@@ -226,6 +226,19 @@ function cleanPayload(type:string, input:unknown) {
       };
     }
 
+    if (subtype === "fabric_ground_truth_label") {
+      const version=text(payload.version,80);
+      const fabricId=text(payload.fabricId,160);
+      const profileId=text(payload.profileId,160);
+      const analyzerVersion=text(payload.analyzerVersion,80);
+      const originalInput=payload.original && typeof payload.original==="object" && !Array.isArray(payload.original) ? payload.original as Record<string,unknown> : null;
+      const finalInput=payload.final && typeof payload.final==="object" && !Array.isArray(payload.final) ? payload.final as Record<string,unknown> : null;
+      if(version!=="fabric-ground-truth-v1" || !fabricId || !profileId || !originalInput || !finalInput) return null;
+      const fields=["colorFamily","patternFamily","patternScale","patternDensity","orientation","sheen","visualWeight","formality","statementLevel"];
+      const original=Object.fromEntries(fields.map((field)=>[field,text(originalInput[field],80)]));
+      const final=Object.fromEntries(fields.map((field)=>[field,text(finalInput[field],80)]));
+      return {subtype,version,fabricId,profileId,analyzerVersion,original,final,note:text(payload.note,600)};
+    }
     if (subtype === "designer_device_qa") {
       const deviceClass=text(payload.deviceClass,20);
       const status=text(payload.status,20);
