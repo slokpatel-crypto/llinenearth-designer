@@ -10,56 +10,35 @@ import {
   type SelectedLookFashnRequest,
   type SelectedLookView,
 } from "@/lib/ai-visualization";
-import { loadDesignerFabricIntelligence } from "@/lib/fabric-intelligence-server";
 import { loadDurableSelectedLookRender, storeDurableSelectedLookRender } from "@/lib/designer/render-cache";
+import { enrichSelectedLookEvidence, resolveSelectedLookRequest } from "@/lib/designer/selected-look-server";
 
 export const runtime="nodejs";
 export const maxDuration=60;
 
-function valid(body:unknown):body is SelectedLookFashnRequest {
-  if(!body || typeof body!=="object") return false;
-  const value=body as Partial<SelectedLookFashnRequest>;
-  return Boolean(
-    value.shirt?.id && value.shirt?.image &&
-    value.pant?.id && value.pant?.image &&
-    value.style?.collar && value.style?.cuff &&
-    value.style?.placket && value.style?.shirtWear
-  );
-}
-
 export async function POST(request:Request) {
   try {
-    const body=await request.json() as unknown;
-    if(!valid(body)) return NextResponse.json({error:"Selected fabrics and a supported garment configuration are required."},{status:400});
-    const input=body as SelectedLookFashnRequest & {
+    const body=await request.json() as Record<string,unknown>;
+    const resolved=await resolveSelectedLookRequest(body);
+    if(!resolved) return NextResponse.json({error:"Selected fabrics and a supported garment configuration are required."},{status:400});
+    if(resolved.locked!==true) return NextResponse.json({error:"Lock the final design before using the photoreal renderer."},{status:409});
+
+    // Canonical stock data and verified Analyzer facts are resolved server-side.
+    // Browser-posted fabric labels/images/physical facts never become render truth.
+    const enriched=await enrichSelectedLookEvidence(resolved);
+    const input:SelectedLookFashnRequest & {
       view?:SelectedLookView;
       frontImage?:string;
       previousImage?:string;
       repairInstruction?:string;
+    }={
+      ...enriched,
+      view:body.view as SelectedLookView|undefined,
+      frontImage:typeof body.frontImage==="string" ? body.frontImage : undefined,
+      previousImage:typeof body.previousImage==="string" ? body.previousImage : undefined,
+      repairInstruction:typeof body.repairInstruction==="string" ? body.repairInstruction : undefined,
     };
     const view:SelectedLookView=["front","three-quarter","side","back"].includes(String(input.view)) ? input.view as SelectedLookView : "front";
-    if(input.locked!==true) return NextResponse.json({error:"Lock the final design before using the photoreal renderer."},{status:409});
-
-    // Never trust physical facts posted by the browser. Enrich the render only
-    // from the private Analyzer store, where mm/GSM/drape/fibre values exist
-    // only when supplied as verified owner/supplier evidence.
-    const intelligence=await loadDesignerFabricIntelligence([input.shirt.id,input.pant.id]);
-    const renderFacts=(fabricId:string)=>{
-      const value=intelligence[fabricId];
-      if(!value) return undefined;
-      return {
-        gsm:value.verifiedPhysical.gsm,
-        drape:value.verifiedPhysical.drape,
-        fiberContent:value.verifiedPhysical.fiberContent,
-        repeatMm:value.measuredEvidence.patternPhysicalScale==="unknown" ? null : value.measuredEvidence.repeatMm,
-        stripeWidthMm:value.measuredEvidence.patternPhysicalScale==="unknown" ? null : value.measuredEvidence.stripeWidthMm,
-        physicalScaleStatus:value.measuredEvidence.patternPhysicalScale,
-      };
-    };
-    input.renderEvidence={
-      shirt:renderFacts(input.shirt.id),
-      pant:renderFacts(input.pant.id),
-    };
     const repairInstruction=String(input.repairInstruction||"").replace(/\s+/g," ").trim().slice(0,240);
     if(view==="front" && repairInstruction) {
       assertFashnRepairRateLimit(request);
