@@ -55,6 +55,7 @@ Phase 10 is now materially beyond the original foundation brief.
 - Multi-view final output remains Front / 3/4 / Side / Back with visual inspection.
 - Measured render evidence is carried into final rendering and QA prompts.
 - Deterministic final-render QA now checks owner-measured stripe/repeat scale against the selected body-height anchor, with conservative tolerances to catch gross AI rescaling without claiming tailoring-CAD precision.
+- The photoreal viewer now exposes structured Colour / Pattern / Fabric / Construction / Model QA states plus measured colour ΔE and detected pattern axis when available, so review/repair decisions are visible rather than hidden in backend logs.
 - Durable Supabase render caching is implemented, including cache keys tied to fabric, canonical construction, body profile and source render identity.
 - Popular-pair cache observability exists so pre-render decisions can be made without blindly spending render credits.
 
