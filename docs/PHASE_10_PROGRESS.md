@@ -25,6 +25,7 @@ Phase 10 is now materially beyond the original foundation brief.
 - **Three-photo protocol is active:** flat image is authoritative for measured colour/pattern; optional macro is used for texture/weave appearance; optional fold is used only for visual fall/structure appearance.
 - Macro/fold captures are passed to the model only when their quality checks pass.
 - Verified GSM, physical drape class and fibre content are accepted only as declared owner/supplier facts with provenance. They are never inferred from pixels.
+- Physical facts and millimetre scale now require explicit provenance at input time: either an HTTPS source record or a short owner/supplier measurement/inspection note. The same validation applies to single and batch Analyzer runs, and provenance participates in the evidence fingerprint.
 - Top-k real textile references are retrieved instead of injecting the whole corpus into every prompt.
 - Unreviewed Analyzer intelligence remains conservatively weighted until human review/evaluation supports higher trust.
 - Persisted re-analysis now always resets the affected Analyzer profile to `unreviewed` and clears old review notes, preventing a previous approval/correction label from silently carrying over after model output is regenerated for the same evidence fingerprint.
