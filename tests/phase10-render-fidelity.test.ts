@@ -97,7 +97,7 @@ test("physical repeat and stripe width stay strong when final render scale is cl
     shirtStripeWidthMm:29,pantStripeWidthMm:null,
     bodyHeightCm:178,
   });
-  assert.equal(result.shirt.status,"strong");
+  assert.equal(result.shirt.status,"strong",JSON.stringify(result.shirt));
   assert(result.shirt.observedRepeatMm!==null && result.shirt.observedRepeatMm>45 && result.shirt.observedRepeatMm<85);
   assert(result.shirt.observedStripeWidthMm!==null && result.shirt.observedStripeWidthMm>18 && result.shirt.observedStripeWidthMm<45);
 });
