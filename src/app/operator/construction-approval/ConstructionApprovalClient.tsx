@@ -105,6 +105,7 @@ export default function ConstructionApprovalClient(){
 
   async function save(status:"approved"|"rejected") {
     if(!selected || saving || !data?.configured) return;
+    const shouldAdvance=!selected.review && filter==="pending";
     setSaving(true);setMessage("");
     try{
       const response=await fetch("/api/memory/event",{
@@ -126,7 +127,7 @@ export default function ConstructionApprovalClient(){
       const result=await response.json() as {stored?:boolean;error?:string};
       if(!response.ok || !result.stored) throw new Error(result.error||"Construction review was not stored.");
       setMessage(status==="approved"?"Option approved for Linen Earth house offering.":"Option rejected from Linen Earth house offering.");
-      await load(true,true);
+      await load(true,shouldAdvance);
     }catch(error){
       setMessage(error instanceof Error?error.message:"Construction review could not be saved.");
     }finally{
