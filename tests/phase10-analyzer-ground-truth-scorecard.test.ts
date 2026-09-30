@@ -102,3 +102,14 @@ test("approved profile history becomes an exact owner match",()=>{
   assert.equal(score.exactProfilePercent,100);
   assert.equal(score.fieldAgreementPercent,100);
 });
+
+
+test("incomplete final labels are not counted as exact profile matches",()=>{
+  const base=label("incomplete");
+  base.original.colorFamily="";
+  base.final.colorFamily="";
+  const score=scoreFabricGroundTruth([base]);
+  assert.equal(score.exactProfileMatches,0);
+  assert.equal(score.exactProfilePercent,0);
+  assert.equal(score.fieldTotal,8);
+});
