@@ -68,6 +68,7 @@ export function fabricAnalysisFingerprint(input:FabricAnalyzerContext) {
       verifiedDrape:clean(input.verifiedDrape,40),
       verifiedFiberContent:clean(input.verifiedFiberContent,220),
       verifiedPhysicalSourceUrl:canonicalUrlIdentity(input.verifiedPhysicalSourceUrl),
+      verifiedPhysicalEvidenceNote:clean(input.verifiedPhysicalEvidenceNote,500),
     };
   const canonical=contentSha
     ? JSON.stringify({
@@ -137,6 +138,7 @@ export async function storeFabricAnalysis(
       verifiedDrape:clean(input.verifiedDrape,40),
       verifiedFiberContent:clean(input.verifiedFiberContent,220),
       verifiedPhysicalSourceUrl:clean(input.verifiedPhysicalSourceUrl,1800),
+      verifiedPhysicalEvidenceNote:clean(input.verifiedPhysicalEvidenceNote,500),
       contentSha256:clean(input.contentSha256,128),
       perceptualHash:clean(input.perceptualHash,64),
       macroContentSha256:clean(input.macroContentSha256,128),
@@ -262,6 +264,7 @@ export type FabricAnalyzerBatchItem = {
   verifiedDrape?:"Fluid"|"Balanced"|"Structured";
   verifiedFiberContent?:string;
   verifiedPhysicalSourceUrl?:string;
+  verifiedPhysicalEvidenceNote?:string;
   force?:boolean;
 };
 
@@ -285,6 +288,7 @@ export async function enqueueFabricAnalyzerBatch(items:FabricAnalyzerBatchItem[]
     verifiedDrape:["Fluid","Balanced","Structured"].includes(String(item.verifiedDrape))?String(item.verifiedDrape):"",
     verifiedFiberContent:clean(item.verifiedFiberContent,220),
     verifiedPhysicalSourceUrl:clean(item.verifiedPhysicalSourceUrl,1800),
+    verifiedPhysicalEvidenceNote:clean(item.verifiedPhysicalEvidenceNote,500),
     force:item.force===true,
   })).filter((item)=>item.imageUrl||item.sourcePageUrl);
   if(!cleanItems.length) return null;
