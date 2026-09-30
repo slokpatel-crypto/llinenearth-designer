@@ -402,6 +402,12 @@ for(const path of ["src/components/DesignerModule.tsx","src/app/style-director/p
 }
 console.log("Fabric Intelligence integration gate passed: Analyzer output affects Designer ranking server-side without entering customer payloads.");
 
+const analyzerReviewResetMigration=fs.readFileSync("supabase/migrations/20260930_fabric_analyzer_reanalysis_review_reset.sql","utf8");
+for(const token of ["fabric_analyzer_profile_upsert","review_status='unreviewed'","review_notes=''","prior human approval"]) {
+  if(!analyzerReviewResetMigration.includes(token)) throw new Error(`Fabric Analyzer re-analysis review-reset regression: missing ${token}`);
+}
+console.log("Fabric Analyzer re-analysis gate passed: changed model output cannot inherit an older human approval.");
+
 const analyzerStoreSource=fs.readFileSync("src/lib/fabric-analyzer-store.ts","utf8");
 for(const token of ["fabric_analyzer_profile_bind","fabric_analyzer_profiles_for_fabrics","fabric_analyzer_profile_review","fabric_analyzer_feedback_apply","loadFabricAnalyzerProfilesForReview","enqueueFabricAnalyzerBatch","claimFabricAnalyzerJobs","finishFabricAnalyzerJob","loadFabricAnalyzerStats","canonicalUrlIdentity"]) {
   if(!analyzerStoreSource.includes(token)) throw new Error(`Fabric Analyzer workflow regression: missing ${token}`);
