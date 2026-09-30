@@ -169,17 +169,31 @@ function autocorrPeriod(series:number[]){
   const m=mean(series),centered=series.map((v)=>v-m);
   const denom=centered.reduce((s,v)=>s+v*v,0);
   if(denom<1e-6) return null;
-  let best:{lag:number;score:number}|null=null;
-  for(let lag=2;lag<=Math.floor(series.length/2);lag++){
+  const maxLag=Math.floor(series.length/2);
+  const scores:number[]=[1];
+  // Include neighbouring lags so a falling smoothing shoulder or a rising
+  // endpoint cannot be mistaken for a complete repeat.
+  for(let lag=1;lag<=maxLag+1;lag++){
     let num=0,left=0,right=0;
     for(let i=0;i<series.length-lag;i++){
       const a=centered[i],b=centered[i+lag];
       num+=a*b;left+=a*a;right+=b*b;
     }
     const score=num/Math.sqrt(Math.max(1e-9,left*right));
-    if(score>.28 && (!best || score>best.score)) best={lag,score};
+    scores[lag]=score;
   }
-  return best?.lag ?? null;
+  const peaks:Array<{lag:number;score:number}>=[];
+  for(let lag=2;lag<=maxLag;lag++){
+    const score=scores[lag];
+    if(score>.28 && score>scores[lag-1] && score>=scores[lag+1]) peaks.push({lag,score});
+  }
+  if(!peaks.length) return null;
+  const bestScore=Math.max(...peaks.map((peak)=>peak.score));
+  // Resizing makes a repeat fractional in pixels. Its second/third multiple
+  // can then align with integer pixels better than the fundamental. Select
+  // the shortest comparable peak, allowing only a small correlation-score
+  // difference; physical mm tolerances are unchanged.
+  return peaks.find((peak)=>peak.score>=bestScore-.05)?.lag ?? null;
 }
 
 function averageRunWidth(series:number[]){

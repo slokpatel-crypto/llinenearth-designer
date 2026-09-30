@@ -115,3 +115,54 @@ test("physical scale guard rejects gross AI stripe enlargement even when the axi
   assert.equal(result.shirt.status,"weak");
   assert.equal(worstRenderPatternStatus(result),"weak");
 });
+
+test("physical repeat survives crop resampling, both stripe axes and image resolution changes",async()=>{
+  // The fixture is 500px high and represents 1780mm at 88% frame occupancy.
+  // Expected sizes come from fixture geometry, independent of the detector.
+  for(const orientation of ["vertical","horizontal"] as const) {
+    for(const period of [12,16,24]) {
+      const width=Math.round(period*.44);
+      const original=await stripedOutfit(orientation,period,width);
+      for(const resolution of [1,2]) {
+        const image=await sharp(original).resize(400*resolution,500*resolution).jpeg({quality:92}).toBuffer();
+        const repeatMm=period*1780/440;
+        const result=await compareRenderMeasuredPatterns(image,"front",{
+          shirtOrientation:orientation,pantOrientation:null,
+          shirtContrastDeltaE:35,pantContrastDeltaE:null,
+          shirtRepeatMm:repeatMm,shirtStripeWidthMm:width*1780/440,bodyHeightCm:178,
+        });
+        const label=`${orientation}, period ${period}px, resolution ${resolution}x`;
+        assert.equal(result.shirt.status,"strong",label);
+        assert(result.shirt.observedRepeatMm!==null,label);
+        assert(Math.abs(result.shirt.observedRepeatMm-repeatMm)<repeatMm*.08,label);
+      }
+    }
+  }
+});
+
+test("physical scale keeps moderate mismatch under review and rejects gross shrinkage",async()=>{
+  const image=await stripedOutfit("vertical",16,7);
+  for(const [repeatMm,stripeMm,status] of [[100,50,"review"],[210,95,"weak"]] as const) {
+    const result=await compareRenderMeasuredPatterns(image,"front",{
+      shirtOrientation:"vertical",pantOrientation:null,
+      shirtContrastDeltaE:35,pantContrastDeltaE:null,
+      shirtRepeatMm:repeatMm,shirtStripeWidthMm:stripeMm,bodyHeightCm:178,
+    });
+    assert.equal(result.shirt.status,status);
+  }
+});
+
+test("physical size is never approved without a valid height anchor",async()=>{
+  const image=await stripedOutfit("vertical",16,7);
+  for(const bodyHeightCm of [undefined,null,0,NaN]) {
+    const result=await compareRenderMeasuredPatterns(image,"front",{
+      shirtOrientation:"vertical",pantOrientation:null,
+      shirtContrastDeltaE:35,pantContrastDeltaE:null,
+      shirtRepeatMm:65,shirtStripeWidthMm:29,bodyHeightCm,
+    });
+    assert.equal(result.shirt.observedOrientation,"vertical");
+    assert.equal(result.shirt.observedRepeatMm,null);
+    assert.equal(result.shirt.observedStripeWidthMm,null);
+    assert.equal(result.shirt.status,"review");
+  }
+});
