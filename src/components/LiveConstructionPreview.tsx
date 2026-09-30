@@ -6,7 +6,7 @@ import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2"
 import { optionsFor } from "@/lib/designer/options/library";
 import type { GarmentOptionGroup } from "@/lib/designer/options/types";
 import { evaluateCrossGarmentRules } from "@/lib/designer/rules/evaluator";
-import { liveCapabilities, modelGeometry, type FabricRenderAsset, type PreviewView } from "@/lib/designer/live-preview";
+import { fabricTileSizePx, liveCapabilities, modelGeometry, type FabricRenderAsset, type PreviewView } from "@/lib/designer/live-preview";
 import { BODY_HEIGHT_OPTIONS, BODY_SKIN_TONES, DEFAULT_BODY_PREVIEW_PROFILE, type BodyPreviewProfile } from "@/lib/designer/body-profile";
 import manifest from "../../public/fabric-tiles/manifest.json";
 
@@ -63,9 +63,7 @@ export function LiveConstructionPreview({
     if(onBodyProfileChange) onBodyProfileChange(next);
     else setLocalBody(next);
   }
-  function tileSize(asset:FabricRenderAsset|null) {
-    return asset?.tileRealWidthMm ? Math.max(25,Math.min(320,asset.tileRealWidthMm*.45)) : 112;
-  }
+  const tileSize=fabricTileSizePx;
   const scaleApproximate=shirtAsset?.scaleApproximate!==false||pantAsset?.scaleApproximate!==false;
   const selectedIds=new Set([...Object.values(spec.shirt),...Object.values(spec.pant)]);
   const unsupported=Object.entries(capabilities).filter(([id,value])=>value==="none"&&selectedIds.has(id));
@@ -120,7 +118,7 @@ export function LiveConstructionPreview({
     </div>
     <div className="liveConstructionFoot">
       <div><strong>{shirt.name}</strong><span>Shirt cloth</span></div><div><strong>{pant.name}</strong><span>Trouser cloth</span></div>
-      <p>{scaleApproximate?"Pattern scale approximate · add owner swatch width/repeat measurements for true scale.":"Pattern scale uses owner-declared measurements."} Body preview: {bodyProfile.build}, {bodyProfile.heightCm} cm · {bodyProfile.source==="measurements"?"build informed by saved measurements":"visual approximation"}.</p>
+      <p>{scaleApproximate?"Pattern scale approximate · add owner swatch width/repeat measurements for true scale.":"Pattern scale is calibrated from owner-declared millimetres against the 178 cm reference model."} Body preview: {bodyProfile.build}, {bodyProfile.heightCm} cm · {bodyProfile.source==="measurements"?"build informed by saved measurements":"visual approximation"}.</p>
     </div>
     <div className="liveConstructionToolbar">
       <label>Body build <select value={bodyProfile.build} onChange={(event)=>changeBody({build:event.target.value as BodyPreviewProfile["build"]})}>
