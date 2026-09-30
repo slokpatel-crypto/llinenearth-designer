@@ -101,21 +101,30 @@ export function LiveConstructionPreview({
     else setLocalBody(next);
     measurePreviewCommit("body-option",started);
   }
+  function changeView(next:PreviewView) {
+    const started=performance.now();
+    setView(next);
+    measurePreviewCommit("view",started);
+  }
   const tileSize=fabricTileSizePx;
   const scaleApproximate=shirtAsset?.scaleApproximate!==false||pantAsset?.scaleApproximate!==false;
   const selectedIds=new Set([...Object.values(spec.shirt),...Object.values(spec.pant)]);
   const unsupported=Object.entries(capabilities).filter(([id,value])=>value==="none"&&selectedIds.has(id));
+  const frontFacing=view==="front"||view==="three-quarter";
+  const viewLabel=view==="three-quarter"?"3/4":view.charAt(0).toUpperCase()+view.slice(1);
 
   return <section className="liveConstruction" aria-label="Live construction preview">
     <div className="liveConstructionHead">
       <div><span>CONSTRUCTION STUDY · LIVE</span><h2>Explore the cut.</h2><p>A consistent model and real catalogue cloth. Shape and scale are approximate until a tailor and measured swatches confirm them.</p></div>
       <div className="liveConstructionSwitches" role="group" aria-label="Preview view">
-        <button type="button" aria-pressed={view==="front"} onClick={()=>{const started=performance.now();setView("front");measurePreviewCommit("view",started);}}>Front</button>
-        <button type="button" aria-pressed={view==="back"} onClick={()=>{const started=performance.now();setView("back");measurePreviewCommit("view",started);}}>Back</button>
+        <button type="button" aria-pressed={view==="front"} onClick={()=>changeView("front")}>Front</button>
+        <button type="button" aria-pressed={view==="three-quarter"} onClick={()=>changeView("three-quarter")}>3/4</button>
+        <button type="button" aria-pressed={view==="side"} onClick={()=>changeView("side")}>Side</button>
+        <button type="button" aria-pressed={view==="back"} onClick={()=>changeView("back")}>Back</button>
       </div>
     </div>
     <div className="liveConstructionStage">
-      <svg viewBox="0 0 640 960" role="img" aria-label={`Approximate ${view} construction study of ${shirt.name} shirt with ${pant.name} trousers`}>
+      <svg viewBox="0 0 640 960" role="img" aria-label={`Approximate ${viewLabel} construction study of ${shirt.name} shirt with ${pant.name} trousers`}>
         <defs>
           <linearGradient id="lcSkin" x1="0" x2="1" y1="0" y2="1"><stop stopColor={BODY_SKIN_TONES[bodyProfile.skinTone].light}/><stop offset=".5" stopColor={BODY_SKIN_TONES[bodyProfile.skinTone].mid}/><stop offset="1" stopColor={BODY_SKIN_TONES[bodyProfile.skinTone].deep}/></linearGradient>
           <linearGradient id="lcClothLight" x1="0" x2="1"><stop stopColor="#111827" stopOpacity=".24"/><stop offset=".23" stopColor="#fff" stopOpacity=".12"/><stop offset=".52" stopColor="#fff" stopOpacity=".03"/><stop offset=".83" stopColor="#111827" stopOpacity=".13"/><stop offset="1" stopColor="#0b1321" stopOpacity=".28"/></linearGradient>
@@ -136,7 +145,7 @@ export function LiveConstructionPreview({
           </pattern>
         </defs>
         <ellipse cx="320" cy="931" rx="182" ry="15" fill="#1b2530" opacity=".09" />
-        <g transform={`translate(320 62) scale(1 ${geometry.heightScale}) translate(-320 -62)`}>
+        <g transform={`translate(${geometry.viewShiftX} 0) translate(320 62) skewY(${geometry.viewSkewY}) scale(${geometry.viewScaleX} ${geometry.heightScale}) translate(-320 -62)`}>
         {geometry.shoePaths.map((path,i)=><path key={`shoe-${i}`} d={path} fill="#302e2b" stroke="#232526" strokeWidth="2"/>)}
         <path d={geometry.neckPath} fill="url(#lcSkin)" stroke="#8c7a6e" strokeOpacity=".3"/>
         <path d={geometry.headPath} fill="url(#lcSkin)" stroke="#8c7a6e" strokeOpacity=".36" strokeWidth="2"/>
@@ -150,14 +159,14 @@ export function LiveConstructionPreview({
           <path d={path} fill="url(#lcClothLight)" opacity=".55"/>
         </g>)}
         {geometry.cuffPaths.map((path,i)=><path key={`cuff-${i}`} d={path} fill={spec.shirt.collarFinish==="White contrast collar + cuffs"?"#eeeae2":"url(#lc-cross)"} stroke="#434951" strokeWidth="1.8"/>)}
-        {geometry.pocketPath&&view==="front"&&<path d={geometry.pocketPath} fill="url(#lc-shirt)" stroke="#59626b" strokeOpacity=".7" strokeWidth="1.5"/>}
+        {geometry.pocketPath&&frontFacing&&<path d={geometry.pocketPath} fill="url(#lc-shirt)" stroke="#59626b" strokeOpacity=".7" strokeWidth="1.5"/>}
         {geometry.seams.map((path,i)=><path key={`seam-${i}`} d={path} fill="none" stroke="#1d2730" strokeOpacity=".31" strokeWidth="1.6"/>)}
-        {view==="front"&&<g fill="#e8dec9" stroke="#454440" strokeWidth=".8">
+        {frontFacing&&<g fill="#e8dec9" stroke="#454440" strokeWidth=".8">
           {[244,278,312,346,380].filter((y)=>y<geometry.shirtHemY-10).map((y)=><circle key={y} cx="320" cy={y} r="2.8"/>)}
         </g>}
         </g>
       </svg>
-      <span className="liveConstructionTag">{view.toUpperCase()} / APPROXIMATE LIVE STUDY</span>
+      <span className="liveConstructionTag">{viewLabel.toUpperCase()} / APPROXIMATE LIVE STUDY</span>
     </div>
     <div className="liveConstructionFoot">
       <div><strong>{shirt.name}</strong><span>Shirt cloth</span></div><div><strong>{pant.name}</strong><span>Trouser cloth</span></div>
