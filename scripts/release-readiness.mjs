@@ -165,7 +165,7 @@ requireFile("tests/phase10-ground-truth-stats.test.ts");
 requireFile("tests/phase10-construction-review-progress.test.ts");
 requireFile("src/lib/designer/construction-review-summary.ts");
 requireTokens("src/lib/designer/construction-review-summary.ts", ["summarizeConstructionReviews","decided","completionPercent","approved+rejected"]);
-requireTokens("src/app/operator/construction-approval/ConstructionApprovalClient.tsx", ["summarizeConstructionReviews","reviewSummary.completionPercent","preferNextPending","await load(true,true)","Construction decisions completed"]);
+requireTokens("src/app/operator/construction-approval/ConstructionApprovalClient.tsx", ["summarizeConstructionReviews","reviewSummary.completionPercent","preferNextPending","shouldAdvance=!selected.review && filter===\"pending\"","await load(true,shouldAdvance)","Construction decisions completed"]);
 requireFile("src/lib/fabric-ground-truth-scorecard.ts");
 requireFile("src/lib/fabric-ground-truth-labels.ts");
 requireFile("src/app/api/operator/fabric-ground-truth/scorecard/route.ts");
