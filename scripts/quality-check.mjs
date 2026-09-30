@@ -454,7 +454,7 @@ for(const token of ["fabric_id:string|null","Catalogue reference · direct captu
   if(!groundTruthClient.includes(token)) throw new Error(`Fabric Ground Truth direct-capture/history regression: missing ${token}`);
 }
 const analyzerReviewRoute=fs.readFileSync("src/app/api/operator/fabric-analyzer/review/route.ts","utf8");
-for(const token of ["url.searchParams.get(\"scope\")","loadFabricAnalysesForFabricIds","FABRIC_STOCK.filter","newestFirst"]) {
+for(const token of ["url.searchParams.get(\"scope\")","loadFabricAnalysesForFabricIds","FABRIC_STOCK.map","newestFirst"]) {
   if(!analyzerReviewRoute.includes(token)) throw new Error(`Fabric Ground Truth reviewed-history regression: missing ${token}`);
 }
 console.log("Fabric Ground Truth provenance gate passed: non-retained direct captures keep exact stock context without rendering broken image URLs.");
