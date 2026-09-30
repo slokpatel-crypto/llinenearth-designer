@@ -8,6 +8,7 @@ import type { GarmentOptionGroup } from "@/lib/designer/options/types";
 import { evaluateCrossGarmentRules } from "@/lib/designer/rules/evaluator";
 import { fabricTileSizePx, liveCapabilities, modelGeometry, type FabricRenderAsset, type PreviewView } from "@/lib/designer/live-preview";
 import { BODY_HEIGHT_OPTIONS, BODY_SKIN_TONES, DEFAULT_BODY_PREVIEW_PROFILE, type BodyPreviewProfile } from "@/lib/designer/body-profile";
+import { measurePreviewCommit } from "@/lib/designer/preview-performance-client";
 import manifest from "../../public/fabric-tiles/manifest.json";
 
 const assets=manifest.assets as Record<string,FabricRenderAsset>;
@@ -74,6 +75,7 @@ export function LiveConstructionPreview({
   },[shirtAsset?.tileUrl,pantAsset?.tileUrl,loadedTiles]);
   const rules=useMemo(()=>evaluateCrossGarmentRules({spec,occasion,climate,pantDrapeVerified:false}),[spec,occasion,climate]);
   function change(side:"shirt"|"pant",key:string,id:string) {
+    const started=performance.now();
     const next:StyleSpecV2={
       ...spec,
       shirt:{...spec.shirt},
@@ -83,11 +85,14 @@ export function LiveConstructionPreview({
     (next[side] as Record<string,string>)[key]=id;
     if(onSpecChange) onSpecChange(next);
     else setLocalSpec(next);
+    measurePreviewCommit("garment-option",started);
   }
   function changeBody(patch:Partial<BodyPreviewProfile>) {
+    const started=performance.now();
     const next:BodyPreviewProfile={...bodyProfile,...patch,version:1,source:"manual"};
     if(onBodyProfileChange) onBodyProfileChange(next);
     else setLocalBody(next);
+    measurePreviewCommit("body-option",started);
   }
   const tileSize=fabricTileSizePx;
   const scaleApproximate=shirtAsset?.scaleApproximate!==false||pantAsset?.scaleApproximate!==false;
@@ -98,8 +103,8 @@ export function LiveConstructionPreview({
     <div className="liveConstructionHead">
       <div><span>CONSTRUCTION STUDY · LIVE</span><h2>Explore the cut.</h2><p>A consistent model and real catalogue cloth. Shape and scale are approximate until a tailor and measured swatches confirm them.</p></div>
       <div className="liveConstructionSwitches" role="group" aria-label="Preview view">
-        <button type="button" aria-pressed={view==="front"} onClick={()=>setView("front")}>Front</button>
-        <button type="button" aria-pressed={view==="back"} onClick={()=>setView("back")}>Back</button>
+        <button type="button" aria-pressed={view==="front"} onClick={()=>{const started=performance.now();setView("front");measurePreviewCommit("view",started);}}>Front</button>
+        <button type="button" aria-pressed={view==="back"} onClick={()=>{const started=performance.now();setView("back");measurePreviewCommit("view",started);}}>Back</button>
       </div>
     </div>
     <div className="liveConstructionStage">
