@@ -13,7 +13,7 @@ import type { StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import { styleSpecRenderSummary } from "@/lib/designer/style-spec-v2";
 import type { BodyPreviewProfile } from "@/lib/designer/body-profile";
 import { bodyProfileRenderSummary } from "@/lib/designer/body-profile";
-import { compareRenderMeasuredColors, worstRenderColorStatus, type RenderColorFidelityResult } from "@/lib/designer/render-fidelity-core";
+import { compareRenderMeasuredColors, compareRenderMeasuredPatterns, worstRenderColorStatus, worstRenderPatternStatus, type RenderColorFidelityResult, type RenderPatternFidelityResult } from "@/lib/designer/render-fidelity-core";
 import { selectedLookRenderCacheKey } from "@/lib/designer/render-cache-key";
 import {
   repairDevelopmentRender,
@@ -132,6 +132,7 @@ export type SelectedLookVisualCheck = {
   issue:string;
   repairInstruction:string;
   measuredColorDeltaE?:{shirt:number|null;pant:number|null};
+  measuredPatternOrientation?:{shirt:string|null;pant:string|null};
 };
 
 export type CreativeRenderVisualCheck = {
@@ -427,49 +428,95 @@ export async function inspectSelectedLookFashnOutput(
   }
 
   let measuredColor:RenderColorFidelityResult|null=null;
+  let measuredPattern:RenderPatternFidelityResult|null=null;
   const shirtMeasured=input.renderEvidence?.shirt?.measuredColorHex || null;
   const pantMeasured=input.renderEvidence?.pant?.measuredColorHex || null;
-  if(shirtMeasured || pantMeasured) {
+  const shirtOrientation=input.renderEvidence?.shirt?.patternOrientation || null;
+  const pantOrientation=input.renderEvidence?.pant?.patternOrientation || null;
+  const shirtPatternContrast=Number.isFinite(input.renderEvidence?.shirt?.patternContrastDeltaE)
+    ? input.renderEvidence?.shirt?.patternContrastDeltaE as number
+    : null;
+  const pantPatternContrast=Number.isFinite(input.renderEvidence?.pant?.patternContrastDeltaE)
+    ? input.renderEvidence?.pant?.patternContrastDeltaE as number
+    : null;
+  const hasPatternTarget=[shirtOrientation,pantOrientation].some((value)=>value && !["none","uncertain"].includes(value));
+
+  if(shirtMeasured || pantMeasured || hasPatternTarget) {
     try {
       const bytes=await remoteImageBuffer(outputUrl);
-      measuredColor=await compareRenderMeasuredColors(bytes,view,{
-        shirtHex:shirtMeasured,
-        pantHex:pantMeasured,
-      });
+      if(shirtMeasured || pantMeasured) {
+        measuredColor=await compareRenderMeasuredColors(bytes,view,{
+          shirtHex:shirtMeasured,
+          pantHex:pantMeasured,
+        });
+      }
+      if(hasPatternTarget) {
+        measuredPattern=await compareRenderMeasuredPatterns(bytes,view,{
+          shirtOrientation,
+          pantOrientation,
+          shirtContrastDeltaE:shirtPatternContrast,
+          pantContrastDeltaE:pantPatternContrast,
+        });
+      }
     } catch {
       measuredColor=null;
+      measuredPattern=null;
     }
   }
+
   const codeColorStatus=measuredColor ? worstRenderColorStatus(measuredColor) : "unavailable";
+  const codePatternStatus=measuredPattern ? worstRenderPatternStatus(measuredPattern) : "unavailable";
   const measuredColorDeltaE=measuredColor ? {
     shirt:measuredColor.shirt.deltaE,
     pant:measuredColor.pant.deltaE,
   } : undefined;
-  const measuredIssue=measuredColor && (codeColorStatus==="review"||codeColorStatus==="weak")
+  const measuredPatternOrientation=measuredPattern ? {
+    shirt:measuredPattern.shirt.observedOrientation,
+    pant:measuredPattern.pant.observedOrientation,
+  } : undefined;
+  const measuredColorIssue=measuredColor && (codeColorStatus==="review"||codeColorStatus==="weak")
     ? [
       measuredColor.shirt.deltaE!==null ? `shirt ΔE ${measuredColor.shirt.deltaE}` : "",
       measuredColor.pant.deltaE!==null ? `trouser ΔE ${measuredColor.pant.deltaE}` : "",
     ].filter(Boolean).join(", ")
     : "";
+  const measuredPatternIssue=measuredPattern && (codePatternStatus==="review"||codePatternStatus==="weak")
+    ? [
+      measuredPattern.shirt.status!=="unavailable"
+        ? `shirt ${measuredPattern.shirt.expectedOrientation}→${measuredPattern.shirt.observedOrientation}`
+        : "",
+      measuredPattern.pant.status!=="unavailable"
+        ? `trouser ${measuredPattern.pant.expectedOrientation}→${measuredPattern.pant.observedOrientation}`
+        : "",
+    ].filter(Boolean).join(", ")
+    : "";
+
 
   const token=gatewayAuthToken();
   if(!token) {
-    const deterministicAvailable=codeColorStatus!=="unavailable";
+    const deterministicAvailable=codeColorStatus!=="unavailable" || codePatternStatus!=="unavailable";
+    const deterministicIssues=[
+      measuredColorIssue ? `colour ${measuredColorIssue}` : "",
+      measuredPatternIssue ? `pattern ${measuredPatternIssue}` : "",
+    ].filter(Boolean).join("; ");
     return {
       available:deterministicAvailable,
       status:"review",
       fabricFidelity:"review",
       colorFidelity:codeColorStatus==="unavailable"?"review":codeColorStatus,
-      patternFidelity:"review",
+      patternFidelity:codePatternStatus==="unavailable"?"review":codePatternStatus,
       boundary:"review",
       construction:"review",
       mannequinConsistency:"review",
       artifact:"minor",
       issue:deterministicAvailable
-        ? (measuredIssue ? `Measured colour needs review (${measuredIssue}). Other QA checks are unavailable.` : "Measured colour is within tolerance; other photoreal QA checks are unavailable.")
+        ? (deterministicIssues ? `Measured render fidelity needs review (${deterministicIssues}). Other QA checks are unavailable.` : "Measured colour/pattern evidence is within available tolerances; other photoreal QA checks are unavailable.")
         : "Automatic photoreal QA is unavailable; keep this render for manual review.",
-      repairInstruction:measuredIssue ? "Restore the shirt and trouser colours to the measured fabric references without changing construction or lighting." : "",
+      repairInstruction:deterministicIssues
+        ? "Restore measured fabric colour and pattern direction without changing the locked construction, model or lighting."
+        : "",
       ...(measuredColorDeltaE?{measuredColorDeltaE}:{}),
+      ...(measuredPatternOrientation?{measuredPatternOrientation}:{}),
     };
   }
 
@@ -486,7 +533,8 @@ export async function inspectSelectedLookFashnOutput(
     `Required construction: ${selectedLookConstruction(input)}.`,
     `Required body/model: ${input.bodyProfile ? bodyProfileRenderSummary(input.bodyProfile) : "preserve existing proportions and skin tone"}.`,
     `Verified physical evidence: ${selectedLookPhysicalEvidence(input)}.`,
-    measuredIssue ? `Deterministic colour check before vision review: ${measuredIssue}.` : "",
+    measuredColorIssue ? `Deterministic colour check before vision review: ${measuredColorIssue}.` : "",
+    measuredPatternIssue ? `Deterministic pattern-axis check before vision review: ${measuredPatternIssue}.` : "",
     "Images are supplied in this order: GENERATED RENDER, LOCKED STUDIO MODEL, then SPLIT FABRIC CONTEXT when available (shirt left, trouser right).",
     "Check visible cloth colour, pattern scale/orientation/contrast, weave character, collar and cuff cleanliness, neck opening, hands, shirt/trouser boundary, tucked waistband layering, trouser silhouette, mannequin identity, background stability and synthesis artifacts.",
     "Use code-measured colour/pattern anchors when supplied as objective references; allow realistic lighting/shading but review obvious hue drift, pattern re-scaling, stripe-width drift or orientation changes.",
@@ -538,42 +586,55 @@ export async function inspectSelectedLookFashnOutput(
     const text=gatewayOutputText(raw);
     if(!text) throw new Error("visual QA empty");
     const parsed=JSON.parse(text) as Omit<SelectedLookVisualCheck,"available">;
-    const colorRank={strong:0,review:1,weak:2} as const;
+    const fidelityRank={strong:0,review:1,weak:2} as const;
     const codeColor=codeColorStatus==="unavailable" ? null : codeColorStatus;
-    const combinedColor=codeColor && colorRank[codeColor]>colorRank[parsed.colorFidelity] ? codeColor : parsed.colorFidelity;
-    const forcedMeasuredReview=codeColor==="review"||codeColor==="weak";
-    const issue=forcedMeasuredReview && measuredIssue
-      ? `Measured colour drift: ${measuredIssue}.`
+    const codePattern=codePatternStatus==="unavailable" ? null : codePatternStatus;
+    const combinedColor=codeColor && fidelityRank[codeColor]>fidelityRank[parsed.colorFidelity] ? codeColor : parsed.colorFidelity;
+    const combinedPattern=codePattern && fidelityRank[codePattern]>fidelityRank[parsed.patternFidelity] ? codePattern : parsed.patternFidelity;
+    const forcedMeasuredReview=[codeColor,codePattern].some((value)=>value==="review"||value==="weak");
+    const deterministicIssues=[
+      measuredColorIssue ? `colour: ${measuredColorIssue}` : "",
+      measuredPatternIssue ? `pattern: ${measuredPatternIssue}` : "",
+    ].filter(Boolean).join("; ");
+    const issue=forcedMeasuredReview && deterministicIssues
+      ? `Measured render drift — ${deterministicIssues}.`
       : String(parsed.issue||"").replace(/\s+/g," ").trim().slice(0,180);
     const repairInstruction=forcedMeasuredReview
-      ? "Restore the shirt and trouser colours to the measured fabric references while preserving the locked construction and lighting."
+      ? "Restore measured fabric colour and pattern direction while preserving the locked construction, model and lighting."
       : String(parsed.repairInstruction||"").replace(/\s+/g," ").trim().slice(0,180);
     return {
       ...parsed,
       available:true,
       status:forcedMeasuredReview?"review":parsed.status,
       colorFidelity:combinedColor,
+      patternFidelity:combinedPattern,
       issue:issue.slice(0,180),
       repairInstruction:repairInstruction.slice(0,180),
       ...(measuredColorDeltaE?{measuredColorDeltaE}:{}),
+      ...(measuredPatternOrientation?{measuredPatternOrientation}:{}),
     };
   } catch {
-    const deterministicAvailable=codeColorStatus!=="unavailable";
+    const deterministicAvailable=codeColorStatus!=="unavailable" || codePatternStatus!=="unavailable";
+    const deterministicIssues=[
+      measuredColorIssue ? `colour ${measuredColorIssue}` : "",
+      measuredPatternIssue ? `pattern ${measuredPatternIssue}` : "",
+    ].filter(Boolean).join("; ");
     return {
       available:deterministicAvailable,
       status:"review",
       fabricFidelity:"review",
       colorFidelity:codeColorStatus==="unavailable"?"review":codeColorStatus,
-      patternFidelity:"review",
+      patternFidelity:codePatternStatus==="unavailable"?"review":codePatternStatus,
       boundary:"review",
       construction:"review",
       mannequinConsistency:"review",
       artifact:"minor",
       issue:deterministicAvailable
-        ? (measuredIssue ? `Measured colour needs review (${measuredIssue}); semantic QA is unavailable.` : "Measured colour is within tolerance; semantic QA is unavailable.")
+        ? (deterministicIssues ? `Measured render fidelity needs review (${deterministicIssues}); semantic QA is unavailable.` : "Measured render evidence is within available tolerances; semantic QA is unavailable.")
         : "Automatic photoreal QA is unavailable; keep this render for manual review.",
-      repairInstruction:measuredIssue ? "Restore the shirt and trouser colours to the measured fabric references without changing construction." : "",
+      repairInstruction:deterministicIssues ? "Restore measured fabric colour and pattern direction without changing construction." : "",
       ...(measuredColorDeltaE?{measuredColorDeltaE}:{}),
+      ...(measuredPatternOrientation?{measuredPatternOrientation}:{}),
     };
   }
 }
