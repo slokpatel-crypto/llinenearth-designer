@@ -5,6 +5,21 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { DesignerFabricMetadata } from "@/lib/designer-fabric-metadata-types";
 
+type EvidenceState = {
+  availabilityVerified:boolean;
+  analyzerReviewed:boolean;
+  imageQualityScore:number|null;
+  physicalScaleStatus:string|null;
+  physicalScaleVerified:boolean;
+  gsmVerified:boolean;
+  drapeVerified:boolean;
+  fiberVerified:boolean;
+  formalityVerified:boolean;
+  patterned:boolean;
+  gaps:string[];
+  priority:number;
+};
+
 type FabricRow = {
   id:string;
   colorName:string;
@@ -15,9 +30,24 @@ type FabricRow = {
   swatchImageUrl:string;
   yarnCountLea:number[];
   metadata:DesignerFabricMetadata;
+  evidence:EvidenceState;
 };
 
-type Payload = { configured:boolean; fabrics:FabricRow[] };
+type Coverage = {
+  total:number;
+  activeCandidates:number;
+  priorityFabrics:number;
+  availability:number;
+  analyzerReviewed:number;
+  physicalScale:number;
+  gsm:number;
+  drape:number;
+  fiber:number;
+  formality:number;
+};
+
+type Payload = { configured:boolean; coverage:Coverage; fabrics:FabricRow[] };
+type EvidenceFilter = "priority"|"all"|"scale"|"physical"|"review";
 
 const SEASONS = ["Spring","Summer","Autumn","Winter","All-season"] as const;
 const ROLE_TAGS = ["base_safe","accent_safe"] as const;
@@ -33,6 +63,7 @@ export default function DesignerDataClient() {
   const [editor,setEditor] = useState<DesignerFabricMetadata|null>(null);
   const [saving,setSaving] = useState(false);
   const [message,setMessage] = useState("");
+  const [evidenceFilter,setEvidenceFilter] = useState<EvidenceFilter>("priority");
 
   async function load(selectCurrent=true) {
     const response = await fetch("/api/operator/designer-data",{cache:"no-store"});
@@ -57,8 +88,17 @@ export default function DesignerDataClient() {
   const filtered = useMemo(()=>{
     const q=search.trim().toLowerCase();
     if (!data) return [];
-    return data.fabrics.filter((fabric)=>!q || [fabric.colorName,fabric.line,fabric.pattern,fabric.id].some((value)=>value.toLowerCase().includes(q)));
-  },[data,search]);
+    return data.fabrics
+      .filter((fabric)=>!q || [fabric.colorName,fabric.line,fabric.pattern,fabric.id].some((value)=>value.toLowerCase().includes(q)))
+      .filter((fabric)=>{
+        if(evidenceFilter==="all") return true;
+        if(evidenceFilter==="priority") return fabric.evidence.priority>=6;
+        if(evidenceFilter==="scale") return fabric.evidence.patterned && !fabric.evidence.physicalScaleVerified;
+        if(evidenceFilter==="physical") return !fabric.evidence.gsmVerified || !fabric.evidence.drapeVerified || !fabric.evidence.fiberVerified;
+        return !fabric.evidence.analyzerReviewed;
+      })
+      .sort((a,b)=>b.evidence.priority-a.evidence.priority || a.colorName.localeCompare(b.colorName));
+  },[data,search,evidenceFilter]);
 
   const selected = data?.fabrics.find((item)=>item.id===selectedId) || null;
 
@@ -123,13 +163,35 @@ export default function DesignerDataClient() {
       <div><b className={data.configured?"live":"offline"}>{data.configured?"CLOUD MEMORY LIVE":"CLOUD NOT CONFIGURED"}</b><Link href="/operator/designer-research">Creative Research</Link><Link href="/operator">Back to Operator Desk</Link></div>
     </header>
 
+    <section className="coverageBoard" aria-label="Verified fabric evidence coverage">
+      <div className="coverageLead"><span>PHASE 10 / EVIDENCE QUEUE</span><strong>{data.coverage.priorityFabrics} fabrics need priority verification</strong><p>This queue only reports missing evidence. It never fills GSM, drape, fibre, formality or physical scale by guessing.</p></div>
+      {([
+        ["Availability",data.coverage.availability],
+        ["Analyzer reviewed",data.coverage.analyzerReviewed],
+        ["True pattern scale",data.coverage.physicalScale],
+        ["GSM",data.coverage.gsm],
+        ["Drape",data.coverage.drape],
+        ["Fibre",data.coverage.fiber],
+        ["Formality",data.coverage.formality],
+      ] as const).map(([label,value])=><article key={label}><small>{label}</small><strong>{value}<i>/ {data.coverage.activeCandidates}</i></strong><em style={{width:`${data.coverage.activeCandidates?Math.round(value/data.coverage.activeCandidates*100):0}%`}} /></article>)}
+    </section>
+
     <section className="dataLayout">
       <aside className="dataBrowser">
+        <div className="evidenceFilters" role="group" aria-label="Evidence queue filter">
+          {([
+            ["priority","Priority"],
+            ["scale","Pattern scale"],
+            ["physical","Physical facts"],
+            ["review","Analyzer review"],
+            ["all","All"],
+          ] as const).map(([value,label])=><button key={value} type="button" aria-pressed={evidenceFilter===value} onClick={()=>setEvidenceFilter(value)}>{label}</button>)}
+        </div>
         <div className="dataSearch"><input value={search} onChange={(event)=>setSearch(event.target.value)} placeholder="Search fabric, collection or pattern" /><span>{filtered.length} fabrics</span></div>
         <div className="dataFabricList">
           {filtered.map((fabric)=><button key={fabric.id} className={selectedId===fabric.id?"active":""} onClick={()=>selectFabric(fabric)}>
             <Image width={62} height={72} src={fabric.swatchImageUrl} alt="" />
-            <span><strong>{fabric.colorName}</strong><small>{fabric.line}</small><em>{fabric.pattern} · {fabric.metadata.availability || "unknown"}</em></span>
+            <span><strong>{fabric.colorName}</strong><small>{fabric.line}</small><em>{fabric.pattern} · {fabric.metadata.availability || "unknown"}</em>{fabric.evidence.gaps.length>0 && <i>{fabric.evidence.gaps.slice(0,3).join(" · ")}</i>}</span><b data-priority={fabric.evidence.priority>=8?"high":fabric.evidence.priority>=4?"medium":"low"}>{fabric.evidence.priority}</b>
           </button>)}
         </div>
       </aside>
@@ -146,6 +208,27 @@ export default function DesignerDataClient() {
             <span><small>YARN COUNT</small><b>{selected.yarnCountLea.length ? `${selected.yarnCountLea.join("/")} Lea` : "Not recorded"}</b></span>
             <span><small>LAST VERIFIED</small><b>{editor.verifiedAt ? new Date(editor.verifiedAt).toLocaleString("en-IN") : "Never"}</b></span>
           </div>
+
+          <section className="evidenceCard" aria-label="Evidence readiness for selected fabric">
+            <div><span>RENDER + DESIGNER EVIDENCE</span><strong>{selected.evidence.gaps.length ? `${selected.evidence.gaps.length} gaps remain` : "Core evidence complete"}</strong><b>Priority {selected.evidence.priority}</b></div>
+            <div className="evidenceChips">
+              {([
+                ["Availability",selected.evidence.availabilityVerified],
+                ["Analyzer review",selected.evidence.analyzerReviewed],
+                ["Pattern scale",selected.evidence.physicalScaleVerified],
+                ["GSM",selected.evidence.gsmVerified],
+                ["Drape",selected.evidence.drapeVerified],
+                ["Fibre",selected.evidence.fiberVerified],
+                ["Formality",selected.evidence.formalityVerified],
+              ] as const).map(([label,ok])=><span key={label} data-ready={ok}><i>{ok?"✓":"!"}</i>{label}</span>)}
+            </div>
+            <p>{selected.evidence.patterned && !selected.evidence.physicalScaleVerified
+              ? "True-scale preview still needs a declared repeat or photographed swatch width in Fabric Analyzer."
+              : selected.evidence.gaps.length
+                ? `Next evidence: ${selected.evidence.gaps.join(", ")}.`
+                : "This fabric has the core evidence needed for calibrated Designer and render QA."}</p>
+            {selected.evidence.imageQualityScore!==null && <small>Latest measured flat-photo quality: {selected.evidence.imageQualityScore}/100 · physical scale: {selected.evidence.physicalScaleStatus || "unknown"}</small>}
+          </section>
 
           <div className="dataForm">
             <label><span>Physical availability</span><select value={editor.availability || "unknown"} onChange={(e)=>setEditor({...editor,availability:e.target.value as DesignerFabricMetadata["availability"]})}><option value="unknown">Not verified</option><option value="available">Available</option><option value="unavailable">Unavailable</option></select><small>Unavailable fabrics are removed from future Designer recommendations.</small></label>
