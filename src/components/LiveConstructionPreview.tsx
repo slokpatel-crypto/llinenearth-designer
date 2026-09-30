@@ -43,9 +43,28 @@ export function LiveConstructionPreview({
   const [localBody,setLocalBody]=useState<BodyPreviewProfile>(DEFAULT_BODY_PREVIEW_PROFILE);
   const bodyProfile=controlledBody || localBody;
   const [showControls,setShowControls]=useState(false);
+  const [loadedTiles,setLoadedTiles]=useState<Set<string>>(()=>new Set());
   const geometry=useMemo(()=>modelGeometry(spec,view,bodyProfile),[spec,view,bodyProfile]);
   const capabilities=useMemo(()=>liveCapabilities(spec),[spec]);
   const shirtAsset=assetFor(shirt),pantAsset=assetFor(pant);
+  useEffect(()=>{
+    let cancelled=false;
+    const urls=[shirtAsset?.tileUrl,pantAsset?.tileUrl].filter((value):value is string=>Boolean(value));
+    for(const url of urls) {
+      if(loadedTiles.has(url)) continue;
+      const image=new Image();
+      image.decoding="async";
+      image.onload=()=>{
+        if(cancelled) return;
+        setLoadedTiles((current)=>{
+          if(current.has(url)) return current;
+          const next=new Set(current);next.add(url);return next;
+        });
+      };
+      image.src=url;
+    }
+    return ()=>{cancelled=true;};
+  },[shirtAsset?.tileUrl,pantAsset?.tileUrl,loadedTiles]);
   const rules=useMemo(()=>evaluateCrossGarmentRules({spec,occasion,climate,pantDrapeVerified:false}),[spec,occasion,climate]);
   function change(side:"shirt"|"pant",key:string,id:string) {
     const next:StyleSpecV2={
@@ -84,12 +103,17 @@ export function LiveConstructionPreview({
           {([["shirt",shirtAsset,shirt],["pant",pantAsset,pant]] as const).map(([name,asset,fabric])=>{
             const size=tileSize(asset);
             const sourceRotation=asset?.orientation==="horizontal"?90:0;
+            const texture=asset
+              ? (loadedTiles.has(asset.tileUrl)?asset.tileUrl:asset.placeholderUrl)
+              : fabric.image;
             return <pattern key={name} id={`lc-${name}`} width={size} height={size} patternUnits="userSpaceOnUse" patternTransform={`rotate(${sourceRotation} 320 480)`}>
-              <image href={asset?.tileUrl||fabric.image} width={size} height={size} preserveAspectRatio="none" />
+              <rect width={size} height={size} fill={asset?.dominantHex||fabric.hex}/>
+              <image href={texture} width={size} height={size} preserveAspectRatio="none" />
             </pattern>;
           })}
           <pattern id="lc-cross" width={tileSize(shirtAsset)} height={tileSize(shirtAsset)} patternUnits="userSpaceOnUse" patternTransform={`rotate(${shirtAsset?.orientation==="horizontal"?180:90} 320 190)`}>
-            <image href={shirtAsset?.tileUrl||shirt.image} width={tileSize(shirtAsset)} height={tileSize(shirtAsset)} preserveAspectRatio="none" />
+            <rect width={tileSize(shirtAsset)} height={tileSize(shirtAsset)} fill={shirtAsset?.dominantHex||shirt.hex}/>
+            <image href={shirtAsset ? (loadedTiles.has(shirtAsset.tileUrl)?shirtAsset.tileUrl:shirtAsset.placeholderUrl) : shirt.image} width={tileSize(shirtAsset)} height={tileSize(shirtAsset)} preserveAspectRatio="none" />
           </pattern>
         </defs>
         <ellipse cx="320" cy="931" rx="182" ry="15" fill="#1b2530" opacity=".09" />
