@@ -41,12 +41,12 @@ test("missing measured target stays unavailable rather than inventing colour tru
 });
 
 
-async function stripedOutfit(orientation:"vertical"|"horizontal") {
+async function stripedOutfit(orientation:"vertical"|"horizontal",periodPx=16,stripeWidthPx=7) {
   const width=400,height=500;
   const stripeSvg=(w:number,h:number,base:string,ink:string)=>{
     const stripes=orientation==="vertical"
-      ? Array.from({length:Math.ceil(w/16)},(_,i)=>`<rect x="${i*16}" y="0" width="7" height="${h}" fill="${ink}"/>`).join("")
-      : Array.from({length:Math.ceil(h/16)},(_,i)=>`<rect x="0" y="${i*16}" width="${w}" height="7" fill="${ink}"/>`).join("");
+      ? Array.from({length:Math.ceil(w/periodPx)},(_,i)=>`<rect x="${i*periodPx}" y="0" width="${stripeWidthPx}" height="${h}" fill="${ink}"/>`).join("")
+      : Array.from({length:Math.ceil(h/periodPx)},(_,i)=>`<rect x="0" y="${i*periodPx}" width="${w}" height="${stripeWidthPx}" fill="${ink}"/>`).join("");
     return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect width="100%" height="100%" fill="${base}"/>${stripes}</svg>`);
   };
   return sharp({create:{width,height,channels:3,background:"#0a1628"}})
@@ -85,4 +85,33 @@ test("subtle low-contrast pattern evidence does not create a false hard check",a
   });
   assert.equal(result.shirt.status,"unavailable");
   assert.equal(worstRenderPatternStatus(result),"unavailable");
+});
+
+
+test("physical repeat and stripe width stay strong when final render scale is close to measured cloth",async()=>{
+  const image=await stripedOutfit("vertical",16,7);
+  const result=await compareRenderMeasuredPatterns(image,"front",{
+    shirtOrientation:"vertical",pantOrientation:null,
+    shirtContrastDeltaE:35,pantContrastDeltaE:null,
+    shirtRepeatMm:65,pantRepeatMm:null,
+    shirtStripeWidthMm:29,pantStripeWidthMm:null,
+    bodyHeightCm:178,
+  });
+  assert.equal(result.shirt.status,"strong");
+  assert(result.shirt.observedRepeatMm!==null && result.shirt.observedRepeatMm>45 && result.shirt.observedRepeatMm<85);
+  assert(result.shirt.observedStripeWidthMm!==null && result.shirt.observedStripeWidthMm>18 && result.shirt.observedStripeWidthMm<45);
+});
+
+test("physical scale guard rejects gross AI stripe enlargement even when the axis is correct",async()=>{
+  const image=await stripedOutfit("vertical",16,7);
+  const result=await compareRenderMeasuredPatterns(image,"front",{
+    shirtOrientation:"vertical",pantOrientation:null,
+    shirtContrastDeltaE:35,pantContrastDeltaE:null,
+    shirtRepeatMm:20,pantRepeatMm:null,
+    shirtStripeWidthMm:8,pantStripeWidthMm:null,
+    bodyHeightCm:178,
+  });
+  assert.equal(result.shirt.observedOrientation,"vertical");
+  assert.equal(result.shirt.status,"weak");
+  assert.equal(worstRenderPatternStatus(result),"weak");
 });
