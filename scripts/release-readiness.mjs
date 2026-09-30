@@ -169,6 +169,7 @@ requireFile("tests/phase10-analyzer-ground-truth-scorecard.test.ts");
 requireTokens("src/lib/fabric-ground-truth-scorecard.ts", ["FABRIC_GROUND_TRUTH_VERSION","scoreFabricGroundTruth","fieldAgreementPercent","exactProfilePercent"]);
 requireTokens("src/app/api/operator/fabric-ground-truth/scorecard/route.ts", ["verifyOperatorSession","MIN_LABELS=40","loadFabricGroundTruthLabels","reportable"]);
 requireTokens("src/app/operator/fabric-ground-truth/FabricGroundTruthClient.tsx", ["fabric_ground_truth_label","fabric-ground-truth-v1","OWNER-LABELLED ANALYZER AGREEMENT","fieldAgreementPercent"]);
+requireTokens("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx", ["analyzerScorecard","/api/operator/fabric-ground-truth/scorecard","analyzerLabelTarget","fieldAgreementPercent"]);
 requireTokens("src/lib/fabric-ground-truth-stats.ts", ["summarizeFabricGroundTruth","reviewedFabrics","pendingFabrics","stockBoundProfiles","pending.delete"]);
 requireTokens("src/app/api/operator/fabric-analyzer/stats/route.ts", ["loadFabricAnalysesForFabricIds","FABRIC_STOCK.filter","summarizeFabricGroundTruth"]);
 requireTokens("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx", ["groundTruth?.reviewedFabrics","groundTruth?.target"]);
