@@ -269,6 +269,7 @@ function cleanPayload(type:string, input:unknown) {
         subtype,version,caseId,choice,
         reason:["best_balance","color","pattern","formality","fit_cut","originality","too_safe","too_bold","none_work","other"].includes(reason)?reason:"other",
         occasion,climate,intention,anchorShirtId,anchorPantId,candidates,
+        engineRuleSetVersion:text(payload.engineRuleSetVersion,100),
         note:text(payload.note,600),
       };
     }
