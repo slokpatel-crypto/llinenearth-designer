@@ -20,13 +20,14 @@ type BatchItem={
   verifiedDrape?:"Fluid"|"Balanced"|"Structured";
   verifiedFiberContent?:string;
   verifiedPhysicalSourceUrl?:string;
+  verifiedPhysicalEvidenceNote?:string;
 };
 
 const HEADERS=[
   "fabricId","imageUrl","macroImageUrl","foldImageUrl","sourcePageUrl","sourceId",
   "declaredMaterial","declaredFabricType","supplierColorName","supplierPatternName",
   "swatchRealWidthMm","repeatRealMm","verifiedGsm","verifiedDrape",
-  "verifiedFiberContent","verifiedPhysicalSourceUrl","notes",
+  "verifiedFiberContent","verifiedPhysicalSourceUrl","verifiedPhysicalEvidenceNote","notes",
 ] as const;
 
 function parseCsv(text:string){
@@ -85,6 +86,7 @@ function itemsFromCsv(text:string){
       verifiedDrape:drape,
       verifiedFiberContent:raw.verifiedFiberContent||undefined,
       verifiedPhysicalSourceUrl:raw.verifiedPhysicalSourceUrl||undefined,
+      verifiedPhysicalEvidenceNote:raw.verifiedPhysicalEvidenceNote||undefined,
       notes:raw.notes||undefined,
     };
   }).filter((item)=>item.fabricId || item.imageUrl || item.sourcePageUrl);
@@ -139,6 +141,7 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
           verifiedDrape:mappedDrape,
           verifiedFiberContent:"",
           verifiedPhysicalSourceUrl:"",
+          verifiedPhysicalEvidenceNote:"",
           notes:`Evidence queue gaps: ${(fabric.evidence?.gaps||[]).join(" | ")}`,
         };
         lines.push(HEADERS.map((header)=>csvCell(row[header])).join(","));
@@ -200,7 +203,7 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
 
   return <section className="analyzerPanel analyzerBatch">
     <div className="panelTitle"><span>03 / BATCH CAPTURE</span><h2>Process verified fabric evidence faster.</h2><b>{runnable.length} runnable</b></div>
-    <div className="batchGuardrail"><strong>NO AUTO-INVENTED PHYSICAL FACTS</strong><p>The worksheet preloads catalogue identity only. Add trusted flat image URLs and only enter GSM, drape, fibre or millimetres when you have real supplier/owner evidence.</p></div>
+    <div className="batchGuardrail"><strong>NO AUTO-INVENTED PHYSICAL FACTS</strong><p>The worksheet preloads catalogue identity only. Add trusted flat image URLs and only enter GSM, drape, fibre or millimetres when you have real supplier/owner evidence. Every physical value also needs either a source URL or a short evidence note.</p></div>
     <div className="batchActions">
       <button type="button" onClick={()=>void downloadTemplate()}>Download evidence-gap CSV</button>
       <button type="button" onClick={()=>fileRef.current?.click()}>Load completed CSV</button>
