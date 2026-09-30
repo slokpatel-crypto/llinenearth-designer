@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { DesignerFabricMetadata } from "@/lib/designer-fabric-metadata-types";
+import DesignerDataBatchPanel from "./DesignerDataBatchPanel";
 
 type EvidenceState = {
   availabilityVerified:boolean;
@@ -175,6 +176,8 @@ export default function DesignerDataClient() {
         ["Formality",data.coverage.formality],
       ] as const).map(([label,value])=><article key={label}><small>{label}</small><strong>{value}<i>/ {data.coverage.activeCandidates}</i></strong><em style={{width:`${data.coverage.activeCandidates?Math.round(value/data.coverage.activeCandidates*100):0}%`}} /></article>)}
     </section>
+
+    <DesignerDataBatchPanel fabrics={data.fabrics} configured={data.configured} onComplete={async()=>{await load(true);}} />
 
     <section className="dataLayout">
       <aside className="dataBrowser">
