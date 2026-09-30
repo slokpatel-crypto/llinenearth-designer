@@ -276,6 +276,11 @@ requireTokens("src/lib/designer/style-spec-v2.ts", ["STYLE_SCHEMA_VERSION=2","me
 requireTokens("src/components/DesignerModule.tsx", ["styleSpec","LiveConstructionPreview","Studio preview","Live cut study","bodyProfileFromMeasurements"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["Lock final design","Final photoreal ✦","selectedLookSessionCache","styleSpec","bodyProfile"]);
 requireTokens("src/app/api/designer/look-render/route.ts", ["resolved.locked!==true","getCachedSelectedLookRender","loadDurableSelectedLookRender","storeDurableSelectedLookRender","resolveSelectedLookRequest","x-linen-render-cache"]);
+requireTokens("src/lib/designer/render-cache.ts", ["designer_render_cache_get","designer_render_cache_upsert_v2","loadDesignerRenderCacheStats","loadPopularDesignerRenderPairs"]);
+requireTokens("src/lib/designer/selected-look-server.ts", ["resolveSelectedLookRequest","enrichSelectedLookEvidence","loadDesignerFabricMetadata","loadDesignerFabricIntelligence"]);
+requireFile("supabase/migrations/20260930_designer_render_cache.sql");
+requireFile("supabase/migrations/20260930_designer_render_cache_observability.sql");
+requireTokens("src/app/api/operator/designer-render-cache/stats/route.ts", ["verifyOperatorSession","loadDesignerRenderCacheStats","loadPopularDesignerRenderPairs","visibleOnCustomerWeb:false"]);
 requireTokens("src/lib/ai-visualization.ts", ["styleSpecRenderSummary","bodyProfileRenderSummary","getCachedSelectedLookRender","Lock the final design before using the photoreal renderer."]);
 requireTokens("src/lib/designer/body-profile.ts", ["BodyPreviewProfile","BODY_HEIGHT_OPTIONS","BODY_SKIN_TONES","bodyProfileFromMeasurements"]);
 requireTokens("src/lib/fabric-analyzer.ts", ["macroImageUrl","foldImageUrl","Photo protocol image order is FLAT","captureMeasurements","Macro capture missing","Fold capture missing"]);
