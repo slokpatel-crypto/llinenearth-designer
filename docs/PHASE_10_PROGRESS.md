@@ -34,6 +34,7 @@ Phase 10 is now materially beyond the original foundation brief.
 
 - `/operator/fabric-analyzer` is now an authenticated private desk.
 - It supports flat/macro/fold capture URLs, declared catalogue context, owner/supplier scale, verified GSM/drape/fibre facts, measured result review and approve/reject workflow.
+- The same desk now accepts local flat/macro/fold photos directly from the operator device. The browser compresses each capture before the authenticated request, the server enforces strict image/data-size bounds, and raw base64 image payloads are never persisted in the Analyzer profile/store; only the measured content identity and a private direct-capture marker are retained.
 - The private desk displays corpus counts, image quality, measured colour/ΔE, pattern evidence, physical-scale state, capture evidence and review priority.
 - Quality gates protect the operator authentication and ensure Analyzer internals do not enter customer Designer UI.
 - Designer Data Desk now includes an evidence-coverage queue that merges verified merchandising metadata with reviewed Analyzer evidence, prioritizes missing availability/physical-scale/GSM/drape/fibre/formality facts, and never fills missing physical facts by inference.
