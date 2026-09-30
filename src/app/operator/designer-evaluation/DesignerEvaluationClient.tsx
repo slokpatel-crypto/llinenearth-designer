@@ -21,6 +21,7 @@ type Payload={
   version:string;
   totalCases:number;
   labeledCases:number;
+  nextUnlabelledIndex:number|null;
   index:number;
   benchmark:{
     id:string;
@@ -144,7 +145,7 @@ export default function DesignerEvaluationClient(){
       const result=await response.json() as {stored?:boolean;error?:string};
       if(!response.ok || !result.stored) throw new Error(result.error||"Benchmark label was not stored.");
       setMessage("Benchmark label saved.");
-      const nextIndex=data.totalCases ? (data.index+1)%data.totalCases : data.index;
+      const nextIndex=data.nextUnlabelledIndex ?? (data.totalCases ? (data.index+1)%data.totalCases : data.index);
       await load(nextIndex);
     }catch(error){
       setMessage(error instanceof Error?error.message:"Benchmark label could not be saved.");
@@ -206,7 +207,7 @@ export default function DesignerEvaluationClient(){
       <div className="evalCaseHead">
         <div><span>{data.benchmark.id.toUpperCase()}</span><h2>{data.benchmark.occasion}</h2></div>
         <div className="evalContext"><b>{data.benchmark.climate}</b><b>{data.benchmark.intention}</b></div>
-        <div className="evalNav"><button disabled={loading||data.index<=0} onClick={()=>void load(Math.max(0,data.index-1))}>← Previous</button><button disabled={loading||data.index>=data.totalCases-1} onClick={()=>void load(Math.min(data.totalCases-1,data.index+1))}>Next →</button></div>
+        <div className="evalNav"><button disabled={loading||data.index<=0} onClick={()=>void load(Math.max(0,data.index-1))}>← Previous</button>{data.nextUnlabelledIndex!==null&&<button className="nextUnlabelled" disabled={loading} onClick={()=>void load(data.nextUnlabelledIndex!)}>Next unlabelled</button>}<button disabled={loading||data.index>=data.totalCases-1} onClick={()=>void load(Math.min(data.totalCases-1,data.index+1))}>Next →</button></div>
       </div>
       <p className="evalInstruction">Choose the direction you would actually show a customer for this context. Judge the complete shirt + trouser + cut direction, not the algorithm score.</p>
       {data.currentLabel&&<div className="evalExisting">Previously labelled {data.currentLabel.choice==="none"?"none of the three":`option ${Number(data.currentLabel.choice)+1}`} · {new Date(data.currentLabel.at).toLocaleString("en-IN")}. Saving again replaces the benchmark label used for this case.</div>}
@@ -231,7 +232,7 @@ export default function DesignerEvaluationClient(){
         <label className="evalNote">Optional operator note
           <textarea value={note} onChange={(event)=>setNote(event.target.value)} placeholder="What would you change or why is this direction stronger?" />
         </label>
-        <div><p>{data.configured?"This saves one auditable ground-truth label. It does not change live ranking weights automatically.":"Connect cloud memory before benchmark labels can be retained."}</p><button className="evalSave" onClick={()=>void save()} disabled={!choice||saving||!data.configured}>{saving?"Saving…":"Save label + next case"}</button></div>
+        <div><p>{data.configured?"This saves one auditable ground-truth label. It does not change live ranking weights automatically.":"Connect cloud memory before benchmark labels can be retained."}</p><button className="evalSave" onClick={()=>void save()} disabled={!choice||saving||!data.configured}>{saving?"Saving…":"Save label + next unlabelled"}</button></div>
       </section>
     </section>
 

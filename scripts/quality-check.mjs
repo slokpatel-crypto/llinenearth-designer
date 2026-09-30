@@ -480,6 +480,19 @@ for(const token of ["summarizeConstructionReviews","decided","completionPercent"
   if(!constructionReviewSummary.includes(token)) throw new Error(`Construction review summary regression: missing ${token}`);
 }
 console.log("Construction review completion gate passed: approve/reject both complete review and the desk advances to the next pending option.");
+const benchmarkProgress=fs.readFileSync("src/lib/designer/benchmark-progress.ts","utf8");
+const designerEvaluationRoute=fs.readFileSync("src/app/api/operator/designer-evaluation/route.ts","utf8");
+const designerEvaluationClient=fs.readFileSync("src/app/operator/designer-evaluation/DesignerEvaluationClient.tsx","utf8");
+for(const token of ["nextUnlabelledBenchmarkIndex","labelledCaseIds","currentIndex"]) {
+  if(!benchmarkProgress.includes(token)) throw new Error(`Designer benchmark progress regression: missing ${token}`);
+}
+for(const token of ["nextUnlabelledBenchmarkIndex","nextUnlabelledIndex","labelState.labels.keys()"]) {
+  if(!designerEvaluationRoute.includes(token)) throw new Error(`Designer benchmark route progress regression: missing ${token}`);
+}
+for(const token of ["nextUnlabelledIndex","Next unlabelled","Save label + next unlabelled"]) {
+  if(!designerEvaluationClient.includes(token)) throw new Error(`Designer benchmark UI progress regression: missing ${token}`);
+}
+console.log("Designer benchmark progress gate passed: owner labelling advances to the next missing case instead of repeatedly cycling reviewed cases.");
 const groundTruthScorecard=fs.readFileSync("src/lib/fabric-ground-truth-scorecard.ts","utf8");
 const groundTruthScorecardRoute=fs.readFileSync("src/app/api/operator/fabric-ground-truth/scorecard/route.ts","utf8");
 for(const token of ["FABRIC_GROUND_TRUTH_VERSION","FABRIC_GROUND_TRUTH_FIELDS","scoreFabricGroundTruth","exactProfilePercent","fieldAgreementPercent"]) {
