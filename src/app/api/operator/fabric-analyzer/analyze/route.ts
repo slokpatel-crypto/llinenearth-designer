@@ -33,17 +33,23 @@ function clean(value:unknown,limit:number) {
   return String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
 }
 
+function imageInput(value:unknown) {
+  const raw=String(value??"").trim();
+  if(/^data:image\/(?:jpeg|png|webp);base64,/i.test(raw)) return raw.slice(0,1_600_000);
+  return clean(raw,1800);
+}
+
 export async function POST(request:Request) {
   if(!await authorized()) return json({error:"Unauthorized."},{status:401});
   if(!sameOrigin(request)) return json({error:"Cross-site Analyzer requests are not allowed."},{status:403});
   const length=Number(request.headers.get("content-length")||0);
-  if(length>80_000) return json({error:"Analyzer request is too large."},{status:413});
+  if(length>3_800_000) return json({error:"Analyzer request is too large."},{status:413});
 
   try {
     const body=await request.json() as Record<string,unknown>;
     const fabricId=clean(body.fabricId,160) || undefined;
     const sourcePageUrl=clean(body.sourcePageUrl,1800);
-    const imageUrl=clean(body.imageUrl,1800);
+    const imageUrl=imageInput(body.imageUrl);
     const force=body.force===true;
 
     if(sourcePageUrl && !imageUrl) {
@@ -55,13 +61,13 @@ export async function POST(request:Request) {
       });
     }
 
-    if(!imageUrl) return json({error:"Provide a trusted imageUrl or approved sourcePageUrl."},{status:400});
+    if(!imageUrl) return json({error:"Provide a trusted image URL, authenticated direct capture, or approved source page."},{status:400});
 
     const input:FabricAnalyzerContext={
       fabricId,
       imageUrl,
-      macroImageUrl:clean(body.macroImageUrl,1800) || undefined,
-      foldImageUrl:clean(body.foldImageUrl,1800) || undefined,
+      macroImageUrl:imageInput(body.macroImageUrl) || undefined,
+      foldImageUrl:imageInput(body.foldImageUrl) || undefined,
       sourcePageUrl:sourcePageUrl || undefined,
       sourceId:clean(body.sourceId,80) || undefined,
       declaredMaterial:clean(body.declaredMaterial,120) || undefined,
