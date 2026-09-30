@@ -8,6 +8,7 @@ import { loadDesignerEvidenceContext } from "@/lib/designer/evidence-context";
 import { enrichDesignerFabricsWithIntelligence } from "@/lib/fabric-intelligence-server";
 import { buildDesignerBenchmarkCases, DESIGNER_BENCHMARK_VERSION } from "@/lib/designer/benchmark";
 import { loadDesignerBenchmarkLabels } from "@/lib/designer/benchmark-labels";
+import { nextUnlabelledBenchmarkIndex } from "@/lib/designer/benchmark-progress";
 
 export const runtime="nodejs";
 export const maxDuration=30;
@@ -98,11 +99,17 @@ export async function GET(request:Request) {
     }));
 
     const labels=[...labelState.labels.values()];
+    const nextUnlabelledIndex=nextUnlabelledBenchmarkIndex(
+      cases.map((item)=>item.id),
+      labelState.labels.keys(),
+      index,
+    );
     return NextResponse.json({
       configured:labelState.configured,
       version:DESIGNER_BENCHMARK_VERSION,
       totalCases:cases.length,
       labeledCases:labels.length,
+      nextUnlabelledIndex,
       index,
       benchmark,
       currentLabel:labelState.labels.get(benchmark.id)||null,
