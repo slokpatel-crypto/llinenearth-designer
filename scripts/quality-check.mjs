@@ -483,6 +483,10 @@ for(const token of ["fabric_ground_truth_label","fabric-ground-truth-v1","origin
   if(!groundTruthClient.includes(token)) throw new Error(`Analyzer Ground Truth label regression: missing ${token}`);
 }
 console.log("Analyzer Ground Truth scorecard gate passed: agreement stays owner-labelled and evidence-gated.");
+for(const token of ["analyzerScorecard","/api/operator/fabric-ground-truth/scorecard","analyzerLabelTarget","fieldAgreementPercent"]) {
+  if(!readinessClient.includes(token)) throw new Error(`Phase 10 Analyzer scorecard readiness regression: missing ${token}`);
+}
+console.log("Analyzer Ground Truth readiness gate passed: reviewed-fabric and owner-label thresholds must both be satisfied.");
 const fabricStudioMounts=sourceFiles("src").filter((path)=>path!=="src/components/FabricStudio.tsx")
   .filter((path)=>fs.readFileSync(path,"utf8").includes("FabricStudio"));
 if(fabricStudioMounts.length) throw new Error(`Fabric Analyzer privacy regression: legacy FabricStudio is mounted by ${fabricStudioMounts.join(", ")}`);
