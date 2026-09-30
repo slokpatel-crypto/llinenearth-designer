@@ -119,7 +119,7 @@ export function modelGeometry(spec:StyleSpecV2,view:PreviewView="front",body:Mod
   };
 }
 
-const drawnGroups=new Set(["shirt.type","shirt.collar","shirt.cuff","shirt.placket","shirt.pocket","shirt.sleeve","shirt.fit","shirt.length","shirt.hem","shirt.back","pant.type","pant.fit","pant.rise","pant.waistband","pant.pleat","pant.hem","pant.break"]);
+const drawnGroups=new Set(["shirt.type","shirt.collar","shirt.cuff","shirt.placket","shirt.pocket","shirt.sleeve","shirt.fit","shirt.length","shirt.hem","shirt.back","shirt.wear","pant.type","pant.fit","pant.rise","pant.waistband","pant.pleat","pant.hem","pant.break"]);
 export function liveCapabilities(_spec:StyleSpecV2):Record<string,RenderSupport> {
   return Object.fromEntries(GARMENT_OPTION_LIBRARY.map((option)=>[
     option.id,drawnGroups.has(option.group)?"approximate":"none",
