@@ -327,6 +327,19 @@ for (const token of ["MENSWEAR_MATERIAL_TAXONOMY","MENSWEAR_PATTERN_TAXONOMY","M
 if (realDesignerModule.includes("fabric-analyzer")) throw new Error("Fabric Analyzer privacy regression: customer Designer UI must not import the backend analyzer.");
 console.log("Private Fabric Analyzer gate passed: server-only visual analysis and menswear taxonomy remain backend-only.");
 
+const analyzerOperatorPage=fs.readFileSync("src/app/operator/fabric-analyzer/page.tsx","utf8");
+const analyzerOperatorClient=fs.readFileSync("src/app/operator/fabric-analyzer/FabricAnalyzerClient.tsx","utf8");
+for(const token of ["verifyOperatorSession","/operator/login?next=/operator/fabric-analyzer","FabricAnalyzerClient"]) {
+  if(!analyzerOperatorPage.includes(token)) throw new Error(`Fabric Analyzer operator-page privacy regression: missing ${token}`);
+}
+for(const token of ["/api/operator/fabric-analyzer/analyze","macroImageUrl","foldImageUrl","verifiedGsm","verifiedDrape","Approve profile","BACKEND ONLY"]) {
+  if(!analyzerOperatorClient.includes(token)) throw new Error(`Fabric Analyzer operator workflow regression: missing ${token}`);
+}
+for(const token of ['Photo protocol image order is FLAT','Use MACRO only for texture/weave appearance','Use FOLD only for visual structure/fall appearance','input.macroImageUrl','input.foldImageUrl']) {
+  if(!fabricAnalyzerSource.includes(token)) throw new Error(`Fabric Analyzer capture-protocol regression: missing ${token}`);
+}
+console.log("Fabric Analyzer operator gate passed: private capture protocol and review workflow remain authenticated and backend-only.");
+
 const fabricReferenceIndex = fs.readFileSync("src/lib/fabric-analyzer-reference-index.ts","utf8");
 for (const token of ["REAL_MENSWEAR_MATERIAL_TERMS","REAL_MENSWEAR_PATTERN_TERMS","STANDARD_COLOR_REFERENCE_TERMS","FABRIC_REFERENCE_SOURCES","real-reference-v3"]) {
   if (!fabricReferenceIndex.includes(token)) throw new Error(`Real-reference Fabric Analyzer regression: missing ${token}`);
