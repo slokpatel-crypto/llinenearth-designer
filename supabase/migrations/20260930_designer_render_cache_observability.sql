@@ -99,7 +99,7 @@ as $$
   from private.designer_render_cache c
   where c.shirt_id is not null and c.pant_id is not null and c.expires_at>now()
   group by c.shirt_id,c.pant_id
-  order by cache_hits desc,cached_variants desc,c.shirt_id,c.pant_id
+  order by coalesce(sum(c.hit_count),0) desc,count(*) desc,c.shirt_id,c.pant_id
   limit greatest(1,least(coalesce(p_limit,20),100));
 $$;
 
