@@ -23,6 +23,11 @@ export interface DesignerFabric {
   formalityScore: number | null;
   patternType: string;
   patternScale: "None" | "Fine" | "Medium" | "Medium-Bold" | "Bold" | null;
+  renderScale?: {
+    physicalScaleStatus:"declared_repeat"|"declared_swatch_width"|"unknown";
+    repeatMm:number|null;
+    stripeWidthMm:number|null;
+  } | null;
   weightGsm: number | null;
   weightClass: "Light" | "Medium" | "Heavy" | null;
   bestSeason: string[] | null;
