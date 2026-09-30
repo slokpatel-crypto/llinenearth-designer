@@ -17,6 +17,7 @@ export type FabricRenderAsset={
   scaleApproximate:boolean;
   tileRealWidthMm:number|null;
   renderAssetVersion:string;
+  tileStrategy?:"mirrored_plain"|"direction_preserving_repeat";
 };
 export type PartGeometry={id:string;path:string;fabric:"shirt"|"pant";rotationDeg:number;patternMatch:"matched"|"unmatched"};
 export type ModelGeometry={
