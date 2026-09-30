@@ -1,42 +1,86 @@
 # Phase 10 implementation record
 
-## Verified on 29 September 2026
+## Verified on 30 September 2026
 
-The attached build brief was made from an earlier snapshot. Current `main` already contains:
+Phase 10 is now materially beyond the original foundation brief.
 
-- **A:** closed vocabulary IDs, exact normalization, Analyzer v4 enums, v3 adapter, exact pairing and 13 unit tests. See `PHASE_10A_REPORT.md`.
-- **B foundation:** Option Library v2, legacy labels and StyleSpec v2 adapters, Korean/extra-high-rise options, validation and hash-input roundtrip test. The expanded choices are provisional; the current saved Designer look still uses legacy selections.
-- **C foundation:** named weights and a data rule evaluator used by the Designer engine. Unit tests cover the proportion, tuck, pattern and festive cases. The top-three Designer snapshot comparison requested by the brief is still outstanding.
-- **E1–E3 and part of E5–E7:** measured colour/pattern and image quality, content hash, top-k references and more conservative unreviewed influence. Ground-truth ΔE and per-field accuracy need owner-labelled fabrics. Multi-image capture, operator upload and per-field feedback statistics remain.
+### Shared contracts and Designer intelligence
 
-The quality gate initially failed on stale prose checks after the Analyzer v4 prompt changed. Its checks now point to the actual evidence and provenance wording without weakening the underlying constraints.
+- **A complete:** shared closed vocabularies, exact normalization, Analyzer v4 enums, v3 adapter and exact pairing protections.
+- **B implemented:** Option Library v2 covers shirt type, collar, cuff, placket, pocket, sleeve, fit, length, hem, back, wear and button; trouser type, fit, rise, pleat, waistband, hem and break. Legacy labels remain stable and StyleSpec v2 adapters preserve old saved looks.
+- **C implemented:** named scoring weights plus data-driven cross-garment rules are active. High-rise/tuck, wide-trouser proportion, pattern load, camp-collar, formality and climate/drape checks produce explanations.
+- Designer search now keeps small occasion-band misses as reviewable/rankable trade-offs rather than collapsing an entire Safe/Elevated/Statement tier. Hard construction conflicts remain blocked.
+- Deterministic CI regression now checks Formal, Casual and Semi-Formal top-three output, tier order, distinct pairs and repeated-input stability.
 
-## Live preview slice delivered
+### Fabric Analyzer v4
 
-- `scripts/build-fabric-render-assets.mjs` creates 66 tile/placeholder pairs from the 66 catalogued fabric photos during test, development and build. Central cloth crops omit printed captions and selvage. Mirroring makes a continuous tile; it may mirror a print motif, so the output is labelled an approximation.
-- `public/fabric-tiles/manifest.json` tracks tile size, detected visual orientation, colour, and scale status. Every stock swatch currently has **unknown physical scale**. `scripts/fabric-scales.json` is empty until the owner measures swatches or repeats.
-- The default photographic preview now loads prepared cloth tiles with a source-photo fallback; this avoids putting printed swatch captions and broad photo folds on a garment.
-- The instant preview visibly marks pattern scale, fit and drape as approximate pending a physical sample.
-- A lazy-loaded **Live cut study** sits beside the existing photographic model on `/designer-studio`. It has separate shirt/pant areas, front/back views, shirt/collar/cuff/sleeve/fit/pocket/back controls, trouser fit/rise/pleat/waistband/hem controls, provisional rule reasons and per-option accuracy.
-- The photograph remains the default because the construction drawing is not photorealistic. Expanded study choices are explicitly not yet part of the saved look or AI render request.
+- Deterministic measurement runs before AI vision:
+  - sRGB/LAB dominant colour and palette
+  - nearest closed colour family + ΔE
+  - pattern orientation, density, scale and contrast
+  - pixel repeat/stripe estimates
+  - millimetres only when owner/supplier physical scale is declared
+  - blur, glare, exposure, colour-cast and framing quality
+  - SHA-256 content identity + perceptual hash
+- **Three-photo protocol is active:** flat image is authoritative for measured colour/pattern; optional macro is used for texture/weave appearance; optional fold is used only for visual fall/structure appearance.
+- Macro/fold captures are passed to the model only when their quality checks pass.
+- Verified GSM, physical drape class and fibre content are accepted only as declared owner/supplier facts with provenance. They are never inferred from pixels.
+- Top-k real textile references are retrieved instead of injecting the whole corpus into every prompt.
+- Unreviewed Analyzer intelligence remains conservatively weighted until human review/evaluation supports higher trust.
+- The Analyzer remains server-only/customer-hidden.
 
-## Manual checks
+### Private operator workflow
 
-1. Run `npm run fabric:tiles`, `npm run quality`, `npm test`, `npm run build`.
-2. Open `/designer-studio`, select fabrics, switch from **Photographic model** to **Live cut study**.
-3. Change to Korean Straight Wide, Extra-High Rise, Short Sleeve, and a different collar. Check front/back and the explanation panel.
-4. Compare plain, stripe and print fabric tiles. For any photographed stripe, inspect orientation and ask the owner for real repeat/width in millimetres before making a true-scale claim.
+- `/operator/fabric-analyzer` is now an authenticated private desk.
+- It supports flat/macro/fold capture URLs, declared catalogue context, owner/supplier scale, verified GSM/drape/fibre facts, measured result review and approve/reject workflow.
+- The private desk displays corpus counts, image quality, measured colour/ΔE, pattern evidence, physical-scale state, capture evidence and review priority.
+- Quality gates protect the operator authentication and ensure Analyzer internals do not enter customer Designer UI.
 
-## Known gaps and acceptance status
+### Instant preview and model system
 
-- **Phase D is in progress.** The construction shapes are approximate illustration geometry, not a physically tailored pattern. Visual acceptance on six combinations and mobile <100 ms measurements have not been run.
-- Pattern rotation is based on visual orientation; catalogue photography and mirroring can distort some motifs. Manual orientation review and measured repeat input are needed.
-- The existing FASHN endpoint still accepts a legacy style and has not gained locked StyleSpec v2 colour/pattern QA.
-- **Phase F/G are in progress.** Expanded options must become canonical saved spec fields, and the mobile controls need a unified flow; no fabricated golden-set labels will be committed.
+- 66 catalogue cloth assets are prepared at build time with placeholder-first loading.
+- Live fabric scale is calibrated against the model when real swatch/repeat millimetres are supplied; otherwise the UI explicitly labels scale approximate.
+- `LiveConstructionPreview` uses deterministic SVG geometry and local state, so garment-option swaps do not require AI generation.
+- Front/back construction study uses the same selected cloth pair and supports:
+  - shirt type, collar, cuff, placket, sleeve, fit, length, hem, pocket, back, tucked/untucked state and button choice
+  - trouser type, fit, rise, pleat, waistband, hem and break
+  - body build, height and skin-tone controls
+- Saved measurements can inform the body build and Designer fit logic.
+- StyleSpec v2 and body profile persist with the Designer draft and flow into the canonical garment specification.
 
-## Owner questions
+### Final AI Studio and caching
 
-1. Supply physical swatch width or pattern repeat in millimetres for each fabric to establish scale.
-2. Approve Korean/baggy trouser proportions, shirt ease, and which tailoring choices are actually offered.
-3. Label 40–50 fabrics and 40–60 outfits for accuracy evaluation.
-4. Provide verified GSM/fibre/drape only where the physical roll or supplier documentation supports it.
+- FASHN remains the final photoreal render step rather than the instant option-change renderer.
+- Final render requests are canonicalized server-side against stock fabric IDs and the locked StyleSpec/body profile.
+- Multi-view final output remains Front / 3/4 / Side / Back with visual inspection.
+- Measured render evidence is carried into final rendering and QA prompts.
+- Durable Supabase render caching is implemented, including cache keys tied to fabric, canonical construction, body profile and source render identity.
+- Popular-pair cache observability exists so pre-render decisions can be made without blindly spending render credits.
+
+### Evaluation / CI
+
+The main CI now runs:
+
+1. production dependency audit
+2. static quality/privacy gates
+3. unit tests
+4. deterministic Phase 10 rule evaluation
+5. deterministic Designer top-three regression
+6. release-readiness checks
+7. production Next.js build
+
+Latest verified run passed all stages.
+
+## Still owner/physical-evidence dependent
+
+These items should not be invented in code:
+
+1. Real swatch width or pattern repeat in millimetres for each stock fabric that needs true-scale rendering.
+2. Owner/tailor approval of provisional Korean/baggy trouser proportions and any new construction option before calling it an offered house style.
+3. Owner-labelled 40–50 fabric ground-truth cases and 40–60 outfit preference cases for meaningful Analyzer/Designer accuracy percentages.
+4. Verified GSM, fibre content and physical drape for each roll where supplier records or physical inspection support them.
+5. Visual acceptance testing on the target phones/desktop hardware for the final sub-second interaction target.
+
+## Deployment status
+
+Code is on `main` and the full CI/build passes. Vercel production deployment is still separately blocked by the previously observed Vercel build-rate limit; do not treat the latest `main` as production until a later deployment is verified READY.
