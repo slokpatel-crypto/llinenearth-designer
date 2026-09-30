@@ -213,8 +213,16 @@ async function samplePatternRegion(
   const mmPerImagePx=hasHeight ? bodyHeightCm*10/(height*.88) : null;
   const axisCropPx=observed==="horizontal"?cropHeight:cropWidth;
   const resizeToImageScale=axisCropPx/128;
-  const observedRepeatMm=mmPerImagePx!==null && measured.repeatPeriodPx
-    ? Math.round(measured.repeatPeriodPx*resizeToImageScale*mmPerImagePx*10)/10
+  // Autocorrelation can choose a harmonic (for example 3x the true
+  // stripe repeat) when several lags correlate almost perfectly. For a
+  // directional stripe, two alternating average runs recover the fundamental
+  // repeat more reliably while keeping the same measurement basis used by the
+  // flat-swatch analyzer.
+  const observedRepeatPx=(observed==="vertical"||observed==="horizontal") && measured.stripeWidthPx
+    ? measured.stripeWidthPx*2
+    : measured.repeatPeriodPx;
+  const observedRepeatMm=mmPerImagePx!==null && observedRepeatPx
+    ? Math.round(observedRepeatPx*resizeToImageScale*mmPerImagePx*10)/10
     : null;
   const observedStripeWidthMm=mmPerImagePx!==null && measured.stripeWidthPx
     ? Math.round(measured.stripeWidthPx*resizeToImageScale*mmPerImagePx*10)/10
