@@ -34,3 +34,57 @@ test("fabric construction or body changes invalidate final render cache",()=>{
   assert.notEqual(baseline,selectedLookRenderCacheKey({...base,bodyProfile:{...base.bodyProfile,heightCm:190}},"front"));
   assert.notEqual(baseline,selectedLookRenderCacheKey({...base,styleSpec:{...base.styleSpec,pant:{fit:"korean_wide"}}},"front"));
 });
+
+
+test("cache ignores non-render body provenance and measurement-quality bookkeeping",()=>{
+  const withSilhouette={
+    ...base,
+    bodyProfile:{
+      ...base.bodyProfile,
+      source:"measurements",
+      silhouette:{
+        shoulderScale:1.04,chestScale:1.06,waistScale:.98,seatScale:1.02,thighScale:1.03,legLengthScale:1.01,evidenceCount:6,
+      },
+    },
+    renderEvidence:{
+      shirt:{repeatMm:12,measurementQuality:82,measuredColorHex:"#8899AA"},
+      pant:{repeatMm:null,measurementQuality:91,measuredColorHex:"#776655"},
+    },
+  };
+  const baseline=selectedLookRenderCacheKey(withSilhouette,"front");
+  assert.equal(
+    baseline,
+    selectedLookRenderCacheKey({
+      ...withSilhouette,
+      bodyProfile:{
+        ...withSilhouette.bodyProfile,
+        source:"manual",
+        silhouette:{...withSilhouette.bodyProfile.silhouette,evidenceCount:4},
+      },
+      renderEvidence:{
+        shirt:{repeatMm:12,measurementQuality:96,measuredColorHex:"#8899AA"},
+        pant:{repeatMm:null,measurementQuality:76,measuredColorHex:"#776655"},
+      },
+    },"front"),
+  );
+  assert.notEqual(
+    baseline,
+    selectedLookRenderCacheKey({
+      ...withSilhouette,
+      bodyProfile:{
+        ...withSilhouette.bodyProfile,
+        silhouette:{...withSilhouette.bodyProfile.silhouette,waistScale:1.08},
+      },
+    },"front"),
+  );
+  assert.notEqual(
+    baseline,
+    selectedLookRenderCacheKey({
+      ...withSilhouette,
+      renderEvidence:{
+        ...withSilhouette.renderEvidence,
+        shirt:{...withSilhouette.renderEvidence.shirt,measuredColorHex:"#AABBCC"},
+      },
+    },"front"),
+  );
+});
