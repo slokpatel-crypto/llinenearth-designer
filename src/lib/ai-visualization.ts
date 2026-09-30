@@ -14,6 +14,7 @@ import { styleSpecRenderSummary } from "@/lib/designer/style-spec-v2";
 import type { BodyPreviewProfile } from "@/lib/designer/body-profile";
 import { bodyProfileRenderSummary } from "@/lib/designer/body-profile";
 import { compareRenderMeasuredColors, worstRenderColorStatus, type RenderColorFidelityResult } from "@/lib/designer/render-fidelity-core";
+import { selectedLookRenderCacheKey } from "@/lib/designer/render-cache-key";
 import {
   repairDevelopmentRender,
   renderDevelopmentSet,
@@ -842,14 +843,7 @@ const selectedRenderCache=(globalThis as typeof globalThis & {__linenSelectedRen
   ||= {items:new Map<string,SelectedRenderCacheEntry>()};
 
 function selectedLookCacheKey(input:SelectedLookFashnRequest) {
-  return JSON.stringify({
-    shirt:input.shirt.id,
-    pant:input.pant.id,
-    style:input.style,
-    styleSpec:input.styleSpec||null,
-    bodyProfile:input.bodyProfile||null,
-    renderEvidence:input.renderEvidence||null,
-  });
+  return selectedLookRenderCacheKey(input,"front");
 }
 
 export function getCachedSelectedLookRender(input:SelectedLookFashnRequest) {
