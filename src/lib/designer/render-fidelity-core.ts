@@ -1,11 +1,12 @@
 import sharp from "sharp";
 import { measuredPalette } from "../fabric-measurement-core.ts";
 import { deltaE2000, srgbHexToLab } from "../vocab/color-distance.ts";
-import type { SelectedLookView } from "../ai-visualization.ts";
 
 type Box={x:number;y:number;w:number;h:number};
 
-const VIEW_BOXES:Record<SelectedLookView,{shirt:Box;pant:Box}>={
+export type RenderFidelityView="front"|"three-quarter"|"side"|"back";
+
+const VIEW_BOXES:Record<RenderFidelityView,{shirt:Box;pant:Box}>={
   front:{
     shirt:{x:.36,y:.20,w:.28,h:.24},
     pant:{x:.34,y:.57,w:.32,h:.22},
@@ -85,7 +86,7 @@ async function sampleRegion(
 
 export async function compareRenderMeasuredColors(
   image:Buffer|Uint8Array,
-  view:SelectedLookView,
+  view:RenderFidelityView,
   targets:{shirtHex:string|null;pantHex:string|null},
 ):Promise<RenderColorFidelityResult> {
   const boxes=VIEW_BOXES[view]||VIEW_BOXES.front;
