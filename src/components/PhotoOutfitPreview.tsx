@@ -23,12 +23,16 @@ type SelectedLookVisualCheck = {
   available:boolean;
   status:"pass"|"review";
   fabricFidelity:"strong"|"review"|"weak";
+  colorFidelity:"strong"|"review"|"weak";
+  patternFidelity:"strong"|"review"|"weak";
   boundary:"strong"|"review"|"weak";
   construction:"strong"|"review"|"weak";
   mannequinConsistency:"strong"|"review"|"weak";
   artifact:"none"|"minor"|"major";
   issue:string;
   repairInstruction:string;
+  measuredColorDeltaE?:{shirt:number|null;pant:number|null};
+  measuredPatternOrientation?:{shirt:string|null;pant:string|null};
 };
 type PhotorealResult = {
   image:string;
@@ -1019,6 +1023,20 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         <strong>{activeSelectedCheck.issue}</strong>
       </div>
       {photorealView==="front" && activeSelectedCheck.available && activeSelectedCheck.status==="review" && selectedRepairCount<1 && activeSelectedCheck.repairInstruction && <button type="button" onClick={()=>void repairSelectedLook()} disabled={creativeAiLoading}>{creativeAiLoading?"Repairing…":"Repair once ✦"}</button>}
+      {activeSelectedCheck.available && <div className="newDesignerSelectedQaMetrics" aria-label="Photoreal render QA details">
+        {([
+          ["Colour",activeSelectedCheck.colorFidelity],
+          ["Pattern",activeSelectedCheck.patternFidelity],
+          ["Fabric",activeSelectedCheck.fabricFidelity],
+          ["Construction",activeSelectedCheck.construction],
+          ["Model",activeSelectedCheck.mannequinConsistency],
+        ] as const).map(([label,status])=><i key={label} data-status={status}><b>{label}</b>{status}</i>)}
+      </div>}
+      {activeSelectedCheck.available && (activeSelectedCheck.measuredColorDeltaE || activeSelectedCheck.measuredPatternOrientation) && <small className="newDesignerSelectedQaEvidence">
+        {activeSelectedCheck.measuredColorDeltaE && <>Measured colour ΔE · shirt {activeSelectedCheck.measuredColorDeltaE.shirt ?? "—"} · trouser {activeSelectedCheck.measuredColorDeltaE.pant ?? "—"}</>}
+        {activeSelectedCheck.measuredColorDeltaE && activeSelectedCheck.measuredPatternOrientation && <> · </>}
+        {activeSelectedCheck.measuredPatternOrientation && <>Pattern axis · shirt {activeSelectedCheck.measuredPatternOrientation.shirt ?? "—"} · trouser {activeSelectedCheck.measuredPatternOrientation.pant ?? "—"}</>}
+      </small>}
       {photorealView==="front" && selectedRepairCount>=1 && <small>One targeted repair used. Review the result before generating again.</small>}
       {photorealView!=="front" && activeSelectedCheck.status==="review" && <small>This camera view needs review; the approved front outfit remains unchanged.</small>}
     </div>}
