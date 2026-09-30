@@ -228,6 +228,7 @@ export default function DesignerDataClient() {
                 ? `Next evidence: ${selected.evidence.gaps.join(", ")}.`
                 : "This fabric has the core evidence needed for calibrated Designer and render QA."}</p>
             {selected.evidence.imageQualityScore!==null && <small>Latest measured flat-photo quality: {selected.evidence.imageQualityScore}/100 · physical scale: {selected.evidence.physicalScaleStatus || "unknown"}</small>}
+            {selected.evidence.gaps.some((gap)=>["analyzer review","pattern scale","GSM","drape","fibre"].includes(gap)) && <Link className="evidenceAnalyzerLink" href={`/operator/fabric-analyzer?fabric=${encodeURIComponent(selected.id)}`}>Open exact fabric in Analyzer ↗</Link>}
           </section>
 
           <div className="dataForm">
