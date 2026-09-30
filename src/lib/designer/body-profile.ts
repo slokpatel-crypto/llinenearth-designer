@@ -139,7 +139,7 @@ function scaleWord(value:number|undefined,low:string,high:string) {
 
 export function bodyProfileRenderSummary(profile:BodyPreviewProfile) {
   const base=`${profile.build} build, approximately ${profile.heightCm} cm tall, ${BODY_SKIN_TONES[profile.skinTone].label.toLowerCase()} exposed skin tone`;
-  if(!profile.silhouette || profile.source!=="measurements") return base;
+  if(!profile.silhouette) return base;
   const silhouette=[
     `${scaleWord(profile.silhouette.shoulderScale,"narrower","broader")} shoulders`,
     `${scaleWord(profile.silhouette.waistScale,"trimmer","fuller")} waist`,
