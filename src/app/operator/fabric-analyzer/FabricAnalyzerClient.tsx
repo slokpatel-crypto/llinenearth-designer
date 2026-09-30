@@ -135,11 +135,9 @@ export default function FabricAnalyzerClient(){
         }>};
         const fabric=payload.fabrics?.find((item)=>item.id===requested);
         if(!fabric) return;
-        const imageUrl=new URL(fabric.swatchImageUrl,window.location.origin).toString();
         setForm((current)=>({
           ...current,
           fabricId:fabric.id,
-          imageUrl,
           sourceId:current.sourceId||"linen-earth-catalogue",
           declaredMaterial:current.declaredMaterial||fabric.family,
           declaredFabricType:current.declaredFabricType||fabric.line,
@@ -147,7 +145,7 @@ export default function FabricAnalyzerClient(){
           supplierPatternName:current.supplierPatternName||fabric.pattern,
           notes:current.notes||"Loaded from the Designer evidence queue for stock-bound Analyzer review.",
         }));
-        setMessage(`Loaded ${fabric.colorName} from Designer Data. Add physical scale/facts if verified, then run Analyzer.`);
+        setMessage(`Loaded ${fabric.colorName} from Designer Data. Add a trusted flat capture plus any verified physical facts, then run Analyzer.`);
       }catch{
         // Manual Analyzer entry remains available if the stock handoff cannot load.
       }
