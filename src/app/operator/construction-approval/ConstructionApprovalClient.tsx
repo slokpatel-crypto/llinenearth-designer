@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { summarizeConstructionReviews } from "@/lib/designer/construction-review-summary";
 
 type Review={
   optionId:string;
@@ -94,6 +95,7 @@ export default function ConstructionApprovalClient(){
   },[data,search,filter,group]);
 
   const selected=data?.options.find((item)=>item.id===selectedId)||null;
+  const reviewSummary=summarizeConstructionReviews(data||{total:0,approved:0,rejected:0,pending:0});
 
   function selectOption(item:OptionRow){
     setSelectedId(item.id);
@@ -103,6 +105,7 @@ export default function ConstructionApprovalClient(){
 
   async function save(status:"approved"|"rejected") {
     if(!selected || saving || !data?.configured) return;
+    const shouldAdvance=!selected.review && filter==="pending";
     setSaving(true);setMessage("");
     try{
       const response=await fetch("/api/memory/event",{
@@ -124,7 +127,7 @@ export default function ConstructionApprovalClient(){
       const result=await response.json() as {stored?:boolean;error?:string};
       if(!response.ok || !result.stored) throw new Error(result.error||"Construction review was not stored.");
       setMessage(status==="approved"?"Option approved for Linen Earth house offering.":"Option rejected from Linen Earth house offering.");
-      await load(true,true);
+      await load(true,shouldAdvance);
     }catch(error){
       setMessage(error instanceof Error?error.message:"Construction review could not be saved.");
     }finally{
@@ -154,7 +157,7 @@ export default function ConstructionApprovalClient(){
       <article className="approved"><small>APPROVED</small><strong>{data.approved}</strong></article>
       <article className="pending"><small>PENDING</small><strong>{data.pending}</strong></article>
       <article className="rejected"><small>REJECTED</small><strong>{data.rejected}</strong></article>
-      <div className="constructionProgress" aria-label="Construction decisions completed"><i style={{width:`${data.total?Math.round((data.approved+data.rejected)/data.total*100):0}%`}}/></div>
+      <div className="constructionProgress" aria-label="Construction decisions completed"><i style={{width:`${reviewSummary.completionPercent}%`}}/></div>
     </section>
 
     <section className="constructionLayout">

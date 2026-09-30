@@ -472,8 +472,12 @@ for(const token of ["groundTruth?.reviewedFabrics","groundTruth?.target"]) {
 }
 console.log("Ground Truth count gate passed: readiness counts unique stock-bound fabrics rather than raw profile rows.");
 const constructionApprovalClient=fs.readFileSync("src/app/operator/construction-approval/ConstructionApprovalClient.tsx","utf8");
-for(const token of ["approved+data.rejected","preferNextPending","await load(true,true)","Construction decisions completed"]) {
+for(const token of ["summarizeConstructionReviews","reviewSummary.completionPercent","preferNextPending","shouldAdvance=!selected.review && filter===\"pending\"","await load(true,shouldAdvance)","Construction decisions completed"]) {
   if(!constructionApprovalClient.includes(token)) throw new Error(`Construction review completion regression: missing ${token}`);
+}
+const constructionReviewSummary=fs.readFileSync("src/lib/designer/construction-review-summary.ts","utf8");
+for(const token of ["summarizeConstructionReviews","decided","completionPercent","approved+rejected"]) {
+  if(!constructionReviewSummary.includes(token)) throw new Error(`Construction review summary regression: missing ${token}`);
 }
 console.log("Construction review completion gate passed: approve/reject both complete review and the desk advances to the next pending option.");
 const groundTruthScorecard=fs.readFileSync("src/lib/fabric-ground-truth-scorecard.ts","utf8");
