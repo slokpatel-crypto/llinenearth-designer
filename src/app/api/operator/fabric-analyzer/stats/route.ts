@@ -1,7 +1,9 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
-import { loadFabricAnalyzerStats } from "@/lib/fabric-analyzer-store";
+import { loadFabricAnalysesForFabricIds, loadFabricAnalyzerStats } from "@/lib/fabric-analyzer-store";
+import { FABRIC_STOCK } from "@/lib/fabric-stock";
+import { summarizeFabricGroundTruth } from "@/lib/fabric-ground-truth-stats";
 import { FABRIC_REFERENCE_COUNTS } from "@/lib/fabric-analyzer-reference-index";
 import { REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT } from "@/lib/fabric-analyzer-real-examples";
 
@@ -13,7 +15,11 @@ export async function GET() {
   if(!await verifyOperatorSession(jar.get(OPERATOR_COOKIE.name)?.value)) {
     return NextResponse.json({error:"Unauthorized."},{status:401});
   }
-  const database=await loadFabricAnalyzerStats();
+  const [database,bound]=await Promise.all([
+    loadFabricAnalyzerStats(),
+    loadFabricAnalysesForFabricIds(FABRIC_STOCK.filter((fabric)=>fabric.inStock).map((fabric)=>fabric.id),{includeUnreviewed:true}),
+  ]);
+  const groundTruth=summarizeFabricGroundTruth(bound,50);
   return NextResponse.json({
     engine:"private-fabric-analyzer-v4",
     visibleOnCustomerWeb:false,
@@ -25,5 +31,6 @@ export async function GET() {
       realExamples:REAL_MENSWEAR_FABRIC_EXAMPLE_COUNT,
     },
     database,
+    groundTruth,
   },{headers:{"cache-control":"private, no-store, max-age=0","x-content-type-options":"nosniff"}});
 }

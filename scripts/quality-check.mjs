@@ -458,6 +458,19 @@ for(const token of ["url.searchParams.get(\"scope\")","loadFabricAnalysesForFabr
   if(!analyzerReviewRoute.includes(token)) throw new Error(`Fabric Ground Truth reviewed-history regression: missing ${token}`);
 }
 console.log("Fabric Ground Truth provenance gate passed: non-retained direct captures keep exact stock context without rendering broken image URLs.");
+const groundTruthStats=fs.readFileSync("src/lib/fabric-ground-truth-stats.ts","utf8");
+const analyzerStatsRoute=fs.readFileSync("src/app/api/operator/fabric-analyzer/stats/route.ts","utf8");
+const readinessClient=fs.readFileSync("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx","utf8");
+for(const token of ["summarizeFabricGroundTruth","reviewedFabrics","pendingFabrics","stockBoundProfiles","reviewed.add","pending.delete"]) {
+  if(!groundTruthStats.includes(token)) throw new Error(`Unique Ground Truth count regression: missing ${token}`);
+}
+for(const token of ["loadFabricAnalysesForFabricIds","FABRIC_STOCK.filter","summarizeFabricGroundTruth"]) {
+  if(!analyzerStatsRoute.includes(token)) throw new Error(`Analyzer unique Ground Truth stats regression: missing ${token}`);
+}
+for(const token of ["groundTruth?.reviewedFabrics","groundTruth?.target"]) {
+  if(!readinessClient.includes(token)) throw new Error(`Phase 10 unique Ground Truth readiness regression: missing ${token}`);
+}
+console.log("Ground Truth count gate passed: readiness counts unique stock-bound fabrics rather than raw profile rows.");
 const fabricStudioMounts=sourceFiles("src").filter((path)=>path!=="src/components/FabricStudio.tsx")
   .filter((path)=>fs.readFileSync(path,"utf8").includes("FabricStudio"));
 if(fabricStudioMounts.length) throw new Error(`Fabric Analyzer privacy regression: legacy FabricStudio is mounted by ${fabricStudioMounts.join(", ")}`);

@@ -48,6 +48,13 @@ type StatsPayload={
     rejected:number;
     feedback:number;
   }|null;
+  groundTruth?:{
+    target:number;
+    reviewedFabrics:number;
+    pendingFabrics:number;
+    stockBoundProfiles:number;
+    remaining:number;
+  };
 };
 
 type FabricCatalogRow={
@@ -155,8 +162,8 @@ export default function FabricGroundTruthClient(){
   const selected=rows.find((row)=>row.id===selectedId)||null;
   const selectedFabric=selected?.fabric_id ? catalog[selected.fabric_id] || null : null;
   const retainedSourceImage=Boolean(selected?.image_source && /^https:\/\//i.test(selected.image_source));
-  const reviewed=(stats?.database?.approved||0)+(stats?.database?.corrected||0);
-  const target=50;
+  const reviewed=stats?.groundTruth?.reviewedFabrics ?? 0;
+  const target=stats?.groundTruth?.target ?? 50;
 
   function selectRow(row:ReviewRow){
     setSelectedId(row.id);setTruth(toTruth(row));setReason("");setMessage("");
@@ -217,7 +224,7 @@ export default function FabricGroundTruthClient(){
     <section className="truthProgress">
       <div><small>REVIEWED FABRICS</small><strong>{reviewed}<i>/ {target}</i></strong><p>Suggested minimum ground-truth set before quoting an Analyzer accuracy percentage.</p></div>
       <div className="truthBar"><i style={{width:`${Math.min(100,Math.round(reviewed/target*100))}%`}}/></div>
-      <div><small>PENDING REVIEW</small><strong>{stats?.database?.pending_review ?? rows.filter((row)=>row.review_status==="unreviewed").length}</strong></div>
+      <div><small>PENDING REVIEW</small><strong>{stats?.groundTruth?.pendingFabrics ?? rows.filter((row)=>row.review_status==="unreviewed" && Boolean(row.fabric_id)).length}</strong></div>
       <div><small>CORRECTIONS</small><strong>{stats?.database?.feedback ?? "—"}</strong></div>
     </section>
 
