@@ -162,6 +162,8 @@ requireTokens("src/lib/fabric-analyzer.ts", ["analyzeMenswearFabricWithStore","l
 requireFile("src/lib/fabric-intelligence-types.ts");
 requireFile("src/lib/fabric-ground-truth-stats.ts");
 requireFile("tests/phase10-ground-truth-stats.test.ts");
+requireFile("tests/phase10-construction-review-progress.test.ts");
+requireTokens("src/app/operator/construction-approval/ConstructionApprovalClient.tsx", ["approved+data.rejected","preferNextPending","await load(true,true)","Construction decisions completed"]);
 requireFile("src/lib/fabric-ground-truth-scorecard.ts");
 requireFile("src/lib/fabric-ground-truth-labels.ts");
 requireFile("src/app/api/operator/fabric-ground-truth/scorecard/route.ts");
