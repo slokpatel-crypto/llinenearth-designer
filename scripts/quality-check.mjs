@@ -483,6 +483,25 @@ for(const token of ["fabric_ground_truth_label","fabric-ground-truth-v1","origin
   if(!groundTruthClient.includes(token)) throw new Error(`Analyzer Ground Truth label regression: missing ${token}`);
 }
 console.log("Analyzer Ground Truth scorecard gate passed: agreement stays owner-labelled and evidence-gated.");
+const groundTruthLabelLoader=fs.readFileSync("src/lib/fabric-ground-truth-labels.ts","utf8");
+const groundTruthHistoryMigration=fs.readFileSync("supabase/migrations/20260930_fabric_ground_truth_history.sql","utf8");
+const analyzerQueueProvenanceMigration=fs.readFileSync("supabase/migrations/20260930_fabric_analyzer_queue_provenance.sql","utf8");
+const analyzerQueueRoute=fs.readFileSync("src/app/api/operator/fabric-analyzer/queue/route.ts","utf8");
+const analyzerProcessRoute=fs.readFileSync("src/app/api/operator/fabric-analyzer/process/route.ts","utf8");
+for(const token of ["loadFabricAnalyzerGroundTruthHistory","fabricGroundTruthStateFromProfile","reconstructOriginalFabricGroundTruthState","backfilledLabels"]) {
+  if(!groundTruthLabelLoader.includes(token)) throw new Error(`Analyzer Ground Truth backfill regression: missing ${token}`);
+}
+for(const token of ["fabric_analyzer_ground_truth_history","fabric_analysis_feedback","review_status in ('approved','corrected')","service_role"]) {
+  if(!groundTruthHistoryMigration.includes(token)) throw new Error(`Analyzer Ground Truth history migration regression: missing ${token}`);
+}
+for(const token of ["verifiedPhysicalEvidenceNote","fabric_analyzer_batch_enqueue","service_role"]) {
+  if(!analyzerQueueProvenanceMigration.includes(token)) throw new Error(`Analyzer queue provenance migration regression: missing ${token}`);
+}
+for(const token of ["validateVerifiedPhysicalEvidence","enqueueFabricAnalyzerBatch"]) {
+  if(!analyzerQueueRoute.includes(token)) throw new Error(`Analyzer queue provenance validation regression: missing ${token}`);
+}
+if(!analyzerProcessRoute.includes("verifiedPhysicalEvidenceNote")) throw new Error("Analyzer worker provenance regression: evidence note is not restored from queued context.");
+console.log("Analyzer Ground Truth backfill gate passed: reviewed history can seed evaluation and queued physical provenance survives the worker path.");
 for(const token of ["analyzerScorecard","/api/operator/fabric-ground-truth/scorecard","analyzerLabelTarget","fieldAgreementPercent"]) {
   if(!readinessClient.includes(token)) throw new Error(`Phase 10 Analyzer scorecard readiness regression: missing ${token}`);
 }

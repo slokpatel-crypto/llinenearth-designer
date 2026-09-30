@@ -15,6 +15,8 @@ export async function GET(){
   const score=scoreFabricGroundTruth([...loaded.labels.values()]);
   return NextResponse.json({
     configured:loaded.configured,
+    explicitLabels:loaded.explicitLabels,
+    backfilledLabels:loaded.backfilledLabels,
     minimumLabels:MIN_LABELS,
     reportable:score.uniqueFabrics>=MIN_LABELS,
     remaining:Math.max(0,MIN_LABELS-score.uniqueFabrics),

@@ -64,6 +64,7 @@ async function processJob(job:ClaimedFabricAnalyzerJob) {
         verifiedDrape:["Fluid","Balanced","Structured"].includes(String(declared.verifiedDrape)) ? declared.verifiedDrape as FabricAnalyzerContext["verifiedDrape"] : undefined,
         verifiedFiberContent:clean(declared.verifiedFiberContent,220) || undefined,
         verifiedPhysicalSourceUrl:clean(declared.verifiedPhysicalSourceUrl,1800) || undefined,
+        verifiedPhysicalEvidenceNote:clean(declared.verifiedPhysicalEvidenceNote,500) || undefined,
       };
       const result=await analyzeMenswearFabricWithStore(input,{reuseReviewed:!job.force,persist:true});
       profileId=result.profileId;
