@@ -4,7 +4,7 @@ import type { RenderSupport } from "./options/types.ts";
 import type { BodyBuild, BodyPreviewProfile } from "./body-profile.ts";
 
 export type ModelBuild=BodyBuild;
-export type PreviewView="front"|"back";
+export type PreviewView="front"|"three-quarter"|"side"|"back";
 export type FabricRenderAsset={
   tileUrl:string;
   placeholderUrl:string;
@@ -34,6 +34,9 @@ export type ModelGeometry={
   shirtHemY:number;
   waistY:number;
   heightScale:number;
+  viewScaleX:number;
+  viewShiftX:number;
+  viewSkewY:number;
 };
 
 export const LIVE_MODEL_REFERENCE_HEIGHT_PX=900;
@@ -133,18 +136,25 @@ export function modelGeometry(spec:StyleSpecV2,view:PreviewView="front",body:Mod
     `M 421 410 L 465 408 L 469 432 Q 444 439 422 436 Z`,
   ];
   const pocketPath=spec.shirt.pocket==="no_pocket"?null:`M 345 267 L 378 269 L 376 307 Q 361 316 346 307 Z`;
-  const seams=view==="front"
+  const frontFacing=view==="front"||view==="three-quarter";
+  const rearFacing=view==="back";
+  const viewScaleX=view==="side"?.56:view==="three-quarter"?.84:1;
+  const viewShiftX=view==="side"?30:view==="three-quarter"?15:0;
+  const viewSkewY=view==="three-quarter"?-1.2:view==="side"?-.35:0;
+  const seams=frontFacing
     ? [`M 320 203 L 320 ${Math.min(shirtHemY,waistY)}`,`M 320 ${waistY+33} L 320 516`]
-    : [`M 243 247 Q 320 258 397 247`,`M 320 257 L 320 ${shirtHemY-18}`];
-  if(view==="back"&&spec.shirt.back==="box_pleat_back") seams.push(`M 312 257 L 312 365 M 328 257 L 328 365`);
-  if(view==="front"&&spec.pant.pleat!=="flat_front") seams.push(`M 282 ${waistY+28} L 287 548 M 358 ${waistY+28} L 353 548`);
+    : rearFacing
+      ? [`M 243 247 Q 320 258 397 247`,`M 320 257 L 320 ${shirtHemY-18}`]
+      : [`M 342 214 Q 350 354 341 ${shirtHemY-18}`,`M 340 ${waistY+35} Q 351 654 342 ${bottomY-18}`];
+  if(rearFacing&&spec.shirt.back==="box_pleat_back") seams.push(`M 312 257 L 312 365 M 328 257 L 328 365`);
+  if(frontFacing&&spec.pant.pleat!=="flat_front") seams.push(`M 282 ${waistY+28} L 287 548 M 358 ${waistY+28} L 353 548`);
   return {
     parts,seams,collarPaths,pocketPath,cuffPaths:cuffs,waistbandPath:waistPath,
     neckPath:"M 298 124 L 296 169 Q 320 190 344 169 L 342 124 Z",
     headPath:"M 273 71 Q 271 27 320 25 Q 369 27 367 71 L 358 112 Q 344 139 320 140 Q 296 139 282 112 Z",
     handPaths:[`M 172 ${sleeveBottom+1} L 216 ${sleeveBottom+3} L 212 ${sleeveBottom+47} Q 187 ${sleeveBottom+67} 175 ${sleeveBottom+37} Z`,`M 424 ${sleeveBottom+3} L 468 ${sleeveBottom+1} L 465 ${sleeveBottom+37} Q 453 ${sleeveBottom+67} 428 ${sleeveBottom+47} Z`],
     shoePaths:[`M ${315-hem*2-3} ${bottomY-2} L 313 ${bottomY-2} L 313 926 Q ${315-hem*2-32} 939 ${315-hem*2-42} 923 Z`,`M 327 ${bottomY-2} L ${325+hem*2+3} ${bottomY-2} L ${325+hem*2+42} 923 Q ${325+hem*2+32} 939 327 926 Z`],
-    shirtHemY,waistY,heightScale,
+    shirtHemY,waistY,heightScale,viewScaleX,viewShiftX,viewSkewY,
   };
 }
 
