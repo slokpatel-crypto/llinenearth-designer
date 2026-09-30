@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { DesignerClimate, DesignerFabric, DesignerStyle, OccasionTier } from "@/lib/designer/engine";
 import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
-import { optionsFor } from "@/lib/designer/options/library";
+import { optionById, optionsFor } from "@/lib/designer/options/library";
 import type { GarmentOptionGroup } from "@/lib/designer/options/types";
 import { evaluateCrossGarmentRules } from "@/lib/designer/rules/evaluator";
 import { fabricTileSizePx, liveCapabilities, modelGeometry, type FabricRenderAsset, type PreviewView } from "@/lib/designer/live-preview";
@@ -51,10 +51,22 @@ export function LiveConstructionPreview({
   const [localBody,setLocalBody]=useState<BodyPreviewProfile>(DEFAULT_BODY_PREVIEW_PROFILE);
   const bodyProfile=controlledBody || localBody;
   const [showControls,setShowControls]=useState(false);
+  const [optionReviews,setOptionReviews]=useState<Record<string,"approved"|"rejected">>({});
   const [loadedTiles,setLoadedTiles]=useState<Set<string>>(()=>new Set());
   const geometry=useMemo(()=>modelGeometry(spec,view,bodyProfile),[spec,view,bodyProfile]);
   const capabilities=useMemo(()=>liveCapabilities(spec),[spec]);
   const shirtAsset=assetFor(shirt),pantAsset=assetFor(pant);
+  useEffect(()=>{
+    let cancelled=false;
+    fetch("/api/designer/construction-options",{cache:"no-store"})
+      .then((response)=>response.ok?response.json():null)
+      .then((data:{reviews?:Record<string,"approved"|"rejected">}|null)=>{
+        if(cancelled || !data?.reviews) return;
+        setOptionReviews(data.reviews);
+      })
+      .catch(()=>{});
+    return ()=>{cancelled=true;};
+  },[]);
   useEffect(()=>{
     let cancelled=false;
     const urls=[shirtAsset?.tileUrl,pantAsset?.tileUrl].filter((value):value is string=>Boolean(value));
@@ -110,6 +122,12 @@ export function LiveConstructionPreview({
   const scaleApproximate=shirtAsset?.scaleApproximate!==false||pantAsset?.scaleApproximate!==false;
   const selectedIds=new Set([...Object.values(spec.shirt),...Object.values(spec.pant)]);
   const unsupported=Object.entries(capabilities).filter(([id,value])=>value==="none"&&selectedIds.has(id));
+  const selectedOwnerOptions=[...selectedIds]
+    .map((id)=>optionById(id))
+    .filter((option):option is NonNullable<ReturnType<typeof optionById>>=>Boolean(option?.provenance==="owner-provided"));
+  const provisionalSelections=selectedOwnerOptions.filter((option)=>!optionReviews[option.id]);
+  const rejectedSelections=selectedOwnerOptions.filter((option)=>optionReviews[option.id]==="rejected");
+  const approvedSelections=selectedOwnerOptions.filter((option)=>optionReviews[option.id]==="approved");
   const frontFacing=view==="front"||view==="three-quarter";
   const viewLabel=view==="three-quarter"?"3/4":view.charAt(0).toUpperCase()+view.slice(1);
 
@@ -188,12 +206,29 @@ export function LiveConstructionPreview({
       {groups.map(({title,fields})=><fieldset key={title}><legend>{title}</legend><div>
         {fields.map(([key,group])=><label key={group}>{group.split(".")[1].replace(/\b\w/g,(v)=>v.toUpperCase())}
           <select value={group.startsWith("shirt.")?spec.shirt[key as keyof typeof spec.shirt]:spec.pant[key as keyof typeof spec.pant]} onChange={(event)=>change(group.startsWith("shirt.")?"shirt":"pant",key,event.target.value)}>
-            {optionsFor(group).map((option)=><option key={option.id} value={option.id}>{option.label}</option>)}
+            {optionsFor(group).map((option)=>{
+              const review=option.provenance==="owner-provided" ? optionReviews[option.id] : undefined;
+              const suffix=option.provenance!=="owner-provided" ? "" : review==="approved" ? " ✓ approved" : review==="rejected" ? " · not offered" : " · provisional";
+              return <option key={option.id} value={option.id}>{option.label}{suffix}</option>;
+            })}
           </select>
-          <small>Preview: approximate · tailoring approval needed</small>
+          <small>{(()=>{
+            const id=group.startsWith("shirt.")?spec.shirt[key as keyof typeof spec.shirt]:spec.pant[key as keyof typeof spec.pant];
+            const option=optionById(id);
+            if(option?.provenance!=="owner-provided") return "Reference option · preview approximate";
+            const review=optionReviews[option.id];
+            if(review==="approved") return "House-approved direction · preview still approximate";
+            if(review==="rejected") return "Not offered by Linen Earth · experimental preview only";
+            return "Provisional option · owner/tailor approval needed";
+          })()}</small>
         </label>)}
       </div></fieldset>)}
       <p className="liveConstructionDraftNote">Expanded cut choices are saved with this Designer draft. Final photoreal rendering stays locked until you confirm the design.</p>
+      {(rejectedSelections.length>0||provisionalSelections.length>0||approvedSelections.length>0)&&<div className="liveConstructionApprovalState" data-status={rejectedSelections.length?"rejected":provisionalSelections.length?"provisional":"approved"}>
+        {rejectedSelections.length>0 ? <><b>NOT A HOUSE-OFFERED CUT</b><span>{rejectedSelections.map((option)=>option.label).join(", ")} has been rejected for Linen Earth offering. Keep it only as an experimental study.</span></>
+          : provisionalSelections.length>0 ? <><b>PROVISIONAL CONSTRUCTION</b><span>{provisionalSelections.map((option)=>option.label).join(", ")} still needs owner/tailor approval before it is treated as a Linen Earth house option.</span></>
+          : <><b>HOUSE-APPROVED DIRECTION</b><span>{approvedSelections.map((option)=>option.label).join(", ")} has recorded approval. Fit and physical cloth verification are still separate.</span></>}
+      </div>}
     </div>}
     <details className="liveConstructionVerdict"><summary>Styling reasons and accuracy</summary>
       {rules.length?<ul>{rules.slice(0,5).map((rule)=><li key={rule.ruleId}><b>{rule.effect.toUpperCase()}</b> {rule.explanation}</li>)}</ul>:<p>No cross-garment conflict from the provisional rules.</p>}
