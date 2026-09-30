@@ -410,6 +410,7 @@ export default function OperatorClient() {
           <a className="operatorLogout" href="/operator/fabric-analyzer">FABRIC ANALYZER</a>
           <a className="operatorLogout" href="/operator/fabric-ground-truth">FABRIC GROUND TRUTH</a>
           <a className="operatorLogout" href="/operator/construction-approval">CONSTRUCTION APPROVAL</a>
+          <a className="operatorLogout" href="/operator/device-qa">DEVICE QA</a>
           <button className="operatorLogout" onClick={logout} disabled={loggingOut}>{loggingOut?"SIGNING OUT…":"SIGN OUT"}</button>
         </div>
       </header>
