@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
 import type { StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import type { BodyPreviewProfile } from "@/lib/designer/body-profile";
+import { photoFabricPatternScale, type FabricRenderAsset } from "@/lib/designer/live-preview";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import fabricTileManifest from "../../public/fabric-tiles/manifest.json";
 import { CREATIVE_FEEDBACK_REASONS, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
@@ -65,9 +66,12 @@ function loadFabricImage(fabric:DesignerFabric):Promise<HTMLImageElement> {
   const stem=fabric.image.split("/").pop()?.match(/^([a-z0-9-]+)\.webp(?:\?.*)?$/i)?.[1];
   return stem ? loadImage(`/fabric-tiles/${stem}.webp`).catch(()=>loadImage(fabric.image)) : loadImage(fabric.image);
 }
-function fabricOrientation(fabric:DesignerFabric) {
+function fabricRenderAsset(fabric:DesignerFabric):FabricRenderAsset|null {
   const stem=fabric.image.split("/").pop()?.replace(/\.webp(?:\?.*)?$/,"")||"";
-  const entry=(fabricTileManifest.assets as Record<string,{orientation:string}>)[stem];
+  return (fabricTileManifest.assets as Record<string,FabricRenderAsset>)[stem] || null;
+}
+function fabricOrientation(fabric:DesignerFabric) {
+  const entry=fabricRenderAsset(fabric);
   return entry?.orientation==="horizontal"?90:0;
 }
 
@@ -107,15 +111,19 @@ function swatchTile(image: HTMLImageElement, fabric: DesignerFabric): HTMLCanvas
     const sourceY = image.height * (plain ? .22 : .16);
     const sourceWidth = image.width * (plain ? .3 : .38);
     const sourceHeight = image.height * (plain ? .22 : .27);
-    // Mirroring only solid weaves and straight stripes joins tile edges. It
-    // leaves irregular prints unmirrored, since reflection would invent motifs.
-    for (const [column, row] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
-      context.save();
-      context.translate(column * 160, row * 160);
-      context.scale(column ? -1 : 1, row ? -1 : 1);
-      context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight,
-        column ? -160 : 0, row ? -160 : 0, 160, 160);
-      context.restore();
+    if(plain) {
+      // Only visually plain cloth is mirrored to soften source-photo lighting
+      // seams. Mirroring stripes would manufacture false stripe spacing.
+      for (const [column, row] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+        context.save();
+        context.translate(column * 160, row * 160);
+        context.scale(column ? -1 : 1, row ? -1 : 1);
+        context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight,
+          column ? -160 : 0, row ? -160 : 0, 160, 160);
+        context.restore();
+      }
+    } else {
+      context.drawImage(image,sourceX,sourceY,sourceWidth,sourceHeight,0,0,320,320);
     }
   }
   if (plain) {
@@ -301,7 +309,8 @@ function drawGarment(
   const tile = swatchTile(swatch, fabric);
   const pattern = context.createPattern(tile, "repeat");
   if (!pattern) throw new Error("Could not prepare the fabric pattern.");
-  const scale = patternScaleForFabric(fabric) * (placement.scale ?? 1);
+  const visualFallback=patternScaleForFabric(fabric);
+  const scale = photoFabricPatternScale(fabricRenderAsset(fabric),visualFallback) * (placement.scale ?? 1);
   pattern.setTransform(new DOMMatrix().translate(placement.offsetX ?? 0, placement.offsetY ?? 0).rotate(fabricOrientation(fabric)+(placement.rotationDeg??0)).scale(scale));
   context.fillStyle = pattern;
   context.fillRect(0, 0, WIDTH, HEIGHT);
