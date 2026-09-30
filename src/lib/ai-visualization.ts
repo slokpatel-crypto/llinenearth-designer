@@ -121,6 +121,8 @@ export type SelectedLookVisualCheck = {
   available:boolean;
   status:"pass"|"review";
   fabricFidelity:"strong"|"review"|"weak";
+  colorFidelity:"strong"|"review"|"weak";
+  patternFidelity:"strong"|"review"|"weak";
   boundary:"strong"|"review"|"weak";
   construction:"strong"|"review"|"weak";
   mannequinConsistency:"strong"|"review"|"weak";
@@ -411,6 +413,8 @@ export async function inspectSelectedLookFashnOutput(
       available:false,
       status:"review",
       fabricFidelity:"review",
+      colorFidelity:"review",
+      patternFidelity:"review",
       boundary:"review",
       construction:"review",
       mannequinConsistency:"review",
@@ -434,7 +438,8 @@ export async function inspectSelectedLookFashnOutput(
     `Required body/model: ${input.bodyProfile ? bodyProfileRenderSummary(input.bodyProfile) : "preserve existing proportions and skin tone"}.`,
     `Verified physical evidence: ${selectedLookPhysicalEvidence(input)}.`,
     "Images are supplied in this order: GENERATED RENDER, LOCKED STUDIO MODEL, then SPLIT FABRIC CONTEXT when available (shirt left, trouser right).",
-    "Check exact visible cloth colour/pattern/weave character, collar and cuff cleanliness, neck opening, hands, shirt/trouser boundary, tucked waistband layering, trouser silhouette, mannequin identity, background stability and synthesis artifacts.",
+    "Check visible cloth colour, pattern scale/orientation/contrast, weave character, collar and cuff cleanliness, neck opening, hands, shirt/trouser boundary, tucked waistband layering, trouser silhouette, mannequin identity, background stability and synthesis artifacts.",
+    "Use code-measured colour/pattern anchors when supplied as objective references; allow realistic lighting/shading but review obvious hue drift, pattern re-scaling, stripe-width drift or orientation changes.",
     "Do not fail minor natural drape variation. Review when cloth visibly bleeds onto skin/background/adjacent garment, the chosen construction is contradicted, fabric identity drifts materially, or the mannequin/background changes materially.",
     "If review is needed, give one concise repair instruction that fixes the rendering defect without redesigning the outfit. Keep issue and repairInstruction each under 180 characters."
   ].join("\n");
@@ -444,6 +449,8 @@ export async function inspectSelectedLookFashnOutput(
     properties:{
       status:{type:"string",enum:["pass","review"]},
       fabricFidelity:{type:"string",enum:["strong","review","weak"]},
+      colorFidelity:{type:"string",enum:["strong","review","weak"]},
+      patternFidelity:{type:"string",enum:["strong","review","weak"]},
       boundary:{type:"string",enum:["strong","review","weak"]},
       construction:{type:"string",enum:["strong","review","weak"]},
       mannequinConsistency:{type:"string",enum:["strong","review","weak"]},
@@ -451,7 +458,7 @@ export async function inspectSelectedLookFashnOutput(
       issue:{type:"string",maxLength:180},
       repairInstruction:{type:"string",maxLength:180},
     },
-    required:["status","fabricFidelity","boundary","construction","mannequinConsistency","artifact","issue","repairInstruction"],
+    required:["status","fabricFidelity","colorFidelity","patternFidelity","boundary","construction","mannequinConsistency","artifact","issue","repairInstruction"],
     additionalProperties:false,
   };
 
@@ -492,6 +499,8 @@ export async function inspectSelectedLookFashnOutput(
       available:false,
       status:"review",
       fabricFidelity:"review",
+      colorFidelity:"review",
+      patternFidelity:"review",
       boundary:"review",
       construction:"review",
       mannequinConsistency:"review",
