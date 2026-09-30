@@ -51,6 +51,26 @@ export function fabricTileSizePx(asset:FabricRenderAsset|null) {
   return clamp(asset.tileRealWidthMm*LIVE_MODEL_PX_PER_MM,18,320);
 }
 
+export function applyRuntimeFabricScale(
+  asset:FabricRenderAsset|null,
+  renderScale:{physicalScaleStatus:"declared_repeat"|"declared_swatch_width"|"unknown";repeatMm:number|null;stripeWidthMm:number|null}|null|undefined,
+):FabricRenderAsset|null {
+  if(!asset || !renderScale || renderScale.physicalScaleStatus==="unknown") return asset;
+  const repeatMm=Number(renderScale.repeatMm);
+  const repeatPx=Number(asset.repeatPeriodPx);
+  if(!Number.isFinite(repeatMm) || repeatMm<=0 || !Number.isFinite(repeatPx) || repeatPx<=0) return asset;
+  // The tile builder measures repeat spacing on the 128 px source crop before
+  // composing the 256 px display tile. Reuse that exact calibration basis so a
+  // reviewed runtime millimetre measurement can override an old build-time
+  // approximate scale without rebuilding the tile image.
+  const tileRealWidthMm=Math.round(200*128*repeatMm/repeatPx)/100;
+  return {
+    ...asset,
+    tileRealWidthMm,
+    scaleApproximate:false,
+  };
+}
+
 /**
  * Maps a verified fabric tile width into the existing 1024px photographic
  * mannequin coordinate system. Unknown physical scale keeps the established
