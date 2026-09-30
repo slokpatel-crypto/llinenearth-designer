@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import manifest from "../public/fabric-tiles/manifest.json" with { type:"json" };
 import { FABRIC_STOCK } from "../src/lib/fabric-stock.ts";
 import { fromLegacyStyle } from "../src/lib/designer/style-spec-v2.ts";
-import { fabricTileSizePx, LIVE_APPROXIMATE_TILE_PX, LIVE_MODEL_PX_PER_MM, liveCapabilities, modelGeometry } from "../src/lib/designer/live-preview.ts";
+import { fabricTileSizePx, LIVE_APPROXIMATE_TILE_PX, LIVE_MODEL_PX_PER_MM, PHOTO_MODEL_COORDINATE_SCALE, PHOTO_SWATCH_TILE_PX, liveCapabilities, modelGeometry, photoFabricPatternScale } from "../src/lib/designer/live-preview.ts";
 import { GARMENT_OPTION_LIBRARY } from "../src/lib/designer/options/library.ts";
 
 const legacy={
@@ -80,4 +80,9 @@ test("owner-declared millimetres map to a calibrated model-space tile size",()=>
   assert.equal(fabricTileSizePx(null),LIVE_APPROXIMATE_TILE_PX);
   assert.equal(fabricTileSizePx(declared),120*LIVE_MODEL_PX_PER_MM);
   assert(fabricTileSizePx(declared)<LIVE_APPROXIMATE_TILE_PX);
+  assert.equal(
+    photoFabricPatternScale(declared,1.12),
+    (fabricTileSizePx(declared)*PHOTO_MODEL_COORDINATE_SCALE)/PHOTO_SWATCH_TILE_PX,
+  );
+  assert.equal(photoFabricPatternScale({...declared,scaleApproximate:true,tileRealWidthMm:null},1.12),1.12);
 });
