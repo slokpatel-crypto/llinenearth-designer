@@ -5,7 +5,7 @@ import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "
 import { designerFabricFromStock, designerStyleForOccasion } from "@/lib/designer/engine";
 import { searchDesignerCatalogue } from "@/lib/designer/search";
 import { loadDesignerEvidenceContext } from "@/lib/designer/evidence-context";
-import { loadDesignerFabricIntelligence } from "@/lib/fabric-intelligence-server";
+import { enrichDesignerFabricsWithIntelligence } from "@/lib/fabric-intelligence-server";
 import { buildDesignerBenchmarkCases, DESIGNER_BENCHMARK_VERSION } from "@/lib/designer/benchmark";
 import { loadDesignerBenchmarkLabels } from "@/lib/designer/benchmark-labels";
 
@@ -26,7 +26,8 @@ export async function GET(request:Request) {
       loadDesignerBenchmarkLabels(),
     ]);
     const stock=applyDesignerFabricMetadataToStock(metadata).filter((fabric)=>fabric.inStock);
-    const fabrics=stock.map(designerFabricFromStock);
+    const baseFabrics=stock.map(designerFabricFromStock);
+    const {fabrics,intelligence}=await enrichDesignerFabricsWithIntelligence(baseFabrics);
     const shirts=fabrics.filter((fabric)=>fabric.allowedGarments.includes("shirt"));
     const pants=fabrics.filter((fabric)=>fabric.allowedGarments.includes("pant"));
     const cases=buildDesignerBenchmarkCases(shirts,pants);
@@ -41,7 +42,6 @@ export async function GET(request:Request) {
       return NextResponse.json({error:"Designer benchmark stock is unavailable."},{status:409});
     }
 
-    const intelligence=await loadDesignerFabricIntelligence(fabrics.map((fabric)=>fabric.id));
     const results=searchDesignerCatalogue({
       shirts,
       pants,
