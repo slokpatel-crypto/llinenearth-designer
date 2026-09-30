@@ -27,13 +27,17 @@ export async function GET() {
       analyzerReviewed:Boolean(analyzed && ["approved","corrected"].includes(analyzed.reviewStatus)),
       imageQualityScore:analyzed?.measuredEvidence.imageQualityScore ?? null,
       physicalScaleStatus:analyzed?.measuredEvidence.patternPhysicalScale ?? null,
-      physicalScaleVerified:!patterned || Boolean(analyzed?.measuredEvidence.patternPhysicalScale && analyzed.measuredEvidence.patternPhysicalScale!=="unknown"),
+      physicalScaleVerified:!patterned || Boolean(
+        analyzed?.measuredEvidence.patternPhysicalScale
+        && analyzed.measuredEvidence.patternPhysicalScale!=="unknown"
+      ),
       gsmVerified:verified.weightGsm!=null || analyzed?.verifiedPhysical.gsm!=null,
       drapeVerified:Boolean(verified.drape || analyzed?.verifiedPhysical.drape),
       fiberVerified:Boolean(analyzed?.verifiedPhysical.fiberContent),
       formalityVerified:verified.formalityScore!=null,
       patterned,
     };
+
     const gaps:string[]=[];
     if(!inactive) {
       if(!evidence.availabilityVerified) gaps.push("availability");
@@ -44,6 +48,7 @@ export async function GET() {
       if(!evidence.fiberVerified) gaps.push("fibre");
       if(!evidence.formalityVerified) gaps.push("formality");
     }
+
     const priority=inactive ? 0
       : (evidence.availabilityVerified?0:4)
       +(evidence.physicalScaleVerified?0:4)
@@ -52,10 +57,8 @@ export async function GET() {
       +(evidence.drapeVerified?0:2)
       +(evidence.formalityVerified?0:2)
       +(evidence.fiberVerified?0:1);
-    return {
-}
 
-/* legacy map body removed */
+    return {
       id:fabric.id,
       colorName:fabric.colorName,
       line:fabric.line,
@@ -64,10 +67,28 @@ export async function GET() {
       suitableFor:fabric.suitableFor,
       swatchImageUrl:fabric.swatchImageUrl,
       yarnCountLea:fabric.yarnCountLea || [],
-      metadata:metadata[fabric.id] || {
-        fabricId:fabric.id,
-        availability:"unknown",
-      },
-    })),
+      metadata:verified,
+      evidence:{...evidence,gaps,priority},
+    };
+  });
+
+  const active=fabrics.filter((fabric)=>fabric.metadata.availability!=="unavailable");
+  const coverage={
+    total:fabrics.length,
+    activeCandidates:active.length,
+    priorityFabrics:active.filter((fabric)=>fabric.evidence.priority>=6).length,
+    availability:active.filter((fabric)=>fabric.evidence.availabilityVerified).length,
+    analyzerReviewed:active.filter((fabric)=>fabric.evidence.analyzerReviewed).length,
+    physicalScale:active.filter((fabric)=>fabric.evidence.physicalScaleVerified).length,
+    gsm:active.filter((fabric)=>fabric.evidence.gsmVerified).length,
+    drape:active.filter((fabric)=>fabric.evidence.drapeVerified).length,
+    fiber:active.filter((fabric)=>fabric.evidence.fiberVerified).length,
+    formality:active.filter((fabric)=>fabric.evidence.formalityVerified).length,
+  };
+
+  return NextResponse.json({
+    configured:Boolean(cloud),
+    coverage,
+    fabrics,
   });
 }
