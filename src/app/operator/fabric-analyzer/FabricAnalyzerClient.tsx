@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import FabricAnalyzerBatchPanel from "./FabricAnalyzerBatchPanel";
+import FabricAnalyzerCalibrationPanel from "./FabricAnalyzerCalibrationPanel";
 
 type StatsPayload={
   engine?:string;
@@ -296,6 +297,8 @@ export default function FabricAnalyzerClient(){
         <div className="rowActions"><button onClick={()=>void review(row.id,"approved")}>Approve</button><button onClick={()=>void review(row.id,"rejected")}>Reject</button></div>
       </article>)}</div>}
     </section>
+
+    <FabricAnalyzerCalibrationPanel />
     {message&&<button className="analyzerToast" onClick={()=>setMessage("")}>{message}<b>×</b></button>}
   </main>;
 }
