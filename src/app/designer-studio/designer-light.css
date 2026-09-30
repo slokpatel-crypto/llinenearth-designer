@@ -666,8 +666,14 @@
 .newDesignerSelectedQa strong{display:block;margin-top:4px;font-size:7px;line-height:1.45;font-weight:500;color:#526679}
 .newDesignerSelectedQa button{border:0;background:#203d5b;color:#fff;border-radius:999px;padding:8px 10px;font-size:7px;cursor:pointer;white-space:nowrap}
 .newDesignerSelectedQa button:disabled{opacity:.45;cursor:not-allowed}
+.newDesignerSelectedQaMetrics{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:5px}
+.newDesignerSelectedQaMetrics i{display:inline-flex;align-items:center;gap:4px;padding:4px 7px;border:1px solid #d8e1d9;border-radius:999px;background:#fff;font-size:6px;line-height:1;font-style:normal;text-transform:capitalize;color:#66736b}
+.newDesignerSelectedQaMetrics i b{font-size:5.5px;letter-spacing:.06em;text-transform:uppercase;color:#46564d}
+.newDesignerSelectedQaMetrics i[data-status="review"]{border-color:#ead4c7;background:#fff9f5;color:#9b684f}
+.newDesignerSelectedQaMetrics i[data-status="weak"]{border-color:#e7c3b3;background:#fff2ec;color:#9b4f3a}
+.newDesignerSelectedQaEvidence{grid-column:1/-1}
 .newDesignerSelectedQa small{grid-column:1/-1;font-size:6px;color:#80766d}
-@media(max-width:720px){.newDesignerSelectedQa{grid-template-columns:1fr}.newDesignerSelectedQa button{width:100%}}
+@media(max-width:720px){.newDesignerSelectedQa{grid-template-columns:1fr}.newDesignerSelectedQa button{width:100%}.newDesignerSelectedQaMetrics{gap:4px}}
 
 
 /* Phase 10 canonical two-tier preview */
