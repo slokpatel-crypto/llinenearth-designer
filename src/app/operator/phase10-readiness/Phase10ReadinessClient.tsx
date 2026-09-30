@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { summarizeConstructionReviews } from "@/lib/designer/construction-review-summary";
 
 type DesignerDataPayload={
   coverage:{
@@ -176,10 +177,9 @@ export default function Phase10ReadinessClient(){
       : 0;
 
     const construction=data.construction;
-    const constructionProgress=construction?.total
-      ? ratio(construction.approved+construction.rejected,construction.total)
-      : 0;
-    const constructionDone=Boolean(construction?.total && construction.pending===0);
+    const constructionSummary=summarizeConstructionReviews(construction||{total:0,approved:0,rejected:0,pending:0});
+    const constructionProgress=constructionSummary.completionPercent;
+    const constructionDone=Boolean(constructionSummary.total && constructionSummary.pending===0);
 
     const latest=data.device?.latest||{};
     const acceptedDevices=["mobile","tablet","desktop"].filter((kind)=>latest[kind]?.status==="accepted").length;
