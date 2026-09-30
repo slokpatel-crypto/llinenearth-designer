@@ -1,6 +1,7 @@
 import "server-only";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import type { DesignerFabric } from "@/lib/designer/engine";
+import { applyVerifiedPhysicalFabricEvidence } from "@/lib/fabric-intelligence-evidence";
 import { adaptFabricProfileToV4 } from "@/lib/fabric-intelligence-adapter";
 import { loadFabricAnalysesForFabricIds, type BoundFabricAnalysis } from "@/lib/fabric-analyzer-store";
 
@@ -103,43 +104,6 @@ export async function loadDesignerFabricIntelligence(
   return out;
 }
 
-
-/**
- * Applies only evidence-backed physical fields to the customer-facing fabric
- * contract. Model-judged style classifications remain in the separate
- * intelligence map and keep their trust weighting.
- */
-export function applyVerifiedPhysicalFabricEvidence(
-  fabric:DesignerFabric,
-  intelligence:DesignerFabricIntelligence|undefined,
-):DesignerFabric {
-  if(!intelligence) return fabric;
-  const physicalScale=intelligence.measuredEvidence.patternPhysicalScale;
-  const patternScaleVerified=Boolean(physicalScale && physicalScale!=="unknown");
-  return {
-    ...fabric,
-    ...(patternScaleVerified ? {
-      patternScaleVerified:true,
-      renderScale:{
-        physicalScaleStatus:physicalScale as "declared_repeat"|"declared_swatch_width",
-        repeatMm:intelligence.measuredEvidence.repeatMm,
-        stripeWidthMm:intelligence.measuredEvidence.stripeWidthMm,
-      },
-    } : {}),
-    ...(fabric.weightGsm===null && intelligence.verifiedPhysical.gsm!=null
-      ? {weightGsm:intelligence.verifiedPhysical.gsm}
-      : {}),
-    ...(fabric.drape===null && intelligence.verifiedPhysical.drape
-      ? {drape:intelligence.verifiedPhysical.drape}
-      : {}),
-    ...(intelligence.verifiedPhysical.fiberContent
-      ? {
-        fiberContent:intelligence.verifiedPhysical.fiberContent,
-        fiberContentVerified:true,
-      }
-      : {}),
-  };
-}
 
 export async function enrichDesignerFabricsWithIntelligence(
   fabrics:DesignerFabric[],
