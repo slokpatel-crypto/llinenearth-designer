@@ -38,6 +38,7 @@ Phase 10 is now materially beyond the original foundation brief.
 - Designer Data Desk now includes an evidence-coverage queue that merges verified merchandising metadata with reviewed Analyzer evidence, prioritizes missing availability/physical-scale/GSM/drape/fibre/formality facts, and never fills missing physical facts by inference.
 - `/operator/designer-evaluation` now provides a deterministic 48-case ground-truth benchmark across occasion, climate and intention contexts. The operator selects the best of three Designer directions (or none), creating auditable labels that remain evaluation evidence and do not automatically change live ranking weights.
 - `/operator/fabric-ground-truth` now turns reviewed Analyzer profiles into an explicit owner-labelled fabric set: the operator can approve classifications as-is or correct colour family, pattern family/scale/density/orientation, sheen, visual weight, formality and statement level. GSM, fibre, physical drape and millimetre scale remain outside this correction screen and still require physical evidence.
+- `/operator/construction-approval` records owner/tailor decisions for expanded owner-provided construction options. Live cut controls now label those options as approved, provisional or not offered without rewriting their source provenance or claiming fit/render accuracy.
 
 ### Instant preview and model system
 

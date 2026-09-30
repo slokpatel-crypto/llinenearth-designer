@@ -226,6 +226,19 @@ function cleanPayload(type:string, input:unknown) {
       };
     }
 
+    if (subtype === "designer_option_review") {
+      const optionId=text(payload.optionId,140);
+      const status=text(payload.status,20);
+      if(!optionId || !["approved","rejected"].includes(status)) return null;
+      return {
+        subtype,
+        version:"designer-option-review-v1",
+        optionId,
+        status,
+        note:text(payload.note,600),
+      };
+    }
+
     if (subtype === "designer_benchmark_label") {
       const version=text(payload.version,80);
       const caseId=text(payload.caseId,80);
