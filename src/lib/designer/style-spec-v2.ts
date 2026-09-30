@@ -182,6 +182,36 @@ export function styleSpecRenderSummary(spec:StyleSpecV2) {
   ].join("; ");
 }
 
+export function styleSpecHashInput(spec:StyleSpecV2) {
+  return JSON.stringify({
+    styleSchemaVersion:2,
+    shirt:{
+      type:spec.shirt.type,
+      collar:spec.shirt.collar,
+      collarFinish:spec.shirt.collarFinish,
+      cuff:spec.shirt.cuff,
+      placket:spec.shirt.placket,
+      pocket:spec.shirt.pocket,
+      sleeve:spec.shirt.sleeve,
+      fit:spec.shirt.fit,
+      length:spec.shirt.length,
+      hem:spec.shirt.hem,
+      back:spec.shirt.back,
+      wear:spec.shirt.wear,
+      button:spec.shirt.button,
+    },
+    pant:{
+      type:spec.pant.type,
+      fit:spec.pant.fit,
+      rise:spec.pant.rise,
+      pleat:spec.pant.pleat,
+      waistband:spec.pant.waistband,
+      hem:spec.pant.hem,
+      break:spec.pant.break,
+    },
+  });
+}
+
 export function legacyStyleHashInput(style:DesignerStyle) {
   return JSON.stringify({
     collar:style.collar,
