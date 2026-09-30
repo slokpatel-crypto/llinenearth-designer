@@ -460,6 +460,15 @@ for(const token of ["url.searchParams.get(\"scope\")","loadFabricAnalysesForFabr
 console.log("Fabric Ground Truth provenance gate passed: non-retained direct captures keep exact stock context without rendering broken image URLs.");
 const groundTruthStats=fs.readFileSync("src/lib/fabric-ground-truth-stats.ts","utf8");
 const analyzerStatsRoute=fs.readFileSync("src/app/api/operator/fabric-analyzer/stats/route.ts","utf8");
+for(const token of ["summarizeFabricGroundTruth","new Set<string>()","pending.delete","reviewedFabrics"]) {
+  if(!groundTruthStats.includes(token)) throw new Error(`Ground Truth unique-count regression: missing ${token}`);
+}
+for(const token of ["summarizeFabricGroundTruth(bound,50)","groundTruth"]) {
+  if(!analyzerStatsRoute.includes(token)) throw new Error(`Analyzer Ground Truth stats regression: missing ${token}`);
+}
+console.log("Ground Truth unique-count gate passed: progress is based on unique stock-bound fabrics, not duplicate profile rows.");
+const groundTruthStats=fs.readFileSync("src/lib/fabric-ground-truth-stats.ts","utf8");
+const analyzerStatsRoute=fs.readFileSync("src/app/api/operator/fabric-analyzer/stats/route.ts","utf8");
 const readinessClient=fs.readFileSync("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx","utf8");
 for(const token of ["summarizeFabricGroundTruth","reviewedFabrics","pendingFabrics","stockBoundProfiles","reviewed.add","pending.delete"]) {
   if(!groundTruthStats.includes(token)) throw new Error(`Unique Ground Truth count regression: missing ${token}`);
