@@ -43,6 +43,7 @@ Phase 10 is now materially beyond the original foundation brief.
 - `/operator/construction-approval` records owner/tailor decisions for expanded owner-provided construction options. Live cut controls now label those options as approved, provisional or not offered without rewriting their source provenance or claiming fit/render accuracy.
 - Final selected-look photoreal rendering now refuses any owner-provided construction option explicitly marked rejected; provisional options remain available for experiments while their status stays visible in the live cut study.
 - `/operator/device-qa` now turns real-browser testing into auditable acceptance evidence: it reads same-tab live-preview latency samples, requires at least 12 interactions, records viewport/DPR/browser context, and combines the measured p95 target with manual four-view/overflow/readability/model-stability checks. Mobile, tablet and desktop results are tracked separately.
+- `/operator/phase10-readiness` now aggregates the evidence queues, Analyzer reviewed-set target, Designer benchmark target, construction decisions, mobile/tablet/desktop acceptance and render-cache learning into one progress view. It deliberately treats real-world evidence as incomplete until the corresponding operator workflow records it.
 
 ### Instant preview and model system
 
