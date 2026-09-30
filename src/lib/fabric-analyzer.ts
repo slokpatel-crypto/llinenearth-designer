@@ -42,6 +42,7 @@ import {
 import { measureFabricImageBytes } from "@/lib/fabric-measurement-server";
 import type { FabricMeasuredData } from "@/lib/fabric-measurement-types";
 import { directFabricCaptureBytes, storedFabricCaptureReference } from "@/lib/fabric-capture-input";
+import { validateVerifiedPhysicalEvidence } from "@/lib/physical-evidence-provenance";
 
 export type FabricAnalyzerContext = {
   fabricId?:string;
@@ -651,6 +652,7 @@ export async function analyzeMenswearFabricWithStore(
   rawInput:FabricAnalyzerContext,
   options:{reuseReviewed?:boolean;persist?:boolean}={},
 ):Promise<FabricAnalyzerRun> {
+  validateVerifiedPhysicalEvidence(rawInput);
   const reuseReviewed=options.reuseReviewed!==false;
   const persist=options.persist!==false;
   // Content measurement comes first so cache identity follows the actual image

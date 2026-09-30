@@ -32,6 +32,15 @@ type ReviewRow={
   fabric_id:string|null;
   id:string;
   image_source:string;
+  declared_context?:{
+    verifiedGsm?:number|null;
+    verifiedDrape?:string|null;
+    verifiedFiberContent?:string|null;
+    verifiedPhysicalSourceUrl?:string|null;
+    verifiedPhysicalEvidenceNote?:string|null;
+    swatchRealWidthMm?:number|null;
+    repeatRealMm?:number|null;
+  };
   review_status:"unreviewed"|"approved"|"corrected"|"rejected";
   review_notes:string;
   profile:AnalyzerProfile;
@@ -262,6 +271,19 @@ export default function FabricGroundTruthClient(){
             <span><small>PATTERN CONFIDENCE</small><b>{pct(selected.profile.confidence?.pattern)}</b></span>
             <span><small>PHYSICAL SCALE</small><b>{selected.profile.measured?.pattern?.physicalScaleStatus || "unknown"}</b></span>
           </div>
+
+          <section className="truthProvenance">
+            <div><span>PHYSICAL EVIDENCE PROVENANCE</span><strong>{selected.declared_context?.verifiedPhysicalSourceUrl || selected.declared_context?.verifiedPhysicalEvidenceNote ? "Recorded" : "No physical provenance recorded"}</strong></div>
+            <div className="truthProvenanceFacts">
+              <span><small>GSM</small><b>{selected.declared_context?.verifiedGsm ?? "—"}</b></span>
+              <span><small>DRAPE</small><b>{selected.declared_context?.verifiedDrape || "—"}</b></span>
+              <span><small>FIBRE</small><b>{selected.declared_context?.verifiedFiberContent || "—"}</b></span>
+              <span><small>SWATCH WIDTH</small><b>{selected.declared_context?.swatchRealWidthMm != null ? `${selected.declared_context.swatchRealWidthMm} mm` : "—"}</b></span>
+              <span><small>REPEAT</small><b>{selected.declared_context?.repeatRealMm != null ? `${selected.declared_context.repeatRealMm} mm` : "—"}</b></span>
+            </div>
+            {selected.declared_context?.verifiedPhysicalSourceUrl && /^https:\/\//i.test(selected.declared_context.verifiedPhysicalSourceUrl) && <a href={selected.declared_context.verifiedPhysicalSourceUrl} target="_blank" rel="noreferrer">Open physical evidence source ↗</a>}
+            {selected.declared_context?.verifiedPhysicalEvidenceNote && <p>{selected.declared_context.verifiedPhysicalEvidenceNote}</p>}
+          </section>
 
           <div className="truthForm">
             <label><span>Colour family</span><select value={truth.colorFamily} onChange={(e)=>setTruth({...truth,colorFamily:e.target.value})}><option value="">Unknown</option>{colorFamilies.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
