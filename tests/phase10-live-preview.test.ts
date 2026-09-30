@@ -20,6 +20,8 @@ test("all stock fabrics have a lightweight tile and scale is explicitly unverifi
     assert.equal(asset.tileWidthPx,256);
     assert.equal(asset.scaleApproximate,true);
     assert.equal(asset.tileRealWidthMm,null);
+    const patterned=/stripe|check|print|floral|botanical|leaf|geometric|chevron|mosaic|abstract/i.test(fabric.pattern);
+    assert.equal(asset.tileStrategy,patterned?"direction_preserving_repeat":"mirrored_plain");
   }
 });
 
@@ -73,7 +75,7 @@ test("owner-declared millimetres map to a calibrated model-space tile size",()=>
     dominantHex:"#112233",
     scaleApproximate:false,
     tileRealWidthMm:120,
-    renderAssetVersion:"fabric-tile-v1",
+    renderAssetVersion:"fabric-tile-v2",
   };
   assert.equal(fabricTileSizePx(null),LIVE_APPROXIMATE_TILE_PX);
   assert.equal(fabricTileSizePx(declared),120*LIVE_MODEL_PX_PER_MM);
