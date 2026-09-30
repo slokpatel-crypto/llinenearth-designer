@@ -104,7 +104,7 @@ export function scoreFabricGroundTruth(labels:FabricGroundTruthLabel[]){
       percent:total?Math.round(matches/total*1000)/10:null,
     };
   });
-  const exactLookMatches=latest.filter((label)=>FABRIC_GROUND_TRUTH_FIELDS.every((field)=>same(label.original[field],label.final[field]))).length;
+  const exactLookMatches=latest.filter((label)=>FABRIC_GROUND_TRUTH_FIELDS.every((field)=>label.final[field]!=="" && same(label.original[field],label.final[field]))).length;
   const corrected=latest.length-exactLookMatches;
   const fieldMatches=perField.reduce((sum,row)=>sum+row.matches,0);
   const fieldTotal=perField.reduce((sum,row)=>sum+row.total,0);
