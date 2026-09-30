@@ -53,16 +53,24 @@ const param=(id:string,key:string,fallback:number)=>n(optionById(id)?.parameters
 export function modelGeometry(spec:StyleSpecV2,view:PreviewView="front",body:ModelBuild|BodyPreviewProfile="regular"):ModelGeometry {
   const build:ModelBuild=typeof body==="string" ? body : body.build;
   const heightCm=typeof body==="string" ? 178 : body.heightCm;
+  const silhouette=typeof body==="string" ? undefined : body.silhouette;
   const heightScale=clamp(heightCm/178,.92,1.08);
   const buildDelta={slim:-8,regular:0,athletic:7,broad:16}[build];
+  const shoulderScale=silhouette?.shoulderScale ?? 1;
+  const chestScale=silhouette?.chestScale ?? 1;
+  const waistScale=silhouette?.waistScale ?? 1;
+  const seatScale=silhouette?.seatScale ?? 1;
+  const thighScale=silhouette?.thighScale ?? 1;
+  const legLengthScale=silhouette?.legLengthScale ?? 1;
   const ease=param(spec.shirt.fit,"chestEaseCm",spec.shirt.fit==="relaxed_fit"?20:14);
-  const bodyHalf=clamp(84+(ease-14)*1.3+buildDelta,70,120);
-  const shoulder=clamp(86+buildDelta*.55,76,101);
+  const bodyHalf=clamp((84+(ease-14)*1.3+buildDelta)*chestScale,68,126);
+  const shoulder=clamp((86+buildDelta*.55)*shoulderScale,74,108);
   const waistY=spec.pant.rise==="extra_high_rise"?410:spec.pant.rise==="high_rise"?428:spec.pant.rise==="low_rise"?468:448;
   const tucked=spec.shirt.wear==="tucked";
   const lengthDelta=param(spec.shirt.length,"lengthDeltaCm",0)*2.4;
   const shirtHemY=tucked?waistY+12:clamp(493+lengthDelta,460,535);
-  const hemHalf=bodyHalf+(spec.shirt.fit==="athletic_taper"?-16:spec.shirt.fit==="boxy_oversized"?8:-4);
+  const baseHemHalf=bodyHalf+(spec.shirt.fit==="athletic_taper"?-16:spec.shirt.fit==="boxy_oversized"?8:-4);
+  const hemHalf=clamp(baseHemHalf*waistScale,66,132);
   const straightHem=spec.shirt.hem==="straight_flat_hem"||spec.shirt.hem==="side_vents_hem";
   const bodyPath=`M ${320-shoulder} 192 Q 274 169 296 169 L 320 198 L 344 169 Q 366 169 ${320+shoulder} 192 L ${320+bodyHalf} 323 Q ${320+hemHalf} 424 ${320+hemHalf} ${shirtHemY-10} ${straightHem?`L ${320+hemHalf} ${shirtHemY} L ${320-hemHalf} ${shirtHemY}`:`Q 320 ${shirtHemY+18} ${320-hemHalf} ${shirtHemY-10}`} Q ${320-hemHalf} 424 ${320-bodyHalf} 323 Z`;
   const shortSleeve=spec.shirt.sleeve==="half_sleeve"||spec.shirt.type==="short_sleeve_shirt";
@@ -74,13 +82,20 @@ export function modelGeometry(spec:StyleSpecV2,view:PreviewView="front",body:Mod
   const hemPct=param(spec.pant.fit,"hemPctSeat",52);
   const thighPct=param(spec.pant.fit,"thighPctSeat",68);
   const kneePct=param(spec.pant.fit,"kneePctSeat",58);
-  const thigh=clamp(thighPct*.82,47,76),knee=clamp(kneePct*.75,33,68),hem=clamp(hemPct*.72,27,67);
-  const bottomY=spec.pant.break==="cropped_above_ankle"||spec.pant.hem==="cropped_above_ankle_hem"?836
+  const thigh=clamp(thighPct*.82*thighScale,44,84);
+  const knee=clamp(kneePct*.75*(.7*thighScale+.3*seatScale),31,74);
+  const hem=clamp(hemPct*.72*(.55*thighScale+.45*seatScale),26,72);
+  const baseBottomY=spec.pant.break==="cropped_above_ankle"||spec.pant.hem==="cropped_above_ankle_hem"?836
     : spec.pant.break==="full_break"||spec.pant.break==="stacked_break"?912:886;
-  const leftLeg=`M 258 ${waistY+28} L 318 ${waistY+55} L 314 560 Q 312 700 315 ${bottomY} L ${315-hem*2} ${bottomY} Q ${312-knee*2} 700 ${320-thigh*2+13} 535 Z`;
-  const rightLeg=`M 382 ${waistY+28} L 322 ${waistY+55} L 326 560 Q 328 700 325 ${bottomY} L ${325+hem*2} ${bottomY} Q ${328+knee*2} 700 ${320+thigh*2-13} 535 Z`;
-  const pelvis=`M 258 ${waistY+24} Q 320 ${waistY+18} 382 ${waistY+24} L 389 530 Q 358 535 340 558 Q 320 580 300 558 Q 282 535 251 530 Z`;
-  const waistPath=`M 254 ${waistY} Q 320 ${waistY-9} 386 ${waistY} L 383 ${waistY+34} Q 320 ${waistY+30} 257 ${waistY+34} Z`;
+  const bottomY=clamp(baseBottomY+(legLengthScale-1)*120,820,930);
+  const seatHalf=clamp(62*seatScale,54,76);
+  const waistHalf=clamp(66*waistScale,54,80);
+  const leftStart=320-seatHalf;
+  const rightStart=320+seatHalf;
+  const leftLeg=`M ${leftStart} ${waistY+28} L 318 ${waistY+55} L 314 560 Q 312 700 315 ${bottomY} L ${315-hem*2} ${bottomY} Q ${312-knee*2} 700 ${320-thigh*2+13} 535 Z`;
+  const rightLeg=`M ${rightStart} ${waistY+28} L 322 ${waistY+55} L 326 560 Q 328 700 325 ${bottomY} L ${325+hem*2} ${bottomY} Q ${328+knee*2} 700 ${320+thigh*2-13} 535 Z`;
+  const pelvis=`M ${leftStart} ${waistY+24} Q 320 ${waistY+18} ${rightStart} ${waistY+24} L ${320+seatHalf+7} 530 Q ${320+seatHalf*.62} 535 340 558 Q 320 580 300 558 Q ${320-seatHalf*.62} 535 ${320-seatHalf-7} 530 Z`;
+  const waistPath=`M ${320-waistHalf} ${waistY} Q 320 ${waistY-9} ${320+waistHalf} ${waistY} L ${320+waistHalf-3} ${waistY+34} Q 320 ${waistY+30} ${320-waistHalf+3} ${waistY+34} Z`;
   const parts:PartGeometry[]=[
     {id:"seat-and-fly",path:pelvis,fabric:"pant",rotationDeg:0,patternMatch:"matched"},
     {id:"left-leg",path:leftLeg,fabric:"pant",rotationDeg:0,patternMatch:"unmatched"},
