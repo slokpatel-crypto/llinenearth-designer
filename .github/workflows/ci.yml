@@ -21,5 +21,6 @@ jobs:
       - run: npm run quality
       - run: npm test
       - run: npm run eval:engine
+      - run: npm run eval:preview-performance
       - run: npm run release:check
       - run: npm run build
