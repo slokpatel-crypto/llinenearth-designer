@@ -41,6 +41,7 @@ import {
 } from "@/lib/fabric-intelligence-adapter";
 import { measureFabricImageBytes } from "@/lib/fabric-measurement-server";
 import type { FabricMeasuredData } from "@/lib/fabric-measurement-types";
+import { directFabricCaptureBytes, storedFabricCaptureReference } from "@/lib/fabric-capture-input";
 
 export type FabricAnalyzerContext = {
   fabricId?:string;
@@ -85,26 +86,9 @@ const ALLOWED_HOSTS=[
   /^https:\/\/images\.unsplash\.com\//i,
 ];
 
-const DIRECT_CAPTURE_MAX_BYTES=1_100_000;
-
-function directCaptureBytes(value:string) {
-  const match=/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/i.exec(value.trim());
-  if(!match) return null;
-  const bytes=new Uint8Array(Buffer.from(match[2],"base64"));
-  if(bytes.byteLength<500) throw new Error("Direct fabric capture is empty or too small.");
-  if(bytes.byteLength>DIRECT_CAPTURE_MAX_BYTES) {
-    throw new Error("Direct fabric capture is too large. Use the built-in compressed upload or a trusted HTTPS image URL.");
-  }
-  return bytes;
-}
-
-function captureReference(value:string) {
-  return directCaptureBytes(value) ? "operator-direct-capture" : value;
-}
-
 function safeImageUrl(value:string,sourcePageUrl?:string) {
   const url=value.trim();
-  if(directCaptureBytes(url)) return url;
+  if(directFabricCaptureBytes(url)) return url;
   const builtIn=url.length<=1800 && ALLOWED_HOSTS.some((pattern)=>pattern.test(url));
   const official=url.length<=1800 && isTrustedFabricReferenceImageUrl(url,sourcePageUrl);
   if(!url || (!builtIn && !official)) {
@@ -119,7 +103,7 @@ async function measureCaptureUrl(
   physical?:{swatchRealWidthMm?:number;repeatRealMm?:number},
 ) {
   const url=safeImageUrl(imageUrl,sourcePageUrl);
-  const direct=directCaptureBytes(url);
+  const direct=directFabricCaptureBytes(url);
   if(direct) return measureFabricImageBytes(direct,physical);
   const response=await fetch(url,{
     headers:{accept:"image/avif,image/webp,image/png,image/jpeg,*/*;q=.5"},
@@ -583,12 +567,12 @@ Statement 1=quiet base, 5=dominant hero fabric.`;
       scaleApproximate:measured.pattern.physicalScaleStatus==="unknown",
     },
     captureSet:[
-      {role:"flat",imageUrl:captureReference(input.imageUrl),contentSha256:measured.contentSha256},
+      {role:"flat",imageUrl:storedFabricCaptureReference(input.imageUrl),contentSha256:measured.contentSha256},
       ...(input.captureMeasurements?.macro && input.macroImageUrl
-        ? [{role:"macro" as const,imageUrl:captureReference(input.macroImageUrl),contentSha256:input.captureMeasurements.macro.contentSha256}]
+        ? [{role:"macro" as const,imageUrl:storedFabricCaptureReference(input.macroImageUrl),contentSha256:input.captureMeasurements.macro.contentSha256}]
         : []),
       ...(input.captureMeasurements?.fold && input.foldImageUrl
-        ? [{role:"fold" as const,imageUrl:captureReference(input.foldImageUrl),contentSha256:input.captureMeasurements.fold.contentSha256}]
+        ? [{role:"fold" as const,imageUrl:storedFabricCaptureReference(input.foldImageUrl),contentSha256:input.captureMeasurements.fold.contentSha256}]
         : []),
     ],
     provenanceByField:{
