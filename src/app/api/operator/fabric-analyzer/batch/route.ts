@@ -6,6 +6,7 @@ import {
   type FabricAnalyzerContext,
 } from "@/lib/fabric-analyzer";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
+import { validateVerifiedPhysicalEvidence } from "@/lib/physical-evidence-provenance";
 
 export const runtime="nodejs";
 export const maxDuration=60;
@@ -28,6 +29,7 @@ type BatchItem={
   verifiedDrape?:"Fluid"|"Balanced"|"Structured";
   verifiedFiberContent?:string;
   verifiedPhysicalSourceUrl?:string;
+  verifiedPhysicalEvidenceNote?:string;
   force?:boolean;
 };
 
@@ -84,7 +86,9 @@ async function runItem(item:BatchItem,index:number) {
       verifiedDrape:["Fluid","Balanced","Structured"].includes(String(item.verifiedDrape)) ? item.verifiedDrape : undefined,
       verifiedFiberContent:clean(item.verifiedFiberContent,220) || undefined,
       verifiedPhysicalSourceUrl:clean(item.verifiedPhysicalSourceUrl,1800) || undefined,
+      verifiedPhysicalEvidenceNote:clean(item.verifiedPhysicalEvidenceNote,500) || undefined,
     };
+    validateVerifiedPhysicalEvidence(input);
     const run=await analyzeMenswearFabricWithStore(input,{reuseReviewed:item.force!==true,persist:true});
     return {index,fabricId,ok:true,mode:"private-fabric-analyzer-v4",run};
   } catch(error) {
