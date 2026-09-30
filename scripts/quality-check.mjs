@@ -717,7 +717,7 @@ for(const token of ["BodyPreviewProfile","bodyProfileFromMeasurements","validBod
   if(!phase10Body.includes(token)) throw new Error(`Phase 10 body-profile regression: missing ${token}`);
 }
 const phase10RenderRoute=fs.readFileSync("src/app/api/designer/look-render/route.ts","utf8");
-for(const token of ["input.locked!==true","getCachedSelectedLookRender","x-linen-render-cache"]) {
+for(const token of ["resolved.locked!==true","getCachedSelectedLookRender","loadDurableSelectedLookRender","storeDurableSelectedLookRender","resolveSelectedLookRequest","x-linen-render-cache"]) {
   if(!phase10RenderRoute.includes(token)) throw new Error(`Phase 10 final-render regression: missing ${token}`);
 }
 const phase10Analyzer=fs.readFileSync("src/lib/fabric-analyzer.ts","utf8");
