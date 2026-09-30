@@ -226,6 +226,35 @@ function cleanPayload(type:string, input:unknown) {
       };
     }
 
+    if (subtype === "designer_device_qa") {
+      const deviceClass=text(payload.deviceClass,20);
+      const status=text(payload.status,20);
+      const viewport=text(payload.viewport,40);
+      const checks=payload.checks && typeof payload.checks==="object" && !Array.isArray(payload.checks)
+        ? Object.fromEntries(Object.entries(payload.checks as Record<string,unknown>)
+          .slice(0,12)
+          .map(([key,value])=>[text(key,80),value===true]))
+        : {};
+      if(!["mobile","tablet","desktop"].includes(deviceClass) || !["accepted","review"].includes(status) || !viewport) return null;
+      return {
+        subtype,
+        version:"designer-device-qa-v1",
+        deviceClass,
+        status,
+        viewport,
+        dpr:Math.max(.5,Math.min(8,Number(payload.dpr)||1)),
+        samples:Math.max(0,Math.min(500,Math.floor(Number(payload.samples)||0))),
+        medianMs:Number.isFinite(Number(payload.medianMs))?Math.max(0,Math.min(10000,Number(payload.medianMs))):null,
+        p95Ms:Number.isFinite(Number(payload.p95Ms))?Math.max(0,Math.min(10000,Number(payload.p95Ms))):null,
+        maxMs:Number.isFinite(Number(payload.maxMs))?Math.max(0,Math.min(10000,Number(payload.maxMs))):null,
+        withinTarget:payload.withinTarget===true,
+        hardwareConcurrency:Math.max(0,Math.min(256,Math.floor(Number(payload.hardwareConcurrency)||0))),
+        userAgent:text(payload.userAgent,400),
+        checks,
+        note:text(payload.note,600),
+      };
+    }
+
     if (subtype === "designer_option_review") {
       const optionId=text(payload.optionId,140);
       const status=text(payload.status,20);
