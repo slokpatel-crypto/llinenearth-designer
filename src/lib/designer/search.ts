@@ -125,8 +125,10 @@ function styleForTier(
       trouser:occasion==="Formal"
         ? pick("trouser",/formal.*flat|flat[- ]?front/i,base.trouser)
         : occasion==="Semi-Formal"
-          ? pick("trouser",/pleated|formal.*flat|flat[- ]?front/i,base.trouser)
-          : pick("trouser",/formal.*flat|flat[- ]?front|cropped/i,base.trouser),
+          ? pick("trouser",/pleated/i,base.trouser)
+          : occasion==="Smart-Casual"
+            ? pick("trouser",/cropped|ankle/i,base.trouser)
+            : pick("trouser",/jean[- ]?cut/i,base.trouser),
       shirtWear:occasion==="Formal"||occasion==="Semi-Formal"?"Tucked":base.shirtWear,
     };
   }
