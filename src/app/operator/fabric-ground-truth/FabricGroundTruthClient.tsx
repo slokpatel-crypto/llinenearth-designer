@@ -110,7 +110,7 @@ export default function FabricGroundTruthClient(){
     setLoading(true);
     try{
       const [queueResponse,statsResponse,catalogResponse]=await Promise.all([
-        fetch("/api/operator/fabric-analyzer/review?limit=100",{cache:"no-store"}),
+        fetch("/api/operator/fabric-analyzer/review?limit=100&scope=all",{cache:"no-store"}),
         fetch("/api/operator/fabric-analyzer/stats",{cache:"no-store"}),
         fetch("/api/operator/designer-data",{cache:"no-store"}),
       ]);
