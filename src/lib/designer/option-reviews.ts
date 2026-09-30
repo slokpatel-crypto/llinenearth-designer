@@ -1,6 +1,7 @@
 import "server-only";
 
-import { GARMENT_OPTION_LIBRARY } from "@/lib/designer/options/library";
+import { GARMENT_OPTION_LIBRARY, optionById } from "@/lib/designer/options/library";
+import type { StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 
 export type DesignerOptionReviewStatus="approved"|"rejected";
@@ -49,4 +50,20 @@ export async function loadDesignerOptionReviews():Promise<Record<string,Designer
   } catch {
     return {};
   }
+}
+
+export function selectedOwnerProvidedOptions(spec:StyleSpecV2) {
+  const ids=[...new Set([...Object.values(spec.shirt),...Object.values(spec.pant)])];
+  return ids
+    .map((id)=>optionById(String(id)))
+    .filter((option):option is NonNullable<ReturnType<typeof optionById>>=>Boolean(option?.provenance==="owner-provided"));
+}
+
+export function rejectedConstructionOptions(
+  spec:StyleSpecV2,
+  reviews:Record<string,DesignerOptionReview>,
+) {
+  return selectedOwnerProvidedOptions(spec)
+    .filter((option)=>reviews[option.id]?.status==="rejected")
+    .map((option)=>({id:option.id,label:option.label,group:option.group}));
 }
