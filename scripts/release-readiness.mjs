@@ -164,6 +164,7 @@ requireFile("src/lib/fabric-intelligence-server.ts");
 requireFile("src/app/api/operator/fabric-analyzer/analyze/route.ts");
 requireFile("src/lib/fabric-capture-input.ts");
 requireFile("src/app/operator/fabric-analyzer/FabricCapturePicker.tsx");
+requireTokens("src/app/operator/fabric-analyzer/FabricAnalyzerClient.tsx", ["approveAndNext","Approve + next fabric","evidence?.priority","/operator/designer-data"]);
 requireFile("tests/phase10-direct-fabric-capture.test.ts");
 requireTokens("src/lib/fabric-capture-input.ts", ["directFabricCaptureBytes","DIRECT_FABRIC_CAPTURE_MAX_BYTES","operator-direct-capture"]);
 requireTokens("src/app/operator/fabric-analyzer/FabricCapturePicker.tsx", ["createImageBitmap","image/jpeg","850_000","Use photo from device"]);
