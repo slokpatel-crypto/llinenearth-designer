@@ -25,6 +25,58 @@ export type FabricGroundTruthLabel={
   at:string;
 };
 
+const PATH_TO_FIELD:Record<string,FabricGroundTruthField>={
+  "observed.colorFamily":"colorFamily",
+  "observed.patternFamily":"patternFamily",
+  "observed.patternScale":"patternScale",
+  "observed.patternDensity":"patternDensity",
+  "observed.orientation":"orientation",
+  "observed.sheen":"sheen",
+  "observed.visualWeight":"visualWeight",
+  "inferredStyle.formality":"formality",
+  "inferredStyle.statementLevel":"statementLevel",
+};
+
+function object(value:unknown):Record<string,unknown>{
+  return value && typeof value==="object" && !Array.isArray(value) ? value as Record<string,unknown> : {};
+}
+
+function scalar(value:unknown){
+  return value===null || value===undefined ? "" : String(value).trim().slice(0,80);
+}
+
+export function fabricGroundTruthStateFromProfile(profile:unknown):FabricGroundTruthState{
+  const root=object(profile);
+  const observed=object(root.observed);
+  const inferred=object(root.inferredStyle);
+  return {
+    colorFamily:scalar(observed.colorFamily),
+    patternFamily:scalar(observed.patternFamily),
+    patternScale:scalar(observed.patternScale),
+    patternDensity:scalar(observed.patternDensity),
+    orientation:scalar(observed.orientation),
+    sheen:scalar(observed.sheen),
+    visualWeight:scalar(observed.visualWeight),
+    formality:scalar(inferred.formality),
+    statementLevel:scalar(inferred.statementLevel),
+  };
+}
+
+export function reconstructOriginalFabricGroundTruthState(
+  finalState:FabricGroundTruthState,
+  feedback:Array<{fieldPath:string;previousValue:unknown}>,
+):FabricGroundTruthState{
+  const original={...finalState};
+  const restored=new Set<FabricGroundTruthField>();
+  for(const correction of feedback){
+    const field=PATH_TO_FIELD[String(correction.fieldPath||"")];
+    if(!field || restored.has(field)) continue;
+    original[field]=scalar(correction.previousValue);
+    restored.add(field);
+  }
+  return original;
+}
+
 function same(a:string,b:string){
   return String(a??"").trim()===String(b??"").trim();
 }
