@@ -4,6 +4,8 @@ import type { FitConstructionAssessment, FinishedTarget } from "@/lib/designer/f
 import type { BrandLanguageEvaluation } from "@/lib/designer/brand-language";
 import type { DesignerBlockStrategy } from "@/lib/designer/block-strategy";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
+import type { StyleSpecV2 } from "@/lib/designer/style-spec-v2";
+import type { BodyPreviewProfile } from "@/lib/designer/body-profile";
 
 export type CanonicalGarmentSpecStatus = "draft" | "review_required" | "ready_for_tailor_review";
 
@@ -35,7 +37,10 @@ export type CanonicalGarmentSpec = {
     fitConstructionVersion: FitConstructionAssessment["version"] | null;
     measurementProfileVersion: MeasurementProfile["version"] | null;
     blockStrategyVersion: DesignerBlockStrategy["version"] | null;
+    styleSchemaVersion:2|null;
   };
+  styleSpec:StyleSpecV2|null;
+  bodyProfile:BodyPreviewProfile|null;
   context: {
     occasion: DesignerRecommendation["occasion"];
     climate: DesignerRecommendation["context"]["climate"];
@@ -160,6 +165,8 @@ export function buildCanonicalGarmentSpec(
   block?: DesignerBlockStrategy | null,
   creative?: CreativeDirection | null,
   creativeVisualReview?: CanonicalCreativeVisualReview | null,
+  styleSpec?:StyleSpecV2|null,
+  bodyProfile?:BodyPreviewProfile|null,
 ): CanonicalGarmentSpec {
   const materialMissing = recommendation.materialEvidence.missing;
   const fitChecks = fit?.checks ?? [];
@@ -196,7 +203,15 @@ export function buildCanonicalGarmentSpec(
       fitConstructionVersion: fit?.version ?? null,
       measurementProfileVersion: measurements?.version ?? null,
       blockStrategyVersion: block?.version ?? null,
+      styleSchemaVersion:styleSpec?.styleSchemaVersion ?? null,
     },
+    styleSpec:styleSpec ? {
+      ...styleSpec,
+      shirt:{...styleSpec.shirt},
+      pant:{...styleSpec.pant},
+      legacy:{...styleSpec.legacy},
+    } : null,
+    bodyProfile:bodyProfile ? {...bodyProfile} : null,
     context: {
       occasion: recommendation.occasion,
       climate: recommendation.context.climate,
@@ -301,6 +316,8 @@ export function buildCanonicalGarmentSpec(
       ...(block?.caveats ?? []),
       "This specification coordinates Designer, visualization and tailoring review; it is not a cutting pattern.",
       "Verified physical cloth data takes precedence over catalogue-derived appearance.",
+      ...(styleSpec ? ["Expanded shirt and trouser construction is stored as stable StyleSpec v2 IDs."] : []),
+      ...(bodyProfile ? ["Body preview settings guide visualization only and do not replace tailoring measurements."] : []),
       ...(creative ? ["Creative treatments are design instructions for visualization and tailor/pattern-maker review; they are not production-ready pattern pieces."] : []),
       ...(creativeVisualReviewRequired ? ["A creative concept is not visualization-ready until the rendered result passes the visual QA loop or receives explicit human review."] : []),
     ],
