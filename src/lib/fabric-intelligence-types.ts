@@ -18,6 +18,9 @@ export type DesignerFabricIntelligence = {
   measuredEvidence:{
     imageQualityScore:number|null;
     colorDeltaE:number|null;
+    measuredHex:string|null;
+    patternContrastDeltaE:number|null;
+    patternOrientation:"none"|"vertical"|"horizontal"|"grid"|"uncertain"|null;
     patternPhysicalScale:"declared_repeat"|"declared_swatch_width"|"unknown"|null;
     repeatMm:number|null;
     stripeWidthMm:number|null;
