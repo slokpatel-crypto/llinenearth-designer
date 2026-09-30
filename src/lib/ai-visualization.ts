@@ -90,6 +90,10 @@ export type SelectedLookFabricRenderEvidence={
   gsm:number|null;
   drape:"Fluid"|"Balanced"|"Structured"|null;
   fiberContent:string|null;
+  measuredColorHex:string|null;
+  measurementQuality:number|null;
+  patternContrastDeltaE:number|null;
+  patternOrientation:"none"|"vertical"|"horizontal"|"grid"|"uncertain"|null;
   repeatMm:number|null;
   stripeWidthMm:number|null;
   physicalScaleStatus:"declared_repeat"|"declared_swatch_width"|"unknown"|null;
