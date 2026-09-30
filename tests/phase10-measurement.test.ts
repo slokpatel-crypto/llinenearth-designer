@@ -31,13 +31,22 @@ test("vertical stripe periodicity is measured in pixels and only becomes mm with
   ];
   const px=measurePattern(gray,w,h,palette);
   assert.equal(px.orientation,"vertical");
-  assert(px.repeatPeriodPx!==null);
+  assert.equal(px.repeatPeriodPx,16);
   assert.equal(px.repeatMm,null);
   assert.equal(px.physicalScaleStatus,"unknown");
 
   const mm=measurePattern(gray,w,h,palette,{swatchRealWidthMm:256,originalWidthPx:512});
   assert.equal(mm.physicalScaleStatus,"declared_swatch_width");
-  assert(mm.repeatMm!==null && mm.repeatMm>0);
+  assert.equal(mm.repeatMm,32);
+});
+
+test("a smooth lighting gradient cannot supply a stripe repeat measurement",()=>{
+  const w=128,h=128;
+  const gray=new Uint8Array(w*h);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++) gray[y*w+x]=30+x;
+  const result=measurePattern(gray,w,h,[]);
+  assert.equal(result.repeatPeriodPx,null);
+  assert.equal(result.repeatMm,null);
 });
 
 test("image quality reports low resolution and flat blur explicitly",()=>{

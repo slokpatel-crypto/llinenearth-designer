@@ -456,6 +456,11 @@ export async function inspectSelectedLookFashnOutput(
           pantOrientation,
           shirtContrastDeltaE:shirtPatternContrast,
           pantContrastDeltaE:pantPatternContrast,
+          shirtRepeatMm:input.renderEvidence?.shirt?.repeatMm ?? null,
+          pantRepeatMm:input.renderEvidence?.pant?.repeatMm ?? null,
+          shirtStripeWidthMm:input.renderEvidence?.shirt?.stripeWidthMm ?? null,
+          pantStripeWidthMm:input.renderEvidence?.pant?.stripeWidthMm ?? null,
+          bodyHeightCm:input.bodyProfile?.heightCm ?? null,
         });
       }
     } catch {
@@ -483,10 +488,26 @@ export async function inspectSelectedLookFashnOutput(
   const measuredPatternIssue=measuredPattern && (codePatternStatus==="review"||codePatternStatus==="weak")
     ? [
       measuredPattern.shirt.status!=="unavailable"
-        ? `shirt ${measuredPattern.shirt.expectedOrientation}→${measuredPattern.shirt.observedOrientation}`
+        ? [
+          `shirt ${measuredPattern.shirt.expectedOrientation}→${measuredPattern.shirt.observedOrientation}`,
+          measuredPattern.shirt.expectedRepeatMm!==null
+            ? `repeat ${measuredPattern.shirt.expectedRepeatMm}→${measuredPattern.shirt.observedRepeatMm ?? "unavailable"} mm`
+            : "",
+          measuredPattern.shirt.expectedStripeWidthMm!==null
+            ? `stripe ${measuredPattern.shirt.expectedStripeWidthMm}→${measuredPattern.shirt.observedStripeWidthMm ?? "unavailable"} mm`
+            : "",
+        ].filter(Boolean).join(" ")
         : "",
       measuredPattern.pant.status!=="unavailable"
-        ? `trouser ${measuredPattern.pant.expectedOrientation}→${measuredPattern.pant.observedOrientation}`
+        ? [
+          `trouser ${measuredPattern.pant.expectedOrientation}→${measuredPattern.pant.observedOrientation}`,
+          measuredPattern.pant.expectedRepeatMm!==null
+            ? `repeat ${measuredPattern.pant.expectedRepeatMm}→${measuredPattern.pant.observedRepeatMm ?? "unavailable"} mm`
+            : "",
+          measuredPattern.pant.expectedStripeWidthMm!==null
+            ? `stripe ${measuredPattern.pant.expectedStripeWidthMm}→${measuredPattern.pant.observedStripeWidthMm ?? "unavailable"} mm`
+            : "",
+        ].filter(Boolean).join(" ")
         : "",
     ].filter(Boolean).join(", ")
     : "";
@@ -513,7 +534,7 @@ export async function inspectSelectedLookFashnOutput(
         ? (deterministicIssues ? `Measured render fidelity needs review (${deterministicIssues}). Other QA checks are unavailable.` : "Measured colour/pattern evidence is within available tolerances; other photoreal QA checks are unavailable.")
         : "Automatic photoreal QA is unavailable; keep this render for manual review.",
       repairInstruction:deterministicIssues
-        ? "Restore measured fabric colour and pattern direction without changing the locked construction, model or lighting."
+        ? "Restore measured fabric colour, pattern direction and physical scale without changing the locked construction, model or lighting."
         : "",
       ...(measuredColorDeltaE?{measuredColorDeltaE}:{}),
       ...(measuredPatternOrientation?{measuredPatternOrientation}:{}),
@@ -600,7 +621,7 @@ export async function inspectSelectedLookFashnOutput(
       ? `Measured render drift — ${deterministicIssues}.`
       : String(parsed.issue||"").replace(/\s+/g," ").trim().slice(0,180);
     const repairInstruction=forcedMeasuredReview
-      ? "Restore measured fabric colour and pattern direction while preserving the locked construction, model and lighting."
+      ? "Restore measured fabric colour, pattern direction and physical scale while preserving the locked construction, model and lighting."
       : String(parsed.repairInstruction||"").replace(/\s+/g," ").trim().slice(0,180);
     return {
       ...parsed,
@@ -632,7 +653,7 @@ export async function inspectSelectedLookFashnOutput(
       issue:deterministicAvailable
         ? (deterministicIssues ? `Measured render fidelity needs review (${deterministicIssues}); semantic QA is unavailable.` : "Measured render evidence is within available tolerances; semantic QA is unavailable.")
         : "Automatic photoreal QA is unavailable; keep this render for manual review.",
-      repairInstruction:deterministicIssues ? "Restore measured fabric colour and pattern direction without changing construction." : "",
+      repairInstruction:deterministicIssues ? "Restore measured fabric colour, pattern direction and physical scale without changing construction." : "",
       ...(measuredColorDeltaE?{measuredColorDeltaE}:{}),
       ...(measuredPatternOrientation?{measuredPatternOrientation}:{}),
     };
