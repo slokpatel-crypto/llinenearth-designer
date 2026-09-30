@@ -16,8 +16,15 @@ function assetFor(fabric:DesignerFabric):FabricRenderAsset|null {
   return assets[name]||null;
 }
 const groups:Array<{title:string;fields:Array<[keyof StyleSpecV2["shirt"]|keyof StyleSpecV2["pant"],GarmentOptionGroup]>}>=[
-  {title:"Shirt",fields:[["type","shirt.type"],["collar","shirt.collar"],["cuff","shirt.cuff"],["sleeve","shirt.sleeve"],["fit","shirt.fit"],["length","shirt.length"],["hem","shirt.hem"],["pocket","shirt.pocket"],["back","shirt.back"]]},
-  {title:"Trousers",fields:[["fit","pant.fit"],["rise","pant.rise"],["pleat","pant.pleat"],["waistband","pant.waistband"],["hem","pant.hem"],["break","pant.break"]]},
+  {title:"Shirt",fields:[
+    ["type","shirt.type"],["collar","shirt.collar"],["cuff","shirt.cuff"],["placket","shirt.placket"],
+    ["sleeve","shirt.sleeve"],["fit","shirt.fit"],["length","shirt.length"],["hem","shirt.hem"],
+    ["pocket","shirt.pocket"],["back","shirt.back"],["wear","shirt.wear"],["button","shirt.button"],
+  ]},
+  {title:"Trousers",fields:[
+    ["type","pant.type"],["fit","pant.fit"],["rise","pant.rise"],["pleat","pant.pleat"],
+    ["waistband","pant.waistband"],["hem","pant.hem"],["break","pant.break"],
+  ]},
 ];
 
 export function LiveConstructionPreview({
