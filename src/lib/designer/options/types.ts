@@ -5,7 +5,7 @@ export type ClimateTag="hot_humid"|"cool"|"air_conditioned"|"all";
 
 export type GarmentOptionGroup=
   |"shirt.type"|"shirt.collar"|"shirt.cuff"|"shirt.placket"|"shirt.pocket"
-  |"shirt.sleeve"|"shirt.fit"|"shirt.length"|"shirt.hem"|"shirt.back"|"shirt.button"
+  |"shirt.sleeve"|"shirt.fit"|"shirt.length"|"shirt.hem"|"shirt.back"|"shirt.wear"|"shirt.button"
   |"pant.type"|"pant.fit"|"pant.rise"|"pant.waistband"|"pant.pleat"
   |"pant.leg"|"pant.hem"|"pant.break";
 
