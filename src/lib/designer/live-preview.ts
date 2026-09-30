@@ -40,10 +40,23 @@ export const LIVE_MODEL_REFERENCE_HEIGHT_PX=900;
 export const LIVE_MODEL_REFERENCE_HEIGHT_MM=1780;
 export const LIVE_MODEL_PX_PER_MM=LIVE_MODEL_REFERENCE_HEIGHT_PX/LIVE_MODEL_REFERENCE_HEIGHT_MM;
 export const LIVE_APPROXIMATE_TILE_PX=112;
+export const PHOTO_MODEL_COORDINATE_SCALE=1024/640;
+export const PHOTO_SWATCH_TILE_PX=320;
 
 export function fabricTileSizePx(asset:FabricRenderAsset|null) {
   if(!asset?.tileRealWidthMm || asset.tileRealWidthMm<=0) return LIVE_APPROXIMATE_TILE_PX;
   return clamp(asset.tileRealWidthMm*LIVE_MODEL_PX_PER_MM,18,320);
+}
+
+/**
+ * Maps a verified fabric tile width into the existing 1024px photographic
+ * mannequin coordinate system. Unknown physical scale keeps the established
+ * visual heuristic and is never presented as measured truth.
+ */
+export function photoFabricPatternScale(asset:FabricRenderAsset|null,fallback:number) {
+  if(!asset || asset.scaleApproximate!==false || !asset.tileRealWidthMm || asset.tileRealWidthMm<=0) return fallback;
+  const photoTilePx=fabricTileSizePx(asset)*PHOTO_MODEL_COORDINATE_SCALE;
+  return clamp(photoTilePx/PHOTO_SWATCH_TILE_PX,.12,1.6);
 }
 
 const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
