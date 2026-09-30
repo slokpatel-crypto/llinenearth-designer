@@ -7,57 +7,10 @@ import { searchDesignerCatalogue } from "@/lib/designer/search";
 import { loadDesignerEvidenceContext } from "@/lib/designer/evidence-context";
 import { loadDesignerFabricIntelligence } from "@/lib/fabric-intelligence-server";
 import { buildDesignerBenchmarkCases, DESIGNER_BENCHMARK_VERSION } from "@/lib/designer/benchmark";
-import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
+import { loadDesignerBenchmarkLabels } from "@/lib/designer/benchmark-labels";
 
 export const runtime="nodejs";
 export const maxDuration=30;
-
-type LabelRow={at:string;payload?:Record<string,unknown>};
-type BenchmarkLabel={
-  caseId:string;
-  choice:"0"|"1"|"2"|"none";
-  reason:string;
-  at:string;
-};
-
-async function loadLabels() {
-  const cloud=getSupabaseAdminConfig();
-  if(!cloud) return {configured:false,labels:new Map<string,BenchmarkLabel>()};
-
-  try {
-    const params=new URLSearchParams({
-      select:"at,payload",
-      type:"eq.operator_note",
-      source:"eq.operator",
-      order:"at.desc",
-      limit:"1200",
-    });
-    const response=await fetch(`${cloud.url}/rest/v1/style_events?${params.toString()}`,{
-      headers:{...supabaseAdminHeaders(cloud),accept:"application/json"},
-      cache:"no-store",
-    });
-    if(!response.ok) return {configured:true,labels:new Map<string,BenchmarkLabel>()};
-    const rows=await response.json() as LabelRow[];
-    const labels=new Map<string,BenchmarkLabel>();
-    for(const row of rows) {
-      const payload=row.payload||{};
-      if(String(payload.subtype||"")!=="designer_benchmark_label") continue;
-      if(String(payload.version||"")!==DESIGNER_BENCHMARK_VERSION) continue;
-      const caseId=String(payload.caseId||"").slice(0,80);
-      const choice=String(payload.choice||"") as BenchmarkLabel["choice"];
-      if(!caseId || !["0","1","2","none"].includes(choice) || labels.has(caseId)) continue;
-      labels.set(caseId,{
-        caseId,
-        choice,
-        reason:String(payload.reason||"other").slice(0,80),
-        at:row.at,
-      });
-    }
-    return {configured:true,labels};
-  } catch {
-    return {configured:true,labels:new Map<string,BenchmarkLabel>()};
-  }
-}
 
 export async function GET(request:Request) {
   const jar=await cookies();
@@ -70,7 +23,7 @@ export async function GET(request:Request) {
     const [metadata,evidence,labelState]=await Promise.all([
       loadDesignerFabricMetadata(),
       loadDesignerEvidenceContext(),
-      loadLabels(),
+      loadDesignerBenchmarkLabels(),
     ]);
     const stock=applyDesignerFabricMetadataToStock(metadata).filter((fabric)=>fabric.inStock);
     const fabrics=stock.map(designerFabricFromStock);
