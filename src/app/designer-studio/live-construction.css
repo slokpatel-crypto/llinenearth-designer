@@ -7,8 +7,8 @@
 .liveConstructionHead span{font-size:9px;letter-spacing:.18em;color:#a75b43;font-weight:700}
 .liveConstructionHead h2{font:400 30px/1 Georgia,serif;letter-spacing:-.03em;margin:8px 0}
 .liveConstructionHead p{font-size:11px;line-height:1.5;color:#697689;max-width:430px;margin:0}
-.liveConstructionSwitches{display:flex;border:1px solid #d8d4cc;padding:2px;flex-shrink:0}
-.liveConstructionSwitches button{border:0;background:transparent;color:#526071;padding:8px 11px;font-size:10px;cursor:pointer}
+.liveConstructionSwitches{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid #d8d4cc;padding:2px;flex-shrink:0;min-width:238px}
+.liveConstructionSwitches button{border:0;background:transparent;color:#526071;padding:8px 10px;font-size:10px;cursor:pointer;white-space:nowrap}
 .liveConstructionSwitches button[aria-pressed="true"]{background:#1b2e47;color:white}
 .liveConstructionStage{position:relative;display:flex;justify-content:center;contain:layout paint;background:radial-gradient(ellipse at 52% 21%,#faf8f3,#e7e3db 76%);height:min(67vh,650px);min-height:480px;overflow:hidden}
 .liveConstructionStage svg{height:100%;width:100%;max-width:510px;display:block}
@@ -30,4 +30,4 @@
 .liveConstructionVerdict{border-top:1px solid #e2ddd3;padding:15px 20px 20px;font-size:11px;line-height:1.55;color:#5a6878}
 .liveConstructionVerdict summary{cursor:pointer;font-weight:700;color:#21334b}
 .liveConstructionVerdict ul{padding-left:19px}.liveConstructionVerdict li{margin:9px 0}.liveConstructionVerdict b{color:#aa6045}
-@media(max-width:680px){.liveConstructionHead{align-items:start;flex-direction:column}.liveConstructionStage{min-height:420px;height:58vh}.liveConstructionOptions fieldset>div{grid-template-columns:1fr}.liveConstructionToolbar{align-items:stretch;flex-direction:column}.liveConstructionToolbar button{width:100%}}
+@media(max-width:680px){.liveConstructionHead{align-items:start;flex-direction:column}.liveConstructionSwitches{width:100%;min-width:0}.liveConstructionStage{min-height:420px;height:58vh}.liveConstructionOptions fieldset>div{grid-template-columns:1fr}.liveConstructionToolbar{align-items:stretch;flex-direction:column}.liveConstructionToolbar button{width:100%}}
