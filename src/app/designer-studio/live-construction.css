@@ -2,7 +2,7 @@
 .liveConstructionMode button{flex:1;border:0;background:transparent;color:#526070;font-size:11px;padding:11px 8px;cursor:pointer}
 .liveConstructionMode button[aria-pressed="true"]{background:#fff;color:#17243a;box-shadow:0 1px 7px #19223116;font-weight:700}
 .liveConstructionLoading{padding:30px;background:#eeeae4;color:#475569;font-size:12px}
-.liveConstruction{border:1px solid #e2ddd3;background:#faf9f6;color:#223146;box-shadow:0 18px 48px #16243b10}
+.liveConstruction{border:1px solid #e2ddd3;background:#faf9f6;color:#223146;box-shadow:0 18px 48px #16243b10;contain:layout paint style}
 .liveConstructionHead{padding:23px 23px 16px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
 .liveConstructionHead span{font-size:9px;letter-spacing:.18em;color:#a75b43;font-weight:700}
 .liveConstructionHead h2{font:400 30px/1 Georgia,serif;letter-spacing:-.03em;margin:8px 0}
@@ -10,7 +10,7 @@
 .liveConstructionSwitches{display:flex;border:1px solid #d8d4cc;padding:2px;flex-shrink:0}
 .liveConstructionSwitches button{border:0;background:transparent;color:#526071;padding:8px 11px;font-size:10px;cursor:pointer}
 .liveConstructionSwitches button[aria-pressed="true"]{background:#1b2e47;color:white}
-.liveConstructionStage{position:relative;display:flex;justify-content:center;background:radial-gradient(ellipse at 52% 21%,#faf8f3,#e7e3db 76%);height:min(67vh,650px);min-height:480px;overflow:hidden}
+.liveConstructionStage{position:relative;display:flex;justify-content:center;contain:layout paint;background:radial-gradient(ellipse at 52% 21%,#faf8f3,#e7e3db 76%);height:min(67vh,650px);min-height:480px;overflow:hidden}
 .liveConstructionStage svg{height:100%;width:100%;max-width:510px;display:block}
 .liveConstructionTag{position:absolute;top:13px;left:13px;background:#fffdf9e8;padding:7px 10px;font-size:9px;letter-spacing:.13em;color:#4f5e70}
 .liveConstructionFoot{padding:14px 20px;display:grid;grid-template-columns:1fr 1fr;gap:12px;border-top:1px solid #e2ddd3}
