@@ -212,6 +212,39 @@ export async function loadFabricAnalyzerLearningHints():Promise<FabricAnalyzerLe
 
 export type BoundFabricAnalysis = StoredFabricAnalysis & {fabric_id:string};
 
+export type FabricAnalyzerGroundTruthHistoryRow={
+  fabric_id:string;
+  profile_id:string;
+  analyzer_version:string;
+  review_status:"approved"|"corrected";
+  profile:FabricAnalyzerProfile;
+  feedback:Array<{
+    fieldPath:string;
+    previousValue:unknown;
+    correctedValue:unknown;
+    reason:string;
+    at:string;
+  }>;
+  reviewed_at:string;
+};
+
+export async function loadFabricAnalyzerGroundTruthHistory(
+  fabricIds:string[],
+):Promise<FabricAnalyzerGroundTruthHistoryRow[]> {
+  if(!config()) return [];
+  const ids=[...new Set(fabricIds.map((id)=>clean(id,160)).filter(Boolean))].slice(0,500);
+  if(!ids.length) return [];
+  try {
+    return await rpc<FabricAnalyzerGroundTruthHistoryRow[]>("fabric_analyzer_ground_truth_history",{
+      p_fabric_ids:ids,
+    });
+  } catch {
+    // The optional historical backfill RPC may not exist until its migration is
+    // applied. Explicit owner-label events continue to power the scorecard.
+    return [];
+  }
+}
+
 export async function loadFabricAnalysesForFabricIds(
   fabricIds:string[],
   options:{includeUnreviewed?:boolean}={},
