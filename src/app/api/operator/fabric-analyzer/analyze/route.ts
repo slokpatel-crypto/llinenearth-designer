@@ -6,6 +6,7 @@ import {
   type FabricAnalyzerContext,
 } from "@/lib/fabric-analyzer";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
+import { validateVerifiedPhysicalEvidence } from "@/lib/physical-evidence-provenance";
 import { DIRECT_FABRIC_CAPTURE_MAX_CHARS, isDirectFabricCapture } from "@/lib/fabric-capture-input";
 
 export const runtime="nodejs";
@@ -85,7 +86,10 @@ export async function POST(request:Request) {
       verifiedDrape:["Fluid","Balanced","Structured"].includes(String(body.verifiedDrape)) ? body.verifiedDrape as FabricAnalyzerContext["verifiedDrape"] : undefined,
       verifiedFiberContent:clean(body.verifiedFiberContent,220) || undefined,
       verifiedPhysicalSourceUrl:clean(body.verifiedPhysicalSourceUrl,1800) || undefined,
+      verifiedPhysicalEvidenceNote:clean(body.verifiedPhysicalEvidenceNote,500) || undefined,
     };
+
+    validateVerifiedPhysicalEvidence(input);
 
     const run=await analyzeMenswearFabricWithStore(input,{reuseReviewed:!force,persist:true});
     return json({mode:"private-fabric-analyzer-v4",run});
