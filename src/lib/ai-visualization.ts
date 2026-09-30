@@ -653,6 +653,10 @@ function selectedLookPhysicalEvidence(input:SelectedLookFashnRequest) {
   const line=(label:string,value:SelectedLookFabricRenderEvidence|undefined)=>{
     if(!value) return `${label}: no verified physical evidence; do not invent GSM, fibre or real drape.`;
     const facts:string[]=[];
+    if(value.measuredColorHex) facts.push(`code-measured visible colour ${value.measuredColorHex}`);
+    if(Number.isFinite(value.measurementQuality)) facts.push(`source image quality ${Math.round(value.measurementQuality as number)}/100`);
+    if(Number.isFinite(value.patternContrastDeltaE)) facts.push(`code-measured pattern contrast delta-E ${value.patternContrastDeltaE}`);
+    if(value.patternOrientation && value.patternOrientation!=="uncertain") facts.push(`code-measured pattern orientation ${value.patternOrientation}`);
     if(Number.isFinite(value.gsm)) facts.push(`${value.gsm} GSM verified`);
     if(value.drape) facts.push(`${value.drape} drape class verified`);
     if(value.fiberContent) facts.push(`verified fibre ${value.fiberContent}`);
