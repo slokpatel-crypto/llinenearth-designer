@@ -40,6 +40,9 @@ function toIntelligence(row:BoundFabricAnalysis):DesignerFabricIntelligence|null
     measuredEvidence:{
       imageQualityScore,
       colorDeltaE:profile.measured?.colour.deltaE ?? null,
+      measuredHex:profile.measured?.colour.hex ?? null,
+      patternContrastDeltaE:profile.measured?.pattern.contrastDeltaE ?? null,
+      patternOrientation:profile.measured?.pattern.orientation ?? null,
       patternPhysicalScale:profile.measured?.pattern.physicalScaleStatus ?? null,
       repeatMm:profile.measured?.pattern.repeatMm ?? null,
       stripeWidthMm:profile.measured?.pattern.stripeWidthMm ?? null,
