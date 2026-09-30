@@ -29,6 +29,7 @@ type AnalyzerProfile={
 };
 
 type ReviewRow={
+  fabric_id:string|null;
   id:string;
   image_source:string;
   review_status:"unreviewed"|"approved"|"corrected"|"rejected";
@@ -47,6 +48,14 @@ type StatsPayload={
     rejected:number;
     feedback:number;
   }|null;
+};
+
+type FabricCatalogRow={
+  id:string;
+  colorName:string;
+  line:string;
+  pattern:string;
+  swatchImageUrl:string;
 };
 
 type TruthState={
@@ -87,6 +96,7 @@ function pct(value:number|undefined){return typeof value==="number"?`${Math.roun
 export default function FabricGroundTruthClient(){
   const [rows,setRows]=useState<ReviewRow[]>([]);
   const [stats,setStats]=useState<StatsPayload|null>(null);
+  const [catalog,setCatalog]=useState<Record<string,FabricCatalogRow>>({});
   const [selectedId,setSelectedId]=useState("");
   const [truth,setTruth]=useState<TruthState|null>(null);
   const [reason,setReason]=useState("");
@@ -99,20 +109,24 @@ export default function FabricGroundTruthClient(){
   async function load(preferNext=false){
     setLoading(true);
     try{
-      const [queueResponse,statsResponse]=await Promise.all([
+      const [queueResponse,statsResponse,catalogResponse]=await Promise.all([
         fetch("/api/operator/fabric-analyzer/review?limit=100",{cache:"no-store"}),
         fetch("/api/operator/fabric-analyzer/stats",{cache:"no-store"}),
+        fetch("/api/operator/designer-data",{cache:"no-store"}),
       ]);
-      if(queueResponse.status===401 || statsResponse.status===401){
+      if(queueResponse.status===401 || statsResponse.status===401 || catalogResponse.status===401){
         window.location.href="/operator/login?next=/operator/fabric-ground-truth";
         return;
       }
       const queue=await queueResponse.json() as {profiles?:ReviewRow[];error?:string};
       const stat=await statsResponse.json() as StatsPayload & {error?:string};
+      const catalogue=await catalogResponse.json() as {fabrics?:FabricCatalogRow[];error?:string};
       if(!queueResponse.ok) throw new Error(queue.error||"Ground-truth queue could not be loaded.");
       if(!statsResponse.ok) throw new Error(stat.error||"Analyzer stats could not be loaded.");
+      if(!catalogResponse.ok) throw new Error(catalogue.error||"Fabric catalogue context could not be loaded.");
       const nextRows=Array.isArray(queue.profiles)?queue.profiles:[];
       setRows(nextRows);setStats(stat);
+      setCatalog(Object.fromEntries((catalogue.fabrics||[]).map((fabric)=>[fabric.id,fabric])));
 
       const current=nextRows.find((row)=>row.id===selectedId);
       const next=(preferNext
@@ -133,11 +147,14 @@ export default function FabricGroundTruthClient(){
   const filtered=useMemo(()=>{
     const q=search.trim().toLowerCase();
     return rows.filter((row)=>(filter==="all" || row.review_status==="unreviewed") && (!q || [
-      row.profile.summary,row.profile.observed.colorFamily,row.profile.observed.patternFamily,row.id,
+      row.profile.summary,row.profile.observed.colorFamily,row.profile.observed.patternFamily,row.id,row.fabric_id,
+      catalog[row.fabric_id||""]?.colorName,catalog[row.fabric_id||""]?.line,catalog[row.fabric_id||""]?.pattern,
     ].some((value)=>String(value||"").toLowerCase().includes(q))));
-  },[rows,filter,search]);
+  },[rows,filter,search,catalog]);
 
   const selected=rows.find((row)=>row.id===selectedId)||null;
+  const selectedFabric=selected?.fabric_id ? catalog[selected.fabric_id] || null : null;
+  const retainedSourceImage=Boolean(selected?.image_source && /^https:\/\//i.test(selected.image_source));
   const reviewed=(stats?.database?.approved||0)+(stats?.database?.corrected||0);
   const target=50;
 
@@ -208,17 +225,27 @@ export default function FabricGroundTruthClient(){
       <aside className="truthQueue">
         <div className="truthFilters"><button aria-pressed={filter==="unreviewed"} onClick={()=>setFilter("unreviewed")}>Unreviewed</button><button aria-pressed={filter==="all"} onClick={()=>setFilter("all")}>All profiles</button></div>
         <div className="truthSearch"><input value={search} onChange={(event)=>setSearch(event.target.value)} placeholder="Search profile, colour or pattern" /><span>{filtered.length} profiles</span></div>
-        <div className="truthRows">{filtered.map((row)=><button key={row.id} className={row.id===selectedId?"active":""} onClick={()=>selectRow(row)}>
-          <i style={{background:row.profile.measured?.colour?.hex || row.profile.observed.dominantColor || "#bbb"}}/>
-          <span><strong>{row.profile.observed.colorFamily || "Unknown colour"}</strong><small>{row.profile.observed.patternFamily} · {row.profile.observed.patternScale}</small><em>{row.review_status}</em></span>
-        </button>)}</div>
+        <div className="truthRows">{filtered.map((row)=>{
+          const fabric=row.fabric_id ? catalog[row.fabric_id] : null;
+          return <button key={row.id} className={row.id===selectedId?"active":""} onClick={()=>selectRow(row)}>
+            <i style={{background:row.profile.measured?.colour?.hex || row.profile.observed.dominantColor || "#bbb"}}/>
+            <span><strong>{fabric?.colorName || row.profile.observed.colorFamily || "Unknown colour"}</strong><small>{fabric?fabric.line:`${row.profile.observed.patternFamily} · ${row.profile.observed.patternScale}`}</small><em>{row.review_status}{row.fabric_id?" · stock-bound":""}</em></span>
+          </button>;
+        })}</div>
       </aside>
 
       <section className="truthEditor">
         {!selected || !truth ? <div className="truthEmpty">No Analyzer profile selected.</div> : <>
           <div className="truthProfileHead">
-            <div><span>PROFILE {selected.id.slice(0,10).toUpperCase()}</span><h2>{selected.profile.observed.colorFamily || "Unclassified fabric"}</h2><p>{selected.profile.summary}</p></div>
-            {selected.image_source&&<img src={selected.image_source} alt="Fabric source used by Analyzer" />}
+            <div><span>PROFILE {selected.id.slice(0,10).toUpperCase()}{selected.fabric_id?` · ${selected.fabric_id}`:""}</span><h2>{selectedFabric?.colorName || selected.profile.observed.colorFamily || "Unclassified fabric"}</h2>{selectedFabric&&<small>{selectedFabric.line} · {selectedFabric.pattern}</small>}<p>{selected.profile.summary}</p></div>
+            <div className="truthSourceMedia" data-retained={retainedSourceImage}>
+              {retainedSourceImage
+                ? <img src={selected.image_source} alt="Fabric source used by Analyzer" />
+                : selectedFabric
+                  ? <img src={selectedFabric.swatchImageUrl} alt={selectedFabric.colorName} />
+                  : <i style={{background:selected.profile.measured?.colour?.hex || selected.profile.observed.dominantColor || "#bbb"}}/>}
+              <small>{retainedSourceImage?"Analyzer source image":"Catalogue reference · direct capture not retained"}</small>
+            </div>
           </div>
 
           <div className="truthSignals">

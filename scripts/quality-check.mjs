@@ -449,6 +449,11 @@ for(const token of ["approveAndNext","Approve + next fabric","evidence?.priority
   if(!analyzerEvidenceSessionClient.includes(token)) throw new Error(`Analyzer evidence-session regression: missing ${token}`);
 }
 console.log("Analyzer evidence-session gate passed: approved profiles can advance directly to the next priority fabric.");
+const groundTruthClient=fs.readFileSync("src/app/operator/fabric-ground-truth/FabricGroundTruthClient.tsx","utf8");
+for(const token of ["fabric_id:string|null","Catalogue reference · direct capture not retained","retainedSourceImage","/api/operator/designer-data"]) {
+  if(!groundTruthClient.includes(token)) throw new Error(`Fabric Ground Truth direct-capture context regression: missing ${token}`);
+}
+console.log("Fabric Ground Truth provenance gate passed: non-retained direct captures keep exact stock context without rendering broken image URLs.");
 const fabricStudioMounts=sourceFiles("src").filter((path)=>path!=="src/components/FabricStudio.tsx")
   .filter((path)=>fs.readFileSync(path,"utf8").includes("FabricStudio"));
 if(fabricStudioMounts.length) throw new Error(`Fabric Analyzer privacy regression: legacy FabricStudio is mounted by ${fabricStudioMounts.join(", ")}`);
