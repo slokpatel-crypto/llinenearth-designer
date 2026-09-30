@@ -720,6 +720,18 @@ const phase10RenderRoute=fs.readFileSync("src/app/api/designer/look-render/route
 for(const token of ["resolved.locked!==true","getCachedSelectedLookRender","loadDurableSelectedLookRender","storeDurableSelectedLookRender","resolveSelectedLookRequest","x-linen-render-cache"]) {
   if(!phase10RenderRoute.includes(token)) throw new Error(`Phase 10 final-render regression: missing ${token}`);
 }
+const phase10RenderCache=fs.readFileSync("src/lib/designer/render-cache.ts","utf8");
+for(const token of ["designer_render_cache_get","designer_render_cache_upsert_v2","loadDesignerRenderCacheStats","loadPopularDesignerRenderPairs"]) {
+  if(!phase10RenderCache.includes(token)) throw new Error(`Phase 10 render-cache regression: missing ${token}`);
+}
+const phase10SelectedLook=fs.readFileSync("src/lib/designer/selected-look-server.ts","utf8");
+for(const token of ["resolveSelectedLookRequest","enrichSelectedLookEvidence","loadDesignerFabricMetadata","loadDesignerFabricIntelligence"]) {
+  if(!phase10SelectedLook.includes(token)) throw new Error(`Phase 10 canonical selected-look regression: missing ${token}`);
+}
+const renderCacheMigration=fs.readFileSync("supabase/migrations/20260930_designer_render_cache_observability.sql","utf8");
+for(const token of ["private.designer_render_cache","designer_render_cache_upsert_v2","designer_render_cache_stats","designer_render_cache_popular","service_role"]) {
+  if(!renderCacheMigration.includes(token)) throw new Error(`Phase 10 render-cache migration regression: missing ${token}`);
+}
 const phase10Analyzer=fs.readFileSync("src/lib/fabric-analyzer.ts","utf8");
 for(const token of ["macroImageUrl","foldImageUrl","Photo protocol image order is FLAT","Macro capture missing","Fold capture missing","captureMeasurements"]) {
   if(!phase10Analyzer.includes(token)) throw new Error(`Phase 10 photo-protocol regression: missing ${token}`);
