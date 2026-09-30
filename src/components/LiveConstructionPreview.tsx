@@ -6,7 +6,7 @@ import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2"
 import { optionById, optionsFor } from "@/lib/designer/options/library";
 import type { GarmentOptionGroup } from "@/lib/designer/options/types";
 import { evaluateCrossGarmentRules } from "@/lib/designer/rules/evaluator";
-import { fabricTileSizePx, liveCapabilities, modelGeometry, type FabricRenderAsset, type PreviewView } from "@/lib/designer/live-preview";
+import { applyRuntimeFabricScale, fabricTileSizePx, liveCapabilities, modelGeometry, type FabricRenderAsset, type PreviewView } from "@/lib/designer/live-preview";
 import { BODY_HEIGHT_OPTIONS, BODY_SKIN_TONES, DEFAULT_BODY_PREVIEW_PROFILE, type BodyPreviewProfile } from "@/lib/designer/body-profile";
 import { measurePreviewCommit } from "@/lib/designer/preview-performance-client";
 import manifest from "../../public/fabric-tiles/manifest.json";
@@ -14,7 +14,7 @@ import manifest from "../../public/fabric-tiles/manifest.json";
 const assets=manifest.assets as Record<string,FabricRenderAsset>;
 function assetFor(fabric:DesignerFabric):FabricRenderAsset|null {
   const name=fabric.image.split("/").pop()?.replace(/\.webp(?:\?.*)?$/,"")||"";
-  return assets[name]||null;
+  return applyRuntimeFabricScale(assets[name]||null,fabric.renderScale);
 }
 const groups:Array<{title:string;fields:Array<[keyof StyleSpecV2["shirt"]|keyof StyleSpecV2["pant"],GarmentOptionGroup]>}>=[
   {title:"Shirt",fields:[
@@ -119,7 +119,9 @@ export function LiveConstructionPreview({
     measurePreviewCommit("view",started);
   }
   const tileSize=fabricTileSizePx;
-  const scaleApproximate=shirtAsset?.scaleApproximate!==false||pantAsset?.scaleApproximate!==false;
+  const shirtScaleApproximate=shirt.patternType!=="Solid" && shirtAsset?.scaleApproximate!==false;
+  const pantScaleApproximate=pant.patternType!=="Solid" && pantAsset?.scaleApproximate!==false;
+  const scaleApproximate=shirtScaleApproximate||pantScaleApproximate;
   const selectedIds=new Set([...Object.values(spec.shirt),...Object.values(spec.pant)]);
   const unsupported=Object.entries(capabilities).filter(([id,value])=>value==="none"&&selectedIds.has(id));
   const selectedOwnerOptions=[...selectedIds]
