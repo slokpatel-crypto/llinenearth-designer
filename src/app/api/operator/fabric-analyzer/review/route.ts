@@ -1,10 +1,13 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import {
+  loadFabricAnalysesForFabricIds,
   loadFabricAnalyzerProfilesForReview,
   recordFabricAnalyzerCorrection,
   reviewFabricAnalyzerProfile,
+  type BoundFabricAnalysis,
 } from "@/lib/fabric-analyzer-store";
+import { FABRIC_STOCK } from "@/lib/fabric-stock";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 
 export const runtime="nodejs";
@@ -32,12 +35,29 @@ function clean(value:unknown,limit:number) {
   return String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
 }
 
+function newestFirst(a:BoundFabricAnalysis,b:BoundFabricAnalysis) {
+  return new Date(b.updated_at||b.created_at).getTime()-new Date(a.updated_at||a.created_at).getTime();
+}
+
 export async function GET(request:Request) {
   if(!await authorized()) return json({error:"Unauthorized."},{status:401});
   const url=new URL(request.url);
   const limit=Math.max(1,Math.min(200,Number(url.searchParams.get("limit"))||50));
+  const scope=url.searchParams.get("scope")==="all" ? "all" : "pending";
+
+  if(scope==="all") {
+    const [pending,bound]=await Promise.all([
+      loadFabricAnalyzerProfilesForReview(limit),
+      loadFabricAnalysesForFabricIds(FABRIC_STOCK.map((fabric)=>fabric.id),{includeUnreviewed:true}),
+    ]);
+    const byId=new Map<string,BoundFabricAnalysis>();
+    for(const profile of [...pending,...bound]) byId.set(profile.id,profile);
+    const profiles=[...byId.values()].sort(newestFirst).slice(0,limit);
+    return json({profiles,count:profiles.length,scope});
+  }
+
   const profiles=await loadFabricAnalyzerProfilesForReview(limit);
-  return json({profiles,count:profiles.length});
+  return json({profiles,count:profiles.length,scope});
 }
 
 export async function POST(request:Request) {
