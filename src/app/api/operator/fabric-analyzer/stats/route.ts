@@ -15,7 +15,7 @@ export async function GET() {
   }
   const database=await loadFabricAnalyzerStats();
   return NextResponse.json({
-    engine:"private-fabric-analyzer-v3",
+    engine:"private-fabric-analyzer-v4",
     visibleOnCustomerWeb:false,
     corpus:{
       materials:FABRIC_REFERENCE_COUNTS.materials,
