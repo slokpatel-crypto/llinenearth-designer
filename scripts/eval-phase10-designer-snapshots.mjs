@@ -20,14 +20,14 @@ function load(file){
     if(specifier.startsWith("@/")) {
       const target=path.resolve("src",specifier.slice(2));
       for(const candidate of [target,target+".ts",target+".tsx",path.join(target,"index.ts")]) {
-        if(fs.existsSync(candidate)) return load(candidate);
+        if(fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return load(candidate);
       }
     }
     if(specifier.startsWith("./")||specifier.startsWith("../")){
       const target=path.resolve(path.dirname(full),specifier);
       if(target.endsWith(".json")) return load(target);
       for(const candidate of [target,target+".ts",target+".tsx",path.join(target,"index.ts")]) {
-        if(fs.existsSync(candidate)) return load(candidate);
+        if(fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return load(candidate);
       }
     }
     return nativeRequire(specifier);
