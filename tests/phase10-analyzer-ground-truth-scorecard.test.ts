@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { scoreFabricGroundTruth, type FabricGroundTruthLabel } from "../src/lib/fabric-ground-truth-scorecard.ts";
+import { fabricGroundTruthStateFromProfile, reconstructOriginalFabricGroundTruthState, scoreFabricGroundTruth, type FabricGroundTruthLabel } from "../src/lib/fabric-ground-truth-scorecard.ts";
 
 function label(fabricId:string,changes:Partial<Record<string,string>>={},at="2026-09-30T10:00:00Z"):FabricGroundTruthLabel{
   const original={
@@ -49,4 +49,56 @@ test("scorecard keeps only the newest label for each fabric",()=>{
   ]);
   assert.equal(score.uniqueFabrics,1);
   assert.equal(score.exactProfilePercent,100);
+});
+
+
+test("reviewed profile history can reconstruct the pre-correction Analyzer state",()=>{
+  const final=fabricGroundTruthStateFromProfile({
+    observed:{
+      colorFamily:"blue_family",
+      patternFamily:"check",
+      patternScale:"fine",
+      patternDensity:"balanced",
+      orientation:"vertical",
+      sheen:"low",
+      visualWeight:"medium-looking",
+    },
+    inferredStyle:{formality:3,statementLevel:2},
+  });
+  const original=reconstructOriginalFabricGroundTruthState(final,[
+    {fieldPath:"observed.patternFamily",previousValue:"stripe"},
+    {fieldPath:"inferredStyle.formality",previousValue:4},
+    // A later edit to the same field must not overwrite the earliest original.
+    {fieldPath:"inferredStyle.formality",previousValue:3},
+  ]);
+  assert.equal(final.patternFamily,"check");
+  assert.equal(original.patternFamily,"stripe");
+  assert.equal(final.formality,"3");
+  assert.equal(original.formality,"4");
+});
+
+test("approved profile history becomes an exact owner match",()=>{
+  const state=fabricGroundTruthStateFromProfile({
+    observed:{
+      colorFamily:"neutral_family",
+      patternFamily:"solid",
+      patternScale:"none",
+      patternDensity:"none",
+      orientation:"none",
+      sheen:"matte",
+      visualWeight:"light-looking",
+    },
+    inferredStyle:{formality:4,statementLevel:1},
+  });
+  const score=scoreFabricGroundTruth([{
+    fabricId:"approved",
+    profileId:"profile-approved",
+    analyzerVersion:"fabric-analyzer-v4",
+    original:{...state},
+    final:{...state},
+    note:"Backfilled approved profile.",
+    at:"2026-09-30T11:00:00Z",
+  }]);
+  assert.equal(score.exactProfilePercent,100);
+  assert.equal(score.fieldAgreementPercent,100);
 });
