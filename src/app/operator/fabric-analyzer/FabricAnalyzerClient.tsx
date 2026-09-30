@@ -70,6 +70,7 @@ type ReviewRow={
 };
 
 const initial={
+  fabricId:"",
   imageUrl:"",
   macroImageUrl:"",
   foldImageUrl:"",
@@ -120,7 +121,38 @@ export default function FabricAnalyzerClient(){
     }finally{setQueueLoading(false);}
   }
 
-  useEffect(()=>{void loadStats();void loadQueue();},[]);
+  useEffect(()=>{
+    void loadStats();
+    void loadQueue();
+    const requested=new URLSearchParams(window.location.search).get("fabric")?.trim();
+    if(!requested) return;
+    void (async()=>{
+      try{
+        const response=await fetch("/api/operator/designer-data",{cache:"no-store"});
+        if(!response.ok) return;
+        const payload=await response.json() as {fabrics?:Array<{
+          id:string;colorName:string;line:string;family:string;pattern:string;swatchImageUrl:string;
+        }>};
+        const fabric=payload.fabrics?.find((item)=>item.id===requested);
+        if(!fabric) return;
+        const imageUrl=new URL(fabric.swatchImageUrl,window.location.origin).toString();
+        setForm((current)=>({
+          ...current,
+          fabricId:fabric.id,
+          imageUrl,
+          sourceId:current.sourceId||"linen-earth-catalogue",
+          declaredMaterial:current.declaredMaterial||fabric.family,
+          declaredFabricType:current.declaredFabricType||fabric.line,
+          supplierColorName:current.supplierColorName||fabric.colorName,
+          supplierPatternName:current.supplierPatternName||fabric.pattern,
+          notes:current.notes||"Loaded from the Designer evidence queue for stock-bound Analyzer review.",
+        }));
+        setMessage(`Loaded ${fabric.colorName} from Designer Data. Add physical scale/facts if verified, then run Analyzer.`);
+      }catch{
+        // Manual Analyzer entry remains available if the stock handoff cannot load.
+      }
+    })();
+  },[]);
 
   const captureCount=useMemo(()=>[form.imageUrl,form.macroImageUrl,form.foldImageUrl].filter(Boolean).length,[form]);
   const physicalCount=useMemo(()=>[form.verifiedGsm,form.verifiedDrape,form.verifiedFiberContent,form.repeatRealMm,form.swatchRealWidthMm].filter(Boolean).length,[form]);
@@ -202,6 +234,7 @@ export default function FabricAnalyzerClient(){
         <details open>
           <summary>Declared catalogue context</summary>
           <div className="formGrid">
+            <label className="wide"><span>Catalogue fabric ID</span><input value={form.fabricId} onChange={(e)=>field("fabricId",e.target.value)} placeholder="Optional stock binding" /><small>When opened from Designer Data this binds the reviewed Analyzer profile back to the exact stock fabric.</small></label>
             <label><span>Material</span><input value={form.declaredMaterial} onChange={(e)=>field("declaredMaterial",e.target.value)} /></label>
             <label><span>Fabric type</span><input value={form.declaredFabricType} onChange={(e)=>field("declaredFabricType",e.target.value)} /></label>
             <label><span>Supplier colour</span><input value={form.supplierColorName} onChange={(e)=>field("supplierColorName",e.target.value)} /></label>
