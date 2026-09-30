@@ -43,6 +43,10 @@ export type RenderPatternFidelityItem={
   observedOrientation:RenderPatternOrientation|null;
   expectedContrastDeltaE:number|null;
   observedContrastDeltaE:number|null;
+  expectedRepeatMm:number|null;
+  observedRepeatMm:number|null;
+  expectedStripeWidthMm:number|null;
+  observedStripeWidthMm:number|null;
   status:"strong"|"review"|"weak"|"unavailable";
 };
 export type RenderPatternFidelityResult={
@@ -115,17 +119,23 @@ export async function compareRenderMeasuredColors(
 function patternUnavailable(
   expectedOrientation:RenderPatternOrientation|null,
   expectedContrastDeltaE:number|null,
+  expectedRepeatMm:number|null,
+  expectedStripeWidthMm:number|null,
 ):RenderPatternFidelityItem {
   return {
     expectedOrientation,
     observedOrientation:null,
     expectedContrastDeltaE,
     observedContrastDeltaE:null,
+    expectedRepeatMm,
+    observedRepeatMm:null,
+    expectedStripeWidthMm,
+    observedStripeWidthMm:null,
     status:"unavailable",
   };
 }
 
-function patternStatus(
+function orientationStatus(
   expected:RenderPatternOrientation,
   observed:RenderPatternOrientation,
 ) {
@@ -135,24 +145,54 @@ function patternStatus(
   return "weak" as const;
 }
 
+function physicalScaleStatus(expected:number|null,observed:number|null) {
+  if(expected===null || !Number.isFinite(expected) || expected<=0) return null;
+  if(observed===null || !Number.isFinite(observed) || observed<=0) return "review" as const;
+  const ratio=Math.max(expected/observed,observed/expected);
+  return ratio<=1.45?"strong" as const:ratio<=2.2?"review" as const:"weak" as const;
+}
+
+function patternStatus(
+  expected:RenderPatternOrientation,
+  observed:RenderPatternOrientation,
+  expectedRepeatMm:number|null,
+  observedRepeatMm:number|null,
+  expectedStripeWidthMm:number|null,
+  observedStripeWidthMm:number|null,
+) {
+  const states:Array<"strong"|"review"|"weak">=[orientationStatus(expected,observed)];
+  // Physical scale is only meaningful for a directional stripe/repeat with a
+  // known body-height anchor. Grid/irregular motifs stay orientation-only.
+  if((expected==="vertical"||expected==="horizontal") && (observed==="vertical"||observed==="horizontal")) {
+    const repeatState=physicalScaleStatus(expectedRepeatMm,observedRepeatMm);
+    const stripeState=physicalScaleStatus(expectedStripeWidthMm,observedStripeWidthMm);
+    if(repeatState) states.push(repeatState);
+    if(stripeState) states.push(stripeState);
+  }
+  return states.includes("weak")?"weak" as const:states.includes("review")?"review" as const:"strong" as const;
+}
+
 async function samplePatternRegion(
   image:Buffer|Uint8Array,
   box:Box,
   expectedOrientation:RenderPatternOrientation|null,
   expectedContrastDeltaE:number|null,
+  expectedRepeatMm:number|null,
+  expectedStripeWidthMm:number|null,
+  bodyHeightCm:number|null,
 ):Promise<RenderPatternFidelityItem> {
   if(!expectedOrientation || ["none","uncertain"].includes(expectedOrientation)) {
-    return patternUnavailable(expectedOrientation,expectedContrastDeltaE);
+    return patternUnavailable(expectedOrientation,expectedContrastDeltaE,expectedRepeatMm,expectedStripeWidthMm);
   }
   // Very low-contrast motifs are not reliable enough to police from a
   // photoreal render because folds and studio lighting can dominate the axis.
   if(expectedContrastDeltaE!==null && expectedContrastDeltaE<8) {
-    return patternUnavailable(expectedOrientation,expectedContrastDeltaE);
+    return patternUnavailable(expectedOrientation,expectedContrastDeltaE,expectedRepeatMm,expectedStripeWidthMm);
   }
 
   const metadata=await sharp(image).metadata();
   const width=metadata.width||0,height=metadata.height||0;
-  if(width<80||height<80) return patternUnavailable(expectedOrientation,expectedContrastDeltaE);
+  if(width<80||height<80) return patternUnavailable(expectedOrientation,expectedContrastDeltaE,expectedRepeatMm,expectedStripeWidthMm);
   const left=Math.max(0,Math.min(width-2,Math.floor(box.x*width)));
   const top=Math.max(0,Math.min(height-2,Math.floor(box.y*height)));
   const cropWidth=Math.max(2,Math.min(width-left,Math.floor(box.w*width)));
@@ -165,12 +205,38 @@ async function samplePatternRegion(
   const palette=measuredPalette(new Uint8Array(rgb),info.width,info.height,info.channels,4).palette;
   const measured=measurePattern(new Uint8Array(gray),128,128,palette);
   const observed=measured.orientation as RenderPatternOrientation;
+
+  // Final renders are fixed full-body catalogue frames. Use a deliberately
+  // conservative 88% visible-body anchor and broad tolerances so this guard
+  // catches gross AI pattern rescaling without pretending to be tailoring CAD.
+  const hasHeight=bodyHeightCm!==null && Number.isFinite(bodyHeightCm) && bodyHeightCm>0;
+  const mmPerImagePx=hasHeight ? bodyHeightCm*10/(height*.88) : null;
+  const axisCropPx=observed==="horizontal"?cropHeight:cropWidth;
+  const resizeToImageScale=axisCropPx/128;
+  const observedRepeatMm=mmPerImagePx!==null && measured.repeatPeriodPx
+    ? Math.round(measured.repeatPeriodPx*resizeToImageScale*mmPerImagePx*10)/10
+    : null;
+  const observedStripeWidthMm=mmPerImagePx!==null && measured.stripeWidthPx
+    ? Math.round(measured.stripeWidthPx*resizeToImageScale*mmPerImagePx*10)/10
+    : null;
+
   return {
     expectedOrientation,
     observedOrientation:observed,
     expectedContrastDeltaE,
     observedContrastDeltaE:measured.contrastDeltaE,
-    status:patternStatus(expectedOrientation,observed),
+    expectedRepeatMm,
+    observedRepeatMm,
+    expectedStripeWidthMm,
+    observedStripeWidthMm,
+    status:patternStatus(
+      expectedOrientation,
+      observed,
+      expectedRepeatMm,
+      observedRepeatMm,
+      expectedStripeWidthMm,
+      observedStripeWidthMm,
+    ),
   };
 }
 
@@ -182,12 +248,24 @@ export async function compareRenderMeasuredPatterns(
     pantOrientation:RenderPatternOrientation|null;
     shirtContrastDeltaE:number|null;
     pantContrastDeltaE:number|null;
+    shirtRepeatMm?:number|null;
+    pantRepeatMm?:number|null;
+    shirtStripeWidthMm?:number|null;
+    pantStripeWidthMm?:number|null;
+    bodyHeightCm?:number|null;
   },
 ):Promise<RenderPatternFidelityResult> {
   const boxes=VIEW_BOXES[view]||VIEW_BOXES.front;
+  const bodyHeightCm=targets.bodyHeightCm??null;
   const [shirt,pant]=await Promise.all([
-    samplePatternRegion(image,boxes.shirt,targets.shirtOrientation,targets.shirtContrastDeltaE),
-    samplePatternRegion(image,boxes.pant,targets.pantOrientation,targets.pantContrastDeltaE),
+    samplePatternRegion(
+      image,boxes.shirt,targets.shirtOrientation,targets.shirtContrastDeltaE,
+      targets.shirtRepeatMm??null,targets.shirtStripeWidthMm??null,bodyHeightCm,
+    ),
+    samplePatternRegion(
+      image,boxes.pant,targets.pantOrientation,targets.pantContrastDeltaE,
+      targets.pantRepeatMm??null,targets.pantStripeWidthMm??null,bodyHeightCm,
+    ),
   ]);
   return {shirt,pant};
 }
