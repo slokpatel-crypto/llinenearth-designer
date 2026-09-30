@@ -89,7 +89,14 @@ export function LiveConstructionPreview({
   }
   function changeBody(patch:Partial<BodyPreviewProfile>) {
     const started=performance.now();
-    const next:BodyPreviewProfile={...bodyProfile,...patch,version:1,source:"manual"};
+    const manualBuild=patch.build!==undefined && patch.build!==bodyProfile.build;
+    const next:BodyPreviewProfile={
+      ...bodyProfile,
+      ...patch,
+      version:1,
+      source:"manual",
+      ...(manualBuild?{silhouette:undefined}:{}),
+    };
     if(onBodyProfileChange) onBodyProfileChange(next);
     else setLocalBody(next);
     measurePreviewCommit("body-option",started);
@@ -154,7 +161,7 @@ export function LiveConstructionPreview({
     </div>
     <div className="liveConstructionFoot">
       <div><strong>{shirt.name}</strong><span>Shirt cloth</span></div><div><strong>{pant.name}</strong><span>Trouser cloth</span></div>
-      <p>{scaleApproximate?"Pattern scale approximate · add owner swatch width/repeat measurements for true scale.":"Pattern scale is calibrated from owner-declared millimetres against the 178 cm reference model."} Body preview: {bodyProfile.build}, {bodyProfile.heightCm} cm · {bodyProfile.source==="measurements"?"build informed by saved measurements":"visual approximation"}.</p>
+      <p>{scaleApproximate?"Pattern scale approximate · add owner swatch width/repeat measurements for true scale.":"Pattern scale is calibrated from owner-declared millimetres against the 178 cm reference model."} Body preview: {bodyProfile.build}, {bodyProfile.heightCm} cm · {bodyProfile.silhouette ? `${bodyProfile.silhouette.evidenceCount}/6 preview proportions informed by saved measurements` : "visual approximation"}.</p>
     </div>
     <div className="liveConstructionToolbar">
       <label>Body build <select value={bodyProfile.build} onChange={(event)=>changeBody({build:event.target.value as BodyPreviewProfile["build"]})}>
