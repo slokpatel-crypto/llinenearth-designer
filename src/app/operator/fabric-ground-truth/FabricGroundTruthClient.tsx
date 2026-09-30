@@ -67,6 +67,22 @@ type StatsPayload={
   };
 };
 
+type ScorecardPayload={
+  configured:boolean;
+  minimumLabels:number;
+  reportable:boolean;
+  remaining:number;
+  uniqueFabrics:number;
+  correctedFabrics:number;
+  exactProfileMatches:number;
+  exactProfilePercent:number|null;
+  fieldAgreementPercent:number|null;
+  fieldMatches:number;
+  fieldTotal:number;
+  perField:Array<{field:string;matches:number;total:number;percent:number|null}>;
+  interpretation:string;
+};
+
 type FabricCatalogRow={
   id:string;
   colorName:string;
@@ -113,6 +129,7 @@ function pct(value:number|undefined){return typeof value==="number"?`${Math.roun
 export default function FabricGroundTruthClient(){
   const [rows,setRows]=useState<ReviewRow[]>([]);
   const [stats,setStats]=useState<StatsPayload|null>(null);
+  const [scorecard,setScorecard]=useState<ScorecardPayload|null>(null);
   const [catalog,setCatalog]=useState<Record<string,FabricCatalogRow>>({});
   const [selectedId,setSelectedId]=useState("");
   const [truth,setTruth]=useState<TruthState|null>(null);
@@ -126,23 +143,26 @@ export default function FabricGroundTruthClient(){
   async function load(preferNext=false){
     setLoading(true);
     try{
-      const [queueResponse,statsResponse,catalogResponse]=await Promise.all([
+      const [queueResponse,statsResponse,catalogResponse,scorecardResponse]=await Promise.all([
         fetch("/api/operator/fabric-analyzer/review?limit=100&scope=all",{cache:"no-store"}),
         fetch("/api/operator/fabric-analyzer/stats",{cache:"no-store"}),
         fetch("/api/operator/designer-data",{cache:"no-store"}),
+        fetch("/api/operator/fabric-ground-truth/scorecard",{cache:"no-store"}),
       ]);
-      if(queueResponse.status===401 || statsResponse.status===401 || catalogResponse.status===401){
+      if(queueResponse.status===401 || statsResponse.status===401 || catalogResponse.status===401 || scorecardResponse.status===401){
         window.location.href="/operator/login?next=/operator/fabric-ground-truth";
         return;
       }
       const queue=await queueResponse.json() as {profiles?:ReviewRow[];error?:string};
       const stat=await statsResponse.json() as StatsPayload & {error?:string};
       const catalogue=await catalogResponse.json() as {fabrics?:FabricCatalogRow[];error?:string};
+      const score=await scorecardResponse.json() as ScorecardPayload & {error?:string};
       if(!queueResponse.ok) throw new Error(queue.error||"Ground-truth queue could not be loaded.");
       if(!statsResponse.ok) throw new Error(stat.error||"Analyzer stats could not be loaded.");
       if(!catalogResponse.ok) throw new Error(catalogue.error||"Fabric catalogue context could not be loaded.");
+      if(!scorecardResponse.ok) throw new Error(score.error||"Analyzer scorecard could not be loaded.");
       const nextRows=Array.isArray(queue.profiles)?queue.profiles:[];
-      setRows(nextRows);setStats(stat);
+      setRows(nextRows);setStats(stat);setScorecard(score);
       setCatalog(Object.fromEntries((catalogue.fabrics||[]).map((fabric)=>[fabric.id,fabric])));
 
       const current=nextRows.find((row)=>row.id===selectedId);
@@ -262,6 +282,17 @@ export default function FabricGroundTruthClient(){
       <div className="truthBar"><i style={{width:`${Math.min(100,Math.round(reviewed/target*100))}%`}}/></div>
       <div><small>PENDING REVIEW</small><strong>{stats?.groundTruth?.pendingFabrics ?? rows.filter((row)=>row.review_status==="unreviewed" && Boolean(row.fabric_id)).length}</strong></div>
       <div><small>CORRECTIONS</small><strong>{stats?.database?.feedback ?? "—"}</strong></div>
+    </section>
+
+    <section className="truthScorecard" aria-label="Fabric Analyzer owner-labelled scorecard">
+      <div className="truthScorecardHead"><div><span>OWNER-LABELLED ANALYZER AGREEMENT</span><strong>{scorecard?.reportable?"Reportable benchmark":"Building benchmark"}</strong></div><b>{scorecard?.uniqueFabrics ?? 0}/{scorecard?.minimumLabels ?? 40} fabrics</b></div>
+      {!scorecard?.reportable ? <div className="truthScorecardWaiting"><strong>{scorecard?.remaining ?? 40} more owner-labelled fabrics needed</strong><p>Percentages stay hidden until enough exact stock fabrics have a stored before/after label. Previously reviewed fabrics may need one fresh Ground Truth save to enter this scorecard.</p></div> : <div className="truthScorecardResults">
+        <article><small>FIELD AGREEMENT</small><strong>{scorecard.fieldAgreementPercent ?? "—"}%</strong><span>{scorecard.fieldMatches}/{scorecard.fieldTotal} visual/styling fields unchanged</span></article>
+        <article><small>EXACT PROFILE MATCH</small><strong>{scorecard.exactProfilePercent ?? "—"}%</strong><span>{scorecard.exactProfileMatches}/{scorecard.uniqueFabrics} fabrics needed no field correction</span></article>
+        <article><small>CORRECTED FABRICS</small><strong>{scorecard.correctedFabrics}</strong><span>Owner changed at least one scored field</span></article>
+        <details><summary>Agreement by field</summary>{scorecard.perField.map((row)=><p key={row.field}><b>{row.field.replace(/([A-Z])/g," $1")}</b><span>{row.percent ?? "—"}% · {row.matches}/{row.total}</span></p>)}</details>
+        <p className="truthScorecardNote">{scorecard.interpretation}</p>
+      </div>}
     </section>
 
     <section className="truthLayout">
