@@ -31,6 +31,7 @@ type AnalyzerProfile={
 type ReviewRow={
   fabric_id:string|null;
   id:string;
+  analyzer_version?:string;
   image_source:string;
   declared_context?:{
     verifiedGsm?:number|null;
@@ -215,6 +216,32 @@ export default function FabricGroundTruthClient(){
       });
       const result=await response.json() as {ok?:boolean;error?:string;status?:string};
       if(!response.ok || !result.ok) throw new Error(result.error||"Ground-truth review could not be saved.");
+
+      if(selected.fabric_id){
+        const labelResponse=await fetch("/api/memory/event",{
+          method:"POST",
+          headers:{"content-type":"application/json"},
+          body:JSON.stringify({
+            id:`EV-FABRIC-GT-${crypto.randomUUID()}`,
+            sessionId:"FABRIC-GROUND-TRUTH",
+            type:"operator_note",
+            at:new Date().toISOString(),
+            payload:{
+              subtype:"fabric_ground_truth_label",
+              version:"fabric-ground-truth-v1",
+              fabricId:selected.fabric_id,
+              profileId:selected.id,
+              analyzerVersion:selected.analyzer_version||"",
+              original,
+              final:truth,
+              note:reason || (corrections.length?"Operator corrected Analyzer output.":"Operator approved Analyzer output as shown."),
+            },
+          }),
+        });
+        const labelResult=await labelResponse.json() as {stored?:boolean;error?:string};
+        if(!labelResponse.ok || !labelResult.stored) throw new Error(labelResult.error||"Review saved, but the ground-truth scorecard label could not be stored.");
+      }
+
       setMessage(corrections.length?`Saved ${corrections.length} ground-truth corrections.`:"Profile approved as ground truth.");
       await load(true);
     }catch(error){
