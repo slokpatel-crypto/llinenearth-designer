@@ -12,6 +12,7 @@ import {
 } from "@/lib/ai-visualization";
 import { loadDurableSelectedLookRender, storeDurableSelectedLookRender } from "@/lib/designer/render-cache";
 import { enrichSelectedLookEvidence, resolveSelectedLookRequest } from "@/lib/designer/selected-look-server";
+import { loadDesignerOptionReviews, rejectedConstructionOptions } from "@/lib/designer/option-reviews";
 
 export const runtime="nodejs";
 export const maxDuration=60;
@@ -22,6 +23,15 @@ export async function POST(request:Request) {
     const resolved=await resolveSelectedLookRequest(body);
     if(!resolved) return NextResponse.json({error:"Selected fabrics and a supported garment configuration are required."},{status:400});
     if(resolved.locked!==true) return NextResponse.json({error:"Lock the final design before using the photoreal renderer."},{status:409});
+    if(resolved.styleSpec) {
+      const constructionReviews=await loadDesignerOptionReviews();
+      const rejected=rejectedConstructionOptions(resolved.styleSpec,constructionReviews);
+      if(rejected.length) {
+        return NextResponse.json({
+          error:`This final design includes a construction option not offered by Linen Earth: ${rejected.map((item)=>item.label).join(", ")}. Choose an approved or provisional alternative before photoreal rendering.`,
+        },{status:409});
+      }
+    }
 
     // Canonical stock data and verified Analyzer facts are resolved server-side.
     // Browser-posted fabric labels/images/physical facts never become render truth.
