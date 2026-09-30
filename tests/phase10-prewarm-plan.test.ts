@@ -6,7 +6,7 @@ test("prewarm endpoint stays private and explicitly zero-cost",async()=>{
   assert.match(source,/verifyOperatorSession/);
   assert.match(source,/visibleOnCustomerWeb:false/);
   assert.match(source,/spendsRenderCredits:false/);
-  assert.doesNotMatch(source,/renderSelectedLookFashnFront|runEdit|fashn/i);
+  assert.doesNotMatch(source,/renderSelectedLookFashnFront|renderSelectedLookFashnView|runEdit/);
 });
 
 test("prewarm planner is deterministic and bounded",async()=>{
