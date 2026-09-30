@@ -97,6 +97,7 @@ export default function DesignerEvaluationClient(){
           shirtId:candidate.shirt.id,
           pantId:candidate.pant.id,
         })),
+        engineRuleSetVersion:data.candidates[0]?.recommendation.ruleSetVersion || "",
         note,
       };
       const response=await fetch("/api/memory/event",{
