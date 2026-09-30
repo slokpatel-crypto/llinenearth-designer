@@ -42,6 +42,7 @@ Phase 10 is now materially beyond the original foundation brief.
 - `/operator/fabric-ground-truth` now turns reviewed Analyzer profiles into an explicit owner-labelled fabric set: the operator can approve classifications as-is or correct colour family, pattern family/scale/density/orientation, sheen, visual weight, formality and statement level. GSM, fibre, physical drape and millimetre scale remain outside this correction screen and still require physical evidence.
 - `/operator/construction-approval` records owner/tailor decisions for expanded owner-provided construction options. Live cut controls now label those options as approved, provisional or not offered without rewriting their source provenance or claiming fit/render accuracy.
 - Final selected-look photoreal rendering now refuses any owner-provided construction option explicitly marked rejected; provisional options remain available for experiments while their status stays visible in the live cut study.
+- `/operator/device-qa` now turns real-browser testing into auditable acceptance evidence: it reads same-tab live-preview latency samples, requires at least 12 interactions, records viewport/DPR/browser context, and combines the measured p95 target with manual four-view/overflow/readability/model-stability checks. Mobile, tablet and desktop results are tracked separately.
 
 ### Instant preview and model system
 
@@ -88,7 +89,7 @@ These items should not be invented in code:
 2. Owner/tailor approval of provisional Korean/baggy trouser proportions and any new construction option before calling it an offered house style.
 3. Owner-labelled 40–50 fabric ground-truth cases and 40–60 outfit preference cases for meaningful Analyzer/Designer accuracy percentages.
 4. Verified GSM, fibre content and physical drape for each roll where supplier records or physical inspection support them.
-5. Visual acceptance testing on the target phones/desktop hardware for the final sub-second interaction target.
+5. Run `/operator/device-qa` on the target phones/desktop hardware and record accepted sessions; the code can capture/validate the evidence, but the physical devices still have to be tested by a person.
 
 ## Deployment status
 
