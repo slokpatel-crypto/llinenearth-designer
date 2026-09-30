@@ -193,6 +193,8 @@ requireTokens("src/lib/fabric-analyzer.ts", ["reviewPriority","reviewReasons","r
 requireTokens("scripts/sync-fabric-reference-index.mjs", ["fabric_analyzer_reference_snapshot","fabric-analyzer-reference-index.ts","fabric-analyzer-provenance-map.ts","fabric-analyzer-real-examples.ts"]);
 requireTokens("src/lib/designer/search.ts", ["OCCASION_INTELLIGENCE_IDS","intelOccasionMatch","patternSupportScore","colorFamilyPairSignal","optionIdForLabel","bothHighContrast","bothBold"]);
 requireFile("supabase/migrations/20260929_fabric_analyzer_private_backend.sql");
+requireFile("supabase/migrations/20260930_fabric_analyzer_reanalysis_review_reset.sql");
+requireTokens("supabase/migrations/20260930_fabric_analyzer_reanalysis_review_reset.sql", ["fabric_analyzer_profile_upsert","review_status='unreviewed'","review_notes=''","prior human approval"]);
 requireTokens("supabase/migrations/20260929_fabric_analyzer_private_backend.sql", ["private.fabric_analysis_profiles","private.fabric_analysis_bindings","fabric_analyzer_feedback_apply","fabric_analyzer_profiles_for_fabrics","fabric_analyzer_calibration_cases_get","service_role"]);
 
 requireTokens("src/lib/designer/search.ts", ["occasionFabricAlignment","formal shirting","printed linen blend","occasionScore","occasionPreferredShirts","strictOccasionFit","openShirts"]);
