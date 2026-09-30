@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { GARMENT_OPTION_LIBRARY, optionsFor, validateGarmentOptionLibrary } from "../src/lib/designer/options/library.ts";
-import { fromLegacyStyle, legacyStyleHashInput, mergeLegacyIntoStyleSpec, toLegacyStyle, validateStyleSpecV2 } from "../src/lib/designer/style-spec-v2.ts";
+import { fromLegacyStyle, legacyStyleHashInput, mergeLegacyIntoStyleSpec, styleSpecHashInput, toLegacyStyle, validateStyleSpecV2 } from "../src/lib/designer/style-spec-v2.ts";
 
 const legacy={
   collar:"Spread Collar",
@@ -65,4 +65,13 @@ test("StyleSpec v2 preserves expanded choices when a legacy field changes",()=>{
   assert.equal(merged.pant.pleat,"double_pleat_reverse");
   assert.equal(merged.pant.hem,"cuffed_turn_up");
   assert.equal(toLegacyStyle(merged).collar,"Cutaway Collar");
+});
+
+
+test("StyleSpec v2 canonical hash changes only when canonical construction changes",()=>{
+  const base=fromLegacyStyle(legacy);
+  const reordered={...base,shirt:{...base.shirt},pant:{...base.pant}};
+  assert.equal(styleSpecHashInput(base),styleSpecHashInput(reordered));
+  const expanded={...base,pant:{...base.pant,fit:"korean_straight_wide"}};
+  assert.notEqual(styleSpecHashInput(base),styleSpecHashInput(expanded));
 });
