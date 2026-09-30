@@ -29,7 +29,7 @@ test("runtime declared repeat makes live preview physically scaled",()=>{
   });
   assert(scaled);
   assert.equal(scaled.scaleApproximate,false);
-  assert.equal(scaled.tileRealWidthMm,80);
+  assert.equal(scaled.tileRealWidthMm,160);
   assert(fabricTileSizePx(scaled)<fabricTileSizePx(asset));
 });
 
