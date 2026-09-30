@@ -191,7 +191,7 @@ export default function Phase10ReadinessClient(){
         detail:reviewed>=analyzerTarget
           ? "The suggested 50-fabric reviewed calibration set is complete."
           : `${Math.max(0,analyzerTarget-reviewed)} more reviewed fabrics are needed before treating Analyzer accuracy as meaningful.`,
-        status:reviewed>=analyzerTarget?"done":analyzerDb?"progress":"blocked",
+        status:reviewed>=analyzerTarget?"done":groundTruth?"progress":"blocked",
         progress:analyzerProgress,
         metric:`${reviewed}/${analyzerTarget} reviewed fabrics`,
         href:"/operator/fabric-ground-truth",
