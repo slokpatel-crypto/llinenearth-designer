@@ -461,23 +461,11 @@ function evidenceScore(recommendation:DesignerRecommendation) {
   return recommendation.materialEvidence.verified/total*100;
 }
 
-function formalityBandDistance(recommendation:DesignerRecommendation) {
-  if(recommendation.formality.match!==false) return 0;
-  const values=[recommendation.formality.shirt,recommendation.formality.pant]
-    .filter((value):value is number=>typeof value==="number"&&Number.isFinite(value));
-  if(!values.length) return 0;
-  const combo=values.reduce((sum,value)=>sum+value,0)/values.length;
-  const [low,high]=recommendation.formality.band;
-  return combo<low ? low-combo : combo>high ? combo-high : 0;
-}
-
 function hardBlocked(recommendation:DesignerRecommendation,fit:FitConstructionAssessment) {
-  // Search must not collapse to zero directions just because a viable look sits
-  // slightly outside a provisional occasion band. Large formality misses still
-  // hard-block; small misses stay visible as reviewable trade-offs and ranking
-  // decides whether a closer option is available.
-  return formalityBandDistance(recommendation)>.9
-    || recommendation.rules.some((item)=>item.status==="flag"&&item.severity==="High")
+  // Occasion-band mismatch remains visible as a review/ranking signal rather
+  // than deleting an entire Safe/Elevated/Statement tier. Hard construction
+  // conflicts and measurement fit warnings still remove a candidate.
+  return recommendation.rules.some((item)=>item.status==="flag"&&item.severity==="High")
     || fit.checks.some((item)=>item.severity==="warning");
 }
 
