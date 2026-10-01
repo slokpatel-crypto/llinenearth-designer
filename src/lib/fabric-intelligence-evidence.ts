@@ -12,7 +12,16 @@ export function applyVerifiedPhysicalFabricEvidence(
 ):DesignerFabric {
   if(!intelligence || intelligence.trust!=="reviewed") return fabric;
   const physicalScale=intelligence.measuredEvidence.patternPhysicalScale;
-  const patternScaleVerified=Boolean(physicalScale && physicalScale!=="unknown");
+  const provenance=intelligence.fieldProvenance||{};
+  const physicalSource=(field:string)=>["declared","reviewed"].includes(String(provenance[field]||""));
+  const patternScaleVerified=Boolean(
+    physicalScale
+    && physicalScale!=="unknown"
+    && physicalSource("measured.pattern.physicalScale")
+  );
+  const gsmVerified=physicalSource("verifiedPhysical.gsm");
+  const drapeVerified=physicalSource("verifiedPhysical.drape");
+  const fiberVerified=physicalSource("verifiedPhysical.fiberContent");
   return {
     ...fabric,
     ...(patternScaleVerified ? {
@@ -23,13 +32,13 @@ export function applyVerifiedPhysicalFabricEvidence(
         stripeWidthMm:intelligence.measuredEvidence.stripeWidthMm,
       },
     } : {}),
-    ...(fabric.weightGsm===null && intelligence.verifiedPhysical.gsm!=null
+    ...(fabric.weightGsm===null && intelligence.verifiedPhysical.gsm!=null && gsmVerified
       ? {weightGsm:intelligence.verifiedPhysical.gsm}
       : {}),
-    ...(fabric.drape===null && intelligence.verifiedPhysical.drape
+    ...(fabric.drape===null && intelligence.verifiedPhysical.drape && drapeVerified
       ? {drape:intelligence.verifiedPhysical.drape}
       : {}),
-    ...(intelligence.verifiedPhysical.fiberContent
+    ...(intelligence.verifiedPhysical.fiberContent && fiberVerified
       ? {
         fiberContent:intelligence.verifiedPhysical.fiberContent,
         fiberContentVerified:true,
