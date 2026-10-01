@@ -85,6 +85,9 @@ for (const path of [
   "src/app/recover-design/page.tsx",
   "src/app/operator/stock/page.tsx",
   "src/app/operator/production/page.tsx",
+  "src/app/operator/garment-qc/page.tsx",
+  "src/lib/designer/finished-garment-qc.ts",
+  "supabase/migrations/20261002_finished_garment_qc.sql",
   "src/app/operator/production-calibration/page.tsx",
   "supabase/migrations/20261001_designer_locked_revision_vault.sql",
   "supabase/migrations/20261001_measurement_profile_vault.sql",
@@ -375,6 +378,9 @@ requireTokens("src/app/operator/production/ProductionClient.tsx", ["Load locked 
 requireTokens("src/app/operator/stock/StockClient.tsx", ["Fabric Stock Ledger","Create reservation","Consume"]);
 requireTokens("supabase/migrations/20261001_fabric_stock_ledger.sql", ["fabric_stock_snapshot","fabric_stock_reserve","request_key","service_role"]);
 requireTokens("supabase/migrations/20261001_production_quotes_orders.sql", ["production_quote_create","production_order_create","invalid order transition","service_role"]);
+requireTokens("supabase/migrations/20261002_finished_garment_qc.sql", ["finished_garment_qc_record","finished_garment_qc_list","finished-garment QC approval is required before delivery","service_role"]);
+requireTokens("src/app/operator/garment-qc/GarmentQcClient.tsx", ["Finished Garment QC","Approve for delivery","Record rework","PHYSICAL CHECKS"]);
+requireTokens("src/app/api/operator/production/route.ts", ["finished_garment_qc_list","Finished-garment QC approval is required before delivery."]);
 requireTokens("next.config.ts", ["Strict-Transport-Security","X-Frame-Options","Cross-Origin-Opener-Policy"]);
 requireTokens("src/app/api/designer/look-render/route.ts", ["recordRenderOutcome","repair:true"]);
 requireTokens("src/app/api/designer/look-inspect/route.ts", ["attachRenderQa","jobId"]);

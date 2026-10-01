@@ -54,6 +54,7 @@ The same locked handoff can also export a printable HTML tech pack. It includes 
 - [x] append-only live stock / reservation integration
 - [x] evidence-safe operator-entered quote ledger
 - [x] tailor-ready formatted tech pack / print layout
+- [x] finished-garment QC evidence desk + delivery gate
 - [ ] first 10 production orders completed with zero design-data re-entry
 
 
@@ -97,3 +98,21 @@ The private Operator Desk now has:
 - append-only production status events through delivered / cancelled.
 
 These systems provide the engineering path for zero re-entry. They do not make meterage, price, stock or production claims until the corresponding physical / operator evidence is entered.
+
+
+## Finished-garment QC delivery gate
+
+A new private **Finished Garment QC** desk closes the engineering gap between a production order reaching **Ready** and being marked **Delivered**.
+
+The operator must inspect the real garment and record:
+- locked construction match,
+- exact fabric identity match,
+- finished-measurement check against the approved target,
+- stripe/check/pattern alignment where applicable,
+- stitching / seam / button / finishing quality,
+- clean and damage-free condition,
+- optional inspector initials, defect tags and notes.
+
+Approval is append-only evidence tied to the production order, locked revision and recipe hash. A rework decision automatically sends the order back to **Stitching**. The API and database both refuse **Delivered** unless the latest QC inspection is approved.
+
+This remains a human physical inspection. The software does not auto-claim that a garment passed QC.

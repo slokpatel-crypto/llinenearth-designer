@@ -117,6 +117,7 @@ if (url && key) {
           ["fabric_stock_snapshot",{p_fabric_ids:null},"Fabric stock ledger RPCs are installed."],
           ["production_quote_list",{p_limit:1},"Production quote ledger RPCs are installed."],
           ["production_order_list",{p_limit:1},"Production order ledger RPCs are installed."],
+          ["finished_garment_qc_list",{p_limit:1},"Finished-garment QC RPCs are installed."],
           ["designer_locked_revision_vault_get",{p_vault_id:"00000000-0000-4000-8000-000000000000",p_access_hash:"0".repeat(64)},"Locked design recovery vault RPCs are installed."],
           ["measurement_profile_vault_get",{p_vault_id:"00000000-0000-4000-8000-000000000000",p_access_hash:"0".repeat(64)},"Measurement recovery vault RPCs are installed."],
           ["designer_render_outcome_list",{p_limit:1},"Final render outcome ledger RPCs are installed."],

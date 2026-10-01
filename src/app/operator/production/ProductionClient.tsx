@@ -10,10 +10,12 @@ import { ORDER_TRANSITIONS, type ProductionOrderStatus } from "@/lib/designer/pr
 
 type Quote={quote_id:string;revision_id:string;recipe_hash:string;currency:string;line_items:Array<{label:string;amount:number}>;subtotal:number;adjustment:number;total:number;note:string;status:string;created_at:string};
 type Order={order_id:string;revision_id:string;recipe_hash:string;quote_id:string|null;status:string;note:string;created_at:string};
+type QcInspection={inspection_id:string;order_id:string;decision:"approved"|"rework";created_at:string};
 
 export default function ProductionClient(){
   const [quotes,setQuotes]=useState<Quote[]>([]);
   const [orders,setOrders]=useState<Order[]>([]);
+  const [qcInspections,setQcInspections]=useState<QcInspection[]>([]);
   const [configured,setConfigured]=useState(true);
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
@@ -26,7 +28,7 @@ export default function ProductionClient(){
     const response=await fetch("/api/operator/production",{cache:"no-store"});
     if(response.status===401){window.location.href="/operator/login?next=/operator/production";return;}
     const data=await response.json();
-    if(response.ok){setConfigured(data.configured!==false);setQuotes(Array.isArray(data.quotes)?data.quotes:[]);setOrders(Array.isArray(data.orders)?data.orders:[]);}
+    if(response.ok){setConfigured(data.configured!==false);setQuotes(Array.isArray(data.quotes)?data.quotes:[]);setOrders(Array.isArray(data.orders)?data.orders:[]);setQcInspections(Array.isArray(data.qcInspections)?data.qcInspections:[]);}
   }
   useEffect(()=>{void load();},[]);
 
@@ -112,7 +114,7 @@ export default function ProductionClient(){
   return <main className="productionDesk">
     <header className="productionHeader">
       <div><span>LINEN EARTH / PRIVATE OPERATOR</span><h1>Production Desk</h1><p>Create traceable quotes and production orders from locked design revisions. Amounts are entered by the operator; this desk never invents prices.</p></div>
-      <nav><Link href="/operator">Operator Desk</Link><Link href="/operator/stock">Stock Ledger</Link><Link href="/operator/production-calibration">Usage Calibration</Link></nav>
+      <nav><Link href="/operator">Operator Desk</Link><Link href="/operator/stock">Stock Ledger</Link><Link href="/operator/production-calibration">Usage Calibration</Link><Link href="/operator/garment-qc">Garment QC</Link></nav>
     </header>
 
     <section className="productionLoad">
@@ -188,15 +190,20 @@ export default function ProductionClient(){
       <article>
         <div><span>ORDERS</span><h2>Production status.</h2></div>
         {!orders.length&&<p>No production orders recorded yet.</p>}
-        {orders.map((item)=><section key={item.order_id} className="productionRecord">
-          <div><b>{item.revision_id}</b><small>{new Date(item.created_at).toLocaleString("en-IN")}</small></div>
-          <strong>{item.status.replaceAll("_"," ").toUpperCase()}</strong>
-          <small>{item.order_id}</small>
-          {(ORDER_TRANSITIONS[item.status as ProductionOrderStatus]||[]).length>0&&<select defaultValue="" onChange={(e)=>{if(e.target.value) void post({action:"order_status",orderId:item.order_id,status:e.target.value},"Order status updated.");}}>
-            <option value="">Update status…</option>
-            {(ORDER_TRANSITIONS[item.status as ProductionOrderStatus]||[]).map((status)=><option key={status} value={status}>{status.replaceAll("_"," ")}</option>)}
-          </select>}
-        </section>)}
+        {orders.map((item)=>{
+          const latestQc=qcInspections.find((inspection)=>inspection.order_id===item.order_id);
+          const nextStatuses=(ORDER_TRANSITIONS[item.status as ProductionOrderStatus]||[]).filter((status)=>status!=="delivered"||latestQc?.decision==="approved");
+          return <section key={item.order_id} className="productionRecord">
+            <div><b>{item.revision_id}</b><small>{new Date(item.created_at).toLocaleString("en-IN")}</small></div>
+            <strong>{item.status.replaceAll("_"," ").toUpperCase()}</strong>
+            <small>{item.order_id}</small>
+            {item.status==="ready"&&<Link className="productionQcLink" href={"/operator/garment-qc?order="+encodeURIComponent(item.order_id)}>Finished garment QC · {latestQc?.decision||"pending"}</Link>}
+            {nextStatuses.length>0&&<select defaultValue="" onChange={(e)=>{if(e.target.value) void post({action:"order_status",orderId:item.order_id,status:e.target.value},"Order status updated.");}}>
+              <option value="">Update status…</option>
+              {nextStatuses.map((status)=><option key={status} value={status}>{status.replaceAll("_"," ")}</option>)}
+            </select>}
+          </section>;
+        })}
       </article>
     </section>
   </main>;

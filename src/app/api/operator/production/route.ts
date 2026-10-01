@@ -35,7 +35,13 @@ export async function GET(){
       rpc("production_quote_list",{p_limit:100}),
       rpc("production_order_list",{p_limit:100}),
     ]);
-    return NextResponse.json({configured:true,quotes,orders},{headers:{"cache-control":"private, no-store"}});
+    let qcInspections:unknown[]=[];
+    try{
+      qcInspections=await rpc<unknown[]>("finished_garment_qc_list",{p_limit:250});
+    }catch{
+      // Keep quote/order operations readable while a new QC migration is being installed.
+    }
+    return NextResponse.json({configured:true,quotes,orders,qcInspections},{headers:{"cache-control":"private, no-store"}});
   }catch(error){
     console.error("[operator/production]",error);
     return NextResponse.json({error:"Production records could not be read."},{status:503});
@@ -89,6 +95,18 @@ export async function POST(request:Request){
       const orderId=String(body.orderId||"");
       const status=String(body.status||"");
       const note=String(body.note||"").slice(0,1000);
+      if(status==="delivered"){
+        let inspections:Array<{order_id:string;decision:string}>=[];
+        try{
+          inspections=await rpc<Array<{order_id:string;decision:string}>>("finished_garment_qc_list",{p_limit:500});
+        }catch{
+          return NextResponse.json({error:"Finished-garment QC backend must be installed before delivery can be recorded."},{status:409});
+        }
+        const latest=inspections.find((item)=>item.order_id===orderId);
+        if(latest?.decision!=="approved"){
+          return NextResponse.json({error:"Finished-garment QC approval is required before delivery."},{status:409});
+        }
+      }
       const updated=await rpc<boolean>("production_order_set_status",{p_order_id:orderId,p_status:status,p_note:note});
       return NextResponse.json({updated:Boolean(updated)});
     }

@@ -126,7 +126,7 @@ returns boolean
 language plpgsql
 security definer
 set search_path='public','private'
-as $
+as $$
 declare v_current text;
 begin
   if p_status not in ('sent','accepted','void') then raise exception 'unsupported quote status'; end if;
@@ -149,7 +149,7 @@ begin
   values(p_quote_id,p_status,jsonb_build_object('note',left(coalesce(p_note,''),1000),'from',v_current));
   return true;
 end;
-$;
+$$;
 
 create or replace function public.production_quote_list(p_limit integer default 100)
 returns table(
@@ -214,7 +214,7 @@ returns boolean
 language plpgsql
 security definer
 set search_path='public','private'
-as $
+as $$
 declare v_current text;
 begin
   if p_status not in ('cloth_reserved','cutting','stitching','fitting','ready','delivered','cancelled') then
@@ -243,7 +243,7 @@ begin
   values(p_order_id,p_status,jsonb_build_object('note',left(coalesce(p_note,''),1000),'from',v_current));
   return true;
 end;
-$;
+$$;
 
 create or replace function public.production_order_list(p_limit integer default 100)
 returns table(

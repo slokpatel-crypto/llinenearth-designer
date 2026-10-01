@@ -1,0 +1,14 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+
+test("Roadmap v2 SQL migrations do not contain invalid single-dollar function delimiters",()=>{
+  for(const path of [
+    "supabase/migrations/20261001_production_quotes_orders.sql",
+    "supabase/migrations/20261002_finished_garment_qc.sql",
+  ]){
+    const sql=fs.readFileSync(path,"utf8");
+    assert.equal(/^as \$$/m.test(sql),false,path+" contains invalid 'as $' delimiter");
+    assert.equal(/^\$;$/m.test(sql),false,path+" contains invalid '$;' delimiter");
+  }
+});
