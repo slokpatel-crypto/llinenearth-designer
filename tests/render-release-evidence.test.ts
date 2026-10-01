@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { evaluateFinalRenderReleaseEvidence, evaluateRenderCreditCap, summarizeCrossViewIdentity } from "../src/lib/designer/render-release-evidence.ts";
+import { buildCrossViewIdentityStates, evaluateFinalRenderReleaseEvidence, evaluateRenderCreditCap, summarizeCrossViewIdentity } from "../src/lib/designer/render-release-evidence.ts";
 
 test("cross-view identity only counts concepts with at least two rendered views",()=>{
   const outcomes=[
@@ -111,4 +111,7 @@ test("rerendering an already-reviewed view invalidates the old identity decision
   assert.equal(result.reviewedConcepts,0);
   assert.equal(result.pendingConcepts,1);
   assert.equal(result.passRate,null);
+  const states=buildCrossViewIdentityStates(outcomes,reviews);
+  assert.equal(states[0]?.status,"pending");
+  assert.equal(states[0]?.staleReason,"render_changed");
 });
