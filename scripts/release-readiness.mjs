@@ -177,6 +177,9 @@ requireTokens("src/lib/designer/device-qa-evidence.ts", ["DEVICE_QA_EVIDENCE_VER
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["PhotoPreviewCalibration","photoPxPerMm","photoFabricPatternScale"]);
 requireTokens("src/lib/designer/live-preview.ts", ["photoFabricPatternScale","photoExpectedRepeatPx","photoPxPerMm"]);
 requireTokens("src/lib/fabric-intelligence-evidence.ts", ["intelligence.trust!==\"reviewed\"","patternScaleVerified","fiberContentVerified"]);
+requireTokens("src/app/operator/designer-data/DesignerDataClient.tsx", ["Physical evidence provenance","physicalEvidence:editor.physicalEvidence","physical_roll","supplier_document","owner_measurement"]);
+requireTokens("src/app/operator/designer-data/DesignerDataBatchPanel.tsx", ["physicalSourceType","physicalReference","physicalCheckedBy","physicalEvidence:incomingPhysicalEvidence??current.physicalEvidence"]);
+requireTokens("src/app/api/memory/event/route.ts", ["designer_fabric_metadata","normalizeFabricPhysicalEvidenceProvenance","physicalEvidence"]);
 requireTokens("src/app/account/page.tsx", ["Email sign in","listOwned","recovery token","Measurement profiles","Accept quote","accept_quote","Timeline","orderEvents","record_outcome","post-delivery feedback","does not automatically change Designer recommendations"]);
 requireTokens("src/lib/customer-auth.ts", ["SUPABASE_ANON_KEY","/auth/v1/otp","/auth/v1/verify","/auth/v1/user","CUSTOMER_SESSION_COOKIE"]);
 requireTokens("src/lib/customer-session-token.ts", ["CUSTOMER_SESSION_MAX_AGE_SECONDS","createCustomerSessionToken","verifyCustomerSessionToken","timingSafeEqual"]);
