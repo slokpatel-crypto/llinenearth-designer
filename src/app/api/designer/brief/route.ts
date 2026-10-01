@@ -5,6 +5,7 @@ import { searchDesignerCatalogue, type DesignerSearchTier } from "@/lib/designer
 import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
 import { loadDesignerEvidenceContext } from "@/lib/designer/evidence-context";
 import { enrichDesignerFabricsWithIntelligence } from "@/lib/fabric-intelligence-server";
+import { loadApprovedHouseEaseModel } from "@/lib/designer/house-ease-server";
 import type { MeasurementProfile } from "@/lib/measurements";
 import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
 
@@ -145,9 +146,10 @@ export async function POST(request:Request) {
     if(brief.length<5) return NextResponse.json({error:"Tell Designer where you are going and how you want the outfit to feel."},{status:400});
 
     const parsed=personalizeBrief(parseDesignerBrief(brief),safeTasteProfile(body.tasteProfile));
-    const [metadata,evidence]=await Promise.all([
+    const [metadata,evidence,easeModel]=await Promise.all([
       loadDesignerFabricMetadata(),
       loadDesignerEvidenceContext(),
+      loadApprovedHouseEaseModel(),
     ]);
     const stock=applyDesignerFabricMetadataToStock(metadata).filter((fabric)=>fabric.inStock);
     const baseFabrics=stock.map(designerFabricFromStock);
@@ -180,6 +182,7 @@ export async function POST(request:Request) {
       fitOutcomes:evidence.fitOutcomes,
       preference:parsed.preference,
       fabricIntelligence,
+      easeModel,
     });
 
     const order=tierOrder(parsed.preference.preferredTier);
