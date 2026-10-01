@@ -132,6 +132,7 @@ for (const path of [
   "supabase/migrations/20261021_style_director_validation_threshold.sql",
   "supabase/migrations/20261022_style_director_handoff_audit.sql",
   "supabase/migrations/20261023_style_director_handoff_validation.sql",
+  "supabase/migrations/20261024_style_director_distinct_handoff_gate.sql",
   "supabase/migrations/20261024_style_director_handoff_uniqueness.sql",
   "supabase/migrations/20261024_measurement_accuracy_evidence.sql",
   "supabase/migrations/20261026_style_director_verified_signoff.sql",
@@ -228,7 +229,7 @@ requireTokens("src/lib/fabric-color-calibration.ts", ["deltaE2000","evidenceGate
 requireTokens("src/app/api/operator/fabric-color-calibration/route.ts", ["verifyOperatorSession","fabric_physical_color_check_record","summarizeFabricPhysicalColorChecks"]);
 requireTokens("src/app/operator/fabric-color-calibration/FabricColorCalibrationClient.tsx", ["Physical Colour Calibration","MEDIAN ΔE","descriptive only","Save append-only colour evidence"]);
 requireTokens("supabase/migrations/20261008_fabric_physical_color_checks.sql", ["fabric_physical_color_checks","fabric_physical_color_check_record","fabric_physical_color_check_list","service_role"]);
-requireTokens("src/lib/designer/style-director-validation.ts", ["directionsUnderstandable","directionsDistinct","stockHandoffWorked","handoffAuditId","verifiedHandoffCases","requiredPositiveCases","thresholdMet","validationComplete"]);
+requireTokens("src/lib/designer/style-director-validation.ts", ["directionsUnderstandable","directionsDistinct","stockHandoffWorked","handoffAuditId","verifiedHandoffCases","uniqueVerifiedHandoffs","requiredPositiveCases","thresholdMet","validationComplete"]);
 requireTokens("src/app/api/operator/style-director-validation/route.ts", ["style_director_user_test_record_v2","p_handoff_audit_id","style_director_validation_signoff_record_v3","p_required_positive_cases","verifyOperatorSession"]);
 requireTokens("src/app/operator/style-director-validation/StyleDirectorValidationClient.tsx", ["Style Director Validation","materially distinct","Verified handoff audit ID","server audit exists","Documented clean-case target","No default is invented","Record user-test evidence","Record approved"]);
 requireTokens("supabase/migrations/20261009_style_director_user_validation.sql", ["style_director_user_tests","style_director_validation_signoffs","record real-user validation evidence before sign-off","service_role"]);
@@ -240,6 +241,7 @@ requireTokens("src/app/api/style-director/handoff/route.ts", ["verifyStyleDirect
 requireTokens("src/components/DesignerModule.tsx", ["handoffToken","/api/style-director/handoff","VERIFIED HANDOFF","directorHandoffAuditId"]);
 requireTokens("supabase/migrations/20261022_style_director_handoff_audit.sql", ["style_director_handoff_audit","style_director_handoff_audit_record","service_role"]);
 requireTokens("supabase/migrations/20261023_style_director_handoff_validation.sql", ["handoff_audit_id","style_director_user_test_record_v2","verified handoff audit id is required","service_role"]);
+requireTokens("supabase/migrations/20261024_style_director_distinct_handoff_gate.sql", ["style_director_validation_signoff_record_v3","distinct handoff_audit_id","distinct verified Style Director handoffs","service_role"]);
 requireTokens("supabase/migrations/20261024_style_director_handoff_uniqueness.sql", ["token_fingerprint","style_director_handoff_audit_record_v2","style_director_user_tests_handoff_unique","service_role"]);
 requireTokens("supabase/migrations/20261026_style_director_verified_signoff.sql", ["count(distinct l.handoff_audit_id)","join private.style_director_handoff_audit","verified positive Style Director cases","service_role"]);
 requireTokens("src/lib/designer/ease-calibration.ts", ["requiredEaseEvidenceKeys","evidenceCoverageComplete","normalizeHouseEaseCalibrationDraft","SHIRT_EASE_CLASSES","TROUSER_EASE_CLASSES"]);
@@ -261,7 +263,7 @@ requireTokens("src/app/api/designer/share/route.ts", ["design_share_audit_record
 requireTokens("src/app/api/designer/enquiry/route.ts", ["verifyLockedDesignRevision","design_enquiry_audit_record","Locked Designer look","audited"]);
 requireTokens("src/components/DesignerModule.tsx", ["verified share audit recorded","beta audit unavailable"]);
 requireTokens("supabase/migrations/20261020_verified_beta_share_flow.sql", ["design_share_audit","design_enquiry_audit","launch_beta_attempt_record_v4","share_audit_confirmed","enquiry_audit_confirmed","no verified % audit exists for this locked revision"]);
-requireTokens("src/lib/designer/launch-readiness-evidence.ts", ["normalizeVerifiedBetaAttempt","evidenceKind","row.design_locked===true","row.share_or_enquiry_completed===true","row.enquiry_audit_confirmed===true","verifiedFlowCases"]);
+requireTokens("src/lib/designer/launch-readiness-evidence.ts", ["normalizeVerifiedBetaAttempt","evidenceKind","row.design_locked===true","row.share_or_enquiry_completed===true","row.enquiry_audit_confirmed===true","distinctVerifiedRevisions","uniqueSuccessfulByRevision"]);
 requireTokens("src/lib/designer/block-strategy.ts", ["block-strategy-provisional-1","assessBlockStrategy","shaped-shirt","roomy-seat-block","suggestedPatch"]);
 requireTokens("src/lib/designer/planner.ts", ["DesignerBlockStrategy","blockStrategy:selectedBlock","item.blockStrategy?.score"]);
 requireTokens("src/lib/designer/search.ts", ["blockStrategy: DesignerBlockStrategy","assessBlockStrategy","block.score"]);
