@@ -84,6 +84,8 @@ for (const path of [
   "src/app/api/customer-auth/session/route.ts",
   "src/app/api/customer-auth/logout/route.ts",
   "supabase/migrations/20261006_customer_account_ownership.sql",
+  "src/app/api/customer-account/production/route.ts",
+  "supabase/migrations/20261007_production_customer_ownership.sql",
   "src/lib/designer/production-handoff.ts",
   "src/lib/designer/tech-pack.ts",
   "src/lib/designer/production-quote.ts",
@@ -120,8 +122,10 @@ requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/v
 requireTokens("src/app/account/page.tsx", ["Email sign in","listOwned","recovery token","Measurement profiles"]);
 requireTokens("src/lib/customer-auth.ts", ["SUPABASE_ANON_KEY","/auth/v1/otp","/auth/v1/verify","/auth/v1/user","httpOnly:true"]);
 requireTokens("src/app/api/designer/vault/route.ts", ["getCustomerIdentity","listOwned","loadOwned","deleteOwned","action===\"claim\""]);
-requireTokens("src/app/api/measurements/vault/route.ts", ["getCustomerIdentity","listOwned","loadOwned","deleteOwned","action==="claim""]);
+requireTokens("src/app/api/measurements/vault/route.ts", ["getCustomerIdentity","listOwned","loadOwned","deleteOwned","action===\"claim\""]);
 requireTokens("supabase/migrations/20261006_customer_account_ownership.sql", ["owner_user_id","auth.users","designer_locked_revision_vault_list_owned","measurement_profile_vault_list_owned","service_role"]);
+requireTokens("src/app/api/customer-account/production/route.ts", ["getCustomerIdentity","production_quote_list_owned","production_order_list_owned","private, no-store"]);
+requireTokens("supabase/migrations/20261007_production_customer_ownership.sql", ["resolve_locked_revision_owner","production_claim_revision_ownership","production_quote_list_owned","production_order_list_owned","owner_user_id"]);
 requireTokens("src/lib/designer/block-strategy.ts", ["block-strategy-provisional-1","assessBlockStrategy","shaped-shirt","roomy-seat-block","suggestedPatch"]);
 requireTokens("src/lib/designer/planner.ts", ["DesignerBlockStrategy","blockStrategy:selectedBlock","item.blockStrategy?.score"]);
 requireTokens("src/lib/designer/search.ts", ["blockStrategy: DesignerBlockStrategy","assessBlockStrategy","block.score"]);
@@ -462,6 +466,8 @@ requireTokens("scripts/check-cloud-readiness.mjs", [
   "launch_checklist_event_list",
   "designer_locked_revision_vault_get",
   "measurement_profile_vault_get",
+  "production_quote_list_owned",
+  "production_order_list_owned",
   "designer_render_outcome_list",
   "designer_render_pattern_calibration_list",
   "Apply Roadmap v2 Supabase migrations",
