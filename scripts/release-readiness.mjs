@@ -127,6 +127,7 @@ for (const path of [
   "supabase/migrations/20261021_style_director_validation_threshold.sql",
   "supabase/migrations/20261022_style_director_handoff_audit.sql",
   "supabase/migrations/20261023_style_director_handoff_validation.sql",
+  "supabase/migrations/20261024_style_director_handoff_uniqueness.sql",
   "src/lib/designer/preview-option-reviews.ts",
   "src/app/api/operator/preview-option-coverage/route.ts",
   "src/app/operator/preview-option-coverage/page.tsx",
@@ -224,10 +225,11 @@ requireTokens("supabase/migrations/20261021_style_director_validation_threshold.
 requireTokens("src/lib/designer/style-director-handoff.ts", ["linen-earth-style-director-handoff-v1","createStyleDirectorHandoffToken","verifyStyleDirectorHandoffToken","styleDirectorHandoffMatches"]);
 requireTokens("src/app/api/style-director/route.ts", ["createStyleDirectorHandoffToken","handoffToken"]);
 requireTokens("src/app/style-director/page.tsx", ["handoffToken:selectedLook.handoffToken","from:\"style-director\""]);
-requireTokens("src/app/api/style-director/handoff/route.ts", ["verifyStyleDirectorHandoffToken","styleDirectorHandoffMatches","style_director_handoff_audit_record"]);
+requireTokens("src/app/api/style-director/handoff/route.ts", ["verifyStyleDirectorHandoffToken","styleDirectorHandoffMatches","createHash","style_director_handoff_audit_record_v2","p_token_fingerprint"]);
 requireTokens("src/components/DesignerModule.tsx", ["handoffToken","/api/style-director/handoff","VERIFIED HANDOFF","directorHandoffAuditId"]);
 requireTokens("supabase/migrations/20261022_style_director_handoff_audit.sql", ["style_director_handoff_audit","style_director_handoff_audit_record","service_role"]);
 requireTokens("supabase/migrations/20261023_style_director_handoff_validation.sql", ["handoff_audit_id","style_director_user_test_record_v2","verified handoff audit id is required","service_role"]);
+requireTokens("supabase/migrations/20261024_style_director_handoff_uniqueness.sql", ["token_fingerprint","style_director_handoff_audit_record_v2","style_director_user_tests_handoff_unique","service_role"]);
 requireTokens("src/lib/designer/ease-calibration.ts", ["requiredEaseEvidenceKeys","evidenceCoverageComplete","normalizeHouseEaseCalibrationDraft","SHIRT_EASE_CLASSES","TROUSER_EASE_CLASSES"]);
 requireTokens("src/lib/designer/preview-option-coverage.ts", ["fullyCleared","constructionBlocked","noPreviewSupport","gateComplete"]);
 requireTokens("src/lib/designer/novice-designer-study.ts", ["durationSeconds","likedDesignCompleted","targetSeconds","withinTargetCases","gateComplete"]);
