@@ -146,3 +146,69 @@ export async function listRenderPatternCalibrations(limit=200) {
     return [] as RenderPatternCalibrationRow[];
   }
 }
+
+
+export type RenderIdentityReviewRow={
+  review_id:string;
+  concept_id:string;
+  status:"pass"|"fail";
+  reviewed_views:string[];
+  reviewer:string;
+  note:string;
+  created_at:string;
+};
+
+export type RenderCreditCapRow={
+  event_id:string;
+  credits_per_approved_cap:number;
+  reviewer:string;
+  note:string;
+  created_at:string;
+};
+
+export async function recordRenderIdentityReview(input:{
+  conceptId:string;
+  status:"pass"|"fail";
+  reviewer:string;
+  note?:string;
+}) {
+  return rpc<string>("designer_render_identity_review_record",{
+    p_concept_id:String(input.conceptId||"").slice(0,180),
+    p_status:input.status,
+    p_reviewer:String(input.reviewer||"").slice(0,120),
+    p_note:String(input.note||"").slice(0,1000),
+  });
+}
+
+export async function listRenderIdentityReviews(limit=300) {
+  if(!getSupabaseAdminConfig()) return [] as RenderIdentityReviewRow[];
+  try{
+    return await rpc<RenderIdentityReviewRow[]>("designer_render_identity_review_list",{
+      p_limit:Math.max(1,Math.min(1000,Math.floor(limit))),
+    });
+  }catch{
+    return [] as RenderIdentityReviewRow[];
+  }
+}
+
+export async function recordRenderCreditCap(input:{
+  cap:number;
+  reviewer:string;
+  note?:string;
+}) {
+  return rpc<string>("designer_render_credit_cap_record",{
+    p_cap:input.cap,
+    p_reviewer:String(input.reviewer||"").slice(0,120),
+    p_note:String(input.note||"").slice(0,1000),
+  });
+}
+
+export async function latestRenderCreditCap() {
+  if(!getSupabaseAdminConfig()) return null as RenderCreditCapRow|null;
+  try{
+    const rows=await rpc<RenderCreditCapRow[]>("designer_render_credit_cap_latest",{});
+    return rows[0]||null;
+  }catch{
+    return null;
+  }
+}
