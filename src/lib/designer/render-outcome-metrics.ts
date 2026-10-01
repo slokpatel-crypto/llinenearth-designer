@@ -61,6 +61,7 @@ export type RenderPatternCoverageOutcomeInput={
 export type RenderPatternCoverageCalibrationInput={
   outcome_id:string;
   garment:"shirt"|"trouser";
+  expected_repeat_mm?:number;
   scale_error_pct:number;
   axis_status:"match"|"mismatch"|"not_applicable";
   created_at:string;
@@ -70,6 +71,7 @@ export function summarizeApprovedPatternCalibrationCoverage(
   outcomes:RenderPatternCoverageOutcomeInput[],
   calibrations:RenderPatternCoverageCalibrationInput[],
   patternedFabricIds:Set<string>,
+  expectedRepeatByFabric?:ReadonlyMap<string,number>,
 ){
   const latest=new Map<string,RenderPatternCoverageCalibrationInput>();
   for(const row of calibrations){
@@ -87,10 +89,31 @@ export function summarizeApprovedPatternCalibrationCoverage(
     if(patternedFabricIds.has(row.pant_id)) requirements.push({outcomeId:row.outcome_id,garment:"trouser",fabricId:row.pant_id});
   }
 
-  let passed=0,failed=0,pending=0;
+  let passed=0,failed=0,pending=0,missingTruth=0,staleCalibration=0;
   for(const requirement of requirements){
+    const verifiedExpected=expectedRepeatByFabric?.get(requirement.fabricId);
+    if(expectedRepeatByFabric && (!Number.isFinite(verifiedExpected)||Number(verifiedExpected)<=0)){
+      pending+=1;
+      missingTruth+=1;
+      continue;
+    }
+
     const calibration=latest.get(`${requirement.outcomeId}::${requirement.garment}`);
     if(!calibration){pending+=1;continue;}
+
+    if(expectedRepeatByFabric){
+      const recordedExpected=Number(calibration.expected_repeat_mm);
+      const expected=Number(verifiedExpected);
+      const sameReviewedTruth=
+        Number.isFinite(recordedExpected)&&
+        Math.round(recordedExpected*100)===Math.round(expected*100);
+      if(!sameReviewedTruth){
+        pending+=1;
+        staleCalibration+=1;
+        continue;
+      }
+    }
+
     const error=Number(calibration.scale_error_pct);
     const pass=Number.isFinite(error)&&error>=0&&error<=8&&calibration.axis_status!=="mismatch";
     if(pass) passed+=1;
@@ -103,6 +126,8 @@ export function summarizeApprovedPatternCalibrationCoverage(
     passedPairs:passed,
     failedPairs:failed,
     pendingPairs:pending,
+    missingTruthPairs:missingTruth,
+    staleCalibrationPairs:staleCalibration,
     gateComplete:requirements.length>0&&failed===0&&pending===0&&passed===requirements.length,
   };
 }
