@@ -455,6 +455,7 @@ export default function Phase10ReadinessClient(){
           approvalRate:renderSummary.approvalRate,
           identity:data.renderQa.identitySummary,
           creditCap:data.renderQa.creditCapSummary,
+          manualReviewSignoff:{status:data.renderQa.manualReviewSignoff?.status||null},
           patternCoverage:data.renderQa.patternCoverageSummary,
         })
       : null;
