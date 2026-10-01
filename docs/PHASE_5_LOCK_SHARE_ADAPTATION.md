@@ -1,6 +1,6 @@
 # Phase 5 — Lock, Share & Enquiry Adaptation
 
-Status: recipe lock, privacy-safe sharing, recovery vault and authenticated customer-account ownership are implemented; real-customer validation remains.
+Status: recipe lock, privacy-safe sharing, recovery vault, authenticated ownership and an auditable five-customer validation gate are implemented; real-customer evidence remains.
 
 ## Existing foundation to keep
 
@@ -64,7 +64,12 @@ The authenticated account now supplies durable customer ownership for locked rev
 - [x] opt-in durable server recovery vault for locked revisions
 - [x] signed expiring share-token model for non-sensitive design recipe
 - [x] authenticated customer ownership / account-level deletion permissions
+- [x] five-customer lock → share/enquiry evidence workflow engineered through the shared private-beta gate
 - [ ] five real customers complete lock → share/enquiry with zero blocking bugs
+
+## Real-customer validation gate
+
+The existing Phase 9 private-beta ledger is reused rather than creating another evidence system. Each anonymous case now records **design locked** and **share/enquiry completed** separately. A case counts only when both are true and no blocking bug is recorded. Legacy generic beta rows cannot accidentally satisfy this stricter Phase 5 gate.
 
 ## Rule
 
