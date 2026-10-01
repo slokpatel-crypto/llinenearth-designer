@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { buildCrossViewIdentityStates } from "@/lib/designer/render-release-evidence";
+import { deriveObservedRepeatMmFromFixture } from "@/lib/designer/render-outcome-metrics";
 
 type Outcome={
   outcome_id:string;job_id:string;concept_id:string;view:string;shirt_id:string;pant_id:string;
@@ -120,7 +121,7 @@ export default function RenderQaClient(){
     const observedRepeatPx=Number(window.prompt("Measure one visible fabric repeat in the final render (pixels).",""));
     if(!Number.isFinite(observedRepeatPx)||observedRepeatPx<=0) return;
 
-    const observedRepeatMm=observedRepeatPx/(referencePx/referenceMm);
+    const observedRepeatMm=deriveObservedRepeatMmFromFixture(referenceMm,referencePx,observedRepeatPx);
     const axisRaw=(window.prompt("Pattern axis: match, mismatch, or not_applicable","match")||"").trim().toLowerCase();
     if(!["match","mismatch","not_applicable"].includes(axisRaw)) return;
     const note=window.prompt(
