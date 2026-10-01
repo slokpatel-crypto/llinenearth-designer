@@ -31,12 +31,12 @@ test("launch checklist approval requires named human sign-off",()=>{
 test("latest attempt per anonymous beta case controls the five-customer lock-flow gate",()=>{
   const attempts=Array.from({length:5},(_,index)=>({
     case_id:"BETA-"+index,device_class:index%2?"mobile":"desktop",
-    core_flow_completed:true,design_locked:true,share_or_enquiry_completed:true,share_audit_confirmed:true,blocking_bug:false,
+    core_flow_completed:true,design_locked:true,share_or_enquiry_completed:true,revision_id:"REV-"+index,share_audit_confirmed:true,blocking_bug:false,
     created_at:"2026-10-0"+(index+1)+"T10:00:00Z",
   }));
   attempts.push({
     case_id:"BETA-0",device_class:"desktop",
-    core_flow_completed:false,design_locked:true,share_or_enquiry_completed:false,share_audit_confirmed:false,blocking_bug:true,
+    core_flow_completed:false,design_locked:true,share_or_enquiry_completed:false,revision_id:"REV-0-RETRY",share_audit_confirmed:false,blocking_bug:true,
     created_at:"2026-10-10T10:00:00Z",
   });
   const summary=summarizeLaunchReadiness(attempts,[]);
@@ -94,7 +94,7 @@ test("verified enquiry audit can satisfy the same beta flow gate",()=>{
   const attempts=Array.from({length:5},(_,index)=>({
     case_id:"ENQUIRY-"+index,device_class:"mobile",
     core_flow_completed:true,design_locked:true,share_or_enquiry_completed:true,
-    share_audit_confirmed:false,enquiry_audit_confirmed:true,evidence_kind:"enquiry",blocking_bug:false,
+    revision_id:"REV-ENQUIRY-"+index,share_audit_confirmed:false,enquiry_audit_confirmed:true,evidence_kind:"enquiry",blocking_bug:false,
     created_at:"2026-10-0"+(index+1)+"T10:00:00Z",
   }));
   const summary=summarizeLaunchReadiness(attempts,[]);
