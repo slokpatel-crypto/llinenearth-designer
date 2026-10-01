@@ -62,6 +62,8 @@ export async function GET(){
           uniqueRealismViewers:evidence.realism.uniqueViewers,
           strongRatings:evidence.realism.strongRatings,
           realismPass:evidence.realism.ready,
+          boundaryChecks:evidence.boundaryChecks,
+          boundaryReady:evidence.boundaryReady,
           note:evidence.acceptance.reasons.join(" ").slice(0,700),
         },
       },{headers:{"cache-control":"private, no-store"}});
