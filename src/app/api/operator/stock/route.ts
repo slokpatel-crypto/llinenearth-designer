@@ -62,12 +62,13 @@ export async function POST(request:Request){
     if(action==="reserve"){
       const fabricId=String(body.fabricId||"").trim().slice(0,160);
       const revisionId=String(body.revisionId||"").trim().slice(0,220);
+      const requestKey=String(body.requestKey||"").trim().slice(0,180);
       const quantity=Number(body.quantityMetres);
-      if(!fabricId||revisionId.length<12||!Number.isFinite(quantity)||quantity<=0) {
+      if(!fabricId||revisionId.length<12||requestKey.length<12||!Number.isFinite(quantity)||quantity<=0) {
         return NextResponse.json({error:"Invalid reservation request."},{status:400});
       }
       const reservationId=await rpc<string>("fabric_stock_reserve",{
-        p_fabric_id:fabricId,p_quantity_metres:quantity,p_revision_id:revisionId,
+        p_fabric_id:fabricId,p_quantity_metres:quantity,p_revision_id:revisionId,p_request_key:requestKey,
       });
       return NextResponse.json({reservationId});
     }
