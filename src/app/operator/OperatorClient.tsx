@@ -416,6 +416,7 @@ export default function OperatorClient() {
           <a className="operatorLogout" href="/operator/production-calibration">PRODUCTION CALIBRATION</a>
           <a className="operatorLogout" href="/operator/stock">STOCK LEDGER</a>
           <a className="operatorLogout" href="/operator/production">PRODUCTION DESK</a>
+          <a className="operatorLogout" href="/operator/render-qa">FINAL RENDER QA</a>
           <a className="operatorLogout" href="/lab/proof">PREMIUM SHIRT PROOF</a>
           <a className="operatorLogout" href="/operator/phase10-readiness">PHASE 10 READINESS</a>
           <button className="operatorLogout" onClick={logout} disabled={loggingOut}>{loggingOut?"SIGNING OUT…":"SIGN OUT"}</button>
