@@ -17,7 +17,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 | Phase 5 — Lock / Share / Enquiry | lock + share + secure recovery vault implemented | authenticated customer-account ownership |
 | Phase 6 — Style Director | advanced foundation | owner-labelled benchmark / real-user validation |
 | Phase 7 — Final Render / QA | advanced foundation | approval-rate, cost and physical-pattern QA evidence |
-| Phase 8 — Production Bridge | safe handoff contract implemented | validated meterage, live stock, quote engine, production orders |
+| Phase 8 — Production Bridge | handoff + tech pack + real usage capture implemented | validated meterage model, live stock, quote engine, production orders |
 | Phase 9 — Hardening | strong engineering foundation | real device / beta / production deployment evidence |
 | Phase 10 — Ecommerce | intentionally later | only after Launch 3 |
 | Phase 11 — Closed loop | ongoing | post-launch evidence |
@@ -44,6 +44,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added evidence-safe production / tailor handoff contract.
 - Added Designer tailor-handoff export.
 - Added printable tailor tech pack generated from the same locked recipe.
+- Added private real production cloth-usage calibration capture before any meterage estimator is allowed.
 - Added phase adaptation records so future coding agents do not rebuild existing systems unnecessarily.
 
 ## Evidence we cannot manufacture in code
