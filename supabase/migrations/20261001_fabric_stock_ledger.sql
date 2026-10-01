@@ -48,12 +48,12 @@ as $$
     end),0) as physical_metres,
     coalesce(sum(case
       when l.event_type='reserve' then l.quantity_metres
-      when l.event_type='release' then -l.quantity_metres
+      when l.event_type in ('release','consume') then -l.quantity_metres
       else 0
     end),0) as reserved_metres,
     coalesce(sum(case
       when l.event_type in ('receipt','adjustment_in','release') then l.quantity_metres
-      when l.event_type in ('adjustment_out','consume','reserve') then -l.quantity_metres
+      when l.event_type in ('adjustment_out','reserve') then -l.quantity_metres
       else 0
     end),0) as available_metres,
     max(l.created_at) as last_event_at
