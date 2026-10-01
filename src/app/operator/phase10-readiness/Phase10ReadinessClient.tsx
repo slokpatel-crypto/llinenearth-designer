@@ -365,8 +365,9 @@ export default function Phase10ReadinessClient(){
     const proofScale=proof?.scaleGatePass===true;
     const proofLatency=Boolean(proof && proof.realModelSamples>=12 && proof.realModelP95Ms!==null && proof.realModelP95Ms<300);
     const proofRealism=proof?.realismPass===true;
-    const proofProgress=ratio([proofScale,proofLatency,proofRealism].filter(Boolean).length,3);
-    const proofDone=Boolean(proof?.status==="accepted" && proofScale && proofLatency && proofRealism);
+    const proofMobileAccepted=data.device?.latest?.mobile?.status==="accepted";
+    const proofProgress=ratio([proofScale,proofLatency,proofRealism,proofMobileAccepted].filter(Boolean).length,4);
+    const proofDone=Boolean(proof?.status==="accepted" && proofScale && proofLatency && proofRealism && proofMobileAccepted);
 
     const coverage=data.designerData?.coverage;
     const active=coverage?.activeCandidates||0;
@@ -458,14 +459,14 @@ export default function Phase10ReadinessClient(){
         id:"premium-shirt-proof",
         title:"Roadmap v2 premium shirt proof",
         detail:proofDone
-          ? `${proof?.fabricName||"Selected fabric"} passed physical scale, real-model latency and 8-independent-viewer realism evidence.`
+          ? `${proof?.fabricName||"Selected fabric"} passed physical scale, real-model latency, 8-independent-viewer realism and target-mobile acceptance evidence.`
           : proof
-            ? `Latest proof is ${proof.status}. Scale ${proofScale?"passes":"needs evidence"}, real-model latency ${proofLatency?"passes":"needs evidence"}, realism ${proofRealism?"passes":"needs evidence"}.`
+            ? `Latest proof is ${proof.status}. Scale ${proofScale?"passes":"needs evidence"}, real-model latency ${proofLatency?"passes":"needs evidence"}, realism ${proofRealism?"passes":"needs evidence"}, target mobile ${proofMobileAccepted?"accepted":"needs acceptance"}.`
             : "No operator-recorded Premium Shirt Proof evidence yet.",
         status:proofDone?"done":data.phase1Proof?"progress":"blocked",
         progress:proofProgress,
         metric:proof
-          ? `${proof.fabricName||proof.fabricId} · scale ${proof.scaleErrorPct??"—"}% · p95 ${proof.realModelP95Ms??"—"} ms · ${proof.strongRatings}/${proof.uniqueRealismViewers||0} strong independent ratings`
+          ? `${proof.fabricName||proof.fabricId} · scale ${proof.scaleErrorPct??"—"}% · p95 ${proof.realModelP95Ms??"—"} ms · ${proof.strongRatings}/${proof.uniqueRealismViewers||0} strong independent ratings · mobile ${proofMobileAccepted?"accepted":"open"}`
           : "No recorded proof",
         href:"/lab/proof",
         action:"Open Premium Shirt Proof",
