@@ -179,3 +179,8 @@ Stock reservation metres are no longer accepted as an unexplained operator numbe
 
 - New real-cut meterage evidence uses `production-usage-v2` and requires a named checker plus a physical cutting reference (job card, cut ticket, or equivalent). Legacy usage rows remain visible but cannot count toward the 20-cut calibration gate.
 - Meterage registration and activation revalidate those provenance-backed cases at the database boundary, so client counts or arbitrary evidence IDs cannot activate a model.
+
+
+## Actual consumption provenance
+
+Closing a reservation by consuming cloth now requires the actual metres, a named checker, and a real cutting/usage reference. The unused reserved balance is released automatically using the same evidence reference. This prevents an unexplained operator number from silently reducing physical stock.
