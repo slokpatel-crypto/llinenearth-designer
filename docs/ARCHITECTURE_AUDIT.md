@@ -57,13 +57,17 @@ Status: **advanced / keep and extend**
 Action: Roadmap Phase 2 becomes a calibration / ingestion hardening phase rather than a greenfield Analyzer build.
 
 ### Measurements
-Status: **partial / extend**
-- current measurements can influence body profile and Designer fit logic
+Status: **advanced foundation / calibrate + persist**
+- current measurements influence body profile and Designer fit logic
+- `fit-construction.ts` already creates provisional finished-garment targets from body measurements plus explicit house ease ranges
+- `block-strategy.ts` already selects provisional starting block families and flags posture / shoulder / seat / mobility issues
+- the code clearly labels these as provisional and requires tailor verification
 
 Action:
-- verify persistence path and versioning
-- add / confirm roadmap-style finished-garment target logic and owner-tailor ease calibration
-- ensure customer-critical profiles are durable server data before public reliance
+- do **not** rebuild the ease engine
+- calibrate the existing provisional ranges against Linen Earth tailor data / measured finished garments
+- version any owner-approved ease-table change
+- move customer-critical profiles from browser-only storage to durable authenticated persistence before public reliance
 
 ### Final render / QA
 Status: **advanced foundation / keep**
@@ -154,7 +158,7 @@ Action: GitHub `main` is the source of truth for implementation work. Do not bas
 | Phase 1 | Build measurable Premium Shirt Proof on top of current assets |
 | Phase 2 | Extend existing Analyzer into verified fabric-truth pipeline |
 | Phase 3 | Reuse current option library / rules / Designer; swap in proved preview |
-| Phase 4 | Harden measurement versioning + ease / finished targets |
+| Phase 4 | Calibrate existing ease / finished-target engine, version owner-approved ranges, and harden persistence |
 | Phase 5 | Durable lock / reconstruct / share / enquiry hardening |
 | Phase 6 | Reuse current Style Director; tighten buildability + evaluation |
 | Phase 7 | Reuse FASHN + QA + caching; improve acceptance gates |
