@@ -11,6 +11,13 @@ import {
 
 export const runtime="nodejs";
 
+function jsonNoStore(body:unknown,init?:{status?:number}){
+  return NextResponse.json(body,{
+    ...init,
+    headers:{"cache-control":"private, no-store, max-age=0","pragma":"no-cache"},
+  });
+}
+
 const rate=(globalThis as typeof globalThis & {
   __linenMeasurementVaultRate?:Map<string,{at:number;count:number}>
 }).__linenMeasurementVaultRate ||= new Map<string,{at:number;count:number}>();
@@ -56,14 +63,14 @@ function validObservations(value:unknown):value is TailorObservationProfile{
 }
 
 export async function POST(request:Request){
-  if(blocked(request)) return NextResponse.json({error:"Too many measurement-vault requests."},{status:429});
+  if(blocked(request)) return jsonNoStore({error:"Too many measurement-vault requests."},{status:429});
   try{
     const body=await request.json() as {action?:string;profile?:MeasurementProfile;observations?:TailorObservationProfile;recoveryToken?:string};
     const action=String(body.action||"");
 
     if(action==="store"){
       if(!validProfile(body.profile)||!validObservations(body.observations)) {
-        return NextResponse.json({error:"A valid measurement and tailoring profile is required."},{status:400});
+        return jsonNoStore({error:"A valid measurement and tailoring profile is required."},{status:400});
       }
       const accessKey=createMeasurementVaultAccessKey();
       const accessHash=hashMeasurementVaultAccessKey(accessKey);
@@ -74,11 +81,11 @@ export async function POST(request:Request){
         p_ttl_days:180,
       });
       const recoveryToken=createMeasurementVaultRecoveryToken(vaultId,accessKey);
-      return NextResponse.json({vaultId,recoveryToken,expiresInDays:180});
+      return jsonNoStore({vaultId,recoveryToken,expiresInDays:180});
     }
 
     const parsed=parseMeasurementVaultRecoveryToken(String(body.recoveryToken||""));
-    if(!parsed) return NextResponse.json({error:"The measurement recovery token is invalid."},{status:400});
+    if(!parsed) return jsonNoStore({error:"The measurement recovery token is invalid."},{status:400});
 
     if(action==="load"){
       const rows=await rpc<Array<{profile:MeasurementProfile;observations:TailorObservationProfile;expires_at:string}>>("measurement_profile_vault_get",{
@@ -86,21 +93,21 @@ export async function POST(request:Request){
       });
       const row=rows[0];
       if(!row||!validProfile(row.profile)||!validObservations(row.observations)) {
-        return NextResponse.json({error:"Measurement profile was not found or has expired."},{status:404});
+        return jsonNoStore({error:"Measurement profile was not found or has expired."},{status:404});
       }
-      return NextResponse.json({profile:row.profile,observations:row.observations,expiresAt:row.expires_at});
+      return jsonNoStore({profile:row.profile,observations:row.observations,expiresAt:row.expires_at});
     }
 
     if(action==="delete"){
       const deleted=await rpc<boolean>("measurement_profile_vault_delete",{
         p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,
       });
-      return NextResponse.json({deleted:Boolean(deleted)});
+      return jsonNoStore({deleted:Boolean(deleted)});
     }
 
-    return NextResponse.json({error:"Unsupported measurement-vault action."},{status:400});
+    return jsonNoStore({error:"Unsupported measurement-vault action."},{status:400});
   }catch(error){
     console.error("[measurements/vault]",error);
-    return NextResponse.json({error:"Secure measurement storage is temporarily unavailable."},{status:503});
+    return jsonNoStore({error:"Secure measurement storage is temporarily unavailable."},{status:503});
   }
 }
