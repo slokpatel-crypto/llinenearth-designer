@@ -14,11 +14,13 @@ type Summary={
   total:number;generated:number;cached:number;reviewed:number;pending:number;approved:number;rejected:number;
   qaPass:number;totalCredits:number;approvalRate:number|null;creditsPerApproved:number|null;
 };
+type PatternSummary={total:number;pass:number;fail:number;passRate:number|null;averageScaleErrorPct:number|null};
 
 export default function RenderQaClient(){
   const [outcomes,setOutcomes]=useState<Outcome[]>([]);
   const [summary,setSummary]=useState<Summary|null>(null);
   const [calibrations,setCalibrations]=useState<Calibration[]>([]);
+  const [patternSummary,setPatternSummary]=useState<PatternSummary|null>(null);
   const [busy,setBusy]=useState("");
   const [message,setMessage]=useState("");
 
@@ -26,7 +28,7 @@ export default function RenderQaClient(){
     const response=await fetch("/api/operator/render-qa",{cache:"no-store"});
     if(response.status===401){window.location.href="/operator/login?next=/operator/render-qa";return;}
     const data=await response.json();
-    if(response.ok){setOutcomes(data.outcomes||[]);setSummary(data.summary||null);setCalibrations(data.calibrations||[]);}
+    if(response.ok){setOutcomes(data.outcomes||[]);setSummary(data.summary||null);setCalibrations(data.calibrations||[]);setPatternSummary(data.patternSummary||null);}
   }
   useEffect(()=>{void load();},[]);
 
@@ -82,6 +84,7 @@ export default function RenderQaClient(){
       <article><small>APPROVAL RATE</small><strong>{summary?.approvalRate==null?"—":summary.approvalRate+"%"}</strong><span>{summary?.approved??0} approved · {summary?.rejected??0} rejected</span></article>
       <article><small>TOTAL CREDITS</small><strong>{summary?.totalCredits??0}</strong><span>generated renders only</span></article>
       <article><small>CREDITS / APPROVED</small><strong>{summary?.creditsPerApproved??"—"}</strong><span>owner cost gate can be compared here</span></article>
+      <article><small>PATTERN SCALE QA</small><strong>{patternSummary?.passRate==null?"—":patternSummary.passRate+"%"}</strong><span>{patternSummary?.total??0} measured checks · avg error {patternSummary?.averageScaleErrorPct??"—"}%</span></article>
     </section>
 
     {message&&<p className="renderQaMessage">{message}</p>}
