@@ -20,7 +20,21 @@ export default function StockClient(){
     const data=await response.json();
     if(response.ok){setConfigured(data.configured!==false);setStock(Array.isArray(data.stock)?data.stock:[]);}
   }
-  useEffect(()=>{void load();},[]);
+  useEffect(()=>{
+    void load();
+    const params=new URLSearchParams(window.location.search);
+    const fabricId=params.get("fabric")||"";
+    const revisionId=params.get("revision")||"";
+    const metres=params.get("metres")||"";
+    if(fabricId||revisionId||metres) {
+      setReservation((current)=>({
+        ...current,
+        fabricId:fabricId.slice(0,160),
+        revisionId:revisionId.slice(0,220),
+        quantityMetres:/^\d+(?:\.\d+)?$/.test(metres)?metres:current.quantityMetres,
+      }));
+    }
+  },[]);
 
   async function post(body:Record<string,unknown>,success:string){
     if(busy) return;
