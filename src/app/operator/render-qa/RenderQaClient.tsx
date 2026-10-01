@@ -12,7 +12,8 @@ type Outcome={
 type Calibration={
   calibration_id:string;outcome_id:string;garment:"shirt"|"trouser";expected_repeat_mm:number;
   observed_repeat_mm:number;scale_error_pct:number;axis_status:"match"|"mismatch"|"not_applicable";
-  note:string;created_at:string;
+  note:string;measurement_method:"legacy_direct_mm"|"pixel_fixture_v2";
+  reference_mm:number|null;reference_px:number|null;observed_repeat_px:number|null;created_at:string;
 };
 type IdentityReview={
   review_id:string;concept_id:string;status:"pass"|"fail";reviewed_views:string[];
@@ -108,15 +109,28 @@ export default function RenderQaClient(){
       setMessage("Reviewed physical repeat evidence is missing for "+fabricId+". Approve it in Fabric Analyzer before final-render pattern QA.");
       return;
     }
-    const observed=Number(window.prompt(`Reviewed physical repeat: ${evidence.repeatMm} mm. Enter the observed repeat on the final render in mm.`,""));
-    if(!Number.isFinite(observed)||observed<=0) return;
+
+    const referenceMm=Number(window.prompt(
+      `Reviewed fabric repeat: ${evidence.repeatMm} mm. Enter a known physical reference length visible in this render (mm).`,
+      "",
+    ));
+    if(!Number.isFinite(referenceMm)||referenceMm<=0) return;
+    const referencePx=Number(window.prompt("Measure that same reference in the final render (pixels).",""));
+    if(!Number.isFinite(referencePx)||referencePx<=0) return;
+    const observedRepeatPx=Number(window.prompt("Measure one visible fabric repeat in the final render (pixels).",""));
+    if(!Number.isFinite(observedRepeatPx)||observedRepeatPx<=0) return;
+
+    const observedRepeatMm=observedRepeatPx/(referencePx/referenceMm);
     const axisRaw=(window.prompt("Pattern axis: match, mismatch, or not_applicable","match")||"").trim().toLowerCase();
     if(!["match","mismatch","not_applicable"].includes(axisRaw)) return;
-    const note=window.prompt("Optional calibration note","")||"";
+    const note=window.prompt(
+      `Computed final-render repeat: ${observedRepeatMm.toFixed(2)} mm from raw pixel fixture evidence. Optional note:`,
+      "",
+    )||"";
     await post({
       action:"pattern_calibration",outcomeId:outcome.outcome_id,
-      garment:garmentRaw,observedRepeatMm:observed,axisStatus:axisRaw,note,
-    },`Physical pattern calibration saved against reviewed ${evidence.repeatMm} mm fabric truth.`,outcome.outcome_id);
+      garment:garmentRaw,referenceMm,referencePx,observedRepeatPx,axisStatus:axisRaw,note,
+    },`Pixel-fixture pattern calibration saved against reviewed ${evidence.repeatMm} mm fabric truth.`,outcome.outcome_id);
   }
 
   async function reviewIdentity(conceptId:string,status:"pass"|"fail"){
@@ -234,7 +248,9 @@ export default function RenderQaClient(){
         {calibrations.filter((entry)=>entry.outcome_id===item.outcome_id).slice(0,2).map((entry)=><div key={entry.calibration_id} className="renderQaCalibration">
           <span>{entry.garment.toUpperCase()} PATTERN</span>
           <b>{Number(entry.scale_error_pct).toFixed(1)}% scale error</b>
-          <small>{entry.expected_repeat_mm} mm physical → {entry.observed_repeat_mm} mm render · axis {entry.axis_status.replaceAll("_"," ")}</small>
+          <small>{entry.expected_repeat_mm} mm physical → {entry.observed_repeat_mm} mm render · axis {entry.axis_status.replaceAll("_"," ")} · {entry.measurement_method==="pixel_fixture_v2"&&entry.reference_mm&&entry.reference_px&&entry.observed_repeat_px
+            ? `fixture ${entry.reference_mm} mm/${entry.reference_px} px · repeat ${entry.observed_repeat_px} px`
+            : "legacy direct-mm evidence"}</small>
         </div>)}
         <div className="renderQaPatternTruth">
           <small>SHIRT: {patternEvidenceByFabric[item.shirt_id]?.patterned
