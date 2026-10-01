@@ -76,10 +76,12 @@ function canonical(value:unknown):string{
 
 export function styleDirectorHandoffMatches(
   payload:StyleDirectorHandoffPayload,
-  observed:{shirtId:string;pantId:string;occasion:OccasionTier;style:DesignerStyle},
+  observed:{shirtId:string;pantId:string;occasion:OccasionTier;climate:DesignerClimate;intention:DesignerIntention;style:DesignerStyle},
 ){
   return payload.shirtId===observed.shirtId
     && payload.pantId===observed.pantId
     && payload.occasion===observed.occasion
+    && payload.climate===observed.climate
+    && payload.intention===observed.intention
     && canonical(payload.style)===canonical(observed.style);
 }
