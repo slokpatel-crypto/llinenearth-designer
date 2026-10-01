@@ -49,3 +49,60 @@ export function summarizeRenderPatternCalibrations(rows:RenderPatternCalibration
     averageScaleErrorPct:averageError===null?null:Math.round(averageError*100)/100,
   };
 }
+
+
+export type RenderPatternCoverageOutcomeInput={
+  outcome_id:string;
+  shirt_id:string;
+  pant_id:string;
+  human_status:"pending"|"approved"|"rejected";
+};
+
+export type RenderPatternCoverageCalibrationInput={
+  outcome_id:string;
+  garment:"shirt"|"trouser";
+  scale_error_pct:number;
+  axis_status:"match"|"mismatch"|"not_applicable";
+  created_at:string;
+};
+
+export function summarizeApprovedPatternCalibrationCoverage(
+  outcomes:RenderPatternCoverageOutcomeInput[],
+  calibrations:RenderPatternCoverageCalibrationInput[],
+  patternedFabricIds:Set<string>,
+){
+  const latest=new Map<string,RenderPatternCoverageCalibrationInput>();
+  for(const row of calibrations){
+    const key=`${row.outcome_id}::${row.garment}`;
+    const current=latest.get(key);
+    const incomingAt=new Date(row.created_at).getTime()||0;
+    const currentAt=current ? new Date(current.created_at).getTime()||0 : -1;
+    if(!current||incomingAt>currentAt) latest.set(key,row);
+  }
+
+  const requirements:Array<{outcomeId:string;garment:"shirt"|"trouser";fabricId:string}>= [];
+  for(const row of outcomes){
+    if(row.human_status!=="approved") continue;
+    if(patternedFabricIds.has(row.shirt_id)) requirements.push({outcomeId:row.outcome_id,garment:"shirt",fabricId:row.shirt_id});
+    if(patternedFabricIds.has(row.pant_id)) requirements.push({outcomeId:row.outcome_id,garment:"trouser",fabricId:row.pant_id});
+  }
+
+  let passed=0,failed=0,pending=0;
+  for(const requirement of requirements){
+    const calibration=latest.get(`${requirement.outcomeId}::${requirement.garment}`);
+    if(!calibration){pending+=1;continue;}
+    const error=Number(calibration.scale_error_pct);
+    const pass=Number.isFinite(error)&&error>=0&&error<=8&&calibration.axis_status!=="mismatch";
+    if(pass) passed+=1;
+    else failed+=1;
+  }
+
+  return {
+    requiredPairs:requirements.length,
+    calibratedPairs:passed+failed,
+    passedPairs:passed,
+    failedPairs:failed,
+    pendingPairs:pending,
+    gateComplete:requirements.length>0&&failed===0&&pending===0&&passed===requirements.length,
+  };
+}
