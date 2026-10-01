@@ -2,6 +2,8 @@
 
 import { useMemo, useRef, useState } from "react";
 import { PREMIUM_SHIRT_PROOF_FABRICS, expectedPeriodPx, passesScaleGate, scaleErrorPct } from "@/lib/designer/proof-scale";
+import { DESIGNER_PANTS, DESIGNER_SHIRTS, designerStyleForOccasion } from "@/lib/designer/engine";
+import { StyleDirectorRealModelPreview } from "@/components/PhotoOutfitPreview";
 
 type Collar="spread"|"button-down"|"band";
 type Cuff="round"|"square"|"french";
@@ -25,6 +27,14 @@ export function PremiumShirtProof(){
   const error=declaredRepeatMm && measuredPx ? scaleErrorPct(measuredPx,declaredRepeatMm,pxPerMm) : null;
   const pass=declaredRepeatMm && measuredPx ? passesScaleGate(measuredPx,declaredRepeatMm,pxPerMm) : null;
   const calibrationState=declaredTileMm ? "DECLARED PHYSICAL SCALE" : "APPROXIMATE SCALE";
+  const stockIdByProofId={
+    "plain-sky":"linen-plain-60-sky-blue",
+    "stripe-formal-03":"formal-shirting-03",
+    "check-formal-04":"formal-shirting-04",
+  } as const;
+  const realShirt=DESIGNER_SHIRTS.find((item)=>item.id===stockIdByProofId[fabric.id]) || DESIGNER_SHIRTS[0];
+  const realPant=DESIGNER_PANTS.find((item)=>item.id==="linen-suiting-beige") || DESIGNER_PANTS[0];
+  const realModelStyle=designerStyleForOccasion("Semi-Formal");
 
   function markChange(run:()=>void){
     startedRef.current=performance.now();
@@ -115,5 +125,23 @@ export function PremiumShirtProof(){
         </section>
       </aside>
     </main>
+
+    {realShirt&&realPant&&<section className="proofRealism">
+      <div className="proofRealismCopy">
+        <span>REAL MANNEQUIN TRACK</span>
+        <h2>Same catalogue fabric on our existing photographic model.</h2>
+        <p>This reuses the current Linen Earth mannequin/photo compositor so we can judge cloth believability separately from construction geometry. The photographed collar/cuff shape stays the base photographed construction; the Phase 1 cut controls above remain the geometry test until matching photographed option assets exist.</p>
+        <div className="proofRealismFacts">
+          <b>{realShirt.name}</b>
+          <span>Real catalogue swatch</span>
+          <span>Existing studio mannequin</span>
+          <span>No AI per edit</span>
+          <span>{declaredTileMm?"Scale evidence entered":"Scale still approximate"}</span>
+        </div>
+      </div>
+      <div className="proofRealModel">
+        <StyleDirectorRealModelPreview shirt={realShirt} pant={realPant} style={realModelStyle}/>
+      </div>
+    </section>}
   </div>;
 }
