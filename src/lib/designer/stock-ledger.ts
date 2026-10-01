@@ -43,3 +43,28 @@ export function normalizeManualStockEvent(input:unknown){
     note,recordedBy,sourceReference,
   };
 }
+
+
+export function normalizeStockReservation(input:unknown){
+  if(!input||typeof input!=="object"||Array.isArray(input)) throw new Error("Stock reservation evidence is required.");
+  const source=input as Record<string,unknown>;
+  const fabricId=String(source.fabricId||"").trim().slice(0,160);
+  const revisionId=String(source.revisionId||"").trim().slice(0,220);
+  const requestKey=String(source.requestKey||"").trim().slice(0,180);
+  const quantityMetres=Number(source.quantityMetres);
+  const requestedBy=String(source.requestedBy||"").replace(/\s+/g," ").trim().slice(0,120);
+  const sourceReference=String(source.sourceReference||"").replace(/\s+/g," ").trim().slice(0,240);
+
+  if(!fabricId) throw new Error("Fabric ID is required.");
+  if(revisionId.length<12) throw new Error("Locked revision ID is required.");
+  if(requestKey.length<12) throw new Error("Reservation request key is required.");
+  if(!Number.isFinite(quantityMetres)||quantityMetres<=0||quantityMetres>100) throw new Error("Reservation quantity must be positive.");
+  if(requestedBy.length<2) throw new Error("Named reservation checker / requester is required.");
+  if(sourceReference.length<3) throw new Error("Reservation quantity evidence reference is required.");
+
+  return {
+    fabricId,revisionId,requestKey,
+    quantityMetres:Math.round(quantityMetres*1000)/1000,
+    requestedBy,sourceReference,
+  };
+}
