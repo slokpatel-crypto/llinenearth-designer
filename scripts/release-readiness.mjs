@@ -163,10 +163,10 @@ for (const path of [
 ]) requireFile(path);
 
 requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/visual", "/real-model", "Open Real Model Designer"]);
-requireTokens("src/lib/designer/proof-scale.ts", ["summarizeIndependentRealism","PHASE1_PROOF_MIN_REALISM_VIEWERS","PHASE1_PROOF_MIN_STRONG_REALISM","phase1ProofAcceptance"]);
+requireTokens("src/lib/designer/proof-scale.ts", ["evaluateRecordedPhase1ProofEvidence","PHASE1_PROOF_EVIDENCE_VERSION","PHASE1_PROOF_PHOTO_COORDINATE_SYSTEM","summarizeIndependentRealism","PHASE1_PROOF_MIN_REALISM_VIEWERS","PHASE1_PROOF_MIN_STRONG_REALISM","phase1ProofAcceptance"]);
 requireTokens("src/components/PremiumShirtProof.tsx", ["linen-earth-phase1-proof-v2","Anonymous viewer code","realismAssessments","uniqueRealismViewers","photoReferenceMm","photoReferencePx","pxPerMmFromMarker","photo-1024x1536-fixture"]);
 requireTokens("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx", ["proofMobileAccepted","target-mobile acceptance","mobile ${proofMobileAccepted?"]);
-requireTokens("src/app/api/operator/phase1-proof/route.ts", ["linen-earth-phase1-proof-v2","coreAccepted","summarizeIndependentRealism","passesScaleGate","phase1ProofAcceptance","uniqueRealismViewers","photoReferenceMm","photoReferencePx","pxPerMmFromMarker","photo-1024x1536-fixture"]);
+requireTokens("src/app/api/operator/phase1-proof/route.ts", ["evaluateRecordedPhase1ProofEvidence","coreAccepted","uniqueRealismViewers","photoReferenceMm","photoReferencePx","photoPxPerMm","scaleCoordinateSystem"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["PhotoPreviewCalibration","photoPxPerMm","photoFabricPatternScale"]);
 requireTokens("src/lib/designer/live-preview.ts", ["photoFabricPatternScale","photoExpectedRepeatPx","photoPxPerMm"]);
 requireTokens("src/app/account/page.tsx", ["Email sign in","listOwned","recovery token","Measurement profiles","Accept quote","accept_quote","Timeline","orderEvents","record_outcome","post-delivery feedback","does not automatically change Designer recommendations"]);
