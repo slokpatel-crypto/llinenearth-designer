@@ -6,6 +6,7 @@ import type { LockedDesignRevision } from "@/lib/designer/design-lock";
 import { buildProductionHandoff } from "@/lib/designer/production-handoff";
 import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-pack";
 import { buildProductionPacket } from "@/lib/designer/production-packet";
+import { ORDER_TRANSITIONS, type ProductionOrderStatus } from "@/lib/designer/production-state";
 
 type Quote={quote_id:string;revision_id:string;recipe_hash:string;currency:string;line_items:Array<{label:string;amount:number}>;subtotal:number;adjustment:number;total:number;note:string;status:string;created_at:string};
 type Order={order_id:string;revision_id:string;recipe_hash:string;quote_id:string|null;status:string;note:string;created_at:string};
@@ -169,7 +170,7 @@ export default function ProductionClient(){
           <small>{item.quote_id}</small>
           <div className="productionRecordActions">
             {item.status==="draft"&&<button disabled={busy} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"sent"},"Quote marked sent.")}>Mark sent</button>}
-            {item.status!=="accepted"&&item.status!=="void"&&<button disabled={busy} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"accepted"},"Quote accepted.")}>Accept</button>}
+            {item.status==="sent"&&<button disabled={busy} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"accepted"},"Quote accepted.")}>Accept</button>}
             {item.status!=="void"&&<button disabled={busy} onClick={()=>void post({action:"quote_status",quoteId:item.quote_id,status:"void"},"Quote voided.")}>Void</button>}
           </div>
         </section>)}
@@ -182,9 +183,9 @@ export default function ProductionClient(){
           <div><b>{item.revision_id}</b><small>{new Date(item.created_at).toLocaleString("en-IN")}</small></div>
           <strong>{item.status.replaceAll("_"," ").toUpperCase()}</strong>
           <small>{item.order_id}</small>
-          {!["delivered","cancelled"].includes(item.status)&&<select defaultValue="" onChange={(e)=>{if(e.target.value) void post({action:"order_status",orderId:item.order_id,status:e.target.value},"Order status updated.");}}>
+          {(ORDER_TRANSITIONS[item.status as ProductionOrderStatus]||[]).length>0&&<select defaultValue="" onChange={(e)=>{if(e.target.value) void post({action:"order_status",orderId:item.order_id,status:e.target.value},"Order status updated.");}}>
             <option value="">Update status…</option>
-            {["cloth_reserved","cutting","stitching","fitting","ready","delivered","cancelled"].map((status)=><option key={status} value={status}>{status.replaceAll("_"," ")}</option>)}
+            {(ORDER_TRANSITIONS[item.status as ProductionOrderStatus]||[]).map((status)=><option key={status} value={status}>{status.replaceAll("_"," ")}</option>)}
           </select>}
         </section>)}
       </article>
