@@ -20,8 +20,8 @@ export type StyleDirectorHandoffPayload={
 };
 
 function secret(){
-  const value=process.env.LINEN_MEMORY_SESSION_SECRET?.trim() || "";
-  return value.length>=32?value:null;
+  const value=readBrandEnv("LINEN_MEMORY_SESSION_SECRET");
+  return value&&value.length>=32?value:null;
 }
 
 function encode(value:string){return Buffer.from(value,"utf8").toString("base64url");}
