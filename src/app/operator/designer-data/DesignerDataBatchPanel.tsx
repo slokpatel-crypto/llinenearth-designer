@@ -14,7 +14,7 @@ type FabricRow={
 
 const HEADERS=[
   "fabricId","availability","weightGsm","weightClass","weave","texture","drape",
-  "seasonTags","formalityScore","roleTags","note",
+  "seasonTags","formalityScore","roleTags","physicalSourceType","physicalReference","physicalCheckedBy","physicalEvidenceDate","physicalSourceUrl","note",
 ] as const;
 
 function parseCsv(text:string){
@@ -71,6 +71,11 @@ type ImportedRow={
   seasonTags?:string[];
   formalityScore?:number;
   roleTags?:string[];
+  physicalSourceType?:string;
+  physicalReference?:string;
+  physicalCheckedBy?:string;
+  physicalEvidenceDate?:string;
+  physicalSourceUrl?:string;
   note?:string;
 };
 
@@ -91,6 +96,11 @@ function importedRows(text:string){
       seasonTags:raw.seasonTags?splitList(raw.seasonTags):undefined,
       formalityScore:numberOrUndefined(raw.formalityScore||""),
       roleTags:raw.roleTags?splitList(raw.roleTags):undefined,
+      physicalSourceType:raw.physicalSourceType||undefined,
+      physicalReference:raw.physicalReference||undefined,
+      physicalCheckedBy:raw.physicalCheckedBy||undefined,
+      physicalEvidenceDate:raw.physicalEvidenceDate||undefined,
+      physicalSourceUrl:raw.physicalSourceUrl||undefined,
       note:raw.note||undefined,
     };
   }).filter((row)=>row.fabricId);
@@ -132,6 +142,11 @@ export default function DesignerDataBatchPanel({
         seasonTags:(value.seasonTags||[]).join(" | "),
         formalityScore:value.formalityScore??"",
         roleTags:(value.roleTags||[]).join(" | "),
+        physicalSourceType:value.physicalEvidence?.sourceType||"",
+        physicalReference:value.physicalEvidence?.reference||"",
+        physicalCheckedBy:value.physicalEvidence?.checkedBy||"",
+        physicalEvidenceDate:value.physicalEvidence?.evidenceDate||"",
+        physicalSourceUrl:value.physicalEvidence?.sourceUrl||"",
         note:value.note||`Evidence gaps: ${fabric.evidence.gaps.join(" | ")}`,
       };
       rows.push(HEADERS.map((header)=>csvCell(row[header])).join(","));
@@ -165,6 +180,16 @@ export default function DesignerDataBatchPanel({
       for(let index=0;index<validRows.length;index++){
         const row=validRows[index];
         const current=currentById.get(row.fabricId)||({fabricId:row.fabricId,availability:"unknown"} as DesignerFabricMetadata);
+        const incomingPhysicalEvidence=
+          row.physicalSourceType&&row.physicalReference&&row.physicalCheckedBy
+            ? {
+                sourceType:row.physicalSourceType,
+                reference:row.physicalReference,
+                checkedBy:row.physicalCheckedBy,
+                ...(row.physicalEvidenceDate?{evidenceDate:row.physicalEvidenceDate}:{}),
+                ...(row.physicalSourceUrl?{sourceUrl:row.physicalSourceUrl}:{}),
+              }
+            : undefined;
         const merged={
           subtype:"designer_fabric_metadata",
           fabricId:row.fabricId,
@@ -179,6 +204,7 @@ export default function DesignerDataBatchPanel({
           seasonTags:row.seasonTags??current.seasonTags??[],
           formalityScore:row.formalityScore??current.formalityScore,
           roleTags:row.roleTags??current.roleTags??[],
+          physicalEvidence:incomingPhysicalEvidence??current.physicalEvidence,
           note:row.note??current.note??"",
         };
         const response=await fetch("/api/memory/event",{
@@ -210,7 +236,7 @@ export default function DesignerDataBatchPanel({
       <span>BULK VERIFIED DATA</span><b>{open?"Close":"CSV worksheet + import"}</b>
     </button>
     {open&&<div className="dataBatchBody">
-      <div className="dataBatchGuardrail"><strong>MERGE, DON’T WIPE</strong><p>Blank CSV cells keep the current verified value. Only supplied values are merged into the latest fabric record. Pattern millimetres and fibre evidence still belong in Fabric Analyzer.</p></div>
+      <div className="dataBatchGuardrail"><strong>MERGE, DON’T WIPE</strong><p>Blank CSV cells keep the current verified value. Only supplied values are merged into the latest fabric record. GSM/drape rows can now carry their physical source, reference and checker; pattern millimetres and fibre evidence still belong in Fabric Analyzer.</p></div>
       <div className="dataBatchActions">
         <button type="button" onClick={downloadTemplate}>Download current worksheet</button>
         <button type="button" onClick={()=>fileRef.current?.click()}>Load edited CSV</button>
