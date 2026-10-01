@@ -23,15 +23,20 @@ export function normalizeBetaAttempt(input:unknown){
   if(!/^[A-Za-z0-9._-]{3,80}$/.test(caseId)) throw new Error("Anonymous beta case ID is required.");
   const deviceClass=String(source.deviceClass||"") as LaunchDeviceClass;
   if(!["mobile","tablet","desktop"].includes(deviceClass)) throw new Error("Beta device class is required.");
-  if(typeof source.coreFlowCompleted!=="boolean"||typeof source.blockingBug!=="boolean"){
-    throw new Error("Beta flow completion and blocking-bug result must both be recorded.");
+  if(typeof source.designLocked!=="boolean"||typeof source.shareOrEnquiryCompleted!=="boolean"||typeof source.blockingBug!=="boolean"){
+    throw new Error("Design-lock, share/enquiry and blocking-bug results must all be recorded.");
+  }
+  if(source.shareOrEnquiryCompleted&&!source.designLocked){
+    throw new Error("Share/enquiry completion requires a locked design first.");
   }
   const note=String(source.note||"").trim().slice(0,1200);
   if(source.blockingBug&&note.length<3) throw new Error("Blocking beta bugs require a short note.");
   return {
     caseId,
     deviceClass,
-    coreFlowCompleted:source.coreFlowCompleted,
+    designLocked:source.designLocked,
+    shareOrEnquiryCompleted:source.shareOrEnquiryCompleted,
+    coreFlowCompleted:source.designLocked&&source.shareOrEnquiryCompleted,
     blockingBug:source.blockingBug,
     note,
   };
@@ -55,6 +60,8 @@ export type LaunchBetaAttempt={
   case_id:string;
   device_class:string;
   core_flow_completed:boolean;
+  design_locked?:boolean;
+  share_or_enquiry_completed?:boolean;
   blocking_bug:boolean;
   created_at:string;
 };
@@ -74,7 +81,12 @@ export function summarizeLaunchReadiness(
     if(!latestBeta.has(row.case_id)) latestBeta.set(row.case_id,row);
   }
   const beta=[...latestBeta.values()];
-  const successfulBeta=beta.filter((row)=>row.core_flow_completed&&!row.blocking_bug);
+  const successfulBeta=beta.filter((row)=>
+    row.core_flow_completed
+    && row.design_locked===true
+    && row.share_or_enquiry_completed===true
+    && !row.blocking_bug
+  );
   const deviceCoverage=new Set(successfulBeta.map((row)=>row.device_class));
 
   const latestChecklist=new Map<string,LaunchChecklistEvent>();
