@@ -13,7 +13,7 @@ import {
 type BetaAttempt={
   attempt_id:string;case_id:string;device_class:string;core_flow_completed:boolean;
   design_locked:boolean;share_or_enquiry_completed:boolean;
-  blocking_bug:boolean;note:string;created_at:string;
+  blocking_bug:boolean;note:string;revision_id?:string|null;recipe_hash?:string|null;share_audit_confirmed?:boolean;created_at:string;
 };
 type ChecklistEvent={
   event_id:string;item_id:string;status:"approved"|"review";signed_by:string;note:string;created_at:string;
@@ -25,8 +25,7 @@ export default function LaunchReadinessClient(){
   const [configured,setConfigured]=useState(true);
   const [caseId,setCaseId]=useState("");
   const [deviceClass,setDeviceClass]=useState<LaunchDeviceClass>("mobile");
-  const [designLocked,setDesignLocked]=useState(false);
-  const [shareOrEnquiryCompleted,setShareOrEnquiryCompleted]=useState(false);
+  const [revisionId,setRevisionId]=useState("");
   const [blockingBug,setBlockingBug]=useState(false);
   const [betaNote,setBetaNote]=useState("");
   const [signedBy,setSignedBy]=useState("");
@@ -79,9 +78,9 @@ export default function LaunchReadinessClient(){
 
   async function recordBeta(){
     const saved=await post({
-      action:"record_beta",caseId,deviceClass,designLocked,shareOrEnquiryCompleted,blockingBug,note:betaNote,
-    },"Lock → share/enquiry customer-flow attempt recorded.");
-    if(saved){setCaseId("");setDesignLocked(false);setShareOrEnquiryCompleted(false);setBlockingBug(false);setBetaNote("");}
+      action:"record_verified_beta",caseId,deviceClass,revisionId,blockingBug,note:betaNote,
+    },"Verified lock → share customer-flow attempt recorded.");
+    if(saved){setCaseId("");setRevisionId("");setBlockingBug(false);setBetaNote("");}
   }
 
   async function recordChecklist(itemId:LaunchChecklistItemId,status:"approved"|"review"){
@@ -90,14 +89,14 @@ export default function LaunchReadinessClient(){
     },status==="approved"?"Human sign-off recorded.":"Checklist item kept in review.");
   }
 
-  const betaValid=/^[A-Za-z0-9._-]{3,80}$/.test(caseId.trim())&&(!blockingBug||betaNote.trim().length>=3);
+  const betaValid=/^[A-Za-z0-9._-]{3,80}$/.test(caseId.trim())&&revisionId.trim().length>=3&&(!blockingBug||betaNote.trim().length>=3);
 
   return <main className="launchReady">
     <header className="launchReadyHeader">
       <div>
         <span>LINEN EARTH / ROADMAP V2 / PHASE 9</span>
         <h1>Launch Evidence</h1>
-        <p>Record real lock → share/enquiry customer-flow outcomes and human launch sign-offs. The same five-case evidence is used for the Phase 5 customer-flow gate and Phase 9 private-beta gate.</p>
+        <p>Record real lock → share customer-flow outcomes and human launch sign-offs. A beta case only qualifies when the server can find a verified share audit created after the locked recipe passed integrity verification.</p>
       </div>
       <nav><Link href="/operator/device-qa">Device QA</Link><Link href="/operator/phase10-readiness">Readiness</Link><Link href="/operator">Operator Desk</Link></nav>
     </header>
@@ -106,7 +105,7 @@ export default function LaunchReadinessClient(){
     {message&&<section className="launchReadyNotice">{message}</section>}
 
     <section className="launchReadyScore">
-      <article data-pass={summary.betaGateComplete}><span>LOCK → SHARE/ENQUIRY</span><strong>{summary.successfulBetaCases}/{LAUNCH_BETA_TARGET}</strong><small>latest case locked, shared/enquired and had no blocking bug</small></article>
+      <article data-pass={summary.betaGateComplete}><span>LOCK → VERIFIED SHARE</span><strong>{summary.successfulBetaCases}/{LAUNCH_BETA_TARGET}</strong><small>latest case has a verified server share audit and no blocking bug</small></article>
       <article data-alert={summary.blockingBetaCases>0}><span>BLOCKING CASES</span><strong>{summary.blockingBetaCases}</strong><small>latest beta outcomes still blocked</small></article>
       <article><span>DEVICE COVERAGE</span><strong>{summary.deviceCoverage.length}/3</strong><small>{summary.deviceCoverage.join(" · ")||"no successful beta devices yet"}</small></article>
       <article data-pass={summary.checklistGateComplete}><span>HUMAN SIGN-OFF</span><strong>{summary.checklistApproved}/{summary.checklistTotal}</strong><small>privacy / commercial / operational launch checks</small></article>
@@ -115,14 +114,14 @@ export default function LaunchReadinessClient(){
 
     <section className="launchReadyGrid">
       <article className="launchReadyPanel">
-        <span>01 / PRIVATE BETA</span><h2>Record a real customer-flow attempt.</h2>
-        <p className="launchReadyRule">Use an anonymous case ID only. Do not enter the customer’s name, phone, email or measurements here.</p>
+        <span>01 / PRIVATE BETA</span><h2>Record a verified lock → share attempt.</h2>
+        <p className="launchReadyRule">Use an anonymous case ID only. In Designer, lock the exact recipe and create its share link first. Paste that locked revision ID here; the server rejects the beta record unless its verified share audit exists.</p>
         <div className="launchReadyPair">
           <label>Anonymous case ID<input value={caseId} onChange={(event)=>setCaseId(event.target.value.slice(0,80))} placeholder="BETA-001"/></label>
           <label>Device<select value={deviceClass} onChange={(event)=>setDeviceClass(event.target.value as LaunchDeviceClass)}><option value="mobile">Mobile</option><option value="tablet">Tablet</option><option value="desktop">Desktop</option></select></label>
         </div>
-        <label className="launchReadyCheck"><input type="checkbox" checked={designLocked} onChange={(event)=>{setDesignLocked(event.target.checked);if(!event.target.checked)setShareOrEnquiryCompleted(false);}}/> Exact design recipe was locked</label>
-        <label className="launchReadyCheck"><input type="checkbox" checked={shareOrEnquiryCompleted} disabled={!designLocked} onChange={(event)=>setShareOrEnquiryCompleted(event.target.checked)}/> Customer completed signed share or exact-look enquiry after locking</label>
+        <label>Locked revision ID<input value={revisionId} onChange={(event)=>setRevisionId(event.target.value.slice(0,180))} placeholder="REV-…"/></label>
+        <p className="launchReadyRule">Only a share created by the verified locked-design API can satisfy this evidence gate. Old checkbox-only beta records stay historical and do not count.</p>
         <label className="launchReadyCheck danger"><input type="checkbox" checked={blockingBug} onChange={(event)=>setBlockingBug(event.target.checked)}/> Blocking bug occurred</label>
         <label>Observed note<textarea rows={4} value={betaNote} onChange={(event)=>setBetaNote(event.target.value.slice(0,1200))} placeholder="What blocked or what was verified on the real flow?"/></label>
         <button disabled={!configured||busy||!betaValid} onClick={()=>void recordBeta()}>{busy?"Saving…":"Record beta attempt"}</button>
@@ -130,9 +129,9 @@ export default function LaunchReadinessClient(){
         <div className="launchBetaHistory">
           <div><span>LATEST UNIQUE CASES</span><b>{latestBeta.length}</b></div>
           {!latestBeta.length&&<p>No private-beta evidence recorded yet.</p>}
-          {latestBeta.slice(0,12).map((row)=><section key={row.case_id} data-pass={row.core_flow_completed&&row.design_locked&&row.share_or_enquiry_completed&&!row.blocking_bug}>
-            <div><b>{row.case_id}</b><em>{row.core_flow_completed&&row.design_locked&&row.share_or_enquiry_completed&&!row.blocking_bug?"PASS":"REVIEW"}</em></div>
-            <small>{row.device_class} · lock {row.design_locked?"✓":"×"} · share/enquiry {row.share_or_enquiry_completed?"✓":"×"} · {new Date(row.created_at).toLocaleString("en-IN")}</small>
+          {latestBeta.slice(0,12).map((row)=><section key={row.case_id} data-pass={row.core_flow_completed&&row.design_locked&&row.share_or_enquiry_completed&&row.share_audit_confirmed&&!row.blocking_bug}>
+            <div><b>{row.case_id}</b><em>{row.core_flow_completed&&row.design_locked&&row.share_or_enquiry_completed&&row.share_audit_confirmed&&!row.blocking_bug?"PASS":"REVIEW"}</em></div>
+            <small>{row.device_class} · verified share {row.share_audit_confirmed?"✓":"legacy/manual"} · {row.revision_id||"no revision evidence"} · {new Date(row.created_at).toLocaleString("en-IN")}</small>
             {row.note&&<p>{row.note}</p>}
           </section>)}
         </div>
