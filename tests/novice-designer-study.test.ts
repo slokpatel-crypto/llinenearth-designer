@@ -39,6 +39,7 @@ test("five latest novice liked-design cases within target plus approval complete
     novice_confirmed:true,
     liked_design_completed:true,
     blocking_issue:false,
+    timing_session_id:`TIMER-${index}`,
     created_at:"2026-10-0"+(index+1)+"T10:00:00Z",
   }));
   const decisions=[{
@@ -59,6 +60,7 @@ test("one latest case over target keeps the five-novice gate open",()=>{
     novice_confirmed:true,
     liked_design_completed:true,
     blocking_issue:false,
+    timing_session_id:`TIMER-${index}`,
     created_at:"2026-10-0"+(index+1)+"T10:00:00Z",
   }));
   const decisions=[{
@@ -75,12 +77,12 @@ test("latest attempt per case replaces earlier success",()=>{
   const attempts=[
     {
       case_id:"NOVICE-A",device_class:"mobile",duration_seconds:250,
-      novice_confirmed:true,liked_design_completed:true,blocking_issue:false,
+      novice_confirmed:true,liked_design_completed:true,blocking_issue:false,timing_session_id:"TIMER-A1",
       created_at:"2026-10-01T10:00:00Z",
     },
     {
       case_id:"NOVICE-A",device_class:"mobile",duration_seconds:280,
-      novice_confirmed:true,liked_design_completed:false,blocking_issue:true,
+      novice_confirmed:true,liked_design_completed:false,blocking_issue:true,timing_session_id:"TIMER-A2",
       created_at:"2026-10-02T10:00:00Z",
     },
   ];
@@ -88,5 +90,27 @@ test("latest attempt per case replaces earlier success",()=>{
   assert.equal(result.uniqueCases,1);
   assert.equal(result.likedDesignCases,0);
   assert.equal(result.blockingCases,1);
+  assert.equal(result.gateComplete,false);
+});
+
+
+test("manual duration evidence cannot complete the five-novice gate",()=>{
+  const attempts=Array.from({length:5},(_,index)=>({
+    case_id:"LEGACY-"+index,
+    device_class:"mobile",
+    duration_seconds:200,
+    novice_confirmed:true,
+    liked_design_completed:true,
+    blocking_issue:false,
+    created_at:"2026-10-0"+(index+1)+"T10:00:00Z",
+  }));
+  const decisions=[{
+    status:"approved",target_seconds:300,signed_by:"Owner",
+    created_at:"2026-10-10T10:00:00Z",
+  }];
+  const result=summarizeNoviceDesignerStudy(attempts,decisions);
+  assert.equal(result.likedDesignCases,5);
+  assert.equal(result.serverTimedLikedCases,0);
+  assert.equal(result.withinTargetCases,0);
   assert.equal(result.gateComplete,false);
 });
