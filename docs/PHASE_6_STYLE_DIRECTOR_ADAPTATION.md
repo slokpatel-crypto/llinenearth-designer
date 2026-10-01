@@ -59,3 +59,8 @@ Status: advanced existing implementation with owner benchmark and real-user vali
 - Handoff audit tokens are SHA-256 fingerprinted and idempotent, and each audit may support only one user-test row, preventing replay of one handoff across multiple anonymous cases.
 
 - Clean real-user validation now counts **distinct signed handoff audits**, not just anonymous case IDs. Reusing one verified handoff under multiple test IDs cannot inflate the human evidence threshold, and database sign-off v3 enforces the same rule.
+
+
+## Stock-aware direction generation
+
+Style Director now applies the same provenance-ready physical stock ledger overlay used by Designer before building directions. Verified out-of-stock cloth cannot be recommended; catalogue-only cloth remains usable without being presented as fully verified live-stock evidence.
