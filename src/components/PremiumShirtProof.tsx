@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { PREMIUM_SHIRT_PROOF_FABRICS, expectedPeriodPx, passesScaleGate, scaleErrorPct } from "@/lib/designer/proof-scale";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { expectedPeriodPx, passesScaleGate, scaleErrorPct } from "@/lib/designer/proof-scale";
 import { DESIGNER_PANTS, DESIGNER_SHIRTS, designerStyleForOccasion } from "@/lib/designer/engine";
 import { StyleDirectorRealModelPreview } from "@/components/PhotoOutfitPreview";
 
@@ -9,9 +9,10 @@ type Collar="spread"|"button-down"|"band";
 type Cuff="round"|"square"|"french";
 const DEFAULT_PX_PER_MM=900/1780;
 const APPROX_TILE_PX=96;
+const REALISM_STORAGE_KEY="linen-earth:phase1-proof-realism:v1";
 
 export function PremiumShirtProof(){
-  const [fabricId,setFabricId]=useState(PREMIUM_SHIRT_PROOF_FABRICS[0].id);
+  const [shirtId,setShirtId]=useState(DESIGNER_SHIRTS[0]?.id||"");
   const [collar,setCollar]=useState<Collar>("spread");
   const [cuff,setCuff]=useState<Cuff>("round");
   const [pxPerMm,setPxPerMm]=useState(DEFAULT_PX_PER_MM);
@@ -19,20 +20,18 @@ export function PremiumShirtProof(){
   const [declaredRepeatMm,setDeclaredRepeatMm]=useState<number|null>(null);
   const [measuredPx,setMeasuredPx]=useState<number|null>(null);
   const [latencyMs,setLatencyMs]=useState<number|null>(null);
+  const [latencySamples,setLatencySamples]=useState<number[]>([]);
+  const [realismRatings,setRealismRatings]=useState<number[]>([]);
   const startedRef=useRef(0);
 
-  const fabric=PREMIUM_SHIRT_PROOF_FABRICS.find((item)=>item.id===fabricId) || PREMIUM_SHIRT_PROOF_FABRICS[0];
-  const tilePx=declaredTileMm ? Math.max(18,Math.min(260,declaredTileMm*pxPerMm)) : APPROX_TILE_PX;
-  const repeatPx=declaredRepeatMm ? expectedPeriodPx(declaredRepeatMm,pxPerMm) : null;
-  const error=declaredRepeatMm && measuredPx ? scaleErrorPct(measuredPx,declaredRepeatMm,pxPerMm) : null;
-  const pass=declaredRepeatMm && measuredPx ? passesScaleGate(measuredPx,declaredRepeatMm,pxPerMm) : null;
-  const calibrationState=declaredTileMm ? "DECLARED PHYSICAL SCALE" : "APPROXIMATE SCALE";
-  const stockIdByProofId={
-    "plain-sky":"linen-plain-60-sky-blue",
-    "stripe-formal-03":"formal-shirting-03",
-    "check-formal-04":"formal-shirting-04",
-  } as const;
-  const realShirt=DESIGNER_SHIRTS.find((item)=>item.id===stockIdByProofId[fabric.id]) || DESIGNER_SHIRTS[0];
+  const realShirt=DESIGNER_SHIRTS.find((item)=>item.id===shirtId) || DESIGNER_SHIRTS[0];
+  const realPant=DESIGNER_PANTS.find((item)=>item.id==="linen-suiting-beige") || DESIGNER_PANTS[0];
+  const realModelStyle=designerStyleForOccasion("Semi-Formal");
+  const fabric={
+    label:realShirt?.name||"Fabric",
+    image:realShirt?.image||"",
+    cataloguePattern:realShirt?.patternType||"Unknown",
+  };
   const proofRealShirt=realShirt ? {
     ...realShirt,
     renderScale: declaredRepeatMm ? {
@@ -41,22 +40,59 @@ export function PremiumShirtProof(){
       stripeWidthMm:null,
     } : realShirt.renderScale,
   } : realShirt;
-  const realPant=DESIGNER_PANTS.find((item)=>item.id==="linen-suiting-beige") || DESIGNER_PANTS[0];
-  const realModelStyle=designerStyleForOccasion("Semi-Formal");
+
+  const tilePx=declaredTileMm ? Math.max(18,Math.min(260,declaredTileMm*pxPerMm)) : APPROX_TILE_PX;
+  const repeatPx=declaredRepeatMm ? expectedPeriodPx(declaredRepeatMm,pxPerMm) : null;
+  const error=declaredRepeatMm && measuredPx ? scaleErrorPct(measuredPx,declaredRepeatMm,pxPerMm) : null;
+  const pass=declaredRepeatMm && measuredPx ? passesScaleGate(measuredPx,declaredRepeatMm,pxPerMm) : null;
+  const calibrationState=declaredTileMm||declaredRepeatMm ? "PHYSICAL EVIDENCE ENTERED" : "APPROXIMATE SCALE";
+  const p95=useMemo(()=>{
+    if(!latencySamples.length) return null;
+    const ordered=[...latencySamples].sort((a,b)=>a-b);
+    return ordered[Math.min(ordered.length-1,Math.ceil(ordered.length*.95)-1)];
+  },[latencySamples]);
+  const strongRealism=realismRatings.filter((rating)=>rating>=4).length;
+  const realismGate=realismRatings.length>=8 && strongRealism>=6;
+
+  useEffect(()=>{
+    try {
+      const raw=localStorage.getItem(REALISM_STORAGE_KEY);
+      if(!raw) return;
+      const parsed=JSON.parse(raw);
+      if(Array.isArray(parsed)) setRealismRatings(parsed.filter((item)=>Number.isInteger(item)&&item>=1&&item<=5).slice(-30));
+    } catch {}
+  },[]);
 
   function markChange(run:()=>void){
     startedRef.current=performance.now();
     run();
-    requestAnimationFrame(()=>setLatencyMs(performance.now()-startedRef.current));
+    requestAnimationFrame(()=>{
+      const sample=performance.now()-startedRef.current;
+      setLatencyMs(sample);
+      setLatencySamples((current)=>[...current.slice(-29),sample]);
+    });
   }
 
-  function chooseFabric(id:typeof fabric.id){
+  function chooseFabric(id:string){
     markChange(()=>{
-      setFabricId(id);
+      setShirtId(id);
       setDeclaredTileMm(null);
       setDeclaredRepeatMm(null);
       setMeasuredPx(null);
     });
+  }
+
+  function addRealismRating(rating:number){
+    setRealismRatings((current)=>{
+      const next=[...current,rating].slice(-30);
+      try { localStorage.setItem(REALISM_STORAGE_KEY,JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }
+
+  function clearRealismRatings(){
+    setRealismRatings([]);
+    try { localStorage.removeItem(REALISM_STORAGE_KEY); } catch {}
   }
 
   const collarPaths=useMemo(()=>collar==="band"
@@ -72,13 +108,14 @@ export function PremiumShirtProof(){
       <div>
         <span>ROADMAP V2 · PHASE 1</span>
         <h1>Premium Shirt Proof</h1>
-        <p>Using the Linen Earth fabric pictures already in the catalogue. No AI call is used when changing fabric, collar or cuff.</p>
+        <p>Uses the current Linen Earth catalogue fabric pictures and the existing studio mannequin. No AI call is used when changing fabric, collar or cuff.</p>
       </div>
       <div className="proofStatus">
         <b>{fabric.label}</b>
         <span>{fabric.cataloguePattern}</span>
         <span>{calibrationState}</span>
         <span>{latencyMs===null?"Edit latency not measured":"Last edit "+latencyMs.toFixed(1)+" ms"}</span>
+        <span>{p95===null?"p95 waiting for samples":"p95 "+p95.toFixed(1)+" ms · "+(p95<300?"PASS":"REVIEW")}</span>
       </div>
     </header>
 
@@ -88,7 +125,7 @@ export function PremiumShirtProof(){
           <defs>
             <pattern id="proofFabric" width={tilePx} height={tilePx} patternUnits="userSpaceOnUse">
               <rect width={tilePx} height={tilePx} fill="#d9d4ca"/>
-              <image href={fabric.image} width={tilePx} height={tilePx} preserveAspectRatio="xMidYMid slice"/>
+              {fabric.image&&<image href={fabric.image} width={tilePx} height={tilePx} preserveAspectRatio="xMidYMid slice"/>}
             </pattern>
             <linearGradient id="proofShade" x1="0" x2="1"><stop stopColor="#0d1721" stopOpacity=".25"/><stop offset=".28" stopColor="#fff" stopOpacity=".12"/><stop offset=".62" stopColor="#fff" stopOpacity=".03"/><stop offset="1" stopColor="#111827" stopOpacity=".25"/></linearGradient>
           </defs>
@@ -117,7 +154,12 @@ export function PremiumShirtProof(){
       <aside className="proofControls">
         <section>
           <h2>Current Linen Earth fabrics</h2>
-          {PREMIUM_SHIRT_PROOF_FABRICS.map((item)=><button key={item.id} type="button" data-active={fabric.id===item.id} onClick={()=>chooseFabric(item.id)}>{item.label}</button>)}
+          <label>Shirting fabric
+            <select value={realShirt?.id||""} onChange={(event)=>chooseFabric(event.target.value)}>
+              {DESIGNER_SHIRTS.map((item)=><option key={item.id} value={item.id}>{item.name} · {item.line}</option>)}
+            </select>
+          </label>
+          <p>{DESIGNER_SHIRTS.length} current shirting fabrics are available in this proof.</p>
         </section>
         <section><h2>Collar</h2>{(["spread","button-down","band"] as Collar[]).map((item)=><button key={item} type="button" data-active={collar===item} onClick={()=>markChange(()=>setCollar(item))}>{item}</button>)}</section>
         <section><h2>Cuff</h2>{(["round","square","french"] as Cuff[]).map((item)=><button key={item} type="button" data-active={cuff===item} onClick={()=>markChange(()=>setCuff(item))}>{item}</button>)}</section>
@@ -129,7 +171,17 @@ export function PremiumShirtProof(){
           {repeatPx&&<p>Expected repeat on model: <b>{repeatPx.toFixed(2)} px</b></p>}
           {declaredRepeatMm&&<label>Measured repeat on preview (px)<input type="number" min=".01" step=".01" value={measuredPx??""} onChange={(event)=>setMeasuredPx(event.target.value?Number(event.target.value):null)}/></label>}
           {error!==null&&<div className="proofGate" data-pass={pass?"yes":"no"}><b>{pass?"PASS":"FAIL"} · {error.toFixed(2)}% error</b><span>Roadmap gate: ≤ 8% scale error.</span></div>}
-          {!declaredTileMm&&<p><b>Important:</b> the current photo is used now, but it stays labelled approximate until we physically measure the photographed swatch or pattern repeat.</p>}
+          {!declaredTileMm&&!declaredRepeatMm&&<p><b>Important:</b> the current photo is used now, but it stays labelled approximate until the photographed swatch width or pattern repeat is physically measured.</p>}
+        </section>
+        <section>
+          <h2>Viewer realism gate</h2>
+          <p>Ask each viewer to rate the real mannequin below from 1–5. Roadmap target: at least 6 of 8 viewers rate it 4 or 5.</p>
+          <div className="proofRatingButtons">{[1,2,3,4,5].map((rating)=><button key={rating} type="button" onClick={()=>addRealismRating(rating)}>{rating}</button>)}</div>
+          <div className="proofGate" data-pass={realismGate?"yes":"no"}>
+            <b>{realismRatings.length} ratings · {strongRealism} strong</b>
+            <span>{realismGate?"PASS · realism gate met":"Need 6 strong ratings from at least 8 viewers"}</span>
+          </div>
+          {realismRatings.length>0&&<button type="button" onClick={clearRealismRatings}>Clear ratings</button>}
         </section>
       </aside>
     </main>
@@ -138,13 +190,14 @@ export function PremiumShirtProof(){
       <div className="proofRealismCopy">
         <span>REAL MANNEQUIN TRACK</span>
         <h2>Same catalogue fabric on our existing photographic model.</h2>
-        <p>This reuses the current Linen Earth mannequin/photo compositor so we can judge cloth believability separately from construction geometry. The photographed collar/cuff shape stays the base photographed construction; the Phase 1 cut controls above remain the geometry test until matching photographed option assets exist.</p>
+        <p>This reuses the current Linen Earth mannequin/photo compositor so cloth believability can be judged separately from construction geometry. The photographed collar/cuff shape stays the base photographed construction until matching photographed option assets exist.</p>
         <div className="proofRealismFacts">
           <b>{proofRealShirt.name}</b>
           <span>Real catalogue swatch</span>
           <span>Existing studio mannequin</span>
           <span>No AI per edit</span>
-          <span>{declaredTileMm?"Scale evidence entered":"Scale still approximate"}</span>
+          <span>{declaredTileMm||declaredRepeatMm?"Physical evidence entered":"Scale still approximate"}</span>
+          <span>{p95===null?"Latency gate awaiting edits":p95<300?"Latency gate passing":"Latency needs review"}</span>
         </div>
       </div>
       <div className="proofRealModel">
