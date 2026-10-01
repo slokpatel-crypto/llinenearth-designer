@@ -137,10 +137,18 @@ export async function POST(request:Request){
 
     if(action==="pattern_calibration"){
       const garment=String(body.garment||"");
-      const observedRepeatMm=Number(body.observedRepeatMm);
+      const referenceMm=Number(body.referenceMm);
+      const referencePx=Number(body.referencePx);
+      const observedRepeatPx=Number(body.observedRepeatPx);
       const axisStatus=String(body.axisStatus||"");
-      if(!["shirt","trouser"].includes(garment)||!Number.isFinite(observedRepeatMm)||observedRepeatMm<=0||!["match","mismatch","not_applicable"].includes(axisStatus)) {
-        return NextResponse.json({error:"Valid observed pattern calibration values are required."},{status:400});
+      if(
+        !["shirt","trouser"].includes(garment) ||
+        !Number.isFinite(referenceMm) || referenceMm<=0 ||
+        !Number.isFinite(referencePx) || referencePx<=0 ||
+        !Number.isFinite(observedRepeatPx) || observedRepeatPx<=0 ||
+        !["match","mismatch","not_applicable"].includes(axisStatus)
+      ) {
+        return NextResponse.json({error:"Valid physical reference and pixel measurements are required."},{status:400});
       }
 
       const outcomes=await listRenderOutcomes(1000);
@@ -173,11 +181,14 @@ export async function POST(request:Request){
         outcomeId,
         garment:garment as "shirt"|"trouser",
         expectedRepeatMm,
-        observedRepeatMm,
+        referenceMm,
+        referencePx,
+        observedRepeatPx,
         axisStatus:axisStatus as "match"|"mismatch"|"not_applicable",
         note:String(body.note||""),
       });
-      return NextResponse.json({calibrationId,expectedRepeatMm,fabricId});
+      const observedRepeatMm=observedRepeatPx/(referencePx/referenceMm);
+      return NextResponse.json({calibrationId,expectedRepeatMm,observedRepeatMm,fabricId});
     }
 
     return NextResponse.json({error:"Unsupported render QA action."},{status:400});
