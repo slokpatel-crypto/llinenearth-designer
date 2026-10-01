@@ -13,7 +13,11 @@ export function applyVerifiedPhysicalFabricEvidence(
   if(!intelligence || intelligence.trust!=="reviewed") return fabric;
   const physicalScale=intelligence.measuredEvidence.patternPhysicalScale;
   const provenance=intelligence.fieldProvenance||{};
-  const physicalSource=(field:string)=>["declared","reviewed"].includes(String(provenance[field]||""));
+  const auditablePhysicalSource=Boolean(
+    String(intelligence.verifiedPhysical.sourceUrl||"").trim()
+    || String(intelligence.verifiedPhysical.evidenceNote||"").trim().length>=8
+  );
+  const physicalSource=(field:string)=>auditablePhysicalSource&&["declared","reviewed"].includes(String(provenance[field]||""));
   const patternScaleVerified=Boolean(
     physicalScale
     && physicalScale!=="unknown"
