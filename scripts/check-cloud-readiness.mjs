@@ -139,6 +139,8 @@ if (url && key) {
           ["production_quote_accept_owned",{p_quote_id:"00000000-0000-4000-8000-000000000000",p_owner_user_id:"00000000-0000-4000-8000-000000000000"},"Customer quote acceptance RPC is installed."],
           ["production_order_list_owned",{p_owner_user_id:"00000000-0000-4000-8000-000000000000",p_limit:1},"Customer-owned production-order RPCs are installed."],
           ["production_order_event_list_owned",{p_owner_user_id:"00000000-0000-4000-8000-000000000000",p_limit:1},"Customer production timeline RPC is installed."],
+          ["production_customer_outcome_list_owned",{p_owner_user_id:"00000000-0000-4000-8000-000000000000",p_limit:1},"Customer-owned post-delivery outcome RPCs are installed."],
+          ["production_customer_outcome_list",{p_limit:1},"Operator post-delivery outcome RPCs are installed."],
           ["fabric_physical_color_check_list",{p_limit:1},"Physical fabric colour evidence RPCs are installed."],
           ["style_director_user_test_list",{p_limit:1},"Style Director real-user validation RPCs are installed."],
           ["style_director_validation_signoff_list",{p_limit:1},"Style Director validation sign-off RPCs are installed."],
