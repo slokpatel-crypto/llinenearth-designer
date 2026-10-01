@@ -16,6 +16,7 @@ import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObserv
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
 import { canonicalGarmentSpecSummary } from "@/lib/designer/garment-spec";
 import { lockGarmentSpec, type LockedDesignRevision } from "@/lib/designer/design-lock";
+import { buildProductionHandoff } from "@/lib/designer/production-handoff";
 import type { DesignerAssessmentResponse } from "@/lib/designer/assessment-types";
 import type { DesignerSearchScope, DesignerSearchTier } from "@/lib/designer/search";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
@@ -954,6 +955,20 @@ export function DesignerModule() {
     }
   }
 
+  function downloadProductionHandoff() {
+    if(!lockedRevision) return;
+    const handoff=buildProductionHandoff(lockedRevision);
+    const blob=new Blob([JSON.stringify(handoff,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const anchor=document.createElement("a");
+    anchor.href=url;
+    anchor.download=`linen-earth-production-handoff-${lockedRevision.revisionId.toLowerCase()}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
   return <div className="newDesigner">
     <header className="newDesignerHero">
       <div className="newDesignerHeroCopy">
@@ -1281,7 +1296,10 @@ export function DesignerModule() {
             {garmentSpec && <>
               <button type="button" onClick={downloadGarmentSpec}>Export garment spec ↗</button>
               <button type="button" onClick={()=>void lockAndDownloadRevision()} disabled={lockBusy}>{lockBusy?"Locking…":"Lock recipe revision ↗"}</button>
-              {lockedRevision&&<p><b>Locked revision:</b> {lockedRevision.revisionId} · recipe {lockedRevision.recipeHash.slice(0,12).toUpperCase()}</p>}
+              {lockedRevision&&<>
+                <p><b>Locked revision:</b> {lockedRevision.revisionId} · recipe {lockedRevision.recipeHash.slice(0,12).toUpperCase()}</p>
+                <button type="button" onClick={downloadProductionHandoff}>Export tailor handoff ↗</button>
+              </>}
             </>}
           </details>
         </>}
