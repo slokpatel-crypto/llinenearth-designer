@@ -51,12 +51,13 @@ export async function POST(request:Request){
     const orderId=String(body.orderId||"").trim();
     if(!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(orderId)) return NextResponse.json({error:"Valid delivered order ID is required."},{status:400});
     const draft=normalizeProductionDeliveryEvidence(body);
-    const evidenceId=await rpc<string>("production_delivery_evidence_record",{
+    const evidenceId=await rpc<string>("production_delivery_evidence_record_v2",{
       p_order_id:orderId,
       p_manual_design_reentry:draft.manualDesignReentry,
       p_reentry_fields:draft.reentryFields,
       p_note:draft.note,
       p_operator:draft.operator,
+      p_evidence_reference:draft.evidenceReference,
     });
     return NextResponse.json({evidenceId});
   }catch(error){
