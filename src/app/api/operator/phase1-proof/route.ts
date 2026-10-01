@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
-import { passesScaleGate, phase1ProofAcceptance, scaleErrorPct, summarizeIndependentRealism, type RealismAssessment } from "@/lib/designer/proof-scale";
+import { passesScaleGate, phase1ProofAcceptance, pxPerMmFromMarker, scaleErrorPct, summarizeIndependentRealism, type RealismAssessment } from "@/lib/designer/proof-scale";
 
 export const runtime="nodejs";
 
@@ -36,17 +36,26 @@ export async function GET(){
       if(String(payload.subtype||"")!=="roadmap_phase1_proof") continue;
       const repeatMm=Number(payload.repeatMm);
       const measuredPreviewRepeatPx=Number(payload.measuredPreviewRepeatPx);
-      const photoPxPerMm=Number(payload.photoPxPerMm);
+      const photoReferenceMm=Number(payload.photoReferenceMm);
+      const photoReferencePx=Number(payload.photoReferencePx);
+      const fixtureInputsValid=
+        String(payload.scaleCoordinateSystem||"")==="photo-1024x1536-fixture"&&
+        Number.isFinite(photoReferenceMm)&&photoReferenceMm>0&&
+        Number.isFinite(photoReferencePx)&&photoReferencePx>0;
+      let photoPxPerMm:number|null=null;
+      if(fixtureInputsValid){
+        try { photoPxPerMm=pxPerMmFromMarker(photoReferencePx,photoReferenceMm); }
+        catch { photoPxPerMm=null; }
+      }
       const scaleInputsValid=
-        String(payload.scaleCoordinateSystem||"")==="photo-1024x1536"&&
+        photoPxPerMm!==null&&
         Number.isFinite(repeatMm)&&repeatMm>0&&
-        Number.isFinite(measuredPreviewRepeatPx)&&measuredPreviewRepeatPx>0&&
-        Number.isFinite(photoPxPerMm)&&photoPxPerMm>0;
+        Number.isFinite(measuredPreviewRepeatPx)&&measuredPreviewRepeatPx>0;
       const computedScaleGate=scaleInputsValid
-        ? passesScaleGate(measuredPreviewRepeatPx,repeatMm,photoPxPerMm)
+        ? passesScaleGate(measuredPreviewRepeatPx,repeatMm,photoPxPerMm as number)
         : false;
       const computedScaleError=scaleInputsValid
-        ? scaleErrorPct(measuredPreviewRepeatPx,repeatMm,photoPxPerMm)
+        ? scaleErrorPct(measuredPreviewRepeatPx,repeatMm,photoPxPerMm as number)
         : null;
 
       const assessments:Array<RealismAssessment>=Array.isArray(payload.realismAssessments)
@@ -80,8 +89,10 @@ export async function GET(){
           fabricName:String(payload.fabricName||""),
           pattern:String(payload.pattern||""),
           repeatMm:scaleInputsValid?repeatMm:null,
+          photoReferenceMm:scaleInputsValid?photoReferenceMm:null,
+          photoReferencePx:scaleInputsValid?photoReferencePx:null,
           photoPxPerMm:scaleInputsValid?photoPxPerMm:null,
-          scaleCoordinateSystem:scaleInputsValid?"photo-1024x1536":null,
+          scaleCoordinateSystem:scaleInputsValid?"photo-1024x1536-fixture":null,
           measuredPreviewRepeatPx:scaleInputsValid?measuredPreviewRepeatPx:null,
           scaleErrorPct:computedScaleError,
           scaleGatePass:computedScaleGate,
