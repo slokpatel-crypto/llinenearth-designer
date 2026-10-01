@@ -22,6 +22,9 @@ type HistoryPayload={
     p95Ms:number|null;
     samples:number;
     note:string;
+    evidenceVersion:string;
+    performancePass:boolean;
+    visualPass:boolean;
   }>;
 };
 
@@ -129,7 +132,9 @@ export default function DeviceQaClient(){
       {coverage.map((item)=><article key={item.kind} data-accepted={item.accepted}>
         <small>{item.kind.toUpperCase()}</small>
         <strong>{item.row?.status==="accepted"?"ACCEPTED":item.row?"REVIEW":"NOT TESTED"}</strong>
-        <span>{item.row ? `${item.row.viewport} · p95 ${item.row.p95Ms ?? "—"} ms · ${item.row.samples} samples` : "No recorded target-device session."}</span>
+        <span>{item.row
+          ? `${item.row.viewport} · p95 ${item.row.p95Ms ?? "—"} ms · ${item.row.samples} samples${item.row.evidenceVersion===DEVICE_QA_EVIDENCE_VERSION?"":" · legacy evidence"}`
+          : "No recorded target-device session."}</span>
       </article>)}
     </section>
 
@@ -167,7 +172,7 @@ export default function DeviceQaClient(){
     </section>
 
     <section className="deviceQaDecision" data-status={accepted?"accepted":"review"}>
-      <div><span>04 / RECORD</span><strong>{accepted?"READY TO RECORD ACCEPTED":"RECORD AS REVIEW"}</strong><p>{accepted?"Both measured latency and all manual visual checks pass for this exact browser/device session.":"One or more required checks or measurements are still incomplete/failing. Saving now records review status, not acceptance."}</p>{previous&&<small>Previous {deviceClass} record: {previous.status} · {new Date(previous.at).toLocaleString("en-IN")}</small>}</div>
+      <div><span>04 / RECORD</span><strong>{accepted?"READY TO RECORD ACCEPTED":"RECORD AS REVIEW"}</strong><p>{accepted?"Both measured latency and all manual visual checks pass for this exact browser/device session.":"One or more required checks or measurements are still incomplete/failing. Saving now records review status, not acceptance."}</p>{previous&&<small>Previous {deviceClass} record: {previous.status} · {new Date(previous.at).toLocaleString("en-IN")}{previous.evidenceVersion!==DEVICE_QA_EVIDENCE_VERSION?" · legacy evidence must be re-run":""}</small>}</div>
       <label>Operator note<textarea value={note} onChange={(event)=>setNote(event.target.value)} placeholder="Device model / browser or any visible issue to revisit…" /></label>
       <button type="button" onClick={()=>void record()} disabled={saving||!history?.configured}>{saving?"Saving…":accepted?"Record accepted device":"Record review evidence"}</button>
       {!history?.configured&&<small>Cloud memory must be configured before target-device acceptance can be retained.</small>}
