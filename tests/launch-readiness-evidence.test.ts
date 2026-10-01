@@ -103,3 +103,18 @@ test("verified enquiry audit can satisfy the same beta flow gate",()=>{
   assert.equal(summary.successfulBetaCases,5);
   assert.equal(summary.betaGateComplete,true);
 });
+
+
+test("duplicate locked revision cannot inflate the five-customer beta gate",()=>{
+  const attempts=Array.from({length:5},(_,index)=>({
+    case_id:"BETA-DUPE-"+index,device_class:"mobile",
+    core_flow_completed:true,design_locked:true,share_or_enquiry_completed:true,
+    revision_id:"REV-SAME",share_audit_confirmed:true,enquiry_audit_confirmed:false,blocking_bug:false,
+    created_at:"2026-10-0"+(index+1)+"T10:00:00Z",
+  }));
+  const summary=summarizeLaunchReadiness(attempts,[]);
+  assert.equal(summary.verifiedFlowCases,5);
+  assert.equal(summary.distinctVerifiedRevisions,1);
+  assert.equal(summary.successfulBetaCases,1);
+  assert.equal(summary.betaGateComplete,false);
+});
