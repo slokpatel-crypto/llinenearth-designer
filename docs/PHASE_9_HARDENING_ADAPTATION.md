@@ -16,6 +16,7 @@ Status: much of the engineering foundation already exists; remaining gates are p
 - Private Analyzer / construction / benchmark desks.
 - Render rate limits and repair limits.
 - Server-side secret boundaries.
+- Global browser security headers for frame blocking, MIME sniff prevention, referrer policy, permission restrictions, COOP and HSTS.
 - Evidence-aware customer copy instead of unsupported physical claims.
 
 ## Roadmap v2 adaptation
@@ -44,6 +45,7 @@ Vercel preview failures caused solely by the free build-rate quota are infrastru
 - [x] device-QA evidence workflow
 - [x] render cost protection
 - [x] server secret boundary
+- [x] baseline public security headers
 - [ ] current Roadmap v2 branch CI green
 - [ ] mobile accepted on target device
 - [ ] tablet accepted on target device
