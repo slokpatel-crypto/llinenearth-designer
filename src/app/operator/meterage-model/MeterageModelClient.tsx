@@ -93,7 +93,7 @@ export default function MeterageModelClient(){
 
   async function createDraft(){
     if(!valid) return;
-    const saved=await post({action:"create",garment,version,bands:normalizedBands,note},"Calibration draft registered from real cut evidence.");
+    const saved=await post({action:"create",garment,version,bands:normalizedBands,note},"Calibration draft registered from production-order-backed cut evidence.");
     if(saved){setVersion("");setNote("");setBands([emptyBand()]);}
   }
 
@@ -142,7 +142,7 @@ export default function MeterageModelClient(){
         <button type="button" className="meterageAdd" disabled={bands.length>=12} onClick={()=>setBands((current)=>[...current,emptyBand()])}>+ Add width band</button>
         <label>Calibration note<textarea rows={3} value={note} onChange={(event)=>setNote(event.target.value.slice(0,1200))} placeholder="How owner/tailor derived these values from the collected cuts."/></label>
         <button type="button" className="meteragePrimary" disabled={!configured||busy||!valid} onClick={()=>void createDraft()}>{busy?"Saving…":"Register draft from real evidence"}</button>
-        <p className="meterageModelRule">The server counts real production-usage cases itself. It refuses to register a draft until at least 20 valid cases exist for the selected garment.</p>
+        <p className="meterageModelRule">The server counts the private production-cut registry itself. Only latest cuts tied to real production orders, immutable design context, exact fabric and physical provenance can count; at least 20 distinct order/garment cuts are required.</p>
       </article>
 
       <article className="meterageModelHistory">
