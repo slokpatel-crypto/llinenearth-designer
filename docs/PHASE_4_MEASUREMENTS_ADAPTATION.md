@@ -1,6 +1,6 @@
 # Phase 4 — Measurements & Fit Adaptation
 
-Status: strong existing foundation; calibrate and persist instead of rebuilding.
+Status: strong existing foundation with opt-in durable recovery now implemented; real-person accuracy and tailor calibration remain.
 
 ## Existing implementation to keep
 
@@ -22,12 +22,22 @@ Do not create a second measurement engine. The roadmap's Phase 4 work becomes:
 3. Measure a Linen Earth set of finished shirts / trousers and calibrate the existing provisional ease bands.
 4. Version every owner-approved ease-table revision.
 5. Keep body measurements distinct from finished-garment targets.
-6. Move customer-critical profiles from browser-only storage to durable authenticated persistence before operational launch.
-7. Keep local browser save as an offline / convenience cache, not the system of record.
+6. Keep local browser save as a convenience cache.
+7. Offer an explicit opt-in secure measurement recovery vault now, while authenticated customer-account ownership remains a later launch dependency.
+8. Keep raw measurement persistence private and never place recovery tokens in URLs.
 
-## Current limitation
+## Durable recovery now implemented
 
-The current Measurement Studio and customer measurement profiles still rely on browser storage in important paths. Clearing browser data or changing devices can remove them. This is acceptable for the lab / development flow but not for a production order handoff.
+Measurement Studio still saves locally by default, but it now also supports an explicit **Secure measurement copy**:
+- private Supabase-backed storage,
+- high-entropy recovery token,
+- only the SHA-256 access-key hash is stored,
+- recovery token is pasted into a POST flow rather than placed in a URL,
+- profile and tailor observations can be recovered onto another device,
+- secure copy expires automatically,
+- user can explicitly delete the secure copy.
+
+This is anonymous recovery, not a replacement for authenticated customer-account ownership.
 
 ## Calibration gate
 
@@ -43,7 +53,8 @@ The current Measurement Studio and customer measurement profiles still rely on b
 - [ ] median sleeve error below roadmap target
 - [ ] owner/tailor finished-garment calibration set recorded
 - [ ] approved ease-table revision versioned
-- [ ] durable customer persistence enabled
+- [x] opt-in durable measurement recovery enabled
+- [ ] authenticated customer-account ownership enabled
 
 ## Safety rule
 
