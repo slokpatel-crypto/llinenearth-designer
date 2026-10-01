@@ -220,3 +220,34 @@ export async function latestRenderCreditCap() {
     return null;
   }
 }
+
+
+export type RenderManualReviewSignoffRow={
+  signoff_id:string;
+  status:"approved"|"review";
+  reviewer:string;
+  note:string;
+  created_at:string;
+};
+
+export async function recordRenderManualReviewSignoff(input:{
+  status:"approved"|"review";
+  reviewer:string;
+  note?:string;
+}) {
+  return rpc<string>("designer_render_manual_review_signoff_record",{
+    p_status:input.status,
+    p_reviewer:String(input.reviewer||"").slice(0,120),
+    p_note:String(input.note||"").slice(0,1000),
+  });
+}
+
+export async function latestRenderManualReviewSignoff() {
+  if(!getSupabaseAdminConfig()) return null as RenderManualReviewSignoffRow|null;
+  try{
+    const rows=await rpc<RenderManualReviewSignoffRow[]>("designer_render_manual_review_signoff_latest",{});
+    return rows[0]||null;
+  }catch{
+    return null;
+  }
+}
