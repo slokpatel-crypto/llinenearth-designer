@@ -96,11 +96,11 @@ The private Operator Desk now has:
 - no seeded or guessed opening balance.
 
 ### Production Desk
-- quote creation tied to a locked revision ID and 64-character recipe hash,
+- quote creation now requires the secure locked-design recovery token, verifies the immutable revision payload, and rejects any revision/hash mismatch,
 - deterministic subtotal / adjustment / total validation,
 - operator-entered price lines only,
 - quote state history: draft → sent → accepted / void,
-- production-order creation from the same locked recipe,
+- production-order creation is also blocked until the same locked revision is cryptographically verified; every new order uses the durable locked-recipe context path,
 - authenticated customer ownership propagated from the immutable locked revision into quote/order records when ownership is unambiguous,
 - customer account view of itemized quote and production status without private operator notes,
 - privacy-safe order timeline from the append-only production event ledger, exposing status timestamps only and keeping operator payloads private,
@@ -184,3 +184,8 @@ Stock reservation metres are no longer accepted as an unexplained operator numbe
 ## Actual consumption provenance
 
 Closing a reservation by consuming cloth now requires the actual metres, a named checker, and a real cutting/usage reference. The unused reserved balance is released automatically using the same evidence reference. This prevents an unexplained operator number from silently reducing physical stock.
+
+
+## Verified production identity gate
+
+Manual revision/hash typing can no longer create a new quote or production order. The operator must load the secure locked-design recovery token; the server retrieves the private vault payload, verifies the immutable recipe hash, checks it matches the requested revision/hash, and only then creates the quote/order. Existing historical records remain readable, but all new production creation follows the verified locked-recipe path.
