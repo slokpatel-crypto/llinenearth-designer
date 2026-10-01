@@ -1,4 +1,5 @@
 import type { FabricDrape, FabricRoleTag, FabricSeason, FabricWeightClass } from "@/lib/fabric-stock";
+import type { FabricPhysicalEvidenceProvenance } from "@/lib/fabric-physical-provenance";
 
 export type PhysicalAvailability = "unknown" | "available" | "unavailable";
 
@@ -13,6 +14,7 @@ export type DesignerFabricMetadata = {
   seasonTags?: FabricSeason[];
   formalityScore?: number;
   roleTags?: FabricRoleTag[];
+  physicalEvidence?: FabricPhysicalEvidenceProvenance;
   note?: string;
   verifiedAt?: string;
 };
