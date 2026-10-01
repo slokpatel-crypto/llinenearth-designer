@@ -56,7 +56,8 @@ test("generic legacy completion cannot satisfy the stricter lock to share enquir
 test("launch evidence completes only when exact flow and checklist gates both pass",()=>{
   const attempts=Array.from({length:5},(_,index)=>({
     case_id:"BETA-"+index,device_class:"mobile",
-    core_flow_completed:true,design_locked:true,share_or_enquiry_completed:true,share_audit_confirmed:true,blocking_bug:false,
+    core_flow_completed:true,design_locked:true,share_or_enquiry_completed:true,
+    revision_id:"REV-CLEAN-"+index,share_audit_confirmed:true,blocking_bug:false,
     created_at:"2026-10-0"+(index+1)+"T10:00:00Z",
   }));
   const checklist=LAUNCH_CHECKLIST_ITEMS.map((item,index)=>({
