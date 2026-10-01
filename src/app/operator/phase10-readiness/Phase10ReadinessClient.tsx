@@ -65,6 +65,19 @@ type ConstructionPayload={
   rejected:number;
 };
 
+type MeasurementCalibrationPayload={
+  configured:boolean;
+  summary:{
+    target:number;
+    total:number;
+    medianChestErrorCm:number|null;
+    medianSleeveErrorCm:number|null;
+    chestPass:boolean;
+    sleevePass:boolean;
+    complete:boolean;
+  };
+};
+
 type Phase1ProofPayload={
   configured:boolean;
   latest:{
@@ -103,6 +116,7 @@ type RenderCachePayload={
 
 type LoadState={
   phase1Proof:Phase1ProofPayload|null;
+  measurementCalibration:MeasurementCalibrationPayload|null;
   designerData:DesignerDataPayload|null;
   analyzer:AnalyzerStatsPayload|null;
   analyzerScorecard:AnalyzerScorecardPayload|null;
@@ -131,7 +145,7 @@ function ratio(value:number,total:number){return total>0?clamp(value/total*100):
 
 export default function Phase10ReadinessClient(){
   const [data,setData]=useState<LoadState>({
-    phase1Proof:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,
+    phase1Proof:null,measurementCalibration:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,
   });
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
@@ -149,8 +163,9 @@ export default function Phase10ReadinessClient(){
   async function load(){
     setLoading(true);setMessage("");
     try{
-      const [phase1Proof,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache]=await Promise.all([
+      const [phase1Proof,measurementCalibration,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache]=await Promise.all([
         read<Phase1ProofPayload>("/api/operator/phase1-proof"),
+        read<MeasurementCalibrationPayload>("/api/operator/measurement-calibration"),
         read<DesignerDataPayload>("/api/operator/designer-data"),
         read<AnalyzerStatsPayload>("/api/operator/fabric-analyzer/stats"),
         read<AnalyzerScorecardPayload>("/api/operator/fabric-ground-truth/scorecard"),
@@ -159,7 +174,7 @@ export default function Phase10ReadinessClient(){
         read<DeviceQaPayload>("/api/operator/device-qa"),
         read<RenderCachePayload>("/api/operator/designer-render-cache/stats"),
       ]);
-      setData({phase1Proof,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache});
+      setData({phase1Proof,measurementCalibration,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache});
     }catch(error){
       setMessage(error instanceof Error?error.message:"Readiness data could not be loaded.");
     }finally{
@@ -170,6 +185,12 @@ export default function Phase10ReadinessClient(){
   useEffect(()=>{void load();},[]);
 
   const rows=useMemo<ReadinessRow[]>(()=>{
+    const measurement=data.measurementCalibration?.summary;
+    const measurementCountProgress=ratio(measurement?.total||0,measurement?.target||10);
+    const measurementAccuracySignals=[measurement?.chestPass===true,measurement?.sleevePass===true].filter(Boolean).length;
+    const measurementProgress=Math.round((measurementCountProgress+ratio(measurementAccuracySignals,2))/2);
+    const measurementDone=measurement?.complete===true;
+
     const proof=data.phase1Proof?.latest||null;
     const proofScale=proof?.scaleGatePass===true;
     const proofLatency=Boolean(proof && proof.realModelSamples>=12 && proof.realModelP95Ms!==null && proof.realModelP95Ms<300);
@@ -233,6 +254,21 @@ export default function Phase10ReadinessClient(){
           : "No recorded proof",
         href:"/lab/proof",
         action:"Open Premium Shirt Proof",
+        ownerDependent:true,
+      },
+      {
+        id:"measurement-calibration",
+        title:"Measurement accuracy calibration",
+        detail:measurementDone
+          ? `10+ real self-vs-tailor cases meet the chest and sleeve median-error targets.`
+          : measurement
+            ? `${Math.max(0,(measurement.target||10)-measurement.total)} more unique cases remain. Median chest ${measurement.medianChestErrorCm??"—"} cm; sleeve ${measurement.medianSleeveErrorCm??"—"} cm.`
+            : "No measurement calibration evidence is available yet.",
+        status:measurementDone?"done":data.measurementCalibration?"progress":"blocked",
+        progress:measurementProgress,
+        metric:measurement?`${measurement.total}/${measurement.target} cases · chest ${measurement.chestPass?"pass":"review"} · sleeve ${measurement.sleevePass?"pass":"review"}`:"No evidence",
+        href:"/operator/measurement-calibration",
+        action:"Record measurement cases",
         ownerDependent:true,
       },
       {
