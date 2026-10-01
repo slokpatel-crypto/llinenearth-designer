@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import type { LockedDesignRevision } from "@/lib/designer/design-lock";
+import { buildProductionHandoff } from "@/lib/designer/production-handoff";
+import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-pack";
 
 type Quote={quote_id:string;revision_id:string;recipe_hash:string;currency:string;line_items:Array<{label:string;amount:number}>;subtotal:number;adjustment:number;total:number;note:string;status:string;created_at:string};
 type Order={order_id:string;revision_id:string;recipe_hash:string;quote_id:string|null;status:string;note:string;created_at:string};
@@ -14,6 +17,8 @@ export default function ProductionClient(){
   const [message,setMessage]=useState("");
   const [quote,setQuote]=useState({revisionId:"",recipeHash:"",currency:"INR",adjustment:"0",note:"",line1Label:"Shirt fabric",line1Amount:"",line2Label:"Tailoring",line2Amount:""});
   const [order,setOrder]=useState({revisionId:"",recipeHash:"",quoteId:"",note:""});
+  const [recoveryToken,setRecoveryToken]=useState("");
+  const [loadedRevision,setLoadedRevision]=useState<LockedDesignRevision|null>(null);
 
   async function load(){
     const response=await fetch("/api/operator/production",{cache:"no-store"});
@@ -35,6 +40,46 @@ export default function ProductionClient(){
     finally{setBusy(false);}
   }
 
+  async function loadLockedDesign(){
+    if(!recoveryToken.trim()||busy) return;
+    setBusy(true);setMessage("");
+    try{
+      const response=await fetch("/api/designer/vault",{
+        method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify({action:"load",recoveryToken:recoveryToken.trim()}),
+      });
+      const data=await response.json() as {revision?:LockedDesignRevision;error?:string};
+      if(!response.ok||!data.revision) throw new Error(data.error||"Locked design could not be recovered.");
+      const revision=data.revision;
+      setLoadedRevision(revision);
+      setQuote((current)=>({...current,revisionId:revision.revisionId,recipeHash:revision.recipeHash}));
+      setOrder((current)=>({...current,revisionId:revision.revisionId,recipeHash:revision.recipeHash}));
+      setMessage("Locked recipe loaded. Quote and order fields were filled from the same immutable revision.");
+    }catch(error){
+      setLoadedRevision(null);
+      setMessage(error instanceof Error?error.message:"Locked design could not be recovered.");
+    }finally{setBusy(false);}
+  }
+
+  function download(name:string,type:string,content:string){
+    const blob=new Blob([content],{type});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+  }
+
+  function exportHandoff(){
+    if(!loadedRevision) return;
+    const handoff=buildProductionHandoff(loadedRevision);
+    download(`linen-earth-production-handoff-${loadedRevision.revisionId.toLowerCase()}.json`,"application/json",JSON.stringify(handoff,null,2));
+  }
+
+  function exportTechPack(){
+    if(!loadedRevision) return;
+    const handoff=buildProductionHandoff(loadedRevision);
+    download(techPackFilename(handoff),"text/html;charset=utf-8",buildTailorTechPackHtml(handoff));
+  }
+
   const quoteItems=useMemo(()=>[
     {label:quote.line1Label.trim(),amount:Number(quote.line1Amount)},
     {label:quote.line2Label.trim(),amount:Number(quote.line2Amount)},
@@ -46,6 +91,25 @@ export default function ProductionClient(){
       <div><span>LINEN EARTH / PRIVATE OPERATOR</span><h1>Production Desk</h1><p>Create traceable quotes and production orders from locked design revisions. Amounts are entered by the operator; this desk never invents prices.</p></div>
       <nav><Link href="/operator">Operator Desk</Link><Link href="/operator/stock">Stock Ledger</Link><Link href="/operator/production-calibration">Usage Calibration</Link></nav>
     </header>
+
+    <section className="productionLoad">
+      <div>
+        <span>00 / LOCKED RECIPE</span>
+        <h2>Load the exact design before production.</h2>
+        <p>Paste the secure recovery token from Designer. This fills the immutable revision ID and recipe hash into quote/order workflows so construction data is not retyped.</p>
+      </div>
+      <div className="productionLoadForm">
+        <textarea rows={3} value={recoveryToken} onChange={(e)=>setRecoveryToken(e.target.value)} placeholder="lev1.…" spellCheck={false}/>
+        <button disabled={busy||!recoveryToken.trim()} onClick={()=>void loadLockedDesign()}>{busy?"Loading…":"Load locked design"}</button>
+      </div>
+      {loadedRevision&&<div className="productionLoadedRecipe">
+        <span><small>REVISION</small><b>{loadedRevision.revisionId}</b></span>
+        <span><small>SHIRT</small><b>{loadedRevision.garmentSpec.fabrics.shirt.name}</b></span>
+        <span><small>TROUSER</small><b>{loadedRevision.garmentSpec.fabrics.trouser.name}</b></span>
+        <span><small>CONSTRUCTION</small><b>{loadedRevision.garmentSpec.shirt.collar} · {loadedRevision.garmentSpec.shirt.cuff}</b></span>
+        <div><button onClick={exportHandoff}>Export tailor handoff</button><button onClick={exportTechPack}>Export tech pack</button></div>
+      </div>}
+    </section>
 
     <section className="productionGrid">
       <article className="productionPanel">
