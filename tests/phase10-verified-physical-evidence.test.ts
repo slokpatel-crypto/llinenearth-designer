@@ -36,8 +36,8 @@ const fabric:DesignerFabric={
 const intelligence={
   profileId:"profile-1",
   analyzerVersion:"fabric-analyzer-v4",
-  reviewStatus:"unreviewed",
-  trust:"provisional",
+  reviewStatus:"approved",
+  trust:"reviewed",
   measuredEvidence:{
     imageQualityScore:91,
     colorDeltaE:3.2,
