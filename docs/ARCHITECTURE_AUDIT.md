@@ -183,5 +183,5 @@ Create `/lab/proof` (or an equivalent isolated proof route) for the shirt render
 - [x] AGENTS.md added
 - [x] DECISIONS.md added
 - [x] Roadmap-to-code audit written
-- [ ] Preview proof route implemented
-- [ ] Real-device / human realism gate recorded
+- [x] Preview proof route implemented
+- [ ] Real-device / human realism gate recorded (instrumentation is implemented; physical reviews are still required)
