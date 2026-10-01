@@ -145,6 +145,8 @@ if (url && key) {
           ["designer_novice_study_decision_list",{p_limit:1},"Novice Designer study decision RPCs are installed."],
           ["designer_render_outcome_list",{p_limit:1},"Final render outcome ledger RPCs are installed."],
           ["designer_render_pattern_calibration_list",{p_limit:1},"Final render pattern calibration RPCs are installed."],
+          ["designer_render_identity_review_list",{p_limit:1},"Cross-view render identity evidence RPCs are installed."],
+          ["designer_render_credit_cap_latest",{},"Render commercial-cap evidence RPCs are installed."],
         ];
         for (const [rpcName,payload,label] of rpcChecks) {
           const rpcResponse = await fetch(
