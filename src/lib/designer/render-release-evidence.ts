@@ -101,6 +101,20 @@ export function evaluateFinalRenderReleaseEvidence(input:FinalRenderReleaseEvide
   const costGateComplete=input.creditCap.configured===true&&input.creditCap.withinCap===true;
   const completedGates=[approvalGateComplete,identityGateComplete,costGateComplete].filter(Boolean).length;
 
+  const reviewVolumeProgress=Math.min(100,reviewed/FINAL_RENDER_REVIEW_TARGET*100);
+  const approvalRateProgress=approvalRate===null
+    ? 0
+    : Math.min(100,approvalRate/FINAL_RENDER_APPROVAL_TARGET_PERCENT*100);
+  const approvalProgress=Math.round((reviewVolumeProgress+approvalRateProgress)/2);
+  const identityProgress=eligibleConcepts
+    ? Math.round(Math.min(1,passedConcepts/eligibleConcepts)*100)
+    : 0;
+  const costProgress=input.creditCap.withinCap===true
+    ? 100
+    : input.creditCap.configured&&input.creditCap.withinCap===null
+      ? 50
+      : 0;
+
   return {
     approvalGateComplete,
     identityGateComplete,
@@ -108,7 +122,10 @@ export function evaluateFinalRenderReleaseEvidence(input:FinalRenderReleaseEvide
     gateComplete:completedGates===3,
     completedGates,
     totalGates:3,
-    progressPercent:Math.round(completedGates/3*100),
+    progressPercent:Math.round((approvalProgress+identityProgress+costProgress)/3),
+    approvalProgress,
+    identityProgress,
+    costProgress,
     remainingReviews:Math.max(0,FINAL_RENDER_REVIEW_TARGET-reviewed),
     approvalTargetPercent:FINAL_RENDER_APPROVAL_TARGET_PERCENT,
     identityEligibleConcepts:eligibleConcepts,
