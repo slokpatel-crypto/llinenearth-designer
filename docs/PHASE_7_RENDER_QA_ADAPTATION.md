@@ -53,6 +53,7 @@ The new Roadmap v2 design-lock contract is separate from the render provider. A 
 - [ ] measured-pattern QA calibrated on physical fixtures
 - [x] cross-view identity review workflow implemented
 - [ ] target-set cross-view identity evidence accepted
+- [x] named manual-review workflow sign-off capture implemented
 - [ ] manual review workflow signed off for production use
 
 
@@ -75,3 +76,8 @@ The private **Final Render QA** desk lets the operator approve or reject each ou
 Cached re-use is excluded from provider credit spend. The evidence is kept separate from customer-facing rendering so a review does not mutate the locked design.
 
 The first readiness threshold is intentionally evidence-based: at least 20 human-reviewed final renders and at least 60% approval before the dashboard can mark the approval-rate gate complete. The commercial credit cap remains an owner decision and is not invented in code. The operator can now record that approved cap, and the desk compares it against observed credits per approved render. Multi-view concepts also require an explicit human identity match/mismatch review rather than treating generated views as automatically consistent. The readiness dashboard now keeps final-render release open until all three coded evidence boundaries pass together: the documented review/approval threshold, clean review of every currently eligible multi-view concept, and observed credits per approved render within the owner-entered cap. Physical-fixture pattern calibration remains a separate real-world gate. Final-render promotion now also requires physical pattern calibration coverage for every approved patterned garment in the evidence set: the latest shirt/trouser calibration for that render must stay within the same <=8% scale-error rule and cannot have an axis mismatch. Rejected renders do not create calibration debt, and a solids-only set cannot satisfy this patterned-render gate.
+
+
+## Manual review production boundary
+
+The operator QA desk now records an append-only named human sign-off for the manual final-render review workflow. This closes the engineering gap without manufacturing the real-world approval: production readiness still remains open until a named owner/reviewer records an approved sign-off. A later review decision can supersede approval while preserving the evidence history.
