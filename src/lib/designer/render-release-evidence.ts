@@ -57,3 +57,61 @@ export function evaluateRenderCreditCap(creditsPerApproved:number|null,ownerCap:
   }
   return {configured:true,withinCap:creditsPerApproved<=ownerCap,ownerCap};
 }
+
+
+export const FINAL_RENDER_REVIEW_TARGET=20;
+export const FINAL_RENDER_APPROVAL_TARGET_PERCENT=60;
+
+export type FinalRenderReleaseEvidenceInput={
+  reviewed:number;
+  approvalRate:number|null;
+  identity:{
+    eligibleConcepts:number;
+    reviewedConcepts:number;
+    pendingConcepts:number;
+    passedConcepts:number;
+    failedConcepts:number;
+  };
+  creditCap:{
+    configured:boolean;
+    withinCap:boolean|null;
+  };
+};
+
+export function evaluateFinalRenderReleaseEvidence(input:FinalRenderReleaseEvidenceInput){
+  const reviewed=Math.max(0,Math.floor(Number(input.reviewed)||0));
+  const approvalRate=input.approvalRate===null||!Number.isFinite(input.approvalRate)
+    ? null
+    : Math.max(0,Math.min(100,input.approvalRate));
+  const approvalGateComplete=
+    reviewed>=FINAL_RENDER_REVIEW_TARGET &&
+    approvalRate!==null &&
+    approvalRate>=FINAL_RENDER_APPROVAL_TARGET_PERCENT;
+
+  const eligibleConcepts=Math.max(0,Math.floor(Number(input.identity.eligibleConcepts)||0));
+  const passedConcepts=Math.max(0,Math.floor(Number(input.identity.passedConcepts)||0));
+  const failedConcepts=Math.max(0,Math.floor(Number(input.identity.failedConcepts)||0));
+  const pendingConcepts=Math.max(0,Math.floor(Number(input.identity.pendingConcepts)||0));
+  const identityGateComplete=
+    eligibleConcepts>0 &&
+    failedConcepts===0 &&
+    pendingConcepts===0 &&
+    passedConcepts>=eligibleConcepts;
+
+  const costGateComplete=input.creditCap.configured===true&&input.creditCap.withinCap===true;
+  const completedGates=[approvalGateComplete,identityGateComplete,costGateComplete].filter(Boolean).length;
+
+  return {
+    approvalGateComplete,
+    identityGateComplete,
+    costGateComplete,
+    gateComplete:completedGates===3,
+    completedGates,
+    totalGates:3,
+    progressPercent:Math.round(completedGates/3*100),
+    remainingReviews:Math.max(0,FINAL_RENDER_REVIEW_TARGET-reviewed),
+    approvalTargetPercent:FINAL_RENDER_APPROVAL_TARGET_PERCENT,
+    identityEligibleConcepts:eligibleConcepts,
+    identityPassedConcepts:passedConcepts,
+  };
+}
