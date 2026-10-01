@@ -65,7 +65,7 @@ export default function StockClient(){
         <label>Fabric ID<input value={reservation.fabricId} onChange={(e)=>setReservation({...reservation,fabricId:e.target.value})}/></label>
         <label>Locked revision ID<input value={reservation.revisionId} onChange={(e)=>setReservation({...reservation,revisionId:e.target.value})}/></label>
         <label>Metres to reserve<input type="number" min=".001" step=".001" value={reservation.quantityMetres} onChange={(e)=>setReservation({...reservation,quantityMetres:e.target.value})}/></label>
-        <button disabled={busy||!configured||!reservation.fabricId||reservation.revisionId.length<12||Number(reservation.quantityMetres)<=0} onClick={()=>void post({action:"reserve",...reservation,quantityMetres:Number(reservation.quantityMetres)},"Reservation created.")}>Create reservation</button>
+        <button disabled={busy||!configured||!reservation.fabricId||reservation.revisionId.length<12||Number(reservation.quantityMetres)<=0} onClick={()=>void post({action:"reserve",...reservation,quantityMetres:Number(reservation.quantityMetres),requestKey:crypto.randomUUID()},"Reservation created.")}>Create reservation</button>
       </article>
 
       <article className="stockPanel">
