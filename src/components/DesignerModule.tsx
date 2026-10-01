@@ -17,6 +17,7 @@ import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
 import { canonicalGarmentSpecSummary } from "@/lib/designer/garment-spec";
 import { lockGarmentSpec, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import { buildProductionHandoff } from "@/lib/designer/production-handoff";
+import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-pack";
 import type { DesignerAssessmentResponse } from "@/lib/designer/assessment-types";
 import type { DesignerSearchScope, DesignerSearchTier } from "@/lib/designer/search";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
@@ -971,6 +972,21 @@ export function DesignerModule() {
     URL.revokeObjectURL(url);
   }
 
+  function downloadTailorTechPack() {
+    if(!lockedRevision) return;
+    const handoff=buildProductionHandoff(lockedRevision);
+    const html=buildTailorTechPackHtml(handoff);
+    const blob=new Blob([html],{type:"text/html;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const anchor=document.createElement("a");
+    anchor.href=url;
+    anchor.download=techPackFilename(handoff);
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
   async function shareLockedRevision() {
     if(!lockedRevision||shareBusy) return;
     setShareBusy(true);setShareMessage("");
@@ -1326,6 +1342,7 @@ export function DesignerModule() {
               {lockedRevision&&<>
                 <p><b>Locked revision:</b> {lockedRevision.revisionId} · recipe {lockedRevision.recipeHash.slice(0,12).toUpperCase()}</p>
                 <button type="button" onClick={downloadProductionHandoff}>Export tailor handoff ↗</button>
+                <button type="button" onClick={downloadTailorTechPack}>Export printable tech pack ↗</button>
                 <button type="button" onClick={()=>void shareLockedRevision()} disabled={shareBusy}>{shareBusy?"Creating share…":"Copy private share link ↗"}</button>
                 {shareMessage&&<p>{shareMessage}</p>}
               </>}
