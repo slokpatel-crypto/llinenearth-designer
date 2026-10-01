@@ -126,12 +126,86 @@ as $$
   limit greatest(1,least(coalesce(p_limit,200),1000));
 $$;
 
+
+create table if not exists private.designer_render_pattern_calibration (
+  calibration_id uuid primary key default gen_random_uuid(),
+  outcome_id uuid not null references private.designer_render_outcomes(outcome_id) on delete cascade,
+  garment text not null check (garment in ('shirt','trouser')),
+  expected_repeat_mm numeric(10,3) not null check (expected_repeat_mm>0 and expected_repeat_mm<=1000),
+  observed_repeat_mm numeric(10,3) not null check (observed_repeat_mm>0 and observed_repeat_mm<=1000),
+  scale_error_pct numeric(10,3) not null check (scale_error_pct>=0),
+  axis_status text not null check (axis_status in ('match','mismatch','not_applicable')),
+  note text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create index if not exists designer_render_pattern_calibration_outcome_idx
+  on private.designer_render_pattern_calibration(outcome_id,created_at desc);
+
+alter table private.designer_render_pattern_calibration enable row level security;
+revoke all on private.designer_render_pattern_calibration from public,anon,authenticated;
+
+create or replace function public.designer_render_pattern_calibration_record(
+  p_outcome_id uuid,
+  p_garment text,
+  p_expected_repeat_mm numeric,
+  p_observed_repeat_mm numeric,
+  p_axis_status text,
+  p_note text default ''
+)
+returns uuid
+language plpgsql
+security definer
+set search_path='public','private'
+as $
+declare
+  v_id uuid;
+  v_error numeric;
+begin
+  if p_garment not in ('shirt','trouser') then raise exception 'invalid garment'; end if;
+  if p_axis_status not in ('match','mismatch','not_applicable') then raise exception 'invalid axis status'; end if;
+  if p_expected_repeat_mm is null or p_expected_repeat_mm<=0 or p_expected_repeat_mm>1000 then raise exception 'invalid expected repeat'; end if;
+  if p_observed_repeat_mm is null or p_observed_repeat_mm<=0 or p_observed_repeat_mm>1000 then raise exception 'invalid observed repeat'; end if;
+  if not exists(select 1 from private.designer_render_outcomes where outcome_id=p_outcome_id) then raise exception 'unknown render outcome'; end if;
+
+  v_error=abs(p_observed_repeat_mm-p_expected_repeat_mm)/p_expected_repeat_mm*100;
+
+  insert into private.designer_render_pattern_calibration(
+    outcome_id,garment,expected_repeat_mm,observed_repeat_mm,scale_error_pct,axis_status,note
+  ) values(
+    p_outcome_id,p_garment,round(p_expected_repeat_mm,3),round(p_observed_repeat_mm,3),round(v_error,3),p_axis_status,left(coalesce(p_note,''),1000)
+  )
+  returning calibration_id into v_id;
+  return v_id;
+end;
+$;
+
+create or replace function public.designer_render_pattern_calibration_list(p_limit integer default 200)
+returns table(
+  calibration_id uuid,outcome_id uuid,garment text,expected_repeat_mm numeric,observed_repeat_mm numeric,
+  scale_error_pct numeric,axis_status text,note text,created_at timestamptz
+)
+language sql
+security definer
+set search_path='public','private'
+as $
+  select c.calibration_id,c.outcome_id,c.garment,c.expected_repeat_mm,c.observed_repeat_mm,
+    c.scale_error_pct,c.axis_status,c.note,c.created_at
+  from private.designer_render_pattern_calibration c
+  order by c.created_at desc
+  limit greatest(1,least(coalesce(p_limit,200),1000));
+$;
+
 revoke all on function public.designer_render_outcome_record(text,text,text,text,text,numeric,boolean,boolean,timestamptz) from public,anon,authenticated;
 revoke all on function public.designer_render_outcome_attach_qa(text,text,text,jsonb) from public,anon,authenticated;
 revoke all on function public.designer_render_outcome_review(uuid,text,text) from public,anon,authenticated;
 revoke all on function public.designer_render_outcome_list(integer) from public,anon,authenticated;
+revoke all on function public.designer_render_pattern_calibration_record(uuid,text,numeric,numeric,text,text) from public,anon,authenticated;
+revoke all on function public.designer_render_pattern_calibration_list(integer) from public,anon,authenticated;
 
 grant execute on function public.designer_render_outcome_record(text,text,text,text,text,numeric,boolean,boolean,timestamptz) to service_role;
 grant execute on function public.designer_render_outcome_attach_qa(text,text,text,jsonb) to service_role;
 grant execute on function public.designer_render_outcome_review(uuid,text,text) to service_role;
 grant execute on function public.designer_render_outcome_list(integer) to service_role;
+grant execute on function public.designer_render_pattern_calibration_record(uuid,text,numeric,numeric,text,text) to service_role;
+grant execute on function public.designer_render_pattern_calibration_list(integer) to service_role;
