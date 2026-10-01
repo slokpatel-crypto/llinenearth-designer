@@ -194,3 +194,8 @@ Manual revision/hash typing can no longer create a new quote or production order
 ## Reservation lifecycle concurrency
 
 Reservation creation now serializes the idempotency request key before checking/inserting, preventing concurrent duplicate requests from racing the unique index. Consume/release operations serialize on the reservation ID, and both closing paths carry named evidence. This prevents a simultaneous consume/release from double-closing the same reserved metres or silently distorting available stock.
+
+
+## Production-order-backed cut registry
+
+Real cloth-usage calibration now writes to a private append-only production-cut registry instead of treating generic operator events as sufficient evidence. Every qualifying cut is derived from a real production order that has reached **Cutting** or later, requires durable immutable-design context, checks that the recorded shirt/trouser fabric ID matches that locked context, and carries a named checker plus physical cutting reference. Meterage calibration counts only the latest evidence per order/garment, preventing one physical cut from being relabelled under multiple case IDs to inflate the 20-cut gate.
