@@ -111,8 +111,10 @@ export async function POST(request:Request){
         created_at:string;expires_at:string;
       }>>("measurement_profile_vault_list_owned",{p_owner_user_id:customer.id});
       const profiles=rows.filter((row)=>validProfile(row.profile)&&validObservations(row.observations)).map((row)=>({
-        vaultId:row.vault_id,profile:row.profile,observations:row.observations,
-        createdAt:row.created_at,expiresAt:row.expires_at,
+        vaultId:row.vault_id,
+        unit:row.profile.unit,
+        createdAt:row.created_at,
+        expiresAt:row.expires_at,
       }));
       return jsonNoStore({profiles,customer:{email:customer.email}});
     }
