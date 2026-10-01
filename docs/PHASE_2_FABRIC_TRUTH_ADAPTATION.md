@@ -78,3 +78,10 @@ Do not replace the existing Analyzer, catalogue, tile builder or evidence store 
 
 ## Reviewed-evidence boundary
 Customer-facing physical truth now upgrades only from Analyzer profiles that have been explicitly reviewed (`approved` / `corrected`). A high-confidence or provisional model result may still inform internal analysis, but it cannot silently mark pattern scale, GSM, drape or fibre content as verified in the Designer. This keeps Phase 1 true-scale preview and Phase 7 final-render pattern QA tied to the same reviewed fabric-truth source.
+
+
+## Field-level physical provenance hardening
+
+- A reviewed Analyzer profile no longer upgrades all physical fabric facts merely because the overall profile was approved.
+- True pattern scale, GSM, drape and fibre content are promoted independently only when the exact field carries declared/reviewed physical provenance from the validated Analyzer input path.
+- Reviewed legacy profiles without the corresponding field provenance remain provisional for that physical claim instead of silently becoming verified customer-facing truth.
