@@ -196,7 +196,9 @@ requireTokens("src/app/operator/device-qa/DeviceQaClient.tsx", ["DEVICE_QA_EVIDE
 requireTokens("src/lib/designer/device-qa-evidence.ts", ["DEVICE_QA_EVIDENCE_VERSION","DEVICE_QA_MIN_SAMPLES","DEVICE_QA_TARGET_P95_MS","evaluateDeviceQaEvidence","sampleDurationsMs"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["PhotoPreviewCalibration","photoPxPerMm","photoFabricPatternScale"]);
 requireTokens("src/lib/designer/live-preview.ts", ["photoFabricPatternScale","photoExpectedRepeatPx","photoPxPerMm"]);
-requireTokens("src/lib/fabric-intelligence-evidence.ts", ["intelligence.trust!==\"reviewed\"","patternScaleVerified","fiberContentVerified"]);
+requireTokens("src/lib/fabric-intelligence-evidence.ts", ["intelligence.trust!==\"reviewed\"","fieldProvenance","measured.pattern.physicalScale","verifiedPhysical.gsm","verifiedPhysical.drape","verifiedPhysical.fiberContent","patternScaleVerified","fiberContentVerified"]);
+requireTokens("src/lib/fabric-intelligence-server.ts", ["fieldProvenance:{...profile.provenanceByField}"]);
+requireTokens("src/lib/fabric-intelligence-types.ts", ["fieldProvenance?:Record<string"]);
 requireTokens("src/app/operator/designer-data/DesignerDataClient.tsx", ["Physical evidence provenance","physicalEvidence:editor.physicalEvidence","physical_roll","supplier_document","owner_measurement"]);
 requireTokens("src/app/operator/designer-data/DesignerDataBatchPanel.tsx", ["physicalSourceType","physicalReference","physicalCheckedBy","physicalEvidence:incomingPhysicalEvidence??current.physicalEvidence"]);
 requireTokens("src/app/api/memory/event/route.ts", ["designer_fabric_metadata","normalizeFabricPhysicalEvidenceProvenance","physicalEvidence"]);
