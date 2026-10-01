@@ -82,3 +82,5 @@ Production deployment verification remains a separate final gate.
 ## Private-beta evidence integrity
 
 The five-customer lock-flow gate now requires a server-recorded share audit tied to a revision whose recipe hash was verified by the share API. Operator checkbox-only completion is retained only as legacy evidence and cannot mark the launch beta gate complete.
+
+- Private-beta success now counts **distinct verified locked revisions**. Reusing one locked design/share or enquiry audit under multiple anonymous beta case IDs cannot satisfy the five-customer flow gate.
