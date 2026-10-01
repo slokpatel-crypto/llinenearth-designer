@@ -12,6 +12,7 @@ import {
 
 type BetaAttempt={
   attempt_id:string;case_id:string;device_class:string;core_flow_completed:boolean;
+  design_locked:boolean;share_or_enquiry_completed:boolean;
   blocking_bug:boolean;note:string;created_at:string;
 };
 type ChecklistEvent={
@@ -24,7 +25,8 @@ export default function LaunchReadinessClient(){
   const [configured,setConfigured]=useState(true);
   const [caseId,setCaseId]=useState("");
   const [deviceClass,setDeviceClass]=useState<LaunchDeviceClass>("mobile");
-  const [coreFlowCompleted,setCoreFlowCompleted]=useState(false);
+  const [designLocked,setDesignLocked]=useState(false);
+  const [shareOrEnquiryCompleted,setShareOrEnquiryCompleted]=useState(false);
   const [blockingBug,setBlockingBug]=useState(false);
   const [betaNote,setBetaNote]=useState("");
   const [signedBy,setSignedBy]=useState("");
@@ -77,9 +79,9 @@ export default function LaunchReadinessClient(){
 
   async function recordBeta(){
     const saved=await post({
-      action:"record_beta",caseId,deviceClass,coreFlowCompleted,blockingBug,note:betaNote,
-    },"Private-beta attempt recorded.");
-    if(saved){setCaseId("");setCoreFlowCompleted(false);setBlockingBug(false);setBetaNote("");}
+      action:"record_beta",caseId,deviceClass,designLocked,shareOrEnquiryCompleted,blockingBug,note:betaNote,
+    },"Lock → share/enquiry customer-flow attempt recorded.");
+    if(saved){setCaseId("");setDesignLocked(false);setShareOrEnquiryCompleted(false);setBlockingBug(false);setBetaNote("");}
   }
 
   async function recordChecklist(itemId:LaunchChecklistItemId,status:"approved"|"review"){
@@ -95,7 +97,7 @@ export default function LaunchReadinessClient(){
       <div>
         <span>LINEN EARTH / ROADMAP V2 / PHASE 9</span>
         <h1>Launch Evidence</h1>
-        <p>Record real private-beta outcomes and human launch sign-offs. These controls gather evidence; they do not mark a launch ready unless the required observations are actually recorded.</p>
+        <p>Record real lock → share/enquiry customer-flow outcomes and human launch sign-offs. The same five-case evidence is used for the Phase 5 customer-flow gate and Phase 9 private-beta gate.</p>
       </div>
       <nav><Link href="/operator/device-qa">Device QA</Link><Link href="/operator/phase10-readiness">Readiness</Link><Link href="/operator">Operator Desk</Link></nav>
     </header>
@@ -104,7 +106,7 @@ export default function LaunchReadinessClient(){
     {message&&<section className="launchReadyNotice">{message}</section>}
 
     <section className="launchReadyScore">
-      <article data-pass={summary.betaGateComplete}><span>PRIVATE BETA</span><strong>{summary.successfulBetaCases}/{LAUNCH_BETA_TARGET}</strong><small>latest case outcome completed with no blocking bug</small></article>
+      <article data-pass={summary.betaGateComplete}><span>LOCK → SHARE/ENQUIRY</span><strong>{summary.successfulBetaCases}/{LAUNCH_BETA_TARGET}</strong><small>latest case locked, shared/enquired and had no blocking bug</small></article>
       <article data-alert={summary.blockingBetaCases>0}><span>BLOCKING CASES</span><strong>{summary.blockingBetaCases}</strong><small>latest beta outcomes still blocked</small></article>
       <article><span>DEVICE COVERAGE</span><strong>{summary.deviceCoverage.length}/3</strong><small>{summary.deviceCoverage.join(" · ")||"no successful beta devices yet"}</small></article>
       <article data-pass={summary.checklistGateComplete}><span>HUMAN SIGN-OFF</span><strong>{summary.checklistApproved}/{summary.checklistTotal}</strong><small>privacy / commercial / operational launch checks</small></article>
@@ -119,7 +121,8 @@ export default function LaunchReadinessClient(){
           <label>Anonymous case ID<input value={caseId} onChange={(event)=>setCaseId(event.target.value.slice(0,80))} placeholder="BETA-001"/></label>
           <label>Device<select value={deviceClass} onChange={(event)=>setDeviceClass(event.target.value as LaunchDeviceClass)}><option value="mobile">Mobile</option><option value="tablet">Tablet</option><option value="desktop">Desktop</option></select></label>
         </div>
-        <label className="launchReadyCheck"><input type="checkbox" checked={coreFlowCompleted} onChange={(event)=>setCoreFlowCompleted(event.target.checked)}/> Core Launch 1 flow completed</label>
+        <label className="launchReadyCheck"><input type="checkbox" checked={designLocked} onChange={(event)=>{setDesignLocked(event.target.checked);if(!event.target.checked)setShareOrEnquiryCompleted(false);}}/> Exact design recipe was locked</label>
+        <label className="launchReadyCheck"><input type="checkbox" checked={shareOrEnquiryCompleted} disabled={!designLocked} onChange={(event)=>setShareOrEnquiryCompleted(event.target.checked)}/> Customer completed signed share or exact-look enquiry after locking</label>
         <label className="launchReadyCheck danger"><input type="checkbox" checked={blockingBug} onChange={(event)=>setBlockingBug(event.target.checked)}/> Blocking bug occurred</label>
         <label>Observed note<textarea rows={4} value={betaNote} onChange={(event)=>setBetaNote(event.target.value.slice(0,1200))} placeholder="What blocked or what was verified on the real flow?"/></label>
         <button disabled={!configured||busy||!betaValid} onClick={()=>void recordBeta()}>{busy?"Saving…":"Record beta attempt"}</button>
@@ -127,9 +130,9 @@ export default function LaunchReadinessClient(){
         <div className="launchBetaHistory">
           <div><span>LATEST UNIQUE CASES</span><b>{latestBeta.length}</b></div>
           {!latestBeta.length&&<p>No private-beta evidence recorded yet.</p>}
-          {latestBeta.slice(0,12).map((row)=><section key={row.case_id} data-pass={row.core_flow_completed&&!row.blocking_bug}>
-            <div><b>{row.case_id}</b><em>{row.core_flow_completed&&!row.blocking_bug?"PASS":"REVIEW"}</em></div>
-            <small>{row.device_class} · {new Date(row.created_at).toLocaleString("en-IN")}</small>
+          {latestBeta.slice(0,12).map((row)=><section key={row.case_id} data-pass={row.core_flow_completed&&row.design_locked&&row.share_or_enquiry_completed&&!row.blocking_bug}>
+            <div><b>{row.case_id}</b><em>{row.core_flow_completed&&row.design_locked&&row.share_or_enquiry_completed&&!row.blocking_bug?"PASS":"REVIEW"}</em></div>
+            <small>{row.device_class} · lock {row.design_locked?"✓":"×"} · share/enquiry {row.share_or_enquiry_completed?"✓":"×"} · {new Date(row.created_at).toLocaleString("en-IN")}</small>
             {row.note&&<p>{row.note}</p>}
           </section>)}
         </div>
