@@ -51,13 +51,14 @@ export async function POST(request:Request){
     const orderId=String(body.orderId||"").trim();
     if(!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(orderId)) return NextResponse.json({error:"Valid production order ID is required."},{status:400});
     const draft=normalizeFinishedGarmentQcDraft(body);
-    const inspectionId=await rpc<string>("finished_garment_qc_record",{
+    const inspectionId=await rpc<string>("finished_garment_qc_record_v2",{
       p_order_id:orderId,
       p_decision:draft.decision,
       p_checks:draft.checks,
       p_defects:draft.defects,
       p_note:draft.note,
       p_inspector:draft.inspector,
+      p_inspection_reference:draft.inspectionReference,
     });
     return NextResponse.json({inspectionId});
   }catch(error){
