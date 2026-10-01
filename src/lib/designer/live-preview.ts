@@ -82,6 +82,11 @@ export function photoFabricPatternScale(asset:FabricRenderAsset|null,fallback:nu
   return clamp(photoTilePx/PHOTO_SWATCH_TILE_PX,.12,1.6);
 }
 
+export function visiblePatternScaleVerified(patternType:string,asset:FabricRenderAsset|null) {
+  if(patternType.toLowerCase()==="solid") return true;
+  return asset?.scaleApproximate===false && Boolean(asset.tileRealWidthMm && asset.tileRealWidthMm>0);
+}
+
 const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
 const n=(value:unknown,fallback:number)=>typeof value==="number"&&Number.isFinite(value)?value:fallback;
 const param=(id:string,key:string,fallback:number)=>n(optionById(id)?.parameters[key],fallback);
