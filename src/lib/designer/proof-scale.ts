@@ -23,10 +23,34 @@ export function passesScaleGate(measuredPeriodPx:number, repeatMm:number, pxPerM
   return scaleErrorPct(measuredPeriodPx,repeatMm,pxPerMm)<=tolerancePct;
 }
 
-export type ProofFabric={ id:"plain"|"stripe-5"|"stripe-10"; label:string; repeatMm:number|null };
+export type ProofFabric={
+  id:"plain-sky"|"stripe-formal-03"|"check-formal-04";
+  label:string;
+  image:string;
+  cataloguePattern:string;
+  repeatMm:number|null;
+};
 
 export const PREMIUM_SHIRT_PROOF_FABRICS:ProofFabric[]=[
-  {id:"plain",label:"Plain linen fixture",repeatMm:null},
-  {id:"stripe-5",label:"5 mm stripe fixture",repeatMm:5},
-  {id:"stripe-10",label:"10 mm bold stripe fixture",repeatMm:10},
+  {
+    id:"plain-sky",
+    label:"Sky Blue · Linen Plain 60 Lea",
+    image:"/fabrics/plain-60-01.webp",
+    cataloguePattern:"Plain",
+    repeatMm:null,
+  },
+  {
+    id:"stripe-formal-03",
+    label:"Formal Shirting 03 · Stripe",
+    image:"/fabrics/formal-shirts-03.webp",
+    cataloguePattern:"Stripe",
+    repeatMm:null,
+  },
+  {
+    id:"check-formal-04",
+    label:"Formal Shirting 04 · Check",
+    image:"/fabrics/formal-shirts-04.webp",
+    cataloguePattern:"Check",
+    repeatMm:null,
+  },
 ];
