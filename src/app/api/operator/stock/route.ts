@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
-import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockReservation } from "@/lib/designer/stock-ledger";
+import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation } from "@/lib/designer/stock-ledger";
 
 export const runtime="nodejs";
 
@@ -74,9 +74,13 @@ export async function POST(request:Request){
       return NextResponse.json({reservationId});
     }
     if(action==="release"){
-      const reservationId=String(body.reservationId||"").trim();
-      const note=String(body.note||"").trim().slice(0,600);
-      const released=await rpc<boolean>("fabric_stock_release",{p_reservation_id:reservationId,p_note:note});
+      const draft=normalizeStockRelease(body);
+      const released=await rpc<boolean>("fabric_stock_release_v2",{
+        p_reservation_id:draft.reservationId,
+        p_note:draft.note,
+        p_released_by:draft.releasedBy,
+        p_source_reference:draft.sourceReference,
+      });
       return NextResponse.json({released:Boolean(released)});
     }
     if(action==="consume"){
