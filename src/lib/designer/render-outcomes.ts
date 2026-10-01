@@ -115,6 +115,10 @@ export type RenderPatternCalibrationRow={
   scale_error_pct:number;
   axis_status:"match"|"mismatch"|"not_applicable";
   note:string;
+  measurement_method:"legacy_direct_mm"|"pixel_fixture_v2";
+  reference_mm:number|null;
+  reference_px:number|null;
+  observed_repeat_px:number|null;
   created_at:string;
 };
 
@@ -122,15 +126,19 @@ export async function recordRenderPatternCalibration(input:{
   outcomeId:string;
   garment:"shirt"|"trouser";
   expectedRepeatMm:number;
-  observedRepeatMm:number;
+  referenceMm:number;
+  referencePx:number;
+  observedRepeatPx:number;
   axisStatus:"match"|"mismatch"|"not_applicable";
   note?:string;
 }) {
-  return rpc<string>("designer_render_pattern_calibration_record",{
+  return rpc<string>("designer_render_pattern_calibration_record_v2",{
     p_outcome_id:input.outcomeId,
     p_garment:input.garment,
     p_expected_repeat_mm:input.expectedRepeatMm,
-    p_observed_repeat_mm:input.observedRepeatMm,
+    p_reference_mm:input.referenceMm,
+    p_reference_px:input.referencePx,
+    p_observed_repeat_px:input.observedRepeatPx,
     p_axis_status:input.axisStatus,
     p_note:String(input.note||"").slice(0,1000),
   });
@@ -139,7 +147,7 @@ export async function recordRenderPatternCalibration(input:{
 export async function listRenderPatternCalibrations(limit=200) {
   if(!getSupabaseAdminConfig()) return [] as RenderPatternCalibrationRow[];
   try{
-    return await rpc<RenderPatternCalibrationRow[]>("designer_render_pattern_calibration_list",{
+    return await rpc<RenderPatternCalibrationRow[]>("designer_render_pattern_calibration_list_v2",{
       p_limit:Math.max(1,Math.min(1000,Math.floor(limit))),
     });
   }catch{
