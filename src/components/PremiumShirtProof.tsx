@@ -21,6 +21,7 @@ export function PremiumShirtProof(){
   const [measuredPx,setMeasuredPx]=useState<number|null>(null);
   const [latencyMs,setLatencyMs]=useState<number|null>(null);
   const [latencySamples,setLatencySamples]=useState<number[]>([]);
+  const [realRenderSamples,setRealRenderSamples]=useState<number[]>([]);
   const [realismRatings,setRealismRatings]=useState<number[]>([]);
   const startedRef=useRef(0);
 
@@ -51,6 +52,11 @@ export function PremiumShirtProof(){
     const ordered=[...latencySamples].sort((a,b)=>a-b);
     return ordered[Math.min(ordered.length-1,Math.ceil(ordered.length*.95)-1)];
   },[latencySamples]);
+  const realP95=useMemo(()=>{
+    if(!realRenderSamples.length) return null;
+    const ordered=[...realRenderSamples].sort((a,b)=>a-b);
+    return ordered[Math.min(ordered.length-1,Math.ceil(ordered.length*.95)-1)];
+  },[realRenderSamples]);
   const strongRealism=realismRatings.filter((rating)=>rating>=4).length;
   const realismGate=realismRatings.length>=8 && strongRealism>=6;
 
@@ -115,7 +121,8 @@ export function PremiumShirtProof(){
         <span>{fabric.cataloguePattern}</span>
         <span>{calibrationState}</span>
         <span>{latencyMs===null?"Edit latency not measured":"Last edit "+latencyMs.toFixed(1)+" ms"}</span>
-        <span>{p95===null?"p95 waiting for samples":"p95 "+p95.toFixed(1)+" ms · "+(p95<300?"PASS":"REVIEW")}</span>
+        <span>{p95===null?"Geometry p95 waiting":"Geometry p95 "+p95.toFixed(1)+" ms · "+(p95<300?"PASS":"REVIEW")}</span>
+        <span>{realP95===null?"Real model p95 waiting":"Real model p95 "+realP95.toFixed(1)+" ms · "+(realP95<300?"PASS":"REVIEW")}</span>
       </div>
     </header>
 
@@ -197,11 +204,11 @@ export function PremiumShirtProof(){
           <span>Existing studio mannequin</span>
           <span>No AI per edit</span>
           <span>{declaredTileMm||declaredRepeatMm?"Physical evidence entered":"Scale still approximate"}</span>
-          <span>{p95===null?"Latency gate awaiting edits":p95<300?"Latency gate passing":"Latency needs review"}</span>
+          <span>{realP95===null?"Real model latency awaiting edits":realP95<300?"Real model latency gate passing":"Real model latency needs review"}</span>
         </div>
       </div>
       <div className="proofRealModel">
-        <StyleDirectorRealModelPreview shirt={proofRealShirt} pant={realPant} style={realModelStyle}/>
+        <StyleDirectorRealModelPreview shirt={proofRealShirt} pant={realPant} style={realModelStyle} onRenderMeasured={(milliseconds)=>setRealRenderSamples((current)=>[...current.slice(-29),milliseconds])}/>
       </div>
     </section>}
   </div>;
