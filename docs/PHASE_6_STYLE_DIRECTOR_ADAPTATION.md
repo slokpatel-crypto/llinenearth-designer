@@ -57,3 +57,5 @@ Status: advanced existing implementation with owner benchmark and real-user vali
 - Designer verifies the signed payload against the state it actually opened before a handoff audit can be recorded.
 - Real-user validation can count a successful stock/style handoff only when it references that verified server audit.
 - Handoff audit tokens are SHA-256 fingerprinted and idempotent, and each audit may support only one user-test row, preventing replay of one handoff across multiple anonymous cases.
+
+- Clean real-user validation now counts **distinct signed handoff audits**, not just anonymous case IDs. Reusing one verified handoff under multiple test IDs cannot inflate the human evidence threshold, and database sign-off v3 enforces the same rule.
