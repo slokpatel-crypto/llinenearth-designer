@@ -92,3 +92,32 @@ export function meterageForWidth(
 export function canApproveMeterageModel(evidenceCount:number,approvedBy:string){
   return Number.isInteger(evidenceCount)&&evidenceCount>=20&&approvedBy.trim().length>=2;
 }
+
+
+export type VerifiedMeterageEvidenceCase={
+  caseId:string;
+  garment:MeterageGarment;
+  fabricWidthCm:number;
+  actualMetres:number;
+  checkedBy:string;
+  evidenceReference:string;
+};
+
+export function verifiedMeterageEvidenceCase(input:unknown,expectedGarment?:MeterageGarment):VerifiedMeterageEvidenceCase|null{
+  const source=record(input);
+  if(String(source.subtype||"")!=="production_usage_case") return null;
+  if(String(source.version||"")!=="production-usage-v2") return null;
+  const garment=String(source.garment||"") as MeterageGarment;
+  if(garment!=="shirt"&&garment!=="trouser") return null;
+  if(expectedGarment&&garment!==expectedGarment) return null;
+  const caseId=String(source.caseId||"").trim().slice(0,80);
+  if(!/^[A-Za-z0-9._-]{3,80}$/.test(caseId)) return null;
+  const fabricWidthCm=finite(source.fabricWidthCm);
+  const actualMetres=finite(source.actualMetres);
+  if(fabricWidthCm===null||fabricWidthCm<60||fabricWidthCm>220) return null;
+  if(actualMetres===null||actualMetres<=0||actualMetres>12) return null;
+  const checkedBy=String(source.checkedBy||"").replace(/\s+/g," ").trim().slice(0,120);
+  const evidenceReference=String(source.evidenceReference||"").replace(/\s+/g," ").trim().slice(0,240);
+  if(checkedBy.length<2||evidenceReference.length<3) return null;
+  return {caseId,garment,fabricWidthCm,actualMetres,checkedBy,evidenceReference};
+}
