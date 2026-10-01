@@ -13,8 +13,8 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 | Phase 1 — Premium Shirt Proof | Engineering implementation complete | physical scale measurement + 8-viewer realism + device evidence |
 | Phase 2 — Fabric Truth | strong existing foundation | owner / supplier physical evidence coverage and 50-fabric reviewed set |
 | Phase 3 — Deterministic Designer | strong existing foundation | promote proved preview only after Phase 1 passes |
-| Phase 4 — Measurements / Fit | advanced foundation + secure recovery implemented | real-person accuracy study + tailor ease calibration + authenticated ownership |
-| Phase 5 — Lock / Share / Enquiry | lock + share + secure recovery vault implemented | authenticated customer-account ownership |
+| Phase 4 — Measurements / Fit | advanced foundation + secure recovery + authenticated ownership implemented | real-person accuracy study + tailor ease calibration |
+| Phase 5 — Lock / Share / Enquiry | lock + share + secure recovery + authenticated customer ownership implemented | five-customer real-flow validation |
 | Phase 6 — Style Director | advanced foundation | owner-labelled benchmark / real-user validation |
 | Phase 7 — Final Render / QA | render outcome + human approval + credit metrics implemented | real approval/cost evidence + physical-pattern QA calibration |
 | Phase 8 — Production Bridge | handoff + stock/quote/order + QC + zero-reentry audit + versioned meterage registry implemented | approved physical meterage tables + 10 real zero-reentry deliveries |
@@ -53,6 +53,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added anonymous five-case private-beta evidence capture and append-only human launch sign-offs for Phase 9 hardening.
 - Added opt-in secure measurement recovery vault with hashed recovery keys, expiry and deletion.
 - Added final-render outcome ledger, human approval desk, automated QA linkage, and credits-per-approved metrics.
+- Added Supabase email-OTP customer accounts, account-owned locked designs and measurement profiles, claim-by-recovery-token migration, and private account listing.
 - Added phase adaptation records so future coding agents do not rebuild existing systems unnecessarily.
 
 ## Evidence we cannot manufacture in code
