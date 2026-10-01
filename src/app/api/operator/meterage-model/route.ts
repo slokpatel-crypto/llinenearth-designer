@@ -49,11 +49,15 @@ async function evidenceCaseIds(garment:"shirt"|"trouser"){
   for(const row of rows){
     const payload=row.payload||{};
     if(String(payload.subtype||"")!=="production_usage_case") continue;
+    if(String(payload.version||"")!=="production-usage-v2") continue;
     if(String(payload.garment||"")!==garment) continue;
     const caseId=String(payload.caseId||"").trim().slice(0,80);
     const width=Number(payload.fabricWidthCm);
     const metres=Number(payload.actualMetres);
+    const checkedBy=String(payload.checkedBy||"").trim();
+    const evidenceReference=String(payload.evidenceReference||"").trim();
     if(!caseId||!Number.isFinite(width)||!Number.isFinite(metres)||width<60||width>220||metres<=0||metres>12) continue;
+    if(checkedBy.length<2||evidenceReference.length<3) continue;
     seen.add(caseId);
   }
   return [...seen];
@@ -86,7 +90,7 @@ export async function POST(request:Request){
           evidenceCount:caseIds.length,
         },{status:409});
       }
-      const modelId=await rpc<string>("production_meterage_model_create_v2",{
+      const modelId=await rpc<string>("production_meterage_model_create_v3",{
         p_garment:draft.garment,
         p_version:draft.version,
         p_bands:draft.bands,
@@ -101,7 +105,7 @@ export async function POST(request:Request){
       const approvedBy=String(body.approvedBy||"").trim().slice(0,120);
       const approvalNote=String(body.approvalNote||"").trim().slice(0,1200);
       if(approvedBy.length<2) return NextResponse.json({error:"Owner/tailor approver is required."},{status:400});
-      const updated=await rpc<boolean>("production_meterage_model_approve_v2",{
+      const updated=await rpc<boolean>("production_meterage_model_approve_v3",{
         p_model_id:modelId,p_approved_by:approvedBy,p_approval_note:approvalNote,
       });
       return NextResponse.json({updated:Boolean(updated)});
