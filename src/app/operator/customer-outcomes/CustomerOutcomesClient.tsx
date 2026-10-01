@@ -102,6 +102,7 @@ export default function CustomerOutcomesClient(){
         <article><small>APPROVED</small><div style={{fontSize:34,fontWeight:800}}>{summary.approved}</div></article>
         <article><small>REJECTED</small><div style={{fontSize:34,fontWeight:800}}>{summary.rejected}</div></article>
         <article><small>UNREVIEWED</small><div style={{fontSize:34,fontWeight:800}}>{summary.unreviewed}</div></article>
+        <article><small>LEARNING ELIGIBLE</small><div style={{fontSize:34,fontWeight:800}}>{summary.learningEligible}</div></article>
         <article><small>APPROVED FIT CASES</small><div style={{fontSize:34,fontWeight:800}}>{summary.approvedFitCases}</div></article>
         <article><small>HUMAN THRESHOLD</small><div style={{fontSize:34,fontWeight:800}}>{summary.threshold??"—"}</div></article>
         <article><small>EVIDENCE GATE</small><div style={{fontSize:24,fontWeight:800}}>{summary.gateComplete?"MET":"OPEN"}</div></article>
@@ -132,6 +133,12 @@ export default function CustomerOutcomesClient(){
         <div style={{display:"grid",gap:12}}>
           {outcomes.map(outcome=>{
             const reviewRow=latestReviewByOutcome.get(outcome.outcome_id);
+            const context=outcome.learning_context as null|{
+              context?:{occasion?:string};
+              fabrics?:{shirtId?:string;trouserId?:string};
+              shirt?:{fit?:string;collar?:string;cuff?:string;wear?:string};
+              trouser?:{shape?:string;rise?:string;break?:string};
+            };
             return <article key={outcome.outcome_id} style={{borderTop:"1px solid #ece6dc",paddingTop:12,display:"grid",gap:7}}>
               <div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
                 <strong>{outcome.revision_id}</strong>
@@ -139,10 +146,15 @@ export default function CustomerOutcomesClient(){
               </div>
               <div style={{fontSize:13}}>Overall: <strong>{label(outcome.overall_rating)}</strong> · Fit: <strong>{label(outcome.fit_result)}</strong> · {outcome.worn_confirmed?"worn + checked":"wear not confirmed"}</div>
               <small style={{opacity:.62}}>Order {outcome.order_id.slice(0,8)}… · recorded {new Date(outcome.created_at).toLocaleString("en-IN")}</small>
+              {context?<div style={{fontSize:12,lineHeight:1.5,padding:"8px 10px",background:"#f5f2eb",borderRadius:8}}>
+                <strong>Durable design context</strong><br/>
+                {context.context?.occasion||"—"} · shirt {context.shirt?.fit||"—"}, {context.shirt?.collar||"—"}, {context.shirt?.cuff||"—"} · trouser {context.trouser?.shape||"—"}, {context.trouser?.rise||"—"}, {context.trouser?.break||"—"}
+                <br/><span style={{opacity:.65}}>Fabric IDs {context.fabrics?.shirtId||"—"} / {context.fabrics?.trouserId||"—"}</span>
+              </div>:<div style={{fontSize:12,lineHeight:1.5,padding:"8px 10px",background:"#fff4df",borderRadius:8}}>No durable design context is attached to this older/manual order. It can be reviewed, but it cannot be approved as learning evidence.</div>}
               {outcome.note&&<p style={{margin:"2px 0",fontSize:13,lineHeight:1.5}}>{outcome.note}</p>}
               {reviewRow&&<small style={{opacity:.62}}>Latest review by {reviewRow.reviewer} · {new Date(reviewRow.created_at).toLocaleString("en-IN")}{reviewRow.note?" · "+reviewRow.note:""}</small>}
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                <button style={{...button,background:"#6b7a63"}} disabled={busy||reviewer.trim().length<2} onClick={()=>void review(outcome.outcome_id,"approved")}>Approve evidence</button>
+                <button style={{...button,background:"#6b7a63"}} disabled={busy||reviewer.trim().length<2||!context} onClick={()=>void review(outcome.outcome_id,"approved")}>Approve evidence</button>
                 <button style={{...button,background:"#7a2f2f"}} disabled={busy||reviewer.trim().length<2||reviewNote.trim().length<3} onClick={()=>void review(outcome.outcome_id,"rejected")}>Reject evidence</button>
               </div>
             </article>;
@@ -152,7 +164,7 @@ export default function CustomerOutcomesClient(){
 
       <section style={{...panel,background:"#f2efe8"}}>
         <strong>Learning boundary</strong>
-        <p style={{marginBottom:0,lineHeight:1.55,fontSize:13}}>“Evidence gate met” means only that the human-defined quantity of reviewed customer outcomes exists. Designer ranking remains unchanged until a separate approved learning rule explicitly maps reviewed evidence into bounded recommendation signals.</p>
+        <p style={{marginBottom:0,lineHeight:1.55,fontSize:13}}>“Evidence gate met” means the human-defined quantity of approved outcomes with durable garment context exists. Customer outcomes without retained design lineage never count toward this gate. Designer ranking remains unchanged until a separate approved learning rule explicitly maps reviewed evidence into bounded recommendation signals.</p>
       </section>
     </div>
   </main>;
