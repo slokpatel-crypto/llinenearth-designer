@@ -13,6 +13,11 @@ export type ProductionHandoff={
     trouser:{id:string;name:string;line:string;source:string};
   };
   construction:{
+    fitProvenance:{
+      fitConstructionVersion:LockedDesignRevision["garmentSpec"]["source"]["fitConstructionVersion"];
+      easeSource:LockedDesignRevision["garmentSpec"]["source"]["fitEaseSource"];
+      easeTableVersion:LockedDesignRevision["garmentSpec"]["source"]["fitEaseTableVersion"];
+    };
     shirt:LockedDesignRevision["garmentSpec"]["shirt"];
     trouser:LockedDesignRevision["garmentSpec"]["trouser"];
     blockStrategy:LockedDesignRevision["garmentSpec"]["blockStrategy"];
@@ -58,6 +63,11 @@ export function buildProductionHandoff(
       trouser:{id:spec.fabrics.trouser.id,name:spec.fabrics.trouser.name,line:spec.fabrics.trouser.line,source:spec.fabrics.trouser.source},
     },
     construction:{
+      fitProvenance:{
+        fitConstructionVersion:spec.source.fitConstructionVersion,
+        easeSource:spec.source.fitEaseSource,
+        easeTableVersion:spec.source.fitEaseTableVersion,
+      },
       shirt:JSON.parse(JSON.stringify(spec.shirt)),
       trouser:JSON.parse(JSON.stringify(spec.trouser)),
       blockStrategy:spec.blockStrategy ? JSON.parse(JSON.stringify(spec.blockStrategy)) : null,
