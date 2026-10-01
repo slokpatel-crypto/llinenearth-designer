@@ -12,6 +12,7 @@ import fabricTileManifest from "../../public/fabric-tiles/manifest.json";
 type Collar="spread"|"button-down"|"band";
 type Cuff="round"|"square"|"french";
 const DEFAULT_PX_PER_MM=900/1780;
+const DEFAULT_PHOTO_PX_PER_MM=DEFAULT_PX_PER_MM*(1024/640);
 const APPROX_TILE_PX=96;
 const REALISM_STORAGE_KEY="linen-earth:phase1-proof-realism:v2";
 
@@ -22,6 +23,7 @@ export function PremiumShirtProof(){
   const [collar,setCollar]=useState<Collar>("spread");
   const [cuff,setCuff]=useState<Cuff>("round");
   const [pxPerMm,setPxPerMm]=useState(DEFAULT_PX_PER_MM);
+  const [photoPxPerMm,setPhotoPxPerMm]=useState(DEFAULT_PHOTO_PX_PER_MM);
   const [declaredTileMm,setDeclaredTileMm]=useState<number|null>(null);
   const [declaredRepeatMm,setDeclaredRepeatMm]=useState<number|null>(null);
   const [measuredPx,setMeasuredPx]=useState<number|null>(null);
@@ -59,12 +61,12 @@ export function PremiumShirtProof(){
   } : realShirt;
   const proofAsset=realShirt ? (fabricTileManifest.assets as Record<string,FabricRenderAsset>)[realShirt.image.split("/").pop()?.replace(/\.webp(?:\?.*)?$/,"")||""] || null : null;
   const calibratedProofAsset=proofRealShirt ? applyRuntimeFabricScale(proofAsset,proofRealShirt.renderScale) : proofAsset;
-  const photoRepeatAuditPx=photoExpectedRepeatPx(calibratedProofAsset);
+  const photoRepeatAuditPx=photoExpectedRepeatPx(calibratedProofAsset,photoPxPerMm);
 
   const tilePx=declaredTileMm ? Math.max(18,Math.min(260,declaredTileMm*pxPerMm)) : APPROX_TILE_PX;
-  const repeatPx=effectiveRepeatMm ? expectedPeriodPx(effectiveRepeatMm,pxPerMm) : null;
-  const error=effectiveRepeatMm && measuredPx ? scaleErrorPct(measuredPx,effectiveRepeatMm,pxPerMm) : null;
-  const pass=effectiveRepeatMm && measuredPx ? passesScaleGate(measuredPx,effectiveRepeatMm,pxPerMm) : null;
+  const repeatPx=effectiveRepeatMm ? expectedPeriodPx(effectiveRepeatMm,photoPxPerMm) : null;
+  const error=effectiveRepeatMm && measuredPx ? scaleErrorPct(measuredPx,effectiveRepeatMm,photoPxPerMm) : null;
+  const pass=effectiveRepeatMm && measuredPx ? passesScaleGate(measuredPx,effectiveRepeatMm,photoPxPerMm) : null;
   const calibrationState=storedRepeatMm ? "VERIFIED CATALOGUE SCALE EVIDENCE"
     : declaredTileMm||declaredRepeatMm ? "PHYSICAL EVIDENCE ENTERED"
     : "APPROXIMATE SCALE";
@@ -190,6 +192,8 @@ export function PremiumShirtProof(){
             pattern:realShirt?.patternType||"",
             repeatMm:effectiveRepeatMm,
             pxPerMm,
+            photoPxPerMm,
+            scaleCoordinateSystem:"photo-1024x1536",
             measuredPreviewRepeatPx:measuredPx,
             scaleErrorPct:error,
             scaleGatePass:pass===true,
@@ -229,7 +233,9 @@ export function PremiumShirtProof(){
         pattern:realShirt?.patternType||null,
       },
       calibration:{
-        pxPerMm,
+        constructionPxPerMm:pxPerMm,
+        photoPxPerMm,
+        scaleCoordinateSystem:"photo-1024x1536",
         sourceTileWidthMm:declaredTileMm,
         storedRepeatMm,
         enteredRepeatMm:declaredRepeatMm,
@@ -341,12 +347,14 @@ export function PremiumShirtProof(){
         <section><h2>Cuff</h2>{(["round","square","french"] as Cuff[]).map((item)=><button key={item} type="button" data-active={cuff===item} onClick={()=>markChange(()=>setCuff(item))}>{item}</button>)}</section>
         <section>
           <h2>Physical calibration</h2>
-          <label>px per mm<input type="number" min=".1" step=".0001" value={pxPerMm} onChange={(event)=>setPxPerMm(Math.max(.1,Number(event.target.value)||DEFAULT_PX_PER_MM))}/></label>
+          <label>Construction proof px per mm<input type="number" min=".1" step=".0001" value={pxPerMm} onChange={(event)=>setPxPerMm(Math.max(.1,Number(event.target.value)||DEFAULT_PX_PER_MM))}/></label>
+          <label>Photographic model px per mm<input type="number" min=".1" step=".0001" value={photoPxPerMm} onChange={(event)=>setPhotoPxPerMm(Math.max(.1,Number(event.target.value)||DEFAULT_PHOTO_PX_PER_MM))}/></label>
+          <p>The physical repeat gate and real mannequin compositor use the photographic 1024×1536 coordinate calibration above.</p>
           <label>Visible source tile width (mm)<input type="number" min=".1" step=".1" placeholder="Enter after measuring swatch" value={declaredTileMm??""} onChange={(event)=>setDeclaredTileMm(event.target.value?Number(event.target.value):null)}/></label>
           <label>Known pattern repeat (mm)<input type="number" min=".1" step=".1" placeholder={storedRepeatMm?"Using stored verified repeat":"Optional measured repeat"} value={declaredRepeatMm??""} onChange={(event)=>setDeclaredRepeatMm(event.target.value?Number(event.target.value):null)}/></label>
           {storedRepeatMm&&<p>Stored reviewed repeat: <b>{storedRepeatMm} mm</b>. Leave the field blank to use it.</p>}
-          {repeatPx&&<p>Expected repeat on model: <b>{repeatPx.toFixed(2)} px</b></p>}
-          {effectiveRepeatMm&&<label>Measured repeat on preview (px)<input type="number" min=".01" step=".01" value={measuredPx??""} onChange={(event)=>setMeasuredPx(event.target.value?Number(event.target.value):null)}/></label>}
+          {repeatPx&&<p>Expected repeat on photographic model: <b>{repeatPx.toFixed(2)} px</b></p>}
+          {effectiveRepeatMm&&<label>Measured repeat on photographic preview (px)<input type="number" min=".01" step=".01" value={measuredPx??""} onChange={(event)=>setMeasuredPx(event.target.value?Number(event.target.value):null)}/></label>}
           {error!==null&&<div className="proofGate" data-pass={pass?"yes":"no"}><b>{pass?"PASS":"FAIL"} · {error.toFixed(2)}% error</b><span>Roadmap gate: ≤ 8% scale error.</span></div>}
           {!declaredTileMm&&!effectiveRepeatMm&&<p><b>Important:</b> the current photo is used now, but it stays labelled approximate until the photographed swatch width or pattern repeat is physically measured.</p>}
         </section>
@@ -387,7 +395,7 @@ export function PremiumShirtProof(){
         </div>
       </div>
       <div className="proofRealModel">
-        <StyleDirectorRealModelPreview shirt={proofRealShirt} pant={realPant} style={realModelStyle} onRenderMeasured={(milliseconds)=>setRealRenderSamples((current)=>[...current.slice(-29),milliseconds])}/>
+        <StyleDirectorRealModelPreview shirt={proofRealShirt} pant={realPant} style={realModelStyle} photoPxPerMm={photoPxPerMm} onRenderMeasured={(milliseconds)=>setRealRenderSamples((current)=>[...current.slice(-29),milliseconds])}/>
       </div>
     </section>}
 
