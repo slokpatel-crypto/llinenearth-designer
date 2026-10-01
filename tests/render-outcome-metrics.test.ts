@@ -79,3 +79,42 @@ test("pattern release gate stays open until at least one approved patterned rend
   assert.equal(result.requiredPairs,0);
   assert.equal(result.gateComplete,false);
 });
+
+
+test("stale calibration is invalidated when reviewed repeat truth changes",()=>{
+  const result=summarizeApprovedPatternCalibrationCoverage([
+    {outcome_id:"o1",shirt_id:"stripe-shirt",pant_id:"solid-pant",human_status:"approved"},
+  ],[
+    {outcome_id:"o1",garment:"shirt",expected_repeat_mm:10,scale_error_pct:2,axis_status:"match",created_at:"2026-10-01T10:00:00Z"},
+  ],new Set(["stripe-shirt"]),new Map([["stripe-shirt",12]]));
+  assert.equal(result.requiredPairs,1);
+  assert.equal(result.passedPairs,0);
+  assert.equal(result.pendingPairs,1);
+  assert.equal(result.staleCalibrationPairs,1);
+  assert.equal(result.gateComplete,false);
+});
+
+test("missing reviewed repeat truth blocks final render pattern coverage",()=>{
+  const result=summarizeApprovedPatternCalibrationCoverage([
+    {outcome_id:"o1",shirt_id:"stripe-shirt",pant_id:"solid-pant",human_status:"approved"},
+  ],[
+    {outcome_id:"o1",garment:"shirt",expected_repeat_mm:10,scale_error_pct:2,axis_status:"match",created_at:"2026-10-01T10:00:00Z"},
+  ],new Set(["stripe-shirt"]),new Map());
+  assert.equal(result.requiredPairs,1);
+  assert.equal(result.passedPairs,0);
+  assert.equal(result.pendingPairs,1);
+  assert.equal(result.missingTruthPairs,1);
+  assert.equal(result.gateComplete,false);
+});
+
+test("current reviewed repeat truth can satisfy final render pattern coverage",()=>{
+  const result=summarizeApprovedPatternCalibrationCoverage([
+    {outcome_id:"o1",shirt_id:"stripe-shirt",pant_id:"solid-pant",human_status:"approved"},
+  ],[
+    {outcome_id:"o1",garment:"shirt",expected_repeat_mm:10,scale_error_pct:4,axis_status:"match",created_at:"2026-10-01T10:00:00Z"},
+  ],new Set(["stripe-shirt"]),new Map([["stripe-shirt",10]]));
+  assert.equal(result.passedPairs,1);
+  assert.equal(result.pendingPairs,0);
+  assert.equal(result.staleCalibrationPairs,0);
+  assert.equal(result.gateComplete,true);
+});
