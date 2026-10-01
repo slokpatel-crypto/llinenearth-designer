@@ -64,7 +64,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added anonymous Style Director real-user validation evidence for understandability, material distinction, exact stock handoff and explicit human sign-off.
 - Added append-only finished-garment ease evidence, a complete 35-cell coverage gate, and a versioned owner/tailor-approved house-ease registry.
 - Approved house-ease models now become the single live runtime ease source across assessment, search and brief generation; drafts/retired models never activate and the provisional table remains the explicit fallback when no approved model exists.
-- Tightened the shared five-customer beta evidence so each case must prove design lock → signed share/exact-look enquiry with zero blocking bugs; legacy generic completion cannot satisfy the gate.
+- Tightened the shared five-customer beta evidence so each qualifying case must reference a server-audited share created only after immutable lock-hash verification, with zero blocking bugs; legacy checkbox/generic completion cannot satisfy the gate.
 - Added customer preview coverage auditing across the actual Designer choices, combining live-preview support, construction status and explicit visual-review evidence.
 - Added a five-novice Designer completion study with a server stopwatch, latest-case semantics and a human-entered documented target; manual/operator-entered durations remain historical only and cannot satisfy the gate.
 - Added Supabase email-OTP customer accounts, account-owned locked designs and measurement profiles, claim-by-recovery-token migration, and private account listing.
