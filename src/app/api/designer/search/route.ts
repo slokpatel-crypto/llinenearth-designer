@@ -13,6 +13,7 @@ import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "
 import { loadDesignerEvidenceContext } from "@/lib/designer/evidence-context";
 import { enrichDesignerFabricsWithIntelligence } from "@/lib/fabric-intelligence-server";
 import { loadApprovedHouseEaseModel } from "@/lib/designer/house-ease-server";
+import { applyLiveVerifiedStockAvailability } from "@/lib/designer/stock-availability-server";
 import type { MeasurementProfile } from "@/lib/measurements";
 import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
 
@@ -120,7 +121,8 @@ export async function POST(request:Request) {
       loadDesignerEvidenceContext(),
       loadApprovedHouseEaseModel(),
     ]);
-    const stock=applyDesignerFabricMetadataToStock(metadata).filter((fabric)=>fabric.inStock);
+    const liveStock=await applyLiveVerifiedStockAvailability(applyDesignerFabricMetadataToStock(metadata));
+    const stock=liveStock.stock.filter((fabric)=>fabric.inStock);
     const baseFabrics=stock.map(designerFabricFromStock);
     const {fabrics,intelligence:fabricIntelligence}=await enrichDesignerFabricsWithIntelligence(baseFabrics);
     const shirts=fabrics.filter((fabric)=>fabric.allowedGarments.includes("shirt"));
