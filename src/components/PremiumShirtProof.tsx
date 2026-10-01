@@ -87,6 +87,7 @@ export function PremiumShirtProof(){
       return false;
     }
   },[effectiveRepeatMm,physicalEvidenceNote]);
+  const scaleEvidencePass=pass===true&&physicalEvidenceReady;
   const calibrationState=physicalEvidenceReady
     ? storedRepeatMm ? "STORED PHYSICAL SCALE + PROVENANCE" : "PHYSICAL SCALE + PROVENANCE ENTERED"
     : "APPROXIMATE / UNVERIFIED SCALE";
@@ -106,11 +107,11 @@ export function PremiumShirtProof(){
   const realismGate=realismSummary.ready;
   const proofAcceptance=useMemo(()=>phase1ProofAcceptance({
     repeatMm:effectiveRepeatMm,
-    scaleGatePass:pass===true&&physicalEvidenceReady,
+    scaleGatePass:scaleEvidencePass,
     realModelSamples:realRenderSamples.length,
     realModelP95Ms:realP95,
     realismRatings,
-  }),[effectiveRepeatMm,pass,physicalEvidenceReady,realRenderSamples.length,realP95,realismRatings]);
+  }),[effectiveRepeatMm,scaleEvidencePass,realRenderSamples.length,realP95,realismRatings]);
 
   useEffect(()=>{
     let cancelled=false;
@@ -385,7 +386,7 @@ export function PremiumShirtProof(){
           {!physicalEvidenceReady&&effectiveRepeatMm&&<p><b>Evidence source required:</b> add a short owner/supplier measurement note before the physical scale gate can count toward acceptance.</p>}
           {repeatPx&&<p>Expected repeat on photographic model: <b>{repeatPx.toFixed(2)} px</b></p>}
           {effectiveRepeatMm&&<label>Measured repeat on photographic preview (px)<input type="number" min=".01" step=".01" value={measuredPx??""} onChange={(event)=>setMeasuredPx(event.target.value?Number(event.target.value):null)}/></label>}
-          {error!==null&&<div className="proofGate" data-pass={pass?"yes":"no"}><b>{pass?"PASS":"FAIL"} · {error.toFixed(2)}% error</b><span>Roadmap gate: ≤ 8% scale error.</span></div>}
+          {error!==null&&<div className="proofGate" data-pass={scaleEvidencePass?"yes":"no"}><b>{scaleEvidencePass?"PASS":pass?"WAITING FOR PROVENANCE":"FAIL"} · {error.toFixed(2)}% error</b><span>Roadmap gate: ≤ 8% scale error plus auditable physical evidence.</span></div>}
           {!declaredTileMm&&!effectiveRepeatMm&&<p><b>Important:</b> the current photo is used now, but it stays labelled approximate until the photographed swatch width or pattern repeat is physically measured.</p>}
         </section>
         <section>
