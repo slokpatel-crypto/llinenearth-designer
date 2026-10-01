@@ -12,6 +12,7 @@ import {
   type OccasionTier,
 } from "@/lib/designer/engine";
 import { assessFitConstruction, type FitConstructionAssessment } from "@/lib/designer/fit-construction";
+import type { ApprovedHouseEaseModel } from "@/lib/designer/ease-calibration";
 import { assessBlockStrategy, type DesignerBlockStrategy } from "@/lib/designer/block-strategy";
 import { evaluateLinenEarthBrandLanguage, type BrandLanguageEvaluation } from "@/lib/designer/brand-language";
 import { casebookSignalFor, type DesignerCasebook, type DesignerCasebookSignal } from "@/lib/designer/casebook";
@@ -86,6 +87,7 @@ export type DesignerSearchInput = {
   fitOutcomes?: FitOutcomeBook | null;
   preference?: DesignerSearchPreference | null;
   fabricIntelligence?: Record<string,DesignerFabricIntelligence> | null;
+  easeModel?: ApprovedHouseEaseModel | null;
 };
 
 type RankedCandidate = Omit<DesignerSearchResult,"comparison">;
@@ -618,7 +620,7 @@ function currentMetrics(input:DesignerSearchInput,tier:DesignerSearchTier) {
   const baseStyle=styleForTier(tier,input.occasion,input.chosenStyle);
   const style=fitAdaptedStyle(baseStyle,input.measurements,input.observations).style;
   const recommendation=evaluateDesignerCombo(input.currentShirt,input.currentPant,input.occasion,style,undefined,input.context);
-  const fit=assessFitConstruction(input.measurements,style,{climate:input.context.climate,shirtFabric:input.currentShirt,trouserFabric:input.currentPant,observations:input.observations});
+  const fit=assessFitConstruction(input.measurements,style,{climate:input.context.climate,shirtFabric:input.currentShirt,trouserFabric:input.currentPant,observations:input.observations,easeModel:input.easeModel});
   const brand=evaluateLinenEarthBrandLanguage(input.currentShirt,input.currentPant,style,input.occasion,input.context);
   const block=assessBlockStrategy(input.measurements,style,input.observations);
   return { recommendation,fit,brand,block,novelty:noveltyScore(input.currentShirt,input.currentPant,style) };
@@ -684,7 +686,7 @@ export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearc
     for(const shirt of shirts) {
       for(const pant of pants) {
         const recommendation=evaluateDesignerCombo(shirt,pant,input.occasion,style,undefined,input.context);
-        const fit=assessFitConstruction(input.measurements,style,{climate:input.context.climate,shirtFabric:shirt,trouserFabric:pant,observations:input.observations});
+        const fit=assessFitConstruction(input.measurements,style,{climate:input.context.climate,shirtFabric:shirt,trouserFabric:pant,observations:input.observations,easeModel:input.easeModel});
         if(hardBlocked(recommendation,fit)) continue;
         const brand=evaluateLinenEarthBrandLanguage(shirt,pant,style,input.occasion,input.context);
         const block=assessBlockStrategy(input.measurements,style,input.observations);
