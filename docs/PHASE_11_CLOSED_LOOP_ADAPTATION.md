@@ -32,6 +32,24 @@ The private **Customer Outcome Review** desk now adds that control layer:
 
 A later learning rule may only map reviewed evidence into bounded recommendation signals after this real evidence and policy gate is satisfied.
 
+
+## Durable design lineage
+
+A delivered-order outcome must still be explainable after a temporary secure design-vault copy expires. Orders created from a verified locked-design recovery token can therefore store a minimal immutable **production learning context** alongside the order.
+
+The retained context contains only:
+- locked revision ID and recipe hash,
+- garment rule/schema versions,
+- occasion/climate/intention,
+- exact shirt and trouser fabric IDs,
+- shirt fit/wear/collar/cuff/placket/button choices,
+- trouser shape/rise/waistband/break choices,
+- non-personal creative treatment identifiers when present.
+
+It intentionally excludes measurements, finished body targets, body-profile data and block/body-shape information.
+
+The human review gate refuses to approve an outcome for learning when this durable lineage is absent. Older/manual orders can still retain customer feedback for service evidence, but they do not count toward the learning threshold.
+
 ## Completion gate
 
 - [x] authenticated delivered-order outcome capture
@@ -40,6 +58,8 @@ A later learning rule may only map reviewed evidence into bounded recommendation
 - [x] privacy-safe customer account display
 - [x] private operator visibility
 - [x] automatic learning explicitly disabled
+- [x] privacy-safe durable order → design learning context implemented
+- [x] learning approval requires durable design lineage
 - [ ] real delivered-order outcome dataset collected
 - [x] human review / rejection workflow implemented
 - [x] human-entered threshold policy registry implemented with no default threshold
