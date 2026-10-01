@@ -1,5 +1,6 @@
 import "server-only";
 import { normalizeCustomerEmail } from "@/lib/customer-account";
+import { CUSTOMER_SESSION_COOKIE, verifySignedCustomerSession } from "@/lib/customer-session";
 export { normalizeCustomerEmail } from "@/lib/customer-account";
 
 export type CustomerIdentity = {
@@ -73,6 +74,11 @@ export async function verifyCustomerOtp(email:string,token:string):Promise<Supab
 }
 
 export async function getCustomerIdentity(request:Request):Promise<CustomerIdentity|null>{
+  const durable=verifySignedCustomerSession(readCookie(request,CUSTOMER_SESSION_COOKIE));
+  if(durable) return durable;
+
+  // Backward-compatible bridge for sessions created before the durable
+  // Linen Earth customer-session cookie was introduced.
   const token=readCookie(request,CUSTOMER_ACCESS_COOKIE);
   if(!token) return null;
   const response=await authFetch("/auth/v1/user",{
