@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { summarizeApprovedPatternCalibrationCoverage, summarizeRenderOutcomes, summarizeRenderPatternCalibrations } from "../src/lib/designer/render-outcome-metrics.ts";
+import { deriveObservedRepeatMmFromFixture, summarizeApprovedPatternCalibrationCoverage, summarizeRenderOutcomes, summarizeRenderPatternCalibrations } from "../src/lib/designer/render-outcome-metrics.ts";
 
 test("render outcome metrics exclude cached renders from provider credit spend",()=>{
   const result=summarizeRenderOutcomes([
@@ -130,4 +130,13 @@ test("legacy direct-mm calibration cannot satisfy the hardened pattern gate",()=
   assert.equal(result.pendingPairs,1);
   assert.equal(result.legacyCalibrationPairs,1);
   assert.equal(result.gateComplete,false);
+});
+
+
+test("fixture conversion derives observed repeat in millimetres deterministically",()=>{
+  assert.equal(deriveObservedRepeatMmFromFixture(100,500,50),10);
+  assert.equal(deriveObservedRepeatMmFromFixture(50,200,24),6);
+  assert.throws(()=>deriveObservedRepeatMmFromFixture(0,200,24));
+  assert.throws(()=>deriveObservedRepeatMmFromFixture(50,0,24));
+  assert.throws(()=>deriveObservedRepeatMmFromFixture(50,200,0));
 });
