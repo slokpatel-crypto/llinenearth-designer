@@ -199,6 +199,7 @@ type StyleDirectorValidationPayload={
     distinctCases:number;
     handoffCases:number;
     verifiedHandoffCases:number;
+    uniqueVerifiedHandoffs:number;
     deviceCoverage:string[];
     latestSignoffStatus:string;
     requiredPositiveCases:number|null;
@@ -634,7 +635,7 @@ export default function Phase10ReadinessClient(){
             : "No real-user Style Director validation evidence is available yet.",
         status:styleValidationDone?"done":data.styleDirectorValidation?.configured?"progress":"blocked",
         progress:styleValidationProgress,
-        metric:styleValidation?`${styleValidation.positiveCases}/${styleValidation.requiredPositiveCases??"—"} clean target · ${styleValidation.verifiedHandoffCases} signed handoffs · ${styleValidation.blockingCases} blocking · ${styleValidation.latestSignoffStatus} sign-off`:"No user-test evidence",
+        metric:styleValidation?`${styleValidation.positiveCases}/${styleValidation.requiredPositiveCases??"—"} distinct clean handoffs · ${styleValidation.uniqueVerifiedHandoffs} unique signed handoffs · ${styleValidation.blockingCases} blocking · ${styleValidation.latestSignoffStatus} sign-off`:"No user-test evidence",
         href:"/operator/style-director-validation",
         action:"Run Style Director validation",
         ownerDependent:true,
