@@ -6,6 +6,7 @@ import {
   normalizeFabricPhysicalColorCheck,
   summarizeFabricPhysicalColorChecks,
 } from "@/lib/fabric-color-calibration";
+import { loadFabricAnalysesForFabricIds } from "@/lib/fabric-analyzer-store";
 
 export const runtime="nodejs";
 
@@ -60,9 +61,17 @@ export async function POST(request:Request){
       physicalHex:body.physicalHex,
       illuminant:body.illuminant,
       device:body.device,
+      checkedBy:body.checkedBy,
+      evidenceReference:body.evidenceReference,
       note:body.note,
     });
-    const checkId=await rpc<string>("fabric_physical_color_check_record",{
+    if(!check.profileId) throw new Error("A reviewed Analyzer profile is required for the digital colour reference.");
+    const profiles=await loadFabricAnalysesForFabricIds([check.fabricId],{includeUnreviewed:false});
+    const profile=profiles.find((item)=>item.id===check.profileId && ["approved","corrected"].includes(item.review_status));
+    if(!profile) throw new Error("The selected Analyzer profile is not an approved/corrected profile bound to this fabric.");
+    const measuredHex=String(profile.profile?.measured?.colour?.hex||"").trim().toUpperCase();
+    if(measuredHex!==check.digitalHex) throw new Error("Digital colour reference must match the selected reviewed Analyzer measurement.");
+    const checkId=await rpc<string>("fabric_physical_color_check_record_v2",{
       p_fabric_id:check.fabricId,
       p_profile_id:check.profileId,
       p_digital_hex:check.digitalHex,
@@ -74,6 +83,8 @@ export async function POST(request:Request){
       p_delta_e:check.deltaE,
       p_illuminant:check.illuminant,
       p_device:check.device,
+      p_checked_by:check.checkedBy,
+      p_evidence_reference:check.evidenceReference,
       p_note:check.note,
     });
     return NextResponse.json({checkId,check});
