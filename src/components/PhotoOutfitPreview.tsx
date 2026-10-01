@@ -698,6 +698,15 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
   const gaps = photoTemplateGaps(style, templateId);
   const tucked = style.shirtWear === "Tucked";
   const creativeCoverage = creativePreviewCoverage(creativeDirection || undefined);
+  const shirtPreviewAsset=fabricRenderAsset(shirt);
+  const pantPreviewAsset=fabricRenderAsset(pant);
+  const shirtPatternScaleVerified=shirt.patternType==="Solid" || shirtPreviewAsset?.scaleApproximate===false;
+  const pantPatternScaleVerified=pant.patternType==="Solid" || pantPreviewAsset?.scaleApproximate===false;
+  const previewScaleVerified=shirtPatternScaleVerified&&pantPatternScaleVerified;
+  const approximateScaleItems=[
+    ...(shirtPatternScaleVerified?[]:[shirt.name]),
+    ...(pantPatternScaleVerified?[]:[pant.name]),
+  ];
   const renderSignature=JSON.stringify({
     shirt:shirt.id,
     pant:pant.id,
@@ -1029,7 +1038,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         <button type="button" onClick={download} disabled={!ready}>Save</button>
       </div>
     </div>
-    {!showCreativeAi && <p className="newDesignerPhotoApproximation"><strong>Instant preview</strong> · Studio model; pattern scale, fit and drape are approximate until verified on a physical sample. FASHN is reserved for the locked final design.</p>}
+    {!showCreativeAi && <p className="newDesignerPhotoApproximation"><strong>Instant preview</strong> · Studio model; {previewScaleVerified ? "pattern scale uses reviewed physical evidence where a visible repeat exists" : "pattern scale is still approximate for "+approximateScaleItems.join(" / ")}. Fit and drape still require physical verification. FASHN is reserved for the locked final design.</p>}
     {!creativeDirection && finalLocked && !creativeAi && <p className="newDesignerPhotoLock"><strong>FINAL DESIGN LOCKED</strong> · Any fabric or construction change automatically unlocks it before another AI render.</p>}
     {creativeAi?.cached && <p className="newDesignerPhotoCache">Cached final render reused · no new FASHN generation was needed.</p>}
     {creativeAi && !creativeDirection && <div className="newDesignerPhotoViews" role="group" aria-label="Photoreal model views">
