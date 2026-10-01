@@ -126,19 +126,30 @@ returns boolean
 language plpgsql
 security definer
 set search_path='public','private'
-as $$
+as $
+declare v_current text;
 begin
   if p_status not in ('sent','accepted','void') then raise exception 'unsupported quote status'; end if;
+
+  select status into v_current from private.production_quotes where quote_id=p_quote_id for update;
+  if v_current is null then return false; end if;
+
+  if not (
+    (v_current='draft' and p_status in ('sent','void')) or
+    (v_current='sent' and p_status in ('accepted','void'))
+  ) then
+    raise exception 'invalid quote transition from % to %',v_current,p_status;
+  end if;
+
   update private.production_quotes
   set status=p_status,updated_at=now(),note=case when trim(coalesce(p_note,''))='' then note else left(p_note,1000) end
-  where quote_id=p_quote_id and status<>'void';
-  if not found then return false; end if;
+  where quote_id=p_quote_id;
 
   insert into private.production_quote_events(quote_id,event_type,payload)
-  values(p_quote_id,p_status,jsonb_build_object('note',left(coalesce(p_note,''),1000)));
+  values(p_quote_id,p_status,jsonb_build_object('note',left(coalesce(p_note,''),1000),'from',v_current));
   return true;
 end;
-$$;
+$;
 
 create or replace function public.production_quote_list(p_limit integer default 100)
 returns table(
@@ -203,23 +214,36 @@ returns boolean
 language plpgsql
 security definer
 set search_path='public','private'
-as $$
+as $
+declare v_current text;
 begin
   if p_status not in ('cloth_reserved','cutting','stitching','fitting','ready','delivered','cancelled') then
     raise exception 'unsupported order status';
   end if;
 
+  select status into v_current from private.production_orders where order_id=p_order_id for update;
+  if v_current is null then return false; end if;
+
+  if not (
+    (v_current='created' and p_status in ('cloth_reserved','cancelled')) or
+    (v_current='cloth_reserved' and p_status in ('cutting','cancelled')) or
+    (v_current='cutting' and p_status in ('stitching','cancelled')) or
+    (v_current='stitching' and p_status in ('fitting','ready','cancelled')) or
+    (v_current='fitting' and p_status in ('stitching','ready','cancelled')) or
+    (v_current='ready' and p_status in ('delivered','cancelled'))
+  ) then
+    raise exception 'invalid order transition from % to %',v_current,p_status;
+  end if;
+
   update private.production_orders
   set status=p_status,updated_at=now(),note=case when trim(coalesce(p_note,''))='' then note else left(p_note,1000) end
-  where order_id=p_order_id and status not in ('delivered','cancelled');
-
-  if not found then return false; end if;
+  where order_id=p_order_id;
 
   insert into private.production_order_events(order_id,status,payload)
-  values(p_order_id,p_status,jsonb_build_object('note',left(coalesce(p_note,''),1000)));
+  values(p_order_id,p_status,jsonb_build_object('note',left(coalesce(p_note,''),1000),'from',v_current));
   return true;
 end;
-$$;
+$;
 
 create or replace function public.production_order_list(p_limit integer default 100)
 returns table(
