@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { evaluateRenderCreditCap, summarizeCrossViewIdentity } from "../src/lib/designer/render-release-evidence.ts";
+import { evaluateFinalRenderReleaseEvidence, evaluateRenderCreditCap, summarizeCrossViewIdentity } from "../src/lib/designer/render-release-evidence.ts";
 
 test("cross-view identity only counts concepts with at least two rendered views",()=>{
   const outcomes=[
@@ -35,4 +35,46 @@ test("render credit cap stays unknown until owner enters a cap and real approval
   assert.deepEqual(evaluateRenderCreditCap(null,1.5),{configured:true,withinCap:null,ownerCap:1.5});
   assert.equal(evaluateRenderCreditCap(1.2,1.5).withinCap,true);
   assert.equal(evaluateRenderCreditCap(1.7,1.5).withinCap,false);
+});
+
+
+test("final render release requires approval evidence, clean identity evidence, and owner cost cap",()=>{
+  const result=evaluateFinalRenderReleaseEvidence({
+    reviewed:20,
+    approvalRate:65,
+    identity:{eligibleConcepts:3,reviewedConcepts:3,pendingConcepts:0,passedConcepts:3,failedConcepts:0},
+    creditCap:{configured:true,withinCap:true},
+  });
+  assert.equal(result.gateComplete,true);
+  assert.equal(result.progressPercent,100);
+  assert.equal(result.remainingReviews,0);
+});
+
+test("final render release stays open when any human evidence boundary is unresolved",()=>{
+  const result=evaluateFinalRenderReleaseEvidence({
+    reviewed:19,
+    approvalRate:90,
+    identity:{eligibleConcepts:2,reviewedConcepts:2,pendingConcepts:0,passedConcepts:1,failedConcepts:1},
+    creditCap:{configured:true,withinCap:null},
+  });
+  assert.equal(result.approvalGateComplete,false);
+  assert.equal(result.identityGateComplete,false);
+  assert.equal(result.costGateComplete,false);
+  assert.equal(result.gateComplete,false);
+  assert.equal(result.progressPercent,0);
+  assert.equal(result.remainingReviews,1);
+});
+
+test("cross-view release evidence cannot pass before a multi-view concept exists",()=>{
+  const result=evaluateFinalRenderReleaseEvidence({
+    reviewed:25,
+    approvalRate:80,
+    identity:{eligibleConcepts:0,reviewedConcepts:0,pendingConcepts:0,passedConcepts:0,failedConcepts:0},
+    creditCap:{configured:true,withinCap:true},
+  });
+  assert.equal(result.approvalGateComplete,true);
+  assert.equal(result.identityGateComplete,false);
+  assert.equal(result.costGateComplete,true);
+  assert.equal(result.progressPercent,67);
+  assert.equal(result.gateComplete,false);
 });
