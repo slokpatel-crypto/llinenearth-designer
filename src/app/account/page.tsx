@@ -5,10 +5,24 @@ import { useCallback, useEffect, useState } from "react";
 type Customer={id?:string;email:string|null};
 type OwnedDesign={vaultId:string;revisionId:string;recipeHash:string;createdAt:string;expiresAt:string};
 type OwnedProfile={vaultId:string;createdAt:string;expiresAt:string;profile:{unit?:string;shirt?:Record<string,unknown>;pants?:Record<string,unknown>}};
+type OwnedQuote={quote_id:string;revision_id:string;currency:string;total:number|string;status:string;created_at:string;updated_at:string};
+type OwnedOrder={order_id:string;revision_id:string;quote_id:string|null;status:string;created_at:string;updated_at:string};
 
 const card:React.CSSProperties={border:"1px solid #ddd7cc",borderRadius:18,padding:20,background:"#fff"};
 const input:React.CSSProperties={width:"100%",boxSizing:"border-box",padding:"12px 14px",border:"1px solid #cfc7ba",borderRadius:10,fontSize:15};
 const button:React.CSSProperties={padding:"11px 15px",border:0,borderRadius:10,background:"#1a1a1a",color:"#fff",cursor:"pointer",fontWeight:700};
+const statusPill:React.CSSProperties={display:"inline-block",padding:"4px 9px",borderRadius:999,background:"#f0ede6",fontSize:12,fontWeight:700,textTransform:"capitalize"};
+
+function money(currency:string,value:number|string){
+  const amount=Number(value);
+  if(!Number.isFinite(amount)) return currency+" —";
+  try{return new Intl.NumberFormat("en-IN",{style:"currency",currency}).format(amount);}
+  catch{return currency+" "+amount.toFixed(2);}
+}
+
+function labelStatus(value:string){
+  return value.replaceAll("_"," ");
+}
 
 export default function AccountPage(){
   const [customer,setCustomer]=useState<Customer|null>(null);
@@ -17,6 +31,8 @@ export default function AccountPage(){
   const [codeSent,setCodeSent]=useState(false);
   const [designs,setDesigns]=useState<OwnedDesign[]>([]);
   const [profiles,setProfiles]=useState<OwnedProfile[]>([]);
+  const [quotes,setQuotes]=useState<OwnedQuote[]>([]);
+  const [orders,setOrders]=useState<OwnedOrder[]>([]);
   const [claimDesign,setClaimDesign]=useState("");
   const [claimMeasurement,setClaimMeasurement]=useState("");
   const [message,setMessage]=useState("");
@@ -26,13 +42,17 @@ export default function AccountPage(){
     const session=await fetch("/api/customer-auth/session",{cache:"no-store"}).then(r=>r.json());
     const next=session.customer||null;
     setCustomer(next);
-    if(!next){setDesigns([]);setProfiles([]);return;}
-    const [d,m]=await Promise.all([
+    if(!next){setDesigns([]);setProfiles([]);setQuotes([]);setOrders([]);return;}
+
+    const [d,m,p]=await Promise.all([
       fetch("/api/designer/vault",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"listOwned"})}).then(r=>r.json()),
       fetch("/api/measurements/vault",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"listOwned"})}).then(r=>r.json()),
+      fetch("/api/customer-account/production",{cache:"no-store"}).then(r=>r.json()),
     ]);
     setDesigns(Array.isArray(d.designs)?d.designs:[]);
     setProfiles(Array.isArray(m.profiles)?m.profiles:[]);
+    setQuotes(Array.isArray(p.quotes)?p.quotes:[]);
+    setOrders(Array.isArray(p.orders)?p.orders:[]);
   },[]);
 
   useEffect(()=>{void refresh();},[refresh]);
@@ -81,7 +101,7 @@ export default function AccountPage(){
       <header>
         <p style={{fontSize:12,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Linen Earth</p>
         <h1 style={{fontFamily:"Georgia,serif",fontSize:"clamp(34px,6vw,58px)",lineHeight:1,margin:"0 0 12px"}}>My private design account</h1>
-        <p style={{maxWidth:680,lineHeight:1.6,opacity:.72}}>Keep locked designs and measurement profiles tied to your account while preserving the existing recovery-token backup.</p>
+        <p style={{maxWidth:700,lineHeight:1.6,opacity:.72}}>Keep locked designs, measurements, quotes and production progress tied to one private account while preserving the recovery-token backup.</p>
       </header>
 
       {!customer?<section style={card}>
@@ -98,6 +118,30 @@ export default function AccountPage(){
         <section style={{...card,display:"flex",alignItems:"center",justifyContent:"space-between",gap:16,flexWrap:"wrap"}}>
           <div><strong>Signed in</strong><div style={{opacity:.7,marginTop:4}}>{customer.email}</div></div>
           <button style={{...button,background:"#6b7a63"}} onClick={logout}>Sign out</button>
+        </section>
+
+        <section style={card}>
+          <h2 style={{marginTop:0}}>Production progress <span style={{opacity:.45}}>({orders.length})</span></h2>
+          {orders.length===0?<p style={{opacity:.65}}>No production order is linked to this account yet.</p>:<div style={{display:"grid",gap:12}}>
+            {orders.map(order=>{
+              const quote=quotes.find(item=>item.quote_id===order.quote_id);
+              return <div key={order.order_id} style={{borderTop:"1px solid #ece6dc",paddingTop:12,display:"grid",gap:5}}>
+                <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+                  <strong>{order.revision_id}</strong>
+                  <span style={statusPill}>{labelStatus(order.status)}</span>
+                </div>
+                <div style={{fontSize:13,opacity:.65}}>Order {order.order_id.slice(0,8)}… · updated {new Date(order.updated_at).toLocaleDateString()}</div>
+                {quote&&<div style={{fontSize:13,opacity:.8}}>Quote {money(quote.currency,quote.total)} · {labelStatus(quote.status)}</div>}
+              </div>;
+            })}
+          </div>}
+          {orders.length===0&&quotes.length>0&&<div style={{marginTop:14}}>
+            <strong>Quotes</strong>
+            {quotes.map(quote=><div key={quote.quote_id} style={{borderTop:"1px solid #ece6dc",paddingTop:10,marginTop:10}}>
+              <span>{money(quote.currency,quote.total)}</span> · <span style={{textTransform:"capitalize"}}>{labelStatus(quote.status)}</span>
+              <div style={{fontSize:13,opacity:.6,marginTop:3}}>{quote.revision_id}</div>
+            </div>)}
+          </div>}
         </section>
 
         <section style={card}>
@@ -132,7 +176,7 @@ export default function AccountPage(){
       </>}
 
       {message&&<div role="status" style={{padding:"12px 14px",borderRadius:10,background:"#ece8df"}}>{message}</div>}
-      <p style={{fontSize:12,lineHeight:1.6,opacity:.6}}>Raw measurement values are not exposed in this account summary. Secure recovery tokens remain valid until expiry unless their vault item is deleted.</p>
+      <p style={{fontSize:12,lineHeight:1.6,opacity:.6}}>Raw measurement values and private operator notes are not exposed here. Secure recovery tokens remain valid until expiry unless their vault item is deleted.</p>
     </div>
   </main>;
 }
