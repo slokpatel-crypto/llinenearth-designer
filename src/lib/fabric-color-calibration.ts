@@ -11,6 +11,8 @@ export type FabricPhysicalColorCheckDraft={
   physicalHex?:unknown;
   illuminant?:unknown;
   device?:unknown;
+  checkedBy?:unknown;
+  evidenceReference?:unknown;
   note?:unknown;
 };
 
@@ -24,6 +26,8 @@ export type FabricPhysicalColorCheck={
   deltaE:number;
   illuminant:string;
   device:string;
+  checkedBy:string;
+  evidenceReference:string;
   note:string;
 };
 
@@ -66,13 +70,18 @@ export function normalizeFabricPhysicalColorCheck(input:FabricPhysicalColorCheck
 
   const illuminant=text(input.illuminant,80);
   const device=text(input.device,160);
+  const checkedBy=text(input.checkedBy,120);
+  const evidenceReference=text(input.evidenceReference,240);
   const note=text(input.note,800);
+  if(illuminant.length<2) throw new Error("Controlled illuminant / lighting condition is required.");
   if(method!=="calibrated_capture"&&!device) {
     throw new Error("Instrument/device identity is required for instrument colour checks.");
   }
   if(method==="calibrated_capture"&&!note) {
     throw new Error("Calibrated-capture checks require a short setup/evidence note.");
   }
+  if(checkedBy.length<2) throw new Error("Named checker is required for physical colour evidence.");
+  if(evidenceReference.length<3) throw new Error("Physical colour evidence reference is required.");
 
   return {
     fabricId,
@@ -84,19 +93,26 @@ export function normalizeFabricPhysicalColorCheck(input:FabricPhysicalColorCheck
     deltaE:Math.round(deltaE2000(digitalLab,physicalLab)*100)/100,
     illuminant,
     device,
+    checkedBy,
+    evidenceReference,
     note,
   };
 }
 
 export function summarizeFabricPhysicalColorChecks(
-  rows:Array<{fabric_id?:unknown;delta_e?:unknown}>,
+  rows:Array<{fabric_id?:unknown;delta_e?:unknown;checked_by?:unknown;evidence_reference?:unknown;illuminant?:unknown}>,
   target=10,
 ){
   const latest=new Map<string,number>();
+  let legacyUnverified=0;
   for(const row of rows){
     const fabricId=text(row.fabric_id,160);
     const deltaE=Number(row.delta_e);
     if(!fabricId||!Number.isFinite(deltaE)||deltaE<0) continue;
+    const provenanceReady=text(row.checked_by,120).length>=2
+      && text(row.evidence_reference,240).length>=3
+      && text(row.illuminant,80).length>=2;
+    if(!provenanceReady){legacyUnverified+=1;continue;}
     if(!latest.has(fabricId)) latest.set(fabricId,deltaE);
   }
   const values=[...latest.values()].sort((a,b)=>a-b);
@@ -110,6 +126,7 @@ export function summarizeFabricPhysicalColorChecks(
     uniqueFabrics:values.length,
     remaining:Math.max(0,safeTarget-values.length),
     evidenceGateComplete:values.length>=safeTarget,
+    legacyUnverified,
     averageDeltaE:average===null?null:Math.round(average*100)/100,
     medianDeltaE:median===null?null:Math.round(median*100)/100,
   };
