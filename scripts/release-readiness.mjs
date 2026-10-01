@@ -100,6 +100,11 @@ for (const path of [
   "supabase/migrations/20261009_style_director_user_validation.sql",
   "src/lib/designer/ease-calibration.ts",
   "src/lib/designer/preview-option-coverage.ts",
+  "src/lib/designer/novice-designer-study.ts",
+  "src/app/api/operator/novice-designer-study/route.ts",
+  "src/app/operator/novice-designer-study/page.tsx",
+  "src/app/operator/novice-designer-study/NoviceDesignerStudyClient.tsx",
+  "supabase/migrations/20261012_designer_novice_study.sql",
   "src/lib/designer/preview-option-reviews.ts",
   "src/app/api/operator/preview-option-coverage/route.ts",
   "src/app/operator/preview-option-coverage/page.tsx",
@@ -162,6 +167,10 @@ requireTokens("src/app/operator/style-director-validation/StyleDirectorValidatio
 requireTokens("supabase/migrations/20261009_style_director_user_validation.sql", ["style_director_user_tests","style_director_validation_signoffs","record real-user validation evidence before sign-off","service_role"]);
 requireTokens("src/lib/designer/ease-calibration.ts", ["requiredEaseEvidenceKeys","evidenceCoverageComplete","normalizeHouseEaseCalibrationDraft","SHIRT_EASE_CLASSES","TROUSER_EASE_CLASSES"]);
 requireTokens("src/lib/designer/preview-option-coverage.ts", ["fullyCleared","constructionBlocked","noPreviewSupport","gateComplete"]);
+requireTokens("src/lib/designer/novice-designer-study.ts", ["durationSeconds","likedDesignCompleted","targetSeconds","withinTargetCases","gateComplete"]);
+requireTokens("src/app/api/operator/novice-designer-study/route.ts", ["designer_novice_attempt_record","designer_novice_study_decision_record","verifyOperatorSession"]);
+requireTokens("src/app/operator/novice-designer-study/NoviceDesignerStudyClient.tsx", ["Novice Designer Completion Study","documented roadmap target","Record observed attempt","Approve five-case gate"]);
+requireTokens("supabase/migrations/20261012_designer_novice_study.sql", ["designer_novice_attempts","designer_novice_study_decisions","five novice liked-design completions within the documented target","service_role"]);
 requireTokens("src/lib/designer/preview-option-reviews.ts", ["DESIGNER_STYLE_CHOICES","designer_preview_option_review","customerPreviewCoverageRows","constructionStatus"]);
 requireTokens("src/app/api/operator/preview-option-coverage/route.ts", ["verifyOperatorSession","customerPreviewCoverageRows","summarizePreviewOptionCoverage"]);
 requireTokens("src/app/operator/preview-option-coverage/PreviewOptionCoverageClient.tsx", ["Customer Preview Coverage","Approve customer preview","Reject preview support","Approximate"]);
@@ -517,6 +526,8 @@ requireTokens("scripts/check-cloud-readiness.mjs", [
   "style_director_validation_signoff_list",
   "house_ease_evidence_list",
   "house_ease_model_list",
+  "designer_novice_attempt_list",
+  "designer_novice_study_decision_list",
   "designer_render_outcome_list",
   "designer_render_pattern_calibration_list",
   "Apply Roadmap v2 Supabase migrations",
