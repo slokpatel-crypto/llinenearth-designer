@@ -24,9 +24,15 @@ Designer technical details now offer **Lock recipe revision**. The revision is e
 
 Changing fabric, construction, body profile, measurements or creative direction clears the current lock state before another revision is created.
 
+## Share-link work now implemented
+
+Locked revisions can now create a signed 30-day share token. The public share payload deliberately excludes body profile, finished-measurement targets and other customer measurement data. The share page shows the design recipe, fabrics and construction choices and can reopen the Designer.
+
+The server verifies the locked recipe hash before issuing a share link. Tampered or expired share tokens are rejected.
+
 ## What this does not yet solve
 
-The exported lock file is portable, but the production system of record is not complete until customer identity and durable server persistence are connected. Browser localStorage must not be treated as the authoritative copy of a paid / production order.
+The exported lock file is portable and the share token is privacy-safe, but the production system of record is not complete until customer identity and durable authenticated persistence are connected. Browser localStorage must not be treated as the authoritative copy of a paid / production order.
 
 ## Completion gate
 
@@ -41,7 +47,8 @@ The exported lock file is portable, but the production system of record is not c
 - [x] WhatsApp exact-look enquiry
 - [ ] authenticated customer ownership
 - [ ] durable server persistence for locked revisions
-- [ ] share-token / permissions model
+- [x] signed expiring share-token model for non-sensitive design recipe
+- [ ] authenticated customer ownership / revocation permissions
 - [ ] five real customers complete lock → share/enquiry with zero blocking bugs
 
 ## Rule
