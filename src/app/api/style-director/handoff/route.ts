@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 import { verifyStyleDirectorHandoffToken, styleDirectorHandoffMatches } from "@/lib/designer/style-director-handoff";
 import type { DesignerClimate, DesignerIntention, DesignerStyle, OccasionTier } from "@/lib/designer/engine";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
@@ -18,7 +19,8 @@ export async function POST(request:Request){
 
     const cloud=getSupabaseAdminConfig();
     if(!cloud) return NextResponse.json({verified:true,audited:false,auditId:null,sourceLookId:payload.sourceLookId});
-    const response=await fetch(cloud.url.replace(/\/$/,"")+"/rest/v1/rpc/style_director_handoff_audit_record",{
+    const tokenFingerprint=createHash("sha256").update(token).digest("hex");
+    const response=await fetch(cloud.url.replace(/\/$/,"")+"/rest/v1/rpc/style_director_handoff_audit_record_v2",{
       method:"POST",
       headers:{...supabaseAdminHeaders(cloud),"content-type":"application/json",accept:"application/json"},
       body:JSON.stringify({
@@ -26,6 +28,7 @@ export async function POST(request:Request){
         p_shirt_id:payload.shirtId,
         p_pant_id:payload.pantId,
         p_occasion:payload.occasion,
+        p_token_fingerprint:tokenFingerprint,
       }),
       cache:"no-store",
       signal:AbortSignal.timeout(8_000),
