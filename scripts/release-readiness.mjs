@@ -35,6 +35,7 @@ for (const path of [
   "src/lib/designer/photo-preview.ts",
   "src/lib/designer/block-strategy.ts",
   "src/lib/designer/fit-construction.ts",
+  "src/lib/designer/house-ease-server.ts",
   "src/lib/designer/constraint-negotiation.ts",
   "src/lib/designer/outcome-learning.ts",
   "src/lib/designer/brand-language.ts",
@@ -261,12 +262,20 @@ requireTokens("src/lib/designer/constraint-negotiation.ts", [
 ]);
 requireTokens("src/lib/designer/fit-construction.ts", [
   "fit-construction-provisional-1",
+  "fit-construction-calibrated-2",
   "assessFitConstruction",
   "HOUSE_SHIRT_EASE",
   "HOUSE_TROUSER_EASE",
   "HOUSE_EASE_TABLE_VERSION",
   "provisional_house_defaults",
+  "approved_house_calibration",
+  "easeModel",
 ]);
+requireTokens("src/lib/designer/ease-calibration.ts", ["approvedHouseEaseModelFromRow","ApprovedHouseEaseModel","status)!==\"approved\""]);
+requireTokens("src/lib/designer/house-ease-server.ts", ["server-only","loadApprovedHouseEaseModel","house_ease_model_list","approvedHouseEaseModelFromRow"]);
+requireTokens("src/app/api/designer/assess/route.ts", ["loadApprovedHouseEaseModel","easeModel","houseEaseModel"]);
+requireTokens("src/app/api/designer/search/route.ts", ["loadApprovedHouseEaseModel","easeModel"]);
+requireTokens("src/app/api/designer/brief/route.ts", ["loadApprovedHouseEaseModel","easeModel"]);
 requireTokens("src/lib/designer/planner.ts", [
   "FitConstructionAssessment",
   "assessFitConstruction",
