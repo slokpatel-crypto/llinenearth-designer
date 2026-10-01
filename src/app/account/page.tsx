@@ -149,7 +149,10 @@ export default function AccountPage(){
   }
 
   function updateOutcomeDraft(orderId:string,patch:Partial<OutcomeDraft>){
-    setOutcomeDrafts(current=>({...current,[orderId]:{...outcomeDraft(orderId),...patch}}));
+    setOutcomeDrafts(current=>{
+      const base=current[orderId]||{overallRating:"good",fitResult:"not_checked",wornConfirmed:false,note:""};
+      return {...current,[orderId]:{...base,...patch}};
+    });
   }
 
   async function recordOutcome(orderId:string){
@@ -235,7 +238,7 @@ export default function AccountPage(){
                         </select>
                       </label>
                       <label style={{fontSize:12}}>Fit result
-                        <select style={input} value={draft.fitResult} onChange={e=>updateOutcomeDraft(order.order_id,{fitResult:e.target.value as CustomerFitResult})}>
+                        <select style={input} disabled={!draft.wornConfirmed} value={draft.fitResult} onChange={e=>updateOutcomeDraft(order.order_id,{fitResult:e.target.value as CustomerFitResult})}>
                           <option value="not_checked">Not checked yet</option><option value="clean_first_fit">Clean first fit</option><option value="minor_alteration">Minor alteration</option><option value="major_alteration">Major alteration</option>
                         </select>
                       </label>
