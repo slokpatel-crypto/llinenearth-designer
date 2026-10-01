@@ -50,10 +50,12 @@ export function normalizeVerifiedBetaAttempt(input:unknown){
   if(!["mobile","tablet","desktop"].includes(deviceClass)) throw new Error("Beta device class is required.");
   const revisionId=String(source.revisionId||"").trim().slice(0,180);
   if(revisionId.length<3) throw new Error("Locked revision ID is required.");
+  const evidenceKind=String(source.evidenceKind||"share").trim();
+  if(!["share","enquiry"].includes(evidenceKind)) throw new Error("Verified beta evidence must be share or enquiry.");
   if(typeof source.blockingBug!=="boolean") throw new Error("Blocking-bug result must be recorded.");
   const note=String(source.note||"").trim().slice(0,1200);
   if(source.blockingBug&&note.length<3) throw new Error("Blocking beta bugs require a short note.");
-  return {caseId,deviceClass,revisionId,blockingBug:source.blockingBug,note};
+  return {caseId,deviceClass,revisionId,evidenceKind:evidenceKind as "share"|"enquiry",blockingBug:source.blockingBug,note};
 }
 
 export function normalizeLaunchChecklistDecision(input:unknown){
@@ -79,7 +81,9 @@ export type LaunchBetaAttempt={
   blocking_bug:boolean;
   revision_id?:string|null;
   recipe_hash?:string|null;
+  evidence_kind?:string|null;
   share_audit_confirmed?:boolean;
+  enquiry_audit_confirmed?:boolean;
   created_at:string;
 };
 
@@ -102,7 +106,7 @@ export function summarizeLaunchReadiness(
     row.core_flow_completed
     && row.design_locked===true
     && row.share_or_enquiry_completed===true
-    && row.share_audit_confirmed===true
+    && (row.share_audit_confirmed===true||row.enquiry_audit_confirmed===true)
     && !row.blocking_bug
   );
   const deviceCoverage=new Set(successfulBeta.map((row)=>row.device_class));
@@ -118,6 +122,8 @@ export function summarizeLaunchReadiness(
     successfulBetaCases:successfulBeta.length,
     blockingBetaCases:beta.filter((row)=>row.blocking_bug).length,
     verifiedShareCases:beta.filter((row)=>row.share_audit_confirmed===true).length,
+    verifiedEnquiryCases:beta.filter((row)=>row.enquiry_audit_confirmed===true).length,
+    verifiedFlowCases:beta.filter((row)=>row.share_audit_confirmed===true||row.enquiry_audit_confirmed===true).length,
     deviceCoverage:[...deviceCoverage],
     checklistApproved,
     checklistTotal:LAUNCH_CHECKLIST_ITEMS.length,
