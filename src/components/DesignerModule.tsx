@@ -159,6 +159,8 @@ export function DesignerModule() {
   const [lockBusy,setLockBusy]=useState(false);
   const [shareBusy,setShareBusy]=useState(false);
   const [shareMessage,setShareMessage]=useState("");
+  const [enquiryBusy,setEnquiryBusy]=useState(false);
+  const [enquiryMessage,setEnquiryMessage]=useState("");
   const [vaultBusy,setVaultBusy]=useState(false);
   const [vaultMessage,setVaultMessage]=useState("");
   const [vaultRecoveryToken,setVaultRecoveryToken]=useState("");
@@ -1028,6 +1030,26 @@ export function DesignerModule() {
     }
   }
 
+  async function openLockedRevisionEnquiry() {
+    if(!lockedRevision||enquiryBusy) return;
+    setEnquiryBusy(true);setEnquiryMessage("");
+    try{
+      const response=await fetch("/api/designer/enquiry",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify(lockedRevision),
+      });
+      const result=await response.json() as {href?:string;audited?:boolean;revisionId?:string;error?:string};
+      if(!response.ok||!result.href) throw new Error(result.error||"Locked-look enquiry could not be created.");
+      setEnquiryMessage(result.audited?"Verified enquiry audit recorded for this locked revision.":"WhatsApp enquiry opened · beta audit unavailable.");
+      window.open(result.href,"_blank","noopener,noreferrer");
+    }catch(error){
+      setEnquiryMessage(error instanceof Error?error.message:"Locked-look enquiry could not be created.");
+    }finally{
+      setEnquiryBusy(false);
+    }
+  }
+
   async function saveLockedRevisionToVault() {
     if(!lockedRevision||vaultBusy) return;
     setVaultBusy(true);setVaultMessage("");
@@ -1388,6 +1410,8 @@ export function DesignerModule() {
                 <button type="button" onClick={downloadTailorTechPack}>Export printable tech pack ↗</button>
                 <button type="button" onClick={()=>void shareLockedRevision()} disabled={shareBusy}>{shareBusy?"Creating share…":"Copy private share link ↗"}</button>
                 {shareMessage&&<p>{shareMessage}</p>}
+                <button type="button" onClick={()=>void openLockedRevisionEnquiry()} disabled={enquiryBusy}>{enquiryBusy?"Opening WhatsApp…":"WhatsApp locked look ↗"}</button>
+                {enquiryMessage&&<p>{enquiryMessage}</p>}
                 <button type="button" onClick={()=>void saveLockedRevisionToVault()} disabled={vaultBusy}>{vaultBusy?"Saving secure copy…":"Save secure cloud copy ↗"}</button>
                 {vaultMessage&&<p>{vaultMessage}</p>}
                 {vaultRecoveryToken&&<>
