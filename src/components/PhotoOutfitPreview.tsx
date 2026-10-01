@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
 import type { StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import type { BodyPreviewProfile } from "@/lib/designer/body-profile";
-import { photoFabricPatternScale, type FabricRenderAsset } from "@/lib/designer/live-preview";
+import { applyRuntimeFabricScale, photoFabricPatternScale, type FabricRenderAsset } from "@/lib/designer/live-preview";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import fabricTileManifest from "../../public/fabric-tiles/manifest.json";
 import { CREATIVE_FEEDBACK_REASONS, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
@@ -72,7 +72,8 @@ function loadFabricImage(fabric:DesignerFabric):Promise<HTMLImageElement> {
 }
 function fabricRenderAsset(fabric:DesignerFabric):FabricRenderAsset|null {
   const stem=fabric.image.split("/").pop()?.replace(/\.webp(?:\?.*)?$/,"")||"";
-  return (fabricTileManifest.assets as Record<string,FabricRenderAsset>)[stem] || null;
+  const asset=(fabricTileManifest.assets as Record<string,FabricRenderAsset>)[stem] || null;
+  return applyRuntimeFabricScale(asset,fabric.renderScale);
 }
 function fabricOrientation(fabric:DesignerFabric) {
   const entry=fabricRenderAsset(fabric);
