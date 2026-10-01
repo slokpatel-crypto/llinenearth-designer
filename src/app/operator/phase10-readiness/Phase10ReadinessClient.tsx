@@ -155,6 +155,9 @@ type RenderQaPayload={
   creditCapSummary:{
     configured:boolean;withinCap:boolean|null;ownerCap:number|null;
   };
+  patternCoverageSummary:{
+    requiredPairs:number;calibratedPairs:number;passedPairs:number;failedPairs:number;pendingPairs:number;gateComplete:boolean;
+  };
 };
 
 type ProductionPayload={
@@ -443,6 +446,7 @@ export default function Phase10ReadinessClient(){
           approvalRate:renderSummary.approvalRate,
           identity:data.renderQa.identitySummary,
           creditCap:data.renderQa.creditCapSummary,
+          patternCoverage:data.renderQa.patternCoverageSummary,
         })
       : null;
     const renderReleaseProgress=renderRelease?.progressPercent||0;
@@ -667,12 +671,12 @@ export default function Phase10ReadinessClient(){
         detail:renderReleaseDone
           ? "Approval-rate evidence, cross-view identity review and the owner-approved credit boundary all pass."
           : renderRelease
-            ? `${renderRelease.completedGates}/3 release evidence gates pass. Complete real render reviews, cross-view identity checks and the owner-approved cost boundary before promotion.`
+            ? `${renderRelease.completedGates}/4 release evidence gates pass. Complete real render reviews, cross-view identity checks, physical pattern QA and the owner-approved cost boundary before promotion.`
             : "No final-render release evidence is available yet.",
         status:renderReleaseDone?"done":renderSummary?"progress":"blocked",
         progress:renderReleaseProgress,
         metric:renderSummary&&data.renderQa
-          ? `${renderSummary.reviewed}/20 reviewed · ${renderSummary.approvalRate??"—"}% approved · identity ${data.renderQa.identitySummary.passedConcepts}/${data.renderQa.identitySummary.eligibleConcepts} pass · cap ${data.renderQa.creditCapSummary.withinCap===true?"pass":data.renderQa.creditCapSummary.withinCap===false?"over":"open"}`
+          ? `${renderSummary.reviewed}/20 reviewed · ${renderSummary.approvalRate??"—"}% approved · identity ${data.renderQa.identitySummary.passedConcepts}/${data.renderQa.identitySummary.eligibleConcepts} · pattern ${data.renderQa.patternCoverageSummary.passedPairs}/${data.renderQa.patternCoverageSummary.requiredPairs} · cap ${data.renderQa.creditCapSummary.withinCap===true?"pass":data.renderQa.creditCapSummary.withinCap===false?"over":"open"}`
           : "No render outcome evidence",
         href:"/operator/render-qa",
         action:"Complete final render evidence",
