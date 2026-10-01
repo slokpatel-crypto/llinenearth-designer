@@ -100,6 +100,7 @@ type Phase1ProofPayload={
     realModelSamples:number;
     realModelP95Ms:number|null;
     realismRatings:number[];
+    uniqueRealismViewers:number;
     strongRatings:number;
     realismPass:boolean;
     note:string;
@@ -457,14 +458,14 @@ export default function Phase10ReadinessClient(){
         id:"premium-shirt-proof",
         title:"Roadmap v2 premium shirt proof",
         detail:proofDone
-          ? `${proof?.fabricName||"Selected fabric"} passed physical scale, real-model latency and 8-viewer realism evidence.`
+          ? `${proof?.fabricName||"Selected fabric"} passed physical scale, real-model latency and 8-independent-viewer realism evidence.`
           : proof
             ? `Latest proof is ${proof.status}. Scale ${proofScale?"passes":"needs evidence"}, real-model latency ${proofLatency?"passes":"needs evidence"}, realism ${proofRealism?"passes":"needs evidence"}.`
             : "No operator-recorded Premium Shirt Proof evidence yet.",
         status:proofDone?"done":data.phase1Proof?"progress":"blocked",
         progress:proofProgress,
         metric:proof
-          ? `${proof.fabricName||proof.fabricId} · scale ${proof.scaleErrorPct??"—"}% · p95 ${proof.realModelP95Ms??"—"} ms · ${proof.strongRatings}/${proof.realismRatings.length} strong realism ratings`
+          ? `${proof.fabricName||proof.fabricId} · scale ${proof.scaleErrorPct??"—"}% · p95 ${proof.realModelP95Ms??"—"} ms · ${proof.strongRatings}/${proof.uniqueRealismViewers||0} strong independent ratings`
           : "No recorded proof",
         href:"/lab/proof",
         action:"Open Premium Shirt Proof",
