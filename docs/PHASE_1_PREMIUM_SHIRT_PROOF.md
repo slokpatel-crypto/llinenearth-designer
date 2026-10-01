@@ -18,7 +18,7 @@ Route: `/lab/proof`
 - The selected proof fabric links directly to its private Analyzer evidence desk.
 - A deterministic photographic-repeat audit reports expected repeat spacing in mannequin pixels when physical repeat evidence exists, and the exact same photo px/mm calibration is passed into the compositor so the audited scale and rendered scale cannot silently diverge.
 - Proof evidence can be exported as JSON with scale, performance and viewer-rating results for an auditable acceptance record.
-- The operator evidence API recomputes photographic px/mm from the stored raw fixture pair, then recomputes physical-scale error, independent-viewer realism and the core proof decision instead of trusting client-supplied calibration or pass/status flags. Hardened records use the explicit `linen-earth-phase1-proof-v2` schema; legacy v1 / click-only evidence cannot satisfy the current core gate.
+- The operator evidence API recomputes photographic px/mm from the stored raw fixture pair, requires a short auditable owner/supplier physical-evidence note, then recomputes physical-scale error, independent-viewer realism and the core proof decision instead of trusting client-supplied calibration or pass/status flags. Hardened records use the explicit `linen-earth-phase1-proof-v2` schema; legacy v1 / click-only evidence cannot satisfy the current core gate.
 - Roadmap readiness treats target-mobile acceptance as a separate fourth gate. A strong desktop/browser proof cannot mark Phase 1 complete until the private Device QA workflow has an accepted mobile result.
 
 ## What this proof does not claim
@@ -39,6 +39,7 @@ Route: `/lab/proof`
 - [x] <= 8% scale gate calculation
 - [x] measured photo-coordinate px/mm is wired into the actual photographic compositor
 - [x] photo px/mm is derived from raw mm + pixel fixture measurements, not accepted as an arbitrary pass value
+- [x] physical scale cannot count toward acceptance without an auditable measurement/provenance note
 - [x] p95 edit instrumentation
 - [x] real compositor p95 instrumentation
 - [x] all current shirt catalogue options exposed
