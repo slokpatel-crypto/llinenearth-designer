@@ -760,6 +760,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         headers:{"content-type":"application/json"},
         body:JSON.stringify({
           image:result.image,
+          jobId:result.jobId,
           view,
           look:{
             shirt:{id:shirt.id,name:shirt.name,line:shirt.line,image:shirt.image,hex:shirt.hex,patternType:shirt.patternType},
