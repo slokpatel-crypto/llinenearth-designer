@@ -160,6 +160,7 @@ for (const path of [
   "src/app/operator/production-evidence/page.tsx",
   "src/lib/designer/production-delivery-evidence.ts",
   "supabase/migrations/20261003_production_delivery_evidence.sql",
+  "supabase/migrations/20261026_production_delivery_evidence_provenance.sql",
   "src/app/operator/meterage-model/page.tsx",
   "src/lib/designer/meterage-calibration.ts",
   "supabase/migrations/20261004_meterage_calibration_registry.sql",
@@ -547,6 +548,11 @@ requireTokens("src/lib/designer/production-handoff.ts", ["linen-earth-production
 requireTokens("src/lib/designer/tech-pack.ts", ["linen-earth-tech-pack-v1","Tailor Tech Pack","not a cutting pattern"]);
 requireTokens("src/lib/designer/production-quote.ts", ["normalizeProductionQuoteDraft","Quote total cannot be negative"]);
 requireTokens("src/lib/designer/production-state.ts", ["ORDER_TRANSITIONS","QUOTE_TRANSITIONS","cloth_reserved","delivered"]);
+requireTokens("src/lib/designer/production-delivery-evidence.ts", ["evidenceReference","legacyOrUnverifiedCount","provenanceReady","gateComplete:firstTarget.length>=target"]);
+requireTokens("src/app/api/operator/production-evidence/route.ts", ["production_delivery_evidence_record_v2","p_evidence_reference"]);
+requireTokens("src/app/operator/production-evidence/ProductionEvidenceClient.tsx", ["Production-flow evidence reference","legacy audits without provenance","evidenceReference"]);
+requireTokens("supabase/migrations/20261026_production_delivery_evidence_provenance.sql", ["evidence_reference","production_delivery_evidence_record_v2","named operator or checker is required","production-flow evidence reference is required","service_role"]);
+requireTokens("src/lib/designer/production-packet.ts", ["packetBuiltFromLockedRevision:true","noDesignDataReEntry:false","deliveryAuditRequired:true","verified separately after real delivery"]);
 requireTokens("src/lib/designer/production-packet.ts", ["linen-earth-production-packet-v1","noDesignDataReEntry"]);
 requireTokens("src/lib/designer/stock-ledger.ts", ["stockSnapshot","reservedMetres","availableMetres"]);
 requireTokens("src/app/operator/production/ProductionClient.tsx", ["Load locked design","Export production packet","Create production order","durable design context","outcome lineage","learningContexts","Outcome lineage","context missing","CUSTOMER OUTCOME","not automatically applied to Designer ranking","/operator/customer-outcomes","Outcome Review"]);
