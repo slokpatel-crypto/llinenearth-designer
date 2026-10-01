@@ -112,6 +112,30 @@ if (url && key) {
 
         if (health?.serviceUpdate || health?.serviceDelete) fail("Server role can mutate/delete historical events.");
         else ok("Server role cannot UPDATE/DELETE the append-only ledger.");
+
+        const rpcChecks = [
+          ["fabric_stock_snapshot",{p_fabric_ids:null},"Fabric stock ledger RPCs are installed."],
+          ["production_quote_list",{p_limit:1},"Production quote ledger RPCs are installed."],
+          ["production_order_list",{p_limit:1},"Production order ledger RPCs are installed."],
+          ["designer_locked_revision_vault_get",{p_vault_id:"00000000-0000-4000-8000-000000000000",p_access_hash:"0".repeat(64)},"Locked design recovery vault RPCs are installed."],
+          ["measurement_profile_vault_get",{p_vault_id:"00000000-0000-4000-8000-000000000000",p_access_hash:"0".repeat(64)},"Measurement recovery vault RPCs are installed."],
+        ];
+        for (const [rpcName,payload,label] of rpcChecks) {
+          const rpcResponse = await fetch(
+            `${url.replace(/\/$/, "")}/rest/v1/rpc/${rpcName}`,
+            {
+              method:"POST",
+              headers:{...headers,"content-type":"application/json"},
+              body:JSON.stringify(payload),
+            },
+          );
+          if (!rpcResponse.ok) {
+            const detail=(await rpcResponse.text()).replace(/\s+/g," ").slice(0,160);
+            fail(`${rpcName} is unavailable. Apply Roadmap v2 Supabase migrations. HTTP ${rpcResponse.status}: ${detail}`);
+          } else {
+            ok(label);
+          }
+        }
       }
     }
   } catch (error) {
