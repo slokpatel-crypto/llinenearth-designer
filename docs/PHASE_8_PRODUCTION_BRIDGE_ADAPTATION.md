@@ -29,6 +29,8 @@ The application does **not** invent meterage from generic tailoring rules and do
 
 After **Lock recipe revision**, Designer now exposes **Export tailor handoff**. The handoff is traceable to exactly the same immutable recipe hash.
 
+The same locked handoff can also export a printable HTML tech pack. It includes exact fabric IDs, construction selections, finished-garment target ranges, block/check information, unresolved items and blank production fields where meterage/stock/quote evidence is still missing. It intentionally does not invent those values.
+
 ## Remaining production work
 
 1. Measure actual cloth usage across representative shirt / trouser sizes and fabric widths.
@@ -50,5 +52,5 @@ After **Lock recipe revision**, Designer now exposes **Export tailor handoff**. 
 - [ ] validated cloth estimation table
 - [ ] live stock / reservation integration
 - [ ] quote engine
-- [ ] tailor-ready formatted tech pack / print layout
+- [x] tailor-ready formatted tech pack / print layout
 - [ ] first 10 production orders completed with zero design-data re-entry
