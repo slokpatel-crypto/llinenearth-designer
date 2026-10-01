@@ -89,12 +89,26 @@ export function summarizeIndependentRealism(assessments:RealismAssessment[]){
   };
 }
 
+export type Phase1BoundaryChecks={
+  neck:boolean;
+  cuffs:boolean;
+  waist:boolean;
+  trouserGap:boolean;
+};
+
+export function phase1BoundaryChecksReady(value:unknown){
+  if(!value||typeof value!=="object"||Array.isArray(value)) return false;
+  const input=value as Partial<Phase1BoundaryChecks>;
+  return input.neck===true&&input.cuffs===true&&input.waist===true&&input.trouserGap===true;
+}
+
 export type Phase1ProofAcceptanceInput={
   repeatMm:number|null;
   scaleGatePass:boolean|null;
   realModelSamples:number;
   realModelP95Ms:number|null;
   realismRatings:number[];
+  boundaryChecks?:Phase1BoundaryChecks|null;
 };
 
 export function phase1ProofAcceptance(input:Phase1ProofAcceptanceInput) {
@@ -105,21 +119,24 @@ export function phase1ProofAcceptance(input:Phase1ProofAcceptanceInput) {
     && input.realModelP95Ms<PHASE1_PROOF_MAX_P95_MS;
   const realismReady=input.realismRatings.length>=PHASE1_PROOF_MIN_REALISM_VIEWERS
     && strongRatings>=PHASE1_PROOF_MIN_STRONG_REALISM;
+  const boundaryReady=phase1BoundaryChecksReady(input.boundaryChecks);
   const reasons:string[]=[];
   if(!scaleReady) reasons.push("Physical repeat scale has not passed the <=8% gate.");
   if(!latencyReady) reasons.push("Real-model p95 needs at least 12 samples and must stay below 300 ms.");
   if(!realismReady) reasons.push("At least 6 of 8 viewers must rate realism 4/5 or 5/5.");
+  if(!boundaryReady) reasons.push("Neck, cuffs, waist and trouser-gap boundary checks must all be visually confirmed.");
   return {
-    accepted:scaleReady&&latencyReady&&realismReady,
+    accepted:scaleReady&&latencyReady&&realismReady&&boundaryReady,
     scaleReady,
     latencyReady,
     realismReady,
+    boundaryReady,
     strongRatings,
     reasons,
   };
 }
 
-export const PHASE1_PROOF_EVIDENCE_VERSION="linen-earth-phase1-proof-v2";
+export const PHASE1_PROOF_EVIDENCE_VERSION="linen-earth-phase1-proof-v3";
 export const PHASE1_PROOF_PHOTO_COORDINATE_SYSTEM="photo-1024x1536-fixture";
 
 export function evaluateRecordedPhase1ProofEvidence(payload:Record<string,unknown>){
@@ -180,12 +197,20 @@ export function evaluateRecordedPhase1ProofEvidence(payload:Record<string,unknow
 
   const realModelSamples=Math.max(0,Math.floor(Number(payload.realModelSamples)||0));
   const realModelP95Ms=Number.isFinite(Number(payload.realModelP95Ms))?Number(payload.realModelP95Ms):null;
+  const boundaryChecksRaw=payload.boundaryChecks;
+  const boundaryChecks:Phase1BoundaryChecks={
+    neck:Boolean(boundaryChecksRaw&&typeof boundaryChecksRaw==="object"&&!Array.isArray(boundaryChecksRaw)&&(boundaryChecksRaw as Record<string,unknown>).neck===true),
+    cuffs:Boolean(boundaryChecksRaw&&typeof boundaryChecksRaw==="object"&&!Array.isArray(boundaryChecksRaw)&&(boundaryChecksRaw as Record<string,unknown>).cuffs===true),
+    waist:Boolean(boundaryChecksRaw&&typeof boundaryChecksRaw==="object"&&!Array.isArray(boundaryChecksRaw)&&(boundaryChecksRaw as Record<string,unknown>).waist===true),
+    trouserGap:Boolean(boundaryChecksRaw&&typeof boundaryChecksRaw==="object"&&!Array.isArray(boundaryChecksRaw)&&(boundaryChecksRaw as Record<string,unknown>).trouserGap===true),
+  };
   const acceptance=phase1ProofAcceptance({
     repeatMm:scaleInputsValid?repeatMm:null,
     scaleGatePass,
     realModelSamples,
     realModelP95Ms,
     realismRatings:realism.ratings,
+    boundaryChecks,
   });
 
   return {
@@ -205,6 +230,8 @@ export function evaluateRecordedPhase1ProofEvidence(payload:Record<string,unknow
     realModelSamples,
     realModelP95Ms,
     realism,
+    boundaryChecks,
+    boundaryReady:acceptance.boundaryReady,
   };
 }
 
