@@ -815,6 +815,8 @@ export function DesignerModule() {
           garmentSpec:{
             version:next.garmentSpec.version,status:next.garmentSpec.status,
             fitConstructionScore:next.garmentSpec.decision.fitConstructionScore,
+            fitEaseSource:next.garmentSpec.source.fitEaseSource,
+            fitEaseTableVersion:next.garmentSpec.source.fitEaseTableVersion,
             brandLanguageScore:next.garmentSpec.decision.brandLanguageScore,
             blockStrategyScore:next.garmentSpec.decision.blockStrategyScore,
             readiness:next.garmentSpec.readiness,
@@ -1196,6 +1198,7 @@ export function DesignerModule() {
             <summary>Fit details</summary>
             {fitGuidance.slice(0,3).map((note)=><p key={note}>{note}</p>)}
             {fitConstruction && <p><b>Fit read:</b> Tailoring checks are active for this cut.</p>}
+            {fitConstruction && <p><b>Ease basis:</b> {fitConstruction.source==="approved_house_calibration"?`Approved Linen Earth model · ${fitConstruction.easeTableVersion}`:"Provisional house defaults"}</p>}
             {blockStrategy && <p><b>Starting block:</b> {blockStrategy.shirtBlock.replaceAll("-"," ")} + {blockStrategy.trouserBlock.replaceAll("-"," ")}</p>}
           </details>}
         </section>
@@ -1373,6 +1376,7 @@ export function DesignerModule() {
             <p><b>Design:</b> {recommendation.style.collar} · {recommendation.style.cuff} · {recommendation.style.placket}</p>
             <p><b>Material:</b> {recommendation.materialEvidence.verified>0?"Verified fabric information is included.":"Physical fabric verification is still needed."}</p>
             {fitConstruction && <p><b>Fit/construction:</b> Tailoring checks are active.</p>}
+            {fitConstruction && <p><b>Ease basis:</b> {fitConstruction.source==="approved_house_calibration"?`Approved Linen Earth model · ${fitConstruction.easeTableVersion}`:"Provisional house defaults"}</p>}
             {blockStrategy && <p><b>Starting block:</b> {blockStrategy.shirtBlock.replaceAll("-"," ")} + {blockStrategy.trouserBlock.replaceAll("-"," ")}</p>}
             {negotiation?.blockers.slice(0,2).map((item)=><p key={item.id}>{item.message}</p>)}
             {garmentSpec && <>
