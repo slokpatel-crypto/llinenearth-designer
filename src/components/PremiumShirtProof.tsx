@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { expectedPeriodPx, passesScaleGate, phase1ProofAcceptance, scaleErrorPct } from "@/lib/designer/proof-scale";
+import { expectedPeriodPx, passesScaleGate, phase1ProofAcceptance, scaleErrorPct, summarizeIndependentRealism, type RealismAssessment } from "@/lib/designer/proof-scale";
 import { applyRuntimeFabricScale, photoExpectedRepeatPx, type FabricRenderAsset } from "@/lib/designer/live-preview";
 import { DESIGNER_PANTS, DESIGNER_SHIRTS, designerStyleForOccasion } from "@/lib/designer/engine";
 import { StyleDirectorRealModelPreview } from "@/components/PhotoOutfitPreview";
@@ -13,7 +13,7 @@ type Collar="spread"|"button-down"|"band";
 type Cuff="round"|"square"|"french";
 const DEFAULT_PX_PER_MM=900/1780;
 const APPROX_TILE_PX=96;
-const REALISM_STORAGE_KEY="linen-earth:phase1-proof-realism:v1";
+const REALISM_STORAGE_KEY="linen-earth:phase1-proof-realism:v2";
 
 export function PremiumShirtProof(){
   const [shirtId,setShirtId]=useState(DESIGNER_SHIRTS[0]?.id||"");
@@ -28,7 +28,8 @@ export function PremiumShirtProof(){
   const [latencyMs,setLatencyMs]=useState<number|null>(null);
   const [latencySamples,setLatencySamples]=useState<number[]>([]);
   const [realRenderSamples,setRealRenderSamples]=useState<number[]>([]);
-  const [realismRatings,setRealismRatings]=useState<number[]>([]);
+  const [realismAssessments,setRealismAssessments]=useState<RealismAssessment[]>([]);
+  const [viewerCode,setViewerCode]=useState("");
   const [recordBusy,setRecordBusy]=useState(false);
   const [recordMessage,setRecordMessage]=useState("");
   const startedRef=useRef(0);
@@ -77,8 +78,10 @@ export function PremiumShirtProof(){
     const ordered=[...realRenderSamples].sort((a,b)=>a-b);
     return ordered[Math.min(ordered.length-1,Math.ceil(ordered.length*.95)-1)];
   },[realRenderSamples]);
-  const strongRealism=realismRatings.filter((rating)=>rating>=4).length;
-  const realismGate=realismRatings.length>=8 && strongRealism>=6;
+  const realismSummary=useMemo(()=>summarizeIndependentRealism(realismAssessments),[realismAssessments]);
+  const realismRatings=realismSummary.ratings;
+  const strongRealism=realismSummary.strongRatings;
+  const realismGate=realismSummary.ready;
   const proofAcceptance=useMemo(()=>phase1ProofAcceptance({
     repeatMm:effectiveRepeatMm,
     scaleGatePass:pass,
@@ -108,7 +111,17 @@ export function PremiumShirtProof(){
       const raw=localStorage.getItem(REALISM_STORAGE_KEY);
       if(!raw) return;
       const parsed=JSON.parse(raw);
-      if(Array.isArray(parsed)) setRealismRatings(parsed.filter((item)=>Number.isInteger(item)&&item>=1&&item<=5).slice(-30));
+      if(!Array.isArray(parsed)) return;
+      const next=parsed.slice(-50).flatMap((item)=>{
+        if(!item||typeof item!=="object") return [];
+        const row=item as Record<string,unknown>;
+        const viewerId=String(row.viewerId||"").trim();
+        const rating=Math.round(Number(row.rating));
+        const recordedAt=String(row.recordedAt||"");
+        if(viewerId.length<2||rating<1||rating>5) return [];
+        return [{viewerId,rating,recordedAt} satisfies RealismAssessment];
+      });
+      setRealismAssessments(next);
     } catch {}
   },[]);
 
@@ -132,15 +145,27 @@ export function PremiumShirtProof(){
   }
 
   function addRealismRating(rating:number){
-    setRealismRatings((current)=>{
-      const next=[...current,rating].slice(-30);
+    const viewerId=viewerCode.trim();
+    if(viewerId.length<2){
+      setRecordMessage("Enter a short anonymous viewer code before recording a realism rating.");
+      return;
+    }
+    setRealismAssessments((current)=>{
+      const normalized=viewerId.toLowerCase();
+      const next=[
+        ...current.filter((item)=>item.viewerId.trim().toLowerCase()!==normalized),
+        {viewerId,rating,recordedAt:new Date().toISOString()},
+      ].slice(-50);
       try { localStorage.setItem(REALISM_STORAGE_KEY,JSON.stringify(next)); } catch {}
       return next;
     });
+    setViewerCode("");
+    setRecordMessage("");
   }
 
   function clearRealismRatings(){
-    setRealismRatings([]);
+    setRealismAssessments([]);
+    setViewerCode("");
     try { localStorage.removeItem(REALISM_STORAGE_KEY); } catch {}
   }
 
@@ -170,6 +195,8 @@ export function PremiumShirtProof(){
             realModelSamples:realRenderSamples.length,
             realModelP95Ms:realP95,
             realismRatings,
+            realismAssessments:realismSummary.assessments,
+            uniqueRealismViewers:realismSummary.uniqueViewers,
             strongRatings:proofAcceptance.strongRatings,
             realismPass:proofAcceptance.realismReady,
             note:proofAcceptance.reasons.join(" "),
@@ -218,9 +245,11 @@ export function PremiumShirtProof(){
         targetMs:300,
       },
       realism:{
+        assessments:realismSummary.assessments,
+        uniqueViewers:realismSummary.uniqueViewers,
         ratings:realismRatings,
         strongRatings:strongRealism,
-        target:"at least 6 of 8 ratings >= 4",
+        target:"at least 6 of 8 independent viewers rate 4/5 or 5/5",
         pass:realismGate,
       },
       construction:{collar,cuff},
@@ -322,13 +351,14 @@ export function PremiumShirtProof(){
         </section>
         <section>
           <h2>Viewer realism gate</h2>
-          <p>Ask each viewer to rate the real mannequin below from 1–5. Roadmap target: at least 6 of 8 viewers rate it 4 or 5.</p>
+          <p>Use a short anonymous code for each real viewer, then record one 1–5 rating. Re-rating the same code replaces that viewer's earlier rating instead of inflating the sample.</p>
+          <label>Anonymous viewer code<input value={viewerCode} maxLength={80} placeholder="e.g. V01" onChange={(event)=>setViewerCode(event.target.value)}/></label>
           <div className="proofRatingButtons">{[1,2,3,4,5].map((rating)=><button key={rating} type="button" onClick={()=>addRealismRating(rating)}>{rating}</button>)}</div>
           <div className="proofGate" data-pass={realismGate?"yes":"no"}>
-            <b>{realismRatings.length} ratings · {strongRealism} strong</b>
-            <span>{realismGate?"PASS · realism gate met":"Need 6 strong ratings from at least 8 viewers"}</span>
+            <b>{realismSummary.uniqueViewers} independent viewers · {strongRealism} strong</b>
+            <span>{realismGate?"PASS · realism gate met":"Need 6 strong ratings from at least 8 independent viewers"}</span>
           </div>
-          {realismRatings.length>0&&<button type="button" onClick={clearRealismRatings}>Clear ratings</button>}
+          {realismSummary.uniqueViewers>0&&<button type="button" onClick={clearRealismRatings}>Clear ratings</button>}
           <button type="button" onClick={exportProofEvidence}>Export proof evidence JSON</button>
           <div className="proofGate" data-pass={proofAcceptance.accepted?"yes":"no"}>
             <b>{proofAcceptance.accepted?"PHASE 1 ACCEPTED":"PHASE 1 REVIEW"}</b>
