@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { expectedPeriodPx, passesScaleGate, phase1ProofAcceptance, pxPerMmFromMarker, scaleErrorPct } from "../src/lib/designer/proof-scale.ts";
+import { expectedPeriodPx, passesScaleGate, phase1ProofAcceptance, pxPerMmFromMarker, scaleErrorPct, summarizeIndependentRealism } from "../src/lib/designer/proof-scale.ts";
 import { applyRuntimeFabricScale, photoExpectedRepeatPx, photoFabricPatternScale, visiblePatternScaleVerified, LIVE_MODEL_PX_PER_MM, PHOTO_MODEL_COORDINATE_SCALE, type FabricRenderAsset } from "../src/lib/designer/live-preview.ts";
 
 test("calibrates px/mm from a known marker",()=>{
@@ -151,4 +151,32 @@ test("phase 1 proof remains review when any real-world gate is missing",()=>{
   assert.equal(review.latencyReady,false);
   assert.equal(review.realismReady,false);
   assert.equal(review.reasons.length,3);
+});
+
+
+test("realism evidence counts the latest rating from each anonymous viewer only",()=>{
+  const result=summarizeIndependentRealism([
+    {viewerId:"V01",rating:3},
+    {viewerId:"v01",rating:5},
+    {viewerId:"V02",rating:4},
+    {viewerId:"V03",rating:4},
+    {viewerId:"V04",rating:5},
+    {viewerId:"V05",rating:4},
+    {viewerId:"V06",rating:4},
+    {viewerId:"V07",rating:3},
+    {viewerId:"V08",rating:2},
+  ]);
+  assert.equal(result.uniqueViewers,8);
+  assert.equal(result.strongRatings,6);
+  assert.equal(result.ready,true);
+  assert.equal(result.ratings.filter((rating)=>rating===5).length,2);
+});
+
+test("duplicate viewer clicks cannot satisfy the independent realism gate",()=>{
+  const result=summarizeIndependentRealism(Array.from({length:8},(_,index)=>({
+    viewerId:"same-viewer",
+    rating:index%2?4:5,
+  })));
+  assert.equal(result.uniqueViewers,1);
+  assert.equal(result.ready,false);
 });
