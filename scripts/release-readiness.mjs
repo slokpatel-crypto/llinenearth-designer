@@ -103,6 +103,7 @@ for (const path of [
   "src/app/operator/ease-calibration/page.tsx",
   "src/app/operator/ease-calibration/EaseCalibrationClient.tsx",
   "supabase/migrations/20261010_house_ease_calibration_registry.sql",
+  "supabase/migrations/20261011_launch_beta_flow_detail.sql",
   "src/lib/designer/production-handoff.ts",
   "src/lib/designer/tech-pack.ts",
   "src/lib/designer/production-quote.ts",
@@ -158,6 +159,8 @@ requireTokens("src/lib/designer/ease-calibration.ts", ["requiredEaseEvidenceKeys
 requireTokens("src/app/api/operator/ease-calibration/route.ts", ["house_ease_evidence_record","house_ease_model_create","house_ease_model_approve","evidenceCoverageComplete"]);
 requireTokens("src/app/operator/ease-calibration/EaseCalibrationClient.tsx", ["House Ease Calibration","35 cells","runtime not auto-switched","Register evidence-backed draft"]);
 requireTokens("supabase/migrations/20261010_house_ease_calibration_registry.sql", ["house_ease_evidence","house_ease_models","real finished-garment evidence is required for every house-ease cell","service_role"]);
+requireTokens("supabase/migrations/20261011_launch_beta_flow_detail.sql", ["design_locked","share_or_enquiry_completed","launch_beta_attempt_record_v2","share/enquiry completion cannot precede a locked design"]);
+requireTokens("src/lib/designer/launch-readiness-evidence.ts", ["designLocked","shareOrEnquiryCompleted","row.design_locked===true","row.share_or_enquiry_completed===true"]);
 requireTokens("src/lib/designer/block-strategy.ts", ["block-strategy-provisional-1","assessBlockStrategy","shaped-shirt","roomy-seat-block","suggestedPatch"]);
 requireTokens("src/lib/designer/planner.ts", ["DesignerBlockStrategy","blockStrategy:selectedBlock","item.blockStrategy?.score"]);
 requireTokens("src/lib/designer/search.ts", ["blockStrategy: DesignerBlockStrategy","assessBlockStrategy","block.score"]);
