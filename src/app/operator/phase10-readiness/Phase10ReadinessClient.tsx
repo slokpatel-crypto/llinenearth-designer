@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { summarizeConstructionReviews } from "@/lib/designer/construction-review-summary";
 import { summarizeLaunchReadiness } from "@/lib/designer/launch-readiness-evidence";
+import { evaluateFinalRenderReleaseEvidence } from "@/lib/designer/render-release-evidence";
 
 type DesignerDataPayload={
   coverage:{
@@ -143,6 +144,13 @@ type RenderQaPayload={
   summary:{
     total:number;generated:number;cached:number;reviewed:number;pending:number;approved:number;rejected:number;
     qaPass:number;totalCredits:number;approvalRate:number|null;creditsPerApproved:number|null;
+  };
+  identitySummary:{
+    eligibleConcepts:number;reviewedConcepts:number;pendingConcepts:number;
+    passedConcepts:number;failedConcepts:number;passRate:number|null;
+  };
+  creditCapSummary:{
+    configured:boolean;withinCap:boolean|null;ownerCap:number|null;
   };
 };
 
@@ -425,10 +433,16 @@ export default function Phase10ReadinessClient(){
     const stockDone=Boolean(data.stock?.configured&&positiveStock>0);
 
     const renderSummary=data.renderQa?.summary;
-    const renderApprovalProgress=renderSummary?.reviewed
-      ? Math.min(100,Math.round(renderSummary.reviewed/20*100))
-      : 0;
-    const renderApprovalDone=Boolean(renderSummary && renderSummary.reviewed>=20 && (renderSummary.approvalRate??0)>=60);
+    const renderRelease=renderSummary&&data.renderQa?.identitySummary&&data.renderQa?.creditCapSummary
+      ? evaluateFinalRenderReleaseEvidence({
+          reviewed:renderSummary.reviewed,
+          approvalRate:renderSummary.approvalRate,
+          identity:data.renderQa.identitySummary,
+          creditCap:data.renderQa.creditCapSummary,
+        })
+      : null;
+    const renderReleaseProgress=renderRelease?.progressPercent||0;
+    const renderReleaseDone=renderRelease?.gateComplete===true;
 
     const productionOrders=data.production?.orders||[];
     const deliveredOrders=productionOrders.filter((item)=>item.status==="delivered").length;
@@ -645,17 +659,19 @@ export default function Phase10ReadinessClient(){
       },
       {
         id:"final-render-qa",
-        title:"Final render approval + cost evidence",
-        detail:renderApprovalDone
-          ? `At least 20 human-reviewed final renders are recorded and current approval rate is ${renderSummary?.approvalRate??0}%.`
-          : `${Math.max(0,20-(renderSummary?.reviewed||0))} reviewed renders remain before the first approval-rate gate can be treated as evidenced.`,
-        status:renderApprovalDone?"done":renderSummary?"progress":"blocked",
-        progress:renderApprovalProgress,
-        metric:renderSummary
-          ? `${renderSummary.reviewed}/20 reviewed · ${renderSummary.approvalRate??"—"}% approved · ${renderSummary.creditsPerApproved??"—"} credits/approved`
+        title:"Final render release evidence",
+        detail:renderReleaseDone
+          ? "Approval-rate evidence, cross-view identity review and the owner-approved credit boundary all pass."
+          : renderRelease
+            ? `${renderRelease.completedGates}/3 release evidence gates pass. Complete real render reviews, cross-view identity checks and the owner-approved cost boundary before promotion.`
+            : "No final-render release evidence is available yet.",
+        status:renderReleaseDone?"done":renderSummary?"progress":"blocked",
+        progress:renderReleaseProgress,
+        metric:renderSummary&&data.renderQa
+          ? `${renderSummary.reviewed}/20 reviewed · ${renderSummary.approvalRate??"—"}% approved · identity ${data.renderQa.identitySummary.passedConcepts}/${data.renderQa.identitySummary.eligibleConcepts} pass · cap ${data.renderQa.creditCapSummary.withinCap===true?"pass":data.renderQa.creditCapSummary.withinCap===false?"over":"open"}`
           : "No render outcome evidence",
         href:"/operator/render-qa",
-        action:"Review final renders",
+        action:"Complete final render evidence",
         ownerDependent:true,
       },
       {
