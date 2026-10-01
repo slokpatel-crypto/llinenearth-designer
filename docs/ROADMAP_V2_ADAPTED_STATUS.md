@@ -53,6 +53,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added anonymous five-case private-beta evidence capture and append-only human launch sign-offs for Phase 9 hardening.
 - Added opt-in secure measurement recovery vault with hashed recovery keys, expiry and deletion.
 - Added final-render outcome ledger, human approval desk, automated QA linkage, and credits-per-approved metrics.
+- Added append-only controlled physical fabric colour checks with LAB/hex evidence, CIEDE2000 comparison and a 10-unique-fabric evidence counter.
 - Added Supabase email-OTP customer accounts, account-owned locked designs and measurement profiles, claim-by-recovery-token migration, and private account listing.
 - Propagated authenticated ownership from immutable locked designs into quotes/orders and added private customer production-status tracking.
 - Added phase adaptation records so future coding agents do not rebuild existing systems unnecessarily.
