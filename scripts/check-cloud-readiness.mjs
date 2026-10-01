@@ -132,6 +132,7 @@ if (url && key) {
           ["measurement_profile_vault_list_owned",{p_owner_user_id:"00000000-0000-4000-8000-000000000000"},"Authenticated measurement ownership RPCs are installed."],
           ["production_quote_list_owned",{p_owner_user_id:"00000000-0000-4000-8000-000000000000",p_limit:1},"Customer-owned quote RPCs are installed."],
           ["production_order_list_owned",{p_owner_user_id:"00000000-0000-4000-8000-000000000000",p_limit:1},"Customer-owned production-order RPCs are installed."],
+          ["fabric_physical_color_check_list",{p_limit:1},"Physical fabric colour evidence RPCs are installed."],
           ["designer_render_outcome_list",{p_limit:1},"Final render outcome ledger RPCs are installed."],
           ["designer_render_pattern_calibration_list",{p_limit:1},"Final render pattern calibration RPCs are installed."],
         ];
