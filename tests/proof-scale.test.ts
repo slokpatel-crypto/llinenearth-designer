@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { expectedPeriodPx, passesScaleGate, phase1ProofAcceptance, pxPerMmFromMarker, scaleErrorPct, summarizeIndependentRealism } from "../src/lib/designer/proof-scale.ts";
+import { evaluateRecordedPhase1ProofEvidence, expectedPeriodPx, passesScaleGate, phase1ProofAcceptance, pxPerMmFromMarker, scaleErrorPct, summarizeIndependentRealism } from "../src/lib/designer/proof-scale.ts";
 import { applyRuntimeFabricScale, photoExpectedRepeatPx, photoFabricPatternScale, visiblePatternScaleVerified, LIVE_MODEL_PX_PER_MM, PHOTO_MODEL_COORDINATE_SCALE, type FabricRenderAsset } from "../src/lib/designer/live-preview.ts";
 
 test("calibrates px/mm from a known marker",()=>{
@@ -222,4 +222,50 @@ test("measured photo px/mm changes physical pattern scale without changing appro
   const alternate=photoFabricPatternScale(asset,1,0.7);
   assert.ok(measured>alternate);
   assert.equal(photoFabricPatternScale({...asset,scaleApproximate:true},1,0.9),1);
+});
+
+
+test("recorded Phase 1 v2 evidence is recomputed from raw fixture and independent viewers",()=>{
+  const evidence=evaluateRecordedPhase1ProofEvidence({
+    version:"linen-earth-phase1-proof-v2",
+    scaleCoordinateSystem:"photo-1024x1536-fixture",
+    repeatMm:10,
+    photoReferenceMm:100,
+    photoReferencePx:82,
+    photoPxPerMm:999,
+    measuredPreviewRepeatPx:8.2,
+    scaleGatePass:false,
+    status:"review",
+    realModelSamples:12,
+    realModelP95Ms:220,
+    realismAssessments:[
+      {viewerId:"V01",rating:5},{viewerId:"V02",rating:4},{viewerId:"V03",rating:4},{viewerId:"V04",rating:5},
+      {viewerId:"V05",rating:4},{viewerId:"V06",rating:4},{viewerId:"V07",rating:3},{viewerId:"V08",rating:2},
+    ],
+  });
+  assert.equal(evidence.photoPxPerMm,0.82);
+  assert.equal(evidence.scaleGatePass,true);
+  assert.equal(evidence.realism.uniqueViewers,8);
+  assert.equal(evidence.realism.strongRatings,6);
+  assert.equal(evidence.coreAccepted,true);
+});
+
+test("legacy or client-spoofed Phase 1 flags cannot satisfy the v2 evidence gate",()=>{
+  const evidence=evaluateRecordedPhase1ProofEvidence({
+    version:"linen-earth-phase1-proof-v1",
+    scaleCoordinateSystem:"photo-1024x1536-fixture",
+    repeatMm:10,
+    photoReferenceMm:100,
+    photoReferencePx:82,
+    measuredPreviewRepeatPx:8.2,
+    scaleGatePass:true,
+    realismPass:true,
+    status:"accepted",
+    realModelSamples:99,
+    realModelP95Ms:10,
+    realismAssessments:Array.from({length:8},(_,index)=>({viewerId:`V${index}`,rating:5})),
+  });
+  assert.equal(evidence.photoPxPerMm,null);
+  assert.equal(evidence.scaleGatePass,false);
+  assert.equal(evidence.coreAccepted,false);
 });
