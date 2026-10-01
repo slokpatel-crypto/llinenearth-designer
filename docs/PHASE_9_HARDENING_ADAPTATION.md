@@ -64,11 +64,12 @@ The private Operator area now has a **Launch Evidence** desk for the two hardeni
 ### Five-customer private beta
 - uses anonymous case IDs only,
 - records the real device class,
-- records whether the core Launch 1 flow completed,
+- separately records whether the exact design was locked and whether signed share / exact-look enquiry completed after that lock,
 - records whether a blocking bug occurred,
 - requires a note when a blocking bug is present,
 - evaluates only the latest attempt for each anonymous case,
-- requires at least 5 successful unique cases before the beta gate passes.
+- requires at least 5 successful unique cases before the beta gate passes,
+- reuses those same five cases for the Phase 5 lock → share/enquiry validation gate instead of duplicating evidence.
 
 ### Human launch checklist
 The desk keeps append-only sign-off events for privacy notice review, terms / returns / refunds, measurement-data handling, third-party processing documentation, operator access / secret handling, and the customer support / incident contact path.
