@@ -23,6 +23,8 @@ type Check={
   delta_e:number|string;
   illuminant:string;
   device:string;
+  checked_by?:string|null;
+  evidence_reference?:string|null;
   note:string;
   created_at:string;
 };
@@ -31,6 +33,7 @@ type Summary={
   uniqueFabrics:number;
   remaining:number;
   evidenceGateComplete:boolean;
+  legacyUnverified:number;
   averageDeltaE:number|null;
   medianDeltaE:number|null;
 };
@@ -53,6 +56,8 @@ export default function FabricColorCalibrationClient(){
   const [b,setB]=useState("");
   const [illuminant,setIlluminant]=useState("D65");
   const [device,setDevice]=useState("");
+  const [checkedBy,setCheckedBy]=useState("");
+  const [evidenceReference,setEvidenceReference]=useState("");
   const [note,setNote]=useState("");
   const [message,setMessage]=useState("");
   const [saving,setSaving]=useState(false);
@@ -81,9 +86,7 @@ export default function FabricColorCalibrationClient(){
 
   const selectedFabric=fabrics.find((item)=>item.id===fabricId)||null;
   const selectedProfile=useMemo(
-    ()=>profiles.find((item)=>item.fabric_id===fabricId && ["approved","corrected"].includes(item.review_status))
-      || profiles.find((item)=>item.fabric_id===fabricId)
-      || null,
+    ()=>profiles.find((item)=>item.fabric_id===fabricId && ["approved","corrected"].includes(item.review_status)) || null,
     [profiles,fabricId],
   );
 
@@ -109,13 +112,15 @@ export default function FabricColorCalibrationClient(){
           physicalHex:physicalHex||undefined,
           illuminant,
           device,
+          checkedBy,
+          evidenceReference,
           note,
         }),
       });
       const data=await response.json();
       if(!response.ok) throw new Error(data.error||"Physical colour check could not be saved.");
       setMessage(`Physical colour check saved · ΔE ${data.check?.deltaE ?? "—"}.`);
-      setPhysicalHex("");setL("");setA("");setB("");setNote("");
+      setPhysicalHex("");setL("");setA("");setB("");setEvidenceReference("");setNote("");
       await load();
     }catch(error){
       setMessage(error instanceof Error?error.message:"Physical colour check could not be saved.");
@@ -137,7 +142,7 @@ export default function FabricColorCalibrationClient(){
         <article><small>UNIQUE CHECKED FABRICS</small><div style={{fontSize:34,fontWeight:800}}>{summary?.uniqueFabrics ?? 0}<span style={{fontSize:16,opacity:.45}}> / {summary?.target ?? 10}</span></div></article>
         <article><small>REMAINING</small><div style={{fontSize:34,fontWeight:800}}>{summary?.remaining ?? 10}</div></article>
         <article><small>MEDIAN ΔE</small><div style={{fontSize:34,fontWeight:800}}>{summary?.medianDeltaE ?? "—"}</div><span style={{fontSize:12,opacity:.6}}>descriptive only</span></article>
-        <article><small>EVIDENCE GATE</small><div style={{fontSize:24,fontWeight:800}}>{summary?.evidenceGateComplete?"10 checks recorded":"COLLECTING"}</div></article>
+        <article><small>EVIDENCE GATE</small><div style={{fontSize:24,fontWeight:800}}>{summary?.evidenceGateComplete?"10 proven checks":"COLLECTING"}</div><span style={{fontSize:12,opacity:.6}}>{summary?.legacyUnverified||0} legacy/unproven rows excluded</span></article>
       </section>
 
       <section style={{display:"grid",gridTemplateColumns:"minmax(0,1.15fr) minmax(320px,.85fr)",gap:18}}>
@@ -153,11 +158,13 @@ export default function FabricColorCalibrationClient(){
             <label><span>Physical a*</span><input style={input} inputMode="decimal" value={a} onChange={(e)=>setA(e.target.value)} placeholder="LAB a"/></label>
             <label><span>Physical b*</span><input style={input} inputMode="decimal" value={b} onChange={(e)=>setB(e.target.value)} placeholder="LAB b"/></label>
             <label><span>Instrument / device</span><input style={input} value={device} onChange={(e)=>setDevice(e.target.value)} placeholder="Required for instrument checks"/></label>
+            <label><span>Checked by</span><input style={input} value={checkedBy} onChange={(e)=>setCheckedBy(e.target.value.slice(0,120))} placeholder="Operator / reviewer"/></label>
+            <label><span>Evidence reference</span><input style={input} value={evidenceReference} onChange={(e)=>setEvidenceReference(e.target.value.slice(0,240))} placeholder="Instrument log, booth session, capture card…"/></label>
             <label style={{gridColumn:"1/-1"}}><span>Evidence/setup note</span><textarea style={{...input,minHeight:84}} value={note} onChange={(e)=>setNote(e.target.value)} placeholder="Lighting, grey card/reference, instrument setup or capture procedure."/></label>
           </div>
-          <p style={{fontSize:12,opacity:.62,lineHeight:1.5}}>Supply either complete physical LAB values or a calibrated physical hex. Instrument checks require device identity; calibrated captures require a setup note.</p>
-          <button style={button} disabled={saving||!fabricId||!digitalHex} onClick={()=>void save()}>{saving?"Saving…":"Save append-only colour evidence"}</button>
-          {selectedFabric&&<div style={{display:"flex",alignItems:"center",gap:12,marginTop:16}}><img src={selectedFabric.swatchImageUrl} alt="" style={{width:54,height:54,objectFit:"cover",borderRadius:8}}/><div><strong>{selectedFabric.colorName}</strong><div style={{fontSize:12,opacity:.6}}>{selectedFabric.pattern} · Analyzer {selectedProfile?selectedProfile.review_status:"profile unavailable"}</div></div></div>}
+          <p style={{fontSize:12,opacity:.62,lineHeight:1.5}}>Supply either complete physical LAB values or a calibrated physical hex. The digital reference must come from an approved/corrected Analyzer profile; all checks require controlled lighting, a named checker and an evidence reference.</p>
+          <button style={button} disabled={saving||!fabricId||!digitalHex||!selectedProfile||illuminant.trim().length<2||checkedBy.trim().length<2||evidenceReference.trim().length<3} onClick={()=>void save()}>{saving?"Saving…":"Save append-only colour evidence"}</button>
+          {selectedFabric&&<div style={{display:"flex",alignItems:"center",gap:12,marginTop:16}}><img src={selectedFabric.swatchImageUrl} alt="" style={{width:54,height:54,objectFit:"cover",borderRadius:8}}/><div><strong>{selectedFabric.colorName}</strong><div style={{fontSize:12,opacity:.6}}>{selectedFabric.pattern} · Analyzer {selectedProfile?selectedProfile.review_status:"reviewed profile required"}</div></div></div>}
         </article>
 
         <aside style={panel}>
@@ -166,7 +173,7 @@ export default function FabricColorCalibrationClient(){
             {checks.length===0&&<p style={{opacity:.65}}>No physical colour checks recorded yet.</p>}
             {checks.slice(0,30).map((item)=><div key={item.check_id} style={{borderTop:"1px solid #ece6dc",paddingTop:10}}>
               <div style={{display:"flex",justifyContent:"space-between",gap:10}}><strong>{item.fabric_id}</strong><b>ΔE {Number(item.delta_e).toFixed(2)}</b></div>
-              <div style={{fontSize:12,opacity:.62,marginTop:4}}>{item.method.replaceAll("_"," ")} · {new Date(item.created_at).toLocaleDateString()}</div>
+              <div style={{fontSize:12,opacity:.62,marginTop:4}}>{item.method.replaceAll("_"," ")} · {new Date(item.created_at).toLocaleDateString()} · {item.checked_by&&item.evidence_reference?item.checked_by+" · "+item.evidence_reference:"legacy/unproven"}</div>
               <div style={{display:"flex",gap:6,marginTop:7}}><i title={item.digital_hex} style={{width:24,height:24,borderRadius:6,background:item.digital_hex,border:"1px solid #aaa"}}/>{item.physical_hex&&<i title={item.physical_hex} style={{width:24,height:24,borderRadius:6,background:item.physical_hex,border:"1px solid #aaa"}}/>}</div>
             </div>)}
           </div>
