@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { expectedPeriodPx, passesScaleGate, scaleErrorPct } from "@/lib/designer/proof-scale";
 import { DESIGNER_PANTS, DESIGNER_SHIRTS, designerStyleForOccasion } from "@/lib/designer/engine";
@@ -238,6 +239,7 @@ export function PremiumShirtProof(){
             </select>
           </label>
           <p>{runtimeShirts.length} current shirting fabrics are available in this proof. Reviewed Analyzer evidence is loaded when available.</p>
+          {realShirt&&<Link className="proofOperatorLink" href={"/operator/fabric-analyzer?fabricId="+encodeURIComponent(realShirt.id)}>Open selected fabric in Analyzer →</Link>}
         </section>
         <section><h2>Collar</h2>{(["spread","button-down","band"] as Collar[]).map((item)=><button key={item} type="button" data-active={collar===item} onClick={()=>markChange(()=>setCollar(item))}>{item}</button>)}</section>
         <section><h2>Cuff</h2>{(["round","square","french"] as Cuff[]).map((item)=><button key={item} type="button" data-active={cuff===item} onClick={()=>markChange(()=>setCuff(item))}>{item}</button>)}</section>
