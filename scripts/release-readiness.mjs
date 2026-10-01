@@ -170,6 +170,7 @@ for (const path of [
   "src/lib/designer/render-release-evidence.ts",
   "supabase/migrations/20261007_render_release_evidence.sql",
   "supabase/migrations/20261018_render_pattern_fixture_evidence.sql",
+  "supabase/migrations/20261023_render_manual_review_signoff.sql",
 ]) requireFile(path);
 
 requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/visual", "/real-model", "Open Real Model Designer"]);
@@ -556,9 +557,9 @@ requireTokens("next.config.ts", ["Strict-Transport-Security","X-Frame-Options","
 requireTokens("src/app/api/designer/look-render/route.ts", ["recordRenderOutcome","repair:true"]);
 requireTokens("src/app/api/designer/look-inspect/route.ts", ["attachRenderQa","jobId"]);
 requireTokens("src/lib/designer/render-outcome-metrics.ts", ["summarizeRenderOutcomes","creditsPerApproved","approvalRate","summarizeRenderPatternCalibrations","scale_error_pct"]);
-requireTokens("src/app/operator/render-qa/RenderQaClient.tsx", ["Final Render QA","Add measured pattern check","APPROVAL RATE","CREDITS / APPROVED","PATTERN SCALE QA","CROSS-VIEW IDENTITY","Record owner-approved credit cap"]);
+requireTokens("src/app/operator/render-qa/RenderQaClient.tsx", ["Final Render QA","Add measured pattern check","APPROVAL RATE","CREDITS / APPROVED","PATTERN SCALE QA","CROSS-VIEW IDENTITY","Record owner-approved credit cap","Approve manual review workflow"]);
 requireTokens("supabase/migrations/20261001_render_outcomes.sql", ["designer_render_outcome_record","designer_render_outcome_review","designer_render_pattern_calibration_record","service_role"]);
-requireTokens("src/lib/designer/render-release-evidence.ts", ["summarizeCrossViewIdentity","evaluateRenderCreditCap","evaluateFinalRenderReleaseEvidence","FINAL_RENDER_REVIEW_TARGET","FINAL_RENDER_APPROVAL_TARGET_PERCENT","patternGateComplete","totalGates:4","eligibleConcepts","withinCap"]);
+requireTokens("src/lib/designer/render-release-evidence.ts", ["summarizeCrossViewIdentity","evaluateRenderCreditCap","evaluateFinalRenderReleaseEvidence","FINAL_RENDER_REVIEW_TARGET","FINAL_RENDER_APPROVAL_TARGET_PERCENT","patternGateComplete","manualReviewGateComplete","totalGates:5","eligibleConcepts","withinCap"]);
 requireTokens("src/app/operator/render-qa/RenderQaClient.tsx", ["PATTERN RELEASE COVERAGE","patternCoverageSummary","referenceMm","referencePx","observedRepeatPx","pixel_fixture_v2"]);
 requireTokens("src/app/api/operator/render-qa/route.ts", ["patternCoverageSummary","patternEvidenceByFabric","expectedRepeatByFabric","summarizeApprovedPatternCalibrationCoverage","patternedFabricIds","referenceMm","referencePx","observedRepeatPx","Reviewed physical repeat evidence is required"]);
 requireTokens("src/lib/designer/render-outcome-metrics.ts", ["deriveObservedRepeatMmFromFixture","summarizeApprovedPatternCalibrationCoverage","expectedRepeatByFabric","missingTruthPairs","staleCalibrationPairs","legacyCalibrationPairs","measurement_method","pixel_fixture_v2","requiredPairs","passedPairs","gateComplete"]);
@@ -566,6 +567,7 @@ requireTokens("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx", [
 requireTokens("supabase/migrations/20261007_render_release_evidence.sql", ["designer_render_identity_review_record","designer_render_credit_cap_record","at least two rendered views","service_role"]);
 requireTokens("src/lib/designer/render-outcomes.ts", ["designer_render_pattern_calibration_record_v2","designer_render_pattern_calibration_list_v2","referenceMm","referencePx","observedRepeatPx"]);
 requireTokens("supabase/migrations/20261018_render_pattern_fixture_evidence.sql", ["designer_render_pattern_calibration_record_v2","designer_render_pattern_calibration_list_v2","pixel_fixture_v2","reference_mm","reference_px","observed_repeat_px","service_role"]);
+requireTokens("supabase/migrations/20261023_render_manual_review_signoff.sql", ["designer_render_manual_review_signoff_record","designer_render_manual_review_signoff_latest","service_role"]);
 
 
 requireTokens("src/app/api/homepage-model/route.ts", [
@@ -629,6 +631,7 @@ requireTokens("scripts/check-cloud-readiness.mjs", [
   "designer_render_pattern_calibration_list",
   "designer_render_identity_review_list",
   "designer_render_credit_cap_latest",
+  "designer_render_manual_review_signoff_latest",
   "Apply Roadmap v2 Supabase migrations",
 ]);
 
