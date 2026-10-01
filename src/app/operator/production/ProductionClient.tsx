@@ -167,7 +167,10 @@ export default function ProductionClient(){
         <label>Recipe hash<input value={order.recipeHash} onChange={(e)=>setOrder({...order,recipeHash:e.target.value})}/></label>
         <label>Accepted quote (optional)<select value={order.quoteId} onChange={(e)=>setOrder({...order,quoteId:e.target.value})}><option value="">No quote attached</option>{acceptedQuotes.map((item)=><option key={item.quote_id} value={item.quote_id}>{item.currency} {Number(item.total).toFixed(2)} · {item.quote_id.slice(0,8)}</option>)}</select></label>
         <label>Note<textarea rows={2} value={order.note} onChange={(e)=>setOrder({...order,note:e.target.value})}/></label>
-        <button disabled={busy||!configured||order.revisionId.length<12||!/^[a-f0-9]{64}$/i.test(order.recipeHash)} onClick={()=>void post({action:"create_order",...order},"Production order created.")}>Create order</button>
+        <button disabled={busy||!configured||order.revisionId.length<12||!/^[a-f0-9]{64}$/i.test(order.recipeHash)} onClick={()=>void post({
+          action:"create_order",...order,recoveryToken:loadedRevision?recoveryToken.trim():"",
+        },loadedRevision?"Production order created with durable design context.":"Production order created without a durable design-context snapshot.")}>Create order</button>
+        <small style={{lineHeight:1.45,opacity:.62}}>{loadedRevision?"Locked recipe verified: privacy-safe style/fabric/construction context will be retained for future outcome learning.":"Load the locked recipe first to retain durable outcome lineage after the temporary design vault expires."}</small>
       </article>
     </section>
 
