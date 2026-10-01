@@ -327,13 +327,29 @@ function drawGarment(
   context.filter = lightingFilter;
   context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
 
-  // Reintroduce a small amount of the photograph's high-level seam/fold
-  // information after recolouring. Grayscale + soft-light preserves garment
-  // construction without bringing the original cloth colour back.
-  context.filter = "grayscale(1) contrast(1.22) brightness(1.05)";
+  // Reintroduce photographic folds and seams without restoring the source
+  // garment colour. Two restrained passes work better than one heavy pass:
+  // broad folds stay dimensional while fine wrinkles keep the cloth from
+  // reading like a flat sticker.
+  context.filter = "grayscale(1) contrast(1.18) brightness(1.04)";
   context.globalCompositeOperation = "soft-light";
-  context.globalAlpha = .24;
+  context.globalAlpha = .22;
   context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
+
+  context.filter = "grayscale(1) contrast(1.48) brightness(1.02)";
+  context.globalCompositeOperation = "overlay";
+  context.globalAlpha = .09;
+  context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
+
+  // Put a faint copy of the real textile back above the lighting model. This
+  // keeps weave / print micro-detail visible in highlights, where multiply
+  // alone tends to wash the source cloth into a smooth painted surface.
+  context.filter = "none";
+  context.globalCompositeOperation = "soft-light";
+  context.globalAlpha = fabric.patternType === "Solid" ? .12 : .16;
+  context.fillStyle = pattern;
+  context.fillRect(0, 0, WIDTH, HEIGHT);
+
   context.globalAlpha = 1;
   context.filter = "none";
 
