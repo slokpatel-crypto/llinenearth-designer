@@ -41,3 +41,11 @@ Status: advanced existing implementation with owner benchmark and real-user vali
 - [x] real-user validation capture + human sign-off engineering
 - [ ] owner-labelled benchmark threshold met
 - [ ] real-user test confirms directions are understandable and materially distinct
+
+
+## Real-user validation threshold hardening
+
+- Style Director sign-off now requires a **human-entered clean-case target** between 1 and 50. The software does not invent how many successful user tests are enough.
+- A clean case means the latest result for that anonymous case reports understandable directions, materially distinct directions, a working stock/style handoff, and no blocking issue.
+- Database approval is rejected until the latest unique clean-case count meets the documented target.
+- Legacy approvals without a documented target remain historical evidence and cannot complete the current Phase 6 validation gate.
