@@ -101,3 +101,11 @@ Customer-facing physical truth now upgrades only from Analyzer profiles that hav
 - Only provenance-ready ledger rows can override customer availability; an unverified legacy stock row cannot silently hide or promote a fabric.
 - A verified zero/negative available balance removes that fabric from new customer selection, while an explicit catalogue/merchandising unavailability always remains authoritative.
 - The public customer APIs expose only a count of fabrics covered by verified stock evidence, not private metre balances.
+
+
+## Controlled colour evidence provenance
+
+- New physical colour checks must be tied to an approved/corrected Analyzer profile for the exact stock fabric; the submitted digital hex must match that reviewed profile’s measured colour.
+- Every qualifying check now records the controlled illuminant, a named checker and a physical evidence reference. Instrument methods also retain device identity, while calibrated captures retain the setup note.
+- Legacy colour rows without this provenance stay visible for history but are excluded from the 10-unique-fabric evidence gate.
+- ΔE remains descriptive until Linen Earth documents a commercial tolerance; this hardening improves evidence integrity without inventing a pass threshold.
