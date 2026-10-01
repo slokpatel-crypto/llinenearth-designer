@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
-import { normalizeMeterageCalibrationDraft, verifiedMeterageEvidenceCase } from "@/lib/designer/meterage-calibration";
+import { normalizeMeterageCalibrationDraft } from "@/lib/designer/meterage-calibration";
 
 export const runtime="nodejs";
 
@@ -29,30 +29,11 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
 }
 
 async function evidenceCaseIds(garment:"shirt"|"trouser"){
-  const config=getSupabaseAdminConfig();
-  if(!config) return [];
-  const params=new URLSearchParams({
-    select:"payload",
-    type:"eq.operator_note",
-    source:"eq.operator",
-    order:"at.asc",
-    limit:"1200",
-  });
-  const response=await fetch(config.url.replace(/\/$/,"")+"/rest/v1/style_events?"+params.toString(),{
-    headers:{...supabaseAdminHeaders(config),accept:"application/json"},
-    cache:"no-store",
-    signal:AbortSignal.timeout(8_000),
-  });
-  if(!response.ok) throw new Error("Real cut evidence could not be read.");
-  const rows=await response.json() as Array<{payload?:Record<string,unknown>}>;
-  const seen=new Set<string>();
-  for(const row of rows){
-    const payload=row.payload||{};
-    const evidence=verifiedMeterageEvidenceCase(payload,garment);
-    if(!evidence) continue;
-    seen.add(evidence.caseId);
-  }
-  return [...seen];
+  const rows=await rpc<Array<{case_id:string;garment:string}>>("production_cut_evidence_list",{p_limit:2000});
+  return rows
+    .filter((row)=>row.garment===garment)
+    .map((row)=>String(row.case_id||"").trim())
+    .filter(Boolean);
 }
 
 export async function GET(){
@@ -78,11 +59,11 @@ export async function POST(request:Request){
       const caseIds=await evidenceCaseIds(draft.garment);
       if(caseIds.length<20){
         return NextResponse.json({
-          error:"At least 20 valid real cut cases for "+draft.garment+" are required before a calibration draft can be registered.",
+          error:"At least 20 production-order-backed real cut cases for "+draft.garment+" are required before a calibration draft can be registered.",
           evidenceCount:caseIds.length,
         },{status:409});
       }
-      const modelId=await rpc<string>("production_meterage_model_create_v3",{
+      const modelId=await rpc<string>("production_meterage_model_create_v4",{
         p_garment:draft.garment,
         p_version:draft.version,
         p_bands:draft.bands,
@@ -97,7 +78,7 @@ export async function POST(request:Request){
       const approvedBy=String(body.approvedBy||"").trim().slice(0,120);
       const approvalNote=String(body.approvalNote||"").trim().slice(0,1200);
       if(approvedBy.length<2) return NextResponse.json({error:"Owner/tailor approver is required."},{status:400});
-      const updated=await rpc<boolean>("production_meterage_model_approve_v3",{
+      const updated=await rpc<boolean>("production_meterage_model_approve_v4",{
         p_model_id:modelId,p_approved_by:approvedBy,p_approval_note:approvalNote,
       });
       return NextResponse.json({updated:Boolean(updated)});
