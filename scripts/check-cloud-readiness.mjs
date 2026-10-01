@@ -119,6 +119,8 @@ if (url && key) {
           ["production_order_list",{p_limit:1},"Production order ledger RPCs are installed."],
           ["designer_locked_revision_vault_get",{p_vault_id:"00000000-0000-4000-8000-000000000000",p_access_hash:"0".repeat(64)},"Locked design recovery vault RPCs are installed."],
           ["measurement_profile_vault_get",{p_vault_id:"00000000-0000-4000-8000-000000000000",p_access_hash:"0".repeat(64)},"Measurement recovery vault RPCs are installed."],
+          ["designer_render_outcome_list",{p_limit:1},"Final render outcome ledger RPCs are installed."],
+          ["designer_render_pattern_calibration_list",{p_limit:1},"Final render pattern calibration RPCs are installed."],
         ];
         for (const [rpcName,payload,label] of rpcChecks) {
           const rpcResponse = await fetch(
