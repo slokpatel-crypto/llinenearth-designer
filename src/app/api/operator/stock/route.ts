@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
+import { normalizeManualStockEvent } from "@/lib/designer/stock-ledger";
 
 export const runtime="nodejs";
 
@@ -32,8 +33,10 @@ export async function GET(){
   if(!getSupabaseAdminConfig()) return NextResponse.json({configured:false,stock:[]});
   try{
     const stock=await rpc<Array<{
-      fabric_id:string;physical_metres:number;reserved_metres:number;available_metres:number;last_event_at:string|null;
-    }>>("fabric_stock_snapshot",{p_fabric_ids:null});
+      fabric_id:string;physical_metres:number;reserved_metres:number;available_metres:number;
+      manual_event_count:number;provenance_event_count:number;legacy_unverified_event_count:number;
+      provenance_ready:boolean;last_event_at:string|null;
+    }>>("fabric_stock_snapshot_v2",{p_fabric_ids:null});
     return NextResponse.json({configured:true,stock},{headers:{"cache-control":"private, no-store"}});
   }catch(error){
     console.error("[operator/stock]",error);
@@ -47,15 +50,14 @@ export async function POST(request:Request){
     const body=await request.json() as Record<string,unknown>;
     const action=String(body.action||"");
     if(action==="record"){
-      const fabricId=String(body.fabricId||"").trim().slice(0,160);
-      const eventType=String(body.eventType||"");
-      const quantity=Number(body.quantityMetres);
-      const note=String(body.note||"").trim().slice(0,600);
-      if(!fabricId||!["receipt","adjustment_in","adjustment_out"].includes(eventType)||!Number.isFinite(quantity)||quantity<=0) {
-        return NextResponse.json({error:"Invalid stock adjustment."},{status:400});
-      }
-      const eventId=await rpc<string>("fabric_stock_record",{
-        p_fabric_id:fabricId,p_event_type:eventType,p_quantity_metres:quantity,p_note:note,
+      const draft=normalizeManualStockEvent(body);
+      const eventId=await rpc<string>("fabric_stock_record_v2",{
+        p_fabric_id:draft.fabricId,
+        p_event_type:draft.eventType,
+        p_quantity_metres:draft.quantityMetres,
+        p_note:draft.note,
+        p_recorded_by:draft.recordedBy,
+        p_source_reference:draft.sourceReference,
       });
       return NextResponse.json({eventId});
     }
