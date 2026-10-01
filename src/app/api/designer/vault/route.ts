@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
+import { getCustomerIdentity } from "@/lib/customer-auth";
 import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
 import {
   createDesignVaultAccessKey,
@@ -50,8 +51,14 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
 export async function POST(request:Request){
   if(blocked(request)) return jsonNoStore({error:"Too many design-vault requests."},{status:429});
   try{
-    const body=await request.json() as {action?:string;revision?:LockedDesignRevision;recoveryToken?:string};
+    const body=await request.json() as {
+      action?:string;
+      revision?:LockedDesignRevision;
+      recoveryToken?:string;
+      vaultId?:string;
+    };
     const action=String(body.action||"");
+    const customer=await getCustomerIdentity(request);
 
     if(action==="store"){
       const revision=body.revision;
@@ -71,12 +78,77 @@ export async function POST(request:Request){
         p_ttl_days:180,
       });
       if(!vaultId) throw new Error("The design vault did not return an id.");
+
+      let accountOwned=false;
+      if(customer){
+        accountOwned=Boolean(await rpc<boolean>("designer_locked_revision_vault_set_owner",{
+          p_vault_id:vaultId,p_access_hash:accessHash,p_owner_user_id:customer.id,
+        }));
+      }
+
       const recoveryToken=createDesignVaultRecoveryToken(vaultId,accessKey);
-      return jsonNoStore({vaultId,recoveryToken,expiresInDays:180});
+      return jsonNoStore({
+        vaultId,recoveryToken,expiresInDays:180,
+        accountOwned,
+        customer:customer?{email:customer.email}:null,
+      });
+    }
+
+    if(action==="listOwned"){
+      if(!customer) return jsonNoStore({error:"Customer sign-in is required."},{status:401});
+      const rows=await rpc<Array<{
+        vault_id:string;revision_id:string;recipe_hash:string;
+        payload:LockedDesignRevision;created_at:string;expires_at:string;
+      }>>("designer_locked_revision_vault_list_owned",{p_owner_user_id:customer.id});
+      const designs=[];
+      for(const row of rows){
+        if(row.payload&&await verifyLockedDesignRevision(row.payload)){
+          designs.push({
+            vaultId:row.vault_id,
+            revisionId:row.revision_id,
+            recipeHash:row.recipe_hash,
+            revision:row.payload,
+            createdAt:row.created_at,
+            expiresAt:row.expires_at,
+          });
+        }
+      }
+      return jsonNoStore({designs,customer:{email:customer.email}});
+    }
+
+    if(action==="loadOwned"){
+      if(!customer) return jsonNoStore({error:"Customer sign-in is required."},{status:401});
+      const vaultId=String(body.vaultId||"");
+      const rows=await rpc<Array<{payload:LockedDesignRevision;expires_at:string}>>(
+        "designer_locked_revision_vault_get_owned",
+        {p_vault_id:vaultId,p_owner_user_id:customer.id},
+      );
+      const row=rows[0];
+      if(!row?.payload) return jsonNoStore({error:"Design not found."},{status:404});
+      if(!await verifyLockedDesignRevision(row.payload)) {
+        return jsonNoStore({error:"Stored design failed integrity verification."},{status:409});
+      }
+      return jsonNoStore({revision:row.payload,expiresAt:row.expires_at});
+    }
+
+    if(action==="deleteOwned"){
+      if(!customer) return jsonNoStore({error:"Customer sign-in is required."},{status:401});
+      const deleted=await rpc<boolean>("designer_locked_revision_vault_delete_owned",{
+        p_vault_id:String(body.vaultId||""),p_owner_user_id:customer.id,
+      });
+      return jsonNoStore({deleted:Boolean(deleted)});
     }
 
     const parsed=parseDesignVaultRecoveryToken(String(body.recoveryToken||""));
     if(!parsed) return jsonNoStore({error:"The recovery token is invalid."},{status:400});
+
+    if(action==="claim"){
+      if(!customer) return jsonNoStore({error:"Customer sign-in is required."},{status:401});
+      const claimed=await rpc<boolean>("designer_locked_revision_vault_set_owner",{
+        p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,p_owner_user_id:customer.id,
+      });
+      return jsonNoStore({claimed:Boolean(claimed)});
+    }
 
     if(action==="load"){
       const rows=await rpc<Array<{payload:LockedDesignRevision;expires_at:string}>>("designer_locked_revision_vault_get",{
