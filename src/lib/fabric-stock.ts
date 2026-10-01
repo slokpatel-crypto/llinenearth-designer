@@ -28,6 +28,7 @@ export interface FabricColorway {
   sourceDocument: string;
   sourcePage: number;
   inStock: boolean;
+  availabilityVerified?: boolean;
 }
 
 const shirt: GarmentKind[] = ["shirt"];
