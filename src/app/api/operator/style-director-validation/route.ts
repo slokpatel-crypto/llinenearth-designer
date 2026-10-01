@@ -75,7 +75,7 @@ export async function POST(request:Request){
     }
     if(action==="signoff"){
       const signoff=normalizeStyleDirectorValidationSignoff(body);
-      const eventId=await rpc<string>("style_director_validation_signoff_record_v2",{
+      const eventId=await rpc<string>("style_director_validation_signoff_record_v3",{
         p_status:signoff.statusTyped,
         p_required_positive_cases:signoff.requiredPositiveCases,
         p_signed_by:signoff.signedBy,
