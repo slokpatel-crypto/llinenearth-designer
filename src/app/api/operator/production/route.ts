@@ -40,6 +40,7 @@ export async function GET(){
     ]);
     let qcInspections:unknown[]=[];
     let customerOutcomes:unknown[]=[];
+    let learningContexts:unknown[]=[];
     try{
       qcInspections=await rpc<unknown[]>("finished_garment_qc_list",{p_limit:250});
     }catch{
@@ -50,7 +51,12 @@ export async function GET(){
     }catch{
       // Keep the production desk usable while the Phase 11 outcome migration is being installed.
     }
-    return NextResponse.json({configured:true,quotes,orders,qcInspections,customerOutcomes},{headers:{"cache-control":"private, no-store"}});
+    try{
+      learningContexts=await rpc<unknown[]>("production_order_learning_context_list",{p_limit:500});
+    }catch{
+      // Older/manual orders remain readable while durable lineage support is being installed.
+    }
+    return NextResponse.json({configured:true,quotes,orders,qcInspections,customerOutcomes,learningContexts},{headers:{"cache-control":"private, no-store"}});
   }catch(error){
     console.error("[operator/production]",error);
     return NextResponse.json({error:"Production records could not be read."},{status:503});
