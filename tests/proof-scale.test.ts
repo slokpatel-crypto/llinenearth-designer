@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { evaluateRecordedPhase1ProofEvidence, expectedPeriodPx, passesScaleGate, phase1ProofAcceptance, pxPerMmFromMarker, scaleErrorPct, summarizeIndependentRealism } from "../src/lib/designer/proof-scale.ts";
+import { evaluateRecordedPhase1ProofEvidence, expectedPeriodPx, passesScaleGate, phase1ProofAcceptance, pxPerMmFromMarker, scaleErrorPct, summarizeIndependentRealism, summarizeLatencySamples } from "../src/lib/designer/proof-scale.ts";
 import { applyRuntimeFabricScale, photoExpectedRepeatPx, photoFabricPatternScale, visiblePatternScaleVerified, LIVE_MODEL_PX_PER_MM, PHOTO_MODEL_COORDINATE_SCALE, type FabricRenderAsset } from "../src/lib/designer/live-preview.ts";
 
 test("calibrates px/mm from a known marker",()=>{
@@ -345,4 +345,13 @@ test("Phase 1 v4 ignores spoofed latency aggregates and requires raw render samp
   assert.equal(evidence.realModelP95Ms,null);
   assert.equal(evidence.acceptance.latencyReady,false);
   assert.equal(evidence.coreAccepted,false);
+});
+
+
+test("raw latency summary recomputes p95 and ignores invalid samples",()=>{
+  const result=summarizeLatencySamples([10,20,30,40,50,60,70,80,90,100,110,120,-5,Number.NaN,20000]);
+  assert.equal(result.count,12);
+  assert.equal(result.medianMs,60);
+  assert.equal(result.p95Ms,120);
+  assert.equal(result.maxMs,120);
 });
