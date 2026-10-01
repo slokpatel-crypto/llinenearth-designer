@@ -141,7 +141,11 @@ type ProductionCalibrationPayload={
 
 type StockPayload={
   configured:boolean;
-  stock:Array<{fabric_id:string;physical_metres:number;reserved_metres:number;available_metres:number}>;
+  stock:Array<{
+    fabric_id:string;physical_metres:number;reserved_metres:number;available_metres:number;
+    manual_event_count?:number;provenance_event_count?:number;legacy_unverified_event_count?:number;
+    provenance_ready?:boolean;
+  }>;
 };
 
 type RenderQaPayload={
@@ -450,9 +454,12 @@ export default function Phase10ReadinessClient(){
     const productionUsageDone=productionCalibration?.readyForModel===true;
 
     const stockRows=data.stock?.stock||[];
-    const positiveStock=stockRows.filter((item)=>Number(item.physical_metres)>0).length;
-    const stockProgress=positiveStock>0?100:0;
-    const stockDone=Boolean(data.stock?.configured&&positiveStock>0);
+    const positiveStockRows=stockRows.filter((item)=>Number(item.physical_metres)>0);
+    const positiveStock=positiveStockRows.length;
+    const provenanceReadyStock=positiveStockRows.filter((item)=>item.provenance_ready===true).length;
+    const legacyStockEvents=stockRows.reduce((sum,item)=>sum+Number(item.legacy_unverified_event_count||0),0);
+    const stockProgress=positiveStock>0?ratio(provenanceReadyStock,positiveStock):0;
+    const stockDone=Boolean(data.stock?.configured&&positiveStock>0&&provenanceReadyStock===positiveStock);
 
     const renderSummary=data.renderQa?.summary;
     const renderRelease=renderSummary&&data.renderQa?.identitySummary&&data.renderQa?.creditCapSummary
@@ -713,15 +720,17 @@ export default function Phase10ReadinessClient(){
       },
       {
         id:"stock-ledger",
-        title:"Physical stock ledger",
+        title:"Live physical stock provenance",
         detail:stockDone
-          ? `${positiveStock} fabrics have physically entered stock. Reservations can now use measured metres instead of catalogue assumptions.`
-          : "No positive physical stock balance has been entered yet. Opening stock must come from real measured inventory.",
+          ? `${positiveStock} fabric(s) have positive physical stock and every contributing manual stock event carries named provenance.`
+          : positiveStock
+            ? `${provenanceReadyStock}/${positiveStock} positive-stock fabric(s) are provenance-ready · ${legacyStockEvents} legacy/unverified manual stock event(s) remain.`
+            : "No physically recorded stock is available yet.",
         status:stockDone?"done":data.stock?.configured?"progress":"blocked",
         progress:stockProgress,
-        metric:`${positiveStock} fabrics with physical metres`,
+        metric:`${provenanceReadyStock}/${positiveStock||"—"} provenance-ready stock fabrics · ${legacyStockEvents} unverified events`,
         href:"/operator/stock",
-        action:"Open stock ledger",
+        action:"Verify physical stock",
         ownerDependent:true,
       },
       {
