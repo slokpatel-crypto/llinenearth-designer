@@ -14,6 +14,9 @@ Route: `/lab/proof`
 - Human realism scoring is captured locally with the roadmap target of at least 6 of 8 ratings at 4/5 or 5/5.
 - Photo compositing now uses restrained multi-pass fold/seam lighting plus a textile-detail pass to reduce the flat sticker effect.
 - Existing reviewed Analyzer catalogue evidence is loaded through `/api/designer/catalog` when available.
+- The selected proof fabric links directly to its private Analyzer evidence desk.
+- A deterministic photographic-repeat audit reports expected repeat spacing in mannequin pixels when physical repeat evidence exists.
+- Proof evidence can be exported as JSON with scale, performance and viewer-rating results for an auditable acceptance record.
 
 ## What this proof does not claim
 - It does not claim a photograph has a true physical scale until a measured repeat / swatch dimension exists.
@@ -34,6 +37,8 @@ Route: `/lab/proof`
 - [x] real compositor p95 instrumentation
 - [x] all current shirt catalogue options exposed
 - [x] runtime reviewed evidence path
+- [x] proof evidence JSON export
+- [x] deterministic photo-repeat audit value
 - [ ] CI green on current branch
 
 ### Physical / human evidence
