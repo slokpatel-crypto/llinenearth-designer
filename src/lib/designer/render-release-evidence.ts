@@ -126,6 +126,13 @@ export type FinalRenderReleaseEvidenceInput={
     configured:boolean;
     withinCap:boolean|null;
   };
+  patternCoverage:{
+    requiredPairs:number;
+    passedPairs:number;
+    failedPairs:number;
+    pendingPairs:number;
+    gateComplete:boolean;
+  };
 };
 
 export function evaluateFinalRenderReleaseEvidence(input:FinalRenderReleaseEvidenceInput){
@@ -149,7 +156,8 @@ export function evaluateFinalRenderReleaseEvidence(input:FinalRenderReleaseEvide
     passedConcepts>=eligibleConcepts;
 
   const costGateComplete=input.creditCap.configured===true&&input.creditCap.withinCap===true;
-  const completedGates=[approvalGateComplete,identityGateComplete,costGateComplete].filter(Boolean).length;
+  const patternGateComplete=input.patternCoverage.gateComplete===true;
+  const completedGates=[approvalGateComplete,identityGateComplete,costGateComplete,patternGateComplete].filter(Boolean).length;
 
   const reviewVolumeProgress=Math.min(100,reviewed/FINAL_RENDER_REVIEW_TARGET*100);
   const approvalRateProgress=approvalRate===null
@@ -164,18 +172,25 @@ export function evaluateFinalRenderReleaseEvidence(input:FinalRenderReleaseEvide
     : input.creditCap.configured&&input.creditCap.withinCap===null
       ? 50
       : 0;
+  const requiredPatternPairs=Math.max(0,Math.floor(Number(input.patternCoverage.requiredPairs)||0));
+  const passedPatternPairs=Math.max(0,Math.floor(Number(input.patternCoverage.passedPairs)||0));
+  const patternProgress=requiredPatternPairs
+    ? Math.round(Math.min(1,passedPatternPairs/requiredPatternPairs)*100)
+    : 0;
 
   return {
     approvalGateComplete,
     identityGateComplete,
     costGateComplete,
-    gateComplete:completedGates===3,
+    patternGateComplete,
+    gateComplete:completedGates===4,
     completedGates,
-    totalGates:3,
-    progressPercent:Math.round((approvalProgress+identityProgress+costProgress)/3),
+    totalGates:4,
+    progressPercent:Math.round((approvalProgress+identityProgress+costProgress+patternProgress)/4),
     approvalProgress,
     identityProgress,
     costProgress,
+    patternProgress,
     remainingReviews:Math.max(0,FINAL_RENDER_REVIEW_TARGET-reviewed),
     approvalTargetPercent:FINAL_RENDER_APPROVAL_TARGET_PERCENT,
     identityEligibleConcepts:eligibleConcepts,
