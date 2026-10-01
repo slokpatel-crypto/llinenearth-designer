@@ -35,6 +35,8 @@ export function PremiumShirtProof(){
     image:realShirt?.image||"",
     cataloguePattern:realShirt?.patternType||"Unknown",
   };
+  const storedRepeatMm=realShirt?.renderScale?.physicalScaleStatus==="declared_repeat" ? realShirt.renderScale.repeatMm : null;
+  const effectiveRepeatMm=declaredRepeatMm ?? storedRepeatMm;
   const proofRealShirt=realShirt ? {
     ...realShirt,
     renderScale: effectiveRepeatMm ? {
@@ -45,8 +47,6 @@ export function PremiumShirtProof(){
   } : realShirt;
 
   const tilePx=declaredTileMm ? Math.max(18,Math.min(260,declaredTileMm*pxPerMm)) : APPROX_TILE_PX;
-  const storedRepeatMm=realShirt?.renderScale?.physicalScaleStatus==="declared_repeat" ? realShirt.renderScale.repeatMm : null;
-  const effectiveRepeatMm=declaredRepeatMm ?? storedRepeatMm;
   const repeatPx=effectiveRepeatMm ? expectedPeriodPx(effectiveRepeatMm,pxPerMm) : null;
   const error=effectiveRepeatMm && measuredPx ? scaleErrorPct(measuredPx,effectiveRepeatMm,pxPerMm) : null;
   const pass=effectiveRepeatMm && measuredPx ? passesScaleGate(measuredPx,effectiveRepeatMm,pxPerMm) : null;
