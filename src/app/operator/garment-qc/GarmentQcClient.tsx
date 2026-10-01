@@ -10,7 +10,7 @@ import {
 } from "@/lib/designer/finished-garment-qc";
 
 type Order={order_id:string;revision_id:string;recipe_hash:string;quote_id:string|null;status:string;note:string;created_at:string};
-type Inspection={inspection_id:string;order_id:string;revision_id:string;recipe_hash:string;decision:"approved"|"rework";checks:Record<string,boolean>;defects:string[];note:string;inspector:string;created_at:string};
+type Inspection={inspection_id:string;order_id:string;revision_id:string;recipe_hash:string;decision:"approved"|"rework";checks:Record<string,boolean>;defects:string[];note:string;inspector:string;inspection_reference?:string;created_at:string};
 
 function emptyChecks(){
   return Object.fromEntries(FINISHED_GARMENT_QC_CHECKS.map((item)=>[item.id,false])) as Record<FinishedGarmentQcCheckId,boolean>;
@@ -25,6 +25,7 @@ export default function GarmentQcClient(){
   const [defects,setDefects]=useState<string[]>([]);
   const [note,setNote]=useState("");
   const [inspector,setInspector]=useState("");
+  const [inspectionReference,setInspectionReference]=useState("");
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
 
@@ -50,10 +51,11 @@ export default function GarmentQcClient(){
   const selectedHistory=useMemo(()=>selected?inspections.filter((item)=>item.order_id===selected.order_id):[],[inspections,selected]);
   const latest=selectedHistory[0]||null;
   const allPass=FINISHED_GARMENT_QC_CHECKS.every((item)=>checks[item.id]);
-  const reworkHasReason=defects.length>0||note.trim().length>=3;
+  const provenanceReady=inspector.trim().length>=2&&inspectionReference.trim().length>=3;
+  const reworkHasReason=(defects.length>0||note.trim().length>=3)&&provenanceReady;
 
   function chooseOrder(orderId:string){
-    setSelectedOrderId(orderId);setChecks(emptyChecks());setDefects([]);setNote("");setMessage("");
+    setSelectedOrderId(orderId);setChecks(emptyChecks());setDefects([]);setNote("");setInspector("");setInspectionReference("");setMessage("");
   }
   function toggleDefect(id:string){
     setDefects((current)=>current.includes(id)?current.filter((item)=>item!==id):[...current,id]);
@@ -65,12 +67,12 @@ export default function GarmentQcClient(){
     try{
       const response=await fetch("/api/operator/garment-qc",{
         method:"POST",headers:{"content-type":"application/json"},
-        body:JSON.stringify({action:"record",orderId:selected.order_id,decision,checks,defects,note,inspector}),
+        body:JSON.stringify({action:"record",orderId:selected.order_id,decision,checks,defects,note,inspector,inspectionReference}),
       });
       const data=await response.json();
       if(!response.ok) throw new Error(data.error||"Finished-garment QC could not be recorded.");
       setMessage(decision==="approved"?"QC approved. Delivery is now unlocked for this order.":"Rework recorded. The order was returned to stitching automatically.");
-      setChecks(emptyChecks());setDefects([]);setNote("");await load();
+      setChecks(emptyChecks());setDefects([]);setNote("");setInspector("");setInspectionReference("");await load();
     }catch(error){
       setMessage(error instanceof Error?error.message:"Finished-garment QC could not be recorded.");
     }finally{setBusy(false);}
@@ -125,13 +127,14 @@ export default function GarmentQcClient(){
           </div>
 
           <div className="garmentQcNotes">
-            <label>Inspector / initials<input value={inspector} onChange={(event)=>setInspector(event.target.value)} maxLength={120} placeholder="Optional"/></label>
+            <label>Inspector / checker<input value={inspector} onChange={(event)=>setInspector(event.target.value)} maxLength={120} placeholder="Required"/></label>
+            <label>Physical inspection reference<input value={inspectionReference} onChange={(event)=>setInspectionReference(event.target.value)} maxLength={240} placeholder="QC sheet, tailor card, inspection batch…"/></label>
             <label>Inspection note<textarea rows={4} value={note} onChange={(event)=>setNote(event.target.value)} placeholder="Physical findings, alteration instruction, or approval note."/></label>
           </div>
 
           <div className="garmentQcActions">
             <button className="rework" disabled={busy||!reworkHasReason} onClick={()=>void recordDecision("rework")}>{busy?"Saving…":"Record rework"}</button>
-            <button disabled={busy||!allPass} onClick={()=>void recordDecision("approved")}>{busy?"Saving…":"Approve for delivery"}</button>
+            <button disabled={busy||!allPass||!provenanceReady} onClick={()=>void recordDecision("approved")}>{busy?"Saving…":"Approve for delivery"}</button>
           </div>
 
           <div className="garmentQcHistory">
@@ -139,7 +142,7 @@ export default function GarmentQcClient(){
             {!selectedHistory.length&&<p>No QC evidence has been recorded for this order.</p>}
             {selectedHistory.map((item)=><article key={item.inspection_id}>
               <div><strong>{item.decision.toUpperCase()}</strong><small>{new Date(item.created_at).toLocaleString("en-IN")}</small></div>
-              <span>{item.inspector||"Inspector not named"}</span>
+              <span>{item.inspector||"Inspector not named"} · {item.inspection_reference||"Legacy inspection · provenance not recorded"}</span>
               {item.defects?.length>0&&<p>Defects: {item.defects.join(", ")}</p>}
               {item.note&&<p>{item.note}</p>}
             </article>)}
