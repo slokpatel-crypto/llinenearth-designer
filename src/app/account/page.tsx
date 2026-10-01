@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import type { CustomerFitResult, CustomerOutcomeRating } from "@/lib/designer/customer-production-outcomes";
 
 type Customer={id?:string;email:string|null};
 type OwnedDesign={vaultId:string;revisionId:string;recipeHash:string;createdAt:string;expiresAt:string};
@@ -8,6 +9,8 @@ type OwnedProfile={vaultId:string;createdAt:string;expiresAt:string;unit?:string
 type OwnedQuote={quote_id:string;revision_id:string;currency:string;line_items:Array<{label:string;amount:number|string}>;subtotal:number|string;adjustment:number|string;total:number|string;status:string;created_at:string;updated_at:string};
 type OwnedOrder={order_id:string;revision_id:string;quote_id:string|null;status:string;created_at:string;updated_at:string};
 type OwnedOrderEvent={event_id:string;order_id:string;status:string;created_at:string};
+type OwnedOutcome={outcome_id:string;order_id:string;overall_rating:CustomerOutcomeRating;fit_result:CustomerFitResult;worn_confirmed:boolean;note:string;created_at:string};
+type OutcomeDraft={overallRating:CustomerOutcomeRating;fitResult:CustomerFitResult;wornConfirmed:boolean;note:string};
 
 const card:React.CSSProperties={border:"1px solid #ddd7cc",borderRadius:18,padding:20,background:"#fff"};
 const input:React.CSSProperties={width:"100%",boxSizing:"border-box",padding:"12px 14px",border:"1px solid #cfc7ba",borderRadius:10,fontSize:15};
@@ -35,6 +38,8 @@ export default function AccountPage(){
   const [quotes,setQuotes]=useState<OwnedQuote[]>([]);
   const [orders,setOrders]=useState<OwnedOrder[]>([]);
   const [orderEvents,setOrderEvents]=useState<OwnedOrderEvent[]>([]);
+  const [outcomes,setOutcomes]=useState<OwnedOutcome[]>([]);
+  const [outcomeDrafts,setOutcomeDrafts]=useState<Record<string,OutcomeDraft>>({});
   const [claimDesign,setClaimDesign]=useState("");
   const [claimMeasurement,setClaimMeasurement]=useState("");
   const [message,setMessage]=useState("");
@@ -44,7 +49,7 @@ export default function AccountPage(){
     const session=await fetch("/api/customer-auth/session",{cache:"no-store"}).then(r=>r.json());
     const next=session.customer||null;
     setCustomer(next);
-    if(!next){setDesigns([]);setProfiles([]);setQuotes([]);setOrders([]);setOrderEvents([]);return;}
+    if(!next){setDesigns([]);setProfiles([]);setQuotes([]);setOrders([]);setOrderEvents([]);setOutcomes([]);setOutcomeDrafts({});return;}
 
     const [d,m,p]=await Promise.all([
       fetch("/api/designer/vault",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"listOwned"})}).then(r=>r.json()),
@@ -56,6 +61,7 @@ export default function AccountPage(){
     setQuotes(Array.isArray(p.quotes)?p.quotes:[]);
     setOrders(Array.isArray(p.orders)?p.orders:[]);
     setOrderEvents(Array.isArray(p.orderEvents)?p.orderEvents:[]);
+    setOutcomes(Array.isArray(p.outcomes)?p.outcomes:[]);
   },[]);
 
   useEffect(()=>{void refresh();},[refresh]);
@@ -137,6 +143,34 @@ export default function AccountPage(){
     }finally{setBusy(false);}
   }
 
+
+  function outcomeDraft(orderId:string):OutcomeDraft{
+    return outcomeDrafts[orderId]||{overallRating:"good",fitResult:"not_checked",wornConfirmed:false,note:""};
+  }
+
+  function updateOutcomeDraft(orderId:string,patch:Partial<OutcomeDraft>){
+    setOutcomeDrafts(current=>({...current,[orderId]:{...outcomeDraft(orderId),...patch}}));
+  }
+
+  async function recordOutcome(orderId:string){
+    const draft=outcomeDraft(orderId);
+    setBusy(true);setMessage("");
+    try{
+      const response=await fetch("/api/customer-account/production",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({action:"record_outcome",orderId,...draft}),
+      });
+      const data=await response.json();
+      if(!response.ok||!data.recorded) throw new Error(data.error||"Feedback could not be saved.");
+      setMessage("Post-delivery feedback saved as evidence for this exact production order.");
+      setOutcomeDrafts(current=>{const next={...current};delete next[orderId];return next;});
+      await refresh();
+    }catch(error){
+      setMessage(error instanceof Error?error.message:"Feedback could not be saved.");
+    }finally{setBusy(false);}
+  }
+
   return <main style={{minHeight:"100vh",background:"#f8f6f0",color:"#1a1a1a",padding:"42px 18px"}}>
     <div style={{maxWidth:900,margin:"0 auto",display:"grid",gap:18}}>
       <header>
@@ -184,6 +218,37 @@ export default function AccountPage(){
                     </span>)}
                   </div>
                 </div>}
+                {order.status==="delivered"&&(()=>{
+                  const saved=outcomes.find(item=>item.order_id===order.order_id);
+                  const draft=outcomeDraft(order.order_id);
+                  return saved?<div style={{borderTop:"1px dashed #ddd7cc",paddingTop:8,display:"grid",gap:4,fontSize:13}}>
+                    <strong>Post-delivery feedback</strong>
+                    <span>{labelStatus(saved.overall_rating)} · {labelStatus(saved.fit_result)}{saved.worn_confirmed?" · worn and checked":""}</span>
+                    {saved.note&&<span style={{opacity:.7}}>{saved.note}</span>}
+                    <small style={{opacity:.55}}>Recorded {new Date(saved.created_at).toLocaleDateString()}</small>
+                  </div>:<div style={{borderTop:"1px dashed #ddd7cc",paddingTop:10,display:"grid",gap:8}}>
+                    <strong>How did the finished garment turn out?</strong>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:8}}>
+                      <label style={{fontSize:12}}>Overall
+                        <select style={input} value={draft.overallRating} onChange={e=>updateOutcomeDraft(order.order_id,{overallRating:e.target.value as CustomerOutcomeRating})}>
+                          <option value="love">Love it</option><option value="good">Good</option><option value="needs_work">Needs work</option>
+                        </select>
+                      </label>
+                      <label style={{fontSize:12}}>Fit result
+                        <select style={input} value={draft.fitResult} onChange={e=>updateOutcomeDraft(order.order_id,{fitResult:e.target.value as CustomerFitResult})}>
+                          <option value="not_checked">Not checked yet</option><option value="clean_first_fit">Clean first fit</option><option value="minor_alteration">Minor alteration</option><option value="major_alteration">Major alteration</option>
+                        </select>
+                      </label>
+                    </div>
+                    <label style={{fontSize:13,display:"flex",gap:8,alignItems:"center"}}>
+                      <input type="checkbox" checked={draft.wornConfirmed} onChange={e=>updateOutcomeDraft(order.order_id,{wornConfirmed:e.target.checked,fitResult:e.target.checked?draft.fitResult:"not_checked"})}/>
+                      I have worn the garment and checked the fit
+                    </label>
+                    <textarea style={input} rows={2} placeholder="Optional note. Required when something needs work." value={draft.note} onChange={e=>updateOutcomeDraft(order.order_id,{note:e.target.value})}/>
+                    <button style={{...button,justifySelf:"start"}} disabled={busy} onClick={()=>void recordOutcome(order.order_id)}>Save post-delivery feedback</button>
+                    <small style={{opacity:.6,lineHeight:1.5}}>This is stored as outcome evidence for this order. It does not automatically change Designer recommendations.</small>
+                  </div>;
+                })()}
               </div>;
             })}
           </div>}
