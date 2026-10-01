@@ -8,17 +8,30 @@ type Outcome={
   credits_used:number;cached:boolean;repair:boolean;qa_status:"pass"|"review"|null;
   human_status:"pending"|"approved"|"rejected";human_note:string;generated_at:string;
 };
-type Calibration={calibration_id:string;outcome_id:string;garment:"shirt"|"trouser";expected_repeat_mm:number;observed_repeat_mm:number;scale_error_pct:number;axis_status:"match"|"mismatch"|"not_applicable";note:string;created_at:string};
-type IdentityReview={review_id:string;concept_id:string;status:"pass"|"fail";reviewed_views:string[];reviewer:string;note:string;created_at:string};
-type CreditCap={event_id:string;credits_per_approved_cap:number;reviewer:string;note:string;created_at:string}|null;
-
+type Calibration={
+  calibration_id:string;outcome_id:string;garment:"shirt"|"trouser";expected_repeat_mm:number;
+  observed_repeat_mm:number;scale_error_pct:number;axis_status:"match"|"mismatch"|"not_applicable";
+  note:string;created_at:string;
+};
+type IdentityReview={
+  review_id:string;concept_id:string;status:"pass"|"fail";reviewed_views:string[];
+  reviewer:string;note:string;created_at:string;
+};
+type CreditCap={
+  event_id:string;credits_per_approved_cap:number;reviewer:string;note:string;created_at:string;
+};
 type Summary={
   total:number;generated:number;cached:number;reviewed:number;pending:number;approved:number;rejected:number;
   qaPass:number;totalCredits:number;approvalRate:number|null;creditsPerApproved:number|null;
 };
 type PatternSummary={total:number;pass:number;fail:number;passRate:number|null;averageScaleErrorPct:number|null};
-type IdentitySummary={eligibleConcepts:number;reviewedConcepts:number;pendingConcepts:number;passedConcepts:number;failedConcepts:number;passRate:number|null};
+type IdentitySummary={
+  eligibleConcepts:number;reviewedConcepts:number;pendingConcepts:number;
+  passedConcepts:number;failedConcepts:number;passRate:number|null;
+};
 type CreditCapSummary={configured:boolean;withinCap:boolean|null;ownerCap:number|null};
+
+type ConceptGroup={conceptId:string;views:string[];outcomes:Outcome[]};
 
 export default function RenderQaClient(){
   const [outcomes,setOutcomes]=useState<Outcome[]>([]);
@@ -27,8 +40,11 @@ export default function RenderQaClient(){
   const [patternSummary,setPatternSummary]=useState<PatternSummary|null>(null);
   const [identityReviews,setIdentityReviews]=useState<IdentityReview[]>([]);
   const [identitySummary,setIdentitySummary]=useState<IdentitySummary|null>(null);
-  const [creditCap,setCreditCap]=useState<CreditCap>(null);
+  const [creditCap,setCreditCap]=useState<CreditCap|null>(null);
   const [creditCapSummary,setCreditCapSummary]=useState<CreditCapSummary|null>(null);
+  const [reviewer,setReviewer]=useState("");
+  const [creditCapInput,setCreditCapInput]=useState("");
+  const [releaseNote,setReleaseNote]=useState("");
   const [busy,setBusy]=useState("");
   const [message,setMessage]=useState("");
 
@@ -36,43 +52,68 @@ export default function RenderQaClient(){
     const response=await fetch("/api/operator/render-qa",{cache:"no-store"});
     if(response.status===401){window.location.href="/operator/login?next=/operator/render-qa";return;}
     const data=await response.json();
-    if(response.ok){
-      setOutcomes(data.outcomes||[]);
-      setSummary(data.summary||null);
-      setCalibrations(data.calibrations||[]);
-      setPatternSummary(data.patternSummary||null);
-      setIdentityReviews(data.identityReviews||[]);
-      setIdentitySummary(data.identitySummary||null);
-      setCreditCap(data.creditCap||null);
-      setCreditCapSummary(data.creditCapSummary||null);
-    }
+    if(!response.ok){setMessage(data.error||"Render QA could not be loaded.");return;}
+    setOutcomes(Array.isArray(data.outcomes)?data.outcomes:[]);
+    setSummary(data.summary||null);
+    setCalibrations(Array.isArray(data.calibrations)?data.calibrations:[]);
+    setPatternSummary(data.patternSummary||null);
+    setIdentityReviews(Array.isArray(data.identityReviews)?data.identityReviews:[]);
+    setIdentitySummary(data.identitySummary||null);
+    setCreditCap(data.creditCap||null);
+    setCreditCapSummary(data.creditCapSummary||null);
   }
   useEffect(()=>{void load();},[]);
 
-  const conceptGroups=useMemo(()=>{
-    const groups=new Map<string,Outcome[]>();
+  const conceptGroups=useMemo<ConceptGroup[]>(()=>{
+    const map=new Map<string,Outcome[]>();
     for(const item of outcomes){
-      const list=groups.get(item.concept_id)||[];
-      list.push(item);groups.set(item.concept_id,list);
+      const id=String(item.concept_id||"").trim();
+      if(!id) continue;
+      const rows=map.get(id)||[];
+      rows.push(item);
+      map.set(id,rows);
     }
-    return [...groups.entries()]
-      .map(([conceptId,items])=>({conceptId,items,views:[...new Set(items.map(item=>item.view))]}))
-      .filter(group=>group.views.length>=2);
+    return [...map.entries()]
+      .map(([conceptId,rows])=>({
+        conceptId,
+        outcomes:rows,
+        views:[...new Set(rows.map((row)=>row.view).filter(Boolean))].sort(),
+      }))
+      .filter((item)=>item.views.length>=2)
+      .sort((a,b)=>{
+        const aTime=Math.max(...a.outcomes.map((row)=>new Date(row.generated_at).getTime()||0));
+        const bTime=Math.max(...b.outcomes.map((row)=>new Date(row.generated_at).getTime()||0));
+        return bTime-aTime;
+      });
   },[outcomes]);
 
-  async function review(outcomeId:string,status:"approved"|"rejected"){
-    setBusy(outcomeId);setMessage("");
-    const note=window.prompt(status==="approved"?"Optional approval note":"Why is this render rejected?")||"";
+  const latestIdentityReview=useMemo(()=>{
+    const map=new Map<string,IdentityReview>();
+    for(const item of identityReviews){
+      const current=map.get(item.concept_id);
+      if(!current||new Date(item.created_at).getTime()>new Date(current.created_at).getTime()) map.set(item.concept_id,item);
+    }
+    return map;
+  },[identityReviews]);
+
+  async function post(body:Record<string,unknown>,success:string,busyKey:string){
+    setBusy(busyKey);setMessage("");
     try{
       const response=await fetch("/api/operator/render-qa",{
-        method:"POST",headers:{"content-type":"application/json"},
-        body:JSON.stringify({outcomeId,status,note}),
+        method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body),
       });
       const data=await response.json();
-      if(!response.ok) throw new Error(data.error||"Review failed.");
-      setMessage("Render review saved.");await load();
-    }catch(error){setMessage(error instanceof Error?error.message:"Review failed.");}
-    finally{setBusy("");}
+      if(!response.ok) throw new Error(data.error||"Render QA update failed.");
+      setMessage(success);await load();return true;
+    }catch(error){
+      setMessage(error instanceof Error?error.message:"Render QA update failed.");
+      return false;
+    }finally{setBusy("");}
+  }
+
+  async function review(outcomeId:string,status:"approved"|"rejected"){
+    const note=window.prompt(status==="approved"?"Optional approval note":"Why is this render rejected?")||"";
+    await post({action:"review",outcomeId,status,note},"Render review saved.",outcomeId);
   }
 
   async function calibratePattern(outcomeId:string){
@@ -84,63 +125,53 @@ export default function RenderQaClient(){
     const axisRaw=(window.prompt("Pattern axis: match, mismatch, or not_applicable","match")||"").trim().toLowerCase();
     if(!["match","mismatch","not_applicable"].includes(axisRaw)) return;
     const note=window.prompt("Optional calibration note","")||"";
-    setBusy(outcomeId);setMessage("");
-    try{
-      const response=await fetch("/api/operator/render-qa",{
-        method:"POST",headers:{"content-type":"application/json"},
-        body:JSON.stringify({
-          action:"pattern_calibration",outcomeId,
-          garment:garmentRaw,expectedRepeatMm:expected,observedRepeatMm:observed,axisStatus:axisRaw,note,
-        }),
-      });
-      const data=await response.json();
-      if(!response.ok) throw new Error(data.error||"Pattern calibration failed.");
-      setMessage("Physical pattern calibration saved.");await load();
-    }catch(error){setMessage(error instanceof Error?error.message:"Pattern calibration failed.");}
-    finally{setBusy("");}
+    await post({
+      action:"pattern_calibration",outcomeId,
+      garment:garmentRaw,expectedRepeatMm:expected,observedRepeatMm:observed,axisStatus:axisRaw,note,
+    },"Physical pattern calibration saved.",outcomeId);
   }
 
   async function reviewIdentity(conceptId:string,status:"pass"|"fail"){
-    const reviewer=(window.prompt("Reviewer / approver initials or name","")||"").trim();
-    if(!reviewer) return;
-    const note=window.prompt(status==="pass"?"Optional cross-view identity note":"Describe the identity mismatch","")||"";
-    setBusy("identity:"+conceptId);setMessage("");
-    try{
-      const response=await fetch("/api/operator/render-qa",{
-        method:"POST",headers:{"content-type":"application/json"},
-        body:JSON.stringify({action:"identity_review",conceptId,status,reviewer,note}),
-      });
-      const data=await response.json();
-      if(!response.ok) throw new Error(data.error||"Identity review failed.");
-      setMessage("Cross-view identity evidence saved.");await load();
-    }catch(error){setMessage(error instanceof Error?error.message:"Identity review failed.");}
-    finally{setBusy("");}
+    if(reviewer.trim().length<2){
+      setMessage("Enter the named owner/reviewer before recording cross-view identity evidence.");
+      return;
+    }
+    await post({
+      action:"identity_review",conceptId,status,reviewer:reviewer.trim(),note:releaseNote.trim(),
+    },status==="pass"?"Cross-view identity pass recorded.":"Cross-view identity failure recorded.","identity:"+conceptId);
   }
 
-  async function setOwnerCreditCap(){
-    const raw=window.prompt("Owner-approved maximum provider credits per approved render",creditCap?String(creditCap.credits_per_approved_cap):"");
-    if(raw===null) return;
-    const cap=Number(raw);
-    if(!Number.isFinite(cap)||cap<=0) return;
-    const reviewer=(window.prompt("Owner / reviewer name or initials","")||"").trim();
-    if(!reviewer) return;
-    const note=window.prompt("Optional commercial cap note","")||"";
-    setBusy("credit-cap");setMessage("");
-    try{
-      const response=await fetch("/api/operator/render-qa",{
-        method:"POST",headers:{"content-type":"application/json"},
-        body:JSON.stringify({action:"credit_cap",cap,reviewer,note}),
-      });
-      const data=await response.json();
-      if(!response.ok) throw new Error(data.error||"Credit cap could not be saved.");
-      setMessage("Owner-approved render credit cap saved.");await load();
-    }catch(error){setMessage(error instanceof Error?error.message:"Credit cap could not be saved.");}
-    finally{setBusy("");}
+  async function saveCreditCap(){
+    const cap=Number(creditCapInput);
+    if(!Number.isFinite(cap)||cap<=0){
+      setMessage("Enter the owner-approved maximum credits per approved render.");
+      return;
+    }
+    if(reviewer.trim().length<2){
+      setMessage("Enter the named owner/reviewer before recording the commercial cap.");
+      return;
+    }
+    const saved=await post({
+      action:"credit_cap",cap,reviewer:reviewer.trim(),note:releaseNote.trim(),
+    },"Owner-approved render credit cap recorded.","credit-cap");
+    if(saved) setCreditCapInput("");
   }
+
+  const capState=creditCapSummary?.withinCap===true
+    ? "WITHIN CAP"
+    : creditCapSummary?.withinCap===false
+      ? "OVER CAP"
+      : creditCapSummary?.configured
+        ? "WAITING FOR APPROVAL EVIDENCE"
+        : "CAP NOT SET";
 
   return <main className="renderQaDesk">
     <header className="renderQaHeader">
-      <div><span>LINEN EARTH / PRIVATE OPERATOR</span><h1>Final Render QA</h1><p>Track real provider credits, automated QA, human approval, physical pattern checks and cross-view identity evidence.</p></div>
+      <div>
+        <span>LINEN EARTH / PRIVATE OPERATOR</span>
+        <h1>Final Render QA</h1>
+        <p>Track real provider credits, automated QA, physical pattern checks and human release evidence without changing the locked customer design.</p>
+      </div>
       <nav><Link href="/operator">Operator Desk</Link><Link href="/operator/phase10-readiness">Readiness</Link></nav>
     </header>
 
@@ -148,49 +179,52 @@ export default function RenderQaClient(){
       <article><small>REVIEWED</small><strong>{summary?.reviewed??0}</strong><span>{summary?.pending??0} pending</span></article>
       <article><small>APPROVAL RATE</small><strong>{summary?.approvalRate==null?"—":summary.approvalRate+"%"}</strong><span>{summary?.approved??0} approved · {summary?.rejected??0} rejected</span></article>
       <article><small>TOTAL CREDITS</small><strong>{summary?.totalCredits??0}</strong><span>generated renders only</span></article>
-      <article><small>CREDITS / APPROVED</small><strong>{summary?.creditsPerApproved??"—"}</strong><span>{creditCapSummary?.configured?(creditCapSummary.withinCap===null?"owner cap set · awaiting evidence":creditCapSummary.withinCap?"within owner cap":"above owner cap"):"owner cap not entered"}</span></article>
+      <article><small>CREDITS / APPROVED</small><strong>{summary?.creditsPerApproved??"—"}</strong><span>{capState.toLowerCase()}</span></article>
       <article><small>PATTERN SCALE QA</small><strong>{patternSummary?.passRate==null?"—":patternSummary.passRate+"%"}</strong><span>{patternSummary?.total??0} measured checks · avg error {patternSummary?.averageScaleErrorPct??"—"}%</span></article>
-      <article><small>CROSS-VIEW IDENTITY</small><strong>{identitySummary?.passRate==null?"—":identitySummary.passRate+"%"}</strong><span>{identitySummary?.reviewedConcepts??0}/{identitySummary?.eligibleConcepts??0} multi-view concepts reviewed</span></article>
-    </section>
-
-    <section className="renderQaList">
-      <article>
-        <div className="renderQaRecordHead"><b>OWNER COMMERCIAL CAP</b><small>{creditCap?new Date(creditCap.created_at).toLocaleString("en-IN"):"not configured"}</small></div>
-        <div className="renderQaRecordMeta">
-          <span>Cap <strong>{creditCap?Number(creditCap.credits_per_approved_cap).toFixed(4):"—"}</strong></span>
-          <span>Current <strong>{summary?.creditsPerApproved??"—"}</strong></span>
-          <span>{creditCapSummary?.withinCap===true?"WITHIN CAP":creditCapSummary?.withinCap===false?"ABOVE CAP":"NOT YET DECIDABLE"}</span>
-        </div>
-        {creditCap?.reviewer&&<small>Approved by {creditCap.reviewer}</small>}
-        <button className="renderQaCalibrate" disabled={busy==="credit-cap"} onClick={()=>void setOwnerCreditCap()}>Record owner-approved credit cap</button>
-      </article>
-    </section>
-
-    <section className="renderQaList">
-      <h2>Cross-view identity evidence</h2>
-      {!conceptGroups.length&&<p>No concept has at least two final-render views yet.</p>}
-      {conceptGroups.map(group=>{
-        const latest=identityReviews.find(review=>review.concept_id===group.conceptId);
-        return <article key={group.conceptId} data-status={latest?.status==="pass"?"approved":latest?.status==="fail"?"rejected":"pending"}>
-          <div className="renderQaRecordHead"><b>{group.conceptId}</b><small>{group.views.join(" · ")}</small></div>
-          <div className="renderQaRecordMeta">
-            <span>Views <strong>{group.views.length}</strong></span>
-            <span>Identity <strong>{latest?.status?.toUpperCase()||"PENDING"}</strong></span>
-            {latest?.reviewer&&<span>Reviewer <strong>{latest.reviewer}</strong></span>}
-          </div>
-          {latest?.note&&<p>{latest.note}</p>}
-          <div className="renderQaReview"><div>
-            <button disabled={busy==="identity:"+group.conceptId} onClick={()=>void reviewIdentity(group.conceptId,"pass")}>Identity matches</button>
-            <button disabled={busy==="identity:"+group.conceptId} onClick={()=>void reviewIdentity(group.conceptId,"fail")}>Identity mismatch</button>
-          </div></div>
-        </article>;
-      })}
+      <article><small>CROSS-VIEW IDENTITY</small><strong>{identitySummary?.passRate==null?"—":identitySummary.passRate+"%"}</strong><span>{identitySummary?.reviewedConcepts??0}/{identitySummary?.eligibleConcepts??0} eligible concepts reviewed</span></article>
+      <article data-pass={creditCapSummary?.withinCap===true}><small>OWNER CREDIT CAP</small><strong>{creditCapSummary?.ownerCap??"—"}</strong><span>{capState.toLowerCase()}</span></article>
     </section>
 
     {message&&<p className="renderQaMessage">{message}</p>}
 
+    <section className="renderQaRelease">
+      <div className="renderQaReleaseHead">
+        <div><span>RELEASE EVIDENCE</span><h2>Confirm identity and the owner-approved commercial boundary.</h2></div>
+        <strong data-state={creditCapSummary?.withinCap===true?"pass":creditCapSummary?.withinCap===false?"fail":"open"}>{capState}</strong>
+      </div>
+      <p>Only real observations belong here. The system does not invent a cost cap or claim that two rendered views match until a named reviewer records it.</p>
+      <div className="renderQaReleaseForm">
+        <label>Named owner / reviewer<input value={reviewer} onChange={(event)=>setReviewer(event.target.value.slice(0,120))} placeholder="Owner / reviewer"/></label>
+        <label>Max credits per approved render<input inputMode="decimal" value={creditCapInput} onChange={(event)=>setCreditCapInput(event.target.value.slice(0,20))} placeholder={creditCap?String(creditCap.credits_per_approved_cap):"Owner-approved cap"}/></label>
+        <label className="wide">Evidence note<textarea rows={2} value={releaseNote} onChange={(event)=>setReleaseNote(event.target.value.slice(0,1000))} placeholder="Optional fixture, device, reviewer or decision note"/></label>
+        <button disabled={busy==="credit-cap"} onClick={()=>void saveCreditCap()}>{busy==="credit-cap"?"Saving…":"Record owner-approved credit cap"}</button>
+      </div>
+      {creditCap&&<small className="renderQaCapHistory">Latest cap: {Number(creditCap.credits_per_approved_cap).toFixed(2)} credits/approved · {creditCap.reviewer} · {new Date(creditCap.created_at).toLocaleString("en-IN")}</small>}
+
+      <div className="renderQaIdentityList">
+        <div className="renderQaIdentityTitle"><span>CROSS-VIEW IDENTITY</span><b>{identitySummary?.passedConcepts??0} pass · {identitySummary?.failedConcepts??0} fail · {identitySummary?.pendingConcepts??0} pending</b></div>
+        {!conceptGroups.length&&<p>No concept has two or more final-render views yet.</p>}
+        {conceptGroups.map((group)=>{
+          const latest=latestIdentityReview.get(group.conceptId);
+          return <article key={group.conceptId} data-status={latest?.status||"pending"}>
+            <div>
+              <b>{group.conceptId}</b>
+              <small>{group.views.join(" · ")}</small>
+            </div>
+            <div className="renderQaIdentityDecision">
+              <em>{latest?.status?.toUpperCase()||"PENDING"}</em>
+              {latest&&<small>{latest.reviewer} · {new Date(latest.created_at).toLocaleString("en-IN")}</small>}
+              <div>
+                <button disabled={busy==="identity:"+group.conceptId||reviewer.trim().length<2} onClick={()=>void reviewIdentity(group.conceptId,"pass")}>Identity matches</button>
+                <button className="fail" disabled={busy==="identity:"+group.conceptId||reviewer.trim().length<2} onClick={()=>void reviewIdentity(group.conceptId,"fail")}>Identity mismatch</button>
+              </div>
+            </div>
+          </article>;
+        })}
+      </div>
+    </section>
+
     <section className="renderQaList">
-      <h2>Individual render evidence</h2>
       {!outcomes.length&&<p>No final render outcomes recorded yet.</p>}
       {outcomes.map((item)=><article key={item.outcome_id} data-status={item.human_status}>
         <div className="renderQaRecordHead"><b>{item.view.toUpperCase()} · {item.shirt_id} + {item.pant_id}</b><small>{new Date(item.generated_at).toLocaleString("en-IN")}</small></div>
