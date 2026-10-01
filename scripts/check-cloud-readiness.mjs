@@ -157,6 +157,7 @@ if (url && key) {
           ["designer_render_identity_review_list",{p_limit:1},"Cross-view render identity evidence RPCs are installed."],
           ["designer_render_credit_cap_latest",{},"Render commercial-cap evidence RPCs are installed."],
           ["designer_render_manual_review_signoff_latest",{},"Final render manual-review sign-off RPC is installed."],
+          ["roadmap_v2_evidence_health",{},"Roadmap v2 hardened evidence health RPC is installed."],
         ];
         for (const [rpcName,payload,label] of rpcChecks) {
           const rpcResponse = await fetch(
