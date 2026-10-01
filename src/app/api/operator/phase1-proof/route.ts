@@ -51,6 +51,8 @@ export async function GET(){
           photoReferencePx:evidence.photoReferencePx,
           photoPxPerMm:evidence.photoPxPerMm,
           scaleCoordinateSystem:evidence.scaleCoordinateSystem,
+          physicalEvidenceReady:evidence.physicalEvidenceReady,
+          physicalEvidenceNote:evidence.physicalEvidenceNote,
           measuredPreviewRepeatPx:evidence.measuredPreviewRepeatPx,
           scaleErrorPct:evidence.scaleErrorPct,
           scaleGatePass:evidence.scaleGatePass,
