@@ -6,6 +6,7 @@ import {
   requiredEaseEvidenceKeys,
   summarizeEaseEvidence,
   canApproveHouseEaseModel,
+  approvedHouseEaseModelFromRow,
 } from "../src/lib/designer/ease-calibration.ts";
 import { HOUSE_SHIRT_EASE,HOUSE_TROUSER_EASE } from "../src/lib/designer/house-ease.ts";
 
@@ -60,4 +61,41 @@ test("house ease approval needs complete evidence coverage and named human",()=>
   assert.equal(canApproveHouseEaseModel({evidenceCoverageComplete:false,approvedBy:"RJ"}),false);
   assert.equal(canApproveHouseEaseModel({evidenceCoverageComplete:true,approvedBy:""}),false);
   assert.equal(canApproveHouseEaseModel({evidenceCoverageComplete:true,approvedBy:"RJ"}),true);
+});
+
+
+test("approved house ease row becomes a validated runtime model",()=>{
+  const model=approvedHouseEaseModelFromRow({
+    model_id:"model-1",
+    version:"house-ease-approved-v1",
+    shirt_table:HOUSE_SHIRT_EASE,
+    trouser_table:HOUSE_TROUSER_EASE,
+    note:"tailor-approved",
+    status:"approved",
+    approved_by:"RJ",
+    approved_at:"2026-10-01T12:00:00Z",
+  });
+  assert.ok(model);
+  assert.equal(model?.version,"house-ease-approved-v1");
+  assert.equal(model?.approvedBy,"RJ");
+  assert.equal(model?.table.shirt.regular.chest.min,HOUSE_SHIRT_EASE.regular.chest.min);
+});
+
+test("draft or malformed ease models cannot enter runtime",()=>{
+  assert.equal(approvedHouseEaseModelFromRow({
+    model_id:"model-1",
+    version:"house-ease-draft-v1",
+    shirt_table:HOUSE_SHIRT_EASE,
+    trouser_table:HOUSE_TROUSER_EASE,
+    status:"draft",
+    approved_by:"RJ",
+  }),null);
+  assert.equal(approvedHouseEaseModelFromRow({
+    model_id:"model-2",
+    version:"house-ease-approved-v2",
+    shirt_table:{},
+    trouser_table:HOUSE_TROUSER_EASE,
+    status:"approved",
+    approved_by:"RJ",
+  }),null);
 });
