@@ -26,6 +26,7 @@ type Summary={
   qaPass:number;totalCredits:number;approvalRate:number|null;creditsPerApproved:number|null;
 };
 type PatternSummary={total:number;pass:number;fail:number;passRate:number|null;averageScaleErrorPct:number|null};
+type PatternCoverageSummary={requiredPairs:number;calibratedPairs:number;passedPairs:number;failedPairs:number;pendingPairs:number;gateComplete:boolean};
 type IdentitySummary={
   eligibleConcepts:number;reviewedConcepts:number;pendingConcepts:number;
   passedConcepts:number;failedConcepts:number;passRate:number|null;
@@ -38,6 +39,7 @@ export default function RenderQaClient(){
   const [summary,setSummary]=useState<Summary|null>(null);
   const [calibrations,setCalibrations]=useState<Calibration[]>([]);
   const [patternSummary,setPatternSummary]=useState<PatternSummary|null>(null);
+  const [patternCoverageSummary,setPatternCoverageSummary]=useState<PatternCoverageSummary|null>(null);
   const [identityReviews,setIdentityReviews]=useState<IdentityReview[]>([]);
   const [identitySummary,setIdentitySummary]=useState<IdentitySummary|null>(null);
   const [creditCap,setCreditCap]=useState<CreditCap|null>(null);
@@ -57,6 +59,7 @@ export default function RenderQaClient(){
     setSummary(data.summary||null);
     setCalibrations(Array.isArray(data.calibrations)?data.calibrations:[]);
     setPatternSummary(data.patternSummary||null);
+    setPatternCoverageSummary(data.patternCoverageSummary||null);
     setIdentityReviews(Array.isArray(data.identityReviews)?data.identityReviews:[]);
     setIdentitySummary(data.identitySummary||null);
     setCreditCap(data.creditCap||null);
@@ -154,6 +157,7 @@ export default function RenderQaClient(){
       <article><small>TOTAL CREDITS</small><strong>{summary?.totalCredits??0}</strong><span>generated renders only</span></article>
       <article><small>CREDITS / APPROVED</small><strong>{summary?.creditsPerApproved??"—"}</strong><span>{capState.toLowerCase()}</span></article>
       <article><small>PATTERN SCALE QA</small><strong>{patternSummary?.passRate==null?"—":patternSummary.passRate+"%"}</strong><span>{patternSummary?.total??0} measured checks · avg error {patternSummary?.averageScaleErrorPct??"—"}%</span></article>
+      <article data-pass={patternCoverageSummary?.gateComplete===true}><small>PATTERN RELEASE COVERAGE</small><strong>{patternCoverageSummary?.requiredPairs?Math.round((patternCoverageSummary.passedPairs/patternCoverageSummary.requiredPairs)*100)+"%":"—"}</strong><span>{patternCoverageSummary?.passedPairs??0}/{patternCoverageSummary?.requiredPairs??0} approved patterned garment checks pass · {patternCoverageSummary?.pendingPairs??0} pending</span></article>
       <article><small>CROSS-VIEW IDENTITY</small><strong>{identitySummary?.passRate==null?"—":identitySummary.passRate+"%"}</strong><span>{identitySummary?.reviewedConcepts??0}/{identitySummary?.eligibleConcepts??0} eligible concepts reviewed</span></article>
       <article data-pass={creditCapSummary?.withinCap===true}><small>OWNER CREDIT CAP</small><strong>{creditCapSummary?.ownerCap??"—"}</strong><span>{capState.toLowerCase()}</span></article>
     </section>
