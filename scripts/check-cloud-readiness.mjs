@@ -135,6 +135,8 @@ if (url && key) {
           ["designer_locked_revision_vault_list_owned",{p_owner_user_id:"00000000-0000-4000-8000-000000000000"},"Authenticated design ownership RPCs are installed."],
           ["measurement_profile_vault_list_owned",{p_owner_user_id:"00000000-0000-4000-8000-000000000000"},"Authenticated measurement ownership RPCs are installed."],
           ["production_quote_list_owned",{p_owner_user_id:"00000000-0000-4000-8000-000000000000",p_limit:1},"Customer-owned quote RPCs are installed."],
+          ["production_quote_list_owned_v2",{p_owner_user_id:"00000000-0000-4000-8000-000000000000",p_limit:1},"Customer quote detail RPCs are installed."],
+          ["production_quote_accept_owned",{p_quote_id:"00000000-0000-4000-8000-000000000000",p_owner_user_id:"00000000-0000-4000-8000-000000000000"},"Customer quote acceptance RPC is installed."],
           ["production_order_list_owned",{p_owner_user_id:"00000000-0000-4000-8000-000000000000",p_limit:1},"Customer-owned production-order RPCs are installed."],
           ["fabric_physical_color_check_list",{p_limit:1},"Physical fabric colour evidence RPCs are installed."],
           ["style_director_user_test_list",{p_limit:1},"Style Director real-user validation RPCs are installed."],
