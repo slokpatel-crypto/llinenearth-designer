@@ -4,6 +4,7 @@ import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import {
   normalizeBetaAttempt,
+  normalizeVerifiedBetaAttempt,
   normalizeLaunchChecklistDecision,
 } from "@/lib/designer/launch-readiness-evidence";
 
@@ -51,6 +52,18 @@ export async function POST(request:Request){
   try{
     const body=await request.json() as Record<string,unknown>;
     const action=String(body.action||"");
+    if(action==="record_verified_beta"){
+      const draft=normalizeVerifiedBetaAttempt(body);
+      const attemptId=await rpc<string>("launch_beta_attempt_record_v3",{
+        p_case_id:draft.caseId,
+        p_device_class:draft.deviceClass,
+        p_revision_id:draft.revisionId,
+        p_blocking_bug:draft.blockingBug,
+        p_note:draft.note,
+      });
+      return NextResponse.json({attemptId,verifiedShareAudit:true});
+    }
+
     if(action==="record_beta"){
       const draft=normalizeBetaAttempt(body);
       const attemptId=await rpc<string>("launch_beta_attempt_record_v2",{
@@ -61,7 +74,7 @@ export async function POST(request:Request){
         p_blocking_bug:draft.blockingBug,
         p_note:draft.note,
       });
-      return NextResponse.json({attemptId});
+      return NextResponse.json({attemptId,legacyManualEvidence:true});
     }
     if(action==="checklist"){
       const decision=normalizeLaunchChecklistDecision(body);
