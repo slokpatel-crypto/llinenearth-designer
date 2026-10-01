@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { summarizeConstructionReviews } from "@/lib/designer/construction-review-summary";
 import { summarizeLaunchReadiness } from "@/lib/designer/launch-readiness-evidence";
 import { evaluateFinalRenderReleaseEvidence } from "@/lib/designer/render-release-evidence";
+import { summarizeProductionDeliveryEvidence } from "@/lib/designer/production-delivery-evidence";
 
 type DesignerDataPayload={
   coverage:{
@@ -175,6 +176,14 @@ type ProductionPayload={
   orders:Array<{order_id:string;status:string;revision_id:string}>;
 };
 
+type ProductionDeliveryEvidencePayload={
+  configured:boolean;
+  orders:Array<{order_id:string;status:string;created_at:string}>;
+  evidence:Array<{
+    order_id:string;manual_design_reentry:boolean;operator?:string|null;evidence_reference?:string|null;created_at:string;
+  }>;
+};
+
 type LaunchReadinessPayload={
   configured:boolean;
   betaAttempts:Array<{case_id:string;device_class:string;core_flow_completed:boolean;design_locked?:boolean;share_or_enquiry_completed?:boolean;blocking_bug:boolean;created_at:string}>;
@@ -272,6 +281,7 @@ type LoadState={
   productionCalibration:ProductionCalibrationPayload|null;
   stock:StockPayload|null;
   production:ProductionPayload|null;
+  productionDeliveryEvidence:ProductionDeliveryEvidencePayload|null;
   renderQa:RenderQaPayload|null;
   launchReadiness:LaunchReadinessPayload|null;
   fabricColorCalibration:FabricColorCalibrationPayload|null;
@@ -300,7 +310,7 @@ function ratio(value:number,total:number){return total>0?clamp(value/total*100):
 
 export default function Phase10ReadinessClient(){
   const [data,setData]=useState<LoadState>({
-    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,renderQa:null,launchReadiness:null,fabricColorCalibration:null,styleDirectorValidation:null,easeCalibration:null,previewCoverage:null,noviceDesignerStudy:null,
+    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,productionDeliveryEvidence:null,renderQa:null,launchReadiness:null,fabricColorCalibration:null,styleDirectorValidation:null,easeCalibration:null,previewCoverage:null,noviceDesignerStudy:null,
   });
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
@@ -318,7 +328,7 @@ export default function Phase10ReadinessClient(){
   async function load(){
     setLoading(true);setMessage("");
     try{
-      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation,easeCalibration,previewCoverage,noviceDesignerStudy]=await Promise.all([
+      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,productionDeliveryEvidence,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation,easeCalibration,previewCoverage,noviceDesignerStudy]=await Promise.all([
         read<Phase1ProofPayload>("/api/operator/phase1-proof"),
         read<MeasurementCalibrationPayload>("/api/operator/measurement-calibration"),
         read<LaunchMetricsPayload>("/api/operator/cloud-summary?days=60"),
@@ -332,6 +342,7 @@ export default function Phase10ReadinessClient(){
         read<ProductionCalibrationPayload>("/api/operator/production-calibration"),
         read<StockPayload>("/api/operator/stock"),
         read<ProductionPayload>("/api/operator/production"),
+        read<ProductionDeliveryEvidencePayload>("/api/operator/production-evidence"),
         read<RenderQaPayload>("/api/operator/render-qa"),
         read<LaunchReadinessPayload>("/api/operator/launch-readiness"),
         read<FabricColorCalibrationPayload>("/api/operator/fabric-color-calibration"),
@@ -340,7 +351,7 @@ export default function Phase10ReadinessClient(){
         read<PreviewCoveragePayload>("/api/operator/preview-option-coverage"),
         read<NoviceDesignerStudyPayload>("/api/operator/novice-designer-study"),
       ]);
-      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation,easeCalibration,previewCoverage,noviceDesignerStudy});
+      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,productionDeliveryEvidence,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation,easeCalibration,previewCoverage,noviceDesignerStudy});
     }catch(error){
       setMessage(error instanceof Error?error.message:"Readiness data could not be loaded.");
     }finally{
@@ -477,8 +488,16 @@ export default function Phase10ReadinessClient(){
 
     const productionOrders=data.production?.orders||[];
     const deliveredOrders=productionOrders.filter((item)=>item.status==="delivered").length;
-    const productionOrderProgress=ratio(deliveredOrders,10);
-    const productionOrderDone=deliveredOrders>=10;
+    const productionDeliverySummary=data.productionDeliveryEvidence
+      ? summarizeProductionDeliveryEvidence(
+          data.productionDeliveryEvidence.orders,
+          data.productionDeliveryEvidence.evidence,
+        )
+      : null;
+    const productionOrderProgress=productionDeliverySummary
+      ? ratio(productionDeliverySummary.zeroReentryTargetCount,productionDeliverySummary.target)
+      : ratio(deliveredOrders,10);
+    const productionOrderDone=productionDeliverySummary?.gateComplete===true;
 
     const cache=data.renderCache?.database;
     const cacheProgress=cache?.distinct_pairs ? clamp(Math.min(100,cache.distinct_pairs*10)) : 0;
@@ -737,13 +756,15 @@ export default function Phase10ReadinessClient(){
         id:"production-orders",
         title:"Zero-reentry production validation",
         detail:productionOrderDone
-          ? "At least 10 production orders are recorded as delivered from locked design revisions."
-          : `${Math.max(0,10-deliveredOrders)} delivered production orders remain before the roadmap production-flow gate is met.`,
-        status:productionOrderDone?"done":data.production?.configured?"progress":"blocked",
+          ? "The first 10 delivered orders have provenance-backed completion audits and zero manual design-data re-entry."
+          : productionDeliverySummary
+            ? `${productionDeliverySummary.zeroReentryTargetCount}/${productionDeliverySummary.target} first delivered orders currently have provenance-backed zero-reentry evidence · ${productionDeliverySummary.reentryIncidentCount} re-entry incident(s) · ${productionDeliverySummary.legacyOrUnverifiedCount} legacy/unverified audit(s).`
+            : "Production delivery evidence is unavailable; delivered-order count alone cannot satisfy the zero-reentry gate.",
+        status:productionOrderDone?"done":data.productionDeliveryEvidence?.configured?"progress":"blocked",
         progress:productionOrderProgress,
-        metric:`${deliveredOrders}/10 delivered orders · ${data.production?.quotes?.length||0} quotes recorded`,
-        href:"/operator/production",
-        action:"Open production desk",
+        metric:productionDeliverySummary?`${productionDeliverySummary.zeroReentryTargetCount}/${productionDeliverySummary.target} zero-reentry · ${productionDeliverySummary.auditedTargetCount} provenance-backed audits`:"No delivery evidence",
+        href:"/operator/production-evidence",
+        action:"Audit delivered production flow",
         ownerDependent:true,
       },
       {
