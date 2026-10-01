@@ -1,6 +1,6 @@
 # Phase 5 — Lock, Share & Enquiry Adaptation
 
-Status: recipe lock, privacy-safe sharing and opt-in durable recovery vault are implemented; authenticated customer-account ownership remains a production dependency.
+Status: recipe lock, privacy-safe sharing, recovery vault and authenticated customer-account ownership are implemented; real-customer validation remains.
 
 ## Existing foundation to keep
 
@@ -43,11 +43,11 @@ A locked revision can be saved deliberately to a private Supabase-backed recover
 - the recovery flow supports download of the locked JSON, tailor handoff and printable tech pack,
 - the recovery token is pasted into a POST flow and is not placed in the page URL.
 
-This is an anonymous recovery mechanism, **not** a substitute for authenticated customer accounts.
+Recovery tokens remain an independent backup mechanism. Signed-in customers can now attach new or older locked revisions to their authenticated account without exposing the recipe through a public URL.
 
 ## What this does not yet solve
 
-Paid / production orders still need authenticated customer ownership and an operational account-level system of record. The recovery token grants access to its vault item, so it must be kept private. Browser localStorage must not be treated as the authoritative copy of a paid / production order.
+The authenticated account now supplies durable customer ownership for locked revisions. Production-order customer identity linkage beyond the locked-design owner is still an operational launch concern. Recovery tokens still grant access to their vault item and must be kept private; browser localStorage is not authoritative.
 
 ## Completion gate
 
@@ -60,10 +60,10 @@ Paid / production orders still need authenticated customer ownership and an oper
 - [x] reconstruction test
 - [x] Designer lock/export action
 - [x] WhatsApp exact-look enquiry
-- [ ] authenticated customer ownership
+- [x] authenticated customer ownership
 - [x] opt-in durable server recovery vault for locked revisions
 - [x] signed expiring share-token model for non-sensitive design recipe
-- [ ] authenticated customer ownership / account-level revocation permissions
+- [x] authenticated customer ownership / account-level deletion permissions
 - [ ] five real customers complete lock → share/enquiry with zero blocking bugs
 
 ## Rule
