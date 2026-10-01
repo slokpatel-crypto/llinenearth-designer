@@ -1,0 +1,54 @@
+# Phase 8 — Production Bridge Adaptation
+
+Status: production handoff contract implemented; validated meterage / stock / quote systems remain intentionally unfilled.
+
+## New production handoff
+
+A locked design revision can now be exported as `linen-earth-production-handoff-v1`.
+
+It carries:
+- locked revision ID and recipe hash,
+- exact shirt / trouser fabric IDs,
+- construction specification,
+- finished-garment targets already present in the canonical spec,
+- block strategy and construction checks,
+- unresolved review items,
+- production placeholders for cloth estimate, stock reservation and quote.
+
+## Evidence boundary
+
+The handoff deliberately leaves these values blank until Linen Earth validates them:
+- shirt metres,
+- trouser metres,
+- stock reservation ID,
+- price / currency.
+
+The application does **not** invent meterage from generic tailoring rules and does not infer price or stock from the visual catalogue.
+
+## Designer integration
+
+After **Lock recipe revision**, Designer now exposes **Export tailor handoff**. The handoff is traceable to exactly the same immutable recipe hash.
+
+## Remaining production work
+
+1. Measure actual cloth usage across representative shirt / trouser sizes and fabric widths.
+2. Agree owner/tailor estimation formulas and version them.
+3. Connect exact stock roll / available metres.
+4. Add reservation lifecycle and idempotent stock changes.
+5. Add quote calculation and append-only price / adjustment history.
+6. Validate the first production orders with zero manual re-entry of design details.
+
+## Completion gate
+
+- [x] immutable recipe traceability
+- [x] evidence-safe tailor handoff schema
+- [x] exact fabric IDs in handoff
+- [x] construction / finished-target export
+- [x] unresolved-item export
+- [x] no invented meterage / price
+- [x] Designer handoff export
+- [ ] validated cloth estimation table
+- [ ] live stock / reservation integration
+- [ ] quote engine
+- [ ] tailor-ready formatted tech pack / print layout
+- [ ] first 10 production orders completed with zero design-data re-entry
