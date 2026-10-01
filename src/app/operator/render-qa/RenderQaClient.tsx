@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { buildCrossViewIdentityStates } from "@/lib/designer/render-release-evidence";
 
 type Outcome={
   outcome_id:string;job_id:string;concept_id:string;view:string;shirt_id:string;pant_id:string;
   credits_used:number;cached:boolean;repair:boolean;qa_status:"pass"|"review"|null;
-  human_status:"pending"|"approved"|"rejected";human_note:string;generated_at:string;
+  human_status:"pending"|"approved"|"rejected";human_note:string;generated_at:string;created_at:string;
 };
 type Calibration={
   calibration_id:string;outcome_id:string;garment:"shirt"|"trouser";expected_repeat_mm:number;
@@ -31,7 +32,6 @@ type IdentitySummary={
 };
 type CreditCapSummary={configured:boolean;withinCap:boolean|null;ownerCap:number|null};
 
-type ConceptGroup={conceptId:string;views:string[];outcomes:Outcome[]};
 
 export default function RenderQaClient(){
   const [outcomes,setOutcomes]=useState<Outcome[]>([]);
@@ -64,37 +64,10 @@ export default function RenderQaClient(){
   }
   useEffect(()=>{void load();},[]);
 
-  const conceptGroups=useMemo<ConceptGroup[]>(()=>{
-    const map=new Map<string,Outcome[]>();
-    for(const item of outcomes){
-      const id=String(item.concept_id||"").trim();
-      if(!id) continue;
-      const rows=map.get(id)||[];
-      rows.push(item);
-      map.set(id,rows);
-    }
-    return [...map.entries()]
-      .map(([conceptId,rows])=>({
-        conceptId,
-        outcomes:rows,
-        views:[...new Set(rows.map((row)=>row.view).filter(Boolean))].sort(),
-      }))
-      .filter((item)=>item.views.length>=2)
-      .sort((a,b)=>{
-        const aTime=Math.max(...a.outcomes.map((row)=>new Date(row.generated_at).getTime()||0));
-        const bTime=Math.max(...b.outcomes.map((row)=>new Date(row.generated_at).getTime()||0));
-        return bTime-aTime;
-      });
-  },[outcomes]);
-
-  const latestIdentityReview=useMemo(()=>{
-    const map=new Map<string,IdentityReview>();
-    for(const item of identityReviews){
-      const current=map.get(item.concept_id);
-      if(!current||new Date(item.created_at).getTime()>new Date(current.created_at).getTime()) map.set(item.concept_id,item);
-    }
-    return map;
-  },[identityReviews]);
+  const identityStates=useMemo(
+    ()=>buildCrossViewIdentityStates(outcomes,identityReviews),
+    [outcomes,identityReviews],
+  );
 
   async function post(body:Record<string,unknown>,success:string,busyKey:string){
     setBusy(busyKey);setMessage("");
@@ -203,20 +176,27 @@ export default function RenderQaClient(){
 
       <div className="renderQaIdentityList">
         <div className="renderQaIdentityTitle"><span>CROSS-VIEW IDENTITY</span><b>{identitySummary?.passedConcepts??0} pass · {identitySummary?.failedConcepts??0} fail · {identitySummary?.pendingConcepts??0} pending</b></div>
-        {!conceptGroups.length&&<p>No concept has two or more final-render views yet.</p>}
-        {conceptGroups.map((group)=>{
-          const latest=latestIdentityReview.get(group.conceptId);
-          return <article key={group.conceptId} data-status={latest?.status||"pending"}>
+        {!identityStates.length&&<p>No concept has two or more final-render views yet.</p>}
+        {identityStates.map((state)=>{
+          const staleLabel=state.staleReason==="render_changed"
+            ? "New render recorded after the last identity review."
+            : state.staleReason==="view_set_changed"
+              ? "A new view needs identity review."
+              : state.staleReason==="missing_review"
+                ? "Identity review has not been recorded."
+                : "";
+          return <article key={state.conceptId} data-status={state.status}>
             <div>
-              <b>{group.conceptId}</b>
-              <small>{group.views.join(" · ")}</small>
+              <b>{state.conceptId}</b>
+              <small>{state.views.join(" · ")}</small>
+              {staleLabel&&<small className="renderQaIdentityStale">{staleLabel}</small>}
             </div>
             <div className="renderQaIdentityDecision">
-              <em>{latest?.status?.toUpperCase()||"PENDING"}</em>
-              {latest&&<small>{latest.reviewer} · {new Date(latest.created_at).toLocaleString("en-IN")}</small>}
+              <em>{state.status.toUpperCase()}</em>
+              {state.review&&<small>{state.review.reviewer||"Reviewer"} · {new Date(state.review.created_at).toLocaleString("en-IN")}</small>}
               <div>
-                <button disabled={busy==="identity:"+group.conceptId||reviewer.trim().length<2} onClick={()=>void reviewIdentity(group.conceptId,"pass")}>Identity matches</button>
-                <button className="fail" disabled={busy==="identity:"+group.conceptId||reviewer.trim().length<2} onClick={()=>void reviewIdentity(group.conceptId,"fail")}>Identity mismatch</button>
+                <button disabled={busy==="identity:"+state.conceptId||reviewer.trim().length<2} onClick={()=>void reviewIdentity(state.conceptId,"pass")}>Identity matches</button>
+                <button className="fail" disabled={busy==="identity:"+state.conceptId||reviewer.trim().length<2} onClick={()=>void reviewIdentity(state.conceptId,"fail")}>Identity mismatch</button>
               </div>
             </div>
           </article>;
