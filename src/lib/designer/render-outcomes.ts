@@ -104,3 +104,45 @@ export async function listRenderOutcomes(limit=200) {
     return [] as RenderOutcomeRow[];
   }
 }
+
+
+export type RenderPatternCalibrationRow={
+  calibration_id:string;
+  outcome_id:string;
+  garment:"shirt"|"trouser";
+  expected_repeat_mm:number;
+  observed_repeat_mm:number;
+  scale_error_pct:number;
+  axis_status:"match"|"mismatch"|"not_applicable";
+  note:string;
+  created_at:string;
+};
+
+export async function recordRenderPatternCalibration(input:{
+  outcomeId:string;
+  garment:"shirt"|"trouser";
+  expectedRepeatMm:number;
+  observedRepeatMm:number;
+  axisStatus:"match"|"mismatch"|"not_applicable";
+  note?:string;
+}) {
+  return rpc<string>("designer_render_pattern_calibration_record",{
+    p_outcome_id:input.outcomeId,
+    p_garment:input.garment,
+    p_expected_repeat_mm:input.expectedRepeatMm,
+    p_observed_repeat_mm:input.observedRepeatMm,
+    p_axis_status:input.axisStatus,
+    p_note:String(input.note||"").slice(0,1000),
+  });
+}
+
+export async function listRenderPatternCalibrations(limit=200) {
+  if(!getSupabaseAdminConfig()) return [] as RenderPatternCalibrationRow[];
+  try{
+    return await rpc<RenderPatternCalibrationRow[]>("designer_render_pattern_calibration_list",{
+      p_limit:Math.max(1,Math.min(1000,Math.floor(limit))),
+    });
+  }catch{
+    return [] as RenderPatternCalibrationRow[];
+  }
+}
