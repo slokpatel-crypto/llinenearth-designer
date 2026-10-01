@@ -96,3 +96,19 @@ test("a newly generated view makes an older identity review pending again",()=>{
   assert.equal(result.passedConcepts,0);
   assert.equal(result.passRate,null);
 });
+
+
+test("rerendering an already-reviewed view invalidates the old identity decision",()=>{
+  const outcomes=[
+    {concept_id:"a",view:"front",human_status:"approved" as const,created_at:"2026-10-01T10:00:00Z"},
+    {concept_id:"a",view:"side",human_status:"approved" as const,created_at:"2026-10-01T10:01:00Z"},
+    {concept_id:"a",view:"side",human_status:"pending" as const,created_at:"2026-10-01T10:10:00Z"},
+  ];
+  const reviews=[
+    {concept_id:"a",status:"pass" as const,reviewed_views:["front","side"],created_at:"2026-10-01T10:05:00Z"},
+  ];
+  const result=summarizeCrossViewIdentity(outcomes,reviews);
+  assert.equal(result.reviewedConcepts,0);
+  assert.equal(result.pendingConcepts,1);
+  assert.equal(result.passRate,null);
+});
