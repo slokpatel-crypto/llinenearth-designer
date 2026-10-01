@@ -66,6 +66,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added a privacy-safe authenticated customer production timeline from append-only order events without exposing operator notes or event payloads.
 - Added Phase 11 post-delivery customer outcome evidence tied to delivered account-owned orders, with wear-confirmed fit evidence and no automatic Designer ranking changes.
 - Added a private Phase 11 outcome-review desk with named approve/reject decisions and a human-entered evidence-threshold policy; no threshold is invented and meeting it still does not auto-change Designer ranking.
+- Added durable privacy-safe production learning context for verified locked-design orders so post-delivery outcomes remain attributable after temporary vault expiry; measurement/body-profile data are excluded and contextless outcomes cannot satisfy the learning gate.
 - Added phase adaptation records so future coding agents do not rebuild existing systems unnecessarily.
 
 ## Evidence we cannot manufacture in code
