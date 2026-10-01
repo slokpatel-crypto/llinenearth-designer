@@ -16,6 +16,9 @@ export function normalizeStyleDirectorUserTest(input:unknown){
   if(!["mobile","tablet","desktop"].includes(deviceClass)) throw new Error("A device class is required.");
   const flags=["directionsUnderstandable","directionsDistinct","stockHandoffWorked","blockingIssue"] as const;
   for(const key of flags) if(typeof source[key]!=="boolean") throw new Error("Every Style Director validation result must be recorded.");
+  const stockHandoffWorked=source.stockHandoffWorked as boolean;
+  const handoffAuditId=clean(source.handoffAuditId,80);
+  if(stockHandoffWorked&&!/^[0-9a-f-]{36}$/i.test(handoffAuditId)) throw new Error("Verified Style Director handoff audit ID is required when the stock handoff worked.");
   const note=clean(source.note,1200);
   if(source.blockingIssue&&note.length<3) throw new Error("Blocking issues require a short note.");
   return {
@@ -23,7 +26,8 @@ export function normalizeStyleDirectorUserTest(input:unknown){
     deviceClass,
     directionsUnderstandable:source.directionsUnderstandable as boolean,
     directionsDistinct:source.directionsDistinct as boolean,
-    stockHandoffWorked:source.stockHandoffWorked as boolean,
+    stockHandoffWorked,
+    handoffAuditId:handoffAuditId||null,
     blockingIssue:source.blockingIssue as boolean,
     note,
   };
@@ -50,6 +54,7 @@ export type StyleDirectorUserTestRow={
   directions_understandable:boolean;
   directions_distinct:boolean;
   stock_handoff_worked:boolean;
+  handoff_audit_id?:string|null;
   blocking_issue:boolean;
   created_at:string;
 };
@@ -71,7 +76,7 @@ export function summarizeStyleDirectorValidation(
   }
   const latest=[...latestByCase.values()];
   const positive=latest.filter((row)=>
-    row.directions_understandable&&row.directions_distinct&&row.stock_handoff_worked&&!row.blocking_issue
+    row.directions_understandable&&row.directions_distinct&&row.stock_handoff_worked&&Boolean(row.handoff_audit_id)&&!row.blocking_issue
   );
   const latestSignoff=[...signoffs].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))[0]||null;
   const requiredPositiveCases=Number.isInteger(latestSignoff?.required_positive_cases)
@@ -85,6 +90,7 @@ export function summarizeStyleDirectorValidation(
     understandableCases:latest.filter((row)=>row.directions_understandable).length,
     distinctCases:latest.filter((row)=>row.directions_distinct).length,
     handoffCases:latest.filter((row)=>row.stock_handoff_worked).length,
+    verifiedHandoffCases:latest.filter((row)=>row.stock_handoff_worked&&Boolean(row.handoff_audit_id)).length,
     deviceCoverage:[...new Set(latest.map((row)=>row.device_class))],
     latestSignoffStatus:latestSignoff?.status||"pending",
     latestSignedBy:latestSignoff?.signed_by||null,
