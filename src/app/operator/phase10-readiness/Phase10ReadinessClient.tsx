@@ -120,6 +120,29 @@ type RenderCachePayload={
   popularPairs?:Array<unknown>;
 };
 
+type ProductionCalibrationPayload={
+  configured:boolean;
+  summary:{
+    total:number;
+    shirtCases:number;
+    trouserCases:number;
+    medianShirtMetres:number|null;
+    medianTrouserMetres:number|null;
+    readyForModel:boolean;
+  };
+};
+
+type StockPayload={
+  configured:boolean;
+  stock:Array<{fabric_id:string;physical_metres:number;reserved_metres:number;available_metres:number}>;
+};
+
+type ProductionPayload={
+  configured:boolean;
+  quotes:Array<{quote_id:string;status:string;revision_id:string}>;
+  orders:Array<{order_id:string;status:string;revision_id:string}>;
+};
+
 type LoadState={
   phase1Proof:Phase1ProofPayload|null;
   measurementCalibration:MeasurementCalibrationPayload|null;
@@ -131,6 +154,9 @@ type LoadState={
   construction:ConstructionPayload|null;
   device:DeviceQaPayload|null;
   renderCache:RenderCachePayload|null;
+  productionCalibration:ProductionCalibrationPayload|null;
+  stock:StockPayload|null;
+  production:ProductionPayload|null;
 };
 
 type RowStatus="done"|"progress"|"blocked"|"optional";
@@ -152,7 +178,7 @@ function ratio(value:number,total:number){return total>0?clamp(value/total*100):
 
 export default function Phase10ReadinessClient(){
   const [data,setData]=useState<LoadState>({
-    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,
+    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,
   });
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
@@ -170,7 +196,7 @@ export default function Phase10ReadinessClient(){
   async function load(){
     setLoading(true);setMessage("");
     try{
-      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache]=await Promise.all([
+      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production]=await Promise.all([
         read<Phase1ProofPayload>("/api/operator/phase1-proof"),
         read<MeasurementCalibrationPayload>("/api/operator/measurement-calibration"),
         read<LaunchMetricsPayload>("/api/operator/cloud-summary?days=60"),
@@ -181,8 +207,11 @@ export default function Phase10ReadinessClient(){
         read<ConstructionPayload>("/api/operator/construction-approval"),
         read<DeviceQaPayload>("/api/operator/device-qa"),
         read<RenderCachePayload>("/api/operator/designer-render-cache/stats"),
+        read<ProductionCalibrationPayload>("/api/operator/production-calibration"),
+        read<StockPayload>("/api/operator/stock"),
+        read<ProductionPayload>("/api/operator/production"),
       ]);
-      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache});
+      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production});
     }catch(error){
       setMessage(error instanceof Error?error.message:"Readiness data could not be loaded.");
     }finally{
@@ -250,6 +279,22 @@ export default function Phase10ReadinessClient(){
     const latest=data.device?.latest||{};
     const acceptedDevices=["mobile","tablet","desktop"].filter((kind)=>latest[kind]?.status==="accepted").length;
     const deviceProgress=ratio(acceptedDevices,3);
+
+    const productionCalibration=data.productionCalibration?.summary;
+    const productionUsageProgress=Math.round((
+      ratio(productionCalibration?.shirtCases||0,20)+ratio(productionCalibration?.trouserCases||0,20)
+    )/2);
+    const productionUsageDone=productionCalibration?.readyForModel===true;
+
+    const stockRows=data.stock?.stock||[];
+    const positiveStock=stockRows.filter((item)=>Number(item.physical_metres)>0).length;
+    const stockProgress=positiveStock>0?100:0;
+    const stockDone=Boolean(data.stock?.configured&&positiveStock>0);
+
+    const productionOrders=data.production?.orders||[];
+    const deliveredOrders=productionOrders.filter((item)=>item.status==="delivered").length;
+    const productionOrderProgress=ratio(deliveredOrders,10);
+    const productionOrderDone=deliveredOrders>=10;
 
     const cache=data.renderCache?.database;
     const cacheProgress=cache?.distinct_pairs ? clamp(Math.min(100,cache.distinct_pairs*10)) : 0;
@@ -363,6 +408,45 @@ export default function Phase10ReadinessClient(){
         metric:`${acceptedDevices}/3 device classes accepted`,
         href:"/operator/device-qa",
         action:"Run device QA",
+        ownerDependent:true,
+      },
+      {
+        id:"production-calibration",
+        title:"Real cloth-usage calibration",
+        detail:productionUsageDone
+          ? "The first evidence threshold is ready to analyse for both shirt and trouser meterage."
+          : `${Math.max(0,20-(productionCalibration?.shirtCases||0))} shirt cuts and ${Math.max(0,20-(productionCalibration?.trouserCases||0))} trouser cuts remain before the first estimator may be analysed.`,
+        status:productionUsageDone?"done":data.productionCalibration?.configured?"progress":"blocked",
+        progress:productionUsageProgress,
+        metric:productionCalibration?`${productionCalibration.shirtCases}/20 shirt · ${productionCalibration.trouserCases}/20 trouser`:"No production evidence",
+        href:"/operator/production-calibration",
+        action:"Record real cloth usage",
+        ownerDependent:true,
+      },
+      {
+        id:"stock-ledger",
+        title:"Physical stock ledger",
+        detail:stockDone
+          ? `${positiveStock} fabrics have physically entered stock. Reservations can now use measured metres instead of catalogue assumptions.`
+          : "No positive physical stock balance has been entered yet. Opening stock must come from real measured inventory.",
+        status:stockDone?"done":data.stock?.configured?"progress":"blocked",
+        progress:stockProgress,
+        metric:`${positiveStock} fabrics with physical metres`,
+        href:"/operator/stock",
+        action:"Open stock ledger",
+        ownerDependent:true,
+      },
+      {
+        id:"production-orders",
+        title:"Zero-reentry production validation",
+        detail:productionOrderDone
+          ? "At least 10 production orders are recorded as delivered from locked design revisions."
+          : `${Math.max(0,10-deliveredOrders)} delivered production orders remain before the roadmap production-flow gate is met.`,
+        status:productionOrderDone?"done":data.production?.configured?"progress":"blocked",
+        progress:productionOrderProgress,
+        metric:`${deliveredOrders}/10 delivered orders · ${data.production?.quotes?.length||0} quotes recorded`,
+        href:"/operator/production",
+        action:"Open production desk",
         ownerDependent:true,
       },
       {
