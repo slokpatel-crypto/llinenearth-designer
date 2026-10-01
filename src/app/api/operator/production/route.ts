@@ -3,6 +3,9 @@ import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeProductionQuoteDraft } from "@/lib/designer/production-quote";
+import { parseDesignVaultRecoveryToken } from "@/lib/designer/design-vault";
+import { verifyLockedDesignRevision, type LockedDesignRevision } from "@/lib/designer/design-lock";
+import { buildProductionLearningContext } from "@/lib/designer/production-learning-context";
 
 export const runtime="nodejs";
 
@@ -92,10 +95,35 @@ export async function POST(request:Request){
       if(revisionId.length<12||!/^[a-f0-9]{64}$/.test(recipeHash)) {
         return NextResponse.json({error:"Locked revision and recipe hash are required."},{status:400});
       }
-      const orderId=await rpc<string>("production_order_create",{
-        p_revision_id:revisionId,p_recipe_hash:recipeHash,p_quote_id:quoteId,p_note:note,
-      });
-      return NextResponse.json({orderId});
+      const recoveryToken=String(body.recoveryToken||"").trim();
+      let orderId:string;
+      if(recoveryToken){
+        const parsed=parseDesignVaultRecoveryToken(recoveryToken);
+        if(!parsed) return NextResponse.json({error:"The locked-design recovery token is invalid."},{status:400});
+        const rows=await rpc<Array<{payload:LockedDesignRevision}>>("designer_locked_revision_vault_get",{
+          p_vault_id:parsed.vaultId,
+          p_access_hash:parsed.accessHash,
+        });
+        const revision=rows[0]?.payload;
+        if(!revision||!await verifyLockedDesignRevision(revision)){
+          return NextResponse.json({error:"The locked design could not be verified for production."},{status:409});
+        }
+        if(revision.revisionId!==revisionId||revision.recipeHash.toLowerCase()!==recipeHash){
+          return NextResponse.json({error:"The loaded locked design does not match the order revision/hash."},{status:409});
+        }
+        orderId=await rpc<string>("production_order_create_with_context",{
+          p_revision_id:revisionId,
+          p_recipe_hash:recipeHash,
+          p_quote_id:quoteId,
+          p_note:note,
+          p_context:buildProductionLearningContext(revision),
+        });
+      }else{
+        orderId=await rpc<string>("production_order_create",{
+          p_revision_id:revisionId,p_recipe_hash:recipeHash,p_quote_id:quoteId,p_note:note,
+        });
+      }
+      return NextResponse.json({orderId,learningContextAttached:Boolean(recoveryToken)});
     }
     if(action==="order_status"){
       const orderId=String(body.orderId||"");
