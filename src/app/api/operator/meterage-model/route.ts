@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
-import { normalizeMeterageCalibrationDraft } from "@/lib/designer/meterage-calibration";
+import { normalizeMeterageCalibrationDraft, verifiedMeterageEvidenceCase } from "@/lib/designer/meterage-calibration";
 
 export const runtime="nodejs";
 
@@ -48,17 +48,9 @@ async function evidenceCaseIds(garment:"shirt"|"trouser"){
   const seen=new Set<string>();
   for(const row of rows){
     const payload=row.payload||{};
-    if(String(payload.subtype||"")!=="production_usage_case") continue;
-    if(String(payload.version||"")!=="production-usage-v2") continue;
-    if(String(payload.garment||"")!==garment) continue;
-    const caseId=String(payload.caseId||"").trim().slice(0,80);
-    const width=Number(payload.fabricWidthCm);
-    const metres=Number(payload.actualMetres);
-    const checkedBy=String(payload.checkedBy||"").trim();
-    const evidenceReference=String(payload.evidenceReference||"").trim();
-    if(!caseId||!Number.isFinite(width)||!Number.isFinite(metres)||width<60||width>220||metres<=0||metres>12) continue;
-    if(checkedBy.length<2||evidenceReference.length<3) continue;
-    seen.add(caseId);
+    const evidence=verifiedMeterageEvidenceCase(payload,garment);
+    if(!evidence) continue;
+    seen.add(evidence.caseId);
   }
   return [...seen];
 }
