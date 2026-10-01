@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { summarizeRenderOutcomes } from "../src/lib/designer/render-outcome-metrics.ts";
+import { summarizeRenderOutcomes, summarizeRenderPatternCalibrations } from "../src/lib/designer/render-outcome-metrics.ts";
 
 test("render outcome metrics exclude cached renders from provider credit spend",()=>{
   const result=summarizeRenderOutcomes([
@@ -23,4 +23,19 @@ test("render approval metrics stay unknown before human review",()=>{
   assert.equal(result.approvalRate,null);
   assert.equal(result.creditsPerApproved,null);
   assert.equal(result.pending,1);
+});
+
+
+test("pattern calibration uses the roadmap 8 percent physical-scale gate",()=>{
+  const result=summarizeRenderPatternCalibrations([
+    {scale_error_pct:4,axis_status:"match"},
+    {scale_error_pct:8,axis_status:"match"},
+    {scale_error_pct:9,axis_status:"match"},
+    {scale_error_pct:2,axis_status:"mismatch"},
+  ]);
+  assert.equal(result.total,4);
+  assert.equal(result.pass,2);
+  assert.equal(result.fail,2);
+  assert.equal(result.passRate,50);
+  assert.equal(result.averageScaleErrorPct,5.75);
 });
