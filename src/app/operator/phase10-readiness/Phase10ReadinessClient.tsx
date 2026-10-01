@@ -154,7 +154,7 @@ type ProductionPayload={
 
 type LaunchReadinessPayload={
   configured:boolean;
-  betaAttempts:Array<{case_id:string;device_class:string;core_flow_completed:boolean;blocking_bug:boolean;created_at:string}>;
+  betaAttempts:Array<{case_id:string;device_class:string;core_flow_completed:boolean;design_locked?:boolean;share_or_enquiry_completed?:boolean;blocking_bug:boolean;created_at:string}>;
   checklistEvents:Array<{item_id:string;status:string;created_at:string}>;
 };
 
@@ -551,11 +551,11 @@ export default function Phase10ReadinessClient(){
       },
       {
         id:"private-beta-launch-signoff",
-        title:"Private beta + human launch sign-off",
+        title:"Five-customer lock flow + human launch sign-off",
         detail:launchEvidence?.launchEvidenceComplete
-          ? "Five successful unique beta cases and every human launch checklist item are evidenced."
+          ? "Five successful unique lock → share/enquiry cases and every human launch checklist item are evidenced."
           : launchEvidence
-            ? `${Math.max(0,launchEvidence.betaTarget-launchEvidence.successfulBetaCases)} successful beta cases and ${Math.max(0,launchEvidence.checklistTotal-launchEvidence.checklistApproved)} human sign-offs remain.`
+            ? `${Math.max(0,launchEvidence.betaTarget-launchEvidence.successfulBetaCases)} successful lock → share/enquiry cases and ${Math.max(0,launchEvidence.checklistTotal-launchEvidence.checklistApproved)} human sign-offs remain.`
             : "No private-beta / human launch-signoff evidence is available yet.",
         status:launchEvidence?.launchEvidenceComplete?"done":data.launchReadiness?.configured?"progress":"blocked",
         progress:launchEvidenceProgress,
