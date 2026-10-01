@@ -61,7 +61,7 @@ test("final render release stays open when any human evidence boundary is unreso
   assert.equal(result.identityGateComplete,false);
   assert.equal(result.costGateComplete,false);
   assert.equal(result.gateComplete,false);
-  assert.equal(result.progressPercent,0);
+  assert.equal(result.progressPercent,66);
   assert.equal(result.remainingReviews,1);
 });
 
