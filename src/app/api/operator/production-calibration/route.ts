@@ -2,89 +2,128 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
+import { normalizeProductionCutEvidenceDraft } from "@/lib/designer/meterage-calibration";
 
 export const runtime="nodejs";
 
-type Row={at:string;payload?:Record<string,unknown>};
+type CutRow={
+  evidence_id:string;
+  case_id:string;
+  order_id:string;
+  revision_id:string;
+  recipe_hash:string;
+  garment:"shirt"|"trouser";
+  fabric_id:string;
+  fabric_width_cm:number|string;
+  actual_metres:number|string;
+  pattern_repeat_mm:number|string|null;
+  pattern_matching:boolean;
+  cut_context:string;
+  checked_by:string;
+  evidence_reference:string;
+  note:string;
+  created_at:string;
+};
 
-function finite(value:unknown){
-  const n=Number(value);
-  return Number.isFinite(n)?n:null;
+async function authorized(){
+  const jar=await cookies();
+  return verifyOperatorSession(jar.get(OPERATOR_COOKIE.name)?.value);
 }
+
+async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
+  const cloud=getSupabaseAdminConfig();
+  if(!cloud) throw new Error("Production cut evidence backend is not configured.");
+  const response=await fetch(cloud.url.replace(/\/$/,"")+"/rest/v1/rpc/"+name,{
+    method:"POST",
+    headers:{...supabaseAdminHeaders(cloud),"content-type":"application/json",accept:"application/json"},
+    body:JSON.stringify(payload),
+    cache:"no-store",
+    signal:AbortSignal.timeout(8_000),
+  });
+  if(!response.ok){
+    const detail=(await response.text()).replace(/\s+/g," ").slice(0,280);
+    throw new Error("Production cut evidence request failed ("+response.status+"): "+detail);
+  }
+  return await response.json() as T;
+}
+
 function median(values:number[]){
   if(!values.length) return null;
   const ordered=[...values].sort((a,b)=>a-b);
-  const m=Math.floor(ordered.length/2);
-  const value=ordered.length%2?ordered[m]:(ordered[m-1]+ordered[m])/2;
-  return Math.round(value*100)/100;
+  const middle=Math.floor(ordered.length/2);
+  const value=ordered.length%2?ordered[middle]:(ordered[middle-1]+ordered[middle])/2;
+  return Math.round(value*1000)/1000;
 }
 
 export async function GET(){
-  const jar=await cookies();
-  if(!await verifyOperatorSession(jar.get(OPERATOR_COOKIE.name)?.value)) {
-    return NextResponse.json({error:"Unauthorized."},{status:401});
-  }
-  const cloud=getSupabaseAdminConfig();
-  if(!cloud) return NextResponse.json({
+  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
+  if(!getSupabaseAdminConfig()) return NextResponse.json({
     configured:false,cases:[],
     summary:{total:0,shirtCases:0,trouserCases:0,medianShirtMetres:null,medianTrouserMetres:null,readyForModel:false},
   },{headers:{"cache-control":"private, no-store"}});
 
   try{
-    const params=new URLSearchParams({
-      select:"at,payload",type:"eq.operator_note",source:"eq.operator",order:"at.desc",limit:"800",
-    });
-    const response=await fetch(`${cloud.url}/rest/v1/style_events?${params.toString()}`,{
-      headers:{...supabaseAdminHeaders(cloud),accept:"application/json"},cache:"no-store",
-    });
-    if(!response.ok) throw new Error("read failed");
-    const rows=await response.json() as Row[];
-    const seen=new Set<string>();
-    const cases:Array<{
-      at:string;caseId:string;revisionId:string;garment:"shirt"|"trouser";fabricId:string;
-      fabricWidthCm:number;actualMetres:number;patternRepeatMm:number|null;patternMatching:boolean;
-      cutContext:string;checkedBy:string;evidenceReference:string;note:string;verifiedEvidence:boolean;
-    }>=[];
-    for(const row of rows){
-      const p=row.payload||{};
-      if(String(p.subtype||"")!=="production_usage_case") continue;
-      const caseId=String(p.caseId||"").slice(0,80);
-      const garment=String(p.garment||"");
-      const fabricWidthCm=finite(p.fabricWidthCm),actualMetres=finite(p.actualMetres);
-      if(!caseId||seen.has(caseId)||!["shirt","trouser"].includes(garment)||fabricWidthCm===null||actualMetres===null) continue;
-      seen.add(caseId);
-      const repeat=finite(p.patternRepeatMm);
-      const checkedBy=String(p.checkedBy||"").trim().slice(0,120);
-      const evidenceReference=String(p.evidenceReference||"").trim().slice(0,240);
-      const verifiedEvidence=String(p.version||"")==="production-usage-v2"&&checkedBy.length>=2&&evidenceReference.length>=3;
-      cases.push({
-        at:row.at,caseId,
-        revisionId:String(p.revisionId||"").slice(0,180),
-        garment:garment as "shirt"|"trouser",
-        fabricId:String(p.fabricId||"").slice(0,160),
-        fabricWidthCm,actualMetres,
-        patternRepeatMm:repeat&&repeat>0?repeat:null,
-        patternMatching:p.patternMatching===true,
-        cutContext:String(p.cutContext||"").slice(0,160),
-        checkedBy,evidenceReference,verifiedEvidence,
-        note:String(p.note||"").slice(0,600),
-      });
-    }
-    const shirts=cases.filter((item)=>item.garment==="shirt"&&item.verifiedEvidence);
-    const trousers=cases.filter((item)=>item.garment==="trouser"&&item.verifiedEvidence);
+    const rows=await rpc<CutRow[]>("production_cut_evidence_list",{p_limit:1000});
+    const cases=rows.map((row)=>({
+      at:row.created_at,
+      caseId:row.case_id,
+      orderId:row.order_id,
+      revisionId:row.revision_id,
+      recipeHash:row.recipe_hash,
+      garment:row.garment,
+      fabricId:row.fabric_id,
+      fabricWidthCm:Number(row.fabric_width_cm),
+      actualMetres:Number(row.actual_metres),
+      patternRepeatMm:row.pattern_repeat_mm===null?null:Number(row.pattern_repeat_mm),
+      patternMatching:row.pattern_matching,
+      cutContext:row.cut_context,
+      checkedBy:row.checked_by,
+      evidenceReference:row.evidence_reference,
+      note:row.note,
+      verifiedEvidence:true,
+    }));
+    const shirts=cases.filter((item)=>item.garment==="shirt");
+    const trousers=cases.filter((item)=>item.garment==="trouser");
     return NextResponse.json({
       configured:true,cases:cases.slice(0,100),
       summary:{
-        total:cases.length,shirtCases:shirts.length,trouserCases:trousers.length,
+        total:cases.length,
+        shirtCases:shirts.length,
+        trouserCases:trousers.length,
         medianShirtMetres:median(shirts.map((item)=>item.actualMetres)),
         medianTrouserMetres:median(trousers.map((item)=>item.actualMetres)),
         readyForModel:shirts.length>=20&&trousers.length>=20,
       },
     },{headers:{"cache-control":"private, no-store"}});
-  }catch{
-    return NextResponse.json({
-      configured:true,cases:[],
-      summary:{total:0,shirtCases:0,trouserCases:0,medianShirtMetres:null,medianTrouserMetres:null,readyForModel:false},
-    },{headers:{"cache-control":"private, no-store"}});
+  }catch(error){
+    console.error("[operator/production-calibration:get]",error);
+    return NextResponse.json({error:"Production cut evidence could not be read."},{status:503});
+  }
+}
+
+export async function POST(request:Request){
+  if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
+  try{
+    const body=await request.json() as Record<string,unknown>;
+    if(String(body.action||"record")!=="record") return NextResponse.json({error:"Unsupported production calibration action."},{status:400});
+    const draft=normalizeProductionCutEvidenceDraft(body);
+    const evidenceId=await rpc<string>("production_cut_evidence_record",{
+      p_case_id:draft.caseId,
+      p_order_id:draft.orderId,
+      p_garment:draft.garment,
+      p_fabric_id:draft.fabricId,
+      p_fabric_width_cm:draft.fabricWidthCm,
+      p_actual_metres:draft.actualMetres,
+      p_pattern_repeat_mm:draft.patternRepeatMm,
+      p_pattern_matching:draft.patternMatching,
+      p_cut_context:draft.cutContext,
+      p_checked_by:draft.checkedBy,
+      p_evidence_reference:draft.evidenceReference,
+      p_note:draft.note,
+    });
+    return NextResponse.json({evidenceId});
+  }catch(error){
+    console.error("[operator/production-calibration:post]",error);
+    return NextResponse.json({error:error instanceof Error?error.message:"Production cut evidence could not be recorded."},{status:409});
   }
 }
