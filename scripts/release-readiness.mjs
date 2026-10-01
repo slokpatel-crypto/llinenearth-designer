@@ -86,6 +86,11 @@ for (const path of [
   "supabase/migrations/20261006_customer_account_ownership.sql",
   "src/app/api/customer-account/production/route.ts",
   "supabase/migrations/20261007_production_customer_ownership.sql",
+  "src/lib/fabric-color-calibration.ts",
+  "src/app/api/operator/fabric-color-calibration/route.ts",
+  "src/app/operator/fabric-color-calibration/page.tsx",
+  "src/app/operator/fabric-color-calibration/FabricColorCalibrationClient.tsx",
+  "supabase/migrations/20261008_fabric_physical_color_checks.sql",
   "src/lib/designer/production-handoff.ts",
   "src/lib/designer/tech-pack.ts",
   "src/lib/designer/production-quote.ts",
@@ -126,6 +131,10 @@ requireTokens("src/app/api/measurements/vault/route.ts", ["getCustomerIdentity",
 requireTokens("supabase/migrations/20261006_customer_account_ownership.sql", ["owner_user_id","auth.users","designer_locked_revision_vault_list_owned","measurement_profile_vault_list_owned","service_role"]);
 requireTokens("src/app/api/customer-account/production/route.ts", ["getCustomerIdentity","production_quote_list_owned","production_order_list_owned","private, no-store"]);
 requireTokens("supabase/migrations/20261007_production_customer_ownership.sql", ["resolve_locked_revision_owner","production_claim_revision_ownership","production_quote_list_owned","production_order_list_owned","owner_user_id"]);
+requireTokens("src/lib/fabric-color-calibration.ts", ["deltaE2000","evidenceGateComplete","calibrated_capture","spectrophotometer"]);
+requireTokens("src/app/api/operator/fabric-color-calibration/route.ts", ["verifyOperatorSession","fabric_physical_color_check_record","summarizeFabricPhysicalColorChecks"]);
+requireTokens("src/app/operator/fabric-color-calibration/FabricColorCalibrationClient.tsx", ["Physical Colour Calibration","MEDIAN ΔE","descriptive only","Save append-only colour evidence"]);
+requireTokens("supabase/migrations/20261008_fabric_physical_color_checks.sql", ["fabric_physical_color_checks","fabric_physical_color_check_record","fabric_physical_color_check_list","service_role"]);
 requireTokens("src/lib/designer/block-strategy.ts", ["block-strategy-provisional-1","assessBlockStrategy","shaped-shirt","roomy-seat-block","suggestedPatch"]);
 requireTokens("src/lib/designer/planner.ts", ["DesignerBlockStrategy","blockStrategy:selectedBlock","item.blockStrategy?.score"]);
 requireTokens("src/lib/designer/search.ts", ["blockStrategy: DesignerBlockStrategy","assessBlockStrategy","block.score"]);
@@ -468,6 +477,7 @@ requireTokens("scripts/check-cloud-readiness.mjs", [
   "measurement_profile_vault_get",
   "production_quote_list_owned",
   "production_order_list_owned",
+  "fabric_physical_color_check_list",
   "designer_render_outcome_list",
   "designer_render_pattern_calibration_list",
   "Apply Roadmap v2 Supabase migrations",
