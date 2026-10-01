@@ -11,7 +11,7 @@ import {
   recordRenderPatternCalibration,
   reviewRenderOutcome,
 } from "@/lib/designer/render-outcomes";
-import { summarizeApprovedPatternCalibrationCoverage, summarizeRenderOutcomes, summarizeRenderPatternCalibrations } from "@/lib/designer/render-outcome-metrics";
+import { deriveObservedRepeatMmFromFixture, summarizeApprovedPatternCalibrationCoverage, summarizeRenderOutcomes, summarizeRenderPatternCalibrations } from "@/lib/designer/render-outcome-metrics";
 import { evaluateRenderCreditCap, summarizeCrossViewIdentity } from "@/lib/designer/render-release-evidence";
 import { DESIGNER_PANTS, DESIGNER_SHIRTS } from "@/lib/designer/engine";
 import { enrichDesignerFabricsWithIntelligence } from "@/lib/fabric-intelligence-server";
@@ -187,7 +187,7 @@ export async function POST(request:Request){
         axisStatus:axisStatus as "match"|"mismatch"|"not_applicable",
         note:String(body.note||""),
       });
-      const observedRepeatMm=observedRepeatPx/(referencePx/referenceMm);
+      const observedRepeatMm=deriveObservedRepeatMmFromFixture(referenceMm,referencePx,observedRepeatPx);
       return NextResponse.json({calibrationId,expectedRepeatMm,observedRepeatMm,fabricId});
     }
 
