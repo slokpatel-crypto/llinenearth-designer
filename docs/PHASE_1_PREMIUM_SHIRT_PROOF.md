@@ -18,7 +18,8 @@ Route: `/lab/proof`
 - The selected proof fabric links directly to its private Analyzer evidence desk.
 - A deterministic photographic-repeat audit reports expected repeat spacing in mannequin pixels when physical repeat evidence exists, and the exact same photo px/mm calibration is passed into the compositor so the audited scale and rendered scale cannot silently diverge.
 - Proof evidence can be exported as JSON with scale, performance and viewer-rating results for an auditable acceptance record.
-- The operator evidence API recomputes physical-scale error, independent-viewer realism and overall Phase 1 acceptance from the stored raw inputs instead of trusting client-supplied pass/status flags. Legacy click-only realism records therefore remain review evidence until fresh independent-viewer evidence is recorded.
+- The operator evidence API recomputes physical-scale error, independent-viewer realism and the core proof decision from the stored raw inputs instead of trusting client-supplied pass/status flags. Legacy click-only realism records therefore remain review evidence until fresh independent-viewer evidence is recorded.
+- Roadmap readiness treats target-mobile acceptance as a separate fourth gate. A strong desktop/browser proof cannot mark Phase 1 complete until the private Device QA workflow has an accepted mobile result.
 
 ## What this proof does not claim
 - It does not claim a photograph has a true physical scale until a measured repeat / swatch dimension exists.
@@ -45,6 +46,7 @@ Route: `/lab/proof`
 - [x] deterministic photo-repeat audit value
 - [x] distinct anonymous viewer-code dedupe for realism evidence
 - [x] server-side recomputation of scale / latency / realism acceptance from raw recorded evidence
+- [x] Phase 1 readiness explicitly depends on accepted target-mobile Device QA evidence
 - [ ] CI green on current branch
 
 ### Physical / human evidence
