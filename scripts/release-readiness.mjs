@@ -174,6 +174,7 @@ for (const path of [
   "supabase/migrations/20261001_designer_locked_revision_vault.sql",
   "supabase/migrations/20261001_measurement_profile_vault.sql",
   "supabase/migrations/20261001_fabric_stock_ledger.sql",
+  "supabase/migrations/20261028_fabric_stock_provenance.sql",
   "supabase/migrations/20261001_production_quotes_orders.sql",
   "supabase/migrations/20261001_render_outcomes.sql",
   "src/lib/designer/render-outcomes.ts",
@@ -563,10 +564,12 @@ requireTokens("src/app/operator/production-evidence/ProductionEvidenceClient.tsx
 requireTokens("supabase/migrations/20261026_production_delivery_evidence_provenance.sql", ["evidence_reference","production_delivery_evidence_record_v2","named operator or checker is required","production-flow evidence reference is required","service_role"]);
 requireTokens("src/lib/designer/production-packet.ts", ["packetBuiltFromLockedRevision:true","noDesignDataReEntry:false","deliveryAuditRequired:true","verified separately after real delivery"]);
 requireTokens("src/lib/designer/production-packet.ts", ["linen-earth-production-packet-v1","noDesignDataReEntry"]);
-requireTokens("src/lib/designer/stock-ledger.ts", ["stockSnapshot","reservedMetres","availableMetres"]);
+requireTokens("src/lib/designer/stock-ledger.ts", ["stockSnapshot","normalizeManualStockEvent","recordedBy","sourceReference","reservedMetres","availableMetres"]);
 requireTokens("src/app/operator/production/ProductionClient.tsx", ["Load locked design","Export production packet","Create production order","durable design context","outcome lineage","learningContexts","Outcome lineage","context missing","CUSTOMER OUTCOME","not automatically applied to Designer ranking","/operator/customer-outcomes","Outcome Review"]);
-requireTokens("src/app/operator/stock/StockClient.tsx", ["Fabric Stock Ledger","Create reservation","Consume"]);
+requireTokens("src/app/api/operator/stock/route.ts", ["fabric_stock_snapshot_v2","fabric_stock_record_v2","p_recorded_by","p_source_reference"]);
+requireTokens("src/app/operator/stock/StockClient.tsx", ["Fabric Stock Ledger","Physical source reference","PHYSICAL PROVENANCE","provenance_ready","Create reservation","Consume"]);
 requireTokens("supabase/migrations/20261001_fabric_stock_ledger.sql", ["fabric_stock_snapshot","fabric_stock_reserve","request_key","service_role"]);
+requireTokens("supabase/migrations/20261028_fabric_stock_provenance.sql", ["fabric_stock_record_v2","fabric_stock_snapshot_v2","recorded_by","source_reference","legacy_unverified_event_count","provenance_ready","service_role"]);
 requireTokens("supabase/migrations/20261001_production_quotes_orders.sql", ["production_quote_create","production_order_create","invalid order transition","service_role"]);
 requireTokens("supabase/migrations/20261002_finished_garment_qc.sql", ["finished_garment_qc_record","finished_garment_qc_list","finished-garment QC approval is required before delivery","service_role"]);
 requireTokens("supabase/migrations/20261027_finished_garment_qc_provenance.sql", ["inspection_reference","finished_garment_qc_record_v2","provenance-backed finished-garment QC approval is required before delivery","service_role"]);
@@ -587,7 +590,7 @@ requireTokens("supabase/migrations/20261005_launch_readiness_evidence.sql", ["la
 requireTokens("src/lib/designer/launch-readiness-evidence.ts", ["LAUNCH_BETA_TARGET=5","LAUNCH_CHECKLIST_ITEMS","summarizeLaunchReadiness","launchEvidenceComplete"]);
 requireTokens("src/app/operator/launch-readiness/LaunchReadinessClient.tsx", ["Launch Evidence","PRIVATE BETA","HUMAN LAUNCH CHECKLIST","deployment readiness is still a separate gate"]);
 requireTokens("src/app/api/operator/launch-readiness/route.ts", ["normalizeBetaAttempt","normalizeLaunchChecklistDecision","launch_beta_attempt_record","launch_checklist_event_record"]);
-requireTokens("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx", ["private-beta-launch-signoff","/operator/launch-readiness","human sign-offs remain"]);
+requireTokens("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx", ["private-beta-launch-signoff","/operator/launch-readiness","human sign-offs remain","provenanceReadyStock","legacyStockEvents","Live physical stock provenance"]);
 requireTokens("next.config.ts", ["Strict-Transport-Security","X-Frame-Options","Cross-Origin-Opener-Policy"]);
 requireTokens("src/app/api/designer/look-render/route.ts", ["recordRenderOutcome","repair:true"]);
 requireTokens("src/app/api/designer/look-inspect/route.ts", ["attachRenderQa","jobId"]);
