@@ -93,3 +93,11 @@ Customer-facing physical truth now upgrades only from Analyzer profiles that hav
 - Customer-facing GSM, drape, fibre and true pattern scale require three things together: a reviewed Analyzer profile, field-level declared/reviewed provenance, and an auditable source URL or physical-evidence note.
 - Designer Data coverage uses the same rule, so a reviewed profile cannot silently convert a model/legacy physical value into a verified fabric fact.
 - Physical evidence notes now survive Analyzer → intelligence → Designer so note-backed shop measurements and supplier checks remain auditable even when no web URL exists.
+
+
+## Verified live-stock overlay
+
+- Customer Designer and Style Director now consult the private physical stock ledger in addition to catalogue/metadata availability.
+- Only provenance-ready ledger rows can override customer availability; an unverified legacy stock row cannot silently hide or promote a fabric.
+- A verified zero/negative available balance removes that fabric from new customer selection, while an explicit catalogue/merchandising unavailability always remains authoritative.
+- The public customer APIs expose only a count of fabrics covered by verified stock evidence, not private metre balances.
