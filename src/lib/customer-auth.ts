@@ -1,4 +1,6 @@
-import "server-only";\nimport { normalizeCustomerEmail } from "@/lib/customer-account";\nexport { normalizeCustomerEmail } from "@/lib/customer-account";
+import "server-only";
+import { normalizeCustomerEmail } from "@/lib/customer-account";
+export { normalizeCustomerEmail } from "@/lib/customer-account";
 
 export type CustomerIdentity = {
   id:string;
@@ -20,12 +22,6 @@ function publicConfig(){
   const key=(process.env.SUPABASE_ANON_KEY||process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)?.trim();
   if(!url||!key) return null;
   return {url,key};
-}
-
-export function normalizeCustomerEmail(value:unknown){
-  const email=String(value||"").trim().toLowerCase();
-  if(email.length<5||email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
-  return email;
 }
 
 export function readCookie(request:Request,name:string){
