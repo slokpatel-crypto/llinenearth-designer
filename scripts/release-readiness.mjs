@@ -76,6 +76,14 @@ for (const path of [
   "src/lib/designer/design-share.ts",
   "src/lib/designer/design-vault.ts",
   "src/lib/measurement-vault.ts",
+  "src/lib/customer-account.ts",
+  "src/lib/customer-auth.ts",
+  "src/app/account/page.tsx",
+  "src/app/api/customer-auth/otp/route.ts",
+  "src/app/api/customer-auth/verify/route.ts",
+  "src/app/api/customer-auth/session/route.ts",
+  "src/app/api/customer-auth/logout/route.ts",
+  "supabase/migrations/20261006_customer_account_ownership.sql",
   "src/lib/designer/production-handoff.ts",
   "src/lib/designer/tech-pack.ts",
   "src/lib/designer/production-quote.ts",
@@ -109,6 +117,11 @@ for (const path of [
 ]) requireFile(path);
 
 requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/visual", "/real-model", "Open Real Model Designer"]);
+requireTokens("src/app/account/page.tsx", ["Email sign in","listOwned","recovery token","Measurement profiles"]);
+requireTokens("src/lib/customer-auth.ts", ["SUPABASE_ANON_KEY","/auth/v1/otp","/auth/v1/verify","/auth/v1/user","httpOnly:true"]);
+requireTokens("src/app/api/designer/vault/route.ts", ["getCustomerIdentity","listOwned","loadOwned","deleteOwned","action==="claim""]);
+requireTokens("src/app/api/measurements/vault/route.ts", ["getCustomerIdentity","listOwned","loadOwned","deleteOwned","action==="claim""]);
+requireTokens("supabase/migrations/20261006_customer_account_ownership.sql", ["owner_user_id","auth.users","designer_locked_revision_vault_list_owned","measurement_profile_vault_list_owned","service_role"]);
 requireTokens("src/lib/designer/block-strategy.ts", ["block-strategy-provisional-1","assessBlockStrategy","shaped-shirt","roomy-seat-block","suggestedPatch"]);
 requireTokens("src/lib/designer/planner.ts", ["DesignerBlockStrategy","blockStrategy:selectedBlock","item.blockStrategy?.score"]);
 requireTokens("src/lib/designer/search.ts", ["blockStrategy: DesignerBlockStrategy","assessBlockStrategy","block.score"]);
