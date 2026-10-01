@@ -27,6 +27,7 @@ type Summary={
 };
 type PatternSummary={total:number;pass:number;fail:number;passRate:number|null;averageScaleErrorPct:number|null};
 type PatternCoverageSummary={requiredPairs:number;calibratedPairs:number;passedPairs:number;failedPairs:number;pendingPairs:number;gateComplete:boolean};
+type PatternEvidence={patternType:string;patterned:boolean;verified:boolean;repeatMm:number|null};
 type IdentitySummary={
   eligibleConcepts:number;reviewedConcepts:number;pendingConcepts:number;
   passedConcepts:number;failedConcepts:number;passRate:number|null;
@@ -40,6 +41,7 @@ export default function RenderQaClient(){
   const [calibrations,setCalibrations]=useState<Calibration[]>([]);
   const [patternSummary,setPatternSummary]=useState<PatternSummary|null>(null);
   const [patternCoverageSummary,setPatternCoverageSummary]=useState<PatternCoverageSummary|null>(null);
+  const [patternEvidenceByFabric,setPatternEvidenceByFabric]=useState<Record<string,PatternEvidence>>({});
   const [identityReviews,setIdentityReviews]=useState<IdentityReview[]>([]);
   const [identitySummary,setIdentitySummary]=useState<IdentitySummary|null>(null);
   const [creditCap,setCreditCap]=useState<CreditCap|null>(null);
@@ -60,6 +62,7 @@ export default function RenderQaClient(){
     setCalibrations(Array.isArray(data.calibrations)?data.calibrations:[]);
     setPatternSummary(data.patternSummary||null);
     setPatternCoverageSummary(data.patternCoverageSummary||null);
+    setPatternEvidenceByFabric(data.patternEvidenceByFabric&&typeof data.patternEvidenceByFabric==="object"?data.patternEvidenceByFabric:{});
     setIdentityReviews(Array.isArray(data.identityReviews)?data.identityReviews:[]);
     setIdentitySummary(data.identitySummary||null);
     setCreditCap(data.creditCap||null);
@@ -92,19 +95,28 @@ export default function RenderQaClient(){
     await post({action:"review",outcomeId,status,note},"Render review saved.",outcomeId);
   }
 
-  async function calibratePattern(outcomeId:string){
+  async function calibratePattern(outcome:Outcome){
     const garmentRaw=(window.prompt("Garment to calibrate: shirt or trouser","shirt")||"").trim().toLowerCase();
     if(!["shirt","trouser"].includes(garmentRaw)) return;
-    const expected=Number(window.prompt("Measured physical repeat in mm",""));
-    const observed=Number(window.prompt("Observed repeat on final render in mm",""));
-    if(!Number.isFinite(expected)||expected<=0||!Number.isFinite(observed)||observed<=0) return;
+    const fabricId=garmentRaw==="shirt"?outcome.shirt_id:outcome.pant_id;
+    const evidence=patternEvidenceByFabric[fabricId];
+    if(!evidence?.patterned){
+      setMessage("The selected garment uses a solid fabric and does not require repeat calibration.");
+      return;
+    }
+    if(!evidence.verified||!evidence.repeatMm){
+      setMessage("Reviewed physical repeat evidence is missing for "+fabricId+". Approve it in Fabric Analyzer before final-render pattern QA.");
+      return;
+    }
+    const observed=Number(window.prompt(`Reviewed physical repeat: ${evidence.repeatMm} mm. Enter the observed repeat on the final render in mm.`,""));
+    if(!Number.isFinite(observed)||observed<=0) return;
     const axisRaw=(window.prompt("Pattern axis: match, mismatch, or not_applicable","match")||"").trim().toLowerCase();
     if(!["match","mismatch","not_applicable"].includes(axisRaw)) return;
     const note=window.prompt("Optional calibration note","")||"";
     await post({
-      action:"pattern_calibration",outcomeId,
-      garment:garmentRaw,expectedRepeatMm:expected,observedRepeatMm:observed,axisStatus:axisRaw,note,
-    },"Physical pattern calibration saved.",outcomeId);
+      action:"pattern_calibration",outcomeId:outcome.outcome_id,
+      garment:garmentRaw,observedRepeatMm:observed,axisStatus:axisRaw,note,
+    },`Physical pattern calibration saved against reviewed ${evidence.repeatMm} mm fabric truth.`,outcome.outcome_id);
   }
 
   async function reviewIdentity(conceptId:string,status:"pass"|"fail"){
@@ -224,7 +236,19 @@ export default function RenderQaClient(){
           <b>{Number(entry.scale_error_pct).toFixed(1)}% scale error</b>
           <small>{entry.expected_repeat_mm} mm physical → {entry.observed_repeat_mm} mm render · axis {entry.axis_status.replaceAll("_"," ")}</small>
         </div>)}
-        <button className="renderQaCalibrate" disabled={busy===item.outcome_id} onClick={()=>void calibratePattern(item.outcome_id)}>Add measured pattern check</button>
+        <div className="renderQaPatternTruth">
+          <small>SHIRT: {patternEvidenceByFabric[item.shirt_id]?.patterned
+            ? patternEvidenceByFabric[item.shirt_id]?.verified
+              ? `reviewed repeat ${patternEvidenceByFabric[item.shirt_id]?.repeatMm} mm`
+              : "patterned · physical repeat not reviewed"
+            : "solid / no repeat gate"}</small>
+          <small>TROUSER: {patternEvidenceByFabric[item.pant_id]?.patterned
+            ? patternEvidenceByFabric[item.pant_id]?.verified
+              ? `reviewed repeat ${patternEvidenceByFabric[item.pant_id]?.repeatMm} mm`
+              : "patterned · physical repeat not reviewed"
+            : "solid / no repeat gate"}</small>
+        </div>
+        <button className="renderQaCalibrate" disabled={busy===item.outcome_id} onClick={()=>void calibratePattern(item)}>Add measured pattern check</button>
         <div className="renderQaReview">
           <strong>{item.human_status.toUpperCase()}</strong>
           {item.human_note&&<p>{item.human_note}</p>}
