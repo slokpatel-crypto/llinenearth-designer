@@ -68,3 +68,25 @@ export function normalizeStockReservation(input:unknown){
     requestedBy,sourceReference,
   };
 }
+
+
+export function normalizeStockConsumption(input:unknown){
+  if(!input||typeof input!=="object"||Array.isArray(input)) throw new Error("Stock consumption evidence is required.");
+  const source=input as Record<string,unknown>;
+  const reservationId=String(source.reservationId||"").trim();
+  const actualMetres=Number(source.actualMetres);
+  const note=String(source.note||"").replace(/\s+/g," ").trim().slice(0,600);
+  const checkedBy=String(source.checkedBy||"").replace(/\s+/g," ").trim().slice(0,120);
+  const sourceReference=String(source.sourceReference||"").replace(/\s+/g," ").trim().slice(0,240);
+
+  if(!/^[0-9a-f-]{36}$/i.test(reservationId)) throw new Error("Valid reservation ID is required.");
+  if(!Number.isFinite(actualMetres)||actualMetres<=0||actualMetres>100) throw new Error("Actual consumed metres must be positive.");
+  if(checkedBy.length<2) throw new Error("Named consumption checker is required.");
+  if(sourceReference.length<3) throw new Error("Actual cloth-usage evidence reference is required.");
+
+  return {
+    reservationId,
+    actualMetres:Math.round(actualMetres*1000)/1000,
+    note,checkedBy,sourceReference,
+  };
+}
