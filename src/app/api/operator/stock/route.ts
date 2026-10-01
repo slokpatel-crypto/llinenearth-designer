@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
-import { normalizeManualStockEvent } from "@/lib/designer/stock-ledger";
+import { normalizeManualStockEvent, normalizeStockReservation } from "@/lib/designer/stock-ledger";
 
 export const runtime="nodejs";
 
@@ -62,15 +62,14 @@ export async function POST(request:Request){
       return NextResponse.json({eventId});
     }
     if(action==="reserve"){
-      const fabricId=String(body.fabricId||"").trim().slice(0,160);
-      const revisionId=String(body.revisionId||"").trim().slice(0,220);
-      const requestKey=String(body.requestKey||"").trim().slice(0,180);
-      const quantity=Number(body.quantityMetres);
-      if(!fabricId||revisionId.length<12||requestKey.length<12||!Number.isFinite(quantity)||quantity<=0) {
-        return NextResponse.json({error:"Invalid reservation request."},{status:400});
-      }
-      const reservationId=await rpc<string>("fabric_stock_reserve",{
-        p_fabric_id:fabricId,p_quantity_metres:quantity,p_revision_id:revisionId,p_request_key:requestKey,
+      const draft=normalizeStockReservation(body);
+      const reservationId=await rpc<string>("fabric_stock_reserve_v2",{
+        p_fabric_id:draft.fabricId,
+        p_quantity_metres:draft.quantityMetres,
+        p_revision_id:draft.revisionId,
+        p_request_key:draft.requestKey,
+        p_requested_by:draft.requestedBy,
+        p_source_reference:draft.sourceReference,
       });
       return NextResponse.json({reservationId});
     }
