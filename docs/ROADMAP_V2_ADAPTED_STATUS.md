@@ -17,7 +17,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 | Phase 5 — Lock / Share / Enquiry | lock + share + secure recovery + authenticated customer ownership implemented | five-customer real-flow validation |
 | Phase 6 — Style Director | advanced foundation | owner-labelled benchmark / real-user validation |
 | Phase 7 — Final Render / QA | render outcome + human approval + credit metrics implemented | real approval/cost evidence + physical-pattern QA calibration |
-| Phase 8 — Production Bridge | handoff + stock/quote/order + QC + zero-reentry audit + versioned meterage registry implemented | approved physical meterage tables + 10 real zero-reentry deliveries |
+| Phase 8 — Production Bridge | handoff + stock/quote/order + customer ownership + QC + zero-reentry audit + versioned meterage registry implemented | approved physical meterage tables + 10 real zero-reentry deliveries |
 | Phase 9 — Hardening | CI/device QA + private-beta + human launch sign-off engineering implemented | real device acceptance + 5 successful beta cases + human sign-off + production READY |
 | Phase 10 — Ecommerce | intentionally later | only after Launch 3 |
 | Phase 11 — Closed loop | ongoing | post-launch evidence |
@@ -54,6 +54,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added opt-in secure measurement recovery vault with hashed recovery keys, expiry and deletion.
 - Added final-render outcome ledger, human approval desk, automated QA linkage, and credits-per-approved metrics.
 - Added Supabase email-OTP customer accounts, account-owned locked designs and measurement profiles, claim-by-recovery-token migration, and private account listing.
+- Propagated authenticated ownership from immutable locked designs into quotes/orders and added private customer production-status tracking.
 - Added phase adaptation records so future coding agents do not rebuild existing systems unnecessarily.
 
 ## Evidence we cannot manufacture in code
