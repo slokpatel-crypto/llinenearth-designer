@@ -217,7 +217,7 @@ requireTokens("src/lib/designer/ease-calibration.ts", ["requiredEaseEvidenceKeys
 requireTokens("src/lib/designer/preview-option-coverage.ts", ["fullyCleared","constructionBlocked","noPreviewSupport","gateComplete"]);
 requireTokens("src/lib/designer/novice-designer-study.ts", ["durationSeconds","likedDesignCompleted","targetSeconds","withinTargetCases","gateComplete"]);
 requireTokens("src/app/api/operator/novice-designer-study/route.ts", ["designer_novice_attempt_record","designer_novice_study_decision_record","verifyOperatorSession"]);
-requireTokens("src/app/operator/novice-designer-study/NoviceDesignerStudyClient.tsx", ["Novice Designer Completion Study","documented roadmap target","Record observed attempt","Approve five-case gate"]);
+requireTokens("src/app/operator/novice-designer-study/NoviceDesignerStudyClient.tsx", ["Novice Designer Completion Study","documented roadmap target","Start server stopwatch","Record server-timed attempt","Approve five-case gate"]);
 requireTokens("supabase/migrations/20261012_designer_novice_study.sql", ["designer_novice_attempts","designer_novice_study_decisions","five novice liked-design completions within the documented target","service_role"]);
 requireTokens("src/lib/designer/preview-option-reviews.ts", ["DESIGNER_STYLE_CHOICES","designer_preview_option_review","customerPreviewCoverageRows","constructionStatus"]);
 requireTokens("src/app/api/operator/preview-option-coverage/route.ts", ["verifyOperatorSession","customerPreviewCoverageRows","summarizePreviewOptionCoverage"]);
