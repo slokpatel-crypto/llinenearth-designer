@@ -157,7 +157,7 @@ export default function StyleDirectorValidationClient(){
         <div style={{display:"grid",gap:10}}>
           {!latestTests.length&&<p style={{opacity:.65}}>No Style Director user-test evidence recorded yet.</p>}
           {latestTests.slice(0,20).map((row)=>{
-            const clean=row.directions_understandable&&row.directions_distinct&&row.stock_handoff_worked&&!row.blocking_issue;
+            const clean=row.directions_understandable&&row.directions_distinct&&row.stock_handoff_worked&&Boolean(row.handoff_audit_id)&&!row.blocking_issue;
             return <div key={row.case_id} style={{borderTop:"1px solid #ece6dc",paddingTop:10}}>
               <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}><strong>{row.case_id}</strong><b>{clean?"ALL CHECKS CLEAN":"REVIEW"}</b></div>
               <div style={{fontSize:12,opacity:.62,marginTop:4}}>{row.device_class} · {new Date(row.created_at).toLocaleString("en-IN")}</div>
