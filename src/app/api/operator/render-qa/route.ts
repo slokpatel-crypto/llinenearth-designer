@@ -3,10 +3,12 @@ import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import {
   latestRenderCreditCap,
+  latestRenderManualReviewSignoff,
   listRenderIdentityReviews,
   listRenderOutcomes,
   listRenderPatternCalibrations,
   recordRenderCreditCap,
+  recordRenderManualReviewSignoff,
   recordRenderIdentityReview,
   recordRenderPatternCalibration,
   reviewRenderOutcome,
@@ -28,11 +30,12 @@ async function authorized(){
 
 export async function GET(){
   if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
-  const [outcomes,calibrations,identityReviews,creditCap]=await Promise.all([
+  const [outcomes,calibrations,identityReviews,creditCap,manualReviewSignoff]=await Promise.all([
     listRenderOutcomes(300),
     listRenderPatternCalibrations(300),
     listRenderIdentityReviews(300),
     latestRenderCreditCap(),
+    latestRenderManualReviewSignoff(),
   ]);
   const summary=summarizeRenderOutcomes(outcomes);
   const patternedFabricIds=new Set(
@@ -78,6 +81,7 @@ export async function GET(){
     calibrations,
     identityReviews,
     creditCap,
+    manualReviewSignoff,
     summary,
     patternSummary:summarizeRenderPatternCalibrations(calibrations),
     patternCoverageSummary,
@@ -101,6 +105,21 @@ export async function POST(request:Request){
       }
       const eventId=await recordRenderCreditCap({cap,reviewer,note:String(body.note||"")});
       return NextResponse.json({eventId});
+    }
+
+    if(action==="manual_review_signoff"){
+      const status=String(body.status||"");
+      const reviewer=String(body.reviewer||"").trim();
+      const note=String(body.note||"").trim();
+      if(!["approved","review"].includes(status)||reviewer.length<2||(status==="review"&&note.length<3)) {
+        return NextResponse.json({error:"A named reviewer and valid manual-review decision are required."},{status:400});
+      }
+      const signoffId=await recordRenderManualReviewSignoff({
+        status:status as "approved"|"review",
+        reviewer,
+        note,
+      });
+      return NextResponse.json({signoffId});
     }
 
     if(action==="identity_review"){
