@@ -1,4 +1,4 @@
-import { FABRIC_STOCK, type FabricColorway } from "@/lib/fabric-stock";
+import { FABRIC_STOCK, type FabricColorway } from "../fabric-stock.ts";
 import reference from "./reference-data.json";
 import { optionsFor } from "./options/library.ts";
 import { fromLegacyStyle } from "./style-spec-v2.ts";
