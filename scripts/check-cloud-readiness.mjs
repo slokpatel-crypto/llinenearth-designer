@@ -139,6 +139,8 @@ if (url && key) {
           ["fabric_physical_color_check_list",{p_limit:1},"Physical fabric colour evidence RPCs are installed."],
           ["style_director_user_test_list",{p_limit:1},"Style Director real-user validation RPCs are installed."],
           ["style_director_validation_signoff_list",{p_limit:1},"Style Director validation sign-off RPCs are installed."],
+          ["house_ease_evidence_list",{p_limit:1},"House-ease physical evidence RPCs are installed."],
+          ["house_ease_model_list",{p_limit:1},"Versioned house-ease calibration RPCs are installed."],
           ["designer_render_outcome_list",{p_limit:1},"Final render outcome ledger RPCs are installed."],
           ["designer_render_pattern_calibration_list",{p_limit:1},"Final render pattern calibration RPCs are installed."],
         ];
