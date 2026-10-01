@@ -20,7 +20,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 | Phase 8 — Production Bridge | handoff + stock/quote/order + customer ownership + QC + zero-reentry audit + versioned meterage registry implemented | approved physical meterage tables + 10 real zero-reentry deliveries |
 | Phase 9 — Hardening | CI/device QA + private-beta + human launch sign-off engineering implemented | real device acceptance + 5 successful beta cases + human sign-off + production READY |
 | Phase 10 — Ecommerce | intentionally later | only after Launch 3 |
-| Phase 11 — Closed loop | ongoing | post-launch evidence |
+| Phase 11 — Closed loop | delivered-order customer outcome evidence implemented | real outcome dataset + human-reviewed learning policy |
 
 ## Work completed in this Roadmap v2 branch
 
@@ -64,6 +64,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Propagated authenticated ownership from immutable locked designs into quotes/orders and added private customer production-status tracking.
 - Added itemized account-owned quote review and authenticated customer acceptance evidence before production-order creation.
 - Added a privacy-safe authenticated customer production timeline from append-only order events without exposing operator notes or event payloads.
+- Added Phase 11 post-delivery customer outcome evidence tied to delivered account-owned orders, with wear-confirmed fit evidence and no automatic Designer ranking changes.
 - Added phase adaptation records so future coding agents do not rebuild existing systems unnecessarily.
 
 ## Evidence we cannot manufacture in code
