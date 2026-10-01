@@ -34,11 +34,13 @@ export async function GET(){
     for(const row of rows){
       const payload=row.payload||{};
       if(String(payload.subtype||"")!=="roadmap_phase1_proof") continue;
+      const recordVersion=String(payload.version||"");
       const repeatMm=Number(payload.repeatMm);
       const measuredPreviewRepeatPx=Number(payload.measuredPreviewRepeatPx);
       const photoReferenceMm=Number(payload.photoReferenceMm);
       const photoReferencePx=Number(payload.photoReferencePx);
       const fixtureInputsValid=
+        recordVersion==="linen-earth-phase1-proof-v2"&&
         String(payload.scaleCoordinateSystem||"")==="photo-1024x1536-fixture"&&
         Number.isFinite(photoReferenceMm)&&photoReferenceMm>0&&
         Number.isFinite(photoReferencePx)&&photoReferencePx>0;
@@ -84,7 +86,9 @@ export async function GET(){
         configured:true,
         latest:{
           at:row.at,
+          version:recordVersion,
           status:acceptance.accepted?"accepted":"review",
+          coreAccepted:acceptance.accepted,
           fabricId:String(payload.fabricId||""),
           fabricName:String(payload.fabricName||""),
           pattern:String(payload.pattern||""),
