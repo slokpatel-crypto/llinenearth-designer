@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   LAUNCH_CHECKLIST_ITEMS,
   normalizeBetaAttempt,
+  normalizeVerifiedBetaAttempt,
   normalizeLaunchChecklistDecision,
   summarizeLaunchReadiness,
 } from "../src/lib/designer/launch-readiness-evidence.ts";
@@ -30,12 +31,12 @@ test("launch checklist approval requires named human sign-off",()=>{
 test("latest attempt per anonymous beta case controls the five-customer lock-flow gate",()=>{
   const attempts=Array.from({length:5},(_,index)=>({
     case_id:"BETA-"+index,device_class:index%2?"mobile":"desktop",
-    core_flow_completed:true,design_locked:true,share_or_enquiry_completed:true,blocking_bug:false,
+    core_flow_completed:true,design_locked:true,share_or_enquiry_completed:true,share_audit_confirmed:true,blocking_bug:false,
     created_at:"2026-10-0"+(index+1)+"T10:00:00Z",
   }));
   attempts.push({
     case_id:"BETA-0",device_class:"desktop",
-    core_flow_completed:false,design_locked:true,share_or_enquiry_completed:false,blocking_bug:true,
+    core_flow_completed:false,design_locked:true,share_or_enquiry_completed:false,share_audit_confirmed:false,blocking_bug:true,
     created_at:"2026-10-10T10:00:00Z",
   });
   const summary=summarizeLaunchReadiness(attempts,[]);
@@ -55,11 +56,34 @@ test("generic legacy completion cannot satisfy the stricter lock to share enquir
 test("launch evidence completes only when exact flow and checklist gates both pass",()=>{
   const attempts=Array.from({length:5},(_,index)=>({
     case_id:"BETA-"+index,device_class:"mobile",
-    core_flow_completed:true,design_locked:true,share_or_enquiry_completed:true,blocking_bug:false,
+    core_flow_completed:true,design_locked:true,share_or_enquiry_completed:true,share_audit_confirmed:true,blocking_bug:false,
     created_at:"2026-10-0"+(index+1)+"T10:00:00Z",
   }));
   const checklist=LAUNCH_CHECKLIST_ITEMS.map((item,index)=>({
     item_id:item.id,status:"approved",created_at:"2026-10-"+String(index+10).padStart(2,"0")+"T10:00:00Z",
   }));
   assert.equal(summarizeLaunchReadiness(attempts,checklist).launchEvidenceComplete,true);
+});
+
+
+test("verified beta attempt requires a locked revision id",()=>{
+  assert.throws(()=>normalizeVerifiedBetaAttempt({
+    caseId:"BETA-VERIFY",deviceClass:"mobile",revisionId:"",blockingBug:false,
+  }),/Locked revision ID/i);
+  const result=normalizeVerifiedBetaAttempt({
+    caseId:"BETA-VERIFY",deviceClass:"mobile",revisionId:"REV-123",blockingBug:false,
+  });
+  assert.equal(result.revisionId,"REV-123");
+});
+
+test("checkbox-only beta attempts cannot satisfy the verified share gate",()=>{
+  const attempts=Array.from({length:5},(_,index)=>({
+    case_id:"OLD-"+index,device_class:"mobile",
+    core_flow_completed:true,design_locked:true,share_or_enquiry_completed:true,blocking_bug:false,
+    created_at:"2026-10-0"+(index+1)+"T10:00:00Z",
+  }));
+  const summary=summarizeLaunchReadiness(attempts,[]);
+  assert.equal(summary.verifiedShareCases,0);
+  assert.equal(summary.successfulBetaCases,0);
+  assert.equal(summary.betaGateComplete,false);
 });
