@@ -156,6 +156,7 @@ if (url && key) {
           ["designer_render_pattern_calibration_list_v2",{p_limit:1},"Final render raw pixel-fixture calibration RPCs are installed."],
           ["designer_render_identity_review_list",{p_limit:1},"Cross-view render identity evidence RPCs are installed."],
           ["designer_render_credit_cap_latest",{},"Render commercial-cap evidence RPCs are installed."],
+          ["designer_render_manual_review_signoff_latest",{},"Final render manual-review sign-off RPC is installed."],
         ];
         for (const [rpcName,payload,label] of rpcChecks) {
           const rpcResponse = await fetch(
