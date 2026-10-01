@@ -189,6 +189,7 @@ export function PremiumShirtProof(){
             fabricName:realShirt?.name||"",
             pattern:realShirt?.patternType||"",
             repeatMm:effectiveRepeatMm,
+            pxPerMm,
             measuredPreviewRepeatPx:measuredPx,
             scaleErrorPct:error,
             scaleGatePass:pass===true,
