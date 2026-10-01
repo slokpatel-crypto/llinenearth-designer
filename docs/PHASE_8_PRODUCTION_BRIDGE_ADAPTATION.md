@@ -114,6 +114,7 @@ These systems provide the engineering path for zero re-entry. They do not make m
 A new private **Finished Garment QC** desk closes the engineering gap between a production order reaching **Ready** and being marked **Delivered**.
 
 The operator must inspect the real garment and record:
+- a named inspector/checker and a concrete physical inspection reference,
 - locked construction match,
 - exact fabric identity match,
 - finished-measurement check against the approved target,
@@ -122,7 +123,7 @@ The operator must inspect the real garment and record:
 - clean and damage-free condition,
 - optional inspector initials, defect tags and notes.
 
-Approval is append-only evidence tied to the production order, locked revision and recipe hash. A rework decision automatically sends the order back to **Stitching**. The API and database both refuse **Delivered** unless the latest QC inspection is approved.
+Approval is append-only evidence tied to the production order, locked revision and recipe hash. A rework decision automatically sends the order back to **Stitching**. The API and database both refuse **Delivered** unless the latest QC inspection is approved **and** contains current provenance (named inspector + physical inspection reference). Legacy provenance-free approvals remain historical and do not unlock delivery.
 
 This remains a human physical inspection. The software does not auto-claim that a garment passed QC.
 
