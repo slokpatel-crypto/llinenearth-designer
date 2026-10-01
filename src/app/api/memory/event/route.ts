@@ -343,6 +343,7 @@ function cleanPayload(type:string, input:unknown) {
         photoReferencePx:Number.isFinite(photoReferencePx)&&photoReferencePx>0&&photoReferencePx<=10000?Math.round(photoReferencePx*100)/100:null,
         photoPxPerMm:Number.isFinite(photoPxPerMm)&&photoPxPerMm>0&&photoPxPerMm<=100?Math.round(photoPxPerMm*10000)/10000:null,
         scaleCoordinateSystem:scaleCoordinateSystem==="photo-1024x1536-fixture"?scaleCoordinateSystem:"",
+        physicalEvidenceNote:text(payload.physicalEvidenceNote,700),
         realismAssessments:assessments,
         uniqueRealismViewers:Math.max(0,Math.min(50,Math.floor(Number(payload.uniqueRealismViewers)||0))),
       };
