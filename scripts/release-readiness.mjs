@@ -667,10 +667,12 @@ requireTokens("supabase/migrations/20260920_style_events_hardening.sql", [
 ]);
 requireTokens("scripts/check-cloud-readiness.mjs", [
   "fabric_stock_snapshot",
+  "fabric_stock_snapshot_v2",
   "production_quote_list",
   "production_order_list",
   "production_delivery_evidence_list",
   "production_meterage_model_list",
+  "production_cut_evidence_list",
   "launch_beta_attempt_list",
   "launch_checklist_event_list",
   "designer_locked_revision_vault_get",
