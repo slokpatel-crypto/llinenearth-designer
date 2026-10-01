@@ -46,14 +46,14 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Removed numeric direction ranking from Style Director candidate UI.
 - Added immutable SHA-256 locked design revision contract + verification tests.
 - Added Designer lock/export action.
-- Added evidence-safe production / tailor handoff contract.
+- Added evidence-safe production / tailor handoff contract; packet generation proves locked-recipe traceability only and does not itself claim zero manual re-entry.
 - Added Designer tailor-handoff export.
 - Added printable tailor tech pack generated from the same locked recipe.
 - Added private real production cloth-usage calibration capture before any meterage estimator is allowed.
 - Added append-only stock ledger with revision-linked reservation / release / consumption.
 - Added operator-entered quote ledger and production-order status workflow tied to immutable recipe hashes.
 - Added append-only finished-garment QC inspections with a hard delivery gate and automatic rework-to-stitching loop.
-- Added immutable delivered-order zero-reentry audits and an evidence scorecard for the first 10 real production orders.
+- Added immutable delivered-order zero-reentry audits and an evidence scorecard for the first 10 real production orders; current qualifying audits require a named checker plus a concrete production-flow reference, while legacy provenance-free rows stay visible but cannot satisfy the gate.
 - Added a versioned meterage calibration registry that requires ≥20 real cuts per garment and explicit owner/tailor approval before activation.
 - Added anonymous five-case private-beta evidence capture and append-only human launch sign-offs for Phase 9 hardening.
 - Added opt-in secure measurement recovery vault with hashed recovery keys, expiry and deletion.
