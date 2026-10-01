@@ -143,6 +143,8 @@ if (url && key) {
           ["production_customer_outcome_list",{p_limit:1},"Operator post-delivery outcome RPCs are installed."],
           ["production_customer_outcome_review_list",{p_limit:1},"Customer outcome human-review RPCs are installed."],
           ["production_customer_outcome_policy_list",{p_limit:1},"Customer outcome learning-policy RPCs are installed."],
+          ["production_order_learning_context_list",{p_limit:1},"Durable production design-lineage RPCs are installed."],
+          ["production_customer_outcome_learning_list",{p_limit:1},"Outcome-to-design learning lineage RPCs are installed."],
           ["fabric_physical_color_check_list",{p_limit:1},"Physical fabric colour evidence RPCs are installed."],
           ["style_director_user_test_list",{p_limit:1},"Style Director real-user validation RPCs are installed."],
           ["style_director_validation_signoff_list",{p_limit:1},"Style Director validation sign-off RPCs are installed."],
