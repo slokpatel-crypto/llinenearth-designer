@@ -126,6 +126,9 @@ export type FinalRenderReleaseEvidenceInput={
     configured:boolean;
     withinCap:boolean|null;
   };
+  manualReviewSignoff:{
+    status:"approved"|"review"|null;
+  };
   patternCoverage:{
     requiredPairs:number;
     passedPairs:number;
@@ -157,7 +160,8 @@ export function evaluateFinalRenderReleaseEvidence(input:FinalRenderReleaseEvide
 
   const costGateComplete=input.creditCap.configured===true&&input.creditCap.withinCap===true;
   const patternGateComplete=input.patternCoverage.gateComplete===true;
-  const completedGates=[approvalGateComplete,identityGateComplete,costGateComplete,patternGateComplete].filter(Boolean).length;
+  const manualReviewGateComplete=input.manualReviewSignoff.status==="approved";
+  const completedGates=[approvalGateComplete,identityGateComplete,costGateComplete,patternGateComplete,manualReviewGateComplete].filter(Boolean).length;
 
   const reviewVolumeProgress=Math.min(100,reviewed/FINAL_RENDER_REVIEW_TARGET*100);
   const approvalRateProgress=approvalRate===null
@@ -183,10 +187,11 @@ export function evaluateFinalRenderReleaseEvidence(input:FinalRenderReleaseEvide
     identityGateComplete,
     costGateComplete,
     patternGateComplete,
-    gateComplete:completedGates===4,
+    manualReviewGateComplete,
+    gateComplete:completedGates===5,
     completedGates,
-    totalGates:4,
-    progressPercent:Math.round((approvalProgress+identityProgress+costProgress+patternProgress)/4),
+    totalGates:5,
+    progressPercent:Math.round((approvalProgress+identityProgress+costProgress+patternProgress+(manualReviewGateComplete?100:0))/5),
     approvalProgress,
     identityProgress,
     costProgress,
