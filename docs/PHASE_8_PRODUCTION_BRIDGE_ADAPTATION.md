@@ -171,3 +171,8 @@ The code therefore supports a controlled production estimator, but it does not c
 ## Physical stock provenance gate
 
 New manual stock receipts and adjustments are accepted only with a named checker and a physical source reference. The v2 stock snapshot reports manual-event provenance per fabric. Legacy stock rows remain part of the numeric balance for audit continuity, but any positive-stock fabric with provenance-free manual events stays **open** in Roadmap readiness rather than being treated as verified live stock.
+
+
+## Reservation quantity provenance
+
+Stock reservation metres are no longer accepted as an unexplained operator number. Every new reservation must name the requester/checker and reference the real source of the quantity (for example an approved meterage sheet or tailor request). The reservation remains tied to the immutable locked revision and keeps the existing idempotent request-key protection.
