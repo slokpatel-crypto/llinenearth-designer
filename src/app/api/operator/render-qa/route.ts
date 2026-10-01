@@ -1,8 +1,18 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
-import { listRenderOutcomes, listRenderPatternCalibrations, recordRenderPatternCalibration, reviewRenderOutcome } from "@/lib/designer/render-outcomes";
+import {
+  latestRenderCreditCap,
+  listRenderIdentityReviews,
+  listRenderOutcomes,
+  listRenderPatternCalibrations,
+  recordRenderCreditCap,
+  recordRenderIdentityReview,
+  recordRenderPatternCalibration,
+  reviewRenderOutcome,
+} from "@/lib/designer/render-outcomes";
 import { summarizeRenderOutcomes, summarizeRenderPatternCalibrations } from "@/lib/designer/render-outcome-metrics";
+import { evaluateRenderCreditCap, summarizeCrossViewIdentity } from "@/lib/designer/render-release-evidence";
 
 export const runtime="nodejs";
 
@@ -13,12 +23,22 @@ async function authorized(){
 
 export async function GET(){
   if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
-  const [outcomes,calibrations]=await Promise.all([listRenderOutcomes(300),listRenderPatternCalibrations(300)]);
+  const [outcomes,calibrations,identityReviews,creditCap]=await Promise.all([
+    listRenderOutcomes(300),
+    listRenderPatternCalibrations(300),
+    listRenderIdentityReviews(300),
+    latestRenderCreditCap(),
+  ]);
+  const summary=summarizeRenderOutcomes(outcomes);
   return NextResponse.json({
     outcomes,
     calibrations,
-    summary:summarizeRenderOutcomes(outcomes),
+    identityReviews,
+    creditCap,
+    summary,
     patternSummary:summarizeRenderPatternCalibrations(calibrations),
+    identitySummary:summarizeCrossViewIdentity(outcomes,identityReviews),
+    creditCapSummary:evaluateRenderCreditCap(summary.creditsPerApproved,creditCap?Number(creditCap.credits_per_approved_cap):null),
   },{headers:{"cache-control":"private, no-store"}});
 }
 
@@ -27,6 +47,33 @@ export async function POST(request:Request){
   try{
     const body=await request.json() as Record<string,unknown>;
     const action=String(body.action||"review");
+
+    if(action==="credit_cap"){
+      const cap=Number(body.cap);
+      const reviewer=String(body.reviewer||"").trim();
+      if(!Number.isFinite(cap)||cap<=0||cap>100000||!reviewer) {
+        return NextResponse.json({error:"A valid owner-approved credit cap and reviewer are required."},{status:400});
+      }
+      const eventId=await recordRenderCreditCap({cap,reviewer,note:String(body.note||"")});
+      return NextResponse.json({eventId});
+    }
+
+    if(action==="identity_review"){
+      const conceptId=String(body.conceptId||"").trim();
+      const status=String(body.status||"");
+      const reviewer=String(body.reviewer||"").trim();
+      if(!conceptId||!["pass","fail"].includes(status)||!reviewer) {
+        return NextResponse.json({error:"Concept, identity decision and reviewer are required."},{status:400});
+      }
+      const reviewId=await recordRenderIdentityReview({
+        conceptId,
+        status:status as "pass"|"fail",
+        reviewer,
+        note:String(body.note||""),
+      });
+      return NextResponse.json({reviewId});
+    }
+
     const outcomeId=String(body.outcomeId||"").trim();
     if(!outcomeId) return NextResponse.json({error:"Render outcome is required."},{status:400});
 
