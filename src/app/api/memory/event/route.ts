@@ -5,6 +5,7 @@ import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-adm
 import { verifyMemorySessionToken } from "@/lib/memory-session";
 import { CREATIVE_FEEDBACK_REASONS } from "@/lib/designer/creative-learning";
 import { legacyMemoryHeader } from "@/lib/runtime-compat";
+import { normalizeFabricPhysicalEvidenceProvenance } from "@/lib/fabric-physical-provenance";
 
 const PUBLIC_TYPES = new Set([
   "session_started",
@@ -444,6 +445,7 @@ function cleanPayload(type:string, input:unknown) {
       const drape = text(payload.drape,20);
       const weightGsmRaw = Number(payload.weightGsm);
       const formalityRaw = Number(payload.formalityScore);
+      const physicalEvidence = normalizeFabricPhysicalEvidenceProvenance(payload.physicalEvidence);
       const seasonTags = Array.isArray(payload.seasonTags)
         ? payload.seasonTags.map((item)=>text(item,30)).filter((item)=>["Spring","Summer","Autumn","Winter","All-season"].includes(item)).slice(0,5)
         : [];
@@ -462,6 +464,7 @@ function cleanPayload(type:string, input:unknown) {
         seasonTags,
         formalityScore:Number.isFinite(formalityRaw) && formalityRaw >= 1 && formalityRaw <= 5 ? Math.round(formalityRaw*10)/10 : undefined,
         roleTags,
+        ...(physicalEvidence?{physicalEvidence}:{}),
         note:text(payload.note,500),
       };
     }
