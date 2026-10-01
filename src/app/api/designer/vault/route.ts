@@ -119,7 +119,6 @@ export async function POST(request:Request){
             vaultId:row.vault_id,
             revisionId:row.revision_id,
             recipeHash:row.recipe_hash,
-            revision:row.payload,
             createdAt:row.created_at,
             expiresAt:row.expires_at,
           });
