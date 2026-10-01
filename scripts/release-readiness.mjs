@@ -88,6 +88,9 @@ for (const path of [
   "src/app/operator/garment-qc/page.tsx",
   "src/lib/designer/finished-garment-qc.ts",
   "supabase/migrations/20261002_finished_garment_qc.sql",
+  "src/app/operator/production-evidence/page.tsx",
+  "src/lib/designer/production-delivery-evidence.ts",
+  "supabase/migrations/20261003_production_delivery_evidence.sql",
   "src/app/operator/production-calibration/page.tsx",
   "supabase/migrations/20261001_designer_locked_revision_vault.sql",
   "supabase/migrations/20261001_measurement_profile_vault.sql",
@@ -381,6 +384,9 @@ requireTokens("supabase/migrations/20261001_production_quotes_orders.sql", ["pro
 requireTokens("supabase/migrations/20261002_finished_garment_qc.sql", ["finished_garment_qc_record","finished_garment_qc_list","finished-garment QC approval is required before delivery","service_role"]);
 requireTokens("src/app/operator/garment-qc/GarmentQcClient.tsx", ["Finished Garment QC","Approve for delivery","Record rework","PHYSICAL CHECKS"]);
 requireTokens("src/app/api/operator/production/route.ts", ["finished_garment_qc_list","Finished-garment QC approval is required before delivery."]);
+requireTokens("supabase/migrations/20261003_production_delivery_evidence.sql", ["production_delivery_evidence_record","production_delivery_evidence_list","delivery evidence can only be recorded for a delivered order","service_role"]);
+requireTokens("src/lib/designer/production-delivery-evidence.ts", ["PRODUCTION_REENTRY_FIELDS","summarizeProductionDeliveryEvidence","gateComplete","reentryIncidentCount"]);
+requireTokens("src/app/operator/production-evidence/ProductionEvidenceClient.tsx", ["Zero-Reentry Proof","FIRST 10 AUDITED","ZERO RE-ENTRY","Save immutable completion audit"]);
 requireTokens("next.config.ts", ["Strict-Transport-Security","X-Frame-Options","Cross-Origin-Opener-Policy"]);
 requireTokens("src/app/api/designer/look-render/route.ts", ["recordRenderOutcome","repair:true"]);
 requireTokens("src/app/api/designer/look-inspect/route.ts", ["attachRenderQa","jobId"]);
@@ -422,6 +428,7 @@ requireTokens("scripts/check-cloud-readiness.mjs", [
   "fabric_stock_snapshot",
   "production_quote_list",
   "production_order_list",
+  "production_delivery_evidence_list",
   "designer_locked_revision_vault_get",
   "measurement_profile_vault_get",
   "designer_render_outcome_list",

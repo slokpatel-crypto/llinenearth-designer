@@ -1,6 +1,6 @@
 # Phase 8 — Production Bridge Adaptation
 
-Status: production handoff, printable tech pack, real usage capture, stock ledger, quote ledger and production-order workflow are implemented. Physical calibration and first-order evidence remain open.
+Status: production handoff, printable tech pack, real usage capture, stock/quote/order workflow, finished-garment QC and zero-reentry evidence capture are implemented. Physical calibration and real first-order outcomes remain open.
 
 ## New production handoff
 
@@ -55,6 +55,7 @@ The same locked handoff can also export a printable HTML tech pack. It includes 
 - [x] evidence-safe operator-entered quote ledger
 - [x] tailor-ready formatted tech pack / print layout
 - [x] finished-garment QC evidence desk + delivery gate
+- [x] first-10 zero-reentry evidence capture + scorecard implemented
 - [ ] first 10 production orders completed with zero design-data re-entry
 
 
@@ -116,3 +117,17 @@ The operator must inspect the real garment and record:
 Approval is append-only evidence tied to the production order, locked revision and recipe hash. A rework decision automatically sends the order back to **Stitching**. The API and database both refuse **Delivered** unless the latest QC inspection is approved.
 
 This remains a human physical inspection. The software does not auto-claim that a garment passed QC.
+
+
+## First-10 zero-reentry proof
+
+A private **Zero-Reentry Proof** desk now measures the remaining operational gate instead of letting it be checked manually.
+
+For every real **Delivered** order, the operator records whether any design data had to be typed again during the handoff or production flow. If re-entry happened, the audit records which category was re-entered and preserves the incident instead of hiding it.
+
+The scorecard evaluates the **first 10 delivered orders in chronological order**:
+- all 10 must have an immutable completion audit,
+- all 10 must confirm zero manual design-data re-entry,
+- any recorded re-entry incident keeps the gate open.
+
+The software therefore supplies the evidence mechanism, but the roadmap item stays incomplete until 10 real delivered orders actually prove the result.

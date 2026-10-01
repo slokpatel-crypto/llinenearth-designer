@@ -114,7 +114,7 @@ export default function ProductionClient(){
   return <main className="productionDesk">
     <header className="productionHeader">
       <div><span>LINEN EARTH / PRIVATE OPERATOR</span><h1>Production Desk</h1><p>Create traceable quotes and production orders from locked design revisions. Amounts are entered by the operator; this desk never invents prices.</p></div>
-      <nav><Link href="/operator">Operator Desk</Link><Link href="/operator/stock">Stock Ledger</Link><Link href="/operator/production-calibration">Usage Calibration</Link><Link href="/operator/garment-qc">Garment QC</Link></nav>
+      <nav><Link href="/operator">Operator Desk</Link><Link href="/operator/stock">Stock Ledger</Link><Link href="/operator/production-calibration">Usage Calibration</Link><Link href="/operator/garment-qc">Garment QC</Link><Link href="/operator/production-evidence">Zero-Reentry Proof</Link></nav>
     </header>
 
     <section className="productionLoad">
@@ -198,6 +198,7 @@ export default function ProductionClient(){
             <strong>{item.status.replaceAll("_"," ").toUpperCase()}</strong>
             <small>{item.order_id}</small>
             {item.status==="ready"&&<Link className="productionQcLink" href={"/operator/garment-qc?order="+encodeURIComponent(item.order_id)}>Finished garment QC · {latestQc?.decision||"pending"}</Link>}
+            {item.status==="delivered"&&<Link className="productionEvidenceLink" href={"/operator/production-evidence?order="+encodeURIComponent(item.order_id)}>Record zero-reentry evidence</Link>}
             {nextStatuses.length>0&&<select defaultValue="" onChange={(e)=>{if(e.target.value) void post({action:"order_status",orderId:item.order_id,status:e.target.value},"Order status updated.");}}>
               <option value="">Update status…</option>
               {nextStatuses.map((status)=><option key={status} value={status}>{status.replaceAll("_"," ")}</option>)}

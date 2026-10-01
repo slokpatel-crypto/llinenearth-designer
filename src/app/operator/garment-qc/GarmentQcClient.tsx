@@ -37,8 +37,10 @@ export default function GarmentQcClient(){
     setConfigured(data.configured!==false);
     setOrders(nextOrders);
     setInspections(Array.isArray(data.inspections)?data.inspections:[]);
+    const requested=new URLSearchParams(window.location.search).get("order");
+    const requestedReady=nextOrders.find((item:Order)=>item.status==="ready"&&item.order_id===requested);
     const firstReady=nextOrders.find((item:Order)=>item.status==="ready");
-    setSelectedOrderId((current)=>current||firstReady?.order_id||"");
+    setSelectedOrderId((current)=>current||requestedReady?.order_id||firstReady?.order_id||"");
   }
 
   useEffect(()=>{void load();},[]);
