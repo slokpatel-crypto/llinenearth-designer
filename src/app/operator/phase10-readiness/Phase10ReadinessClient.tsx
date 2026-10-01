@@ -242,6 +242,7 @@ type NoviceDesignerStudyPayload={
     uniqueCases:number;
     noviceCases:number;
     likedDesignCases:number;
+    serverTimedLikedCases:number;
     blockingCases:number;
     medianLikedDesignSeconds:number|null;
     targetSeconds:number|null;
@@ -365,7 +366,7 @@ export default function Phase10ReadinessClient(){
     const noviceStudy=data.noviceDesignerStudy?.summary;
     const noviceProgress=noviceStudy?.targetSeconds
       ? ratio(noviceStudy.withinTargetCases,5)
-      : ratio(noviceStudy?.likedDesignCases||0,5);
+      : ratio(noviceStudy?.serverTimedLikedCases||0,5);
     const noviceDone=noviceStudy?.gateComplete===true;
 
     const easeCalibration=data.easeCalibration?.summary;
