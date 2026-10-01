@@ -17,6 +17,7 @@ const url = process.env.SUPABASE_URL?.trim();
 const secret = process.env.SUPABASE_SECRET_KEY?.trim();
 const legacy = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 const key = secret || legacy;
+const anonKey = (process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)?.trim();
 const readBrandEnv = (name) => process.env[name]?.trim() || process.env[`L${name}`]?.trim() || "";
 const legacyBrandIdentifier = (name) => `l${name}`;
 const syncToken = readBrandEnv("LINEN_OPERATOR_SYNC_TOKEN");
@@ -47,6 +48,9 @@ if (!key) {
   ok("Legacy service_role key is configured (supported fallback).");
   warn("Plan to migrate to SUPABASE_SECRET_KEY before legacy service_role keys are retired.");
 }
+
+if (!anonKey) fail("SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY is missing for customer email authentication.");
+else ok("Supabase public auth key is configured.");
 
 if (!syncToken || syncToken.length < 24) fail("LINEN_OPERATOR_SYNC_TOKEN is missing or too short.");
 else ok("Desktop sync token is configured.");
@@ -124,6 +128,8 @@ if (url && key) {
           ["launch_checklist_event_list",{p_limit:1},"Human launch checklist RPCs are installed."],
           ["designer_locked_revision_vault_get",{p_vault_id:"00000000-0000-4000-8000-000000000000",p_access_hash:"0".repeat(64)},"Locked design recovery vault RPCs are installed."],
           ["measurement_profile_vault_get",{p_vault_id:"00000000-0000-4000-8000-000000000000",p_access_hash:"0".repeat(64)},"Measurement recovery vault RPCs are installed."],
+          ["designer_locked_revision_vault_list_owned",{p_owner_user_id:"00000000-0000-4000-8000-000000000000"},"Authenticated design ownership RPCs are installed."],
+          ["measurement_profile_vault_list_owned",{p_owner_user_id:"00000000-0000-4000-8000-000000000000"},"Authenticated measurement ownership RPCs are installed."],
           ["designer_render_outcome_list",{p_limit:1},"Final render outcome ledger RPCs are installed."],
           ["designer_render_pattern_calibration_list",{p_limit:1},"Final render pattern calibration RPCs are installed."],
         ];
