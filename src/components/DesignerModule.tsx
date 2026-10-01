@@ -159,6 +159,9 @@ export function DesignerModule() {
   const [lockBusy,setLockBusy]=useState(false);
   const [shareBusy,setShareBusy]=useState(false);
   const [shareMessage,setShareMessage]=useState("");
+  const [vaultBusy,setVaultBusy]=useState(false);
+  const [vaultMessage,setVaultMessage]=useState("");
+  const [vaultRecoveryToken,setVaultRecoveryToken]=useState("");
   const [creativeDirections, setCreativeDirections] = useState<CreativeDirection[]>([]);
   const [activeCreative, setActiveCreative] = useState<CreativeDirection | null>(null);
   const [creativeAutoNote,setCreativeAutoNote]=useState("");
@@ -202,6 +205,8 @@ export function DesignerModule() {
 
   useEffect(()=>{
     setLockedRevision(null);
+    setVaultRecoveryToken("");
+    setVaultMessage("");
   },[shirtId,pantId,styleSpec,bodyProfile,measurementProfile,activeCreative]);
 
   useEffect(() => {
@@ -1021,6 +1026,31 @@ export function DesignerModule() {
     }
   }
 
+  async function saveLockedRevisionToVault() {
+    if(!lockedRevision||vaultBusy) return;
+    setVaultBusy(true);setVaultMessage("");
+    try{
+      const response=await fetch("/api/designer/vault",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({action:"store",revision:lockedRevision}),
+      });
+      const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;error?:string};
+      if(!response.ok||!result.recoveryToken) throw new Error(result.error||"Secure cloud copy could not be saved.");
+      setVaultRecoveryToken(result.recoveryToken);
+      try{
+        await navigator.clipboard.writeText(result.recoveryToken);
+        setVaultMessage(`Recovery token copied · secure copy expires in ${result.expiresInDays||180} days.`);
+      }catch{
+        setVaultMessage("Secure cloud copy saved. Copy the recovery token below and keep it private.");
+      }
+    }catch(error){
+      setVaultMessage(error instanceof Error?error.message:"Secure cloud copy could not be saved.");
+    }finally{
+      setVaultBusy(false);
+    }
+  }
+
   return <div className="newDesigner">
     <header className="newDesignerHero">
       <div className="newDesignerHeroCopy">
@@ -1354,6 +1384,13 @@ export function DesignerModule() {
                 <button type="button" onClick={downloadTailorTechPack}>Export printable tech pack ↗</button>
                 <button type="button" onClick={()=>void shareLockedRevision()} disabled={shareBusy}>{shareBusy?"Creating share…":"Copy private share link ↗"}</button>
                 {shareMessage&&<p>{shareMessage}</p>}
+                <button type="button" onClick={()=>void saveLockedRevisionToVault()} disabled={vaultBusy}>{vaultBusy?"Saving secure copy…":"Save secure cloud copy ↗"}</button>
+                {vaultMessage&&<p>{vaultMessage}</p>}
+                {vaultRecoveryToken&&<>
+                  <p><b>Recovery token:</b> keep this private. Anyone with it can recover this locked design until it expires.</p>
+                  <textarea readOnly value={vaultRecoveryToken} rows={3} aria-label="Secure design recovery token"/>
+                  <Link href="/recover-design">Open design recovery →</Link>
+                </>}
               </>}
             </>}
           </details>
