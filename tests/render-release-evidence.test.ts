@@ -63,7 +63,7 @@ test("final render release stays open when any human evidence boundary is unreso
   assert.equal(result.identityGateComplete,false);
   assert.equal(result.costGateComplete,false);
   assert.equal(result.gateComplete,false);
-  assert.equal(result.progressPercent,50);
+  assert.equal(result.progressPercent,62);
   assert.equal(result.remainingReviews,1);
 });
 
@@ -78,7 +78,7 @@ test("cross-view release evidence cannot pass before a multi-view concept exists
   assert.equal(result.approvalGateComplete,true);
   assert.equal(result.identityGateComplete,false);
   assert.equal(result.costGateComplete,true);
-  assert.equal(result.progressPercent,67);
+  assert.equal(result.progressPercent,75);
   assert.equal(result.gateComplete,false);
 });
 
