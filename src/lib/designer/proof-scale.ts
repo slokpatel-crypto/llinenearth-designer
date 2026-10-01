@@ -61,6 +61,32 @@ export const PHASE1_PROOF_MIN_STRONG_REALISM=6;
 export const PHASE1_PROOF_MIN_LATENCY_SAMPLES=12;
 export const PHASE1_PROOF_MAX_P95_MS=300;
 
+export type RealismAssessment={
+  viewerId:string;
+  rating:number;
+  recordedAt?:string;
+};
+
+export function summarizeIndependentRealism(assessments:RealismAssessment[]){
+  const latest=new Map<string,RealismAssessment>();
+  for(const item of assessments){
+    const viewerId=String(item.viewerId||"").trim().toLowerCase();
+    const rating=Math.round(Number(item.rating));
+    if(viewerId.length<2||viewerId.length>80||rating<1||rating>5) continue;
+    latest.set(viewerId,{...item,viewerId,rating});
+  }
+  const unique=[...latest.values()];
+  const ratings=unique.map((item)=>item.rating);
+  const strongRatings=ratings.filter((rating)=>rating>=4).length;
+  return {
+    uniqueViewers:unique.length,
+    strongRatings,
+    ratings,
+    assessments:unique,
+    ready:unique.length>=PHASE1_PROOF_MIN_REALISM_VIEWERS&&strongRatings>=PHASE1_PROOF_MIN_STRONG_REALISM,
+  };
+}
+
 export type Phase1ProofAcceptanceInput={
   repeatMm:number|null;
   scaleGatePass:boolean|null;
