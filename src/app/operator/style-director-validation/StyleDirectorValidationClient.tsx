@@ -10,7 +10,7 @@ import {
 type TestRow={
   attempt_id:string;case_id:string;device_class:string;
   directions_understandable:boolean;directions_distinct:boolean;
-  stock_handoff_worked:boolean;blocking_issue:boolean;note:string;created_at:string;
+  stock_handoff_worked:boolean;handoff_audit_id?:string|null;blocking_issue:boolean;note:string;created_at:string;
 };
 type SignoffRow={event_id:string;status:string;required_positive_cases?:number|null;signed_by:string;note:string;created_at:string};
 
@@ -27,6 +27,7 @@ export default function StyleDirectorValidationClient(){
   const [understandable,setUnderstandable]=useState(false);
   const [distinct,setDistinct]=useState(false);
   const [handoff,setHandoff]=useState(false);
+  const [handoffAuditId,setHandoffAuditId]=useState("");
   const [blocking,setBlocking]=useState(false);
   const [note,setNote]=useState("");
   const [signedBy,setSignedBy]=useState("");
@@ -75,11 +76,12 @@ export default function StyleDirectorValidationClient(){
       directionsUnderstandable:understandable,
       directionsDistinct:distinct,
       stockHandoffWorked:handoff,
+      handoffAuditId,
       blockingIssue:blocking,
       note,
     },"Style Director real-user test recorded.");
     if(saved){
-      setCaseId("");setUnderstandable(false);setDistinct(false);setHandoff(false);setBlocking(false);setNote("");
+      setCaseId("");setUnderstandable(false);setDistinct(false);setHandoff(false);setHandoffAuditId("");setBlocking(false);setNote("");
     }
   }
 
@@ -89,7 +91,7 @@ export default function StyleDirectorValidationClient(){
     },status==="approved"?"Style Director validation signed off.":"Style Director validation kept in review.");
   }
 
-  const validCase=/^[A-Za-z0-9._-]{3,80}$/.test(caseId.trim())&&(!blocking||note.trim().length>=3);
+  const validCase=/^[A-Za-z0-9._-]{3,80}$/.test(caseId.trim())&&(!handoff||/^[0-9a-f-]{36}$/i.test(handoffAuditId.trim()))&&(!blocking||note.trim().length>=3);
 
   return <main style={{minHeight:"100vh",background:"#f8f6f0",padding:"34px 18px",color:"#1a1a1a"}}>
     <div style={{maxWidth:1050,margin:"0 auto",display:"grid",gap:18}}>
@@ -124,6 +126,7 @@ export default function StyleDirectorValidationClient(){
             <label><input type="checkbox" checked={understandable} onChange={(e)=>setUnderstandable(e.target.checked)}/> Three directions were understandable</label>
             <label><input type="checkbox" checked={distinct} onChange={(e)=>setDistinct(e.target.checked)}/> Directions felt materially distinct</label>
             <label><input type="checkbox" checked={handoff} onChange={(e)=>setHandoff(e.target.checked)}/> Exact stock/style handoff opened correctly</label>
+            {handoff&&<label><span>Verified handoff audit ID</span><input style={input} value={handoffAuditId} onChange={(e)=>setHandoffAuditId(e.target.value.slice(0,80))} placeholder="Copy from the Designer handoff banner"/><small style={{display:"block",opacity:.6,marginTop:4}}>The clean-case gate accepts handoff success only when this server audit exists.</small></label>}
             <label><input type="checkbox" checked={blocking} onChange={(e)=>setBlocking(e.target.checked)}/> Blocking issue occurred</label>
             <label><span>Observation note</span><textarea style={{...input,minHeight:90}} value={note} onChange={(e)=>setNote(e.target.value.slice(0,1200))} placeholder="What confused the user, what felt repetitive, or what was confirmed?"/></label>
             <button style={button} disabled={!configured||busy||!validCase} onClick={()=>void recordTest()}>{busy?"Saving…":"Record user-test evidence"}</button>
@@ -158,7 +161,7 @@ export default function StyleDirectorValidationClient(){
             return <div key={row.case_id} style={{borderTop:"1px solid #ece6dc",paddingTop:10}}>
               <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}><strong>{row.case_id}</strong><b>{clean?"ALL CHECKS CLEAN":"REVIEW"}</b></div>
               <div style={{fontSize:12,opacity:.62,marginTop:4}}>{row.device_class} · {new Date(row.created_at).toLocaleString("en-IN")}</div>
-              <div style={{fontSize:13,marginTop:6}}>Understandable {row.directions_understandable?"✓":"×"} · Distinct {row.directions_distinct?"✓":"×"} · Handoff {row.stock_handoff_worked?"✓":"×"} · Blocking issue {row.blocking_issue?"yes":"no"}</div>
+              <div style={{fontSize:13,marginTop:6}}>Understandable {row.directions_understandable?"✓":"×"} · Distinct {row.directions_distinct?"✓":"×"} · Handoff {row.stock_handoff_worked?(row.handoff_audit_id?"verified ✓":"unverified"):"×"} · Blocking issue {row.blocking_issue?"yes":"no"}</div>
               {row.note&&<p style={{fontSize:13,opacity:.7,marginBottom:0}}>{row.note}</p>}
             </div>;
           })}
