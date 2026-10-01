@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeManualStockEvent, stockSnapshot } from "../src/lib/designer/stock-ledger.ts";
+import { normalizeManualStockEvent, normalizeStockReservation, stockSnapshot } from "../src/lib/designer/stock-ledger.ts";
 
 test("reservation reduces available stock without changing physical stock",()=>{
   assert.deepEqual(stockSnapshot([
@@ -39,4 +39,19 @@ test("manual physical stock evidence requires named provenance",()=>{
   }),{
     fabricId:"shirt-1",eventType:"receipt",quantityMetres:12.346,note:"",recordedBy:"SP",sourceReference:"Roll tag LE-42",
   });
+});
+
+
+test("stock reservation quantity requires a named source of truth",()=>{
+  assert.throws(()=>normalizeStockReservation({
+    fabricId:"shirt-1",revisionId:"LE-LOCK-123456",requestKey:"REQUEST-123456",
+    quantityMetres:2.1,requestedBy:"SP",sourceReference:"",
+  }),/quantity evidence reference/i);
+  const result=normalizeStockReservation({
+    fabricId:"shirt-1",revisionId:"LE-LOCK-123456",requestKey:"REQUEST-123456",
+    quantityMetres:2.1237,requestedBy:" RJ ",sourceReference:" Approved meterage sheet M-19 ",
+  });
+  assert.equal(result.quantityMetres,2.124);
+  assert.equal(result.requestedBy,"RJ");
+  assert.equal(result.sourceReference,"Approved meterage sheet M-19");
 });
