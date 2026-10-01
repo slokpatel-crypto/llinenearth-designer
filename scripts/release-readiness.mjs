@@ -108,6 +108,7 @@ for (const path of [
   "src/app/operator/fabric-color-calibration/page.tsx",
   "src/app/operator/fabric-color-calibration/FabricColorCalibrationClient.tsx",
   "supabase/migrations/20261008_fabric_physical_color_checks.sql",
+  "supabase/migrations/20261031_fabric_color_evidence_provenance.sql",
   "src/lib/designer/style-director-validation.ts",
   "src/lib/designer/style-director-handoff.ts",
   "src/app/api/style-director/handoff/route.ts",
@@ -242,10 +243,11 @@ requireTokens("src/lib/designer/production-learning-context.ts", ["PRODUCTION_LE
 requireTokens("src/lib/designer/customer-outcome-learning.ts", ["PRODUCTION_LEARNING_CONTEXT_VERSION","validOutcomeLearningContext","revisionId","recipeHash","shirtId","trouserId","summarizeCustomerOutcomeLearning","learningEligible","gateComplete"]);
 requireTokens("src/app/api/operator/customer-outcomes/route.ts", ["verifyOperatorSession","production_customer_outcome_learning_list","production_customer_outcome_review_record","production_customer_outcome_policy_record","summarizeCustomerOutcomeLearning"]);
 requireTokens("src/app/operator/customer-outcomes/CustomerOutcomesClient.tsx", ["Customer Outcome Review","Human evidence threshold","LEARNING ELIGIBLE","Durable design context","cannot be approved as learning evidence","Designer ranking remains unchanged"]);
-requireTokens("src/lib/fabric-color-calibration.ts", ["deltaE2000","evidenceGateComplete","calibrated_capture","spectrophotometer"]);
-requireTokens("src/app/api/operator/fabric-color-calibration/route.ts", ["verifyOperatorSession","fabric_physical_color_check_record","summarizeFabricPhysicalColorChecks"]);
-requireTokens("src/app/operator/fabric-color-calibration/FabricColorCalibrationClient.tsx", ["Physical Colour Calibration","MEDIAN ΔE","descriptive only","Save append-only colour evidence"]);
+requireTokens("src/lib/fabric-color-calibration.ts", ["deltaE2000","checkedBy","evidenceReference","legacyUnverified","evidenceGateComplete","calibrated_capture","spectrophotometer"]);
+requireTokens("src/app/api/operator/fabric-color-calibration/route.ts", ["verifyOperatorSession","loadFabricAnalysesForFabricIds","approved","corrected","Digital colour reference must match","fabric_physical_color_check_record_v2","p_checked_by","p_evidence_reference","summarizeFabricPhysicalColorChecks"]);
+requireTokens("src/app/operator/fabric-color-calibration/FabricColorCalibrationClient.tsx", ["Physical Colour Calibration","MEDIAN ΔE","legacy/unproven","Checked by","Evidence reference","reviewed profile required","Save append-only colour evidence"]);
 requireTokens("supabase/migrations/20261008_fabric_physical_color_checks.sql", ["fabric_physical_color_checks","fabric_physical_color_check_record","fabric_physical_color_check_list","service_role"]);
+requireTokens("supabase/migrations/20261031_fabric_color_evidence_provenance.sql", ["checked_by","evidence_reference","fabric_physical_color_check_record_v2","reviewed Analyzer profile id is required","controlled illuminant is required","service_role"]);
 requireTokens("src/lib/designer/style-director-validation.ts", ["directionsUnderstandable","directionsDistinct","stockHandoffWorked","handoffAuditId","verifiedHandoffCases","uniqueVerifiedHandoffs","requiredPositiveCases","thresholdMet","validationComplete"]);
 requireTokens("src/app/api/operator/style-director-validation/route.ts", ["style_director_user_test_record_v2","p_handoff_audit_id","style_director_validation_signoff_record_v3","p_required_positive_cases","verifyOperatorSession"]);
 requireTokens("src/app/operator/style-director-validation/StyleDirectorValidationClient.tsx", ["Style Director Validation","materially distinct","Verified handoff audit ID","server audit exists","Documented clean-case target","No default is invented","Record user-test evidence","Record approved"]);
