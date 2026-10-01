@@ -1,6 +1,5 @@
 // Server-only by dependency: this module imports node:crypto and is only called by server routes/pages.
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { readBrandEnv } from "@/lib/runtime-compat";
 import type { LockedDesignRevision } from "@/lib/designer/design-lock";
 
 const VERSION="v1";
@@ -30,8 +29,12 @@ export type SharedDesignPayload={
   }|null;
 };
 
+function readShareEnv(name:string){
+  return process.env[name]?.trim() || process.env[`L${name}`]?.trim() || "";
+}
+
 function secret(){
-  const value=readBrandEnv("LINEN_DESIGN_SHARE_SECRET") || readBrandEnv("LINEN_MEMORY_SESSION_SECRET");
+  const value=readShareEnv("LINEN_DESIGN_SHARE_SECRET") || readShareEnv("LINEN_MEMORY_SESSION_SECRET");
   return value && value.length>=32 ? value : null;
 }
 
