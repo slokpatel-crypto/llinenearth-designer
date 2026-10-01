@@ -99,6 +99,9 @@ for (const path of [
   "src/app/api/operator/customer-outcomes/route.ts",
   "src/app/operator/customer-outcomes/page.tsx",
   "src/app/operator/customer-outcomes/CustomerOutcomesClient.tsx",
+  "supabase/migrations/20261017_production_learning_context.sql",
+  "src/lib/designer/production-learning-context.ts",
+  "tests/production-learning-context.test.ts",
   "src/lib/fabric-color-calibration.ts",
   "src/app/api/operator/fabric-color-calibration/route.ts",
   "src/app/operator/fabric-color-calibration/page.tsx",
@@ -178,9 +181,11 @@ requireTokens("supabase/migrations/20261014_customer_production_timeline.sql", [
 requireTokens("supabase/migrations/20261015_customer_production_outcomes.sql", ["production_customer_outcomes","production_customer_outcome_record","production_customer_outcome_list_owned","production_customer_outcome_list","customer outcome requires a delivered order","service_role"]);
 requireTokens("src/lib/designer/customer-production-outcomes.ts", ["CUSTOMER_OUTCOME_RATINGS","CUSTOMER_FIT_RESULTS","normalizeCustomerProductionOutcome","Confirm the garment was worn"]);
 requireTokens("supabase/migrations/20261016_customer_outcome_learning_policy.sql", ["production_customer_outcome_reviews","production_customer_outcome_policies","production_customer_outcome_review_record","production_customer_outcome_policy_record","named policy approver is required","service_role"]);
-requireTokens("src/lib/designer/customer-outcome-learning.ts", ["normalizeCustomerOutcomeReview","normalizeCustomerOutcomePolicy","summarizeCustomerOutcomeLearning","gateComplete"]);
-requireTokens("src/app/api/operator/customer-outcomes/route.ts", ["verifyOperatorSession","production_customer_outcome_review_record","production_customer_outcome_policy_record","summarizeCustomerOutcomeLearning"]);
-requireTokens("src/app/operator/customer-outcomes/CustomerOutcomesClient.tsx", ["Customer Outcome Review","Human evidence threshold","Approve evidence","Reject evidence","Designer ranking remains unchanged"]);
+requireTokens("supabase/migrations/20261017_production_learning_context.sql", ["production_order_learning_context","production_order_create_with_context","production_customer_outcome_learning_list","durable production design context is required before evidence approval","prohibited personal measurement data","service_role"]);
+requireTokens("src/lib/designer/production-learning-context.ts", ["PRODUCTION_LEARNING_CONTEXT_VERSION","buildProductionLearningContext","shirtId","trouserId"]);
+requireTokens("src/lib/designer/customer-outcome-learning.ts", ["normalizeCustomerOutcomeReview","normalizeCustomerOutcomePolicy","summarizeCustomerOutcomeLearning","learningEligible","gateComplete"]);
+requireTokens("src/app/api/operator/customer-outcomes/route.ts", ["verifyOperatorSession","production_customer_outcome_learning_list","production_customer_outcome_review_record","production_customer_outcome_policy_record","summarizeCustomerOutcomeLearning"]);
+requireTokens("src/app/operator/customer-outcomes/CustomerOutcomesClient.tsx", ["Customer Outcome Review","Human evidence threshold","LEARNING ELIGIBLE","Durable design context","cannot be approved as learning evidence","Designer ranking remains unchanged"]);
 requireTokens("src/lib/fabric-color-calibration.ts", ["deltaE2000","evidenceGateComplete","calibrated_capture","spectrophotometer"]);
 requireTokens("src/app/api/operator/fabric-color-calibration/route.ts", ["verifyOperatorSession","fabric_physical_color_check_record","summarizeFabricPhysicalColorChecks"]);
 requireTokens("src/app/operator/fabric-color-calibration/FabricColorCalibrationClient.tsx", ["Physical Colour Calibration","MEDIAN ΔE","descriptive only","Save append-only colour evidence"]);
@@ -477,13 +482,13 @@ requireTokens("src/lib/designer/production-quote.ts", ["normalizeProductionQuote
 requireTokens("src/lib/designer/production-state.ts", ["ORDER_TRANSITIONS","QUOTE_TRANSITIONS","cloth_reserved","delivered"]);
 requireTokens("src/lib/designer/production-packet.ts", ["linen-earth-production-packet-v1","noDesignDataReEntry"]);
 requireTokens("src/lib/designer/stock-ledger.ts", ["stockSnapshot","reservedMetres","availableMetres"]);
-requireTokens("src/app/operator/production/ProductionClient.tsx", ["Load locked design","Export production packet","Create production order","CUSTOMER OUTCOME","not automatically applied to Designer ranking","/operator/customer-outcomes","Outcome Review"]);
+requireTokens("src/app/operator/production/ProductionClient.tsx", ["Load locked design","Export production packet","Create production order","durable design context","outcome lineage","CUSTOMER OUTCOME","not automatically applied to Designer ranking","/operator/customer-outcomes","Outcome Review"]);
 requireTokens("src/app/operator/stock/StockClient.tsx", ["Fabric Stock Ledger","Create reservation","Consume"]);
 requireTokens("supabase/migrations/20261001_fabric_stock_ledger.sql", ["fabric_stock_snapshot","fabric_stock_reserve","request_key","service_role"]);
 requireTokens("supabase/migrations/20261001_production_quotes_orders.sql", ["production_quote_create","production_order_create","invalid order transition","service_role"]);
 requireTokens("supabase/migrations/20261002_finished_garment_qc.sql", ["finished_garment_qc_record","finished_garment_qc_list","finished-garment QC approval is required before delivery","service_role"]);
 requireTokens("src/app/operator/garment-qc/GarmentQcClient.tsx", ["Finished Garment QC","Approve for delivery","Record rework","PHYSICAL CHECKS"]);
-requireTokens("src/app/api/operator/production/route.ts", ["finished_garment_qc_list","Finished-garment QC approval is required before delivery.","production_customer_outcome_list","customerOutcomes"]);
+requireTokens("src/app/api/operator/production/route.ts", ["finished_garment_qc_list","Finished-garment QC approval is required before delivery.","production_customer_outcome_list","customerOutcomes","parseDesignVaultRecoveryToken","verifyLockedDesignRevision","buildProductionLearningContext","production_order_create_with_context","learningContextAttached"]);
 requireTokens("supabase/migrations/20261003_production_delivery_evidence.sql", ["production_delivery_evidence_record","production_delivery_evidence_list","delivery evidence can only be recorded for a delivered order","service_role"]);
 requireTokens("src/lib/designer/production-delivery-evidence.ts", ["PRODUCTION_REENTRY_FIELDS","summarizeProductionDeliveryEvidence","gateComplete","reentryIncidentCount"]);
 requireTokens("src/app/operator/production-evidence/ProductionEvidenceClient.tsx", ["Zero-Reentry Proof","FIRST 10 AUDITED","ZERO RE-ENTRY","Save immutable completion audit"]);
@@ -555,6 +560,8 @@ requireTokens("scripts/check-cloud-readiness.mjs", [
   "production_customer_outcome_list",
   "production_customer_outcome_review_list",
   "production_customer_outcome_policy_list",
+  "production_order_learning_context_list",
+  "production_customer_outcome_learning_list",
   "fabric_physical_color_check_list",
   "style_director_user_test_list",
   "style_director_validation_signoff_list",
