@@ -56,6 +56,7 @@ The same locked handoff can also export a printable HTML tech pack. It includes 
 - [x] evidence-safe operator-entered quote ledger
 - [x] authenticated customer ownership propagated into quote/order records
 - [x] authenticated customer quote review + direct acceptance evidence
+- [x] privacy-safe authenticated customer production timeline
 - [x] tailor-ready formatted tech pack / print layout
 - [x] finished-garment QC evidence desk + delivery gate
 - [x] first-10 zero-reentry evidence capture + scorecard implemented
@@ -100,6 +101,7 @@ The private Operator Desk now has:
 - production-order creation from the same locked recipe,
 - authenticated customer ownership propagated from the immutable locked revision into quote/order records when ownership is unambiguous,
 - customer account view of itemized quote and production status without private operator notes,
+- privacy-safe order timeline from the append-only production event ledger, exposing status timestamps only and keeping operator payloads private,
 - authenticated customer acceptance of a sent quote, recorded as an append-only customer-account event before operator order creation,
 - accepted-quote consistency checks,
 - append-only production status events through delivered / cancelled.
