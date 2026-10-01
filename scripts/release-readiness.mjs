@@ -98,6 +98,11 @@ for (const path of [
   "src/app/operator/style-director-validation/page.tsx",
   "src/app/operator/style-director-validation/StyleDirectorValidationClient.tsx",
   "supabase/migrations/20261009_style_director_user_validation.sql",
+  "src/lib/designer/ease-calibration.ts",
+  "src/app/api/operator/ease-calibration/route.ts",
+  "src/app/operator/ease-calibration/page.tsx",
+  "src/app/operator/ease-calibration/EaseCalibrationClient.tsx",
+  "supabase/migrations/20261010_house_ease_calibration_registry.sql",
   "src/lib/designer/production-handoff.ts",
   "src/lib/designer/tech-pack.ts",
   "src/lib/designer/production-quote.ts",
@@ -149,6 +154,10 @@ requireTokens("src/lib/designer/style-director-validation.ts", ["directionsUnder
 requireTokens("src/app/api/operator/style-director-validation/route.ts", ["style_director_user_test_record","style_director_validation_signoff_record","verifyOperatorSession"]);
 requireTokens("src/app/operator/style-director-validation/StyleDirectorValidationClient.tsx", ["Style Director Validation","materially distinct","Record user-test evidence","Record approved"]);
 requireTokens("supabase/migrations/20261009_style_director_user_validation.sql", ["style_director_user_tests","style_director_validation_signoffs","record real-user validation evidence before sign-off","service_role"]);
+requireTokens("src/lib/designer/ease-calibration.ts", ["requiredEaseEvidenceKeys","evidenceCoverageComplete","normalizeHouseEaseCalibrationDraft","35"]);
+requireTokens("src/app/api/operator/ease-calibration/route.ts", ["house_ease_evidence_record","house_ease_model_create","house_ease_model_approve","evidenceCoverageComplete"]);
+requireTokens("src/app/operator/ease-calibration/EaseCalibrationClient.tsx", ["House Ease Calibration","35 cells","runtime not auto-switched","Register evidence-backed draft"]);
+requireTokens("supabase/migrations/20261010_house_ease_calibration_registry.sql", ["house_ease_evidence","house_ease_models","real finished-garment evidence is required for every house-ease cell","service_role"]);
 requireTokens("src/lib/designer/block-strategy.ts", ["block-strategy-provisional-1","assessBlockStrategy","shaped-shirt","roomy-seat-block","suggestedPatch"]);
 requireTokens("src/lib/designer/planner.ts", ["DesignerBlockStrategy","blockStrategy:selectedBlock","item.blockStrategy?.score"]);
 requireTokens("src/lib/designer/search.ts", ["blockStrategy: DesignerBlockStrategy","assessBlockStrategy","block.score"]);
@@ -494,6 +503,8 @@ requireTokens("scripts/check-cloud-readiness.mjs", [
   "fabric_physical_color_check_list",
   "style_director_user_test_list",
   "style_director_validation_signoff_list",
+  "house_ease_evidence_list",
+  "house_ease_model_list",
   "designer_render_outcome_list",
   "designer_render_pattern_calibration_list",
   "Apply Roadmap v2 Supabase migrations",
