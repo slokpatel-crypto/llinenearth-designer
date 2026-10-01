@@ -1,5 +1,4 @@
-import "server-only";
-
+// Server-only by dependency: this module imports node:crypto and is only called by server routes/pages.
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { readBrandEnv } from "@/lib/runtime-compat";
 import type { LockedDesignRevision } from "@/lib/designer/design-lock";
