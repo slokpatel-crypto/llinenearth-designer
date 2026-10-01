@@ -48,9 +48,12 @@ test("Style Director validation requires real evidence plus human approval",()=>
   assert.equal(approved.validationComplete,true);
 });
 
-test("Style Director sign-off normalization requires named human reviewer",()=>{
+test("Style Director sign-off normalization requires human target and named reviewer",()=>{
   assert.throws(()=>normalizeStyleDirectorValidationSignoff({
-    status:"approved",signedBy:"",
+    status:"approved",requiredPositiveCases:0,signedBy:"Owner",
+  }),/documented positive-case target/i);
+  assert.throws(()=>normalizeStyleDirectorValidationSignoff({
+    status:"approved",requiredPositiveCases:2,signedBy:"",
   }),/Named owner\/reviewer sign-off/);
 });
 
