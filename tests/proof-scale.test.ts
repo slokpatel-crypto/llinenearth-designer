@@ -230,6 +230,7 @@ test("recorded Phase 1 v2 evidence is recomputed from raw fixture and independen
     version:"linen-earth-phase1-proof-v2",
     scaleCoordinateSystem:"photo-1024x1536-fixture",
     repeatMm:10,
+    physicalEvidenceNote:"Owner measured the repeat and photo calibration fixture with a steel ruler.",
     photoReferenceMm:100,
     photoReferencePx:82,
     photoPxPerMm:999,
@@ -255,6 +256,7 @@ test("legacy or client-spoofed Phase 1 flags cannot satisfy the v2 evidence gate
     version:"linen-earth-phase1-proof-v1",
     scaleCoordinateSystem:"photo-1024x1536-fixture",
     repeatMm:10,
+    physicalEvidenceNote:"Owner measured the repeat and photo calibration fixture with a steel ruler.",
     photoReferenceMm:100,
     photoReferencePx:82,
     measuredPreviewRepeatPx:8.2,
@@ -266,6 +268,24 @@ test("legacy or client-spoofed Phase 1 flags cannot satisfy the v2 evidence gate
     realismAssessments:Array.from({length:8},(_,index)=>({viewerId:`V${index}`,rating:5})),
   });
   assert.equal(evidence.photoPxPerMm,null);
+  assert.equal(evidence.scaleGatePass,false);
+  assert.equal(evidence.coreAccepted,false);
+});
+
+
+test("Phase 1 physical evidence cannot pass without an auditable provenance note",()=>{
+  const evidence=evaluateRecordedPhase1ProofEvidence({
+    version:"linen-earth-phase1-proof-v2",
+    scaleCoordinateSystem:"photo-1024x1536-fixture",
+    repeatMm:10,
+    photoReferenceMm:100,
+    photoReferencePx:82,
+    measuredPreviewRepeatPx:8.2,
+    realModelSamples:12,
+    realModelP95Ms:220,
+    realismAssessments:Array.from({length:8},(_,index)=>({viewerId:`V${index}`,rating:index<6?5:3})),
+  });
+  assert.equal(evidence.physicalEvidenceReady,false);
   assert.equal(evidence.scaleGatePass,false);
   assert.equal(evidence.coreAccepted,false);
 });
