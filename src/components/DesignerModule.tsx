@@ -156,6 +156,8 @@ export function DesignerModule() {
   const [lockedRevision,setLockedRevision]=useState<LockedDesignRevision|null>(null);
   const [lastLockedRevisionId,setLastLockedRevisionId]=useState<string|null>(null);
   const [lockBusy,setLockBusy]=useState(false);
+  const [shareBusy,setShareBusy]=useState(false);
+  const [shareMessage,setShareMessage]=useState("");
   const [creativeDirections, setCreativeDirections] = useState<CreativeDirection[]>([]);
   const [activeCreative, setActiveCreative] = useState<CreativeDirection | null>(null);
   const [creativeAutoNote,setCreativeAutoNote]=useState("");
@@ -969,6 +971,31 @@ export function DesignerModule() {
     URL.revokeObjectURL(url);
   }
 
+  async function shareLockedRevision() {
+    if(!lockedRevision||shareBusy) return;
+    setShareBusy(true);setShareMessage("");
+    try{
+      const response=await fetch("/api/designer/share",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify(lockedRevision),
+      });
+      const result=await response.json() as {token?:string;expiresInDays?:number;error?:string};
+      if(!response.ok||!result.token) throw new Error(result.error||"Share link could not be created.");
+      const url=new URL(`/share/${result.token}`,window.location.origin).toString();
+      try{
+        await navigator.clipboard.writeText(url);
+        setShareMessage(`Share link copied · expires in ${result.expiresInDays||30} days.`);
+      }catch{
+        setShareMessage(url);
+      }
+    }catch(error){
+      setShareMessage(error instanceof Error?error.message:"Share link could not be created.");
+    }finally{
+      setShareBusy(false);
+    }
+  }
+
   return <div className="newDesigner">
     <header className="newDesignerHero">
       <div className="newDesignerHeroCopy">
@@ -1299,6 +1326,8 @@ export function DesignerModule() {
               {lockedRevision&&<>
                 <p><b>Locked revision:</b> {lockedRevision.revisionId} · recipe {lockedRevision.recipeHash.slice(0,12).toUpperCase()}</p>
                 <button type="button" onClick={downloadProductionHandoff}>Export tailor handoff ↗</button>
+                <button type="button" onClick={()=>void shareLockedRevision()} disabled={shareBusy}>{shareBusy?"Creating share…":"Copy private share link ↗"}</button>
+                {shareMessage&&<p>{shareMessage}</p>}
               </>}
             </>}
           </details>
