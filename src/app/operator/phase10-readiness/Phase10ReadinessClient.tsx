@@ -105,6 +105,8 @@ type Phase1ProofPayload={
     uniqueRealismViewers:number;
     strongRatings:number;
     realismPass:boolean;
+    boundaryChecks:{neck:boolean;cuffs:boolean;waist:boolean;trouserGap:boolean};
+    boundaryReady:boolean;
     note:string;
   }|null;
 };
@@ -370,9 +372,10 @@ export default function Phase10ReadinessClient(){
     const proofScale=proof?.scaleGatePass===true;
     const proofLatency=Boolean(proof && proof.realModelSamples>=12 && proof.realModelP95Ms!==null && proof.realModelP95Ms<300);
     const proofRealism=proof?.realismPass===true;
+    const proofBoundaries=proof?.boundaryReady===true;
     const proofMobileAccepted=data.device?.latest?.mobile?.status==="accepted";
-    const proofProgress=ratio([proofScale,proofLatency,proofRealism,proofMobileAccepted].filter(Boolean).length,4);
-    const proofDone=Boolean(proof?.coreAccepted===true && proofScale && proofLatency && proofRealism && proofMobileAccepted);
+    const proofProgress=ratio([proofScale,proofLatency,proofRealism,proofBoundaries,proofMobileAccepted].filter(Boolean).length,5);
+    const proofDone=Boolean(proof?.coreAccepted===true && proofScale && proofLatency && proofRealism && proofBoundaries && proofMobileAccepted);
 
     const coverage=data.designerData?.coverage;
     const active=coverage?.activeCandidates||0;
@@ -465,14 +468,14 @@ export default function Phase10ReadinessClient(){
         id:"premium-shirt-proof",
         title:"Roadmap v2 premium shirt proof",
         detail:proofDone
-          ? `${proof?.fabricName||"Selected fabric"} passed physical scale, real-model latency, 8-independent-viewer realism and target-mobile acceptance evidence.`
+          ? `${proof?.fabricName||"Selected fabric"} passed physical scale, real-model latency, 8-independent-viewer realism, protected-boundary review and target-mobile acceptance evidence.`
           : proof
-            ? `Latest core proof is ${proof.coreAccepted?"accepted":"review"}. Scale ${proofScale?"passes":"needs evidence"}, real-model latency ${proofLatency?"passes":"needs evidence"}, realism ${proofRealism?"passes":"needs evidence"}, target mobile ${proofMobileAccepted?"accepted":"needs acceptance"}.`
+            ? `Latest core proof is ${proof.coreAccepted?"accepted":"review"}. Scale ${proofScale?"passes":"needs evidence"}, real-model latency ${proofLatency?"passes":"needs evidence"}, realism ${proofRealism?"passes":"needs evidence"}, garment boundaries ${proofBoundaries?"pass":"need review"}, target mobile ${proofMobileAccepted?"accepted":"needs acceptance"}.`
             : "No operator-recorded Premium Shirt Proof evidence yet.",
         status:proofDone?"done":data.phase1Proof?"progress":"blocked",
         progress:proofProgress,
         metric:proof
-          ? `${proof.fabricName||proof.fabricId} · scale ${proof.scaleErrorPct??"—"}% · p95 ${proof.realModelP95Ms??"—"} ms · ${proof.strongRatings}/${proof.uniqueRealismViewers||0} strong independent ratings · mobile ${proofMobileAccepted?"accepted":"open"}`
+          ? `${proof.fabricName||proof.fabricId} · scale ${proof.scaleErrorPct??"—"}% · p95 ${proof.realModelP95Ms??"—"} ms · ${proof.strongRatings}/${proof.uniqueRealismViewers||0} strong independent ratings · boundaries ${proofBoundaries?"pass":"open"} · mobile ${proofMobileAccepted?"accepted":"open"}`
           : "No recorded proof",
         href:"/lab/proof",
         action:"Open Premium Shirt Proof",
