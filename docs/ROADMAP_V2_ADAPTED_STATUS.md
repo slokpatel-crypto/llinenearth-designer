@@ -55,6 +55,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added append-only finished-garment QC inspections with a hard delivery gate and automatic rework-to-stitching loop.
 - Added immutable delivered-order zero-reentry audits and an evidence scorecard for the first 10 real production orders; current qualifying audits require a named checker plus a concrete production-flow reference, while legacy provenance-free rows stay visible but cannot satisfy the gate.
 - Added a versioned meterage calibration registry that requires ≥20 real cuts per garment and explicit owner/tailor approval before activation; model registration and approval now revalidate every case ID against unambiguous real cut records in the append-only operator ledger.
+- Meterage evidence now requires `production-usage-v2` real-cut records with named checker + physical cutting reference; legacy/no-provenance cut rows cannot satisfy calibration.
 - Added anonymous five-case private-beta evidence capture and append-only human launch sign-offs for Phase 9 hardening.
 - Added opt-in secure measurement recovery vault with hashed recovery keys, expiry and deletion.
 - Added final-render outcome ledger, human approval desk, automated QA linkage, and credits-per-approved metrics.
