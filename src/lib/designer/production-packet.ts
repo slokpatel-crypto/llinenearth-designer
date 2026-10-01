@@ -33,10 +33,13 @@ export function buildProductionPacket(input:{
     order,
     traceability:{
       immutableRecipe:true,
+      packetBuiltFromLockedRevision:true,
       quoteAttached:Boolean(quote),
       quoteAccepted:quote?.status==="accepted",
       orderAttached:Boolean(order),
-      noDesignDataReEntry:true,
+      noDesignDataReEntry:false,
+      deliveryAuditRequired:true,
+      note:"Packet generation proves locked-recipe traceability only. Zero manual re-entry is verified separately after real delivery.",
     },
   };
 }
