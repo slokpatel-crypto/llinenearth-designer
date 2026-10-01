@@ -123,6 +123,55 @@ export function PremiumShirtProof(){
     try { localStorage.removeItem(REALISM_STORAGE_KEY); } catch {}
   }
 
+  function exportProofEvidence(){
+    const payload={
+      version:"linen-earth-phase1-proof-v1",
+      recordedAt:new Date().toISOString(),
+      fabric:{
+        id:realShirt?.id||null,
+        name:realShirt?.name||null,
+        line:realShirt?.line||null,
+        pattern:realShirt?.patternType||null,
+      },
+      calibration:{
+        pxPerMm,
+        sourceTileWidthMm:declaredTileMm,
+        storedRepeatMm,
+        enteredRepeatMm:declaredRepeatMm,
+        effectiveRepeatMm,
+        measuredPreviewRepeatPx:measuredPx,
+        scaleErrorPct:error,
+        scaleGatePass:pass,
+      },
+      performance:{
+        geometrySamplesMs:latencySamples,
+        geometryP95Ms:p95,
+        realModelSamplesMs:realRenderSamples,
+        realModelP95Ms:realP95,
+        targetMs:300,
+      },
+      realism:{
+        ratings:realismRatings,
+        strongRatings:strongRealism,
+        target:"at least 6 of 8 ratings >= 4",
+        pass:realismGate,
+      },
+      construction:{collar,cuff},
+      caveats:[
+        "Catalogue imagery is not physical scale evidence by itself.",
+        "Synthetic collar/cuff geometry is a proof control, not a photographed finished garment.",
+        "Final tailoring fit requires physical verification.",
+      ],
+    };
+    const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const anchor=document.createElement("a");
+    anchor.href=url;
+    anchor.download="linen-earth-phase1-proof-"+(realShirt?.id||"fabric")+".json";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   const collarPaths=useMemo(()=>collar==="band"
     ? ["M 276 175 Q 320 194 364 175 L 362 201 Q 320 216 278 201 Z"]
     : collar==="button-down"
@@ -212,6 +261,7 @@ export function PremiumShirtProof(){
             <span>{realismGate?"PASS · realism gate met":"Need 6 strong ratings from at least 8 viewers"}</span>
           </div>
           {realismRatings.length>0&&<button type="button" onClick={clearRealismRatings}>Clear ratings</button>}
+          <button type="button" onClick={exportProofEvidence}>Export proof evidence JSON</button>
         </section>
       </aside>
     </main>
