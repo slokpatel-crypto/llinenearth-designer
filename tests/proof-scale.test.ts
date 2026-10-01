@@ -130,8 +130,9 @@ test("phase 1 proof acceptance requires physical scale, latency samples and real
   const accepted=phase1ProofAcceptance({
     repeatMm:10,
     scaleGatePass:true,
-    realModelSamples:12,
-    realModelP95Ms:220,
+    realModelSamples:999,
+    realModelP95Ms:1,
+    realModelSampleDurationsMs:[180,190,200,205,210,215,218,219,220,220,221,222],
     realismRatings:[5,4,4,5,4,5,3,2],
     boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
   });
@@ -228,9 +229,9 @@ test("measured photo px/mm changes physical pattern scale without changing appro
 });
 
 
-test("recorded Phase 1 v3 evidence is recomputed from raw fixture, independent viewers and boundaries",()=>{
+test("recorded Phase 1 v4 evidence is recomputed from raw scale, latency, viewer and boundary evidence",()=>{
   const evidence=evaluateRecordedPhase1ProofEvidence({
-    version:"linen-earth-phase1-proof-v3",
+    version:"linen-earth-phase1-proof-v4",
     scaleCoordinateSystem:"photo-1024x1536-fixture",
     repeatMm:10,
     physicalEvidenceNote:"Owner measured the repeat and photo calibration fixture with a steel ruler.",
@@ -240,8 +241,9 @@ test("recorded Phase 1 v3 evidence is recomputed from raw fixture, independent v
     measuredPreviewRepeatPx:8.2,
     scaleGatePass:false,
     status:"review",
-    realModelSamples:12,
-    realModelP95Ms:220,
+    realModelSamples:999,
+    realModelP95Ms:1,
+    realModelSampleDurationsMs:[180,190,200,205,210,215,218,219,220,220,221,222],
     realismAssessments:[
       {viewerId:"V01",rating:5},{viewerId:"V02",rating:4},{viewerId:"V03",rating:4},{viewerId:"V04",rating:5},
       {viewerId:"V05",rating:4},{viewerId:"V06",rating:4},{viewerId:"V07",rating:3},{viewerId:"V08",rating:2},
@@ -250,13 +252,15 @@ test("recorded Phase 1 v3 evidence is recomputed from raw fixture, independent v
   });
   assert.equal(evidence.photoPxPerMm,0.82);
   assert.equal(evidence.scaleGatePass,true);
+  assert.equal(evidence.realModelSamples,12);
+  assert.equal(evidence.realModelP95Ms,222);
   assert.equal(evidence.realism.uniqueViewers,8);
   assert.equal(evidence.realism.strongRatings,6);
   assert.equal(evidence.boundaryReady,true);
   assert.equal(evidence.coreAccepted,true);
 });
 
-test("legacy or client-spoofed Phase 1 flags cannot satisfy the v3 evidence gate",()=>{
+test("legacy or client-spoofed Phase 1 flags cannot satisfy the v4 evidence gate",()=>{
   const evidence=evaluateRecordedPhase1ProofEvidence({
     version:"linen-earth-phase1-proof-v1",
     scaleCoordinateSystem:"photo-1024x1536-fixture",
@@ -270,6 +274,7 @@ test("legacy or client-spoofed Phase 1 flags cannot satisfy the v3 evidence gate
     status:"accepted",
     realModelSamples:99,
     realModelP95Ms:10,
+    realModelSampleDurationsMs:Array(12).fill(20),
     realismAssessments:Array.from({length:8},(_,index)=>({viewerId:`V${index}`,rating:5})),
     boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
   });
@@ -281,14 +286,15 @@ test("legacy or client-spoofed Phase 1 flags cannot satisfy the v3 evidence gate
 
 test("Phase 1 physical evidence cannot pass without an auditable provenance note",()=>{
   const evidence=evaluateRecordedPhase1ProofEvidence({
-    version:"linen-earth-phase1-proof-v3",
+    version:"linen-earth-phase1-proof-v4",
     scaleCoordinateSystem:"photo-1024x1536-fixture",
     repeatMm:10,
     photoReferenceMm:100,
     photoReferencePx:82,
     measuredPreviewRepeatPx:8.2,
-    realModelSamples:12,
-    realModelP95Ms:220,
+    realModelSamples:999,
+    realModelP95Ms:1,
+    realModelSampleDurationsMs:[180,190,200,205,210,215,218,219,220,220,221,222],
     realismAssessments:Array.from({length:8},(_,index)=>({viewerId:`V${index}`,rating:index<6?5:3})),
     boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
   });
@@ -300,15 +306,16 @@ test("Phase 1 physical evidence cannot pass without an auditable provenance note
 
 test("Phase 1 core proof cannot pass until every garment boundary is visually checked",()=>{
   const evidence=evaluateRecordedPhase1ProofEvidence({
-    version:"linen-earth-phase1-proof-v3",
+    version:"linen-earth-phase1-proof-v4",
     scaleCoordinateSystem:"photo-1024x1536-fixture",
     repeatMm:10,
     physicalEvidenceNote:"Owner measured the repeat and photo fixture against a steel ruler.",
     photoReferenceMm:100,
     photoReferencePx:82,
     measuredPreviewRepeatPx:8.2,
-    realModelSamples:12,
-    realModelP95Ms:220,
+    realModelSamples:999,
+    realModelP95Ms:1,
+    realModelSampleDurationsMs:[180,190,200,205,210,215,218,219,220,220,221,222],
     realismAssessments:Array.from({length:8},(_,index)=>({viewerId:`V${index}`,rating:index<6?5:3})),
     boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:false},
   });
@@ -317,4 +324,25 @@ test("Phase 1 core proof cannot pass until every garment boundary is visually ch
   assert.equal(evidence.boundaryReady,false);
   assert.equal(evidence.coreAccepted,false);
   assert.match(evidence.acceptance.reasons.join(" "),/trouser-gap/i);
+});
+
+
+test("Phase 1 v4 ignores spoofed latency aggregates and requires raw render samples",()=>{
+  const evidence=evaluateRecordedPhase1ProofEvidence({
+    version:"linen-earth-phase1-proof-v4",
+    scaleCoordinateSystem:"photo-1024x1536-fixture",
+    repeatMm:10,
+    physicalEvidenceNote:"Owner measured repeat and the fixed photo reference with a steel ruler.",
+    photoReferenceMm:100,
+    photoReferencePx:82,
+    measuredPreviewRepeatPx:8.2,
+    realModelSamples:999,
+    realModelP95Ms:1,
+    realismAssessments:Array.from({length:8},(_,index)=>({viewerId:`V${index}`,rating:index<6?5:3})),
+    boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
+  });
+  assert.equal(evidence.realModelSamples,0);
+  assert.equal(evidence.realModelP95Ms,null);
+  assert.equal(evidence.acceptance.latencyReady,false);
+  assert.equal(evidence.coreAccepted,false);
 });
