@@ -7,6 +7,7 @@ type OwnedDesign={vaultId:string;revisionId:string;recipeHash:string;createdAt:s
 type OwnedProfile={vaultId:string;createdAt:string;expiresAt:string;unit?:string};
 type OwnedQuote={quote_id:string;revision_id:string;currency:string;line_items:Array<{label:string;amount:number|string}>;subtotal:number|string;adjustment:number|string;total:number|string;status:string;created_at:string;updated_at:string};
 type OwnedOrder={order_id:string;revision_id:string;quote_id:string|null;status:string;created_at:string;updated_at:string};
+type OwnedOrderEvent={event_id:string;order_id:string;status:string;created_at:string};
 
 const card:React.CSSProperties={border:"1px solid #ddd7cc",borderRadius:18,padding:20,background:"#fff"};
 const input:React.CSSProperties={width:"100%",boxSizing:"border-box",padding:"12px 14px",border:"1px solid #cfc7ba",borderRadius:10,fontSize:15};
@@ -33,6 +34,7 @@ export default function AccountPage(){
   const [profiles,setProfiles]=useState<OwnedProfile[]>([]);
   const [quotes,setQuotes]=useState<OwnedQuote[]>([]);
   const [orders,setOrders]=useState<OwnedOrder[]>([]);
+  const [orderEvents,setOrderEvents]=useState<OwnedOrderEvent[]>([]);
   const [claimDesign,setClaimDesign]=useState("");
   const [claimMeasurement,setClaimMeasurement]=useState("");
   const [message,setMessage]=useState("");
@@ -42,7 +44,7 @@ export default function AccountPage(){
     const session=await fetch("/api/customer-auth/session",{cache:"no-store"}).then(r=>r.json());
     const next=session.customer||null;
     setCustomer(next);
-    if(!next){setDesigns([]);setProfiles([]);setQuotes([]);setOrders([]);return;}
+    if(!next){setDesigns([]);setProfiles([]);setQuotes([]);setOrders([]);setOrderEvents([]);return;}
 
     const [d,m,p]=await Promise.all([
       fetch("/api/designer/vault",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"listOwned"})}).then(r=>r.json()),
@@ -53,6 +55,7 @@ export default function AccountPage(){
     setProfiles(Array.isArray(m.profiles)?m.profiles:[]);
     setQuotes(Array.isArray(p.quotes)?p.quotes:[]);
     setOrders(Array.isArray(p.orders)?p.orders:[]);
+    setOrderEvents(Array.isArray(p.orderEvents)?p.orderEvents:[]);
   },[]);
 
   useEffect(()=>{void refresh();},[refresh]);
@@ -163,13 +166,24 @@ export default function AccountPage(){
           {orders.length===0?<p style={{opacity:.65}}>No production order is linked to this account yet.</p>:<div style={{display:"grid",gap:12}}>
             {orders.map(order=>{
               const quote=quotes.find(item=>item.quote_id===order.quote_id);
-              return <div key={order.order_id} style={{borderTop:"1px solid #ece6dc",paddingTop:12,display:"grid",gap:5}}>
+              const timeline=orderEvents
+                .filter(event=>event.order_id===order.order_id)
+                .sort((a,b)=>new Date(a.created_at).getTime()-new Date(b.created_at).getTime());
+              return <div key={order.order_id} style={{borderTop:"1px solid #ece6dc",paddingTop:12,display:"grid",gap:7}}>
                 <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
                   <strong>{order.revision_id}</strong>
                   <span style={statusPill}>{labelStatus(order.status)}</span>
                 </div>
                 <div style={{fontSize:13,opacity:.65}}>Order {order.order_id.slice(0,8)}… · updated {new Date(order.updated_at).toLocaleDateString()}</div>
                 {quote&&<div style={{fontSize:13,opacity:.8}}>Quote {money(quote.currency,quote.total)} · {labelStatus(quote.status)}</div>}
+                {timeline.length>0&&<div style={{display:"grid",gap:5,marginTop:3}}>
+                  <strong style={{fontSize:12,letterSpacing:.5,textTransform:"uppercase",opacity:.65}}>Timeline</strong>
+                  <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+                    {timeline.map(event=><span key={event.event_id} style={{...statusPill,fontWeight:600}}>
+                      {labelStatus(event.status)} · {new Date(event.created_at).toLocaleDateString()}
+                    </span>)}
+                  </div>
+                </div>}
               </div>;
             })}
           </div>}
