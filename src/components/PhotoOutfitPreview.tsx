@@ -603,6 +603,8 @@ export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured
   onRenderMeasured?:(milliseconds:number)=>void;
 }) {
   const canvasRef=useRef<HTMLCanvasElement>(null);
+  const onRenderMeasuredRef=useRef(onRenderMeasured);
+  onRenderMeasuredRef.current=onRenderMeasured;
   const [ready,setReady]=useState(false);
   const [error,setError]=useState(false);
   const templateId=photoTemplateForStyle(style);
@@ -628,7 +630,7 @@ export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured
       setReady(true);
       setError(false);
       requestAnimationFrame(()=>{
-        if(!cancelled) onRenderMeasured?.(performance.now()-started);
+        if(!cancelled) onRenderMeasuredRef.current?.(performance.now()-started);
       });
     }).catch(()=>{
       if(cancelled) return;
@@ -636,7 +638,7 @@ export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured
       setError(true);
     });
     return ()=>{cancelled=true;};
-  },[shirt,pant,template,tucked,style,onRenderMeasured]);
+  },[shirt,pant,template,tucked,style]);
 
   return <div className="directorExistingModel" data-ready={ready?"true":"false"}>
     <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-label={`Existing Linen Earth real model wearing ${shirt.name} shirt with ${pant.name} trousers`} />
