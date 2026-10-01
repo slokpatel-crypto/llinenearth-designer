@@ -44,6 +44,10 @@ export function readPreviewPerformanceSummary() {
   return summarize(readSamples());
 }
 
+export function readPreviewPerformanceSamples() {
+  return readSamples();
+}
+
 export function recordPreviewPerformance(kind:PreviewPerformanceKind,durationMs:number) {
   if(typeof window==="undefined" || !Number.isFinite(durationMs) || durationMs<0) return readPreviewPerformanceSummary();
   const samples=readSamples();
