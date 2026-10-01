@@ -88,6 +88,7 @@ for (const path of [
   "supabase/migrations/20261006_customer_account_ownership.sql",
   "src/app/api/customer-account/production/route.ts",
   "supabase/migrations/20261007_production_customer_ownership.sql",
+  "supabase/migrations/20261013_customer_quote_acceptance.sql",
   "src/lib/fabric-color-calibration.ts",
   "src/app/api/operator/fabric-color-calibration/route.ts",
   "src/app/operator/fabric-color-calibration/page.tsx",
@@ -149,7 +150,7 @@ for (const path of [
 ]) requireFile(path);
 
 requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/visual", "/real-model", "Open Real Model Designer"]);
-requireTokens("src/app/account/page.tsx", ["Email sign in","listOwned","recovery token","Measurement profiles"]);
+requireTokens("src/app/account/page.tsx", ["Email sign in","listOwned","recovery token","Measurement profiles","Accept quote","accept_quote"]);
 requireTokens("src/lib/customer-auth.ts", ["SUPABASE_ANON_KEY","/auth/v1/otp","/auth/v1/verify","/auth/v1/user","CUSTOMER_SESSION_COOKIE"]);
 requireTokens("src/lib/customer-session-token.ts", ["CUSTOMER_SESSION_MAX_AGE_SECONDS","createCustomerSessionToken","verifyCustomerSessionToken","timingSafeEqual"]);
 requireTokens("src/app/api/customer-auth/verify/route.ts", ["createSignedCustomerSession","CUSTOMER_SESSION_COOKIE","Customer session signing is not configured"]);
@@ -157,8 +158,9 @@ requireTokens("src/app/api/customer-auth/logout/route.ts", ["CUSTOMER_SESSION_CO
 requireTokens("src/app/api/designer/vault/route.ts", ["getCustomerIdentity","listOwned","loadOwned","deleteOwned","action===\"claim\""]);
 requireTokens("src/app/api/measurements/vault/route.ts", ["getCustomerIdentity","listOwned","loadOwned","deleteOwned","action===\"claim\""]);
 requireTokens("supabase/migrations/20261006_customer_account_ownership.sql", ["owner_user_id","auth.users","designer_locked_revision_vault_list_owned","measurement_profile_vault_list_owned","service_role"]);
-requireTokens("src/app/api/customer-account/production/route.ts", ["getCustomerIdentity","production_quote_list_owned","production_order_list_owned","private, no-store"]);
+requireTokens("src/app/api/customer-account/production/route.ts", ["getCustomerIdentity","production_quote_list_owned_v2","production_order_list_owned","production_quote_accept_owned","accept_quote","private, no-store"]);
 requireTokens("supabase/migrations/20261007_production_customer_ownership.sql", ["resolve_locked_revision_owner","production_claim_revision_ownership","production_quote_list_owned","production_order_list_owned","owner_user_id"]);
+requireTokens("supabase/migrations/20261013_customer_quote_acceptance.sql", ["production_quote_accept_owned","production_quote_list_owned_v2","customer_account","service_role"]);
 requireTokens("src/lib/fabric-color-calibration.ts", ["deltaE2000","evidenceGateComplete","calibrated_capture","spectrophotometer"]);
 requireTokens("src/app/api/operator/fabric-color-calibration/route.ts", ["verifyOperatorSession","fabric_physical_color_check_record","summarizeFabricPhysicalColorChecks"]);
 requireTokens("src/app/operator/fabric-color-calibration/FabricColorCalibrationClient.tsx", ["Physical Colour Calibration","MEDIAN ΔE","descriptive only","Save append-only colour evidence"]);
@@ -524,6 +526,8 @@ requireTokens("scripts/check-cloud-readiness.mjs", [
   "designer_locked_revision_vault_get",
   "measurement_profile_vault_get",
   "production_quote_list_owned",
+  "production_quote_list_owned_v2",
+  "production_quote_accept_owned",
   "production_order_list_owned",
   "fabric_physical_color_check_list",
   "style_director_user_test_list",
