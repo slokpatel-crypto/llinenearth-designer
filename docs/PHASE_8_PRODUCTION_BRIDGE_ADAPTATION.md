@@ -87,6 +87,8 @@ The private Operator Desk now has:
 ### Stock Ledger
 - append-only receipts and adjustments,
 - physically measured metres only,
+- every new receipt/adjustment requires a named checker/recorder and a concrete physical source reference (roll tag, receipt, stock-count sheet, etc.),
+- positive-stock readiness remains open if any contributing manual stock event is legacy/provenance-free,
 - available / reserved / physical snapshot,
 - revision-linked reservations,
 - release and consume flows,
@@ -164,3 +166,8 @@ The code therefore supports a controlled production estimator, but it does not c
 - Meterage model registration now revalidates every submitted evidence case ID against the append-only operator production-usage ledger.
 - Case IDs must resolve to an unambiguous real cut for the same garment; unknown, duplicated-input or cross-garment IDs are rejected.
 - A model cannot even be registered through the hardened route before 20 verified real cuts exist, and approval rechecks the same evidence again before activation.
+
+
+## Physical stock provenance gate
+
+New manual stock receipts and adjustments are accepted only with a named checker and a physical source reference. The v2 stock snapshot reports manual-event provenance per fabric. Legacy stock rows remain part of the numeric balance for audit continuity, but any positive-stock fabric with provenance-free manual events stays **open** in Roadmap readiness rather than being treated as verified live stock.
