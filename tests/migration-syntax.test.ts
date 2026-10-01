@@ -1,26 +1,27 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import path from "node:path";
 
-test("Roadmap v2 SQL migrations do not contain invalid single-dollar function delimiters",()=>{
-  for(const path of [
-    "supabase/migrations/20261001_production_quotes_orders.sql",
-    "supabase/migrations/20261001_render_outcomes.sql",
-    "supabase/migrations/20261002_finished_garment_qc.sql",
-    "supabase/migrations/20261003_production_delivery_evidence.sql",
-    "supabase/migrations/20261004_meterage_calibration_registry.sql",
-    "supabase/migrations/20261005_launch_readiness_evidence.sql",
-    "supabase/migrations/20261006_customer_account_ownership.sql",
-    "supabase/migrations/20261007_production_customer_ownership.sql",
-    "supabase/migrations/20261008_fabric_physical_color_checks.sql",
-    "supabase/migrations/20261009_style_director_user_validation.sql",
-    "supabase/migrations/20261010_house_ease_calibration_registry.sql",
-    "supabase/migrations/20261011_launch_beta_flow_detail.sql",
-    "supabase/migrations/20261012_designer_novice_study.sql",
-    "supabase/migrations/20261007_render_release_evidence.sql",
-  ]){
-    const sql=fs.readFileSync(path,"utf8");
-    assert.equal(/^as \$$/m.test(sql),false,path+" contains invalid 'as $' delimiter");
-    assert.equal(/^\$;$/m.test(sql),false,path+" contains invalid '$;' delimiter");
+test("all Supabase SQL migrations avoid malformed function delimiters",()=>{
+  const dir="supabase/migrations";
+  const migrations=fs.readdirSync(dir)
+    .filter((name)=>name.endsWith(".sql"))
+    .sort();
+
+  assert.ok(migrations.length>0,"expected at least one Supabase migration");
+
+  for(const name of migrations){
+    const filePath=path.join(dir,name);
+    const sql=fs.readFileSync(filePath,"utf8");
+    assert.equal(/^as \$$/m.test(sql),false,filePath+" contains invalid 'as $' delimiter");
+    assert.equal(/^\$;$/m.test(sql),false,filePath+" contains invalid '$;' delimiter");
+
+    const doubleDollarCount=(sql.match(/\$\$/g)||[]).length;
+    assert.equal(
+      doubleDollarCount%2,
+      0,
+      filePath+" contains an unmatched $$ function delimiter",
+    );
   }
 });
