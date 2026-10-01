@@ -14,8 +14,12 @@ import {
 import { summarizeApprovedPatternCalibrationCoverage, summarizeRenderOutcomes, summarizeRenderPatternCalibrations } from "@/lib/designer/render-outcome-metrics";
 import { evaluateRenderCreditCap, summarizeCrossViewIdentity } from "@/lib/designer/render-release-evidence";
 import { DESIGNER_PANTS, DESIGNER_SHIRTS } from "@/lib/designer/engine";
+import { enrichDesignerFabricsWithIntelligence } from "@/lib/fabric-intelligence-server";
 
 export const runtime="nodejs";
+
+const BASE_RENDER_FABRICS=[...DESIGNER_SHIRTS,...DESIGNER_PANTS];
+const BASE_RENDER_FABRIC_BY_ID=new Map(BASE_RENDER_FABRICS.map((fabric)=>[fabric.id,fabric]));
 
 async function authorized(){
   const jar=await cookies();
@@ -32,10 +36,33 @@ export async function GET(){
   ]);
   const summary=summarizeRenderOutcomes(outcomes);
   const patternedFabricIds=new Set(
-    [...DESIGNER_SHIRTS,...DESIGNER_PANTS]
+    BASE_RENDER_FABRICS
       .filter((fabric)=>String(fabric.patternType||"").toLowerCase()!=="solid")
       .map((fabric)=>fabric.id),
   );
+  const involvedIds=[...new Set(outcomes.flatMap((row)=>[row.shirt_id,row.pant_id]).filter(Boolean))];
+  const involvedBase=involvedIds.flatMap((id)=>{
+    const fabric=BASE_RENDER_FABRIC_BY_ID.get(id);
+    return fabric?[fabric]:[];
+  });
+  const enriched=involvedBase.length
+    ? await enrichDesignerFabricsWithIntelligence(involvedBase)
+    : {fabrics:[]};
+  const patternEvidenceByFabric=Object.fromEntries(enriched.fabrics.map((fabric)=>{
+    const repeatMm=Number(fabric.renderScale?.repeatMm);
+    const verified=Boolean(
+      fabric.patternScaleVerified===true &&
+      fabric.renderScale?.physicalScaleStatus!=="unknown" &&
+      Number.isFinite(repeatMm) &&
+      repeatMm>0
+    );
+    return [fabric.id,{
+      patternType:fabric.patternType,
+      patterned:String(fabric.patternType||"").toLowerCase()!=="solid",
+      verified,
+      repeatMm:verified?repeatMm:null,
+    }];
+  }));
   const patternCoverageSummary=summarizeApprovedPatternCalibrationCoverage(outcomes,calibrations,patternedFabricIds);
   return NextResponse.json({
     outcomes,
@@ -45,6 +72,7 @@ export async function GET(){
     summary,
     patternSummary:summarizeRenderPatternCalibrations(calibrations),
     patternCoverageSummary,
+    patternEvidenceByFabric,
     identitySummary:summarizeCrossViewIdentity(outcomes,identityReviews),
     creditCapSummary:evaluateRenderCreditCap(summary.creditsPerApproved,creditCap?Number(creditCap.credits_per_approved_cap):null),
   },{headers:{"cache-control":"private, no-store"}});
@@ -100,12 +128,38 @@ export async function POST(request:Request){
 
     if(action==="pattern_calibration"){
       const garment=String(body.garment||"");
-      const expectedRepeatMm=Number(body.expectedRepeatMm);
       const observedRepeatMm=Number(body.observedRepeatMm);
       const axisStatus=String(body.axisStatus||"");
-      if(!["shirt","trouser"].includes(garment)||!Number.isFinite(expectedRepeatMm)||expectedRepeatMm<=0||!Number.isFinite(observedRepeatMm)||observedRepeatMm<=0||!["match","mismatch","not_applicable"].includes(axisStatus)) {
-        return NextResponse.json({error:"Valid pattern calibration values are required."},{status:400});
+      if(!["shirt","trouser"].includes(garment)||!Number.isFinite(observedRepeatMm)||observedRepeatMm<=0||!["match","mismatch","not_applicable"].includes(axisStatus)) {
+        return NextResponse.json({error:"Valid observed pattern calibration values are required."},{status:400});
       }
+
+      const outcomes=await listRenderOutcomes(1000);
+      const outcome=outcomes.find((row)=>row.outcome_id===outcomeId);
+      if(!outcome) return NextResponse.json({error:"Render outcome was not found."},{status:404});
+      const fabricId=garment==="shirt"?outcome.shirt_id:outcome.pant_id;
+      const baseFabric=BASE_RENDER_FABRIC_BY_ID.get(fabricId);
+      if(!baseFabric) return NextResponse.json({error:"The render fabric is not in the current catalogue."},{status:409});
+      if(String(baseFabric.patternType||"").toLowerCase()==="solid") {
+        return NextResponse.json({error:"Solid fabric does not require physical repeat calibration."},{status:409});
+      }
+
+      const enriched=await enrichDesignerFabricsWithIntelligence([baseFabric]);
+      const verifiedFabric=enriched.fabrics[0];
+      const expectedRepeatMm=Number(verifiedFabric?.renderScale?.repeatMm);
+      const hasReviewedRepeat=Boolean(
+        verifiedFabric?.patternScaleVerified===true &&
+        verifiedFabric?.renderScale?.physicalScaleStatus!=="unknown" &&
+        Number.isFinite(expectedRepeatMm) &&
+        expectedRepeatMm>0
+      );
+      if(!hasReviewedRepeat) {
+        return NextResponse.json({
+          error:"Reviewed physical repeat evidence is required in Fabric Analyzer before final-render pattern calibration.",
+          fabricId,
+        },{status:409});
+      }
+
       const calibrationId=await recordRenderPatternCalibration({
         outcomeId,
         garment:garment as "shirt"|"trouser",
@@ -114,7 +168,7 @@ export async function POST(request:Request){
         axisStatus:axisStatus as "match"|"mismatch"|"not_applicable",
         note:String(body.note||""),
       });
-      return NextResponse.json({calibrationId});
+      return NextResponse.json({calibrationId,expectedRepeatMm,fabricId});
     }
 
     return NextResponse.json({error:"Unsupported render QA action."},{status:400});
