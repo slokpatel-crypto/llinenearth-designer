@@ -191,7 +191,7 @@ export default function StyleDirectorPage() {
       {complete && selectedLook && <motion.section key="results" className="directorResults" initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-12}} transition={{duration:.4,ease:[.2,.8,.2,1]}}>
         <div className="resultHeader">
           <div><p>YOUR THREE DIRECTIONS</p><h1>Not recommendations.<br/><em>Three different versions of you.</em></h1></div>
-          <span>Built from your choices + live Linen Earth fabric stock.</span>
+          <span>Built from your choices + current Linen Earth cloth, with verified ledger availability enforced where recorded.</span>
         </div>
 
         <div className="lookTabs">
