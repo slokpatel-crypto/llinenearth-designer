@@ -1,6 +1,6 @@
 # Phase 6 — Style Director Adaptation
 
-Status: advanced existing implementation; Roadmap v2 is mostly a grounding / evaluation phase.
+Status: advanced existing implementation with owner benchmark and real-user validation evidence workflow; real evidence/sign-off remain.
 
 ## Existing foundation to keep
 
@@ -11,6 +11,8 @@ Status: advanced existing implementation; Roadmap v2 is mostly a grounding / eva
 - Existing real-model preview path.
 - Direct handoff into the full Designer with exact fabric IDs and construction context.
 - Feedback and evaluation telemetry.
+- Private anonymous real-user validation desk for understandability, material distinction, exact stock handoff and blocking issues.
+- Append-only owner/reviewer validation sign-off after real evidence exists.
 - Creative-generation / critique work is already separated from the deterministic garment core.
 
 ## Roadmap v2 alignment completed
@@ -36,5 +38,6 @@ Status: advanced existing implementation; Roadmap v2 is mostly a grounding / eva
 - [x] deterministic Designer handoff
 - [x] no numeric candidate ranking in customer direction UI
 - [x] feedback / evaluation foundation
+- [x] real-user validation capture + human sign-off engineering
 - [ ] owner-labelled benchmark threshold met
 - [ ] real-user test confirms directions are understandable and materially distinct
