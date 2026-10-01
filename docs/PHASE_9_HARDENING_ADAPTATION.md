@@ -77,3 +77,8 @@ The desk keeps append-only sign-off events for privacy notice review, terms / re
 Each item requires a named human reviewer. A **review** state needs an issue note; **approved** is an explicit sign-off. The software does not treat this operational checklist as legal advice and does not auto-approve any item.
 
 Production deployment verification remains a separate final gate.
+
+
+## Private-beta evidence integrity
+
+The five-customer lock-flow gate now requires a server-recorded share audit tied to a revision whose recipe hash was verified by the share API. Operator checkbox-only completion is retained only as legacy evidence and cannot mark the launch beta gate complete.
