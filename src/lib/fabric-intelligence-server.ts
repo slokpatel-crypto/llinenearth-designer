@@ -51,6 +51,7 @@ function toIntelligence(row:BoundFabricAnalysis):DesignerFabricIntelligence|null
       contentSha256:profile.measured?.contentSha256 ?? null,
     },
     verifiedPhysical:{...profile.verifiedPhysical},
+    fieldProvenance:{...profile.provenanceByField},
     colorFamily:profile.observed.colorFamily,
     undertone:profile.observed.undertone,
     depth:profile.observed.depth,
