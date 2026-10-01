@@ -30,6 +30,20 @@ export function summarizeRenderOutcomes(rows:RenderOutcomeMetricInput[]){
 }
 
 
+export function deriveObservedRepeatMmFromFixture(
+  referenceMm:number,
+  referencePx:number,
+  observedRepeatPx:number,
+){
+  const physical=Number(referenceMm);
+  const pixels=Number(referencePx);
+  const repeatPixels=Number(observedRepeatPx);
+  if(!Number.isFinite(physical)||physical<=0) throw new Error("referenceMm must be > 0");
+  if(!Number.isFinite(pixels)||pixels<=0) throw new Error("referencePx must be > 0");
+  if(!Number.isFinite(repeatPixels)||repeatPixels<=0) throw new Error("observedRepeatPx must be > 0");
+  return repeatPixels/(pixels/physical);
+}
+
 export type RenderPatternCalibrationMetricInput={
   scale_error_pct:number;
   axis_status:"match"|"mismatch"|"not_applicable";
