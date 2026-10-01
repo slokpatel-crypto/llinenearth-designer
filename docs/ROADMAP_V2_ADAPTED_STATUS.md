@@ -12,7 +12,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 | Phase 0 — Audit / Stabilize | Engineering complete | merge after CI / review |
 | Phase 1 — Premium Shirt Proof | Engineering implementation complete | physical scale measurement + 8-viewer realism + device evidence |
 | Phase 2 — Fabric Truth | strong existing foundation | owner / supplier physical evidence coverage and 50-fabric reviewed set |
-| Phase 3 — Deterministic Designer | strong existing foundation | promote proved preview only after Phase 1 passes |
+| Phase 3 — Deterministic Designer | strong foundation + shared proof/customer compositor + customer option coverage audit | Phase 1 evidence + novice-user evidence + all visible option reviews |
 | Phase 4 — Measurements / Fit | advanced foundation + secure recovery + authenticated ownership + house-ease calibration registry implemented | real-person accuracy evidence + real finished-garment ease evidence/approval |
 | Phase 5 — Lock / Share / Enquiry | lock + share + secure recovery + authenticated customer ownership implemented | five-customer real-flow validation |
 | Phase 6 — Style Director | advanced foundation + real-user validation/sign-off workflow | owner-labelled benchmark threshold + real-user evidence/sign-off |
@@ -57,6 +57,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added anonymous Style Director real-user validation evidence for understandability, material distinction, exact stock handoff and explicit human sign-off.
 - Added append-only finished-garment ease evidence, a complete 35-cell coverage gate, and versioned owner/tailor-approved house-ease registry without auto-switching provisional runtime values.
 - Tightened the shared five-customer beta evidence so each case must prove design lock → signed share/exact-look enquiry with zero blocking bugs; legacy generic completion cannot satisfy the gate.
+- Added customer preview coverage auditing across the actual Designer choices, combining live-preview support, construction status and explicit visual-review evidence.
 - Added Supabase email-OTP customer accounts, account-owned locked designs and measurement profiles, claim-by-recovery-token migration, and private account listing.
 - Propagated authenticated ownership from immutable locked designs into quotes/orders and added private customer production-status tracking.
 - Added phase adaptation records so future coding agents do not rebuild existing systems unnecessarily.
