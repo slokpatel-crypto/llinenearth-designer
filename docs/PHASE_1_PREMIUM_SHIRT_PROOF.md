@@ -10,7 +10,7 @@ Route: `/lab/proof`
 - Live fabric / collar / cuff changes use no AI render call.
 - Real mannequin renderer applies reviewed runtime repeat measurements when they exist.
 - Unknown physical scale remains explicitly approximate.
-- The proof includes a 50 mm construction ruler plus an explicit photographic-model px/mm calibration. The <= 8% physical-repeat error gate is now evaluated in the same 1024×1536 photo coordinate system used by the real mannequin compositor.
+- The proof includes a 50 mm construction ruler plus an explicit photographic-model calibration derived from two raw fixture measurements: a known real length in millimetres and the same reference measured in the 1024×1536 photo in pixels. The <= 8% physical-repeat error gate is evaluated in that same photo coordinate system.
 - Geometry interaction latency and actual photographic compositor latency are sampled separately with p95 reporting.
 - Human realism scoring now uses short anonymous viewer codes so each person contributes only one current rating; re-rating the same code replaces the earlier score. The roadmap target remains at least 6 of 8 independent viewers at 4/5 or 5/5.
 - Photo compositing now uses restrained multi-pass fold/seam lighting plus a textile-detail pass to reduce the flat sticker effect.
@@ -18,7 +18,7 @@ Route: `/lab/proof`
 - The selected proof fabric links directly to its private Analyzer evidence desk.
 - A deterministic photographic-repeat audit reports expected repeat spacing in mannequin pixels when physical repeat evidence exists, and the exact same photo px/mm calibration is passed into the compositor so the audited scale and rendered scale cannot silently diverge.
 - Proof evidence can be exported as JSON with scale, performance and viewer-rating results for an auditable acceptance record.
-- The operator evidence API recomputes physical-scale error, independent-viewer realism and the core proof decision from the stored raw inputs instead of trusting client-supplied pass/status flags. Legacy click-only realism records therefore remain review evidence until fresh independent-viewer evidence is recorded.
+- The operator evidence API recomputes photographic px/mm from the stored raw fixture pair, then recomputes physical-scale error, independent-viewer realism and the core proof decision instead of trusting client-supplied calibration or pass/status flags. Legacy click-only realism records therefore remain review evidence until fresh independent-viewer evidence is recorded.
 - Roadmap readiness treats target-mobile acceptance as a separate fourth gate. A strong desktop/browser proof cannot mark Phase 1 complete until the private Device QA workflow has an accepted mobile result.
 
 ## What this proof does not claim
@@ -38,6 +38,7 @@ Route: `/lab/proof`
 - [x] repeat-mm scale plumbing
 - [x] <= 8% scale gate calculation
 - [x] measured photo-coordinate px/mm is wired into the actual photographic compositor
+- [x] photo px/mm is derived from raw mm + pixel fixture measurements, not accepted as an arbitrary pass value
 - [x] p95 edit instrumentation
 - [x] real compositor p95 instrumentation
 - [x] all current shirt catalogue options exposed
