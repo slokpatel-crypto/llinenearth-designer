@@ -86,7 +86,7 @@ export async function POST(request:Request){
           evidenceCount:caseIds.length,
         },{status:409});
       }
-      const modelId=await rpc<string>("production_meterage_model_create",{
+      const modelId=await rpc<string>("production_meterage_model_create_v2",{
         p_garment:draft.garment,
         p_version:draft.version,
         p_bands:draft.bands,
@@ -101,7 +101,7 @@ export async function POST(request:Request){
       const approvedBy=String(body.approvedBy||"").trim().slice(0,120);
       const approvalNote=String(body.approvalNote||"").trim().slice(0,1200);
       if(approvedBy.length<2) return NextResponse.json({error:"Owner/tailor approver is required."},{status:400});
-      const updated=await rpc<boolean>("production_meterage_model_approve",{
+      const updated=await rpc<boolean>("production_meterage_model_approve_v2",{
         p_model_id:modelId,p_approved_by:approvedBy,p_approval_note:approvalNote,
       });
       return NextResponse.json({updated:Boolean(updated)});
