@@ -65,6 +65,26 @@ type ConstructionPayload={
   rejected:number;
 };
 
+type Phase1ProofPayload={
+  configured:boolean;
+  latest:{
+    at:string;
+    status:string;
+    fabricId:string;
+    fabricName:string;
+    pattern:string;
+    repeatMm:number|null;
+    scaleErrorPct:number|null;
+    scaleGatePass:boolean;
+    realModelSamples:number;
+    realModelP95Ms:number|null;
+    realismRatings:number[];
+    strongRatings:number;
+    realismPass:boolean;
+    note:string;
+  }|null;
+};
+
 type DeviceQaPayload={
   configured:boolean;
   latest:Record<string,{status:string;viewport:string;p95Ms:number|null;samples:number;at:string}>;
@@ -82,6 +102,7 @@ type RenderCachePayload={
 };
 
 type LoadState={
+  phase1Proof:Phase1ProofPayload|null;
   designerData:DesignerDataPayload|null;
   analyzer:AnalyzerStatsPayload|null;
   analyzerScorecard:AnalyzerScorecardPayload|null;
@@ -110,7 +131,7 @@ function ratio(value:number,total:number){return total>0?clamp(value/total*100):
 
 export default function Phase10ReadinessClient(){
   const [data,setData]=useState<LoadState>({
-    designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,
+    phase1Proof:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,
   });
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
@@ -128,7 +149,8 @@ export default function Phase10ReadinessClient(){
   async function load(){
     setLoading(true);setMessage("");
     try{
-      const [designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache]=await Promise.all([
+      const [phase1Proof,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache]=await Promise.all([
+        read<Phase1ProofPayload>("/api/operator/phase1-proof"),
         read<DesignerDataPayload>("/api/operator/designer-data"),
         read<AnalyzerStatsPayload>("/api/operator/fabric-analyzer/stats"),
         read<AnalyzerScorecardPayload>("/api/operator/fabric-ground-truth/scorecard"),
@@ -137,7 +159,7 @@ export default function Phase10ReadinessClient(){
         read<DeviceQaPayload>("/api/operator/device-qa"),
         read<RenderCachePayload>("/api/operator/designer-render-cache/stats"),
       ]);
-      setData({designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache});
+      setData({phase1Proof,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache});
     }catch(error){
       setMessage(error instanceof Error?error.message:"Readiness data could not be loaded.");
     }finally{
@@ -148,6 +170,13 @@ export default function Phase10ReadinessClient(){
   useEffect(()=>{void load();},[]);
 
   const rows=useMemo<ReadinessRow[]>(()=>{
+    const proof=data.phase1Proof?.latest||null;
+    const proofScale=proof?.scaleGatePass===true;
+    const proofLatency=Boolean(proof && proof.realModelSamples>=12 && proof.realModelP95Ms!==null && proof.realModelP95Ms<300);
+    const proofRealism=proof?.realismPass===true;
+    const proofProgress=ratio([proofScale,proofLatency,proofRealism].filter(Boolean).length,3);
+    const proofDone=Boolean(proof?.status==="accepted" && proofScale && proofLatency && proofRealism);
+
     const coverage=data.designerData?.coverage;
     const active=coverage?.activeCandidates||0;
     const evidenceSignals=coverage
@@ -189,6 +218,23 @@ export default function Phase10ReadinessClient(){
     const cacheProgress=cache?.distinct_pairs ? clamp(Math.min(100,cache.distinct_pairs*10)) : 0;
 
     return [
+      {
+        id:"premium-shirt-proof",
+        title:"Roadmap v2 premium shirt proof",
+        detail:proofDone
+          ? `${proof?.fabricName||"Selected fabric"} passed physical scale, real-model latency and 8-viewer realism evidence.`
+          : proof
+            ? `Latest proof is ${proof.status}. Scale ${proofScale?"passes":"needs evidence"}, real-model latency ${proofLatency?"passes":"needs evidence"}, realism ${proofRealism?"passes":"needs evidence"}.`
+            : "No operator-recorded Premium Shirt Proof evidence yet.",
+        status:proofDone?"done":data.phase1Proof?"progress":"blocked",
+        progress:proofProgress,
+        metric:proof
+          ? `${proof.fabricName||proof.fabricId} · scale ${proof.scaleErrorPct??"—"}% · p95 ${proof.realModelP95Ms??"—"} ms · ${proof.strongRatings}/${proof.realismRatings.length} strong realism ratings`
+          : "No recorded proof",
+        href:"/lab/proof",
+        action:"Open Premium Shirt Proof",
+        ownerDependent:true,
+      },
       {
         id:"fabric-evidence",
         title:"Fabric evidence coverage",
