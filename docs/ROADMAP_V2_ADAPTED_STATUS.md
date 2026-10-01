@@ -16,7 +16,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 | Phase 4 — Measurements / Fit | advanced foundation + secure recovery + authenticated ownership + house-ease calibration registry implemented | real-person accuracy evidence + real finished-garment ease evidence/approval |
 | Phase 5 — Lock / Share / Enquiry | lock + share + secure recovery + authenticated customer ownership implemented | five-customer real-flow validation |
 | Phase 6 — Style Director | advanced foundation + real-user validation/sign-off workflow | owner-labelled benchmark threshold + real-user evidence/sign-off |
-| Phase 7 — Final Render / QA | render outcome + human approval + credit metrics implemented | real approval/cost evidence + physical-pattern QA calibration |
+| Phase 7 — Final Render / QA | render outcome + human approval + credit metrics + cross-view identity + owner-cap workflow implemented | real approval/cost/identity evidence + physical-pattern QA calibration |
 | Phase 8 — Production Bridge | handoff + stock/quote/order + customer ownership + QC + zero-reentry audit + versioned meterage registry implemented | approved physical meterage tables + 10 real zero-reentry deliveries |
 | Phase 9 — Hardening | CI/device QA + private-beta + human launch sign-off engineering implemented | real device acceptance + 5 successful beta cases + human sign-off + production READY |
 | Phase 10 — Ecommerce | intentionally later | only after Launch 3 |
@@ -53,6 +53,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added anonymous five-case private-beta evidence capture and append-only human launch sign-offs for Phase 9 hardening.
 - Added opt-in secure measurement recovery vault with hashed recovery keys, expiry and deletion.
 - Added final-render outcome ledger, human approval desk, automated QA linkage, and credits-per-approved metrics.
+- Added cross-view final-render identity evidence and a human-entered owner credit-cap registry with observed cost comparison.
 - Added append-only controlled physical fabric colour checks with LAB/hex evidence, CIEDE2000 comparison and a 10-unique-fabric evidence counter.
 - Added anonymous Style Director real-user validation evidence for understandability, material distinction, exact stock handoff and explicit human sign-off.
 - Added append-only finished-garment ease evidence, a complete 35-cell coverage gate, and versioned owner/tailor-approved house-ease registry without auto-switching provisional runtime values.
