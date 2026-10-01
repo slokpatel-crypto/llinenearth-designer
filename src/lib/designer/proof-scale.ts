@@ -1,4 +1,4 @@
-import { validateVerifiedPhysicalEvidence } from "@/lib/physical-evidence-provenance";
+import { validateVerifiedPhysicalEvidence } from "../physical-evidence-provenance.ts";
 
 export const ROADMAP_SCALE_TOLERANCE_PCT = 8;
 
