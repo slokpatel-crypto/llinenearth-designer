@@ -186,6 +186,18 @@ type StyleDirectorValidationPayload={
   };
 };
 
+type EaseCalibrationPayload={
+  configured:boolean;
+  models:Array<{model_id:string;version:string;status:string;approved_by:string}>;
+  summary:{
+    requiredCells:number;
+    coveredCells:number;
+    uncoveredCells:string[];
+    evidenceCoverageComplete:boolean;
+    uniqueCases:number;
+  };
+};
+
 type LoadState={
   phase1Proof:Phase1ProofPayload|null;
   measurementCalibration:MeasurementCalibrationPayload|null;
@@ -204,6 +216,7 @@ type LoadState={
   launchReadiness:LaunchReadinessPayload|null;
   fabricColorCalibration:FabricColorCalibrationPayload|null;
   styleDirectorValidation:StyleDirectorValidationPayload|null;
+  easeCalibration:EaseCalibrationPayload|null;
 };
 
 type RowStatus="done"|"progress"|"blocked"|"optional";
@@ -225,7 +238,7 @@ function ratio(value:number,total:number){return total>0?clamp(value/total*100):
 
 export default function Phase10ReadinessClient(){
   const [data,setData]=useState<LoadState>({
-    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,renderQa:null,launchReadiness:null,fabricColorCalibration:null,styleDirectorValidation:null,
+    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,renderQa:null,launchReadiness:null,fabricColorCalibration:null,styleDirectorValidation:null,easeCalibration:null,
   });
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
@@ -243,7 +256,7 @@ export default function Phase10ReadinessClient(){
   async function load(){
     setLoading(true);setMessage("");
     try{
-      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation]=await Promise.all([
+      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation,easeCalibration]=await Promise.all([
         read<Phase1ProofPayload>("/api/operator/phase1-proof"),
         read<MeasurementCalibrationPayload>("/api/operator/measurement-calibration"),
         read<LaunchMetricsPayload>("/api/operator/cloud-summary?days=60"),
@@ -261,8 +274,9 @@ export default function Phase10ReadinessClient(){
         read<LaunchReadinessPayload>("/api/operator/launch-readiness"),
         read<FabricColorCalibrationPayload>("/api/operator/fabric-color-calibration"),
         read<StyleDirectorValidationPayload>("/api/operator/style-director-validation"),
+        read<EaseCalibrationPayload>("/api/operator/ease-calibration"),
       ]);
-      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation});
+      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation,easeCalibration});
     }catch(error){
       setMessage(error instanceof Error?error.message:"Readiness data could not be loaded.");
     }finally{
@@ -286,6 +300,12 @@ export default function Phase10ReadinessClient(){
     const measurementAccuracySignals=[measurement?.chestPass===true,measurement?.sleevePass===true].filter(Boolean).length;
     const measurementProgress=Math.round((measurementCountProgress+ratio(measurementAccuracySignals,2))/2);
     const measurementDone=measurement?.complete===true;
+
+    const easeCalibration=data.easeCalibration?.summary;
+    const approvedEaseModel=data.easeCalibration?.models?.find((item)=>item.status==="approved")||null;
+    const easeCoverageProgress=ratio(easeCalibration?.coveredCells||0,easeCalibration?.requiredCells||35);
+    const easeProgress=Math.round((easeCoverageProgress+(approvedEaseModel?100:0))/2);
+    const easeDone=Boolean(easeCalibration?.evidenceCoverageComplete&&approvedEaseModel);
 
     const proof=data.phase1Proof?.latest||null;
     const proofScale=proof?.scaleGatePass===true;
@@ -417,6 +437,21 @@ export default function Phase10ReadinessClient(){
         metric:measurement?`${measurement.total}/${measurement.target} cases · chest ${measurement.chestPass?"pass":"review"} · sleeve ${measurement.sleevePass?"pass":"review"}`:"No evidence",
         href:"/operator/measurement-calibration",
         action:"Record measurement cases",
+        ownerDependent:true,
+      },
+      {
+        id:"house-ease-calibration",
+        title:"Finished-garment house-ease calibration",
+        detail:easeDone
+          ? `All ${easeCalibration?.requiredCells||35} current ease-table cells have real finished-garment evidence and ${approvedEaseModel?.version} has explicit owner/tailor approval in the registry.`
+          : easeCalibration
+            ? `${Math.max(0,easeCalibration.requiredCells-easeCalibration.coveredCells)} table cells still need real finished-garment evidence. ${approvedEaseModel?"An approved registry version exists.":"No replacement table is approved yet."}`
+            : "No finished-garment house-ease calibration evidence is available yet.",
+        status:easeDone?"done":data.easeCalibration?.configured?"progress":"blocked",
+        progress:easeProgress,
+        metric:easeCalibration?`${easeCalibration.coveredCells}/${easeCalibration.requiredCells} cells · ${easeCalibration.uniqueCases} real cases · ${approvedEaseModel?.version||"no approved version"}`:"No ease evidence",
+        href:"/operator/ease-calibration",
+        action:"Open house ease calibration",
         ownerDependent:true,
       },
       {
