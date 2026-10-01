@@ -24,6 +24,10 @@ The customer Designer does not need a greenfield rebuild.
 
 The Premium Shirt Proof and customer Designer now use the same photographic compositor and physical-scale helpers. Once the proof passes physical scale, latency and realism gates, the shared path can be treated as promoted without copying code. A private Customer Preview Coverage desk audits every actual customer-selectable style choice against preview support and any required construction approval.
 
+## Novice completion evidence
+
+A private operator study now records anonymous first-time-user cases, real elapsed completion time, whether the user completed a design they liked, device class and blocking issues. The software intentionally contains **no invented time target**. A named reviewer enters the documented roadmap target, and the database refuses approval unless five latest unique novice cases complete a liked design with no blocking issue within that entered target.
+
 ## Important boundary
 
 A construction option can be:
@@ -46,6 +50,7 @@ The UI must not make a provisional SVG approximation look like a verified finish
 - [x] regression / evaluation foundation
 - [x] shared proof/customer photo-preview architecture implemented with no duplicate compositor
 - [x] customer-visible preview coverage audit engineered against the actual Designer choices
+- [x] five-novice completion-study evidence workflow implemented with observed timing + human-entered roadmap target
 - [ ] Phase 1 premium preview promoted after real evidence passes
-- [ ] five novice users complete a liked design in the roadmap target time
+- [ ] five real novice users complete a liked design within the documented roadmap target time
 - [ ] all customer-visible supported options pass construction / preview review
