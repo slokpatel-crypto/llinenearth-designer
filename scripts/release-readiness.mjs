@@ -133,6 +133,7 @@ for (const path of [
   "supabase/migrations/20261022_style_director_handoff_audit.sql",
   "supabase/migrations/20261023_style_director_handoff_validation.sql",
   "supabase/migrations/20261024_style_director_distinct_handoff_gate.sql",
+  "supabase/migrations/20261027_roadmap_v2_evidence_health.sql",
   "supabase/migrations/20261024_style_director_handoff_uniqueness.sql",
   "supabase/migrations/20261024_measurement_accuracy_evidence.sql",
   "supabase/migrations/20261026_style_director_verified_signoff.sql",
@@ -243,6 +244,7 @@ requireTokens("src/components/DesignerModule.tsx", ["handoffToken","/api/style-d
 requireTokens("supabase/migrations/20261022_style_director_handoff_audit.sql", ["style_director_handoff_audit","style_director_handoff_audit_record","service_role"]);
 requireTokens("supabase/migrations/20261023_style_director_handoff_validation.sql", ["handoff_audit_id","style_director_user_test_record_v2","verified handoff audit id is required","service_role"]);
 requireTokens("supabase/migrations/20261024_style_director_distinct_handoff_gate.sql", ["style_director_validation_signoff_record_v3","distinct handoff_audit_id","distinct verified Style Director handoffs","service_role"]);
+requireTokens("supabase/migrations/20261027_roadmap_v2_evidence_health.sql", ["roadmap_v2_evidence_health","noviceServerTimer","verifiedBetaFlow","signedStyleHandoff","distinctStyleValidation","renderManualReview","measurementEvidence","productionDeliveryEvidence","service_role"]);
 requireTokens("supabase/migrations/20261024_style_director_handoff_uniqueness.sql", ["token_fingerprint","style_director_handoff_audit_record_v2","style_director_user_tests_handoff_unique","service_role"]);
 requireTokens("supabase/migrations/20261026_style_director_verified_signoff.sql", ["count(distinct l.handoff_audit_id)","join private.style_director_handoff_audit","verified positive Style Director cases","service_role"]);
 requireTokens("src/lib/designer/ease-calibration.ts", ["requiredEaseEvidenceKeys","evidenceCoverageComplete","normalizeHouseEaseCalibrationDraft","SHIRT_EASE_CLASSES","TROUSER_EASE_CLASSES"]);
