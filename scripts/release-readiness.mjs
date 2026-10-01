@@ -94,6 +94,9 @@ for (const path of [
   "src/app/operator/meterage-model/page.tsx",
   "src/lib/designer/meterage-calibration.ts",
   "supabase/migrations/20261004_meterage_calibration_registry.sql",
+  "src/app/operator/launch-readiness/page.tsx",
+  "src/lib/designer/launch-readiness-evidence.ts",
+  "supabase/migrations/20261005_launch_readiness_evidence.sql",
   "src/app/operator/production-calibration/page.tsx",
   "supabase/migrations/20261001_designer_locked_revision_vault.sql",
   "supabase/migrations/20261001_measurement_profile_vault.sql",
@@ -394,6 +397,11 @@ requireTokens("supabase/migrations/20261004_meterage_calibration_registry.sql", 
 requireTokens("src/lib/designer/meterage-calibration.ts", ["normalizeMeterageCalibrationDraft","meterageForWidth","canApproveMeterageModel"]);
 requireTokens("src/app/operator/meterage-model/MeterageModelClient.tsx", ["Meterage Registry","Register draft from real evidence","Approve + activate","requires ≥20 real"]);
 requireTokens("src/app/api/operator/meterage-model/route.ts", ["evidenceCaseIds","At least 20 valid real cut cases","production_meterage_model_create","production_meterage_model_approve"]);
+requireTokens("supabase/migrations/20261005_launch_readiness_evidence.sql", ["launch_beta_attempt_record","launch_checklist_event_record","No customer names","service_role"]);
+requireTokens("src/lib/designer/launch-readiness-evidence.ts", ["LAUNCH_BETA_TARGET=5","LAUNCH_CHECKLIST_ITEMS","summarizeLaunchReadiness","launchEvidenceComplete"]);
+requireTokens("src/app/operator/launch-readiness/LaunchReadinessClient.tsx", ["Launch Evidence","PRIVATE BETA","HUMAN LAUNCH CHECKLIST","deployment readiness is still a separate gate"]);
+requireTokens("src/app/api/operator/launch-readiness/route.ts", ["normalizeBetaAttempt","normalizeLaunchChecklistDecision","launch_beta_attempt_record","launch_checklist_event_record"]);
+requireTokens("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx", ["private-beta-launch-signoff","/operator/launch-readiness","human sign-offs remain"]);
 requireTokens("next.config.ts", ["Strict-Transport-Security","X-Frame-Options","Cross-Origin-Opener-Policy"]);
 requireTokens("src/app/api/designer/look-render/route.ts", ["recordRenderOutcome","repair:true"]);
 requireTokens("src/app/api/designer/look-inspect/route.ts", ["attachRenderQa","jobId"]);
@@ -437,6 +445,8 @@ requireTokens("scripts/check-cloud-readiness.mjs", [
   "production_order_list",
   "production_delivery_evidence_list",
   "production_meterage_model_list",
+  "launch_beta_attempt_list",
+  "launch_checklist_event_list",
   "designer_locked_revision_vault_get",
   "measurement_profile_vault_get",
   "designer_render_outcome_list",

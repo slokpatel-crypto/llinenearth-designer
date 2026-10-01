@@ -120,6 +120,8 @@ if (url && key) {
           ["finished_garment_qc_list",{p_limit:1},"Finished-garment QC RPCs are installed."],
           ["production_delivery_evidence_list",{p_limit:1},"Production delivery evidence RPCs are installed."],
           ["production_meterage_model_list",{p_limit:1},"Versioned meterage calibration RPCs are installed."],
+          ["launch_beta_attempt_list",{p_limit:1},"Private-beta evidence RPCs are installed."],
+          ["launch_checklist_event_list",{p_limit:1},"Human launch checklist RPCs are installed."],
           ["designer_locked_revision_vault_get",{p_vault_id:"00000000-0000-4000-8000-000000000000",p_access_hash:"0".repeat(64)},"Locked design recovery vault RPCs are installed."],
           ["measurement_profile_vault_get",{p_vault_id:"00000000-0000-4000-8000-000000000000",p_access_hash:"0".repeat(64)},"Measurement recovery vault RPCs are installed."],
           ["designer_render_outcome_list",{p_limit:1},"Final render outcome ledger RPCs are installed."],

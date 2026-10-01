@@ -18,7 +18,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 | Phase 6 — Style Director | advanced foundation | owner-labelled benchmark / real-user validation |
 | Phase 7 — Final Render / QA | render outcome + human approval + credit metrics implemented | real approval/cost evidence + physical-pattern QA calibration |
 | Phase 8 — Production Bridge | handoff + stock/quote/order + QC + zero-reentry audit + versioned meterage registry implemented | approved physical meterage tables + 10 real zero-reentry deliveries |
-| Phase 9 — Hardening | strong engineering foundation | real device / beta / production deployment evidence |
+| Phase 9 — Hardening | CI/device QA + private-beta + human launch sign-off engineering implemented | real device acceptance + 5 successful beta cases + human sign-off + production READY |
 | Phase 10 — Ecommerce | intentionally later | only after Launch 3 |
 | Phase 11 — Closed loop | ongoing | post-launch evidence |
 
@@ -50,6 +50,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added append-only finished-garment QC inspections with a hard delivery gate and automatic rework-to-stitching loop.
 - Added immutable delivered-order zero-reentry audits and an evidence scorecard for the first 10 real production orders.
 - Added a versioned meterage calibration registry that requires ≥20 real cuts per garment and explicit owner/tailor approval before activation.
+- Added anonymous five-case private-beta evidence capture and append-only human launch sign-offs for Phase 9 hardening.
 - Added opt-in secure measurement recovery vault with hashed recovery keys, expiry and deletion.
 - Added final-render outcome ledger, human approval desk, automated QA linkage, and credits-per-approved metrics.
 - Added phase adaptation records so future coding agents do not rebuild existing systems unnecessarily.

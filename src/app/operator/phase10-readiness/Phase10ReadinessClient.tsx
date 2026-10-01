@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { summarizeConstructionReviews } from "@/lib/designer/construction-review-summary";
+import { summarizeLaunchReadiness } from "@/lib/designer/launch-readiness-evidence";
 
 type DesignerDataPayload={
   coverage:{
@@ -151,6 +152,12 @@ type ProductionPayload={
   orders:Array<{order_id:string;status:string;revision_id:string}>;
 };
 
+type LaunchReadinessPayload={
+  configured:boolean;
+  betaAttempts:Array<{case_id:string;device_class:string;core_flow_completed:boolean;blocking_bug:boolean;created_at:string}>;
+  checklistEvents:Array<{item_id:string;status:string;created_at:string}>;
+};
+
 type LoadState={
   phase1Proof:Phase1ProofPayload|null;
   measurementCalibration:MeasurementCalibrationPayload|null;
@@ -166,6 +173,7 @@ type LoadState={
   stock:StockPayload|null;
   production:ProductionPayload|null;
   renderQa:RenderQaPayload|null;
+  launchReadiness:LaunchReadinessPayload|null;
 };
 
 type RowStatus="done"|"progress"|"blocked"|"optional";
@@ -187,7 +195,7 @@ function ratio(value:number,total:number){return total>0?clamp(value/total*100):
 
 export default function Phase10ReadinessClient(){
   const [data,setData]=useState<LoadState>({
-    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,renderQa:null,
+    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,renderQa:null,launchReadiness:null,
   });
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
@@ -205,7 +213,7 @@ export default function Phase10ReadinessClient(){
   async function load(){
     setLoading(true);setMessage("");
     try{
-      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa]=await Promise.all([
+      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa,launchReadiness]=await Promise.all([
         read<Phase1ProofPayload>("/api/operator/phase1-proof"),
         read<MeasurementCalibrationPayload>("/api/operator/measurement-calibration"),
         read<LaunchMetricsPayload>("/api/operator/cloud-summary?days=60"),
@@ -220,8 +228,9 @@ export default function Phase10ReadinessClient(){
         read<StockPayload>("/api/operator/stock"),
         read<ProductionPayload>("/api/operator/production"),
         read<RenderQaPayload>("/api/operator/render-qa"),
+        read<LaunchReadinessPayload>("/api/operator/launch-readiness"),
       ]);
-      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa});
+      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa,launchReadiness});
     }catch(error){
       setMessage(error instanceof Error?error.message:"Readiness data could not be loaded.");
     }finally{
@@ -289,6 +298,13 @@ export default function Phase10ReadinessClient(){
     const latest=data.device?.latest||{};
     const acceptedDevices=["mobile","tablet","desktop"].filter((kind)=>latest[kind]?.status==="accepted").length;
     const deviceProgress=ratio(acceptedDevices,3);
+
+    const launchEvidence=data.launchReadiness
+      ? summarizeLaunchReadiness(data.launchReadiness.betaAttempts,data.launchReadiness.checklistEvents)
+      : null;
+    const launchEvidenceProgress=launchEvidence
+      ? Math.round((ratio(launchEvidence.successfulBetaCases,launchEvidence.betaTarget)+ratio(launchEvidence.checklistApproved,launchEvidence.checklistTotal))/2)
+      : 0;
 
     const productionCalibration=data.productionCalibration?.summary;
     const productionUsageProgress=Math.round((
@@ -424,6 +440,21 @@ export default function Phase10ReadinessClient(){
         metric:`${acceptedDevices}/3 device classes accepted`,
         href:"/operator/device-qa",
         action:"Run device QA",
+        ownerDependent:true,
+      },
+      {
+        id:"private-beta-launch-signoff",
+        title:"Private beta + human launch sign-off",
+        detail:launchEvidence?.launchEvidenceComplete
+          ? "Five successful unique beta cases and every human launch checklist item are evidenced."
+          : launchEvidence
+            ? `${Math.max(0,launchEvidence.betaTarget-launchEvidence.successfulBetaCases)} successful beta cases and ${Math.max(0,launchEvidence.checklistTotal-launchEvidence.checklistApproved)} human sign-offs remain.`
+            : "No private-beta / human launch-signoff evidence is available yet.",
+        status:launchEvidence?.launchEvidenceComplete?"done":data.launchReadiness?.configured?"progress":"blocked",
+        progress:launchEvidenceProgress,
+        metric:launchEvidence?`${launchEvidence.successfulBetaCases}/${launchEvidence.betaTarget} beta · ${launchEvidence.checklistApproved}/${launchEvidence.checklistTotal} sign-offs`:"No launch evidence",
+        href:"/operator/launch-readiness",
+        action:"Open launch evidence",
         ownerDependent:true,
       },
       {

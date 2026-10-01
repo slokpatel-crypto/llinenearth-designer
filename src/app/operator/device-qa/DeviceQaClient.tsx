@@ -118,7 +118,7 @@ export default function DeviceQaClient(){
   return <main className="deviceQa">
     <header className="deviceQaHeader">
       <div><span>LINEN EARTH / PRIVATE OPERATOR</span><h1>Designer Device QA</h1><p>Record real browser/device acceptance separately from the Node performance benchmark. This page never invents a device pass: it requires observed interaction samples and manual visual checks.</p></div>
-      <nav><Link href="/designer-studio">Open Designer Studio</Link><Link href="/operator/designer-evaluation">Designer Evaluation</Link><Link href="/operator">Operator Desk</Link></nav>
+      <nav><Link href="/designer-studio">Open Designer Studio</Link><Link href="/operator/launch-readiness">Launch Evidence</Link><Link href="/operator/designer-evaluation">Designer Evaluation</Link><Link href="/operator">Operator Desk</Link></nav>
     </header>
 
     <section className="deviceQaCoverage">

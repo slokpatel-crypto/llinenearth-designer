@@ -46,6 +46,8 @@ Vercel preview failures caused solely by the free build-rate quota are infrastru
 - [x] render cost protection
 - [x] server secret boundary
 - [x] baseline public security headers
+- [x] private-beta evidence capture + five-case gate engineering
+- [x] security / privacy / commercial launch sign-off registry engineering
 - [ ] current Roadmap v2 branch CI green
 - [ ] mobile accepted on target device
 - [ ] tablet accepted on target device
@@ -53,3 +55,24 @@ Vercel preview failures caused solely by the free build-rate quota are infrastru
 - [ ] private beta evidence collected
 - [ ] security / privacy / legal launch checklist signed off
 - [ ] production deployment verified READY
+
+
+## Private beta + human launch sign-off evidence
+
+The private Operator area now has a **Launch Evidence** desk for the two hardening gates that code cannot self-certify.
+
+### Five-customer private beta
+- uses anonymous case IDs only,
+- records the real device class,
+- records whether the core Launch 1 flow completed,
+- records whether a blocking bug occurred,
+- requires a note when a blocking bug is present,
+- evaluates only the latest attempt for each anonymous case,
+- requires at least 5 successful unique cases before the beta gate passes.
+
+### Human launch checklist
+The desk keeps append-only sign-off events for privacy notice review, terms / returns / refunds, measurement-data handling, third-party processing documentation, operator access / secret handling, and the customer support / incident contact path.
+
+Each item requires a named human reviewer. A **review** state needs an issue note; **approved** is an explicit sign-off. The software does not treat this operational checklist as legal advice and does not auto-approve any item.
+
+Production deployment verification remains a separate final gate.
