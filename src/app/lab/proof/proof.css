@@ -3,3 +3,8 @@
 .proofControls select{width:100%;border:1px solid #c9c1b3;background:white;padding:10px;color:#18202a}.proofRatingButtons{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:10px 0}.proofRatingButtons button{text-align:center;margin:0;padding:10px 0}.proofControls section>button:last-child{margin-top:10px}.proofStatus span:last-child{font-weight:600}
 .proofOperatorLink{display:block;margin-top:12px;border:1px solid #c9c1b3;background:#fff;padding:10px 12px;font-size:12px;color:#26324b}.proofOperatorLink:hover{background:#f0ebe2}
 .proofConstructionEngine{max-width:1240px;margin:18px auto 0;border:1px solid #d5cec0;background:#fbf8f1;padding:22px}.proofConstructionEngineHead{max-width:760px;margin-bottom:16px}.proofConstructionEngineHead>span{font-size:10px;letter-spacing:.16em;color:#7b746a}.proofConstructionEngineHead h2{font:400 clamp(26px,3vw,40px)/1.05 Georgia,serif;margin:10px 0 12px}.proofConstructionEngineHead p{margin:0;color:#66717a;line-height:1.6;font-size:13px}.proofConstructionEngine .liveConstruction{margin:0;background:#f4f0e7;border:1px solid #d5cec0}
+.proofBoundaryChecks{display:grid;gap:7px;margin:14px 0;padding:12px;border:1px solid #d5cec0;background:#fff}
+.proofBoundaryChecks p{margin:0 0 4px;line-height:1.45}
+.proofBoundaryChecks label{display:flex;align-items:center;gap:8px;margin:0;color:#26324b}
+.proofBoundaryChecks input{width:16px;height:16px;margin:0;padding:0}
+.proofBoundaryChecks span{font-size:12px}
