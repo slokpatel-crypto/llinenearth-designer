@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { expectedPeriodPx, passesScaleGate, pxPerMmFromMarker, scaleErrorPct } from "../src/lib/designer/proof-scale.ts";
+import { expectedPeriodPx, passesScaleGate, phase1ProofAcceptance, pxPerMmFromMarker, scaleErrorPct } from "../src/lib/designer/proof-scale.ts";
 import { applyRuntimeFabricScale, photoExpectedRepeatPx, photoFabricPatternScale, visiblePatternScaleVerified, LIVE_MODEL_PX_PER_MM, PHOTO_MODEL_COORDINATE_SCALE, type FabricRenderAsset } from "../src/lib/designer/live-preview.ts";
 
 test("calibrates px/mm from a known marker",()=>{
@@ -123,4 +123,32 @@ test("photographic repeat audit stays unavailable without physical scale",()=>{
     renderAssetVersion:"test",
   };
   assert.equal(photoExpectedRepeatPx(asset),null);
+});
+
+
+test("phase 1 proof acceptance requires physical scale, latency samples and realism",()=>{
+  const accepted=phase1ProofAcceptance({
+    repeatMm:10,
+    scaleGatePass:true,
+    realModelSamples:12,
+    realModelP95Ms:220,
+    realismRatings:[5,4,4,5,4,5,3,2],
+  });
+  assert.equal(accepted.accepted,true);
+  assert.equal(accepted.strongRatings,6);
+});
+
+test("phase 1 proof remains review when any real-world gate is missing",()=>{
+  const review=phase1ProofAcceptance({
+    repeatMm:null,
+    scaleGatePass:null,
+    realModelSamples:4,
+    realModelP95Ms:180,
+    realismRatings:[5,5,5],
+  });
+  assert.equal(review.accepted,false);
+  assert.equal(review.scaleReady,false);
+  assert.equal(review.latencyReady,false);
+  assert.equal(review.realismReady,false);
+  assert.equal(review.reasons.length,3);
 });
