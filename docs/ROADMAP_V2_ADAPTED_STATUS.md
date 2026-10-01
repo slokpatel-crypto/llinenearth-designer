@@ -15,7 +15,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 | Phase 3 — Deterministic Designer | shared proof/customer compositor + option coverage audit + novice completion-study workflow | Phase 1 evidence + five server-timed real novice completions within documented target + all visible option reviews |
 | Phase 4 — Measurements / Fit | advanced foundation + secure recovery + authenticated ownership + house-ease registry + approved-model runtime activation implemented | real-person accuracy evidence + real finished-garment ease evidence/approval |
 | Phase 5 — Lock / Share / Enquiry | lock + share + secure recovery + authenticated customer ownership implemented | five-customer real-flow validation |
-| Phase 6 — Style Director | advanced foundation + real-user validation/sign-off workflow | owner-labelled benchmark threshold + real-user evidence/sign-off |
+| Phase 6 — Style Director | advanced foundation + real-user validation/sign-off workflow + human-entered clean-case threshold | owner-labelled benchmark threshold + enough real-user clean cases to meet the documented target + sign-off |
 | Phase 7 — Final Render / QA | render outcome + human approval + credit metrics + cross-view identity + owner-cap + approved-pattern coverage workflow implemented | real approval/cost/identity evidence + physical pattern checks on approved patterned renders |
 | Phase 8 — Production Bridge | handoff + stock/quote/order + customer ownership + QC + zero-reentry audit + versioned meterage registry implemented | approved physical meterage tables + 10 real zero-reentry deliveries |
 | Phase 9 — Hardening | CI/device QA + private-beta + human launch sign-off engineering implemented | real device acceptance + 5 successful beta cases + human sign-off + production READY |
@@ -61,7 +61,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added cross-view final-render identity evidence and a human-entered owner credit-cap registry with observed cost comparison.
 - Added final-render pattern release coverage: every approved patterned shirt/trouser in the evidence set must have a latest <=8% physical-scale calibration without axis mismatch; solids do not create pattern-calibration debt, while a solids-only set cannot prove the patterned-render gate.
 - Added append-only controlled physical fabric colour checks with LAB/hex evidence, CIEDE2000 comparison and a 10-unique-fabric evidence counter.
-- Added anonymous Style Director real-user validation evidence for understandability, material distinction, exact stock handoff and explicit human sign-off.
+- Added anonymous Style Director real-user validation evidence for understandability, material distinction, exact stock handoff and explicit human sign-off; approval now also requires a human-entered clean-case target, and the database blocks approval until latest unique evidence meets it.
 - Added append-only finished-garment ease evidence, a complete 35-cell coverage gate, and a versioned owner/tailor-approved house-ease registry.
 - Approved house-ease models now become the single live runtime ease source across assessment, search and brief generation; drafts/retired models never activate and the provisional table remains the explicit fallback when no approved model exists.
 - Tightened the shared five-customer beta evidence so each qualifying case must reference a server-audited share created only after immutable lock-hash verification, with zero blocking bugs; legacy checkbox/generic completion cannot satisfy the gate.
