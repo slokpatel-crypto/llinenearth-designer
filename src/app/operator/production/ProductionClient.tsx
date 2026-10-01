@@ -110,7 +110,7 @@ export default function ProductionClient(){
     {label:quote.line1Label.trim(),amount:Number(quote.line1Amount)},
     {label:quote.line2Label.trim(),amount:Number(quote.line2Amount)},
   ].filter((item)=>item.label&&Number.isFinite(item.amount)&&item.amount>=0),[quote]);
-  const canQuote=quote.revisionId.trim().length>=12&&/^[a-f0-9]{64}$/i.test(quote.recipeHash.trim())&&quoteItems.length>0;
+  const canQuote=Boolean(loadedRevision)&&quote.revisionId.trim().length>=12&&/^[a-f0-9]{64}$/i.test(quote.recipeHash.trim())&&quoteItems.length>0;
   const acceptedQuotes=useMemo(()=>quotes.filter((item)=>item.status==="accepted"&&(
     !order.revisionId || (item.revision_id===order.revisionId&&item.recipe_hash===order.recipeHash)
   )),[quotes,order.revisionId,order.recipeHash]);
@@ -125,7 +125,7 @@ export default function ProductionClient(){
       <div>
         <span>00 / LOCKED RECIPE</span>
         <h2>Load the exact design before production.</h2>
-        <p>Paste the secure recovery token from Designer. This fills the immutable revision ID and recipe hash into quote/order workflows so construction data is not retyped.</p>
+        <p>Paste the secure recovery token from Designer. New quotes and production orders are blocked until this immutable revision is verified, so recipe identity cannot be typed or guessed manually.</p>
       </div>
       <div className="productionLoadForm">
         <textarea rows={3} value={recoveryToken} onChange={(e)=>setRecoveryToken(e.target.value)} placeholder="lev1.…" spellCheck={false}/>
@@ -160,7 +160,7 @@ export default function ProductionClient(){
           <fieldset className="productionLine"><legend>Line 2</legend><input aria-label="Line 2 label" value={quote.line2Label} onChange={(e)=>setQuote({...quote,line2Label:e.target.value})} placeholder="Label"/><input aria-label="Line 2 amount" type="number" min="0" step=".01" value={quote.line2Amount} onChange={(e)=>setQuote({...quote,line2Amount:e.target.value})} placeholder="Amount"/></fieldset>
         </div>
         <label>Note<textarea rows={2} value={quote.note} onChange={(e)=>setQuote({...quote,note:e.target.value})}/></label>
-        <button disabled={busy||!configured||!canQuote} onClick={()=>void post({action:"create_quote",revisionId:quote.revisionId,recipeHash:quote.recipeHash,currency:quote.currency,lineItems:quoteItems,adjustment:Number(quote.adjustment||0),note:quote.note},"Quote created.")}>Create quote</button>
+        <button disabled={busy||!configured||!canQuote} onClick={()=>void post({action:"create_quote",revisionId:quote.revisionId,recipeHash:quote.recipeHash,currency:quote.currency,lineItems:quoteItems,adjustment:Number(quote.adjustment||0),note:quote.note,recoveryToken:recoveryToken.trim()},"Quote created from verified locked revision.")}>Create quote</button>
       </article>
 
       <article className="productionPanel">
@@ -169,10 +169,10 @@ export default function ProductionClient(){
         <label>Recipe hash<input value={order.recipeHash} onChange={(e)=>setOrder({...order,recipeHash:e.target.value})}/></label>
         <label>Accepted quote (optional)<select value={order.quoteId} onChange={(e)=>setOrder({...order,quoteId:e.target.value})}><option value="">No quote attached</option>{acceptedQuotes.map((item)=><option key={item.quote_id} value={item.quote_id}>{item.currency} {Number(item.total).toFixed(2)} · {item.quote_id.slice(0,8)}</option>)}</select></label>
         <label>Note<textarea rows={2} value={order.note} onChange={(e)=>setOrder({...order,note:e.target.value})}/></label>
-        <button disabled={busy||!configured||order.revisionId.length<12||!/^[a-f0-9]{64}$/i.test(order.recipeHash)} onClick={()=>void post({
-          action:"create_order",...order,recoveryToken:loadedRevision?recoveryToken.trim():"",
-        },loadedRevision?"Production order created with durable design context.":"Production order created without a durable design-context snapshot.")}>Create order</button>
-        <small style={{lineHeight:1.45,opacity:.62}}>{loadedRevision?"Locked recipe verified: privacy-safe style/fabric/construction context will be retained for future outcome learning.":"Load the locked recipe first to retain durable outcome lineage after the temporary design vault expires."}</small>
+        <button disabled={busy||!configured||!loadedRevision||order.revisionId.length<12||!/^[a-f0-9]{64}$/i.test(order.recipeHash)} onClick={()=>void post({
+          action:"create_order",...order,recoveryToken:recoveryToken.trim(),
+        },"Production order created from verified locked revision with durable design context.")}>Create order</button>
+        <small style={{lineHeight:1.45,opacity:.62}}>{loadedRevision?"Locked recipe verified: privacy-safe style/fabric/construction context will be retained for future outcome learning.":"Load and verify the locked recipe before creating quotes or production orders."}</small>
       </article>
     </section>
 
