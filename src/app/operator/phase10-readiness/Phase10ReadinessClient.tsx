@@ -214,6 +214,22 @@ type PreviewCoveragePayload={
   };
 };
 
+type NoviceDesignerStudyPayload={
+  configured:boolean;
+  summary:{
+    uniqueCases:number;
+    noviceCases:number;
+    likedDesignCases:number;
+    blockingCases:number;
+    medianLikedDesignSeconds:number|null;
+    targetSeconds:number|null;
+    withinTargetCases:number;
+    latestDecisionStatus:string;
+    evidenceReady:boolean;
+    gateComplete:boolean;
+  };
+};
+
 type LoadState={
   phase1Proof:Phase1ProofPayload|null;
   measurementCalibration:MeasurementCalibrationPayload|null;
@@ -234,6 +250,7 @@ type LoadState={
   styleDirectorValidation:StyleDirectorValidationPayload|null;
   easeCalibration:EaseCalibrationPayload|null;
   previewCoverage:PreviewCoveragePayload|null;
+  noviceDesignerStudy:NoviceDesignerStudyPayload|null;
 };
 
 type RowStatus="done"|"progress"|"blocked"|"optional";
@@ -255,7 +272,7 @@ function ratio(value:number,total:number){return total>0?clamp(value/total*100):
 
 export default function Phase10ReadinessClient(){
   const [data,setData]=useState<LoadState>({
-    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,renderQa:null,launchReadiness:null,fabricColorCalibration:null,styleDirectorValidation:null,easeCalibration:null,previewCoverage:null,
+    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,renderQa:null,launchReadiness:null,fabricColorCalibration:null,styleDirectorValidation:null,easeCalibration:null,previewCoverage:null,noviceDesignerStudy:null,
   });
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
@@ -273,7 +290,7 @@ export default function Phase10ReadinessClient(){
   async function load(){
     setLoading(true);setMessage("");
     try{
-      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation,easeCalibration,previewCoverage]=await Promise.all([
+      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation,easeCalibration,previewCoverage,noviceDesignerStudy]=await Promise.all([
         read<Phase1ProofPayload>("/api/operator/phase1-proof"),
         read<MeasurementCalibrationPayload>("/api/operator/measurement-calibration"),
         read<LaunchMetricsPayload>("/api/operator/cloud-summary?days=60"),
@@ -293,8 +310,9 @@ export default function Phase10ReadinessClient(){
         read<StyleDirectorValidationPayload>("/api/operator/style-director-validation"),
         read<EaseCalibrationPayload>("/api/operator/ease-calibration"),
         read<PreviewCoveragePayload>("/api/operator/preview-option-coverage"),
+        read<NoviceDesignerStudyPayload>("/api/operator/novice-designer-study"),
       ]);
-      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation,easeCalibration,previewCoverage});
+      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation,easeCalibration,previewCoverage,noviceDesignerStudy});
     }catch(error){
       setMessage(error instanceof Error?error.message:"Readiness data could not be loaded.");
     }finally{
@@ -321,6 +339,12 @@ export default function Phase10ReadinessClient(){
 
     const previewCoverage=data.previewCoverage?.summary;
     const previewCoverageDone=previewCoverage?.gateComplete===true;
+
+    const noviceStudy=data.noviceDesignerStudy?.summary;
+    const noviceProgress=noviceStudy?.targetSeconds
+      ? ratio(noviceStudy.withinTargetCases,5)
+      : ratio(noviceStudy?.likedDesignCases||0,5);
+    const noviceDone=noviceStudy?.gateComplete===true;
 
     const easeCalibration=data.easeCalibration?.summary;
     const approvedEaseModel=data.easeCalibration?.models?.find((item)=>item.status==="approved")||null;
@@ -473,6 +497,25 @@ export default function Phase10ReadinessClient(){
         metric:previewCoverage?`${previewCoverage.fullyCleared}/${previewCoverage.total} cleared · ${previewCoverage.previewPending} preview pending · ${previewCoverage.constructionPending} construction pending`:"No coverage evidence",
         href:"/operator/preview-option-coverage",
         action:"Audit customer preview choices",
+        ownerDependent:true,
+      },
+      {
+        id:"novice-designer-study",
+        title:"Five-novice Designer completion study",
+        detail:noviceDone
+          ? `Five latest unique novice cases completed a liked design within the documented target of ${noviceStudy?.targetSeconds||0} seconds, with explicit human approval.`
+          : noviceStudy
+            ? noviceStudy.targetSeconds
+              ? `${Math.max(0,5-noviceStudy.withinTargetCases)} more qualifying novice cases are needed within the documented target. Latest human decision: ${noviceStudy.latestDecisionStatus}.`
+              : `${noviceStudy.likedDesignCases}/5 clean liked-design completions are recorded, but no documented target time has been entered yet.`
+            : "No novice Designer completion evidence is available yet.",
+        status:noviceDone?"done":data.noviceDesignerStudy?.configured?"progress":"blocked",
+        progress:noviceProgress,
+        metric:noviceStudy
+          ? `${noviceStudy.withinTargetCases}/5 within target · median ${noviceStudy.medianLikedDesignSeconds??"—"} sec · target ${noviceStudy.targetSeconds??"not set"} sec`
+          : "No novice evidence",
+        href:"/operator/novice-designer-study",
+        action:"Run novice completion study",
         ownerDependent:true,
       },
       {
