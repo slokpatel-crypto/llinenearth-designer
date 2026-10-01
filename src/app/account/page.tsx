@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 type Customer={id?:string;email:string|null};
 type OwnedDesign={vaultId:string;revisionId:string;recipeHash:string;createdAt:string;expiresAt:string};
-type OwnedProfile={vaultId:string;createdAt:string;expiresAt:string;profile:{unit?:string;shirt?:Record<string,unknown>;pants?:Record<string,unknown>}};
+type OwnedProfile={vaultId:string;createdAt:string;expiresAt:string;unit?:string};
 type OwnedQuote={quote_id:string;revision_id:string;currency:string;total:number|string;status:string;created_at:string;updated_at:string};
 type OwnedOrder={order_id:string;revision_id:string;quote_id:string|null;status:string;created_at:string;updated_at:string};
 
@@ -90,6 +90,26 @@ export default function AccountPage(){
     await refresh();
   }
 
+  async function deleteOwned(kind:"design"|"measurement",vaultId:string){
+    const label=kind==="design"?"secure design copy":"secure measurement copy";
+    if(!window.confirm(`Delete this ${label}? Production records, if any, are not deleted by this action.`)) return;
+    setBusy(true);setMessage("");
+    try{
+      const url=kind==="design"?"/api/designer/vault":"/api/measurements/vault";
+      const response=await fetch(url,{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({action:"deleteOwned",vaultId}),
+      });
+      const data=await response.json();
+      if(!response.ok||!data.deleted) throw new Error(data.error||"Secure copy could not be deleted.");
+      setMessage(kind==="design"?"Secure design copy deleted.":"Secure measurement copy deleted.");
+      await refresh();
+    }catch(error){
+      setMessage(error instanceof Error?error.message:"Secure copy could not be deleted.");
+    }finally{setBusy(false);}
+  }
+
   async function logout(){
     await fetch("/api/customer-auth/logout",{method:"POST"});
     setMessage("Signed out.");setCodeSent(false);
@@ -148,9 +168,11 @@ export default function AccountPage(){
           <h2 style={{marginTop:0}}>Locked designs <span style={{opacity:.45}}>({designs.length})</span></h2>
           <div style={{display:"grid",gap:10}}>
             {designs.length===0&&<p style={{opacity:.65}}>No account-owned locked designs yet. New secure copies created while signed in will appear here.</p>}
-            {designs.map(item=><div key={item.vaultId} style={{borderTop:"1px solid #ece6dc",paddingTop:12}}>
-              <strong>{item.revisionId}</strong>
-              <div style={{fontSize:13,opacity:.65,marginTop:4}}>Saved {new Date(item.createdAt).toLocaleDateString()} · integrity hash {item.recipeHash.slice(0,12)}…</div>
+            {designs.map(item=><div key={item.vaultId} style={{borderTop:"1px solid #ece6dc",paddingTop:12,display:"grid",gap:7}}>
+              <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"start",flexWrap:"wrap"}}>
+                <div><strong>{item.revisionId}</strong><div style={{fontSize:13,opacity:.65,marginTop:4}}>Saved {new Date(item.createdAt).toLocaleDateString()} · integrity hash {item.recipeHash.slice(0,12)}…</div></div>
+                <button style={{...button,background:"#fff",color:"#7a2f2f",border:"1px solid #d8c6c1",padding:"7px 10px"}} disabled={busy} onClick={()=>void deleteOwned("design",item.vaultId)}>Delete secure copy</button>
+              </div>
             </div>)}
           </div>
           <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) auto",gap:8,marginTop:18}}>
@@ -164,8 +186,10 @@ export default function AccountPage(){
           <div style={{display:"grid",gap:10}}>
             {profiles.length===0&&<p style={{opacity:.65}}>No account-owned measurement profile yet. Measurements remain private and are shown here only as saved-profile metadata.</p>}
             {profiles.map(item=><div key={item.vaultId} style={{borderTop:"1px solid #ece6dc",paddingTop:12}}>
-              <strong>Private measurement profile</strong>
-              <div style={{fontSize:13,opacity:.65,marginTop:4}}>Saved {new Date(item.createdAt).toLocaleDateString()} · unit {item.profile?.unit||"—"}</div>
+              <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"start",flexWrap:"wrap"}}>
+                <div><strong>Private measurement profile</strong><div style={{fontSize:13,opacity:.65,marginTop:4}}>Saved {new Date(item.createdAt).toLocaleDateString()} · unit {item.unit||"—"}</div></div>
+                <button style={{...button,background:"#fff",color:"#7a2f2f",border:"1px solid #d8c6c1",padding:"7px 10px"}} disabled={busy} onClick={()=>void deleteOwned("measurement",item.vaultId)}>Delete secure copy</button>
+              </div>
             </div>)}
           </div>
           <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) auto",gap:8,marginTop:18}}>
