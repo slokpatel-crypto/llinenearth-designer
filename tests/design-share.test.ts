@@ -16,7 +16,7 @@ const revision={
     status:"draft",
     source:{designerRuleSetVersion:"v",fitConstructionVersion:null,measurementProfileVersion:null,blockStrategyVersion:null,styleSchemaVersion:null},
     styleSpec:null,
-    bodyProfile:{source:"manual",heightCm:178,shoulderWidthCm:46,torsoLengthCm:62,waistCm:82,seatCm:96,legLengthCm:102},
+    bodyProfile:{version:1,build:"regular",heightCm:178,skinTone:"medium",source:"measurements",silhouette:{shoulderScale:1.02,chestScale:1.03,waistScale:.95,seatScale:1.01,thighScale:1,legLengthScale:1.04,evidenceCount:6}},
     context:{occasion:"Semi-Formal",climate:"Not specified",intention:"Balanced"},
     fabrics:{
       shirt:{id:"s1",name:"Sky Blue",line:"Linen Plain",source:"catalogue",verifiedMaterialFacts:1},
@@ -38,6 +38,7 @@ test("shared design payload excludes body and measurement data",()=>{
   const payload=sharePayloadFromRevision(revision,1_000);
   assert.equal("bodyProfile" in payload,false);
   assert.equal(JSON.stringify(payload).includes("heightCm"),false);
+  assert.equal(JSON.stringify(payload).includes("silhouette"),false);
   assert.equal(JSON.stringify(payload).includes("bodyCm"),false);
   assert.equal(payload.fabrics.shirt.id,"s1");
   assert.equal(payload.shirt.collar,"Point");
