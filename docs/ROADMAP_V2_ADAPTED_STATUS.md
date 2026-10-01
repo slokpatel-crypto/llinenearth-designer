@@ -72,6 +72,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added Supabase email-OTP customer accounts, account-owned locked designs and measurement profiles, claim-by-recovery-token migration, and private account listing.
 - Propagated authenticated ownership from immutable locked designs into quotes/orders and added private customer production-status tracking.
 - Added itemized account-owned quote review and authenticated customer acceptance evidence before production-order creation.
+- Hardened Phase 4 self-vs-tailor calibration into a private append-only measurement accuracy registry with server-derived errors, unique-case semantics, physical-source provenance and named checker evidence.
 - Added a privacy-safe authenticated customer production timeline from append-only order events without exposing operator notes or event payloads.
 - Added Phase 11 post-delivery customer outcome evidence tied to delivered account-owned orders, with wear-confirmed fit evidence and no automatic Designer ranking changes.
 - Added a private Phase 11 outcome-review desk with named approve/reject decisions and a human-entered evidence-threshold policy; no threshold is invented and meeting it still does not auto-change Designer ranking.
