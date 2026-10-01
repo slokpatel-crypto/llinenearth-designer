@@ -1,6 +1,6 @@
 # Phase 7 — Final Photoreal Render & QA Adaptation
 
-Status: advanced implementation with provider-credit outcome tracking and human approval workflow now added; physical-pattern calibration remains.
+Status: advanced implementation with provider-credit outcomes, cross-view identity review and owner-entered commercial cap workflow; real evidence remains.
 
 ## Existing foundation to keep
 
@@ -29,7 +29,8 @@ The new Roadmap v2 design-lock contract is separate from the render provider. A 
 - [x] Calculate approval rate and credits per approved render from real outcomes.
 - [x] Add measured stripe/check calibration capture against the existing <= 8% physical-scale gate.
 - Confirm the QA tolerance with real physical fixtures and owner/tailor evidence.
-- Confirm cross-view identity on the target set.
+- [x] Add explicit cross-view identity evidence capture for multi-view concepts.
+- Confirm cross-view identity on the target set with real human reviews.
 - Continue manual review for cases where automated QA cannot confidently approve.
 - Do not call final AI output a physical colour proof; the real swatch remains authoritative.
 
@@ -46,9 +47,12 @@ The new Roadmap v2 design-lock contract is separate from the render provider. A 
 - [x] render approval-rate / credit evidence collection implemented
 - [ ] real render approval-rate target met
 - [x] credits-per-approved metric implemented
+- [x] owner-approved credit-cap registry + automatic comparison implemented
 - [ ] cost per approved render under owner cap
 - [x] measured-pattern QA evidence capture + <= 8% scale scoring implemented
 - [ ] measured-pattern QA calibrated on physical fixtures
+- [x] cross-view identity review workflow implemented
+- [ ] target-set cross-view identity evidence accepted
 - [ ] manual review workflow signed off for production use
 
 
@@ -70,4 +74,4 @@ The private **Final Render QA** desk lets the operator approve or reject each ou
 
 Cached re-use is excluded from provider credit spend. The evidence is kept separate from customer-facing rendering so a review does not mutate the locked design.
 
-The first readiness threshold is intentionally evidence-based: at least 20 human-reviewed final renders and at least 60% approval before the dashboard can mark the approval-rate gate complete. The commercial credit cap remains an owner decision and is not invented in code.
+The first readiness threshold is intentionally evidence-based: at least 20 human-reviewed final renders and at least 60% approval before the dashboard can mark the approval-rate gate complete. The commercial credit cap remains an owner decision and is not invented in code. The operator can now record that approved cap, and the desk compares it against observed credits per approved render. Multi-view concepts also require an explicit human identity match/mismatch review rather than treating generated views as automatically consistent.
