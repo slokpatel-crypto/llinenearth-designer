@@ -90,6 +90,10 @@ for (const path of [
   "supabase/migrations/20261001_measurement_profile_vault.sql",
   "supabase/migrations/20261001_fabric_stock_ledger.sql",
   "supabase/migrations/20261001_production_quotes_orders.sql",
+  "supabase/migrations/20261001_render_outcomes.sql",
+  "src/lib/designer/render-outcomes.ts",
+  "src/lib/designer/render-outcome-metrics.ts",
+  "src/app/operator/render-qa/page.tsx",
 ]) requireFile(path);
 
 requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/visual", "/real-model", "Open Real Model Designer"]);
@@ -372,6 +376,12 @@ requireTokens("src/app/operator/stock/StockClient.tsx", ["Fabric Stock Ledger","
 requireTokens("supabase/migrations/20261001_fabric_stock_ledger.sql", ["fabric_stock_snapshot","fabric_stock_reserve","request_key","service_role"]);
 requireTokens("supabase/migrations/20261001_production_quotes_orders.sql", ["production_quote_create","production_order_create","invalid order transition","service_role"]);
 requireTokens("next.config.ts", ["Strict-Transport-Security","X-Frame-Options","Cross-Origin-Opener-Policy"]);
+requireTokens("src/app/api/designer/look-render/route.ts", ["recordRenderOutcome","repair:true"]);
+requireTokens("src/app/api/designer/look-inspect/route.ts", ["attachRenderQa","jobId"]);
+requireTokens("src/lib/designer/render-outcome-metrics.ts", ["summarizeRenderOutcomes","creditsPerApproved","approvalRate"]);
+requireTokens("src/app/operator/render-qa/RenderQaClient.tsx", ["Final Render QA","Add measured pattern check","APPROVAL RATE","CREDITS / APPROVED"]);
+requireTokens("supabase/migrations/20261001_render_outcomes.sql", ["designer_render_outcome_record","designer_render_outcome_review","designer_render_pattern_calibration_record","service_role"]);
+
 
 requireTokens("src/app/api/homepage-model/route.ts", [
   "FASHN_API_KEY",
@@ -408,6 +418,8 @@ requireTokens("scripts/check-cloud-readiness.mjs", [
   "production_order_list",
   "designer_locked_revision_vault_get",
   "measurement_profile_vault_get",
+  "designer_render_outcome_list",
+  "designer_render_pattern_calibration_list",
   "Apply Roadmap v2 Supabase migrations",
 ]);
 
