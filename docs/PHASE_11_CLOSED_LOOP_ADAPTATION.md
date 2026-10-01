@@ -1,6 +1,6 @@
 # Phase 11 — Closed Loop Adaptation
 
-Status: post-delivery customer outcome evidence capture is implemented. Real delivered-order outcomes and a human review/learning policy remain operational evidence gates.
+Status: post-delivery customer outcome capture plus human review/threshold-policy engineering are implemented. Real delivered-order outcomes and a real approved learning policy remain operational evidence gates.
 
 ## Implemented closed-loop evidence
 
@@ -22,7 +22,15 @@ Customer outcome data is held in the private production schema and exposed only 
 
 The private Production Desk can view the latest outcome for an order. Customer outcome evidence is **not automatically applied to Designer ranking or fit intelligence**. That separation is intentional: customer feedback can be noisy, subjective or caused by production execution rather than design logic.
 
-A later learning step should therefore require enough real cases plus explicit human review before any outcome signal is allowed to influence recommendation weights.
+The private **Customer Outcome Review** desk now adds that control layer:
+- each customer outcome can be approved or rejected by a named reviewer,
+- rejected evidence requires a reason,
+- the minimum approved-case threshold has no software default,
+- a named human must enter and document the threshold policy,
+- the evidence gate can report whether the human-defined quantity is met,
+- even a met evidence gate does not automatically alter Designer ranking.
+
+A later learning rule may only map reviewed evidence into bounded recommendation signals after this real evidence and policy gate is satisfied.
 
 ## Completion gate
 
@@ -33,6 +41,8 @@ A later learning step should therefore require enough real cases plus explicit h
 - [x] private operator visibility
 - [x] automatic learning explicitly disabled
 - [ ] real delivered-order outcome dataset collected
-- [ ] human review policy for learning eligibility approved
-- [ ] evidence threshold reached before any ranking influence
+- [x] human review / rejection workflow implemented
+- [x] human-entered threshold policy registry implemented with no default threshold
+- [ ] real learning policy approved and recorded
+- [ ] real evidence threshold reached before any ranking influence
 - [ ] post-launch outcome analysis completed
