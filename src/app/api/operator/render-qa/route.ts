@@ -63,7 +63,16 @@ export async function GET(){
       repeatMm:verified?repeatMm:null,
     }];
   }));
-  const patternCoverageSummary=summarizeApprovedPatternCalibrationCoverage(outcomes,calibrations,patternedFabricIds);
+  const expectedRepeatByFabric=new Map<string,number>(
+    Object.entries(patternEvidenceByFabric)
+      .flatMap(([fabricId,evidence])=>evidence.verified&&evidence.repeatMm ? [[fabricId,evidence.repeatMm] as [string,number]] : []),
+  );
+  const patternCoverageSummary=summarizeApprovedPatternCalibrationCoverage(
+    outcomes,
+    calibrations,
+    patternedFabricIds,
+    expectedRepeatByFabric,
+  );
   return NextResponse.json({
     outcomes,
     calibrations,
