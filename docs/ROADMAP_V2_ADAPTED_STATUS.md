@@ -14,7 +14,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 | Phase 2 — Fabric Truth | strong existing foundation | owner / supplier physical evidence coverage and 50-fabric reviewed set |
 | Phase 3 — Deterministic Designer | strong existing foundation | promote proved preview only after Phase 1 passes |
 | Phase 4 — Measurements / Fit | advanced foundation | real-person accuracy study, tailor ease calibration, durable persistence |
-| Phase 5 — Lock / Share / Enquiry | lock contract + enquiry implemented | authenticated durable storage / share permissions |
+| Phase 5 — Lock / Share / Enquiry | lock + share + secure recovery vault implemented | authenticated customer-account ownership |
 | Phase 6 — Style Director | advanced foundation | owner-labelled benchmark / real-user validation |
 | Phase 7 — Final Render / QA | advanced foundation | approval-rate, cost and physical-pattern QA evidence |
 | Phase 8 — Production Bridge | safe handoff contract implemented | validated meterage, live stock, quote engine, production orders |
