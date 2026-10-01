@@ -7,6 +7,7 @@ export type CustomerOutcomeEvidenceRow={
   worn_confirmed:boolean;
   note:string;
   created_at:string;
+  learning_context?:Record<string,unknown>|null;
 };
 
 export type CustomerOutcomeReviewDecision="approved"|"rejected";
@@ -69,13 +70,17 @@ export function summarizeCustomerOutcomeLearning(
   let approved=0;
   let rejected=0;
   let unreviewed=0;
+  let learningEligible=0;
   let approvedFitCases=0;
   for(const outcome of outcomes){
     const review=latestReviewByOutcome.get(outcome.outcome_id);
     if(!review){unreviewed+=1;continue;}
     if(review.decision==="rejected"){rejected+=1;continue;}
     approved+=1;
-    if(outcome.worn_confirmed&&outcome.fit_result!=="not_checked") approvedFitCases+=1;
+    if(outcome.learning_context){
+      learningEligible+=1;
+      if(outcome.worn_confirmed&&outcome.fit_result!=="not_checked") approvedFitCases+=1;
+    }
   }
 
   const threshold=latestPolicy?.minimum_approved_cases||null;
@@ -84,9 +89,10 @@ export function summarizeCustomerOutcomeLearning(
     approved,
     rejected,
     unreviewed,
+    learningEligible,
     approvedFitCases,
     threshold,
     policy:latestPolicy,
-    gateComplete:Boolean(threshold&&approved>=threshold),
+    gateComplete:Boolean(threshold&&learningEligible>=threshold),
   };
 }
