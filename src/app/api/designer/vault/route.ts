@@ -84,6 +84,18 @@ export async function POST(request:Request){
         accountOwned=Boolean(await rpc<boolean>("designer_locked_revision_vault_set_owner",{
           p_vault_id:vaultId,p_access_hash:accessHash,p_owner_user_id:customer.id,
         }));
+        if(accountOwned){
+          try{
+            await rpc("production_claim_revision_ownership",{
+              p_revision_id:revision.revisionId,
+              p_recipe_hash:revision.recipeHash.toLowerCase(),
+              p_owner_user_id:customer.id,
+            });
+          }catch{
+            // Ownership propagation is additive; secure design storage remains available
+            // while the newer production-ownership migration is being installed.
+          }
+        }
       }
 
       const recoveryToken=createDesignVaultRecoveryToken(vaultId,accessKey);
@@ -147,6 +159,23 @@ export async function POST(request:Request){
       const claimed=await rpc<boolean>("designer_locked_revision_vault_set_owner",{
         p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,p_owner_user_id:customer.id,
       });
+      if(claimed){
+        const rows=await rpc<Array<{payload:LockedDesignRevision;expires_at:string}>>("designer_locked_revision_vault_get",{
+          p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,
+        });
+        const revision=rows[0]?.payload;
+        if(revision&&await verifyLockedDesignRevision(revision)){
+          try{
+            await rpc("production_claim_revision_ownership",{
+              p_revision_id:revision.revisionId,
+              p_recipe_hash:revision.recipeHash.toLowerCase(),
+              p_owner_user_id:customer.id,
+            });
+          }catch{
+            // Keep account claim available while the production-ownership migration rolls out.
+          }
+        }
+      }
       return jsonNoStore({claimed:Boolean(claimed)});
     }
 
