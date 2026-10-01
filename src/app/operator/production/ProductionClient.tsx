@@ -140,8 +140,8 @@ export default function ProductionClient(){
           <label>Adjustment<input type="number" step=".01" value={quote.adjustment} onChange={(e)=>setQuote({...quote,adjustment:e.target.value})}/></label>
         </div>
         <div className="productionPair">
-          <label>Line 1<label><input value={quote.line1Label} onChange={(e)=>setQuote({...quote,line1Label:e.target.value})} placeholder="Label"/></label><input type="number" min="0" step=".01" value={quote.line1Amount} onChange={(e)=>setQuote({...quote,line1Amount:e.target.value})} placeholder="Amount"/></label>
-          <label>Line 2<label><input value={quote.line2Label} onChange={(e)=>setQuote({...quote,line2Label:e.target.value})} placeholder="Label"/></label><input type="number" min="0" step=".01" value={quote.line2Amount} onChange={(e)=>setQuote({...quote,line2Amount:e.target.value})} placeholder="Amount"/></label>
+          <fieldset className="productionLine"><legend>Line 1</legend><input aria-label="Line 1 label" value={quote.line1Label} onChange={(e)=>setQuote({...quote,line1Label:e.target.value})} placeholder="Label"/><input aria-label="Line 1 amount" type="number" min="0" step=".01" value={quote.line1Amount} onChange={(e)=>setQuote({...quote,line1Amount:e.target.value})} placeholder="Amount"/></fieldset>
+          <fieldset className="productionLine"><legend>Line 2</legend><input aria-label="Line 2 label" value={quote.line2Label} onChange={(e)=>setQuote({...quote,line2Label:e.target.value})} placeholder="Label"/><input aria-label="Line 2 amount" type="number" min="0" step=".01" value={quote.line2Amount} onChange={(e)=>setQuote({...quote,line2Amount:e.target.value})} placeholder="Amount"/></fieldset>
         </div>
         <label>Note<textarea rows={2} value={quote.note} onChange={(e)=>setQuote({...quote,note:e.target.value})}/></label>
         <button disabled={busy||!configured||!canQuote} onClick={()=>void post({action:"create_quote",revisionId:quote.revisionId,recipeHash:quote.recipeHash,currency:quote.currency,lineItems:quoteItems,adjustment:Number(quote.adjustment||0),note:quote.note},"Quote created.")}>Create quote</button>
