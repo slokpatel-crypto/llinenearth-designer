@@ -91,6 +91,11 @@ for (const path of [
   "src/app/operator/fabric-color-calibration/page.tsx",
   "src/app/operator/fabric-color-calibration/FabricColorCalibrationClient.tsx",
   "supabase/migrations/20261008_fabric_physical_color_checks.sql",
+  "src/lib/designer/style-director-validation.ts",
+  "src/app/api/operator/style-director-validation/route.ts",
+  "src/app/operator/style-director-validation/page.tsx",
+  "src/app/operator/style-director-validation/StyleDirectorValidationClient.tsx",
+  "supabase/migrations/20261009_style_director_user_validation.sql",
   "src/lib/designer/production-handoff.ts",
   "src/lib/designer/tech-pack.ts",
   "src/lib/designer/production-quote.ts",
@@ -135,6 +140,10 @@ requireTokens("src/lib/fabric-color-calibration.ts", ["deltaE2000","evidenceGate
 requireTokens("src/app/api/operator/fabric-color-calibration/route.ts", ["verifyOperatorSession","fabric_physical_color_check_record","summarizeFabricPhysicalColorChecks"]);
 requireTokens("src/app/operator/fabric-color-calibration/FabricColorCalibrationClient.tsx", ["Physical Colour Calibration","MEDIAN ΔE","descriptive only","Save append-only colour evidence"]);
 requireTokens("supabase/migrations/20261008_fabric_physical_color_checks.sql", ["fabric_physical_color_checks","fabric_physical_color_check_record","fabric_physical_color_check_list","service_role"]);
+requireTokens("src/lib/designer/style-director-validation.ts", ["directionsUnderstandable","directionsDistinct","stockHandoffWorked","validationComplete"]);
+requireTokens("src/app/api/operator/style-director-validation/route.ts", ["style_director_user_test_record","style_director_validation_signoff_record","verifyOperatorSession"]);
+requireTokens("src/app/operator/style-director-validation/StyleDirectorValidationClient.tsx", ["Style Director Validation","materially distinct","Record user-test evidence","Record approved"]);
+requireTokens("supabase/migrations/20261009_style_director_user_validation.sql", ["style_director_user_tests","style_director_validation_signoffs","record real-user validation evidence before sign-off","service_role"]);
 requireTokens("src/lib/designer/block-strategy.ts", ["block-strategy-provisional-1","assessBlockStrategy","shaped-shirt","roomy-seat-block","suggestedPatch"]);
 requireTokens("src/lib/designer/planner.ts", ["DesignerBlockStrategy","blockStrategy:selectedBlock","item.blockStrategy?.score"]);
 requireTokens("src/lib/designer/search.ts", ["blockStrategy: DesignerBlockStrategy","assessBlockStrategy","block.score"]);
@@ -478,6 +487,8 @@ requireTokens("scripts/check-cloud-readiness.mjs", [
   "production_quote_list_owned",
   "production_order_list_owned",
   "fabric_physical_color_check_list",
+  "style_director_user_test_list",
+  "style_director_validation_signoff_list",
   "designer_render_outcome_list",
   "designer_render_pattern_calibration_list",
   "Apply Roadmap v2 Supabase migrations",
