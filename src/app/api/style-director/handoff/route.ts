@@ -1,18 +1,18 @@
 import { NextResponse } from "next/server";
 import { verifyStyleDirectorHandoffToken, styleDirectorHandoffMatches } from "@/lib/designer/style-director-handoff";
-import type { DesignerStyle, OccasionTier } from "@/lib/designer/engine";
+import type { DesignerClimate, DesignerIntention, DesignerStyle, OccasionTier } from "@/lib/designer/engine";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 
 export const runtime="nodejs";
 
 export async function POST(request:Request){
   try{
-    const body=await request.json() as {token?:string;shirtId?:string;pantId?:string;occasion?:OccasionTier;style?:DesignerStyle};
+    const body=await request.json() as {token?:string;shirtId?:string;pantId?:string;occasion?:OccasionTier;climate?:DesignerClimate;intention?:DesignerIntention;style?:DesignerStyle};
     const token=String(body.token||"");
     const payload=verifyStyleDirectorHandoffToken(token);
     if(!payload) return NextResponse.json({error:"Style Director handoff token is invalid or expired."},{status:409});
-    if(!body.shirtId||!body.pantId||!body.occasion||!body.style) return NextResponse.json({error:"Observed Designer handoff state is incomplete."},{status:400});
-    if(!styleDirectorHandoffMatches(payload,{shirtId:body.shirtId,pantId:body.pantId,occasion:body.occasion,style:body.style})){
+    if(!body.shirtId||!body.pantId||!body.occasion||!body.climate||!body.intention||!body.style) return NextResponse.json({error:"Observed Designer handoff state is incomplete."},{status:400});
+    if(!styleDirectorHandoffMatches(payload,{shirtId:body.shirtId,pantId:body.pantId,occasion:body.occasion,climate:body.climate,intention:body.intention,style:body.style})){
       return NextResponse.json({error:"Designer state no longer matches the signed Style Director handoff."},{status:409});
     }
 
