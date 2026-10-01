@@ -63,7 +63,8 @@ test("Style Director sign-off normalization requires human target and named revi
 test("approved sign-off cannot complete validation below its documented clean-case target",()=>{
   const tests=[{
     case_id:"SD-THRESHOLD-1",device_class:"mobile",
-    directions_understandable:true,directions_distinct:true,stock_handoff_worked:true,blocking_issue:false,
+    directions_understandable:true,directions_distinct:true,stock_handoff_worked:true,
+    handoff_audit_id:"33333333-3333-4333-8333-333333333333",blocking_issue:false,
     created_at:"2026-10-01T10:00:00Z",
   }];
   const summary=summarizeStyleDirectorValidation(tests,[{
