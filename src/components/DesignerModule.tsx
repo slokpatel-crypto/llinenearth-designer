@@ -944,6 +944,15 @@ export function DesignerModule() {
       const revision=await lockGarmentSpec(garmentSpec,{parentRevisionId:lastLockedRevisionId});
       setLockedRevision(revision);
       setLastLockedRevisionId(revision.revisionId);
+      recordStyleMemoryEvent(designerSession(),"design_locked",{
+        revisionId:revision.revisionId,
+        recipeHash:revision.recipeHash,
+        parentRevisionId:revision.parentRevisionId,
+        shirtId:revision.garmentSpec.fabrics.shirt.id,
+        pantId:revision.garmentSpec.fabrics.trouser.id,
+        occasion:revision.garmentSpec.context.occasion,
+        status:revision.garmentSpec.status,
+      });
       const blob=new Blob([JSON.stringify(revision,null,2)],{type:"application/json"});
       const url=URL.createObjectURL(blob);
       const anchor=document.createElement("a");
