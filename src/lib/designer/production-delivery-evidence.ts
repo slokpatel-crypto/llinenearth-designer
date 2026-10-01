@@ -26,6 +26,9 @@ export function normalizeProductionDeliveryEvidence(input:unknown){
     : [];
   const note=String(source.note||"").trim().slice(0,1200);
   const operator=String(source.operator||"").trim().slice(0,120);
+  const evidenceReference=String(source.evidenceReference||"").replace(/\s+/g," ").trim().slice(0,240);
+  if(operator.length<2) throw new Error("Named operator / checker is required for production completion evidence.");
+  if(evidenceReference.length<3) throw new Error("Production-flow evidence reference is required.");
   if(source.manualDesignReentry&&reentryFields.length===0&&note.length<3){
     throw new Error("Record what had to be re-entered or add a short incident note.");
   }
@@ -34,6 +37,7 @@ export function normalizeProductionDeliveryEvidence(input:unknown){
     reentryFields,
     note,
     operator,
+    evidenceReference,
   };
 }
 
@@ -46,6 +50,8 @@ export type ProductionEvidenceOrder={
 export type ProductionDeliveryEvidenceRow={
   order_id:string;
   manual_design_reentry:boolean;
+  operator?:string|null;
+  evidence_reference?:string|null;
   created_at:string;
 };
 
@@ -59,16 +65,28 @@ export function summarizeProductionDeliveryEvidence(
     .sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at));
   const firstTarget=delivered.slice(0,target);
   const evidenceByOrder=new Map(evidence.map((item)=>[item.order_id,item]));
-  const audited=firstTarget.map((order)=>({order,evidence:evidenceByOrder.get(order.order_id)||null}));
-  const auditedTargetCount=audited.filter((item)=>item.evidence).length;
-  const zeroReentryTargetCount=audited.filter((item)=>item.evidence&&!item.evidence.manual_design_reentry).length;
-  const reentryIncidentCount=audited.filter((item)=>item.evidence?.manual_design_reentry).length;
-  const missingEvidenceCount=firstTarget.length-auditedTargetCount;
+  const audited=firstTarget.map((order)=>{
+    const row=evidenceByOrder.get(order.order_id)||null;
+    const provenanceReady=Boolean(
+      row &&
+      String(row.operator||"").trim().length>=2 &&
+      String(row.evidence_reference||"").trim().length>=3
+    );
+    return {order,evidence:row,provenanceReady};
+  });
+  const recordedTargetCount=audited.filter((item)=>item.evidence).length;
+  const auditedTargetCount=audited.filter((item)=>item.evidence&&item.provenanceReady).length;
+  const legacyOrUnverifiedCount=audited.filter((item)=>item.evidence&&!item.provenanceReady).length;
+  const zeroReentryTargetCount=audited.filter((item)=>item.evidence&&item.provenanceReady&&!item.evidence.manual_design_reentry).length;
+  const reentryIncidentCount=audited.filter((item)=>item.evidence&&item.provenanceReady&&item.evidence.manual_design_reentry).length;
+  const missingEvidenceCount=firstTarget.length-recordedTargetCount;
   return {
     target,
     deliveredCount:delivered.length,
     firstTargetOrderCount:firstTarget.length,
+    recordedTargetCount,
     auditedTargetCount,
+    legacyOrUnverifiedCount,
     zeroReentryTargetCount,
     reentryIncidentCount,
     missingEvidenceCount,
