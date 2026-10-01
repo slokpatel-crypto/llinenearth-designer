@@ -44,6 +44,7 @@ test("final render release requires approval evidence, clean identity evidence, 
     approvalRate:65,
     identity:{eligibleConcepts:3,reviewedConcepts:3,pendingConcepts:0,passedConcepts:3,failedConcepts:0},
     creditCap:{configured:true,withinCap:true},
+    patternCoverage:{requiredPairs:2,passedPairs:2,failedPairs:0,pendingPairs:0,gateComplete:true},
   });
   assert.equal(result.gateComplete,true);
   assert.equal(result.progressPercent,100);
@@ -56,12 +57,13 @@ test("final render release stays open when any human evidence boundary is unreso
     approvalRate:90,
     identity:{eligibleConcepts:2,reviewedConcepts:2,pendingConcepts:0,passedConcepts:1,failedConcepts:1},
     creditCap:{configured:true,withinCap:null},
+    patternCoverage:{requiredPairs:2,passedPairs:1,failedPairs:0,pendingPairs:1,gateComplete:false},
   });
   assert.equal(result.approvalGateComplete,false);
   assert.equal(result.identityGateComplete,false);
   assert.equal(result.costGateComplete,false);
   assert.equal(result.gateComplete,false);
-  assert.equal(result.progressPercent,66);
+  assert.equal(result.progressPercent,50);
   assert.equal(result.remainingReviews,1);
 });
 
@@ -71,6 +73,7 @@ test("cross-view release evidence cannot pass before a multi-view concept exists
     approvalRate:80,
     identity:{eligibleConcepts:0,reviewedConcepts:0,pendingConcepts:0,passedConcepts:0,failedConcepts:0},
     creditCap:{configured:true,withinCap:true},
+    patternCoverage:{requiredPairs:2,passedPairs:2,failedPairs:0,pendingPairs:0,gateComplete:true},
   });
   assert.equal(result.approvalGateComplete,true);
   assert.equal(result.identityGateComplete,false);
@@ -114,4 +117,22 @@ test("rerendering an already-reviewed view invalidates the old identity decision
   const states=buildCrossViewIdentityStates(outcomes,reviews);
   assert.equal(states[0]?.status,"pending");
   assert.equal(states[0]?.staleReason,"render_changed");
+});
+
+
+test("pattern calibration keeps final render release open even when approval identity and cost pass",()=>{
+  const result=evaluateFinalRenderReleaseEvidence({
+    reviewed:24,
+    approvalRate:75,
+    identity:{eligibleConcepts:2,reviewedConcepts:2,pendingConcepts:0,passedConcepts:2,failedConcepts:0},
+    creditCap:{configured:true,withinCap:true},
+    patternCoverage:{requiredPairs:3,passedPairs:2,failedPairs:0,pendingPairs:1,gateComplete:false},
+  });
+  assert.equal(result.approvalGateComplete,true);
+  assert.equal(result.identityGateComplete,true);
+  assert.equal(result.costGateComplete,true);
+  assert.equal(result.patternGateComplete,false);
+  assert.equal(result.completedGates,3);
+  assert.equal(result.totalGates,4);
+  assert.equal(result.gateComplete,false);
 });
