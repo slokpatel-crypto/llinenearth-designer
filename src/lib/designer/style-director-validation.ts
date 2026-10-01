@@ -33,11 +33,15 @@ export function normalizeStyleDirectorValidationSignoff(input:unknown){
   const source=record(input);
   const status=clean(source.status,20);
   if(status!=="approved"&&status!=="review") throw new Error("Validation sign-off must be approved or review.");
+  const requiredPositiveCases=Number(source.requiredPositiveCases);
+  if(!Number.isInteger(requiredPositiveCases)||requiredPositiveCases<1||requiredPositiveCases>50){
+    throw new Error("Enter the documented positive-case target between 1 and 50.");
+  }
   const signedBy=clean(source.signedBy,120);
   if(signedBy.length<2) throw new Error("Named owner/reviewer sign-off is required.");
   const note=clean(source.note,1200);
   if(status==="review"&&note.length<3) throw new Error("Review status requires a short note.");
-  return {status,statusTyped:status as "approved"|"review",signedBy,note};
+  return {status,statusTyped:status as "approved"|"review",requiredPositiveCases,signedBy,note};
 }
 
 export type StyleDirectorUserTestRow={
@@ -52,6 +56,7 @@ export type StyleDirectorUserTestRow={
 
 export type StyleDirectorValidationSignoffRow={
   status:string;
+  required_positive_cases?:number|null;
   signed_by:string;
   created_at:string;
 };
@@ -69,6 +74,10 @@ export function summarizeStyleDirectorValidation(
     row.directions_understandable&&row.directions_distinct&&row.stock_handoff_worked&&!row.blocking_issue
   );
   const latestSignoff=[...signoffs].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))[0]||null;
+  const requiredPositiveCases=Number.isInteger(latestSignoff?.required_positive_cases)
+    ? Number(latestSignoff?.required_positive_cases)
+    : null;
+  const thresholdMet=requiredPositiveCases!==null&&positive.length>=requiredPositiveCases;
   return {
     uniqueCases:latest.length,
     positiveCases:positive.length,
@@ -79,7 +88,9 @@ export function summarizeStyleDirectorValidation(
     deviceCoverage:[...new Set(latest.map((row)=>row.device_class))],
     latestSignoffStatus:latestSignoff?.status||"pending",
     latestSignedBy:latestSignoff?.signed_by||null,
+    requiredPositiveCases,
+    thresholdMet,
     evidenceRecorded:latest.length>0,
-    validationComplete:latest.length>0&&latestSignoff?.status==="approved",
+    validationComplete:thresholdMet&&latestSignoff?.status==="approved",
   };
 }
