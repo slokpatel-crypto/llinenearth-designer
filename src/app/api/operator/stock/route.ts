@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
-import { normalizeManualStockEvent, normalizeStockReservation } from "@/lib/designer/stock-ledger";
+import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockReservation } from "@/lib/designer/stock-ledger";
 
 export const runtime="nodejs";
 
@@ -80,12 +80,13 @@ export async function POST(request:Request){
       return NextResponse.json({released:Boolean(released)});
     }
     if(action==="consume"){
-      const reservationId=String(body.reservationId||"").trim();
-      const actual=Number(body.actualMetres);
-      const note=String(body.note||"").trim().slice(0,600);
-      if(!Number.isFinite(actual)||actual<=0) return NextResponse.json({error:"Invalid actual usage."},{status:400});
-      const consumed=await rpc<boolean>("fabric_stock_consume_reservation",{
-        p_reservation_id:reservationId,p_actual_metres:actual,p_note:note,
+      const draft=normalizeStockConsumption(body);
+      const consumed=await rpc<boolean>("fabric_stock_consume_reservation_v2",{
+        p_reservation_id:draft.reservationId,
+        p_actual_metres:draft.actualMetres,
+        p_note:draft.note,
+        p_checked_by:draft.checkedBy,
+        p_source_reference:draft.sourceReference,
       });
       return NextResponse.json({consumed:Boolean(consumed)});
     }
