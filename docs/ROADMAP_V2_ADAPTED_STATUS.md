@@ -12,7 +12,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 | Phase 0 — Audit / Stabilize | Engineering complete | merge after CI / review |
 | Phase 1 — Premium Shirt Proof | Engineering implementation complete | physical scale measurement + 8-viewer realism + protected-boundary confirmation + device evidence |
 | Phase 2 — Fabric Truth | strong existing foundation | owner / supplier physical evidence coverage and 50-fabric reviewed set |
-| Phase 3 — Deterministic Designer | shared proof/customer compositor + option coverage audit + novice completion-study workflow | Phase 1 evidence + five real novice completions within documented target + all visible option reviews |
+| Phase 3 — Deterministic Designer | shared proof/customer compositor + option coverage audit + novice completion-study workflow | Phase 1 evidence + five server-timed real novice completions within documented target + all visible option reviews |
 | Phase 4 — Measurements / Fit | advanced foundation + secure recovery + authenticated ownership + house-ease registry + approved-model runtime activation implemented | real-person accuracy evidence + real finished-garment ease evidence/approval |
 | Phase 5 — Lock / Share / Enquiry | lock + share + secure recovery + authenticated customer ownership implemented | five-customer real-flow validation |
 | Phase 6 — Style Director | advanced foundation + real-user validation/sign-off workflow | owner-labelled benchmark threshold + real-user evidence/sign-off |
@@ -66,7 +66,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Approved house-ease models now become the single live runtime ease source across assessment, search and brief generation; drafts/retired models never activate and the provisional table remains the explicit fallback when no approved model exists.
 - Tightened the shared five-customer beta evidence so each case must prove design lock → signed share/exact-look enquiry with zero blocking bugs; legacy generic completion cannot satisfy the gate.
 - Added customer preview coverage auditing across the actual Designer choices, combining live-preview support, construction status and explicit visual-review evidence.
-- Added a five-novice Designer completion study with real elapsed-time evidence, latest-case semantics and human-entered documented target; no timing threshold is invented in code.
+- Added a five-novice Designer completion study with a server stopwatch, latest-case semantics and a human-entered documented target; manual/operator-entered durations remain historical only and cannot satisfy the gate.
 - Added Supabase email-OTP customer accounts, account-owned locked designs and measurement profiles, claim-by-recovery-token migration, and private account listing.
 - Propagated authenticated ownership from immutable locked designs into quotes/orders and added private customer production-status tracking.
 - Added itemized account-owned quote review and authenticated customer acceptance evidence before production-order creation.
