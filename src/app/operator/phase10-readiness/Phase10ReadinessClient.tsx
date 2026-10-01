@@ -158,6 +158,34 @@ type LaunchReadinessPayload={
   checklistEvents:Array<{item_id:string;status:string;created_at:string}>;
 };
 
+type FabricColorCalibrationPayload={
+  configured:boolean;
+  summary:{
+    target:number;
+    uniqueFabrics:number;
+    remaining:number;
+    evidenceGateComplete:boolean;
+    averageDeltaE:number|null;
+    medianDeltaE:number|null;
+  };
+};
+
+type StyleDirectorValidationPayload={
+  configured:boolean;
+  summary:{
+    uniqueCases:number;
+    positiveCases:number;
+    blockingCases:number;
+    understandableCases:number;
+    distinctCases:number;
+    handoffCases:number;
+    deviceCoverage:string[];
+    latestSignoffStatus:string;
+    evidenceRecorded:boolean;
+    validationComplete:boolean;
+  };
+};
+
 type LoadState={
   phase1Proof:Phase1ProofPayload|null;
   measurementCalibration:MeasurementCalibrationPayload|null;
@@ -174,6 +202,8 @@ type LoadState={
   production:ProductionPayload|null;
   renderQa:RenderQaPayload|null;
   launchReadiness:LaunchReadinessPayload|null;
+  fabricColorCalibration:FabricColorCalibrationPayload|null;
+  styleDirectorValidation:StyleDirectorValidationPayload|null;
 };
 
 type RowStatus="done"|"progress"|"blocked"|"optional";
@@ -195,7 +225,7 @@ function ratio(value:number,total:number){return total>0?clamp(value/total*100):
 
 export default function Phase10ReadinessClient(){
   const [data,setData]=useState<LoadState>({
-    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,renderQa:null,launchReadiness:null,
+    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,renderQa:null,launchReadiness:null,fabricColorCalibration:null,styleDirectorValidation:null,
   });
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
@@ -213,7 +243,7 @@ export default function Phase10ReadinessClient(){
   async function load(){
     setLoading(true);setMessage("");
     try{
-      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa,launchReadiness]=await Promise.all([
+      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation]=await Promise.all([
         read<Phase1ProofPayload>("/api/operator/phase1-proof"),
         read<MeasurementCalibrationPayload>("/api/operator/measurement-calibration"),
         read<LaunchMetricsPayload>("/api/operator/cloud-summary?days=60"),
@@ -229,8 +259,10 @@ export default function Phase10ReadinessClient(){
         read<ProductionPayload>("/api/operator/production"),
         read<RenderQaPayload>("/api/operator/render-qa"),
         read<LaunchReadinessPayload>("/api/operator/launch-readiness"),
+        read<FabricColorCalibrationPayload>("/api/operator/fabric-color-calibration"),
+        read<StyleDirectorValidationPayload>("/api/operator/style-director-validation"),
       ]);
-      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa,launchReadiness});
+      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation});
     }catch(error){
       setMessage(error instanceof Error?error.message:"Readiness data could not be loaded.");
     }finally{
@@ -282,6 +314,16 @@ export default function Phase10ReadinessClient(){
       ratio(analyzerScore?.uniqueFabrics||0,analyzerLabelTarget),
     );
     const analyzerDone=Boolean(reviewed>=analyzerTarget && analyzerScore?.reportable);
+
+    const colorCalibration=data.fabricColorCalibration?.summary;
+    const colorCalibrationProgress=ratio(colorCalibration?.uniqueFabrics||0,colorCalibration?.target||10);
+    const colorCalibrationDone=colorCalibration?.evidenceGateComplete===true;
+
+    const styleValidation=data.styleDirectorValidation?.summary;
+    const styleValidationProgress=styleValidation
+      ? Math.round((ratio(styleValidation.positiveCases,Math.max(1,styleValidation.uniqueCases))+(styleValidation.latestSignoffStatus==="approved"?100:0))/2)
+      : 0;
+    const styleValidationDone=styleValidation?.validationComplete===true;
 
     const score=data.scorecard;
     const totalLabelTarget=score?.minimumTotalLabels||40;
@@ -404,6 +446,21 @@ export default function Phase10ReadinessClient(){
         ownerDependent:true,
       },
       {
+        id:"fabric-physical-colour",
+        title:"Controlled physical colour checks",
+        detail:colorCalibrationDone
+          ? "The roadmap count gate has 10 unique controlled physical fabric colour checks recorded. ΔE remains descriptive until Linen Earth chooses a commercial tolerance."
+          : colorCalibration
+            ? `${colorCalibration.remaining} unique controlled colour checks remain. Current median ΔE is ${colorCalibration.medianDeltaE??"—"} (descriptive only).`
+            : "No physical colour-calibration evidence is available yet.",
+        status:colorCalibrationDone?"done":data.fabricColorCalibration?.configured?"progress":"blocked",
+        progress:colorCalibrationProgress,
+        metric:colorCalibration?`${colorCalibration.uniqueFabrics}/${colorCalibration.target} unique fabrics · median ΔE ${colorCalibration.medianDeltaE??"—"}`:"No colour evidence",
+        href:"/operator/fabric-color-calibration",
+        action:"Record physical colour checks",
+        ownerDependent:true,
+      },
+      {
         id:"designer-ground-truth",
         title:"Designer preference benchmark",
         detail:score?.reportable
@@ -414,6 +471,21 @@ export default function Phase10ReadinessClient(){
         metric:score?`${score.labeledCases}/${totalLabelTarget} total · ${score.actionableLabels}/${actionTarget} actionable`:"Unavailable",
         href:"/operator/designer-evaluation",
         action:"Label Designer cases",
+        ownerDependent:true,
+      },
+      {
+        id:"style-director-user-validation",
+        title:"Style Director real-user validation",
+        detail:styleValidationDone
+          ? "Real-user evidence exists and the owner/reviewer has explicitly approved the Style Director validation."
+          : styleValidation
+            ? `${styleValidation.uniqueCases} real-user case(s) recorded · ${styleValidation.positiveCases} with all three checks clean · latest human decision ${styleValidation.latestSignoffStatus}.`
+            : "No real-user Style Director validation evidence is available yet.",
+        status:styleValidationDone?"done":data.styleDirectorValidation?.configured?"progress":"blocked",
+        progress:styleValidationProgress,
+        metric:styleValidation?`${styleValidation.uniqueCases} cases · ${styleValidation.blockingCases} blocking · ${styleValidation.latestSignoffStatus} sign-off`:"No user-test evidence",
+        href:"/operator/style-director-validation",
+        action:"Run Style Director validation",
         ownerDependent:true,
       },
       {
