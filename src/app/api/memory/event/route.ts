@@ -239,6 +239,28 @@ function cleanPayload(type:string, input:unknown) {
       const final=Object.fromEntries(fields.map((field)=>[field,text(finalInput[field],80)]));
       return {subtype,version,fabricId,profileId,analyzerVersion,original,final,note:text(payload.note,600)};
     }
+    if (subtype === "measurement_calibration_case") {
+      const version=text(payload.version,80);
+      const caseId=text(payload.caseId,80);
+      const selfChest=Number(payload.selfChestCm);
+      const tailorChest=Number(payload.tailorChestCm);
+      const selfSleeve=Number(payload.selfSleeveCm);
+      const tailorSleeve=Number(payload.tailorSleeveCm);
+      if(version!=="measurement-calibration-v1" || !caseId) return null;
+      if(![selfChest,tailorChest].every((value)=>Number.isFinite(value)&&value>=50&&value<=200)) return null;
+      if(![selfSleeve,tailorSleeve].every((value)=>Number.isFinite(value)&&value>=30&&value<=100)) return null;
+      return {
+        subtype,
+        version,
+        caseId,
+        selfChestCm:Math.round(selfChest*10)/10,
+        tailorChestCm:Math.round(tailorChest*10)/10,
+        selfSleeveCm:Math.round(selfSleeve*10)/10,
+        tailorSleeveCm:Math.round(tailorSleeve*10)/10,
+        note:text(payload.note,500),
+      };
+    }
+
     if (subtype === "roadmap_phase1_proof") {
       const version=text(payload.version,80);
       const status=text(payload.status,20);
