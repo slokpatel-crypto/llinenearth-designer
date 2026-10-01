@@ -61,6 +61,7 @@ export type NoviceDesignerAttemptRow={
   novice_confirmed:boolean;
   liked_design_completed:boolean;
   blocking_issue:boolean;
+  timing_session_id?:string|null;
   created_at:string;
 };
 
@@ -90,18 +91,20 @@ export function summarizeNoviceDesignerStudy(
   const latestDecision=[...decisions].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))[0]||null;
   const targetSeconds=latestDecision?.target_seconds||null;
   const eligible=latest.filter((row)=>row.novice_confirmed&&row.liked_design_completed&&!row.blocking_issue);
-  const withinTarget=targetSeconds===null?[]:eligible.filter((row)=>row.duration_seconds<=targetSeconds);
+  const serverTimed=eligible.filter((row)=>Boolean(row.timing_session_id));
+  const withinTarget=targetSeconds===null?[]:serverTimed.filter((row)=>row.duration_seconds<=targetSeconds);
   return {
     uniqueCases:latest.length,
     noviceCases:latest.filter((row)=>row.novice_confirmed).length,
     likedDesignCases:eligible.length,
+    serverTimedLikedCases:serverTimed.length,
     blockingCases:latest.filter((row)=>row.blocking_issue).length,
     medianLikedDesignSeconds:median(eligible.map((row)=>Number(row.duration_seconds))),
     targetSeconds,
     withinTargetCases:withinTarget.length,
     latestDecisionStatus:latestDecision?.status||"pending",
     latestSignedBy:latestDecision?.signed_by||null,
-    evidenceReady:eligible.length>=5,
+    evidenceReady:serverTimed.length>=5,
     gateComplete:Boolean(targetSeconds&&withinTarget.length>=5&&latestDecision?.status==="approved"),
   };
 }
