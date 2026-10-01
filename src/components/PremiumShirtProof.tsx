@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { expectedPeriodPx, passesScaleGate, phase1ProofAcceptance, pxPerMmFromMarker, scaleErrorPct, summarizeIndependentRealism, type RealismAssessment } from "@/lib/designer/proof-scale";
+import { expectedPeriodPx, passesScaleGate, phase1ProofAcceptance, pxPerMmFromMarker, scaleErrorPct, summarizeIndependentRealism, type Phase1BoundaryChecks, type RealismAssessment } from "@/lib/designer/proof-scale";
 import { applyRuntimeFabricScale, photoExpectedRepeatPx, type FabricRenderAsset } from "@/lib/designer/live-preview";
 import { DESIGNER_PANTS, DESIGNER_SHIRTS, designerStyleForOccasion } from "@/lib/designer/engine";
 import { StyleDirectorRealModelPreview } from "@/components/PhotoOutfitPreview";
@@ -34,6 +34,7 @@ export function PremiumShirtProof(){
   const [latencySamples,setLatencySamples]=useState<number[]>([]);
   const [realRenderSamples,setRealRenderSamples]=useState<number[]>([]);
   const [realismAssessments,setRealismAssessments]=useState<RealismAssessment[]>([]);
+  const [boundaryChecks,setBoundaryChecks]=useState<Phase1BoundaryChecks>({neck:false,cuffs:false,waist:false,trouserGap:false});
   const [viewerCode,setViewerCode]=useState("");
   const [recordBusy,setRecordBusy]=useState(false);
   const [recordMessage,setRecordMessage]=useState("");
@@ -111,7 +112,8 @@ export function PremiumShirtProof(){
     realModelSamples:realRenderSamples.length,
     realModelP95Ms:realP95,
     realismRatings,
-  }),[effectiveRepeatMm,scaleEvidencePass,realRenderSamples.length,realP95,realismRatings]);
+    boundaryChecks,
+  }),[effectiveRepeatMm,scaleEvidencePass,realRenderSamples.length,realP95,realismRatings,boundaryChecks]);
 
   useEffect(()=>{
     let cancelled=false;
@@ -206,7 +208,7 @@ export function PremiumShirtProof(){
           at:new Date().toISOString(),
           payload:{
             subtype:"roadmap_phase1_proof",
-            version:"linen-earth-phase1-proof-v2",
+            version:"linen-earth-phase1-proof-v3",
             status:proofAcceptance.accepted?"accepted":"review",
             fabricId:realShirt?.id||"",
             fabricName:realShirt?.name||"",
@@ -228,6 +230,8 @@ export function PremiumShirtProof(){
             uniqueRealismViewers:realismSummary.uniqueViewers,
             strongRatings:proofAcceptance.strongRatings,
             realismPass:proofAcceptance.realismReady,
+            boundaryChecks,
+            boundaryReady:proofAcceptance.boundaryReady,
             note:proofAcceptance.reasons.join(" "),
           },
         }),
@@ -248,7 +252,7 @@ export function PremiumShirtProof(){
 
   function exportProofEvidence(){
     const payload={
-      version:"linen-earth-phase1-proof-v2",
+      version:"linen-earth-phase1-proof-v3",
       recordedAt:new Date().toISOString(),
       fabric:{
         id:realShirt?.id||null,
@@ -285,6 +289,7 @@ export function PremiumShirtProof(){
         target:"at least 6 of 8 independent viewers rate 4/5 or 5/5",
         pass:realismGate,
       },
+      boundaryChecks,
       construction:{collar,cuff},
       caveats:[
         "Catalogue imagery is not physical scale evidence by itself.",
@@ -399,10 +404,26 @@ export function PremiumShirtProof(){
             <span>{realismGate?"PASS · realism gate met":"Need 6 strong ratings from at least 8 independent viewers"}</span>
           </div>
           {realismSummary.uniqueViewers>0&&<button type="button" onClick={clearRealismRatings}>Clear ratings</button>}
+          <div className="proofBoundaryChecks">
+            <p><b>Garment boundary review:</b> confirm the real mannequin preview shows no cloth spill at all four protected edges.</p>
+            {([
+              ["neck","Neck opening"],
+              ["cuffs","Cuffs / hands"],
+              ["waist","Tucked waist / fly"],
+              ["trouserGap","Trouser leg gap"],
+            ] as Array<[keyof Phase1BoundaryChecks,string]>).map(([key,label])=><label key={key}>
+              <input type="checkbox" checked={boundaryChecks[key]} onChange={(event)=>setBoundaryChecks((current)=>({...current,[key]:event.target.checked}))}/>
+              <span>{label}</span>
+            </label>)}
+          </div>
+          <div className="proofGate" data-pass={proofAcceptance.boundaryReady?"yes":"no"}>
+            <b>{proofAcceptance.boundaryReady?"PASS · boundaries clean":"BOUNDARY REVIEW OPEN"}</b>
+            <span>All four protected garment edges must be visually confirmed before the core proof can pass.</span>
+          </div>
           <button type="button" onClick={exportProofEvidence}>Export proof evidence JSON</button>
           <div className="proofGate" data-pass={proofAcceptance.accepted?"yes":"no"}>
             <b>{proofAcceptance.accepted?"CORE PROOF ACCEPTED":"CORE PROOF REVIEW"}</b>
-            <span>{proofAcceptance.accepted?"Scale, real-model latency and viewer realism gates pass. Target-mobile acceptance remains a separate roadmap evidence gate.":proofAcceptance.reasons.join(" ")}</span>
+            <span>{proofAcceptance.accepted?"Scale, real-model latency, viewer realism and protected-boundary gates pass. Target-mobile acceptance remains a separate roadmap evidence gate.":proofAcceptance.reasons.join(" ")}</span>
           </div>
           <button type="button" onClick={()=>void recordProofEvidence()} disabled={recordBusy}>{recordBusy?"Recording…":proofAcceptance.accepted?"Record core proof evidence":"Record review evidence"}</button>
           {recordMessage&&<p className="proofRecordMessage">{recordMessage}</p>}
