@@ -115,3 +115,28 @@ test("unverified handoff rows cannot count as clean Style Director evidence",()=
   assert.equal(summary.positiveCases,0);
   assert.equal(summary.validationComplete,false);
 });
+
+
+test("duplicate handoff audit cannot inflate the Style Director clean-case count",()=>{
+  const sharedAudit="44444444-4444-4444-8444-444444444444";
+  const tests=[
+    {
+      case_id:"SD-DUPE-1",device_class:"mobile",
+      directions_understandable:true,directions_distinct:true,stock_handoff_worked:true,
+      handoff_audit_id:sharedAudit,blocking_issue:false,created_at:"2026-10-01T10:00:00Z",
+    },
+    {
+      case_id:"SD-DUPE-2",device_class:"desktop",
+      directions_understandable:true,directions_distinct:true,stock_handoff_worked:true,
+      handoff_audit_id:sharedAudit,blocking_issue:false,created_at:"2026-10-01T10:01:00Z",
+    },
+  ];
+  const summary=summarizeStyleDirectorValidation(tests,[{
+    status:"approved",required_positive_cases:2,signed_by:"Owner",created_at:"2026-10-01T12:00:00Z",
+  }]);
+  assert.equal(summary.verifiedHandoffCases,2);
+  assert.equal(summary.uniqueVerifiedHandoffs,1);
+  assert.equal(summary.positiveCases,1);
+  assert.equal(summary.thresholdMet,false);
+  assert.equal(summary.validationComplete,false);
+});
