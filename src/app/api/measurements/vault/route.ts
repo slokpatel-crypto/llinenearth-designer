@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
+import { getCustomerIdentity } from "@/lib/customer-auth";
 import { type MeasurementProfile } from "@/lib/measurements";
 import { type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import {
@@ -65,8 +66,15 @@ function validObservations(value:unknown):value is TailorObservationProfile{
 export async function POST(request:Request){
   if(blocked(request)) return jsonNoStore({error:"Too many measurement-vault requests."},{status:429});
   try{
-    const body=await request.json() as {action?:string;profile?:MeasurementProfile;observations?:TailorObservationProfile;recoveryToken?:string};
+    const body=await request.json() as {
+      action?:string;
+      profile?:MeasurementProfile;
+      observations?:TailorObservationProfile;
+      recoveryToken?:string;
+      vaultId?:string;
+    };
     const action=String(body.action||"");
+    const customer=await getCustomerIdentity(request);
 
     if(action==="store"){
       if(!validProfile(body.profile)||!validObservations(body.observations)) {
@@ -80,12 +88,66 @@ export async function POST(request:Request){
         p_observations:body.observations,
         p_ttl_days:180,
       });
+
+      let accountOwned=false;
+      if(customer){
+        accountOwned=Boolean(await rpc<boolean>("measurement_profile_vault_set_owner",{
+          p_vault_id:vaultId,p_access_hash:accessHash,p_owner_user_id:customer.id,
+        }));
+      }
+
       const recoveryToken=createMeasurementVaultRecoveryToken(vaultId,accessKey);
-      return jsonNoStore({vaultId,recoveryToken,expiresInDays:180});
+      return jsonNoStore({
+        vaultId,recoveryToken,expiresInDays:180,
+        accountOwned,
+        customer:customer?{email:customer.email}:null,
+      });
+    }
+
+    if(action==="listOwned"){
+      if(!customer) return jsonNoStore({error:"Customer sign-in is required."},{status:401});
+      const rows=await rpc<Array<{
+        vault_id:string;profile:MeasurementProfile;observations:TailorObservationProfile;
+        created_at:string;expires_at:string;
+      }>>("measurement_profile_vault_list_owned",{p_owner_user_id:customer.id});
+      const profiles=rows.filter((row)=>validProfile(row.profile)&&validObservations(row.observations)).map((row)=>({
+        vaultId:row.vault_id,profile:row.profile,observations:row.observations,
+        createdAt:row.created_at,expiresAt:row.expires_at,
+      }));
+      return jsonNoStore({profiles,customer:{email:customer.email}});
+    }
+
+    if(action==="loadOwned"){
+      if(!customer) return jsonNoStore({error:"Customer sign-in is required."},{status:401});
+      const rows=await rpc<Array<{profile:MeasurementProfile;observations:TailorObservationProfile;expires_at:string}>>(
+        "measurement_profile_vault_get_owned",
+        {p_vault_id:String(body.vaultId||""),p_owner_user_id:customer.id},
+      );
+      const row=rows[0];
+      if(!row||!validProfile(row.profile)||!validObservations(row.observations)) {
+        return jsonNoStore({error:"Measurement profile was not found."},{status:404});
+      }
+      return jsonNoStore({profile:row.profile,observations:row.observations,expiresAt:row.expires_at});
+    }
+
+    if(action==="deleteOwned"){
+      if(!customer) return jsonNoStore({error:"Customer sign-in is required."},{status:401});
+      const deleted=await rpc<boolean>("measurement_profile_vault_delete_owned",{
+        p_vault_id:String(body.vaultId||""),p_owner_user_id:customer.id,
+      });
+      return jsonNoStore({deleted:Boolean(deleted)});
     }
 
     const parsed=parseMeasurementVaultRecoveryToken(String(body.recoveryToken||""));
     if(!parsed) return jsonNoStore({error:"The measurement recovery token is invalid."},{status:400});
+
+    if(action==="claim"){
+      if(!customer) return jsonNoStore({error:"Customer sign-in is required."},{status:401});
+      const claimed=await rpc<boolean>("measurement_profile_vault_set_owner",{
+        p_vault_id:parsed.vaultId,p_access_hash:parsed.accessHash,p_owner_user_id:customer.id,
+      });
+      return jsonNoStore({claimed:Boolean(claimed)});
+    }
 
     if(action==="load"){
       const rows=await rpc<Array<{profile:MeasurementProfile;observations:TailorObservationProfile;expires_at:string}>>("measurement_profile_vault_get",{
