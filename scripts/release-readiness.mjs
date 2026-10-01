@@ -120,6 +120,7 @@ for (const path of [
   "src/app/operator/novice-designer-study/page.tsx",
   "src/app/operator/novice-designer-study/NoviceDesignerStudyClient.tsx",
   "supabase/migrations/20261012_designer_novice_study.sql",
+  "supabase/migrations/20261019_novice_server_timing.sql",
   "src/lib/designer/preview-option-reviews.ts",
   "src/app/api/operator/preview-option-coverage/route.ts",
   "src/app/operator/preview-option-coverage/page.tsx",
@@ -180,6 +181,10 @@ requireTokens("src/lib/fabric-intelligence-evidence.ts", ["intelligence.trust!==
 requireTokens("src/app/operator/designer-data/DesignerDataClient.tsx", ["Physical evidence provenance","physicalEvidence:editor.physicalEvidence","physical_roll","supplier_document","owner_measurement"]);
 requireTokens("src/app/operator/designer-data/DesignerDataBatchPanel.tsx", ["physicalSourceType","physicalReference","physicalCheckedBy","physicalEvidence:incomingPhysicalEvidence??current.physicalEvidence"]);
 requireTokens("src/app/api/memory/event/route.ts", ["designer_fabric_metadata","normalizeFabricPhysicalEvidenceProvenance","physicalEvidence"]);
+requireTokens("src/lib/designer/novice-designer-study.ts", ["timing_session_id","serverTimedLikedCases","evidenceReady:serverTimed.length>=5"]);
+requireTokens("src/app/api/operator/novice-designer-study/route.ts", ["start_timer","finish_timer","record_timed_attempt","designer_novice_attempt_record_v2"]);
+requireTokens("src/app/operator/novice-designer-study/NoviceDesignerStudyClient.tsx", ["Start server stopwatch","Stop stopwatch","record_timed_attempt","Server timer"]);
+requireTokens("supabase/migrations/20261019_novice_server_timing.sql", ["designer_novice_timer_start","designer_novice_timer_finish","designer_novice_attempt_record_v2","five server-timed novice liked-design completions"]);
 requireTokens("src/app/account/page.tsx", ["Email sign in","listOwned","recovery token","Measurement profiles","Accept quote","accept_quote","Timeline","orderEvents","record_outcome","post-delivery feedback","does not automatically change Designer recommendations"]);
 requireTokens("src/lib/customer-auth.ts", ["SUPABASE_ANON_KEY","/auth/v1/otp","/auth/v1/verify","/auth/v1/user","CUSTOMER_SESSION_COOKIE"]);
 requireTokens("src/lib/customer-session-token.ts", ["CUSTOMER_SESSION_MAX_AGE_SECONDS","createCustomerSessionToken","verifyCustomerSessionToken","timingSafeEqual"]);
