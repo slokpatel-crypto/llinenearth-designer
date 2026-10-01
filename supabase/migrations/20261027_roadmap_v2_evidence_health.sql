@@ -24,8 +24,10 @@ as $$
     'deliveryProvenance', to_regprocedure('public.production_delivery_evidence_record_v2(uuid,boolean,jsonb,text,text,text)') is not null,
     'outcomeLearningContext', to_regprocedure('public.production_order_create_with_context(text,text,uuid,text,jsonb)') is not null
       and to_regprocedure('public.production_order_learning_context_list(integer)') is not null,
-    'verifiedMeterageCuts', to_regprocedure('public.production_meterage_model_create_v3(text,text,jsonb,jsonb,text)') is not null
-      and to_regprocedure('public.production_meterage_model_approve_v3(uuid,text,text)') is not null
+    'productionCutEvidence', to_regprocedure('public.production_cut_evidence_record(text,uuid,text,text,numeric,numeric,numeric,boolean,text,text,text,text)') is not null
+      and to_regprocedure('public.production_cut_evidence_list(integer)') is not null,
+    'verifiedMeterageCuts', to_regprocedure('public.production_meterage_model_create_v4(text,text,jsonb,jsonb,text)') is not null
+      and to_regprocedure('public.production_meterage_model_approve_v4(uuid,text,text)') is not null
   );
 $$;
 
