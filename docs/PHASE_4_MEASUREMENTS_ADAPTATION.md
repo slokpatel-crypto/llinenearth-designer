@@ -1,6 +1,6 @@
 # Phase 4 — Measurements & Fit Adaptation
 
-Status: strong existing foundation with secure recovery, authenticated ownership, self-vs-tailor evidence capture and a versioned house-ease calibration registry implemented; real evidence and approval remain.
+Status: strong existing foundation with secure recovery, authenticated ownership, self-vs-tailor evidence capture, a versioned house-ease calibration registry, and controlled runtime activation of the one approved model; real evidence and approval remain.
 
 ## Existing implementation to keep
 
@@ -21,10 +21,11 @@ Do not create a second measurement engine. The roadmap's Phase 4 work becomes:
 2. Compare self-measurements with tailor measurements and record error.
 3. Measure a Linen Earth set of finished shirts / trousers through the new append-only House Ease Calibration desk and calibrate the existing provisional ease bands.
 4. Register every replacement as a complete versioned table and require named owner/tailor approval.
-5. Keep body measurements distinct from finished-garment targets.
-6. Keep local browser save as a convenience cache.
-7. Offer an explicit opt-in secure measurement recovery vault and authenticated customer ownership without exposing raw measurements in account summaries.
-8. Keep raw measurement persistence private and never place recovery tokens in URLs.
+5. Use only the currently approved complete model in the live Designer; drafts and retired models never change customer fit calculations. If no approved model exists, retain the explicit provisional fallback.
+6. Keep body measurements distinct from finished-garment targets.
+7. Keep local browser save as a convenience cache.
+8. Offer an explicit opt-in secure measurement recovery vault and authenticated customer ownership without exposing raw measurements in account summaries.
+9. Keep raw measurement persistence private and never place recovery tokens in URLs.
 
 ## Durable recovery now implemented
 
@@ -53,8 +54,10 @@ Signed-in customers can now attach new or older secure copies to their Supabase-
 - [ ] median sleeve error below roadmap target
 - [x] finished-garment calibration evidence workflow + full 35-cell coverage gate implemented
 - [x] versioned owner/tailor approval registry implemented
+- [x] approved-model runtime loader + calibrated fit-engine source switching implemented
+- [x] Designer assessment, search and brief paths share the same approved ease model
 - [ ] owner/tailor finished-garment calibration set recorded with real garments
-- [ ] approved ease-table revision created from real evidence
+- [ ] approved ease-table revision created from real evidence (once approved, it becomes the runtime source automatically)
 - [x] opt-in durable measurement recovery enabled
 - [x] authenticated customer-account ownership enabled
 
