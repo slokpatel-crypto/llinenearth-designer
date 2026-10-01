@@ -273,9 +273,12 @@ function cleanPayload(type:string, input:unknown) {
       const actualMetres=Number(payload.actualMetres);
       const patternRepeatMm=Number(payload.patternRepeatMm);
       const patternMatching=payload.patternMatching===true;
-      if(version!=="production-usage-v1" || !caseId || !revisionId || !fabricId || !["shirt","trouser"].includes(garment)) return null;
+      const checkedBy=text(payload.checkedBy,120);
+      const evidenceReference=text(payload.evidenceReference,240);
+      if(!["production-usage-v1","production-usage-v2"].includes(version) || !caseId || !revisionId || !fabricId || !["shirt","trouser"].includes(garment)) return null;
       if(!Number.isFinite(fabricWidthCm)||fabricWidthCm<60||fabricWidthCm>220) return null;
       if(!Number.isFinite(actualMetres)||actualMetres<=0||actualMetres>12) return null;
+      if(version==="production-usage-v2"&&(checkedBy.length<2||evidenceReference.length<3)) return null;
       return {
         subtype,version,caseId,revisionId,garment,fabricId,
         fabricWidthCm:Math.round(fabricWidthCm*10)/10,
@@ -283,6 +286,7 @@ function cleanPayload(type:string, input:unknown) {
         patternRepeatMm:Number.isFinite(patternRepeatMm)&&patternRepeatMm>0&&patternRepeatMm<=1000?Math.round(patternRepeatMm*10)/10:null,
         patternMatching,
         cutContext:text(payload.cutContext,160),
+        ...(version==="production-usage-v2"?{checkedBy,evidenceReference}:{}),
         note:text(payload.note,600),
       };
     }
