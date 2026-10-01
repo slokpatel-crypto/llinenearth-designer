@@ -85,3 +85,11 @@ Customer-facing physical truth now upgrades only from Analyzer profiles that hav
 - A reviewed Analyzer profile no longer upgrades all physical fabric facts merely because the overall profile was approved.
 - True pattern scale, GSM, drape and fibre content are promoted independently only when the exact field carries declared/reviewed physical provenance from the validated Analyzer input path.
 - Reviewed legacy profiles without the corresponding field provenance remain provisional for that physical claim instead of silently becoming verified customer-facing truth.
+
+
+## Field-level physical evidence integrity
+
+- Physical Analyzer facts now keep the underlying owner/supplier evidence note in the persisted profile instead of discarding note-only provenance after validation.
+- Customer-facing GSM, drape, fibre and true pattern scale require three things together: a reviewed Analyzer profile, field-level declared/reviewed provenance, and an auditable source URL or physical-evidence note.
+- Designer Data coverage uses the same rule, so a reviewed profile cannot silently convert a model/legacy physical value into a verified fabric fact.
+- Physical evidence notes now survive Analyzer → intelligence → Designer so note-backed shop measurements and supplier checks remain auditable even when no web URL exists.
