@@ -33,8 +33,9 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Wired an explicit photo-coordinate px/mm calibration into both the photographic compositor and its repeat audit so measured scale and rendered scale use the same coordinate system.
 - Added <= 8% pattern-scale gate.
 - Added geometry and real-compositor p95 measurements.
+- Phase 1 v4 now stores bounded raw photographic-render duration samples and recomputes p95 server-side, so client-supplied sample counts or p95 values cannot satisfy the proof gate.
 - Hardened the realism gate to require distinct anonymous viewer codes; repeat ratings from the same viewer replace the earlier rating instead of inflating the sample.
-- Recompute Phase 1 scale and realism acceptance server-side from raw recorded evidence rather than trusting client pass flags.
+- Recompute Phase 1 physical scale, render-latency p95, independent-viewer realism and protected-boundary acceptance from raw recorded evidence rather than trusting client aggregate/pass flags.
 - Added explicit protected-boundary evidence for neck, cuffs/hands, tucked waist/fly and trouser-leg gap; all four must pass before the core proof can be accepted.
 - Made target-mobile Device QA acceptance an explicit fifth Phase 1 readiness gate.
 - Added auditable proof JSON export.
