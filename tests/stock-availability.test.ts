@@ -18,11 +18,11 @@ test("only provenance-ready ledger rows can override catalogue availability",()=
   assert.deepEqual(result.verifiedFabricIds,["a"]);
 });
 
-test("provenance-ready positive availability can restore a catalogue row",()=>{
+test("verified physical stock never overrides an explicit catalogue unavailability",()=>{
   const result=applyVerifiedStockAvailability([fabric("a",false)],[
     {fabric_id:"a",available_metres:"4.250",provenance_ready:true},
   ]);
-  assert.equal(result.stock[0]?.inStock,true);
+  assert.equal(result.stock[0]?.inStock,false);
 });
 
 test("invalid ledger quantities never become verified availability",()=>{
