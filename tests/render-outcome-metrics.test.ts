@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { summarizeRenderOutcomes, summarizeRenderPatternCalibrations } from "../src/lib/designer/render-outcome-metrics.ts";
+import { summarizeApprovedPatternCalibrationCoverage, summarizeRenderOutcomes, summarizeRenderPatternCalibrations } from "../src/lib/designer/render-outcome-metrics.ts";
 
 test("render outcome metrics exclude cached renders from provider credit spend",()=>{
   const result=summarizeRenderOutcomes([
@@ -38,4 +38,44 @@ test("pattern calibration uses the roadmap 8 percent physical-scale gate",()=>{
   assert.equal(result.fail,2);
   assert.equal(result.passRate,50);
   assert.equal(result.averageScaleErrorPct,5.75);
+});
+
+
+test("approved patterned renders require a passing calibration for each patterned garment",()=>{
+  const result=summarizeApprovedPatternCalibrationCoverage([
+    {outcome_id:"o1",shirt_id:"stripe-shirt",pant_id:"solid-pant",human_status:"approved"},
+    {outcome_id:"o2",shirt_id:"check-shirt",pant_id:"check-pant",human_status:"approved"},
+    {outcome_id:"o3",shirt_id:"stripe-shirt",pant_id:"check-pant",human_status:"rejected"},
+  ],[
+    {outcome_id:"o1",garment:"shirt",scale_error_pct:4,axis_status:"match",created_at:"2026-10-01T10:00:00Z"},
+    {outcome_id:"o2",garment:"shirt",scale_error_pct:7,axis_status:"match",created_at:"2026-10-01T10:00:00Z"},
+    {outcome_id:"o2",garment:"trouser",scale_error_pct:2,axis_status:"mismatch",created_at:"2026-10-01T10:00:00Z"},
+  ],new Set(["stripe-shirt","check-shirt","check-pant"]));
+  assert.equal(result.requiredPairs,3);
+  assert.equal(result.passedPairs,2);
+  assert.equal(result.failedPairs,1);
+  assert.equal(result.pendingPairs,0);
+  assert.equal(result.gateComplete,false);
+});
+
+test("latest pattern calibration controls release coverage",()=>{
+  const result=summarizeApprovedPatternCalibrationCoverage([
+    {outcome_id:"o1",shirt_id:"stripe-shirt",pant_id:"solid-pant",human_status:"approved"},
+  ],[
+    {outcome_id:"o1",garment:"shirt",scale_error_pct:12,axis_status:"match",created_at:"2026-10-01T10:00:00Z"},
+    {outcome_id:"o1",garment:"shirt",scale_error_pct:5,axis_status:"match",created_at:"2026-10-01T10:05:00Z"},
+  ],new Set(["stripe-shirt"]));
+  assert.equal(result.requiredPairs,1);
+  assert.equal(result.passedPairs,1);
+  assert.equal(result.failedPairs,0);
+  assert.equal(result.pendingPairs,0);
+  assert.equal(result.gateComplete,true);
+});
+
+test("pattern release gate stays open until at least one approved patterned render exists",()=>{
+  const result=summarizeApprovedPatternCalibrationCoverage([
+    {outcome_id:"o1",shirt_id:"solid-shirt",pant_id:"solid-pant",human_status:"approved"},
+  ],[],new Set(["stripe-shirt"]));
+  assert.equal(result.requiredPairs,0);
+  assert.equal(result.gateComplete,false);
 });
