@@ -543,8 +543,11 @@ export function evaluateDesignerCombo(shirt: DesignerFabric, pant: DesignerFabri
     materialEvidence.total += 1;
     materialEvidence.missing.push("White contrast collar cloth: shade, weight, shrinkage and available metres");
   }
+  const stockStatusVerified=shirt.availabilityVerified===true&&pant.availabilityVerified===true;
   const confirmationsNeeded = [
-    "Confirm current availability and required metres for both fabrics.",
+    stockStatusVerified
+      ? "Both fabrics have provenance-ready positive stock status; confirm required metres and reserve them before cutting."
+      : "Confirm current availability and required metres for both fabrics.",
     "Confirm GSM, opacity and drape before cutting; these are absent from the catalogue.",
     ...(context.climate !== "Not specified" && climateStatus !== "pass" ? ["Check air flow, thermal comfort and the chosen climate against both physical cloths."] : []),
     "Confirm the chosen fit and proportions against the wearer's measurements.",
