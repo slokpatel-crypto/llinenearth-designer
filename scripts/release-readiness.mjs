@@ -598,7 +598,7 @@ requireTokens("supabase/migrations/20261003_production_delivery_evidence.sql", [
 requireTokens("src/lib/designer/production-delivery-evidence.ts", ["PRODUCTION_REENTRY_FIELDS","summarizeProductionDeliveryEvidence","gateComplete","reentryIncidentCount"]);
 requireTokens("src/app/operator/production-evidence/ProductionEvidenceClient.tsx", ["Zero-Reentry Proof","FIRST 10 AUDITED","ZERO RE-ENTRY","Save immutable completion audit"]);
 requireTokens("supabase/migrations/20261004_meterage_calibration_registry.sql", ["production_meterage_model_create","production_meterage_model_approve","at least 20 real cut cases are required before approval","service_role"]);
-requireTokens("src/lib/designer/meterage-calibration.ts", ["normalizeMeterageCalibrationDraft","meterageForWidth","canApproveMeterageModel"]);
+requireTokens("src/lib/designer/meterage-calibration.ts", ["normalizeMeterageCalibrationDraft","meterageForWidth","canApproveMeterageModel","verifiedMeterageEvidenceCase","production-usage-v2","checkedBy","evidenceReference"]);
 requireTokens("src/app/api/operator/meterage-model/route.ts", ["production_meterage_model_create_v3","production_meterage_model_approve_v3","At least 20 valid real cut cases"]);
 requireTokens("src/lib/designer/meterage-calibration.ts", ["verifiedMeterageEvidenceCase","production-usage-v2","checkedBy","evidenceReference"]);
 requireTokens("src/app/operator/production-calibration/ProductionCalibrationClient.tsx", ["production-usage-v2","Checked by","Physical evidence reference","checkedBy","evidenceReference"]);
