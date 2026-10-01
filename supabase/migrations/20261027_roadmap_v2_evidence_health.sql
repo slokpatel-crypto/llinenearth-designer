@@ -17,7 +17,9 @@ as $$
     'distinctStyleValidation', to_regprocedure('public.style_director_validation_signoff_record_v3(text,integer,text,text)') is not null,
     'renderManualReview', to_regprocedure('public.designer_render_manual_review_signoff_latest()') is not null,
     'measurementEvidence', to_regprocedure('public.measurement_calibration_case_list(integer)') is not null,
-    'productionDeliveryEvidence', to_regprocedure('public.production_delivery_evidence_list(integer)') is not null
+    'productionDeliveryEvidence', to_regprocedure('public.production_delivery_evidence_list(integer)') is not null,
+    'verifiedMeterageCuts', to_regprocedure('public.production_meterage_model_create_v2(text,text,jsonb,jsonb,text)') is not null
+      and to_regprocedure('public.production_meterage_model_approve_v2(uuid,text,text)') is not null
   );
 $$;
 
