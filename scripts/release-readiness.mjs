@@ -78,6 +78,8 @@ for (const path of [
   "src/lib/measurement-vault.ts",
   "src/lib/customer-account.ts",
   "src/lib/customer-auth.ts",
+  "src/lib/customer-session-token.ts",
+  "src/lib/customer-session.ts",
   "src/app/account/page.tsx",
   "src/app/api/customer-auth/otp/route.ts",
   "src/app/api/customer-auth/verify/route.ts",
@@ -130,7 +132,10 @@ for (const path of [
 
 requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/visual", "/real-model", "Open Real Model Designer"]);
 requireTokens("src/app/account/page.tsx", ["Email sign in","listOwned","recovery token","Measurement profiles"]);
-requireTokens("src/lib/customer-auth.ts", ["SUPABASE_ANON_KEY","/auth/v1/otp","/auth/v1/verify","/auth/v1/user","httpOnly:true"]);
+requireTokens("src/lib/customer-auth.ts", ["SUPABASE_ANON_KEY","/auth/v1/otp","/auth/v1/verify","/auth/v1/user","CUSTOMER_SESSION_COOKIE"]);
+requireTokens("src/lib/customer-session-token.ts", ["CUSTOMER_SESSION_MAX_AGE_SECONDS","createCustomerSessionToken","verifyCustomerSessionToken","timingSafeEqual"]);
+requireTokens("src/app/api/customer-auth/verify/route.ts", ["createSignedCustomerSession","CUSTOMER_SESSION_COOKIE","Customer session signing is not configured"]);
+requireTokens("src/app/api/customer-auth/logout/route.ts", ["CUSTOMER_SESSION_COOKIE","CUSTOMER_ACCESS_COOKIE","CUSTOMER_REFRESH_COOKIE"]);
 requireTokens("src/app/api/designer/vault/route.ts", ["getCustomerIdentity","listOwned","loadOwned","deleteOwned","action===\"claim\""]);
 requireTokens("src/app/api/measurements/vault/route.ts", ["getCustomerIdentity","listOwned","loadOwned","deleteOwned","action===\"claim\""]);
 requireTokens("supabase/migrations/20261006_customer_account_ownership.sql", ["owner_user_id","auth.users","designer_locked_revision_vault_list_owned","measurement_profile_vault_list_owned","service_role"]);
@@ -502,6 +507,8 @@ requireTokens(".env.example", [
   "LINEN_OPERATOR_PASSWORD_HASH=",
   "LINEN_OPERATOR_SESSION_SECRET=",
   "LINEN_MEMORY_SESSION_SECRET=",
+  "LINEN_CUSTOMER_SESSION_SECRET=",
+  "SUPABASE_ANON_KEY=",
   "AI_GATEWAY_API_KEY=",
   "LINEN_VISUAL_CRITIC_MODEL=",
   "LINEN_RESEARCH_MODEL=",
