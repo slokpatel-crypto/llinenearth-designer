@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 type Customer={id?:string;email:string|null};
 type OwnedDesign={vaultId:string;revisionId:string;recipeHash:string;createdAt:string;expiresAt:string};
 type OwnedProfile={vaultId:string;createdAt:string;expiresAt:string;unit?:string};
-type OwnedQuote={quote_id:string;revision_id:string;currency:string;total:number|string;status:string;created_at:string;updated_at:string};
+type OwnedQuote={quote_id:string;revision_id:string;currency:string;line_items:Array<{label:string;amount:number|string}>;subtotal:number|string;adjustment:number|string;total:number|string;status:string;created_at:string;updated_at:string};
 type OwnedOrder={order_id:string;revision_id:string;quote_id:string|null;status:string;created_at:string;updated_at:string};
 
 const card:React.CSSProperties={border:"1px solid #ddd7cc",borderRadius:18,padding:20,background:"#fff"};
@@ -116,6 +116,24 @@ export default function AccountPage(){
     await refresh();
   }
 
+  async function acceptQuote(quoteId:string){
+    if(!window.confirm("Accept this quote and lock it for production handoff?")) return;
+    setBusy(true);setMessage("");
+    try{
+      const response=await fetch("/api/customer-account/production",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({action:"accept_quote",quoteId}),
+      });
+      const data=await response.json();
+      if(!response.ok||!data.accepted) throw new Error(data.error||"Quote could not be accepted.");
+      setMessage("Quote accepted. Linen Earth can now create the production order from this exact locked design.");
+      await refresh();
+    }catch(error){
+      setMessage(error instanceof Error?error.message:"Quote could not be accepted.");
+    }finally{setBusy(false);}
+  }
+
   return <main style={{minHeight:"100vh",background:"#f8f6f0",color:"#1a1a1a",padding:"42px 18px"}}>
     <div style={{maxWidth:900,margin:"0 auto",display:"grid",gap:18}}>
       <header>
@@ -155,11 +173,26 @@ export default function AccountPage(){
               </div>;
             })}
           </div>}
-          {orders.length===0&&quotes.length>0&&<div style={{marginTop:14}}>
+          {quotes.length>0&&<div style={{marginTop:18}}>
             <strong>Quotes</strong>
-            {quotes.map(quote=><div key={quote.quote_id} style={{borderTop:"1px solid #ece6dc",paddingTop:10,marginTop:10}}>
-              <span>{money(quote.currency,quote.total)}</span> · <span style={{textTransform:"capitalize"}}>{labelStatus(quote.status)}</span>
-              <div style={{fontSize:13,opacity:.6,marginTop:3}}>{quote.revision_id}</div>
+            {quotes.map(quote=><div key={quote.quote_id} style={{borderTop:"1px solid #ece6dc",paddingTop:12,marginTop:10,display:"grid",gap:8}}>
+              <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+                <span><strong>{money(quote.currency,quote.total)}</strong> · <span style={{textTransform:"capitalize"}}>{labelStatus(quote.status)}</span></span>
+                {quote.status==="sent"&&<button style={{...button,padding:"8px 11px"}} disabled={busy} onClick={()=>void acceptQuote(quote.quote_id)}>Accept quote</button>}
+              </div>
+              <div style={{fontSize:13,opacity:.6}}>{quote.revision_id}</div>
+              {Array.isArray(quote.line_items)&&quote.line_items.length>0&&<div style={{display:"grid",gap:4,fontSize:13}}>
+                {quote.line_items.map((item,index)=><div key={quote.quote_id+"-"+index} style={{display:"flex",justifyContent:"space-between",gap:12}}>
+                  <span>{item.label}</span><span>{money(quote.currency,item.amount)}</span>
+                </div>)}
+                <div style={{display:"flex",justifyContent:"space-between",gap:12,borderTop:"1px dashed #ddd7cc",paddingTop:5,marginTop:2}}>
+                  <span>Subtotal</span><span>{money(quote.currency,quote.subtotal)}</span>
+                </div>
+                {Number(quote.adjustment)!==0&&<div style={{display:"flex",justifyContent:"space-between",gap:12}}>
+                  <span>Adjustment</span><span>{money(quote.currency,quote.adjustment)}</span>
+                </div>}
+              </div>}
+              {quote.status==="sent"&&<div style={{fontSize:12,lineHeight:1.5,opacity:.65}}>Accepting confirms this quoted amount for the exact locked revision shown above. It does not create a production order by itself.</div>}
             </div>)}
           </div>}
         </section>
