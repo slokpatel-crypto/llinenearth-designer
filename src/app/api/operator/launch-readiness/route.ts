@@ -53,10 +53,11 @@ export async function POST(request:Request){
     const action=String(body.action||"");
     if(action==="record_beta"){
       const draft=normalizeBetaAttempt(body);
-      const attemptId=await rpc<string>("launch_beta_attempt_record",{
+      const attemptId=await rpc<string>("launch_beta_attempt_record_v2",{
         p_case_id:draft.caseId,
         p_device_class:draft.deviceClass,
-        p_core_flow_completed:draft.coreFlowCompleted,
+        p_design_locked:draft.designLocked,
+        p_share_or_enquiry_completed:draft.shareOrEnquiryCompleted,
         p_blocking_bug:draft.blockingBug,
         p_note:draft.note,
       });
