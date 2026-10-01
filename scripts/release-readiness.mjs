@@ -122,6 +122,7 @@ for (const path of [
   "supabase/migrations/20261012_designer_novice_study.sql",
   "supabase/migrations/20261019_novice_server_timing.sql",
   "supabase/migrations/20261020_verified_beta_share_flow.sql",
+  "supabase/migrations/20261021_style_director_validation_threshold.sql",
   "src/lib/designer/preview-option-reviews.ts",
   "src/app/api/operator/preview-option-coverage/route.ts",
   "src/app/operator/preview-option-coverage/page.tsx",
@@ -210,10 +211,11 @@ requireTokens("src/lib/fabric-color-calibration.ts", ["deltaE2000","evidenceGate
 requireTokens("src/app/api/operator/fabric-color-calibration/route.ts", ["verifyOperatorSession","fabric_physical_color_check_record","summarizeFabricPhysicalColorChecks"]);
 requireTokens("src/app/operator/fabric-color-calibration/FabricColorCalibrationClient.tsx", ["Physical Colour Calibration","MEDIAN ΔE","descriptive only","Save append-only colour evidence"]);
 requireTokens("supabase/migrations/20261008_fabric_physical_color_checks.sql", ["fabric_physical_color_checks","fabric_physical_color_check_record","fabric_physical_color_check_list","service_role"]);
-requireTokens("src/lib/designer/style-director-validation.ts", ["directionsUnderstandable","directionsDistinct","stockHandoffWorked","validationComplete"]);
-requireTokens("src/app/api/operator/style-director-validation/route.ts", ["style_director_user_test_record","style_director_validation_signoff_record","verifyOperatorSession"]);
-requireTokens("src/app/operator/style-director-validation/StyleDirectorValidationClient.tsx", ["Style Director Validation","materially distinct","Record user-test evidence","Record approved"]);
+requireTokens("src/lib/designer/style-director-validation.ts", ["directionsUnderstandable","directionsDistinct","stockHandoffWorked","requiredPositiveCases","thresholdMet","validationComplete"]);
+requireTokens("src/app/api/operator/style-director-validation/route.ts", ["style_director_user_test_record","style_director_validation_signoff_record_v2","p_required_positive_cases","verifyOperatorSession"]);
+requireTokens("src/app/operator/style-director-validation/StyleDirectorValidationClient.tsx", ["Style Director Validation","materially distinct","Documented clean-case target","No default is invented","Record user-test evidence","Record approved"]);
 requireTokens("supabase/migrations/20261009_style_director_user_validation.sql", ["style_director_user_tests","style_director_validation_signoffs","record real-user validation evidence before sign-off","service_role"]);
+requireTokens("supabase/migrations/20261021_style_director_validation_threshold.sql", ["required_positive_cases","style_director_validation_signoff_record_v2","positive Style Director cases do not meet the documented approval target","service_role"]);
 requireTokens("src/lib/designer/ease-calibration.ts", ["requiredEaseEvidenceKeys","evidenceCoverageComplete","normalizeHouseEaseCalibrationDraft","SHIRT_EASE_CLASSES","TROUSER_EASE_CLASSES"]);
 requireTokens("src/lib/designer/preview-option-coverage.ts", ["fullyCleared","constructionBlocked","noPreviewSupport","gateComplete"]);
 requireTokens("src/lib/designer/novice-designer-study.ts", ["durationSeconds","likedDesignCompleted","targetSeconds","withinTargetCases","gateComplete"]);
