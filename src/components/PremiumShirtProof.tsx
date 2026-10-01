@@ -192,7 +192,7 @@ export function PremiumShirtProof(){
           at:new Date().toISOString(),
           payload:{
             subtype:"roadmap_phase1_proof",
-            version:"linen-earth-phase1-proof-v1",
+            version:"linen-earth-phase1-proof-v2",
             status:proofAcceptance.accepted?"accepted":"review",
             fabricId:realShirt?.id||"",
             fabricName:realShirt?.name||"",
@@ -233,7 +233,7 @@ export function PremiumShirtProof(){
 
   function exportProofEvidence(){
     const payload={
-      version:"linen-earth-phase1-proof-v1",
+      version:"linen-earth-phase1-proof-v2",
       recordedAt:new Date().toISOString(),
       fabric:{
         id:realShirt?.id||null,
