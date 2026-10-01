@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { assessFitConstruction } from "../src/lib/designer/fit-construction.ts";
-import { designerStyleForOccasion } from "../src/lib/designer/engine.ts";
 import { HOUSE_SHIRT_EASE,HOUSE_TROUSER_EASE } from "../src/lib/designer/house-ease.ts";
 import type { ApprovedHouseEaseModel } from "../src/lib/designer/ease-calibration.ts";
 import type { MeasurementProfile } from "../src/lib/measurements.ts";
@@ -14,7 +13,19 @@ const profile:MeasurementProfile={
   pants:{waist:82,seat:100,thigh:58,knee:42,frontRise:29,inseam:80,outseam:105,hem:36},
 };
 
-const style=designerStyleForOccasion("Semi-Formal");
+const style={
+  collar:"Spread Collar",
+  collarFinish:"Self-fabric",
+  cuff:"Barrel Cuff (2-button)",
+  placket:"French Placket",
+  shirtFit:"Regular / Classic Fit",
+  shirtWear:"Tucked",
+  trouser:"Pleated Trouser",
+  rise:"Mid Rise",
+  waistband:"Side-Adjuster Tabs",
+  break:"Slight Break",
+  button:"Corozo",
+} as any;
 
 function approvedModel():ApprovedHouseEaseModel {
   const shirt=structuredClone(HOUSE_SHIRT_EASE);
