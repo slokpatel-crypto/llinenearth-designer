@@ -168,6 +168,7 @@ requireTokens("src/components/PremiumShirtProof.tsx", ["linen-earth-phase1-proof
 requireTokens("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx", ["proofMobileAccepted","target-mobile acceptance","mobile ${proofMobileAccepted?"]);
 requireTokens("src/app/api/operator/phase1-proof/route.ts", ["evaluateRecordedPhase1ProofEvidence","coreAccepted","physicalEvidenceReady","physicalEvidenceNote","uniqueRealismViewers","photoReferenceMm","photoReferencePx","photoPxPerMm","scaleCoordinateSystem"]);
 requireTokens("src/app/api/memory/event/route.ts", ["linen-earth-phase1-proof-v2","photoReferenceMm","photoReferencePx","realismAssessments","uniqueRealismViewers"]);
+requireTokens("src/app/api/memory/event/route.ts", ["designer-device-qa-v2","sampleDurationsMs","hardwareConcurrency","checks"]);
 requireTokens("src/app/api/operator/device-qa/route.ts", ["evaluateDeviceQaEvidence","performancePass","visualPass","evidenceVersion"]);
 requireTokens("src/app/operator/device-qa/DeviceQaClient.tsx", ["DEVICE_QA_EVIDENCE_VERSION","readPreviewPerformanceSamples","sampleDurationsMs"]);
 requireTokens("src/lib/designer/device-qa-evidence.ts", ["DEVICE_QA_EVIDENCE_VERSION","DEVICE_QA_MIN_SAMPLES","DEVICE_QA_TARGET_P95_MS","evaluateDeviceQaEvidence","sampleDurationsMs"]);
