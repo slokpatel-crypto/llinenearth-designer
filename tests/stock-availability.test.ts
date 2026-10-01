@@ -13,7 +13,9 @@ test("only provenance-ready ledger rows can override catalogue availability",()=
     {fabric_id:"b",available_metres:0,provenance_ready:false},
   ]);
   assert.equal(result.stock.find((item)=>item.id==="a")?.inStock,false);
+  assert.equal(result.stock.find((item)=>item.id==="a")?.availabilityVerified,true);
   assert.equal(result.stock.find((item)=>item.id==="b")?.inStock,true);
+  assert.equal(result.stock.find((item)=>item.id==="b")?.availabilityVerified,undefined);
   assert.equal(result.stock.find((item)=>item.id==="c")?.inStock,true);
   assert.deepEqual(result.verifiedFabricIds,["a"]);
 });
@@ -23,6 +25,7 @@ test("verified physical stock never overrides an explicit catalogue unavailabili
     {fabric_id:"a",available_metres:"4.250",provenance_ready:true},
   ]);
   assert.equal(result.stock[0]?.inStock,false);
+  assert.equal(result.stock[0]?.availabilityVerified,true);
 });
 
 test("invalid ledger quantities never become verified availability",()=>{
