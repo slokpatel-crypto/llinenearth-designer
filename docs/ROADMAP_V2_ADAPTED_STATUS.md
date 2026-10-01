@@ -13,7 +13,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 | Phase 1 — Premium Shirt Proof | Engineering implementation complete | physical scale measurement + 8-viewer realism + device evidence |
 | Phase 2 — Fabric Truth | strong existing foundation | owner / supplier physical evidence coverage and 50-fabric reviewed set |
 | Phase 3 — Deterministic Designer | strong existing foundation | promote proved preview only after Phase 1 passes |
-| Phase 4 — Measurements / Fit | advanced foundation | real-person accuracy study, tailor ease calibration, durable persistence |
+| Phase 4 — Measurements / Fit | advanced foundation + secure recovery implemented | real-person accuracy study + tailor ease calibration + authenticated ownership |
 | Phase 5 — Lock / Share / Enquiry | lock + share + secure recovery vault implemented | authenticated customer-account ownership |
 | Phase 6 — Style Director | advanced foundation | owner-labelled benchmark / real-user validation |
 | Phase 7 — Final Render / QA | advanced foundation | approval-rate, cost and physical-pattern QA evidence |
@@ -47,6 +47,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added private real production cloth-usage calibration capture before any meterage estimator is allowed.
 - Added append-only stock ledger with revision-linked reservation / release / consumption.
 - Added operator-entered quote ledger and production-order status workflow tied to immutable recipe hashes.
+- Added opt-in secure measurement recovery vault with hashed recovery keys, expiry and deletion.
 - Added phase adaptation records so future coding agents do not rebuild existing systems unnecessarily.
 
 ## Evidence we cannot manufacture in code
