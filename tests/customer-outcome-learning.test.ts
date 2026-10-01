@@ -63,10 +63,50 @@ test("approved evidence needs durable design context before the human threshold 
   assert.equal(withoutContext.gateComplete,false);
 
   const withContext=summarizeCustomerOutcomeLearning(
-    [{...outcomes[0],learning_context:{version:"linen-earth-production-learning-context-v1"}}],
+    [{...outcomes[0],learning_context:{
+      version:"linen-earth-production-learning-context-v1",
+      revisionId:"r1",
+      recipeHash:"a".repeat(64),
+      fabrics:{shirtId:"shirt-1",trouserId:"trouser-1"},
+    }}],
     reviews,
     policies,
   );
   assert.equal(withContext.learningEligible,1);
   assert.equal(withContext.gateComplete,true);
+});
+
+
+test("malformed or mismatched durable context cannot satisfy the learning threshold",()=>{
+  const reviews=[
+    {review_id:"r1",outcome_id:"o1",decision:"approved" as const,reviewer:"Owner",note:"",created_at:"2026-10-01T12:00:00Z"},
+  ];
+  const policies=[
+    {policy_id:"p",minimum_approved_cases:1,approved_by:"Owner",note:"Documented threshold",created_at:"2026-10-01T09:00:00Z"},
+  ];
+  const wrongRevision=summarizeCustomerOutcomeLearning(
+    [{...outcomes[0],learning_context:{
+      version:"linen-earth-production-learning-context-v1",
+      revisionId:"different-revision",
+      recipeHash:"b".repeat(64),
+      fabrics:{shirtId:"shirt-1",trouserId:"trouser-1"},
+    }}],
+    reviews,
+    policies,
+  );
+  assert.equal(wrongRevision.learningEligible,0);
+  assert.equal(wrongRevision.gateComplete,false);
+
+  const missingPair=summarizeCustomerOutcomeLearning(
+    [{...outcomes[0],learning_context:{
+      version:"linen-earth-production-learning-context-v1",
+      revisionId:"r1",
+      recipeHash:"b".repeat(64),
+      fabrics:{shirtId:"shirt-1"},
+    }}],
+    reviews,
+    policies,
+  );
+  assert.equal(missingPair.learningEligible,0);
+  assert.equal(missingPair.gateComplete,false);
 });
