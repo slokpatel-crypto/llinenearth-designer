@@ -18,7 +18,7 @@ Route: `/lab/proof`
 - The selected proof fabric links directly to its private Analyzer evidence desk.
 - A deterministic photographic-repeat audit reports expected repeat spacing in mannequin pixels when physical repeat evidence exists, and the exact same photo px/mm calibration is passed into the compositor so the audited scale and rendered scale cannot silently diverge.
 - Proof evidence can be exported as JSON with scale, performance and viewer-rating results for an auditable acceptance record.
-- The operator evidence API recomputes photographic px/mm from the stored raw fixture pair, requires a short auditable owner/supplier physical-evidence note, then recomputes physical-scale error, independent-viewer realism and the core proof decision instead of trusting client-supplied calibration or pass/status flags. Hardened records use the explicit `linen-earth-phase1-proof-v3` schema; legacy v1 / click-only evidence cannot satisfy the current core gate.
+- The operator evidence API recomputes photographic px/mm from the stored raw fixture pair, requires a short auditable owner/supplier physical-evidence note, recomputes p95 latency from the raw photographic-render sample durations, and then recomputes physical-scale error, independent-viewer realism, protected-boundary status and the core proof decision instead of trusting client-supplied aggregate/pass flags. Hardened records use the explicit `linen-earth-phase1-proof-v4` schema; legacy v1 / click-only evidence cannot satisfy the current core gate.
 - The core proof now also requires a recorded protected-boundary review for the neck opening, cuffs/hands, tucked waist/fly and trouser-leg gap. Roadmap readiness then treats target-mobile acceptance as a separate fifth gate. A strong desktop/browser proof cannot mark Phase 1 complete until the private Device QA workflow has an accepted mobile result.
 
 ## What this proof does not claim
@@ -48,7 +48,8 @@ Route: `/lab/proof`
 - [x] deterministic photo-repeat audit value
 - [x] distinct anonymous viewer-code dedupe for realism evidence
 - [x] server-side recomputation of scale / latency / realism acceptance from raw recorded evidence
-- [x] versioned v3 proof schema prevents legacy weaker evidence from being treated as current acceptance
+- [x] real-model p95 is recomputed from bounded raw render-duration samples; client-supplied p95/sample counts cannot satisfy the gate
+- [x] versioned v4 proof schema prevents legacy weaker evidence from being treated as current acceptance
 - [x] protected neck/cuff/waist/trouser-gap review is explicitly recorded and recomputed in the core gate
 - [x] Phase 1 readiness explicitly depends on accepted target-mobile Device QA evidence
 - [ ] CI green on current branch
