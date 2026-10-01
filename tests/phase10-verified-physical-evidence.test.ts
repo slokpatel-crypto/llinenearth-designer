@@ -54,6 +54,13 @@ const intelligence={
     drape:"Balanced",
     fiberContent:"100% linen",
     sourceUrl:"https://example.com/evidence",
+    evidenceNote:null,
+  },
+  fieldProvenance:{
+    "measured.pattern.physicalScale":"declared",
+    "verifiedPhysical.gsm":"declared",
+    "verifiedPhysical.drape":"declared",
+    "verifiedPhysical.fiberContent":"declared",
   },
   colorFamily:"blue_family",
   undertone:"cool",
@@ -113,4 +120,41 @@ test("unknown physical scale does not claim true-scale preview",()=>{
   const enriched=applyVerifiedPhysicalFabricEvidence(fabric,unknown);
   assert.equal(enriched.patternScaleVerified,false);
   assert.equal(enriched.renderScale,undefined);
+});
+
+
+test("reviewed physical values without auditable physical source stay out of customer fabric facts",()=>{
+  const unproven={
+    ...intelligence,
+    verifiedPhysical:{...intelligence.verifiedPhysical,sourceUrl:null,evidenceNote:null},
+  } satisfies DesignerFabricIntelligence;
+  const enriched=applyVerifiedPhysicalFabricEvidence(fabric,unproven);
+  assert.equal(enriched.weightGsm,null);
+  assert.equal(enriched.drape,null);
+  assert.equal(enriched.fiberContent,null);
+  assert.equal(enriched.fiberContentVerified,false);
+  assert.equal(enriched.patternScaleVerified,false);
+  assert.equal(enriched.renderScale,undefined);
+});
+
+test("physical evidence note can provide audit provenance when no source URL exists",()=>{
+  const noted={
+    ...intelligence,
+    verifiedPhysical:{...intelligence.verifiedPhysical,sourceUrl:null,evidenceNote:"Owner measured this roll against the physical stock card."},
+  } satisfies DesignerFabricIntelligence;
+  const enriched=applyVerifiedPhysicalFabricEvidence(fabric,noted);
+  assert.equal(enriched.weightGsm,145);
+  assert.equal(enriched.patternScaleVerified,true);
+});
+
+test("review status alone cannot upgrade a physical field without field-level provenance",()=>{
+  const noFieldSource={
+    ...intelligence,
+    fieldProvenance:{},
+  } satisfies DesignerFabricIntelligence;
+  const enriched=applyVerifiedPhysicalFabricEvidence(fabric,noFieldSource);
+  assert.equal(enriched.weightGsm,null);
+  assert.equal(enriched.drape,null);
+  assert.equal(enriched.fiberContentVerified,false);
+  assert.equal(enriched.patternScaleVerified,false);
 });
