@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockReservation, stockSnapshot } from "../src/lib/designer/stock-ledger.ts";
+import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation, stockSnapshot } from "../src/lib/designer/stock-ledger.ts";
 
 test("reservation reduces available stock without changing physical stock",()=>{
   assert.deepEqual(stockSnapshot([
@@ -68,4 +68,17 @@ test("stock consumption requires measured usage provenance",()=>{
   assert.equal(result.actualMetres,1.824);
   assert.equal(result.checkedBy,"RJ");
   assert.equal(result.sourceReference,"Cutting sheet CUT-42");
+});
+
+
+test("stock release requires a named operational reason source",()=>{
+  assert.throws(()=>normalizeStockRelease({
+    reservationId:"11111111-1111-4111-8111-111111111111",releasedBy:"SP",sourceReference:"",
+  }),/release reference/i);
+  const result=normalizeStockRelease({
+    reservationId:"11111111-1111-4111-8111-111111111111",
+    releasedBy:" SP ",sourceReference:" Order cancellation ORD-42 ",note:" Customer cancelled before cutting. ",
+  });
+  assert.equal(result.releasedBy,"SP");
+  assert.equal(result.sourceReference,"Order cancellation ORD-42");
 });
