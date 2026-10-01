@@ -1,6 +1,6 @@
 # Phase 5 — Lock, Share & Enquiry Adaptation
 
-Status: core recipe-lock groundwork implemented; durable account persistence remains a production dependency.
+Status: recipe lock, privacy-safe sharing and opt-in durable recovery vault are implemented; authenticated customer-account ownership remains a production dependency.
 
 ## Existing foundation to keep
 
@@ -30,9 +30,24 @@ Locked revisions can now create a signed 30-day share token. The public share pa
 
 The server verifies the locked recipe hash before issuing a share link. Tampered or expired share tokens are rejected.
 
+## Secure recovery vault now implemented
+
+A locked revision can be saved deliberately to a private Supabase-backed recovery vault:
+- browser never receives database credentials,
+- the full locked recipe is integrity-verified before storage,
+- a high-entropy recovery key is generated in the server route,
+- only the SHA-256 hash of that key is stored,
+- the recovery token stays with the customer/operator,
+- retrieval verifies the locked recipe again,
+- the secure copy expires automatically,
+- the recovery flow supports download of the locked JSON, tailor handoff and printable tech pack,
+- the recovery token is pasted into a POST flow and is not placed in the page URL.
+
+This is an anonymous recovery mechanism, **not** a substitute for authenticated customer accounts.
+
 ## What this does not yet solve
 
-The exported lock file is portable and the share token is privacy-safe, but the production system of record is not complete until customer identity and durable authenticated persistence are connected. Browser localStorage must not be treated as the authoritative copy of a paid / production order.
+Paid / production orders still need authenticated customer ownership and an operational account-level system of record. The recovery token grants access to its vault item, so it must be kept private. Browser localStorage must not be treated as the authoritative copy of a paid / production order.
 
 ## Completion gate
 
@@ -46,9 +61,9 @@ The exported lock file is portable and the share token is privacy-safe, but the 
 - [x] Designer lock/export action
 - [x] WhatsApp exact-look enquiry
 - [ ] authenticated customer ownership
-- [ ] durable server persistence for locked revisions
+- [x] opt-in durable server recovery vault for locked revisions
 - [x] signed expiring share-token model for non-sensitive design recipe
-- [ ] authenticated customer ownership / revocation permissions
+- [ ] authenticated customer ownership / account-level revocation permissions
 - [ ] five real customers complete lock → share/enquiry with zero blocking bugs
 
 ## Rule
