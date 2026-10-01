@@ -61,12 +61,13 @@ export async function POST(request:Request){
     const action=String(body.action||"");
     if(action==="record_test"){
       const draft=normalizeStyleDirectorUserTest(body);
-      const attemptId=await rpc<string>("style_director_user_test_record",{
+      const attemptId=await rpc<string>("style_director_user_test_record_v2",{
         p_case_id:draft.caseId,
         p_device_class:draft.deviceClass,
         p_directions_understandable:draft.directionsUnderstandable,
         p_directions_distinct:draft.directionsDistinct,
         p_stock_handoff_worked:draft.stockHandoffWorked,
+        p_handoff_audit_id:draft.handoffAuditId,
         p_blocking_issue:draft.blockingIssue,
         p_note:draft.note,
       });
