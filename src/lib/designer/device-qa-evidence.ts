@@ -1,6 +1,8 @@
+import { PREVIEW_PERFORMANCE_TARGET_MS } from "./preview-performance-client.ts";
+
 export const DEVICE_QA_EVIDENCE_VERSION="designer-device-qa-v2";
 export const DEVICE_QA_MIN_SAMPLES=12;
-export const DEVICE_QA_TARGET_P95_MS=100;
+export const DEVICE_QA_TARGET_P95_MS=PREVIEW_PERFORMANCE_TARGET_MS;
 export const DEVICE_QA_CHECK_KEYS=[
   "fourViews",
   "controlsLegible",
