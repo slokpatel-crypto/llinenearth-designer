@@ -142,7 +142,7 @@ export default function EaseCalibrationClient(){
         <div>
           <p style={{fontSize:12,letterSpacing:2,margin:"0 0 8px"}}>LINEN EARTH / ROADMAP V2 / PHASE 4</p>
           <h1 style={{fontFamily:"Georgia,serif",fontSize:"clamp(34px,5vw,56px)",margin:"0 0 10px",lineHeight:1}}>House Ease Calibration</h1>
-          <p style={{maxWidth:760,lineHeight:1.6,opacity:.72}}>Measure real finished garments against real body measurements, cover every existing fit-table cell, then version and approve a replacement. The live fit engine remains on provisional defaults until a separate controlled promotion is made.</p>
+          <p style={{maxWidth:760,lineHeight:1.6,opacity:.72}}>Measure real finished garments against real body measurements, cover every existing fit-table cell, then version and approve a replacement. The live Designer uses provisional defaults until one complete model receives explicit owner/tailor approval; that approved version then becomes the active fit-ease source.</p>
         </div>
         <nav style={{display:"flex",gap:12,flexWrap:"wrap"}}><Link href="/operator/measurement-calibration">Self vs Tailor</Link><Link href="/operator/phase10-readiness">Readiness</Link><Link href="/operator">Operator Desk</Link></nav>
       </header>
@@ -154,7 +154,7 @@ export default function EaseCalibrationClient(){
         <article><small>EVIDENCE CELLS</small><div style={{fontSize:34,fontWeight:800}}>{summary?.coveredCells??0}<span style={{fontSize:16,opacity:.45}}> / {summary?.requiredCells??35}</span></div></article>
         <article><small>REAL CASES</small><div style={{fontSize:34,fontWeight:800}}>{summary?.uniqueCases??0}</div></article>
         <article><small>TABLE COVERAGE</small><div style={{fontSize:25,fontWeight:800}}>{summary?.evidenceCoverageComplete?"COMPLETE":"COLLECTING"}</div></article>
-        <article><small>ACTIVE APPROVAL</small><div style={{fontSize:22,fontWeight:800}}>{activeModel?.version||"NONE"}</div><span style={{fontSize:12,opacity:.6}}>registry only · runtime not auto-switched</span></article>
+        <article><small>ACTIVE APPROVAL</small><div style={{fontSize:22,fontWeight:800}}>{activeModel?.version||"NONE"}</div><span style={{fontSize:12,opacity:.6}}>approved model · active in Designer runtime</span></article>
       </section>
 
       <section style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(350px,1fr))",gap:18}}>
@@ -188,7 +188,7 @@ export default function EaseCalibrationClient(){
 
       <section style={panel}>
         <h2 style={{marginTop:0}}>2. Build the versioned replacement table</h2>
-        <p style={{opacity:.68,fontSize:13,lineHeight:1.55}}>The editor begins with the current provisional Linen Earth values only as a comparison baseline. Change values only from the evidence and tailor review. Registering or approving this table does not silently change customer fit calculations.</p>
+        <p style={{opacity:.68,fontSize:13,lineHeight:1.55}}>The editor begins with the current provisional Linen Earth values only as a comparison baseline. Change values only from the evidence and tailor review. Registering a draft does not change customer fit calculations. Approving a complete evidence-backed model is the controlled promotion step: the Designer runtime will use that one approved version on subsequent assessments.</p>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(330px,1fr))",gap:18}}>
           <EaseTableEditor title="Shirt" garment="shirt" classes={SHIRT_EASE_CLASSES} fields={SHIRT_EASE_FIELDS} table={table.shirt as any} patch={patchRange}/>
           <EaseTableEditor title="Trouser" garment="trouser" classes={TROUSER_EASE_CLASSES} fields={TROUSER_EASE_FIELDS} table={table.trouser as any} patch={patchRange}/>
@@ -214,7 +214,7 @@ export default function EaseCalibrationClient(){
             {model.note&&<p style={{fontSize:13,opacity:.72}}>{model.note}</p>}
             {model.status==="approved"&&<p style={{fontSize:13}}>Approved by <strong>{model.approved_by}</strong>{model.approved_at?" · "+new Date(model.approved_at).toLocaleString("en-IN"):""}</p>}
             {model.status==="draft"&&<div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:9}}>
-              <button style={button} disabled={busy||approver.trim().length<2} onClick={()=>void post({action:"approve_model",modelId:model.model_id,approvedBy:approver,approvalNote},"House-ease table approved in the registry. Runtime remains provisional until controlled promotion.")}>Approve registry version</button>
+              <button style={button} disabled={busy||approver.trim().length<2} onClick={()=>void post({action:"approve_model",modelId:model.model_id,approvedBy:approver,approvalNote},"House-ease table approved. This version is now eligible as the active Designer runtime ease model.")}>Approve registry version</button>
               <button style={{...button,background:"#fff",color:"#7a2f2f",border:"1px solid #d8c6c1"}} disabled={busy} onClick={()=>void post({action:"retire_model",modelId:model.model_id},"Ease-table draft retired.")}>Retire</button>
             </div>}
             {model.status==="approved"&&<button style={{...button,marginTop:8,background:"#fff",color:"#7a2f2f",border:"1px solid #d8c6c1"}} disabled={busy} onClick={()=>void post({action:"retire_model",modelId:model.model_id},"Approved ease-table version retired.")}>Retire active registry version</button>}
