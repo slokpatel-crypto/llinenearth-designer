@@ -13,6 +13,8 @@ Status: existing foundation is substantially implemented; Roadmap v2 becomes a c
 - Content identity / hashes and evidence fingerprints.
 - Private Fabric Analyzer workflow with stock binding.
 - Owner / supplier physical-evidence notes and source URLs.
+- Designer Data Desk captures structured physical provenance (`physical_roll`, `supplier_document`, `lab_report`, `owner_measurement`) with reference, checker, optional date/URL; GSM/drape do not count as verified without it.
+- The bulk fabric worksheet carries the same physical-provenance fields so real stock evidence can be entered across the catalogue without weakening provenance rules.
 - Human approve / correct / reject review loop.
 - Dedicated append-only controlled physical colour-check workflow with LAB/hex evidence and CIEDE2000 comparison.
 - Ground-truth and calibration workflows.
@@ -59,6 +61,7 @@ Engineering:
 - [x] direction-preserving patterned tiles
 - [x] approximate/verified UI distinction
 - [x] controlled physical colour evidence capture + descriptive ΔE metrics
+- [x] structured physical provenance capture in single-fabric and bulk Designer Data workflows
 - [ ] CI green for Roadmap v2 branch
 
 Physical evidence:
