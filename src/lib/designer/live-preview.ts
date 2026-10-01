@@ -76,9 +76,20 @@ export function applyRuntimeFabricScale(
  * mannequin coordinate system. Unknown physical scale keeps the established
  * visual heuristic and is never presented as measured truth.
  */
-export function photoFabricPatternScale(asset:FabricRenderAsset|null,fallback:number) {
+export function photoFabricPatternScale(
+  asset:FabricRenderAsset|null,
+  fallback:number,
+  photoPxPerMm?:number|null,
+) {
   if(!asset || asset.scaleApproximate!==false || !asset.tileRealWidthMm || asset.tileRealWidthMm<=0) return fallback;
-  const photoTilePx=fabricTileSizePx(asset)*PHOTO_MODEL_COORDINATE_SCALE;
+  const directPhotoPxPerMm=Number(photoPxPerMm);
+  const photoTilePx=Number.isFinite(directPhotoPxPerMm)&&directPhotoPxPerMm>0
+    ? clamp(
+        asset.tileRealWidthMm*directPhotoPxPerMm,
+        18*PHOTO_MODEL_COORDINATE_SCALE,
+        320*PHOTO_MODEL_COORDINATE_SCALE,
+      )
+    : fabricTileSizePx(asset)*PHOTO_MODEL_COORDINATE_SCALE;
   return clamp(photoTilePx/PHOTO_SWATCH_TILE_PX,.12,1.6);
 }
 
@@ -92,9 +103,9 @@ export function visiblePatternScaleVerified(patternType:string,asset:FabricRende
  * coordinate system. This is a deterministic audit value, not image vision:
  * it proves the renderer's scale math when a measured repeat is available.
  */
-export function photoExpectedRepeatPx(asset:FabricRenderAsset|null) {
+export function photoExpectedRepeatPx(asset:FabricRenderAsset|null,photoPxPerMm?:number|null) {
   if(!asset || asset.scaleApproximate!==false || !asset.repeatPeriodPx || asset.repeatPeriodPx<=0) return null;
-  const scale=photoFabricPatternScale(asset,1);
+  const scale=photoFabricPatternScale(asset,1,photoPxPerMm);
   const repeatInSwatchTile=asset.repeatPeriodPx*(PHOTO_SWATCH_TILE_PX/asset.tileWidthPx);
   return repeatInSwatchTile*scale;
 }
