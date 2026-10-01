@@ -36,6 +36,7 @@ export interface DesignerFabric {
   texture: string | null;
   fiberContent: string | null;
   confirmedAvailableMetres: number | null;
+  availabilityVerified?: boolean;
   // Only set these after checking the physical roll or a documented supplier measurement.
   colorVerified?: boolean;
   patternScaleVerified?: boolean;
@@ -294,7 +295,7 @@ export function designerFabricFromStock(fabric: FabricColorway): DesignerFabric 
     weave: fabric.weave || (fabric.line === "Linen Plain 60 Lea" ? "Plain Weave" : null),
     texture: fabric.texture || null,
     fiberContent: fabric.line.includes("Blend") ? null : fabric.family,
-    confirmedAvailableMetres: null, colorVerified: false, patternScaleVerified: false,
+    confirmedAvailableMetres: null, availabilityVerified:fabric.availabilityVerified===true, colorVerified: false, patternScaleVerified: false,
     fiberContentVerified: false, drape, opacity: null, comfortTags: null,
     source: `${fabric.sourceDocument}, page ${fabric.sourcePage}`,
     allowedGarments: [
@@ -346,7 +347,7 @@ export function designerMaterialEvidence(shirt: DesignerFabric, pant: DesignerFa
     [`${fabric.name}: drape`, !!fabric.drape],
     [`${fabric.name}: opacity`, !!fabric.opacity],
     [`${fabric.name}: comfort for intended climate`, !!fabric.comfortTags?.length],
-    [`${fabric.name}: physical metres available`, fabric.confirmedAvailableMetres !== null && Number.isFinite(fabric.confirmedAvailableMetres) && fabric.confirmedAvailableMetres >= 0],
+    [`${fabric.name}: verified physical stock status`, fabric.availabilityVerified===true || (fabric.confirmedAvailableMetres !== null && Number.isFinite(fabric.confirmedAvailableMetres) && fabric.confirmedAvailableMetres >= 0)],
   ] as Array<[string, boolean]>);
   return { verified: checks.filter(([, known]) => known).length, total: checks.length,
     missing: checks.filter(([, known]) => !known).map(([label]) => label) };
