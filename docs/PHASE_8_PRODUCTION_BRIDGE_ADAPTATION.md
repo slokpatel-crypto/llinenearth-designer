@@ -176,3 +176,6 @@ New manual stock receipts and adjustments are accepted only with a named checker
 ## Reservation quantity provenance
 
 Stock reservation metres are no longer accepted as an unexplained operator number. Every new reservation must name the requester/checker and reference the real source of the quantity (for example an approved meterage sheet or tailor request). The reservation remains tied to the immutable locked revision and keeps the existing idempotent request-key protection.
+
+- New real-cut meterage evidence uses `production-usage-v2` and requires a named checker plus a physical cutting reference (job card, cut ticket, or equivalent). Legacy usage rows remain visible but cannot count toward the 20-cut calibration gate.
+- Meterage registration and activation revalidate those provenance-backed cases at the database boundary, so client counts or arbitrary evidence IDs cannot activate a model.
