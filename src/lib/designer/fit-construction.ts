@@ -1,8 +1,8 @@
-import type { MeasurementProfile } from "@/lib/measurements";
-import type { DesignerClimate, DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
-import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
-import { HOUSE_EASE_TABLE_VERSION, HOUSE_SHIRT_EASE, HOUSE_TROUSER_EASE, type ShirtEaseClass, type TrouserEaseClass } from "@/lib/designer/house-ease";
-import type { ApprovedHouseEaseModel } from "@/lib/designer/ease-calibration";
+import type { MeasurementProfile } from "../measurements.ts";
+import type { DesignerClimate, DesignerFabric, DesignerStyle } from "./engine.ts";
+import type { TailorObservationProfile } from "./tailor-observations.ts";
+import { HOUSE_EASE_TABLE_VERSION, HOUSE_SHIRT_EASE, HOUSE_TROUSER_EASE, type ShirtEaseClass, type TrouserEaseClass } from "./house-ease.ts";
+import type { ApprovedHouseEaseModel } from "./ease-calibration.ts";
 
 export type FitConstructionSeverity = "info" | "review" | "warning";
 export type RangeCm = { min: number; max: number };
