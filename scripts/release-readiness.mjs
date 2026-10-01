@@ -144,6 +144,8 @@ for (const path of [
   "src/lib/designer/render-outcomes.ts",
   "src/lib/designer/render-outcome-metrics.ts",
   "src/app/operator/render-qa/page.tsx",
+  "src/lib/designer/render-release-evidence.ts",
+  "supabase/migrations/20261007_render_release_evidence.sql",
 ]) requireFile(path);
 
 requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/visual", "/real-model", "Open Real Model Designer"]);
@@ -476,8 +478,10 @@ requireTokens("next.config.ts", ["Strict-Transport-Security","X-Frame-Options","
 requireTokens("src/app/api/designer/look-render/route.ts", ["recordRenderOutcome","repair:true"]);
 requireTokens("src/app/api/designer/look-inspect/route.ts", ["attachRenderQa","jobId"]);
 requireTokens("src/lib/designer/render-outcome-metrics.ts", ["summarizeRenderOutcomes","creditsPerApproved","approvalRate","summarizeRenderPatternCalibrations","scale_error_pct"]);
-requireTokens("src/app/operator/render-qa/RenderQaClient.tsx", ["Final Render QA","Add measured pattern check","APPROVAL RATE","CREDITS / APPROVED","PATTERN SCALE QA"]);
+requireTokens("src/app/operator/render-qa/RenderQaClient.tsx", ["Final Render QA","Add measured pattern check","APPROVAL RATE","CREDITS / APPROVED","PATTERN SCALE QA","CROSS-VIEW IDENTITY","Record owner-approved credit cap"]);
 requireTokens("supabase/migrations/20261001_render_outcomes.sql", ["designer_render_outcome_record","designer_render_outcome_review","designer_render_pattern_calibration_record","service_role"]);
+requireTokens("src/lib/designer/render-release-evidence.ts", ["summarizeCrossViewIdentity","evaluateRenderCreditCap","eligibleConcepts","withinCap"]);
+requireTokens("supabase/migrations/20261007_render_release_evidence.sql", ["designer_render_identity_review_record","designer_render_credit_cap_record","at least two rendered views","service_role"]);
 
 
 requireTokens("src/app/api/homepage-model/route.ts", [
@@ -530,6 +534,8 @@ requireTokens("scripts/check-cloud-readiness.mjs", [
   "designer_novice_study_decision_list",
   "designer_render_outcome_list",
   "designer_render_pattern_calibration_list",
+  "designer_render_identity_review_list",
+  "designer_render_credit_cap_latest",
   "Apply Roadmap v2 Supabase migrations",
 ]);
 
