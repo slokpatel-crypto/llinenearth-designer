@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { expectedPeriodPx, passesScaleGate, pxPerMmFromMarker, scaleErrorPct } from "../src/lib/designer/proof-scale.ts";
-import { applyRuntimeFabricScale, photoFabricPatternScale, type FabricRenderAsset } from "../src/lib/designer/live-preview.ts";
+import { applyRuntimeFabricScale, photoFabricPatternScale, visiblePatternScaleVerified, type FabricRenderAsset } from "../src/lib/designer/live-preview.ts";
 
 test("calibrates px/mm from a known marker",()=>{
   assert.equal(pxPerMmFromMarker(2362,100),23.62);
@@ -61,4 +61,27 @@ test("unknown runtime scale never fabricates a physical calibration",()=>{
   const untouched=applyRuntimeFabricScale(asset,{physicalScaleStatus:"unknown",repeatMm:null,stripeWidthMm:null});
   assert.equal(untouched?.scaleApproximate,true);
   assert.equal(untouched?.tileRealWidthMm,null);
+});
+
+
+test("visible scale verification is true for solids without physical repeat data",()=>{
+  assert.equal(visiblePatternScaleVerified("Solid",null),true);
+});
+
+test("visible scale verification requires real width for patterned cloth",()=>{
+  const approximate:FabricRenderAsset={
+    tileUrl:"/fabric-tiles/test.webp",
+    placeholderUrl:"/fabric-tiles/test-placeholder.webp",
+    tileWidthPx:256,
+    tileHeightPx:256,
+    repeatDetected:true,
+    repeatPeriodPx:20,
+    orientation:"vertical",
+    dominantHex:"#ffffff",
+    scaleApproximate:true,
+    tileRealWidthMm:null,
+    renderAssetVersion:"test",
+  };
+  assert.equal(visiblePatternScaleVerified("Stripe",approximate),false);
+  assert.equal(visiblePatternScaleVerified("Stripe",{...approximate,scaleApproximate:false,tileRealWidthMm:64}),true);
 });
