@@ -49,3 +49,11 @@ Status: advanced existing implementation with owner benchmark and real-user vali
 - A clean case means the latest result for that anonymous case reports understandable directions, materially distinct directions, a working stock/style handoff, and no blocking issue.
 - Database approval is rejected until the latest unique clean-case count meets the documented target.
 - Legacy approvals without a documented target remain historical evidence and cannot complete the current Phase 6 validation gate.
+
+
+## Signed handoff evidence
+
+- Every Style Director result now receives a short-lived server-signed handoff token containing the exact stock pair, occasion, context and supported style.
+- Designer verifies the signed payload against the state it actually opened before a handoff audit can be recorded.
+- Real-user validation can count a successful stock/style handoff only when it references that verified server audit.
+- Handoff audit tokens are SHA-256 fingerprinted and idempotent, and each audit may support only one user-test row, preventing replay of one handoff across multiple anonymous cases.
