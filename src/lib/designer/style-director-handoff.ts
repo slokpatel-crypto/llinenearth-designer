@@ -2,6 +2,7 @@ import "server-only";
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { DesignerClimate, DesignerIntention, DesignerStyle, OccasionTier } from "./engine";
+import { readBrandEnv } from "../runtime-compat";
 
 const VERSION="v1";
 const MAX_AGE_MS=2*60*60*1000;
