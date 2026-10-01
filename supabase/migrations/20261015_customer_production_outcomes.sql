@@ -90,14 +90,19 @@ returns table(
 language sql
 security definer
 set search_path='public','private'
-as $$
-  select distinct on (o.order_id)
-    o.outcome_id,o.order_id,o.overall_rating,o.fit_result,o.worn_confirmed,o.note,o.created_at
-  from private.production_customer_outcomes o
-  where o.owner_user_id=p_owner_user_id
-  order by o.order_id,o.created_at desc
+as $
+  select latest.outcome_id,latest.order_id,latest.overall_rating,latest.fit_result,
+    latest.worn_confirmed,latest.note,latest.created_at
+  from (
+    select distinct on (o.order_id)
+      o.outcome_id,o.order_id,o.overall_rating,o.fit_result,o.worn_confirmed,o.note,o.created_at
+    from private.production_customer_outcomes o
+    where o.owner_user_id=p_owner_user_id
+    order by o.order_id,o.created_at desc
+  ) latest
+  order by latest.created_at desc
   limit greatest(1,least(coalesce(p_limit,100),200));
-$$;
+$;
 
 create or replace function public.production_customer_outcome_list(
   p_limit integer default 250
@@ -115,14 +120,19 @@ returns table(
 language sql
 security definer
 set search_path='public','private'
-as $$
-  select distinct on (o.order_id)
-    o.outcome_id,o.order_id,p.revision_id,o.overall_rating,o.fit_result,o.worn_confirmed,o.note,o.created_at
-  from private.production_customer_outcomes o
-  join private.production_orders p on p.order_id=o.order_id
-  order by o.order_id,o.created_at desc
+as $
+  select latest.outcome_id,latest.order_id,latest.revision_id,latest.overall_rating,latest.fit_result,
+    latest.worn_confirmed,latest.note,latest.created_at
+  from (
+    select distinct on (o.order_id)
+      o.outcome_id,o.order_id,p.revision_id,o.overall_rating,o.fit_result,o.worn_confirmed,o.note,o.created_at
+    from private.production_customer_outcomes o
+    join private.production_orders p on p.order_id=o.order_id
+    order by o.order_id,o.created_at desc
+  ) latest
+  order by latest.created_at desc
   limit greatest(1,least(coalesce(p_limit,250),1000));
-$$;
+$;
 
 revoke all on function public.production_customer_outcome_record(uuid,uuid,text,text,boolean,text) from public,anon,authenticated;
 revoke all on function public.production_customer_outcome_list_owned(uuid,integer) from public,anon,authenticated;
