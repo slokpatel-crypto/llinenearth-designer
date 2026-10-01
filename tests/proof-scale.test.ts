@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { expectedPeriodPx, passesScaleGate, pxPerMmFromMarker, scaleErrorPct } from "../src/lib/designer/proof-scale.ts";
-import { applyRuntimeFabricScale, photoFabricPatternScale, visiblePatternScaleVerified, type FabricRenderAsset } from "../src/lib/designer/live-preview.ts";
+import { applyRuntimeFabricScale, photoExpectedRepeatPx, photoFabricPatternScale, visiblePatternScaleVerified, LIVE_MODEL_PX_PER_MM, PHOTO_MODEL_COORDINATE_SCALE, type FabricRenderAsset } from "../src/lib/designer/live-preview.ts";
 
 test("calibrates px/mm from a known marker",()=>{
   assert.equal(pxPerMmFromMarker(2362,100),23.62);
@@ -84,4 +84,43 @@ test("visible scale verification requires real width for patterned cloth",()=>{
   };
   assert.equal(visiblePatternScaleVerified("Stripe",approximate),false);
   assert.equal(visiblePatternScaleVerified("Stripe",{...approximate,scaleApproximate:false,tileRealWidthMm:64}),true);
+});
+
+
+test("photographic repeat audit matches the physical model scale",()=>{
+  const asset:FabricRenderAsset={
+    tileUrl:"/fabric-tiles/test.webp",
+    placeholderUrl:"/fabric-tiles/test-placeholder.webp",
+    tileWidthPx:256,
+    tileHeightPx:256,
+    repeatDetected:true,
+    repeatPeriodPx:20,
+    orientation:"vertical",
+    dominantHex:"#ffffff",
+    scaleApproximate:true,
+    tileRealWidthMm:null,
+    renderAssetVersion:"test",
+  };
+  const calibrated=applyRuntimeFabricScale(asset,{physicalScaleStatus:"declared_repeat",repeatMm:5,stripeWidthMm:null});
+  const expected=5*LIVE_MODEL_PX_PER_MM*PHOTO_MODEL_COORDINATE_SCALE;
+  const actual=photoExpectedRepeatPx(calibrated);
+  assert.ok(actual!==null);
+  assert.ok(Math.abs((actual as number)-expected)<1e-9);
+});
+
+test("photographic repeat audit stays unavailable without physical scale",()=>{
+  const asset:FabricRenderAsset={
+    tileUrl:"/fabric-tiles/test.webp",
+    placeholderUrl:"/fabric-tiles/test-placeholder.webp",
+    tileWidthPx:256,
+    tileHeightPx:256,
+    repeatDetected:true,
+    repeatPeriodPx:20,
+    orientation:"vertical",
+    dominantHex:"#ffffff",
+    scaleApproximate:true,
+    tileRealWidthMm:null,
+    renderAssetVersion:"test",
+  };
+  assert.equal(photoExpectedRepeatPx(asset),null);
 });
