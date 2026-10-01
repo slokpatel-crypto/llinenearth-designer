@@ -157,7 +157,7 @@ returns uuid
 language plpgsql
 security definer
 set search_path='public','private'
-as $
+as $$
 declare
   v_id uuid;
   v_error numeric;
@@ -178,7 +178,7 @@ begin
   returning calibration_id into v_id;
   return v_id;
 end;
-$;
+$$;
 
 create or replace function public.designer_render_pattern_calibration_list(p_limit integer default 200)
 returns table(
@@ -188,13 +188,13 @@ returns table(
 language sql
 security definer
 set search_path='public','private'
-as $
+as $$
   select c.calibration_id,c.outcome_id,c.garment,c.expected_repeat_mm,c.observed_repeat_mm,
     c.scale_error_pct,c.axis_status,c.note,c.created_at
   from private.designer_render_pattern_calibration c
   order by c.created_at desc
   limit greatest(1,least(coalesce(p_limit,200),1000));
-$;
+$$;
 
 revoke all on function public.designer_render_outcome_record(text,text,text,text,text,numeric,boolean,boolean,timestamptz) from public,anon,authenticated;
 revoke all on function public.designer_render_outcome_attach_qa(text,text,text,jsonb) from public,anon,authenticated;
