@@ -160,6 +160,9 @@ for (const path of [
 ]) requireFile(path);
 
 requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/visual", "/real-model", "Open Real Model Designer"]);
+requireTokens("src/lib/designer/proof-scale.ts", ["summarizeIndependentRealism","PHASE1_PROOF_MIN_REALISM_VIEWERS","PHASE1_PROOF_MIN_STRONG_REALISM","phase1ProofAcceptance"]);
+requireTokens("src/components/PremiumShirtProof.tsx", ["Anonymous viewer code","realismAssessments","uniqueRealismViewers","pxPerMm"]);
+requireTokens("src/app/api/operator/phase1-proof/route.ts", ["summarizeIndependentRealism","passesScaleGate","phase1ProofAcceptance","uniqueRealismViewers"]);
 requireTokens("src/app/account/page.tsx", ["Email sign in","listOwned","recovery token","Measurement profiles","Accept quote","accept_quote","Timeline","orderEvents","record_outcome","post-delivery feedback","does not automatically change Designer recommendations"]);
 requireTokens("src/lib/customer-auth.ts", ["SUPABASE_ANON_KEY","/auth/v1/otp","/auth/v1/verify","/auth/v1/user","CUSTOMER_SESSION_COOKIE"]);
 requireTokens("src/lib/customer-session-token.ts", ["CUSTOMER_SESSION_MAX_AGE_SECONDS","createCustomerSessionToken","verifyCustomerSessionToken","timingSafeEqual"]);
