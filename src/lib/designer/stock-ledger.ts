@@ -90,3 +90,17 @@ export function normalizeStockConsumption(input:unknown){
     note,checkedBy,sourceReference,
   };
 }
+
+
+export function normalizeStockRelease(input:unknown){
+  if(!input||typeof input!=="object"||Array.isArray(input)) throw new Error("Stock release evidence is required.");
+  const source=input as Record<string,unknown>;
+  const reservationId=String(source.reservationId||"").trim();
+  const note=String(source.note||"").replace(/\s+/g," ").trim().slice(0,600);
+  const releasedBy=String(source.releasedBy||"").replace(/\s+/g," ").trim().slice(0,120);
+  const sourceReference=String(source.sourceReference||"").replace(/\s+/g," ").trim().slice(0,240);
+  if(!/^[0-9a-f-]{36}$/i.test(reservationId)) throw new Error("Valid reservation ID is required.");
+  if(releasedBy.length<2) throw new Error("Named reservation release checker is required.");
+  if(sourceReference.length<3) throw new Error("Reservation release reference is required.");
+  return {reservationId,note,releasedBy,sourceReference};
+}
