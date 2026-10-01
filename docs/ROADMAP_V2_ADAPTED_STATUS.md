@@ -43,6 +43,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added Designer lock/export action.
 - Added evidence-safe production / tailor handoff contract.
 - Added Designer tailor-handoff export.
+- Added printable tailor tech pack generated from the same locked recipe.
 - Added phase adaptation records so future coding agents do not rebuild existing systems unnecessarily.
 
 ## Evidence we cannot manufacture in code
