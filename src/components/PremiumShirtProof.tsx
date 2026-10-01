@@ -370,10 +370,10 @@ export function PremiumShirtProof(){
           {realismSummary.uniqueViewers>0&&<button type="button" onClick={clearRealismRatings}>Clear ratings</button>}
           <button type="button" onClick={exportProofEvidence}>Export proof evidence JSON</button>
           <div className="proofGate" data-pass={proofAcceptance.accepted?"yes":"no"}>
-            <b>{proofAcceptance.accepted?"PHASE 1 ACCEPTED":"PHASE 1 REVIEW"}</b>
-            <span>{proofAcceptance.accepted?"Scale, real-model latency and viewer realism gates all pass.":proofAcceptance.reasons.join(" ")}</span>
+            <b>{proofAcceptance.accepted?"CORE PROOF ACCEPTED":"CORE PROOF REVIEW"}</b>
+            <span>{proofAcceptance.accepted?"Scale, real-model latency and viewer realism gates pass. Target-mobile acceptance remains a separate roadmap evidence gate.":proofAcceptance.reasons.join(" ")}</span>
           </div>
-          <button type="button" onClick={()=>void recordProofEvidence()} disabled={recordBusy}>{recordBusy?"Recording…":proofAcceptance.accepted?"Record accepted proof":"Record review evidence"}</button>
+          <button type="button" onClick={()=>void recordProofEvidence()} disabled={recordBusy}>{recordBusy?"Recording…":proofAcceptance.accepted?"Record core proof evidence":"Record review evidence"}</button>
           {recordMessage&&<p className="proofRecordMessage">{recordMessage}</p>}
         </section>
       </aside>
