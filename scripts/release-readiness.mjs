@@ -127,7 +127,6 @@ for (const path of [
   "supabase/migrations/20261021_style_director_validation_threshold.sql",
   "supabase/migrations/20261022_style_director_handoff_audit.sql",
   "supabase/migrations/20261023_style_director_handoff_validation.sql",
-  "supabase/migrations/20261021_style-director-validation-threshold.sql",
   "src/lib/designer/preview-option-reviews.ts",
   "src/app/api/operator/preview-option-coverage/route.ts",
   "src/app/operator/preview-option-coverage/page.tsx",
