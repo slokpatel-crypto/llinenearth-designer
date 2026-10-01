@@ -300,7 +300,7 @@ function cleanPayload(type:string, input:unknown) {
       const ratings=Array.isArray(payload.realismRatings)
         ? payload.realismRatings.map((item)=>Math.round(Number(item))).filter((item)=>item>=1&&item<=5).slice(0,30)
         : [];
-      if(!["linen-earth-phase1-proof-v1","linen-earth-phase1-proof-v2","linen-earth-phase1-proof-v3"].includes(version) || !fabricId || !["accepted","review"].includes(status)) return null;
+      if(!["linen-earth-phase1-proof-v1","linen-earth-phase1-proof-v2","linen-earth-phase1-proof-v3","linen-earth-phase1-proof-v4"].includes(version) || !fabricId || !["accepted","review"].includes(status)) return null;
 
       const base={
         subtype,
@@ -346,6 +346,9 @@ function cleanPayload(type:string, input:unknown) {
         waist:boundarySource.waist===true,
         trouserGap:boundarySource.trouserGap===true,
       };
+      const realModelSampleDurationsMs=version==="linen-earth-phase1-proof-v4"&&Array.isArray(payload.realModelSampleDurationsMs)
+        ? payload.realModelSampleDurationsMs.map(Number).filter((value)=>Number.isFinite(value)&&value>=0&&value<=10000).slice(-120).map((value)=>Math.round(value*10)/10)
+        : [];
       return {
         ...base,
         photoReferenceMm:Number.isFinite(photoReferenceMm)&&photoReferenceMm>0&&photoReferenceMm<=3000?Math.round(photoReferenceMm*100)/100:null,
@@ -355,10 +358,11 @@ function cleanPayload(type:string, input:unknown) {
         physicalEvidenceNote:text(payload.physicalEvidenceNote,700),
         realismAssessments:assessments,
         uniqueRealismViewers:Math.max(0,Math.min(50,Math.floor(Number(payload.uniqueRealismViewers)||0))),
-        ...(version==="linen-earth-phase1-proof-v3"?{
+        ...(["linen-earth-phase1-proof-v3","linen-earth-phase1-proof-v4"].includes(version)?{
           boundaryChecks,
           boundaryReady:boundaryChecks.neck&&boundaryChecks.cuffs&&boundaryChecks.waist&&boundaryChecks.trouserGap,
         }:{}),
+        ...(version==="linen-earth-phase1-proof-v4"?{realModelSampleDurationsMs}:{}),
       };
     }
 
