@@ -18,6 +18,12 @@ as $$
     'renderManualReview', to_regprocedure('public.designer_render_manual_review_signoff_latest()') is not null,
     'measurementEvidence', to_regprocedure('public.measurement_calibration_case_list(integer)') is not null,
     'productionDeliveryEvidence', to_regprocedure('public.production_delivery_evidence_list(integer)') is not null,
+    'stockProvenance', to_regprocedure('public.fabric_stock_record_v2(text,text,numeric,text,text,text)') is not null
+      and to_regprocedure('public.fabric_stock_snapshot_v2(text[])') is not null,
+    'garmentQcProvenance', to_regprocedure('public.finished_garment_qc_record_v2(uuid,text,jsonb,jsonb,text,text,text)') is not null,
+    'deliveryProvenance', to_regprocedure('public.production_delivery_evidence_record_v2(uuid,boolean,jsonb,text,text,text)') is not null,
+    'outcomeLearningContext', to_regprocedure('public.production_order_create_with_context(text,text,uuid,text,jsonb)') is not null
+      and to_regprocedure('public.production_order_learning_context_list(integer)') is not null,
     'verifiedMeterageCuts', to_regprocedure('public.production_meterage_model_create_v3(text,text,jsonb,jsonb,text)') is not null
       and to_regprocedure('public.production_meterage_model_approve_v3(uuid,text,text)') is not null
   );
