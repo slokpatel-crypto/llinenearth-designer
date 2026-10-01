@@ -197,6 +197,8 @@ type StyleDirectorValidationPayload={
     handoffCases:number;
     deviceCoverage:string[];
     latestSignoffStatus:string;
+    requiredPositiveCases:number|null;
+    thresholdMet:boolean;
     evidenceRecorded:boolean;
     validationComplete:boolean;
   };
@@ -404,7 +406,11 @@ export default function Phase10ReadinessClient(){
 
     const styleValidation=data.styleDirectorValidation?.summary;
     const styleValidationProgress=styleValidation
-      ? Math.round((ratio(styleValidation.positiveCases,Math.max(1,styleValidation.uniqueCases))+(styleValidation.latestSignoffStatus==="approved"?100:0))/2)
+      ? ratio([
+          styleValidation.requiredPositiveCases!==null,
+          styleValidation.thresholdMet,
+          styleValidation.latestSignoffStatus==="approved",
+        ].filter(Boolean).length,3)
       : 0;
     const styleValidationDone=styleValidation?.validationComplete===true;
 
@@ -616,13 +622,13 @@ export default function Phase10ReadinessClient(){
         id:"style-director-user-validation",
         title:"Style Director real-user validation",
         detail:styleValidationDone
-          ? "Real-user evidence exists and the owner/reviewer has explicitly approved the Style Director validation."
+          ? `Real-user evidence met the documented clean-case target of ${styleValidation?.requiredPositiveCases} and the owner/reviewer explicitly approved the Style Director validation.`
           : styleValidation
-            ? `${styleValidation.uniqueCases} real-user case(s) recorded · ${styleValidation.positiveCases} with all three checks clean · latest human decision ${styleValidation.latestSignoffStatus}.`
+            ? `${styleValidation.uniqueCases} real-user case(s) recorded · ${styleValidation.positiveCases}${styleValidation.requiredPositiveCases!==null?"/"+styleValidation.requiredPositiveCases:""} with all three checks clean · target ${styleValidation.requiredPositiveCases===null?"not documented":styleValidation.thresholdMet?"met":"open"} · latest human decision ${styleValidation.latestSignoffStatus}.`
             : "No real-user Style Director validation evidence is available yet.",
         status:styleValidationDone?"done":data.styleDirectorValidation?.configured?"progress":"blocked",
         progress:styleValidationProgress,
-        metric:styleValidation?`${styleValidation.uniqueCases} cases · ${styleValidation.blockingCases} blocking · ${styleValidation.latestSignoffStatus} sign-off`:"No user-test evidence",
+        metric:styleValidation?`${styleValidation.positiveCases}/${styleValidation.requiredPositiveCases??"—"} clean target · ${styleValidation.blockingCases} blocking · ${styleValidation.latestSignoffStatus} sign-off`:"No user-test evidence",
         href:"/operator/style-director-validation",
         action:"Run Style Director validation",
         ownerDependent:true,
