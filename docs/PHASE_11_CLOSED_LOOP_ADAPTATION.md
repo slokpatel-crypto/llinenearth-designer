@@ -66,3 +66,10 @@ The human review gate refuses to approve an outcome for learning when this durab
 - [ ] real learning policy approved and recorded
 - [ ] real evidence threshold reached before any ranking influence
 - [ ] post-launch outcome analysis completed
+
+
+## Durable context integrity hardening
+
+- Human-approved customer outcomes count toward the learning threshold only when the attached durable production context uses the supported context version, matches the outcome's immutable revision ID, carries a valid recipe hash, and identifies both shirt and trouser fabric references.
+- A generic, stale or mismatched JSON object can no longer satisfy the Phase 11 learning gate merely by being present.
+- This remains evidence gating only; reaching the threshold still does not automatically change Designer ranking.
