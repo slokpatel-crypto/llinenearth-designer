@@ -102,13 +102,20 @@ export function summarizeLaunchReadiness(
     if(!latestBeta.has(row.case_id)) latestBeta.set(row.case_id,row);
   }
   const beta=[...latestBeta.values()];
-  const successfulBeta=beta.filter((row)=>
+  const successfulRows=beta.filter((row)=>
     row.core_flow_completed
     && row.design_locked===true
     && row.share_or_enquiry_completed===true
+    && Boolean(row.revision_id)
     && (row.share_audit_confirmed===true||row.enquiry_audit_confirmed===true)
     && !row.blocking_bug
   );
+  const uniqueSuccessfulByRevision=new Map<string,LaunchBetaAttempt>();
+  for(const row of successfulRows){
+    const revisionId=String(row.revision_id||"").trim().toLowerCase();
+    if(revisionId&&!uniqueSuccessfulByRevision.has(revisionId)) uniqueSuccessfulByRevision.set(revisionId,row);
+  }
+  const successfulBeta=[...uniqueSuccessfulByRevision.values()];
   const deviceCoverage=new Set(successfulBeta.map((row)=>row.device_class));
 
   const latestChecklist=new Map<string,LaunchChecklistEvent>();
@@ -124,6 +131,7 @@ export function summarizeLaunchReadiness(
     verifiedShareCases:beta.filter((row)=>row.share_audit_confirmed===true).length,
     verifiedEnquiryCases:beta.filter((row)=>row.enquiry_audit_confirmed===true).length,
     verifiedFlowCases:beta.filter((row)=>row.share_audit_confirmed===true||row.enquiry_audit_confirmed===true).length,
+    distinctVerifiedRevisions:successfulBeta.length,
     deviceCoverage:[...deviceCoverage],
     checklistApproved,
     checklistTotal:LAUNCH_CHECKLIST_ITEMS.length,
