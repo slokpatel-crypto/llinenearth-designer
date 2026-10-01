@@ -13,6 +13,7 @@ import {
 import { loadDurableSelectedLookRender, storeDurableSelectedLookRender } from "@/lib/designer/render-cache";
 import { enrichSelectedLookEvidence, resolveSelectedLookRequest } from "@/lib/designer/selected-look-server";
 import { loadDesignerOptionReviews, rejectedConstructionOptions } from "@/lib/designer/option-reviews";
+import { recordRenderOutcome } from "@/lib/designer/render-outcomes";
 
 export const runtime="nodejs";
 export const maxDuration=60;
@@ -53,6 +54,7 @@ export async function POST(request:Request) {
     if(view==="front" && repairInstruction) {
       assertFashnRepairRateLimit(request);
       const result=await repairSelectedLookFashnFront(input,String(input.previousImage||""),repairInstruction);
+      await recordRenderOutcome({result,view:"front",shirtId:input.shirt.id,pantId:input.pant.id,repair:true});
       return NextResponse.json({result});
     }
     if(view==="front") {
@@ -73,6 +75,7 @@ export async function POST(request:Request) {
       ? await renderSelectedLookFashnFront(input)
       : await renderSelectedLookFashnView(input,frontImage,view);
     await storeDurableSelectedLookRender(input,result,view,view==="front"?undefined:frontImage);
+    await recordRenderOutcome({result,view,shirtId:input.shirt.id,pantId:input.pant.id});
     return NextResponse.json({result},{headers:{"x-linen-render-cache":"miss"}});
   } catch(error) {
     if(error instanceof FashnVisualizationError) {
