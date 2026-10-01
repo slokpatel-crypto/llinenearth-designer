@@ -12,7 +12,7 @@ type TestRow={
   directions_understandable:boolean;directions_distinct:boolean;
   stock_handoff_worked:boolean;blocking_issue:boolean;note:string;created_at:string;
 };
-type SignoffRow={event_id:string;status:string;signed_by:string;note:string;created_at:string};
+type SignoffRow={event_id:string;status:string;required_positive_cases?:number|null;signed_by:string;note:string;created_at:string};
 
 const panel:React.CSSProperties={background:"#fff",border:"1px solid #ddd7cc",borderRadius:18,padding:20};
 const input:React.CSSProperties={width:"100%",boxSizing:"border-box",padding:"11px 12px",border:"1px solid #cbc3b7",borderRadius:9,fontSize:14,background:"#fff"};
@@ -30,6 +30,7 @@ export default function StyleDirectorValidationClient(){
   const [blocking,setBlocking]=useState(false);
   const [note,setNote]=useState("");
   const [signedBy,setSignedBy]=useState("");
+  const [requiredPositiveCases,setRequiredPositiveCases]=useState("");
   const [signoffNote,setSignoffNote]=useState("");
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
@@ -84,7 +85,7 @@ export default function StyleDirectorValidationClient(){
 
   async function signoff(status:"approved"|"review"){
     await post({
-      action:"signoff",status,signedBy,note:signoffNote,
+      action:"signoff",status,requiredPositiveCases:Number(requiredPositiveCases)||summary.requiredPositiveCases||0,signedBy,note:signoffNote,
     },status==="approved"?"Style Director validation signed off.":"Style Director validation kept in review.");
   }
 
@@ -109,6 +110,7 @@ export default function StyleDirectorValidationClient(){
         <article><small>ALL 3 CHECKS CLEAN</small><div style={{fontSize:34,fontWeight:800}}>{summary.positiveCases}</div></article>
         <article><small>BLOCKING CASES</small><div style={{fontSize:34,fontWeight:800}}>{summary.blockingCases}</div></article>
         <article><small>DEVICE COVERAGE</small><div style={{fontSize:27,fontWeight:800}}>{summary.deviceCoverage.length}/3</div><span style={{fontSize:12,opacity:.6}}>{summary.deviceCoverage.join(" · ")||"none yet"}</span></article>
+        <article><small>DOCUMENTED CLEAN TARGET</small><div style={{fontSize:27,fontWeight:800}}>{summary.requiredPositiveCases??"—"}</div><span style={{fontSize:12,opacity:.6}}>{summary.thresholdMet?"met":"not yet met"}</span></article>
         <article><small>HUMAN SIGN-OFF</small><div style={{fontSize:24,fontWeight:800,textTransform:"uppercase"}}>{summary.latestSignoffStatus}</div></article>
       </section>
 
@@ -132,16 +134,17 @@ export default function StyleDirectorValidationClient(){
           <h2 style={{marginTop:0}}>Owner/reviewer decision</h2>
           <p style={{fontSize:13,opacity:.65}}>There is deliberately no auto-generated pass percentage. Review the real evidence and record the human decision.</p>
           <div style={{display:"grid",gap:12}}>
+            <label><span>Documented clean-case target</span><input style={input} type="number" min="1" max="50" value={requiredPositiveCases} onChange={(e)=>setRequiredPositiveCases(e.target.value)} placeholder={summary.requiredPositiveCases?String(summary.requiredPositiveCases):"Enter approved target"}/><small style={{display:"block",opacity:.6,marginTop:4}}>No default is invented. Enter the minimum clean real-user cases required by the owner/reviewer.</small></label>
             <label><span>Signer</span><input style={input} value={signedBy} onChange={(e)=>setSignedBy(e.target.value.slice(0,120))} placeholder="Owner / reviewer"/></label>
-            <label><span>Decision note</span><textarea style={{...input,minHeight:100}} value={signoffNote} onChange={(e)=>setSignoffNote(e.target.value.slice(0,1200))} placeholder="Why the real-user evidence is sufficient, or what still needs work."/></label>
+            <label><span>Decision note</span><textarea style={{...input,minHeight:100}} value={signoffNote} onChange={(e)=>setSignoffNote(e.target.value.slice(0,1200))} placeholder="Why this clean-case target is appropriate and what the real-user evidence shows."/></label>
             <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-              <button style={{...button,background:"#6b7a63"}} disabled={busy||signedBy.trim().length<2||signoffNote.trim().length<3} onClick={()=>void signoff("review")}>Keep in review</button>
-              <button style={button} disabled={busy||signedBy.trim().length<2||!summary.evidenceRecorded} onClick={()=>void signoff("approved")}>Record approved</button>
+              <button style={{...button,background:"#6b7a63"}} disabled={busy||(!Number(requiredPositiveCases)&&!summary.requiredPositiveCases)||signedBy.trim().length<2||signoffNote.trim().length<3} onClick={()=>void signoff("review")}>Keep in review</button>
+              <button style={button} disabled={busy||(!Number(requiredPositiveCases)&&!summary.requiredPositiveCases)||signedBy.trim().length<2||!summary.evidenceRecorded} onClick={()=>void signoff("approved")}>Record approved</button>
             </div>
           </div>
           <div style={{marginTop:18,paddingTop:14,borderTop:"1px solid #ece6dc"}}>
             <strong>Current phase evidence</strong>
-            <p style={{opacity:.68,fontSize:13,lineHeight:1.55}}>User evidence recorded: {summary.evidenceRecorded?"yes":"no"} · latest sign-off: {summary.latestSignoffStatus}. Phase 6 validation becomes complete only after real evidence exists and a human records approval.</p>
+            <p style={{opacity:.68,fontSize:13,lineHeight:1.55}}>Clean cases: {summary.positiveCases}{summary.requiredPositiveCases?" / "+summary.requiredPositiveCases:" · target not documented"} · latest sign-off: {summary.latestSignoffStatus}. Phase 6 completes only when the latest human-entered clean-case target is met and the reviewer records approval.</p>
           </div>
         </article>
       </section>
