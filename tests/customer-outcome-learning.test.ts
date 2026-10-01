@@ -48,3 +48,25 @@ test("rejected customer evidence requires reviewer context",()=>{
     note:"",
   }),/rejection reason/);
 });
+
+
+test("approved evidence needs durable design context before the human threshold gate can pass",()=>{
+  const reviews=[
+    {review_id:"r1",outcome_id:"o1",decision:"approved" as const,reviewer:"Owner",note:"",created_at:"2026-10-01T12:00:00Z"},
+  ];
+  const policies=[
+    {policy_id:"p",minimum_approved_cases:1,approved_by:"Owner",note:"Documented threshold",created_at:"2026-10-01T09:00:00Z"},
+  ];
+  const withoutContext=summarizeCustomerOutcomeLearning(outcomes,reviews,policies);
+  assert.equal(withoutContext.approved,1);
+  assert.equal(withoutContext.learningEligible,0);
+  assert.equal(withoutContext.gateComplete,false);
+
+  const withContext=summarizeCustomerOutcomeLearning(
+    [{...outcomes[0],learning_context:{version:"linen-earth-production-learning-context-v1"}}],
+    reviews,
+    policies,
+  );
+  assert.equal(withContext.learningEligible,1);
+  assert.equal(withContext.gateComplete,true);
+});
