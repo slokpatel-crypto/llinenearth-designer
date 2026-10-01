@@ -8,6 +8,8 @@ type Outcome={
   credits_used:number;cached:boolean;repair:boolean;qa_status:"pass"|"review"|null;
   human_status:"pending"|"approved"|"rejected";human_note:string;generated_at:string;
 };
+type Calibration={calibration_id:string;outcome_id:string;garment:"shirt"|"trouser";expected_repeat_mm:number;observed_repeat_mm:number;scale_error_pct:number;axis_status:"match"|"mismatch"|"not_applicable";note:string;created_at:string};
+
 type Summary={
   total:number;generated:number;cached:number;reviewed:number;pending:number;approved:number;rejected:number;
   qaPass:number;totalCredits:number;approvalRate:number|null;creditsPerApproved:number|null;
@@ -16,6 +18,7 @@ type Summary={
 export default function RenderQaClient(){
   const [outcomes,setOutcomes]=useState<Outcome[]>([]);
   const [summary,setSummary]=useState<Summary|null>(null);
+  const [calibrations,setCalibrations]=useState<Calibration[]>([]);
   const [busy,setBusy]=useState("");
   const [message,setMessage]=useState("");
 
@@ -23,7 +26,7 @@ export default function RenderQaClient(){
     const response=await fetch("/api/operator/render-qa",{cache:"no-store"});
     if(response.status===401){window.location.href="/operator/login?next=/operator/render-qa";return;}
     const data=await response.json();
-    if(response.ok){setOutcomes(data.outcomes||[]);setSummary(data.summary||null);}
+    if(response.ok){setOutcomes(data.outcomes||[]);setSummary(data.summary||null);setCalibrations(data.calibrations||[]);}
   }
   useEffect(()=>{void load();},[]);
 
@@ -41,6 +44,32 @@ export default function RenderQaClient(){
     }catch(error){setMessage(error instanceof Error?error.message:"Review failed.");}
     finally{setBusy("");}
   }
+
+  async function calibratePattern(outcomeId:string){
+    const garmentRaw=(window.prompt("Garment to calibrate: shirt or trouser","shirt")||"").trim().toLowerCase();
+    if(!["shirt","trouser"].includes(garmentRaw)) return;
+    const expected=Number(window.prompt("Measured physical repeat in mm",""));
+    const observed=Number(window.prompt("Observed repeat on final render in mm",""));
+    if(!Number.isFinite(expected)||expected<=0||!Number.isFinite(observed)||observed<=0) return;
+    const axisRaw=(window.prompt("Pattern axis: match, mismatch, or not_applicable","match")||"").trim().toLowerCase();
+    if(!["match","mismatch","not_applicable"].includes(axisRaw)) return;
+    const note=window.prompt("Optional calibration note","")||"";
+    setBusy(outcomeId);setMessage("");
+    try{
+      const response=await fetch("/api/operator/render-qa",{
+        method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify({
+          action:"pattern_calibration",outcomeId,
+          garment:garmentRaw,expectedRepeatMm:expected,observedRepeatMm:observed,axisStatus:axisRaw,note,
+        }),
+      });
+      const data=await response.json();
+      if(!response.ok) throw new Error(data.error||"Pattern calibration failed.");
+      setMessage("Physical pattern calibration saved.");await load();
+    }catch(error){setMessage(error instanceof Error?error.message:"Pattern calibration failed.");}
+    finally{setBusy("");}
+  }
+
 
   return <main className="renderQaDesk">
     <header className="renderQaHeader">
@@ -68,6 +97,12 @@ export default function RenderQaClient(){
           <span>{item.cached?"CACHED":"GENERATED"}</span>
         </div>
         <small>{item.job_id}</small>
+        {calibrations.filter((entry)=>entry.outcome_id===item.outcome_id).slice(0,2).map((entry)=><div key={entry.calibration_id} className="renderQaCalibration">
+          <span>{entry.garment.toUpperCase()} PATTERN</span>
+          <b>{Number(entry.scale_error_pct).toFixed(1)}% scale error</b>
+          <small>{entry.expected_repeat_mm} mm physical → {entry.observed_repeat_mm} mm render · axis {entry.axis_status.replaceAll("_"," ")}</small>
+        </div>)}
+        <button className="renderQaCalibrate" disabled={busy===item.outcome_id} onClick={()=>void calibratePattern(item.outcome_id)}>Add measured pattern check</button>
         <div className="renderQaReview">
           <strong>{item.human_status.toUpperCase()}</strong>
           {item.human_note&&<p>{item.human_note}</p>}
