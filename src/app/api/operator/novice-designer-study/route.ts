@@ -65,6 +65,50 @@ export async function POST(request:Request){
     const body=await request.json() as Record<string,unknown>;
     const action=String(body.action||"");
 
+    if(action==="start_timer"){
+      const caseId=String(body.caseId||"").trim();
+      const deviceClass=String(body.deviceClass||"").trim();
+      const rows=await rpc<Array<{session_id:string;case_id:string;device_class:string;started_at:string}>>("designer_novice_timer_start",{
+        p_case_id:caseId,
+        p_device_class:deviceClass,
+      });
+      const session=rows[0];
+      if(!session) throw new Error("Novice timing session could not be started.");
+      return NextResponse.json({session});
+    }
+
+    if(action==="finish_timer"){
+      const timingSessionId=String(body.timingSessionId||"").trim();
+      if(!/^[0-9a-f-]{36}$/i.test(timingSessionId)) throw new Error("Valid novice timing session is required.");
+      const rows=await rpc<Array<{session_id:string;case_id:string;device_class:string;duration_seconds:number;started_at:string;finished_at:string}>>("designer_novice_timer_finish",{
+        p_session_id:timingSessionId,
+      });
+      const session=rows[0];
+      if(!session) throw new Error("Novice timing session could not be finished.");
+      return NextResponse.json({session});
+    }
+
+    if(action==="record_timed_attempt"){
+      const timingSessionId=String(body.timingSessionId||"").trim();
+      if(!/^[0-9a-f-]{36}$/i.test(timingSessionId)) throw new Error("Finish a valid server timing session first.");
+      const noviceConfirmed=body.noviceConfirmed;
+      const likedDesignCompleted=body.likedDesignCompleted;
+      const blockingIssue=body.blockingIssue;
+      if(typeof noviceConfirmed!=="boolean"||typeof likedDesignCompleted!=="boolean"||typeof blockingIssue!=="boolean"){
+        throw new Error("Novice status, liked-design completion and blocking result must all be recorded.");
+      }
+      const note=String(body.note||"").replace(/\s+/g," ").trim().slice(0,1200);
+      if(blockingIssue&&note.length<3) throw new Error("Blocking issues require a short note.");
+      const attemptId=await rpc<string>("designer_novice_attempt_record_v2",{
+        p_timing_session_id:timingSessionId,
+        p_novice_confirmed:noviceConfirmed,
+        p_liked_design_completed:likedDesignCompleted,
+        p_blocking_issue:blockingIssue,
+        p_note:note,
+      });
+      return NextResponse.json({attemptId});
+    }
+
     if(action==="record_attempt"){
       const attempt=normalizeNoviceDesignerAttempt(body);
       const attemptId=await rpc<string>("designer_novice_attempt_record",{
@@ -76,7 +120,7 @@ export async function POST(request:Request){
         p_blocking_issue:attempt.blockingIssue,
         p_note:attempt.note,
       });
-      return NextResponse.json({attemptId});
+      return NextResponse.json({attemptId,legacyManualTiming:true});
     }
 
     if(action==="record_decision"){
