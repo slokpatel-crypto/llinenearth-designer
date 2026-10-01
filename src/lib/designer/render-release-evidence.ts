@@ -2,6 +2,8 @@ export type RenderIdentityReviewInput={
   concept_id:string;
   status:"pass"|"fail";
   reviewed_views:string[];
+  reviewer?:string;
+  note?:string;
   created_at:string;
 };
 
