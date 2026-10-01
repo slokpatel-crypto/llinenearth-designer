@@ -123,6 +123,7 @@ if (url && key) {
 
         const rpcChecks = [
           ["fabric_stock_snapshot",{p_fabric_ids:null},"Fabric stock ledger RPCs are installed."],
+          ["fabric_stock_snapshot_v2",{p_fabric_ids:null},"Provenance-aware fabric stock snapshot RPC is installed."],
           ["production_quote_list",{p_limit:1},"Production quote ledger RPCs are installed."],
           ["production_order_list",{p_limit:1},"Production order ledger RPCs are installed."],
           ["finished_garment_qc_list",{p_limit:1},"Finished-garment QC RPCs are installed."],
