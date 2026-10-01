@@ -1,4 +1,4 @@
-import "server-only";
+import "server-only";\nimport { normalizeCustomerEmail } from "@/lib/customer-account";\nexport { normalizeCustomerEmail } from "@/lib/customer-account";
 
 export type CustomerIdentity = {
   id:string;
