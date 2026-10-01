@@ -189,3 +189,8 @@ Closing a reservation by consuming cloth now requires the actual metres, a named
 ## Verified production identity gate
 
 Manual revision/hash typing can no longer create a new quote or production order. The operator must load the secure locked-design recovery token; the server retrieves the private vault payload, verifies the immutable recipe hash, checks it matches the requested revision/hash, and only then creates the quote/order. Existing historical records remain readable, but all new production creation follows the verified locked-recipe path.
+
+
+## Reservation lifecycle concurrency
+
+Reservation creation now serializes the idempotency request key before checking/inserting, preventing concurrent duplicate requests from racing the unique index. Consume/release operations serialize on the reservation ID, and both closing paths carry named evidence. This prevents a simultaneous consume/release from double-closing the same reserved metres or silently distorting available stock.
