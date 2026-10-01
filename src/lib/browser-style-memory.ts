@@ -9,6 +9,7 @@ export type StyleMemoryEventType =
   | "designer_preview_opened"
   | "designer_feedback"
   | "designer_override"
+  | "design_locked"
   | "whatsapp_clicked"
   | "visit_logged"
   | "sale_logged"
