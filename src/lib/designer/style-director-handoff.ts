@@ -19,7 +19,7 @@ export type StyleDirectorHandoffPayload={
 };
 
 function secret(){
-  const value=process.env.LINEN_MEMORY_SESSION_SECRET?.trim() || process.env.LLINEN_MEMORY_SESSION_SECRET?.trim() || "";
+  const value=process.env.LINEN_MEMORY_SESSION_SECRET?.trim() || "";
   return value.length>=32?value:null;
 }
 
