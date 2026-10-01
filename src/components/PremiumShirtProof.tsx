@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { expectedPeriodPx, passesScaleGate, scaleErrorPct } from "@/lib/designer/proof-scale";
+import { applyRuntimeFabricScale, photoExpectedRepeatPx, type FabricRenderAsset } from "@/lib/designer/live-preview";
 import { DESIGNER_PANTS, DESIGNER_SHIRTS, designerStyleForOccasion } from "@/lib/designer/engine";
 import { StyleDirectorRealModelPreview } from "@/components/PhotoOutfitPreview";
+import fabricTileManifest from "../../public/fabric-tiles/manifest.json";
 
 type Collar="spread"|"button-down"|"band";
 type Cuff="round"|"square"|"french";
@@ -46,6 +48,9 @@ export function PremiumShirtProof(){
       stripeWidthMm:realShirt.renderScale?.stripeWidthMm??null,
     } : realShirt.renderScale,
   } : realShirt;
+  const proofAsset=realShirt ? (fabricTileManifest.assets as Record<string,FabricRenderAsset>)[realShirt.image.split("/").pop()?.replace(/\.webp(?:\?.*)?$/,"")||""] || null : null;
+  const calibratedProofAsset=proofRealShirt ? applyRuntimeFabricScale(proofAsset,proofRealShirt.renderScale) : proofAsset;
+  const photoRepeatAuditPx=photoExpectedRepeatPx(calibratedProofAsset);
 
   const tilePx=declaredTileMm ? Math.max(18,Math.min(260,declaredTileMm*pxPerMm)) : APPROX_TILE_PX;
   const repeatPx=effectiveRepeatMm ? expectedPeriodPx(effectiveRepeatMm,pxPerMm) : null;
@@ -278,7 +283,8 @@ export function PremiumShirtProof(){
           <span>Real catalogue swatch</span>
           <span>Existing studio mannequin</span>
           <span>No AI per edit</span>
-          <span>{declaredTileMm||declaredRepeatMm?"Physical evidence entered":"Scale still approximate"}</span>
+          <span>{declaredTileMm||effectiveRepeatMm?"Physical evidence entered":"Scale still approximate"}</span>
+          {photoRepeatAuditPx!==null&&<span>Expected repeat on photo · {photoRepeatAuditPx.toFixed(2)} px</span>}
           <span>{realP95===null?"Real model latency awaiting edits":realP95<300?"Real model latency gate passing":"Real model latency needs review"}</span>
         </div>
       </div>
