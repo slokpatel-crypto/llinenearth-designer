@@ -42,6 +42,20 @@ export function normalizeBetaAttempt(input:unknown){
   };
 }
 
+export function normalizeVerifiedBetaAttempt(input:unknown){
+  const source=record(input);
+  const caseId=String(source.caseId||"").trim().slice(0,80);
+  if(!/^[A-Za-z0-9._-]{3,80}$/.test(caseId)) throw new Error("Anonymous beta case ID is required.");
+  const deviceClass=String(source.deviceClass||"") as LaunchDeviceClass;
+  if(!["mobile","tablet","desktop"].includes(deviceClass)) throw new Error("Beta device class is required.");
+  const revisionId=String(source.revisionId||"").trim().slice(0,180);
+  if(revisionId.length<3) throw new Error("Locked revision ID is required.");
+  if(typeof source.blockingBug!=="boolean") throw new Error("Blocking-bug result must be recorded.");
+  const note=String(source.note||"").trim().slice(0,1200);
+  if(source.blockingBug&&note.length<3) throw new Error("Blocking beta bugs require a short note.");
+  return {caseId,deviceClass,revisionId,blockingBug:source.blockingBug,note};
+}
+
 export function normalizeLaunchChecklistDecision(input:unknown){
   const source=record(input);
   const known=new Set(LAUNCH_CHECKLIST_ITEMS.map((item)=>item.id));
@@ -63,6 +77,9 @@ export type LaunchBetaAttempt={
   design_locked?:boolean;
   share_or_enquiry_completed?:boolean;
   blocking_bug:boolean;
+  revision_id?:string|null;
+  recipe_hash?:string|null;
+  share_audit_confirmed?:boolean;
   created_at:string;
 };
 
@@ -85,6 +102,7 @@ export function summarizeLaunchReadiness(
     row.core_flow_completed
     && row.design_locked===true
     && row.share_or_enquiry_completed===true
+    && row.share_audit_confirmed===true
     && !row.blocking_bug
   );
   const deviceCoverage=new Set(successfulBeta.map((row)=>row.device_class));
@@ -99,6 +117,7 @@ export function summarizeLaunchReadiness(
     uniqueBetaCases:beta.length,
     successfulBetaCases:successfulBeta.length,
     blockingBetaCases:beta.filter((row)=>row.blocking_bug).length,
+    verifiedShareCases:beta.filter((row)=>row.share_audit_confirmed===true).length,
     deviceCoverage:[...deviceCoverage],
     checklistApproved,
     checklistTotal:LAUNCH_CHECKLIST_ITEMS.length,
