@@ -30,9 +30,12 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Connected current Linen Earth fabric photos.
 - Connected the existing photographic mannequin.
 - Connected runtime physical-repeat evidence to the photographic compositor.
+- Wired an explicit photo-coordinate px/mm calibration into both the photographic compositor and its repeat audit so measured scale and rendered scale use the same coordinate system.
 - Added <= 8% pattern-scale gate.
 - Added geometry and real-compositor p95 measurements.
-- Added 8-viewer realism gate.
+- Hardened the realism gate to require distinct anonymous viewer codes; repeat ratings from the same viewer replace the earlier rating instead of inflating the sample.
+- Recompute Phase 1 scale and realism acceptance server-side from raw recorded evidence rather than trusting client pass flags.
+- Made target-mobile Device QA acceptance an explicit fourth Phase 1 readiness gate.
 - Added auditable proof JSON export.
 - Added direct Analyzer handoff for the selected proof fabric.
 - Improved photo cloth depth / fold / textile-detail compositing.
