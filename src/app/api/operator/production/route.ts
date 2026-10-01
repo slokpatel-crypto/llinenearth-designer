@@ -139,15 +139,18 @@ export async function POST(request:Request){
       const status=String(body.status||"");
       const note=String(body.note||"").slice(0,1000);
       if(status==="delivered"){
-        let inspections:Array<{order_id:string;decision:string}>=[];
+        let inspections:Array<{order_id:string;decision:string;inspector?:string;inspection_reference?:string}>=[];
         try{
-          inspections=await rpc<Array<{order_id:string;decision:string}>>("finished_garment_qc_list",{p_limit:500});
+          inspections=await rpc<Array<{order_id:string;decision:string;inspector?:string;inspection_reference?:string}>>("finished_garment_qc_list",{p_limit:500});
         }catch{
           return NextResponse.json({error:"Finished-garment QC backend must be installed before delivery can be recorded."},{status:409});
         }
         const latest=inspections.find((item)=>item.order_id===orderId);
         if(latest?.decision!=="approved"){
           return NextResponse.json({error:"Finished-garment QC approval is required before delivery."},{status:409});
+        }
+        if(String(latest.inspector||"").trim().length<2||String(latest.inspection_reference||"").trim().length<3){
+          return NextResponse.json({error:"Provenance-backed finished-garment QC approval is required before delivery."},{status:409});
         }
       }
       const updated=await rpc<boolean>("production_order_set_status",{p_order_id:orderId,p_status:status,p_note:note});
