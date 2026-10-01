@@ -300,8 +300,9 @@ function cleanPayload(type:string, input:unknown) {
       const ratings=Array.isArray(payload.realismRatings)
         ? payload.realismRatings.map((item)=>Math.round(Number(item))).filter((item)=>item>=1&&item<=5).slice(0,30)
         : [];
-      if(version!=="linen-earth-phase1-proof-v1" || !fabricId || !["accepted","review"].includes(status)) return null;
-      return {
+      if(!["linen-earth-phase1-proof-v1","linen-earth-phase1-proof-v2"].includes(version) || !fabricId || !["accepted","review"].includes(status)) return null;
+
+      const base={
         subtype,
         version,
         status,
@@ -318,6 +319,32 @@ function cleanPayload(type:string, input:unknown) {
         strongRatings:Math.max(0,Math.min(30,Math.floor(Number(payload.strongRatings)||0))),
         realismPass:payload.realismPass===true,
         note:text(payload.note,700),
+      };
+      if(version==="linen-earth-phase1-proof-v1") return base;
+
+      const photoReferenceMm=Number(payload.photoReferenceMm);
+      const photoReferencePx=Number(payload.photoReferencePx);
+      const photoPxPerMm=Number(payload.photoPxPerMm);
+      const scaleCoordinateSystem=text(payload.scaleCoordinateSystem,80);
+      const assessments=Array.isArray(payload.realismAssessments)
+        ? payload.realismAssessments.slice(0,50).flatMap((item)=>{
+          if(!item||typeof item!=="object"||Array.isArray(item)) return [];
+          const row=item as Record<string,unknown>;
+          const viewerId=text(row.viewerId,80);
+          const rating=Math.round(Number(row.rating));
+          const recordedAt=text(row.recordedAt,80);
+          if(viewerId.length<2 || rating<1 || rating>5) return [];
+          return [{viewerId,rating,recordedAt}];
+        })
+        : [];
+      return {
+        ...base,
+        photoReferenceMm:Number.isFinite(photoReferenceMm)&&photoReferenceMm>0&&photoReferenceMm<=3000?Math.round(photoReferenceMm*100)/100:null,
+        photoReferencePx:Number.isFinite(photoReferencePx)&&photoReferencePx>0&&photoReferencePx<=10000?Math.round(photoReferencePx*100)/100:null,
+        photoPxPerMm:Number.isFinite(photoPxPerMm)&&photoPxPerMm>0&&photoPxPerMm<=100?Math.round(photoPxPerMm*10000)/10000:null,
+        scaleCoordinateSystem:scaleCoordinateSystem==="photo-1024x1536-fixture"?scaleCoordinateSystem:"",
+        realismAssessments:assessments,
+        uniqueRealismViewers:Math.max(0,Math.min(50,Math.floor(Number(payload.uniqueRealismViewers)||0))),
       };
     }
 
