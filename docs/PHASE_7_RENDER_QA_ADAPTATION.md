@@ -1,6 +1,6 @@
 # Phase 7 — Final Photoreal Render & QA Adaptation
 
-Status: advanced existing implementation; keep and harden.
+Status: advanced implementation with provider-credit outcome tracking and human approval workflow now added; physical-pattern calibration remains.
 
 ## Existing foundation to keep
 
@@ -24,8 +24,9 @@ The new Roadmap v2 design-lock contract is separate from the render provider. A 
 
 ## Remaining work / evidence
 
-- Measure approval rate over real final renders.
-- Record cost per approved render.
+- [x] Record provider credits for generated final renders.
+- [x] Record human approve/reject decisions for final renders.
+- [x] Calculate approval rate and credits per approved render from real outcomes.
 - Confirm the QA tolerances on measured stripe/check fabrics.
 - Confirm cross-view identity on the target set.
 - Continue manual review for cases where automated QA cannot confidently approve.
@@ -41,7 +42,30 @@ The new Roadmap v2 design-lock contract is separate from the render provider. A 
 - [x] durable cache
 - [x] targeted repair limit
 - [x] structured visual QA
+- [x] render approval-rate / credit evidence collection implemented
 - [ ] real render approval-rate target met
+- [x] credits-per-approved metric implemented
 - [ ] cost per approved render under owner cap
 - [ ] measured-pattern QA calibrated on physical fixtures
 - [ ] manual review workflow signed off for production use
+
+
+## Render outcome evidence workflow
+
+Every newly generated selected-look render now records:
+- provider job ID and concept ID,
+- view,
+- shirt / trouser IDs,
+- provider-reported credits used,
+- whether it was a repair,
+- automated QA result when available.
+
+The private **Final Render QA** desk lets the operator approve or reject each outcome. It reports:
+- reviewed / pending counts,
+- approval rate,
+- total generated credits,
+- credits per approved render.
+
+Cached re-use is excluded from provider credit spend. The evidence is kept separate from customer-facing rendering so a review does not mutate the locked design.
+
+The first readiness threshold is intentionally evidence-based: at least 20 human-reviewed final renders and at least 60% approval before the dashboard can mark the approval-rate gate complete. The commercial credit cap remains an owner decision and is not invented in code.
