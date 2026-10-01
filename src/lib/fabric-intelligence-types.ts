@@ -32,6 +32,7 @@ export type DesignerFabricIntelligence = {
     fiberContent:string|null;
     sourceUrl:string|null;
   };
+  fieldProvenance?:Record<string,"measured"|"modelJudged"|"declared"|"reviewed">;
   colorFamily:ColorFamilyId|null;
   undertone:"warm"|"cool"|"neutral"|"uncertain";
   depth:"very-light"|"light"|"mid"|"deep"|"very-deep";
