@@ -1,3 +1,5 @@
+import { validateVerifiedPhysicalEvidence } from "@/lib/physical-evidence-provenance";
+
 export const ROADMAP_SCALE_TOLERANCE_PCT = 8;
 
 export function pxPerMmFromMarker(pixelDistance:number, markerMm:number) {
@@ -127,9 +129,21 @@ export function evaluateRecordedPhase1ProofEvidence(payload:Record<string,unknow
   const photoReferenceMm=Number(payload.photoReferenceMm);
   const photoReferencePx=Number(payload.photoReferencePx);
 
+  const physicalEvidenceNote=String(payload.physicalEvidenceNote||"").replace(/\s+/g," ").trim().slice(0,700);
+  let physicalEvidenceReady=false;
+  try {
+    physicalEvidenceReady=validateVerifiedPhysicalEvidence({
+      repeatRealMm:Number.isFinite(repeatMm)?repeatMm:undefined,
+      verifiedPhysicalEvidenceNote:physicalEvidenceNote,
+    }).hasEvidence;
+  } catch {
+    physicalEvidenceReady=false;
+  }
+
   const fixtureInputsValid=
     version===PHASE1_PROOF_EVIDENCE_VERSION &&
     String(payload.scaleCoordinateSystem||"")===PHASE1_PROOF_PHOTO_COORDINATE_SYSTEM &&
+    physicalEvidenceReady &&
     Number.isFinite(photoReferenceMm)&&photoReferenceMm>0 &&
     Number.isFinite(photoReferencePx)&&photoReferencePx>0;
 
@@ -184,6 +198,8 @@ export function evaluateRecordedPhase1ProofEvidence(payload:Record<string,unknow
     photoReferencePx:scaleInputsValid?photoReferencePx:null,
     photoPxPerMm:scaleInputsValid?photoPxPerMm:null,
     scaleCoordinateSystem:scaleInputsValid?PHASE1_PROOF_PHOTO_COORDINATE_SYSTEM:null,
+    physicalEvidenceNote:physicalEvidenceReady?physicalEvidenceNote:null,
+    physicalEvidenceReady,
     scaleErrorPct:scaleErrorPctValue,
     scaleGatePass,
     realModelSamples,
