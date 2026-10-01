@@ -556,6 +556,7 @@ Statement 1=quiet base, 5=dominant hero fabric.`;
       drape:input.verifiedDrape || null,
       fiberContent:input.verifiedFiberContent ? safeText(input.verifiedFiberContent,220) : null,
       sourceUrl:safeText(input.verifiedPhysicalSourceUrl||input.sourcePageUrl,1800)||null,
+      evidenceNote:safeText(input.verifiedPhysicalEvidenceNote,500)||null,
     },
     measured,
     imageQuality:measured.imageQuality,
