@@ -7,6 +7,7 @@ test("Roadmap v2 SQL migrations do not contain invalid single-dollar function de
     "supabase/migrations/20261001_production_quotes_orders.sql",
     "supabase/migrations/20261002_finished_garment_qc.sql",
     "supabase/migrations/20261003_production_delivery_evidence.sql",
+    "supabase/migrations/20261004_meterage_calibration_registry.sql",
   ]){
     const sql=fs.readFileSync(path,"utf8");
     assert.equal(/^as \$$/m.test(sql),false,path+" contains invalid 'as $' delimiter");

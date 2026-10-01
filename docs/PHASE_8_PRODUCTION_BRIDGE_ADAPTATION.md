@@ -51,6 +51,7 @@ The same locked handoff can also export a printable HTML tech pack. It includes 
 - [x] no invented meterage / price
 - [x] Designer handoff export
 - [ ] validated cloth estimation table
+- [x] versioned meterage-table registry + owner/tailor approval gate implemented
 - [x] append-only live stock / reservation integration
 - [x] evidence-safe operator-entered quote ledger
 - [x] tailor-ready formatted tech pack / print layout
@@ -131,3 +132,18 @@ The scorecard evaluates the **first 10 delivered orders in chronological order**
 - any recorded re-entry incident keeps the gate open.
 
 The software therefore supplies the evidence mechanism, but the roadmap item stays incomplete until 10 real delivered orders actually prove the result.
+
+
+## Versioned meterage calibration registry
+
+The engineering path for the remaining **validated cloth estimation table** is now implemented without seeding generic tailoring numbers.
+
+The private **Meterage Registry**:
+- refuses to register a garment calibration draft until the server can verify at least 20 valid real cut cases for that garment,
+- stores explicit non-overlapping fabric-width bands, base metres and optional pattern-matching allowance,
+- versions every table,
+- requires a named owner/tailor approver before activation,
+- automatically retires the previous active table for the same garment when a new version is approved,
+- keeps the roadmap validation gate open until real evidence and a real approval are entered.
+
+The code therefore supports a controlled production estimator, but it does not call any meterage value validated until Linen Earth has supplied the physical cut data and owner/tailor sign-off.

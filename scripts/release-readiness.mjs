@@ -91,6 +91,9 @@ for (const path of [
   "src/app/operator/production-evidence/page.tsx",
   "src/lib/designer/production-delivery-evidence.ts",
   "supabase/migrations/20261003_production_delivery_evidence.sql",
+  "src/app/operator/meterage-model/page.tsx",
+  "src/lib/designer/meterage-calibration.ts",
+  "supabase/migrations/20261004_meterage_calibration_registry.sql",
   "src/app/operator/production-calibration/page.tsx",
   "supabase/migrations/20261001_designer_locked_revision_vault.sql",
   "supabase/migrations/20261001_measurement_profile_vault.sql",
@@ -387,6 +390,10 @@ requireTokens("src/app/api/operator/production/route.ts", ["finished_garment_qc_
 requireTokens("supabase/migrations/20261003_production_delivery_evidence.sql", ["production_delivery_evidence_record","production_delivery_evidence_list","delivery evidence can only be recorded for a delivered order","service_role"]);
 requireTokens("src/lib/designer/production-delivery-evidence.ts", ["PRODUCTION_REENTRY_FIELDS","summarizeProductionDeliveryEvidence","gateComplete","reentryIncidentCount"]);
 requireTokens("src/app/operator/production-evidence/ProductionEvidenceClient.tsx", ["Zero-Reentry Proof","FIRST 10 AUDITED","ZERO RE-ENTRY","Save immutable completion audit"]);
+requireTokens("supabase/migrations/20261004_meterage_calibration_registry.sql", ["production_meterage_model_create","production_meterage_model_approve","at least 20 real cut cases are required before approval","service_role"]);
+requireTokens("src/lib/designer/meterage-calibration.ts", ["normalizeMeterageCalibrationDraft","meterageForWidth","canApproveMeterageModel"]);
+requireTokens("src/app/operator/meterage-model/MeterageModelClient.tsx", ["Meterage Registry","Register draft from real evidence","Approve + activate","requires ≥20 real"]);
+requireTokens("src/app/api/operator/meterage-model/route.ts", ["evidenceCaseIds","At least 20 valid real cut cases","production_meterage_model_create","production_meterage_model_approve"]);
 requireTokens("next.config.ts", ["Strict-Transport-Security","X-Frame-Options","Cross-Origin-Opener-Policy"]);
 requireTokens("src/app/api/designer/look-render/route.ts", ["recordRenderOutcome","repair:true"]);
 requireTokens("src/app/api/designer/look-inspect/route.ts", ["attachRenderQa","jobId"]);
@@ -429,6 +436,7 @@ requireTokens("scripts/check-cloud-readiness.mjs", [
   "production_quote_list",
   "production_order_list",
   "production_delivery_evidence_list",
+  "production_meterage_model_list",
   "designer_locked_revision_vault_get",
   "measurement_profile_vault_get",
   "designer_render_outcome_list",

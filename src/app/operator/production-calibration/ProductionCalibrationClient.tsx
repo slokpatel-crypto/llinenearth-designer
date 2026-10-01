@@ -65,7 +65,7 @@ export default function ProductionCalibrationClient(){
   return <main className="prodCal">
     <header className="prodCalHeader">
       <div><span>LINEN EARTH / PRIVATE OPERATOR</span><h1>Production Calibration</h1><p>Record cloth actually consumed after a real garment is cut. This evidence will later support meterage estimation; the system does not guess meterage from these few cases.</p></div>
-      <nav><Link href="/operator">Operator Desk</Link><Link href="/operator/phase10-readiness">Readiness</Link></nav>
+      <nav><Link href="/operator">Operator Desk</Link><Link href="/operator/meterage-model">Meterage Registry</Link><Link href="/operator/phase10-readiness">Readiness</Link></nav>
     </header>
 
     <section className="prodCalSummary">
