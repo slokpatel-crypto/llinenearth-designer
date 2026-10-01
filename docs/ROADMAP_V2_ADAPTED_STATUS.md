@@ -62,6 +62,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added a five-novice Designer completion study with real elapsed-time evidence, latest-case semantics and human-entered documented target; no timing threshold is invented in code.
 - Added Supabase email-OTP customer accounts, account-owned locked designs and measurement profiles, claim-by-recovery-token migration, and private account listing.
 - Propagated authenticated ownership from immutable locked designs into quotes/orders and added private customer production-status tracking.
+- Added itemized account-owned quote review and authenticated customer acceptance evidence before production-order creation.
 - Added phase adaptation records so future coding agents do not rebuild existing systems unnecessarily.
 
 ## Evidence we cannot manufacture in code
