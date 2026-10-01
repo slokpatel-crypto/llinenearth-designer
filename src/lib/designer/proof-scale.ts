@@ -102,6 +102,22 @@ export function phase1BoundaryChecksReady(value:unknown){
   return input.neck===true&&input.cuffs===true&&input.waist===true&&input.trouserGap===true;
 }
 
+export function summarizeLatencySamples(values:unknown){
+  const samples=Array.isArray(values)
+    ? values.map(Number).filter((value)=>Number.isFinite(value)&&value>=0&&value<=10_000).slice(-120)
+    : [];
+  if(!samples.length) return {samples:[],count:0,p95Ms:null as number|null,medianMs:null as number|null,maxMs:null as number|null};
+  const ordered=[...samples].sort((a,b)=>a-b);
+  const percentile=(fraction:number)=>ordered[Math.min(ordered.length-1,Math.max(0,Math.ceil(ordered.length*fraction)-1))];
+  return {
+    samples:samples.map((value)=>Math.round(value*10)/10),
+    count:samples.length,
+    p95Ms:Math.round(percentile(.95)*10)/10,
+    medianMs:Math.round(percentile(.5)*10)/10,
+    maxMs:Math.round(ordered[ordered.length-1]*10)/10,
+  };
+}
+
 export type Phase1ProofAcceptanceInput={
   repeatMm:number|null;
   scaleGatePass:boolean|null;
@@ -136,7 +152,7 @@ export function phase1ProofAcceptance(input:Phase1ProofAcceptanceInput) {
   };
 }
 
-export const PHASE1_PROOF_EVIDENCE_VERSION="linen-earth-phase1-proof-v3";
+export const PHASE1_PROOF_EVIDENCE_VERSION="linen-earth-phase1-proof-v4";
 export const PHASE1_PROOF_PHOTO_COORDINATE_SYSTEM="photo-1024x1536-fixture";
 
 export function evaluateRecordedPhase1ProofEvidence(payload:Record<string,unknown>){
@@ -195,8 +211,9 @@ export function evaluateRecordedPhase1ProofEvidence(payload:Record<string,unknow
     : [];
   const realism=summarizeIndependentRealism(realismAssessments);
 
-  const realModelSamples=Math.max(0,Math.floor(Number(payload.realModelSamples)||0));
-  const realModelP95Ms=Number.isFinite(Number(payload.realModelP95Ms))?Number(payload.realModelP95Ms):null;
+  const latency=summarizeLatencySamples(payload.realModelSampleDurationsMs);
+  const realModelSamples=latency.count;
+  const realModelP95Ms=latency.p95Ms;
   const boundaryChecksRaw=payload.boundaryChecks;
   const boundaryChecks:Phase1BoundaryChecks={
     neck:Boolean(boundaryChecksRaw&&typeof boundaryChecksRaw==="object"&&!Array.isArray(boundaryChecksRaw)&&(boundaryChecksRaw as Record<string,unknown>).neck===true),
@@ -229,6 +246,9 @@ export function evaluateRecordedPhase1ProofEvidence(payload:Record<string,unknow
     scaleGatePass,
     realModelSamples,
     realModelP95Ms,
+    realModelSampleDurationsMs:latency.samples,
+    realModelMedianMs:latency.medianMs,
+    realModelMaxMs:latency.maxMs,
     realism,
     boundaryChecks,
     boundaryReady:acceptance.boundaryReady,
