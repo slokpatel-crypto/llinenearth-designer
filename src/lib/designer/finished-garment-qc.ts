@@ -43,14 +43,17 @@ export function normalizeFinishedGarmentQcDraft(input:unknown){
     : [];
   const note=String(source.note||"").trim().slice(0,1200);
   const inspector=String(source.inspector||"").trim().slice(0,120);
+  const inspectionReference=String(source.inspectionReference||"").replace(/\s+/g," ").trim().slice(0,240);
 
+  if(inspector.length<2) throw new Error("Named inspector / checker is required.");
+  if(inspectionReference.length<3) throw new Error("Physical inspection reference is required.");
   if(decision==="approved"&&FINISHED_GARMENT_QC_CHECKS.some((item)=>!checks[item.id])){
     throw new Error("Every finished-garment QC check must pass before approval.");
   }
   if(decision==="rework"&&defects.length===0&&note.length<3){
     throw new Error("Record at least one defect or a short rework note.");
   }
-  return {decision,checks,defects,note,inspector};
+  return {decision,checks,defects,note,inspector,inspectionReference};
 }
 
 export function latestQcDecision<T extends {decision:string;created_at:string}>(items:T[]){
