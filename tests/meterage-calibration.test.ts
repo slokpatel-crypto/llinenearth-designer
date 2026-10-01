@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   normalizeMeterageCalibrationDraft,
+  normalizeProductionCutEvidenceDraft,
   meterageForWidth,
   canApproveMeterageModel,
   verifiedMeterageEvidenceCase,
@@ -67,4 +68,35 @@ test("meterage evidence cannot be reused across garment classes",()=>{
   };
   assert.equal(verifiedMeterageEvidenceCase(payload,"shirt"),null);
   assert.equal(verifiedMeterageEvidenceCase(payload,"trouser")?.garment,"trouser");
+});
+
+
+test("production cut evidence draft requires a real order and physical provenance",()=>{
+  assert.throws(()=>normalizeProductionCutEvidenceDraft({
+    caseId:"CUT-ORDER-1",orderId:"not-a-uuid",garment:"shirt",fabricId:"shirt-1",
+    fabricWidthCm:150,actualMetres:1.8,checkedBy:"RJ",evidenceReference:"Cut ticket 1",
+  }),/production order ID/i);
+  assert.throws(()=>normalizeProductionCutEvidenceDraft({
+    caseId:"CUT-ORDER-1",orderId:"11111111-1111-4111-8111-111111111111",garment:"shirt",fabricId:"shirt-1",
+    fabricWidthCm:150,actualMetres:1.8,checkedBy:"",evidenceReference:"",
+  }),/tailor or checker/i);
+  const draft=normalizeProductionCutEvidenceDraft({
+    caseId:"CUT-ORDER-1",orderId:"11111111-1111-4111-8111-111111111111",garment:"shirt",fabricId:"shirt-1",
+    fabricWidthCm:150.126,actualMetres:1.8126,patternRepeatMm:12.345,patternMatching:true,
+    cutContext:" Regular full sleeve ",checkedBy:" Rajesh Jain ",evidenceReference:" Job card 118 ",
+  });
+  assert.equal(draft.fabricWidthCm,150.13);
+  assert.equal(draft.actualMetres,1.813);
+  assert.equal(draft.patternRepeatMm,12.35);
+  assert.equal(draft.checkedBy,"Rajesh Jain");
+  assert.equal(draft.evidenceReference,"Job card 118");
+});
+
+test("production cut evidence rejects implausible physical usage",()=>{
+  const base={
+    caseId:"CUT-ORDER-2",orderId:"22222222-2222-4222-8222-222222222222",garment:"trouser",fabricId:"pant-1",
+    checkedBy:"RJ",evidenceReference:"Cut sheet 22",
+  };
+  assert.throws(()=>normalizeProductionCutEvidenceDraft({...base,fabricWidthCm:40,actualMetres:1.5}),/Fabric width/i);
+  assert.throws(()=>normalizeProductionCutEvidenceDraft({...base,fabricWidthCm:150,actualMetres:0}),/Actual cloth usage/i);
 });
