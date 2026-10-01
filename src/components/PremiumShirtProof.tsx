@@ -13,6 +13,8 @@ const REALISM_STORAGE_KEY="linen-earth:phase1-proof-realism:v1";
 
 export function PremiumShirtProof(){
   const [shirtId,setShirtId]=useState(DESIGNER_SHIRTS[0]?.id||"");
+  const [runtimeShirts,setRuntimeShirts]=useState(DESIGNER_SHIRTS);
+  const [runtimePants,setRuntimePants]=useState(DESIGNER_PANTS);
   const [collar,setCollar]=useState<Collar>("spread");
   const [cuff,setCuff]=useState<Cuff>("round");
   const [pxPerMm,setPxPerMm]=useState(DEFAULT_PX_PER_MM);
@@ -25,8 +27,8 @@ export function PremiumShirtProof(){
   const [realismRatings,setRealismRatings]=useState<number[]>([]);
   const startedRef=useRef(0);
 
-  const realShirt=DESIGNER_SHIRTS.find((item)=>item.id===shirtId) || DESIGNER_SHIRTS[0];
-  const realPant=DESIGNER_PANTS.find((item)=>item.id==="linen-suiting-beige") || DESIGNER_PANTS[0];
+  const realShirt=runtimeShirts.find((item)=>item.id===shirtId) || runtimeShirts[0];
+  const realPant=runtimePants.find((item)=>item.id==="linen-suiting-beige") || runtimePants[0];
   const realModelStyle=designerStyleForOccasion("Semi-Formal");
   const fabric={
     label:realShirt?.name||"Fabric",
@@ -35,18 +37,22 @@ export function PremiumShirtProof(){
   };
   const proofRealShirt=realShirt ? {
     ...realShirt,
-    renderScale: declaredRepeatMm ? {
+    renderScale: effectiveRepeatMm ? {
       physicalScaleStatus:"declared_repeat" as const,
-      repeatMm:declaredRepeatMm,
-      stripeWidthMm:null,
+      repeatMm:effectiveRepeatMm,
+      stripeWidthMm:realShirt.renderScale?.stripeWidthMm??null,
     } : realShirt.renderScale,
   } : realShirt;
 
   const tilePx=declaredTileMm ? Math.max(18,Math.min(260,declaredTileMm*pxPerMm)) : APPROX_TILE_PX;
-  const repeatPx=declaredRepeatMm ? expectedPeriodPx(declaredRepeatMm,pxPerMm) : null;
-  const error=declaredRepeatMm && measuredPx ? scaleErrorPct(measuredPx,declaredRepeatMm,pxPerMm) : null;
-  const pass=declaredRepeatMm && measuredPx ? passesScaleGate(measuredPx,declaredRepeatMm,pxPerMm) : null;
-  const calibrationState=declaredTileMm||declaredRepeatMm ? "PHYSICAL EVIDENCE ENTERED" : "APPROXIMATE SCALE";
+  const storedRepeatMm=realShirt?.renderScale?.physicalScaleStatus==="declared_repeat" ? realShirt.renderScale.repeatMm : null;
+  const effectiveRepeatMm=declaredRepeatMm ?? storedRepeatMm;
+  const repeatPx=effectiveRepeatMm ? expectedPeriodPx(effectiveRepeatMm,pxPerMm) : null;
+  const error=effectiveRepeatMm && measuredPx ? scaleErrorPct(measuredPx,effectiveRepeatMm,pxPerMm) : null;
+  const pass=effectiveRepeatMm && measuredPx ? passesScaleGate(measuredPx,effectiveRepeatMm,pxPerMm) : null;
+  const calibrationState=storedRepeatMm ? "VERIFIED CATALOGUE SCALE EVIDENCE"
+    : declaredTileMm||declaredRepeatMm ? "PHYSICAL EVIDENCE ENTERED"
+    : "APPROXIMATE SCALE";
   const p95=useMemo(()=>{
     if(!latencySamples.length) return null;
     const ordered=[...latencySamples].sort((a,b)=>a-b);
@@ -59,6 +65,22 @@ export function PremiumShirtProof(){
   },[realRenderSamples]);
   const strongRealism=realismRatings.filter((rating)=>rating>=4).length;
   const realismGate=realismRatings.length>=8 && strongRealism>=6;
+
+  useEffect(()=>{
+    let cancelled=false;
+    fetch("/api/designer/catalog",{cache:"no-store"})
+      .then((response)=>response.ok?response.json():null)
+      .then((data:{shirts?:typeof DESIGNER_SHIRTS;pants?:typeof DESIGNER_PANTS}|null)=>{
+        if(cancelled||!data) return;
+        if(Array.isArray(data.shirts)&&data.shirts.length) {
+          setRuntimeShirts(data.shirts);
+          setShirtId((current)=>data.shirts?.some((item)=>item.id===current)?current:data.shirts?.[0]?.id||current);
+        }
+        if(Array.isArray(data.pants)&&data.pants.length) setRuntimePants(data.pants);
+      })
+      .catch(()=>{});
+    return ()=>{cancelled=true;};
+  },[]);
 
   useEffect(()=>{
     try {
@@ -163,10 +185,10 @@ export function PremiumShirtProof(){
           <h2>Current Linen Earth fabrics</h2>
           <label>Shirting fabric
             <select value={realShirt?.id||""} onChange={(event)=>chooseFabric(event.target.value)}>
-              {DESIGNER_SHIRTS.map((item)=><option key={item.id} value={item.id}>{item.name} · {item.line}</option>)}
+              {runtimeShirts.map((item)=><option key={item.id} value={item.id}>{item.name} · {item.line}</option>)}
             </select>
           </label>
-          <p>{DESIGNER_SHIRTS.length} current shirting fabrics are available in this proof.</p>
+          <p>{runtimeShirts.length} current shirting fabrics are available in this proof. Reviewed Analyzer evidence is loaded when available.</p>
         </section>
         <section><h2>Collar</h2>{(["spread","button-down","band"] as Collar[]).map((item)=><button key={item} type="button" data-active={collar===item} onClick={()=>markChange(()=>setCollar(item))}>{item}</button>)}</section>
         <section><h2>Cuff</h2>{(["round","square","french"] as Cuff[]).map((item)=><button key={item} type="button" data-active={cuff===item} onClick={()=>markChange(()=>setCuff(item))}>{item}</button>)}</section>
@@ -174,11 +196,12 @@ export function PremiumShirtProof(){
           <h2>Physical calibration</h2>
           <label>px per mm<input type="number" min=".1" step=".0001" value={pxPerMm} onChange={(event)=>setPxPerMm(Math.max(.1,Number(event.target.value)||DEFAULT_PX_PER_MM))}/></label>
           <label>Visible source tile width (mm)<input type="number" min=".1" step=".1" placeholder="Enter after measuring swatch" value={declaredTileMm??""} onChange={(event)=>setDeclaredTileMm(event.target.value?Number(event.target.value):null)}/></label>
-          <label>Known pattern repeat (mm)<input type="number" min=".1" step=".1" placeholder="Optional measured repeat" value={declaredRepeatMm??""} onChange={(event)=>setDeclaredRepeatMm(event.target.value?Number(event.target.value):null)}/></label>
+          <label>Known pattern repeat (mm)<input type="number" min=".1" step=".1" placeholder={storedRepeatMm?"Using stored verified repeat":"Optional measured repeat"} value={declaredRepeatMm??""} onChange={(event)=>setDeclaredRepeatMm(event.target.value?Number(event.target.value):null)}/></label>
+          {storedRepeatMm&&<p>Stored reviewed repeat: <b>{storedRepeatMm} mm</b>. Leave the field blank to use it.</p>}
           {repeatPx&&<p>Expected repeat on model: <b>{repeatPx.toFixed(2)} px</b></p>}
-          {declaredRepeatMm&&<label>Measured repeat on preview (px)<input type="number" min=".01" step=".01" value={measuredPx??""} onChange={(event)=>setMeasuredPx(event.target.value?Number(event.target.value):null)}/></label>}
+          {effectiveRepeatMm&&<label>Measured repeat on preview (px)<input type="number" min=".01" step=".01" value={measuredPx??""} onChange={(event)=>setMeasuredPx(event.target.value?Number(event.target.value):null)}/></label>}
           {error!==null&&<div className="proofGate" data-pass={pass?"yes":"no"}><b>{pass?"PASS":"FAIL"} · {error.toFixed(2)}% error</b><span>Roadmap gate: ≤ 8% scale error.</span></div>}
-          {!declaredTileMm&&!declaredRepeatMm&&<p><b>Important:</b> the current photo is used now, but it stays labelled approximate until the photographed swatch width or pattern repeat is physically measured.</p>}
+          {!declaredTileMm&&!effectiveRepeatMm&&<p><b>Important:</b> the current photo is used now, but it stays labelled approximate until the photographed swatch width or pattern repeat is physically measured.</p>}
         </section>
         <section>
           <h2>Viewer realism gate</h2>
