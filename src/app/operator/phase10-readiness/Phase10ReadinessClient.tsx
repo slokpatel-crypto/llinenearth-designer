@@ -198,6 +198,22 @@ type EaseCalibrationPayload={
   };
 };
 
+type PreviewCoveragePayload={
+  configured:boolean;
+  summary:{
+    total:number;
+    previewApproved:number;
+    previewRejected:number;
+    previewPending:number;
+    noPreviewSupport:number;
+    constructionBlocked:number;
+    constructionPending:number;
+    fullyCleared:number;
+    coveragePercent:number;
+    gateComplete:boolean;
+  };
+};
+
 type LoadState={
   phase1Proof:Phase1ProofPayload|null;
   measurementCalibration:MeasurementCalibrationPayload|null;
@@ -217,6 +233,7 @@ type LoadState={
   fabricColorCalibration:FabricColorCalibrationPayload|null;
   styleDirectorValidation:StyleDirectorValidationPayload|null;
   easeCalibration:EaseCalibrationPayload|null;
+  previewCoverage:PreviewCoveragePayload|null;
 };
 
 type RowStatus="done"|"progress"|"blocked"|"optional";
@@ -238,7 +255,7 @@ function ratio(value:number,total:number){return total>0?clamp(value/total*100):
 
 export default function Phase10ReadinessClient(){
   const [data,setData]=useState<LoadState>({
-    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,renderQa:null,launchReadiness:null,fabricColorCalibration:null,styleDirectorValidation:null,easeCalibration:null,
+    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,renderQa:null,launchReadiness:null,fabricColorCalibration:null,styleDirectorValidation:null,easeCalibration:null,previewCoverage:null,
   });
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
@@ -256,7 +273,7 @@ export default function Phase10ReadinessClient(){
   async function load(){
     setLoading(true);setMessage("");
     try{
-      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation,easeCalibration]=await Promise.all([
+      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation,easeCalibration,previewCoverage]=await Promise.all([
         read<Phase1ProofPayload>("/api/operator/phase1-proof"),
         read<MeasurementCalibrationPayload>("/api/operator/measurement-calibration"),
         read<LaunchMetricsPayload>("/api/operator/cloud-summary?days=60"),
@@ -275,8 +292,9 @@ export default function Phase10ReadinessClient(){
         read<FabricColorCalibrationPayload>("/api/operator/fabric-color-calibration"),
         read<StyleDirectorValidationPayload>("/api/operator/style-director-validation"),
         read<EaseCalibrationPayload>("/api/operator/ease-calibration"),
+        read<PreviewCoveragePayload>("/api/operator/preview-option-coverage"),
       ]);
-      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation,easeCalibration});
+      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation,easeCalibration,previewCoverage});
     }catch(error){
       setMessage(error instanceof Error?error.message:"Readiness data could not be loaded.");
     }finally{
@@ -300,6 +318,9 @@ export default function Phase10ReadinessClient(){
     const measurementAccuracySignals=[measurement?.chestPass===true,measurement?.sleevePass===true].filter(Boolean).length;
     const measurementProgress=Math.round((measurementCountProgress+ratio(measurementAccuracySignals,2))/2);
     const measurementDone=measurement?.complete===true;
+
+    const previewCoverage=data.previewCoverage?.summary;
+    const previewCoverageDone=previewCoverage?.gateComplete===true;
 
     const easeCalibration=data.easeCalibration?.summary;
     const approvedEaseModel=data.easeCalibration?.models?.find((item)=>item.status==="approved")||null;
@@ -437,6 +458,21 @@ export default function Phase10ReadinessClient(){
         metric:measurement?`${measurement.total}/${measurement.target} cases · chest ${measurement.chestPass?"pass":"review"} · sleeve ${measurement.sleevePass?"pass":"review"}`:"No evidence",
         href:"/operator/measurement-calibration",
         action:"Record measurement cases",
+        ownerDependent:true,
+      },
+      {
+        id:"customer-preview-coverage",
+        title:"Customer-visible construction / preview coverage",
+        detail:previewCoverageDone
+          ? "Every style choice currently exposed by Designer is preview-approved and construction-cleared where required."
+          : previewCoverage
+            ? `${Math.max(0,previewCoverage.total-previewCoverage.fullyCleared)} of ${previewCoverage.total} customer-visible choices still need preview/construction clearance. ${previewCoverage.noPreviewSupport} have no instant-preview support and ${previewCoverage.constructionBlocked} are construction-rejected.`
+            : "Customer-visible preview coverage has not been audited yet.",
+        status:previewCoverageDone?"done":data.previewCoverage?.configured?"progress":"blocked",
+        progress:previewCoverage?.coveragePercent||0,
+        metric:previewCoverage?`${previewCoverage.fullyCleared}/${previewCoverage.total} cleared · ${previewCoverage.previewPending} preview pending · ${previewCoverage.constructionPending} construction pending`:"No coverage evidence",
+        href:"/operator/preview-option-coverage",
+        action:"Audit customer preview choices",
         ownerDependent:true,
       },
       {
