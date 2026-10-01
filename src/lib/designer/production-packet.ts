@@ -1,5 +1,5 @@
-import type { LockedDesignRevision } from "@/lib/designer/design-lock";
-import { buildProductionHandoff } from "@/lib/designer/production-handoff";
+import type { LockedDesignRevision } from "./design-lock.ts";
+import { buildProductionHandoff } from "./production-handoff.ts";
 
 export type ProductionQuoteSnapshot={
   quoteId:string;
