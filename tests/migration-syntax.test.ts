@@ -5,6 +5,7 @@ import fs from "node:fs";
 test("Roadmap v2 SQL migrations do not contain invalid single-dollar function delimiters",()=>{
   for(const path of [
     "supabase/migrations/20261001_production_quotes_orders.sql",
+    "supabase/migrations/20261001_render_outcomes.sql",
     "supabase/migrations/20261002_finished_garment_qc.sql",
     "supabase/migrations/20261003_production_delivery_evidence.sql",
     "supabase/migrations/20261004_meterage_calibration_registry.sql",
