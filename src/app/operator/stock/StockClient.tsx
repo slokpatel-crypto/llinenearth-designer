@@ -94,8 +94,8 @@ export default function StockClient(){
         <span>03 / CLOSE RESERVATION</span><h2>Consume or release.</h2>
         <label>Reservation UUID<input value={close.reservationId} onChange={(e)=>setClose({...close,reservationId:e.target.value})}/></label>
         <label>Actual metres used<input type="number" min=".001" step=".001" value={close.actualMetres} onChange={(e)=>setClose({...close,actualMetres:e.target.value})}/></label>
-        <label>Consumption checked by<input value={close.checkedBy} onChange={(e)=>setClose({...close,checkedBy:e.target.value})} maxLength={120} placeholder="Required for consume"/></label>
-        <label>Actual usage source<input value={close.sourceReference} onChange={(e)=>setClose({...close,sourceReference:e.target.value})} maxLength={240} placeholder="Cutting sheet, usage card…"/></label>
+        <label>Close action checked by<input value={close.checkedBy} onChange={(e)=>setClose({...close,checkedBy:e.target.value})} maxLength={120} placeholder="Required"/></label>
+        <label>Close action source<input value={close.sourceReference} onChange={(e)=>setClose({...close,sourceReference:e.target.value})} maxLength={240} placeholder="Cutting sheet, cancellation note, usage card…"/></label>
         <label>Note<textarea rows={2} value={close.note} onChange={(e)=>setClose({...close,note:e.target.value})}/></label>
         <div className="stockActions">
           <button disabled={busy||!configured||!close.reservationId||Number(close.actualMetres)<=0||close.checkedBy.trim().length<2||close.sourceReference.trim().length<3} onClick={()=>void post({action:"consume",reservationId:close.reservationId,actualMetres:Number(close.actualMetres),checkedBy:close.checkedBy,sourceReference:close.sourceReference,note:close.note},"Reservation consumed from measured usage and unused metres released.")}>Consume</button>
