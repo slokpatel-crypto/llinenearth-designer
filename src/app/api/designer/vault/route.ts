@@ -10,6 +10,13 @@ import {
 
 export const runtime="nodejs";
 
+function jsonNoStore(body:unknown,init?:{status?:number}){
+  return NextResponse.json(body,{
+    ...init,
+    headers:{"cache-control":"private, no-store, max-age=0","pragma":"no-cache"},
+  });
+}
+
 const rate=(globalThis as typeof globalThis & {
   __linenDesignVaultRate?:Map<string,{at:number;count:number}>
 }).__linenDesignVaultRate ||= new Map<string,{at:number;count:number}>();
@@ -41,7 +48,7 @@ async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
 }
 
 export async function POST(request:Request){
-  if(blocked(request)) return NextResponse.json({error:"Too many design-vault requests."},{status:429});
+  if(blocked(request)) return jsonNoStore({error:"Too many design-vault requests."},{status:429});
   try{
     const body=await request.json() as {action?:string;revision?:LockedDesignRevision;recoveryToken?:string};
     const action=String(body.action||"");
@@ -49,10 +56,10 @@ export async function POST(request:Request){
     if(action==="store"){
       const revision=body.revision;
       if(!revision||revision.version!=="linen-earth-design-lock-v1") {
-        return NextResponse.json({error:"A locked Linen Earth design revision is required."},{status:400});
+        return jsonNoStore({error:"A locked Linen Earth design revision is required."},{status:400});
       }
       if(!await verifyLockedDesignRevision(revision)) {
-        return NextResponse.json({error:"The locked design revision failed integrity verification."},{status:409});
+        return jsonNoStore({error:"The locked design revision failed integrity verification."},{status:409});
       }
       const accessKey=createDesignVaultAccessKey();
       const accessHash=hashDesignVaultAccessKey(accessKey);
@@ -65,11 +72,11 @@ export async function POST(request:Request){
       });
       if(!vaultId) throw new Error("The design vault did not return an id.");
       const recoveryToken=createDesignVaultRecoveryToken(vaultId,accessKey);
-      return NextResponse.json({vaultId,recoveryToken,expiresInDays:180});
+      return jsonNoStore({vaultId,recoveryToken,expiresInDays:180});
     }
 
     const parsed=parseDesignVaultRecoveryToken(String(body.recoveryToken||""));
-    if(!parsed) return NextResponse.json({error:"The recovery token is invalid."},{status:400});
+    if(!parsed) return jsonNoStore({error:"The recovery token is invalid."},{status:400});
 
     if(action==="load"){
       const rows=await rpc<Array<{payload:LockedDesignRevision;expires_at:string}>>("designer_locked_revision_vault_get",{
@@ -77,11 +84,11 @@ export async function POST(request:Request){
         p_access_hash:parsed.accessHash,
       });
       const row=rows[0];
-      if(!row?.payload) return NextResponse.json({error:"Design not found or recovery token expired."},{status:404});
+      if(!row?.payload) return jsonNoStore({error:"Design not found or recovery token expired."},{status:404});
       if(!await verifyLockedDesignRevision(row.payload)) {
-        return NextResponse.json({error:"Stored design failed integrity verification."},{status:409});
+        return jsonNoStore({error:"Stored design failed integrity verification."},{status:409});
       }
-      return NextResponse.json({revision:row.payload,expiresAt:row.expires_at});
+      return jsonNoStore({revision:row.payload,expiresAt:row.expires_at});
     }
 
     if(action==="delete"){
@@ -89,12 +96,12 @@ export async function POST(request:Request){
         p_vault_id:parsed.vaultId,
         p_access_hash:parsed.accessHash,
       });
-      return NextResponse.json({deleted:Boolean(deleted)});
+      return jsonNoStore({deleted:Boolean(deleted)});
     }
 
-    return NextResponse.json({error:"Unsupported design-vault action."},{status:400});
+    return jsonNoStore({error:"Unsupported design-vault action."},{status:400});
   }catch(error){
     console.error("[designer/vault]",error);
-    return NextResponse.json({error:"Secure design storage is temporarily unavailable."},{status:503});
+    return jsonNoStore({error:"Secure design storage is temporarily unavailable."},{status:503});
   }
 }
