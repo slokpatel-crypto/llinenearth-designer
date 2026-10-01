@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
-import { passesScaleGate, phase1ProofAcceptance, pxPerMmFromMarker, scaleErrorPct, summarizeIndependentRealism, type RealismAssessment } from "@/lib/designer/proof-scale";
+import { evaluateRecordedPhase1ProofEvidence } from "@/lib/designer/proof-scale";
 
 export const runtime="nodejs";
 
@@ -34,79 +34,33 @@ export async function GET(){
     for(const row of rows){
       const payload=row.payload||{};
       if(String(payload.subtype||"")!=="roadmap_phase1_proof") continue;
-      const recordVersion=String(payload.version||"");
-      const repeatMm=Number(payload.repeatMm);
-      const measuredPreviewRepeatPx=Number(payload.measuredPreviewRepeatPx);
-      const photoReferenceMm=Number(payload.photoReferenceMm);
-      const photoReferencePx=Number(payload.photoReferencePx);
-      const fixtureInputsValid=
-        recordVersion==="linen-earth-phase1-proof-v2"&&
-        String(payload.scaleCoordinateSystem||"")==="photo-1024x1536-fixture"&&
-        Number.isFinite(photoReferenceMm)&&photoReferenceMm>0&&
-        Number.isFinite(photoReferencePx)&&photoReferencePx>0;
-      let photoPxPerMm:number|null=null;
-      if(fixtureInputsValid){
-        try { photoPxPerMm=pxPerMmFromMarker(photoReferencePx,photoReferenceMm); }
-        catch { photoPxPerMm=null; }
-      }
-      const scaleInputsValid=
-        photoPxPerMm!==null&&
-        Number.isFinite(repeatMm)&&repeatMm>0&&
-        Number.isFinite(measuredPreviewRepeatPx)&&measuredPreviewRepeatPx>0;
-      const computedScaleGate=scaleInputsValid
-        ? passesScaleGate(measuredPreviewRepeatPx,repeatMm,photoPxPerMm as number)
-        : false;
-      const computedScaleError=scaleInputsValid
-        ? scaleErrorPct(measuredPreviewRepeatPx,repeatMm,photoPxPerMm as number)
-        : null;
-
-      const assessments:Array<RealismAssessment>=Array.isArray(payload.realismAssessments)
-        ? payload.realismAssessments.flatMap((item)=>{
-            if(!item||typeof item!=="object") return [];
-            const value=item as Record<string,unknown>;
-            return [{
-              viewerId:String(value.viewerId||"").slice(0,80),
-              rating:Number(value.rating),
-              recordedAt:String(value.recordedAt||"").slice(0,80),
-            }];
-          })
-        : [];
-      const realism=summarizeIndependentRealism(assessments);
-      const realModelSamples=Math.max(0,Math.floor(Number(payload.realModelSamples)||0));
-      const realModelP95Ms=Number.isFinite(Number(payload.realModelP95Ms))?Number(payload.realModelP95Ms):null;
-      const acceptance=phase1ProofAcceptance({
-        repeatMm:scaleInputsValid?repeatMm:null,
-        scaleGatePass:computedScaleGate,
-        realModelSamples,
-        realModelP95Ms,
-        realismRatings:realism.ratings,
-      });
+      const evidence=evaluateRecordedPhase1ProofEvidence(payload);
 
       return NextResponse.json({
         configured:true,
         latest:{
           at:row.at,
-          version:recordVersion,
-          status:acceptance.accepted?"accepted":"review",
-          coreAccepted:acceptance.accepted,
+          version:evidence.version,
+          status:evidence.coreAccepted?"accepted":"review",
+          coreAccepted:evidence.coreAccepted,
           fabricId:String(payload.fabricId||""),
           fabricName:String(payload.fabricName||""),
           pattern:String(payload.pattern||""),
-          repeatMm:scaleInputsValid?repeatMm:null,
-          photoReferenceMm:scaleInputsValid?photoReferenceMm:null,
-          photoReferencePx:scaleInputsValid?photoReferencePx:null,
-          photoPxPerMm:scaleInputsValid?photoPxPerMm:null,
-          scaleCoordinateSystem:scaleInputsValid?"photo-1024x1536-fixture":null,
-          measuredPreviewRepeatPx:scaleInputsValid?measuredPreviewRepeatPx:null,
-          scaleErrorPct:computedScaleError,
-          scaleGatePass:computedScaleGate,
-          realModelSamples,
-          realModelP95Ms,
-          realismRatings:realism.ratings,
-          uniqueRealismViewers:realism.uniqueViewers,
-          strongRatings:realism.strongRatings,
-          realismPass:realism.ready,
-          note:acceptance.reasons.join(" ").slice(0,700),
+          repeatMm:evidence.repeatMm,
+          photoReferenceMm:evidence.photoReferenceMm,
+          photoReferencePx:evidence.photoReferencePx,
+          photoPxPerMm:evidence.photoPxPerMm,
+          scaleCoordinateSystem:evidence.scaleCoordinateSystem,
+          measuredPreviewRepeatPx:evidence.measuredPreviewRepeatPx,
+          scaleErrorPct:evidence.scaleErrorPct,
+          scaleGatePass:evidence.scaleGatePass,
+          realModelSamples:evidence.realModelSamples,
+          realModelP95Ms:evidence.realModelP95Ms,
+          realismRatings:evidence.realism.ratings,
+          uniqueRealismViewers:evidence.realism.uniqueViewers,
+          strongRatings:evidence.realism.strongRatings,
+          realismPass:evidence.realism.ready,
+          note:evidence.acceptance.reasons.join(" ").slice(0,700),
         },
       },{headers:{"cache-control":"private, no-store"}});
     }
