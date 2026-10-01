@@ -29,3 +29,4 @@
 .renderQaIdentityDecision>div{display:flex;gap:7px}
 .renderQaIdentityDecision button.fail{background:#fff;color:#8b2d2d;border-color:#caa}
 @media(max-width:800px){.renderQaReleaseHead,.renderQaIdentityList>article{display:grid}.renderQaReleaseForm{grid-template-columns:1fr}.renderQaReleaseForm label.wide{grid-column:auto}.renderQaIdentityDecision{justify-items:start}}
+.renderQaIdentityStale{color:#8b5d2d!important;font-weight:600}
