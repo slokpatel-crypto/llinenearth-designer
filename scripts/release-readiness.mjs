@@ -271,7 +271,7 @@ requireTokens("src/lib/designer/fit-construction.ts", [
   "approved_house_calibration",
   "easeModel",
 ]);
-requireTokens("src/lib/designer/ease-calibration.ts", ["approvedHouseEaseModelFromRow","ApprovedHouseEaseModel","status)!==\"approved\""]);
+requireTokens("src/lib/designer/ease-calibration.ts", ["approvedHouseEaseModelFromRow","ApprovedHouseEaseModel","status,20)!==\"approved\""]);
 requireTokens("src/lib/designer/house-ease-server.ts", ["server-only","loadApprovedHouseEaseModel","house_ease_model_list","approvedHouseEaseModelFromRow"]);
 requireTokens("src/app/api/designer/assess/route.ts", ["loadApprovedHouseEaseModel","easeModel","houseEaseModel"]);
 requireTokens("src/app/api/designer/search/route.ts", ["loadApprovedHouseEaseModel","easeModel"]);
