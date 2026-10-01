@@ -1,6 +1,7 @@
 import type { MeasurementProfile } from "@/lib/measurements";
 import type { DesignerClimate, DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
 import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
+import { HOUSE_EASE_TABLE_VERSION, HOUSE_SHIRT_EASE, HOUSE_TROUSER_EASE, type ShirtEaseClass, type TrouserEaseClass } from "@/lib/designer/house-ease";
 
 export type FitConstructionSeverity = "info" | "review" | "warning";
 export type RangeCm = { min: number; max: number };
@@ -23,47 +24,12 @@ export type FitConstructionAssessment = {
   version: "fit-construction-provisional-1";
   status: "insufficient_measurements" | "provisional";
   source: "provisional_house_defaults";
+  easeTableVersion: typeof HOUSE_EASE_TABLE_VERSION;
   shirtTargets: FinishedTarget[];
   trouserTargets: FinishedTarget[];
   checks: ConstructionCheck[];
   fitScore: number;
   caveats: string[];
-};
-
-type FitClass = "slim" | "regular" | "relaxed";
-type TrouserClass = "flat" | "pleated" | "wide" | "cropped" | "other";
-
-const SHIRT_EASE: Record<FitClass,{ chest: RangeCm; waist: RangeCm; bicep: RangeCm; neck: RangeCm; wrist: RangeCm }> = {
-  slim: {
-    chest:{ min:7.5,max:10 }, waist:{ min:6,max:9 }, bicep:{ min:5,max:7 },
-    neck:{ min:1,max:1.5 }, wrist:{ min:2,max:3 },
-  },
-  regular: {
-    chest:{ min:10,max:14 }, waist:{ min:9,max:13 }, bicep:{ min:6,max:9 },
-    neck:{ min:1,max:1.5 }, wrist:{ min:2.5,max:3.5 },
-  },
-  relaxed: {
-    chest:{ min:15,max:20 }, waist:{ min:14,max:19 }, bicep:{ min:8,max:12 },
-    neck:{ min:1.2,max:1.8 }, wrist:{ min:3,max:4.5 },
-  },
-};
-
-const TROUSER_EASE: Record<TrouserClass,{ waist: RangeCm; seat: RangeCm; thigh: RangeCm; knee: RangeCm }> = {
-  flat: {
-    waist:{ min:1,max:3 }, seat:{ min:6,max:9 }, thigh:{ min:4,max:6 }, knee:{ min:3,max:5 },
-  },
-  pleated: {
-    waist:{ min:1.5,max:3.5 }, seat:{ min:8,max:12 }, thigh:{ min:6,max:9 }, knee:{ min:4,max:7 },
-  },
-  wide: {
-    waist:{ min:1.5,max:4 }, seat:{ min:10,max:14 }, thigh:{ min:8,max:12 }, knee:{ min:8,max:14 },
-  },
-  cropped: {
-    waist:{ min:1,max:3 }, seat:{ min:6,max:9 }, thigh:{ min:4,max:7 }, knee:{ min:3,max:5 },
-  },
-  other: {
-    waist:{ min:1.5,max:3.5 }, seat:{ min:7,max:10 }, thigh:{ min:5,max:8 }, knee:{ min:4,max:6 },
-  },
 };
 
 function round(value:number){ return Math.round(value*10)/10; }
@@ -80,13 +46,13 @@ function anchor(label:string,bodyCm:number,basis:FinishedTarget["basis"]="record
   return { label, bodyCm:round(bodyCm), finishedCm:direct(bodyCm), basis };
 }
 
-function shirtFitClass(style:DesignerStyle):FitClass {
+function shirtFitClass(style:DesignerStyle):ShirtEaseClass {
   const value=style.shirtFit.toLowerCase();
   if(value.includes("slim")) return "slim";
   if(value.includes("relaxed")) return "relaxed";
   return "regular";
 }
-function trouserFitClass(style:DesignerStyle):TrouserClass {
+function trouserFitClass(style:DesignerStyle):TrouserEaseClass {
   const value=style.trouser.toLowerCase();
   if(value.includes("wide")||value.includes("relaxed")) return "wide";
   if(value.includes("pleat")) return "pleated";
@@ -115,7 +81,7 @@ export function assessFitConstruction(
   ];
   if(!profile){
     return {
-      version:"fit-construction-provisional-1",status:"insufficient_measurements",source:"provisional_house_defaults",
+      version:"fit-construction-provisional-1",status:"insufficient_measurements",source:"provisional_house_defaults",easeTableVersion:HOUSE_EASE_TABLE_VERSION,
       shirtTargets:[],trouserTargets:[],checks:[{id:"FIT-DATA",severity:"review",message:"Add body measurements before the Designer can assess fit and construction."}],
       fitScore:50,caveats,
     };
@@ -126,8 +92,8 @@ export function assessFitConstruction(
   const trouserTargets:FinishedTarget[]=[];
   const sf=shirtFitClass(style);
   const tf=trouserFitClass(style);
-  const se=SHIRT_EASE[sf];
-  const te=TROUSER_EASE[tf];
+  const se=HOUSE_SHIRT_EASE[sf];
+  const te=HOUSE_TROUSER_EASE[tf];
 
   if(profile.shirt.neck) shirtTargets.push(target("Finished collar circumference",profile.shirt.neck,se.neck));
   if(profile.shirt.chest) shirtTargets.push(target("Finished shirt chest",profile.shirt.chest,se.chest));
@@ -238,6 +204,7 @@ export function assessFitConstruction(
     version:"fit-construction-provisional-1",
     status:dataCount>=6?"provisional":"insufficient_measurements",
     source:"provisional_house_defaults",
+    easeTableVersion:HOUSE_EASE_TABLE_VERSION,
     shirtTargets,trouserTargets,checks,fitScore,caveats,
   };
 }

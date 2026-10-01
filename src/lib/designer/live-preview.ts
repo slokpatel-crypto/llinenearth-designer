@@ -82,6 +82,23 @@ export function photoFabricPatternScale(asset:FabricRenderAsset|null,fallback:nu
   return clamp(photoTilePx/PHOTO_SWATCH_TILE_PX,.12,1.6);
 }
 
+export function visiblePatternScaleVerified(patternType:string,asset:FabricRenderAsset|null) {
+  if(patternType.toLowerCase()==="solid") return true;
+  return asset?.scaleApproximate===false && Boolean(asset.tileRealWidthMm && asset.tileRealWidthMm>0);
+}
+
+/**
+ * Expected visible repeat spacing in the 1024px photographic mannequin
+ * coordinate system. This is a deterministic audit value, not image vision:
+ * it proves the renderer's scale math when a measured repeat is available.
+ */
+export function photoExpectedRepeatPx(asset:FabricRenderAsset|null) {
+  if(!asset || asset.scaleApproximate!==false || !asset.repeatPeriodPx || asset.repeatPeriodPx<=0) return null;
+  const scale=photoFabricPatternScale(asset,1);
+  const repeatInSwatchTile=asset.repeatPeriodPx*(PHOTO_SWATCH_TILE_PX/asset.tileWidthPx);
+  return repeatInSwatchTile*scale;
+}
+
 const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
 const n=(value:unknown,fallback:number)=>typeof value==="number"&&Number.isFinite(value)?value:fallback;
 const param=(id:string,key:string,fallback:number)=>n(optionById(id)?.parameters[key],fallback);

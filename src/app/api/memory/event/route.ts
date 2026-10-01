@@ -17,6 +17,7 @@ const PUBLIC_TYPES = new Set([
   "designer_preview_opened",
   "designer_feedback",
   "designer_override",
+  "design_locked",
   "whatsapp_clicked",
 ]);
 
@@ -239,6 +240,62 @@ function cleanPayload(type:string, input:unknown) {
       const final=Object.fromEntries(fields.map((field)=>[field,text(finalInput[field],80)]));
       return {subtype,version,fabricId,profileId,analyzerVersion,original,final,note:text(payload.note,600)};
     }
+    if (subtype === "measurement_calibration_case") {
+      const version=text(payload.version,80);
+      const caseId=text(payload.caseId,80);
+      const selfChest=Number(payload.selfChestCm);
+      const tailorChest=Number(payload.tailorChestCm);
+      const selfSleeve=Number(payload.selfSleeveCm);
+      const tailorSleeve=Number(payload.tailorSleeveCm);
+      if(version!=="measurement-calibration-v1" || !caseId) return null;
+      if(![selfChest,tailorChest].every((value)=>Number.isFinite(value)&&value>=50&&value<=200)) return null;
+      if(![selfSleeve,tailorSleeve].every((value)=>Number.isFinite(value)&&value>=30&&value<=100)) return null;
+      return {
+        subtype,
+        version,
+        caseId,
+        selfChestCm:Math.round(selfChest*10)/10,
+        tailorChestCm:Math.round(tailorChest*10)/10,
+        selfSleeveCm:Math.round(selfSleeve*10)/10,
+        tailorSleeveCm:Math.round(tailorSleeve*10)/10,
+        note:text(payload.note,500),
+      };
+    }
+
+    if (subtype === "roadmap_phase1_proof") {
+      const version=text(payload.version,80);
+      const status=text(payload.status,20);
+      const fabricId=text(payload.fabricId,160);
+      const fabricName=text(payload.fabricName,160);
+      const pattern=text(payload.pattern,120);
+      const repeatMmRaw=Number(payload.repeatMm);
+      const measuredPreviewRepeatPxRaw=Number(payload.measuredPreviewRepeatPx);
+      const scaleErrorRaw=Number(payload.scaleErrorPct);
+      const realP95Raw=Number(payload.realModelP95Ms);
+      const ratings=Array.isArray(payload.realismRatings)
+        ? payload.realismRatings.map((item)=>Math.round(Number(item))).filter((item)=>item>=1&&item<=5).slice(0,30)
+        : [];
+      if(version!=="linen-earth-phase1-proof-v1" || !fabricId || !["accepted","review"].includes(status)) return null;
+      return {
+        subtype,
+        version,
+        status,
+        fabricId,
+        fabricName,
+        pattern,
+        repeatMm:Number.isFinite(repeatMmRaw)&&repeatMmRaw>0&&repeatMmRaw<=1000?Math.round(repeatMmRaw*100)/100:null,
+        measuredPreviewRepeatPx:Number.isFinite(measuredPreviewRepeatPxRaw)&&measuredPreviewRepeatPxRaw>0?Math.round(measuredPreviewRepeatPxRaw*100)/100:null,
+        scaleErrorPct:Number.isFinite(scaleErrorRaw)&&scaleErrorRaw>=0?Math.round(scaleErrorRaw*100)/100:null,
+        scaleGatePass:payload.scaleGatePass===true,
+        realModelSamples:Math.max(0,Math.min(500,Math.floor(Number(payload.realModelSamples)||0))),
+        realModelP95Ms:Number.isFinite(realP95Raw)&&realP95Raw>=0?Math.round(realP95Raw*10)/10:null,
+        realismRatings:ratings,
+        strongRatings:Math.max(0,Math.min(30,Math.floor(Number(payload.strongRatings)||0))),
+        realismPass:payload.realismPass===true,
+        note:text(payload.note,700),
+      };
+    }
+
     if (subtype === "designer_device_qa") {
       const deviceClass=text(payload.deviceClass,20);
       const status=text(payload.status,20);
@@ -452,6 +509,26 @@ function cleanPayload(type:string, input:unknown) {
       ...(imageUrl ? { imageUrl } : {}),
       label: text(payload.label,120),
       generatedAt: Number.isNaN(generated.getTime()) ? undefined : generated.toISOString(),
+    };
+  }
+
+  if (type === "design_locked") {
+    const revisionId=text(payload.revisionId,180);
+    const recipeHash=text(payload.recipeHash,128);
+    const shirtId=text(payload.shirtId,140);
+    const pantId=text(payload.pantId,140);
+    const occasion=text(payload.occasion,40);
+    const status=text(payload.status,40);
+    if(!revisionId || !/^[a-f0-9]{64}$/i.test(recipeHash) || !shirtId || !pantId) return null;
+    if(occasion && !["Casual","Smart-Casual","Semi-Formal","Formal"].includes(occasion)) return null;
+    return {
+      revisionId,
+      recipeHash:recipeHash.toLowerCase(),
+      shirtId,
+      pantId,
+      occasion,
+      status:["draft","review_required","ready_for_tailor_review"].includes(status)?status:"draft",
+      parentRevisionId:text(payload.parentRevisionId,180),
     };
   }
 

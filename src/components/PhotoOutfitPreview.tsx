@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
 import type { StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import type { BodyPreviewProfile } from "@/lib/designer/body-profile";
-import { photoFabricPatternScale, type FabricRenderAsset } from "@/lib/designer/live-preview";
+import { applyRuntimeFabricScale, photoFabricPatternScale, visiblePatternScaleVerified, type FabricRenderAsset } from "@/lib/designer/live-preview";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import fabricTileManifest from "../../public/fabric-tiles/manifest.json";
 import { CREATIVE_FEEDBACK_REASONS, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
@@ -72,7 +72,8 @@ function loadFabricImage(fabric:DesignerFabric):Promise<HTMLImageElement> {
 }
 function fabricRenderAsset(fabric:DesignerFabric):FabricRenderAsset|null {
   const stem=fabric.image.split("/").pop()?.replace(/\.webp(?:\?.*)?$/,"")||"";
-  return (fabricTileManifest.assets as Record<string,FabricRenderAsset>)[stem] || null;
+  const asset=(fabricTileManifest.assets as Record<string,FabricRenderAsset>)[stem] || null;
+  return applyRuntimeFabricScale(asset,fabric.renderScale);
 }
 function fabricOrientation(fabric:DesignerFabric) {
   const entry=fabricRenderAsset(fabric);
@@ -326,13 +327,29 @@ function drawGarment(
   context.filter = lightingFilter;
   context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
 
-  // Reintroduce a small amount of the photograph's high-level seam/fold
-  // information after recolouring. Grayscale + soft-light preserves garment
-  // construction without bringing the original cloth colour back.
-  context.filter = "grayscale(1) contrast(1.22) brightness(1.05)";
+  // Reintroduce photographic folds and seams without restoring the source
+  // garment colour. Two restrained passes work better than one heavy pass:
+  // broad folds stay dimensional while fine wrinkles keep the cloth from
+  // reading like a flat sticker.
+  context.filter = "grayscale(1) contrast(1.18) brightness(1.04)";
   context.globalCompositeOperation = "soft-light";
-  context.globalAlpha = .24;
+  context.globalAlpha = .22;
   context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
+
+  context.filter = "grayscale(1) contrast(1.48) brightness(1.02)";
+  context.globalCompositeOperation = "overlay";
+  context.globalAlpha = .09;
+  context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
+
+  // Put a faint copy of the real textile back above the lighting model. This
+  // keeps weave / print micro-detail visible in highlights, where multiply
+  // alone tends to wash the source cloth into a smooth painted surface.
+  context.filter = "none";
+  context.globalCompositeOperation = "soft-light";
+  context.globalAlpha = fabric.patternType === "Solid" ? .12 : .16;
+  context.fillStyle = pattern;
+  context.fillRect(0, 0, WIDTH, HEIGHT);
+
   context.globalAlpha = 1;
   context.filter = "none";
 
@@ -579,12 +596,15 @@ export function composePhotoOutfit(
   }
 }
 
-export function StyleDirectorRealModelPreview({shirt,pant,style}:{
+export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured}:{
   shirt:DesignerFabric;
   pant:DesignerFabric;
   style:DesignerStyle;
+  onRenderMeasured?:(milliseconds:number)=>void;
 }) {
   const canvasRef=useRef<HTMLCanvasElement>(null);
+  const onRenderMeasuredRef=useRef(onRenderMeasured);
+  onRenderMeasuredRef.current=onRenderMeasured;
   const [ready,setReady]=useState(false);
   const [error,setError]=useState(false);
   const templateId=photoTemplateForStyle(style);
@@ -593,6 +613,7 @@ export function StyleDirectorRealModelPreview({shirt,pant,style}:{
 
   useEffect(()=>{
     let cancelled=false;
+    const started=performance.now();
     setReady(false);
     setError(false);
     Promise.all([
@@ -608,6 +629,9 @@ export function StyleDirectorRealModelPreview({shirt,pant,style}:{
       composePhotoOutfit(context,modelPhoto,trouserPhoto,shirtImage,pantImage,shirt,pant,style);
       setReady(true);
       setError(false);
+      requestAnimationFrame(()=>{
+        if(!cancelled) onRenderMeasuredRef.current?.(performance.now()-started);
+      });
     }).catch(()=>{
       if(cancelled) return;
       setReady(false);
@@ -674,6 +698,15 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
   const gaps = photoTemplateGaps(style, templateId);
   const tucked = style.shirtWear === "Tucked";
   const creativeCoverage = creativePreviewCoverage(creativeDirection || undefined);
+  const shirtPreviewAsset=fabricRenderAsset(shirt);
+  const pantPreviewAsset=fabricRenderAsset(pant);
+  const shirtPatternScaleVerified=visiblePatternScaleVerified(shirt.patternType,shirtPreviewAsset);
+  const pantPatternScaleVerified=visiblePatternScaleVerified(pant.patternType,pantPreviewAsset);
+  const previewScaleVerified=shirtPatternScaleVerified&&pantPatternScaleVerified;
+  const approximateScaleItems=[
+    ...(shirtPatternScaleVerified?[]:[shirt.name]),
+    ...(pantPatternScaleVerified?[]:[pant.name]),
+  ];
   const renderSignature=JSON.stringify({
     shirt:shirt.id,
     pant:pant.id,
@@ -1005,7 +1038,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         <button type="button" onClick={download} disabled={!ready}>Save</button>
       </div>
     </div>
-    {!showCreativeAi && <p className="newDesignerPhotoApproximation"><strong>Instant preview</strong> · Studio model; pattern scale, fit and drape are approximate until verified on a physical sample. FASHN is reserved for the locked final design.</p>}
+    {!showCreativeAi && <p className="newDesignerPhotoApproximation"><strong>Instant preview</strong> · Studio model; {previewScaleVerified ? "pattern scale uses reviewed physical evidence where a visible repeat exists" : "pattern scale is still approximate for "+approximateScaleItems.join(" / ")}. Fit and drape still require physical verification. FASHN is reserved for the locked final design.</p>}
     {!creativeDirection && finalLocked && !creativeAi && <p className="newDesignerPhotoLock"><strong>FINAL DESIGN LOCKED</strong> · Any fabric or construction change automatically unlocks it before another AI render.</p>}
     {creativeAi?.cached && <p className="newDesignerPhotoCache">Cached final render reused · no new FASHN generation was needed.</p>}
     {creativeAi && !creativeDirection && <div className="newDesignerPhotoViews" role="group" aria-label="Photoreal model views">

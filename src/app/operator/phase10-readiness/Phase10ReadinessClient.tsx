@@ -65,6 +65,45 @@ type ConstructionPayload={
   rejected:number;
 };
 
+type LaunchMetricsPayload={
+  configured:boolean;
+  counts?:Record<string,number>;
+  totals?:{sessions:number;renders:number;whatsapp:number;sales:number};
+};
+
+type MeasurementCalibrationPayload={
+  configured:boolean;
+  summary:{
+    target:number;
+    total:number;
+    medianChestErrorCm:number|null;
+    medianSleeveErrorCm:number|null;
+    chestPass:boolean;
+    sleevePass:boolean;
+    complete:boolean;
+  };
+};
+
+type Phase1ProofPayload={
+  configured:boolean;
+  latest:{
+    at:string;
+    status:string;
+    fabricId:string;
+    fabricName:string;
+    pattern:string;
+    repeatMm:number|null;
+    scaleErrorPct:number|null;
+    scaleGatePass:boolean;
+    realModelSamples:number;
+    realModelP95Ms:number|null;
+    realismRatings:number[];
+    strongRatings:number;
+    realismPass:boolean;
+    note:string;
+  }|null;
+};
+
 type DeviceQaPayload={
   configured:boolean;
   latest:Record<string,{status:string;viewport:string;p95Ms:number|null;samples:number;at:string}>;
@@ -82,6 +121,9 @@ type RenderCachePayload={
 };
 
 type LoadState={
+  phase1Proof:Phase1ProofPayload|null;
+  measurementCalibration:MeasurementCalibrationPayload|null;
+  launchMetrics:LaunchMetricsPayload|null;
   designerData:DesignerDataPayload|null;
   analyzer:AnalyzerStatsPayload|null;
   analyzerScorecard:AnalyzerScorecardPayload|null;
@@ -110,7 +152,7 @@ function ratio(value:number,total:number){return total>0?clamp(value/total*100):
 
 export default function Phase10ReadinessClient(){
   const [data,setData]=useState<LoadState>({
-    designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,
+    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,
   });
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
@@ -128,7 +170,10 @@ export default function Phase10ReadinessClient(){
   async function load(){
     setLoading(true);setMessage("");
     try{
-      const [designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache]=await Promise.all([
+      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache]=await Promise.all([
+        read<Phase1ProofPayload>("/api/operator/phase1-proof"),
+        read<MeasurementCalibrationPayload>("/api/operator/measurement-calibration"),
+        read<LaunchMetricsPayload>("/api/operator/cloud-summary?days=60"),
         read<DesignerDataPayload>("/api/operator/designer-data"),
         read<AnalyzerStatsPayload>("/api/operator/fabric-analyzer/stats"),
         read<AnalyzerScorecardPayload>("/api/operator/fabric-ground-truth/scorecard"),
@@ -137,7 +182,7 @@ export default function Phase10ReadinessClient(){
         read<DeviceQaPayload>("/api/operator/device-qa"),
         read<RenderCachePayload>("/api/operator/designer-render-cache/stats"),
       ]);
-      setData({designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache});
+      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache});
     }catch(error){
       setMessage(error instanceof Error?error.message:"Readiness data could not be loaded.");
     }finally{
@@ -148,6 +193,27 @@ export default function Phase10ReadinessClient(){
   useEffect(()=>{void load();},[]);
 
   const rows=useMemo<ReadinessRow[]>(()=>{
+    const launchCounts=data.launchMetrics?.counts||{};
+    const launchLocked=Math.max(0,Number(launchCounts.design_locked)||0);
+    const launchEnquiries=Math.max(0,Number(launchCounts.whatsapp_clicked)||0);
+    const launchDesignProgress=ratio(launchLocked,100);
+    const launchEnquiryProgress=ratio(launchEnquiries,20);
+    const launch1Progress=Math.round((launchDesignProgress+launchEnquiryProgress)/2);
+    const launch1Done=launchLocked>=100&&launchEnquiries>=20;
+
+    const measurement=data.measurementCalibration?.summary;
+    const measurementCountProgress=ratio(measurement?.total||0,measurement?.target||10);
+    const measurementAccuracySignals=[measurement?.chestPass===true,measurement?.sleevePass===true].filter(Boolean).length;
+    const measurementProgress=Math.round((measurementCountProgress+ratio(measurementAccuracySignals,2))/2);
+    const measurementDone=measurement?.complete===true;
+
+    const proof=data.phase1Proof?.latest||null;
+    const proofScale=proof?.scaleGatePass===true;
+    const proofLatency=Boolean(proof && proof.realModelSamples>=12 && proof.realModelP95Ms!==null && proof.realModelP95Ms<300);
+    const proofRealism=proof?.realismPass===true;
+    const proofProgress=ratio([proofScale,proofLatency,proofRealism].filter(Boolean).length,3);
+    const proofDone=Boolean(proof?.status==="accepted" && proofScale && proofLatency && proofRealism);
+
     const coverage=data.designerData?.coverage;
     const active=coverage?.activeCandidates||0;
     const evidenceSignals=coverage
@@ -189,6 +255,51 @@ export default function Phase10ReadinessClient(){
     const cacheProgress=cache?.distinct_pairs ? clamp(Math.min(100,cache.distinct_pairs*10)) : 0;
 
     return [
+      {
+        id:"premium-shirt-proof",
+        title:"Roadmap v2 premium shirt proof",
+        detail:proofDone
+          ? `${proof?.fabricName||"Selected fabric"} passed physical scale, real-model latency and 8-viewer realism evidence.`
+          : proof
+            ? `Latest proof is ${proof.status}. Scale ${proofScale?"passes":"needs evidence"}, real-model latency ${proofLatency?"passes":"needs evidence"}, realism ${proofRealism?"passes":"needs evidence"}.`
+            : "No operator-recorded Premium Shirt Proof evidence yet.",
+        status:proofDone?"done":data.phase1Proof?"progress":"blocked",
+        progress:proofProgress,
+        metric:proof
+          ? `${proof.fabricName||proof.fabricId} · scale ${proof.scaleErrorPct??"—"}% · p95 ${proof.realModelP95Ms??"—"} ms · ${proof.strongRatings}/${proof.realismRatings.length} strong realism ratings`
+          : "No recorded proof",
+        href:"/lab/proof",
+        action:"Open Premium Shirt Proof",
+        ownerDependent:true,
+      },
+      {
+        id:"launch1-traction",
+        title:"Launch 1 usage evidence",
+        detail:launch1Done
+          ? "The current evidence window has reached the roadmap usage targets for locked designs and WhatsApp enquiries."
+          : `${Math.max(0,100-launchLocked)} more locked designs and ${Math.max(0,20-launchEnquiries)} more WhatsApp enquiries remain against the current Launch 1 targets.`,
+        status:launch1Done?"done":data.launchMetrics?.configured?"progress":"blocked",
+        progress:launch1Progress,
+        metric:`${launchLocked}/100 locked designs · ${launchEnquiries}/20 enquiries`,
+        href:"/operator",
+        action:"Open conversion funnel",
+        ownerDependent:true,
+      },
+      {
+        id:"measurement-calibration",
+        title:"Measurement accuracy calibration",
+        detail:measurementDone
+          ? `10+ real self-vs-tailor cases meet the chest and sleeve median-error targets.`
+          : measurement
+            ? `${Math.max(0,(measurement.target||10)-measurement.total)} more unique cases remain. Median chest ${measurement.medianChestErrorCm??"—"} cm; sleeve ${measurement.medianSleeveErrorCm??"—"} cm.`
+            : "No measurement calibration evidence is available yet.",
+        status:measurementDone?"done":data.measurementCalibration?"progress":"blocked",
+        progress:measurementProgress,
+        metric:measurement?`${measurement.total}/${measurement.target} cases · chest ${measurement.chestPass?"pass":"review"} · sleeve ${measurement.sleevePass?"pass":"review"}`:"No evidence",
+        href:"/operator/measurement-calibration",
+        action:"Record measurement cases",
+        ownerDependent:true,
+      },
       {
         id:"fabric-evidence",
         title:"Fabric evidence coverage",

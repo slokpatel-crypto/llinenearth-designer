@@ -15,6 +15,9 @@ import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measuremen
 import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
 import { canonicalGarmentSpecSummary } from "@/lib/designer/garment-spec";
+import { lockGarmentSpec, type LockedDesignRevision } from "@/lib/designer/design-lock";
+import { buildProductionHandoff } from "@/lib/designer/production-handoff";
+import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-pack";
 import type { DesignerAssessmentResponse } from "@/lib/designer/assessment-types";
 import type { DesignerSearchScope, DesignerSearchTier } from "@/lib/designer/search";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
@@ -151,6 +154,11 @@ export function DesignerModule() {
   const [assessment,setAssessment]=useState<DesignerAssessmentResponse|null>(null);
   const [assessmentLoading,setAssessmentLoading]=useState(false);
   const [assessmentError,setAssessmentError]=useState("");
+  const [lockedRevision,setLockedRevision]=useState<LockedDesignRevision|null>(null);
+  const [lastLockedRevisionId,setLastLockedRevisionId]=useState<string|null>(null);
+  const [lockBusy,setLockBusy]=useState(false);
+  const [shareBusy,setShareBusy]=useState(false);
+  const [shareMessage,setShareMessage]=useState("");
   const [creativeDirections, setCreativeDirections] = useState<CreativeDirection[]>([]);
   const [activeCreative, setActiveCreative] = useState<CreativeDirection | null>(null);
   const [creativeAutoNote,setCreativeAutoNote]=useState("");
@@ -191,6 +199,10 @@ export function DesignerModule() {
   const negotiation=assessment?.negotiation || null;
   const brandLanguage=assessment?.brandLanguage || null;
   const garmentSpec=assessment?.garmentSpec || null;
+
+  useEffect(()=>{
+    setLockedRevision(null);
+  },[shirtId,pantId,styleSpec,bodyProfile,measurementProfile,activeCreative]);
 
   useEffect(() => {
     try {
@@ -925,6 +937,90 @@ export function DesignerModule() {
     URL.revokeObjectURL(url);
   }
 
+  async function lockAndDownloadRevision() {
+    if(!garmentSpec || lockBusy) return;
+    setLockBusy(true);
+    try {
+      const revision=await lockGarmentSpec(garmentSpec,{parentRevisionId:lastLockedRevisionId});
+      setLockedRevision(revision);
+      setLastLockedRevisionId(revision.revisionId);
+      recordStyleMemoryEvent(designerSession(),"design_locked",{
+        revisionId:revision.revisionId,
+        recipeHash:revision.recipeHash,
+        parentRevisionId:revision.parentRevisionId,
+        shirtId:revision.garmentSpec.fabrics.shirt.id,
+        pantId:revision.garmentSpec.fabrics.trouser.id,
+        occasion:revision.garmentSpec.context.occasion,
+        status:revision.garmentSpec.status,
+      });
+      const blob=new Blob([JSON.stringify(revision,null,2)],{type:"application/json"});
+      const url=URL.createObjectURL(blob);
+      const anchor=document.createElement("a");
+      anchor.href=url;
+      anchor.download=`linen-earth-${revision.revisionId.toLowerCase()}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setLockBusy(false);
+    }
+  }
+
+  function downloadProductionHandoff() {
+    if(!lockedRevision) return;
+    const handoff=buildProductionHandoff(lockedRevision);
+    const blob=new Blob([JSON.stringify(handoff,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const anchor=document.createElement("a");
+    anchor.href=url;
+    anchor.download=`linen-earth-production-handoff-${lockedRevision.revisionId.toLowerCase()}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function downloadTailorTechPack() {
+    if(!lockedRevision) return;
+    const handoff=buildProductionHandoff(lockedRevision);
+    const html=buildTailorTechPackHtml(handoff);
+    const blob=new Blob([html],{type:"text/html;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const anchor=document.createElement("a");
+    anchor.href=url;
+    anchor.download=techPackFilename(handoff);
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function shareLockedRevision() {
+    if(!lockedRevision||shareBusy) return;
+    setShareBusy(true);setShareMessage("");
+    try{
+      const response=await fetch("/api/designer/share",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify(lockedRevision),
+      });
+      const result=await response.json() as {token?:string;expiresInDays?:number;error?:string};
+      if(!response.ok||!result.token) throw new Error(result.error||"Share link could not be created.");
+      const url=new URL(`/share/${result.token}`,window.location.origin).toString();
+      try{
+        await navigator.clipboard.writeText(url);
+        setShareMessage(`Share link copied · expires in ${result.expiresInDays||30} days.`);
+      }catch{
+        setShareMessage(url);
+      }
+    }catch(error){
+      setShareMessage(error instanceof Error?error.message:"Share link could not be created.");
+    }finally{
+      setShareBusy(false);
+    }
+  }
+
   return <div className="newDesigner">
     <header className="newDesignerHero">
       <div className="newDesignerHeroCopy">
@@ -1249,7 +1345,17 @@ export function DesignerModule() {
             {fitConstruction && <p><b>Fit/construction:</b> Tailoring checks are active.</p>}
             {blockStrategy && <p><b>Starting block:</b> {blockStrategy.shirtBlock.replaceAll("-"," ")} + {blockStrategy.trouserBlock.replaceAll("-"," ")}</p>}
             {negotiation?.blockers.slice(0,2).map((item)=><p key={item.id}>{item.message}</p>)}
-            {garmentSpec && <button type="button" onClick={downloadGarmentSpec}>Export garment spec ↗</button>}
+            {garmentSpec && <>
+              <button type="button" onClick={downloadGarmentSpec}>Export garment spec ↗</button>
+              <button type="button" onClick={()=>void lockAndDownloadRevision()} disabled={lockBusy}>{lockBusy?"Locking…":"Lock recipe revision ↗"}</button>
+              {lockedRevision&&<>
+                <p><b>Locked revision:</b> {lockedRevision.revisionId} · recipe {lockedRevision.recipeHash.slice(0,12).toUpperCase()}</p>
+                <button type="button" onClick={downloadProductionHandoff}>Export tailor handoff ↗</button>
+                <button type="button" onClick={downloadTailorTechPack}>Export printable tech pack ↗</button>
+                <button type="button" onClick={()=>void shareLockedRevision()} disabled={shareBusy}>{shareBusy?"Creating share…":"Copy private share link ↗"}</button>
+                {shareMessage&&<p>{shareMessage}</p>}
+              </>}
+            </>}
           </details>
         </>}
       </section>
