@@ -26,8 +26,10 @@ export default function NoviceDesignerStudyClient(){
   const [decisions,setDecisions]=useState<NoviceDesignerDecisionRow[]>([]);
   const [caseId,setCaseId]=useState("");
   const [deviceClass,setDeviceClass]=useState<NoviceDesignerDevice>("mobile");
-  const [minutes,setMinutes]=useState("");
-  const [seconds,setSeconds]=useState("");
+  const [timingSessionId,setTimingSessionId]=useState("");
+  const [timerStartedAt,setTimerStartedAt]=useState("");
+  const [timerFinishedSeconds,setTimerFinishedSeconds]=useState<number|null>(null);
+  const [timerNow,setTimerNow]=useState(Date.now());
   const [noviceConfirmed,setNoviceConfirmed]=useState(true);
   const [likedDesignCompleted,setLikedDesignCompleted]=useState(false);
   const [blockingIssue,setBlockingIssue]=useState(false);
@@ -52,6 +54,11 @@ export default function NoviceDesignerStudyClient(){
     setDecisions(Array.isArray(data.decisions)?data.decisions:[]);
   }
   useEffect(()=>{void load();},[]);
+  useEffect(()=>{
+    if(!timerStartedAt||timerFinishedSeconds!==null) return;
+    const id=window.setInterval(()=>setTimerNow(Date.now()),1000);
+    return ()=>window.clearInterval(id);
+  },[timerStartedAt,timerFinishedSeconds]);
 
   const summary=useMemo(()=>summarizeNoviceDesignerStudy(attempts,decisions),[attempts,decisions]);
   const latestAttempts=useMemo(()=>{
@@ -62,7 +69,7 @@ export default function NoviceDesignerStudyClient(){
     return [...map.values()];
   },[attempts]);
 
-  const observedSeconds=(Math.max(0,Number(minutes)||0)*60)+Math.max(0,Number(seconds)||0);
+  const observedSeconds=timerFinishedSeconds ?? (timerStartedAt?Math.max(0,Math.floor((timerNow-Date.parse(timerStartedAt))/1000)):0);
   const enteredTargetSeconds=(Math.max(0,Number(targetMinutes)||0)*60)+Math.max(0,Number(targetSecondsRemainder)||0);
   const decisionTargetSeconds=enteredTargetSeconds||summary.targetSeconds||0;
 
@@ -84,14 +91,51 @@ export default function NoviceDesignerStudyClient(){
     }finally{setBusy(false);}
   }
 
+  async function timerAction(body:Record<string,unknown>){
+    if(busy) return null;
+    setBusy(true);setMessage("");
+    try{
+      const response=await fetch("/api/operator/novice-designer-study",{
+        method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body),
+      });
+      const data=await response.json();
+      if(!response.ok) throw new Error(data.error||"Novice timing action failed.");
+      return data as Record<string,unknown>;
+    }catch(error){
+      setMessage(error instanceof Error?error.message:"Novice timing action failed.");
+      return null;
+    }finally{setBusy(false);}
+  }
+
+  async function startTimer(){
+    const data=await timerAction({action:"start_timer",caseId,deviceClass});
+    const session=data?.session as {session_id?:string;started_at?:string}|undefined;
+    if(!session?.session_id||!session.started_at) return;
+    setTimingSessionId(session.session_id);
+    setTimerStartedAt(session.started_at);
+    setTimerFinishedSeconds(null);
+    setTimerNow(Date.now());
+    setMessage("Server stopwatch started. Open the customer Designer and observe the novice flow.");
+  }
+
+  async function finishTimer(){
+    if(!timingSessionId) return;
+    const data=await timerAction({action:"finish_timer",timingSessionId});
+    const session=data?.session as {duration_seconds?:number}|undefined;
+    if(!session||!Number.isFinite(Number(session.duration_seconds))) return;
+    setTimerFinishedSeconds(Number(session.duration_seconds));
+    setMessage("Server stopwatch stopped. Record the observed outcome below.");
+  }
+
   async function recordAttempt(){
+    if(!timingSessionId||timerFinishedSeconds===null) return;
     const saved=await post({
-      action:"record_attempt",
-      caseId,deviceClass,durationSeconds:observedSeconds,
+      action:"record_timed_attempt",
+      timingSessionId,
       noviceConfirmed,likedDesignCompleted,blockingIssue,note,
-    },"Observed novice Designer attempt recorded.");
+    },"Server-timed novice Designer attempt recorded.");
     if(saved){
-      setCaseId("");setMinutes("");setSeconds("");
+      setCaseId("");setTimingSessionId("");setTimerStartedAt("");setTimerFinishedSeconds(null);
       setLikedDesignCompleted(false);setBlockingIssue(false);setNote("");
     }
   }
@@ -121,7 +165,7 @@ export default function NoviceDesignerStudyClient(){
 
       <section style={{...panel,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:12}}>
         <article><small>UNIQUE CASES</small><div style={{fontSize:34,fontWeight:800}}>{summary.uniqueCases}</div></article>
-        <article><small>LIKED DESIGN / CLEAN</small><div style={{fontSize:34,fontWeight:800}}>{summary.likedDesignCases}</div></article>
+        <article><small>SERVER-TIMED / CLEAN</small><div style={{fontSize:34,fontWeight:800}}>{summary.serverTimedLikedCases}</div><small>{summary.likedDesignCases} clean total</small></article>
         <article><small>WITHIN TARGET</small><div style={{fontSize:34,fontWeight:800}}>{summary.targetSeconds?summary.withinTargetCases:"—"}<span style={{fontSize:16,opacity:.45}}>{summary.targetSeconds?" / 5":""}</span></div></article>
         <article><small>MEDIAN LIKED TIME</small><div style={{fontSize:27,fontWeight:800}}>{durationLabel(summary.medianLikedDesignSeconds)}</div></article>
         <article><small>DOCUMENTED TARGET</small><div style={{fontSize:27,fontWeight:800}}>{durationLabel(summary.targetSeconds)}</div></article>
@@ -131,19 +175,22 @@ export default function NoviceDesignerStudyClient(){
       <section style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(350px,1fr))",gap:18}}>
         <article style={panel}>
           <h2 style={{marginTop:0}}>1. Record an observed novice attempt</h2>
-          <p style={{fontSize:13,opacity:.65,lineHeight:1.55}}>Use an anonymous ID only. Do not enter the tester’s name, email, phone number, measurements or other identifying information.</p>
+          <p style={{fontSize:13,opacity:.65,lineHeight:1.55}}>Use an anonymous ID only. Start the server stopwatch immediately before the novice begins, then stop it when they finish. Do not enter identifying information.</p>
           <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:11}}>
             <label><span>Anonymous case ID</span><input style={input} value={caseId} onChange={(e)=>setCaseId(e.target.value.slice(0,80))} placeholder="NOVICE-001"/></label>
             <label><span>Device</span><select style={input} value={deviceClass} onChange={(e)=>setDeviceClass(e.target.value as NoviceDesignerDevice)}><option value="mobile">Mobile</option><option value="tablet">Tablet</option><option value="desktop">Desktop</option></select></label>
-            <label><span>Observed minutes</span><input style={input} type="number" min="0" max="120" value={minutes} onChange={(e)=>setMinutes(e.target.value)}/></label>
-            <label><span>Extra seconds</span><input style={input} type="number" min="0" max="59" value={seconds} onChange={(e)=>setSeconds(e.target.value)}/></label>
+            <div style={{gridColumn:"1/-1",display:"flex",gap:10,flexWrap:"wrap"}}>
+              <button style={{...button,background:"#6b7a63"}} type="button" disabled={busy||caseId.trim().length<3||Boolean(timingSessionId)} onClick={()=>void startTimer()}>Start server stopwatch</button>
+              <button style={button} type="button" disabled={busy||!timingSessionId||timerFinishedSeconds!==null} onClick={()=>void finishTimer()}>Stop stopwatch</button>
+              <Link href="/designer-studio" target="_blank" rel="noreferrer">Open Designer ↗</Link>
+            </div>
             <label style={{gridColumn:"1/-1"}}><input type="checkbox" checked={noviceConfirmed} onChange={(e)=>setNoviceConfirmed(e.target.checked)}/> Tester was genuinely new to this Designer flow</label>
             <label style={{gridColumn:"1/-1"}}><input type="checkbox" checked={likedDesignCompleted} onChange={(e)=>setLikedDesignCompleted(e.target.checked)}/> Tester completed a design they said they liked</label>
             <label style={{gridColumn:"1/-1"}}><input type="checkbox" checked={blockingIssue} onChange={(e)=>setBlockingIssue(e.target.checked)}/> Blocking issue occurred</label>
             <label style={{gridColumn:"1/-1"}}><span>Observation note</span><textarea style={{...input,minHeight:90}} value={note} onChange={(e)=>setNote(e.target.value.slice(0,1200))} placeholder="Where they hesitated, what was confusing, or what worked smoothly."/></label>
           </div>
-          <div style={{margin:"14px 0",padding:12,borderRadius:10,background:"#f3f0ea"}}>Observed completion time: <strong>{durationLabel(observedSeconds||null)}</strong></div>
-          <button style={button} disabled={busy||caseId.trim().length<3||observedSeconds<1||observedSeconds>7200||(!note.trim()&&blockingIssue)} onClick={()=>void recordAttempt()}>{busy?"Saving…":"Record observed attempt"}</button>
+          <div style={{margin:"14px 0",padding:12,borderRadius:10,background:"#f3f0ea"}}>Server-observed completion time: <strong>{durationLabel(observedSeconds||null)}</strong><small style={{display:"block",opacity:.6,marginTop:4}}>{timerFinishedSeconds!==null?"Stopped and ready to record":timingSessionId?"Timer running":"Timer not started"}</small></div>
+          <button style={button} disabled={busy||!timingSessionId||timerFinishedSeconds===null||(!note.trim()&&blockingIssue)} onClick={()=>void recordAttempt()}>{busy?"Saving…":"Record server-timed attempt"}</button>
         </article>
 
         <article style={panel}>
@@ -160,7 +207,7 @@ export default function NoviceDesignerStudyClient(){
             <button style={{...button,background:"#6b7a63"}} disabled={busy||decisionTargetSeconds<1||signedBy.trim().length<2||decisionNote.trim().length<3} onClick={()=>void recordDecision("review")}>Keep in review</button>
             <button style={button} disabled={busy||decisionTargetSeconds<1||signedBy.trim().length<2} onClick={()=>void recordDecision("approved")}>Approve five-case gate</button>
           </div>
-          <p style={{fontSize:12,opacity:.62,lineHeight:1.55,marginTop:14}}>The database refuses approval unless five latest unique cases are confirmed novices, completed a liked design, had no blocking issue, and finished within this target.</p>
+          <p style={{fontSize:12,opacity:.62,lineHeight:1.55,marginTop:14}}>The database refuses approval unless five latest unique cases are server-timed, confirmed novices, completed a liked design, had no blocking issue, and finished within this target.</p>
         </article>
       </section>
 
@@ -170,11 +217,12 @@ export default function NoviceDesignerStudyClient(){
           {!latestAttempts.length&&<p style={{opacity:.65}}>No novice Designer observations recorded yet.</p>}
           {latestAttempts.slice(0,25).map((row)=>{
             const eligible=row.novice_confirmed&&row.liked_design_completed&&!row.blocking_issue;
-            const within=Boolean(summary.targetSeconds&&eligible&&row.duration_seconds<=summary.targetSeconds);
+            const serverTimed=Boolean(row.timing_session_id);
+            const within=Boolean(summary.targetSeconds&&eligible&&serverTimed&&row.duration_seconds<=summary.targetSeconds);
             return <article key={row.case_id} style={{borderTop:"1px solid #ece6dc",paddingTop:10}}>
               <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}><strong>{row.case_id}</strong><b>{summary.targetSeconds?(within?"WITHIN TARGET":"REVIEW"):(eligible?"LIKED DESIGN":"REVIEW")}</b></div>
               <div style={{fontSize:12,opacity:.62,marginTop:4}}>{row.device_class} · {durationLabel(row.duration_seconds)} · {new Date(row.created_at).toLocaleString("en-IN")}</div>
-              <div style={{fontSize:13,marginTop:6}}>Novice {row.novice_confirmed?"✓":"×"} · liked design {row.liked_design_completed?"✓":"×"} · blocking issue {row.blocking_issue?"yes":"no"}</div>
+              <div style={{fontSize:13,marginTop:6}}>Server timer {serverTimed?"✓":"legacy/manual"} · novice {row.novice_confirmed?"✓":"×"} · liked design {row.liked_design_completed?"✓":"×"} · blocking issue {row.blocking_issue?"yes":"no"}</div>
             </article>;
           })}
         </div>
