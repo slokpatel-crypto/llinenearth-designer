@@ -54,14 +54,15 @@ export async function POST(request:Request){
     const action=String(body.action||"");
     if(action==="record_verified_beta"){
       const draft=normalizeVerifiedBetaAttempt(body);
-      const attemptId=await rpc<string>("launch_beta_attempt_record_v3",{
+      const attemptId=await rpc<string>("launch_beta_attempt_record_v4",{
         p_case_id:draft.caseId,
         p_device_class:draft.deviceClass,
         p_revision_id:draft.revisionId,
+        p_evidence_kind:draft.evidenceKind,
         p_blocking_bug:draft.blockingBug,
         p_note:draft.note,
       });
-      return NextResponse.json({attemptId,verifiedShareAudit:true});
+      return NextResponse.json({attemptId,verifiedFlowAudit:true,evidenceKind:draft.evidenceKind});
     }
 
     if(action==="record_beta"){
