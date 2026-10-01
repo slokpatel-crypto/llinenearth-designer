@@ -73,7 +73,11 @@ export async function POST(request:Request){
     if(action==="record_outcome"){
       const orderId=String(body.orderId||"").trim();
       if(!uuid.test(orderId)) return NextResponse.json({error:"Valid order ID is required."},{status:400});
-      const outcome=normalizeCustomerProductionOutcome(body);
+      let outcome;
+      try{outcome=normalizeCustomerProductionOutcome(body);}
+      catch(error){
+        return NextResponse.json({error:error instanceof Error?error.message:"Invalid post-delivery feedback."},{status:400});
+      }
       const outcomeId=await rpc<string>("production_customer_outcome_record",{
         p_order_id:orderId,
         p_owner_user_id:customer.id,
@@ -92,7 +96,7 @@ export async function POST(request:Request){
   }catch(error){
     console.error("[customer-account/production]",error);
     return NextResponse.json(
-      {error:error instanceof Error?error.message:"Customer production action failed."},
+      {error:"Customer production action could not be completed."},
       {status:409},
     );
   }
