@@ -99,6 +99,11 @@ for (const path of [
   "src/app/operator/style-director-validation/StyleDirectorValidationClient.tsx",
   "supabase/migrations/20261009_style_director_user_validation.sql",
   "src/lib/designer/ease-calibration.ts",
+  "src/lib/designer/preview-option-coverage.ts",
+  "src/lib/designer/preview-option-reviews.ts",
+  "src/app/api/operator/preview-option-coverage/route.ts",
+  "src/app/operator/preview-option-coverage/page.tsx",
+  "src/app/operator/preview-option-coverage/PreviewOptionCoverageClient.tsx",
   "src/app/api/operator/ease-calibration/route.ts",
   "src/app/operator/ease-calibration/page.tsx",
   "src/app/operator/ease-calibration/EaseCalibrationClient.tsx",
@@ -156,6 +161,10 @@ requireTokens("src/app/api/operator/style-director-validation/route.ts", ["style
 requireTokens("src/app/operator/style-director-validation/StyleDirectorValidationClient.tsx", ["Style Director Validation","materially distinct","Record user-test evidence","Record approved"]);
 requireTokens("supabase/migrations/20261009_style_director_user_validation.sql", ["style_director_user_tests","style_director_validation_signoffs","record real-user validation evidence before sign-off","service_role"]);
 requireTokens("src/lib/designer/ease-calibration.ts", ["requiredEaseEvidenceKeys","evidenceCoverageComplete","normalizeHouseEaseCalibrationDraft","SHIRT_EASE_CLASSES","TROUSER_EASE_CLASSES"]);
+requireTokens("src/lib/designer/preview-option-coverage.ts", ["fullyCleared","constructionBlocked","noPreviewSupport","gateComplete"]);
+requireTokens("src/lib/designer/preview-option-reviews.ts", ["DESIGNER_STYLE_CHOICES","designer_preview_option_review","customerPreviewCoverageRows","constructionStatus"]);
+requireTokens("src/app/api/operator/preview-option-coverage/route.ts", ["verifyOperatorSession","customerPreviewCoverageRows","summarizePreviewOptionCoverage"]);
+requireTokens("src/app/operator/preview-option-coverage/PreviewOptionCoverageClient.tsx", ["Customer Preview Coverage","Approve customer preview","Reject preview support","Approximate"]);
 requireTokens("src/app/api/operator/ease-calibration/route.ts", ["house_ease_evidence_record","house_ease_model_create","house_ease_model_approve","evidenceCoverageComplete"]);
 requireTokens("src/app/operator/ease-calibration/EaseCalibrationClient.tsx", ["House Ease Calibration","35 cells","runtime not auto-switched","Register evidence-backed draft"]);
 requireTokens("supabase/migrations/20261010_house_ease_calibration_registry.sql", ["house_ease_evidence","house_ease_models","real finished-garment evidence is required for every house-ease cell","service_role"]);
