@@ -12,12 +12,13 @@ Route: `/lab/proof`
 - Unknown physical scale remains explicitly approximate.
 - The proof includes a 50 mm calibration ruler and an <= 8% physical-repeat error gate.
 - Geometry interaction latency and actual photographic compositor latency are sampled separately with p95 reporting.
-- Human realism scoring is captured locally with the roadmap target of at least 6 of 8 ratings at 4/5 or 5/5.
+- Human realism scoring now uses short anonymous viewer codes so each person contributes only one current rating; re-rating the same code replaces the earlier score. The roadmap target remains at least 6 of 8 independent viewers at 4/5 or 5/5.
 - Photo compositing now uses restrained multi-pass fold/seam lighting plus a textile-detail pass to reduce the flat sticker effect.
 - Existing reviewed Analyzer catalogue evidence is loaded through `/api/designer/catalog` when available.
 - The selected proof fabric links directly to its private Analyzer evidence desk.
 - A deterministic photographic-repeat audit reports expected repeat spacing in mannequin pixels when physical repeat evidence exists.
 - Proof evidence can be exported as JSON with scale, performance and viewer-rating results for an auditable acceptance record.
+- The operator evidence API recomputes physical-scale error, independent-viewer realism and overall Phase 1 acceptance from the stored raw inputs instead of trusting client-supplied pass/status flags. Legacy click-only realism records therefore remain review evidence until fresh independent-viewer evidence is recorded.
 
 ## What this proof does not claim
 - It does not claim a photograph has a true physical scale until a measured repeat / swatch dimension exists.
@@ -41,6 +42,8 @@ Route: `/lab/proof`
 - [x] runtime reviewed evidence path
 - [x] proof evidence JSON export
 - [x] deterministic photo-repeat audit value
+- [x] distinct anonymous viewer-code dedupe for realism evidence
+- [x] server-side recomputation of scale / latency / realism acceptance from raw recorded evidence
 - [ ] CI green on current branch
 
 ### Physical / human evidence
