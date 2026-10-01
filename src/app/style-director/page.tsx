@@ -194,7 +194,7 @@ export default function StyleDirectorPage() {
 
         <div className="lookTabs">
           {looks.map((look,i)=><button className={selected===i?"active":""} onClick={()=>{setSelected(i);setRenderSet(null);recordStyleMemoryEvent(sessionId,"look_selected",{lookId:look.id,title:look.title,fabricId:look.fabric.id,fabric:look.fabric.colorName});}} key={look.id}>
-            <span>0{i+1}</span><strong>{look.title}</strong><small>{look.fabric.colorName}</small>
+            <span>{look.candidate.tier.toUpperCase()}</span><strong>{look.title}</strong><small>{look.fabric.colorName}</small>
           </button>)}
         </div>
 
@@ -221,7 +221,7 @@ export default function StyleDirectorPage() {
               <p><small>LAYER</small><b>{selectedLook.candidate.garments.layer}</b></p>
               <p><small>FOOTWEAR</small><b>{selectedLook.candidate.garments.footwear}</b></p>
             </div>
-            <div className="whyBlock"><small>WHY THIS WORKS</small>{selectedLook.why.slice(0,2).map((w,i)=><p key={i}><span>0{i+1}</span>{w}</p>)}</div>
+            <div className="whyBlock"><small>WHY THIS WORKS</small>{selectedLook.why.slice(0,2).map((w,i)=><p key={i}><span>•</span>{w}</p>)}</div>
             {selectedLook.realModel && <div className="directorRealModelSpec">
               <span>REAL MODEL OUTFIT</span>
               <strong>{selectedLook.realModel.shirtName} shirt + {selectedLook.realModel.pantName} trousers</strong>
