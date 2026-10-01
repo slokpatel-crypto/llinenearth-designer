@@ -43,7 +43,7 @@ export async function GET(){
     const cases:Array<{
       at:string;caseId:string;revisionId:string;garment:"shirt"|"trouser";fabricId:string;
       fabricWidthCm:number;actualMetres:number;patternRepeatMm:number|null;patternMatching:boolean;
-      cutContext:string;note:string;
+      cutContext:string;checkedBy:string;evidenceReference:string;note:string;verifiedEvidence:boolean;
     }>=[];
     for(const row of rows){
       const p=row.payload||{};
@@ -54,6 +54,9 @@ export async function GET(){
       if(!caseId||seen.has(caseId)||!["shirt","trouser"].includes(garment)||fabricWidthCm===null||actualMetres===null) continue;
       seen.add(caseId);
       const repeat=finite(p.patternRepeatMm);
+      const checkedBy=String(p.checkedBy||"").trim().slice(0,120);
+      const evidenceReference=String(p.evidenceReference||"").trim().slice(0,240);
+      const verifiedEvidence=String(p.version||"")==="production-usage-v2"&&checkedBy.length>=2&&evidenceReference.length>=3;
       cases.push({
         at:row.at,caseId,
         revisionId:String(p.revisionId||"").slice(0,180),
@@ -63,11 +66,12 @@ export async function GET(){
         patternRepeatMm:repeat&&repeat>0?repeat:null,
         patternMatching:p.patternMatching===true,
         cutContext:String(p.cutContext||"").slice(0,160),
+        checkedBy,evidenceReference,verifiedEvidence,
         note:String(p.note||"").slice(0,600),
       });
     }
-    const shirts=cases.filter((item)=>item.garment==="shirt");
-    const trousers=cases.filter((item)=>item.garment==="trouser");
+    const shirts=cases.filter((item)=>item.garment==="shirt"&&item.verifiedEvidence);
+    const trousers=cases.filter((item)=>item.garment==="trouser"&&item.verifiedEvidence);
     return NextResponse.json({
       configured:true,cases:cases.slice(0,100),
       summary:{
