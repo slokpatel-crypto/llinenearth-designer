@@ -80,8 +80,8 @@ export default function EaseCalibrationClient(){
   const classes=garment==="shirt"?SHIRT_EASE_CLASSES:TROUSER_EASE_CLASSES;
   const fields=garment==="shirt"?SHIRT_EASE_FIELDS:TROUSER_EASE_FIELDS;
   useEffect(()=>{
-    if(!classes.includes(fitClass as never)) setFitClass(classes[0]);
-    if(!fields.includes(field as never)) setField(fields[0]);
+    if(!(classes as readonly string[]).includes(fitClass)) setFitClass(classes[0]);
+    if(!(fields as readonly string[]).includes(field)) setField(fields[0]);
   },[garment]);
 
   const activeModel=useMemo(()=>models.find((item)=>item.status==="approved")||null,[models]);
