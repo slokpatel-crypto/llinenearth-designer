@@ -389,6 +389,7 @@ export default function OperatorClient() {
     {label:"Started",value:counts.session_started || 0},
     {label:"Looks built",value:counts.looks_generated || 0},
     {label:"Visual made",value:counts.render_completed || 0},
+    {label:"Design locked",value:counts.design_locked || 0},
     {label:"WhatsApp",value:counts.whatsapp_clicked || 0},
     {label:"Sale",value:counts.sale_logged || 0},
   ];
@@ -421,6 +422,7 @@ export default function OperatorClient() {
       <section className="pulseGrid" aria-label="Business pulse">
         <article><small>STYLE SESSIONS</small><strong>{totals.sessions}</strong><p>People whose style journey was recorded.</p></article>
         <article><small>VISUALS CREATED</small><strong>{totals.renders}</strong><p>Signals stronger intent than browsing alone.</p></article>
+        <article><small>DESIGNS LOCKED</small><strong>{counts.design_locked || 0}</strong><p>Exact recipes customers deliberately locked before enquiry or handoff.</p></article>
         <article><small>WHATSAPP INTENT</small><strong>{totals.whatsapp}</strong><p>Customers who moved toward a conversation.</p></article>
         <article className="accent"><small>SALES LOGGED</small><strong>{totals.sales}</strong><p>The feedback that teaches the system what converts.</p></article>
       </section>
