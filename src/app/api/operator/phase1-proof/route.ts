@@ -36,16 +36,17 @@ export async function GET(){
       if(String(payload.subtype||"")!=="roadmap_phase1_proof") continue;
       const repeatMm=Number(payload.repeatMm);
       const measuredPreviewRepeatPx=Number(payload.measuredPreviewRepeatPx);
-      const pxPerMm=Number(payload.pxPerMm);
+      const photoPxPerMm=Number(payload.photoPxPerMm);
       const scaleInputsValid=
+        String(payload.scaleCoordinateSystem||"")==="photo-1024x1536"&&
         Number.isFinite(repeatMm)&&repeatMm>0&&
         Number.isFinite(measuredPreviewRepeatPx)&&measuredPreviewRepeatPx>0&&
-        Number.isFinite(pxPerMm)&&pxPerMm>0;
+        Number.isFinite(photoPxPerMm)&&photoPxPerMm>0;
       const computedScaleGate=scaleInputsValid
-        ? passesScaleGate(measuredPreviewRepeatPx,repeatMm,pxPerMm)
+        ? passesScaleGate(measuredPreviewRepeatPx,repeatMm,photoPxPerMm)
         : false;
       const computedScaleError=scaleInputsValid
-        ? scaleErrorPct(measuredPreviewRepeatPx,repeatMm,pxPerMm)
+        ? scaleErrorPct(measuredPreviewRepeatPx,repeatMm,photoPxPerMm)
         : null;
 
       const assessments:Array<RealismAssessment>=Array.isArray(payload.realismAssessments)
@@ -79,7 +80,8 @@ export async function GET(){
           fabricName:String(payload.fabricName||""),
           pattern:String(payload.pattern||""),
           repeatMm:scaleInputsValid?repeatMm:null,
-          pxPerMm:scaleInputsValid?pxPerMm:null,
+          photoPxPerMm:scaleInputsValid?photoPxPerMm:null,
+          scaleCoordinateSystem:scaleInputsValid?"photo-1024x1536":null,
           measuredPreviewRepeatPx:scaleInputsValid?measuredPreviewRepeatPx:null,
           scaleErrorPct:computedScaleError,
           scaleGatePass:computedScaleGate,
