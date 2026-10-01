@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
 import type { StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import type { BodyPreviewProfile } from "@/lib/designer/body-profile";
-import { applyRuntimeFabricScale, photoFabricPatternScale, type FabricRenderAsset } from "@/lib/designer/live-preview";
+import { applyRuntimeFabricScale, photoFabricPatternScale, visiblePatternScaleVerified, type FabricRenderAsset } from "@/lib/designer/live-preview";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import fabricTileManifest from "../../public/fabric-tiles/manifest.json";
 import { CREATIVE_FEEDBACK_REASONS, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
@@ -700,8 +700,8 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
   const creativeCoverage = creativePreviewCoverage(creativeDirection || undefined);
   const shirtPreviewAsset=fabricRenderAsset(shirt);
   const pantPreviewAsset=fabricRenderAsset(pant);
-  const shirtPatternScaleVerified=shirt.patternType==="Solid" || shirtPreviewAsset?.scaleApproximate===false;
-  const pantPatternScaleVerified=pant.patternType==="Solid" || pantPreviewAsset?.scaleApproximate===false;
+  const shirtPatternScaleVerified=visiblePatternScaleVerified(shirt.patternType,shirtPreviewAsset);
+  const pantPatternScaleVerified=visiblePatternScaleVerified(pant.patternType,pantPreviewAsset);
   const previewScaleVerified=shirtPatternScaleVerified&&pantPatternScaleVerified;
   const approximateScaleItems=[
     ...(shirtPatternScaleVerified?[]:[shirt.name]),
