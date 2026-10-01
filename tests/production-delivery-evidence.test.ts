@@ -5,6 +5,7 @@ import { normalizeProductionDeliveryEvidence, summarizeProductionDeliveryEvidenc
 test("manual re-entry incident requires field or note evidence",()=>{
   assert.throws(()=>normalizeProductionDeliveryEvidence({
     manualDesignReentry:true,reentryFields:[],note:"",
+    operator:"SP",evidenceReference:"Packing audit sheet 001",
   }),/what had to be re-entered/i);
 });
 
