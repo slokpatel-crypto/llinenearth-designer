@@ -137,6 +137,14 @@ type StockPayload={
   stock:Array<{fabric_id:string;physical_metres:number;reserved_metres:number;available_metres:number}>;
 };
 
+type RenderQaPayload={
+  outcomes:Array<unknown>;
+  summary:{
+    total:number;generated:number;cached:number;reviewed:number;pending:number;approved:number;rejected:number;
+    qaPass:number;totalCredits:number;approvalRate:number|null;creditsPerApproved:number|null;
+  };
+};
+
 type ProductionPayload={
   configured:boolean;
   quotes:Array<{quote_id:string;status:string;revision_id:string}>;
@@ -157,6 +165,7 @@ type LoadState={
   productionCalibration:ProductionCalibrationPayload|null;
   stock:StockPayload|null;
   production:ProductionPayload|null;
+  renderQa:RenderQaPayload|null;
 };
 
 type RowStatus="done"|"progress"|"blocked"|"optional";
@@ -178,7 +187,7 @@ function ratio(value:number,total:number){return total>0?clamp(value/total*100):
 
 export default function Phase10ReadinessClient(){
   const [data,setData]=useState<LoadState>({
-    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,
+    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,renderQa:null,
   });
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
@@ -196,7 +205,7 @@ export default function Phase10ReadinessClient(){
   async function load(){
     setLoading(true);setMessage("");
     try{
-      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production]=await Promise.all([
+      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa]=await Promise.all([
         read<Phase1ProofPayload>("/api/operator/phase1-proof"),
         read<MeasurementCalibrationPayload>("/api/operator/measurement-calibration"),
         read<LaunchMetricsPayload>("/api/operator/cloud-summary?days=60"),
@@ -210,8 +219,9 @@ export default function Phase10ReadinessClient(){
         read<ProductionCalibrationPayload>("/api/operator/production-calibration"),
         read<StockPayload>("/api/operator/stock"),
         read<ProductionPayload>("/api/operator/production"),
+        read<RenderQaPayload>("/api/operator/render-qa"),
       ]);
-      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production});
+      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,renderQa});
     }catch(error){
       setMessage(error instanceof Error?error.message:"Readiness data could not be loaded.");
     }finally{
@@ -290,6 +300,12 @@ export default function Phase10ReadinessClient(){
     const positiveStock=stockRows.filter((item)=>Number(item.physical_metres)>0).length;
     const stockProgress=positiveStock>0?100:0;
     const stockDone=Boolean(data.stock?.configured&&positiveStock>0);
+
+    const renderSummary=data.renderQa?.summary;
+    const renderApprovalProgress=renderSummary?.reviewed
+      ? Math.min(100,Math.round(renderSummary.reviewed/20*100))
+      : 0;
+    const renderApprovalDone=Boolean(renderSummary && renderSummary.reviewed>=20 && (renderSummary.approvalRate??0)>=60);
 
     const productionOrders=data.production?.orders||[];
     const deliveredOrders=productionOrders.filter((item)=>item.status==="delivered").length;
@@ -408,6 +424,21 @@ export default function Phase10ReadinessClient(){
         metric:`${acceptedDevices}/3 device classes accepted`,
         href:"/operator/device-qa",
         action:"Run device QA",
+        ownerDependent:true,
+      },
+      {
+        id:"final-render-qa",
+        title:"Final render approval + cost evidence",
+        detail:renderApprovalDone
+          ? `At least 20 human-reviewed final renders are recorded and current approval rate is ${renderSummary?.approvalRate??0}%.`
+          : `${Math.max(0,20-(renderSummary?.reviewed||0))} reviewed renders remain before the first approval-rate gate can be treated as evidenced.`,
+        status:renderApprovalDone?"done":renderSummary?"progress":"blocked",
+        progress:renderApprovalProgress,
+        metric:renderSummary
+          ? `${renderSummary.reviewed}/20 reviewed · ${renderSummary.approvalRate??"—"}% approved · ${renderSummary.creditsPerApproved??"—"} credits/approved`
+          : "No render outcome evidence",
+        href:"/operator/render-qa",
+        action:"Review final renders",
         ownerDependent:true,
       },
       {
