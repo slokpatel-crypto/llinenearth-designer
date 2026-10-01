@@ -45,7 +45,6 @@ export const LIVE_MODEL_PX_PER_MM=LIVE_MODEL_REFERENCE_HEIGHT_PX/LIVE_MODEL_REFE
 export const LIVE_APPROXIMATE_TILE_PX=112;
 export const PHOTO_MODEL_COORDINATE_SCALE=1024/640;
 export const PHOTO_SWATCH_TILE_PX=320;
-export const FABRIC_MEASUREMENT_CROP_PX=128;
 
 export function fabricTileSizePx(asset:FabricRenderAsset|null) {
   if(!asset?.tileRealWidthMm || asset.tileRealWidthMm<=0) return LIVE_APPROXIMATE_TILE_PX;
@@ -96,7 +95,7 @@ export function visiblePatternScaleVerified(patternType:string,asset:FabricRende
 export function photoExpectedRepeatPx(asset:FabricRenderAsset|null) {
   if(!asset || asset.scaleApproximate!==false || !asset.repeatPeriodPx || asset.repeatPeriodPx<=0) return null;
   const scale=photoFabricPatternScale(asset,1);
-  const repeatInSwatchTile=asset.repeatPeriodPx*(PHOTO_SWATCH_TILE_PX/FABRIC_MEASUREMENT_CROP_PX);
+  const repeatInSwatchTile=asset.repeatPeriodPx*(PHOTO_SWATCH_TILE_PX/asset.tileWidthPx);
   return repeatInSwatchTile*scale;
 }
 
