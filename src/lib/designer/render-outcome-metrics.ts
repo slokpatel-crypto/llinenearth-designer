@@ -28,3 +28,24 @@ export function summarizeRenderOutcomes(rows:RenderOutcomeMetricInput[]){
     creditsPerApproved:creditsPerApproved===null?null:Math.round(creditsPerApproved*10000)/10000,
   };
 }
+
+
+export type RenderPatternCalibrationMetricInput={
+  scale_error_pct:number;
+  axis_status:"match"|"mismatch"|"not_applicable";
+};
+
+export function summarizeRenderPatternCalibrations(rows:RenderPatternCalibrationMetricInput[]){
+  const valid=rows.filter((row)=>Number.isFinite(Number(row.scale_error_pct))&&Number(row.scale_error_pct)>=0);
+  const pass=valid.filter((row)=>Number(row.scale_error_pct)<=8&&row.axis_status!=="mismatch");
+  const averageError=valid.length
+    ? valid.reduce((sum,row)=>sum+Number(row.scale_error_pct),0)/valid.length
+    : null;
+  return {
+    total:valid.length,
+    pass:pass.length,
+    fail:valid.length-pass.length,
+    passRate:valid.length?Math.round(pass.length/valid.length*1000)/10:null,
+    averageScaleErrorPct:averageError===null?null:Math.round(averageError*100)/100,
+  };
+}
