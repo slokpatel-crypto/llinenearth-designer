@@ -157,3 +157,10 @@ The private **Meterage Registry**:
 - keeps the roadmap validation gate open until real evidence and a real approval are entered.
 
 The code therefore supports a controlled production estimator, but it does not call any meterage value validated until Linen Earth has supplied the physical cut data and owner/tailor sign-off.
+
+
+## Meterage evidence integrity
+
+- Meterage model registration now revalidates every submitted evidence case ID against the append-only operator production-usage ledger.
+- Case IDs must resolve to an unambiguous real cut for the same garment; unknown, duplicated-input or cross-garment IDs are rejected.
+- A model cannot even be registered through the hardened route before 20 verified real cuts exist, and approval rechecks the same evidence again before activation.
