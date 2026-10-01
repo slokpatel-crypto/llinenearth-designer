@@ -7,6 +7,7 @@ import { applyRuntimeFabricScale, photoExpectedRepeatPx, type FabricRenderAsset 
 import { DESIGNER_PANTS, DESIGNER_SHIRTS, designerStyleForOccasion } from "@/lib/designer/engine";
 import { StyleDirectorRealModelPreview } from "@/components/PhotoOutfitPreview";
 import { LiveConstructionPreview } from "@/components/LiveConstructionPreview";
+import { validateVerifiedPhysicalEvidence } from "@/lib/physical-evidence-provenance";
 import fabricTileManifest from "../../public/fabric-tiles/manifest.json";
 
 type Collar="spread"|"button-down"|"band";
@@ -27,6 +28,7 @@ export function PremiumShirtProof(){
   const [photoReferencePx,setPhotoReferencePx]=useState<number|null>(null);
   const [declaredTileMm,setDeclaredTileMm]=useState<number|null>(null);
   const [declaredRepeatMm,setDeclaredRepeatMm]=useState<number|null>(null);
+  const [physicalEvidenceNote,setPhysicalEvidenceNote]=useState("");
   const [measuredPx,setMeasuredPx]=useState<number|null>(null);
   const [latencyMs,setLatencyMs]=useState<number|null>(null);
   const [latencySamples,setLatencySamples]=useState<number[]>([]);
@@ -74,9 +76,20 @@ export function PremiumShirtProof(){
   const repeatPx=effectiveRepeatMm&&photoPxPerMm ? expectedPeriodPx(effectiveRepeatMm,photoPxPerMm) : null;
   const error=effectiveRepeatMm&&measuredPx&&photoPxPerMm ? scaleErrorPct(measuredPx,effectiveRepeatMm,photoPxPerMm) : null;
   const pass=effectiveRepeatMm&&measuredPx&&photoPxPerMm ? passesScaleGate(measuredPx,effectiveRepeatMm,photoPxPerMm) : null;
-  const calibrationState=storedRepeatMm ? "VERIFIED CATALOGUE SCALE EVIDENCE"
-    : declaredTileMm||declaredRepeatMm ? "PHYSICAL EVIDENCE ENTERED"
-    : "APPROXIMATE SCALE";
+  const physicalEvidenceReady=useMemo(()=>{
+    if(!effectiveRepeatMm) return false;
+    try {
+      return validateVerifiedPhysicalEvidence({
+        repeatRealMm:effectiveRepeatMm,
+        verifiedPhysicalEvidenceNote:physicalEvidenceNote,
+      }).hasEvidence;
+    } catch {
+      return false;
+    }
+  },[effectiveRepeatMm,physicalEvidenceNote]);
+  const calibrationState=physicalEvidenceReady
+    ? storedRepeatMm ? "STORED PHYSICAL SCALE + PROVENANCE" : "PHYSICAL SCALE + PROVENANCE ENTERED"
+    : "APPROXIMATE / UNVERIFIED SCALE";
   const p95=useMemo(()=>{
     if(!latencySamples.length) return null;
     const ordered=[...latencySamples].sort((a,b)=>a-b);
@@ -93,11 +106,11 @@ export function PremiumShirtProof(){
   const realismGate=realismSummary.ready;
   const proofAcceptance=useMemo(()=>phase1ProofAcceptance({
     repeatMm:effectiveRepeatMm,
-    scaleGatePass:pass,
+    scaleGatePass:pass===true&&physicalEvidenceReady,
     realModelSamples:realRenderSamples.length,
     realModelP95Ms:realP95,
     realismRatings,
-  }),[effectiveRepeatMm,pass,realRenderSamples.length,realP95,realismRatings]);
+  }),[effectiveRepeatMm,pass,physicalEvidenceReady,realRenderSamples.length,realP95,realismRatings]);
 
   useEffect(()=>{
     let cancelled=false;
@@ -198,6 +211,7 @@ export function PremiumShirtProof(){
             fabricName:realShirt?.name||"",
             pattern:realShirt?.patternType||"",
             repeatMm:effectiveRepeatMm,
+            physicalEvidenceNote:physicalEvidenceNote.trim(),
             pxPerMm,
             photoReferenceMm,
             photoReferencePx,
@@ -366,7 +380,9 @@ export function PremiumShirtProof(){
             : <>Photographic px/mm is still approximate. Enter both physical fixture length and its measured photo pixels before the scale gate can pass.</>}</p>
           <label>Visible source tile width (mm)<input type="number" min=".1" step=".1" placeholder="Enter after measuring swatch" value={declaredTileMm??""} onChange={(event)=>setDeclaredTileMm(event.target.value?Number(event.target.value):null)}/></label>
           <label>Known pattern repeat (mm)<input type="number" min=".1" step=".1" placeholder={storedRepeatMm?"Using stored verified repeat":"Optional measured repeat"} value={declaredRepeatMm??""} onChange={(event)=>setDeclaredRepeatMm(event.target.value?Number(event.target.value):null)}/></label>
-          {storedRepeatMm&&<p>Stored reviewed repeat: <b>{storedRepeatMm} mm</b>. Leave the field blank to use it.</p>}
+          {storedRepeatMm&&<p>Stored repeat evidence: <b>{storedRepeatMm} mm</b>. Leave the field blank to use it.</p>}
+          <label>Physical evidence note<textarea rows={2} placeholder="Who measured the fabric repeat/photo fixture, with what reference or instrument?" value={physicalEvidenceNote} onChange={(event)=>setPhysicalEvidenceNote(event.target.value.slice(0,700))}/></label>
+          {!physicalEvidenceReady&&effectiveRepeatMm&&<p><b>Evidence source required:</b> add a short owner/supplier measurement note before the physical scale gate can count toward acceptance.</p>}
           {repeatPx&&<p>Expected repeat on photographic model: <b>{repeatPx.toFixed(2)} px</b></p>}
           {effectiveRepeatMm&&<label>Measured repeat on photographic preview (px)<input type="number" min=".01" step=".01" value={measuredPx??""} onChange={(event)=>setMeasuredPx(event.target.value?Number(event.target.value):null)}/></label>}
           {error!==null&&<div className="proofGate" data-pass={pass?"yes":"no"}><b>{pass?"PASS":"FAIL"} · {error.toFixed(2)}% error</b><span>Roadmap gate: ≤ 8% scale error.</span></div>}
