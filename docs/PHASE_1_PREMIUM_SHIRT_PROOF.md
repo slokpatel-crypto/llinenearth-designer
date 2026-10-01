@@ -18,7 +18,7 @@ Route: `/lab/proof`
 - The selected proof fabric links directly to its private Analyzer evidence desk.
 - A deterministic photographic-repeat audit reports expected repeat spacing in mannequin pixels when physical repeat evidence exists, and the exact same photo px/mm calibration is passed into the compositor so the audited scale and rendered scale cannot silently diverge.
 - Proof evidence can be exported as JSON with scale, performance and viewer-rating results for an auditable acceptance record.
-- The operator evidence API recomputes photographic px/mm from the stored raw fixture pair, then recomputes physical-scale error, independent-viewer realism and the core proof decision instead of trusting client-supplied calibration or pass/status flags. Legacy click-only realism records therefore remain review evidence until fresh independent-viewer evidence is recorded.
+- The operator evidence API recomputes photographic px/mm from the stored raw fixture pair, then recomputes physical-scale error, independent-viewer realism and the core proof decision instead of trusting client-supplied calibration or pass/status flags. Hardened records use the explicit `linen-earth-phase1-proof-v2` schema; legacy v1 / click-only evidence cannot satisfy the current core gate.
 - Roadmap readiness treats target-mobile acceptance as a separate fourth gate. A strong desktop/browser proof cannot mark Phase 1 complete until the private Device QA workflow has an accepted mobile result.
 
 ## What this proof does not claim
@@ -47,6 +47,7 @@ Route: `/lab/proof`
 - [x] deterministic photo-repeat audit value
 - [x] distinct anonymous viewer-code dedupe for realism evidence
 - [x] server-side recomputation of scale / latency / realism acceptance from raw recorded evidence
+- [x] versioned v2 proof schema prevents legacy weaker evidence from being treated as current acceptance
 - [x] Phase 1 readiness explicitly depends on accepted target-mobile Device QA evidence
 - [ ] CI green on current branch
 
