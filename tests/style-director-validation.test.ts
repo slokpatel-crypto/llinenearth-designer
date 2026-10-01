@@ -37,13 +37,13 @@ test("Style Director validation requires real evidence plus human approval",()=>
     created_at:"2026-10-01T10:00:00Z",
   }];
   const review=summarizeStyleDirectorValidation(tests,[{
-    status:"review",signed_by:"Owner",created_at:"2026-10-01T11:00:00Z",
+    status:"review",required_positive_cases:1,signed_by:"Owner",created_at:"2026-10-01T11:00:00Z",
   }]);
   assert.equal(review.evidenceRecorded,true);
   assert.equal(review.validationComplete,false);
 
   const approved=summarizeStyleDirectorValidation(tests,[{
-    status:"approved",signed_by:"Owner",created_at:"2026-10-01T12:00:00Z",
+    status:"approved",required_positive_cases:1,signed_by:"Owner",created_at:"2026-10-01T12:00:00Z",
   }]);
   assert.equal(approved.validationComplete,true);
 });
@@ -52,4 +52,33 @@ test("Style Director sign-off normalization requires named human reviewer",()=>{
   assert.throws(()=>normalizeStyleDirectorValidationSignoff({
     status:"approved",signedBy:"",
   }),/Named owner\/reviewer sign-off/);
+});
+
+
+test("approved sign-off cannot complete validation below its documented clean-case target",()=>{
+  const tests=[{
+    case_id:"SD-THRESHOLD-1",device_class:"mobile",
+    directions_understandable:true,directions_distinct:true,stock_handoff_worked:true,blocking_issue:false,
+    created_at:"2026-10-01T10:00:00Z",
+  }];
+  const summary=summarizeStyleDirectorValidation(tests,[{
+    status:"approved",required_positive_cases:2,signed_by:"Owner",created_at:"2026-10-01T12:00:00Z",
+  }]);
+  assert.equal(summary.positiveCases,1);
+  assert.equal(summary.requiredPositiveCases,2);
+  assert.equal(summary.thresholdMet,false);
+  assert.equal(summary.validationComplete,false);
+});
+
+test("legacy approval without a documented clean-case target never completes validation",()=>{
+  const tests=[{
+    case_id:"SD-LEGACY",device_class:"desktop",
+    directions_understandable:true,directions_distinct:true,stock_handoff_worked:true,blocking_issue:false,
+    created_at:"2026-10-01T10:00:00Z",
+  }];
+  const summary=summarizeStyleDirectorValidation(tests,[{
+    status:"approved",signed_by:"Owner",created_at:"2026-10-01T12:00:00Z",
+  }]);
+  assert.equal(summary.requiredPositiveCases,null);
+  assert.equal(summary.validationComplete,false);
 });
