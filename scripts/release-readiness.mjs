@@ -575,6 +575,9 @@ requireTokens("src/lib/designer/stock-ledger.ts", ["stockSnapshot","normalizeMan
 requireTokens("src/lib/designer/stock-availability.ts", ["verifiedStockAvailabilityMap","provenance_ready","fabric.inStock&&verified.get(fabric.id)===true"]);
 requireTokens("src/lib/designer/stock-availability-server.ts", ["fabric_stock_snapshot_v2","applyLiveVerifiedStockAvailability","cache:\"no-store\""]);
 requireTokens("src/app/api/designer/catalog/route.ts", ["applyLiveVerifiedStockAvailability","verifiedStockFabrics"]);
+requireTokens("src/app/api/designer/search/route.ts", ["applyLiveVerifiedStockAvailability","liveStock.stock.filter((fabric)=>fabric.inStock)"]);
+requireTokens("src/app/api/designer/brief/route.ts", ["applyLiveVerifiedStockAvailability","liveStock.stock.filter((fabric)=>fabric.inStock)"]);
+requireTokens("src/app/api/designer/assess/route.ts", ["applyLiveVerifiedStockAvailability","liveStock.stock.filter((fabric)=>fabric.inStock)"]);
 requireTokens("src/app/api/style-director/route.ts", ["applyLiveVerifiedStockAvailability","verifiedStockFabrics"]);
 requireTokens("src/app/style-director/page.tsx", ["verified ledger availability enforced where recorded"]);
 requireTokens("src/app/operator/production/ProductionClient.tsx", ["Load locked design","Export production packet","Create production order","durable design context","outcome lineage","learningContexts","Outcome lineage","context missing","CUSTOMER OUTCOME","not automatically applied to Designer ranking","/operator/customer-outcomes","Outcome Review"]);
