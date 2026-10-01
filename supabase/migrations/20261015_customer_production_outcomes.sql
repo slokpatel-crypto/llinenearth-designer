@@ -90,7 +90,7 @@ returns table(
 language sql
 security definer
 set search_path='public','private'
-as $
+as $$
   select latest.outcome_id,latest.order_id,latest.overall_rating,latest.fit_result,
     latest.worn_confirmed,latest.note,latest.created_at
   from (
@@ -102,7 +102,7 @@ as $
   ) latest
   order by latest.created_at desc
   limit greatest(1,least(coalesce(p_limit,100),200));
-$;
+$$;
 
 create or replace function public.production_customer_outcome_list(
   p_limit integer default 250
@@ -120,7 +120,7 @@ returns table(
 language sql
 security definer
 set search_path='public','private'
-as $
+as $$
   select latest.outcome_id,latest.order_id,latest.revision_id,latest.overall_rating,latest.fit_result,
     latest.worn_confirmed,latest.note,latest.created_at
   from (
@@ -132,7 +132,7 @@ as $
   ) latest
   order by latest.created_at desc
   limit greatest(1,least(coalesce(p_limit,250),1000));
-$;
+$$;
 
 revoke all on function public.production_customer_outcome_record(uuid,uuid,text,text,boolean,text) from public,anon,authenticated;
 revoke all on function public.production_customer_outcome_list_owned(uuid,integer) from public,anon,authenticated;
