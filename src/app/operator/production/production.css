@@ -3,3 +3,5 @@
 .productionQcLink{display:inline-flex;justify-self:start;border:1px solid #bcae9c;background:#f8f3eb;color:#5f4a33;padding:8px 9px;text-decoration:none;font-size:9px;letter-spacing:.04em}
 
 .productionEvidenceLink{display:inline-flex;justify-self:start;border:1px solid #a9b9c4;background:#f1f5f7;color:#294456;padding:8px 9px;text-decoration:none;font-size:9px;letter-spacing:.04em}
+
+.productionCustomerOutcome{display:grid;gap:4px;border:1px solid #d8d1c6;background:#faf8f3;padding:10px;margin-top:3px}.productionCustomerOutcome strong{font-size:11px;letter-spacing:.04em}.productionCustomerOutcome span,.productionCustomerOutcome p{font-size:11px;line-height:1.45;margin:0;color:#58646b}.productionCustomerOutcome>small:last-child{font-size:9px}
