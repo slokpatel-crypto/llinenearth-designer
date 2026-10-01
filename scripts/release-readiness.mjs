@@ -402,6 +402,15 @@ requireTokens("supabase/migrations/20260920_style_events_hardening.sql", [
   "select 5;",
   "linen_cloud_health",
 ]);
+requireTokens("scripts/check-cloud-readiness.mjs", [
+  "fabric_stock_snapshot",
+  "production_quote_list",
+  "production_order_list",
+  "designer_locked_revision_vault_get",
+  "measurement_profile_vault_get",
+  "Apply Roadmap v2 Supabase migrations",
+]);
+
 requireTokens(".env.example", [
   "FASHN_API_KEY=",
   "SUPABASE_URL=",
