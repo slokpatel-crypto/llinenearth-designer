@@ -135,6 +135,7 @@ for (const path of [
   "supabase/migrations/20261024_style_director_distinct_handoff_gate.sql",
   "supabase/migrations/20261027_roadmap_v2_evidence_health.sql",
   "supabase/migrations/20261028_verified_meterage_cut_evidence.sql",
+  "supabase/migrations/20261029_meterage_cut_provenance_gate.sql",
   "supabase/migrations/20261024_style_director_handoff_uniqueness.sql",
   "supabase/migrations/20261024_measurement_accuracy_evidence.sql",
   "supabase/migrations/20261026_style_director_verified_signoff.sql",
@@ -592,8 +593,10 @@ requireTokens("src/lib/designer/production-delivery-evidence.ts", ["PRODUCTION_R
 requireTokens("src/app/operator/production-evidence/ProductionEvidenceClient.tsx", ["Zero-Reentry Proof","FIRST 10 AUDITED","ZERO RE-ENTRY","Save immutable completion audit"]);
 requireTokens("supabase/migrations/20261004_meterage_calibration_registry.sql", ["production_meterage_model_create","production_meterage_model_approve","at least 20 real cut cases are required before approval","service_role"]);
 requireTokens("src/lib/designer/meterage-calibration.ts", ["normalizeMeterageCalibrationDraft","meterageForWidth","canApproveMeterageModel"]);
-requireTokens("src/app/api/operator/meterage-model/route.ts", ["production_meterage_model_create_v2","production_meterage_model_approve_v2","At least 20 valid real cut cases"]);
-requireTokens("supabase/migrations/20261028_verified_meterage_cut_evidence.sql", ["production_meterage_model_create_v2","production_meterage_model_approve_v2","production_usage_case","every meterage evidence case must resolve","20 verified unambiguous real cut cases","service_role"]);
+requireTokens("src/app/api/operator/meterage-model/route.ts", ["production_meterage_model_create_v3","production_meterage_model_approve_v3","At least 20 valid real cut cases"]);
+requireTokens("src/app/operator/production-calibration/ProductionCalibrationClient.tsx", ["production-usage-v2","Checked by","Physical evidence reference","checkedBy","evidenceReference"]);
+requireTokens("supabase/migrations/20261028_verified_meterage_cut_evidence.sql", ["production_meterage_model_create_v3","production_meterage_model_approve_v3","production_usage_case","every meterage evidence case must resolve","20 verified unambiguous real cut cases","service_role"]);
+requireTokens("supabase/migrations/20261029_meterage_cut_provenance_gate.sql", ["production_meterage_model_create_v3","production_meterage_model_approve_v3","production-usage-v2","checkedBy","evidenceReference","20 provenance-backed real cuts","service_role"]);
 requireTokens("src/app/operator/meterage-model/MeterageModelClient.tsx", ["Meterage Registry","Register draft from real evidence","Approve + activate","requires ≥20 real"]);
 requireTokens("src/app/api/operator/meterage-model/route.ts", ["evidenceCaseIds","At least 20 valid real cut cases","production_meterage_model_create","production_meterage_model_approve"]);
 requireTokens("supabase/migrations/20261005_launch_readiness_evidence.sql", ["launch_beta_attempt_record","launch_checklist_event_record","No customer names","service_role"]);
