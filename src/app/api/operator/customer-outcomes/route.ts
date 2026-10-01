@@ -45,7 +45,7 @@ export async function GET(){
   }
   try{
     const [outcomes,reviews,policies]=await Promise.all([
-      rpc<CustomerOutcomeEvidenceRow[]>("production_customer_outcome_list",{p_limit:1000}),
+      rpc<CustomerOutcomeEvidenceRow[]>("production_customer_outcome_learning_list",{p_limit:1000}),
       rpc<CustomerOutcomeReviewRow[]>("production_customer_outcome_review_list",{p_limit:5000}),
       rpc<CustomerOutcomePolicyRow[]>("production_customer_outcome_policy_list",{p_limit:100}),
     ]);
