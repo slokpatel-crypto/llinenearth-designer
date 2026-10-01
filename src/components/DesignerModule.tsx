@@ -1012,12 +1012,12 @@ export function DesignerModule() {
         headers:{"content-type":"application/json"},
         body:JSON.stringify(lockedRevision),
       });
-      const result=await response.json() as {token?:string;expiresInDays?:number;error?:string};
+      const result=await response.json() as {token?:string;expiresInDays?:number;audited?:boolean;error?:string};
       if(!response.ok||!result.token) throw new Error(result.error||"Share link could not be created.");
       const url=new URL(`/share/${result.token}`,window.location.origin).toString();
       try{
         await navigator.clipboard.writeText(url);
-        setShareMessage(`Share link copied · expires in ${result.expiresInDays||30} days.`);
+        setShareMessage(`Share link copied · expires in ${result.expiresInDays||30} days${result.audited?" · verified share audit recorded":" · beta audit unavailable"}.`);
       }catch{
         setShareMessage(url);
       }
