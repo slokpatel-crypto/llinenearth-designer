@@ -378,8 +378,8 @@ requireTokens("supabase/migrations/20261001_production_quotes_orders.sql", ["pro
 requireTokens("next.config.ts", ["Strict-Transport-Security","X-Frame-Options","Cross-Origin-Opener-Policy"]);
 requireTokens("src/app/api/designer/look-render/route.ts", ["recordRenderOutcome","repair:true"]);
 requireTokens("src/app/api/designer/look-inspect/route.ts", ["attachRenderQa","jobId"]);
-requireTokens("src/lib/designer/render-outcome-metrics.ts", ["summarizeRenderOutcomes","creditsPerApproved","approvalRate"]);
-requireTokens("src/app/operator/render-qa/RenderQaClient.tsx", ["Final Render QA","Add measured pattern check","APPROVAL RATE","CREDITS / APPROVED"]);
+requireTokens("src/lib/designer/render-outcome-metrics.ts", ["summarizeRenderOutcomes","creditsPerApproved","approvalRate","summarizeRenderPatternCalibrations","scale_error_pct"]);
+requireTokens("src/app/operator/render-qa/RenderQaClient.tsx", ["Final Render QA","Add measured pattern check","APPROVAL RATE","CREDITS / APPROVED","PATTERN SCALE QA"]);
 requireTokens("supabase/migrations/20261001_render_outcomes.sql", ["designer_render_outcome_record","designer_render_outcome_review","designer_render_pattern_calibration_record","service_role"]);
 
 
