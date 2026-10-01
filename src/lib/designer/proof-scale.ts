@@ -116,3 +116,79 @@ export function phase1ProofAcceptance(input:Phase1ProofAcceptanceInput) {
     reasons,
   };
 }
+
+export const PHASE1_PROOF_EVIDENCE_VERSION="linen-earth-phase1-proof-v2";
+export const PHASE1_PROOF_PHOTO_COORDINATE_SYSTEM="photo-1024x1536-fixture";
+
+export function evaluateRecordedPhase1ProofEvidence(payload:Record<string,unknown>){
+  const version=String(payload.version||"");
+  const repeatMm=Number(payload.repeatMm);
+  const measuredPreviewRepeatPx=Number(payload.measuredPreviewRepeatPx);
+  const photoReferenceMm=Number(payload.photoReferenceMm);
+  const photoReferencePx=Number(payload.photoReferencePx);
+
+  const fixtureInputsValid=
+    version===PHASE1_PROOF_EVIDENCE_VERSION &&
+    String(payload.scaleCoordinateSystem||"")===PHASE1_PROOF_PHOTO_COORDINATE_SYSTEM &&
+    Number.isFinite(photoReferenceMm)&&photoReferenceMm>0 &&
+    Number.isFinite(photoReferencePx)&&photoReferencePx>0;
+
+  let photoPxPerMm:number|null=null;
+  if(fixtureInputsValid){
+    try { photoPxPerMm=pxPerMmFromMarker(photoReferencePx,photoReferenceMm); }
+    catch { photoPxPerMm=null; }
+  }
+
+  const scaleInputsValid=
+    photoPxPerMm!==null &&
+    Number.isFinite(repeatMm)&&repeatMm>0 &&
+    Number.isFinite(measuredPreviewRepeatPx)&&measuredPreviewRepeatPx>0;
+
+  const scaleGatePass=scaleInputsValid
+    ? passesScaleGate(measuredPreviewRepeatPx,repeatMm,photoPxPerMm as number)
+    : false;
+  const scaleErrorPctValue=scaleInputsValid
+    ? scaleErrorPct(measuredPreviewRepeatPx,repeatMm,photoPxPerMm as number)
+    : null;
+
+  const realismAssessments:Array<RealismAssessment>=Array.isArray(payload.realismAssessments)
+    ? payload.realismAssessments.flatMap((item)=>{
+        if(!item||typeof item!=="object") return [];
+        const value=item as Record<string,unknown>;
+        return [{
+          viewerId:String(value.viewerId||"").slice(0,80),
+          rating:Number(value.rating),
+          recordedAt:String(value.recordedAt||"").slice(0,80),
+        }];
+      })
+    : [];
+  const realism=summarizeIndependentRealism(realismAssessments);
+
+  const realModelSamples=Math.max(0,Math.floor(Number(payload.realModelSamples)||0));
+  const realModelP95Ms=Number.isFinite(Number(payload.realModelP95Ms))?Number(payload.realModelP95Ms):null;
+  const acceptance=phase1ProofAcceptance({
+    repeatMm:scaleInputsValid?repeatMm:null,
+    scaleGatePass,
+    realModelSamples,
+    realModelP95Ms,
+    realismRatings:realism.ratings,
+  });
+
+  return {
+    version,
+    coreAccepted:acceptance.accepted,
+    acceptance,
+    repeatMm:scaleInputsValid?repeatMm:null,
+    measuredPreviewRepeatPx:scaleInputsValid?measuredPreviewRepeatPx:null,
+    photoReferenceMm:scaleInputsValid?photoReferenceMm:null,
+    photoReferencePx:scaleInputsValid?photoReferencePx:null,
+    photoPxPerMm:scaleInputsValid?photoPxPerMm:null,
+    scaleCoordinateSystem:scaleInputsValid?PHASE1_PROOF_PHOTO_COORDINATE_SYSTEM:null,
+    scaleErrorPct:scaleErrorPctValue,
+    scaleGatePass,
+    realModelSamples,
+    realModelP95Ms,
+    realism,
+  };
+}
+
