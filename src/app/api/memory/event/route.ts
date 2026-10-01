@@ -300,7 +300,7 @@ function cleanPayload(type:string, input:unknown) {
       const ratings=Array.isArray(payload.realismRatings)
         ? payload.realismRatings.map((item)=>Math.round(Number(item))).filter((item)=>item>=1&&item<=5).slice(0,30)
         : [];
-      if(!["linen-earth-phase1-proof-v1","linen-earth-phase1-proof-v2"].includes(version) || !fabricId || !["accepted","review"].includes(status)) return null;
+      if(!["linen-earth-phase1-proof-v1","linen-earth-phase1-proof-v2","linen-earth-phase1-proof-v3"].includes(version) || !fabricId || !["accepted","review"].includes(status)) return null;
 
       const base={
         subtype,
@@ -337,6 +337,15 @@ function cleanPayload(type:string, input:unknown) {
           return [{viewerId,rating,recordedAt}];
         })
         : [];
+      const boundarySource=payload.boundaryChecks&&typeof payload.boundaryChecks==="object"&&!Array.isArray(payload.boundaryChecks)
+        ? payload.boundaryChecks as Record<string,unknown>
+        : {};
+      const boundaryChecks={
+        neck:boundarySource.neck===true,
+        cuffs:boundarySource.cuffs===true,
+        waist:boundarySource.waist===true,
+        trouserGap:boundarySource.trouserGap===true,
+      };
       return {
         ...base,
         photoReferenceMm:Number.isFinite(photoReferenceMm)&&photoReferenceMm>0&&photoReferenceMm<=3000?Math.round(photoReferenceMm*100)/100:null,
@@ -346,6 +355,10 @@ function cleanPayload(type:string, input:unknown) {
         physicalEvidenceNote:text(payload.physicalEvidenceNote,700),
         realismAssessments:assessments,
         uniqueRealismViewers:Math.max(0,Math.min(50,Math.floor(Number(payload.uniqueRealismViewers)||0))),
+        ...(version==="linen-earth-phase1-proof-v3"?{
+          boundaryChecks,
+          boundaryReady:boundaryChecks.neck&&boundaryChecks.cuffs&&boundaryChecks.waist&&boundaryChecks.trouserGap,
+        }:{}),
       };
     }
 
