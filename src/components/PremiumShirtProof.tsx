@@ -373,5 +373,6 @@ export function PremiumShirtProof(){
         occasion="Semi-Formal"
         climate="Not specified"
       />
+    </section>}
   </div>;
 }
