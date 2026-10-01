@@ -415,6 +415,7 @@ export default function OperatorClient() {
           <a className="operatorLogout" href="/operator/construction-approval">CONSTRUCTION APPROVAL</a>
           <a className="operatorLogout" href="/operator/device-qa">DEVICE QA</a>
           <a className="operatorLogout" href="/operator/measurement-calibration">MEASUREMENT CALIBRATION</a>
+          <a className="operatorLogout" href="/operator/ease-calibration">HOUSE EASE CALIBRATION</a>
           <a className="operatorLogout" href="/operator/production-calibration">PRODUCTION CALIBRATION</a>
           <a className="operatorLogout" href="/operator/stock">STOCK LEDGER</a>
           <a className="operatorLogout" href="/operator/production">PRODUCTION DESK</a>
