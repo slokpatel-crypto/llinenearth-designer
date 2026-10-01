@@ -33,6 +33,14 @@ export function PremiumShirtProof(){
     "check-formal-04":"formal-shirting-04",
   } as const;
   const realShirt=DESIGNER_SHIRTS.find((item)=>item.id===stockIdByProofId[fabric.id]) || DESIGNER_SHIRTS[0];
+  const proofRealShirt=realShirt ? {
+    ...realShirt,
+    renderScale: declaredRepeatMm ? {
+      physicalScaleStatus:"declared_repeat" as const,
+      repeatMm:declaredRepeatMm,
+      stripeWidthMm:null,
+    } : realShirt.renderScale,
+  } : realShirt;
   const realPant=DESIGNER_PANTS.find((item)=>item.id==="linen-suiting-beige") || DESIGNER_PANTS[0];
   const realModelStyle=designerStyleForOccasion("Semi-Formal");
 
@@ -126,13 +134,13 @@ export function PremiumShirtProof(){
       </aside>
     </main>
 
-    {realShirt&&realPant&&<section className="proofRealism">
+    {proofRealShirt&&realPant&&<section className="proofRealism">
       <div className="proofRealismCopy">
         <span>REAL MANNEQUIN TRACK</span>
         <h2>Same catalogue fabric on our existing photographic model.</h2>
         <p>This reuses the current Linen Earth mannequin/photo compositor so we can judge cloth believability separately from construction geometry. The photographed collar/cuff shape stays the base photographed construction; the Phase 1 cut controls above remain the geometry test until matching photographed option assets exist.</p>
         <div className="proofRealismFacts">
-          <b>{realShirt.name}</b>
+          <b>{proofRealShirt.name}</b>
           <span>Real catalogue swatch</span>
           <span>Existing studio mannequin</span>
           <span>No AI per edit</span>
@@ -140,7 +148,7 @@ export function PremiumShirtProof(){
         </div>
       </div>
       <div className="proofRealModel">
-        <StyleDirectorRealModelPreview shirt={realShirt} pant={realPant} style={realModelStyle}/>
+        <StyleDirectorRealModelPreview shirt={proofRealShirt} pant={realPant} style={realModelStyle}/>
       </div>
     </section>}
   </div>;
