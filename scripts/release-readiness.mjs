@@ -121,6 +121,7 @@ for (const path of [
   "src/app/operator/novice-designer-study/NoviceDesignerStudyClient.tsx",
   "supabase/migrations/20261012_designer_novice_study.sql",
   "supabase/migrations/20261019_novice_server_timing.sql",
+  "supabase/migrations/20261020_verified_beta_share_flow.sql",
   "src/lib/designer/preview-option-reviews.ts",
   "src/app/api/operator/preview-option-coverage/route.ts",
   "src/app/operator/preview-option-coverage/page.tsx",
@@ -226,7 +227,12 @@ requireTokens("src/app/api/operator/ease-calibration/route.ts", ["house_ease_evi
 requireTokens("src/app/operator/ease-calibration/EaseCalibrationClient.tsx", ["House Ease Calibration","35 cells","active in Designer runtime","controlled promotion step","Register evidence-backed draft"]);
 requireTokens("supabase/migrations/20261010_house_ease_calibration_registry.sql", ["house_ease_evidence","house_ease_models","real finished-garment evidence is required for every house-ease cell","service_role"]);
 requireTokens("supabase/migrations/20261011_launch_beta_flow_detail.sql", ["design_locked","share_or_enquiry_completed","launch_beta_attempt_record_v2","share/enquiry completion cannot precede a locked design"]);
-requireTokens("src/lib/designer/launch-readiness-evidence.ts", ["designLocked","shareOrEnquiryCompleted","row.design_locked===true","row.share_or_enquiry_completed===true"]);
+requireTokens("src/app/api/operator/launch-readiness/route.ts", ["record_verified_beta","launch_beta_attempt_record_v3","verifiedShareAudit"]);
+requireTokens("src/app/operator/launch-readiness/LaunchReadinessClient.tsx", ["LOCK → VERIFIED SHARE","record_verified_beta","verified share","share_audit_confirmed"]);
+requireTokens("src/app/api/designer/share/route.ts", ["design_share_audit_record","p_revision_id:revision.revisionId","audited"]);
+requireTokens("src/components/DesignerModule.tsx", ["verified share audit recorded","beta audit unavailable"]);
+requireTokens("supabase/migrations/20261020_verified_beta_share_flow.sql", ["design_share_audit","launch_beta_attempt_record_v3","share_audit_confirmed","no verified share audit exists for this locked revision"]);
+requireTokens("src/lib/designer/launch-readiness-evidence.ts", ["normalizeVerifiedBetaAttempt","revisionId","row.design_locked===true","row.share_or_enquiry_completed===true","row.share_audit_confirmed===true","verifiedShareCases"]);
 requireTokens("src/lib/designer/block-strategy.ts", ["block-strategy-provisional-1","assessBlockStrategy","shaped-shirt","roomy-seat-block","suggestedPatch"]);
 requireTokens("src/lib/designer/planner.ts", ["DesignerBlockStrategy","blockStrategy:selectedBlock","item.blockStrategy?.score"]);
 requireTokens("src/lib/designer/search.ts", ["blockStrategy: DesignerBlockStrategy","assessBlockStrategy","block.score"]);
