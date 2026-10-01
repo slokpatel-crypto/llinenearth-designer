@@ -74,3 +74,10 @@ The existing Phase 9 private-beta ledger is reused rather than creating another 
 ## Rule
 
 Never overwrite a locked revision in place. Any changed fabric, measurement, construction option or creative treatment creates a new revision linked to the previous revision.
+
+
+## Verified beta-flow evidence hardening
+
+- The share API verifies the immutable locked recipe before issuing a public token and now records a private server-side share audit when the production evidence backend is available.
+- Private-beta success can no longer be proved by checking “locked” and “shared” boxes alone. A qualifying beta record must reference a locked revision that has a matching verified share audit.
+- Older manual beta rows remain visible as historical observations but do not satisfy the current five-customer gate.
