@@ -36,12 +36,18 @@ export async function GET(){
       rpc("production_order_list",{p_limit:100}),
     ]);
     let qcInspections:unknown[]=[];
+    let customerOutcomes:unknown[]=[];
     try{
       qcInspections=await rpc<unknown[]>("finished_garment_qc_list",{p_limit:250});
     }catch{
       // Keep quote/order operations readable while a new QC migration is being installed.
     }
-    return NextResponse.json({configured:true,quotes,orders,qcInspections},{headers:{"cache-control":"private, no-store"}});
+    try{
+      customerOutcomes=await rpc<unknown[]>("production_customer_outcome_list",{p_limit:250});
+    }catch{
+      // Keep the production desk usable while the Phase 11 outcome migration is being installed.
+    }
+    return NextResponse.json({configured:true,quotes,orders,qcInspections,customerOutcomes},{headers:{"cache-control":"private, no-store"}});
   }catch(error){
     console.error("[operator/production]",error);
     return NextResponse.json({error:"Production records could not be read."},{status:503});
