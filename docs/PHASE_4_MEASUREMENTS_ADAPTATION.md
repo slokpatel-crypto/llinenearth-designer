@@ -1,6 +1,6 @@
 # Phase 4 — Measurements & Fit Adaptation
 
-Status: strong existing foundation with opt-in durable recovery now implemented; real-person accuracy and tailor calibration remain.
+Status: strong existing foundation with opt-in durable recovery and authenticated account ownership implemented; real-person accuracy and tailor calibration remain.
 
 ## Existing implementation to keep
 
@@ -23,7 +23,7 @@ Do not create a second measurement engine. The roadmap's Phase 4 work becomes:
 4. Version every owner-approved ease-table revision.
 5. Keep body measurements distinct from finished-garment targets.
 6. Keep local browser save as a convenience cache.
-7. Offer an explicit opt-in secure measurement recovery vault now, while authenticated customer-account ownership remains a later launch dependency.
+7. Offer an explicit opt-in secure measurement recovery vault and authenticated customer ownership without exposing raw measurements in account summaries.
 8. Keep raw measurement persistence private and never place recovery tokens in URLs.
 
 ## Durable recovery now implemented
@@ -37,7 +37,7 @@ Measurement Studio still saves locally by default, but it now also supports an e
 - secure copy expires automatically,
 - user can explicitly delete the secure copy.
 
-This is anonymous recovery, not a replacement for authenticated customer-account ownership.
+Signed-in customers can now attach new or older secure copies to their Supabase-authenticated account. Recovery tokens remain an independent backup path.
 
 ## Calibration gate
 
@@ -54,7 +54,7 @@ This is anonymous recovery, not a replacement for authenticated customer-account
 - [ ] owner/tailor finished-garment calibration set recorded
 - [ ] approved ease-table revision versioned
 - [x] opt-in durable measurement recovery enabled
-- [ ] authenticated customer-account ownership enabled
+- [x] authenticated customer-account ownership enabled
 
 ## Safety rule
 
