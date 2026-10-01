@@ -121,3 +121,40 @@ export function verifiedMeterageEvidenceCase(input:unknown,expectedGarment?:Mete
   if(checkedBy.length<2||evidenceReference.length<3) return null;
   return {caseId,garment,fabricWidthCm,actualMetres,checkedBy,evidenceReference};
 }
+
+
+export function normalizeProductionCutEvidenceDraft(input:unknown){
+  const source=record(input);
+  const caseId=String(source.caseId||"").trim().slice(0,80);
+  if(!/^[A-Za-z0-9._-]{3,80}$/.test(caseId)) throw new Error("Anonymous cut case ID is required.");
+  const orderId=String(source.orderId||"").trim();
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(orderId)){
+    throw new Error("Valid production order ID is required.");
+  }
+  const garment=String(source.garment||"") as MeterageGarment;
+  if(garment!=="shirt"&&garment!=="trouser") throw new Error("Garment must be shirt or trouser.");
+  const fabricId=String(source.fabricId||"").trim().slice(0,160);
+  if(fabricId.length<2) throw new Error("Locked fabric ID is required.");
+  const fabricWidthCm=finite(source.fabricWidthCm);
+  if(fabricWidthCm===null||fabricWidthCm<60||fabricWidthCm>220) throw new Error("Fabric width must be between 60 and 220 cm.");
+  const actualMetres=finite(source.actualMetres);
+  if(actualMetres===null||actualMetres<=0||actualMetres>12) throw new Error("Actual cloth usage must be greater than 0 and at most 12 metres.");
+  const repeatRaw=source.patternRepeatMm===null||source.patternRepeatMm===undefined||String(source.patternRepeatMm).trim()===""
+    ? null
+    : finite(source.patternRepeatMm);
+  if(repeatRaw!==null&&(repeatRaw<=0||repeatRaw>1000)) throw new Error("Pattern repeat must be between 0 and 1000 mm.");
+  const checkedBy=String(source.checkedBy||"").replace(/\s+/g," ").trim().slice(0,120);
+  if(checkedBy.length<2) throw new Error("Named tailor or checker is required.");
+  const evidenceReference=String(source.evidenceReference||"").replace(/\s+/g," ").trim().slice(0,240);
+  if(evidenceReference.length<3) throw new Error("Physical cutting evidence reference is required.");
+  return {
+    caseId,orderId,garment,fabricId,
+    fabricWidthCm:Math.round(fabricWidthCm*100)/100,
+    actualMetres:Math.round(actualMetres*1000)/1000,
+    patternRepeatMm:repeatRaw===null?null:Math.round(repeatRaw*100)/100,
+    patternMatching:source.patternMatching===true,
+    cutContext:String(source.cutContext||"").replace(/\s+/g," ").trim().slice(0,160),
+    checkedBy,evidenceReference,
+    note:String(source.note||"").replace(/\s+/g," ").trim().slice(0,1200),
+  };
+}
