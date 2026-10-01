@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { expectedPeriodPx, passesScaleGate, scaleErrorPct } from "@/lib/designer/proof-scale";
+import { expectedPeriodPx, passesScaleGate, phase1ProofAcceptance, scaleErrorPct } from "@/lib/designer/proof-scale";
 import { applyRuntimeFabricScale, photoExpectedRepeatPx, type FabricRenderAsset } from "@/lib/designer/live-preview";
 import { DESIGNER_PANTS, DESIGNER_SHIRTS, designerStyleForOccasion } from "@/lib/designer/engine";
 import { StyleDirectorRealModelPreview } from "@/components/PhotoOutfitPreview";
@@ -28,6 +28,8 @@ export function PremiumShirtProof(){
   const [latencySamples,setLatencySamples]=useState<number[]>([]);
   const [realRenderSamples,setRealRenderSamples]=useState<number[]>([]);
   const [realismRatings,setRealismRatings]=useState<number[]>([]);
+  const [recordBusy,setRecordBusy]=useState(false);
+  const [recordMessage,setRecordMessage]=useState("");
   const startedRef=useRef(0);
 
   const realShirt=runtimeShirts.find((item)=>item.id===shirtId) || runtimeShirts[0];
@@ -71,6 +73,13 @@ export function PremiumShirtProof(){
   },[realRenderSamples]);
   const strongRealism=realismRatings.filter((rating)=>rating>=4).length;
   const realismGate=realismRatings.length>=8 && strongRealism>=6;
+  const proofAcceptance=useMemo(()=>phase1ProofAcceptance({
+    repeatMm:effectiveRepeatMm,
+    scaleGatePass:pass,
+    realModelSamples:realRenderSamples.length,
+    realModelP95Ms:realP95,
+    realismRatings,
+  }),[effectiveRepeatMm,pass,realRenderSamples.length,realP95,realismRatings]);
 
   useEffect(()=>{
     let cancelled=false;
@@ -127,6 +136,52 @@ export function PremiumShirtProof(){
   function clearRealismRatings(){
     setRealismRatings([]);
     try { localStorage.removeItem(REALISM_STORAGE_KEY); } catch {}
+  }
+
+  async function recordProofEvidence(){
+    if(recordBusy) return;
+    setRecordBusy(true);setRecordMessage("");
+    try{
+      const response=await fetch("/api/memory/event",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({
+          id:"EV-PHASE1-"+crypto.randomUUID(),
+          sessionId:"ROADMAP-V2-PHASE1-PROOF",
+          type:"operator_note",
+          at:new Date().toISOString(),
+          payload:{
+            subtype:"roadmap_phase1_proof",
+            version:"linen-earth-phase1-proof-v1",
+            status:proofAcceptance.accepted?"accepted":"review",
+            fabricId:realShirt?.id||"",
+            fabricName:realShirt?.name||"",
+            pattern:realShirt?.patternType||"",
+            repeatMm:effectiveRepeatMm,
+            measuredPreviewRepeatPx:measuredPx,
+            scaleErrorPct:error,
+            scaleGatePass:pass===true,
+            realModelSamples:realRenderSamples.length,
+            realModelP95Ms:realP95,
+            realismRatings,
+            strongRatings:proofAcceptance.strongRatings,
+            realismPass:proofAcceptance.realismReady,
+            note:proofAcceptance.reasons.join(" "),
+          },
+        }),
+      });
+      const result=await response.json() as {stored?:boolean;error?:string};
+      if(response.status===403||response.status===401) {
+        setRecordMessage("Operator login is required to record this proof.");
+        return;
+      }
+      if(!response.ok||!result.stored) throw new Error(result.error||"Proof evidence could not be stored.");
+      setRecordMessage(proofAcceptance.accepted?"Accepted Phase 1 proof recorded.":"Review evidence recorded; remaining gates are preserved.");
+    }catch(error){
+      setRecordMessage(error instanceof Error?error.message:"Proof evidence could not be stored.");
+    }finally{
+      setRecordBusy(false);
+    }
   }
 
   function exportProofEvidence(){
@@ -269,6 +324,12 @@ export function PremiumShirtProof(){
           </div>
           {realismRatings.length>0&&<button type="button" onClick={clearRealismRatings}>Clear ratings</button>}
           <button type="button" onClick={exportProofEvidence}>Export proof evidence JSON</button>
+          <div className="proofGate" data-pass={proofAcceptance.accepted?"yes":"no"}>
+            <b>{proofAcceptance.accepted?"PHASE 1 ACCEPTED":"PHASE 1 REVIEW"}</b>
+            <span>{proofAcceptance.accepted?"Scale, real-model latency and viewer realism gates all pass.":proofAcceptance.reasons.join(" ")}</span>
+          </div>
+          <button type="button" onClick={()=>void recordProofEvidence()} disabled={recordBusy}>{recordBusy?"Recording…":proofAcceptance.accepted?"Record accepted proof":"Record review evidence"}</button>
+          {recordMessage&&<p className="proofRecordMessage">{recordMessage}</p>}
         </section>
       </aside>
     </main>
