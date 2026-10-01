@@ -78,3 +78,21 @@ test("cross-view release evidence cannot pass before a multi-view concept exists
   assert.equal(result.progressPercent,67);
   assert.equal(result.gateComplete,false);
 });
+
+
+test("a newly generated view makes an older identity review pending again",()=>{
+  const outcomes=[
+    {concept_id:"a",view:"front",human_status:"approved" as const},
+    {concept_id:"a",view:"side",human_status:"approved" as const},
+    {concept_id:"a",view:"back",human_status:"pending" as const},
+  ];
+  const reviews=[
+    {concept_id:"a",status:"pass" as const,reviewed_views:["front","side"],created_at:"2026-10-01T10:00:00Z"},
+  ];
+  const result=summarizeCrossViewIdentity(outcomes,reviews);
+  assert.equal(result.eligibleConcepts,1);
+  assert.equal(result.reviewedConcepts,0);
+  assert.equal(result.pendingConcepts,1);
+  assert.equal(result.passedConcepts,0);
+  assert.equal(result.passRate,null);
+});
