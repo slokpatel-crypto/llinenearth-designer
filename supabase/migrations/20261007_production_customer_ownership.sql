@@ -28,7 +28,7 @@ declare
   v_owner uuid;
   v_count integer;
 begin
-  select min(owner_user_id),count(distinct owner_user_id)
+  select (array_agg(distinct owner_user_id))[1],count(distinct owner_user_id)
   into v_owner,v_count
   from private.designer_locked_revision_vault
   where revision_id=trim(p_revision_id)
@@ -184,6 +184,9 @@ begin
   ) into v_valid;
 
   if not v_valid then raise exception 'customer does not own this locked revision'; end if;
+  if private.resolve_locked_revision_owner(p_revision_id,p_recipe_hash) is distinct from p_owner_user_id then
+    raise exception 'locked revision ownership is ambiguous';
+  end if;
 
   update private.production_quotes
   set owner_user_id=p_owner_user_id
