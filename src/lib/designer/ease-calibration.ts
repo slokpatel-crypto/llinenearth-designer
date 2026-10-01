@@ -170,3 +170,37 @@ export function canApproveHouseEaseModel(input:{
 }){
   return input.evidenceCoverageComplete&&input.approvedBy.trim().length>=2;
 }
+
+
+export type ApprovedHouseEaseModel={
+  modelId:string;
+  version:string;
+  table:HouseEaseCalibrationTable;
+  approvedBy:string;
+  approvedAt:string|null;
+};
+
+export function approvedHouseEaseModelFromRow(input:unknown):ApprovedHouseEaseModel|null {
+  const source=record(input);
+  if(text(source.status,20)!=="approved") return null;
+  const modelId=text(source.model_id,120);
+  const approvedBy=text(source.approved_by,120);
+  if(!modelId||approvedBy.length<2) return null;
+  try{
+    const normalized=normalizeHouseEaseCalibrationDraft({
+      version:source.version,
+      shirt:source.shirt_table,
+      trouser:source.trouser_table,
+      note:source.note,
+    });
+    return {
+      modelId,
+      version:normalized.version,
+      table:{shirt:normalized.shirt,trouser:normalized.trouser},
+      approvedBy,
+      approvedAt:text(source.approved_at,80)||null,
+    };
+  }catch{
+    return null;
+  }
+}
