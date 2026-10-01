@@ -180,3 +180,46 @@ test("duplicate viewer clicks cannot satisfy the independent realism gate",()=>{
   assert.equal(result.uniqueViewers,1);
   assert.equal(result.ready,false);
 });
+
+
+test("photographic repeat audit can use a measured photo-coordinate px/mm calibration",()=>{
+  const asset:FabricRenderAsset={
+    tileUrl:"/fabric-tiles/test.webp",
+    placeholderUrl:"/fabric-tiles/test-placeholder.webp",
+    tileWidthPx:256,
+    tileHeightPx:256,
+    repeatDetected:true,
+    repeatPeriodPx:20,
+    orientation:"vertical",
+    dominantHex:"#ffffff",
+    scaleApproximate:true,
+    tileRealWidthMm:null,
+    renderAssetVersion:"test",
+  };
+  const calibrated=applyRuntimeFabricScale(asset,{physicalScaleStatus:"declared_repeat",repeatMm:10,stripeWidthMm:null});
+  const photoPxPerMm=0.82;
+  const expected=10*photoPxPerMm;
+  const actual=photoExpectedRepeatPx(calibrated,photoPxPerMm);
+  assert.ok(actual!==null);
+  assert.ok(Math.abs((actual as number)-expected)<1e-9);
+});
+
+test("measured photo px/mm changes physical pattern scale without changing approximate fabrics",()=>{
+  const asset:FabricRenderAsset={
+    tileUrl:"/fabric-tiles/test.webp",
+    placeholderUrl:"/fabric-tiles/test-placeholder.webp",
+    tileWidthPx:256,
+    tileHeightPx:256,
+    repeatDetected:true,
+    repeatPeriodPx:32,
+    orientation:"vertical",
+    dominantHex:"#ffffff",
+    scaleApproximate:false,
+    tileRealWidthMm:80,
+    renderAssetVersion:"test",
+  };
+  const measured=photoFabricPatternScale(asset,1,0.9);
+  const alternate=photoFabricPatternScale(asset,1,0.7);
+  assert.ok(measured>alternate);
+  assert.equal(photoFabricPatternScale({...asset,scaleApproximate:true},1,0.9),1);
+});
