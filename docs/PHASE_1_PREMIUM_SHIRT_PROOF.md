@@ -6,6 +6,7 @@ Route: `/lab/proof`
 ## What is implemented
 - Existing Linen Earth catalogue shirting photos are selectable in the proof.
 - Existing photographic mannequin compositor is shown beside the construction proof.
+- The current deterministic construction engine is embedded with Front / 3/4 / Side / Back views; Front + 3/4 are the Phase 1 comparison views.
 - Live fabric / collar / cuff changes use no AI render call.
 - Real mannequin renderer applies reviewed runtime repeat measurements when they exist.
 - Unknown physical scale remains explicitly approximate.
@@ -29,6 +30,7 @@ Route: `/lab/proof`
 ### Engineering
 - [x] isolated proof route
 - [x] current fabric photos
+- [x] multi-view deterministic construction engine (Front + 3/4 comparison, Side/Back regression)
 - [x] existing real mannequin track
 - [x] no AI per edit
 - [x] repeat-mm scale plumbing
