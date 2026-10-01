@@ -278,7 +278,9 @@ requireTokens("src/app/api/designer/search/route.ts", ["loadApprovedHouseEaseMod
 requireTokens("src/app/api/designer/brief/route.ts", ["loadApprovedHouseEaseModel","easeModel"]);
 requireTokens("src/lib/designer/planner.ts", [
   "FitConstructionAssessment",
+  "ApprovedHouseEaseModel",
   "assessFitConstruction",
+  "easeModel",
   "fitConstruction",
 ]);
 requireTokens("src/lib/designer/photo-preview.ts", [
