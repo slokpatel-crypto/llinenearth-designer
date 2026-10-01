@@ -22,6 +22,8 @@ export async function GET() {
     const analyzed=intelligence[fabric.id];
     const patterned=!/^(solid|plain)$/i.test(String(fabric.pattern||"").trim());
     const inactive=verified.availability==="unavailable";
+    const manualPhysicalProvenance=Boolean(verified.physicalEvidence);
+    const analyzerPhysicalProvenance=Boolean(analyzed?.verifiedPhysical.sourceUrl);
     const evidence={
       availabilityVerified:verified.availability!=="unknown",
       analyzerReviewed:Boolean(analyzed && ["approved","corrected"].includes(analyzed.reviewStatus)),
@@ -31,9 +33,17 @@ export async function GET() {
         analyzed?.measuredEvidence.patternPhysicalScale
         && analyzed.measuredEvidence.patternPhysicalScale!=="unknown"
       ),
-      gsmVerified:verified.weightGsm!=null || analyzed?.verifiedPhysical.gsm!=null,
-      drapeVerified:Boolean(verified.drape || analyzed?.verifiedPhysical.drape),
-      fiberVerified:Boolean(analyzed?.verifiedPhysical.fiberContent),
+      gsmVerified:Boolean(
+        (manualPhysicalProvenance && verified.weightGsm!=null)
+        || (analyzerPhysicalProvenance && analyzed?.verifiedPhysical.gsm!=null)
+      ),
+      drapeVerified:Boolean(
+        (manualPhysicalProvenance && verified.drape)
+        || (analyzerPhysicalProvenance && analyzed?.verifiedPhysical.drape)
+      ),
+      fiberVerified:Boolean(analyzerPhysicalProvenance && analyzed?.verifiedPhysical.fiberContent),
+      manualPhysicalProvenance,
+      analyzerPhysicalProvenance,
       formalityVerified:verified.formalityScore!=null,
       patterned,
     };
@@ -45,6 +55,7 @@ export async function GET() {
       if(!evidence.physicalScaleVerified) gaps.push("pattern scale");
       if(!evidence.gsmVerified) gaps.push("GSM");
       if(!evidence.drapeVerified) gaps.push("drape");
+      if((verified.weightGsm!=null||Boolean(verified.drape))&&!manualPhysicalProvenance) gaps.push("physical provenance");
       if(!evidence.fiberVerified) gaps.push("fibre");
       if(!evidence.formalityVerified) gaps.push("formality");
     }
