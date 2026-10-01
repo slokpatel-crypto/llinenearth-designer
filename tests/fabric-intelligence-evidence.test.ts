@@ -53,6 +53,7 @@ function intelligence(trust:DesignerFabricIntelligence["trust"]):DesignerFabricI
       drape:"Balanced",
       fiberContent:"100% Linen",
       sourceUrl:null,
+      evidenceNote:"Owner measured the physical roll and verified these facts.",
     },
     fieldProvenance:{
       "measured.pattern.physicalScale":"declared",
