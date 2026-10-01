@@ -20,6 +20,7 @@ type IdentityReview={
   review_id:string;concept_id:string;status:"pass"|"fail";reviewed_views:string[];
   reviewer:string;note:string;created_at:string;
 };
+type ManualReviewSignoff={signoff_id:string;status:"approved"|"review";reviewer:string;note:string;created_at:string};
 type CreditCap={
   event_id:string;credits_per_approved_cap:number;reviewer:string;note:string;created_at:string;
 };
@@ -47,6 +48,7 @@ export default function RenderQaClient(){
   const [identityReviews,setIdentityReviews]=useState<IdentityReview[]>([]);
   const [identitySummary,setIdentitySummary]=useState<IdentitySummary|null>(null);
   const [creditCap,setCreditCap]=useState<CreditCap|null>(null);
+  const [manualReviewSignoff,setManualReviewSignoff]=useState<ManualReviewSignoff|null>(null);
   const [creditCapSummary,setCreditCapSummary]=useState<CreditCapSummary|null>(null);
   const [reviewer,setReviewer]=useState("");
   const [creditCapInput,setCreditCapInput]=useState("");
@@ -67,7 +69,7 @@ export default function RenderQaClient(){
     setPatternEvidenceByFabric(data.patternEvidenceByFabric&&typeof data.patternEvidenceByFabric==="object"?data.patternEvidenceByFabric:{});
     setIdentityReviews(Array.isArray(data.identityReviews)?data.identityReviews:[]);
     setIdentitySummary(data.identitySummary||null);
-    setCreditCap(data.creditCap||null);
+    setCreditCap(data.creditCap||null);setManualReviewSignoff(data.manualReviewSignoff||null);
     setCreditCapSummary(data.creditCapSummary||null);
   }
   useEffect(()=>{void load();},[]);
@@ -144,6 +146,20 @@ export default function RenderQaClient(){
     },status==="pass"?"Cross-view identity pass recorded.":"Cross-view identity failure recorded.","identity:"+conceptId);
   }
 
+  async function saveManualReviewSignoff(status:"approved"|"review"){
+    if(reviewer.trim().length<2){
+      setMessage("Enter the named owner/reviewer before signing off the manual review workflow.");
+      return;
+    }
+    if(status==="review"&&releaseNote.trim().length<3){
+      setMessage("Add a short note explaining what remains before manual review can be approved.");
+      return;
+    }
+    await post({
+      action:"manual_review_signoff",status,reviewer:reviewer.trim(),note:releaseNote.trim(),
+    },status==="approved"?"Manual final-render review workflow signed off.":"Manual review workflow kept open for follow-up.","manual-review-signoff");
+  }
+
   async function saveCreditCap(){
     const cap=Number(creditCapInput);
     if(!Number.isFinite(cap)||cap<=0){
@@ -204,6 +220,13 @@ export default function RenderQaClient(){
         <button disabled={busy==="credit-cap"} onClick={()=>void saveCreditCap()}>{busy==="credit-cap"?"Saving…":"Record owner-approved credit cap"}</button>
       </div>
       {creditCap&&<small className="renderQaCapHistory">Latest cap: {Number(creditCap.credits_per_approved_cap).toFixed(2)} credits/approved · {creditCap.reviewer} · {new Date(creditCap.created_at).toLocaleString("en-IN")}</small>}
+      <div className="renderQaIdentityTitle"><span>MANUAL REVIEW WORKFLOW</span><b>{manualReviewSignoff?.status==="approved"?"SIGNED OFF":manualReviewSignoff?.status==="review"?"REVIEW OPEN":"NOT SIGNED OFF"}</b></div>
+      <p>Confirm that uncertain final renders will continue to receive human review before production release.</p>
+      <div className="renderQaReleaseForm">
+        <button disabled={busy==="manual-review-signoff"||reviewer.trim().length<2} onClick={()=>void saveManualReviewSignoff("approved")}>Approve manual review workflow</button>
+        <button disabled={busy==="manual-review-signoff"||reviewer.trim().length<2} onClick={()=>void saveManualReviewSignoff("review")}>Keep workflow under review</button>
+      </div>
+      {manualReviewSignoff&&<small className="renderQaCapHistory">Latest workflow sign-off: {manualReviewSignoff.status} · {manualReviewSignoff.reviewer} · {new Date(manualReviewSignoff.created_at).toLocaleString("en-IN")}</small>}
 
       <div className="renderQaIdentityList">
         <div className="renderQaIdentityTitle"><span>CROSS-VIEW IDENTITY</span><b>{identitySummary?.passedConcepts??0} pass · {identitySummary?.failedConcepts??0} fail · {identitySummary?.pendingConcepts??0} pending</b></div>
