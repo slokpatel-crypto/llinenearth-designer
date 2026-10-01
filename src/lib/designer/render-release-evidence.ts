@@ -32,9 +32,12 @@ export function summarizeCrossViewIdentity(
     }
   }
   let passed=0,failed=0,reviewed=0;
-  for(const [conceptId] of eligible){
+  for(const [conceptId,currentViews] of eligible){
     const review=latest.get(conceptId);
     if(!review) continue;
+    const reviewedViews=new Set((review.reviewed_views||[]).map((view)=>String(view||"").trim()).filter(Boolean));
+    const coversCurrentViews=[...currentViews].every((view)=>reviewedViews.has(view));
+    if(!coversCurrentViews) continue;
     reviewed+=1;
     if(review.status==="pass") passed+=1; else failed+=1;
   }
