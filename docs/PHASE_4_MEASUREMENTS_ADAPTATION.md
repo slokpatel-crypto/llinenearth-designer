@@ -18,7 +18,7 @@ Status: strong existing foundation with secure recovery, authenticated ownership
 Do not create a second measurement engine. The roadmap's Phase 4 work becomes:
 
 1. Validate the current capture flow with real people.
-2. Compare self-measurements with tailor measurements and record error.
+2. Compare self-measurements with tailor measurements and record error in the private append-only calibration registry.
 3. Measure a Linen Earth set of finished shirts / trousers through the new append-only House Ease Calibration desk and calibrate the existing provisional ease bands.
 4. Register every replacement as a complete versioned table and require named owner/tailor approval.
 5. Use only the currently approved complete model in the live Designer; drafts and retired models never change customer fit calculations. If no approved model exists, retain the explicit provisional fallback.
@@ -64,3 +64,11 @@ Signed-in customers can now attach new or older secure copies to their Supabase-
 ## Safety rule
 
 Never silently convert a provisional ease range into a cutting instruction. The canonical spec can become tailor-ready only after the measurement evidence, house ease calibration and tailor review requirements are satisfied.
+
+
+## Measurement accuracy evidence hardening
+
+- Self-vs-tailor comparison cases now use a private append-only Supabase registry behind the authenticated Operator API instead of generic browser event writes.
+- The server validates plausible measurement ranges and recomputes absolute chest/sleeve error from raw pairs; clients cannot submit pass/error values.
+- Every case requires an anonymous case ID, a physical comparison source, and a named checker/tailor. Latest-case semantics prevent repeat attempts from inflating the 10-person gate.
+- The existing roadmap thresholds remain explicit: at least 10 unique cases, median chest error below 1.5 cm, and median sleeve error below 1.0 cm.
