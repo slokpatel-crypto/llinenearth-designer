@@ -14,6 +14,7 @@ Status: existing foundation is substantially implemented; Roadmap v2 becomes a c
 - Private Fabric Analyzer workflow with stock binding.
 - Owner / supplier physical-evidence notes and source URLs.
 - Human approve / correct / reject review loop.
+- Dedicated append-only controlled physical colour-check workflow with LAB/hex evidence and CIEDE2000 comparison.
 - Ground-truth and calibration workflows.
 - Reviewed physical evidence can flow into the runtime Designer catalogue.
 - Build-time fabric tiles preserve pattern direction and avoid mirroring patterned cloth.
@@ -23,7 +24,7 @@ Status: existing foundation is substantially implemented; Roadmap v2 becomes a c
 1. Record physical scale evidence for stock fabrics that have visible repeats.
 2. Build the 50-fabric reviewed ground-truth set with unique stock IDs.
 3. Add verified GSM / fibre / physical drape only where owner, supplier or inspection evidence exists.
-4. Complete colour checks against physical cloth under a controlled capture setup.
+4. Use the new Physical Colour Calibration desk to complete colour checks against physical cloth under a controlled capture setup.
 5. Keep source imagery / capture procedure consistent enough that re-analysis is meaningful.
 6. Do not call any image-derived drape / GSM / fibre estimate a verified physical fact.
 
@@ -57,12 +58,13 @@ Engineering:
 - [x] runtime Designer merge
 - [x] direction-preserving patterned tiles
 - [x] approximate/verified UI distinction
+- [x] controlled physical colour evidence capture + descriptive ΔE metrics
 - [ ] CI green for Roadmap v2 branch
 
 Physical evidence:
 - [ ] 50 unique stock fabrics reviewed
 - [ ] visible-repeat fabrics have measured repeat or swatch-width evidence where true-scale publishing is desired
-- [ ] 10 controlled physical colour checks recorded
+- [ ] 10 controlled physical colour checks recorded (workflow implemented; real evidence still required)
 - [ ] verified GSM/drape/fibre entered only from trusted records or inspection
 - [ ] scale errors above the roadmap threshold block true-scale claims
 
