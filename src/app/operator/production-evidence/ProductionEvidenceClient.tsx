@@ -8,7 +8,7 @@ import {
 } from "@/lib/designer/production-delivery-evidence";
 
 type Order={order_id:string;revision_id:string;recipe_hash:string;status:string;note:string;created_at:string};
-type Evidence={evidence_id:string;order_id:string;revision_id:string;recipe_hash:string;manual_design_reentry:boolean;reentry_fields:string[];note:string;operator:string;created_at:string;order_created_at:string};
+type Evidence={evidence_id:string;order_id:string;revision_id:string;recipe_hash:string;manual_design_reentry:boolean;reentry_fields:string[];note:string;operator:string;evidence_reference?:string;created_at:string;order_created_at:string};
 
 export default function ProductionEvidenceClient(){
   const [orders,setOrders]=useState<Order[]>([]);
@@ -19,6 +19,7 @@ export default function ProductionEvidenceClient(){
   const [reentryFields,setReentryFields]=useState<string[]>([]);
   const [note,setNote]=useState("");
   const [operator,setOperator]=useState("");
+  const [evidenceReference,setEvidenceReference]=useState("");
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
 
@@ -45,13 +46,15 @@ export default function ProductionEvidenceClient(){
   const summary=useMemo(()=>summarizeProductionDeliveryEvidence(orders,evidence),[orders,evidence]);
   const selected=delivered.find((item)=>item.order_id===selectedOrderId)||delivered[0]||null;
   const selectedEvidence=selected?evidence.find((item)=>item.order_id===selected.order_id)||null:null;
-  const choiceValid=manualChoice!=="unset"&&(manualChoice==="no"||reentryFields.length>0||note.trim().length>=3);
+  const choiceValid=manualChoice!=="unset"&&operator.trim().length>=2&&evidenceReference.trim().length>=3&&(manualChoice==="no"||reentryFields.length>0||note.trim().length>=3);
 
   function chooseOrder(orderId:string){
     setSelectedOrderId(orderId);
     setManualChoice("unset");
     setReentryFields([]);
     setNote("");
+    setOperator("");
+    setEvidenceReference("");
     setMessage("");
   }
 
@@ -73,12 +76,13 @@ export default function ProductionEvidenceClient(){
           reentryFields,
           note,
           operator,
+          evidenceReference,
         }),
       });
       const data=await response.json();
       if(!response.ok) throw new Error(data.error||"Production completion evidence could not be saved.");
       setMessage("Immutable completion audit saved for this delivered order.");
-      setManualChoice("unset");setReentryFields([]);setNote("");
+      setManualChoice("unset");setReentryFields([]);setNote("");setOperator("");setEvidenceReference("");
       await load();
     }catch(error){
       setMessage(error instanceof Error?error.message:"Production completion evidence could not be saved.");
@@ -133,6 +137,7 @@ export default function ProductionEvidenceClient(){
             <h2>{selectedEvidence.manual_design_reentry?"Manual re-entry occurred":"Zero design-data re-entry confirmed"}</h2>
             <p>{selectedEvidence.note||"No additional note."}</p>
             {selectedEvidence.reentry_fields?.length>0&&<p><b>Fields:</b> {selectedEvidence.reentry_fields.join(", ")}</p>}
+            <p><b>Evidence reference:</b> {selectedEvidence.evidence_reference||"Legacy audit · provenance not recorded"}</p>
             <small>{selectedEvidence.operator||"Operator not named"} · {new Date(selectedEvidence.created_at).toLocaleString("en-IN")}</small>
           </div>:<>
             <div className="productionEvidenceChoice">
@@ -149,11 +154,12 @@ export default function ProductionEvidenceClient(){
             </div>}
 
             <div className="productionEvidenceNotes">
-              <label>Operator / initials<input value={operator} onChange={(event)=>setOperator(event.target.value)} maxLength={120} placeholder="Optional"/></label>
+              <label>Operator / checker<input value={operator} onChange={(event)=>setOperator(event.target.value)} maxLength={120} placeholder="Required"/></label>
+              <label>Production-flow evidence reference<input value={evidenceReference} onChange={(event)=>setEvidenceReference(event.target.value)} maxLength={240} placeholder="Tailor job card, cutting packet, dispatch note…"/></label>
               <label>Completion note<textarea rows={4} value={note} onChange={(event)=>setNote(event.target.value)} placeholder="What happened during the real handoff and production flow?"/></label>
             </div>
             <button className="productionEvidenceSave" disabled={busy||!choiceValid} onClick={()=>void saveEvidence()}>{busy?"Saving…":"Save immutable completion audit"}</button>
-            <p className="productionEvidenceRule">Save only after checking the actual production workflow. A re-entry incident keeps the first-10 gate open; the system will not hide it.</p>
+            <p className="productionEvidenceRule">Save only after checking the actual production workflow. A named checker plus a concrete production-flow reference are required; legacy audits without provenance remain visible but do not satisfy the first-10 gate.</p>
           </>}
         </>}
       </section>
