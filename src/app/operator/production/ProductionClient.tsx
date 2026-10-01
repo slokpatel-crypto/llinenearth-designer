@@ -105,6 +105,9 @@ export default function ProductionClient(){
     {label:quote.line2Label.trim(),amount:Number(quote.line2Amount)},
   ].filter((item)=>item.label&&Number.isFinite(item.amount)&&item.amount>=0),[quote]);
   const canQuote=quote.revisionId.trim().length>=12&&/^[a-f0-9]{64}$/i.test(quote.recipeHash.trim())&&quoteItems.length>0;
+  const acceptedQuotes=useMemo(()=>quotes.filter((item)=>item.status==="accepted"&&(
+    !order.revisionId || (item.revision_id===order.revisionId&&item.recipe_hash===order.recipeHash)
+  )),[quotes,order.revisionId,order.recipeHash]);
 
   return <main className="productionDesk">
     <header className="productionHeader">
@@ -152,7 +155,7 @@ export default function ProductionClient(){
         <span>02 / ORDER</span><h2>Create production order.</h2>
         <label>Revision ID<input value={order.revisionId} onChange={(e)=>setOrder({...order,revisionId:e.target.value})}/></label>
         <label>Recipe hash<input value={order.recipeHash} onChange={(e)=>setOrder({...order,recipeHash:e.target.value})}/></label>
-        <label>Accepted quote UUID (optional)<input value={order.quoteId} onChange={(e)=>setOrder({...order,quoteId:e.target.value})}/></label>
+        <label>Accepted quote (optional)<select value={order.quoteId} onChange={(e)=>setOrder({...order,quoteId:e.target.value})}><option value="">No quote attached</option>{acceptedQuotes.map((item)=><option key={item.quote_id} value={item.quote_id}>{item.currency} {Number(item.total).toFixed(2)} · {item.quote_id.slice(0,8)}</option>)}</select></label>
         <label>Note<textarea rows={2} value={order.note} onChange={(e)=>setOrder({...order,note:e.target.value})}/></label>
         <button disabled={busy||!configured||order.revisionId.length<12||!/^[a-f0-9]{64}$/i.test(order.recipeHash)} onClick={()=>void post({action:"create_order",...order},"Production order created.")}>Create order</button>
       </article>
