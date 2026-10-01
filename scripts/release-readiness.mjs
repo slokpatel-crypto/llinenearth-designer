@@ -518,8 +518,8 @@ requireTokens("src/app/operator/render-qa/RenderQaClient.tsx", ["Final Render QA
 requireTokens("supabase/migrations/20261001_render_outcomes.sql", ["designer_render_outcome_record","designer_render_outcome_review","designer_render_pattern_calibration_record","service_role"]);
 requireTokens("src/lib/designer/render-release-evidence.ts", ["summarizeCrossViewIdentity","evaluateRenderCreditCap","evaluateFinalRenderReleaseEvidence","FINAL_RENDER_REVIEW_TARGET","FINAL_RENDER_APPROVAL_TARGET_PERCENT","patternGateComplete","totalGates:4","eligibleConcepts","withinCap"]);
 requireTokens("src/app/operator/render-qa/RenderQaClient.tsx", ["PATTERN RELEASE COVERAGE","patternCoverageSummary"]);
-requireTokens("src/app/api/operator/render-qa/route.ts", ["patternCoverageSummary","summarizeApprovedPatternCalibrationCoverage","patternedFabricIds"]);
-requireTokens("src/lib/designer/render-outcome-metrics.ts", ["summarizeApprovedPatternCalibrationCoverage","requiredPairs","passedPairs","gateComplete"]);
+requireTokens("src/app/api/operator/render-qa/route.ts", ["patternCoverageSummary","patternEvidenceByFabric","expectedRepeatByFabric","summarizeApprovedPatternCalibrationCoverage","patternedFabricIds","Reviewed physical repeat evidence is required"]);
+requireTokens("src/lib/designer/render-outcome-metrics.ts", ["summarizeApprovedPatternCalibrationCoverage","expectedRepeatByFabric","missingTruthPairs","staleCalibrationPairs","requiredPairs","passedPairs","gateComplete"]);
 requireTokens("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx", ["Final render release evidence","evaluateFinalRenderReleaseEvidence","identitySummary","creditCapSummary"]);
 requireTokens("supabase/migrations/20261007_render_release_evidence.sql", ["designer_render_identity_review_record","designer_render_credit_cap_record","at least two rendered views","service_role"]);
 
