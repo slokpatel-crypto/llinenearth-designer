@@ -109,7 +109,7 @@ export default function StyleDirectorValidationClient(){
 
       <section style={{...panel,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12}}>
         <article><small>REAL USER CASES</small><div style={{fontSize:34,fontWeight:800}}>{summary.uniqueCases}</div></article>
-        <article><small>ALL 3 CHECKS CLEAN</small><div style={{fontSize:34,fontWeight:800}}>{summary.positiveCases}</div></article>
+        <article><small>DISTINCT CLEAN HANDOFFS</small><div style={{fontSize:34,fontWeight:800}}>{summary.positiveCases}</div><span style={{fontSize:12,opacity:.6}}>{summary.verifiedHandoffCases} verified case rows</span></article>
         <article><small>BLOCKING CASES</small><div style={{fontSize:34,fontWeight:800}}>{summary.blockingCases}</div></article>
         <article><small>DEVICE COVERAGE</small><div style={{fontSize:27,fontWeight:800}}>{summary.deviceCoverage.length}/3</div><span style={{fontSize:12,opacity:.6}}>{summary.deviceCoverage.join(" · ")||"none yet"}</span></article>
         <article><small>DOCUMENTED CLEAN TARGET</small><div style={{fontSize:27,fontWeight:800}}>{summary.requiredPositiveCases??"—"}</div><span style={{fontSize:12,opacity:.6}}>{summary.thresholdMet?"met":"not yet met"}</span></article>
@@ -147,7 +147,7 @@ export default function StyleDirectorValidationClient(){
           </div>
           <div style={{marginTop:18,paddingTop:14,borderTop:"1px solid #ece6dc"}}>
             <strong>Current phase evidence</strong>
-            <p style={{opacity:.68,fontSize:13,lineHeight:1.55}}>Clean cases: {summary.positiveCases}{summary.requiredPositiveCases?" / "+summary.requiredPositiveCases:" · target not documented"} · latest sign-off: {summary.latestSignoffStatus}. Phase 6 completes only when the latest human-entered clean-case target is met and the reviewer records approval.</p>
+            <p style={{opacity:.68,fontSize:13,lineHeight:1.55}}>Distinct clean handoffs: {summary.positiveCases}{summary.requiredPositiveCases?" / "+summary.requiredPositiveCases:" · target not documented"} · latest sign-off: {summary.latestSignoffStatus}. Reusing one handoff audit under multiple case IDs does not increase the evidence count.</p>
           </div>
         </article>
       </section>
