@@ -1,6 +1,6 @@
 # Phase 4 — Measurements & Fit Adaptation
 
-Status: strong existing foundation with opt-in durable recovery and authenticated account ownership implemented; real-person accuracy and tailor calibration remain.
+Status: strong existing foundation with secure recovery, authenticated ownership, self-vs-tailor evidence capture and a versioned house-ease calibration registry implemented; real evidence and approval remain.
 
 ## Existing implementation to keep
 
@@ -19,8 +19,8 @@ Do not create a second measurement engine. The roadmap's Phase 4 work becomes:
 
 1. Validate the current capture flow with real people.
 2. Compare self-measurements with tailor measurements and record error.
-3. Measure a Linen Earth set of finished shirts / trousers and calibrate the existing provisional ease bands.
-4. Version every owner-approved ease-table revision.
+3. Measure a Linen Earth set of finished shirts / trousers through the new append-only House Ease Calibration desk and calibrate the existing provisional ease bands.
+4. Register every replacement as a complete versioned table and require named owner/tailor approval.
 5. Keep body measurements distinct from finished-garment targets.
 6. Keep local browser save as a convenience cache.
 7. Offer an explicit opt-in secure measurement recovery vault and authenticated customer ownership without exposing raw measurements in account summaries.
@@ -51,8 +51,10 @@ Signed-in customers can now attach new or older secure copies to their Supabase-
 - [ ] 10-person self-measurement comparison recorded
 - [ ] median chest error below roadmap target
 - [ ] median sleeve error below roadmap target
-- [ ] owner/tailor finished-garment calibration set recorded
-- [ ] approved ease-table revision versioned
+- [x] finished-garment calibration evidence workflow + full 35-cell coverage gate implemented
+- [x] versioned owner/tailor approval registry implemented
+- [ ] owner/tailor finished-garment calibration set recorded with real garments
+- [ ] approved ease-table revision created from real evidence
 - [x] opt-in durable measurement recovery enabled
 - [x] authenticated customer-account ownership enabled
 
