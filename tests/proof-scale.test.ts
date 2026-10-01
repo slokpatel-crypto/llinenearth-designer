@@ -228,7 +228,7 @@ test("measured photo px/mm changes physical pattern scale without changing appro
 });
 
 
-test("recorded Phase 1 v2 evidence is recomputed from raw fixture and independent viewers",()=>{
+test("recorded Phase 1 v3 evidence is recomputed from raw fixture, independent viewers and boundaries",()=>{
   const evidence=evaluateRecordedPhase1ProofEvidence({
     version:"linen-earth-phase1-proof-v3",
     scaleCoordinateSystem:"photo-1024x1536-fixture",
@@ -256,7 +256,7 @@ test("recorded Phase 1 v2 evidence is recomputed from raw fixture and independen
   assert.equal(evidence.coreAccepted,true);
 });
 
-test("legacy or client-spoofed Phase 1 flags cannot satisfy the v2 evidence gate",()=>{
+test("legacy or client-spoofed Phase 1 flags cannot satisfy the v3 evidence gate",()=>{
   const evidence=evaluateRecordedPhase1ProofEvidence({
     version:"linen-earth-phase1-proof-v1",
     scaleCoordinateSystem:"photo-1024x1536-fixture",
