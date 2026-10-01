@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   PREVIEW_PERFORMANCE_TARGET_MS,
+  readPreviewPerformanceSamples,
   readPreviewPerformanceSummary,
   type PreviewPerformanceSummary,
 } from "@/lib/designer/preview-performance-client";
+import { DEVICE_QA_EVIDENCE_VERSION } from "@/lib/designer/device-qa-evidence";
 
 type DeviceClass="mobile"|"tablet"|"desktop";
 type CheckKey="fourViews"|"controlsLegible"|"noOverflow"|"fabricReadable"|"modelStable";
@@ -90,11 +92,13 @@ export default function DeviceQaClient(){
           at:new Date().toISOString(),
           payload:{
             subtype:"designer_device_qa",
+            version:DEVICE_QA_EVIDENCE_VERSION,
             deviceClass,
             status:accepted?"accepted":"review",
             viewport:`${viewport.width}x${viewport.height}`,
             dpr:viewport.dpr,
             samples:summary.samples,
+            sampleDurationsMs:readPreviewPerformanceSamples().map((item)=>item.durationMs),
             medianMs:summary.medianMs,
             p95Ms:summary.p95Ms,
             maxMs:summary.maxMs,
