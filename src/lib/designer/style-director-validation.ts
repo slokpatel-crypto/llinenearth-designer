@@ -75,9 +75,15 @@ export function summarizeStyleDirectorValidation(
     if(!latestByCase.has(row.case_id)) latestByCase.set(row.case_id,row);
   }
   const latest=[...latestByCase.values()];
-  const positive=latest.filter((row)=>
+  const cleanRows=latest.filter((row)=>
     row.directions_understandable&&row.directions_distinct&&row.stock_handoff_worked&&Boolean(row.handoff_audit_id)&&!row.blocking_issue
   );
+  const uniqueCleanByHandoff=new Map<string,StyleDirectorUserTestRow>();
+  for(const row of cleanRows){
+    const auditId=String(row.handoff_audit_id||"").trim().toLowerCase();
+    if(auditId&&!uniqueCleanByHandoff.has(auditId)) uniqueCleanByHandoff.set(auditId,row);
+  }
+  const positive=[...uniqueCleanByHandoff.values()];
   const latestSignoff=[...signoffs].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))[0]||null;
   const requiredPositiveCases=Number.isInteger(latestSignoff?.required_positive_cases)
     ? Number(latestSignoff?.required_positive_cases)
@@ -91,6 +97,7 @@ export function summarizeStyleDirectorValidation(
     distinctCases:latest.filter((row)=>row.directions_distinct).length,
     handoffCases:latest.filter((row)=>row.stock_handoff_worked).length,
     verifiedHandoffCases:latest.filter((row)=>row.stock_handoff_worked&&Boolean(row.handoff_audit_id)).length,
+    uniqueVerifiedHandoffs:new Set(latest.filter((row)=>row.stock_handoff_worked&&Boolean(row.handoff_audit_id)).map((row)=>String(row.handoff_audit_id).toLowerCase())).size,
     deviceCoverage:[...new Set(latest.map((row)=>row.device_class))],
     latestSignoffStatus:latestSignoff?.status||"pending",
     latestSignedBy:latestSignoff?.signed_by||null,
