@@ -71,3 +71,7 @@ Physical evidence:
 ## Do not rebuild
 
 Do not replace the existing Analyzer, catalogue, tile builder or evidence store just to mirror the roadmap document. Extend the existing contracts only where a measured physical fact cannot currently reach the renderer or customer-facing disclosure.
+
+
+## Reviewed-evidence boundary
+Customer-facing physical truth now upgrades only from Analyzer profiles that have been explicitly reviewed (`approved` / `corrected`). A high-confidence or provisional model result may still inform internal analysis, but it cannot silently mark pattern scale, GSM, drape or fibre content as verified in the Designer. This keeps Phase 1 true-scale preview and Phase 7 final-render pattern QA tied to the same reviewed fabric-truth source.
