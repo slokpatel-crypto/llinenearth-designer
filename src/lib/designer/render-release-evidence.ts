@@ -9,6 +9,7 @@ export type RenderOutcomeIdentityInput={
   concept_id:string;
   view:string;
   human_status:"pending"|"approved"|"rejected";
+  created_at?:string;
 };
 
 export function summarizeCrossViewIdentity(
@@ -16,12 +17,15 @@ export function summarizeCrossViewIdentity(
   reviews:RenderIdentityReviewInput[],
 ){
   const grouped=new Map<string,Set<string>>();
+  const latestOutcomeAt=new Map<string,number>();
   for(const row of outcomes){
     const key=String(row.concept_id||"").trim();
     const view=String(row.view||"").trim();
     if(!key||!view) continue;
     const set=grouped.get(key)||new Set<string>();
     set.add(view);grouped.set(key,set);
+    const createdAt=new Date(String(row.created_at||"")).getTime();
+    if(Number.isFinite(createdAt)) latestOutcomeAt.set(key,Math.max(latestOutcomeAt.get(key)||0,createdAt));
   }
   const eligible=[...grouped.entries()].filter(([,views])=>views.size>=2);
   const latest=new Map<string,RenderIdentityReviewInput>();
@@ -37,7 +41,10 @@ export function summarizeCrossViewIdentity(
     if(!review) continue;
     const reviewedViews=new Set((review.reviewed_views||[]).map((view)=>String(view||"").trim()).filter(Boolean));
     const coversCurrentViews=[...currentViews].every((view)=>reviewedViews.has(view));
-    if(!coversCurrentViews) continue;
+    const reviewAt=new Date(review.created_at).getTime();
+    const outcomeAt=latestOutcomeAt.get(conceptId)||0;
+    const hasNewerRender=Number.isFinite(reviewAt)&&outcomeAt>reviewAt;
+    if(!coversCurrentViews||hasNewerRender) continue;
     reviewed+=1;
     if(review.status==="pass") passed+=1; else failed+=1;
   }
