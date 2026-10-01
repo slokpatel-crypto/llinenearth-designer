@@ -11,8 +11,9 @@ import {
   recordRenderPatternCalibration,
   reviewRenderOutcome,
 } from "@/lib/designer/render-outcomes";
-import { summarizeRenderOutcomes, summarizeRenderPatternCalibrations } from "@/lib/designer/render-outcome-metrics";
+import { summarizeApprovedPatternCalibrationCoverage, summarizeRenderOutcomes, summarizeRenderPatternCalibrations } from "@/lib/designer/render-outcome-metrics";
 import { evaluateRenderCreditCap, summarizeCrossViewIdentity } from "@/lib/designer/render-release-evidence";
+import { DESIGNER_PANTS, DESIGNER_SHIRTS } from "@/lib/designer/engine";
 
 export const runtime="nodejs";
 
@@ -30,6 +31,12 @@ export async function GET(){
     latestRenderCreditCap(),
   ]);
   const summary=summarizeRenderOutcomes(outcomes);
+  const patternedFabricIds=new Set(
+    [...DESIGNER_SHIRTS,...DESIGNER_PANTS]
+      .filter((fabric)=>String(fabric.patternType||"").toLowerCase()!=="solid")
+      .map((fabric)=>fabric.id),
+  );
+  const patternCoverageSummary=summarizeApprovedPatternCalibrationCoverage(outcomes,calibrations,patternedFabricIds);
   return NextResponse.json({
     outcomes,
     calibrations,
@@ -37,6 +44,7 @@ export async function GET(){
     creditCap,
     summary,
     patternSummary:summarizeRenderPatternCalibrations(calibrations),
+    patternCoverageSummary,
     identitySummary:summarizeCrossViewIdentity(outcomes,identityReviews),
     creditCapSummary:evaluateRenderCreditCap(summary.creditsPerApproved,creditCap?Number(creditCap.credits_per_approved_cap):null),
   },{headers:{"cache-control":"private, no-store"}});
