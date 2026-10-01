@@ -195,6 +195,7 @@ type StyleDirectorValidationPayload={
     understandableCases:number;
     distinctCases:number;
     handoffCases:number;
+    verifiedHandoffCases:number;
     deviceCoverage:string[];
     latestSignoffStatus:string;
     requiredPositiveCases:number|null;
@@ -625,11 +626,11 @@ export default function Phase10ReadinessClient(){
         detail:styleValidationDone
           ? `Real-user evidence met the documented clean-case target of ${styleValidation?.requiredPositiveCases} and the owner/reviewer explicitly approved the Style Director validation.`
           : styleValidation
-            ? `${styleValidation.uniqueCases} real-user case(s) recorded · ${styleValidation.positiveCases}${styleValidation.requiredPositiveCases!==null?"/"+styleValidation.requiredPositiveCases:""} with all three checks clean · target ${styleValidation.requiredPositiveCases===null?"not documented":styleValidation.thresholdMet?"met":"open"} · latest human decision ${styleValidation.latestSignoffStatus}.`
+            ? `${styleValidation.uniqueCases} real-user case(s) recorded · ${styleValidation.positiveCases}${styleValidation.requiredPositiveCases!==null?"/"+styleValidation.requiredPositiveCases:""} clean with signed stock handoff evidence · ${styleValidation.verifiedHandoffCases} verified handoff case(s) · target ${styleValidation.requiredPositiveCases===null?"not documented":styleValidation.thresholdMet?"met":"open"} · latest human decision ${styleValidation.latestSignoffStatus}.`
             : "No real-user Style Director validation evidence is available yet.",
         status:styleValidationDone?"done":data.styleDirectorValidation?.configured?"progress":"blocked",
         progress:styleValidationProgress,
-        metric:styleValidation?`${styleValidation.positiveCases}/${styleValidation.requiredPositiveCases??"—"} clean target · ${styleValidation.blockingCases} blocking · ${styleValidation.latestSignoffStatus} sign-off`:"No user-test evidence",
+        metric:styleValidation?`${styleValidation.positiveCases}/${styleValidation.requiredPositiveCases??"—"} clean target · ${styleValidation.verifiedHandoffCases} signed handoffs · ${styleValidation.blockingCases} blocking · ${styleValidation.latestSignoffStatus} sign-off`:"No user-test evidence",
         href:"/operator/style-director-validation",
         action:"Run Style Director validation",
         ownerDependent:true,
