@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
+import { normalizeProductionQuoteDraft } from "@/lib/designer/production-quote";
 
 export const runtime="nodejs";
 
@@ -49,16 +50,18 @@ export async function POST(request:Request){
     if(action==="create_quote"){
       const revisionId=String(body.revisionId||"").trim();
       const recipeHash=String(body.recipeHash||"").trim().toLowerCase();
-      const currency=String(body.currency||"INR").trim().toUpperCase();
-      const lineItems=Array.isArray(body.lineItems)?body.lineItems:[];
-      const adjustment=Number(body.adjustment||0);
       const note=String(body.note||"").slice(0,1000);
-      if(revisionId.length<12||!/^[a-f0-9]{64}$/.test(recipeHash)||!/^[A-Z]{3}$/.test(currency)||!lineItems.length) {
-        return NextResponse.json({error:"Locked revision, recipe hash and line items are required."},{status:400});
+      if(revisionId.length<12||!/^[a-f0-9]{64}$/.test(recipeHash)) {
+        return NextResponse.json({error:"Locked revision and recipe hash are required."},{status:400});
       }
+      const draft=normalizeProductionQuoteDraft({
+        currency:body.currency,
+        lineItems:body.lineItems,
+        adjustment:body.adjustment,
+      });
       const quoteId=await rpc<string>("production_quote_create",{
-        p_revision_id:revisionId,p_recipe_hash:recipeHash,p_currency:currency,
-        p_line_items:lineItems,p_adjustment:adjustment,p_note:note,
+        p_revision_id:revisionId,p_recipe_hash:recipeHash,p_currency:draft.currency,
+        p_line_items:draft.lineItems,p_adjustment:draft.adjustment,p_note:note,
       });
       return NextResponse.json({quoteId});
     }
