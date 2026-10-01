@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { LockedDesignRevision } from "@/lib/designer/design-lock";
 import { buildProductionHandoff } from "@/lib/designer/production-handoff";
 import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-pack";
+import { buildProductionPacket } from "@/lib/designer/production-packet";
 
 type Quote={quote_id:string;revision_id:string;recipe_hash:string;currency:string;line_items:Array<{label:string;amount:number}>;subtotal:number;adjustment:number;total:number;note:string;status:string;created_at:string};
 type Order={order_id:string;revision_id:string;recipe_hash:string;quote_id:string|null;status:string;note:string;created_at:string};
@@ -79,6 +80,24 @@ export default function ProductionClient(){
     const handoff=buildProductionHandoff(loadedRevision);
     download(techPackFilename(handoff),"text/html;charset=utf-8",buildTailorTechPackHtml(handoff));
   }
+  function exportProductionPacket(){
+    if(!loadedRevision) return;
+    const quoteMatch=quotes.find((item)=>item.revision_id===loadedRevision.revisionId&&item.recipe_hash===loadedRevision.recipeHash&&item.status==="accepted")
+      || quotes.find((item)=>item.revision_id===loadedRevision.revisionId&&item.recipe_hash===loadedRevision.recipeHash)
+      || null;
+    const orderMatch=orders.find((item)=>item.revision_id===loadedRevision.revisionId&&item.recipe_hash===loadedRevision.recipeHash)||null;
+    const packet=buildProductionPacket({
+      revision:loadedRevision,
+      quote:quoteMatch?{
+        quoteId:quoteMatch.quote_id,currency:quoteMatch.currency,total:Number(quoteMatch.total),status:quoteMatch.status,createdAt:quoteMatch.created_at,
+      }:null,
+      order:orderMatch?{
+        orderId:orderMatch.order_id,status:orderMatch.status,createdAt:orderMatch.created_at,
+      }:null,
+    });
+    download(`linen-earth-production-packet-${loadedRevision.revisionId.toLowerCase()}.json`,"application/json",JSON.stringify(packet,null,2));
+  }
+
 
   const quoteItems=useMemo(()=>[
     {label:quote.line1Label.trim(),amount:Number(quote.line1Amount)},
@@ -107,7 +126,7 @@ export default function ProductionClient(){
         <span><small>SHIRT</small><b>{loadedRevision.garmentSpec.fabrics.shirt.name}</b></span>
         <span><small>TROUSER</small><b>{loadedRevision.garmentSpec.fabrics.trouser.name}</b></span>
         <span><small>CONSTRUCTION</small><b>{loadedRevision.garmentSpec.shirt.collar} · {loadedRevision.garmentSpec.shirt.cuff}</b></span>
-        <div><button onClick={exportHandoff}>Export tailor handoff</button><button onClick={exportTechPack}>Export tech pack</button></div>
+        <div><button onClick={exportHandoff}>Export tailor handoff</button><button onClick={exportTechPack}>Export tech pack</button><button onClick={exportProductionPacket}>Export production packet</button></div>
       </div>}
     </section>
 
