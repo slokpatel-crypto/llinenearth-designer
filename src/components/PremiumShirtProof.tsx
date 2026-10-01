@@ -6,6 +6,7 @@ import { expectedPeriodPx, passesScaleGate, phase1ProofAcceptance, scaleErrorPct
 import { applyRuntimeFabricScale, photoExpectedRepeatPx, type FabricRenderAsset } from "@/lib/designer/live-preview";
 import { DESIGNER_PANTS, DESIGNER_SHIRTS, designerStyleForOccasion } from "@/lib/designer/engine";
 import { StyleDirectorRealModelPreview } from "@/components/PhotoOutfitPreview";
+import { LiveConstructionPreview } from "@/components/LiveConstructionPreview";
 import fabricTileManifest from "../../public/fabric-tiles/manifest.json";
 
 type Collar="spread"|"button-down"|"band";
@@ -35,6 +36,11 @@ export function PremiumShirtProof(){
   const realShirt=runtimeShirts.find((item)=>item.id===shirtId) || runtimeShirts[0];
   const realPant=runtimePants.find((item)=>item.id==="linen-suiting-beige") || runtimePants[0];
   const realModelStyle=designerStyleForOccasion("Semi-Formal");
+  const proofConstructionStyle={
+    ...realModelStyle,
+    collar:collar==="spread" ? "Spread Collar" : collar==="button-down" ? "Button-Down Collar" : "Mandarin / Band Collar",
+    cuff:cuff==="french" ? "French / Double Cuff" : cuff==="round" ? "Rounded/Soft Cuff" : "Barrel Cuff (1-button)",
+  };
   const fabric={
     label:realShirt?.name||"Fabric",
     image:realShirt?.image||"",
@@ -353,5 +359,19 @@ export function PremiumShirtProof(){
         <StyleDirectorRealModelPreview shirt={proofRealShirt} pant={realPant} style={realModelStyle} onRenderMeasured={(milliseconds)=>setRealRenderSamples((current)=>[...current.slice(-29),milliseconds])}/>
       </div>
     </section>}
+
+    {proofRealShirt&&realPant&&<section className="proofConstructionEngine">
+      <div className="proofConstructionEngineHead">
+        <span>CURRENT LIVE ENGINE · MULTI-VIEW</span>
+        <h2>Check the same proof through the deterministic construction renderer.</h2>
+        <p>Use Front and 3/4 as the Phase 1 comparison views. Side and Back remain available for regression checks. Fabric changes and construction edits stay local; no AI image call is made.</p>
+      </div>
+      <LiveConstructionPreview
+        shirt={proofRealShirt}
+        pant={realPant}
+        style={proofConstructionStyle}
+        occasion="Semi-Formal"
+        climate="Not specified"
+      />
   </div>;
 }
