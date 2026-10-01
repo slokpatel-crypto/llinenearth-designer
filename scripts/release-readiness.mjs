@@ -90,6 +90,9 @@ for (const path of [
   "supabase/migrations/20261007_production_customer_ownership.sql",
   "supabase/migrations/20261013_customer_quote_acceptance.sql",
   "supabase/migrations/20261014_customer_production_timeline.sql",
+  "supabase/migrations/20261015_customer_production_outcomes.sql",
+  "src/lib/designer/customer-production-outcomes.ts",
+  "tests/customer-production-outcomes.test.ts",
   "src/lib/fabric-color-calibration.ts",
   "src/app/api/operator/fabric-color-calibration/route.ts",
   "src/app/operator/fabric-color-calibration/page.tsx",
@@ -151,7 +154,7 @@ for (const path of [
 ]) requireFile(path);
 
 requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/visual", "/real-model", "Open Real Model Designer"]);
-requireTokens("src/app/account/page.tsx", ["Email sign in","listOwned","recovery token","Measurement profiles","Accept quote","accept_quote","Timeline","orderEvents"]);
+requireTokens("src/app/account/page.tsx", ["Email sign in","listOwned","recovery token","Measurement profiles","Accept quote","accept_quote","Timeline","orderEvents","record_outcome","post-delivery feedback","does not automatically change Designer recommendations"]);
 requireTokens("src/lib/customer-auth.ts", ["SUPABASE_ANON_KEY","/auth/v1/otp","/auth/v1/verify","/auth/v1/user","CUSTOMER_SESSION_COOKIE"]);
 requireTokens("src/lib/customer-session-token.ts", ["CUSTOMER_SESSION_MAX_AGE_SECONDS","createCustomerSessionToken","verifyCustomerSessionToken","timingSafeEqual"]);
 requireTokens("src/app/api/customer-auth/verify/route.ts", ["createSignedCustomerSession","CUSTOMER_SESSION_COOKIE","Customer session signing is not configured"]);
@@ -159,10 +162,12 @@ requireTokens("src/app/api/customer-auth/logout/route.ts", ["CUSTOMER_SESSION_CO
 requireTokens("src/app/api/designer/vault/route.ts", ["getCustomerIdentity","listOwned","loadOwned","deleteOwned","action===\"claim\""]);
 requireTokens("src/app/api/measurements/vault/route.ts", ["getCustomerIdentity","listOwned","loadOwned","deleteOwned","action===\"claim\""]);
 requireTokens("supabase/migrations/20261006_customer_account_ownership.sql", ["owner_user_id","auth.users","designer_locked_revision_vault_list_owned","measurement_profile_vault_list_owned","service_role"]);
-requireTokens("src/app/api/customer-account/production/route.ts", ["getCustomerIdentity","production_quote_list_owned_v2","production_order_list_owned","production_order_event_list_owned","orderEvents","production_quote_accept_owned","accept_quote","private, no-store"]);
+requireTokens("src/app/api/customer-account/production/route.ts", ["getCustomerIdentity","production_quote_list_owned_v2","production_order_list_owned","production_order_event_list_owned","production_customer_outcome_list_owned","outcomes","production_quote_accept_owned","accept_quote","record_outcome","normalizeCustomerProductionOutcome","private, no-store"]);
 requireTokens("supabase/migrations/20261007_production_customer_ownership.sql", ["resolve_locked_revision_owner","production_claim_revision_ownership","production_quote_list_owned","production_order_list_owned","owner_user_id"]);
 requireTokens("supabase/migrations/20261013_customer_quote_acceptance.sql", ["production_quote_accept_owned","production_quote_list_owned_v2","customer_account","service_role"]);
 requireTokens("supabase/migrations/20261014_customer_production_timeline.sql", ["production_order_event_list_owned","production_order_events","owner_user_id","service_role"]);
+requireTokens("supabase/migrations/20261015_customer_production_outcomes.sql", ["production_customer_outcomes","production_customer_outcome_record","production_customer_outcome_list_owned","production_customer_outcome_list","customer outcome requires a delivered order","service_role"]);
+requireTokens("src/lib/designer/customer-production-outcomes.ts", ["CUSTOMER_OUTCOME_RATINGS","CUSTOMER_FIT_RESULTS","normalizeCustomerProductionOutcome","Confirm the garment was worn"]);
 requireTokens("src/lib/fabric-color-calibration.ts", ["deltaE2000","evidenceGateComplete","calibrated_capture","spectrophotometer"]);
 requireTokens("src/app/api/operator/fabric-color-calibration/route.ts", ["verifyOperatorSession","fabric_physical_color_check_record","summarizeFabricPhysicalColorChecks"]);
 requireTokens("src/app/operator/fabric-color-calibration/FabricColorCalibrationClient.tsx", ["Physical Colour Calibration","MEDIAN ΔE","descriptive only","Save append-only colour evidence"]);
@@ -459,13 +464,13 @@ requireTokens("src/lib/designer/production-quote.ts", ["normalizeProductionQuote
 requireTokens("src/lib/designer/production-state.ts", ["ORDER_TRANSITIONS","QUOTE_TRANSITIONS","cloth_reserved","delivered"]);
 requireTokens("src/lib/designer/production-packet.ts", ["linen-earth-production-packet-v1","noDesignDataReEntry"]);
 requireTokens("src/lib/designer/stock-ledger.ts", ["stockSnapshot","reservedMetres","availableMetres"]);
-requireTokens("src/app/operator/production/ProductionClient.tsx", ["Load locked design","Export production packet","Create production order"]);
+requireTokens("src/app/operator/production/ProductionClient.tsx", ["Load locked design","Export production packet","Create production order","CUSTOMER OUTCOME","not automatically applied to Designer ranking"]);
 requireTokens("src/app/operator/stock/StockClient.tsx", ["Fabric Stock Ledger","Create reservation","Consume"]);
 requireTokens("supabase/migrations/20261001_fabric_stock_ledger.sql", ["fabric_stock_snapshot","fabric_stock_reserve","request_key","service_role"]);
 requireTokens("supabase/migrations/20261001_production_quotes_orders.sql", ["production_quote_create","production_order_create","invalid order transition","service_role"]);
 requireTokens("supabase/migrations/20261002_finished_garment_qc.sql", ["finished_garment_qc_record","finished_garment_qc_list","finished-garment QC approval is required before delivery","service_role"]);
 requireTokens("src/app/operator/garment-qc/GarmentQcClient.tsx", ["Finished Garment QC","Approve for delivery","Record rework","PHYSICAL CHECKS"]);
-requireTokens("src/app/api/operator/production/route.ts", ["finished_garment_qc_list","Finished-garment QC approval is required before delivery."]);
+requireTokens("src/app/api/operator/production/route.ts", ["finished_garment_qc_list","Finished-garment QC approval is required before delivery.","production_customer_outcome_list","customerOutcomes"]);
 requireTokens("supabase/migrations/20261003_production_delivery_evidence.sql", ["production_delivery_evidence_record","production_delivery_evidence_list","delivery evidence can only be recorded for a delivered order","service_role"]);
 requireTokens("src/lib/designer/production-delivery-evidence.ts", ["PRODUCTION_REENTRY_FIELDS","summarizeProductionDeliveryEvidence","gateComplete","reentryIncidentCount"]);
 requireTokens("src/app/operator/production-evidence/ProductionEvidenceClient.tsx", ["Zero-Reentry Proof","FIRST 10 AUDITED","ZERO RE-ENTRY","Save immutable completion audit"]);
@@ -533,6 +538,8 @@ requireTokens("scripts/check-cloud-readiness.mjs", [
   "production_quote_accept_owned",
   "production_order_list_owned",
   "production_order_event_list_owned",
+  "production_customer_outcome_list_owned",
+  "production_customer_outcome_list",
   "fabric_physical_color_check_list",
   "style_director_user_test_list",
   "style_director_validation_signoff_list",
