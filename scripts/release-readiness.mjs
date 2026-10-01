@@ -208,6 +208,7 @@ requireTokens("src/lib/fabric-intelligence-server.ts", ["fieldProvenance:{...pro
 requireTokens("src/lib/fabric-intelligence-types.ts", ["evidenceNote:string|null","fieldProvenance?:Record<string"]);
 requireTokens("src/lib/fabric-intelligence-adapter.ts", ["evidenceNote:string|null","evidenceNote:str(obj(root.verifiedPhysical).evidenceNote"]);
 requireTokens("src/lib/fabric-analyzer.ts", ["verifiedPhysicalEvidenceNote","evidenceNote:safeText(input.verifiedPhysicalEvidenceNote"]);
+requireTokens("src/app/operator/fabric-analyzer/FabricAnalyzerClient.tsx", ["verifiedPhysical?.sourceUrl","verifiedPhysical?.evidenceNote","VERIFIED PHYSICAL"]);
 requireTokens("src/app/api/operator/designer-data/route.ts", ["analyzerPhysicalProvenance","evidenceNote","physicalField(\"measured.pattern.physicalScale\")"]);
 requireTokens("src/app/operator/designer-data/DesignerDataClient.tsx", ["Physical evidence provenance","physicalEvidence:editor.physicalEvidence","physical_roll","supplier_document","owner_measurement"]);
 requireTokens("src/app/operator/designer-data/DesignerDataBatchPanel.tsx", ["physicalSourceType","physicalReference","physicalCheckedBy","physicalEvidence:incomingPhysicalEvidence??current.physicalEvidence"]);
