@@ -1,4 +1,4 @@
-import { PRODUCTION_LEARNING_CONTEXT_VERSION } from "@/lib/designer/production-learning-context";
+import { PRODUCTION_LEARNING_CONTEXT_VERSION } from "./production-learning-context.ts";
 
 export type CustomerOutcomeEvidenceRow={
   outcome_id:string;
