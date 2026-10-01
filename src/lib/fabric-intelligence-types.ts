@@ -31,6 +31,7 @@ export type DesignerFabricIntelligence = {
     drape:"Fluid"|"Balanced"|"Structured"|null;
     fiberContent:string|null;
     sourceUrl:string|null;
+    evidenceNote:string|null;
   };
   fieldProvenance?:Record<string,"measured"|"modelJudged"|"declared"|"reviewed">;
   colorFamily:ColorFamilyId|null;
