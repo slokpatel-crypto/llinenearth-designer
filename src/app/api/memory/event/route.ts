@@ -262,6 +262,30 @@ function cleanPayload(type:string, input:unknown) {
       };
     }
 
+    if (subtype === "production_usage_case") {
+      const version=text(payload.version,80);
+      const caseId=text(payload.caseId,80);
+      const revisionId=text(payload.revisionId,180);
+      const garment=text(payload.garment,20);
+      const fabricId=text(payload.fabricId,160);
+      const fabricWidthCm=Number(payload.fabricWidthCm);
+      const actualMetres=Number(payload.actualMetres);
+      const patternRepeatMm=Number(payload.patternRepeatMm);
+      const patternMatching=payload.patternMatching===true;
+      if(version!=="production-usage-v1" || !caseId || !revisionId || !fabricId || !["shirt","trouser"].includes(garment)) return null;
+      if(!Number.isFinite(fabricWidthCm)||fabricWidthCm<60||fabricWidthCm>220) return null;
+      if(!Number.isFinite(actualMetres)||actualMetres<=0||actualMetres>12) return null;
+      return {
+        subtype,version,caseId,revisionId,garment,fabricId,
+        fabricWidthCm:Math.round(fabricWidthCm*10)/10,
+        actualMetres:Math.round(actualMetres*100)/100,
+        patternRepeatMm:Number.isFinite(patternRepeatMm)&&patternRepeatMm>0&&patternRepeatMm<=1000?Math.round(patternRepeatMm*10)/10:null,
+        patternMatching,
+        cutContext:text(payload.cutContext,160),
+        note:text(payload.note,600),
+      };
+    }
+
     if (subtype === "roadmap_phase1_proof") {
       const version=text(payload.version,80);
       const status=text(payload.status,20);
