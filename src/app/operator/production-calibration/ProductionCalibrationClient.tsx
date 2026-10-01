@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 type UsageCase={
   at:string;caseId:string;revisionId:string;garment:"shirt"|"trouser";fabricId:string;
   fabricWidthCm:number;actualMetres:number;patternRepeatMm:number|null;patternMatching:boolean;
-  cutContext:string;checkedBy:string;evidenceReference:string;note:string;
+  cutContext:string;checkedBy:string;evidenceReference:string;note:string;verifiedEvidence:boolean;
 };
 type Payload={
   configured:boolean;cases:UsageCase[];
@@ -71,8 +71,8 @@ export default function ProductionCalibrationClient(){
     </header>
 
     <section className="prodCalSummary">
-      <article><small>SHIRT CASES</small><strong>{summary?.shirtCases??0}/20</strong><span>Minimum evidence target before fitting a first estimator.</span></article>
-      <article><small>TROUSER CASES</small><strong>{summary?.trouserCases??0}/20</strong><span>Collected separately from shirt usage.</span></article>
+      <article><small>SHIRT VERIFIED CUTS</small><strong>{summary?.shirtCases??0}/20</strong><span>Only named, physically referenced cuts count toward calibration.</span></article>
+      <article><small>TROUSER VERIFIED CUTS</small><strong>{summary?.trouserCases??0}/20</strong><span>Collected separately with checker + cutting reference.</span></article>
       <article><small>MEDIAN OBSERVED</small><strong>{summary?.medianShirtMetres??"—"} / {summary?.medianTrouserMetres??"—"} m</strong><span>Descriptive only; not a quote or recommendation.</span></article>
       <article data-pass={summary?.readyForModel===true}><small>ESTIMATOR DATA</small><strong>{summary?.readyForModel?"READY TO ANALYSE":"COLLECTING"}</strong><span>Even when ready, owner/tailor review is required before customer use.</span></article>
     </section>
@@ -110,7 +110,7 @@ export default function ProductionCalibrationClient(){
         {!data?.cases.length&&<p>No production usage cases recorded yet.</p>}
         {data?.cases.slice(0,30).map((item)=><div key={item.caseId} className="prodCalCase">
           <div><b>{item.caseId}</b><small>{new Date(item.at).toLocaleString("en-IN")}</small></div>
-          <span>{item.garment.toUpperCase()} · {item.fabricId}</span>
+          <span>{item.garment.toUpperCase()} · {item.fabricId} · {item.verifiedEvidence?"VERIFIED":"LEGACY / UNVERIFIED"}</span>
           <strong>{item.actualMetres} m from {item.fabricWidthCm} cm width</strong>
           <small>{item.revisionId}</small>
           <small>Verified by {item.checkedBy||"legacy / unverified"} · {item.evidenceReference||"no physical reference"}</small>
