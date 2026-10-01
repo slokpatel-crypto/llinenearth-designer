@@ -41,7 +41,10 @@ test("production packet preserves exact locked recipe traceability",()=>{
   assert.equal(packet.revisionId,revision.revisionId);
   assert.equal(packet.recipeHash,revision.recipeHash);
   assert.equal(packet.handoff.designRevisionId,revision.revisionId);
-  assert.equal(packet.traceability.noDesignDataReEntry,true);
+  assert.equal(packet.traceability.packetBuiltFromLockedRevision,true);
+  assert.equal(packet.traceability.noDesignDataReEntry,false);
+  assert.equal(packet.traceability.deliveryAuditRequired,true);
+  assert.match(packet.traceability.note,/verified separately after real delivery/i);
   assert.equal(packet.traceability.quoteAccepted,true);
 });
 
