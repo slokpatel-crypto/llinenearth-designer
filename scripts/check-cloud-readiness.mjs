@@ -171,6 +171,11 @@ if (url && key) {
           if (!rpcResponse.ok) {
             const detail=(await rpcResponse.text()).replace(/\s+/g," ").slice(0,160);
             fail(`${rpcName} is unavailable. Apply Roadmap v2 Supabase migrations. HTTP ${rpcResponse.status}: ${detail}`);
+          } else if (rpcName==="roadmap_v2_evidence_health") {
+            const health=await rpcResponse.json();
+            const missing=Object.entries(health||{}).filter(([,value])=>value!==true).map(([key])=>key);
+            if(missing.length) fail(`Roadmap v2 evidence schema is incomplete: ${missing.join(", ")}`);
+            else ok(label);
           } else {
             ok(label);
           }
