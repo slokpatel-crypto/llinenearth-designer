@@ -59,6 +59,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added opt-in secure measurement recovery vault with hashed recovery keys, expiry and deletion.
 - Added final-render outcome ledger, human approval desk, automated QA linkage, and credits-per-approved metrics.
 - Added cross-view final-render identity evidence and a human-entered owner credit-cap registry with observed cost comparison.
+- Added append-only named human sign-off evidence for the final-render manual review workflow; production readiness stays open until a real reviewer approves it.
 - Added final-render pattern release coverage: every approved patterned shirt/trouser in the evidence set must have a latest <=8% physical-scale calibration without axis mismatch; solids do not create pattern-calibration debt, while a solids-only set cannot prove the patterned-render gate.
 - Added append-only controlled physical fabric colour checks with LAB/hex evidence, CIEDE2000 comparison and a 10-unique-fabric evidence counter.
 - Added anonymous Style Director real-user validation evidence for understandability, material distinction, exact stock handoff and explicit human sign-off; approval now also requires a human-entered clean-case target, and the database blocks approval until latest unique evidence meets it.
