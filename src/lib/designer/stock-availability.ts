@@ -23,7 +23,7 @@ export function applyVerifiedStockAvailability(
 ){
   const verified=verifiedStockAvailabilityMap(rows);
   return {
-    stock:stock.map((fabric)=>verified.has(fabric.id)?{...fabric,inStock:fabric.inStock&&verified.get(fabric.id)===true}:fabric),
+    stock:stock.map((fabric)=>verified.has(fabric.id)?{...fabric,inStock:fabric.inStock&&verified.get(fabric.id)===true,availabilityVerified:true}:fabric),
     verifiedFabricIds:[...verified.keys()],
   };
 }
