@@ -27,7 +27,8 @@ The new Roadmap v2 design-lock contract is separate from the render provider. A 
 - [x] Record provider credits for generated final renders.
 - [x] Record human approve/reject decisions for final renders.
 - [x] Calculate approval rate and credits per approved render from real outcomes.
-- Confirm the QA tolerances on measured stripe/check fabrics.
+- [x] Add measured stripe/check calibration capture against the existing <= 8% physical-scale gate.
+- Confirm the QA tolerance with real physical fixtures and owner/tailor evidence.
 - Confirm cross-view identity on the target set.
 - Continue manual review for cases where automated QA cannot confidently approve.
 - Do not call final AI output a physical colour proof; the real swatch remains authoritative.
@@ -46,6 +47,7 @@ The new Roadmap v2 design-lock contract is separate from the render provider. A 
 - [ ] real render approval-rate target met
 - [x] credits-per-approved metric implemented
 - [ ] cost per approved render under owner cap
+- [x] measured-pattern QA evidence capture + <= 8% scale scoring implemented
 - [ ] measured-pattern QA calibrated on physical fixtures
 - [ ] manual review workflow signed off for production use
 
