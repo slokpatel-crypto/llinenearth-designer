@@ -65,6 +65,12 @@ type ConstructionPayload={
   rejected:number;
 };
 
+type LaunchMetricsPayload={
+  configured:boolean;
+  counts?:Record<string,number>;
+  totals?:{sessions:number;renders:number;whatsapp:number;sales:number};
+};
+
 type MeasurementCalibrationPayload={
   configured:boolean;
   summary:{
@@ -117,6 +123,7 @@ type RenderCachePayload={
 type LoadState={
   phase1Proof:Phase1ProofPayload|null;
   measurementCalibration:MeasurementCalibrationPayload|null;
+  launchMetrics:LaunchMetricsPayload|null;
   designerData:DesignerDataPayload|null;
   analyzer:AnalyzerStatsPayload|null;
   analyzerScorecard:AnalyzerScorecardPayload|null;
@@ -145,7 +152,7 @@ function ratio(value:number,total:number){return total>0?clamp(value/total*100):
 
 export default function Phase10ReadinessClient(){
   const [data,setData]=useState<LoadState>({
-    phase1Proof:null,measurementCalibration:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,
+    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,
   });
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
@@ -163,9 +170,10 @@ export default function Phase10ReadinessClient(){
   async function load(){
     setLoading(true);setMessage("");
     try{
-      const [phase1Proof,measurementCalibration,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache]=await Promise.all([
+      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache]=await Promise.all([
         read<Phase1ProofPayload>("/api/operator/phase1-proof"),
         read<MeasurementCalibrationPayload>("/api/operator/measurement-calibration"),
+        read<LaunchMetricsPayload>("/api/operator/cloud-summary?days=60"),
         read<DesignerDataPayload>("/api/operator/designer-data"),
         read<AnalyzerStatsPayload>("/api/operator/fabric-analyzer/stats"),
         read<AnalyzerScorecardPayload>("/api/operator/fabric-ground-truth/scorecard"),
@@ -174,7 +182,7 @@ export default function Phase10ReadinessClient(){
         read<DeviceQaPayload>("/api/operator/device-qa"),
         read<RenderCachePayload>("/api/operator/designer-render-cache/stats"),
       ]);
-      setData({phase1Proof,measurementCalibration,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache});
+      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache});
     }catch(error){
       setMessage(error instanceof Error?error.message:"Readiness data could not be loaded.");
     }finally{
@@ -185,6 +193,14 @@ export default function Phase10ReadinessClient(){
   useEffect(()=>{void load();},[]);
 
   const rows=useMemo<ReadinessRow[]>(()=>{
+    const launchCounts=data.launchMetrics?.counts||{};
+    const launchLocked=Math.max(0,Number(launchCounts.design_locked)||0);
+    const launchEnquiries=Math.max(0,Number(launchCounts.whatsapp_clicked)||0);
+    const launchDesignProgress=ratio(launchLocked,100);
+    const launchEnquiryProgress=ratio(launchEnquiries,20);
+    const launch1Progress=Math.round((launchDesignProgress+launchEnquiryProgress)/2);
+    const launch1Done=launchLocked>=100&&launchEnquiries>=20;
+
     const measurement=data.measurementCalibration?.summary;
     const measurementCountProgress=ratio(measurement?.total||0,measurement?.target||10);
     const measurementAccuracySignals=[measurement?.chestPass===true,measurement?.sleevePass===true].filter(Boolean).length;
@@ -254,6 +270,19 @@ export default function Phase10ReadinessClient(){
           : "No recorded proof",
         href:"/lab/proof",
         action:"Open Premium Shirt Proof",
+        ownerDependent:true,
+      },
+      {
+        id:"launch1-traction",
+        title:"Launch 1 usage evidence",
+        detail:launch1Done
+          ? "The current evidence window has reached the roadmap usage targets for locked designs and WhatsApp enquiries."
+          : `${Math.max(0,100-launchLocked)} more locked designs and ${Math.max(0,20-launchEnquiries)} more WhatsApp enquiries remain against the current Launch 1 targets.`,
+        status:launch1Done?"done":data.launchMetrics?.configured?"progress":"blocked",
+        progress:launch1Progress,
+        metric:`${launchLocked}/100 locked designs · ${launchEnquiries}/20 enquiries`,
+        href:"/operator",
+        action:"Open conversion funnel",
         ownerDependent:true,
       },
       {
