@@ -1,6 +1,6 @@
 # Phase 8 — Production Bridge Adaptation
 
-Status: production handoff, printable tech pack, real usage capture, stock/quote/order workflow, finished-garment QC and zero-reentry evidence capture are implemented. Physical calibration and real first-order outcomes remain open.
+Status: production handoff, printable tech pack, real usage capture, stock/quote/order workflow, authenticated customer ownership, finished-garment QC and zero-reentry evidence capture are implemented. Physical calibration and real first-order outcomes remain open.
 
 ## New production handoff
 
@@ -54,6 +54,7 @@ The same locked handoff can also export a printable HTML tech pack. It includes 
 - [x] versioned meterage-table registry + owner/tailor approval gate implemented
 - [x] append-only live stock / reservation integration
 - [x] evidence-safe operator-entered quote ledger
+- [x] authenticated customer ownership propagated into quote/order records
 - [x] tailor-ready formatted tech pack / print layout
 - [x] finished-garment QC evidence desk + delivery gate
 - [x] first-10 zero-reentry evidence capture + scorecard implemented
@@ -96,6 +97,8 @@ The private Operator Desk now has:
 - operator-entered price lines only,
 - quote state history: draft → sent → accepted / void,
 - production-order creation from the same locked recipe,
+- authenticated customer ownership propagated from the immutable locked revision into quote/order records when ownership is unambiguous,
+- customer account view of quote and production status without private operator notes,
 - accepted-quote consistency checks,
 - append-only production status events through delivered / cancelled.
 
