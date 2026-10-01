@@ -64,6 +64,7 @@ export type RenderPatternCoverageCalibrationInput={
   expected_repeat_mm?:number;
   scale_error_pct:number;
   axis_status:"match"|"mismatch"|"not_applicable";
+  measurement_method?:"legacy_direct_mm"|"pixel_fixture_v2";
   created_at:string;
 };
 
@@ -89,7 +90,7 @@ export function summarizeApprovedPatternCalibrationCoverage(
     if(patternedFabricIds.has(row.pant_id)) requirements.push({outcomeId:row.outcome_id,garment:"trouser",fabricId:row.pant_id});
   }
 
-  let passed=0,failed=0,pending=0,missingTruth=0,staleCalibration=0;
+  let passed=0,failed=0,pending=0,missingTruth=0,staleCalibration=0,legacyCalibration=0;
   for(const requirement of requirements){
     const verifiedExpected=expectedRepeatByFabric?.get(requirement.fabricId);
     if(expectedRepeatByFabric && (!Number.isFinite(verifiedExpected)||Number(verifiedExpected)<=0)){
@@ -100,6 +101,12 @@ export function summarizeApprovedPatternCalibrationCoverage(
 
     const calibration=latest.get(`${requirement.outcomeId}::${requirement.garment}`);
     if(!calibration){pending+=1;continue;}
+
+    if(expectedRepeatByFabric && calibration.measurement_method!=="pixel_fixture_v2"){
+      pending+=1;
+      legacyCalibration+=1;
+      continue;
+    }
 
     if(expectedRepeatByFabric){
       const recordedExpected=Number(calibration.expected_repeat_mm);
@@ -128,6 +135,7 @@ export function summarizeApprovedPatternCalibrationCoverage(
     pendingPairs:pending,
     missingTruthPairs:missingTruth,
     staleCalibrationPairs:staleCalibration,
+    legacyCalibrationPairs:legacyCalibration,
     gateComplete:requirements.length>0&&failed===0&&pending===0&&passed===requirements.length,
   };
 }
