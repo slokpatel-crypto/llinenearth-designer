@@ -239,6 +239,40 @@ function cleanPayload(type:string, input:unknown) {
       const final=Object.fromEntries(fields.map((field)=>[field,text(finalInput[field],80)]));
       return {subtype,version,fabricId,profileId,analyzerVersion,original,final,note:text(payload.note,600)};
     }
+    if (subtype === "roadmap_phase1_proof") {
+      const version=text(payload.version,80);
+      const status=text(payload.status,20);
+      const fabricId=text(payload.fabricId,160);
+      const fabricName=text(payload.fabricName,160);
+      const pattern=text(payload.pattern,120);
+      const repeatMmRaw=Number(payload.repeatMm);
+      const measuredPreviewRepeatPxRaw=Number(payload.measuredPreviewRepeatPx);
+      const scaleErrorRaw=Number(payload.scaleErrorPct);
+      const realP95Raw=Number(payload.realModelP95Ms);
+      const ratings=Array.isArray(payload.realismRatings)
+        ? payload.realismRatings.map((item)=>Math.round(Number(item))).filter((item)=>item>=1&&item<=5).slice(0,30)
+        : [];
+      if(version!=="linen-earth-phase1-proof-v1" || !fabricId || !["accepted","review"].includes(status)) return null;
+      return {
+        subtype,
+        version,
+        status,
+        fabricId,
+        fabricName,
+        pattern,
+        repeatMm:Number.isFinite(repeatMmRaw)&&repeatMmRaw>0&&repeatMmRaw<=1000?Math.round(repeatMmRaw*100)/100:null,
+        measuredPreviewRepeatPx:Number.isFinite(measuredPreviewRepeatPxRaw)&&measuredPreviewRepeatPxRaw>0?Math.round(measuredPreviewRepeatPxRaw*100)/100:null,
+        scaleErrorPct:Number.isFinite(scaleErrorRaw)&&scaleErrorRaw>=0?Math.round(scaleErrorRaw*100)/100:null,
+        scaleGatePass:payload.scaleGatePass===true,
+        realModelSamples:Math.max(0,Math.min(500,Math.floor(Number(payload.realModelSamples)||0))),
+        realModelP95Ms:Number.isFinite(realP95Raw)&&realP95Raw>=0?Math.round(realP95Raw*10)/10:null,
+        realismRatings:ratings,
+        strongRatings:Math.max(0,Math.min(30,Math.floor(Number(payload.strongRatings)||0))),
+        realismPass:payload.realismPass===true,
+        note:text(payload.note,700),
+      };
+    }
+
     if (subtype === "designer_device_qa") {
       const deviceClass=text(payload.deviceClass,20);
       const status=text(payload.status,20);
