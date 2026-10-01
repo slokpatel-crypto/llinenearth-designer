@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { expectedPeriodPx, passesScaleGate, phase1ProofAcceptance, scaleErrorPct, summarizeIndependentRealism, type RealismAssessment } from "@/lib/designer/proof-scale";
+import { expectedPeriodPx, passesScaleGate, phase1ProofAcceptance, pxPerMmFromMarker, scaleErrorPct, summarizeIndependentRealism, type RealismAssessment } from "@/lib/designer/proof-scale";
 import { applyRuntimeFabricScale, photoExpectedRepeatPx, type FabricRenderAsset } from "@/lib/designer/live-preview";
 import { DESIGNER_PANTS, DESIGNER_SHIRTS, designerStyleForOccasion } from "@/lib/designer/engine";
 import { StyleDirectorRealModelPreview } from "@/components/PhotoOutfitPreview";
@@ -23,7 +23,8 @@ export function PremiumShirtProof(){
   const [collar,setCollar]=useState<Collar>("spread");
   const [cuff,setCuff]=useState<Cuff>("round");
   const [pxPerMm,setPxPerMm]=useState(DEFAULT_PX_PER_MM);
-  const [photoPxPerMm,setPhotoPxPerMm]=useState(DEFAULT_PHOTO_PX_PER_MM);
+  const [photoReferenceMm,setPhotoReferenceMm]=useState<number|null>(null);
+  const [photoReferencePx,setPhotoReferencePx]=useState<number|null>(null);
   const [declaredTileMm,setDeclaredTileMm]=useState<number|null>(null);
   const [declaredRepeatMm,setDeclaredRepeatMm]=useState<number|null>(null);
   const [measuredPx,setMeasuredPx]=useState<number|null>(null);
@@ -61,12 +62,18 @@ export function PremiumShirtProof(){
   } : realShirt;
   const proofAsset=realShirt ? (fabricTileManifest.assets as Record<string,FabricRenderAsset>)[realShirt.image.split("/").pop()?.replace(/\.webp(?:\?.*)?$/,"")||""] || null : null;
   const calibratedProofAsset=proofRealShirt ? applyRuntimeFabricScale(proofAsset,proofRealShirt.renderScale) : proofAsset;
-  const photoRepeatAuditPx=photoExpectedRepeatPx(calibratedProofAsset,photoPxPerMm);
+  const photoPxPerMm=useMemo(()=>{
+    if(!photoReferenceMm||!photoReferencePx) return null;
+    try { return pxPerMmFromMarker(photoReferencePx,photoReferenceMm); }
+    catch { return null; }
+  },[photoReferenceMm,photoReferencePx]);
+  const photoRenderPxPerMm=photoPxPerMm??DEFAULT_PHOTO_PX_PER_MM;
+  const photoRepeatAuditPx=photoExpectedRepeatPx(calibratedProofAsset,photoRenderPxPerMm);
 
   const tilePx=declaredTileMm ? Math.max(18,Math.min(260,declaredTileMm*pxPerMm)) : APPROX_TILE_PX;
-  const repeatPx=effectiveRepeatMm ? expectedPeriodPx(effectiveRepeatMm,photoPxPerMm) : null;
-  const error=effectiveRepeatMm && measuredPx ? scaleErrorPct(measuredPx,effectiveRepeatMm,photoPxPerMm) : null;
-  const pass=effectiveRepeatMm && measuredPx ? passesScaleGate(measuredPx,effectiveRepeatMm,photoPxPerMm) : null;
+  const repeatPx=effectiveRepeatMm&&photoPxPerMm ? expectedPeriodPx(effectiveRepeatMm,photoPxPerMm) : null;
+  const error=effectiveRepeatMm&&measuredPx&&photoPxPerMm ? scaleErrorPct(measuredPx,effectiveRepeatMm,photoPxPerMm) : null;
+  const pass=effectiveRepeatMm&&measuredPx&&photoPxPerMm ? passesScaleGate(measuredPx,effectiveRepeatMm,photoPxPerMm) : null;
   const calibrationState=storedRepeatMm ? "VERIFIED CATALOGUE SCALE EVIDENCE"
     : declaredTileMm||declaredRepeatMm ? "PHYSICAL EVIDENCE ENTERED"
     : "APPROXIMATE SCALE";
@@ -192,8 +199,10 @@ export function PremiumShirtProof(){
             pattern:realShirt?.patternType||"",
             repeatMm:effectiveRepeatMm,
             pxPerMm,
+            photoReferenceMm,
+            photoReferencePx,
             photoPxPerMm,
-            scaleCoordinateSystem:"photo-1024x1536",
+            scaleCoordinateSystem:"photo-1024x1536-fixture",
             measuredPreviewRepeatPx:measuredPx,
             scaleErrorPct:error,
             scaleGatePass:pass===true,
@@ -234,8 +243,10 @@ export function PremiumShirtProof(){
       },
       calibration:{
         constructionPxPerMm:pxPerMm,
+        photoReferenceMm,
+        photoReferencePx,
         photoPxPerMm,
-        scaleCoordinateSystem:"photo-1024x1536",
+        scaleCoordinateSystem:"photo-1024x1536-fixture",
         sourceTileWidthMm:declaredTileMm,
         storedRepeatMm,
         enteredRepeatMm:declaredRepeatMm,
@@ -348,8 +359,11 @@ export function PremiumShirtProof(){
         <section>
           <h2>Physical calibration</h2>
           <label>Construction proof px per mm<input type="number" min=".1" step=".0001" value={pxPerMm} onChange={(event)=>setPxPerMm(Math.max(.1,Number(event.target.value)||DEFAULT_PX_PER_MM))}/></label>
-          <label>Photographic model px per mm<input type="number" min=".1" step=".0001" value={photoPxPerMm} onChange={(event)=>setPhotoPxPerMm(Math.max(.1,Number(event.target.value)||DEFAULT_PHOTO_PX_PER_MM))}/></label>
-          <p>The physical repeat gate and real mannequin compositor use the photographic 1024×1536 coordinate calibration above.</p>
+          <label>Known photo reference length (mm)<input type="number" min=".1" step=".1" placeholder="Physical fixture length" value={photoReferenceMm??""} onChange={(event)=>setPhotoReferenceMm(event.target.value?Number(event.target.value):null)}/></label>
+          <label>Same reference in 1024px photo (px)<input type="number" min=".1" step=".1" placeholder="Measured pixels" value={photoReferencePx??""} onChange={(event)=>setPhotoReferencePx(event.target.value?Number(event.target.value):null)}/></label>
+          <p>{photoPxPerMm
+            ? <>Photographic calibration: <b>{photoPxPerMm.toFixed(4)} px/mm</b>. The real mannequin compositor and repeat gate use this measured fixture.</>
+            : <>Photographic px/mm is still approximate. Enter both physical fixture length and its measured photo pixels before the scale gate can pass.</>}</p>
           <label>Visible source tile width (mm)<input type="number" min=".1" step=".1" placeholder="Enter after measuring swatch" value={declaredTileMm??""} onChange={(event)=>setDeclaredTileMm(event.target.value?Number(event.target.value):null)}/></label>
           <label>Known pattern repeat (mm)<input type="number" min=".1" step=".1" placeholder={storedRepeatMm?"Using stored verified repeat":"Optional measured repeat"} value={declaredRepeatMm??""} onChange={(event)=>setDeclaredRepeatMm(event.target.value?Number(event.target.value):null)}/></label>
           {storedRepeatMm&&<p>Stored reviewed repeat: <b>{storedRepeatMm} mm</b>. Leave the field blank to use it.</p>}
@@ -395,7 +409,7 @@ export function PremiumShirtProof(){
         </div>
       </div>
       <div className="proofRealModel">
-        <StyleDirectorRealModelPreview shirt={proofRealShirt} pant={realPant} style={realModelStyle} photoPxPerMm={photoPxPerMm} onRenderMeasured={(milliseconds)=>setRealRenderSamples((current)=>[...current.slice(-29),milliseconds])}/>
+        <StyleDirectorRealModelPreview shirt={proofRealShirt} pant={realPant} style={realModelStyle} photoPxPerMm={photoRenderPxPerMm} onRenderMeasured={(milliseconds)=>setRealRenderSamples((current)=>[...current.slice(-29),milliseconds])}/>
       </div>
     </section>}
 
