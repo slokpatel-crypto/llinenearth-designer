@@ -528,11 +528,11 @@ export default function Phase10ReadinessClient(){
         id:"novice-designer-study",
         title:"Five-novice Designer completion study",
         detail:noviceDone
-          ? `Five latest unique novice cases completed a liked design within the documented target of ${noviceStudy?.targetSeconds||0} seconds, with explicit human approval.`
+          ? `Five latest unique server-timed novice cases completed a liked design within the documented target of ${noviceStudy?.targetSeconds||0} seconds, with explicit human approval.`
           : noviceStudy
             ? noviceStudy.targetSeconds
-              ? `${Math.max(0,5-noviceStudy.withinTargetCases)} more qualifying novice cases are needed within the documented target. Latest human decision: ${noviceStudy.latestDecisionStatus}.`
-              : `${noviceStudy.likedDesignCases}/5 clean liked-design completions are recorded, but no documented target time has been entered yet.`
+              ? `${Math.max(0,5-noviceStudy.withinTargetCases)} more server-timed qualifying novice cases are needed within the documented target. Latest human decision: ${noviceStudy.latestDecisionStatus}.`
+              : `${noviceStudy.likedDesignCases}/5 server-timed clean liked-design completions are recorded, but no documented target time has been entered yet.`
             : "No novice Designer completion evidence is available yet.",
         status:noviceDone?"done":data.noviceDesignerStudy?.configured?"progress":"blocked",
         progress:noviceProgress,
