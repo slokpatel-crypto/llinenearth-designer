@@ -140,6 +140,8 @@ export function DesignerModule() {
   const [directorHandoffTitle, setDirectorHandoffTitle] = useState("");
   const [directorHandoffTier, setDirectorHandoffTier] = useState("");
   const [directorHandoffReason, setDirectorHandoffReason] = useState("");
+  const [directorHandoffAuditId,setDirectorHandoffAuditId]=useState("");
+  const [directorHandoffAuditStatus,setDirectorHandoffAuditStatus]=useState<"idle"|"verified"|"unavailable"|"mismatch">("idle");
   const [measurementProfile, setMeasurementProfile] = useState<MeasurementProfile | null>(null);
   const [tailorObservations, setTailorObservations] = useState<TailorObservationProfile | null>(null);
   const [searchScope, setSearchScope] = useState<DesignerSearchScope>("keep_shirt");
@@ -313,6 +315,34 @@ export function DesignerModule() {
         setDirectorHandoffTitle(params.get("sourceTitle") || "Style Director result");
         setDirectorHandoffTier(params.get("sourceTier") || "");
         setDirectorHandoffReason(params.get("sourceReason") || "");
+        const handoffToken=params.get("handoffToken");
+        if(handoffToken){
+          void fetch("/api/style-director/handoff",{
+            method:"POST",
+            headers:{"content-type":"application/json"},
+            body:JSON.stringify({
+              token:handoffToken,
+              shirtId:nextShirtId,
+              pantId:nextPantId,
+              occasion:nextOccasion,
+              style:nextStyle,
+            }),
+          }).then(async(response)=>{
+            const result=await response.json() as {verified?:boolean;audited?:boolean;auditId?:string|null;error?:string};
+            if(!response.ok||!result.verified){
+              setDirectorHandoffAuditStatus("mismatch");
+              return;
+            }
+            if(result.audited&&result.auditId){
+              setDirectorHandoffAuditId(result.auditId);
+              setDirectorHandoffAuditStatus("verified");
+            }else{
+              setDirectorHandoffAuditStatus("unavailable");
+            }
+          }).catch(()=>setDirectorHandoffAuditStatus("unavailable"));
+        }else{
+          setDirectorHandoffAuditStatus("mismatch");
+        }
       }
 
       setShirtId(nextShirtId);
@@ -1093,7 +1123,7 @@ export function DesignerModule() {
 
     <div className="newDesignerBody">
       <section className="newDesignerSelections" aria-labelledby="designerChoose">
-        {directorHandoff && <div className="newDesignerHandoff"><span>STYLE DIRECTOR HANDOFF</span><strong>{directorHandoffTitle || "Your complete outfit direction is loaded."}</strong><p>{shirt?.name} shirt + {pant?.name} trousers · {style.shirtWear} · {style.trouser}. You can refine any detail below without rebuilding the look.</p></div>}
+        {directorHandoff && <div className="newDesignerHandoff"><span>STYLE DIRECTOR HANDOFF</span><strong>{directorHandoffTitle || "Your complete outfit direction is loaded."}</strong><p>{shirt?.name} shirt + {pant?.name} trousers · {style.shirtWear} · {style.trouser}. You can refine any detail below without rebuilding the look.</p>{directorHandoffAuditStatus==="verified"&&<small>VERIFIED HANDOFF · audit {directorHandoffAuditId}</small>}{directorHandoffAuditStatus==="unavailable"&&<small>Handoff matched, but cloud audit is unavailable.</small>}{directorHandoffAuditStatus==="mismatch"&&<small>Handoff verification could not be established.</small>}</div>}
         <section className="newDesignerBrief" aria-label="One-line Designer brief">
           <div className="newDesignerBriefHead">
             <div><span>00 / ASK DESIGNER</span><strong>Describe the look in one line.</strong><small>Designer will choose the cloth, cut and level of expression.</small></div>
