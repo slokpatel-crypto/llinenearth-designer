@@ -596,10 +596,11 @@ export function composePhotoOutfit(
   }
 }
 
-export function StyleDirectorRealModelPreview({shirt,pant,style}:{
+export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured}:{
   shirt:DesignerFabric;
   pant:DesignerFabric;
   style:DesignerStyle;
+  onRenderMeasured?:(milliseconds:number)=>void;
 }) {
   const canvasRef=useRef<HTMLCanvasElement>(null);
   const [ready,setReady]=useState(false);
@@ -610,6 +611,7 @@ export function StyleDirectorRealModelPreview({shirt,pant,style}:{
 
   useEffect(()=>{
     let cancelled=false;
+    const started=performance.now();
     setReady(false);
     setError(false);
     Promise.all([
@@ -625,13 +627,16 @@ export function StyleDirectorRealModelPreview({shirt,pant,style}:{
       composePhotoOutfit(context,modelPhoto,trouserPhoto,shirtImage,pantImage,shirt,pant,style);
       setReady(true);
       setError(false);
+      requestAnimationFrame(()=>{
+        if(!cancelled) onRenderMeasured?.(performance.now()-started);
+      });
     }).catch(()=>{
       if(cancelled) return;
       setReady(false);
       setError(true);
     });
     return ()=>{cancelled=true;};
-  },[shirt,pant,template,tucked,style]);
+  },[shirt,pant,template,tucked,style,onRenderMeasured]);
 
   return <div className="directorExistingModel" data-ready={ready?"true":"false"}>
     <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-label={`Existing Linen Earth real model wearing ${shirt.name} shirt with ${pant.name} trousers`} />
