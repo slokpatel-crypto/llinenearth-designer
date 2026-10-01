@@ -16,7 +16,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 | Phase 4 — Measurements / Fit | advanced foundation + secure recovery implemented | real-person accuracy study + tailor ease calibration + authenticated ownership |
 | Phase 5 — Lock / Share / Enquiry | lock + share + secure recovery vault implemented | authenticated customer-account ownership |
 | Phase 6 — Style Director | advanced foundation | owner-labelled benchmark / real-user validation |
-| Phase 7 — Final Render / QA | advanced foundation | approval-rate, cost and physical-pattern QA evidence |
+| Phase 7 — Final Render / QA | render outcome + human approval + credit metrics implemented | real approval/cost evidence + physical-pattern QA calibration |
 | Phase 8 — Production Bridge | handoff + tech pack + usage capture + stock + quote + order engineering implemented | physical meterage calibration + first 10 zero-re-entry orders |
 | Phase 9 — Hardening | strong engineering foundation | real device / beta / production deployment evidence |
 | Phase 10 — Ecommerce | intentionally later | only after Launch 3 |
@@ -48,6 +48,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added append-only stock ledger with revision-linked reservation / release / consumption.
 - Added operator-entered quote ledger and production-order status workflow tied to immutable recipe hashes.
 - Added opt-in secure measurement recovery vault with hashed recovery keys, expiry and deletion.
+- Added final-render outcome ledger, human approval desk, automated QA linkage, and credits-per-approved metrics.
 - Added phase adaptation records so future coding agents do not rebuild existing systems unnecessarily.
 
 ## Evidence we cannot manufacture in code
