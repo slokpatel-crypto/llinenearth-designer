@@ -408,6 +408,7 @@ export default function OperatorClient() {
           <span className={cloudState==="live"?"live":""}><i className={cloudState==="live"?"":"amber"}/>{cloudState==="live"?"CLOUD MEMORY LIVE":cloudState==="unconfigured"?"CLOUD NOT CONFIGURED":cloudState==="error"?"CLOUD ERROR":"CHECKING CLOUD"}</span>
           <a className="operatorLogout" href="/operator/designer-data">DESIGNER DATA</a>
           <a className="operatorLogout" href="/operator/designer-evaluation">DESIGNER EVALUATION</a>
+          <a className="operatorLogout" href="/operator/style-director-validation">STYLE DIRECTOR VALIDATION</a>
           <a className="operatorLogout" href="/operator/fabric-analyzer">FABRIC ANALYZER</a>
           <a className="operatorLogout" href="/operator/fabric-ground-truth">FABRIC GROUND TRUTH</a>
           <a className="operatorLogout" href="/operator/fabric-color-calibration">PHYSICAL COLOUR QA</a>
