@@ -133,6 +133,8 @@ if (url && key) {
           ["production_quote_list_owned",{p_owner_user_id:"00000000-0000-4000-8000-000000000000",p_limit:1},"Customer-owned quote RPCs are installed."],
           ["production_order_list_owned",{p_owner_user_id:"00000000-0000-4000-8000-000000000000",p_limit:1},"Customer-owned production-order RPCs are installed."],
           ["fabric_physical_color_check_list",{p_limit:1},"Physical fabric colour evidence RPCs are installed."],
+          ["style_director_user_test_list",{p_limit:1},"Style Director real-user validation RPCs are installed."],
+          ["style_director_validation_signoff_list",{p_limit:1},"Style Director validation sign-off RPCs are installed."],
           ["designer_render_outcome_list",{p_limit:1},"Final render outcome ledger RPCs are installed."],
           ["designer_render_pattern_calibration_list",{p_limit:1},"Final render pattern calibration RPCs are installed."],
         ];
