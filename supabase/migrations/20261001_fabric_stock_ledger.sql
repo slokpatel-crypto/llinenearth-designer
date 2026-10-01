@@ -10,6 +10,7 @@ create table if not exists private.fabric_stock_ledger (
   quantity_metres numeric(10,3) not null check (quantity_metres>0 and quantity_metres<=100000),
   reservation_id uuid,
   revision_id text,
+  request_key text,
   note text not null default '',
   created_at timestamptz not null default now()
 );
@@ -19,6 +20,9 @@ create index if not exists fabric_stock_ledger_fabric_idx
 create index if not exists fabric_stock_ledger_reservation_idx
   on private.fabric_stock_ledger(reservation_id,created_at)
   where reservation_id is not null;
+create unique index if not exists fabric_stock_ledger_request_key_uidx
+  on private.fabric_stock_ledger(request_key)
+  where request_key is not null;
 
 alter table private.fabric_stock_ledger enable row level security;
 revoke all on private.fabric_stock_ledger from public,anon,authenticated;
@@ -97,7 +101,8 @@ $$;
 create or replace function public.fabric_stock_reserve(
   p_fabric_id text,
   p_quantity_metres numeric,
-  p_revision_id text
+  p_revision_id text,
+  p_request_key text
 )
 returns uuid
 language plpgsql
@@ -107,8 +112,16 @@ as $$
 declare
   v_available numeric:=0;
   v_reservation uuid:=gen_random_uuid();
+  v_existing uuid;
 begin
   if coalesce(length(trim(p_fabric_id)),0)=0 then raise exception 'fabric id is required'; end if;
+  if coalesce(length(trim(p_request_key)),0)<12 then raise exception 'reservation request key is required'; end if;
+
+  select reservation_id into v_existing
+  from private.fabric_stock_ledger
+  where request_key=left(trim(p_request_key),180)
+  limit 1;
+  if v_existing is not null then return v_existing; end if;
   if p_quantity_metres is null or p_quantity_metres<=0 or p_quantity_metres>100 then raise exception 'invalid reservation quantity'; end if;
   if coalesce(length(trim(p_revision_id)),0)<12 then raise exception 'locked revision id is required'; end if;
 
@@ -120,8 +133,11 @@ begin
 
   if coalesce(v_available,0)<p_quantity_metres then raise exception 'insufficient available stock'; end if;
 
-  insert into private.fabric_stock_ledger(fabric_id,event_type,quantity_metres,reservation_id,revision_id,note)
-  values(left(trim(p_fabric_id),160),'reserve',round(p_quantity_metres,3),v_reservation,left(trim(p_revision_id),220),'locked design reservation');
+  insert into private.fabric_stock_ledger(fabric_id,event_type,quantity_metres,reservation_id,revision_id,request_key,note)
+  values(
+    left(trim(p_fabric_id),160),'reserve',round(p_quantity_metres,3),v_reservation,left(trim(p_revision_id),220),
+    left(trim(p_request_key),180),'locked design reservation'
+  );
 
   return v_reservation;
 end;
@@ -215,12 +231,12 @@ $$;
 
 revoke all on function public.fabric_stock_snapshot(text[]) from public,anon,authenticated;
 revoke all on function public.fabric_stock_record(text,text,numeric,text) from public,anon,authenticated;
-revoke all on function public.fabric_stock_reserve(text,numeric,text) from public,anon,authenticated;
+revoke all on function public.fabric_stock_reserve(text,numeric,text,text) from public,anon,authenticated;
 revoke all on function public.fabric_stock_release(uuid,text) from public,anon,authenticated;
 revoke all on function public.fabric_stock_consume_reservation(uuid,numeric,text) from public,anon,authenticated;
 
 grant execute on function public.fabric_stock_snapshot(text[]) to service_role;
 grant execute on function public.fabric_stock_record(text,text,numeric,text) to service_role;
-grant execute on function public.fabric_stock_reserve(text,numeric,text) to service_role;
+grant execute on function public.fabric_stock_reserve(text,numeric,text,text) to service_role;
 grant execute on function public.fabric_stock_release(uuid,text) to service_role;
 grant execute on function public.fabric_stock_consume_reservation(uuid,numeric,text) to service_role;
