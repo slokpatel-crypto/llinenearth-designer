@@ -54,6 +54,12 @@ function intelligence(trust:DesignerFabricIntelligence["trust"]):DesignerFabricI
       fiberContent:"100% Linen",
       sourceUrl:null,
     },
+    fieldProvenance:{
+      "measured.pattern.physicalScale":"declared",
+      "verifiedPhysical.gsm":"declared",
+      "verifiedPhysical.drape":"declared",
+      "verifiedPhysical.fiberContent":"declared",
+    },
     colorFamily:null,
     undertone:"neutral",
     depth:"mid",
@@ -98,4 +104,27 @@ test("reviewed physical evidence upgrades scale and material facts",()=>{
   assert.equal(result.drape,"Balanced");
   assert.equal(result.fiberContent,"100% Linen");
   assert.equal(result.fiberContentVerified,true);
+});
+
+
+test("reviewed profile without physical field provenance cannot upgrade physical claims",()=>{
+  const reviewed=intelligence("reviewed");
+  reviewed.fieldProvenance={};
+  const result=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+  assert.equal(result.patternScaleVerified,undefined);
+  assert.equal(result.renderScale?.physicalScaleStatus,"unknown");
+  assert.equal(result.weightGsm,null);
+  assert.equal(result.drape,null);
+  assert.equal(result.fiberContent,null);
+  assert.equal(result.fiberContentVerified,undefined);
+});
+
+test("reviewed physical claims are applied independently by field provenance",()=>{
+  const reviewed=intelligence("reviewed");
+  reviewed.fieldProvenance={"verifiedPhysical.gsm":"reviewed"};
+  const result=applyVerifiedPhysicalFabricEvidence(fabric,reviewed);
+  assert.equal(result.weightGsm,145);
+  assert.equal(result.drape,null);
+  assert.equal(result.fiberContent,null);
+  assert.equal(result.patternScaleVerified,undefined);
 });
