@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { listRenderOutcomes, listRenderPatternCalibrations, recordRenderPatternCalibration, reviewRenderOutcome } from "@/lib/designer/render-outcomes";
-import { summarizeRenderOutcomes } from "@/lib/designer/render-outcome-metrics";
+import { summarizeRenderOutcomes, summarizeRenderPatternCalibrations } from "@/lib/designer/render-outcome-metrics";
 
 export const runtime="nodejs";
 
@@ -18,6 +18,7 @@ export async function GET(){
     outcomes,
     calibrations,
     summary:summarizeRenderOutcomes(outcomes),
+    patternSummary:summarizeRenderPatternCalibrations(calibrations),
   },{headers:{"cache-control":"private, no-store"}});
 }
 
