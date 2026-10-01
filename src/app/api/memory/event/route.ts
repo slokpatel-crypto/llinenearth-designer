@@ -17,6 +17,7 @@ const PUBLIC_TYPES = new Set([
   "designer_preview_opened",
   "designer_feedback",
   "designer_override",
+  "design_locked",
   "whatsapp_clicked",
 ]);
 
@@ -508,6 +509,26 @@ function cleanPayload(type:string, input:unknown) {
       ...(imageUrl ? { imageUrl } : {}),
       label: text(payload.label,120),
       generatedAt: Number.isNaN(generated.getTime()) ? undefined : generated.toISOString(),
+    };
+  }
+
+  if (type === "design_locked") {
+    const revisionId=text(payload.revisionId,180);
+    const recipeHash=text(payload.recipeHash,128);
+    const shirtId=text(payload.shirtId,140);
+    const pantId=text(payload.pantId,140);
+    const occasion=text(payload.occasion,40);
+    const status=text(payload.status,40);
+    if(!revisionId || !/^[a-f0-9]{64}$/i.test(recipeHash) || !shirtId || !pantId) return null;
+    if(occasion && !["Casual","Smart-Casual","Semi-Formal","Formal"].includes(occasion)) return null;
+    return {
+      revisionId,
+      recipeHash:recipeHash.toLowerCase(),
+      shirtId,
+      pantId,
+      occasion,
+      status:["draft","review_required","ready_for_tailor_review"].includes(status)?status:"draft",
+      parentRevisionId:text(payload.parentRevisionId,180),
     };
   }
 
