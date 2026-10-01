@@ -22,6 +22,7 @@ import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import { toLegacyStyle, validateStyleSpecV2, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import { validBodyPreviewProfile, type BodyPreviewProfile } from "@/lib/designer/body-profile";
 import { loadApprovedHouseEaseModel } from "@/lib/designer/house-ease-server";
+import { applyLiveVerifiedStockAvailability } from "@/lib/designer/stock-availability-server";
 
 export const runtime="nodejs";
 export const maxDuration=20;
@@ -162,7 +163,8 @@ export async function POST(request:Request) {
       loadDesignerFabricMetadata(),
       loadApprovedHouseEaseModel(),
     ]);
-    const stock=applyDesignerFabricMetadataToStock(metadata).filter((fabric)=>fabric.inStock);
+    const liveStock=await applyLiveVerifiedStockAvailability(applyDesignerFabricMetadataToStock(metadata));
+    const stock=liveStock.stock.filter((fabric)=>fabric.inStock);
     const baseFabrics=stock.map(designerFabricFromStock);
     const {fabrics}=await enrichDesignerFabricsWithIntelligence(baseFabrics);
     const shirt=fabrics.find((fabric)=>fabric.id===shirtId && fabric.allowedGarments.includes("shirt"));
