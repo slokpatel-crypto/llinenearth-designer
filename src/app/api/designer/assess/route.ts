@@ -21,6 +21,7 @@ import type { TailorObservationProfile } from "@/lib/designer/tailor-observation
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import { toLegacyStyle, validateStyleSpecV2, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import { validBodyPreviewProfile, type BodyPreviewProfile } from "@/lib/designer/body-profile";
+import { loadApprovedHouseEaseModel } from "@/lib/designer/house-ease-server";
 
 export const runtime="nodejs";
 export const maxDuration=20;
@@ -157,7 +158,10 @@ export async function POST(request:Request) {
       return NextResponse.json({error:"A valid fabric pair, occasion and supported style are required."},{status:400});
     }
 
-    const metadata=await loadDesignerFabricMetadata();
+    const [metadata,easeModel]=await Promise.all([
+      loadDesignerFabricMetadata(),
+      loadApprovedHouseEaseModel(),
+    ]);
     const stock=applyDesignerFabricMetadataToStock(metadata).filter((fabric)=>fabric.inStock);
     const baseFabrics=stock.map(designerFabricFromStock);
     const {fabrics}=await enrichDesignerFabricsWithIntelligence(baseFabrics);
@@ -175,6 +179,7 @@ export async function POST(request:Request) {
       shirtFabric:shirt,
       trouserFabric:pant,
       observations,
+      easeModel,
     });
     const blockStrategy=assessBlockStrategy(measurements,resolvedStyle,observations);
     const brandLanguage=evaluateLinenEarthBrandLanguage(shirt,pant,resolvedStyle,occasion,body.context);
@@ -193,6 +198,7 @@ export async function POST(request:Request) {
 
     return NextResponse.json({
       assessment:{recommendation,fitConstruction,blockStrategy,brandLanguage,negotiation,garmentSpec},
+      runtime:{houseEaseModel:easeModel?{modelId:easeModel.modelId,version:easeModel.version,approvedBy:easeModel.approvedBy}:null},
     },{headers:{"cache-control":"no-store"}});
   } catch(error) {
     console.error("[designer/assess]",error);
