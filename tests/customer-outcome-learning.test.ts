@@ -1,0 +1,50 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  normalizeCustomerOutcomePolicy,
+  normalizeCustomerOutcomeReview,
+  summarizeCustomerOutcomeLearning,
+} from "../src/lib/designer/customer-outcome-learning.ts";
+
+const outcomes=[
+  {outcome_id:"o1",order_id:"p1",revision_id:"r1",overall_rating:"love",fit_result:"clean_first_fit",worn_confirmed:true,note:"",created_at:"2026-10-01T10:00:00Z"},
+  {outcome_id:"o2",order_id:"p2",revision_id:"r2",overall_rating:"good",fit_result:"not_checked",worn_confirmed:false,note:"",created_at:"2026-10-01T11:00:00Z"},
+];
+
+test("learning gate stays open without a human-entered threshold",()=>{
+  const summary=summarizeCustomerOutcomeLearning(outcomes,[
+    {review_id:"r1",outcome_id:"o1",decision:"approved",reviewer:"Owner",note:"",created_at:"2026-10-01T12:00:00Z"},
+  ],[]);
+  assert.equal(summary.approved,1);
+  assert.equal(summary.threshold,null);
+  assert.equal(summary.gateComplete,false);
+});
+
+test("latest human review controls whether an outcome is eligible",()=>{
+  const summary=summarizeCustomerOutcomeLearning(outcomes,[
+    {review_id:"r1",outcome_id:"o1",decision:"approved",reviewer:"Owner",note:"",created_at:"2026-10-01T12:00:00Z"},
+    {review_id:"r2",outcome_id:"o1",decision:"rejected",reviewer:"Owner",note:"Production issue",created_at:"2026-10-01T13:00:00Z"},
+  ],[
+    {policy_id:"p",minimum_approved_cases:1,approved_by:"Owner",note:"Documented threshold",created_at:"2026-10-01T09:00:00Z"},
+  ]);
+  assert.equal(summary.approved,0);
+  assert.equal(summary.rejected,1);
+  assert.equal(summary.gateComplete,false);
+});
+
+test("human policy threshold is never invented by normalization",()=>{
+  assert.throws(()=>normalizeCustomerOutcomePolicy({minimumApprovedCases:"",approvedBy:"Owner",note:"Policy"}),/whole-number/);
+  assert.deepEqual(
+    normalizeCustomerOutcomePolicy({minimumApprovedCases:25,approvedBy:"Owner",note:"Approved launch-learning policy"}),
+    {minimumApprovedCases:25,approvedBy:"Owner",note:"Approved launch-learning policy"},
+  );
+});
+
+test("rejected customer evidence requires reviewer context",()=>{
+  assert.throws(()=>normalizeCustomerOutcomeReview({
+    outcomeId:"00000000-0000-4000-8000-000000000001",
+    decision:"rejected",
+    reviewer:"Owner",
+    note:"",
+  }),/rejection reason/);
+});
