@@ -12,6 +12,7 @@ import { searchDesignerCatalogue, type DesignerSearchScope } from "@/lib/designe
 import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
 import { loadDesignerEvidenceContext } from "@/lib/designer/evidence-context";
 import { enrichDesignerFabricsWithIntelligence } from "@/lib/fabric-intelligence-server";
+import { loadApprovedHouseEaseModel } from "@/lib/designer/house-ease-server";
 import type { MeasurementProfile } from "@/lib/measurements";
 import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
 
@@ -114,9 +115,10 @@ export async function POST(request:Request) {
       return NextResponse.json({error:"A valid fabric pair, occasion and supported style are required."},{status:400});
     }
 
-    const [metadata,evidence]=await Promise.all([
+    const [metadata,evidence,easeModel]=await Promise.all([
       loadDesignerFabricMetadata(),
       loadDesignerEvidenceContext(),
+      loadApprovedHouseEaseModel(),
     ]);
     const stock=applyDesignerFabricMetadataToStock(metadata).filter((fabric)=>fabric.inStock);
     const baseFabrics=stock.map(designerFabricFromStock);
@@ -141,6 +143,7 @@ export async function POST(request:Request) {
       casebook:evidence.casebook,
       fitOutcomes:evidence.fitOutcomes,
       fabricIntelligence,
+      easeModel,
     });
 
     const presentation=results.slice(0,3).map((result)=>({
