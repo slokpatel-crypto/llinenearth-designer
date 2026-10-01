@@ -130,7 +130,13 @@ export default function ProductionClient(){
         <span><small>SHIRT</small><b>{loadedRevision.garmentSpec.fabrics.shirt.name}</b></span>
         <span><small>TROUSER</small><b>{loadedRevision.garmentSpec.fabrics.trouser.name}</b></span>
         <span><small>CONSTRUCTION</small><b>{loadedRevision.garmentSpec.shirt.collar} · {loadedRevision.garmentSpec.shirt.cuff}</b></span>
-        <div><button onClick={exportHandoff}>Export tailor handoff</button><button onClick={exportTechPack}>Export tech pack</button><button onClick={exportProductionPacket}>Export production packet</button></div>
+        <div>
+          <button onClick={exportHandoff}>Export tailor handoff</button>
+          <button onClick={exportTechPack}>Export tech pack</button>
+          <button onClick={exportProductionPacket}>Export production packet</button>
+          <Link href={`/operator/stock?fabric=${encodeURIComponent(loadedRevision.garmentSpec.fabrics.shirt.id)}&revision=${encodeURIComponent(loadedRevision.revisionId)}`}>Reserve shirt stock</Link>
+          <Link href={`/operator/stock?fabric=${encodeURIComponent(loadedRevision.garmentSpec.fabrics.trouser.id)}&revision=${encodeURIComponent(loadedRevision.revisionId)}`}>Reserve trouser stock</Link>
+        </div>
       </div>}
     </section>
 
