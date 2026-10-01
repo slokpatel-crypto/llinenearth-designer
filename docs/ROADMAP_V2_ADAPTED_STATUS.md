@@ -10,7 +10,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 | Roadmap phase | Current adapted status | Main remaining blocker |
 |---|---|---|
 | Phase 0 — Audit / Stabilize | Engineering complete | merge after CI / review |
-| Phase 1 — Premium Shirt Proof | Engineering implementation complete | physical scale measurement + 8-viewer realism + device evidence |
+| Phase 1 — Premium Shirt Proof | Engineering implementation complete | physical scale measurement + 8-viewer realism + protected-boundary confirmation + device evidence |
 | Phase 2 — Fabric Truth | strong existing foundation | owner / supplier physical evidence coverage and 50-fabric reviewed set |
 | Phase 3 — Deterministic Designer | shared proof/customer compositor + option coverage audit + novice completion-study workflow | Phase 1 evidence + five real novice completions within documented target + all visible option reviews |
 | Phase 4 — Measurements / Fit | advanced foundation + secure recovery + authenticated ownership + house-ease registry + approved-model runtime activation implemented | real-person accuracy evidence + real finished-garment ease evidence/approval |
@@ -35,7 +35,8 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added geometry and real-compositor p95 measurements.
 - Hardened the realism gate to require distinct anonymous viewer codes; repeat ratings from the same viewer replace the earlier rating instead of inflating the sample.
 - Recompute Phase 1 scale and realism acceptance server-side from raw recorded evidence rather than trusting client pass flags.
-- Made target-mobile Device QA acceptance an explicit fourth Phase 1 readiness gate.
+- Added explicit protected-boundary evidence for neck, cuffs/hands, tucked waist/fly and trouser-leg gap; all four must pass before the core proof can be accepted.
+- Made target-mobile Device QA acceptance an explicit fifth Phase 1 readiness gate.
 - Added auditable proof JSON export.
 - Added direct Analyzer handoff for the selected proof fabric.
 - Improved photo cloth depth / fold / textile-detail compositing.
