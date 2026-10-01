@@ -158,6 +158,7 @@ for (const path of [
   "src/app/operator/garment-qc/page.tsx",
   "src/lib/designer/finished-garment-qc.ts",
   "supabase/migrations/20261002_finished_garment_qc.sql",
+  "supabase/migrations/20261027_finished_garment_qc_provenance.sql",
   "src/app/operator/production-evidence/page.tsx",
   "src/lib/designer/production-delivery-evidence.ts",
   "supabase/migrations/20261003_production_delivery_evidence.sql",
@@ -562,7 +563,10 @@ requireTokens("src/app/operator/stock/StockClient.tsx", ["Fabric Stock Ledger","
 requireTokens("supabase/migrations/20261001_fabric_stock_ledger.sql", ["fabric_stock_snapshot","fabric_stock_reserve","request_key","service_role"]);
 requireTokens("supabase/migrations/20261001_production_quotes_orders.sql", ["production_quote_create","production_order_create","invalid order transition","service_role"]);
 requireTokens("supabase/migrations/20261002_finished_garment_qc.sql", ["finished_garment_qc_record","finished_garment_qc_list","finished-garment QC approval is required before delivery","service_role"]);
-requireTokens("src/app/operator/garment-qc/GarmentQcClient.tsx", ["Finished Garment QC","Approve for delivery","Record rework","PHYSICAL CHECKS"]);
+requireTokens("supabase/migrations/20261027_finished_garment_qc_provenance.sql", ["inspection_reference","finished_garment_qc_record_v2","provenance-backed finished-garment QC approval is required before delivery","service_role"]);
+requireTokens("src/lib/designer/finished-garment-qc.ts", ["inspectionReference","Named inspector / checker is required","Physical inspection reference is required"]);
+requireTokens("src/app/api/operator/garment-qc/route.ts", ["finished_garment_qc_record_v2","p_inspection_reference"]);
+requireTokens("src/app/operator/garment-qc/GarmentQcClient.tsx", ["Finished Garment QC","Physical inspection reference","provenanceReady","Legacy inspection · provenance not recorded","Approve for delivery","Record rework","PHYSICAL CHECKS"]);
 requireTokens("src/app/api/operator/production/route.ts", ["finished_garment_qc_list","Finished-garment QC approval is required before delivery.","production_customer_outcome_list","customerOutcomes","production_order_learning_context_list","learningContexts","parseDesignVaultRecoveryToken","verifyLockedDesignRevision","buildProductionLearningContext","production_order_create_with_context","learningContextAttached"]);
 requireTokens("supabase/migrations/20261003_production_delivery_evidence.sql", ["production_delivery_evidence_record","production_delivery_evidence_list","delivery evidence can only be recorded for a delivered order","service_role"]);
 requireTokens("src/lib/designer/production-delivery-evidence.ts", ["PRODUCTION_REENTRY_FIELDS","summarizeProductionDeliveryEvidence","gateComplete","reentryIncidentCount"]);
