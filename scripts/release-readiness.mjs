@@ -66,6 +66,30 @@ for (const path of [
   "supabase/migrations/20260920_style_events_hardening.sql",
   ".env.example",
   "package-lock.json",
+  "AGENTS.md",
+  "DECISIONS.md",
+  "docs/ARCHITECTURE_AUDIT.md",
+  "src/app/lab/proof/page.tsx",
+  "src/components/PremiumShirtProof.tsx",
+  "src/lib/designer/proof-scale.ts",
+  "src/lib/designer/design-lock.ts",
+  "src/lib/designer/design-share.ts",
+  "src/lib/designer/design-vault.ts",
+  "src/lib/measurement-vault.ts",
+  "src/lib/designer/production-handoff.ts",
+  "src/lib/designer/tech-pack.ts",
+  "src/lib/designer/production-quote.ts",
+  "src/lib/designer/production-state.ts",
+  "src/lib/designer/production-packet.ts",
+  "src/lib/designer/stock-ledger.ts",
+  "src/app/recover-design/page.tsx",
+  "src/app/operator/stock/page.tsx",
+  "src/app/operator/production/page.tsx",
+  "src/app/operator/production-calibration/page.tsx",
+  "supabase/migrations/20261001_designer_locked_revision_vault.sql",
+  "supabase/migrations/20261001_measurement_profile_vault.sql",
+  "supabase/migrations/20261001_fabric_stock_ledger.sql",
+  "supabase/migrations/20261001_production_quotes_orders.sql",
 ]) requireFile(path);
 
 requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/visual", "/real-model", "Open Real Model Designer"]);
@@ -330,6 +354,23 @@ requireTokens("src/app/api/operator/fabric-analyzer/analyze/route.ts", ["macroIm
 requireTokens("src/app/api/operator/fabric-analyzer/batch/route.ts", ["macroImageUrl","foldImageUrl"]);
 requireTokens("src/app/api/operator/fabric-analyzer/process/route.ts", ["macroImageUrl","foldImageUrl"]);
 requireTokens("supabase/migrations/20260929_fabric_analyzer_private_backend.sql", ["fabric-analyzer-v4","macroImageUrl","foldImageUrl","swatchRealWidthMm","repeatRealMm"]);
+
+requireTokens("src/components/PremiumShirtProof.tsx", ["Premium Shirt Proof","StyleDirectorRealModelPreview","LiveConstructionPreview","Roadmap gate: ≤ 8% scale error"]);
+requireTokens("src/lib/designer/design-lock.ts", ["linen-earth-design-lock-v1","recipeHash","revisionId","verifyLockedDesignRevision"]);
+requireTokens("src/lib/designer/design-vault.ts", ["lev1","createDesignVaultAccessKey","hashDesignVaultAccessKey"]);
+requireTokens("src/lib/measurement-vault.ts", ["lem1","createMeasurementVaultAccessKey","hashMeasurementVaultAccessKey"]);
+requireTokens("src/components/MeasurementStudio.tsx", ["Secure measurement copy","/api/measurements/vault","Recovery token"]);
+requireTokens("src/lib/designer/production-handoff.ts", ["linen-earth-production-handoff-v1","stockReservation","clothEstimate","quote"]);
+requireTokens("src/lib/designer/tech-pack.ts", ["linen-earth-tech-pack-v1","Tailor Tech Pack","not a cutting pattern"]);
+requireTokens("src/lib/designer/production-quote.ts", ["normalizeProductionQuoteDraft","Quote total cannot be negative"]);
+requireTokens("src/lib/designer/production-state.ts", ["ORDER_TRANSITIONS","QUOTE_TRANSITIONS","cloth_reserved","delivered"]);
+requireTokens("src/lib/designer/production-packet.ts", ["linen-earth-production-packet-v1","noDesignDataReEntry"]);
+requireTokens("src/lib/designer/stock-ledger.ts", ["stockSnapshot","reservedMetres","availableMetres"]);
+requireTokens("src/app/operator/production/ProductionClient.tsx", ["Load locked design","Export production packet","Create production order"]);
+requireTokens("src/app/operator/stock/StockClient.tsx", ["Fabric Stock Ledger","Create reservation","Consume"]);
+requireTokens("supabase/migrations/20261001_fabric_stock_ledger.sql", ["fabric_stock_snapshot","fabric_stock_reserve","request_key","service_role"]);
+requireTokens("supabase/migrations/20261001_production_quotes_orders.sql", ["production_quote_create","production_order_create","invalid order transition","service_role"]);
+requireTokens("next.config.ts", ["Strict-Transport-Security","X-Frame-Options","Cross-Origin-Opener-Policy"]);
 
 requireTokens("src/app/api/homepage-model/route.ts", [
   "FASHN_API_KEY",
