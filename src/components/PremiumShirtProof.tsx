@@ -208,7 +208,7 @@ export function PremiumShirtProof(){
           at:new Date().toISOString(),
           payload:{
             subtype:"roadmap_phase1_proof",
-            version:"linen-earth-phase1-proof-v3",
+            version:"linen-earth-phase1-proof-v4",
             status:proofAcceptance.accepted?"accepted":"review",
             fabricId:realShirt?.id||"",
             fabricName:realShirt?.name||"",
@@ -225,6 +225,7 @@ export function PremiumShirtProof(){
             scaleGatePass:pass===true,
             realModelSamples:realRenderSamples.length,
             realModelP95Ms:realP95,
+            realModelSampleDurationsMs:realRenderSamples,
             realismRatings,
             realismAssessments:realismSummary.assessments,
             uniqueRealismViewers:realismSummary.uniqueViewers,
@@ -252,7 +253,7 @@ export function PremiumShirtProof(){
 
   function exportProofEvidence(){
     const payload={
-      version:"linen-earth-phase1-proof-v3",
+      version:"linen-earth-phase1-proof-v4",
       recordedAt:new Date().toISOString(),
       fabric:{
         id:realShirt?.id||null,
