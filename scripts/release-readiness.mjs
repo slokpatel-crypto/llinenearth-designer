@@ -117,6 +117,11 @@ for (const path of [
   "supabase/migrations/20261009_style_director_user_validation.sql",
   "src/lib/designer/ease-calibration.ts",
   "src/lib/designer/preview-option-coverage.ts",
+  "src/lib/designer/measurement-calibration.ts",
+  "src/app/api/operator/measurement-calibration/route.ts",
+  "src/app/operator/measurement-calibration/page.tsx",
+  "src/app/operator/measurement-calibration/MeasurementCalibrationClient.tsx",
+  "tests/measurement-calibration.test.ts",
   "src/lib/designer/novice-designer-study.ts",
   "src/app/api/operator/novice-designer-study/route.ts",
   "src/app/operator/novice-designer-study/page.tsx",
@@ -128,6 +133,7 @@ for (const path of [
   "supabase/migrations/20261022_style_director_handoff_audit.sql",
   "supabase/migrations/20261023_style_director_handoff_validation.sql",
   "supabase/migrations/20261024_style_director_handoff_uniqueness.sql",
+  "supabase/migrations/20261024_measurement_accuracy_evidence.sql",
   "supabase/migrations/20261026_style_director_verified_signoff.sql",
   "src/lib/designer/preview-option-reviews.ts",
   "src/app/api/operator/preview-option-coverage/route.ts",
@@ -190,6 +196,10 @@ requireTokens("src/lib/fabric-intelligence-evidence.ts", ["intelligence.trust!==
 requireTokens("src/app/operator/designer-data/DesignerDataClient.tsx", ["Physical evidence provenance","physicalEvidence:editor.physicalEvidence","physical_roll","supplier_document","owner_measurement"]);
 requireTokens("src/app/operator/designer-data/DesignerDataBatchPanel.tsx", ["physicalSourceType","physicalReference","physicalCheckedBy","physicalEvidence:incomingPhysicalEvidence??current.physicalEvidence"]);
 requireTokens("src/app/api/memory/event/route.ts", ["designer_fabric_metadata","normalizeFabricPhysicalEvidenceProvenance","physicalEvidence"]);
+requireTokens("src/lib/designer/measurement-calibration.ts", ["MEASUREMENT_CALIBRATION_TARGET_CASES","MEASUREMENT_CHEST_MEDIAN_TARGET_CM","MEASUREMENT_SLEEVE_MEDIAN_TARGET_CM","normalizeMeasurementCalibrationDraft","summarizeMeasurementCalibration"]);
+requireTokens("src/app/api/operator/measurement-calibration/route.ts", ["verifyOperatorSession","measurement_calibration_case_list","measurement_calibration_case_record","p_evidence_source","p_checked_by"]);
+requireTokens("src/app/operator/measurement-calibration/MeasurementCalibrationClient.tsx", ["Physical comparison source","Checked by","/api/operator/measurement-calibration","Record comparison"]);
+requireTokens("supabase/migrations/20261024_measurement_accuracy_evidence.sql", ["measurement_calibration_cases","measurement_calibration_case_record","measurement_calibration_case_list","physical comparison evidence source is required","service_role"]);
 requireTokens("src/lib/designer/novice-designer-study.ts", ["timing_session_id","serverTimedLikedCases","evidenceReady:serverTimed.length>=5"]);
 requireTokens("src/app/api/operator/novice-designer-study/route.ts", ["start_timer","finish_timer","record_timed_attempt","designer_novice_attempt_record_v2"]);
 requireTokens("src/app/operator/novice-designer-study/NoviceDesignerStudyClient.tsx", ["Start server stopwatch","Stop stopwatch","record_timed_attempt","Server timer"]);
