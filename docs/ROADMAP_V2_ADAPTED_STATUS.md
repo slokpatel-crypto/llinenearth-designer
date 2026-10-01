@@ -50,7 +50,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added Designer tailor-handoff export.
 - Added printable tailor tech pack generated from the same locked recipe.
 - Added private real production cloth-usage calibration capture before any meterage estimator is allowed.
-- Added append-only stock ledger with revision-linked reservation / release / consumption; physical receipts/adjustments now require named provenance, positive-stock readiness rejects legacy provenance-free manual events, every new reservation metre quantity requires a named requester plus source reference, and actual consumed metres require a named checker plus cutting/usage evidence.
+- Added append-only stock ledger with revision-linked reservation / release / consumption; physical receipts/adjustments now require named provenance, positive-stock readiness rejects legacy provenance-free manual events, every new reservation metre quantity requires a named requester plus source reference, actual consumed metres require a named checker plus cutting/usage evidence, and reservation create/consume/release operations are serialized to prevent duplicate or simultaneous close races.
 - Added operator-entered quote ledger and production-order status workflow tied to immutable recipe hashes.
 - Added append-only finished-garment QC inspections with a hard delivery gate and automatic rework-to-stitching loop.
 - Added immutable delivered-order zero-reentry audits and an evidence scorecard for the first 10 real production orders; current qualifying audits require a named checker plus a concrete production-flow reference, while legacy provenance-free rows stay visible but cannot satisfy the gate.
