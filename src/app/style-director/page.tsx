@@ -10,6 +10,7 @@ import "./style-director.css";
 
 type StepKey = keyof StyleDirectorAnswers;
 type RenderSet = { renders?: Array<{ view: string; src: string; label: string; provider?: string }>; providerLabel?: string; status?: string };
+type StyleDirectorClientLook = StyleDirectorLook & {handoffToken?:string|null};
 
 const steps: Array<{ key: StepKey; eyebrow: string; title: string; note: string; options: Array<{ value: string; label: string; hint: string; symbol: string }> }> = [
   { key:"occasion", eyebrow:"THE MOMENT", title:"Where are you going?", note:"Don’t think about clothes yet. Start with the moment.", options:[
@@ -43,7 +44,7 @@ export default function StyleDirectorPage() {
   const [sessionId] = useState(createStyleSessionId);
   const [index,setIndex] = useState(0);
   const [answers,setAnswers] = useState<Partial<StyleDirectorAnswers>>({});
-  const [looks,setLooks] = useState<StyleDirectorLook[]>([]);
+  const [looks,setLooks] = useState<StyleDirectorClientLook[]>([]);
   const [selected,setSelected] = useState(0);
   const [loading,setLoading] = useState(false);
   const [rendering,setRendering] = useState<"preview"|"photo"|null>(null);
@@ -70,8 +71,8 @@ export default function StyleDirectorPage() {
       if (!response.ok) throw new Error(data.error || "Could not create looks.");
       setLooks(data.looks);
       setSelected(0);
-      recordStyleMemoryEvent(sessionId,"looks_generated",{looks:data.looks.map((look:StyleDirectorLook)=>({id:look.id,title:look.title,fabricId:look.fabric.id,fabric:look.fabric.colorName,tier:look.candidate.tier}))});
-      const firstLook = data.looks?.[0] as StyleDirectorLook | undefined;
+      recordStyleMemoryEvent(sessionId,"looks_generated",{looks:data.looks.map((look:StyleDirectorClientLook)=>({id:look.id,title:look.title,fabricId:look.fabric.id,fabric:look.fabric.colorName,tier:look.candidate.tier}))});
+      const firstLook = data.looks?.[0] as StyleDirectorClientLook | undefined;
       if (firstLook) recordStyleMemoryEvent(sessionId,"look_selected",{lookId:firstLook.id,title:firstLook.title,fabricId:firstLook.fabric.id,fabric:firstLook.fabric.colorName,automatic:true});
     } catch(e) {
       setError(e instanceof Error ? e.message : "Could not create looks.");
@@ -144,6 +145,7 @@ export default function StyleDirectorPage() {
           sourceTier:selectedLook.candidate.tier,
           sourceReason:selectedLook.realModel.reason,
           from:"style-director",
+          ...(selectedLook.handoffToken?{handoffToken:selectedLook.handoffToken}:{}),
         });
         return `/designer-studio?${params.toString()}#designerPhotoTitle`;
       })()
