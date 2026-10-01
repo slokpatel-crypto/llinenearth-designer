@@ -26,13 +26,14 @@ export async function GET(request:Request){
     const customer=await getCustomerIdentity(request);
     if(!customer) return NextResponse.json({error:"Customer sign-in is required."},{status:401});
 
-    const [quotes,orders]=await Promise.all([
+    const [quotes,orders,orderEvents]=await Promise.all([
       rpc("production_quote_list_owned_v2",{p_owner_user_id:customer.id,p_limit:100}),
       rpc("production_order_list_owned",{p_owner_user_id:customer.id,p_limit:100}),
+      rpc("production_order_event_list_owned",{p_owner_user_id:customer.id,p_limit:300}),
     ]);
 
     return NextResponse.json(
-      {quotes,orders},
+      {quotes,orders,orderEvents},
       {headers:{"cache-control":"private, no-store, max-age=0","pragma":"no-cache"}},
     );
   }catch(error){
