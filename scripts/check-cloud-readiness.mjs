@@ -23,6 +23,7 @@ const legacyBrandIdentifier = (name) => `l${name}`;
 const syncToken = readBrandEnv("LINEN_OPERATOR_SYNC_TOKEN");
 const sessionSecret = readBrandEnv("LINEN_OPERATOR_SESSION_SECRET");
 const memorySessionSecret = readBrandEnv("LINEN_MEMORY_SESSION_SECRET");
+const customerSessionSecret = readBrandEnv("LINEN_CUSTOMER_SESSION_SECRET");
 const passwordHash = readBrandEnv("LINEN_OPERATOR_PASSWORD_HASH");
 
 console.log("Linen Earth cloud readiness\n");
@@ -60,6 +61,9 @@ else ok("Operator session signing secret is configured.");
 
 if (!memorySessionSecret || memorySessionSecret.length < 32) fail("LINEN_MEMORY_SESSION_SECRET is missing or too short.");
 else ok("Public memory session signing secret is configured.");
+
+if (!customerSessionSecret || customerSessionSecret.length < 32) fail("LINEN_CUSTOMER_SESSION_SECRET is missing or too short.");
+else ok("Customer account session signing secret is configured.");
 
 if (!passwordHash?.startsWith("scrypt-v1$")) fail("LINEN_OPERATOR_PASSWORD_HASH is missing or not a supported scrypt hash.");
 else ok("Operator password hash is configured.");
