@@ -153,6 +153,9 @@ for (const path of [
   "src/lib/designer/production-state.ts",
   "src/lib/designer/production-packet.ts",
   "src/lib/designer/stock-ledger.ts",
+  "src/lib/designer/stock-availability.ts",
+  "src/lib/designer/stock-availability-server.ts",
+  "tests/stock-availability.test.ts",
   "src/app/recover-design/page.tsx",
   "src/app/operator/stock/page.tsx",
   "src/app/operator/production/page.tsx",
@@ -565,6 +568,11 @@ requireTokens("supabase/migrations/20261026_production_delivery_evidence_provena
 requireTokens("src/lib/designer/production-packet.ts", ["packetBuiltFromLockedRevision:true","noDesignDataReEntry:false","deliveryAuditRequired:true","verified separately after real delivery"]);
 requireTokens("src/lib/designer/production-packet.ts", ["linen-earth-production-packet-v1","noDesignDataReEntry"]);
 requireTokens("src/lib/designer/stock-ledger.ts", ["stockSnapshot","normalizeManualStockEvent","recordedBy","sourceReference","reservedMetres","availableMetres"]);
+requireTokens("src/lib/designer/stock-availability.ts", ["verifiedStockAvailabilityMap","provenance_ready","fabric.inStock&&verified.get(fabric.id)===true"]);
+requireTokens("src/lib/designer/stock-availability-server.ts", ["fabric_stock_snapshot_v2","applyLiveVerifiedStockAvailability","cache:\"no-store\""]);
+requireTokens("src/app/api/designer/catalog/route.ts", ["applyLiveVerifiedStockAvailability","verifiedStockFabrics"]);
+requireTokens("src/app/api/style-director/route.ts", ["applyLiveVerifiedStockAvailability","verifiedStockFabrics"]);
+requireTokens("src/app/style-director/page.tsx", ["verified ledger availability enforced where recorded"]);
 requireTokens("src/app/operator/production/ProductionClient.tsx", ["Load locked design","Export production packet","Create production order","durable design context","outcome lineage","learningContexts","Outcome lineage","context missing","CUSTOMER OUTCOME","not automatically applied to Designer ranking","/operator/customer-outcomes","Outcome Review"]);
 requireTokens("src/app/api/operator/stock/route.ts", ["fabric_stock_snapshot_v2","fabric_stock_record_v2","p_recorded_by","p_source_reference"]);
 requireTokens("src/app/operator/stock/StockClient.tsx", ["Fabric Stock Ledger","Physical source reference","PHYSICAL PROVENANCE","provenance_ready","Create reservation","Consume"]);
