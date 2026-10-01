@@ -23,25 +23,38 @@ export async function GET() {
     const patterned=!/^(solid|plain)$/i.test(String(fabric.pattern||"").trim());
     const inactive=verified.availability==="unavailable";
     const manualPhysicalProvenance=Boolean(verified.physicalEvidence);
-    const analyzerPhysicalProvenance=Boolean(analyzed?.verifiedPhysical.sourceUrl);
+    const analyzerReviewed=Boolean(analyzed && ["approved","corrected"].includes(analyzed.reviewStatus));
+    const analyzerPhysicalProvenance=Boolean(
+      analyzed
+      && (
+        String(analyzed.verifiedPhysical.sourceUrl||"").trim()
+        || String(analyzed.verifiedPhysical.evidenceNote||"").trim().length>=8
+      )
+    );
+    const physicalField=(field:string)=>Boolean(
+      analyzerReviewed
+      && analyzerPhysicalProvenance
+      && ["declared","reviewed"].includes(String(analyzed?.fieldProvenance?.[field]||""))
+    );
     const evidence={
       availabilityVerified:verified.availability!=="unknown",
-      analyzerReviewed:Boolean(analyzed && ["approved","corrected"].includes(analyzed.reviewStatus)),
+      analyzerReviewed,
       imageQualityScore:analyzed?.measuredEvidence.imageQualityScore ?? null,
       physicalScaleStatus:analyzed?.measuredEvidence.patternPhysicalScale ?? null,
       physicalScaleVerified:!patterned || Boolean(
         analyzed?.measuredEvidence.patternPhysicalScale
         && analyzed.measuredEvidence.patternPhysicalScale!=="unknown"
+        && physicalField("measured.pattern.physicalScale")
       ),
       gsmVerified:Boolean(
         (manualPhysicalProvenance && verified.weightGsm!=null)
-        || (analyzerPhysicalProvenance && analyzed?.verifiedPhysical.gsm!=null)
+        || (physicalField("verifiedPhysical.gsm") && analyzed?.verifiedPhysical.gsm!=null)
       ),
       drapeVerified:Boolean(
         (manualPhysicalProvenance && verified.drape)
-        || (analyzerPhysicalProvenance && analyzed?.verifiedPhysical.drape)
+        || (physicalField("verifiedPhysical.drape") && analyzed?.verifiedPhysical.drape)
       ),
-      fiberVerified:Boolean(analyzerPhysicalProvenance && analyzed?.verifiedPhysical.fiberContent),
+      fiberVerified:Boolean(physicalField("verifiedPhysical.fiberContent") && analyzed?.verifiedPhysical.fiberContent),
       manualPhysicalProvenance,
       analyzerPhysicalProvenance,
       formalityVerified:verified.formalityScore!=null,
