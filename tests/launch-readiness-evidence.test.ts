@@ -71,9 +71,10 @@ test("verified beta attempt requires a locked revision id",()=>{
     caseId:"BETA-VERIFY",deviceClass:"mobile",revisionId:"",blockingBug:false,
   }),/Locked revision ID/i);
   const result=normalizeVerifiedBetaAttempt({
-    caseId:"BETA-VERIFY",deviceClass:"mobile",revisionId:"REV-123",blockingBug:false,
+    caseId:"BETA-VERIFY",deviceClass:"mobile",revisionId:"REV-123",evidenceKind:"enquiry",blockingBug:false,
   });
   assert.equal(result.revisionId,"REV-123");
+  assert.equal(result.evidenceKind,"enquiry");
 });
 
 test("checkbox-only beta attempts cannot satisfy the verified share gate",()=>{
@@ -86,4 +87,19 @@ test("checkbox-only beta attempts cannot satisfy the verified share gate",()=>{
   assert.equal(summary.verifiedShareCases,0);
   assert.equal(summary.successfulBetaCases,0);
   assert.equal(summary.betaGateComplete,false);
+});
+
+
+test("verified enquiry audit can satisfy the same beta flow gate",()=>{
+  const attempts=Array.from({length:5},(_,index)=>({
+    case_id:"ENQUIRY-"+index,device_class:"mobile",
+    core_flow_completed:true,design_locked:true,share_or_enquiry_completed:true,
+    share_audit_confirmed:false,enquiry_audit_confirmed:true,evidence_kind:"enquiry",blocking_bug:false,
+    created_at:"2026-10-0"+(index+1)+"T10:00:00Z",
+  }));
+  const summary=summarizeLaunchReadiness(attempts,[]);
+  assert.equal(summary.verifiedEnquiryCases,5);
+  assert.equal(summary.verifiedFlowCases,5);
+  assert.equal(summary.successfulBetaCases,5);
+  assert.equal(summary.betaGateComplete,true);
 });
