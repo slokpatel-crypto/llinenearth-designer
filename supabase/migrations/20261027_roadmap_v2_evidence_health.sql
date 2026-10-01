@@ -16,7 +16,7 @@ as $$
       and to_regprocedure('public.style_director_user_test_record_v2(text,text,boolean,boolean,boolean,uuid,boolean,text)') is not null,
     'distinctStyleValidation', to_regprocedure('public.style_director_validation_signoff_record_v3(text,integer,text,text)') is not null,
     'renderManualReview', to_regprocedure('public.designer_render_manual_review_signoff_latest()') is not null,
-    'measurementEvidence', to_regprocedure('public.measurement_accuracy_evidence_list(integer)') is not null,
+    'measurementEvidence', to_regprocedure('public.measurement_calibration_case_list(integer)') is not null,
     'productionDeliveryEvidence', to_regprocedure('public.production_delivery_evidence_list(integer)') is not null
   );
 $$;
