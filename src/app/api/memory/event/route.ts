@@ -352,20 +352,26 @@ function cleanPayload(type:string, input:unknown) {
       const deviceClass=text(payload.deviceClass,20);
       const status=text(payload.status,20);
       const viewport=text(payload.viewport,40);
+      const requestedVersion=text(payload.version,80);
+      const version=requestedVersion==="designer-device-qa-v2" ? requestedVersion : "designer-device-qa-v1";
       const checks=payload.checks && typeof payload.checks==="object" && !Array.isArray(payload.checks)
         ? Object.fromEntries(Object.entries(payload.checks as Record<string,unknown>)
           .slice(0,12)
           .map(([key,value])=>[text(key,80),value===true]))
         : {};
       if(!["mobile","tablet","desktop"].includes(deviceClass) || !["accepted","review"].includes(status) || !viewport) return null;
+      const sampleDurationsMs=version==="designer-device-qa-v2" && Array.isArray(payload.sampleDurationsMs)
+        ? payload.sampleDurationsMs.map(Number).filter((value)=>Number.isFinite(value)&&value>=0&&value<=10000).slice(-120).map((value)=>Math.round(value*10)/10)
+        : [];
       return {
         subtype,
-        version:"designer-device-qa-v1",
+        version,
         deviceClass,
         status,
         viewport,
         dpr:Math.max(.5,Math.min(8,Number(payload.dpr)||1)),
         samples:Math.max(0,Math.min(500,Math.floor(Number(payload.samples)||0))),
+        ...(version==="designer-device-qa-v2"?{sampleDurationsMs}:{}),
         medianMs:Number.isFinite(Number(payload.medianMs))?Math.max(0,Math.min(10000,Number(payload.medianMs))):null,
         p95Ms:Number.isFinite(Number(payload.p95Ms))?Math.max(0,Math.min(10000,Number(payload.p95Ms))):null,
         maxMs:Number.isFinite(Number(payload.maxMs))?Math.max(0,Math.min(10000,Number(payload.maxMs))):null,
