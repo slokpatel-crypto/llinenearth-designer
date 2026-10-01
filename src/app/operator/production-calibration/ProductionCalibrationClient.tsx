@@ -6,13 +6,13 @@ import { useEffect, useState } from "react";
 type UsageCase={
   at:string;caseId:string;revisionId:string;garment:"shirt"|"trouser";fabricId:string;
   fabricWidthCm:number;actualMetres:number;patternRepeatMm:number|null;patternMatching:boolean;
-  cutContext:string;note:string;
+  cutContext:string;checkedBy:string;evidenceReference:string;note:string;
 };
 type Payload={
   configured:boolean;cases:UsageCase[];
   summary:{total:number;shirtCases:number;trouserCases:number;medianShirtMetres:number|null;medianTrouserMetres:number|null;readyForModel:boolean};
 };
-const empty={caseId:"",revisionId:"",garment:"shirt",fabricId:"",fabricWidthCm:"",actualMetres:"",patternRepeatMm:"",patternMatching:false,cutContext:"",note:""};
+const empty={caseId:"",revisionId:"",garment:"shirt",fabricId:"",fabricWidthCm:"",actualMetres:"",patternRepeatMm:"",patternMatching:false,cutContext:"",checkedBy:"",evidenceReference:"",note:""};
 
 export default function ProductionCalibrationClient(){
   const [data,setData]=useState<Payload|null>(null);
@@ -31,6 +31,7 @@ export default function ProductionCalibrationClient(){
     form.caseId.trim()&&form.revisionId.trim()&&form.fabricId.trim()
     && Number(form.fabricWidthCm)>=60&&Number(form.fabricWidthCm)<=220
     && Number(form.actualMetres)>0&&Number(form.actualMetres)<=12
+    && form.checkedBy.trim().length>=2&&form.evidenceReference.trim().length>=3
   );
 
   async function save(){
@@ -45,12 +46,13 @@ export default function ProductionCalibrationClient(){
           type:"operator_note",
           at:new Date().toISOString(),
           payload:{
-            subtype:"production_usage_case",version:"production-usage-v1",
+            subtype:"production_usage_case",version:"production-usage-v2",
             caseId:form.caseId.trim(),revisionId:form.revisionId.trim(),
             garment:form.garment,fabricId:form.fabricId.trim(),
             fabricWidthCm:Number(form.fabricWidthCm),actualMetres:Number(form.actualMetres),
             patternRepeatMm:form.patternRepeatMm?Number(form.patternRepeatMm):null,
-            patternMatching:form.patternMatching,cutContext:form.cutContext.trim(),note:form.note.trim(),
+            patternMatching:form.patternMatching,cutContext:form.cutContext.trim(),
+            checkedBy:form.checkedBy.trim(),evidenceReference:form.evidenceReference.trim(),note:form.note.trim(),
           },
         }),
       });
@@ -93,6 +95,10 @@ export default function ProductionCalibrationClient(){
           <label className="prodCalCheck"><input type="checkbox" checked={form.patternMatching} onChange={(e)=>setForm({...form,patternMatching:e.target.checked})}/> Pattern matching required</label>
         </div>
         <label>Cut / size context<input value={form.cutContext} onChange={(e)=>setForm({...form,cutContext:e.target.value.slice(0,160)})} placeholder="Regular shirt · full sleeve · size 40"/></label>
+        <div className="prodCalPair">
+          <label>Checked by<input value={form.checkedBy} onChange={(e)=>setForm({...form,checkedBy:e.target.value.slice(0,120)})} placeholder="Tailor / checker"/></label>
+          <label>Physical evidence reference<input value={form.evidenceReference} onChange={(e)=>setForm({...form,evidenceReference:e.target.value.slice(0,240)})} placeholder="Cut ticket, job card, roll/cutting record…"/></label>
+        </div>
         <label>Operator note<textarea rows={3} value={form.note} onChange={(e)=>setForm({...form,note:e.target.value.slice(0,600)})} placeholder="Waste, defect allowance, special matching, tailor note…"/></label>
         <button type="button" onClick={()=>void save()} disabled={!valid||saving||data?.configured===false}>{saving?"Saving…":"Record actual usage"}</button>
         {data?.configured===false&&<small>Cloud operator memory must be configured before evidence can be retained.</small>}
@@ -107,6 +113,7 @@ export default function ProductionCalibrationClient(){
           <span>{item.garment.toUpperCase()} · {item.fabricId}</span>
           <strong>{item.actualMetres} m from {item.fabricWidthCm} cm width</strong>
           <small>{item.revisionId}</small>
+          <small>Verified by {item.checkedBy||"legacy / unverified"} · {item.evidenceReference||"no physical reference"}</small>
           {item.patternMatching&&<em>pattern matching</em>}
           {item.note&&<p>{item.note}</p>}
         </div>)}
