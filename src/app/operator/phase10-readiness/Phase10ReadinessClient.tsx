@@ -157,6 +157,9 @@ type RenderQaPayload={
   creditCapSummary:{
     configured:boolean;withinCap:boolean|null;ownerCap:number|null;
   };
+  manualReviewSignoff:{
+    signoff_id:string;status:"approved"|"review";reviewer:string;note:string;created_at:string;
+  }|null;
   patternCoverageSummary:{
     requiredPairs:number;calibratedPairs:number;passedPairs:number;failedPairs:number;pendingPairs:number;gateComplete:boolean;
   };
