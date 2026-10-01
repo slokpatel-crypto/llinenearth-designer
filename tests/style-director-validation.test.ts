@@ -21,6 +21,7 @@ test("blocking Style Director user tests require evidence note",()=>{
     directionsUnderstandable:false,
     directionsDistinct:false,
     stockHandoffWorked:true,
+    handoffAuditId:"11111111-1111-4111-8111-111111111111",
     blockingIssue:true,
     note:"",
   }),/require a short note/i);
@@ -33,6 +34,7 @@ test("Style Director validation requires real evidence plus human approval",()=>
     directions_understandable:true,
     directions_distinct:true,
     stock_handoff_worked:true,
+    handoff_audit_id:"22222222-2222-4222-8222-222222222222",
     blocking_issue:false,
     created_at:"2026-10-01T10:00:00Z",
   }];
@@ -83,5 +85,32 @@ test("legacy approval without a documented clean-case target never completes val
     status:"approved",signed_by:"Owner",created_at:"2026-10-01T12:00:00Z",
   }]);
   assert.equal(summary.requiredPositiveCases,null);
+  assert.equal(summary.validationComplete,false);
+});
+
+
+test("successful handoff observation requires a verified audit id",()=>{
+  assert.throws(()=>normalizeStyleDirectorUserTest({
+    caseId:"SD-HANDOFF",
+    deviceClass:"mobile",
+    directionsUnderstandable:true,
+    directionsDistinct:true,
+    stockHandoffWorked:true,
+    handoffAuditId:"",
+    blockingIssue:false,
+  }),/handoff audit ID/i);
+});
+
+test("unverified handoff rows cannot count as clean Style Director evidence",()=>{
+  const summary=summarizeStyleDirectorValidation([{
+    case_id:"SD-UNVERIFIED",device_class:"mobile",
+    directions_understandable:true,directions_distinct:true,stock_handoff_worked:true,
+    blocking_issue:false,created_at:"2026-10-01T10:00:00Z",
+  }],[{
+    status:"approved",required_positive_cases:1,signed_by:"Owner",created_at:"2026-10-01T12:00:00Z",
+  }]);
+  assert.equal(summary.handoffCases,1);
+  assert.equal(summary.verifiedHandoffCases,0);
+  assert.equal(summary.positiveCases,0);
   assert.equal(summary.validationComplete,false);
 });
