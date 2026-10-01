@@ -215,7 +215,7 @@ requireTokens("src/lib/designer/preview-option-reviews.ts", ["DESIGNER_STYLE_CHO
 requireTokens("src/app/api/operator/preview-option-coverage/route.ts", ["verifyOperatorSession","customerPreviewCoverageRows","summarizePreviewOptionCoverage"]);
 requireTokens("src/app/operator/preview-option-coverage/PreviewOptionCoverageClient.tsx", ["Customer Preview Coverage","Approve customer preview","Reject preview support","Approximate"]);
 requireTokens("src/app/api/operator/ease-calibration/route.ts", ["house_ease_evidence_record","house_ease_model_create","house_ease_model_approve","evidenceCoverageComplete"]);
-requireTokens("src/app/operator/ease-calibration/EaseCalibrationClient.tsx", ["House Ease Calibration","35 cells","runtime not auto-switched","Register evidence-backed draft"]);
+requireTokens("src/app/operator/ease-calibration/EaseCalibrationClient.tsx", ["House Ease Calibration","35 cells","active in Designer runtime","controlled promotion step","Register evidence-backed draft"]);
 requireTokens("supabase/migrations/20261010_house_ease_calibration_registry.sql", ["house_ease_evidence","house_ease_models","real finished-garment evidence is required for every house-ease cell","service_role"]);
 requireTokens("supabase/migrations/20261011_launch_beta_flow_detail.sql", ["design_locked","share_or_enquiry_completed","launch_beta_attempt_record_v2","share/enquiry completion cannot precede a locked design"]);
 requireTokens("src/lib/designer/launch-readiness-evidence.ts", ["designLocked","shareOrEnquiryCompleted","row.design_locked===true","row.share_or_enquiry_completed===true"]);
