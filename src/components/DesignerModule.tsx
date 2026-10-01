@@ -325,6 +325,8 @@ export function DesignerModule() {
               shirtId:nextShirtId,
               pantId:nextPantId,
               occasion:nextOccasion,
+              climate:nextClimate,
+              intention:nextIntention,
               style:nextStyle,
             }),
           }).then(async(response)=>{
