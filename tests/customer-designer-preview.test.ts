@@ -11,4 +11,8 @@ test("customer Designer keeps photographic preview as the only model surface", (
 
   const page = readFileSync("src/app/designer-studio/page.tsx", "utf8");
   assert.doesNotMatch(page, /live-construction\.css/);
+
+  const director = readFileSync("src/app/style-director/page.tsx", "utf8");
+  assert.match(director, /StyleDirectorRealModelPreview/);
+  assert.doesNotMatch(director, /<svg/);
 });
