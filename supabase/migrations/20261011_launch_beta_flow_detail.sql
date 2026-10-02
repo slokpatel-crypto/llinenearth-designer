@@ -45,7 +45,9 @@ begin
 end;
 $$;
 
-drop function if exists public.launch_beta_attempt_list(integer);\n\ncreate function public.launch_beta_attempt_list(p_limit integer default 200)
+drop function if exists public.launch_beta_attempt_list(integer);
+
+create function public.launch_beta_attempt_list(p_limit integer default 200)
 returns table(
   attempt_id uuid,case_id text,device_class text,core_flow_completed boolean,
   design_locked boolean,share_or_enquiry_completed boolean,
