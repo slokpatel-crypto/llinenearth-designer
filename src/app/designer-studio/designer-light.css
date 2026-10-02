@@ -676,16 +676,9 @@
 @media(max-width:720px){.newDesignerSelectedQa{grid-template-columns:1fr}.newDesignerSelectedQa button{width:100%}.newDesignerSelectedQaMetrics{gap:4px}}
 
 
-/* Phase 10 canonical two-tier preview */
-.newDesignerRenderMode{display:flex;gap:6px;padding:10px 14px;border:1px solid #e2dbd3;border-bottom:0;background:#f7f4ef;border-radius:14px 14px 0 0}
-.newDesignerRenderMode button{border:1px solid #d8d0c7;background:#fff;color:#5d6f7f;border-radius:999px;padding:8px 11px;font-size:7px;letter-spacing:.04em;cursor:pointer}
-.newDesignerRenderMode button[aria-pressed="true"]{background:#203d5b;border-color:#203d5b;color:#fff}
+/* Photo-first customer preview; construction study remains internal-only. */
 .newDesignerPreviewLoading{min-height:420px;display:grid;place-items:center;border:1px solid #e2dbd3;background:#faf8f4;color:#74808a;font-size:8px;letter-spacing:.08em}
 .newDesignerPhotoLock,.newDesignerPhotoCache{margin:0;padding:9px 22px;border-bottom:1px solid #e6e0d5;font-size:7px;line-height:1.45}
 .newDesignerPhotoLock{background:#f3f7f2;color:#536b58}
 .newDesignerPhotoLock strong{font-size:6px;letter-spacing:.1em}
 .newDesignerPhotoCache{background:#f5f8fb;color:#49677e}
-@media(max-width:720px){
-  .newDesignerRenderMode{border-radius:10px 10px 0 0;overflow-x:auto}
-  .newDesignerRenderMode button{flex:1 0 auto}
-}
