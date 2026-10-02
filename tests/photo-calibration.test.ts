@@ -96,3 +96,15 @@ test("customer preview refreshes proof-backed calibration after returning to the
   assert.match(preview,/window\.removeEventListener\("focus",refresh\)/);
   assert.match(preview,/document\.removeEventListener\("visibilitychange",onVisibility\)/);
 });
+
+
+test("changing proof-backed calibration invalidates the locked final render signature",()=>{
+  const preview=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.match(preview,/photoCalibration:photoCalibration\.verified \? \{/);
+  assert.match(preview,/photoPxPerMm:verifiedPhotoPxPerMm/);
+  assert.match(preview,/scaleCoordinateSystem:photoCalibration\.scaleCoordinateSystem/);
+  assert.match(preview,/proofVersion:photoCalibration\.proofVersion/);
+  assert.match(preview,/\} : \{verified:false\}/);
+  assert.match(preview,/setFinalLocked\(false\)/);
+  assert.match(preview,/selectedLookSessionCache\.get\(renderSignature\)/);
+});
