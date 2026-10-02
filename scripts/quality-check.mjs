@@ -228,11 +228,12 @@ console.log("Style Director generated-render framing gate passed: photoreal outp
 
 
 const photoPreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","PHOTO_TUCKED_LEFT_SLEEVE_CLIP","PHOTO_TUCKED_RIGHT_SLEEVE_CLIP","PHOTO_TUCKED_LEFT_TROUSER_CLIP","PHOTO_TUCKED_RIGHT_TROUSER_CLIP","destination-in","masks.shirt","masks.pant","featherMaskInside","featheredMasks","featheredPathMask","pathMasks","if(path) context.drawImage(featheredPathMask(path),0,0)","patternScaleForFabric","placement.offsetX","soft-light","Zoom fit","Compare","Boundary QA"]) {
+for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","PHOTO_TUCKED_LEFT_SLEEVE_CLIP","PHOTO_TUCKED_RIGHT_SLEEVE_CLIP","PHOTO_TUCKED_LEFT_TROUSER_CLIP","PHOTO_TUCKED_RIGHT_TROUSER_CLIP","destination-in","masks.shirt","masks.pant","featherMaskInside","featheredMasks","featheredPathMask","pathMasks","if(path) context.drawImage(featheredPathMask(path),0,0)","patternScaleForFabric","placement.offsetX","soft-light","globalCompositeOperation = \"luminosity\"","globalAlpha = .82","globalAlpha = .16","Zoom fit","Compare","Boundary QA"]) {
   if (!photoPreview.includes(token)) throw new Error(`Real photographic Designer regression: PhotoOutfitPreview missing ${token}`);
 }
 const photoCustomerCss = fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
 if (photoCustomerCss.includes(".newDesignerConstruction{")) throw new Error("Real photographic Designer regression: dead construction-preview CSS returned to the customer Designer.");
+if(!/\.newDesignerPhotoStage\{[^}]*background:#0a1726/.test(photoCustomerCss)) throw new Error("Photographic Designer regression: instant preview stage must retain the deep navy studio backdrop.");
 const photoGeometry = fs.readFileSync("src/lib/designer/photo-preview.ts","utf8");
 for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","PHOTO_TUCKED_LEFT_SLEEVE_CLIP","PHOTO_TUCKED_RIGHT_SLEEVE_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_LEFT_TROUSER_CLIP","PHOTO_TUCKED_RIGHT_TROUSER_CLIP","PHOTO_TUCKED_NECK_CLEAR","/designer/studio-tucked.webp"]) {
   if (!photoGeometry.includes(token)) throw new Error(`Real photographic Designer regression: photo-preview missing ${token}`);
