@@ -5,6 +5,7 @@ import { GARMENT_OPTION_LIBRARY } from "@/lib/designer/options/library";
 import { loadDesignerOptionReviews } from "@/lib/designer/option-reviews";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import type { PreviewOptionReviewStatus } from "@/lib/designer/preview-option-coverage";
+import { photoPreviewSupportForChoice } from "@/lib/designer/photo-preview";
 
 export type DesignerPreviewOptionReview={
   id:string;
@@ -79,6 +80,7 @@ export async function customerPreviewCoverageRows(){
     livePreview:"exact"|"approximate"|"none";
     aiRender:"exact"|"approximate"|"none";
     provenance:string;
+    supportReason:string;
     constructionStatus:"approved"|"rejected"|"pending"|"not_required";
     previewReview:DesignerPreviewOptionReview|null;
   }>;
@@ -93,11 +95,13 @@ export async function customerPreviewCoverageRows(){
       const constructionStatus=option?.provenance==="owner-provided"
         ? constructionReviews[option.id]?.status||"pending"
         : "not_required";
+      const photographicSupport=photoPreviewSupportForChoice(styleKey,label);
       rows.push({
         id,styleKey,label,group,
-        livePreview:option?.renderSupport.livePreview||"approximate",
+        livePreview:photographicSupport.status,
         aiRender:option?.renderSupport.aiRender||"approximate",
         provenance:option?.provenance||"built-in-style-control",
+        supportReason:photographicSupport.reason,
         constructionStatus,
         previewReview:previewReviews[id]||null,
       });
