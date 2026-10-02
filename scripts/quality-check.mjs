@@ -1058,3 +1058,17 @@ for (const token of ["blockStrategyVersion","blockStrategyScore","blockStrategy:
   if (!garmentSpecBlocks.includes(token)) throw new Error(`Garment-spec block regression: missing ${token}`);
 }
 console.log("Designer block-strategy gate passed: measurements and manual observations now guide provisional shirt/trouser starting blocks without creating a cutting pattern.");
+\n
+const roadmapReadinessModel=fs.readFileSync("src/lib/designer/roadmap-readiness.ts","utf8");
+const roadmapReadinessClient=fs.readFileSync("src/app/operator/roadmap-readiness/RoadmapReadinessClient.tsx","utf8");
+const roadmapReadinessTest=fs.readFileSync("tests/roadmap-readiness.test.ts","utf8");
+for(const token of ["summarizeRoadmapReadiness","phase1Complete","phase3Complete","phase8Complete","phase9Complete","phase2Complete=false"]) {
+  if(!roadmapReadinessModel.includes(token)) throw new Error(`Roadmap readiness model regression: missing ${token}`);
+}
+for(const token of ["Readiness Control Tower","ENGINEERING","REAL EVIDENCE","No phase is promoted from missing data"]) {
+  if(!roadmapReadinessClient.includes(token)) throw new Error(`Roadmap readiness operator regression: missing ${token}`);
+}
+for(const token of ["Phase 3 cannot pass before","Phase 8 requires both approved meterage garments"]) {
+  if(!roadmapReadinessTest.includes(token)) throw new Error(`Roadmap readiness test regression: missing ${token}`);
+}
+console.log("Roadmap readiness gate passed: cross-phase engineering and evidence status remain separate and conservative.");
