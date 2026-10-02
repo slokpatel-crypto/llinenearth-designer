@@ -1094,7 +1094,7 @@ for(const token of ["ROADMAP_BACKEND_CAPABILITIES","summarizeRoadmapBackendHealt
 for(const token of ["verifyOperatorSession","roadmap_v2_evidence_health","summarizeRoadmapBackendHealth","Production backend health could not be verified"]) {
   if(!roadmapBackendHealthRoute.includes(token)) throw new Error(`Roadmap backend-health API regression: missing ${token}`);
 }
-for(const token of ["all hardened Roadmap capability exists","one missing production RPC"]) {
+for(const token of ["every hardened Roadmap capability exists","one missing production RPC"]) {
   if(!roadmapBackendHealthTest.includes(token)) throw new Error(`Roadmap backend-health test regression: missing ${token}`);
 }
 console.log("Roadmap backend-health gate passed: Phase 9 now verifies the live production Supabase contract.");
