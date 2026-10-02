@@ -234,6 +234,13 @@ for(const token of ["directorFabricFallback","REAL STOCK / PHOTO TEMPLATE PENDIN
 if(styleDirectorCss.includes(".abstractLook")) throw new Error("Style Director photo-first regression: simulated mannequin CSS returned.");
 if(!styleDirectorCss.includes(".directorFabricFallback")) throw new Error("Style Director truthful fallback regression: fabric editorial fallback CSS missing.");
 console.log("Style Director photo-only fallback gate passed: unsupported categories show real fabric without simulated garment geometry.");
+for(const token of ["visualizePhotoreal","/api/visualization/fashn","Make photoreal"]) {
+  if(!styleDirectorPhotoPage.includes(token)) throw new Error(`Style Director photo-first action regression: missing ${token}`);
+}
+for(const token of ["/api/visualization/render","Generate alternate preview"]) {
+  if(styleDirectorPhotoPage.includes(token)) throw new Error(`Style Director photo-first action regression: legacy flat preview returned: ${token}`);
+}
+console.log("Style Director photo-first action gate passed: customer actions cannot replace the real-model surface with the flat alternate preview.");
 
 
 const photoPreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");

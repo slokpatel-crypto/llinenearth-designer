@@ -47,7 +47,7 @@ export default function StyleDirectorPage() {
   const [looks,setLooks] = useState<StyleDirectorClientLook[]>([]);
   const [selected,setSelected] = useState(0);
   const [loading,setLoading] = useState(false);
-  const [rendering,setRendering] = useState<"preview"|"photo"|null>(null);
+  const [rendering,setRendering] = useState(false);
   const [renderSet,setRenderSet] = useState<RenderSet|null>(null);
   const [error,setError] = useState("");
   const step = steps[index];
@@ -79,32 +79,31 @@ export default function StyleDirectorPage() {
     } finally { setLoading(false); }
   }
 
-  async function visualize(mode:"preview"|"photo") {
+  async function visualizePhotoreal() {
     if (!selectedLook) return;
-    setRendering(mode); setError("");
-    recordStyleMemoryEvent(sessionId,"render_requested",{mode,lookId:selectedLook.id,fabricId:selectedLook.fabric.id});
+    setRendering(true); setError("");
+    recordStyleMemoryEvent(sessionId,"render_requested",{mode:"photo",lookId:selectedLook.id,fabricId:selectedLook.fabric.id});
     try {
-      const endpoint = mode === "photo" ? "/api/visualization/fashn" : "/api/visualization/render";
-      const response = await fetch(endpoint,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({brief:selectedLook.brief,version:selectedLook.version})});
+      const response = await fetch("/api/visualization/fashn",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({brief:selectedLook.brief,version:selectedLook.version})});
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Could not create the visual.");
+      if (!response.ok) throw new Error(data.error || "Could not create the photoreal visual.");
       setRenderSet(data.renderSet);
       const front = data.renderSet?.renders?.find((render:{view?:string;src?:string})=>render.view==="front") ?? data.renderSet?.renders?.[0];
       const imageUrl = typeof front?.src === "string" && /^https:\/\/(cdn|media)\.fashn\.ai\//i.test(front.src) ? front.src : undefined;
       recordStyleMemoryEvent(sessionId,"render_completed",{
-        mode,
+        mode:"photo",
         lookId:selectedLook.id,
         fabricId:selectedLook.fabric.id,
         fabric:selectedLook.fabric.colorName,
         line:selectedLook.fabric.line,
-        provider:data.renderSet?.providerLabel || data.renderSet?.provider || "development",
+        provider:data.renderSet?.providerLabel || data.renderSet?.provider || "photoreal",
         imageUrl,
-        label:front?.label || "Generated visual",
+        label:front?.label || "Photoreal visual",
         generatedAt:data.renderSet?.generatedAt || new Date().toISOString(),
       });
     } catch(e) {
-      setError(e instanceof Error ? e.message : "Could not create the visual.");
-    } finally { setRendering(null); }
+      setError(e instanceof Error ? e.message : "Could not create the photoreal visual.");
+    } finally { setRendering(false); }
   }
 
   function reset() {
@@ -233,8 +232,7 @@ export default function StyleDirectorPage() {
               <p>{selectedLook.realModel.style.shirtWear} · {selectedLook.realModel.style.trouser} · {selectedLook.realModel.style.collar}</p>
             </div>}
             <div className="directorActions">
-              <button onClick={()=>visualize("preview")} disabled={Boolean(rendering)}>{rendering==="preview"?"Building…":"Generate alternate preview"} <b>↗</b></button>
-              <button className="photoAction" onClick={()=>visualize("photo")} disabled={Boolean(rendering)}>{rendering==="photo"?"Rendering…":"Make photoreal"} <b>✦</b></button>
+              <button className="photoAction" onClick={()=>void visualizePhotoreal()} disabled={rendering}>{rendering?"Rendering…":"Make photoreal"} <b>✦</b></button>
               {designerHandoff && <a href={designerHandoff} onClick={()=>recordStyleMemoryEvent(sessionId,"render_requested",{mode:"real-model-handoff",lookId:selectedLook.id,fabricId:selectedLook.fabric.id})}>Open Linen Earth Real Model Designer <b>↗</b></a>}
               <a href={whatsapp} target="_blank" rel="noreferrer" onClick={()=>recordStyleMemoryEvent(sessionId,"whatsapp_clicked",{lookId:selectedLook.id,fabricId:selectedLook.fabric.id,fabric:selectedLook.fabric.colorName})}>Book this look <b>↗</b></a>
             </div>
