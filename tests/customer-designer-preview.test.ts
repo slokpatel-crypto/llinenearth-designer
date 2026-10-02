@@ -60,3 +60,10 @@ test("Style Director keeps the full photographed model visible",()=>{
   assert.match(css,/\.directorExistingModel canvas\{[^}]*object-fit:contain/);
   assert.doesNotMatch(css,/\.directorExistingModel canvas\{[^}]*object-fit:cover/);
 });
+
+
+test("Style Director generated photoreal also stays full-body",()=>{
+  const css=readFileSync("src/app/style-director/style-director.css","utf8");
+  assert.match(css,/\.lookVisual img\{[^}]*object-fit:contain/);
+  assert.doesNotMatch(css,/\.lookVisual img\{[^}]*object-fit:cover/);
+});
