@@ -223,7 +223,7 @@ for (const path of [
   "supabase/migrations/20261023_render_manual_review_signoff.sql",
 ]) requireFile(path);
 
-requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/visual", "/real-model", "Open Real Model Designer"]);
+requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/designer-studio", "/real-model", "Open Real Model Designer"]);
 requireTokens("src/lib/designer/proof-scale.ts", ["evaluateRecordedPhase1ProofEvidence","summarizeLatencySamples","realModelSampleDurationsMs","phase1BoundaryChecksReady","boundaryReady","validateVerifiedPhysicalEvidence","physicalEvidenceReady","PHASE1_PROOF_EVIDENCE_VERSION","PHASE1_PROOF_PHOTO_COORDINATE_SYSTEM","summarizeIndependentRealism","PHASE1_PROOF_MIN_REALISM_VIEWERS","PHASE1_PROOF_MIN_STRONG_REALISM","phase1ProofAcceptance"]);
 requireTokens("src/components/PremiumShirtProof.tsx", ["linen-earth-phase1-proof-v4","Anonymous viewer code","boundaryChecks","Garment boundary review","realismAssessments","uniqueRealismViewers","physicalEvidenceNote","WAITING FOR PROVENANCE","photoReferenceMm","photoReferencePx","pxPerMmFromMarker","photo-1024x1536-fixture"]);
 requireTokens("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx", ["proofBoundaries","proofMobileAccepted","target-mobile acceptance","garment boundaries","mobile ${proofMobileAccepted?"]);
