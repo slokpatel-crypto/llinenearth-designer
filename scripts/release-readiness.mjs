@@ -175,6 +175,10 @@ for (const path of [
   "supabase/migrations/20261004_meterage_calibration_registry.sql",
   "src/app/operator/launch-readiness/page.tsx",
   "src/lib/designer/roadmap-readiness.ts",
+  "src/lib/designer/photo-calibration.ts",
+  "src/lib/designer/phase1-proof-server.ts",
+  "src/app/api/designer/photo-calibration/route.ts",
+  "tests/photo-calibration.test.ts",
   "src/lib/designer/roadmap-backend-health.ts",
   "src/app/api/operator/roadmap-backend-health/route.ts",
   "tests/roadmap-backend-health.test.ts",
@@ -216,13 +220,17 @@ requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/v
 requireTokens("src/lib/designer/proof-scale.ts", ["evaluateRecordedPhase1ProofEvidence","summarizeLatencySamples","realModelSampleDurationsMs","phase1BoundaryChecksReady","boundaryReady","validateVerifiedPhysicalEvidence","physicalEvidenceReady","PHASE1_PROOF_EVIDENCE_VERSION","PHASE1_PROOF_PHOTO_COORDINATE_SYSTEM","summarizeIndependentRealism","PHASE1_PROOF_MIN_REALISM_VIEWERS","PHASE1_PROOF_MIN_STRONG_REALISM","phase1ProofAcceptance"]);
 requireTokens("src/components/PremiumShirtProof.tsx", ["linen-earth-phase1-proof-v4","Anonymous viewer code","boundaryChecks","Garment boundary review","realismAssessments","uniqueRealismViewers","physicalEvidenceNote","WAITING FOR PROVENANCE","photoReferenceMm","photoReferencePx","pxPerMmFromMarker","photo-1024x1536-fixture"]);
 requireTokens("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx", ["proofBoundaries","proofMobileAccepted","target-mobile acceptance","garment boundaries","mobile ${proofMobileAccepted?"]);
-requireTokens("src/app/api/operator/phase1-proof/route.ts", ["evaluateRecordedPhase1ProofEvidence","coreAccepted","boundaryReady","boundaryChecks","physicalEvidenceReady","physicalEvidenceNote","uniqueRealismViewers","photoReferenceMm","photoReferencePx","photoPxPerMm","scaleCoordinateSystem"]);
+requireTokens("src/app/api/operator/phase1-proof/route.ts", ["loadLatestPhase1ProofRecord","coreAccepted","boundaryReady","boundaryChecks","physicalEvidenceReady","physicalEvidenceNote","uniqueRealismViewers","photoReferenceMm","photoReferencePx","photoPxPerMm","scaleCoordinateSystem"]);
 requireTokens("src/app/api/memory/event/route.ts", ["linen-earth-phase1-proof-v4","boundaryChecks","boundaryReady","realModelSampleDurationsMs","photoReferenceMm","photoReferencePx","realismAssessments","uniqueRealismViewers"]);
 requireTokens("src/app/api/memory/event/route.ts", ["designer-device-qa-v2","sampleDurationsMs","hardwareConcurrency","checks"]);
 requireTokens("src/app/api/operator/device-qa/route.ts", ["evaluateDeviceQaEvidence","performancePass","visualPass","evidenceVersion"]);
 requireTokens("src/app/operator/device-qa/DeviceQaClient.tsx", ["DEVICE_QA_EVIDENCE_VERSION","readPreviewPerformanceSamples","sampleDurationsMs"]);
 requireTokens("src/lib/designer/device-qa-evidence.ts", ["DEVICE_QA_EVIDENCE_VERSION","DEVICE_QA_MIN_SAMPLES","DEVICE_QA_TARGET_P95_MS","evaluateDeviceQaEvidence","sampleDurationsMs"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["PhotoPreviewCalibration","photoPxPerMm","photoFabricPatternScale"]);
+requireTokens("src/lib/designer/photo-calibration.ts", ["customerPhotoCalibrationFromProofPayload","UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION","coreAccepted===true","scaleGatePass===true","physicalEvidenceReady===true","boundaryReady===true"]);
+requireTokens("src/lib/designer/phase1-proof-server.ts", ['import "server-only"',"loadLatestPhase1ProofRecord","style_events","supabaseAdminHeaders"]);
+requireTokens("src/app/api/designer/photo-calibration/route.ts", ["customerPhotoCalibrationFromProofPayload","UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION","s-maxage=60"]);
+requireTokens("src/components/PhotoOutfitPreview.tsx", ["/api/designer/photo-calibration","photoPxPerMm:verifiedPhotoPxPerMm","accepted studio calibration","patterned scale stays approximate"]);
 requireTokens("src/lib/designer/live-preview.ts", ["photoFabricPatternScale","photoExpectedRepeatPx","photoPxPerMm"]);
 requireTokens("src/lib/fabric-intelligence-evidence.ts", ["intelligence.trust!==\"reviewed\"","auditablePhysicalSource","evidenceNote","fieldProvenance","measured.pattern.physicalScale","verifiedPhysical.gsm","verifiedPhysical.drape","verifiedPhysical.fiberContent","patternScaleVerified","fiberContentVerified"]);
 requireTokens("src/lib/fabric-intelligence-server.ts", ["fieldProvenance:{...profile.provenanceByField}"]);
