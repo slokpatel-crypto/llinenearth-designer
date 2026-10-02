@@ -5,7 +5,7 @@ import { GARMENT_OPTION_LIBRARY } from "@/lib/designer/options/library";
 import { loadDesignerOptionReviews } from "@/lib/designer/option-reviews";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import type { PreviewOptionReviewStatus } from "@/lib/designer/preview-option-coverage";
-import { photoPreviewSupportForChoice } from "@/lib/designer/photo-preview";
+import { photoPreviewSupportForChoice } from "@/lib/designer/photo-preview-support";
 
 export type DesignerPreviewOptionReview={
   id:string;
