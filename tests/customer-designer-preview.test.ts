@@ -46,3 +46,10 @@ test("photo compositor neutralizes source-template luminance before restoring fo
   assert.match(geometry,/shirtDetailBrightness: 3\.05/);
   assert.match(geometry,/trouserDetailBrightness: 1\.9/);
 });
+
+
+test("customer final photoreal keeps the full model in frame",()=>{
+  const css=readFileSync("src/app/designer-studio/designer-light.css","utf8");
+  assert.match(css,/\.newDesignerPhotoAi\{[^}]*object-fit:contain/);
+  assert.doesNotMatch(css,/\.newDesignerPhotoAi\{[^}]*object-fit:cover/);
+});
