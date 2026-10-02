@@ -175,6 +175,12 @@ for (const path of [
   "supabase/migrations/20261004_meterage_calibration_registry.sql",
   "src/app/operator/launch-readiness/page.tsx",
   "src/lib/designer/roadmap-readiness.ts",
+  "src/lib/designer/fabric-truth-policy.ts",
+  "src/app/api/operator/fabric-truth-policy/route.ts",
+  "src/app/operator/fabric-truth-policy/page.tsx",
+  "src/app/operator/fabric-truth-policy/FabricTruthPolicyClient.tsx",
+  "src/app/operator/fabric-truth-policy/fabric-truth-policy.css",
+  "tests/fabric-truth-policy.test.ts",
   "src/app/operator/roadmap-readiness/page.tsx",
   "src/app/operator/roadmap-readiness/RoadmapReadinessClient.tsx",
   "src/app/operator/roadmap-readiness/roadmap-readiness.css",
@@ -536,8 +542,11 @@ requireTokens("src/app/api/designer/casebook/route.ts", [
 requireTokens("src/app/operator/OperatorClient.tsx", [
   "DESIGNER CASE REVIEW","Approve case","Reject case","designer_case_review"
 ]);
-requireTokens("src/lib/designer/roadmap-readiness.ts", ["summarizeRoadmapReadiness","Phase 2 remains evidence-open","phase1Complete","phase8Complete","phase9Complete"]);
+requireTokens("src/lib/designer/roadmap-readiness.ts", ["summarizeRoadmapReadiness","fabricTruthEvidence","phase2Complete=reviewedComplete&&colorComplete&&fabricTruthEvidence.gateComplete","phase1Complete","phase8Complete","phase9Complete"]);
 requireTokens("src/app/operator/roadmap-readiness/RoadmapReadinessClient.tsx", ["Readiness Control Tower","ENGINEERING","REAL EVIDENCE","No phase is promoted from missing data"]);
+requireTokens("src/lib/designer/fabric-truth-policy.ts", ["FABRIC_TRUTH_POLICY_VERSION","normalizeFabricTruthPolicy","evaluateFabricTruthPolicy","gateComplete"]);
+requireTokens("src/app/api/operator/fabric-truth-policy/route.ts", ["verifyOperatorSession","fabric_truth_evidence_policy","normalizeFabricTruthPolicy"]);
+requireTokens("src/app/operator/fabric-truth-policy/FabricTruthPolicyClient.tsx", ["The software does not choose these thresholds","Save approved policy","LIVE PHYSICAL COVERAGE"]);
 requireTokens("src/lib/designer/fit-outcomes.ts", ["designer-fit-outcomes-v1","aggregateFitOutcomes","fitOutcomeSignalFor"]);
 requireTokens("src/app/api/designer/casebook/route.ts", ["aggregateFitOutcomes","fitOutcomes"]);
 requireTokens("src/app/operator/OperatorClient.tsx", ["FIRST-FITTING OUTCOME","designer_fit_outcome","saveFitOutcome"]);
