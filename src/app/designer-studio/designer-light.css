@@ -346,7 +346,7 @@
 .newDesignerPhotoCreative>p{margin:7px 0 0;font-size:8px;line-height:1.5;color:#6e675f}
 .newDesignerPhotoCreative b{font-weight:700;color:#365b7e}
 
-.newDesignerPhotoAi{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:4;background:#0a1422}
+.newDesignerPhotoAi{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;z-index:4;background:#eeeae4}
 .newDesignerCreativeRenderError{color:#9b4f3d!important}
 
 .newDesignerPhotoStage.inspectFit .newDesignerPhotoAi{transform:scale(1.42);transform-origin:50% 35%}
