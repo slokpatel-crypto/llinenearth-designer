@@ -17,8 +17,8 @@ const visualRefs = [
 const garments = [
   { name: "Shirts", image: "/editorial/shirt.webp", className: "editorialShirt", href: "/designer-studio", note: "Real catalogue cloth · photographic preview" },
   { name: "Trousers", image: "/editorial/trouser.webp", className: "editorialTrouser", href: "/designer-studio", note: "Tailored balance · photographic preview" },
-  { name: "Suits", image: "/editorial/suit.webp", className: "editorialSuit", href: "/visual?garment=suit", note: "Two-piece · occasion tailoring" },
-  { name: "Blazers", image: "/editorial/blazer.webp", className: "editorialBlazer", href: "/visual?garment=blazer", note: "Structured layering · sharp finish" },
+  { name: "Suits", image: "/editorial/suit.webp", className: "editorialSuit", href: "/style-director", note: "Two-piece · direction first · real fabric" },
+  { name: "Blazers", image: "/editorial/blazer.webp", className: "editorialBlazer", href: "/style-director", note: "Layering direction · real fabric first" },
 ] as const;
 
 const GOOGLE_BUSINESS_URL = "https://www.google.com/maps/search/?api=1&query=Linen%20Earth%20Murlidhar%20Compound%2049%2F4%20Kalyan%20Rd%20behind%20Shiv%20Mandir%20near%20Masoom%20Hospital%20Bhiwandi%20Maharashtra";

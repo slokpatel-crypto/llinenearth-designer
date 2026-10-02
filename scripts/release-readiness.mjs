@@ -223,7 +223,7 @@ for (const path of [
   "supabase/migrations/20261023_render_manual_review_signoff.sql",
 ]) requireFile(path);
 
-requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/visual", "/real-model", "Open Real Model Designer"]);
+requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/designer-studio", "/real-model", "Open Real Model Designer"]);
 requireTokens("src/lib/designer/proof-scale.ts", ["evaluateRecordedPhase1ProofEvidence","summarizeLatencySamples","realModelSampleDurationsMs","phase1BoundaryChecksReady","boundaryReady","validateVerifiedPhysicalEvidence","physicalEvidenceReady","PHASE1_PROOF_EVIDENCE_VERSION","PHASE1_PROOF_PHOTO_COORDINATE_SYSTEM","summarizeIndependentRealism","PHASE1_PROOF_MIN_REALISM_VIEWERS","PHASE1_PROOF_MIN_STRONG_REALISM","phase1ProofAcceptance"]);
 requireTokens("src/components/PremiumShirtProof.tsx", ["linen-earth-phase1-proof-v4","Anonymous viewer code","boundaryChecks","Garment boundary review","realismAssessments","uniqueRealismViewers","physicalEvidenceNote","WAITING FOR PROVENANCE","photoReferenceMm","photoReferencePx","pxPerMmFromMarker","photo-1024x1536-fixture"]);
 requireTokens("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx", ["proofBoundaries","proofMobileAccepted","target-mobile acceptance","garment boundaries","mobile ${proofMobileAccepted?"]);
@@ -415,6 +415,11 @@ requireTokens("tests/customer-designer-preview.test.ts", ["Style Director keeps 
 requireTokens("tests/customer-designer-preview.test.ts", ["Style Director photoreal letterbox matches the navy studio"]);
 requireTokens("tests/customer-designer-preview.test.ts", ["Style Director never falls back to a simulated mannequin"]);
 requireTokens("tests/customer-designer-preview.test.ts", ["Style Director no longer offers a flat alternate preview"]);
+requireTokens("src/app/designer/page.tsx", ['redirect("/designer-studio")']);
+requireTokens("src/app/visual/page.tsx", ['redirect("/style-director")']);
+requireTokens("src/app/designer-brief/page.tsx", ['redirect("/style-director")']);
+requireTokens("src/app/page.tsx", ['name: "Suits"','name: "Blazers"','href: "/style-director"']);
+requireTokens("tests/customer-designer-preview.test.ts", ["legacy customer design routes consolidate onto the photo-first experiences"]);
 requireTokens("src/components/DesignerModule.tsx", ['params.get("shirt")','params.get("pant")','params.get("style")',"STYLE DIRECTOR"]);
 requireTokens("src/lib/designer/garment-spec.ts", ["linen-earth-garment-spec-v1","buildCanonicalGarmentSpec","finishedTargets","ready_for_tailor_review","not a cutting pattern","fitEaseSource","fitEaseTableVersion","conceptId:string","treatments:Array","Creative treatments are design instructions","CanonicalCreativeVisualReview","visualReview:CanonicalCreativeVisualReview"]);
 requireTokens("src/app/api/designer/assess/route.ts", ["buildCanonicalGarmentSpec","fitConstruction","blockStrategy","brandLanguage","negotiation","creative","visualReview"]);

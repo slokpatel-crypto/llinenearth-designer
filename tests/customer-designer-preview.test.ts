@@ -139,3 +139,21 @@ test("Style Director no longer offers a flat alternate preview",()=>{
   assert.doesNotMatch(page,/\/api\/visualization\/render/);
   assert.doesNotMatch(page,/Generate alternate preview/);
 });
+
+
+test("legacy customer design routes consolidate onto the photo-first experiences",()=>{
+  const designer=readFileSync("src/app/designer/page.tsx","utf8");
+  const visual=readFileSync("src/app/visual/page.tsx","utf8");
+  const brief=readFileSync("src/app/designer-brief/page.tsx","utf8");
+  const home=readFileSync("src/app/page.tsx","utf8");
+
+  assert.match(designer,/redirect\("\/designer-studio"\)/);
+  assert.match(visual,/redirect\("\/style-director"\)/);
+  assert.match(brief,/redirect\("\/style-director"\)/);
+  assert.doesNotMatch(designer,/StudioDashboard|AtelierMannequin/);
+  assert.doesNotMatch(visual,/HomeVisualExplorer|OutfitStudio/);
+  assert.doesNotMatch(brief,/OccasionDesignerPreview/);
+  assert.doesNotMatch(home,/\/visual\?garment=(?:suit|blazer)/);
+  assert.match(home,/name: "Suits"[\s\S]*href: "\/style-director"/);
+  assert.match(home,/name: "Blazers"[\s\S]*href: "\/style-director"/);
+});

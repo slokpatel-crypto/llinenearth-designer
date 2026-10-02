@@ -241,6 +241,19 @@ for(const token of ["/api/visualization/render","Generate alternate preview"]) {
   if(styleDirectorPhotoPage.includes(token)) throw new Error(`Style Director photo-first action regression: legacy flat preview returned: ${token}`);
 }
 console.log("Style Director photo-first action gate passed: customer actions cannot replace the real-model surface with the flat alternate preview.");
+const legacyDesignerRoute=fs.readFileSync("src/app/designer/page.tsx","utf8");
+const legacyVisualRoute=fs.readFileSync("src/app/visual/page.tsx","utf8");
+const legacyBriefRoute=fs.readFileSync("src/app/designer-brief/page.tsx","utf8");
+const photoFirstHome=fs.readFileSync("src/app/page.tsx","utf8");
+if(!legacyDesignerRoute.includes('redirect("/designer-studio")')) throw new Error("Customer route regression: /designer must redirect to the photographic Designer.");
+for(const [label,source] of [["/visual",legacyVisualRoute],["/designer-brief",legacyBriefRoute]]) {
+  if(!source.includes('redirect("/style-director")')) throw new Error(`Customer route regression: ${label} must redirect to Style Director.`);
+}
+for(const token of ["StudioDashboard","AtelierMannequin"]) if(legacyDesignerRoute.includes(token)) throw new Error(`Legacy flat Designer surface returned: ${token}`);
+for(const token of ["HomeVisualExplorer","OutfitStudio"]) if(legacyVisualRoute.includes(token)) throw new Error(`Legacy visualizer surface returned: ${token}`);
+if(legacyBriefRoute.includes("OccasionDesignerPreview")) throw new Error("Legacy Designer Brief surface returned.");
+if(/\/visual\?garment=(?:suit|blazer)/.test(photoFirstHome)) throw new Error("Homepage suit/blazer cards returned to the legacy visualizer.");
+console.log("Photo-first customer route gate passed: legacy visual/model surfaces redirect to the current Designer and Style Director.");
 
 
 const photoPreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
