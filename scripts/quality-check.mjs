@@ -217,6 +217,9 @@ const styleDirectorCss=fs.readFileSync("src/app/style-director/style-director.cs
 if(!/\.directorExistingModel canvas\{[^}]*object-fit:contain/.test(styleDirectorCss)) throw new Error("Style Director framing regression: photographed model must remain fully visible.");
 if(/\.directorExistingModel canvas\{[^}]*object-fit:cover/.test(styleDirectorCss)) throw new Error("Style Director framing regression: cover would crop the photographed model.");
 console.log("Style Director full-model framing gate passed: photographed model stays fully visible.");
+if(!/\.lookVisual img\{[^}]*object-fit:contain/.test(styleDirectorCss)) throw new Error("Style Director generated-render framing regression: full rendered outfit must remain visible.");
+if(/\.lookVisual img\{[^}]*object-fit:cover/.test(styleDirectorCss)) throw new Error("Style Director generated-render framing regression: cover would crop the rendered outfit.");
+console.log("Style Director generated-render framing gate passed: photoreal output stays fully visible.");
 
 
 const photoPreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
