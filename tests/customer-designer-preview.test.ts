@@ -229,6 +229,16 @@ test("customer-facing photoreal fails closed to the trusted instant preview when
 });
 
 
+test("identical session-cached photoreal reuses completed QA without reinspection",()=>{
+  const preview=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.match(preview,/if\(!creativeDirection && data\.check\.available\)/);
+  assert.match(preview,/selectedLookSessionCache\.set\(renderSignature,\{\.\.\.cached,selectedCheck:data\.check\}\)/);
+  assert.match(preview,/setShowCreativeAi\(Boolean\(cached\.selectedCheck\?\.available && cached\.selectedCheck\.status==="pass"\)\)/);
+  assert.match(preview,/if\(!cached\.selectedCheck\?\.available\) \{/);
+  assert.match(preview,/retrying later when QA was temporarily unavailable/);
+});
+
+
 test("Save never exports an unapproved selected-look photoreal",()=>{
   const preview=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   assert.match(preview,/const selectedPhotorealApproved=Boolean\(/);
