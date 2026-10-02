@@ -85,6 +85,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added a cross-phase Roadmap Readiness control tower that keeps engineering completion separate from human/physical evidence, links directly to every major gate, and refuses to promote missing data to complete.
 - Added an owner/supplier-controlled Fabric Truth evidence policy so Phase 2 physical-scale, GSM, drape and fibre thresholds are explicitly human-defined rather than hard-coded by software.
 - Added 12 production foreign-key covering indexes from the live Supabase advisor; the unindexed-foreign-key advisory count is now zero.
+- Hardened Supabase private-schema deny-by-default privileges and added that effective client isolation to the live backend-health capability gate; current anon/authenticated schema, table and private-function access is false.
 - Added a live production Supabase evidence-contract probe to Phase 9, so readiness fails closed if required hardened RPCs/migrations are absent from production.
 - Added a primary Vercel production-runtime identity probe using deployment/project/environment/Git metadata; Phase 9 now fails closed on previews, duplicate projects or untraceable deployments.
 - Added an Evidence Sprint operator workflow that converts remaining real-world phase gates into a dependency-aware collection queue while keeping all evidence boundaries intact.
