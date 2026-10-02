@@ -35,3 +35,11 @@ test("creative preview treatment stays inside the same feathered photo boundary"
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   assert.match(source,/function clipCreativeLayer[\s\S]*if\(path\) context\.drawImage\(featheredPathMask\(path\),0,0\)/);
 });
+
+
+test("photoreal result keeps the full studio silhouette",()=>{
+  const css=readFileSync("src/app/designer-studio/designer-light.css","utf8");
+  assert.match(css,/\.newDesignerPhotoAi\{[^}]*object-fit:contain/);
+  assert.doesNotMatch(css,/\.newDesignerPhotoAi\{[^}]*object-fit:cover/);
+  assert.match(css,/\.newDesignerPhotoAi\{[^}]*background:#eeeae4/);
+});
