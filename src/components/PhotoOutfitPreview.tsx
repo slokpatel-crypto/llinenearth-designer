@@ -1138,6 +1138,14 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       setCreativeAiError("");
       return;
     }
+    const frontCheck=creativeAi.selectedCheck;
+    if(!frontCheck?.available || frontCheck.status!=="pass") {
+      // Never spend another generation credit or propagate identity from a
+      // front render that has not cleared customer-facing fidelity QA.
+      setPhotorealView("front");
+      setCreativeAiError("Front photoreal must pass fidelity QA before generating another view.");
+      return;
+    }
     const existing=photorealViews[view];
     if(existing) {
       setPhotorealView(view);
@@ -1257,9 +1265,13 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     {creativeAi?.cached && <p className="newDesignerPhotoCache">Cached final render reused · no new FASHN generation was needed.</p>}
     {creativeAi && !creativeDirection && activeSelectedCheck && (!activeSelectedCheck.available || activeSelectedCheck.status==="review") && <p className="newDesignerPhotoQaHold"><strong>PHOTOREAL HELD FOR REVIEW</strong> · The render has not cleared customer-facing fidelity QA. The trusted instant studio preview remains the save/export source until QA passes; the generated image is preserved only for explicit review or one targeted repair.</p>}
     {creativeAi && !creativeDirection && <div className="newDesignerPhotoViews" role="group" aria-label="Photoreal model views">
-      {(["front","three-quarter","side","back"] as PhotorealView[]).map((view)=><button key={view} type="button" aria-pressed={photorealView===view} disabled={Boolean(photorealViewLoading)} onClick={()=>void choosePhotorealView(view)}>
-        {photorealViewLoading===view ? "Rendering…" : view==="three-quarter" ? (photorealViews[view]?"3/4":"Generate 3/4") : view==="front" ? "Front" : photorealViews[view] ? view[0].toUpperCase()+view.slice(1) : "Generate "+view}
-      </button>)}
+      {(["front","three-quarter","side","back"] as PhotorealView[]).map((view)=>{
+        const frontQaReady=Boolean(creativeAi.selectedCheck?.available && creativeAi.selectedCheck.status==="pass");
+        const blocked=view!=="front" && !frontQaReady;
+        return <button key={view} type="button" aria-pressed={photorealView===view} disabled={Boolean(photorealViewLoading) || blocked} onClick={()=>void choosePhotorealView(view)}>
+          {blocked ? "Front QA first" : photorealViewLoading===view ? "Rendering…" : view==="three-quarter" ? (photorealViews[view]?"3/4":"Generate 3/4") : view==="front" ? "Front" : photorealViews[view] ? view[0].toUpperCase()+view.slice(1) : "Generate "+view}
+        </button>;
+      })}
     </div>}
     {creativeAi && !creativeDirection && activeSelectedCheck && <div className="newDesignerSelectedQa" data-status={activeSelectedCheck.available ? activeSelectedCheck.status : "unavailable"}>
       <div>

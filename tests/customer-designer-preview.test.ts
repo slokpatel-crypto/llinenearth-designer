@@ -229,6 +229,18 @@ test("customer-facing photoreal fails closed to the trusted instant preview when
 });
 
 
+test("secondary photoreal views cannot spend credits until front fidelity QA passes",()=>{
+  const preview=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.match(preview,/const frontCheck=creativeAi\.selectedCheck/);
+  assert.match(preview,/if\(!frontCheck\?\.available \|\| frontCheck\.status!=="pass"\)/);
+  assert.match(preview,/Front photoreal must pass fidelity QA before generating another view/);
+  assert.match(preview,/Never spend another generation credit or propagate identity/);
+  assert.match(preview,/const frontQaReady=Boolean\(creativeAi\.selectedCheck\?\.available && creativeAi\.selectedCheck\.status==="pass"\)/);
+  assert.match(preview,/const blocked=view!=="front" && !frontQaReady/);
+  assert.match(preview,/Front QA first/);
+});
+
+
 test("identical session-cached photoreal reuses completed QA without reinspection",()=>{
   const preview=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   assert.match(preview,/if\(!creativeDirection && data\.check\.available\)/);
