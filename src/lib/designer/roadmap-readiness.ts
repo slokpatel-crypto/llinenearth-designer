@@ -1,6 +1,7 @@
 import { summarizeLaunchReadiness } from "./launch-readiness-evidence.ts";
 import { summarizeProductionDeliveryEvidence } from "./production-delivery-evidence.ts";
 import { evaluateFinalRenderReleaseEvidence } from "./render-release-evidence.ts";
+import { evaluateFabricTruthPolicy, normalizeFabricTruthPolicy } from "./fabric-truth-policy.ts";
 
 export type RoadmapPhaseStatus="complete"|"evidence"|"open"|"later";
 
@@ -22,6 +23,8 @@ export type RoadmapReadinessInput={
   deviceQa?:Record<string,unknown>;
   fabricAnalyzer?:Record<string,unknown>;
   fabricColor?:Record<string,unknown>;
+  designerData?:Record<string,unknown>;
+  fabricTruthPolicy?:Record<string,unknown>;
   previewCoverage?:Record<string,unknown>;
   noviceStudy?:Record<string,unknown>;
   measurementCalibration?:Record<string,unknown>;
@@ -74,11 +77,25 @@ export function summarizeRoadmapReadiness(input:RoadmapReadinessInput){
   const colorSummary=object(object(input.fabricColor).summary);
   const colorCount=number(colorSummary.uniqueFabrics);
   const colorTarget=Math.max(1,number(colorSummary.target,10));
-  const phase2MeasuredProgress=Math.round((ratio(reviewedFabrics,reviewedTarget)+ratio(colorCount,colorTarget))/2);
-  // The roadmap intentionally does not invent a blanket GSM/fibre/drape coverage
-  // threshold. Phase 2 remains evidence-open until the owner/supplier policy is
-  // explicitly documented, even if the current measurable counters are full.
-  const phase2Complete=false;
+  const colorComplete=colorSummary.evidenceGateComplete===true||colorCount>=colorTarget;
+  const fabricCoverage=object(object(input.designerData).coverage);
+  const policyRaw=object(input.fabricTruthPolicy).policy;
+  let fabricTruthPolicy=null;
+  try{fabricTruthPolicy=normalizeFabricTruthPolicy(policyRaw);}catch{}
+  const fabricTruthEvidence=evaluateFabricTruthPolicy(fabricTruthPolicy,{
+    activeCandidates:number(fabricCoverage.activeCandidates),
+    physicalScale:number(fabricCoverage.physicalScale),
+    gsm:number(fabricCoverage.gsm),
+    drape:number(fabricCoverage.drape),
+    fiber:number(fabricCoverage.fiber),
+  });
+  const reviewedComplete=reviewedFabrics>=reviewedTarget;
+  const phase2MeasuredProgress=Math.round((
+    ratio(reviewedFabrics,reviewedTarget)
+    +ratio(colorCount,colorTarget)
+    +fabricTruthEvidence.progressPercent
+  )/3);
+  const phase2Complete=reviewedComplete&&colorComplete&&fabricTruthEvidence.gateComplete;
 
   const previewSummary=object(object(input.previewCoverage).summary);
   const previewComplete=previewSummary.gateComplete===true;
@@ -160,7 +177,7 @@ export function summarizeRoadmapReadiness(input:RoadmapReadinessInput){
   const phases:RoadmapPhaseState[]=[
     phase({id:"phase-0",phase:0,title:"Audit / Stabilize",engineeringComplete:true,evidenceComplete:true,progressPercent:100,metric:"Engineering baseline locked",blocker:"None — merge/deploy is the release action.",href:"/operator/phase10-readiness"}),
     phase({id:"phase-1",phase:1,title:"Premium Shirt Proof",engineeringComplete:true,evidenceComplete:phase1Complete,progressPercent:percent([phase1Core,mobileAccepted]),metric:`${phase1Core?"Core proof accepted":"Core proof open"} · mobile ${mobileAccepted?"accepted":"open"}`,blocker:phase1Complete?"Evidence gate satisfied.":"Needs physical-scale/realism/boundary proof and target-mobile acceptance.",href:"/lab/proof"}),
-    phase({id:"phase-2",phase:2,title:"Fabric Truth",engineeringComplete:true,evidenceComplete:phase2Complete,progressPercent:Math.min(95,phase2MeasuredProgress),metric:`${reviewedFabrics}/${reviewedTarget} reviewed fabrics · ${colorCount}/${colorTarget} physical colour checks`,blocker:"Owner/supplier policy for physical GSM, fibre and drape coverage still needs a documented threshold; code will not invent one.",href:"/operator/fabric-analyzer"}),
+    phase({id:"phase-2",phase:2,title:"Fabric Truth",engineeringComplete:true,evidenceComplete:phase2Complete,progressPercent:phase2MeasuredProgress,metric:`${reviewedFabrics}/${reviewedTarget} reviewed · ${colorCount}/${colorTarget} colour · physical ${fabricTruthEvidence.completedFields}/${fabricTruthEvidence.totalFields}`,blocker:phase2Complete?"Fabric Truth evidence gate satisfied.":!fabricTruthPolicy?"Owner/supplier physical-evidence thresholds are not documented yet.":"Needs the reviewed-fabric, physical-colour and approved GSM/fibre/drape/scale coverage gates to pass.",href:"/operator/fabric-truth-policy"}),
     phase({id:"phase-3",phase:3,title:"Deterministic Designer",engineeringComplete:true,evidenceComplete:phase3Complete,progressPercent:percent([phase1Complete,previewComplete,noviceComplete]),metric:`proof ${phase1Complete?"✓":"open"} · preview ${previewComplete?"✓":"open"} · novice study ${noviceComplete?"✓":"open"}`,blocker:phase3Complete?"Evidence gate satisfied.":"Requires Phase 1 evidence, all visible preview reviews and five server-timed novice completions within the documented target.",href:"/operator/preview-option-coverage"}),
     phase({id:"phase-4",phase:4,title:"Measurements / Fit",engineeringComplete:true,evidenceComplete:phase4Complete,progressPercent:percent([measurementComplete,easeCoverageComplete,approvedEaseModel]),metric:`measurement ${measurementComplete?"✓":"open"} · ease cells ${easeCoverageComplete?"✓":"open"} · approved model ${approvedEaseModel?"✓":"open"}`,blocker:phase4Complete?"Evidence gate satisfied.":"Requires real-person measurement accuracy plus complete finished-garment ease evidence and owner/tailor approval.",href:"/operator/measurement-calibration"}),
     phase({id:"phase-5",phase:5,title:"Lock / Share / Enquiry",engineeringComplete:true,evidenceComplete:phase5Complete,progressPercent:ratio(launchSummary.successfulBetaCases,launchSummary.betaTarget),metric:`${launchSummary.successfulBetaCases}/${launchSummary.betaTarget} verified customer flows`,blocker:phase5Complete?"Five-customer flow gate satisfied.":"Run five distinct real lock → verified share/enquiry flows with no blocking bug.",href:"/operator/launch-readiness"}),

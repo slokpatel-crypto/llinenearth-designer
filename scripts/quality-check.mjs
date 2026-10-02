@@ -1062,13 +1062,26 @@ console.log("Designer block-strategy gate passed: measurements and manual observ
 const roadmapReadinessModel=fs.readFileSync("src/lib/designer/roadmap-readiness.ts","utf8");
 const roadmapReadinessClient=fs.readFileSync("src/app/operator/roadmap-readiness/RoadmapReadinessClient.tsx","utf8");
 const roadmapReadinessTest=fs.readFileSync("tests/roadmap-readiness.test.ts","utf8");
-for(const token of ["summarizeRoadmapReadiness","phase1Complete","phase3Complete","phase8Complete","phase9Complete","phase2Complete=false"]) {
+for(const token of ["summarizeRoadmapReadiness","phase1Complete","phase3Complete","phase8Complete","phase9Complete","fabricTruthEvidence","phase2Complete=reviewedComplete&&colorComplete&&fabricTruthEvidence.gateComplete"]) {
   if(!roadmapReadinessModel.includes(token)) throw new Error(`Roadmap readiness model regression: missing ${token}`);
 }
 for(const token of ["Readiness Control Tower","ENGINEERING","REAL EVIDENCE","No phase is promoted from missing data"]) {
   if(!roadmapReadinessClient.includes(token)) throw new Error(`Roadmap readiness operator regression: missing ${token}`);
 }
-for(const token of ["Phase 3 cannot pass before","Phase 8 requires both approved meterage garments"]) {
+for(const token of ["Phase 2 completes only after an approved human policy","Phase 3 cannot pass before","Phase 8 requires both approved meterage garments"]) {
   if(!roadmapReadinessTest.includes(token)) throw new Error(`Roadmap readiness test regression: missing ${token}`);
 }
 console.log("Roadmap readiness gate passed: cross-phase engineering and evidence status remain separate and conservative.");
+const fabricTruthPolicyModel=fs.readFileSync("src/lib/designer/fabric-truth-policy.ts","utf8");
+const fabricTruthPolicyRoute=fs.readFileSync("src/app/api/operator/fabric-truth-policy/route.ts","utf8");
+const fabricTruthPolicyClient=fs.readFileSync("src/app/operator/fabric-truth-policy/FabricTruthPolicyClient.tsx","utf8");
+for(const token of ["FABRIC_TRUTH_POLICY_VERSION","normalizeFabricTruthPolicy","evaluateFabricTruthPolicy","gateComplete"]) {
+  if(!fabricTruthPolicyModel.includes(token)) throw new Error(`Fabric Truth policy model regression: missing ${token}`);
+}
+for(const token of ["verifyOperatorSession","fabric_truth_evidence_policy","source:\"operator\"","normalizeFabricTruthPolicy"]) {
+  if(!fabricTruthPolicyRoute.includes(token)) throw new Error(`Fabric Truth policy API regression: missing ${token}`);
+}
+for(const token of ["The software does not choose these thresholds","Save approved policy","LIVE PHYSICAL COVERAGE"]) {
+  if(!fabricTruthPolicyClient.includes(token)) throw new Error(`Fabric Truth policy operator regression: missing ${token}`);
+}
+console.log("Fabric Truth policy gate passed: Phase 2 physical coverage remains human-defined and evidence-backed.");
