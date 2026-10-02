@@ -257,6 +257,15 @@ for(const token of ["baseline photographed shirt details are exact","unsupported
   if(!previewSupportTest.includes(token)) throw new Error(`Photographic option-support test regression: missing ${token}`);
 }
 console.log("Photographic option-support gate passed: customer coverage now audits the real photo compositor rather than internal construction support.");
+const designerModulePhotoTruth=fs.readFileSync("src/components/DesignerModule.tsx","utf8");
+for(const token of ["photoPreviewSupportForChoice","photoMatchSummary","PHOTO MATCH · MIXED","selected details directly match a photographed template"]) {
+  if(!designerModulePhotoTruth.includes(token)) throw new Error(`Customer photo-match disclosure regression: missing ${token}`);
+}
+const designerLightCss=fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
+for(const token of [".newDesignerPhotoMatch","data-state=\"mixed\""]) {
+  if(!designerLightCss.includes(token)) throw new Error(`Customer photo-match CSS regression: missing ${token}`);
+}
+console.log("Customer photo-match disclosure gate passed: selected cut details show whether the photograph directly represents them.");
 
 
 const realDesignerModule = fs.readFileSync("src/components/DesignerModule.tsx","utf8");

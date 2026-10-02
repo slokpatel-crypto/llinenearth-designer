@@ -10,6 +10,7 @@ import {
 import { DESIGNER_FASHION_FACTS, DESIGNER_RESEARCH } from "@/lib/designer/research";
 import { createStyleSessionId, readLocalDesignerTasteProfile, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
 import { PhotoOutfitPreview, StyleDirectorRealModelPreview, type CreativeVisualCheck } from "@/components/PhotoOutfitPreview";
+import { photoPreviewSupportForChoice } from "@/lib/designer/photo-preview-support";
 import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, type MeasurementProfile } from "@/lib/measurements";
 import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
@@ -175,6 +176,22 @@ export function DesignerModule() {
   const pant = useMemo(() => pantOptions.find((item) => item.id === pantId), [pantId, pantOptions]);
   const visibleShirts=useMemo(()=>shirtFilter==="All" ? shirtOptions : shirtOptions.filter((item)=>shirtFilterFor(item)===shirtFilter),[shirtFilter,shirtOptions]);
   const visiblePants=useMemo(()=>pantFilter==="All" ? pantOptions : pantOptions.filter((item)=>pantFilterFor(item)===pantFilter),[pantFilter,pantOptions]);
+  const photoMatchSummary=useMemo(()=>{
+    const choices=[...MAIN_DETAILS,...MORE_DETAILS] as const;
+    const rows=choices.map(([key,label])=>({
+      key,label,
+      support:photoPreviewSupportForChoice(key,style[key]),
+    }));
+    const exact=rows.filter((row)=>row.support.status==="exact");
+    const approximate=rows.filter((row)=>row.support.status==="approximate");
+    const unsupported=rows.filter((row)=>row.support.status==="none");
+    return {
+      total:rows.length,
+      exactCount:exact.length,
+      approximate,
+      unsupported,
+    };
+  },[style]);
   const designerWhatsAppHref=useMemo(()=>{
     if(!shirt || !pant) return "#";
     const creative=activeCreative ? [
@@ -1330,6 +1347,10 @@ export function DesignerModule() {
               </select>
             </label>)}</div>
           </details>
+          <div className="newDesignerPhotoMatch" data-state={photoMatchSummary.unsupported.length?"unsupported":photoMatchSummary.approximate.length?"mixed":"matched"}>
+            <span>{photoMatchSummary.approximate.length||photoMatchSummary.unsupported.length?"PHOTO MATCH · MIXED":"PHOTO MATCH · DIRECT"}</span>
+            <p><b>{photoMatchSummary.exactCount}/{photoMatchSummary.total}</b> selected details directly match a photographed template. {photoMatchSummary.approximate.length>0&&<>Approximate: {photoMatchSummary.approximate.slice(0,3).map((row)=>row.label).join(", ")}{photoMatchSummary.approximate.length>3?" +"+(photoMatchSummary.approximate.length-3)+" more":""}.</>} {photoMatchSummary.unsupported.length>0&&<>Not shown: {photoMatchSummary.unsupported.map((row)=>row.label).join(", ")}.</>}</p>
+          </div>
         </div>
         <div className="newDesignerDraftActions">
           <button className="newDesignerAction" type="button" disabled={!shirt || !pant} onClick={() => assess()}>Check this look ↗</button>
