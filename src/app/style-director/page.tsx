@@ -49,6 +49,7 @@ export default function StyleDirectorPage() {
   const [loading,setLoading] = useState(false);
   const [rendering,setRendering] = useState(false);
   const [renderSet,setRenderSet] = useState<RenderSet|null>(null);
+  const [lockedPreviewImage,setLockedPreviewImage] = useState("");
   const [error,setError] = useState("");
   const step = steps[index];
   const complete = looks.length > 0;
@@ -71,6 +72,8 @@ export default function StyleDirectorPage() {
       if (!response.ok) throw new Error(data.error || "Could not create looks.");
       setLooks(data.looks);
       setSelected(0);
+      setRenderSet(null);
+      setLockedPreviewImage("");
       recordStyleMemoryEvent(sessionId,"looks_generated",{looks:data.looks.map((look:StyleDirectorClientLook)=>({id:look.id,title:look.title,fabricId:look.fabric.id,fabric:look.fabric.colorName,tier:look.candidate.tier}))});
       const firstLook = data.looks?.[0] as StyleDirectorClientLook | undefined;
       if (firstLook) recordStyleMemoryEvent(sessionId,"look_selected",{lookId:firstLook.id,title:firstLook.title,fabricId:firstLook.fabric.id,fabric:firstLook.fabric.colorName,automatic:true});
@@ -80,26 +83,41 @@ export default function StyleDirectorPage() {
   }
 
   async function visualizePhotoreal() {
-    if (!selectedLook) return;
+    if (!selectedLook?.realModel) return;
     setRendering(true); setError("");
     recordStyleMemoryEvent(sessionId,"render_requested",{mode:"photo",lookId:selectedLook.id,fabricId:selectedLook.fabric.id});
     try {
-      const response = await fetch("/api/visualization/fashn",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({brief:selectedLook.brief,version:selectedLook.version})});
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Could not create the photoreal visual.");
-      setRenderSet(data.renderSet);
-      const front = data.renderSet?.renders?.find((render:{view?:string;src?:string})=>render.view==="front") ?? data.renderSet?.renders?.[0];
-      const imageUrl = typeof front?.src === "string" && /^https:\/\/(cdn|media)\.fashn\.ai\//i.test(front.src) ? front.src : undefined;
+      const response = await fetch("/api/designer/look-render",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({
+          shirt:{id:selectedLook.realModel.shirtId},
+          pant:{id:selectedLook.realModel.pantId},
+          style:selectedLook.realModel.style,
+          locked:true,
+          lookKey:`style-director:${selectedLook.id}`,
+          lockedPreviewImage:lockedPreviewImage || undefined,
+        }),
+      });
+      const data = await response.json() as {result?:{image:string;jobId:string;creditsUsed:number;conceptId:string;generatedAt:string};error?:string};
+      if (!response.ok || !data.result) throw new Error(data.error || "Could not create the photoreal visual.");
+      const nextRenderSet:RenderSet={
+        renders:[{view:"front",src:data.result.image,label:"Photoreal front view",provider:"fashn-edit"}],
+        providerLabel:"Linen Earth photoreal refinement",
+        status:"generated",
+      };
+      setRenderSet(nextRenderSet);
+      const imageUrl = /^https:\/\/(cdn|media)\.fashn\.ai\//i.test(data.result.image) ? data.result.image : undefined;
       recordStyleMemoryEvent(sessionId,"render_completed",{
         mode:"photo",
         lookId:selectedLook.id,
         fabricId:selectedLook.fabric.id,
         fabric:selectedLook.fabric.colorName,
         line:selectedLook.fabric.line,
-        provider:data.renderSet?.providerLabel || data.renderSet?.provider || "photoreal",
+        provider:"Linen Earth photoreal refinement",
         imageUrl,
-        label:front?.label || "Photoreal visual",
-        generatedAt:data.renderSet?.generatedAt || new Date().toISOString(),
+        label:"Photoreal front view",
+        generatedAt:data.result.generatedAt,
       });
     } catch(e) {
       setError(e instanceof Error ? e.message : "Could not create the photoreal visual.");
@@ -107,7 +125,7 @@ export default function StyleDirectorPage() {
   }
 
   function reset() {
-    setIndex(0); setAnswers({}); setLooks([]); setSelected(0); setRenderSet(null); setError("");
+    setIndex(0); setAnswers({}); setLooks([]); setSelected(0); setRenderSet(null); setLockedPreviewImage(""); setError("");
   }
 
   const heroRender = useMemo(()=>renderSet?.renders?.find((r)=>r.view==="front") ?? renderSet?.renders?.[0], [renderSet]);
@@ -194,7 +212,7 @@ export default function StyleDirectorPage() {
         </div>
 
         <div className="lookTabs">
-          {looks.map((look,i)=><button className={selected===i?"active":""} onClick={()=>{setSelected(i);setRenderSet(null);recordStyleMemoryEvent(sessionId,"look_selected",{lookId:look.id,title:look.title,fabricId:look.fabric.id,fabric:look.fabric.colorName});}} key={look.id}>
+          {looks.map((look,i)=><button className={selected===i?"active":""} onClick={()=>{setSelected(i);setRenderSet(null);setLockedPreviewImage("");recordStyleMemoryEvent(sessionId,"look_selected",{lookId:look.id,title:look.title,fabricId:look.fabric.id,fabric:look.fabric.colorName});}} key={look.id}>
             <span>{look.candidate.tier.toUpperCase()}</span><strong>{look.title}</strong><small>{look.fabric.colorName}</small>
           </button>)}
         </div>
@@ -202,7 +220,7 @@ export default function StyleDirectorPage() {
         <motion.div key={selectedLook.id} className="lookStage" initial={{opacity:0,x:14}} animate={{opacity:1,x:0}} transition={{duration:.3,ease:[.2,.8,.2,1]}}>
           <div className="lookVisual" style={{"--fabric":selectedLook.fabric.hex} as React.CSSProperties}>
             {heroRender ? <img src={heroRender.src} alt={heroRender.label} /> : selectedLook.realModel ? <>
-              <StyleDirectorRealModelPreview shirt={selectedLook.realModel.shirtFabric} pant={selectedLook.realModel.pantFabric} style={selectedLook.realModel.style} />
+              <StyleDirectorRealModelPreview shirt={selectedLook.realModel.shirtFabric} pant={selectedLook.realModel.pantFabric} style={selectedLook.realModel.style} onPreviewReady={setLockedPreviewImage} />
               <div className="swatchCard" style={{backgroundImage:`url('${selectedLook.fabric.swatchImageUrl}')`}}><span>REAL STOCK</span></div>
             </> : <div className="directorFabricFallback" style={{backgroundImage:`linear-gradient(180deg,rgba(8,24,39,.06),rgba(8,24,39,.76)),url('${selectedLook.fabric.swatchImageUrl}')`}}>
               <div>
@@ -232,7 +250,9 @@ export default function StyleDirectorPage() {
               <p>{selectedLook.realModel.style.shirtWear} · {selectedLook.realModel.style.trouser} · {selectedLook.realModel.style.collar}</p>
             </div>}
             <div className="directorActions">
-              <button className="photoAction" onClick={()=>void visualizePhotoreal()} disabled={rendering}>{rendering?"Rendering…":"Make photoreal"} <b>✦</b></button>
+              {selectedLook.realModel
+                ? <button className="photoAction" onClick={()=>void visualizePhotoreal()} disabled={rendering || !lockedPreviewImage}>{rendering?"Rendering…":lockedPreviewImage?"Make photoreal":"Preparing real model…"} <b>✦</b></button>
+                : <span className="directorPhotoPending">Photoreal unlocks when a photographed garment template supports this category.</span>}
               {designerHandoff && <a href={designerHandoff} onClick={()=>recordStyleMemoryEvent(sessionId,"render_requested",{mode:"real-model-handoff",lookId:selectedLook.id,fabricId:selectedLook.fabric.id})}>Open Linen Earth Real Model Designer <b>↗</b></a>}
               <a href={whatsapp} target="_blank" rel="noreferrer" onClick={()=>recordStyleMemoryEvent(sessionId,"whatsapp_clicked",{lookId:selectedLook.id,fabricId:selectedLook.fabric.id,fabric:selectedLook.fabric.colorName})}>Book this look <b>↗</b></a>
             </div>

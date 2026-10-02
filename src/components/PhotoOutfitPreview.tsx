@@ -640,16 +640,19 @@ export function composePhotoOutfit(
   }
 }
 
-export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured,photoPxPerMm}:{
+export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured,onPreviewReady,photoPxPerMm}:{
   shirt:DesignerFabric;
   pant:DesignerFabric;
   style:DesignerStyle;
   onRenderMeasured?:(milliseconds:number)=>void;
+  onPreviewReady?:(dataUrl:string)=>void;
   photoPxPerMm?:number;
 }) {
   const canvasRef=useRef<HTMLCanvasElement>(null);
   const onRenderMeasuredRef=useRef(onRenderMeasured);
+  const onPreviewReadyRef=useRef(onPreviewReady);
   onRenderMeasuredRef.current=onRenderMeasured;
+  onPreviewReadyRef.current=onPreviewReady;
   const [ready,setReady]=useState(false);
   const [error,setError]=useState(false);
   const templateId=photoTemplateForStyle(style);
@@ -674,6 +677,13 @@ export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured
       composePhotoOutfit(context,modelPhoto,trouserPhoto,shirtImage,pantImage,shirt,pant,style,undefined,{photoPxPerMm});
       setReady(true);
       setError(false);
+      if(onPreviewReadyRef.current) {
+        try {
+          onPreviewReadyRef.current(canvas.toDataURL("image/jpeg",.92));
+        } catch {
+          // The visible preview stays usable even if browser serialization fails.
+        }
+      }
       requestAnimationFrame(()=>{
         if(!cancelled) onRenderMeasuredRef.current?.(performance.now()-started);
       });

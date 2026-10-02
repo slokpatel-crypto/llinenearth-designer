@@ -131,11 +131,20 @@ test("Style Director never falls back to a simulated mannequin",()=>{
 });
 
 
-test("Style Director no longer offers a flat alternate preview",()=>{
+test("Style Director photoreal uses the same locked real-model preview instead of a flat source",()=>{
   const page=readFileSync("src/app/style-director/page.tsx","utf8");
+  const preview=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  const css=readFileSync("src/app/style-director/style-director.css","utf8");
   assert.match(page,/visualizePhotoreal/);
-  assert.match(page,/\/api\/visualization\/fashn/);
-  assert.match(page,/Make photoreal/);
+  assert.match(page,/\/api\/designer\/look-render/);
+  assert.match(page,/lockedPreviewImage:lockedPreviewImage \|\| undefined/);
+  assert.match(page,/onPreviewReady=\{setLockedPreviewImage\}/);
+  assert.match(page,/Preparing real model…/);
+  assert.match(page,/Photoreal unlocks when a photographed garment template supports this category/);
+  assert.match(preview,/onPreviewReady\?:\(dataUrl:string\)=>void/);
+  assert.match(preview,/onPreviewReadyRef\.current\(canvas\.toDataURL\("image\/jpeg",\.92\)\)/);
+  assert.match(css,/\.directorPhotoPending/);
+  assert.doesNotMatch(page,/\/api\/visualization\/fashn/);
   assert.doesNotMatch(page,/\/api\/visualization\/render/);
   assert.doesNotMatch(page,/Generate alternate preview/);
 });
