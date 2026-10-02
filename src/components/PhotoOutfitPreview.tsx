@@ -8,6 +8,7 @@ import { applyRuntimeFabricScale, photoFabricPatternScale, visiblePatternScaleVe
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import fabricTileManifest from "../../public/fabric-tiles/manifest.json";
 import { CREATIVE_FEEDBACK_REASONS, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
+import { UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION, type CustomerPhotoCalibration } from "@/lib/designer/photo-calibration-types";
 import {
   DESIGNER_PHOTO_TEMPLATES, PHOTO_COLLAR_MASK, PHOTO_CUFF_MASK, PHOTO_TUCKED_COLLAR_MASK, PHOTO_TUCKED_COLLAR_STAND_MASK,
   PHOTO_TUCKED_CUFF_MASK, PHOTO_TUCKED_NECK_CLEAR, PHOTO_TUCKED_SHIRT_CLIP, PHOTO_TUCKED_TROUSER_CLIP,
@@ -51,6 +52,24 @@ const pathMasks = new Map<string, HTMLCanvasElement>();
 const tuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
 const untuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
 const selectedLookSessionCache=new Map<string,PhotorealResult>();
+let customerPhotoCalibrationRequest:Promise<CustomerPhotoCalibration>|null=null;
+
+function loadCustomerPhotoCalibration(){
+  if(customerPhotoCalibrationRequest) return customerPhotoCalibrationRequest;
+  customerPhotoCalibrationRequest=fetch("/api/designer/photo-calibration",{cache:"no-store"})
+    .then(async(response)=>{
+      if(!response.ok) return UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION;
+      const payload=await response.json() as CustomerPhotoCalibration;
+      return payload?.verified===true
+        && Number.isFinite(Number(payload.photoPxPerMm))
+        && Number(payload.photoPxPerMm)>0
+        ? payload
+        : UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION;
+    })
+    .catch(()=>UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION)
+    .finally(()=>{customerPhotoCalibrationRequest=null;});
+  return customerPhotoCalibrationRequest;
+}
 
 function loadImage(url: string): Promise<HTMLImageElement> {
   const cached = images.get(url);
@@ -655,9 +674,25 @@ export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured
   onPreviewReadyRef.current=onPreviewReady;
   const [ready,setReady]=useState(false);
   const [error,setError]=useState(false);
+  const [customerCalibration,setCustomerCalibration]=useState<CustomerPhotoCalibration>(UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION);
+  const explicitPhotoPxPerMm=Number(photoPxPerMm);
+  const resolvedPhotoPxPerMm=Number.isFinite(explicitPhotoPxPerMm)&&explicitPhotoPxPerMm>0
+    ? explicitPhotoPxPerMm
+    : customerCalibration.verified
+      ? Number(customerCalibration.photoPxPerMm)
+      : undefined;
   const templateId=photoTemplateForStyle(style);
   const template=DESIGNER_PHOTO_TEMPLATES[templateId];
   const tucked=style.shirtWear==="Tucked";
+
+  useEffect(()=>{
+    if(Number.isFinite(explicitPhotoPxPerMm)&&explicitPhotoPxPerMm>0) return;
+    let cancelled=false;
+    void loadCustomerPhotoCalibration().then((value)=>{
+      if(!cancelled) setCustomerCalibration(value);
+    });
+    return ()=>{cancelled=true;};
+  },[explicitPhotoPxPerMm]);
 
   useEffect(()=>{
     let cancelled=false;
@@ -674,7 +709,7 @@ export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured
       const canvas=canvasRef.current;
       const context=canvas?.getContext("2d",{alpha:false});
       if(!canvas || !context) throw new Error("Canvas is unavailable.");
-      composePhotoOutfit(context,modelPhoto,trouserPhoto,shirtImage,pantImage,shirt,pant,style,undefined,{photoPxPerMm});
+      composePhotoOutfit(context,modelPhoto,trouserPhoto,shirtImage,pantImage,shirt,pant,style,undefined,{photoPxPerMm:resolvedPhotoPxPerMm});
       setReady(true);
       setError(false);
       if(onPreviewReadyRef.current) {
@@ -693,7 +728,7 @@ export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured
       setError(true);
     });
     return ()=>{cancelled=true;};
-  },[shirt,pant,template,tucked,style,photoPxPerMm]);
+  },[shirt,pant,template,tucked,style,resolvedPhotoPxPerMm]);
 
   return <div className="directorExistingModel" data-ready={ready?"true":"false"}>
     <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-label={`Existing Linen Earth real model wearing ${shirt.name} shirt with ${pant.name} trousers`} />
@@ -748,6 +783,8 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
   const [finalLocked,setFinalLocked]=useState(false);
   const [creativeReview, setCreativeReview] = useState<"up"|"down"|null>(null);
   const [creativeReviewReason, setCreativeReviewReason] = useState<CreativeFeedbackReason|null>(null);
+  const [photoCalibration,setPhotoCalibration]=useState<CustomerPhotoCalibration>(UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION);
+  const verifiedPhotoPxPerMm=photoCalibration.verified ? Number(photoCalibration.photoPxPerMm) : undefined;
   const templateId = photoTemplateForStyle(style);
   const template = DESIGNER_PHOTO_TEMPLATES[templateId];
   const gaps = photoTemplateGaps(style, templateId);
@@ -755,8 +792,11 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
   const creativeCoverage = creativePreviewCoverage(creativeDirection || undefined);
   const shirtPreviewAsset=fabricRenderAsset(shirt);
   const pantPreviewAsset=fabricRenderAsset(pant);
-  const shirtPatternScaleVerified=visiblePatternScaleVerified(shirt.patternType,shirtPreviewAsset);
-  const pantPatternScaleVerified=visiblePatternScaleVerified(pant.patternType,pantPreviewAsset);
+  const shirtScaleEvidenceReady=visiblePatternScaleVerified(shirt.patternType,shirtPreviewAsset);
+  const pantScaleEvidenceReady=visiblePatternScaleVerified(pant.patternType,pantPreviewAsset);
+  const photoScaleReady=photoCalibration.verified&&Number.isFinite(verifiedPhotoPxPerMm)&&Number(verifiedPhotoPxPerMm)>0;
+  const shirtPatternScaleVerified=shirt.patternType.toLowerCase()==="solid" || (shirtScaleEvidenceReady&&photoScaleReady);
+  const pantPatternScaleVerified=pant.patternType.toLowerCase()==="solid" || (pantScaleEvidenceReady&&photoScaleReady);
   const previewScaleVerified=shirtPatternScaleVerified&&pantPatternScaleVerified;
   const approximateScaleItems=[
     ...(shirtPatternScaleVerified?[]:[shirt.name]),
@@ -770,6 +810,14 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     bodyProfile:bodyProfile||null,
     creative:creativeDirection?.id ?? null,
   });
+
+  useEffect(()=>{
+    let cancelled=false;
+    void loadCustomerPhotoCalibration().then((value)=>{
+      if(!cancelled) setPhotoCalibration(value);
+    });
+    return ()=>{cancelled=true;};
+  },[]);
 
   useEffect(() => {
     setCreativeAi(null);
@@ -800,13 +848,13 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         const canvas = canvasRef.current;
         const context = canvas?.getContext("2d", { alpha: false });
         if (!canvas || !context) throw new Error("Canvas is unavailable.");
-        composePhotoOutfit(context, modelPhoto, trouserPhoto, shirtImage, pantImage, shirt, pant, style, creativeDirection || undefined);
+        composePhotoOutfit(context, modelPhoto, trouserPhoto, shirtImage, pantImage, shirt, pant, style, creativeDirection || undefined,{photoPxPerMm:verifiedPhotoPxPerMm});
         setError(false);
         setReady(true);
       })
       .catch(() => { if (!cancelled) { setReady(false); setError(true); } });
     return () => { cancelled = true; };
-  }, [shirt, pant, template, tucked, style.collarFinish, creativeDirection]);
+  }, [shirt, pant, template, tucked, style.collarFinish, creativeDirection, verifiedPhotoPxPerMm]);
 
   async function inspectSelectedLook(result:PhotorealResult,view:PhotorealView="front") {
     try {
@@ -1103,7 +1151,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         <button type="button" onClick={download} disabled={!ready}>Save</button>
       </div>
     </div>
-    {!showCreativeAi && <p className="newDesignerPhotoApproximation"><strong>Instant preview</strong> · Studio model; {previewScaleVerified ? "pattern scale uses reviewed physical evidence where a visible repeat exists" : "pattern scale is still approximate for "+approximateScaleItems.join(" / ")}. Fit and drape still require physical verification. FASHN is reserved for the locked final design.</p>}
+    {!showCreativeAi && <p className="newDesignerPhotoApproximation"><strong>Instant preview</strong> · Studio model; {previewScaleVerified ? "pattern scale uses reviewed physical evidence plus accepted studio calibration where a visible repeat exists" : "pattern scale is still approximate for "+approximateScaleItems.join(" / ")}. Fit and drape still require physical verification. FASHN is reserved for the locked final design.</p>}
     {!creativeDirection && finalLocked && !creativeAi && <p className="newDesignerPhotoLock"><strong>FINAL DESIGN LOCKED</strong> · Any fabric or construction change automatically unlocks it before another AI render.</p>}
     {creativeAi?.cached && <p className="newDesignerPhotoCache">Cached final render reused · no new FASHN generation was needed.</p>}
     {creativeAi && !creativeDirection && <div className="newDesignerPhotoViews" role="group" aria-label="Photoreal model views">
