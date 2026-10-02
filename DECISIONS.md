@@ -25,3 +25,9 @@ Architecture and product decisions that must persist across coding sessions.
 
 ## 2026-10-01 — Durable customer state before public order reliance
 **Decision:** browser-only drafts may remain as convenience, but customer-critical designs / measurement profiles / enquiries must have durable server persistence before they are relied on operationally.
+
+## 2026-10-02 — Customer Designer stays photo-first
+**Decision:** the photographic studio model is the canonical customer preview in Designer. The flat/vector construction study must not be exposed as an alternate customer-facing model.
+
+**Why:** the premium target is believable fabric on a consistent photographed model. Construction geometry may remain an internal engineering/QA aid, but customer preview should not fall back to a cartoon-like figure.
+
