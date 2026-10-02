@@ -139,6 +139,11 @@ for (const secretName of [
 }
 
 console.log("Security gate passed: operator auth, signed public memory, Supabase admin isolation, deterministic sync cursor.");
+const privateSchemaMigration=fs.readFileSync("supabase/migrations/20261102_private_schema_deny_by_default.sql","utf8");
+for(const token of ["revoke all privileges on schema private","revoke all privileges on all tables in schema private","revoke all privileges on all functions in schema private","alter default privileges for role postgres in schema private","privateSchemaDenyByDefault","has_schema_privilege('anon','private','USAGE')"]) {
+  if(!privateSchemaMigration.includes(token)) throw new Error(`Private-schema security regression: missing ${token}`);
+}
+console.log("Private-schema security gate passed: client roles stay behind service-role-only SECURITY DEFINER RPCs.");
 
 
 const desktopOperationalContracts = [
@@ -1142,7 +1147,7 @@ console.log("Fabric Truth policy gate passed: Phase 2 physical coverage remains 
 const roadmapBackendHealthModel=fs.readFileSync("src/lib/designer/roadmap-backend-health.ts","utf8");
 const roadmapBackendHealthRoute=fs.readFileSync("src/app/api/operator/roadmap-backend-health/route.ts","utf8");
 const roadmapBackendHealthTest=fs.readFileSync("tests/roadmap-backend-health.test.ts","utf8");
-for(const token of ["ROADMAP_BACKEND_CAPABILITIES","summarizeRoadmapBackendHealth","productionCutEvidence","verifiedMeterageCuts"]) {
+for(const token of ["ROADMAP_BACKEND_CAPABILITIES","summarizeRoadmapBackendHealth","productionCutEvidence","verifiedMeterageCuts","privateSchemaDenyByDefault"]) {
   if(!roadmapBackendHealthModel.includes(token)) throw new Error(`Roadmap backend-health model regression: missing ${token}`);
 }
 for(const token of ["verifyOperatorSession","roadmap_v2_evidence_health","summarizeRoadmapBackendHealth","Production backend health could not be verified"]) {
