@@ -543,7 +543,7 @@ requireFile("src/lib/designer/body-profile.ts");
 requireFile("src/components/LiveConstructionPreview.tsx");
 requireFile("tests/phase10-body-profile.test.ts");
 requireTokens("src/lib/designer/style-spec-v2.ts", ["STYLE_SCHEMA_VERSION=2","mergeLegacyIntoStyleSpec","validateStyleSpecV2","styleSpecRenderSummary"]);
-requireTokens("src/components/DesignerModule.tsx", ["styleSpec","LiveConstructionPreview","Studio preview","Live cut study","bodyProfileFromMeasurements"]);
+requireTokens("src/components/DesignerModule.tsx", ["styleSpec","PhotoOutfitPreview","bodyProfileFromMeasurements"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["Lock final design","Final photoreal ✦","selectedLookSessionCache","styleSpec","bodyProfile"]);
 requireTokens("src/app/api/designer/look-render/route.ts", ["resolved.locked!==true","getCachedSelectedLookRender","loadDurableSelectedLookRender","storeDurableSelectedLookRender","resolveSelectedLookRequest","x-linen-render-cache"]);
 requireTokens("src/lib/designer/render-cache.ts", ["designer_render_cache_get","designer_render_cache_upsert_v2","loadDesignerRenderCacheStats","loadPopularDesignerRenderPairs"]);
