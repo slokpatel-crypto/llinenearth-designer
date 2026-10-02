@@ -82,6 +82,18 @@ test("customer Designer exposes the selected details photo-match state without s
 });
 
 
+test("photo compositor restores colour-neutral photographic micro-relief",()=>{
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.match(source,/photographicReliefMaps = new WeakMap/);
+  assert.match(source,/function photographicReliefMap\(photo: HTMLImageElement\)/);
+  assert.match(source,/Working at half resolution keeps the first preview fast/);
+  assert.match(source,/128 \+ \(luminance - blurredLuminance\) \* 1\.8/);
+  assert.match(source,/const relief = photographicReliefMap\(photo\)/);
+  assert.match(source,/globalCompositeOperation = "soft-light"[\s\S]*globalAlpha = \.28[\s\S]*drawImage\(relief, 0, 0, WIDTH, HEIGHT\)/);
+  assert.match(source,/drawImage\(photographicReliefMap\(photo\), 0, 0, WIDTH, HEIGHT\)/);
+});
+
+
 test("instant photo compositor preserves selected fabric colour while borrowing studio depth",()=>{
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   assert.match(source,/globalCompositeOperation = "luminosity"/);
