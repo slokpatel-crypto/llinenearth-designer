@@ -29,3 +29,9 @@ test("photographic garment clips feather only inside the real cloth boundary",()
   assert.match(source,/Contrast collars\/cuffs sit directly beside skin and hands/);
   assert.match(source,/destination-in/);
 });
+
+
+test("creative preview treatment stays inside the same feathered photo boundary",()=>{
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.match(source,/function clipCreativeLayer[\s\S]*if\(path\) context\.drawImage\(featheredPathMask\(path\),0,0\)/);
+});
