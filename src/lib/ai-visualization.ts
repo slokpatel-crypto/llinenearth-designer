@@ -113,6 +113,7 @@ export type SelectedLookFashnRequest = {
   styleSpec?:StyleSpecV2;
   bodyProfile?:BodyPreviewProfile;
   renderEvidence?:SelectedLookRenderEvidence;
+  lockedPreviewImage?:string;
   locked?:boolean;
   lookKey?:string;
 };
@@ -265,6 +266,62 @@ const PROTECTED_RENDER_BOXES:NormalizedBox[]=[
   {x:.00,y:.00,w:1,h:.07},   // upper background
   {x:.00,y:.88,w:1,h:.12},   // floor / shoes
 ];
+
+const LOCKED_PREVIEW_DATA_URI=/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/i;
+const LOCKED_PREVIEW_MAX_BYTES=4_500_000;
+const LOCKED_PREVIEW_IDENTITY_BOXES:NormalizedBox[]=[
+  {x:.39,y:.015,w:.22,h:.105}, // faceless head / upper neck
+  {x:.00,y:.00,w:1,h:.06},     // upper studio background
+  {x:.00,y:.10,w:.11,h:.72},   // left outer studio background
+  {x:.89,y:.10,w:.11,h:.72},   // right outer studio background
+  {x:.00,y:.92,w:1,h:.08},     // floor / lower studio
+];
+
+async function validatedLockedPreviewSource(input:SelectedLookFashnRequest) {
+  const fallback=await creativeModelDataUri(input.style);
+  const candidate=String(input.lockedPreviewImage||"");
+  const match=LOCKED_PREVIEW_DATA_URI.exec(candidate);
+  if(!match) return {source:fallback,usedLockedPreview:false};
+
+  let bytes:Buffer;
+  try {
+    bytes=Buffer.from(match[2],"base64");
+  } catch {
+    return {source:fallback,usedLockedPreview:false};
+  }
+  if(bytes.length<40_000 || bytes.length>LOCKED_PREVIEW_MAX_BYTES) return {source:fallback,usedLockedPreview:false};
+
+  try {
+    const metadata=await sharp(bytes,{limitInputPixels:1024*1536*2}).metadata();
+    if(metadata.width!==1024 || metadata.height!==1536 || (metadata.pages||1)!==1) {
+      return {source:fallback,usedLockedPreview:false};
+    }
+
+    // Strip browser/file metadata and normalize encoding before sending the
+    // source to the external renderer. Only the canonical 1024×1536 live-preview
+    // coordinate system is accepted.
+    const sanitized=await sharp(bytes,{limitInputPixels:1024*1536*2})
+      .removeAlpha()
+      .jpeg({quality:92,chromaSubsampling:"4:4:4"})
+      .toBuffer();
+
+    const [preview,reference]=await Promise.all([
+      normalizedRgb(sanitized),
+      normalizedRgb(fallback),
+    ]);
+    const deltas=LOCKED_PREVIEW_IDENTITY_BOXES.map((box)=>boxDelta(preview,reference,box));
+    const average=deltas.reduce((sum,value)=>sum+value,0)/deltas.length;
+    const maximum=Math.max(...deltas);
+    if(average>.16 || maximum>.28) return {source:fallback,usedLockedPreview:false};
+
+    return {
+      source:`data:image/jpeg;base64,${sanitized.toString("base64")}`,
+      usedLockedPreview:true,
+    };
+  } catch {
+    return {source:fallback,usedLockedPreview:false};
+  }
+}
 
 async function remoteImageBuffer(url:string) {
   if(!OFFICIAL_FASHN_OUTPUT.test(url)) throw new FashnVisualizationError("Generated render URL is not trusted.","invalid_source");
@@ -832,9 +889,12 @@ function selectedLookConstruction(input:SelectedLookFashnRequest) {
     : `${input.style.collar}; ${input.style.cuff}; ${input.style.placket}; ${input.style.shirtFit}; ${input.style.shirtWear}; ${input.style.trouser}; ${input.style.rise}; ${input.style.waistband}; ${input.style.break}`;
 }
 
-function selectedLookPrompt(input:SelectedLookFashnRequest) {
+function selectedLookPrompt(input:SelectedLookFashnRequest,usedLockedPreview=false) {
   const safe=(value:unknown,limit=360)=>String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
-  return `Edit this existing premium menswear studio photograph into the exact Linen Earth outfit configured by the customer. Preserve the same faceless male mannequin, pose, body proportions, camera angle, studio lighting and deep navy environment.
+  const sourceContract=usedLockedPreview
+    ? "The edit source is the customer's deterministic locked live preview. Treat its mannequin identity, pose, garment boundaries, tuck layering, silhouette, cloth placement and visible pattern geometry as the primary visual contract. Add photographic realism without replacing or reinterpreting that layout."
+    : "The edit source is the canonical Linen Earth studio photograph. Preserve its mannequin identity, pose, body proportions, camera angle, studio lighting and deep navy environment.";
+  return `Edit this existing premium menswear studio photograph into the exact Linen Earth outfit configured by the customer. ${sourceContract}
 
 The image-context is split vertically: LEFT HALF is the exact shirt-fabric reference; RIGHT HALF is the exact trouser-fabric reference. Use those references only for their matching garments.
 
@@ -955,14 +1015,14 @@ export async function renderSelectedLookFashnFront(input:SelectedLookFashnReques
   if(input.locked!==true) throw new FashnVisualizationError("Lock the final design before using the photoreal renderer.","invalid_source");
   const cached=getCachedSelectedLookRender(input);
   if(cached) return cached;
-  const source=await creativeModelDataUri(input.style);
+  const {source,usedLockedPreview}=await validatedLockedPreviewSource(input);
   const context=await creativeFabricContext(input.shirt.image,input.pant.image);
-  const generated=await runEdit(source,selectedLookPrompt(input),context);
+  const generated=await runEdit(source,selectedLookPrompt(input,usedLockedPreview),context);
   const result:CreativeFashnResult={
     image:generated.output,
     jobId:generated.jobId,
     creditsUsed:generated.creditsUsed,
-    conceptId:"selected-look",
+    conceptId:usedLockedPreview?"selected-look-locked-preview":"selected-look",
     generatedAt:new Date().toISOString(),
     cached:false,
   };
