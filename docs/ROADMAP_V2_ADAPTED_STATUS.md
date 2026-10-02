@@ -98,6 +98,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Matched Style Director photoreal letterboxing to the same deep navy studio, removing the pale frame around otherwise premium full-body renders.
 - Refined white contrast collars and cuffs with luminance-first photographic shading so they keep the real folded/seam depth without inheriting the source garment colour.
 - Removed the remaining Style Director simulated mannequin fallback: shirt/trouser directions stay photographic, while unsupported suit/blazer categories show the real stock fabric editorially and explicitly leave garment geometry unvisualized until a photographed template exists.
+- Removed the Style Director flat alternate-preview action from the customer flow; the live photographed model remains the instant surface and the only optional generated replacement is the explicit photoreal action.
 - Added photographic option-support truth for Phase 3: exact/approximate status is now derived from the real customer photo templates rather than the broader internal construction renderer, with explicit operator reasons.
 - Added a compact customer photo-match summary beside cut controls so selected details that directly match a photographed template are separated from photographic approximations before the user relies on the preview.
 
