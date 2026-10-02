@@ -84,6 +84,13 @@ for (const token of ["disables every branch except main","ignores preview branch
   if(!vercelPolicyTest.includes(token)) throw new Error(`Vercel deployment-policy test regression: missing ${token}`);
 }
 console.log("Vercel deployment guard passed: duplicate projects and non-main previews cannot consume production build quota.");
+const photographicPreviewSource=fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+const photographicPreviewCss=fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
+for(const token of ["function featheredPathMask","featherMaskInside","Contrast collars/cuffs sit directly beside skin and hands","Hard SVG-like clip edges make fabric look pasted"]) {
+  if(!photographicPreviewSource.includes(token)) throw new Error(`Photographic preview realism regression: missing ${token}`);
+}
+if(photographicPreviewCss.includes(".newDesignerConstruction")) throw new Error("Photographic preview regression: dead construction-preview CSS returned to the customer Designer.");
+console.log("Photographic preview edge gate passed: garment/detail clipping stays inward-feathered and customer construction CSS stays removed.");
 
 
 const intelligence = fs.readFileSync("src/lib/fashion-intelligence.ts","utf8");
