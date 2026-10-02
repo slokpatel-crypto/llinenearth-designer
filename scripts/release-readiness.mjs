@@ -179,6 +179,11 @@ for (const path of [
   "src/lib/designer/production-runtime-health.ts",
   "src/app/api/operator/production-runtime-health/route.ts",
   "tests/production-runtime-health.test.ts",
+  "src/lib/designer/evidence-sprint.ts",
+  "src/app/operator/evidence-sprint/page.tsx",
+  "src/app/operator/evidence-sprint/EvidenceSprintClient.tsx",
+  "src/app/operator/evidence-sprint/evidence-sprint.css",
+  "tests/evidence-sprint.test.ts",
   "src/app/api/operator/roadmap-backend-health/route.ts",
   "tests/roadmap-backend-health.test.ts",
   "tests/customer-designer-preview.test.ts",
@@ -564,6 +569,11 @@ requireTokens("src/app/operator/roadmap-readiness/RoadmapReadinessClient.tsx", [
 requireTokens("src/lib/designer/fabric-truth-policy.ts", ["FABRIC_TRUTH_POLICY_VERSION","normalizeFabricTruthPolicy","evaluateFabricTruthPolicy","gateComplete"]);
 requireTokens("src/lib/designer/roadmap-backend-health.ts", ["ROADMAP_BACKEND_CAPABILITIES","summarizeRoadmapBackendHealth","productionCutEvidence","verifiedMeterageCuts"]);
 requireTokens("src/app/api/operator/roadmap-backend-health/route.ts", ["verifyOperatorSession","roadmap_v2_evidence_health","summarizeRoadmapBackendHealth"]);
+requireTokens("src/lib/designer/production-runtime-health.ts", ["PRIMARY_VERCEL_PROJECT_ID","summarizeProductionRuntimeHealth","VERCEL_DEPLOYMENT_ID","VERCEL_GIT_COMMIT_SHA","primaryProject"]);
+requireTokens("src/app/api/operator/production-runtime-health/route.ts", ["verifyOperatorSession","productionRuntimeHealthFromEnv","private, no-store"]);
+requireTokens("src/lib/designer/evidence-sprint.ts", ["buildEvidenceSprint","premium-shirt-proof","fabric-truth","deterministic-designer","measurement-fit","production-bridge","closed-loop"]);
+requireTokens("src/app/operator/evidence-sprint/EvidenceSprintClient.tsx", ["Evidence Sprint","NEXT THREE","Highest-leverage evidence to collect","Missing data never marks a task complete","Evidence boundary"]);
+requireTokens("src/app/operator/OperatorClient.tsx", ["/operator/evidence-sprint","EVIDENCE SPRINT"]);
 requireTokens("vercel.json", ["deploymentEnabled","\"**\": false","\"main\": true","ignoreCommand"]);
 requireTokens("scripts/vercel-ignore.mjs", ["VERCEL_GIT_COMMIT_REF","PRODUCTION_BRANCH = \"main\"","preserve production build quota"]);
 requireTokens("src/app/api/operator/fabric-truth-policy/route.ts", ["verifyOperatorSession","fabric_truth_evidence_policy","normalizeFabricTruthPolicy"]);

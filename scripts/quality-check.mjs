@@ -1120,3 +1120,16 @@ for(const token of ["traceable primary production deployment","duplicate linked 
   if(!productionRuntimeHealthTest.includes(token)) throw new Error(`Production runtime health test regression: missing ${token}`);
 }
 console.log("Production runtime gate passed: Phase 9 can verify the primary Vercel production deployment identity.");
+const evidenceSprintModel=fs.readFileSync("src/lib/designer/evidence-sprint.ts","utf8");
+const evidenceSprintClient=fs.readFileSync("src/app/operator/evidence-sprint/EvidenceSprintClient.tsx","utf8");
+const evidenceSprintTest=fs.readFileSync("tests/evidence-sprint.test.ts","utf8");
+for(const token of ["buildEvidenceSprint","premium-shirt-proof","fabric-truth","deterministic-designer","measurement-fit","production-bridge","closed-loop"]) {
+  if(!evidenceSprintModel.includes(token)) throw new Error(`Evidence Sprint model regression: missing ${token}`);
+}
+for(const token of ["Evidence Sprint","NEXT THREE","Highest-leverage evidence to collect","Missing data never marks a task complete","Evidence boundary"]) {
+  if(!evidenceSprintClient.includes(token)) throw new Error(`Evidence Sprint operator regression: missing ${token}`);
+}
+for(const token of ["evidence sprint puts real physical and customer gates first","Phase 3 becomes a current sprint item","production outcomes stay later"]) {
+  if(!evidenceSprintTest.includes(token)) throw new Error(`Evidence Sprint test regression: missing ${token}`);
+}
+console.log("Evidence Sprint gate passed: remaining real-world gates are sequenced without manufacturing evidence.");
