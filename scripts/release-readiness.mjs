@@ -407,8 +407,9 @@ requireTokens("src/app/style-director/page.tsx", ["Open Linen Earth Real Model D
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["StyleDirectorRealModelPreview","Existing Linen Earth real model","composePhotoOutfit","DESIGNER_PHOTO_TEMPLATES"]);
 requireTokens("src/app/style-director/page.tsx", ["StyleDirectorRealModelPreview","shirtFabric","pantFabric","Existing real model · live outfit"]);
 requireTokens("src/app/style-director/style-director.css", [".directorExistingModel canvas","object-fit:contain"]);
-requireTokens("src/app/style-director/style-director.css", [".lookVisual img","object-fit:contain","background:#eeeae4"]);
+requireTokens("src/app/style-director/style-director.css", [".lookVisual img","object-fit:contain","background:#081827"]);
 requireTokens("tests/customer-designer-preview.test.ts", ["Style Director keeps the full photographed model visible","Style Director generated photoreal also stays full-body"]);
+requireTokens("tests/customer-designer-preview.test.ts", ["Style Director photoreal letterbox matches the navy studio"]);
 requireTokens("src/components/DesignerModule.tsx", ['params.get("shirt")','params.get("pant")','params.get("style")',"STYLE DIRECTOR"]);
 requireTokens("src/lib/designer/garment-spec.ts", ["linen-earth-garment-spec-v1","buildCanonicalGarmentSpec","finishedTargets","ready_for_tailor_review","not a cutting pattern","fitEaseSource","fitEaseTableVersion","conceptId:string","treatments:Array","Creative treatments are design instructions","CanonicalCreativeVisualReview","visualReview:CanonicalCreativeVisualReview"]);
 requireTokens("src/app/api/designer/assess/route.ts", ["buildCanonicalGarmentSpec","fitConstruction","blockStrategy","brandLanguage","negotiation","creative","visualReview"]);
