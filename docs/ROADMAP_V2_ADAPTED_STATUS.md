@@ -104,6 +104,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Removed the Style Director flat alternate-preview action from the customer flow; the live photographed model remains the instant surface and the only optional generated replacement is the explicit photoreal action.
 - Consolidated legacy customer routes so `/designer` now opens the photographic Designer, while `/visual` and `/designer-brief` hand off to Style Director; homepage suit/blazer cards no longer open the old simulated visualizer.
 - Retired the separate customer-facing Catalog, Atelier, Saved Designs and Fashion Brain routes: they now hand off to the photographic Designer, My Account or Style Director instead of exposing parallel/legacy product experiences.
+- Wired accepted Phase 1 photographic calibration into both customer Designer and Style Director previews: patterned cloth only claims reviewed physical scale when fabric evidence and the accepted 1024×1536 studio px/mm fixture are both present; solids remain unaffected and unaccepted proof fails closed.
 - Added photographic option-support truth for Phase 3: exact/approximate status is now derived from the real customer photo templates rather than the broader internal construction renderer, with explicit operator reasons.
 - Added a compact customer photo-match summary beside cut controls so selected details that directly match a photographed template are separated from photographic approximations before the user relies on the preview.
 

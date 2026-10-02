@@ -276,6 +276,29 @@ console.log("Legacy customer module gate passed: Catalog, Atelier, Saved Designs
 
 
 const photoPreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+const photoCalibrationTypes=fs.readFileSync("src/lib/designer/photo-calibration-types.ts","utf8");
+const photoCalibrationModel=fs.readFileSync("src/lib/designer/photo-calibration.ts","utf8");
+const photoCalibrationRoute=fs.readFileSync("src/app/api/designer/photo-calibration/route.ts","utf8");
+const phase1ProofServer=fs.readFileSync("src/lib/designer/phase1-proof-server.ts","utf8");
+for(const token of ["CustomerPhotoCalibration","UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION","photo-1024x1536-fixture","linen-earth-phase1-proof-v4"]) {
+  if(!photoCalibrationTypes.includes(token)) throw new Error(`Photo calibration contract regression: missing ${token}`);
+}
+for(const token of ["customerPhotoCalibrationFromProofPayload","coreAccepted===true","scaleGatePass===true","physicalEvidenceReady===true","boundaryReady===true","PHASE1_PROOF_PHOTO_COORDINATE_SYSTEM"]) {
+  if(!photoCalibrationModel.includes(token)) throw new Error(`Photo calibration proof gate regression: missing ${token}`);
+}
+for(const token of ['import "server-only"',"loadLatestPhase1ProofRecord","evaluateRecordedPhase1ProofEvidence","roadmap_phase1_proof",'cache:"no-store"']) {
+  if(!phase1ProofServer.includes(token)) throw new Error(`Phase 1 proof loader regression: missing ${token}`);
+}
+for(const token of ["customerPhotoCalibrationFromProofPayload","loadLatestPhase1ProofRecord",'"cache-control":"no-store"','"x-content-type-options":"nosniff"']) {
+  if(!photoCalibrationRoute.includes(token)) throw new Error(`Public photo calibration route regression: missing ${token}`);
+}
+for(const forbidden of ["physicalEvidenceNote","realismAssessments","viewerId","strongRatings"]) {
+  if(photoCalibrationRoute.includes(forbidden)) throw new Error(`Public photo calibration privacy regression: route exposes ${forbidden}`);
+}
+for(const token of ["/api/designer/photo-calibration","UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION","resolvedPhotoPxPerMm","verifiedPhotoPxPerMm","photoScaleReady","accepted studio calibration"]) {
+  if(!photoPreview.includes(token)) throw new Error(`Customer photo calibration regression: preview missing ${token}`);
+}
+console.log("Verified photo calibration gate passed: accepted Phase 1 scale can drive customer previews without exposing operator evidence.");
 for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","PHOTO_TUCKED_LEFT_SLEEVE_CLIP","PHOTO_TUCKED_RIGHT_SLEEVE_CLIP","PHOTO_TUCKED_LEFT_TROUSER_CLIP","PHOTO_TUCKED_RIGHT_TROUSER_CLIP","destination-in","masks.shirt","masks.pant","featherMaskInside","featheredMasks","featheredPathMask","pathMasks","if(path) context.drawImage(featheredPathMask(path),0,0)","patternScaleForFabric","placement.offsetX","soft-light","globalCompositeOperation = \"luminosity\"","globalAlpha = .82","globalAlpha = .16","Zoom fit","Compare","Boundary QA"]) {
   if (!photoPreview.includes(token)) throw new Error(`Real photographic Designer regression: PhotoOutfitPreview missing ${token}`);
 }
