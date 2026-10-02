@@ -174,6 +174,11 @@ for (const path of [
   "src/lib/designer/meterage-calibration.ts",
   "supabase/migrations/20261004_meterage_calibration_registry.sql",
   "src/app/operator/launch-readiness/page.tsx",
+  "src/lib/designer/roadmap-readiness.ts",
+  "src/app/operator/roadmap-readiness/page.tsx",
+  "src/app/operator/roadmap-readiness/RoadmapReadinessClient.tsx",
+  "src/app/operator/roadmap-readiness/roadmap-readiness.css",
+  "tests/roadmap-readiness.test.ts",
   "src/lib/designer/launch-readiness-evidence.ts",
   "supabase/migrations/20261005_launch_readiness_evidence.sql",
   "src/app/operator/production-calibration/page.tsx",
@@ -751,7 +756,9 @@ if (live) {
 }
 
 if (failed) {
-  console.error("\nLinen Earth release is NOT ready.");
+  console.error("\requireTokens("src/lib/designer/roadmap-readiness.ts", ["summarizeRoadmapReadiness","Phase 2 remains evidence-open","phase1Complete","phase8Complete","phase9Complete"]);
+requireTokens("src/app/operator/roadmap-readiness/RoadmapReadinessClient.tsx", ["Readiness Control Tower","ENGINEERING","REAL EVIDENCE","No phase is promoted from missing data"]);
+nLinen Earth release is NOT ready.");
   process.exit(1);
 }
 
