@@ -44,12 +44,6 @@
 .newDesignerPhotoAccuracy .newDesignerPhotoGap{color:#7a513e}
 .newDesignerPhotoAccuracy .newDesignerPhotoGap strong{font-weight:600}
 .newDesignerJump{display:none}
-.newDesignerConstruction{display:grid;gap:10px;margin-top:22px}
-.newDesignerConstruction article{padding:15px 16px;background:#fbfaf7;border:1px solid #e8e2d8}
-.newDesignerConstruction article span{display:block;color:#a65d43;font-size:9px;letter-spacing:.14em}
-.newDesignerConstruction article strong{display:block;margin:7px 0 4px;font:400 16px Georgia,serif;color:#26364c}
-.newDesignerConstruction article p{font-size:11px;line-height:1.5;color:#6b7988;margin:0 0 6px}
-.newDesignerConstruction article a{color:#825443;font-size:10px;text-decoration:underline;text-underline-offset:2px}
 .newDesignerSectionHead h2,.newDesignerEmpty h2{color:var(--ink)}
 .newDesignerFabric{background:#fbfaf7;border:1px solid #e7e1d6}
 .newDesignerSwatch{height:205px;margin-bottom:15px;background:#efe9de}
