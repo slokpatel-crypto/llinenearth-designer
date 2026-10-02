@@ -300,9 +300,9 @@ for (const token of ['toDataURL("image/jpeg",.92)',"lockedPreviewImage"]) {
 }
 const selectedLookRoute=fs.readFileSync("src/app/api/designer/look-render/route.ts","utf8");
 if(!selectedLookRoute.includes('lockedPreviewImage:typeof body.lockedPreviewImage==="string"')) throw new Error("Locked-preview final-render regression: server route no longer forwards the preview candidate.");
-const aiVisualization=fs.readFileSync("src/lib/ai-visualization.ts","utf8");
+const lockedPreviewAiVisualization=fs.readFileSync("src/lib/ai-visualization.ts","utf8");
 for (const token of ["LOCKED_PREVIEW_DATA_URI","LOCKED_PREVIEW_MAX_BYTES=4_500_000","LOCKED_PREVIEW_IDENTITY_BOXES","average>.16 || maximum>.28","selected-look-locked-preview","deterministic locked live preview"]) {
-  if(!aiVisualization.includes(token)) throw new Error(`Locked-preview final-render regression: ai-visualization missing ${token}`);
+  if(!lockedPreviewAiVisualization.includes(token)) throw new Error(`Locked-preview final-render regression: ai-visualization missing ${token}`);
 }
 const selectedLookCacheKey=fs.readFileSync("src/lib/designer/render-cache-key.ts","utf8");
 if(!selectedLookCacheKey.includes("linen-final-render-cache-v2-locked-preview-source")) throw new Error("Locked-preview final-render regression: old render-cache generation could mask the new source strategy.");
