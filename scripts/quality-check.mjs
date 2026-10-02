@@ -221,6 +221,10 @@ for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","P
   if (!photoGeometry.includes(token)) throw new Error(`Real photographic Designer regression: photo-preview missing ${token}`);
 }
 console.log("Real photographic Designer gate passed: inward-feathered garment/creative boundaries, neck clear zone and tucked layering protected.");
+for (const token of ["detailBrightness?:number","const detailBrightness = placement.detailBrightness ?? 1.3","brightness(${detailBrightness})","detailBrightness: 3.05","detailBrightness: 1.9"]) {
+  if (!photoPreview.includes(token)) throw new Error(`Photo luminance neutralization regression: missing ${token}`);
+}
+console.log("Photo luminance neutralization gate passed: source-template colour cannot dominate selected fabric while folds remain photographic.");
 
 
 const realDesignerModule = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
