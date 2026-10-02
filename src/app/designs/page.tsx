@@ -1,7 +1,5 @@
-import { AppShell } from "@/components/AppShell";
-import { SavedDesignsClient } from "@/components/SavedDesignsClient";
-import "../atelier/atelier.css";
+import { redirect } from "next/navigation";
 
-export default function DesignsPage() {
-  return <AppShell><div className="wrap"><SavedDesignsClient /></div></AppShell>;
+export default function LegacySavedDesignsRoute() {
+  redirect("/account");
 }
