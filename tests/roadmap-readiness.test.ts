@@ -58,7 +58,7 @@ test("roadmap control tower keeps human and physical evidence separate from engi
   assert.equal(byPhase.get(9)?.evidenceComplete,true);
   assert.equal(byPhase.get(11)?.evidenceComplete,true);
   assert.equal(byPhase.get(2)?.evidenceComplete,false);
-  assert.match(byPhase.get(2)?.blocker||"",/will not invent|documented threshold/i);
+  assert.match(byPhase.get(2)?.blocker||"",/threshold|policy/i);
   assert.equal(byPhase.get(10)?.status,"later");
   assert.equal(summary.allEngineeringComplete,true);
   assert.equal(summary.allEvidenceComplete,false);
@@ -84,4 +84,45 @@ test("Phase 8 requires both approved meterage garments and ten provenance-backed
     meterageModel:{models:[{garment:"shirt",status:"approved"}]},
   });
   assert.equal(summary.phases.find((item)=>item.phase===8)?.evidenceComplete,false);
+});
+
+
+test("Phase 2 completes only after an approved human policy and all Fabric Truth evidence gates pass",()=>{
+  const summary=summarizeRoadmapReadiness({
+    fabricAnalyzer:{groundTruth:{reviewedFabrics:50,target:50}},
+    fabricColor:{summary:{uniqueFabrics:10,target:10,evidenceGateComplete:true}},
+    designerData:{coverage:{activeCandidates:20,physicalScale:20,gsm:16,drape:15,fiber:18}},
+    fabricTruthPolicy:{policy:{
+      version:"fabric-truth-policy-v1",
+      status:"approved",
+      physicalScalePercent:100,
+      gsmPercent:80,
+      drapePercent:75,
+      fiberPercent:90,
+      signedBy:"Owner",
+      note:"Approved supplier and physical roll evidence coverage policy.",
+    }},
+  });
+  const phase2=summary.phases.find((item)=>item.phase===2);
+  assert.equal(phase2?.evidenceComplete,true);
+  assert.equal(phase2?.progressPercent,100);
+});
+
+test("Phase 2 remains open when the same thresholds are only in review",()=>{
+  const summary=summarizeRoadmapReadiness({
+    fabricAnalyzer:{groundTruth:{reviewedFabrics:50,target:50}},
+    fabricColor:{summary:{uniqueFabrics:10,target:10,evidenceGateComplete:true}},
+    designerData:{coverage:{activeCandidates:20,physicalScale:20,gsm:20,drape:20,fiber:20}},
+    fabricTruthPolicy:{policy:{
+      version:"fabric-truth-policy-v1",
+      status:"review",
+      physicalScalePercent:50,
+      gsmPercent:50,
+      drapePercent:50,
+      fiberPercent:50,
+      signedBy:"Owner",
+      note:"Thresholds still need final owner approval.",
+    }},
+  });
+  assert.equal(summary.phases.find((item)=>item.phase===2)?.evidenceComplete,false);
 });
