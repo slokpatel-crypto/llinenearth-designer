@@ -129,3 +129,13 @@ test("Style Director never falls back to a simulated mannequin",()=>{
   assert.doesNotMatch(css,/\.abstractLook/);
   assert.match(css,/\.directorFabricFallback/);
 });
+
+
+test("Style Director no longer offers a flat alternate preview",()=>{
+  const page=readFileSync("src/app/style-director/page.tsx","utf8");
+  assert.match(page,/visualizePhotoreal/);
+  assert.match(page,/\/api\/visualization\/fashn/);
+  assert.match(page,/Make photoreal/);
+  assert.doesNotMatch(page,/\/api\/visualization\/render/);
+  assert.doesNotMatch(page,/Generate alternate preview/);
+});
