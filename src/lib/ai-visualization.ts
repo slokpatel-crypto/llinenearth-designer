@@ -1048,13 +1048,17 @@ Preserve the same faceless mannequin, pose, camera, body proportions, exposed sk
 
 Use the supplied split fabric context only to restore the exact shirt and trouser cloth appearance. Fix the cited defect locally. Do not add styling ideas, decorative seams, contrast panels, prints, logos, props or extra garments. Keep cloth off the neck, hands, background and neighbouring garment. If tucked, keep the waistband physically in front of the shirt. Full-body front catalogue photograph.`;
   const generated=await runEdit(previousImage,prompt,context);
-  return {
+  const result:CreativeFashnResult={
     image:generated.output,
     jobId:generated.jobId,
     creditsUsed:generated.creditsUsed,
     conceptId:"selected-look-repair",
     generatedAt:new Date().toISOString(),
   };
+  // A repair replaces the stale in-memory front result for this exact locked
+  // design identity; otherwise a later cache hit could resurrect the defect.
+  storeSelectedRender(input,result);
+  return result;
 }
 
 export async function renderSelectedLookFashnView(
