@@ -90,6 +90,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added an Evidence Sprint operator workflow that converts remaining real-world phase gates into a dependency-aware collection queue while keeping all evidence boundaries intact.
 - Added a main-only Vercel Git deployment policy plus duplicate-project guard so feature-branch commit storms cannot consume production build quota.
 - Tightened the customer photo compositor with inward-feathered photographic garment/collar/cuff/creative boundaries and removed remaining dead customer construction-preview CSS.
+- Added neutral-luminance photographic detail passes so the selected fabric keeps its own colour while the studio template contributes folds, seams and wrinkle depth.
 
 ## Evidence we cannot manufacture in code
 

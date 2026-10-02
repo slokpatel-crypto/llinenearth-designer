@@ -33,3 +33,23 @@ test("photographic garment clips feather only inside the real cloth boundary",()
   const css=readFileSync("src/app/designer-studio/designer-light.css","utf8");
   assert.doesNotMatch(css,/\.newDesignerConstruction\{/);
 });
+
+
+test("photo compositor neutralizes source-template luminance before restoring folds",()=>{
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.match(source,/detailBrightness\?:number/);
+  assert.match(source,/const detailBrightness = placement\.detailBrightness \?\? 1\.3/);
+  assert.match(source,/brightness\(\$\{detailBrightness\}\)/);
+  assert.match(source,/detailBrightness: template\.shirtDetailBrightness/);
+  assert.match(source,/detailBrightness: template\.trouserDetailBrightness/);
+  const geometry=readFileSync("src/lib/designer/photo-preview.ts","utf8");
+  assert.match(geometry,/shirtDetailBrightness: 3\.05/);
+  assert.match(geometry,/trouserDetailBrightness: 1\.9/);
+});
+
+
+test("customer final photoreal keeps the full model in frame",()=>{
+  const css=readFileSync("src/app/designer-studio/designer-light.css","utf8");
+  assert.match(css,/\.newDesignerPhotoAi\{[^}]*object-fit:contain/);
+  assert.doesNotMatch(css,/\.newDesignerPhotoAi\{[^}]*object-fit:cover/);
+});
