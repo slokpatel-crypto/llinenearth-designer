@@ -1062,13 +1062,13 @@ console.log("Designer block-strategy gate passed: measurements and manual observ
 const roadmapReadinessModel=fs.readFileSync("src/lib/designer/roadmap-readiness.ts","utf8");
 const roadmapReadinessClient=fs.readFileSync("src/app/operator/roadmap-readiness/RoadmapReadinessClient.tsx","utf8");
 const roadmapReadinessTest=fs.readFileSync("tests/roadmap-readiness.test.ts","utf8");
-for(const token of ["summarizeRoadmapReadiness","phase1Complete","phase3Complete","phase8Complete","phase9Complete","fabricTruthEvidence","phase2Complete=reviewedComplete&&colorComplete&&fabricTruthEvidence.gateComplete"]) {
+for(const token of ["summarizeRoadmapReadiness","phase1Complete","phase3Complete","phase8Complete","phase9Complete","fabricTruthEvidence","phase2Complete=reviewedComplete&&colorComplete&&fabricTruthEvidence.gateComplete","backendHealth.gateComplete"]) {
   if(!roadmapReadinessModel.includes(token)) throw new Error(`Roadmap readiness model regression: missing ${token}`);
 }
-for(const token of ["Readiness Control Tower","ENGINEERING","REAL EVIDENCE","No phase is promoted from missing data"]) {
+for(const token of ["Readiness Control Tower","ENGINEERING","PRODUCTION BACKEND","REAL EVIDENCE","No phase is promoted from missing data"]) {
   if(!roadmapReadinessClient.includes(token)) throw new Error(`Roadmap readiness operator regression: missing ${token}`);
 }
-for(const token of ["Phase 2 completes only after an approved human policy","Phase 3 cannot pass before","Phase 8 requires both approved meterage garments"]) {
+for(const token of ["Phase 2 completes only after an approved human policy","Phase 3 cannot pass before","Phase 8 requires both approved meterage garments","Phase 9 cannot pass when the live production backend contract is incomplete"]) {
   if(!roadmapReadinessTest.includes(token)) throw new Error(`Roadmap readiness test regression: missing ${token}`);
 }
 console.log("Roadmap readiness gate passed: cross-phase engineering and evidence status remain separate and conservative.");
@@ -1085,3 +1085,16 @@ for(const token of ["The software does not choose these thresholds","Save approv
   if(!fabricTruthPolicyClient.includes(token)) throw new Error(`Fabric Truth policy operator regression: missing ${token}`);
 }
 console.log("Fabric Truth policy gate passed: Phase 2 physical coverage remains human-defined and evidence-backed.");
+const roadmapBackendHealthModel=fs.readFileSync("src/lib/designer/roadmap-backend-health.ts","utf8");
+const roadmapBackendHealthRoute=fs.readFileSync("src/app/api/operator/roadmap-backend-health/route.ts","utf8");
+const roadmapBackendHealthTest=fs.readFileSync("tests/roadmap-backend-health.test.ts","utf8");
+for(const token of ["ROADMAP_BACKEND_CAPABILITIES","summarizeRoadmapBackendHealth","productionCutEvidence","verifiedMeterageCuts"]) {
+  if(!roadmapBackendHealthModel.includes(token)) throw new Error(`Roadmap backend-health model regression: missing ${token}`);
+}
+for(const token of ["verifyOperatorSession","roadmap_v2_evidence_health","summarizeRoadmapBackendHealth","Production backend health could not be verified"]) {
+  if(!roadmapBackendHealthRoute.includes(token)) throw new Error(`Roadmap backend-health API regression: missing ${token}`);
+}
+for(const token of ["all hardened Roadmap capability exists","one missing production RPC"]) {
+  if(!roadmapBackendHealthTest.includes(token)) throw new Error(`Roadmap backend-health test regression: missing ${token}`);
+}
+console.log("Roadmap backend-health gate passed: Phase 9 now verifies the live production Supabase contract.");
