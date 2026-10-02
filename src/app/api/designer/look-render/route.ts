@@ -13,7 +13,7 @@ import {
 import { loadDurableSelectedLookRender, storeDurableSelectedLookRender } from "@/lib/designer/render-cache";
 import { enrichSelectedLookEvidence, resolveSelectedLookRequest } from "@/lib/designer/selected-look-server";
 import { loadDesignerOptionReviews, rejectedConstructionOptions } from "@/lib/designer/option-reviews";
-import { recordRenderOutcome } from "@/lib/designer/render-outcomes";
+import { approvedFrontRenderEvidence, recordRenderOutcome } from "@/lib/designer/render-outcomes";
 
 export const runtime="nodejs";
 export const maxDuration=60;
@@ -42,6 +42,7 @@ export async function POST(request:Request) {
     const input:SelectedLookFashnRequest & {
       view?:SelectedLookView;
       frontImage?:string;
+      frontJobId?:string;
       previousImage?:string;
       repairInstruction?:string;
     }={
@@ -49,6 +50,7 @@ export async function POST(request:Request) {
       view:body.view as SelectedLookView|undefined,
       lockedPreviewImage:typeof body.lockedPreviewImage==="string" ? body.lockedPreviewImage : undefined,
       frontImage:typeof body.frontImage==="string" ? body.frontImage : undefined,
+      frontJobId:typeof body.frontJobId==="string" ? body.frontJobId : undefined,
       previousImage:typeof body.previousImage==="string" ? body.previousImage : undefined,
       repairInstruction:typeof body.repairInstruction==="string" ? body.repairInstruction : undefined,
     };
@@ -57,6 +59,7 @@ export async function POST(request:Request) {
     if(view==="front" && repairInstruction) {
       assertFashnRepairRateLimit(request);
       const result=await repairSelectedLookFashnFront(input,String(input.previousImage||""),repairInstruction);
+      await storeDurableSelectedLookRender(input,result,"front");
       await recordRenderOutcome({result,view:"front",shirtId:input.shirt.id,pantId:input.pant.id,repair:true});
       return NextResponse.json({result});
     }
@@ -67,7 +70,19 @@ export async function POST(request:Request) {
       if(durableCached) return NextResponse.json({result:durableCached},{headers:{"x-linen-render-cache":"durable"}});
     } else {
       const frontImage=String(input.frontImage||"");
-      if(!frontImage) return NextResponse.json({error:"Generate or load the locked front render before requesting another view."},{status:409});
+      const frontJobId=String(input.frontJobId||"").trim();
+      if(!frontImage || !frontJobId) {
+        return NextResponse.json({error:"An approved locked front render is required before requesting another view."},{status:409});
+      }
+      const frontApproved=await approvedFrontRenderEvidence({
+        jobId:frontJobId,
+        image:frontImage,
+        shirtId:input.shirt.id,
+        pantId:input.pant.id,
+      });
+      if(!frontApproved) {
+        return NextResponse.json({error:"Front photoreal must pass server-verified fidelity QA before generating another view."},{status:409});
+      }
       const durableCached=await loadDurableSelectedLookRender(input,view,frontImage);
       if(durableCached) return NextResponse.json({result:durableCached},{headers:{"x-linen-render-cache":"durable"}});
     }
