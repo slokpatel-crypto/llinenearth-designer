@@ -319,7 +319,7 @@ function drawGarment(
   target: CanvasRenderingContext2D, photo: CanvasImageSource,
   swatch: HTMLImageElement, fabric: DesignerFabric, path: string,
   mask?: HTMLCanvasElement, lightingFilter = "grayscale(1) brightness(1.3) contrast(1.04)",
-  placement: { offsetX?: number; offsetY?: number; scale?: number; rotationDeg?:number; photoPxPerMm?:number } = {},
+  placement: { offsetX?: number; offsetY?: number; scale?: number; rotationDeg?:number; photoPxPerMm?:number; detailBrightness?:number } = {},
 ) {
   const layer = document.createElement("canvas");
   layer.width = WIDTH;
@@ -343,16 +343,16 @@ function drawGarment(
   context.filter = lightingFilter;
   context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
 
-  // Reintroduce photographic folds and seams without restoring the source
-  // garment colour. Two restrained passes work better than one heavy pass:
-  // broad folds stay dimensional while fine wrinkles keep the cloth from
-  // reading like a flat sticker.
-  context.filter = "grayscale(1) contrast(1.18) brightness(1.04)";
+  // Reintroduce photographic folds and seams after neutralizing the source
+  // garment luminance. A dark source shirt must not make a light selected
+  // fabric look charcoal; we preserve structure, not the template colour.
+  const detailBrightness = placement.detailBrightness ?? 1.3;
+  context.filter = `grayscale(1) contrast(1.18) brightness(${detailBrightness})`;
   context.globalCompositeOperation = "soft-light";
   context.globalAlpha = .22;
   context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
 
-  context.filter = "grayscale(1) contrast(1.48) brightness(1.02)";
+  context.filter = `grayscale(1) contrast(1.48) brightness(${detailBrightness})`;
   context.globalCompositeOperation = "overlay";
   context.globalAlpha = .09;
   context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
@@ -587,9 +587,9 @@ export function composePhotoOutfit(
     // A tucked shirt must physically sit behind the trouser waistband. Draw
     // the shirt first, then the trouser garment on top. This removes the
     // pasted-on band of shirt texture across the waist/fly/crotch.
-    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_SHIRT_BODY_CLIP, masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)", { ...calibratedPlacement, offsetX: 0 });
-    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_LEFT_SLEEVE_CLIP, masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)", { ...calibratedPlacement, offsetX: 11 });
-    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_RIGHT_SLEEVE_CLIP, masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)", { ...calibratedPlacement, offsetX: -9 });
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_SHIRT_BODY_CLIP, masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)", { ...calibratedPlacement, offsetX: 0, detailBrightness: 3.05 });
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_LEFT_SLEEVE_CLIP, masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)", { ...calibratedPlacement, offsetX: 11, detailBrightness: 3.05 });
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_RIGHT_SLEEVE_CLIP, masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)", { ...calibratedPlacement, offsetX: -9, detailBrightness: 3.05 });
 
     drawCreativePattern(context,creative,PHOTO_TUCKED_SHIRT_BODY_CLIP,masks.shirt);
     drawCreativePattern(context,creative,PHOTO_TUCKED_LEFT_SLEEVE_CLIP,masks.shirt);
@@ -597,15 +597,15 @@ export function composePhotoOutfit(
     drawCreativeDetails(context,creative,true,masks.shirt);
 
     if (style.collarFinish === "Self-fabric") {
-      drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined, "grayscale(1) brightness(3.05) contrast(.94)",{...calibratedPlacement,rotationDeg:90});
+      drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined, "grayscale(1) brightness(3.05) contrast(.94)",{...calibratedPlacement,rotationDeg:90,detailBrightness:3.05});
     } else {
       drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_STAND_MASK, undefined, 3.6);
       if (!creativeHas(creative,"quiet-collar-echo")) drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_MASK, undefined, 3.6);
     }
     if (style.collarFinish === "White contrast collar + cuffs") drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_CUFF_MASK, undefined, 3.6);
 
-    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_LEFT_TROUSER_CLIP, masks.pant, "grayscale(1) brightness(1.9) contrast(1.03)", { ...calibratedPlacement, offsetX: 5 });
-    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_RIGHT_TROUSER_CLIP, masks.pant, "grayscale(1) brightness(1.9) contrast(1.03)", { ...calibratedPlacement, offsetX: -5 });
+    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_LEFT_TROUSER_CLIP, masks.pant, "grayscale(1) brightness(1.9) contrast(1.03)", { ...calibratedPlacement, offsetX: 5, detailBrightness: 1.9 });
+    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_RIGHT_TROUSER_CLIP, masks.pant, "grayscale(1) brightness(1.9) contrast(1.03)", { ...calibratedPlacement, offsetX: -5, detailBrightness: 1.9 });
   } else {
     const shirtMask = untuckedGarmentMasks(modelPhoto, template.shirtPath, DESIGNER_PHOTO_TEMPLATES.pleated.trouserPath).shirt;
     const trouserMask = untuckedGarmentMasks(trouserPhoto, template.shirtPath, template.trouserPath).pant;
