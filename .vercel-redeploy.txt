@@ -1,3 +1,8 @@
-Redeploy trigger for latest Linen Earth Designer main branch.
-Requested 2026-09-29 17:32 UTC after merging Phase 10 live fabric preview Work output.
-Production target should follow main commit 62f4ec0060061b027d12fd4181812ed4b71e35f1.
+Redeploy trigger for Linen Earth Roadmap v2 major milestone.
+
+Production target: main after the photo-first Designer, Roadmap Readiness control tower,
+production Supabase migration rollout, Phase 2 Fabric Truth evidence policy,
+foreign-key index hardening, and live backend-health Phase 9 gate.
+
+Target main commit before this trigger: afe8ef18dd2e41cce9626153546da4cb699f3bad
+Date: 2026-10-02
