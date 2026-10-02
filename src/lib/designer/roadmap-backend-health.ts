@@ -12,6 +12,7 @@ export const ROADMAP_BACKEND_CAPABILITIES=[
   "outcomeLearningContext",
   "productionCutEvidence",
   "verifiedMeterageCuts",
+  "privateSchemaDenyByDefault",
 ] as const;
 
 export type RoadmapBackendCapability=typeof ROADMAP_BACKEND_CAPABILITIES[number];
