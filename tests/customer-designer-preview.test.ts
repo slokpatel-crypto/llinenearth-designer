@@ -229,6 +229,17 @@ test("customer-facing photoreal fails closed to the trusted instant preview when
 });
 
 
+test("Save never exports an unapproved selected-look photoreal",()=>{
+  const preview=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.match(preview,/const selectedPhotorealApproved=Boolean\(/);
+  assert.match(preview,/activeSelectedCheck\?\.available && activeSelectedCheck\.status==="pass"/);
+  assert.match(preview,/if\(showCreativeAi && creativeAi && selectedPhotorealApproved\)/);
+  assert.match(preview,/silently become the saved design asset before fidelity QA passes/);
+  assert.match(preview,/Save trusted preview/);
+  assert.match(preview,/trusted instant studio preview remains the save\/export source until QA passes/);
+});
+
+
 test("final photoreal render is seeded from the validated locked live preview",()=>{
   const preview=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   const route=readFileSync("src/app/api/designer/look-render/route.ts","utf8");
