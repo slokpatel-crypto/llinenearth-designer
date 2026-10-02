@@ -625,8 +625,10 @@ requireTokens("src/app/designer-studio/designer-light.css", [".newDesignerBriefM
 requireTokens("tests/customer-designer-preview.test.ts", ["customer Designer exposes the selected details photo-match state"]);
 requireTokens("tests/customer-designer-preview.test.ts", ["Designer recommendation cards keep the photographic mannequin full-body"]);
 requireTokens("tests/customer-designer-preview.test.ts", ["contrast collar and cuff shading stays photographic without source-colour contamination"]);
+requireTokens("tests/customer-designer-preview.test.ts", ["plain linen swatches retain visible microtexture without reusing catalogue shadows"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["Lock final design","Final photoreal ✦","selectedLookSessionCache","styleSpec","bodyProfile"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["detailBrightness?:number","const detailBrightness = placement.detailBrightness ?? 1.3","detailBrightness: template.shirtDetailBrightness","detailBrightness: template.trouserDetailBrightness"]);
+requireTokens("src/components/PhotoOutfitPreview.tsx", ["const plainTextureDetailGain = .34","high-frequency linen weave to avoid a flat painted-shirt look","plainTextureDetailGain"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["function drawWhiteDetail","globalAlpha = .9","globalAlpha = .12","clean white while retaining the real folded edge beside neck and hands"]);
 requireTokens("src/lib/designer/photo-preview.ts", ["shirtDetailBrightness: 3.05","trouserDetailBrightness: 1.9","shirtDetailBrightness: 1.3","trouserDetailBrightness: 1.3"]);
 requireTokens("tests/customer-designer-preview.test.ts", ["photo compositor neutralizes source-template luminance"]);
