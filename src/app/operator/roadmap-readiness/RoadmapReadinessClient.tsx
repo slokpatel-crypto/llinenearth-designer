@@ -21,6 +21,7 @@ const ENDPOINTS={
   productionEvidence:"/api/operator/production-evidence",
   meterageModel:"/api/operator/meterage-model",
   customerOutcomes:"/api/operator/customer-outcomes",
+  backendHealth:"/api/operator/roadmap-backend-health",
 } as const;
 
 type SourceKey=keyof typeof ENDPOINTS;
@@ -84,8 +85,9 @@ export default function RoadmapReadinessClient(){
 
     <section className="roadmapReadinessScore">
       <article data-pass={summary.allEngineeringComplete}><span>ENGINEERING</span><strong>{summary.engineeringComplete}/{summary.engineeringTotal}</strong><small>{summary.allEngineeringComplete?"all active roadmap engineering implemented":"engineering work still open"}</small></article>
+      <article data-pass={summary.backendHealthy}><span>PRODUCTION BACKEND</span><strong>{summary.backendReadyCount}/{summary.backendTotal}</strong><small>{summary.backendHealthy?"live Supabase evidence contract verified":"production RPC contract incomplete or unavailable"}</small></article>
       <article data-pass={summary.allEvidenceComplete}><span>REAL EVIDENCE</span><strong>{summary.evidenceComplete}/{summary.evidenceTotal}</strong><small>physical, user, tailor, render and production proof</small></article>
-      <article><span>PRODUCTION RULE</span><strong>{summary.allEvidenceComplete?"REVIEW":"HOLD"}</strong><small>no customer claim is upgraded before its evidence gate passes</small></article>
+      <article><span>PRODUCTION RULE</span><strong>{summary.allEvidenceComplete&&summary.backendHealthy?"REVIEW":"HOLD"}</strong><small>no customer claim is upgraded before its evidence and backend gates pass</small></article>
     </section>
 
     <section className="roadmapReadinessLegend">
@@ -114,7 +116,7 @@ export default function RoadmapReadinessClient(){
 
     <section className="roadmapReadinessRule">
       <strong>What “complete” means here</strong>
-      <p>A phase turns complete only when both its engineering contract and its documented evidence gate are satisfied. Phase 2 uses the owner/supplier physical-evidence policy instead of a software-invented threshold. Phase 10 remains deferred by roadmap design.</p>
+      <p>A phase turns complete only when its engineering contract and documented evidence gate are satisfied. Phase 9 also requires the live production Supabase evidence contract to be present. Phase 2 uses the owner/supplier physical-evidence policy instead of a software-invented threshold. Phase 10 remains deferred by roadmap design.</p>
     </section>
   </main>;
 }
