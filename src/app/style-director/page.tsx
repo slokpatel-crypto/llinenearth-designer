@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import type { StyleDirectorAnswers, StyleDirectorLook } from "@/lib/style-director-agent";
 import { StyleDirectorRealModelPreview } from "@/components/PhotoOutfitPreview";
 import { createStyleSessionId, flushPendingStyleMemoryEvents, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
+import { customerPhotoCalibrationIdentity, fetchCustomerPhotoCalibration } from "@/lib/designer/photo-calibration-client";
 import "./style-director.css";
 
 type StepKey = keyof StyleDirectorAnswers;
@@ -50,6 +51,9 @@ export default function StyleDirectorPage() {
   const [rendering,setRendering] = useState(false);
   const [renderSet,setRenderSet] = useState<RenderSet|null>(null);
   const [lockedPreviewImage,setLockedPreviewImage] = useState("");
+  const [lockedPreviewCalibrationIdentity,setLockedPreviewCalibrationIdentity] = useState("");
+  const [renderCalibrationIdentity,setRenderCalibrationIdentity] = useState<string|null>(null);
+  const [currentCalibrationIdentity,setCurrentCalibrationIdentity] = useState<string|null>(null);
   const [error,setError] = useState("");
   const step = steps[index];
   const complete = looks.length > 0;
@@ -73,7 +77,9 @@ export default function StyleDirectorPage() {
       setLooks(data.looks);
       setSelected(0);
       setRenderSet(null);
+      setRenderCalibrationIdentity(null);
       setLockedPreviewImage("");
+      setLockedPreviewCalibrationIdentity("");
       recordStyleMemoryEvent(sessionId,"looks_generated",{looks:data.looks.map((look:StyleDirectorClientLook)=>({id:look.id,title:look.title,fabricId:look.fabric.id,fabric:look.fabric.colorName,tier:look.candidate.tier}))});
       const firstLook = data.looks?.[0] as StyleDirectorClientLook | undefined;
       if (firstLook) recordStyleMemoryEvent(sessionId,"look_selected",{lookId:firstLook.id,title:firstLook.title,fabricId:firstLook.fabric.id,fabric:firstLook.fabric.colorName,automatic:true});
@@ -83,7 +89,8 @@ export default function StyleDirectorPage() {
   }
 
   async function visualizePhotoreal() {
-    if (!selectedLook?.realModel) return;
+    if (!selectedLook?.realModel || !lockedPreviewImage || !lockedPreviewCalibrationIdentity) return;
+    const sourceCalibrationIdentity=lockedPreviewCalibrationIdentity;
     setRendering(true); setError("");
     recordStyleMemoryEvent(sessionId,"render_requested",{mode:"photo",lookId:selectedLook.id,fabricId:selectedLook.fabric.id});
     try {
@@ -107,6 +114,7 @@ export default function StyleDirectorPage() {
         status:"generated",
       };
       setRenderSet(nextRenderSet);
+      setRenderCalibrationIdentity(sourceCalibrationIdentity);
       const imageUrl = /^https:\/\/(cdn|media)\.fashn\.ai\//i.test(data.result.image) ? data.result.image : undefined;
       recordStyleMemoryEvent(sessionId,"render_completed",{
         mode:"photo",
@@ -125,10 +133,51 @@ export default function StyleDirectorPage() {
   }
 
   function reset() {
-    setIndex(0); setAnswers({}); setLooks([]); setSelected(0); setRenderSet(null); setLockedPreviewImage(""); setError("");
+    setIndex(0); setAnswers({}); setLooks([]); setSelected(0);
+    setRenderSet(null); setRenderCalibrationIdentity(null);
+    setLockedPreviewImage(""); setLockedPreviewCalibrationIdentity("");
+    setError("");
+  }
+
+  function acceptLockedPreview(dataUrl:string,calibrationIdentity:string) {
+    setLockedPreviewImage(dataUrl);
+    setLockedPreviewCalibrationIdentity(calibrationIdentity);
+    setCurrentCalibrationIdentity(calibrationIdentity);
   }
 
   const heroRender = useMemo(()=>renderSet?.renders?.find((r)=>r.view==="front") ?? renderSet?.renders?.[0], [renderSet]);
+
+  useEffect(()=>{
+    let cancelled=false;
+    const refresh=()=>void fetchCustomerPhotoCalibration().then((value)=>{
+      if(!cancelled) setCurrentCalibrationIdentity(customerPhotoCalibrationIdentity(value));
+    });
+    const onVisibility=()=>{if(document.visibilityState==="visible") refresh();};
+    refresh();
+    window.addEventListener("focus",refresh);
+    document.addEventListener("visibilitychange",onVisibility);
+    return ()=>{
+      cancelled=true;
+      window.removeEventListener("focus",refresh);
+      document.removeEventListener("visibilitychange",onVisibility);
+    };
+  },[]);
+
+  useEffect(()=>{
+    if(!currentCalibrationIdentity) return;
+    if(renderSet && renderCalibrationIdentity && renderCalibrationIdentity!==currentCalibrationIdentity) {
+      setRenderSet(null);
+      setRenderCalibrationIdentity(null);
+      setLockedPreviewImage("");
+      setLockedPreviewCalibrationIdentity("");
+      return;
+    }
+    if(lockedPreviewImage && lockedPreviewCalibrationIdentity && lockedPreviewCalibrationIdentity!==currentCalibrationIdentity) {
+      setLockedPreviewImage("");
+      setLockedPreviewCalibrationIdentity("");
+    }
+  },[currentCalibrationIdentity,renderSet,renderCalibrationIdentity,lockedPreviewImage,lockedPreviewCalibrationIdentity]);
+
   useEffect(()=>{
     recordStyleMemoryEvent(sessionId,"session_started",{experience:"style-director-v1"});
 
@@ -212,7 +261,7 @@ export default function StyleDirectorPage() {
         </div>
 
         <div className="lookTabs">
-          {looks.map((look,i)=><button className={selected===i?"active":""} onClick={()=>{setSelected(i);setRenderSet(null);setLockedPreviewImage("");recordStyleMemoryEvent(sessionId,"look_selected",{lookId:look.id,title:look.title,fabricId:look.fabric.id,fabric:look.fabric.colorName});}} key={look.id}>
+          {looks.map((look,i)=><button className={selected===i?"active":""} onClick={()=>{setSelected(i);setRenderSet(null);setRenderCalibrationIdentity(null);setLockedPreviewImage("");setLockedPreviewCalibrationIdentity("");recordStyleMemoryEvent(sessionId,"look_selected",{lookId:look.id,title:look.title,fabricId:look.fabric.id,fabric:look.fabric.colorName});}} key={look.id}>
             <span>{look.candidate.tier.toUpperCase()}</span><strong>{look.title}</strong><small>{look.fabric.colorName}</small>
           </button>)}
         </div>
@@ -220,7 +269,7 @@ export default function StyleDirectorPage() {
         <motion.div key={selectedLook.id} className="lookStage" initial={{opacity:0,x:14}} animate={{opacity:1,x:0}} transition={{duration:.3,ease:[.2,.8,.2,1]}}>
           <div className="lookVisual" style={{"--fabric":selectedLook.fabric.hex} as React.CSSProperties}>
             {heroRender ? <img src={heroRender.src} alt={heroRender.label} /> : selectedLook.realModel ? <>
-              <StyleDirectorRealModelPreview shirt={selectedLook.realModel.shirtFabric} pant={selectedLook.realModel.pantFabric} style={selectedLook.realModel.style} onPreviewReady={setLockedPreviewImage} />
+              <StyleDirectorRealModelPreview shirt={selectedLook.realModel.shirtFabric} pant={selectedLook.realModel.pantFabric} style={selectedLook.realModel.style} onPreviewReady={acceptLockedPreview} />
               <div className="swatchCard" style={{backgroundImage:`url('${selectedLook.fabric.swatchImageUrl}')`}}><span>REAL STOCK</span></div>
             </> : <div className="directorFabricFallback" style={{backgroundImage:`linear-gradient(180deg,rgba(8,24,39,.06),rgba(8,24,39,.76)),url('${selectedLook.fabric.swatchImageUrl}')`}}>
               <div>
