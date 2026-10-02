@@ -580,7 +580,7 @@ requireTokens("src/lib/designer/evidence-sprint.ts", ["buildEvidenceSprint","pre
 requireTokens("src/app/operator/evidence-sprint/EvidenceSprintClient.tsx", ["Evidence Sprint","NEXT THREE","Highest-leverage evidence to collect","Missing data never marks a task complete","Evidence boundary"]);
 requireTokens("src/app/operator/OperatorClient.tsx", ["/operator/evidence-sprint","EVIDENCE SPRINT"]);
 requireTokens("vercel.json", ["deploymentEnabled","\"**\": false","\"main\": true","ignoreCommand"]);
-requireTokens("scripts/vercel-ignore.mjs", ["VERCEL_GIT_COMMIT_REF","PRODUCTION_BRANCH = \"main\"","preserve production build quota"]);
+requireTokens("scripts/vercel-ignore.mjs", ["VERCEL_GIT_COMMIT_REF","VERCEL_GIT_COMMIT_MESSAGE","PRODUCTION_BRANCH = \"main\"","DEPLOY_MARKER = \"[deploy]\"","no [deploy] milestone marker","continue production build"]);
 requireTokens("src/app/api/operator/fabric-truth-policy/route.ts", ["verifyOperatorSession","fabric_truth_evidence_policy","normalizeFabricTruthPolicy"]);
 requireTokens("src/app/operator/fabric-truth-policy/FabricTruthPolicyClient.tsx", ["The software does not choose these thresholds","Save approved policy","LIVE PHYSICAL COVERAGE"]);
 requireTokens("src/lib/designer/fit-outcomes.ts", ["designer-fit-outcomes-v1","aggregateFitOutcomes","fitOutcomeSignalFor"]);
