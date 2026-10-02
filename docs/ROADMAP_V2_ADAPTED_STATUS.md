@@ -9,7 +9,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 
 | Roadmap phase | Current adapted status | Main remaining blocker |
 |---|---|---|
-| Phase 0 — Audit / Stabilize | Engineering complete | merge after CI / review |
+| Phase 0 — Audit / Stabilize | complete | none |
 | Phase 1 — Premium Shirt Proof | Engineering implementation complete | physical scale measurement + 8-viewer realism + protected-boundary confirmation + device evidence |
 | Phase 2 — Fabric Truth | engineering complete + owner-controlled physical-evidence policy implemented | real GSM / fibre / drape / scale coverage, 50 reviewed fabrics and physical colour evidence against the approved policy |
 | Phase 3 — Deterministic Designer | shared proof/customer compositor + option coverage audit + novice completion-study workflow | Phase 1 evidence + five server-timed real novice completions within documented target + all visible option reviews |
