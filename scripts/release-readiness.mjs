@@ -605,7 +605,9 @@ requireTokens("src/components/DesignerModule.tsx", ["styleSpec","PhotoOutfitPrev
 requireTokens("src/components/DesignerModule.tsx", ["photoPreviewSupportForChoice","photoMatchSummary","PHOTO MATCH · MIXED","selected details directly match a photographed template"]);
 requireTokens("src/app/designer-studio/designer-light.css", [".newDesignerPhotoMatch","data-state=\"mixed\""]);
 requireTokens("src/app/designer-studio/designer-light.css", [".newDesignerPhotoStage","background:#0a1726",".newDesignerPhotoAi"]);
+requireTokens("src/app/designer-studio/designer-light.css", [".newDesignerBriefModel .directorExistingModel canvas","object-fit:contain"]);
 requireTokens("tests/customer-designer-preview.test.ts", ["customer Designer exposes the selected details photo-match state"]);
+requireTokens("tests/customer-designer-preview.test.ts", ["Designer recommendation cards keep the photographic mannequin full-body"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["Lock final design","Final photoreal ✦","selectedLookSessionCache","styleSpec","bodyProfile"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["detailBrightness?:number","const detailBrightness = placement.detailBrightness ?? 1.3","detailBrightness: template.shirtDetailBrightness","detailBrightness: template.trouserDetailBrightness"]);
 requireTokens("src/lib/designer/photo-preview.ts", ["shirtDetailBrightness: 3.05","trouserDetailBrightness: 1.9","shirtDetailBrightness: 1.3","trouserDetailBrightness: 1.3"]);
