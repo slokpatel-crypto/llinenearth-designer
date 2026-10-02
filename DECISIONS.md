@@ -59,3 +59,10 @@ Architecture and product decisions that must persist across coding sessions.
 **Why:** repeated feature-branch pushes exhausted the Vercel deployment rate limit and blocked a valid production milestone from deploying.
 
 **Rule:** the primary project continues only on `main`; duplicate Vercel projects remain ignored by the existing project-ID guard. Create a preview deliberately only when visual/runtime verification needs one.
+
+## 2026-10-02 — Patterned photo scale needs accepted fixture proof
+**Decision:** a patterned customer preview may use measured photo-space scale only when the latest Phase 1 proof is fully accepted and provides the approved `photo-1024x1536-fixture` calibration.
+
+**Why:** a measured fabric repeat alone does not prove how millimetres map onto pixels in the photographed mannequin coordinate system.
+
+**Rule:** the browser receives only a sanitized calibration tuple (verified state, px/mm, coordinate system, proof version). Operator notes, viewer identifiers and raw proof evidence remain server-side. Missing or review-state proof fails closed to approximate scale; solid fabrics are unaffected.
