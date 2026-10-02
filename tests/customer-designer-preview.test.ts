@@ -174,3 +174,11 @@ test("legacy customer modules redirect into the consolidated experience",()=>{
   assert.doesNotMatch(designs,/SavedDesignsClient/);
   assert.doesNotMatch(knowledge,/FASHION BRAIN|WearTypeVisual/);
 });
+
+
+test("plain linen swatches retain visible microtexture without reusing catalogue shadows",()=>{
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.match(source,/const plainTextureDetailGain = \.34/);
+  assert.match(source,/high-frequency linen weave to avoid a flat painted-shirt look/);
+  assert.match(source,/original\.data\[index \+ channel\] - blurred\[index \+ channel\]\) \* plainTextureDetailGain/);
+});
