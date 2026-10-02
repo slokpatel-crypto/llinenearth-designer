@@ -291,6 +291,10 @@ for (const token of ["shirtDetailBrightness: 3.05","trouserDetailBrightness: 1.9
   if (!photoGeometry.includes(token)) throw new Error(`Photo template luminance calibration regression: missing ${token}`);
 }
 console.log("Photo luminance neutralization gate passed: source-template colour cannot dominate selected fabric while folds remain photographic.");
+for (const token of ["const plainTextureDetailGain = .34","high-frequency linen weave to avoid a flat painted-shirt look","* plainTextureDetailGain"]) {
+  if (!photoPreview.includes(token)) throw new Error(`Plain linen texture regression: missing ${token}`);
+}
+console.log("Plain linen texture gate passed: solid swatches retain microtexture without importing broad catalogue-photo shadows.");
 for (const token of ["function drawWhiteDetail","globalAlpha = .9","globalAlpha = .12","clean white while retaining the real folded edge beside neck and hands"]) {
   if (!photoPreview.includes(token)) throw new Error(`Contrast collar/cuff photographic shading regression: missing ${token}`);
 }
