@@ -678,7 +678,8 @@
 
 /* Photo-first customer preview; construction study remains internal-only. */
 .newDesignerPreviewLoading{min-height:420px;display:grid;place-items:center;border:1px solid #e2dbd3;background:#faf8f4;color:#74808a;font-size:8px;letter-spacing:.08em}
-.newDesignerPhotoLock,.newDesignerPhotoCache{margin:0;padding:9px 22px;border-bottom:1px solid #e6e0d5;font-size:7px;line-height:1.45}
+.newDesignerPhotoLock,.newDesignerPhotoCache,.newDesignerPhotoQaHold{margin:0;padding:9px 22px;border-bottom:1px solid #e6e0d5;font-size:7px;line-height:1.45}
 .newDesignerPhotoLock{background:#f3f7f2;color:#536b58}
-.newDesignerPhotoLock strong{font-size:6px;letter-spacing:.1em}
+.newDesignerPhotoLock strong,.newDesignerPhotoQaHold strong{font-size:6px;letter-spacing:.1em}
 .newDesignerPhotoCache{background:#f5f8fb;color:#49677e}
+.newDesignerPhotoQaHold{background:#fff8ee;color:#76552f}
