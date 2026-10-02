@@ -87,6 +87,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added 12 production foreign-key covering indexes from the live Supabase advisor; the unindexed-foreign-key advisory count is now zero.
 - Added a live production Supabase evidence-contract probe to Phase 9, so readiness fails closed if required hardened RPCs/migrations are absent from production.
 - Added a main-only Vercel Git deployment policy plus duplicate-project guard so feature-branch commit storms cannot consume production build quota.
+- Wired accepted Phase 1 photo-fixture calibration into the customer photographic compositor through a sanitized public scale contract; patterned previews remain approximate until real proof is accepted.
 
 ## Evidence we cannot manufacture in code
 
