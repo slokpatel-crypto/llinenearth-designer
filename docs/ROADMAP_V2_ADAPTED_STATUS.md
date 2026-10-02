@@ -94,6 +94,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Tightened the customer photo compositor with inward-feathered photographic garment/collar/cuff/creative boundaries and removed remaining dead customer construction-preview CSS.
 - Added neutral-luminance photographic detail passes so the selected fabric keeps its own colour while the studio template contributes folds, seams and wrinkle depth.
 - Refined the instant customer compositor to use luminance-first studio shading plus a restrained depth pass, reducing dark/painted overlays while retaining real photographed folds; the preview stage now matches the deep navy studio environment.
+- Kept the same full-body photographic mannequin framing inside Designer recommendation cards instead of cropping it with cover-mode.
 - Added photographic option-support truth for Phase 3: exact/approximate status is now derived from the real customer photo templates rather than the broader internal construction renderer, with explicit operator reasons.
 - Added a compact customer photo-match summary beside cut controls so selected details that directly match a photographed template are separated from photographic approximations before the user relies on the preview.
 
