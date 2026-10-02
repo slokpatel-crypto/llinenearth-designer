@@ -195,6 +195,7 @@ for (const path of [
   "supabase/migrations/20261029_stock_reservation_provenance.sql",
   "supabase/migrations/20261030_stock_consumption_provenance.sql",
   "supabase/migrations/20261031_stock_reservation_concurrency_provenance.sql",
+  "supabase/migrations/20261101_foreign_key_index_hardening.sql",
   "supabase/migrations/20261001_production_quotes_orders.sql",
   "supabase/migrations/20261001_render_outcomes.sql",
   "src/lib/designer/render-outcomes.ts",
