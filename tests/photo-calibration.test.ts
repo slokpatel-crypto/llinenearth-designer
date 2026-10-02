@@ -1,10 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
-import {
-  customerPhotoCalibrationFromProofPayload,
-  UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION,
-} from "../src/lib/designer/photo-calibration.ts";
+import { customerPhotoCalibrationFromProofPayload } from "../src/lib/designer/photo-calibration.ts";
+import { UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION } from "../src/lib/designer/photo-calibration-types.ts";
 
 function acceptedPayload(){
   return {
@@ -77,8 +75,10 @@ test("missing proof fails closed",()=>{
 test("public photo-calibration route exposes no operator proof notes or viewer data",()=>{
   const route=readFileSync("src/app/api/designer/photo-calibration/route.ts","utf8");
   const server=readFileSync("src/lib/designer/phase1-proof-server.ts","utf8");
+  const browserContract=readFileSync("src/lib/designer/photo-calibration-types.ts","utf8");
   const preview=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   assert.match(server,/import "server-only"/);
+  assert.doesNotMatch(browserContract,/proof-scale|evaluateRecordedPhase1ProofEvidence|physicalEvidenceNote|realismAssessments/);
   assert.match(route,/customerPhotoCalibrationFromProofPayload/);
   assert.doesNotMatch(route,/physicalEvidenceNote|realismAssessments|viewerId|strongRatings/);
   assert.match(preview,/\/api\/designer\/photo-calibration/);
