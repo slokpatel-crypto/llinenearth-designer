@@ -75,6 +75,7 @@ export default function RoadmapReadinessClient(){
       </div>
       <nav>
         <Link href="/operator">Operator Desk</Link>
+        <Link href="/operator/evidence-sprint">Evidence Sprint</Link>
         <Link href="/designer-studio">Customer Designer</Link>
         <button type="button" onClick={()=>void load()} disabled={loading}>{loading?"Refreshing…":"Refresh evidence"}</button>
       </nav>
