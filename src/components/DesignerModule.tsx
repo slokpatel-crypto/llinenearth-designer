@@ -10,7 +10,7 @@ import {
 import { DESIGNER_FASHION_FACTS, DESIGNER_RESEARCH } from "@/lib/designer/research";
 import { createStyleSessionId, readLocalDesignerTasteProfile, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
 import { PhotoOutfitPreview, StyleDirectorRealModelPreview, type CreativeVisualCheck } from "@/components/PhotoOutfitPreview";
-import { photoPreviewSupportForChoice } from "@/lib/designer/photo-preview-support";
+import { photoPreviewSupportForStyle } from "@/lib/designer/photo-preview-support";
 import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, type MeasurementProfile } from "@/lib/measurements";
 import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
@@ -177,11 +177,7 @@ export function DesignerModule() {
   const visibleShirts=useMemo(()=>shirtFilter==="All" ? shirtOptions : shirtOptions.filter((item)=>shirtFilterFor(item)===shirtFilter),[shirtFilter,shirtOptions]);
   const visiblePants=useMemo(()=>pantFilter==="All" ? pantOptions : pantOptions.filter((item)=>pantFilterFor(item)===pantFilter),[pantFilter,pantOptions]);
   const photoMatchSummary=useMemo(()=>{
-    const choices=[...MAIN_DETAILS,...MORE_DETAILS] as const;
-    const rows=choices.map(([key,label])=>({
-      key,label,
-      support:photoPreviewSupportForChoice(key,style[key]),
-    }));
+    const rows=photoPreviewSupportForStyle(style);
     const exact=rows.filter((row)=>row.support.status==="exact");
     const approximate=rows.filter((row)=>row.support.status==="approximate");
     const unsupported=rows.filter((row)=>row.support.status==="none");
