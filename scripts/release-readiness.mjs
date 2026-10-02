@@ -176,6 +176,9 @@ for (const path of [
   "src/app/operator/launch-readiness/page.tsx",
   "src/lib/designer/roadmap-readiness.ts",
   "src/lib/designer/roadmap-backend-health.ts",
+  "src/lib/designer/production-runtime-health.ts",
+  "src/app/api/operator/production-runtime-health/route.ts",
+  "tests/production-runtime-health.test.ts",
   "src/app/api/operator/roadmap-backend-health/route.ts",
   "tests/roadmap-backend-health.test.ts",
   "tests/customer-designer-preview.test.ts",
@@ -556,8 +559,8 @@ requireTokens("src/app/api/designer/casebook/route.ts", [
 requireTokens("src/app/operator/OperatorClient.tsx", [
   "DESIGNER CASE REVIEW","Approve case","Reject case","designer_case_review"
 ]);
-requireTokens("src/lib/designer/roadmap-readiness.ts", ["summarizeRoadmapReadiness","fabricTruthEvidence","phase2Complete=reviewedComplete&&colorComplete&&fabricTruthEvidence.gateComplete","phase1Complete","phase8Complete","phase9Complete","backendHealth.gateComplete"]);
-requireTokens("src/app/operator/roadmap-readiness/RoadmapReadinessClient.tsx", ["Readiness Control Tower","ENGINEERING","PRODUCTION BACKEND","REAL EVIDENCE","No phase is promoted from missing data"]);
+requireTokens("src/lib/designer/roadmap-readiness.ts", ["summarizeRoadmapReadiness","fabricTruthEvidence","phase2Complete=reviewedComplete&&colorComplete&&fabricTruthEvidence.gateComplete","phase1Complete","phase8Complete","phase9Complete","backendHealth.gateComplete","productionRuntime.gateComplete"]);
+requireTokens("src/app/operator/roadmap-readiness/RoadmapReadinessClient.tsx", ["Readiness Control Tower","ENGINEERING","PRODUCTION BACKEND","PRODUCTION RUNTIME","REAL EVIDENCE","No phase is promoted from missing data"]);
 requireTokens("src/lib/designer/fabric-truth-policy.ts", ["FABRIC_TRUTH_POLICY_VERSION","normalizeFabricTruthPolicy","evaluateFabricTruthPolicy","gateComplete"]);
 requireTokens("src/lib/designer/roadmap-backend-health.ts", ["ROADMAP_BACKEND_CAPABILITIES","summarizeRoadmapBackendHealth","productionCutEvidence","verifiedMeterageCuts"]);
 requireTokens("src/app/api/operator/roadmap-backend-health/route.ts", ["verifyOperatorSession","roadmap_v2_evidence_health","summarizeRoadmapBackendHealth"]);
