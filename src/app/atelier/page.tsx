@@ -1,5 +1,5 @@
-import { AppShell } from "@/components/AppShell";
-import { AtelierQueueClient } from "@/components/AtelierQueueClient";
-import "./atelier.css";
+import { redirect } from "next/navigation";
 
-export default function AtelierPage(){return <AppShell><div className="wrap"><AtelierQueueClient/></div></AppShell>}
+export default function LegacyAtelierRoute() {
+  redirect("/account");
+}

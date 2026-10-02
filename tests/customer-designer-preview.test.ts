@@ -157,3 +157,20 @@ test("legacy customer design routes consolidate onto the photo-first experiences
   assert.match(home,/name: "Suits"[\s\S]*href: "\/style-director"/);
   assert.match(home,/name: "Blazers"[\s\S]*href: "\/style-director"/);
 });
+
+
+test("legacy customer modules redirect into the consolidated experience",()=>{
+  const catalog=readFileSync("src/app/catalog/page.tsx","utf8");
+  const atelier=readFileSync("src/app/atelier/page.tsx","utf8");
+  const designs=readFileSync("src/app/designs/page.tsx","utf8");
+  const knowledge=readFileSync("src/app/knowledge/page.tsx","utf8");
+
+  assert.match(catalog,/redirect\("\/designer-studio"\)/);
+  assert.match(atelier,/redirect\("\/account"\)/);
+  assert.match(designs,/redirect\("\/account"\)/);
+  assert.match(knowledge,/redirect\("\/style-director"\)/);
+  assert.doesNotMatch(catalog,/catalogGarments|Live Visual/);
+  assert.doesNotMatch(atelier,/AtelierQueueClient/);
+  assert.doesNotMatch(designs,/SavedDesignsClient/);
+  assert.doesNotMatch(knowledge,/FASHION BRAIN|WearTypeVisual/);
+});
