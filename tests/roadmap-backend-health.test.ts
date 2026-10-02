@@ -17,3 +17,12 @@ test("one missing production RPC keeps backend readiness open",()=>{
   assert.equal(summary.gateComplete,false);
   assert.deepEqual(summary.missing,["productionCutEvidence"]);
 });
+
+
+test("private-schema client access keeps backend readiness open",()=>{
+  const all=Object.fromEntries(ROADMAP_BACKEND_CAPABILITIES.map((key)=>[key,true]));
+  all.privateSchemaDenyByDefault=false;
+  const summary=summarizeRoadmapBackendHealth(all);
+  assert.equal(summary.gateComplete,false);
+  assert.deepEqual(summary.missing,["privateSchemaDenyByDefault"]);
+});
