@@ -8,6 +8,19 @@ function healthyBackend(){
   return {summary:{capabilities:Object.fromEntries(ROADMAP_BACKEND_CAPABILITIES.map((key)=>[key,true]))}};
 }
 
+function healthyProductionRuntime(){
+  return {summary:{
+    checks:{vercel:true},
+    environment:"production",
+    targetEnvironment:"production",
+    projectId:"prj_b3rwwOl5OI0VV3qYyKXPFOloCllT",
+    deploymentId:"dpl_4sczwptRDCUDpambPp4UP87yimiH",
+    deploymentUrl:"llinenearth-designer-h6xez8ye5-success-aveneu.vercel.app",
+    productionUrl:"llinenearth-designer.vercel.app",
+    commitSha:"d2a6d80beb3db56c700030d6c259af95523f92c3",
+  }};
+}
+
 function launchEvidence(){
   const betaAttempts=Array.from({length:5},(_,index)=>({
     case_id:`BETA-${index+1}`,
@@ -52,6 +65,7 @@ test("roadmap control tower keeps human and physical evidence separate from engi
     meterageModel:{models:[{garment:"shirt",status:"approved"},{garment:"trouser",status:"approved"}]},
     customerOutcomes:{summary:{gateComplete:true,learningEligible:10,threshold:10}},
     backendHealth:healthyBackend(),
+    productionRuntime:healthyProductionRuntime(),
   });
 
   const byPhase=new Map(summary.phases.map((item)=>[item.phase,item]));
@@ -142,10 +156,34 @@ test("Phase 9 cannot pass when the live production backend contract is incomplet
     deviceQa:{latest:{mobile:{status:"accepted"},tablet:{status:"accepted"},desktop:{status:"accepted"}}},
     launchReadiness:launchEvidence(),
     backendHealth:{summary:{capabilities}},
+    productionRuntime:healthyProductionRuntime(),
   });
   const phase9=summary.phases.find((item)=>item.phase===9);
   assert.equal(phase9?.evidenceComplete,false);
   assert.match(phase9?.blocker||"",/production supabase backend contract/i);
   assert.equal(summary.backendHealthy,false);
   assert.deepEqual(summary.backendMissing,["productionCutEvidence"]);
+});
+
+
+test("Phase 9 cannot pass on a preview or duplicate Vercel runtime",()=>{
+  const summary=summarizeRoadmapReadiness({
+    deviceQa:{latest:{mobile:{status:"accepted"},tablet:{status:"accepted"},desktop:{status:"accepted"}}},
+    launchReadiness:launchEvidence(),
+    backendHealth:healthyBackend(),
+    productionRuntime:{summary:{
+      checks:{vercel:true},
+      environment:"preview",
+      targetEnvironment:"preview",
+      projectId:"prj_duplicate",
+      deploymentId:"dpl_preview",
+      deploymentUrl:"preview.vercel.app",
+      productionUrl:"llinenearth-designer.vercel.app",
+      commitSha:"d2a6d80beb3db56c700030d6c259af95523f92c3",
+    }},
+  });
+  const phase9=summary.phases.find((item)=>item.phase===9);
+  assert.equal(phase9?.evidenceComplete,false);
+  assert.match(phase9?.blocker||"",/primary vercel production runtime/i);
+  assert.equal(summary.productionRuntimeHealthy,false);
 });
