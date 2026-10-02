@@ -52,6 +52,7 @@ const featheredMasks = new WeakMap<HTMLCanvasElement, HTMLCanvasElement>();
 const pathMasks = new Map<string, HTMLCanvasElement>();
 const tuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
 const untuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
+const photographicReliefMaps = new WeakMap<HTMLImageElement, HTMLCanvasElement>();
 const selectedLookSessionCache=new Map<string,PhotorealResult>();
 function loadImage(url: string): Promise<HTMLImageElement> {
   const cached = images.get(url);
@@ -175,6 +176,49 @@ function swatchTile(image: HTMLImageElement, fabric: DesignerFabric): HTMLCanvas
 }
 
 function clamp(value: number) { return Math.max(0, Math.min(1, value)); }
+
+function photographicReliefMap(photo: HTMLImageElement) {
+  const cached = photographicReliefMaps.get(photo);
+  if (cached) return cached;
+
+  // Extract a neutral high-pass relief map from the real studio photograph.
+  // Working at half resolution keeps the first preview fast while retaining
+  // the folds, placket seams, cuff edges and trouser creases that make the
+  // garment read as photographed rather than painted.
+  const reliefWidth = WIDTH / 2;
+  const reliefHeight = HEIGHT / 2;
+  const source = document.createElement("canvas");
+  const blurred = document.createElement("canvas");
+  const detail = document.createElement("canvas");
+  source.width = blurred.width = detail.width = reliefWidth;
+  source.height = blurred.height = detail.height = reliefHeight;
+
+  const sourceContext = source.getContext("2d", { willReadFrequently: true });
+  const blurContext = blurred.getContext("2d", { willReadFrequently: true });
+  const detailContext = detail.getContext("2d");
+  if (!sourceContext || !blurContext || !detailContext) throw new Error("Canvas is unavailable.");
+
+  sourceContext.filter = "grayscale(1)";
+  sourceContext.drawImage(photo, 0, 0, reliefWidth, reliefHeight);
+  blurContext.filter = "grayscale(1) blur(4px)";
+  blurContext.drawImage(photo, 0, 0, reliefWidth, reliefHeight);
+
+  const original = sourceContext.getImageData(0, 0, reliefWidth, reliefHeight);
+  const soft = blurContext.getImageData(0, 0, reliefWidth, reliefHeight);
+  const pixels = detailContext.createImageData(reliefWidth, reliefHeight);
+  for (let index = 0; index < original.data.length; index += 4) {
+    const luminance = original.data[index];
+    const blurredLuminance = soft.data[index];
+    const neutralRelief = Math.max(0, Math.min(255, Math.round(128 + (luminance - blurredLuminance) * 1.8)));
+    pixels.data[index] = neutralRelief;
+    pixels.data[index + 1] = neutralRelief;
+    pixels.data[index + 2] = neutralRelief;
+    pixels.data[index + 3] = 255;
+  }
+  detailContext.putImageData(pixels, 0, 0);
+  photographicReliefMaps.set(photo, detail);
+  return detail;
+}
 
 function patternScaleForFabric(fabric: DesignerFabric) {
   const pattern = fabric.patternType.toLowerCase();
@@ -320,7 +364,7 @@ function untuckedGarmentMasks(photo: HTMLImageElement, shirtPath: string, pantPa
 }
 
 function drawGarment(
-  target: CanvasRenderingContext2D, photo: CanvasImageSource,
+  target: CanvasRenderingContext2D, photo: HTMLImageElement,
   swatch: HTMLImageElement, fabric: DesignerFabric, path: string,
   mask?: HTMLCanvasElement, lightingFilter = "grayscale(1) brightness(1.3) contrast(1.04)",
   placement: { offsetX?: number; offsetY?: number; scale?: number; rotationDeg?:number; photoPxPerMm?:number; detailBrightness?:number } = {},
@@ -369,6 +413,15 @@ function drawGarment(
   context.globalCompositeOperation = "overlay";
   context.globalAlpha = .09;
   context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
+
+  // Add colour-neutral photographic relief after the broad lighting passes.
+  // Because this map is centred on neutral gray it restores wrinkle/seam
+  // micro-contrast without tinting the selected Linen Earth fabric.
+  const relief = photographicReliefMap(photo);
+  context.filter = "none";
+  context.globalCompositeOperation = "soft-light";
+  context.globalAlpha = .28;
+  context.drawImage(relief, 0, 0, WIDTH, HEIGHT);
 
   // Put a faint copy of the real textile back above the lighting model. This
   // keeps weave / print micro-detail visible in highlights, where multiply
@@ -575,6 +628,11 @@ function drawWhiteDetail(target: CanvasRenderingContext2D, photo: HTMLImageEleme
   context.globalCompositeOperation = "multiply";
   context.globalAlpha = .12;
   context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
+
+  context.filter = "none";
+  context.globalCompositeOperation = "soft-light";
+  context.globalAlpha = .24;
+  context.drawImage(photographicReliefMap(photo), 0, 0, WIDTH, HEIGHT);
 
   context.globalAlpha = 1;
   context.filter = "none";
