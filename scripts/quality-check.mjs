@@ -246,6 +246,12 @@ for(const token of ["accepted Phase 1 proof publishes only the safe photo calibr
   if(!photoCalibrationTest.includes(token)) throw new Error(`Customer photo-calibration test regression: missing ${token}`);
 }
 console.log("Customer photo calibration gate passed: only accepted Phase 1 fixture scale can promote patterned photo-space scale.");
+const designerPhotoCss=fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
+for(const token of [".newDesignerPhotoAi","object-fit:contain","background:#eeeae4"]) {
+  if(!designerPhotoCss.includes(token)) throw new Error(`Photoreal full-frame presentation regression: missing ${token}`);
+}
+if(/\.newDesignerPhotoAi\{[^}]*object-fit:cover/.test(designerPhotoCss)) throw new Error("Photoreal full-frame presentation regression: cover crop returned.");
+console.log("Photoreal framing gate passed: final renders preserve the full studio-model silhouette.");
 
 
 const realDesignerModule = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
