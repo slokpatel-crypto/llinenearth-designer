@@ -178,6 +178,7 @@ for (const path of [
   "src/lib/designer/roadmap-backend-health.ts",
   "src/app/api/operator/roadmap-backend-health/route.ts",
   "tests/roadmap-backend-health.test.ts",
+  "tests/customer-designer-preview.test.ts",
   "tests/vercel-deployment-policy.test.ts",
   "src/lib/designer/fabric-truth-policy.ts",
   "src/app/api/operator/fabric-truth-policy/route.ts",
@@ -313,6 +314,9 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "PHOTO_TUCKED_NECK_CLEAR",
   "masks.shirt",
   "masks.pant",
+  "featheredPathMask",
+  "pathMasks",
+  "Contrast collars/cuffs sit directly beside skin and hands",
 ]);
 requireTokens("src/lib/designer/brand-language.ts", [
   "linen-earth-brand-language-provisional-1",
