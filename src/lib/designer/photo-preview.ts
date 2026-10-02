@@ -49,12 +49,16 @@ export const DESIGNER_PHOTO_TEMPLATES: Record<PhotoTemplate, {
   break: string;
   shirtPath: string;
   trouserPath: string;
+  shirtDetailBrightness: number;
+  trouserDetailBrightness: number;
 }> = {
   pleated: {
     src: "/designer/studio-pleated.webp",
     trouser: "single-pleat straight leg",
     break: "Slight Break",
     shirtPath: SHIRT_MASK,
+    shirtDetailBrightness: 1.3,
+    trouserDetailBrightness: 1.3,
     trouserPath: "M 369 673 C 425 708 590 718 650 674 L 650 831 L 652 1080 L 650 1306 L 643 1351 Q 608 1371 562 1354 L 553 1329 L 540 1132 L 526 934 L 511 759 L 495 758 L 477 938 L 469 1124 L 464 1327 L 458 1352 Q 418 1364 372 1355 L 365 1326 L 371 1115 L 374 884 Z",
   },
   wide: {
@@ -62,6 +66,8 @@ export const DESIGNER_PHOTO_TEMPLATES: Record<PhotoTemplate, {
     trouser: "single-pleat wide leg",
     break: "Full Break",
     shirtPath: SHIRT_MASK,
+    shirtDetailBrightness: 1.3,
+    trouserDetailBrightness: 1.3,
     trouserPath: "M 368 674 C 424 709 592 719 653 675 L 661 886 L 677 1107 L 679 1316 L 678 1351 Q 609 1371 542 1353 L 537 1324 L 526 1065 L 513 774 L 497 770 L 486 1070 L 482 1327 L 479 1353 Q 415 1368 344 1353 L 342 1317 L 351 1085 L 357 875 Z",
   },
   tucked: {
@@ -70,6 +76,10 @@ export const DESIGNER_PHOTO_TEMPLATES: Record<PhotoTemplate, {
     break: "Slight Break",
     // The tucked photograph has its own cloth-colour masks, traced from the
     // actual photographed edges rather than a simulated waistband path.
+    // These luminance normalizers are template calibration, not fabric truth:
+    // they cancel the source photo cloth tone before fold/seam detail is blended.
+    shirtDetailBrightness: 3.05,
+    trouserDetailBrightness: 1.9,
     shirtPath: "",
     trouserPath: "",
   },
