@@ -220,8 +220,8 @@ test("selected-look photoreal stays hidden until automated fidelity QA passes",(
 test("customer-facing photoreal fails closed to the trusted instant preview when QA requests review",()=>{
   const preview=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   const css=readFileSync("src/app/designer-studio/designer-light.css","utf8");
-  assert.match(preview,/if\(data\.check\.available && data\.check\.status==="review"\) setShowCreativeAi\(false\)/);
-  assert.match(preview,/if\(data\.check\.available && data\.check\.status==="review"\) setPhotorealView\("front"\)/);
+  assert.match(preview,/if\(!data\.check\.available \|\| data\.check\.status==="review"\) setShowCreativeAi\(false\)/);
+  assert.match(preview,/if\(!data\.check\.available \|\| data\.check\.status==="review"\) setPhotorealView\("front"\)/);
   assert.match(preview,/PHOTOREAL HELD FOR REVIEW/);
   assert.match(preview,/Review photoreal/);
   assert.match(preview,/generated result available for human review\/repair/);
