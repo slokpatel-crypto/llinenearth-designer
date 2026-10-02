@@ -595,6 +595,8 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", ["Lock final design","Fin
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["detailBrightness?:number","const detailBrightness = placement.detailBrightness ?? 1.3","detailBrightness: template.shirtDetailBrightness","detailBrightness: template.trouserDetailBrightness"]);
 requireTokens("src/lib/designer/photo-preview.ts", ["shirtDetailBrightness: 3.05","trouserDetailBrightness: 1.9","shirtDetailBrightness: 1.3","trouserDetailBrightness: 1.3"]);
 requireTokens("tests/customer-designer-preview.test.ts", ["photo compositor neutralizes source-template luminance"]);
+requireTokens("tests/customer-designer-preview.test.ts", ["customer final photoreal keeps the full model in frame"]);
+requireTokens("src/app/designer-studio/designer-light.css", [".newDesignerPhotoAi","object-fit:contain"]);
 requireTokens("src/app/api/designer/look-render/route.ts", ["resolved.locked!==true","getCachedSelectedLookRender","loadDurableSelectedLookRender","storeDurableSelectedLookRender","resolveSelectedLookRequest","x-linen-render-cache"]);
 requireTokens("src/lib/designer/render-cache.ts", ["designer_render_cache_get","designer_render_cache_upsert_v2","loadDesignerRenderCacheStats","loadPopularDesignerRenderPairs"]);
 requireTokens("src/lib/designer/selected-look-server.ts", ["resolveSelectedLookRequest","enrichSelectedLookEvidence","loadDesignerFabricMetadata","loadDesignerFabricIntelligence"]);
