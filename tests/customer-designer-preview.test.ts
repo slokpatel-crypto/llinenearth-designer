@@ -100,3 +100,10 @@ test("Designer recommendation cards keep the photographic mannequin full-body",(
   assert.match(css,/\.newDesignerBriefModel \.directorExistingModel canvas\{[^}]*object-fit:contain/);
   assert.doesNotMatch(css,/\.newDesignerBriefModel \.directorExistingModel canvas\{[^}]*object-fit:cover/);
 });
+
+
+test("Style Director photoreal letterbox matches the navy studio",()=>{
+  const css=readFileSync("src/app/style-director/style-director.css","utf8");
+  assert.match(css,/\.lookVisual img\{[^}]*object-fit:contain[^}]*background:#081827/);
+  assert.doesNotMatch(css,/\.lookVisual img\{[^}]*background:#eeeae4/);
+});
