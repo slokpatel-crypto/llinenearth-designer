@@ -9,6 +9,8 @@ const ENDPOINTS={
   deviceQa:"/api/operator/device-qa",
   fabricAnalyzer:"/api/operator/fabric-analyzer/stats",
   fabricColor:"/api/operator/fabric-color-calibration",
+  designerData:"/api/operator/designer-data",
+  fabricTruthPolicy:"/api/operator/fabric-truth-policy",
   previewCoverage:"/api/operator/preview-option-coverage",
   noviceStudy:"/api/operator/novice-designer-study",
   measurementCalibration:"/api/operator/measurement-calibration",
@@ -112,7 +114,7 @@ export default function RoadmapReadinessClient(){
 
     <section className="roadmapReadinessRule">
       <strong>What “complete” means here</strong>
-      <p>A phase turns complete only when both its engineering contract and its documented evidence gate are satisfied. Phase 2 intentionally stays evidence-open until an owner/supplier physical-field coverage policy is documented; this page will not invent that threshold. Phase 10 remains deferred by roadmap design.</p>
+      <p>A phase turns complete only when both its engineering contract and its documented evidence gate are satisfied. Phase 2 uses the owner/supplier physical-evidence policy instead of a software-invented threshold. Phase 10 remains deferred by roadmap design.</p>
     </section>
   </main>;
 }
