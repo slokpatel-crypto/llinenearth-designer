@@ -1,6 +1,6 @@
 # Linen Earth — Roadmap v2 Adapted Status
 
-Date: 2026-10-01
+Date: 2026-10-02
 Source of truth: current GitHub repository, not the older ZIP.
 
 ## Overall approach
@@ -82,6 +82,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added durable privacy-safe production learning context for verified locked-design orders so post-delivery outcomes remain attributable after temporary vault expiry; measurement/body-profile data are excluded and contextless outcomes cannot satisfy the learning gate.
 - Hardened durable outcome learning context integrity: only supported-version context matching the immutable revision, valid recipe hash and complete fabric pair can count toward the human evidence threshold.
 - Added phase adaptation records so future coding agents do not rebuild existing systems unnecessarily.
+- Added a cross-phase Roadmap Readiness control tower that keeps engineering completion separate from human/physical evidence, links directly to every major gate, and refuses to promote missing data to complete.
 
 ## Evidence we cannot manufacture in code
 

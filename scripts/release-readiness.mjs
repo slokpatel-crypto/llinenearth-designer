@@ -174,6 +174,11 @@ for (const path of [
   "src/lib/designer/meterage-calibration.ts",
   "supabase/migrations/20261004_meterage_calibration_registry.sql",
   "src/app/operator/launch-readiness/page.tsx",
+  "src/lib/designer/roadmap-readiness.ts",
+  "src/app/operator/roadmap-readiness/page.tsx",
+  "src/app/operator/roadmap-readiness/RoadmapReadinessClient.tsx",
+  "src/app/operator/roadmap-readiness/roadmap-readiness.css",
+  "tests/roadmap-readiness.test.ts",
   "src/lib/designer/launch-readiness-evidence.ts",
   "supabase/migrations/20261005_launch_readiness_evidence.sql",
   "src/app/operator/production-calibration/page.tsx",
@@ -531,6 +536,8 @@ requireTokens("src/app/api/designer/casebook/route.ts", [
 requireTokens("src/app/operator/OperatorClient.tsx", [
   "DESIGNER CASE REVIEW","Approve case","Reject case","designer_case_review"
 ]);
+requireTokens("src/lib/designer/roadmap-readiness.ts", ["summarizeRoadmapReadiness","Phase 2 remains evidence-open","phase1Complete","phase8Complete","phase9Complete"]);
+requireTokens("src/app/operator/roadmap-readiness/RoadmapReadinessClient.tsx", ["Readiness Control Tower","ENGINEERING","REAL EVIDENCE","No phase is promoted from missing data"]);
 requireTokens("src/lib/designer/fit-outcomes.ts", ["designer-fit-outcomes-v1","aggregateFitOutcomes","fitOutcomeSignalFor"]);
 requireTokens("src/app/api/designer/casebook/route.ts", ["aggregateFitOutcomes","fitOutcomes"]);
 requireTokens("src/app/operator/OperatorClient.tsx", ["FIRST-FITTING OUTCOME","designer_fit_outcome","saveFitOutcome"]);
@@ -543,7 +550,7 @@ requireFile("src/lib/designer/body-profile.ts");
 requireFile("src/components/LiveConstructionPreview.tsx");
 requireFile("tests/phase10-body-profile.test.ts");
 requireTokens("src/lib/designer/style-spec-v2.ts", ["STYLE_SCHEMA_VERSION=2","mergeLegacyIntoStyleSpec","validateStyleSpecV2","styleSpecRenderSummary"]);
-requireTokens("src/components/DesignerModule.tsx", ["styleSpec","LiveConstructionPreview","Studio preview","Live cut study","bodyProfileFromMeasurements"]);
+requireTokens("src/components/DesignerModule.tsx", ["styleSpec","PhotoOutfitPreview","bodyProfileFromMeasurements"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["Lock final design","Final photoreal ✦","selectedLookSessionCache","styleSpec","bodyProfile"]);
 requireTokens("src/app/api/designer/look-render/route.ts", ["resolved.locked!==true","getCachedSelectedLookRender","loadDurableSelectedLookRender","storeDurableSelectedLookRender","resolveSelectedLookRequest","x-linen-render-cache"]);
 requireTokens("src/lib/designer/render-cache.ts", ["designer_render_cache_get","designer_render_cache_upsert_v2","loadDesignerRenderCacheStats","loadPopularDesignerRenderPairs"]);

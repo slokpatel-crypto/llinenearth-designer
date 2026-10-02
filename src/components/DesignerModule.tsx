@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import {
   DESIGNER_PANTS, DESIGNER_REVIEWED_PAIRING, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES,
@@ -43,10 +42,6 @@ const INTENTIONS: DesignerIntention[] = ["Understated", "Balanced", "Expressive"
 const SESSION_KEY = "linen-earth:designer-session:v1";
 const DRAFT_KEY = "linen-earth:real-designer-draft:v2";
 const FACT_INTERVAL_MS = 15_000;
-const LiveConstructionPreview=dynamic(
-  ()=>import("@/components/LiveConstructionPreview").then((module)=>module.LiveConstructionPreview),
-  {ssr:false,loading:()=> <div className="newDesignerPreviewLoading">Loading construction preview…</div>},
-);
 type ShirtFabricFilter = "All" | "Plain" | "Print" | "Blend" | "Formal";
 type PantFabricFilter = "All" | "Light" | "Medium" | "Dark";
 type DesignerSearchOption = {
@@ -125,7 +120,6 @@ export function DesignerModule() {
   const [occasion, setOccasion] = useState<OccasionTier>(DESIGNER_REVIEWED_PAIRING.occasion);
   const [style, setStyle] = useState<DesignerStyle>(() => designerStyleForOccasion(DESIGNER_REVIEWED_PAIRING.occasion));
   const [styleSpec,setStyleSpec]=useState<StyleSpecV2>(()=>fromLegacyStyle(designerStyleForOccasion(DESIGNER_REVIEWED_PAIRING.occasion)));
-  const [previewMode,setPreviewMode]=useState<"photo"|"construction">("photo");
   const [bodyProfile,setBodyProfile]=useState<BodyPreviewProfile>(DEFAULT_BODY_PREVIEW_PROFILE);
   const [climate, setClimate] = useState<DesignerClimate>("Not specified");
   const [intention, setIntention] = useState<DesignerIntention>("Balanced");
@@ -502,7 +496,6 @@ export function DesignerModule() {
     const resetStyle=designerStyleForOccasion(nextOccasion);
     setStyle(resetStyle);
     setStyleSpec(fromLegacyStyle(resetStyle));
-    setPreviewMode("photo");
     setBodyProfile(DEFAULT_BODY_PREVIEW_PROFILE);
     setRecommendation(null);
     setAssessment(null);
@@ -895,7 +888,6 @@ export function DesignerModule() {
 
   function changeStyle(key: keyof DesignerStyle, value: string) {
     setActiveCreative(null);
-    setPreviewMode("construction");
     setStyle((current) => ({ ...current, [key]: value }));
     setRecommendation(null);
     setAssessment(null);
@@ -904,7 +896,6 @@ export function DesignerModule() {
 
   function applyStyleSpec(next:StyleSpecV2) {
     setActiveCreative(null);
-    setPreviewMode("construction");
     setStyleSpec(next);
     setStyle(toLegacyStyle(next));
     setRecommendation(null);
@@ -916,7 +907,6 @@ export function DesignerModule() {
 
   function applyStylePatch(patch: Partial<DesignerStyle>) {
     setActiveCreative(null);
-    setPreviewMode("construction");
     setStyle((current) => ({ ...current, ...patch }));
     setRecommendation(null);
     setAssessment(null);
@@ -940,7 +930,6 @@ export function DesignerModule() {
     setOccasion("Semi-Formal");
     setStyle(next);
     setStyleSpec(fromLegacyStyle(next));
-    setPreviewMode("photo");
     setRecommendation(null);
     setAssessment(null);
     setRecommendationId(null);
@@ -1356,11 +1345,7 @@ export function DesignerModule() {
         <strong>{activeCreative.name}</strong>
         <div>{creativeQuickTags(activeCreative).map((tag)=><b key={tag}>{tag}</b>)}</div>
       </div>}
-      {shirt && pant && <div className="newDesignerRenderMode" role="group" aria-label="Preview mode">
-        <button type="button" aria-pressed={previewMode==="photo"} onClick={()=>setPreviewMode("photo")}>Studio preview</button>
-        <button type="button" aria-pressed={previewMode==="construction"} onClick={()=>setPreviewMode("construction")}>Live cut study</button>
-      </div>}
-      {shirt && pant && previewMode==="photo" && <PhotoOutfitPreview
+      {shirt && pant && <PhotoOutfitPreview
         shirt={shirt}
         pant={pant}
         style={style}
@@ -1391,17 +1376,7 @@ export function DesignerModule() {
           }
         }}
       />}
-      {shirt && pant && previewMode==="construction" && <LiveConstructionPreview
-        shirt={shirt}
-        pant={pant}
-        style={style}
-        spec={styleSpec}
-        onSpecChange={applyStyleSpec}
-        bodyProfile={bodyProfile}
-        onBodyProfileChange={setBodyProfile}
-        occasion={occasion}
-        climate={climate}
-      />}
+
       {fitCoverage.total > 0 && <div className="newDesignerFitModelNote newDesignerFitModelNoteCompact"><span>FIT PROFILE · {fitCoverage.total}/16</span></div>}
       <section className="newDesignerOutcome newDesignerOutcomeCompact" aria-live="polite" aria-label="Designer recommendation">
         {!recommendation ? <div className="newDesignerEmpty newDesignerEmptyCompact"><span>LOOK CHECK</span><strong>Preview first.</strong><p>When you like the direction, check the look.</p></div> : <>
