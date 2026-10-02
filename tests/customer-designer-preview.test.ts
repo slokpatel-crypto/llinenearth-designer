@@ -53,3 +53,10 @@ test("customer final photoreal keeps the full model in frame",()=>{
   assert.match(css,/\.newDesignerPhotoAi\{[^}]*object-fit:contain/);
   assert.doesNotMatch(css,/\.newDesignerPhotoAi\{[^}]*object-fit:cover/);
 });
+
+
+test("Style Director keeps the full photographed model visible",()=>{
+  const css=readFileSync("src/app/style-director/style-director.css","utf8");
+  assert.match(css,/\.directorExistingModel canvas\{[^}]*object-fit:contain/);
+  assert.doesNotMatch(css,/\.directorExistingModel canvas\{[^}]*object-fit:cover/);
+});
