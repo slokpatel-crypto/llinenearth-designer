@@ -817,6 +817,12 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     styleSpec:styleSpec||null,
     bodyProfile:bodyProfile||null,
     creative:creativeDirection?.id ?? null,
+    photoCalibration:photoCalibration.verified ? {
+      verified:true,
+      photoPxPerMm:verifiedPhotoPxPerMm,
+      scaleCoordinateSystem:photoCalibration.scaleCoordinateSystem,
+      proofVersion:photoCalibration.proofVersion,
+    } : {verified:false},
   });
 
   useEffect(()=>{
