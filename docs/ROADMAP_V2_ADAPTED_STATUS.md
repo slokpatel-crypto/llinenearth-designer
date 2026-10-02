@@ -97,6 +97,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Kept the same full-body photographic mannequin framing inside Designer recommendation cards instead of cropping it with cover-mode.
 - Matched Style Director photoreal letterboxing to the same deep navy studio, removing the pale frame around otherwise premium full-body renders.
 - Refined white contrast collars and cuffs with luminance-first photographic shading so they keep the real folded/seam depth without inheriting the source garment colour.
+- Increased plain-fabric microtexture retention after catalogue-shadow neutralization, so solid linen reads more like woven cloth and less like a flat painted overlay.
 - Removed the remaining Style Director simulated mannequin fallback: shirt/trouser directions stay photographic, while unsupported suit/blazer categories show the real stock fabric editorially and explicitly leave garment geometry unvisualized until a photographed template exists.
 - Removed the Style Director flat alternate-preview action from the customer flow; the live photographed model remains the instant surface and the only optional generated replacement is the explicit photoreal action.
 - Consolidated legacy customer routes so `/designer` now opens the photographic Designer, while `/visual` and `/designer-brief` hand off to Style Director; homepage suit/blazer cards no longer open the old simulated visualizer.
