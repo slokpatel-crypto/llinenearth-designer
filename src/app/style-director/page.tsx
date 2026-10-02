@@ -205,11 +205,14 @@ export default function StyleDirectorPage() {
             {heroRender ? <img src={heroRender.src} alt={heroRender.label} /> : selectedLook.realModel ? <>
               <StyleDirectorRealModelPreview shirt={selectedLook.realModel.shirtFabric} pant={selectedLook.realModel.pantFabric} style={selectedLook.realModel.style} />
               <div className="swatchCard" style={{backgroundImage:`url('${selectedLook.fabric.swatchImageUrl}')`}}><span>REAL STOCK</span></div>
-            </> : <>
-              <div className="abstractLook"><i/><i/><i/></div>
-              <div className="swatchCard" style={{backgroundImage:`url('${selectedLook.fabric.swatchImageUrl}')`}}><span>REAL STOCK</span></div>
-            </>}
-            <div className="visualBadge">{heroRender ? (renderSet?.providerLabel || "Rendered look") : selectedLook.realModel ? "Existing real model · live outfit" : "Concept view"}</div>
+            </> : <div className="directorFabricFallback" style={{backgroundImage:`linear-gradient(180deg,rgba(8,24,39,.06),rgba(8,24,39,.76)),url('${selectedLook.fabric.swatchImageUrl}')`}}>
+              <div>
+                <span>REAL STOCK / PHOTO TEMPLATE PENDING</span>
+                <strong>{selectedLook.fabric.colorName}</strong>
+                <small>Fabric is real. Garment geometry stays unvisualized until a photographed template supports this category.</small>
+              </div>
+            </div>}
+            <div className="visualBadge">{heroRender ? (renderSet?.providerLabel || "Rendered look") : selectedLook.realModel ? "Existing real model · live outfit" : "Real fabric · no simulated mannequin"}</div>
           </div>
 
           <div className="lookCopy">
