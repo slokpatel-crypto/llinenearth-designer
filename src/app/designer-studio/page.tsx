@@ -2,7 +2,6 @@ import { AppShell } from "@/components/AppShell";
 import { DesignerModule } from "@/components/DesignerModule";
 import "./designer-studio.css";
 import "./designer-light.css";
-import "./live-construction.css";
 
 export const metadata = { title: "Designer | Linen Earth", description: "Explore shirt and trouser designs from Linen Earth catalogue fabrics." };
 
