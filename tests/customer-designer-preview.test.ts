@@ -71,7 +71,7 @@ test("Style Director generated photoreal also stays full-body",()=>{
 
 test("customer Designer exposes the selected details photo-match state without switching models",()=>{
   const source=readFileSync("src/components/DesignerModule.tsx","utf8");
-  assert.match(source,/photoPreviewSupportForChoice/);
+  assert.match(source,/photoPreviewSupportForStyle/);
   assert.match(source,/photoMatchSummary/);
   assert.match(source,/PHOTO MATCH · MIXED/);
   assert.match(source,/selected details directly match a photographed template/);
