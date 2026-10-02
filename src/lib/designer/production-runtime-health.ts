@@ -16,7 +16,7 @@ function clean(value:unknown,limit=240){
 }
 
 export function summarizeProductionRuntimeHealth(input:ProductionRuntimeHealthInput){
-  const vercel=clean(input.vercel)==="1";
+  const vercel=input.vercel===true||clean(input.vercel)==="1";
   const environment=clean(input.environment,40);
   const targetEnvironment=clean(input.targetEnvironment,40);
   const projectId=clean(input.projectId,120);
