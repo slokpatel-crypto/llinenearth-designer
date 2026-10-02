@@ -178,6 +178,7 @@ for (const path of [
   "src/lib/designer/roadmap-backend-health.ts",
   "src/app/api/operator/roadmap-backend-health/route.ts",
   "tests/roadmap-backend-health.test.ts",
+  "tests/vercel-deployment-policy.test.ts",
   "src/lib/designer/fabric-truth-policy.ts",
   "src/app/api/operator/fabric-truth-policy/route.ts",
   "src/app/operator/fabric-truth-policy/page.tsx",
@@ -551,6 +552,8 @@ requireTokens("src/app/operator/roadmap-readiness/RoadmapReadinessClient.tsx", [
 requireTokens("src/lib/designer/fabric-truth-policy.ts", ["FABRIC_TRUTH_POLICY_VERSION","normalizeFabricTruthPolicy","evaluateFabricTruthPolicy","gateComplete"]);
 requireTokens("src/lib/designer/roadmap-backend-health.ts", ["ROADMAP_BACKEND_CAPABILITIES","summarizeRoadmapBackendHealth","productionCutEvidence","verifiedMeterageCuts"]);
 requireTokens("src/app/api/operator/roadmap-backend-health/route.ts", ["verifyOperatorSession","roadmap_v2_evidence_health","summarizeRoadmapBackendHealth"]);
+requireTokens("vercel.json", ["deploymentEnabled","\"**\": false","\"main\": true","ignoreCommand"]);
+requireTokens("scripts/vercel-ignore.mjs", ["VERCEL_GIT_COMMIT_REF","PRODUCTION_BRANCH = \"main\"","preserve production build quota"]);
 requireTokens("src/app/api/operator/fabric-truth-policy/route.ts", ["verifyOperatorSession","fabric_truth_evidence_policy","normalizeFabricTruthPolicy"]);
 requireTokens("src/app/operator/fabric-truth-policy/FabricTruthPolicyClient.tsx", ["The software does not choose these thresholds","Save approved policy","LIVE PHYSICAL COVERAGE"]);
 requireTokens("src/lib/designer/fit-outcomes.ts", ["designer-fit-outcomes-v1","aggregateFitOutcomes","fitOutcomeSignalFor"]);

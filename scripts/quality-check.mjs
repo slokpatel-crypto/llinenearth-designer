@@ -72,11 +72,18 @@ console.log("Linen Earth brand spelling gate passed: no double-L typo remains in
 
 const vercelConfig = JSON.parse(fs.readFileSync("vercel.json","utf8"));
 if (vercelConfig.ignoreCommand !== "node scripts/vercel-ignore.mjs") throw new Error("Vercel duplicate-build guard regression: ignoreCommand changed.");
-const vercelIgnore = fs.readFileSync("scripts/vercel-ignore.mjs","utf8");
-for (const token of ["VERCEL_PROJECT_ID","prj_b3rwwOl5OI0VV3qYyKXPFOloCllT","process.exit(0)","process.exit(1)"]) {
-  if (!vercelIgnore.includes(token)) throw new Error(`Vercel duplicate-build guard regression: missing ${token}`);
+if (vercelConfig.git?.deploymentEnabled?.["**"] !== false || vercelConfig.git?.deploymentEnabled?.main !== true) {
+  throw new Error("Vercel Git deployment policy regression: only main may auto-deploy.");
 }
-console.log("Vercel duplicate-build guard passed: only the primary Linen Earth web project is allowed to build from Git.");
+const vercelIgnore = fs.readFileSync("scripts/vercel-ignore.mjs","utf8");
+for (const token of ["VERCEL_PROJECT_ID","VERCEL_GIT_COMMIT_REF","prj_b3rwwOl5OI0VV3qYyKXPFOloCllT","PRODUCTION_BRANCH = \"main\"","preserve production build quota","process.exit(0)","process.exit(1)"]) {
+  if (!vercelIgnore.includes(token)) throw new Error(`Vercel deployment guard regression: missing ${token}`);
+}
+const vercelPolicyTest=fs.readFileSync("tests/vercel-deployment-policy.test.ts","utf8");
+for (const token of ["disables every branch except main","ignores preview branches","continues the production build"]) {
+  if(!vercelPolicyTest.includes(token)) throw new Error(`Vercel deployment-policy test regression: missing ${token}`);
+}
+console.log("Vercel deployment guard passed: duplicate projects and non-main previews cannot consume production build quota.");
 
 
 const intelligence = fs.readFileSync("src/lib/fashion-intelligence.ts","utf8");
