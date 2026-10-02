@@ -316,7 +316,12 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "masks.pant",
   "featheredPathMask",
   "pathMasks",
+  "if(path) context.drawImage(featheredPathMask(path),0,0)",
   "Contrast collars/cuffs sit directly beside skin and hands",
+]);
+requireTokens("tests/customer-designer-preview.test.ts", [
+  "photographic garment clips feather only inside the real cloth boundary",
+  "newDesignerConstruction",
 ]);
 requireTokens("src/lib/designer/brand-language.ts", [
   "linen-earth-brand-language-provisional-1",
