@@ -52,10 +52,10 @@ function ratio(done:number,total:number){
   if(total<=0) return 0;
   return Math.max(0,Math.min(100,Math.round(done/total*100)));
 }
-function phase(input:Omit<RoadmapPhaseState,"status">):RoadmapPhaseState{
+function phase(input:Omit<RoadmapPhaseState,"status">&{status?:RoadmapPhaseStatus}):RoadmapPhaseState{
   return {
     ...input,
-    status:input.evidenceComplete?"complete":input.engineeringComplete?"evidence":"open",
+    status:input.status??(input.evidenceComplete?"complete":input.engineeringComplete?"evidence":"open"),
   };
 }
 
