@@ -229,6 +229,45 @@ test("customer-facing photoreal fails closed to the trusted instant preview when
 });
 
 
+test("server binds secondary generation to the exact front image that passed QA",()=>{
+  const preview=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  const renderRoute=readFileSync("src/app/api/designer/look-render/route.ts","utf8");
+  const inspectRoute=readFileSync("src/app/api/designer/look-inspect/route.ts","utf8");
+  const outcomes=readFileSync("src/lib/designer/render-outcomes.ts","utf8");
+
+  assert.match(preview,/frontJobId:creativeAi\.jobId/);
+  assert.match(renderRoute,/frontJobId\?:string/);
+  assert.match(renderRoute,/approvedFrontRenderEvidence/);
+  assert.match(renderRoute,/Front photoreal must pass server-verified fidelity QA before generating another view/);
+  assert.match(inspectRoute,/inspectedImageSha256:renderImageIdentity\(image\)/);
+  assert.match(outcomes,/export function renderImageIdentity/);
+  assert.match(outcomes,/row\.qa_status!=="pass"/);
+  assert.match(outcomes,/row\.shirt_id!==input\.shirtId \|\| row\.pant_id!==input\.pantId/);
+  assert.match(outcomes,/payload\?\.inspectedImageSha256===imageIdentity/);
+});
+
+
+test("targeted front repair replaces stale memory and durable cache identity",()=>{
+  const preview=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  const renderRoute=readFileSync("src/app/api/designer/look-render/route.ts","utf8");
+  const ai=readFileSync("src/lib/ai-visualization.ts","utf8");
+
+  assert.match(preview,/lockedPreviewImage=canvasRef\.current\.toDataURL\("image\/jpeg",\.92\)/);
+  assert.match(preview,/selectedLookSessionCache\.set\([\s\S]*renderSignature,[\s\S]*repairCheck\?\.available/);
+  assert.match(renderRoute,/repairSelectedLookFashnFront[\s\S]*storeDurableSelectedLookRender\(input,result,"front"\)/);
+  assert.match(ai,/A repair replaces the stale in-memory front result/);
+  assert.match(ai,/storeSelectedRender\(input,result\)/);
+});
+
+
+test("cached renders are backfilled into outcome evidence before QA attachment",()=>{
+  const renderRoute=readFileSync("src/app/api/designer/look-render/route.ts","utf8");
+  assert.match(renderRoute,/if\(memoryCached\) \{[\s\S]*recordRenderOutcome\(\{result:memoryCached,view:"front"/);
+  assert.match(renderRoute,/if\(durableCached\) \{[\s\S]*recordRenderOutcome\(\{result:durableCached,view:"front"/);
+  assert.match(renderRoute,/recordRenderOutcome\(\{result:durableCached,view,shirtId:input\.shirt\.id,pantId:input\.pant\.id\}\)/);
+});
+
+
 test("existing secondary views require their own fidelity state before normal display",()=>{
   const preview=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   assert.match(preview,/const existingCheck=existing\.selectedCheck/);
