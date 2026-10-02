@@ -336,17 +336,26 @@ function drawGarment(
   context.fillStyle = pattern;
   context.fillRect(0, 0, WIDTH, HEIGHT);
 
-  // Normalize the neutral studio photo's midtone before multiplying. The cloth
-  // retains its photographed hue instead of turning dull or too dark, while
-  // the model's creases and seams still shape the result.
-  context.globalCompositeOperation = "multiply";
+  // Transfer the photographed garment's luminance rather than multiplying its
+  // original cloth colour into the selected Linen Earth fabric. This keeps the
+  // selected swatch hue/saturation dominant while the real studio photograph
+  // supplies broad light, shadow, folds and seam depth.
+  const detailBrightness = placement.detailBrightness ?? 1.3;
+  context.globalCompositeOperation = "luminosity";
+  context.globalAlpha = .82;
   context.filter = lightingFilter;
   context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
 
-  // Reintroduce photographic folds and seams after neutralizing the source
-  // garment luminance. A dark source shirt must not make a light selected
-  // fabric look charcoal; we preserve structure, not the template colour.
-  const detailBrightness = placement.detailBrightness ?? 1.3;
+  // A restrained multiply pass puts weight back into the deepest folds without
+  // recreating the old dark/painted overlay. The calibrated lighting filter
+  // keeps dark source garments from dragging pale selected fabrics to charcoal.
+  context.globalCompositeOperation = "multiply";
+  context.globalAlpha = .16;
+  context.filter = lightingFilter;
+  context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
+
+  // Reintroduce high-frequency photographic folds and seams after the broad
+  // luminance transfer. We preserve structure, not the template cloth colour.
   context.filter = `grayscale(1) contrast(1.18) brightness(${detailBrightness})`;
   context.globalCompositeOperation = "soft-light";
   context.globalAlpha = .22;
