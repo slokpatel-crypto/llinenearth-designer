@@ -81,7 +81,7 @@ export function selectedLookRenderCacheKey(
   frontImage?:string,
 ) {
   const canonical=stableValue({
-    version:"linen-final-render-cache-v1",
+    version:"linen-final-render-cache-v2-locked-preview-source",
     view,
     shirtId:input.shirt.id,
     pantId:input.pant.id,
