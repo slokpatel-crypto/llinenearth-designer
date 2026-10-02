@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { summarizeRoadmapReadiness } from "../src/lib/designer/roadmap-readiness.ts";
+import { ROADMAP_BACKEND_CAPABILITIES } from "../src/lib/designer/roadmap-backend-health.ts";
+
+
+function healthyBackend(){
+  return {summary:{capabilities:Object.fromEntries(ROADMAP_BACKEND_CAPABILITIES.map((key)=>[key,true]))}};
+}
 
 function launchEvidence(){
   const betaAttempts=Array.from({length:5},(_,index)=>({
@@ -45,6 +51,7 @@ test("roadmap control tower keeps human and physical evidence separate from engi
     },
     meterageModel:{models:[{garment:"shirt",status:"approved"},{garment:"trouser",status:"approved"}]},
     customerOutcomes:{summary:{gateComplete:true,learningEligible:10,threshold:10}},
+    backendHealth:healthyBackend(),
   });
 
   const byPhase=new Map(summary.phases.map((item)=>[item.phase,item]));
@@ -125,4 +132,20 @@ test("Phase 2 remains open when the same thresholds are only in review",()=>{
     }},
   });
   assert.equal(summary.phases.find((item)=>item.phase===2)?.evidenceComplete,false);
+});
+
+
+test("Phase 9 cannot pass when the live production backend contract is incomplete",()=>{
+  const capabilities=Object.fromEntries(ROADMAP_BACKEND_CAPABILITIES.map((key)=>[key,true])) as Record<string,boolean>;
+  capabilities.productionCutEvidence=false;
+  const summary=summarizeRoadmapReadiness({
+    deviceQa:{latest:{mobile:{status:"accepted"},tablet:{status:"accepted"},desktop:{status:"accepted"}}},
+    launchReadiness:launchEvidence(),
+    backendHealth:{summary:{capabilities}},
+  });
+  const phase9=summary.phases.find((item)=>item.phase===9);
+  assert.equal(phase9?.evidenceComplete,false);
+  assert.match(phase9?.blocker||"",/production supabase backend contract/i);
+  assert.equal(summary.backendHealthy,false);
+  assert.deepEqual(summary.backendMissing,["productionCutEvidence"]);
 });
