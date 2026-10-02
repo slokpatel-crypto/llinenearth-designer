@@ -211,6 +211,7 @@ for (const path of [
   "supabase/migrations/20261030_stock_consumption_provenance.sql",
   "supabase/migrations/20261031_stock_reservation_concurrency_provenance.sql",
   "supabase/migrations/20261101_foreign_key_index_hardening.sql",
+  "supabase/migrations/20261102_private_schema_deny_by_default.sql",
   "supabase/migrations/20261001_production_quotes_orders.sql",
   "supabase/migrations/20261001_render_outcomes.sql",
   "src/lib/designer/render-outcomes.ts",
@@ -291,6 +292,7 @@ requireTokens("supabase/migrations/20261022_style_director_handoff_audit.sql", [
 requireTokens("supabase/migrations/20261023_style_director_handoff_validation.sql", ["handoff_audit_id","style_director_user_test_record_v2","verified handoff audit id is required","service_role"]);
 requireTokens("supabase/migrations/20261024_style_director_distinct_handoff_gate.sql", ["style_director_validation_signoff_record_v3","distinct handoff_audit_id","distinct verified Style Director handoffs","service_role"]);
 requireTokens("supabase/migrations/20261027_roadmap_v2_evidence_health.sql", ["roadmap_v2_evidence_health","noviceServerTimer","verifiedBetaFlow","signedStyleHandoff","distinctStyleValidation","renderManualReview","measurementEvidence","productionDeliveryEvidence","stockProvenance","garmentQcProvenance","deliveryProvenance","outcomeLearningContext","productionCutEvidence","verifiedMeterageCuts","service_role"]);
+requireTokens("supabase/migrations/20261102_private_schema_deny_by_default.sql", ["revoke all privileges on schema private","revoke all privileges on all tables in schema private","revoke all privileges on all functions in schema private","alter default privileges for role postgres in schema private","privateSchemaDenyByDefault","has_schema_privilege('anon','private','USAGE')"]);
 requireTokens("supabase/migrations/20261024_style_director_handoff_uniqueness.sql", ["token_fingerprint","style_director_handoff_audit_record_v2","style_director_user_tests_handoff_unique","service_role"]);
 requireTokens("supabase/migrations/20261026_style_director_verified_signoff.sql", ["count(distinct l.handoff_audit_id)","join private.style_director_handoff_audit","verified positive Style Director cases","service_role"]);
 requireTokens("src/lib/designer/ease-calibration.ts", ["requiredEaseEvidenceKeys","evidenceCoverageComplete","normalizeHouseEaseCalibrationDraft","SHIRT_EASE_CLASSES","TROUSER_EASE_CLASSES"]);
@@ -572,7 +574,7 @@ requireTokens("src/app/operator/OperatorClient.tsx", [
 requireTokens("src/lib/designer/roadmap-readiness.ts", ["summarizeRoadmapReadiness","fabricTruthEvidence","phase2Complete=reviewedComplete&&colorComplete&&fabricTruthEvidence.gateComplete","phase1Complete","phase8Complete","phase9Complete","backendHealth.gateComplete","productionRuntime.gateComplete"]);
 requireTokens("src/app/operator/roadmap-readiness/RoadmapReadinessClient.tsx", ["Readiness Control Tower","ENGINEERING","PRODUCTION BACKEND","PRODUCTION RUNTIME","REAL EVIDENCE","No phase is promoted from missing data"]);
 requireTokens("src/lib/designer/fabric-truth-policy.ts", ["FABRIC_TRUTH_POLICY_VERSION","normalizeFabricTruthPolicy","evaluateFabricTruthPolicy","gateComplete"]);
-requireTokens("src/lib/designer/roadmap-backend-health.ts", ["ROADMAP_BACKEND_CAPABILITIES","summarizeRoadmapBackendHealth","productionCutEvidence","verifiedMeterageCuts"]);
+requireTokens("src/lib/designer/roadmap-backend-health.ts", ["ROADMAP_BACKEND_CAPABILITIES","summarizeRoadmapBackendHealth","productionCutEvidence","verifiedMeterageCuts","privateSchemaDenyByDefault"]);
 requireTokens("src/app/api/operator/roadmap-backend-health/route.ts", ["verifyOperatorSession","roadmap_v2_evidence_health","summarizeRoadmapBackendHealth"]);
 requireTokens("src/lib/designer/production-runtime-health.ts", ["PRIMARY_VERCEL_PROJECT_ID","summarizeProductionRuntimeHealth","VERCEL_DEPLOYMENT_ID","VERCEL_GIT_COMMIT_SHA","primaryProject"]);
 requireTokens("src/app/api/operator/production-runtime-health/route.ts", ["verifyOperatorSession","productionRuntimeHealthFromEnv","private, no-store"]);
