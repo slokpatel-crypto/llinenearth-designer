@@ -24,26 +24,71 @@ test("Vercel Git config disables every branch except main",()=>{
   assert.equal(config.ignoreCommand,"node scripts/vercel-ignore.mjs");
 });
 
-test("duplicate Vercel projects are ignored even on main",()=>{
-  const result=runIgnore({VERCEL_PROJECT_ID:"prj_duplicate",VERCEL_GIT_COMMIT_REF:"main"});
+test("duplicate Vercel projects are ignored even on a marked main commit",()=>{
+  const result=runIgnore({
+    VERCEL_PROJECT_ID:"prj_duplicate",
+    VERCEL_GIT_COMMIT_REF:"main",
+    VERCEL_GIT_COMMIT_MESSAGE:"[deploy] milestone",
+  });
   assert.equal(result.status,0);
   assert.match(result.stdout,/Duplicate Vercel project/);
 });
 
 test("primary Vercel project ignores preview branches",()=>{
-  const result=runIgnore({VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,VERCEL_GIT_COMMIT_REF:"feature/preview"});
+  const result=runIgnore({
+    VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
+    VERCEL_GIT_COMMIT_REF:"feature/preview",
+    VERCEL_GIT_COMMIT_MESSAGE:"[deploy] preview",
+  });
   assert.equal(result.status,0);
   assert.match(result.stdout,/preserve production build quota/);
 });
 
-test("primary Vercel main branch continues the production build",()=>{
-  const result=runIgnore({VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,VERCEL_GIT_COMMIT_REF:"main"});
+test("ordinary primary main commits are ignored until a deployment milestone",()=>{
+  const result=runIgnore({
+    VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
+    VERCEL_GIT_COMMIT_REF:"main",
+    VERCEL_GIT_COMMIT_MESSAGE:"Merge customer photo-match status",
+  });
+  assert.equal(result.status,0);
+  assert.match(result.stdout,/no \[deploy\] milestone marker/);
+});
+
+test("explicitly marked primary main commit continues the production build",()=>{
+  const result=runIgnore({
+    VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
+    VERCEL_GIT_COMMIT_REF:"main",
+    VERCEL_GIT_COMMIT_MESSAGE:"[deploy] Roadmap v2 major milestone",
+  });
   assert.equal(result.status,1);
   assert.match(result.stdout,/continue production build/);
 });
 
+test("deployment marker is case-insensitive",()=>{
+  const result=runIgnore({
+    VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
+    VERCEL_GIT_COMMIT_REF:"main",
+    VERCEL_GIT_COMMIT_MESSAGE:"[DEPLOY] customer photo milestone",
+  });
+  assert.equal(result.status,1);
+});
+
 test("missing Vercel branch metadata fails safe by continuing",()=>{
-  const result=runIgnore({VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,VERCEL_GIT_COMMIT_REF:undefined});
+  const result=runIgnore({
+    VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
+    VERCEL_GIT_COMMIT_REF:undefined,
+    VERCEL_GIT_COMMIT_MESSAGE:undefined,
+  });
   assert.equal(result.status,1);
   assert.match(result.stdout,/continue build fail-safe/);
+});
+
+test("missing commit-message metadata on main fails safe by continuing",()=>{
+  const result=runIgnore({
+    VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
+    VERCEL_GIT_COMMIT_REF:"main",
+    VERCEL_GIT_COMMIT_MESSAGE:undefined,
+  });
+  assert.equal(result.status,1);
+  assert.match(result.stdout,/COMMIT_MESSAGE unavailable/);
 });
