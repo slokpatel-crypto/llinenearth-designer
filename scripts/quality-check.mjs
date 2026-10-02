@@ -84,6 +84,11 @@ for (const token of ["disables every branch except main","ignores preview branch
   if(!vercelPolicyTest.includes(token)) throw new Error(`Vercel deployment-policy test regression: missing ${token}`);
 }
 console.log("Vercel deployment guard passed: duplicate projects and non-main previews cannot consume production build quota.");
+const ciWorkflow=fs.readFileSync(".github/workflows/ci.yml","utf8");
+for(const token of ["concurrency:","github.event.pull_request.number || github.ref","cancel-in-progress: true"]) {
+  if(!ciWorkflow.includes(token)) throw new Error(`CI concurrency regression: missing ${token}`);
+}
+console.log("CI concurrency gate passed: superseded branch runs are cancelled instead of wasting validation capacity.");
 
 
 const intelligence = fs.readFileSync("src/lib/fashion-intelligence.ts","utf8");
