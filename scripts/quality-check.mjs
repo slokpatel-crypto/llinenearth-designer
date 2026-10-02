@@ -234,13 +234,17 @@ for(const token of ["directorFabricFallback","REAL STOCK / PHOTO TEMPLATE PENDIN
 if(styleDirectorCss.includes(".abstractLook")) throw new Error("Style Director photo-first regression: simulated mannequin CSS returned.");
 if(!styleDirectorCss.includes(".directorFabricFallback")) throw new Error("Style Director truthful fallback regression: fabric editorial fallback CSS missing.");
 console.log("Style Director photo-only fallback gate passed: unsupported categories show real fabric without simulated garment geometry.");
-for(const token of ["visualizePhotoreal","/api/visualization/fashn","Make photoreal"]) {
+for(const token of ["visualizePhotoreal","/api/designer/look-render","lockedPreviewImage:lockedPreviewImage || undefined","onPreviewReady={setLockedPreviewImage}","Preparing real model…","Photoreal unlocks when a photographed garment template supports this category"]) {
   if(!styleDirectorPhotoPage.includes(token)) throw new Error(`Style Director photo-first action regression: missing ${token}`);
 }
-for(const token of ["/api/visualization/render","Generate alternate preview"]) {
-  if(styleDirectorPhotoPage.includes(token)) throw new Error(`Style Director photo-first action regression: legacy flat preview returned: ${token}`);
+for(const token of ["/api/visualization/fashn","/api/visualization/render","Generate alternate preview"]) {
+  if(styleDirectorPhotoPage.includes(token)) throw new Error(`Style Director photo-first action regression: legacy generated source returned: ${token}`);
 }
-console.log("Style Director photo-first action gate passed: customer actions cannot replace the real-model surface with the flat alternate preview.");
+for(const token of ["onPreviewReady?:(dataUrl:string)=>void",'onPreviewReadyRef.current(canvas.toDataURL("image/jpeg",.92))']) {
+  if(!photoPreview.includes(token)) throw new Error(`Style Director locked-preview handoff regression: missing ${token}`);
+}
+if(!styleDirectorCss.includes(".directorPhotoPending")) throw new Error("Style Director unsupported-photoreal state styling is missing.");
+console.log("Style Director photo-first action gate passed: photoreal refinement uses the same validated real-model preview and unsupported categories cannot invoke a simulated source.");
 const legacyDesignerRoute=fs.readFileSync("src/app/designer/page.tsx","utf8");
 const legacyVisualRoute=fs.readFileSync("src/app/visual/page.tsx","utf8");
 const legacyBriefRoute=fs.readFileSync("src/app/designer-brief/page.tsx","utf8");
