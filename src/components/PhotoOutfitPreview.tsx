@@ -560,9 +560,19 @@ function drawWhiteDetail(target: CanvasRenderingContext2D, photo: HTMLImageEleme
   if (!context) throw new Error("Canvas is unavailable.");
   context.fillStyle = "#faf9f5";
   context.fillRect(0, 0, WIDTH, HEIGHT);
-  context.globalCompositeOperation = "multiply";
+
+  // White contrast cloth should borrow photographed light and seam depth, not
+  // the source garment colour. Luminance-first shading keeps the collar/cuff
+  // clean white while retaining the real folded edge beside neck and hands.
+  context.globalCompositeOperation = "luminosity";
+  context.globalAlpha = .9;
   context.filter = `grayscale(1) brightness(${brightness}) contrast(1.05)`;
   context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
+  context.globalCompositeOperation = "multiply";
+  context.globalAlpha = .12;
+  context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
+
+  context.globalAlpha = 1;
   context.filter = "none";
   context.globalCompositeOperation = "destination-in";
   // Contrast collars/cuffs sit directly beside skin and hands. Use the same

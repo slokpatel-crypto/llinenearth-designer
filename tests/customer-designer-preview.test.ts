@@ -107,3 +107,11 @@ test("Style Director photoreal letterbox matches the navy studio",()=>{
   assert.match(css,/\.lookVisual img\{[^}]*object-fit:contain[^}]*background:#081827/);
   assert.doesNotMatch(css,/\.lookVisual img\{[^}]*background:#eeeae4/);
 });
+
+
+test("contrast collar and cuff shading stays photographic without source-colour contamination",()=>{
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.match(source,/function drawWhiteDetail[\s\S]*globalCompositeOperation = "luminosity"[\s\S]*globalAlpha = \.9/);
+  assert.match(source,/function drawWhiteDetail[\s\S]*globalCompositeOperation = "multiply"[\s\S]*globalAlpha = \.12/);
+  assert.match(source,/clean white while retaining the real folded edge beside neck and hands/);
+});
