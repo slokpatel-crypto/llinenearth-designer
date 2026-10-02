@@ -33,6 +33,7 @@ for (const path of [
   "src/app/real-model/page.tsx",
   "public/designer/studio-tucked.webp",
   "src/lib/designer/photo-preview.ts",
+  "src/lib/designer/photo-preview-support.ts",
   "src/lib/designer/block-strategy.ts",
   "src/lib/designer/fit-construction.ts",
   "src/lib/designer/house-ease-server.ts",
