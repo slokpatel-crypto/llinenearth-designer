@@ -65,9 +65,15 @@ export async function POST(request:Request) {
     }
     if(view==="front") {
       const memoryCached=getCachedSelectedLookRender(input);
-      if(memoryCached) return NextResponse.json({result:memoryCached},{headers:{"x-linen-render-cache":"memory"}});
+      if(memoryCached) {
+        await recordRenderOutcome({result:memoryCached,view:"front",shirtId:input.shirt.id,pantId:input.pant.id});
+        return NextResponse.json({result:memoryCached},{headers:{"x-linen-render-cache":"memory"}});
+      }
       const durableCached=await loadDurableSelectedLookRender(input,"front");
-      if(durableCached) return NextResponse.json({result:durableCached},{headers:{"x-linen-render-cache":"durable"}});
+      if(durableCached) {
+        await recordRenderOutcome({result:durableCached,view:"front",shirtId:input.shirt.id,pantId:input.pant.id});
+        return NextResponse.json({result:durableCached},{headers:{"x-linen-render-cache":"durable"}});
+      }
     } else {
       const frontImage=String(input.frontImage||"");
       const frontJobId=String(input.frontJobId||"").trim();
@@ -84,7 +90,10 @@ export async function POST(request:Request) {
         return NextResponse.json({error:"Front photoreal must pass server-verified fidelity QA before generating another view."},{status:409});
       }
       const durableCached=await loadDurableSelectedLookRender(input,view,frontImage);
-      if(durableCached) return NextResponse.json({result:durableCached},{headers:{"x-linen-render-cache":"durable"}});
+      if(durableCached) {
+        await recordRenderOutcome({result:durableCached,view,shirtId:input.shirt.id,pantId:input.pant.id});
+        return NextResponse.json({result:durableCached},{headers:{"x-linen-render-cache":"durable"}});
+      }
     }
 
     assertFashnRateLimit(request);
