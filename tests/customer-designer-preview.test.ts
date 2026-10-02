@@ -115,3 +115,17 @@ test("contrast collar and cuff shading stays photographic without source-colour 
   assert.match(source,/function drawWhiteDetail[\s\S]*globalCompositeOperation = "multiply"[\s\S]*globalAlpha = \.12/);
   assert.match(source,/clean white while retaining the real folded edge beside neck and hands/);
 });
+
+
+test("Style Director never falls back to a simulated mannequin",()=>{
+  const page=readFileSync("src/app/style-director/page.tsx","utf8");
+  assert.doesNotMatch(page,/abstractLook/);
+  assert.match(page,/directorFabricFallback/);
+  assert.match(page,/REAL STOCK \/ PHOTO TEMPLATE PENDING/);
+  assert.match(page,/Real fabric · no simulated mannequin/);
+  assert.match(page,/Garment geometry stays unvisualized until a photographed template supports this category/);
+
+  const css=readFileSync("src/app/style-director/style-director.css","utf8");
+  assert.doesNotMatch(css,/\.abstractLook/);
+  assert.match(css,/\.directorFabricFallback/);
+});
