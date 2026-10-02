@@ -233,6 +233,7 @@ requireTokens("src/lib/designer/photo-calibration-types.ts", ["CustomerPhotoCali
 requireTokens("src/lib/designer/phase1-proof-server.ts", ['import "server-only"',"loadLatestPhase1ProofRecord","style_events","supabaseAdminHeaders"]);
 requireTokens("src/app/api/designer/photo-calibration/route.ts", ["customerPhotoCalibrationFromProofPayload","UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION","cache-control","no-store"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["/api/designer/photo-calibration","photoPxPerMm:verifiedPhotoPxPerMm","accepted studio calibration","patterned scale stays approximate"]);
+requireTokens("src/app/designer-studio/designer-light.css", [".newDesignerPhotoAi","object-fit:contain","background:#eeeae4"]);
 requireTokens("src/lib/designer/live-preview.ts", ["photoFabricPatternScale","photoExpectedRepeatPx","photoPxPerMm"]);
 requireTokens("src/lib/fabric-intelligence-evidence.ts", ["intelligence.trust!==\"reviewed\"","auditablePhysicalSource","evidenceNote","fieldProvenance","measured.pattern.physicalScale","verifiedPhysical.gsm","verifiedPhysical.drape","verifiedPhysical.fiberContent","patternScaleVerified","fiberContentVerified"]);
 requireTokens("src/lib/fabric-intelligence-server.ts", ["fieldProvenance:{...profile.provenanceByField}"]);
