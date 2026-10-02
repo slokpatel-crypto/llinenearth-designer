@@ -536,6 +536,8 @@ requireTokens("src/app/api/designer/casebook/route.ts", [
 requireTokens("src/app/operator/OperatorClient.tsx", [
   "DESIGNER CASE REVIEW","Approve case","Reject case","designer_case_review"
 ]);
+requireTokens("src/lib/designer/roadmap-readiness.ts", ["summarizeRoadmapReadiness","Phase 2 remains evidence-open","phase1Complete","phase8Complete","phase9Complete"]);
+requireTokens("src/app/operator/roadmap-readiness/RoadmapReadinessClient.tsx", ["Readiness Control Tower","ENGINEERING","REAL EVIDENCE","No phase is promoted from missing data"]);
 requireTokens("src/lib/designer/fit-outcomes.ts", ["designer-fit-outcomes-v1","aggregateFitOutcomes","fitOutcomeSignalFor"]);
 requireTokens("src/app/api/designer/casebook/route.ts", ["aggregateFitOutcomes","fitOutcomes"]);
 requireTokens("src/app/operator/OperatorClient.tsx", ["FIRST-FITTING OUTCOME","designer_fit_outcome","saveFitOutcome"]);
@@ -756,9 +758,7 @@ if (live) {
 }
 
 if (failed) {
-  console.error("\requireTokens("src/lib/designer/roadmap-readiness.ts", ["summarizeRoadmapReadiness","Phase 2 remains evidence-open","phase1Complete","phase8Complete","phase9Complete"]);
-requireTokens("src/app/operator/roadmap-readiness/RoadmapReadinessClient.tsx", ["Readiness Control Tower","ENGINEERING","REAL EVIDENCE","No phase is promoted from missing data"]);
-nLinen Earth release is NOT ready.");
+  console.error("\nLinen Earth release is NOT ready.");
   process.exit(1);
 }
 
