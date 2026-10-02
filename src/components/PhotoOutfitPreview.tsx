@@ -1099,6 +1099,15 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     setCreativeAiLoading(true);
     setCreativeAiError("");
     try {
+      let lockedPreviewImage:string|undefined;
+      if(ready && canvasRef.current) {
+        try {
+          lockedPreviewImage=canvasRef.current.toDataURL("image/jpeg",.92);
+        } catch {
+          // Repair still has the existing trusted generated image if browser
+          // serialization is unavailable.
+        }
+      }
       const response=await fetch("/api/designer/look-render",{
         method:"POST",
         headers:{"content-type":"application/json"},
@@ -1113,6 +1122,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
           bodyProfile,
           locked:true,
           lookKey:renderSignature,
+          lockedPreviewImage,
         }),
       });
       const data=await response.json() as {result?:PhotorealResult;error?:string};
@@ -1123,6 +1133,10 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       setSelectedRepairCount(1);
       setShowCreativeAi(false);
       const repairCheck=await inspectSelectedLook(data.result);
+      selectedLookSessionCache.set(
+        renderSignature,
+        repairCheck?.available ? {...data.result,selectedCheck:repairCheck} : data.result,
+      );
       if(repairCheck?.available && repairCheck.status==="pass") setShowCreativeAi(true);
     } catch(error) {
       setCreativeAiError(error instanceof Error ? error.message : "Photoreal repair failed.");
@@ -1183,6 +1197,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         body:JSON.stringify({
           view,
           frontImage:creativeAi.image,
+          frontJobId:creativeAi.jobId,
           shirt:{id:shirt.id,name:shirt.name,line:shirt.line,image:shirt.image,hex:shirt.hex,patternType:shirt.patternType},
           pant:{id:pant.id,name:pant.name,line:pant.line,image:pant.image,hex:pant.hex,patternType:pant.patternType},
           style,

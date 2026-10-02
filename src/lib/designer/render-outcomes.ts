@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import type { CreativeFashnResult, SelectedLookView } from "@/lib/ai-visualization";
 
@@ -80,6 +81,31 @@ export async function attachRenderQa(input:{
   }catch{
     return false;
   }
+}
+
+export function renderImageIdentity(image:string) {
+  const value=String(image||"").trim();
+  return value ? createHash("sha256").update(value).digest("hex") : "";
+}
+
+export async function approvedFrontRenderEvidence(input:{
+  jobId:string;
+  image:string;
+  shirtId:string;
+  pantId:string;
+}) {
+  const jobId=String(input.jobId||"").trim().slice(0,180);
+  const imageIdentity=renderImageIdentity(input.image);
+  if(!jobId || !imageIdentity || !getSupabaseAdminConfig()) return false;
+  const rows=await listRenderOutcomes(1000);
+  const row=rows.find((item)=>item.job_id===jobId && item.view==="front");
+  if(!row || row.qa_status!=="pass") return false;
+  if(row.shirt_id!==input.shirtId || row.pant_id!==input.pantId) return false;
+  if(!["selected-look","selected-look-locked-preview","selected-look-repair"].includes(row.concept_id)) return false;
+  const payload=row.qa_payload && typeof row.qa_payload==="object"
+    ? row.qa_payload as Record<string,unknown>
+    : null;
+  return payload?.inspectedImageSha256===imageIdentity;
 }
 
 export async function reviewRenderOutcome(input:{
