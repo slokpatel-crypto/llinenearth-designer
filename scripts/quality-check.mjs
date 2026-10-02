@@ -219,6 +219,29 @@ for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","P
   if (!photoGeometry.includes(token)) throw new Error(`Real photographic Designer regression: photo-preview missing ${token}`);
 }
 console.log("Real photographic Designer gate passed: inward-feathered garment boundaries, neck clear zone and tucked layering protected.");
+const photoCalibrationModel=fs.readFileSync("src/lib/designer/photo-calibration.ts","utf8");
+const phase1ProofServer=fs.readFileSync("src/lib/designer/phase1-proof-server.ts","utf8");
+const publicPhotoCalibrationRoute=fs.readFileSync("src/app/api/designer/photo-calibration/route.ts","utf8");
+const photoCalibrationTest=fs.readFileSync("tests/photo-calibration.test.ts","utf8");
+for(const token of ["customerPhotoCalibrationFromProofPayload","UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION","coreAccepted===true","scaleGatePass===true","physicalEvidenceReady===true","boundaryReady===true"]) {
+  if(!photoCalibrationModel.includes(token)) throw new Error(`Customer photo-calibration regression: model missing ${token}`);
+}
+for(const token of ['import "server-only"',"loadLatestPhase1ProofRecord","supabaseAdminHeaders","style_events"]) {
+  if(!phase1ProofServer.includes(token)) throw new Error(`Phase 1 proof server regression: missing ${token}`);
+}
+for(const token of ["customerPhotoCalibrationFromProofPayload","UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION","s-maxage=60"]) {
+  if(!publicPhotoCalibrationRoute.includes(token)) throw new Error(`Public photo-calibration route regression: missing ${token}`);
+}
+for(const privateToken of ["physicalEvidenceNote","realismAssessments","viewerId","strongRatings"]) {
+  if(publicPhotoCalibrationRoute.includes(privateToken)) throw new Error(`Public photo-calibration privacy regression: leaked ${privateToken}`);
+}
+for(const token of ["/api/designer/photo-calibration","photoPxPerMm:verifiedPhotoPxPerMm","accepted studio calibration","patterned scale stays approximate"]) {
+  if(!photoPreview.includes(token)) throw new Error(`Customer calibrated-photo preview regression: missing ${token}`);
+}
+for(const token of ["accepted Phase 1 proof publishes only the safe photo calibration","review-state proof cannot activate","public photo-calibration route exposes no operator proof notes"]) {
+  if(!photoCalibrationTest.includes(token)) throw new Error(`Customer photo-calibration test regression: missing ${token}`);
+}
+console.log("Customer photo calibration gate passed: only accepted Phase 1 fixture scale can promote patterned photo-space scale.");
 
 
 const realDesignerModule = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
