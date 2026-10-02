@@ -213,6 +213,10 @@ for (const token of ["fabric must never spill","waistband in front of it","disti
 }
 
 console.log("Restored Designer model gate passed: Style Director visible, public nav cleaned, tucked garment boundaries protected.");
+const styleDirectorCss=fs.readFileSync("src/app/style-director/style-director.css","utf8");
+if(!/\.directorExistingModel canvas\{[^}]*object-fit:contain/.test(styleDirectorCss)) throw new Error("Style Director framing regression: photographed model must remain fully visible.");
+if(/\.directorExistingModel canvas\{[^}]*object-fit:cover/.test(styleDirectorCss)) throw new Error("Style Director framing regression: cover would crop the photographed model.");
+console.log("Style Director full-model framing gate passed: photographed model stays fully visible.");
 
 
 const photoPreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
