@@ -102,6 +102,7 @@ export function photoTemplateGaps(style: DesignerStyle, template: PhotoTemplate)
     if (style.rise !== "Mid Rise") gaps.push(style.rise);
     if (style.waistband !== "Belt Loops") gaps.push(style.waistband);
   } else gaps.push(`${style.rise} / ${style.waistband} (hidden under shirt)`);
+  gaps.push(`${style.button} buttons (material not re-rendered)`);
   return gaps;
 }
 

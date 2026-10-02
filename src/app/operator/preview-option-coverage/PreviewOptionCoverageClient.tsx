@@ -9,6 +9,7 @@ type Row={
   livePreview:"exact"|"approximate"|"none";
   aiRender:"exact"|"approximate"|"none";
   provenance:string;
+  supportReason:string;
   constructionStatus:"approved"|"rejected"|"pending"|"not_required";
   previewReview:Review|null;
 };
@@ -135,7 +136,9 @@ export default function PreviewOptionCoverageClient(){
               <Fact label="Source" value={selected.provenance}/>
             </div>
             <section style={{marginTop:18,padding:14,background:"#f3f0ea",borderRadius:10}}>
-              <strong>Approval rule</strong>
+              <strong>Photographic support truth</strong>
+              <p style={{fontSize:13,lineHeight:1.55,opacity:.78}}>{selected.supportReason}</p>
+              <strong style={{display:"block",marginTop:10}}>Approval rule</strong>
               <p style={{fontSize:13,lineHeight:1.55,opacity:.72}}>Inspect this exact choice in the customer Designer. Approve only if its instant preview communicates the intended construction well enough for design selection. “Approximate” is allowed only when the UI remains honest about the limitation. A construction-rejected or non-renderable option cannot be preview-approved.</p>
             </section>
             <label style={{display:"grid",gap:6,marginTop:14}}>Review note<textarea rows={5} value={note} onChange={(e)=>setNote(e.target.value.slice(0,800))} placeholder="What was visually checked, what remains approximate, or why it should be removed."/></label>

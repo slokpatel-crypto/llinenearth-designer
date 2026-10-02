@@ -33,6 +33,7 @@ for (const path of [
   "src/app/real-model/page.tsx",
   "public/designer/studio-tucked.webp",
   "src/lib/designer/photo-preview.ts",
+  "src/lib/designer/photo-preview-support.ts",
   "src/lib/designer/block-strategy.ts",
   "src/lib/designer/fit-construction.ts",
   "src/lib/designer/house-ease-server.ts",
@@ -142,6 +143,7 @@ for (const path of [
   "supabase/migrations/20261024_measurement_accuracy_evidence.sql",
   "supabase/migrations/20261026_style_director_verified_signoff.sql",
   "src/lib/designer/preview-option-reviews.ts",
+  "tests/photo-preview-support.test.ts",
   "src/app/api/operator/preview-option-coverage/route.ts",
   "src/app/operator/preview-option-coverage/page.tsx",
   "src/app/operator/preview-option-coverage/PreviewOptionCoverageClient.tsx",
@@ -297,9 +299,9 @@ requireTokens("src/lib/designer/novice-designer-study.ts", ["durationSeconds","l
 requireTokens("src/app/api/operator/novice-designer-study/route.ts", ["designer_novice_attempt_record","designer_novice_study_decision_record","verifyOperatorSession"]);
 requireTokens("src/app/operator/novice-designer-study/NoviceDesignerStudyClient.tsx", ["Novice Designer Completion Study","documented roadmap target","Start server stopwatch","Record server-timed attempt","Approve five-case gate"]);
 requireTokens("supabase/migrations/20261012_designer_novice_study.sql", ["designer_novice_attempts","designer_novice_study_decisions","five novice liked-design completions within the documented target","service_role"]);
-requireTokens("src/lib/designer/preview-option-reviews.ts", ["DESIGNER_STYLE_CHOICES","designer_preview_option_review","customerPreviewCoverageRows","constructionStatus"]);
+requireTokens("src/lib/designer/preview-option-reviews.ts", ["DESIGNER_STYLE_CHOICES","designer_preview_option_review","customerPreviewCoverageRows","constructionStatus","photoPreviewSupportForChoice","supportReason:photographicSupport.reason","livePreview:photographicSupport.status"]);
 requireTokens("src/app/api/operator/preview-option-coverage/route.ts", ["verifyOperatorSession","customerPreviewCoverageRows","summarizePreviewOptionCoverage"]);
-requireTokens("src/app/operator/preview-option-coverage/PreviewOptionCoverageClient.tsx", ["Customer Preview Coverage","Approve customer preview","Reject preview support","Approximate"]);
+requireTokens("src/app/operator/preview-option-coverage/PreviewOptionCoverageClient.tsx", ["Customer Preview Coverage","Approve customer preview","Reject preview support","Approximate","Photographic support truth","supportReason"]);
 requireTokens("src/app/api/operator/ease-calibration/route.ts", ["house_ease_evidence_record","house_ease_model_create","house_ease_model_approve","evidenceCoverageComplete"]);
 requireTokens("src/app/operator/ease-calibration/EaseCalibrationClient.tsx", ["House Ease Calibration","35 cells","active in Designer runtime","controlled promotion step","Register evidence-backed draft"]);
 requireTokens("supabase/migrations/20261010_house_ease_calibration_registry.sql", ["house_ease_evidence","house_ease_models","real finished-garment evidence is required for every house-ease cell","service_role"]);

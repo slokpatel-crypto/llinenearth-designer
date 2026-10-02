@@ -244,6 +244,19 @@ const designerPhotoCss=fs.readFileSync("src/app/designer-studio/designer-light.c
 if(!/\.newDesignerPhotoAi\{[^}]*object-fit:contain/.test(designerPhotoCss)) throw new Error("Final photoreal framing regression: full model must remain contained.");
 if(/\.newDesignerPhotoAi\{[^}]*object-fit:cover/.test(designerPhotoCss)) throw new Error("Final photoreal framing regression: cover would crop the model.");
 console.log("Full-body final render framing gate passed: customer photoreal stays fully visible.");
+const photoSupportSource=fs.readFileSync("src/lib/designer/photo-preview-support.ts","utf8");
+for(const token of ["photoPreviewSupportForChoice","Point (Standard) Collar","button material is specification-only","matching source photo"]) {
+  if(!photoSupportSource.includes(token)) throw new Error(`Photographic option-support regression: missing ${token}`);
+}
+const previewReviewSource=fs.readFileSync("src/lib/designer/preview-option-reviews.ts","utf8");
+for(const token of ["photoPreviewSupportForChoice","supportReason:photographicSupport.reason","livePreview:photographicSupport.status"]) {
+  if(!previewReviewSource.includes(token)) throw new Error(`Preview audit photographic-truth regression: missing ${token}`);
+}
+const previewSupportTest=fs.readFileSync("tests/photo-preview-support.test.ts","utf8");
+for(const token of ["baseline photographed shirt details are exact","unsupported cut changes stay approximate","button material stays specification-only"]) {
+  if(!previewSupportTest.includes(token)) throw new Error(`Photographic option-support test regression: missing ${token}`);
+}
+console.log("Photographic option-support gate passed: customer coverage now audits the real photo compositor rather than internal construction support.");
 
 
 const realDesignerModule = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
