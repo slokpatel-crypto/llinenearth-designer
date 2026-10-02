@@ -457,6 +457,12 @@
 .newDesignerStyleGridCompact{grid-template-columns:repeat(2,minmax(0,1fr))!important;margin-top:12px!important;gap:8px!important}
 .newDesignerStyleGridCompact label{font-size:7px!important}
 .newDesignerStyleGridCompact select{margin-top:5px!important}
+.newDesignerPhotoMatch{margin-top:10px;border:1px solid #e4ddd3;background:#faf8f4;padding:9px 10px;border-radius:9px}
+.newDesignerPhotoMatch>span{display:block;font-size:6px;letter-spacing:.14em;font-weight:800;color:#6f816d}
+.newDesignerPhotoMatch[data-state="mixed"]>span{color:#9a684f}
+.newDesignerPhotoMatch[data-state="unsupported"]>span{color:#9b4f3d}
+.newDesignerPhotoMatch p{margin:5px 0 0;font-size:7px;line-height:1.45;color:#6e6a65}
+.newDesignerPhotoMatch b{font-weight:800;color:#2f4f68}
 
 .newDesignerDraftActions{margin:0!important;display:grid!important;grid-template-columns:1fr auto!important;gap:8px!important}
 .newDesignerDraftActions button{border-radius:999px!important}
