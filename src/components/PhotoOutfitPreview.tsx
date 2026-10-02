@@ -47,6 +47,7 @@ type PhotorealResult = {
 const images = new Map<string, Promise<HTMLImageElement>>();
 const fabricTiles = new Map<string, HTMLCanvasElement>();
 const featheredMasks = new WeakMap<HTMLCanvasElement, HTMLCanvasElement>();
+const pathMasks = new Map<string, HTMLCanvasElement>();
 const tuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
 const untuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
 const selectedLookSessionCache=new Map<string,PhotorealResult>();
@@ -203,6 +204,21 @@ function featherMaskInside(mask: HTMLCanvasElement, blurPx = 1.6) {
   return feathered;
 }
 
+function featheredPathMask(path:string) {
+  const cached=pathMasks.get(path);
+  if(cached) return featherMaskInside(cached);
+
+  const mask=document.createElement("canvas");
+  mask.width=WIDTH;
+  mask.height=HEIGHT;
+  const context=mask.getContext("2d");
+  if(!context) throw new Error("Canvas is unavailable.");
+  context.fillStyle="#fff";
+  context.fill(new Path2D(path));
+  pathMasks.set(path,mask);
+  return featherMaskInside(mask);
+}
+
 
 // The tucked photo has dark, cool shirting and warm trousers. Separate them
 // by their photographed colour, so cloth never spills onto arms, neck, the
@@ -355,10 +371,10 @@ function drawGarment(
 
   context.globalCompositeOperation = "destination-in";
   if (mask) context.drawImage(featherMaskInside(mask), 0, 0);
-  if (path) {
-    context.fillStyle = "#fff";
-    context.fill(new Path2D(path));
-  }
+  // Hard SVG-like clip edges make fabric look pasted onto the photograph.
+  // Feather only toward the garment interior so collar/cuff/body boundaries
+  // inherit the photographed antialiasing without leaking onto skin or set.
+  if (path) context.drawImage(featheredPathMask(path), 0, 0);
   context.globalCompositeOperation = "source-over";
   target.drawImage(layer, 0, 0);
 }
@@ -543,8 +559,12 @@ function drawWhiteDetail(target: CanvasRenderingContext2D, photo: HTMLImageEleme
   context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
   context.filter = "none";
   context.globalCompositeOperation = "destination-in";
-  context.fill(new Path2D(path));
-  if (mask) context.drawImage(mask, 0, 0);
+  // Contrast collars/cuffs sit directly beside skin and hands. Use the same
+  // inward-only edge feather as the base garment so white details do not read
+  // as hard vector stickers.
+  context.drawImage(featheredPathMask(path), 0, 0);
+  if (mask) context.drawImage(featherMaskInside(mask), 0, 0);
+  context.globalCompositeOperation = "source-over";
   target.drawImage(layer, 0, 0);
 }
 
