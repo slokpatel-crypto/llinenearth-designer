@@ -138,11 +138,11 @@ test("Style Director photoreal uses the same locked real-model preview instead o
   assert.match(page,/visualizePhotoreal/);
   assert.match(page,/\/api\/designer\/look-render/);
   assert.match(page,/lockedPreviewImage:lockedPreviewImage \|\| undefined/);
-  assert.match(page,/onPreviewReady=\{setLockedPreviewImage\}/);
+  assert.match(page,/onPreviewReady=\{acceptLockedPreview\}/);
   assert.match(page,/Preparing real model…/);
   assert.match(page,/Photoreal unlocks when a photographed garment template supports this category/);
-  assert.match(preview,/onPreviewReady\?:\(dataUrl:string\)=>void/);
-  assert.match(preview,/onPreviewReadyRef\.current\(canvas\.toDataURL\("image\/jpeg",\.92\)\)/);
+  assert.match(preview,/onPreviewReady\?:\(dataUrl:string,calibrationIdentity:string\)=>void/);
+  assert.match(preview,/onPreviewReadyRef\.current\(canvas\.toDataURL\("image\/jpeg",\.92\),resolvedCalibrationIdentity\)/);
   assert.match(css,/\.directorPhotoPending/);
   assert.doesNotMatch(page,/\/api\/visualization\/fashn/);
   assert.doesNotMatch(page,/\/api\/visualization\/render/);

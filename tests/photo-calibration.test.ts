@@ -77,11 +77,14 @@ test("public photo-calibration route exposes no operator proof notes or viewer d
   const server=readFileSync("src/lib/designer/phase1-proof-server.ts","utf8");
   const browserContract=readFileSync("src/lib/designer/photo-calibration-types.ts","utf8");
   const preview=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  const client=readFileSync("src/lib/designer/photo-calibration-client.ts","utf8");
   assert.match(server,/import "server-only"/);
   assert.doesNotMatch(browserContract,/proof-scale|evaluateRecordedPhase1ProofEvidence|physicalEvidenceNote|realismAssessments/);
   assert.match(route,/customerPhotoCalibrationFromProofPayload/);
   assert.doesNotMatch(route,/physicalEvidenceNote|realismAssessments|viewerId|strongRatings/);
-  assert.match(preview,/\/api\/designer\/photo-calibration/);
+  assert.match(client,/\/api\/designer\/photo-calibration/);
+  assert.match(client,/photo-1024x1536-fixture/);
+  assert.match(client,/linen-earth-phase1-proof-v4/);
   assert.match(preview,/photoPxPerMm:verifiedPhotoPxPerMm/);
   assert.match(preview,/accepted studio calibration/);
 });
@@ -89,7 +92,8 @@ test("public photo-calibration route exposes no operator proof notes or viewer d
 
 test("customer preview refreshes proof-backed calibration after returning to the tab",()=>{
   const preview=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-  assert.match(preview,/\.finally\(\(\)=>\{customerPhotoCalibrationRequest=null;\}\)/);
+  const client=readFileSync("src/lib/designer/photo-calibration-client.ts","utf8");
+  assert.match(client,/\.finally\(\(\)=>\{customerPhotoCalibrationRequest=null;\}\)/);
   assert.match(preview,/window\.addEventListener\("focus",refresh\)/);
   assert.match(preview,/document\.addEventListener\("visibilitychange",onVisibility\)/);
   assert.match(preview,/document\.visibilityState==="visible"/);
@@ -107,4 +111,24 @@ test("changing proof-backed calibration invalidates the locked final render sign
   assert.match(preview,/\} : \{verified:false\}/);
   assert.match(preview,/setFinalLocked\(false\)/);
   assert.match(preview,/selectedLookSessionCache\.get\(renderSignature\)/);
+});
+
+
+test("Style Director invalidates a generated photoreal when accepted photo calibration changes",()=>{
+  const page=readFileSync("src/app/style-director/page.tsx","utf8");
+  const preview=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  const client=readFileSync("src/lib/designer/photo-calibration-client.ts","utf8");
+
+  assert.match(client,/export function customerPhotoCalibrationIdentity/);
+  assert.match(page,/currentCalibrationIdentity/);
+  assert.match(page,/lockedPreviewCalibrationIdentity/);
+  assert.match(page,/renderCalibrationIdentity/);
+  assert.match(page,/fetchCustomerPhotoCalibration/);
+  assert.match(page,/renderCalibrationIdentity!==currentCalibrationIdentity/);
+  assert.match(page,/setRenderSet\(null\)/);
+  assert.match(page,/setLockedPreviewImage\(""\)/);
+  assert.match(page,/function acceptLockedPreview\(dataUrl:string,calibrationIdentity:string\)/);
+  assert.match(page,/setRenderCalibrationIdentity\(sourceCalibrationIdentity\)/);
+  assert.match(preview,/resolvedCalibrationIdentity/);
+  assert.match(preview,/onPreviewReadyRef\.current\(canvas\.toDataURL\("image\/jpeg",\.92\),resolvedCalibrationIdentity\)/);
 });

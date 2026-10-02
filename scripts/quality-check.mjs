@@ -234,18 +234,22 @@ for(const token of ["directorFabricFallback","REAL STOCK / PHOTO TEMPLATE PENDIN
 if(styleDirectorCss.includes(".abstractLook")) throw new Error("Style Director photo-first regression: simulated mannequin CSS returned.");
 if(!styleDirectorCss.includes(".directorFabricFallback")) throw new Error("Style Director truthful fallback regression: fabric editorial fallback CSS missing.");
 console.log("Style Director photo-only fallback gate passed: unsupported categories show real fabric without simulated garment geometry.");
-for(const token of ["visualizePhotoreal","/api/designer/look-render","lockedPreviewImage:lockedPreviewImage || undefined","onPreviewReady={setLockedPreviewImage}","Preparing real model…","Photoreal unlocks when a photographed garment template supports this category"]) {
+for(const token of ["visualizePhotoreal","/api/designer/look-render","lockedPreviewImage:lockedPreviewImage || undefined","onPreviewReady={acceptLockedPreview}","Preparing real model…","Photoreal unlocks when a photographed garment template supports this category"]) {
   if(!styleDirectorPhotoPage.includes(token)) throw new Error(`Style Director photo-first action regression: missing ${token}`);
 }
 for(const token of ["/api/visualization/fashn","/api/visualization/render","Generate alternate preview"]) {
   if(styleDirectorPhotoPage.includes(token)) throw new Error(`Style Director photo-first action regression: legacy generated source returned: ${token}`);
 }
 const styleDirectorPreviewSource=fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-for(const token of ["onPreviewReady?:(dataUrl:string)=>void",'onPreviewReadyRef.current(canvas.toDataURL("image/jpeg",.92))']) {
+for(const token of ["onPreviewReady?:(dataUrl:string,calibrationIdentity:string)=>void",'onPreviewReadyRef.current(canvas.toDataURL("image/jpeg",.92),resolvedCalibrationIdentity)']) {
   if(!styleDirectorPreviewSource.includes(token)) throw new Error(`Style Director locked-preview handoff regression: missing ${token}`);
 }
 if(!styleDirectorCss.includes(".directorPhotoPending")) throw new Error("Style Director unsupported-photoreal state styling is missing.");
 console.log("Style Director photo-first action gate passed: photoreal refinement uses the same validated real-model preview and unsupported categories cannot invoke a simulated source.");
+for(const token of ["currentCalibrationIdentity","lockedPreviewCalibrationIdentity","renderCalibrationIdentity","fetchCustomerPhotoCalibration","customerPhotoCalibrationIdentity","renderCalibrationIdentity!==currentCalibrationIdentity","setRenderCalibrationIdentity(sourceCalibrationIdentity)","function acceptLockedPreview(dataUrl:string,calibrationIdentity:string)"]) {
+  if(!styleDirectorPhotoPage.includes(token)) throw new Error(`Style Director calibration invalidation regression: missing ${token}`);
+}
+console.log("Style Director calibration identity gate passed: stale generated photoreal output is discarded when accepted studio calibration changes.");
 const legacyDesignerRoute=fs.readFileSync("src/app/designer/page.tsx","utf8");
 const legacyVisualRoute=fs.readFileSync("src/app/visual/page.tsx","utf8");
 const legacyBriefRoute=fs.readFileSync("src/app/designer-brief/page.tsx","utf8");
@@ -277,6 +281,7 @@ console.log("Legacy customer module gate passed: Catalog, Atelier, Saved Designs
 
 const photoPreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
 const photoCalibrationTypes=fs.readFileSync("src/lib/designer/photo-calibration-types.ts","utf8");
+const photoCalibrationClient=fs.readFileSync("src/lib/designer/photo-calibration-client.ts","utf8");
 const photoCalibrationModel=fs.readFileSync("src/lib/designer/photo-calibration.ts","utf8");
 const photoCalibrationRoute=fs.readFileSync("src/app/api/designer/photo-calibration/route.ts","utf8");
 const phase1ProofServer=fs.readFileSync("src/lib/designer/phase1-proof-server.ts","utf8");
@@ -295,11 +300,15 @@ for(const token of ["customerPhotoCalibrationFromProofPayload","loadLatestPhase1
 for(const forbidden of ["physicalEvidenceNote","realismAssessments","viewerId","strongRatings"]) {
   if(photoCalibrationRoute.includes(forbidden)) throw new Error(`Public photo calibration privacy regression: route exposes ${forbidden}`);
 }
-for(const token of ["/api/designer/photo-calibration","UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION","resolvedPhotoPxPerMm","verifiedPhotoPxPerMm","photoScaleReady","accepted studio calibration"]) {
+for(const token of ["/api/designer/photo-calibration","customerPhotoCalibrationIdentity","fetchCustomerPhotoCalibration",'.finally(()=>{customerPhotoCalibrationRequest=null;})',"photo-1024x1536-fixture","linen-earth-phase1-proof-v4"]) {
+  if(!photoCalibrationClient.includes(token)) throw new Error(`Customer photo calibration client regression: missing ${token}`);
+}
+for(const token of ["UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION","resolvedPhotoPxPerMm","verifiedPhotoPxPerMm","photoScaleReady","accepted studio calibration","customerPhotoCalibrationIdentity","fetchCustomerPhotoCalibration"]) {
   if(!photoPreview.includes(token)) throw new Error(`Customer photo calibration regression: preview missing ${token}`);
 }
 console.log("Verified photo calibration gate passed: accepted Phase 1 scale can drive customer previews without exposing operator evidence.");
-for(const token of ['.finally(()=>{customerPhotoCalibrationRequest=null;})','window.addEventListener("focus",refresh)','document.addEventListener("visibilitychange",onVisibility)','document.visibilityState==="visible"']) {
+if(!photoCalibrationClient.includes('.finally(()=>{customerPhotoCalibrationRequest=null;})')) throw new Error("Photo calibration refresh regression: completed client request remains cached indefinitely.");
+for(const token of ['window.addEventListener("focus",refresh)','document.addEventListener("visibilitychange",onVisibility)','document.visibilityState==="visible"']) {
   if(!photoPreview.includes(token)) throw new Error(`Photo calibration refresh regression: preview missing ${token}`);
 }
 console.log("Photo calibration refresh gate passed: proof-backed scale is rechecked when the customer returns to the tab.");
