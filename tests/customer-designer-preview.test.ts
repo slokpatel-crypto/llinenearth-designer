@@ -229,6 +229,20 @@ test("customer-facing photoreal fails closed to the trusted instant preview when
 });
 
 
+test("existing secondary views require their own fidelity state before normal display",()=>{
+  const preview=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.match(preview,/const existingCheck=existing\.selectedCheck/);
+  assert.match(preview,/existingCheck\?\.available && existingCheck\.status==="pass"/);
+  assert.match(preview,/existingCheck\?\.available && existingCheck\.status==="review"/);
+  assert.match(preview,/const recheck=await inspectSelectedLook\(existing,view\)/);
+  assert.match(preview,/This view has not cleared fidelity QA/);
+  assert.match(preview,/const ownReview=view!=="front"/);
+  assert.match(preview,/const ownUnchecked=view!=="front"/);
+  assert.match(preview,/"Review "\+baseLabel/);
+  assert.match(preview,/"Recheck "\+baseLabel/);
+});
+
+
 test("secondary photoreal views cannot spend credits until front fidelity QA passes",()=>{
   const preview=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   assert.match(preview,/const frontCheck=creativeAi\.selectedCheck/);
@@ -236,7 +250,7 @@ test("secondary photoreal views cannot spend credits until front fidelity QA pas
   assert.match(preview,/Front photoreal must pass fidelity QA before generating another view/);
   assert.match(preview,/Never spend another generation credit or propagate identity/);
   assert.match(preview,/const frontQaReady=Boolean\(creativeAi\.selectedCheck\?\.available && creativeAi\.selectedCheck\.status==="pass"\)/);
-  assert.match(preview,/const blocked=view!=="front" && !frontQaReady/);
+  assert.match(preview,/const frontBlocked=view!=="front" && !frontQaReady/);
   assert.match(preview,/Front QA first/);
 });
 

@@ -1148,8 +1148,29 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     }
     const existing=photorealViews[view];
     if(existing) {
-      setPhotorealView(view);
+      const existingCheck=existing.selectedCheck;
+      if(existingCheck?.available && existingCheck.status==="pass") {
+        setPhotorealView(view);
+        setCreativeAiError("");
+        return;
+      }
+      if(existingCheck?.available && existingCheck.status==="review") {
+        // A second explicit click is the review action; never promote this
+        // view automatically after generation or cache reuse.
+        setPhotorealView(view);
+        setCreativeAiError("This view is held for review and is not a trusted save/export source.");
+        return;
+      }
+      if(photorealViewLoading) return;
+      setPhotorealViewLoading(view);
       setCreativeAiError("");
+      try {
+        const recheck=await inspectSelectedLook(existing,view);
+        if(recheck?.available && recheck.status==="pass") setPhotorealView(view);
+        else setCreativeAiError("This view has not cleared fidelity QA. It remains held on the trusted front view.");
+      } finally {
+        setPhotorealViewLoading(null);
+      }
       return;
     }
     if(photorealViewLoading) return;
@@ -1267,9 +1288,15 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     {creativeAi && !creativeDirection && <div className="newDesignerPhotoViews" role="group" aria-label="Photoreal model views">
       {(["front","three-quarter","side","back"] as PhotorealView[]).map((view)=>{
         const frontQaReady=Boolean(creativeAi.selectedCheck?.available && creativeAi.selectedCheck.status==="pass");
-        const blocked=view!=="front" && !frontQaReady;
-        return <button key={view} type="button" aria-pressed={photorealView===view} disabled={Boolean(photorealViewLoading) || blocked} onClick={()=>void choosePhotorealView(view)}>
-          {blocked ? "Front QA first" : photorealViewLoading===view ? "Rendering…" : view==="three-quarter" ? (photorealViews[view]?"3/4":"Generate 3/4") : view==="front" ? "Front" : photorealViews[view] ? view[0].toUpperCase()+view.slice(1) : "Generate "+view}
+        const existing=view==="front" ? creativeAi : photorealViews[view];
+        const ownCheck=existing?.selectedCheck;
+        const frontBlocked=view!=="front" && !frontQaReady;
+        const ownReview=view!=="front" && Boolean(ownCheck?.available && ownCheck.status==="review");
+        const ownUnchecked=view!=="front" && Boolean(existing && !ownCheck?.available);
+        const baseLabel=view==="three-quarter" ? "3/4" : view[0].toUpperCase()+view.slice(1);
+        const generateLabel=view==="three-quarter" ? "Generate 3/4" : "Generate "+view;
+        return <button key={view} type="button" aria-pressed={photorealView===view} disabled={Boolean(photorealViewLoading) || frontBlocked} onClick={()=>void choosePhotorealView(view)}>
+          {frontBlocked ? "Front QA first" : photorealViewLoading===view ? "Checking…" : view==="front" ? "Front" : ownReview ? "Review "+baseLabel : ownUnchecked ? "Recheck "+baseLabel : existing ? baseLabel : generateLabel}
         </button>;
       })}
     </div>}
