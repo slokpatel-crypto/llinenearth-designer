@@ -921,7 +921,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     return () => { cancelled = true; };
   }, [shirt, pant, template, tucked, style.collarFinish, creativeDirection, verifiedPhotoPxPerMm]);
 
-  async function inspectSelectedLook(result:PhotorealResult,view:PhotorealView="front") {
+  async function inspectSelectedLook(result:PhotorealResult,view:PhotorealView="front"):Promise<SelectedLookVisualCheck|null> {
     try {
       const response=await fetch("/api/designer/look-inspect",{
         method:"POST",
@@ -941,14 +941,14 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         }),
       });
       const data=await response.json() as {check?:SelectedLookVisualCheck};
-      if(!response.ok || !data.check) return;
+      if(!response.ok || !data.check) return null;
       if(view==="front") {
         setCreativeAi((current)=>current?.image===result.image ? {...current,selectedCheck:data.check} : current);
         // A generated image never outranks the deterministic photographic
         // preview when automated QA finds a blocking fidelity issue. Keep the
         // generated result available for human review/repair, but fail closed
         // to the trusted instant preview instead of presenting it as final.
-        if(data.check.available && data.check.status==="review") setShowCreativeAi(false);
+        if(!data.check.available || data.check.status==="review") setShowCreativeAi(false);
       } else {
         setPhotorealViews((current)=>{
           const existing=current[view];
@@ -957,10 +957,14 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         });
         // A failed secondary camera view must not replace the approved front
         // view. Return to front while preserving the generated view for review.
-        if(data.check.available && data.check.status==="review") setPhotorealView("front");
+        if(!data.check.available || data.check.status==="review") setPhotorealView("front");
       }
+      return data.check;
     } catch {
-      // A render remains usable when optional visual QA is unavailable.
+      // Customer display remains on the deterministic preview when automated
+      // inspection is unavailable. The generated image is still kept for
+      // explicit human review.
+      return null;
     }
   }
 
@@ -981,12 +985,13 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       if(!creativeDirection) {
         const cached=selectedLookSessionCache.get(renderSignature);
         if(cached) {
-          setCreativeAi({...cached,cached:true});
+          const cachedResult={...cached,cached:true};
+          setCreativeAi(cachedResult);
           setPhotorealView("front");
           setPhotorealViews({});
-          setShowCreativeAi(true);
-          setCreativeAiLoading(false);
-          void inspectSelectedLook({...cached,cached:true});
+          setShowCreativeAi(false);
+          const check=await inspectSelectedLook(cachedResult);
+          if(check?.available && check.status==="pass") setShowCreativeAi(true);
           return;
         }
       }
@@ -1032,9 +1037,14 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       }
       setPhotorealView("front");
       setPhotorealViews({});
-      setShowCreativeAi(true);
+      // Final selected-look renders stay behind QA until fidelity passes.
+      // Creative concept renders keep their separate creative-inspection flow.
+      setShowCreativeAi(Boolean(creativeDirection));
 
-      if(!creativeDirection) await inspectSelectedLook(data.result);
+      if(!creativeDirection) {
+        const check=await inspectSelectedLook(data.result);
+        if(check?.available && check.status==="pass") setShowCreativeAi(true);
+      }
 
       if(creativeDirection) try {
         const inspectResponse=await fetch("/api/designer/creative-inspect",{
@@ -1100,8 +1110,9 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       setPhotorealView("front");
       setPhotorealViews({});
       setSelectedRepairCount(1);
-      setShowCreativeAi(true);
-      await inspectSelectedLook(data.result);
+      setShowCreativeAi(false);
+      const check=await inspectSelectedLook(data.result);
+      if(check?.available && check.status==="pass") setShowCreativeAi(true);
     } catch(error) {
       setCreativeAiError(error instanceof Error ? error.message : "Photoreal repair failed.");
     } finally {
@@ -1144,8 +1155,8 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       const data=await response.json() as {result?:PhotorealResult;error?:string};
       if(!response.ok || !data.result) throw new Error(data.error || "Photoreal view failed.");
       setPhotorealViews((current)=>({...current,[view]:data.result}));
-      setPhotorealView(view);
-      await inspectSelectedLook(data.result,view);
+      const check=await inspectSelectedLook(data.result,view);
+      if(check?.available && check.status==="pass") setPhotorealView(view);
     } catch(error) {
       setCreativeAiError(error instanceof Error ? error.message : "Photoreal view failed.");
     } finally {
@@ -1218,7 +1229,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         {!creativeAi && !creativeDirection && !finalLocked && <button className="primary" type="button" onClick={()=>{setFinalLocked(true);setCreativeAiError("");}} disabled={!ready}>Lock final design</button>}
         {!creativeAi && !creativeDirection && finalLocked && <button className="primary" type="button" onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading}>{creativeAiLoading ? "Rendering…" : "Final photoreal ✦"}</button>}
         {!creativeAi && creativeDirection && <button className="primary" type="button" onClick={()=>void renderPhotoreal("manual")} disabled={!ready || creativeAiLoading}>{creativeAiLoading ? "Rendering…" : "Render selected idea ✦"}</button>}
-        {creativeAi && <button className="primary" type="button" onClick={()=>setShowCreativeAi((value)=>!value)}>{showCreativeAi ? "Instant preview" : (!creativeDirection && activeSelectedCheck?.available && activeSelectedCheck.status==="review" ? "Review photoreal" : "Photoreal render")}</button>}
+        {creativeAi && <button className="primary" type="button" onClick={()=>setShowCreativeAi((value)=>!value)}>{showCreativeAi ? "Instant preview" : (!creativeDirection && activeSelectedCheck && (!activeSelectedCheck.available || activeSelectedCheck.status==="review") ? "Review photoreal" : "Photoreal render")}</button>}
         {!creativeAi && !creativeDirection && finalLocked && <button type="button" onClick={()=>setFinalLocked(false)} disabled={creativeAiLoading}>Unlock</button>}
         <button type="button" onClick={() => setShowOriginal((value) => !value)} disabled={!ready}>{showOriginal ? "Show design" : "Compare"}</button>
         <button type="button" onClick={download} disabled={!ready}>Save</button>
@@ -1227,7 +1238,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     {!showCreativeAi && <p className="newDesignerPhotoApproximation"><strong>Instant preview</strong> · Studio model; {previewScaleVerified ? "pattern scale uses reviewed physical evidence plus accepted studio calibration where a visible repeat exists" : "pattern scale is still approximate for "+approximateScaleItems.join(" / ")}. Fit and drape still require physical verification. FASHN is reserved for the locked final design.</p>}
     {!creativeDirection && finalLocked && !creativeAi && <p className="newDesignerPhotoLock"><strong>FINAL DESIGN LOCKED</strong> · Any fabric or construction change automatically unlocks it before another AI render.</p>}
     {creativeAi?.cached && <p className="newDesignerPhotoCache">Cached final render reused · no new FASHN generation was needed.</p>}
-    {creativeAi && !creativeDirection && activeSelectedCheck?.available && activeSelectedCheck.status==="review" && !showCreativeAi && <p className="newDesignerPhotoQaHold"><strong>PHOTOREAL HELD FOR REVIEW</strong> · Automated QA found a fidelity issue, so the trusted instant studio preview remains on screen. The generated image is preserved for review or one targeted repair.</p>}
+    {creativeAi && !creativeDirection && activeSelectedCheck && (!activeSelectedCheck.available || activeSelectedCheck.status==="review") && !showCreativeAi && <p className="newDesignerPhotoQaHold"><strong>PHOTOREAL HELD FOR REVIEW</strong> · The render has not cleared customer-facing fidelity QA, so the trusted instant studio preview remains on screen. The generated image is preserved for explicit review or one targeted repair.</p>}
     {creativeAi && !creativeDirection && <div className="newDesignerPhotoViews" role="group" aria-label="Photoreal model views">
       {(["front","three-quarter","side","back"] as PhotorealView[]).map((view)=><button key={view} type="button" aria-pressed={photorealView===view} disabled={Boolean(photorealViewLoading)} onClick={()=>void choosePhotorealView(view)}>
         {photorealViewLoading===view ? "Rendering…" : view==="three-quarter" ? (photorealViews[view]?"3/4":"Generate 3/4") : view==="front" ? "Front" : photorealViews[view] ? view[0].toUpperCase()+view.slice(1) : "Generate "+view}
