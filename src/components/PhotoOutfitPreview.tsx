@@ -1111,8 +1111,8 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       setPhotorealViews({});
       setSelectedRepairCount(1);
       setShowCreativeAi(false);
-      const check=await inspectSelectedLook(data.result);
-      if(check?.available && check.status==="pass") setShowCreativeAi(true);
+      const repairCheck=await inspectSelectedLook(data.result);
+      if(repairCheck?.available && repairCheck.status==="pass") setShowCreativeAi(true);
     } catch(error) {
       setCreativeAiError(error instanceof Error ? error.message : "Photoreal repair failed.");
     } finally {
