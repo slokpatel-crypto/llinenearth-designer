@@ -226,6 +226,14 @@ if(!/\.lookVisual img\{[^}]*object-fit:contain/.test(styleDirectorCss)) throw ne
 if(/\.lookVisual img\{[^}]*object-fit:cover/.test(styleDirectorCss)) throw new Error("Style Director generated-render framing regression: cover would crop the rendered outfit.");
 if(!/\.lookVisual img\{[^}]*background:#081827/.test(styleDirectorCss)) throw new Error("Style Director generated-render backdrop regression: photoreal letterbox must match the navy studio.");
 console.log("Style Director generated-render framing gate passed: photoreal output stays fully visible on the navy studio backdrop.");
+const styleDirectorPhotoPage=fs.readFileSync("src/app/style-director/page.tsx","utf8");
+if(styleDirectorPhotoPage.includes("abstractLook")) throw new Error("Style Director photo-first regression: simulated mannequin fallback returned.");
+for(const token of ["directorFabricFallback","REAL STOCK / PHOTO TEMPLATE PENDING","Real fabric · no simulated mannequin","Garment geometry stays unvisualized until a photographed template supports this category"]) {
+  if(!styleDirectorPhotoPage.includes(token)) throw new Error(`Style Director truthful fallback regression: missing ${token}`);
+}
+if(styleDirectorCss.includes(".abstractLook")) throw new Error("Style Director photo-first regression: simulated mannequin CSS returned.");
+if(!styleDirectorCss.includes(".directorFabricFallback")) throw new Error("Style Director truthful fallback regression: fabric editorial fallback CSS missing.");
+console.log("Style Director photo-only fallback gate passed: unsupported categories show real fabric without simulated garment geometry.");
 
 
 const photoPreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
