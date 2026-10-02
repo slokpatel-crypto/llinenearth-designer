@@ -281,7 +281,7 @@ export default function FabricGroundTruthClient(){
   return <main className="fabricTruth">
     <header className="truthHeader">
       <div><span>LINEN EARTH / PRIVATE OPERATOR</span><h1>Fabric Ground-Truth Desk</h1><p>Approve or correct Analyzer classifications for real fabrics. These reviewed labels become calibration evidence without inventing physical facts.</p></div>
-      <nav><Link href="/operator/fabric-analyzer">Fabric Analyzer</Link><Link href="/operator/designer-evaluation">Designer Evaluation</Link><Link href="/operator">Operator Desk</Link></nav>
+      <nav><Link href="/operator/fabric-analyzer">Fabric Analyzer</Link><Link href="/operator/fabric-truth-policy">Evidence Policy</Link><Link href="/operator/designer-evaluation">Designer Evaluation</Link><Link href="/operator">Operator Desk</Link></nav>
     </header>
 
     <section className="truthProgress">
