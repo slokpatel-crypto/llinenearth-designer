@@ -415,6 +415,11 @@ requireTokens("tests/customer-designer-preview.test.ts", ["Style Director keeps 
 requireTokens("tests/customer-designer-preview.test.ts", ["Style Director photoreal letterbox matches the navy studio"]);
 requireTokens("tests/customer-designer-preview.test.ts", ["Style Director never falls back to a simulated mannequin"]);
 requireTokens("tests/customer-designer-preview.test.ts", ["Style Director no longer offers a flat alternate preview"]);
+requireTokens("src/app/designer/page.tsx", ['redirect("/designer-studio")']);
+requireTokens("src/app/visual/page.tsx", ['redirect("/style-director")']);
+requireTokens("src/app/designer-brief/page.tsx", ['redirect("/style-director")']);
+requireTokens("src/app/page.tsx", ['name: "Suits"','name: "Blazers"','href: "/style-director"']);
+requireTokens("tests/customer-designer-preview.test.ts", ["legacy customer design routes consolidate onto the photo-first experiences"]);
 requireTokens("src/components/DesignerModule.tsx", ['params.get("shirt")','params.get("pant")','params.get("style")',"STYLE DIRECTOR"]);
 requireTokens("src/lib/designer/garment-spec.ts", ["linen-earth-garment-spec-v1","buildCanonicalGarmentSpec","finishedTargets","ready_for_tailor_review","not a cutting pattern","fitEaseSource","fitEaseTableVersion","conceptId:string","treatments:Array","Creative treatments are design instructions","CanonicalCreativeVisualReview","visualReview:CanonicalCreativeVisualReview"]);
 requireTokens("src/app/api/designer/assess/route.ts", ["buildCanonicalGarmentSpec","fitConstruction","blockStrategy","brandLanguage","negotiation","creative","visualReview"]);
