@@ -85,3 +85,14 @@ test("public photo-calibration route exposes no operator proof notes or viewer d
   assert.match(preview,/photoPxPerMm:verifiedPhotoPxPerMm/);
   assert.match(preview,/accepted studio calibration/);
 });
+
+
+test("customer preview refreshes proof-backed calibration after returning to the tab",()=>{
+  const preview=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.match(preview,/\.finally\(\(\)=>\{customerPhotoCalibrationRequest=null;\}\)/);
+  assert.match(preview,/window\.addEventListener\("focus",refresh\)/);
+  assert.match(preview,/document\.addEventListener\("visibilitychange",onVisibility\)/);
+  assert.match(preview,/document\.visibilityState==="visible"/);
+  assert.match(preview,/window\.removeEventListener\("focus",refresh\)/);
+  assert.match(preview,/document\.removeEventListener\("visibilitychange",onVisibility\)/);
+});
