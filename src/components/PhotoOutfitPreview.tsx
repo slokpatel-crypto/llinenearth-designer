@@ -1170,8 +1170,18 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     void renderPhotoreal("automatic");
   },[autoRenderNonce,creativeDirection?.id,ready]);
 
+  const activeSelectedCheck=photorealView==="front"
+    ? creativeAi?.selectedCheck
+    : photorealViews[photorealView]?.selectedCheck;
+  const selectedPhotorealApproved=Boolean(
+    creativeDirection || (activeSelectedCheck?.available && activeSelectedCheck.status==="pass")
+  );
+
   function download() {
-    if(showCreativeAi && creativeAi) {
+    // Customer exports fail closed to the deterministic studio preview. A
+    // reviewed/unavailable AI image may be inspected on screen, but it cannot
+    // silently become the saved design asset before fidelity QA passes.
+    if(showCreativeAi && creativeAi && selectedPhotorealApproved) {
       const activeImage=photorealView==="front" ? creativeAi.image : (photorealViews[photorealView]?.image || creativeAi.image);
       const anchor=document.createElement("a");
       const name=`linen-earth-${shirt.id}-${pant.id}-${photorealView}`;
@@ -1191,10 +1201,6 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       window.setTimeout(() => URL.revokeObjectURL(url), 30000);
     }, "image/png");
   }
-
-  const activeSelectedCheck=photorealView==="front"
-    ? creativeAi?.selectedCheck
-    : photorealViews[photorealView]?.selectedCheck;
 
   return <section className="newDesignerPhoto" aria-labelledby="designerPhotoTitle">
     <div className="newDesignerPhotoIntro newDesignerPhotoIntroCompact">
@@ -1232,13 +1238,13 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         {creativeAi && <button className="primary" type="button" onClick={()=>setShowCreativeAi((value)=>!value)}>{showCreativeAi ? "Instant preview" : (!creativeDirection && activeSelectedCheck && (!activeSelectedCheck.available || activeSelectedCheck.status==="review") ? "Review photoreal" : "Photoreal render")}</button>}
         {!creativeAi && !creativeDirection && finalLocked && <button type="button" onClick={()=>setFinalLocked(false)} disabled={creativeAiLoading}>Unlock</button>}
         <button type="button" onClick={() => setShowOriginal((value) => !value)} disabled={!ready}>{showOriginal ? "Show design" : "Compare"}</button>
-        <button type="button" onClick={download} disabled={!ready}>Save</button>
+        <button type="button" onClick={download} disabled={!ready}>{showCreativeAi && creativeAi && !selectedPhotorealApproved ? "Save trusted preview" : "Save"}</button>
       </div>
     </div>
     {!showCreativeAi && <p className="newDesignerPhotoApproximation"><strong>Instant preview</strong> · Studio model; {previewScaleVerified ? "pattern scale uses reviewed physical evidence plus accepted studio calibration where a visible repeat exists" : "pattern scale is still approximate for "+approximateScaleItems.join(" / ")}. Fit and drape still require physical verification. FASHN is reserved for the locked final design.</p>}
     {!creativeDirection && finalLocked && !creativeAi && <p className="newDesignerPhotoLock"><strong>FINAL DESIGN LOCKED</strong> · Any fabric or construction change automatically unlocks it before another AI render.</p>}
     {creativeAi?.cached && <p className="newDesignerPhotoCache">Cached final render reused · no new FASHN generation was needed.</p>}
-    {creativeAi && !creativeDirection && activeSelectedCheck && (!activeSelectedCheck.available || activeSelectedCheck.status==="review") && !showCreativeAi && <p className="newDesignerPhotoQaHold"><strong>PHOTOREAL HELD FOR REVIEW</strong> · The render has not cleared customer-facing fidelity QA, so the trusted instant studio preview remains on screen. The generated image is preserved for explicit review or one targeted repair.</p>}
+    {creativeAi && !creativeDirection && activeSelectedCheck && (!activeSelectedCheck.available || activeSelectedCheck.status==="review") && <p className="newDesignerPhotoQaHold"><strong>PHOTOREAL HELD FOR REVIEW</strong> · The render has not cleared customer-facing fidelity QA. The trusted instant studio preview remains the save/export source until QA passes; the generated image is preserved only for explicit review or one targeted repair.</p>}
     {creativeAi && !creativeDirection && <div className="newDesignerPhotoViews" role="group" aria-label="Photoreal model views">
       {(["front","three-quarter","side","back"] as PhotorealView[]).map((view)=><button key={view} type="button" aria-pressed={photorealView===view} disabled={Boolean(photorealViewLoading)} onClick={()=>void choosePhotorealView(view)}>
         {photorealViewLoading===view ? "Rendering…" : view==="three-quarter" ? (photorealViews[view]?"3/4":"Generate 3/4") : view==="front" ? "Front" : photorealViews[view] ? view[0].toUpperCase()+view.slice(1) : "Generate "+view}
