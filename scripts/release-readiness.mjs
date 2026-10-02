@@ -705,6 +705,7 @@ requireTokens("desktop/src/App.tsx", [
   "MEASUREMENT PASSPORT",
   "PAYMENT HISTORY",
 ]);
+requireTokens(".github/workflows/ci.yml", ["concurrency:","github.event.pull_request.number || github.ref","cancel-in-progress: true"]);
 requireTokens(".github/workflows/build-linen-earth-os.yml", [
   "npm run desktop:build",
   "SHA256SUMS.txt",
