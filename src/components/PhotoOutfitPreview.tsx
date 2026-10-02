@@ -688,10 +688,18 @@ export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured
   useEffect(()=>{
     if(Number.isFinite(explicitPhotoPxPerMm)&&explicitPhotoPxPerMm>0) return;
     let cancelled=false;
-    void loadCustomerPhotoCalibration().then((value)=>{
+    const refresh=()=>void loadCustomerPhotoCalibration().then((value)=>{
       if(!cancelled) setCustomerCalibration(value);
     });
-    return ()=>{cancelled=true;};
+    const onVisibility=()=>{if(document.visibilityState==="visible") refresh();};
+    refresh();
+    window.addEventListener("focus",refresh);
+    document.addEventListener("visibilitychange",onVisibility);
+    return ()=>{
+      cancelled=true;
+      window.removeEventListener("focus",refresh);
+      document.removeEventListener("visibilitychange",onVisibility);
+    };
   },[explicitPhotoPxPerMm]);
 
   useEffect(()=>{
@@ -813,10 +821,18 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
 
   useEffect(()=>{
     let cancelled=false;
-    void loadCustomerPhotoCalibration().then((value)=>{
+    const refresh=()=>void loadCustomerPhotoCalibration().then((value)=>{
       if(!cancelled) setPhotoCalibration(value);
     });
-    return ()=>{cancelled=true;};
+    const onVisibility=()=>{if(document.visibilityState==="visible") refresh();};
+    refresh();
+    window.addEventListener("focus",refresh);
+    document.addEventListener("visibilitychange",onVisibility);
+    return ()=>{
+      cancelled=true;
+      window.removeEventListener("focus",refresh);
+      document.removeEventListener("visibilitychange",onVisibility);
+    };
   },[]);
 
   useEffect(() => {
