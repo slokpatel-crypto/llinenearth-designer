@@ -249,6 +249,10 @@ for (const token of ["shirtDetailBrightness: 3.05","trouserDetailBrightness: 1.9
   if (!photoGeometry.includes(token)) throw new Error(`Photo template luminance calibration regression: missing ${token}`);
 }
 console.log("Photo luminance neutralization gate passed: source-template colour cannot dominate selected fabric while folds remain photographic.");
+for (const token of ["function drawWhiteDetail","globalAlpha = .9","globalAlpha = .12","clean white while retaining the real folded edge beside neck and hands"]) {
+  if (!photoPreview.includes(token)) throw new Error(`Contrast collar/cuff photographic shading regression: missing ${token}`);
+}
+console.log("Contrast-detail shading gate passed: white collar/cuff cloth keeps photographic depth without source-colour contamination.");
 const designerPhotoCss=fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
 if(!/\.newDesignerPhotoAi\{[^}]*object-fit:contain/.test(designerPhotoCss)) throw new Error("Final photoreal framing regression: full model must remain contained.");
 if(/\.newDesignerPhotoAi\{[^}]*object-fit:cover/.test(designerPhotoCss)) throw new Error("Final photoreal framing regression: cover would crop the model.");
