@@ -1071,13 +1071,13 @@ console.log("Designer block-strategy gate passed: measurements and manual observ
 const roadmapReadinessModel=fs.readFileSync("src/lib/designer/roadmap-readiness.ts","utf8");
 const roadmapReadinessClient=fs.readFileSync("src/app/operator/roadmap-readiness/RoadmapReadinessClient.tsx","utf8");
 const roadmapReadinessTest=fs.readFileSync("tests/roadmap-readiness.test.ts","utf8");
-for(const token of ["summarizeRoadmapReadiness","phase1Complete","phase3Complete","phase8Complete","phase9Complete","fabricTruthEvidence","phase2Complete=reviewedComplete&&colorComplete&&fabricTruthEvidence.gateComplete","backendHealth.gateComplete"]) {
+for(const token of ["summarizeRoadmapReadiness","phase1Complete","phase3Complete","phase8Complete","phase9Complete","fabricTruthEvidence","phase2Complete=reviewedComplete&&colorComplete&&fabricTruthEvidence.gateComplete","backendHealth.gateComplete","productionRuntime.gateComplete"]) {
   if(!roadmapReadinessModel.includes(token)) throw new Error(`Roadmap readiness model regression: missing ${token}`);
 }
-for(const token of ["Readiness Control Tower","ENGINEERING","PRODUCTION BACKEND","REAL EVIDENCE","No phase is promoted from missing data"]) {
+for(const token of ["Readiness Control Tower","ENGINEERING","PRODUCTION BACKEND","PRODUCTION RUNTIME","REAL EVIDENCE","No phase is promoted from missing data"]) {
   if(!roadmapReadinessClient.includes(token)) throw new Error(`Roadmap readiness operator regression: missing ${token}`);
 }
-for(const token of ["Phase 2 completes only after an approved human policy","Phase 3 cannot pass before","Phase 8 requires both approved meterage garments","Phase 9 cannot pass when the live production backend contract is incomplete"]) {
+for(const token of ["Phase 2 completes only after an approved human policy","Phase 3 cannot pass before","Phase 8 requires both approved meterage garments","Phase 9 cannot pass when the live production backend contract is incomplete","Phase 9 cannot pass on a preview or duplicate Vercel runtime"]) {
   if(!roadmapReadinessTest.includes(token)) throw new Error(`Roadmap readiness test regression: missing ${token}`);
 }
 console.log("Roadmap readiness gate passed: cross-phase engineering and evidence status remain separate and conservative.");
@@ -1107,3 +1107,16 @@ for(const token of ["every hardened Roadmap capability exists","one missing prod
   if(!roadmapBackendHealthTest.includes(token)) throw new Error(`Roadmap backend-health test regression: missing ${token}`);
 }
 console.log("Roadmap backend-health gate passed: Phase 9 now verifies the live production Supabase contract.");
+const productionRuntimeHealthModel=fs.readFileSync("src/lib/designer/production-runtime-health.ts","utf8");
+const productionRuntimeHealthRoute=fs.readFileSync("src/app/api/operator/production-runtime-health/route.ts","utf8");
+const productionRuntimeHealthTest=fs.readFileSync("tests/production-runtime-health.test.ts","utf8");
+for(const token of ["PRIMARY_VERCEL_PROJECT_ID","summarizeProductionRuntimeHealth","VERCEL_DEPLOYMENT_ID","VERCEL_GIT_COMMIT_SHA","primaryProject","gitCommit"]) {
+  if(!productionRuntimeHealthModel.includes(token)) throw new Error(`Production runtime health regression: missing ${token}`);
+}
+for(const token of ["verifyOperatorSession","productionRuntimeHealthFromEnv","cache-control","private, no-store"]) {
+  if(!productionRuntimeHealthRoute.includes(token)) throw new Error(`Production runtime health API regression: missing ${token}`);
+}
+for(const token of ["traceable primary production deployment","duplicate linked Vercel projects","immutable deployment and Git identities"]) {
+  if(!productionRuntimeHealthTest.includes(token)) throw new Error(`Production runtime health test regression: missing ${token}`);
+}
+console.log("Production runtime gate passed: Phase 9 can verify the primary Vercel production deployment identity.");
