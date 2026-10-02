@@ -6,6 +6,7 @@ import { summarizeConstructionReviews } from "@/lib/designer/construction-review
 import { summarizeLaunchReadiness } from "@/lib/designer/launch-readiness-evidence";
 import { evaluateFinalRenderReleaseEvidence } from "@/lib/designer/render-release-evidence";
 import { summarizeProductionDeliveryEvidence } from "@/lib/designer/production-delivery-evidence";
+import { evaluateFabricTruthPolicy, normalizeFabricTruthPolicy, type FabricTruthPolicy } from "@/lib/designer/fabric-truth-policy";
 
 type DesignerDataPayload={
   coverage:{
@@ -190,6 +191,12 @@ type LaunchReadinessPayload={
   checklistEvents:Array<{item_id:string;status:string;created_at:string}>;
 };
 
+type FabricTruthPolicyPayload={
+  configured:boolean;
+  policy:FabricTruthPolicy|null;
+  recordedAt?:string;
+};
+
 type FabricColorCalibrationPayload={
   configured:boolean;
   summary:{
@@ -285,6 +292,7 @@ type LoadState={
   renderQa:RenderQaPayload|null;
   launchReadiness:LaunchReadinessPayload|null;
   fabricColorCalibration:FabricColorCalibrationPayload|null;
+  fabricTruthPolicy:FabricTruthPolicyPayload|null;
   styleDirectorValidation:StyleDirectorValidationPayload|null;
   easeCalibration:EaseCalibrationPayload|null;
   previewCoverage:PreviewCoveragePayload|null;
@@ -310,7 +318,7 @@ function ratio(value:number,total:number){return total>0?clamp(value/total*100):
 
 export default function Phase10ReadinessClient(){
   const [data,setData]=useState<LoadState>({
-    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,productionDeliveryEvidence:null,renderQa:null,launchReadiness:null,fabricColorCalibration:null,styleDirectorValidation:null,easeCalibration:null,previewCoverage:null,noviceDesignerStudy:null,
+    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,productionDeliveryEvidence:null,renderQa:null,launchReadiness:null,fabricColorCalibration:null,fabricTruthPolicy:null,styleDirectorValidation:null,easeCalibration:null,previewCoverage:null,noviceDesignerStudy:null,
   });
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
@@ -328,7 +336,7 @@ export default function Phase10ReadinessClient(){
   async function load(){
     setLoading(true);setMessage("");
     try{
-      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,productionDeliveryEvidence,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation,easeCalibration,previewCoverage,noviceDesignerStudy]=await Promise.all([
+      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,productionDeliveryEvidence,renderQa,launchReadiness,fabricColorCalibration,fabricTruthPolicy,styleDirectorValidation,easeCalibration,previewCoverage,noviceDesignerStudy]=await Promise.all([
         read<Phase1ProofPayload>("/api/operator/phase1-proof"),
         read<MeasurementCalibrationPayload>("/api/operator/measurement-calibration"),
         read<LaunchMetricsPayload>("/api/operator/cloud-summary?days=60"),
@@ -346,12 +354,13 @@ export default function Phase10ReadinessClient(){
         read<RenderQaPayload>("/api/operator/render-qa"),
         read<LaunchReadinessPayload>("/api/operator/launch-readiness"),
         read<FabricColorCalibrationPayload>("/api/operator/fabric-color-calibration"),
+        read<FabricTruthPolicyPayload>("/api/operator/fabric-truth-policy"),
         read<StyleDirectorValidationPayload>("/api/operator/style-director-validation"),
         read<EaseCalibrationPayload>("/api/operator/ease-calibration"),
         read<PreviewCoveragePayload>("/api/operator/preview-option-coverage"),
         read<NoviceDesignerStudyPayload>("/api/operator/novice-designer-study"),
       ]);
-      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,productionDeliveryEvidence,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation,easeCalibration,previewCoverage,noviceDesignerStudy});
+      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,productionDeliveryEvidence,renderQa,launchReadiness,fabricColorCalibration,fabricTruthPolicy,styleDirectorValidation,easeCalibration,previewCoverage,noviceDesignerStudy});
     }catch(error){
       setMessage(error instanceof Error?error.message:"Readiness data could not be loaded.");
     }finally{
@@ -401,14 +410,11 @@ export default function Phase10ReadinessClient(){
     const proofDone=Boolean(proof?.coreAccepted===true && proofScale && proofLatency && proofRealism && proofBoundaries && proofMobileAccepted);
 
     const coverage=data.designerData?.coverage;
-    const active=coverage?.activeCandidates||0;
-    const evidenceSignals=coverage
-      ? [coverage.availability,coverage.analyzerReviewed,coverage.physicalScale,coverage.gsm,coverage.drape,coverage.fiber,coverage.formality]
-      : [];
-    const evidenceProgress=active&&evidenceSignals.length
-      ? Math.round(evidenceSignals.reduce((sum,value)=>sum+ratio(value,active),0)/evidenceSignals.length)
-      : 0;
-    const evidenceDone=Boolean(active && evidenceSignals.every((value)=>value>=active));
+    let physicalPolicy=null;
+    try{physicalPolicy=normalizeFabricTruthPolicy(data.fabricTruthPolicy?.policy);}catch{}
+    const fabricTruthEvidence=evaluateFabricTruthPolicy(physicalPolicy,coverage);
+    const evidenceProgress=fabricTruthEvidence.progressPercent;
+    const evidenceDone=fabricTruthEvidence.gateComplete;
 
     const groundTruth=data.analyzer?.groundTruth;
     const analyzerScore=data.analyzerScorecard;
@@ -599,15 +605,17 @@ export default function Phase10ReadinessClient(){
       },
       {
         id:"fabric-evidence",
-        title:"Fabric evidence coverage",
+        title:"Fabric Truth physical evidence policy",
         detail:evidenceDone
-          ? "All active fabrics have the core verified Designer evidence fields."
-          : `${coverage?.priorityFabrics||0} fabrics still have high-priority evidence gaps across availability, Analyzer review, true pattern scale, GSM, drape, fibre or formality.`,
+          ? "Owner-approved GSM, fibre, drape and physical-scale coverage thresholds are satisfied by current evidence."
+          : physicalPolicy
+            ? `${fabricTruthEvidence.completedFields}/${fabricTruthEvidence.totalFields} physical evidence fields currently meet the approved policy.`
+            : "No owner/supplier physical-evidence coverage policy is approved yet. Software will not invent the threshold.",
         status:evidenceDone?"done":coverage?"progress":"blocked",
         progress:evidenceProgress,
-        metric:`${evidenceProgress}% evidence coverage`,
-        href:"/operator/designer-data",
-        action:"Open evidence queue",
+        metric:`${evidenceProgress}% of policy fields at threshold`,
+        href:"/operator/fabric-truth-policy",
+        action:"Open evidence policy",
         ownerDependent:true,
       },
       {
