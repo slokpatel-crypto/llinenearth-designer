@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { photoPreviewSupportForChoice } from "../src/lib/designer/photo-preview.ts";
+import { photoPreviewSupportForChoice } from "../src/lib/designer/photo-preview-support.ts";
 
 test("baseline photographed shirt details are exact only where the source photo truly matches",()=>{
   assert.equal(photoPreviewSupportForChoice("collar","Point (Standard) Collar").status,"exact");
