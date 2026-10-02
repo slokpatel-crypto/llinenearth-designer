@@ -250,7 +250,7 @@ test("secondary photoreal views cannot spend credits until front fidelity QA pas
   assert.match(preview,/Front photoreal must pass fidelity QA before generating another view/);
   assert.match(preview,/Never spend another generation credit or propagate identity/);
   assert.match(preview,/const frontQaReady=Boolean\(creativeAi\.selectedCheck\?\.available && creativeAi\.selectedCheck\.status==="pass"\)/);
-  assert.match(preview,/const blocked=view!=="front" && !frontQaReady/);
+  assert.match(preview,/const frontBlocked=view!=="front" && !frontQaReady/);
   assert.match(preview,/Front QA first/);
 });
 
