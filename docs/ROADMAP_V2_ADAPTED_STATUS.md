@@ -18,7 +18,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 | Phase 6 — Style Director | advanced foundation + real-user validation/sign-off workflow + human-entered clean-case threshold | owner-labelled benchmark threshold + enough real-user clean cases to meet the documented target + sign-off |
 | Phase 7 — Final Render / QA | render outcome + human approval + credit metrics + cross-view identity + owner-cap + approved-pattern coverage workflow implemented | real approval/cost/identity evidence + physical pattern checks on approved patterned renders |
 | Phase 8 — Production Bridge | handoff + stock/quote/order + customer ownership + QC + zero-reentry audit + versioned meterage registry implemented | approved physical meterage tables + 10 real zero-reentry deliveries |
-| Phase 9 — Hardening | CI/device QA + private-beta + human sign-off + production DB index hardening + live backend-contract probe implemented | real device acceptance + 5 successful beta cases + human sign-off + production READY |
+| Phase 9 — Hardening | CI/device QA + private-beta + human sign-off + DB index hardening + live backend contract + primary production-runtime identity probe implemented | real device acceptance + 5 successful beta cases + human sign-off |
 | Phase 10 — Ecommerce | intentionally later | only after Launch 3 |
 | Phase 11 — Closed loop | delivered-order outcome capture + human review/threshold-policy engineering implemented | real outcome dataset + recorded human policy/threshold |
 
@@ -86,6 +86,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added an owner/supplier-controlled Fabric Truth evidence policy so Phase 2 physical-scale, GSM, drape and fibre thresholds are explicitly human-defined rather than hard-coded by software.
 - Added 12 production foreign-key covering indexes from the live Supabase advisor; the unindexed-foreign-key advisory count is now zero.
 - Added a live production Supabase evidence-contract probe to Phase 9, so readiness fails closed if required hardened RPCs/migrations are absent from production.
+- Added a primary Vercel production-runtime identity probe using deployment/project/environment/Git metadata; Phase 9 now fails closed on previews, duplicate projects or untraceable deployments.
 - Added a main-only Vercel Git deployment policy plus duplicate-project guard so feature-branch commit storms cannot consume production build quota.
 - Tightened the customer photo compositor with inward-feathered photographic garment/collar/cuff/creative boundaries and removed remaining dead customer construction-preview CSS.
 
