@@ -52,7 +52,7 @@ as $$
         from pg_class c
         join pg_namespace n on n.oid=c.relnamespace
         where n.nspname='private'
-          and c.relkind in ('r','p','v','m','S')
+          and c.relkind in ('r','p','v','m')
           and (
             has_table_privilege('anon',c.oid,'SELECT')
             or has_table_privilege('anon',c.oid,'INSERT')
