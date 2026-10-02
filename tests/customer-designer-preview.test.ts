@@ -211,7 +211,7 @@ test("selected-look photoreal stays hidden until automated fidelity QA passes",(
   assert.match(preview,/setShowCreativeAi\(false\);[\s\S]*const check=await inspectSelectedLook\(cachedResult\);[\s\S]*check\?\.available && check\.status==="pass"/);
   assert.match(preview,/Final selected-look renders stay behind QA until fidelity passes/);
   assert.match(preview,/setShowCreativeAi\(Boolean\(creativeDirection\)\)/);
-  assert.match(preview,/setSelectedRepairCount\(1\);[\s\S]*setShowCreativeAi\(false\);[\s\S]*check\?\.available && check\.status==="pass"/);
+  assert.match(preview,/setSelectedRepairCount\(1\);[\s\S]*setShowCreativeAi\(false\);[\s\S]*repairCheck\?\.available && repairCheck\.status==="pass"/);
   assert.match(preview,/const check=await inspectSelectedLook\(data\.result,view\);[\s\S]*check\?\.available && check\.status==="pass"\) setPhotorealView\(view\)/);
   assert.match(preview,/The render has not cleared customer-facing fidelity QA/);
 });
