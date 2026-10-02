@@ -1,8 +1,9 @@
 Redeploy trigger for Linen Earth Roadmap v2 major milestone.
 
-Production target: main after the photo-first Designer, Roadmap Readiness control tower,
-production Supabase migration rollout, Phase 2 Fabric Truth evidence policy,
-foreign-key index hardening, and live backend-health Phase 9 gate.
+Production target: main after the photo-first Designer realism pass, Style Director
+photo-only customer policy, full-body recommendation framing, navy studio continuity,
+legacy visual-route consolidation, and retirement of redundant Catalog / Atelier /
+Saved Designs / Fashion Brain customer surfaces.
 
-Target main commit before this trigger: afe8ef18dd2e41cce9626153546da4cb699f3bad
-Date: 2026-10-02
+Target main commit before this trigger: 9fc1593ed5b1f818bf7764e7ff90aa7b81ec7296
+Date: 2026-10-03
