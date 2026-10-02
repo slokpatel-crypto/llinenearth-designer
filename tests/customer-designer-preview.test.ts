@@ -210,4 +210,7 @@ test("final photoreal render is seeded from the validated locked live preview",(
   assert.match(ai,/usedLockedPreview\?"selected-look-locked-preview":"selected-look"/);
   assert.match(ai,/deterministic locked live preview/);
   assert.match(cache,/linen-final-render-cache-v2-locked-preview-source/);
+  assert.match(cache,/function lockedPreviewIdentity/);
+  assert.match(cache,/createHash\("sha256"\)\.update\(raw\)\.digest\("hex"\)/);
+  assert.match(cache,/lockedPreview:view==="front"\?lockedPreviewIdentity\(input\.lockedPreviewImage\):""/);
 });

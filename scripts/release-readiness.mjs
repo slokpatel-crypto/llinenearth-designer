@@ -631,7 +631,7 @@ requireTokens("tests/customer-designer-preview.test.ts", ["plain linen swatches 
 requireTokens("src/components/PhotoOutfitPreview.tsx", ['toDataURL("image/jpeg",.92)',"lockedPreviewImage"]);
 requireTokens("src/app/api/designer/look-render/route.ts", ['lockedPreviewImage:typeof body.lockedPreviewImage==="string"']);
 requireTokens("src/lib/ai-visualization.ts", ["LOCKED_PREVIEW_DATA_URI","LOCKED_PREVIEW_MAX_BYTES=4_500_000","LOCKED_PREVIEW_IDENTITY_BOXES","selected-look-locked-preview","deterministic locked live preview"]);
-requireTokens("src/lib/designer/render-cache-key.ts", ["linen-final-render-cache-v2-locked-preview-source"]);
+requireTokens("src/lib/designer/render-cache-key.ts", ["linen-final-render-cache-v2-locked-preview-source","function lockedPreviewIdentity",'createHash("sha256").update(raw).digest("hex")','lockedPreview:view==="front"?lockedPreviewIdentity(input.lockedPreviewImage):""']);
 requireTokens("tests/customer-designer-preview.test.ts", ["final photoreal render is seeded from the validated locked live preview"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["Lock final design","Final photoreal ✦","selectedLookSessionCache","styleSpec","bodyProfile"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["detailBrightness?:number","const detailBrightness = placement.detailBrightness ?? 1.3","detailBrightness: template.shirtDetailBrightness","detailBrightness: template.trouserDetailBrightness"]);

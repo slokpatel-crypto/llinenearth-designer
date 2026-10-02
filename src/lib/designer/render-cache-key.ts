@@ -7,6 +7,7 @@ type SelectedLookCacheInput={
   styleSpec?:unknown;
   bodyProfile?:unknown;
   renderEvidence?:unknown;
+  lockedPreviewImage?:string;
 };
 
 function canonicalUrlIdentity(value:string|undefined) {
@@ -54,6 +55,14 @@ function renderRelevantBodyProfile(value:unknown) {
   };
 }
 
+function lockedPreviewIdentity(value:string|undefined) {
+  const raw=String(value||"").trim();
+  if(!raw) return "";
+  // Cache identity follows the exact deterministic preview bytes without
+  // persisting the large browser data URI in the canonical payload.
+  return createHash("sha256").update(raw).digest("hex");
+}
+
 function renderRelevantEvidence(value:unknown) {
   if(!value || typeof value!=="object") return null;
   const root=value as Record<string,unknown>;
@@ -89,6 +98,7 @@ export function selectedLookRenderCacheKey(
     styleSpec:input.styleSpec||null,
     bodyProfile:renderRelevantBodyProfile(input.bodyProfile),
     renderEvidence:renderRelevantEvidence(input.renderEvidence),
+    lockedPreview:view==="front"?lockedPreviewIdentity(input.lockedPreviewImage):"",
     frontImage:view==="front"?"":canonicalUrlIdentity(frontImage),
   });
   return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");

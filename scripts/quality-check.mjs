@@ -310,7 +310,9 @@ for (const token of ["LOCKED_PREVIEW_DATA_URI","LOCKED_PREVIEW_MAX_BYTES=4_500_0
   if(!lockedPreviewAiVisualization.includes(token)) throw new Error(`Locked-preview final-render regression: ai-visualization missing ${token}`);
 }
 const selectedLookCacheKey=fs.readFileSync("src/lib/designer/render-cache-key.ts","utf8");
-if(!selectedLookCacheKey.includes("linen-final-render-cache-v2-locked-preview-source")) throw new Error("Locked-preview final-render regression: old render-cache generation could mask the new source strategy.");
+for (const token of ["linen-final-render-cache-v2-locked-preview-source","function lockedPreviewIdentity",'createHash("sha256").update(raw).digest("hex")','lockedPreview:view==="front"?lockedPreviewIdentity(input.lockedPreviewImage):""']) {
+  if(!selectedLookCacheKey.includes(token)) throw new Error(`Locked-preview final-render cache regression: missing ${token}`);
+}
 console.log("Locked-preview final-render gate passed: final photoreal generation starts from a validated deterministic customer preview when available.");
 for (const token of ["function drawWhiteDetail","globalAlpha = .9","globalAlpha = .12","clean white while retaining the real folded edge beside neck and hands"]) {
   if (!photoPreview.includes(token)) throw new Error(`Contrast collar/cuff photographic shading regression: missing ${token}`);
