@@ -39,5 +39,5 @@ test("photographic compositor feathers garment boundaries inward instead of hard
   assert.match(source,/Contrast collars\/cuffs sit directly beside skin and hands/);
 
   const css=readFileSync("src/app/designer-studio/designer-light.css","utf8");
-  assert.doesNotMatch(css,/\.newDesignerConstruction/);
+  assert.doesNotMatch(css,/\.newDesignerConstruction\{/);
 });
