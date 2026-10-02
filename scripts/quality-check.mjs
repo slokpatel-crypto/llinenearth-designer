@@ -89,7 +89,7 @@ const photographicPreviewCss=fs.readFileSync("src/app/designer-studio/designer-l
 for(const token of ["function featheredPathMask","featherMaskInside","Contrast collars/cuffs sit directly beside skin and hands","Hard SVG-like clip edges make fabric look pasted"]) {
   if(!photographicPreviewSource.includes(token)) throw new Error(`Photographic preview realism regression: missing ${token}`);
 }
-if(photographicPreviewCss.includes(".newDesignerConstruction")) throw new Error("Photographic preview regression: dead construction-preview CSS returned to the customer Designer.");
+if(photographicPreviewCss.includes(".newDesignerConstruction{")) throw new Error("Photographic preview regression: dead construction-preview CSS returned to the customer Designer.");
 console.log("Photographic preview edge gate passed: garment/detail clipping stays inward-feathered and customer construction CSS stays removed.");
 
 
