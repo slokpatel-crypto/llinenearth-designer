@@ -410,10 +410,7 @@ function clipCreativeLayer(
 ) {
   context.globalCompositeOperation="destination-in";
   if(mask) context.drawImage(featherMaskInside(mask),0,0);
-  if(path) {
-    context.fillStyle="#fff";
-    context.fill(new Path2D(path));
-  }
+  if(path) context.drawImage(featheredPathMask(path),0,0);
   context.globalCompositeOperation="source-over";
 }
 
