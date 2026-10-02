@@ -944,6 +944,15 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       if(!response.ok || !data.check) return null;
       if(view==="front") {
         setCreativeAi((current)=>current?.image===result.image ? {...current,selectedCheck:data.check} : current);
+        // Persist only completed, available QA with the in-session render
+        // cache. This avoids paying/latency for inspecting the identical image
+        // again while still retrying later when QA was temporarily unavailable.
+        if(!creativeDirection && data.check.available) {
+          const cached=selectedLookSessionCache.get(renderSignature);
+          if(cached?.image===result.image) {
+            selectedLookSessionCache.set(renderSignature,{...cached,selectedCheck:data.check});
+          }
+        }
         // A generated image never outranks the deterministic photographic
         // preview when automated QA finds a blocking fidelity issue. Keep the
         // generated result available for human review/repair, but fail closed
@@ -989,9 +998,11 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
           setCreativeAi(cachedResult);
           setPhotorealView("front");
           setPhotorealViews({});
-          setShowCreativeAi(false);
-          const check=await inspectSelectedLook(cachedResult);
-          if(check?.available && check.status==="pass") setShowCreativeAi(true);
+          setShowCreativeAi(Boolean(cached.selectedCheck?.available && cached.selectedCheck.status==="pass"));
+          if(!cached.selectedCheck?.available) {
+            const check=await inspectSelectedLook(cachedResult);
+            if(check?.available && check.status==="pass") setShowCreativeAi(true);
+          }
           return;
         }
       }
