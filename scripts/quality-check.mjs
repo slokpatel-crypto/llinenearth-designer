@@ -240,8 +240,9 @@ for(const token of ["visualizePhotoreal","/api/designer/look-render","lockedPrev
 for(const token of ["/api/visualization/fashn","/api/visualization/render","Generate alternate preview"]) {
   if(styleDirectorPhotoPage.includes(token)) throw new Error(`Style Director photo-first action regression: legacy generated source returned: ${token}`);
 }
+const styleDirectorPreviewSource=fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
 for(const token of ["onPreviewReady?:(dataUrl:string)=>void",'onPreviewReadyRef.current(canvas.toDataURL("image/jpeg",.92))']) {
-  if(!photoPreview.includes(token)) throw new Error(`Style Director locked-preview handoff regression: missing ${token}`);
+  if(!styleDirectorPreviewSource.includes(token)) throw new Error(`Style Director locked-preview handoff regression: missing ${token}`);
 }
 if(!styleDirectorCss.includes(".directorPhotoPending")) throw new Error("Style Director unsupported-photoreal state styling is missing.");
 console.log("Style Director photo-first action gate passed: photoreal refinement uses the same validated real-model preview and unsupported categories cannot invoke a simulated source.");
