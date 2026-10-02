@@ -93,3 +93,10 @@ test("instant photo compositor preserves selected fabric colour while borrowing 
   assert.match(css,/\.newDesignerPhotoStage\{[^}]*background:#0a1726/);
   assert.match(css,/\.newDesignerPhotoAi\{[^}]*background:#0a1726/);
 });
+
+
+test("Designer recommendation cards keep the photographic mannequin full-body",()=>{
+  const css=readFileSync("src/app/designer-studio/designer-light.css","utf8");
+  assert.match(css,/\.newDesignerBriefModel \.directorExistingModel canvas\{[^}]*object-fit:contain/);
+  assert.doesNotMatch(css,/\.newDesignerBriefModel \.directorExistingModel canvas\{[^}]*object-fit:cover/);
+});
