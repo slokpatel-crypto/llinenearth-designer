@@ -65,3 +65,74 @@ export function photoPreviewSupportForChoice(
       return {status:"approximate",reason:"The instant photo communicates the outfit while this construction detail remains provisional."};
   }
 }
+
+
+export type ContextualPhotoPreviewSupportRow={
+  key:keyof DesignerStyle;
+  label:string;
+  value:string;
+  support:PhotoPreviewSupportDetail;
+};
+
+export function photoPreviewSupportForStyle(style:DesignerStyle):ContextualPhotoPreviewSupportRow[]{
+  const tucked=style.shirtWear==="Tucked";
+  const template=tucked
+    ? "tucked"
+    : style.trouser==="Wide-leg / Relaxed Drape Trouser"
+      ? "wide"
+      : "pleated";
+
+  const contextual=(key:keyof DesignerStyle,label:string):PhotoPreviewSupportDetail=>{
+    if(key==="trouser"){
+      if(template==="tucked" && style.trouser==="Pleated Trouser")
+        return {status:"exact",reason:"The tucked studio photograph uses the same single-pleat straight trouser geometry."};
+      if(template==="wide" && style.trouser==="Wide-leg / Relaxed Drape Trouser")
+        return {status:"exact",reason:"The untucked wide-leg selection uses the dedicated photographed wide-trouser template."};
+      if(template==="pleated" && style.trouser==="Pleated Trouser")
+        return {status:"exact",reason:"The untucked pleated selection uses the dedicated photographed pleated-trouser template."};
+      return {status:"approximate",reason:"The selected trouser fabric is photographic, but this cut is not represented by the active studio template."};
+    }
+    if(key==="rise"){
+      if(tucked && style.rise==="Mid Rise")
+        return {status:"exact",reason:"The visible tucked waistband uses the same photographed mid-rise position."};
+      if(!tucked)
+        return {status:"approximate",reason:"Rise is hidden under the untucked shirt, so the photograph cannot directly verify this selection."};
+      return {status:"approximate",reason:"The photographed tucked waistband is not moved to this selected rise."};
+    }
+    if(key==="waistband"){
+      if(tucked && style.waistband==="Belt Loops")
+        return {status:"exact",reason:"The visible tucked waistband uses photographed belt-loop construction."};
+      if(!tucked)
+        return {status:"approximate",reason:"Waistband construction is hidden under the untucked shirt in the active photograph."};
+      return {status:"approximate",reason:"The active tucked photograph does not rebuild this waistband hardware."};
+    }
+    if(key==="break"){
+      const expected=template==="wide"?"Full Break":"Slight Break";
+      return style.break===expected
+        ? {status:"exact",reason:`The active ${template} studio template has the same photographed trouser break.`}
+        : {status:"approximate",reason:"The photographed trouser length is not re-cut to this selected break."};
+    }
+    return photoPreviewSupportForChoice(key,style[key]);
+  };
+
+  const labels:Record<keyof DesignerStyle,string>={
+    collar:"Shirt collar",
+    collarFinish:"Collar cloth",
+    cuff:"Shirt cuff",
+    placket:"Shirt placket",
+    shirtFit:"Shirt fit",
+    shirtWear:"Shirt finish",
+    trouser:"Trouser shape",
+    rise:"Trouser rise",
+    waistband:"Trouser waistband",
+    break:"Trouser break",
+    button:"Button material",
+  };
+
+  return (Object.keys(labels) as Array<keyof DesignerStyle>).map((key)=>({
+    key,
+    label:labels[key],
+    value:style[key],
+    support:contextual(key,labels[key]),
+  }));
+}
