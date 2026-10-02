@@ -175,6 +175,9 @@ for (const path of [
   "supabase/migrations/20261004_meterage_calibration_registry.sql",
   "src/app/operator/launch-readiness/page.tsx",
   "src/lib/designer/roadmap-readiness.ts",
+  "src/lib/designer/roadmap-backend-health.ts",
+  "src/app/api/operator/roadmap-backend-health/route.ts",
+  "tests/roadmap-backend-health.test.ts",
   "src/lib/designer/fabric-truth-policy.ts",
   "src/app/api/operator/fabric-truth-policy/route.ts",
   "src/app/operator/fabric-truth-policy/page.tsx",
@@ -543,9 +546,11 @@ requireTokens("src/app/api/designer/casebook/route.ts", [
 requireTokens("src/app/operator/OperatorClient.tsx", [
   "DESIGNER CASE REVIEW","Approve case","Reject case","designer_case_review"
 ]);
-requireTokens("src/lib/designer/roadmap-readiness.ts", ["summarizeRoadmapReadiness","fabricTruthEvidence","phase2Complete=reviewedComplete&&colorComplete&&fabricTruthEvidence.gateComplete","phase1Complete","phase8Complete","phase9Complete"]);
-requireTokens("src/app/operator/roadmap-readiness/RoadmapReadinessClient.tsx", ["Readiness Control Tower","ENGINEERING","REAL EVIDENCE","No phase is promoted from missing data"]);
+requireTokens("src/lib/designer/roadmap-readiness.ts", ["summarizeRoadmapReadiness","fabricTruthEvidence","phase2Complete=reviewedComplete&&colorComplete&&fabricTruthEvidence.gateComplete","phase1Complete","phase8Complete","phase9Complete","backendHealth.gateComplete"]);
+requireTokens("src/app/operator/roadmap-readiness/RoadmapReadinessClient.tsx", ["Readiness Control Tower","ENGINEERING","PRODUCTION BACKEND","REAL EVIDENCE","No phase is promoted from missing data"]);
 requireTokens("src/lib/designer/fabric-truth-policy.ts", ["FABRIC_TRUTH_POLICY_VERSION","normalizeFabricTruthPolicy","evaluateFabricTruthPolicy","gateComplete"]);
+requireTokens("src/lib/designer/roadmap-backend-health.ts", ["ROADMAP_BACKEND_CAPABILITIES","summarizeRoadmapBackendHealth","productionCutEvidence","verifiedMeterageCuts"]);
+requireTokens("src/app/api/operator/roadmap-backend-health/route.ts", ["verifyOperatorSession","roadmap_v2_evidence_health","summarizeRoadmapBackendHealth"]);
 requireTokens("src/app/api/operator/fabric-truth-policy/route.ts", ["verifyOperatorSession","fabric_truth_evidence_policy","normalizeFabricTruthPolicy"]);
 requireTokens("src/app/operator/fabric-truth-policy/FabricTruthPolicyClient.tsx", ["The software does not choose these thresholds","Save approved policy","LIVE PHYSICAL COVERAGE"]);
 requireTokens("src/lib/designer/fit-outcomes.ts", ["designer-fit-outcomes-v1","aggregateFitOutcomes","fitOutcomeSignalFor"]);

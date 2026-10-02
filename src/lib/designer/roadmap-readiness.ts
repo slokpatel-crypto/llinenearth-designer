@@ -2,6 +2,7 @@ import { summarizeLaunchReadiness } from "./launch-readiness-evidence.ts";
 import { summarizeProductionDeliveryEvidence } from "./production-delivery-evidence.ts";
 import { evaluateFinalRenderReleaseEvidence } from "./render-release-evidence.ts";
 import { evaluateFabricTruthPolicy, normalizeFabricTruthPolicy } from "./fabric-truth-policy.ts";
+import { summarizeRoadmapBackendHealth } from "./roadmap-backend-health.ts";
 
 export type RoadmapPhaseStatus="complete"|"evidence"|"open"|"later";
 
@@ -35,6 +36,7 @@ export type RoadmapReadinessInput={
   productionEvidence?:Record<string,unknown>;
   meterageModel?:Record<string,unknown>;
   customerOutcomes?:Record<string,unknown>;
+  backendHealth?:Record<string,unknown>;
 };
 
 function object(value:unknown):Record<string,unknown>{
@@ -169,7 +171,9 @@ export function summarizeRoadmapReadiness(input:RoadmapReadinessInput){
   const phase8Complete=productionSummary.gateComplete&&meterageComplete;
 
   const allDeviceAccepted=mobileAccepted&&tabletAccepted&&desktopAccepted;
-  const phase9Complete=launchSummary.launchEvidenceComplete&&allDeviceAccepted;
+  const backendApiSummary=object(object(input.backendHealth).summary);
+  const backendHealth=summarizeRoadmapBackendHealth(object(backendApiSummary.capabilities));
+  const phase9Complete=launchSummary.launchEvidenceComplete&&allDeviceAccepted&&backendHealth.gateComplete;
 
   const outcomeSummary=object(object(input.customerOutcomes).summary);
   const phase11Complete=outcomeSummary.gateComplete===true;
@@ -184,7 +188,7 @@ export function summarizeRoadmapReadiness(input:RoadmapReadinessInput){
     phase({id:"phase-6",phase:6,title:"Style Director",engineeringComplete:true,evidenceComplete:phase6Complete,progressPercent:directorSummary.requiredPositiveCases?ratio(number(directorSummary.positiveCases),number(directorSummary.requiredPositiveCases)):0,metric:`${number(directorSummary.positiveCases)} clean cases · target ${directorSummary.requiredPositiveCases??"not documented"}`,blocker:phase6Complete?"Validation gate satisfied.":"Needs a documented owner target, enough non-replayed clean handoff cases and human sign-off.",href:"/operator/style-director-validation"}),
     phase({id:"phase-7",phase:7,title:"Final Render / QA",engineeringComplete:true,evidenceComplete:phase7Complete,progressPercent:renderRelease.progressPercent,metric:`${renderRelease.completedGates}/${renderRelease.totalGates} render-release gates`,blocker:phase7Complete?"Render release evidence satisfied.":"Needs real approval volume/rate, cross-view identity, owner credit cap, manual-review sign-off and physical pattern calibration.",href:"/operator/render-qa"}),
     phase({id:"phase-8",phase:8,title:"Production Bridge",engineeringComplete:true,evidenceComplete:phase8Complete,progressPercent:percent([productionSummary.gateComplete,meterageComplete]),metric:`${productionSummary.zeroReentryTargetCount}/${productionSummary.target} zero-reentry deliveries · meterage ${meterageComplete?"approved":"open"}`,blocker:phase8Complete?"Production evidence gate satisfied.":"Needs approved shirt + trouser meterage models and ten provenance-backed zero-reentry deliveries.",href:"/operator/production-evidence"}),
-    phase({id:"phase-9",phase:9,title:"Hardening / Launch",engineeringComplete:true,evidenceComplete:phase9Complete,progressPercent:percent([launchSummary.betaGateComplete,launchSummary.checklistGateComplete,allDeviceAccepted]),metric:`beta ${launchSummary.betaGateComplete?"✓":"open"} · sign-off ${launchSummary.checklistGateComplete?"✓":"open"} · devices ${allDeviceAccepted?"3/3":"open"}`,blocker:phase9Complete?"Human/device evidence is complete; production promotion still runs through CI/release readiness.":"Needs verified beta evidence, human launch checklist and accepted mobile/tablet/desktop device QA.",href:"/operator/launch-readiness"}),
+    phase({id:"phase-9",phase:9,title:"Hardening / Launch",engineeringComplete:true,evidenceComplete:phase9Complete,progressPercent:percent([launchSummary.betaGateComplete,launchSummary.checklistGateComplete,allDeviceAccepted,backendHealth.gateComplete]),metric:`beta ${launchSummary.betaGateComplete?"✓":"open"} · sign-off ${launchSummary.checklistGateComplete?"✓":"open"} · devices ${allDeviceAccepted?"3/3":"open"} · backend ${backendHealth.readyCount}/${backendHealth.total}`,blocker:phase9Complete?"Human/device evidence and the live production backend contract are complete; production promotion still runs through CI/release readiness.":!backendHealth.gateComplete?"Production Supabase backend contract is incomplete or could not be verified.":"Needs verified beta evidence, human launch checklist and accepted mobile/tablet/desktop device QA.",href:"/operator/launch-readiness"}),
     phase({id:"phase-10",phase:10,title:"Ecommerce",engineeringComplete:false,evidenceComplete:false,status:"later",progressPercent:0,metric:"Intentionally deferred",blocker:"Starts only after Launch 3; do not pull this forward.",href:"/operator"}),
     phase({id:"phase-11",phase:11,title:"Closed Loop",engineeringComplete:true,evidenceComplete:phase11Complete,progressPercent:outcomeSummary.threshold?ratio(number(outcomeSummary.learningEligible),number(outcomeSummary.threshold)):0,metric:`${number(outcomeSummary.learningEligible)} learning-eligible outcomes · target ${outcomeSummary.threshold??"not documented"}`,blocker:phase11Complete?"Human outcome threshold satisfied.":"Needs real delivered-order outcomes plus a recorded human learning threshold/policy.",href:"/operator/customer-outcomes"}),
   ];
@@ -200,5 +204,9 @@ export function summarizeRoadmapReadiness(input:RoadmapReadinessInput){
     evidenceTotal:active.length,
     allEngineeringComplete:engineeringComplete===active.length,
     allEvidenceComplete:evidenceComplete===active.length,
+    backendHealthy:backendHealth.gateComplete,
+    backendReadyCount:backendHealth.readyCount,
+    backendTotal:backendHealth.total,
+    backendMissing:backendHealth.missing,
   };
 }
