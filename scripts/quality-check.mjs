@@ -819,7 +819,7 @@ for(const token of ["/brand/linen-earth-logo.png","SITE_URL","alternates: { cano
 console.log("Designer trust/mobile gate passed: measurement units, corrected social metadata/logo path and mobile dock separation protected.");
 
 const phase10DesignerUi=fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for(const token of ["styleSpec","mergeLegacyIntoStyleSpec","validateStyleSpecV2","LiveConstructionPreview","Studio preview","Live cut study","bodyProfile","bodyProfileFromMeasurements"]) {
+for(const token of ["styleSpec","mergeLegacyIntoStyleSpec","validateStyleSpecV2","PhotoOutfitPreview","bodyProfile","bodyProfileFromMeasurements"]) {
   if(!phase10DesignerUi.includes(token)) throw new Error(`Phase 10 canonical Designer regression: missing ${token}`);
 }
 const phase10StyleSpec=fs.readFileSync("src/lib/designer/style-spec-v2.ts","utf8");
