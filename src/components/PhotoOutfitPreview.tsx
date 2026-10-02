@@ -9,6 +9,7 @@ import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import fabricTileManifest from "../../public/fabric-tiles/manifest.json";
 import { CREATIVE_FEEDBACK_REASONS, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
 import { UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION, type CustomerPhotoCalibration } from "@/lib/designer/photo-calibration-types";
+import { customerPhotoCalibrationIdentity, fetchCustomerPhotoCalibration } from "@/lib/designer/photo-calibration-client";
 import {
   DESIGNER_PHOTO_TEMPLATES, PHOTO_COLLAR_MASK, PHOTO_CUFF_MASK, PHOTO_TUCKED_COLLAR_MASK, PHOTO_TUCKED_COLLAR_STAND_MASK,
   PHOTO_TUCKED_CUFF_MASK, PHOTO_TUCKED_NECK_CLEAR, PHOTO_TUCKED_SHIRT_CLIP, PHOTO_TUCKED_TROUSER_CLIP,
@@ -52,25 +53,6 @@ const pathMasks = new Map<string, HTMLCanvasElement>();
 const tuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
 const untuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
 const selectedLookSessionCache=new Map<string,PhotorealResult>();
-let customerPhotoCalibrationRequest:Promise<CustomerPhotoCalibration>|null=null;
-
-function loadCustomerPhotoCalibration(){
-  if(customerPhotoCalibrationRequest) return customerPhotoCalibrationRequest;
-  customerPhotoCalibrationRequest=fetch("/api/designer/photo-calibration",{cache:"no-store"})
-    .then(async(response)=>{
-      if(!response.ok) return UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION;
-      const payload=await response.json() as CustomerPhotoCalibration;
-      return payload?.verified===true
-        && Number.isFinite(Number(payload.photoPxPerMm))
-        && Number(payload.photoPxPerMm)>0
-        ? payload
-        : UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION;
-    })
-    .catch(()=>UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION)
-    .finally(()=>{customerPhotoCalibrationRequest=null;});
-  return customerPhotoCalibrationRequest;
-}
-
 function loadImage(url: string): Promise<HTMLImageElement> {
   const cached = images.get(url);
   if (cached) return cached;
@@ -664,7 +646,7 @@ export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured
   pant:DesignerFabric;
   style:DesignerStyle;
   onRenderMeasured?:(milliseconds:number)=>void;
-  onPreviewReady?:(dataUrl:string)=>void;
+  onPreviewReady?:(dataUrl:string,calibrationIdentity:string)=>void;
   photoPxPerMm?:number;
 }) {
   const canvasRef=useRef<HTMLCanvasElement>(null);
@@ -681,6 +663,9 @@ export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured
     : customerCalibration.verified
       ? Number(customerCalibration.photoPxPerMm)
       : undefined;
+  const resolvedCalibrationIdentity=Number.isFinite(explicitPhotoPxPerMm)&&explicitPhotoPxPerMm>0
+    ? `explicit:${explicitPhotoPxPerMm.toFixed(6)}`
+    : customerPhotoCalibrationIdentity(customerCalibration);
   const templateId=photoTemplateForStyle(style);
   const template=DESIGNER_PHOTO_TEMPLATES[templateId];
   const tucked=style.shirtWear==="Tucked";
@@ -688,7 +673,7 @@ export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured
   useEffect(()=>{
     if(Number.isFinite(explicitPhotoPxPerMm)&&explicitPhotoPxPerMm>0) return;
     let cancelled=false;
-    const refresh=()=>void loadCustomerPhotoCalibration().then((value)=>{
+    const refresh=()=>void fetchCustomerPhotoCalibration().then((value)=>{
       if(!cancelled) setCustomerCalibration(value);
     });
     const onVisibility=()=>{if(document.visibilityState==="visible") refresh();};
@@ -722,7 +707,7 @@ export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured
       setError(false);
       if(onPreviewReadyRef.current) {
         try {
-          onPreviewReadyRef.current(canvas.toDataURL("image/jpeg",.92));
+          onPreviewReadyRef.current(canvas.toDataURL("image/jpeg",.92),resolvedCalibrationIdentity);
         } catch {
           // The visible preview stays usable even if browser serialization fails.
         }
@@ -736,7 +721,7 @@ export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured
       setError(true);
     });
     return ()=>{cancelled=true;};
-  },[shirt,pant,template,tucked,style,resolvedPhotoPxPerMm]);
+  },[shirt,pant,template,tucked,style,resolvedPhotoPxPerMm,resolvedCalibrationIdentity]);
 
   return <div className="directorExistingModel" data-ready={ready?"true":"false"}>
     <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-label={`Existing Linen Earth real model wearing ${shirt.name} shirt with ${pant.name} trousers`} />
@@ -827,7 +812,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
 
   useEffect(()=>{
     let cancelled=false;
-    const refresh=()=>void loadCustomerPhotoCalibration().then((value)=>{
+    const refresh=()=>void fetchCustomerPhotoCalibration().then((value)=>{
       if(!cancelled) setPhotoCalibration(value);
     });
     const onVisibility=()=>{if(document.visibilityState==="visible") refresh();};
