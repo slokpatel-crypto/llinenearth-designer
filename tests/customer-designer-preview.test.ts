@@ -7,7 +7,7 @@ test("customer Designer keeps photographic preview as the only model surface", (
   assert.match(source, /<PhotoOutfitPreview/);
   assert.doesNotMatch(source, /LiveConstructionPreview/);
   assert.doesNotMatch(source, /Live cut study/);
-  assert.doesNotMatch(source, /previewMode/);
+  assert.doesNotMatch(source, /previewMode|PreviewMode/);
 
   const page = readFileSync("src/app/designer-studio/page.tsx", "utf8");
   assert.doesNotMatch(page, /live-construction\.css/);
