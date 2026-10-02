@@ -29,3 +29,15 @@ test("photographic garment clips feather only inside the real cloth boundary",()
   assert.match(source,/Contrast collars\/cuffs sit directly beside skin and hands/);
   assert.match(source,/destination-in/);
 });
+
+
+test("photographic compositor feathers garment boundaries inward instead of hard vector clipping",()=>{
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.match(source,/function featheredPathMask/);
+  assert.match(source,/context\.drawImage\(featheredPathMask\(path\), 0, 0\)/);
+  assert.match(source,/if\(path\) context\.drawImage\(featheredPathMask\(path\),0,0\)/);
+  assert.match(source,/Contrast collars\/cuffs sit directly beside skin and hands/);
+
+  const css=readFileSync("src/app/designer-studio/designer-light.css","utf8");
+  assert.doesNotMatch(css,/\.newDesignerConstruction/);
+});
