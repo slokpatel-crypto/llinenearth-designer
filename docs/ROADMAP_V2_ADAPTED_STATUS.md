@@ -11,7 +11,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 |---|---|---|
 | Phase 0 — Audit / Stabilize | Engineering complete | merge after CI / review |
 | Phase 1 — Premium Shirt Proof | Engineering implementation complete | physical scale measurement + 8-viewer realism + protected-boundary confirmation + device evidence |
-| Phase 2 — Fabric Truth | strong existing foundation | owner / supplier physical evidence coverage and 50-fabric reviewed set |
+| Phase 2 — Fabric Truth | engineering complete + owner-controlled physical-evidence policy implemented | real GSM / fibre / drape / scale coverage, 50 reviewed fabrics and physical colour evidence against the approved policy |
 | Phase 3 — Deterministic Designer | shared proof/customer compositor + option coverage audit + novice completion-study workflow | Phase 1 evidence + five server-timed real novice completions within documented target + all visible option reviews |
 | Phase 4 — Measurements / Fit | advanced foundation + secure recovery + authenticated ownership + house-ease registry + approved-model runtime activation implemented | real-person accuracy evidence + real finished-garment ease evidence/approval |
 | Phase 5 — Lock / Share / Enquiry | lock + share + secure recovery + authenticated customer ownership implemented | five-customer real-flow validation |
@@ -83,6 +83,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Hardened durable outcome learning context integrity: only supported-version context matching the immutable revision, valid recipe hash and complete fabric pair can count toward the human evidence threshold.
 - Added phase adaptation records so future coding agents do not rebuild existing systems unnecessarily.
 - Added a cross-phase Roadmap Readiness control tower that keeps engineering completion separate from human/physical evidence, links directly to every major gate, and refuses to promote missing data to complete.
+- Added an owner/supplier-controlled Fabric Truth evidence policy so Phase 2 physical-scale, GSM, drape and fibre thresholds are explicitly human-defined rather than hard-coded by software.
 
 ## Evidence we cannot manufacture in code
 
