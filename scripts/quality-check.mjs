@@ -295,6 +295,18 @@ for (const token of ["const plainTextureDetailGain = .34","high-frequency linen 
   if (!photoPreview.includes(token)) throw new Error(`Plain linen texture regression: missing ${token}`);
 }
 console.log("Plain linen texture gate passed: solid swatches retain microtexture without importing broad catalogue-photo shadows.");
+for (const token of ['toDataURL("image/jpeg",.92)',"lockedPreviewImage"]) {
+  if (!photoPreview.includes(token)) throw new Error(`Locked-preview final-render regression: PhotoOutfitPreview missing ${token}`);
+}
+const selectedLookRoute=fs.readFileSync("src/app/api/designer/look-render/route.ts","utf8");
+if(!selectedLookRoute.includes('lockedPreviewImage:typeof body.lockedPreviewImage==="string"')) throw new Error("Locked-preview final-render regression: server route no longer forwards the preview candidate.");
+const lockedPreviewAiVisualization=fs.readFileSync("src/lib/ai-visualization.ts","utf8");
+for (const token of ["LOCKED_PREVIEW_DATA_URI","LOCKED_PREVIEW_MAX_BYTES=4_500_000","LOCKED_PREVIEW_IDENTITY_BOXES","average>.16 || maximum>.28","selected-look-locked-preview","deterministic locked live preview"]) {
+  if(!lockedPreviewAiVisualization.includes(token)) throw new Error(`Locked-preview final-render regression: ai-visualization missing ${token}`);
+}
+const selectedLookCacheKey=fs.readFileSync("src/lib/designer/render-cache-key.ts","utf8");
+if(!selectedLookCacheKey.includes("linen-final-render-cache-v2-locked-preview-source")) throw new Error("Locked-preview final-render regression: old render-cache generation could mask the new source strategy.");
+console.log("Locked-preview final-render gate passed: final photoreal generation starts from a validated deterministic customer preview when available.");
 for (const token of ["function drawWhiteDetail","globalAlpha = .9","globalAlpha = .12","clean white while retaining the real folded edge beside neck and hands"]) {
   if (!photoPreview.includes(token)) throw new Error(`Contrast collar/cuff photographic shading regression: missing ${token}`);
 }

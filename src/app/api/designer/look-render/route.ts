@@ -36,6 +36,8 @@ export async function POST(request:Request) {
 
     // Canonical stock data and verified Analyzer facts are resolved server-side.
     // Browser-posted fabric labels/images/physical facts never become render truth.
+    // A browser-composited locked preview may only become the visual edit source
+    // after server-side dimensions and protected-region identity validation.
     const enriched=await enrichSelectedLookEvidence(resolved);
     const input:SelectedLookFashnRequest & {
       view?:SelectedLookView;
@@ -45,6 +47,7 @@ export async function POST(request:Request) {
     }={
       ...enriched,
       view:body.view as SelectedLookView|undefined,
+      lockedPreviewImage:typeof body.lockedPreviewImage==="string" ? body.lockedPreviewImage : undefined,
       frontImage:typeof body.frontImage==="string" ? body.frontImage : undefined,
       previousImage:typeof body.previousImage==="string" ? body.previousImage : undefined,
       repairInstruction:typeof body.repairInstruction==="string" ? body.repairInstruction : undefined,

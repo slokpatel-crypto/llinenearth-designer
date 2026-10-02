@@ -859,6 +859,15 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
           return;
         }
       }
+      let lockedPreviewImage:string|undefined;
+      if(!creativeDirection && ready && canvasRef.current) {
+        try {
+          lockedPreviewImage=canvasRef.current.toDataURL("image/jpeg",.92);
+        } catch {
+          // Final rendering can fall back to the canonical studio photograph
+          // if the browser cannot serialize the deterministic live preview.
+        }
+      }
       const response=await fetch(creativeDirection ? "/api/designer/creative-render" : "/api/designer/look-render",{
         method:"POST",
         headers:{"content-type":"application/json"},
@@ -866,7 +875,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
           shirt:{id:shirt.id,name:shirt.name,line:shirt.line,image:shirt.image,hex:shirt.hex,patternType:shirt.patternType},
           pant:{id:pant.id,name:pant.name,line:pant.line,image:pant.image,hex:pant.hex,patternType:pant.patternType},
           style,
-          ...(!creativeDirection ? {styleSpec,bodyProfile,locked:true,lookKey:renderSignature} : {}),
+          ...(!creativeDirection ? {styleSpec,bodyProfile,locked:true,lookKey:renderSignature,lockedPreviewImage} : {}),
           ...(creativeDirection ? {creative:{
             id:creativeDirection.id,
             name:creativeDirection.name,
