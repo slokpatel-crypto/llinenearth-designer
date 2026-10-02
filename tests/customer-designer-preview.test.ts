@@ -33,3 +33,13 @@ test("photographic garment clips feather only inside the real cloth boundary",()
   const css=readFileSync("src/app/designer-studio/designer-light.css","utf8");
   assert.doesNotMatch(css,/\.newDesignerConstruction\{/);
 });
+
+
+test("photo compositor neutralizes source-template luminance before restoring folds",()=>{
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.match(source,/detailBrightness\?:number/);
+  assert.match(source,/const detailBrightness = placement\.detailBrightness \?\? 1\.3/);
+  assert.match(source,/brightness\(\$\{detailBrightness\}\)/);
+  assert.match(source,/detailBrightness: 3\.05/);
+  assert.match(source,/detailBrightness: 1\.9/);
+});
