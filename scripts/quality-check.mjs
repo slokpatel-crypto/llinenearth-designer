@@ -234,6 +234,8 @@ for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOT
 const photoCustomerCss = fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
 if (photoCustomerCss.includes(".newDesignerConstruction{")) throw new Error("Real photographic Designer regression: dead construction-preview CSS returned to the customer Designer.");
 if(!/\.newDesignerPhotoStage\{[^}]*background:#0a1726/.test(photoCustomerCss)) throw new Error("Photographic Designer regression: instant preview stage must retain the deep navy studio backdrop.");
+if(!/\.newDesignerBriefModel \.directorExistingModel canvas\{[^}]*object-fit:contain/.test(photoCustomerCss)) throw new Error("Photographic Designer regression: recommendation-card model must remain full-body.");
+if(/\.newDesignerBriefModel \.directorExistingModel canvas\{[^}]*object-fit:cover/.test(photoCustomerCss)) throw new Error("Photographic Designer regression: recommendation-card cover crop returned.");
 const photoGeometry = fs.readFileSync("src/lib/designer/photo-preview.ts","utf8");
 for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","PHOTO_TUCKED_LEFT_SLEEVE_CLIP","PHOTO_TUCKED_RIGHT_SLEEVE_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_LEFT_TROUSER_CLIP","PHOTO_TUCKED_RIGHT_TROUSER_CLIP","PHOTO_TUCKED_NECK_CLEAR","/designer/studio-tucked.webp"]) {
   if (!photoGeometry.includes(token)) throw new Error(`Real photographic Designer regression: photo-preview missing ${token}`);
