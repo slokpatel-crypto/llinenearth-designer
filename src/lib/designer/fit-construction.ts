@@ -1,7 +1,8 @@
-import type { MeasurementProfile } from "@/lib/measurements";
-import type { DesignerClimate, DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
-import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
-import { HOUSE_EASE_TABLE_VERSION, HOUSE_SHIRT_EASE, HOUSE_TROUSER_EASE, type ShirtEaseClass, type TrouserEaseClass } from "@/lib/designer/house-ease";
+import type { MeasurementProfile } from "../measurements.ts";
+import type { DesignerClimate, DesignerFabric, DesignerStyle } from "./engine.ts";
+import type { TailorObservationProfile } from "./tailor-observations.ts";
+import { HOUSE_EASE_TABLE_VERSION, HOUSE_SHIRT_EASE, HOUSE_TROUSER_EASE, type ShirtEaseClass, type TrouserEaseClass } from "./house-ease.ts";
+import type { ApprovedHouseEaseModel } from "./ease-calibration.ts";
 
 export type FitConstructionSeverity = "info" | "review" | "warning";
 export type RangeCm = { min: number; max: number };
@@ -21,10 +22,10 @@ export type ConstructionCheck = {
 };
 
 export type FitConstructionAssessment = {
-  version: "fit-construction-provisional-1";
+  version: "fit-construction-provisional-1" | "fit-construction-calibrated-2";
   status: "insufficient_measurements" | "provisional";
-  source: "provisional_house_defaults";
-  easeTableVersion: typeof HOUSE_EASE_TABLE_VERSION;
+  source: "provisional_house_defaults" | "approved_house_calibration";
+  easeTableVersion: string;
   shirtTargets: FinishedTarget[];
   trouserTargets: FinishedTarget[];
   checks: ConstructionCheck[];
@@ -73,15 +74,22 @@ export function assessFitConstruction(
     shirtFabric?: Pick<DesignerFabric,"drape"|"weightClass"|"weave"|"name"> | null;
     trouserFabric?: Pick<DesignerFabric,"drape"|"weightClass"|"weave"|"name"> | null;
     observations?: TailorObservationProfile | null;
+    easeModel?: ApprovedHouseEaseModel | null;
   } = {},
 ):FitConstructionAssessment {
+  const approvedEase=options.easeModel||null;
+  const easeSource=approvedEase?"approved_house_calibration" as const:"provisional_house_defaults" as const;
+  const easeVersion=approvedEase?.version||HOUSE_EASE_TABLE_VERSION;
+  const fitVersion=approvedEase?"fit-construction-calibrated-2" as const:"fit-construction-provisional-1" as const;
   const caveats=[
-    "Ease values are provisional Linen Earth house ranges, not final cutting measurements.",
+    approvedEase
+      ? `Ease ranges come from owner/tailor-approved Linen Earth calibration ${approvedEase.version}; final cutting still requires tailor verification.`
+      : "Ease values are provisional Linen Earth house ranges, not final cutting measurements.",
     options.observations ? "Manual tailoring observations improve the fit read, but a tailor must still verify armhole, sleeve pitch and pattern/block adjustments before cutting." : "A tailor must verify posture, shoulder slope, armhole, seat balance and pattern/block adjustments before cutting.",
   ];
   if(!profile){
     return {
-      version:"fit-construction-provisional-1",status:"insufficient_measurements",source:"provisional_house_defaults",easeTableVersion:HOUSE_EASE_TABLE_VERSION,
+      version:fitVersion,status:"insufficient_measurements",source:easeSource,easeTableVersion:easeVersion,
       shirtTargets:[],trouserTargets:[],checks:[{id:"FIT-DATA",severity:"review",message:"Add body measurements before the Designer can assess fit and construction."}],
       fitScore:50,caveats,
     };
@@ -92,8 +100,8 @@ export function assessFitConstruction(
   const trouserTargets:FinishedTarget[]=[];
   const sf=shirtFitClass(style);
   const tf=trouserFitClass(style);
-  const se=HOUSE_SHIRT_EASE[sf];
-  const te=HOUSE_TROUSER_EASE[tf];
+  const se=approvedEase?.table.shirt[sf]||HOUSE_SHIRT_EASE[sf];
+  const te=approvedEase?.table.trouser[tf]||HOUSE_TROUSER_EASE[tf];
 
   if(profile.shirt.neck) shirtTargets.push(target("Finished collar circumference",profile.shirt.neck,se.neck));
   if(profile.shirt.chest) shirtTargets.push(target("Finished shirt chest",profile.shirt.chest,se.chest));
@@ -201,10 +209,10 @@ export function assessFitConstruction(
   const fitScore=Math.max(0,Math.min(100,70+Math.min(16,dataCount)*2-warnings*18-reviews*6));
 
   return {
-    version:"fit-construction-provisional-1",
+    version:fitVersion,
     status:dataCount>=6?"provisional":"insufficient_measurements",
-    source:"provisional_house_defaults",
-    easeTableVersion:HOUSE_EASE_TABLE_VERSION,
+    source:easeSource,
+    easeTableVersion:easeVersion,
     shirtTargets,trouserTargets,checks,fitScore,caveats,
   };
 }

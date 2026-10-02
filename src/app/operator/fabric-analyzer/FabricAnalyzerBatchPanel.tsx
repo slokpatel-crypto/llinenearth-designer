@@ -112,7 +112,10 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
       const response=await fetch("/api/operator/designer-data",{cache:"no-store"});
       const payload=await response.json() as {fabrics?:Array<{
         id:string;colorName:string;line:string;family:string;pattern:string;
-        metadata?:{weightGsm?:number;drape?:string;note?:string};
+        metadata?:{
+          weightGsm?:number;drape?:string;note?:string;
+          physicalEvidence?:{sourceType?:string;reference?:string;checkedBy?:string;evidenceDate?:string;sourceUrl?:string};
+        };
         evidence?:{priority?:number;gaps?:string[]};
       }>;error?:string};
       if(!response.ok) throw new Error(payload.error||"Designer data could not be loaded.");
@@ -124,6 +127,10 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
         const mappedDrape=fabric.metadata?.drape==="structured"?"Structured"
           : fabric.metadata?.drape==="medium"?"Balanced"
             : ["fluid","soft"].includes(String(fabric.metadata?.drape||""))?"Fluid":"";
+        const provenance=fabric.metadata?.physicalEvidence;
+        const inheritedEvidenceNote=provenance
+          ? [provenance.sourceType,provenance.reference,provenance.checkedBy ? "checked by "+provenance.checkedBy : "",provenance.evidenceDate].filter(Boolean).join(" · ")
+          : "";
         const row:Record<string,unknown>={
           fabricId:fabric.id,
           imageUrl:"",
@@ -140,8 +147,8 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
           verifiedGsm:fabric.metadata?.weightGsm??"",
           verifiedDrape:mappedDrape,
           verifiedFiberContent:"",
-          verifiedPhysicalSourceUrl:"",
-          verifiedPhysicalEvidenceNote:"",
+          verifiedPhysicalSourceUrl:provenance?.sourceUrl||"",
+          verifiedPhysicalEvidenceNote:inheritedEvidenceNote,
           notes:`Evidence queue gaps: ${(fabric.evidence?.gaps||[]).join(" | ")}`,
         };
         lines.push(HEADERS.map((header)=>csvCell(row[header])).join(","));
@@ -155,7 +162,7 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
       anchor.click();
       anchor.remove();
       URL.revokeObjectURL(url);
-      setMessage(`Template created for ${fabrics.length} fabrics with evidence gaps. Add trusted capture URLs before running.`);
+      setMessage(`Template created for ${fabrics.length} fabrics with evidence gaps. Existing structured physical provenance is carried forward; add trusted capture URLs before running.`);
     }catch(error){
       setMessage(error instanceof Error?error.message:"Batch template could not be created.");
     }

@@ -48,6 +48,7 @@ type AnalyzerProfile={
     drape:string|null;
     fiberContent:string|null;
     sourceUrl:string|null;
+    evidenceNote:string|null;
   };
   captureSet?:Array<{role:string;imageUrl:string;contentSha256:string|null}>;
   reviewNeeded?:string[];
@@ -320,7 +321,7 @@ export default function FabricAnalyzerClient(){
             <span>Texture <b>{pct(run.profile.confidence.texture)}</b></span>
             <span>Styling <b>{pct(run.profile.confidence.styling)}</b></span>
           </div>
-          <div className="physicalTruth"><small>VERIFIED PHYSICAL</small><p>GSM <b>{run.profile.verifiedPhysical?.gsm ?? "unknown"}</b> · Drape <b>{run.profile.verifiedPhysical?.drape || "unknown"}</b></p><p>Fibre <b>{run.profile.verifiedPhysical?.fiberContent || "unknown"}</b></p></div>
+          <div className="physicalTruth"><small>VERIFIED PHYSICAL</small><p>GSM <b>{run.profile.verifiedPhysical?.gsm ?? "unknown"}</b> · Drape <b>{run.profile.verifiedPhysical?.drape || "unknown"}</b></p><p>Fibre <b>{run.profile.verifiedPhysical?.fiberContent || "unknown"}</b></p>{run.profile.verifiedPhysical?.sourceUrl&&<p><b>Source:</b> {run.profile.verifiedPhysical.sourceUrl}</p>}{run.profile.verifiedPhysical?.evidenceNote&&<p><b>Evidence:</b> {run.profile.verifiedPhysical.evidenceNote}</p>}</div>
           <div className="captures"><small>CAPTURES USED</small>{(run.profile.captureSet||[]).map((item)=><span key={item.role}>{item.role}<b>{item.contentSha256?"measured":"unmeasured"}</b></span>)}</div>
           <div className="summary"><small>ANALYZER SUMMARY</small><p>{run.profile.summary}</p></div>
           {!!run.reviewReasons?.length&&<div className="reviewReasons"><small>WHY REVIEW</small>{run.reviewReasons.map((item)=><p key={item}>{item}</p>)}</div>}

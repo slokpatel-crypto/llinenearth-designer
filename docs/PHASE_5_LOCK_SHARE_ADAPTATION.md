@@ -1,6 +1,6 @@
 # Phase 5 — Lock, Share & Enquiry Adaptation
 
-Status: core recipe-lock groundwork implemented; durable account persistence remains a production dependency.
+Status: recipe lock, privacy-safe sharing, recovery vault, authenticated ownership and an auditable five-customer validation gate are implemented; real-customer evidence remains.
 
 ## Existing foundation to keep
 
@@ -30,9 +30,24 @@ Locked revisions can now create a signed 30-day share token. The public share pa
 
 The server verifies the locked recipe hash before issuing a share link. Tampered or expired share tokens are rejected.
 
+## Secure recovery vault now implemented
+
+A locked revision can be saved deliberately to a private Supabase-backed recovery vault:
+- browser never receives database credentials,
+- the full locked recipe is integrity-verified before storage,
+- a high-entropy recovery key is generated in the server route,
+- only the SHA-256 hash of that key is stored,
+- the recovery token stays with the customer/operator,
+- retrieval verifies the locked recipe again,
+- the secure copy expires automatically,
+- the recovery flow supports download of the locked JSON, tailor handoff and printable tech pack,
+- the recovery token is pasted into a POST flow and is not placed in the page URL.
+
+Recovery tokens remain an independent backup mechanism. Signed-in customers can now attach new or older locked revisions to their authenticated account without exposing the recipe through a public URL.
+
 ## What this does not yet solve
 
-The exported lock file is portable and the share token is privacy-safe, but the production system of record is not complete until customer identity and durable authenticated persistence are connected. Browser localStorage must not be treated as the authoritative copy of a paid / production order.
+The authenticated account now supplies durable customer ownership for locked revisions. Production-order customer identity linkage beyond the locked-design owner is still an operational launch concern. Recovery tokens still grant access to their vault item and must be kept private; browser localStorage is not authoritative.
 
 ## Completion gate
 
@@ -45,12 +60,24 @@ The exported lock file is portable and the share token is privacy-safe, but the 
 - [x] reconstruction test
 - [x] Designer lock/export action
 - [x] WhatsApp exact-look enquiry
-- [ ] authenticated customer ownership
-- [ ] durable server persistence for locked revisions
+- [x] authenticated customer ownership
+- [x] opt-in durable server recovery vault for locked revisions
 - [x] signed expiring share-token model for non-sensitive design recipe
-- [ ] authenticated customer ownership / revocation permissions
+- [x] authenticated customer ownership / account-level deletion permissions
+- [x] five-customer lock → share/enquiry evidence workflow engineered through the shared private-beta gate
 - [ ] five real customers complete lock → share/enquiry with zero blocking bugs
+
+## Real-customer validation gate
+
+The existing Phase 9 private-beta ledger is reused rather than creating another evidence system. Each anonymous case now records **design locked** and **share/enquiry completed** separately. A case counts only when both are true and no blocking bug is recorded. Legacy generic beta rows cannot accidentally satisfy this stricter Phase 5 gate.
 
 ## Rule
 
 Never overwrite a locked revision in place. Any changed fabric, measurement, construction option or creative treatment creates a new revision linked to the previous revision.
+
+
+## Verified beta-flow evidence hardening
+
+- The share API verifies the immutable locked recipe before issuing a public token and now records a private server-side share audit when the production evidence backend is available.
+- Private-beta success can no longer be proved by checking “locked” and “shared” boxes alone. A qualifying beta record must reference a locked revision that has a matching verified share audit.
+- Older manual beta rows remain visible as historical observations but do not satisfy the current five-customer gate.

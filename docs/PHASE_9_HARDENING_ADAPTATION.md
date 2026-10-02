@@ -16,6 +16,7 @@ Status: much of the engineering foundation already exists; remaining gates are p
 - Private Analyzer / construction / benchmark desks.
 - Render rate limits and repair limits.
 - Server-side secret boundaries.
+- Global browser security headers for frame blocking, MIME sniff prevention, referrer policy, permission restrictions, COOP and HSTS.
 - Evidence-aware customer copy instead of unsupported physical claims.
 
 ## Roadmap v2 adaptation
@@ -44,6 +45,9 @@ Vercel preview failures caused solely by the free build-rate quota are infrastru
 - [x] device-QA evidence workflow
 - [x] render cost protection
 - [x] server secret boundary
+- [x] baseline public security headers
+- [x] private-beta evidence capture + five-case gate engineering
+- [x] security / privacy / commercial launch sign-off registry engineering
 - [ ] current Roadmap v2 branch CI green
 - [ ] mobile accepted on target device
 - [ ] tablet accepted on target device
@@ -51,3 +55,32 @@ Vercel preview failures caused solely by the free build-rate quota are infrastru
 - [ ] private beta evidence collected
 - [ ] security / privacy / legal launch checklist signed off
 - [ ] production deployment verified READY
+
+
+## Private beta + human launch sign-off evidence
+
+The private Operator area now has a **Launch Evidence** desk for the two hardening gates that code cannot self-certify.
+
+### Five-customer private beta
+- uses anonymous case IDs only,
+- records the real device class,
+- separately records whether the exact design was locked and whether signed share / exact-look enquiry completed after that lock,
+- records whether a blocking bug occurred,
+- requires a note when a blocking bug is present,
+- evaluates only the latest attempt for each anonymous case,
+- requires at least 5 successful unique cases before the beta gate passes,
+- reuses those same five cases for the Phase 5 lock → share/enquiry validation gate instead of duplicating evidence.
+
+### Human launch checklist
+The desk keeps append-only sign-off events for privacy notice review, terms / returns / refunds, measurement-data handling, third-party processing documentation, operator access / secret handling, and the customer support / incident contact path.
+
+Each item requires a named human reviewer. A **review** state needs an issue note; **approved** is an explicit sign-off. The software does not treat this operational checklist as legal advice and does not auto-approve any item.
+
+Production deployment verification remains a separate final gate.
+
+
+## Private-beta evidence integrity
+
+The five-customer lock-flow gate now requires a server-recorded share audit tied to a revision whose recipe hash was verified by the share API. Operator checkbox-only completion is retained only as legacy evidence and cannot mark the launch beta gate complete.
+
+- Private-beta success now counts **distinct verified locked revisions**. Reusing one locked design/share or enquiry audit under multiple anonymous beta case IDs cannot satisfy the five-customer flow gate.

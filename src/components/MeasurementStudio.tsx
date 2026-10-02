@@ -143,6 +143,10 @@ export function MeasurementStudio(){
   const [active,setActive]=useState("neck");
   const [saved,setSaved]=useState(false);
   const [observations,setObservations]=useState<TailorObservationProfile>(emptyTailorObservationProfile());
+  const [vaultBusy,setVaultBusy]=useState(false);
+  const [vaultMessage,setVaultMessage]=useState("");
+  const [vaultToken,setVaultToken]=useState("");
+  const [vaultExpiresAt,setVaultExpiresAt]=useState("");
 
   useEffect(()=>{try{const raw=localStorage.getItem(MEASUREMENT_STORAGE_KEY);if(raw){const parsed=JSON.parse(raw) as MeasurementProfile;setProfile({...parsed,unit:"in"});}const observed=localStorage.getItem(TAILOR_OBSERVATION_STORAGE_KEY);if(observed){const parsed=JSON.parse(observed) as TailorObservationProfile;if(parsed?.version===1)setObservations(parsed);}}catch{}},[]);
   const unit="in" as const; const fields=mode==="shirt"?shirtFields:pantFields; const coverage=measurementCoverage(profile);
@@ -159,6 +163,72 @@ export function MeasurementStudio(){
     setProfile(p=>({...p,unit:"in",[mode]:{...p[mode],[key]:cm},updatedAt:new Date().toISOString()}));setSaved(false);
   }
   function save(){const now=new Date().toISOString();const inchProfile={...profile,unit:"in" as const,updatedAt:now};const observationProfile={...observations,updatedAt:now};localStorage.setItem(MEASUREMENT_STORAGE_KEY,JSON.stringify(inchProfile));localStorage.setItem(TAILOR_OBSERVATION_STORAGE_KEY,JSON.stringify(observationProfile));setProfile(inchProfile);setObservations(observationProfile);setSaved(true);}
+  async function saveSecureCopy(){
+    if(vaultBusy) return;
+    setVaultBusy(true);setVaultMessage("");
+    const now=new Date().toISOString();
+    const nextProfile={...profile,unit:"in" as const,updatedAt:now};
+    const nextObservations={...observations,updatedAt:now};
+    try{
+      const response=await fetch("/api/measurements/vault",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({action:"store",profile:nextProfile,observations:nextObservations}),
+      });
+      const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;error?:string};
+      if(!response.ok||!result.recoveryToken) throw new Error(result.error||"Secure measurement copy could not be saved.");
+      localStorage.setItem(MEASUREMENT_STORAGE_KEY,JSON.stringify(nextProfile));
+      localStorage.setItem(TAILOR_OBSERVATION_STORAGE_KEY,JSON.stringify(nextObservations));
+      setProfile(nextProfile);setObservations(nextObservations);setSaved(true);setVaultToken(result.recoveryToken);
+      try{
+        await navigator.clipboard.writeText(result.recoveryToken);
+        setVaultMessage(`Recovery token copied · secure copy expires in ${result.expiresInDays||180} days.`);
+      }catch{
+        setVaultMessage("Secure copy saved. Copy the recovery token and keep it private.");
+      }
+    }catch(error){
+      setVaultMessage(error instanceof Error?error.message:"Secure measurement copy could not be saved.");
+    }finally{setVaultBusy(false);}
+  }
+
+  async function loadSecureCopy(){
+    if(vaultBusy||!vaultToken.trim()) return;
+    setVaultBusy(true);setVaultMessage("");
+    try{
+      const response=await fetch("/api/measurements/vault",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({action:"load",recoveryToken:vaultToken.trim()}),
+      });
+      const result=await response.json() as {profile?:MeasurementProfile;observations?:TailorObservationProfile;expiresAt?:string;error?:string};
+      if(!response.ok||!result.profile||!result.observations) throw new Error(result.error||"Secure measurement profile could not be loaded.");
+      const nextProfile={...result.profile,unit:"in" as const};
+      localStorage.setItem(MEASUREMENT_STORAGE_KEY,JSON.stringify(nextProfile));
+      localStorage.setItem(TAILOR_OBSERVATION_STORAGE_KEY,JSON.stringify(result.observations));
+      setProfile(nextProfile);setObservations(result.observations);setSaved(true);setVaultExpiresAt(result.expiresAt||"");
+      setVaultMessage("Secure measurement profile loaded onto this device.");
+    }catch(error){
+      setVaultMessage(error instanceof Error?error.message:"Secure measurement profile could not be loaded.");
+    }finally{setVaultBusy(false);}
+  }
+
+  async function deleteSecureCopy(){
+    if(vaultBusy||!vaultToken.trim()) return;
+    setVaultBusy(true);setVaultMessage("");
+    try{
+      const response=await fetch("/api/measurements/vault",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({action:"delete",recoveryToken:vaultToken.trim()}),
+      });
+      const result=await response.json() as {deleted?:boolean;error?:string};
+      if(!response.ok) throw new Error(result.error||"Secure measurement copy could not be deleted.");
+      setVaultMessage(result.deleted?"Secure measurement copy deleted.":"No matching secure copy was found.");
+      if(result.deleted){setVaultToken("");setVaultExpiresAt("");}
+    }catch(error){
+      setVaultMessage(error instanceof Error?error.message:"Secure measurement copy could not be deleted.");
+    }finally{setVaultBusy(false);}
+  }
   const progress=mode==="shirt"?coverage.shirt:coverage.pants;
   const summary=useMemo(()=>[
     ["Shirt",`${coverage.shirt}/8`],["Pants",`${coverage.pants}/8`],["Unit","INCHES"]
@@ -182,7 +252,20 @@ export function MeasurementStudio(){
           <div className="measurementScaleMeta"><span>TAILORING GUIDE</span><strong>{formatMeasure(activeField.min,unit)} – {formatMeasure(activeField.max,unit)}</strong><p>The full selector runs from 0.01 to 100 inches. The highlighted guide range helps you catch an accidental selection.</p></div>
         </div>
         {invalid&&<p className="measureWarning">This value is outside the usual tailoring range. Recheck the tape and scale position.</p>}
-        <button className="measureSave" onClick={save}>{saved?"Measurements saved ✓":"Save measurements"}</button><Link href="/designer-studio" className="measureDesignerLink" onClick={save}>Use in Designer <span>→</span></Link><small className="measurePrivacy">Stored locally on this device. No body measurements are sent anywhere until a design request uses them.</small></aside>
+        <button className="measureSave" onClick={save}>{saved?"Measurements saved ✓":"Save measurements"}</button><Link href="/designer-studio" className="measureDesignerLink" onClick={save}>Use in Designer <span>→</span></Link><small className="measurePrivacy">Stored locally on this device. No body measurements are sent to secure storage unless you explicitly choose it below.</small>
+        <details className="measurementVault">
+          <summary>Secure measurement copy</summary>
+          <p>Optional. Save an expiring private server copy so you can recover measurements on another device. The recovery token is the key; keep it private.</p>
+          <div className="measurementVaultActions">
+            <button type="button" onClick={()=>void saveSecureCopy()} disabled={vaultBusy}>{vaultBusy?"Working…":"Save secure copy"}</button>
+            <button type="button" onClick={()=>void loadSecureCopy()} disabled={vaultBusy||!vaultToken.trim()}>Load token</button>
+          </div>
+          <label>Recovery token<textarea rows={3} value={vaultToken} onChange={(e)=>setVaultToken(e.target.value)} placeholder="lem1.…" spellCheck={false}/></label>
+          {vaultExpiresAt&&<small>Recovered copy expires {new Date(vaultExpiresAt).toLocaleDateString("en-IN")}.</small>}
+          {vaultMessage&&<p className="measurementVaultMessage">{vaultMessage}</p>}
+          {vaultToken&&<button type="button" className="measurementVaultDelete" onClick={()=>void deleteSecureCopy()} disabled={vaultBusy}>Delete secure copy</button>}
+        </details>
+      </aside>
     </div>
 
     <section className="tailorObservationPanel" aria-labelledby="tailorObservationTitle">

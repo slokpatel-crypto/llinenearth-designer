@@ -35,6 +35,8 @@ export type CanonicalGarmentSpec = {
   source: {
     designerRuleSetVersion: string;
     fitConstructionVersion: FitConstructionAssessment["version"] | null;
+    fitEaseSource: FitConstructionAssessment["source"] | null;
+    fitEaseTableVersion: string | null;
     measurementProfileVersion: MeasurementProfile["version"] | null;
     blockStrategyVersion: DesignerBlockStrategy["version"] | null;
     styleSchemaVersion:2|null;
@@ -201,6 +203,8 @@ export function buildCanonicalGarmentSpec(
     source: {
       designerRuleSetVersion: recommendation.ruleSetVersion,
       fitConstructionVersion: fit?.version ?? null,
+      fitEaseSource: fit?.source ?? null,
+      fitEaseTableVersion: fit?.easeTableVersion ?? null,
       measurementProfileVersion: measurements?.version ?? null,
       blockStrategyVersion: block?.version ?? null,
       styleSchemaVersion:styleSpec?.styleSchemaVersion ?? null,

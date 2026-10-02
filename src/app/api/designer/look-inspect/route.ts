@@ -4,6 +4,7 @@ import {
   type SelectedLookView,
 } from "@/lib/ai-visualization";
 import { enrichSelectedLookEvidence, resolveSelectedLookRequest } from "@/lib/designer/selected-look-server";
+import { attachRenderQa } from "@/lib/designer/render-outcomes";
 
 export const runtime="nodejs";
 export const maxDuration=30;
@@ -23,6 +24,10 @@ export async function POST(request:Request) {
       ? body.view as SelectedLookView
       : "front";
     const check=await inspectSelectedLookFashnOutput(image,look,view);
+    const jobId=typeof body.jobId==="string"?body.jobId:"";
+    if(jobId && (check.status==="pass"||check.status==="review")) {
+      await attachRenderQa({jobId,view,status:check.status,payload:check});
+    }
     return NextResponse.json({check},{headers:{"cache-control":"no-store"}});
   } catch(error) {
     console.error("[designer/look-inspect]",error);

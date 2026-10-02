@@ -1,4 +1,4 @@
-import type { FabricProfile } from "@/lib/fabric-analysis";
+import type { FabricProfile } from "./fabric-analysis.ts";
 
 export type GarmentKind = "shirt" | "trouser" | "suit" | "blazer";
 export type FabricWeightClass = "Light" | "Medium" | "Heavy";
@@ -28,6 +28,7 @@ export interface FabricColorway {
   sourceDocument: string;
   sourcePage: number;
   inStock: boolean;
+  availabilityVerified?: boolean;
 }
 
 const shirt: GarmentKind[] = ["shirt"];

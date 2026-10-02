@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { DesignerFabricMetadata } from "@/lib/designer-fabric-metadata-types";
+import type { FabricPhysicalEvidenceProvenance, FabricPhysicalEvidenceSourceType } from "@/lib/fabric-physical-provenance";
 import DesignerDataBatchPanel from "./DesignerDataBatchPanel";
 
 type EvidenceState = {
@@ -116,6 +117,16 @@ export default function DesignerDataClient() {
     setEditor({...editor,[field]:next});
   }
 
+  function updatePhysicalEvidence(patch:Partial<FabricPhysicalEvidenceProvenance>) {
+    if(!editor) return;
+    const current=editor.physicalEvidence||{
+      sourceType:"physical_roll" as FabricPhysicalEvidenceSourceType,
+      reference:"",
+      checkedBy:"",
+    };
+    setEditor({...editor,physicalEvidence:{...current,...patch}});
+  }
+
   async function save() {
     if (!editor || !selected || !data?.configured) return;
     setSaving(true); setMessage("");
@@ -137,6 +148,7 @@ export default function DesignerDataClient() {
           seasonTags:editor.seasonTags || [],
           formalityScore:editor.formalityScore,
           roleTags:editor.roleTags || [],
+          physicalEvidence:editor.physicalEvidence,
           note:editor.note || "",
         },
       };
@@ -242,6 +254,17 @@ export default function DesignerDataClient() {
             <label><span>Weave</span><input value={editor.weave || ""} onChange={(e)=>setEditor({...editor,weave:e.target.value})} placeholder="e.g. plain weave" /></label>
             <label><span>Texture</span><input value={editor.texture || ""} onChange={(e)=>setEditor({...editor,texture:e.target.value})} placeholder="e.g. dry slub, smooth" /></label>
             <label><span>Drape</span><select value={editor.drape || ""} onChange={(e)=>setEditor({...editor,drape:e.target.value ? e.target.value as DesignerFabricMetadata["drape"] : undefined})}><option value="">Unknown</option><option value="fluid">Fluid</option><option value="soft">Soft</option><option value="medium">Medium</option><option value="structured">Structured</option></select></label>
+
+            <fieldset className="wide"><legend>Physical evidence provenance</legend>
+              <div className="physicalEvidenceGrid">
+                <label><span>Source type</span><select value={editor.physicalEvidence?.sourceType||""} onChange={(e)=>updatePhysicalEvidence({sourceType:e.target.value as FabricPhysicalEvidenceSourceType})}><option value="">Not recorded</option><option value="physical_roll">Physical roll</option><option value="supplier_document">Supplier document</option><option value="lab_report">Lab report</option><option value="owner_measurement">Owner measurement</option></select></label>
+                <label><span>Checked by</span><input value={editor.physicalEvidence?.checkedBy||""} onChange={(e)=>updatePhysicalEvidence({checkedBy:e.target.value})} placeholder="Name / initials" /></label>
+                <label><span>Evidence reference</span><input value={editor.physicalEvidence?.reference||""} onChange={(e)=>updatePhysicalEvidence({reference:e.target.value})} placeholder="Roll tag, supplier sheet, measurement note…" /></label>
+                <label><span>Evidence date</span><input type="date" value={editor.physicalEvidence?.evidenceDate||""} onChange={(e)=>updatePhysicalEvidence({evidenceDate:e.target.value||undefined})} /></label>
+                <label className="wide"><span>Source URL · optional</span><input type="url" value={editor.physicalEvidence?.sourceUrl||""} onChange={(e)=>updatePhysicalEvidence({sourceUrl:e.target.value||undefined})} placeholder="https://…" /></label>
+              </div>
+              <small>GSM and drape only count as verified Designer evidence when this provenance record is complete. Do not use catalogue guesswork.</small>
+            </fieldset>
 
             <fieldset><legend>Season tags</legend><div className="checkGrid">{SEASONS.map((season)=><label key={season}><input type="checkbox" checked={editor.seasonTags?.includes(season) || false} onChange={()=>toggleList("seasonTags",season)} /><span>{season}</span></label>)}</div></fieldset>
             <fieldset><legend>Designer role</legend><div className="checkGrid">{ROLE_TAGS.map((role)=><label key={role}><input type="checkbox" checked={editor.roleTags?.includes(role) || false} onChange={()=>toggleList("roleTags",role)} /><span>{role === "base_safe" ? "Base safe" : "Accent safe"}</span></label>)}</div></fieldset>

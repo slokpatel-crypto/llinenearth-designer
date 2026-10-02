@@ -84,6 +84,7 @@ export type FabricAnalyzerProfileV4 = {
     drape:"Fluid"|"Balanced"|"Structured"|null;
     fiberContent:string|null;
     sourceUrl:string|null;
+    evidenceNote:string|null;
   };
   measured:FabricMeasuredData|null;
   imageQuality:FabricImageQuality|null;
@@ -209,6 +210,7 @@ export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|nu
         ? String(obj(root.verifiedPhysical).drape) as "Fluid"|"Balanced"|"Structured" : null,
       fiberContent:str(obj(root.verifiedPhysical).fiberContent,220)||null,
       sourceUrl:str(obj(root.verifiedPhysical).sourceUrl,1800)||null,
+      evidenceNote:str(obj(root.verifiedPhysical).evidenceNote,500)||null,
     },
     measured:root.measured && typeof root.measured==="object" ? root.measured as FabricMeasuredData : null,
     imageQuality:root.imageQuality && typeof root.imageQuality==="object" ? root.imageQuality as FabricImageQuality : null,

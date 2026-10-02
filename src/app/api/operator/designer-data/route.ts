@@ -22,18 +22,41 @@ export async function GET() {
     const analyzed=intelligence[fabric.id];
     const patterned=!/^(solid|plain)$/i.test(String(fabric.pattern||"").trim());
     const inactive=verified.availability==="unavailable";
+    const manualPhysicalProvenance=Boolean(verified.physicalEvidence);
+    const analyzerReviewed=Boolean(analyzed && ["approved","corrected"].includes(analyzed.reviewStatus));
+    const analyzerPhysicalProvenance=Boolean(
+      analyzed
+      && (
+        String(analyzed.verifiedPhysical.sourceUrl||"").trim()
+        || String(analyzed.verifiedPhysical.evidenceNote||"").trim().length>=8
+      )
+    );
+    const physicalField=(field:string)=>Boolean(
+      analyzerReviewed
+      && analyzerPhysicalProvenance
+      && ["declared","reviewed"].includes(String(analyzed?.fieldProvenance?.[field]||""))
+    );
     const evidence={
       availabilityVerified:verified.availability!=="unknown",
-      analyzerReviewed:Boolean(analyzed && ["approved","corrected"].includes(analyzed.reviewStatus)),
+      analyzerReviewed,
       imageQualityScore:analyzed?.measuredEvidence.imageQualityScore ?? null,
       physicalScaleStatus:analyzed?.measuredEvidence.patternPhysicalScale ?? null,
       physicalScaleVerified:!patterned || Boolean(
         analyzed?.measuredEvidence.patternPhysicalScale
         && analyzed.measuredEvidence.patternPhysicalScale!=="unknown"
+        && physicalField("measured.pattern.physicalScale")
       ),
-      gsmVerified:verified.weightGsm!=null || analyzed?.verifiedPhysical.gsm!=null,
-      drapeVerified:Boolean(verified.drape || analyzed?.verifiedPhysical.drape),
-      fiberVerified:Boolean(analyzed?.verifiedPhysical.fiberContent),
+      gsmVerified:Boolean(
+        (manualPhysicalProvenance && verified.weightGsm!=null)
+        || (physicalField("verifiedPhysical.gsm") && analyzed?.verifiedPhysical.gsm!=null)
+      ),
+      drapeVerified:Boolean(
+        (manualPhysicalProvenance && verified.drape)
+        || (physicalField("verifiedPhysical.drape") && analyzed?.verifiedPhysical.drape)
+      ),
+      fiberVerified:Boolean(physicalField("verifiedPhysical.fiberContent") && analyzed?.verifiedPhysical.fiberContent),
+      manualPhysicalProvenance,
+      analyzerPhysicalProvenance,
       formalityVerified:verified.formalityScore!=null,
       patterned,
     };
@@ -45,6 +68,7 @@ export async function GET() {
       if(!evidence.physicalScaleVerified) gaps.push("pattern scale");
       if(!evidence.gsmVerified) gaps.push("GSM");
       if(!evidence.drapeVerified) gaps.push("drape");
+      if((verified.weightGsm!=null||Boolean(verified.drape))&&!manualPhysicalProvenance) gaps.push("physical provenance");
       if(!evidence.fiberVerified) gaps.push("fibre");
       if(!evidence.formalityVerified) gaps.push("formality");
     }

@@ -408,11 +408,20 @@ export default function OperatorClient() {
           <span className={cloudState==="live"?"live":""}><i className={cloudState==="live"?"":"amber"}/>{cloudState==="live"?"CLOUD MEMORY LIVE":cloudState==="unconfigured"?"CLOUD NOT CONFIGURED":cloudState==="error"?"CLOUD ERROR":"CHECKING CLOUD"}</span>
           <a className="operatorLogout" href="/operator/designer-data">DESIGNER DATA</a>
           <a className="operatorLogout" href="/operator/designer-evaluation">DESIGNER EVALUATION</a>
+          <a className="operatorLogout" href="/operator/style-director-validation">STYLE DIRECTOR VALIDATION</a>
           <a className="operatorLogout" href="/operator/fabric-analyzer">FABRIC ANALYZER</a>
           <a className="operatorLogout" href="/operator/fabric-ground-truth">FABRIC GROUND TRUTH</a>
+          <a className="operatorLogout" href="/operator/fabric-color-calibration">PHYSICAL COLOUR QA</a>
           <a className="operatorLogout" href="/operator/construction-approval">CONSTRUCTION APPROVAL</a>
+          <a className="operatorLogout" href="/operator/preview-option-coverage">CUSTOMER PREVIEW COVERAGE</a>
+          <a className="operatorLogout" href="/operator/novice-designer-study">NOVICE DESIGNER STUDY</a>
           <a className="operatorLogout" href="/operator/device-qa">DEVICE QA</a>
           <a className="operatorLogout" href="/operator/measurement-calibration">MEASUREMENT CALIBRATION</a>
+          <a className="operatorLogout" href="/operator/ease-calibration">HOUSE EASE CALIBRATION</a>
+          <a className="operatorLogout" href="/operator/production-calibration">PRODUCTION CALIBRATION</a>
+          <a className="operatorLogout" href="/operator/stock">STOCK LEDGER</a>
+          <a className="operatorLogout" href="/operator/production">PRODUCTION DESK</a>
+          <a className="operatorLogout" href="/operator/render-qa">FINAL RENDER QA</a>
           <a className="operatorLogout" href="/lab/proof">PREMIUM SHIRT PROOF</a>
           <a className="operatorLogout" href="/operator/phase10-readiness">PHASE 10 READINESS</a>
           <button className="operatorLogout" onClick={logout} disabled={loggingOut}>{loggingOut?"SIGNING OUT…":"SIGN OUT"}</button>

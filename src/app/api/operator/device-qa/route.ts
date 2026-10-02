@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
+import { evaluateDeviceQaEvidence } from "@/lib/designer/device-qa-evidence";
 
 export const runtime="nodejs";
 
@@ -29,19 +30,28 @@ export async function GET() {
     });
     if(!response.ok) return NextResponse.json({configured:true,latest:{}},{headers:{"cache-control":"private, no-store"}});
     const rows=await response.json() as Row[];
-    const latest:Record<string,{at:string;status:string;viewport:string;p95Ms:number|null;samples:number;note:string}>={};
+    const latest:Record<string,{
+      at:string;status:string;viewport:string;p95Ms:number|null;samples:number;note:string;
+      evidenceVersion:string;performancePass:boolean;visualPass:boolean;
+    }>={};
     for(const row of rows){
       const payload=row.payload||{};
       if(String(payload.subtype||"")!=="designer_device_qa") continue;
-      const deviceClass=String(payload.deviceClass||"").slice(0,20);
-      if(!["mobile","tablet","desktop"].includes(deviceClass) || latest[deviceClass]) continue;
-      latest[deviceClass]={
+      const requestedClass=String(payload.deviceClass||"").slice(0,20);
+      if(!["mobile","tablet","desktop"].includes(requestedClass) || latest[requestedClass]) continue;
+      const evaluation=evaluateDeviceQaEvidence(payload);
+      const legacyP95=Number.isFinite(Number(payload.p95Ms))?Number(payload.p95Ms):null;
+      const legacySamples=Math.max(0,Math.floor(Number(payload.samples)||0));
+      latest[requestedClass]={
         at:row.at,
-        status:String(payload.status||"review"),
+        status:evaluation.accepted?"accepted":"review",
         viewport:String(payload.viewport||""),
-        p95Ms:Number.isFinite(Number(payload.p95Ms))?Number(payload.p95Ms):null,
-        samples:Math.max(0,Math.floor(Number(payload.samples)||0)),
+        p95Ms:evaluation.p95Ms??legacyP95,
+        samples:evaluation.samples||legacySamples,
         note:String(payload.note||"").slice(0,400),
+        evidenceVersion:String(payload.version||"designer-device-qa-v1"),
+        performancePass:evaluation.performancePass,
+        visualPass:evaluation.visualPass,
       };
     }
     return NextResponse.json({configured:true,latest},{headers:{"cache-control":"private, no-store"}});

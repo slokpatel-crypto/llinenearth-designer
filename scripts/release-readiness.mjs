@@ -35,6 +35,7 @@ for (const path of [
   "src/lib/designer/photo-preview.ts",
   "src/lib/designer/block-strategy.ts",
   "src/lib/designer/fit-construction.ts",
+  "src/lib/designer/house-ease-server.ts",
   "src/lib/designer/constraint-negotiation.ts",
   "src/lib/designer/outcome-learning.ts",
   "src/lib/designer/brand-language.ts",
@@ -66,13 +67,230 @@ for (const path of [
   "supabase/migrations/20260920_style_events_hardening.sql",
   ".env.example",
   "package-lock.json",
+  "AGENTS.md",
+  "DECISIONS.md",
+  "docs/ARCHITECTURE_AUDIT.md",
+  "src/app/lab/proof/page.tsx",
+  "src/components/PremiumShirtProof.tsx",
+  "src/lib/designer/proof-scale.ts",
+  "src/lib/designer/design-lock.ts",
+  "src/lib/designer/design-share.ts",
+  "src/lib/designer/design-vault.ts",
+  "src/lib/measurement-vault.ts",
+  "src/lib/customer-account.ts",
+  "src/lib/customer-auth.ts",
+  "src/lib/customer-session-token.ts",
+  "src/lib/customer-session.ts",
+  "src/app/account/page.tsx",
+  "src/app/api/customer-auth/otp/route.ts",
+  "src/app/api/customer-auth/verify/route.ts",
+  "src/app/api/customer-auth/session/route.ts",
+  "src/app/api/customer-auth/logout/route.ts",
+  "supabase/migrations/20261006_customer_account_ownership.sql",
+  "src/app/api/customer-account/production/route.ts",
+  "supabase/migrations/20261007_production_customer_ownership.sql",
+  "supabase/migrations/20261013_customer_quote_acceptance.sql",
+  "supabase/migrations/20261014_customer_production_timeline.sql",
+  "supabase/migrations/20261015_customer_production_outcomes.sql",
+  "src/lib/designer/customer-production-outcomes.ts",
+  "tests/customer-production-outcomes.test.ts",
+  "supabase/migrations/20261016_customer_outcome_learning_policy.sql",
+  "src/lib/designer/customer-outcome-learning.ts",
+  "tests/customer-outcome-learning.test.ts",
+  "src/app/api/operator/customer-outcomes/route.ts",
+  "src/app/operator/customer-outcomes/page.tsx",
+  "src/app/operator/customer-outcomes/CustomerOutcomesClient.tsx",
+  "supabase/migrations/20261017_production_learning_context.sql",
+  "src/lib/designer/production-learning-context.ts",
+  "tests/production-learning-context.test.ts",
+  "src/lib/fabric-color-calibration.ts",
+  "src/app/api/operator/fabric-color-calibration/route.ts",
+  "src/app/operator/fabric-color-calibration/page.tsx",
+  "src/app/operator/fabric-color-calibration/FabricColorCalibrationClient.tsx",
+  "supabase/migrations/20261008_fabric_physical_color_checks.sql",
+  "supabase/migrations/20261031_fabric_color_evidence_provenance.sql",
+  "src/lib/designer/style-director-validation.ts",
+  "src/lib/designer/style-director-handoff.ts",
+  "src/app/api/style-director/handoff/route.ts",
+  "src/app/api/operator/style-director-validation/route.ts",
+  "src/app/operator/style-director-validation/page.tsx",
+  "src/app/operator/style-director-validation/StyleDirectorValidationClient.tsx",
+  "supabase/migrations/20261009_style_director_user_validation.sql",
+  "src/lib/designer/ease-calibration.ts",
+  "src/lib/designer/preview-option-coverage.ts",
+  "src/lib/designer/measurement-calibration.ts",
+  "src/app/api/operator/measurement-calibration/route.ts",
+  "src/app/operator/measurement-calibration/page.tsx",
+  "src/app/operator/measurement-calibration/MeasurementCalibrationClient.tsx",
+  "tests/measurement-calibration.test.ts",
+  "src/lib/designer/novice-designer-study.ts",
+  "src/app/api/operator/novice-designer-study/route.ts",
+  "src/app/operator/novice-designer-study/page.tsx",
+  "src/app/operator/novice-designer-study/NoviceDesignerStudyClient.tsx",
+  "supabase/migrations/20261012_designer_novice_study.sql",
+  "supabase/migrations/20261019_novice_server_timing.sql",
+  "supabase/migrations/20261020_verified_beta_share_flow.sql",
+  "supabase/migrations/20261021_style_director_validation_threshold.sql",
+  "supabase/migrations/20261022_style_director_handoff_audit.sql",
+  "supabase/migrations/20261023_style_director_handoff_validation.sql",
+  "supabase/migrations/20261024_style_director_distinct_handoff_gate.sql",
+  "supabase/migrations/20261027_roadmap_v2_evidence_health.sql",
+  "supabase/migrations/20261028_verified_meterage_cut_evidence.sql",
+  "supabase/migrations/20261029_meterage_cut_provenance_gate.sql",
+  "supabase/migrations/20261030_production_cut_evidence_registry.sql",
+  "supabase/migrations/20261024_style_director_handoff_uniqueness.sql",
+  "supabase/migrations/20261024_measurement_accuracy_evidence.sql",
+  "supabase/migrations/20261026_style_director_verified_signoff.sql",
+  "src/lib/designer/preview-option-reviews.ts",
+  "src/app/api/operator/preview-option-coverage/route.ts",
+  "src/app/operator/preview-option-coverage/page.tsx",
+  "src/app/operator/preview-option-coverage/PreviewOptionCoverageClient.tsx",
+  "src/app/api/operator/ease-calibration/route.ts",
+  "src/app/operator/ease-calibration/page.tsx",
+  "src/app/operator/ease-calibration/EaseCalibrationClient.tsx",
+  "supabase/migrations/20261010_house_ease_calibration_registry.sql",
+  "supabase/migrations/20261011_launch_beta_flow_detail.sql",
+  "src/lib/designer/production-handoff.ts",
+  "src/lib/designer/tech-pack.ts",
+  "src/lib/designer/production-quote.ts",
+  "src/lib/designer/production-state.ts",
+  "src/lib/designer/production-packet.ts",
+  "src/lib/designer/stock-ledger.ts",
+  "src/lib/designer/stock-availability.ts",
+  "src/lib/designer/stock-availability-server.ts",
+  "tests/stock-availability.test.ts",
+  "src/app/recover-design/page.tsx",
+  "src/app/operator/stock/page.tsx",
+  "src/app/operator/production/page.tsx",
+  "src/app/operator/garment-qc/page.tsx",
+  "src/lib/designer/finished-garment-qc.ts",
+  "supabase/migrations/20261002_finished_garment_qc.sql",
+  "supabase/migrations/20261027_finished_garment_qc_provenance.sql",
+  "src/app/operator/production-evidence/page.tsx",
+  "src/lib/designer/production-delivery-evidence.ts",
+  "supabase/migrations/20261003_production_delivery_evidence.sql",
+  "supabase/migrations/20261026_production_delivery_evidence_provenance.sql",
+  "src/app/operator/meterage-model/page.tsx",
+  "src/lib/designer/meterage-calibration.ts",
+  "supabase/migrations/20261004_meterage_calibration_registry.sql",
+  "src/app/operator/launch-readiness/page.tsx",
+  "src/lib/designer/launch-readiness-evidence.ts",
+  "supabase/migrations/20261005_launch_readiness_evidence.sql",
+  "src/app/operator/production-calibration/page.tsx",
+  "supabase/migrations/20261001_designer_locked_revision_vault.sql",
+  "supabase/migrations/20261001_measurement_profile_vault.sql",
+  "supabase/migrations/20261001_fabric_stock_ledger.sql",
+  "supabase/migrations/20261028_fabric_stock_provenance.sql",
+  "supabase/migrations/20261029_stock_reservation_provenance.sql",
+  "supabase/migrations/20261030_stock_consumption_provenance.sql",
+  "supabase/migrations/20261031_stock_reservation_concurrency_provenance.sql",
+  "supabase/migrations/20261001_production_quotes_orders.sql",
+  "supabase/migrations/20261001_render_outcomes.sql",
+  "src/lib/designer/render-outcomes.ts",
+  "src/lib/designer/render-outcome-metrics.ts",
+  "src/app/operator/render-qa/page.tsx",
+  "src/lib/designer/render-release-evidence.ts",
+  "supabase/migrations/20261007_render_release_evidence.sql",
+  "supabase/migrations/20261018_render_pattern_fixture_evidence.sql",
+  "supabase/migrations/20261023_render_manual_review_signoff.sql",
 ]) requireFile(path);
 
 requireTokens("src/app/page.tsx", ["/api/homepage-model", "/style-director", "/visual", "/real-model", "Open Real Model Designer"]);
+requireTokens("src/lib/designer/proof-scale.ts", ["evaluateRecordedPhase1ProofEvidence","summarizeLatencySamples","realModelSampleDurationsMs","phase1BoundaryChecksReady","boundaryReady","validateVerifiedPhysicalEvidence","physicalEvidenceReady","PHASE1_PROOF_EVIDENCE_VERSION","PHASE1_PROOF_PHOTO_COORDINATE_SYSTEM","summarizeIndependentRealism","PHASE1_PROOF_MIN_REALISM_VIEWERS","PHASE1_PROOF_MIN_STRONG_REALISM","phase1ProofAcceptance"]);
+requireTokens("src/components/PremiumShirtProof.tsx", ["linen-earth-phase1-proof-v4","Anonymous viewer code","boundaryChecks","Garment boundary review","realismAssessments","uniqueRealismViewers","physicalEvidenceNote","WAITING FOR PROVENANCE","photoReferenceMm","photoReferencePx","pxPerMmFromMarker","photo-1024x1536-fixture"]);
+requireTokens("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx", ["proofBoundaries","proofMobileAccepted","target-mobile acceptance","garment boundaries","mobile ${proofMobileAccepted?"]);
+requireTokens("src/app/api/operator/phase1-proof/route.ts", ["evaluateRecordedPhase1ProofEvidence","coreAccepted","boundaryReady","boundaryChecks","physicalEvidenceReady","physicalEvidenceNote","uniqueRealismViewers","photoReferenceMm","photoReferencePx","photoPxPerMm","scaleCoordinateSystem"]);
+requireTokens("src/app/api/memory/event/route.ts", ["linen-earth-phase1-proof-v4","boundaryChecks","boundaryReady","realModelSampleDurationsMs","photoReferenceMm","photoReferencePx","realismAssessments","uniqueRealismViewers"]);
+requireTokens("src/app/api/memory/event/route.ts", ["designer-device-qa-v2","sampleDurationsMs","hardwareConcurrency","checks"]);
+requireTokens("src/app/api/operator/device-qa/route.ts", ["evaluateDeviceQaEvidence","performancePass","visualPass","evidenceVersion"]);
+requireTokens("src/app/operator/device-qa/DeviceQaClient.tsx", ["DEVICE_QA_EVIDENCE_VERSION","readPreviewPerformanceSamples","sampleDurationsMs"]);
+requireTokens("src/lib/designer/device-qa-evidence.ts", ["DEVICE_QA_EVIDENCE_VERSION","DEVICE_QA_MIN_SAMPLES","DEVICE_QA_TARGET_P95_MS","evaluateDeviceQaEvidence","sampleDurationsMs"]);
+requireTokens("src/components/PhotoOutfitPreview.tsx", ["PhotoPreviewCalibration","photoPxPerMm","photoFabricPatternScale"]);
+requireTokens("src/lib/designer/live-preview.ts", ["photoFabricPatternScale","photoExpectedRepeatPx","photoPxPerMm"]);
+requireTokens("src/lib/fabric-intelligence-evidence.ts", ["intelligence.trust!==\"reviewed\"","auditablePhysicalSource","evidenceNote","fieldProvenance","measured.pattern.physicalScale","verifiedPhysical.gsm","verifiedPhysical.drape","verifiedPhysical.fiberContent","patternScaleVerified","fiberContentVerified"]);
+requireTokens("src/lib/fabric-intelligence-server.ts", ["fieldProvenance:{...profile.provenanceByField}"]);
+requireTokens("src/lib/fabric-intelligence-types.ts", ["evidenceNote:string|null","fieldProvenance?:Record<string"]);
+requireTokens("src/lib/fabric-intelligence-adapter.ts", ["evidenceNote:string|null","evidenceNote:str(obj(root.verifiedPhysical).evidenceNote"]);
+requireTokens("src/lib/fabric-analyzer.ts", ["verifiedPhysicalEvidenceNote","evidenceNote:safeText(input.verifiedPhysicalEvidenceNote"]);
+requireTokens("src/app/operator/fabric-analyzer/FabricAnalyzerClient.tsx", ["verifiedPhysical?.sourceUrl","verifiedPhysical?.evidenceNote","VERIFIED PHYSICAL"]);
+requireTokens("src/app/api/operator/designer-data/route.ts", ["analyzerPhysicalProvenance","evidenceNote","physicalField(\"measured.pattern.physicalScale\")"]);
+requireTokens("src/app/operator/designer-data/DesignerDataClient.tsx", ["Physical evidence provenance","physicalEvidence:editor.physicalEvidence","physical_roll","supplier_document","owner_measurement"]);
+requireTokens("src/app/operator/designer-data/DesignerDataBatchPanel.tsx", ["physicalSourceType","physicalReference","physicalCheckedBy","physicalEvidence:incomingPhysicalEvidence??current.physicalEvidence"]);
+requireTokens("src/app/api/memory/event/route.ts", ["designer_fabric_metadata","normalizeFabricPhysicalEvidenceProvenance","physicalEvidence"]);
+requireTokens("src/lib/designer/measurement-calibration.ts", ["MEASUREMENT_CALIBRATION_TARGET_CASES","MEASUREMENT_CHEST_MEDIAN_TARGET_CM","MEASUREMENT_SLEEVE_MEDIAN_TARGET_CM","normalizeMeasurementCalibrationDraft","summarizeMeasurementCalibration"]);
+requireTokens("src/app/api/operator/measurement-calibration/route.ts", ["verifyOperatorSession","measurement_calibration_case_list","measurement_calibration_case_record","p_evidence_source","p_checked_by"]);
+requireTokens("src/app/operator/measurement-calibration/MeasurementCalibrationClient.tsx", ["Physical comparison source","Checked by","/api/operator/measurement-calibration","Record comparison"]);
+requireTokens("supabase/migrations/20261024_measurement_accuracy_evidence.sql", ["measurement_calibration_cases","measurement_calibration_case_record","measurement_calibration_case_list","physical comparison evidence source is required","service_role"]);
+requireTokens("src/lib/designer/novice-designer-study.ts", ["timing_session_id","serverTimedLikedCases","evidenceReady:serverTimed.length>=5"]);
+requireTokens("src/app/api/operator/novice-designer-study/route.ts", ["start_timer","finish_timer","record_timed_attempt","designer_novice_attempt_record_v2"]);
+requireTokens("src/app/operator/novice-designer-study/NoviceDesignerStudyClient.tsx", ["Start server stopwatch","Stop stopwatch","record_timed_attempt","Server timer"]);
+requireTokens("supabase/migrations/20261019_novice_server_timing.sql", ["designer_novice_timer_start","designer_novice_timer_finish","designer_novice_attempt_record_v2","five server-timed novice liked-design completions"]);
+requireTokens("src/app/account/page.tsx", ["Email sign in","listOwned","recovery token","Measurement profiles","Accept quote","accept_quote","Timeline","orderEvents","record_outcome","post-delivery feedback","does not automatically change Designer recommendations"]);
+requireTokens("src/lib/customer-auth.ts", ["SUPABASE_ANON_KEY","/auth/v1/otp","/auth/v1/verify","/auth/v1/user","CUSTOMER_SESSION_COOKIE"]);
+requireTokens("src/lib/customer-session-token.ts", ["CUSTOMER_SESSION_MAX_AGE_SECONDS","createCustomerSessionToken","verifyCustomerSessionToken","timingSafeEqual"]);
+requireTokens("src/app/api/customer-auth/verify/route.ts", ["createSignedCustomerSession","CUSTOMER_SESSION_COOKIE","Customer session signing is not configured"]);
+requireTokens("src/app/api/customer-auth/logout/route.ts", ["CUSTOMER_SESSION_COOKIE","CUSTOMER_ACCESS_COOKIE","CUSTOMER_REFRESH_COOKIE"]);
+requireTokens("src/app/api/designer/vault/route.ts", ["getCustomerIdentity","listOwned","loadOwned","deleteOwned","action===\"claim\""]);
+requireTokens("src/app/api/measurements/vault/route.ts", ["getCustomerIdentity","listOwned","loadOwned","deleteOwned","action===\"claim\""]);
+requireTokens("supabase/migrations/20261006_customer_account_ownership.sql", ["owner_user_id","auth.users","designer_locked_revision_vault_list_owned","measurement_profile_vault_list_owned","service_role"]);
+requireTokens("src/app/api/customer-account/production/route.ts", ["getCustomerIdentity","production_quote_list_owned_v2","production_order_list_owned","production_order_event_list_owned","production_customer_outcome_list_owned","outcomes","production_quote_accept_owned","accept_quote","record_outcome","normalizeCustomerProductionOutcome","private, no-store"]);
+requireTokens("supabase/migrations/20261007_production_customer_ownership.sql", ["resolve_locked_revision_owner","production_claim_revision_ownership","production_quote_list_owned","production_order_list_owned","owner_user_id"]);
+requireTokens("supabase/migrations/20261013_customer_quote_acceptance.sql", ["production_quote_accept_owned","production_quote_list_owned_v2","customer_account","service_role"]);
+requireTokens("supabase/migrations/20261014_customer_production_timeline.sql", ["production_order_event_list_owned","production_order_events","owner_user_id","service_role"]);
+requireTokens("supabase/migrations/20261015_customer_production_outcomes.sql", ["production_customer_outcomes","production_customer_outcome_record","production_customer_outcome_list_owned","production_customer_outcome_list","customer outcome requires a delivered order","service_role"]);
+requireTokens("src/lib/designer/customer-production-outcomes.ts", ["CUSTOMER_OUTCOME_RATINGS","CUSTOMER_FIT_RESULTS","normalizeCustomerProductionOutcome","Confirm the garment was worn"]);
+requireTokens("supabase/migrations/20261016_customer_outcome_learning_policy.sql", ["production_customer_outcome_reviews","production_customer_outcome_policies","production_customer_outcome_review_record","production_customer_outcome_policy_record","named policy approver is required","service_role"]);
+requireTokens("supabase/migrations/20261017_production_learning_context.sql", ["production_order_learning_context","production_order_create_with_context","production_customer_outcome_learning_list","durable production design context is required before evidence approval","prohibited personal measurement data","service_role"]);
+requireTokens("src/lib/designer/production-learning-context.ts", ["PRODUCTION_LEARNING_CONTEXT_VERSION","buildProductionLearningContext","shirtId","trouserId"]);
+requireTokens("src/lib/designer/customer-outcome-learning.ts", ["PRODUCTION_LEARNING_CONTEXT_VERSION","validOutcomeLearningContext","revisionId","recipeHash","shirtId","trouserId","summarizeCustomerOutcomeLearning","learningEligible","gateComplete"]);
+requireTokens("src/app/api/operator/customer-outcomes/route.ts", ["verifyOperatorSession","production_customer_outcome_learning_list","production_customer_outcome_review_record","production_customer_outcome_policy_record","summarizeCustomerOutcomeLearning"]);
+requireTokens("src/app/operator/customer-outcomes/CustomerOutcomesClient.tsx", ["Customer Outcome Review","Human evidence threshold","LEARNING ELIGIBLE","Durable design context","cannot be approved as learning evidence","Designer ranking remains unchanged"]);
+requireTokens("src/lib/fabric-color-calibration.ts", ["deltaE2000","checkedBy","evidenceReference","legacyUnverified","evidenceGateComplete","calibrated_capture","spectrophotometer"]);
+requireTokens("src/app/api/operator/fabric-color-calibration/route.ts", ["verifyOperatorSession","loadFabricAnalysesForFabricIds","approved","corrected","Digital colour reference must match","fabric_physical_color_check_record_v2","p_checked_by","p_evidence_reference","summarizeFabricPhysicalColorChecks"]);
+requireTokens("src/app/operator/fabric-color-calibration/FabricColorCalibrationClient.tsx", ["Physical Colour Calibration","MEDIAN ΔE","legacy/unproven","Checked by","Evidence reference","reviewed profile required","Save append-only colour evidence"]);
+requireTokens("supabase/migrations/20261008_fabric_physical_color_checks.sql", ["fabric_physical_color_checks","fabric_physical_color_check_record","fabric_physical_color_check_list","service_role"]);
+requireTokens("supabase/migrations/20261031_fabric_color_evidence_provenance.sql", ["checked_by","evidence_reference","fabric_physical_color_check_record_v2","reviewed Analyzer profile id is required","controlled illuminant is required","service_role"]);
+requireTokens("src/lib/designer/style-director-validation.ts", ["directionsUnderstandable","directionsDistinct","stockHandoffWorked","handoffAuditId","verifiedHandoffCases","uniqueVerifiedHandoffs","requiredPositiveCases","thresholdMet","validationComplete"]);
+requireTokens("src/app/api/operator/style-director-validation/route.ts", ["style_director_user_test_record_v2","p_handoff_audit_id","style_director_validation_signoff_record_v3","p_required_positive_cases","verifyOperatorSession"]);
+requireTokens("src/app/operator/style-director-validation/StyleDirectorValidationClient.tsx", ["Style Director Validation","materially distinct","Verified handoff audit ID","server audit exists","Documented clean-case target","No default is invented","Record user-test evidence","Record approved"]);
+requireTokens("supabase/migrations/20261009_style_director_user_validation.sql", ["style_director_user_tests","style_director_validation_signoffs","record real-user validation evidence before sign-off","service_role"]);
+requireTokens("supabase/migrations/20261021_style_director_validation_threshold.sql", ["required_positive_cases","style_director_validation_signoff_record_v2","positive Style Director cases do not meet the documented approval target","service_role"]);
+requireTokens("src/lib/designer/style-director-handoff.ts", ["linen-earth-style-director-handoff-v1","createStyleDirectorHandoffToken","verifyStyleDirectorHandoffToken","styleDirectorHandoffMatches"]);
+requireTokens("src/app/api/style-director/route.ts", ["createStyleDirectorHandoffToken","handoffToken"]);
+requireTokens("src/app/style-director/page.tsx", ["handoffToken:selectedLook.handoffToken","from:\"style-director\""]);
+requireTokens("src/app/api/style-director/handoff/route.ts", ["verifyStyleDirectorHandoffToken","styleDirectorHandoffMatches","createHash","style_director_handoff_audit_record_v2","p_token_fingerprint"]);
+requireTokens("src/components/DesignerModule.tsx", ["handoffToken","/api/style-director/handoff","VERIFIED HANDOFF","directorHandoffAuditId"]);
+requireTokens("supabase/migrations/20261022_style_director_handoff_audit.sql", ["style_director_handoff_audit","style_director_handoff_audit_record","service_role"]);
+requireTokens("supabase/migrations/20261023_style_director_handoff_validation.sql", ["handoff_audit_id","style_director_user_test_record_v2","verified handoff audit id is required","service_role"]);
+requireTokens("supabase/migrations/20261024_style_director_distinct_handoff_gate.sql", ["style_director_validation_signoff_record_v3","distinct handoff_audit_id","distinct verified Style Director handoffs","service_role"]);
+requireTokens("supabase/migrations/20261027_roadmap_v2_evidence_health.sql", ["roadmap_v2_evidence_health","noviceServerTimer","verifiedBetaFlow","signedStyleHandoff","distinctStyleValidation","renderManualReview","measurementEvidence","productionDeliveryEvidence","stockProvenance","garmentQcProvenance","deliveryProvenance","outcomeLearningContext","productionCutEvidence","verifiedMeterageCuts","service_role"]);
+requireTokens("supabase/migrations/20261024_style_director_handoff_uniqueness.sql", ["token_fingerprint","style_director_handoff_audit_record_v2","style_director_user_tests_handoff_unique","service_role"]);
+requireTokens("supabase/migrations/20261026_style_director_verified_signoff.sql", ["count(distinct l.handoff_audit_id)","join private.style_director_handoff_audit","verified positive Style Director cases","service_role"]);
+requireTokens("src/lib/designer/ease-calibration.ts", ["requiredEaseEvidenceKeys","evidenceCoverageComplete","normalizeHouseEaseCalibrationDraft","SHIRT_EASE_CLASSES","TROUSER_EASE_CLASSES"]);
+requireTokens("src/lib/designer/preview-option-coverage.ts", ["fullyCleared","constructionBlocked","noPreviewSupport","gateComplete"]);
+requireTokens("src/lib/designer/novice-designer-study.ts", ["durationSeconds","likedDesignCompleted","targetSeconds","withinTargetCases","gateComplete"]);
+requireTokens("src/app/api/operator/novice-designer-study/route.ts", ["designer_novice_attempt_record","designer_novice_study_decision_record","verifyOperatorSession"]);
+requireTokens("src/app/operator/novice-designer-study/NoviceDesignerStudyClient.tsx", ["Novice Designer Completion Study","documented roadmap target","Start server stopwatch","Record server-timed attempt","Approve five-case gate"]);
+requireTokens("supabase/migrations/20261012_designer_novice_study.sql", ["designer_novice_attempts","designer_novice_study_decisions","five novice liked-design completions within the documented target","service_role"]);
+requireTokens("src/lib/designer/preview-option-reviews.ts", ["DESIGNER_STYLE_CHOICES","designer_preview_option_review","customerPreviewCoverageRows","constructionStatus"]);
+requireTokens("src/app/api/operator/preview-option-coverage/route.ts", ["verifyOperatorSession","customerPreviewCoverageRows","summarizePreviewOptionCoverage"]);
+requireTokens("src/app/operator/preview-option-coverage/PreviewOptionCoverageClient.tsx", ["Customer Preview Coverage","Approve customer preview","Reject preview support","Approximate"]);
+requireTokens("src/app/api/operator/ease-calibration/route.ts", ["house_ease_evidence_record","house_ease_model_create","house_ease_model_approve","evidenceCoverageComplete"]);
+requireTokens("src/app/operator/ease-calibration/EaseCalibrationClient.tsx", ["House Ease Calibration","35 cells","active in Designer runtime","controlled promotion step","Register evidence-backed draft"]);
+requireTokens("supabase/migrations/20261010_house_ease_calibration_registry.sql", ["house_ease_evidence","house_ease_models","real finished-garment evidence is required for every house-ease cell","service_role"]);
+requireTokens("supabase/migrations/20261011_launch_beta_flow_detail.sql", ["design_locked","share_or_enquiry_completed","launch_beta_attempt_record_v2","share/enquiry completion cannot precede a locked design"]);
+requireTokens("src/app/api/operator/launch-readiness/route.ts", ["record_verified_beta","launch_beta_attempt_record_v4","verifiedFlowAudit","p_evidence_kind"]);
+requireTokens("src/app/operator/launch-readiness/LaunchReadinessClient.tsx", ["LOCK → VERIFIED SHARE/ENQUIRY","record_verified_beta","Verified action","share_audit_confirmed","enquiry_audit_confirmed"]);
+requireTokens("src/app/api/designer/share/route.ts", ["design_share_audit_record","p_revision_id:revision.revisionId","audited"]);
+requireTokens("src/app/api/designer/enquiry/route.ts", ["verifyLockedDesignRevision","design_enquiry_audit_record","Locked Designer look","audited"]);
+requireTokens("src/components/DesignerModule.tsx", ["verified share audit recorded","beta audit unavailable"]);
+requireTokens("supabase/migrations/20261020_verified_beta_share_flow.sql", ["design_share_audit","design_enquiry_audit","launch_beta_attempt_record_v4","share_audit_confirmed","enquiry_audit_confirmed","no verified % audit exists for this locked revision"]);
+requireTokens("src/lib/designer/launch-readiness-evidence.ts", ["normalizeVerifiedBetaAttempt","evidenceKind","row.design_locked===true","row.share_or_enquiry_completed===true","row.enquiry_audit_confirmed===true","distinctVerifiedRevisions","uniqueSuccessfulByRevision"]);
 requireTokens("src/lib/designer/block-strategy.ts", ["block-strategy-provisional-1","assessBlockStrategy","shaped-shirt","roomy-seat-block","suggestedPatch"]);
 requireTokens("src/lib/designer/planner.ts", ["DesignerBlockStrategy","blockStrategy:selectedBlock","item.blockStrategy?.score"]);
 requireTokens("src/lib/designer/search.ts", ["blockStrategy: DesignerBlockStrategy","assessBlockStrategy","block.score"]);
 requireTokens("src/components/DesignerModule.tsx", ["blockStrategy=assessment?.blockStrategy","Starting block:","newDesignerTechnicalDrawer","requestLookAssessment"]);
+requireTokens("src/components/DesignerModule.tsx", ["Ease basis:","approved_house_calibration","fitEaseTableVersion"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "PHOTO_TUCKED_SHIRT_CLIP",
   "PHOTO_TUCKED_TROUSER_CLIP",
@@ -112,14 +330,25 @@ requireTokens("src/lib/designer/constraint-negotiation.ts", [
 ]);
 requireTokens("src/lib/designer/fit-construction.ts", [
   "fit-construction-provisional-1",
+  "fit-construction-calibrated-2",
   "assessFitConstruction",
-  "SHIRT_EASE",
-  "TROUSER_EASE",
+  "HOUSE_SHIRT_EASE",
+  "HOUSE_TROUSER_EASE",
+  "HOUSE_EASE_TABLE_VERSION",
   "provisional_house_defaults",
+  "approved_house_calibration",
+  "easeModel",
 ]);
+requireTokens("src/lib/designer/ease-calibration.ts", ["approvedHouseEaseModelFromRow","ApprovedHouseEaseModel","status,20)!==\"approved\""]);
+requireTokens("src/lib/designer/house-ease-server.ts", ["server-only","loadApprovedHouseEaseModel","house_ease_model_list","approvedHouseEaseModelFromRow"]);
+requireTokens("src/app/api/designer/assess/route.ts", ["loadApprovedHouseEaseModel","easeModel","houseEaseModel"]);
+requireTokens("src/app/api/designer/search/route.ts", ["loadApprovedHouseEaseModel","easeModel"]);
+requireTokens("src/app/api/designer/brief/route.ts", ["loadApprovedHouseEaseModel","easeModel"]);
 requireTokens("src/lib/designer/planner.ts", [
   "FitConstructionAssessment",
+  "ApprovedHouseEaseModel",
   "assessFitConstruction",
+  "easeModel",
   "fitConstruction",
 ]);
 requireTokens("src/lib/designer/photo-preview.ts", [
@@ -137,7 +366,7 @@ requireTokens("src/app/style-director/page.tsx", ["Open Linen Earth Real Model D
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["StyleDirectorRealModelPreview","Existing Linen Earth real model","composePhotoOutfit","DESIGNER_PHOTO_TEMPLATES"]);
 requireTokens("src/app/style-director/page.tsx", ["StyleDirectorRealModelPreview","shirtFabric","pantFabric","Existing real model · live outfit"]);
 requireTokens("src/components/DesignerModule.tsx", ['params.get("shirt")','params.get("pant")','params.get("style")',"STYLE DIRECTOR"]);
-requireTokens("src/lib/designer/garment-spec.ts", ["linen-earth-garment-spec-v1","buildCanonicalGarmentSpec","finishedTargets","ready_for_tailor_review","not a cutting pattern","conceptId:string","treatments:Array","Creative treatments are design instructions","CanonicalCreativeVisualReview","visualReview:CanonicalCreativeVisualReview"]);
+requireTokens("src/lib/designer/garment-spec.ts", ["linen-earth-garment-spec-v1","buildCanonicalGarmentSpec","finishedTargets","ready_for_tailor_review","not a cutting pattern","fitEaseSource","fitEaseTableVersion","conceptId:string","treatments:Array","Creative treatments are design instructions","CanonicalCreativeVisualReview","visualReview:CanonicalCreativeVisualReview"]);
 requireTokens("src/app/api/designer/assess/route.ts", ["buildCanonicalGarmentSpec","fitConstruction","blockStrategy","brandLanguage","negotiation","creative","visualReview"]);
 requireTokens("src/components/DesignerModule.tsx", ["garmentSpec=assessment?.garmentSpec","Export garment spec","downloadGarmentSpec","activeCreative","creativeTreatmentCount","creativePatternId","creativeVisualReview","setCreativeVisualReview(check)"]);
 requireTokens("src/app/api/memory/event/route.ts", ["garmentSpecInput","fitConstructionScore","brandLanguageScore","materialVerification"]);
@@ -331,6 +560,82 @@ requireTokens("src/app/api/operator/fabric-analyzer/batch/route.ts", ["macroImag
 requireTokens("src/app/api/operator/fabric-analyzer/process/route.ts", ["macroImageUrl","foldImageUrl"]);
 requireTokens("supabase/migrations/20260929_fabric_analyzer_private_backend.sql", ["fabric-analyzer-v4","macroImageUrl","foldImageUrl","swatchRealWidthMm","repeatRealMm"]);
 
+requireTokens("src/components/PremiumShirtProof.tsx", ["Premium Shirt Proof","StyleDirectorRealModelPreview","LiveConstructionPreview","Roadmap gate: ≤ 8% scale error"]);
+requireTokens("src/lib/designer/design-lock.ts", ["linen-earth-design-lock-v1","recipeHash","revisionId","verifyLockedDesignRevision"]);
+requireTokens("src/lib/designer/design-vault.ts", ["lev1","createDesignVaultAccessKey","hashDesignVaultAccessKey"]);
+requireTokens("src/lib/measurement-vault.ts", ["lem1","createMeasurementVaultAccessKey","hashMeasurementVaultAccessKey"]);
+requireTokens("src/components/MeasurementStudio.tsx", ["Secure measurement copy","/api/measurements/vault","Recovery token"]);
+requireTokens("src/lib/designer/production-handoff.ts", ["linen-earth-production-handoff-v1","stockReservation","clothEstimate","quote"]);
+requireTokens("src/lib/designer/tech-pack.ts", ["linen-earth-tech-pack-v1","Tailor Tech Pack","not a cutting pattern"]);
+requireTokens("src/lib/designer/production-quote.ts", ["normalizeProductionQuoteDraft","Quote total cannot be negative"]);
+requireTokens("src/lib/designer/production-state.ts", ["ORDER_TRANSITIONS","QUOTE_TRANSITIONS","cloth_reserved","delivered"]);
+requireTokens("src/lib/designer/production-delivery-evidence.ts", ["evidenceReference","legacyOrUnverifiedCount","provenanceReady","gateComplete:firstTarget.length>=target"]);
+requireTokens("src/app/api/operator/production-evidence/route.ts", ["production_delivery_evidence_record_v2","p_evidence_reference"]);
+requireTokens("src/app/operator/production-evidence/ProductionEvidenceClient.tsx", ["Production-flow evidence reference","legacy audits without provenance","evidenceReference"]);
+requireTokens("supabase/migrations/20261026_production_delivery_evidence_provenance.sql", ["evidence_reference","production_delivery_evidence_record_v2","named operator or checker is required","production-flow evidence reference is required","service_role"]);
+requireTokens("src/lib/designer/production-packet.ts", ["packetBuiltFromLockedRevision:true","noDesignDataReEntry:false","deliveryAuditRequired:true","verified separately after real delivery"]);
+requireTokens("src/lib/designer/production-packet.ts", ["linen-earth-production-packet-v1","noDesignDataReEntry"]);
+requireTokens("src/lib/designer/stock-ledger.ts", ["stockSnapshot","normalizeManualStockEvent","normalizeStockReservation","normalizeStockConsumption","normalizeStockRelease","recordedBy","requestedBy","checkedBy","releasedBy","sourceReference","reservedMetres","availableMetres"]);
+requireTokens("src/lib/fabric-stock.ts", ["availabilityVerified?: boolean"]);
+requireTokens("src/lib/designer/stock-availability.ts", ["verifiedStockAvailabilityMap","provenance_ready","availabilityVerified:true","fabric.inStock&&verified.get(fabric.id)===true"]);
+requireTokens("src/lib/designer/engine.ts", ["availabilityVerified?: boolean","verified physical stock status","provenance-ready positive stock status"]);
+requireTokens("tests/stock-availability.test.ts", ["availabilityVerified,true","availabilityVerified,undefined"]);
+requireTokens("src/lib/designer/stock-availability-server.ts", ["fabric_stock_snapshot_v2","applyLiveVerifiedStockAvailability","cache:\"no-store\""]);
+requireTokens("src/app/api/designer/catalog/route.ts", ["applyLiveVerifiedStockAvailability","verifiedStockFabrics"]);
+requireTokens("src/app/api/designer/search/route.ts", ["applyLiveVerifiedStockAvailability","liveStock.stock.filter((fabric)=>fabric.inStock)"]);
+requireTokens("src/app/api/designer/brief/route.ts", ["applyLiveVerifiedStockAvailability","liveStock.stock.filter((fabric)=>fabric.inStock)"]);
+requireTokens("src/app/api/designer/assess/route.ts", ["applyLiveVerifiedStockAvailability","liveStock.stock.filter((fabric)=>fabric.inStock)"]);
+requireTokens("src/app/api/style-director/route.ts", ["applyLiveVerifiedStockAvailability","verifiedStockFabrics"]);
+requireTokens("src/app/style-director/page.tsx", ["verified ledger availability enforced where recorded"]);
+requireTokens("src/app/operator/production/ProductionClient.tsx", ["Load locked design","New quotes and production orders are blocked","Quote created from verified locked revision","Production order created from verified locked revision","durable design context","learningContexts","Outcome lineage","context missing","CUSTOMER OUTCOME","not automatically applied to Designer ranking","/operator/customer-outcomes","Outcome Review"]);
+requireTokens("src/app/api/operator/stock/route.ts", ["fabric_stock_snapshot_v2","fabric_stock_record_v2","fabric_stock_reserve_v2","fabric_stock_release_v2","fabric_stock_consume_reservation_v2","p_recorded_by","p_requested_by","p_released_by","p_checked_by","p_source_reference"]);
+requireTokens("src/app/operator/stock/StockClient.tsx", ["Fabric Stock Ledger","Physical source reference","Reservation quantity source","Close action source","PHYSICAL PROVENANCE","provenance_ready","Create reservation","Consume","Release"]);
+requireTokens("supabase/migrations/20261001_fabric_stock_ledger.sql", ["fabric_stock_snapshot","fabric_stock_reserve","request_key","service_role"]);
+requireTokens("supabase/migrations/20261028_fabric_stock_provenance.sql", ["fabric_stock_record_v2","fabric_stock_snapshot_v2","recorded_by","source_reference","legacy_unverified_event_count","provenance_ready","service_role"]);
+requireTokens("supabase/migrations/20261029_stock_reservation_provenance.sql", ["fabric_stock_reserve_v2","p_requested_by","p_source_reference","reservation quantity evidence reference is required","service_role"]);
+requireTokens("supabase/migrations/20261030_stock_consumption_provenance.sql", ["fabric_stock_consume_reservation_v2","p_checked_by","p_source_reference","actual cloth-usage evidence reference is required","service_role"]);
+requireTokens("supabase/migrations/20261031_stock_reservation_concurrency_provenance.sql", ["stock-request:","stock-reservation:","fabric_stock_release_v2","fabric_stock_reserve_v2","fabric_stock_consume_reservation_v2","reservation release reference is required","service_role"]);
+requireTokens("supabase/migrations/20261001_production_quotes_orders.sql", ["production_quote_create","production_order_create","invalid order transition","service_role"]);
+requireTokens("supabase/migrations/20261002_finished_garment_qc.sql", ["finished_garment_qc_record","finished_garment_qc_list","finished-garment QC approval is required before delivery","service_role"]);
+requireTokens("supabase/migrations/20261027_finished_garment_qc_provenance.sql", ["inspection_reference","finished_garment_qc_record_v2","provenance-backed finished-garment QC approval is required before delivery","service_role"]);
+requireTokens("src/lib/designer/finished-garment-qc.ts", ["inspectionReference","Named inspector / checker is required","Physical inspection reference is required"]);
+requireTokens("src/app/api/operator/garment-qc/route.ts", ["finished_garment_qc_record_v2","p_inspection_reference"]);
+requireTokens("src/app/operator/garment-qc/GarmentQcClient.tsx", ["Finished Garment QC","Physical inspection reference","provenanceReady","Legacy inspection · provenance not recorded","Approve for delivery","Record rework","PHYSICAL CHECKS"]);
+requireTokens("src/app/api/operator/production/route.ts", ["finished_garment_qc_list","Finished-garment QC approval is required before delivery.","Provenance-backed finished-garment QC approval is required before delivery.","production_customer_outcome_list","customerOutcomes","production_order_learning_context_list","learningContexts","loadVerifiedLockedRevision","A valid locked-design recovery token is required","verified locked design does not match the quote revision/hash","verified locked design does not match the order revision/hash","parseDesignVaultRecoveryToken","verifyLockedDesignRevision","buildProductionLearningContext","production_order_create_with_context","learningContextAttached","lockedRevisionVerified"]);
+requireTokens("supabase/migrations/20261003_production_delivery_evidence.sql", ["production_delivery_evidence_record","production_delivery_evidence_list","delivery evidence can only be recorded for a delivered order","service_role"]);
+requireTokens("src/lib/designer/production-delivery-evidence.ts", ["PRODUCTION_REENTRY_FIELDS","summarizeProductionDeliveryEvidence","gateComplete","reentryIncidentCount"]);
+requireTokens("src/app/operator/production-evidence/ProductionEvidenceClient.tsx", ["Zero-Reentry Proof","FIRST 10 AUDITED","ZERO RE-ENTRY","Save immutable completion audit"]);
+requireTokens("supabase/migrations/20261004_meterage_calibration_registry.sql", ["production_meterage_model_create","production_meterage_model_approve","at least 20 real cut cases are required before approval","service_role"]);
+requireTokens("supabase/migrations/20261028_verified_meterage_cut_evidence.sql", ["production_meterage_model_create_v2","production_meterage_model_approve_v2","production_usage_case","every meterage evidence case must resolve","20 verified unambiguous real cut cases","service_role"]);
+requireTokens("supabase/migrations/20261029_meterage_cut_provenance_gate.sql", ["production_meterage_model_create_v3","production_meterage_model_approve_v3","production-usage-v2","checkedBy","evidenceReference","20 provenance-backed real cuts","service_role"]);
+requireTokens("supabase/migrations/20261030_production_cut_evidence_registry.sql", ["production_cut_evidence","production_cut_evidence_record","production_cut_evidence_list","production_meterage_model_create_v4","production_meterage_model_approve_v4","durable locked-design production context","cut fabric does not match","distinct provenance-backed real production cuts","service_role"]);
+requireTokens("src/lib/designer/meterage-calibration.ts", ["normalizeMeterageCalibrationDraft","normalizeProductionCutEvidenceDraft","verifiedMeterageEvidenceCase","meterageForWidth","canApproveMeterageModel"]);
+requireTokens("src/app/api/operator/production-calibration/route.ts", ["normalizeProductionCutEvidenceDraft","production_cut_evidence_record","production_cut_evidence_list","p_order_id","p_evidence_reference"]);
+requireTokens("src/app/operator/production-calibration/ProductionCalibrationClient.tsx", ["Production order ID","Checked by","Physical evidence reference","/api/operator/production-calibration"]);
+requireTokens("src/app/operator/meterage-model/MeterageModelClient.tsx", ["Meterage Registry","production-cut registry","Approve + activate","requires ≥20 real"]);
+requireTokens("src/app/api/operator/meterage-model/route.ts", ["evidenceCaseIds","production_cut_evidence_list","production-order-backed real cut cases","production_meterage_model_create_v4","production_meterage_model_approve_v4"]);
+requireTokens("supabase/migrations/20261005_launch_readiness_evidence.sql", ["launch_beta_attempt_record","launch_checklist_event_record","No customer names","service_role"]);
+requireTokens("src/lib/designer/launch-readiness-evidence.ts", ["LAUNCH_BETA_TARGET=5","LAUNCH_CHECKLIST_ITEMS","summarizeLaunchReadiness","launchEvidenceComplete"]);
+requireTokens("src/app/operator/launch-readiness/LaunchReadinessClient.tsx", ["Launch Evidence","PRIVATE BETA","HUMAN LAUNCH CHECKLIST","deployment readiness is still a separate gate"]);
+requireTokens("src/app/api/operator/launch-readiness/route.ts", ["normalizeBetaAttempt","normalizeLaunchChecklistDecision","launch_beta_attempt_record","launch_checklist_event_record"]);
+requireTokens("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx", ["private-beta-launch-signoff","/operator/launch-readiness","human sign-offs remain","provenanceReadyStock","legacyStockEvents","Live physical stock provenance"]);
+requireTokens("next.config.ts", ["Strict-Transport-Security","X-Frame-Options","Cross-Origin-Opener-Policy"]);
+requireTokens("src/app/api/designer/look-render/route.ts", ["recordRenderOutcome","repair:true"]);
+requireTokens("src/app/api/designer/look-inspect/route.ts", ["attachRenderQa","jobId"]);
+requireTokens("src/lib/designer/render-outcome-metrics.ts", ["summarizeRenderOutcomes","creditsPerApproved","approvalRate","summarizeRenderPatternCalibrations","scale_error_pct"]);
+requireTokens("src/app/operator/render-qa/RenderQaClient.tsx", ["Final Render QA","Add measured pattern check","APPROVAL RATE","CREDITS / APPROVED","PATTERN SCALE QA","CROSS-VIEW IDENTITY","Record owner-approved credit cap","Approve manual review workflow"]);
+requireTokens("supabase/migrations/20261001_render_outcomes.sql", ["designer_render_outcome_record","designer_render_outcome_review","designer_render_pattern_calibration_record","service_role"]);
+requireTokens("src/lib/designer/render-release-evidence.ts", ["summarizeCrossViewIdentity","evaluateRenderCreditCap","evaluateFinalRenderReleaseEvidence","FINAL_RENDER_REVIEW_TARGET","FINAL_RENDER_APPROVAL_TARGET_PERCENT","patternGateComplete","manualReviewGateComplete","totalGates:5","eligibleConcepts","withinCap"]);
+requireTokens("src/app/operator/render-qa/RenderQaClient.tsx", ["PATTERN RELEASE COVERAGE","patternCoverageSummary","referenceMm","referencePx","observedRepeatPx","pixel_fixture_v2"]);
+requireTokens("src/app/api/operator/render-qa/route.ts", ["patternCoverageSummary","patternEvidenceByFabric","expectedRepeatByFabric","summarizeApprovedPatternCalibrationCoverage","patternedFabricIds","referenceMm","referencePx","observedRepeatPx","Reviewed physical repeat evidence is required"]);
+requireTokens("src/lib/designer/render-outcome-metrics.ts", ["deriveObservedRepeatMmFromFixture","summarizeApprovedPatternCalibrationCoverage","expectedRepeatByFabric","missingTruthPairs","staleCalibrationPairs","legacyCalibrationPairs","measurement_method","pixel_fixture_v2","requiredPairs","passedPairs","gateComplete"]);
+requireTokens("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx", ["Final render release evidence","evaluateFinalRenderReleaseEvidence","identitySummary","creditCapSummary"]);
+requireTokens("supabase/migrations/20261007_render_release_evidence.sql", ["designer_render_identity_review_record","designer_render_credit_cap_record","at least two rendered views","service_role"]);
+requireTokens("src/lib/designer/render-outcomes.ts", ["designer_render_pattern_calibration_record_v2","designer_render_pattern_calibration_list_v2","referenceMm","referencePx","observedRepeatPx"]);
+requireTokens("supabase/migrations/20261018_render_pattern_fixture_evidence.sql", ["designer_render_pattern_calibration_record_v2","designer_render_pattern_calibration_list_v2","pixel_fixture_v2","reference_mm","reference_px","observed_repeat_px","service_role"]);
+requireTokens("supabase/migrations/20261023_render_manual_review_signoff.sql", ["designer_render_manual_review_signoff_record","designer_render_manual_review_signoff_latest","service_role"]);
+
+
 requireTokens("src/app/api/homepage-model/route.ts", [
   "FASHN_API_KEY",
   "model-create",
@@ -360,6 +665,45 @@ requireTokens("supabase/migrations/20260920_style_events_hardening.sql", [
   "select 5;",
   "linen_cloud_health",
 ]);
+requireTokens("scripts/check-cloud-readiness.mjs", [
+  "fabric_stock_snapshot",
+  "fabric_stock_snapshot_v2",
+  "production_quote_list",
+  "production_order_list",
+  "production_delivery_evidence_list",
+  "production_meterage_model_list",
+  "production_cut_evidence_list",
+  "launch_beta_attempt_list",
+  "launch_checklist_event_list",
+  "designer_locked_revision_vault_get",
+  "measurement_profile_vault_get",
+  "production_quote_list_owned",
+  "production_quote_list_owned_v2",
+  "production_quote_accept_owned",
+  "production_order_list_owned",
+  "production_order_event_list_owned",
+  "production_customer_outcome_list_owned",
+  "production_customer_outcome_list",
+  "production_customer_outcome_review_list",
+  "production_customer_outcome_policy_list",
+  "production_order_learning_context_list",
+  "production_customer_outcome_learning_list",
+  "fabric_physical_color_check_list",
+  "style_director_user_test_list",
+  "style_director_validation_signoff_list",
+  "house_ease_evidence_list",
+  "house_ease_model_list",
+  "designer_novice_attempt_list",
+  "designer_novice_study_decision_list",
+  "designer_render_outcome_list",
+  "designer_render_pattern_calibration_list",
+  "designer_render_identity_review_list",
+  "designer_render_credit_cap_latest",
+  "designer_render_manual_review_signoff_latest",
+  "roadmap_v2_evidence_health",
+  "Apply Roadmap v2 Supabase migrations",
+]);
+
 requireTokens(".env.example", [
   "FASHN_API_KEY=",
   "SUPABASE_URL=",
@@ -368,6 +712,8 @@ requireTokens(".env.example", [
   "LINEN_OPERATOR_PASSWORD_HASH=",
   "LINEN_OPERATOR_SESSION_SECRET=",
   "LINEN_MEMORY_SESSION_SECRET=",
+  "LINEN_CUSTOMER_SESSION_SECRET=",
+  "SUPABASE_ANON_KEY=",
   "AI_GATEWAY_API_KEY=",
   "LINEN_VISUAL_CRITIC_MODEL=",
   "LINEN_RESEARCH_MODEL=",

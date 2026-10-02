@@ -7,7 +7,7 @@ type CalibrationCase={
   at:string;caseId:string;
   selfChestCm:number;tailorChestCm:number;chestErrorCm:number;
   selfSleeveCm:number;tailorSleeveCm:number;sleeveErrorCm:number;
-  note:string;
+  evidenceSource:string;checkedBy:string;note:string;
 };
 type Payload={
   configured:boolean;
@@ -19,7 +19,7 @@ type Payload={
   };
 };
 
-const empty={caseId:"",selfChest:"",tailorChest:"",selfSleeve:"",tailorSleeve:"",note:""};
+const empty={caseId:"",selfChest:"",tailorChest:"",selfSleeve:"",tailorSleeve:"",evidenceSource:"",checkedBy:"",note:""};
 
 export default function MeasurementCalibrationClient(){
   const [data,setData]=useState<Payload|null>(null);
@@ -40,30 +40,26 @@ export default function MeasurementCalibrationClient(){
     && Number(form.tailorChest)>=50 && Number(form.tailorChest)<=200
     && Number(form.selfSleeve)>=30 && Number(form.selfSleeve)<=100
     && Number(form.tailorSleeve)>=30 && Number(form.tailorSleeve)<=100
+    && form.evidenceSource.trim().length>=3
+    && form.checkedBy.trim().length>=2
   );
 
   async function save(){
     if(!valid||saving) return;
     setSaving(true);setMessage("");
     try{
-      const response=await fetch("/api/memory/event",{
+      const response=await fetch("/api/operator/measurement-calibration",{
         method:"POST",
         headers:{"content-type":"application/json"},
         body:JSON.stringify({
-          id:"EV-MEASURE-CAL-"+crypto.randomUUID(),
-          sessionId:"MEASUREMENT-CALIBRATION",
-          type:"operator_note",
-          at:new Date().toISOString(),
-          payload:{
-            subtype:"measurement_calibration_case",
-            version:"measurement-calibration-v1",
-            caseId:form.caseId.trim(),
-            selfChestCm:Number(form.selfChest),
-            tailorChestCm:Number(form.tailorChest),
-            selfSleeveCm:Number(form.selfSleeve),
-            tailorSleeveCm:Number(form.tailorSleeve),
-            note:form.note.trim(),
-          },
+          caseId:form.caseId.trim(),
+          selfChestCm:Number(form.selfChest),
+          tailorChestCm:Number(form.tailorChest),
+          selfSleeveCm:Number(form.selfSleeve),
+          tailorSleeveCm:Number(form.tailorSleeve),
+          evidenceSource:form.evidenceSource.trim(),
+          checkedBy:form.checkedBy.trim(),
+          note:form.note.trim(),
         }),
       });
       const result=await response.json() as {stored?:boolean;error?:string};
@@ -102,7 +98,9 @@ export default function MeasurementCalibrationClient(){
           <label>Self sleeve (cm)<input type="number" min="30" max="100" step=".1" value={form.selfSleeve} onChange={(event)=>setForm((current)=>({...current,selfSleeve:event.target.value}))}/></label>
           <label>Tailor sleeve (cm)<input type="number" min="30" max="100" step=".1" value={form.tailorSleeve} onChange={(event)=>setForm((current)=>({...current,tailorSleeve:event.target.value}))}/></label>
         </div>
-        <label>Operator note<textarea value={form.note} onChange={(event)=>setForm((current)=>({...current,note:event.target.value.slice(0,500)}))} placeholder="Any measurement difficulty or correction…"/></label>
+        <label>Physical comparison source<input value={form.evidenceSource} onChange={(event)=>setForm((current)=>({...current,evidenceSource:event.target.value.slice(0,240)}))} placeholder="Tailor session / tape-check reference / fitting note"/></label>
+        <label>Checked by<input value={form.checkedBy} onChange={(event)=>setForm((current)=>({...current,checkedBy:event.target.value.slice(0,120)}))} placeholder="Tailor / reviewer"/></label>
+        <label>Operator note<textarea value={form.note} onChange={(event)=>setForm((current)=>({...current,note:event.target.value.slice(0,1200)}))} placeholder="Any measurement difficulty or correction…"/></label>
         <button type="button" disabled={!valid||saving||data?.configured===false} onClick={()=>void save()}>{saving?"Saving…":"Record comparison"}</button>
         {data?.configured===false&&<small>Supabase operator memory must be configured before evidence can be retained.</small>}
         {message&&<p className="measurementCalMessage">{message}</p>}
@@ -115,6 +113,7 @@ export default function MeasurementCalibrationClient(){
           <div><b>{item.caseId}</b><small>{new Date(item.at).toLocaleString("en-IN")}</small></div>
           <span>Chest {item.selfChestCm} → {item.tailorChestCm} cm <b>Δ {item.chestErrorCm}</b></span>
           <span>Sleeve {item.selfSleeveCm} → {item.tailorSleeveCm} cm <b>Δ {item.sleeveErrorCm}</b></span>
+          <p><b>Evidence:</b> {item.evidenceSource} · checked by {item.checkedBy}</p>
           {item.note&&<p>{item.note}</p>}
         </div>)}
       </article>

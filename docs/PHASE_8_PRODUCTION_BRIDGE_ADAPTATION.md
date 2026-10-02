@@ -1,6 +1,6 @@
 # Phase 8 — Production Bridge Adaptation
 
-Status: production handoff contract implemented; validated meterage / stock / quote systems remain intentionally unfilled.
+Status: production handoff, printable tech pack, real usage capture, stock/quote/order workflow, authenticated customer ownership, finished-garment QC and zero-reentry evidence capture are implemented. Physical calibration and real first-order outcomes remain open.
 
 ## New production handoff
 
@@ -35,10 +35,11 @@ The same locked handoff can also export a printable HTML tech pack. It includes 
 
 1. Measure actual cloth usage across representative shirt / trouser sizes and fabric widths.
 2. Agree owner/tailor estimation formulas and version them.
-3. Connect exact stock roll / available metres.
-4. Add reservation lifecycle and idempotent stock changes.
-5. Add quote calculation and append-only price / adjustment history.
-6. Validate the first production orders with zero manual re-entry of design details.
+3. Enter physically verified opening stock / receipts in the new append-only stock ledger.
+4. Use reservation / release / consumption lifecycle against locked revisions.
+5. Create operator-entered quotes with immutable line items and status history; no prices are auto-invented.
+6. Create production orders from the same locked revision / recipe hash, optionally tied to an accepted quote.
+7. Validate the first production orders with zero manual re-entry of design details.
 
 ## Completion gate
 
@@ -50,7 +51,151 @@ The same locked handoff can also export a printable HTML tech pack. It includes 
 - [x] no invented meterage / price
 - [x] Designer handoff export
 - [ ] validated cloth estimation table
-- [ ] live stock / reservation integration
-- [ ] quote engine
+- [x] versioned meterage-table registry + owner/tailor approval gate implemented
+- [x] append-only live stock / reservation integration
+- [x] evidence-safe operator-entered quote ledger
+- [x] authenticated customer ownership propagated into quote/order records
+- [x] authenticated customer quote review + direct acceptance evidence
+- [x] privacy-safe authenticated customer production timeline
 - [x] tailor-ready formatted tech pack / print layout
+- [x] finished-garment QC evidence desk + delivery gate
+- [x] first-10 zero-reentry evidence capture + scorecard implemented
 - [ ] first 10 production orders completed with zero design-data re-entry
+
+
+## Real cloth-usage calibration now implemented
+
+The private Operator Desk now includes **Production Calibration**. After a real garment is cut, the operator can record:
+- locked revision ID,
+- garment side,
+- exact fabric ID,
+- actual fabric width,
+- actual metres consumed,
+- measured pattern repeat when relevant,
+- whether pattern matching was required,
+- cut/size context and operator notes.
+
+The dashboard keeps shirt and trouser evidence separate and waits for at least 20 real cases on each side before calling the dataset ready to analyse. It reports observed medians only as descriptive evidence; those medians are **not** used as customer meterage estimates or quotes.
+
+This closes the engineering gap for collecting the evidence needed to build a future meterage model without inventing numbers.
+
+
+## Stock, quote and order engineering
+
+The private Operator Desk now has:
+
+### Stock Ledger
+- append-only receipts and adjustments,
+- physically measured metres only,
+- every new receipt/adjustment requires a named checker/recorder and a concrete physical source reference (roll tag, receipt, stock-count sheet, etc.),
+- positive-stock readiness remains open if any contributing manual stock event is legacy/provenance-free,
+- available / reserved / physical snapshot,
+- revision-linked reservations,
+- release and consume flows,
+- transaction locking to reduce oversubscription risk,
+- no seeded or guessed opening balance.
+
+### Production Desk
+- quote creation now requires the secure locked-design recovery token, verifies the immutable revision payload, and rejects any revision/hash mismatch,
+- deterministic subtotal / adjustment / total validation,
+- operator-entered price lines only,
+- quote state history: draft → sent → accepted / void,
+- production-order creation is also blocked until the same locked revision is cryptographically verified; every new order uses the durable locked-recipe context path,
+- authenticated customer ownership propagated from the immutable locked revision into quote/order records when ownership is unambiguous,
+- customer account view of itemized quote and production status without private operator notes,
+- privacy-safe order timeline from the append-only production event ledger, exposing status timestamps only and keeping operator payloads private,
+- authenticated customer acceptance of a sent quote, recorded as an append-only customer-account event before operator order creation,
+- accepted-quote consistency checks,
+- append-only production status events through delivered / cancelled.
+
+These systems provide the engineering path for zero re-entry. They do not make meterage, price, stock or production claims until the corresponding physical / operator evidence is entered.
+
+
+## Finished-garment QC delivery gate
+
+A new private **Finished Garment QC** desk closes the engineering gap between a production order reaching **Ready** and being marked **Delivered**.
+
+The operator must inspect the real garment and record:
+- a named inspector/checker and a concrete physical inspection reference,
+- locked construction match,
+- exact fabric identity match,
+- finished-measurement check against the approved target,
+- stripe/check/pattern alignment where applicable,
+- stitching / seam / button / finishing quality,
+- clean and damage-free condition,
+- optional inspector initials, defect tags and notes.
+
+Approval is append-only evidence tied to the production order, locked revision and recipe hash. A rework decision automatically sends the order back to **Stitching**. The API and database both refuse **Delivered** unless the latest QC inspection is approved **and** contains current provenance (named inspector + physical inspection reference). Legacy provenance-free approvals remain historical and do not unlock delivery.
+
+This remains a human physical inspection. The software does not auto-claim that a garment passed QC.
+
+
+## First-10 zero-reentry proof
+
+A private **Zero-Reentry Proof** desk now measures the remaining operational gate instead of letting it be checked manually.
+
+For every real **Delivered** order, the operator records whether any design data had to be typed again during the handoff or production flow. If re-entry happened, the audit records which category was re-entered and preserves the incident instead of hiding it.
+
+The scorecard evaluates the **first 10 delivered orders in chronological order**:
+- all 10 must have a completion audit tied to a named operator/checker,
+- every qualifying audit must include a concrete production-flow evidence reference such as a tailor job card, cutting packet or dispatch record,
+- all 10 must confirm zero manual design-data re-entry,
+- any recorded re-entry incident keeps the gate open,
+- legacy completion rows without provenance remain visible but do not satisfy the current gate.
+
+The software therefore supplies the evidence mechanism, but the roadmap item stays incomplete until 10 real delivered orders actually prove the result. Production-packet generation itself no longer claims zero re-entry; it proves only that the packet came directly from the immutable locked revision, while the real post-delivery audit supplies the operational proof.
+
+
+## Versioned meterage calibration registry
+
+The engineering path for the remaining **validated cloth estimation table** is now implemented without seeding generic tailoring numbers.
+
+The private **Meterage Registry**:
+- refuses to register a garment calibration draft until the server can verify at least 20 valid real cut cases for that garment,
+- stores explicit non-overlapping fabric-width bands, base metres and optional pattern-matching allowance,
+- versions every table,
+- requires a named owner/tailor approver before activation,
+- automatically retires the previous active table for the same garment when a new version is approved,
+- keeps the roadmap validation gate open until real evidence and a real approval are entered.
+
+The code therefore supports a controlled production estimator, but it does not call any meterage value validated until Linen Earth has supplied the physical cut data and owner/tailor sign-off.
+
+
+## Meterage evidence integrity
+
+- Meterage model registration now revalidates every submitted evidence case ID against the append-only operator production-usage ledger.
+- Case IDs must resolve to an unambiguous real cut for the same garment; unknown, duplicated-input or cross-garment IDs are rejected.
+- A model cannot even be registered through the hardened route before 20 verified real cuts exist, and approval rechecks the same evidence again before activation.
+
+
+## Physical stock provenance gate
+
+New manual stock receipts and adjustments are accepted only with a named checker and a physical source reference. The v2 stock snapshot reports manual-event provenance per fabric. Legacy stock rows remain part of the numeric balance for audit continuity, but any positive-stock fabric with provenance-free manual events stays **open** in Roadmap readiness rather than being treated as verified live stock.
+
+
+## Reservation quantity provenance
+
+Stock reservation metres are no longer accepted as an unexplained operator number. Every new reservation must name the requester/checker and reference the real source of the quantity (for example an approved meterage sheet or tailor request). The reservation remains tied to the immutable locked revision and keeps the existing idempotent request-key protection.
+
+- New real-cut meterage evidence uses `production-usage-v2` and requires a named checker plus a physical cutting reference (job card, cut ticket, or equivalent). Legacy usage rows remain visible but cannot count toward the 20-cut calibration gate.
+- Meterage registration and activation revalidate those provenance-backed cases at the database boundary, so client counts or arbitrary evidence IDs cannot activate a model.
+
+
+## Actual consumption provenance
+
+Closing a reservation by consuming cloth now requires the actual metres, a named checker, and a real cutting/usage reference. The unused reserved balance is released automatically using the same evidence reference. This prevents an unexplained operator number from silently reducing physical stock.
+
+
+## Verified production identity gate
+
+Manual revision/hash typing can no longer create a new quote or production order. The operator must load the secure locked-design recovery token; the server retrieves the private vault payload, verifies the immutable recipe hash, checks it matches the requested revision/hash, and only then creates the quote/order. Existing historical records remain readable, but all new production creation follows the verified locked-recipe path.
+
+
+## Reservation lifecycle concurrency
+
+Reservation creation now serializes the idempotency request key before checking/inserting, preventing concurrent duplicate requests from racing the unique index. Consume/release operations serialize on the reservation ID, and both closing paths carry named evidence. This prevents a simultaneous consume/release from double-closing the same reserved metres or silently distorting available stock.
+
+
+## Production-order-backed cut registry
+
+Real cloth-usage calibration now writes to a private append-only production-cut registry instead of treating generic operator events as sufficient evidence. Every qualifying cut is derived from a real production order that has reached **Cutting** or later, requires durable immutable-design context, checks that the recorded shirt/trouser fabric ID matches that locked context, and carries a named checker plus physical cutting reference. Meterage calibration counts only the latest evidence per order/garment, preventing one physical cut from being relabelled under multiple case IDs to inflate the 20-cut gate.

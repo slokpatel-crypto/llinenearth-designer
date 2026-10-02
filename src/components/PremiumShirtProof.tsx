@@ -2,18 +2,20 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { expectedPeriodPx, passesScaleGate, phase1ProofAcceptance, scaleErrorPct } from "@/lib/designer/proof-scale";
+import { expectedPeriodPx, passesScaleGate, phase1ProofAcceptance, pxPerMmFromMarker, scaleErrorPct, summarizeIndependentRealism, type Phase1BoundaryChecks, type RealismAssessment } from "@/lib/designer/proof-scale";
 import { applyRuntimeFabricScale, photoExpectedRepeatPx, type FabricRenderAsset } from "@/lib/designer/live-preview";
 import { DESIGNER_PANTS, DESIGNER_SHIRTS, designerStyleForOccasion } from "@/lib/designer/engine";
 import { StyleDirectorRealModelPreview } from "@/components/PhotoOutfitPreview";
 import { LiveConstructionPreview } from "@/components/LiveConstructionPreview";
+import { validateVerifiedPhysicalEvidence } from "@/lib/physical-evidence-provenance";
 import fabricTileManifest from "../../public/fabric-tiles/manifest.json";
 
 type Collar="spread"|"button-down"|"band";
 type Cuff="round"|"square"|"french";
 const DEFAULT_PX_PER_MM=900/1780;
+const DEFAULT_PHOTO_PX_PER_MM=DEFAULT_PX_PER_MM*(1024/640);
 const APPROX_TILE_PX=96;
-const REALISM_STORAGE_KEY="linen-earth:phase1-proof-realism:v1";
+const REALISM_STORAGE_KEY="linen-earth:phase1-proof-realism:v2";
 
 export function PremiumShirtProof(){
   const [shirtId,setShirtId]=useState(DESIGNER_SHIRTS[0]?.id||"");
@@ -22,13 +24,18 @@ export function PremiumShirtProof(){
   const [collar,setCollar]=useState<Collar>("spread");
   const [cuff,setCuff]=useState<Cuff>("round");
   const [pxPerMm,setPxPerMm]=useState(DEFAULT_PX_PER_MM);
+  const [photoReferenceMm,setPhotoReferenceMm]=useState<number|null>(null);
+  const [photoReferencePx,setPhotoReferencePx]=useState<number|null>(null);
   const [declaredTileMm,setDeclaredTileMm]=useState<number|null>(null);
   const [declaredRepeatMm,setDeclaredRepeatMm]=useState<number|null>(null);
+  const [physicalEvidenceNote,setPhysicalEvidenceNote]=useState("");
   const [measuredPx,setMeasuredPx]=useState<number|null>(null);
   const [latencyMs,setLatencyMs]=useState<number|null>(null);
   const [latencySamples,setLatencySamples]=useState<number[]>([]);
   const [realRenderSamples,setRealRenderSamples]=useState<number[]>([]);
-  const [realismRatings,setRealismRatings]=useState<number[]>([]);
+  const [realismAssessments,setRealismAssessments]=useState<RealismAssessment[]>([]);
+  const [boundaryChecks,setBoundaryChecks]=useState<Phase1BoundaryChecks>({neck:false,cuffs:false,waist:false,trouserGap:false});
+  const [viewerCode,setViewerCode]=useState("");
   const [recordBusy,setRecordBusy]=useState(false);
   const [recordMessage,setRecordMessage]=useState("");
   const startedRef=useRef(0);
@@ -58,15 +65,33 @@ export function PremiumShirtProof(){
   } : realShirt;
   const proofAsset=realShirt ? (fabricTileManifest.assets as Record<string,FabricRenderAsset>)[realShirt.image.split("/").pop()?.replace(/\.webp(?:\?.*)?$/,"")||""] || null : null;
   const calibratedProofAsset=proofRealShirt ? applyRuntimeFabricScale(proofAsset,proofRealShirt.renderScale) : proofAsset;
-  const photoRepeatAuditPx=photoExpectedRepeatPx(calibratedProofAsset);
+  const photoPxPerMm=useMemo(()=>{
+    if(!photoReferenceMm||!photoReferencePx) return null;
+    try { return pxPerMmFromMarker(photoReferencePx,photoReferenceMm); }
+    catch { return null; }
+  },[photoReferenceMm,photoReferencePx]);
+  const photoRenderPxPerMm=photoPxPerMm??DEFAULT_PHOTO_PX_PER_MM;
+  const photoRepeatAuditPx=photoExpectedRepeatPx(calibratedProofAsset,photoRenderPxPerMm);
 
   const tilePx=declaredTileMm ? Math.max(18,Math.min(260,declaredTileMm*pxPerMm)) : APPROX_TILE_PX;
-  const repeatPx=effectiveRepeatMm ? expectedPeriodPx(effectiveRepeatMm,pxPerMm) : null;
-  const error=effectiveRepeatMm && measuredPx ? scaleErrorPct(measuredPx,effectiveRepeatMm,pxPerMm) : null;
-  const pass=effectiveRepeatMm && measuredPx ? passesScaleGate(measuredPx,effectiveRepeatMm,pxPerMm) : null;
-  const calibrationState=storedRepeatMm ? "VERIFIED CATALOGUE SCALE EVIDENCE"
-    : declaredTileMm||declaredRepeatMm ? "PHYSICAL EVIDENCE ENTERED"
-    : "APPROXIMATE SCALE";
+  const repeatPx=effectiveRepeatMm&&photoPxPerMm ? expectedPeriodPx(effectiveRepeatMm,photoPxPerMm) : null;
+  const error=effectiveRepeatMm&&measuredPx&&photoPxPerMm ? scaleErrorPct(measuredPx,effectiveRepeatMm,photoPxPerMm) : null;
+  const pass=effectiveRepeatMm&&measuredPx&&photoPxPerMm ? passesScaleGate(measuredPx,effectiveRepeatMm,photoPxPerMm) : null;
+  const physicalEvidenceReady=useMemo(()=>{
+    if(!effectiveRepeatMm) return false;
+    try {
+      return validateVerifiedPhysicalEvidence({
+        repeatRealMm:effectiveRepeatMm,
+        verifiedPhysicalEvidenceNote:physicalEvidenceNote,
+      }).hasEvidence;
+    } catch {
+      return false;
+    }
+  },[effectiveRepeatMm,physicalEvidenceNote]);
+  const scaleEvidencePass=pass===true&&physicalEvidenceReady;
+  const calibrationState=physicalEvidenceReady
+    ? storedRepeatMm ? "STORED PHYSICAL SCALE + PROVENANCE" : "PHYSICAL SCALE + PROVENANCE ENTERED"
+    : "APPROXIMATE / UNVERIFIED SCALE";
   const p95=useMemo(()=>{
     if(!latencySamples.length) return null;
     const ordered=[...latencySamples].sort((a,b)=>a-b);
@@ -77,15 +102,18 @@ export function PremiumShirtProof(){
     const ordered=[...realRenderSamples].sort((a,b)=>a-b);
     return ordered[Math.min(ordered.length-1,Math.ceil(ordered.length*.95)-1)];
   },[realRenderSamples]);
-  const strongRealism=realismRatings.filter((rating)=>rating>=4).length;
-  const realismGate=realismRatings.length>=8 && strongRealism>=6;
+  const realismSummary=useMemo(()=>summarizeIndependentRealism(realismAssessments),[realismAssessments]);
+  const realismRatings=realismSummary.ratings;
+  const strongRealism=realismSummary.strongRatings;
+  const realismGate=realismSummary.ready;
   const proofAcceptance=useMemo(()=>phase1ProofAcceptance({
     repeatMm:effectiveRepeatMm,
-    scaleGatePass:pass,
+    scaleGatePass:scaleEvidencePass,
     realModelSamples:realRenderSamples.length,
     realModelP95Ms:realP95,
     realismRatings,
-  }),[effectiveRepeatMm,pass,realRenderSamples.length,realP95,realismRatings]);
+    boundaryChecks,
+  }),[effectiveRepeatMm,scaleEvidencePass,realRenderSamples.length,realP95,realismRatings,boundaryChecks]);
 
   useEffect(()=>{
     let cancelled=false;
@@ -108,7 +136,17 @@ export function PremiumShirtProof(){
       const raw=localStorage.getItem(REALISM_STORAGE_KEY);
       if(!raw) return;
       const parsed=JSON.parse(raw);
-      if(Array.isArray(parsed)) setRealismRatings(parsed.filter((item)=>Number.isInteger(item)&&item>=1&&item<=5).slice(-30));
+      if(!Array.isArray(parsed)) return;
+      const next=parsed.slice(-50).flatMap((item)=>{
+        if(!item||typeof item!=="object") return [];
+        const row=item as Record<string,unknown>;
+        const viewerId=String(row.viewerId||"").trim();
+        const rating=Math.round(Number(row.rating));
+        const recordedAt=String(row.recordedAt||"");
+        if(viewerId.length<2||rating<1||rating>5) return [];
+        return [{viewerId,rating,recordedAt} satisfies RealismAssessment];
+      });
+      setRealismAssessments(next);
     } catch {}
   },[]);
 
@@ -132,15 +170,27 @@ export function PremiumShirtProof(){
   }
 
   function addRealismRating(rating:number){
-    setRealismRatings((current)=>{
-      const next=[...current,rating].slice(-30);
+    const viewerId=viewerCode.trim();
+    if(viewerId.length<2){
+      setRecordMessage("Enter a short anonymous viewer code before recording a realism rating.");
+      return;
+    }
+    setRealismAssessments((current)=>{
+      const normalized=viewerId.toLowerCase();
+      const next=[
+        ...current.filter((item)=>item.viewerId.trim().toLowerCase()!==normalized),
+        {viewerId,rating,recordedAt:new Date().toISOString()},
+      ].slice(-50);
       try { localStorage.setItem(REALISM_STORAGE_KEY,JSON.stringify(next)); } catch {}
       return next;
     });
+    setViewerCode("");
+    setRecordMessage("");
   }
 
   function clearRealismRatings(){
-    setRealismRatings([]);
+    setRealismAssessments([]);
+    setViewerCode("");
     try { localStorage.removeItem(REALISM_STORAGE_KEY); } catch {}
   }
 
@@ -158,20 +208,31 @@ export function PremiumShirtProof(){
           at:new Date().toISOString(),
           payload:{
             subtype:"roadmap_phase1_proof",
-            version:"linen-earth-phase1-proof-v1",
+            version:"linen-earth-phase1-proof-v4",
             status:proofAcceptance.accepted?"accepted":"review",
             fabricId:realShirt?.id||"",
             fabricName:realShirt?.name||"",
             pattern:realShirt?.patternType||"",
             repeatMm:effectiveRepeatMm,
+            physicalEvidenceNote:physicalEvidenceNote.trim(),
+            pxPerMm,
+            photoReferenceMm,
+            photoReferencePx,
+            photoPxPerMm,
+            scaleCoordinateSystem:"photo-1024x1536-fixture",
             measuredPreviewRepeatPx:measuredPx,
             scaleErrorPct:error,
             scaleGatePass:pass===true,
             realModelSamples:realRenderSamples.length,
             realModelP95Ms:realP95,
+            realModelSampleDurationsMs:realRenderSamples,
             realismRatings,
+            realismAssessments:realismSummary.assessments,
+            uniqueRealismViewers:realismSummary.uniqueViewers,
             strongRatings:proofAcceptance.strongRatings,
             realismPass:proofAcceptance.realismReady,
+            boundaryChecks,
+            boundaryReady:proofAcceptance.boundaryReady,
             note:proofAcceptance.reasons.join(" "),
           },
         }),
@@ -192,7 +253,7 @@ export function PremiumShirtProof(){
 
   function exportProofEvidence(){
     const payload={
-      version:"linen-earth-phase1-proof-v1",
+      version:"linen-earth-phase1-proof-v4",
       recordedAt:new Date().toISOString(),
       fabric:{
         id:realShirt?.id||null,
@@ -201,7 +262,11 @@ export function PremiumShirtProof(){
         pattern:realShirt?.patternType||null,
       },
       calibration:{
-        pxPerMm,
+        constructionPxPerMm:pxPerMm,
+        photoReferenceMm,
+        photoReferencePx,
+        photoPxPerMm,
+        scaleCoordinateSystem:"photo-1024x1536-fixture",
         sourceTileWidthMm:declaredTileMm,
         storedRepeatMm,
         enteredRepeatMm:declaredRepeatMm,
@@ -218,11 +283,14 @@ export function PremiumShirtProof(){
         targetMs:300,
       },
       realism:{
+        assessments:realismSummary.assessments,
+        uniqueViewers:realismSummary.uniqueViewers,
         ratings:realismRatings,
         strongRatings:strongRealism,
-        target:"at least 6 of 8 ratings >= 4",
+        target:"at least 6 of 8 independent viewers rate 4/5 or 5/5",
         pass:realismGate,
       },
+      boundaryChecks,
       construction:{collar,cuff},
       caveats:[
         "Catalogue imagery is not physical scale evidence by itself.",
@@ -311,30 +379,54 @@ export function PremiumShirtProof(){
         <section><h2>Cuff</h2>{(["round","square","french"] as Cuff[]).map((item)=><button key={item} type="button" data-active={cuff===item} onClick={()=>markChange(()=>setCuff(item))}>{item}</button>)}</section>
         <section>
           <h2>Physical calibration</h2>
-          <label>px per mm<input type="number" min=".1" step=".0001" value={pxPerMm} onChange={(event)=>setPxPerMm(Math.max(.1,Number(event.target.value)||DEFAULT_PX_PER_MM))}/></label>
+          <label>Construction proof px per mm<input type="number" min=".1" step=".0001" value={pxPerMm} onChange={(event)=>setPxPerMm(Math.max(.1,Number(event.target.value)||DEFAULT_PX_PER_MM))}/></label>
+          <label>Known photo reference length (mm)<input type="number" min=".1" step=".1" placeholder="Physical fixture length" value={photoReferenceMm??""} onChange={(event)=>setPhotoReferenceMm(event.target.value?Number(event.target.value):null)}/></label>
+          <label>Same reference in 1024px photo (px)<input type="number" min=".1" step=".1" placeholder="Measured pixels" value={photoReferencePx??""} onChange={(event)=>setPhotoReferencePx(event.target.value?Number(event.target.value):null)}/></label>
+          <p>{photoPxPerMm
+            ? <>Photographic calibration: <b>{photoPxPerMm.toFixed(4)} px/mm</b>. The real mannequin compositor and repeat gate use this measured fixture.</>
+            : <>Photographic px/mm is still approximate. Enter both physical fixture length and its measured photo pixels before the scale gate can pass.</>}</p>
           <label>Visible source tile width (mm)<input type="number" min=".1" step=".1" placeholder="Enter after measuring swatch" value={declaredTileMm??""} onChange={(event)=>setDeclaredTileMm(event.target.value?Number(event.target.value):null)}/></label>
           <label>Known pattern repeat (mm)<input type="number" min=".1" step=".1" placeholder={storedRepeatMm?"Using stored verified repeat":"Optional measured repeat"} value={declaredRepeatMm??""} onChange={(event)=>setDeclaredRepeatMm(event.target.value?Number(event.target.value):null)}/></label>
-          {storedRepeatMm&&<p>Stored reviewed repeat: <b>{storedRepeatMm} mm</b>. Leave the field blank to use it.</p>}
-          {repeatPx&&<p>Expected repeat on model: <b>{repeatPx.toFixed(2)} px</b></p>}
-          {effectiveRepeatMm&&<label>Measured repeat on preview (px)<input type="number" min=".01" step=".01" value={measuredPx??""} onChange={(event)=>setMeasuredPx(event.target.value?Number(event.target.value):null)}/></label>}
-          {error!==null&&<div className="proofGate" data-pass={pass?"yes":"no"}><b>{pass?"PASS":"FAIL"} · {error.toFixed(2)}% error</b><span>Roadmap gate: ≤ 8% scale error.</span></div>}
+          {storedRepeatMm&&<p>Stored repeat evidence: <b>{storedRepeatMm} mm</b>. Leave the field blank to use it.</p>}
+          <label>Physical evidence note<textarea rows={2} placeholder="Who measured the fabric repeat/photo fixture, with what reference or instrument?" value={physicalEvidenceNote} onChange={(event)=>setPhysicalEvidenceNote(event.target.value.slice(0,700))}/></label>
+          {!physicalEvidenceReady&&effectiveRepeatMm&&<p><b>Evidence source required:</b> add a short owner/supplier measurement note before the physical scale gate can count toward acceptance.</p>}
+          {repeatPx&&<p>Expected repeat on photographic model: <b>{repeatPx.toFixed(2)} px</b></p>}
+          {effectiveRepeatMm&&<label>Measured repeat on photographic preview (px)<input type="number" min=".01" step=".01" value={measuredPx??""} onChange={(event)=>setMeasuredPx(event.target.value?Number(event.target.value):null)}/></label>}
+          {error!==null&&<div className="proofGate" data-pass={scaleEvidencePass?"yes":"no"}><b>{scaleEvidencePass?"PASS":pass?"WAITING FOR PROVENANCE":"FAIL"} · {error.toFixed(2)}% error</b><span>Roadmap gate: ≤ 8% scale error plus auditable physical evidence.</span></div>}
           {!declaredTileMm&&!effectiveRepeatMm&&<p><b>Important:</b> the current photo is used now, but it stays labelled approximate until the photographed swatch width or pattern repeat is physically measured.</p>}
         </section>
         <section>
           <h2>Viewer realism gate</h2>
-          <p>Ask each viewer to rate the real mannequin below from 1–5. Roadmap target: at least 6 of 8 viewers rate it 4 or 5.</p>
+          <p>Use a short anonymous code for each real viewer, then record one 1–5 rating. Re-rating the same code replaces that viewer's earlier rating instead of inflating the sample.</p>
+          <label>Anonymous viewer code<input value={viewerCode} maxLength={80} placeholder="e.g. V01" onChange={(event)=>setViewerCode(event.target.value)}/></label>
           <div className="proofRatingButtons">{[1,2,3,4,5].map((rating)=><button key={rating} type="button" onClick={()=>addRealismRating(rating)}>{rating}</button>)}</div>
           <div className="proofGate" data-pass={realismGate?"yes":"no"}>
-            <b>{realismRatings.length} ratings · {strongRealism} strong</b>
-            <span>{realismGate?"PASS · realism gate met":"Need 6 strong ratings from at least 8 viewers"}</span>
+            <b>{realismSummary.uniqueViewers} independent viewers · {strongRealism} strong</b>
+            <span>{realismGate?"PASS · realism gate met":"Need 6 strong ratings from at least 8 independent viewers"}</span>
           </div>
-          {realismRatings.length>0&&<button type="button" onClick={clearRealismRatings}>Clear ratings</button>}
+          {realismSummary.uniqueViewers>0&&<button type="button" onClick={clearRealismRatings}>Clear ratings</button>}
+          <div className="proofBoundaryChecks">
+            <p><b>Garment boundary review:</b> confirm the real mannequin preview shows no cloth spill at all four protected edges.</p>
+            {([
+              ["neck","Neck opening"],
+              ["cuffs","Cuffs / hands"],
+              ["waist","Tucked waist / fly"],
+              ["trouserGap","Trouser leg gap"],
+            ] as Array<[keyof Phase1BoundaryChecks,string]>).map(([key,label])=><label key={key}>
+              <input type="checkbox" checked={boundaryChecks[key]} onChange={(event)=>setBoundaryChecks((current)=>({...current,[key]:event.target.checked}))}/>
+              <span>{label}</span>
+            </label>)}
+          </div>
+          <div className="proofGate" data-pass={proofAcceptance.boundaryReady?"yes":"no"}>
+            <b>{proofAcceptance.boundaryReady?"PASS · boundaries clean":"BOUNDARY REVIEW OPEN"}</b>
+            <span>All four protected garment edges must be visually confirmed before the core proof can pass.</span>
+          </div>
           <button type="button" onClick={exportProofEvidence}>Export proof evidence JSON</button>
           <div className="proofGate" data-pass={proofAcceptance.accepted?"yes":"no"}>
-            <b>{proofAcceptance.accepted?"PHASE 1 ACCEPTED":"PHASE 1 REVIEW"}</b>
-            <span>{proofAcceptance.accepted?"Scale, real-model latency and viewer realism gates all pass.":proofAcceptance.reasons.join(" ")}</span>
+            <b>{proofAcceptance.accepted?"CORE PROOF ACCEPTED":"CORE PROOF REVIEW"}</b>
+            <span>{proofAcceptance.accepted?"Scale, real-model latency, viewer realism and protected-boundary gates pass. Target-mobile acceptance remains a separate roadmap evidence gate.":proofAcceptance.reasons.join(" ")}</span>
           </div>
-          <button type="button" onClick={()=>void recordProofEvidence()} disabled={recordBusy}>{recordBusy?"Recording…":proofAcceptance.accepted?"Record accepted proof":"Record review evidence"}</button>
+          <button type="button" onClick={()=>void recordProofEvidence()} disabled={recordBusy}>{recordBusy?"Recording…":proofAcceptance.accepted?"Record core proof evidence":"Record review evidence"}</button>
           {recordMessage&&<p className="proofRecordMessage">{recordMessage}</p>}
         </section>
       </aside>
@@ -356,7 +448,7 @@ export function PremiumShirtProof(){
         </div>
       </div>
       <div className="proofRealModel">
-        <StyleDirectorRealModelPreview shirt={proofRealShirt} pant={realPant} style={realModelStyle} onRenderMeasured={(milliseconds)=>setRealRenderSamples((current)=>[...current.slice(-29),milliseconds])}/>
+        <StyleDirectorRealModelPreview shirt={proofRealShirt} pant={realPant} style={realModelStyle} photoPxPerMm={photoRenderPxPerMm} onRenderMeasured={(milliseconds)=>setRealRenderSamples((current)=>[...current.slice(-29),milliseconds])}/>
       </div>
     </section>}
 

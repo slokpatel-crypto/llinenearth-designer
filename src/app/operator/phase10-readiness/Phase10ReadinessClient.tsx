@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { summarizeConstructionReviews } from "@/lib/designer/construction-review-summary";
+import { summarizeLaunchReadiness } from "@/lib/designer/launch-readiness-evidence";
+import { evaluateFinalRenderReleaseEvidence } from "@/lib/designer/render-release-evidence";
+import { summarizeProductionDeliveryEvidence } from "@/lib/designer/production-delivery-evidence";
 
 type DesignerDataPayload={
   coverage:{
@@ -88,7 +91,9 @@ type Phase1ProofPayload={
   configured:boolean;
   latest:{
     at:string;
+    version:string;
     status:string;
+    coreAccepted:boolean;
     fabricId:string;
     fabricName:string;
     pattern:string;
@@ -98,8 +103,11 @@ type Phase1ProofPayload={
     realModelSamples:number;
     realModelP95Ms:number|null;
     realismRatings:number[];
+    uniqueRealismViewers:number;
     strongRatings:number;
     realismPass:boolean;
+    boundaryChecks:{neck:boolean;cuffs:boolean;waist:boolean;trouserGap:boolean};
+    boundaryReady:boolean;
     note:string;
   }|null;
 };
@@ -120,6 +128,145 @@ type RenderCachePayload={
   popularPairs?:Array<unknown>;
 };
 
+type ProductionCalibrationPayload={
+  configured:boolean;
+  summary:{
+    total:number;
+    shirtCases:number;
+    trouserCases:number;
+    medianShirtMetres:number|null;
+    medianTrouserMetres:number|null;
+    readyForModel:boolean;
+  };
+};
+
+type StockPayload={
+  configured:boolean;
+  stock:Array<{
+    fabric_id:string;physical_metres:number;reserved_metres:number;available_metres:number;
+    manual_event_count?:number;provenance_event_count?:number;legacy_unverified_event_count?:number;
+    provenance_ready?:boolean;
+  }>;
+};
+
+type RenderQaPayload={
+  outcomes:Array<unknown>;
+  summary:{
+    total:number;generated:number;cached:number;reviewed:number;pending:number;approved:number;rejected:number;
+    qaPass:number;totalCredits:number;approvalRate:number|null;creditsPerApproved:number|null;
+  };
+  identitySummary:{
+    eligibleConcepts:number;reviewedConcepts:number;pendingConcepts:number;
+    passedConcepts:number;failedConcepts:number;passRate:number|null;
+  };
+  creditCapSummary:{
+    configured:boolean;withinCap:boolean|null;ownerCap:number|null;
+  };
+  manualReviewSignoff:{
+    signoff_id:string;status:"approved"|"review";reviewer:string;note:string;created_at:string;
+  }|null;
+  patternCoverageSummary:{
+    requiredPairs:number;calibratedPairs:number;passedPairs:number;failedPairs:number;pendingPairs:number;gateComplete:boolean;
+  };
+};
+
+type ProductionPayload={
+  configured:boolean;
+  quotes:Array<{quote_id:string;status:string;revision_id:string}>;
+  orders:Array<{order_id:string;status:string;revision_id:string}>;
+};
+
+type ProductionDeliveryEvidencePayload={
+  configured:boolean;
+  orders:Array<{order_id:string;status:string;created_at:string}>;
+  evidence:Array<{
+    order_id:string;manual_design_reentry:boolean;operator?:string|null;evidence_reference?:string|null;created_at:string;
+  }>;
+};
+
+type LaunchReadinessPayload={
+  configured:boolean;
+  betaAttempts:Array<{case_id:string;device_class:string;core_flow_completed:boolean;design_locked?:boolean;share_or_enquiry_completed?:boolean;blocking_bug:boolean;created_at:string}>;
+  checklistEvents:Array<{item_id:string;status:string;created_at:string}>;
+};
+
+type FabricColorCalibrationPayload={
+  configured:boolean;
+  summary:{
+    target:number;
+    uniqueFabrics:number;
+    remaining:number;
+    evidenceGateComplete:boolean;
+    averageDeltaE:number|null;
+    medianDeltaE:number|null;
+  };
+};
+
+type StyleDirectorValidationPayload={
+  configured:boolean;
+  summary:{
+    uniqueCases:number;
+    positiveCases:number;
+    blockingCases:number;
+    understandableCases:number;
+    distinctCases:number;
+    handoffCases:number;
+    verifiedHandoffCases:number;
+    uniqueVerifiedHandoffs:number;
+    deviceCoverage:string[];
+    latestSignoffStatus:string;
+    requiredPositiveCases:number|null;
+    thresholdMet:boolean;
+    evidenceRecorded:boolean;
+    validationComplete:boolean;
+  };
+};
+
+type EaseCalibrationPayload={
+  configured:boolean;
+  models:Array<{model_id:string;version:string;status:string;approved_by:string}>;
+  summary:{
+    requiredCells:number;
+    coveredCells:number;
+    uncoveredCells:string[];
+    evidenceCoverageComplete:boolean;
+    uniqueCases:number;
+  };
+};
+
+type PreviewCoveragePayload={
+  configured:boolean;
+  summary:{
+    total:number;
+    previewApproved:number;
+    previewRejected:number;
+    previewPending:number;
+    noPreviewSupport:number;
+    constructionBlocked:number;
+    constructionPending:number;
+    fullyCleared:number;
+    coveragePercent:number;
+    gateComplete:boolean;
+  };
+};
+
+type NoviceDesignerStudyPayload={
+  configured:boolean;
+  summary:{
+    uniqueCases:number;
+    noviceCases:number;
+    likedDesignCases:number;
+    serverTimedLikedCases:number;
+    blockingCases:number;
+    medianLikedDesignSeconds:number|null;
+    targetSeconds:number|null;
+    withinTargetCases:number;
+    latestDecisionStatus:string;
+    evidenceReady:boolean;
+    gateComplete:boolean;
+  };
+};
+
 type LoadState={
   phase1Proof:Phase1ProofPayload|null;
   measurementCalibration:MeasurementCalibrationPayload|null;
@@ -131,6 +278,17 @@ type LoadState={
   construction:ConstructionPayload|null;
   device:DeviceQaPayload|null;
   renderCache:RenderCachePayload|null;
+  productionCalibration:ProductionCalibrationPayload|null;
+  stock:StockPayload|null;
+  production:ProductionPayload|null;
+  productionDeliveryEvidence:ProductionDeliveryEvidencePayload|null;
+  renderQa:RenderQaPayload|null;
+  launchReadiness:LaunchReadinessPayload|null;
+  fabricColorCalibration:FabricColorCalibrationPayload|null;
+  styleDirectorValidation:StyleDirectorValidationPayload|null;
+  easeCalibration:EaseCalibrationPayload|null;
+  previewCoverage:PreviewCoveragePayload|null;
+  noviceDesignerStudy:NoviceDesignerStudyPayload|null;
 };
 
 type RowStatus="done"|"progress"|"blocked"|"optional";
@@ -152,7 +310,7 @@ function ratio(value:number,total:number){return total>0?clamp(value/total*100):
 
 export default function Phase10ReadinessClient(){
   const [data,setData]=useState<LoadState>({
-    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,
+    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,productionDeliveryEvidence:null,renderQa:null,launchReadiness:null,fabricColorCalibration:null,styleDirectorValidation:null,easeCalibration:null,previewCoverage:null,noviceDesignerStudy:null,
   });
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
@@ -170,7 +328,7 @@ export default function Phase10ReadinessClient(){
   async function load(){
     setLoading(true);setMessage("");
     try{
-      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache]=await Promise.all([
+      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,productionDeliveryEvidence,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation,easeCalibration,previewCoverage,noviceDesignerStudy]=await Promise.all([
         read<Phase1ProofPayload>("/api/operator/phase1-proof"),
         read<MeasurementCalibrationPayload>("/api/operator/measurement-calibration"),
         read<LaunchMetricsPayload>("/api/operator/cloud-summary?days=60"),
@@ -181,8 +339,19 @@ export default function Phase10ReadinessClient(){
         read<ConstructionPayload>("/api/operator/construction-approval"),
         read<DeviceQaPayload>("/api/operator/device-qa"),
         read<RenderCachePayload>("/api/operator/designer-render-cache/stats"),
+        read<ProductionCalibrationPayload>("/api/operator/production-calibration"),
+        read<StockPayload>("/api/operator/stock"),
+        read<ProductionPayload>("/api/operator/production"),
+        read<ProductionDeliveryEvidencePayload>("/api/operator/production-evidence"),
+        read<RenderQaPayload>("/api/operator/render-qa"),
+        read<LaunchReadinessPayload>("/api/operator/launch-readiness"),
+        read<FabricColorCalibrationPayload>("/api/operator/fabric-color-calibration"),
+        read<StyleDirectorValidationPayload>("/api/operator/style-director-validation"),
+        read<EaseCalibrationPayload>("/api/operator/ease-calibration"),
+        read<PreviewCoveragePayload>("/api/operator/preview-option-coverage"),
+        read<NoviceDesignerStudyPayload>("/api/operator/novice-designer-study"),
       ]);
-      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache});
+      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,productionDeliveryEvidence,renderQa,launchReadiness,fabricColorCalibration,styleDirectorValidation,easeCalibration,previewCoverage,noviceDesignerStudy});
     }catch(error){
       setMessage(error instanceof Error?error.message:"Readiness data could not be loaded.");
     }finally{
@@ -207,12 +376,29 @@ export default function Phase10ReadinessClient(){
     const measurementProgress=Math.round((measurementCountProgress+ratio(measurementAccuracySignals,2))/2);
     const measurementDone=measurement?.complete===true;
 
+    const previewCoverage=data.previewCoverage?.summary;
+    const previewCoverageDone=previewCoverage?.gateComplete===true;
+
+    const noviceStudy=data.noviceDesignerStudy?.summary;
+    const noviceProgress=noviceStudy?.targetSeconds
+      ? ratio(noviceStudy.withinTargetCases,5)
+      : ratio(noviceStudy?.serverTimedLikedCases||0,5);
+    const noviceDone=noviceStudy?.gateComplete===true;
+
+    const easeCalibration=data.easeCalibration?.summary;
+    const approvedEaseModel=data.easeCalibration?.models?.find((item)=>item.status==="approved")||null;
+    const easeCoverageProgress=ratio(easeCalibration?.coveredCells||0,easeCalibration?.requiredCells||35);
+    const easeProgress=Math.round((easeCoverageProgress+(approvedEaseModel?100:0))/2);
+    const easeDone=Boolean(easeCalibration?.evidenceCoverageComplete&&approvedEaseModel);
+
     const proof=data.phase1Proof?.latest||null;
     const proofScale=proof?.scaleGatePass===true;
     const proofLatency=Boolean(proof && proof.realModelSamples>=12 && proof.realModelP95Ms!==null && proof.realModelP95Ms<300);
     const proofRealism=proof?.realismPass===true;
-    const proofProgress=ratio([proofScale,proofLatency,proofRealism].filter(Boolean).length,3);
-    const proofDone=Boolean(proof?.status==="accepted" && proofScale && proofLatency && proofRealism);
+    const proofBoundaries=proof?.boundaryReady===true;
+    const proofMobileAccepted=data.device?.latest?.mobile?.status==="accepted";
+    const proofProgress=ratio([proofScale,proofLatency,proofRealism,proofBoundaries,proofMobileAccepted].filter(Boolean).length,5);
+    const proofDone=Boolean(proof?.coreAccepted===true && proofScale && proofLatency && proofRealism && proofBoundaries && proofMobileAccepted);
 
     const coverage=data.designerData?.coverage;
     const active=coverage?.activeCandidates||0;
@@ -235,6 +421,20 @@ export default function Phase10ReadinessClient(){
     );
     const analyzerDone=Boolean(reviewed>=analyzerTarget && analyzerScore?.reportable);
 
+    const colorCalibration=data.fabricColorCalibration?.summary;
+    const colorCalibrationProgress=ratio(colorCalibration?.uniqueFabrics||0,colorCalibration?.target||10);
+    const colorCalibrationDone=colorCalibration?.evidenceGateComplete===true;
+
+    const styleValidation=data.styleDirectorValidation?.summary;
+    const styleValidationProgress=styleValidation
+      ? ratio([
+          styleValidation.requiredPositiveCases!==null,
+          styleValidation.thresholdMet,
+          styleValidation.latestSignoffStatus==="approved",
+        ].filter(Boolean).length,3)
+      : 0;
+    const styleValidationDone=styleValidation?.validationComplete===true;
+
     const score=data.scorecard;
     const totalLabelTarget=score?.minimumTotalLabels||40;
     const actionTarget=score?.minimumActionableLabels||32;
@@ -251,6 +451,54 @@ export default function Phase10ReadinessClient(){
     const acceptedDevices=["mobile","tablet","desktop"].filter((kind)=>latest[kind]?.status==="accepted").length;
     const deviceProgress=ratio(acceptedDevices,3);
 
+    const launchEvidence=data.launchReadiness
+      ? summarizeLaunchReadiness(data.launchReadiness.betaAttempts,data.launchReadiness.checklistEvents)
+      : null;
+    const launchEvidenceProgress=launchEvidence
+      ? Math.round((ratio(launchEvidence.successfulBetaCases,launchEvidence.betaTarget)+ratio(launchEvidence.checklistApproved,launchEvidence.checklistTotal))/2)
+      : 0;
+
+    const productionCalibration=data.productionCalibration?.summary;
+    const productionUsageProgress=Math.round((
+      ratio(productionCalibration?.shirtCases||0,20)+ratio(productionCalibration?.trouserCases||0,20)
+    )/2);
+    const productionUsageDone=productionCalibration?.readyForModel===true;
+
+    const stockRows=data.stock?.stock||[];
+    const positiveStockRows=stockRows.filter((item)=>Number(item.physical_metres)>0);
+    const positiveStock=positiveStockRows.length;
+    const provenanceReadyStock=positiveStockRows.filter((item)=>item.provenance_ready===true).length;
+    const legacyStockEvents=stockRows.reduce((sum,item)=>sum+Number(item.legacy_unverified_event_count||0),0);
+    const stockProgress=positiveStock>0?ratio(provenanceReadyStock,positiveStock):0;
+    const stockDone=Boolean(data.stock?.configured&&positiveStock>0&&provenanceReadyStock===positiveStock);
+
+    const renderSummary=data.renderQa?.summary;
+    const renderRelease=renderSummary&&data.renderQa?.identitySummary&&data.renderQa?.creditCapSummary
+      ? evaluateFinalRenderReleaseEvidence({
+          reviewed:renderSummary.reviewed,
+          approvalRate:renderSummary.approvalRate,
+          identity:data.renderQa.identitySummary,
+          creditCap:data.renderQa.creditCapSummary,
+          manualReviewSignoff:{status:data.renderQa.manualReviewSignoff?.status||null},
+          patternCoverage:data.renderQa.patternCoverageSummary,
+        })
+      : null;
+    const renderReleaseProgress=renderRelease?.progressPercent||0;
+    const renderReleaseDone=renderRelease?.gateComplete===true;
+
+    const productionOrders=data.production?.orders||[];
+    const deliveredOrders=productionOrders.filter((item)=>item.status==="delivered").length;
+    const productionDeliverySummary=data.productionDeliveryEvidence
+      ? summarizeProductionDeliveryEvidence(
+          data.productionDeliveryEvidence.orders,
+          data.productionDeliveryEvidence.evidence,
+        )
+      : null;
+    const productionOrderProgress=productionDeliverySummary
+      ? ratio(productionDeliverySummary.zeroReentryTargetCount,productionDeliverySummary.target)
+      : ratio(deliveredOrders,10);
+    const productionOrderDone=productionDeliverySummary?.gateComplete===true;
+
     const cache=data.renderCache?.database;
     const cacheProgress=cache?.distinct_pairs ? clamp(Math.min(100,cache.distinct_pairs*10)) : 0;
 
@@ -259,14 +507,14 @@ export default function Phase10ReadinessClient(){
         id:"premium-shirt-proof",
         title:"Roadmap v2 premium shirt proof",
         detail:proofDone
-          ? `${proof?.fabricName||"Selected fabric"} passed physical scale, real-model latency and 8-viewer realism evidence.`
+          ? `${proof?.fabricName||"Selected fabric"} passed physical scale, real-model latency, 8-independent-viewer realism, protected-boundary review and target-mobile acceptance evidence.`
           : proof
-            ? `Latest proof is ${proof.status}. Scale ${proofScale?"passes":"needs evidence"}, real-model latency ${proofLatency?"passes":"needs evidence"}, realism ${proofRealism?"passes":"needs evidence"}.`
+            ? `Latest core proof is ${proof.coreAccepted?"accepted":"review"}. Scale ${proofScale?"passes":"needs evidence"}, real-model latency ${proofLatency?"passes":"needs evidence"}, realism ${proofRealism?"passes":"needs evidence"}, garment boundaries ${proofBoundaries?"pass":"need review"}, target mobile ${proofMobileAccepted?"accepted":"needs acceptance"}.`
             : "No operator-recorded Premium Shirt Proof evidence yet.",
         status:proofDone?"done":data.phase1Proof?"progress":"blocked",
         progress:proofProgress,
         metric:proof
-          ? `${proof.fabricName||proof.fabricId} · scale ${proof.scaleErrorPct??"—"}% · p95 ${proof.realModelP95Ms??"—"} ms · ${proof.strongRatings}/${proof.realismRatings.length} strong realism ratings`
+          ? `${proof.fabricName||proof.fabricId} · scale ${proof.scaleErrorPct??"—"}% · p95 ${proof.realModelP95Ms??"—"} ms · ${proof.strongRatings}/${proof.uniqueRealismViewers||0} strong independent ratings · boundaries ${proofBoundaries?"pass":"open"} · mobile ${proofMobileAccepted?"accepted":"open"}`
           : "No recorded proof",
         href:"/lab/proof",
         action:"Open Premium Shirt Proof",
@@ -301,6 +549,55 @@ export default function Phase10ReadinessClient(){
         ownerDependent:true,
       },
       {
+        id:"customer-preview-coverage",
+        title:"Customer-visible construction / preview coverage",
+        detail:previewCoverageDone
+          ? "Every style choice currently exposed by Designer is preview-approved and construction-cleared where required."
+          : previewCoverage
+            ? `${Math.max(0,previewCoverage.total-previewCoverage.fullyCleared)} of ${previewCoverage.total} customer-visible choices still need preview/construction clearance. ${previewCoverage.noPreviewSupport} have no instant-preview support and ${previewCoverage.constructionBlocked} are construction-rejected.`
+            : "Customer-visible preview coverage has not been audited yet.",
+        status:previewCoverageDone?"done":data.previewCoverage?.configured?"progress":"blocked",
+        progress:previewCoverage?.coveragePercent||0,
+        metric:previewCoverage?`${previewCoverage.fullyCleared}/${previewCoverage.total} cleared · ${previewCoverage.previewPending} preview pending · ${previewCoverage.constructionPending} construction pending`:"No coverage evidence",
+        href:"/operator/preview-option-coverage",
+        action:"Audit customer preview choices",
+        ownerDependent:true,
+      },
+      {
+        id:"novice-designer-study",
+        title:"Five-novice Designer completion study",
+        detail:noviceDone
+          ? `Five latest unique server-timed novice cases completed a liked design within the documented target of ${noviceStudy?.targetSeconds||0} seconds, with explicit human approval.`
+          : noviceStudy
+            ? noviceStudy.targetSeconds
+              ? `${Math.max(0,5-noviceStudy.withinTargetCases)} more server-timed qualifying novice cases are needed within the documented target. Latest human decision: ${noviceStudy.latestDecisionStatus}.`
+              : `${noviceStudy.likedDesignCases}/5 server-timed clean liked-design completions are recorded, but no documented target time has been entered yet.`
+            : "No novice Designer completion evidence is available yet.",
+        status:noviceDone?"done":data.noviceDesignerStudy?.configured?"progress":"blocked",
+        progress:noviceProgress,
+        metric:noviceStudy
+          ? `${noviceStudy.withinTargetCases}/5 within target · median ${noviceStudy.medianLikedDesignSeconds??"—"} sec · target ${noviceStudy.targetSeconds??"not set"} sec`
+          : "No novice evidence",
+        href:"/operator/novice-designer-study",
+        action:"Run novice completion study",
+        ownerDependent:true,
+      },
+      {
+        id:"house-ease-calibration",
+        title:"Finished-garment house-ease calibration",
+        detail:easeDone
+          ? `All ${easeCalibration?.requiredCells||35} current ease-table cells have real finished-garment evidence and ${approvedEaseModel?.version} has explicit owner/tailor approval in the registry.`
+          : easeCalibration
+            ? `${Math.max(0,easeCalibration.requiredCells-easeCalibration.coveredCells)} table cells still need real finished-garment evidence. ${approvedEaseModel?"An approved registry version exists.":"No replacement table is approved yet."}`
+            : "No finished-garment house-ease calibration evidence is available yet.",
+        status:easeDone?"done":data.easeCalibration?.configured?"progress":"blocked",
+        progress:easeProgress,
+        metric:easeCalibration?`${easeCalibration.coveredCells}/${easeCalibration.requiredCells} cells · ${easeCalibration.uniqueCases} real cases · ${approvedEaseModel?.version||"no approved version"}`:"No ease evidence",
+        href:"/operator/ease-calibration",
+        action:"Open house ease calibration",
+        ownerDependent:true,
+      },
+      {
         id:"fabric-evidence",
         title:"Fabric evidence coverage",
         detail:evidenceDone
@@ -327,6 +624,21 @@ export default function Phase10ReadinessClient(){
         ownerDependent:true,
       },
       {
+        id:"fabric-physical-colour",
+        title:"Controlled physical colour checks",
+        detail:colorCalibrationDone
+          ? "The roadmap count gate has 10 unique controlled physical fabric colour checks recorded. ΔE remains descriptive until Linen Earth chooses a commercial tolerance."
+          : colorCalibration
+            ? `${colorCalibration.remaining} unique controlled colour checks remain. Current median ΔE is ${colorCalibration.medianDeltaE??"—"} (descriptive only).`
+            : "No physical colour-calibration evidence is available yet.",
+        status:colorCalibrationDone?"done":data.fabricColorCalibration?.configured?"progress":"blocked",
+        progress:colorCalibrationProgress,
+        metric:colorCalibration?`${colorCalibration.uniqueFabrics}/${colorCalibration.target} unique fabrics · median ΔE ${colorCalibration.medianDeltaE??"—"}`:"No colour evidence",
+        href:"/operator/fabric-color-calibration",
+        action:"Record physical colour checks",
+        ownerDependent:true,
+      },
+      {
         id:"designer-ground-truth",
         title:"Designer preference benchmark",
         detail:score?.reportable
@@ -337,6 +649,21 @@ export default function Phase10ReadinessClient(){
         metric:score?`${score.labeledCases}/${totalLabelTarget} total · ${score.actionableLabels}/${actionTarget} actionable`:"Unavailable",
         href:"/operator/designer-evaluation",
         action:"Label Designer cases",
+        ownerDependent:true,
+      },
+      {
+        id:"style-director-user-validation",
+        title:"Style Director real-user validation",
+        detail:styleValidationDone
+          ? `Real-user evidence met the documented clean-case target of ${styleValidation?.requiredPositiveCases} and the owner/reviewer explicitly approved the Style Director validation.`
+          : styleValidation
+            ? `${styleValidation.uniqueCases} real-user case(s) recorded · ${styleValidation.positiveCases}${styleValidation.requiredPositiveCases!==null?"/"+styleValidation.requiredPositiveCases:""} clean with signed stock handoff evidence · ${styleValidation.verifiedHandoffCases} verified handoff case(s) · target ${styleValidation.requiredPositiveCases===null?"not documented":styleValidation.thresholdMet?"met":"open"} · latest human decision ${styleValidation.latestSignoffStatus}.`
+            : "No real-user Style Director validation evidence is available yet.",
+        status:styleValidationDone?"done":data.styleDirectorValidation?.configured?"progress":"blocked",
+        progress:styleValidationProgress,
+        metric:styleValidation?`${styleValidation.positiveCases}/${styleValidation.requiredPositiveCases??"—"} distinct clean handoffs · ${styleValidation.uniqueVerifiedHandoffs} unique signed handoffs · ${styleValidation.blockingCases} blocking · ${styleValidation.latestSignoffStatus} sign-off`:"No user-test evidence",
+        href:"/operator/style-director-validation",
+        action:"Run Style Director validation",
         ownerDependent:true,
       },
       {
@@ -363,6 +690,81 @@ export default function Phase10ReadinessClient(){
         metric:`${acceptedDevices}/3 device classes accepted`,
         href:"/operator/device-qa",
         action:"Run device QA",
+        ownerDependent:true,
+      },
+      {
+        id:"private-beta-launch-signoff",
+        title:"Five-customer lock flow + human launch sign-off",
+        detail:launchEvidence?.launchEvidenceComplete
+          ? "Five successful unique lock → share/enquiry cases and every human launch checklist item are evidenced."
+          : launchEvidence
+            ? `${Math.max(0,launchEvidence.betaTarget-launchEvidence.successfulBetaCases)} successful lock → share/enquiry cases and ${Math.max(0,launchEvidence.checklistTotal-launchEvidence.checklistApproved)} human sign-offs remain.`
+            : "No private-beta / human launch-signoff evidence is available yet.",
+        status:launchEvidence?.launchEvidenceComplete?"done":data.launchReadiness?.configured?"progress":"blocked",
+        progress:launchEvidenceProgress,
+        metric:launchEvidence?`${launchEvidence.successfulBetaCases}/${launchEvidence.betaTarget} beta · ${launchEvidence.checklistApproved}/${launchEvidence.checklistTotal} sign-offs`:"No launch evidence",
+        href:"/operator/launch-readiness",
+        action:"Open launch evidence",
+        ownerDependent:true,
+      },
+      {
+        id:"final-render-qa",
+        title:"Final render release evidence",
+        detail:renderReleaseDone
+          ? "Approval-rate evidence, cross-view identity review and the owner-approved credit boundary all pass."
+          : renderRelease
+            ? `${renderRelease.completedGates}/4 release evidence gates pass. Complete real render reviews, cross-view identity checks, physical pattern QA and the owner-approved cost boundary before promotion.`
+            : "No final-render release evidence is available yet.",
+        status:renderReleaseDone?"done":renderSummary?"progress":"blocked",
+        progress:renderReleaseProgress,
+        metric:renderSummary&&data.renderQa
+          ? `${renderSummary.reviewed}/20 reviewed · ${renderSummary.approvalRate??"—"}% approved · identity ${data.renderQa.identitySummary.passedConcepts}/${data.renderQa.identitySummary.eligibleConcepts} · pattern ${data.renderQa.patternCoverageSummary.passedPairs}/${data.renderQa.patternCoverageSummary.requiredPairs} · cap ${data.renderQa.creditCapSummary.withinCap===true?"pass":data.renderQa.creditCapSummary.withinCap===false?"over":"open"}`
+          : "No render outcome evidence",
+        href:"/operator/render-qa",
+        action:"Complete final render evidence",
+        ownerDependent:true,
+      },
+      {
+        id:"production-calibration",
+        title:"Real cloth-usage calibration",
+        detail:productionUsageDone
+          ? "The first evidence threshold is ready to analyse for both shirt and trouser meterage."
+          : `${Math.max(0,20-(productionCalibration?.shirtCases||0))} shirt cuts and ${Math.max(0,20-(productionCalibration?.trouserCases||0))} trouser cuts remain before the first estimator may be analysed.`,
+        status:productionUsageDone?"done":data.productionCalibration?.configured?"progress":"blocked",
+        progress:productionUsageProgress,
+        metric:productionCalibration?`${productionCalibration.shirtCases}/20 shirt · ${productionCalibration.trouserCases}/20 trouser`:"No production evidence",
+        href:"/operator/production-calibration",
+        action:"Record real cloth usage",
+        ownerDependent:true,
+      },
+      {
+        id:"stock-ledger",
+        title:"Live physical stock provenance",
+        detail:stockDone
+          ? `${positiveStock} fabric(s) have positive physical stock and every contributing manual stock event carries named provenance.`
+          : positiveStock
+            ? `${provenanceReadyStock}/${positiveStock} positive-stock fabric(s) are provenance-ready · ${legacyStockEvents} legacy/unverified manual stock event(s) remain.`
+            : "No physically recorded stock is available yet.",
+        status:stockDone?"done":data.stock?.configured?"progress":"blocked",
+        progress:stockProgress,
+        metric:`${provenanceReadyStock}/${positiveStock||"—"} provenance-ready stock fabrics · ${legacyStockEvents} unverified events`,
+        href:"/operator/stock",
+        action:"Verify physical stock",
+        ownerDependent:true,
+      },
+      {
+        id:"production-orders",
+        title:"Zero-reentry production validation",
+        detail:productionOrderDone
+          ? "The first 10 delivered orders have provenance-backed completion audits and zero manual design-data re-entry."
+          : productionDeliverySummary
+            ? `${productionDeliverySummary.zeroReentryTargetCount}/${productionDeliverySummary.target} first delivered orders currently have provenance-backed zero-reentry evidence · ${productionDeliverySummary.reentryIncidentCount} re-entry incident(s) · ${productionDeliverySummary.legacyOrUnverifiedCount} legacy/unverified audit(s).`
+            : "Production delivery evidence is unavailable; delivered-order count alone cannot satisfy the zero-reentry gate.",
+        status:productionOrderDone?"done":data.productionDeliveryEvidence?.configured?"progress":"blocked",
+        progress:productionOrderProgress,
+        metric:productionDeliverySummary?`${productionDeliverySummary.zeroReentryTargetCount}/${productionDeliverySummary.target} zero-reentry · ${productionDeliverySummary.auditedTargetCount} provenance-backed audits`:"No delivery evidence",
+        href:"/operator/production-evidence",
+        action:"Audit delivered production flow",
         ownerDependent:true,
       },
       {

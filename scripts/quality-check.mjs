@@ -1019,7 +1019,7 @@ for (const token of ["observations?: TailorObservationProfile","OBS-SHOULDER-SLO
   if (!tailorFit.includes(token)) throw new Error(`Tailor observation regression: fit engine missing ${token}`);
 }
 const tailorPlanner = fs.readFileSync("src/lib/designer/planner.ts","utf8");
-for (const token of ["TailorObservationProfile","observations?: TailorObservationProfile","observations })"]) {
+for (const token of ["TailorObservationProfile","observations?: TailorObservationProfile","observations, easeModel"]) {
   if (!tailorPlanner.includes(token)) throw new Error(`Tailor observation regression: planner missing ${token}`);
 }
 const tailorSearch = fs.readFileSync("src/lib/designer/search.ts","utf8");

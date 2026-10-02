@@ -13,7 +13,10 @@ Status: existing foundation is substantially implemented; Roadmap v2 becomes a c
 - Content identity / hashes and evidence fingerprints.
 - Private Fabric Analyzer workflow with stock binding.
 - Owner / supplier physical-evidence notes and source URLs.
+- Designer Data Desk captures structured physical provenance (`physical_roll`, `supplier_document`, `lab_report`, `owner_measurement`) with reference, checker, optional date/URL; GSM/drape do not count as verified without it.
+- The bulk fabric worksheet carries the same physical-provenance fields so real stock evidence can be entered across the catalogue without weakening provenance rules.
 - Human approve / correct / reject review loop.
+- Dedicated append-only controlled physical colour-check workflow with LAB/hex evidence and CIEDE2000 comparison.
 - Ground-truth and calibration workflows.
 - Reviewed physical evidence can flow into the runtime Designer catalogue.
 - Build-time fabric tiles preserve pattern direction and avoid mirroring patterned cloth.
@@ -23,7 +26,7 @@ Status: existing foundation is substantially implemented; Roadmap v2 becomes a c
 1. Record physical scale evidence for stock fabrics that have visible repeats.
 2. Build the 50-fabric reviewed ground-truth set with unique stock IDs.
 3. Add verified GSM / fibre / physical drape only where owner, supplier or inspection evidence exists.
-4. Complete colour checks against physical cloth under a controlled capture setup.
+4. Use the new Physical Colour Calibration desk to complete colour checks against physical cloth under a controlled capture setup.
 5. Keep source imagery / capture procedure consistent enough that re-analysis is meaningful.
 6. Do not call any image-derived drape / GSM / fibre estimate a verified physical fact.
 
@@ -57,15 +60,52 @@ Engineering:
 - [x] runtime Designer merge
 - [x] direction-preserving patterned tiles
 - [x] approximate/verified UI distinction
+- [x] controlled physical colour evidence capture + descriptive ΔE metrics
+- [x] structured physical provenance capture in single-fabric and bulk Designer Data workflows
 - [ ] CI green for Roadmap v2 branch
 
 Physical evidence:
 - [ ] 50 unique stock fabrics reviewed
 - [ ] visible-repeat fabrics have measured repeat or swatch-width evidence where true-scale publishing is desired
-- [ ] 10 controlled physical colour checks recorded
+- [ ] 10 controlled physical colour checks recorded (workflow implemented; real evidence still required)
 - [ ] verified GSM/drape/fibre entered only from trusted records or inspection
 - [ ] scale errors above the roadmap threshold block true-scale claims
 
 ## Do not rebuild
 
 Do not replace the existing Analyzer, catalogue, tile builder or evidence store just to mirror the roadmap document. Extend the existing contracts only where a measured physical fact cannot currently reach the renderer or customer-facing disclosure.
+
+
+## Reviewed-evidence boundary
+Customer-facing physical truth now upgrades only from Analyzer profiles that have been explicitly reviewed (`approved` / `corrected`). A high-confidence or provisional model result may still inform internal analysis, but it cannot silently mark pattern scale, GSM, drape or fibre content as verified in the Designer. This keeps Phase 1 true-scale preview and Phase 7 final-render pattern QA tied to the same reviewed fabric-truth source.
+
+
+## Field-level physical provenance hardening
+
+- A reviewed Analyzer profile no longer upgrades all physical fabric facts merely because the overall profile was approved.
+- True pattern scale, GSM, drape and fibre content are promoted independently only when the exact field carries declared/reviewed physical provenance from the validated Analyzer input path.
+- Reviewed legacy profiles without the corresponding field provenance remain provisional for that physical claim instead of silently becoming verified customer-facing truth.
+
+
+## Field-level physical evidence integrity
+
+- Physical Analyzer facts now keep the underlying owner/supplier evidence note in the persisted profile instead of discarding note-only provenance after validation.
+- Customer-facing GSM, drape, fibre and true pattern scale require three things together: a reviewed Analyzer profile, field-level declared/reviewed provenance, and an auditable source URL or physical-evidence note.
+- Designer Data coverage uses the same rule, so a reviewed profile cannot silently convert a model/legacy physical value into a verified fabric fact.
+- Physical evidence notes now survive Analyzer → intelligence → Designer so note-backed shop measurements and supplier checks remain auditable even when no web URL exists.
+
+
+## Verified live-stock overlay
+
+- Customer Designer and Style Director now consult the private physical stock ledger in addition to catalogue/metadata availability.
+- Only provenance-ready ledger rows can override customer availability; an unverified legacy stock row cannot silently hide or promote a fabric.
+- A verified zero/negative available balance removes that fabric from new customer selection, while an explicit catalogue/merchandising unavailability always remains authoritative.
+- The public customer APIs expose only a count of fabrics covered by verified stock evidence, not private metre balances.
+
+
+## Controlled colour evidence provenance
+
+- New physical colour checks must be tied to an approved/corrected Analyzer profile for the exact stock fabric; the submitted digital hex must match that reviewed profile’s measured colour.
+- Every qualifying check now records the controlled illuminant, a named checker and a physical evidence reference. Instrument methods also retain device identity, while calibrated captures retain the setup note.
+- Legacy colour rows without this provenance stay visible for history but are excluded from the 10-unique-fabric evidence gate.
+- ΔE remains descriptive until Linen Earth documents a commercial tolerance; this hardening improves evidence integrity without inventing a pass threshold.

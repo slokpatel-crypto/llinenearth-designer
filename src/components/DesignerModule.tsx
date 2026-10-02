@@ -140,6 +140,8 @@ export function DesignerModule() {
   const [directorHandoffTitle, setDirectorHandoffTitle] = useState("");
   const [directorHandoffTier, setDirectorHandoffTier] = useState("");
   const [directorHandoffReason, setDirectorHandoffReason] = useState("");
+  const [directorHandoffAuditId,setDirectorHandoffAuditId]=useState("");
+  const [directorHandoffAuditStatus,setDirectorHandoffAuditStatus]=useState<"idle"|"verified"|"unavailable"|"mismatch">("idle");
   const [measurementProfile, setMeasurementProfile] = useState<MeasurementProfile | null>(null);
   const [tailorObservations, setTailorObservations] = useState<TailorObservationProfile | null>(null);
   const [searchScope, setSearchScope] = useState<DesignerSearchScope>("keep_shirt");
@@ -159,6 +161,11 @@ export function DesignerModule() {
   const [lockBusy,setLockBusy]=useState(false);
   const [shareBusy,setShareBusy]=useState(false);
   const [shareMessage,setShareMessage]=useState("");
+  const [enquiryBusy,setEnquiryBusy]=useState(false);
+  const [enquiryMessage,setEnquiryMessage]=useState("");
+  const [vaultBusy,setVaultBusy]=useState(false);
+  const [vaultMessage,setVaultMessage]=useState("");
+  const [vaultRecoveryToken,setVaultRecoveryToken]=useState("");
   const [creativeDirections, setCreativeDirections] = useState<CreativeDirection[]>([]);
   const [activeCreative, setActiveCreative] = useState<CreativeDirection | null>(null);
   const [creativeAutoNote,setCreativeAutoNote]=useState("");
@@ -202,6 +209,8 @@ export function DesignerModule() {
 
   useEffect(()=>{
     setLockedRevision(null);
+    setVaultRecoveryToken("");
+    setVaultMessage("");
   },[shirtId,pantId,styleSpec,bodyProfile,measurementProfile,activeCreative]);
 
   useEffect(() => {
@@ -306,6 +315,36 @@ export function DesignerModule() {
         setDirectorHandoffTitle(params.get("sourceTitle") || "Style Director result");
         setDirectorHandoffTier(params.get("sourceTier") || "");
         setDirectorHandoffReason(params.get("sourceReason") || "");
+        const handoffToken=params.get("handoffToken");
+        if(handoffToken){
+          void fetch("/api/style-director/handoff",{
+            method:"POST",
+            headers:{"content-type":"application/json"},
+            body:JSON.stringify({
+              token:handoffToken,
+              shirtId:nextShirtId,
+              pantId:nextPantId,
+              occasion:nextOccasion,
+              climate:nextClimate,
+              intention:nextIntention,
+              style:nextStyle,
+            }),
+          }).then(async(response)=>{
+            const result=await response.json() as {verified?:boolean;audited?:boolean;auditId?:string|null;error?:string};
+            if(!response.ok||!result.verified){
+              setDirectorHandoffAuditStatus("mismatch");
+              return;
+            }
+            if(result.audited&&result.auditId){
+              setDirectorHandoffAuditId(result.auditId);
+              setDirectorHandoffAuditStatus("verified");
+            }else{
+              setDirectorHandoffAuditStatus("unavailable");
+            }
+          }).catch(()=>setDirectorHandoffAuditStatus("unavailable"));
+        }else{
+          setDirectorHandoffAuditStatus("mismatch");
+        }
       }
 
       setShirtId(nextShirtId);
@@ -810,6 +849,8 @@ export function DesignerModule() {
           garmentSpec:{
             version:next.garmentSpec.version,status:next.garmentSpec.status,
             fitConstructionScore:next.garmentSpec.decision.fitConstructionScore,
+            fitEaseSource:next.garmentSpec.source.fitEaseSource,
+            fitEaseTableVersion:next.garmentSpec.source.fitEaseTableVersion,
             brandLanguageScore:next.garmentSpec.decision.brandLanguageScore,
             blockStrategyScore:next.garmentSpec.decision.blockStrategyScore,
             readiness:next.garmentSpec.readiness,
@@ -1005,12 +1046,12 @@ export function DesignerModule() {
         headers:{"content-type":"application/json"},
         body:JSON.stringify(lockedRevision),
       });
-      const result=await response.json() as {token?:string;expiresInDays?:number;error?:string};
+      const result=await response.json() as {token?:string;expiresInDays?:number;audited?:boolean;error?:string};
       if(!response.ok||!result.token) throw new Error(result.error||"Share link could not be created.");
       const url=new URL(`/share/${result.token}`,window.location.origin).toString();
       try{
         await navigator.clipboard.writeText(url);
-        setShareMessage(`Share link copied · expires in ${result.expiresInDays||30} days.`);
+        setShareMessage(`Share link copied · expires in ${result.expiresInDays||30} days${result.audited?" · verified share audit recorded":" · beta audit unavailable"}.`);
       }catch{
         setShareMessage(url);
       }
@@ -1018,6 +1059,51 @@ export function DesignerModule() {
       setShareMessage(error instanceof Error?error.message:"Share link could not be created.");
     }finally{
       setShareBusy(false);
+    }
+  }
+
+  async function openLockedRevisionEnquiry() {
+    if(!lockedRevision||enquiryBusy) return;
+    setEnquiryBusy(true);setEnquiryMessage("");
+    try{
+      const response=await fetch("/api/designer/enquiry",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify(lockedRevision),
+      });
+      const result=await response.json() as {href?:string;audited?:boolean;revisionId?:string;error?:string};
+      if(!response.ok||!result.href) throw new Error(result.error||"Locked-look enquiry could not be created.");
+      setEnquiryMessage(result.audited?"Verified enquiry audit recorded for this locked revision.":"WhatsApp enquiry opened · beta audit unavailable.");
+      window.open(result.href,"_blank","noopener,noreferrer");
+    }catch(error){
+      setEnquiryMessage(error instanceof Error?error.message:"Locked-look enquiry could not be created.");
+    }finally{
+      setEnquiryBusy(false);
+    }
+  }
+
+  async function saveLockedRevisionToVault() {
+    if(!lockedRevision||vaultBusy) return;
+    setVaultBusy(true);setVaultMessage("");
+    try{
+      const response=await fetch("/api/designer/vault",{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({action:"store",revision:lockedRevision}),
+      });
+      const result=await response.json() as {recoveryToken?:string;expiresInDays?:number;error?:string};
+      if(!response.ok||!result.recoveryToken) throw new Error(result.error||"Secure cloud copy could not be saved.");
+      setVaultRecoveryToken(result.recoveryToken);
+      try{
+        await navigator.clipboard.writeText(result.recoveryToken);
+        setVaultMessage(`Recovery token copied · secure copy expires in ${result.expiresInDays||180} days.`);
+      }catch{
+        setVaultMessage("Secure cloud copy saved. Copy the recovery token below and keep it private.");
+      }
+    }catch(error){
+      setVaultMessage(error instanceof Error?error.message:"Secure cloud copy could not be saved.");
+    }finally{
+      setVaultBusy(false);
     }
   }
 
@@ -1039,7 +1125,7 @@ export function DesignerModule() {
 
     <div className="newDesignerBody">
       <section className="newDesignerSelections" aria-labelledby="designerChoose">
-        {directorHandoff && <div className="newDesignerHandoff"><span>STYLE DIRECTOR HANDOFF</span><strong>{directorHandoffTitle || "Your complete outfit direction is loaded."}</strong><p>{shirt?.name} shirt + {pant?.name} trousers · {style.shirtWear} · {style.trouser}. You can refine any detail below without rebuilding the look.</p></div>}
+        {directorHandoff && <div className="newDesignerHandoff"><span>STYLE DIRECTOR HANDOFF</span><strong>{directorHandoffTitle || "Your complete outfit direction is loaded."}</strong><p>{shirt?.name} shirt + {pant?.name} trousers · {style.shirtWear} · {style.trouser}. You can refine any detail below without rebuilding the look.</p>{directorHandoffAuditStatus==="verified"&&<small>VERIFIED HANDOFF · audit {directorHandoffAuditId}</small>}{directorHandoffAuditStatus==="unavailable"&&<small>Handoff matched, but cloud audit is unavailable.</small>}{directorHandoffAuditStatus==="mismatch"&&<small>Handoff verification could not be established.</small>}</div>}
         <section className="newDesignerBrief" aria-label="One-line Designer brief">
           <div className="newDesignerBriefHead">
             <div><span>00 / ASK DESIGNER</span><strong>Describe the look in one line.</strong><small>Designer will choose the cloth, cut and level of expression.</small></div>
@@ -1166,6 +1252,7 @@ export function DesignerModule() {
             <summary>Fit details</summary>
             {fitGuidance.slice(0,3).map((note)=><p key={note}>{note}</p>)}
             {fitConstruction && <p><b>Fit read:</b> Tailoring checks are active for this cut.</p>}
+            {fitConstruction && <p><b>Ease basis:</b> {fitConstruction.source==="approved_house_calibration"?`Approved Linen Earth model · ${fitConstruction.easeTableVersion}`:"Provisional house defaults"}</p>}
             {blockStrategy && <p><b>Starting block:</b> {blockStrategy.shirtBlock.replaceAll("-"," ")} + {blockStrategy.trouserBlock.replaceAll("-"," ")}</p>}
           </details>}
         </section>
@@ -1343,6 +1430,7 @@ export function DesignerModule() {
             <p><b>Design:</b> {recommendation.style.collar} · {recommendation.style.cuff} · {recommendation.style.placket}</p>
             <p><b>Material:</b> {recommendation.materialEvidence.verified>0?"Verified fabric information is included.":"Physical fabric verification is still needed."}</p>
             {fitConstruction && <p><b>Fit/construction:</b> Tailoring checks are active.</p>}
+            {fitConstruction && <p><b>Ease basis:</b> {fitConstruction.source==="approved_house_calibration"?`Approved Linen Earth model · ${fitConstruction.easeTableVersion}`:"Provisional house defaults"}</p>}
             {blockStrategy && <p><b>Starting block:</b> {blockStrategy.shirtBlock.replaceAll("-"," ")} + {blockStrategy.trouserBlock.replaceAll("-"," ")}</p>}
             {negotiation?.blockers.slice(0,2).map((item)=><p key={item.id}>{item.message}</p>)}
             {garmentSpec && <>
@@ -1354,6 +1442,15 @@ export function DesignerModule() {
                 <button type="button" onClick={downloadTailorTechPack}>Export printable tech pack ↗</button>
                 <button type="button" onClick={()=>void shareLockedRevision()} disabled={shareBusy}>{shareBusy?"Creating share…":"Copy private share link ↗"}</button>
                 {shareMessage&&<p>{shareMessage}</p>}
+                <button type="button" onClick={()=>void openLockedRevisionEnquiry()} disabled={enquiryBusy}>{enquiryBusy?"Opening WhatsApp…":"WhatsApp locked look ↗"}</button>
+                {enquiryMessage&&<p>{enquiryMessage}</p>}
+                <button type="button" onClick={()=>void saveLockedRevisionToVault()} disabled={vaultBusy}>{vaultBusy?"Saving secure copy…":"Save secure cloud copy ↗"}</button>
+                {vaultMessage&&<p>{vaultMessage}</p>}
+                {vaultRecoveryToken&&<>
+                  <p><b>Recovery token:</b> keep this private. Anyone with it can recover this locked design until it expires.</p>
+                  <textarea readOnly value={vaultRecoveryToken} rows={3} aria-label="Secure design recovery token"/>
+                  <Link href="/recover-design">Open design recovery →</Link>
+                </>}
               </>}
             </>}
           </details>

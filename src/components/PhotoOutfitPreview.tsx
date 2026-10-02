@@ -303,7 +303,7 @@ function drawGarment(
   target: CanvasRenderingContext2D, photo: CanvasImageSource,
   swatch: HTMLImageElement, fabric: DesignerFabric, path: string,
   mask?: HTMLCanvasElement, lightingFilter = "grayscale(1) brightness(1.3) contrast(1.04)",
-  placement: { offsetX?: number; offsetY?: number; scale?: number; rotationDeg?:number } = {},
+  placement: { offsetX?: number; offsetY?: number; scale?: number; rotationDeg?:number; photoPxPerMm?:number } = {},
 ) {
   const layer = document.createElement("canvas");
   layer.width = WIDTH;
@@ -315,7 +315,7 @@ function drawGarment(
   const pattern = context.createPattern(tile, "repeat");
   if (!pattern) throw new Error("Could not prepare the fabric pattern.");
   const visualFallback=patternScaleForFabric(fabric);
-  const scale = photoFabricPatternScale(fabricRenderAsset(fabric),visualFallback) * (placement.scale ?? 1);
+  const scale = photoFabricPatternScale(fabricRenderAsset(fabric),visualFallback,placement.photoPxPerMm) * (placement.scale ?? 1);
   pattern.setTransform(new DOMMatrix().translate(placement.offsetX ?? 0, placement.offsetY ?? 0).rotate(fabricOrientation(fabric)+(placement.rotationDeg??0)).scale(scale));
   context.fillStyle = pattern;
   context.fillRect(0, 0, WIDTH, HEIGHT);
@@ -548,26 +548,31 @@ function drawWhiteDetail(target: CanvasRenderingContext2D, photo: HTMLImageEleme
   target.drawImage(layer, 0, 0);
 }
 
+export type PhotoPreviewCalibration={photoPxPerMm?:number};
+
 export function composePhotoOutfit(
   context: CanvasRenderingContext2D, modelPhoto: HTMLImageElement, trouserPhoto: HTMLImageElement,
   shirtImage: HTMLImageElement, pantImage: HTMLImageElement,
   shirt: DesignerFabric, pant: DesignerFabric, style: DesignerStyle,
   creative?: CreativePreviewSpec,
+  calibration?: PhotoPreviewCalibration,
 ) {
   const template = DESIGNER_PHOTO_TEMPLATES[photoTemplateForStyle(style)];
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
   context.drawImage(modelPhoto, 0, 0, WIDTH, HEIGHT);
   const tucked = style.shirtWear === "Tucked";
+  const photoPxPerMm=Number(calibration?.photoPxPerMm);
+  const calibratedPlacement=Number.isFinite(photoPxPerMm)&&photoPxPerMm>0 ? {photoPxPerMm} : {};
   if (tucked) {
     const masks = tuckedGarmentMasks(modelPhoto);
 
     // A tucked shirt must physically sit behind the trouser waistband. Draw
     // the shirt first, then the trouser garment on top. This removes the
     // pasted-on band of shirt texture across the waist/fly/crotch.
-    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_SHIRT_BODY_CLIP, masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)", { offsetX: 0 });
-    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_LEFT_SLEEVE_CLIP, masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)", { offsetX: 11 });
-    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_RIGHT_SLEEVE_CLIP, masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)", { offsetX: -9 });
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_SHIRT_BODY_CLIP, masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)", { ...calibratedPlacement, offsetX: 0 });
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_LEFT_SLEEVE_CLIP, masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)", { ...calibratedPlacement, offsetX: 11 });
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_RIGHT_SLEEVE_CLIP, masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)", { ...calibratedPlacement, offsetX: -9 });
 
     drawCreativePattern(context,creative,PHOTO_TUCKED_SHIRT_BODY_CLIP,masks.shirt);
     drawCreativePattern(context,creative,PHOTO_TUCKED_LEFT_SLEEVE_CLIP,masks.shirt);
@@ -575,20 +580,20 @@ export function composePhotoOutfit(
     drawCreativeDetails(context,creative,true,masks.shirt);
 
     if (style.collarFinish === "Self-fabric") {
-      drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined, "grayscale(1) brightness(3.05) contrast(.94)",{rotationDeg:90});
+      drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined, "grayscale(1) brightness(3.05) contrast(.94)",{...calibratedPlacement,rotationDeg:90});
     } else {
       drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_STAND_MASK, undefined, 3.6);
       if (!creativeHas(creative,"quiet-collar-echo")) drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_MASK, undefined, 3.6);
     }
     if (style.collarFinish === "White contrast collar + cuffs") drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_CUFF_MASK, undefined, 3.6);
 
-    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_LEFT_TROUSER_CLIP, masks.pant, "grayscale(1) brightness(1.9) contrast(1.03)", { offsetX: 5 });
-    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_RIGHT_TROUSER_CLIP, masks.pant, "grayscale(1) brightness(1.9) contrast(1.03)", { offsetX: -5 });
+    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_LEFT_TROUSER_CLIP, masks.pant, "grayscale(1) brightness(1.9) contrast(1.03)", { ...calibratedPlacement, offsetX: 5 });
+    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_RIGHT_TROUSER_CLIP, masks.pant, "grayscale(1) brightness(1.9) contrast(1.03)", { ...calibratedPlacement, offsetX: -5 });
   } else {
     const shirtMask = untuckedGarmentMasks(modelPhoto, template.shirtPath, DESIGNER_PHOTO_TEMPLATES.pleated.trouserPath).shirt;
     const trouserMask = untuckedGarmentMasks(trouserPhoto, template.shirtPath, template.trouserPath).pant;
-    drawGarment(context, trouserPhoto, pantImage, pant, "", trouserMask);
-    drawGarment(context, modelPhoto, shirtImage, shirt, "", shirtMask);
+    drawGarment(context, trouserPhoto, pantImage, pant, "", trouserMask, undefined, calibratedPlacement);
+    drawGarment(context, modelPhoto, shirtImage, shirt, "", shirtMask, undefined, calibratedPlacement);
     drawCreativePattern(context,creative,"",shirtMask);
     drawCreativeDetails(context,creative,false,shirtMask);
     if (style.collarFinish !== "Self-fabric") drawWhiteDetail(context, modelPhoto, PHOTO_COLLAR_MASK);
@@ -596,11 +601,12 @@ export function composePhotoOutfit(
   }
 }
 
-export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured}:{
+export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured,photoPxPerMm}:{
   shirt:DesignerFabric;
   pant:DesignerFabric;
   style:DesignerStyle;
   onRenderMeasured?:(milliseconds:number)=>void;
+  photoPxPerMm?:number;
 }) {
   const canvasRef=useRef<HTMLCanvasElement>(null);
   const onRenderMeasuredRef=useRef(onRenderMeasured);
@@ -626,7 +632,7 @@ export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured
       const canvas=canvasRef.current;
       const context=canvas?.getContext("2d",{alpha:false});
       if(!canvas || !context) throw new Error("Canvas is unavailable.");
-      composePhotoOutfit(context,modelPhoto,trouserPhoto,shirtImage,pantImage,shirt,pant,style);
+      composePhotoOutfit(context,modelPhoto,trouserPhoto,shirtImage,pantImage,shirt,pant,style,undefined,{photoPxPerMm});
       setReady(true);
       setError(false);
       requestAnimationFrame(()=>{
@@ -638,7 +644,7 @@ export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured
       setError(true);
     });
     return ()=>{cancelled=true;};
-  },[shirt,pant,template,tucked,style]);
+  },[shirt,pant,template,tucked,style,photoPxPerMm]);
 
   return <div className="directorExistingModel" data-ready={ready?"true":"false"}>
     <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-label={`Existing Linen Earth real model wearing ${shirt.name} shirt with ${pant.name} trousers`} />
@@ -760,6 +766,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         headers:{"content-type":"application/json"},
         body:JSON.stringify({
           image:result.image,
+          jobId:result.jobId,
           view,
           look:{
             shirt:{id:shirt.id,name:shirt.name,line:shirt.line,image:shirt.image,hex:shirt.hex,patternType:shirt.patternType},

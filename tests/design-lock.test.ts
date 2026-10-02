@@ -6,7 +6,7 @@ import type { CanonicalGarmentSpec } from "../src/lib/designer/garment-spec.ts";
 const spec={
   version:"linen-earth-garment-spec-v1",
   status:"draft",
-  source:{designerRuleSetVersion:"rules-1",fitConstructionVersion:null,measurementProfileVersion:null,blockStrategyVersion:null,styleSchemaVersion:null},
+  source:{designerRuleSetVersion:"rules-1",fitConstructionVersion:null,fitEaseSource:null,fitEaseTableVersion:null,measurementProfileVersion:null,blockStrategyVersion:null,styleSchemaVersion:null},
   styleSpec:null,
   bodyProfile:null,
   context:{occasion:"Semi-Formal",climate:"Not specified",intention:"Balanced"},
@@ -45,4 +45,17 @@ test("reconstruction returns an independent canonical copy",async()=>{
   assert.deepEqual(reconstructed,revision.garmentSpec);
   reconstructed.fabrics.shirt.id="other";
   assert.notEqual(reconstructed.fabrics.shirt.id,revision.garmentSpec.fabrics.shirt.id);
+});
+
+
+test("ease calibration provenance changes the locked recipe hash",async()=>{
+  const provisional=await lockGarmentSpec({
+    ...spec,
+    source:{...spec.source,fitConstructionVersion:"fit-construction-provisional-1",fitEaseSource:"provisional_house_defaults",fitEaseTableVersion:"linen-earth-house-ease-provisional-v1"},
+  },{lockedAt:"2026-10-01T09:00:00.000Z"});
+  const calibrated=await lockGarmentSpec({
+    ...spec,
+    source:{...spec.source,fitConstructionVersion:"fit-construction-calibrated-2",fitEaseSource:"approved_house_calibration",fitEaseTableVersion:"house-ease-approved-v1"},
+  },{lockedAt:"2026-10-01T09:00:00.000Z"});
+  assert.notEqual(provisional.recipeHash,calibrated.recipeHash);
 });

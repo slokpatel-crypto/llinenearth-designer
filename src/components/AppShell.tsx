@@ -6,6 +6,7 @@ const primaryLinks = [
   ["Real Model Designer", "/real-model"],
   ["Style Director", "/style-director"],
   ["Measurements", "/measurements"],
+  ["My Account", "/account"],
   ["Contact", "/contact"],
 ] as const;
 

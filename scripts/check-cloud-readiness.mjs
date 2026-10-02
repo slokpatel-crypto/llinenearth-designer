@@ -17,11 +17,13 @@ const url = process.env.SUPABASE_URL?.trim();
 const secret = process.env.SUPABASE_SECRET_KEY?.trim();
 const legacy = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 const key = secret || legacy;
+const anonKey = (process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)?.trim();
 const readBrandEnv = (name) => process.env[name]?.trim() || process.env[`L${name}`]?.trim() || "";
 const legacyBrandIdentifier = (name) => `l${name}`;
 const syncToken = readBrandEnv("LINEN_OPERATOR_SYNC_TOKEN");
 const sessionSecret = readBrandEnv("LINEN_OPERATOR_SESSION_SECRET");
 const memorySessionSecret = readBrandEnv("LINEN_MEMORY_SESSION_SECRET");
+const customerSessionSecret = readBrandEnv("LINEN_CUSTOMER_SESSION_SECRET");
 const passwordHash = readBrandEnv("LINEN_OPERATOR_PASSWORD_HASH");
 
 console.log("Linen Earth cloud readiness\n");
@@ -48,6 +50,9 @@ if (!key) {
   warn("Plan to migrate to SUPABASE_SECRET_KEY before legacy service_role keys are retired.");
 }
 
+if (!anonKey) fail("SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY is missing for customer email authentication.");
+else ok("Supabase public auth key is configured.");
+
 if (!syncToken || syncToken.length < 24) fail("LINEN_OPERATOR_SYNC_TOKEN is missing or too short.");
 else ok("Desktop sync token is configured.");
 
@@ -56,6 +61,9 @@ else ok("Operator session signing secret is configured.");
 
 if (!memorySessionSecret || memorySessionSecret.length < 32) fail("LINEN_MEMORY_SESSION_SECRET is missing or too short.");
 else ok("Public memory session signing secret is configured.");
+
+if (!customerSessionSecret || customerSessionSecret.length < 32) fail("LINEN_CUSTOMER_SESSION_SECRET is missing or too short.");
+else ok("Customer account session signing secret is configured.");
 
 if (!passwordHash?.startsWith("scrypt-v1$")) fail("LINEN_OPERATOR_PASSWORD_HASH is missing or not a supported scrypt hash.");
 else ok("Operator password hash is configured.");
@@ -112,6 +120,68 @@ if (url && key) {
 
         if (health?.serviceUpdate || health?.serviceDelete) fail("Server role can mutate/delete historical events.");
         else ok("Server role cannot UPDATE/DELETE the append-only ledger.");
+
+        const rpcChecks = [
+          ["fabric_stock_snapshot",{p_fabric_ids:null},"Fabric stock ledger RPCs are installed."],
+          ["fabric_stock_snapshot_v2",{p_fabric_ids:null},"Provenance-aware fabric stock snapshot RPC is installed."],
+          ["production_quote_list",{p_limit:1},"Production quote ledger RPCs are installed."],
+          ["production_order_list",{p_limit:1},"Production order ledger RPCs are installed."],
+          ["finished_garment_qc_list",{p_limit:1},"Finished-garment QC RPCs are installed."],
+          ["production_delivery_evidence_list",{p_limit:1},"Production delivery evidence RPCs are installed."],
+          ["production_meterage_model_list",{p_limit:1},"Versioned meterage calibration RPCs are installed."],
+          ["production_cut_evidence_list",{p_limit:1},"Production cut evidence registry RPCs are installed."],
+          ["launch_beta_attempt_list",{p_limit:1},"Private-beta evidence RPCs are installed."],
+          ["launch_checklist_event_list",{p_limit:1},"Human launch checklist RPCs are installed."],
+          ["designer_locked_revision_vault_get",{p_vault_id:"00000000-0000-4000-8000-000000000000",p_access_hash:"0".repeat(64)},"Locked design recovery vault RPCs are installed."],
+          ["measurement_profile_vault_get",{p_vault_id:"00000000-0000-4000-8000-000000000000",p_access_hash:"0".repeat(64)},"Measurement recovery vault RPCs are installed."],
+          ["designer_locked_revision_vault_list_owned",{p_owner_user_id:"00000000-0000-4000-8000-000000000000"},"Authenticated design ownership RPCs are installed."],
+          ["measurement_profile_vault_list_owned",{p_owner_user_id:"00000000-0000-4000-8000-000000000000"},"Authenticated measurement ownership RPCs are installed."],
+          ["production_quote_list_owned",{p_owner_user_id:"00000000-0000-4000-8000-000000000000",p_limit:1},"Customer-owned quote RPCs are installed."],
+          ["production_quote_list_owned_v2",{p_owner_user_id:"00000000-0000-4000-8000-000000000000",p_limit:1},"Customer quote detail RPCs are installed."],
+          ["production_quote_accept_owned",{p_quote_id:"00000000-0000-4000-8000-000000000000",p_owner_user_id:"00000000-0000-4000-8000-000000000000"},"Customer quote acceptance RPC is installed."],
+          ["production_order_list_owned",{p_owner_user_id:"00000000-0000-4000-8000-000000000000",p_limit:1},"Customer-owned production-order RPCs are installed."],
+          ["production_order_event_list_owned",{p_owner_user_id:"00000000-0000-4000-8000-000000000000",p_limit:1},"Customer production timeline RPC is installed."],
+          ["production_customer_outcome_list_owned",{p_owner_user_id:"00000000-0000-4000-8000-000000000000",p_limit:1},"Customer-owned post-delivery outcome RPCs are installed."],
+          ["production_customer_outcome_list",{p_limit:1},"Operator post-delivery outcome RPCs are installed."],
+          ["production_customer_outcome_review_list",{p_limit:1},"Customer outcome human-review RPCs are installed."],
+          ["production_customer_outcome_policy_list",{p_limit:1},"Customer outcome learning-policy RPCs are installed."],
+          ["production_order_learning_context_list",{p_limit:1},"Durable production design-lineage RPCs are installed."],
+          ["production_customer_outcome_learning_list",{p_limit:1},"Outcome-to-design learning lineage RPCs are installed."],
+          ["fabric_physical_color_check_list",{p_limit:1},"Physical fabric colour evidence RPCs are installed."],
+          ["style_director_user_test_list",{p_limit:1},"Style Director real-user validation RPCs are installed."],
+          ["style_director_validation_signoff_list",{p_limit:1},"Style Director validation sign-off RPCs are installed."],
+          ["house_ease_evidence_list",{p_limit:1},"House-ease physical evidence RPCs are installed."],
+          ["house_ease_model_list",{p_limit:1},"Versioned house-ease calibration RPCs are installed."],
+          ["designer_novice_attempt_list",{p_limit:1},"Novice Designer study evidence RPCs are installed."],
+          ["designer_novice_study_decision_list",{p_limit:1},"Novice Designer study decision RPCs are installed."],
+          ["designer_render_outcome_list",{p_limit:1},"Final render outcome ledger RPCs are installed."],
+          ["designer_render_pattern_calibration_list_v2",{p_limit:1},"Final render raw pixel-fixture calibration RPCs are installed."],
+          ["designer_render_identity_review_list",{p_limit:1},"Cross-view render identity evidence RPCs are installed."],
+          ["designer_render_credit_cap_latest",{},"Render commercial-cap evidence RPCs are installed."],
+          ["designer_render_manual_review_signoff_latest",{},"Final render manual-review sign-off RPC is installed."],
+          ["roadmap_v2_evidence_health",{},"Roadmap v2 hardened evidence health RPC is installed."],
+        ];
+        for (const [rpcName,payload,label] of rpcChecks) {
+          const rpcResponse = await fetch(
+            `${url.replace(/\/$/, "")}/rest/v1/rpc/${rpcName}`,
+            {
+              method:"POST",
+              headers:{...headers,"content-type":"application/json"},
+              body:JSON.stringify(payload),
+            },
+          );
+          if (!rpcResponse.ok) {
+            const detail=(await rpcResponse.text()).replace(/\s+/g," ").slice(0,160);
+            fail(`${rpcName} is unavailable. Apply Roadmap v2 Supabase migrations. HTTP ${rpcResponse.status}: ${detail}`);
+          } else if (rpcName==="roadmap_v2_evidence_health") {
+            const health=await rpcResponse.json();
+            const missing=Object.entries(health||{}).filter(([,value])=>value!==true).map(([key])=>key);
+            if(missing.length) fail(`Roadmap v2 evidence schema is incomplete: ${missing.join(", ")}`);
+            else ok(label);
+          } else {
+            ok(label);
+          }
+        }
       }
     }
   } catch (error) {

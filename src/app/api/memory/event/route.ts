@@ -5,6 +5,7 @@ import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-adm
 import { verifyMemorySessionToken } from "@/lib/memory-session";
 import { CREATIVE_FEEDBACK_REASONS } from "@/lib/designer/creative-learning";
 import { legacyMemoryHeader } from "@/lib/runtime-compat";
+import { normalizeFabricPhysicalEvidenceProvenance } from "@/lib/fabric-physical-provenance";
 
 const PUBLIC_TYPES = new Set([
   "session_started",
@@ -262,6 +263,34 @@ function cleanPayload(type:string, input:unknown) {
       };
     }
 
+    if (subtype === "production_usage_case") {
+      const version=text(payload.version,80);
+      const caseId=text(payload.caseId,80);
+      const revisionId=text(payload.revisionId,180);
+      const garment=text(payload.garment,20);
+      const fabricId=text(payload.fabricId,160);
+      const fabricWidthCm=Number(payload.fabricWidthCm);
+      const actualMetres=Number(payload.actualMetres);
+      const patternRepeatMm=Number(payload.patternRepeatMm);
+      const patternMatching=payload.patternMatching===true;
+      const checkedBy=text(payload.checkedBy,120);
+      const evidenceReference=text(payload.evidenceReference,240);
+      if(!["production-usage-v1","production-usage-v2"].includes(version) || !caseId || !revisionId || !fabricId || !["shirt","trouser"].includes(garment)) return null;
+      if(!Number.isFinite(fabricWidthCm)||fabricWidthCm<60||fabricWidthCm>220) return null;
+      if(!Number.isFinite(actualMetres)||actualMetres<=0||actualMetres>12) return null;
+      if(version==="production-usage-v2"&&(checkedBy.length<2||evidenceReference.length<3)) return null;
+      return {
+        subtype,version,caseId,revisionId,garment,fabricId,
+        fabricWidthCm:Math.round(fabricWidthCm*10)/10,
+        actualMetres:Math.round(actualMetres*100)/100,
+        patternRepeatMm:Number.isFinite(patternRepeatMm)&&patternRepeatMm>0&&patternRepeatMm<=1000?Math.round(patternRepeatMm*10)/10:null,
+        patternMatching,
+        cutContext:text(payload.cutContext,160),
+        ...(version==="production-usage-v2"?{checkedBy,evidenceReference}:{}),
+        note:text(payload.note,600),
+      };
+    }
+
     if (subtype === "roadmap_phase1_proof") {
       const version=text(payload.version,80);
       const status=text(payload.status,20);
@@ -275,8 +304,9 @@ function cleanPayload(type:string, input:unknown) {
       const ratings=Array.isArray(payload.realismRatings)
         ? payload.realismRatings.map((item)=>Math.round(Number(item))).filter((item)=>item>=1&&item<=5).slice(0,30)
         : [];
-      if(version!=="linen-earth-phase1-proof-v1" || !fabricId || !["accepted","review"].includes(status)) return null;
-      return {
+      if(!["linen-earth-phase1-proof-v1","linen-earth-phase1-proof-v2","linen-earth-phase1-proof-v3","linen-earth-phase1-proof-v4"].includes(version) || !fabricId || !["accepted","review"].includes(status)) return null;
+
+      const base={
         subtype,
         version,
         status,
@@ -294,26 +324,76 @@ function cleanPayload(type:string, input:unknown) {
         realismPass:payload.realismPass===true,
         note:text(payload.note,700),
       };
+      if(version==="linen-earth-phase1-proof-v1") return base;
+
+      const photoReferenceMm=Number(payload.photoReferenceMm);
+      const photoReferencePx=Number(payload.photoReferencePx);
+      const photoPxPerMm=Number(payload.photoPxPerMm);
+      const scaleCoordinateSystem=text(payload.scaleCoordinateSystem,80);
+      const assessments=Array.isArray(payload.realismAssessments)
+        ? payload.realismAssessments.slice(0,50).flatMap((item)=>{
+          if(!item||typeof item!=="object"||Array.isArray(item)) return [];
+          const row=item as Record<string,unknown>;
+          const viewerId=text(row.viewerId,80);
+          const rating=Math.round(Number(row.rating));
+          const recordedAt=text(row.recordedAt,80);
+          if(viewerId.length<2 || rating<1 || rating>5) return [];
+          return [{viewerId,rating,recordedAt}];
+        })
+        : [];
+      const boundarySource=payload.boundaryChecks&&typeof payload.boundaryChecks==="object"&&!Array.isArray(payload.boundaryChecks)
+        ? payload.boundaryChecks as Record<string,unknown>
+        : {};
+      const boundaryChecks={
+        neck:boundarySource.neck===true,
+        cuffs:boundarySource.cuffs===true,
+        waist:boundarySource.waist===true,
+        trouserGap:boundarySource.trouserGap===true,
+      };
+      const realModelSampleDurationsMs=version==="linen-earth-phase1-proof-v4"&&Array.isArray(payload.realModelSampleDurationsMs)
+        ? payload.realModelSampleDurationsMs.map(Number).filter((value)=>Number.isFinite(value)&&value>=0&&value<=10000).slice(-120).map((value)=>Math.round(value*10)/10)
+        : [];
+      return {
+        ...base,
+        photoReferenceMm:Number.isFinite(photoReferenceMm)&&photoReferenceMm>0&&photoReferenceMm<=3000?Math.round(photoReferenceMm*100)/100:null,
+        photoReferencePx:Number.isFinite(photoReferencePx)&&photoReferencePx>0&&photoReferencePx<=10000?Math.round(photoReferencePx*100)/100:null,
+        photoPxPerMm:Number.isFinite(photoPxPerMm)&&photoPxPerMm>0&&photoPxPerMm<=100?Math.round(photoPxPerMm*10000)/10000:null,
+        scaleCoordinateSystem:scaleCoordinateSystem==="photo-1024x1536-fixture"?scaleCoordinateSystem:"",
+        physicalEvidenceNote:text(payload.physicalEvidenceNote,700),
+        realismAssessments:assessments,
+        uniqueRealismViewers:Math.max(0,Math.min(50,Math.floor(Number(payload.uniqueRealismViewers)||0))),
+        ...(["linen-earth-phase1-proof-v3","linen-earth-phase1-proof-v4"].includes(version)?{
+          boundaryChecks,
+          boundaryReady:boundaryChecks.neck&&boundaryChecks.cuffs&&boundaryChecks.waist&&boundaryChecks.trouserGap,
+        }:{}),
+        ...(version==="linen-earth-phase1-proof-v4"?{realModelSampleDurationsMs}:{}),
+      };
     }
 
     if (subtype === "designer_device_qa") {
       const deviceClass=text(payload.deviceClass,20);
       const status=text(payload.status,20);
       const viewport=text(payload.viewport,40);
+      const requestedVersion=text(payload.version,80);
+      const version=requestedVersion==="designer-device-qa-v2" ? requestedVersion : "designer-device-qa-v1";
       const checks=payload.checks && typeof payload.checks==="object" && !Array.isArray(payload.checks)
         ? Object.fromEntries(Object.entries(payload.checks as Record<string,unknown>)
           .slice(0,12)
           .map(([key,value])=>[text(key,80),value===true]))
         : {};
       if(!["mobile","tablet","desktop"].includes(deviceClass) || !["accepted","review"].includes(status) || !viewport) return null;
+      const sampleDurationsMs=version==="designer-device-qa-v2" && Array.isArray(payload.sampleDurationsMs)
+        ? payload.sampleDurationsMs.map(Number).filter((value)=>Number.isFinite(value)&&value>=0&&value<=10000).slice(-120).map((value)=>Math.round(value*10)/10)
+        : [];
       return {
         subtype,
-        version:"designer-device-qa-v1",
+        version,
         deviceClass,
         status,
         viewport,
         dpr:Math.max(.5,Math.min(8,Number(payload.dpr)||1)),
         samples:Math.max(0,Math.min(500,Math.floor(Number(payload.samples)||0))),
+        ...(version==="designer-device-qa-v2"?{sampleDurationsMs}:{}),
         medianMs:Number.isFinite(Number(payload.medianMs))?Math.max(0,Math.min(10000,Number(payload.medianMs))):null,
         p95Ms:Number.isFinite(Number(payload.p95Ms))?Math.max(0,Math.min(10000,Number(payload.p95Ms))):null,
         maxMs:Number.isFinite(Number(payload.maxMs))?Math.max(0,Math.min(10000,Number(payload.maxMs))):null,
@@ -420,6 +500,7 @@ function cleanPayload(type:string, input:unknown) {
       const drape = text(payload.drape,20);
       const weightGsmRaw = Number(payload.weightGsm);
       const formalityRaw = Number(payload.formalityScore);
+      const physicalEvidence = normalizeFabricPhysicalEvidenceProvenance(payload.physicalEvidence);
       const seasonTags = Array.isArray(payload.seasonTags)
         ? payload.seasonTags.map((item)=>text(item,30)).filter((item)=>["Spring","Summer","Autumn","Winter","All-season"].includes(item)).slice(0,5)
         : [];
@@ -438,6 +519,7 @@ function cleanPayload(type:string, input:unknown) {
         seasonTags,
         formalityScore:Number.isFinite(formalityRaw) && formalityRaw >= 1 && formalityRaw <= 5 ? Math.round(formalityRaw*10)/10 : undefined,
         roleTags,
+        ...(physicalEvidence?{physicalEvidence}:{}),
         note:text(payload.note,500),
       };
     }
