@@ -254,6 +254,20 @@ for(const token of ["HomeVisualExplorer","OutfitStudio"]) if(legacyVisualRoute.i
 if(legacyBriefRoute.includes("OccasionDesignerPreview")) throw new Error("Legacy Designer Brief surface returned.");
 if(/\/visual\?garment=(?:suit|blazer)/.test(photoFirstHome)) throw new Error("Homepage suit/blazer cards returned to the legacy visualizer.");
 console.log("Photo-first customer route gate passed: legacy visual/model surfaces redirect to the current Designer and Style Director.");
+const legacyCatalogRoute=fs.readFileSync("src/app/catalog/page.tsx","utf8");
+const legacyAtelierRoute=fs.readFileSync("src/app/atelier/page.tsx","utf8");
+const legacyDesignsRoute=fs.readFileSync("src/app/designs/page.tsx","utf8");
+const legacyKnowledgeRoute=fs.readFileSync("src/app/knowledge/page.tsx","utf8");
+if(!legacyCatalogRoute.includes('redirect("/designer-studio")')) throw new Error("Legacy catalog route must redirect to the photographic Designer.");
+for(const [label,source] of [["atelier",legacyAtelierRoute],["saved designs",legacyDesignsRoute]]) if(!source.includes('redirect("/account")')) throw new Error(`Legacy ${label} route must redirect to My Account.`);
+if(!legacyKnowledgeRoute.includes('redirect("/style-director")')) throw new Error("Legacy Fashion Brain route must redirect to Style Director.");
+for(const [label,source,tokens] of [
+  ["catalog",legacyCatalogRoute,["catalogGarments","Live Visual"]],
+  ["atelier",legacyAtelierRoute,["AtelierQueueClient"]],
+  ["saved designs",legacyDesignsRoute,["SavedDesignsClient"]],
+  ["Fashion Brain",legacyKnowledgeRoute,["FASHION BRAIN","WearTypeVisual"]],
+]) for(const token of tokens) if(source.includes(token)) throw new Error(`Legacy customer module regression: ${label} still exposes ${token}.`);
+console.log("Legacy customer module gate passed: Catalog, Atelier, Saved Designs and Fashion Brain no longer expose separate customer experiences.");
 
 
 const photoPreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
