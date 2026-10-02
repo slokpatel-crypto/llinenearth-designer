@@ -496,7 +496,6 @@ export function DesignerModule() {
     const resetStyle=designerStyleForOccasion(nextOccasion);
     setStyle(resetStyle);
     setStyleSpec(fromLegacyStyle(resetStyle));
-    setPreviewMode("photo");
     setBodyProfile(DEFAULT_BODY_PREVIEW_PROFILE);
     setRecommendation(null);
     setAssessment(null);
@@ -889,7 +888,6 @@ export function DesignerModule() {
 
   function changeStyle(key: keyof DesignerStyle, value: string) {
     setActiveCreative(null);
-    setPreviewMode("construction");
     setStyle((current) => ({ ...current, [key]: value }));
     setRecommendation(null);
     setAssessment(null);
@@ -898,7 +896,6 @@ export function DesignerModule() {
 
   function applyStyleSpec(next:StyleSpecV2) {
     setActiveCreative(null);
-    setPreviewMode("construction");
     setStyleSpec(next);
     setStyle(toLegacyStyle(next));
     setRecommendation(null);
@@ -910,7 +907,6 @@ export function DesignerModule() {
 
   function applyStylePatch(patch: Partial<DesignerStyle>) {
     setActiveCreative(null);
-    setPreviewMode("construction");
     setStyle((current) => ({ ...current, ...patch }));
     setRecommendation(null);
     setAssessment(null);
@@ -934,7 +930,6 @@ export function DesignerModule() {
     setOccasion("Semi-Formal");
     setStyle(next);
     setStyleSpec(fromLegacyStyle(next));
-    setPreviewMode("photo");
     setRecommendation(null);
     setAssessment(null);
     setRecommendationId(null);
