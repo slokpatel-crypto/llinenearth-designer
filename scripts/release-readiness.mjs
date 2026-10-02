@@ -176,6 +176,7 @@ for (const path of [
   "src/app/operator/launch-readiness/page.tsx",
   "src/lib/designer/roadmap-readiness.ts",
   "src/lib/designer/photo-calibration.ts",
+  "src/lib/designer/photo-calibration-types.ts",
   "src/lib/designer/phase1-proof-server.ts",
   "src/app/api/designer/photo-calibration/route.ts",
   "tests/photo-calibration.test.ts",
@@ -228,8 +229,9 @@ requireTokens("src/app/operator/device-qa/DeviceQaClient.tsx", ["DEVICE_QA_EVIDE
 requireTokens("src/lib/designer/device-qa-evidence.ts", ["DEVICE_QA_EVIDENCE_VERSION","DEVICE_QA_MIN_SAMPLES","DEVICE_QA_TARGET_P95_MS","evaluateDeviceQaEvidence","sampleDurationsMs"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["PhotoPreviewCalibration","photoPxPerMm","photoFabricPatternScale"]);
 requireTokens("src/lib/designer/photo-calibration.ts", ["customerPhotoCalibrationFromProofPayload","UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION","coreAccepted===true","scaleGatePass===true","physicalEvidenceReady===true","boundaryReady===true"]);
+requireTokens("src/lib/designer/photo-calibration-types.ts", ["CustomerPhotoCalibration","UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION","photo-1024x1536-fixture","linen-earth-phase1-proof-v4"]);
 requireTokens("src/lib/designer/phase1-proof-server.ts", ['import "server-only"',"loadLatestPhase1ProofRecord","style_events","supabaseAdminHeaders"]);
-requireTokens("src/app/api/designer/photo-calibration/route.ts", ["customerPhotoCalibrationFromProofPayload","UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION","s-maxage=60"]);
+requireTokens("src/app/api/designer/photo-calibration/route.ts", ["customerPhotoCalibrationFromProofPayload","UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION","cache-control","no-store"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["/api/designer/photo-calibration","photoPxPerMm:verifiedPhotoPxPerMm","accepted studio calibration","patterned scale stays approximate"]);
 requireTokens("src/lib/designer/live-preview.ts", ["photoFabricPatternScale","photoExpectedRepeatPx","photoPxPerMm"]);
 requireTokens("src/lib/fabric-intelligence-evidence.ts", ["intelligence.trust!==\"reviewed\"","auditablePhysicalSource","evidenceNote","fieldProvenance","measured.pattern.physicalScale","verifiedPhysical.gsm","verifiedPhysical.drape","verifiedPhysical.fiberContent","patternScaleVerified","fiberContentVerified"]);
