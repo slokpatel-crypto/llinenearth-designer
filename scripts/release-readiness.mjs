@@ -234,6 +234,8 @@ requireTokens("src/lib/designer/photo-calibration.ts", ["customerPhotoCalibratio
 requireTokens("src/app/api/designer/photo-calibration/route.ts", ["customerPhotoCalibrationFromProofPayload","loadLatestPhase1ProofRecord","cache-control","no-store","x-content-type-options"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["/api/designer/photo-calibration","UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION","resolvedPhotoPxPerMm","verifiedPhotoPxPerMm","photoScaleReady","accepted studio calibration"]);
 requireTokens("tests/photo-calibration.test.ts", ["accepted Phase 1 proof publishes only the safe photo calibration","public photo-calibration route exposes no operator proof notes or viewer data"]);
+requireTokens("src/components/PhotoOutfitPreview.tsx", ['.finally(()=>{customerPhotoCalibrationRequest=null;})','window.addEventListener("focus",refresh)','document.addEventListener("visibilitychange",onVisibility)','document.visibilityState==="visible"']);
+requireTokens("tests/photo-calibration.test.ts", ["customer preview refreshes proof-backed calibration after returning to the tab"]);
 requireTokens("src/app/api/memory/event/route.ts", ["linen-earth-phase1-proof-v4","boundaryChecks","boundaryReady","realModelSampleDurationsMs","photoReferenceMm","photoReferencePx","realismAssessments","uniqueRealismViewers"]);
 requireTokens("src/app/api/memory/event/route.ts", ["designer-device-qa-v2","sampleDurationsMs","hardwareConcurrency","checks"]);
 requireTokens("src/app/api/operator/device-qa/route.ts", ["evaluateDeviceQaEvidence","performancePass","visualPass","evidenceVersion"]);
