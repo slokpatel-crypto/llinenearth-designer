@@ -150,11 +150,14 @@ function swatchTile(image: HTMLImageElement, fabric: DesignerFabric): HTMLCanvas
     }
     for (let channel = 0; channel < 3; channel++) mean[channel] /= 320 * 320;
     // Remove broad swatch-photo shadows and old creases while preserving
-    // fine woven detail. The mirrored edges blend without a painted stripe.
+    // enough high-frequency linen weave to avoid a flat painted-shirt look.
+    // The gain stays below 1 so catalogue lighting does not become a fake
+    // garment fold once the photographed model luminance is applied later.
+    const plainTextureDetailGain = .34;
     for (let index = 0; index < original.data.length; index += 4) {
       for (let channel = 0; channel < 3; channel++) {
         original.data[index + channel] = Math.round(mean[channel] +
-          (original.data[index + channel] - blurred[index + channel]) * .22);
+          (original.data[index + channel] - blurred[index + channel]) * plainTextureDetailGain);
       }
     }
     context.putImageData(original, 0, 0);
