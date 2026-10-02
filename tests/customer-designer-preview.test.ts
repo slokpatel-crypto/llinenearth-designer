@@ -80,3 +80,30 @@ test("customer Designer exposes the selected details photo-match state without s
   assert.match(css,/\.newDesignerPhotoMatch/);
   assert.match(css,/data-state="mixed"/);
 });
+
+
+test("instant photo compositor preserves selected fabric colour while borrowing studio depth",()=>{
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.match(source,/globalCompositeOperation = "luminosity"/);
+  assert.match(source,/globalAlpha = \.82/);
+  assert.match(source,/globalCompositeOperation = "multiply"[\s\S]*globalAlpha = \.16/);
+  assert.match(source,/selected swatch hue\/saturation dominant/);
+
+  const css=readFileSync("src/app/designer-studio/designer-light.css","utf8");
+  assert.match(css,/\.newDesignerPhotoStage\{[^}]*background:#0a1726/);
+  assert.match(css,/\.newDesignerPhotoAi\{[^}]*background:#0a1726/);
+});
+
+
+test("Designer recommendation cards keep the photographic mannequin full-body",()=>{
+  const css=readFileSync("src/app/designer-studio/designer-light.css","utf8");
+  assert.match(css,/\.newDesignerBriefModel \.directorExistingModel canvas\{[^}]*object-fit:contain/);
+  assert.doesNotMatch(css,/\.newDesignerBriefModel \.directorExistingModel canvas\{[^}]*object-fit:cover/);
+});
+
+
+test("Style Director photoreal letterbox matches the navy studio",()=>{
+  const css=readFileSync("src/app/style-director/style-director.css","utf8");
+  assert.match(css,/\.lookVisual img\{[^}]*object-fit:contain[^}]*background:#081827/);
+  assert.doesNotMatch(css,/\.lookVisual img\{[^}]*background:#eeeae4/);
+});

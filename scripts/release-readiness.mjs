@@ -330,10 +330,14 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "pathMasks",
   "if(path) context.drawImage(featheredPathMask(path),0,0)",
   "Contrast collars/cuffs sit directly beside skin and hands",
+  "globalCompositeOperation = \"luminosity\"",
+  "globalAlpha = .82",
+  "globalAlpha = .16",
 ]);
 requireTokens("tests/customer-designer-preview.test.ts", [
   "photographic garment clips feather only inside the real cloth boundary",
   "newDesignerConstruction",
+  "instant photo compositor preserves selected fabric colour while borrowing studio depth",
 ]);
 requireTokens("src/lib/designer/brand-language.ts", [
   "linen-earth-brand-language-provisional-1",
@@ -403,8 +407,9 @@ requireTokens("src/app/style-director/page.tsx", ["Open Linen Earth Real Model D
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["StyleDirectorRealModelPreview","Existing Linen Earth real model","composePhotoOutfit","DESIGNER_PHOTO_TEMPLATES"]);
 requireTokens("src/app/style-director/page.tsx", ["StyleDirectorRealModelPreview","shirtFabric","pantFabric","Existing real model · live outfit"]);
 requireTokens("src/app/style-director/style-director.css", [".directorExistingModel canvas","object-fit:contain"]);
-requireTokens("src/app/style-director/style-director.css", [".lookVisual img","object-fit:contain","background:#eeeae4"]);
+requireTokens("src/app/style-director/style-director.css", [".lookVisual img","object-fit:contain","background:#081827"]);
 requireTokens("tests/customer-designer-preview.test.ts", ["Style Director keeps the full photographed model visible","Style Director generated photoreal also stays full-body"]);
+requireTokens("tests/customer-designer-preview.test.ts", ["Style Director photoreal letterbox matches the navy studio"]);
 requireTokens("src/components/DesignerModule.tsx", ['params.get("shirt")','params.get("pant")','params.get("style")',"STYLE DIRECTOR"]);
 requireTokens("src/lib/designer/garment-spec.ts", ["linen-earth-garment-spec-v1","buildCanonicalGarmentSpec","finishedTargets","ready_for_tailor_review","not a cutting pattern","fitEaseSource","fitEaseTableVersion","conceptId:string","treatments:Array","Creative treatments are design instructions","CanonicalCreativeVisualReview","visualReview:CanonicalCreativeVisualReview"]);
 requireTokens("src/app/api/designer/assess/route.ts", ["buildCanonicalGarmentSpec","fitConstruction","blockStrategy","brandLanguage","negotiation","creative","visualReview"]);
@@ -600,7 +605,10 @@ requireTokens("src/lib/designer/style-spec-v2.ts", ["STYLE_SCHEMA_VERSION=2","me
 requireTokens("src/components/DesignerModule.tsx", ["styleSpec","PhotoOutfitPreview","bodyProfileFromMeasurements"]);
 requireTokens("src/components/DesignerModule.tsx", ["photoPreviewSupportForChoice","photoMatchSummary","PHOTO MATCH · MIXED","selected details directly match a photographed template"]);
 requireTokens("src/app/designer-studio/designer-light.css", [".newDesignerPhotoMatch","data-state=\"mixed\""]);
+requireTokens("src/app/designer-studio/designer-light.css", [".newDesignerPhotoStage","background:#0a1726",".newDesignerPhotoAi"]);
+requireTokens("src/app/designer-studio/designer-light.css", [".newDesignerBriefModel .directorExistingModel canvas","object-fit:contain"]);
 requireTokens("tests/customer-designer-preview.test.ts", ["customer Designer exposes the selected details photo-match state"]);
+requireTokens("tests/customer-designer-preview.test.ts", ["Designer recommendation cards keep the photographic mannequin full-body"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["Lock final design","Final photoreal ✦","selectedLookSessionCache","styleSpec","bodyProfile"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["detailBrightness?:number","const detailBrightness = placement.detailBrightness ?? 1.3","detailBrightness: template.shirtDetailBrightness","detailBrightness: template.trouserDetailBrightness"]);
 requireTokens("src/lib/designer/photo-preview.ts", ["shirtDetailBrightness: 3.05","trouserDetailBrightness: 1.9","shirtDetailBrightness: 1.3","trouserDetailBrightness: 1.3"]);

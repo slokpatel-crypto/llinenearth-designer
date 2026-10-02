@@ -28,7 +28,7 @@
 .newDesignerPhotoIntro>span,.newDesignerPhotoSummary span{font-size:9px;letter-spacing:.17em;color:#a65d43;font-weight:600}
 .newDesignerPhotoIntro h2{font:400 clamp(1.55rem,2.3vw,2.15rem)/1.15 Georgia,serif;letter-spacing:-.035em;color:#17243a;margin:12px 0 10px}
 .newDesignerPhotoIntro p{font:12px/1.6 Arial,sans-serif;color:#657485;margin:0}
-.newDesignerPhotoStage{height:min(69vh,685px);min-height:490px;position:relative;display:flex;align-items:center;justify-content:center;background:#eeeae4;overflow:hidden}
+.newDesignerPhotoStage{height:min(69vh,685px);min-height:490px;position:relative;display:flex;align-items:center;justify-content:center;background:#0a1726;overflow:hidden}
 .newDesignerPhotoStage canvas{display:block;width:100%;height:100%;object-fit:contain;transition:transform .28s ease}.newDesignerPhotoStage.inspectFit canvas,.newDesignerPhotoStage.inspectFit .newDesignerPhotoOriginal{transform:scale(1.42);transform-origin:50% 35%}.newDesignerPhotoOriginal{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;z-index:2;transition:transform .28s ease}.newDesignerBoundaryQa{position:absolute;inset:0;width:100%;height:100%;z-index:4;pointer-events:none}.newDesignerBoundaryQa path{fill:none;stroke-width:3;vector-effect:non-scaling-stroke}.newDesignerBoundaryQa .shirtBoundary{stroke:#d35252}.newDesignerBoundaryQa .trouserBoundary{stroke:#2f67b2}.newDesignerBoundaryQa .clearBoundary{stroke:#d6a10b;stroke-dasharray:7 6}.newDesignerPhotoTag,.newDesignerPhotoError,.newDesignerPhotoLoading{z-index:5}
 .newDesignerPhotoTag{position:absolute;top:16px;left:16px;background:rgba(255,255,255,.9);padding:8px 11px;color:#25344a;font-size:9px;letter-spacing:.15em}
 .newDesignerPhotoLoading,.newDesignerPhotoError{position:absolute;bottom:18px;left:18px;right:18px;background:rgba(255,255,255,.92);padding:12px 14px;font-size:12px;color:#334155}
@@ -340,7 +340,7 @@
 .newDesignerPhotoCreative>p{margin:7px 0 0;font-size:8px;line-height:1.5;color:#6e675f}
 .newDesignerPhotoCreative b{font-weight:700;color:#365b7e}
 
-.newDesignerPhotoAi{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;z-index:4;background:#eeeae4}
+.newDesignerPhotoAi{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;z-index:4;background:#0a1726}
 .newDesignerCreativeRenderError{color:#9b4f3d!important}
 
 .newDesignerPhotoStage.inspectFit .newDesignerPhotoAi{transform:scale(1.42);transform-origin:50% 35%}
@@ -626,7 +626,7 @@
 .newDesignerBriefResults>article{min-width:0;display:grid;grid-template-rows:auto auto 1fr auto;gap:8px;padding:8px;border:1px solid #e1d9cf;background:#fff;border-radius:11px}
 .newDesignerBriefModel{position:relative;height:220px;overflow:hidden;border-radius:8px;background:#0a1726}
 .newDesignerBriefModel .directorExistingModel{position:absolute;inset:0;display:grid;place-items:center;overflow:hidden;background:#0a1726}
-.newDesignerBriefModel .directorExistingModel canvas{display:block;width:100%;height:100%;object-fit:cover}
+.newDesignerBriefModel .directorExistingModel canvas{display:block;width:100%;height:100%;object-fit:contain}
 .newDesignerBriefModel .directorExistingModel[data-ready="false"] canvas{opacity:.32}
 .newDesignerBriefModel .directorExistingModelState{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;background:rgba(10,23,38,.78);color:#fff;padding:7px 9px;font-size:6px;letter-spacing:.09em;white-space:nowrap}
 .newDesignerBriefModel>span{position:absolute;left:7px;bottom:7px;z-index:3;background:rgba(255,255,255,.9);color:#33485d;padding:5px 6px;border-radius:999px;font-size:5.5px;letter-spacing:.1em;font-weight:800}
