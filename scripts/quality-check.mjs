@@ -303,6 +303,10 @@ for(const token of ['.finally(()=>{customerPhotoCalibrationRequest=null;})','win
   if(!photoPreview.includes(token)) throw new Error(`Photo calibration refresh regression: preview missing ${token}`);
 }
 console.log("Photo calibration refresh gate passed: proof-backed scale is rechecked when the customer returns to the tab.");
+for(const token of ["photoCalibration:photoCalibration.verified ? {","photoPxPerMm:verifiedPhotoPxPerMm","scaleCoordinateSystem:photoCalibration.scaleCoordinateSystem","proofVersion:photoCalibration.proofVersion","} : {verified:false}","selectedLookSessionCache.get(renderSignature)"]) {
+  if(!photoPreview.includes(token)) throw new Error(`Calibration-aware final-render identity regression: missing ${token}`);
+}
+console.log("Calibration lock identity gate passed: changing accepted photo scale invalidates locked/session final-render state.");
 for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","PHOTO_TUCKED_LEFT_SLEEVE_CLIP","PHOTO_TUCKED_RIGHT_SLEEVE_CLIP","PHOTO_TUCKED_LEFT_TROUSER_CLIP","PHOTO_TUCKED_RIGHT_TROUSER_CLIP","destination-in","masks.shirt","masks.pant","featherMaskInside","featheredMasks","featheredPathMask","pathMasks","if(path) context.drawImage(featheredPathMask(path),0,0)","patternScaleForFabric","placement.offsetX","soft-light","globalCompositeOperation = \"luminosity\"","globalAlpha = .82","globalAlpha = .16","Zoom fit","Compare","Boundary QA"]) {
   if (!photoPreview.includes(token)) throw new Error(`Real photographic Designer regression: PhotoOutfitPreview missing ${token}`);
 }
