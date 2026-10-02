@@ -40,6 +40,9 @@ test("photo compositor neutralizes source-template luminance before restoring fo
   assert.match(source,/detailBrightness\?:number/);
   assert.match(source,/const detailBrightness = placement\.detailBrightness \?\? 1\.3/);
   assert.match(source,/brightness\(\$\{detailBrightness\}\)/);
-  assert.match(source,/detailBrightness: 3\.05/);
-  assert.match(source,/detailBrightness: 1\.9/);
+  assert.match(source,/detailBrightness: template\.shirtDetailBrightness/);
+  assert.match(source,/detailBrightness: template\.trouserDetailBrightness/);
+  const geometry=readFileSync("src/lib/designer/photo-preview.ts","utf8");
+  assert.match(geometry,/shirtDetailBrightness: 3\.05/);
+  assert.match(geometry,/trouserDetailBrightness: 1\.9/);
 });
