@@ -358,6 +358,10 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "colour-neutral multi-band relief map",
   "globalAlpha = .36",
   "globalAlpha = .08",
+  "const detailMask = featheredPathMask(path)",
+  "photographicShapeMap(photo, detailMask)",
+  "globalAlpha = .42",
+  "globalAlpha = .32",
 ]);
 requireTokens("src/lib/designer/photo-shading.ts", [
   "weightedGarmentLuminanceMean",
@@ -374,6 +378,7 @@ requireTokens("tests/customer-designer-preview.test.ts", [
   "instant photo compositor normalizes source albedo before borrowing studio depth",
   "photo compositor removes source-template detail brightness calibration",
   "photo compositor restores colour-neutral photographic micro-relief",
+  "contrast collar and cuff shading reuses baseline-neutral photo structure",
 ]);
 requireTokens("src/lib/designer/brand-language.ts", [
   "linen-earth-brand-language-provisional-1",
