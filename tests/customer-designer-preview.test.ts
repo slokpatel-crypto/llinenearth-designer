@@ -89,21 +89,28 @@ test("photo compositor restores colour-neutral photographic micro-relief",()=>{
   assert.match(source,/Working at half resolution keeps the first preview fast/);
   assert.match(source,/128 \+ \(luminance - blurredLuminance\) \* 1\.8/);
   assert.match(source,/const relief = photographicReliefMap\(photo\)/);
-  assert.match(source,/globalCompositeOperation = "soft-light"[\s\S]*globalAlpha = \.28[\s\S]*drawImage\(relief, 0, 0, WIDTH, HEIGHT\)/);
+  assert.match(source,/globalCompositeOperation = "soft-light"[\s\S]*globalAlpha = \.24[\s\S]*drawImage\(relief, 0, 0, WIDTH, HEIGHT\)/);
   assert.match(source,/drawImage\(photographicReliefMap\(photo\), 0, 0, WIDTH, HEIGHT\)/);
 });
 
 
-test("instant photo compositor normalizes source albedo before borrowing studio depth",()=>{
+test("instant photo compositor uses neutral multiband studio depth without source albedo",()=>{
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   assert.match(source,/photographicShapeMaps = new WeakMap/);
+  assert.match(source,/photographicFoldMaps = new WeakMap/);
   assert.match(source,/function photographicShapeMap\(photo: HTMLImageElement, sourceBrightness: number\)/);
+  assert.match(source,/function photographicFoldMap\(photo: HTMLImageElement\)/);
   assert.match(source,/grayscale\(1\) blur\(7px\)/);
+  assert.match(source,/grayscale\(1\) blur\(1\.25px\)/);
+  assert.match(source,/grayscale\(1\) blur\(12px\)/);
   assert.match(source,/128 \+ \(corrected - 128\) \* \.58/);
+  assert.match(source,/128 \+ \(finePixels\.data\[index\] - broadPixels\.data\[index\]\) \* 1\.42/);
   assert.match(source,/globalCompositeOperation = "soft-light"[\s\S]*globalAlpha = \.58[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
-  assert.match(source,/globalCompositeOperation = "multiply"[\s\S]*globalAlpha = \.07[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
+  assert.match(source,/globalAlpha = \.34[\s\S]*drawImage\(folds, 0, 0, WIDTH, HEIGHT\)/);
+  assert.match(source,/globalAlpha = \.07[\s\S]*drawImage\(folds, 0, 0, WIDTH, HEIGHT\)/);
   assert.match(source,/selected Linen Earth cloth/);
   assert.doesNotMatch(source,/context\.globalAlpha = \.82/);
+  assert.doesNotMatch(source,/contrast\(1\.18\) brightness\(\$\{detailBrightness\}\)/);
 
   const css=readFileSync("src/app/designer-studio/designer-light.css","utf8");
   assert.match(css,/\.newDesignerPhotoStage\{[^}]*background:#0a1726/);
@@ -125,11 +132,14 @@ test("Style Director photoreal letterbox matches the navy studio",()=>{
 });
 
 
-test("contrast collar and cuff shading stays photographic without source-colour contamination",()=>{
+test("contrast collar and cuff shading uses the neutral multiband stack",()=>{
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-  assert.match(source,/function drawWhiteDetail[\s\S]*globalCompositeOperation = "luminosity"[\s\S]*globalAlpha = \.9/);
-  assert.match(source,/function drawWhiteDetail[\s\S]*globalCompositeOperation = "multiply"[\s\S]*globalAlpha = \.12/);
-  assert.match(source,/clean white while retaining the real folded edge beside neck and hands/);
+  assert.match(source,/function drawWhiteDetail[\s\S]*const shape = photographicShapeMap\(photo, brightness\)/);
+  assert.match(source,/function drawWhiteDetail[\s\S]*const folds = photographicFoldMap\(photo\)/);
+  assert.match(source,/function drawWhiteDetail[\s\S]*globalAlpha = \.42[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
+  assert.match(source,/function drawWhiteDetail[\s\S]*globalAlpha = \.28[\s\S]*drawImage\(folds, 0, 0, WIDTH, HEIGHT\)/);
+  assert.match(source,/keeping the collar\/cuff visibly white beside the neck and hands/);
+  assert.doesNotMatch(source,/function drawWhiteDetail[\s\S]*globalCompositeOperation = "luminosity"/);
 });
 
 
