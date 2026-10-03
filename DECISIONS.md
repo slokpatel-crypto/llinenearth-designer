@@ -147,6 +147,13 @@ Architecture and product decisions that must persist across coding sessions.
 **Rule:** front inspection stores a SHA-256 identity of the inspected FASHN image inside the private QA payload. Secondary generation supplies the front job ID and image; the server requires a matching front outcome, passing QA, matching shirt/trouser IDs, an allowed selected-look concept, and the same image hash before returning a cache hit or spending a generation credit. Repair replaces stale front caches so later views inherit the reviewed repaired source rather than an older defect.
 
 
+## 2026-10-03 — Front final-render QA measures protected-region drift
+**Decision:** the locked front photoreal is checked deterministically outside the intended garment edit before semantic QA can promote it.
+
+**Why:** FASHN Edit documents black mask pixels as preserve guidance rather than a hard boundary, so a successful garment refinement can still change the faceless mannequin, shoes or studio. Recent virtual-try-on research likewise treats preservation of human/background regions as a separate fidelity problem rather than assuming garment quality guarantees identity stability.
+
+**Rule:** only the aligned front view is compared against the canonical studio reference in protected head/outer-background/floor regions. Normalize the mean pixel delta on the existing protected-region scale, classify it conservatively as strong/review/weak, and combine the result with semantic mannequin consistency using the worse status. Review/weak deterministic drift must hold the render and produce a targeted restore-model/studio repair instruction. Do not apply fixed front-coordinate comparison to three-quarter, side or back views because their geometry intentionally changes.
+
 ## 2026-10-03 — Instant cloth shading uses neutral shape maps
 **Decision:** the customer photo compositor derives broad garment form from a neutral-gray, low-frequency studio lighting map normalized against the actual photographed garment region, rather than blending the photographed source garment luminance/albedo directly into the selected fabric.
 
