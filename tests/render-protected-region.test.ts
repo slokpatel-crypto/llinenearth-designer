@@ -12,7 +12,7 @@ test("protected render drift uses the same conservative normalized scale as visu
 });
 
 test("protected region status fails closed only after meaningful front-view drift",()=>{
-  assert.equal(classifyProtectedRegionChange(null),"strong");
+  assert.equal(classifyProtectedRegionChange(null),"unavailable");
   assert.equal(classifyProtectedRegionChange(Number.NaN),"unavailable");
   assert.equal(classifyProtectedRegionChange(34),"strong");
   assert.equal(classifyProtectedRegionChange(35),"review");
