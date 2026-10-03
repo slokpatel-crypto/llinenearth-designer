@@ -707,7 +707,7 @@ export async function inspectSelectedLookFashnOutput(
     measuredColorIssue ? `Deterministic colour check before vision review: ${measuredColorIssue}.` : "",
     measuredPatternIssue ? `Deterministic pattern-axis check before vision review: ${measuredPatternIssue}.` : "",
     protectedRegionStatus!=="unavailable" ? `Deterministic protected-region check for the front view: ${protectedRegionStatus}, normalized change ${protectedRegionChange}%.` : "",
-    "Images are supplied in this order: GENERATED RENDER, LOCKED STUDIO MODEL, then SPLIT FABRIC CONTEXT when available (shirt left, trouser right).",
+    "Images are supplied in this order: GENERATED RENDER, LOCKED STUDIO MODEL, then SPLIT FABRIC CONTEXT when available (shirt left panel, neutral separator, trouser right panel).",
     "Check visible cloth colour, pattern scale/orientation/contrast, weave character, collar and cuff cleanliness, neck opening, hands, shirt/trouser boundary, tucked waistband layering, trouser silhouette, mannequin identity, background stability and synthesis artifacts.",
     "Use code-measured colour/pattern anchors when supplied as objective references; allow realistic lighting/shading but review obvious hue drift, pattern re-scaling, stripe-width drift or orientation changes.",
     "Do not fail minor natural drape variation. Review when cloth visibly bleeds onto skin/background/adjacent garment, the chosen construction is contradicted, fabric identity drifts materially, or the mannequin/background changes materially.",
@@ -865,8 +865,8 @@ async function semanticCreativeRenderCheck(
     input.creative.pattern ? `Pattern: ${input.creative.pattern.name}; ${input.creative.pattern.layout}; placement: ${input.creative.pattern.placement}.` : "",
     `Base cut: ${input.style.collar}; ${input.style.cuff}; ${input.style.placket}; ${input.style.shirtFit}; ${input.style.shirtWear}; ${input.style.trouser}.`,
     previousOutputUrl
-      ? "You receive four visual references in this order: CURRENT GENERATED RENDER, PREVIOUS FAILED/REVIEW RENDER, LOCKED STUDIO REFERENCE, then (when present) SPLIT FABRIC CONTEXT with shirt on the left and trouser on the right."
-      : "You receive three visual references in this order: GENERATED RENDER, LOCKED STUDIO REFERENCE, then (when present) SPLIT FABRIC CONTEXT with shirt on the left and trouser on the right.",
+      ? "You receive four visual references in this order: CURRENT GENERATED RENDER, PREVIOUS FAILED/REVIEW RENDER, LOCKED STUDIO REFERENCE, then (when present) SPLIT FABRIC CONTEXT with a shirt panel on the left, neutral separator, and trouser panel on the right."
+      : "You receive three visual references in this order: GENERATED RENDER, LOCKED STUDIO REFERENCE, then (when present) SPLIT FABRIC CONTEXT with a shirt panel on the left, neutral separator, and trouser panel on the right.",
     previousOutputUrl
       ? "Compare the current render with the previous failed/review render. Reward a targeted fix only when the cited problem visibly improved without damaging fabric fidelity, boundaries or the hero hierarchy."
       : "Compare them rather than judging the generated render in isolation.",
@@ -1005,7 +1005,7 @@ function selectedLookPrompt(input:SelectedLookFashnRequest,usedLockedPreview=fal
     : "The edit source is the canonical Linen Earth studio photograph. Preserve its mannequin identity, pose, body proportions, camera angle, studio lighting and deep navy environment.";
   return `Edit this existing premium menswear studio photograph into the exact Linen Earth outfit configured by the customer. ${sourceContract}
 
-The image-context is split vertically: LEFT HALF is the exact shirt-fabric reference; RIGHT HALF is the exact trouser-fabric reference. Use those references only for their matching garments.
+The image-context has two separated cloth panels: LEFT PANEL is the exact shirt-fabric reference; RIGHT PANEL is the exact trouser-fabric reference. Ignore the neutral strip between them. Use those references only for their matching garments.
 
 Shirt: ${safe(input.shirt.name)} ${safe(input.shirt.line)}, ${safe(input.shirt.patternType)}.
 Trousers: ${safe(input.pant.name)} ${safe(input.pant.line)}, ${safe(input.pant.patternType)}.
@@ -1069,8 +1069,8 @@ function creativeConceptPrompt(input:CreativeFashnRequest) {
     ? `Previous render QA correction: ${safe(input.creative.repairInstruction,420)}. Fix this exact rendering failure while preserving the concept, fabric references, pose and every unrelated successful detail. Do not make the design safer or more conventional to hide the failure.`
     : "";
   const pattern=input.creative.pattern
-    ? `Generated surface concept: ${safe(input.creative.pattern.name,100)}. Family ${safe(input.creative.pattern.family,50)}, ${safe(input.creative.pattern.scale,40)} scale, about ${Math.max(0,Math.min(60,Number(input.creative.pattern.coverage)||0))}% intended coverage. Layout: ${safe(input.creative.pattern.layout,420)} Placement: ${safe(input.creative.pattern.placement,260)}. The image-context is split vertically: LEFT HALF is the exact shirt-fabric reference; RIGHT HALF is the exact trouser-fabric reference. Use the generated motif logic on the shirt only where specified, while preserving the underlying cloth colour and woven character.`
-    : "The image-context is split vertically: LEFT HALF is the exact shirt-fabric reference; RIGHT HALF is the exact trouser-fabric reference.";
+    ? `Generated surface concept: ${safe(input.creative.pattern.name,100)}. Family ${safe(input.creative.pattern.family,50)}, ${safe(input.creative.pattern.scale,40)} scale, about ${Math.max(0,Math.min(60,Number(input.creative.pattern.coverage)||0))}% intended coverage. Layout: ${safe(input.creative.pattern.layout,420)} Placement: ${safe(input.creative.pattern.placement,260)}. The image-context has two separated cloth panels: LEFT PANEL is the exact shirt-fabric reference; RIGHT PANEL is the exact trouser-fabric reference. Ignore the neutral strip between them. Use the generated motif logic on the shirt only where specified, while preserving the underlying cloth colour and woven character.`
+    : "The image-context has two separated cloth panels: LEFT PANEL is the exact shirt-fabric reference; RIGHT PANEL is the exact trouser-fabric reference. Ignore the neutral strip between them.";
 
   return `Edit this existing premium menswear studio photograph into the selected Linen Earth Creative Lab concept. Preserve the same faceless male mannequin, pose, body proportions, camera angle, deep navy studio environment and realistic tailoring quality. Keep the outfit physically believable and premium, but the DESIGN APPEARANCE is the priority.
 
