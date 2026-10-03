@@ -18,6 +18,20 @@ test("garment luminance mean ignores transparent pixels outside the cloth mask",
   assert.equal(weightedGarmentLuminanceMean(source,mask),90);
 });
 
+test("garment luminance baseline keeps a constant photographed cloth unchanged",()=>{
+  const source=rgba([72,72,72,72]);
+  const mask=rgba([0,0,0,0],[255,255,255,255]);
+  assert.equal(weightedGarmentLuminanceMean(source,mask),72);
+});
+
+test("log-average garment baseline resists a small bright highlight",()=>{
+  const source=rgba([80,80,250]);
+  const mask=rgba([0,0,0],[255,255,255]);
+  const baseline=weightedGarmentLuminanceMean(source,mask);
+  assert.equal(baseline,119);
+  assert.ok(baseline<137);
+});
+
 test("shape normalization is invariant to the photographed source cloth baseline",()=>{
   // These pairs represent approximately the same relative illumination around
   // two very different source-cloth baselines after sRGB -> linear conversion.

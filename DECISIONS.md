@@ -161,3 +161,10 @@ Architecture and product decisions that must persist across coding sessions.
 
 **Rule:** convert photographed grayscale samples to linear-light sRGB before comparing them to the garment baseline; map only the relative illumination ratio back to the neutral shape layer. Keep the selected catalogue swatch as the colour/texture authority, clamp extreme ratios, and do not promote this 2D approximation to a physical BRDF or measured sheen claim.
 
+## 2026-10-03 — Photo garment baseline uses log-average linear luminance
+**Decision:** the neutral photographic shape map estimates each garment/panel baseline with an alpha-weighted log-average in linear-light space.
+
+**Why:** the compositor treats shading as relative illumination. A plain arithmetic mean of gamma-encoded pixels lets a small bright highlight or specular patch pull the baseline upward and flatten the rest of the cloth. A log-average in linear light better matches the multiplicative shading model while leaving a uniformly lit garment unchanged.
+
+**Rule:** derive the baseline only from pixels inside the active garment/panel mask, ignore invalid or near-transparent samples, convert sRGB bytes to linear light before averaging in log space, and convert the resulting baseline back to sRGB only for the existing neutralization interface. This is a rendering heuristic, not a measured material property.
+
