@@ -354,10 +354,10 @@ for (const token of ["linen-final-render-cache-v2-locked-preview-source","functi
   if(!selectedLookCacheKey.includes(token)) throw new Error(`Locked-preview final-render cache regression: missing ${token}`);
 }
 console.log("Locked-preview final-render gate passed: final photoreal generation starts from a validated deterministic customer preview when available.");
-for (const token of ["function drawWhiteDetail","globalAlpha = .9","globalAlpha = .12","clean white while retaining the real folded edge beside neck and hands"]) {
-  if (!photoPreview.includes(token)) throw new Error(`Contrast collar/cuff photographic shading regression: missing ${token}`);
+for (const token of ["function drawWhiteDetail","const detailMask = mask ?? featheredPathMask(path)","const shape = photographicShapeMap(photo, detailMask)","globalAlpha = .48","globalAlpha = .04","globalAlpha = .28","globalAlpha = .05","leave a source-colour halo"]) {
+  if (!photoPreview.includes(token)) throw new Error(`Contrast collar/cuff neutral shading regression: missing ${token}`);
 }
-console.log("Contrast-detail shading gate passed: white collar/cuff cloth keeps photographic depth without source-colour contamination.");
+console.log("Contrast-detail shading gate passed: white collar/cuff cloth uses neutral studio form and relief without source-value contamination.");
 const designerPhotoCss=fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
 if(!/\.newDesignerPhotoAi\{[^}]*object-fit:contain/.test(designerPhotoCss)) throw new Error("Final photoreal framing regression: full model must remain contained.");
 if(/\.newDesignerPhotoAi\{[^}]*object-fit:cover/.test(designerPhotoCss)) throw new Error("Final photoreal framing regression: cover would crop the model.");
