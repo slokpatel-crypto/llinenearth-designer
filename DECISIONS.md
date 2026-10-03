@@ -240,4 +240,11 @@ Architecture and product decisions that must persist across coding sessions.
 
 **Rule:** require an available passing check with every fidelity dimension strong and no major artifact. Missing, malformed, contradictory, unavailable or review checks keep the live outfit visible. Retain the generated image only within the current look/calibration lifecycle so Retry photoreal check repeats inspection without generating another image or recording another render request. Successful QA disables further generation of that same result. Generation and inspection share the request scope; stale approvals/errors cannot display an old image, unlock a new request or complete memory. No dependencies, persistence schema, physical acceptance or deployment changes.
 
+## 2026-10-03 — Live model framing follows the finite preview surface
+**Decision:** anchor the Style Director Canvas to its preview frame, matching the contained generated-image surface.
+
+**Why:** a percentage-sized Canvas inside the centered grid could retain an intrinsic row taller than the tablet preview; `object-fit:contain` alone did not stop the model's feet from being clipped by the parent.
+
+**Rule:** keep the Canvas absolutely contained by the preview bounds. Browser checks measure the rendered intrinsic-image bounds inside the clipping frame at 390/768/1440px for initial/selected live looks, held QA and approved images. This changes CSS framing only; Canvas pixels, serialized locked sources, calibration, garment geometry and fabric claims stay identical. No dependencies or schema changes.
+
 **Verification:** real Chromium CI exercises the questionnaire and photographed Canvas at 390/768/1440px, then deliberately delivers mocked responses after cancellation. Reports separate these code regressions from physical, device and owner acceptance; the calibration-change case uses a synthetic API fixture only.
