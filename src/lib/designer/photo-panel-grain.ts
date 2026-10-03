@@ -77,3 +77,45 @@ export const PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR={
   rightSleeve:{x:PHOTO_UNTUCKED_SHIRT_PANEL_AXES.rightSleeve.topX,y:PHOTO_UNTUCKED_SHIRT_PANEL_AXES.rightSleeve.topY},
   collar:{x:512,y:214},
 } as const satisfies Record<string,PhotoPanelPoint>;
+
+
+export type UntuckedTrouserTemplate="pleated"|"wide";
+
+/**
+ * Screen-space centerline traces for the two older untucked trouser photos.
+ * They are visual projection geometry only. The left/right values are taken
+ * from the existing photographed trouser silhouettes and do not claim cutting
+ * grain, drape physics or physical dimensions.
+ */
+export const PHOTO_UNTUCKED_TROUSER_PANEL_AXES={
+  pleated:{
+    leftTrouser:{topX:495,topY:758,bottomX:458,bottomY:1352},
+    rightTrouser:{topX:511,topY:759,bottomX:562,bottomY:1354},
+  },
+  wide:{
+    leftTrouser:{topX:497,topY:770,bottomX:479,bottomY:1353},
+    rightTrouser:{topX:513,topY:774,bottomX:542,bottomY:1353},
+  },
+} as const satisfies Record<UntuckedTrouserTemplate,Record<"leftTrouser"|"rightTrouser",PhotoPanelAxis>>;
+
+export const PHOTO_UNTUCKED_TROUSER_GRAIN_ROTATION={
+  pleated:{
+    leftTrouser:photoPanelRotationFromVertical(PHOTO_UNTUCKED_TROUSER_PANEL_AXES.pleated.leftTrouser),
+    rightTrouser:photoPanelRotationFromVertical(PHOTO_UNTUCKED_TROUSER_PANEL_AXES.pleated.rightTrouser),
+  },
+  wide:{
+    leftTrouser:photoPanelRotationFromVertical(PHOTO_UNTUCKED_TROUSER_PANEL_AXES.wide.leftTrouser),
+    rightTrouser:photoPanelRotationFromVertical(PHOTO_UNTUCKED_TROUSER_PANEL_AXES.wide.rightTrouser),
+  },
+} as const;
+
+export const PHOTO_UNTUCKED_TROUSER_PATTERN_ANCHOR={
+  pleated:{
+    leftTrouser:{x:PHOTO_UNTUCKED_TROUSER_PANEL_AXES.pleated.leftTrouser.topX,y:PHOTO_UNTUCKED_TROUSER_PANEL_AXES.pleated.leftTrouser.topY},
+    rightTrouser:{x:PHOTO_UNTUCKED_TROUSER_PANEL_AXES.pleated.rightTrouser.topX,y:PHOTO_UNTUCKED_TROUSER_PANEL_AXES.pleated.rightTrouser.topY},
+  },
+  wide:{
+    leftTrouser:{x:PHOTO_UNTUCKED_TROUSER_PANEL_AXES.wide.leftTrouser.topX,y:PHOTO_UNTUCKED_TROUSER_PANEL_AXES.wide.leftTrouser.topY},
+    rightTrouser:{x:PHOTO_UNTUCKED_TROUSER_PANEL_AXES.wide.rightTrouser.topX,y:PHOTO_UNTUCKED_TROUSER_PANEL_AXES.wide.rightTrouser.topY},
+  },
+} as const satisfies Record<UntuckedTrouserTemplate,Record<"leftTrouser"|"rightTrouser",PhotoPanelPoint>>;
