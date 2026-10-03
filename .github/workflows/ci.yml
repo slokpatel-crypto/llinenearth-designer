@@ -49,6 +49,7 @@ jobs:
           done
           node scripts/verify-preview-lifecycle.cjs
           node scripts/verify-style-director-lifecycle.cjs
+          node scripts/verify-designer-advisor.cjs
       - name: Save browser verification evidence
         if: always()
         uses: actions/upload-artifact@v4
