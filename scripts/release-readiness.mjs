@@ -344,14 +344,20 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "Contrast collars/cuffs sit directly beside skin and hands",
   "photographicShapeMaps",
   "photographicShapeMap",
+  "photographicFoldMaps",
+  "photographicFoldMap",
   "grayscale(1) blur(7px)",
+  "grayscale(1) blur(1.25px)",
+  "grayscale(1) blur(12px)",
   "globalAlpha = .58",
+  "globalAlpha = .34",
   "globalAlpha = .07",
 ]);
 requireTokens("tests/customer-designer-preview.test.ts", [
   "photographic garment clips feather only inside the real cloth boundary",
   "newDesignerConstruction",
-  "instant photo compositor normalizes source albedo before borrowing studio depth",
+  "instant photo compositor uses neutral multiband studio depth without source albedo",
+  "contrast collar and cuff shading uses the neutral multiband stack",
 ]);
 requireTokens("src/lib/designer/brand-language.ts", [
   "linen-earth-brand-language-provisional-1",
