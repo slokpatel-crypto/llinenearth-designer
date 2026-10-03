@@ -351,6 +351,13 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "const lightingMask = mask ?? (path ? featheredPathMask(path) : undefined)",
   "globalAlpha = .58",
   "globalAlpha = .07",
+  "grayscale(1) blur(14px)",
+  "microDetail",
+  "foldDetail",
+  "128 + microDetail * 1.55 + foldDetail * .85",
+  "colour-neutral multi-band relief map",
+  "globalAlpha = .36",
+  "globalAlpha = .08",
 ]);
 requireTokens("src/lib/designer/photo-shading.ts", [
   "weightedGarmentLuminanceMean",
@@ -365,6 +372,8 @@ requireTokens("tests/customer-designer-preview.test.ts", [
   "photographic garment clips feather only inside the real cloth boundary",
   "newDesignerConstruction",
   "instant photo compositor normalizes source albedo before borrowing studio depth",
+  "photo compositor removes source-template detail brightness calibration",
+  "photo compositor restores colour-neutral photographic micro-relief",
 ]);
 requireTokens("src/lib/designer/brand-language.ts", [
   "linen-earth-brand-language-provisional-1",
