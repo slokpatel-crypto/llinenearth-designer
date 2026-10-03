@@ -664,7 +664,7 @@ requireTokens("src/app/designer-studio/designer-light.css", [".newDesignerPhotoS
 requireTokens("src/app/designer-studio/designer-light.css", [".newDesignerBriefModel .directorExistingModel canvas","object-fit:contain"]);
 requireTokens("tests/customer-designer-preview.test.ts", ["customer Designer exposes the selected details photo-match state"]);
 requireTokens("tests/customer-designer-preview.test.ts", ["Designer recommendation cards keep the photographic mannequin full-body"]);
-requireTokens("tests/customer-designer-preview.test.ts", ["contrast collar and cuff shading stays photographic without source-colour contamination"]);
+requireTokens("tests/customer-designer-preview.test.ts", ["contrast collar and cuff shading uses neutral studio form without source-value contamination"]);
 requireTokens("tests/customer-designer-preview.test.ts", ["plain linen swatches retain visible microtexture without reusing catalogue shadows"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ['toDataURL("image/jpeg",.92)',"lockedPreviewImage"]);
 requireTokens("src/app/api/designer/look-render/route.ts", ['lockedPreviewImage:typeof body.lockedPreviewImage==="string"']);
