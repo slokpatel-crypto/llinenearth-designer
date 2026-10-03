@@ -11,7 +11,7 @@ import { CREATIVE_FEEDBACK_REASONS, type CreativeFeedbackReason } from "@/lib/de
 import { UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION, type CustomerPhotoCalibration } from "@/lib/designer/photo-calibration-types";
 import { customerPhotoCalibrationIdentity, fetchCustomerPhotoCalibration } from "@/lib/designer/photo-calibration-client";
 import { neutralizePhotographicLuminance, weightedGarmentLuminanceMean } from "@/lib/designer/photo-shading";
-import { PHOTO_TUCKED_PANEL_GRAIN_ROTATION } from "@/lib/designer/photo-panel-grain";
+import { PHOTO_TUCKED_PANEL_GRAIN_ROTATION, PHOTO_TUCKED_PANEL_PATTERN_ANCHOR } from "@/lib/designer/photo-panel-grain";
 import {
   DESIGNER_PHOTO_TEMPLATES, PHOTO_COLLAR_MASK, PHOTO_CUFF_MASK, PHOTO_TUCKED_COLLAR_MASK, PHOTO_TUCKED_COLLAR_STAND_MASK,
   PHOTO_TUCKED_CUFF_MASK, PHOTO_TUCKED_NECK_CLEAR, PHOTO_TUCKED_SHIRT_CLIP, PHOTO_TUCKED_TROUSER_CLIP,
@@ -489,11 +489,44 @@ function untuckedGarmentMasks(photo: HTMLImageElement, shirtPath: string, pantPa
   return result;
 }
 
+type FabricPatternPlacement={
+  offsetX?:number;
+  offsetY?:number;
+  scale?:number;
+  rotationDeg?:number;
+  photoPxPerMm?:number;
+  anchorX?:number;
+  anchorY?:number;
+};
+
+function fabricPatternTransform(fabric:DesignerFabric,placement:FabricPatternPlacement,scale:number) {
+  const offsetX=placement.offsetX??0;
+  const offsetY=placement.offsetY??0;
+  const rotation=fabricOrientation(fabric)+(placement.rotationDeg??0);
+  const anchorX=Number(placement.anchorX);
+  const anchorY=Number(placement.anchorY);
+  const hasAnchor=Number.isFinite(anchorX)&&Number.isFinite(anchorY);
+  let transform=new DOMMatrix().translate(offsetX,offsetY);
+  if(hasAnchor) {
+    // Keep the photographed seam/waist anchor stationary while repeat scale or
+    // panel rotation changes. Otherwise the infinite texture is re-phased
+    // around the canvas origin and stripes visibly jump at the panel start.
+    transform=transform
+      .translate(anchorX,anchorY)
+      .rotate(rotation)
+      .scale(scale)
+      .translate(-anchorX,-anchorY);
+  } else {
+    transform=transform.rotate(rotation).scale(scale);
+  }
+  return transform;
+}
+
 function drawGarment(
   target: CanvasRenderingContext2D, photo: HTMLImageElement,
   swatch: HTMLImageElement, fabric: DesignerFabric, path: string,
   mask?: HTMLCanvasElement,
-  placement: { offsetX?: number; offsetY?: number; scale?: number; rotationDeg?:number; photoPxPerMm?:number } = {},
+  placement: FabricPatternPlacement = {},
 ) {
   const layer = document.createElement("canvas");
   layer.width = WIDTH;
@@ -506,7 +539,7 @@ function drawGarment(
   if (!pattern) throw new Error("Could not prepare the fabric pattern.");
   const visualFallback=patternScaleForFabric(fabric);
   const scale = photoFabricPatternScale(fabricRenderAsset(fabric),visualFallback,placement.photoPxPerMm) * (placement.scale ?? 1);
-  pattern.setTransform(new DOMMatrix().translate(placement.offsetX ?? 0, placement.offsetY ?? 0).rotate(fabricOrientation(fabric)+(placement.rotationDeg??0)).scale(scale));
+  pattern.setTransform(fabricPatternTransform(fabric,placement,scale));
   context.fillStyle = pattern;
   context.fillRect(0, 0, WIDTH, HEIGHT);
 
@@ -788,9 +821,9 @@ export function composePhotoOutfit(
     // pasted-on band of shirt texture across the waist/fly/crotch.
     // Directional fabric grain follows each photographed panel's screen-space
     // fall, so stripes/checks do not stay unnaturally vertical on angled sleeves.
-    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_SHIRT_BODY_CLIP, masks.shirt, { ...calibratedPlacement, offsetX: 0, rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.body });
-    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_LEFT_SLEEVE_CLIP, masks.shirt, { ...calibratedPlacement, offsetX: 11, rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.leftSleeve });
-    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_RIGHT_SLEEVE_CLIP, masks.shirt, { ...calibratedPlacement, offsetX: -9, rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.rightSleeve });
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_SHIRT_BODY_CLIP, masks.shirt, { ...calibratedPlacement, offsetX: 0, rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.body, anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.body.x, anchorY:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.body.y });
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_LEFT_SLEEVE_CLIP, masks.shirt, { ...calibratedPlacement, offsetX: 11, rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.leftSleeve, anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.leftSleeve.x, anchorY:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.leftSleeve.y });
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_RIGHT_SLEEVE_CLIP, masks.shirt, { ...calibratedPlacement, offsetX: -9, rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.rightSleeve, anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.rightSleeve.x, anchorY:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.rightSleeve.y });
 
     drawCreativePattern(context,creative,PHOTO_TUCKED_SHIRT_BODY_CLIP,masks.shirt);
     drawCreativePattern(context,creative,PHOTO_TUCKED_LEFT_SLEEVE_CLIP,masks.shirt);
@@ -798,15 +831,15 @@ export function composePhotoOutfit(
     drawCreativeDetails(context,creative,true,masks.shirt);
 
     if (style.collarFinish === "Self-fabric") {
-      drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined,{...calibratedPlacement,rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.collar});
+      drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined,{...calibratedPlacement,rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.collar,anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.collar.x,anchorY:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.collar.y});
     } else {
       drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_STAND_MASK, undefined);
       if (!creativeHas(creative,"quiet-collar-echo")) drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_MASK, undefined);
     }
     if (style.collarFinish === "White contrast collar + cuffs") drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_CUFF_MASK, undefined);
 
-    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_LEFT_TROUSER_CLIP, masks.pant, { ...calibratedPlacement, offsetX: 5, rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.leftTrouser });
-    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_RIGHT_TROUSER_CLIP, masks.pant, { ...calibratedPlacement, offsetX: -5, rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.rightTrouser });
+    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_LEFT_TROUSER_CLIP, masks.pant, { ...calibratedPlacement, offsetX: 5, rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.leftTrouser, anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.leftTrouser.x, anchorY:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.leftTrouser.y });
+    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_RIGHT_TROUSER_CLIP, masks.pant, { ...calibratedPlacement, offsetX: -5, rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.rightTrouser, anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.rightTrouser.x, anchorY:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.rightTrouser.y });
   } else {
     const shirtMask = untuckedGarmentMasks(modelPhoto, template.shirtPath, DESIGNER_PHOTO_TEMPLATES.pleated.trouserPath).shirt;
     const trouserMask = untuckedGarmentMasks(trouserPhoto, template.shirtPath, template.trouserPath).pant;
