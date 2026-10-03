@@ -713,7 +713,7 @@ requireTokens("tests/customer-designer-preview.test.ts", ["contrast collar and c
 requireTokens("tests/customer-designer-preview.test.ts", ["plain linen swatches retain visible microtexture without reusing catalogue shadows"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["serializeLockedPreview(canvasRef.current)",'LOCKED_PREVIEW_MIME="image/webp"',"LOCKED_PREVIEW_QUALITY=.96","lockedPreviewImage"]);
 requireTokens("src/app/api/designer/look-render/route.ts", ['lockedPreviewImage:typeof body.lockedPreviewImage==="string"']);
-requireTokens("src/lib/ai-visualization.ts", ["LOCKED_PREVIEW_DATA_URI","LOCKED_PREVIEW_MAX_BYTES=4_500_000","LOCKED_PREVIEW_IDENTITY_BOXES",".webp({quality:96,nearLossless:true,smartSubsample:true})","data:image/webp;base64","selected-look-locked-preview","deterministic locked live preview"]);
+requireTokens("src/lib/ai-visualization.ts", ["LOCKED_PREVIEW_DATA_URI","LOCKED_PREVIEW_MAX_BYTES=4_500_000","LOCKED_PREVIEW_IDENTITY_BOXES",".webp({quality:96,nearLossless:true,smartSubsample:true})","data:image/webp;base64",'output_format: "png"',"selected-look-locked-preview","deterministic locked live preview"]);
 requireTokens("src/lib/designer/render-cache-key.ts", ["linen-final-render-cache-v2-locked-preview-source","function lockedPreviewIdentity",'createHash("sha256").update(raw).digest("hex")','lockedPreview:view==="front"?lockedPreviewIdentity(input.lockedPreviewImage):""']);
 requireTokens("tests/customer-designer-preview.test.ts", ["final photoreal render is seeded from the validated locked live preview"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["Lock final design","Final photoreal ✦","selectedLookSessionCache","styleSpec","bodyProfile"]);
