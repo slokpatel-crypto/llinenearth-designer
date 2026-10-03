@@ -20,7 +20,7 @@ Phase 10 is now materially beyond the original foundation brief.
   - pattern orientation, density, scale and contrast
   - pixel repeat/stripe estimates
   - millimetres only when owner/supplier physical scale is declared
-  - blur, glare, exposure, colour-cast and framing quality
+  - blur, glare, exposure and framing quality; RGB channel spread is diagnostic only and is not treated as white-balance/cast evidence without a neutral reference
   - SHA-256 content identity + perceptual hash
 - **Three-photo protocol is active:** flat image is authoritative for measured colour/pattern; optional macro is used for texture/weave appearance; optional fold is used only for visual fall/structure appearance.
 - Macro/fold captures are passed to the model only when their quality checks pass.
