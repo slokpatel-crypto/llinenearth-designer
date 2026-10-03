@@ -12,10 +12,21 @@ function srgbByteToLinear(value:number) {
     : Math.pow((encoded+.055)/1.055,2.4);
 }
 
+function linearToSrgbByte(value:number) {
+  const linear=Math.max(0,Math.min(1,Number.isFinite(value)?value:srgbByteToLinear(PHOTO_SHAPE_NEUTRAL_LUMINANCE)));
+  const encoded=linear<=.0031308
+    ? linear*12.92
+    : 1.055*Math.pow(linear,1/2.4)-.055;
+  return Math.round(Math.max(0,Math.min(1,encoded))*255);
+}
+
 /**
- * Calculates the average photographed luminance inside a garment alpha mask.
- * Inputs are RGBA arrays from equally sized canvases. Transparent/outside
- * pixels do not influence the source-cloth baseline.
+ * Estimates the photographed garment's base luminance from the active alpha
+ * mask. Because the later shape normalization is multiplicative in linear
+ * light, the baseline is a weighted log-average of linear luminance rather
+ * than an arithmetic mean of gamma-encoded sRGB bytes. This reduces bright
+ * specular/highlight pixels dominating the cloth baseline while keeping a
+ * constant garment value unchanged.
  */
 export function weightedGarmentLuminanceMean(
   grayscaleRgba:ArrayLike<number>,
@@ -24,17 +35,18 @@ export function weightedGarmentLuminanceMean(
   if(grayscaleRgba.length!==maskRgba.length || grayscaleRgba.length<4 || grayscaleRgba.length%4!==0) {
     return PHOTO_SHAPE_NEUTRAL_LUMINANCE;
   }
-  let weightedLuminance=0;
+  let weightedLogLuminance=0;
   let totalWeight=0;
   for(let index=0;index<grayscaleRgba.length;index+=4) {
     const weight=Number(maskRgba[index+3])/255;
-    if(!Number.isFinite(weight) || weight<.04) continue;
-    weightedLuminance+=Number(grayscaleRgba[index])*weight;
+    const luminance=Number(grayscaleRgba[index]);
+    if(!Number.isFinite(weight) || weight<.04 || !Number.isFinite(luminance)) continue;
+    weightedLogLuminance+=Math.log(srgbByteToLinear(luminance)+PHOTO_SHAPE_LINEAR_EPSILON)*weight;
     totalWeight+=weight;
   }
-  return totalWeight>0 && Number.isFinite(weightedLuminance)
-    ? weightedLuminance/totalWeight
-    : PHOTO_SHAPE_NEUTRAL_LUMINANCE;
+  if(totalWeight<=0 || !Number.isFinite(weightedLogLuminance)) return PHOTO_SHAPE_NEUTRAL_LUMINANCE;
+  const linearMean=Math.max(0,Math.exp(weightedLogLuminance/totalWeight)-PHOTO_SHAPE_LINEAR_EPSILON);
+  return linearToSrgbByte(linearMean);
 }
 
 /**
