@@ -34,6 +34,18 @@ test("photographic garment clips feather only inside the real cloth boundary",()
   assert.doesNotMatch(css,/\.newDesignerConstruction\{/);
 });
 
+test("photo lighting normalization is panel-local inside adaptive garment masks",()=>{
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.match(source,/panelLightingMasks = new WeakMap<HTMLCanvasElement, Map<string, HTMLCanvasElement>>/);
+  assert.match(source,/function photoLightingMask\(mask\?:HTMLCanvasElement,path=""\)/);
+  assert.match(source,/context\.drawImage\(featherMaskInside\(mask\),0,0\)/);
+  assert.match(source,/context\.globalCompositeOperation="destination-in"/);
+  assert.match(source,/context\.drawImage\(featheredPathMask\(path\),0,0\)/);
+  assert.match(source,/const lightingMask = photoLightingMask\(mask,path\)/);
+  assert.match(source,/exact photographed panel being[\s\S]*not the whole shirt or both trouser legs/);
+});
+
+
 
 test("tucked directional fabric follows photographed panel grain",()=>{
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
@@ -120,7 +132,7 @@ test("instant photo compositor normalizes source albedo before borrowing studio 
   assert.match(source,/grayscale\(1\) blur\(7px\)/);
   assert.match(source,/weightedGarmentLuminanceMean\(input\.data, maskPixels\.data\)/);
   assert.match(source,/neutralizePhotographicLuminance\(input\.data\[index\], garmentMean\)/);
-  assert.match(source,/const lightingMask = mask \?\? \(path \? featheredPathMask\(path\) : undefined\)/);
+  assert.match(source,/const lightingMask = photoLightingMask\(mask,path\)/);
   assert.match(source,/globalCompositeOperation = "soft-light"[\s\S]*globalAlpha = \.58[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
   assert.match(source,/globalCompositeOperation = "multiply"[\s\S]*globalAlpha = \.07[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
   assert.match(source,/selected Linen Earth cloth/);
