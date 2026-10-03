@@ -376,7 +376,6 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "globalAlpha = .42",
   "globalAlpha = .32",
   "PHOTO_TUCKED_PANEL_PATTERN_ANCHOR",
-  "PHOTO_UNTUCKED_SHIRT_PANEL_AXES",
   "PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION",
   "PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR",
   "function fabricPatternTransform(fabric:DesignerFabric,placement:FabricPatternPlacement,scale:number)",
