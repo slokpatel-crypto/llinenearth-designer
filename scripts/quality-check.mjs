@@ -476,6 +476,30 @@ for (const token of ["linen-final-render-cache-v2-locked-preview-source","functi
 }
 if(lockedPreviewAiVisualization.includes('aspect_ratio: "4:5"')) throw new Error("FASHN Edit framing regression: unsupported forced 4:5 aspect ratio returned.");
 console.log("Locked-preview final-render gate passed: final photoreal generation starts from a validated deterministic customer preview when available.");
+const protectedRenderQa=fs.readFileSync("src/lib/designer/render-protected-region.ts","utf8");
+for (const token of [
+  "PROTECTED_REGION_DELTA_REFERENCE=.22",
+  "PROTECTED_REGION_REVIEW_PERCENT=34",
+  "PROTECTED_REGION_WEAK_PERCENT=60",
+  "protectedRegionChangePercent",
+  "classifyProtectedRegionChange",
+]) {
+  if(!protectedRenderQa.includes(token)) throw new Error(`Front protected-region QA regression: scoring missing ${token}`);
+}
+for (const token of [
+  "let protectedRegionChange:number|null=null",
+  'let protectedRegionStatus:ProtectedRegionStatus="unavailable"',
+  'if(view==="front")',
+  "const protectedDeltas=PROTECTED_RENDER_BOXES.map((box)=>boxDelta(reference,output,box))",
+  "protectedRegionStatus=classifyProtectedRegionChange(protectedRegionChange)",
+  "Deterministic protected-region check for the front view",
+  'const codeProtected=protectedRegionStatus==="unavailable" ? null : protectedRegionStatus',
+  "mannequinConsistency:combinedMannequin",
+  "Restore the locked mannequin and studio outside the garment edit region",
+]) {
+  if(!lockedPreviewAiVisualization.includes(token)) throw new Error(`Front protected-region QA regression: ai-visualization missing ${token}`);
+}
+console.log("Front protected-region QA gate passed: model/background drift is measured before a customer render can be trusted.");
 for (const token of [
   "FABRIC_CONTEXT_PANEL_WIDTH=500",
   "FABRIC_CONTEXT_HEIGHT=620",
