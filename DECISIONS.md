@@ -148,8 +148,8 @@ Architecture and product decisions that must persist across coding sessions.
 
 
 ## 2026-10-03 — Instant cloth shading uses neutral shape maps
-**Decision:** the customer photo compositor derives broad garment form from a neutral-gray, low-frequency studio lighting map rather than blending the photographed source garment luminance/albedo directly into the selected fabric.
+**Decision:** the customer photo compositor derives broad garment form from a neutral-gray, low-frequency studio lighting map normalized against the actual photographed garment region, rather than blending the photographed source garment luminance/albedo directly into the selected fabric.
 
-**Why:** direct template luminance can make pale Linen Earth cloth inherit the dark source shirt or make darker cloth inherit a pale trouser base, which reads like painted/stickered fabric even when the garment boundary is correct.
+**Why:** direct template luminance can make pale Linen Earth cloth inherit the dark source shirt or make darker cloth inherit a pale trouser base. A fixed brightness multiplier is also fragile across shirts, sleeves, trousers and future studio templates. Region-normalizing the photographed cloth around neutral gray keeps relative studio highlights/shadows while removing the source garment's base value.
 
-**Rule:** the catalogue swatch remains the colour/texture authority. The studio photograph may contribute neutral broad lighting, folds, seams and wrinkle relief only; source-garment colour must not be reintroduced as a shortcut.
+**Rule:** the catalogue swatch remains the colour/texture authority. The studio photograph may contribute garment-local neutral broad lighting, folds, seams and wrinkle relief only; source-garment colour/value must not be reintroduced as a shortcut or corrected with an arbitrary per-template albedo multiplier.
