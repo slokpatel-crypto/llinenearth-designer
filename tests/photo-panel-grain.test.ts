@@ -5,6 +5,8 @@ import {
   PHOTO_TUCKED_PANEL_PATTERN_ANCHOR,
   PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION,
   PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR,
+  PHOTO_UNTUCKED_TROUSER_GRAIN_ROTATION,
+  PHOTO_UNTUCKED_TROUSER_PATTERN_ANCHOR,
   photoPanelRotationFromVertical,
 } from "../src/lib/designer/photo-panel-grain.ts";
 
@@ -55,5 +57,23 @@ test("untucked studio shirt keeps sleeves and collar on photographed panel direc
     leftSleeve:{x:351,y:244},
     rightSleeve:{x:669,y:244},
     collar:{x:512,y:214},
+  });
+});
+
+
+test("untucked trouser photos keep each leg on its photographed fall",()=>{
+  assert.deepEqual(PHOTO_UNTUCKED_TROUSER_GRAIN_ROTATION,{
+    pleated:{leftTrouser:-3.6,rightTrouser:4.9},
+    wide:{leftTrouser:-1.8,rightTrouser:2.9},
+  });
+  assert.deepEqual(PHOTO_UNTUCKED_TROUSER_PATTERN_ANCHOR,{
+    pleated:{
+      leftTrouser:{x:495,y:758},
+      rightTrouser:{x:511,y:759},
+    },
+    wide:{
+      leftTrouser:{x:497,y:770},
+      rightTrouser:{x:513,y:774},
+    },
   });
 });

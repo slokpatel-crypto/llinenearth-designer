@@ -316,7 +316,7 @@ for(const token of ["photoCalibration:photoCalibration.verified ? {","photoPxPer
   if(!photoPreview.includes(token)) throw new Error(`Calibration-aware final-render identity regression: missing ${token}`);
 }
 console.log("Calibration lock identity gate passed: changing accepted photo scale invalidates locked/session final-render state.");
-for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","PHOTO_TUCKED_LEFT_SLEEVE_CLIP","PHOTO_TUCKED_RIGHT_SLEEVE_CLIP","PHOTO_TUCKED_LEFT_TROUSER_CLIP","PHOTO_TUCKED_RIGHT_TROUSER_CLIP","destination-in","masks.shirt","masks.pant","featherMaskInside","featheredMasks","featheredPathMask","pathMasks","if(path) context.drawImage(featheredPathMask(path),0,0)","patternScaleForFabric","placement.offsetX","soft-light","photographicShapeMaps","photographicShapeMap","grayscale(1) blur(7px)","weightedGarmentLuminanceMean","neutralizePhotographicLuminance","garmentMean","const lightingMask = photoLightingMask(mask,path)","globalAlpha = .58","globalAlpha = .07","Zoom fit","Compare","Boundary QA"]) {
+for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","PHOTO_TUCKED_LEFT_SLEEVE_CLIP","PHOTO_TUCKED_RIGHT_SLEEVE_CLIP","PHOTO_TUCKED_LEFT_TROUSER_CLIP","PHOTO_TUCKED_RIGHT_TROUSER_CLIP","destination-in","masks.shirt","masks.pant","featherMaskInside","featheredMasks","featheredPathMask","pathMasks","if(path) context.drawImage(featheredPathMask(path),0,0)","patternScaleForFabric","placement.offsetX","soft-light","photographicShapeMaps","photographicShapeMap","grayscale(1) blur(7px)","weightedGarmentLuminanceMean","neutralizePhotographicLuminance","garmentMean","const lightingMask = photoLightingMask(mask,path,Boolean(placement.maskPrepared))","globalAlpha = .58","globalAlpha = .07","Zoom fit","Compare","Boundary QA"]) {
   if (!photoPreview.includes(token)) throw new Error(`Real photographic Designer regression: PhotoOutfitPreview missing ${token}`);
 }
 const photoCustomerCss = fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
@@ -398,12 +398,37 @@ for (const token of [
 }
 console.log("Untucked shirt panel gate passed: torso, sleeves and collar project cloth independently on the photographed model.");
 for (const token of [
+  "untuckedTrouserLegMasks = new WeakMap<HTMLCanvasElement",
+  "UNTUCKED_TROUSER_SEAM_X=512",
+  "function splitUntuckedTrouserLegMasks(mask:HTMLCanvasElement)",
+  "const prepared=featherMaskInside(mask)",
+  "const rightWeight=clamp(",
+  "const leftWeight=1-rightWeight",
+  "maskPrepared:true",
+  "PHOTO_UNTUCKED_TROUSER_GRAIN_ROTATION[trouserGeometry].leftTrouser",
+  "PHOTO_UNTUCKED_TROUSER_GRAIN_ROTATION[trouserGeometry].rightTrouser",
+  "PHOTO_UNTUCKED_TROUSER_PATTERN_ANCHOR[trouserGeometry].leftTrouser",
+  "PHOTO_UNTUCKED_TROUSER_PATTERN_ANCHOR[trouserGeometry].rightTrouser",
+]) {
+  if (!photoPreview.includes(token)) throw new Error(`Untucked trouser leg projection regression: preview missing ${token}`);
+}
+for (const token of [
+  "PHOTO_UNTUCKED_TROUSER_PANEL_AXES",
+  "PHOTO_UNTUCKED_TROUSER_GRAIN_ROTATION",
+  "PHOTO_UNTUCKED_TROUSER_PATTERN_ANCHOR",
+  "visual projection geometry only",
+  "do not claim cutting",
+]) {
+  if (!photoPanelGrain.includes(token)) throw new Error(`Untucked trouser leg projection regression: geometry missing ${token}`);
+}
+console.log("Untucked trouser leg gate passed: left/right cloth projection preserves seam alpha while following photographed leg fall.");
+for (const token of [
   "panelLightingMasks = new WeakMap<HTMLCanvasElement, Map<string, HTMLCanvasElement>>",
-  'function photoLightingMask(mask?:HTMLCanvasElement,path="")',
-  "context.drawImage(featherMaskInside(mask),0,0)",
+  'function photoLightingMask(mask?:HTMLCanvasElement,path="",maskPrepared=false)',
+  "context.drawImage(maskPrepared?mask:featherMaskInside(mask),0,0)",
   'context.globalCompositeOperation="destination-in"',
   "context.drawImage(featheredPathMask(path),0,0)",
-  "const lightingMask = photoLightingMask(mask,path)",
+  "const lightingMask = photoLightingMask(mask,path,Boolean(placement.maskPrepared))",
   "exact photographed panel being",
   "not the whole shirt or both trouser legs",
 ]) {

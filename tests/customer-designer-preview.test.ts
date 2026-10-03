@@ -37,11 +37,11 @@ test("photographic garment clips feather only inside the real cloth boundary",()
 test("photo lighting normalization is panel-local inside adaptive garment masks",()=>{
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   assert.match(source,/panelLightingMasks = new WeakMap<HTMLCanvasElement, Map<string, HTMLCanvasElement>>/);
-  assert.match(source,/function photoLightingMask\(mask\?:HTMLCanvasElement,path=""\)/);
-  assert.match(source,/context\.drawImage\(featherMaskInside\(mask\),0,0\)/);
+  assert.match(source,/function photoLightingMask\(mask\?:HTMLCanvasElement,path="",maskPrepared=false\)/);
+  assert.match(source,/context\.drawImage\(maskPrepared\?mask:featherMaskInside\(mask\),0,0\)/);
   assert.match(source,/context\.globalCompositeOperation="destination-in"/);
   assert.match(source,/context\.drawImage\(featheredPathMask\(path\),0,0\)/);
-  assert.match(source,/const lightingMask = photoLightingMask\(mask,path\)/);
+  assert.match(source,/const lightingMask = photoLightingMask\(mask,path,Boolean\(placement\.maskPrepared\)\)/);
   assert.match(source,/exact photographed panel being[\s\S]*not the whole shirt or both trouser legs/);
 });
 
@@ -80,6 +80,26 @@ test("untucked photographic shirt projects fabric per torso sleeve and collar pa
   assert.match(source,/drawGarment\(context, modelPhoto, shirtImage, shirt, PHOTO_UNTUCKED_RIGHT_SLEEVE_CLIP/);
   assert.match(source,/drawGarment\(context, modelPhoto, shirtImage, shirt, PHOTO_UNTUCKED_COLLAR_CLIP/);
   assert.match(source,/directional[\s\S]*each traced arm instead of staying globally vertical/);
+});
+
+test("untucked trousers project fabric per photographed leg without seam alpha loss",()=>{
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  const grain=readFileSync("src/lib/designer/photo-panel-grain.ts","utf8");
+  assert.match(source,/UNTUCKED_TROUSER_SEAM_X=512/);
+  assert.match(source,/function splitUntuckedTrouserLegMasks\(mask:HTMLCanvasElement\)/);
+  assert.match(source,/const prepared=featherMaskInside\(mask\)/);
+  assert.match(source,/const rightWeight=clamp\(/);
+  assert.match(source,/const leftWeight=1-rightWeight/);
+  assert.match(source,/left\.data\.data\[index\+3\]=Math\.round\(alpha\*leftWeight\)/);
+  assert.match(source,/right\.data\.data\[index\+3\]=Math\.round\(alpha\*rightWeight\)/);
+  assert.match(source,/const trouserLegMasks=splitUntuckedTrouserLegMasks\(trouserMask\)/);
+  assert.match(source,/const trouserGeometry=templateKey==="wide"\?"wide":"pleated"/);
+  assert.match(source,/maskPrepared:true[\s\S]*PHOTO_UNTUCKED_TROUSER_GRAIN_ROTATION\[trouserGeometry\]\.leftTrouser/);
+  assert.match(source,/maskPrepared:true[\s\S]*PHOTO_UNTUCKED_TROUSER_GRAIN_ROTATION\[trouserGeometry\]\.rightTrouser/);
+  assert.match(source,/PHOTO_UNTUCKED_TROUSER_PATTERN_ANCHOR\[trouserGeometry\]\.leftTrouser/);
+  assert.match(source,/PHOTO_UNTUCKED_TROUSER_PATTERN_ANCHOR\[trouserGeometry\]\.rightTrouser/);
+  assert.match(grain,/PHOTO_UNTUCKED_TROUSER_PANEL_AXES/);
+  assert.match(grain,/visual projection geometry only/);
 });
 
 test("photo compositor removes source-template detail brightness calibration",()=>{
@@ -152,7 +172,7 @@ test("instant photo compositor normalizes source albedo before borrowing studio 
   assert.match(source,/grayscale\(1\) blur\(7px\)/);
   assert.match(source,/weightedGarmentLuminanceMean\(input\.data, maskPixels\.data\)/);
   assert.match(source,/neutralizePhotographicLuminance\(input\.data\[index\], garmentMean\)/);
-  assert.match(source,/const lightingMask = photoLightingMask\(mask,path\)/);
+  assert.match(source,/const lightingMask = photoLightingMask\(mask,path,Boolean\(placement\.maskPrepared\)\)/);
   assert.match(source,/globalCompositeOperation = "soft-light"[\s\S]*globalAlpha = \.58[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
   assert.match(source,/globalCompositeOperation = "multiply"[\s\S]*globalAlpha = \.07[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
   assert.match(source,/selected Linen Earth cloth/);

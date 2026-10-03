@@ -353,9 +353,9 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "neutralizePhotographicLuminance",
   "garmentMean",
   "panelLightingMasks = new WeakMap<HTMLCanvasElement, Map<string, HTMLCanvasElement>>",
-  "function photoLightingMask(mask?:HTMLCanvasElement,path=\"\")",
-  "context.drawImage(featherMaskInside(mask),0,0)",
-  "const lightingMask = photoLightingMask(mask,path)",
+  "function photoLightingMask(mask?:HTMLCanvasElement,path=\"\",maskPrepared=false)",
+  "context.drawImage(maskPrepared?mask:featherMaskInside(mask),0,0)",
+  "const lightingMask = photoLightingMask(mask,path,Boolean(placement.maskPrepared))",
   "globalAlpha = .58",
   "globalAlpha = .07",
   "function photographicReliefMap(photo: HTMLImageElement, garmentMask?: HTMLCanvasElement)",
@@ -378,6 +378,11 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "PHOTO_TUCKED_PANEL_PATTERN_ANCHOR",
   "PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION",
   "PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR",
+  "UNTUCKED_TROUSER_SEAM_X=512",
+  "splitUntuckedTrouserLegMasks",
+  "maskPrepared:true",
+  "PHOTO_UNTUCKED_TROUSER_GRAIN_ROTATION",
+  "PHOTO_UNTUCKED_TROUSER_PATTERN_ANCHOR",
   "function fabricPatternTransform(fabric:DesignerFabric,placement:FabricPatternPlacement,scale:number)",
   "translate(anchorX,anchorY)",
   "translate(-anchorX,-anchorY)",
@@ -395,6 +400,10 @@ requireTokens("src/lib/designer/photo-panel-grain.ts", [
   "PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR",
   "PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION",
   "PHOTO_UNTUCKED_SHIRT_PANEL_AXES",
+  "PHOTO_UNTUCKED_TROUSER_PANEL_AXES",
+  "PHOTO_UNTUCKED_TROUSER_GRAIN_ROTATION",
+  "PHOTO_UNTUCKED_TROUSER_PATTERN_ANCHOR",
+  "visual projection geometry only",
   "screen-space layout anchors only",
   "not tailoring or grain evidence",
   "not a claim about physical cloth measurements",
@@ -404,6 +413,7 @@ requireTokens("tests/photo-panel-grain.test.ts", [
   "tucked photo panels keep directional fabric aligned to photographed garment axes",
   "tucked panel pattern anchors stay on photographed seam and waist starts",
   "untucked studio shirt keeps sleeves and collar on photographed panel directions",
+  "untucked trouser photos keep each leg on its photographed fall",
 ]);
 
 requireTokens("tests/photo-shading.test.ts", [
@@ -420,6 +430,7 @@ requireTokens("tests/customer-designer-preview.test.ts", [
   "contrast collar and cuff shading reuses baseline-neutral photo structure",
   "tucked directional fabric follows photographed panel grain with stable pattern anchors",
   "untucked photographic shirt projects fabric per torso sleeve and collar panel",
+  "untucked trousers project fabric per photographed leg without seam alpha loss",
 ]);
 requireTokens("src/lib/designer/brand-language.ts", [
   "linen-earth-brand-language-provisional-1",
