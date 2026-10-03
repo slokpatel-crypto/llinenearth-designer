@@ -57,3 +57,12 @@ test("image quality reports low resolution and flat blur explicitly",()=>{
   assert(quality.issues.includes("blur_high"));
   assert(quality.score<60);
 });
+
+test("saturated fabric colour is not misclassified as an illumination colour cast",()=>{
+  const rgb=solid(128,128,20,55,185);
+  const gray=grayFromRgb(rgb);
+  const quality=assessImageQuality(rgb,gray,128,128,3,1200,1200);
+  assert(quality.colorCast>95);
+  assert(!quality.issues.includes("strong_color_cast"));
+});
+

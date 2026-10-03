@@ -196,3 +196,10 @@ Architecture and product decisions that must persist across coding sessions.
 
 **Rule:** generate a binary PNG mask server-side from the exact active shirt/trouser photo-template paths; pass it only to the locked front refinement where source and mask coordinates are aligned. Repairs and alternate camera views do not reuse the front mask because generated geometry may have moved. Treat the mask as guidance, not a hard boundary; the existing automated fidelity QA remains mandatory.
 
+## 2026-10-03 — Fabric chroma is not white-balance evidence
+**Decision:** Fabric Analyzer image quality no longer penalizes a large RGB channel spread as a `strong_color_cast` by itself.
+
+**Why:** a saturated navy, burgundy or green fabric naturally has unequal RGB channel means. Without a known neutral grey/white reference in the same light, that imbalance cannot distinguish the cloth's real colour from an illumination cast. Treating chroma as white-balance evidence unfairly downgraded strongly coloured fabrics.
+
+**Rule:** keep the existing channel-spread value only as a diagnostic compatibility field. Do not turn it into a colour-cast issue or quality penalty unless a future capture protocol supplies a known neutral reference. Physical colour verification remains a separate controlled evidence workflow.
+

@@ -125,6 +125,10 @@ export function assessImageQuality(
   const meanLuma=mean(Array.from(gray));
   const blurVariance=laplacianVariance(gray,width,height);
   const glarePct=total?glare/total*100:100;
+  // RGB channel spread describes the fabric's own chroma as much as the light.
+  // A saturated blue/red swatch can legitimately have a large spread, so this
+  // diagnostic must never be promoted to white-balance/cast evidence without a
+  // known neutral reference photographed under the same illumination.
   const colorCast=Math.max(...means)-Math.min(...means);
   const border=regionMean(rgb,width,height,channels,"border");
   const center=regionMean(rgb,width,height,channels,"center");
@@ -139,7 +143,6 @@ export function assessImageQuality(
   else if(glarePct>5){issues.push("glare_present");score-=12;}
   if(meanLuma<30){issues.push("underexposed");score-=25;}
   else if(meanLuma>230){issues.push("overexposed");score-=25;}
-  if(colorCast>95){issues.push("strong_color_cast");score-=12;}
   if(borderCenterDelta>115){issues.push("swatch_may_not_fill_frame");score-=18;}
 
   return {
