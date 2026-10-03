@@ -28,6 +28,15 @@ import {
 
 const WIDTH = 1024;
 const HEIGHT = 1536;
+const LOCKED_PREVIEW_MIME="image/webp";
+const LOCKED_PREVIEW_QUALITY=.96;
+
+function serializeLockedPreview(canvas:HTMLCanvasElement) {
+  // Keep fine weave/stripe detail for the final-render handoff. Modern browsers
+  // emit WebP here; per Canvas semantics an unsupported type falls back to PNG,
+  // which the server validator also accepts.
+  return canvas.toDataURL(LOCKED_PREVIEW_MIME,LOCKED_PREVIEW_QUALITY);
+}
 type PhotorealView = "front"|"three-quarter"|"side"|"back";
 type SelectedLookVisualCheck = {
   available:boolean;
@@ -951,7 +960,7 @@ export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured
       setError(false);
       if(onPreviewReadyRef.current) {
         try {
-          onPreviewReadyRef.current(canvas.toDataURL("image/jpeg",.92),resolvedCalibrationIdentity);
+          onPreviewReadyRef.current(serializeLockedPreview(canvas),resolvedCalibrationIdentity);
         } catch {
           // The visible preview stays usable even if browser serialization fails.
         }
@@ -1195,7 +1204,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       let lockedPreviewImage:string|undefined;
       if(!creativeDirection && ready && canvasRef.current) {
         try {
-          lockedPreviewImage=canvasRef.current.toDataURL("image/jpeg",.92);
+          lockedPreviewImage=serializeLockedPreview(canvasRef.current);
         } catch {
           // Final rendering can fall back to the canonical studio photograph
           // if the browser cannot serialize the deterministic live preview.
@@ -1288,7 +1297,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       let lockedPreviewImage:string|undefined;
       if(ready && canvasRef.current) {
         try {
-          lockedPreviewImage=canvasRef.current.toDataURL("image/jpeg",.92);
+          lockedPreviewImage=serializeLockedPreview(canvasRef.current);
         } catch {
           // Repair still has the existing trusted generated image if browser
           // serialization is unavailable.
