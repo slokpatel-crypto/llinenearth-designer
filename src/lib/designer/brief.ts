@@ -1,5 +1,4 @@
 import {
-  DESIGNER_STYLE_CHOICES,
   designerStyleForOccasion,
   type DesignerClimate,
   type DesignerContext,
@@ -8,6 +7,7 @@ import {
   type OccasionTier,
 } from "@/lib/designer/engine";
 import type { DesignerSearchPreference, DesignerSearchTier } from "@/lib/designer/search";
+import { designerFabricBriefText, designerMentionIsNegated, parseDesignerConstructionIntent } from "./construction-intent.ts";
 
 export type ParsedDesignerBrief = {
   original:string;
@@ -19,11 +19,7 @@ export type ParsedDesignerBrief = {
 };
 
 function includesAny(text:string,words:string[]) {
-  return words.some((word)=>text.includes(word));
-}
-
-function pick<K extends keyof DesignerStyle>(key:K,matcher:RegExp,fallback:DesignerStyle[K]):DesignerStyle[K] {
-  return (DESIGNER_STYLE_CHOICES[key].find((value)=>matcher.test(value)) || fallback) as DesignerStyle[K];
+  return words.some((word)=>new RegExp("\\b"+word.trim().split(" ").join("\\s+")+"\\b","i").test(text));
 }
 
 function occasionFrom(text:string):OccasionTier {
@@ -47,6 +43,7 @@ function climateFrom(text:string):DesignerClimate {
 }
 
 function intentionFrom(text:string):DesignerIntention {
+  if(/\b(?:not|no|avoid)(?: too)? (?:bold|statement|expressive)\b|\bnot flashy\b/i.test(text)) return "Understated";
   if(includesAny(text,["bold","statement","stand out","standout","not boring","creative","different","distinctive","fashion forward","fashion-forward","memorable"])) return "Expressive";
   if(includesAny(text,["quiet","understated","minimal","subtle","simple","conservative","low key","low-key"])) return "Understated";
   return "Balanced";
@@ -71,64 +68,26 @@ function colorPreferences(text:string) {
 }
 
 export function applyExplicitStyle(text:string,style:DesignerStyle) {
-  const next={...style};
-  if(/\b(?:not|avoid|no)\s+(?:a\s+)?slim(?: fit)?\b/i.test(text)) next.shirtFit=pick("shirtFit",/regular|classic/i,next.shirtFit);
-  if(/\b(?:not|avoid|no)\s+(?:a\s+)?(?:french|double) cuffs?\b/i.test(text)) next.cuff=pick("cuff",/barrel.*1/i,next.cuff);
-  if(/\b(?:not|avoid|no)\s+(?:pleats?|pleated trousers?)\b/i.test(text)) next.trouser=pick("trouser",/flat[- ]front/i,next.trouser);
-  // A rejected option is not a positive request for that same option.
-  text=text.replace(/\b(?:not|avoid|without|no)\s+(?:a\s+)?(?:slim(?: fit)?|french(?: cuffs?)?|double cuffs?|cutaway|pleats?|pleated trousers?|wide[- ]leg)\b/gi,"");
-  if(/\buntucked\b/i.test(text)) next.shirtWear="Untucked";
-  if(/\btucked\b/i.test(text)) next.shirtWear="Tucked";
-
-  if(/\brelaxed\b(?!\s+(?:trouser|pants))/i.test(text)) next.shirtFit=pick("shirtFit",/relaxed/i,next.shirtFit);
-  if(/\bslim\b/i.test(text)) next.shirtFit=pick("shirtFit",/slim/i,next.shirtFit);
-  if(/\bclassic\b|\bregular\b/i.test(text)) next.shirtFit=pick("shirtFit",/regular|classic/i,next.shirtFit);
-
-  if(/\bcutaway\b/i.test(text)) next.collar=pick("collar",/cutaway/i,next.collar);
-  else if(/\bspread collar\b|\bspread\b/i.test(text)) next.collar=pick("collar",/spread/i,next.collar);
-  else if(/\bbutton[- ]?down\b/i.test(text)) next.collar=pick("collar",/button[- ]?down/i,next.collar);
-  else if(/\bpoint collar\b/i.test(text)) next.collar=pick("collar",/point/i,next.collar);
-
-  if(/\bfrench cuffs?\b|\bdouble cuffs?\b/i.test(text)) next.cuff=pick("cuff",/french|double/i,next.cuff);
-  else if(/\btwo[- ]?button cuffs?\b|\b2[- ]?button cuffs?\b/i.test(text)) next.cuff=pick("cuff",/2-button|2 button/i,next.cuff);
-  else if(/\bbarrel cuffs?\b/i.test(text)) next.cuff=pick("cuff",/barrel/i,next.cuff);
-
-  if(/\bpleat(?:ed|s)? trouser/i.test(text)) next.trouser=pick("trouser",/pleated/i,next.trouser);
-  else if(/\bflat[- ]?front\b/i.test(text)) next.trouser=pick("trouser",/flat[- ]?front|formal.*flat/i,next.trouser);
-  else if(/\bwide[- ]?leg\b|\brelaxed trouser/i.test(text)) next.trouser=pick("trouser",/wide|relaxed drape/i,next.trouser);
-  else if(/\bcropped\b|\bankle[- ]?length\b/i.test(text)) next.trouser=pick("trouser",/cropped|ankle/i,next.trouser);
-
-  if(/\bhigh rise\b/i.test(text)) next.rise=pick("rise",/high rise/i,next.rise);
-  else if(/\blow rise\b/i.test(text)) next.rise=pick("rise",/low rise/i,next.rise);
-  else if(/\bmid rise\b/i.test(text)) next.rise=pick("rise",/mid rise/i,next.rise);
-
-  if(/\bside[- ]?adjuster/i.test(text)) next.waistband=pick("waistband",/side[- ]?adjuster/i,next.waistband);
-  else if(/\bbelt loops?\b/i.test(text)) next.waistband=pick("waistband",/belt loops/i,next.waistband);
-
-  if(/\bno break\b/i.test(text)) next.break=pick("break",/no break/i,next.break);
-  else if(/\bslight break\b/i.test(text)) next.break=pick("break",/slight break/i,next.break);
-  else if(/\bfull break\b/i.test(text)) next.break=pick("break",/full break/i,next.break);
-
-  return next;
+  return {...style,...parseDesignerConstructionIntent(text).patch};
 }
 
 export function explicitDesignerStylePatch(text:string):Partial<DesignerStyle> {
-  const first={} as DesignerStyle, last={} as DesignerStyle;
-  const keys=Object.keys(DESIGNER_STYLE_CHOICES) as Array<keyof DesignerStyle>;
-  for(const key of keys) {
-    first[key]=DESIGNER_STYLE_CHOICES[key][0];
-    last[key]=DESIGNER_STYLE_CHOICES[key].at(-1)!;
-  }
-  const a=applyExplicitStyle(text,first), b=applyExplicitStyle(text,last);
-  return Object.fromEntries(keys.filter((key)=>first[key]!==last[key] && a[key]===b[key]).map((key)=>[key,a[key]]));
+  return parseDesignerConstructionIntent(text).patch;
 }
 
-function patternPreference(text:string):DesignerSearchPreference["preferredPattern"] {
-  if(/\bplain\b|\bsolid\b/i.test(text)) return "plain";
-  if(/\bstripe|striped|pinstripe/i.test(text)) return "stripe";
-  if(/\bcheck|checked|windowpane|gingham/i.test(text)) return "check";
-  if(/\bprint|printed|floral|geometric/i.test(text)) return "print";
-  return undefined;
+function patternPreferences(text:string) {
+  const excludedPatterns:NonNullable<DesignerSearchPreference["excludedPatterns"]>=[];
+  let preferredPattern:DesignerSearchPreference["preferredPattern"];
+  const patterns:Array<[NonNullable<DesignerSearchPreference["preferredPattern"]>,RegExp]>=[
+    ["plain",/\b(?:plain|solid)s?\b/gi],["stripe",/\b(?:stripes?|striped|pinstripes?)\b/gi],
+    ["check",/\b(?:checks?|checked|windowpane|gingham)\b/gi],["print",/\b(?:prints?|printed|floral|geometric)\b/gi],
+  ];
+  for(const [pattern,matcher] of patterns) for(const match of text.matchAll(matcher)) {
+    if(pattern==="check" && /^check$/i.test(match[0]) && !designerMentionIsNegated(text,match.index!) && !/^\s+(?:cloth|fabric|pattern|shirt|trouser)/i.test(text.slice(match.index!+match[0].length))) continue;
+    if(designerMentionIsNegated(text,match.index!)) {if(!excludedPatterns.includes(pattern)) excludedPatterns.push(pattern);}
+    else preferredPattern ||= pattern;
+  }
+  return {preferredPattern,excludedPatterns};
 }
 
 function preferredTier(intention:DesignerIntention):DesignerSearchTier {
@@ -144,12 +103,13 @@ export function parseDesignerBrief(raw:string,base?:{occasion:OccasionTier;conte
   const climate=readClimate==="Not specified" ? base?.context.climate || readClimate : readClimate;
   const intention=readIntention==="Balanced" && !/\bbalanced\b/.test(text) ? base?.context.intention || readIntention : readIntention;
   const style=applyExplicitStyle(original,base?.style || designerStyleForOccasion(occasion));
-  const colors=colorPreferences(original);
-  const pattern=patternPreference(original);
+  const colors=colorPreferences(designerFabricBriefText(original));
+  const {preferredPattern:pattern,excludedPatterns}=patternPreferences(original);
   const preference:DesignerSearchPreference={
     wantedTokens:colors.wanted,
     avoidTokens:colors.avoid,
     preferredPattern:pattern,
+    ...(excludedPatterns.length?{excludedPatterns}:{}),
     preferredTier:preferredTier(intention),
     strictOccasionFit:true,
   };
@@ -161,6 +121,7 @@ export function parseDesignerBrief(raw:string,base?:{occasion:OccasionTier;conte
     ...(colors.wanted.length ? ["colour pull: "+colors.wanted.join(", ")] : []),
     ...(colors.avoid.length ? ["avoid: "+colors.avoid.join(", ")] : []),
     ...(pattern ? [pattern+" fabric preference"] : []),
+    ...(excludedPatterns.length ? ["exclude fabric patterns: "+excludedPatterns.join(", ")] : []),
     ...(style.shirtWear!==designerStyleForOccasion(occasion).shirtWear ? [style.shirtWear.toLowerCase()+" shirt"] : []),
   ];
 

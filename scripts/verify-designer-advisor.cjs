@@ -85,7 +85,18 @@ async function apiContracts(){
   await post("reject invented construction",{...base,brief:"Critique this outfit",currentStyle:{...base.currentStyle,collar:"Invented collar"}},400);
   await post("reject unavailability",{...base,brief:"Critique this outfit",currentShirtId:"not-a-stock-fabric"},409);
   await post("reject ambiguous judgement",{...base,brief:"Critique this outfit",judgement:{recommendationId:"CI-judged-direction",rating:"down",reason:"formality"}},400);
-  console.log("PASS 13 actual Designer HTTP contracts");
+  const compound=await post("compound design task",{...base,brief:"Design a comfortable summer wedding outfit with a mandarin collar and horn buttons"});
+  assert.equal(compound.advice.task,"design");assert.ok(compound.results.length);for(const option of compound.results){assert.equal(option.style.collar,"Mandarin / Band Collar");assert.equal(option.style.button,"Horn");}
+  const details=await post("named construction revision",{...base,brief:"Keep both fabrics. Make the collar mandarin, hide the placket and use horn buttons."});
+  assert.equal(details.results.length,1);assert.equal(details.results[0].style.placket,"Hidden / Fly-front");assert.equal(details.results[0].style.button,"Horn");assert.equal(details.results[0].shirt.id,base.currentShirtId);
+  const collars=await post("named collar comparison",{...base,brief:"Compare mandarin vs camp collar"});
+  assert.deepEqual(collars.results.map(option=>option.style.collar),["Mandarin / Band Collar","Cuban / Camp Collar"]);
+  const excluded=await post("negated energy and patterns",{...base,brief:"Design a resort outfit, not bold and no prints or checks"});
+  assert.equal(excluded.interpretation.context.intention,"Understated");assert.ok(excluded.results.length);
+  for(const option of excluded.results)for(const fabric of [option.shirt,option.pant])assert.doesNotMatch(fabric.patternType,/print|check/i);
+  const ambiguous=await post("contradictory construction clarification",{...base,brief:"Use point collar and spread collar"});assert.equal(ambiguous.advice.task,"clarify");assert.deepEqual(ambiguous.results,[]);
+  const trouser=await post("unsupported trouser fit clarification",{...base,brief:"Make the trousers slim. Keep the shirt fit."});assert.equal(trouser.advice.task,"clarify");assert.deepEqual(trouser.results,[]);
+  console.log("PASS "+summary.apiContracts.length+" actual Designer HTTP contracts");
 }
 (async()=>{
   fs.mkdirSync(output,{recursive:true});await apiContracts();browser=await chromium.launch({headless:true});
@@ -108,8 +119,17 @@ async function apiContracts(){
     await complete(page,"assessment",assessmentIndex,assessmentFixture(applied));
     assert.equal(await page.getByLabel("Shirt fit",{exact:true}).inputValue(),"Relaxed Fit");
     const completed=(await memory(page)).filter(e=>e.type==="designer_recommendation");assert.equal(completed.at(-1).payload.style.shirtFit,"Relaxed Fit");
+    const constructionPixels=await mainPixels(page),named=await answer(page,await start(page,"Keep both fabrics. Make the collar mandarin, hide the placket and use horn buttons."));
+    assert.equal(named.results.length,1);assert.equal(named.results[0].style.collar,"Mandarin / Band Collar");assert.equal(named.results[0].style.placket,"Hidden / Fly-front");assert.equal(named.results[0].style.button,"Horn");
+    assert.equal(await mainPixels(page),constructionPixels,"A named construction request still needs Apply");
+    await page.screenshot({path:path.join(output,"construction-"+width+".png"),fullPage:true});
+    const namedAssessmentIndex=await count(page,"assessment");await panel(page).getByRole("button",{name:"Apply direction",exact:true}).first().click();await settle(page);
+    const namedApplied=(await request(page,"assessment",namedAssessmentIndex)).body;
+    assert.deepEqual(namedApplied.styleSpec,fromLegacyStyle(named.results[0].style));await complete(page,"assessment",namedAssessmentIndex,assessmentFixture(namedApplied));
+    const namedMemory=(await memory(page)).filter(e=>e.type==="designer_recommendation").at(-1).payload.style;
+    assert.equal(namedMemory.collar,"Mandarin / Band Collar");assert.equal(namedMemory.placket,"Hidden / Fly-front");assert.equal(namedMemory.button,"Horn");
     const metrics=await page.evaluate(()=>({width:innerWidth,documentWidth:document.documentElement.scrollWidth}));assert.ok(metrics.documentWidth<=width+2);
-    await page.screenshot({path:path.join(output,"applied-"+width+".png"),fullPage:true});summary.viewports.push({...metrics,critiqueJudgementRevisionApply:"passed",sameFrameDispatch:"passed",exactCanonicalConstruction:"passed"});await context.close();console.log("PASS designer judgement flow at "+width+"px");
+    await page.screenshot({path:path.join(output,"applied-"+width+".png"),fullPage:true});summary.viewports.push({...metrics,critiqueJudgementRevisionApply:"passed",sameFrameDispatch:"passed",exactCanonicalConstruction:"passed",namedConstructionRevisionApply:"passed"});await context.close();console.log("PASS designer judgement flow at "+width+"px");
   }
   await regression("stale-question-after-new-text",async page=>{const old=await start(page);const fresh=await start(page,"Compare point vs spread collar");await answer(page,old);assert.equal(await panel(page).locator(".designerAdvice").count(),0);assert.equal((await request(page,"question",old)).aborted,true);await answer(page,fresh);assert.match(await panel(page).locator(".designerAdvice>span").textContent(),/COMPARE/);});
   await regression("stale-question-after-construction-change",async page=>{const old=await start(page);await page.getByLabel("Shirt fit",{exact:true}).selectOption("Relaxed Fit");await answer(page,old);assert.equal(await panel(page).locator(".designerAdvice").count(),0);assert.equal((await memory(page)).filter(e=>e.type==="designer_override").length,0);});

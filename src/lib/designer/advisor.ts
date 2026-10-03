@@ -1,11 +1,12 @@
 import { DESIGNER_STYLE_CHOICES, designerStyleForOccasion, evaluateDesignerCombo, type DesignerStyle, type OccasionTier, type DesignerContext } from "./engine.ts";
 import { parseDesignerBrief, explicitDesignerStylePatch } from "./brief.ts";
-import { searchDesignerCatalogue, type DesignerSearchInput, type DesignerSearchTier } from "./search.ts";
+import { designerFabricAllowedForBrief, searchDesignerCatalogue, type DesignerSearchInput, type DesignerSearchTier } from "./search.ts";
+import { designerFabricBriefText, parseDesignerConstructionIntent } from "./construction-intent.ts";
 import { assessFitConstruction } from "./fit-construction.ts";
 import { buildDesignerNegotiation } from "./constraint-negotiation.ts";
 import { fromLegacyStyle, type StyleSpecV2 } from "./style-spec-v2.ts";
 import { designerFeedbackNeedsInstruction, isDesignerFeedbackReason, type DesignerFeedbackReason } from "./outcome-learning.ts";
-import { legacyOptionByLabel } from "./options/library.ts";
+import { legacyOptionByLabel, optionsFor } from "./options/library.ts";
 
 export type DesignerTask="design"|"critique"|"compare"|"refine"|"fit"|"construction"|"material"|"production"|"clarify";
 export type DesignerJudgement={recommendationId:string;rating:"up"|"down";reason?:DesignerFeedbackReason;note:string};
@@ -59,6 +60,9 @@ export function designerTaskFor(question:string,judgement?:DesignerJudgement|nul
   if(judgement?.rating==="down") return "refine";
   if(/\b(compare|versus|vs\.?|difference between|which .* better)\b/.test(text)) return "compare";
   if(/\b(tech pack|production|cutting|ready to cut|manufactur|tailor handoff)\b/.test(text)) return "production";
+  // Outfit requirements supplement the primary design task.
+  if(/\b(design|suggest|recommend|create|build|put together|plan)\b/.test(text) && /\b(outfit|look|wear|shirts?|trousers?|pants|wedding|meeting|office|party|resort)\b/.test(text) && !/\b(suggest|recommend)\b.*\b(collar|cuff|placket|button|waistband|rise|break)\b/.test(text)) return "design";
+  if(/\b(change|make|refine|improve|replace|switch|reduce|fix|hide|set|use)\b/.test(text) && Object.keys(parseDesignerConstructionIntent(text).patch).length) return "refine";
   if(/\b(fit|tight|loose|ease|mobility|seat|shoulder|posture|measurement|comfortable|comfort)\b/.test(text)) return "fit";
   if(/\b(gsm|weight|weave|texture|drape|shrink|shrinkage|opacity|sheer|fibre|fiber|composition|wash|care)\b/.test(text)) return "material";
   if(/\b(change|make|refine|improve|replace|switch|reduce|keep|fix)\b/.test(text)) return "refine";
@@ -69,6 +73,7 @@ export function designerTaskFor(question:string,judgement?:DesignerJudgement|nul
 }
 
 function fabricRestrictions(text:string,task:DesignerTask,reason?:DesignerFeedbackReason) {
+  text=designerFabricBriefText(text);
   const keepBoth=/\bkeep\s+(?:(?:my|the|these|both|current|selected)\s+)*(?:fabrics?|cloth|fabric pair)\b|\b(?:same|unchanged)\s+(?:fabrics?|cloth)\b|\b(?:do not|don't)\s+change\s+(?:the\s+)?fabrics?\b/i.test(text);
   const keepShirt=keepBoth || /\bkeep\s+(?:(?:my|the|current|selected)\s+)*(?:shirt|shirting)(?:\s+(?:fabric|cloth))?\b/i.test(text);
   const keepPant=keepBoth || /\bkeep\s+(?:(?:my|the|current|selected)\s+)*(?:pants?|trousers?)(?:\s+(?:fabric|cloth))?\b/i.test(text);
@@ -92,7 +97,9 @@ const TASK_NAMES:Record<DesignerTask,string>={design:"Outfit directions",critiqu
 
 export function answerDesignerQuestion(input:DesignerSearchInput & {brief:string;judgement?:DesignerJudgement|null;parsed?:ReturnType<typeof parseDesignerBrief>}) {
   const text=input.brief+(input.judgement?.note ? " "+input.judgement.note : "");
-  const task=designerTaskFor(text,input.judgement);
+  let task=designerTaskFor(text,input.judgement);
+  const constructionIntent=parseDesignerConstructionIntent(input.judgement ? input.judgement.note : text);
+  if(constructionIntent.issues.length && task!=="compare") task="clarify";
   let parsed=input.parsed || parseDesignerBrief(input.judgement ? input.judgement.note || "Revise this direction" : text,{occasion:input.occasion,context:input.context,style:input.chosenStyle});
   if(!input.parsed && task==="design" && !/\b(?:keep|preserve|same|unchanged)\b/i.test(text)) parsed={...parsed,style:{...designerStyleForOccasion(parsed.occasion),...explicitDesignerStylePatch(text)}};
   const explicit=explicitDesignerStylePatch(input.judgement ? input.judgement.note : text);
@@ -113,7 +120,7 @@ export function answerDesignerQuestion(input:DesignerSearchInput & {brief:string
   const proposed=assess();
   const advice:DesignerAdvice={
     version:"designer-advice-v1",task,headline:TASK_NAMES[task],
-    answer:task==="clarify" ? "I can design, critique, compare and refine Linen Earth shirts and trousers. Ask about the selected cloth, cut, occasion, fit or construction; other garment categories need a supported block and material brief." : `${current.recommendation.shortReason} ${current.negotiation.headline}`,
+    answer:task==="clarify" ? constructionIntent.issues.join(" ") || "I can design, critique, compare and refine Linen Earth shirts and trousers. Ask about the selected cloth, cut, occasion, fit or construction; other garment categories need a supported block and material brief." : `${current.recommendation.shortReason} ${current.negotiation.headline}`,
     findings:[],nextSteps:[],preserved:[...(restrictions.keepShirt?[input.currentShirt.name+" shirt fabric"]:[]),...(restrictions.keepPant?[input.currentPant.name+" trouser fabric"]:[])],
     revision:input.judgement?.rating==="down" ? `Revising your judged direction for ${input.judgement.reason?.replace(/_/g," ") || input.judgement.note}. Your explicit instructions take priority.` : null,
   };
@@ -155,12 +162,16 @@ export function answerDesignerQuestion(input:DesignerSearchInput & {brief:string
   const results:DesignerAdviceOption[]=[];
   const addOption=(title:string,shirt=input.currentShirt,pant=input.currentPant,candidateStyle=style,tier:DesignerSearchTier="Elevated",reasons:string[]=[],fitAdaptation="")=>{
     if(restrictions.keepShirt && shirt.id!==input.currentShirt.id || restrictions.keepPant && pant.id!==input.currentPant.id) return;
+    if(!designerFabricAllowedForBrief(shirt,parsed.preference) || !designerFabricAllowedForBrief(pant,parsed.preference)) return;
+    if(Object.entries(constructionIntent.excluded).some(([key,values])=>values?.includes(candidateStyle[key as keyof DesignerStyle]))) return;
     if(results.some((result)=>result.shirt.id===shirt.id && result.pant.id===pant.id && JSON.stringify(result.style)===JSON.stringify(candidateStyle))) return;
     const read=assess(shirt,pant,candidateStyle);
     const changes=Object.keys(candidateStyle).filter((key)=>candidateStyle[key as keyof DesignerStyle]!==input.chosenStyle[key as keyof DesignerStyle]).map((key)=>`${key}: ${input.chosenStyle[key as keyof DesignerStyle]} → ${candidateStyle[key as keyof DesignerStyle]}`);
     if(shirt.id!==input.currentShirt.id) changes.unshift("Shirt fabric: "+shirt.name);
     if(pant.id!==input.currentPant.id) changes.unshift("Trouser fabric: "+pant.name);
-    const constructionNotes=([ ["shirt.collar",candidateStyle.collar],["shirt.cuff",candidateStyle.cuff],["shirt.fit",candidateStyle.shirtFit],["pant.type",candidateStyle.trouser] ] as const).map(([group,label])=>legacyOptionByLabel(group,label)).filter((option)=>option && option.description!==option.label).map((option)=>`${option!.label}: ${option!.description} (recorded option guidance; ${option!.reviewStatus}).`);
+    const groups={collar:"shirt.collar",cuff:"shirt.cuff",placket:"shirt.placket",shirtFit:"shirt.fit",shirtWear:"shirt.wear",trouser:"pant.type",rise:"pant.rise",waistband:"pant.waistband",break:"pant.break",button:"shirt.button"} as const;
+    const guidanceKeys=unique([...Object.keys(candidateStyle).filter((key)=>candidateStyle[key as keyof DesignerStyle]!==input.chosenStyle[key as keyof DesignerStyle]),"collar","cuff","shirtFit","trouser"]) as Array<keyof typeof groups>;
+    const constructionNotes=guidanceKeys.filter((key)=>key in groups).map((key)=>legacyOptionByLabel(groups[key],candidateStyle[key]) || optionsFor(groups[key]).find((option)=>option.label===candidateStyle[key])).filter((option)=>option && option.description!==option.label).map((option)=>option!.label+": "+option!.description+" (recorded option guidance; "+option!.reviewStatus+").");
     results.push({id:`advice-option-${results.length+1}`,rank:results.length+1,title,tier,shirt,pant,style:candidateStyle,styleSpec:fromLegacyStyle(candidateStyle),recommendation:read.recommendation,
       reasons:unique([...constructionNotes,...reasons,read.recommendation.shortReason,...read.recommendation.rules.filter((rule)=>rule.status==="pass").slice(0,2).map((rule)=>rule.explanation)]).slice(0,7),
       tradeoffs:unique([...read.negotiation.blockers,...read.negotiation.reviews,...read.negotiation.tradeoffs,...read.negotiation.missingFacts].map((issue)=>issue.message)).slice(0,4),fitAdaptation,changeSummary:changes,canApply:read.negotiation.blockers.length===0,fitTargets:[...read.fit.shirtTargets,...read.fit.trouserTargets]});
@@ -190,9 +201,9 @@ export function answerDesignerQuestion(input:DesignerSearchInput & {brief:string
         }
       }
     }
-    if(results.length<2 && /pleat|flat[- ]front|trouser|pants/i.test(text)) {
+    if(parts.length!==2 && results.length<2 && /pleat|flat[- ]front|trouser|pants/i.test(text)) {
       for(const matcher of [/pleated/i,/flat[- ]front/i]) addOption(choose("trouser",matcher,style.trouser),input.currentShirt,input.currentPant,{...input.chosenStyle,trouser:choose("trouser",matcher,style.trouser)});
-    } else if(results.length<2 && /collar/i.test(text)) {
+    } else if(parts.length!==2 && results.length<2 && /collar/i.test(text)) {
       for(const matcher of [/point/i,/spread/i]) addOption(choose("collar",matcher,style.collar),input.currentShirt,input.currentPant,{...input.chosenStyle,collar:choose("collar",matcher,style.collar)});
     }
     if(results.length>=2) {
