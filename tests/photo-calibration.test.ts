@@ -130,5 +130,6 @@ test("Style Director invalidates a generated photoreal when accepted photo calib
   assert.match(page,/function acceptLockedPreview\(dataUrl:string,calibrationIdentity:string\)/);
   assert.match(page,/setRenderCalibrationIdentity\(sourceCalibrationIdentity\)/);
   assert.match(preview,/resolvedCalibrationIdentity/);
-  assert.match(preview,/LOCKED_PREVIEW_MIME="image\/webp"/);\n  assert.match(preview,/onPreviewReadyRef\.current\(serializeLockedPreview\(canvas\),resolvedCalibrationIdentity\)/);
+  assert.match(preview,/LOCKED_PREVIEW_MIME="image\/webp"/);
+  assert.match(preview,/onPreviewReadyRef\.current\(serializeLockedPreview\(canvas\),resolvedCalibrationIdentity\)/);
 });
