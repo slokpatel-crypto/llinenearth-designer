@@ -373,7 +373,7 @@ for (const token of [
   "function drawWhiteDetail",
   "const detailMask = featheredPathMask(path)",
   "photographicShapeMap(photo, detailMask)",
-  "const relief = photographicReliefMap(photo)",
+  "const relief = photographicReliefMap(photo, detailMask)",
   "globalAlpha = .42",
   "globalAlpha = .32",
 ]) {
