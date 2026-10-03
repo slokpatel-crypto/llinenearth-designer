@@ -541,43 +541,43 @@ function drawGarmentPanels(
   // One garment-wide lighting/relief pass is enough even when directional
   // pattern placement differs by photographed panel. This avoids recomputing
   // identical shape maps for body/sleeves or left/right trouser legs.
-  const singlePath=panels.length===1 ? panels[0].path : "";
-  const lightingMask=mask ?? (singlePath ? featheredPathMask(singlePath) : undefined);
-  const shape=photographicShapeMap(photo, lightingMask);
-  context.filter="none";
-  context.globalCompositeOperation="soft-light";
-  context.globalAlpha=.58;
-  context.drawImage(shape,0,0,WIDTH,HEIGHT);
+  const singlePath = panels.length === 1 ? panels[0].path : "";
+  const lightingMask = mask ?? (singlePath ? featheredPathMask(singlePath) : undefined);
+  const shape = photographicShapeMap(photo, lightingMask);
+  context.filter = "none";
+  context.globalCompositeOperation = "soft-light";
+  context.globalAlpha = .58;
+  context.drawImage(shape, 0, 0, WIDTH, HEIGHT);
 
-  context.globalCompositeOperation="multiply";
-  context.globalAlpha=.07;
-  context.drawImage(shape,0,0,WIDTH,HEIGHT);
+  context.globalCompositeOperation = "multiply";
+  context.globalAlpha = .07;
+  context.drawImage(shape, 0, 0, WIDTH, HEIGHT);
 
   // Seam, weave, wrinkle and fold contrast comes only from the
   // colour-neutral multi-band relief map. Direct source-photo detail blending
   // remains intentionally forbidden because it can reintroduce template value.
-  const relief=photographicReliefMap(photo, lightingMask);
-  context.globalCompositeOperation="soft-light";
-  context.globalAlpha=.36;
-  context.drawImage(relief,0,0,WIDTH,HEIGHT);
-  context.globalCompositeOperation="overlay";
-  context.globalAlpha=.08;
-  context.drawImage(relief,0,0,WIDTH,HEIGHT);
+  const relief = photographicReliefMap(photo, lightingMask);
+  context.globalCompositeOperation = "soft-light";
+  context.globalAlpha = .36;
+  context.drawImage(relief, 0, 0, WIDTH, HEIGHT);
+  context.globalCompositeOperation = "overlay";
+  context.globalAlpha = .08;
+  context.drawImage(relief, 0, 0, WIDTH, HEIGHT);
 
   // Reintroduce the exact selected textile above lighting with the same
   // per-panel transforms used by the base fill.
-  context.filter="none";
-  context.globalCompositeOperation="soft-light";
-  context.globalAlpha=fabric.patternType==="Solid" ? .12 : .16;
+  context.filter = "none";
+  context.globalCompositeOperation = "soft-light";
+  context.globalAlpha = fabric.patternType === "Solid" ? .12 : .16;
   paintPreparedFabricPanels(context,preparedPanels);
 
-  context.globalAlpha=1;
-  context.filter="none";
-  context.globalCompositeOperation="destination-in";
-  if(mask) context.drawImage(featherMaskInside(mask),0,0);
-  if(!mask && singlePath) context.drawImage(featheredPathMask(singlePath),0,0);
-  context.globalCompositeOperation="source-over";
-  target.drawImage(layer,0,0);
+  context.globalAlpha = 1;
+  context.filter = "none";
+  context.globalCompositeOperation = "destination-in";
+  if (mask) context.drawImage(featherMaskInside(mask), 0, 0);
+  if (!mask && singlePath) context.drawImage(featheredPathMask(singlePath), 0, 0);
+  context.globalCompositeOperation = "source-over";
+  target.drawImage(layer, 0, 0);
 }
 
 function drawGarment(
@@ -603,10 +603,10 @@ function clipCreativeLayer(
   path:string,
   mask?:HTMLCanvasElement,
 ) {
-  context.globalCompositeOperation="destination-in";
-  if(mask) context.drawImage(featherMaskInside(mask),0,0);
+  context.globalCompositeOperation = "destination-in";
+  if (mask) context.drawImage(featherMaskInside(mask), 0, 0);
   if(path) context.drawImage(featheredPathMask(path),0,0);
-  context.globalCompositeOperation="source-over";
+  context.globalCompositeOperation = "source-over";
 }
 
 function drawCreativePattern(
@@ -661,7 +661,7 @@ function drawCreativePattern(
     }
   } else if(pattern.id==="drift-chevron-pattern") {
     context.strokeStyle=ink;
-    context.globalAlpha=.36;
+    context.globalAlpha = .36;
     context.lineWidth=1.5;
     for(let y=275;y<705;y+=30) {
       for(let x=310;x<720;x+=34) {
@@ -688,7 +688,7 @@ function drawCreativePattern(
   target.save();
   target.globalCompositeOperation="multiply";
   target.globalAlpha=.78;
-  target.drawImage(layer,0,0);
+  target.drawImage(layer, 0, 0);
   target.restore();
 }
 
@@ -710,7 +710,7 @@ function drawCreativeDetails(
       ctx.beginPath();
       ctx.moveTo(365,250); ctx.lineTo(430,228); ctx.lineTo(410,555); ctx.lineTo(382,548); ctx.closePath(); ctx.fill();
       clipCreativeLayer(ctx,tucked?PHOTO_TUCKED_SHIRT_BODY_CLIP:"",shirtMask);
-      target.save(); target.globalCompositeOperation="multiply"; target.drawImage(layer,0,0); target.restore();
+      target.save(); target.globalCompositeOperation="multiply"; target.drawImage(layer, 0, 0); target.restore();
     }
   }
 
@@ -738,7 +738,7 @@ function drawCreativeDetails(
       }
       ctx.globalCompositeOperation="destination-in";
       ctx.fill(new Path2D(cuffPath));
-      target.save();target.globalCompositeOperation="multiply";target.drawImage(layer,0,0);target.restore();
+      target.save();target.globalCompositeOperation="multiply";target.drawImage(layer, 0, 0);target.restore();
     }
   }
 }
