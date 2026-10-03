@@ -3,6 +3,8 @@ import test from "node:test";
 import {
   PHOTO_TUCKED_PANEL_GRAIN_ROTATION,
   PHOTO_TUCKED_PANEL_PATTERN_ANCHOR,
+  PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION,
+  PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR,
   photoPanelRotationFromVertical,
 } from "../src/lib/designer/photo-panel-grain.ts";
 
@@ -36,6 +38,22 @@ test("tucked panel pattern anchors stay on photographed seam and waist starts",(
     rightSleeve:{x:669,y:244},
     leftTrouser:{x:439,y:542},
     rightTrouser:{x:580,y:542},
+    collar:{x:512,y:214},
+  });
+});
+
+
+test("untucked studio shirt keeps sleeves and collar on photographed panel directions",()=>{
+  assert.deepEqual(PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION,{
+    body:0,
+    leftSleeve:-5.2,
+    rightSleeve:4.9,
+    collar:90,
+  });
+  assert.deepEqual(PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR,{
+    body:{x:510,y:244},
+    leftSleeve:{x:351,y:244},
+    rightSleeve:{x:669,y:244},
     collar:{x:512,y:214},
   });
 });
