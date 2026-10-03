@@ -54,6 +54,7 @@ const tuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pa
 const untuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
 const photographicReliefMaps = new WeakMap<HTMLImageElement, HTMLCanvasElement>();
 const photographicShapeMaps = new WeakMap<HTMLImageElement, Map<string, HTMLCanvasElement>>();
+const photographicFoldMaps = new WeakMap<HTMLImageElement, HTMLCanvasElement>();
 const selectedLookSessionCache=new Map<string,PhotorealResult>();
 function loadImage(url: string): Promise<HTMLImageElement> {
   const cached = images.get(url);
@@ -267,6 +268,50 @@ function photographicShapeMap(photo: HTMLImageElement, sourceBrightness: number)
   return shape;
 }
 
+function photographicFoldMap(photo: HTMLImageElement) {
+  const cached = photographicFoldMaps.get(photo);
+  if (cached) return cached;
+
+  // Capture mid-frequency garment form without copying the photographed
+  // garment's base light/dark albedo. Comparing a lightly blurred image with a
+  // much broader blur keeps folds, placket rolls and trouser creases while
+  // centering the result on neutral gray for colour-safe soft-light blending.
+  const mapWidth = WIDTH / 2;
+  const mapHeight = HEIGHT / 2;
+  const fine = document.createElement("canvas");
+  const broad = document.createElement("canvas");
+  const folds = document.createElement("canvas");
+  fine.width = broad.width = folds.width = mapWidth;
+  fine.height = broad.height = folds.height = mapHeight;
+
+  const fineContext = fine.getContext("2d", { willReadFrequently: true });
+  const broadContext = broad.getContext("2d", { willReadFrequently: true });
+  const foldContext = folds.getContext("2d");
+  if (!fineContext || !broadContext || !foldContext) throw new Error("Canvas is unavailable.");
+
+  fineContext.filter = "grayscale(1) blur(1.25px)";
+  fineContext.drawImage(photo, 0, 0, mapWidth, mapHeight);
+  broadContext.filter = "grayscale(1) blur(12px)";
+  broadContext.drawImage(photo, 0, 0, mapWidth, mapHeight);
+
+  const finePixels = fineContext.getImageData(0, 0, mapWidth, mapHeight);
+  const broadPixels = broadContext.getImageData(0, 0, mapWidth, mapHeight);
+  const output = foldContext.createImageData(mapWidth, mapHeight);
+  for (let index = 0; index < finePixels.data.length; index += 4) {
+    const neutralFold = Math.max(
+      40,
+      Math.min(216, Math.round(128 + (finePixels.data[index] - broadPixels.data[index]) * 1.42)),
+    );
+    output.data[index] = neutralFold;
+    output.data[index + 1] = neutralFold;
+    output.data[index + 2] = neutralFold;
+    output.data[index + 3] = 255;
+  }
+  foldContext.putImageData(output, 0, 0);
+  photographicFoldMaps.set(photo, folds);
+  return folds;
+}
+
 function patternScaleForFabric(fabric: DesignerFabric) {
   const pattern = fabric.patternType.toLowerCase();
   if (pattern === "solid") return .82;
@@ -449,25 +494,24 @@ function drawGarment(
   context.globalAlpha = .07;
   context.drawImage(shape, 0, 0, WIDTH, HEIGHT);
 
-  // Reintroduce high-frequency photographic folds and seams after the broad
-  // luminance transfer. We preserve structure, not the template cloth colour.
-  context.filter = `grayscale(1) contrast(1.18) brightness(${detailBrightness})`;
-  context.globalCompositeOperation = "soft-light";
-  context.globalAlpha = .22;
-  context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
-
-  context.filter = `grayscale(1) contrast(1.48) brightness(${detailBrightness})`;
-  context.globalCompositeOperation = "overlay";
-  context.globalAlpha = .09;
-  context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
-
-  // Add colour-neutral photographic relief after the broad lighting passes.
-  // Because this map is centred on neutral gray it restores wrinkle/seam
-  // micro-contrast without tinting the selected Linen Earth fabric.
-  const relief = photographicReliefMap(photo);
+  // Add a neutral band-pass fold map for medium-scale garment depth. Unlike a
+  // direct grayscale copy of the source garment, the map removes broad albedo
+  // first, so dark source shirting cannot dirty a pale selected fabric.
+  const folds = photographicFoldMap(photo);
   context.filter = "none";
   context.globalCompositeOperation = "soft-light";
-  context.globalAlpha = .28;
+  context.globalAlpha = .34;
+  context.drawImage(folds, 0, 0, WIDTH, HEIGHT);
+
+  context.globalCompositeOperation = "overlay";
+  context.globalAlpha = .07;
+  context.drawImage(folds, 0, 0, WIDTH, HEIGHT);
+
+  // Add colour-neutral high-frequency relief after broad shape and fold depth.
+  // This restores wrinkle/seam micro-contrast without tinting the swatch.
+  const relief = photographicReliefMap(photo);
+  context.globalCompositeOperation = "soft-light";
+  context.globalAlpha = .24;
   context.drawImage(relief, 0, 0, WIDTH, HEIGHT);
 
   // Put a faint copy of the real textile back above the lighting model. This
@@ -665,20 +709,19 @@ function drawWhiteDetail(target: CanvasRenderingContext2D, photo: HTMLImageEleme
   context.fillStyle = "#faf9f5";
   context.fillRect(0, 0, WIDTH, HEIGHT);
 
-  // White contrast cloth should borrow photographed light and seam depth, not
-  // the source garment colour. Luminance-first shading keeps the collar/cuff
-  // clean white while retaining the real folded edge beside neck and hands.
-  context.globalCompositeOperation = "luminosity";
-  context.globalAlpha = .9;
-  context.filter = `grayscale(1) brightness(${brightness}) contrast(1.05)`;
-  context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
-  context.globalCompositeOperation = "multiply";
-  context.globalAlpha = .12;
-  context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
-
-  context.filter = "none";
+  // White contrast cloth uses the same neutral multi-band lighting stack as
+  // the base garment. The source photo contributes shape/folds/relief only,
+  // keeping the collar/cuff visibly white beside the neck and hands.
+  const shape = photographicShapeMap(photo, brightness);
   context.globalCompositeOperation = "soft-light";
-  context.globalAlpha = .24;
+  context.globalAlpha = .42;
+  context.drawImage(shape, 0, 0, WIDTH, HEIGHT);
+
+  const folds = photographicFoldMap(photo);
+  context.globalAlpha = .28;
+  context.drawImage(folds, 0, 0, WIDTH, HEIGHT);
+
+  context.globalAlpha = .22;
   context.drawImage(photographicReliefMap(photo), 0, 0, WIDTH, HEIGHT);
 
   context.globalAlpha = 1;
