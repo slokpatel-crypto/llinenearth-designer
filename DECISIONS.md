@@ -225,3 +225,12 @@ Architecture and product decisions that must persist across coding sessions.
 **Why:** the assembled base64 image had a bad palette CRC and a truncated image stream. It exposed metadata to permissive decoders but failed actual browser/pixel decoding, leaving the brand surfaces broken. Reusing its year-cached alias alone would also leave cached failures visible.
 
 **Rule:** preserve the recovered image bytes; verify full pixel decoding and the URL's content hash in tests. Keep the old public image URL as a short-lived redirect to the canonical asset. Browser checks must decode the header and opening logo and validate icon/social metadata at all three responsive widths. No new dependencies, brand redesign, fabric claims or deployment milestone.
+
+## 2026-10-03 — Style Director requests belong to the current journey and look
+**Decision:** reuse the cancellable preview request scope for each committed questionnaire step and selected look/calibration. A restart creates a fresh journey even when the first question is already visible.
+
+**Why:** clearing the results on restart or look selection did not stop an older response from displaying another look, recording a discarded render as completed, reopening previous recommendations or clearing a newer request's loading state. Clicking the already selected look also cleared its source preview without asking the compositor to rebuild it.
+
+**Rule:** check ownership after each async boundary and before result, error, loading or style-memory writes. Pass the request's AbortSignal to fetch, invalidate before paint and on restart/selection, and synchronously lock each action against duplicate clicks. Local photo callbacks must belong to an enabled selected look, including while exit animations retain the previous view. Reselecting the active look preserves its prepared source. Server/provider work already dispatched may continue after browser cancellation. No new application dependencies, schema, physical evidence or deployment milestone.
+
+**Verification:** real Chromium CI exercises the questionnaire and photographed Canvas at 390/768/1440px, then deliberately delivers mocked responses after cancellation. Reports separate these code regressions from physical, device and owner acceptance; the calibration-change case uses a synthetic API fixture only.

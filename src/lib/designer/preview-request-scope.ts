@@ -4,12 +4,15 @@ export type PreviewRequest = {
   finish: () => void;
 };
 
-/** Owns one generation / repair / view / QA chain for one committed design. */
+/** Owns one async chain for one committed preview or questionnaire step. */
 export function createPreviewRequestScope() {
   let active: AbortController | null = null;
   let enabled = false;
 
   return {
+    // Local preview callbacks also need ownership before a network request
+    // begins, including while an old view is retained by an exit animation.
+    isEnabled: () => enabled,
     // React may mount, clean up and remount the same scope in Strict Mode.
     activate() {
       enabled = true;

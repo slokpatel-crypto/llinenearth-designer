@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { AnimatePresence, motion } from "motion/react";
 import type { StyleDirectorAnswers, StyleDirectorLook } from "@/lib/style-director-agent";
 import { StyleDirectorRealModelPreview } from "@/components/PhotoOutfitPreview";
 import { createStyleSessionId, flushPendingStyleMemoryEvents, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
 import { customerPhotoCalibrationIdentity, fetchCustomerPhotoCalibration } from "@/lib/designer/photo-calibration-client";
+import { createPreviewRequestScope } from "@/lib/designer/preview-request-scope";
 import "./style-director.css";
 
 type StepKey = keyof StyleDirectorAnswers;
@@ -44,6 +45,7 @@ const steps: Array<{ key: StepKey; eyebrow: string; title: string; note: string;
 export default function StyleDirectorPage() {
   const [sessionId] = useState(createStyleSessionId);
   const [index,setIndex] = useState(0);
+  const [journeyEpoch,setJourneyEpoch] = useState(0);
   const [answers,setAnswers] = useState<Partial<StyleDirectorAnswers>>({});
   const [looks,setLooks] = useState<StyleDirectorClientLook[]>([]);
   const [selected,setSelected] = useState(0);
@@ -59,20 +61,41 @@ export default function StyleDirectorPage() {
   const complete = looks.length > 0;
   const selectedLook = looks[selected];
   const progress = complete ? 100 : Math.round((index / steps.length) * 100);
+  const journeyScope = useMemo(()=>createPreviewRequestScope(),[index,journeyEpoch]);
+  const renderScope = useMemo(()=>createPreviewRequestScope(),[selectedLook,currentCalibrationIdentity,journeyEpoch]);
+
+  useLayoutEffect(()=>{
+    journeyScope.activate();
+    setLoading(false);
+    return ()=>journeyScope.invalidate();
+  },[journeyScope]);
+
+  useLayoutEffect(()=>{
+    renderScope.activate();
+    setRendering(false);
+    // Look/calibration changes invalidate the old request before paint, even
+    // if the server continues rendering after the browser cancels its fetch.
+    return ()=>renderScope.invalidate();
+  },[renderScope]);
 
   async function choose(value:string) {
+    const request=journeyScope.begin();
+    if(!request) return;
     const next = {...answers,[step.key]:value} as Partial<StyleDirectorAnswers>;
     setAnswers(next);
     setError("");
     recordStyleMemoryEvent(sessionId,"answer_selected",{step:step.key,value});
     if (index < steps.length - 1) {
-      setIndex((n)=>n+1);
+      // Keep this question locked until the next committed question owns it.
+      setIndex(index+1);
       return;
     }
     setLoading(true);
     try {
-      const response = await fetch("/api/style-director",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(next)});
+      const response = await fetch("/api/style-director",{method:"POST",signal:request.signal,headers:{"content-type":"application/json"},body:JSON.stringify(next)});
+      if(!request.isCurrent()) return;
       const data = await response.json();
+      if(!request.isCurrent()) return;
       if (!response.ok) throw new Error(data.error || "Could not create looks.");
       setLooks(data.looks);
       setSelected(0);
@@ -84,18 +107,24 @@ export default function StyleDirectorPage() {
       const firstLook = data.looks?.[0] as StyleDirectorClientLook | undefined;
       if (firstLook) recordStyleMemoryEvent(sessionId,"look_selected",{lookId:firstLook.id,title:firstLook.title,fabricId:firstLook.fabric.id,fabric:firstLook.fabric.colorName,automatic:true});
     } catch(e) {
-      setError(e instanceof Error ? e.message : "Could not create looks.");
-    } finally { setLoading(false); }
+      if(request.isCurrent()) setError(e instanceof Error ? e.message : "Could not create looks.");
+    } finally {
+      if(request.isCurrent()) setLoading(false);
+      request.finish();
+    }
   }
 
   async function visualizePhotoreal() {
-    if (!selectedLook?.realModel || !lockedPreviewImage || !lockedPreviewCalibrationIdentity) return;
+    if (!selectedLook?.realModel || !lockedPreviewImage || !lockedPreviewCalibrationIdentity || lockedPreviewCalibrationIdentity!==currentCalibrationIdentity) return;
+    const request=renderScope.begin();
+    if(!request) return;
     const sourceCalibrationIdentity=lockedPreviewCalibrationIdentity;
     setRendering(true); setError("");
     recordStyleMemoryEvent(sessionId,"render_requested",{mode:"photo",lookId:selectedLook.id,fabricId:selectedLook.fabric.id});
     try {
       const response = await fetch("/api/designer/look-render",{
         method:"POST",
+        signal:request.signal,
         headers:{"content-type":"application/json"},
         body:JSON.stringify({
           shirt:{id:selectedLook.realModel.shirtId},
@@ -106,7 +135,9 @@ export default function StyleDirectorPage() {
           lockedPreviewImage:lockedPreviewImage || undefined,
         }),
       });
+      if(!request.isCurrent()) return;
       const data = await response.json() as {result?:{image:string;jobId:string;creditsUsed:number;conceptId:string;generatedAt:string};error?:string};
+      if(!request.isCurrent()) return;
       if (!response.ok || !data.result) throw new Error(data.error || "Could not create the photoreal visual.");
       const nextRenderSet:RenderSet={
         renders:[{view:"front",src:data.result.image,label:"Photoreal front view",provider:"fashn-edit"}],
@@ -128,21 +159,39 @@ export default function StyleDirectorPage() {
         generatedAt:data.result.generatedAt,
       });
     } catch(e) {
-      setError(e instanceof Error ? e.message : "Could not create the photoreal visual.");
-    } finally { setRendering(false); }
+      if(request.isCurrent()) setError(e instanceof Error ? e.message : "Could not create the photoreal visual.");
+    } finally {
+      if(request.isCurrent()) setRendering(false);
+      request.finish();
+    }
   }
 
   function reset() {
+    journeyScope.invalidate(); renderScope.invalidate();
+    setJourneyEpoch((epoch)=>epoch+1);
     setIndex(0); setAnswers({}); setLooks([]); setSelected(0);
+    setLoading(false); setRendering(false);
     setRenderSet(null); setRenderCalibrationIdentity(null);
     setLockedPreviewImage(""); setLockedPreviewCalibrationIdentity("");
     setError("");
   }
 
   function acceptLockedPreview(dataUrl:string,calibrationIdentity:string) {
+    if(!renderScope.isEnabled() || !selectedLook?.realModel) return;
+    if(currentCalibrationIdentity && calibrationIdentity!==currentCalibrationIdentity) return;
     setLockedPreviewImage(dataUrl);
     setLockedPreviewCalibrationIdentity(calibrationIdentity);
     setCurrentCalibrationIdentity(calibrationIdentity);
+  }
+
+  function selectLook(i:number) {
+    if(!renderScope.isEnabled() || i===selected) return;
+    const look=looks[i];
+    renderScope.invalidate();
+    setSelected(i); setRendering(false); setError("");
+    setRenderSet(null); setRenderCalibrationIdentity(null);
+    setLockedPreviewImage(""); setLockedPreviewCalibrationIdentity("");
+    recordStyleMemoryEvent(sessionId,"look_selected",{lookId:look.id,title:look.title,fabricId:look.fabric.id,fabric:look.fabric.colorName});
   }
 
   const heroRender = useMemo(()=>renderSet?.renders?.find((r)=>r.view==="front") ?? renderSet?.renders?.[0], [renderSet]);
@@ -261,7 +310,7 @@ export default function StyleDirectorPage() {
         </div>
 
         <div className="lookTabs">
-          {looks.map((look,i)=><button className={selected===i?"active":""} onClick={()=>{setSelected(i);setRenderSet(null);setRenderCalibrationIdentity(null);setLockedPreviewImage("");setLockedPreviewCalibrationIdentity("");recordStyleMemoryEvent(sessionId,"look_selected",{lookId:look.id,title:look.title,fabricId:look.fabric.id,fabric:look.fabric.colorName});}} key={look.id}>
+          {looks.map((look,i)=><button className={selected===i?"active":""} onClick={()=>selectLook(i)} key={look.id}>
             <span>{look.candidate.tier.toUpperCase()}</span><strong>{look.title}</strong><small>{look.fabric.colorName}</small>
           </button>)}
         </div>
@@ -300,7 +349,7 @@ export default function StyleDirectorPage() {
             </div>}
             <div className="directorActions">
               {selectedLook.realModel
-                ? <button className="photoAction" onClick={()=>void visualizePhotoreal()} disabled={rendering || !lockedPreviewImage}>{rendering?"Rendering…":lockedPreviewImage?"Make photoreal":"Preparing real model…"} <b>✦</b></button>
+                ? <button className="photoAction" onClick={()=>void visualizePhotoreal()} disabled={rendering || !lockedPreviewImage || lockedPreviewCalibrationIdentity!==currentCalibrationIdentity}>{rendering?"Rendering…":lockedPreviewImage?"Make photoreal":"Preparing real model…"} <b>✦</b></button>
                 : <span className="directorPhotoPending">Photoreal unlocks when a photographed garment template supports this category.</span>}
               {designerHandoff && <a href={designerHandoff} onClick={()=>recordStyleMemoryEvent(sessionId,"render_requested",{mode:"real-model-handoff",lookId:selectedLook.id,fabricId:selectedLook.fabric.id})}>Open Linen Earth Real Model Designer <b>↗</b></a>}
               <a href={whatsapp} target="_blank" rel="noreferrer" onClick={()=>recordStyleMemoryEvent(sessionId,"whatsapp_clicked",{lookId:selectedLook.id,fabricId:selectedLook.fabric.id,fabric:selectedLook.fabric.colorName})}>Book this look <b>↗</b></a>
