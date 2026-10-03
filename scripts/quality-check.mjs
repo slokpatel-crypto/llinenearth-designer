@@ -354,10 +354,21 @@ for (const token of ["linen-final-render-cache-v2-locked-preview-source","functi
   if(!selectedLookCacheKey.includes(token)) throw new Error(`Locked-preview final-render cache regression: missing ${token}`);
 }
 console.log("Locked-preview final-render gate passed: final photoreal generation starts from a validated deterministic customer preview when available.");
-for (const token of ["function drawWhiteDetail","globalAlpha = .9","globalAlpha = .12","clean white while retaining the real folded edge beside neck and hands"]) {
+for (const token of [
+  "function drawWhiteDetail",
+  "const detailMask = featheredPathMask(path)",
+  "photographicShapeMap(photo, detailMask)",
+  "const relief = photographicReliefMap(photo)",
+  "globalAlpha = .42",
+  "globalAlpha = .32",
+]) {
   if (!photoPreview.includes(token)) throw new Error(`Contrast collar/cuff photographic shading regression: missing ${token}`);
 }
-console.log("Contrast-detail shading gate passed: white collar/cuff cloth keeps photographic depth without source-colour contamination.");
+const whiteDetailBlock=photoPreview.slice(photoPreview.indexOf("function drawWhiteDetail"),photoPreview.indexOf("export type PhotoPreviewCalibration"));
+if (whiteDetailBlock.includes('globalCompositeOperation = "luminosity"') || whiteDetailBlock.includes("drawImage(photo, 0, 0, WIDTH, HEIGHT)") || whiteDetailBlock.includes("brightness(")) {
+  throw new Error("Contrast collar/cuff photographic shading regression: direct source albedo returned.");
+}
+console.log("Contrast-detail shading gate passed: white collar/cuff cloth reuses baseline-neutral studio structure.");
 const designerPhotoCss=fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
 if(!/\.newDesignerPhotoAi\{[^}]*object-fit:contain/.test(designerPhotoCss)) throw new Error("Final photoreal framing regression: full model must remain contained.");
 if(/\.newDesignerPhotoAi\{[^}]*object-fit:cover/.test(designerPhotoCss)) throw new Error("Final photoreal framing regression: cover would crop the model.");

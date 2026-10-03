@@ -668,7 +668,7 @@ function creativePreviewCoverage(creative?:CreativePreviewSpec) {
   return {visible:[...new Set(visible)],specOnly:[...new Set(specOnly)]};
 }
 
-function drawWhiteDetail(target: CanvasRenderingContext2D, photo: HTMLImageElement, path: string, mask?: HTMLCanvasElement, brightness = 1.38) {
+function drawWhiteDetail(target: CanvasRenderingContext2D, photo: HTMLImageElement, path: string, mask?: HTMLCanvasElement) {
   const layer = document.createElement("canvas");
   layer.width = WIDTH;
   layer.height = HEIGHT;
@@ -677,21 +677,21 @@ function drawWhiteDetail(target: CanvasRenderingContext2D, photo: HTMLImageEleme
   context.fillStyle = "#faf9f5";
   context.fillRect(0, 0, WIDTH, HEIGHT);
 
-  // White contrast cloth should borrow photographed light and seam depth, not
-  // the source garment colour. Luminance-first shading keeps the collar/cuff
-  // clean white while retaining the real folded edge beside neck and hands.
-  context.globalCompositeOperation = "luminosity";
-  context.globalAlpha = .9;
-  context.filter = `grayscale(1) brightness(${brightness}) contrast(1.05)`;
-  context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
-  context.globalCompositeOperation = "multiply";
-  context.globalAlpha = .12;
-  context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
-
-  context.filter = "none";
+  // White contrast cloth uses the same baseline-neutral studio structure as
+  // the garment body. The detail path defines its own luminance baseline, so
+  // dark source collars/cuffs cannot turn selected white cloth grey or muddy.
+  const detailMask = featheredPathMask(path);
+  const shape = photographicShapeMap(photo, detailMask);
   context.globalCompositeOperation = "soft-light";
-  context.globalAlpha = .24;
-  context.drawImage(photographicReliefMap(photo), 0, 0, WIDTH, HEIGHT);
+  context.globalAlpha = .42;
+  context.drawImage(shape, 0, 0, WIDTH, HEIGHT);
+
+  const relief = photographicReliefMap(photo);
+  context.globalAlpha = .32;
+  context.drawImage(relief, 0, 0, WIDTH, HEIGHT);
+  context.globalCompositeOperation = "overlay";
+  context.globalAlpha = .06;
+  context.drawImage(relief, 0, 0, WIDTH, HEIGHT);
 
   context.globalAlpha = 1;
   context.filter = "none";
@@ -739,10 +739,10 @@ export function composePhotoOutfit(
     if (style.collarFinish === "Self-fabric") {
       drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined,{...calibratedPlacement,rotationDeg:90});
     } else {
-      drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_STAND_MASK, undefined, 3.6);
-      if (!creativeHas(creative,"quiet-collar-echo")) drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_MASK, undefined, 3.6);
+      drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_STAND_MASK, undefined);
+      if (!creativeHas(creative,"quiet-collar-echo")) drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_MASK, undefined);
     }
-    if (style.collarFinish === "White contrast collar + cuffs") drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_CUFF_MASK, undefined, 3.6);
+    if (style.collarFinish === "White contrast collar + cuffs") drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_CUFF_MASK, undefined);
 
     drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_LEFT_TROUSER_CLIP, masks.pant, { ...calibratedPlacement, offsetX: 5 });
     drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_RIGHT_TROUSER_CLIP, masks.pant, { ...calibratedPlacement, offsetX: -5 });
