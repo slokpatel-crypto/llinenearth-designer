@@ -53,6 +53,7 @@ const pathMasks = new Map<string, HTMLCanvasElement>();
 const tuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
 const untuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
 const photographicReliefMaps = new WeakMap<HTMLImageElement, HTMLCanvasElement>();
+const photographicShapeMaps = new WeakMap<HTMLImageElement, Map<string, HTMLCanvasElement>>();
 const selectedLookSessionCache=new Map<string,PhotorealResult>();
 function loadImage(url: string): Promise<HTMLImageElement> {
   const cached = images.get(url);
@@ -220,6 +221,52 @@ function photographicReliefMap(photo: HTMLImageElement) {
   return detail;
 }
 
+function photographicShapeMap(photo: HTMLImageElement, sourceBrightness: number) {
+  let cachedByBrightness = photographicShapeMaps.get(photo);
+  if (!cachedByBrightness) {
+    cachedByBrightness = new Map<string, HTMLCanvasElement>();
+    photographicShapeMaps.set(photo, cachedByBrightness);
+  }
+  const key = sourceBrightness.toFixed(2);
+  const cached = cachedByBrightness.get(key);
+  if (cached) return cached;
+
+  // Build a low-frequency, neutral-gray lighting field instead of blending the
+  // source garment pixels directly into the Linen Earth fabric. Mid gray is
+  // neutral under soft-light, so the swatch keeps its own colour while broad
+  // photographed highlights and body/fold shadows still shape the garment.
+  const mapWidth = WIDTH / 2;
+  const mapHeight = HEIGHT / 2;
+  const source = document.createElement("canvas");
+  const shape = document.createElement("canvas");
+  source.width = shape.width = mapWidth;
+  source.height = shape.height = mapHeight;
+
+  const sourceContext = source.getContext("2d", { willReadFrequently: true });
+  const shapeContext = shape.getContext("2d");
+  if (!sourceContext || !shapeContext) throw new Error("Canvas is unavailable.");
+
+  sourceContext.filter = "grayscale(1) blur(7px)";
+  sourceContext.drawImage(photo, 0, 0, mapWidth, mapHeight);
+  const input = sourceContext.getImageData(0, 0, mapWidth, mapHeight);
+  const output = shapeContext.createImageData(mapWidth, mapHeight);
+
+  for (let index = 0; index < input.data.length; index += 4) {
+    const corrected = Math.max(0, Math.min(255, input.data[index] * sourceBrightness));
+    // Compress the template's original cloth tone around neutral gray. This
+    // retains large photographic form without letting a navy source shirt turn
+    // a pale selected linen charcoal, or pale source trousers wash dark cloth.
+    const neutral = Math.max(48, Math.min(208, Math.round(128 + (corrected - 128) * .58)));
+    output.data[index] = neutral;
+    output.data[index + 1] = neutral;
+    output.data[index + 2] = neutral;
+    output.data[index + 3] = 255;
+  }
+  shapeContext.putImageData(output, 0, 0);
+  cachedByBrightness.set(key, shape);
+  return shape;
+}
+
 function patternScaleForFabric(fabric: DesignerFabric) {
   const pattern = fabric.patternType.toLowerCase();
   if (pattern === "solid") return .82;
@@ -384,23 +431,23 @@ function drawGarment(
   context.fillStyle = pattern;
   context.fillRect(0, 0, WIDTH, HEIGHT);
 
-  // Transfer the photographed garment's luminance rather than multiplying its
-  // original cloth colour into the selected Linen Earth fabric. This keeps the
-  // selected swatch hue/saturation dominant while the real studio photograph
-  // supplies broad light, shadow, folds and seam depth.
+  // Use a neutral, low-frequency lighting field rather than directly blending
+  // the source garment's luminance/albedo into the selected Linen Earth cloth.
+  // This keeps the actual swatch hue and woven texture authoritative while the
+  // studio photograph contributes broad three-dimensional form.
   const detailBrightness = placement.detailBrightness ?? 1.3;
-  context.globalCompositeOperation = "luminosity";
-  context.globalAlpha = .82;
-  context.filter = lightingFilter;
-  context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
+  const shape = photographicShapeMap(photo, detailBrightness);
+  context.filter = "none";
+  context.globalCompositeOperation = "soft-light";
+  context.globalAlpha = .58;
+  context.drawImage(shape, 0, 0, WIDTH, HEIGHT);
 
-  // A restrained multiply pass puts weight back into the deepest folds without
-  // recreating the old dark/painted overlay. The calibrated lighting filter
-  // keeps dark source garments from dragging pale selected fabrics to charcoal.
+  // A tiny multiply reinforcement is enough for deep folds because the shape
+  // map is already centered around neutral gray. We intentionally do not blend
+  // the original navy/beige template cloth back into the selected fabric.
   context.globalCompositeOperation = "multiply";
-  context.globalAlpha = .16;
-  context.filter = lightingFilter;
-  context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
+  context.globalAlpha = .07;
+  context.drawImage(shape, 0, 0, WIDTH, HEIGHT);
 
   // Reintroduce high-frequency photographic folds and seams after the broad
   // luminance transfer. We preserve structure, not the template cloth colour.
