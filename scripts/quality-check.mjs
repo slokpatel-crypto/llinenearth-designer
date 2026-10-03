@@ -955,7 +955,7 @@ console.log("Selected-look render QA gate passed: normal photoreal looks are ins
 for (const token of ["view:SelectedLookView=\"front\"","Expected camera/view:","three-quarter","side","back"]) {
   if (!selectedLookRenderEngine.includes(token)) throw new Error(`Multi-view photoreal QA regression: missing ${token}`);
 }
-for (const token of ["activeSelectedCheck","inspectSelectedLook(data.result,view)","This camera view needs review"]) {
+for (const token of ["activeSelectedCheck","inspectSelectedLook(data.result,view,request)","This camera view needs review"]) {
   if (!photoPreviewMultiView.includes(token)) throw new Error(`Multi-view QA UI regression: missing ${token}`);
 }
 console.log("Photoreal multi-view QA gate passed: generated three-quarter, side and back views are checked for model, cloth and construction consistency.");

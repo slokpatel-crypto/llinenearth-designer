@@ -14,7 +14,7 @@ const revision={
   garmentSpec:{
     version:"linen-earth-garment-spec-v1",
     status:"draft",
-    source:{designerRuleSetVersion:"v",fitConstructionVersion:null,measurementProfileVersion:null,blockStrategyVersion:null,styleSchemaVersion:null},
+    source:{designerRuleSetVersion:"v",fitConstructionVersion:null,fitEaseSource:null,fitEaseTableVersion:null,measurementProfileVersion:null,blockStrategyVersion:null,styleSchemaVersion:null},
     styleSpec:null,
     bodyProfile:{version:1,build:"regular",heightCm:178,skinTone:"medium",source:"measurements",silhouette:{shoulderScale:1.02,chestScale:1.03,waistScale:.95,seatScale:1.01,thighScale:1,legLengthScale:1.04,evidenceCount:6}},
     context:{occasion:"Semi-Formal",climate:"Not specified",intention:"Balanced"},

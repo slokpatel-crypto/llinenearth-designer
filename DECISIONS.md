@@ -210,3 +210,11 @@ Architecture and product decisions that must persist across coding sessions.
 
 **Rule:** keep the existing channel-spread value only as a diagnostic compatibility field. Do not turn it into a colour-cast issue or quality penalty unless a future capture protocol supplies a known neutral reference. Physical colour verification remains a separate controlled evidence workflow.
 
+## 2026-10-03 — Async preview results belong to one committed design
+**Decision:** the browser owns one cancellable generation/repair/view/QA chain per committed design signature, including its accepted studio calibration. A signature change or unmount invalidates that lifecycle before the next frame is painted.
+
+**Why:** resetting the visible render when a selection changes is insufficient if an older network response can later repopulate the preview, approve old QA, overwrite loading state or invoke creative feedback for the replacement look.
+
+**Rule:** every async response checks its request lifecycle before state/cache writes, follow-up inspections or feedback callbacks. Fetches share an AbortSignal, stale errors and finally blocks cannot affect a newer chain, and a synchronous lock prevents same-frame duplicate generation dispatch. Cancellation is a browser correctness boundary; it cannot promise to refund or stop provider work already dispatched server-side. No shared schema or persistence contract changes.
+
+**Verification runtime:** CI installs pinned Playwright 1.63.0 in a temporary test-only prefix after the production build. It uses real Chromium, local photographs and Canvas at 390/768/1440px, with delayed mocked provider/QA responses that deliberately ignore cancellation. This does not add an application dependency or change package/schema contracts. The screenshots and lifecycle report are retained as CI artifacts; synthetic QA approvals, desktop viewport emulation and unverified calibration must never satisfy physical-fabric or real-device acceptance gates.

@@ -12,7 +12,7 @@ const revision={
   garmentSpec:{
     version:"linen-earth-garment-spec-v1",
     status:"ready_for_tailor_review",
-    source:{designerRuleSetVersion:"v",fitConstructionVersion:null,measurementProfileVersion:null,blockStrategyVersion:null,styleSchemaVersion:null},
+    source:{designerRuleSetVersion:"v",fitConstructionVersion:null,fitEaseSource:null,fitEaseTableVersion:null,measurementProfileVersion:null,blockStrategyVersion:null,styleSchemaVersion:null},
     styleSpec:null,
     bodyProfile:null,
     context:{occasion:"Formal",climate:"Not specified",intention:"Balanced"},

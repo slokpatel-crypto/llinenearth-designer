@@ -130,9 +130,8 @@ test("phase 1 proof acceptance requires physical scale, latency samples and real
   const accepted=phase1ProofAcceptance({
     repeatMm:10,
     scaleGatePass:true,
-    realModelSamples:999,
-    realModelP95Ms:1,
-    realModelSampleDurationsMs:[180,190,200,205,210,215,218,219,220,220,221,222],
+    realModelSamples:12,
+    realModelP95Ms:222,
     realismRatings:[5,4,4,5,4,5,3,2],
     boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
   });

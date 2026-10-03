@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { DesignerFabric, DesignerStyle } from "@/lib/designer/engine";
 import type { StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import type { BodyPreviewProfile } from "@/lib/designer/body-profile";
@@ -11,6 +11,7 @@ import { CREATIVE_FEEDBACK_REASONS, type CreativeFeedbackReason } from "@/lib/de
 import { UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION, type CustomerPhotoCalibration } from "@/lib/designer/photo-calibration-types";
 import { customerPhotoCalibrationIdentity, fetchCustomerPhotoCalibration } from "@/lib/designer/photo-calibration-client";
 import { neutralizePhotographicLuminance, weightedGarmentLuminanceMean } from "@/lib/designer/photo-shading";
+import { createPreviewRequestScope, type PreviewRequest } from "@/lib/designer/preview-request-scope";
 import {
   PHOTO_TUCKED_PANEL_GRAIN_ROTATION,
   PHOTO_TUCKED_PANEL_PATTERN_ANCHOR,
@@ -1133,6 +1134,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       proofVersion:photoCalibration.proofVersion,
     } : {verified:false},
   });
+  const requestScope=useMemo(()=>createPreviewRequestScope(),[renderSignature]);
 
   useEffect(()=>{
     let cancelled=false;
@@ -1150,8 +1152,10 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     };
   },[]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    requestScope.activate();
     setCreativeAi(null);
+    setCreativeAiLoading(false);
     setCreativeAiError("");
     setShowCreativeAi(false);
     setPhotorealView("front");
@@ -1161,7 +1165,10 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     setFinalLocked(false);
     setCreativeReview(null);
     setCreativeReviewReason(null);
-  },[renderSignature]);
+    // Invalidate before paint: responses from the previous committed design
+    // must not repopulate its render, QA, cache or loading state in this look.
+    return ()=>requestScope.invalidate();
+  },[requestScope]);
 
   useEffect(()=>{
     previousReviewedRender.current="";
@@ -1187,10 +1194,12 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     return () => { cancelled = true; };
   }, [shirt, pant, template, tucked, style.collarFinish, creativeDirection, verifiedPhotoPxPerMm]);
 
-  async function inspectSelectedLook(result:PhotorealResult,view:PhotorealView="front"):Promise<SelectedLookVisualCheck|null> {
+  async function inspectSelectedLook(result:PhotorealResult,view:PhotorealView,request:PreviewRequest):Promise<SelectedLookVisualCheck|null> {
+    if(!request.isCurrent()) return null;
     try {
       const response=await fetch("/api/designer/look-inspect",{
         method:"POST",
+        signal:request.signal,
         headers:{"content-type":"application/json"},
         body:JSON.stringify({
           image:result.image,
@@ -1207,6 +1216,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         }),
       });
       const data=await response.json() as {check?:SelectedLookVisualCheck};
+      if(!request.isCurrent()) return null;
       if(!response.ok || !data.check) return null;
       if(view==="front") {
         setCreativeAi((current)=>current?.image===result.image ? {...current,selectedCheck:data.check} : current);
@@ -1250,13 +1260,15 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       setCreativeAiError("Lock the final design before using the photoreal renderer.");
       return;
     }
-    if(origin==="manual") {
-      previousReviewedRender.current="";
-      onCreativeRenderStart?.();
-    }
+    const request=requestScope.begin();
+    if(!request) return;
     setCreativeAiLoading(true);
     setCreativeAiError("");
     try {
+      if(origin==="manual") {
+        previousReviewedRender.current="";
+        onCreativeRenderStart?.();
+      }
       if(!creativeDirection) {
         const cached=selectedLookSessionCache.get(renderSignature);
         if(cached) {
@@ -1266,7 +1278,8 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
           setPhotorealViews({});
           setShowCreativeAi(Boolean(cached.selectedCheck?.available && cached.selectedCheck.status==="pass"));
           if(!cached.selectedCheck?.available) {
-            const check=await inspectSelectedLook(cachedResult);
+            const check=await inspectSelectedLook(cachedResult,"front",request);
+            if(!request.isCurrent()) return;
             if(check?.available && check.status==="pass") setShowCreativeAi(true);
           }
           return;
@@ -1283,6 +1296,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       }
       const response=await fetch(creativeDirection ? "/api/designer/creative-render" : "/api/designer/look-render",{
         method:"POST",
+        signal:request.signal,
         headers:{"content-type":"application/json"},
         body:JSON.stringify({
           shirt:{id:shirt.id,name:shirt.name,line:shirt.line,image:shirt.image,hex:shirt.hex,patternType:shirt.patternType},
@@ -1302,6 +1316,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         }),
       });
       const data=await response.json() as {result?:{image:string;jobId:string;creditsUsed:number;conceptId:string;generatedAt:string};error?:string};
+      if(!request.isCurrent()) return;
       if(!response.ok || !data.result) throw new Error(data.error || "Photoreal render failed.");
       setCreativeAi(data.result);
       if(!creativeDirection) {
@@ -1319,13 +1334,15 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       setShowCreativeAi(Boolean(creativeDirection));
 
       if(!creativeDirection) {
-        const check=await inspectSelectedLook(data.result);
+        const check=await inspectSelectedLook(data.result,"front",request);
+        if(!request.isCurrent()) return;
         if(check?.available && check.status==="pass") setShowCreativeAi(true);
       }
 
       if(creativeDirection) try {
         const inspectResponse=await fetch("/api/designer/creative-inspect",{
           method:"POST",
+          signal:request.signal,
           headers:{"content-type":"application/json"},
           body:JSON.stringify({
             image:data.result.image,
@@ -1343,6 +1360,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
           }),
         });
         const inspected=await inspectResponse.json() as {check?:CreativeVisualCheck};
+        if(!request.isCurrent()) return;
         if(inspectResponse.ok && inspected.check) {
           setCreativeAi((current)=>current && current.conceptId===data.result?.conceptId ? {...current,visualCheck:inspected.check} : current);
           if(inspected.check.status==="review") previousReviewedRender.current=data.result.image;
@@ -1353,15 +1371,18 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         // The photoreal result remains usable when automatic inspection is unavailable.
       }
     } catch(error) {
-      setCreativeAiError(error instanceof Error ? error.message : "Photoreal render failed.");
+      if(request.isCurrent()) setCreativeAiError(error instanceof Error ? error.message : "Photoreal render failed.");
     } finally {
-      setCreativeAiLoading(false);
+      if(request.isCurrent()) setCreativeAiLoading(false);
+      request.finish();
     }
   }
 
   async function repairSelectedLook() {
     const check=creativeAi?.selectedCheck;
     if(!creativeAi || creativeDirection || selectedRepairCount>=1 || !check?.available || check.status!=="review" || !check.repairInstruction || creativeAiLoading) return;
+    const request=requestScope.begin();
+    if(!request) return;
     setCreativeAiLoading(true);
     setCreativeAiError("");
     try {
@@ -1376,6 +1397,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       }
       const response=await fetch("/api/designer/look-render",{
         method:"POST",
+        signal:request.signal,
         headers:{"content-type":"application/json"},
         body:JSON.stringify({
           view:"front",
@@ -1392,22 +1414,25 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         }),
       });
       const data=await response.json() as {result?:PhotorealResult;error?:string};
+      if(!request.isCurrent()) return;
       if(!response.ok || !data.result) throw new Error(data.error || "Photoreal repair failed.");
       setCreativeAi(data.result);
       setPhotorealView("front");
       setPhotorealViews({});
       setSelectedRepairCount(1);
       setShowCreativeAi(false);
-      const repairCheck=await inspectSelectedLook(data.result);
+      const repairCheck=await inspectSelectedLook(data.result,"front",request);
+      if(!request.isCurrent()) return;
       selectedLookSessionCache.set(
         renderSignature,
         repairCheck?.available ? {...data.result,selectedCheck:repairCheck} : data.result,
       );
       if(repairCheck?.available && repairCheck.status==="pass") setShowCreativeAi(true);
     } catch(error) {
-      setCreativeAiError(error instanceof Error ? error.message : "Photoreal repair failed.");
+      if(request.isCurrent()) setCreativeAiError(error instanceof Error ? error.message : "Photoreal repair failed.");
     } finally {
-      setCreativeAiLoading(false);
+      if(request.isCurrent()) setCreativeAiLoading(false);
+      request.finish();
     }
   }
 
@@ -1442,23 +1467,30 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         return;
       }
       if(photorealViewLoading) return;
+      const request=requestScope.begin();
+      if(!request) return;
       setPhotorealViewLoading(view);
       setCreativeAiError("");
       try {
-        const recheck=await inspectSelectedLook(existing,view);
+        const recheck=await inspectSelectedLook(existing,view,request);
+        if(!request.isCurrent()) return;
         if(recheck?.available && recheck.status==="pass") setPhotorealView(view);
         else setCreativeAiError("This view has not cleared fidelity QA. It remains held on the trusted front view.");
       } finally {
-        setPhotorealViewLoading(null);
+        if(request.isCurrent()) setPhotorealViewLoading(null);
+        request.finish();
       }
       return;
     }
     if(photorealViewLoading) return;
+    const request=requestScope.begin();
+    if(!request) return;
     setPhotorealViewLoading(view);
     setCreativeAiError("");
     try {
       const response=await fetch("/api/designer/look-render",{
         method:"POST",
+        signal:request.signal,
         headers:{"content-type":"application/json"},
         body:JSON.stringify({
           view,
@@ -1474,14 +1506,17 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         }),
       });
       const data=await response.json() as {result?:PhotorealResult;error?:string};
+      if(!request.isCurrent()) return;
       if(!response.ok || !data.result) throw new Error(data.error || "Photoreal view failed.");
       setPhotorealViews((current)=>({...current,[view]:data.result}));
-      const check=await inspectSelectedLook(data.result,view);
+      const check=await inspectSelectedLook(data.result,view,request);
+      if(!request.isCurrent()) return;
       if(check?.available && check.status==="pass") setPhotorealView(view);
     } catch(error) {
-      setCreativeAiError(error instanceof Error ? error.message : "Photoreal view failed.");
+      if(request.isCurrent()) setCreativeAiError(error instanceof Error ? error.message : "Photoreal view failed.");
     } finally {
-      setPhotorealViewLoading(null);
+      if(request.isCurrent()) setPhotorealViewLoading(null);
+      request.finish();
     }
   }
 

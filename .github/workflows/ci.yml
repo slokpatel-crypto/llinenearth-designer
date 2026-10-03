@@ -12,6 +12,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,3 +29,30 @@ jobs:
       - run: npm run eval:preview-performance
       - run: npm run release:check
       - run: npm run build
+      - name: Install pinned browser verification runtime
+        env:
+          LINEN_BROWSER_QA_RUNTIME: /tmp/linen-browser-qa
+        run: |
+          npm install --prefix "$LINEN_BROWSER_QA_RUNTIME" --no-audit --no-fund playwright@1.63.0
+          node "$LINEN_BROWSER_QA_RUNTIME/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Verify preview lifecycle and responsive Designer
+        env:
+          LINEN_BROWSER_QA_RUNTIME: /tmp/linen-browser-qa
+        run: |
+          mkdir -p artifacts/preview-lifecycle
+          npm run start > artifacts/preview-lifecycle/server.log 2>&1 &
+          preview_server_pid=$!
+          trap 'kill "$preview_server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/designer-studio > /dev/null; then break; fi
+            sleep 1
+          done
+          node scripts/verify-preview-lifecycle.cjs
+      - name: Save browser verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-lifecycle-browser
+          path: artifacts/preview-lifecycle
+          if-no-files-found: ignore
+          retention-days: 14
