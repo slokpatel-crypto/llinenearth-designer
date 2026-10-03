@@ -49,3 +49,30 @@ export function neutralizePhotographicLuminance(
     ),
   );
 }
+
+
+/**
+ * Centers a photographed detail band on neutral gray. Subtracting the broader
+ * luminance band first removes source-cloth albedo, so the same fold delta is
+ * reproduced identically on dark and pale studio garments.
+ */
+export function neutralizePhotographicBandDifference(
+  fineLuminance:number,
+  broadLuminance:number,
+  gain:number,
+  minimum=0,
+  maximum=255,
+) {
+  const fine=Number.isFinite(fineLuminance)?fineLuminance:PHOTO_SHAPE_NEUTRAL_LUMINANCE;
+  const broad=Number.isFinite(broadLuminance)?broadLuminance:PHOTO_SHAPE_NEUTRAL_LUMINANCE;
+  const safeGain=Number.isFinite(gain)?Math.max(0,Math.min(4,gain)):1;
+  const low=Number.isFinite(minimum)?Math.max(0,Math.min(255,minimum)):0;
+  const high=Number.isFinite(maximum)?Math.max(low,Math.min(255,maximum)):255;
+  return Math.max(
+    low,
+    Math.min(
+      high,
+      Math.round(PHOTO_SHAPE_NEUTRAL_LUMINANCE+(fine-broad)*safeGain),
+    ),
+  );
+}
