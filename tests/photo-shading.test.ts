@@ -19,12 +19,20 @@ test("garment luminance mean ignores transparent pixels outside the cloth mask",
 });
 
 test("shape normalization is invariant to the photographed source cloth baseline",()=>{
+  // These pairs represent approximately the same relative illumination around
+  // two very different source-cloth baselines after sRGB -> linear conversion.
   const darkMean=50;
   const paleMean=170;
-  const dark=[30,50,70].map((value)=>neutralizePhotographicLuminance(value,darkMean));
-  const pale=[150,170,190].map((value)=>neutralizePhotographicLuminance(value,paleMean));
-  assert.deepEqual(dark,pale);
-  assert.deepEqual(dark,[112,128,144]);
+  const dark=[41,50,60].map((value)=>neutralizePhotographicLuminance(value,darkMean));
+  const pale=[145,170,198].map((value)=>neutralizePhotographicLuminance(value,paleMean));
+  dark.forEach((value,index)=>assert.ok(Math.abs(value-pale[index])<=1));
+  assert.deepEqual(dark,[110,128,145]);
+});
+
+test("equal source and mean always map to neutral gray",()=>{
+  for(const mean of [24,50,96,128,170,230]) {
+    assert.equal(neutralizePhotographicLuminance(mean,mean),PHOTO_SHAPE_NEUTRAL_LUMINANCE);
+  }
 });
 
 test("invalid or empty evidence fails to neutral rather than inventing contrast",()=>{
