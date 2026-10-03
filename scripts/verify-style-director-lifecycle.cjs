@@ -201,6 +201,23 @@ async function modelFraming(page, generatedImage = false) {
   assert.ok(metrics.completeModelFits, "Model pixels extend beyond the clipped preview frame: " + JSON.stringify(metrics));
   return metrics;
 }
+async function fabricCoverage(page) {
+  return page.evaluate(async () => {
+    const canvas = document.querySelector(".directorExistingModel canvas"), ctx = canvas.getContext("2d");
+    const source = new Image(); source.src = "/designer/studio-tucked.webp"; await source.decode();
+    const original = document.createElement("canvas"); original.width = canvas.width; original.height = canvas.height;
+    const originalContext = original.getContext("2d"); originalContext.drawImage(source, 0, 0);
+    const pixel = (context, x, y) => [...context.getImageData(x, y, 1, 1).data];
+    const brightness = (value) => (value[0] + value[1] + value[2]) / 3;
+    // Real neutral folds where the old RGB classifier exposed the dark source
+    // shirt through a pale selected cloth. These are output checks, not masks.
+    const folds = [[626, 490], [626, 493], [626, 496], [314, 325], [365, 340], [440, 350], [480, 235], [487, 235], [548, 237]].map(([x, y]) => ({
+      x, y, source: brightness(pixel(originalContext, x, y)), rendered: brightness(pixel(ctx, x, y)),
+    }));
+    const protectedPixels = [[512, 100], [510, 210], [490, 200], [520, 195], [310, 750], [703, 750], [445, 1420], [610, 1430], [100, 300]].map(([x, y]) => ({ x, y, rgba: pixel(ctx, x, y) }));
+    return { folds, protectedPixels };
+  });
+}
 async function regression(name, run) {
   const { page, context } = await freshPage();
   try {
@@ -222,6 +239,12 @@ async function regression(name, run) {
     await page.screenshot({ path: path.join(output, "journey-" + width + ".png"), fullPage: true });
     await journey(page);
     const initialFraming = await modelFraming(page);
+    const initialCoverage = await fabricCoverage(page);
+    fs.writeFileSync(path.join(output, "coverage-" + width + ".json"), JSON.stringify(initialCoverage, null, 2));
+    await page.locator(".lookVisual").screenshot({ path: path.join(output, "coverage-" + width + ".png") });
+    const canvasPNG = await page.locator(".directorExistingModel canvas").evaluate((canvas) => canvas.toDataURL("image/png"));
+    fs.writeFileSync(path.join(output, "cloth-pixels-" + width + ".png"), Buffer.from(canvasPNG.split(",")[1], "base64"));
+    for (const fold of initialCoverage.folds) assert.ok(fold.rendered > fold.source + 15, "Pale cloth leaves an exposed source-shirt fold: " + JSON.stringify(fold));
     const metrics = await page.evaluate(() => {
       const canvas = document.querySelector(".directorExistingModel canvas");
       const ctx = canvas.getContext("2d"), colors = new Set();
@@ -236,6 +259,8 @@ async function regression(name, run) {
     await page.locator(".lookVisual").screenshot({ path: path.join(output, "preview-" + width + ".png") });
     await selectLook(page, 1);
     const selectedFraming = await modelFraming(page);
+    const selectedCoverage = await fabricCoverage(page);
+    assert.deepEqual(selectedCoverage.protectedPixels, initialCoverage.protectedPixels, "Fabric changes must preserve the head, hands, shoes and studio pixels");
     assert.equal(await count(page, "render"), 0, "Live look selection must stay deterministic");
     assert.equal(await page.locator(".lookTabs button.active").textContent(), await page.locator(".lookTabs button").nth(1).textContent());
     const render = await start(page);
@@ -257,7 +282,7 @@ async function regression(name, run) {
     const approvedFraming = await modelFraming(page, true);
     assert.equal((await memory(page, "render_completed")).length, 1);
     await page.screenshot({ path: path.join(output, "approved-" + width + ".png"), fullPage: true });
-    summary.viewports.push({ ...metrics, questionnaireAndLookSelection: "passed", fidelityGateAndRetry: "passed", framing: { initial: initialFraming, selected: selectedFraming, held: heldFraming, approved: approvedFraming } });
+    summary.viewports.push({ ...metrics, questionnaireAndLookSelection: "passed", fidelityGateAndRetry: "passed", fabricCoverage: initialCoverage, protectedPixelsPreserved: true, framing: { initial: initialFraming, selected: selectedFraming, held: heldFraming, approved: approvedFraming } });
     await context.close();
   }
   await regression("delayed-render-and-return-to-same-look", async (page) => {
