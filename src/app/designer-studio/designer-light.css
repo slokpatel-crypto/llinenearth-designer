@@ -673,6 +673,12 @@
 .designerRevision select,.designerRevision textarea{width:100%;min-width:0;padding:10px;border:1px solid #ced9e0;border-radius:7px;color:#294158;background:#fff;font:400 13px/1.5 Arial,sans-serif}
 .designerRevision>button{border:0;border-radius:8px;background:#203d5b;color:#fff;padding:12px;font:600 13px/1.4 Arial,sans-serif;cursor:pointer;min-height:44px}
 .designerFeedbackStatus{font:400 12px/1.5 Arial,sans-serif;color:#49664e;margin:12px 0 0}
+.designerTaste{margin-top:10px;border-top:1px solid #e3dfd8;padding-top:4px}
+.designerTaste label{display:flex;align-items:center;gap:8px;min-height:44px}
+.designerTaste input{width:18px;height:18px;flex-shrink:0;accent-color:#203d5b}
+.designerTaste p,.designerTaste small{font-size:12px;line-height:1.55}
+.designerPreviousRevision{margin-top:12px;min-height:44px;border:1px solid #ced9e0;border-radius:8px;background:#fff;color:#294158;padding:10px 14px;cursor:pointer;font:500 12px/1.5 Arial,sans-serif}
+.designerOptionOccasion{color:#8e624c;font-weight:600}
 
 @media(max-width:720px){
   .newDesignerBriefHead{grid-template-columns:1fr}

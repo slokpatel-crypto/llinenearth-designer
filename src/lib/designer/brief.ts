@@ -8,6 +8,7 @@ import {
 } from "@/lib/designer/engine";
 import type { DesignerSearchPreference, DesignerSearchTier } from "@/lib/designer/search";
 import { designerFabricBriefText, designerMentionIsNegated, parseDesignerConstructionIntent } from "./construction-intent.ts";
+import { compileDesignerIntent, unscopedFabricBriefText } from "./design-intent.ts";
 
 export type ParsedDesignerBrief = {
   original:string;
@@ -16,6 +17,7 @@ export type ParsedDesignerBrief = {
   style:DesignerStyle;
   preference:DesignerSearchPreference;
   interpretation:string[];
+  personalStylePatch?:Partial<DesignerStyle>;
 };
 
 function includesAny(text:string,words:string[]) {
@@ -103,8 +105,10 @@ export function parseDesignerBrief(raw:string,base?:{occasion:OccasionTier;conte
   const climate=readClimate==="Not specified" ? base?.context.climate || readClimate : readClimate;
   const intention=readIntention==="Balanced" && !/\bbalanced\b/.test(text) ? base?.context.intention || readIntention : readIntention;
   const style=applyExplicitStyle(original,base?.style || designerStyleForOccasion(occasion));
-  const colors=colorPreferences(designerFabricBriefText(original));
-  const {preferredPattern:pattern,excludedPatterns}=patternPreferences(original);
+  const intent=compileDesignerIntent(original);
+  const globalFabricText=Object.keys(intent.roles).length?unscopedFabricBriefText(original):designerFabricBriefText(original);
+  const colors=colorPreferences(globalFabricText);
+  const {preferredPattern:pattern,excludedPatterns}=patternPreferences(globalFabricText);
   const preference:DesignerSearchPreference={
     wantedTokens:colors.wanted,
     avoidTokens:colors.avoid,
@@ -112,6 +116,7 @@ export function parseDesignerBrief(raw:string,base?:{occasion:OccasionTier;conte
     ...(excludedPatterns.length?{excludedPatterns}:{}),
     preferredTier:preferredTier(intention),
     strictOccasionFit:true,
+    ...(Object.keys(intent.roles).length?{roles:intent.roles}:{}),
   };
 
   const interpretation=[
