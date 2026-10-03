@@ -340,7 +340,7 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "masks.pant",
   "featheredPathMask",
   "pathMasks",
-  "if(path) context.drawImage(featheredPathMask(path),0,0)",
+  "if(!mask && singlePath) context.drawImage(featheredPathMask(singlePath),0,0)",
   "Contrast collars/cuffs sit directly beside skin and hands",
   "photographicShapeMaps",
   "photographicShapeMap",
@@ -348,7 +348,7 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "weightedGarmentLuminanceMean",
   "neutralizePhotographicLuminance",
   "garmentMean",
-  "const lightingMask = mask ?? (path ? featheredPathMask(path) : undefined)",
+  "const lightingMask=mask ?? (singlePath ? featheredPathMask(singlePath) : undefined)",
   "globalAlpha = .58",
   "globalAlpha = .07",
   "function photographicReliefMap(photo: HTMLImageElement, garmentMask?: HTMLCanvasElement)",
@@ -368,6 +368,13 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "photographicShapeMap(photo, detailMask)",
   "globalAlpha = .42",
   "globalAlpha = .32",
+  "function prepareFabricPanels",
+  "function paintPreparedFabricPanels",
+  "function drawGarmentPanels",
+  "if(panels.length>1 && !mask) throw new Error",
+  "One garment-wide lighting/relief pass is enough",
+  "drawGarmentPanels(context,modelPhoto,shirtImage,shirt,[",
+  "drawGarmentPanels(context,modelPhoto,pantImage,pant,[",
 ]);
 requireTokens("src/lib/designer/photo-shading.ts", [
   "weightedGarmentLuminanceMean",
@@ -397,6 +404,7 @@ requireTokens("tests/customer-designer-preview.test.ts", [
   "photo compositor restores garment-local colour-neutral photographic relief",
   "contrast collar and cuff shading reuses baseline-neutral photo structure",
   "tucked directional fabric follows photographed panel grain",
+  "tucked photographic panels share one lighting pass per garment",
 ]);
 requireTokens("src/lib/designer/brand-language.ts", [
   "linen-earth-brand-language-provisional-1",
