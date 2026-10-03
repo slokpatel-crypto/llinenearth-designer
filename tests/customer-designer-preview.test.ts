@@ -35,16 +35,13 @@ test("photographic garment clips feather only inside the real cloth boundary",()
 });
 
 
-test("photo compositor neutralizes source-template luminance before restoring folds",()=>{
+test("photo compositor removes source-template detail brightness calibration",()=>{
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-  assert.match(source,/detailBrightness\?:number/);
-  assert.match(source,/const detailBrightness = placement\.detailBrightness \?\? 1\.3/);
-  assert.match(source,/brightness\(\$\{detailBrightness\}\)/);
-  assert.match(source,/detailBrightness: template\.shirtDetailBrightness/);
-  assert.match(source,/detailBrightness: template\.trouserDetailBrightness/);
   const geometry=readFileSync("src/lib/designer/photo-preview.ts","utf8");
-  assert.match(geometry,/shirtDetailBrightness: 3\.05/);
-  assert.match(geometry,/trouserDetailBrightness: 1\.9/);
+  assert.doesNotMatch(source,/detailBrightness/);
+  assert.doesNotMatch(geometry,/DetailBrightness/);
+  assert.match(source,/Direct source-photo detail blending/);
+  assert.match(source,/colour-neutral multi-band relief map/);
 });
 
 
@@ -87,9 +84,13 @@ test("photo compositor restores colour-neutral photographic micro-relief",()=>{
   assert.match(source,/photographicReliefMaps = new WeakMap/);
   assert.match(source,/function photographicReliefMap\(photo: HTMLImageElement\)/);
   assert.match(source,/Working at half resolution keeps the first preview fast/);
-  assert.match(source,/128 \+ \(luminance - blurredLuminance\) \* 1\.8/);
+  assert.match(source,/grayscale\(1\) blur\(14px\)/);
+  assert.match(source,/const microDetail = original\.data\[index\] - soft\.data\[index\]/);
+  assert.match(source,/const foldDetail = soft\.data\[index\] - broadPixels\.data\[index\]/);
+  assert.match(source,/128 \+ microDetail \* 1\.55 \+ foldDetail \* \.85/);
   assert.match(source,/const relief = photographicReliefMap\(photo\)/);
-  assert.match(source,/globalCompositeOperation = "soft-light"[\s\S]*globalAlpha = \.28[\s\S]*drawImage\(relief, 0, 0, WIDTH, HEIGHT\)/);
+  assert.match(source,/globalCompositeOperation = "soft-light"[\s\S]*globalAlpha = \.36[\s\S]*drawImage\(relief, 0, 0, WIDTH, HEIGHT\)/);
+  assert.match(source,/globalCompositeOperation = "overlay"[\s\S]*globalAlpha = \.08[\s\S]*drawImage\(relief, 0, 0, WIDTH, HEIGHT\)/);
   assert.match(source,/drawImage\(photographicReliefMap\(photo\), 0, 0, WIDTH, HEIGHT\)/);
 });
 
