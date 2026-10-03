@@ -15,6 +15,7 @@ import type { BodyPreviewProfile } from "@/lib/designer/body-profile";
 import { bodyProfileRenderSummary } from "@/lib/designer/body-profile";
 import { compareRenderMeasuredColors, compareRenderMeasuredPatterns, worstRenderColorStatus, worstRenderPatternStatus, type RenderColorFidelityResult, type RenderPatternFidelityResult } from "@/lib/designer/render-fidelity-core";
 import { selectedLookRenderCacheKey } from "@/lib/designer/render-cache-key";
+import { classifyProtectedRegionChange, protectedRegionChangePercent, type ProtectedRegionStatus } from "@/lib/designer/render-protected-region";
 import {
   DESIGNER_PHOTO_TEMPLATES,
   PHOTO_TUCKED_SHIRT_CLIP,
@@ -140,6 +141,8 @@ export type SelectedLookVisualCheck = {
   repairInstruction:string;
   measuredColorDeltaE?:{shirt:number|null;pant:number|null};
   measuredPatternOrientation?:{shirt:string|null;pant:string|null};
+  protectedRegionChange?:number;
+  protectedRegionStatus?:ProtectedRegionStatus;
 };
 
 export type CreativeRenderVisualCheck = {
@@ -553,6 +556,10 @@ export async function inspectSelectedLookFashnOutput(
 
   let measuredColor:RenderColorFidelityResult|null=null;
   let measuredPattern:RenderPatternFidelityResult|null=null;
+  let outputBytes:Buffer|null=null;
+  let deterministicReferenceDataUri:string|undefined;
+  let protectedRegionChange:number|null=null;
+  let protectedRegionStatus:ProtectedRegionStatus="unavailable";
   const shirtMeasured=input.renderEvidence?.shirt?.measuredColorHex || null;
   const pantMeasured=input.renderEvidence?.pant?.measuredColorHex || null;
   const shirtOrientation=input.renderEvidence?.shirt?.patternOrientation || null;
@@ -565,17 +572,17 @@ export async function inspectSelectedLookFashnOutput(
     : null;
   const hasPatternTarget=[shirtOrientation,pantOrientation].some((value)=>value && !["none","uncertain"].includes(value));
 
-  if(shirtMeasured || pantMeasured || hasPatternTarget) {
+  if(view==="front" || shirtMeasured || pantMeasured || hasPatternTarget) {
     try {
-      const bytes=await remoteImageBuffer(outputUrl);
+      outputBytes=await remoteImageBuffer(outputUrl);
       if(shirtMeasured || pantMeasured) {
-        measuredColor=await compareRenderMeasuredColors(bytes,view,{
+        measuredColor=await compareRenderMeasuredColors(outputBytes,view,{
           shirtHex:shirtMeasured,
           pantHex:pantMeasured,
         });
       }
       if(hasPatternTarget) {
-        measuredPattern=await compareRenderMeasuredPatterns(bytes,view,{
+        measuredPattern=await compareRenderMeasuredPatterns(outputBytes,view,{
           shirtOrientation,
           pantOrientation,
           shirtContrastDeltaE:shirtPatternContrast,
@@ -587,9 +594,21 @@ export async function inspectSelectedLookFashnOutput(
           bodyHeightCm:input.bodyProfile?.heightCm ?? null,
         });
       }
+      if(view==="front") {
+        deterministicReferenceDataUri=await creativeModelDataUri(input.style);
+        const [reference,output]=await Promise.all([
+          normalizedRgb(deterministicReferenceDataUri),
+          normalizedRgb(outputBytes),
+        ]);
+        const protectedDeltas=PROTECTED_RENDER_BOXES.map((box)=>boxDelta(reference,output,box));
+        protectedRegionChange=protectedRegionChangePercent(protectedDeltas);
+        protectedRegionStatus=classifyProtectedRegionChange(protectedRegionChange);
+      }
     } catch {
       measuredColor=null;
       measuredPattern=null;
+      protectedRegionChange=null;
+      protectedRegionStatus="unavailable";
     }
   }
 
@@ -635,15 +654,23 @@ export async function inspectSelectedLookFashnOutput(
         : "",
     ].filter(Boolean).join(", ")
     : "";
+  const protectedRegionIssue=protectedRegionStatus==="review"||protectedRegionStatus==="weak"
+    ? `protected model/background change ${protectedRegionChange ?? "unavailable"}%`
+    : "";
 
 
   const token=gatewayAuthToken();
   if(!token) {
-    const deterministicAvailable=codeColorStatus!=="unavailable" || codePatternStatus!=="unavailable";
+    const deterministicAvailable=codeColorStatus!=="unavailable" || codePatternStatus!=="unavailable" || protectedRegionStatus!=="unavailable";
     const deterministicIssues=[
       measuredColorIssue ? `colour ${measuredColorIssue}` : "",
       measuredPatternIssue ? `pattern ${measuredPatternIssue}` : "",
+      protectedRegionIssue,
     ].filter(Boolean).join("; ");
+    const deterministicRepair=[
+      measuredColorIssue||measuredPatternIssue ? "Restore measured fabric colour, pattern direction and physical scale." : "",
+      protectedRegionIssue ? "Restore the locked mannequin and studio outside the garment edit region." : "",
+    ].filter(Boolean).join(" ");
     return {
       available:deterministicAvailable,
       status:"review",
@@ -652,21 +679,20 @@ export async function inspectSelectedLookFashnOutput(
       patternFidelity:codePatternStatus==="unavailable"?"review":codePatternStatus,
       boundary:"review",
       construction:"review",
-      mannequinConsistency:"review",
+      mannequinConsistency:protectedRegionStatus==="unavailable"?"review":protectedRegionStatus,
       artifact:"minor",
       issue:deterministicAvailable
-        ? (deterministicIssues ? `Measured render fidelity needs review (${deterministicIssues}). Other QA checks are unavailable.` : "Measured colour/pattern evidence is within available tolerances; other photoreal QA checks are unavailable.")
+        ? (deterministicIssues ? `Measured render fidelity needs review (${deterministicIssues}). Other QA checks are unavailable.` : "Available deterministic colour, pattern and protected-region checks are within tolerance; other photoreal QA checks are unavailable.")
         : "Automatic photoreal QA is unavailable; keep this render for manual review.",
-      repairInstruction:deterministicIssues
-        ? "Restore measured fabric colour, pattern direction and physical scale without changing the locked construction, model or lighting."
-        : "",
+      repairInstruction:deterministicRepair.slice(0,180),
       ...(measuredColorDeltaE?{measuredColorDeltaE}:{}),
       ...(measuredPatternOrientation?{measuredPatternOrientation}:{}),
+      ...(protectedRegionChange!==null?{protectedRegionChange,protectedRegionStatus}:{}),
     };
   }
 
   const [referenceDataUri,fabricContext]=await Promise.all([
-    creativeModelDataUri(input.style),
+    deterministicReferenceDataUri ? Promise.resolve(deterministicReferenceDataUri) : creativeModelDataUri(input.style),
     creativeFabricContext(input.shirt.image,input.pant.image),
   ]);
   const prompt=[
@@ -680,6 +706,7 @@ export async function inspectSelectedLookFashnOutput(
     `Verified physical evidence: ${selectedLookPhysicalEvidence(input)}.`,
     measuredColorIssue ? `Deterministic colour check before vision review: ${measuredColorIssue}.` : "",
     measuredPatternIssue ? `Deterministic pattern-axis check before vision review: ${measuredPatternIssue}.` : "",
+    protectedRegionStatus!=="unavailable" ? `Deterministic protected-region check for the front view: ${protectedRegionStatus}, normalized change ${protectedRegionChange}%.` : "",
     "Images are supplied in this order: GENERATED RENDER, LOCKED STUDIO MODEL, then SPLIT FABRIC CONTEXT when available (shirt left, trouser right).",
     "Check visible cloth colour, pattern scale/orientation/contrast, weave character, collar and cuff cleanliness, neck opening, hands, shirt/trouser boundary, tucked waistband layering, trouser silhouette, mannequin identity, background stability and synthesis artifacts.",
     "Use code-measured colour/pattern anchors when supplied as objective references; allow realistic lighting/shading but review obvious hue drift, pattern re-scaling, stripe-width drift or orientation changes.",
@@ -734,18 +761,25 @@ export async function inspectSelectedLookFashnOutput(
     const fidelityRank={strong:0,review:1,weak:2} as const;
     const codeColor=codeColorStatus==="unavailable" ? null : codeColorStatus;
     const codePattern=codePatternStatus==="unavailable" ? null : codePatternStatus;
+    const codeProtected=protectedRegionStatus==="unavailable" ? null : protectedRegionStatus;
     const combinedColor=codeColor && fidelityRank[codeColor]>fidelityRank[parsed.colorFidelity] ? codeColor : parsed.colorFidelity;
     const combinedPattern=codePattern && fidelityRank[codePattern]>fidelityRank[parsed.patternFidelity] ? codePattern : parsed.patternFidelity;
-    const forcedMeasuredReview=[codeColor,codePattern].some((value)=>value==="review"||value==="weak");
+    const combinedMannequin=codeProtected && fidelityRank[codeProtected]>fidelityRank[parsed.mannequinConsistency] ? codeProtected : parsed.mannequinConsistency;
+    const forcedMeasuredReview=[codeColor,codePattern,codeProtected].some((value)=>value==="review"||value==="weak");
     const deterministicIssues=[
       measuredColorIssue ? `colour: ${measuredColorIssue}` : "",
       measuredPatternIssue ? `pattern: ${measuredPatternIssue}` : "",
+      protectedRegionIssue ? `identity: ${protectedRegionIssue}` : "",
     ].filter(Boolean).join("; ");
     const issue=forcedMeasuredReview && deterministicIssues
       ? `Measured render drift — ${deterministicIssues}.`
       : String(parsed.issue||"").replace(/\s+/g," ").trim().slice(0,180);
+    const deterministicRepair=[
+      measuredColorIssue||measuredPatternIssue ? "Restore measured fabric colour, pattern direction and physical scale." : "",
+      protectedRegionIssue ? "Restore the locked mannequin and studio outside the garment edit region." : "",
+    ].filter(Boolean).join(" ");
     const repairInstruction=forcedMeasuredReview
-      ? "Restore measured fabric colour, pattern direction and physical scale while preserving the locked construction, model and lighting."
+      ? deterministicRepair.slice(0,180)
       : String(parsed.repairInstruction||"").replace(/\s+/g," ").trim().slice(0,180);
     return {
       ...parsed,
@@ -753,17 +787,24 @@ export async function inspectSelectedLookFashnOutput(
       status:forcedMeasuredReview?"review":parsed.status,
       colorFidelity:combinedColor,
       patternFidelity:combinedPattern,
+      mannequinConsistency:combinedMannequin,
       issue:issue.slice(0,180),
       repairInstruction:repairInstruction.slice(0,180),
       ...(measuredColorDeltaE?{measuredColorDeltaE}:{}),
       ...(measuredPatternOrientation?{measuredPatternOrientation}:{}),
+      ...(protectedRegionChange!==null?{protectedRegionChange,protectedRegionStatus}:{}),
     };
   } catch {
-    const deterministicAvailable=codeColorStatus!=="unavailable" || codePatternStatus!=="unavailable";
+    const deterministicAvailable=codeColorStatus!=="unavailable" || codePatternStatus!=="unavailable" || protectedRegionStatus!=="unavailable";
     const deterministicIssues=[
       measuredColorIssue ? `colour ${measuredColorIssue}` : "",
       measuredPatternIssue ? `pattern ${measuredPatternIssue}` : "",
+      protectedRegionIssue,
     ].filter(Boolean).join("; ");
+    const deterministicRepair=[
+      measuredColorIssue||measuredPatternIssue ? "Restore measured fabric colour, pattern direction and physical scale." : "",
+      protectedRegionIssue ? "Restore the locked mannequin and studio outside the garment edit region." : "",
+    ].filter(Boolean).join(" ");
     return {
       available:deterministicAvailable,
       status:"review",
@@ -772,14 +813,15 @@ export async function inspectSelectedLookFashnOutput(
       patternFidelity:codePatternStatus==="unavailable"?"review":codePatternStatus,
       boundary:"review",
       construction:"review",
-      mannequinConsistency:"review",
+      mannequinConsistency:protectedRegionStatus==="unavailable"?"review":protectedRegionStatus,
       artifact:"minor",
       issue:deterministicAvailable
-        ? (deterministicIssues ? `Measured render fidelity needs review (${deterministicIssues}); semantic QA is unavailable.` : "Measured render evidence is within available tolerances; semantic QA is unavailable.")
+        ? (deterministicIssues ? `Measured render fidelity needs review (${deterministicIssues}); semantic QA is unavailable.` : "Available deterministic render evidence is within tolerance; semantic QA is unavailable.")
         : "Automatic photoreal QA is unavailable; keep this render for manual review.",
-      repairInstruction:deterministicIssues ? "Restore measured fabric colour, pattern direction and physical scale without changing construction." : "",
+      repairInstruction:deterministicRepair.slice(0,180),
       ...(measuredColorDeltaE?{measuredColorDeltaE}:{}),
       ...(measuredPatternOrientation?{measuredPatternOrientation}:{}),
+      ...(protectedRegionChange!==null?{protectedRegionChange,protectedRegionStatus}:{}),
     };
   }
 }
