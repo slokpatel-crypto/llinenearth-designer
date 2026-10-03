@@ -383,11 +383,16 @@ test("final photoreal render is seeded from the validated locked live preview",(
   const ai=readFileSync("src/lib/ai-visualization.ts","utf8");
   const cache=readFileSync("src/lib/designer/render-cache-key.ts","utf8");
 
-  assert.match(preview,/canvasRef\.current\.toDataURL\("image\/jpeg",\.92\)/);
+  assert.match(preview,/serializeLockedPreview\(canvasRef\.current\)/);
   assert.match(preview,/lockedPreviewImage/);
   assert.match(route,/lockedPreviewImage:typeof body\.lockedPreviewImage==="string"/);
+  assert.match(preview,/LOCKED_PREVIEW_MIME="image\/webp"/);
+  assert.match(preview,/LOCKED_PREVIEW_QUALITY=\.96/);
   assert.match(ai,/LOCKED_PREVIEW_DATA_URI/);
   assert.match(ai,/LOCKED_PREVIEW_MAX_BYTES=4_500_000/);
+  assert.match(ai,/\.webp\(\{quality:96,nearLossless:true,smartSubsample:true\}\)/);
+  assert.match(ai,/data:image\/webp;base64/);
+  assert.doesNotMatch(ai,/\.jpeg\(\{quality:92,chromaSubsampling:"4:4:4"\}\)/);
   assert.match(ai,/metadata\.width!==1024 \|\| metadata\.height!==1536/);
   assert.match(ai,/LOCKED_PREVIEW_IDENTITY_BOXES/);
   assert.match(ai,/average>\.16 \|\| maximum>\.28/);
