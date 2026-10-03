@@ -348,7 +348,10 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "weightedGarmentLuminanceMean",
   "neutralizePhotographicLuminance",
   "garmentMean",
-  "const lightingMask = mask ?? (path ? featheredPathMask(path) : undefined)",
+  "panelLightingMasks = new WeakMap<HTMLCanvasElement, Map<string, HTMLCanvasElement>>",
+  "function photoLightingMask(mask?:HTMLCanvasElement,path=\"\")",
+  "context.drawImage(featherMaskInside(mask),0,0)",
+  "const lightingMask = photoLightingMask(mask,path)",
   "globalAlpha = .58",
   "globalAlpha = .07",
   "function photographicReliefMap(photo: HTMLImageElement, garmentMask?: HTMLCanvasElement)",
@@ -391,6 +394,7 @@ requireTokens("tests/photo-shading.test.ts", [
 ]);
 requireTokens("tests/customer-designer-preview.test.ts", [
   "photographic garment clips feather only inside the real cloth boundary",
+  "photo lighting normalization is panel-local inside adaptive garment masks",
   "newDesignerConstruction",
   "instant photo compositor normalizes source albedo before borrowing studio depth",
   "photo compositor removes source-template detail brightness calibration",

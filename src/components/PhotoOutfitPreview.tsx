@@ -52,6 +52,7 @@ const images = new Map<string, Promise<HTMLImageElement>>();
 const fabricTiles = new Map<string, HTMLCanvasElement>();
 const featheredMasks = new WeakMap<HTMLCanvasElement, HTMLCanvasElement>();
 const pathMasks = new Map<string, HTMLCanvasElement>();
+const panelLightingMasks = new WeakMap<HTMLCanvasElement, Map<string, HTMLCanvasElement>>();
 const tuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
 const untuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
 const photographicReliefMaps = new WeakMap<HTMLImageElement, Map<HTMLCanvasElement | null, HTMLCanvasElement>>();
@@ -363,6 +364,36 @@ function featheredPathMask(path:string) {
 }
 
 
+function photoLightingMask(mask?:HTMLCanvasElement,path="") {
+  if(mask && path) {
+    let byPath=panelLightingMasks.get(mask);
+    if(!byPath) {
+      byPath=new Map<string,HTMLCanvasElement>();
+      panelLightingMasks.set(mask,byPath);
+    }
+    const cached=byPath.get(path);
+    if(cached) return cached;
+
+    // Lighting normalization must follow the exact photographed panel being
+    // drawn, not the whole shirt or both trouser legs. Intersect the adaptive
+    // cloth mask with the traced panel path before deriving shape/relief.
+    const combined=document.createElement("canvas");
+    combined.width=WIDTH;
+    combined.height=HEIGHT;
+    const context=combined.getContext("2d");
+    if(!context) throw new Error("Canvas is unavailable.");
+    context.drawImage(featherMaskInside(mask),0,0);
+    context.globalCompositeOperation="destination-in";
+    context.drawImage(featheredPathMask(path),0,0);
+    context.globalCompositeOperation="source-over";
+    byPath.set(path,combined);
+    return combined;
+  }
+  if(mask) return featherMaskInside(mask);
+  if(path) return featheredPathMask(path);
+  return undefined;
+}
+
 // The tucked photo has dark, cool shirting and warm trousers. Separate them
 // by their photographed colour, so cloth never spills onto arms, neck, the
 // studio set, or through the gap between the legs.
@@ -483,7 +514,7 @@ function drawGarment(
   // the source garment's luminance/albedo into the selected Linen Earth cloth.
   // This keeps the actual swatch hue and woven texture authoritative while the
   // studio photograph contributes broad three-dimensional form.
-  const lightingMask = mask ?? (path ? featheredPathMask(path) : undefined);
+  const lightingMask = photoLightingMask(mask,path);
   const shape = photographicShapeMap(photo, lightingMask);
   context.filter = "none";
   context.globalCompositeOperation = "soft-light";
