@@ -543,7 +543,7 @@ function drawGarmentPanels(
   // identical shape maps for body/sleeves or left/right trouser legs.
   const singlePath=panels.length===1 ? panels[0].path : "";
   const lightingMask=mask ?? (singlePath ? featheredPathMask(singlePath) : undefined);
-  const shape=photographicShapeMap(photo,lightingMask);
+  const shape=photographicShapeMap(photo, lightingMask);
   context.filter="none";
   context.globalCompositeOperation="soft-light";
   context.globalAlpha=.58;
@@ -556,7 +556,7 @@ function drawGarmentPanels(
   // Seam, weave, wrinkle and fold contrast comes only from the
   // colour-neutral multi-band relief map. Direct source-photo detail blending
   // remains intentionally forbidden because it can reintroduce template value.
-  const relief=photographicReliefMap(photo,lightingMask);
+  const relief=photographicReliefMap(photo, lightingMask);
   context.globalCompositeOperation="soft-light";
   context.globalAlpha=.36;
   context.drawImage(relief,0,0,WIDTH,HEIGHT);
