@@ -91,6 +91,7 @@ Phase 10 is now materially beyond the original foundation brief.
 - FASHN remains the final photoreal render step rather than the instant option-change renderer.
 - The locked deterministic preview and paired fabric-context image now avoid repeated JPEG generations: the browser hands off high-quality WebP (with Canvas fallback), the server preserves it as near-lossless WebP after identity validation, and fabric-context resizing uses lossless intermediates before one WebP encode. This retains more fine weave/stripe/check detail for the final renderer without changing credit usage.
 - FASHN final front renders, repairs and secondary views now request PNG output instead of JPEG, so generated images can feed later QA/view steps without another lossy encoding generation. Resolution, generation mode and credit count remain unchanged.
+- The FASHN Edit request no longer forces an undocumented 4:5 aspect-ratio override. Final rendering now preserves the locked source model's 2:3 full-body framing; any future social/export crop should be a separate explicit reframe operation rather than changing the fidelity source.
 - Final render requests are canonicalized server-side against stock fabric IDs and the locked StyleSpec/body profile.
 - Multi-view final output remains Front / 3/4 / Side / Back with visual inspection.
 - Measured render evidence is carried into final rendering and QA prompts.
