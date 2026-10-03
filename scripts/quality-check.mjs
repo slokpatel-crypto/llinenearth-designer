@@ -329,13 +329,23 @@ for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","P
   if (!photoGeometry.includes(token)) throw new Error(`Real photographic Designer regression: photo-preview missing ${token}`);
 }
 console.log("Real photographic Designer gate passed: inward-feathered garment/creative boundaries, neck clear zone and tucked layering protected.");
-for (const token of ["detailBrightness?:number","const detailBrightness = placement.detailBrightness ?? 1.3","brightness(${detailBrightness})","detailBrightness: template.shirtDetailBrightness","detailBrightness: template.trouserDetailBrightness"]) {
-  if (!photoPreview.includes(token)) throw new Error(`Photo luminance neutralization regression: missing ${token}`);
+for (const token of [
+  "detailBrightness?:number",
+  "const detailBrightness = placement.detailBrightness ?? 1.3",
+  "photographicShapeMap(photo, detailBrightness)",
+  "photographicFoldMap(photo)",
+  "detailBrightness: template.shirtDetailBrightness",
+  "detailBrightness: template.trouserDetailBrightness",
+]) {
+  if (!photoPreview.includes(token)) throw new Error(`Photo multiband neutralization regression: missing ${token}`);
 }
 for (const token of ["shirtDetailBrightness: 3.05","trouserDetailBrightness: 1.9","shirtDetailBrightness: 1.3","trouserDetailBrightness: 1.3"]) {
   if (!photoGeometry.includes(token)) throw new Error(`Photo template luminance calibration regression: missing ${token}`);
 }
-console.log("Photo luminance neutralization gate passed: source-template colour cannot dominate selected fabric while folds remain photographic.");
+for (const token of ["photographicFoldMaps","grayscale(1) blur(1.25px)","grayscale(1) blur(12px)","* 1.42","globalAlpha = .34"]) {
+  if (!photoPreview.includes(token)) throw new Error(`Photo fold-band regression: missing ${token}`);
+}
+console.log("Photo multiband neutralization gate passed: source-template albedo is removed while broad form, folds and relief remain photographic.");
 for (const token of ["const plainTextureDetailGain = .34","high-frequency linen weave to avoid a flat painted-shirt look","* plainTextureDetailGain"]) {
   if (!photoPreview.includes(token)) throw new Error(`Plain linen texture regression: missing ${token}`);
 }
@@ -354,10 +364,17 @@ for (const token of ["linen-final-render-cache-v2-locked-preview-source","functi
   if(!selectedLookCacheKey.includes(token)) throw new Error(`Locked-preview final-render cache regression: missing ${token}`);
 }
 console.log("Locked-preview final-render gate passed: final photoreal generation starts from a validated deterministic customer preview when available.");
-for (const token of ["function drawWhiteDetail","globalAlpha = .9","globalAlpha = .12","clean white while retaining the real folded edge beside neck and hands"]) {
+for (const token of [
+  "function drawWhiteDetail",
+  "const shape = photographicShapeMap(photo, brightness)",
+  "const folds = photographicFoldMap(photo)",
+  "globalAlpha = .42",
+  "globalAlpha = .28",
+  "keeping the collar/cuff visibly white beside the neck and hands",
+]) {
   if (!photoPreview.includes(token)) throw new Error(`Contrast collar/cuff photographic shading regression: missing ${token}`);
 }
-console.log("Contrast-detail shading gate passed: white collar/cuff cloth keeps photographic depth without source-colour contamination.");
+console.log("Contrast-detail shading gate passed: white collar/cuff cloth uses the neutral shape/fold/relief stack.");
 const designerPhotoCss=fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
 if(!/\.newDesignerPhotoAi\{[^}]*object-fit:contain/.test(designerPhotoCss)) throw new Error("Final photoreal framing regression: full model must remain contained.");
 if(/\.newDesignerPhotoAi\{[^}]*object-fit:cover/.test(designerPhotoCss)) throw new Error("Final photoreal framing regression: cover would crop the model.");
