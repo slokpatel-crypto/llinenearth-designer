@@ -458,51 +458,106 @@ function untuckedGarmentMasks(photo: HTMLImageElement, shirtPath: string, pantPa
   return result;
 }
 
-function drawGarment(
-  target: CanvasRenderingContext2D, photo: HTMLImageElement,
-  swatch: HTMLImageElement, fabric: DesignerFabric, path: string,
-  mask?: HTMLCanvasElement,
-  placement: { offsetX?: number; offsetY?: number; scale?: number; rotationDeg?:number; photoPxPerMm?:number } = {},
-) {
-  const layer = document.createElement("canvas");
-  layer.width = WIDTH;
-  layer.height = HEIGHT;
-  const context = layer.getContext("2d");
-  if (!context) throw new Error("Canvas is unavailable.");
+type GarmentPlacement={
+  offsetX?:number;
+  offsetY?:number;
+  scale?:number;
+  rotationDeg?:number;
+  photoPxPerMm?:number;
+};
 
-  const tile = swatchTile(swatch, fabric);
-  const pattern = context.createPattern(tile, "repeat");
-  if (!pattern) throw new Error("Could not prepare the fabric pattern.");
+type GarmentPanel={
+  path:string;
+  placement?:GarmentPlacement;
+};
+
+type PreparedFabricPanel={
+  path:string;
+  pattern:CanvasPattern;
+};
+
+function prepareFabricPanels(
+  context:CanvasRenderingContext2D,
+  tile:HTMLCanvasElement,
+  fabric:DesignerFabric,
+  panels:GarmentPanel[],
+  basePlacement:GarmentPlacement,
+):PreparedFabricPanel[] {
   const visualFallback=patternScaleForFabric(fabric);
-  const scale = photoFabricPatternScale(fabricRenderAsset(fabric),visualFallback,placement.photoPxPerMm) * (placement.scale ?? 1);
-  pattern.setTransform(new DOMMatrix().translate(placement.offsetX ?? 0, placement.offsetY ?? 0).rotate(fabricOrientation(fabric)+(placement.rotationDeg??0)).scale(scale));
-  context.fillStyle = pattern;
-  context.fillRect(0, 0, WIDTH, HEIGHT);
+  return panels.map((panel)=>{
+    const placement={...basePlacement,...panel.placement};
+    const pattern=context.createPattern(tile,"repeat");
+    if(!pattern) throw new Error("Could not prepare the fabric pattern.");
+    const scale=photoFabricPatternScale(
+      fabricRenderAsset(fabric),
+      visualFallback,
+      placement.photoPxPerMm,
+    )*(placement.scale??1);
+    pattern.setTransform(
+      new DOMMatrix()
+        .translate(placement.offsetX??0,placement.offsetY??0)
+        .rotate(fabricOrientation(fabric)+(placement.rotationDeg??0))
+        .scale(scale),
+    );
+    return {path:panel.path,pattern};
+  });
+}
 
-  // Use a neutral, low-frequency lighting field rather than directly blending
-  // the source garment's luminance/albedo into the selected Linen Earth cloth.
-  // This keeps the actual swatch hue and woven texture authoritative while the
-  // studio photograph contributes broad three-dimensional form.
-  const lightingMask = mask ?? (path ? featheredPathMask(path) : undefined);
+function paintPreparedFabricPanels(
+  context:CanvasRenderingContext2D,
+  panels:PreparedFabricPanel[],
+) {
+  for(const panel of panels) {
+    context.save();
+    if(panel.path) context.clip(new Path2D(panel.path));
+    context.fillStyle=panel.pattern;
+    context.fillRect(0,0,WIDTH,HEIGHT);
+    context.restore();
+  }
+}
+
+function drawGarmentPanels(
+  target:CanvasRenderingContext2D,
+  photo:HTMLImageElement,
+  swatch:HTMLImageElement,
+  fabric:DesignerFabric,
+  panels:GarmentPanel[],
+  mask?:HTMLCanvasElement,
+  placement:GarmentPlacement={},
+) {
+  if(!panels.length) throw new Error("At least one garment panel is required.");
+  if(panels.length>1 && !mask) throw new Error("Multi-panel photo garment requires a combined photographic mask.");
+
+  const layer=document.createElement("canvas");
+  layer.width=WIDTH;
+  layer.height=HEIGHT;
+  const context=layer.getContext("2d");
+  if(!context) throw new Error("Canvas is unavailable.");
+
+  const tile=swatchTile(swatch,fabric);
+  const preparedPanels=prepareFabricPanels(context,tile,fabric,panels,placement);
+  paintPreparedFabricPanels(context,preparedPanels);
+
+  // One garment-wide lighting/relief pass is enough even when directional
+  // pattern placement differs by photographed panel. This avoids recomputing
+  // identical shape maps for body/sleeves or left/right trouser legs while the
+  // selected Linen Earth cloth remains the colour and texture authority.
+  const singlePath = panels.length === 1 ? panels[0].path : "";
+  const lightingMask = mask ?? (singlePath ? featheredPathMask(singlePath) : undefined);
   const shape = photographicShapeMap(photo, lightingMask);
   context.filter = "none";
   context.globalCompositeOperation = "soft-light";
   context.globalAlpha = .58;
   context.drawImage(shape, 0, 0, WIDTH, HEIGHT);
 
-  // A tiny multiply reinforcement is enough for deep folds because the shape
-  // map is already centered around neutral gray. We intentionally do not blend
-  // the original navy/beige template cloth back into the selected fabric.
   context.globalCompositeOperation = "multiply";
   context.globalAlpha = .07;
   context.drawImage(shape, 0, 0, WIDTH, HEIGHT);
 
-  // Restore seam, weave, wrinkle and medium-fold contrast only from a
+  // Seam, weave, wrinkle and fold contrast comes only from the
   // colour-neutral multi-band relief map. Direct source-photo detail blending
-  // is intentionally avoided because even grayscale passes can reintroduce the
-  // original garment's value bias into a pale or dark selected fabric.
+  // remains intentionally forbidden because it can reintroduce template value.
   const relief = photographicReliefMap(photo, lightingMask);
-  context.filter = "none";
   context.globalCompositeOperation = "soft-light";
   context.globalAlpha = .36;
   context.drawImage(relief, 0, 0, WIDTH, HEIGHT);
@@ -510,26 +565,32 @@ function drawGarment(
   context.globalAlpha = .08;
   context.drawImage(relief, 0, 0, WIDTH, HEIGHT);
 
-  // Put a faint copy of the real textile back above the lighting model. This
-  // keeps weave / print micro-detail visible in highlights, where multiply
-  // alone tends to wash the source cloth into a smooth painted surface.
+  // Reintroduce the exact selected textile above lighting with the same
+  // per-panel transforms used by the base fill.
   context.filter = "none";
   context.globalCompositeOperation = "soft-light";
   context.globalAlpha = fabric.patternType === "Solid" ? .12 : .16;
-  context.fillStyle = pattern;
-  context.fillRect(0, 0, WIDTH, HEIGHT);
+  paintPreparedFabricPanels(context,preparedPanels);
 
   context.globalAlpha = 1;
   context.filter = "none";
-
   context.globalCompositeOperation = "destination-in";
   if (mask) context.drawImage(featherMaskInside(mask), 0, 0);
-  // Hard SVG-like clip edges make fabric look pasted onto the photograph.
-  // Feather only toward the garment interior so collar/cuff/body boundaries
-  // inherit the photographed antialiasing without leaking onto skin or set.
-  if (path) context.drawImage(featheredPathMask(path), 0, 0);
+  if (!mask && singlePath) context.drawImage(featheredPathMask(singlePath), 0, 0);
   context.globalCompositeOperation = "source-over";
   target.drawImage(layer, 0, 0);
+}
+
+function drawGarment(
+  target:CanvasRenderingContext2D,
+  photo:HTMLImageElement,
+  swatch:HTMLImageElement,
+  fabric:DesignerFabric,
+  path:string,
+  mask?:HTMLCanvasElement,
+  placement:GarmentPlacement={},
+) {
+  drawGarmentPanels(target,photo,swatch,fabric,[{path}],mask,placement);
 }
 
 type CreativePreviewSpec = Pick<CreativeDirection,"id"|"name"|"treatments"|"pattern">;
@@ -543,10 +604,10 @@ function clipCreativeLayer(
   path:string,
   mask?:HTMLCanvasElement,
 ) {
-  context.globalCompositeOperation="destination-in";
-  if(mask) context.drawImage(featherMaskInside(mask),0,0);
+  context.globalCompositeOperation = "destination-in";
+  if (mask) context.drawImage(featherMaskInside(mask), 0, 0);
   if(path) context.drawImage(featheredPathMask(path),0,0);
-  context.globalCompositeOperation="source-over";
+  context.globalCompositeOperation = "source-over";
 }
 
 function drawCreativePattern(
@@ -601,7 +662,7 @@ function drawCreativePattern(
     }
   } else if(pattern.id==="drift-chevron-pattern") {
     context.strokeStyle=ink;
-    context.globalAlpha=.36;
+    context.globalAlpha = .36;
     context.lineWidth=1.5;
     for(let y=275;y<705;y+=30) {
       for(let x=310;x<720;x+=34) {
@@ -628,7 +689,7 @@ function drawCreativePattern(
   target.save();
   target.globalCompositeOperation="multiply";
   target.globalAlpha=.78;
-  target.drawImage(layer,0,0);
+  target.drawImage(layer, 0, 0);
   target.restore();
 }
 
@@ -650,7 +711,7 @@ function drawCreativeDetails(
       ctx.beginPath();
       ctx.moveTo(365,250); ctx.lineTo(430,228); ctx.lineTo(410,555); ctx.lineTo(382,548); ctx.closePath(); ctx.fill();
       clipCreativeLayer(ctx,tucked?PHOTO_TUCKED_SHIRT_BODY_CLIP:"",shirtMask);
-      target.save(); target.globalCompositeOperation="multiply"; target.drawImage(layer,0,0); target.restore();
+      target.save(); target.globalCompositeOperation="multiply"; target.drawImage(layer, 0, 0); target.restore();
     }
   }
 
@@ -678,7 +739,7 @@ function drawCreativeDetails(
       }
       ctx.globalCompositeOperation="destination-in";
       ctx.fill(new Path2D(cuffPath));
-      target.save();target.globalCompositeOperation="multiply";target.drawImage(layer,0,0);target.restore();
+      target.save();target.globalCompositeOperation="multiply";target.drawImage(layer, 0, 0);target.restore();
     }
   }
 }
@@ -757,9 +818,13 @@ export function composePhotoOutfit(
     // pasted-on band of shirt texture across the waist/fly/crotch.
     // Directional fabric grain follows each photographed panel's screen-space
     // fall, so stripes/checks do not stay unnaturally vertical on angled sleeves.
-    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_SHIRT_BODY_CLIP, masks.shirt, { ...calibratedPlacement, offsetX: 0, rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.body });
-    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_LEFT_SLEEVE_CLIP, masks.shirt, { ...calibratedPlacement, offsetX: 11, rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.leftSleeve });
-    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_RIGHT_SLEEVE_CLIP, masks.shirt, { ...calibratedPlacement, offsetX: -9, rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.rightSleeve });
+    // Body/sleeves and both trouser legs are batched into one cloth-lighting
+    // pass per garment, so panel alignment does not multiply shape/relief work.
+    drawGarmentPanels(context,modelPhoto,shirtImage,shirt,[
+      {path:PHOTO_TUCKED_SHIRT_BODY_CLIP,placement:{offsetX:0,rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.body}},
+      {path:PHOTO_TUCKED_LEFT_SLEEVE_CLIP,placement:{offsetX:11,rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.leftSleeve}},
+      {path:PHOTO_TUCKED_RIGHT_SLEEVE_CLIP,placement:{offsetX:-9,rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.rightSleeve}},
+    ],masks.shirt,calibratedPlacement);
 
     drawCreativePattern(context,creative,PHOTO_TUCKED_SHIRT_BODY_CLIP,masks.shirt);
     drawCreativePattern(context,creative,PHOTO_TUCKED_LEFT_SLEEVE_CLIP,masks.shirt);
@@ -774,8 +839,10 @@ export function composePhotoOutfit(
     }
     if (style.collarFinish === "White contrast collar + cuffs") drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_CUFF_MASK, undefined);
 
-    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_LEFT_TROUSER_CLIP, masks.pant, { ...calibratedPlacement, offsetX: 5, rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.leftTrouser });
-    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_RIGHT_TROUSER_CLIP, masks.pant, { ...calibratedPlacement, offsetX: -5, rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.rightTrouser });
+    drawGarmentPanels(context,modelPhoto,pantImage,pant,[
+      {path:PHOTO_TUCKED_LEFT_TROUSER_CLIP,placement:{offsetX:5,rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.leftTrouser}},
+      {path:PHOTO_TUCKED_RIGHT_TROUSER_CLIP,placement:{offsetX:-5,rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.rightTrouser}},
+    ],masks.pant,calibratedPlacement);
   } else {
     const shirtMask = untuckedGarmentMasks(modelPhoto, template.shirtPath, DESIGNER_PHOTO_TEMPLATES.pleated.trouserPath).shirt;
     const trouserMask = untuckedGarmentMasks(trouserPhoto, template.shirtPath, template.trouserPath).pant;

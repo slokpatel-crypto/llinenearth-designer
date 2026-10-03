@@ -26,12 +26,25 @@ test("photographic garment clips feather only inside the real cloth boundary",()
   assert.match(source,/function featheredPathMask/);
   assert.match(source,/pathMasks = new Map/);
   assert.match(source,/context\.drawImage\(featheredPathMask\(path\), 0, 0\)/);
-  assert.match(source,/if\(path\) context\.drawImage\(featheredPathMask\(path\),0,0\)/);
+  assert.match(source,/if\(!mask && singlePath\) context\.drawImage\(featheredPathMask\(singlePath\),0,0\)/);
   assert.match(source,/Contrast collars\/cuffs sit directly beside skin and hands/);
   assert.match(source,/destination-in/);
 
   const css=readFileSync("src/app/designer-studio/designer-light.css","utf8");
   assert.doesNotMatch(css,/\.newDesignerConstruction\{/);
+});
+
+
+test("tucked photographic panels share one lighting pass per garment",()=>{
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  assert.match(source,/function prepareFabricPanels/);
+  assert.match(source,/function paintPreparedFabricPanels/);
+  assert.match(source,/function drawGarmentPanels/);
+  assert.match(source,/if\(panels\.length>1 && !mask\) throw new Error/);
+  assert.match(source,/One garment-wide lighting\/relief pass is enough/);
+  assert.match(source,/drawGarmentPanels\(context,modelPhoto,shirtImage,shirt,\[/);
+  assert.match(source,/drawGarmentPanels\(context,modelPhoto,pantImage,pant,\[/);
+  assert.match(source,/paintPreparedFabricPanels\(context,preparedPanels\)[\s\S]*const shape=photographicShapeMap[\s\S]*paintPreparedFabricPanels\(context,preparedPanels\)/);
 });
 
 
@@ -120,7 +133,7 @@ test("instant photo compositor normalizes source albedo before borrowing studio 
   assert.match(source,/grayscale\(1\) blur\(7px\)/);
   assert.match(source,/weightedGarmentLuminanceMean\(input\.data, maskPixels\.data\)/);
   assert.match(source,/neutralizePhotographicLuminance\(input\.data\[index\], garmentMean\)/);
-  assert.match(source,/const lightingMask = mask \?\? \(path \? featheredPathMask\(path\) : undefined\)/);
+  assert.match(source,/const lightingMask = mask \?\? \(singlePath \? featheredPathMask\(singlePath\) : undefined\)/);
   assert.match(source,/globalCompositeOperation = "soft-light"[\s\S]*globalAlpha = \.58[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
   assert.match(source,/globalCompositeOperation = "multiply"[\s\S]*globalAlpha = \.07[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
   assert.match(source,/selected Linen Earth cloth/);
