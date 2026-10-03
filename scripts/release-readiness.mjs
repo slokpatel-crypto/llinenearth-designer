@@ -345,6 +345,9 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "photographicShapeMaps",
   "photographicShapeMap",
   "grayscale(1) blur(7px)",
+  "weightedLuminance",
+  "garmentMean",
+  "const lightingMask = mask ?? (path ? featheredPathMask(path) : undefined)",
   "globalAlpha = .58",
   "globalAlpha = .07",
 ]);
