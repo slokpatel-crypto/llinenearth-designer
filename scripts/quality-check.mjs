@@ -325,10 +325,31 @@ if(!/\.newDesignerPhotoStage\{[^}]*background:#0a1726/.test(photoCustomerCss)) t
 if(!/\.newDesignerBriefModel \.directorExistingModel canvas\{[^}]*object-fit:contain/.test(photoCustomerCss)) throw new Error("Photographic Designer regression: recommendation-card model must remain full-body.");
 if(/\.newDesignerBriefModel \.directorExistingModel canvas\{[^}]*object-fit:cover/.test(photoCustomerCss)) throw new Error("Photographic Designer regression: recommendation-card cover crop returned.");
 const photoGeometry = fs.readFileSync("src/lib/designer/photo-preview.ts","utf8");
+const photoPanelGrain = fs.readFileSync("src/lib/designer/photo-panel-grain.ts","utf8");
 for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","PHOTO_TUCKED_LEFT_SLEEVE_CLIP","PHOTO_TUCKED_RIGHT_SLEEVE_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_LEFT_TROUSER_CLIP","PHOTO_TUCKED_RIGHT_TROUSER_CLIP","PHOTO_TUCKED_NECK_CLEAR","/designer/studio-tucked.webp"]) {
   if (!photoGeometry.includes(token)) throw new Error(`Real photographic Designer regression: photo-preview missing ${token}`);
 }
 console.log("Real photographic Designer gate passed: inward-feathered garment/creative boundaries, neck clear zone and tucked layering protected.");
+for (const token of [
+  "PHOTO_TUCKED_PANEL_GRAIN_ROTATION",
+  "rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.leftSleeve",
+  "rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.rightSleeve",
+  "rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.leftTrouser",
+  "rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.rightTrouser",
+  "rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.collar",
+]) {
+  if (!photoPreview.includes(token)) throw new Error(`Photo panel grain regression: preview missing ${token}`);
+}
+for (const token of [
+  "photoPanelRotationFromVertical",
+  "visual geometry from",
+  "not a claim about physical cloth measurements",
+  "leftSleeve:{topX:351,topY:244,bottomX:311,bottomY:680}",
+  "rightSleeve:{topX:669,topY:244,bottomX:706,bottomY:680}",
+]) {
+  if (!photoPanelGrain.includes(token)) throw new Error(`Photo panel grain regression: geometry missing ${token}`);
+}
+console.log("Photo panel grain gate passed: directional fabrics follow photographed panel fall without claiming physical grain evidence.");
 for (const token of [
   "photographicReliefMaps = new WeakMap<HTMLImageElement, Map<HTMLCanvasElement | null, HTMLCanvasElement>>",
   "function photographicReliefMap(photo: HTMLImageElement, garmentMask?: HTMLCanvasElement)",
