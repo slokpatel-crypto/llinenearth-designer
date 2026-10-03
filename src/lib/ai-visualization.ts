@@ -16,6 +16,12 @@ import { bodyProfileRenderSummary } from "@/lib/designer/body-profile";
 import { compareRenderMeasuredColors, compareRenderMeasuredPatterns, worstRenderColorStatus, worstRenderPatternStatus, type RenderColorFidelityResult, type RenderPatternFidelityResult } from "@/lib/designer/render-fidelity-core";
 import { selectedLookRenderCacheKey } from "@/lib/designer/render-cache-key";
 import {
+  DESIGNER_PHOTO_TEMPLATES,
+  PHOTO_TUCKED_SHIRT_CLIP,
+  PHOTO_TUCKED_TROUSER_CLIP,
+  photoTemplateForStyle,
+} from "@/lib/designer/photo-preview";
+import {
   repairDevelopmentRender,
   renderDevelopmentSet,
   type RenderSet,
@@ -247,6 +253,28 @@ async function creativeModelDataUri(style:DesignerStyle) {
   const image=await publicImageDataUri(source,"designer");
   if(!image) throw new FashnVisualizationError("The studio model reference is unavailable.","invalid_source");
   return `data:${image.mime};base64,${image.bytes.toString("base64")}`;
+}
+
+async function selectedLookGarmentEditMask(style:DesignerStyle) {
+  const templateId=photoTemplateForStyle(style);
+  const template=DESIGNER_PHOTO_TEMPLATES[templateId];
+  const shirtPath=templateId==="tucked" ? PHOTO_TUCKED_SHIRT_CLIP : template.shirtPath;
+  const trouserPath=templateId==="tucked" ? PHOTO_TUCKED_TROUSER_CLIP : template.trouserPath;
+  if(!shirtPath || !trouserPath) return undefined;
+
+  // FASHN Edit treats white mask pixels as the priority edit region and black
+  // as preserve. Reuse the same 1024×1536 garment geometry as the deterministic
+  // preview so the final refinement concentrates on cloth while the faceless
+  // head, hands, shoes and studio remain protected by default.
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1536" viewBox="0 0 1024 1536">
+    <rect width="1024" height="1536" fill="#000"/>
+    <path d="${shirtPath}" fill="#fff"/>
+    <path d="${trouserPath}" fill="#fff"/>
+  </svg>`;
+  const mask=await sharp(Buffer.from(svg))
+    .png({compressionLevel:9})
+    .toBuffer();
+  return `data:image/png;base64,${mask.toString("base64")}`;
 }
 
 type NormalizedBox={x:number;y:number;w:number;h:number};
@@ -1020,8 +1048,11 @@ export async function renderSelectedLookFashnFront(input:SelectedLookFashnReques
   const cached=getCachedSelectedLookRender(input);
   if(cached) return cached;
   const {source,usedLockedPreview}=await validatedLockedPreviewSource(input);
-  const context=await creativeFabricContext(input.shirt.image,input.pant.image);
-  const generated=await runEdit(source,selectedLookPrompt(input,usedLockedPreview),context);
+  const [context,garmentMask]=await Promise.all([
+    creativeFabricContext(input.shirt.image,input.pant.image),
+    selectedLookGarmentEditMask(input.style),
+  ]);
+  const generated=await runEdit(source,selectedLookPrompt(input,usedLockedPreview),context,garmentMask);
   const result:CreativeFashnResult={
     image:generated.output,
     jobId:generated.jobId,
@@ -1139,7 +1170,7 @@ export async function inspectCreativeFashnOutput(
   };
 }
 
-async function runEdit(image: string, prompt: string, imageContext?: string) {
+async function runEdit(image: string, prompt: string, imageContext?: string, mask?: string) {
   // FASHN Edit currently derives output geometry from the source image; its
   // documented input contract does not expose an aspect-ratio override. Keep
   // the locked model framing intact instead of forcing a separate 4:5 reframe.
@@ -1149,6 +1180,7 @@ async function runEdit(image: string, prompt: string, imageContext?: string) {
       image,
       prompt,
       image_context: imageContext,
+      mask,
       resolution: "1k",
       generation_mode: "balanced",
       num_images: 1,
