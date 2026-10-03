@@ -219,6 +219,35 @@ async function publicImageDataUri(publicPath:string,allowedRootName:string) {
   }
 }
 
+const FABRIC_CONTEXT_PANEL_WIDTH=500;
+const FABRIC_CONTEXT_HEIGHT=620;
+const FABRIC_CONTEXT_GUTTER=32;
+const FABRIC_CONTEXT_BACKGROUND={r:235,g:231,b:224} as const;
+
+async function fabricContextPanel(bytes:Buffer|undefined) {
+  const placeholder=await sharp({
+    create:{
+      width:FABRIC_CONTEXT_PANEL_WIDTH,
+      height:FABRIC_CONTEXT_HEIGHT,
+      channels:3,
+      background:{r:218,g:212,b:202},
+    },
+  }).png().toBuffer();
+
+  // Preserve the complete photographed swatch rather than cover-cropping it.
+  // Cropping can remove a stripe/check repeat or edge variation that the final
+  // renderer and visual QA need to distinguish the actual catalogue fabric.
+  return sharp(bytes||placeholder)
+    .resize(FABRIC_CONTEXT_PANEL_WIDTH,FABRIC_CONTEXT_HEIGHT,{
+      fit:"contain",
+      background:FABRIC_CONTEXT_BACKGROUND,
+      withoutEnlargement:false,
+    })
+    .removeAlpha()
+    .png()
+    .toBuffer();
+}
+
 async function creativeFabricContext(shirtImage:string,pantImage:string) {
   const [shirt,pant]=await Promise.all([
     publicImageDataUri(shirtImage,"fabrics"),
@@ -226,20 +255,26 @@ async function creativeFabricContext(shirtImage:string,pantImage:string) {
   ]);
   if(!shirt && !pant) return undefined;
   try {
-    const placeholder=await sharp({
-      create:{width:500,height:620,channels:3,background:{r:218,g:212,b:202}},
-    }).jpeg().toBuffer();
-    // Resize each swatch losslessly before composing them. The final WebP uses
-    // near-lossless encoding so fine linen slub, stripes and checks are not
-    // blurred by two JPEG generations before FASHN receives the cloth context.
-    const left=await sharp(shirt?.bytes || placeholder).resize(500,620,{fit:"cover"}).png().toBuffer();
-    const right=await sharp(pant?.bytes || placeholder).resize(500,620,{fit:"cover"}).png().toBuffer();
+    const [left,right]=await Promise.all([
+      fabricContextPanel(shirt?.bytes),
+      fabricContextPanel(pant?.bytes),
+    ]);
+    const rightOffset=FABRIC_CONTEXT_PANEL_WIDTH+FABRIC_CONTEXT_GUTTER;
     const joined=await sharp({
-      create:{width:1000,height:620,channels:3,background:{r:235,g:231,b:224}},
+      create:{
+        width:FABRIC_CONTEXT_PANEL_WIDTH*2+FABRIC_CONTEXT_GUTTER,
+        height:FABRIC_CONTEXT_HEIGHT,
+        channels:3,
+        background:FABRIC_CONTEXT_BACKGROUND,
+      },
     }).composite([
       {input:left,left:0,top:0},
-      {input:right,left:500,top:0},
+      {input:right,left:rightOffset,top:0},
     ]).webp({quality:96,nearLossless:true,smartSubsample:true}).toBuffer();
+
+    // The neutral gutter deliberately keeps shirt and trouser references
+    // visually separate without adding labels/text that a generative model
+    // could accidentally reproduce in the garment or studio scene.
     return `data:image/webp;base64,${joined.toString("base64")}`;
   } catch {
     return undefined;
