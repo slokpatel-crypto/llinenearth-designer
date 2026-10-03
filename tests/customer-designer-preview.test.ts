@@ -135,7 +135,7 @@ test("contrast collar and cuff shading reuses baseline-neutral photo structure",
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   assert.match(source,/function drawWhiteDetail[\s\S]*const detailMask = featheredPathMask\(path\)/);
   assert.match(source,/function drawWhiteDetail[\s\S]*photographicShapeMap\(photo, detailMask\)/);
-  assert.match(source,/function drawWhiteDetail[\s\S]*const relief = photographicReliefMap\(photo\)/);
+  assert.match(source,/function drawWhiteDetail[\s\S]*const relief = photographicReliefMap\(photo, detailMask\)/);
   assert.match(source,/function drawWhiteDetail[\s\S]*globalAlpha = \.42[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
   const whiteBlock=source.slice(source.indexOf("function drawWhiteDetail"),source.indexOf("export type PhotoPreviewCalibration"));
   assert.doesNotMatch(whiteBlock,/globalCompositeOperation = "luminosity"/);
