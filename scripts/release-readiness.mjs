@@ -374,6 +374,17 @@ requireTokens("src/lib/designer/photo-shading.ts", [
   "neutralizePhotographicLuminance",
   "PHOTO_SHAPE_CONTRAST_GAIN",
 ]);
+requireTokens("src/lib/designer/photo-panel-grain.ts", [
+  "photoPanelRotationFromVertical",
+  "PHOTO_TUCKED_PANEL_AXES",
+  "PHOTO_TUCKED_PANEL_GRAIN_ROTATION",
+  "not a claim about physical cloth measurements",
+]);
+requireTokens("tests/photo-panel-grain.test.ts", [
+  "panel grain rotation measures screen-space fall from vertical",
+  "tucked photo panels keep directional fabric aligned to photographed garment axes",
+]);
+
 requireTokens("tests/photo-shading.test.ts", [
   "shape normalization is invariant to the photographed source cloth baseline",
   "garment luminance mean ignores transparent pixels outside the cloth mask",
@@ -385,6 +396,7 @@ requireTokens("tests/customer-designer-preview.test.ts", [
   "photo compositor removes source-template detail brightness calibration",
   "photo compositor restores garment-local colour-neutral photographic relief",
   "contrast collar and cuff shading reuses baseline-neutral photo structure",
+  "tucked directional fabric follows photographed panel grain",
 ]);
 requireTokens("src/lib/designer/brand-language.ts", [
   "linen-earth-brand-language-provisional-1",
