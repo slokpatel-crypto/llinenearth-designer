@@ -16,6 +16,8 @@ import {
   PHOTO_TUCKED_PANEL_PATTERN_ANCHOR,
   PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION,
   PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR,
+  PHOTO_UNTUCKED_TROUSER_GRAIN_ROTATION,
+  PHOTO_UNTUCKED_TROUSER_PATTERN_ANCHOR,
 } from "@/lib/designer/photo-panel-grain";
 import {
   DESIGNER_PHOTO_TEMPLATES, PHOTO_COLLAR_MASK, PHOTO_CUFF_MASK, PHOTO_TUCKED_COLLAR_MASK, PHOTO_TUCKED_COLLAR_STAND_MASK,
@@ -61,6 +63,7 @@ const pathMasks = new Map<string, HTMLCanvasElement>();
 const panelLightingMasks = new WeakMap<HTMLCanvasElement, Map<string, HTMLCanvasElement>>();
 const tuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
 const untuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
+const untuckedTrouserLegMasks = new WeakMap<HTMLCanvasElement, { left: HTMLCanvasElement; right: HTMLCanvasElement }>();
 const photographicReliefMaps = new WeakMap<HTMLImageElement, Map<HTMLCanvasElement | null, HTMLCanvasElement>>();
 const photographicShapeMaps = new WeakMap<HTMLImageElement, Map<HTMLCanvasElement | null, HTMLCanvasElement>>();
 const selectedLookSessionCache=new Map<string,PhotorealResult>();
@@ -370,14 +373,15 @@ function featheredPathMask(path:string) {
 }
 
 
-function photoLightingMask(mask?:HTMLCanvasElement,path="") {
+function photoLightingMask(mask?:HTMLCanvasElement,path="",maskPrepared=false) {
   if(mask && path) {
     let byPath=panelLightingMasks.get(mask);
     if(!byPath) {
       byPath=new Map<string,HTMLCanvasElement>();
       panelLightingMasks.set(mask,byPath);
     }
-    const cached=byPath.get(path);
+    const cacheKey=`${maskPrepared?"prepared":"raw"}:${path}`;
+    const cached=byPath.get(cacheKey);
     if(cached) return cached;
 
     // Lighting normalization must follow the exact photographed panel being
@@ -388,14 +392,14 @@ function photoLightingMask(mask?:HTMLCanvasElement,path="") {
     combined.height=HEIGHT;
     const context=combined.getContext("2d");
     if(!context) throw new Error("Canvas is unavailable.");
-    context.drawImage(featherMaskInside(mask),0,0);
+    context.drawImage(maskPrepared?mask:featherMaskInside(mask),0,0);
     context.globalCompositeOperation="destination-in";
     context.drawImage(featheredPathMask(path),0,0);
     context.globalCompositeOperation="source-over";
-    byPath.set(path,combined);
+    byPath.set(cacheKey,combined);
     return combined;
   }
-  if(mask) return featherMaskInside(mask);
+  if(mask) return maskPrepared?mask:featherMaskInside(mask);
   if(path) return featheredPathMask(path);
   return undefined;
 }
@@ -495,6 +499,52 @@ function untuckedGarmentMasks(photo: HTMLImageElement, shirtPath: string, pantPa
   return result;
 }
 
+const UNTUCKED_TROUSER_SEAM_X=512;
+
+function splitUntuckedTrouserLegMasks(mask:HTMLCanvasElement) {
+  const cached=untuckedTrouserLegMasks.get(mask);
+  if(cached) return cached;
+
+  // Start from the already inward-feathered photographed trouser silhouette,
+  // then divide its alpha into complementary left/right leg masks. Across a
+  // narrow center transition the two alpha values sum back to the original,
+  // avoiding a bright gap or doubled textile at the fly/crotch seam.
+  const prepared=featherMaskInside(mask);
+  const preparedContext=prepared.getContext("2d",{willReadFrequently:true});
+  if(!preparedContext) throw new Error("Canvas is unavailable.");
+  const source=preparedContext.getImageData(0,0,WIDTH,HEIGHT);
+  const make=()=> {
+    const canvas=document.createElement("canvas");
+    canvas.width=WIDTH;
+    canvas.height=HEIGHT;
+    const context=canvas.getContext("2d");
+    if(!context) throw new Error("Canvas is unavailable.");
+    return {canvas,context,data:context.createImageData(WIDTH,HEIGHT)};
+  };
+  const left=make();
+  const right=make();
+  const transitionHalfWidth=3;
+  for(let y=0;y<HEIGHT;y++) for(let x=0;x<WIDTH;x++) {
+    const index=(y*WIDTH+x)*4;
+    const alpha=source.data[index+3];
+    if(!alpha) continue;
+    const rightWeight=clamp((x-(UNTUCKED_TROUSER_SEAM_X-transitionHalfWidth))/(transitionHalfWidth*2));
+    const leftWeight=1-rightWeight;
+    for(const target of [left,right]) {
+      target.data.data[index]=255;
+      target.data.data[index+1]=255;
+      target.data.data[index+2]=255;
+    }
+    left.data.data[index+3]=Math.round(alpha*leftWeight);
+    right.data.data[index+3]=Math.round(alpha*rightWeight);
+  }
+  left.context.putImageData(left.data,0,0);
+  right.context.putImageData(right.data,0,0);
+  const result={left:left.canvas,right:right.canvas};
+  untuckedTrouserLegMasks.set(mask,result);
+  return result;
+}
+
 type FabricPatternPlacement={
   offsetX?:number;
   offsetY?:number;
@@ -503,6 +553,7 @@ type FabricPatternPlacement={
   photoPxPerMm?:number;
   anchorX?:number;
   anchorY?:number;
+  maskPrepared?:boolean;
 };
 
 function fabricPatternTransform(fabric:DesignerFabric,placement:FabricPatternPlacement,scale:number) {
@@ -553,7 +604,7 @@ function drawGarment(
   // the source garment's luminance/albedo into the selected Linen Earth cloth.
   // This keeps the actual swatch hue and woven texture authoritative while the
   // studio photograph contributes broad three-dimensional form.
-  const lightingMask = photoLightingMask(mask,path);
+  const lightingMask = photoLightingMask(mask,path,Boolean(placement.maskPrepared));
   const shape = photographicShapeMap(photo, lightingMask);
   context.filter = "none";
   context.globalCompositeOperation = "soft-light";
@@ -593,7 +644,7 @@ function drawGarment(
   context.filter = "none";
 
   context.globalCompositeOperation = "destination-in";
-  if (mask) context.drawImage(featherMaskInside(mask), 0, 0);
+  if (mask) context.drawImage(placement.maskPrepared?mask:featherMaskInside(mask), 0, 0);
   // Hard SVG-like clip edges make fabric look pasted onto the photograph.
   // Feather only toward the garment interior so collar/cuff/body boundaries
   // inherit the photographed antialiasing without leaking onto skin or set.
@@ -812,7 +863,8 @@ export function composePhotoOutfit(
   creative?: CreativePreviewSpec,
   calibration?: PhotoPreviewCalibration,
 ) {
-  const template = DESIGNER_PHOTO_TEMPLATES[photoTemplateForStyle(style)];
+  const templateKey=photoTemplateForStyle(style);
+  const template = DESIGNER_PHOTO_TEMPLATES[templateKey];
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
   context.drawImage(modelPhoto, 0, 0, WIDTH, HEIGHT);
@@ -849,7 +901,26 @@ export function composePhotoOutfit(
   } else {
     const shirtMask = untuckedGarmentMasks(modelPhoto, template.shirtPath, DESIGNER_PHOTO_TEMPLATES.pleated.trouserPath).shirt;
     const trouserMask = untuckedGarmentMasks(trouserPhoto, template.shirtPath, template.trouserPath).pant;
-    drawGarment(context, trouserPhoto, pantImage, pant, "", trouserMask, { ...calibratedPlacement });
+    const trouserLegMasks=splitUntuckedTrouserLegMasks(trouserMask);
+    const trouserGeometry=templateKey==="wide"?"wide":"pleated";
+
+    // Split the untucked trouser photograph into complementary leg masks. Each
+    // leg gets its own photographed lighting baseline and screen-space fall,
+    // while the seam transition preserves the original silhouette alpha.
+    drawGarment(context, trouserPhoto, pantImage, pant, "", trouserLegMasks.left, {
+      ...calibratedPlacement,
+      maskPrepared:true,
+      rotationDeg:PHOTO_UNTUCKED_TROUSER_GRAIN_ROTATION[trouserGeometry].leftTrouser,
+      anchorX:PHOTO_UNTUCKED_TROUSER_PATTERN_ANCHOR[trouserGeometry].leftTrouser.x,
+      anchorY:PHOTO_UNTUCKED_TROUSER_PATTERN_ANCHOR[trouserGeometry].leftTrouser.y,
+    });
+    drawGarment(context, trouserPhoto, pantImage, pant, "", trouserLegMasks.right, {
+      ...calibratedPlacement,
+      maskPrepared:true,
+      rotationDeg:PHOTO_UNTUCKED_TROUSER_GRAIN_ROTATION[trouserGeometry].rightTrouser,
+      anchorX:PHOTO_UNTUCKED_TROUSER_PATTERN_ANCHOR[trouserGeometry].rightTrouser.x,
+      anchorY:PHOTO_UNTUCKED_TROUSER_PATTERN_ANCHOR[trouserGeometry].rightTrouser.y,
+    });
 
     // The untucked shirt photograph is also panelized. Torso, sleeves and
     // collar borrow their own photographed lighting region and directional
