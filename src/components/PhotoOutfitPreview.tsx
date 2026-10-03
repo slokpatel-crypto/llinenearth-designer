@@ -668,7 +668,7 @@ function creativePreviewCoverage(creative?:CreativePreviewSpec) {
   return {visible:[...new Set(visible)],specOnly:[...new Set(specOnly)]};
 }
 
-function drawWhiteDetail(target: CanvasRenderingContext2D, photo: HTMLImageElement, path: string, mask?: HTMLCanvasElement, brightness = 1.38) {
+function drawWhiteDetail(target: CanvasRenderingContext2D, photo: HTMLImageElement, path: string, mask?: HTMLCanvasElement) {
   const layer = document.createElement("canvas");
   layer.width = WIDTH;
   layer.height = HEIGHT;
@@ -677,28 +677,32 @@ function drawWhiteDetail(target: CanvasRenderingContext2D, photo: HTMLImageEleme
   context.fillStyle = "#faf9f5";
   context.fillRect(0, 0, WIDTH, HEIGHT);
 
-  // White contrast cloth should borrow photographed light and seam depth, not
-  // the source garment colour. Luminance-first shading keeps the collar/cuff
-  // clean white while retaining the real folded edge beside neck and hands.
-  context.globalCompositeOperation = "luminosity";
-  context.globalAlpha = .9;
-  context.filter = `grayscale(1) brightness(${brightness}) contrast(1.05)`;
-  context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
-  context.globalCompositeOperation = "multiply";
-  context.globalAlpha = .12;
-  context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
-
-  context.filter = "none";
+  // White contrast cloth uses the same neutral studio-lighting model as the
+  // selected fabric. This keeps collars/cuffs clean white while borrowing only
+  // relative photographed form, not the source garment's base value.
+  const detailMask = mask ?? featheredPathMask(path);
+  const shape = photographicShapeMap(photo, detailMask);
   context.globalCompositeOperation = "soft-light";
-  context.globalAlpha = .24;
-  context.drawImage(photographicReliefMap(photo), 0, 0, WIDTH, HEIGHT);
+  context.globalAlpha = .48;
+  context.drawImage(shape, 0, 0, WIDTH, HEIGHT);
+  context.globalCompositeOperation = "multiply";
+  context.globalAlpha = .04;
+  context.drawImage(shape, 0, 0, WIDTH, HEIGHT);
+
+  const relief = photographicReliefMap(photo);
+  context.globalCompositeOperation = "soft-light";
+  context.globalAlpha = .28;
+  context.drawImage(relief, 0, 0, WIDTH, HEIGHT);
+  context.globalCompositeOperation = "overlay";
+  context.globalAlpha = .05;
+  context.drawImage(relief, 0, 0, WIDTH, HEIGHT);
 
   context.globalAlpha = 1;
   context.filter = "none";
   context.globalCompositeOperation = "destination-in";
   // Contrast collars/cuffs sit directly beside skin and hands. Use the same
   // inward-only edge feather as the base garment so white details do not read
-  // as hard vector stickers.
+  // as hard vector stickers or leave a source-colour halo.
   context.drawImage(featheredPathMask(path), 0, 0);
   if (mask) context.drawImage(featherMaskInside(mask), 0, 0);
   context.globalCompositeOperation = "source-over";
@@ -739,10 +743,10 @@ export function composePhotoOutfit(
     if (style.collarFinish === "Self-fabric") {
       drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined,{...calibratedPlacement,rotationDeg:90});
     } else {
-      drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_STAND_MASK, undefined, 3.6);
-      if (!creativeHas(creative,"quiet-collar-echo")) drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_MASK, undefined, 3.6);
+      drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_STAND_MASK);
+      if (!creativeHas(creative,"quiet-collar-echo")) drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_MASK);
     }
-    if (style.collarFinish === "White contrast collar + cuffs") drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_CUFF_MASK, undefined, 3.6);
+    if (style.collarFinish === "White contrast collar + cuffs") drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_CUFF_MASK);
 
     drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_LEFT_TROUSER_CLIP, masks.pant, { ...calibratedPlacement, offsetX: 5 });
     drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_RIGHT_TROUSER_CLIP, masks.pant, { ...calibratedPlacement, offsetX: -5 });
