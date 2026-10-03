@@ -27,10 +27,14 @@ export function photographicGarmentOpacity(
 }
 
 /** The existing neck-clear region also contains inner collar cloth. Its cool
- * source chroma distinguishes that cloth from this photograph's warm mannequin
- * skin. A positive classification covers the cloth without weakening deep
+ * source chroma and very dark cloth shadows distinguish it from this photograph's
+ * brighter warm mannequin skin. A positive classification covers cloth without weakening deep
  * collar shadows merely because their RGB differences are small. */
 export function photographicCollarOpacity(red:number,green:number,blue:number,geometryAlpha:number):number {
-  if(![red,green,blue,geometryAlpha].every(Number.isFinite) || green-red<=1 || blue-red<=1) return 0;
+  if(![red,green,blue,geometryAlpha].every(Number.isFinite)) return 0;
+  const sourceBrightness=Math.max(red,green,blue);
+  // In this bounded source neckline, neutral near-black pixels are collar
+  // folds. Quantised hue differences there cannot be used as coverage alpha.
+  if(sourceBrightness>=100 && (green-red<=1 || blue-red<=1)) return 0;
   return unit(geometryAlpha/255)*unit((165-Math.max(red,green,blue))/35);
 }

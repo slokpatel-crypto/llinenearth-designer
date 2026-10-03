@@ -40,7 +40,7 @@ test("interior recovery is smooth, bounded and rejects invalid evidence",()=>{
 });
 
 test("inner collar cloth is covered while actual photographed neck skin stays excluded",()=>{
-  for(const [r,g,b] of [[27,31,34],[38,45,47],[8,10,11],[5,7,9]]) assert.equal(photographicCollarOpacity(r,g,b,255),1);
+  for(const [r,g,b] of [[27,31,34],[38,45,47],[8,10,11],[5,7,9],[20,20,20],[25,23,24],[2,2,2]]) assert.equal(photographicCollarOpacity(r,g,b,255),1);
   for(const [r,g,b] of [[184,173,168],[223,216,212],[151,141,135]]) assert.equal(photographicCollarOpacity(r,g,b,255),0);
   assert.equal(photographicCollarOpacity(27,31,34,0),0);
   assert.equal(photographicCollarOpacity(27,31,34,128),128/255);
