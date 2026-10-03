@@ -241,7 +241,7 @@ for(const token of ["/api/visualization/fashn","/api/visualization/render","Gene
   if(styleDirectorPhotoPage.includes(token)) throw new Error(`Style Director photo-first action regression: legacy generated source returned: ${token}`);
 }
 const styleDirectorPreviewSource=fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-for(const token of ["onPreviewReady?:(dataUrl:string,calibrationIdentity:string)=>void",'onPreviewReadyRef.current(canvas.toDataURL("image/jpeg",.92),resolvedCalibrationIdentity)']) {
+for(const token of ["onPreviewReady?:(dataUrl:string,calibrationIdentity:string)=>void",'LOCKED_PREVIEW_MIME="image/webp"',"LOCKED_PREVIEW_QUALITY=.96","onPreviewReadyRef.current(serializeLockedPreview(canvas),resolvedCalibrationIdentity)"]) {
   if(!styleDirectorPreviewSource.includes(token)) throw new Error(`Style Director locked-preview handoff regression: missing ${token}`);
 }
 if(!styleDirectorCss.includes(".directorPhotoPending")) throw new Error("Style Director unsupported-photoreal state styling is missing.");
@@ -436,13 +436,13 @@ for (const token of ["const plainTextureDetailGain = .34","high-frequency linen 
   if (!photoPreview.includes(token)) throw new Error(`Plain linen texture regression: missing ${token}`);
 }
 console.log("Plain linen texture gate passed: solid swatches retain microtexture without importing broad catalogue-photo shadows.");
-for (const token of ['toDataURL("image/jpeg",.92)',"lockedPreviewImage"]) {
+for (const token of ["serializeLockedPreview(canvasRef.current)",'LOCKED_PREVIEW_MIME="image/webp"',"LOCKED_PREVIEW_QUALITY=.96","lockedPreviewImage"]) {
   if (!photoPreview.includes(token)) throw new Error(`Locked-preview final-render regression: PhotoOutfitPreview missing ${token}`);
 }
 const selectedLookRoute=fs.readFileSync("src/app/api/designer/look-render/route.ts","utf8");
 if(!selectedLookRoute.includes('lockedPreviewImage:typeof body.lockedPreviewImage==="string"')) throw new Error("Locked-preview final-render regression: server route no longer forwards the preview candidate.");
 const lockedPreviewAiVisualization=fs.readFileSync("src/lib/ai-visualization.ts","utf8");
-for (const token of ["LOCKED_PREVIEW_DATA_URI","LOCKED_PREVIEW_MAX_BYTES=4_500_000","LOCKED_PREVIEW_IDENTITY_BOXES","average>.16 || maximum>.28","selected-look-locked-preview","deterministic locked live preview"]) {
+for (const token of ["LOCKED_PREVIEW_DATA_URI","LOCKED_PREVIEW_MAX_BYTES=4_500_000","LOCKED_PREVIEW_IDENTITY_BOXES","average>.16 || maximum>.28",".webp({quality:96,nearLossless:true,smartSubsample:true})","data:image/webp;base64","selected-look-locked-preview","deterministic locked live preview"]) {
   if(!lockedPreviewAiVisualization.includes(token)) throw new Error(`Locked-preview final-render regression: ai-visualization missing ${token}`);
 }
 const selectedLookCacheKey=fs.readFileSync("src/lib/designer/render-cache-key.ts","utf8");

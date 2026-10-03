@@ -487,7 +487,7 @@ requireTokens("src/components/AppShell.tsx", ["Real Model Designer","/real-model
 requireTokens("src/lib/style-director-agent.ts", ["StyleDirectorRealModelSpec","buildRealModelSpec","evaluateDesignerCombo","shirtName","pantName"]);
 requireTokens("src/app/style-director/page.tsx", ["Open Linen Earth Real Model Designer","REAL MODEL OUTFIT","#designerPhotoTitle"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["StyleDirectorRealModelPreview","Existing Linen Earth real model","composePhotoOutfit","DESIGNER_PHOTO_TEMPLATES"]);
-requireTokens("src/components/PhotoOutfitPreview.tsx", ["onPreviewReady?:(dataUrl:string,calibrationIdentity:string)=>void",'onPreviewReadyRef.current(canvas.toDataURL("image/jpeg",.92),resolvedCalibrationIdentity)']);
+requireTokens("src/components/PhotoOutfitPreview.tsx", ["onPreviewReady?:(dataUrl:string,calibrationIdentity:string)=>void",'LOCKED_PREVIEW_MIME="image/webp"',"LOCKED_PREVIEW_QUALITY=.96","onPreviewReadyRef.current(serializeLockedPreview(canvas),resolvedCalibrationIdentity)"]);
 requireTokens("src/app/style-director/page.tsx", ["StyleDirectorRealModelPreview","shirtFabric","pantFabric","Existing real model · live outfit"]);
 requireTokens("src/app/style-director/page.tsx", ["directorFabricFallback","REAL STOCK / PHOTO TEMPLATE PENDING","Real fabric · no simulated mannequin","Garment geometry stays unvisualized until a photographed template supports this category"]);
 requireTokens("src/app/style-director/page.tsx", ["visualizePhotoreal","/api/designer/look-render","lockedPreviewImage:lockedPreviewImage || undefined","onPreviewReady={acceptLockedPreview}","Preparing real model…","Photoreal unlocks when a photographed garment template supports this category","currentCalibrationIdentity","lockedPreviewCalibrationIdentity","renderCalibrationIdentity","fetchCustomerPhotoCalibration","customerPhotoCalibrationIdentity","renderCalibrationIdentity!==currentCalibrationIdentity","setRenderCalibrationIdentity(sourceCalibrationIdentity)","function acceptLockedPreview(dataUrl:string,calibrationIdentity:string)"]);
@@ -711,9 +711,9 @@ requireTokens("tests/customer-designer-preview.test.ts", ["customer Designer exp
 requireTokens("tests/customer-designer-preview.test.ts", ["Designer recommendation cards keep the photographic mannequin full-body"]);
 requireTokens("tests/customer-designer-preview.test.ts", ["contrast collar and cuff shading reuses baseline-neutral photo structure"]);
 requireTokens("tests/customer-designer-preview.test.ts", ["plain linen swatches retain visible microtexture without reusing catalogue shadows"]);
-requireTokens("src/components/PhotoOutfitPreview.tsx", ['toDataURL("image/jpeg",.92)',"lockedPreviewImage"]);
+requireTokens("src/components/PhotoOutfitPreview.tsx", ["serializeLockedPreview(canvasRef.current)",'LOCKED_PREVIEW_MIME="image/webp"',"LOCKED_PREVIEW_QUALITY=.96","lockedPreviewImage"]);
 requireTokens("src/app/api/designer/look-render/route.ts", ['lockedPreviewImage:typeof body.lockedPreviewImage==="string"']);
-requireTokens("src/lib/ai-visualization.ts", ["LOCKED_PREVIEW_DATA_URI","LOCKED_PREVIEW_MAX_BYTES=4_500_000","LOCKED_PREVIEW_IDENTITY_BOXES","selected-look-locked-preview","deterministic locked live preview"]);
+requireTokens("src/lib/ai-visualization.ts", ["LOCKED_PREVIEW_DATA_URI","LOCKED_PREVIEW_MAX_BYTES=4_500_000","LOCKED_PREVIEW_IDENTITY_BOXES",".webp({quality:96,nearLossless:true,smartSubsample:true})","data:image/webp;base64","selected-look-locked-preview","deterministic locked live preview"]);
 requireTokens("src/lib/designer/render-cache-key.ts", ["linen-final-render-cache-v2-locked-preview-source","function lockedPreviewIdentity",'createHash("sha256").update(raw).digest("hex")','lockedPreview:view==="front"?lockedPreviewIdentity(input.lockedPreviewImage):""']);
 requireTokens("tests/customer-designer-preview.test.ts", ["final photoreal render is seeded from the validated locked live preview"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["Lock final design","Final photoreal ✦","selectedLookSessionCache","styleSpec","bodyProfile"]);
