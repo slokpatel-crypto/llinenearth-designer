@@ -329,7 +329,22 @@ for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","P
   if (!photoGeometry.includes(token)) throw new Error(`Real photographic Designer regression: photo-preview missing ${token}`);
 }
 console.log("Real photographic Designer gate passed: inward-feathered garment/creative boundaries, neck clear zone and tucked layering protected.");
-for (const token of ["grayscale(1) blur(14px)","microDetail","foldDetail","128 + microDetail * 1.55 + foldDetail * .85","colour-neutral multi-band relief map","globalAlpha = .36","globalAlpha = .08"]) {
+for (const token of [
+  "photographicReliefMaps = new WeakMap<HTMLImageElement, Map<HTMLCanvasElement | null, HTMLCanvasElement>>",
+  "function photographicReliefMap(photo: HTMLImageElement, garmentMask?: HTMLCanvasElement)",
+  "preventing neck/skin/background values",
+  "const garmentMean = weightedGarmentLuminanceMean(original.data, maskPixels.data)",
+  "original.data[index] * weight + garmentMean * (1 - weight)",
+  "blurContext.drawImage(source, 0, 0, reliefWidth, reliefHeight)",
+  "broadContext.drawImage(source, 0, 0, reliefWidth, reliefHeight)",
+  "microDetail",
+  "foldDetail",
+  "128 + microDetail * 1.55 + foldDetail * .85",
+  "photographicReliefMap(photo, lightingMask)",
+  "photographicReliefMap(photo, detailMask)",
+  "globalAlpha = .36",
+  "globalAlpha = .08",
+]) {
   if (!photoPreview.includes(token)) throw new Error(`Photo neutral-detail regression: missing ${token}`);
 }
 for (const forbidden of ["detailBrightness","shirtDetailBrightness","trouserDetailBrightness"]) {
@@ -358,7 +373,7 @@ for (const token of [
   "function drawWhiteDetail",
   "const detailMask = featheredPathMask(path)",
   "photographicShapeMap(photo, detailMask)",
-  "const relief = photographicReliefMap(photo)",
+  "const relief = photographicReliefMap(photo, detailMask)",
   "globalAlpha = .42",
   "globalAlpha = .32",
 ]) {

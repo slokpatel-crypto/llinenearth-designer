@@ -53,7 +53,7 @@ const featheredMasks = new WeakMap<HTMLCanvasElement, HTMLCanvasElement>();
 const pathMasks = new Map<string, HTMLCanvasElement>();
 const tuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
 const untuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
-const photographicReliefMaps = new WeakMap<HTMLImageElement, HTMLCanvasElement>();
+const photographicReliefMaps = new WeakMap<HTMLImageElement, Map<HTMLCanvasElement | null, HTMLCanvasElement>>();
 const photographicShapeMaps = new WeakMap<HTMLImageElement, Map<HTMLCanvasElement | null, HTMLCanvasElement>>();
 const selectedLookSessionCache=new Map<string,PhotorealResult>();
 function loadImage(url: string): Promise<HTMLImageElement> {
@@ -179,46 +179,73 @@ function swatchTile(image: HTMLImageElement, fabric: DesignerFabric): HTMLCanvas
 
 function clamp(value: number) { return Math.max(0, Math.min(1, value)); }
 
-function photographicReliefMap(photo: HTMLImageElement) {
-  const cached = photographicReliefMaps.get(photo);
+function photographicReliefMap(photo: HTMLImageElement, garmentMask?: HTMLCanvasElement) {
+  let cachedByMask = photographicReliefMaps.get(photo);
+  if (!cachedByMask) {
+    cachedByMask = new Map<HTMLCanvasElement | null, HTMLCanvasElement>();
+    photographicReliefMaps.set(photo, cachedByMask);
+  }
+  const cacheKey = garmentMask ?? null;
+  const cached = cachedByMask.get(cacheKey);
   if (cached) return cached;
 
-  // Extract a neutral high-pass relief map from the real studio photograph.
-  // Working at half resolution keeps the first preview fast while retaining
-  // the folds, placket seams, cuff edges and trouser creases that make the
-  // garment read as photographed rather than painted.
+  // Extract colour-neutral high/medium-frequency structure only from the
+  // photographed garment region. Outside pixels are replaced by that garment's
+  // own mean luminance before blurring, preventing neck/skin/background values
+  // from creating false edge halos inside the cloth.
   const reliefWidth = WIDTH / 2;
   const reliefHeight = HEIGHT / 2;
   const source = document.createElement("canvas");
+  const maskCanvas = document.createElement("canvas");
   const blurred = document.createElement("canvas");
   const broad = document.createElement("canvas");
   const detail = document.createElement("canvas");
-  source.width = blurred.width = broad.width = detail.width = reliefWidth;
-  source.height = blurred.height = broad.height = detail.height = reliefHeight;
+  source.width = maskCanvas.width = blurred.width = broad.width = detail.width = reliefWidth;
+  source.height = maskCanvas.height = blurred.height = broad.height = detail.height = reliefHeight;
 
   const sourceContext = source.getContext("2d", { willReadFrequently: true });
+  const maskContext = maskCanvas.getContext("2d", { willReadFrequently: true });
   const blurContext = blurred.getContext("2d", { willReadFrequently: true });
   const broadContext = broad.getContext("2d", { willReadFrequently: true });
   const detailContext = detail.getContext("2d");
-  if (!sourceContext || !blurContext || !broadContext || !detailContext) throw new Error("Canvas is unavailable.");
+  if (!sourceContext || !maskContext || !blurContext || !broadContext || !detailContext) throw new Error("Canvas is unavailable.");
 
   sourceContext.filter = "grayscale(1)";
   sourceContext.drawImage(photo, 0, 0, reliefWidth, reliefHeight);
-  blurContext.filter = "grayscale(1) blur(4px)";
-  blurContext.drawImage(photo, 0, 0, reliefWidth, reliefHeight);
-  broadContext.filter = "grayscale(1) blur(14px)";
-  broadContext.drawImage(photo, 0, 0, reliefWidth, reliefHeight);
+  if (garmentMask) maskContext.drawImage(garmentMask, 0, 0, reliefWidth, reliefHeight);
+  else {
+    maskContext.fillStyle = "#fff";
+    maskContext.fillRect(0, 0, reliefWidth, reliefHeight);
+  }
 
   const original = sourceContext.getImageData(0, 0, reliefWidth, reliefHeight);
+  const maskPixels = maskContext.getImageData(0, 0, reliefWidth, reliefHeight);
+  const garmentMean = weightedGarmentLuminanceMean(original.data, maskPixels.data);
+  const maskedSource = sourceContext.createImageData(reliefWidth, reliefHeight);
+  for (let index = 0; index < original.data.length; index += 4) {
+    const weight = Math.max(0, Math.min(1, maskPixels.data[index + 3] / 255));
+    const value = Math.round(original.data[index] * weight + garmentMean * (1 - weight));
+    maskedSource.data[index] = value;
+    maskedSource.data[index + 1] = value;
+    maskedSource.data[index + 2] = value;
+    maskedSource.data[index + 3] = 255;
+  }
+  sourceContext.putImageData(maskedSource, 0, 0);
+
+  blurContext.filter = "grayscale(1) blur(4px)";
+  blurContext.drawImage(source, 0, 0, reliefWidth, reliefHeight);
+  broadContext.filter = "grayscale(1) blur(14px)";
+  broadContext.drawImage(source, 0, 0, reliefWidth, reliefHeight);
+
+  const localSource = sourceContext.getImageData(0, 0, reliefWidth, reliefHeight);
   const soft = blurContext.getImageData(0, 0, reliefWidth, reliefHeight);
   const broadPixels = broadContext.getImageData(0, 0, reliefWidth, reliefHeight);
   const pixels = detailContext.createImageData(reliefWidth, reliefHeight);
-  for (let index = 0; index < original.data.length; index += 4) {
-    const microDetail = original.data[index] - soft.data[index];
+  for (let index = 0; index < localSource.data.length; index += 4) {
+    const microDetail = localSource.data[index] - soft.data[index];
     const foldDetail = soft.data[index] - broadPixels.data[index];
     // Two neutral frequency bands preserve seams/weave plus medium folds while
-    // cancelling the source garment's base value. No source-cloth brightness
-    // calibration is needed after this point.
+    // cancelling source-cloth base value and neighbouring non-garment pixels.
     const neutralRelief = Math.max(0, Math.min(255, Math.round(128 + microDetail * 1.55 + foldDetail * .85)));
     pixels.data[index] = neutralRelief;
     pixels.data[index + 1] = neutralRelief;
@@ -226,7 +253,7 @@ function photographicReliefMap(photo: HTMLImageElement) {
     pixels.data[index + 3] = 255;
   }
   detailContext.putImageData(pixels, 0, 0);
-  photographicReliefMaps.set(photo, detail);
+  cachedByMask.set(cacheKey, detail);
   return detail;
 }
 
@@ -473,7 +500,7 @@ function drawGarment(
   // colour-neutral multi-band relief map. Direct source-photo detail blending
   // is intentionally avoided because even grayscale passes can reintroduce the
   // original garment's value bias into a pale or dark selected fabric.
-  const relief = photographicReliefMap(photo);
+  const relief = photographicReliefMap(photo, lightingMask);
   context.filter = "none";
   context.globalCompositeOperation = "soft-light";
   context.globalAlpha = .36;
@@ -686,7 +713,7 @@ function drawWhiteDetail(target: CanvasRenderingContext2D, photo: HTMLImageEleme
   context.globalAlpha = .42;
   context.drawImage(shape, 0, 0, WIDTH, HEIGHT);
 
-  const relief = photographicReliefMap(photo);
+  const relief = photographicReliefMap(photo, detailMask);
   context.globalAlpha = .32;
   context.drawImage(relief, 0, 0, WIDTH, HEIGHT);
   context.globalCompositeOperation = "overlay";
