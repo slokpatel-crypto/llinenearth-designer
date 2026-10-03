@@ -354,7 +354,7 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "garmentMean",
   "panelLightingMasks = new WeakMap<HTMLCanvasElement, Map<string, HTMLCanvasElement>>",
   "function photoLightingMask(mask?:HTMLCanvasElement,path=\"\",maskPrepared=false)",
-  "context.drawImage(featherMaskInside(mask),0,0)",
+  "context.drawImage(maskPrepared?mask:featherMaskInside(mask),0,0)",
   "const lightingMask = photoLightingMask(mask,path,Boolean(placement.maskPrepared))",
   "globalAlpha = .58",
   "globalAlpha = .07",
