@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   PHOTO_SHAPE_NEUTRAL_LUMINANCE,
+  neutralizePhotographicBandDifference,
   neutralizePhotographicLuminance,
   weightedGarmentLuminanceMean,
 } from "../src/lib/designer/photo-shading.ts";
@@ -35,4 +36,26 @@ test("invalid or empty evidence fails to neutral rather than inventing contrast"
 test("extreme photographed highlights and shadows remain bounded",()=>{
   assert.equal(neutralizePhotographicLuminance(0,255),48);
   assert.equal(neutralizePhotographicLuminance(255,0),208);
+});
+
+
+test("band-pass detail normalization is invariant to photographed cloth baseline",()=>{
+  const dark=[
+    neutralizePhotographicBandDifference(46,50,1.42,40,216),
+    neutralizePhotographicBandDifference(50,50,1.42,40,216),
+    neutralizePhotographicBandDifference(54,50,1.42,40,216),
+  ];
+  const pale=[
+    neutralizePhotographicBandDifference(166,170,1.42,40,216),
+    neutralizePhotographicBandDifference(170,170,1.42,40,216),
+    neutralizePhotographicBandDifference(174,170,1.42,40,216),
+  ];
+  assert.deepEqual(dark,pale);
+  assert.deepEqual(dark,[122,128,134]);
+});
+
+test("band-pass detail normalization stays neutral on invalid evidence and bounded at extremes",()=>{
+  assert.equal(neutralizePhotographicBandDifference(Number.NaN,Number.NaN,1.42,40,216),128);
+  assert.equal(neutralizePhotographicBandDifference(0,255,4,40,216),40);
+  assert.equal(neutralizePhotographicBandDifference(255,0,4,40,216),216);
 });
