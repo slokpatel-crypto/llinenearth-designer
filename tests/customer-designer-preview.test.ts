@@ -216,7 +216,7 @@ test("Style Director photoreal uses the same locked real-model preview instead o
   assert.match(page,/Preparing real model…/);
   assert.match(page,/Photoreal unlocks when a photographed garment template supports this category/);
   assert.match(preview,/onPreviewReady\?:\(dataUrl:string,calibrationIdentity:string\)=>void/);
-  assert.match(preview,/onPreviewReadyRef\.current\(canvas\.toDataURL\("image\/jpeg",\.92\),resolvedCalibrationIdentity\)/);
+  assert.match(preview,/onPreviewReadyRef\.current\(serializeLockedPreview\(canvas\),resolvedCalibrationIdentity\)/);
   assert.match(css,/\.directorPhotoPending/);
   assert.doesNotMatch(page,/\/api\/visualization\/fashn/);
   assert.doesNotMatch(page,/\/api\/visualization\/render/);
@@ -314,7 +314,7 @@ test("targeted front repair replaces stale memory and durable cache identity",()
   const renderRoute=readFileSync("src/app/api/designer/look-render/route.ts","utf8");
   const ai=readFileSync("src/lib/ai-visualization.ts","utf8");
 
-  assert.match(preview,/lockedPreviewImage=canvasRef\.current\.toDataURL\("image\/jpeg",\.92\)/);
+  assert.match(preview,/lockedPreviewImage=serializeLockedPreview\(canvasRef\.current\)/);
   assert.match(preview,/selectedLookSessionCache\.set\([\s\S]*renderSignature,[\s\S]*repairCheck\?\.available/);
   assert.match(renderRoute,/repairSelectedLookFashnFront[\s\S]*storeDurableSelectedLookRender\(input,result,"front"\)/);
   assert.match(ai,/A repair replaces the stale in-memory front result/);
