@@ -85,6 +85,7 @@ Phase 10 is now materially beyond the original foundation brief.
 - Deterministic final-render QA now checks owner-measured stripe/repeat scale against the selected body-height anchor, with conservative tolerances to catch gross AI rescaling without claiming tailoring-CAD precision.
 - The photoreal viewer now exposes structured Colour / Pattern / Fabric / Construction / Model QA states plus measured colour ΔE and detected pattern axis when available, so review/repair decisions are visible rather than hidden in backend logs.
 - Durable Supabase render caching is implemented, including cache keys tied to fabric, canonical construction, body profile and source render identity.
+- Instant photo preview shading now uses three neutral bands—broad shape, mid-frequency folds and high-frequency relief—so the selected swatch remains the colour/texture authority while photographed garment depth survives without reusing the template garment albedo.
 - Popular-pair cache observability exists so pre-render decisions can be made without blindly spending render credits.
 
 ### Evaluation / CI
