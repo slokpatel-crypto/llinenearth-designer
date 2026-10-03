@@ -45,7 +45,7 @@ const baseURL = process.env.LINEN_BROWSER_QA_URL || "http://127.0.0.1:3000";
 const output = path.resolve("artifacts/preview-lifecycle/style-director");
 const summary = {
   browser: "Chromium", providerResponses: "mocked; no paid provider calls",
-  calibration: "unverified except one synthetic API-change regression",
+  calibration: "unverified except synthetic API-change regressions",
   physicalOrDeviceAcceptance: false, viewports: [], regressions: [], errors: [],
 };
 let browser;
@@ -178,6 +178,29 @@ async function cleared(page) {
   assert.equal(await page.locator(".lookVisual > img").count(), 0, "Old render must not replace the selected real-model look");
   assert.equal((await memory(page, "render_completed")).length, 0, "Discarded renders must not enter style memory");
 }
+async function modelFraming(page, generatedImage = false) {
+  const metrics = await page.evaluate((generatedImage) => {
+    const frame = document.querySelector(generatedImage ? ".lookVisual" : ".directorExistingModel");
+    const media = frame.querySelector(generatedImage ? ":scope > img" : "canvas");
+    const f = frame.getBoundingClientRect(), m = media.getBoundingClientRect();
+    const naturalWidth = generatedImage ? media.naturalWidth : media.width;
+    const naturalHeight = generatedImage ? media.naturalHeight : media.height;
+    const scale = Math.min(m.width / naturalWidth, m.height / naturalHeight);
+    const width = naturalWidth * scale, height = naturalHeight * scale;
+    const left = m.left + (m.width - width) / 2, top = m.top + (m.height - height) / 2;
+    return {
+      objectFit: getComputedStyle(media).objectFit,
+      objectPosition: getComputedStyle(media).objectPosition,
+      frame: { width: f.width, height: f.height },
+      media: { width: m.width, height: m.height },
+      completeModelFits: left >= f.left - 1 && top >= f.top - 1 && left + width <= f.right + 1 && top + height <= f.bottom + 1,
+    };
+  }, generatedImage);
+  assert.equal(metrics.objectFit, "contain", "The model must retain its complete intrinsic image");
+  assert.equal(metrics.objectPosition, "50% 50%", "Framing bounds assume the centered full model");
+  assert.ok(metrics.completeModelFits, "Model pixels extend beyond the clipped preview frame: " + JSON.stringify(metrics));
+  return metrics;
+}
 async function regression(name, run) {
   const { page, context } = await freshPage();
   try {
@@ -198,6 +221,7 @@ async function regression(name, run) {
     const { page, context } = await freshPage(width);
     await page.screenshot({ path: path.join(output, "journey-" + width + ".png"), fullPage: true });
     await journey(page);
+    const initialFraming = await modelFraming(page);
     const metrics = await page.evaluate(() => {
       const canvas = document.querySelector(".directorExistingModel canvas");
       const ctx = canvas.getContext("2d"), colors = new Set();
@@ -211,12 +235,14 @@ async function regression(name, run) {
     await page.screenshot({ path: path.join(output, "results-" + width + ".png"), fullPage: true });
     await page.locator(".lookVisual").screenshot({ path: path.join(output, "preview-" + width + ".png") });
     await selectLook(page, 1);
+    const selectedFraming = await modelFraming(page);
     assert.equal(await count(page, "render"), 0, "Live look selection must stay deterministic");
     assert.equal(await page.locator(".lookTabs button.active").textContent(), await page.locator(".lookTabs button").nth(1).textContent());
     const render = await start(page);
     const inspection = await generated(page, render);
     await page.screenshot({ path: path.join(output, "checking-" + width + ".png"), fullPage: true });
     await complete(page, "inspect", inspection, { check: { ...passingCheck, status: "review", colorFidelity: "weak" } });
+    const heldFraming = await modelFraming(page);
     assert.match(await photoButton(page).textContent(), /Retry photoreal check/);
     await cleared(page);
     const heldWidth = await page.evaluate(() => document.documentElement.scrollWidth);
@@ -228,9 +254,10 @@ async function regression(name, run) {
     assert.equal(await count(page, "render"), 1, "Retry must reuse the generated image");
     await complete(page, "inspect", retry, { check: passingCheck });
     await page.locator(".lookVisual > img").evaluate((image) => image.decode());
+    const approvedFraming = await modelFraming(page, true);
     assert.equal((await memory(page, "render_completed")).length, 1);
     await page.screenshot({ path: path.join(output, "approved-" + width + ".png"), fullPage: true });
-    summary.viewports.push({ ...metrics, questionnaireAndLookSelection: "passed", fidelityGateAndRetry: "passed" });
+    summary.viewports.push({ ...metrics, questionnaireAndLookSelection: "passed", fidelityGateAndRetry: "passed", framing: { initial: initialFraming, selected: selectedFraming, held: heldFraming, approved: approvedFraming } });
     await context.close();
   }
   await regression("delayed-render-and-return-to-same-look", async (page) => {
