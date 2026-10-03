@@ -425,7 +425,7 @@ console.log("Untucked trouser leg gate passed: left/right cloth projection prese
 for (const token of [
   "panelLightingMasks = new WeakMap<HTMLCanvasElement, Map<string, HTMLCanvasElement>>",
   'function photoLightingMask(mask?:HTMLCanvasElement,path="",maskPrepared=false)',
-  "context.drawImage(featherMaskInside(mask),0,0)",
+  "context.drawImage(maskPrepared?mask:featherMaskInside(mask),0,0)",
   'context.globalCompositeOperation="destination-in"',
   "context.drawImage(featheredPathMask(path),0,0)",
   "const lightingMask = photoLightingMask(mask,path)",
