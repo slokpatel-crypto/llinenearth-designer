@@ -633,21 +633,31 @@ for (const token of ["occasionFrom","climateFrom","intentionFrom","colorPreferen
 for (const token of ["occasionFabricAlignment","formal shirting","printed linen blend","occasionScore","occasionPreferredShirts","strictOccasionFit","openShirts"]) {
   if (!designerSearch.includes(token)) throw new Error(`One-line Designer occasion separation regression: missing ${token}`);
 }
-for (const token of ["/api/designer/brief","newDesignerBrief","Create 3 directions","one_line_designer_brief","StyleDirectorRealModelPreview","newDesignerBriefModel","SAME LINEN EARTH MODEL","newDesignerBriefCut","Occasion match:"]) {
-  if (!realDesignerModule.includes(token)) throw new Error(`One-line Designer UI regression: missing ${token}`);
+const designerAdvisorPanel=fs.readFileSync("src/components/DesignerAdvisorPanel.tsx","utf8");
+for (const token of ["/api/designer/brief","newDesignerBrief","Ask Designer","one_line_designer_brief","StyleDirectorRealModelPreview","newDesignerBriefModel","SAME LINEN EARTH MODEL","newDesignerBriefCut"]) {
+  if (!(realDesignerModule+designerAdvisorPanel).includes(token)) throw new Error(`Designer question UI regression: missing ${token}`);
 }
 for (const token of ["fabricPairDiffers","Prefer genuinely different fabric pairs","occasionPreferredShirts"]) {
   if (!designerSearch.includes(token)) throw new Error(`One-line Designer diversity regression: missing ${token}`);
 }
 console.log("One-line Designer gate passed: natural brief, stock search, fit context and three-direction handoff protected.");
-const browserTasteMemory = fs.readFileSync("src/lib/browser-style-memory.ts","utf8");
+const browserTasteMemory = fs.readFileSync("src/lib/browser-style-memory.ts","utf8")+fs.readFileSync("src/lib/designer/taste-profile.ts","utf8");
 for (const token of ["readLocalDesignerTasteProfile","evidence<4","preferredTier","preferredShirtWear","preferredTrouser"]) {
   if (!browserTasteMemory.includes(token)) throw new Error(`Local Designer taste-profile regression: missing ${token}`);
 }
 for (const token of ["safeTasteProfile","personalizeBrief","learned preference:","linen-designer-brief-v2"]) {
   if (!designerBriefRoute.includes(token)) throw new Error(`Personalized one-line Designer regression: missing ${token}`);
 }
-console.log("Local taste-profile gate passed: repeated non-sensitive Designer choices can personalize future briefs only after conservative evidence thresholds.");
+console.log("Local taste-profile gate passed: distinct human judgements can personalize future briefs only after conservative evidence thresholds.");
+const designerAdvisor=fs.readFileSync("src/lib/designer/advisor.ts","utf8");
+for(const token of ["designer-advice-v1","designerTaskFor","buildDesignerNegotiation","explicitDesignerStylePatch","safeDesignerJudgement","canApply","styleSpec:fromLegacyStyle","legacyOptionByLabel"]) {
+  if(!designerAdvisor.includes(token)) throw new Error(`Grounded Designer question regression: missing ${token}`);
+}
+for(const token of ["createPreviewRequestScope","request.isCurrent()","request.signal","recordJudgement","Revise this direction","changeSummary","aria-label=\"Designer question or task\""]) {
+  if(!designerAdvisorPanel.includes(token)) throw new Error(`Designer judgement/lifecycle regression: missing ${token}`);
+}
+if(/look-render|creative-render|fashn/.test(designerAdvisor+designerAdvisorPanel)) throw new Error("Designer questions must not dispatch paid image generation.");
+console.log("Grounded Designer gate passed: checked task answers, explicit constraints, human revisions and scoped requests.");
 
 for (const token of ["fitAdaptedStyle","Fit-aware adjustment:","suggestedPatch","fitAdaptation"]) {
   if (!designerSearch.includes(token)) throw new Error(`Measurement-to-cut intelligence regression: missing ${token}`);
@@ -657,7 +667,7 @@ for (const token of ['patch.shirtFit = "Regular / Classic Fit"','patch.trouser =
   if (!blockStrategySource.includes(token)) throw new Error(`Fit patch regression: missing ${token}`);
 }
 for (const token of ["fitAdaptation","newDesignerBriefFit","FIT-AWARE"]) {
-  if (!realDesignerModule.includes(token)) throw new Error(`Fit-aware Designer UI regression: missing ${token}`);
+  if (!(realDesignerModule+designerAdvisorPanel).includes(token)) throw new Error(`Fit-aware Designer UI regression: missing ${token}`);
 }
 console.log("Measurement-to-cut gate passed: saved proportions and tailor observations can alter the recommended starting cut, with the adjustment shown to the customer.");
 

@@ -626,7 +626,7 @@
 .newDesignerBriefResults>article{min-width:0;display:grid;grid-template-rows:auto auto 1fr auto;gap:8px;padding:8px;border:1px solid #e1d9cf;background:#fff;border-radius:11px}
 .newDesignerBriefModel{position:relative;height:220px;overflow:hidden;border-radius:8px;background:#0a1726}
 .newDesignerBriefModel .directorExistingModel{position:absolute;inset:0;display:grid;place-items:center;overflow:hidden;background:#0a1726}
-.newDesignerBriefModel .directorExistingModel canvas{display:block;width:100%;height:100%;object-fit:contain}
+.newDesignerBriefModel .directorExistingModel canvas{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain}
 .newDesignerBriefModel .directorExistingModel[data-ready="false"] canvas{opacity:.32}
 .newDesignerBriefModel .directorExistingModelState{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;background:rgba(10,23,38,.78);color:#fff;padding:7px 9px;font-size:6px;letter-spacing:.09em;white-space:nowrap}
 .newDesignerBriefModel>span{position:absolute;left:7px;bottom:7px;z-index:3;background:rgba(255,255,255,.9);color:#33485d;padding:5px 6px;border-radius:999px;font-size:5.5px;letter-spacing:.1em;font-weight:800}
@@ -641,6 +641,38 @@
 .newDesignerBriefFit{display:block;margin-top:6px;padding:5px 6px;border-left:2px solid #6f8b72;background:#f6faf5;color:#5f735e;font-size:5.5px;line-height:1.35;font-style:normal;font-weight:700;letter-spacing:.04em}
 .newDesignerBriefCopy>small{display:block;margin-top:6px;font-size:6px;line-height:1.4;color:#80766d}
 .newDesignerBriefResults>article>button{justify-self:start;padding:7px 9px}
+
+/* Grounded answers and human-directed revisions use the same outfit controls. */
+.newDesignerAdvisor{min-width:0;max-width:100%}
+.newDesignerAdvisor .newDesignerBriefHead small,.newDesignerAdvisor .newDesignerBriefHead>button{font-size:12px;line-height:1.45}
+.newDesignerAdvisor .newDesignerBriefHead>button{min-height:42px}
+.newDesignerAdvisor>textarea{font-size:13px;min-height:84px}
+.designerQuestionExamples,.designerJudgement{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.designerQuestionExamples button,.designerJudgement button{border:1px solid #d6dfe7;background:#fff;color:#294158;border-radius:8px;padding:9px 10px;font:500 12px/1.4 Arial,sans-serif;cursor:pointer;min-height:40px}
+.designerJudgement button[aria-pressed=true]{background:#e8f0e8;border-color:#708a74}
+.newDesignerAdvisor button:disabled{opacity:.5;cursor:not-allowed}
+.designerAdvice{margin-top:14px;padding:14px;background:#f6f9fb;border:1px solid #dbe4eb;border-radius:10px;font:400 13px/1.6 Arial,sans-serif;color:#334b60;overflow-wrap:anywhere}
+.designerAdvice>span{font-size:10px;letter-spacing:.1em;color:#8e624c;font-weight:700}
+.designerAdvice h3{font:400 20px/1.3 Georgia,serif;margin:5px 0 8px;color:#243b52}
+.designerAdvice p{margin:8px 0}
+.designerAdvice ul,.designerAdvice ol,.newDesignerAdvisor details ul{padding-left:18px;margin:8px 0}
+.designerAdvice li,.newDesignerAdvisor details li{margin:7px 0}
+.designerAdvice li b{text-transform:none;color:#415c70}
+.designerRevisionReason{border-left:2px solid #b37e5e;padding-left:10px}
+.newDesignerAdvisor summary{font-size:12px;cursor:pointer;font-weight:600;color:#365e7c;padding:8px 0}
+.newDesignerAdvisor .newDesignerBriefResults{grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));max-width:100%;min-width:0;align-items:start}
+.newDesignerAdvisor .newDesignerBriefCopy>span{font-size:10px}
+.newDesignerAdvisor .newDesignerBriefCopy>strong{font-size:17px;overflow-wrap:anywhere}
+.newDesignerAdvisor .newDesignerBriefCopy>p{font-size:12px;white-space:normal;line-height:1.5;overflow-wrap:anywhere}
+.newDesignerAdvisor .newDesignerBriefCopy>.designerChanges{font-size:12px;color:#435a6c;padding-top:5px}
+.newDesignerAdvisor .newDesignerBriefCut b{font-size:11px;line-height:1.4}
+.newDesignerAdvisor .newDesignerBriefResults>article>button{font-size:12px;min-height:40px;white-space:normal}
+.newDesignerAdvisor details{font:400 12px/1.5 Arial,sans-serif;color:#536b7d;overflow-wrap:anywhere}
+.designerRevision{margin-top:14px;padding:14px;border:1px solid #cbd9e1;border-radius:10px;background:#fff;display:grid;gap:12px;color:#294158;font:400 13px/1.5 Arial,sans-serif}
+.designerRevision label{display:grid;gap:5px}
+.designerRevision select,.designerRevision textarea{width:100%;min-width:0;padding:10px;border:1px solid #ced9e0;border-radius:7px;color:#294158;background:#fff;font:400 13px/1.5 Arial,sans-serif}
+.designerRevision>button{border:0;border-radius:8px;background:#203d5b;color:#fff;padding:12px;font:600 13px/1.4 Arial,sans-serif;cursor:pointer;min-height:44px}
+.designerFeedbackStatus{font:400 12px/1.5 Arial,sans-serif;color:#49664e;margin:12px 0 0}
 
 @media(max-width:720px){
   .newDesignerBriefHead{grid-template-columns:1fr}

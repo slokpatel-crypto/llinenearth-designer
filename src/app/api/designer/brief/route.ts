@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { DESIGNER_REVIEWED_PAIRING, DESIGNER_STYLE_CHOICES, designerFabricFromStock } from "@/lib/designer/engine";
-import { parseDesignerBrief } from "@/lib/designer/brief";
+import { DESIGNER_REVIEWED_PAIRING, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion } from "@/lib/designer/engine";
+import { parseDesignerBrief, explicitDesignerStylePatch } from "@/lib/designer/brief";
+import { answerDesignerQuestion, designerTaskFor, safeDesignerJudgement, validDesignerContext, validDesignerOccasion, validDesignerStyle } from "@/lib/designer/advisor";
 import { searchDesignerCatalogue, type DesignerSearchTier } from "@/lib/designer/search";
 import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
 import { loadDesignerEvidenceContext } from "@/lib/designer/evidence-context";
@@ -142,11 +143,23 @@ export async function POST(request:Request) {
       measurements?:unknown;
       observations?:unknown;
       tasteProfile?:unknown;
+      currentStyle?:unknown;
+      occasion?:unknown;
+      context?:unknown;
+      judgement?:unknown;
     };
     const brief=String(body.brief||"").replace(/\s+/g," ").trim().slice(0,500);
     if(brief.length<5) return NextResponse.json({error:"Tell Designer where you are going and how you want the outfit to feel."},{status:400});
 
-    const parsed=personalizeBrief(parseDesignerBrief(brief),safeTasteProfile(body.tasteProfile));
+    const advisorRequest=body.currentStyle!==undefined;
+    if(advisorRequest && (!validDesignerStyle(body.currentStyle) || !validDesignerOccasion(body.occasion) || !validDesignerContext(body.context))) return NextResponse.json({error:"The selected construction or occasion is invalid. Reload the direction before asking Designer."},{status:400});
+    const judgement=safeDesignerJudgement(body.judgement);
+    if(body.judgement!==undefined && !judgement) return NextResponse.json({error:"Choose a judgement reason or give a specific improvement instruction."},{status:400});
+    const base=advisorRequest ? {style:body.currentStyle as Parameters<typeof answerDesignerQuestion>[0]["chosenStyle"],occasion:body.occasion as Parameters<typeof answerDesignerQuestion>[0]["occasion"],context:body.context as Parameters<typeof answerDesignerQuestion>[0]["context"]} : undefined;
+    const taskText=brief+(judgement?.note?" "+judgement.note:"");
+    const read=parseDesignerBrief(judgement ? judgement.note || "Revise this direction" : taskText,base);
+    if(base && designerTaskFor(taskText,judgement)==="design" && !/\b(?:keep|preserve|same|unchanged)\b/i.test(taskText)) read.style={...designerStyleForOccasion(read.occasion),...explicitDesignerStylePatch(taskText)};
+    const parsed=!base || designerTaskFor(taskText,judgement)==="design" ? personalizeBrief(read,safeTasteProfile(body.tasteProfile)) : read;
     const [metadata,evidence,easeModel]=await Promise.all([
       loadDesignerFabricMetadata(),
       loadDesignerEvidenceContext(),
@@ -168,6 +181,13 @@ export async function POST(request:Request) {
     const currentPant=pants.find((fabric)=>fabric.id===requestedPant)
       || pants.find((fabric)=>fabric.id===DESIGNER_REVIEWED_PAIRING.pantId)
       || pants[0];
+
+    if(base) {
+      if(currentShirt.id!==requestedShirt || currentPant.id!==requestedPant) return NextResponse.json({error:"A selected fabric is no longer available for this garment. Choose current stock before continuing."},{status:409});
+      const answer=answerDesignerQuestion({shirts,pants,currentShirt,currentPant,occasion:base.occasion,context:base.context,chosenStyle:base.style,
+        measurements:safeMeasurements(body.measurements),observations:safeObservations(body.observations),casebook:evidence.casebook,fitOutcomes:evidence.fitOutcomes,fabricIntelligence,easeModel,brief,judgement,parsed});
+      return NextResponse.json({...answer,requestId:"LE-ADVICE-"+crypto.randomUUID(),engine:"linen-designer-advisor-v1"},{headers:{"cache-control":"no-store"}});
+    }
 
     const results=searchDesignerCatalogue({
       shirts,

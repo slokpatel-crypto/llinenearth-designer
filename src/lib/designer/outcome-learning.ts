@@ -12,6 +12,10 @@ export const DESIGNER_FEEDBACK_REASONS = [
 
 export type DesignerFeedbackReason = typeof DESIGNER_FEEDBACK_REASONS[number][0];
 
+export function designerFeedbackNeedsInstruction(reason?:DesignerFeedbackReason) {
+  return !reason || ["color","fabric","formality","other"].includes(reason);
+}
+
 export type DesignerOutcomeEvent = {
   type: string;
   payload?: Record<string,unknown>;

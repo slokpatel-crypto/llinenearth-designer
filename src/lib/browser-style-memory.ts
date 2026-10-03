@@ -1,3 +1,7 @@
+import { aggregateDesignerTaste, type LocalDesignerTasteProfile } from "./designer/taste-profile";
+import type { OccasionTier } from "./designer/engine";
+export type { LocalDesignerTasteProfile } from "./designer/taste-profile";
+
 export type StyleMemoryEventType =
   | "session_started"
   | "answer_selected"
@@ -107,68 +111,8 @@ export function readBrowserStyleEvents(): StyleMemoryEvent[] {
   }
 }
 
-export type LocalDesignerTasteProfile = {
-  version:1;
-  evidence:number;
-  preferredTier?:"Safe"|"Elevated"|"Statement";
-  preferredShirtWear?:"Tucked"|"Untucked";
-  preferredTrouser?:string;
-};
-
-export function readLocalDesignerTasteProfile():LocalDesignerTasteProfile {
-  const events=readBrowserStyleEvents().slice(-240);
-  const tierScore={Safe:0,Elevated:0,Statement:0};
-  const wearScore={Tucked:0,Untucked:0};
-  const trouserScore=new Map<string,number>();
-  let evidence=0;
-
-  for(const event of events) {
-    const payload=event.payload || {};
-    if(event.type==="designer_recommendation") {
-      const input=(payload.input && typeof payload.input==="object" ? payload.input : {}) as Record<string,unknown>;
-      const source=String(input.source || "");
-      const tier=String(input.tier || "");
-      const style=(payload.style && typeof payload.style==="object" ? payload.style : {}) as Record<string,unknown>;
-      if(source==="one_line_designer_brief") {
-        if(tier==="Safe" || tier==="Elevated" || tier==="Statement") tierScore[tier]+=2;
-        const wear=String(style.shirtWear || "");
-        if(wear==="Tucked" || wear==="Untucked") wearScore[wear]+=1;
-        const trouser=String(style.trouser || "");
-        if(trouser) trouserScore.set(trouser,(trouserScore.get(trouser)||0)+1);
-        evidence+=1;
-      }
-    }
-    if(event.type==="designer_feedback") {
-      const rating=String(payload.rating || "");
-      const reason=String(payload.reason || "");
-      const style=(payload.style && typeof payload.style==="object" ? payload.style : {}) as Record<string,unknown>;
-      if(rating==="up" || rating==="saved") {
-        const wear=String(style.shirtWear || "");
-        if(wear==="Tucked" || wear==="Untucked") wearScore[wear]+=2;
-        const trouser=String(style.trouser || "");
-        if(trouser) trouserScore.set(trouser,(trouserScore.get(trouser)||0)+2);
-        evidence+=1;
-      } else if(rating==="down") {
-        if(reason==="too_bold") tierScore.Safe+=2;
-        if(reason==="too_safe") tierScore.Statement+=2;
-        evidence+=1;
-      }
-    }
-  }
-
-  const profile:LocalDesignerTasteProfile={version:1,evidence};
-  if(evidence<4) return profile;
-
-  const tier=Object.entries(tierScore).sort((a,b)=>b[1]-a[1])[0] as ["Safe"|"Elevated"|"Statement",number] | undefined;
-  if(tier && tier[1]>=3) profile.preferredTier=tier[0];
-
-  if(Math.max(wearScore.Tucked,wearScore.Untucked)>=3) {
-    profile.preferredShirtWear=wearScore.Tucked>=wearScore.Untucked ? "Tucked" : "Untucked";
-  }
-
-  const trouser=[...trouserScore.entries()].sort((a,b)=>b[1]-a[1])[0];
-  if(trouser && trouser[1]>=3) profile.preferredTrouser=trouser[0].slice(0,100);
-  return profile;
+export function readLocalDesignerTasteProfile(occasion?:OccasionTier):LocalDesignerTasteProfile {
+  return aggregateDesignerTaste(readBrowserStyleEvents(),occasion);
 }
 
 export function readBridgeConfig(): LocalBridgeConfig | null {

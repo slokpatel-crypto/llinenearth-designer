@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import DesignerAdvisorPanel from "@/components/DesignerAdvisorPanel";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   DESIGNER_PANTS, DESIGNER_REVIEWED_PAIRING, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES,
   designerStyleForOccasion, designerTasteAlternative,
   type DesignerClimate, type DesignerContext, type DesignerFabric, type DesignerIntention, type DesignerRecommendation, type DesignerStyle, type OccasionTier,
 } from "@/lib/designer/engine";
 import { DESIGNER_FASHION_FACTS, DESIGNER_RESEARCH } from "@/lib/designer/research";
-import { createStyleSessionId, readLocalDesignerTasteProfile, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
-import { PhotoOutfitPreview, StyleDirectorRealModelPreview, type CreativeVisualCheck } from "@/components/PhotoOutfitPreview";
+import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
+import { PhotoOutfitPreview, type CreativeVisualCheck } from "@/components/PhotoOutfitPreview";
 import { photoPreviewSupportForChoice } from "@/lib/designer/photo-preview-support";
 import { MEASUREMENT_STORAGE_KEY, formatMeasure, measurementCoverage, measurementFitGuidance, type MeasurementProfile } from "@/lib/measurements";
 import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObservationSummary, type TailorObservationProfile } from "@/lib/designer/tailor-observations";
@@ -53,19 +54,6 @@ type DesignerSearchOption = {
   style:DesignerStyle;
   recommendation:DesignerRecommendation;
   fitAdaptation?:string;
-};
-
-type DesignerBriefOption = DesignerSearchOption & {
-  rank:number;
-  title:string;
-  reasons:string[];
-  tradeoffs:string[];
-};
-type DesignerBriefInterpretation = {
-  brief:string;
-  occasion:OccasionTier;
-  context:DesignerContext;
-  notes:string[];
 };
 
 const SHIRT_FILTERS:ShirtFabricFilter[]=["All","Plain","Print","Blend","Formal"];
@@ -143,11 +131,7 @@ export function DesignerModule() {
   const [searchResults, setSearchResults] = useState<DesignerSearchOption[]>([]);
   const [searchLoading,setSearchLoading]=useState(false);
   const [searchError,setSearchError]=useState("");
-  const [briefText,setBriefText]=useState("");
-  const [briefResults,setBriefResults]=useState<DesignerBriefOption[]>([]);
-  const [briefInterpretation,setBriefInterpretation]=useState<DesignerBriefInterpretation|null>(null);
-  const [briefLoading,setBriefLoading]=useState(false);
-  const [briefError,setBriefError]=useState("");
+  const [advisorEpoch,setAdvisorEpoch]=useState(0);
   const [assessment,setAssessment]=useState<DesignerAssessmentResponse|null>(null);
   const [assessmentLoading,setAssessmentLoading]=useState(false);
   const [assessmentError,setAssessmentError]=useState("");
@@ -174,6 +158,10 @@ export function DesignerModule() {
   const fact = DESIGNER_FASHION_FACTS[factIndex];
   const shirt = useMemo(() => shirtOptions.find((item) => item.id === shirtId), [shirtId, shirtOptions]);
   const pant = useMemo(() => pantOptions.find((item) => item.id === pantId), [pantId, pantOptions]);
+  const styleIdentity=(value:DesignerStyle)=>(Object.keys(DESIGNER_STYLE_CHOICES) as Array<keyof DesignerStyle>).map((key)=>value[key]);
+  const assessmentIdentity=JSON.stringify([shirtId,pantId,occasion,styleIdentity(style),climate,intention,measurementProfile,tailorObservations,bodyProfile]);
+  const committedAssessmentIdentity=useRef(assessmentIdentity);
+  useLayoutEffect(()=>{committedAssessmentIdentity.current=assessmentIdentity;},[assessmentIdentity]);
   const visibleShirts=useMemo(()=>shirtFilter==="All" ? shirtOptions : shirtOptions.filter((item)=>shirtFilterFor(item)===shirtFilter),[shirtFilter,shirtOptions]);
   const visiblePants=useMemo(()=>pantFilter==="All" ? pantOptions : pantOptions.filter((item)=>pantFilterFor(item)===pantFilter),[pantFilter,pantOptions]);
   const photoMatchSummary=useMemo(()=>{
@@ -437,10 +425,6 @@ export function DesignerModule() {
       activeCreative.recommendation.occasion===occasion;
     if(creativeStillMatches) return;
     setSearchResults([]);
-    setBriefText("");
-    setBriefResults([]);
-    setBriefInterpretation(null);
-    setBriefError("");
     setCreativeDirections([]);
     setActiveCreative(null);
     setCreativeVisualReview(null);
@@ -504,6 +488,7 @@ export function DesignerModule() {
   }
 
   function resetDraft() {
+    setAdvisorEpoch((current)=>current+1);
     const nextOccasion = DESIGNER_REVIEWED_PAIRING.occasion;
     setShirtId(DESIGNER_REVIEWED_PAIRING.shirtId);
     setPantId(DESIGNER_REVIEWED_PAIRING.pantId);
@@ -520,53 +505,10 @@ export function DesignerModule() {
     setResponse(null);
     setFeedbackReason(null);
     setSearchResults([]);
-    setBriefText("");
-    setBriefResults([]);
-    setBriefInterpretation(null);
-    setBriefError("");
     setCreativeDirections([]);
     setActiveCreative(null);
     setCreativeAutoNote("");
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
-  }
-
-  async function runDesignerBrief() {
-    if(briefLoading || briefText.trim().length<5) return;
-    setBriefLoading(true);
-    setBriefError("");
-    try {
-      const response=await fetch("/api/designer/brief",{
-        method:"POST",
-        headers:{"content-type":"application/json"},
-        body:JSON.stringify({
-          brief:briefText,
-          currentShirtId:shirt?.id,
-          currentPantId:pant?.id,
-          measurements:measurementProfile,
-          observations:tailorObservations,
-          tasteProfile:readLocalDesignerTasteProfile(),
-        }),
-      });
-      const data=await response.json() as {interpretation?:DesignerBriefInterpretation;results?:DesignerBriefOption[];error?:string};
-      if(!response.ok || !data.interpretation) throw new Error(data.error || "Designer could not build directions from that brief.");
-      setBriefInterpretation(data.interpretation);
-      setBriefResults(Array.isArray(data.results)?data.results:[]);
-      try {
-        recordStyleMemoryEvent(designerSession(),"designer_override",{
-          briefLength:briefText.trim().length,
-          occasion:data.interpretation.occasion,
-          context:data.interpretation.context,
-          interpretation:data.interpretation.notes,
-          resultIds:(data.results || []).map((item)=>item.id),
-        });
-      } catch { /* Brief remains usable if memory storage is unavailable. */ }
-    } catch(error) {
-      setBriefResults([]);
-      setBriefInterpretation(null);
-      setBriefError(error instanceof Error ? error.message : "Designer could not build directions from that brief.");
-    } finally {
-      setBriefLoading(false);
-    }
   }
 
     async function runAdvancedSearch() {
@@ -785,6 +727,7 @@ export function DesignerModule() {
   function useSearchResult(result:DesignerSearchOption,source?:{occasion?:OccasionTier;context?:DesignerContext;name?:string}) {
     const nextOccasion=source?.occasion || result.recommendation.occasion;
     const nextContext=source?.context || {climate,intention};
+    const expectedIdentity=JSON.stringify([result.shirt.id,result.pant.id,nextOccasion,styleIdentity(result.style),nextContext.climate,nextContext.intention,measurementProfile,tailorObservations,bodyProfile]);
     setActiveCreative(null);
     setCreativeVisualReview(null);
     setShirtId(result.shirt.id);
@@ -797,15 +740,16 @@ export function DesignerModule() {
     setRecommendation(result.recommendation);
     setAssessment(null);
     setSearchResults([]);
-    setBriefResults([]);
     setResponse(null);
     setFeedbackReason(null);
     setRecommendationId(null);
 
     void requestLookAssessment({
       shirtId:result.shirt.id,pantId:result.pant.id,occasion:nextOccasion,
-      style:result.style,context:nextContext,
+      style:result.style,styleSpec:fromLegacyStyle(result.style),context:nextContext,
     }).then((next)=>{
+      if(committedAssessmentIdentity.current!==expectedIdentity) return;
+      if(next.recommendation.shirt.id!==result.shirt.id || next.recommendation.pant.id!==result.pant.id || JSON.stringify(styleIdentity(next.recommendation.style))!==JSON.stringify(styleIdentity(result.style))) throw new Error("The assessment does not match the applied direction. Assess the current look again.");
       applyServerAssessment(next);
       try {
         const event=recordStyleMemoryEvent(designerSession(),"designer_recommendation",{
@@ -824,7 +768,7 @@ export function DesignerModule() {
         });
         setRecommendationId(event.id);
       } catch { /* Search result remains usable when event storage is unavailable. */ }
-    }).catch((error)=>setAssessmentError(error instanceof Error?error.message:"Designer assessment is unavailable."));
+    }).catch((error)=>{if(committedAssessmentIdentity.current===expectedIdentity) setAssessmentError(error instanceof Error?error.message:"Designer assessment is unavailable.");});
   }
 
   async function assess(nextStyle: DesignerStyle = style) {
@@ -1132,42 +1076,7 @@ export function DesignerModule() {
     <div className="newDesignerBody">
       <section className="newDesignerSelections" aria-labelledby="designerChoose">
         {directorHandoff && <div className="newDesignerHandoff"><span>STYLE DIRECTOR HANDOFF</span><strong>{directorHandoffTitle || "Your complete outfit direction is loaded."}</strong><p>{shirt?.name} shirt + {pant?.name} trousers · {style.shirtWear} · {style.trouser}. You can refine any detail below without rebuilding the look.</p>{directorHandoffAuditStatus==="verified"&&<small>VERIFIED HANDOFF · audit {directorHandoffAuditId}</small>}{directorHandoffAuditStatus==="unavailable"&&<small>Handoff matched, but cloud audit is unavailable.</small>}{directorHandoffAuditStatus==="mismatch"&&<small>Handoff verification could not be established.</small>}</div>}
-        <section className="newDesignerBrief" aria-label="One-line Designer brief">
-          <div className="newDesignerBriefHead">
-            <div><span>00 / ASK DESIGNER</span><strong>Describe the look in one line.</strong><small>Designer will choose the cloth, cut and level of expression.</small></div>
-            <button type="button" onClick={()=>void runDesignerBrief()} disabled={briefLoading || briefText.trim().length<5}>{briefLoading?"Designing…":"Create 3 directions ✦"}</button>
-          </div>
-          <textarea value={briefText} onChange={(event)=>{setBriefText(event.target.value.slice(0,500));setBriefError("");}} placeholder="e.g. Business meeting in Mumbai, premium but not boring, tucked shirt" rows={2} />
-          {briefInterpretation && <div className="newDesignerBriefRead"><span>DESIGNER READ</span>{briefInterpretation.notes.map((note)=><b key={note}>{note}</b>)}</div>}
-          {briefError && <span className="newDesignerSearchError">{briefError}</span>}
-          {briefResults.length>0 && <div className="newDesignerBriefResults">
-            {briefResults.map((result)=><article key={result.id}>
-              <div className="newDesignerBriefModel">
-                <StyleDirectorRealModelPreview shirt={result.shirt} pant={result.pant} style={result.style} />
-                <span>SAME LINEN EARTH MODEL</span>
-              </div>
-              <div className="newDesignerBriefPair" aria-label="Selected fabric references">
-                <img src={result.shirt.image} alt={`${result.shirt.name} shirt fabric`} loading="lazy" decoding="async" />
-                <img src={result.pant.image} alt={`${result.pant.name} trouser fabric`} loading="lazy" decoding="async" />
-              </div>
-              <div className="newDesignerBriefCopy">
-                <span>0{result.rank} · {result.tier.toUpperCase()}</span>
-                <strong>{result.title}</strong>
-                <p>{result.shirt.name} + {result.pant.name}</p>
-                <div className="newDesignerBriefCut">
-                  <b>{result.style.shirtWear}</b><b>{result.style.collar}</b><b>{result.style.trouser}</b>
-                </div>
-                {result.fitAdaptation && <em className="newDesignerBriefFit">FIT-AWARE · {result.fitAdaptation.replace(/^Fit-aware adjustment:\s*/,"")}</em>}
-                <small>{result.reasons.find((reason)=>reason.startsWith("Occasion match:")) || result.reasons.find((reason)=>reason.startsWith("Brief match:")) || result.reasons[0] || "Built from current Linen Earth stock."}</small>
-              </div>
-              <button type="button" onClick={()=>{
-                if(!briefInterpretation) return;
-                useSearchResult(result,{occasion:briefInterpretation.occasion,context:briefInterpretation.context,name:"one_line_designer_brief"});
-                setBriefResults([]);
-              }}>Use direction</button>
-            </article>)}
-          </div>}
-        </section>
+        {shirt && pant && <DesignerAdvisorPanel key={advisorEpoch} shirt={shirt} pant={pant} style={style} occasion={occasion} context={{climate,intention}} measurements={measurementProfile} observations={tailorObservations} sessionId={designerSession} onApply={(result,interpretation)=>useSearchResult(result,{occasion:interpretation.occasion,context:interpretation.context,name:"one_line_designer_brief"})} />}
 
         <div className="newDesignerSectionHead"><span>01 / CLOTH</span><h2 id="designerChoose">Choose your fabrics.</h2></div>
         <div className="newDesignerFabricGrid">
