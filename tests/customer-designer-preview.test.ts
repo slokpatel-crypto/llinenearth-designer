@@ -38,7 +38,7 @@ test("photo lighting normalization is panel-local inside adaptive garment masks"
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   assert.match(source,/panelLightingMasks = new WeakMap<HTMLCanvasElement, Map<string, HTMLCanvasElement>>/);
   assert.match(source,/function photoLightingMask\(mask\?:HTMLCanvasElement,path="",maskPrepared=false\)/);
-  assert.match(source,/context\.drawImage\(featherMaskInside\(mask\),0,0\)/);
+  assert.match(source,/context\.drawImage\(maskPrepared\?mask:featherMaskInside\(mask\),0,0\)/);
   assert.match(source,/context\.globalCompositeOperation="destination-in"/);
   assert.match(source,/context\.drawImage\(featheredPathMask\(path\),0,0\)/);
   assert.match(source,/const lightingMask = photoLightingMask\(mask,path,Boolean\(placement\.maskPrepared\)\)/);
