@@ -218,3 +218,10 @@ Architecture and product decisions that must persist across coding sessions.
 **Rule:** every async response checks its request lifecycle before state/cache writes, follow-up inspections or feedback callbacks. Fetches share an AbortSignal, stale errors and finally blocks cannot affect a newer chain, and a synchronous lock prevents same-frame duplicate generation dispatch. Cancellation is a browser correctness boundary; it cannot promise to refund or stop provider work already dispatched server-side. No shared schema or persistence contract changes.
 
 **Verification runtime:** CI installs pinned Playwright 1.63.0 in a temporary test-only prefix after the production build. It uses real Chromium, local photographs and Canvas at 390/768/1440px, with delayed mocked provider/QA responses that deliberately ignore cancellation. This does not add an application dependency or change package/schema contracts. The screenshots and lifecycle report are retained as CI artifacts; synthetic QA approvals, desktop viewport emulation and unverified calibration must never satisfy physical-fabric or real-device acceptance gates.
+
+## 2026-10-03 — Brand surfaces share the intact original logo
+**Decision:** restore the original 890×242 Linen Earth PNG from branding commit `52984409` unchanged and serve it as one content-hashed public asset. Header, opening animation, favicon and social metadata share its source and intrinsic dimensions.
+
+**Why:** the assembled base64 image had a bad palette CRC and a truncated image stream. It exposed metadata to permissive decoders but failed actual browser/pixel decoding, leaving the brand surfaces broken. Reusing its year-cached alias alone would also leave cached failures visible.
+
+**Rule:** preserve the recovered image bytes; verify full pixel decoding and the URL's content hash in tests. Keep the old public image URL as a short-lived redirect to the canonical asset. Browser checks must decode the header and opening logo and validate icon/social metadata at all three responsive widths. No new dependencies, brand redesign, fabric claims or deployment milestone.

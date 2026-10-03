@@ -1,6 +1,7 @@
 // Real Chromium/UI regression checks. Provider/QA responses are deliberately
 // mocked; these screenshots are never physical-fabric or device acceptance.
 const assert = require("node:assert/strict");
+const { createHash } = require("node:crypto");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { createRequire } = require("node:module");
@@ -15,6 +16,7 @@ const summary = {
   providerResponses: "mocked; no paid provider calls",
   calibration: "unverified",
   physicalOrDeviceAcceptance: false,
+  branding: {},
   viewports: [],
   regressions: [],
   errors: [],
@@ -22,7 +24,25 @@ const summary = {
 let browser;
 let activePage;
 
-async function freshPage(width = 1440) {
+async function decodeLogo(locator) {
+  const logo = await locator.evaluate(async (image) => {
+    await image.decode();
+    return {
+      source: new URL(image.currentSrc || image.src).pathname,
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+      declaredWidth: Number(image.getAttribute("width")),
+      declaredHeight: Number(image.getAttribute("height")),
+    };
+  });
+  assert.ok(logo.width > 0 && logo.height > 0, "The logo must actually decode in the browser");
+  assert.equal(logo.width, logo.declaredWidth);
+  assert.equal(logo.height, logo.declaredHeight);
+  assert.match(logo.source, /^\/brand\/linen-earth-logo-[0-9a-f]{12}\.png$/);
+  return logo;
+}
+
+async function freshPage(width = 1440, captureIntro = false) {
   const context = await browser.newContext({ viewport: { width, height: 1000 } });
   const page = await context.newPage();
   activePage = page;
@@ -59,10 +79,22 @@ async function freshPage(width = 1440) {
       }));
     };
   });
-  await page.goto(baseURL + "/designer-studio", { waitUntil: "networkidle" });
+  await page.goto(baseURL + "/designer-studio", { waitUntil: captureIntro ? "domcontentloaded" : "networkidle" });
+  if (captureIntro) {
+    const logo = page.locator(".brandIntro img");
+    await logo.waitFor({ state: "visible" });
+    await decodeLogo(logo);
+    await page.waitForFunction(() => {
+      const card = document.querySelector(".brandIntro .introCard");
+      return card && Number(getComputedStyle(card).opacity) > 0.95;
+    });
+    await page.screenshot({ path: path.join(output, "brand-intro-" + width + ".png") });
+    summary.branding.openingAnimation = "passed";
+  }
   await ready(page);
   await page.locator(".brandIntro").waitFor({ state: "hidden" });
-  return { page, context };
+  const logo = await decodeLogo(page.locator(".atelierBrand img"));
+  return { page, context, logo };
 }
 
 async function ready(page) {
@@ -141,7 +173,30 @@ async function regression(name, run) {
   await fs.mkdir(output, { recursive: true });
   browser = await chromium.launch({ headless: true });
   for (const width of [390, 768, 1440]) {
-    const { page, context } = await freshPage(width);
+    const { page, context, logo } = await freshPage(width, width === 390);
+    for (const [selector, attribute] of [
+      ['link[rel="icon"]', "href"],
+      ['link[rel="apple-touch-icon"]', "href"],
+      ['meta[property="og:image"]', "content"],
+      ['meta[name="twitter:image"]', "content"],
+    ]) {
+      const url = await page.locator(selector).getAttribute(attribute);
+      assert.equal(new URL(url, baseURL).pathname, logo.source, "Brand metadata must use the displayed logo");
+    }
+    assert.equal(Number(await page.locator('meta[property="og:image:width"]').getAttribute("content")), logo.width);
+    assert.equal(Number(await page.locator('meta[property="og:image:height"]').getAttribute("content")), logo.height);
+    if (width === 390) {
+      const alias = await page.request.get(baseURL + "/brand/linen-earth-logo.png", { maxRedirects: 0 });
+      assert.equal(alias.status(), 307);
+      assert.equal(new URL(alias.headers().location, baseURL).pathname, logo.source);
+      assert.equal(alias.headers()["cache-control"], "public, max-age=3600");
+      const asset = await page.request.get(baseURL + logo.source);
+      assert.equal(asset.status(), 200);
+      assert.ok(asset.headers()["content-type"].includes("image/png"));
+      const hash = createHash("sha256").update(await asset.body()).digest("hex");
+      assert.equal(logo.source, "/brand/linen-earth-logo-" + hash.slice(0, 12) + ".png");
+      summary.branding.legacyAliasAndContentIdentity = "passed";
+    }
     const metrics = await page.evaluate(() => {
       const canvas = document.querySelector(".newDesignerPhoto canvas");
       const ctx = canvas.getContext("2d");
@@ -154,6 +209,7 @@ async function regression(name, run) {
     assert.ok(metrics.documentWidth <= width + 2, "Horizontal overflow at " + width + "px: " + metrics.documentWidth);
     assert.ok(metrics.paintedColors > 16, "The real photograph/canvas must render at " + width + "px");
     await page.screenshot({ path: path.join(output, "designer-" + width + ".png"), fullPage: true });
+    await page.locator(".atelierBrandBand").screenshot({ path: path.join(output, "brand-header-" + width + ".png") });
     await page.locator(".newDesignerPhoto").screenshot({ path: path.join(output, "preview-" + width + ".png") });
     const before = await page.locator("#designer-shirt").inputValue();
     await changeShirt(page);
@@ -161,9 +217,9 @@ async function regression(name, run) {
     await button(page, "Lock final design").click();
     assert.equal(await button(page, "Final photoreal ✦").isEnabled(), true);
     assert.deepEqual(await counts(page), { renders: 0, inspections: 0 }, "Live edits/locking must not call a paid provider");
-    summary.viewports.push({ ...metrics, fabricSelectionAndLock: "passed" });
+    summary.viewports.push({ ...metrics, logo, brandMetadata: "passed", fabricSelectionAndLock: "passed" });
     await context.close();
-    console.log("PASS real Canvas and controls at " + width + "px");
+    console.log("PASS brand images/metadata, real Canvas and controls at " + width + "px");
   }
 
   await regression("Delayed generation cannot repopulate a changed design or its cache", async (page) => {

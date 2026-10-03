@@ -19,6 +19,7 @@ import "./outfit-studio.css";
 import "./contact-dock.css";
 import "./finish-polish.css";
 import { BrandIntro } from "@/components/BrandIntro";
+import { BRAND_LOGO_SRC, BRAND_LOGO_SIZE } from "@/lib/brand-logo-data";
 
 const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL
@@ -31,15 +32,15 @@ export const metadata: Metadata = {
   alternates: { canonical: SITE_URL },
   metadataBase: new URL(SITE_URL),
   icons: {
-    icon: "/brand/linen-earth-logo.png",
-    apple: "/brand/linen-earth-logo.png",
+    icon: BRAND_LOGO_SRC,
+    apple: BRAND_LOGO_SRC,
   },
   openGraph: {
     title: "Linen Earth — AI Atelier",
     description: "A premium digital atelier for fabric-led menswear design.",
     url: SITE_URL,
     siteName: "Linen Earth",
-    images: [{ url: "/brand/linen-earth-logo.png", width: 1273, height: 531 }],
+    images: [{ url: BRAND_LOGO_SRC, ...BRAND_LOGO_SIZE }],
     locale: "en_IN",
     type: "website",
   },
@@ -47,7 +48,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Linen Earth — AI Atelier",
     description: "A premium digital atelier for fabric-led menswear design.",
-    images: ["/brand/linen-earth-logo.png"],
+    images: [BRAND_LOGO_SRC],
   },
 };
 
