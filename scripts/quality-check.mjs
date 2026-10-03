@@ -316,7 +316,7 @@ for(const token of ["photoCalibration:photoCalibration.verified ? {","photoPxPer
   if(!photoPreview.includes(token)) throw new Error(`Calibration-aware final-render identity regression: missing ${token}`);
 }
 console.log("Calibration lock identity gate passed: changing accepted photo scale invalidates locked/session final-render state.");
-for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","PHOTO_TUCKED_LEFT_SLEEVE_CLIP","PHOTO_TUCKED_RIGHT_SLEEVE_CLIP","PHOTO_TUCKED_LEFT_TROUSER_CLIP","PHOTO_TUCKED_RIGHT_TROUSER_CLIP","destination-in","masks.shirt","masks.pant","featherMaskInside","featheredMasks","featheredPathMask","pathMasks","if(path) context.drawImage(featheredPathMask(path),0,0)","patternScaleForFabric","placement.offsetX","soft-light","photographicShapeMaps","photographicShapeMap","grayscale(1) blur(7px)","weightedGarmentLuminanceMean","neutralizePhotographicLuminance","garmentMean","const lightingMask = mask ?? (path ? featheredPathMask(path) : undefined)","globalAlpha = .58","globalAlpha = .07","Zoom fit","Compare","Boundary QA"]) {
+for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","PHOTO_TUCKED_LEFT_SLEEVE_CLIP","PHOTO_TUCKED_RIGHT_SLEEVE_CLIP","PHOTO_TUCKED_LEFT_TROUSER_CLIP","PHOTO_TUCKED_RIGHT_TROUSER_CLIP","destination-in","masks.shirt","masks.pant","featherMaskInside","featheredMasks","featheredPathMask","pathMasks","if(!mask && singlePath) context.drawImage(featheredPathMask(singlePath),0,0)","patternScaleForFabric","placement.offsetX","soft-light","photographicShapeMaps","photographicShapeMap","grayscale(1) blur(7px)","weightedGarmentLuminanceMean","neutralizePhotographicLuminance","garmentMean","const lightingMask=mask ?? (singlePath ? featheredPathMask(singlePath) : undefined)","globalAlpha = .58","globalAlpha = .07","Zoom fit","Compare","Boundary QA"]) {
   if (!photoPreview.includes(token)) throw new Error(`Real photographic Designer regression: PhotoOutfitPreview missing ${token}`);
 }
 const photoCustomerCss = fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
@@ -350,6 +350,19 @@ for (const token of [
   if (!photoPanelGrain.includes(token)) throw new Error(`Photo panel grain regression: geometry missing ${token}`);
 }
 console.log("Photo panel grain gate passed: directional fabrics follow photographed panel fall without claiming physical grain evidence.");
+for (const token of [
+  "function prepareFabricPanels",
+  "function paintPreparedFabricPanels",
+  "function drawGarmentPanels",
+  "if(panels.length>1 && !mask) throw new Error",
+  "One garment-wide lighting/relief pass is enough",
+  "drawGarmentPanels(context,modelPhoto,shirtImage,shirt,[",
+  "drawGarmentPanels(context,modelPhoto,pantImage,pant,[",
+  "paintPreparedFabricPanels(context,preparedPanels)",
+]) {
+  if (!photoPreview.includes(token)) throw new Error(`Batched photo panel regression: missing ${token}`);
+}
+console.log("Batched photo panel gate passed: directional panels share one lighting/relief pass per garment.");
 for (const token of [
   "photographicReliefMaps = new WeakMap<HTMLImageElement, Map<HTMLCanvasElement | null, HTMLCanvasElement>>",
   "function photographicReliefMap(photo: HTMLImageElement, garmentMask?: HTMLCanvasElement)",
