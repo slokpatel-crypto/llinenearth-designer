@@ -168,3 +168,10 @@ Architecture and product decisions that must persist across coding sessions.
 
 **Rule:** derive the baseline only from pixels inside the active garment/panel mask, ignore invalid or near-transparent samples, convert sRGB bytes to linear light before averaging in log space, and convert the resulting baseline back to sRGB only for the existing neutralization interface. This is a rendering heuristic, not a measured material property.
 
+## 2026-10-03 — Final-render handoff preserves textile detail with WebP
+**Decision:** the deterministic locked customer preview and the split shirt/trouser fabric context use high-quality WebP rather than introducing JPEG generations before the final FASHN render.
+
+**Why:** the final renderer depends on fine weave, slub, stripe/check edges and colour separation that can be softened by repeated JPEG encoding. Current FASHN guidance accepts WebP inputs and recommends preserving original format/quality when possible, so the handoff should avoid avoidable lossy transcodes while staying small enough for the existing request path.
+
+**Rule:** browser locked-preview serialization uses WebP at high quality with Canvas fallback semantics; server validation still accepts JPEG/PNG/WebP but canonicalizes an accepted 1024×1536 locked source to near-lossless WebP. Fabric-context resizing uses lossless intermediates and one near-lossless WebP output. Keep the current request-size guard and identity checks; this improves source fidelity but does not bypass render QA or upgrade physical-fabric claims.
+
