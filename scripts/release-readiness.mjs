@@ -374,6 +374,7 @@ requireTokens("tests/customer-designer-preview.test.ts", [
   "instant photo compositor normalizes source albedo before borrowing studio depth",
   "photo compositor removes source-template detail brightness calibration",
   "photo compositor restores colour-neutral photographic micro-relief",
+  "contrast collar and cuff shading uses neutral studio form without source-value contamination",
 ]);
 requireTokens("src/lib/designer/brand-language.ts", [
   "linen-earth-brand-language-provisional-1",
@@ -673,7 +674,7 @@ requireTokens("tests/customer-designer-preview.test.ts", ["final photoreal rende
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["Lock final design","Final photoreal ✦","selectedLookSessionCache","styleSpec","bodyProfile"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["grayscale(1) blur(14px)","microDetail","foldDetail","colour-neutral multi-band relief map","globalAlpha = .36","globalAlpha = .08"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["const plainTextureDetailGain = .34","high-frequency linen weave to avoid a flat painted-shirt look","plainTextureDetailGain"]);
-requireTokens("src/components/PhotoOutfitPreview.tsx", ["function drawWhiteDetail","globalAlpha = .9","globalAlpha = .12","clean white while retaining the real folded edge beside neck and hands"]);
+requireTokens("src/components/PhotoOutfitPreview.tsx", ["function drawWhiteDetail","const detailMask = mask ?? featheredPathMask(path)","const shape = photographicShapeMap(photo, detailMask)","globalAlpha = .48","globalAlpha = .04","globalAlpha = .28","globalAlpha = .05","leave a source-colour halo"]);
 requireTokens("src/lib/designer/photo-preview.ts", ["DESIGNER_PHOTO_TEMPLATES","/designer/studio-tucked.webp"]);
 requireTokens("tests/customer-designer-preview.test.ts", ["photo compositor removes source-template detail brightness calibration"]);
 requireTokens("tests/customer-designer-preview.test.ts", ["customer final photoreal keeps the full model in frame"]);
