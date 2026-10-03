@@ -371,6 +371,10 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "photographicShapeMap(photo, detailMask)",
   "globalAlpha = .42",
   "globalAlpha = .32",
+  "PHOTO_TUCKED_PANEL_PATTERN_ANCHOR",
+  "function fabricPatternTransform(fabric:DesignerFabric,placement:FabricPatternPlacement,scale:number)",
+  "translate(anchorX,anchorY)",
+  "translate(-anchorX,-anchorY)",
 ]);
 requireTokens("src/lib/designer/photo-shading.ts", [
   "weightedGarmentLuminanceMean",
@@ -381,11 +385,15 @@ requireTokens("src/lib/designer/photo-panel-grain.ts", [
   "photoPanelRotationFromVertical",
   "PHOTO_TUCKED_PANEL_AXES",
   "PHOTO_TUCKED_PANEL_GRAIN_ROTATION",
+  "PHOTO_TUCKED_PANEL_PATTERN_ANCHOR",
+  "screen-space layout anchors only",
+  "not tailoring or grain evidence",
   "not a claim about physical cloth measurements",
 ]);
 requireTokens("tests/photo-panel-grain.test.ts", [
   "panel grain rotation measures screen-space fall from vertical",
   "tucked photo panels keep directional fabric aligned to photographed garment axes",
+  "tucked panel pattern anchors stay on photographed seam and waist starts",
 ]);
 
 requireTokens("tests/photo-shading.test.ts", [
@@ -400,7 +408,7 @@ requireTokens("tests/customer-designer-preview.test.ts", [
   "photo compositor removes source-template detail brightness calibration",
   "photo compositor restores garment-local colour-neutral photographic relief",
   "contrast collar and cuff shading reuses baseline-neutral photo structure",
-  "tucked directional fabric follows photographed panel grain",
+  "tucked directional fabric follows photographed panel grain with stable pattern anchors",
 ]);
 requireTokens("src/lib/designer/brand-language.ts", [
   "linen-earth-brand-language-provisional-1",

@@ -47,18 +47,21 @@ test("photo lighting normalization is panel-local inside adaptive garment masks"
 
 
 
-test("tucked directional fabric follows photographed panel grain",()=>{
+test("tucked directional fabric follows photographed panel grain with stable pattern anchors",()=>{
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   const grain=readFileSync("src/lib/designer/photo-panel-grain.ts","utf8");
   assert.match(source,/PHOTO_TUCKED_PANEL_GRAIN_ROTATION/);
-  assert.match(source,/rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION\.leftSleeve/);
-  assert.match(source,/rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION\.rightSleeve/);
-  assert.match(source,/rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION\.leftTrouser/);
-  assert.match(source,/rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION\.rightTrouser/);
-  assert.match(source,/rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION\.collar/);
-  assert.match(grain,/visual geometry from[\s\S]*not a claim about physical cloth measurements/);
-  assert.match(grain,/leftSleeve:photoPanelRotationFromVertical/);
-  assert.match(grain,/rightSleeve:photoPanelRotationFromVertical/);
+  assert.match(source,/PHOTO_TUCKED_PANEL_PATTERN_ANCHOR/);
+  assert.match(source,/function fabricPatternTransform\(fabric:DesignerFabric,placement:FabricPatternPlacement,scale:number\)/);
+  assert.match(source,/translate\(anchorX,anchorY\)[\s\S]*rotate\(rotation\)[\s\S]*scale\(scale\)[\s\S]*translate\(-anchorX,-anchorY\)/);
+  assert.match(source,/rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION\.leftSleeve[\s\S]*anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR\.leftSleeve\.x/);
+  assert.match(source,/rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION\.rightSleeve[\s\S]*anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR\.rightSleeve\.x/);
+  assert.match(source,/rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION\.leftTrouser[\s\S]*anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR\.leftTrouser\.x/);
+  assert.match(source,/rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION\.rightTrouser[\s\S]*anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR\.rightTrouser\.x/);
+  assert.match(source,/rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION\.collar[\s\S]*anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR\.collar\.x/);
+  assert.match(grain,/screen-space layout anchors only[\s\S]*not tailoring or grain evidence/);
+  assert.match(grain,/leftSleeve:\{x:PHOTO_TUCKED_PANEL_AXES\.leftSleeve\.topX/);
+  assert.match(grain,/rightSleeve:\{x:PHOTO_TUCKED_PANEL_AXES\.rightSleeve\.topX/);
 });
 
 
