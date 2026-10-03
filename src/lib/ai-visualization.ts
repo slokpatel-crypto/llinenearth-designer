@@ -1150,7 +1150,7 @@ async function runEdit(image: string, prompt: string, imageContext?: string) {
       resolution: "1k",
       generation_mode: "balanced",
       num_images: 1,
-      output_format: "jpeg",
+      // Final renders are quality assets and feed later view/repair steps. PNG avoids\n      // another lossy generation without changing the requested model resolution.\n      output_format: "png",
       return_base64: false,
       seed: 4137,
     },
