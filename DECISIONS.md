@@ -145,3 +145,11 @@ Architecture and product decisions that must persist across coding sessions.
 **Why:** a browser-only gate can be bypassed with a direct API request, and a passing job ID alone could be paired with a different generated image. The private outcome ledger already holds the appropriate evidence boundary.
 
 **Rule:** front inspection stores a SHA-256 identity of the inspected FASHN image inside the private QA payload. Secondary generation supplies the front job ID and image; the server requires a matching front outcome, passing QA, matching shirt/trouser IDs, an allowed selected-look concept, and the same image hash before returning a cache hit or spending a generation credit. Repair replaces stale front caches so later views inherit the reviewed repaired source rather than an older defect.
+
+
+## 2026-10-03 — Instant cloth shading uses neutral shape maps
+**Decision:** the customer photo compositor derives broad garment form from a neutral-gray, low-frequency studio lighting map rather than blending the photographed source garment luminance/albedo directly into the selected fabric.
+
+**Why:** direct template luminance can make pale Linen Earth cloth inherit the dark source shirt or make darker cloth inherit a pale trouser base, which reads like painted/stickered fabric even when the garment boundary is correct.
+
+**Rule:** the catalogue swatch remains the colour/texture authority. The studio photograph may contribute neutral broad lighting, folds, seams and wrinkle relief only; source-garment colour must not be reintroduced as a shortcut.

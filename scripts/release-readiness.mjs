@@ -342,14 +342,16 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "pathMasks",
   "if(path) context.drawImage(featheredPathMask(path),0,0)",
   "Contrast collars/cuffs sit directly beside skin and hands",
-  "globalCompositeOperation = \"luminosity\"",
-  "globalAlpha = .82",
-  "globalAlpha = .16",
+  "photographicShapeMaps",
+  "photographicShapeMap",
+  "grayscale(1) blur(7px)",
+  "globalAlpha = .58",
+  "globalAlpha = .07",
 ]);
 requireTokens("tests/customer-designer-preview.test.ts", [
   "photographic garment clips feather only inside the real cloth boundary",
   "newDesignerConstruction",
-  "instant photo compositor preserves selected fabric colour while borrowing studio depth",
+  "instant photo compositor normalizes source albedo before borrowing studio depth",
 ]);
 requireTokens("src/lib/designer/brand-language.ts", [
   "linen-earth-brand-language-provisional-1",
