@@ -175,3 +175,10 @@ Architecture and product decisions that must persist across coding sessions.
 
 **Rule:** browser locked-preview serialization uses WebP at high quality with Canvas fallback semantics; server validation still accepts JPEG/PNG/WebP but canonicalizes an accepted 1024×1536 locked source to near-lossless WebP. Fabric-context resizing uses lossless intermediates and one near-lossless WebP output. Keep the current request-size guard and identity checks; this improves source fidelity but does not bypass render QA or upgrade physical-fabric claims.
 
+## 2026-10-03 — Final FASHN renders use PNG
+**Decision:** the FASHN edit pipeline requests PNG output for the final front render, repairs and secondary views.
+
+**Why:** these generated images are quality assets and can themselves become the source for later repair/view generation. FASHN documents PNG as the higher-quality output option, while JPEG trades some image fidelity for smaller/faster delivery. Keeping the generated chain in PNG avoids another lossy generation around fine weave and pattern edges without increasing the number of render calls.
+
+**Rule:** keep the existing 1k balanced generation settings and credit gates unchanged; change only the output encoding to PNG. Customer exposure still depends on the existing fidelity QA, and PNG output does not imply verified physical colour or pattern scale.
+
