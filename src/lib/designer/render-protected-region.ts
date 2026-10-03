@@ -14,6 +14,7 @@ export function protectedRegionChangePercent(deltas:unknown[]):number|null{
 }
 
 export function classifyProtectedRegionChange(changePercent:unknown):ProtectedRegionStatus{
+  if(changePercent===null||changePercent===undefined||changePercent==="") return "unavailable";
   const value=Number(changePercent);
   if(!Number.isFinite(value)||value<0) return "unavailable";
   if(value>PROTECTED_REGION_WEAK_PERCENT) return "weak";
