@@ -90,6 +90,11 @@ test("ties, repeated recipes and other occasions cannot manufacture a constructi
   const repeated=Array.from({length:12},(_,i)=>vote(i%1));assert.equal(aggregateDesignerTaste(repeated,input.occasion).evidence,1);
   const events=[0,1,2,3].map(i=>vote(i,{...input.chosenStyle,collar:i<2?"Spread Collar":"Mandarin / Band Collar"}));assert.equal(aggregateDesignerTaste(events,input.occasion).preferredConstruction.collar,undefined);assert.equal(aggregateDesignerTaste(events,"Casual").evidence,0);
 });
+test("the latest correction wins even when the same recipe was reasked under another ID",()=>{
+  const first=vote(0),copy=vote(0,input.chosenStyle,{recommendationId:"reasked",rating:"down",reason:"too_bold"}),correction=vote(0);
+  const profile=aggregateDesignerTaste([first,copy,correction,vote(1),vote(2),vote(3)],input.occasion);
+  assert.equal(profile.evidence,4);assert.equal(profile.preferredShirtWear,"Tucked");assert.equal(profile.signals.find((s:any)=>s.key==="shirtWear").support,4);
+});
 test("personal learning is secondary to explicit details, exclusions, mood and garment locks",()=>{
   const taste={version:1,evidence:4,preferredTier:"Statement",preferredConstruction:{collar:"Spread Collar",shirtFit:"Slim Fit",trouser:"Wide-leg / Relaxed Drape Trouser",button:"Horn"}};
   const parsed=personalizeDesignerBrief(parseDesignerBrief("Design a shirt only with quiet texture, not slim and use mother-of-pearl buttons",{occasion:input.occasion,context:input.context,style:input.chosenStyle}),taste);

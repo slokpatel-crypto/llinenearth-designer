@@ -18,6 +18,7 @@ export function aggregateDesignerTaste(events:TasteEvent[],occasion?:OccasionTie
     if(!id || occasion && payload.occasion!==occasion) continue;
     if(!["up","down"].includes(String(payload.rating))) continue;
     if(payload.reason && !isDesignerFeedbackReason(String(payload.reason))) continue;
+    latest.delete(id);
     latest.set(id,payload);
   }
   const tier={Safe:0,Elevated:0,Statement:0};
