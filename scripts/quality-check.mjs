@@ -477,6 +477,24 @@ for (const token of ["linen-final-render-cache-v2-locked-preview-source","functi
 if(lockedPreviewAiVisualization.includes('aspect_ratio: "4:5"')) throw new Error("FASHN Edit framing regression: unsupported forced 4:5 aspect ratio returned.");
 console.log("Locked-preview final-render gate passed: final photoreal generation starts from a validated deterministic customer preview when available.");
 for (const token of [
+  "FABRIC_CONTEXT_PANEL_WIDTH=500",
+  "FABRIC_CONTEXT_HEIGHT=620",
+  "FABRIC_CONTEXT_GUTTER=32",
+  "async function fabricContextPanel(bytes:Buffer|undefined)",
+  'fit:"contain"',
+  "background:FABRIC_CONTEXT_BACKGROUND",
+  "withoutEnlargement:false",
+  "const rightOffset=FABRIC_CONTEXT_PANEL_WIDTH+FABRIC_CONTEXT_GUTTER",
+  "width:FABRIC_CONTEXT_PANEL_WIDTH*2+FABRIC_CONTEXT_GUTTER",
+  "{input:right,left:rightOffset,top:0}",
+  "neutral gutter deliberately keeps shirt and trouser references",
+  "without adding labels/text",
+]) {
+  if(!lockedPreviewAiVisualization.includes(token)) throw new Error(`Fabric-context fidelity regression: ai-visualization missing ${token}`);
+}
+if(lockedPreviewAiVisualization.includes('resize(500,620,{fit:"cover"})')) throw new Error("Fabric-context fidelity regression: cover-cropping can hide pattern-repeat evidence.");
+console.log("Fabric-context fidelity gate passed: final rendering sees each full swatch in separated near-lossless panels.");
+for (const token of [
   "function drawWhiteDetail",
   "const detailMask = featheredPathMask(path)",
   "photographicShapeMap(photo, detailMask)",
