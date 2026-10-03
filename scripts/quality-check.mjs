@@ -332,11 +332,20 @@ for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","P
 console.log("Real photographic Designer gate passed: inward-feathered garment/creative boundaries, neck clear zone and tucked layering protected.");
 for (const token of [
   "PHOTO_TUCKED_PANEL_GRAIN_ROTATION",
+  "PHOTO_TUCKED_PANEL_PATTERN_ANCHOR",
+  "function fabricPatternTransform(fabric:DesignerFabric,placement:FabricPatternPlacement,scale:number)",
+  "translate(anchorX,anchorY)",
+  "translate(-anchorX,-anchorY)",
   "rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.leftSleeve",
+  "anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.leftSleeve.x",
   "rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.rightSleeve",
+  "anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.rightSleeve.x",
   "rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.leftTrouser",
+  "anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.leftTrouser.x",
   "rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.rightTrouser",
+  "anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.rightTrouser.x",
   "rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.collar",
+  "anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.collar.x",
 ]) {
   if (!photoPreview.includes(token)) throw new Error(`Photo panel grain regression: preview missing ${token}`);
 }
@@ -344,12 +353,17 @@ for (const token of [
   "photoPanelRotationFromVertical",
   "visual geometry from",
   "not a claim about physical cloth measurements",
+  "PHOTO_TUCKED_PANEL_PATTERN_ANCHOR",
+  "screen-space layout anchors only",
+  "not tailoring or grain evidence",
   "leftSleeve:{topX:351,topY:244,bottomX:311,bottomY:680}",
   "rightSleeve:{topX:669,topY:244,bottomX:706,bottomY:680}",
+  "leftSleeve:{x:PHOTO_TUCKED_PANEL_AXES.leftSleeve.topX",
+  "rightSleeve:{x:PHOTO_TUCKED_PANEL_AXES.rightSleeve.topX",
 ]) {
   if (!photoPanelGrain.includes(token)) throw new Error(`Photo panel grain regression: geometry missing ${token}`);
 }
-console.log("Photo panel grain gate passed: directional fabrics follow photographed panel fall without claiming physical grain evidence.");
+console.log("Photo panel grain gate passed: directional fabrics follow photographed panel fall and keep repeat phase anchored at panel starts without claiming physical grain evidence.");
 for (const token of [
   "panelLightingMasks = new WeakMap<HTMLCanvasElement, Map<string, HTMLCanvasElement>>",
   'function photoLightingMask(mask?:HTMLCanvasElement,path="")',
