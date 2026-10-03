@@ -449,6 +449,7 @@ const selectedLookCacheKey=fs.readFileSync("src/lib/designer/render-cache-key.ts
 for (const token of ["linen-final-render-cache-v2-locked-preview-source","function lockedPreviewIdentity",'createHash("sha256").update(raw).digest("hex")','lockedPreview:view==="front"?lockedPreviewIdentity(input.lockedPreviewImage):""']) {
   if(!selectedLookCacheKey.includes(token)) throw new Error(`Locked-preview final-render cache regression: missing ${token}`);
 }
+if(lockedPreviewAiVisualization.includes('aspect_ratio: "4:5"')) throw new Error("FASHN Edit framing regression: unsupported forced 4:5 aspect ratio returned.");
 console.log("Locked-preview final-render gate passed: final photoreal generation starts from a validated deterministic customer preview when available.");
 for (const token of [
   "function drawWhiteDetail",

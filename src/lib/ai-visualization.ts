@@ -1140,13 +1140,15 @@ export async function inspectCreativeFashnOutput(
 }
 
 async function runEdit(image: string, prompt: string, imageContext?: string) {
+  // FASHN Edit currently derives output geometry from the source image; its
+  // documented input contract does not expose an aspect-ratio override. Keep
+  // the locked model framing intact instead of forcing a separate 4:5 reframe.
   const response = await fashnClient().predictions.subscribe({
     model_name: "edit",
     inputs: {
       image,
       prompt,
       image_context: imageContext,
-      aspect_ratio: "4:5",
       resolution: "1k",
       generation_mode: "balanced",
       num_images: 1,

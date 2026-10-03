@@ -182,3 +182,10 @@ Architecture and product decisions that must persist across coding sessions.
 
 **Rule:** keep the existing 1k balanced generation settings and credit gates unchanged; change only the output encoding to PNG. Customer exposure still depends on the existing fidelity QA, and PNG output does not imply verified physical colour or pattern scale.
 
+## 2026-10-03 — FASHN Edit preserves source framing
+**Decision:** the final-render Edit call no longer sends a forced 4:5 aspect-ratio field.
+
+**Why:** the current FASHN Edit API documents image, prompt, mask, image_context, resolution, generation_mode, seed, num_images, output_format and return_base64, but not an aspect-ratio override. The locked customer preview already has the full-body 1024×1536 framing we want, so an unsupported/extra 4:5 field risks unnecessary reframing or future request incompatibility.
+
+**Rule:** let FASHN Edit derive output geometry from the submitted source image and keep full-body framing instructions in the prompt. Use a separate supported reframe step only if Linen Earth intentionally wants a different export aspect ratio later; do not couple that to the fidelity render itself.
+
