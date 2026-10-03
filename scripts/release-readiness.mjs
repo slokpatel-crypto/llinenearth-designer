@@ -345,11 +345,21 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "photographicShapeMaps",
   "photographicShapeMap",
   "grayscale(1) blur(7px)",
-  "weightedLuminance",
+  "weightedGarmentLuminanceMean",
+  "neutralizePhotographicLuminance",
   "garmentMean",
   "const lightingMask = mask ?? (path ? featheredPathMask(path) : undefined)",
   "globalAlpha = .58",
   "globalAlpha = .07",
+]);
+requireTokens("src/lib/designer/photo-shading.ts", [
+  "weightedGarmentLuminanceMean",
+  "neutralizePhotographicLuminance",
+  "PHOTO_SHAPE_CONTRAST_GAIN",
+]);
+requireTokens("tests/photo-shading.test.ts", [
+  "shape normalization is invariant to the photographed source cloth baseline",
+  "garment luminance mean ignores transparent pixels outside the cloth mask",
 ]);
 requireTokens("tests/customer-designer-preview.test.ts", [
   "photographic garment clips feather only inside the real cloth boundary",
