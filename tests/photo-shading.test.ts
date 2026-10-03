@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   PHOTO_SHAPE_NEUTRAL_LUMINANCE,
+  neutralizePhotographicFoldDifference,
   neutralizePhotographicLuminance,
   weightedGarmentLuminanceMean,
 } from "../src/lib/designer/photo-shading.ts";
@@ -35,4 +36,17 @@ test("invalid or empty evidence fails to neutral rather than inventing contrast"
 test("extreme photographed highlights and shadows remain bounded",()=>{
   assert.equal(neutralizePhotographicLuminance(0,255),48);
   assert.equal(neutralizePhotographicLuminance(255,0),208);
+});
+
+test("fold-band normalization is invariant to source-cloth baseline",()=>{
+  const dark=[40,50,60].map((fine,index)=>neutralizePhotographicFoldDifference(fine,[50,50,50][index]));
+  const pale=[160,170,180].map((fine,index)=>neutralizePhotographicFoldDifference(fine,[170,170,170][index]));
+  assert.deepEqual(dark,pale);
+  assert.deepEqual(dark,[114,128,142]);
+});
+
+test("fold-band normalization stays bounded and neutral on invalid input",()=>{
+  assert.equal(neutralizePhotographicFoldDifference(Number.NaN,Number.NaN),128);
+  assert.equal(neutralizePhotographicFoldDifference(0,255),40);
+  assert.equal(neutralizePhotographicFoldDifference(255,0),216);
 });
