@@ -193,7 +193,7 @@ async function regression(name, run) {
     await complete(page, "inspect", 0, { check: qa() });
     await page.locator(".newDesignerPhotoAi").waitFor({ state: "visible" });
     await button(page, "Generate back").click();
-    const collar = page.locator(".newDesignerStyleBlock").getByLabel("Shirt collar", { exact: true });
+    const collar = page.locator(".newDesignerStyleBlock").getByLabel(/Shirt collar/);
     const value = await collar.evaluate((select) => [...select.options].find((item) => item.value !== select.value).value);
     await collar.selectOption(value);
     await ready(page);
