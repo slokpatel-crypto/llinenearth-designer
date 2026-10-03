@@ -1,6 +1,6 @@
 # Linen Earth — Roadmap v2 Adapted Status
 
-Date: 2026-10-03
+Date: 2026-10-04
 Source of truth: current GitHub repository, not the older ZIP.
 
 ## Overall approach
@@ -131,6 +131,11 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Style Director independently tracks the calibration identity attached to its serialized real-model preview and generated photoreal; if Phase 1 calibration changes while a generated image is displayed, that stale image is discarded and the refreshed photographic preview becomes authoritative again.
 - Added photographic option-support truth for Phase 3: exact/approximate status is now derived from the real customer photo templates rather than the broader internal construction renderer, with explicit operator reasons.
 - Added a compact customer photo-match summary beside cut controls so selected details that directly match a photographed template are separated from photographic approximations before the user relies on the preview.
+
+- Recovered continuous selected-fabric coverage across neutral photographed folds and the inner self-fabric collar, with unchanged protected mannequin/studio pixels.
+- Added grounded Designer design, critique, comparison, revision, fit, construction, material and production-preparation answers, with human judgement revisions and occasion-scoped personal preference adaptation.
+- Applied recommendations now assess the exact revised StyleSpec; late answers or assessments cannot affect a replacement design.
+- Extended natural construction requests to the current closed option library, preserving primary task intent and rejecting contradictory/unsupported detail changes; named comparisons and colour/pattern exclusions retain the requested constraints.
 
 ## Evidence we cannot manufacture in code
 

@@ -28,6 +28,7 @@ export type DesignerSearchPreference = {
   wantedTokens:string[];
   avoidTokens:string[];
   preferredPattern?:"plain"|"stripe"|"check"|"print";
+  excludedPatterns?:Array<"plain"|"stripe"|"check"|"print">;
   preferredTier?:DesignerSearchTier;
   strictOccasionFit?:boolean;
 };
@@ -685,6 +686,7 @@ export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearc
     const ranked:RankedCandidate[]=[];
     for(const shirt of shirts) {
       for(const pant of pants) {
+        if(!designerFabricAllowedForBrief(shirt,input.preference) || !designerFabricAllowedForBrief(pant,input.preference)) continue;
         const recommendation=evaluateDesignerCombo(shirt,pant,input.occasion,style,undefined,input.context);
         const fit=assessFitConstruction(input.measurements,style,{climate:input.context.climate,shirtFabric:shirt,trouserFabric:pant,observations:input.observations,easeModel:input.easeModel});
         if(hardBlocked(recommendation,fit)) continue;
@@ -739,6 +741,19 @@ export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearc
     ...candidate,
     comparison:comparisonFor(candidate,input),
   }));
+}
+
+export function designerFabricAllowedForBrief(fabric:DesignerFabric,preference?:DesignerSearchPreference|null) {
+  const words=new Set((fabric.name+" "+fabric.colorFamily+" "+fabric.tone).toLowerCase().match(/[a-z]+/g) || []);
+  if((preference?.avoidTokens || []).some((token)=>words.has(token.toLowerCase()))) return false;
+  const text=(fabric.patternType || "").toLowerCase();
+  const patterns={
+    plain:/solid|plain/.test(text),
+    stripe:/stripe|pinstripe/.test(text),
+    check:/check|windowpane|gingham/.test(text),
+    print:/print|floral|geometric|botanical|abstract/.test(text),
+  };
+  return !(preference?.excludedPatterns || []).some((pattern)=>patterns[pattern]);
 }
 
 export function explainWhyNotCurrentPair(input:DesignerSearchInput) {

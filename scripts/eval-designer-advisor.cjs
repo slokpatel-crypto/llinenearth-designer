@@ -13,6 +13,14 @@ const cases=[
   ["What is the exact GSM, drape and wash care?","material"],
   ["Prepare the tailor tech pack","production"],
   ["Design a sherwani","clarify"],
+  ["Design a comfortable summer wedding outfit with a mandarin collar and horn buttons","design"],
+  ["Keep both fabrics. Make the collar mandarin, hide the placket and use horn buttons.","refine"],
+  ["Compare mandarin vs camp collar","compare"],
+  ["Design a resort outfit, not bold and no prints or checks","design"],
+  ["Make the trousers slim. Keep the shirt fit.","clarify"],
+  ["Use point collar and spread collar","clarify"],
+  ["Use white contrast collar and cuffs","refine"],
+  ["Use a soft button-down collar and extra-high rise with two-button barrel cuffs","refine"],
 ];
 const timings=[],tasks=[];
 for(let round=0;round<5;round++)for(const [brief,task] of cases){

@@ -8,6 +8,7 @@ const engine=load("src/lib/designer/engine.ts") as typeof import("../src/lib/des
 const advisor=load("src/lib/designer/advisor.ts") as typeof import("../src/lib/designer/advisor.ts");
 const briefEngine=load("src/lib/designer/brief.ts") as typeof import("../src/lib/designer/brief.ts");
 const taste=load("src/lib/designer/taste-profile.ts") as typeof import("../src/lib/designer/taste-profile.ts");
+const construction=load("src/lib/designer/construction-intent.ts") as typeof import("../src/lib/designer/construction-intent.ts");
 const input:DesignerSearchInput={shirts:engine.DESIGNER_SHIRTS,pants:engine.DESIGNER_PANTS,
   currentShirt:engine.DESIGNER_SHIRTS.find((item)=>item.id===engine.DESIGNER_REVIEWED_PAIRING.shirtId)!,currentPant:engine.DESIGNER_PANTS.find((item)=>item.id===engine.DESIGNER_REVIEWED_PAIRING.pantId)!,
   occasion:"Semi-Formal",context:{climate:"Air-conditioned",intention:"Balanced"},chosenStyle:engine.designerStyleForOccasion("Semi-Formal")};
@@ -127,4 +128,89 @@ test("four distinct human reviews can form an occasion-specific preference",()=>
 });
 test("tied judgements never manufacture a preferred wear choice",()=>{
   const events=engine.DESIGNER_SHIRTS.slice(0,4).map((shirt,i)=>vote("r"+i,"up",{...input.chosenStyle,shirtWear:i<2?"Tucked":"Untucked"},"Semi-Formal",{shirtId:shirt.id}));assert.equal(taste.aggregateDesignerTaste(events).preferredShirtWear,undefined);
+});
+
+test("compound comfort and fabric requirements do not replace the primary design task",()=>{
+  const answer=ask("Design a comfortable summer wedding outfit with a mandarin collar and horn buttons");
+  assert.equal(answer.advice.task,"design");assert.ok(answer.results.length);
+  assert.equal(answer.interpretation.context.climate,"Hot / humid");
+  for(const result of answer.results) {assert.equal(result.style.collar,"Mandarin / Band Collar");assert.equal(result.style.button,"Horn");}
+  assert.equal(ask("What is this fabric's drape for a wedding?").advice.task,"material");
+  assert.equal(ask("Recommend a collar for this shirt").advice.task,"construction");
+});
+test("all current construction labels can be requested without invented vocabulary",()=>{
+  for(const [key,values] of Object.entries(engine.DESIGNER_STYLE_CHOICES)) for(const value of values) {
+    const intent=construction.parseDesignerConstructionIntent("Use "+value);
+    assert.equal(intent.patch[key as keyof typeof intent.patch],value,key+": "+value);
+    assert.deepEqual(intent.issues,[],value);
+  }
+});
+test("natural construction aliases resolve shared options and preserve other details",()=>{
+  const answer=ask("Keep both fabrics. Make the collar mandarin, hide the placket and use horn buttons.");
+  assert.equal(answer.advice.task,"refine");assert.equal(answer.results.length,1);
+  const result=answer.results[0];assert.equal(result.style.collar,"Mandarin / Band Collar");assert.equal(result.style.placket,"Hidden / Fly-front");assert.equal(result.style.button,"Horn");
+  assert.deepEqual({...result.style,collar:input.chosenStyle.collar,placket:input.chosenStyle.placket,button:input.chosenStyle.button},input.chosenStyle);
+  assert.equal(result.shirt.id,input.currentShirt.id);assert.equal(result.pant.id,input.currentPant.id);
+  assert.ok(result.reasons.some((reason)=>reason.startsWith("Horn:")));assert.ok(result.reasons.some((reason)=>reason.startsWith("Hidden / Fly-front:")));
+});
+test("specific option names win over contained generic aliases",()=>{
+  const intent=construction.parseDesignerConstructionIntent("Use a soft button-down collar and extra-high rise with two-button barrel cuffs");
+  assert.equal(intent.patch.collar,"Soft Button-Down Collar");assert.equal(intent.patch.rise,"Extra-High Rise");assert.equal(intent.patch.cuff,"Barrel Cuff (2-button)");assert.deepEqual(intent.issues,[]);
+});
+test("comparison answers the named collars rather than substituting defaults",()=>{
+  const answer=ask("Compare mandarin vs camp collar");assert.equal(answer.results.length,2);
+  assert.deepEqual(answer.results.map((result)=>result.style.collar),["Mandarin / Band Collar","Cuban / Camp Collar"]);
+  for(const result of answer.results) {assert.equal(result.shirt.id,input.currentShirt.id);assert.equal(result.pant.id,input.currentPant.id);}
+});
+test("an unknown comparison choice is never replaced by a different supported option",()=>{
+  for(const question of ["Compare square vs spread collar","Compare slim vs pleated trousers"]) {
+    const answer=ask(question);assert.deepEqual(answer.results,[]);assert.match(answer.advice.answer,/Name two/);
+  }
+});
+test("trouser fit requests cannot silently alter the shirt fit",()=>{
+  for(const question of ["Make the trousers slim. Keep the shirt fit.","Use slim trousers with a regular shirt"]) {
+    const answer=ask(question);assert.equal(answer.advice.task,"clarify");assert.deepEqual(answer.results,[]);assert.match(answer.advice.answer,/shirt fit is preserved/);
+  }
+  const intent=construction.parseDesignerConstructionIntent("Use relaxed trousers with a slim shirt");
+  assert.equal(intent.patch.trouser,"Wide-leg / Relaxed Drape Trouser");assert.equal(intent.patch.shirtFit,"Slim Fit");
+});
+test("negated bold energy and pattern lists remain exclusions",()=>{
+  const answer=ask("Design a resort outfit, not bold and no prints or checks");
+  assert.equal(answer.interpretation.context.intention,"Understated");assert.ok(answer.results.length);
+  for(const result of answer.results) for(const fabric of [result.shirt,result.pant]) assert.doesNotMatch(fabric.patternType,/print|check/i);
+  const parsed=briefEngine.parseDesignerBrief("Design an outfit without stripes, prints and checks but with plain cloth");
+  assert.equal(parsed.preference.preferredPattern,"plain");assert.deepEqual([...parsed.preference.excludedPatterns!].sort(),["check","print","stripe"]);
+});
+test("excluded cloth is filtered before ranking even when every high-scoring pair contains it",()=>{
+  const plain={...input.currentShirt,id:"plain-fixture",name:"Plain test",patternType:"Solid" as const};
+  const print={...input.currentShirt,id:"print-fixture",name:"Printed test",patternType:"Floral Print" as const};
+  const answer=ask("Design a casual resort outfit with no prints",{shirts:[print,plain],currentShirt:print});
+  assert.ok(answer.results.length);for(const result of answer.results) assert.equal(result.shirt.id,plain.id);
+});
+test("an excluded retained cloth produces no proposal instead of breaking the constraint",()=>{
+  const currentShirt={...input.currentShirt,patternType:"Floral Print" as const};
+  const answer=ask("Keep both fabrics. Design a casual outfit with no prints",{currentShirt,shirts:[currentShirt]});
+  assert.deepEqual(answer.results,[]);assert.match(answer.advice.answer,/No current stock/);
+});
+test("construction negation is scoped independently from fabric colour exclusions",()=>{
+  const intent=construction.parseDesignerConstructionIntent("Design a business outfit with no blue and a tucked shirt");
+  assert.equal(intent.patch.shirtWear,"Tucked");assert.deepEqual(intent.excluded,{});
+  const answer=ask("No slim fit or French cuffs. Use a camp collar.",{chosenStyle:{...input.chosenStyle,shirtFit:"Slim Fit",cuff:"French / Double Cuff"}});
+  assert.equal(answer.results[0].style.shirtFit,"Regular / Classic Fit");assert.equal(answer.results[0].style.cuff,"Barrel Cuff (1-button)");assert.equal(answer.results[0].style.collar,"Cuban / Camp Collar");
+});
+test("contradictory construction asks for a choice without applying either option",()=>{
+  for(const question of ["Use point collar and spread collar","Make a slim fit, but no slim fit"]) {
+    const answer=ask(question);assert.equal(answer.advice.task,"clarify");assert.deepEqual(answer.results,[]);assert.match(answer.advice.answer,/Choose one/);
+  }
+  assert.deepEqual(construction.parseDesignerConstructionIntent("Use point collar then switch to mandarin collar").issues,[]);
+});
+test("white contrast details and vegetable ivory buttons do not replace body cloth",()=>{
+  const answer=ask("Use white contrast collar and cuffs");assert.equal(answer.results.length,1);
+  assert.equal(answer.results[0].style.collarFinish,"White contrast collar + cuffs");
+  assert.equal(answer.results[0].shirt.id,input.currentShirt.id);assert.equal(answer.results[0].pant.id,input.currentPant.id);
+  assert.deepEqual(briefEngine.parseDesignerBrief("Use corozo (vegetable ivory) buttons").preference.wantedTokens,[]);
+});
+test("words embedded in photograph or different do not invent hot weather or expressive intent",()=>{
+  const parsed=briefEngine.parseDesignerBrief("Review the photograph",{occasion:input.occasion,context:input.context,style:input.chosenStyle});
+  assert.equal(parsed.context.climate,input.context.climate);assert.equal(parsed.context.intention,input.context.intention);
 });
