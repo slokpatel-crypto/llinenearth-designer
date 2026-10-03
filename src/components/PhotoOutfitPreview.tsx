@@ -553,6 +553,9 @@ function drawGarmentPanels(
   context.globalAlpha=.07;
   context.drawImage(shape,0,0,WIDTH,HEIGHT);
 
+  // Seam, weave, wrinkle and fold contrast comes only from the
+  // colour-neutral multi-band relief map. Direct source-photo detail blending
+  // remains intentionally forbidden because it can reintroduce template value.
   const relief=photographicReliefMap(photo,lightingMask);
   context.globalCompositeOperation="soft-light";
   context.globalAlpha=.36;
