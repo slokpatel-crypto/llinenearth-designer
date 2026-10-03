@@ -99,9 +99,8 @@ test("instant photo compositor normalizes source albedo before borrowing studio 
   assert.match(source,/photographicShapeMaps = new WeakMap/);
   assert.match(source,/function photographicShapeMap\(photo: HTMLImageElement, garmentMask\?: HTMLCanvasElement\)/);
   assert.match(source,/grayscale\(1\) blur\(7px\)/);
-  assert.match(source,/weightedLuminance/);
-  assert.match(source,/garmentMean/);
-  assert.match(source,/128 \+ \(input\.data\[index\] - garmentMean\) \* \.78/);
+  assert.match(source,/weightedGarmentLuminanceMean\(input\.data, maskPixels\.data\)/);
+  assert.match(source,/neutralizePhotographicLuminance\(input\.data\[index\], garmentMean\)/);
   assert.match(source,/const lightingMask = mask \?\? \(path \? featheredPathMask\(path\) : undefined\)/);
   assert.match(source,/globalCompositeOperation = "soft-light"[\s\S]*globalAlpha = \.58[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
   assert.match(source,/globalCompositeOperation = "multiply"[\s\S]*globalAlpha = \.07[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
