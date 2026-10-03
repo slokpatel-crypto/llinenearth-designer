@@ -10,6 +10,7 @@ import fabricTileManifest from "../../public/fabric-tiles/manifest.json";
 import { CREATIVE_FEEDBACK_REASONS, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
 import { UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION, type CustomerPhotoCalibration } from "@/lib/designer/photo-calibration-types";
 import { customerPhotoCalibrationIdentity, fetchCustomerPhotoCalibration } from "@/lib/designer/photo-calibration-client";
+import { neutralizePhotographicLuminance, weightedGarmentLuminanceMean } from "@/lib/designer/photo-shading";
 import {
   DESIGNER_PHOTO_TEMPLATES, PHOTO_COLLAR_MASK, PHOTO_CUFF_MASK, PHOTO_TUCKED_COLLAR_MASK, PHOTO_TUCKED_COLLAR_STAND_MASK,
   PHOTO_TUCKED_CUFF_MASK, PHOTO_TUCKED_NECK_CLEAR, PHOTO_TUCKED_SHIRT_CLIP, PHOTO_TUCKED_TROUSER_CLIP,
@@ -261,21 +262,13 @@ function photographicShapeMap(photo: HTMLImageElement, garmentMask?: HTMLCanvasE
   const maskPixels = maskContext.getImageData(0, 0, mapWidth, mapHeight);
   const output = shapeContext.createImageData(mapWidth, mapHeight);
 
-  let weightedLuminance = 0;
-  let totalWeight = 0;
-  for (let index = 0; index < input.data.length; index += 4) {
-    const weight = maskPixels.data[index + 3] / 255;
-    if (weight < .04) continue;
-    weightedLuminance += input.data[index] * weight;
-    totalWeight += weight;
-  }
-  const garmentMean = totalWeight > 0 ? weightedLuminance / totalWeight : 128;
+  const garmentMean = weightedGarmentLuminanceMean(input.data, maskPixels.data);
 
   for (let index = 0; index < input.data.length; index += 4) {
-    // Center the photographed garment itself on neutral gray. The .78 contrast
-    // gain preserves broad studio modelling without allowing the original
-    // garment colour/value to overpower a pale or dark selected swatch.
-    const neutral = Math.max(48, Math.min(208, Math.round(128 + (input.data[index] - garmentMean) * .78)));
+    // Center the photographed garment itself on neutral gray. The shared pure
+    // transform is regression-tested so equal light/shadow deltas render the
+    // same regardless of whether the source template cloth is dark or pale.
+    const neutral = neutralizePhotographicLuminance(input.data[index], garmentMean);
     output.data[index] = neutral;
     output.data[index + 1] = neutral;
     output.data[index + 2] = neutral;
