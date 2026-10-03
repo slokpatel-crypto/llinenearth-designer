@@ -53,3 +53,27 @@ export const PHOTO_TUCKED_PANEL_PATTERN_ANCHOR={
   rightTrouser:{x:PHOTO_TUCKED_PANEL_AXES.rightTrouser.topX,y:PHOTO_TUCKED_PANEL_AXES.rightTrouser.topY},
   collar:{x:512,y:214},
 } as const satisfies Record<string,PhotoPanelPoint>;
+
+/**
+ * The untucked studio shirt is a separate photograph. Split its torso, sleeves
+ * and collar into independent texture panels so directional fabric follows the
+ * photographed arm fall instead of remaining globally vertical across the body.
+ */
+export const PHOTO_UNTUCKED_SHIRT_PANEL_AXES={
+  leftSleeve:{topX:351,topY:244,bottomX:311,bottomY:680},
+  rightSleeve:{topX:669,topY:244,bottomX:706,bottomY:680},
+} as const satisfies Record<string,PhotoPanelAxis>;
+
+export const PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION={
+  body:0,
+  leftSleeve:photoPanelRotationFromVertical(PHOTO_UNTUCKED_SHIRT_PANEL_AXES.leftSleeve),
+  rightSleeve:photoPanelRotationFromVertical(PHOTO_UNTUCKED_SHIRT_PANEL_AXES.rightSleeve),
+  collar:90,
+} as const;
+
+export const PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR={
+  body:{x:510,y:244},
+  leftSleeve:{x:PHOTO_UNTUCKED_SHIRT_PANEL_AXES.leftSleeve.topX,y:PHOTO_UNTUCKED_SHIRT_PANEL_AXES.leftSleeve.topY},
+  rightSleeve:{x:PHOTO_UNTUCKED_SHIRT_PANEL_AXES.rightSleeve.topX,y:PHOTO_UNTUCKED_SHIRT_PANEL_AXES.rightSleeve.topY},
+  collar:{x:512,y:214},
+} as const satisfies Record<string,PhotoPanelPoint>;
