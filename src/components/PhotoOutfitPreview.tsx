@@ -413,7 +413,7 @@ function untuckedGarmentMasks(photo: HTMLImageElement, shirtPath: string, pantPa
 function drawGarment(
   target: CanvasRenderingContext2D, photo: HTMLImageElement,
   swatch: HTMLImageElement, fabric: DesignerFabric, path: string,
-  mask?: HTMLCanvasElement, lightingFilter = "grayscale(1) brightness(1.3) contrast(1.04)",
+  mask?: HTMLCanvasElement,
   placement: { offsetX?: number; offsetY?: number; scale?: number; rotationDeg?:number; photoPxPerMm?:number; detailBrightness?:number } = {},
 ) {
   const layer = document.createElement("canvas");
@@ -715,9 +715,9 @@ export function composePhotoOutfit(
     // A tucked shirt must physically sit behind the trouser waistband. Draw
     // the shirt first, then the trouser garment on top. This removes the
     // pasted-on band of shirt texture across the waist/fly/crotch.
-    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_SHIRT_BODY_CLIP, masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)", { ...calibratedPlacement, offsetX: 0, detailBrightness: template.shirtDetailBrightness });
-    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_LEFT_SLEEVE_CLIP, masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)", { ...calibratedPlacement, offsetX: 11, detailBrightness: template.shirtDetailBrightness });
-    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_RIGHT_SLEEVE_CLIP, masks.shirt, "grayscale(1) brightness(3.05) contrast(.94)", { ...calibratedPlacement, offsetX: -9, detailBrightness: template.shirtDetailBrightness });
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_SHIRT_BODY_CLIP, masks.shirt, { ...calibratedPlacement, offsetX: 0, detailBrightness: template.shirtDetailBrightness });
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_LEFT_SLEEVE_CLIP, masks.shirt, { ...calibratedPlacement, offsetX: 11, detailBrightness: template.shirtDetailBrightness });
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_RIGHT_SLEEVE_CLIP, masks.shirt, { ...calibratedPlacement, offsetX: -9, detailBrightness: template.shirtDetailBrightness });
 
     drawCreativePattern(context,creative,PHOTO_TUCKED_SHIRT_BODY_CLIP,masks.shirt);
     drawCreativePattern(context,creative,PHOTO_TUCKED_LEFT_SLEEVE_CLIP,masks.shirt);
@@ -725,20 +725,20 @@ export function composePhotoOutfit(
     drawCreativeDetails(context,creative,true,masks.shirt);
 
     if (style.collarFinish === "Self-fabric") {
-      drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined, "grayscale(1) brightness(3.05) contrast(.94)",{...calibratedPlacement,rotationDeg:90,detailBrightness:3.05});
+      drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined,{...calibratedPlacement,rotationDeg:90,detailBrightness:3.05});
     } else {
       drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_STAND_MASK, undefined, 3.6);
       if (!creativeHas(creative,"quiet-collar-echo")) drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_MASK, undefined, 3.6);
     }
     if (style.collarFinish === "White contrast collar + cuffs") drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_CUFF_MASK, undefined, 3.6);
 
-    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_LEFT_TROUSER_CLIP, masks.pant, "grayscale(1) brightness(1.9) contrast(1.03)", { ...calibratedPlacement, offsetX: 5, detailBrightness: template.trouserDetailBrightness });
-    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_RIGHT_TROUSER_CLIP, masks.pant, "grayscale(1) brightness(1.9) contrast(1.03)", { ...calibratedPlacement, offsetX: -5, detailBrightness: template.trouserDetailBrightness });
+    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_LEFT_TROUSER_CLIP, masks.pant, { ...calibratedPlacement, offsetX: 5, detailBrightness: template.trouserDetailBrightness });
+    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_RIGHT_TROUSER_CLIP, masks.pant, { ...calibratedPlacement, offsetX: -5, detailBrightness: template.trouserDetailBrightness });
   } else {
     const shirtMask = untuckedGarmentMasks(modelPhoto, template.shirtPath, DESIGNER_PHOTO_TEMPLATES.pleated.trouserPath).shirt;
     const trouserMask = untuckedGarmentMasks(trouserPhoto, template.shirtPath, template.trouserPath).pant;
-    drawGarment(context, trouserPhoto, pantImage, pant, "", trouserMask, undefined, { ...calibratedPlacement, detailBrightness: template.trouserDetailBrightness });
-    drawGarment(context, modelPhoto, shirtImage, shirt, "", shirtMask, undefined, { ...calibratedPlacement, detailBrightness: template.shirtDetailBrightness });
+    drawGarment(context, trouserPhoto, pantImage, pant, "", trouserMask, { ...calibratedPlacement, detailBrightness: template.trouserDetailBrightness });
+    drawGarment(context, modelPhoto, shirtImage, shirt, "", shirtMask, { ...calibratedPlacement, detailBrightness: template.shirtDetailBrightness });
     drawCreativePattern(context,creative,"",shirtMask);
     drawCreativeDetails(context,creative,false,shirtMask);
     if (style.collarFinish !== "Self-fabric") drawWhiteDetail(context, modelPhoto, PHOTO_COLLAR_MASK);
