@@ -400,6 +400,16 @@ test("final photoreal render is seeded from the validated locked live preview",(
   assert.match(ai,/average>\.16 \|\| maximum>\.28/);
   assert.match(ai,/usedLockedPreview\?"selected-look-locked-preview":"selected-look"/);
   assert.match(ai,/deterministic locked live preview/);
+  assert.match(ai,/async function selectedLookGarmentEditMask/);
+  assert.match(ai,/PHOTO_TUCKED_SHIRT_CLIP/);
+  assert.match(ai,/PHOTO_TUCKED_TROUSER_CLIP/);
+  assert.match(ai,/photoTemplateForStyle\(style\)/);
+  assert.match(ai,/<rect width="1024" height="1536" fill="#000"\/>/);
+  assert.match(ai,/<path d="\$\{shirtPath\}" fill="#fff"\/>/);
+  assert.match(ai,/<path d="\$\{trouserPath\}" fill="#fff"\/>/);
+  assert.match(ai,/mask,/);
+  assert.match(ai,/selectedLookGarmentEditMask\(input\.style\)/);
+  assert.match(ai,/runEdit\(source,selectedLookPrompt\(input,usedLockedPreview\),context,garmentMask\)/);
   assert.match(cache,/linen-final-render-cache-v2-locked-preview-source/);
   assert.match(cache,/function lockedPreviewIdentity/);
   assert.match(cache,/createHash\("sha256"\)\.update\(raw\)\.digest\("hex"\)/);

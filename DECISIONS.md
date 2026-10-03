@@ -189,3 +189,10 @@ Architecture and product decisions that must persist across coding sessions.
 
 **Rule:** let FASHN Edit derive output geometry from the submitted source image and keep full-body framing instructions in the prompt. Use a separate supported reframe step only if Linen Earth intentionally wants a different export aspect ratio later; do not couple that to the fidelity render itself.
 
+## 2026-10-03 — Final front edit is garment-mask guided
+**Decision:** the locked selected-look front render supplies FASHN Edit with a mask generated from the same 1024×1536 photographed shirt/trouser geometry used by the deterministic compositor.
+
+**Why:** FASHN Edit documents white mask pixels as the priority edit region and black pixels as preserve guidance. The selected look needs cloth realism refinement, while the faceless head, hands, shoes and navy studio should stay as stable as possible. Reusing the existing traced garment geometry focuses the edit without adding another generation or inventing a second segmentation system.
+
+**Rule:** generate a binary PNG mask server-side from the exact active shirt/trouser photo-template paths; pass it only to the locked front refinement where source and mask coordinates are aligned. Repairs and alternate camera views do not reuse the front mask because generated geometry may have moved. Treat the mask as guidance, not a hard boundary; the existing automated fidelity QA remains mandatory.
+
