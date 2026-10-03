@@ -14,7 +14,9 @@ export function photographicGarmentOpacity(
   if(![red,green,blue,geometryAlpha,blurredGeometryAlpha].every(Number.isFinite)) return 0;
   const geometry=unit(geometryAlpha/255);
   if(!geometry) return 0;
-  const interior=unit((blurredGeometryAlpha-248)/6);
+  // Fully recover folds a few pixels inside the boundary. Requiring almost
+  // opaque blurred coverage left dark neutral folds beside the armhole exposed.
+  const interior=unit((blurredGeometryAlpha-210)/24);
   const chroma=region==="shirt"
     ? unit((Math.min(green-red,blue-red-1)-1)/4)
     : unit(Math.min(red-green-3,red-blue-5)/7);

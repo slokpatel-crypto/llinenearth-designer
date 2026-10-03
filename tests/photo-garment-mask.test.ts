@@ -23,17 +23,18 @@ test("geometry and source brightness still protect skin, shoes and studio",()=>{
 });
 
 test("the uncertain edge retains the existing photographic colour segmentation",()=>{
-  assert.equal(opacity("shirt",70,70,70,255,230),0);
-  assert.equal(opacity("shirt",60,70,75,255,230),1);
-  assert.equal(opacity("pant",150,140,135,255,230),1);
-  assert.equal(opacity("pant",150,150,150,255,230),0);
-  assert.ok(opacity("shirt",60,70,75,128,230)>0);
-  assert.ok(opacity("shirt",60,70,75,128,230)<1);
+  assert.equal(opacity("shirt",70,70,70,255,200),0);
+  assert.equal(opacity("shirt",60,70,75,255,200),1);
+  assert.equal(opacity("pant",150,140,135,255,200),1);
+  assert.equal(opacity("pant",150,150,150,255,200),0);
+  assert.ok(opacity("shirt",60,70,75,128,200)>0);
+  assert.ok(opacity("shirt",60,70,75,128,200)<1);
 });
 
 test("interior recovery is smooth, bounded and rejects invalid evidence",()=>{
-  assert.equal(opacity("shirt",80,80,80,255,248),0);
-  assert.equal(opacity("shirt",80,80,80,255,251),.5);
-  assert.equal(opacity("shirt",80,80,80,255,254),1);
+  assert.equal(opacity("shirt",80,80,80,255,210),0);
+  assert.equal(opacity("shirt",80,80,80,255,222),.5);
+  assert.equal(opacity("shirt",80,80,80,255,234),1);
+  for(const alpha of [245,247,248]) assert.equal(opacity("shirt",40,39,42,255,alpha),1);
   assert.equal(opacity("shirt",Number.NaN,80,80,255,255),0);
 });

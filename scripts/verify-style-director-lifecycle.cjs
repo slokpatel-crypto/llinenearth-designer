@@ -34,7 +34,6 @@ function load(file) {
 }
 const answers = { occasion: "Work", mood: "Quiet", time: "Day", climate: "Indoor", garment: "shirt", colorDirection: "Light" };
 const looks = load("src/lib/style-director-agent.ts").createStyleDirectorLooks(answers);
-const photoGeometry = load("src/lib/designer/photo-preview.ts");
 const passingCheck = { available: true, status: "pass", fabricFidelity: "strong", colorFidelity: "strong", patternFidelity: "strong", boundary: "strong", construction: "strong", mannequinConsistency: "strong", artifact: "none" };
 assert.equal(looks.length, 3);
 assert.ok(looks.every((look) => look.realModel), "Fixture must use the real photographed shirt/trouser path");
@@ -203,29 +202,21 @@ async function modelFraming(page, generatedImage = false) {
   return metrics;
 }
 async function fabricCoverage(page) {
-  return page.evaluate(async ({ garmentPath, bodyPath, neckPath }) => {
+  return page.evaluate(async () => {
     const canvas = document.querySelector(".directorExistingModel canvas"), ctx = canvas.getContext("2d");
     const source = new Image(); source.src = "/designer/studio-tucked.webp"; await source.decode();
     const original = document.createElement("canvas"); original.width = canvas.width; original.height = canvas.height;
     const originalContext = original.getContext("2d"); originalContext.drawImage(source, 0, 0);
     const pixel = (context, x, y) => [...context.getImageData(x, y, 1, 1).data];
     const brightness = (value) => (value[0] + value[1] + value[2]) / 3;
-    const geometry = document.createElement("canvas"); geometry.width = canvas.width; geometry.height = canvas.height;
-    const g = geometry.getContext("2d"); g.fillStyle = "white"; g.fill(new Path2D(garmentPath));
-    g.globalCompositeOperation = "destination-out"; g.fill(new Path2D(neckPath));
-    const blurred = document.createElement("canvas"); blurred.width = canvas.width; blurred.height = canvas.height;
-    const b = blurred.getContext("2d"); b.filter = "blur(3px)"; b.drawImage(geometry, 0, 0);
-    const body = document.createElement("canvas"); body.width = canvas.width; body.height = canvas.height;
-    const bc = body.getContext("2d"); bc.fillStyle = "white"; bc.fill(new Path2D(bodyPath));
     // Real neutral folds where the old RGB classifier exposed the dark source
     // shirt through a pale selected cloth. These are output checks, not masks.
     const folds = [[626, 490], [626, 493], [626, 496], [314, 325], [365, 340], [440, 350]].map(([x, y]) => ({
       x, y, source: brightness(pixel(originalContext, x, y)), rendered: brightness(pixel(ctx, x, y)),
-      geometry: pixel(g, x, y)[3], interior: pixel(b, x, y)[3], body: pixel(bc, x, y)[3],
     }));
-    const protectedPixels = [[512, 100], [445, 1420], [610, 1430], [100, 300]].map(([x, y]) => ({ x, y, rgba: pixel(ctx, x, y) }));
+    const protectedPixels = [[512, 100], [310, 750], [703, 750], [445, 1420], [610, 1430], [100, 300]].map(([x, y]) => ({ x, y, rgba: pixel(ctx, x, y) }));
     return { folds, protectedPixels };
-  }, { garmentPath: photoGeometry.PHOTO_TUCKED_SHIRT_CLIP, bodyPath: photoGeometry.PHOTO_TUCKED_SHIRT_BODY_CLIP, neckPath: photoGeometry.PHOTO_TUCKED_NECK_CLEAR });
+  });
 }
 async function regression(name, run) {
   const { page, context } = await freshPage();
@@ -253,7 +244,6 @@ async function regression(name, run) {
     await page.locator(".lookVisual").screenshot({ path: path.join(output, "coverage-" + width + ".png") });
     const canvasPNG = await page.locator(".directorExistingModel canvas").evaluate((canvas) => canvas.toDataURL("image/png"));
     fs.writeFileSync(path.join(output, "cloth-pixels-" + width + ".png"), Buffer.from(canvasPNG.split(",")[1], "base64"));
-    console.log("COVERAGE " + JSON.stringify(initialCoverage.folds));
     for (const fold of initialCoverage.folds) assert.ok(fold.rendered > fold.source + 15, "Pale cloth leaves an exposed source-shirt fold: " + JSON.stringify(fold));
     const metrics = await page.evaluate(() => {
       const canvas = document.querySelector(".directorExistingModel canvas");
@@ -270,7 +260,7 @@ async function regression(name, run) {
     await selectLook(page, 1);
     const selectedFraming = await modelFraming(page);
     const selectedCoverage = await fabricCoverage(page);
-    assert.deepEqual(selectedCoverage.protectedPixels, initialCoverage.protectedPixels, "Fabric changes must preserve the head, shoes and studio pixels");
+    assert.deepEqual(selectedCoverage.protectedPixels, initialCoverage.protectedPixels, "Fabric changes must preserve the head, hands, shoes and studio pixels");
     assert.equal(await count(page, "render"), 0, "Live look selection must stay deterministic");
     assert.equal(await page.locator(".lookTabs button.active").textContent(), await page.locator(".lookTabs button").nth(1).textContent());
     const render = await start(page);
