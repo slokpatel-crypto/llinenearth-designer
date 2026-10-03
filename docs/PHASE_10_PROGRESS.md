@@ -89,6 +89,7 @@ Phase 10 is now materially beyond the original foundation brief.
 ### Final AI Studio and caching
 
 - FASHN remains the final photoreal render step rather than the instant option-change renderer.
+- The locked deterministic preview and paired fabric-context image now avoid repeated JPEG generations: the browser hands off high-quality WebP (with Canvas fallback), the server preserves it as near-lossless WebP after identity validation, and fabric-context resizing uses lossless intermediates before one WebP encode. This retains more fine weave/stripe/check detail for the final renderer without changing credit usage.
 - Final render requests are canonicalized server-side against stock fabric IDs and the locked StyleSpec/body profile.
 - Multi-view final output remains Front / 3/4 / Side / Back with visual inspection.
 - Measured render evidence is carried into final rendering and QA prompts.
