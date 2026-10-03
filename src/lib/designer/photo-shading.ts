@@ -2,6 +2,10 @@ export const PHOTO_SHAPE_NEUTRAL_LUMINANCE=128;
 export const PHOTO_SHAPE_MIN_LUMINANCE=48;
 export const PHOTO_SHAPE_MAX_LUMINANCE=208;
 export const PHOTO_SHAPE_CONTRAST_GAIN=.78;
+export const PHOTO_FOLD_NEUTRAL_LUMINANCE=128;
+export const PHOTO_FOLD_MIN_LUMINANCE=40;
+export const PHOTO_FOLD_MAX_LUMINANCE=216;
+export const PHOTO_FOLD_CONTRAST_GAIN=1.42;
 
 /**
  * Calculates the average photographed luminance inside a garment alpha mask.
@@ -46,6 +50,28 @@ export function neutralizePhotographicLuminance(
     Math.min(
       PHOTO_SHAPE_MAX_LUMINANCE,
       Math.round(PHOTO_SHAPE_NEUTRAL_LUMINANCE+(value-mean)*safeGain),
+    ),
+  );
+}
+
+/**
+ * Converts a medium-frequency luminance difference into a neutral-gray fold
+ * band. Since broad source albedo is subtracted before this transform, equal
+ * fold deltas render identically on dark and pale studio garments.
+ */
+export function neutralizePhotographicFoldDifference(
+  fineLuminance:number,
+  broadLuminance:number,
+  gain=PHOTO_FOLD_CONTRAST_GAIN,
+) {
+  const fine=Number.isFinite(fineLuminance)?fineLuminance:PHOTO_FOLD_NEUTRAL_LUMINANCE;
+  const broad=Number.isFinite(broadLuminance)?broadLuminance:fine;
+  const safeGain=Number.isFinite(gain)?Math.max(0,Math.min(3,gain)):PHOTO_FOLD_CONTRAST_GAIN;
+  return Math.max(
+    PHOTO_FOLD_MIN_LUMINANCE,
+    Math.min(
+      PHOTO_FOLD_MAX_LUMINANCE,
+      Math.round(PHOTO_FOLD_NEUTRAL_LUMINANCE+(fine-broad)*safeGain),
     ),
   );
 }
