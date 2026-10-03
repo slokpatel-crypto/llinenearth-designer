@@ -513,10 +513,13 @@ for (const token of [
   "{input:right,left:rightOffset,top:0}",
   "neutral gutter deliberately keeps shirt and trouser references",
   "without adding labels/text",
+  "LEFT PANEL is the exact shirt-fabric reference; RIGHT PANEL is the exact trouser-fabric reference. Ignore the neutral strip between them.",
+  "shirt left panel, neutral separator, trouser right panel",
 ]) {
   if(!lockedPreviewAiVisualization.includes(token)) throw new Error(`Fabric-context fidelity regression: ai-visualization missing ${token}`);
 }
 if(lockedPreviewAiVisualization.includes('resize(500,620,{fit:"cover"})')) throw new Error("Fabric-context fidelity regression: cover-cropping can hide pattern-repeat evidence.");
+if(lockedPreviewAiVisualization.includes("LEFT HALF is the exact shirt-fabric reference")) throw new Error("Fabric-context prompt regression: old half-split wording ignores the neutral separator.");
 console.log("Fabric-context fidelity gate passed: final rendering sees each full swatch in separated near-lossless panels.");
 for (const token of [
   "function drawWhiteDetail",
