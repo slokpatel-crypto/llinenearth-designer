@@ -172,7 +172,7 @@ test("instant photo compositor normalizes source albedo before borrowing studio 
   assert.match(source,/grayscale\(1\) blur\(7px\)/);
   assert.match(source,/weightedGarmentLuminanceMean\(input\.data, maskPixels\.data\)/);
   assert.match(source,/neutralizePhotographicLuminance\(input\.data\[index\], garmentMean\)/);
-  assert.match(source,/const lightingMask = photoLightingMask\(mask,path\)/);
+  assert.match(source,/const lightingMask = photoLightingMask\(mask,path,Boolean\(placement\.maskPrepared\)\)/);
   assert.match(source,/globalCompositeOperation = "soft-light"[\s\S]*globalAlpha = \.58[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
   assert.match(source,/globalCompositeOperation = "multiply"[\s\S]*globalAlpha = \.07[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
   assert.match(source,/selected Linen Earth cloth/);
