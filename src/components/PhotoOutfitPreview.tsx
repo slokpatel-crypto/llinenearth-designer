@@ -191,27 +191,35 @@ function photographicReliefMap(photo: HTMLImageElement) {
   const reliefHeight = HEIGHT / 2;
   const source = document.createElement("canvas");
   const blurred = document.createElement("canvas");
+  const broad = document.createElement("canvas");
   const detail = document.createElement("canvas");
-  source.width = blurred.width = detail.width = reliefWidth;
-  source.height = blurred.height = detail.height = reliefHeight;
+  source.width = blurred.width = broad.width = detail.width = reliefWidth;
+  source.height = blurred.height = broad.height = detail.height = reliefHeight;
 
   const sourceContext = source.getContext("2d", { willReadFrequently: true });
   const blurContext = blurred.getContext("2d", { willReadFrequently: true });
+  const broadContext = broad.getContext("2d", { willReadFrequently: true });
   const detailContext = detail.getContext("2d");
-  if (!sourceContext || !blurContext || !detailContext) throw new Error("Canvas is unavailable.");
+  if (!sourceContext || !blurContext || !broadContext || !detailContext) throw new Error("Canvas is unavailable.");
 
   sourceContext.filter = "grayscale(1)";
   sourceContext.drawImage(photo, 0, 0, reliefWidth, reliefHeight);
   blurContext.filter = "grayscale(1) blur(4px)";
   blurContext.drawImage(photo, 0, 0, reliefWidth, reliefHeight);
+  broadContext.filter = "grayscale(1) blur(14px)";
+  broadContext.drawImage(photo, 0, 0, reliefWidth, reliefHeight);
 
   const original = sourceContext.getImageData(0, 0, reliefWidth, reliefHeight);
   const soft = blurContext.getImageData(0, 0, reliefWidth, reliefHeight);
+  const broadPixels = broadContext.getImageData(0, 0, reliefWidth, reliefHeight);
   const pixels = detailContext.createImageData(reliefWidth, reliefHeight);
   for (let index = 0; index < original.data.length; index += 4) {
-    const luminance = original.data[index];
-    const blurredLuminance = soft.data[index];
-    const neutralRelief = Math.max(0, Math.min(255, Math.round(128 + (luminance - blurredLuminance) * 1.8)));
+    const microDetail = original.data[index] - soft.data[index];
+    const foldDetail = soft.data[index] - broadPixels.data[index];
+    // Two neutral frequency bands preserve seams/weave plus medium folds while
+    // cancelling the source garment's base value. No source-cloth brightness
+    // calibration is needed after this point.
+    const neutralRelief = Math.max(0, Math.min(255, Math.round(128 + microDetail * 1.55 + foldDetail * .85)));
     pixels.data[index] = neutralRelief;
     pixels.data[index + 1] = neutralRelief;
     pixels.data[index + 2] = neutralRelief;
@@ -426,7 +434,7 @@ function drawGarment(
   target: CanvasRenderingContext2D, photo: HTMLImageElement,
   swatch: HTMLImageElement, fabric: DesignerFabric, path: string,
   mask?: HTMLCanvasElement,
-  placement: { offsetX?: number; offsetY?: number; scale?: number; rotationDeg?:number; photoPxPerMm?:number; detailBrightness?:number } = {},
+  placement: { offsetX?: number; offsetY?: number; scale?: number; rotationDeg?:number; photoPxPerMm?:number } = {},
 ) {
   const layer = document.createElement("canvas");
   layer.width = WIDTH;
@@ -447,7 +455,6 @@ function drawGarment(
   // the source garment's luminance/albedo into the selected Linen Earth cloth.
   // This keeps the actual swatch hue and woven texture authoritative while the
   // studio photograph contributes broad three-dimensional form.
-  const detailBrightness = placement.detailBrightness ?? 1.3;
   const lightingMask = mask ?? (path ? featheredPathMask(path) : undefined);
   const shape = photographicShapeMap(photo, lightingMask);
   context.filter = "none";
@@ -462,25 +469,17 @@ function drawGarment(
   context.globalAlpha = .07;
   context.drawImage(shape, 0, 0, WIDTH, HEIGHT);
 
-  // Reintroduce high-frequency photographic folds and seams after the broad
-  // luminance transfer. We preserve structure, not the template cloth colour.
-  context.filter = `grayscale(1) contrast(1.18) brightness(${detailBrightness})`;
-  context.globalCompositeOperation = "soft-light";
-  context.globalAlpha = .22;
-  context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
-
-  context.filter = `grayscale(1) contrast(1.48) brightness(${detailBrightness})`;
-  context.globalCompositeOperation = "overlay";
-  context.globalAlpha = .09;
-  context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
-
-  // Add colour-neutral photographic relief after the broad lighting passes.
-  // Because this map is centred on neutral gray it restores wrinkle/seam
-  // micro-contrast without tinting the selected Linen Earth fabric.
+  // Restore seam, weave, wrinkle and medium-fold contrast only from a
+  // colour-neutral multi-band relief map. Direct source-photo detail blending
+  // is intentionally avoided because even grayscale passes can reintroduce the
+  // original garment's value bias into a pale or dark selected fabric.
   const relief = photographicReliefMap(photo);
   context.filter = "none";
   context.globalCompositeOperation = "soft-light";
-  context.globalAlpha = .28;
+  context.globalAlpha = .36;
+  context.drawImage(relief, 0, 0, WIDTH, HEIGHT);
+  context.globalCompositeOperation = "overlay";
+  context.globalAlpha = .08;
   context.drawImage(relief, 0, 0, WIDTH, HEIGHT);
 
   // Put a faint copy of the real textile back above the lighting model. This
@@ -728,9 +727,9 @@ export function composePhotoOutfit(
     // A tucked shirt must physically sit behind the trouser waistband. Draw
     // the shirt first, then the trouser garment on top. This removes the
     // pasted-on band of shirt texture across the waist/fly/crotch.
-    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_SHIRT_BODY_CLIP, masks.shirt, { ...calibratedPlacement, offsetX: 0, detailBrightness: template.shirtDetailBrightness });
-    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_LEFT_SLEEVE_CLIP, masks.shirt, { ...calibratedPlacement, offsetX: 11, detailBrightness: template.shirtDetailBrightness });
-    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_RIGHT_SLEEVE_CLIP, masks.shirt, { ...calibratedPlacement, offsetX: -9, detailBrightness: template.shirtDetailBrightness });
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_SHIRT_BODY_CLIP, masks.shirt, { ...calibratedPlacement, offsetX: 0 });
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_LEFT_SLEEVE_CLIP, masks.shirt, { ...calibratedPlacement, offsetX: 11 });
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_RIGHT_SLEEVE_CLIP, masks.shirt, { ...calibratedPlacement, offsetX: -9 });
 
     drawCreativePattern(context,creative,PHOTO_TUCKED_SHIRT_BODY_CLIP,masks.shirt);
     drawCreativePattern(context,creative,PHOTO_TUCKED_LEFT_SLEEVE_CLIP,masks.shirt);
@@ -738,20 +737,20 @@ export function composePhotoOutfit(
     drawCreativeDetails(context,creative,true,masks.shirt);
 
     if (style.collarFinish === "Self-fabric") {
-      drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined,{...calibratedPlacement,rotationDeg:90,detailBrightness:3.05});
+      drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined,{...calibratedPlacement,rotationDeg:90});
     } else {
       drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_STAND_MASK, undefined, 3.6);
       if (!creativeHas(creative,"quiet-collar-echo")) drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_MASK, undefined, 3.6);
     }
     if (style.collarFinish === "White contrast collar + cuffs") drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_CUFF_MASK, undefined, 3.6);
 
-    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_LEFT_TROUSER_CLIP, masks.pant, { ...calibratedPlacement, offsetX: 5, detailBrightness: template.trouserDetailBrightness });
-    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_RIGHT_TROUSER_CLIP, masks.pant, { ...calibratedPlacement, offsetX: -5, detailBrightness: template.trouserDetailBrightness });
+    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_LEFT_TROUSER_CLIP, masks.pant, { ...calibratedPlacement, offsetX: 5 });
+    drawGarment(context, modelPhoto, pantImage, pant, PHOTO_TUCKED_RIGHT_TROUSER_CLIP, masks.pant, { ...calibratedPlacement, offsetX: -5 });
   } else {
     const shirtMask = untuckedGarmentMasks(modelPhoto, template.shirtPath, DESIGNER_PHOTO_TEMPLATES.pleated.trouserPath).shirt;
     const trouserMask = untuckedGarmentMasks(trouserPhoto, template.shirtPath, template.trouserPath).pant;
-    drawGarment(context, trouserPhoto, pantImage, pant, "", trouserMask, { ...calibratedPlacement, detailBrightness: template.trouserDetailBrightness });
-    drawGarment(context, modelPhoto, shirtImage, shirt, "", shirtMask, { ...calibratedPlacement, detailBrightness: template.shirtDetailBrightness });
+    drawGarment(context, trouserPhoto, pantImage, pant, "", trouserMask, { ...calibratedPlacement });
+    drawGarment(context, modelPhoto, shirtImage, shirt, "", shirtMask, { ...calibratedPlacement });
     drawCreativePattern(context,creative,"",shirtMask);
     drawCreativeDetails(context,creative,false,shirtMask);
     if (style.collarFinish !== "Self-fabric") drawWhiteDetail(context, modelPhoto, PHOTO_COLLAR_MASK);

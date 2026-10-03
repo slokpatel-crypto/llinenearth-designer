@@ -351,6 +351,13 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "const lightingMask = mask ?? (path ? featheredPathMask(path) : undefined)",
   "globalAlpha = .58",
   "globalAlpha = .07",
+  "grayscale(1) blur(14px)",
+  "microDetail",
+  "foldDetail",
+  "128 + microDetail * 1.55 + foldDetail * .85",
+  "colour-neutral multi-band relief map",
+  "globalAlpha = .36",
+  "globalAlpha = .08",
 ]);
 requireTokens("src/lib/designer/photo-shading.ts", [
   "weightedGarmentLuminanceMean",
@@ -365,6 +372,8 @@ requireTokens("tests/customer-designer-preview.test.ts", [
   "photographic garment clips feather only inside the real cloth boundary",
   "newDesignerConstruction",
   "instant photo compositor normalizes source albedo before borrowing studio depth",
+  "photo compositor removes source-template detail brightness calibration",
+  "photo compositor restores colour-neutral photographic micro-relief",
 ]);
 requireTokens("src/lib/designer/brand-language.ts", [
   "linen-earth-brand-language-provisional-1",
@@ -662,11 +671,11 @@ requireTokens("src/lib/ai-visualization.ts", ["LOCKED_PREVIEW_DATA_URI","LOCKED_
 requireTokens("src/lib/designer/render-cache-key.ts", ["linen-final-render-cache-v2-locked-preview-source","function lockedPreviewIdentity",'createHash("sha256").update(raw).digest("hex")','lockedPreview:view==="front"?lockedPreviewIdentity(input.lockedPreviewImage):""']);
 requireTokens("tests/customer-designer-preview.test.ts", ["final photoreal render is seeded from the validated locked live preview"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["Lock final design","Final photoreal ✦","selectedLookSessionCache","styleSpec","bodyProfile"]);
-requireTokens("src/components/PhotoOutfitPreview.tsx", ["detailBrightness?:number","const detailBrightness = placement.detailBrightness ?? 1.3","detailBrightness: template.shirtDetailBrightness","detailBrightness: template.trouserDetailBrightness"]);
+requireTokens("src/components/PhotoOutfitPreview.tsx", ["grayscale(1) blur(14px)","microDetail","foldDetail","colour-neutral multi-band relief map","globalAlpha = .36","globalAlpha = .08"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["const plainTextureDetailGain = .34","high-frequency linen weave to avoid a flat painted-shirt look","plainTextureDetailGain"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["function drawWhiteDetail","globalAlpha = .9","globalAlpha = .12","clean white while retaining the real folded edge beside neck and hands"]);
-requireTokens("src/lib/designer/photo-preview.ts", ["shirtDetailBrightness: 3.05","trouserDetailBrightness: 1.9","shirtDetailBrightness: 1.3","trouserDetailBrightness: 1.3"]);
-requireTokens("tests/customer-designer-preview.test.ts", ["photo compositor neutralizes source-template luminance"]);
+requireTokens("src/lib/designer/photo-preview.ts", ["DESIGNER_PHOTO_TEMPLATES","/designer/studio-tucked.webp"]);
+requireTokens("tests/customer-designer-preview.test.ts", ["photo compositor removes source-template detail brightness calibration"]);
 requireTokens("tests/customer-designer-preview.test.ts", ["customer final photoreal keeps the full model in frame"]);
 requireTokens("src/app/designer-studio/designer-light.css", [".newDesignerPhotoAi","object-fit:contain"]);
 requireTokens("src/app/api/designer/look-render/route.ts", ["resolved.locked!==true","getCachedSelectedLookRender","loadDurableSelectedLookRender","storeDurableSelectedLookRender","resolveSelectedLookRequest","x-linen-render-cache"]);
