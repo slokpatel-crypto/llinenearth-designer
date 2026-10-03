@@ -11,12 +11,18 @@ import { CREATIVE_FEEDBACK_REASONS, type CreativeFeedbackReason } from "@/lib/de
 import { UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION, type CustomerPhotoCalibration } from "@/lib/designer/photo-calibration-types";
 import { customerPhotoCalibrationIdentity, fetchCustomerPhotoCalibration } from "@/lib/designer/photo-calibration-client";
 import { neutralizePhotographicLuminance, weightedGarmentLuminanceMean } from "@/lib/designer/photo-shading";
-import { PHOTO_TUCKED_PANEL_GRAIN_ROTATION, PHOTO_TUCKED_PANEL_PATTERN_ANCHOR } from "@/lib/designer/photo-panel-grain";
+import {
+  PHOTO_TUCKED_PANEL_GRAIN_ROTATION,
+  PHOTO_TUCKED_PANEL_PATTERN_ANCHOR,
+  PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION,
+  PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR,
+} from "@/lib/designer/photo-panel-grain";
 import {
   DESIGNER_PHOTO_TEMPLATES, PHOTO_COLLAR_MASK, PHOTO_CUFF_MASK, PHOTO_TUCKED_COLLAR_MASK, PHOTO_TUCKED_COLLAR_STAND_MASK,
   PHOTO_TUCKED_CUFF_MASK, PHOTO_TUCKED_NECK_CLEAR, PHOTO_TUCKED_SHIRT_CLIP, PHOTO_TUCKED_TROUSER_CLIP,
   PHOTO_TUCKED_SHIRT_BODY_CLIP, PHOTO_TUCKED_LEFT_SLEEVE_CLIP, PHOTO_TUCKED_RIGHT_SLEEVE_CLIP,
   PHOTO_TUCKED_LEFT_TROUSER_CLIP, PHOTO_TUCKED_RIGHT_TROUSER_CLIP,
+  PHOTO_UNTUCKED_SHIRT_BODY_CLIP, PHOTO_UNTUCKED_LEFT_SLEEVE_CLIP, PHOTO_UNTUCKED_RIGHT_SLEEVE_CLIP, PHOTO_UNTUCKED_COLLAR_CLIP,
   photoTemplateForStyle, photoTemplateGaps, previewFabricLabel,
 } from "@/lib/designer/photo-preview";
 
@@ -844,7 +850,34 @@ export function composePhotoOutfit(
     const shirtMask = untuckedGarmentMasks(modelPhoto, template.shirtPath, DESIGNER_PHOTO_TEMPLATES.pleated.trouserPath).shirt;
     const trouserMask = untuckedGarmentMasks(trouserPhoto, template.shirtPath, template.trouserPath).pant;
     drawGarment(context, trouserPhoto, pantImage, pant, "", trouserMask, { ...calibratedPlacement });
-    drawGarment(context, modelPhoto, shirtImage, shirt, "", shirtMask, { ...calibratedPlacement });
+
+    // The untucked shirt photograph is also panelized. Torso, sleeves and
+    // collar borrow their own photographed lighting region and directional
+    // cloth follows each traced arm instead of staying globally vertical.
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_UNTUCKED_SHIRT_BODY_CLIP, shirtMask, {
+      ...calibratedPlacement,
+      rotationDeg:PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION.body,
+      anchorX:PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR.body.x,
+      anchorY:PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR.body.y,
+    });
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_UNTUCKED_LEFT_SLEEVE_CLIP, shirtMask, {
+      ...calibratedPlacement,
+      rotationDeg:PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION.leftSleeve,
+      anchorX:PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR.leftSleeve.x,
+      anchorY:PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR.leftSleeve.y,
+    });
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_UNTUCKED_RIGHT_SLEEVE_CLIP, shirtMask, {
+      ...calibratedPlacement,
+      rotationDeg:PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION.rightSleeve,
+      anchorX:PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR.rightSleeve.x,
+      anchorY:PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR.rightSleeve.y,
+    });
+    drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_UNTUCKED_COLLAR_CLIP, shirtMask, {
+      ...calibratedPlacement,
+      rotationDeg:PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION.collar,
+      anchorX:PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR.collar.x,
+      anchorY:PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR.collar.y,
+    });
     drawCreativePattern(context,creative,"",shirtMask);
     drawCreativeDetails(context,creative,false,shirtMask);
     if (style.collarFinish !== "Self-fabric") drawWhiteDetail(context, modelPhoto, PHOTO_COLLAR_MASK);

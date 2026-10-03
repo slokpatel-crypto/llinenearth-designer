@@ -65,6 +65,23 @@ test("tucked directional fabric follows photographed panel grain with stable pat
 });
 
 
+test("untucked photographic shirt projects fabric per torso sleeve and collar panel",()=>{
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  const geometry=readFileSync("src/lib/designer/photo-preview.ts","utf8");
+  assert.match(geometry,/PHOTO_UNTUCKED_SHIRT_BODY_CLIP/);
+  assert.match(geometry,/PHOTO_UNTUCKED_LEFT_SLEEVE_CLIP/);
+  assert.match(geometry,/PHOTO_UNTUCKED_RIGHT_SLEEVE_CLIP/);
+  assert.match(geometry,/PHOTO_UNTUCKED_COLLAR_CLIP/);
+  assert.match(geometry,/const SHIRT_MASK = `\$\{PHOTO_UNTUCKED_SHIRT_BODY_CLIP\}/);
+  assert.match(source,/PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION/);
+  assert.match(source,/PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR/);
+  assert.match(source,/drawGarment\(context, modelPhoto, shirtImage, shirt, PHOTO_UNTUCKED_SHIRT_BODY_CLIP/);
+  assert.match(source,/drawGarment\(context, modelPhoto, shirtImage, shirt, PHOTO_UNTUCKED_LEFT_SLEEVE_CLIP/);
+  assert.match(source,/drawGarment\(context, modelPhoto, shirtImage, shirt, PHOTO_UNTUCKED_RIGHT_SLEEVE_CLIP/);
+  assert.match(source,/drawGarment\(context, modelPhoto, shirtImage, shirt, PHOTO_UNTUCKED_COLLAR_CLIP/);
+  assert.match(source,/directional[\s\S]*each traced arm instead of staying globally vertical/);
+});
+
 test("photo compositor removes source-template detail brightness calibration",()=>{
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   const geometry=readFileSync("src/lib/designer/photo-preview.ts","utf8");

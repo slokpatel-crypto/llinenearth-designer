@@ -336,6 +336,10 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "PHOTO_TUCKED_SHIRT_CLIP",
   "PHOTO_TUCKED_TROUSER_CLIP",
   "PHOTO_TUCKED_NECK_CLEAR",
+  "PHOTO_UNTUCKED_SHIRT_BODY_CLIP",
+  "PHOTO_UNTUCKED_LEFT_SLEEVE_CLIP",
+  "PHOTO_UNTUCKED_RIGHT_SLEEVE_CLIP",
+  "PHOTO_UNTUCKED_COLLAR_CLIP",
   "masks.shirt",
   "masks.pant",
   "featheredPathMask",
@@ -372,6 +376,8 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "globalAlpha = .42",
   "globalAlpha = .32",
   "PHOTO_TUCKED_PANEL_PATTERN_ANCHOR",
+  "PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION",
+  "PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR",
   "function fabricPatternTransform(fabric:DesignerFabric,placement:FabricPatternPlacement,scale:number)",
   "translate(anchorX,anchorY)",
   "translate(-anchorX,-anchorY)",
@@ -386,6 +392,9 @@ requireTokens("src/lib/designer/photo-panel-grain.ts", [
   "PHOTO_TUCKED_PANEL_AXES",
   "PHOTO_TUCKED_PANEL_GRAIN_ROTATION",
   "PHOTO_TUCKED_PANEL_PATTERN_ANCHOR",
+  "PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR",
+  "PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION",
+  "PHOTO_UNTUCKED_SHIRT_PANEL_AXES",
   "screen-space layout anchors only",
   "not tailoring or grain evidence",
   "not a claim about physical cloth measurements",
@@ -394,6 +403,7 @@ requireTokens("tests/photo-panel-grain.test.ts", [
   "panel grain rotation measures screen-space fall from vertical",
   "tucked photo panels keep directional fabric aligned to photographed garment axes",
   "tucked panel pattern anchors stay on photographed seam and waist starts",
+  "untucked studio shirt keeps sleeves and collar on photographed panel directions",
 ]);
 
 requireTokens("tests/photo-shading.test.ts", [
@@ -409,6 +419,7 @@ requireTokens("tests/customer-designer-preview.test.ts", [
   "photo compositor restores garment-local colour-neutral photographic relief",
   "contrast collar and cuff shading reuses baseline-neutral photo structure",
   "tucked directional fabric follows photographed panel grain with stable pattern anchors",
+  "untucked photographic shirt projects fabric per torso sleeve and collar panel",
 ]);
 requireTokens("src/lib/designer/brand-language.ts", [
   "linen-earth-brand-language-provisional-1",

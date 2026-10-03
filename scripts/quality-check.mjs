@@ -365,6 +365,39 @@ for (const token of [
 }
 console.log("Photo panel grain gate passed: directional fabrics follow photographed panel fall and keep repeat phase anchored at panel starts without claiming physical grain evidence.");
 for (const token of [
+  "PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION",
+  "PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR",
+  "PHOTO_UNTUCKED_SHIRT_BODY_CLIP",
+  "PHOTO_UNTUCKED_LEFT_SLEEVE_CLIP",
+  "PHOTO_UNTUCKED_RIGHT_SLEEVE_CLIP",
+  "PHOTO_UNTUCKED_COLLAR_CLIP",
+  "rotationDeg:PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION.leftSleeve",
+  "anchorX:PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR.leftSleeve.x",
+  "rotationDeg:PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION.rightSleeve",
+  "anchorX:PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR.rightSleeve.x",
+]) {
+  if (!photoPreview.includes(token)) throw new Error(`Untucked shirt panel projection regression: preview missing ${token}`);
+}
+for (const token of [
+  "PHOTO_UNTUCKED_SHIRT_BODY_CLIP",
+  "PHOTO_UNTUCKED_LEFT_SLEEVE_CLIP",
+  "PHOTO_UNTUCKED_RIGHT_SLEEVE_CLIP",
+  "PHOTO_UNTUCKED_COLLAR_CLIP",
+  "const SHIRT_MASK =",
+]) {
+  if (!photoGeometry.includes(token)) throw new Error(`Untucked shirt panel projection regression: geometry missing ${token}`);
+}
+for (const token of [
+  "PHOTO_UNTUCKED_SHIRT_PANEL_AXES",
+  "PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION",
+  "PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR",
+  "separate photograph",
+  "remaining globally vertical",
+]) {
+  if (!photoPanelGrain.includes(token)) throw new Error(`Untucked shirt panel grain regression: missing ${token}`);
+}
+console.log("Untucked shirt panel gate passed: torso, sleeves and collar project cloth independently on the photographed model.");
+for (const token of [
   "panelLightingMasks = new WeakMap<HTMLCanvasElement, Map<string, HTMLCanvasElement>>",
   'function photoLightingMask(mask?:HTMLCanvasElement,path="")',
   "context.drawImage(featherMaskInside(mask),0,0)",
