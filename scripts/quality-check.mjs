@@ -329,13 +329,13 @@ for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","P
   if (!photoGeometry.includes(token)) throw new Error(`Real photographic Designer regression: photo-preview missing ${token}`);
 }
 console.log("Real photographic Designer gate passed: inward-feathered garment/creative boundaries, neck clear zone and tucked layering protected.");
-for (const token of ["detailBrightness?:number","const detailBrightness = placement.detailBrightness ?? 1.3","brightness(${detailBrightness})","detailBrightness: template.shirtDetailBrightness","detailBrightness: template.trouserDetailBrightness"]) {
-  if (!photoPreview.includes(token)) throw new Error(`Photo luminance neutralization regression: missing ${token}`);
+for (const token of ["grayscale(1) blur(14px)","microDetail","foldDetail","128 + microDetail * 1.55 + foldDetail * .85","colour-neutral multi-band relief map","globalAlpha = .36","globalAlpha = .08"]) {
+  if (!photoPreview.includes(token)) throw new Error(`Photo neutral-detail regression: missing ${token}`);
 }
-for (const token of ["shirtDetailBrightness: 3.05","trouserDetailBrightness: 1.9","shirtDetailBrightness: 1.3","trouserDetailBrightness: 1.3"]) {
-  if (!photoGeometry.includes(token)) throw new Error(`Photo template luminance calibration regression: missing ${token}`);
+for (const forbidden of ["detailBrightness","shirtDetailBrightness","trouserDetailBrightness"]) {
+  if (photoPreview.includes(forbidden) || photoGeometry.includes(forbidden)) throw new Error(`Photo neutral-detail regression: obsolete source brightness calibration returned: ${forbidden}`);
 }
-console.log("Photo luminance neutralization gate passed: source-template colour cannot dominate selected fabric while folds remain photographic.");
+console.log("Photo neutral-detail gate passed: broad form, seams and folds remain photographic without direct source-garment value calibration.");
 for (const token of ["const plainTextureDetailGain = .34","high-frequency linen weave to avoid a flat painted-shirt look","* plainTextureDetailGain"]) {
   if (!photoPreview.includes(token)) throw new Error(`Plain linen texture regression: missing ${token}`);
 }
