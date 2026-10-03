@@ -428,7 +428,7 @@ for (const token of [
   "context.drawImage(maskPrepared?mask:featherMaskInside(mask),0,0)",
   'context.globalCompositeOperation="destination-in"',
   "context.drawImage(featheredPathMask(path),0,0)",
-  "const lightingMask = photoLightingMask(mask,path)",
+  "const lightingMask = photoLightingMask(mask,path,Boolean(placement.maskPrepared))",
   "exact photographed panel being",
   "not the whole shirt or both trouser legs",
 ]) {
