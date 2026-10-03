@@ -53,7 +53,7 @@ const pathMasks = new Map<string, HTMLCanvasElement>();
 const tuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
 const untuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
 const photographicReliefMaps = new WeakMap<HTMLImageElement, HTMLCanvasElement>();
-const photographicShapeMaps = new WeakMap<HTMLImageElement, Map<string, HTMLCanvasElement>>();
+const photographicShapeMaps = new WeakMap<HTMLImageElement, Map<HTMLCanvasElement | null, HTMLCanvasElement>>();
 const selectedLookSessionCache=new Map<string,PhotorealResult>();
 function loadImage(url: string): Promise<HTMLImageElement> {
   const cached = images.get(url);
@@ -221,49 +221,68 @@ function photographicReliefMap(photo: HTMLImageElement) {
   return detail;
 }
 
-function photographicShapeMap(photo: HTMLImageElement, sourceBrightness: number) {
-  let cachedByBrightness = photographicShapeMaps.get(photo);
-  if (!cachedByBrightness) {
-    cachedByBrightness = new Map<string, HTMLCanvasElement>();
-    photographicShapeMaps.set(photo, cachedByBrightness);
+function photographicShapeMap(photo: HTMLImageElement, garmentMask?: HTMLCanvasElement) {
+  let cachedByMask = photographicShapeMaps.get(photo);
+  if (!cachedByMask) {
+    cachedByMask = new Map<HTMLCanvasElement | null, HTMLCanvasElement>();
+    photographicShapeMaps.set(photo, cachedByMask);
   }
-  const key = sourceBrightness.toFixed(2);
-  const cached = cachedByBrightness.get(key);
+  const cacheKey = garmentMask ?? null;
+  const cached = cachedByMask.get(cacheKey);
   if (cached) return cached;
 
-  // Build a low-frequency, neutral-gray lighting field instead of blending the
-  // source garment pixels directly into the Linen Earth fabric. Mid gray is
-  // neutral under soft-light, so the swatch keeps its own colour while broad
-  // photographed highlights and body/fold shadows still shape the garment.
+  // Build a low-frequency lighting field and normalize it against the actual
+  // photographed garment region. This removes the source cloth's base albedo
+  // instead of relying on a hand-tuned brightness multiplier for navy/beige
+  // templates. Mid gray is neutral under soft-light; only relative highlights
+  // and shadows survive into the selected Linen Earth fabric.
   const mapWidth = WIDTH / 2;
   const mapHeight = HEIGHT / 2;
   const source = document.createElement("canvas");
+  const maskCanvas = document.createElement("canvas");
   const shape = document.createElement("canvas");
-  source.width = shape.width = mapWidth;
-  source.height = shape.height = mapHeight;
+  source.width = maskCanvas.width = shape.width = mapWidth;
+  source.height = maskCanvas.height = shape.height = mapHeight;
 
   const sourceContext = source.getContext("2d", { willReadFrequently: true });
+  const maskContext = maskCanvas.getContext("2d", { willReadFrequently: true });
   const shapeContext = shape.getContext("2d");
-  if (!sourceContext || !shapeContext) throw new Error("Canvas is unavailable.");
+  if (!sourceContext || !maskContext || !shapeContext) throw new Error("Canvas is unavailable.");
 
   sourceContext.filter = "grayscale(1) blur(7px)";
   sourceContext.drawImage(photo, 0, 0, mapWidth, mapHeight);
+  if (garmentMask) maskContext.drawImage(garmentMask, 0, 0, mapWidth, mapHeight);
+  else {
+    maskContext.fillStyle = "#fff";
+    maskContext.fillRect(0, 0, mapWidth, mapHeight);
+  }
+
   const input = sourceContext.getImageData(0, 0, mapWidth, mapHeight);
+  const maskPixels = maskContext.getImageData(0, 0, mapWidth, mapHeight);
   const output = shapeContext.createImageData(mapWidth, mapHeight);
 
+  let weightedLuminance = 0;
+  let totalWeight = 0;
   for (let index = 0; index < input.data.length; index += 4) {
-    const corrected = Math.max(0, Math.min(255, input.data[index] * sourceBrightness));
-    // Compress the template's original cloth tone around neutral gray. This
-    // retains large photographic form without letting a navy source shirt turn
-    // a pale selected linen charcoal, or pale source trousers wash dark cloth.
-    const neutral = Math.max(48, Math.min(208, Math.round(128 + (corrected - 128) * .58)));
+    const weight = maskPixels.data[index + 3] / 255;
+    if (weight < .04) continue;
+    weightedLuminance += input.data[index] * weight;
+    totalWeight += weight;
+  }
+  const garmentMean = totalWeight > 0 ? weightedLuminance / totalWeight : 128;
+
+  for (let index = 0; index < input.data.length; index += 4) {
+    // Center the photographed garment itself on neutral gray. The .78 contrast
+    // gain preserves broad studio modelling without allowing the original
+    // garment colour/value to overpower a pale or dark selected swatch.
+    const neutral = Math.max(48, Math.min(208, Math.round(128 + (input.data[index] - garmentMean) * .78)));
     output.data[index] = neutral;
     output.data[index + 1] = neutral;
     output.data[index + 2] = neutral;
     output.data[index + 3] = 255;
   }
   shapeContext.putImageData(output, 0, 0);
-  cachedByBrightness.set(key, shape);
+  cachedByMask.set(cacheKey, shape);
   return shape;
 }
 
@@ -436,7 +455,8 @@ function drawGarment(
   // This keeps the actual swatch hue and woven texture authoritative while the
   // studio photograph contributes broad three-dimensional form.
   const detailBrightness = placement.detailBrightness ?? 1.3;
-  const shape = photographicShapeMap(photo, detailBrightness);
+  const lightingMask = mask ?? (path ? featheredPathMask(path) : undefined);
+  const shape = photographicShapeMap(photo, lightingMask);
   context.filter = "none";
   context.globalCompositeOperation = "soft-light";
   context.globalAlpha = .58;

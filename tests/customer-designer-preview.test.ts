@@ -97,9 +97,12 @@ test("photo compositor restores colour-neutral photographic micro-relief",()=>{
 test("instant photo compositor normalizes source albedo before borrowing studio depth",()=>{
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   assert.match(source,/photographicShapeMaps = new WeakMap/);
-  assert.match(source,/function photographicShapeMap\(photo: HTMLImageElement, sourceBrightness: number\)/);
+  assert.match(source,/function photographicShapeMap\(photo: HTMLImageElement, garmentMask\?: HTMLCanvasElement\)/);
   assert.match(source,/grayscale\(1\) blur\(7px\)/);
-  assert.match(source,/128 \+ \(corrected - 128\) \* \.58/);
+  assert.match(source,/weightedLuminance/);
+  assert.match(source,/garmentMean/);
+  assert.match(source,/128 \+ \(input\.data\[index\] - garmentMean\) \* \.78/);
+  assert.match(source,/const lightingMask = mask \?\? \(path \? featheredPathMask\(path\) : undefined\)/);
   assert.match(source,/globalCompositeOperation = "soft-light"[\s\S]*globalAlpha = \.58[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
   assert.match(source,/globalCompositeOperation = "multiply"[\s\S]*globalAlpha = \.07[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
   assert.match(source,/selected Linen Earth cloth/);
