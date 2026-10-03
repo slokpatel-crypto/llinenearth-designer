@@ -5,6 +5,8 @@ export type PhotoPanelAxis={
   bottomY:number;
 };
 
+export type PhotoPanelPoint={x:number;y:number};
+
 /**
  * Returns the screen-space rotation, in degrees, needed to align a fabric's
  * vertical grain with a photographed panel axis. This is visual geometry from
@@ -36,3 +38,18 @@ export const PHOTO_TUCKED_PANEL_GRAIN_ROTATION={
   rightTrouser:photoPanelRotationFromVertical(PHOTO_TUCKED_PANEL_AXES.rightTrouser),
   collar:90,
 } as const;
+
+/**
+ * Pattern transforms rotate/scale around a photographed panel anchor rather
+ * than the canvas origin. Anchoring near the seam/waist keeps stripe/check
+ * phase visually stable when panel rotation or verified repeat scale changes.
+ * These are screen-space layout anchors only, not tailoring or grain evidence.
+ */
+export const PHOTO_TUCKED_PANEL_PATTERN_ANCHOR={
+  body:{x:510,y:244},
+  leftSleeve:{x:PHOTO_TUCKED_PANEL_AXES.leftSleeve.topX,y:PHOTO_TUCKED_PANEL_AXES.leftSleeve.topY},
+  rightSleeve:{x:PHOTO_TUCKED_PANEL_AXES.rightSleeve.topX,y:PHOTO_TUCKED_PANEL_AXES.rightSleeve.topY},
+  leftTrouser:{x:PHOTO_TUCKED_PANEL_AXES.leftTrouser.topX,y:PHOTO_TUCKED_PANEL_AXES.leftTrouser.topY},
+  rightTrouser:{x:PHOTO_TUCKED_PANEL_AXES.rightTrouser.topX,y:PHOTO_TUCKED_PANEL_AXES.rightTrouser.topY},
+  collar:{x:512,y:214},
+} as const satisfies Record<string,PhotoPanelPoint>;
