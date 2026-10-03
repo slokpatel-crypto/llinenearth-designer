@@ -61,6 +61,7 @@ async function freshPage(width = 1440) {
   });
   await page.goto(baseURL + "/designer-studio", { waitUntil: "networkidle" });
   await ready(page);
+  await page.locator(".brandIntro").waitFor({ state: "hidden" });
   return { page, context };
 }
 
