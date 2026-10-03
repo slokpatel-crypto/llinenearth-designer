@@ -540,7 +540,8 @@ function drawGarmentPanels(
 
   // One garment-wide lighting/relief pass is enough even when directional
   // pattern placement differs by photographed panel. This avoids recomputing
-  // identical shape maps for body/sleeves or left/right trouser legs.
+  // identical shape maps for body/sleeves or left/right trouser legs while the
+  // selected Linen Earth cloth remains the colour and texture authority.
   const singlePath = panels.length === 1 ? panels[0].path : "";
   const lightingMask = mask ?? (singlePath ? featheredPathMask(singlePath) : undefined);
   const shape = photographicShapeMap(photo, lightingMask);
