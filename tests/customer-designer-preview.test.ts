@@ -290,11 +290,11 @@ test("plain linen swatches retain visible microtexture without reusing catalogue
 test("selected-look photoreal stays hidden until automated fidelity QA passes",()=>{
   const preview=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   assert.match(preview,/Promise<SelectedLookVisualCheck\|null>/);
-  assert.match(preview,/setShowCreativeAi\(false\);[\s\S]*const check=await inspectSelectedLook\(cachedResult\);[\s\S]*check\?\.available && check\.status==="pass"/);
+  assert.match(preview,/setShowCreativeAi\(false\);[\s\S]*const check=await inspectSelectedLook\(cachedResult,"front",request\);[\s\S]*check\?\.available && check\.status==="pass"/);
   assert.match(preview,/Final selected-look renders stay behind QA until fidelity passes/);
   assert.match(preview,/setShowCreativeAi\(Boolean\(creativeDirection\)\)/);
   assert.match(preview,/setSelectedRepairCount\(1\);[\s\S]*setShowCreativeAi\(false\);[\s\S]*repairCheck\?\.available && repairCheck\.status==="pass"/);
-  assert.match(preview,/const check=await inspectSelectedLook\(data\.result,view\);[\s\S]*check\?\.available && check\.status==="pass"\) setPhotorealView\(view\)/);
+  assert.match(preview,/const check=await inspectSelectedLook\(data\.result,view,request\);[\s\S]*check\?\.available && check\.status==="pass"\) setPhotorealView\(view\)/);
   assert.match(preview,/The render has not cleared customer-facing fidelity QA/);
 });
 
@@ -355,7 +355,7 @@ test("existing secondary views require their own fidelity state before normal di
   assert.match(preview,/const existingCheck=existing\.selectedCheck/);
   assert.match(preview,/existingCheck\?\.available && existingCheck\.status==="pass"/);
   assert.match(preview,/existingCheck\?\.available && existingCheck\.status==="review"/);
-  assert.match(preview,/const recheck=await inspectSelectedLook\(existing,view\)/);
+  assert.match(preview,/const recheck=await inspectSelectedLook\(existing,view,request\)/);
   assert.match(preview,/This view has not cleared fidelity QA/);
   assert.match(preview,/const ownReview=view!=="front"/);
   assert.match(preview,/const ownUnchecked=view!=="front"/);

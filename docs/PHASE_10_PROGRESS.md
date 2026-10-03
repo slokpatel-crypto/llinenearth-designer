@@ -101,6 +101,7 @@ Phase 10 is now materially beyond the original foundation brief.
 - Deterministic final-render QA now checks owner-measured stripe/repeat scale against the selected body-height anchor, with conservative tolerances to catch gross AI rescaling without claiming tailoring-CAD precision.
 - The photoreal viewer now exposes structured Colour / Pattern / Fabric / Construction / Model QA states plus measured colour ΔE and detected pattern axis when available, so review/repair decisions are visible rather than hidden in backend logs.
 - Front-view final QA now includes a deterministic protected-region delta over head/outer studio/floor zones. It catches model/background drift outside the garment edit before the semantic critic can approve the render, while side/back/three-quarter views remain governed by their own semantic/identity checks because they intentionally move those pixels.
+- Generation, repair, secondary-view and QA requests now belong to the exact committed design lifecycle. Changing fabric/construction or studio calibration, or leaving the preview, aborts the old browser request chain and discards delayed responses before they can populate the current image, QA state, session cache or loading state. A synchronous request lock also prevents duplicate same-frame generation clicks. Browser cancellation does not claim to reverse a provider generation already dispatched on the server.
 - Durable Supabase render caching is implemented, including cache keys tied to fabric, canonical construction, body profile and source render identity.
 - Popular-pair cache observability exists so pre-render decisions can be made without blindly spending render credits.
 
@@ -117,6 +118,8 @@ The main CI now runs:
 7. production Next.js build
 
 Latest verified run passed all stages.
+
+On 3 October, the async preview lifecycle change also passed 346 unit tests, a clean TypeScript check, rule/snapshot/performance evaluations, static quality/release gates and the production build. Separate actual React DOM regressions (mocked drawing/network, zero paid calls) covered delayed generation/QA/repair/view responses, revisiting a previous fabric, duplicate clicks and unmount. Browser screenshots and physical-device acceptance remain unverified in this session because the execution environment denied browser socket startup; those results do not satisfy the owner/device evidence gate.
 
 ## Still owner/physical-evidence dependent
 

@@ -14,6 +14,7 @@ const handoff:ProductionHandoff={
     trouser:{id:"pant-1",name:"Beige",line:"Linen Suiting",source:"catalogue"},
   },
   construction:{
+    fitProvenance:{fitConstructionVersion:null,easeSource:null,easeTableVersion:null},
     shirt:{
       fit:"Regular / Classic Fit",
       wear:"Tucked",
