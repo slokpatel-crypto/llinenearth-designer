@@ -128,11 +128,16 @@ test("Style Director photoreal letterbox matches the navy studio",()=>{
 });
 
 
-test("contrast collar and cuff shading stays photographic without source-colour contamination",()=>{
+test("contrast collar and cuff shading reuses baseline-neutral photo structure",()=>{
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-  assert.match(source,/function drawWhiteDetail[\s\S]*globalCompositeOperation = "luminosity"[\s\S]*globalAlpha = \.9/);
-  assert.match(source,/function drawWhiteDetail[\s\S]*globalCompositeOperation = "multiply"[\s\S]*globalAlpha = \.12/);
-  assert.match(source,/clean white while retaining the real folded edge beside neck and hands/);
+  assert.match(source,/function drawWhiteDetail[\s\S]*const detailMask = featheredPathMask\(path\)/);
+  assert.match(source,/function drawWhiteDetail[\s\S]*photographicShapeMap\(photo, detailMask\)/);
+  assert.match(source,/function drawWhiteDetail[\s\S]*const relief = photographicReliefMap\(photo\)/);
+  assert.match(source,/function drawWhiteDetail[\s\S]*globalAlpha = \.42[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
+  const whiteBlock=source.slice(source.indexOf("function drawWhiteDetail"),source.indexOf("export type PhotoPreviewCalibration"));
+  assert.doesNotMatch(whiteBlock,/globalCompositeOperation = "luminosity"/);
+  assert.doesNotMatch(whiteBlock,/drawImage\(photo, 0, 0, WIDTH, HEIGHT\)/);
+  assert.doesNotMatch(whiteBlock,/brightness\(/);
 });
 
 
