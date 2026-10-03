@@ -8,6 +8,21 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
+test("local preview callbacks only belong to an enabled committed owner", () => {
+  const previous = createPreviewRequestScope();
+  assert.equal(previous.isEnabled(), false);
+  previous.activate();
+  assert.equal(previous.isEnabled(), true);
+  previous.invalidate();
+  const replacement = createPreviewRequestScope();
+  replacement.activate();
+  assert.equal(previous.isEnabled(), false);
+  assert.equal(replacement.isEnabled(), true);
+  assert.equal(previous.begin(), null);
+  replacement.invalidate();
+  assert.equal(replacement.isEnabled(), false);
+});
+
 test("a changed design discards a delayed generation before cache or QA dispatch", async () => {
   const scope = createPreviewRequestScope();
   scope.activate();

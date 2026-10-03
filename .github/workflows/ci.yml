@@ -35,7 +35,7 @@ jobs:
         run: |
           npm install --prefix "$LINEN_BROWSER_QA_RUNTIME" --no-audit --no-fund playwright@1.63.0
           node "$LINEN_BROWSER_QA_RUNTIME/node_modules/playwright/cli.js" install --with-deps chromium
-      - name: Verify preview lifecycle and responsive Designer
+      - name: Verify preview lifecycle, responsive Designer and Style Director
         env:
           LINEN_BROWSER_QA_RUNTIME: /tmp/linen-browser-qa
         run: |
@@ -48,6 +48,7 @@ jobs:
             sleep 1
           done
           node scripts/verify-preview-lifecycle.cjs
+          node scripts/verify-style-director-lifecycle.cjs
       - name: Save browser verification evidence
         if: always()
         uses: actions/upload-artifact@v4

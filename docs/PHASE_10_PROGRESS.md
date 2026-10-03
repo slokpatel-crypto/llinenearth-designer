@@ -102,6 +102,7 @@ Phase 10 is now materially beyond the original foundation brief.
 - The photoreal viewer now exposes structured Colour / Pattern / Fabric / Construction / Model QA states plus measured colour ΔE and detected pattern axis when available, so review/repair decisions are visible rather than hidden in backend logs.
 - Front-view final QA now includes a deterministic protected-region delta over head/outer studio/floor zones. It catches model/background drift outside the garment edit before the semantic critic can approve the render, while side/back/three-quarter views remain governed by their own semantic/identity checks because they intentionally move those pixels.
 - Generation, repair, secondary-view and QA requests now belong to the exact committed design lifecycle. Changing fabric/construction or studio calibration, or leaving the preview, aborts the old browser request chain and discards delayed responses before they can populate the current image, QA state, session cache or loading state. A synchronous request lock also prevents duplicate same-frame generation clicks. Browser cancellation does not claim to reverse a provider generation already dispatched on the server.
+- Style Director uses the same lifecycle boundary for its questionnaire and optional photoreal requests. Restart, look/calibration changes and unmount discard old recommendations/renders before they can update the current view or completed style memory. Same-frame clicks dispatch one request; reselecting the current look preserves its prepared photographic source.
 - Durable Supabase render caching is implemented, including cache keys tied to fabric, canonical construction, body profile and source render identity.
 - Popular-pair cache observability exists so pre-render decisions can be made without blindly spending render credits.
 
@@ -118,7 +119,7 @@ The main CI now runs:
 5. deterministic Designer top-three regression
 6. release-readiness checks
 7. production Next.js build
-8. Chromium preview lifecycle regressions and responsive Designer checks at 390/768/1440px, with screenshot/report artifacts
+8. Chromium preview lifecycle regressions and responsive Designer/Style Director checks at 390/768/1440px, with screenshot/report artifacts
 
 Browser verification mocks provider and automated-QA responses while rendering real local photographs and fabrics through Canvas. It gates code correctness without consuming paid render credits or recording owner/device acceptance.
 
