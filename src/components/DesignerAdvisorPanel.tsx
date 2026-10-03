@@ -94,6 +94,7 @@ export default function DesignerAdvisorPanel(props:Props) {
       <div className="designerAdvice" aria-live="polite" aria-busy={loading}>
         <span>{answer.advice.task.toUpperCase()}{revision>0?` · REVISION ${revision}`:""}</span>
         <h3>{answer.advice.headline}</h3><p>{answer.advice.answer}</p>
+        <p><strong>Design context:</strong> {answer.interpretation.occasion} · {answer.interpretation.context.climate} · {answer.interpretation.context.intention}</p>
         {answer.advice.revision && <p className="designerRevisionReason">{answer.advice.revision}</p>}
         {answer.advice.preserved.length>0 && <p><strong>Preserved:</strong> {answer.advice.preserved.join(" · ")}</p>}
         <ul>{answer.advice.findings.slice(0,3).map((finding,index)=><li key={index}><b>{finding.kind==="strength"?"Supports the choice":finding.kind==="risk"?"Review":"Evidence needed"}</b> {finding.text}</li>)}</ul>
@@ -118,8 +119,8 @@ export default function DesignerAdvisorPanel(props:Props) {
       </div>}
       {target && <div className="designerRevision" aria-label="Revise judged direction">
         <strong>Improve: {target.title}</strong>
-        <label>What should improve?<select disabled={loading} value={reason} onChange={(event)=>setReason(event.target.value as DesignerFeedbackReason)}>{DESIGNER_FEEDBACK_REASONS.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label>
-        <label>Your judgement or instruction{needsInstruction && <small>Tell Designer which colour, cloth or detail you prefer, or how the formality should change.</small>}<textarea disabled={loading} value={note} maxLength={300} onChange={(event)=>setNote(event.target.value)} placeholder="e.g. Keep the fabric and collar. Give the shirt more room for movement." rows={2}/></label>
+        <label>What should improve?<select aria-label="What should improve?" disabled={loading} value={reason} onChange={(event)=>setReason(event.target.value as DesignerFeedbackReason)}>{DESIGNER_FEEDBACK_REASONS.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label>
+        <label>Your judgement or instruction{needsInstruction && <small>Tell Designer which colour, cloth or detail you prefer, or how the formality should change.</small>}<textarea aria-label="Your judgement or instruction" disabled={loading} value={note} maxLength={300} onChange={(event)=>setNote(event.target.value)} placeholder="e.g. Keep the fabric and collar. Give the shirt more room for movement." rows={2}/></label>
         <button type="button" disabled={loading || needsInstruction && note.trim().length<5} onClick={revise}>{loading?"Revising…":"Revise this direction"}</button>
       </div>}
     </>}

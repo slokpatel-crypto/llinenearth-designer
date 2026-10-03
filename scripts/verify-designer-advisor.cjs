@@ -9,14 +9,15 @@ const {buildDesignerNegotiation}=load("src/lib/designer/constraint-negotiation.t
 const runtime=process.env.LINEN_BROWSER_QA_RUNTIME;if(!runtime)throw Error("Set LINEN_BROWSER_QA_RUNTIME");
 const {chromium}=Module.createRequire(path.join(runtime,"package.json"))("playwright");
 const output=path.resolve("artifacts/preview-lifecycle/designer-advisor"), baseURL=process.env.LINEN_BROWSER_QA_URL || "http://127.0.0.1:3000";
-const summary={browser:"Chromium",backendResponses:"mocked using the real deterministic rules; no paid calls",physicalOrDeviceAcceptance:false,viewports:[],regressions:[],errors:[]};
-let browser;
+const summary={browser:"Chromium",backendResponses:"UI responses mocked using the real rules; actual HTTP contracts checked on the isolated CI server; no paid calls",physicalOrDeviceAcceptance:false,apiContracts:[],viewports:[],regressions:[],errors:[]};
+let browser,activePage;
 const panel=page=>page.locator(".newDesignerAdvisor");
 const question=page=>page.getByRole("textbox",{name:"Designer question or task",exact:true});
 const askButton=page=>panel(page).getByRole("button",{name:"Ask Designer",exact:true});
 const settle=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(resolve,30)))));
 async function freshPage(width=1440){
   const context=await browser.newContext({viewport:{width,height:1000}}), page=await context.newPage();
+  activePage=page;
   page.on("pageerror",error=>summary.errors.push(error.message));page.on("console",message=>{if(message.type()==="error")summary.errors.push(message.text());});
   await context.route("**/api/**",route=>{
     const p=new URL(route.request().url()).pathname;
@@ -67,11 +68,31 @@ async function revision(page,duplicate=false){
   await settle(page);assert.equal(await count(page,"question"),index+1);return index;
 }
 async function regression(name,run){const {page,context}=await freshPage();try{await run(page);summary.regressions.push({name,status:"passed"});console.log("PASS "+name);}catch(error){summary.regressions.push({name,status:"failed",error:error.message});await page.screenshot({path:path.join(output,name+"-failure.png"),fullPage:true}).catch(()=>{});}finally{await context.close();}}
+async function apiContracts(){
+  const base={currentShirtId:engine.DESIGNER_REVIEWED_PAIRING.shirtId,currentPantId:engine.DESIGNER_REVIEWED_PAIRING.pantId,currentStyle:engine.designerStyleForOccasion("Semi-Formal"),occasion:"Semi-Formal",context:{climate:"Air-conditioned",intention:"Balanced"}};
+  const post=async(label,body,status=200)=>{
+    const response=await fetch(baseURL+"/api/designer/brief",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)}),data=await response.json();
+    assert.equal(response.status,status,label+": "+(data.error || "unexpected response"));
+    summary.apiContracts.push({label,status:response.status,engine:data.engine || null});return data;
+  };
+  for(const [brief,task] of [["Design a business outfit","design"],["Critique my current outfit","critique"],["Compare point vs spread collar","compare"],["Keep both fabrics. Make the shirt relaxed.","refine"],["Check fit and movement","fit"],["Explain my collar construction","construction"],["What is this fabric's GSM and drape?","material"],["Prepare the tailor tech pack","production"]]){
+    const data=await post(task,{...base,brief});assert.equal(data.engine,"linen-designer-advisor-v1");assert.equal(data.advice.version,"designer-advice-v1");assert.equal(data.advice.task,task);assert.ok(data.requestId);
+    for(const option of data.results){assert.equal(option.styleSpec.styleSchemaVersion,2);assert.equal(typeof option.canApply,"boolean");assert.ok(Array.isArray(option.fitTargets));}
+  }
+  const revised=await post("judged revision",{...base,brief:"Design a slim business outfit",currentStyle:{...base.currentStyle,shirtFit:"Slim Fit"},judgement:{recommendationId:"CI-judged-direction",rating:"down",reason:"fit_cut",note:"Keep both fabrics and collar. Make the shirt relaxed."}});
+  assert.equal(revised.results[0].style.shirtFit,"Relaxed Fit");assert.equal(revised.results[0].shirt.id,base.currentShirtId);assert.equal(revised.results[0].pant.id,base.currentPantId);
+  const legacy=await post("legacy v2 compatibility",{brief:"Business meeting with a tucked shirt",currentShirtId:base.currentShirtId,currentPantId:base.currentPantId});assert.equal(legacy.engine,"linen-designer-brief-v2");assert.ok(legacy.results.length>0);
+  await post("reject invented construction",{...base,brief:"Critique this outfit",currentStyle:{...base.currentStyle,collar:"Invented collar"}},400);
+  await post("reject unavailability",{...base,brief:"Critique this outfit",currentShirtId:"not-a-stock-fabric"},409);
+  await post("reject ambiguous judgement",{...base,brief:"Critique this outfit",judgement:{recommendationId:"CI-judged-direction",rating:"down",reason:"formality"}},400);
+  console.log("PASS 13 actual Designer HTTP contracts");
+}
 (async()=>{
-  fs.mkdirSync(output,{recursive:true});browser=await chromium.launch({headless:true});
+  fs.mkdirSync(output,{recursive:true});await apiContracts();browser=await chromium.launch({headless:true});
   for(const width of [390,768,1440]){
     const {page,context}=await freshPage(width),pixels=await mainPixels(page);
     const first=await start(page,"Critique my current outfit",true);const initial=await answer(page,first);
+    await page.screenshot({path:path.join(output,"critique-"+width+".png"),fullPage:true});
     assert.equal(await mainPixels(page),pixels,"Advice must not alter the chosen outfit before Apply");assert.ok(initial.advice.findings.length>0);
     await panel(page).getByRole("button",{name:"Works for me",exact:true}).first().evaluate(b=>{b.click();b.click();});await settle(page);
     assert.equal(aggregateDesignerTaste(await memory(page),initial.interpretation.occasion).evidence,1,"Repeated clicks count once");
@@ -98,4 +119,4 @@ async function regression(name,run){const {page,context}=await freshPage();try{a
   await regression("comparison-and-unsupported-task",async page=>{const compared=await answer(page,await start(page,"Compare pleated vs flat-front trousers"));assert.equal(compared.results.length,2);assert.equal(await panel(page).getByRole("button",{name:"Resolve conflict first",exact:true}).isDisabled(),true);await answer(page,await start(page,"Design a sherwani"));assert.equal(await panel(page).locator(".newDesignerBriefResults").count(),0);assert.match(await panel(page).locator(".designerAdvice").textContent(),/supported block/);});
   await regression("unmount-discards-question",async page=>{const old=await start(page);await page.getByRole("link",{name:/Style Director/i}).first().click();await page.waitForURL("**/style-director");await answer(page,old);assert.equal((await request(page,"question",old)).aborted,true);assert.equal((await memory(page)).filter(e=>e.type==="designer_override").length,0);});
   assert.deepEqual(summary.errors,[]);assert.equal(summary.regressions.filter(r=>r.status==="failed").length,0,"Designer advisor regressions failed");
-})().catch(error=>{summary.failure=error.stack;console.error(error);process.exitCode=1;}).finally(async()=>{fs.mkdirSync(output,{recursive:true});fs.writeFileSync(path.join(output,"summary.json"),JSON.stringify(summary,null,2));if(browser)await browser.close();});
+})().catch(async error=>{summary.failure=error.stack;console.error(error);process.exitCode=1;if(activePage&&!activePage.isClosed())await activePage.screenshot({path:path.join(output,"flow-failure.png"),fullPage:true}).catch(()=>{});}).finally(async()=>{fs.mkdirSync(output,{recursive:true});fs.writeFileSync(path.join(output,"summary.json"),JSON.stringify(summary,null,2));if(browser)await browser.close();});

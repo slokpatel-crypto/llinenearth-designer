@@ -1244,14 +1244,14 @@ export function DesignerModule() {
             <button type="button" onClick={matchPhotographedOfficeModel}>Office preset</button>
           </div>
           <div className="newDesignerStyleGrid newDesignerStyleGridCompact">{MAIN_DETAILS.slice(0,4).map(([key,label])=><label key={key}>{label}
-            <select value={style[key]} onChange={(event)=>changeStyle(key,event.target.value)}>
+            <select aria-label={label} value={style[key]} onChange={(event)=>changeStyle(key,event.target.value)}>
               {DESIGNER_STYLE_CHOICES[key].map((option)=><option key={option} value={option}>{option}</option>)}
             </select>
           </label>)}</div>
           <details className="newDesignerTechnicalDrawer">
             <summary>More cut options</summary>
             <div className="newDesignerStyleGrid">{[...MAIN_DETAILS.slice(4),...MORE_DETAILS].map(([key,label])=><label key={key}>{label}
-              <select value={style[key]} onChange={(event)=>changeStyle(key,event.target.value)}>
+              <select aria-label={label} value={style[key]} onChange={(event)=>changeStyle(key,event.target.value)}>
                 {DESIGNER_STYLE_CHOICES[key].map((option)=><option key={option} value={option}>{option}</option>)}
               </select>
             </label>)}</div>
