@@ -12,7 +12,7 @@ function rgba(values:number[],alphas:number[]=values.map(()=>255)) {
   return new Uint8ClampedArray(out);
 }
 
-test("garment luminance baseline ignores transparent pixels outside the cloth mask",()=>{
+test("garment luminance mean ignores transparent pixels outside the cloth mask",()=>{
   const source=rgba([20,80,100,240]);
   const mask=rgba([0,0,0,0],[0,255,255,0]);
   assert.equal(weightedGarmentLuminanceMean(source,mask),90);
