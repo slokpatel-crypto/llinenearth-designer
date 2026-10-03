@@ -25,3 +25,12 @@ export function photographicGarmentOpacity(
     : unit((195-red)/12);
   return geometry*clothBrightness*Math.max(chroma,interior);
 }
+
+/** The existing neck-clear region also contains inner collar cloth. Its cool
+ * source chroma distinguishes that cloth from this photograph's warm mannequin
+ * skin. A positive classification covers the cloth without weakening deep
+ * collar shadows merely because their RGB differences are small. */
+export function photographicCollarOpacity(red:number,green:number,blue:number,geometryAlpha:number):number {
+  if(![red,green,blue,geometryAlpha].every(Number.isFinite) || green-red<=1 || blue-red<=1) return 0;
+  return unit(geometryAlpha/255)*unit((165-Math.max(red,green,blue))/35);
+}

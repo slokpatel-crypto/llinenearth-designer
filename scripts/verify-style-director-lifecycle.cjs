@@ -211,10 +211,10 @@ async function fabricCoverage(page) {
     const brightness = (value) => (value[0] + value[1] + value[2]) / 3;
     // Real neutral folds where the old RGB classifier exposed the dark source
     // shirt through a pale selected cloth. These are output checks, not masks.
-    const folds = [[626, 490], [626, 493], [626, 496], [314, 325], [365, 340], [440, 350]].map(([x, y]) => ({
+    const folds = [[626, 490], [626, 493], [626, 496], [314, 325], [365, 340], [440, 350], [480, 235], [487, 235], [548, 237]].map(([x, y]) => ({
       x, y, source: brightness(pixel(originalContext, x, y)), rendered: brightness(pixel(ctx, x, y)),
     }));
-    const protectedPixels = [[512, 100], [310, 750], [703, 750], [445, 1420], [610, 1430], [100, 300]].map(([x, y]) => ({ x, y, rgba: pixel(ctx, x, y) }));
+    const protectedPixels = [[512, 100], [510, 210], [490, 200], [520, 195], [310, 750], [703, 750], [445, 1420], [610, 1430], [100, 300]].map(([x, y]) => ({ x, y, rgba: pixel(ctx, x, y) }));
     return { folds, protectedPixels };
   });
 }

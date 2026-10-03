@@ -12,7 +12,7 @@ import { UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION, type CustomerPhotoCalibration } 
 import { customerPhotoCalibrationIdentity, fetchCustomerPhotoCalibration } from "@/lib/designer/photo-calibration-client";
 import { neutralizePhotographicLuminance, weightedGarmentLuminanceMean } from "@/lib/designer/photo-shading";
 import { createPreviewRequestScope, type PreviewRequest } from "@/lib/designer/preview-request-scope";
-import { photographicGarmentOpacity } from "@/lib/designer/photo-garment-mask";
+import { photographicCollarOpacity, photographicGarmentOpacity } from "@/lib/designer/photo-garment-mask";
 import {
   PHOTO_TUCKED_PANEL_GRAIN_ROTATION,
   PHOTO_TUCKED_PANEL_PATTERN_ANCHOR,
@@ -72,7 +72,7 @@ const fabricTiles = new Map<string, HTMLCanvasElement>();
 const featheredMasks = new WeakMap<HTMLCanvasElement, HTMLCanvasElement>();
 const pathMasks = new Map<string, HTMLCanvasElement>();
 const panelLightingMasks = new WeakMap<HTMLCanvasElement, Map<string, HTMLCanvasElement>>();
-const tuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
+const tuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement; collar: HTMLCanvasElement }>();
 const untuckedMasks = new WeakMap<HTMLImageElement, { shirt: HTMLCanvasElement; pant: HTMLCanvasElement }>();
 const untuckedTrouserLegMasks = new WeakMap<HTMLCanvasElement, { left: HTMLCanvasElement; right: HTMLCanvasElement }>();
 const photographicReliefMaps = new WeakMap<HTMLImageElement, Map<HTMLCanvasElement | null, HTMLCanvasElement>>();
@@ -427,13 +427,14 @@ function tuckedGarmentMasks(photo: HTMLImageElement) {
   if (!context) throw new Error("Canvas is unavailable.");
   context.drawImage(photo, 0, 0, WIDTH, HEIGHT);
   const pixels = context.getImageData(0, 0, WIDTH, HEIGHT).data;
-  const mask = (region: "shirt" | "pant") => {
+  const mask = (region: "shirt" | "pant" | "collar") => {
     const canvas = document.createElement("canvas");
     canvas.width = WIDTH; canvas.height = HEIGHT;
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Canvas is unavailable.");
     ctx.fillStyle="#fff";
-    ctx.fill(new Path2D(region === "shirt" ? PHOTO_TUCKED_SHIRT_CLIP : PHOTO_TUCKED_TROUSER_CLIP));
+    const geometryPath=region==="collar" ? PHOTO_TUCKED_NECK_CLEAR : region==="shirt" ? PHOTO_TUCKED_SHIRT_CLIP : PHOTO_TUCKED_TROUSER_CLIP;
+    ctx.fill(new Path2D(geometryPath));
     if(region==="shirt") {
       ctx.globalCompositeOperation="destination-out";
       ctx.fill(new Path2D(PHOTO_TUCKED_NECK_CLEAR));
@@ -453,9 +454,12 @@ function tuckedGarmentMasks(photo: HTMLImageElement) {
     for (let y = 0; y < HEIGHT; y++) for (let x = 0; x < WIDTH; x++) {
       if (region === "shirt" && (y < 188 || y > 705 || x < 270 || x > 748)) continue;
       if (region === "pant" && (y < 541 || y > 1360 || x < 342 || x > 680)) continue;
+      if (region === "collar" && (y < 165 || y > 260 || x < 440 || x > 590)) continue;
       const i = (y * WIDTH + x) * 4;
       const red = pixels[i], green = pixels[i + 1], blue = pixels[i + 2];
-      const opacity=photographicGarmentOpacity(region,red,green,blue,geometry[i+3],blurredGeometry[i+3]);
+      // The neckline contains both cloth and skin. Recover only actual cool
+      // source cloth there; interior geometry alone cannot classify neck skin.
+      const opacity=region==="collar" ? photographicCollarOpacity(red,green,blue,geometry[i+3]) : photographicGarmentOpacity(region,red,green,blue,geometry[i+3],blurredGeometry[i+3]);
       data.data[i] = 255;
       data.data[i + 1] = 255;
       data.data[i + 2] = 255;
@@ -468,7 +472,7 @@ function tuckedGarmentMasks(photo: HTMLImageElement) {
     // studio or mannequin can never receive fabric.
     ctx.globalCompositeOperation = "destination-in";
     ctx.fillStyle = "#fff";
-    ctx.fill(new Path2D(region === "shirt" ? PHOTO_TUCKED_SHIRT_CLIP : PHOTO_TUCKED_TROUSER_CLIP));
+    ctx.fill(new Path2D(geometryPath));
 
     if (region === "shirt") {
       // The collar is composited separately below. Clearing the photographed
@@ -479,7 +483,7 @@ function tuckedGarmentMasks(photo: HTMLImageElement) {
     ctx.globalCompositeOperation = "source-over";
     return canvas;
   };
-  const result = { shirt: mask("shirt"), pant: mask("pant") };
+  const result = { shirt: mask("shirt"), pant: mask("pant"), collar: mask("collar") };
   tuckedMasks.set(photo, result);
   return result;
 }
@@ -915,6 +919,10 @@ export function composePhotoOutfit(
     drawCreativeDetails(context,creative,true,masks.shirt);
 
     if (style.collarFinish === "Self-fabric") {
+      // The broad neck clear zone removed inner collar folds as well as skin.
+      // Put back selected cloth only where source-colour segmentation confirms
+      // collar cloth, then draw the existing traced collar wings over it.
+      drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_NECK_CLEAR, masks.collar,{...calibratedPlacement,rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.collar,anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.collar.x,anchorY:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.collar.y});
       drawGarment(context, modelPhoto, shirtImage, shirt, PHOTO_TUCKED_COLLAR_MASK, undefined,{...calibratedPlacement,rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION.collar,anchorX:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.collar.x,anchorY:PHOTO_TUCKED_PANEL_PATTERN_ANCHOR.collar.y});
     } else {
       drawWhiteDetail(context, modelPhoto, PHOTO_TUCKED_COLLAR_STAND_MASK, undefined);
