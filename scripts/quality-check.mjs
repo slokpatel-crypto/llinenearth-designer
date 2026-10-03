@@ -1163,7 +1163,7 @@ for(const token of ["@media(max-width:760px)",".floatingInstagram,.floatingConta
 const measurementUnitPage=fs.readFileSync("src/app/measurements/page.tsx","utf8");
 if(!measurementUnitPage.includes("All measurement entries use <b>inches</b>")) throw new Error("Measurement-unit regression: inches are no longer explicit.");
 const layoutSource=fs.readFileSync("src/app/layout.tsx","utf8");
-for(const token of ["/brand/linen-earth-logo.png","SITE_URL","alternates: { canonical: SITE_URL }"]) {
+for(const token of ["BRAND_LOGO_SRC","BRAND_LOGO_SIZE","SITE_URL","alternates: { canonical: SITE_URL }"]) {
   if(!layoutSource.includes(token)) throw new Error(`Metadata/brand asset regression: missing ${token}`);
 }
 console.log("Designer trust/mobile gate passed: measurement units, corrected social metadata/logo path and mobile dock separation protected.");

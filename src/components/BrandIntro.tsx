@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BRAND_LOGO_SRC } from "@/lib/brand-logo-data";
+import Image from "next/image";
+import { BRAND_LOGO_SRC, BRAND_LOGO_SIZE } from "@/lib/brand-logo-data";
 
 export function BrandIntro() {
   const [show, setShow] = useState(true);
@@ -26,7 +27,7 @@ export function BrandIntro() {
     <div className={`brandIntro${reducedMotion ? " reducedMotion" : ""}`} aria-label="Linen Earth opening brand animation">
       <div className="introGlow" />
       <div className="introCard">
-        <img src={BRAND_LOGO_SRC} alt="Linen Earth" width="1273" height="531" />
+        <Image src={BRAND_LOGO_SRC} alt="Linen Earth" {...BRAND_LOGO_SIZE} unoptimized priority />
       </div>
       <p>FABRIC · DESIGN · CRAFT</p>
     </div>

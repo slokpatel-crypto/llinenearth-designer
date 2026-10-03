@@ -2,13 +2,14 @@ import { BRAND_LOGO_SRC } from "@/lib/brand-logo-data";
 
 export const runtime = "nodejs";
 
-export async function GET() {
-  const base64 = BRAND_LOGO_SRC.split(",")[1] || "";
-  const bytes = Buffer.from(base64,"base64");
-  return new Response(bytes,{
+export async function GET(request: Request) {
+  // Preserve the old public URL while every current surface uses the same
+  // versioned, decodable asset. The alias can change with later brand updates.
+  return new Response(null,{
+    status: 307,
     headers:{
-      "content-type":"image/png",
-      "cache-control":"public, max-age=31536000, immutable",
+      "location":new URL(BRAND_LOGO_SRC,request.url).href,
+      "cache-control":"public, max-age=3600",
     },
   });
 }

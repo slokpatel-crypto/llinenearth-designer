@@ -107,6 +107,8 @@ Phase 10 is now materially beyond the original foundation brief.
 
 ### Evaluation / CI
 
+The original Linen Earth logo is restored as one intact, content-hashed public PNG shared by the header, opening animation, icons and social metadata. Full pixel decoding and content identity are checked in unit tests; the browser suite also verifies actual image decoding and branding metadata rather than accepting a successful image request as proof that it displays.
+
 The main CI now runs:
 
 1. production dependency audit

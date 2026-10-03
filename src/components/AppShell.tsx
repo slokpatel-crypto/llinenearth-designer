@@ -1,6 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
-import { BRAND_LOGO_SRC } from "@/lib/brand-logo-data";
+import { BRAND_LOGO_SRC, BRAND_LOGO_SIZE } from "@/lib/brand-logo-data";
 
 const primaryLinks = [
   ["Real Model Designer", "/real-model"],
@@ -33,7 +34,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return <div className="siteShell atelierShell">
     <header className="atelierBrandBand">
       <Link href="/" className="atelierBrand" aria-label="Linen Earth home">
-        <img src={BRAND_LOGO_SRC} alt="Linen Earth" width="1273" height="531" />
+        <Image src={BRAND_LOGO_SRC} alt="Linen Earth" {...BRAND_LOGO_SIZE} unoptimized />
       </Link>
     </header>
 
