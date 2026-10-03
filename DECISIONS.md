@@ -152,4 +152,4 @@ Architecture and product decisions that must persist across coding sessions.
 
 **Why:** direct template luminance can make pale Linen Earth cloth inherit the dark source shirt or make darker cloth inherit a pale trouser base, which reads like painted/stickered fabric even when the garment boundary is correct.
 
-**Rule:** the catalogue swatch remains the colour/texture authority. The studio photograph may contribute neutral broad lighting, folds, seams and wrinkle relief only; source-garment colour must not be reintroduced as a shortcut.
+**Rule:** the catalogue swatch remains the colour/texture authority. The studio photograph may contribute neutral broad lighting, folds, seams and wrinkle relief only; source-garment colour must not be reintroduced as a shortcut. Broad shape, mid-frequency folds and high-frequency relief must be normalized around neutral gray before blending, including white contrast collar/cuff rendering.
