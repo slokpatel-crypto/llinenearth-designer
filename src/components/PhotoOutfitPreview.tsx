@@ -12,6 +12,7 @@ import { UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION, type CustomerPhotoCalibration } 
 import { customerPhotoCalibrationIdentity, fetchCustomerPhotoCalibration } from "@/lib/designer/photo-calibration-client";
 import { neutralizePhotographicLuminance, weightedGarmentLuminanceMean } from "@/lib/designer/photo-shading";
 import { createPreviewRequestScope, type PreviewRequest } from "@/lib/designer/preview-request-scope";
+import { photographicGarmentOpacity } from "@/lib/designer/photo-garment-mask";
 import {
   PHOTO_TUCKED_PANEL_GRAIN_ROTATION,
   PHOTO_TUCKED_PANEL_PATTERN_ANCHOR,
@@ -415,8 +416,8 @@ function photoLightingMask(mask?:HTMLCanvasElement,path="",maskPrepared=false) {
 }
 
 // The tucked photo has dark, cool shirting and warm trousers. Separate them
-// by their photographed colour, so cloth never spills onto arms, neck, the
-// studio set, or through the gap between the legs.
+// by their traced geometry and photographic colour at uncertain edges. Neutral
+// cloth folds inside that geometry must not become holes in the new fabric.
 function tuckedGarmentMasks(photo: HTMLImageElement) {
   const cached = tuckedMasks.get(photo);
   if (cached) return cached;
@@ -431,15 +432,30 @@ function tuckedGarmentMasks(photo: HTMLImageElement) {
     canvas.width = WIDTH; canvas.height = HEIGHT;
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Canvas is unavailable.");
+    ctx.fillStyle="#fff";
+    ctx.fill(new Path2D(region === "shirt" ? PHOTO_TUCKED_SHIRT_CLIP : PHOTO_TUCKED_TROUSER_CLIP));
+    if(region==="shirt") {
+      ctx.globalCompositeOperation="destination-out";
+      ctx.fill(new Path2D(PHOTO_TUCKED_NECK_CLEAR));
+      ctx.globalCompositeOperation="source-over";
+    }
+    const geometry=ctx.getImageData(0,0,WIDTH,HEIGHT).data;
+    const interior=document.createElement("canvas");
+    interior.width=WIDTH; interior.height=HEIGHT;
+    const interiorContext=interior.getContext("2d");
+    if(!interiorContext) throw new Error("Canvas is unavailable.");
+    // This is prepared once per photograph and reused across option changes.
+    // Blur only the geometric coverage, never the selected fabric or its repeat.
+    interiorContext.filter="blur(3px)";
+    interiorContext.drawImage(canvas,0,0);
+    const blurredGeometry=interiorContext.getImageData(0,0,WIDTH,HEIGHT).data;
     const data = ctx.createImageData(WIDTH, HEIGHT);
     for (let y = 0; y < HEIGHT; y++) for (let x = 0; x < WIDTH; x++) {
       if (region === "shirt" && (y < 188 || y > 705 || x < 270 || x > 748)) continue;
       if (region === "pant" && (y < 541 || y > 1360 || x < 342 || x > 680)) continue;
       const i = (y * WIDTH + x) * 4;
       const red = pixels[i], green = pixels[i + 1], blue = pixels[i + 2];
-      const opacity = region === "shirt"
-        ? clamp((Math.min(green - red, blue - red - 1) - 1) / 4) * clamp((165 - Math.max(red, green, blue)) / 35)
-        : clamp((Math.min(red - green - 3, red - blue - 5)) / 7) * clamp((195 - red) / 12);
+      const opacity=photographicGarmentOpacity(region,red,green,blue,geometry[i+3],blurredGeometry[i+3]);
       data.data[i] = 255;
       data.data[i + 1] = 255;
       data.data[i + 2] = 255;
