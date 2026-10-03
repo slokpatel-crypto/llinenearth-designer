@@ -233,4 +233,11 @@ Architecture and product decisions that must persist across coding sessions.
 
 **Rule:** check ownership after each async boundary and before result, error, loading or style-memory writes. Pass the request's AbortSignal to fetch, invalidate before paint and on restart/selection, and synchronously lock each action against duplicate clicks. Local photo callbacks must belong to an enabled selected look, including while exit animations retain the previous view. Reselecting the active look preserves its prepared source. Server/provider work already dispatched may continue after browser cancellation. No new application dependencies, schema, physical evidence or deployment milestone.
 
+## 2026-10-03 — Style Director photoreal promotion requires fidelity QA
+**Decision:** inspect the exact generated front image/job against the same locked shirt, trousers and construction before it replaces the live photographic outfit or enters completed style memory.
+
+**Why:** Style Director used the selected-look generator but bypassed its inspection step, so a wrong fabric, construction or model could appear as a completed final visual.
+
+**Rule:** require an available passing check with every fidelity dimension strong and no major artifact. Missing, malformed, contradictory, unavailable or review checks keep the live outfit visible. Retain the generated image only within the current look/calibration lifecycle so Retry photoreal check repeats inspection without generating another image or recording another render request. Successful QA disables further generation of that same result. Generation and inspection share the request scope; stale approvals/errors cannot display an old image, unlock a new request or complete memory. No dependencies, persistence schema, physical acceptance or deployment changes.
+
 **Verification:** real Chromium CI exercises the questionnaire and photographed Canvas at 390/768/1440px, then deliberately delivers mocked responses after cancellation. Reports separate these code regressions from physical, device and owner acceptance; the calibration-change case uses a synthetic API fixture only.

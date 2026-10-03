@@ -34,6 +34,7 @@ function load(file) {
 }
 const answers = { occasion: "Work", mood: "Quiet", time: "Day", climate: "Indoor", garment: "shirt", colorDirection: "Light" };
 const looks = load("src/lib/style-director-agent.ts").createStyleDirectorLooks(answers);
+const passingCheck = { available: true, status: "pass", fabricFidelity: "strong", colorFidelity: "strong", patternFidelity: "strong", boundary: "strong", construction: "strong", mannequinConsistency: "strong", artifact: "none" };
 assert.equal(looks.length, 3);
 assert.ok(looks.every((look) => look.realModel), "Fixture must use the real photographed shirt/trouser path");
 
@@ -69,7 +70,7 @@ async function freshPage(width = 1440) {
       if (pathname === "/api/designer/photo-calibration") {
         return Promise.resolve(new Response(JSON.stringify(window.__linenDirectorQA.calibration), { status: 200 }));
       }
-      const kind = pathname === "/api/style-director" ? "directions" : pathname === "/api/designer/look-render" ? "render" : null;
+      const kind = pathname === "/api/style-director" ? "directions" : pathname === "/api/designer/look-render" ? "render" : pathname === "/api/designer/look-inspect" ? "inspect" : null;
       if (!kind) return originalFetch(input, options);
       return new Promise((resolve) => window.__linenDirectorQA.requests.push({
         kind, body: JSON.parse(options.body || "{}"), signal: options.signal, completed: false,
@@ -77,7 +78,7 @@ async function freshPage(width = 1440) {
         // be running, so cancellation alone must not protect state or memory.
         complete(value, status) {
           this.completed = true;
-          resolve(new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } }));
+          resolve(new Response(typeof value === "string" ? value : JSON.stringify(value), { status, headers: { "content-type": "application/json" } }));
         },
       }));
     };
@@ -148,6 +149,31 @@ async function selectLook(page, index) {
   await page.locator('.directorExistingModel[data-ready="true"]').waitFor({ state: "visible" });
   await settle(page);
 }
+async function generated(page, render) {
+  const index = await count(page, "inspect");
+  await complete(page, "render", render.index, { result: render.result });
+  assert.equal(await count(page, "inspect"), index + 1, "Generated image requires one fidelity inspection");
+  const inspection = await request(page, "inspect", index);
+  const generation = await request(page, "render", render.index);
+  assert.equal(inspection.body.image, render.result.image);
+  assert.equal(inspection.body.jobId, render.result.jobId);
+  assert.equal(inspection.body.view, "front");
+  assert.equal(inspection.body.look.locked, true);
+  for (const field of ["shirt", "pant", "style"]) assert.deepEqual(inspection.body.look[field], generation.body[field]);
+  await cleared(page);
+  assert.equal(await photoButton(page).isDisabled(), true);
+  assert.match(await photoButton(page).textContent(), /Checking photoreal/);
+  return index;
+}
+async function approved(page, render) {
+  const index = await generated(page, render);
+  await complete(page, "inspect", index, { check: passingCheck });
+  await page.locator(".lookVisual > img").evaluate((image) => image.decode());
+  assert.equal((await memory(page, "render_completed")).length, 1);
+  assert.equal(await photoButton(page).isDisabled(), true);
+  assert.match(await photoButton(page).textContent(), /Photoreal ready/);
+  return index;
+}
 async function cleared(page) {
   assert.equal(await page.locator(".lookVisual > img").count(), 0, "Old render must not replace the selected real-model look");
   assert.equal((await memory(page, "render_completed")).length, 0, "Discarded renders must not enter style memory");
@@ -187,7 +213,24 @@ async function regression(name, run) {
     await selectLook(page, 1);
     assert.equal(await count(page, "render"), 0, "Live look selection must stay deterministic");
     assert.equal(await page.locator(".lookTabs button.active").textContent(), await page.locator(".lookTabs button").nth(1).textContent());
-    summary.viewports.push({ ...metrics, questionnaireAndLookSelection: "passed" });
+    const render = await start(page);
+    const inspection = await generated(page, render);
+    await page.screenshot({ path: path.join(output, "checking-" + width + ".png"), fullPage: true });
+    await complete(page, "inspect", inspection, { check: { ...passingCheck, status: "review", colorFidelity: "weak" } });
+    assert.match(await photoButton(page).textContent(), /Retry photoreal check/);
+    await cleared(page);
+    const heldWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    assert.ok(heldWidth <= width + 2, "Held QA state must not overflow: " + heldWidth);
+    await page.screenshot({ path: path.join(output, "held-" + width + ".png"), fullPage: true });
+    const retry = await count(page, "inspect");
+    await photoButton(page).click();
+    await settle(page);
+    assert.equal(await count(page, "render"), 1, "Retry must reuse the generated image");
+    await complete(page, "inspect", retry, { check: passingCheck });
+    await page.locator(".lookVisual > img").evaluate((image) => image.decode());
+    assert.equal((await memory(page, "render_completed")).length, 1);
+    await page.screenshot({ path: path.join(output, "approved-" + width + ".png"), fullPage: true });
+    summary.viewports.push({ ...metrics, questionnaireAndLookSelection: "passed", fidelityGateAndRetry: "passed" });
     await context.close();
   }
   await regression("delayed-render-and-return-to-same-look", async (page) => {
@@ -196,13 +239,13 @@ async function regression(name, run) {
     await selectLook(page, 1);
     await complete(page, "render", old.index, { result: old.result });
     await cleared(page);
+    assert.equal(await count(page, "inspect"), 0, "Discarded generation must not dispatch QA");
     assert.equal((await request(page, "render", old.index)).aborted, true);
     await selectLook(page, 0);
     const fresh = await start(page);
-    await complete(page, "render", fresh.index, { result: fresh.result });
-    await page.locator(".lookVisual > img").evaluate((image) => image.decode());
+    await approved(page, fresh);
     assert.equal((await memory(page, "render_completed"))[0].payload.lookId, looks[0].id);
-    assert.equal(await photoButton(page).isEnabled(), true);
+    assert.equal(await photoButton(page).isDisabled(), true);
   });
   await regression("stale-error-cannot-unlock-new-render", async (page) => {
     await journey(page);
@@ -213,7 +256,7 @@ async function regression(name, run) {
     assert.equal(await page.locator(".directorError").count(), 0);
     assert.equal(await photoButton(page).isDisabled(), true);
     assert.match(await photoButton(page).textContent(), /Rendering/);
-    await complete(page, "render", fresh.index, { result: fresh.result });
+    await approved(page, fresh);
     assert.equal((await memory(page, "render_completed"))[0].payload.lookId, looks[1].id);
   });
   await regression("restart-discards-photoreal", async (page) => {
@@ -278,6 +321,89 @@ async function regression(name, run) {
     assert.equal(await photoButton(page).isEnabled(), true);
     await start(page);
   });
+  for (const [name, check, status] of [
+    ["review", { ...passingCheck, status: "review", construction: "weak" }, 200],
+    ["unavailable", { ...passingCheck, available: false }, 200],
+    ["missing-check", undefined, 200],
+    ["incomplete-pass", { available: true, status: "pass" }, 200],
+    ["contradictory-pass", { ...passingCheck, mannequinConsistency: "weak" }, 200],
+    ["inspection-error", passingCheck, 500],
+    ["invalid-json", undefined, 200],
+  ]) {
+    await regression("held-" + name + "-reuses-image-on-retry", async (page) => {
+      await journey(page);
+      const render = await start(page);
+      const inspection = await generated(page, render);
+      await complete(page, "inspect", inspection, name === "invalid-json" ? "{" : { check }, status);
+      await cleared(page);
+      assert.equal(await page.locator('.directorExistingModel[data-ready="true"]').count(), 1);
+      assert.equal(await photoButton(page).isEnabled(), true);
+      assert.match(await photoButton(page).textContent(), /Retry photoreal check/);
+      assert.equal(await page.locator('.directorQaStatus[role="status"]').count(), 1);
+      await photoButton(page).evaluate((button) => { button.click(); button.click(); });
+      await settle(page);
+      assert.equal(await count(page, "render"), 1);
+      assert.equal(await count(page, "inspect"), 2, "Duplicate retry clicks inspect once");
+      const retry = await request(page, "inspect", 1);
+      const first = await request(page, "inspect", 0);
+      assert.deepEqual(retry.body, first.body, "Retry must inspect the exact same image and locked look");
+      assert.equal((await memory(page, "render_requested")).length, 1);
+      await complete(page, "inspect", 1, { check: passingCheck });
+      await page.locator(".lookVisual > img").evaluate((image) => image.decode());
+      assert.equal((await memory(page, "render_completed")).length, 1);
+      await photoButton(page).evaluate((button) => button.click());
+      await settle(page);
+      assert.equal(await count(page, "render"), 1);
+      assert.equal(await count(page, "inspect"), 2);
+    });
+  }
+  await regression("look-change-discards-delayed-qa-and-old-qa-error", async (page) => {
+    await journey(page);
+    const old = await start(page);
+    const oldInspection = await generated(page, old);
+    await selectLook(page, 1);
+    const fresh = await start(page);
+    const freshInspection = await generated(page, fresh);
+    await complete(page, "inspect", oldInspection, { error: "Old QA failed" }, 500);
+    await cleared(page);
+    assert.match(await photoButton(page).textContent(), /Checking photoreal/);
+    assert.equal(await photoButton(page).isDisabled(), true);
+    assert.equal((await request(page, "inspect", oldInspection)).aborted, true);
+    await complete(page, "inspect", freshInspection, { check: passingCheck });
+    assert.equal((await memory(page, "render_completed"))[0].payload.lookId, looks[1].id);
+  });
+  for (const action of ["look", "restart", "calibration", "unmount"]) {
+    await regression(action + "-discards-delayed-qa-approval", async (page) => {
+      await journey(page);
+      const old = await start(page);
+      const inspection = await generated(page, old);
+      if (action === "look") await selectLook(page, 1);
+      if (action === "restart") {
+        await page.getByRole("button", { name: "Start over ↺", exact: true }).click();
+        await page.locator(".directorJourney").waitFor({ state: "visible" });
+      }
+      if (action === "calibration") {
+        await page.evaluate(() => {
+          window.__linenDirectorQA.calibration = { verified: true, photoPxPerMm: 2, scaleCoordinateSystem: "photo-1024x1536-fixture", proofVersion: "linen-earth-phase1-proof-v4" };
+          window.dispatchEvent(new Event("focus"));
+        });
+        await settle(page);
+      }
+      if (action === "unmount") {
+        await page.locator(".atelierBrand").click();
+        await page.waitForURL(baseURL + "/");
+      }
+      await complete(page, "inspect", inspection, { check: passingCheck });
+      await cleared(page);
+      assert.equal((await request(page, "inspect", inspection)).aborted, true);
+      if (action === "look" || action === "calibration") {
+        await ready(page);
+        assert.match(await photoButton(page).textContent(), /Make photoreal/);
+        await start(page);
+        assert.equal(await count(page, "render"), 2, "New look/calibration cannot reuse the old generated image");
+      }
+    });
+  }
   assert.deepEqual(summary.errors, [], "No browser errors or unmocked backend calls");
   assert.equal(summary.regressions.filter((item) => item.status === "failed").length, 0, "Style Director lifecycle regressions failed");
 })().catch((error) => {
