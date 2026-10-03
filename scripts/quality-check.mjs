@@ -246,6 +246,10 @@ for(const token of ["onPreviewReady?:(dataUrl:string,calibrationIdentity:string)
 }
 if(!styleDirectorCss.includes(".directorPhotoPending")) throw new Error("Style Director unsupported-photoreal state styling is missing.");
 console.log("Style Director photo-first action gate passed: photoreal refinement uses the same validated real-model preview and unsupported categories cannot invoke a simulated source.");
+for(const token of ["/api/designer/look-inspect","selectedLookQaPassed(inspected.check)","setPhotoreal(result)","Retry photoreal check","directorQaStatus","status:\"qa-passed\""]) {
+  if(!styleDirectorPhotoPage.includes(token)) throw new Error(`Style Director fidelity QA regression: missing ${token}`);
+}
+console.log("Style Director fidelity QA gate passed: generated images require a passing inspection and retry reuses the held image.");
 for(const token of ["currentCalibrationIdentity","lockedPreviewCalibrationIdentity","renderCalibrationIdentity","fetchCustomerPhotoCalibration","customerPhotoCalibrationIdentity","renderCalibrationIdentity!==currentCalibrationIdentity","setRenderCalibrationIdentity(sourceCalibrationIdentity)","function acceptLockedPreview(dataUrl:string,calibrationIdentity:string)"]) {
   if(!styleDirectorPhotoPage.includes(token)) throw new Error(`Style Director calibration invalidation regression: missing ${token}`);
 }

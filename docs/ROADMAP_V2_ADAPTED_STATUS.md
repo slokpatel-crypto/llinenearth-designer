@@ -1,6 +1,6 @@
 # Linen Earth — Roadmap v2 Adapted Status
 
-Date: 2026-10-02
+Date: 2026-10-03
 Source of truth: current GitHub repository, not the older ZIP.
 
 ## Overall approach
@@ -120,6 +120,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added per-view multi-view QA semantics: a cached/generated side, back or three-quarter render is not treated as normally approved merely because the front passed; unavailable checks can be re-run without another generation, while review-state views require an explicit review action and remain excluded from trusted save/export.
 - Moved the front-QA prerequisite across the API boundary: secondary generation now requires the exact front job/image pair to match a private server-recorded passing QA hash for the same fabric pair, so a direct browser/API request cannot bypass the customer UI gate. Cached legacy results are backfilled into the outcome ledger before inspection, and a targeted front repair replaces both memory and durable cache entries for the locked design.
 - Style Director now feeds that same serialized real-model preview into the selected-look photoreal pipeline for supported shirt/trouser directions; suit/blazer directions cannot spend AI credits until a photographed garment template exists, eliminating the older flat-development-render source from the Style Director customer path.
+- Style Director photoreal promotion and completed style memory now require an available passing fidelity inspection of that exact image/job and locked outfit. Held or unavailable QA preserves the live model, and inspection retry reuses the generated image; stale inspection results cannot outlive their look/calibration or journey.
 - Removed the remaining Style Director simulated mannequin fallback: shirt/trouser directions stay photographic, while unsupported suit/blazer categories show the real stock fabric editorially and explicitly leave garment geometry unvisualized until a photographed template exists.
 - Removed the Style Director flat alternate-preview action from the customer flow; the live photographed model remains the instant surface and the only optional generated replacement is the explicit photoreal action.
 - Consolidated legacy customer routes so `/designer` now opens the photographic Designer, while `/visual` and `/designer-brief` hand off to Style Director; homepage suit/blazer cards no longer open the old simulated visualizer.

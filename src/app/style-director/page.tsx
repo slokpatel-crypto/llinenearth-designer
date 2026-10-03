@@ -8,10 +8,13 @@ import { StyleDirectorRealModelPreview } from "@/components/PhotoOutfitPreview";
 import { createStyleSessionId, flushPendingStyleMemoryEvents, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
 import { customerPhotoCalibrationIdentity, fetchCustomerPhotoCalibration } from "@/lib/designer/photo-calibration-client";
 import { createPreviewRequestScope } from "@/lib/designer/preview-request-scope";
+import { selectedLookQaPassed } from "@/lib/designer/selected-look-qa";
 import "./style-director.css";
 
 type StepKey = keyof StyleDirectorAnswers;
 type RenderSet = { renders?: Array<{ view: string; src: string; label: string; provider?: string }>; providerLabel?: string; status?: string };
+type PhotorealResult = {image:string;jobId:string;generatedAt:string};
+type PhotorealQaStatus = "checking"|"review"|"unavailable";
 type StyleDirectorClientLook = StyleDirectorLook & {handoffToken?:string|null};
 
 const steps: Array<{ key: StepKey; eyebrow: string; title: string; note: string; options: Array<{ value: string; label: string; hint: string; symbol: string }> }> = [
@@ -52,6 +55,8 @@ export default function StyleDirectorPage() {
   const [loading,setLoading] = useState(false);
   const [rendering,setRendering] = useState(false);
   const [renderSet,setRenderSet] = useState<RenderSet|null>(null);
+  const [photoreal,setPhotoreal] = useState<PhotorealResult|null>(null);
+  const [photorealQaStatus,setPhotorealQaStatus] = useState<PhotorealQaStatus|null>(null);
   const [lockedPreviewImage,setLockedPreviewImage] = useState("");
   const [lockedPreviewCalibrationIdentity,setLockedPreviewCalibrationIdentity] = useState("");
   const [renderCalibrationIdentity,setRenderCalibrationIdentity] = useState<string|null>(null);
@@ -100,6 +105,7 @@ export default function StyleDirectorPage() {
       setLooks(data.looks);
       setSelected(0);
       setRenderSet(null);
+      setPhotoreal(null); setPhotorealQaStatus(null);
       setRenderCalibrationIdentity(null);
       setLockedPreviewImage("");
       setLockedPreviewCalibrationIdentity("");
@@ -115,38 +121,57 @@ export default function StyleDirectorPage() {
   }
 
   async function visualizePhotoreal() {
-    if (!selectedLook?.realModel || !lockedPreviewImage || !lockedPreviewCalibrationIdentity || lockedPreviewCalibrationIdentity!==currentCalibrationIdentity) return;
+    if (!selectedLook?.realModel || renderSet || !lockedPreviewImage || !lockedPreviewCalibrationIdentity || lockedPreviewCalibrationIdentity!==currentCalibrationIdentity) return;
     const request=renderScope.begin();
     if(!request) return;
     const sourceCalibrationIdentity=lockedPreviewCalibrationIdentity;
+    const lockedLook={shirt:{id:selectedLook.realModel.shirtId},pant:{id:selectedLook.realModel.pantId},style:selectedLook.realModel.style,locked:true};
+    let result=renderCalibrationIdentity===sourceCalibrationIdentity ? photoreal : null;
     setRendering(true); setError("");
-    recordStyleMemoryEvent(sessionId,"render_requested",{mode:"photo",lookId:selectedLook.id,fabricId:selectedLook.fabric.id});
     try {
-      const response = await fetch("/api/designer/look-render",{
-        method:"POST",
-        signal:request.signal,
-        headers:{"content-type":"application/json"},
-        body:JSON.stringify({
-          shirt:{id:selectedLook.realModel.shirtId},
-          pant:{id:selectedLook.realModel.pantId},
-          style:selectedLook.realModel.style,
-          locked:true,
-          lookKey:`style-director:${selectedLook.id}`,
-          lockedPreviewImage:lockedPreviewImage || undefined,
-        }),
+      if(!result) {
+        recordStyleMemoryEvent(sessionId,"render_requested",{mode:"photo",lookId:selectedLook.id,fabricId:selectedLook.fabric.id});
+        const response = await fetch("/api/designer/look-render",{
+          method:"POST",
+          signal:request.signal,
+          headers:{"content-type":"application/json"},
+          body:JSON.stringify({
+            ...lockedLook,
+            lookKey:`style-director:${selectedLook.id}`,
+            lockedPreviewImage:lockedPreviewImage || undefined,
+          }),
+        });
+        if(!request.isCurrent()) return;
+        const data = await response.json() as {result?:PhotorealResult;error?:string};
+        if(!request.isCurrent()) return;
+        if (!response.ok || !data.result?.image || !data.result.jobId) throw new Error(data.error || "Could not create the photoreal visual.");
+        result=data.result;
+        // Keep the generated result for QA retries without another paid render.
+        // It cannot become the hero or completed memory until inspection passes.
+        setPhotoreal(result);
+        setRenderCalibrationIdentity(sourceCalibrationIdentity);
+      }
+      setPhotorealQaStatus("checking");
+      const inspection=await fetch("/api/designer/look-inspect",{
+        method:"POST",signal:request.signal,headers:{"content-type":"application/json"},
+        body:JSON.stringify({image:result.image,jobId:result.jobId,view:"front",look:lockedLook}),
       });
       if(!request.isCurrent()) return;
-      const data = await response.json() as {result?:{image:string;jobId:string;creditsUsed:number;conceptId:string;generatedAt:string};error?:string};
+      const inspected=await inspection.json() as {check?:{available?:boolean}};
       if(!request.isCurrent()) return;
-      if (!response.ok || !data.result) throw new Error(data.error || "Could not create the photoreal visual.");
+      if(!inspection.ok || !selectedLookQaPassed(inspected.check)) {
+        setPhotorealQaStatus(inspection.ok && inspected.check?.available===true ? "review" : "unavailable");
+        return;
+      }
       const nextRenderSet:RenderSet={
-        renders:[{view:"front",src:data.result.image,label:"Photoreal front view",provider:"fashn-edit"}],
+        renders:[{view:"front",src:result.image,label:"Photoreal front view",provider:"fashn-edit"}],
         providerLabel:"Linen Earth photoreal refinement",
-        status:"generated",
+        status:"qa-passed",
       };
       setRenderSet(nextRenderSet);
+      setPhotorealQaStatus(null);
       setRenderCalibrationIdentity(sourceCalibrationIdentity);
-      const imageUrl = /^https:\/\/(cdn|media)\.fashn\.ai\//i.test(data.result.image) ? data.result.image : undefined;
+      const imageUrl = /^https:\/\/(cdn|media)\.fashn\.ai\//i.test(result.image) ? result.image : undefined;
       recordStyleMemoryEvent(sessionId,"render_completed",{
         mode:"photo",
         lookId:selectedLook.id,
@@ -156,10 +181,13 @@ export default function StyleDirectorPage() {
         provider:"Linen Earth photoreal refinement",
         imageUrl,
         label:"Photoreal front view",
-        generatedAt:data.result.generatedAt,
+        generatedAt:result.generatedAt,
       });
     } catch(e) {
-      if(request.isCurrent()) setError(e instanceof Error ? e.message : "Could not create the photoreal visual.");
+      if(request.isCurrent()) {
+        if(result) setPhotorealQaStatus("unavailable");
+        else setError(e instanceof Error ? e.message : "Could not create the photoreal visual.");
+      }
     } finally {
       if(request.isCurrent()) setRendering(false);
       request.finish();
@@ -172,6 +200,7 @@ export default function StyleDirectorPage() {
     setIndex(0); setAnswers({}); setLooks([]); setSelected(0);
     setLoading(false); setRendering(false);
     setRenderSet(null); setRenderCalibrationIdentity(null);
+    setPhotoreal(null); setPhotorealQaStatus(null);
     setLockedPreviewImage(""); setLockedPreviewCalibrationIdentity("");
     setError("");
   }
@@ -190,11 +219,12 @@ export default function StyleDirectorPage() {
     renderScope.invalidate();
     setSelected(i); setRendering(false); setError("");
     setRenderSet(null); setRenderCalibrationIdentity(null);
+    setPhotoreal(null); setPhotorealQaStatus(null);
     setLockedPreviewImage(""); setLockedPreviewCalibrationIdentity("");
     recordStyleMemoryEvent(sessionId,"look_selected",{lookId:look.id,title:look.title,fabricId:look.fabric.id,fabric:look.fabric.colorName});
   }
 
-  const heroRender = useMemo(()=>renderSet?.renders?.find((r)=>r.view==="front") ?? renderSet?.renders?.[0], [renderSet]);
+  const heroRender = useMemo(()=>renderCalibrationIdentity===currentCalibrationIdentity ? renderSet?.renders?.find((r)=>r.view==="front") ?? renderSet?.renders?.[0] : undefined, [renderSet,renderCalibrationIdentity,currentCalibrationIdentity]);
 
   useEffect(()=>{
     let cancelled=false;
@@ -214,8 +244,9 @@ export default function StyleDirectorPage() {
 
   useEffect(()=>{
     if(!currentCalibrationIdentity) return;
-    if(renderSet && renderCalibrationIdentity && renderCalibrationIdentity!==currentCalibrationIdentity) {
+    if((renderSet || photoreal) && renderCalibrationIdentity && renderCalibrationIdentity!==currentCalibrationIdentity) {
       setRenderSet(null);
+      setPhotoreal(null); setPhotorealQaStatus(null);
       setRenderCalibrationIdentity(null);
       setLockedPreviewImage("");
       setLockedPreviewCalibrationIdentity("");
@@ -225,7 +256,7 @@ export default function StyleDirectorPage() {
       setLockedPreviewImage("");
       setLockedPreviewCalibrationIdentity("");
     }
-  },[currentCalibrationIdentity,renderSet,renderCalibrationIdentity,lockedPreviewImage,lockedPreviewCalibrationIdentity]);
+  },[currentCalibrationIdentity,renderSet,photoreal,renderCalibrationIdentity,lockedPreviewImage,lockedPreviewCalibrationIdentity]);
 
   useEffect(()=>{
     recordStyleMemoryEvent(sessionId,"session_started",{experience:"style-director-v1"});
@@ -349,11 +380,16 @@ export default function StyleDirectorPage() {
             </div>}
             <div className="directorActions">
               {selectedLook.realModel
-                ? <button className="photoAction" onClick={()=>void visualizePhotoreal()} disabled={rendering || !lockedPreviewImage || lockedPreviewCalibrationIdentity!==currentCalibrationIdentity}>{rendering?"Rendering…":lockedPreviewImage?"Make photoreal":"Preparing real model…"} <b>✦</b></button>
+                ? <button className="photoAction" onClick={()=>void visualizePhotoreal()} disabled={rendering || !!heroRender || !lockedPreviewImage || lockedPreviewCalibrationIdentity!==currentCalibrationIdentity}>{rendering?(photorealQaStatus==="checking"?"Checking photoreal…":"Rendering…"):heroRender?"Photoreal ready":photoreal?"Retry photoreal check":lockedPreviewImage?"Make photoreal":"Preparing real model…"} <b>✦</b></button>
                 : <span className="directorPhotoPending">Photoreal unlocks when a photographed garment template supports this category.</span>}
               {designerHandoff && <a href={designerHandoff} onClick={()=>recordStyleMemoryEvent(sessionId,"render_requested",{mode:"real-model-handoff",lookId:selectedLook.id,fabricId:selectedLook.fabric.id})}>Open Linen Earth Real Model Designer <b>↗</b></a>}
               <a href={whatsapp} target="_blank" rel="noreferrer" onClick={()=>recordStyleMemoryEvent(sessionId,"whatsapp_clicked",{lookId:selectedLook.id,fabricId:selectedLook.fabric.id,fabric:selectedLook.fabric.colorName})}>Book this look <b>↗</b></a>
             </div>
+            {photorealQaStatus && <p className="directorQaStatus" role="status">{photorealQaStatus==="checking"
+              ? "Checking fabric, construction and model fidelity before showing this image."
+              : photorealQaStatus==="review"
+                ? "Photoreal needs review. Your live outfit stays visible; retry checks the same generated image."
+                : "Photoreal checks are unavailable. Your live outfit stays visible; retry checks the same generated image."}</p>}
             <p className="tradeoff"><b>Director note:</b> {selectedLook.candidate.tradeoff}</p>
           </div>
         </motion.div>
