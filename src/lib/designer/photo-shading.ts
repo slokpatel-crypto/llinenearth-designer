@@ -2,6 +2,15 @@ export const PHOTO_SHAPE_NEUTRAL_LUMINANCE=128;
 export const PHOTO_SHAPE_MIN_LUMINANCE=48;
 export const PHOTO_SHAPE_MAX_LUMINANCE=208;
 export const PHOTO_SHAPE_CONTRAST_GAIN=.78;
+export const PHOTO_SHAPE_LOG_CONTRAST=64;
+const PHOTO_SHAPE_LINEAR_EPSILON=1e-4;
+
+function srgbByteToLinear(value:number) {
+  const encoded=Math.max(0,Math.min(255,Number.isFinite(value)?value:PHOTO_SHAPE_NEUTRAL_LUMINANCE))/255;
+  return encoded<=.04045
+    ? encoded/12.92
+    : Math.pow((encoded+.055)/1.055,2.4);
+}
 
 /**
  * Calculates the average photographed luminance inside a garment alpha mask.
@@ -29,9 +38,11 @@ export function weightedGarmentLuminanceMean(
 }
 
 /**
- * Removes the source garment's base value while keeping relative studio
- * highlights/shadows. Equal lighting deltas normalize identically whether the
- * photographed source cloth is dark, mid or pale.
+ * Removes the photographed source cloth's base value while keeping relative
+ * studio illumination. Intrinsic-image formation is multiplicative
+ * (reflectance × shading), so the normalization uses a linear-light luminance
+ * ratio in log space instead of treating equal sRGB byte deltas as equal
+ * lighting. Mid gray stays neutral for the compositor's soft-light pass.
  */
 export function neutralizePhotographicLuminance(
   luminance:number,
@@ -41,11 +52,15 @@ export function neutralizePhotographicLuminance(
   const value=Number.isFinite(luminance)?luminance:PHOTO_SHAPE_NEUTRAL_LUMINANCE;
   const mean=Number.isFinite(garmentMean)?garmentMean:PHOTO_SHAPE_NEUTRAL_LUMINANCE;
   const safeGain=Number.isFinite(gain)?Math.max(0,Math.min(2,gain)):PHOTO_SHAPE_CONTRAST_GAIN;
+  const valueLinear=srgbByteToLinear(value);
+  const meanLinear=srgbByteToLinear(mean);
+  const relativeIllumination=(valueLinear+PHOTO_SHAPE_LINEAR_EPSILON)/(meanLinear+PHOTO_SHAPE_LINEAR_EPSILON);
+  const normalized=Math.round(
+    PHOTO_SHAPE_NEUTRAL_LUMINANCE+
+    Math.log(relativeIllumination)*PHOTO_SHAPE_LOG_CONTRAST*safeGain,
+  );
   return Math.max(
     PHOTO_SHAPE_MIN_LUMINANCE,
-    Math.min(
-      PHOTO_SHAPE_MAX_LUMINANCE,
-      Math.round(PHOTO_SHAPE_NEUTRAL_LUMINANCE+(value-mean)*safeGain),
-    ),
+    Math.min(PHOTO_SHAPE_MAX_LUMINANCE,normalized),
   );
 }
