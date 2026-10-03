@@ -94,12 +94,16 @@ test("photo compositor restores colour-neutral photographic micro-relief",()=>{
 });
 
 
-test("instant photo compositor preserves selected fabric colour while borrowing studio depth",()=>{
+test("instant photo compositor normalizes source albedo before borrowing studio depth",()=>{
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
-  assert.match(source,/globalCompositeOperation = "luminosity"/);
-  assert.match(source,/globalAlpha = \.82/);
-  assert.match(source,/globalCompositeOperation = "multiply"[\s\S]*globalAlpha = \.16/);
-  assert.match(source,/selected swatch hue\/saturation dominant/);
+  assert.match(source,/photographicShapeMaps = new WeakMap/);
+  assert.match(source,/function photographicShapeMap\(photo: HTMLImageElement, sourceBrightness: number\)/);
+  assert.match(source,/grayscale\(1\) blur\(7px\)/);
+  assert.match(source,/128 \+ \(corrected - 128\) \* \.58/);
+  assert.match(source,/globalCompositeOperation = "soft-light"[\s\S]*globalAlpha = \.58[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
+  assert.match(source,/globalCompositeOperation = "multiply"[\s\S]*globalAlpha = \.07[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
+  assert.match(source,/selected Linen Earth cloth/);
+  assert.doesNotMatch(source,/context\.globalAlpha = \.82/);
 
   const css=readFileSync("src/app/designer-studio/designer-light.css","utf8");
   assert.match(css,/\.newDesignerPhotoStage\{[^}]*background:#0a1726/);
