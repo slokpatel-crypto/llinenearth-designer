@@ -223,15 +223,18 @@ async function creativeFabricContext(shirtImage:string,pantImage:string) {
     const placeholder=await sharp({
       create:{width:500,height:620,channels:3,background:{r:218,g:212,b:202}},
     }).jpeg().toBuffer();
-    const left=await sharp(shirt?.bytes || placeholder).resize(500,620,{fit:"cover"}).jpeg({quality:90}).toBuffer();
-    const right=await sharp(pant?.bytes || placeholder).resize(500,620,{fit:"cover"}).jpeg({quality:90}).toBuffer();
+    // Resize each swatch losslessly before composing them. The final WebP uses
+    // near-lossless encoding so fine linen slub, stripes and checks are not
+    // blurred by two JPEG generations before FASHN receives the cloth context.
+    const left=await sharp(shirt?.bytes || placeholder).resize(500,620,{fit:"cover"}).png().toBuffer();
+    const right=await sharp(pant?.bytes || placeholder).resize(500,620,{fit:"cover"}).png().toBuffer();
     const joined=await sharp({
       create:{width:1000,height:620,channels:3,background:{r:235,g:231,b:224}},
     }).composite([
       {input:left,left:0,top:0},
       {input:right,left:500,top:0},
-    ]).jpeg({quality:90}).toBuffer();
-    return `data:image/jpeg;base64,${joined.toString("base64")}`;
+    ]).webp({quality:96,nearLossless:true,smartSubsample:true}).toBuffer();
+    return `data:image/webp;base64,${joined.toString("base64")}`;
   } catch {
     return undefined;
   }
@@ -297,12 +300,13 @@ async function validatedLockedPreviewSource(input:SelectedLookFashnRequest) {
       return {source:fallback,usedLockedPreview:false};
     }
 
-    // Strip browser/file metadata and normalize encoding before sending the
-    // source to the external renderer. Only the canonical 1024×1536 live-preview
-    // coordinate system is accepted.
+    // Strip browser/file metadata while preserving fine weave and directional
+    // pattern detail. FASHN accepts WebP inputs, so avoid an extra JPEG
+    // generation between the deterministic customer preview and final render.
+    // Only the canonical 1024×1536 live-preview coordinate system is accepted.
     const sanitized=await sharp(bytes,{limitInputPixels:1024*1536*2})
       .removeAlpha()
-      .jpeg({quality:92,chromaSubsampling:"4:4:4"})
+      .webp({quality:96,nearLossless:true,smartSubsample:true})
       .toBuffer();
 
     const [preview,reference]=await Promise.all([
@@ -315,7 +319,7 @@ async function validatedLockedPreviewSource(input:SelectedLookFashnRequest) {
     if(average>.16 || maximum>.28) return {source:fallback,usedLockedPreview:false};
 
     return {
-      source:`data:image/jpeg;base64,${sanitized.toString("base64")}`,
+      source:`data:image/webp;base64,${sanitized.toString("base64")}`,
       usedLockedPreview:true,
     };
   } catch {
