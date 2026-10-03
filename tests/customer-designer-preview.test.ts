@@ -35,6 +35,21 @@ test("photographic garment clips feather only inside the real cloth boundary",()
 });
 
 
+test("tucked directional fabric follows photographed panel grain",()=>{
+  const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+  const grain=readFileSync("src/lib/designer/photo-panel-grain.ts","utf8");
+  assert.match(source,/PHOTO_TUCKED_PANEL_GRAIN_ROTATION/);
+  assert.match(source,/rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION\.leftSleeve/);
+  assert.match(source,/rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION\.rightSleeve/);
+  assert.match(source,/rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION\.leftTrouser/);
+  assert.match(source,/rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION\.rightTrouser/);
+  assert.match(source,/rotationDeg:PHOTO_TUCKED_PANEL_GRAIN_ROTATION\.collar/);
+  assert.match(grain,/visual geometry from[\s\S]*not a claim about physical cloth measurements/);
+  assert.match(grain,/leftSleeve:photoPanelRotationFromVertical/);
+  assert.match(grain,/rightSleeve:photoPanelRotationFromVertical/);
+});
+
+
 test("photo compositor removes source-template detail brightness calibration",()=>{
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   const geometry=readFileSync("src/lib/designer/photo-preview.ts","utf8");
