@@ -91,7 +91,6 @@ test("photo compositor restores colour-neutral photographic micro-relief",()=>{
   assert.match(source,/const relief = photographicReliefMap\(photo\)/);
   assert.match(source,/globalCompositeOperation = "soft-light"[\s\S]*globalAlpha = \.36[\s\S]*drawImage\(relief, 0, 0, WIDTH, HEIGHT\)/);
   assert.match(source,/globalCompositeOperation = "overlay"[\s\S]*globalAlpha = \.08[\s\S]*drawImage\(relief, 0, 0, WIDTH, HEIGHT\)/);
-  assert.match(source,/drawImage\(photographicReliefMap\(photo\), 0, 0, WIDTH, HEIGHT\)/);
 });
 
 
