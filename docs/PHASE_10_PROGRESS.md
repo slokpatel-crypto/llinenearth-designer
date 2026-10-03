@@ -116,10 +116,11 @@ The main CI now runs:
 5. deterministic Designer top-three regression
 6. release-readiness checks
 7. production Next.js build
+8. Chromium preview lifecycle regressions and responsive Designer checks at 390/768/1440px, with screenshot/report artifacts
 
-Latest verified run passed all stages.
+Browser verification mocks provider and automated-QA responses while rendering real local photographs and fabrics through Canvas. It gates code correctness without consuming paid render credits or recording owner/device acceptance.
 
-On 3 October, the async preview lifecycle change also passed 346 unit tests, a clean TypeScript check, rule/snapshot/performance evaluations, static quality/release gates and the production build. Separate actual React DOM regressions (mocked drawing/network, zero paid calls) covered delayed generation/QA/repair/view responses, revisiting a previous fabric, duplicate clicks and unmount. Browser screenshots and physical-device acceptance remain unverified in this session because the execution environment denied browser socket startup; those results do not satisfy the owner/device evidence gate.
+On 3 October, the async preview lifecycle change passed 346 unit tests, a clean TypeScript check, rule/snapshot/performance evaluations, static quality/release gates and the production build. Separate actual React DOM regressions (mocked drawing/network, zero paid calls) covered delayed generation/QA/repair/view responses, revisiting a previous fabric, duplicate clicks and unmount. The local execution environment denied browser socket startup, so Chromium checks and screenshots run in CI against the production build instead. Viewport emulation, synthetic QA approvals and unverified studio calibration do not satisfy the owner/physical-device evidence gate.
 
 ## Still owner/physical-evidence dependent
 
