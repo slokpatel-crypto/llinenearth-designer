@@ -117,6 +117,12 @@ async function apiContracts(){
   fs.mkdirSync(output,{recursive:true});await apiContracts();browser=await chromium.launch({headless:true});
   for(const width of [390,768,1440]){
     const {page,context}=await freshPage(width),pixels=await mainPixels(page);
+    const heroLayout=await page.evaluate(()=>{
+      const heading=document.querySelector(".newDesignerHero h1"),art=document.querySelector(".newDesignerHeroArt"),hero=document.querySelector(".newDesignerHero");
+      const range=document.createRange();range.selectNodeContents(heading);const text=range.getBoundingClientRect(),image=art.getBoundingClientRect(),bounds=hero.getBoundingClientRect();
+      return {textContained:text.left>=bounds.left-1&&text.right<=bounds.right+1,textClearOfImage:text.right<=image.left+1||text.bottom<=image.top+1||text.top>=image.bottom-1};
+    });
+    assert.ok(heroLayout.textContained&&heroLayout.textClearOfImage,"Designer heading must remain fully visible beside or above the hero image");
     const first=await start(page,"Critique my current outfit",true);const initial=await answer(page,first);
     await page.screenshot({path:path.join(output,"critique-"+width+".png"),fullPage:true});
     assert.equal(await mainPixels(page),pixels,"Advice must not alter the chosen outfit before Apply");assert.ok(initial.advice.findings.length>0);
@@ -145,12 +151,14 @@ async function apiContracts(){
     assert.equal(namedMemory.collar,"Mandarin / Band Collar");assert.equal(namedMemory.placket,"Hidden / Fly-front");assert.equal(namedMemory.button,"Horn");
     const beforeCapsule=await mainPixels(page),wardrobe=await answer(page,await start(page,"Create a capsule for office, dinner and weekend"));
     assert.deepEqual(wardrobe.results.map(r=>r.occasion),["Semi-Formal","Smart-Casual","Casual"]);assert.equal(await mainPixels(page),beforeCapsule);
-    assert.equal(await panel(page).locator(".designerOptionOccasion").count(),3);await page.screenshot({path:path.join(output,"capsule-"+width+".png"),fullPage:true});
+    assert.equal(await panel(page).locator(".designerOptionOccasion").count(),3);
+    if(width<=720){const cards=await panel(page).locator(".newDesignerBriefResults").evaluate(list=>({width:list.clientWidth,scrollWidth:list.scrollWidth,contained:[...list.children].every(card=>card.getBoundingClientRect().left>=list.getBoundingClientRect().left-1&&card.getBoundingClientRect().right<=list.getBoundingClientRect().right+1)}));assert.ok(cards.contained&&cards.scrollWidth<=cards.width+1,"Every mobile direction and judgement control must fit without horizontal scrolling");}
+    await page.screenshot({path:path.join(output,"capsule-"+width+".png"),fullPage:true});
     const capsuleAssessmentIndex=await count(page,"assessment");await panel(page).getByRole("button",{name:"Apply direction",exact:true}).nth(1).click();await settle(page);
     const capsuleApplied=(await request(page,"assessment",capsuleAssessmentIndex)).body;assert.equal(capsuleApplied.occasion,"Smart-Casual");assert.deepEqual(capsuleApplied.styleSpec,wardrobe.results[1].styleSpec);await complete(page,"assessment",capsuleAssessmentIndex,assessmentFixture(capsuleApplied));
     assert.equal((await memory(page)).filter(e=>e.type==="designer_recommendation").at(-1).payload.occasion,"Smart-Casual");
     const metrics=await page.evaluate(()=>({width:innerWidth,documentWidth:document.documentElement.scrollWidth}));assert.ok(metrics.documentWidth<=width+2);
-    await page.screenshot({path:path.join(output,"applied-"+width+".png"),fullPage:true});summary.viewports.push({...metrics,critiqueJudgementRevisionApply:"passed",sameFrameDispatch:"passed",exactCanonicalConstruction:"passed",namedConstructionRevisionApply:"passed",capsuleOwnOccasionApply:"passed"});await context.close();console.log("PASS designer judgement flow at "+width+"px");
+    await page.screenshot({path:path.join(output,"applied-"+width+".png"),fullPage:true});summary.viewports.push({...metrics,heroTextVisibility:"passed",mobileDirectionLayout:"passed",critiqueJudgementRevisionApply:"passed",sameFrameDispatch:"passed",exactCanonicalConstruction:"passed",namedConstructionRevisionApply:"passed",capsuleOwnOccasionApply:"passed"});await context.close();console.log("PASS designer judgement flow at "+width+"px");
   }
   await regression("stale-question-after-new-text",async page=>{const old=await start(page);const fresh=await start(page,"Compare point vs spread collar");await answer(page,old);assert.equal(await panel(page).locator(".designerAdvice").count(),0);assert.equal((await request(page,"question",old)).aborted,true);await answer(page,fresh);assert.match(await panel(page).locator(".designerAdvice>span").textContent(),/COMPARE/);});
   await regression("stale-question-after-construction-change",async page=>{const old=await start(page);await page.getByLabel("Shirt fit",{exact:true}).selectOption("Relaxed Fit");await answer(page,old);assert.equal(await panel(page).locator(".designerAdvice").count(),0);assert.equal((await memory(page)).filter(e=>e.type==="designer_override").length,0);});
