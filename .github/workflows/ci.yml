@@ -51,12 +51,12 @@ jobs:
             sleep 1
           done
           node scripts/verify-premium-atelier.cjs
+          node scripts/verify-designer-advisor.cjs
           node scripts/verify-photo-form.cjs
           node scripts/verify-photo-craft.cjs
           node scripts/verify-creative-workflow.cjs
           node scripts/verify-preview-lifecycle.cjs
           node scripts/verify-style-director-lifecycle.cjs
-          node scripts/verify-designer-advisor.cjs
       - name: Save browser verification evidence
         if: always()
         uses: actions/upload-artifact@v4

@@ -20,6 +20,7 @@ import "./contact-dock.css";
 import "./finish-polish.css";
 import "./premium-atelier.css";
 import "./brand-motion.css";
+import "./premium-controls.css";
 import { BrandIntro } from "@/components/BrandIntro";
 import { BRAND_LOGO_SRC, BRAND_LOGO_SIZE } from "@/lib/brand-logo-data";
 

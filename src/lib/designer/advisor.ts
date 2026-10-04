@@ -9,6 +9,7 @@ import { designerFeedbackNeedsInstruction, isDesignerFeedbackReason, type Design
 import { legacyOptionByLabel, optionsFor } from "./options/library.ts";
 import { compileDesignerIntent, completeDesignConstruction, designGoalPatch, scopeStyleLocks, DESIGN_GOALS } from "./design-intent.ts";
 import { photoPreviewSupportForChoice } from "./photo-preview-support.ts";
+import { buildDesignerClarification, type DesignerClarification } from "./clarification.ts";
 
 export type DesignerTask="design"|"capsule"|"critique"|"compare"|"refine"|"fit"|"construction"|"material"|"production"|"clarify";
 export type DesignerJudgement={recommendationId:string;rating:"up"|"down";reason?:DesignerFeedbackReason;note:string};
@@ -22,6 +23,7 @@ export type DesignerAdvice={
   preserved:string[];
   revision:string|null;
   designPlan?:{scope:string;goals:string[];constraints:string[];notes:string[]};
+  clarification?:DesignerClarification;
 };
 export type DesignerAdviceOption={
   id:string;rank:number;title:string;tier:DesignerSearchTier;
@@ -135,6 +137,7 @@ export function answerDesignerQuestion(input:DesignerSearchInput & {brief:string
     findings:[],nextSteps:[],preserved:[...(restrictions.keepShirt?[input.currentShirt.name+" shirt fabric"]:[]),...(restrictions.keepPant?[input.currentPant.name+" trouser fabric"]:[])],
     revision:input.judgement?.rating==="down" ? `Revising your judged direction for ${input.judgement.reason?.replace(/_/g," ") || input.judgement.note}. Your explicit instructions take priority.` : null,
     designPlan:{scope:intent.scope,goals:intent.goals.map(goal=>DESIGN_GOALS[goal].label),constraints:[...Object.entries(intent.roles).map(([role,brief])=>`${role}: ${[...brief.wantedTokens,...brief.avoidTokens.map(token=>"avoid "+token),brief.pattern,brief.material,brief.gsm?"recorded GSM "+(brief.gsm.min ?? "any")+"–"+(brief.gsm.max ?? "any"):"",brief.lea?brief.lea+" Lea catalogue label":""].filter(Boolean).join(", ")}`),...Object.entries(explicit).map(([key,value])=>`${key}: ${value}`)],notes:intent.notes},
+    ...(task==="clarify" ? {clarification:buildDesignerClarification(text,[...constructionIntent.issues,...intent.issues],input.chosenStyle)} : {}),
   };
   const addFinding=(kind:"strength"|"risk"|"missing",message:string)=>{
     if(message && !advice.findings.some((item)=>item.text===message)) advice.findings.push({kind,text:message});

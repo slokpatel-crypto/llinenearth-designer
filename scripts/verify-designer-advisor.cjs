@@ -108,6 +108,9 @@ async function apiContracts(){
   const weight=await post("missing numeric fabric evidence",{...base,brief:"Design an outfit with a linen shirt under 180 gsm"});assert.deepEqual(weight.results,[]);assert.ok(weight.advice.findings.some(f=>/recorded GSM/.test(f.text)));
   const clash=await post("explicit construction incompatibility",{...base,brief:"Design a formal look with a camp collar and French cuffs"});assert.deepEqual(clash.results,[]);assert.ok(clash.advice.findings.some(f=>/French cuff/.test(f.text)));
   const unknown=await post("unmapped reference clarification",{...base,brief:"Design a British collar shirt"});assert.equal(unknown.advice.task,"clarify");assert.deepEqual(unknown.results,[]);
+  assert.equal(unknown.advice.clarification.choices.length,2);
+  const clarified=await post("explicit supported clarification follow-up",{...base,brief:unknown.advice.clarification.choices[0].brief});assert.equal(clarified.advice.task,"compare");assert.equal(clarified.results.length,2);
+  for(const option of clarified.results){assert.equal(option.shirt.id,base.currentShirtId);assert.equal(option.pant.id,base.currentPantId);}
   const learned=await post("construction-level personal preference",{...base,brief:"Design a business outfit",tasteProfile:{version:1,evidence:4,preferredConstruction:{collar:"Mandarin / Band Collar",shirtFit:"Relaxed Fit",button:"Horn"}}});assert.ok(learned.results.length);for(const r of learned.results){assert.equal(r.style.collar,"Mandarin / Band Collar");assert.equal(r.style.shirtFit,"Relaxed Fit");assert.equal(r.style.button,"Horn");}
   const overridden=await post("instructions precede learned construction",{...base,brief:"Design a business outfit with a point collar and mother-of-pearl buttons",tasteProfile:{version:1,evidence:4,preferredConstruction:{collar:"Mandarin / Band Collar",button:"Horn"}}});assert.ok(overridden.results.length);for(const r of overridden.results){assert.equal(r.style.collar,"Point (Standard) Collar");assert.equal(r.style.button,"Mother-of-Pearl");}
   const invalidTaste=await post("unsupported preference discarded",{...base,brief:"Design a business outfit",tasteProfile:{version:1,evidence:100,preferredConstruction:{collar:"Invented collar"}}});assert.ok(invalidTaste.results.length);for(const r of invalidTaste.results)assert.notEqual(r.style.collar,"Invented collar");
@@ -130,6 +133,22 @@ async function apiContracts(){
       return {textContained:text.left>=bounds.left-1&&text.right<=bounds.right+1,textClearOfImage:text.right<=image.left+1||text.bottom<=image.top+1||text.top>=image.bottom-1};
     });
     assert.ok(heroLayout.textContained&&heroLayout.textClearOfImage,"Designer heading must remain fully visible beside or above the hero image");
+    const originalQuestion="Design a British collar shirt",clarifiedInitial=await answer(page,await start(page,originalQuestion));
+    assert.equal(clarifiedInitial.advice.task,"clarify");assert.deepEqual(clarifiedInitial.results,[]);
+    await panel(page).getByLabel("Designer clarification choices").screenshot({path:path.join(output,"clarification-"+width+".png")});
+    const clarificationCount=await count(page,"question"),clarificationAssessments=await count(page,"assessment"),clarificationVotes=(await memory(page)).filter(e=>e.type==="designer_feedback").length;
+    await panel(page).getByRole("button",{name:"Point vs spread",exact:true}).press("Enter");await settle(page);
+    assert.equal(await question(page).inputValue(),clarifiedInitial.advice.clarification.choices[0].brief);assert.equal(await question(page).evaluate(n=>n===document.activeElement),true);
+    assert.equal(await count(page,"question"),clarificationCount,"choosing a question must not submit it");assert.equal(await count(page,"assessment"),clarificationAssessments);assert.equal(await mainPixels(page),pixels);
+    assert.equal((await memory(page)).filter(e=>e.type==="designer_feedback").length,clarificationVotes,"a clarification is not a human design judgement");
+    await panel(page).getByLabel("Clarification follow-up draft").screenshot({path:path.join(output,"clarification-draft-"+width+".png")});
+    const cancelledClarification=await start(page,await question(page).inputValue());
+    await panel(page).getByRole("button",{name:"Restore original question",exact:true}).click();await settle(page);
+    assert.equal(await question(page).inputValue(),originalQuestion);assert.equal((await request(page,"question",cancelledClarification)).aborted,true);
+    await answer(page,cancelledClarification);assert.equal(await panel(page).locator(".designerAdvice").count(),0,"restoring the question discards a late follow-up response");
+    await answer(page,await start(page,originalQuestion));await panel(page).getByRole("button",{name:"Point vs spread",exact:true}).click();await settle(page);
+    const clarifiedReply=await answer(page,await start(page,await question(page).inputValue()));assert.equal(clarifiedReply.advice.task,"compare");assert.equal(clarifiedReply.results.length,2);assert.equal(await mainPixels(page),pixels);
+    assert.equal(await panel(page).getByLabel("Clarification follow-up draft").count(),0);
     const first=await start(page,"Critique my current outfit",true);const initial=await answer(page,first);
     await page.screenshot({path:path.join(output,"critique-"+width+".png"),fullPage:true});
     assert.equal(await mainPixels(page),pixels,"Advice must not alter the chosen outfit before Apply");assert.ok(initial.advice.findings.length>0);
@@ -216,6 +235,24 @@ async function apiContracts(){
     await answer(page,await start(page,"Create a capsule for office, dinner and weekend"));await panel(page).getByRole("button",{name:"Develop this direction",exact:true}).nth(2).click();
     const index=await start(page,"Design a business outfit"),body=(await request(page,"question",index)).body;assert.equal(body.occasion,"Casual");assert.equal(body.tasteProfile.preferredConstruction.button,"Mother-of-Pearl");
     await panel(page).locator(".designerTaste>summary").click();assert.match(await panel(page).locator(".designerTaste").textContent(),/For semi-formal looks/);const reply=await answer(page,index);assert.equal(reply.interpretation.occasion,"Semi-Formal");assert.ok(reply.results.length);for(const result of reply.results)assert.equal(result.style.button,"Mother-of-Pearl");
+  });
+  await regression("clarification-preserves-request-context-and-restores-proposal",async page=>{
+    await answer(page,await start(page,"Create a capsule for office, dinner and weekend"));
+    await panel(page).getByRole("button",{name:"Develop this direction",exact:true}).nth(2).click();await settle(page);
+    const beforeVotes=(await memory(page)).filter(e=>e.type==="designer_feedback").length;
+    const original="Design a British collar shirt for a business meeting",clarify=await answer(page,await start(page,original));
+    assert.equal(clarify.interpretation.occasion,"Semi-Formal");
+    await panel(page).getByRole("button",{name:"Point vs spread",exact:true}).click();await settle(page);
+    const pending=await start(page,await question(page).inputValue()),body=(await request(page,"question",pending)).body;
+    assert.equal(body.occasion,clarify.interpretation.occasion);assert.deepEqual(body.context,clarify.interpretation.context);assert.equal(body.judgement,undefined);
+    await panel(page).getByRole("button",{name:"Restore original question",exact:true}).click();await settle(page);
+    assert.match(await panel(page).getByLabel("Designer starting point").textContent(),/Weekend direction.*Casual/);
+    assert.equal(await question(page).inputValue(),original);assert.equal((await request(page,"question",pending)).aborted,true);
+    await answer(page,pending);assert.equal(await panel(page).locator(".designerAdvice").count(),0);
+    await answer(page,await start(page,original));await panel(page).getByRole("button",{name:"Point vs spread",exact:true}).click();await settle(page);
+    const fit=page.getByLabel("Shirt fit",{exact:true});await fit.selectOption(await fit.inputValue()==="Relaxed Fit"?"Regular / Classic Fit":"Relaxed Fit");await settle(page);
+    assert.equal(await panel(page).getByLabel("Clarification follow-up draft").count(),0);assert.equal(await panel(page).getByLabel("Designer starting point").count(),0);
+    assert.equal((await memory(page)).filter(e=>e.type==="designer_feedback").length,beforeVotes);
   });
   assert.deepEqual(summary.errors,[]);assert.equal(summary.regressions.filter(r=>r.status==="failed").length,0,"Designer advisor regressions failed");
 })().catch(async error=>{summary.failure=error.stack;console.error(error);process.exitCode=1;if(activePage&&!activePage.isClosed())await activePage.screenshot({path:path.join(output,"flow-failure.png"),fullPage:true}).catch(()=>{});}).finally(async()=>{fs.mkdirSync(output,{recursive:true});fs.writeFileSync(path.join(output,"summary.json"),JSON.stringify(summary,null,2));if(browser)await browser.close();});

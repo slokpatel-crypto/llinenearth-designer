@@ -1,0 +1,46 @@
+/* A compass, cloth and woven seal; finite motion belongs to the controls. */
+.premiumAtelier :is(.gatewayHeroActions .atelierControl, .newDesignerBriefHead > .atelierControl) { display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px; min-height: 50px; }
+.atelierControl { position: relative; isolation: isolate; gap: 9px; }
+.atelierButtonEmblem { position: relative; z-index: 1; display: grid; place-items: center; flex: 0 0 26px; width: 26px; height: 26px; border: 1px solid #b3976a66; border-radius: 50%; background: #b3976a0d; }
+.atelierButtonEmblem svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 1.25; stroke-linecap: round; stroke-linejoin: round; }
+.atelierButtonText { position: relative; z-index: 1; flex: 1; }
+.atelierButtonText::after { content: ""; position: absolute; left: 0; right: 0; bottom: -4px; height: 1px; background: currentColor; opacity: .45; transform: scaleX(0); transform-origin: left; transition: transform .35s var(--atelier-ease); }
+.atelierButtonArrow { position: relative; z-index: 1; display: grid; place-items: center; flex: 0 0 26px; width: 26px; height: 26px; border: 1px solid #b3976a55; border-radius: 50%; background: #ffffff0a; font-size: 15px; font-weight: 400; transition: transform .35s var(--atelier-ease), border-color .25s ease; }
+.premiumAtelier .atelierControl::before { content: ""; position: absolute; inset: 4px; pointer-events: none; border: 1px solid #b3976a99; border-radius: inherit; opacity: 0; transition: opacity .2s ease; }
+.premiumAtelier .atelierControl::after { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: linear-gradient(110deg, transparent 20%, #d8b98235 45%, #ffffff24 52%, transparent 78%); transform: translateX(-135%); transition: none; }
+.premiumAtelier .atelierControl:focus-visible::before { opacity: 1; }
+.premiumAtelier .atelierControl:focus-visible::after { animation: atelierControlSweep .8s var(--atelier-ease) both; }
+.premiumAtelier .atelierControl:focus-visible .atelierButtonText::after { transform: scaleX(1); }
+.premiumAtelier .atelierControl:active:not(:disabled):not([aria-disabled="true"]) { box-shadow: inset 0 2px 8px #132f4325; }
+.premiumAtelier .atelierControl:active:not(:disabled):not([aria-disabled="true"])::before { opacity: 1; }
+.premiumAtelier .brandSignatureReplay.atelierControl { min-height: 44px; padding: 7px 10px; border: 1px solid #dcd7cb; border-radius: 999px; background: #fffdf9; color: #435a62; overflow: hidden; }
+.premiumAtelier .brandSignatureReplay.atelierControl span { font-size: inherit; transform: none; transition: none; }
+.premiumAtelier .brandSignatureReplay.atelierControl .atelierButtonArrow { font-size: 17px; transition: transform .35s var(--atelier-ease); }
+.premiumAtelier .brandSignatureReplay .atelierButtonEmblem { flex-basis: 22px; width: 22px; height: 22px; }
+.premiumAtelier .brandSignatureReplay .atelierButtonEmblem svg { width: 15px; height: 15px; }
+@media (hover: hover) and (pointer: fine) {
+  .premiumAtelier .atelierControl:not(:disabled):not([aria-disabled="true"]):hover::before { opacity: 1; }
+  .premiumAtelier .atelierControl:not(:disabled):not([aria-disabled="true"]):hover::after { animation: atelierControlSweep .8s var(--atelier-ease) both; }
+  .premiumAtelier .atelierControl:not(:disabled):not([aria-disabled="true"]):hover .atelierButtonText::after { transform: scaleX(1); }
+  .premiumAtelier .atelierControl:not(:disabled):not([aria-disabled="true"]):hover .atelierButtonArrow { transform: translate(1px, -1px) rotate(-8deg); border-color: #b3976a; }
+  .premiumAtelier .brandSignatureReplay.atelierControl:hover .atelierButtonArrow { transform: rotate(-30deg); }
+}
+.premiumAtelier .atelierControl:is(:disabled, [aria-disabled="true"])::before,
+.premiumAtelier .atelierControl:is(:disabled, [aria-disabled="true"])::after { opacity: 0; animation: none; }
+@keyframes atelierControlSweep { from { transform: translateX(-135%); } to { transform: translateX(135%); } }
+@media (max-width: 760px) { .premiumAtelier .gatewayHeroActions .atelierControl { min-height: 52px; } }
+@media (prefers-reduced-motion: reduce) {
+  .premiumAtelier .atelierControl,
+  .premiumAtelier .atelierControl :is(.atelierButtonText, .atelierButtonArrow),
+  .premiumAtelier .atelierControl::before,
+  .premiumAtelier .atelierButtonText::after { transition: none!important; }
+  .premiumAtelier .atelierControl::after { display: none!important; animation: none!important; }
+  .premiumAtelier .atelierControl:is(:hover, :active),
+  .premiumAtelier .atelierControl:is(:hover, :focus-visible) .atelierButtonArrow { transform: none!important; }
+}
+@media (forced-colors: active) { .atelierButtonEmblem, .atelierButtonArrow { border-color: ButtonText; } .premiumAtelier .atelierControl::after { display: none; } }
+.designerClarification, .designerClarificationDraft { margin-block: 12px; padding: 12px; border: 1px solid #d8cebb; border-radius: 10px; background: #fffdf9; }
+.designerClarification > p, .designerClarificationDraft > p { margin: 0 0 10px; font-size: 12px; line-height: 1.6; }
+.designerClarification > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.designerClarification button, .designerClarificationDraft button { min-height: 44px; border: 1px solid #b9a68a; border-radius: 999px; padding: 9px 13px; background: #fffdf9; color: #132f43; font-size: 11px; cursor: pointer; }
+.designerClarificationDraft details { margin-block: 8px; font-size: 11px; overflow-wrap: anywhere; }
