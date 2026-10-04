@@ -38,6 +38,7 @@ jobs:
       - name: Verify preview lifecycle, responsive Designer and Style Director
         env:
           LINEN_BROWSER_QA_RUNTIME: /tmp/linen-browser-qa
+          LINEN_OPERATOR_SESSION_SECRET: creative-browser-qa-session-${{ github.run_id }}
         run: |
           mkdir -p artifacts/preview-lifecycle
           npm run start > artifacts/preview-lifecycle/server.log 2>&1 &
@@ -47,6 +48,8 @@ jobs:
             if curl --fail --silent http://127.0.0.1:3000/designer-studio > /dev/null; then break; fi
             sleep 1
           done
+          node scripts/verify-creative-workflow.cjs
+          node scripts/verify-premium-atelier.cjs
           node scripts/verify-preview-lifecycle.cjs
           node scripts/verify-style-director-lifecycle.cjs
           node scripts/verify-designer-advisor.cjs

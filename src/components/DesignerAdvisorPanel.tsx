@@ -15,7 +15,7 @@ import { designerDirectionBasis, designerQuestionBasis, designerQuestionPreferen
 
 export type DesignerBriefInterpretation={brief:string;occasion:OccasionTier;context:DesignerContext;notes:string[]};
 type AdviceResponse={requestId:string;interpretation:DesignerBriefInterpretation;results:DesignerAdviceOption[];advice:DesignerAdvice};
-type Props={shirt:DesignerFabric;pant:DesignerFabric;style:DesignerStyle;occasion:OccasionTier;context:DesignerContext;measurements:MeasurementProfile|null;observations:TailorObservationProfile|null;sessionId:()=>string;onApply:(option:DesignerAdviceOption,interpretation:DesignerBriefInterpretation)=>void};
+type Props={onCreativeBrief?:(brief:string)=>void;shirt:DesignerFabric;pant:DesignerFabric;style:DesignerStyle;occasion:OccasionTier;context:DesignerContext;measurements:MeasurementProfile|null;observations:TailorObservationProfile|null;sessionId:()=>string;onApply:(option:DesignerAdviceOption,interpretation:DesignerBriefInterpretation)=>void};
 
 export default function DesignerAdvisorPanel(props:Props) {
   const [question,setQuestion]=useState("");
@@ -65,6 +65,7 @@ export default function DesignerAdvisorPanel(props:Props) {
 
   async function askDesigner(judgement?:DesignerJudgement,option?:DesignerAdviceOption) {
     if(question.trim().length<5) return;
+    if(!judgement&&props.onCreativeBrief&&/embroid|thread|motif|contrast panel|fabric combination/i.test(question)){props.onCreativeBrief(question);return;}
     const request=scope.begin();if(!request) return;
     const priorRevision=revision;
     setLoading(true);setError("");
@@ -115,6 +116,7 @@ export default function DesignerAdvisorPanel(props:Props) {
       <small>Preferences are remembered in this browser. They guide your suggestions and do not train a global model.</small>
     </details>
     {error && <p className="newDesignerSearchError" role="alert">{error}</p>}
+    {props.onCreativeBrief && /embroid|thread|motif|contrast panel|fabric combination/i.test(question) && <button type="button" onClick={()=>props.onCreativeBrief?.(question)}>Develop craft details in Creative Lab</button>}
     {answer && <>
       <div className="designerAdvice" aria-live="polite" aria-busy={loading}>
         <span>{answer.advice.task.toUpperCase()}{revision>0?` · REVISION ${revision}`:""}</span>

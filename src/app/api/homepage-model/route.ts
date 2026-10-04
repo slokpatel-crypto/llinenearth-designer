@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const OFFICIAL_FASHN_OUTPUT = /^https:\/\/(cdn|media)\.fashn\.ai\//i;
-const FALLBACK = "/editorial/suit.webp";
+const FALLBACK = "/designer/studio-tucked.webp";
 
 const HERO_PROMPT = [
   "Photorealistic full-body luxury menswear editorial photograph.",

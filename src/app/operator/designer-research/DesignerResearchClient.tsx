@@ -6,6 +6,7 @@ import type { CreativeResearchLibrary, CreativeResearchSignal } from "@/lib/desi
 import type { FashionResearchSource, FashionResearchTopic } from "@/lib/designer/fashion-research-source-pool";
 
 type Payload={
+  schedule?:{configured:boolean;cronConfigured:boolean;enabled:boolean;maxSources:number;paidModelCalls:number;runs:Array<{status:string;receivedAt:string;runKey:string;candidates?:number}>};
   configured:boolean;
   library:CreativeResearchLibrary;
   pool:{websites:number;topics:number;targets:number;highAuthorityWebsites:number};
@@ -27,6 +28,7 @@ const PATTERN_FAMILIES=["none","stripe","geometric","border","tonal","placement"
 const SCALES=["micro","fine","medium"] as const;
 
 type Draft={
+  provenance?:CreativeResearchSignal["provenance"];
   researchId:string; title:string; sourceUrl:string; sourceType:typeof SOURCE_TYPES[number];
   principle:string; transformedIdea:string; zone:typeof ZONES[number]; secondaryZone:string;
   treatmentLabel:string; treatmentInstruction:string; visualPurpose:string; intensity:number;
@@ -55,6 +57,7 @@ function sourceRole(source:FashionResearchSource):Draft["sourceType"] {
 
 function toDraft(signal:CreativeResearchSignal):Draft {
   return {
+    provenance:signal.provenance,
     researchId:signal.id,title:signal.title,sourceUrl:signal.sourceUrl,sourceType:signal.sourceType,
     principle:signal.principle,transformedIdea:signal.transformedIdea,zone:signal.zone,
     secondaryZone:signal.secondaryZone || "",treatmentLabel:signal.treatmentLabel,
@@ -70,6 +73,7 @@ export default function DesignerResearchClient(){
   const [data,setData]=useState<Payload|null>(null);
   const [draft,setDraft]=useState<Draft>(emptyDraft);
   const [saving,setSaving]=useState(false);
+  const [refreshing,setRefreshing]=useState(false);
   const [message,setMessage]=useState("");
   const [sourceSearch,setSourceSearch]=useState("");
   const [discoveredSources,setDiscoveredSources]=useState<FashionResearchSource[]>([]);
@@ -233,6 +237,24 @@ export default function DesignerResearchClient(){
     }finally{setAnalyzing(false);}
   }
 
+  async function refreshResearch(action:"refresh"|"settings",enabled?:boolean){
+    if(refreshing)return;setRefreshing(true);setMessage("");
+    const previousEnabled=data?.schedule?.enabled||false;
+    if(action==="settings"&&typeof enabled==="boolean")setData(current=>current?.schedule?{...current,schedule:{...current.schedule,enabled}}:current);
+    let committed=false;
+    try{
+      const response=await fetch("/api/operator/designer-research/refresh",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action,enabled})});
+      const result=await response.json() as {status?:string;candidates?:number;error?:string};
+      if(!response.ok)throw Error(result.error||"Research refresh failed");
+      committed=true;
+      setMessage(action==="settings"?"Research schedule updated. Activation requires a deployed cron and its secret.":`${result.status}: ${result.candidates||0} new candidates pending review. No paid model calls.`);
+      await load();
+    }catch(e){
+      if(action==="settings"&&!committed)setData(current=>current?.schedule?{...current,schedule:{...current.schedule,enabled:previousEnabled}}:current);
+      setMessage(e instanceof Error?e.message:"Research refresh failed");
+    }finally{setRefreshing(false);}
+  }
+
   async function save(){
     if(!data?.configured) {setMessage("Cloud memory must be configured before research signals can be activated.");return;}
     if(!draft.title.trim()||!draft.sourceUrl.trim()||!draft.principle.trim()||!draft.transformedIdea.trim()||!draft.treatmentLabel.trim()||!draft.treatmentInstruction.trim()||!draft.visualPurpose.trim()){
@@ -302,7 +324,7 @@ export default function DesignerResearchClient(){
           <label className="wide"><span>What did the source actually teach?</span><textarea value={draft.principle} onChange={(e)=>setDraft({...draft,principle:e.target.value})} placeholder="State the source principle without copying a finished garment." /></label>
           <label className="wide"><span>How should Linen Earth transform it?</span><textarea value={draft.transformedIdea} onChange={(e)=>setDraft({...draft,transformedIdea:e.target.value})} placeholder="Turn the principle into a new design direction rather than a copy." /></label>
           <label><span>Design move name</span><input value={draft.treatmentLabel} onChange={(e)=>setDraft({...draft,treatmentLabel:e.target.value})} placeholder="e.g. Graduated cuff frame" /></label>
-          <label className="wide"><span>Design instruction</span><textarea value={draft.treatmentInstruction} onChange={(e)=>setDraft({...draft,treatmentInstruction:e.target.value})} placeholder="Specific geometry, placement or proportion instruction." /></label>
+          <label className="wide"><span>Design instruction</span><textarea aria-label="Design instruction" value={draft.treatmentInstruction} onChange={(e)=>setDraft({...draft,treatmentInstruction:e.target.value})} placeholder="Specific geometry, placement or proportion instruction." /></label>
           <label className="wide"><span>Visual purpose</span><textarea value={draft.visualPurpose} onChange={(e)=>setDraft({...draft,visualPurpose:e.target.value})} placeholder="Why this move helps the look." /></label>
 
           <label><span>Visual intensity · {draft.intensity}</span><input type="range" min="1" max="100" value={draft.intensity} onChange={(e)=>setDraft({...draft,intensity:Number(e.target.value)})} /></label>
@@ -330,10 +352,17 @@ export default function DesignerResearchClient(){
           </button>)}</div>
         </section>}
 
+        <section className="researchLibrary" aria-label="Scheduled designer research">
+          <div><span>REGULAR WEB COLLECTION / HUMAN REVIEW</span><strong>{data.schedule?.enabled?"Enabled":"Paused"} · maximum two sources per day · zero paid model calls</strong></div>
+          <p>{data.schedule?.cronConfigured?"Cron secret configured. The daily job runs after this build is deployed.":"Daily activation needs CRON_SECRET on the deployment. Manual collection is available now."} Collection creates inactive keyword hypotheses with source hashes and fetch dates. Read the linked source and improve each hypothesis before activation.</p>
+          <button type="button" disabled={refreshing||!data.configured} onClick={()=>void refreshResearch("refresh")}>{refreshing?"Collecting…":"Collect today's sources"}</button>
+          <label><input type="checkbox" disabled={refreshing||!data.configured} checked={data.schedule?.enabled||false} onChange={e=>void refreshResearch("settings",e.target.checked)}/> Enable daily collection</label>
+          {data.schedule?.runs.slice(0,4).map(r=><p key={`${r.runKey}-${r.status}`}>{r.receivedAt} · {r.status} · {r.candidates||0} candidates</p>)}
+        </section>
         <section className="researchLibrary">
           <div><span>CURATED LIBRARY</span><strong>{data.library.total} signals · {data.library.active} active</strong></div>
           {data.library.signals.length===0 ? <p>No operator-curated signals yet. Built-in V5 research still runs.</p> : data.library.signals.map((signal)=><button type="button" key={signal.id} onClick={()=>setDraft(toDraft(signal))}>
-            <span>{signal.active?"ACTIVE":"PAUSED"} · {signal.sourceType.toUpperCase()}</span><strong>{signal.title}</strong><p>{signal.principle}</p><small>{signal.zone} · {signal.patternFamily}</small>
+            <span>{signal.active?"ACTIVE":"PAUSED"} · {signal.sourceType.toUpperCase()}</span><strong>{signal.title}</strong><p>{signal.principle}</p><small>{signal.zone} · {signal.patternFamily}{signal.provenance?` · fetched ${signal.provenance.fetchedAt} · ${signal.provenance.contentHash.slice(0,12)} · human review`:""}</small>
           </button>)}
         </section>
       </section>

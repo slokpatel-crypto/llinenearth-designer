@@ -82,7 +82,7 @@ async function resolvePublicAddress(url:URL):Promise<PublicAddress> {
   return {address:selected.address,family:selected.family as 4|6};
 }
 
-function pinnedPageRequest(url:URL,target:PublicAddress) {
+function pinnedPageRequest(url:URL,target:PublicAddress,timeout=9000) {
   return new Promise<{status:number;headers:Record<string,string|string[]|undefined>;body:string}>((resolve,reject)=>{
     const secure=url.protocol==="https:";
     const request=secure?httpsRequest:httpRequest;
@@ -103,7 +103,7 @@ function pinnedPageRequest(url:URL,target:PublicAddress) {
         "user-agent":"LinenEarthDesignerResearch/1.0",
         connection:"close",
       },
-      timeout:9_000,
+      timeout,
     },(response)=>{
       const chunks:Buffer[]=[];
       let bytes=0;
@@ -124,11 +124,14 @@ function pinnedPageRequest(url:URL,target:PublicAddress) {
   });
 }
 
-async function fetchPublicHtml(input:string) {
+async function fetchPublicHtml(input:string,budgetMs=36000) {
+  const deadline=Date.now()+budgetMs;
   let url=safePublicUrl(input);
   for(let hop=0;hop<4;hop+=1) {
     const target=await resolvePublicAddress(url);
-    const response=await pinnedPageRequest(url,target);
+    const remaining=deadline-Date.now();
+    if(remaining<=0)throw new Error("Research source fetch budget exceeded.");
+    const response=await pinnedPageRequest(url,target,Math.min(9000,remaining));
     if([301,302,303,307,308].includes(response.status)) {
       const rawLocation=response.headers.location;
       const location=Array.isArray(rawLocation)?rawLocation[0]:rawLocation;
@@ -298,4 +301,11 @@ export async function analyzeFashionResearchBatch(
     });
   }
   return output;
+}
+
+/** Safe text-only collection; no Gateway token or model call. */
+export async function collectFashionResearchPage(url:string){
+  const page=await fetchPublicHtml(url,22000),text=readablePageText(page.html);
+  if(text.length<120)throw new Error("Source has too little readable text; review it manually.");
+  return {url:page.url,text};
 }

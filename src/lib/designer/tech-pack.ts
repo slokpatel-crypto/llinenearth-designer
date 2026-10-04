@@ -114,6 +114,7 @@ footer{margin-top:14px;padding-top:10px;border-top:1px solid #cfd3d6;color:#6872
   </article>
 </section>
 
+${handoff.construction.creative?`<section class="card" style="margin-bottom:12px"><h2>Creative recipe / sample review</h2><p>${esc(handoff.construction.creative.name)} · ${esc(handoff.construction.creative.thesis)}</p><ul>${list(handoff.construction.creative.treatments.map(t=>`${t.zone}: ${t.instruction}`))}</ul>${handoff.construction.creative.craft?`<p>Craft version: ${esc(handoff.construction.creative.craft.version)} · Proposed sample dimensions</p><ul>${list(handoff.construction.creative.craft.panels.map(p=>`${p.zone}: ${p.fabric.name} (${p.fabric.id}); provenance: ${p.fabric.source}`))}</ul><pre>${esc(JSON.stringify(handoff.construction.creative.craft.decoration,null,2))}</pre>`:""}</section>`:""}
 <section class="card" style="margin-bottom:12px">
   <h2>Shirt finished-garment targets</h2>
   <table class="measure"><thead><tr><th>Target</th><th>Body</th><th>Finished range</th><th>Basis</th></tr></thead><tbody>${measurementRows(shirt.finishedTargets)}</tbody></table>

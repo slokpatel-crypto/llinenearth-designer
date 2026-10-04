@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import CreativeStudioPanel from "@/components/CreativeStudioPanel";
+import { DEFAULT_CRAFT_REQUEST, type CreativeCraftRequest } from "@/lib/designer/creative-spec";
 import DesignerAdvisorPanel from "@/components/DesignerAdvisorPanel";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
@@ -146,6 +148,10 @@ export function DesignerModule() {
   const [vaultMessage,setVaultMessage]=useState("");
   const [vaultRecoveryToken,setVaultRecoveryToken]=useState("");
   const [creativeDirections, setCreativeDirections] = useState<CreativeDirection[]>([]);
+  const [craftRequest,setCraftRequest]=useState<CreativeCraftRequest>({...DEFAULT_CRAFT_REQUEST});
+  const creativeRequestRef=useRef<{controller:AbortController;stamp:number}|null>(null);
+  const creativeGenerationStamp=useRef(0);
+  const pendingCraftBrief=useRef(false);
   const [activeCreative, setActiveCreative] = useState<CreativeDirection | null>(null);
   const [creativeAutoNote,setCreativeAutoNote]=useState("");
   const [creativeAutoRetryCount,setCreativeAutoRetryCount]=useState(0);
@@ -161,6 +167,8 @@ export function DesignerModule() {
   const styleIdentity=(value:DesignerStyle)=>(Object.keys(DESIGNER_STYLE_CHOICES) as Array<keyof DesignerStyle>).map((key)=>value[key]);
   const assessmentIdentity=JSON.stringify([shirtId,pantId,occasion,styleIdentity(style),climate,intention,measurementProfile,tailorObservations,bodyProfile]);
   const committedAssessmentIdentity=useRef(assessmentIdentity);
+  const committedCreativeId=useRef(activeCreative?.id||null);
+  useLayoutEffect(()=>{committedCreativeId.current=activeCreative?.id||null;},[activeCreative?.id]);
   useLayoutEffect(()=>{committedAssessmentIdentity.current=assessmentIdentity;},[assessmentIdentity]);
   const visibleShirts=useMemo(()=>shirtFilter==="All" ? shirtOptions : shirtOptions.filter((item)=>shirtFilterFor(item)===shirtFilter),[shirtFilter,shirtOptions]);
   const visiblePants=useMemo(()=>pantFilter==="All" ? pantOptions : pantOptions.filter((item)=>pantFilterFor(item)===pantFilter),[pantFilter,pantOptions]);
@@ -541,9 +549,10 @@ export function DesignerModule() {
     }
   }
 
-  async function requestCreativeDirections(limit:number,current?:CreativeDirection,reason?:CreativeFeedbackReason) {
-    if(!shirt || !pant) return {concepts:[] as CreativeDirection[],redesign:null as CreativeDirection|null};
+  async function requestCreativeDirections(limit:number,current?:CreativeDirection,reason?:CreativeFeedbackReason,signal?:AbortSignal) {
+    if(!shirt || !pant) return {concepts:[] as CreativeDirection[],redesign:null as CreativeDirection|null,clarifications:[] as string[]};
     const response=await fetch("/api/designer/creative-generate",{
+      signal:signal||AbortSignal.timeout(25000),
       method:"POST",
       headers:{"content-type":"application/json"},
       body:JSON.stringify({
@@ -554,30 +563,40 @@ export function DesignerModule() {
         style,
         context:{climate,intention},
         limit,
+        craft:craftRequest,
         ...(current?{current}:{}),
         ...(reason?{reason}:{}),
       }),
     });
-    const data=await response.json() as {concepts?:CreativeDirection[];redesign?:CreativeDirection|null;error?:string};
+    const data=await response.json() as {concepts?:CreativeDirection[];redesign?:CreativeDirection|null;clarifications?:string[];error?:string};
     if(!response.ok) throw new Error(data.error || "Creative Designer could not generate directions.");
-    return {concepts:Array.isArray(data.concepts)?data.concepts:[],redesign:data.redesign || null};
+    return {concepts:Array.isArray(data.concepts)?data.concepts:[],redesign:data.redesign || null,clarifications:data.clarifications||[]};
   }
 
+  useLayoutEffect(()=>{
+    creativeGenerationStamp.current++;
+    creativeRequestRef.current?.controller.abort();
+    creativeRequestRef.current=null;
+    setCreativeGenerating(false);
+    return ()=>{creativeRequestRef.current?.controller.abort();};
+  },[shirtId,pantId,occasion,style,climate,intention,craftRequest]);
+
+  useEffect(()=>{if(pendingCraftBrief.current){pendingCraftBrief.current=false;void runCreativeLab();}},[craftRequest]);
+
   async function runCreativeLab() {
-    if (!shirt || !pant || creativeGenerating) return;
-    setCreativeAutoRetryCount(0);
-    setCreativeVisualReview(null);
-    setCreativeAutoNote("");
-    setCreativeGenerating(true);
+    if (!shirt || !pant || creativeRequestRef.current) return;
+    const controller=new AbortController(),stamp=++creativeGenerationStamp.current;
+    creativeRequestRef.current={controller,stamp};
+    setCreativeAutoNote("");setCreativeGenerating(true);
     try {
-      const {concepts}=await requestCreativeDirections(5);
+      const {concepts,clarifications}=await requestCreativeDirections(5,undefined,undefined,controller.signal);
+      if(stamp!==creativeGenerationStamp.current)return;
       setCreativeDirections(concepts);
-      setActiveCreative(null);
-      if(!concepts.length) setCreativeAutoNote("No creative direction cleared the current fabric and occasion checks.");
+      if(!concepts.length)setCreativeAutoNote(clarifications.join(" ")||"No direction cleared the current fabric and occasion checks.");
     } catch(error) {
-      setCreativeAutoNote(error instanceof Error ? error.message : "Creative Designer could not generate directions.");
+      if(stamp===creativeGenerationStamp.current)setCreativeAutoNote(error instanceof Error ? error.message : "Creative Designer could not generate directions.");
     } finally {
-      setCreativeGenerating(false);
+      if(stamp===creativeGenerationStamp.current){creativeRequestRef.current=null;setCreativeGenerating(false);}
     }
   }
 
@@ -637,7 +656,9 @@ export function DesignerModule() {
       let candidates:CreativeDirection[]=[];
       let redesign:CreativeDirection|null=null;
       try {
+        const expectedCreativeId=activeCreative.id,expectedIdentity=committedAssessmentIdentity.current;
         const generated=await requestCreativeDirections(12,activeCreative,creativeReason);
+        if(committedCreativeId.current!==expectedCreativeId||committedAssessmentIdentity.current!==expectedIdentity)return;
         candidates=generated.concepts;
         redesign=generated.redesign;
       } catch(error) {
@@ -660,6 +681,7 @@ export function DesignerModule() {
   }
 
   function useCreativeDirection(direction:CreativeDirection,origin:"manual"|"automatic"="manual") {
+    const expectedIdentity=JSON.stringify([direction.recommendation.shirt.id,direction.recommendation.pant.id,direction.recommendation.occasion,styleIdentity(direction.baseStyle),climate,intention,measurementProfile,tailorObservations,bodyProfile]);
     setCreativeVisualReview(null);
     if(origin==="manual") {
       setCreativeAutoRetryCount(0);
@@ -681,10 +703,12 @@ export function DesignerModule() {
       pantId:direction.recommendation.pant.id,
       occasion:direction.recommendation.occasion,
       style:direction.baseStyle,
+      styleSpec:fromLegacyStyle(direction.baseStyle),
       context:{climate,intention},
       creative:direction,
       visualReview:null,
     }).then((next)=>{
+      if(committedAssessmentIdentity.current!==expectedIdentity||committedCreativeId.current!==direction.id)return;
       applyServerAssessment(next);
       try {
         const event=recordStyleMemoryEvent(designerSession(),"designer_recommendation",{
@@ -721,7 +745,7 @@ export function DesignerModule() {
         });
         setRecommendationId(event.id);
       } catch { /* Creative concept remains usable if memory storage is unavailable. */ }
-    }).catch((error)=>setAssessmentError(error instanceof Error?error.message:"Designer assessment is unavailable."));
+    }).catch((error)=>{if(committedAssessmentIdentity.current===expectedIdentity&&committedCreativeId.current===direction.id)setAssessmentError(error instanceof Error?error.message:"Designer assessment is unavailable.");});
   }
 
   function useSearchResult(result:DesignerSearchOption,source?:{occasion?:OccasionTier;context?:DesignerContext;name?:string}) {
@@ -898,14 +922,6 @@ export function DesignerModule() {
     setFeedbackReason(null);
   }
 
-  function creativeStatus(direction:CreativeDirection) {
-    const aesthetic=direction.critics.find((item)=>item.id==="aesthetic")?.score || 0;
-    const originality=direction.critics.find((item)=>item.id==="originality")?.score || 0;
-    if(direction.explorationClass==="frontier") return "Frontier";
-    if(aesthetic>=82 && originality>=78) return "Strong";
-    if(originality>=84) return "Fresh";
-    return "Explore";
-  }
 
   function creativeQuickTags(direction:CreativeDirection) {
     const tags:string[]=[];
@@ -1076,7 +1092,7 @@ export function DesignerModule() {
     <div className="newDesignerBody">
       <section className="newDesignerSelections" aria-labelledby="designerChoose">
         {directorHandoff && <div className="newDesignerHandoff"><span>STYLE DIRECTOR HANDOFF</span><strong>{directorHandoffTitle || "Your complete outfit direction is loaded."}</strong><p>{shirt?.name} shirt + {pant?.name} trousers · {style.shirtWear} · {style.trouser}. You can refine any detail below without rebuilding the look.</p>{directorHandoffAuditStatus==="verified"&&<small>VERIFIED HANDOFF · audit {directorHandoffAuditId}</small>}{directorHandoffAuditStatus==="unavailable"&&<small>Handoff matched, but cloud audit is unavailable.</small>}{directorHandoffAuditStatus==="mismatch"&&<small>Handoff verification could not be established.</small>}</div>}
-        {shirt && pant && <DesignerAdvisorPanel key={advisorEpoch} shirt={shirt} pant={pant} style={style} occasion={occasion} context={{climate,intention}} measurements={measurementProfile} observations={tailorObservations} sessionId={designerSession} onApply={(result,interpretation)=>useSearchResult(result,{occasion:interpretation.occasion,context:interpretation.context,name:"one_line_designer_brief"})} />}
+        {shirt && pant && <DesignerAdvisorPanel key={advisorEpoch} shirt={shirt} pant={pant} style={style} occasion={occasion} context={{climate,intention}} measurements={measurementProfile} observations={tailorObservations} sessionId={designerSession} onCreativeBrief={(brief)=>{pendingCraftBrief.current=true;setCraftRequest(current=>({...current,brief:brief.slice(0,900)}));document.getElementById("designerCreativeLab")?.scrollIntoView({behavior:"smooth",block:"start"});}} onApply={(result,interpretation)=>useSearchResult(result,{occasion:interpretation.occasion,context:interpretation.context,name:"one_line_designer_brief"})} />}
 
         <div className="newDesignerSectionHead"><span>01 / CLOTH</span><h2 id="designerChoose">Choose your fabrics.</h2></div>
         <div className="newDesignerFabricGrid">
@@ -1198,45 +1214,7 @@ export function DesignerModule() {
           </div>
         </details>
 
-        <section id="designerCreativeLab" className="newDesignerCreative newDesignerVisualLab" aria-label="Creative Designer Lab V5">
-          <div className="newDesignerSimpleHead">
-            <div>
-              <span>03 / CREATE</span>
-              <strong>Imagine new designs.</strong>
-              <small>Fashion research runs quietly in the background.</small>
-            </div>
-            <button type="button" onClick={()=>void runCreativeLab()} disabled={!shirt || !pant || creativeGenerating}>{creativeGenerating?"Creating…":"Create ideas ✦"}</button>
-          </div>
-          {creativeAutoNote && <div className="newDesignerAutoRevision"><span>V5 REDESIGN</span><strong>{creativeAutoNote}</strong></div>}
-          {creativeDirections.length===0 && <div className="newDesignerCreativeEmpty">
-            <div className="newDesignerSpark">✦</div>
-            <strong>Ready to explore</strong>
-            <span>V5 searches widely, then shows only its strongest ideas.</span>
-          </div>}
-          {creativeDirections.length>0 && <div className="newDesignerCreativeResults newDesignerVisualResults">
-            {creativeDirections.slice(0,5).map((direction)=><article key={direction.id} data-active={activeCreative?.id===direction.id}>
-              <button className="newDesignerCreativeVisual" type="button" onClick={()=>useCreativeDirection(direction)} data-pattern={direction.pattern?.family || "detail"} aria-label={`Preview ${direction.name}`}>
-                <img src={shirt?.image} alt="" loading="lazy" decoding="async" />
-                <span className="newDesignerCreativeVisualOverlay" />
-                <b>{creativeStatus(direction)}</b>
-              </button>
-              <div className="newDesignerCreativeCardCopy">
-                <span>{direction.explorationClass==="frontier" ? "FRONTIER IDEA" : direction.pattern ? "PATTERN + DETAIL" : "DETAIL + PROPORTION"}</span>
-                <h3>{direction.name}</h3>
-                <div className="newDesignerCreativeTagRow">{creativeQuickTags(direction).map((tag)=><b key={tag}>{tag}</b>)}</div>
-              </div>
-              <button className="newDesignerCreativeUse" type="button" onClick={()=>{setCreativeAutoNote("");useCreativeDirection(direction);}}>{activeCreative?.id===direction.id?"Selected":"Try this"}</button>
-              <details className="newDesignerTechnicalDrawer">
-                <summary>Design reasoning</summary>
-                <p>{direction.thesis}</p>
-                <div className="newDesignerMiniScores">
-                  <span>Visual balance checked</span><span>Originality checked</span><span>Construction checked</span>
-                </div>
-                {direction.research.slice(0,2).map((item)=><p key={item.id}><b>{item.sourceTitle}:</b> {item.transformedInto}</p>)}
-              </details>
-            </article>)}
-          </div>}
-        </section>
+        <CreativeStudioPanel request={craftRequest} onRequest={setCraftRequest} directions={creativeDirections} onDirections={setCreativeDirections} onGenerate={()=>void runCreativeLab()} onApply={useCreativeDirection} activeId={activeCreative?.id} busy={creativeGenerating} note={creativeAutoNote} shirt={shirt} pant={pant} fabrics={[...new Map([...shirtOptions,...pantOptions].map(f=>[f.id,f])).values()]} />
 
         <div className="newDesignerStyleBlock newDesignerSimplePanel">
           <div className="newDesignerSimpleHead">

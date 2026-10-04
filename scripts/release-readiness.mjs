@@ -660,7 +660,7 @@ requireTokens("src/app/api/designer/look-download/route.ts", ["OFFICIAL_FASHN_OU
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["/api/designer/look-download","activeImage","encodeURIComponent(activeImage)"]);
 requireTokens("src/components/DesignerModule.tsx", [
   "OPTIONAL","Try a different fabric pairing","Show 3 options","Keep shirt","Keep trouser","Change both","Use look","newDesignerOptionalSearch","/api/designer/search","Finding…",
-  "03 / CREATE","Create ideas ✦","newDesignerCreativeVisual","Design reasoning","FRONTIER IDEA",
+  "CreativeStudioPanel","craftRequest",
   "/api/designer/creative-generate","requestCreativeDirections(12","creativeAutoNote","onCreativeInspection"
 ]);
 requireTokens("src/lib/designer/creative-engine.ts", [
@@ -842,7 +842,7 @@ requireTokens("src/app/api/homepage-model/route.ts", [
   "model-create",
   "status",
   "X-Linen-Render",
-  "/editorial/suit.webp",
+  "/designer/studio-tucked.webp",
 ]);
 requireTokens("desktop/src-tauri/tauri.conf.json", ["\"version\": \"1.0.0\"", "\"productName\": \"Linen Earth OS\""]);
 requireTokens("desktop/package.json", ["\"version\": \"1.0.0\""]);
@@ -951,6 +951,12 @@ if (live) {
 } else {
   warn("Live FASHN + Supabase checks are skipped. Run npm run release:check:live with RELEASE_URL and production env vars before launch.");
 }
+
+
+requireTokens("src/components/CreativeStudioPanel.tsx",["03 / CREATE","Create ideas ✦","creativePlacementSvg","PLACEMENT ILLUSTRATION · SCALE PROPOSED","Reasoning and sample checks","Reset creative learning"]);
+requireTokens("src/app/api/designer/creative-profile/route.ts",["getCustomerIdentity","body.owner!==identity.id","resetAt","context.preferences.enabled"]);
+requireTokens("src/lib/designer/research-refresh-server.ts",["claim.duplicate","paidModelCalls:0","contentHash:hash","pending_review"]);
+requireTokens("src/app/api/cron/designer-research/route.ts",["CRON_SECRET","timingSafeEqual"]);
 
 if (failed) {
   console.error("\nLinen Earth release is NOT ready.");

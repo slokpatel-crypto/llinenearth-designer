@@ -3,6 +3,7 @@ import type { CreativePattern, CreativeTreatment, CreativeZone } from "@/lib/des
 export type CreativeResearchPatternFamily = CreativePattern["family"] | "none";
 
 export type CreativeResearchSignal = {
+  provenance?:{contentHash:string;fetchedAt:string;method:"keyword_hypothesis";reviewRequired:boolean};
   id:string;
   title:string;
   sourceUrl:string;
@@ -70,6 +71,7 @@ export function aggregateCreativeResearch(events:EventLike[]):CreativeResearchLi
     if(!id || !title || !principle || !transformedIdea || !ZONEs(zone) || !treatmentLabel || !treatmentInstruction || !visualPurpose) continue;
     latest.set(id,{
       id,title,
+      ...(p.provenance&&typeof p.provenance==="object"?{provenance:p.provenance as CreativeResearchSignal["provenance"]}:{}),
       sourceUrl:text(p.sourceUrl,500),
       sourceType:SOURCES.has(sourceType)?sourceType:"operator",
       principle,transformedIdea,zone,

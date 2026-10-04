@@ -18,6 +18,7 @@ import "./light-theme.css";
 import "./outfit-studio.css";
 import "./contact-dock.css";
 import "./finish-polish.css";
+import "./premium-atelier.css";
 import { BrandIntro } from "@/components/BrandIntro";
 import { BRAND_LOGO_SRC, BRAND_LOGO_SIZE } from "@/lib/brand-logo-data";
 

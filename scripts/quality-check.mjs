@@ -1270,7 +1270,7 @@ const sourceRows = (researchPool.match(/\{id:"[^"]+",name:/g) || []).length;
 const topicRows = (researchPool.match(/\{id:"[^"]+",query:/g) || []).length;
 if (sourceRows * topicRows < 1000) throw new Error(`Designer V5 research pool regression: expected >=1000 source-topic targets, found ${sourceRows * topicRows}`);
 const creativeUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
-for (const token of ["03 / CREATE","Imagine new designs","Create ideas ✦","newDesignerCreativeVisual","newDesignerMiniScores","Fashion research runs quietly in the background.","FRONTIER IDEA","Design reasoning","/api/designer/creative-generate","requestCreativeDirections(12","creativeAutoNote","render_mismatch","onCreativeInspection","severeHeuristicFailure","reliableReview","executionFailure","repairing the same design once","creativeAutoRetryCount>=2"]) {
+for (const token of ["CreativeStudioPanel","craftRequest","/api/designer/creative-generate","requestCreativeDirections(12","creativeAutoNote","render_mismatch","onCreativeInspection","severeHeuristicFailure","reliableReview","executionFailure","repairing the same design once","creativeAutoRetryCount>=2"]) {
   if (!creativeUi.includes(token)) throw new Error(`Designer V5 creative UI regression: missing ${token}`);
 }
 const creativePreview = fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
@@ -1292,7 +1292,7 @@ if (realDesignerModule.includes("generateCreativeDirections({") || realDesignerM
   throw new Error("Designer V5 architecture regression: creative intelligence returned to the customer UI bundle.");
 }
 const creativeContextLoader=fs.readFileSync("src/lib/designer/creative-context.ts","utf8");
-for(const token of ["server-only","aggregateCreativeLearning","aggregateCreativeResearch","source:\"eq.operator\"","source:\"eq.style-director\"","loadDesignerCreativeContext"]) {
+for(const token of ["server-only","aggregateCreativeLearning","aggregateCreativeResearch","source:\"eq.operator\"","order:\"received_at.desc,id.desc\"","learning:aggregateCreativeLearning([])","loadDesignerCreativeContext"]) {
   if(!creativeContextLoader.includes(token)) throw new Error(`Designer creative-context regression: missing ${token}`);
 }
 const creativeRenderRoute = fs.readFileSync("src/app/api/designer/creative-render/route.ts","utf8");
@@ -1492,3 +1492,14 @@ for(const token of ["evidence sprint puts real physical and customer gates first
   if(!evidenceSprintTest.includes(token)) throw new Error(`Evidence Sprint test regression: missing ${token}`);
 }
 console.log("Evidence Sprint gate passed: remaining real-world gates are sequenced without manufacturing evidence.");
+
+const craftPanel=fs.readFileSync("src/components/CreativeStudioPanel.tsx","utf8"), craftSpec=fs.readFileSync("src/lib/designer/creative-spec.ts","utf8"), personalApi=fs.readFileSync("src/app/api/designer/creative-profile/route.ts","utf8");
+for(const token of ["03 / CREATE","Create ideas ✦","PLACEMENT ILLUSTRATION · SCALE PROPOSED","creativePlacementSvg","Try this","Improve this","Reset creative learning","personal.owner","/api/designer/creative-profile"])if(!craftPanel.includes(token))throw Error("Creative workflow UI regression: "+token);
+for(const token of ["linen-earth-creative-craft-v1","proposed_sample_dimensions","validCreativeCraft","resolveCraftFabrics","reviseCreativeCraft"])if(!craftSpec.includes(token))throw Error("Creative contract regression: "+token);
+for(const token of ["getCustomerIdentity","body.owner!==identity.id","context.preferences.enabled","private, no-store","resetAt"])if(!personalApi.includes(token))throw Error("Personal creative ownership regression: "+token);
+if(creativeContextLoader.includes('source:"eq.style-director"'))throw Error("Creative learning must not pool customer reviews.");
+const refreshServer=fs.readFileSync("src/lib/designer/research-refresh-server.ts","utf8"),cronRoute=fs.readFileSync("src/app/api/cron/designer-research/route.ts","utf8");
+for(const token of ["claim.duplicate","paidModelCalls:0","researchRefreshSources","collectFashionResearchPage","contentHash:hash","pending_review"])if(!refreshServer.includes(token))throw Error("Bounded research regression: "+token);
+if(refreshServer.includes("analyzeFashionResearchSource"))throw Error("Scheduled research must not silently spend model credits.");
+for(const token of ["CRON_SECRET","timingSafeEqual"])if(!cronRoute.includes(token))throw Error("Cron authorization regression: "+token);
+console.log("Creative workflow gate passed: versioned craft, personal ownership, reset, bounded free research and explicit sample gates.");

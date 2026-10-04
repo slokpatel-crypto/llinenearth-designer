@@ -61,6 +61,7 @@ export type CreativeResearchTrace = {
 };
 
 export type CreativeDirection = {
+  craft?:import("@/lib/designer/creative-spec").CreativeCraftSpec;
   id:string;
   name:string;
   thesis:string;

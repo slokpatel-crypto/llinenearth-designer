@@ -6,5 +6,11 @@
       "main": true
     }
   },
-  "ignoreCommand": "node scripts/vercel-ignore.mjs"
+  "ignoreCommand": "node scripts/vercel-ignore.mjs",
+  "crons": [
+    {
+      "path": "/api/cron/designer-research",
+      "schedule": "0 3 * * *"
+    }
+  ]
 }
