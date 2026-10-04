@@ -14,6 +14,13 @@ test("neutral warm-trouser folds do not retain the template cloth inside the tra
   }
 });
 
+test("overlapping waist geometry cannot paint shirt cloth onto trousers or the reverse",()=>{
+  assert.equal(opacity("pant",65,77,85,255,255),0);
+  assert.equal(opacity("shirt",130,118,109,255,255),0);
+  assert.equal(opacity("pant",130,118,109,255,255),1);
+  assert.equal(opacity("shirt",65,77,85,255,255),1);
+});
+
 test("geometry and source brightness still protect skin, shoes and studio",()=>{
   for(const region of ["shirt","pant"] as const) {
     assert.equal(opacity(region,40,60,65,0,255),0);
@@ -29,6 +36,12 @@ test("the uncertain edge retains the existing photographic colour segmentation",
   assert.equal(opacity("pant",150,150,150,255,200),0);
   assert.ok(opacity("shirt",60,70,75,128,200)>0);
   assert.ok(opacity("shirt",60,70,75,128,200)<1);
+});
+
+test("known source cloth at the waistband gets full coverage without a source-colour fringe",()=>{
+  assert.equal(opacity("shirt",70,72,73,255,180),1);
+  assert.equal(opacity("pant",140,136,134,255,180),1);
+  assert.equal(opacity("shirt",70,72,73,128,180),128/255);
 });
 
 test("interior recovery is smooth, bounded and rejects invalid evidence",()=>{

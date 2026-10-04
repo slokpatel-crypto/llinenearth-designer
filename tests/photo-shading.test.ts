@@ -4,6 +4,7 @@ import {
   PHOTO_SHAPE_NEUTRAL_LUMINANCE,
   neutralizePhotographicLuminance,
   weightedGarmentLuminanceMean,
+  maskedPhotographicLuminance,
 } from "../src/lib/designer/photo-shading.ts";
 
 function rgba(values:number[],alphas:number[]=values.map(()=>255)) {
@@ -11,6 +12,22 @@ function rgba(values:number[],alphas:number[]=values.map(()=>255)) {
   values.forEach((value,index)=>out.push(value,value,value,alphas[index]??255));
   return new Uint8ClampedArray(out);
 }
+
+test("garment-local blur padding rejects bright skin and floor without weakening cloth",()=>{
+  assert.equal(maskedPhotographicLuminance(250,80,0),80);
+  assert.equal(maskedPhotographicLuminance(25,80,0),80);
+  assert.equal(maskedPhotographicLuminance(25,80,255),25);
+  assert.equal(maskedPhotographicLuminance(80,80,128),80);
+  assert.equal(maskedPhotographicLuminance(250,80,128),165);
+});
+
+test("local lighting padding stays finite and bounded for invalid or extreme pixels",()=>{
+  assert.equal(maskedPhotographicLuminance(Number.NaN,80,255),80);
+  assert.equal(maskedPhotographicLuminance(250,80,Number.NaN),80);
+  assert.equal(maskedPhotographicLuminance(250,Number.NaN,0),128);
+  assert.equal(maskedPhotographicLuminance(999,-10,999),255);
+  assert.equal(maskedPhotographicLuminance(-10,999,-10),255);
+});
 
 test("garment luminance mean ignores transparent pixels outside the cloth mask",()=>{
   const source=rgba([20,80,100,240]);

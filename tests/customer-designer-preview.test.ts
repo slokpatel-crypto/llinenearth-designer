@@ -75,10 +75,10 @@ test("untucked photographic shirt projects fabric per torso sleeve and collar pa
   assert.match(geometry,/const SHIRT_MASK = `\$\{PHOTO_UNTUCKED_SHIRT_BODY_CLIP\}/);
   assert.match(source,/PHOTO_UNTUCKED_SHIRT_GRAIN_ROTATION/);
   assert.match(source,/PHOTO_UNTUCKED_SHIRT_PATTERN_ANCHOR/);
-  assert.match(source,/drawGarment\(context, modelPhoto, shirtImage, shirt, PHOTO_UNTUCKED_SHIRT_BODY_CLIP/);
-  assert.match(source,/drawGarment\(context, modelPhoto, shirtImage, shirt, PHOTO_UNTUCKED_LEFT_SLEEVE_CLIP/);
-  assert.match(source,/drawGarment\(context, modelPhoto, shirtImage, shirt, PHOTO_UNTUCKED_RIGHT_SLEEVE_CLIP/);
-  assert.match(source,/drawGarment\(context, modelPhoto, shirtImage, shirt, PHOTO_UNTUCKED_COLLAR_CLIP/);
+  assert.match(source,/drawGarment\(atlas, modelPhoto, shirtImage, shirt, PHOTO_UNTUCKED_SHIRT_BODY_CLIP/);
+  assert.match(source,/drawGarment\(atlas, modelPhoto, shirtImage, shirt, PHOTO_UNTUCKED_LEFT_SLEEVE_CLIP/);
+  assert.match(source,/drawGarment\(atlas, modelPhoto, shirtImage, shirt, PHOTO_UNTUCKED_RIGHT_SLEEVE_CLIP/);
+  assert.match(source,/drawGarment\(atlas, modelPhoto, shirtImage, shirt, PHOTO_UNTUCKED_COLLAR_CLIP/);
   assert.match(source,/directional[\s\S]*each traced arm instead of staying globally vertical/);
 });
 
@@ -152,16 +152,16 @@ test("photo compositor restores garment-local colour-neutral photographic relief
   assert.match(source,/function photographicReliefMap\(photo: HTMLImageElement, garmentMask\?: HTMLCanvasElement\)/);
   assert.match(source,/preventing neck\/skin\/background values[\s\S]*false edge halos inside the cloth/);
   assert.match(source,/const garmentMean = weightedGarmentLuminanceMean\(original\.data, maskPixels\.data\)/);
-  assert.match(source,/original\.data\[index\] \* weight \+ garmentMean \* \(1 - weight\)/);
+  assert.match(source,/maskedPhotographicLuminance\(original\.data\[index\],garmentMean,maskPixels\.data\[index\+3\]\)/);
   assert.match(source,/blurContext\.drawImage\(source, 0, 0, reliefWidth, reliefHeight\)/);
   assert.match(source,/broadContext\.drawImage\(source, 0, 0, reliefWidth, reliefHeight\)/);
   assert.match(source,/const microDetail = localSource\.data\[index\] - soft\.data\[index\]/);
   assert.match(source,/const foldDetail = soft\.data\[index\] - broadPixels\.data\[index\]/);
-  assert.match(source,/128 \+ microDetail \* 1\.55 \+ foldDetail \* \.85/);
+  assert.match(source,/128 \+ microDetail \* 1\.8 \+ foldDetail \* 1\.15/);
   assert.match(source,/const relief = photographicReliefMap\(photo, lightingMask\)/);
   assert.match(source,/const relief = photographicReliefMap\(photo, detailMask\)/);
-  assert.match(source,/globalCompositeOperation = "soft-light"[\s\S]*globalAlpha = \.36[\s\S]*drawImage\(relief, 0, 0, WIDTH, HEIGHT\)/);
-  assert.match(source,/globalCompositeOperation = "overlay"[\s\S]*globalAlpha = \.08[\s\S]*drawImage\(relief, 0, 0, WIDTH, HEIGHT\)/);
+  assert.match(source,/globalCompositeOperation = "soft-light"[\s\S]*globalAlpha = \.7[\s\S]*drawImage\(relief, 0, 0, WIDTH, HEIGHT\)/);
+  assert.match(source,/globalCompositeOperation = "overlay"[\s\S]*globalAlpha = \.14[\s\S]*drawImage\(relief, 0, 0, WIDTH, HEIGHT\)/);
 });
 
 
@@ -169,11 +169,11 @@ test("instant photo compositor normalizes source albedo before borrowing studio 
   const source=readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
   assert.match(source,/photographicShapeMaps = new WeakMap/);
   assert.match(source,/function photographicShapeMap\(photo: HTMLImageElement, garmentMask\?: HTMLCanvasElement\)/);
-  assert.match(source,/grayscale\(1\) blur\(7px\)/);
-  assert.match(source,/weightedGarmentLuminanceMean\(input\.data, maskPixels\.data\)/);
+  assert.match(source,/blur\(5px\)/);
+  assert.match(source,/weightedGarmentLuminanceMean\(original\.data, maskPixels\.data\)/);
   assert.match(source,/neutralizePhotographicLuminance\(input\.data\[index\], garmentMean\)/);
   assert.match(source,/const lightingMask = photoLightingMask\(mask,path,Boolean\(placement\.maskPrepared\)\)/);
-  assert.match(source,/globalCompositeOperation = "soft-light"[\s\S]*globalAlpha = \.58[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
+  assert.match(source,/globalCompositeOperation = "soft-light"[\s\S]*globalAlpha = \.9[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
   assert.match(source,/globalCompositeOperation = "multiply"[\s\S]*globalAlpha = \.07[\s\S]*drawImage\(shape, 0, 0, WIDTH, HEIGHT\)/);
   assert.match(source,/selected Linen Earth cloth/);
   assert.doesNotMatch(source,/context\.globalAlpha = \.82/);

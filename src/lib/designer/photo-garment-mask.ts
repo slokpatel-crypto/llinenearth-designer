@@ -14,12 +14,19 @@ export function photographicGarmentOpacity(
   if(![red,green,blue,geometryAlpha,blurredGeometryAlpha].every(Number.isFinite)) return 0;
   const geometry=unit(geometryAlpha/255);
   if(!geometry) return 0;
+  // The tucked waistband shares a traced boundary with the shirt. Interior
+  // recovery must not classify the other garment's strong source hue as cloth
+  // merely because the conservative geometry overlaps that boundary.
+  const otherGarment=region==="shirt"
+    ? red-green>=3&&red-blue>=5
+    : green-red>=2&&blue-red>=3;
+  if(otherGarment) return 0;
   // Fully recover folds a few pixels inside the boundary. Requiring almost
   // opaque blurred coverage left dark neutral folds beside the armhole exposed.
   const interior=unit((blurredGeometryAlpha-210)/24);
   const chroma=region==="shirt"
-    ? unit((Math.min(green-red,blue-red-1)-1)/4)
-    : unit(Math.min(red-green-3,red-blue-5)/7);
+    ? unit(Math.min(green-red,blue-red-1)-1)
+    : unit(Math.min(red-green-3,red-blue-5));
   const clothBrightness=region==="shirt"
     ? unit((165-Math.max(red,green,blue))/35)
     : unit((195-red)/12);

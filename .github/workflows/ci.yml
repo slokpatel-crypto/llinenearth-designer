@@ -12,7 +12,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,6 +29,8 @@ jobs:
       - run: npm run eval:preview-performance
       - run: npm run release:check
       - run: npm run build
+      - name: Load immutable photographic regression baseline
+        run: git fetch --depth=1 origin 5126ebb6f82179b7fe25106e71f234248af3a677
       - name: Install pinned browser verification runtime
         env:
           LINEN_BROWSER_QA_RUNTIME: /tmp/linen-browser-qa
@@ -48,6 +50,7 @@ jobs:
             if curl --fail --silent http://127.0.0.1:3000/designer-studio > /dev/null; then break; fi
             sleep 1
           done
+          node scripts/verify-photo-form.cjs
           node scripts/verify-photo-craft.cjs
           node scripts/verify-creative-workflow.cjs
           node scripts/verify-premium-atelier.cjs
