@@ -2,6 +2,14 @@
 
 Architecture and product decisions that must persist across coding sessions.
 
+## 2026-10-04 — Original thread motion around the real brand logo
+
+**Decision:** add a finite, replayable homepage brand signature and replace the long opening fade with a 2.4-second thread-and-logo reveal. Use the existing `motion/mini` runtime for native path/opacity/transform choreography; original SVG threads surround the unchanged uploaded logo. Reference the [Motion animation API](https://motion.dev/docs/animate), [Magic UI travelling beams](https://magicui.design/docs/components/animated-beam) and [Anime.js line drawing](https://animejs.com/) for movement principles rather than importing another UI or animation framework.
+
+**Interaction:** signature motion plays once when at least a quarter of its artwork enters view and can be replayed. Its longest sequence lasts 3.8 seconds of visible playback. Pause when offscreen or the document is hidden; cancel and restore the complete static artwork if reduced motion is requested, including a live preference change. The intro remains once per tab session and yields immediately to the first keyboard, pointer or wheel interaction. Content and the real logo remain available without JavaScript or session storage. Observers, native animation controls and listeners are cleaned up on navigation.
+
+**Boundary:** these abstract graphics express the brand; they do not depict cloth scale, garment fit, measured drape or manufacturing detail. No catalogue, photograph, Designer contract, saved recipe, dependency or schema changes. Existing keyboard targets and focus treatment remain in use. Browser review includes normal/reduced motion at 390/768/1440, actual changing path pixels, replay, offscreen pause/resume, live reduction, first-interaction dismissal and a short recorded animation.
+
 ## 2026-10-01 — Adopt Execution Roadmap v2 by adaptation, not rewrite
 **Decision:** keep the existing application and map Roadmap v2 onto it. Rebuild only modules that fail the new gates.
 

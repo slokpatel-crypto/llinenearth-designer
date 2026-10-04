@@ -86,7 +86,8 @@ async function freshPage(width = 1440, captureIntro = false) {
     await decodeLogo(logo);
     await page.waitForFunction(() => {
       const card = document.querySelector(".brandIntro .introCard");
-      return card && Number(getComputedStyle(card).opacity) > 0.95;
+      const image = card?.querySelector("img");
+      return card && image && Number(getComputedStyle(card).opacity) > 0.95 && Number(getComputedStyle(image).opacity) > 0.95;
     });
     await page.screenshot({ path: path.join(output, "brand-intro-" + width + ".png") });
     summary.branding.openingAnimation = "passed";

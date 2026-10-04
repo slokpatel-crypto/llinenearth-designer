@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { HomeMotion } from "@/components/HomeMotion";
+import { BrandSignature } from "@/components/BrandSignature";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 
 const designerRefs = [
@@ -63,6 +64,8 @@ export default function Home() {
           <div className="gatewayHeroCaption"><span>REALISTIC SILHOUETTE</span><i/> <span>FABRIC-LED STYLING</span></div>
         </div>
       </section>
+
+      <BrandSignature />
 
       <section className="gatewayIntro wrap" data-reveal>
         <div><p className="eyebrow">CHOOSE HOW YOU WANT TO DESIGN</p><h2>Two ways to find your look.</h2></div>
