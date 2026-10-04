@@ -2,6 +2,14 @@
 
 Architecture and product decisions that must persist across coding sessions.
 
+## 2026-10-04 — Richer controls and explicit Designer clarification drafts
+
+**Controls:** add original compass/garment/weave icons, circular arrow details, an inset tailoring line, a finite light sweep and press feedback to the homepage actions, brand replay and Ask Designer. Keep labels and destinations authoritative, illustrations decorative, disabled controls quiet and reduced-motion controls static. Server markup contains the complete controls; no extra animation dependency or per-frame JavaScript is introduced.
+
+**Designer:** when a question has conflicting construction, an unsupported reference, unsupported garment or unclear task, offer up to three relevant questions from the existing supported option library. Selecting one prepares a new editable question and retains the original question plus its previous starting point for restoration. Carry the request's interpreted occasion/context and existing cloth/construction basis into the follow-up. A choice is not a submission, an outfit application or a human judgement. Restore, main-outfit changes and navigation cancel stale work through the existing request scope.
+
+**Compatibility:** `designer-advice-v1` gains an optional clarification object. Old callers still receive the same task/results contract; no database migration, persisted recipe, physical-fabric claim or provider call changes. Clarification is assistance with supported tasks, not universal reference-image understanding. Browser verification covers draft preparation/restoration, late responses, unchanged model pixels, proposal/request context, human-feedback counts and responsive motion controls.
+
 ## 2026-10-04 — Original thread motion around the real brand logo
 
 **Decision:** add a finite, replayable homepage brand signature and replace the long opening fade with a 2.4-second thread-and-logo reveal. Use the existing `motion/mini` runtime for native path/opacity/transform choreography; original SVG threads surround the unchanged uploaded logo. Reference the [Motion animation API](https://motion.dev/docs/animate), [Magic UI travelling beams](https://magicui.design/docs/components/animated-beam) and [Anime.js line drawing](https://animejs.com/) for movement principles rather than importing another UI or animation framework.

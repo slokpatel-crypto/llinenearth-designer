@@ -100,6 +100,37 @@ test("less formal feedback softens construction without reversing the recorded o
 test("unsupported garments and unknown tasks ask for a specific supported task",()=>{
   for(const question of ["Design a sherwani","Make a jacket","Tell me something random"]) {const answer=ask(question);assert.equal(answer.advice.task,"clarify");assert.deepEqual(answer.results,[]);}
 });
+test("unmapped collars offer supported, grounded comparison questions",()=>{
+  const before=JSON.stringify(input),answer=ask("Design a British collar shirt");
+  assert.equal(answer.advice.task,"clarify");assert.deepEqual(answer.results,[]);
+  assert.equal(answer.advice.clarification?.choices.length,2);
+  for(const choice of answer.advice.clarification!.choices) {
+    const follow=ask(choice.brief);assert.equal(follow.advice.task,"compare");assert.equal(follow.results.length,2);
+    for(const result of follow.results) {assert.equal(result.shirt.id,input.currentShirt.id);assert.equal(result.pant.id,input.currentPant.id);assert.ok(engine.DESIGNER_STYLE_CHOICES.collar.includes(result.style.collar));}
+  }
+  assert.equal(JSON.stringify(input),before);
+});
+test("conflicting construction offers an explicit comparison without choosing a winner",()=>{
+  const answer=ask("Use point collar and spread collar");
+  assert.deepEqual(answer.results,[]);assert.equal(answer.advice.clarification?.choices[0].id,"compare-conflict");
+  const follow=ask(answer.advice.clarification!.choices[0].brief);
+  assert.equal(follow.advice.task,"compare");assert.deepEqual(follow.results.map(result=>result.style.collar),["Point (Standard) Collar","Spread Collar"]);
+  assert.equal(follow.advice.revision,null);
+});
+test("unsupported garments only offer explicit supported garment tasks",()=>{
+  const answer=ask("Design a sherwani for me");assert.deepEqual(answer.results,[]);
+  assert.deepEqual(answer.advice.clarification?.choices.map(choice=>choice.id),["shirt-task","trouser-task"]);
+  const shirt=ask(answer.advice.clarification!.choices[0].brief);assert.ok(shirt.results.length);
+  for(const option of shirt.results) {assert.equal(option.pant.id,input.currentPant.id);for(const key of ["trouser","rise","waistband","break"] as const)assert.equal(option.style[key],input.chosenStyle[key]);}
+});
+test("reference-copy and unknown questions keep clarification bounded and optional",()=>{
+  for(const brief of ["Make an exact copy of this photo","Help me understand"]){
+    const answer=ask(brief);assert.equal(answer.advice.task,"clarify");assert.deepEqual(answer.results,[]);
+    assert.ok(answer.advice.clarification!.choices.length<=3);
+    for(const choice of answer.advice.clarification!.choices){assert.ok(choice.brief.length>=5&&choice.brief.length<=500);assert.notEqual(ask(choice.brief).advice.task,"clarify");}
+  }
+  assert.equal(ask("Critique my current outfit").advice.clarification,undefined);
+});
 test("construction and judgement contracts reject invented values",()=>{
   assert.equal(advisor.validDesignerStyle({...input.chosenStyle,collar:"Banana collar"}),false);assert.equal(advisor.validDesignerContext({climate:"Mars",intention:"Balanced"}),false);
   assert.equal(advisor.safeDesignerJudgement({recommendationId:"r",rating:"down",reason:"invented",note:"change it"}),null);

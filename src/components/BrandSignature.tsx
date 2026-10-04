@@ -5,6 +5,7 @@ import Image from "next/image";
 import { animate } from "motion/mini";
 import { BRAND_LOGO_SRC, BRAND_LOGO_SIZE } from "@/lib/brand-logo-data";
 import { BrandThreadwork } from "@/components/BrandThreadwork";
+import { AtelierButtonIcon } from "@/components/AtelierButtonIcon";
 
 /** A finite brand film. The complete artwork is readable before hydration. */
 export function BrandSignature() {
@@ -99,6 +100,6 @@ export function BrandSignature() {
     <div className="brandSignatureArt" aria-hidden="true"><BrandThreadwork /><i className="brandSignatureLight" /></div>
     <div className="brandSignatureLogo"><Image src={BRAND_LOGO_SRC} alt="Linen Earth" {...BRAND_LOGO_SIZE} unoptimized /></div>
     <div className="brandSignatureCaption"><span>FABRIC</span><i /><span>DESIGN</span><i /><span>CRAFT</span></div>
-    <button className="brandSignatureReplay" onClick={() => replayRef.current?.()} aria-label="Replay Linen Earth brand animation">Replay <span aria-hidden="true">↺</span></button>
+    <button className="brandSignatureReplay atelierControl" onClick={() => replayRef.current?.()} aria-label="Replay Linen Earth brand animation"><AtelierButtonIcon kind="thread" /><span className="atelierButtonText">Replay</span><span className="atelierButtonArrow" aria-hidden="true">↺</span></button>
   </div>;
 }

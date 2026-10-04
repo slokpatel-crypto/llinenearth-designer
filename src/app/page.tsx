@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { HomeMotion } from "@/components/HomeMotion";
 import { BrandSignature } from "@/components/BrandSignature";
+import { AtelierButtonIcon } from "@/components/AtelierButtonIcon";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 
 const designerRefs = [
@@ -52,8 +53,8 @@ export default function Home() {
           <p className="gatewayHeroStatement">Cloth. Cut. Your point of view.</p>
           <p className="gatewayHeroSub">Start with your occasion and instinct. Linen Earth narrows the direction, connects it to real fabric, and lets you see the look with photoreal fashion rendering.</p>
           <div className="gatewayHeroActions">
-            <Link href="/style-director">Enter Style Director <b>↗</b></Link>
-            <Link href="/real-model">Open Real Model Designer <b>↗</b></Link>
+            <Link href="/style-director" className="atelierControl"><AtelierButtonIcon kind="direction" /><span className="atelierButtonText">Enter Style Director</span><b className="atelierButtonArrow" aria-hidden="true">↗</b></Link>
+            <Link href="/real-model" className="atelierControl"><AtelierButtonIcon kind="cloth" /><span className="atelierButtonText">Open Real Model Designer</span><b className="atelierButtonArrow" aria-hidden="true">↗</b></Link>
           </div>
           <div className="gatewayLine"><span>FABRIC FIRST · DESIGN WITH INTENT</span><i /></div>
         </div>

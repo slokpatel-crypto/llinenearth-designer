@@ -12,9 +12,11 @@ import type { MeasurementProfile } from "@/lib/measurements";
 import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import type { LocalDesignerTasteProfile } from "@/lib/designer/taste-profile";
 import { designerDirectionBasis, designerQuestionBasis, designerQuestionPreferenceOccasion, type DesignerQuestionBasis } from "@/lib/designer/question-basis";
+import { AtelierButtonIcon } from "@/components/AtelierButtonIcon";
 
 export type DesignerBriefInterpretation={brief:string;occasion:OccasionTier;context:DesignerContext;notes:string[]};
 type AdviceResponse={requestId:string;interpretation:DesignerBriefInterpretation;results:DesignerAdviceOption[];advice:DesignerAdvice};
+type WorkingDirection={title:string;fabrics:string;sourceRequestId:string;basis:DesignerQuestionBasis};
 type Props={onCreativeBrief?:(brief:string)=>void;shirt:DesignerFabric;pant:DesignerFabric;style:DesignerStyle;occasion:OccasionTier;context:DesignerContext;measurements:MeasurementProfile|null;observations:TailorObservationProfile|null;sessionId:()=>string;onApply:(option:DesignerAdviceOption,interpretation:DesignerBriefInterpretation)=>void};
 
 export default function DesignerAdvisorPanel(props:Props) {
@@ -31,7 +33,8 @@ export default function DesignerAdvisorPanel(props:Props) {
   const [history,setHistory]=useState<Array<{answer:AdviceResponse;revision:number}>>([]);
   const [taste,setTaste]=useState<LocalDesignerTasteProfile|null>(null);
   const [useTaste,setUseTaste]=useState(true);
-  const [workingDirection,setWorkingDirection]=useState<{title:string;fabrics:string;sourceRequestId:string;basis:DesignerQuestionBasis}|null>(null);
+  const [workingDirection,setWorkingDirection]=useState<WorkingDirection|null>(null);
+  const [followUpOrigin,setFollowUpOrigin]=useState<{question:string;direction:WorkingDirection|null}|null>(null);
   const questionInput=useRef<HTMLTextAreaElement>(null);
   const needsInstruction=designerFeedbackNeedsInstruction(reason);
   const currentBasis:DesignerQuestionBasis={currentShirtId:props.shirt.id,currentPantId:props.pant.id,currentStyle:props.style,occasion:props.occasion,context:props.context};
@@ -40,7 +43,7 @@ export default function DesignerAdvisorPanel(props:Props) {
   const designSignature=JSON.stringify([currentBasis,props.measurements,props.observations]);
   const signature=JSON.stringify([designSignature,activeBasis,workingDirection?.sourceRequestId,question,useTaste]);
   const scope=useMemo(()=>createPreviewRequestScope(),[signature]);
-  useLayoutEffect(()=>{setWorkingDirection(null);},[designSignature]);
+  useLayoutEffect(()=>{setWorkingDirection(null);setFollowUpOrigin(null);},[designSignature]);
   useLayoutEffect(()=>{if(workingDirection)questionInput.current?.focus();},[workingDirection]);
   useLayoutEffect(()=>{
     scope.activate();setLoading(false);setAnswer(null);setTarget(null);setError("");setFeedback("");setRatings({});setRevision(0);setHistory([]);
@@ -82,6 +85,7 @@ export default function DesignerAdvisorPanel(props:Props) {
       if(!response.ok || data.advice?.version!=="designer-advice-v1" || !data.interpretation || !data.requestId || !Array.isArray(data.results)) throw new Error(data.error || "Designer could not assess this question. Try a specific fabric, cut or occasion task.");
       if(judgement && answer) setHistory(current=>[...current,{answer,revision:priorRevision}].slice(-6));
       setAnswer(data as AdviceResponse);setTarget(null);setRatings({});setNote("");setReason("other");
+      setFollowUpOrigin(null);
       setRevision(judgement ? priorRevision+1 : 0);
       try { recordStyleMemoryEvent(props.sessionId(),"designer_override",{recommendationId:data.requestId,reason:`Designer ${data.advice.task}; ${data.results.length} checked proposals${judgement?"; human-judgement revision":""}.`}); } catch { /* The answer remains usable offline. */ }
     } catch(err) {
@@ -99,13 +103,18 @@ export default function DesignerAdvisorPanel(props:Props) {
   return <section className="newDesignerBrief newDesignerAdvisor" aria-label="Ask Designer">
     <div className="newDesignerBriefHead">
       <div><span>00 / ASK DESIGNER</span><strong>Give your designer a brief or task.</strong><small>Create a look, design one garment, plan a small wardrobe, compare choices or improve a direction.</small></div>
-      <button type="button" onClick={()=>void askDesigner()} disabled={loading || question.trim().length<5}>{loading?"Designing…":"Ask Designer"}</button>
+      <button className="atelierControl" type="button" onClick={()=>void askDesigner()} disabled={loading || question.trim().length<5}><AtelierButtonIcon kind="direction" /><span className="atelierButtonText">{loading?"Designing…":"Ask Designer"}</span></button>
     </div>
     {workingDirection && <div className="designerWorkingDirection" aria-label="Designer starting point">
       <div><strong>Developing: {workingDirection.title}</strong><small>{workingDirection.fabrics} · {activeBasis.occasion}</small><small>Your current outfit changes only when you apply a direction.</small></div>
-      <button type="button" onClick={()=>{setWorkingDirection(null);setQuestion("");}}>Use my current outfit</button>
+      <button type="button" onClick={()=>{setWorkingDirection(null);setFollowUpOrigin(null);setQuestion("");}}>Use my current outfit</button>
     </div>}
     <textarea ref={questionInput} aria-label="Designer question or task" value={question} maxLength={500} onChange={(event)=>setQuestion(event.target.value)} placeholder="e.g. Keep both fabrics. Compare pleated vs flat-front trousers for my business meeting." rows={3} />
+    {followUpOrigin && <div className="designerClarificationDraft" aria-label="Clarification follow-up draft">
+      <p>Review or edit this new question, then ask Designer. Your outfit has not changed.</p>
+      <details><summary>Original question</summary><p>{followUpOrigin.question}</p></details>
+      <button type="button" onClick={()=>{setWorkingDirection(followUpOrigin.direction);setQuestion(followUpOrigin.question);setFollowUpOrigin(null);questionInput.current?.focus();}}>Restore original question</button>
+    </div>}
     <div className="designerQuestionExamples" aria-label="Example designer tasks">
       {["Design a relaxed summer dinner outfit with quiet texture","Design a shirt only with clean tailoring","Create a capsule for office, dinner and weekend","Critique my current outfit","Compare pleated trousers vs flat-front trousers","Check fit and movement"].map((example)=><button type="button" key={example} onClick={()=>setQuestion(example)}>{example}</button>)}
     </div>
@@ -121,6 +130,14 @@ export default function DesignerAdvisorPanel(props:Props) {
       <div className="designerAdvice" aria-live="polite" aria-busy={loading}>
         <span>{answer.advice.task.toUpperCase()}{revision>0?` · REVISION ${revision}`:""}</span>
         <h3>{answer.advice.headline}</h3><p>{answer.advice.answer}</p>
+        {answer.advice.clarification && <div className="designerClarification" aria-label="Designer clarification choices">
+          <p>{answer.advice.clarification.question}</p>
+          <div>{answer.advice.clarification.choices.map(choice=><button type="button" key={choice.id} disabled={loading} onClick={()=>{
+            setFollowUpOrigin({question,direction:workingDirection});
+            setWorkingDirection({title:"Clarifying your request",fabrics:workingDirection?.fabrics || props.shirt.name+" + "+props.pant.name,sourceRequestId:answer.requestId,basis:{...activeBasis,occasion:answer.interpretation.occasion,context:answer.interpretation.context}});
+            setQuestion(choice.brief);questionInput.current?.focus();
+          }}>{choice.label}</button>)}</div>
+        </div>}
         <p><strong>Design context:</strong> {answer.interpretation.occasion} · {answer.interpretation.context.climate} · {answer.interpretation.context.intention}</p>
         {answer.advice.revision && <p className="designerRevisionReason">{answer.advice.revision}</p>}
         {answer.advice.preserved.length>0 && <p><strong>Preserved:</strong> {answer.advice.preserved.join(" · ")}</p>}
@@ -146,7 +163,7 @@ export default function DesignerAdvisorPanel(props:Props) {
             {!!result.previewNotes?.length && <details><summary>What the preview shows</summary><p>The selected cloth is shown on our studio model. These construction details remain approximate:</p><ul>{result.previewNotes.map((item,index)=><li key={index}>{item}</li>)}</ul></details>}
           </div>
           <button type="button" disabled={loading || !result.canApply} onClick={()=>{setWorkingDirection(null);props.onApply(result,{...answer.interpretation,occasion:result.occasion || answer.interpretation.occasion,context:result.context || answer.interpretation.context});}}>{result.canApply?"Apply direction":"Resolve conflict first"}</button>
-          <button type="button" className="designerDevelopDirection" disabled={loading} onClick={()=>{setWorkingDirection({title:result.title,fabrics:result.shirt.name+" + "+result.pant.name,sourceRequestId:answer.requestId,basis:designerDirectionBasis(result,answer.interpretation)});setQuestion("");}}>Develop this direction</button>
+          <button type="button" className="designerDevelopDirection" disabled={loading} onClick={()=>{setFollowUpOrigin(null);setWorkingDirection({title:result.title,fabrics:result.shirt.name+" + "+result.pant.name,sourceRequestId:answer.requestId,basis:designerDirectionBasis(result,answer.interpretation)});setQuestion("");}}>Develop this direction</button>
           <div className="designerJudgement" aria-label={`Judge ${result.title}`}><button type="button" disabled={loading} aria-pressed={ratings[result.id]==="up"} onClick={()=>recordJudgement(result,"up")}>Works for me</button><button type="button" disabled={loading} aria-pressed={target?.id===result.id} onClick={()=>{setTarget(result);setNote("");setReason("other");}}>Improve this</button></div>
         </article>)}
       </div>}

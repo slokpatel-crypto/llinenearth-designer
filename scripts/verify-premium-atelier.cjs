@@ -59,7 +59,21 @@ async function run() {
       const focus = await action.evaluate(n => ({ active: document.activeElement === n, outline: getComputedStyle(n).outlineStyle, height: n.getBoundingClientRect().height }));
       assert.ok(focus.active && focus.outline !== 'none', 'visible keyboard focus');
       assert.ok(focus.height >= 44, 'usable CTA target');
+      assert.equal(await action.locator('.atelierButtonEmblem').getAttribute('aria-hidden'), 'true', 'button illustration is decorative');
+      assert.equal(await page.locator('.gatewayHeroActions .atelierButtonArrow').count(), 2);
+      const buttonLabels = await page.locator('.gatewayHeroActions a').evaluateAll(nodes => nodes.every(n => {
+        const bounds = n.getBoundingClientRect(), text = n.querySelector('.atelierButtonText').getBoundingClientRect();
+        return text.left >= bounds.left && text.right <= bounds.right && text.top >= bounds.top && text.bottom <= bounds.bottom;
+      }));
+      assert.ok(buttonLabels, `button labels stay inside their controls at ${width}px`);
       await action.hover();
+      if (reducedMotion === 'no-preference') {
+        assert.equal(await action.evaluate(n => getComputedStyle(n, '::after').animationName), 'atelierControlSweep');
+        await action.screenshot({ path: path.join(out, `button-focus-${width}.png`) });
+      } else {
+        assert.equal(await action.evaluate(n => getComputedStyle(n, '::after').display), 'none');
+        assert.equal(await action.locator('.atelierButtonArrow').evaluate(n => getComputedStyle(n).transitionDuration), '0s');
+      }
       const signature = page.locator('.brandSignature');
       await signature.locator('img').evaluate(image => image.decode());
       assert.equal(await signature.locator('img').getAttribute('src'), await page.locator('.atelierBrand img').getAttribute('src'), 'signature uses the unchanged real brand asset');
