@@ -1238,6 +1238,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
 
   useLayoutEffect(() => {
     requestScope.activate();
+    setReady(false);
     setCreativeAi(null);
     setCreativeAiLoading(false);
     setCreativeAiError("");
@@ -1267,7 +1268,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       loadFabricImage(shirt), loadFabricImage(pant),
       resolvedCraft?.panelFabric&&photoCraftZone(resolvedCraft.craft.panels[0].zone,style).status==="approximate"?loadFabricImage(resolvedCraft.panelFabric):Promise.resolve(undefined),
     ]).then(([modelPhoto, trouserPhoto, shirtImage, pantImage, panelImage]) => {
-        if (cancelled) return;
+        if (cancelled || !requestScope.isEnabled()) return;
         const canvas = canvasRef.current;
         const context = canvas?.getContext("2d", { alpha: false });
         if (!canvas || !context) throw new Error("Canvas is unavailable.");
@@ -1275,9 +1276,9 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         setError(false);
         setReady(true);
       })
-      .catch(() => { if (!cancelled) { setReady(false); setError(true); } });
+      .catch(() => { if (!cancelled && requestScope.isEnabled()) { setReady(false); setError(true); } });
     return () => { cancelled = true; };
-  }, [shirt, pant, template, tucked, style, previewCreative, resolvedCraft, verifiedPhotoPxPerMm]);
+  }, [shirt, pant, template, tucked, style, previewCreative, resolvedCraft, verifiedPhotoPxPerMm, requestScope]);
 
   async function inspectSelectedLook(result:PhotorealResult,view:PhotorealView,request:PreviewRequest):Promise<SelectedLookVisualCheck|null> {
     if(!request.isCurrent()) return null;
