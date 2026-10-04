@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 const require=createRequire(import.meta.url),{load}=require("../scripts/designer-test-loader.cjs");
 const e=load("src/lib/designer/engine.ts");
-const {designerDirectionBasis,designerQuestionBasis}=load("src/lib/designer/question-basis.ts");
+const {designerDirectionBasis,designerQuestionBasis,designerQuestionPreferenceOccasion}=load("src/lib/designer/question-basis.ts");
 const {answerDesignerQuestion}=load("src/lib/designer/advisor.ts");
 const shirt=e.DESIGNER_SHIRTS.find((f:any)=>f.id===e.DESIGNER_REVIEWED_PAIRING.shirtId),pant=e.DESIGNER_PANTS.find((f:any)=>f.id===e.DESIGNER_REVIEWED_PAIRING.pantId);
 const current={currentShirtId:shirt.id,currentPantId:pant.id,currentStyle:e.designerStyleForOccasion("Semi-Formal"),occasion:"Semi-Formal",context:{climate:"Air-conditioned",intention:"Balanced"}};
@@ -52,4 +52,15 @@ test("garment-only tasks preserve the complete companion from the working propos
   const basis={...current,currentStyle:{...current.currentStyle,waistband:"Side-Adjuster Tabs",button:"Horn"}};
   const answer=ask("Design a shirt only with clean tailoring",basis);assert.ok(answer.results.length);
   for(const result of answer.results){assert.equal(result.pant.id,basis.currentPantId);for(const key of ["trouser","rise","waistband","break"])assert.equal(result.style[key],basis.currentStyle[key]);}
+});
+test("a new explicit occasion gets that occasion's preferences rather than the starting point's",()=>{
+  const working=designerDirectionBasis(option,current);
+  assert.equal(designerQuestionPreferenceOccasion("Design a business outfit",working),"Semi-Formal");
+  assert.equal(designerQuestionPreferenceOccasion("Design a dinner outfit",working),"Smart-Casual");
+  assert.equal(designerQuestionPreferenceOccasion("Design a formal look",working),"Formal");
+});
+test("detail-only follow-ups retain the working occasion for personal preferences",()=>{
+  const working=designerDirectionBasis(option,current);
+  assert.equal(designerQuestionPreferenceOccasion("Keep both fabrics. Use horn buttons.",working),"Casual");
+  assert.equal(designerQuestionPreferenceOccasion("",working),"Casual");
 });

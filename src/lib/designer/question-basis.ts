@@ -1,5 +1,6 @@
 import type { DesignerAdviceOption } from "./advisor.ts";
 import type { DesignerContext, DesignerStyle, OccasionTier } from "./engine.ts";
+import { parseDesignerBrief } from "./brief.ts";
 
 export type DesignerQuestionBasis={
   currentShirtId:string;
@@ -29,4 +30,10 @@ export function designerQuestionBasis(
 ):DesignerQuestionBasis {
   const source=judged || working || current;
   return {...source,currentStyle:{...source.currentStyle},context:{...source.context}};
+}
+
+/** Match the occasion parser used by the API. An explicit new occasion in a
+ * follow-up must not receive preferences from the proposal's earlier occasion. */
+export function designerQuestionPreferenceOccasion(brief:string,basis:DesignerQuestionBasis):OccasionTier {
+  return parseDesignerBrief(brief,{occasion:basis.occasion,context:basis.context,style:basis.currentStyle}).occasion;
 }

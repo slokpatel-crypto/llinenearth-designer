@@ -209,5 +209,12 @@ async function apiContracts(){
     const followed=await answer(page,await start(page,"Keep both fabrics. Use horn buttons.")),index=await revision(page),body=(await request(page,"question",index)).body;
     assert.deepEqual(body.currentStyle,followed.results[0].style);assert.equal(body.currentStyle.button,"Horn");assert.equal(body.occasion,"Casual");assert.equal(body.judgement.rating,"down");await answer(page,index);
   });
+  await regression("new-occasion-uses-own-personal-preferences",async page=>{
+    const events=[];for(const [occasion,button] of [["Casual","Horn"],["Semi-Formal","Mother-of-Pearl"]])for(let i=0;i<4;i++)events.push({type:"designer_feedback",source:"style-director",payload:{recommendationId:"qa-occasion-"+occasion+i,rating:"up",shirtId:engine.DESIGNER_SHIRTS[i].id,pantId:engine.DESIGNER_REVIEWED_PAIRING.pantId,occasion,style:{...engine.designerStyleForOccasion(occasion),button}}});
+    await page.evaluate(events=>localStorage.setItem("linen-earth:style-memory:v1",JSON.stringify(events)),events);
+    await answer(page,await start(page,"Create a capsule for office, dinner and weekend"));await panel(page).getByRole("button",{name:"Develop this direction",exact:true}).nth(2).click();
+    const index=await start(page,"Design a business outfit"),body=(await request(page,"question",index)).body;assert.equal(body.occasion,"Casual");assert.equal(body.tasteProfile.preferredConstruction.button,"Mother-of-Pearl");
+    await panel(page).locator(".designerTaste>summary").click();assert.match(await panel(page).locator(".designerTaste").textContent(),/For semi-formal looks/);const reply=await answer(page,index);assert.equal(reply.interpretation.occasion,"Semi-Formal");assert.ok(reply.results.length);for(const result of reply.results)assert.equal(result.style.button,"Mother-of-Pearl");
+  });
   assert.deepEqual(summary.errors,[]);assert.equal(summary.regressions.filter(r=>r.status==="failed").length,0,"Designer advisor regressions failed");
 })().catch(async error=>{summary.failure=error.stack;console.error(error);process.exitCode=1;if(activePage&&!activePage.isClosed())await activePage.screenshot({path:path.join(output,"flow-failure.png"),fullPage:true}).catch(()=>{});}).finally(async()=>{fs.mkdirSync(output,{recursive:true});fs.writeFileSync(path.join(output,"summary.json"),JSON.stringify(summary,null,2));if(browser)await browser.close();});

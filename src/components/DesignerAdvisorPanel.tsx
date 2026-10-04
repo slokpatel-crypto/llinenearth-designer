@@ -11,7 +11,7 @@ import type { DesignerContext, DesignerFabric, DesignerStyle, OccasionTier } fro
 import type { MeasurementProfile } from "@/lib/measurements";
 import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import type { LocalDesignerTasteProfile } from "@/lib/designer/taste-profile";
-import { designerDirectionBasis, designerQuestionBasis, type DesignerQuestionBasis } from "@/lib/designer/question-basis";
+import { designerDirectionBasis, designerQuestionBasis, designerQuestionPreferenceOccasion, type DesignerQuestionBasis } from "@/lib/designer/question-basis";
 
 export type DesignerBriefInterpretation={brief:string;occasion:OccasionTier;context:DesignerContext;notes:string[]};
 type AdviceResponse={requestId:string;interpretation:DesignerBriefInterpretation;results:DesignerAdviceOption[];advice:DesignerAdvice};
@@ -36,6 +36,7 @@ export default function DesignerAdvisorPanel(props:Props) {
   const needsInstruction=designerFeedbackNeedsInstruction(reason);
   const currentBasis:DesignerQuestionBasis={currentShirtId:props.shirt.id,currentPantId:props.pant.id,currentStyle:props.style,occasion:props.occasion,context:props.context};
   const activeBasis=designerQuestionBasis(currentBasis,workingDirection?.basis);
+  const tasteOccasion=designerQuestionPreferenceOccasion(question,activeBasis);
   const designSignature=JSON.stringify([currentBasis,props.measurements,props.observations]);
   const signature=JSON.stringify([designSignature,activeBasis,workingDirection?.sourceRequestId,question,useTaste]);
   const scope=useMemo(()=>createPreviewRequestScope(),[signature]);
@@ -43,7 +44,7 @@ export default function DesignerAdvisorPanel(props:Props) {
   useLayoutEffect(()=>{if(workingDirection)questionInput.current?.focus();},[workingDirection]);
   useLayoutEffect(()=>{
     scope.activate();setLoading(false);setAnswer(null);setTarget(null);setError("");setFeedback("");setRatings({});setRevision(0);setHistory([]);
-    setTaste(readLocalDesignerTasteProfile(activeBasis.occasion));
+    setTaste(readLocalDesignerTasteProfile(tasteOccasion));
     return ()=>scope.invalidate();
   },[scope]);
 
@@ -55,7 +56,7 @@ export default function DesignerAdvisorPanel(props:Props) {
         recommendationId,rating,...(feedbackReason?{reason:feedbackReason}:{}),note:feedbackNote,
         shirtId:option.shirt.id,pantId:option.pant.id,occasion:option.occasion || answer.interpretation.occasion,style:option.style,
       });
-      const learned=readLocalDesignerTasteProfile(option.occasion || answer.interpretation.occasion);setTaste(readLocalDesignerTasteProfile(activeBasis.occasion));
+      const learned=readLocalDesignerTasteProfile(option.occasion || answer.interpretation.occasion);setTaste(readLocalDesignerTasteProfile(tasteOccasion));
       const evidence=learned.evidence;
       setFeedback(`${evidence} distinct human judgement${evidence===1?"":"s"} recorded for ${(option.occasion || answer.interpretation.occasion).toLowerCase()}. Your next revision uses this feedback immediately.`);
     } catch { setFeedback("This revision uses your feedback, but the judgement could not be saved."); }
@@ -73,7 +74,7 @@ export default function DesignerAdvisorPanel(props:Props) {
         method:"POST",signal:request.signal,headers:{"content-type":"application/json"},
         body:JSON.stringify({brief:question,...basis,
           measurements:props.measurements,observations:props.observations,
-          ...(useTaste?{tasteProfile:readLocalDesignerTasteProfile(basis.occasion)}:{}),...(judgement?{judgement}:{})}),
+          ...(useTaste?{tasteProfile:readLocalDesignerTasteProfile(designerQuestionPreferenceOccasion(judgement?.note || question,basis))}:{}),...(judgement?{judgement}:{})}),
       });
       const data=await response.json() as Partial<AdviceResponse> & {error?:string};
       if(!request.isCurrent()) return;
@@ -108,7 +109,7 @@ export default function DesignerAdvisorPanel(props:Props) {
       {["Design a relaxed summer dinner outfit with quiet texture","Design a shirt only with clean tailoring","Create a capsule for office, dinner and weekend","Critique my current outfit","Compare pleated trousers vs flat-front trousers","Check fit and movement"].map((example)=><button type="button" key={example} onClick={()=>setQuestion(example)}>{example}</button>)}
     </div>
     <details className="designerTaste"><summary>Your design preferences{taste?.evidence?` · ${taste.evidence} distinct judgements`:""}</summary>
-      <p>For {activeBasis.occasion.toLowerCase()} looks.</p>
+      <p>For {tasteOccasion.toLowerCase()} looks.</p>
       <label><input type="checkbox" checked={useTaste} onChange={event=>setUseTaste(event.target.checked)}/>Use my preferences for new directions</label>
       <p>{taste?.signals?.length?"Learned from your reviewed looks: "+taste.signals.map(signal=>signal.value+" ("+signal.support+" supporting reviews)").join(" · "):"Four distinct judgements are needed before a stable preference is used. Your instructions always take priority."}</p>
       <small>Preferences are remembered in this browser. They guide your suggestions and do not train a global model.</small>
