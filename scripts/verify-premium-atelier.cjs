@@ -12,7 +12,8 @@ const out = path.resolve('artifacts/preview-lifecycle/premium-atelier');
 const summary = { browser: 'Chromium', model: 'existing local fallback', providerCalls: 0, viewports: [], checks: [], errors: [] };
 let browser, activePage;
 async function open(width, reducedMotion = 'no-preference', javaScriptEnabled = true) {
-  const context = await browser.newContext({ viewport: { width, height: 1000 }, reducedMotion, javaScriptEnabled });
+  const recordVideo = width === 1440 && reducedMotion === 'no-preference' && javaScriptEnabled ? { dir: path.join(out, 'recordings'), size: { width: 1440, height: 1000 } } : undefined;
+  const context = await browser.newContext({ viewport: { width, height: 1000 }, reducedMotion, javaScriptEnabled, recordVideo });
   const page = await context.newPage(); activePage = page;
   page.on('pageerror', error => summary.errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') summary.errors.push(message.text()); });
@@ -24,7 +25,12 @@ async function open(width, reducedMotion = 'no-preference', javaScriptEnabled = 
       ? route.fulfill({ status: 200, contentType: 'image/webp', body: photo })
       : route.fulfill({ status: 200, json: {} });
   });
-  await page.goto(base, { waitUntil: 'networkidle' });
+  await page.goto(base, { waitUntil: 'domcontentloaded' });
+  if (javaScriptEnabled && reducedMotion === 'no-preference') {
+    await page.locator('.brandIntro img').waitFor({ state: 'visible' });
+    await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.brandIntro img')).opacity) > .95);
+    await page.locator('.brandIntro').screenshot({ path: path.join(out, `intro-${width}.png`) });
+  }
   await page.locator('.brandIntro').waitFor({ state: 'hidden' });
   await page.locator('.gatewayHeroActions').waitFor();
   await page.locator('.atelierBrand img').evaluate(image => image.decode());
@@ -49,6 +55,38 @@ async function run() {
       assert.ok(focus.active && focus.outline !== 'none', 'visible keyboard focus');
       assert.ok(focus.height >= 44, 'usable CTA target');
       await action.hover();
+      const signature = page.locator('.brandSignature');
+      await signature.locator('img').evaluate(image => image.decode());
+      assert.equal(await signature.locator('img').getAttribute('src'), await page.locator('.atelierBrand img').getAttribute('src'), 'signature uses the unchanged real brand asset');
+      assert.equal(await signature.locator('[data-brand-thread]').count(), 26);
+      assert.equal(await signature.locator('.brandSignatureArt').evaluate(n => getComputedStyle(n).pointerEvents), 'none');
+      await signature.scrollIntoViewIfNeeded();
+      if (reducedMotion === 'no-preference') {
+        await signature.getByRole('button', { name: 'Replay Linen Earth brand animation' }).click();
+        await page.locator('.brandSignature[data-motion-state="playing"]').waitFor();
+        const thread = signature.locator('[data-brand-thread]').first();
+        const start = await thread.evaluate(n => parseFloat(getComputedStyle(n).strokeDashoffset));
+        await page.waitForTimeout(180);
+        const moved = await thread.evaluate(n => parseFloat(getComputedStyle(n).strokeDashoffset));
+        assert.ok(moved < start - .1, `actual path drawing ${start} -> ${moved}`);
+        await signature.screenshot({ path: path.join(out, `signature-drawing-${width}.png`) });
+        await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
+        await page.locator('.brandSignature[data-motion-state="paused"]').waitFor();
+        const paused = await thread.evaluate(n => parseFloat(getComputedStyle(n).strokeDashoffset));
+        await page.waitForTimeout(180);
+        assert.ok(Math.abs(await thread.evaluate(n => parseFloat(getComputedStyle(n).strokeDashoffset)) - paused) < .01, 'offscreen animation freezes');
+        await signature.scrollIntoViewIfNeeded();
+        await page.locator('.brandSignature[data-motion-state="playing"]').waitFor();
+        await page.locator('.brandSignature[data-motion-state="complete"]').waitFor();
+        assert.equal(await signature.locator('[data-brand-thread]').evaluateAll(nodes => nodes.every(n => Math.abs(parseFloat(getComputedStyle(n).strokeDashoffset)) < .01)), true);
+        summary.checks.push(`thread drawing, replay and offscreen pause/resume at ${width}px`);
+      } else {
+        await page.locator('.brandSignature[data-motion-state="reduced"]').waitFor();
+        assert.equal(await signature.getByRole('button', { name: 'Replay Linen Earth brand animation' }).isVisible(), false);
+        assert.equal(await signature.evaluate(n => n.getAnimations({ subtree: true }).filter(a => a.playState === 'running').length), 0);
+        assert.equal(await signature.locator('img').evaluate(n => getComputedStyle(n).opacity), '1');
+      }
+      await signature.screenshot({ path: path.join(out, `signature-${width}-${reducedMotion}.png`) });
       if (reducedMotion === 'reduce') {
         assert.equal(await action.evaluate(n => getComputedStyle(n).transitionDuration), '0s');
         assert.equal(await page.locator('.atelierPageProgress').evaluate(n => getComputedStyle(n).display), 'none');
@@ -66,20 +104,32 @@ async function run() {
       await page.screenshot({ path: path.join(out, `home-${width}-${reducedMotion}.png`), fullPage: true });
       summary.viewports.push({ width, reducedMotion, overflow: false, logo: 'decoded', keyboardFocus: true });
       if (width === 1440 && reducedMotion === 'no-preference') {
+        await signature.getByRole('button', { name: 'Replay Linen Earth brand animation' }).click();
+        await page.locator('.brandSignature[data-motion-state="playing"]').waitFor();
         await page.emulateMedia({ reducedMotion: 'reduce' });
+        await page.locator('.brandSignature[data-motion-state="reduced"]').waitFor();
+        assert.equal(await signature.locator('[data-brand-thread]').evaluateAll(nodes => nodes.every(n => Math.abs(parseFloat(getComputedStyle(n).strokeDashoffset)) < .01 && getComputedStyle(n).opacity === '0.65')), true, 'live reduction restores complete static artwork');
+        assert.equal(await signature.evaluate(n => n.getAnimations({ subtree: true }).filter(a => a.playState === 'running').length), 0);
+        summary.checks.push('runtime reduced-motion change cancels the brand film and restores the logo/threads');
         await page.waitForTimeout(100);
         assert.equal(await page.locator('.gatewayBrandCopy').evaluate(n => [...n.children].every(c => getComputedStyle(c).opacity === '1' && ['none', 'matrix(1, 0, 0, 1, 0, 0)'].includes(getComputedStyle(c).transform))), true);
         summary.checks.push('runtime reduced-motion changes finish entrance animations');
         await page.goto(base + '/designer-studio', { waitUntil: 'networkidle' });
         await page.locator('#designerCreativeLab').waitFor();
+        assert.equal(await page.locator('.brandSignature').count(), 0, 'homepage brand film is removed on studio navigation');
+        assert.equal(await page.locator('.brandIntro').count(), 0, 'intro does not replay on same-session navigation');
         assert.equal(await page.locator('.atelierPageProgress').count(), 0, 'homepage motion does not leak into studio');
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
         summary.checks.push('navigation preserves usable designer and removes homepage motion');
       }
+      const video = page.video();
       await context.close();
+      if (video) await video.saveAs(path.join(out, 'linen-earth-brand-motion.webm'));
     }
   }
   const noJs = await open(390, 'reduce', false);
+  assert.equal(await noJs.page.locator('.brandSignature img').isVisible(), true, 'signature has complete no-JS artwork');
+  assert.equal(await noJs.page.locator('.brandSignatureReplay').isVisible(), false);
   assert.equal(await noJs.page.locator('.brandIntro').count(), 0, 'intro cannot block the site without JS');
   assert.equal(await noJs.page.locator('.gatewayHeroActions a').first().isVisible(), true);
   await noJs.context.close();
@@ -88,8 +138,11 @@ async function run() {
   const privateTab = await privatePage.newPage(); activePage = privateTab;
   privateTab.on('pageerror', error => summary.errors.push(error.message));
   await privateTab.route('**/api/homepage-model', route => route.fulfill({ status: 302, headers: { location: '/designer/studio-tucked.webp' } }));
-  await privateTab.goto(base, { waitUntil: 'networkidle' });
+  await privateTab.goto(base, { waitUntil: 'domcontentloaded' });
+  await privateTab.locator('.brandIntro').waitFor({ state: 'visible' });
+  await privateTab.keyboard.press('Tab');
   await privateTab.locator('.brandIntro').waitFor({ state: 'hidden' });
+  summary.checks.push('first keyboard interaction dismisses opening immediately even when storage is blocked');
   assert.equal(await privateTab.locator('.gatewayHeroActions a').first().isVisible(), true);
   await privatePage.close();
   summary.checks.push('content visible with JavaScript disabled and storage unavailable', 'logo unchanged; no provider calls; no console errors');
