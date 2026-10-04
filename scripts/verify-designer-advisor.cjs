@@ -133,6 +133,18 @@ async function apiContracts(){
       return {textContained:text.left>=bounds.left-1&&text.right<=bounds.right+1,textClearOfImage:text.right<=image.left+1||text.bottom<=image.top+1||text.top>=image.bottom-1};
     });
     assert.ok(heroLayout.textContained&&heroLayout.textClearOfImage,"Designer heading must remain fully visible beside or above the hero image");
+    await question(page).fill("Critique my current outfit");
+    const askReadability=await askButton(page).evaluate(button=>{
+      const label=button.querySelector(".atelierButtonText"),emblem=button.querySelector(".atelierButtonEmblem"),style=getComputedStyle(label),base=getComputedStyle(button);
+      const luminance=colour=>colour.match(/\d+/g).slice(0,3).map(Number).map(value=>{const channel=value/255;return channel<=.04045?channel/12.92:((channel+.055)/1.055)**2.4;}).reduce((sum,value,index)=>sum+value*[.2126,.7152,.0722][index],0);
+      const foreground=luminance(style.color),background=luminance(base.backgroundColor),bounds=button.getBoundingClientRect(),text=label.getBoundingClientRect();
+      return {fontSize:parseFloat(style.fontSize),contrast:(Math.max(foreground,background)+.05)/(Math.min(foreground,background)+.05),emblemColor:getComputedStyle(emblem).color,labelColor:style.color,buttonColor:base.color,contained:text.left>=bounds.left&&text.right<=bounds.right&&text.top>=bounds.top&&text.bottom<=bounds.bottom};
+    });
+    assert.equal(await askButton(page).isEnabled(),true);
+    assert.ok(askReadability.fontSize>=12&&askReadability.contrast>=4.5&&askReadability.contained,`Ask Designer must stay readable at ${width}px: ${JSON.stringify(askReadability)}`);
+    assert.equal(askReadability.emblemColor,askReadability.buttonColor,"action icon must inherit the button foreground, not the header eyebrow");
+    assert.equal(askReadability.labelColor,askReadability.buttonColor);
+    await askButton(page).screenshot({path:path.join(output,"ask-control-"+width+".png")});
     const originalQuestion="Design a British collar shirt",clarifiedInitial=await answer(page,await start(page,originalQuestion));
     assert.equal(clarifiedInitial.advice.task,"clarify");assert.deepEqual(clarifiedInitial.results,[]);
     await panel(page).getByLabel("Designer clarification choices").screenshot({path:path.join(output,"clarification-"+width+".png")});
