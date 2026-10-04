@@ -366,3 +366,10 @@ Architecture and product decisions that must persist across coding sessions.
 **Reference replacement:** the existing bounded swatch-tile cache includes the loaded image URL, crop pattern and colour fallback. Updating a catalogue reference under the same fabric ID therefore refreshes both base garments and craft panels instead of reusing an earlier cloth tile. Base and accent reference metadata also participate in preview ownership/final-render cache identity, so the replaced cloth invalidates readiness and cannot inherit an earlier render.
 
 **Verification:** pure cases cover catalogue reconstruction, stale bases, garment compatibility, hidden placements and bounded deterministic geometry. Chromium verifies real canvas pixels, protected skin/background, all supported zones/motifs, no provider calls, responsive application, and late accent loads. These are software placement checks, not physical acceptance.
+
+
+## 2026-10-04 — Preserve the banner Replay placement
+
+**Decision:** the premium button base sets relative positioning, which overrode the signature Replay button's original absolute placement and put it over the caption. Give the existing scoped premium Replay rule absolute positioning so its original responsive bottom-right offsets apply. The brass styling, keyboard focus, 44px target, three-second motion, logo and thread artwork are retained.
+
+**Verification:** add actual browser geometry checks at 390/768/1440 for caption clearance, the bottom-right inset, target height and containment. Existing timeline, strict pause/resume, reduced-motion and Designer/photo/Style Director verification remains unchanged. No dependency, data, API or deployment guard changes.

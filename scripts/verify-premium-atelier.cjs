@@ -133,6 +133,12 @@ async function run() {
         await page.locator('.brandSignature[data-motion-state="playing"]').waitFor();
         await page.locator('.brandSignature[data-motion-state="complete"]').waitFor();
         assert.equal(await signature.locator('[data-brand-thread]').evaluateAll(nodes => nodes.every(n => Math.abs(parseFloat(getComputedStyle(n).strokeDashoffset)) < .01)), true);
+        const replayPlacement = await signature.evaluate(n => {
+          const banner = n.getBoundingClientRect(), replay = n.querySelector('.brandSignatureReplay').getBoundingClientRect(), caption = n.querySelector('.brandSignatureCaption').getBoundingClientRect();
+          return { captionGap: replay.top - caption.bottom, rightGap: banner.right - replay.right, bottomGap: banner.bottom - replay.bottom, height: replay.height, inside: replay.left >= banner.left && replay.right <= banner.right && replay.top >= banner.top && replay.bottom <= banner.bottom };
+        });
+        assert.ok(replayPlacement.inside && replayPlacement.height >= 44 && replayPlacement.captionGap >= 4 && replayPlacement.rightGap >= 8 && replayPlacement.rightGap <= 18 && replayPlacement.bottomGap >= 4, `Replay stays in the bottom-right without covering the caption at ${width}px: ${JSON.stringify(replayPlacement)}`);
+        summary.checks.push(`Replay clears the caption in the bottom-right corner at ${width}px`);
         summary.checks.push(`white hold, three-second reveal, actual thread drawing, replay and offscreen pause/resume at ${width}px`);
       } else {
         await page.locator('.brandSignature[data-motion-state="reduced"]').waitFor();
