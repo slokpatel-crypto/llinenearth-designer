@@ -239,7 +239,20 @@ export default function DesignerResearchClient(){
 
   async function refreshResearch(action:"refresh"|"settings",enabled?:boolean){
     if(refreshing)return;setRefreshing(true);setMessage("");
-    try{const response=await fetch("/api/operator/designer-research/refresh",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action,enabled})});const result=await response.json() as {status?:string;candidates?:number;error?:string};if(!response.ok)throw Error(result.error||"Research refresh failed");setMessage(action==="settings"?"Research schedule updated. Activation requires a deployed cron and its secret.":`${result.status}: ${result.candidates||0} new candidates pending review. No paid model calls.`);await load();}catch(e){setMessage(e instanceof Error?e.message:"Research refresh failed");}finally{setRefreshing(false);}
+    const previousEnabled=data?.schedule?.enabled||false;
+    if(action==="settings"&&typeof enabled==="boolean")setData(current=>current?.schedule?{...current,schedule:{...current.schedule,enabled}}:current);
+    let committed=false;
+    try{
+      const response=await fetch("/api/operator/designer-research/refresh",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action,enabled})});
+      const result=await response.json() as {status?:string;candidates?:number;error?:string};
+      if(!response.ok)throw Error(result.error||"Research refresh failed");
+      committed=true;
+      setMessage(action==="settings"?"Research schedule updated. Activation requires a deployed cron and its secret.":`${result.status}: ${result.candidates||0} new candidates pending review. No paid model calls.`);
+      await load();
+    }catch(e){
+      if(action==="settings"&&!committed)setData(current=>current?.schedule?{...current,schedule:{...current.schedule,enabled:previousEnabled}}:current);
+      setMessage(e instanceof Error?e.message:"Research refresh failed");
+    }finally{setRefreshing(false);}
   }
 
   async function save(){

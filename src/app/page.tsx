@@ -4,14 +4,14 @@ import { HomeMotion } from "@/components/HomeMotion";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 
 const designerRefs = [
-  "https://images.pexels.com/photos/6766382/pexels-photo-6766382.jpeg?auto=compress&cs=tinysrgb&w=600",
-  "https://images.pexels.com/photos/6765068/pexels-photo-6765068.jpeg?auto=compress&cs=tinysrgb&w=600",
-  "https://images.pexels.com/photos/6765003/pexels-photo-6765003.jpeg?auto=compress&cs=tinysrgb&w=600",
+  "/editorial/shirt.webp",
+  "/editorial/trouser.webp",
+  "/editorial/blazer.webp",
 ];
 const visualRefs = [
-  "https://images.pexels.com/photos/6766236/pexels-photo-6766236.jpeg?auto=compress&cs=tinysrgb&w=600",
-  "https://images.pexels.com/photos/6765639/pexels-photo-6765639.jpeg?auto=compress&cs=tinysrgb&w=600",
-  "https://images.pexels.com/photos/6766385/pexels-photo-6766385.jpeg?auto=compress&cs=tinysrgb&w=600",
+  "/editorial/suit.webp",
+  "/editorial/shirt.webp",
+  "/editorial/trouser.webp",
 ];
 
 const garments = [

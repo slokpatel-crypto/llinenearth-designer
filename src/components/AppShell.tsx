@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { BRAND_LOGO_SRC, BRAND_LOGO_SIZE } from "@/lib/brand-logo-data";
+import { AtelierBackdrop } from "@/components/AtelierBackdrop";
 
 const primaryLinks = [
   ["Real Model Designer", "/real-model"],
@@ -31,7 +32,7 @@ function PinIcon() {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const whatsappHref = buildWhatsAppUrl({ topic: "Premium fabric and tailoring" });
-  return <div className="siteShell atelierShell">
+  return <div className="siteShell atelierShell premiumAtelier">
     <header className="atelierBrandBand">
       <Link href="/" className="atelierBrand" aria-label="Linen Earth home">
         <Image src={BRAND_LOGO_SRC} alt="Linen Earth" {...BRAND_LOGO_SIZE} unoptimized />
@@ -39,6 +40,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </header>
 
     <div className="atelierBody">
+      <AtelierBackdrop />
       <aside className="atelierRail" aria-label="Site navigation">
         <nav className="atelierRailPrimary">
           {primaryLinks.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
