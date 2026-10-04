@@ -10,6 +10,8 @@ Architecture and product decisions that must persist across coding sessions.
 
 **Behavior:** first keyboard/pointer/wheel interaction can still dismiss the opening immediately. Keep once-per-session display, offscreen/hidden-tab pause, replay, complete static no-JavaScript artwork and live reduced-motion cancellation. Browser evidence checks the actual white hold, native animation end times, path movement, replay and original responsive/lifecycle regressions. No outfit, fabric, Designer, recipe or schema changes.
 
+**Completed tracks:** pause/resume only unfinished Motion handles. A completed native track has committed its final style and cancelled its underlying animation; replaying that handle would resurrect its first keyframe. Browser tests wait for pending native pause tasks to settle, retain the strict frozen-pixel/clock checks, and prove that the finished logo and threads remain intact during a late offscreen pause/resume.
+
 ## 2026-10-04 — Richer controls and explicit Designer clarification drafts
 
 **Controls:** add original compass/garment/weave icons, circular arrow details, an inset tailoring line, a finite light sweep and press feedback to the homepage actions, brand replay and Ask Designer. Keep labels and destinations authoritative, illustrations decorative, disabled controls quiet and reduced-motion controls static. Server markup contains the complete controls; no extra animation dependency or per-frame JavaScript is introduced.

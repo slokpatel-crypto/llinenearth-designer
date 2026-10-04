@@ -120,9 +120,15 @@ async function run() {
         await signature.screenshot({ path: path.join(out, `signature-drawing-${width}.png`) });
         await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
         await page.locator('.brandSignature[data-motion-state="paused"]').waitFor();
+        await page.waitForFunction(() => {
+          const animations = document.querySelector('.brandSignature').getAnimations({ subtree: true });
+          return animations.some(a => a.playState === 'paused') && animations.every(a => !a.pending && a.playState !== 'running');
+        });
         const paused = await thread.evaluate(n => parseFloat(getComputedStyle(n).strokeDashoffset));
+        const pausedTimes = await signature.evaluate(n => n.getAnimations({ subtree: true }).filter(a => a.playState === 'paused').map(a => Number(a.currentTime)));
         await page.waitForTimeout(180);
         assert.ok(Math.abs(await thread.evaluate(n => parseFloat(getComputedStyle(n).strokeDashoffset)) - paused) < .01, 'offscreen animation freezes');
+        assert.deepEqual(await signature.evaluate(n => n.getAnimations({ subtree: true }).filter(a => a.playState === 'paused').map(a => Number(a.currentTime))), pausedTimes, 'every paused native track keeps its clock frozen');
         await signature.scrollIntoViewIfNeeded();
         await page.locator('.brandSignature[data-motion-state="playing"]').waitFor();
         await page.locator('.brandSignature[data-motion-state="complete"]').waitFor();
@@ -152,6 +158,25 @@ async function run() {
       await page.screenshot({ path: path.join(out, `home-${width}-${reducedMotion}.png`), fullPage: true });
       summary.viewports.push({ width, reducedMotion, overflow: false, logo: 'decoded', keyboardFocus: true });
       if (width === 1440 && reducedMotion === 'no-preference') {
+        await signature.getByRole('button', { name: 'Replay Linen Earth brand animation' }).click();
+        await page.waitForFunction(() => {
+          const root = document.querySelector('.brandSignature'), thread = root.querySelector('[data-brand-thread]'), logo = root.querySelector('.brandSignatureLogo');
+          return root.dataset.motionState === 'playing' && thread.getAnimations().length === 0 && logo.getAnimations().length === 0 && Number(getComputedStyle(logo).opacity) === 1;
+        });
+        await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
+        await page.locator('.brandSignature[data-motion-state="paused"]').waitFor();
+        await page.waitForFunction(() => document.querySelector('.brandSignature').getAnimations({ subtree: true }).every(a => !a.pending && a.playState !== 'running'));
+        const completedArtwork = () => signature.evaluate(n => ({
+          logo: Number(getComputedStyle(n.querySelector('.brandSignatureLogo')).opacity),
+          offset: parseFloat(getComputedStyle(n.querySelector('[data-brand-thread]')).strokeDashoffset),
+          tracks: n.querySelector('[data-brand-thread]').getAnimations().length + n.querySelector('.brandSignatureLogo').getAnimations().length,
+        }));
+        assert.deepEqual(await completedArtwork(), { logo: 1, offset: 0, tracks: 0 }, 'offscreen pause must not restart completed artwork');
+        await signature.scrollIntoViewIfNeeded();
+        await page.locator('.brandSignature[data-motion-state="playing"]').waitFor();
+        assert.deepEqual(await completedArtwork(), { logo: 1, offset: 0, tracks: 0 }, 'resume keeps completed tracks intact');
+        await page.locator('.brandSignature[data-motion-state="complete"]').waitFor();
+        summary.checks.push('late pause/resume preserves completed logo and thread tracks');
         await signature.getByRole('button', { name: 'Replay Linen Earth brand animation' }).click();
         await page.locator('.brandSignature[data-motion-state="playing"]').waitFor();
         await page.emulateMedia({ reducedMotion: 'reduce' });

@@ -44,7 +44,11 @@ export function BrandSignature() {
     const syncVisibility = () => {
       if (!running) return;
       const active = visible && !document.hidden;
-      controls.forEach(animation => active ? animation.play() : animation.pause());
+      // Completed native tracks have committed their final styles. Pausing or
+      // playing those cancelled handles would restart their first keyframe.
+      controls.forEach(animation => {
+        if (animation.state !== "finished") active ? animation.play() : animation.pause();
+      });
       root.dataset.motionState = active ? "playing" : "paused";
     };
     const play = () => {
