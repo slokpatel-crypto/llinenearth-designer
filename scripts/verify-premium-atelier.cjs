@@ -28,6 +28,19 @@ async function open(width, reducedMotion = 'no-preference', javaScriptEnabled = 
   await page.goto(base, { waitUntil: 'domcontentloaded' });
   if (javaScriptEnabled && reducedMotion === 'no-preference') {
     await page.locator('.brandIntro img').waitFor({ state: 'visible' });
+    await page.waitForFunction(() => document.querySelector('.brandIntro')?.getAnimations().some(a => Number(a.currentTime) >= 1000));
+    const openingHold = await page.locator('.brandIntro').evaluate(n => ({
+      background: getComputedStyle(n).backgroundColor,
+      logo: Number(getComputedStyle(n.querySelector('img')).opacity),
+      glow: Number(getComputedStyle(n.querySelector('.introGlow')).opacity),
+      threads: [...n.querySelectorAll('[data-brand-thread]')].every(p => Number(getComputedStyle(p).opacity) < .01),
+      logoEnd: n.querySelector('img').getAnimations()[0].effect.getComputedTiming().endTime,
+      end: n.getAnimations()[0].effect.getComputedTiming().endTime,
+    }));
+    assert.equal(openingHold.background, 'rgb(255, 255, 255)');
+    assert.ok(openingHold.logo < .01 && openingHold.glow < .01 && openingHold.threads, `opening remains white at one second: ${JSON.stringify(openingHold)}`);
+    assert.ok(openingHold.logoEnd >= 2500 && openingHold.logoEnd <= 3000 && openingHold.end <= 3000, 'logo and opening finish in the requested three-second window');
+    await page.locator('.brandIntro').screenshot({ path: path.join(out, `intro-white-${width}.png`) });
     await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.brandIntro img')).opacity) > .95);
     const openingSpacing = await page.locator('.brandIntro').evaluate(n => ({
       rule: n.querySelector('.introLogoRule').getBoundingClientRect().bottom,
@@ -84,6 +97,22 @@ async function run() {
         await signature.getByRole('button', { name: 'Replay Linen Earth brand animation' }).click();
         await page.locator('.brandSignature[data-motion-state="playing"]').waitFor();
         const thread = signature.locator('[data-brand-thread]').first();
+        const signatureTiming = await signature.evaluate(n => ({
+          threadDelay: n.querySelector('[data-brand-thread]').getAnimations()[0].effect.getTiming().delay,
+          logoEnd: n.querySelector('.brandSignatureLogo').getAnimations()[0].effect.getComputedTiming().endTime,
+          end: Math.max(...n.getAnimations({ subtree: true }).map(a => a.effect.getComputedTiming().endTime)),
+        }));
+        assert.ok(signatureTiming.threadDelay >= 1000 && signatureTiming.threadDelay <= 1500, 'background starts after the requested white hold');
+        assert.ok(signatureTiming.logoEnd >= 2500 && signatureTiming.logoEnd <= 3000 && signatureTiming.end <= 3000, 'banner settles by three seconds');
+        await page.waitForTimeout(850);
+        const signatureHold = await signature.evaluate(n => ({
+          logo: Number(getComputedStyle(n.querySelector('.brandSignatureLogo')).opacity),
+          caption: Number(getComputedStyle(n.querySelector('.brandSignatureCaption')).opacity),
+          threads: [...n.querySelectorAll('[data-brand-thread]')].every(p => Number(getComputedStyle(p).opacity) < .01),
+        }));
+        assert.ok(signatureHold.logo < .01 && signatureHold.caption < .01 && signatureHold.threads, 'banner artwork stays blank throughout the initial hold');
+        await signature.screenshot({ path: path.join(out, `signature-white-${width}.png`) });
+        await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.brandSignature [data-brand-thread]')).opacity) > .05);
         const start = await thread.evaluate(n => parseFloat(getComputedStyle(n).strokeDashoffset));
         await page.waitForTimeout(180);
         const moved = await thread.evaluate(n => parseFloat(getComputedStyle(n).strokeDashoffset));
@@ -98,7 +127,7 @@ async function run() {
         await page.locator('.brandSignature[data-motion-state="playing"]').waitFor();
         await page.locator('.brandSignature[data-motion-state="complete"]').waitFor();
         assert.equal(await signature.locator('[data-brand-thread]').evaluateAll(nodes => nodes.every(n => Math.abs(parseFloat(getComputedStyle(n).strokeDashoffset)) < .01)), true);
-        summary.checks.push(`thread drawing, replay and offscreen pause/resume at ${width}px`);
+        summary.checks.push(`white hold, three-second reveal, actual thread drawing, replay and offscreen pause/resume at ${width}px`);
       } else {
         await page.locator('.brandSignature[data-motion-state="reduced"]').waitFor();
         assert.equal(await signature.getByRole('button', { name: 'Replay Linen Earth brand animation' }).isVisible(), false);

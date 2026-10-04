@@ -29,7 +29,8 @@ export function BrandIntro() {
     };
     const dismiss = () => { cleanup(); setShow(false); };
     const handlePreference = () => { if (preference.matches) dismiss(); };
-    introTimer = window.setTimeout(dismiss, 2400);
+    // Let the three-second CSS exit finish before removing its artwork.
+    introTimer = window.setTimeout(dismiss, 3050);
     // The opening is decoration, not a loading gate. First interaction wins.
     window.addEventListener("keydown", dismiss, { once: true });
     window.addEventListener("pointerdown", dismiss, { once: true });

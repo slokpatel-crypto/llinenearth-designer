@@ -19,7 +19,8 @@ export function BrandSignature() {
     const threads = root.querySelectorAll<SVGPathElement>("[data-brand-thread]");
     const logo = root.querySelector<HTMLElement>(".brandSignatureLogo");
     const light = root.querySelector<HTMLElement>(".brandSignatureLight");
-    if (!logo || !light) return;
+    const caption = root.querySelector<HTMLElement>(".brandSignatureCaption");
+    if (!logo || !light || !caption) return;
     let controls: ReturnType<typeof animate>[] = [];
     let visible = false;
     let played = false;
@@ -35,7 +36,7 @@ export function BrandSignature() {
         thread.style.removeProperty("stroke-dashoffset");
         thread.style.removeProperty("opacity");
       });
-      for (const node of [logo, light]) {
+      for (const node of [logo, light, caption]) {
         node.style.removeProperty("opacity");
         node.style.removeProperty("transform");
       }
@@ -53,13 +54,16 @@ export function BrandSignature() {
       const current = generation;
       threads.forEach((thread, index) => controls.push(animate(thread, {
         strokeDashoffset: ["100", "0"], opacity: [0, .65],
-      }, { duration: 1.9, delay: Math.min(index * .035, .7), ease: [.22, 1, .36, 1] })));
+      }, { duration: 1.3, delay: 1.2 + Math.min(index * .012, .25), ease: [.22, 1, .36, 1] })));
       controls.push(animate(logo, {
-        opacity: [.15, 1], transform: ["translateY(9px)", "translateY(0px)"],
-      }, { duration: .9, delay: .45, ease: [.22, 1, .36, 1] }));
+        opacity: [0, 1], transform: ["translateY(8px)", "translateY(0px)"],
+      }, { duration: 1.1, delay: 1.5, ease: [.22, 1, .36, 1] }));
+      controls.push(animate(caption, {
+        opacity: [0, 1], transform: ["translateY(4px)", "translateY(0px)"],
+      }, { duration: .8, delay: 1.75, ease: [.22, 1, .36, 1] }));
       controls.push(animate(light, {
-        transform: ["translateX(-110%)", "translateX(110%)"], opacity: [0, .7, 0],
-      }, { duration: 3.8, ease: "easeInOut" }));
+        transform: ["translateX(-110%)", "translateX(110%)"], opacity: [0, .55, 0],
+      }, { duration: 1.8, delay: 1.2, ease: "easeInOut" }));
       syncVisibility();
       void Promise.all(controls.map(animation => animation.finished)).then(() => {
         if (current !== generation) return;

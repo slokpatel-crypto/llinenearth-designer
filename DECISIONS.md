@@ -2,6 +2,14 @@
 
 Architecture and product decisions that must persist across coding sessions.
 
+## 2026-10-04 — Preserve both controls and banner; use a calm three-second reveal
+
+**Owner preference:** keep the existing thread-and-logo homepage banner alongside the new premium buttons. Save their approved combined version at `checkpoint/brand-animation-and-premium-controls-20261004`; a preview cropped above the banner must not be treated as removing it.
+
+**Timing:** both the opening and replayable banner begin with 1.2 seconds of quiet white artwork. Background threads/light start after that hold; the unchanged logo begins at 1.5 seconds and finishes at 2.6 seconds. All movement finishes by 3 seconds of visible playback. Reveal the caption gently; use restrained offsets and easing, without a loop or additional dependency.
+
+**Behavior:** first keyboard/pointer/wheel interaction can still dismiss the opening immediately. Keep once-per-session display, offscreen/hidden-tab pause, replay, complete static no-JavaScript artwork and live reduced-motion cancellation. Browser evidence checks the actual white hold, native animation end times, path movement, replay and original responsive/lifecycle regressions. No outfit, fabric, Designer, recipe or schema changes.
+
 ## 2026-10-04 — Richer controls and explicit Designer clarification drafts
 
 **Controls:** add original compass/garment/weave icons, circular arrow details, an inset tailoring line, a finite light sweep and press feedback to the homepage actions, brand replay and Ask Designer. Keep labels and destinations authoritative, illustrations decorative, disabled controls quiet and reduced-motion controls static. Server markup contains the complete controls; no extra animation dependency or per-frame JavaScript is introduced.
