@@ -48,11 +48,11 @@ jobs:
             if curl --fail --silent http://127.0.0.1:3000/designer-studio > /dev/null; then break; fi
             sleep 1
           done
+          node scripts/verify-creative-workflow.cjs
           node scripts/verify-premium-atelier.cjs
           node scripts/verify-preview-lifecycle.cjs
           node scripts/verify-style-director-lifecycle.cjs
           node scripts/verify-designer-advisor.cjs
-          node scripts/verify-creative-workflow.cjs
       - name: Save browser verification evidence
         if: always()
         uses: actions/upload-artifact@v4
