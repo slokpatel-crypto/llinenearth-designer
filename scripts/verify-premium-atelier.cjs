@@ -16,7 +16,7 @@ async function open(width, reducedMotion = 'no-preference', javaScriptEnabled = 
   const page = await context.newPage(); activePage = page;
   page.on('pageerror', error => summary.errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') summary.errors.push(message.text()); });
-  const photo = await fs.readFile('public/editorial/suit.webp');
+  const photo = await fs.readFile('public/designer/studio-tucked.webp');
   await context.route('**/api/**', route => {
     const p = new URL(route.request().url()).pathname;
     if (/render|inspect/.test(p)) summary.providerCalls++;
@@ -87,7 +87,7 @@ async function run() {
   await privatePage.addInitScript(() => Object.defineProperty(window, 'sessionStorage', { get() { throw new DOMException('Storage unavailable', 'SecurityError'); } }));
   const privateTab = await privatePage.newPage(); activePage = privateTab;
   privateTab.on('pageerror', error => summary.errors.push(error.message));
-  await privateTab.route('**/api/homepage-model', route => route.fulfill({ status: 302, headers: { location: '/editorial/suit.webp' } }));
+  await privateTab.route('**/api/homepage-model', route => route.fulfill({ status: 302, headers: { location: '/designer/studio-tucked.webp' } }));
   await privateTab.goto(base, { waitUntil: 'networkidle' });
   await privateTab.locator('.brandIntro').waitFor({ state: 'hidden' });
   assert.equal(await privateTab.locator('.gatewayHeroActions a').first().isVisible(), true);

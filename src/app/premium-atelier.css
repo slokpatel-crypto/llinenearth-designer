@@ -35,8 +35,8 @@
 .premiumAtelier .gatewayIntro h2 { font-size: clamp(2.5rem, 4.2vw, 4.2rem); }
 .premiumAtelier .gatewayIntro > p { font-size: 14px; line-height: 1.8; }
 .premiumAtelier .gatewayCard { border-radius: 12px; box-shadow: 0 14px 38px #263a4810; }
-.premiumAtelier .gatewayImageDesigner { background-image: url('/editorial/shirt.webp'); }
-.premiumAtelier .gatewayImageVisual { background-image: url('/editorial/suit.webp'); }
+.premiumAtelier .gatewayImageDesigner { background-image: url('/designer/studio-wide.webp'); }
+.premiumAtelier .gatewayImageVisual { background-image: url('/designer/studio-tucked.webp'); }
 .premiumAtelier .gatewayCardCopy h3 { font-size: clamp(2.3rem, 3.4vw, 3.8rem); line-height: 1.03; }
 .premiumAtelier .gatewayCardCopy > p:not(.eyebrow) { font-size: 13px; line-height: 1.75; }
 .premiumAtelier .gatewayCardTop span { border-radius: 50%; }

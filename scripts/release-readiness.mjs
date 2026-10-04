@@ -842,7 +842,7 @@ requireTokens("src/app/api/homepage-model/route.ts", [
   "model-create",
   "status",
   "X-Linen-Render",
-  "/editorial/suit.webp",
+  "/designer/studio-tucked.webp",
 ]);
 requireTokens("desktop/src-tauri/tauri.conf.json", ["\"version\": \"1.0.0\"", "\"productName\": \"Linen Earth OS\""]);
 requireTokens("desktop/package.json", ["\"version\": \"1.0.0\""]);

@@ -4,20 +4,20 @@ import { HomeMotion } from "@/components/HomeMotion";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 
 const designerRefs = [
-  "/editorial/shirt.webp",
-  "/editorial/trouser.webp",
+  "/designer/studio-tucked.webp",
+  "/designer/studio-wide.webp",
   "/editorial/blazer.webp",
 ];
 const visualRefs = [
-  "/editorial/suit.webp",
-  "/editorial/shirt.webp",
+  "/designer/studio-pleated.webp",
+  "/designer/studio-tucked.webp",
   "/editorial/trouser.webp",
 ];
 
 const garments = [
-  { name: "Shirts", image: "/editorial/shirt.webp", className: "editorialShirt", href: "/designer-studio", note: "Real catalogue cloth · photographic preview" },
+  { name: "Shirts", image: "/designer/studio-tucked.webp", className: "editorialShirt", href: "/designer-studio", note: "Cloth and cut · studio illustration" },
   { name: "Trousers", image: "/editorial/trouser.webp", className: "editorialTrouser", href: "/designer-studio", note: "Tailored balance · photographic preview" },
-  { name: "Suits", image: "/editorial/suit.webp", className: "editorialSuit", href: "/style-director", note: "Two-piece · direction first · real fabric" },
+  { name: "Suits", image: "/editorial/blazer.webp", className: "editorialSuit", href: "/style-director", note: "Two-piece · direction first · real fabric" },
   { name: "Blazers", image: "/editorial/blazer.webp", className: "editorialBlazer", href: "/style-director", note: "Layering direction · real fabric first" },
 ] as const;
 
@@ -48,7 +48,7 @@ export default function Home() {
         <div className="gatewayBrandCopy">
           <p>PREMIUM FABRICS · INTELLIGENT MENSWEAR · LINEN EARTH</p>
           <h1><span>Linen</span> Earth</h1>
-          <p className="gatewayHeroStatement">Cloth, judged on a real body.</p>
+          <p className="gatewayHeroStatement">Cloth. Cut. Your point of view.</p>
           <p className="gatewayHeroSub">Start with your occasion and instinct. Linen Earth narrows the direction, connects it to real fabric, and lets you see the look with photoreal fashion rendering.</p>
           <div className="gatewayHeroActions">
             <Link href="/style-director">Enter Style Director <b>↗</b></Link>
@@ -56,10 +56,10 @@ export default function Home() {
           </div>
           <div className="gatewayLine"><span>FABRIC FIRST · DESIGN WITH INTENT</span><i /></div>
         </div>
-        <div className="gatewayHeroModel" aria-label="Photoreal Linen Earth menswear model">
+        <div className="gatewayHeroModel" aria-label="Linen Earth menswear studio preview">
           <div className="gatewayHeroGlow" />
-          <img src="/api/homepage-model" alt="Photoreal menswear model styled for Linen Earth" fetchPriority="high" decoding="async" />
-          <div className="gatewayHeroBadge"><span>LINEN EARTH MODEL</span><b>FABRIC · FIT · FORM</b></div>
+          <img src="/api/homepage-model" alt="Menswear studio preview for Linen Earth" fetchPriority="high" decoding="async" />
+          <div className="gatewayHeroBadge"><span>LINEN EARTH STUDIO</span><b>FABRIC · FIT · FORM</b></div>
           <div className="gatewayHeroCaption"><span>REALISTIC SILHOUETTE</span><i/> <span>FABRIC-LED STYLING</span></div>
         </div>
       </section>
