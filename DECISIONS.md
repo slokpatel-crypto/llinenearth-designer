@@ -328,6 +328,6 @@ Architecture and product decisions that must persist across coding sessions.
 
 **Scale disclosure:** visible patterned accents use the same independent physical-repeat and studio-calibration checks as the base cloth. Verified base fabrics cannot upgrade an unverified accent. The proposed craft-dimension note remains visibly readable in the compact model panel regardless of cloth-scale status.
 
-**Reference replacement:** the existing bounded swatch-tile cache includes the loaded image URL, crop pattern and colour fallback. Updating a catalogue reference under the same fabric ID therefore refreshes both base garments and craft panels instead of reusing an earlier cloth tile.
+**Reference replacement:** the existing bounded swatch-tile cache includes the loaded image URL, crop pattern and colour fallback. Updating a catalogue reference under the same fabric ID therefore refreshes both base garments and craft panels instead of reusing an earlier cloth tile. Base and accent reference metadata also participate in preview ownership/final-render cache identity, so the replaced cloth invalidates readiness and cannot inherit an earlier render.
 
 **Verification:** pure cases cover catalogue reconstruction, stale bases, garment compatibility, hidden placements and bounded deterministic geometry. Chromium verifies real canvas pixels, protected skin/background, all supported zones/motifs, no provider calls, responsive application, and late accent loads. These are software placement checks, not physical acceptance.

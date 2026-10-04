@@ -1212,6 +1212,10 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
   const renderSignature=JSON.stringify({
     shirt:shirt.id,
     pant:pant.id,
+    fabricReferences:{
+      shirt:{image:shirt.image,hex:shirt.hex,patternType:shirt.patternType,renderScale:shirt.renderScale||null},
+      pant:{image:pant.image,hex:pant.hex,patternType:pant.patternType,renderScale:pant.renderScale||null},
+    },
     style,
     styleSpec:styleSpec||null,
     bodyProfile:bodyProfile||null,
