@@ -612,7 +612,7 @@
 .newDesignerBrief{margin:0 0 14px;padding:14px;border:1px solid #d9d1c7;background:linear-gradient(135deg,#fffaf5 0%,#fff 58%,#f4f8fb 100%);border-radius:14px}
 .newDesignerBriefHead{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center}
 .newDesignerBriefHead>div{min-width:0}
-.newDesignerBriefHead span{display:block;font-size:6px;letter-spacing:.14em;color:#a65d43;font-weight:800}
+.newDesignerBriefHead>div>span{display:block;font-size:6px;letter-spacing:.14em;color:#a65d43;font-weight:800}
 .newDesignerBriefHead strong{display:block;margin-top:5px;font:400 17px/1.2 Georgia,serif;color:#243b52}
 .newDesignerBriefHead small{display:block;margin-top:4px;font-size:7px;line-height:1.4;color:#76828d}
 .newDesignerBriefHead>button,.newDesignerBriefResults>article>button{border:0;background:#203d5b;color:#fff;border-radius:999px;padding:9px 12px;font-size:7px;cursor:pointer;white-space:nowrap}
