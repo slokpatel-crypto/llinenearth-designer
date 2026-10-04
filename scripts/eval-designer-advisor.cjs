@@ -21,6 +21,16 @@ const cases=[
   ["Use point collar and spread collar","clarify"],
   ["Use white contrast collar and cuffs","refine"],
   ["Use a soft button-down collar and extra-high rise with two-button barrel cuffs","refine"],
+  ["Create a capsule for office, dinner and weekend","capsule"],
+  ["Design two relaxed summer dinner outfits with a blue shirt and beige trousers","design"],
+  ["Design a shirt only with clean tailoring","design"],
+  ["Design trousers only with modern volume","design"],
+  ["Design a casual outfit with no blue shirt and blue trousers","design"],
+  ["Design a cropped trouser","design"],
+  ["Design an outfit with a linen shirt under 180 gsm","design"],
+  ["Design a formal look with a camp collar and French cuffs","design"],
+  ["Design a British collar shirt","clarify"],
+  ["Design five outfit directions","design"],
 ];
 const timings=[],tasks=[];
 for(let round=0;round<5;round++)for(const [brief,task] of cases){

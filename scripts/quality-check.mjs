@@ -645,8 +645,12 @@ const browserTasteMemory = fs.readFileSync("src/lib/browser-style-memory.ts","ut
 for (const token of ["readLocalDesignerTasteProfile","evidence<4","preferredTier","preferredShirtWear","preferredTrouser"]) {
   if (!browserTasteMemory.includes(token)) throw new Error(`Local Designer taste-profile regression: missing ${token}`);
 }
-for (const token of ["safeTasteProfile","personalizeBrief","learned preference:","linen-designer-brief-v2"]) {
+for (const token of ["safePersonalTaste","personalizeDesignerBrief","linen-designer-brief-v2"]) {
   if (!designerBriefRoute.includes(token)) throw new Error(`Personalized one-line Designer regression: missing ${token}`);
+}
+const personalTaste=fs.readFileSync("src/lib/designer/personal-taste.ts","utf8");
+for(const token of ["evidence<4","protectedKeys","Personal preferences from your distinct judgements","parseDesignerConstructionIntent","scopeStyleLocks","DESIGNER_STYLE_CHOICES"]) {
+  if(!personalTaste.includes(token)) throw new Error(`Personal taste constraint regression: missing ${token}`);
 }
 console.log("Local taste-profile gate passed: distinct human judgements can personalize future briefs only after conservative evidence thresholds.");
 const designerAdvisor=fs.readFileSync("src/lib/designer/advisor.ts","utf8");

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { DESIGNER_REVIEWED_PAIRING, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion } from "@/lib/designer/engine";
+import { DESIGNER_REVIEWED_PAIRING, designerFabricFromStock, designerStyleForOccasion } from "@/lib/designer/engine";
 import { parseDesignerBrief, explicitDesignerStylePatch } from "@/lib/designer/brief";
 import { answerDesignerQuestion, designerTaskFor, safeDesignerJudgement, validDesignerContext, validDesignerOccasion, validDesignerStyle } from "@/lib/designer/advisor";
 import { searchDesignerCatalogue, type DesignerSearchTier } from "@/lib/designer/search";
@@ -10,6 +10,8 @@ import { loadApprovedHouseEaseModel } from "@/lib/designer/house-ease-server";
 import { applyLiveVerifiedStockAvailability } from "@/lib/designer/stock-availability-server";
 import type { MeasurementProfile } from "@/lib/measurements";
 import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
+import { safePersonalTaste, personalizeDesignerBrief } from "@/lib/designer/personal-taste";
+import { compileDesignerIntent, designGoalPatch, scopeStyleLocks } from "@/lib/designer/design-intent";
 
 export const runtime="nodejs";
 export const maxDuration=20;
@@ -67,57 +69,6 @@ function safeObservations(value:unknown):TailorObservationProfile|null {
   };
 }
 
-type SafeTasteProfile = {
-  evidence:number;
-  preferredTier?:DesignerSearchTier;
-  preferredShirtWear?:"Tucked"|"Untucked";
-  preferredTrouser?:string;
-};
-
-function safeTasteProfile(value:unknown):SafeTasteProfile|null {
-  if(!value || typeof value!=="object" || Array.isArray(value)) return null;
-  const input=value as Record<string,unknown>;
-  if(Number(input.version)!==1) return null;
-  const evidence=Math.max(0,Math.min(100,Math.floor(Number(input.evidence)||0)));
-  if(evidence<4) return {evidence};
-  const tier=String(input.preferredTier||"");
-  const wear=String(input.preferredShirtWear||"");
-  const trouser=String(input.preferredTrouser||"").slice(0,100);
-  return {
-    evidence,
-    ...(tier==="Safe"||tier==="Elevated"||tier==="Statement" ? {preferredTier:tier} : {}),
-    ...(wear==="Tucked"||wear==="Untucked" ? {preferredShirtWear:wear} : {}),
-    ...(DESIGNER_STYLE_CHOICES.trouser.includes(trouser) ? {preferredTrouser:trouser} : {}),
-  };
-}
-
-function personalizeBrief(parsed:ReturnType<typeof parseDesignerBrief>,taste:SafeTasteProfile|null) {
-  if(!taste || taste.evidence<4) return parsed;
-  const style={...parsed.style};
-  const preference={...parsed.preference};
-  const interpretation=[...parsed.interpretation];
-  const text=parsed.original.toLowerCase();
-  const explicitEnergy=/\b(quiet|understated|minimal|subtle|bold|statement|expressive|stand out|standout|not boring|creative|distinctive)\b/.test(text);
-  const explicitWear=/\b(tucked|untucked)\b/.test(text);
-  const explicitTrouser=/\b(pleat|pleated|flat[- ]?front|wide[- ]?leg|relaxed trouser|cropped|ankle[- ]?length)\b/.test(text);
-  const learned:string[]=[];
-
-  if(taste.preferredTier && !explicitEnergy) {
-    preference.preferredTier=taste.preferredTier;
-    learned.push(`${taste.preferredTier.toLowerCase()} energy`);
-  }
-  if(taste.preferredShirtWear && !explicitWear) {
-    style.shirtWear=taste.preferredShirtWear;
-    learned.push(`${taste.preferredShirtWear.toLowerCase()} shirt`);
-  }
-  if(taste.preferredTrouser && !explicitTrouser) {
-    style.trouser=taste.preferredTrouser;
-    learned.push(taste.preferredTrouser.toLowerCase());
-  }
-  if(learned.length) interpretation.push(`learned preference: ${learned.join(", ")}`);
-  return {...parsed,style,preference,interpretation};
-}
-
 function tierOrder(preferred:DesignerSearchTier|undefined) {
   if(preferred==="Safe") return ["Safe","Elevated","Statement"] as DesignerSearchTier[];
   if(preferred==="Statement") return ["Statement","Elevated","Safe"] as DesignerSearchTier[];
@@ -158,8 +109,8 @@ export async function POST(request:Request) {
     const base=advisorRequest ? {style:body.currentStyle as Parameters<typeof answerDesignerQuestion>[0]["chosenStyle"],occasion:body.occasion as Parameters<typeof answerDesignerQuestion>[0]["occasion"],context:body.context as Parameters<typeof answerDesignerQuestion>[0]["context"]} : undefined;
     const taskText=brief+(judgement?.note?" "+judgement.note:"");
     const read=parseDesignerBrief(judgement ? judgement.note || "Revise this direction" : taskText,base);
-    if(base && designerTaskFor(taskText,judgement)==="design" && !/\b(?:keep|preserve|same|unchanged)\b/i.test(taskText)) read.style={...designerStyleForOccasion(read.occasion),...explicitDesignerStylePatch(taskText)};
-    const parsed=!base || designerTaskFor(taskText,judgement)==="design" ? personalizeBrief(read,safeTasteProfile(body.tasteProfile)) : read;
+    if(base && ["design","capsule"].includes(designerTaskFor(taskText,judgement)) && !/\b(?:keep|preserve|same|unchanged)\b/i.test(taskText)) read.style={...designerStyleForOccasion(read.occasion),...explicitDesignerStylePatch(taskText)};
+    const parsed=!base || ["design","capsule"].includes(designerTaskFor(taskText,judgement)) ? personalizeDesignerBrief(read,safePersonalTaste(body.tasteProfile)) : read;
     const [metadata,evidence,easeModel]=await Promise.all([
       loadDesignerFabricMetadata(),
       loadDesignerEvidenceContext(),
@@ -189,6 +140,7 @@ export async function POST(request:Request) {
       return NextResponse.json({...answer,requestId:"LE-ADVICE-"+crypto.randomUUID(),engine:"linen-designer-advisor-v1"},{headers:{"cache-control":"no-store"}});
     }
 
+    const intent=compileDesignerIntent(brief);
     const results=searchDesignerCatalogue({
       shirts,
       pants,
@@ -203,6 +155,7 @@ export async function POST(request:Request) {
       casebook:evidence.casebook,
       fitOutcomes:evidence.fitOutcomes,
       preference:parsed.preference,
+      stylePatch:{...parsed.personalStylePatch,...designGoalPatch(intent,parsed.occasion),...explicitDesignerStylePatch(brief),...scopeStyleLocks(intent.scope,parsed.style)},
       fabricIntelligence,
       easeModel,
     });

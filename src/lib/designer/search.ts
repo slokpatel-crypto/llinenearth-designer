@@ -20,6 +20,7 @@ import { fitOutcomeProportionFromMeasurements, fitOutcomeSignalFor, type FitOutc
 
 import { colorFamilyPairSignal, optionIdForLabel } from "@/lib/vocab";
 import { FABRIC_INTELLIGENCE_WEIGHTS as FIW } from "@/lib/designer/weights";
+import type { FabricRole, RoleFabricBrief } from "./design-intent.ts";
 
 export type DesignerSearchScope = "keep_shirt" | "keep_trouser" | "open";
 export type DesignerSearchTier = "Safe" | "Elevated" | "Statement";
@@ -31,6 +32,7 @@ export type DesignerSearchPreference = {
   excludedPatterns?:Array<"plain"|"stripe"|"check"|"print">;
   preferredTier?:DesignerSearchTier;
   strictOccasionFit?:boolean;
+  roles?:Partial<Record<FabricRole,RoleFabricBrief>>;
 };
 
 export type DesignerDecisionDimension = {
@@ -89,6 +91,10 @@ export type DesignerSearchInput = {
   preference?: DesignerSearchPreference | null;
   fabricIntelligence?: Record<string,DesignerFabricIntelligence> | null;
   easeModel?: ApprovedHouseEaseModel | null;
+  // Brief locks apply before evaluation/ranking; measurement adaptations never
+  // silently override an explicit customer choice.
+  stylePatch?:Partial<DesignerStyle>;
+  excludedStyle?:Partial<Record<keyof DesignerStyle,string[]>>;
 };
 
 type RankedCandidate = Omit<DesignerSearchResult,"comparison">;
@@ -682,11 +688,12 @@ export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearc
   for(const tier of tiers) {
     const baseStyle=styleForTier(tier,input.occasion,input.chosenStyle);
     const adapted=fitAdaptedStyle(baseStyle,input.measurements,input.observations);
-    const style=adapted.style;
+    const style={...adapted.style,...input.stylePatch};
+    if(Object.entries(input.excludedStyle || {}).some(([key,values])=>values?.includes(style[key as keyof DesignerStyle]))) continue;
     const ranked:RankedCandidate[]=[];
     for(const shirt of shirts) {
       for(const pant of pants) {
-        if(!designerFabricAllowedForBrief(shirt,input.preference) || !designerFabricAllowedForBrief(pant,input.preference)) continue;
+        if(!designerFabricAllowedForBrief(shirt,input.preference,"shirt") || !designerFabricAllowedForBrief(pant,input.preference,"pant")) continue;
         const recommendation=evaluateDesignerCombo(shirt,pant,input.occasion,style,undefined,input.context);
         const fit=assessFitConstruction(input.measurements,style,{climate:input.context.climate,shirtFabric:shirt,trouserFabric:pant,observations:input.observations,easeModel:input.easeModel});
         if(hardBlocked(recommendation,fit)) continue;
@@ -743,8 +750,10 @@ export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearc
   }));
 }
 
-export function designerFabricAllowedForBrief(fabric:DesignerFabric,preference?:DesignerSearchPreference|null) {
+export function designerFabricAllowedForBrief(fabric:DesignerFabric,preference?:DesignerSearchPreference|null,role?:FabricRole) {
   const words=new Set((fabric.name+" "+fabric.colorFamily+" "+fabric.tone).toLowerCase().match(/[a-z]+/g) || []);
+  if(words.has("gray")) words.add("grey");
+  if(words.has("grey")) words.add("gray");
   if((preference?.avoidTokens || []).some((token)=>words.has(token.toLowerCase()))) return false;
   const text=(fabric.patternType || "").toLowerCase();
   const patterns={
@@ -753,7 +762,20 @@ export function designerFabricAllowedForBrief(fabric:DesignerFabric,preference?:
     check:/check|windowpane|gingham/.test(text),
     print:/print|floral|geometric|botanical|abstract/.test(text),
   };
-  return !(preference?.excludedPatterns || []).some((pattern)=>patterns[pattern]);
+  if((preference?.excludedPatterns || []).some((pattern)=>patterns[pattern])) return false;
+  const request=role?preference?.roles?.[role]:undefined;
+  if(request) {
+    if(request.wantedTokens.some(token=>!words.has(token)) || request.avoidTokens.some(token=>words.has(token))) return false;
+    if(request.pattern && !patterns[request.pattern] || request.excludedPatterns?.some(pattern=>patterns[pattern])) return false;
+    if(request.material) {
+      const material=(fabric.name+" "+fabric.line+" "+(fabric.fiberContent || "")).toLowerCase();
+      const matches={linen:/linen/.test(material),cotton:/cotton/.test(material),blend:/blend/.test(material),synthetic:/synthetic|polyester|polyamide|nylon|\btr\b|\bpv\b/.test(material)};
+      if(!matches[request.material]) return false;
+    }
+    if(request.gsm && (fabric.weightGsm===null || !Number.isFinite(fabric.weightGsm) || request.gsm.min!==undefined && fabric.weightGsm<request.gsm.min || request.gsm.max!==undefined && fabric.weightGsm>request.gsm.max)) return false;
+    if(request.lea && !new RegExp("\\b"+request.lea+"\\s*lea\\b","i").test(fabric.line+" "+fabric.name)) return false;
+  }
+  return true;
 }
 
 export function explainWhyNotCurrentPair(input:DesignerSearchInput) {

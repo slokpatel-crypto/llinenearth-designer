@@ -137,6 +137,10 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Applied recommendations now assess the exact revised StyleSpec; late answers or assessments cannot affect a replacement design.
 - Extended natural construction requests to the current closed option library, preserving primary task intent and rejecting contradictory/unsupported detail changes; named comparisons and colour/pattern exclusions retain the requested constraints.
 
+- Added garment-specific colour/pattern/material requirements, recorded GSM/Lea matching, bounded creative-goal execution and three-occasion capsule directions with per-option Apply context.
+- Expanded occasion-scoped human preferences to individual construction choices, with evidence summaries, opt-out and bounded previous-revision review; cloth-only judgement revisions preserve the judged construction.
+- Added proposal-level photographic support disclosures; unsupported reference constructions and exact-copy requests require clarification. Full acceptance scope and remaining intelligence/physical gates are recorded in `docs/DESIGNER_ENGINE_EXECUTION.md`.
+
 ## Evidence we cannot manufacture in code
 
 These remain intentionally open because they require a person, physical cloth or a real device:
