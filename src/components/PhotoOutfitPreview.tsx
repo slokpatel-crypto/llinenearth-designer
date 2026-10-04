@@ -6,6 +6,8 @@ import type { StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import type { BodyPreviewProfile } from "@/lib/designer/body-profile";
 import { applyRuntimeFabricScale, photoFabricPatternScale, visiblePatternScaleVerified, type FabricRenderAsset } from "@/lib/designer/live-preview";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
+import { photoCraftAreaPath, photoCraftZone, resolvePhotoCraft } from "@/lib/designer/photo-craft";
+import { drawPhotoCraftDecoration } from "@/lib/designer/photo-craft-canvas";
 import fabricTileManifest from "../../public/fabric-tiles/manifest.json";
 import { CREATIVE_FEEDBACK_REASONS, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
 import { UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION, type CustomerPhotoCalibration } from "@/lib/designer/photo-calibration-types";
@@ -683,7 +685,8 @@ function drawGarment(
   target.drawImage(layer, 0, 0);
 }
 
-type CreativePreviewSpec = Pick<CreativeDirection,"id"|"name"|"treatments"|"pattern">;
+type CreativePreviewSpec = Pick<CreativeDirection,"id"|"name"|"treatments"|"pattern"|"craft">;
+type PhotoCraftPanel={fabric:DesignerFabric;image:HTMLImageElement};
 
 function creativeHas(creative:CreativePreviewSpec|undefined,id:string) {
   return Boolean(creative?.treatments.some((item)=>item.id===id));
@@ -834,13 +837,62 @@ function drawCreativeDetails(
   }
 }
 
-function creativePreviewCoverage(creative?:CreativePreviewSpec) {
+function drawPhotoCraft(
+  target:CanvasRenderingContext2D, modelPhoto:HTMLImageElement, trouserPhoto:HTMLImageElement,
+  style:DesignerStyle, creative:CreativePreviewSpec|undefined, panel:PhotoCraftPanel|undefined,
+  calibration:PhotoPreviewCalibration|undefined,
+) {
+  const craft=creative?.craft;
+  if(!craft)return;
+  const tucked=style.shirtWear==="Tucked",template=DESIGNER_PHOTO_TEMPLATES[photoTemplateForStyle(style)];
+  const tuckedMask=tucked?tuckedGarmentMasks(modelPhoto):null;
+  const shirtMask=tuckedMask?.shirt||untuckedGarmentMasks(modelPhoto,template.shirtPath,DESIGNER_PHOTO_TEMPLATES.pleated.trouserPath).shirt;
+  const pantMask=tuckedMask?.pant||untuckedGarmentMasks(trouserPhoto,template.shirtPath,template.trouserPath).pant;
+  const draw=(zone:NonNullable<CreativePreviewSpec["craft"]>["panels"][number]["zone"],decoration:boolean)=>{
+    const placement=photoCraftZone(zone,style);
+    if(placement.status!=="approximate")return;
+    const path=photoCraftAreaPath(placement.areas),region=placement.region;
+    const boundary=region==="collar"?(tucked?PHOTO_TUCKED_COLLAR_MASK:PHOTO_UNTUCKED_COLLAR_CLIP):
+      region==="cuff"?(tucked?PHOTO_TUCKED_CUFF_MASK:PHOTO_CUFF_MASK):
+      region==="shirt"?(tucked?PHOTO_TUCKED_SHIRT_BODY_CLIP:PHOTO_UNTUCKED_SHIRT_BODY_CLIP):
+      tucked?PHOTO_TUCKED_TROUSER_CLIP:template.trouserPath;
+    const mask=photoLightingMask(region==="collar"?undefined:region==="pant"?pantMask:shirtMask,boundary);
+    const photo=region==="pant"?trouserPhoto:modelPhoto;
+    if(!decoration&&panel){
+      const grain=region==="pant"?(tucked?PHOTO_TUCKED_PANEL_GRAIN_ROTATION.rightTrouser:PHOTO_UNTUCKED_TROUSER_GRAIN_ROTATION[photoTemplateForStyle(style)==="wide"?"wide":"pleated"].rightTrouser):0;
+      drawGarment(target,photo,panel.image,panel.fabric,path,mask,{...calibration,maskPrepared:true,rotationDeg:grain,anchorX:placement.areas[0].x,anchorY:placement.areas[0].y});
+    }
+    if(decoration&&craft.decoration){
+      const layer=document.createElement("canvas");layer.width=WIDTH;layer.height=HEIGHT;
+      const ctx=layer.getContext("2d");if(!ctx)return;
+      drawPhotoCraftDecoration(ctx,craft.decoration,placement.areas);
+      // A light neutral relief tint preserves the marks' alpha; source-atop
+      // cannot turn transparent gaps into a rectangular layer over the cloth.
+      ctx.globalCompositeOperation="source-atop";ctx.globalAlpha=.15;
+      ctx.drawImage(photographicReliefMap(photo,mask),0,0);
+      ctx.globalAlpha=1;ctx.globalCompositeOperation="destination-in";
+      if(mask)ctx.drawImage(mask,0,0);
+      ctx.drawImage(featheredPathMask(path),0,0);
+      target.drawImage(layer,0,0);
+    }
+  };
+  if(panel&&craft.panels[0]?.fabric.id===panel.fabric.id)draw(craft.panels[0].zone,false);
+  if(craft.decoration)draw(craft.decoration.zone,true);
+}
+
+function creativePreviewCoverage(creative:CreativePreviewSpec|undefined,style:DesignerStyle,craftReady:boolean) {
   if(!creative) return {visible:[] as string[],specOnly:[] as string[]};
   const visible:string[]=[];
   const specOnly:string[]=[];
   if(creative.pattern) visible.push(`Surface preview · ${creative.pattern.name}`);
   const partiallyVisible=new Set(["extended-white-cuff","quiet-collar-echo","tonal-panel","collar-line","border-cuff","direction-control"]);
   for(const move of creative.treatments) {
+    if(move.id==="craft-panel"||move.id==="craft-decoration"){
+      const zone=move.id==="craft-panel"?creative.craft?.panels[0]?.zone:creative.craft?.decoration?.zone;
+      if(craftReady&&zone&&photoCraftZone(zone,style).status==="approximate")visible.push(`Proposed · ${move.label}`);
+      else specOnly.push(move.label);
+      continue;
+    }
     if(partiallyVisible.has(move.id)) visible.push(move.label);
     else specOnly.push(move.label);
   }
@@ -892,6 +944,7 @@ export function composePhotoOutfit(
   shirt: DesignerFabric, pant: DesignerFabric, style: DesignerStyle,
   creative?: CreativePreviewSpec,
   calibration?: PhotoPreviewCalibration,
+  craftPanel?: PhotoCraftPanel,
 ) {
   const templateKey=photoTemplateForStyle(style);
   const template = DESIGNER_PHOTO_TEMPLATES[templateKey];
@@ -988,6 +1041,9 @@ export function composePhotoOutfit(
     if (style.collarFinish !== "Self-fabric") drawWhiteDetail(context, modelPhoto, PHOTO_COLLAR_MASK);
     if (style.collarFinish === "White contrast collar + cuffs") drawWhiteDetail(context, modelPhoto, PHOTO_CUFF_MASK);
   }
+  // Craft is composed last so contrast details cannot erase the selected
+  // catalogue panel or its thread marks. Zone/garment masks protect skin/set.
+  drawPhotoCraft(context,modelPhoto,trouserPhoto,style,creative,craftPanel,calibration);
 }
 
 export function StyleDirectorRealModelPreview({shirt,pant,style,onRenderMeasured,onPreviewReady,photoPxPerMm}:{
@@ -1093,13 +1149,14 @@ export type CreativeVisualCheck = {
   improvement?:"improved"|"same"|"worse"|"not_applicable";
 };
 
-export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile, creativeDirection, onCreativeFeedback, onCreativeInspection, autoRenderNonce = 0, onCreativeRenderStart, renderRepairInstruction = "" }: {
+export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile, creativeDirection, craftFabrics, onCreativeFeedback, onCreativeInspection, autoRenderNonce = 0, onCreativeRenderStart, renderRepairInstruction = "" }: {
   shirt: DesignerFabric;
   pant: DesignerFabric;
   style: DesignerStyle;
   styleSpec?: StyleSpecV2;
   bodyProfile?: BodyPreviewProfile;
   creativeDirection?: CreativeDirection | null;
+  craftFabrics?: DesignerFabric[];
   onCreativeFeedback?: (rating:"up"|"down",reason?:CreativeFeedbackReason)=>void;
   onCreativeInspection?: (check:CreativeVisualCheck)=>void;
   autoRenderNonce?: number;
@@ -1131,7 +1188,9 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
   const template = DESIGNER_PHOTO_TEMPLATES[templateId];
   const gaps = photoTemplateGaps(style, templateId);
   const tucked = style.shirtWear === "Tucked";
-  const creativeCoverage = creativePreviewCoverage(creativeDirection || undefined);
+  const resolvedCraft=useMemo(()=>resolvePhotoCraft(creativeDirection?.craft,craftFabrics||[],shirt.id,pant.id),[creativeDirection?.craft,craftFabrics,shirt.id,pant.id]);
+  const previewCreative=useMemo(()=>creativeDirection?{...creativeDirection,craft:resolvedCraft?.craft}:undefined,[creativeDirection,resolvedCraft]);
+  const creativeCoverage = creativePreviewCoverage(creativeDirection || undefined,style,Boolean(resolvedCraft));
   const shirtPreviewAsset=fabricRenderAsset(shirt);
   const pantPreviewAsset=fabricRenderAsset(pant);
   const shirtScaleEvidenceReady=visiblePatternScaleVerified(shirt.patternType,shirtPreviewAsset);
@@ -1151,6 +1210,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     styleSpec:styleSpec||null,
     bodyProfile:bodyProfile||null,
     creative:creativeDirection?{id:creativeDirection.id,craft:creativeDirection.craft||null,treatments:creativeDirection.treatments,pattern:creativeDirection.pattern||null}:null,
+    craftCatalogue:resolvedCraft?{craft:resolvedCraft.craft,renderScale:resolvedCraft.panelFabric?.renderScale||null}:null,
     photoCalibration:photoCalibration.verified ? {
       verified:true,
       photoPxPerMm:verifiedPhotoPxPerMm,
@@ -1205,18 +1265,19 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     Promise.all([
       loadImage(tucked ? template.src : DESIGNER_PHOTO_TEMPLATES.pleated.src), loadImage(template.src),
       loadFabricImage(shirt), loadFabricImage(pant),
-    ]).then(([modelPhoto, trouserPhoto, shirtImage, pantImage]) => {
+      resolvedCraft?.panelFabric&&photoCraftZone(resolvedCraft.craft.panels[0].zone,style).status==="approximate"?loadFabricImage(resolvedCraft.panelFabric):Promise.resolve(undefined),
+    ]).then(([modelPhoto, trouserPhoto, shirtImage, pantImage, panelImage]) => {
         if (cancelled) return;
         const canvas = canvasRef.current;
         const context = canvas?.getContext("2d", { alpha: false });
         if (!canvas || !context) throw new Error("Canvas is unavailable.");
-        composePhotoOutfit(context, modelPhoto, trouserPhoto, shirtImage, pantImage, shirt, pant, style, creativeDirection || undefined,{photoPxPerMm:verifiedPhotoPxPerMm});
+        composePhotoOutfit(context, modelPhoto, trouserPhoto, shirtImage, pantImage, shirt, pant, style, previewCreative,{photoPxPerMm:verifiedPhotoPxPerMm},panelImage&&resolvedCraft?.panelFabric?{image:panelImage,fabric:resolvedCraft.panelFabric}:undefined);
         setError(false);
         setReady(true);
       })
       .catch(() => { if (!cancelled) { setReady(false); setError(true); } });
     return () => { cancelled = true; };
-  }, [shirt, pant, template, tucked, style.collarFinish, creativeDirection, verifiedPhotoPxPerMm]);
+  }, [shirt, pant, template, tucked, style, previewCreative, resolvedCraft, verifiedPhotoPxPerMm]);
 
   async function inspectSelectedLook(result:PhotorealResult,view:PhotorealView,request:PreviewRequest):Promise<SelectedLookVisualCheck|null> {
     if(!request.isCurrent()) return null;
@@ -1589,7 +1650,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       <span>LIVE PREVIEW</span>
       <h2 id="designerPhotoTitle">Your look.</h2>
     </div>
-    <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`}>
+    <div className={`newDesignerPhotoStage ${inspectFit ? "inspectFit" : ""}`} data-ready={ready?"true":"false"}>
       <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} role="img" aria-label={`${previewFabricLabel(shirt, pant)}, ${style.shirtWear.toLowerCase()} with ${style.collarFinish.toLowerCase()}`} />
       {showCreativeAi && creativeAi && <img className="newDesignerPhotoAi" src={photorealView==="front" ? creativeAi.image : (photorealViews[photorealView]?.image || creativeAi.image)} alt={creativeDirection ? `Photoreal V5 render of ${creativeDirection.name}` : `Photoreal ${photorealView} view of ${shirt.name} with ${pant.name}`} />}
       {showOriginal && <img className="newDesignerPhotoOriginal" src={tucked ? template.src : DESIGNER_PHOTO_TEMPLATES.pleated.src} alt="Original photographed model template for comparison" />}
@@ -1680,8 +1741,9 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       <span>SELECTED · {creativeDirection.name.toUpperCase()}</span>
       <div className="newDesignerPhotoCreativeTags">
         {creativeCoverage.visible.slice(0,2).map((item)=><b key={item}>{item}</b>)}
-        {creativeCoverage.specOnly.length>0 && <b>{creativeCoverage.specOnly.length} detail{creativeCoverage.specOnly.length===1?"":"s"} need photoreal render</b>}
+        {creativeCoverage.specOnly.length>0 && <b>{creativeCoverage.specOnly.length} detail{creativeCoverage.specOnly.length===1?"":"s"} remain specification-only</b>}
       </div>
+      {creativeDirection.craft && <p className="newDesignerPhotoApproximation">Craft placement is proposed. Motif size, thread width and density are illustrative; exact stitch execution needs a sample.</p>}
       {creativeAi?.visualCheck && <div className="newDesignerRenderCheck" data-status={creativeAi.visualCheck.evidenceAvailable ? creativeAi.visualCheck.status : "review"}>
         <span>{!creativeAi.visualCheck.evidenceAvailable ? "VISUAL CHECK UNAVAILABLE" : creativeAi.visualCheck.status==="pass" ? "VISUAL CHECK PASSED" : "VISUAL CHECK / REDESIGNING"}</span>
         <p>{!creativeAi.visualCheck.evidenceAvailable ? "Keep the render for manual review; V5 will not redesign from missing evidence." : creativeAi.visualCheck.status==="pass" ? "The main design detail reads clearly and the garment boundaries remain stable." : "The render did not express the design cleanly enough, so V5 is moving to a revised direction."}</p>
@@ -1703,6 +1765,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
       <summary>Preview accuracy</summary>
       <p>{tucked ? "Tucked studio template" : "Untucked studio template"} · {template.trouser} · {template.break.toLowerCase()}.</p>
       {gaps.length > 0 && <p><b>Not yet exact:</b> {gaps.join(" · ")}.</p>}
+      {creativeDirection?.craft && <p>{[...new Set([...creativeDirection.craft.panels.map(p=>p.zone),...(creativeDirection.craft.decoration?[creativeDirection.craft.decoration.zone]:[])])].map(zone=>`${zone.replaceAll("-"," ")}: ${photoCraftZone(zone,style).reason}`).join(" ")}{!resolvedCraft&&" This craft cannot be reconstructed from the current base fabrics and available catalogue."}</p>}
       <p>Final colour, drape and fit still need physical fabric / sample verification.</p>
     </details>
   </section>;

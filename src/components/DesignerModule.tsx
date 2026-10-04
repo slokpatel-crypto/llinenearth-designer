@@ -164,6 +164,7 @@ export function DesignerModule() {
   const fact = DESIGNER_FASHION_FACTS[factIndex];
   const shirt = useMemo(() => shirtOptions.find((item) => item.id === shirtId), [shirtId, shirtOptions]);
   const pant = useMemo(() => pantOptions.find((item) => item.id === pantId), [pantId, pantOptions]);
+  const craftFabrics=useMemo(()=>[...new Map([...shirtOptions,...pantOptions].map(f=>[f.id,f])).values()],[shirtOptions,pantOptions]);
   const styleIdentity=(value:DesignerStyle)=>(Object.keys(DESIGNER_STYLE_CHOICES) as Array<keyof DesignerStyle>).map((key)=>value[key]);
   const assessmentIdentity=JSON.stringify([shirtId,pantId,occasion,styleIdentity(style),climate,intention,measurementProfile,tailorObservations,bodyProfile]);
   const committedAssessmentIdentity=useRef(assessmentIdentity);
@@ -1214,7 +1215,7 @@ export function DesignerModule() {
           </div>
         </details>
 
-        <CreativeStudioPanel request={craftRequest} onRequest={setCraftRequest} directions={creativeDirections} onDirections={setCreativeDirections} onGenerate={()=>void runCreativeLab()} onApply={useCreativeDirection} activeId={activeCreative?.id} busy={creativeGenerating} note={creativeAutoNote} shirt={shirt} pant={pant} fabrics={[...new Map([...shirtOptions,...pantOptions].map(f=>[f.id,f])).values()]} />
+        <CreativeStudioPanel request={craftRequest} onRequest={setCraftRequest} directions={creativeDirections} onDirections={setCreativeDirections} onGenerate={()=>void runCreativeLab()} onApply={useCreativeDirection} activeId={activeCreative?.id} busy={creativeGenerating} note={creativeAutoNote} shirt={shirt} pant={pant} fabrics={craftFabrics} />
 
         <div className="newDesignerStyleBlock newDesignerSimplePanel">
           <div className="newDesignerSimpleHead">
@@ -1260,6 +1261,7 @@ export function DesignerModule() {
         styleSpec={styleSpec}
         bodyProfile={bodyProfile}
         creativeDirection={activeCreative}
+        craftFabrics={craftFabrics}
         onCreativeFeedback={giveCreativeRenderFeedback}
         autoRenderNonce={creativeAutoRenderNonce}
         renderRepairInstruction={creativeRenderRepair}
