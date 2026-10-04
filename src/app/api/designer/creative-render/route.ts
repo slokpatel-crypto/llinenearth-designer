@@ -1,3 +1,5 @@
+import { canonicalCreativeRenderRequest } from "@/lib/designer/creative-render-contract";
+import { validCreativeCraft } from "@/lib/designer/creative-spec";
 import { NextResponse } from "next/server";
 import {
   assertFashnRateLimit,
@@ -17,6 +19,7 @@ function valid(body:unknown):body is CreativeFashnRequest {
     value.pant?.id && value.pant?.image &&
     value.style?.collar && value.style?.cuff &&
     value.creative?.id && value.creative?.name &&
+    (value.creative.craft===undefined||validCreativeCraft(value.creative.craft)) &&
     Array.isArray(value.creative?.treatments) &&
     value.creative.treatments.length>0 &&
     value.creative.treatments.length<=8
@@ -25,10 +28,14 @@ function valid(body:unknown):body is CreativeFashnRequest {
 
 export async function POST(request:Request) {
   try {
-    const body=await request.json() as unknown;
+    const raw=await request.text();
+    if(raw.length>100000)return NextResponse.json({error:"Creative request is too large."},{status:413});
+    const body=JSON.parse(raw) as unknown;
     if(!valid(body)) return NextResponse.json({error:"A selected V5 concept, fabrics and supported base cut are required."},{status:400});
+    const canonical=await canonicalCreativeRenderRequest(body);
+    if(!canonical)return NextResponse.json({error:"Craft fabrics are unavailable or the recipe does not match this look."},{status:409});
     assertFashnRateLimit(request);
-    const result=await renderCreativeFashnFront(body);
+    const result=await renderCreativeFashnFront(canonical);
     return NextResponse.json({result});
   } catch(error) {
     if(error instanceof FashnVisualizationError) {

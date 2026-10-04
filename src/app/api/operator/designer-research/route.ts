@@ -1,3 +1,4 @@
+import { researchRefreshStatus } from "@/lib/designer/research-refresh-server";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
@@ -33,7 +34,7 @@ export async function GET() {
       select:"type,source,payload",
       source:"eq.operator",
       type:"eq.operator_note",
-      order:"received_at.asc",
+      order:"received_at.desc,id.desc",
       limit:"4000",
     });
     const response=await fetch(`${cloud.url}/rest/v1/style_events?${params.toString()}`,{
@@ -44,7 +45,8 @@ export async function GET() {
     const rows=await response.json() as Array<{type:string;source:string;payload:Record<string,unknown>}>;
     return NextResponse.json({
       configured:true,
-      library:aggregateCreativeResearch(rows),
+      library:aggregateCreativeResearch(rows.reverse()),
+      schedule:await researchRefreshStatus(),
       pool:FASHION_RESEARCH_POOL_STATS,
       sources:FASHION_RESEARCH_SOURCES,
       topics:FASHION_RESEARCH_TOPICS,

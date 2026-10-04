@@ -27,48 +27,20 @@ export async function loadDesignerCreativeContext():Promise<DesignerCreativeCont
     select:"type,source,payload",
     source:"eq.operator",
     type:"eq.operator_note",
-    order:"received_at.asc",
-    limit:"3000",
-  });
-  const feedbackParams=new URLSearchParams({
-    select:"type,source,payload",
-    source:"eq.style-director",
-    type:"eq.designer_feedback",
-    order:"received_at.asc",
+    order:"received_at.desc,id.desc",
     limit:"3000",
   });
 
   try {
-    const [operatorResponse,feedbackResponse]=await Promise.all([
-      fetch(`${cloud.url}/rest/v1/style_events?${operatorParams.toString()}`,{
-        headers:{...supabaseAdminHeaders(cloud),accept:"application/json"},
-        cache:"no-store",
-      }),
-      fetch(`${cloud.url}/rest/v1/style_events?${feedbackParams.toString()}`,{
-        headers:{...supabaseAdminHeaders(cloud),accept:"application/json"},
-        cache:"no-store",
-      }),
-    ]);
-
-    if(!operatorResponse.ok || !feedbackResponse.ok) {
-      const failed=!operatorResponse.ok?operatorResponse:feedbackResponse;
-      console.error("[designer/creative-context]",failed.status,(await failed.text()).slice(0,300));
-      return {
-        learning:aggregateCreativeLearning([]),
-        research:aggregateCreativeResearch([]),
-      };
-    }
-
+    const operatorResponse=await fetch(`${cloud.url}/rest/v1/style_events?${operatorParams.toString()}`,{
+      headers:{...supabaseAdminHeaders(cloud),accept:"application/json"},cache:"no-store",signal:AbortSignal.timeout(8000),
+    });
+    if(!operatorResponse.ok)throw new Error("Reviewed research is temporarily unavailable.");
     const operatorRows=await operatorResponse.json() as CreativeContextRow[];
-    const feedbackRows=await feedbackResponse.json() as CreativeContextRow[];
-    const events=[...operatorRows,...feedbackRows].map((row)=>({
-      type:row.type,
-      source:row.source,
-      payload:row.payload || {},
-    }));
+    const events=operatorRows.reverse();
 
     return {
-      learning:aggregateCreativeLearning(events),
+      learning:aggregateCreativeLearning([]),
       research:aggregateCreativeResearch(events),
     };
   } catch(error) {

@@ -38,6 +38,7 @@ jobs:
       - name: Verify preview lifecycle, responsive Designer and Style Director
         env:
           LINEN_BROWSER_QA_RUNTIME: /tmp/linen-browser-qa
+          LINEN_OPERATOR_SESSION_SECRET: creative-browser-qa-session-${{ github.run_id }}
         run: |
           mkdir -p artifacts/preview-lifecycle
           npm run start > artifacts/preview-lifecycle/server.log 2>&1 &
@@ -50,6 +51,7 @@ jobs:
           node scripts/verify-preview-lifecycle.cjs
           node scripts/verify-style-director-lifecycle.cjs
           node scripts/verify-designer-advisor.cjs
+          node scripts/verify-creative-workflow.cjs
       - name: Save browser verification evidence
         if: always()
         uses: actions/upload-artifact@v4

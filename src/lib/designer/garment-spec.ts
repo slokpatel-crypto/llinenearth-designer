@@ -82,6 +82,7 @@ export type CanonicalGarmentSpec = {
     finishedTargets: CanonicalGarmentMeasurement[];
   };
   creative: {
+    craft?:import("@/lib/designer/creative-spec").CreativeCraftSpec;
     conceptId:string;
     name:string;
     thesis:string;
@@ -185,6 +186,7 @@ export function buildCanonicalGarmentSpec(
   );
 
   const unresolved = [
+    ...(creative?.craft?creative.craft.checks:[]),
     ...recommendation.confirmationsNeeded,
     ...fitChecks.filter((item) => item.severity !== "info").map((item) => item.message),
     ...(creativeVisualReviewRequired ? [
@@ -193,7 +195,7 @@ export function buildCanonicalGarmentSpec(
   ].filter((value, index, all) => all.indexOf(value) === index);
 
   const status: CanonicalGarmentSpecStatus =
-    hardDesignerFlag || blockingConstruction || creativeVisualReviewRequired ? "review_required"
+    hardDesignerFlag || blockingConstruction || creativeVisualReviewRequired || Boolean(creative?.craft) ? "review_required"
       : insufficientMeasurements || reviewConstruction || materialMissing.length > 0 ? "draft"
         : "ready_for_tailor_review";
 
@@ -255,6 +257,7 @@ export function buildCanonicalGarmentSpec(
       finishedTargets: (fit?.trouserTargets ?? []).map(target),
     },
     creative: creative ? {
+      ...(creative.craft?{craft:JSON.parse(JSON.stringify(creative.craft))}:{}),
       conceptId:creative.id,
       name:creative.name,
       thesis:creative.thesis,
@@ -313,7 +316,7 @@ export function buildCanonicalGarmentSpec(
     readiness: {
       visualization: hardDesignerFlag || blockingConstruction || creativeVisualReviewRequired ? "visual_review_required" : "supported_with_current_template",
       tailoring: insufficientMeasurements ? "insufficient_measurements" : "tailor_review_required",
-      materialVerification: materialMissing.length ? "verification_required" : "verified",
+      materialVerification: materialMissing.length || creative?.craft?.panels.length ? "verification_required" : "verified",
     },
     caveats: [
       ...(fit?.caveats ?? []),

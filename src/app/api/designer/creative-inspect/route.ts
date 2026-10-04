@@ -1,3 +1,5 @@
+import { canonicalCreativeRenderRequest } from "@/lib/designer/creative-render-contract";
+import { validCreativeCraft } from "@/lib/designer/creative-spec";
 import { NextResponse } from "next/server";
 import {
   FashnVisualizationError,
@@ -35,6 +37,7 @@ function valid(body:unknown):body is InspectBody {
     value.pant?.id && value.pant?.image &&
     value.style?.collar && value.style?.cuff &&
     value.creative?.id && value.creative?.name &&
+    (value.creative.craft===undefined||validCreativeCraft(value.creative.craft)) &&
     Array.isArray(value.creative?.treatments) &&
     value.creative.treatments.length>0 &&
     value.creative.treatments.length<=8
@@ -44,9 +47,13 @@ function valid(body:unknown):body is InspectBody {
 export async function POST(request:Request) {
   try {
     if(inspectRateLimited(request)) return NextResponse.json({error:"Creative render inspection is temporarily rate limited."},{status:429});
-    const body=await request.json() as unknown;
+    const raw=await request.text();
+    if(raw.length>100000)return NextResponse.json({error:"Creative request is too large."},{status:413});
+    const body=JSON.parse(raw) as unknown;
     if(!valid(body)) return NextResponse.json({error:"A generated render and its V5 concept specification are required."},{status:400});
-    const check=await inspectCreativeFashnOutput(body.image,body,body.previousImage);
+    const canonical=await canonicalCreativeRenderRequest(body);
+    if(!canonical)return NextResponse.json({error:"Craft fabrics do not match this look."},{status:409});
+    const check=await inspectCreativeFashnOutput(body.image,canonical,body.previousImage);
     return NextResponse.json({check});
   } catch(error) {
     if(error instanceof FashnVisualizationError) {

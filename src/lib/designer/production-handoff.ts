@@ -18,6 +18,7 @@ export type ProductionHandoff={
       easeSource:LockedDesignRevision["garmentSpec"]["source"]["fitEaseSource"];
       easeTableVersion:LockedDesignRevision["garmentSpec"]["source"]["fitEaseTableVersion"];
     };
+    creative?:LockedDesignRevision["garmentSpec"]["creative"];
     shirt:LockedDesignRevision["garmentSpec"]["shirt"];
     trouser:LockedDesignRevision["garmentSpec"]["trouser"];
     blockStrategy:LockedDesignRevision["garmentSpec"]["blockStrategy"];
@@ -68,6 +69,7 @@ export function buildProductionHandoff(
         easeSource:spec.source.fitEaseSource,
         easeTableVersion:spec.source.fitEaseTableVersion,
       },
+      ...(spec.creative?{creative:JSON.parse(JSON.stringify(spec.creative))}:{}),
       shirt:JSON.parse(JSON.stringify(spec.shirt)),
       trouser:JSON.parse(JSON.stringify(spec.trouser)),
       blockStrategy:spec.blockStrategy ? JSON.parse(JSON.stringify(spec.blockStrategy)) : null,

@@ -1,4 +1,5 @@
 import "server-only";
+import { craftDecorationInstruction } from "@/lib/designer/creative-spec";
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -88,7 +89,7 @@ export type CreativeFashnRequest = {
   shirt: Pick<DesignerFabric,"id"|"name"|"line"|"image"|"hex"|"patternType">;
   pant: Pick<DesignerFabric,"id"|"name"|"line"|"image"|"hex"|"patternType">;
   style: DesignerStyle;
-  creative: Pick<CreativeDirection,"id"|"name"|"thesis"|"treatments"|"pattern"> & {
+  creative: Pick<CreativeDirection,"id"|"name"|"thesis"|"treatments"|"pattern"|"craft"> & {
     renderRisk?: "low"|"moderate"|"high";
     renderCaution?: CreativeFeedbackReason;
     repairInstruction?: string;
@@ -251,21 +252,28 @@ async function fabricContextPanel(bytes:Buffer|undefined) {
     .toBuffer();
 }
 
-async function creativeFabricContext(shirtImage:string,pantImage:string) {
-  const [shirt,pant]=await Promise.all([
+async function creativeFabricContext(shirtImage:string,pantImage:string,accentImage?:string) {
+  const [shirt,pant,accent]=await Promise.all([
     publicImageDataUri(shirtImage,"fabrics"),
     publicImageDataUri(pantImage,"fabrics"),
+    accentImage?publicImageDataUri(accentImage,"fabrics"):Promise.resolve(undefined),
   ]);
   if(!shirt && !pant) return undefined;
   try {
-    const [left,right]=await Promise.all([
+    const [left,right,third]=await Promise.all([
       fabricContextPanel(shirt?.bytes),
       fabricContextPanel(pant?.bytes),
+      accent?fabricContextPanel(accent.bytes):Promise.resolve(undefined),
     ]);
     const rightOffset=FABRIC_CONTEXT_PANEL_WIDTH+FABRIC_CONTEXT_GUTTER;
+    const contextDimensions={
+      width:FABRIC_CONTEXT_PANEL_WIDTH*2+FABRIC_CONTEXT_GUTTER,
+      height:FABRIC_CONTEXT_HEIGHT,channels:3 as const,background:FABRIC_CONTEXT_BACKGROUND,
+    };
+    if(third)contextDimensions.width=FABRIC_CONTEXT_PANEL_WIDTH*3+FABRIC_CONTEXT_GUTTER*2;
     const joined=await sharp({
       create:{
-        width:FABRIC_CONTEXT_PANEL_WIDTH*2+FABRIC_CONTEXT_GUTTER,
+        ...contextDimensions,
         height:FABRIC_CONTEXT_HEIGHT,
         channels:3,
         background:FABRIC_CONTEXT_BACKGROUND,
@@ -273,6 +281,7 @@ async function creativeFabricContext(shirtImage:string,pantImage:string) {
     }).composite([
       {input:left,left:0,top:0},
       {input:right,left:rightOffset,top:0},
+      ...(third?[{input:third,left:rightOffset*2,top:0}]:[]),
     ]).webp({quality:96,nearLossless:true,smartSubsample:true}).toBuffer();
 
     // The neutral gutter deliberately keeps shirt and trouser references
@@ -863,6 +872,7 @@ async function semanticCreativeRenderCheck(
     hero ? `Hero move: ${hero.zone} / ${hero.label}. ${hero.instruction}. Intended purpose: ${hero.visualPurpose}.` : "",
     support.map((move)=>`Support move: ${move.zone} / ${move.label}. ${move.instruction}.`).join(" "),
     input.creative.pattern ? `Pattern: ${input.creative.pattern.name}; ${input.creative.pattern.layout}; placement: ${input.creative.pattern.placement}.` : "",
+    input.creative.craft?`Craft specification: ${craftDecorationInstruction(input.creative.craft)} ${input.creative.craft.panels.map(p=>`${p.zone}: exact accent fabric ${p.fabric.name} (${p.fabric.id})`).join("; ")}`:"",
     `Base cut: ${input.style.collar}; ${input.style.cuff}; ${input.style.placket}; ${input.style.shirtFit}; ${input.style.shirtWear}; ${input.style.trouser}.`,
     previousOutputUrl
       ? "You receive four visual references in this order: CURRENT GENERATED RENDER, PREVIOUS FAILED/REVIEW RENDER, LOCKED STUDIO REFERENCE, then (when present) SPLIT FABRIC CONTEXT with a shirt panel on the left, neutral separator, and trouser panel on the right."
@@ -1068,6 +1078,7 @@ function creativeConceptPrompt(input:CreativeFashnRequest) {
   const repairInstruction=input.creative.repairInstruction
     ? `Previous render QA correction: ${safe(input.creative.repairInstruction,420)}. Fix this exact rendering failure while preserving the concept, fabric references, pose and every unrelated successful detail. Do not make the design safer or more conventional to hide the failure.`
     : "";
+  const craft=input.creative.craft?`Craft recipe ${input.creative.craft.version}: ${craftDecorationInstruction(input.creative.craft)} ${input.creative.craft.panels.map(p=>`Accent fabric ${p.fabric.name} (${p.fabric.id}) on ${p.zone}.`).join(" ")} ${input.creative.craft.panels.length?"The fabric-context has THREE panels: left shirt, middle trousers, right accent. Use the accent only in its specified zone.":""}`:"";
   const pattern=input.creative.pattern
     ? `Generated surface concept: ${safe(input.creative.pattern.name,100)}. Family ${safe(input.creative.pattern.family,50)}, ${safe(input.creative.pattern.scale,40)} scale, about ${Math.max(0,Math.min(60,Number(input.creative.pattern.coverage)||0))}% intended coverage. Layout: ${safe(input.creative.pattern.layout,420)} Placement: ${safe(input.creative.pattern.placement,260)}. The image-context has two separated cloth panels: LEFT PANEL is the exact shirt-fabric reference; RIGHT PANEL is the exact trouser-fabric reference. Ignore the neutral strip between them. Use the generated motif logic on the shirt only where specified, while preserving the underlying cloth colour and woven character.`
     : "The image-context has two separated cloth panels: LEFT PANEL is the exact shirt-fabric reference; RIGHT PANEL is the exact trouser-fabric reference. Ignore the neutral strip between them.";
@@ -1082,6 +1093,7 @@ ${renderHierarchy}
 ${repairInstruction}
 Design moves: ${moves}
 ${pattern}
+${craft}
 
 Render the custom visual details as geometry and construction, not merely as colour changes. First satisfy the HERO move exactly, then add supporting moves only where specified. If a move changes cuff depth, collar proportion, pocket geometry, panel placement, border position, fastening axis or line rhythm, visibly change that garment detail while keeping the rest controlled. Do not average an unconventional design back into a normal shirt or trouser.
 
@@ -1194,7 +1206,7 @@ export async function renderSelectedLookFashnView(
 
 export async function renderCreativeFashnFront(input:CreativeFashnRequest):Promise<CreativeFashnResult> {
   const source=await creativeModelDataUri(input.style);
-  const context=await creativeFabricContext(input.shirt.image,input.pant.image);
+  const context=await creativeFabricContext(input.shirt.image,input.pant.image,input.creative.craft?.panels[0]?.fabric.image);
   const generated=await runEdit(source,creativeConceptPrompt(input),context);
   return {
     image:generated.output,
@@ -1214,7 +1226,7 @@ export async function inspectCreativeFashnOutput(
   if(previousOutputUrl && !OFFICIAL_FASHN_OUTPUT.test(previousOutputUrl)) throw new FashnVisualizationError("Previous render URL is not trusted.","invalid_source");
   const [source,fabricContext]=await Promise.all([
     creativeModelDataUri(input.style),
-    creativeFabricContext(input.shirt.image,input.pant.image),
+    creativeFabricContext(input.shirt.image,input.pant.image,input.creative.craft?.panels[0]?.fabric.image),
   ]);
   const heuristic=await inspectCreativeRender(source,outputUrl,input);
   const previousHeuristic=previousOutputUrl ? await inspectCreativeRender(source,previousOutputUrl,input) : null;

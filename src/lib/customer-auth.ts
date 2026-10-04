@@ -29,7 +29,7 @@ export function readCookie(request:Request,name:string){
   const raw=request.headers.get("cookie")||"";
   for(const part of raw.split(";")){
     const [key,...rest]=part.trim().split("=");
-    if(key===name) return decodeURIComponent(rest.join("="));
+    if(key===name){try{return decodeURIComponent(rest.join("="));}catch{return "";}}
   }
   return "";
 }

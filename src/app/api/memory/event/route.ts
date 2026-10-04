@@ -483,6 +483,7 @@ function cleanPayload(type:string, input:unknown) {
       if(patternScale && !["micro","fine","medium"].includes(patternScale)) return null;
       return {
         subtype,researchId,title,sourceUrl,sourceType,principle,transformedIdea,zone,secondaryZone,
+        ...(payload.provenance&&typeof payload.provenance==="object"&&!Array.isArray(payload.provenance)&&/^[a-f0-9]{64}$/.test(String((payload.provenance as Record<string,unknown>).contentHash))?{provenance:{contentHash:String((payload.provenance as Record<string,unknown>).contentHash),fetchedAt:text((payload.provenance as Record<string,unknown>).fetchedAt,80),method:"keyword_hypothesis",reviewRequired:!Boolean(payload.active)}}:{}),
         treatmentLabel,treatmentInstruction,visualPurpose,
         intensity:Number.isFinite(intensityRaw)?Math.max(1,Math.min(100,Math.round(intensityRaw))):50,
         buildability,patternFamily,patternName,patternLayout,patternPlacement,patternScale,

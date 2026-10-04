@@ -18,6 +18,11 @@ import { loadDesignerCreativeContext } from "@/lib/designer/creative-context";
 import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
 import { enrichDesignerFabricsWithIntelligence } from "@/lib/fabric-intelligence-server";
 
+import { attachCreativeCraft, craftClarifications, DEFAULT_CRAFT_REQUEST, resolveCraftRequest, reviseCreativeCraft, validCraftRequest, validCreativeCraft, resolveCraftFabrics } from "@/lib/designer/creative-spec";
+import { getCustomerIdentity } from "@/lib/customer-auth";
+import { readCreativePersonalContext } from "@/lib/designer/creative-profile-server";
+import { applyLiveVerifiedStockAvailability } from "@/lib/designer/stock-availability-server";
+
 export const runtime="nodejs";
 export const maxDuration=30;
 
@@ -63,7 +68,10 @@ function validCurrent(value:unknown):value is CreativeDirection {
   return Boolean(
     item.id && typeof item.id==="string" && item.id.length<=220 &&
     item.name && typeof item.name==="string" && item.name.length<=180 &&
-    Array.isArray(item.treatments) && item.treatments.length<=10 &&
+    typeof item.thesis==="string"&&item.thesis.length<=900 && validStyle(item.baseStyle) &&
+    Array.isArray(item.refinement)&&item.refinement.length<=100&&item.refinement.every(v=>typeof v==="string"&&v.length<=1000) &&
+    Number.isInteger(item.iteration)&&Number(item.iteration)>=0&&Number(item.iteration)<60 &&
+    Array.isArray(item.treatments) && item.treatments.length<=10 && item.treatments.every(t=>t&&typeof t.id==="string"&&typeof t.instruction==="string"&&t.instruction.length<=1000) &&
     Array.isArray(item.critics) && item.critics.length<=8
   );
 }
@@ -75,6 +83,7 @@ export async function POST(request:Request) {
   try {
     const body=await request.json() as {
       mode?:unknown;
+      craft?:unknown;
       shirtId?:unknown;
       pantId?:unknown;
       occasion?:unknown;
@@ -92,33 +101,49 @@ export async function POST(request:Request) {
     }
 
     const metadata=await loadDesignerFabricMetadata();
-    const stock=applyDesignerFabricMetadataToStock(metadata).filter((fabric)=>fabric.inStock);
+    const stock=(await applyLiveVerifiedStockAvailability(applyDesignerFabricMetadataToStock(metadata))).stock.filter((fabric)=>fabric.inStock);
     const baseFabrics=stock.map(designerFabricFromStock);
     const {fabrics}=await enrichDesignerFabricsWithIntelligence(baseFabrics);
     const shirt=fabrics.find((fabric)=>fabric.id===shirtId && fabric.allowedGarments.includes("shirt"));
     const pant=fabrics.find((fabric)=>fabric.id===pantId && fabric.allowedGarments.includes("pant"));
     if(!shirt || !pant) return NextResponse.json({error:"The selected fabrics are no longer available in the current Designer catalogue."},{status:409});
 
+    if(body.craft!==undefined&&!validCraftRequest(body.craft))return NextResponse.json({error:"Supported craft controls are required."},{status:400});
+    const requested=body.craft===undefined?{...DEFAULT_CRAFT_REQUEST}:body.craft as import("@/lib/designer/creative-spec").CreativeCraftRequest;
+    const clarifications=craftClarifications(requested);
+    if(clarifications.length)return NextResponse.json({concepts:[],clarifications},{headers:{"cache-control":"no-store"}});
+    const identity=await getCustomerIdentity(request);
+    let personal:Awaited<ReturnType<typeof readCreativePersonalContext>>|null=null;
+    let memoryAvailable=true;
+    if(identity)try{personal=await readCreativePersonalContext(identity.id);}catch{memoryAvailable=false;}
+    const craftRequest=resolveCraftRequest(requested,personal?.effective);
+    const accent=craftRequest.accentId&&craftRequest.accentId!=="auto"?fabrics.find(f=>f.id===craftRequest.accentId):undefined;
+    const garment=["waistband","pleat","trouser-leg"].includes(craftRequest.zone)?"pant":"shirt";
+    if(craftRequest.accentId&&craftRequest.accentId!=="auto"&&(!accent||!accent.allowedGarments.includes(garment as "shirt"|"pant")))return NextResponse.json({error:"Choose an available accent fabric suitable for the selected garment."},{status:409});
     const limit=Math.max(1,Math.min(12,Math.round(Number(body.limit)||5)));
     const creativeContext=await loadDesignerCreativeContext();
     const input={
       shirt,pant,occasion,style:body.style,context:body.context,
-      creativeLearning:creativeContext.learning,
+      creativeLearning:personal?.learning,
       creativeResearch:creativeContext.research,
       researchFreedom:"maximum" as const,
       limit:body.mode==="redesign"?Math.max(12,limit):limit,
     };
-    const concepts=generateCreativeDirections(input);
+    const autoAccents=fabrics.filter(f=>f.allowedGarments.includes(garment as "shirt"|"pant")&&f.id!==(garment==="shirt"?shirtId:pantId)).sort((a,b)=>Number(b.patternType.toLowerCase()==="solid")-Number(a.patternType.toLowerCase()==="solid")||a.id.localeCompare(b.id)).slice(0,6);
+    const concepts=attachCreativeCraft(generateCreativeDirections(input),craftRequest,accent,autoAccents);
+    const memory={authenticated:Boolean(identity),enabled:personal?.preferences.enabled||false,reviewCount:personal?.reviewCount||0,available:memoryAvailable};
 
     if(body.mode==="redesign") {
       if(!validCurrent(body.current) || !validReason(body.reason)) {
         return NextResponse.json({error:"A current concept and redesign reason are required."},{status:400});
       }
-      const redesign=chooseCreativeRedesign(concepts,body.current,body.reason);
-      return NextResponse.json({concepts:concepts.slice(0,limit),redesign:redesign || null},{headers:{"cache-control":"no-store"}});
+      if(body.current.craft!==undefined&&!validCreativeCraft(body.current.craft))return NextResponse.json({error:"Invalid craft recipe."},{status:400});
+      if(body.current.craft){const canonical=resolveCraftFabrics(body.current.craft,fabrics,shirtId,pantId);if(!canonical)return NextResponse.json({error:"Current craft recipe does not match available fabrics."},{status:409});body.current.craft=canonical;}
+      const redesign=body.current.craft?reviseCreativeCraft(body.current,body.reason):chooseCreativeRedesign(concepts,body.current,body.reason);
+      return NextResponse.json({concepts:concepts.slice(0,limit),redesign:redesign || null,memory},{headers:{"cache-control":"no-store"}});
     }
 
-    return NextResponse.json({concepts:concepts.slice(0,limit)},{headers:{"cache-control":"no-store"}});
+    return NextResponse.json({concepts:concepts.slice(0,limit),memory},{headers:{"cache-control":"no-store"}});
   } catch(error) {
     console.error("[designer/creative-generate]",error);
     return NextResponse.json({error:"Creative Designer could not generate directions."},{status:500});

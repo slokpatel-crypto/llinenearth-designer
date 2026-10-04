@@ -1,3 +1,4 @@
+import { validCreativeCraft, resolveCraftFabrics } from "@/lib/designer/creative-spec";
 import { NextResponse } from "next/server";
 import {
   DESIGNER_STYLE_CHOICES,
@@ -126,6 +127,7 @@ function safeCreative(value:unknown):CreativeDirection|null {
     !Array.isArray(input.treatments) || input.treatments.length>10 ||
     !Array.isArray(input.research) || input.research.length>8 ||
     !Array.isArray(input.critics) || input.critics.length>8 ||
+    (input.craft!==undefined&&!validCreativeCraft(input.craft)) ||
     !input.baseStyle || !input.recommendation
   ) return null;
   return value as CreativeDirection;
@@ -174,6 +176,8 @@ export async function POST(request:Request) {
     const measurements=safeMeasurements(body.measurements);
     const observations=safeObservations(body.observations);
     const creative=safeCreative(body.creative);
+    if(body.creative&&!creative)return NextResponse.json({error:"Invalid creative recipe."},{status:400});
+    if(creative?.craft){const canonical=resolveCraftFabrics(creative.craft,fabrics,shirtId,pantId);if(!canonical)return NextResponse.json({error:"Craft fabrics are unavailable or do not match this look."},{status:409});creative.craft=canonical;}
     const visualReview=safeVisualReview(body.creativeVisualReview);
     const recommendation=evaluateDesignerCombo(shirt,pant,occasion,resolvedStyle,undefined,body.context);
     const fitConstruction=assessFitConstruction(measurements,resolvedStyle,{
