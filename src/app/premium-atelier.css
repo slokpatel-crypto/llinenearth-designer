@@ -31,7 +31,10 @@
 .premiumAtelier .gatewayLine span { color: #786c59!important; font-size: 9px; letter-spacing: .17em; }
 .premiumAtelier .gatewayLine i { background: linear-gradient(90deg, #b3976a, transparent)!important; }
 .premiumAtelier .gatewayHeroModel { border-radius: 140px 140px 12px 12px; border-color: #d4cbbc; box-shadow: 0 22px 65px #283a4820; }
-.premiumAtelier .gatewayHeroBadge { border-radius: 6px; }
+.premiumAtelier .gatewayHeroModel img { object-fit: contain; object-position: center; background: #eceae6; }
+.premiumAtelier .gatewayHeroBadge { border-radius: 6px; top: 110px; left: 20px; }
+.premiumAtelier .gatewayHeroBadge span { font-size: 8px; }
+.premiumAtelier .gatewayHeroBadge b { font-size: 9px; }
 .premiumAtelier .gatewayIntro h2 { font-size: clamp(2.5rem, 4.2vw, 4.2rem); }
 .premiumAtelier .gatewayIntro > p { font-size: 14px; line-height: 1.8; }
 .premiumAtelier .gatewayCard { border-radius: 12px; box-shadow: 0 14px 38px #263a4810; }
