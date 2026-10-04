@@ -326,4 +326,8 @@ Architecture and product decisions that must persist across coding sessions.
 
 **Truth boundary:** every new craft placement is approximate. Illustrative motif spacing, mark width and density respond to the proposed recipe without asserting calibrated physical dimensions. The pocket remains specification-only because the source shirt has no pocket. Untucked waistbands/upper pleats remain hidden, and flat-front trouser pleats are not fabricated. Unsupported details stay in the saved recipe and drafting illustration. Physical drape, shrinkage, stitch tension and production approval still require the exact cloth sample.
 
+**Scale disclosure:** visible patterned accents use the same independent physical-repeat and studio-calibration checks as the base cloth. Verified base fabrics cannot upgrade an unverified accent. The proposed craft-dimension note remains visibly readable in the compact model panel regardless of cloth-scale status.
+
+**Reference replacement:** the existing bounded swatch-tile cache includes the loaded image URL, crop pattern and colour fallback. Updating a catalogue reference under the same fabric ID therefore refreshes both base garments and craft panels instead of reusing an earlier cloth tile.
+
 **Verification:** pure cases cover catalogue reconstruction, stale bases, garment compatibility, hidden placements and bounded deterministic geometry. Chromium verifies real canvas pixels, protected skin/background, all supported zones/motifs, no provider calls, responsive application, and late accent loads. These are software placement checks, not physical acceptance.

@@ -110,10 +110,13 @@ function fabricOrientation(fabric:DesignerFabric) {
 }
 
 function swatchTile(image: HTMLImageElement, fabric: DesignerFabric): HTMLCanvasElement {
-  const cached = fabricTiles.get(fabric.id);
+  // An operator can replace a reference without changing its catalogue ID.
+  // Cache the actual loaded source and crop inputs, not the ID alone.
+  const tileKey=JSON.stringify([fabric.id,image.currentSrc||image.src,fabric.patternType,fabric.hex]);
+  const cached = fabricTiles.get(tileKey);
   if (cached) {
-    fabricTiles.delete(fabric.id);
-    fabricTiles.set(fabric.id, cached);
+    fabricTiles.delete(tileKey);
+    fabricTiles.set(tileKey, cached);
     return cached;
   }
   const tile = document.createElement("canvas");
@@ -128,7 +131,7 @@ function swatchTile(image: HTMLImageElement, fabric: DesignerFabric): HTMLCanvas
   if (image.src.includes("/fabric-tiles/")) {
     // Prepared tiles omit captions and selvage; photo lighting remains in drawGarment.
     context.drawImage(image,0,0,320,320);
-    fabricTiles.set(fabric.id,tile);
+    fabricTiles.set(tileKey,tile);
     if(fabricTiles.size>12) {
       const oldest=fabricTiles.keys().next().value;
       if(oldest) fabricTiles.delete(oldest);
@@ -193,7 +196,7 @@ function swatchTile(image: HTMLImageElement, fabric: DesignerFabric): HTMLCanvas
     context.drawImage(image, image.width * .08, image.height * .06,
       image.width * .84, image.height * .62, 0, 0, 320, 320);
   }
-  fabricTiles.set(fabric.id, tile);
+  fabricTiles.set(tileKey, tile);
   if (fabricTiles.size > 12) {
     const oldest = fabricTiles.keys().next().value;
     if (oldest) fabricTiles.delete(oldest);
@@ -1198,11 +1201,14 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
   const photoScaleReady=photoCalibration.verified&&Number.isFinite(verifiedPhotoPxPerMm)&&Number(verifiedPhotoPxPerMm)>0;
   const shirtPatternScaleVerified=shirt.patternType.toLowerCase()==="solid" || (shirtScaleEvidenceReady&&photoScaleReady);
   const pantPatternScaleVerified=pant.patternType.toLowerCase()==="solid" || (pantScaleEvidenceReady&&photoScaleReady);
-  const previewScaleVerified=shirtPatternScaleVerified&&pantPatternScaleVerified;
-  const approximateScaleItems=[
+  const visiblePanelFabric=resolvedCraft?.panelFabric&&photoCraftZone(resolvedCraft.craft.panels[0].zone,style).status==="approximate"?resolvedCraft.panelFabric:undefined;
+  const panelPatternScaleVerified=!visiblePanelFabric||visiblePanelFabric.patternType.toLowerCase()==="solid"||(visiblePatternScaleVerified(visiblePanelFabric.patternType,fabricRenderAsset(visiblePanelFabric))&&photoScaleReady);
+  const previewScaleVerified=shirtPatternScaleVerified&&pantPatternScaleVerified&&panelPatternScaleVerified;
+  const approximateScaleItems=[...new Set([
     ...(shirtPatternScaleVerified?[]:[shirt.name]),
     ...(pantPatternScaleVerified?[]:[pant.name]),
-  ];
+    ...(panelPatternScaleVerified||!visiblePanelFabric?[]:[visiblePanelFabric.name]),
+  ])];
   const renderSignature=JSON.stringify({
     shirt:shirt.id,
     pant:pant.id,
