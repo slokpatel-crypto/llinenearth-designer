@@ -140,6 +140,7 @@ Roadmap v2 is being adapted onto the existing Linen Earth platform. Working modu
 - Added garment-specific colour/pattern/material requirements, recorded GSM/Lea matching, bounded creative-goal execution and three-occasion capsule directions with per-option Apply context.
 - Expanded occasion-scoped human preferences to individual construction choices, with evidence summaries, opt-out and bounded previous-revision review; cloth-only judgement revisions preserve the judged construction.
 - Added proposal-level photographic support disclosures; unsupported reference constructions and exact-copy requests require clarification. Full acceptance scope and remaining intelligence/physical gates are recorded in `docs/DESIGNER_ENGINE_EXECUTION.md`.
+- Added explicit proposal starting points for follow-up briefs and comparisons without an implied human judgement. The proposal's cloth, construction and capsule occasion/context reach the existing validated API; leaving the starting point, changing the applied outfit or resetting cancels stale work. Apply remains explicit.
 
 ## Evidence we cannot manufacture in code
 

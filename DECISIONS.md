@@ -289,3 +289,11 @@ Architecture and product decisions that must persist across coding sessions.
 **Workflow:** every capsule option carries its own occasion/context through judging and Apply. Cloth-only revisions preserve the actual judged construction. Keep up to six prior advice revisions within the current brief, with explicit Apply still required. Cards disclose photographic construction approximations using the existing shared photo-support contract.
 
 **Compatibility:** additive advisor-v1 and browser-profile-v1 fields; unchanged StyleSpec v2 and legacy brief response, existing feedback event queue, no database migration, dependency or provider call. Read `docs/DESIGNER_ENGINE_EXECUTION.md` for the acceptance scope and remaining physical, preview-asset, broad-interpretation and real-user gates. Software success must not be described as universal designer intelligence or 100% physical readiness.
+
+## 2026-10-04 — Develop a proposal without applying or judging it
+
+**Decision:** let customers explicitly choose a returned direction as the starting point for subsequent Designer questions. Carry the exact proposal fabric IDs, closed construction choices and its own occasion/context through the existing validated brief API. Keep the applied outfit authoritative until explicit Apply; selecting a starting point is neither approval nor a negative judgement and adds no preference evidence.
+
+**Ownership:** snapshot only the question context, not a new saved design or stock record. A human judgement always refers to its actual target proposal, taking priority over the earlier starting point. Question edits and preference changes cancel pending answers while keeping the chosen starting point; manual changes to the applied outfit, reset/unmount, explicit Apply and returning to the current outfit clear it. Return focus to the brief when a proposal is chosen so mobile users can continue from long card lists.
+
+**Compatibility and verification:** no new API request schema, StyleSpec version, database migration, dependency or paid call. Transient starting points do not provide durable account memory or unrestricted chat history. Pure context/engine cases, actual HTTP follow-up/comparison contracts and responsive Chromium flows cover exact proposal context, no implicit feedback, canonical Apply and stale-response cancellation.

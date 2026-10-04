@@ -18,6 +18,7 @@ Turn a fabric-led brief into useful, buildable design directions, let the custom
 | Capsule | A bounded wardrobe for up to three occasions, each carrying its own occasion through judgement, Apply and canonical assessment. Cloth may be reused across looks; unavailable occasions stay explicitly incomplete. |
 | Critique and comparison | Evaluate the actual selected pair and named supported alternatives, with concrete reasons, tradeoffs and blocked Apply for conflicts. |
 | Human revision | Revise the judged proposal, preserve unaffected construction on cloth-only changes, and keep six previous revisions for review within the current brief. Going back does not apply or endorse a look. |
+| Proposal follow-up | Develop a proposed direction without endorsing or rejecting it. New questions use that proposal's cloth, construction and own occasion/context; explicit Apply still changes the main outfit. Return to the current outfit at any time. A later judgement refers to the newly judged proposal. |
 | Personal learning | Distinct latest human judgements can support individual construction preferences; targeted rejections affect their actual detail. Four relevant reviews, supporting evidence and a clear winner are required. Ties, duplicate recipes, saves and automated image QA do not create preferences. |
 | User control | Show learned choices with supporting review counts; allow preference use to be disabled. Current instructions, exclusions, garment locks and compatibility checks take priority. |
 | Preview truth | Each proposal discloses which construction details the photographic model approximates. It does not claim the studio silhouette was physically re-cut. |
@@ -25,7 +26,7 @@ Turn a fabric-led brief into useful, buildable design directions, let the custom
 
 ## Compatibility
 
-Existing StyleSpec v2, option IDs, saved designs and `linen-designer-brief-v2` callers remain readable. Advisor v1 receives additive plan, preview-support and per-option occasion/context fields. Browser taste profile v1 gains optional construction preferences and evidence summaries, recalculated from the existing bounded feedback event stream. The existing cloud event queue still records its supported feedback fields. Revision history is transient, bounded browser state, not durable account storage. No database migration, application dependency, paid image call or model-training claim is introduced.
+Existing StyleSpec v2, option IDs, saved designs and `linen-designer-brief-v2` callers remain readable. Advisor v1 receives additive plan, preview-support and per-option occasion/context fields. Browser taste profile v1 gains optional construction preferences and evidence summaries, recalculated from the existing bounded feedback event stream. The existing cloud event queue still records its supported feedback fields. Revision history and the proposal starting point are transient, bounded browser state, not durable account storage or open-ended conversation history. Follow-ups use the existing validated brief API fields; selecting a starting point records no feedback. No database migration, application dependency, paid image call or model-training claim is introduced.
 
 ## Verification story
 
@@ -35,6 +36,6 @@ Unit cases cover role constraints, companion locks, creative goals, bounded caps
 
 ## Remaining gates
 
-There is no audited overall completion percentage. Software checks do not establish universal fashion-designer intelligence. Open-ended visual-reference understanding, unsupported garments/details and arbitrary creative instructions still require broader supported blocks and interpretation work. Real fabric colour, composition, GSM, scale and drape need reviewed supplier/physical evidence. Photographic coverage needs matching source assets for additional cuts. Novice-user, device and tailor trials remain open in Roadmap Readiness. Production deployment remains paused.
+There is no audited overall completion percentage. Software checks do not establish universal fashion-designer intelligence. Open-ended visual-reference understanding, unsupported garments/details and arbitrary creative instructions still require broader supported blocks and interpretation work. Real fabric colour, composition, GSM, scale and drape need reviewed supplier/physical evidence. Photographic coverage needs matching source assets for additional cuts. Novice-user, device and tailor trials remain open in Roadmap Readiness. The verified workbench milestone was deployed to production on 2026-10-04; subsequent development updates wait for a deliberate release milestone.
 
 These are not marked 100% complete by this software delivery.
