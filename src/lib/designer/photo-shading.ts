@@ -5,6 +5,15 @@ export const PHOTO_SHAPE_CONTRAST_GAIN=.78;
 export const PHOTO_SHAPE_LOG_CONTRAST=64;
 const PHOTO_SHAPE_LINEAR_EPSILON=1e-4;
 
+/** Neutral padding for garment-local filtering. Background/skin must never
+ * become a highlight just because a blur kernel crosses the cloth boundary. */
+export function maskedPhotographicLuminance(luminance:number,garmentMean:number,alpha:number) {
+  const mean=Number.isFinite(garmentMean)?Math.max(0,Math.min(255,garmentMean)):PHOTO_SHAPE_NEUTRAL_LUMINANCE;
+  const value=Number.isFinite(luminance)?Math.max(0,Math.min(255,luminance)):mean;
+  const weight=Number.isFinite(alpha)?Math.max(0,Math.min(1,alpha/255)):0;
+  return Math.round(value*weight+mean*(1-weight));
+}
+
 function srgbByteToLinear(value:number) {
   const encoded=Math.max(0,Math.min(255,Number.isFinite(value)?value:PHOTO_SHAPE_NEUTRAL_LUMINANCE))/255;
   return encoded<=.04045

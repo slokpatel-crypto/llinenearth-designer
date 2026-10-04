@@ -14,6 +14,13 @@ test("neutral warm-trouser folds do not retain the template cloth inside the tra
   }
 });
 
+test("overlapping waist geometry cannot paint shirt cloth onto trousers or the reverse",()=>{
+  assert.equal(opacity("pant",65,77,85,255,255),0);
+  assert.equal(opacity("shirt",130,118,109,255,255),0);
+  assert.equal(opacity("pant",130,118,109,255,255),1);
+  assert.equal(opacity("shirt",65,77,85,255,255),1);
+});
+
 test("geometry and source brightness still protect skin, shoes and studio",()=>{
   for(const region of ["shirt","pant"] as const) {
     assert.equal(opacity(region,40,60,65,0,255),0);

@@ -320,7 +320,7 @@ for(const token of ["photoCalibration:photoCalibration.verified ? {","photoPxPer
   if(!photoPreview.includes(token)) throw new Error(`Calibration-aware final-render identity regression: missing ${token}`);
 }
 console.log("Calibration lock identity gate passed: changing accepted photo scale invalidates locked/session final-render state.");
-for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","PHOTO_TUCKED_LEFT_SLEEVE_CLIP","PHOTO_TUCKED_RIGHT_SLEEVE_CLIP","PHOTO_TUCKED_LEFT_TROUSER_CLIP","PHOTO_TUCKED_RIGHT_TROUSER_CLIP","destination-in","masks.shirt","masks.pant","featherMaskInside","featheredMasks","featheredPathMask","pathMasks","if(path) context.drawImage(featheredPathMask(path),0,0)","patternScaleForFabric","placement.offsetX","soft-light","photographicShapeMaps","photographicShapeMap","grayscale(1) blur(7px)","weightedGarmentLuminanceMean","neutralizePhotographicLuminance","garmentMean","const lightingMask = photoLightingMask(mask,path,Boolean(placement.maskPrepared))","globalAlpha = .58","globalAlpha = .07","Zoom fit","Compare","Boundary QA"]) {
+for (const token of ["PHOTO_TUCKED_SHIRT_CLIP","PHOTO_TUCKED_TROUSER_CLIP","PHOTO_TUCKED_SHIRT_BODY_CLIP","PHOTO_TUCKED_LEFT_SLEEVE_CLIP","PHOTO_TUCKED_RIGHT_SLEEVE_CLIP","PHOTO_TUCKED_LEFT_TROUSER_CLIP","PHOTO_TUCKED_RIGHT_TROUSER_CLIP","destination-in","masks.shirt","masks.pant","featherMaskInside","featheredMasks","featheredPathMask","pathMasks","if(path) context.drawImage(featheredPathMask(path),0,0)","patternScaleForFabric","placement.offsetX","soft-light","photographicShapeMaps","photographicShapeMap","blur(5px)","weightedGarmentLuminanceMean","neutralizePhotographicLuminance","garmentMean","const lightingMask = photoLightingMask(mask,path,Boolean(placement.maskPrepared))","globalAlpha = .9","globalAlpha = .07","Zoom fit","Compare","Boundary QA"]) {
   if (!photoPreview.includes(token)) throw new Error(`Real photographic Designer regression: PhotoOutfitPreview missing ${token}`);
 }
 const photoCustomerCss = fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
@@ -444,16 +444,16 @@ for (const token of [
   "function photographicReliefMap(photo: HTMLImageElement, garmentMask?: HTMLCanvasElement)",
   "preventing neck/skin/background values",
   "const garmentMean = weightedGarmentLuminanceMean(original.data, maskPixels.data)",
-  "original.data[index] * weight + garmentMean * (1 - weight)",
+  "maskedPhotographicLuminance(original.data[index],garmentMean,maskPixels.data[index+3])",
   "blurContext.drawImage(source, 0, 0, reliefWidth, reliefHeight)",
   "broadContext.drawImage(source, 0, 0, reliefWidth, reliefHeight)",
   "microDetail",
   "foldDetail",
-  "128 + microDetail * 1.55 + foldDetail * .85",
+  "128 + microDetail * 1.8 + foldDetail * 1.15",
   "photographicReliefMap(photo, lightingMask)",
   "photographicReliefMap(photo, detailMask)",
-  "globalAlpha = .36",
-  "globalAlpha = .08",
+  "globalAlpha = .7",
+  "globalAlpha = .14",
 ]) {
   if (!photoPreview.includes(token)) throw new Error(`Photo neutral-detail regression: missing ${token}`);
 }

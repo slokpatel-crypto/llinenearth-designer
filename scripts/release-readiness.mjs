@@ -348,7 +348,7 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "Contrast collars/cuffs sit directly beside skin and hands",
   "photographicShapeMaps",
   "photographicShapeMap",
-  "grayscale(1) blur(7px)",
+  "blur(5px)",
   "weightedGarmentLuminanceMean",
   "neutralizePhotographicLuminance",
   "garmentMean",
@@ -356,21 +356,21 @@ requireTokens("src/components/PhotoOutfitPreview.tsx", [
   "function photoLightingMask(mask?:HTMLCanvasElement,path=\"\",maskPrepared=false)",
   "context.drawImage(maskPrepared?mask:featherMaskInside(mask),0,0)",
   "const lightingMask = photoLightingMask(mask,path,Boolean(placement.maskPrepared))",
-  "globalAlpha = .58",
+  "globalAlpha = .9",
   "globalAlpha = .07",
   "function photographicReliefMap(photo: HTMLImageElement, garmentMask?: HTMLCanvasElement)",
   "photographicReliefMaps = new WeakMap<HTMLImageElement, Map<HTMLCanvasElement | null, HTMLCanvasElement>>",
   "const garmentMean = weightedGarmentLuminanceMean(original.data, maskPixels.data)",
-  "original.data[index] * weight + garmentMean * (1 - weight)",
+  "maskedPhotographicLuminance(original.data[index],garmentMean,maskPixels.data[index+3])",
   "blurContext.drawImage(source, 0, 0, reliefWidth, reliefHeight)",
   "broadContext.drawImage(source, 0, 0, reliefWidth, reliefHeight)",
   "microDetail",
   "foldDetail",
-  "128 + microDetail * 1.55 + foldDetail * .85",
+  "128 + microDetail * 1.8 + foldDetail * 1.15",
   "photographicReliefMap(photo, lightingMask)",
   "photographicReliefMap(photo, detailMask)",
-  "globalAlpha = .36",
-  "globalAlpha = .08",
+  "globalAlpha = .7",
+  "globalAlpha = .14",
   "const detailMask = featheredPathMask(path)",
   "photographicShapeMap(photo, detailMask)",
   "globalAlpha = .42",
@@ -739,7 +739,7 @@ requireTokens("tests/final-render-protected-region-qa.test.ts", ["front photorea
 requireTokens("src/lib/ai-visualization.ts", ["FABRIC_CONTEXT_PANEL_WIDTH=500","FABRIC_CONTEXT_HEIGHT=620","FABRIC_CONTEXT_GUTTER=32","fabricContextPanel",'fit:"contain"',"withoutEnlargement:false","FABRIC_CONTEXT_BACKGROUND","rightOffset=FABRIC_CONTEXT_PANEL_WIDTH+FABRIC_CONTEXT_GUTTER","neutral gutter deliberately keeps shirt and trouser references","without adding labels/text","LEFT PANEL is the exact shirt-fabric reference; RIGHT PANEL is the exact trouser-fabric reference. Ignore the neutral strip between them.","shirt left panel, neutral separator, trouser right panel"]);
 requireTokens("tests/final-render-fabric-context.test.ts", ["final-render fabric context preserves each full swatch and separates garments",'fit:"contain"',"FABRIC_CONTEXT_GUTTER=32"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["Lock final design","Final photoreal ✦","selectedLookSessionCache","styleSpec","bodyProfile"]);
-requireTokens("src/components/PhotoOutfitPreview.tsx", ["grayscale(1) blur(14px)","microDetail","foldDetail","colour-neutral multi-band relief map","globalAlpha = .36","globalAlpha = .08"]);
+requireTokens("src/components/PhotoOutfitPreview.tsx", ["grayscale(1) blur(7px)","microDetail","foldDetail","colour-neutral multi-band relief map","globalAlpha = .7","globalAlpha = .14"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["const plainTextureDetailGain = .34","high-frequency linen weave to avoid a flat painted-shirt look","plainTextureDetailGain"]);
 requireTokens("src/components/PhotoOutfitPreview.tsx", ["function drawWhiteDetail","const detailMask = featheredPathMask(path)","photographicShapeMap(photo, detailMask)","globalAlpha = .42","globalAlpha = .32"]);
 requireTokens("src/lib/designer/photo-preview.ts", ["DESIGNER_PHOTO_TEMPLATES","/designer/studio-tucked.webp"]);
