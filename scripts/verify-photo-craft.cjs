@@ -48,6 +48,7 @@ async function run(){fs.mkdirSync(out,{recursive:true});browser=await chromium.l
     const check=await diff(page,"base",p.photoCraftZone("cuff",combined.recommendation.style).areas);
     assert.ok(check.changed>300,"real swatch + thread must be visible");assert.equal(check.outside,0,"craft cannot change skin/set/base cloth outside its zone");assert.ok(check.left>0&&check.right>0,"both cuffs show craft");
     assert.match(await page.locator(".newDesignerPhotoCreative").textContent(),/Craft placement is proposed/);
+    assert.equal(await page.locator(".newDesignerPhotoCraftNote").isVisible(),true,"the sample/scale disclosure must be visibly readable");
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false,`overflow at ${width}`);
     await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,`model-craft-${width}.png`)});
     summary.viewports.push({width,overflow:false,applyMs:Date.now()-started,...check});

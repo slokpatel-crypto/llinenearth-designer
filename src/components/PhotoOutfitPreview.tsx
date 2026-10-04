@@ -1744,7 +1744,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
         {creativeCoverage.visible.slice(0,2).map((item)=><b key={item}>{item}</b>)}
         {creativeCoverage.specOnly.length>0 && <b>{creativeCoverage.specOnly.length} detail{creativeCoverage.specOnly.length===1?"":"s"} remain specification-only</b>}
       </div>
-      {creativeDirection.craft && <p className="newDesignerPhotoApproximation">Craft placement is proposed. Motif size, thread width and density are illustrative; exact stitch execution needs a sample.</p>}
+      {creativeDirection.craft && <p className="newDesignerPhotoApproximation newDesignerPhotoCraftNote">Craft placement is proposed. Motif size, thread width and density are illustrative; exact stitch execution needs a sample.</p>}
       {creativeAi?.visualCheck && <div className="newDesignerRenderCheck" data-status={creativeAi.visualCheck.evidenceAvailable ? creativeAi.visualCheck.status : "review"}>
         <span>{!creativeAi.visualCheck.evidenceAvailable ? "VISUAL CHECK UNAVAILABLE" : creativeAi.visualCheck.status==="pass" ? "VISUAL CHECK PASSED" : "VISUAL CHECK / REDESIGNING"}</span>
         <p>{!creativeAi.visualCheck.evidenceAvailable ? "Keep the render for manual review; V5 will not redesign from missing evidence." : creativeAi.visualCheck.status==="pass" ? "The main design detail reads clearly and the garment boundaries remain stable." : "The render did not express the design cleanly enough, so V5 is moving to a revised direction."}</p>
