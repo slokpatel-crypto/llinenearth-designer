@@ -29,6 +29,11 @@ async function open(width, reducedMotion = 'no-preference', javaScriptEnabled = 
   if (javaScriptEnabled && reducedMotion === 'no-preference') {
     await page.locator('.brandIntro img').waitFor({ state: 'visible' });
     await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.brandIntro img')).opacity) > .95);
+    const openingSpacing = await page.locator('.brandIntro').evaluate(n => ({
+      rule: n.querySelector('.introLogoRule').getBoundingClientRect().bottom,
+      caption: n.querySelector('p').getBoundingClientRect().top,
+    }));
+    assert.ok(openingSpacing.caption >= openingSpacing.rule + 4, `caption clears the decorative rule at ${width}px`);
     await page.locator('.brandIntro').screenshot({ path: path.join(out, `intro-${width}.png`) });
   }
   await page.locator('.brandIntro').waitFor({ state: 'hidden' });

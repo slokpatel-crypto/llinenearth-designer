@@ -29,7 +29,7 @@
 .brandThreadIntro .introThreads path:nth-child(3n) { animation-delay: .12s; }
 .brandThreadIntro .introThreads path:nth-child(3n + 1) { animation-delay: .24s; }
 .brandThreadIntro .introLogoRule { display: block; position: absolute; left: 14%; right: 0; bottom: -24px; height: 1px; background: linear-gradient(90deg, #b58e52, #a6b7ae, transparent); transform-origin: left; animation: brandRuleArrival 1s .65s cubic-bezier(.22,1,.36,1) both; }
-.brandThreadIntro > p { bottom: calc(50% - min(14vw, 124px)); margin: 0; font-size: 9px; letter-spacing: .3em; animation: brandCaptionArrival 1s .5s ease both; }
+.brandThreadIntro > p { top: calc(50% + min(12vw, 96px) + 42px); bottom: auto; margin: 0; font-size: 9px; letter-spacing: .3em; animation: brandCaptionArrival 1s .5s ease both; }
 @keyframes brandOpeningExit { 0%, 82% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
 @keyframes brandLogoArrival { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @keyframes brandThreadDraw { from { stroke-dashoffset: 100; opacity: 0; } to { stroke-dashoffset: 0; opacity: .5; } }
@@ -41,7 +41,7 @@
   .brandSignatureCaption { gap: 8px; font-size: 7px; letter-spacing: .2em; margin-top: 14px; }
   .brandSignatureReplay { bottom: 4px; right: 10px; }
   .brandThreadIntro .introThreads { inset: -180% -70%; }
-  .brandThreadIntro > p { bottom: calc(50% - 86px); font-size: 8px; }
+  .brandThreadIntro > p { font-size: 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .brandThreadIntro { display: none!important; }
