@@ -679,8 +679,16 @@
 .designerTaste p,.designerTaste small{font-size:12px;line-height:1.55}
 .designerPreviousRevision{margin-top:12px;min-height:44px;border:1px solid #ced9e0;border-radius:8px;background:#fff;color:#294158;padding:10px 14px;cursor:pointer;font:500 12px/1.5 Arial,sans-serif}
 .designerOptionOccasion{color:#8e624c;font-weight:600}
+.designerWorkingDirection{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:12px 0;padding:12px;border:1px solid #cbd9e1;border-radius:8px;background:#f6f9fb;font:400 12px/1.5 Arial,sans-serif;color:#294158}
+.designerWorkingDirection>div{min-width:0;overflow-wrap:anywhere}
+.designerWorkingDirection strong,.designerWorkingDirection small{display:block}
+.designerWorkingDirection small{margin-top:4px}
+.designerWorkingDirection button,.newDesignerAdvisor .newDesignerBriefResults>article>.designerDevelopDirection{border:1px solid #ced9e0;border-radius:8px;background:#fff;color:#294158;padding:10px;cursor:pointer;font:500 12px/1.5 Arial,sans-serif;min-height:44px}
+.designerWorkingDirection button{flex-shrink:0;max-width:45%}
 
 @media(max-width:720px){
+  .designerWorkingDirection{flex-direction:column}
+  .designerWorkingDirection button{max-width:none;width:100%}
   .newDesignerBriefHead{grid-template-columns:1fr}
   .newDesignerBriefHead>button{width:100%}
   .newDesignerBriefResults{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:3px}
