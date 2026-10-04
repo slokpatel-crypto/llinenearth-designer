@@ -5,6 +5,9 @@ const require=createRequire(import.meta.url),{load}=require("../scripts/designer
 const e=load("src/lib/designer/engine.ts");
 const {designerDirectionBasis,designerQuestionBasis,designerQuestionPreferenceOccasion}=load("src/lib/designer/question-basis.ts");
 const {answerDesignerQuestion}=load("src/lib/designer/advisor.ts");
+const {aggregateDesignerTaste}=load("src/lib/designer/taste-profile.ts");
+const {parseDesignerBrief}=load("src/lib/designer/brief.ts");
+const {safePersonalTaste,personalizeDesignerBrief}=load("src/lib/designer/personal-taste.ts");
 const shirt=e.DESIGNER_SHIRTS.find((f:any)=>f.id===e.DESIGNER_REVIEWED_PAIRING.shirtId),pant=e.DESIGNER_PANTS.find((f:any)=>f.id===e.DESIGNER_REVIEWED_PAIRING.pantId);
 const current={currentShirtId:shirt.id,currentPantId:pant.id,currentStyle:e.designerStyleForOccasion("Semi-Formal"),occasion:"Semi-Formal",context:{climate:"Air-conditioned",intention:"Balanced"}};
 const option={shirt:e.DESIGNER_SHIRTS[1],pant:e.DESIGNER_PANTS[1],style:{...e.designerStyleForOccasion("Casual"),button:"Horn"},occasion:"Casual",context:{climate:"Hot / humid",intention:"Understated"}};
@@ -63,4 +66,27 @@ test("detail-only follow-ups retain the working occasion for personal preference
   const working=designerDirectionBasis(option,current);
   assert.equal(designerQuestionPreferenceOccasion("Keep both fabrics. Use horn buttons.",working),"Casual");
   assert.equal(designerQuestionPreferenceOccasion("",working),"Casual");
+});
+test("a complete learned business construction cannot remove the other capsule occasions",()=>{
+  const brief="Create a capsule for office, dinner and weekend";
+  const events=e.DESIGNER_SHIRTS.slice(0,4).map((fabric:any,i:number)=>({type:"designer_feedback",source:"style-director",payload:{recommendationId:"capsule-taste-"+i,rating:"up",shirtId:fabric.id,pantId:pant.id,occasion:"Semi-Formal",style:{...current.currentStyle,button:"Horn"}}}));
+  const parsed=personalizeDesignerBrief(parseDesignerBrief(brief,{style:current.currentStyle,occasion:current.occasion,context:current.context}),safePersonalTaste(aggregateDesignerTaste(events,"Semi-Formal")));
+  const learned=answerDesignerQuestion({shirts:e.DESIGNER_SHIRTS,pants:e.DESIGNER_PANTS,currentShirt:shirt,currentPant:pant,chosenStyle:current.currentStyle,occasion:current.occasion,context:current.context,brief,parsed});
+  const ordinary=ask(brief,current);
+  assert.deepEqual(learned.results.map((r:any)=>r.occasion),["Semi-Formal","Smart-Casual","Casual"]);
+  assert.equal(learned.results[0].style.button,"Horn");
+  for(const result of learned.results.slice(1))assert.deepEqual(result.style,ordinary.results.find((r:any)=>r.occasion===result.occasion).style);
+  assert.ok(learned.results.every((r:any)=>r.canApply));
+});
+test("capsule occasion defaults preserve explicit construction and customer cut locks",()=>{
+  const brief="Create a capsule for office, dinner and weekend with horn buttons. Keep my shirt fit.";
+  const parsed=personalizeDesignerBrief(parseDesignerBrief(brief,{style:current.currentStyle,occasion:current.occasion,context:current.context}),safePersonalTaste({version:1,evidence:4,preferredConstruction:{button:"Mother-of-Pearl",shirtFit:"Relaxed Fit"}}));
+  const answer=answerDesignerQuestion({shirts:e.DESIGNER_SHIRTS,pants:e.DESIGNER_PANTS,currentShirt:shirt,currentPant:pant,chosenStyle:current.currentStyle,occasion:current.occasion,context:current.context,brief,parsed});
+  assert.deepEqual(answer.results.map((r:any)=>r.occasion),["Semi-Formal","Smart-Casual","Casual"]);
+  for(const result of answer.results){assert.equal(result.style.button,"Horn");assert.equal(result.style.shirtFit,current.currentStyle.shirtFit);}
+});
+test("capsule defaults cannot relax an explicitly incompatible construction",()=>{
+  const answer=ask("Create a capsule for office, dinner and weekend with camp collar and French cuffs",current);
+  assert.deepEqual(answer.results,[]);
+  assert.ok(answer.advice.findings.some((f:any)=>/French cuff/.test(f.text)));
 });

@@ -233,13 +233,17 @@ export function answerDesignerQuestion(input:DesignerSearchInput & {brief:string
     const order=preference.preferredTier==="Safe"?["Safe","Elevated","Statement"]:preference.preferredTier==="Statement"?["Statement","Elevated","Safe"]:["Elevated","Safe","Statement"];
     const slots=task==="capsule"?intent.capsule:[{label:"",occasion:parsed.occasion}];
     for(const slot of slots) {
+      // One browser taste profile is scoped to the parsed occasion. Other
+      // capsule slots keep their own defaults and the customer's explicit locks.
+      const slotBase=task==="capsule"?{...designerStyleForOccasion(slot.occasion),...explicit,...retained}:style;
+      const personalPatch=slot.occasion===parsed.occasion?parsed.personalStylePatch:undefined;
       const slotGoals=designGoalPatch(intent,slot.occasion);
-      const requestedPatch=task==="refine"?{...style,...retained}:{...parsed.personalStylePatch,...slotGoals,...explicit,...retained};
-      const stylePatch=task==="refine"?requestedPatch:completeDesignConstruction(requestedPatch,style);
-      const searchInput={...baseInput,occasion:slot.occasion,shirts,pants,scope:"open" as const,preference,excludedStyle:constructionIntent.excluded};
+      const requestedPatch=task==="refine"?{...style,...retained}:{...personalPatch,...slotGoals,...explicit,...retained};
+      const stylePatch=task==="refine"?requestedPatch:completeDesignConstruction(requestedPatch,slotBase);
+      const searchInput={...baseInput,occasion:slot.occasion,chosenStyle:slotBase,shirts,pants,scope:"open" as const,preference,excludedStyle:constructionIntent.excluded};
       let matches=searchDesignerCatalogue({...searchInput,stylePatch});
-      if(!matches.length && (Object.keys(slotGoals).length || Object.keys(parsed.personalStylePatch || {}).length)) {
-        const hardPatch=task==="refine"?{...style,...retained}:completeDesignConstruction({...explicit,...retained},style);
+      if(!matches.length && (Object.keys(slotGoals).length || Object.keys(personalPatch || {}).length)) {
+        const hardPatch=task==="refine"?{...style,...retained}:completeDesignConstruction({...explicit,...retained},slotBase);
         matches=searchDesignerCatalogue({...searchInput,stylePatch:hardPatch});
         if(matches.length) addFinding("risk","Some creative-goal or learned details were relaxed to preserve your explicit instructions and the compatibility checks. Review the actual construction shown in each proposal.");
       }
