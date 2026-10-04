@@ -38,6 +38,12 @@ test("the uncertain edge retains the existing photographic colour segmentation",
   assert.ok(opacity("shirt",60,70,75,128,200)<1);
 });
 
+test("known source cloth at the waistband gets full coverage without a source-colour fringe",()=>{
+  assert.equal(opacity("shirt",70,72,73,255,180),1);
+  assert.equal(opacity("pant",140,136,134,255,180),1);
+  assert.equal(opacity("shirt",70,72,73,128,180),128/255);
+});
+
 test("interior recovery is smooth, bounded and rejects invalid evidence",()=>{
   assert.equal(opacity("shirt",80,80,80,255,210),0);
   assert.equal(opacity("shirt",80,80,80,255,222),.5);

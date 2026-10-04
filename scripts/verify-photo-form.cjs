@@ -68,16 +68,17 @@ async function run(){
           for(const r of protectedRegions)for(let y=r.y;y<r.y+r.h;y++)for(let x=r.x;x<r.x+r.w;x++){const i=(y*W+x)*4;if(current[i]!==raw[i]||current[i+1]!==raw[i+1]||current[i+2]!==raw[i+2])protectedChanges++;}
           // This photographed source has cool shirt and warm trousers. Find
           // their actual edge on each column instead of assuming a flat waist.
-          let wrongWaistPixels=0;
+          let wrongWaistPixels=0;const waistExamples=[];
           if(template==="tucked")for(let y=537;y<566;y++)for(let x=405;x<610;x++){
             const i=(y*W+x)*4,r=raw[i],g=raw[i+1],b=raw[i+2];
-            if(g-r>=2&&b-r>=3&&Math.max(r,g,b)<130&&current[i]<current[i+1]*1.15)wrongWaistPixels++;
+            if(g-r>=2&&b-r>=3&&Math.max(r,g,b)<130&&current[i]<current[i+1]*1.15){wrongWaistPixels++;if(waistExamples.length<20)waistExamples.push({x,y,source:[r,g,b],render:[current[i],current[i+1],current[i+2]]});}
           }
           const display=makeCanvas();display.width=W*2;display.getContext("2d").drawImage(before,0,0);display.getContext("2d").drawImage(after,W,0);
-          window.__photoFormImages[template]=display.toDataURL("image/png");results.push({template,renderMs,folds,protectedChanges,wrongWaistPixels});
+          window.__photoFormImages[template]=display.toDataURL("image/png");results.push({template,renderMs,folds,protectedChanges,wrongWaistPixels,waistExamples});
         }return results;
       });
-      for(const result of summary.forms){assert.equal(result.protectedChanges,0,result.template+" must preserve skin, shoes, inner-leg gap and set");assert.equal(result.wrongWaistPixels,0,"trousers cannot cross into photographed shirting");for(const fold of result.folds){assert.ok(fold.after.slope>fold.before.slope*1.15,`${result.template} ${fold.name}: depicted fold contrast must improve, ${fold.before.slope} -> ${fold.after.slope}`);}await page.evaluate(template=>{const image=document.createElement("img");image.id="photo-form-comparison";image.src=window.__photoFormImages[template];image.style.width="1024px";document.body.append(image);},result.template);await page.locator("#photo-form-comparison").screenshot({path:path.join(out,`before-after-${result.template}.png`)});await page.locator("#photo-form-comparison").evaluate(image=>image.remove());}
+      for(const result of summary.forms){await page.evaluate(template=>{const image=document.createElement("img");image.id="photo-form-comparison";image.src=window.__photoFormImages[template];image.style.width="1024px";document.body.append(image);},result.template);await page.locator("#photo-form-comparison").screenshot({path:path.join(out,`before-after-${result.template}.png`)});await page.locator("#photo-form-comparison").evaluate(image=>image.remove());}
+      for(const result of summary.forms){assert.equal(result.protectedChanges,0,result.template+" must preserve skin, shoes, inner-leg gap and set");assert.equal(result.wrongWaistPixels,0,"source shirting must stay fully covered at the tucked waist");for(const fold of result.folds)assert.ok(fold.after.slope>fold.before.slope*1.15,`${result.template} ${fold.name}: depicted fold contrast must improve, ${fold.before.slope} -> ${fold.after.slope}`);}
       await page.getByRole("combobox",{name:"Shirt finish",exact:true}).selectOption("Untucked");await ready(page);await page.locator(".newDesignerPhoto").screenshot({path:path.join(out,"real-untucked.png")});
     }
     await context.close();

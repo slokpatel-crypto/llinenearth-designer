@@ -715,11 +715,11 @@ function drawGarmentAtlas(target:CanvasRenderingContext2D,mask:HTMLCanvasElement
   const context=atlas.getContext("2d");
   if(!context) throw new Error("Canvas is unavailable.");
   paint(context);
-  // Feather the complete silhouette once. Independently feathering each
-  // sleeve/body/leg and multiplying by the same outline again exposed the old
-  // source cloth at edges and left a partial-coverage line between panels.
+  // The adaptive silhouette already contains photographed edge coverage and
+  // path antialiasing. Apply it once: blurring it again would expose a strip of
+  // source cloth along the waist and other otherwise fully covered boundaries.
   context.globalCompositeOperation="destination-in";
-  context.drawImage(featherMaskInside(mask),0,0);
+  context.drawImage(mask,0,0);
   target.drawImage(atlas,0,0);
 }
 

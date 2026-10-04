@@ -25,8 +25,8 @@ export function photographicGarmentOpacity(
   // opaque blurred coverage left dark neutral folds beside the armhole exposed.
   const interior=unit((blurredGeometryAlpha-210)/24);
   const chroma=region==="shirt"
-    ? unit((Math.min(green-red,blue-red-1)-1)/4)
-    : unit(Math.min(red-green-3,red-blue-5)/7);
+    ? unit(Math.min(green-red,blue-red-1)-1)
+    : unit(Math.min(red-green-3,red-blue-5));
   const clothBrightness=region==="shirt"
     ? unit((165-Math.max(red,green,blue))/35)
     : unit((195-red)/12);
