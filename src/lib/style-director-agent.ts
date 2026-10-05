@@ -4,6 +4,7 @@ import { finalizeVersion, initialVersion, type DesignVersion } from "@/lib/refin
 import type { ContextProfile, DesignerBrief } from "@/lib/designer-types";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import { colorFamilyPairSignal } from "@/lib/vocab";
+import { fromLegacyStyle, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import {
   DESIGNER_PANTS, DESIGNER_SHIRTS, DESIGNER_STYLE_CHOICES, designerFabricFromStock, designerStyleForOccasion, evaluateDesignerCombo,
   type DesignerClimate, type DesignerContext, type DesignerIntention, type DesignerStyle, type OccasionTier,
@@ -29,6 +30,7 @@ export type StyleDirectorRealModelSpec = {
   climate: DesignerClimate;
   intention: DesignerIntention;
   style: DesignerStyle;
+  styleSpec: StyleSpecV2;
   reason: string;
   status: "preliminary" | "needs_review";
   confidenceScore: number;
@@ -260,6 +262,25 @@ function styleForDirectorCandidate(a: StyleDirectorAnswers, candidate: DesignCan
   return style;
 }
 
+function styleSpecForDirectorCandidate(candidate:DesignCandidate,style:DesignerStyle):StyleSpecV2 {
+  const spec=fromLegacyStyle(style);
+  const shirt=String(candidate.garments.shirt||"").toLowerCase();
+  const trouser=String(candidate.garments.trouser||"").toLowerCase();
+
+  if(/camp|cuban/.test(shirt)) spec.shirt.type="camp_collar_resort";
+  else if(/band/.test(shirt)) spec.shirt.type="band_collar_shirt";
+  else if(/overshirt/.test(shirt)) spec.shirt.type="overshirt";
+  else if(/short[- ]?sleeve/.test(shirt)) spec.shirt.type="short_sleeve_shirt";
+  else if(/oxford|button[- ]?down/.test(shirt)) spec.shirt.type="casual_shirt";
+  else spec.shirt.type="dress_shirt";
+
+  if(/wide/.test(trouser)) spec.pant.type="wide_leg_relaxed_drape";
+  else if(/pleat/.test(trouser)) spec.pant.type="pleated_trouser";
+  else if(/flat[- ]?front/.test(trouser)) spec.pant.type="formal_flat_front";
+
+  return spec;
+}
+
 function buildRealModelSpec(
   a: StyleDirectorAnswers, fabric: FabricColorway, candidate: DesignCandidate,
   shirts = DESIGNER_SHIRTS, pants = DESIGNER_PANTS,
@@ -287,6 +308,7 @@ function buildRealModelSpec(
 
   const best = ranked[0]?.recommendation;
   if (!best) return undefined;
+  const styleSpec=styleSpecForDirectorCandidate(candidate,best.style);
   return {
     shirtId: best.shirt.id,
     shirtName: best.shirt.name,
@@ -298,6 +320,7 @@ function buildRealModelSpec(
     climate: context.climate,
     intention: context.intention,
     style: best.style,
+    styleSpec,
     reason: best.shortReason,
     status: best.status,
     confidenceScore: best.confidenceScore,
