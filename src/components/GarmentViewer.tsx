@@ -199,7 +199,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
       viewer.removeEventListener("error",fail);
       viewer.removeEventListener("progress",update);
     };
-  },[modelUrl,engineReady]);
+  },[modelUrl]);
 
   useEffect(()=>{
     if(!modelReady || !shirt || !trouser) return;
