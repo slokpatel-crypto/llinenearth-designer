@@ -1531,6 +1531,7 @@ const garmentViewerSource=fs.readFileSync("src/components/GarmentViewer.tsx","ut
 const garmentViewerBlenderExporter=fs.readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
 const garmentViewerBaseBootstrap=fs.readFileSync("scripts/blender/bootstrap-human-base-meshes.py","utf8");
 const garmentViewerBodyPreparer=fs.readFileSync("scripts/blender/prepare-linen-earth-body.py","utf8");
+const garmentViewerScenePreflight=fs.readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
 const designerModuleGarmentScope=fs.readFileSync("src/components/DesignerModule.tsx","utf8");
 const garmentCategoryLibrary=fs.readFileSync("src/lib/designer/garment-category-library.ts","utf8");
 const futureGarmentOptions=fs.readFileSync("src/lib/designer/future-garment-options.ts","utf8");
@@ -1568,6 +1569,9 @@ for(const token of ["TARGET_HEIGHT_M = 1.727","SOURCE_VERSION = \"1.4.1\"","SOUR
   if(!garmentViewerBodyPreparer.includes(token)) throw new Error(`GarmentViewer realistic-body intake regression: missing ${token}`);
 }
 if(garmentViewerBodyPreparer.includes("ShirtTorsoFabric")) throw new Error("GarmentViewer body intake must not fake production garment geometry.");
+for(const token of ["linen-earth-officewear-scene-preflight-v1","evaluated_mesh_stats","degenerateFaces","activeUv","transformApplied","MAX_TOTAL_TRIANGLES = 220_000","MAX_TOTAL_VERTICES = 280_000"]) {
+  if(!garmentViewerScenePreflight.includes(token)) throw new Error(`GarmentViewer Blender scene-preflight regression: missing ${token}`);
+}
 for(const token of ["linen-earth-garment-viewer-v2","REQUIRED_GARMENT_VIEWER_MATERIALS","approvedGarmentViewerModelSource","validateGarmentViewerModelManifest","GarmentViewerAssetSource","Model source provenance is required","sourceReady"]) {
   if(!garmentViewerContract.includes(token)) throw new Error(`GarmentViewer production contract regression: missing ${token}`);
 }
