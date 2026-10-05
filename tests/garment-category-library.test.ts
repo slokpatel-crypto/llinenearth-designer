@@ -104,3 +104,10 @@ test("Designer to 3D handoff carries current fabrics and types",()=>{
   assert(viewer.includes("setShirtId(parsed.shirtId)"));
   assert(viewer.includes("setTrouserId(parsed.pantId)"));
 });
+
+
+test("Designer leads with garment plus cloth instead of fabric alone",()=>{
+  const source=readFileSync("src/components/DesignerModule.tsx","utf8");
+  assert(source.includes("01 / GARMENT + CLOTH"));
+  assert(source.includes("Choose what you are making, then the fabric."));
+});
