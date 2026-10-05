@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { fabricCompatibilityMatrix, fabricPhysicsFromDesignerFabric, type FabricPhysicsPatch, type FabricPhysicsEvidenceOverrides } from "@/lib/designer/fabric-physics";
 import FabricAnalyzerBatchPanel from "./FabricAnalyzerBatchPanel";
 import FabricAnalyzerCalibrationPanel from "./FabricAnalyzerCalibrationPanel";
 import FabricCapturePicker, { type DirectFabricCapture } from "./FabricCapturePicker";
@@ -174,6 +175,29 @@ export default function FabricAnalyzerClient(){
   const captureCount=useMemo(()=>[effectiveCaptures.imageUrl,effectiveCaptures.macroImageUrl,effectiveCaptures.foldImageUrl].filter(Boolean).length,[effectiveCaptures]);
   const physicalCount=useMemo(()=>[form.verifiedGsm,form.verifiedDrape,form.verifiedFiberContent,form.verifiedStructure,form.verifiedBreathability,form.verifiedWrinkleResistance,form.verifiedStretch,form.repeatRealMm,form.swatchRealWidthMm].filter((value)=>value!=="").length,[form]);
   const physicalProvenanceMissing=physicalCount>0 && !form.verifiedPhysicalSourceUrl.trim() && form.verifiedPhysicalEvidenceNote.trim().length<8;
+  const compatibility=useMemo(()=>{
+    const physical=run?.profile.verifiedPhysical;
+    if(!physical) return [];
+    const patch:FabricPhysicsPatch={
+      structure:physical.structure ?? null,
+      breathability:physical.breathability ?? null,
+      wrinkleResistance:physical.wrinkleResistance ?? null,
+      stretch:physical.stretch ?? null,
+    };
+    const evidence:FabricPhysicsEvidenceOverrides={
+      ...(physical.gsm!=null?{gsm:"declared" as const}:{}),
+      ...(physical.structure!=null?{structure:"declared" as const}:{}),
+      ...(physical.breathability!=null?{breathability:"declared" as const}:{}),
+      ...(physical.wrinkleResistance!=null?{wrinkleResistance:"declared" as const}:{}),
+      ...(physical.stretch!=null?{stretch:"declared" as const}:{}),
+    };
+    const physics=fabricPhysicsFromDesignerFabric({
+      id:form.fabricId||run.profileId||"operator-preview",
+      weightGsm:physical.gsm,
+      drape:physical.drape==="Fluid"||physical.drape==="Balanced"||physical.drape==="Structured"?physical.drape:null,
+    },patch,evidence);
+    return fabricCompatibilityMatrix(physics);
+  },[run,form.fabricId]);
 
   function field<K extends keyof typeof initial>(key:K,value:string){setForm((current)=>({...current,[key]:value}));}
   function directCapture(role:"flat"|"macro"|"fold",value:DirectFabricCapture|null){
@@ -339,6 +363,7 @@ export default function FabricAnalyzerClient(){
           </div>
           <div className="physicalTruth"><small>VERIFIED PHYSICAL</small><p>GSM <b>{run.profile.verifiedPhysical?.gsm ?? "unknown"}</b> · Drape <b>{run.profile.verifiedPhysical?.drape || "unknown"}</b></p><p>Structure <b>{run.profile.verifiedPhysical?.structure ?? "unknown"}</b> · Breathability <b>{run.profile.verifiedPhysical?.breathability ?? "unknown"}</b></p><p>Wrinkle resistance <b>{run.profile.verifiedPhysical?.wrinkleResistance ?? "unknown"}</b> · Stretch <b>{run.profile.verifiedPhysical?.stretch ?? "unknown"}</b></p><p>Fibre <b>{run.profile.verifiedPhysical?.fiberContent || "unknown"}</b></p>{run.profile.verifiedPhysical?.sourceUrl&&<p><b>Source:</b> {run.profile.verifiedPhysical.sourceUrl}</p>}{run.profile.verifiedPhysical?.evidenceNote&&<p><b>Evidence:</b> {run.profile.verifiedPhysical.evidenceNote}</p>}</div>
           <div className="captures"><small>CAPTURES USED</small>{(run.profile.captureSet||[]).map((item)=><span key={item.role}>{item.role}<b>{item.contentSha256?"measured":"unmeasured"}</b></span>)}</div>
+          {compatibility.length>0&&<div className="physicalTruth"><small>PHYSICS COMPATIBILITY · PROVISIONAL</small><div className="resultGrid">{compatibility.map((item)=><span key={item.garmentType}><small>{item.label.toUpperCase()}</small><b>{Math.round(item.score)}%</b><em>{item.status.replaceAll("_"," ")} · {Math.round(item.evidenceCoverage)}% evidence</em></span>)}</div><p>Operator calibration aid only. Strong customer claims remain blocked until reviewed, auditable physical evidence is complete.</p></div>}
           <div className="summary"><small>ANALYZER SUMMARY</small><p>{run.profile.summary}</p></div>
           {!!run.reviewReasons?.length&&<div className="reviewReasons"><small>WHY REVIEW</small>{run.reviewReasons.map((item)=><p key={item}>{item}</p>)}</div>}
           {run.profileId&&<div className="resultActions resultActionsThree"><button onClick={()=>void review(run.profileId!,"approved")}>Approve profile</button><button onClick={()=>void approveAndNext(run.profileId!)}>Approve + next fabric</button><button onClick={()=>void review(run.profileId!,"rejected")}>Reject</button></div>}
