@@ -26,6 +26,7 @@ import type { DesignerSearchScope, DesignerSearchTier } from "@/lib/designer/sea
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import { creativeFamilyFromConceptId, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
 import {
   fromLegacyStyle,
   mergeLegacyIntoStyleSpec,
@@ -1096,6 +1097,13 @@ export function DesignerModule() {
         {shirt && pant && <DesignerAdvisorPanel key={advisorEpoch} shirt={shirt} pant={pant} style={style} occasion={occasion} context={{climate,intention}} measurements={measurementProfile} observations={tailorObservations} sessionId={designerSession} onCreativeBrief={(brief)=>{pendingCraftBrief.current=true;setCraftRequest(current=>({...current,brief:brief.slice(0,900)}));document.getElementById("designerCreativeLab")?.scrollIntoView({behavior:"smooth",block:"start"});}} onApply={(result,interpretation)=>useSearchResult(result,{occasion:interpretation.occasion,context:interpretation.context,name:"one_line_designer_brief"})} />}
 
         <div className="newDesignerSectionHead"><span>01 / CLOTH</span><h2 id="designerChoose">Choose your fabrics.</h2></div>
+        <div className="newDesignerGarmentScope" aria-label="Garment types and design details">
+          {GARMENT_CATEGORY_LIBRARY.map((garment)=><article key={garment.id} data-status={garment.status}>
+            <div><span>{garment.status==="live"?"CURRENT":"FUTURE"}</span><strong>{garment.label}</strong></div>
+            <p>{garment.typeExamples.slice(0,4).join(" · ")}</p>
+            <small>{garment.detailFamilies.slice(0,5).join(" · ")}</small>
+          </article>)}
+        </div>
         <div className="newDesignerFabricGrid">
           <article className="newDesignerFabric">
             <div className="newDesignerFabricFilters" aria-label="Filter shirt fabrics">
