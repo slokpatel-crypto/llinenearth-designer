@@ -55,3 +55,66 @@ test("3D lab carries the saved Designer recipe without claiming geometry support
   assert(source.includes("temporary 3D block maps fabric now"));
   assert(source.includes("construction-specific mesh changes remain a later production-model step"));
 });
+
+
+test("Designer garment cards expose selectable current garment types and keep future garments non-selectable",()=>{
+  const source=readFileSync("src/components/DesignerModule.tsx","utf8");
+  assert(source.includes('aria-label="Shirt type"'));
+  assert(source.includes('aria-label="Trouser type"'));
+  assert(source.includes('changeGarmentType("shirt"'));
+  assert(source.includes('changeGarmentType("pant"'));
+  assert(source.includes('styleSpec.shirt.type'));
+  assert(source.includes('styleSpec.pant.type'));
+  assert(source.includes('"PLANNED DETAILS · "'));
+  assert.equal(source.includes('aria-label="Blazer type"'),false);
+  assert.equal(source.includes('aria-label="Suit type"'),false);
+});
+
+test("Designer type selection participates in assessment identity and customer handoff",()=>{
+  const source=readFileSync("src/components/DesignerModule.tsx","utf8");
+  assert(source.includes("styleIdentity(style),styleSpec,climate"));
+  assert(source.includes("Shirt type:"));
+  assert(source.includes("Trouser type:"));
+  assert(source.includes("optionById(styleSpec.shirt.type)"));
+  assert(source.includes("optionById(styleSpec.pant.type)"));
+});
+
+
+test("3D recipe shows saved garment type selections from Designer StyleSpec",()=>{
+  const source=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  assert(source.includes("styleSpec?:"));
+  assert(source.includes("draftShirtTypeLabel"));
+  assert(source.includes("draftTrouserTypeLabel"));
+  assert(source.includes("designerDraftRecipe.styleSpec.shirt.type"));
+  assert(source.includes("designerDraftRecipe.styleSpec.pant.type"));
+  assert(source.includes("Shirt · {draftShirtTypeLabel}"));
+  assert(source.includes("Trouser · {draftTrouserTypeLabel}"));
+});
+
+
+test("Designer to 3D handoff carries current fabrics and types",()=>{
+  const designer=readFileSync("src/components/DesignerModule.tsx","utf8");
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  assert(designer.includes('className="newDesignerOpen3D"'));
+  assert(designer.includes('href="/lab/garment-viewer"'));
+  assert(designer.includes("localStorage.setItem(DRAFT_KEY"));
+  assert(designer.includes("styleSpec"));
+  assert(viewer.includes("shirtId?:string"));
+  assert(viewer.includes("pantId?:string"));
+  assert(viewer.includes("setShirtId(parsed.shirtId)"));
+  assert(viewer.includes("setTrouserId(parsed.pantId)"));
+});
+
+
+test("Designer leads with garment plus cloth instead of fabric alone",()=>{
+  const source=readFileSync("src/components/DesignerModule.tsx","utf8");
+  assert(source.includes("01 / GARMENT + CLOTH"));
+  assert(source.includes("Choose what you are making, then the fabric."));
+});
+
+
+test("Async Designer identity includes canonical StyleSpec so applied directions are not discarded",()=>{
+  const source=readFileSync("src/components/DesignerModule.tsx","utf8");
+  assert(source.includes("styleIdentity(direction.baseStyle),fromLegacyStyle(direction.baseStyle),climate"));
+  assert(source.includes("styleIdentity(result.style),fromLegacyStyle(result.style),nextContext.climate"));
+});

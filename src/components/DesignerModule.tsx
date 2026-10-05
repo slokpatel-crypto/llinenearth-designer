@@ -27,6 +27,7 @@ import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import { creativeFamilyFromConceptId, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
+import { optionById, optionsFor } from "@/lib/designer/options/library";
 import {
   fromLegacyStyle,
   mergeLegacyIntoStyleSpec,
@@ -61,6 +62,8 @@ type DesignerSearchOption = {
 
 const SHIRT_FILTERS:ShirtFabricFilter[]=["All","Plain","Print","Blend","Formal"];
 const PANT_FILTERS:PantFabricFilter[]=["All","Light","Medium","Dark"];
+const SHIRT_TYPE_OPTIONS=optionsFor("shirt.type");
+const TROUSER_TYPE_OPTIONS=optionsFor("pant.type");
 
 function customerFabricLine(line:string) {
   return line
@@ -167,7 +170,7 @@ export function DesignerModule() {
   const pant = useMemo(() => pantOptions.find((item) => item.id === pantId), [pantId, pantOptions]);
   const craftFabrics=useMemo(()=>[...new Map([...shirtOptions,...pantOptions].map(f=>[f.id,f])).values()],[shirtOptions,pantOptions]);
   const styleIdentity=(value:DesignerStyle)=>(Object.keys(DESIGNER_STYLE_CHOICES) as Array<keyof DesignerStyle>).map((key)=>value[key]);
-  const assessmentIdentity=JSON.stringify([shirtId,pantId,occasion,styleIdentity(style),climate,intention,measurementProfile,tailorObservations,bodyProfile]);
+  const assessmentIdentity=JSON.stringify([shirtId,pantId,occasion,styleIdentity(style),styleSpec,climate,intention,measurementProfile,tailorObservations,bodyProfile]);
   const committedAssessmentIdentity=useRef(assessmentIdentity);
   const committedCreativeId=useRef(activeCreative?.id||null);
   useLayoutEffect(()=>{committedCreativeId.current=activeCreative?.id||null;},[activeCreative?.id]);
@@ -201,11 +204,13 @@ export function DesignerModule() {
       `Shirt: ${customerFabricLine(shirt.line)} — ${shirt.name}`,
       `Trouser: ${customerFabricLine(pant.line)} — ${pant.name}`,
       `Occasion: ${occasion}`,
+      `Shirt type: ${optionById(styleSpec.shirt.type)?.label || styleSpec.shirt.type}`,
+      `Trouser type: ${optionById(styleSpec.pant.type)?.label || styleSpec.pant.type}`,
       `Style: ${style.collar}; ${style.cuff}; ${style.shirtFit}; ${style.shirtWear}; ${style.trouser}`,
       ...creative,
     ].filter(Boolean).join("\n");
     return buildWhatsAppUrl({topic:"Designer Studio look",garment:"Shirt + trouser",details});
-  },[shirt,pant,occasion,style,activeCreative]);
+  },[shirt,pant,occasion,style,styleSpec,activeCreative]);
   const fitCoverage = useMemo(() => measurementCoverage(measurementProfile), [measurementProfile]);
   const fitGuidance = useMemo(() => measurementFitGuidance(measurementProfile), [measurementProfile]);
   const observationCoverage = useMemo(() => tailorObservationCoverage(tailorObservations), [tailorObservations]);
@@ -683,7 +688,7 @@ export function DesignerModule() {
   }
 
   function useCreativeDirection(direction:CreativeDirection,origin:"manual"|"automatic"="manual") {
-    const expectedIdentity=JSON.stringify([direction.recommendation.shirt.id,direction.recommendation.pant.id,direction.recommendation.occasion,styleIdentity(direction.baseStyle),climate,intention,measurementProfile,tailorObservations,bodyProfile]);
+    const expectedIdentity=JSON.stringify([direction.recommendation.shirt.id,direction.recommendation.pant.id,direction.recommendation.occasion,styleIdentity(direction.baseStyle),fromLegacyStyle(direction.baseStyle),climate,intention,measurementProfile,tailorObservations,bodyProfile]);
     setCreativeVisualReview(null);
     if(origin==="manual") {
       setCreativeAutoRetryCount(0);
@@ -753,7 +758,7 @@ export function DesignerModule() {
   function useSearchResult(result:DesignerSearchOption,source?:{occasion?:OccasionTier;context?:DesignerContext;name?:string}) {
     const nextOccasion=source?.occasion || result.recommendation.occasion;
     const nextContext=source?.context || {climate,intention};
-    const expectedIdentity=JSON.stringify([result.shirt.id,result.pant.id,nextOccasion,styleIdentity(result.style),nextContext.climate,nextContext.intention,measurementProfile,tailorObservations,bodyProfile]);
+    const expectedIdentity=JSON.stringify([result.shirt.id,result.pant.id,nextOccasion,styleIdentity(result.style),fromLegacyStyle(result.style),nextContext.climate,nextContext.intention,measurementProfile,tailorObservations,bodyProfile]);
     setActiveCreative(null);
     setCreativeVisualReview(null);
     setShirtId(result.shirt.id);
@@ -890,6 +895,18 @@ export function DesignerModule() {
     setRecommendationId(null);
     setResponse(null);
     setFeedbackReason(null);
+  }
+
+  function changeGarmentType(garment:"shirt"|"pant",value:string) {
+    const next:StyleSpecV2={
+      ...styleSpec,
+      shirt:{...styleSpec.shirt},
+      pant:{...styleSpec.pant},
+      legacy:{...styleSpec.legacy},
+    };
+    if(garment==="shirt") next.shirt.type=value;
+    else next.pant.type=value;
+    applyStyleSpec(next);
   }
 
   function applyStylePatch(patch: Partial<DesignerStyle>) {
@@ -1096,12 +1113,16 @@ export function DesignerModule() {
         {directorHandoff && <div className="newDesignerHandoff"><span>STYLE DIRECTOR HANDOFF</span><strong>{directorHandoffTitle || "Your complete outfit direction is loaded."}</strong><p>{shirt?.name} shirt + {pant?.name} trousers · {style.shirtWear} · {style.trouser}. You can refine any detail below without rebuilding the look.</p>{directorHandoffAuditStatus==="verified"&&<small>VERIFIED HANDOFF · audit {directorHandoffAuditId}</small>}{directorHandoffAuditStatus==="unavailable"&&<small>Handoff matched, but cloud audit is unavailable.</small>}{directorHandoffAuditStatus==="mismatch"&&<small>Handoff verification could not be established.</small>}</div>}
         {shirt && pant && <DesignerAdvisorPanel key={advisorEpoch} shirt={shirt} pant={pant} style={style} occasion={occasion} context={{climate,intention}} measurements={measurementProfile} observations={tailorObservations} sessionId={designerSession} onCreativeBrief={(brief)=>{pendingCraftBrief.current=true;setCraftRequest(current=>({...current,brief:brief.slice(0,900)}));document.getElementById("designerCreativeLab")?.scrollIntoView({behavior:"smooth",block:"start"});}} onApply={(result,interpretation)=>useSearchResult(result,{occasion:interpretation.occasion,context:interpretation.context,name:"one_line_designer_brief"})} />}
 
-        <div className="newDesignerSectionHead"><span>01 / CLOTH</span><h2 id="designerChoose">Choose your fabrics.</h2></div>
+        <div className="newDesignerSectionHead"><span>01 / GARMENT + CLOTH</span><h2 id="designerChoose">Choose what you are making, then the fabric.</h2></div>
         <div className="newDesignerGarmentScope" aria-label="Garment types and design details">
           {GARMENT_CATEGORY_LIBRARY.map((garment)=><article key={garment.id} data-status={garment.status}>
             <div><span>{garment.status==="live"?"CURRENT":"FUTURE"}</span><strong>{garment.label}</strong></div>
-            <p>{garment.typeExamples.slice(0,4).join(" · ")}</p>
-            <small>{garment.detailFamilies.slice(0,5).join(" · ")}</small>
+            {garment.id==="shirt" ? <label><span>TYPE</span><select aria-label="Shirt type" value={styleSpec.shirt.type} onChange={(event)=>changeGarmentType("shirt",event.target.value)}>
+              {SHIRT_TYPE_OPTIONS.map((option)=><option key={option.id} value={option.id}>{option.label}</option>)}
+            </select></label> : garment.id==="trouser" ? <label><span>TYPE</span><select aria-label="Trouser type" value={styleSpec.pant.type} onChange={(event)=>changeGarmentType("pant",event.target.value)}>
+              {TROUSER_TYPE_OPTIONS.map((option)=><option key={option.id} value={option.id}>{option.label}</option>)}
+            </select></label> : <p>{garment.typeExamples.slice(0,4).join(" · ")}</p>}
+            <small>{garment.status==="live" ? "DETAILS · "+garment.detailFamilies.slice(0,5).join(" · ") : "PLANNED DETAILS · "+garment.detailFamilies.slice(0,5).join(" · ")}</small>
           </article>)}
         </div>
         <div className="newDesignerFabricGrid">
@@ -1156,6 +1177,10 @@ export function DesignerModule() {
             {pant && /lea/i.test(pant.line) && <details className="newDesignerFabricSpecs"><summary>ⓘ Fabric specs</summary><p><b>{pant.line}</b> · “Lea” is a yarn-count term used in the textile trade; it stays here as a technical fabric reference.</p></details>}
           </article>
         </div>
+        <Link className="newDesignerOpen3D" href="/lab/garment-viewer" onClick={()=>{
+          try{localStorage.setItem(DRAFT_KEY,JSON.stringify({shirtId,pantId,occasion,climate,intention,style,styleSpec,bodyProfile,creative:activeCreative,creativeVisualReview}));}catch{/* 3D Lab still opens if browser storage is unavailable. */}
+        }}><span>3D FABRIC VIEW</span><strong>See this exact shirt + trouser fabric on the reusable 3D model.</strong><b>Open 3D ↗</b></Link>
+
         <a className="newDesignerCreativeTeaser" href="#designerCreativeLab"><span>✦ CREATIVE LAB</span><strong>Your cloth can become 5 original design directions.</strong><b>Explore after occasion →</b></a>
         <a className="newDesignerJump" href="#designerPhotoTitle">Preview on model ↘</a>
 
@@ -1303,9 +1328,10 @@ export function DesignerModule() {
             <strong>{recommendation.shirt.name} + {recommendation.pant.name}</strong>
           </div>
           <div className="newDesignerResultChips">
+            <b>{optionById(styleSpec.shirt.type)?.label || "Shirt"}</b>
             <b>{recommendation.style.shirtFit}</b>
             <b>{recommendation.style.shirtWear}</b>
-            <b>{recommendation.style.trouser}</b>
+            <b>{optionById(styleSpec.pant.type)?.label || recommendation.style.trouser}</b>
             {brandLanguage && <b>{brandLanguage.mode}</b>}
           </div>
           <div className="newDesignerResultReasons">
