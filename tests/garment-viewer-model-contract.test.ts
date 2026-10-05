@@ -1,10 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  approvedGarmentViewerManifestSource,
   approvedGarmentViewerModelSource,
   GARMENT_VIEWER_CONTRACT_VERSION,
   REQUIRED_GARMENT_VIEWER_MATERIALS,
   validateGarmentViewerModelContract,
+  validateGarmentViewerModelManifest,
 } from "../src/lib/garment-viewer-model-contract.ts";
 import { PROTOTYPE_MODEL_ID } from "../src/lib/garment-viewer-prototype.ts";
 
@@ -63,7 +65,6 @@ test("production manifest identity and all panel dimensions must match the appro
     referenceHeightMm:1727,
     panels,
   };
-  const { validateGarmentViewerModelManifest, approvedGarmentViewerManifestSource } = require("../src/lib/garment-viewer-model-contract.ts");
   assert.equal(validateGarmentViewerModelManifest(good,"LE-OFFICEWEAR-V1").valid,true);
   assert.equal(validateGarmentViewerModelManifest({...good,modelId:"OTHER"},"LE-OFFICEWEAR-V1").valid,false);
   assert.equal(approvedGarmentViewerManifestSource("/models/linen-earth-officewear-v1.glb"),"/models/linen-earth-officewear-v1.viewer.json");
