@@ -122,9 +122,9 @@ The sidecar binds physical panel dimensions and optional camera orbits to the ex
   "modelId": "LE-OFFICEWEAR-V1",
   "referenceHeightMm": 1727,
   "panels": {
-    "ShirtTorsoFabric": { "widthMm": 580, "heightMm": 780 },
-    "ShirtSleeveLFabric": { "widthMm": 180, "heightMm": 540 },
-    "ShirtSleeveRFabric": { "widthMm": 180, "heightMm": 540 },
+    "ShirtTorsoFabric": { "widthMm": 580, "heightMm": 780, "offsetU": 0, "offsetV": 0, "rotationDeg": 0 },
+    "ShirtSleeveLFabric": { "widthMm": 180, "heightMm": 540, "offsetU": 0.12, "offsetV": 0, "rotationDeg": 0 },
+    "ShirtSleeveRFabric": { "widthMm": 180, "heightMm": 540, "offsetU": 0.12, "offsetV": 0, "rotationDeg": 0 },
     "TrouserWaistFabric": { "widthMm": 540, "heightMm": 260 },
     "TrouserLegLFabric": { "widthMm": 240, "heightMm": 760 },
     "TrouserLegRFabric": { "widthMm": 240, "heightMm": 760 }
@@ -155,3 +155,14 @@ The checker verifies GLB 2.0 structure, six unique garment material slots, POSIT
 Production QA is bound to SHA-256 hashes of both the GLB and its sidecar. If either file changes, old pattern-scale, interaction-latency, realism and boundary evidence can no longer satisfy the customer-promotion gate.
 
 The operator desk at `/operator/garment-viewer` reports structural blockers and the latest evidence gate. Fabric-change latency is collected automatically in the 3D Lab only when an approved production model contract is active.
+
+
+### Pattern phase / grain controls
+
+Each panel can optionally define `offsetU`, `offsetV` and `rotationDeg`. These are applied through the <model-viewer> texture sampler after physical repeat scale is set, so stripes/checks can be phase-aligned across torso, sleeves, waistband and legs without changing the real repeat size.
+
+- `offsetU` / `offsetV`: repeating UV offset, bounded to -10…10.
+- `rotationDeg`: panel textile/grain rotation, bounded to -360…360.
+- Leave all three at zero when the production UVs are already authored to match the intended grain and seam phase.
+
+These controls are for verified production alignment, not for visually stretching or rotating a fabric to hide bad UVs.
