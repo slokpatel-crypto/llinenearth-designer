@@ -40,9 +40,14 @@ type ModelViewerElement=HTMLElement&{
 type FabricTileManifest={
   assets?:Record<string,{
     tileRealWidthMm?:number|null;
+    repeatPeriodPx?:number|null;
     scaleApproximate?:boolean;
     renderAssetVersion?:string;
   }>;
+};
+type RuntimeRenderScale={
+  physicalScaleStatus:"declared_repeat"|"declared_swatch_width"|"unknown";
+  repeatMm:number|null;
 };
 
 const CAMERA_VIEWS=[
@@ -80,11 +85,20 @@ function materialByName(viewer:ModelViewerElement,name:string) {
   return viewer.model?.materials.find((material)=>material.name===name) || null;
 }
 
-function measuredTileWidth(manifest:FabricTileManifest,fabric:GarmentViewerFabric|undefined) {
+function measuredTileWidth(
+  manifest:FabricTileManifest,
+  runtimeScale:Record<string,RuntimeRenderScale>,
+  fabric:GarmentViewerFabric|undefined,
+) {
   if(!fabric) return null;
   const asset=manifest.assets?.[fabric.tileKey];
   const width=Number(asset?.tileRealWidthMm);
-  return asset?.scaleApproximate===false && Number.isFinite(width) && width>0 ? width : null;
+  if(asset?.scaleApproximate===false && Number.isFinite(width) && width>0) return width;
+  const runtime=runtimeScale[fabric.id];
+  const repeatMm=Number(runtime?.repeatMm);
+  const repeatPx=Number(asset?.repeatPeriodPx);
+  if(!runtime || runtime.physicalScaleStatus==="unknown" || !Number.isFinite(repeatMm) || repeatMm<=0 || !Number.isFinite(repeatPx) || repeatPx<=0) return null;
+  return Math.round(200*128*repeatMm/repeatPx)/100;
 }
 
 export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
@@ -103,14 +117,15 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
   const [shirtId,setShirtId]=useState(shirtFabrics[0]?.id || "");
   const [trouserId,setTrouserId]=useState(trouserFabrics[0]?.id || "");
   const [manifest,setManifest]=useState<FabricTileManifest>({});
+  const [runtimeScale,setRuntimeScale]=useState<Record<string,RuntimeRenderScale>>({});
   const [shirtManualTileMm,setShirtManualTileMm]=useState(120);
   const [trouserManualTileMm,setTrouserManualTileMm]=useState(120);
   const [roughness,setRoughness]=useState(.84);
 
   const shirt=useMemo(()=>shirtFabrics.find((fabric)=>fabric.id===shirtId) || shirtFabrics[0],[shirtFabrics,shirtId]);
   const trouser=useMemo(()=>trouserFabrics.find((fabric)=>fabric.id===trouserId) || trouserFabrics[0],[trouserFabrics,trouserId]);
-  const shirtMeasuredTileMm=useMemo(()=>measuredTileWidth(manifest,shirt),[manifest,shirt]);
-  const trouserMeasuredTileMm=useMemo(()=>measuredTileWidth(manifest,trouser),[manifest,trouser]);
+  const shirtMeasuredTileMm=useMemo(()=>measuredTileWidth(manifest,runtimeScale,shirt),[manifest,runtimeScale,shirt]);
+  const trouserMeasuredTileMm=useMemo(()=>measuredTileWidth(manifest,runtimeScale,trouser),[manifest,runtimeScale,trouser]);
   const shirtTileMm=shirtMeasuredTileMm ?? shirtManualTileMm;
   const trouserTileMm=trouserMeasuredTileMm ?? trouserManualTileMm;
 
@@ -126,6 +141,27 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
     void fetch("/fabric-tiles/manifest.json",{cache:"no-store"})
       .then((response)=>response.ok?response.json():null)
       .then((value)=>{if(!cancelled&&value&&typeof value==="object")setManifest(value as FabricTileManifest);})
+      .catch(()=>{});
+    return ()=>{cancelled=true;};
+  },[]);
+
+  useEffect(()=>{
+    let cancelled=false;
+    void fetch("/api/designer/catalog",{cache:"no-store"})
+      .then((response)=>response.ok?response.json():null)
+      .then((value)=>{
+        if(cancelled || !value || typeof value!=="object") return;
+        const rows=[...((value as {shirts?:unknown[]}).shirts||[]),...((value as {pants?:unknown[]}).pants||[])];
+        const next:Record<string,RuntimeRenderScale>={};
+        for(const row of rows){
+          if(!row || typeof row!=="object") continue;
+          const item=row as {id?:unknown;renderScale?:RuntimeRenderScale|null};
+          const id=String(item.id||"");
+          const scale=item.renderScale;
+          if(id && scale && ["declared_repeat","declared_swatch_width","unknown"].includes(scale.physicalScaleStatus)) next[id]=scale;
+        }
+        setRuntimeScale(next);
+      })
       .catch(()=>{});
     return ()=>{cancelled=true;};
   },[]);
