@@ -96,3 +96,12 @@ test("future blazer and suit displayed details have real planned options",()=>{
     'group:"suit.trouser"',
   ]) assert(future.includes(token),token);
 });
+
+
+test("Designer garment cards expose full expandable option detail",()=>{
+  const designer=readFileSync("src/components/DesignerModule.tsx","utf8");
+  assert(designer.includes("newDesignerGarmentDetails"));
+  assert(designer.includes('garment.status==="live"?"View garment options":"Preview future options"'));
+  assert(designer.includes('garment.typeExamples.join(" · ")'));
+  assert(designer.includes('garment.detailFamilies.join(" · ")'));
+});
