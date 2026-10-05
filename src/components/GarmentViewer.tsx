@@ -51,6 +51,8 @@ type ModelViewerElement=HTMLElement&{
   updateFraming?:()=>void|Promise<void>;
 };
 type DesignerDraftRecipe={
+  shirtId?:string;
+  pantId?:string;
   occasion?:string;
   styleSpec?:{
     shirt?:{type?:string};
@@ -176,9 +178,13 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     try{
       const raw=localStorage.getItem("linen-earth:real-designer-draft:v2");
       const parsed=raw?JSON.parse(raw) as DesignerDraftRecipe:null;
-      if(parsed?.style&&typeof parsed.style==="object") setDesignerDraftRecipe(parsed);
+      if(parsed?.style&&typeof parsed.style==="object"){
+        setDesignerDraftRecipe(parsed);
+        if(parsed.shirtId&&shirtFabrics.some((fabric)=>fabric.id===parsed.shirtId)) setShirtId(parsed.shirtId);
+        if(parsed.pantId&&trouserFabrics.some((fabric)=>fabric.id===parsed.pantId)) setTrouserId(parsed.pantId);
+      }
     }catch{/* 3D Lab stays usable without Designer browser state. */}
-  },[]);
+  },[shirtFabrics,trouserFabrics]);
 
   useEffect(()=>{
     normalMapRef.current=createLinenNormalMap();
