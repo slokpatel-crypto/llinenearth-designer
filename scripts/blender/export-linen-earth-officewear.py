@@ -1,5 +1,7 @@
 # Run inside Blender 4.2+:
-# blender --background your-scene.blend --python scripts/blender/export-linen-earth-officewear.py -- --output public/models/linen-earth-officewear-v1.glb
+# blender --background your-scene.blend --python scripts/blender/export-linen-earth-officewear.py -- \
+#   --output public/models/linen-earth-officewear-v1.glb \
+#   --panel-spec path/to/measured-panel-spec.json
 #
 # Scene contract:
 # - garment mesh objects must be named exactly like the six material slots below
@@ -11,14 +13,17 @@
 # It prepares an already-approved body/garment scene for the web GLB contract.
 
 import argparse
+import json
 import math
 import os
+import re
 import sys
 
 import bpy
 from mathutils import Vector
 
 MODEL_ID = "LE-OFFICEWEAR-V1"
+CONTRACT_VERSION = "linen-earth-garment-viewer-v2"
 EXPORT_COLLECTION = "LinenEarthExport"
 REFERENCE_BODY = "Body"
 REFERENCE_HEIGHT_M = 1.727
@@ -33,6 +38,14 @@ GARMENT_OBJECTS = (
     "TrouserLegRFabric",
 )
 
+SOURCE_KEYS = {
+    "name": "linen_earth_model_source_name",
+    "version": "linen_earth_model_source_version",
+    "license": "linen_earth_model_source_license",
+    "verifiedAt": "linen_earth_model_source_verified_at",
+    "sourceUrl": "linen_earth_model_source_url",
+}
+
 
 def cli_args():
     argv = sys.argv
@@ -41,6 +54,13 @@ def cli_args():
     parser.add_argument("--output", required=True)
     parser.add_argument("--collection", default=EXPORT_COLLECTION)
     parser.add_argument("--reference-body", default=REFERENCE_BODY)
+    parser.add_argument(
+        "--panel-spec",
+        help=(
+            "JSON containing measured physical panel dimensions. "
+            "When supplied, the exporter writes the matching .viewer.json sidecar."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -100,6 +120,104 @@ def validate_scene(collection_name, reference_body_name):
     return collection, height
 
 
+def scene_source_provenance(scene):
+    source = {}
+    for output_key, scene_key in SOURCE_KEYS.items():
+        value = str(scene.get(scene_key, "")).strip()
+        if value:
+            source[output_key] = value
+
+    missing = [key for key in ("name", "license", "verifiedAt") if not source.get(key)]
+    if missing:
+        raise RuntimeError(
+            "Measured-panel export requires body-source provenance in the Blender scene. "
+            "Missing: " + ", ".join(missing) + ". "
+            "Use prepare-linen-earth-body.py or stamp equivalent verified source fields."
+        )
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", source["verifiedAt"]):
+        raise RuntimeError("Source verifiedAt must use YYYY-MM-DD.")
+
+    # Version is useful evidence but the web contract only requires name/license/date.
+    if source.get("version"):
+        source["name"] = f'{source["name"]} v{source["version"]}'
+    source.pop("version", None)
+    return source
+
+
+def finite_number(value):
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def load_panel_spec(path):
+    with open(path, "r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+
+    panels = payload.get("panels") if isinstance(payload, dict) else None
+    if not isinstance(panels, dict):
+        raise RuntimeError("Panel spec must contain a panels object.")
+
+    missing = [name for name in GARMENT_OBJECTS if name not in panels]
+    if missing:
+        raise RuntimeError("Panel spec is missing measured dimensions for: " + ", ".join(missing))
+
+    normalized = {}
+    for name in GARMENT_OBJECTS:
+        panel = panels.get(name)
+        if not isinstance(panel, dict):
+            raise RuntimeError(f"Panel spec entry must be an object: {name}")
+        width = panel.get("widthMm")
+        height = panel.get("heightMm")
+        if not finite_number(width) or width <= 0 or width > 2000:
+            raise RuntimeError(f"{name} widthMm must be a measured value between 0 and 2000 mm.")
+        if not finite_number(height) or height <= 0 or height > 2500:
+            raise RuntimeError(f"{name} heightMm must be a measured value between 0 and 2500 mm.")
+
+        entry = {"widthMm": width, "heightMm": height}
+        for key, limit in (("offsetU", 10), ("offsetV", 10), ("rotationDeg", 360)):
+            if key not in panel:
+                continue
+            value = panel[key]
+            if not finite_number(value) or abs(value) > limit:
+                raise RuntimeError(f"{name} {key} is outside the viewer contract.")
+            entry[key] = value
+        normalized[name] = entry
+
+    camera_orbits = payload.get("cameraOrbits")
+    if camera_orbits is not None:
+        if not isinstance(camera_orbits, dict):
+            raise RuntimeError("cameraOrbits must be an object when provided.")
+        allowed = {"front", "three-quarter", "side", "back"}
+        if any(key not in allowed or not isinstance(value, str) or not value.strip() for key, value in camera_orbits.items()):
+            raise RuntimeError("cameraOrbits may contain only non-empty front/three-quarter/side/back strings.")
+
+    return {"panels": normalized, "cameraOrbits": camera_orbits or None}
+
+
+def viewer_manifest_path(output_path):
+    root, extension = os.path.splitext(os.path.abspath(output_path))
+    if extension.lower() != ".glb":
+        raise RuntimeError("--output must end in .glb")
+    return root + ".viewer.json"
+
+
+def write_viewer_manifest(output_path, height, source, panel_spec):
+    payload = {
+        "version": CONTRACT_VERSION,
+        "modelId": MODEL_ID,
+        "referenceHeightMm": round(height * 1000),
+        "source": source,
+        "panels": panel_spec["panels"],
+    }
+    if panel_spec.get("cameraOrbits"):
+        payload["cameraOrbits"] = panel_spec["cameraOrbits"]
+
+    manifest_path = viewer_manifest_path(output_path)
+    with open(manifest_path, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2)
+        handle.write("\n")
+    return manifest_path
+
+
 def export_glb(collection, output_path):
     bpy.ops.object.select_all(action="DESELECT")
     for obj in collection.all_objects:
@@ -125,13 +243,27 @@ def export_glb(collection, output_path):
 
 def main():
     args = cli_args()
+    panel_spec = load_panel_spec(args.panel_spec) if args.panel_spec else None
+    source = scene_source_provenance(bpy.context.scene) if panel_spec else None
     collection, height = validate_scene(args.collection, args.reference_body)
     export_glb(collection, args.output)
+
+    manifest_path = None
+    if panel_spec and source:
+        manifest_path = write_viewer_manifest(args.output, height, source, panel_spec)
+
     print(f"Linen Earth model exported: {os.path.abspath(args.output)}")
     print(f"Model ID: {MODEL_ID}")
     print(f"Reference body height: {height * 1000:.1f} mm")
-    print("Next: create the matching .viewer.json from measured garment-panel dimensions.")
-    print("Then run: npm run garment:model-check -- " + os.path.abspath(args.output))
+    if manifest_path:
+        print(f"Measured viewer manifest written: {manifest_path}")
+        print("Next: npm run garment:model-check -- " + os.path.abspath(args.output))
+    else:
+        print("No .viewer.json was written because --panel-spec was omitted.")
+        print(
+            "Measure the actual garment/pattern panel dimensions, fill the template, "
+            "then export again with --panel-spec before production QA."
+        )
 
 
 if __name__ == "__main__":
