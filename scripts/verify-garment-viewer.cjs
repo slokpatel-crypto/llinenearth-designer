@@ -57,6 +57,9 @@ async function verifyViewport(browser, width) {
   await reference.waitFor({state:"visible"});
   assert.match(await reference.getAttribute("src"),/studio-tucked\.webp$/, "3D lab must keep the approved studio reference target visible");
 
+  const stageScope=await page.locator(".garmentViewerStageHead").innerText();
+  assert.match(stageScope,/SHIRT \+ TROUSER · BLAZER \/ SUIT NEXT/,"3D stage must state current and future garment scope");
+
   const garmentCards=page.locator(".garmentTypeGrid article");
   assert.equal(await garmentCards.count(),4,"garment type roadmap must show current and future families");
   const garmentText=await garmentCards.allTextContents();
