@@ -1530,6 +1530,7 @@ console.log("Fabric Physics gate passed: physical suitability stays evidence-awa
 const garmentViewerSource=fs.readFileSync("src/components/GarmentViewer.tsx","utf8");
 const designerModuleGarmentScope=fs.readFileSync("src/components/DesignerModule.tsx","utf8");
 const garmentCategoryLibrary=fs.readFileSync("src/lib/designer/garment-category-library.ts","utf8");
+const futureGarmentOptions=fs.readFileSync("src/lib/designer/future-garment-options.ts","utf8");
 const garmentViewerContract=fs.readFileSync("src/lib/garment-viewer-model-contract.ts","utf8");
 const garmentViewerPrototype=fs.readFileSync("src/lib/garment-viewer-prototype.ts","utf8");
 const garmentViewerGlb=fs.readFileSync("src/lib/garment-viewer-glb.ts","utf8");
@@ -1542,8 +1543,11 @@ const designerCatalogStock=fs.readFileSync("src/lib/designer/catalog-stock-serve
 const garmentViewerMemory=fs.readFileSync("src/app/api/memory/event/route.ts","utf8");
 const garmentViewerReadinessClient=fs.readFileSync("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx","utf8");
 const protectedVisualRoute=fs.readFileSync("src/app/visual/page.tsx","utf8");
-for(const token of ["shirt","trouser","blazer","suit","typeExamples","detailFamilies","status:\"planned\"","optionsFor(\"shirt.type\")","optionsFor(\"pant.type\")"]) {
+for(const token of ["shirt","trouser","blazer","suit","typeExamples","detailFamilies","status:\"planned\"","optionsFor(\"shirt.type\")","optionsFor(\"pant.type\")","futureGarmentOptionsFor(\"blazer.type\")","futureGarmentOptionsFor(\"suit.type\")"]) {
   if(!garmentCategoryLibrary.includes(token)) throw new Error(`Garment category library regression: missing ${token}`);
+}
+for(const token of ["blazer.type","blazer.lapel","blazer.vent","blazer.pocket","blazer.shoulder","suit.type","suit.waistcoat","suit.jacket","suit.trouser","status:\"planned\""]) {
+  if(!futureGarmentOptions.includes(token)) throw new Error(`Future garment taxonomy regression: missing ${token}`);
 }
 for(const token of ["GARMENT_CATEGORY_LIBRARY","newDesignerGarmentScope","garment.status===\"live\"?\"CURRENT\":\"FUTURE\"","typeExamples.slice(0,4)","detailFamilies.slice(0,5)"]) {
   if(!designerModuleGarmentScope.includes(token)) throw new Error(`Designer garment-scope regression: missing ${token}`);
