@@ -13,3 +13,6 @@ Production target includes all current merged work:
 
 Target main commit before this trigger: 8a1e984dff6f9612c7651c5242f2ee23ee5e6fe2
 Date: 2026-10-05
+
+
+Operator credential refresh deployment: 2026-10-05.
