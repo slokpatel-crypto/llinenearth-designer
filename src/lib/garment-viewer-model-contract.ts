@@ -86,12 +86,13 @@ export type GarmentViewerManifestValidation = {
   reasons:string[];
 };
 
-export function validateGarmentViewerModelManifest(value:unknown):GarmentViewerManifestValidation {
+export function validateGarmentViewerModelManifest(value:unknown,expectedModelId?:string):GarmentViewerManifestValidation {
   const reasons:string[]=[];
   if(!value || typeof value!=="object") return {valid:false,missingPanels:[...REQUIRED_GARMENT_VIEWER_MATERIALS],invalidPanels:[],reasons:["Manifest is missing or invalid."]};
   const manifest=value as Partial<GarmentViewerModelManifest>;
   if(manifest.version!==GARMENT_VIEWER_CONTRACT_VERSION) reasons.push("Manifest contract version does not match the viewer.");
   if(!String(manifest.modelId||"").trim()) reasons.push("Manifest modelId is required.");
+  else if(expectedModelId && manifest.modelId!==expectedModelId) reasons.push(`Manifest modelId ${manifest.modelId} does not match ${expectedModelId}.`);
   if(!Number.isFinite(manifest.referenceHeightMm)||Number(manifest.referenceHeightMm)<1400||Number(manifest.referenceHeightMm)>2200) reasons.push("Reference height must be between 1400 and 2200 mm.");
   const panels=manifest.panels&&typeof manifest.panels==="object"?manifest.panels:{};
   const missingPanels=REQUIRED_GARMENT_VIEWER_MATERIALS.filter((name)=>!(name in panels));
