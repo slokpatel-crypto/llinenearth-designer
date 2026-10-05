@@ -1,9 +1,15 @@
-Redeploy trigger for Linen Earth Roadmap v2 major milestone.
+Redeploy trigger for Linen Earth Deep Engine major milestone.
 
-Production target: main after the photo-first Designer realism pass, Style Director
-photo-only customer policy, full-body recommendation framing, navy studio continuity,
-legacy visual-route consolidation, and retirement of redundant Catalog / Atelier /
-Saved Designs / Fashion Brain customer surfaces.
+Production target includes all current merged work:
+- evidence-aware Fabric Physics + six-garment compatibility intelligence
+- reusable GarmentViewer M1 foundation
+- GarmentViewer M2 production model contract
+- live Designer catalogue parity in the 3D Lab
+- physical fabric repeat scale with panel phase/grain alignment
+- revision-bound GLB + manifest QA evidence
+- mobile complexity, latency, realism, boundary and stripe/check promotion gates
+- Phase 10 readiness integration
+- existing three-second Linen Earth brand reveal and current photographic Designer
 
-Target main commit before this trigger: 9fc1593ed5b1f818bf7764e7ff90aa7b81ec7296
-Date: 2026-10-03
+Target main commit before this trigger: 8a1e984dff6f9612c7651c5242f2ee23ee5e6fe2
+Date: 2026-10-05
