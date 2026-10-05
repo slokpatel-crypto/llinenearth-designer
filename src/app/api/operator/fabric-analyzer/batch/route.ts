@@ -28,6 +28,10 @@ type BatchItem={
   verifiedGsm?:number;
   verifiedDrape?:"Fluid"|"Balanced"|"Structured";
   verifiedFiberContent?:string;
+  verifiedStructure?:number;
+  verifiedBreathability?:number;
+  verifiedWrinkleResistance?:number;
+  verifiedStretch?:number;
   verifiedPhysicalSourceUrl?:string;
   verifiedPhysicalEvidenceNote?:string;
   force?:boolean;
@@ -53,6 +57,10 @@ function sameOrigin(request:Request) {
 
 function clean(value:unknown,limit:number) {
   return String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
+}
+
+function physicalNumber(value:unknown) {
+  return typeof value==="number" && Number.isFinite(value) ? value : undefined;
 }
 
 async function runItem(item:BatchItem,index:number) {
@@ -85,6 +93,10 @@ async function runItem(item:BatchItem,index:number) {
       verifiedGsm:Number.isFinite(Number(item.verifiedGsm)) ? Number(item.verifiedGsm) : undefined,
       verifiedDrape:["Fluid","Balanced","Structured"].includes(String(item.verifiedDrape)) ? item.verifiedDrape : undefined,
       verifiedFiberContent:clean(item.verifiedFiberContent,220) || undefined,
+      verifiedStructure:physicalNumber(item.verifiedStructure),
+      verifiedBreathability:physicalNumber(item.verifiedBreathability),
+      verifiedWrinkleResistance:physicalNumber(item.verifiedWrinkleResistance),
+      verifiedStretch:physicalNumber(item.verifiedStretch),
       verifiedPhysicalSourceUrl:clean(item.verifiedPhysicalSourceUrl,1800) || undefined,
       verifiedPhysicalEvidenceNote:clean(item.verifiedPhysicalEvidenceNote,500) || undefined,
     };

@@ -64,6 +64,10 @@ export type FabricAnalyzerContext = {
   verifiedGsm?:number;
   verifiedDrape?:"Fluid"|"Balanced"|"Structured";
   verifiedFiberContent?:string;
+  verifiedStructure?:number;
+  verifiedBreathability?:number;
+  verifiedWrinkleResistance?:number;
+  verifiedStretch?:number;
   verifiedPhysicalSourceUrl?:string;
   verifiedPhysicalEvidenceNote?:string;
   // Internal server-generated evidence used for content fingerprinting and to
@@ -286,6 +290,12 @@ const schema={
 function safeText(value:unknown,limit:number) {
   return String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
 }
+function verifiedIndex(value:unknown) {
+  return typeof value==="number" && Number.isFinite(value) && value>=0 && value<=1 ? value : null;
+}
+function verifiedGsmValue(value:unknown) {
+  return typeof value==="number" && Number.isFinite(value) && value>=20 && value<=1000 ? value : null;
+}
 
 
 const materialReferenceSet=new Set<string>(REAL_MENSWEAR_MATERIAL_TERMS.map((value)=>value.toLowerCase()));
@@ -387,6 +397,10 @@ export async function analyzeMenswearFabric(rawInput:FabricAnalyzerContext):Prom
     Number.isFinite(input.verifiedGsm) ? `VERIFIED physical GSM: ${input.verifiedGsm}, source ${safeText(input.verifiedPhysicalSourceUrl||"owner supplied; see physical evidence note",500)}.` : "",
     input.verifiedDrape ? `VERIFIED physical drape class: ${input.verifiedDrape}, source ${safeText(input.verifiedPhysicalSourceUrl||"owner supplied; see physical evidence note",500)}.` : "",
     input.verifiedFiberContent ? `VERIFIED fibre content: ${safeText(input.verifiedFiberContent,220)}, source ${safeText(input.verifiedPhysicalSourceUrl||"owner supplied; see physical evidence note",500)}.` : "",
+    Number.isFinite(input.verifiedStructure) ? `VERIFIED normalized structure index: ${input.verifiedStructure} (0 soft/fluid → 1 highly structured).` : "",
+    Number.isFinite(input.verifiedBreathability) ? `VERIFIED normalized breathability index: ${input.verifiedBreathability} (0 low → 1 high).` : "",
+    Number.isFinite(input.verifiedWrinkleResistance) ? `VERIFIED normalized wrinkle-resistance index: ${input.verifiedWrinkleResistance} (0 wrinkles readily → 1 strongly resistant).` : "",
+    Number.isFinite(input.verifiedStretch) ? `VERIFIED normalized stretch index: ${input.verifiedStretch} (0 none → 1 high).` : "",
     input.notes ? `Additional context: ${safeText(input.notes,500)}.` : "",
     input.captureMeasurements?.macro ? "Macro capture supplied for texture/weave appearance." : "",
     input.captureMeasurements?.fold ? "Fold capture supplied for visual fall/structure appearance only." : "",
@@ -552,9 +566,13 @@ Statement 1=quiet base, 5=dominant hero fabric.`;
       pattern:Math.min(adapted.confidence.pattern,measuredConfidence),
     },
     verifiedPhysical:{
-      gsm:Number.isFinite(input.verifiedGsm) ? Math.max(20,Math.min(1000,Number(input.verifiedGsm))) : null,
+      gsm:verifiedGsmValue(input.verifiedGsm),
       drape:input.verifiedDrape || null,
       fiberContent:input.verifiedFiberContent ? safeText(input.verifiedFiberContent,220) : null,
+      structure:verifiedIndex(input.verifiedStructure),
+      breathability:verifiedIndex(input.verifiedBreathability),
+      wrinkleResistance:verifiedIndex(input.verifiedWrinkleResistance),
+      stretch:verifiedIndex(input.verifiedStretch),
       sourceUrl:safeText(input.verifiedPhysicalSourceUrl,1800)||null,
       evidenceNote:safeText(input.verifiedPhysicalEvidenceNote,500)||null,
     },
@@ -598,6 +616,10 @@ Statement 1=quiet base, 5=dominant hero fabric.`;
       ...(Number.isFinite(input.verifiedGsm)?{"verifiedPhysical.gsm":"declared" as const}:{}),
       ...(input.verifiedDrape?{"verifiedPhysical.drape":"declared" as const}:{}),
       ...(input.verifiedFiberContent?{"verifiedPhysical.fiberContent":"declared" as const}:{}),
+      ...(Number.isFinite(input.verifiedStructure)?{"verifiedPhysical.structure":"declared" as const}:{}),
+      ...(Number.isFinite(input.verifiedBreathability)?{"verifiedPhysical.breathability":"declared" as const}:{}),
+      ...(Number.isFinite(input.verifiedWrinkleResistance)?{"verifiedPhysical.wrinkleResistance":"declared" as const}:{}),
+      ...(Number.isFinite(input.verifiedStretch)?{"verifiedPhysical.stretch":"declared" as const}:{}),
       ...(Number.isFinite(input.repeatRealMm)||Number.isFinite(input.swatchRealWidthMm)
         ? {"measured.pattern.physicalScale":"declared" as const}:{}),
     },

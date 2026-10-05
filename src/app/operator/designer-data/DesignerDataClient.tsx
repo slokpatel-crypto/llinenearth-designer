@@ -16,11 +16,17 @@ type EvidenceState = {
   gsmVerified:boolean;
   drapeVerified:boolean;
   fiberVerified:boolean;
+  structureVerified:boolean;
+  breathabilityVerified:boolean;
+  wrinkleResistanceVerified:boolean;
+  stretchVerified:boolean;
   formalityVerified:boolean;
   patterned:boolean;
   gaps:string[];
   priority:number;
 };
+
+type CompatibilityState = { garmentType:string; label:string; score:number; status:string; evidenceCoverage:number; evidenceConfidence:number; criticalUnknowns:string[]; warnings:string[] };
 
 type FabricRow = {
   id:string;
@@ -32,6 +38,7 @@ type FabricRow = {
   swatchImageUrl:string;
   yarnCountLea:number[];
   metadata:DesignerFabricMetadata;
+  compatibility:CompatibilityState[];
   evidence:EvidenceState;
 };
 
@@ -45,10 +52,15 @@ type Coverage = {
   gsm:number;
   drape:number;
   fiber:number;
+  structure:number;
+  breathability:number;
+  wrinkleResistance:number;
+  stretch:number;
   formality:number;
 };
 
-type Payload = { configured:boolean; coverage:Coverage; fabrics:FabricRow[] };
+type GarmentExpansion = { garmentType:string; label:string; evidenceReady:number; strongOrWorkable:number; strong:number; total:number };
+type Payload = { configured:boolean; coverage:Coverage; garmentExpansion:GarmentExpansion[]; fabrics:FabricRow[] };
 type EvidenceFilter = "priority"|"all"|"scale"|"physical"|"review";
 
 const SEASONS = ["Spring","Summer","Autumn","Winter","All-season"] as const;
@@ -96,7 +108,7 @@ export default function DesignerDataClient() {
         if(evidenceFilter==="all") return true;
         if(evidenceFilter==="priority") return fabric.evidence.priority>=6;
         if(evidenceFilter==="scale") return fabric.evidence.patterned && !fabric.evidence.physicalScaleVerified;
-        if(evidenceFilter==="physical") return !fabric.evidence.gsmVerified || !fabric.evidence.drapeVerified || !fabric.evidence.fiberVerified;
+        if(evidenceFilter==="physical") return !fabric.evidence.gsmVerified || !fabric.evidence.drapeVerified || !fabric.evidence.fiberVerified || !fabric.evidence.structureVerified || !fabric.evidence.breathabilityVerified || !fabric.evidence.wrinkleResistanceVerified || !fabric.evidence.stretchVerified;
         return !fabric.evidence.analyzerReviewed;
       })
       .sort((a,b)=>b.evidence.priority-a.evidence.priority || a.colorName.localeCompare(b.colorName));
@@ -185,8 +197,22 @@ export default function DesignerDataClient() {
         ["GSM",data.coverage.gsm],
         ["Drape",data.coverage.drape],
         ["Fibre",data.coverage.fiber],
+        ["Structure",data.coverage.structure],
+        ["Breathability",data.coverage.breathability],
+        ["Wrinkle resistance",data.coverage.wrinkleResistance],
+        ["Stretch",data.coverage.stretch],
         ["Formality",data.coverage.formality],
       ] as const).map(([label,value])=><article key={label}><small>{label}</small><strong>{value}<i>/ {data.coverage.activeCandidates}</i></strong><em style={{width:`${data.coverage.activeCandidates?Math.round(value/data.coverage.activeCandidates*100):0}%`}} /></article>)}
+    </section>
+
+    <section className="garmentExpansionBoard" aria-label="Garment expansion readiness">
+      <div><span>GARMENT EXPANSION READINESS</span><strong>Physics evidence before we expose new garment families</strong><p>This is an internal readiness view, not a customer claim. A garment family only becomes a serious expansion candidate after enough real fabrics have measured physical evidence.</p></div>
+      <div className="garmentExpansionGrid">{data.garmentExpansion.map((item)=><article key={item.garmentType}>
+        <small>{item.label}</small>
+        <strong>{item.strongOrWorkable}<i>/ {item.total}</i></strong>
+        <span>{item.strong} strong · {item.evidenceReady} evidence-ready</span>
+        <em style={{width:`${item.total?Math.round(item.strongOrWorkable/item.total*100):0}%`}}/>
+      </article>)}</div>
     </section>
 
     <DesignerDataBatchPanel fabrics={data.fabrics} configured={data.configured} onComplete={async()=>{await load(true);}} />
@@ -224,6 +250,22 @@ export default function DesignerDataClient() {
             <span><small>LAST VERIFIED</small><b>{editor.verifiedAt ? new Date(editor.verifiedAt).toLocaleString("en-IN") : "Never"}</b></span>
           </div>
 
+          <section className="evidenceCard compatibilityCard" aria-label="Fabric physics compatibility">
+            <div><span>PHYSICS COMPATIBILITY · PROVISIONAL</span><strong>Best use from verified physical evidence</strong><b>{selected.compatibility.filter((item)=>item.status!=="insufficient_evidence").length}/{selected.compatibility.length} usable scores</b></div>
+            <div className="compatibilityMatrix">
+              {selected.compatibility.map((item)=><span key={item.garmentType} data-status={item.status}>
+                <small>{item.label}</small>
+                <strong>{Math.round(item.score)}%</strong>
+                <em>{item.status.replaceAll("_"," ")}</em>
+                <i>{Math.round(item.evidenceCoverage)}% evidence · {Math.round(item.evidenceConfidence)}% confidence</i>
+              </span>)}
+            </div>
+            <p>{selected.compatibility.some((item)=>item.status==="insufficient_evidence")
+              ? "Low-evidence scores stay provisional. Add verified GSM, structure, drape, breathability, wrinkle and stretch evidence in Fabric Analyzer before using them as production guidance."
+              : "All six garment families have enough physical evidence for internal compatibility guidance. Customer-facing claims remain disabled."}</p>
+            {selected.compatibility.some((item)=>item.criticalUnknowns.length>0)&&<small className="compatibilityMissing">Calibration blockers: {[...new Set(selected.compatibility.flatMap((item)=>item.criticalUnknowns))].join(", ")}.</small>}
+          </section>
+
           <section className="evidenceCard" aria-label="Evidence readiness for selected fabric">
             <div><span>RENDER + DESIGNER EVIDENCE</span><strong>{selected.evidence.gaps.length ? `${selected.evidence.gaps.length} gaps remain` : "Core evidence complete"}</strong><b>Priority {selected.evidence.priority}</b></div>
             <div className="evidenceChips">
@@ -234,6 +276,10 @@ export default function DesignerDataClient() {
                 ["GSM",selected.evidence.gsmVerified],
                 ["Drape",selected.evidence.drapeVerified],
                 ["Fibre",selected.evidence.fiberVerified],
+                ["Structure",selected.evidence.structureVerified],
+                ["Breathability",selected.evidence.breathabilityVerified],
+                ["Wrinkle resistance",selected.evidence.wrinkleResistanceVerified],
+                ["Stretch",selected.evidence.stretchVerified],
                 ["Formality",selected.evidence.formalityVerified],
               ] as const).map(([label,ok])=><span key={label} data-ready={ok}><i>{ok?"✓":"!"}</i>{label}</span>)}
             </div>
@@ -243,7 +289,7 @@ export default function DesignerDataClient() {
                 ? `Next evidence: ${selected.evidence.gaps.join(", ")}.`
                 : "This fabric has the core evidence needed for calibrated Designer and render QA."}</p>
             {selected.evidence.imageQualityScore!==null && <small>Latest measured flat-photo quality: {selected.evidence.imageQualityScore}/100 · physical scale: {selected.evidence.physicalScaleStatus || "unknown"}</small>}
-            {selected.evidence.gaps.some((gap)=>["analyzer review","pattern scale","GSM","drape","fibre"].includes(gap)) && <Link className="evidenceAnalyzerLink" href={`/operator/fabric-analyzer?fabric=${encodeURIComponent(selected.id)}`}>Open exact fabric in Analyzer ↗</Link>}
+            {selected.evidence.gaps.some((gap)=>["analyzer review","pattern scale","GSM","drape","fibre","structure","breathability","wrinkle resistance","stretch"].includes(gap)) && <Link className="evidenceAnalyzerLink" href={`/operator/fabric-analyzer?fabric=${encodeURIComponent(selected.id)}`}>Open exact fabric in Analyzer ↗</Link>}
           </section>
 
           <div className="dataForm">

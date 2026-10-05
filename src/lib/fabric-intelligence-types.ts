@@ -30,6 +30,10 @@ export type DesignerFabricIntelligence = {
     gsm:number|null;
     drape:"Fluid"|"Balanced"|"Structured"|null;
     fiberContent:string|null;
+    structure?:number|null;
+    breathability?:number|null;
+    wrinkleResistance?:number|null;
+    stretch?:number|null;
     sourceUrl:string|null;
     evidenceNote:string|null;
   };

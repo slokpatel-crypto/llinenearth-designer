@@ -1503,3 +1503,26 @@ for(const token of ["claim.duplicate","paidModelCalls:0","researchRefreshSources
 if(refreshServer.includes("analyzeFashionResearchSource"))throw Error("Scheduled research must not silently spend model credits.");
 for(const token of ["CRON_SECRET","timingSafeEqual"])if(!cronRoute.includes(token))throw Error("Cron authorization regression: "+token);
 console.log("Creative workflow gate passed: versioned craft, personal ownership, reset, bounded free research and explicit sample gates.");
+
+
+const fabricPhysics=fs.readFileSync("src/lib/designer/fabric-physics.ts","utf8");
+const fabricPhysicsCatalog=fs.readFileSync("src/lib/designer/fabric-physics-catalog.ts","utf8");
+const fabricCatalogRoute=fs.readFileSync("src/app/api/designer/catalog/route.ts","utf8");
+const fabricAnalyzerUi=fs.readFileSync("src/app/operator/fabric-analyzer/FabricAnalyzerClient.tsx","utf8");
+const designerDataUi=fs.readFileSync("src/app/operator/designer-data/DesignerDataClient.tsx","utf8");
+for(const token of ["linen-earth-fabric-physics-v1","linen-earth-fabric-compatibility-v1","insufficient_evidence","evidenceCoverage","evidenceConfidence","bandhgala"]) {
+  if(!fabricPhysics.includes(token)) throw new Error(`Fabric Physics regression: missing ${token}`);
+}
+for(const token of ["attachCatalogFabricPhysics","validFabricPhysicsValue","fabricCompatibilityMatrix","verifiedPhysical.structure","verifiedPhysical.breathability"]) {
+  if(!fabricPhysicsCatalog.includes(token)) throw new Error(`Fabric Physics catalogue regression: missing ${token}`);
+}
+for(const token of ["attachCatalogFabricPhysics","fabricsWithPhysics"]) {
+  if(!fabricCatalogRoute.includes(token)) throw new Error(`Fabric Physics Designer catalogue regression: missing ${token}`);
+}
+for(const token of ["Verified structure index","Verified breathability","Verified wrinkle resistance","Verified stretch","PHYSICS COMPATIBILITY"]) {
+  if(!fabricAnalyzerUi.includes(token)) throw new Error(`Fabric Physics Analyzer regression: missing ${token}`);
+}
+for(const token of ["PHYSICS COMPATIBILITY · PROVISIONAL","GARMENT EXPANSION READINESS","internal readiness view, not a customer claim"]) {
+  if(!designerDataUi.includes(token)) throw new Error(`Fabric Physics operator desk regression: missing ${token}`);
+}
+console.log("Fabric Physics gate passed: physical suitability stays evidence-aware, operator-visible and provisional before customer exposure.");

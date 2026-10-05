@@ -67,6 +67,10 @@ export function fabricAnalysisFingerprint(input:FabricAnalyzerContext) {
       verifiedGsm:Number.isFinite(input.verifiedGsm)?Number(input.verifiedGsm):null,
       verifiedDrape:clean(input.verifiedDrape,40),
       verifiedFiberContent:clean(input.verifiedFiberContent,220),
+      verifiedStructure:Number.isFinite(input.verifiedStructure)?Number(input.verifiedStructure):null,
+      verifiedBreathability:Number.isFinite(input.verifiedBreathability)?Number(input.verifiedBreathability):null,
+      verifiedWrinkleResistance:Number.isFinite(input.verifiedWrinkleResistance)?Number(input.verifiedWrinkleResistance):null,
+      verifiedStretch:Number.isFinite(input.verifiedStretch)?Number(input.verifiedStretch):null,
       verifiedPhysicalSourceUrl:canonicalUrlIdentity(input.verifiedPhysicalSourceUrl),
       verifiedPhysicalEvidenceNote:clean(input.verifiedPhysicalEvidenceNote,500),
     };
@@ -137,6 +141,10 @@ export async function storeFabricAnalysis(
       verifiedGsm:Number.isFinite(input.verifiedGsm)?input.verifiedGsm:null,
       verifiedDrape:clean(input.verifiedDrape,40),
       verifiedFiberContent:clean(input.verifiedFiberContent,220),
+      verifiedStructure:Number.isFinite(input.verifiedStructure)?input.verifiedStructure:null,
+      verifiedBreathability:Number.isFinite(input.verifiedBreathability)?input.verifiedBreathability:null,
+      verifiedWrinkleResistance:Number.isFinite(input.verifiedWrinkleResistance)?input.verifiedWrinkleResistance:null,
+      verifiedStretch:Number.isFinite(input.verifiedStretch)?input.verifiedStretch:null,
       verifiedPhysicalSourceUrl:clean(input.verifiedPhysicalSourceUrl,1800),
       verifiedPhysicalEvidenceNote:clean(input.verifiedPhysicalEvidenceNote,500),
       contentSha256:clean(input.contentSha256,128),
@@ -296,6 +304,10 @@ export type FabricAnalyzerBatchItem = {
   verifiedGsm?:number;
   verifiedDrape?:"Fluid"|"Balanced"|"Structured";
   verifiedFiberContent?:string;
+  verifiedStructure?:number;
+  verifiedBreathability?:number;
+  verifiedWrinkleResistance?:number;
+  verifiedStretch?:number;
   verifiedPhysicalSourceUrl?:string;
   verifiedPhysicalEvidenceNote?:string;
   force?:boolean;
@@ -320,6 +332,10 @@ export async function enqueueFabricAnalyzerBatch(items:FabricAnalyzerBatchItem[]
     verifiedGsm:Number.isFinite(item.verifiedGsm)?Number(item.verifiedGsm):null,
     verifiedDrape:["Fluid","Balanced","Structured"].includes(String(item.verifiedDrape))?String(item.verifiedDrape):"",
     verifiedFiberContent:clean(item.verifiedFiberContent,220),
+    verifiedStructure:Number.isFinite(item.verifiedStructure)?Number(item.verifiedStructure):null,
+    verifiedBreathability:Number.isFinite(item.verifiedBreathability)?Number(item.verifiedBreathability):null,
+    verifiedWrinkleResistance:Number.isFinite(item.verifiedWrinkleResistance)?Number(item.verifiedWrinkleResistance):null,
+    verifiedStretch:Number.isFinite(item.verifiedStretch)?Number(item.verifiedStretch):null,
     verifiedPhysicalSourceUrl:clean(item.verifiedPhysicalSourceUrl,1800),
     verifiedPhysicalEvidenceNote:clean(item.verifiedPhysicalEvidenceNote,500),
     force:item.force===true,

@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { FABRIC_STOCK } from "@/lib/fabric-stock";
 import { loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
 import { loadDesignerFabricIntelligence } from "@/lib/fabric-intelligence-server";
+import { designerFabricFromStock } from "@/lib/designer/engine";
+import { attachCatalogFabricPhysics } from "@/lib/designer/fabric-physics-catalog";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig } from "@/lib/supabase-admin";
 
@@ -31,6 +33,8 @@ export async function GET() {
         || String(analyzed.verifiedPhysical.evidenceNote||"").trim().length>=8
       )
     );
+    const physicsFabric=attachCatalogFabricPhysics(designerFabricFromStock(fabric),analyzed);
+    const compatibility=(physicsFabric.garmentCompatibility||[]).map((item)=>({garmentType:item.garmentType,label:item.label,score:item.score,status:item.status,evidenceCoverage:item.evidenceCoverage,evidenceConfidence:item.evidenceConfidence,criticalUnknowns:item.criticalUnknowns,warnings:item.warnings}));
     const physicalField=(field:string)=>Boolean(
       analyzerReviewed
       && analyzerPhysicalProvenance
@@ -55,6 +59,10 @@ export async function GET() {
         || (physicalField("verifiedPhysical.drape") && analyzed?.verifiedPhysical.drape)
       ),
       fiberVerified:Boolean(physicalField("verifiedPhysical.fiberContent") && analyzed?.verifiedPhysical.fiberContent),
+      structureVerified:Boolean(physicalField("verifiedPhysical.structure") && analyzed?.verifiedPhysical.structure!=null),
+      breathabilityVerified:Boolean(physicalField("verifiedPhysical.breathability") && analyzed?.verifiedPhysical.breathability!=null),
+      wrinkleResistanceVerified:Boolean(physicalField("verifiedPhysical.wrinkleResistance") && analyzed?.verifiedPhysical.wrinkleResistance!=null),
+      stretchVerified:Boolean(physicalField("verifiedPhysical.stretch") && analyzed?.verifiedPhysical.stretch!=null),
       manualPhysicalProvenance,
       analyzerPhysicalProvenance,
       formalityVerified:verified.formalityScore!=null,
@@ -70,6 +78,10 @@ export async function GET() {
       if(!evidence.drapeVerified) gaps.push("drape");
       if((verified.weightGsm!=null||Boolean(verified.drape))&&!manualPhysicalProvenance) gaps.push("physical provenance");
       if(!evidence.fiberVerified) gaps.push("fibre");
+      if(!evidence.structureVerified) gaps.push("structure");
+      if(!evidence.breathabilityVerified) gaps.push("breathability");
+      if(!evidence.wrinkleResistanceVerified) gaps.push("wrinkle resistance");
+      if(!evidence.stretchVerified) gaps.push("stretch");
       if(!evidence.formalityVerified) gaps.push("formality");
     }
 
@@ -80,7 +92,11 @@ export async function GET() {
       +(evidence.gsmVerified?0:2)
       +(evidence.drapeVerified?0:2)
       +(evidence.formalityVerified?0:2)
-      +(evidence.fiberVerified?0:1);
+      +(evidence.fiberVerified?0:1)
+      +(evidence.structureVerified?0:1)
+      +(evidence.breathabilityVerified?0:1)
+      +(evidence.wrinkleResistanceVerified?0:1)
+      +(evidence.stretchVerified?0:1);
 
     return {
       id:fabric.id,
@@ -92,11 +108,24 @@ export async function GET() {
       swatchImageUrl:fabric.swatchImageUrl,
       yarnCountLea:fabric.yarnCountLea || [],
       metadata:verified,
+      compatibility,
       evidence:{...evidence,gaps,priority},
     };
   });
 
   const active=fabrics.filter((fabric)=>fabric.metadata.availability!=="unavailable");
+  const garmentExpansion=["shirt","trouser","suit","blazer","kurta","bandhgala"].map((garmentType)=>{
+    const rows=active.flatMap((fabric)=>fabric.compatibility.filter((item)=>item.garmentType===garmentType));
+    return {
+      garmentType,
+      label:rows[0]?.label || garmentType,
+      evidenceReady:rows.filter((item)=>item.status!=="insufficient_evidence").length,
+      strongOrWorkable:rows.filter((item)=>item.status==="strong"||item.status==="workable").length,
+      strong:rows.filter((item)=>item.status==="strong").length,
+      total:active.length,
+    };
+  });
+
   const coverage={
     total:fabrics.length,
     activeCandidates:active.length,
@@ -107,12 +136,17 @@ export async function GET() {
     gsm:active.filter((fabric)=>fabric.evidence.gsmVerified).length,
     drape:active.filter((fabric)=>fabric.evidence.drapeVerified).length,
     fiber:active.filter((fabric)=>fabric.evidence.fiberVerified).length,
+    structure:active.filter((fabric)=>fabric.evidence.structureVerified).length,
+    breathability:active.filter((fabric)=>fabric.evidence.breathabilityVerified).length,
+    wrinkleResistance:active.filter((fabric)=>fabric.evidence.wrinkleResistanceVerified).length,
+    stretch:active.filter((fabric)=>fabric.evidence.stretchVerified).length,
     formality:active.filter((fabric)=>fabric.evidence.formalityVerified).length,
   };
 
   return NextResponse.json({
     configured:Boolean(cloud),
     coverage,
+    garmentExpansion,
     fabrics,
   });
 }
