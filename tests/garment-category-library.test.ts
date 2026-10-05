@@ -90,3 +90,17 @@ test("3D recipe shows saved garment type selections from Designer StyleSpec",()=
   assert(source.includes("Shirt · {draftShirtTypeLabel}"));
   assert(source.includes("Trouser · {draftTrouserTypeLabel}"));
 });
+
+
+test("Designer to 3D handoff carries current fabrics and types",()=>{
+  const designer=readFileSync("src/components/DesignerModule.tsx","utf8");
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  assert(designer.includes('className="newDesignerOpen3D"'));
+  assert(designer.includes('href="/lab/garment-viewer"'));
+  assert(designer.includes("localStorage.setItem(DRAFT_KEY"));
+  assert(designer.includes("styleSpec"));
+  assert(viewer.includes("shirtId?:string"));
+  assert(viewer.includes("pantId?:string"));
+  assert(viewer.includes("setShirtId(parsed.shirtId)"));
+  assert(viewer.includes("setTrouserId(parsed.pantId)"));
+});
