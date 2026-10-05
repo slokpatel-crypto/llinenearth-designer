@@ -23,16 +23,14 @@ export async function GET(){
       },
     });
   }catch(error){
-    return new NextResponse(
-      `console.error("Linen Earth 3D engine unavailable:", ${JSON.stringify(error instanceof Error?error.message:"unknown error")});`,
-      {
-        status:503,
-        headers:{
-          "content-type":"text/javascript; charset=utf-8",
-          "cache-control":"no-store",
-          "x-content-type-options":"nosniff",
-        },
+    console.warn("Linen Earth 3D engine proxy fallback:",error instanceof Error?error.message:"unknown error");
+    return NextResponse.redirect(MODEL_VIEWER_URL,{
+      status:307,
+      headers:{
+        "content-type":"text/javascript; charset=utf-8",
+        "cache-control":"public, max-age=300, s-maxage=2592000, stale-while-revalidate=604800",
+        "x-content-type-options":"nosniff",
       },
-    );
+    });
   }
 }
