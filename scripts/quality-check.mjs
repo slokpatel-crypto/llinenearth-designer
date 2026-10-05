@@ -1529,6 +1529,7 @@ console.log("Fabric Physics gate passed: physical suitability stays evidence-awa
 
 const garmentViewerSource=fs.readFileSync("src/components/GarmentViewer.tsx","utf8");
 const garmentViewerBlenderExporter=fs.readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
+const garmentViewerBaseBootstrap=fs.readFileSync("scripts/blender/bootstrap-human-base-meshes.py","utf8");
 const designerModuleGarmentScope=fs.readFileSync("src/components/DesignerModule.tsx","utf8");
 const garmentCategoryLibrary=fs.readFileSync("src/lib/designer/garment-category-library.ts","utf8");
 const futureGarmentOptions=fs.readFileSync("src/lib/designer/future-garment-options.ts","utf8");
@@ -1558,6 +1559,9 @@ for(const token of ["GARMENT_CATEGORY_LIBRARY","GARMENT TYPES · CURRENT + FUTUR
 }
 for(const token of ["LinenEarthExport","REFERENCE_HEIGHT_M = 1.727","ShirtTorsoFabric","TrouserLegRFabric","export_scene.gltf","export_format=\"GLB\""]) {
   if(!garmentViewerBlenderExporter.includes(token)) throw new Error(`GarmentViewer Blender exporter regression: missing ${token}`);
+}
+for(const token of ["BUNDLE_VERSION = \"1.4.1\"","BUNDLE_LICENSE = \"CC0\"","human-base-meshes-bundle-v1.4.1.zip","EXPECTED_ARCHIVE_BYTES = 50_643_039","safe_extract","source-library-only-not-production-model"]) {
+  if(!garmentViewerBaseBootstrap.includes(token)) throw new Error(`GarmentViewer model-source bootstrap regression: missing ${token}`);
 }
 for(const token of ["linen-earth-garment-viewer-v2","REQUIRED_GARMENT_VIEWER_MATERIALS","approvedGarmentViewerModelSource","validateGarmentViewerModelManifest","GarmentViewerAssetSource","Model source provenance is required","sourceReady"]) {
   if(!garmentViewerContract.includes(token)) throw new Error(`GarmentViewer production contract regression: missing ${token}`);
