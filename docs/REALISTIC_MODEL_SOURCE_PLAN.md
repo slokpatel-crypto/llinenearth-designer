@@ -29,9 +29,21 @@ Why:
 - bundle is published CC0,
 - no AI credits or per-render cost.
 
-Research references:
-- Blender Demo Files — Human Base Meshes v1.4.1, CC0
-- Blender release notes — realistic male body replaced with scan-based geometry
+Pinned source facts:
+- Blender Demo Files — Human Base Meshes v1.4.1
+- 49 MB / 50,643,039-byte archive
+- CC0
+- updated 20 January 2026
+- requires Blender 4.2 LTS or newer
+- official page: https://www.blender.org/download/demo-files/
+- pinned archive: https://download.blender.org/demo/asset-bundles/human-base-meshes/human-base-meshes-bundle-v1.4.1.zip
+- Blender 4.0 release notes document that the Realistic Male Body was replaced with scan-based geometry for increased realism
+
+The repository now includes a reproducible source-library bootstrap:
+```bash
+npm run garment:model-base:fetch
+```
+It downloads only the pinned Blender v1.4.1 CC0 bundle, checks the published archive byte size, rejects unsafe ZIP paths, extracts it under `.cache/linen-earth/`, and writes a Linen Earth provenance record. It does not claim that the downloaded body is the finished production asset.
 
 This base body is not itself the finished Linen Earth asset. Shirt and trouser geometry still need to be authored/fitted around the body and exported to the six-panel GarmentViewer contract.
 
