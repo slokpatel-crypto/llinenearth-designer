@@ -73,7 +73,8 @@
 @media(max-width:980px){
   .garmentViewerShell{grid-template-columns:1fr}
   .garmentViewerCanvas{height:62vh;min-height:520px}
-  .garmentViewerControls{order:-1}
+  .garmentViewerStage{order:0}
+  .garmentViewerControls{order:1}
   .garmentViewerControls h1{max-width:none}
 }
 @media(max-width:640px){
