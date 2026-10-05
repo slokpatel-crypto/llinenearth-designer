@@ -1,4 +1,5 @@
 import { optionsFor } from "./options/library.ts";
+import { futureGarmentOptionsFor } from "./future-garment-options.ts";
 
 export type GarmentCategoryStatus="live"|"planned";
 
@@ -14,6 +15,8 @@ export type GarmentCategoryDefinition={
 
 const shirtTypeExamples=optionsFor("shirt.type").map((option)=>option.label);
 const trouserTypeExamples=optionsFor("pant.type").map((option)=>option.label);
+const blazerTypeExamples=futureGarmentOptionsFor("blazer.type").map((option)=>option.label);
+const suitTypeExamples=futureGarmentOptionsFor("suit.type").map((option)=>option.label);
 
 export const GARMENT_CATEGORY_LIBRARY:GarmentCategoryDefinition[]=[
   {
@@ -40,7 +43,7 @@ export const GARMENT_CATEGORY_LIBRARY:GarmentCategoryDefinition[]=[
     status:"planned",
     stageLabel:"Future garment block",
     description:"Prepared as a separate garment family so blazer construction does not get forced into the shirt or trouser model.",
-    typeExamples:["Single-breasted","Double-breasted","Unstructured","Peak-lapel","Patch-pocket"],
+    typeExamples:blazerTypeExamples,
     detailFamilies:["Lapel","Breast style","Button stance","Vent","Pocket","Length","Shoulder"],
   },
   {
@@ -49,7 +52,7 @@ export const GARMENT_CATEGORY_LIBRARY:GarmentCategoryDefinition[]=[
     status:"planned",
     stageLabel:"Future coordinated look",
     description:"Planned as a linked jacket-and-trouser system with shared fabric, proportion and formality rules.",
-    typeExamples:["2-piece business","3-piece","Double-breasted","Formal evening","Wedding"],
+    typeExamples:suitTypeExamples,
     detailFamilies:["Jacket","Trouser","Lapel","Vent","Waistcoat","Button stance","Trouser pairing"],
   },
 ];
