@@ -76,3 +76,17 @@ Before exposing six-garment scores as customer claims:
 3. Add supplier/physical evidence for breathability, wrinkle behaviour and stretch where available.
 4. Compare scores with finished garments and tailor feedback.
 5. Revise provisional target bands from real Linen Earth outcomes.
+
+
+## Operator calibration protocol
+
+The private Fabric Analyzer now accepts optional normalized physical indices, each from 0 to 1:
+
+- `structure`: 0 = soft/fluid, 1 = highly structured.
+- `breathability`: 0 = low, 1 = high.
+- `wrinkleResistance`: 0 = wrinkles readily, 1 = strongly resistant.
+- `stretch`: 0 = none, 1 = high stretch.
+
+These values are not inferred from flat, macro or fold photos. They require the same auditable physical-evidence source URL or operator evidence note as GSM/drape/fibre data. The Analyzer fingerprint includes them, so changing a calibration value creates a distinct evidence identity rather than silently reusing a cached profile.
+
+Only reviewed, auditable records with field-level `declared` or `reviewed` provenance can enter the customer catalogue's compatibility matrix. Invalid, model-judged, unauditable or missing indices remain unknown and cannot influence garment suitability.
