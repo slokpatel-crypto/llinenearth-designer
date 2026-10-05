@@ -1,0 +1,87 @@
+.garmentViewerPage{
+  min-height:100vh;
+  color:#22231f;
+  background:
+    radial-gradient(circle at 18% 8%,rgba(191,151,101,.12),transparent 30rem),
+    linear-gradient(145deg,#f7f2e8 0%,#eee7da 52%,#e5ddcf 100%);
+  padding:18px clamp(14px,3vw,42px) 42px;
+}
+.garmentViewerHeader{
+  max-width:1500px;margin:0 auto 16px;display:flex;align-items:center;justify-content:space-between;gap:20px;
+  padding:10px 2px 17px;border-bottom:1px solid rgba(67,58,45,.16);font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+}
+.garmentViewerHeader a{color:#343127;text-decoration:none;font-weight:650}
+.garmentViewerHeader div{display:flex;flex-direction:column;align-items:center;gap:3px}
+.garmentViewerHeader div span{font-size:9px;letter-spacing:.24em;color:#8c785b}
+.garmentViewerHeader div b{font-family:Georgia,"Times New Roman",serif;font-size:14px;letter-spacing:.05em}
+.garmentViewerShell{
+  max-width:1500px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1.55fr) minmax(330px,.7fr);gap:18px;
+}
+.garmentViewerStage,.garmentViewerControls{
+  border:1px solid rgba(74,61,45,.16);background:rgba(250,247,241,.78);box-shadow:0 22px 70px rgba(72,56,35,.08);
+}
+.garmentViewerStage{min-width:0;padding:14px}
+.garmentViewerStageHead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 4px 12px;font-size:9px;letter-spacing:.18em}
+.garmentViewerStageHead span{color:#8f7655}
+.garmentViewerStageHead strong{font-size:9px;font-weight:600;color:#4d493f}
+.garmentViewerCanvas{
+  position:relative;min-height:690px;height:min(75vh,850px);overflow:hidden;border-radius:2px;
+  background:
+    radial-gradient(circle at 50% 35%,rgba(255,255,255,.96),rgba(243,237,227,.84) 48%,rgba(216,204,187,.72) 100%);
+}
+.garmentModelViewer{display:block;width:100%;height:100%;background:transparent;--poster-color:transparent}
+.garmentViewerLoading{
+  position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:10px;background:#f2ece1;color:#39352d;text-align:center;z-index:2;
+}
+.garmentViewerLoading i{height:2px;min-width:30px;max-width:220px;background:#9b7040;transition:width .25s ease}
+.garmentViewerLoading strong{font-family:Georgia,"Times New Roman",serif;font-size:19px;font-weight:500}
+.garmentViewerLoading span{font-size:10px;letter-spacing:.14em;color:#87755d}
+.garmentViewerError{position:absolute;left:16px;right:16px;bottom:16px;padding:12px 14px;background:#382924;color:#f7eee5;font-size:12px;z-index:3}
+.garmentCameraRail{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:10px}
+.garmentCameraRail button{
+  border:1px solid rgba(77,63,45,.17);background:#f6f1e7;color:#504a40;padding:11px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;
+  transition:transform .18s ease,background .18s ease,color .18s ease,border-color .18s ease;
+}
+.garmentCameraRail button:hover{transform:translateY(-1px);border-color:#9c7242}
+.garmentCameraRail button[aria-pressed="true"]{background:#302e28;color:#fbf7ef;border-color:#302e28}
+.garmentViewerHint{margin:10px 3px 0;color:#776e61;font-size:10px;text-align:center;letter-spacing:.03em}
+.garmentViewerControls{padding:clamp(20px,2.8vw,34px);display:flex;flex-direction:column;gap:17px}
+.garmentViewerEyebrow{font-size:9px;letter-spacing:.21em;color:#9b7446;font-weight:700}
+.garmentViewerControls h1{font:500 clamp(29px,3.2vw,46px)/.98 Georgia,"Times New Roman",serif;margin:8px 0 12px;max-width:9ch;color:#282721}
+.garmentViewerControls>div:first-child p{font-size:12px;line-height:1.65;color:#70685c;max-width:48ch}
+.garmentViewerControls label{display:grid;gap:7px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#6b5c49}
+.garmentViewerControls select{
+  width:100%;min-height:45px;border:1px solid rgba(76,62,43,.2);background:#f8f3ea;color:#302f2a;padding:0 12px;font:500 13px/1.2 Arial,sans-serif;border-radius:0;
+}
+.garmentSwatchPreview{display:flex;align-items:center;gap:11px;margin-top:-9px;padding:7px;border:1px solid rgba(78,64,45,.1);background:rgba(255,255,255,.4)}
+.garmentSwatchPreview img{width:46px;height:52px;object-fit:cover;display:block}
+.garmentSwatchPreview span{display:grid;gap:2px}
+.garmentSwatchPreview b{font:500 14px/1.2 Georgia,"Times New Roman",serif}
+.garmentSwatchPreview small{font-size:9px;color:#887962}
+.garmentRange{padding-top:3px}
+.garmentRange span{display:flex;justify-content:space-between;gap:12px}
+.garmentRange span b{font-size:10px;color:#2c2a25}
+.garmentRange input{width:100%;accent-color:#795733}
+.garmentRange small{font-size:9px;line-height:1.45;letter-spacing:0;text-transform:none;color:#8b8174}
+.garmentViewerFacts{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:rgba(87,69,47,.12);border:1px solid rgba(87,69,47,.1)}
+.garmentViewerFacts span{display:grid;gap:5px;padding:12px;background:#f4eee4}
+.garmentViewerFacts small{font-size:8px;letter-spacing:.15em;color:#92764f}
+.garmentViewerFacts b{font-size:11px;font-weight:650}
+.garmentViewerGuardrail{padding:13px 14px;margin:0;border-left:2px solid #9e7444;background:#eee4d5;font-size:10px;line-height:1.55;color:#645b4f}
+@media(max-width:980px){
+  .garmentViewerShell{grid-template-columns:1fr}
+  .garmentViewerCanvas{height:62vh;min-height:520px}
+  .garmentViewerControls{order:-1}
+  .garmentViewerControls h1{max-width:none}
+}
+@media(max-width:640px){
+  .garmentViewerPage{padding:10px 9px 24px}
+  .garmentViewerHeader{font-size:9px;gap:8px}
+  .garmentViewerHeader div span{display:none}
+  .garmentViewerCanvas{min-height:470px;height:58vh}
+  .garmentCameraRail button{padding:10px 4px;font-size:9px}
+  .garmentViewerControls{padding:18px}
+}
+@media(prefers-reduced-motion:reduce){
+  .garmentCameraRail button{transition:none}
+}
