@@ -1,5 +1,6 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import {
@@ -32,6 +33,7 @@ export async function loadGarmentViewerProductionAssetStatus(){
       model:null,
       manifest:null,
       assetReady:false,
+      assetIdentity:null,
       reasons:["No approved Linen Earth production GLB is configured."],
     };
   }
@@ -39,8 +41,11 @@ export async function loadGarmentViewerProductionAssetStatus(){
   const reasons:string[]=[];
   let model:ReturnType<typeof inspectGarmentViewerGlb>|null=null;
   let manifest:ReturnType<typeof validateGarmentViewerModelManifest>|null=null;
+  let modelSha256:string|null=null;
+  let manifestSha256:string|null=null;
   try{
     const bytes=new Uint8Array(await readFile(publicAssetPath(modelSrc)));
+    modelSha256=createHash("sha256").update(bytes).digest("hex");
     model=inspectGarmentViewerGlb(bytes,GARMENT_VIEWER_PRODUCTION_MODEL_ID);
     if(!model.structuralReady) reasons.push(...model.reasons);
   }catch(error){
@@ -48,14 +53,17 @@ export async function loadGarmentViewerProductionAssetStatus(){
   }
 
   try{
-    const raw=JSON.parse(await readFile(publicAssetPath(manifestSrc),"utf8")) as GarmentViewerModelManifest;
+    const manifestText=await readFile(publicAssetPath(manifestSrc),"utf8");
+    manifestSha256=createHash("sha256").update(manifestText).digest("hex");
+    const raw=JSON.parse(manifestText) as GarmentViewerModelManifest;
     manifest=validateGarmentViewerModelManifest(raw,GARMENT_VIEWER_PRODUCTION_MODEL_ID);
     if(!manifest.valid) reasons.push(...manifest.reasons);
   }catch(error){
     reasons.push(error instanceof Error ? "Manifest: "+error.message : "Manifest could not be inspected.");
   }
 
-  const assetReady=Boolean(model?.structuralReady&&manifest?.valid);
+  const assetReady=Boolean(model?.structuralReady&&manifest?.valid&&modelSha256&&manifestSha256);
+  const assetIdentity=assetReady ? {modelId:GARMENT_VIEWER_PRODUCTION_MODEL_ID,modelSha256:modelSha256 as string,manifestSha256:manifestSha256 as string} : null;
   return {
     configured:true as const,
     modelId:GARMENT_VIEWER_PRODUCTION_MODEL_ID,
@@ -64,6 +72,7 @@ export async function loadGarmentViewerProductionAssetStatus(){
     model,
     manifest,
     assetReady,
+    assetIdentity,
     reasons:[...new Set(reasons)],
   };
 }
