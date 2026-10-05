@@ -1507,6 +1507,7 @@ console.log("Creative workflow gate passed: versioned craft, personal ownership,
 
 const garmentViewerSource=fs.readFileSync("src/components/GarmentViewer.tsx","utf8");
 const garmentViewerContract=fs.readFileSync("src/lib/garment-viewer-model-contract.ts","utf8");
+const garmentViewerPrototype=fs.readFileSync("src/lib/garment-viewer-prototype.ts","utf8");
 const garmentViewerGlb=fs.readFileSync("src/lib/garment-viewer-glb.ts","utf8");
 const garmentViewerReadiness=fs.readFileSync("src/lib/garment-viewer-readiness.ts","utf8");
 const garmentViewerOperator=fs.readFileSync("src/app/operator/garment-viewer/page.tsx","utf8");
@@ -1515,8 +1516,11 @@ const protectedVisualRoute=fs.readFileSync("src/app/visual/page.tsx","utf8");
 for(const token of ["GARMENT_PANEL_SPECS","sampler?.setScale","modelManifestSrc","assetIdentity","GARMENT_VIEWER_LATENCY_STORAGE_KEY"]) {
   if(!garmentViewerSource.includes(token)) throw new Error(`GarmentViewer M2 runtime regression: missing ${token}`);
 }
-for(const token of ["linen-earth-garment-viewer-v2","ShirtTorsoFabric","TrouserLegRFabric","approvedGarmentViewerModelSource","validateGarmentViewerModelManifest"]) {
+for(const token of ["linen-earth-garment-viewer-v2","REQUIRED_GARMENT_VIEWER_MATERIALS","approvedGarmentViewerModelSource","validateGarmentViewerModelManifest"]) {
   if(!garmentViewerContract.includes(token)) throw new Error(`GarmentViewer production contract regression: missing ${token}`);
+}
+for(const token of ["ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric","TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric"]) {
+  if(!garmentViewerPrototype.includes(token)) throw new Error(`GarmentViewer panel contract regression: missing ${token}`);
 }
 for(const token of ["parseGarmentViewerGlbJson","TEXCOORD_0","externalGlbUri","structuralReady"]) {
   if(!garmentViewerGlb.includes(token)) throw new Error(`GarmentViewer GLB inspection regression: missing ${token}`);
