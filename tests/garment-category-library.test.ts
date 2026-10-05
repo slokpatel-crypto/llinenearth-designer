@@ -9,8 +9,8 @@ test("garment category library keeps shirt and trouser live while blazer and sui
   assert.equal(byId.trouser.status,"live");
   assert.equal(byId.blazer.status,"planned");
   assert.equal(byId.suit.status,"planned");
-  assert(byId.shirt.typeExamples.includes("Dress shirt"));
-  assert(byId.trouser.typeExamples.includes("Pleated"));
+  assert(byId.shirt.typeExamples.includes("Dress Shirt"));
+  assert(byId.trouser.typeExamples.includes("Pleated Trouser"));
   assert(byId.blazer.typeExamples.includes("Single-breasted"));
   assert(byId.suit.typeExamples.includes("3-piece"));
   assert(byId.shirt.detailFamilies.includes("Collar"));
@@ -22,10 +22,10 @@ test("garment category library keeps shirt and trouser live while blazer and sui
 test("GarmentViewer shows garment construction scope, not fabric alone",()=>{
   const source=readFileSync("src/components/GarmentViewer.tsx","utf8");
   assert(source.includes("GARMENT TYPES · CURRENT + FUTURE"));
-  assert(source.includes("Types: Dress"));
-  assert(source.includes("Details: Collar"));
-  assert(source.includes("Types: Formal flat-front"));
-  assert(source.includes("Details: Rise"));
+  assert(source.includes("SHIRT_GARMENT_CATEGORY.typeExamples"));
+  assert(source.includes("SHIRT_GARMENT_CATEGORY.detailFamilies"));
+  assert(source.includes("TROUSER_GARMENT_CATEGORY.typeExamples"));
+  assert(source.includes("TROUSER_GARMENT_CATEGORY.detailFamilies"));
   assert(source.includes("GARMENT_CATEGORY_LIBRARY.map"));
 });
 
