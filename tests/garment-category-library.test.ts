@@ -28,3 +28,12 @@ test("GarmentViewer shows garment construction scope, not fabric alone",()=>{
   assert(source.includes("Details: Rise"));
   assert(source.includes("GARMENT_CATEGORY_LIBRARY.map"));
 });
+
+
+test("Designer shows current and future garment types before fabric selection",()=>{
+  const source=readFileSync("src/components/DesignerModule.tsx","utf8");
+  assert(source.includes("newDesignerGarmentScope"));
+  assert(source.includes("GARMENT_CATEGORY_LIBRARY.map"));
+  assert(source.includes('garment.status==="live"?"CURRENT":"FUTURE"'));
+  assert(source.indexOf("newDesignerGarmentScope") < source.indexOf("newDesignerFabricGrid"));
+});
