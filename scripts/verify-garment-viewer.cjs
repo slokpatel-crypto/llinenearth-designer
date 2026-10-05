@@ -64,7 +64,7 @@ async function verifyViewport(browser, width) {
         metallic: current.pbrMetallicRoughness?.metallicFactor,
         hasTexture: Boolean(current.pbrMetallicRoughness?.baseColorTexture?.texture),
         hasNormal: Boolean(current.normalTexture?.texture),
-        scale: current.pbrMetallicRoughness?.baseColorTexture?.texture?.scale || null,
+        scale: current.pbrMetallicRoughness?.baseColorTexture?.texture?.sampler?.scale || null,
       }));
   });
   assert.equal(materialState.length, 6);
