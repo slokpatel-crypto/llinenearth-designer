@@ -57,6 +57,14 @@ async function verifyViewport(browser, width) {
   await reference.waitFor({state:"visible"});
   assert.match(await reference.getAttribute("src"),/studio-tucked\.webp$/, "3D lab must keep the approved studio reference target visible");
 
+  const garmentCards=page.locator(".garmentTypeGrid article");
+  assert.equal(await garmentCards.count(),4,"garment type roadmap must show current and future families");
+  const garmentText=await garmentCards.allTextContents();
+  assert.ok(garmentText.some((value)=>/Shirt/.test(value)&&/LIVE/.test(value)&&/Dress shirt/.test(value)),"shirt types must be visible");
+  assert.ok(garmentText.some((value)=>/Trouser/.test(value)&&/LIVE/.test(value)&&/Pleated/.test(value)),"trouser types must be visible");
+  assert.ok(garmentText.some((value)=>/Blazer/.test(value)&&/FUTURE/.test(value)&&/Single-breasted/.test(value)),"future blazer types must be visible");
+  assert.ok(garmentText.some((value)=>/Suit/.test(value)&&/FUTURE/.test(value)&&/3-piece/.test(value)),"future suit types must be visible");
+
   const selects = page.locator(".garmentViewerControls select");
   assert.equal(await selects.count(), 2);
   for (let index = 0; index < 2; index++) {
