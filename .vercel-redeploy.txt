@@ -32,3 +32,8 @@ Exact Real Model Designer identity release: front / 3/4 / side / back and produc
 Target merged commit: 414c2355faf664027bf09f4e1f17d6dc9196bb40
 Verification: CI 37326746746 passed quality, 551 tests, engine/performance, release, production build and full browser verification.
 Date: 2026-10-05
+
+
+Visible 3D viewer release: Designer now exposes the 3D entry at the top, and /vendor/model-viewer falls back to the pinned model-viewer CDN instead of returning a dead engine response.
+Target fix commits: fc0e7d2eb86c2c3ba81e24df3d4e164304c3ccdb + 1aac1edc486ffe88ca580f819c89057910b5f405
+Date: 2026-10-05
