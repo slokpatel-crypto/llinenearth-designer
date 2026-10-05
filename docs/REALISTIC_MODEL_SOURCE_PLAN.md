@@ -100,6 +100,8 @@ It expects an already-approved Blender scene with:
 
 It assigns the exact material names and exports a self-contained GLB candidate. It intentionally refuses to auto-scale a wrong body or invent pattern dimensions.
 
+For a production candidate, copy `docs/examples/linen-earth-officewear-panel-spec.template.json`, replace every zero width/height with measured garment/pattern dimensions, and pass it with `--panel-spec`. The exporter then transfers the verified body-source provenance from the Blender scene and writes the matching `.viewer.json` beside the GLB. Zero/unmeasured values are rejected, so a guessed physical scale cannot accidentally become production-ready.
+
 ## Production asset construction path
 
 1. Start from the approved realistic male body base.
