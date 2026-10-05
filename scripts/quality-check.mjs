@@ -1549,7 +1549,7 @@ for(const token of ["shirt","trouser","blazer","suit","typeExamples","detailFami
 for(const token of ["blazer.type","blazer.lapel","blazer.vent","blazer.pocket","blazer.shoulder","suit.type","suit.waistcoat","suit.jacket","suit.trouser","status:\"planned\""]) {
   if(!futureGarmentOptions.includes(token)) throw new Error(`Future garment taxonomy regression: missing ${token}`);
 }
-for(const token of ["GARMENT_CATEGORY_LIBRARY","newDesignerGarmentScope","garment.status===\"live\"?\"CURRENT\":\"FUTURE\"","typeExamples.slice(0,4)","detailFamilies.slice(0,5)"]) {
+for(const token of ["GARMENT_CATEGORY_LIBRARY","newDesignerGarmentScope","garment.status===\"live\"?\"CURRENT\":\"FUTURE\"","aria-label=\"Shirt type\"","aria-label=\"Trouser type\"","changeGarmentType(\"shirt\"","changeGarmentType(\"pant\"","styleSpec.shirt.type","styleSpec.pant.type","PLANNED DETAILS · ","detailFamilies.slice(0,5)"]) {
   if(!designerModuleGarmentScope.includes(token)) throw new Error(`Designer garment-scope regression: missing ${token}`);
 }
 for(const token of ["GARMENT_CATEGORY_LIBRARY","GARMENT TYPES · CURRENT + FUTURE","SHIRT_GARMENT_CATEGORY.typeExamples","SHIRT_GARMENT_CATEGORY.detailFamilies","TROUSER_GARMENT_CATEGORY.typeExamples","TROUSER_GARMENT_CATEGORY.detailFamilies","linen-earth:real-designer-draft:v2","YOUR DESIGNER RECIPE","construction-specific mesh changes remain a later production-model step","GARMENT_PANEL_SPECS","sampler?.setScale","sampler?.setOffset","sampler?.setRotation","modelManifestSrc","assetIdentity","GARMENT_VIEWER_LATENCY_STORAGE_KEY"]) {
