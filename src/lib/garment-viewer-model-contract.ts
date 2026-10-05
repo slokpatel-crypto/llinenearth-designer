@@ -71,16 +71,27 @@ export function approvedGarmentViewerModelSource(value:string|undefined|null) {
 }
 
 
+export type GarmentViewerAssetSource = {
+  name:string;
+  license:string;
+  verifiedAt:string;
+  sourceUrl?:string;
+  licenseUrl?:string;
+};
+
 export type GarmentViewerModelManifest = {
   version: typeof GARMENT_VIEWER_CONTRACT_VERSION;
   modelId: string;
   referenceHeightMm: number;
+  source?:GarmentViewerAssetSource;
   panels: Record<string,{widthMm:number;heightMm:number;offsetU?:number;offsetV?:number;rotationDeg?:number}>;
   cameraOrbits?: Partial<Record<"front"|"three-quarter"|"side"|"back",string>>;
 };
 
 export type GarmentViewerManifestValidation = {
   valid:boolean;
+  sourceReady:boolean;
+  source:GarmentViewerAssetSource|null;
   missingPanels:string[];
   invalidPanels:string[];
   reasons:string[];
@@ -88,12 +99,25 @@ export type GarmentViewerManifestValidation = {
 
 export function validateGarmentViewerModelManifest(value:unknown,expectedModelId?:string):GarmentViewerManifestValidation {
   const reasons:string[]=[];
-  if(!value || typeof value!=="object") return {valid:false,missingPanels:[...REQUIRED_GARMENT_VIEWER_MATERIALS],invalidPanels:[],reasons:["Manifest is missing or invalid."]};
+  if(!value || typeof value!=="object") return {valid:false,sourceReady:false,source:null,missingPanels:[...REQUIRED_GARMENT_VIEWER_MATERIALS],invalidPanels:[],reasons:["Manifest is missing or invalid."]};
   const manifest=value as Partial<GarmentViewerModelManifest>;
   if(manifest.version!==GARMENT_VIEWER_CONTRACT_VERSION) reasons.push("Manifest contract version does not match the viewer.");
   if(!String(manifest.modelId||"").trim()) reasons.push("Manifest modelId is required.");
   else if(expectedModelId && manifest.modelId!==expectedModelId) reasons.push(`Manifest modelId ${manifest.modelId} does not match ${expectedModelId}.`);
   if(!Number.isFinite(manifest.referenceHeightMm)||Number(manifest.referenceHeightMm)<1400||Number(manifest.referenceHeightMm)>2200) reasons.push("Reference height must be between 1400 and 2200 mm.");
+  const rawSource=manifest.source&&typeof manifest.source==="object"?manifest.source:null;
+  const sourceName=String(rawSource?.name||"").trim();
+  const sourceLicense=String(rawSource?.license||"").trim();
+  const sourceVerifiedAt=String(rawSource?.verifiedAt||"").trim();
+  const sourceReady=Boolean(sourceName&&sourceLicense&&/^\d{4}-\d{2}-\d{2}$/.test(sourceVerifiedAt));
+  const source=sourceReady?{
+    name:sourceName,
+    license:sourceLicense,
+    verifiedAt:sourceVerifiedAt,
+    ...(String(rawSource?.sourceUrl||"").trim()?{sourceUrl:String(rawSource?.sourceUrl).trim()}:{}),
+    ...(String(rawSource?.licenseUrl||"").trim()?{licenseUrl:String(rawSource?.licenseUrl).trim()}:{}),
+  }:null;
+  if(manifest.modelId!==PROTOTYPE_MODEL_ID&&!sourceReady) reasons.push("Model source provenance is required: source name, license and YYYY-MM-DD verification date.");
   const panels=manifest.panels&&typeof manifest.panels==="object"?manifest.panels:{};
   const missingPanels=REQUIRED_GARMENT_VIEWER_MATERIALS.filter((name)=>!(name in panels));
   const invalidPanels=REQUIRED_GARMENT_VIEWER_MATERIALS.filter((name)=>{
@@ -110,7 +134,7 @@ export function validateGarmentViewerModelManifest(value:unknown,expectedModelId
   });
   if(missingPanels.length) reasons.push(`Manifest is missing panel dimensions for: ${missingPanels.join(", ")}.`);
   if(invalidPanels.length) reasons.push(`Manifest has invalid panel dimensions for: ${invalidPanels.join(", ")}.`);
-  return {valid:reasons.length===0,missingPanels,invalidPanels,reasons};
+  return {valid:reasons.length===0,sourceReady,source,missingPanels,invalidPanels,reasons};
 }
 
 export function approvedGarmentViewerManifestSource(modelSource:string|undefined|null) {
