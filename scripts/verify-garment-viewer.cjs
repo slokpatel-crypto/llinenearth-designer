@@ -23,6 +23,13 @@ async function verifyViewport(browser, width) {
   const viewer = page.locator("model-viewer");
   await viewer.waitFor({ state: "visible" });
   await page.locator(".garmentViewerLoading").waitFor({ state: "hidden", timeout: 20000 });
+  await page.waitForFunction(() => document.querySelector(".garmentViewerShell")?.getAttribute("data-model-readiness") === "prototype");
+  const labReadiness = await page.locator(".garmentViewerShell").evaluate((element) => ({
+    model: element.getAttribute("data-model-readiness"),
+    manifest: element.getAttribute("data-manifest-ready"),
+  }));
+  assert.equal(labReadiness.model, "prototype", "default lab must remain on the non-production prototype");
+  assert.equal(labReadiness.manifest, "true", "prototype fallback must not require a production sidecar");
 
   const modelState = await viewer.evaluate((element) => {
     const materials = element.model?.materials || [];
@@ -55,6 +62,8 @@ async function verifyViewport(browser, width) {
   }
 
   await page.waitForTimeout(400);
+  const prototypeLatencyEvidence = await page.evaluate(() => localStorage.getItem("linen-earth-garment-viewer-latency-v1"));
+  assert.equal(prototypeLatencyEvidence, null, "prototype fabric changes must not create production latency evidence");
   const materialState = await viewer.evaluate((element) => {
     return (element.model?.materials || [])
       .filter((material) => /^(Shirt|Trouser)/.test(material.name))
