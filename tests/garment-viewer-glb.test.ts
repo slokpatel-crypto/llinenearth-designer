@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildPrototypeGarmentGlb, PROTOTYPE_MODEL_ID } from "../src/lib/garment-viewer-prototype.ts";
-import { inspectGarmentViewerGlb, parseGarmentViewerGlbJson } from "../src/lib/garment-viewer-glb.ts";
+import { externalGlbUri, inspectGarmentViewerGlb, parseGarmentViewerGlbJson } from "../src/lib/garment-viewer-glb.ts";
 
 test("prototype GLB is structurally valid but remains explicitly non-production",()=>{
   const bytes=buildPrototypeGarmentGlb();
@@ -30,4 +30,13 @@ test("GLB parser rejects corrupt headers and declared lengths",()=>{
   const badLength=bytes.slice();
   new DataView(badLength.buffer,badLength.byteOffset,badLength.byteLength).setUint32(8,badLength.byteLength-4,true);
   assert.throws(()=>parseGarmentViewerGlbJson(badLength),/declared length/i);
+});
+
+
+test("production GLB only permits embedded data URIs or bufferView-backed assets",()=>{
+  assert.equal(externalGlbUri(undefined),null);
+  assert.equal(externalGlbUri("data:image/png;base64,AAAA"),null);
+  assert.equal(externalGlbUri("texture.png"),"texture.png");
+  assert.equal(externalGlbUri("/models/texture.png"),"/models/texture.png");
+  assert.equal(externalGlbUri("https://cdn.example/texture.png"),"https://cdn.example/texture.png");
 });
