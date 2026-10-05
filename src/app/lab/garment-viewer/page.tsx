@@ -11,11 +11,14 @@ export const metadata={
 };
 
 function viewerFabric(fabric:(typeof FABRIC_STOCK)[number]):GarmentViewerFabric {
+  const file=fabric.swatchImageUrl.split("/").pop() || "";
+  const tileKey=file.replace(/\.webp$/i,"");
   return {
     id:fabric.id,
     name:fabric.colorName,
     line:fabric.line,
-    image:fabric.swatchImageUrl,
+    image:`/fabric-tiles/${tileKey}.webp`,
+    tileKey,
   };
 }
 
