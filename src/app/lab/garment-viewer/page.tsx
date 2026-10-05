@@ -2,12 +2,12 @@ import Link from "next/link";
 import Script from "next/script";
 import GarmentViewer, { type GarmentViewerFabric } from "@/components/GarmentViewer";
 import { FABRIC_STOCK } from "@/lib/fabric-stock";
-import { approvedGarmentViewerModelSource } from "@/lib/garment-viewer-model-contract";
+import { approvedGarmentViewerManifestSource, approvedGarmentViewerModelSource } from "@/lib/garment-viewer-model-contract";
 import { PROTOTYPE_MODEL_ID } from "@/lib/garment-viewer-prototype";
 import "./garment-viewer.css";
 
 export const metadata={
-  title:"GarmentViewer M1 · Linen Earth",
+  title:"GarmentViewer M2 · Linen Earth",
   description:"Reusable 3D garment material-mapping proof for Linen Earth.",
   robots:{index:false,follow:false},
 };
@@ -26,6 +26,7 @@ function viewerFabric(fabric:(typeof FABRIC_STOCK)[number]):GarmentViewerFabric 
 
 export default function GarmentViewerLabPage() {
   const approvedModelSrc=approvedGarmentViewerModelSource(process.env.LINEN_GARMENT_MODEL_SRC);
+  const modelManifestSrc=approvedGarmentViewerManifestSource(approvedModelSrc);
   const modelId=approvedModelSrc ? "LE-OFFICEWEAR-V1" : PROTOTYPE_MODEL_ID;
   const shirtFabrics=FABRIC_STOCK.filter((fabric)=>fabric.inStock&&fabric.suitableFor.includes("shirt")).slice(0,10).map(viewerFabric);
   const trouserFabrics=FABRIC_STOCK.filter((fabric)=>fabric.inStock&&fabric.suitableFor.includes("trouser")).slice(0,10).map(viewerFabric);
@@ -44,7 +45,7 @@ export default function GarmentViewerLabPage() {
         <div><span>LINEN EARTH · DEEP ENGINE</span><b>3D VIEWER LAB</b></div>
         <Link href="/designer-studio">Designer Studio ↗</Link>
       </header>
-      <GarmentViewer shirtFabrics={shirtFabrics} trouserFabrics={trouserFabrics} modelSrc={approvedModelSrc} modelId={modelId}/>
+      <GarmentViewer shirtFabrics={shirtFabrics} trouserFabrics={trouserFabrics} modelSrc={approvedModelSrc} modelManifestSrc={modelManifestSrc} modelId={modelId}/>
     </main>
   </>;
 }
