@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
-import { loadGarmentViewerProductionAssetStatus } from "@/lib/garment-viewer-model-server";
+import { loadLatestGarmentViewerReadiness } from "@/lib/garment-viewer-evidence-server";
 import "./garment-viewer.css";
 
 export const dynamic="force-dynamic";
@@ -13,7 +13,9 @@ export default async function GarmentViewerOperatorPage(){
     redirect("/operator/login?next=/operator/garment-viewer");
   }
 
-  const status=await loadGarmentViewerProductionAssetStatus();
+  const report=await loadLatestGarmentViewerReadiness();
+  const status=report.asset;
+  const latest=report.latest;
   const model=status.model;
   const manifest=status.manifest;
   const panels=model?.panels||[];
@@ -51,6 +53,22 @@ export default async function GarmentViewerOperatorPage(){
         </div>)}
       </div>
     </section>}
+
+    <section className="garmentQaPanel">
+      <div className="garmentQaPanelHead"><div><small>CUSTOMER PROMOTION GATE</small><h2>3D stays in the lab until every evidence gate passes</h2></div><b>{latest?.readiness.ready?"READY":"BLOCKED"}</b></div>
+      {latest?<div className="garmentQaPromotion">
+        {([
+          ["Model contract",latest.readiness.contractReady],
+          ["Physical manifest",latest.readiness.manifestReady],
+          ["Stripe + check scale",latest.readiness.scaleReady],
+          ["Interaction p95",latest.readiness.latencyReady],
+          ["Independent realism",latest.readiness.realismReady],
+          ["Garment boundaries",latest.readiness.boundaryReady],
+        ] as const).map(([label,ready])=><span key={label} data-ready={ready}><i>{ready?"✓":"!"}</i><b>{label}</b></span>)}
+        <p>Latest evidence: {new Date(latest.at).toLocaleString("en-IN")} · {latest.readiness.realism.uniqueViewers} realism viewers · {latest.readiness.latency.count} latency samples.</p>
+        {latest.readiness.reasons.length>0&&<div className="garmentQaReasons">{latest.readiness.reasons.map((reason,index)=><p key={index}>{reason}</p>)}</div>}
+      </div>:<p className="garmentQaReasons">No GarmentViewer readiness evidence has been recorded yet. Structural asset checks alone cannot promote 3D to customers.</p>}
+    </section>
 
     <section className="garmentQaPanel">
       <div className="garmentQaPanelHead"><div><small>BLOCKERS</small><h2>What still prevents asset approval</h2></div></div>
