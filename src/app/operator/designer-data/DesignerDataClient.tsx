@@ -263,6 +263,7 @@ export default function DesignerDataClient() {
             <p>{selected.compatibility.some((item)=>item.status==="insufficient_evidence")
               ? "Low-evidence scores stay provisional. Add verified GSM, structure, drape, breathability, wrinkle and stretch evidence in Fabric Analyzer before using them as production guidance."
               : "All six garment families have enough physical evidence for internal compatibility guidance. Customer-facing claims remain disabled."}</p>
+            {selected.compatibility.some((item)=>item.criticalUnknowns.length>0)&&<small className="compatibilityMissing">Calibration blockers: {[...new Set(selected.compatibility.flatMap((item)=>item.criticalUnknowns))].join(", ")}.</small>}
           </section>
 
           <section className="evidenceCard" aria-label="Evidence readiness for selected fabric">
