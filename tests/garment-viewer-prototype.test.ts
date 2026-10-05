@@ -67,9 +67,13 @@ test("GarmentViewer lab route is isolated from the protected customer visual rou
   assert(legacy.includes('redirect("/style-director")'));
 });
 
-test("viewer surface exposes four cameras and independent shirt/trouser material controls",()=>{
+test("viewer surface exposes the shared four-angle turntable and independent shirt/trouser material controls",()=>{
   const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
-  for(const token of ['id:"front"','id:"three-quarter"','id:"side"','id:"back"',"GARMENT_PANEL_SPECS","createTexture","setRoughnessFactor","setScale","shirtTileMm","trouserTileMm"]) {
+  const identity=readFileSync("src/lib/designer/model-identity.ts","utf8");
+  for(const token of ["LINEN_EARTH_MODEL_VIEWS","GARMENT_PANEL_SPECS","createTexture","setRoughnessFactor","setScale","shirtTileMm","trouserTileMm"]) {
     assert(viewer.includes(token),token);
+  }
+  for(const token of ['id:"front"','id:"three-quarter"','id:"side"','id:"back"',"yawDeg:0","yawDeg:35","yawDeg:90","yawDeg:180"]) {
+    assert(identity.includes(token),token);
   }
 });
