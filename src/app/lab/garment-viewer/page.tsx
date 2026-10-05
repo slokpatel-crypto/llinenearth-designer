@@ -2,10 +2,9 @@ import Link from "next/link";
 import Script from "next/script";
 import GarmentViewer, { type GarmentViewerFabric } from "@/components/GarmentViewer";
 import { FABRIC_STOCK } from "@/lib/fabric-stock";
-import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
-import { applyLiveVerifiedStockAvailability } from "@/lib/designer/stock-availability-server";
 import { loadGarmentViewerProductionAssetStatus } from "@/lib/garment-viewer-model-server";
 import { PROTOTYPE_MODEL_ID } from "@/lib/garment-viewer-prototype";
+import { loadActiveDesignerFabricStock } from "@/lib/designer/catalog-stock-server";
 import "./garment-viewer.css";
 
 export const metadata={
@@ -28,10 +27,8 @@ function viewerFabric(fabric:(typeof FABRIC_STOCK)[number]):GarmentViewerFabric 
 
 export default async function GarmentViewerLabPage() {
   const production=await loadGarmentViewerProductionAssetStatus();
-  const metadata=await loadDesignerFabricMetadata();
-  const metadataStock=applyDesignerFabricMetadataToStock(metadata);
-  const liveStock=await applyLiveVerifiedStockAvailability(metadataStock);
-  const activeStock=liveStock.stock.filter((fabric)=>fabric.inStock);
+  const live=await loadActiveDesignerFabricStock();
+  const activeStock=live.stock;
   const approvedModelSrc=production.configured ? production.modelSrc : null;
   const modelManifestSrc=production.configured ? production.manifestSrc : null;
   const modelId=approvedModelSrc ? production.modelId : PROTOTYPE_MODEL_ID;
