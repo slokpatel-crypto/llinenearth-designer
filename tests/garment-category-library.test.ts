@@ -111,3 +111,10 @@ test("Designer leads with garment plus cloth instead of fabric alone",()=>{
   assert(source.includes("01 / GARMENT + CLOTH"));
   assert(source.includes("Choose what you are making, then the fabric."));
 });
+
+
+test("Async Designer identity includes canonical StyleSpec so applied directions are not discarded",()=>{
+  const source=readFileSync("src/components/DesignerModule.tsx","utf8");
+  assert(source.includes("styleIdentity(direction.baseStyle),fromLegacyStyle(direction.baseStyle),climate"));
+  assert(source.includes("styleIdentity(result.style),fromLegacyStyle(result.style),nextContext.climate"));
+});
