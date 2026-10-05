@@ -1533,6 +1533,7 @@ const garmentViewerPrototype=fs.readFileSync("src/lib/garment-viewer-prototype.t
 const garmentViewerGlb=fs.readFileSync("src/lib/garment-viewer-glb.ts","utf8");
 const garmentViewerReadiness=fs.readFileSync("src/lib/garment-viewer-readiness.ts","utf8");
 const garmentViewerOperator=fs.readFileSync("src/app/operator/garment-viewer/page.tsx","utf8");
+const garmentViewerLabPage=fs.readFileSync("src/app/lab/garment-viewer/page.tsx","utf8");
 const garmentViewerMemory=fs.readFileSync("src/app/api/memory/event/route.ts","utf8");
 const garmentViewerReadinessClient=fs.readFileSync("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx","utf8");
 const protectedVisualRoute=fs.readFileSync("src/app/visual/page.tsx","utf8");
@@ -1550,6 +1551,9 @@ for(const token of ["parseGarmentViewerGlbJson","TEXCOORD_0","externalGlbUri","s
 }
 for(const token of ["garmentViewerPromotionReadiness","ROADMAP_SCALE_TOLERANCE_PCT","PHASE1_PROOF_MIN_REALISM_VIEWERS","PHASE1_PROOF_MAX_P95_MS","garmentViewerAssetIdentityMatches","GARMENT_VIEWER_REALISM_RUBRIC_VERSION"]) {
   if(!garmentViewerReadiness.includes(token)) throw new Error(`GarmentViewer promotion gate regression: missing ${token}`);
+}
+for(const token of ["loadDesignerFabricMetadata","applyDesignerFabricMetadataToStock","applyLiveVerifiedStockAvailability","activeStock"]) {
+  if(!garmentViewerLabPage.includes(token)) throw new Error(`GarmentViewer live-catalogue regression: missing ${token}`);
 }
 for(const token of ["GarmentViewerEvidenceForm","CUSTOMER PROMOTION GATE","loadLatestGarmentViewerReadiness"]) {
   if(!garmentViewerOperator.includes(token)) throw new Error(`GarmentViewer operator QA regression: missing ${token}`);
