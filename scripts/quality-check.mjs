@@ -1528,6 +1528,7 @@ for(const token of ["PHYSICS COMPATIBILITY · PROVISIONAL","GARMENT EXPANSION RE
 console.log("Fabric Physics gate passed: physical suitability stays evidence-aware, operator-visible and provisional before customer exposure.");
 
 const garmentViewerSource=fs.readFileSync("src/components/GarmentViewer.tsx","utf8");
+const garmentViewerBlenderExporter=fs.readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
 const garmentViewerContract=fs.readFileSync("src/lib/garment-viewer-model-contract.ts","utf8");
 const garmentViewerPrototype=fs.readFileSync("src/lib/garment-viewer-prototype.ts","utf8");
 const garmentViewerGlb=fs.readFileSync("src/lib/garment-viewer-glb.ts","utf8");
@@ -1542,6 +1543,9 @@ const garmentViewerReadinessClient=fs.readFileSync("src/app/operator/phase10-rea
 const protectedVisualRoute=fs.readFileSync("src/app/visual/page.tsx","utf8");
 for(const token of ["GARMENT_PANEL_SPECS","sampler?.setScale","sampler?.setOffset","sampler?.setRotation","modelManifestSrc","assetIdentity","GARMENT_VIEWER_LATENCY_STORAGE_KEY"]) {
   if(!garmentViewerSource.includes(token)) throw new Error(`GarmentViewer M2 runtime regression: missing ${token}`);
+}
+for(const token of ["LinenEarthExport","REFERENCE_HEIGHT_M = 1.727","ShirtTorsoFabric","TrouserLegRFabric","export_scene.gltf","export_format=\"GLB\""]) {
+  if(!garmentViewerBlenderExporter.includes(token)) throw new Error(`GarmentViewer Blender exporter regression: missing ${token}`);
 }
 for(const token of ["linen-earth-garment-viewer-v2","REQUIRED_GARMENT_VIEWER_MATERIALS","approvedGarmentViewerModelSource","validateGarmentViewerModelManifest","GarmentViewerAssetSource","Model source provenance is required","sourceReady"]) {
   if(!garmentViewerContract.includes(token)) throw new Error(`GarmentViewer production contract regression: missing ${token}`);
