@@ -40,3 +40,12 @@ test("production GLB only permits embedded data URIs or bufferView-backed assets
   assert.equal(externalGlbUri("/models/texture.png"),"/models/texture.png");
   assert.equal(externalGlbUri("https://cdn.example/texture.png"),"https://cdn.example/texture.png");
 });
+
+
+test("prototype complexity preflight counts rendered mesh instances",()=>{
+  const inspection=inspectGarmentViewerGlb(buildPrototypeGarmentGlb(),"LE-OFFICEWEAR-V1");
+  assert.equal(inspection.triangleCount,168);
+  assert.equal(inspection.vertexCount,336);
+  assert.equal(inspection.performanceBudgetReady,true);
+  assert.deepEqual(inspection.performanceWarnings,[]);
+});
