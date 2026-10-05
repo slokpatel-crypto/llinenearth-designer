@@ -27,6 +27,7 @@ import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import { creativeFamilyFromConceptId, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
+import { optionById, optionsFor } from "@/lib/designer/options/library";
 import {
   fromLegacyStyle,
   mergeLegacyIntoStyleSpec,
@@ -61,6 +62,8 @@ type DesignerSearchOption = {
 
 const SHIRT_FILTERS:ShirtFabricFilter[]=["All","Plain","Print","Blend","Formal"];
 const PANT_FILTERS:PantFabricFilter[]=["All","Light","Medium","Dark"];
+const SHIRT_TYPE_OPTIONS=optionsFor("shirt.type");
+const TROUSER_TYPE_OPTIONS=optionsFor("pant.type");
 
 function customerFabricLine(line:string) {
   return line
@@ -167,7 +170,7 @@ export function DesignerModule() {
   const pant = useMemo(() => pantOptions.find((item) => item.id === pantId), [pantId, pantOptions]);
   const craftFabrics=useMemo(()=>[...new Map([...shirtOptions,...pantOptions].map(f=>[f.id,f])).values()],[shirtOptions,pantOptions]);
   const styleIdentity=(value:DesignerStyle)=>(Object.keys(DESIGNER_STYLE_CHOICES) as Array<keyof DesignerStyle>).map((key)=>value[key]);
-  const assessmentIdentity=JSON.stringify([shirtId,pantId,occasion,styleIdentity(style),climate,intention,measurementProfile,tailorObservations,bodyProfile]);
+  const assessmentIdentity=JSON.stringify([shirtId,pantId,occasion,styleIdentity(style),styleSpec,climate,intention,measurementProfile,tailorObservations,bodyProfile]);
   const committedAssessmentIdentity=useRef(assessmentIdentity);
   const committedCreativeId=useRef(activeCreative?.id||null);
   useLayoutEffect(()=>{committedCreativeId.current=activeCreative?.id||null;},[activeCreative?.id]);
@@ -201,11 +204,13 @@ export function DesignerModule() {
       `Shirt: ${customerFabricLine(shirt.line)} — ${shirt.name}`,
       `Trouser: ${customerFabricLine(pant.line)} — ${pant.name}`,
       `Occasion: ${occasion}`,
+      `Shirt type: ${optionById(styleSpec.shirt.type)?.label || styleSpec.shirt.type}`,
+      `Trouser type: ${optionById(styleSpec.pant.type)?.label || styleSpec.pant.type}`,
       `Style: ${style.collar}; ${style.cuff}; ${style.shirtFit}; ${style.shirtWear}; ${style.trouser}`,
       ...creative,
     ].filter(Boolean).join("\n");
     return buildWhatsAppUrl({topic:"Designer Studio look",garment:"Shirt + trouser",details});
-  },[shirt,pant,occasion,style,activeCreative]);
+  },[shirt,pant,occasion,style,styleSpec,activeCreative]);
   const fitCoverage = useMemo(() => measurementCoverage(measurementProfile), [measurementProfile]);
   const fitGuidance = useMemo(() => measurementFitGuidance(measurementProfile), [measurementProfile]);
   const observationCoverage = useMemo(() => tailorObservationCoverage(tailorObservations), [tailorObservations]);
@@ -892,6 +897,18 @@ export function DesignerModule() {
     setFeedbackReason(null);
   }
 
+  function changeGarmentType(garment:"shirt"|"pant",value:string) {
+    const next:StyleSpecV2={
+      ...styleSpec,
+      shirt:{...styleSpec.shirt},
+      pant:{...styleSpec.pant},
+      legacy:{...styleSpec.legacy},
+    };
+    if(garment==="shirt") next.shirt.type=value;
+    else next.pant.type=value;
+    applyStyleSpec(next);
+  }
+
   function applyStylePatch(patch: Partial<DesignerStyle>) {
     setActiveCreative(null);
     setStyle((current) => ({ ...current, ...patch }));
@@ -1156,6 +1173,24 @@ export function DesignerModule() {
             {pant && /lea/i.test(pant.line) && <details className="newDesignerFabricSpecs"><summary>ⓘ Fabric specs</summary><p><b>{pant.line}</b> · “Lea” is a yarn-count term used in the textile trade; it stays here as a technical fabric reference.</p></details>}
           </article>
         </div>
+
+        <section className="newDesignerGarmentTypePicker" aria-label="Choose garment type">
+          <div className="newDesignerGarmentTypeHead"><span>GARMENT TYPE</span><strong>Choose what the fabric becomes.</strong><p>Fabric selection and garment construction stay separate, so the same cloth can later support more garment families without rebuilding the engine.</p></div>
+          <div className="newDesignerGarmentTypeLive">
+            <label><span>Shirt type</span><select value={styleSpec.shirt.type} onChange={(event)=>changeGarmentType("shirt",event.target.value)}>
+              {SHIRT_TYPE_OPTIONS.map((option)=><option key={option.id} value={option.id}>{option.label}</option>)}
+            </select><small>{optionById(styleSpec.shirt.type)?.description || "Shirt construction direction"}</small></label>
+            <label><span>Trouser type</span><select value={styleSpec.pant.type} onChange={(event)=>changeGarmentType("pant",event.target.value)}>
+              {TROUSER_TYPE_OPTIONS.map((option)=><option key={option.id} value={option.id}>{option.label}</option>)}
+            </select><small>{optionById(styleSpec.pant.type)?.description || "Trouser construction direction"}</small></label>
+          </div>
+          <div className="newDesignerFutureGarments">
+            {GARMENT_CATEGORY_LIBRARY.filter((garment)=>garment.status==="planned").map((garment)=><article key={garment.id}>
+              <span>FUTURE</span><strong>{garment.label}</strong><p>{garment.typeExamples.slice(0,4).join(" · ")}</p><small>{garment.detailFamilies.slice(0,5).join(" · ")}</small>
+            </article>)}
+          </div>
+        </section>
+
         <a className="newDesignerCreativeTeaser" href="#designerCreativeLab"><span>✦ CREATIVE LAB</span><strong>Your cloth can become 5 original design directions.</strong><b>Explore after occasion →</b></a>
         <a className="newDesignerJump" href="#designerPhotoTitle">Preview on model ↘</a>
 
