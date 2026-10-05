@@ -1104,6 +1104,12 @@ export function DesignerModule() {
             <small>{garment.detailFamilies.slice(0,5).join(" · ")}</small>
           </article>)}
         </div>
+        <Link className="newDesigner3dBridge" href="/lab/garment-viewer">
+          <span>LIVE 3D LOOK</span>
+          <strong>Open this shirt + trouser recipe in 3D</strong>
+          <small>Your selected fabrics and saved construction details carry into the 3D Lab. Blazer and Suit stay marked future until their production garment blocks are ready.</small>
+          <b aria-hidden="true">↗</b>
+        </Link>
         <div className="newDesignerFabricGrid">
           <article className="newDesignerFabric">
             <div className="newDesignerFabricFilters" aria-label="Filter shirt fabrics">
