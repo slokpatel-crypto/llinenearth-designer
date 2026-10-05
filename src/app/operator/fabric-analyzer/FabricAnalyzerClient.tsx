@@ -47,6 +47,10 @@ type AnalyzerProfile={
     gsm:number|null;
     drape:string|null;
     fiberContent:string|null;
+    structure:number|null;
+    breathability:number|null;
+    wrinkleResistance:number|null;
+    stretch:number|null;
     sourceUrl:string|null;
     evidenceNote:string|null;
   };
@@ -89,6 +93,10 @@ const initial={
   verifiedGsm:"",
   verifiedDrape:"",
   verifiedFiberContent:"",
+  verifiedStructure:"",
+  verifiedBreathability:"",
+  verifiedWrinkleResistance:"",
+  verifiedStretch:"",
   verifiedPhysicalSourceUrl:"",
   verifiedPhysicalEvidenceNote:"",
   notes:"",
@@ -164,7 +172,7 @@ export default function FabricAnalyzerClient(){
     foldImageUrl:directCaptures.fold?.dataUrl || form.foldImageUrl.trim(),
   }),[directCaptures,form.imageUrl,form.macroImageUrl,form.foldImageUrl]);
   const captureCount=useMemo(()=>[effectiveCaptures.imageUrl,effectiveCaptures.macroImageUrl,effectiveCaptures.foldImageUrl].filter(Boolean).length,[effectiveCaptures]);
-  const physicalCount=useMemo(()=>[form.verifiedGsm,form.verifiedDrape,form.verifiedFiberContent,form.repeatRealMm,form.swatchRealWidthMm].filter(Boolean).length,[form]);
+  const physicalCount=useMemo(()=>[form.verifiedGsm,form.verifiedDrape,form.verifiedFiberContent,form.verifiedStructure,form.verifiedBreathability,form.verifiedWrinkleResistance,form.verifiedStretch,form.repeatRealMm,form.swatchRealWidthMm].filter((value)=>value!=="").length,[form]);
   const physicalProvenanceMissing=physicalCount>0 && !form.verifiedPhysicalSourceUrl.trim() && form.verifiedPhysicalEvidenceNote.trim().length<8;
 
   function field<K extends keyof typeof initial>(key:K,value:string){setForm((current)=>({...current,[key]:value}));}
@@ -182,6 +190,10 @@ export default function FabricAnalyzerClient(){
         swatchRealWidthMm:form.swatchRealWidthMm?Number(form.swatchRealWidthMm):undefined,
         repeatRealMm:form.repeatRealMm?Number(form.repeatRealMm):undefined,
         verifiedGsm:form.verifiedGsm?Number(form.verifiedGsm):undefined,
+        verifiedStructure:form.verifiedStructure!==""?Number(form.verifiedStructure):undefined,
+        verifiedBreathability:form.verifiedBreathability!==""?Number(form.verifiedBreathability):undefined,
+        verifiedWrinkleResistance:form.verifiedWrinkleResistance!==""?Number(form.verifiedWrinkleResistance):undefined,
+        verifiedStretch:form.verifiedStretch!==""?Number(form.verifiedStretch):undefined,
       };
       const response=await fetch("/api/operator/fabric-analyzer/analyze",{
         method:"POST",
@@ -295,6 +307,10 @@ export default function FabricAnalyzerClient(){
             <label><span>Verified GSM</span><input type="number" min="20" max="1000" value={form.verifiedGsm} onChange={(e)=>field("verifiedGsm",e.target.value)} /></label>
             <label><span>Verified drape</span><select value={form.verifiedDrape} onChange={(e)=>field("verifiedDrape",e.target.value)}><option value="">Unknown</option><option>Fluid</option><option>Balanced</option><option>Structured</option></select></label>
             <label className="wide"><span>Verified fibre content</span><input value={form.verifiedFiberContent} onChange={(e)=>field("verifiedFiberContent",e.target.value)} placeholder="Only from supplier/owner evidence" /></label>
+            <label><span>Verified structure index</span><input type="number" min="0" max="1" step="0.05" value={form.verifiedStructure} onChange={(e)=>field("verifiedStructure",e.target.value)} placeholder="0–1" /><small>0 = soft/fluid, 1 = highly structured.</small></label>
+            <label><span>Verified breathability</span><input type="number" min="0" max="1" step="0.05" value={form.verifiedBreathability} onChange={(e)=>field("verifiedBreathability",e.target.value)} placeholder="0–1" /><small>Only from a repeatable owner/supplier test.</small></label>
+            <label><span>Verified wrinkle resistance</span><input type="number" min="0" max="1" step="0.05" value={form.verifiedWrinkleResistance} onChange={(e)=>field("verifiedWrinkleResistance",e.target.value)} placeholder="0–1" /><small>0 = wrinkles readily, 1 = strongly resistant.</small></label>
+            <label><span>Verified stretch</span><input type="number" min="0" max="1" step="0.05" value={form.verifiedStretch} onChange={(e)=>field("verifiedStretch",e.target.value)} placeholder="0–1" /><small>0 = none, 1 = high stretch.</small></label>
             <label className="wide"><span>Physical evidence source URL</span><input value={form.verifiedPhysicalSourceUrl} onChange={(e)=>field("verifiedPhysicalSourceUrl",e.target.value)} placeholder="HTTPS supplier record / specification page, when available" /></label><label className="wide"><span>Physical evidence note</span><textarea rows={2} value={form.verifiedPhysicalEvidenceNote} onChange={(e)=>field("verifiedPhysicalEvidenceNote",e.target.value)} placeholder="Required when no source URL: e.g. Owner measured repeat with ruler on roll 24B." /><small>Any supplied GSM, drape, fibre or millimetre measurement needs a source URL or this evidence note.</small></label>{physicalProvenanceMissing&&<p className="physicalProvenanceWarning">Add provenance for the supplied physical facts before running Analyzer.</p>}
           </div>
         </details>
@@ -321,7 +337,7 @@ export default function FabricAnalyzerClient(){
             <span>Texture <b>{pct(run.profile.confidence.texture)}</b></span>
             <span>Styling <b>{pct(run.profile.confidence.styling)}</b></span>
           </div>
-          <div className="physicalTruth"><small>VERIFIED PHYSICAL</small><p>GSM <b>{run.profile.verifiedPhysical?.gsm ?? "unknown"}</b> · Drape <b>{run.profile.verifiedPhysical?.drape || "unknown"}</b></p><p>Fibre <b>{run.profile.verifiedPhysical?.fiberContent || "unknown"}</b></p>{run.profile.verifiedPhysical?.sourceUrl&&<p><b>Source:</b> {run.profile.verifiedPhysical.sourceUrl}</p>}{run.profile.verifiedPhysical?.evidenceNote&&<p><b>Evidence:</b> {run.profile.verifiedPhysical.evidenceNote}</p>}</div>
+          <div className="physicalTruth"><small>VERIFIED PHYSICAL</small><p>GSM <b>{run.profile.verifiedPhysical?.gsm ?? "unknown"}</b> · Drape <b>{run.profile.verifiedPhysical?.drape || "unknown"}</b></p><p>Structure <b>{run.profile.verifiedPhysical?.structure ?? "unknown"}</b> · Breathability <b>{run.profile.verifiedPhysical?.breathability ?? "unknown"}</b></p><p>Wrinkle resistance <b>{run.profile.verifiedPhysical?.wrinkleResistance ?? "unknown"}</b> · Stretch <b>{run.profile.verifiedPhysical?.stretch ?? "unknown"}</b></p><p>Fibre <b>{run.profile.verifiedPhysical?.fiberContent || "unknown"}</b></p>{run.profile.verifiedPhysical?.sourceUrl&&<p><b>Source:</b> {run.profile.verifiedPhysical.sourceUrl}</p>}{run.profile.verifiedPhysical?.evidenceNote&&<p><b>Evidence:</b> {run.profile.verifiedPhysical.evidenceNote}</p>}</div>
           <div className="captures"><small>CAPTURES USED</small>{(run.profile.captureSet||[]).map((item)=><span key={item.role}>{item.role}<b>{item.contentSha256?"measured":"unmeasured"}</b></span>)}</div>
           <div className="summary"><small>ANALYZER SUMMARY</small><p>{run.profile.summary}</p></div>
           {!!run.reviewReasons?.length&&<div className="reviewReasons"><small>WHY REVIEW</small>{run.reviewReasons.map((item)=><p key={item}>{item}</p>)}</div>}
