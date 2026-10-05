@@ -37,3 +37,5 @@ Date: 2026-10-05
 Visible 3D viewer release: Designer now exposes the 3D entry at the top, and /vendor/model-viewer falls back to the pinned model-viewer CDN instead of returning a dead engine response.
 Target fix commits: fc0e7d2eb86c2c3ba81e24df3d4e164304c3ccdb + 1aac1edc486ffe88ca580f819c89057910b5f405
 Date: 2026-10-05
+
+Retry production deploy after 3D visibility fix. Requested 2026-10-05 22:37 IST.
