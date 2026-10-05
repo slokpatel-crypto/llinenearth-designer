@@ -74,3 +74,18 @@ test("panel spec template cannot pass as guessed production scale",()=>{
   assert(exporter.includes("widthMm must be a measured value between 0 and 2000 mm"));
   assert(exporter.includes("heightMm must be a measured value between 0 and 2500 mm"));
 });
+
+test("Blender scene preflight catches structural garment quality risks without requiring watertight clothing",()=>{
+  const preflight=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
+  for(const token of [
+    "linen-earth-officewear-scene-preflight-v1",
+    "evaluated_mesh_stats",
+    "degenerateFaces",
+    "activeUv",
+    "transformApplied",
+    "MAX_TOTAL_TRIANGLES = 220_000",
+    "MAX_TOTAL_VERTICES = 280_000",
+    "Apply transforms before measuring panels or exporting",
+  ]) assert(preflight.includes(token),token);
+  assert(!preflight.includes("non_manifold"),"Tailored garment openings must not be rejected as if clothing were watertight.");
+});
