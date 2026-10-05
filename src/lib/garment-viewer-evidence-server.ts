@@ -3,6 +3,7 @@ import "server-only";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { loadGarmentViewerProductionAssetStatus } from "@/lib/garment-viewer-model-server";
 import {
+  GARMENT_VIEWER_REALISM_RUBRIC_VERSION,
   garmentViewerAssetIdentityMatches,
   garmentViewerPromotionReadiness,
   type GarmentViewerPatternScaleSample,
@@ -76,6 +77,7 @@ export async function loadLatestGarmentViewerReadiness(){
     for(const row of rows){
       const payload=row.payload||{};
       if(String(payload.subtype||"")!=="garment_viewer_readiness") continue;
+      if(String(payload.realismRubricVersion||"")!==GARMENT_VIEWER_REALISM_RUBRIC_VERSION) continue;
       const evidence={
         patternScaleSamples:patternSamples(payload.patternScaleSamples),
         interactionLatencyMs:latencies(payload.interactionLatencyMs),
