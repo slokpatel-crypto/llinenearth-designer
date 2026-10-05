@@ -1564,7 +1564,10 @@ for(const token of ["LinenEarthExport","REFERENCE_HEIGHT_M = 1.727","ShirtTorsoF
 for(const token of ["BUNDLE_VERSION = \"1.4.1\"","BUNDLE_LICENSE = \"CC0\"","human-base-meshes-bundle-v1.4.1.zip","EXPECTED_ARCHIVE_BYTES = 50_643_039","safe_extract","source-library-only-not-production-model"]) {
   if(!garmentViewerBaseBootstrap.includes(token)) throw new Error(`GarmentViewer model-source bootstrap regression: missing ${token}`);
 }
-for(const token of ["TARGET_HEIGHT_M = 1.727","SOURCE_VERSION = \"1.4.1\"","SOURCE_LICENSE = \"CC0\"","discover_candidate","normalize_height","body-source-prepared-garments-required"]) {\n  if(!garmentViewerBodyPreparer.includes(token)) throw new Error(`GarmentViewer realistic-body intake regression: missing ${token}`);\n}\nif(garmentViewerBodyPreparer.includes("ShirtTorsoFabric")) throw new Error("GarmentViewer body intake must not fake production garment geometry.");
+for(const token of ["TARGET_HEIGHT_M = 1.727","SOURCE_VERSION = \"1.4.1\"","SOURCE_LICENSE = \"CC0\"","discover_candidate","normalize_height","body-source-prepared-garments-required"]) {
+  if(!garmentViewerBodyPreparer.includes(token)) throw new Error(`GarmentViewer realistic-body intake regression: missing ${token}`);
+}
+if(garmentViewerBodyPreparer.includes("ShirtTorsoFabric")) throw new Error("GarmentViewer body intake must not fake production garment geometry.");
 for(const token of ["linen-earth-garment-viewer-v2","REQUIRED_GARMENT_VIEWER_MATERIALS","approvedGarmentViewerModelSource","validateGarmentViewerModelManifest","GarmentViewerAssetSource","Model source provenance is required","sourceReady"]) {
   if(!garmentViewerContract.includes(token)) throw new Error(`GarmentViewer production contract regression: missing ${token}`);
 }
