@@ -290,6 +290,12 @@ const schema={
 function safeText(value:unknown,limit:number) {
   return String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
 }
+function verifiedIndex(value:unknown) {
+  return typeof value==="number" && Number.isFinite(value) && value>=0 && value<=1 ? value : null;
+}
+function verifiedGsmValue(value:unknown) {
+  return typeof value==="number" && Number.isFinite(value) && value>=20 && value<=1000 ? value : null;
+}
 
 
 const materialReferenceSet=new Set<string>(REAL_MENSWEAR_MATERIAL_TERMS.map((value)=>value.toLowerCase()));
@@ -560,13 +566,13 @@ Statement 1=quiet base, 5=dominant hero fabric.`;
       pattern:Math.min(adapted.confidence.pattern,measuredConfidence),
     },
     verifiedPhysical:{
-      gsm:Number.isFinite(input.verifiedGsm) ? Math.max(20,Math.min(1000,Number(input.verifiedGsm))) : null,
+      gsm:verifiedGsmValue(input.verifiedGsm),
       drape:input.verifiedDrape || null,
       fiberContent:input.verifiedFiberContent ? safeText(input.verifiedFiberContent,220) : null,
-      structure:Number.isFinite(input.verifiedStructure) ? Number(input.verifiedStructure) : null,
-      breathability:Number.isFinite(input.verifiedBreathability) ? Number(input.verifiedBreathability) : null,
-      wrinkleResistance:Number.isFinite(input.verifiedWrinkleResistance) ? Number(input.verifiedWrinkleResistance) : null,
-      stretch:Number.isFinite(input.verifiedStretch) ? Number(input.verifiedStretch) : null,
+      structure:verifiedIndex(input.verifiedStructure),
+      breathability:verifiedIndex(input.verifiedBreathability),
+      wrinkleResistance:verifiedIndex(input.verifiedWrinkleResistance),
+      stretch:verifiedIndex(input.verifiedStretch),
       sourceUrl:safeText(input.verifiedPhysicalSourceUrl,1800)||null,
       evidenceNote:safeText(input.verifiedPhysicalEvidenceNote,500)||null,
     },
