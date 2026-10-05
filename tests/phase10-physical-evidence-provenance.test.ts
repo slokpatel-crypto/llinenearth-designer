@@ -17,4 +17,7 @@ test("physical value ranges are bounded",()=>{
   assert.throws(()=>validateVerifiedPhysicalEvidence({verifiedGsm:10,verifiedPhysicalEvidenceNote:"Owner measured GSM."}),/between 20 and 1000/i);
   assert.throws(()=>validateVerifiedPhysicalEvidence({repeatRealMm:6000,verifiedPhysicalEvidenceNote:"Owner measured pattern repeat."}),/between 0 and 5000/i);
   assert.doesNotThrow(()=>validateVerifiedPhysicalEvidence({swatchRealWidthMm:250,verifiedPhysicalEvidenceNote:"Owner measured photographed swatch width."}));
+  assert.throws(()=>validateVerifiedPhysicalEvidence({verifiedStructure:1.2,verifiedPhysicalEvidenceNote:"Owner ran a structure test."}),/between 0 and 1/i);
+  assert.throws(()=>validateVerifiedPhysicalEvidence({verifiedBreathability:-0.1,verifiedPhysicalEvidenceNote:"Owner ran a breathability test."}),/between 0 and 1/i);
+  assert.doesNotThrow(()=>validateVerifiedPhysicalEvidence({verifiedStructure:0,verifiedBreathability:1,verifiedWrinkleResistance:.65,verifiedStretch:.08,verifiedPhysicalEvidenceNote:"Owner recorded repeatable shop test indices."}));
 });
