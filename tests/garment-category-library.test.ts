@@ -78,3 +78,15 @@ test("Designer type selection participates in assessment identity and customer h
   assert(source.includes("optionById(styleSpec.shirt.type)"));
   assert(source.includes("optionById(styleSpec.pant.type)"));
 });
+
+
+test("3D recipe shows saved garment type selections from Designer StyleSpec",()=>{
+  const source=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  assert(source.includes("styleSpec?:"));
+  assert(source.includes("draftShirtTypeLabel"));
+  assert(source.includes("draftTrouserTypeLabel"));
+  assert(source.includes("designerDraftRecipe.styleSpec.shirt.type"));
+  assert(source.includes("designerDraftRecipe.styleSpec.pant.type"));
+  assert(source.includes("Shirt · {draftShirtTypeLabel}"));
+  assert(source.includes("Trouser · {draftTrouserTypeLabel}"));
+});
