@@ -1528,6 +1528,7 @@ for(const token of ["PHYSICS COMPATIBILITY · PROVISIONAL","GARMENT EXPANSION RE
 console.log("Fabric Physics gate passed: physical suitability stays evidence-aware, operator-visible and provisional before customer exposure.");
 
 const garmentViewerSource=fs.readFileSync("src/components/GarmentViewer.tsx","utf8");
+const garmentViewerBlenderExporter=fs.readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
 const designerModuleGarmentScope=fs.readFileSync("src/components/DesignerModule.tsx","utf8");
 const garmentCategoryLibrary=fs.readFileSync("src/lib/designer/garment-category-library.ts","utf8");
 const futureGarmentOptions=fs.readFileSync("src/lib/designer/future-garment-options.ts","utf8");
@@ -1555,7 +1556,10 @@ for(const token of ["GARMENT_CATEGORY_LIBRARY","newDesignerGarmentScope","garmen
 for(const token of ["GARMENT_CATEGORY_LIBRARY","GARMENT TYPES · CURRENT + FUTURE","SHIRT_GARMENT_CATEGORY.typeExamples","SHIRT_GARMENT_CATEGORY.detailFamilies","TROUSER_GARMENT_CATEGORY.typeExamples","TROUSER_GARMENT_CATEGORY.detailFamilies","linen-earth:real-designer-draft:v2","YOUR DESIGNER RECIPE","construction-specific mesh changes remain a later production-model step","GARMENT_PANEL_SPECS","sampler?.setScale","sampler?.setOffset","sampler?.setRotation","modelManifestSrc","assetIdentity","GARMENT_VIEWER_LATENCY_STORAGE_KEY"]) {
   if(!garmentViewerSource.includes(token)) throw new Error(`GarmentViewer M2 runtime regression: missing ${token}`);
 }
-for(const token of ["linen-earth-garment-viewer-v2","REQUIRED_GARMENT_VIEWER_MATERIALS","approvedGarmentViewerModelSource","validateGarmentViewerModelManifest"]) {
+for(const token of ["LinenEarthExport","REFERENCE_HEIGHT_M = 1.727","ShirtTorsoFabric","TrouserLegRFabric","export_scene.gltf","export_format=\"GLB\""]) {
+  if(!garmentViewerBlenderExporter.includes(token)) throw new Error(`GarmentViewer Blender exporter regression: missing ${token}`);
+}
+for(const token of ["linen-earth-garment-viewer-v2","REQUIRED_GARMENT_VIEWER_MATERIALS","approvedGarmentViewerModelSource","validateGarmentViewerModelManifest","GarmentViewerAssetSource","Model source provenance is required","sourceReady"]) {
   if(!garmentViewerContract.includes(token)) throw new Error(`GarmentViewer production contract regression: missing ${token}`);
 }
 for(const token of ["ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric","TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric"]) {
@@ -1578,7 +1582,7 @@ for(const token of ["@google/model-viewer@4.3.1","text/javascript","s-maxage=259
 }
 if(garmentViewerLabPage.includes("ajax.googleapis.com")) throw new Error("GarmentViewer browser must not load its 3D engine from Google CDN directly.");
 if(garmentViewerLabCss.includes(".garmentViewerControls{order:-1}")) throw new Error("GarmentViewer mobile regression: controls cannot appear before the 3D stage.");
-for(const token of ["GarmentViewerEvidenceForm","CUSTOMER PROMOTION GATE","loadLatestGarmentViewerReadiness"]) {
+for(const token of ["GarmentViewerEvidenceForm","CUSTOMER PROMOTION GATE","SOURCE / LICENSE","sourceReady","loadLatestGarmentViewerReadiness"]) {
   if(!garmentViewerOperator.includes(token)) throw new Error(`GarmentViewer operator QA regression: missing ${token}`);
 }
 for(const token of ["garment-viewer-m2","Reusable 3D GarmentViewer production gate","/api/operator/garment-viewer","The current customer Designer stays on the photographic preview"]) {
