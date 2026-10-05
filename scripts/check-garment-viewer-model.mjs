@@ -28,6 +28,8 @@ try{
   }catch(error){
     manifest={
       valid:false,
+      sourceReady:false,
+      source:null,
       missingPanels:[],
       invalidPanels:[],
       reasons:[error instanceof Error ? error.message : "Manifest could not be read."],
