@@ -1117,8 +1117,12 @@ export function DesignerModule() {
         <div className="newDesignerGarmentScope" aria-label="Garment types and design details">
           {GARMENT_CATEGORY_LIBRARY.map((garment)=><article key={garment.id} data-status={garment.status}>
             <div><span>{garment.status==="live"?"CURRENT":"FUTURE"}</span><strong>{garment.label}</strong></div>
-            <p>{garment.typeExamples.slice(0,4).join(" · ")}</p>
-            <small>{garment.detailFamilies.slice(0,5).join(" · ")}</small>
+            {garment.id==="shirt" ? <label><span>TYPE</span><select aria-label="Shirt type" value={styleSpec.shirt.type} onChange={(event)=>changeGarmentType("shirt",event.target.value)}>
+              {SHIRT_TYPE_OPTIONS.map((option)=><option key={option.id} value={option.id}>{option.label}</option>)}
+            </select></label> : garment.id==="trouser" ? <label><span>TYPE</span><select aria-label="Trouser type" value={styleSpec.pant.type} onChange={(event)=>changeGarmentType("pant",event.target.value)}>
+              {TROUSER_TYPE_OPTIONS.map((option)=><option key={option.id} value={option.id}>{option.label}</option>)}
+            </select></label> : <p>{garment.typeExamples.slice(0,4).join(" · ")}</p>}
+            <small>{garment.status==="live" ? "DETAILS · "+garment.detailFamilies.slice(0,5).join(" · ") : "PLANNED DETAILS · "+garment.detailFamilies.slice(0,5).join(" · ")}</small>
           </article>)}
         </div>
         <div className="newDesignerFabricGrid">
@@ -1173,23 +1177,6 @@ export function DesignerModule() {
             {pant && /lea/i.test(pant.line) && <details className="newDesignerFabricSpecs"><summary>ⓘ Fabric specs</summary><p><b>{pant.line}</b> · “Lea” is a yarn-count term used in the textile trade; it stays here as a technical fabric reference.</p></details>}
           </article>
         </div>
-
-        <section className="newDesignerGarmentTypePicker" aria-label="Choose garment type">
-          <div className="newDesignerGarmentTypeHead"><span>GARMENT TYPE</span><strong>Choose what the fabric becomes.</strong><p>Fabric selection and garment construction stay separate, so the same cloth can later support more garment families without rebuilding the engine.</p></div>
-          <div className="newDesignerGarmentTypeLive">
-            <label><span>Shirt type</span><select value={styleSpec.shirt.type} onChange={(event)=>changeGarmentType("shirt",event.target.value)}>
-              {SHIRT_TYPE_OPTIONS.map((option)=><option key={option.id} value={option.id}>{option.label}</option>)}
-            </select><small>{optionById(styleSpec.shirt.type)?.description || "Shirt construction direction"}</small></label>
-            <label><span>Trouser type</span><select value={styleSpec.pant.type} onChange={(event)=>changeGarmentType("pant",event.target.value)}>
-              {TROUSER_TYPE_OPTIONS.map((option)=><option key={option.id} value={option.id}>{option.label}</option>)}
-            </select><small>{optionById(styleSpec.pant.type)?.description || "Trouser construction direction"}</small></label>
-          </div>
-          <div className="newDesignerFutureGarments">
-            {GARMENT_CATEGORY_LIBRARY.filter((garment)=>garment.status==="planned").map((garment)=><article key={garment.id}>
-              <span>FUTURE</span><strong>{garment.label}</strong><p>{garment.typeExamples.slice(0,4).join(" · ")}</p><small>{garment.detailFamilies.slice(0,5).join(" · ")}</small>
-            </article>)}
-          </div>
-        </section>
 
         <a className="newDesignerCreativeTeaser" href="#designerCreativeLab"><span>✦ CREATIVE LAB</span><strong>Your cloth can become 5 original design directions.</strong><b>Explore after occasion →</b></a>
         <a className="newDesignerJump" href="#designerPhotoTitle">Preview on model ↘</a>
