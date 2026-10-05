@@ -29,9 +29,11 @@ Skin, hair, shoes and non-fabric accessories must use other material names and a
 
 ## Geometry target
 
+The production asset must use the exact same Real Model Designer identity, not a similar substitute. Canonical identity: `linen-earth-studio-model-v1`, anchored to `/designer/studio-tucked.webp`.
+
 The production asset should preserve the Linen Earth approved model direction:
 
-- adult male, approximately 5'8" reference height,
+- adult male, 1727 mm / approximately 5'8" reference height,
 - neutral premium-office proportions,
 - tucked-in shirt,
 - realistic neck-to-collar junction,
@@ -116,11 +118,17 @@ Every approved GLB requires a same-name sidecar:
 
 The sidecar binds physical panel dimensions and optional camera orbits to the exact model identity:
 
+Production validation rejects a sidecar that does not declare `linen-earth-studio-model-v1` and the exact existing Real Model Designer reference image. This prevents a structurally valid but visually different 3D mannequin from being promoted.
+
 ```json
 {
   "version": "linen-earth-garment-viewer-v2",
   "modelId": "LE-OFFICEWEAR-V1",
   "referenceHeightMm": 1727,
+  "modelIdentity": {
+    "id": "linen-earth-studio-model-v1",
+    "referenceImage": "/designer/studio-tucked.webp"
+  },
   "source": {
     "name": "Blender Human Base Meshes",
     "license": "CC0",
