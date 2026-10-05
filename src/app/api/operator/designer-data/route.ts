@@ -55,6 +55,10 @@ export async function GET() {
         || (physicalField("verifiedPhysical.drape") && analyzed?.verifiedPhysical.drape)
       ),
       fiberVerified:Boolean(physicalField("verifiedPhysical.fiberContent") && analyzed?.verifiedPhysical.fiberContent),
+      structureVerified:Boolean(physicalField("verifiedPhysical.structure") && analyzed?.verifiedPhysical.structure!=null),
+      breathabilityVerified:Boolean(physicalField("verifiedPhysical.breathability") && analyzed?.verifiedPhysical.breathability!=null),
+      wrinkleResistanceVerified:Boolean(physicalField("verifiedPhysical.wrinkleResistance") && analyzed?.verifiedPhysical.wrinkleResistance!=null),
+      stretchVerified:Boolean(physicalField("verifiedPhysical.stretch") && analyzed?.verifiedPhysical.stretch!=null),
       manualPhysicalProvenance,
       analyzerPhysicalProvenance,
       formalityVerified:verified.formalityScore!=null,
@@ -70,6 +74,10 @@ export async function GET() {
       if(!evidence.drapeVerified) gaps.push("drape");
       if((verified.weightGsm!=null||Boolean(verified.drape))&&!manualPhysicalProvenance) gaps.push("physical provenance");
       if(!evidence.fiberVerified) gaps.push("fibre");
+      if(!evidence.structureVerified) gaps.push("structure");
+      if(!evidence.breathabilityVerified) gaps.push("breathability");
+      if(!evidence.wrinkleResistanceVerified) gaps.push("wrinkle resistance");
+      if(!evidence.stretchVerified) gaps.push("stretch");
       if(!evidence.formalityVerified) gaps.push("formality");
     }
 
@@ -80,7 +88,11 @@ export async function GET() {
       +(evidence.gsmVerified?0:2)
       +(evidence.drapeVerified?0:2)
       +(evidence.formalityVerified?0:2)
-      +(evidence.fiberVerified?0:1);
+      +(evidence.fiberVerified?0:1)
+      +(evidence.structureVerified?0:1)
+      +(evidence.breathabilityVerified?0:1)
+      +(evidence.wrinkleResistanceVerified?0:1)
+      +(evidence.stretchVerified?0:1);
 
     return {
       id:fabric.id,
@@ -107,6 +119,10 @@ export async function GET() {
     gsm:active.filter((fabric)=>fabric.evidence.gsmVerified).length,
     drape:active.filter((fabric)=>fabric.evidence.drapeVerified).length,
     fiber:active.filter((fabric)=>fabric.evidence.fiberVerified).length,
+    structure:active.filter((fabric)=>fabric.evidence.structureVerified).length,
+    breathability:active.filter((fabric)=>fabric.evidence.breathabilityVerified).length,
+    wrinkleResistance:active.filter((fabric)=>fabric.evidence.wrinkleResistanceVerified).length,
+    stretch:active.filter((fabric)=>fabric.evidence.stretchVerified).length,
     formality:active.filter((fabric)=>fabric.evidence.formalityVerified).length,
   };
 
