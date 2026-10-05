@@ -1516,7 +1516,7 @@ for(const token of ["linen-earth-fabric-physics-v1","linen-earth-fabric-compatib
 for(const token of ["attachCatalogFabricPhysics","validFabricPhysicsValue","fabricCompatibilityMatrix","verifiedPhysical.structure","verifiedPhysical.breathability"]) {
   if(!fabricPhysicsCatalog.includes(token)) throw new Error(`Fabric Physics catalogue regression: missing ${token}`);
 }
-for(const token of ["attachCatalogFabricPhysics","garmentCompatibility"]) {
+for(const token of ["attachCatalogFabricPhysics","fabricsWithPhysics"]) {
   if(!fabricCatalogRoute.includes(token)) throw new Error(`Fabric Physics Designer catalogue regression: missing ${token}`);
 }
 for(const token of ["Verified structure index","Verified breathability","Verified wrinkle resistance","Verified stretch","PHYSICS COMPATIBILITY"]) {
