@@ -63,6 +63,19 @@ Reason:
 - the published model/database licensing can impose AGPL obligations on generated 3D models,
 - that is unnecessarily restrictive for a proprietary production garment asset.
 
+## Blender export helper
+
+The repository includes `scripts/blender/export-linen-earth-officewear.py`.
+
+It expects an already-approved Blender scene with:
+- collection `LinenEarthExport`,
+- body mesh named `Body`,
+- six garment mesh objects named exactly like the GarmentViewer material slots,
+- UVs on all six garment meshes,
+- body height at 1727 mm ± 20 mm.
+
+It assigns the exact material names and exports a self-contained GLB candidate. It intentionally refuses to auto-scale a wrong body or invent pattern dimensions.
+
 ## Production asset construction path
 
 1. Start from the approved realistic male body base.
