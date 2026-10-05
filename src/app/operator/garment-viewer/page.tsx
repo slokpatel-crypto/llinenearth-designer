@@ -37,7 +37,7 @@ export default async function GarmentViewerOperatorPage(){
       <p>{status.configured ? status.modelSrc : "LINEN_GARMENT_MODEL_SRC is not configured."}</p>
     </section>
 
-    <section className="garmentQaGrid garmentQaGridFive">
+    <section className="garmentQaGrid garmentQaGridSix">
       <article><small>MODEL FILE</small><strong>{status.configured?"Configured":"Missing"}</strong><p>{status.modelSrc||"Add an approved /models/*.glb source."}</p></article>
       <article><small>SOURCE / LICENSE</small><strong>{manifest?.sourceReady?"Verified":"Open"}</strong><p>{manifest?.source ? `${manifest.source.name} · ${manifest.source.license} · verified ${manifest.source.verifiedAt}` : "Production manifest must record source name, license and verification date."}</p></article>
       <article><small>SIX-PANEL CONTRACT</small><strong>{model?.contract.readiness==="contract_ready"?"Pass":"Open"}</strong><p>{model?model.contract.reasons.join(" "):"GLB has not been structurally inspected."}</p></article>
