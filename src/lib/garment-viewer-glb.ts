@@ -61,9 +61,10 @@ export function parseGarmentViewerGlbJson(bytes:Uint8Array):GlbJson {
   return parsed as GlbJson;
 }
 
-function remoteUri(uri:string|undefined){
+export function externalGlbUri(uri:string|undefined){
   const value=String(uri||"").trim();
-  return /^(?:https?:)?\/\//i.test(value)?value:null;
+  if(!value || /^data:/i.test(value)) return null;
+  return value;
 }
 
 export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):GarmentViewerGlbInspection {
@@ -94,8 +95,8 @@ export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):Garment
   });
 
   const remoteUris=[
-    ...(gltf.images||[]).map((item)=>remoteUri(item.uri)),
-    ...(gltf.buffers||[]).map((item)=>remoteUri(item.uri)),
+    ...(gltf.images||[]).map((item)=>externalGlbUri(item.uri)),
+    ...(gltf.buffers||[]).map((item)=>externalGlbUri(item.uri)),
   ].filter((value):value is string=>Boolean(value));
   const uvReady=panels.every((panel)=>panel.primitiveCount>0&&panel.position&&panel.normal&&panel.uv0);
   const selfContained=remoteUris.length===0;
@@ -108,7 +109,7 @@ export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):Garment
       if(!panel.uv0) reasons.push(`${panel.material} primitive is missing TEXCOORD_0.`);
     }
   }
-  if(!selfContained) reasons.push("Production GLB must not depend on remote image or buffer URLs.");
+  if(!selfContained) reasons.push("Production GLB must be self-contained; external image or buffer URIs are not allowed.");
 
   return {
     modelId,
