@@ -3,6 +3,7 @@ import reference from "./reference-data.json";
 import { optionsFor } from "./options/library.ts";
 import { fromLegacyStyle } from "./style-spec-v2.ts";
 import { evaluateCrossGarmentRules } from "./rules/evaluator.ts";
+import type { FabricCompatibilityResult, FabricPhysicsProfile } from "./fabric-physics.ts";
 
 export type OccasionTier = "Casual" | "Smart-Casual" | "Semi-Formal" | "Formal";
 export type RuleStatus = "pass" | "flag" | "unknown" | "not_applicable";
@@ -44,6 +45,9 @@ export interface DesignerFabric {
   drape?: "Fluid" | "Balanced" | "Structured" | null;
   opacity?: "Sheer" | "Semi-sheer" | "Opaque" | null;
   comfortTags?: Exclude<DesignerClimate, "Not specified">[] | null;
+  // Physical suitability is attached by the calibrated catalogue path; static fallbacks may omit it.
+  physicsProfile?: FabricPhysicsProfile;
+  garmentCompatibility?: FabricCompatibilityResult[];
   source: string;
   allowedGarments: Array<"shirt" | "pant">;
 }
