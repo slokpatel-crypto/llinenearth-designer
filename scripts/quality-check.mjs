@@ -1543,6 +1543,9 @@ for(const token of ["PHYSICS COMPATIBILITY · PROVISIONAL","GARMENT EXPANSION RE
 console.log("Fabric Physics gate passed: physical suitability stays evidence-aware, operator-visible and provisional before customer exposure.");
 
 const garmentViewerSource=fs.readFileSync("src/components/GarmentViewer.tsx","utf8");
+const designerModelIdentity=fs.readFileSync("public/model-identity/linen-earth-studio-model-v1.json","utf8");
+const photoOutfitPreviewIdentity=fs.readFileSync("src/components/PhotoOutfitPreview.tsx","utf8");
+const aiVisualizationIdentity=fs.readFileSync("src/lib/ai-visualization.ts","utf8");
 const garmentViewerBlenderExporter=fs.readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
 const garmentViewerBaseBootstrap=fs.readFileSync("scripts/blender/bootstrap-human-base-meshes.py","utf8");
 const garmentViewerBodyPreparer=fs.readFileSync("scripts/blender/prepare-linen-earth-body.py","utf8");
@@ -1571,23 +1574,32 @@ for(const token of ["blazer.type","blazer.lapel","blazer.vent","blazer.pocket","
 for(const token of ["01 / GARMENT + CLOTH","Choose what you are making, then the fabric.","styleIdentity(direction.baseStyle),fromLegacyStyle(direction.baseStyle),climate","styleIdentity(result.style),fromLegacyStyle(result.style),nextContext.climate","GARMENT_CATEGORY_LIBRARY","newDesignerGarmentScope","garment.status===\"live\"?\"CURRENT\":\"FUTURE\"","aria-label=\"Shirt type\"","aria-label=\"Trouser type\"","changeGarmentType(\"shirt\"","changeGarmentType(\"pant\"","styleSpec.shirt.type","styleSpec.pant.type","PLANNED DETAILS · ","newDesignerOpen3D","href=\"/lab/garment-viewer\"","localStorage.setItem(DRAFT_KEY","detailFamilies.slice(0,5)"]) {
   if(!designerModuleGarmentScope.includes(token)) throw new Error(`Designer garment-scope regression: missing ${token}`);
 }
-for(const token of ["GARMENT_CATEGORY_LIBRARY","GARMENT TYPES · CURRENT + FUTURE","SHIRT_GARMENT_CATEGORY.typeExamples","SHIRT_GARMENT_CATEGORY.detailFamilies","TROUSER_GARMENT_CATEGORY.typeExamples","TROUSER_GARMENT_CATEGORY.detailFamilies","linen-earth:real-designer-draft:v2","YOUR DESIGNER RECIPE","draftShirtTypeLabel","draftTrouserTypeLabel","designerDraftRecipe.styleSpec.shirt.type","designerDraftRecipe.styleSpec.pant.type","setShirtId(parsed.shirtId)","setTrouserId(parsed.pantId)","construction-specific mesh changes remain a later production-model step","GARMENT_PANEL_SPECS","sampler?.setScale","sampler?.setOffset","sampler?.setRotation","modelManifestSrc","assetIdentity","GARMENT_VIEWER_LATENCY_STORAGE_KEY"]) {
+for(const token of ["GARMENT_CATEGORY_LIBRARY","GARMENT TYPES · CURRENT + FUTURE","SHIRT_GARMENT_CATEGORY.typeExamples","SHIRT_GARMENT_CATEGORY.detailFamilies","TROUSER_GARMENT_CATEGORY.typeExamples","TROUSER_GARMENT_CATEGORY.detailFamilies","linen-earth:real-designer-draft:v2","YOUR DESIGNER RECIPE","draftShirtTypeLabel","draftTrouserTypeLabel","designerDraftRecipe.styleSpec.shirt.type","designerDraftRecipe.styleSpec.pant.type","setShirtId(parsed.shirtId)","setTrouserId(parsed.pantId)","construction-specific mesh changes remain a later production-model step","GARMENT_PANEL_SPECS","sampler?.setScale","sampler?.setOffset","sampler?.setRotation","modelManifestSrc","assetIdentity","GARMENT_VIEWER_LATENCY_STORAGE_KEY","LINEN_EARTH_MODEL_IDENTITY_ID","LINEN_EARTH_MODEL_REFERENCE_IMAGE","LINEN_EARTH_MODEL_VIEWS","MODEL IDENTITY LOCKED"]) {
   if(!garmentViewerSource.includes(token)) throw new Error(`GarmentViewer M2 runtime regression: missing ${token}`);
 }
-for(const token of ["LinenEarthExport","REFERENCE_HEIGHT_M = 1.727","ShirtTorsoFabric","TrouserLegRFabric","export_scene.gltf","export_format=\"GLB\"","load_panel_spec","scene_source_provenance","write_viewer_manifest","--panel-spec"]) {
+for(const token of ["LinenEarthExport","REFERENCE_HEIGHT_M = 1.727","ShirtTorsoFabric","TrouserLegRFabric","export_scene.gltf","export_format=\"GLB\"","load_panel_spec","scene_source_provenance","scene_model_identity","write_viewer_manifest","--panel-spec","MODEL_IDENTITY_ID = \"linen-earth-studio-model-v1\"","MODEL_REFERENCE_IMAGE = \"/designer/studio-tucked.webp\""]) {
   if(!garmentViewerBlenderExporter.includes(token)) throw new Error(`GarmentViewer Blender exporter regression: missing ${token}`);
 }
 for(const token of ["BUNDLE_VERSION = \"1.4.1\"","BUNDLE_LICENSE = \"CC0\"","human-base-meshes-bundle-v1.4.1.zip","EXPECTED_ARCHIVE_BYTES = 50_643_039","safe_extract","source-library-only-not-production-model"]) {
   if(!garmentViewerBaseBootstrap.includes(token)) throw new Error(`GarmentViewer model-source bootstrap regression: missing ${token}`);
 }
-for(const token of ["TARGET_HEIGHT_M = 1.727","SOURCE_VERSION = \"1.4.1\"","SOURCE_LICENSE = \"CC0\"","discover_candidate","normalize_height","body-source-prepared-garments-required"]) {
+for(const token of ["TARGET_HEIGHT_M = 1.727","SOURCE_VERSION = \"1.4.1\"","SOURCE_LICENSE = \"CC0\"","discover_candidate","normalize_height","body-source-prepared-garments-required","linen_earth_model_identity_id","linen_earth_model_identity_locked"]) {
   if(!garmentViewerBodyPreparer.includes(token)) throw new Error(`GarmentViewer realistic-body intake regression: missing ${token}`);
 }
 if(garmentViewerBodyPreparer.includes("ShirtTorsoFabric")) throw new Error("GarmentViewer body intake must not fake production garment geometry.");
-for(const token of ["linen-earth-officewear-scene-preflight-v1","evaluated_mesh_stats","degenerateFaces","activeUv","transformApplied","MAX_TOTAL_TRIANGLES = 220_000","MAX_TOTAL_VERTICES = 280_000"]) {
+for(const token of ["linen-earth-studio-model-v1","/designer/studio-tucked.webp","\"front\"","\"three-quarter\"","\"side\"","\"back\"","\"yawDeg\": 35","\"yawDeg\": 90","\"yawDeg\": 180"]) {
+  if(!designerModelIdentity.includes(token)) throw new Error(`Real Model identity contract regression: missing ${token}`);
+}
+for(const token of ["MODEL IDENTITY LOCKED","LINEN_EARTH_MODEL_IDENTITY_ID","Front / 3/4 / Side / Back"]) {
+  if(!photoOutfitPreviewIdentity.includes(token)) throw new Error(`Real Model Designer identity UI regression: missing ${token}`);
+}
+for(const token of ["linenEarthModelIdentityPrompt","linenEarthViewPrompt","exact same faceless mannequin","Canonical model identity"]) {
+  if(!aiVisualizationIdentity.includes(token)) throw new Error(`Real Model multi-view identity regression: missing ${token}`);
+}
+for(const token of ["linen-earth-officewear-scene-preflight-v1","evaluated_mesh_stats","degenerateFaces","activeUv","transformApplied","MAX_TOTAL_TRIANGLES = 220_000","MAX_TOTAL_VERTICES = 280_000","MODEL_IDENTITY_ID = \"linen-earth-studio-model-v1\"","Model identity lock is not enabled"]) {
   if(!garmentViewerScenePreflight.includes(token)) throw new Error(`GarmentViewer Blender scene-preflight regression: missing ${token}`);
 }
-for(const token of ["linen-earth-garment-viewer-v2","REQUIRED_GARMENT_VIEWER_MATERIALS","approvedGarmentViewerModelSource","validateGarmentViewerModelManifest","GarmentViewerAssetSource","Model source provenance is required","sourceReady"]) {
+for(const token of ["linen-earth-garment-viewer-v2","REQUIRED_GARMENT_VIEWER_MATERIALS","approvedGarmentViewerModelSource","validateGarmentViewerModelManifest","GarmentViewerAssetSource","Model source provenance is required","sourceReady","LINEN_EARTH_MODEL_IDENTITY_ID","Production model identity must be","exact Real Model Designer studio image"]) {
   if(!garmentViewerContract.includes(token)) throw new Error(`GarmentViewer production contract regression: missing ${token}`);
 }
 for(const token of ["ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric","TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric"]) {
