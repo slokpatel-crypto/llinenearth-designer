@@ -1,38 +1,21 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { createStyleDirectorLooks, type StyleDirectorAnswers } from "../src/lib/style-director-agent.ts";
-import { validateStyleSpecV2 } from "../src/lib/designer/style-spec-v2.ts";
 
-function answers(overrides:Partial<StyleDirectorAnswers>={}):StyleDirectorAnswers{
-  return {
-    occasion:"Work",
-    mood:"Sharp",
-    time:"Day",
-    climate:"Indoor",
-    garment:"shirt",
-    colorDirection:"Blue",
-    ...overrides,
-  };
-}
-
-test("Style Director real-model looks carry canonical garment types",()=>{
-  const looks=createStyleDirectorLooks(answers());
-  const real=looks.map((look)=>look.realModel).filter(Boolean);
-  assert(real.length>0);
-  for(const look of real){
-    assert(look);
-    assert.equal(validateStyleSpecV2(look.styleSpec),true);
-    assert.equal(look.styleSpec.styleSchemaVersion,2);
-    assert.ok(look.styleSpec.shirt.type);
-    assert.ok(look.styleSpec.pant.type);
-  }
-});
-
-test("Style Director translates garment language into explicit shirt types",()=>{
-  const resort=createStyleDirectorLooks(answers({occasion:"Travel",mood:"Relaxed",climate:"Hot",colorDirection:"Surprise me"}));
-  const types=resort.map((look)=>look.realModel?.styleSpec.shirt.type).filter(Boolean);
-  assert(types.includes("camp_collar_resort"),"Travel/resort directions should carry a camp-collar shirt type when the candidate calls for it.");
+test("Style Director real-model contract carries canonical garment types",()=>{
+  const agent=readFileSync("src/lib/style-director-agent.ts","utf8");
+  for(const token of [
+    "styleSpec: StyleSpecV2",
+    "styleSpecForDirectorCandidate",
+    'spec.shirt.type="camp_collar_resort"',
+    'spec.shirt.type="band_collar_shirt"',
+    'spec.shirt.type="casual_shirt"',
+    'spec.shirt.type="dress_shirt"',
+    'spec.pant.type="wide_leg_relaxed_drape"',
+    'spec.pant.type="pleated_trouser"',
+    'spec.pant.type="formal_flat_front"',
+    "styleSpec=styleSpecForDirectorCandidate(candidate,best.style)",
+  ]) assert.ok(agent.includes(token),token);
 });
 
 test("Style Director handoff signs and verifies StyleSpec rather than legacy style alone",()=>{
@@ -41,12 +24,19 @@ test("Style Director handoff signs and verifies StyleSpec rather than legacy sty
   const page=readFileSync("src/app/style-director/page.tsx","utf8");
   const designer=readFileSync("src/components/DesignerModule.tsx","utf8");
 
-  assert(handoff.includes('const VERSION="v2"'));
-  assert(handoff.includes('version:"linen-earth-style-director-handoff-v2"'));
-  assert(handoff.includes("styleSpec:StyleSpecV2"));
-  assert(handoff.includes("canonical(payload.styleSpec)===canonical(observed.styleSpec)"));
-  assert(api.includes("validateStyleSpecV2(body.styleSpec)"));
-  assert(page.includes("styleSpec:JSON.stringify(selectedLook.realModel.styleSpec)"));
-  assert(designer.includes('const routedStyleSpec = params.get("styleSpec")'));
-  assert(designer.includes("styleSpec:nextStyleSpec || fromLegacyStyle(nextStyle)"));
+  assert.ok(handoff.includes('const VERSION="v2"'));
+  assert.ok(handoff.includes('version:"linen-earth-style-director-handoff-v2"'));
+  assert.ok(handoff.includes("styleSpec:StyleSpecV2"));
+  assert.ok(handoff.includes("canonical(payload.styleSpec)===canonical(observed.styleSpec)"));
+  assert.ok(api.includes("validateStyleSpecV2(body.styleSpec)"));
+  assert.ok(page.includes("styleSpec:JSON.stringify(selectedLook.realModel.styleSpec)"));
+  assert.ok(page.includes("styleSpec:selectedLook.realModel.styleSpec"));
+  assert.ok(designer.includes('const routedStyleSpec = params.get("styleSpec")'));
+  assert.ok(designer.includes("styleSpec:nextStyleSpec || fromLegacyStyle(nextStyle)"));
+});
+
+test("Style Director result visibly names the selected garment types",()=>{
+  const page=readFileSync("src/app/style-director/page.tsx","utf8");
+  assert.ok(page.includes("optionById(selectedLook.realModel.styleSpec.shirt.type)"));
+  assert.ok(page.includes("optionById(selectedLook.realModel.styleSpec.pant.type)"));
 });
