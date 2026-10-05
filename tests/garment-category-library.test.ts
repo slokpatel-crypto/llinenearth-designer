@@ -55,3 +55,24 @@ test("3D lab carries the saved Designer recipe without claiming geometry support
   assert(source.includes("temporary 3D block maps fabric now"));
   assert(source.includes("construction-specific mesh changes remain a later production-model step"));
 });
+
+
+test("3D Lab restores the exact StyleSpec and selected fabrics from Designer",()=>{
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  assert(viewer.includes("validateStyleSpecV2"));
+  assert(viewer.includes("parsed.shirtId"));
+  assert(viewer.includes("parsed.pantId"));
+  assert(viewer.includes("setShirtId(parsed.shirtId)"));
+  assert(viewer.includes("setTrouserId(parsed.pantId)"));
+  assert(viewer.includes("optionLabel(designerDraftRecipe.styleSpec.shirt.type"));
+  assert(viewer.includes("optionLabel(designerDraftRecipe.styleSpec.pant.type"));
+  assert(viewer.includes("The 3D Lab now opens on the same saved shirt and trouser fabrics as Designer"));
+});
+
+test("Designer exposes a direct bridge from garment details to the 3D Lab",()=>{
+  const designer=readFileSync("src/components/DesignerModule.tsx","utf8");
+  assert(designer.includes('className="newDesigner3dBridge"'));
+  assert(designer.includes('href="/lab/garment-viewer"'));
+  assert(designer.includes("Open this shirt + trouser recipe in 3D"));
+  assert(designer.indexOf("newDesigner3dBridge") < designer.indexOf("newDesignerFabricGrid"));
+});
