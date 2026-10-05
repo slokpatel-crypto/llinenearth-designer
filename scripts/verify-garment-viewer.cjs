@@ -50,6 +50,10 @@ async function verifyViewport(browser, width) {
   await page.getByRole("button", { name: "Back", exact: true }).click();
   await page.waitForFunction(() => document.querySelector("model-viewer")?.getAttribute("camera-orbit")?.startsWith("180deg"));
 
+  const reference=page.locator(".garmentViewerReference img");
+  await reference.waitFor({state:"visible"});
+  assert.match(await reference.getAttribute("src"),/studio-tucked\.webp$/, "3D lab must keep the approved studio reference target visible");
+
   const selects = page.locator(".garmentViewerControls select");
   assert.equal(await selects.count(), 2);
   for (let index = 0; index < 2; index++) {
