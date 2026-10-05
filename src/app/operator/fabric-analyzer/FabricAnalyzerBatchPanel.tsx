@@ -19,6 +19,10 @@ type BatchItem={
   verifiedGsm?:number;
   verifiedDrape?:"Fluid"|"Balanced"|"Structured";
   verifiedFiberContent?:string;
+  verifiedStructure?:number;
+  verifiedBreathability?:number;
+  verifiedWrinkleResistance?:number;
+  verifiedStretch?:number;
   verifiedPhysicalSourceUrl?:string;
   verifiedPhysicalEvidenceNote?:string;
 };
@@ -26,8 +30,9 @@ type BatchItem={
 const HEADERS=[
   "fabricId","imageUrl","macroImageUrl","foldImageUrl","sourcePageUrl","sourceId",
   "declaredMaterial","declaredFabricType","supplierColorName","supplierPatternName",
-  "swatchRealWidthMm","repeatRealMm","verifiedGsm","verifiedDrape",
-  "verifiedFiberContent","verifiedPhysicalSourceUrl","verifiedPhysicalEvidenceNote","notes",
+  "swatchRealWidthMm","repeatRealMm","verifiedGsm","verifiedDrape","verifiedFiberContent",
+  "verifiedStructure","verifiedBreathability","verifiedWrinkleResistance","verifiedStretch",
+  "verifiedPhysicalSourceUrl","verifiedPhysicalEvidenceNote","notes",
 ] as const;
 
 function parseCsv(text:string){
@@ -85,6 +90,10 @@ function itemsFromCsv(text:string){
       verifiedGsm:numberOrUndefined(raw.verifiedGsm||""),
       verifiedDrape:drape,
       verifiedFiberContent:raw.verifiedFiberContent||undefined,
+      verifiedStructure:numberOrUndefined(raw.verifiedStructure||""),
+      verifiedBreathability:numberOrUndefined(raw.verifiedBreathability||""),
+      verifiedWrinkleResistance:numberOrUndefined(raw.verifiedWrinkleResistance||""),
+      verifiedStretch:numberOrUndefined(raw.verifiedStretch||""),
       verifiedPhysicalSourceUrl:raw.verifiedPhysicalSourceUrl||undefined,
       verifiedPhysicalEvidenceNote:raw.verifiedPhysicalEvidenceNote||undefined,
       notes:raw.notes||undefined,
@@ -147,6 +156,10 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
           verifiedGsm:fabric.metadata?.weightGsm??"",
           verifiedDrape:mappedDrape,
           verifiedFiberContent:"",
+          verifiedStructure:"",
+          verifiedBreathability:"",
+          verifiedWrinkleResistance:"",
+          verifiedStretch:"",
           verifiedPhysicalSourceUrl:provenance?.sourceUrl||"",
           verifiedPhysicalEvidenceNote:inheritedEvidenceNote,
           notes:`Evidence queue gaps: ${(fabric.evidence?.gaps||[]).join(" | ")}`,
@@ -210,7 +223,7 @@ export default function FabricAnalyzerBatchPanel({onComplete}:{onComplete?:()=>v
 
   return <section className="analyzerPanel analyzerBatch">
     <div className="panelTitle"><span>03 / BATCH CAPTURE</span><h2>Process verified fabric evidence faster.</h2><b>{runnable.length} runnable</b></div>
-    <div className="batchGuardrail"><strong>NO AUTO-INVENTED PHYSICAL FACTS</strong><p>The worksheet preloads catalogue identity only. Add trusted flat image URLs and only enter GSM, drape, fibre or millimetres when you have real supplier/owner evidence. Every physical value also needs either a source URL or a short evidence note.</p></div>
+    <div className="batchGuardrail"><strong>NO AUTO-INVENTED PHYSICAL FACTS</strong><p>The worksheet preloads catalogue identity only. Add trusted flat image URLs and enter GSM, drape, fibre, millimetres or the 0–1 physics indices only when you have repeatable supplier/owner evidence. Every physical value also needs either a source URL or a short evidence note.</p></div>
     <div className="batchActions">
       <button type="button" onClick={()=>void downloadTemplate()}>Download evidence-gap CSV</button>
       <button type="button" onClick={()=>fileRef.current?.click()}>Load completed CSV</button>
