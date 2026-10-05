@@ -1,3 +1,5 @@
+import { optionsFor } from "./options/library.ts";
+
 export type GarmentCategoryStatus="live"|"planned";
 
 export type GarmentCategoryDefinition={
@@ -10,6 +12,9 @@ export type GarmentCategoryDefinition={
   detailFamilies:string[];
 };
 
+const shirtTypeExamples=optionsFor("shirt.type").map((option)=>option.label);
+const trouserTypeExamples=optionsFor("pant.type").map((option)=>option.label);
+
 export const GARMENT_CATEGORY_LIBRARY:GarmentCategoryDefinition[]=[
   {
     id:"shirt",
@@ -17,7 +22,7 @@ export const GARMENT_CATEGORY_LIBRARY:GarmentCategoryDefinition[]=[
     status:"live",
     stageLabel:"3D foundation live",
     description:"Fabric is mapped now. Construction controls stay owned by Designer until the production shirt mesh can express them exactly.",
-    typeExamples:["Dress shirt","Casual shirt","Camp-collar","Band-collar","Overshirt","Short-sleeve"],
+    typeExamples:shirtTypeExamples,
     detailFamilies:["Collar","Cuff","Placket","Fit","Sleeve","Pocket","Buttons"],
   },
   {
@@ -26,7 +31,7 @@ export const GARMENT_CATEGORY_LIBRARY:GarmentCategoryDefinition[]=[
     status:"live",
     stageLabel:"3D foundation live",
     description:"Fabric is mapped now. Trouser construction will progressively move from preview rules into the production 3D garment block.",
-    typeExamples:["Formal flat-front","Pleated","Straight classic","Tapered","Wide-leg drape","Korean wide"],
+    typeExamples:trouserTypeExamples,
     detailFamilies:["Rise","Pleats","Leg shape","Waistband","Break","Pocket","Fit"],
   },
   {
