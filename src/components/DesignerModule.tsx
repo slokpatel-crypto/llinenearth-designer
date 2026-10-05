@@ -688,7 +688,7 @@ export function DesignerModule() {
   }
 
   function useCreativeDirection(direction:CreativeDirection,origin:"manual"|"automatic"="manual") {
-    const expectedIdentity=JSON.stringify([direction.recommendation.shirt.id,direction.recommendation.pant.id,direction.recommendation.occasion,styleIdentity(direction.baseStyle),climate,intention,measurementProfile,tailorObservations,bodyProfile]);
+    const expectedIdentity=JSON.stringify([direction.recommendation.shirt.id,direction.recommendation.pant.id,direction.recommendation.occasion,styleIdentity(direction.baseStyle),fromLegacyStyle(direction.baseStyle),climate,intention,measurementProfile,tailorObservations,bodyProfile]);
     setCreativeVisualReview(null);
     if(origin==="manual") {
       setCreativeAutoRetryCount(0);
@@ -758,7 +758,7 @@ export function DesignerModule() {
   function useSearchResult(result:DesignerSearchOption,source?:{occasion?:OccasionTier;context?:DesignerContext;name?:string}) {
     const nextOccasion=source?.occasion || result.recommendation.occasion;
     const nextContext=source?.context || {climate,intention};
-    const expectedIdentity=JSON.stringify([result.shirt.id,result.pant.id,nextOccasion,styleIdentity(result.style),nextContext.climate,nextContext.intention,measurementProfile,tailorObservations,bodyProfile]);
+    const expectedIdentity=JSON.stringify([result.shirt.id,result.pant.id,nextOccasion,styleIdentity(result.style),fromLegacyStyle(result.style),nextContext.climate,nextContext.intention,measurementProfile,tailorObservations,bodyProfile]);
     setActiveCreative(null);
     setCreativeVisualReview(null);
     setShirtId(result.shirt.id);
