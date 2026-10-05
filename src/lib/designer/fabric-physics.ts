@@ -23,7 +23,7 @@ export type FabricPhysicsProfile = {
 export type FabricPhysicsSource = {
   id: string;
   weightGsm: number | null;
-  drape: "Fluid" | "Balanced" | "Structured" | null;
+  drape?: "Fluid" | "Balanced" | "Structured" | null;
 };
 
 export type FabricPhysicsEvidenceOverrides = Partial<Record<FabricPhysicsDimension, FabricPhysicsEvidence>>;
