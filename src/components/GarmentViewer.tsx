@@ -376,6 +376,11 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         <p>The same geometry stays fixed while the current live Designer fabric library replaces each shirt and trouser panel material. {shirtFabrics.length} shirt fabrics and {trouserFabrics.length} trouser fabrics use the same active stock source as Designer. Calibrated tile widths are applied panel-by-panel when physical scale exists.</p>
       </div>
 
+      <div className="garmentViewerReference">
+        <div><span>SILHOUETTE / DRAPE TARGET</span><b>Current Linen Earth studio reference</b><small>Match the tucked shirt, clean neck/collar junction, hand clearance, waist overlap and straight premium officewear posture before any 3D model is promoted.</small></div>
+        <img src="/designer/studio-tucked.webp" alt="Current Linen Earth tucked officewear studio reference"/>
+      </div>
+
       <label><span>Shirt fabric</span><select value={shirtId} onChange={(event)=>{beginFabricInteraction();setShirtId(event.target.value);}}>{shirtFabrics.map((fabric)=><option key={fabric.id} value={fabric.id}>{fabric.name} · {fabric.line}</option>)}</select></label>
       <div className="garmentSwatchPreview">{shirt&&<><img src={shirt.image} alt="" /><span><b>{shirt.name}</b><small>{shirt.line}</small><em data-calibrated={Boolean(shirtMeasuredTileMm)}>{shirtMeasuredTileMm?`Calibrated tile · ${shirtMeasuredTileMm.toFixed(1)} mm`:`Approximate tile · ${shirtManualTileMm} mm`}</em></span></>}</div>
       {!shirtMeasuredTileMm&&<label className="garmentRange"><span>Approx. shirt tile width <b>{shirtManualTileMm} mm</b></span><input type="range" min="30" max="260" step="5" value={shirtManualTileMm} onChange={(event)=>setShirtManualTileMm(Number(event.target.value))}/><small>Temporary only until owner/supplier physical scale is verified.</small></label>}
