@@ -102,6 +102,18 @@ It assigns the exact material names and exports a self-contained GLB candidate. 
 
 For a production candidate, copy `docs/examples/linen-earth-officewear-panel-spec.template.json`, replace every zero width/height with measured garment/pattern dimensions, and pass it with `--panel-spec`. The exporter then transfers the verified body-source provenance from the Blender scene and writes the matching `.viewer.json` beside the GLB. Zero/unmeasured values are rejected, so a guessed physical scale cannot accidentally become production-ready.
 
+## Pre-export scene gate
+
+Before exporting a garment candidate, run:
+
+```bash
+npm run garment:model-scene:check
+```
+
+The Blender preflight inspects the evaluated shirt/trouser geometry without modifying it. It rejects missing six-panel objects, empty meshes, missing active UVs, excessive degenerate faces, unapplied garment transforms, incorrect body height, and garment geometry beyond the current mobile triangle/vertex budgets. Open garment boundaries such as cuffs and hems are not treated as errors because tailored clothing is not required to be watertight.
+
+Passing this gate means only that the scene is structurally ready to export; it does not certify premium drape, fit or visual realism.
+
 ## Production asset construction path
 
 1. Start from the approved realistic male body base.
