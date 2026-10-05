@@ -10,7 +10,6 @@ import { garmentPanelTextureScale, resolveViewerTileWidthMm, type ViewerRuntimeR
 import { validateGarmentViewerModelContract, validateGarmentViewerModelManifest, type GarmentViewerModelContractResult, type GarmentViewerModelManifest, type GarmentViewerManifestValidation } from "@/lib/garment-viewer-model-contract";
 import { GARMENT_VIEWER_LATENCY_STORAGE_KEY, garmentViewerAssetIdentityKey, type GarmentViewerAssetIdentity } from "@/lib/garment-viewer-readiness";
 import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
-import { optionById } from "@/lib/designer/options/library";
 
 export type GarmentViewerFabric = {
   id:string;
@@ -51,13 +50,7 @@ type ModelViewerElement=HTMLElement&{
   updateFraming?:()=>void|Promise<void>;
 };
 type DesignerDraftRecipe={
-  shirtId?:string;
-  pantId?:string;
   occasion?:string;
-  styleSpec?:{
-    shirt?:{type?:string};
-    pant?:{type?:string};
-  };
   style?:{
     collar?:string;
     cuff?:string;
@@ -154,8 +147,6 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const [trouserManualTileMm,setTrouserManualTileMm]=useState(120);
   const [roughness,setRoughness]=useState(.84);
   const [designerDraftRecipe,setDesignerDraftRecipe]=useState<DesignerDraftRecipe|null>(null);
-  const draftShirtTypeLabel=designerDraftRecipe?.styleSpec?.shirt?.type ? optionById(designerDraftRecipe.styleSpec.shirt.type)?.label || designerDraftRecipe.styleSpec.shirt.type.replaceAll("_"," ") : "Shirt type not saved";
-  const draftTrouserTypeLabel=designerDraftRecipe?.styleSpec?.pant?.type ? optionById(designerDraftRecipe.styleSpec.pant.type)?.label || designerDraftRecipe.styleSpec.pant.type.replaceAll("_"," ") : designerDraftRecipe?.style?.trouser || "Trouser type not saved";
 
   const shirt=useMemo(()=>shirtFabrics.find((fabric)=>fabric.id===shirtId) || shirtFabrics[0],[shirtFabrics,shirtId]);
   const trouser=useMemo(()=>trouserFabrics.find((fabric)=>fabric.id===trouserId) || trouserFabrics[0],[trouserFabrics,trouserId]);
@@ -178,13 +169,9 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     try{
       const raw=localStorage.getItem("linen-earth:real-designer-draft:v2");
       const parsed=raw?JSON.parse(raw) as DesignerDraftRecipe:null;
-      if(parsed?.style&&typeof parsed.style==="object"){
-        setDesignerDraftRecipe(parsed);
-        if(parsed.shirtId&&shirtFabrics.some((fabric)=>fabric.id===parsed.shirtId)) setShirtId(parsed.shirtId);
-        if(parsed.pantId&&trouserFabrics.some((fabric)=>fabric.id===parsed.pantId)) setTrouserId(parsed.pantId);
-      }
+      if(parsed?.style&&typeof parsed.style==="object") setDesignerDraftRecipe(parsed);
     }catch{/* 3D Lab stays usable without Designer browser state. */}
-  },[shirtFabrics,trouserFabrics]);
+  },[]);
 
   useEffect(()=>{
     normalMapRef.current=createLinenNormalMap();
@@ -209,9 +196,9 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   useEffect(()=>{
     let cancelled=false;
     setModelManifest(null);
-    setModelManifestValidation(modelSrc ? null : {valid:true,missingPanels:[],invalidPanels:[],reasons:[]});
+    setModelManifestValidation(modelSrc ? null : {valid:true,sourceReady:true,source:null,missingPanels:[],invalidPanels:[],reasons:[]});
     if(!modelSrc || !modelManifestSrc) {
-      if(modelSrc) setModelManifestValidation({valid:false,missingPanels:GARMENT_PANEL_SPECS.map((panel)=>panel.material),invalidPanels:[],reasons:["Approved production model needs a matching viewer manifest."]});
+      if(modelSrc) setModelManifestValidation({valid:false,sourceReady:false,source:null,missingPanels:GARMENT_PANEL_SPECS.map((panel)=>panel.material),invalidPanels:[],reasons:["Approved production model needs a matching viewer manifest."]});
       return ()=>{cancelled=true;};
     }
     void fetch(modelManifestSrc,{cache:"no-store"})
@@ -227,7 +214,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       })
       .catch((reason)=>{
         if(cancelled) return;
-        setModelManifestValidation({valid:false,missingPanels:GARMENT_PANEL_SPECS.map((panel)=>panel.material),invalidPanels:[],reasons:[reason instanceof Error?reason.message:"Approved model manifest could not be loaded."]});
+        setModelManifestValidation({valid:false,sourceReady:false,source:null,missingPanels:GARMENT_PANEL_SPECS.map((panel)=>panel.material),invalidPanels:[],reasons:[reason instanceof Error?reason.message:"Approved model manifest could not be loaded."]});
       });
     return ()=>{cancelled=true;};
   },[modelSrc,modelManifestSrc,modelId]);
@@ -437,8 +424,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       {designerDraftRecipe?.style&&<section className="garmentDraftRecipe" aria-label="Current Designer garment recipe">
         <div><span>YOUR DESIGNER RECIPE</span><b>{designerDraftRecipe.occasion||"Saved look"}</b></div>
         <div className="garmentDraftRecipeGrid">
-          <article><strong>Shirt · {draftShirtTypeLabel}</strong><p>{[designerDraftRecipe.style.collar,designerDraftRecipe.style.cuff,designerDraftRecipe.style.placket,designerDraftRecipe.style.shirtFit,designerDraftRecipe.style.shirtWear].filter(Boolean).join(" · ")}</p></article>
-          <article><strong>Trouser · {draftTrouserTypeLabel}</strong><p>{[designerDraftRecipe.style.rise,designerDraftRecipe.style.waistband,designerDraftRecipe.style.break].filter(Boolean).join(" · ")}</p></article>
+          <article><strong>Shirt</strong><p>{[designerDraftRecipe.style.collar,designerDraftRecipe.style.cuff,designerDraftRecipe.style.placket,designerDraftRecipe.style.shirtFit,designerDraftRecipe.style.shirtWear].filter(Boolean).join(" · ")}</p></article>
+          <article><strong>Trouser</strong><p>{[designerDraftRecipe.style.trouser,designerDraftRecipe.style.rise,designerDraftRecipe.style.waistband,designerDraftRecipe.style.break].filter(Boolean).join(" · ")}</p></article>
         </div>
         <small>Recipe is shown for continuity. The temporary 3D block maps fabric now; construction-specific mesh changes remain a later production-model step.</small>
       </section>}
