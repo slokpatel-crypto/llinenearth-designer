@@ -1552,7 +1552,7 @@ for(const token of ["blazer.type","blazer.lapel","blazer.vent","blazer.pocket","
 for(const token of ["GARMENT_CATEGORY_LIBRARY","newDesignerGarmentScope","garment.status===\"live\"?\"CURRENT\":\"FUTURE\"","typeExamples.slice(0,4)","detailFamilies.slice(0,5)"]) {
   if(!designerModuleGarmentScope.includes(token)) throw new Error(`Designer garment-scope regression: missing ${token}`);
 }
-for(const token of ["GARMENT_CATEGORY_LIBRARY","GARMENT TYPES · CURRENT + FUTURE","SHIRT_GARMENT_CATEGORY.typeExamples","SHIRT_GARMENT_CATEGORY.detailFamilies","TROUSER_GARMENT_CATEGORY.typeExamples","TROUSER_GARMENT_CATEGORY.detailFamilies","GARMENT_PANEL_SPECS","sampler?.setScale","sampler?.setOffset","sampler?.setRotation","modelManifestSrc","assetIdentity","GARMENT_VIEWER_LATENCY_STORAGE_KEY"]) {
+for(const token of ["GARMENT_CATEGORY_LIBRARY","GARMENT TYPES · CURRENT + FUTURE","SHIRT_GARMENT_CATEGORY.typeExamples","SHIRT_GARMENT_CATEGORY.detailFamilies","TROUSER_GARMENT_CATEGORY.typeExamples","TROUSER_GARMENT_CATEGORY.detailFamilies","linen-earth:real-designer-draft:v2","YOUR DESIGNER RECIPE","construction-specific mesh changes remain a later production-model step","GARMENT_PANEL_SPECS","sampler?.setScale","sampler?.setOffset","sampler?.setRotation","modelManifestSrc","assetIdentity","GARMENT_VIEWER_LATENCY_STORAGE_KEY"]) {
   if(!garmentViewerSource.includes(token)) throw new Error(`GarmentViewer M2 runtime regression: missing ${token}`);
 }
 for(const token of ["linen-earth-garment-viewer-v2","REQUIRED_GARMENT_VIEWER_MATERIALS","approvedGarmentViewerModelSource","validateGarmentViewerModelManifest"]) {
