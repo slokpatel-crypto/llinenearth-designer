@@ -1558,7 +1558,7 @@ for(const token of ["GARMENT_CATEGORY_LIBRARY","newDesignerGarmentScope","garmen
 for(const token of ["GARMENT_CATEGORY_LIBRARY","GARMENT TYPES · CURRENT + FUTURE","SHIRT_GARMENT_CATEGORY.typeExamples","SHIRT_GARMENT_CATEGORY.detailFamilies","TROUSER_GARMENT_CATEGORY.typeExamples","TROUSER_GARMENT_CATEGORY.detailFamilies","linen-earth:real-designer-draft:v2","YOUR DESIGNER RECIPE","construction-specific mesh changes remain a later production-model step","GARMENT_PANEL_SPECS","sampler?.setScale","sampler?.setOffset","sampler?.setRotation","modelManifestSrc","assetIdentity","GARMENT_VIEWER_LATENCY_STORAGE_KEY"]) {
   if(!garmentViewerSource.includes(token)) throw new Error(`GarmentViewer M2 runtime regression: missing ${token}`);
 }
-for(const token of ["LinenEarthExport","REFERENCE_HEIGHT_M = 1.727","ShirtTorsoFabric","TrouserLegRFabric","export_scene.gltf","export_format=\"GLB\""]) {
+for(const token of ["LinenEarthExport","REFERENCE_HEIGHT_M = 1.727","ShirtTorsoFabric","TrouserLegRFabric","export_scene.gltf","export_format=\"GLB\"","load_panel_spec","scene_source_provenance","write_viewer_manifest","--panel-spec"]) {
   if(!garmentViewerBlenderExporter.includes(token)) throw new Error(`GarmentViewer Blender exporter regression: missing ${token}`);
 }
 for(const token of ["BUNDLE_VERSION = \"1.4.1\"","BUNDLE_LICENSE = \"CC0\"","human-base-meshes-bundle-v1.4.1.zip","EXPECTED_ARCHIVE_BYTES = 50_643_039","safe_extract","source-library-only-not-production-model"]) {
