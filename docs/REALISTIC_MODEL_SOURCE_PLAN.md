@@ -6,6 +6,21 @@ Status: research / asset-intake preparation only. This document does not promote
 
 Replace the temporary block mannequin with one consistent realistic male officewear asset while keeping the existing GarmentViewer M2 material, camera, scale and QA pipeline.
 
+## Exact Real Model Designer identity lock
+
+The production 3D body is not allowed to be a second or merely similar mannequin. The canonical identity is now `linen-earth-studio-model-v1`, anchored to the existing Real Model Designer photograph `/designer/studio-tucked.webp`.
+
+The same identity contract is shared by the photoreal Designer and GarmentViewer:
+- Front: 0° yaw
+- 3/4: 35° yaw
+- Side: 90° yaw
+- Back: 180° yaw
+- reference height: 1727 mm
+- same faceless matte head, shoulder width, torso taper, arm/hand scale, hip width, leg length, stance and shoe silhouette across every view
+- camera rotation may reveal hidden garment surfaces, but the body must never morph between views
+
+The front silhouette anchor coordinates already used by the photographic garment masks are stored in `public/model-identity/linen-earth-studio-model-v1.json`. Blender preparation stamps this identity into the scene; preflight rejects an unlocked/wrong identity; the GLB exporter carries it into the production `.viewer.json`; and the browser refuses to treat a mismatched manifest as production-ready.
+
 The production asset must visually match the current Linen Earth studio target:
 - neutral premium male proportions around 5'8" / 1727 mm reference height,
 - tucked shirt,
