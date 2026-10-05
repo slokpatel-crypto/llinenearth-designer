@@ -160,6 +160,7 @@ for (const path of [
   "src/lib/designer/stock-ledger.ts",
   "src/lib/designer/stock-availability.ts",
   "src/lib/designer/stock-availability-server.ts",
+  "src/lib/designer/catalog-stock-server.ts",
   "tests/stock-availability.test.ts",
   "src/app/recover-design/page.tsx",
   "src/app/operator/stock/page.tsx",
@@ -782,7 +783,8 @@ requireTokens("src/lib/designer/stock-availability.ts", ["verifiedStockAvailabil
 requireTokens("src/lib/designer/engine.ts", ["availabilityVerified?: boolean","verified physical stock status","provenance-ready positive stock status"]);
 requireTokens("tests/stock-availability.test.ts", ["availabilityVerified,true","availabilityVerified,undefined"]);
 requireTokens("src/lib/designer/stock-availability-server.ts", ["fabric_stock_snapshot_v2","applyLiveVerifiedStockAvailability","cache:\"no-store\""]);
-requireTokens("src/app/api/designer/catalog/route.ts", ["applyLiveVerifiedStockAvailability","verifiedStockFabrics"]);
+requireTokens("src/lib/designer/catalog-stock-server.ts", ["loadDesignerFabricMetadata","applyDesignerFabricMetadataToStock","applyLiveVerifiedStockAvailability","verifiedStockFabrics"]);
+requireTokens("src/app/api/designer/catalog/route.ts", ["loadActiveDesignerFabricStock","verifiedStockFabrics"]);
 requireTokens("src/app/api/designer/search/route.ts", ["applyLiveVerifiedStockAvailability","liveStock.stock.filter((fabric)=>fabric.inStock)"]);
 requireTokens("src/app/api/designer/brief/route.ts", ["applyLiveVerifiedStockAvailability","liveStock.stock.filter((fabric)=>fabric.inStock)"]);
 requireTokens("src/app/api/designer/assess/route.ts", ["applyLiveVerifiedStockAvailability","liveStock.stock.filter((fabric)=>fabric.inStock)"]);
