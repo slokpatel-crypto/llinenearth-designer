@@ -1139,6 +1139,9 @@ export function DesignerModule() {
         <h1>Designer<span className="newDesignerHeroDot">.</span></h1>
         <p className="newDesignerHeroLead">Describe the moment. Designer builds the outfit. Refine only what you want.</p>
         <div className="newDesignerHeroIndex"><span>1 · TELL DESIGNER</span><span>2 · REFINE</span><span>3 · PREVIEW</span></div>
+        <Link className="newDesignerOpen3D" href="/lab/garment-viewer" onClick={()=>{
+          try{localStorage.setItem(DRAFT_KEY,JSON.stringify({shirtId,pantId,occasion,climate,intention,style,styleSpec,bodyProfile,creative:activeCreative,creativeVisualReview}));}catch{/* 3D Viewer still opens if browser storage is unavailable. */}
+        }}><span>3D MODEL · LIVE</span><strong>Open the interactive shirt + trouser model with your selected fabrics.</strong><b>View 3D ↗</b></Link>
       </div>
       <figure className="newDesignerHeroArt">
         <div className="newDesignerArchiveFrame"><img src="/designer/studio-pleated.webp" alt="Faceless studio mannequin in a shirt and tailored trousers" /></div>
@@ -1226,10 +1229,6 @@ export function DesignerModule() {
             {pant && /lea/i.test(pant.line) && <details className="newDesignerFabricSpecs"><summary>ⓘ Fabric specs</summary><p><b>{pant.line}</b> · “Lea” is a yarn-count term used in the textile trade; it stays here as a technical fabric reference.</p></details>}
           </article>
         </div>
-        <Link className="newDesignerOpen3D" href="/lab/garment-viewer" onClick={()=>{
-          try{localStorage.setItem(DRAFT_KEY,JSON.stringify({shirtId,pantId,occasion,climate,intention,style,styleSpec,bodyProfile,creative:activeCreative,creativeVisualReview}));}catch{/* 3D Lab still opens if browser storage is unavailable. */}
-        }}><span>3D FABRIC VIEW</span><strong>See this exact shirt + trouser fabric on the reusable 3D model.</strong><b>Open 3D ↗</b></Link>
-
         <a className="newDesignerCreativeTeaser" href="#designerCreativeLab"><span>✦ CREATIVE LAB</span><strong>Your cloth can become 5 original design directions.</strong><b>Explore after occasion →</b></a>
         <a className="newDesignerJump" href="#designerPhotoTitle">Preview on model ↘</a>
 
