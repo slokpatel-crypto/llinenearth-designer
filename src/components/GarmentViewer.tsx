@@ -95,9 +95,18 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
 
   useEffect(()=>{
     let cancelled=false;
-    if(typeof customElements==="undefined") return;
-    void customElements.whenDefined("model-viewer").then(()=>{if(!cancelled)setEngineReady(true);});
-    return ()=>{cancelled=true;};
+    if(typeof customElements==="undefined") {
+      setError("This browser does not expose the custom-elements API required by the 3D viewer.");
+      return;
+    }
+    const timeout=window.setTimeout(()=>{
+      if(!cancelled && !customElements.get("model-viewer")) setError("The 3D viewer engine could not be started.");
+    },12_000);
+    void customElements.whenDefined("model-viewer").then(()=>{
+      window.clearTimeout(timeout);
+      if(!cancelled){setEngineReady(true);setError("");}
+    });
+    return ()=>{cancelled=true;window.clearTimeout(timeout);};
   },[]);
 
   useEffect(()=>{
