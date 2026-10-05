@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   GARMENT_VIEWER_LATENCY_STORAGE_KEY,
   GARMENT_VIEWER_REALISM_STORAGE_KEY,
+  GARMENT_VIEWER_REALISM_RUBRIC_VERSION,
   garmentViewerAssetIdentityKey,
   type GarmentViewerAssetIdentity,
 } from "@/lib/garment-viewer-readiness";
@@ -104,6 +105,7 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
             subtype:"garment_viewer_readiness",
             version:"linen-earth-garment-viewer-readiness-v1",
             status:"review",
+            realismRubricVersion:GARMENT_VIEWER_REALISM_RUBRIC_VERSION,
             ...assetIdentity,
             patternScaleSamples,
             interactionLatencyMs:latencies,
@@ -136,6 +138,7 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
         <label><span>Check scale error %</span><input type="number" min="0" max="100" step=".1" value={checkError} onChange={(event)=>setCheckError(event.target.value)} placeholder="≤ 8"/></label>
         <label className="garmentQaCheck"><input type="checkbox" checked={checkVerified} onChange={(event)=>setCheckVerified(event.target.checked)}/><span>Measured against verified physical repeat</span></label>
       </div>
+      <div className="garmentQaRubric"><small>REALISM RUBRIC · V1</small><p>Rate the same five things every time: officewear silhouette/proportions, cloth drape and body fit, collar/neck junction, hands + waist/trouser boundaries, and overall photographic believability against the studio-tucked reference. Give 4/5 or 5/5 only when there is no major mismatch.</p></div>
       <div className="garmentQaRating">
         <label><span>Independent viewer code</span><input value={viewerCode} onChange={(event)=>setViewerCode(event.target.value)} placeholder="e.g. viewer-07"/></label>
         <label><span>Realism rating</span><select value={rating} onChange={(event)=>setRating(event.target.value)}>{[1,2,3,4,5].map((value)=><option key={value} value={value}>{value}/5</option>)}</select></label>
