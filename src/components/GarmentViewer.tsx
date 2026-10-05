@@ -173,7 +173,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       })
       .then((value)=>{
         if(cancelled) return;
-        const validation=validateGarmentViewerModelManifest(value);
+        const validation=validateGarmentViewerModelManifest(value,modelId);
         setModelManifestValidation(validation);
         if(validation.valid) setModelManifest(value as GarmentViewerModelManifest);
       })
@@ -182,7 +182,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         setModelManifestValidation({valid:false,missingPanels:GARMENT_PANEL_SPECS.map((panel)=>panel.material),invalidPanels:[],reasons:[reason instanceof Error?reason.message:"Approved model manifest could not be loaded."]});
       });
     return ()=>{cancelled=true;};
-  },[modelSrc,modelManifestSrc]);
+  },[modelSrc,modelManifestSrc,modelId]);
 
   useEffect(()=>{
     let cancelled=false;
@@ -316,7 +316,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     className:"garmentModelViewer",
   }) : null;
 
-  return <section className="garmentViewerShell">
+  return <section className="garmentViewerShell" data-model-readiness={modelContract?.readiness || "loading"} data-manifest-ready={productionManifestReady}>
     <div className="garmentViewerStage">
       <div className="garmentViewerStageHead">
         <span>GARMENTVIEWER · MILESTONE 1</span>
