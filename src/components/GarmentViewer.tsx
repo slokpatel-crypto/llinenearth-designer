@@ -16,8 +16,12 @@ export type GarmentViewerFabric = {
   tileKey:string;
 };
 
-type ViewerTexture={
+type ViewerSampler={
+  scale?:{u:number;v:number}|null;
   setScale?:(scale:{u:number;v:number}|null)=>void;
+};
+type ViewerTexture={
+  sampler?:ViewerSampler;
 };
 type TextureInfo={
   setTexture:(texture:ViewerTexture|null)=>void;
@@ -205,8 +209,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
             normalMapRef.current ? viewer.createTexture!(normalMapRef.current) : Promise.resolve(null),
           ]);
           const scale=garmentPanelTextureScale(panel.widthMm,panel.heightMm,tileMm);
-          texture.setScale?.(scale);
-          normal?.setScale?.({u:clamp(scale.u*1.35,.35,100),v:clamp(scale.v*1.35,.35,100)});
+          texture.sampler?.setScale?.(scale);
+          normal?.sampler?.setScale?.({u:clamp(scale.u*1.35,.35,100),v:clamp(scale.v*1.35,.35,100)});
           return {panel,texture,normal};
         }));
         if(token!==applyToken.current) return;
