@@ -159,7 +159,8 @@ async function generated(page, render) {
   assert.equal(inspection.body.jobId, render.result.jobId);
   assert.equal(inspection.body.view, "front");
   assert.equal(inspection.body.look.locked, true);
-  for (const field of ["shirt", "pant", "style"]) assert.deepEqual(inspection.body.look[field], generation.body[field]);
+  for (const field of ["shirt", "pant", "style", "styleSpec"]) assert.deepEqual(inspection.body.look[field], generation.body[field]);
+  assert.ok(generation.body.styleSpec, "Photoreal generation must receive the canonical garment recipe");
   await cleared(page);
   assert.equal(await photoButton(page).isDisabled(), true);
   assert.match(await photoButton(page).textContent(), /Checking photoreal/);

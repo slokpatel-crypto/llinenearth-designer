@@ -34,6 +34,7 @@ export async function POST(request: Request) {
         climate:look.realModel.climate,
         intention:look.realModel.intention,
         style:look.realModel.style,
+        styleSpec:look.realModel.styleSpec,
       }) : null,
     }));
     return NextResponse.json({

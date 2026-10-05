@@ -130,7 +130,8 @@ export function DesignerModule() {
   const [directorHandoffTier, setDirectorHandoffTier] = useState("");
   const [directorHandoffReason, setDirectorHandoffReason] = useState("");
   const [directorHandoffAuditId,setDirectorHandoffAuditId]=useState("");
-  const [directorHandoffAuditStatus,setDirectorHandoffAuditStatus]=useState<"idle"|"verified"|"unavailable"|"mismatch">("idle");
+  const [directorHandoffIdentity,setDirectorHandoffIdentity]=useState("");
+  const [directorHandoffAuditStatus,setDirectorHandoffAuditStatus]=useState<"idle"|"verified"|"matched"|"unavailable"|"mismatch">("idle");
   const [measurementProfile, setMeasurementProfile] = useState<MeasurementProfile | null>(null);
   const [tailorObservations, setTailorObservations] = useState<TailorObservationProfile | null>(null);
   const [searchScope, setSearchScope] = useState<DesignerSearchScope>("keep_shirt");
@@ -170,6 +171,8 @@ export function DesignerModule() {
   const pant = useMemo(() => pantOptions.find((item) => item.id === pantId), [pantId, pantOptions]);
   const craftFabrics=useMemo(()=>[...new Map([...shirtOptions,...pantOptions].map(f=>[f.id,f])).values()],[shirtOptions,pantOptions]);
   const styleIdentity=(value:DesignerStyle)=>(Object.keys(DESIGNER_STYLE_CHOICES) as Array<keyof DesignerStyle>).map((key)=>value[key]);
+  const handoffIdentity=JSON.stringify([shirtId,pantId,occasion,styleIdentity(style),styleSpec,climate,intention]);
+  const directorHandoffCurrent=directorHandoffIdentity===handoffIdentity;
   const assessmentIdentity=JSON.stringify([shirtId,pantId,occasion,styleIdentity(style),styleSpec,climate,intention,measurementProfile,tailorObservations,bodyProfile]);
   const committedAssessmentIdentity=useRef(assessmentIdentity);
   const committedCreativeId=useRef(activeCreative?.id||null);
@@ -266,12 +269,20 @@ export function DesignerModule() {
   },[]);
 
   useEffect(() => {
+    let cancelled=false;
+    const handoffController=new AbortController();
     try {
-      const parsed = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null") as {
+      let parsed: {
         shirtId?: string; pantId?: string; occasion?: OccasionTier; climate?: DesignerClimate;
         intention?: DesignerIntention; style?: Partial<DesignerStyle>; styleSpec?: unknown; bodyProfile?: unknown; creative?: CreativeDirection | null;
         creativeVisualReview?: CreativeVisualCheck | null;
-      } | null;
+      } | null = null;
+      try {
+        parsed=JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
+      } catch {
+        // An unreadable browser draft must not block a new Director handoff.
+        try { localStorage.removeItem(DRAFT_KEY); } catch { /* Storage may be unavailable. */ }
+      }
 
       let nextShirtId = parsed?.shirtId && DESIGNER_SHIRTS.some((item) => item.id === parsed.shirtId) ? parsed.shirtId : shirtId;
       let nextPantId = parsed?.pantId && DESIGNER_PANTS.some((item) => item.id === parsed.pantId) ? parsed.pantId : pantId;
@@ -326,14 +337,24 @@ export function DesignerModule() {
           } catch { /* Invalid URL style data falls back to the occasion preset. */ }
         }
 
+        const routedStyleSpec = params.get("styleSpec");
+        if(routedStyleSpec){
+          try{
+            const parsedStyleSpec=JSON.parse(routedStyleSpec) as unknown;
+            if(validateStyleSpecV2(parsedStyleSpec)) nextStyleSpec=parsedStyleSpec;
+          }catch{/* Invalid StyleSpec falls back to the signed legacy style. */}
+        }
+
         setDirectorHandoffTitle(params.get("sourceTitle") || "Style Director result");
         setDirectorHandoffTier(params.get("sourceTier") || "");
         setDirectorHandoffReason(params.get("sourceReason") || "");
+        setDirectorHandoffIdentity(JSON.stringify([nextShirtId,nextPantId,nextOccasion,styleIdentity(nextStyle),nextStyleSpec || fromLegacyStyle(nextStyle),nextClimate,nextIntention]));
         const handoffToken=params.get("handoffToken");
         if(handoffToken){
           void fetch("/api/style-director/handoff",{
             method:"POST",
             headers:{"content-type":"application/json"},
+            signal:handoffController.signal,
             body:JSON.stringify({
               token:handoffToken,
               shirtId:nextShirtId,
@@ -342,9 +363,11 @@ export function DesignerModule() {
               climate:nextClimate,
               intention:nextIntention,
               style:nextStyle,
+              styleSpec:nextStyleSpec || fromLegacyStyle(nextStyle),
             }),
           }).then(async(response)=>{
             const result=await response.json() as {verified?:boolean;audited?:boolean;auditId?:string|null;error?:string};
+            if(cancelled) return;
             if(!response.ok||!result.verified){
               setDirectorHandoffAuditStatus("mismatch");
               return;
@@ -353,9 +376,9 @@ export function DesignerModule() {
               setDirectorHandoffAuditId(result.auditId);
               setDirectorHandoffAuditStatus("verified");
             }else{
-              setDirectorHandoffAuditStatus("unavailable");
+              setDirectorHandoffAuditStatus("matched");
             }
-          }).catch(()=>setDirectorHandoffAuditStatus("unavailable"));
+          }).catch(()=>{if(!cancelled) setDirectorHandoffAuditStatus("unavailable");});
         }else{
           setDirectorHandoffAuditStatus("mismatch");
         }
@@ -386,9 +409,13 @@ export function DesignerModule() {
         const routedPantFabric = DESIGNER_PANTS.find((item) => item.id === nextPantId);
         if (routedShirtFabric && routedPantFabric) {
           const context: DesignerContext = { climate: nextClimate, intention: nextIntention };
+          const expectedIdentity=JSON.stringify([nextShirtId,nextPantId,nextOccasion,styleIdentity(nextStyle),nextStyleSpec || fromLegacyStyle(nextStyle),nextClimate,nextIntention,measurementProfile,tailorObservations,nextBodyProfile || DEFAULT_BODY_PREVIEW_PROFILE]);
           void requestLookAssessment({
-            shirtId:nextShirtId,pantId:nextPantId,occasion:nextOccasion,style:nextStyle,context,
+            shirtId:nextShirtId,pantId:nextPantId,occasion:nextOccasion,style:nextStyle,styleSpec:nextStyleSpec || fromLegacyStyle(nextStyle),context,
+            bodyProfile:nextBodyProfile || DEFAULT_BODY_PREVIEW_PROFILE,
+            signal:handoffController.signal,
           }).then((next)=>{
+            if(cancelled || committedAssessmentIdentity.current!==expectedIdentity) return;
             applyServerAssessment(next);
             setResponse(null);
             setFeedbackReason(null);
@@ -407,10 +434,11 @@ export function DesignerModule() {
         }
       }
     } catch {
-      localStorage.removeItem(DRAFT_KEY);
+      try { localStorage.removeItem(DRAFT_KEY); } catch { /* Browser storage is optional. */ }
     } finally {
       setDraftReady(true);
     }
+    return ()=>{cancelled=true;handoffController.abort();};
   // Restore once; subsequent changes are persisted by the effect below.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -473,10 +501,12 @@ export function DesignerModule() {
     observations?:TailorObservationProfile|null;
     styleSpec?:StyleSpecV2|null;
     bodyProfile?:BodyPreviewProfile|null;
+    signal?:AbortSignal;
   }) {
     const response=await fetch("/api/designer/assess",{
       method:"POST",
       headers:{"content-type":"application/json"},
+      signal:input.signal,
       body:JSON.stringify({
         shirtId:input.shirtId,
         pantId:input.pantId,
@@ -889,7 +919,11 @@ export function DesignerModule() {
   function applyStyleSpec(next:StyleSpecV2) {
     setActiveCreative(null);
     setStyleSpec(next);
-    setStyle(toLegacyStyle(next));
+    // Keep the legacy controls bound to the spec's explicit legacy snapshot.
+    // Deriving every legacy field from canonical garment types can mutate
+    // unrelated controls (for example a shirt-type edit changing trousers),
+    // which makes a reversible Style Director edit look permanently changed.
+    setStyle({...next.legacy});
     setRecommendation(null);
     setAssessment(null);
     setRecommendationId(null);
@@ -904,8 +938,14 @@ export function DesignerModule() {
       pant:{...styleSpec.pant},
       legacy:{...styleSpec.legacy},
     };
-    if(garment==="shirt") next.shirt.type=value;
-    else next.pant.type=value;
+    if(garment==="shirt") {
+      next.shirt.type=value;
+    } else {
+      next.pant.type=value;
+      // Pant type has a legacy DesignerStyle equivalent; update only that
+      // field instead of re-deriving the complete legacy style.
+      next.legacy.trouser=toLegacyStyle(next).trouser;
+    }
     applyStyleSpec(next);
   }
 
@@ -1110,7 +1150,16 @@ export function DesignerModule() {
 
     <div className="newDesignerBody">
       <section className="newDesignerSelections" aria-labelledby="designerChoose">
-        {directorHandoff && <div className="newDesignerHandoff"><span>STYLE DIRECTOR HANDOFF</span><strong>{directorHandoffTitle || "Your complete outfit direction is loaded."}</strong><p>{shirt?.name} shirt + {pant?.name} trousers · {style.shirtWear} · {style.trouser}. You can refine any detail below without rebuilding the look.</p>{directorHandoffAuditStatus==="verified"&&<small>VERIFIED HANDOFF · audit {directorHandoffAuditId}</small>}{directorHandoffAuditStatus==="unavailable"&&<small>Handoff matched, but cloud audit is unavailable.</small>}{directorHandoffAuditStatus==="mismatch"&&<small>Handoff verification could not be established.</small>}</div>}
+        {directorHandoff && <div className="newDesignerHandoff">
+          <span>STYLE DIRECTOR HANDOFF</span>
+          <strong>{directorHandoffTitle || "Your complete outfit direction is loaded."}</strong>
+          <p>{shirt?.name} shirt + {pant?.name} trousers · {style.shirtWear} · {style.trouser}. You can refine any detail below without rebuilding the look.</p>
+          {directorHandoffCurrent&&directorHandoffAuditStatus==="verified"&&<small>VERIFIED HANDOFF · audit {directorHandoffAuditId}</small>}
+          {directorHandoffCurrent&&directorHandoffAuditStatus==="matched"&&<small>Handoff matched, but cloud audit is unavailable.</small>}
+          {directorHandoffCurrent&&directorHandoffAuditStatus==="unavailable"&&<small>Handoff verification is currently unavailable.</small>}
+          {!directorHandoffCurrent&&<small>Design adjusted since the Style Director handoff.</small>}
+          {directorHandoffCurrent&&directorHandoffAuditStatus==="mismatch"&&<small>Handoff verification could not be established.</small>}
+        </div>}
         {shirt && pant && <DesignerAdvisorPanel key={advisorEpoch} shirt={shirt} pant={pant} style={style} occasion={occasion} context={{climate,intention}} measurements={measurementProfile} observations={tailorObservations} sessionId={designerSession} onCreativeBrief={(brief)=>{pendingCraftBrief.current=true;setCraftRequest(current=>({...current,brief:brief.slice(0,900)}));document.getElementById("designerCreativeLab")?.scrollIntoView({behavior:"smooth",block:"start"});}} onApply={(result,interpretation)=>useSearchResult(result,{occasion:interpretation.occasion,context:interpretation.context,name:"one_line_designer_brief"})} />}
 
         <div className="newDesignerSectionHead"><span>01 / GARMENT + CLOTH</span><h2 id="designerChoose">Choose what you are making, then the fabric.</h2></div>

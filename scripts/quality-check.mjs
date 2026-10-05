@@ -227,6 +227,21 @@ if(/\.lookVisual img\{[^}]*object-fit:cover/.test(styleDirectorCss)) throw new E
 if(!/\.lookVisual img\{[^}]*background:#081827/.test(styleDirectorCss)) throw new Error("Style Director generated-render backdrop regression: photoreal letterbox must match the navy studio.");
 console.log("Style Director generated-render framing gate passed: photoreal output stays fully visible on the navy studio backdrop.");
 const styleDirectorPhotoPage=fs.readFileSync("src/app/style-director/page.tsx","utf8");
+const styleDirectorAgentSource=fs.readFileSync("src/lib/style-director-agent.ts","utf8");
+const styleDirectorHandoffSource=fs.readFileSync("src/lib/designer/style-director-handoff.ts","utf8");
+const styleDirectorHandoffApi=fs.readFileSync("src/app/api/style-director/handoff/route.ts","utf8");
+for(const token of ["styleSpec: StyleSpecV2","styleSpecForDirectorCandidate","camp_collar_resort","band_collar_shirt","wide_leg_relaxed_drape","pleated_trouser"]) {
+  if(!styleDirectorAgentSource.includes(token)) throw new Error(`Style Director garment-type regression: missing ${token}`);
+}
+for(const token of ['const VERSION="v2"','linen-earth-style-director-handoff-v2',"styleSpec:StyleSpecV2","canonical(payload.styleSpec)===canonical(observed.styleSpec)"]) {
+  if(!styleDirectorHandoffSource.includes(token)) throw new Error(`Style Director signed garment-type handoff regression: missing ${token}`);
+}
+for(const token of ["validateStyleSpecV2(body.styleSpec)","styleSpec:body.styleSpec"]) {
+  if(!styleDirectorHandoffApi.includes(token)) throw new Error(`Style Director handoff API garment-type regression: missing ${token}`);
+}
+for(const token of ["styleSpec:JSON.stringify(selectedLook.realModel.styleSpec)","styleSpec:selectedLook.realModel.styleSpec","optionById(selectedLook.realModel.styleSpec.shirt.type)"]) {
+  if(!styleDirectorPhotoPage.includes(token)) throw new Error(`Style Director customer garment-type regression: missing ${token}`);
+}
 if(styleDirectorPhotoPage.includes("abstractLook")) throw new Error("Style Director photo-first regression: simulated mannequin fallback returned.");
 for(const token of ["directorFabricFallback","REAL STOCK / PHOTO TEMPLATE PENDING","Real fabric · no simulated mannequin","Garment geometry stays unvisualized until a photographed template supports this category"]) {
   if(!styleDirectorPhotoPage.includes(token)) throw new Error(`Style Director truthful fallback regression: missing ${token}`);
