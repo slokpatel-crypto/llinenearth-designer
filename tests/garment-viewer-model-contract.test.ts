@@ -63,6 +63,7 @@ test("production manifest identity and all panel dimensions must match the appro
     version:GARMENT_VIEWER_CONTRACT_VERSION,
     modelId:"LE-OFFICEWEAR-V1",
     referenceHeightMm:1727,
+    source:{name:"Blender Human Base Meshes",license:"CC0",verifiedAt:"2026-10-05"},
     panels,
   };
   assert.equal(validateGarmentViewerModelManifest(good,"LE-OFFICEWEAR-V1").valid,true);
@@ -77,6 +78,7 @@ test("panel phase controls stay bounded for production texture alignment",()=>{
     version:GARMENT_VIEWER_CONTRACT_VERSION,
     modelId:"LE-OFFICEWEAR-V1",
     referenceHeightMm:1727,
+    source:{name:"Blender Human Base Meshes",license:"CC0",verifiedAt:"2026-10-05"},
     panels,
   },"LE-OFFICEWEAR-V1");
   assert.equal(valid.valid,true);
@@ -86,8 +88,32 @@ test("panel phase controls stay bounded for production texture alignment",()=>{
     version:GARMENT_VIEWER_CONTRACT_VERSION,
     modelId:"LE-OFFICEWEAR-V1",
     referenceHeightMm:1727,
+    source:{name:"Blender Human Base Meshes",license:"CC0",verifiedAt:"2026-10-05"},
     panels:invalidPanels,
   },"LE-OFFICEWEAR-V1");
   assert.equal(invalid.valid,false);
   assert(invalid.invalidPanels.includes(REQUIRED_GARMENT_VIEWER_MATERIALS[0]));
+});
+
+
+test("production manifest requires traceable source provenance",()=>{
+  const panels=Object.fromEntries(REQUIRED_GARMENT_VIEWER_MATERIALS.map((name)=>[name,{widthMm:300,heightMm:600}]));
+  const base={
+    version:GARMENT_VIEWER_CONTRACT_VERSION,
+    modelId:"LE-OFFICEWEAR-V1",
+    referenceHeightMm:1727,
+    panels,
+  };
+  const missing=validateGarmentViewerModelManifest(base,"LE-OFFICEWEAR-V1");
+  assert.equal(missing.valid,false);
+  assert.equal(missing.sourceReady,false);
+  assert(missing.reasons.some((reason)=>reason.includes("source provenance")));
+
+  const ready=validateGarmentViewerModelManifest({
+    ...base,
+    source:{name:"Blender Human Base Meshes",license:"CC0",verifiedAt:"2026-10-05"},
+  },"LE-OFFICEWEAR-V1");
+  assert.equal(ready.valid,true);
+  assert.equal(ready.sourceReady,true);
+  assert.equal(ready.source?.license,"CC0");
 });
