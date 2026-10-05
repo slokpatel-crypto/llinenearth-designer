@@ -1102,8 +1102,19 @@ export function DesignerModule() {
             <div><span>{garment.status==="live"?"CURRENT":"FUTURE"}</span><strong>{garment.label}</strong></div>
             <p>{garment.typeExamples.slice(0,4).join(" · ")}</p>
             <small>{garment.detailFamilies.slice(0,5).join(" · ")}</small>
+            <details className="newDesignerGarmentDetails">
+              <summary>{garment.status==="live"?"View garment options":"Preview future options"}</summary>
+              <div><b>Types</b><p>{garment.typeExamples.join(" · ")}</p></div>
+              <div><b>Design details</b><p>{garment.detailFamilies.join(" · ")}</p></div>
+            </details>
           </article>)}
         </div>
+        <Link className="newDesigner3dBridge" href={`/lab/garment-viewer?from=designer&shirt=${encodeURIComponent(shirtId)}&pant=${encodeURIComponent(pantId)}`}>
+          <span>LIVE 3D LOOK</span>
+          <strong>Open this shirt + trouser recipe in 3D</strong>
+          <small>Your selected fabrics and saved construction details carry into the 3D Lab. Blazer and Suit stay marked future until their production garment blocks are ready.</small>
+          <b aria-hidden="true">↗</b>
+        </Link>
         <div className="newDesignerFabricGrid">
           <article className="newDesignerFabric">
             <div className="newDesignerFabricFilters" aria-label="Filter shirt fabrics">

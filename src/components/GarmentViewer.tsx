@@ -10,6 +10,8 @@ import { garmentPanelTextureScale, resolveViewerTileWidthMm, type ViewerRuntimeR
 import { validateGarmentViewerModelContract, validateGarmentViewerModelManifest, type GarmentViewerModelContractResult, type GarmentViewerModelManifest, type GarmentViewerManifestValidation } from "@/lib/garment-viewer-model-contract";
 import { GARMENT_VIEWER_LATENCY_STORAGE_KEY, garmentViewerAssetIdentityKey, type GarmentViewerAssetIdentity } from "@/lib/garment-viewer-readiness";
 import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
+import { optionById } from "@/lib/designer/options/library";
+import { validateStyleSpecV2, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 
 export type GarmentViewerFabric = {
   id:string;
@@ -50,7 +52,10 @@ type ModelViewerElement=HTMLElement&{
   updateFraming?:()=>void|Promise<void>;
 };
 type DesignerDraftRecipe={
+  shirtId?:string;
+  pantId?:string;
   occasion?:string;
+  styleSpec?:StyleSpecV2;
   style?:{
     collar?:string;
     cuff?:string;
@@ -103,6 +108,11 @@ function createLinenNormalMap() {
   }
   ctx.putImageData(image,0,0);
   return canvas.toDataURL("image/png");
+}
+
+function optionLabel(id:string|undefined,fallback="—") {
+  if(!id) return fallback;
+  return optionById(id)?.label || optionById(id)?.legacyLabel || id.replaceAll("_"," ");
 }
 
 function materialByName(viewer:ModelViewerElement,name:string) {
@@ -169,9 +179,21 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     try{
       const raw=localStorage.getItem("linen-earth:real-designer-draft:v2");
       const parsed=raw?JSON.parse(raw) as DesignerDraftRecipe:null;
-      if(parsed?.style&&typeof parsed.style==="object") setDesignerDraftRecipe(parsed);
+      if(!parsed || typeof parsed!=="object") return;
+      const normalized:DesignerDraftRecipe={
+        ...parsed,
+        styleSpec:validateStyleSpecV2(parsed.styleSpec) ? parsed.styleSpec : undefined,
+      };
+      setDesignerDraftRecipe(normalized);
+      const params=new URLSearchParams(window.location.search);
+      const routedShirt=params.get("shirt");
+      const routedPant=params.get("pant");
+      const nextShirtId=routedShirt&&shirtFabrics.some((fabric)=>fabric.id===routedShirt) ? routedShirt : parsed.shirtId;
+      const nextPantId=routedPant&&trouserFabrics.some((fabric)=>fabric.id===routedPant) ? routedPant : parsed.pantId;
+      if(nextShirtId && shirtFabrics.some((fabric)=>fabric.id===nextShirtId)) setShirtId(nextShirtId);
+      if(nextPantId && trouserFabrics.some((fabric)=>fabric.id===nextPantId)) setTrouserId(nextPantId);
     }catch{/* 3D Lab stays usable without Designer browser state. */}
-  },[]);
+  },[shirtFabrics,trouserFabrics]);
 
   useEffect(()=>{
     normalMapRef.current=createLinenNormalMap();
@@ -424,10 +446,40 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       {designerDraftRecipe?.style&&<section className="garmentDraftRecipe" aria-label="Current Designer garment recipe">
         <div><span>YOUR DESIGNER RECIPE</span><b>{designerDraftRecipe.occasion||"Saved look"}</b></div>
         <div className="garmentDraftRecipeGrid">
-          <article><strong>Shirt</strong><p>{[designerDraftRecipe.style.collar,designerDraftRecipe.style.cuff,designerDraftRecipe.style.placket,designerDraftRecipe.style.shirtFit,designerDraftRecipe.style.shirtWear].filter(Boolean).join(" · ")}</p></article>
-          <article><strong>Trouser</strong><p>{[designerDraftRecipe.style.trouser,designerDraftRecipe.style.rise,designerDraftRecipe.style.waistband,designerDraftRecipe.style.break].filter(Boolean).join(" · ")}</p></article>
+          <article>
+            <strong>Shirt</strong>
+            <h4>{designerDraftRecipe.styleSpec ? optionLabel(designerDraftRecipe.styleSpec.shirt.type,"Dress Shirt") : "Shirt"}</h4>
+            <p>{designerDraftRecipe.styleSpec
+              ? [
+                  optionLabel(designerDraftRecipe.styleSpec.shirt.collar),
+                  optionLabel(designerDraftRecipe.styleSpec.shirt.cuff),
+                  optionLabel(designerDraftRecipe.styleSpec.shirt.placket),
+                  optionLabel(designerDraftRecipe.styleSpec.shirt.fit),
+                  optionLabel(designerDraftRecipe.styleSpec.shirt.sleeve),
+                  optionLabel(designerDraftRecipe.styleSpec.shirt.pocket),
+                  optionLabel(designerDraftRecipe.styleSpec.shirt.button),
+                  designerDraftRecipe.styleSpec.shirt.wear,
+                ].join(" · ")
+              : [designerDraftRecipe.style.collar,designerDraftRecipe.style.cuff,designerDraftRecipe.style.placket,designerDraftRecipe.style.shirtFit,designerDraftRecipe.style.shirtWear].filter(Boolean).join(" · ")}</p>
+            {shirt&&<small>Fabric: {shirt.name} · {shirt.line}</small>}
+          </article>
+          <article>
+            <strong>Trouser</strong>
+            <h4>{designerDraftRecipe.styleSpec ? optionLabel(designerDraftRecipe.styleSpec.pant.type,"Trouser") : (designerDraftRecipe.style.trouser||"Trouser")}</h4>
+            <p>{designerDraftRecipe.styleSpec
+              ? [
+                  optionLabel(designerDraftRecipe.styleSpec.pant.fit),
+                  optionLabel(designerDraftRecipe.styleSpec.pant.rise),
+                  optionLabel(designerDraftRecipe.styleSpec.pant.pleat),
+                  optionLabel(designerDraftRecipe.styleSpec.pant.waistband),
+                  optionLabel(designerDraftRecipe.styleSpec.pant.hem),
+                  optionLabel(designerDraftRecipe.styleSpec.pant.break),
+                ].join(" · ")
+              : [designerDraftRecipe.style.trouser,designerDraftRecipe.style.rise,designerDraftRecipe.style.waistband,designerDraftRecipe.style.break].filter(Boolean).join(" · ")}</p>
+            {trouser&&<small>Fabric: {trouser.name} · {trouser.line}</small>}
+          </article>
         </div>
-        <small>Recipe is shown for continuity. The temporary 3D block maps fabric now; construction-specific mesh changes remain a later production-model step.</small>
+        <small>The 3D Lab now opens on the same saved shirt and trouser fabrics as Designer. Construction details are carried with the look; the temporary block still maps fabric only until the production garment meshes can express those details.</small>
       </section>}
 
       <div className="garmentCurrentType"><span>ACTIVE GARMENT</span><b>Shirt</b><small>Types: {SHIRT_GARMENT_CATEGORY.typeExamples.slice(0,6).join(" · ")}</small><small>Details: {SHIRT_GARMENT_CATEGORY.detailFamilies.join(" · ")}</small></div>
