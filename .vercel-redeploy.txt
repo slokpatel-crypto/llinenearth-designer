@@ -18,3 +18,7 @@ Date: 2026-10-05
 Operator credential refresh deployment: 2026-10-05.
 
 Mobile GarmentViewer ordering fix: show 3D stage before controls on phone/tablet.
+
+3D viewer reliability hotfix: self-host pinned model-viewer engine through Linen Earth origin after verified CI 37290185631.
+Target merged commit: 43c6c411807bee34d1dd537ccf1eb23c52309d81
+Date: 2026-10-05
