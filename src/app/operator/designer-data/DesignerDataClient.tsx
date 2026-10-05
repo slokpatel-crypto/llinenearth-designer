@@ -59,7 +59,8 @@ type Coverage = {
   formality:number;
 };
 
-type Payload = { configured:boolean; coverage:Coverage; fabrics:FabricRow[] };
+type GarmentExpansion = { garmentType:string; label:string; evidenceReady:number; strongOrWorkable:number; strong:number; total:number };
+type Payload = { configured:boolean; coverage:Coverage; garmentExpansion:GarmentExpansion[]; fabrics:FabricRow[] };
 type EvidenceFilter = "priority"|"all"|"scale"|"physical"|"review";
 
 const SEASONS = ["Spring","Summer","Autumn","Winter","All-season"] as const;
@@ -202,6 +203,16 @@ export default function DesignerDataClient() {
         ["Stretch",data.coverage.stretch],
         ["Formality",data.coverage.formality],
       ] as const).map(([label,value])=><article key={label}><small>{label}</small><strong>{value}<i>/ {data.coverage.activeCandidates}</i></strong><em style={{width:`${data.coverage.activeCandidates?Math.round(value/data.coverage.activeCandidates*100):0}%`}} /></article>)}
+    </section>
+
+    <section className="garmentExpansionBoard" aria-label="Garment expansion readiness">
+      <div><span>GARMENT EXPANSION READINESS</span><strong>Physics evidence before we expose new garment families</strong><p>This is an internal readiness view, not a customer claim. A garment family only becomes a serious expansion candidate after enough real fabrics have measured physical evidence.</p></div>
+      <div className="garmentExpansionGrid">{data.garmentExpansion.map((item)=><article key={item.garmentType}>
+        <small>{item.label}</small>
+        <strong>{item.strongOrWorkable}<i>/ {item.total}</i></strong>
+        <span>{item.strong} strong · {item.evidenceReady} evidence-ready</span>
+        <em style={{width:`${item.total?Math.round(item.strongOrWorkable/item.total*100):0}%`}}/>
+      </article>)}</div>
     </section>
 
     <DesignerDataBatchPanel fabrics={data.fabrics} configured={data.configured} onComplete={async()=>{await load(true);}} />
