@@ -13,7 +13,7 @@ import { inspectGarmentViewerGlb } from "@/lib/garment-viewer-glb";
 export const GARMENT_VIEWER_PRODUCTION_MODEL_ID="LE-OFFICEWEAR-V1";
 
 function publicAssetPath(source:string){
-  const relative=source.replace(/^\\/+/, "");
+  const relative=source.replace(/\?.*$/,"").replace(/^\/+/,"");
   const root=path.resolve(process.cwd(),"public");
   const resolved=path.resolve(root,relative);
   if(!resolved.startsWith(root+path.sep)) throw new Error("GarmentViewer asset escaped public root.");
