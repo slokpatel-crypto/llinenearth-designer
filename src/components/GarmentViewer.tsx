@@ -8,7 +8,7 @@ import {
 } from "@/lib/garment-viewer-prototype";
 import { garmentPanelTextureScale, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
 import { validateGarmentViewerModelContract, validateGarmentViewerModelManifest, type GarmentViewerModelContractResult, type GarmentViewerModelManifest, type GarmentViewerManifestValidation } from "@/lib/garment-viewer-model-contract";
-import { GARMENT_VIEWER_LATENCY_STORAGE_KEY } from "@/lib/garment-viewer-readiness";
+import { GARMENT_VIEWER_LATENCY_STORAGE_KEY, garmentViewerAssetIdentityKey, type GarmentViewerAssetIdentity } from "@/lib/garment-viewer-readiness";
 
 export type GarmentViewerFabric = {
   id:string;
@@ -96,12 +96,13 @@ function measuredTileWidth(
   return resolveViewerTileWidthMm(manifest.assets?.[fabric.tileKey],runtimeScale[fabric.id]);
 }
 
-export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null,modelManifestSrc=null,modelId=PROTOTYPE_MODEL_ID}:{
+export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null,modelManifestSrc=null,modelId=PROTOTYPE_MODEL_ID,assetIdentity=null}:{
   shirtFabrics:GarmentViewerFabric[];
   trouserFabrics:GarmentViewerFabric[];
   modelSrc?:string|null;
   modelManifestSrc?:string|null;
   modelId?:string;
+  assetIdentity?:GarmentViewerAssetIdentity|null;
 }) {
   const viewerRef=useRef<ModelViewerElement|null>(null);
   const normalMapRef=useRef("");
@@ -128,6 +129,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const trouser=useMemo(()=>trouserFabrics.find((fabric)=>fabric.id===trouserId) || trouserFabrics[0],[trouserFabrics,trouserId]);
   const shirtMeasuredTileMm=useMemo(()=>measuredTileWidth(tileManifest,runtimeScale,shirt),[tileManifest,runtimeScale,shirt]);
   const trouserMeasuredTileMm=useMemo(()=>measuredTileWidth(tileManifest,runtimeScale,trouser),[tileManifest,runtimeScale,trouser]);
+  const assetIdentityKey=useMemo(()=>garmentViewerAssetIdentityKey(assetIdentity),[assetIdentity]);
   const shirtTileMm=shirtMeasuredTileMm ?? shirtManualTileMm;
   const trouserTileMm=trouserMeasuredTileMm ?? trouserManualTileMm;
   const productionManifestReady=!modelSrc || modelManifestValidation?.valid===true;
@@ -273,16 +275,20 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           material.pbrMetallicRoughness.baseColorTexture?.setTexture(entry.texture);
           if(entry.normal) material.normalTexture?.setTexture(entry.normal);
         }
-        if(interactionStartedAt.current!==null && modelSrc && modelContract?.readiness==="contract_ready"){
+        if(interactionStartedAt.current!==null && modelSrc && assetIdentityKey && modelContract?.readiness==="contract_ready"){
           const duration=performance.now()-interactionStartedAt.current;
           interactionStartedAt.current=null;
           if(Number.isFinite(duration)&&duration>=0&&duration<=10000){
             try{
               const raw=localStorage.getItem(GARMENT_VIEWER_LATENCY_STORAGE_KEY);
-              const previous=raw?JSON.parse(raw):[];
-              const samples=Array.isArray(previous)?previous.map(Number).filter((value)=>Number.isFinite(value)&&value>=0&&value<=10000):[];
+              const previous=raw?JSON.parse(raw):null;
+              const samples=previous&&typeof previous==="object"&&!Array.isArray(previous)
+                && String((previous as {assetKey?:unknown}).assetKey||"")===assetIdentityKey
+                && Array.isArray((previous as {samples?:unknown}).samples)
+                ? ((previous as {samples:unknown[]}).samples).map(Number).filter((value)=>Number.isFinite(value)&&value>=0&&value<=10000)
+                : [];
               samples.push(Math.round(duration*10)/10);
-              localStorage.setItem(GARMENT_VIEWER_LATENCY_STORAGE_KEY,JSON.stringify(samples.slice(-120)));
+              localStorage.setItem(GARMENT_VIEWER_LATENCY_STORAGE_KEY,JSON.stringify({assetKey:assetIdentityKey,samples:samples.slice(-120)}));
             }catch{}
           }
         }
@@ -293,7 +299,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       }
     };
     void apply();
-  },[modelReady,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract]);
+  },[modelReady,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract,modelSrc,assetIdentityKey]);
 
   useEffect(()=>{
     if(!modelReady) return;
