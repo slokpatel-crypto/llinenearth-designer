@@ -9,6 +9,10 @@ test("garment category library keeps shirt and trouser live while blazer and sui
   assert.equal(byId.trouser.status,"live");
   assert.equal(byId.blazer.status,"planned");
   assert.equal(byId.suit.status,"planned");
+  assert(byId.shirt.typeExamples.includes("Dress shirt"));
+  assert(byId.trouser.typeExamples.includes("Pleated"));
+  assert(byId.blazer.typeExamples.includes("Single-breasted"));
+  assert(byId.suit.typeExamples.includes("3-piece"));
   assert(byId.shirt.detailFamilies.includes("Collar"));
   assert(byId.trouser.detailFamilies.includes("Rise"));
   assert(byId.blazer.detailFamilies.includes("Lapel"));
@@ -18,7 +22,9 @@ test("garment category library keeps shirt and trouser live while blazer and sui
 test("GarmentViewer shows garment construction scope, not fabric alone",()=>{
   const source=readFileSync("src/components/GarmentViewer.tsx","utf8");
   assert(source.includes("GARMENT TYPES · CURRENT + FUTURE"));
-  assert(source.includes("Construction families: Collar"));
-  assert(source.includes("Construction families: Rise"));
+  assert(source.includes("Types: Dress"));
+  assert(source.includes("Details: Collar"));
+  assert(source.includes("Types: Formal flat-front"));
+  assert(source.includes("Details: Rise"));
   assert(source.includes("GARMENT_CATEGORY_LIBRARY.map"));
 });
