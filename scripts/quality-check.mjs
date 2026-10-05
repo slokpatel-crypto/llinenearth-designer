@@ -1528,6 +1528,7 @@ for(const token of ["PHYSICS COMPATIBILITY · PROVISIONAL","GARMENT EXPANSION RE
 console.log("Fabric Physics gate passed: physical suitability stays evidence-aware, operator-visible and provisional before customer exposure.");
 
 const garmentViewerSource=fs.readFileSync("src/components/GarmentViewer.tsx","utf8");
+const designerModuleGarmentScope=fs.readFileSync("src/components/DesignerModule.tsx","utf8");
 const garmentCategoryLibrary=fs.readFileSync("src/lib/designer/garment-category-library.ts","utf8");
 const garmentViewerContract=fs.readFileSync("src/lib/garment-viewer-model-contract.ts","utf8");
 const garmentViewerPrototype=fs.readFileSync("src/lib/garment-viewer-prototype.ts","utf8");
@@ -1543,6 +1544,9 @@ const garmentViewerReadinessClient=fs.readFileSync("src/app/operator/phase10-rea
 const protectedVisualRoute=fs.readFileSync("src/app/visual/page.tsx","utf8");
 for(const token of ["shirt","trouser","blazer","suit","typeExamples","detailFamilies","status:\"planned\""]) {
   if(!garmentCategoryLibrary.includes(token)) throw new Error(`Garment category library regression: missing ${token}`);
+}
+for(const token of ["GARMENT_CATEGORY_LIBRARY","newDesignerGarmentScope","garment.status===\"live\"?\"CURRENT\":\"FUTURE\"","typeExamples.slice(0,4)","detailFamilies.slice(0,5)"]) {
+  if(!designerModuleGarmentScope.includes(token)) throw new Error(`Designer garment-scope regression: missing ${token}`);
 }
 for(const token of ["GARMENT_CATEGORY_LIBRARY","GARMENT TYPES · CURRENT + FUTURE","Types: Dress","Details: Collar","Types: Formal flat-front","Details: Rise","GARMENT_PANEL_SPECS","sampler?.setScale","sampler?.setOffset","sampler?.setRotation","modelManifestSrc","assetIdentity","GARMENT_VIEWER_LATENCY_STORAGE_KEY"]) {
   if(!garmentViewerSource.includes(token)) throw new Error(`GarmentViewer M2 runtime regression: missing ${token}`);
