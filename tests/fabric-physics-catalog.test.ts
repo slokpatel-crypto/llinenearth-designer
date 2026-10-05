@@ -29,8 +29,8 @@ function reviewed(provenance: "declared" | "reviewed" = "reviewed"): DesignerFab
     profileId: "physics-review", analyzerVersion: "fabric-analyzer-v4", reviewStatus: "approved", trust: "reviewed",
     measuredEvidence: { imageQualityScore: 90, colorDeltaE: null, measuredHex: null, patternContrastDeltaE: null,
       patternOrientation: null, patternPhysicalScale: "unknown", repeatMm: null, stripeWidthMm: null, contentSha256: null },
-    verifiedPhysical: { gsm: 280, drape: "Balanced", fiberContent: null, sourceUrl: null, evidenceNote: "Physical roll checked for these fields." },
-    fieldProvenance: { "verifiedPhysical.gsm": provenance, "verifiedPhysical.drape": provenance },
+    verifiedPhysical: { gsm: 280, drape: "Balanced", fiberContent: null, structure: 0.82, breathability: 0.62, wrinkleResistance: 0.72, stretch: 0.08, sourceUrl: null, evidenceNote: "Physical roll checked for these fields." },
+    fieldProvenance: { "verifiedPhysical.gsm": provenance, "verifiedPhysical.drape": provenance, "verifiedPhysical.structure": provenance, "verifiedPhysical.breathability": provenance, "verifiedPhysical.wrinkleResistance": provenance, "verifiedPhysical.stretch": provenance },
     colorFamily: null, undertone: "uncertain", depth: "mid", saturation: "medium", patternFamily: "solid", patternScale: "none",
     patternDensity: "none", patternContrast: "low", visibleTexture: [], weaveAppearance: [], sheen: "uncertain",
     visualWeight: "uncertain", personality: [], formality: 3, statementLevel: 2, bestGarments: [], bestOccasions: [],
@@ -69,6 +69,36 @@ test("overall approval, model judgement or unauditable reviews cannot supply phy
     assert.equal(fabric.physicsProfile?.drape.value, null);
     assert(fabric.garmentCompatibility?.every((item) => item.status === "insufficient_evidence"));
   }
+});
+
+test("reviewed normalized physics indices enter compatibility with their own provenance", () => {
+  const fabric = attachCatalogFabricPhysics(base, reviewed("reviewed"));
+  assert.equal(fabric.physicsProfile?.structure.value, 0.82);
+  assert.equal(fabric.physicsProfile?.structure.evidence, "reviewed");
+  assert.equal(fabric.physicsProfile?.breathability.value, 0.62);
+  assert.equal(fabric.physicsProfile?.wrinkleResistance.value, 0.72);
+  assert.equal(fabric.physicsProfile?.stretch.value, 0.08);
+  const suit = fabric.garmentCompatibility?.find((item) => item.garmentType === "suit");
+  assert(suit);
+  assert(suit.evidenceCoverage > 80);
+  assert.notEqual(suit.status, "insufficient_evidence");
+});
+
+test("invalid or unauditable normalized physics never enter customer compatibility", () => {
+  const invalid = reviewed();
+  invalid.verifiedPhysical.structure = 1.2;
+  const invalidFabric = attachCatalogFabricPhysics(base, invalid);
+  assert.equal(invalidFabric.physicsProfile?.structure.value, null);
+
+  const unauditable = reviewed();
+  unauditable.verifiedPhysical = { ...unauditable.verifiedPhysical, evidenceNote: null, sourceUrl: null };
+  const unauditableFabric = attachCatalogFabricPhysics(base, unauditable);
+  assert.equal(unauditableFabric.physicsProfile?.structure.value, null);
+
+  const modelJudged = reviewed();
+  modelJudged.fieldProvenance = { ...modelJudged.fieldProvenance, "verifiedPhysical.structure":"modelJudged" };
+  const judgedFabric = attachCatalogFabricPhysics(base, modelJudged);
+  assert.equal(judgedFabric.physicsProfile?.structure.value, null);
 });
 
 test("Analyzer adapters preserve absent or invalid GSM as unknown instead of manufacturing 20 GSM", () => {
