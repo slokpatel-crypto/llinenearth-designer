@@ -1,5 +1,22 @@
 export const PROTOTYPE_MODEL_ID = "LE-GARMENT-M1";
 
+export type GarmentPanelSpec = {
+  material:string;
+  garment:"shirt"|"trouser";
+  widthMm:number;
+  heightMm:number;
+  normalScale:number;
+};
+
+export const GARMENT_PANEL_SPECS:GarmentPanelSpec[]=[
+  {material:"ShirtTorsoFabric",garment:"shirt",widthMm:580,heightMm:780,normalScale:.32},
+  {material:"ShirtSleeveLFabric",garment:"shirt",widthMm:180,heightMm:540,normalScale:.30},
+  {material:"ShirtSleeveRFabric",garment:"shirt",widthMm:180,heightMm:540,normalScale:.30},
+  {material:"TrouserWaistFabric",garment:"trouser",widthMm:540,heightMm:260,normalScale:.24},
+  {material:"TrouserLegLFabric",garment:"trouser",widthMm:240,heightMm:760,normalScale:.26},
+  {material:"TrouserLegRFabric",garment:"trouser",widthMm:240,heightMm:760,normalScale:.26},
+];
+
 const WHITE_PIXEL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFUlEQVR4nGP8////fwYGBgYmBigAAD34BADaOyqcAAAAAElFTkSuQmCC";
 const NEUTRAL_NORMAL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGNsaPj/n4GBgYGJAQoALZkDAqlaHJYAAAAASUVORK5CYII=";
 
@@ -65,6 +82,19 @@ function boxNode(name:string,mesh:number,translation:[number,number,number],scal
   return {name,mesh,translation,scale};
 }
 
+function clothMaterial(name:string,roughness:number,normalScale:number) {
+  return {
+    name,
+    pbrMetallicRoughness:{
+      baseColorFactor:[1,1,1,1],
+      baseColorTexture:{index:0},
+      metallicFactor:0,
+      roughnessFactor:roughness,
+    },
+    normalTexture:{index:2,scale:normalScale},
+  };
+}
+
 export function buildPrototypeGarmentGlb() {
   const {geometry,views,binary}=buildBinaryParts();
   const positionView=0, normalView=1, uvView=2, indexView=3;
@@ -82,17 +112,23 @@ export function buildPrototypeGarmentGlb() {
     boxNode("Head",0,[0,1.67,0],[.18,.22,.16]),
     boxNode("Neck",0,[0,1.48,0],[.075,.08,.075]),
     boxNode("ShirtTorso",1,[0,1.18,0],[.29,.39,.12]),
-    boxNode("ShirtSleeveL",1,[-.37,1.20,0],[.09,.27,.11]),
-    boxNode("ShirtSleeveR",1,[.37,1.20,0],[.09,.27,.11]),
+    boxNode("ShirtSleeveL",2,[-.37,1.20,0],[.09,.27,.11]),
+    boxNode("ShirtSleeveR",3,[.37,1.20,0],[.09,.27,.11]),
     boxNode("ForearmL",0,[-.37,.87,0],[.06,.16,.07]),
     boxNode("ForearmR",0,[.37,.87,0],[.06,.16,.07]),
     boxNode("HandL",0,[-.37,.67,0],[.07,.09,.075]),
     boxNode("HandR",0,[.37,.67,0],[.07,.09,.075]),
-    boxNode("TrouserWaist",2,[0,.72,0],[.27,.13,.12]),
-    boxNode("TrouserLegL",2,[-.14,.27,0],[.12,.38,.11]),
-    boxNode("TrouserLegR",2,[.14,.27,0],[.12,.38,.11]),
-    boxNode("ShoeL",3,[-.14,-.18,.06],[.13,.07,.22]),
-    boxNode("ShoeR",3,[.14,-.18,.06],[.13,.07,.22]),
+    boxNode("TrouserWaist",4,[0,.72,0],[.27,.13,.12]),
+    boxNode("TrouserLegL",5,[-.14,.27,0],[.12,.38,.11]),
+    boxNode("TrouserLegR",6,[.14,.27,0],[.12,.38,.11]),
+    boxNode("ShoeL",7,[-.14,-.18,.06],[.13,.07,.22]),
+    boxNode("ShoeR",7,[.14,-.18,.06],[.13,.07,.22]),
+  ];
+
+  const materials=[
+    {name:"Skin",pbrMetallicRoughness:{baseColorFactor:[.56,.37,.25,1],metallicFactor:0,roughnessFactor:.72}},
+    ...GARMENT_PANEL_SPECS.map((panel)=>clothMaterial(panel.material,panel.garment==="shirt"?.86:.8,panel.normalScale)),
+    {name:"Shoe",pbrMetallicRoughness:{baseColorFactor:[.06,.045,.035,1],metallicFactor:0,roughnessFactor:.48}},
   ];
 
   const gltf={
@@ -119,21 +155,15 @@ export function buildPrototypeGarmentGlb() {
       {uri:NEUTRAL_NORMAL,name:"Neutral normal"},
     ],
     textures:[
-      {sampler:0,source:0,name:"Shirt placeholder"},
-      {sampler:0,source:0,name:"Trouser placeholder"},
+      {sampler:0,source:0,name:"Fabric placeholder"},
+      {sampler:0,source:0,name:"Unused compatibility placeholder"},
       {sampler:0,source:1,name:"Neutral linen normal"},
     ],
-    materials:[
-      {name:"Skin",pbrMetallicRoughness:{baseColorFactor:[.56,.37,.25,1],metallicFactor:0,roughnessFactor:.72}},
-      {name:"ShirtFabric",pbrMetallicRoughness:{baseColorFactor:[1,1,1,1],baseColorTexture:{index:0},metallicFactor:0,roughnessFactor:.86},normalTexture:{index:2,scale:.32}},
-      {name:"TrouserFabric",pbrMetallicRoughness:{baseColorFactor:[.42,.43,.45,1],baseColorTexture:{index:1},metallicFactor:0,roughnessFactor:.8},normalTexture:{index:2,scale:.26}},
-      {name:"Shoe",pbrMetallicRoughness:{baseColorFactor:[.06,.045,.035,1],metallicFactor:0,roughnessFactor:.48}},
-    ],
+    materials,
     meshes:[
       mesh("BodyCube",0),
-      mesh("ShirtCube",1),
-      mesh("TrouserCube",2),
-      mesh("ShoeCube",3),
+      ...GARMENT_PANEL_SPECS.map((panel,index)=>mesh(panel.material.replace("Fabric","Mesh"),index+1)),
+      mesh("ShoeCube",GARMENT_PANEL_SPECS.length+1),
     ],
   };
 
