@@ -1546,7 +1546,7 @@ const protectedVisualRoute=fs.readFileSync("src/app/visual/page.tsx","utf8");
 for(const token of ["shirt","trouser","blazer","suit","typeExamples","detailFamilies","status:\"planned\"","optionsFor(\"shirt.type\")","optionsFor(\"pant.type\")","futureGarmentOptionsFor(\"blazer.type\")","futureGarmentOptionsFor(\"suit.type\")"]) {
   if(!garmentCategoryLibrary.includes(token)) throw new Error(`Garment category library regression: missing ${token}`);
 }
-for(const token of ["blazer.type","blazer.lapel","blazer.vent","blazer.pocket","blazer.shoulder","suit.type","suit.waistcoat","suit.jacket","suit.trouser","status:\"planned\""]) {
+for(const token of ["blazer.type","blazer.lapel","blazer.vent","blazer.pocket","blazer.shoulder","blazer.button_stance","blazer.length","suit.type","suit.waistcoat","suit.jacket","suit.trouser","suit.lapel","suit.vent","suit.button_stance","status:\"planned\""]) {
   if(!futureGarmentOptions.includes(token)) throw new Error(`Future garment taxonomy regression: missing ${token}`);
 }
 for(const token of ["GARMENT_CATEGORY_LIBRARY","newDesignerGarmentScope","garment.status===\"live\"?\"CURRENT\":\"FUTURE\"","typeExamples.slice(0,4)","detailFamilies.slice(0,5)","newDesigner3dBridge","Open this shirt + trouser recipe in 3D","/lab/garment-viewer?from=designer&shirt="]) {
