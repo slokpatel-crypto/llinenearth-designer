@@ -60,7 +60,9 @@ test("prototype model is a reusable full outfit rather than one flattened garmen
 test("GarmentViewer lab route is isolated from the protected customer visual route",()=>{
   const lab=readFileSync("src/app/lab/garment-viewer/page.tsx","utf8");
   const legacy=readFileSync("src/app/visual/page.tsx","utf8");
-  assert(lab.includes("model-viewer/4.3.1/model-viewer.min.js"));
+  assert(lab.includes('src="/vendor/model-viewer"'));
+  const vendor=readFileSync("src/app/vendor/model-viewer/route.ts","utf8");
+  assert(vendor.includes("@google/model-viewer@4.3.1"));
   assert(lab.includes("<GarmentViewer"));
   assert(legacy.includes('redirect("/style-director")'));
 });
