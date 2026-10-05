@@ -10,9 +10,11 @@ export type GarmentViewerFabric = {
   image:string;
 };
 
+type ViewerTexture={
+  setScale?:(scale:{u:number;v:number}|null)=>void;
+};
 type TextureInfo={
-  setTexture:(texture:unknown|null)=>void;
-  setScale?:(scale:{u:number;v:number})=>void;
+  setTexture:(texture:ViewerTexture|null)=>void;
 };
 type Material={
   name:string;
@@ -23,12 +25,11 @@ type Material={
     setRoughnessFactor:(value:number)=>void;
   };
   normalTexture?:TextureInfo|null;
-  setNormalScale?:(value:number)=>void;
 };
 type ModelViewerElement=HTMLElement&{
   model?:{materials:ReadonlyArray<Material>};
   cameraOrbit?:string;
-  createTexture?:(url:string)=>Promise<unknown>;
+  createTexture?:(url:string)=>Promise<ViewerTexture>;
   updateFraming?:()=>void|Promise<void>;
 };
 
@@ -135,15 +136,20 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
     const token=++applyToken.current;
     const apply=async()=>{
       try{
-        const [shirtTexture,trouserTexture,normalTexture]=await Promise.all([
+        const [shirtTexture,trouserTexture,shirtNormal,trouserNormal]=await Promise.all([
           viewer.createTexture!(shirt.image),
           viewer.createTexture!(trouser.image),
           normalMapRef.current ? viewer.createTexture!(normalMapRef.current) : Promise.resolve(null),
+          normalMapRef.current ? viewer.createTexture!(normalMapRef.current) : Promise.resolve(null),
         ]);
+        shirtTexture.setScale?.({u:textureScale,v:textureScale});
+        trouserTexture.setScale?.({u:textureScale,v:textureScale});
+        shirtNormal?.setScale?.({u:textureScale*1.35,v:textureScale*1.35});
+        trouserNormal?.setScale?.({u:textureScale*1.35,v:textureScale*1.35});
         if(token!==applyToken.current) return;
         const entries=[
-          {name:"ShirtFabric",texture:shirtTexture,normalScale:.34},
-          {name:"TrouserFabric",texture:trouserTexture,normalScale:.27},
+          {name:"ShirtFabric",texture:shirtTexture,normal:shirtNormal},
+          {name:"TrouserFabric",texture:trouserTexture,normal:trouserNormal},
         ];
         for(const entry of entries){
           const material=materialByName(viewer,entry.name);
@@ -152,12 +158,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
           material.pbrMetallicRoughness.setMetallicFactor(0);
           material.pbrMetallicRoughness.setRoughnessFactor(roughness);
           material.pbrMetallicRoughness.baseColorTexture?.setTexture(entry.texture);
-          material.pbrMetallicRoughness.baseColorTexture?.setScale?.({u:textureScale,v:textureScale});
-          if(normalTexture){
-            material.normalTexture?.setTexture(normalTexture);
-            material.normalTexture?.setScale?.({u:textureScale*1.35,v:textureScale*1.35});
-            material.setNormalScale?.(entry.normalScale);
-          }
+          if(entry.normal) material.normalTexture?.setTexture(entry.normal);
         }
       }catch{
         if(token===applyToken.current)setError("Fabric texture application failed. The base 3D model is still available.");
