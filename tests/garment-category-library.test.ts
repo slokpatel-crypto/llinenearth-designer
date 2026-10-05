@@ -11,8 +11,8 @@ test("garment category library keeps shirt and trouser live while blazer and sui
   assert.equal(byId.suit.status,"planned");
   assert(byId.shirt.typeExamples.includes("Dress Shirt"));
   assert(byId.trouser.typeExamples.includes("Pleated Trouser"));
-  assert(byId.blazer.typeExamples.includes("Single-breasted"));
-  assert(byId.suit.typeExamples.includes("3-piece"));
+  assert(byId.blazer.typeExamples.includes("Single-Breasted 2-Button"));
+  assert(byId.suit.typeExamples.includes("3-Piece Suit"));
   assert(byId.shirt.detailFamilies.includes("Collar"));
   assert(byId.trouser.detailFamilies.includes("Rise"));
   assert(byId.blazer.detailFamilies.includes("Lapel"));
@@ -36,4 +36,13 @@ test("Designer shows current and future garment types before fabric selection",(
   assert(source.includes("GARMENT_CATEGORY_LIBRARY.map"));
   assert(source.includes('garment.status==="live"?"CURRENT":"FUTURE"'));
   assert(source.indexOf("newDesignerGarmentScope") < source.indexOf("newDesignerFabricGrid"));
+});
+
+
+test("future blazer and suit taxonomy stays planned",()=>{
+  const future=readFileSync("src/lib/designer/future-garment-options.ts","utf8");
+  for(const token of ["blazer.type","blazer.lapel","blazer.vent","blazer.pocket","blazer.shoulder","suit.type","suit.waistcoat","suit.jacket","suit.trouser"]) {
+    assert(future.includes(token),token);
+  }
+  assert(future.includes('status:"planned"'));
 });
