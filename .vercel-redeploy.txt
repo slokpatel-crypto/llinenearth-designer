@@ -16,3 +16,5 @@ Date: 2026-10-05
 
 
 Operator credential refresh deployment: 2026-10-05.
+
+Mobile GarmentViewer ordering fix: show 3D stage before controls on phone/tablet.
