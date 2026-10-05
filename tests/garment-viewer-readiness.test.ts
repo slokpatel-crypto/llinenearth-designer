@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { garmentViewerPromotionReadiness } from "../src/lib/garment-viewer-readiness.ts";
+import { garmentViewerAssetIdentityKey, garmentViewerAssetIdentityMatches, garmentViewerPromotionReadiness } from "../src/lib/garment-viewer-readiness.ts";
 import {
   GARMENT_VIEWER_CONTRACT_VERSION,
   REQUIRED_GARMENT_VIEWER_MATERIALS,
@@ -80,4 +80,13 @@ test("realism, latency and boundary evidence cannot be bypassed",()=>{
   assert.equal(result.realismReady,false);
   assert.equal(result.boundaryReady,false);
   assert(result.reasons.length>=3);
+});
+
+
+test("QA evidence identity is invalidated by any GLB or manifest revision",()=>{
+  const current={modelId:"LE-OFFICEWEAR-V1",modelSha256:"a".repeat(64),manifestSha256:"b".repeat(64)};
+  assert.equal(garmentViewerAssetIdentityMatches(current,{...current}),true);
+  assert.equal(garmentViewerAssetIdentityMatches(current,{...current,modelSha256:"c".repeat(64)}),false);
+  assert.equal(garmentViewerAssetIdentityMatches(current,{...current,manifestSha256:"d".repeat(64)}),false);
+  assert.equal(garmentViewerAssetIdentityKey(current),`LE-OFFICEWEAR-V1:${"a".repeat(64)}:${"b".repeat(64)}`);
 });
