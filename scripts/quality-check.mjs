@@ -1525,13 +1525,13 @@ for(const token of ["ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric"
 for(const token of ["parseGarmentViewerGlbJson","TEXCOORD_0","externalGlbUri","structuralReady"]) {
   if(!garmentViewerGlb.includes(token)) throw new Error(`GarmentViewer GLB inspection regression: missing ${token}`);
 }
-for(const token of ["garmentViewerPromotionReadiness","ROADMAP_SCALE_TOLERANCE_PCT","PHASE1_PROOF_MIN_REALISM_VIEWERS","PHASE1_PROOF_MAX_P95_MS","garmentViewerAssetIdentityMatches"]) {
+for(const token of ["garmentViewerPromotionReadiness","ROADMAP_SCALE_TOLERANCE_PCT","PHASE1_PROOF_MIN_REALISM_VIEWERS","PHASE1_PROOF_MAX_P95_MS","garmentViewerAssetIdentityMatches","GARMENT_VIEWER_REALISM_RUBRIC_VERSION"]) {
   if(!garmentViewerReadiness.includes(token)) throw new Error(`GarmentViewer promotion gate regression: missing ${token}`);
 }
 for(const token of ["GarmentViewerEvidenceForm","CUSTOMER PROMOTION GATE","loadLatestGarmentViewerReadiness"]) {
   if(!garmentViewerOperator.includes(token)) throw new Error(`GarmentViewer operator QA regression: missing ${token}`);
 }
-for(const token of ['subtype === "garment_viewer_readiness"',"modelSha256","manifestSha256","patternScaleSamples","realismAssessments"]) {
+for(const token of ['subtype === "garment_viewer_readiness"',"modelSha256","manifestSha256","realismRubricVersion","patternScaleSamples","realismAssessments"]) {
   if(!garmentViewerMemory.includes(token)) throw new Error(`GarmentViewer evidence storage regression: missing ${token}`);
 }
 if(!protectedVisualRoute.includes('redirect("/style-director")')) throw new Error("GarmentViewer regression: public /visual must remain on Style Director until promotion evidence passes.");
