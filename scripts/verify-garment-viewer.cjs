@@ -60,8 +60,8 @@ async function verifyViewport(browser, width) {
   const garmentCards=page.locator(".garmentTypeGrid article");
   assert.equal(await garmentCards.count(),4,"garment type roadmap must show current and future families");
   const garmentText=await garmentCards.allTextContents();
-  assert.ok(garmentText.some((value)=>/Shirt/.test(value)&&/LIVE/.test(value)&&/Dress shirt/.test(value)),"shirt types must be visible");
-  assert.ok(garmentText.some((value)=>/Trouser/.test(value)&&/LIVE/.test(value)&&/Pleated/.test(value)),"trouser types must be visible");
+  assert.ok(garmentText.some((value)=>/Shirt/.test(value)&&/LIVE/.test(value)&&/Dress Shirt/.test(value)),"shirt types must be visible");
+  assert.ok(garmentText.some((value)=>/Trouser/.test(value)&&/LIVE/.test(value)&&/Pleated Trouser/.test(value)),"trouser types must be visible");
   assert.ok(garmentText.some((value)=>/Blazer/.test(value)&&/FUTURE/.test(value)&&/Single-breasted/.test(value)),"future blazer types must be visible");
   assert.ok(garmentText.some((value)=>/Suit/.test(value)&&/FUTURE/.test(value)&&/3-piece/.test(value)),"future suit types must be visible");
 
