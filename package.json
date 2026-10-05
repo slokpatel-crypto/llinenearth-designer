@@ -21,7 +21,8 @@
     "test": "npm run fabric:tiles && node --experimental-strip-types --test tests/*.test.ts",
     "eval:engine": "node --experimental-strip-types scripts/eval-phase10-engine.mjs && npm run eval:designer-snapshots && node scripts/eval-designer-advisor.cjs",
     "eval:designer-snapshots": "node --experimental-strip-types scripts/eval-phase10-designer-snapshots.mjs",
-    "eval:preview-performance": "node --experimental-strip-types scripts/eval-preview-performance.mjs"
+    "eval:preview-performance": "node --experimental-strip-types scripts/eval-preview-performance.mjs",
+    "garment:model-check": "node --experimental-strip-types scripts/check-garment-viewer-model.mjs"
   },
   "dependencies": {
     "fashn": "^0.15.0",
