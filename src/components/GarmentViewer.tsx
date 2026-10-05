@@ -169,9 +169,9 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   useEffect(()=>{
     let cancelled=false;
     setModelManifest(null);
-    setModelManifestValidation(modelSrc ? null : {valid:true,missingPanels:[],invalidPanels:[],reasons:[]});
+    setModelManifestValidation(modelSrc ? null : {valid:true,sourceReady:true,source:null,missingPanels:[],invalidPanels:[],reasons:[]});
     if(!modelSrc || !modelManifestSrc) {
-      if(modelSrc) setModelManifestValidation({valid:false,missingPanels:GARMENT_PANEL_SPECS.map((panel)=>panel.material),invalidPanels:[],reasons:["Approved production model needs a matching viewer manifest."]});
+      if(modelSrc) setModelManifestValidation({valid:false,sourceReady:false,source:null,missingPanels:GARMENT_PANEL_SPECS.map((panel)=>panel.material),invalidPanels:[],reasons:["Approved production model needs a matching viewer manifest."]});
       return ()=>{cancelled=true;};
     }
     void fetch(modelManifestSrc,{cache:"no-store"})
@@ -187,7 +187,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       })
       .catch((reason)=>{
         if(cancelled) return;
-        setModelManifestValidation({valid:false,missingPanels:GARMENT_PANEL_SPECS.map((panel)=>panel.material),invalidPanels:[],reasons:[reason instanceof Error?reason.message:"Approved model manifest could not be loaded."]});
+        setModelManifestValidation({valid:false,sourceReady:false,source:null,missingPanels:GARMENT_PANEL_SPECS.map((panel)=>panel.material),invalidPanels:[],reasons:[reason instanceof Error?reason.message:"Approved model manifest could not be loaded."]});
       });
     return ()=>{cancelled=true;};
   },[modelSrc,modelManifestSrc,modelId]);
