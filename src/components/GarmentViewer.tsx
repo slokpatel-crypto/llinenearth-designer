@@ -358,8 +358,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   return <section className="garmentViewerShell" data-model-readiness={modelContract?.readiness || "loading"} data-manifest-ready={productionManifestReady}>
     <div className="garmentViewerStage">
       <div className="garmentViewerStageHead">
-        <span>GARMENTVIEWER · MILESTONE 1</span>
-        <strong>{modelId}</strong>
+        <span>GARMENTVIEWER · DEEP ENGINE</span>
+        <strong>SHIRT + TROUSER · BLAZER / SUIT NEXT</strong>
       </div>
       <div className="garmentViewerCanvas">
         {modelViewer}
