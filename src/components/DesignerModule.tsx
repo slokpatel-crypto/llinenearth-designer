@@ -326,6 +326,14 @@ export function DesignerModule() {
           } catch { /* Invalid URL style data falls back to the occasion preset. */ }
         }
 
+        const routedStyleSpec = params.get("styleSpec");
+        if(routedStyleSpec){
+          try{
+            const parsedStyleSpec=JSON.parse(routedStyleSpec) as unknown;
+            if(validateStyleSpecV2(parsedStyleSpec)) nextStyleSpec=parsedStyleSpec;
+          }catch{/* Invalid StyleSpec falls back to the signed legacy style. */}
+        }
+
         setDirectorHandoffTitle(params.get("sourceTitle") || "Style Director result");
         setDirectorHandoffTier(params.get("sourceTier") || "");
         setDirectorHandoffReason(params.get("sourceReason") || "");
@@ -342,6 +350,7 @@ export function DesignerModule() {
               climate:nextClimate,
               intention:nextIntention,
               style:nextStyle,
+              styleSpec:nextStyleSpec || fromLegacyStyle(nextStyle),
             }),
           }).then(async(response)=>{
             const result=await response.json() as {verified?:boolean;audited?:boolean;auditId?:string|null;error?:string};
@@ -387,7 +396,7 @@ export function DesignerModule() {
         if (routedShirtFabric && routedPantFabric) {
           const context: DesignerContext = { climate: nextClimate, intention: nextIntention };
           void requestLookAssessment({
-            shirtId:nextShirtId,pantId:nextPantId,occasion:nextOccasion,style:nextStyle,context,
+            shirtId:nextShirtId,pantId:nextPantId,occasion:nextOccasion,style:nextStyle,styleSpec:nextStyleSpec || fromLegacyStyle(nextStyle),context,
           }).then((next)=>{
             applyServerAssessment(next);
             setResponse(null);
