@@ -3,6 +3,7 @@ import "server-only";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { loadGarmentViewerProductionAssetStatus } from "@/lib/garment-viewer-model-server";
 import {
+  garmentViewerAssetIdentityMatches,
   garmentViewerPromotionReadiness,
   type GarmentViewerPatternScaleSample,
 } from "@/lib/garment-viewer-readiness";
@@ -86,12 +87,7 @@ export async function loadLatestGarmentViewerReadiness(){
         modelSha256:String(payload.modelSha256||"").toLowerCase(),
         manifestSha256:String(payload.manifestSha256||"").toLowerCase(),
       };
-      const identityMatches=Boolean(
-        asset.assetIdentity
-        && evidenceIdentity.modelId===asset.assetIdentity.modelId
-        && evidenceIdentity.modelSha256===asset.assetIdentity.modelSha256
-        && evidenceIdentity.manifestSha256===asset.assetIdentity.manifestSha256
-      );
+      const identityMatches=garmentViewerAssetIdentityMatches(asset.assetIdentity,evidenceIdentity);
       const readiness=garmentViewerPromotionReadiness({
         contract:identityMatches?asset.model?.contract||null:null,
         manifest:identityMatches?asset.manifest||null:null,
