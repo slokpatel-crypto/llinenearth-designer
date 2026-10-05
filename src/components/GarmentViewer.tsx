@@ -8,6 +8,7 @@ import {
 } from "@/lib/garment-viewer-prototype";
 import { garmentPanelTextureScale, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
 import { validateGarmentViewerModelContract, validateGarmentViewerModelManifest, type GarmentViewerModelContractResult, type GarmentViewerModelManifest, type GarmentViewerManifestValidation } from "@/lib/garment-viewer-model-contract";
+import { GARMENT_VIEWER_LATENCY_STORAGE_KEY } from "@/lib/garment-viewer-readiness";
 
 export type GarmentViewerFabric = {
   id:string;
@@ -105,6 +106,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const viewerRef=useRef<ModelViewerElement|null>(null);
   const normalMapRef=useRef("");
   const applyToken=useRef(0);
+  const interactionStartedAt=useRef<number|null>(null);
   const [modelUrl,setModelUrl]=useState("");
   const [engineReady,setEngineReady]=useState(false);
   const [modelReady,setModelReady]=useState(false);
@@ -271,8 +273,22 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           material.pbrMetallicRoughness.baseColorTexture?.setTexture(entry.texture);
           if(entry.normal) material.normalTexture?.setTexture(entry.normal);
         }
+        if(interactionStartedAt.current!==null && modelSrc && modelContract?.readiness==="contract_ready"){
+          const duration=performance.now()-interactionStartedAt.current;
+          interactionStartedAt.current=null;
+          if(Number.isFinite(duration)&&duration>=0&&duration<=10000){
+            try{
+              const raw=localStorage.getItem(GARMENT_VIEWER_LATENCY_STORAGE_KEY);
+              const previous=raw?JSON.parse(raw):[];
+              const samples=Array.isArray(previous)?previous.map(Number).filter((value)=>Number.isFinite(value)&&value>=0&&value<=10000):[];
+              samples.push(Math.round(duration*10)/10);
+              localStorage.setItem(GARMENT_VIEWER_LATENCY_STORAGE_KEY,JSON.stringify(samples.slice(-120)));
+            }catch{}
+          }
+        }
         setError("");
       }catch{
+        interactionStartedAt.current=null;
         if(token===applyToken.current)setError("Fabric texture application failed. The base 3D model is still available.");
       }
     };
@@ -288,6 +304,10 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       material?.pbrMetallicRoughness.setRoughnessFactor(roughness);
     }
   },[modelReady,roughness,panelSpecs]);
+
+  function beginFabricInteraction(){
+    interactionStartedAt.current=performance.now();
+  }
 
   function setCamera(view:(typeof cameraViews)[number]) {
     setActiveView(view.id);
@@ -340,11 +360,11 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         <p>The same geometry stays fixed while seamless Linen Earth fabric tiles replace each shirt and trouser panel material. Calibrated tile widths are applied panel-by-panel when physical scale exists.</p>
       </div>
 
-      <label><span>Shirt fabric</span><select value={shirtId} onChange={(event)=>setShirtId(event.target.value)}>{shirtFabrics.map((fabric)=><option key={fabric.id} value={fabric.id}>{fabric.name} · {fabric.line}</option>)}</select></label>
+      <label><span>Shirt fabric</span><select value={shirtId} onChange={(event)=>{beginFabricInteraction();setShirtId(event.target.value);}}>{shirtFabrics.map((fabric)=><option key={fabric.id} value={fabric.id}>{fabric.name} · {fabric.line}</option>)}</select></label>
       <div className="garmentSwatchPreview">{shirt&&<><img src={shirt.image} alt="" /><span><b>{shirt.name}</b><small>{shirt.line}</small><em data-calibrated={Boolean(shirtMeasuredTileMm)}>{shirtMeasuredTileMm?`Calibrated tile · ${shirtMeasuredTileMm.toFixed(1)} mm`:`Approximate tile · ${shirtManualTileMm} mm`}</em></span></>}</div>
       {!shirtMeasuredTileMm&&<label className="garmentRange"><span>Approx. shirt tile width <b>{shirtManualTileMm} mm</b></span><input type="range" min="30" max="260" step="5" value={shirtManualTileMm} onChange={(event)=>setShirtManualTileMm(Number(event.target.value))}/><small>Temporary only until owner/supplier physical scale is verified.</small></label>}
 
-      <label><span>Trouser fabric</span><select value={trouserId} onChange={(event)=>setTrouserId(event.target.value)}>{trouserFabrics.map((fabric)=><option key={fabric.id} value={fabric.id}>{fabric.name} · {fabric.line}</option>)}</select></label>
+      <label><span>Trouser fabric</span><select value={trouserId} onChange={(event)=>{beginFabricInteraction();setTrouserId(event.target.value);}}>{trouserFabrics.map((fabric)=><option key={fabric.id} value={fabric.id}>{fabric.name} · {fabric.line}</option>)}</select></label>
       <div className="garmentSwatchPreview">{trouser&&<><img src={trouser.image} alt="" /><span><b>{trouser.name}</b><small>{trouser.line}</small><em data-calibrated={Boolean(trouserMeasuredTileMm)}>{trouserMeasuredTileMm?`Calibrated tile · ${trouserMeasuredTileMm.toFixed(1)} mm`:`Approximate tile · ${trouserManualTileMm} mm`}</em></span></>}</div>
       {!trouserMeasuredTileMm&&<label className="garmentRange"><span>Approx. trouser tile width <b>{trouserManualTileMm} mm</b></span><input type="range" min="30" max="260" step="5" value={trouserManualTileMm} onChange={(event)=>setTrouserManualTileMm(Number(event.target.value))}/><small>Temporary only until owner/supplier physical scale is verified.</small></label>}
 
