@@ -179,3 +179,10 @@ All 8-person realism evidence uses `linen-earth-garment-viewer-realism-rubric-v1
 5. overall photographic believability.
 
 A 4/5 or 5/5 rating means no major mismatch on those criteria. Evidence created under a different rubric version is ignored rather than silently satisfying the promotion gate.
+
+
+## Designer catalogue parity
+
+The 3D Lab and the customer Designer now use the same server-side active-stock loader. Verified metadata and provenance-ready live stock therefore remove or retain the same fabrics in both paths. The 3D Lab must not keep a separate hard-coded shortlist that can drift away from the current Designer catalogue.
+
+This parity only covers fabric availability/source-of-truth. It does not promote 3D to customers; the GLB revision must still pass the full production, scale, latency, realism and boundary evidence gate.
