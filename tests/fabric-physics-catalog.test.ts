@@ -171,11 +171,13 @@ test("catalogue GET retains stock filtering and accepted metadata while attachin
   assert.equal(selected.physicsProfile?.gsm.evidence, "declared");
   assert.equal(selected.drape, "Fluid");
   assert.equal(selected.physicsProfile?.drape.evidence, "estimated");
+  assert.equal(selected.physicsProfile?.structure.value, 0.82);
+  assert.equal(selected.physicsProfile?.structure.evidence, "reviewed");
   for (const fabric of [...data.shirts, ...data.pants] as DesignerFabric[]) {
     assert.equal(fabric.physicsProfile?.fabricId, fabric.id);
     assert.equal(fabric.garmentCompatibility?.length, 6);
     assert(fabric.garmentCompatibility?.every((item) => Number.isFinite(item.score) && item.score >= 0 && item.score <= 100));
-    assert.equal(fabric.physicsProfile?.structure.value, null);
+    assert.equal(fabric.physicsProfile?.structure.value, fabric.id===base.id ? 0.82 : null);
   }
   assert(!JSON.stringify(data).includes("test checker"), "public physics results must not expose operator evidence notes");
 });
