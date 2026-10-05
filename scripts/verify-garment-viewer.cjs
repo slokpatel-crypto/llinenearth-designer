@@ -11,6 +11,26 @@ const output = path.resolve("artifacts/preview-lifecycle");
 
 async function verifyViewport(browser, width) {
   const context = await browser.newContext({ viewport: { width, height: 1000 } });
+  const staleDesignerDraft={
+    shirtId:"linen-plain-60-sky-blue",
+    pantId:"linen-suiting-dark-grey",
+    occasion:"Formal",
+    style:{
+      collar:"Spread Collar",
+      cuff:"French / Double Cuff",
+      placket:"Hidden / Fly-front",
+      shirtFit:"Slim Fit",
+      shirtWear:"Tucked",
+      trouser:"Pleated Trouser",
+      rise:"High Rise",
+      waistband:"Side-Adjuster Tabs",
+      break:"Slight Break",
+      button:"Mother-of-Pearl",
+    },
+  };
+  await context.addInitScript((draft)=>{
+    localStorage.setItem("linen-earth:real-designer-draft:v2",JSON.stringify(draft));
+  },staleDesignerDraft);
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -34,7 +54,7 @@ async function verifyViewport(browser, width) {
     }));
   });
 
-  await page.goto(baseURL + "/lab/garment-viewer", { waitUntil: "domcontentloaded", timeout: 30000 });
+  await page.goto(baseURL + "/lab/garment-viewer?from=designer&shirt=linen-plain-60-peach&pant=linen-suiting-beige", { waitUntil: "domcontentloaded", timeout: 30000 });
   await page.waitForFunction(() => Boolean(customElements.get("model-viewer")), null, { timeout: 20000 });
   const engineResources=await page.evaluate(()=>performance.getEntriesByType("resource").map((entry)=>entry.name).filter((name)=>name.includes("model-viewer")));
   assert.ok(engineResources.some((name)=>name.includes("/vendor/model-viewer")), "3D engine must load through the Linen Earth origin");
@@ -92,6 +112,12 @@ async function verifyViewport(browser, width) {
 
   const selects = page.locator(".garmentViewerControls select");
   assert.equal(await selects.count(), 2);
+  assert.equal(await selects.nth(0).inputValue(),"linen-plain-60-peach","explicit Designer handoff must override a stale saved shirt");
+  assert.equal(await selects.nth(1).inputValue(),"linen-suiting-beige","explicit Designer handoff must override a stale saved trouser");
+  const recipe=page.locator(".garmentDraftRecipe");
+  await recipe.waitFor({state:"visible"});
+  assert.match(await recipe.textContent(),/Spread Collar/);
+  assert.match(await recipe.textContent(),/Pleated Trouser/);
   for (let index = 0; index < 2; index++) {
     const select = selects.nth(index);
     const before = await select.inputValue();
