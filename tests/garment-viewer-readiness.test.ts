@@ -16,6 +16,7 @@ const manifest=validateGarmentViewerModelManifest({
   version:GARMENT_VIEWER_CONTRACT_VERSION,
   modelId:"LE-OFFICEWEAR-V1",
   referenceHeightMm:1727,
+  source:{name:"Blender Human Base Meshes",license:"CC0",verifiedAt:"2026-10-05"},
   panels:Object.fromEntries(REQUIRED_GARMENT_VIEWER_MATERIALS.map((name)=>[name,{widthMm:300,heightMm:600}])),
 },"LE-OFFICEWEAR-V1");
 
