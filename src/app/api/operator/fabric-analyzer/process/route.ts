@@ -34,6 +34,9 @@ function sameOrigin(request:Request) {
 function clean(value:unknown,limit:number) {
   return String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
 }
+function physicalIndex(value:unknown) {
+  return typeof value==="number" && Number.isFinite(value) ? value : undefined;
+}
 
 async function processJob(job:ClaimedFabricAnalyzerJob) {
   try {
@@ -63,6 +66,10 @@ async function processJob(job:ClaimedFabricAnalyzerJob) {
         verifiedGsm:Number.isFinite(Number(declared.verifiedGsm)) ? Number(declared.verifiedGsm) : undefined,
         verifiedDrape:["Fluid","Balanced","Structured"].includes(String(declared.verifiedDrape)) ? declared.verifiedDrape as FabricAnalyzerContext["verifiedDrape"] : undefined,
         verifiedFiberContent:clean(declared.verifiedFiberContent,220) || undefined,
+        verifiedStructure:physicalIndex(declared.verifiedStructure),
+        verifiedBreathability:physicalIndex(declared.verifiedBreathability),
+        verifiedWrinkleResistance:physicalIndex(declared.verifiedWrinkleResistance),
+        verifiedStretch:physicalIndex(declared.verifiedStretch),
         verifiedPhysicalSourceUrl:clean(declared.verifiedPhysicalSourceUrl,1800) || undefined,
         verifiedPhysicalEvidenceNote:clean(declared.verifiedPhysicalEvidenceNote,500) || undefined,
       };
