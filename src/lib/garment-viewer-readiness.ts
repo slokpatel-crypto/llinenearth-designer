@@ -30,6 +30,19 @@ export function garmentViewerAssetIdentityKey(identity:GarmentViewerAssetIdentit
   return [identity.modelId,identity.modelSha256,identity.manifestSha256].join(":");
 }
 
+export function garmentViewerAssetIdentityMatches(
+  current:GarmentViewerAssetIdentity|null|undefined,
+  evidence:GarmentViewerAssetIdentity|null|undefined,
+){
+  return Boolean(
+    current
+    && evidence
+    && current.modelId===evidence.modelId
+    && current.modelSha256===evidence.modelSha256
+    && current.manifestSha256===evidence.manifestSha256
+  );
+}
+
 export type GarmentViewerPatternScaleSample = {
   fabricId:string;
   pattern:"stripe"|"check"|"other";
