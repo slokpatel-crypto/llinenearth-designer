@@ -74,6 +74,8 @@ async function verifyViewport(browser, width) {
         hasTexture: Boolean(current.pbrMetallicRoughness?.baseColorTexture?.texture),
         hasNormal: Boolean(current.normalTexture?.texture),
         scale: current.pbrMetallicRoughness?.baseColorTexture?.texture?.sampler?.scale || null,
+        offset: current.pbrMetallicRoughness?.baseColorTexture?.texture?.sampler?.offset || null,
+        rotation: current.pbrMetallicRoughness?.baseColorTexture?.texture?.sampler?.rotation ?? null,
       }));
   });
   assert.equal(materialState.length, 6);
@@ -83,6 +85,8 @@ async function verifyViewport(browser, width) {
     assert.equal(material.hasTexture, true, material.name + " must carry the selected swatch texture");
     assert.equal(material.hasNormal, true, material.name + " must carry linen normal detail");
     assert.ok(material.scale && material.scale.u > 0 && material.scale.v > 0, material.name + " must carry a panel-scale texture transform");
+    assert.ok(material.offset && Number.isFinite(material.offset.u) && Number.isFinite(material.offset.v), material.name + " must expose texture phase offset");
+    assert.ok(Number.isFinite(material.rotation), material.name + " must expose texture grain rotation");
   }
 
   const layout = await page.evaluate(() => ({
