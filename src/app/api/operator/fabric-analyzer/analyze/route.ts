@@ -35,6 +35,10 @@ function clean(value:unknown,limit:number) {
   return String(value??"").replace(/\s+/g," ").trim().slice(0,limit);
 }
 
+function physicalIndexInput(value:unknown) {
+  return typeof value==="number" && Number.isFinite(value) ? value : undefined;
+}
+
 function imageInput(value:unknown) {
   const raw=String(value??"").trim();
   if(isDirectFabricCapture(raw)) {
@@ -85,6 +89,10 @@ export async function POST(request:Request) {
       verifiedGsm:Number.isFinite(Number(body.verifiedGsm)) ? Number(body.verifiedGsm) : undefined,
       verifiedDrape:["Fluid","Balanced","Structured"].includes(String(body.verifiedDrape)) ? body.verifiedDrape as FabricAnalyzerContext["verifiedDrape"] : undefined,
       verifiedFiberContent:clean(body.verifiedFiberContent,220) || undefined,
+      verifiedStructure:physicalIndexInput(body.verifiedStructure),
+      verifiedBreathability:physicalIndexInput(body.verifiedBreathability),
+      verifiedWrinkleResistance:physicalIndexInput(body.verifiedWrinkleResistance),
+      verifiedStretch:physicalIndexInput(body.verifiedStretch),
       verifiedPhysicalSourceUrl:clean(body.verifiedPhysicalSourceUrl,1800) || undefined,
       verifiedPhysicalEvidenceNote:clean(body.verifiedPhysicalEvidenceNote,500) || undefined,
     };
