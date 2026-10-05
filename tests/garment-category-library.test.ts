@@ -55,3 +55,26 @@ test("3D lab carries the saved Designer recipe without claiming geometry support
   assert(source.includes("temporary 3D block maps fabric now"));
   assert(source.includes("construction-specific mesh changes remain a later production-model step"));
 });
+
+
+test("Designer garment cards expose selectable current garment types and keep future garments non-selectable",()=>{
+  const source=readFileSync("src/components/DesignerModule.tsx","utf8");
+  assert(source.includes('aria-label="Shirt type"'));
+  assert(source.includes('aria-label="Trouser type"'));
+  assert(source.includes('changeGarmentType("shirt"'));
+  assert(source.includes('changeGarmentType("pant"'));
+  assert(source.includes('styleSpec.shirt.type'));
+  assert(source.includes('styleSpec.pant.type'));
+  assert(source.includes('"PLANNED DETAILS · "'));
+  assert.equal(source.includes('aria-label="Blazer type"'),false);
+  assert.equal(source.includes('aria-label="Suit type"'),false);
+});
+
+test("Designer type selection participates in assessment identity and customer handoff",()=>{
+  const source=readFileSync("src/components/DesignerModule.tsx","utf8");
+  assert(source.includes("styleIdentity(style),styleSpec,climate"));
+  assert(source.includes("Shirt type:"));
+  assert(source.includes("Trouser type:"));
+  assert(source.includes("optionById(styleSpec.shirt.type)"));
+  assert(source.includes("optionById(styleSpec.pant.type)"));
+});
