@@ -56,7 +56,7 @@ test("GarmentViewer lab route is isolated from the protected customer visual rou
 
 test("viewer surface exposes four cameras and independent shirt/trouser material controls",()=>{
   const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
-  for(const token of ['id:"front"','id:"three-quarter"','id:"side"','id:"back"',"ShirtFabric","TrouserFabric","createTexture","setRoughnessFactor","setNormalScale","textureScale"]) {
+  for(const token of ['id:"front"','id:"three-quarter"','id:"side"','id:"back"',"ShirtFabric","TrouserFabric","createTexture","setRoughnessFactor","setScale","textureScale"]) {
     assert(viewer.includes(token),token);
   }
 });
