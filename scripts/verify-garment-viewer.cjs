@@ -20,6 +20,9 @@ async function verifyViewport(browser, width) {
 
   await page.goto(baseURL + "/lab/garment-viewer", { waitUntil: "domcontentloaded", timeout: 30000 });
   await page.waitForFunction(() => Boolean(customElements.get("model-viewer")), null, { timeout: 20000 });
+  const engineResources=await page.evaluate(()=>performance.getEntriesByType("resource").map((entry)=>entry.name).filter((name)=>name.includes("model-viewer")));
+  assert.ok(engineResources.some((name)=>name.includes("/vendor/model-viewer")), "3D engine must load through the Linen Earth origin");
+  assert.equal(engineResources.some((name)=>name.includes("ajax.googleapis.com")), false, "Browser must not depend on the Google CDN for the 3D engine");
   const viewer = page.locator("model-viewer");
   await viewer.waitFor({ state: "visible" });
   await page.locator(".garmentViewerLoading").waitFor({ state: "hidden", timeout: 20000 });
@@ -101,6 +104,14 @@ async function verifyViewport(browser, width) {
   }));
   assert.ok(layout.documentWidth <= width + 2, "GarmentViewer horizontal overflow at " + width + "px");
   assert.ok(layout.viewerWidth > 250 && layout.viewerHeight > 400, "GarmentViewer canvas must remain usable");
+  if(width<=640){
+    const order=await page.evaluate(()=>{
+      const stage=document.querySelector(".garmentViewerStage")?.getBoundingClientRect().top ?? 999999;
+      const controls=document.querySelector(".garmentViewerControls")?.getBoundingClientRect().top ?? -1;
+      return {stage,controls};
+    });
+    assert.ok(order.stage < order.controls, "mobile must show the 3D stage before controls");
+  }
 
   await page.screenshot({ path: path.join(output, "garment-viewer-" + width + ".png"), fullPage: true });
   assert.deepEqual(errors, [], "GarmentViewer must load without console/page errors");

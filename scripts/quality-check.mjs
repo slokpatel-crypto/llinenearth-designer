@@ -1534,6 +1534,8 @@ const garmentViewerGlb=fs.readFileSync("src/lib/garment-viewer-glb.ts","utf8");
 const garmentViewerReadiness=fs.readFileSync("src/lib/garment-viewer-readiness.ts","utf8");
 const garmentViewerOperator=fs.readFileSync("src/app/operator/garment-viewer/page.tsx","utf8");
 const garmentViewerLabPage=fs.readFileSync("src/app/lab/garment-viewer/page.tsx","utf8");
+const garmentViewerVendorRoute=fs.readFileSync("src/app/vendor/model-viewer/route.ts","utf8");
+const garmentViewerLabCss=fs.readFileSync("src/app/lab/garment-viewer/garment-viewer.css","utf8");
 const designerCatalogStock=fs.readFileSync("src/lib/designer/catalog-stock-server.ts","utf8");
 const garmentViewerMemory=fs.readFileSync("src/app/api/memory/event/route.ts","utf8");
 const garmentViewerReadinessClient=fs.readFileSync("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx","utf8");
@@ -1556,9 +1558,14 @@ for(const token of ["garmentViewerPromotionReadiness","ROADMAP_SCALE_TOLERANCE_P
 for(const token of ["loadDesignerFabricMetadata","applyDesignerFabricMetadataToStock","applyLiveVerifiedStockAvailability","verifiedStockFabrics"]) {
   if(!designerCatalogStock.includes(token)) throw new Error(`Shared Designer stock regression: missing ${token}`);
 }
-for(const token of ["loadActiveDesignerFabricStock","activeStock"]) {
-  if(!garmentViewerLabPage.includes(token)) throw new Error(`GarmentViewer live-catalogue regression: missing ${token}`);
+for(const token of ["loadActiveDesignerFabricStock","activeStock","src=\"/vendor/model-viewer\""]) {
+  if(!garmentViewerLabPage.includes(token)) throw new Error(`GarmentViewer live-catalogue/runtime regression: missing ${token}`);
 }
+for(const token of ["@google/model-viewer@4.3.1","text/javascript","s-maxage=2592000"]) {
+  if(!garmentViewerVendorRoute.includes(token)) throw new Error(`GarmentViewer same-origin engine regression: missing ${token}`);
+}
+if(garmentViewerLabPage.includes("ajax.googleapis.com")) throw new Error("GarmentViewer browser must not load its 3D engine from Google CDN directly.");
+if(garmentViewerLabCss.includes(".garmentViewerControls{order:-1}")) throw new Error("GarmentViewer mobile regression: controls cannot appear before the 3D stage.");
 for(const token of ["GarmentViewerEvidenceForm","CUSTOMER PROMOTION GATE","loadLatestGarmentViewerReadiness"]) {
   if(!garmentViewerOperator.includes(token)) throw new Error(`GarmentViewer operator QA regression: missing ${token}`);
 }
