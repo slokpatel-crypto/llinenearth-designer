@@ -26,6 +26,8 @@ SOURCE_VERSION = "1.4.1"
 SOURCE_LICENSE = "CC0"
 SOURCE_VERIFIED_AT = "2026-10-05"
 SOURCE_URL = "https://www.blender.org/download/demo-files/"
+MODEL_IDENTITY_ID = "linen-earth-studio-model-v1"
+MODEL_REFERENCE_IMAGE = "/designer/studio-tucked.webp"
 
 
 def cli_args():
@@ -176,6 +178,9 @@ def stamp_provenance(scene, source_file: Path, source_datablock: str, original_h
     scene["linen_earth_body_target_height_mm"] = int(TARGET_HEIGHT_M * 1000)
     scene["linen_earth_body_original_height_m"] = round(original_height, 6)
     scene["linen_earth_body_scale_factor"] = round(factor, 8)
+    scene["linen_earth_model_identity_id"] = MODEL_IDENTITY_ID
+    scene["linen_earth_model_reference_image"] = MODEL_REFERENCE_IMAGE
+    scene["linen_earth_model_identity_locked"] = True
     scene["linen_earth_asset_status"] = "body-source-prepared-garments-required"
 
 
@@ -205,6 +210,7 @@ def main():
 
     print(f"Prepared Linen Earth realistic body base: {output}")
     print(f"Source: {SOURCE_NAME} v{SOURCE_VERSION} · {SOURCE_LICENSE}")
+    print(f"Locked model identity: {MODEL_IDENTITY_ID} · {MODEL_REFERENCE_IMAGE}")
     print(f"Selected: {blend_path.name} :: {kind} {datablock} (score {score})")
     print(f"Body object: {original_name} -> {BODY_NAME}")
     print(f"Explicit height normalization: {original_height:.4f} m -> {measured:.4f} m")
