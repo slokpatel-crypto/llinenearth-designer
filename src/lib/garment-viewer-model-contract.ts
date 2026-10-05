@@ -75,7 +75,7 @@ export type GarmentViewerModelManifest = {
   version: typeof GARMENT_VIEWER_CONTRACT_VERSION;
   modelId: string;
   referenceHeightMm: number;
-  panels: Record<string,{widthMm:number;heightMm:number}>;
+  panels: Record<string,{widthMm:number;heightMm:number;offsetU?:number;offsetV?:number;rotationDeg?:number}>;
   cameraOrbits?: Partial<Record<"front"|"three-quarter"|"side"|"back",string>>;
 };
 
@@ -97,10 +97,16 @@ export function validateGarmentViewerModelManifest(value:unknown,expectedModelId
   const panels=manifest.panels&&typeof manifest.panels==="object"?manifest.panels:{};
   const missingPanels=REQUIRED_GARMENT_VIEWER_MATERIALS.filter((name)=>!(name in panels));
   const invalidPanels=REQUIRED_GARMENT_VIEWER_MATERIALS.filter((name)=>{
-    const panel=(panels as Record<string,{widthMm?:unknown;heightMm?:unknown}>)[name];
+    const panel=(panels as Record<string,{widthMm?:unknown;heightMm?:unknown;offsetU?:unknown;offsetV?:unknown;rotationDeg?:unknown}>)[name];
     if(!panel) return false;
+    const offsetU=panel.offsetU===undefined?0:Number(panel.offsetU);
+    const offsetV=panel.offsetV===undefined?0:Number(panel.offsetV);
+    const rotationDeg=panel.rotationDeg===undefined?0:Number(panel.rotationDeg);
     return !Number.isFinite(panel.widthMm)||Number(panel.widthMm)<=0||Number(panel.widthMm)>2000
-      || !Number.isFinite(panel.heightMm)||Number(panel.heightMm)<=0||Number(panel.heightMm)>2500;
+      || !Number.isFinite(panel.heightMm)||Number(panel.heightMm)<=0||Number(panel.heightMm)>2500
+      || !Number.isFinite(offsetU)||Math.abs(offsetU)>10
+      || !Number.isFinite(offsetV)||Math.abs(offsetV)>10
+      || !Number.isFinite(rotationDeg)||Math.abs(rotationDeg)>360;
   });
   if(missingPanels.length) reasons.push(`Manifest is missing panel dimensions for: ${missingPanels.join(", ")}.`);
   if(invalidPanels.length) reasons.push(`Manifest has invalid panel dimensions for: ${invalidPanels.join(", ")}.`);
