@@ -166,3 +166,16 @@ Each panel can optionally define `offsetU`, `offsetV` and `rotationDeg`. These a
 - Leave all three at zero when the production UVs are already authored to match the intended grain and seam phase.
 
 These controls are for verified production alignment, not for visually stretching or rotating a fabric to hide bad UVs.
+
+
+## Independent realism rubric
+
+All 8-person realism evidence uses `linen-earth-garment-viewer-realism-rubric-v1`. Reviewers compare the same five criteria against the current `studio-tucked.webp` Linen Earth reference:
+
+1. premium officewear silhouette and body proportions,
+2. cloth drape / garment fit on the body,
+3. collar-to-neck connection,
+4. hands, tucked waist and trouser boundary cleanliness,
+5. overall photographic believability.
+
+A 4/5 or 5/5 rating means no major mismatch on those criteria. Evidence created under a different rubric version is ignored rather than silently satisfying the promotion gate.
