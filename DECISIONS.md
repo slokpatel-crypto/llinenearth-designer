@@ -2,6 +2,15 @@
 
 Architecture and product decisions that must persist across coding sessions.
 
+
+## 2026-10-05 — GarmentViewer M1 stays isolated until realistic geometry passes QA
+
+**Decision:** continue the reusable 3D viewer idea as an isolated `/lab/garment-viewer` milestone. Preserve the public `/visual -> /style-director` redirect and the current photographic Designer. M1 proves stable model identity, separate shirt/trouser PBR materials, Linen Earth swatch replacement, texture scale, roughness/normal detail, four camera views and touch/orbit behavior without AI credits.
+
+**Geometry:** the generated block GLB is temporary engineering geometry, not a customer realism surface. Do not promote it to Designer/Style Director. The next milestone replaces only geometry/UV quality with the approved realistic office-wear model while retaining the material/camera contract.
+
+**Dependency:** the lab pins Google `<model-viewer>` 4.3.1 for GLB/PBR/camera plumbing. Linen Earth generates the temporary GLB itself; no third-party mannequin asset is used.
+
 ## 2026-10-04 — Preserve both controls and banner; use a calm three-second reveal
 
 **Owner preference:** keep the existing thread-and-logo homepage banner alongside the new premium buttons. Save their approved combined version at `checkpoint/brand-animation-and-premium-controls-20261004`; a preview cropped above the banner must not be treated as removing it.
