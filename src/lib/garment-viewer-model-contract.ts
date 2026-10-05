@@ -69,3 +69,46 @@ export function approvedGarmentViewerModelSource(value:string|undefined|null) {
   if(source.includes("..")||source.includes("\\")) return null;
   return source;
 }
+
+
+export type GarmentViewerModelManifest = {
+  version: typeof GARMENT_VIEWER_CONTRACT_VERSION;
+  modelId: string;
+  referenceHeightMm: number;
+  panels: Record<string,{widthMm:number;heightMm:number}>;
+  cameraOrbits?: Partial<Record<"front"|"three-quarter"|"side"|"back",string>>;
+};
+
+export type GarmentViewerManifestValidation = {
+  valid:boolean;
+  missingPanels:string[];
+  invalidPanels:string[];
+  reasons:string[];
+};
+
+export function validateGarmentViewerModelManifest(value:unknown):GarmentViewerManifestValidation {
+  const reasons:string[]=[];
+  if(!value || typeof value!=="object") return {valid:false,missingPanels:[...REQUIRED_GARMENT_VIEWER_MATERIALS],invalidPanels:[],reasons:["Manifest is missing or invalid."]};
+  const manifest=value as Partial<GarmentViewerModelManifest>;
+  if(manifest.version!==GARMENT_VIEWER_CONTRACT_VERSION) reasons.push("Manifest contract version does not match the viewer.");
+  if(!String(manifest.modelId||"").trim()) reasons.push("Manifest modelId is required.");
+  if(!Number.isFinite(manifest.referenceHeightMm)||Number(manifest.referenceHeightMm)<1400||Number(manifest.referenceHeightMm)>2200) reasons.push("Reference height must be between 1400 and 2200 mm.");
+  const panels=manifest.panels&&typeof manifest.panels==="object"?manifest.panels:{};
+  const missingPanels=REQUIRED_GARMENT_VIEWER_MATERIALS.filter((name)=>!(name in panels));
+  const invalidPanels=REQUIRED_GARMENT_VIEWER_MATERIALS.filter((name)=>{
+    const panel=(panels as Record<string,{widthMm?:unknown;heightMm?:unknown}>)[name];
+    if(!panel) return false;
+    return !Number.isFinite(panel.widthMm)||Number(panel.widthMm)<=0||Number(panel.widthMm)>2000
+      || !Number.isFinite(panel.heightMm)||Number(panel.heightMm)<=0||Number(panel.heightMm)>2500;
+  });
+  if(missingPanels.length) reasons.push(`Manifest is missing panel dimensions for: ${missingPanels.join(", ")}.`);
+  if(invalidPanels.length) reasons.push(`Manifest has invalid panel dimensions for: ${invalidPanels.join(", ")}.`);
+  return {valid:reasons.length===0,missingPanels,invalidPanels,reasons};
+}
+
+export function approvedGarmentViewerManifestSource(modelSource:string|undefined|null) {
+  const source=approvedGarmentViewerModelSource(modelSource);
+  if(!source) return null;
+  const clean=source.replace(/\?.*$/,"");
+  return clean.replace(/\.glb$/i,".viewer.json");
+}
