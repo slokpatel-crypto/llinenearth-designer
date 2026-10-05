@@ -2,7 +2,7 @@ import Link from "next/link";
 import Script from "next/script";
 import GarmentViewer, { type GarmentViewerFabric } from "@/components/GarmentViewer";
 import { FABRIC_STOCK } from "@/lib/fabric-stock";
-import { approvedGarmentViewerManifestSource, approvedGarmentViewerModelSource } from "@/lib/garment-viewer-model-contract";
+import { loadGarmentViewerProductionAssetStatus } from "@/lib/garment-viewer-model-server";
 import { PROTOTYPE_MODEL_ID } from "@/lib/garment-viewer-prototype";
 import "./garment-viewer.css";
 
@@ -24,10 +24,11 @@ function viewerFabric(fabric:(typeof FABRIC_STOCK)[number]):GarmentViewerFabric 
   };
 }
 
-export default function GarmentViewerLabPage() {
-  const approvedModelSrc=approvedGarmentViewerModelSource(process.env.LINEN_GARMENT_MODEL_SRC);
-  const modelManifestSrc=approvedGarmentViewerManifestSource(approvedModelSrc);
-  const modelId=approvedModelSrc ? "LE-OFFICEWEAR-V1" : PROTOTYPE_MODEL_ID;
+export default async function GarmentViewerLabPage() {
+  const production=await loadGarmentViewerProductionAssetStatus();
+  const approvedModelSrc=production.configured ? production.modelSrc : null;
+  const modelManifestSrc=production.configured ? production.manifestSrc : null;
+  const modelId=approvedModelSrc ? production.modelId : PROTOTYPE_MODEL_ID;
   const shirtFabrics=FABRIC_STOCK.filter((fabric)=>fabric.inStock&&fabric.suitableFor.includes("shirt")).slice(0,10).map(viewerFabric);
   const trouserFabrics=FABRIC_STOCK.filter((fabric)=>fabric.inStock&&fabric.suitableFor.includes("trouser")).slice(0,10).map(viewerFabric);
 
@@ -45,7 +46,7 @@ export default function GarmentViewerLabPage() {
         <div><span>LINEN EARTH · DEEP ENGINE</span><b>3D VIEWER LAB</b></div>
         <Link href="/designer-studio">Designer Studio ↗</Link>
       </header>
-      <GarmentViewer shirtFabrics={shirtFabrics} trouserFabrics={trouserFabrics} modelSrc={approvedModelSrc} modelManifestSrc={modelManifestSrc} modelId={modelId}/>
+      <GarmentViewer shirtFabrics={shirtFabrics} trouserFabrics={trouserFabrics} modelSrc={approvedModelSrc} modelManifestSrc={modelManifestSrc} modelId={modelId} assetIdentity={production.assetIdentity}/>
     </main>
   </>;
 }
