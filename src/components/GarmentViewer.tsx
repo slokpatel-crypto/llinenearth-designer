@@ -389,17 +389,18 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
             <div><strong>{garment.label}</strong><em>{garment.status==="live"?"LIVE":"FUTURE"}</em></div>
             <small>{garment.stageLabel}</small>
             <p>{garment.description}</p>
+            <div className="garmentTypeExamples"><b>Types</b><span>{garment.typeExamples.join(" · ")}</span></div>
             <ul>{garment.detailFamilies.map((detail)=><li key={detail}>{detail}</li>)}</ul>
           </article>)}
         </div>
       </section>
 
-      <div className="garmentCurrentType"><span>ACTIVE GARMENT</span><b>Shirt</b><small>Construction families: Collar · Cuff · Placket · Fit · Sleeve · Pocket · Buttons</small></div>
+      <div className="garmentCurrentType"><span>ACTIVE GARMENT</span><b>Shirt</b><small>Types: Dress · Casual · Camp-collar · Band-collar · Overshirt · Short-sleeve</small><small>Details: Collar · Cuff · Placket · Fit · Sleeve · Pocket · Buttons</small></div>
       <label><span>Shirt fabric</span><select value={shirtId} onChange={(event)=>{beginFabricInteraction();setShirtId(event.target.value);}}>{shirtFabrics.map((fabric)=><option key={fabric.id} value={fabric.id}>{fabric.name} · {fabric.line}</option>)}</select></label>
       <div className="garmentSwatchPreview">{shirt&&<><img src={shirt.image} alt="" /><span><b>{shirt.name}</b><small>{shirt.line}</small><em data-calibrated={Boolean(shirtMeasuredTileMm)}>{shirtMeasuredTileMm?`Calibrated tile · ${shirtMeasuredTileMm.toFixed(1)} mm`:`Approximate tile · ${shirtManualTileMm} mm`}</em></span></>}</div>
       {!shirtMeasuredTileMm&&<label className="garmentRange"><span>Approx. shirt tile width <b>{shirtManualTileMm} mm</b></span><input type="range" min="30" max="260" step="5" value={shirtManualTileMm} onChange={(event)=>setShirtManualTileMm(Number(event.target.value))}/><small>Temporary only until owner/supplier physical scale is verified.</small></label>}
 
-      <div className="garmentCurrentType"><span>ACTIVE GARMENT</span><b>Trouser</b><small>Construction families: Rise · Pleats · Leg shape · Waistband · Break · Pocket · Fit</small></div>
+      <div className="garmentCurrentType"><span>ACTIVE GARMENT</span><b>Trouser</b><small>Types: Formal flat-front · Pleated · Straight · Tapered · Wide-leg · Korean wide</small><small>Details: Rise · Pleats · Leg shape · Waistband · Break · Pocket · Fit</small></div>
       <label><span>Trouser fabric</span><select value={trouserId} onChange={(event)=>{beginFabricInteraction();setTrouserId(event.target.value);}}>{trouserFabrics.map((fabric)=><option key={fabric.id} value={fabric.id}>{fabric.name} · {fabric.line}</option>)}</select></label>
       <div className="garmentSwatchPreview">{trouser&&<><img src={trouser.image} alt="" /><span><b>{trouser.name}</b><small>{trouser.line}</small><em data-calibrated={Boolean(trouserMeasuredTileMm)}>{trouserMeasuredTileMm?`Calibrated tile · ${trouserMeasuredTileMm.toFixed(1)} mm`:`Approximate tile · ${trouserManualTileMm} mm`}</em></span></>}</div>
       {!trouserMeasuredTileMm&&<label className="garmentRange"><span>Approx. trouser tile width <b>{trouserManualTileMm} mm</b></span><input type="range" min="30" max="260" step="5" value={trouserManualTileMm} onChange={(event)=>setTrouserManualTileMm(Number(event.target.value))}/><small>Temporary only until owner/supplier physical scale is verified.</small></label>}
