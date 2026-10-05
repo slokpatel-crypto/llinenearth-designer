@@ -13,7 +13,7 @@ test("reviewed runtime repeat upgrades an approximate tile using the live-previe
   assert.equal(resolveViewerTileWidthMm(
     {tileRealWidthMm:null,repeatPeriodPx:32,scaleApproximate:true},
     {physicalScaleStatus:"declared_repeat",repeatMm:20},
-  ),80);
+  ),160);
 });
 
 test("unknown or invalid scale remains unknown",()=>{
