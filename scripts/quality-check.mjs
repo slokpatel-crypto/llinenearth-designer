@@ -1534,6 +1534,7 @@ const garmentViewerGlb=fs.readFileSync("src/lib/garment-viewer-glb.ts","utf8");
 const garmentViewerReadiness=fs.readFileSync("src/lib/garment-viewer-readiness.ts","utf8");
 const garmentViewerOperator=fs.readFileSync("src/app/operator/garment-viewer/page.tsx","utf8");
 const garmentViewerMemory=fs.readFileSync("src/app/api/memory/event/route.ts","utf8");
+const garmentViewerReadinessClient=fs.readFileSync("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx","utf8");
 const protectedVisualRoute=fs.readFileSync("src/app/visual/page.tsx","utf8");
 for(const token of ["GARMENT_PANEL_SPECS","sampler?.setScale","sampler?.setOffset","sampler?.setRotation","modelManifestSrc","assetIdentity","GARMENT_VIEWER_LATENCY_STORAGE_KEY"]) {
   if(!garmentViewerSource.includes(token)) throw new Error(`GarmentViewer M2 runtime regression: missing ${token}`);
@@ -1552,6 +1553,9 @@ for(const token of ["garmentViewerPromotionReadiness","ROADMAP_SCALE_TOLERANCE_P
 }
 for(const token of ["GarmentViewerEvidenceForm","CUSTOMER PROMOTION GATE","loadLatestGarmentViewerReadiness"]) {
   if(!garmentViewerOperator.includes(token)) throw new Error(`GarmentViewer operator QA regression: missing ${token}`);
+}
+for(const token of ["garment-viewer-m2","Reusable 3D GarmentViewer production gate","/api/operator/garment-viewer","The current customer Designer stays on the photographic preview"]) {
+  if(!garmentViewerReadinessClient.includes(token)) throw new Error(`GarmentViewer roadmap-readiness regression: missing ${token}`);
 }
 for(const token of ['subtype === "garment_viewer_readiness"',"modelSha256","manifestSha256","realismRubricVersion","patternScaleSamples","realismAssessments"]) {
   if(!garmentViewerMemory.includes(token)) throw new Error(`GarmentViewer evidence storage regression: missing ${token}`);
