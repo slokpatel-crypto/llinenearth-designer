@@ -80,7 +80,11 @@ async function verifyViewport(browser, width) {
   assert.match(recipe,/temporary 3D block maps fabric now/i);
 
   const stageScope=await page.locator(".garmentViewerStageHead").innerText();
-  assert.match(stageScope,/SHIRT \+ TROUSER · BLAZER \/ SUIT NEXT/,"3D stage must state current and future garment scope");
+  assert.match(stageScope,/MODEL IDENTITY LOCKED · SHIRT \+ TROUSER/,"3D stage must state the exact-model lock");
+  const referenceBlock=await page.locator(".garmentViewerReference").innerText();
+  assert.match(referenceBlock,/EXACT REAL MODEL DESIGNER IDENTITY/);
+  assert.match(referenceBlock,/linen-earth-studio-model-v1/);
+  assert.match(referenceBlock,/same shoulder width, torso taper, arm length, hand scale, hip width, leg length, stance and shoes/i);
 
   const garmentCards=page.locator(".garmentTypeGrid article");
   assert.equal(await garmentCards.count(),4,"garment type roadmap must show current and future families");
