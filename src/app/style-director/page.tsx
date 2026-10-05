@@ -9,6 +9,7 @@ import { createStyleSessionId, flushPendingStyleMemoryEvents, recordStyleMemoryE
 import { customerPhotoCalibrationIdentity, fetchCustomerPhotoCalibration } from "@/lib/designer/photo-calibration-client";
 import { createPreviewRequestScope } from "@/lib/designer/preview-request-scope";
 import { selectedLookQaPassed } from "@/lib/designer/selected-look-qa";
+import { optionById } from "@/lib/designer/options/library";
 import "./style-director.css";
 
 type StepKey = keyof StyleDirectorAnswers;
@@ -286,6 +287,7 @@ export default function StyleDirectorPage() {
           climate:selectedLook.realModel.climate,
           intention:selectedLook.realModel.intention,
           style:JSON.stringify(selectedLook.realModel.style),
+          styleSpec:JSON.stringify(selectedLook.realModel.styleSpec),
           sourceLook:selectedLook.id,
           sourceTitle:selectedLook.title,
           sourceTier:selectedLook.candidate.tier,
@@ -376,7 +378,7 @@ export default function StyleDirectorPage() {
             {selectedLook.realModel && <div className="directorRealModelSpec">
               <span>REAL MODEL OUTFIT</span>
               <strong>{selectedLook.realModel.shirtName} shirt + {selectedLook.realModel.pantName} trousers</strong>
-              <p>{selectedLook.realModel.style.shirtWear} · {selectedLook.realModel.style.trouser} · {selectedLook.realModel.style.collar}</p>
+              <p>{optionById(selectedLook.realModel.styleSpec.shirt.type)?.label || "Shirt"} · {optionById(selectedLook.realModel.styleSpec.pant.type)?.label || selectedLook.realModel.style.trouser} · {selectedLook.realModel.style.collar}</p>
             </div>}
             <div className="directorActions">
               {selectedLook.realModel
