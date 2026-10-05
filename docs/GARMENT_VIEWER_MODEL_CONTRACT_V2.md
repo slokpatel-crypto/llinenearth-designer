@@ -105,3 +105,53 @@ Do not replace the current photographic Designer with the 3D model until all of 
 4. front/3/4/side/back identity is stable,
 5. mobile interaction stays usable,
 6. no paid AI render is required for normal fabric/style changes.
+
+
+## Sidecar manifest
+
+Every approved GLB requires a same-name sidecar:
+
+`/models/linen-earth-officewear-v1.glb`  
+`/models/linen-earth-officewear-v1.viewer.json`
+
+The sidecar binds physical panel dimensions and optional camera orbits to the exact model identity:
+
+```json
+{
+  "version": "linen-earth-garment-viewer-v2",
+  "modelId": "LE-OFFICEWEAR-V1",
+  "referenceHeightMm": 1727,
+  "panels": {
+    "ShirtTorsoFabric": { "widthMm": 580, "heightMm": 780 },
+    "ShirtSleeveLFabric": { "widthMm": 180, "heightMm": 540 },
+    "ShirtSleeveRFabric": { "widthMm": 180, "heightMm": 540 },
+    "TrouserWaistFabric": { "widthMm": 540, "heightMm": 260 },
+    "TrouserLegLFabric": { "widthMm": 240, "heightMm": 760 },
+    "TrouserLegRFabric": { "widthMm": 240, "heightMm": 760 }
+  },
+  "cameraOrbits": {
+    "front": "0deg 76deg 2.65m",
+    "three-quarter": "35deg 76deg 2.65m",
+    "side": "90deg 76deg 2.65m",
+    "back": "180deg 76deg 2.65m"
+  }
+}
+```
+
+Panel dimensions must come from the actual approved garment mesh/pattern workflow. The values above are only the current M1 engineering reference and must not be copied blindly into a production asset.
+
+## Local asset check
+
+Before configuring a new model:
+
+```bash
+npm run garment:model-check -- public/models/linen-earth-officewear-v1.glb
+```
+
+The checker verifies GLB 2.0 structure, six unique garment material slots, POSITION/NORMAL/UV0 coverage, absence of remote buffer/image dependencies and the matching sidecar manifest.
+
+## Evidence revision binding
+
+Production QA is bound to SHA-256 hashes of both the GLB and its sidecar. If either file changes, old pattern-scale, interaction-latency, realism and boundary evidence can no longer satisfy the customer-promotion gate.
+
+The operator desk at `/operator/garment-viewer` reports structural blockers and the latest evidence gate. Fabric-change latency is collected automatically in the 3D Lab only when an approved production model contract is active.
