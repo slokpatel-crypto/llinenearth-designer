@@ -53,3 +53,18 @@ test("approved model source is same-origin and restricted to models/*.glb",()=>{
   assert.equal(approvedGarmentViewerModelSource("/models/../secret.glb"),null);
   assert.equal(approvedGarmentViewerModelSource("/models/model.gltf"),null);
 });
+
+
+test("production manifest identity and all panel dimensions must match the approved model",()=>{
+  const panels=Object.fromEntries(REQUIRED_GARMENT_VIEWER_MATERIALS.map((name)=>[name,{widthMm:300,heightMm:600}]));
+  const good={
+    version:GARMENT_VIEWER_CONTRACT_VERSION,
+    modelId:"LE-OFFICEWEAR-V1",
+    referenceHeightMm:1727,
+    panels,
+  };
+  const { validateGarmentViewerModelManifest, approvedGarmentViewerManifestSource } = require("../src/lib/garment-viewer-model-contract.ts");
+  assert.equal(validateGarmentViewerModelManifest(good,"LE-OFFICEWEAR-V1").valid,true);
+  assert.equal(validateGarmentViewerModelManifest({...good,modelId:"OTHER"},"LE-OFFICEWEAR-V1").valid,false);
+  assert.equal(approvedGarmentViewerManifestSource("/models/linen-earth-officewear-v1.glb"),"/models/linen-earth-officewear-v1.viewer.json");
+});
