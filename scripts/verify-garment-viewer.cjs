@@ -93,11 +93,13 @@ async function verifyViewport(browser, width) {
   await reference.waitFor({state:"visible"});
   assert.match(await reference.getAttribute("src"),/studio-tucked\.webp$/, "3D lab must keep the approved studio reference target visible");
 
-  const recipe=await page.locator(".garmentDraftRecipe").innerText();
-  assert.match(recipe,/YOUR DESIGNER RECIPE/);
-  assert.match(recipe,/Spread Collar/);
-  assert.match(recipe,/Pleated Trouser/);
-  assert.match(recipe,/temporary 3D block maps fabric now/i);
+  const recipeCard=page.locator(".garmentDraftRecipe");
+  await recipeCard.waitFor({state:"visible"});
+  const recipeText=await recipeCard.innerText();
+  assert.match(recipeText,/YOUR DESIGNER RECIPE/);
+  assert.match(recipeText,/Spread Collar/);
+  assert.match(recipeText,/Pleated Trouser/);
+  assert.match(recipeText,/same saved shirt and trouser fabrics as Designer/i);
 
   const stageScope=await page.locator(".garmentViewerStageHead").innerText();
   assert.match(stageScope,/SHIRT \+ TROUSER · BLAZER \/ SUIT NEXT/,"3D stage must state current and future garment scope");
@@ -114,10 +116,6 @@ async function verifyViewport(browser, width) {
   assert.equal(await selects.count(), 2);
   assert.equal(await selects.nth(0).inputValue(),"linen-plain-60-peach","explicit Designer handoff must override a stale saved shirt");
   assert.equal(await selects.nth(1).inputValue(),"linen-suiting-beige","explicit Designer handoff must override a stale saved trouser");
-  const recipe=page.locator(".garmentDraftRecipe");
-  await recipe.waitFor({state:"visible"});
-  assert.match(await recipe.textContent(),/Spread Collar/);
-  assert.match(await recipe.textContent(),/Pleated Trouser/);
   for (let index = 0; index < 2; index++) {
     const select = selects.nth(index);
     const before = await select.inputValue();
