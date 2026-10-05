@@ -9,7 +9,8 @@ const {optionById}=load("src/lib/designer/options/library.ts");
 const {assessFitConstruction}=load("src/lib/designer/fit-construction.ts"),{assessBlockStrategy}=load("src/lib/designer/block-strategy.ts");
 const {evaluateLinenEarthBrandLanguage}=load("src/lib/designer/brand-language.ts"),{buildDesignerNegotiation}=load("src/lib/designer/constraint-negotiation.ts");
 const {buildCanonicalGarmentSpec}=load("src/lib/designer/garment-spec.ts");
-const looks=createStyleDirectorLooks({occasion:"Work",mood:"Quiet",time:"Day",climate:"Indoor",garment:"shirt",colorDirection:"Light"}).map(look=>({...look,handoffToken:"synthetic-browser-handoff"}));
+const looks=createStyleDirectorLooks({occasion:"Travel",mood:"Relaxed",time:"Day",climate:"Hot",garment:"shirt",colorDirection:"Light"}).map(look=>({...look,handoffToken:"synthetic-browser-handoff"}));
+assert.equal(looks[0].realModel.styleSpec.shirt.type,"camp_collar_resort","Exercise a type that legacy-only restoration would lose");
 const runtime=process.env.LINEN_BROWSER_QA_RUNTIME;
 if(!runtime)throw Error("Set LINEN_BROWSER_QA_RUNTIME");
 const {chromium}=createRequire(path.join(runtime,"package.json"))("playwright");
@@ -58,7 +59,7 @@ async function verify(browser,width){
   });
   await page.goto(baseURL+"/style-director",{waitUntil:"networkidle"});
   await page.locator(".brandIntro").waitFor({state:"hidden"});
-  for(const label of ["Work","Quiet","Day","Indoor / AC","Shirt","Light"]){
+  for(const label of ["Travel","Relaxed","Day","Hot / Outdoor","Shirt","Light"]){
     await page.locator(".directorOption").filter({has:page.locator("strong").getByText(label,{exact:true})}).click();
   }
   const link=page.getByRole("link",{name:/Open Linen Earth Real Model Designer/});
