@@ -29,7 +29,21 @@ test("Blender exporter refuses silent body scaling and requires garment UVs",()=
   assert(exporter.includes("needs a UV map before export"));
   assert(exporter.includes("obj.data.materials.clear()"));
 });
-\ntest("Blender base source bootstrap stays pinned, licensed and non-promotional",()=>{\n  const bootstrap=readFileSync("scripts/blender/bootstrap-human-base-meshes.py","utf8");\n  const packageJson=readFileSync("package.json","utf8");\n  for(const token of [\n    'BUNDLE_VERSION = "1.4.1"',\n    'BUNDLE_LICENSE = "CC0"',\n    "human-base-meshes-bundle-v1.4.1.zip",\n    "EXPECTED_ARCHIVE_BYTES = 50_643_039",\n    "safe_extract",\n    "source-library-only-not-production-model",\n  ]) assert(bootstrap.includes(token),token);\n  assert(packageJson.includes('"garment:model-base:fetch"'));\n});\n
+
+test("Blender base source bootstrap stays pinned, licensed and non-promotional",()=>{
+  const bootstrap=readFileSync("scripts/blender/bootstrap-human-base-meshes.py","utf8");
+  const packageJson=readFileSync("package.json","utf8");
+  for(const token of [
+    'BUNDLE_VERSION = "1.4.1"',
+    'BUNDLE_LICENSE = "CC0"',
+    "human-base-meshes-bundle-v1.4.1.zip",
+    "EXPECTED_ARCHIVE_BYTES = 50_643_039",
+    "safe_extract",
+    "source-library-only-not-production-model",
+  ]) assert(bootstrap.includes(token),token);
+  assert(packageJson.includes('"garment:model-base:fetch"'));
+});
+
 test("realistic body intake is explicit, licensed and does not fake garment geometry",()=>{
   const prepare=readFileSync("scripts/blender/prepare-linen-earth-body.py","utf8");
   for(const token of [
