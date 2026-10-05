@@ -32,8 +32,8 @@ async function verifyViewport(browser, width) {
       hasCreateTexture: typeof element.createTexture === "function",
     };
   });
-  assert.ok(modelState.materialNames.includes("ShirtFabric"), "3D model must expose ShirtFabric");
-  assert.ok(modelState.materialNames.includes("TrouserFabric"), "3D model must expose TrouserFabric");
+  assert.equal(modelState.materialNames.filter((name) => name.startsWith("Shirt")).length, 3, "3D model must expose three independent shirt panels");
+  assert.equal(modelState.materialNames.filter((name) => name.startsWith("Trouser")).length, 3, "3D model must expose three independent trouser panels");
   assert.equal(modelState.hasCreateTexture, true, "model-viewer scene graph texture API must be available");
 
   const buttons = page.locator(".garmentCameraRail button");
@@ -56,23 +56,24 @@ async function verifyViewport(browser, width) {
 
   await page.waitForTimeout(400);
   const materialState = await viewer.evaluate((element) => {
-    const material = (name) => element.model?.materials?.find((item) => item.name === name);
-    return ["ShirtFabric", "TrouserFabric"].map((name) => {
-      const current = material(name);
-      return {
-        name,
-        roughness: current?.pbrMetallicRoughness?.roughnessFactor,
-        metallic: current?.pbrMetallicRoughness?.metallicFactor,
-        hasTexture: Boolean(current?.pbrMetallicRoughness?.baseColorTexture?.texture),
-        hasNormal: Boolean(current?.normalTexture?.texture),
-      };
-    });
+    return (element.model?.materials || [])
+      .filter((material) => /^(Shirt|Trouser)/.test(material.name))
+      .map((current) => ({
+        name: current.name,
+        roughness: current.pbrMetallicRoughness?.roughnessFactor,
+        metallic: current.pbrMetallicRoughness?.metallicFactor,
+        hasTexture: Boolean(current.pbrMetallicRoughness?.baseColorTexture?.texture),
+        hasNormal: Boolean(current.normalTexture?.texture),
+        scale: current.pbrMetallicRoughness?.baseColorTexture?.texture?.scale || null,
+      }));
   });
+  assert.equal(materialState.length, 6);
   for (const material of materialState) {
     assert.equal(material.metallic, 0, material.name + " must remain non-metallic");
     assert.ok(material.roughness >= .55 && material.roughness <= .98, material.name + " roughness must stay in the cloth range");
     assert.equal(material.hasTexture, true, material.name + " must carry the selected swatch texture");
     assert.equal(material.hasNormal, true, material.name + " must carry linen normal detail");
+    assert.ok(material.scale && material.scale.u > 0 && material.scale.v > 0, material.name + " must carry a panel-scale texture transform");
   }
 
   const layout = await page.evaluate(() => ({
