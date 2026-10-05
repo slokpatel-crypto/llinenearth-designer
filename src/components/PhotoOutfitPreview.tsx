@@ -14,6 +14,7 @@ import { UNVERIFIED_CUSTOMER_PHOTO_CALIBRATION, type CustomerPhotoCalibration } 
 import { customerPhotoCalibrationIdentity, fetchCustomerPhotoCalibration } from "@/lib/designer/photo-calibration-client";
 import { maskedPhotographicLuminance, neutralizePhotographicLuminance, weightedGarmentLuminanceMean } from "@/lib/designer/photo-shading";
 import { createPreviewRequestScope, type PreviewRequest } from "@/lib/designer/preview-request-scope";
+import { LINEN_EARTH_MODEL_IDENTITY_ID } from "@/lib/designer/model-identity";
 import { photographicCollarOpacity, photographicGarmentOpacity } from "@/lib/designer/photo-garment-mask";
 import {
   PHOTO_TUCKED_PANEL_GRAIN_ROTATION,
@@ -1747,6 +1748,7 @@ export function PhotoOutfitPreview({ shirt, pant, style, styleSpec, bodyProfile,
     {!showCreativeAi && <p className="newDesignerPhotoApproximation"><strong>Instant preview</strong> · Studio model; {previewScaleVerified ? "pattern scale uses reviewed physical evidence plus accepted studio calibration where a visible repeat exists" : "pattern scale is still approximate for "+approximateScaleItems.join(" / ")}. Fit and drape still require physical verification. FASHN is reserved for the locked final design.</p>}
     {!creativeDirection && finalLocked && !creativeAi && <p className="newDesignerPhotoLock"><strong>FINAL DESIGN LOCKED</strong> · Any fabric or construction change automatically unlocks it before another AI render.</p>}
     {creativeAi?.cached && <p className="newDesignerPhotoCache">Cached final render reused · no new FASHN generation was needed.</p>}
+    {creativeAi && !creativeDirection && <p className="newDesignerPhotoLock"><strong>MODEL IDENTITY LOCKED</strong> · {LINEN_EARTH_MODEL_IDENTITY_ID} stays identical across Front / 3/4 / Side / Back; only camera angle and hidden garment surfaces may change.</p>}
     {creativeAi && !creativeDirection && activeSelectedCheck && (!activeSelectedCheck.available || activeSelectedCheck.status==="review") && <p className="newDesignerPhotoQaHold"><strong>PHOTOREAL HELD FOR REVIEW</strong> · The render has not cleared customer-facing fidelity QA. The trusted instant studio preview remains the save/export source until QA passes; the generated image is preserved only for explicit review or one targeted repair.</p>}
     {creativeAi && !creativeDirection && <div className="newDesignerPhotoViews" role="group" aria-label="Photoreal model views">
       {(["front","three-quarter","side","back"] as PhotorealView[]).map((view)=>{
