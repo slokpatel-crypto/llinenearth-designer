@@ -26,6 +26,8 @@ type EvidenceState = {
   priority:number;
 };
 
+type CompatibilityState = { garmentType:string; label:string; score:number; status:string; evidenceCoverage:number; evidenceConfidence:number; criticalUnknowns:string[]; warnings:string[] };
+
 type FabricRow = {
   id:string;
   colorName:string;
@@ -36,6 +38,7 @@ type FabricRow = {
   swatchImageUrl:string;
   yarnCountLea:number[];
   metadata:DesignerFabricMetadata;
+  compatibility:CompatibilityState[];
   evidence:EvidenceState;
 };
 
@@ -235,6 +238,21 @@ export default function DesignerDataClient() {
             <span><small>YARN COUNT</small><b>{selected.yarnCountLea.length ? `${selected.yarnCountLea.join("/")} Lea` : "Not recorded"}</b></span>
             <span><small>LAST VERIFIED</small><b>{editor.verifiedAt ? new Date(editor.verifiedAt).toLocaleString("en-IN") : "Never"}</b></span>
           </div>
+
+          <section className="evidenceCard compatibilityCard" aria-label="Fabric physics compatibility">
+            <div><span>PHYSICS COMPATIBILITY · PROVISIONAL</span><strong>Best use from verified physical evidence</strong><b>{selected.compatibility.filter((item)=>item.status!=="insufficient_evidence").length}/{selected.compatibility.length} usable scores</b></div>
+            <div className="compatibilityMatrix">
+              {selected.compatibility.map((item)=><span key={item.garmentType} data-status={item.status}>
+                <small>{item.label}</small>
+                <strong>{Math.round(item.score)}%</strong>
+                <em>{item.status.replaceAll("_"," ")}</em>
+                <i>{Math.round(item.evidenceCoverage)}% evidence · {Math.round(item.evidenceConfidence)}% confidence</i>
+              </span>)}
+            </div>
+            <p>{selected.compatibility.some((item)=>item.status==="insufficient_evidence")
+              ? "Low-evidence scores stay provisional. Add verified GSM, structure, drape, breathability, wrinkle and stretch evidence in Fabric Analyzer before using them as production guidance."
+              : "All six garment families have enough physical evidence for internal compatibility guidance. Customer-facing claims remain disabled."}</p>
+          </section>
 
           <section className="evidenceCard" aria-label="Evidence readiness for selected fabric">
             <div><span>RENDER + DESIGNER EVIDENCE</span><strong>{selected.evidence.gaps.length ? `${selected.evidence.gaps.length} gaps remain` : "Core evidence complete"}</strong><b>Priority {selected.evidence.priority}</b></div>
