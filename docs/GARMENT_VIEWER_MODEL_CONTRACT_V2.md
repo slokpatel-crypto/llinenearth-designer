@@ -121,6 +121,13 @@ The sidecar binds physical panel dimensions and optional camera orbits to the ex
   "version": "linen-earth-garment-viewer-v2",
   "modelId": "LE-OFFICEWEAR-V1",
   "referenceHeightMm": 1727,
+  "source": {
+    "name": "Blender Human Base Meshes",
+    "license": "CC0",
+    "verifiedAt": "2026-10-05",
+    "sourceUrl": "record the approved source URL here",
+    "licenseUrl": "record the license evidence URL here"
+  },
   "panels": {
     "ShirtTorsoFabric": { "widthMm": 580, "heightMm": 780, "offsetU": 0, "offsetV": 0, "rotationDeg": 0 },
     "ShirtSleeveLFabric": { "widthMm": 180, "heightMm": 540, "offsetU": 0.12, "offsetV": 0, "rotationDeg": 0 },
@@ -139,6 +146,14 @@ The sidecar binds physical panel dimensions and optional camera orbits to the ex
 ```
 
 Panel dimensions must come from the actual approved garment mesh/pattern workflow. The values above are only the current M1 engineering reference and must not be copied blindly into a production asset.
+
+## Model source provenance
+
+Every production manifest must record the source asset name, license and the date Linen Earth verified that license. URLs are optional because an internally owned/proprietary asset may not have a public source page.
+
+The source field is part of manifest validity. A structurally correct GLB cannot become `assetReady` if its production sidecar lacks traceable provenance.
+
+This prevents an unlicensed or ambiguously licensed body/garment mesh from being promoted by mistake.
 
 ## Local asset check
 
