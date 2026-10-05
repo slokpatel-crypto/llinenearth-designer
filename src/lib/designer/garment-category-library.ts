@@ -6,6 +6,7 @@ export type GarmentCategoryDefinition={
   status:GarmentCategoryStatus;
   stageLabel:string;
   description:string;
+  typeExamples:string[];
   detailFamilies:string[];
 };
 
@@ -16,6 +17,7 @@ export const GARMENT_CATEGORY_LIBRARY:GarmentCategoryDefinition[]=[
     status:"live",
     stageLabel:"3D foundation live",
     description:"Fabric is mapped now. Construction controls stay owned by Designer until the production shirt mesh can express them exactly.",
+    typeExamples:["Dress shirt","Casual shirt","Camp-collar","Band-collar","Overshirt","Short-sleeve"],
     detailFamilies:["Collar","Cuff","Placket","Fit","Sleeve","Pocket","Buttons"],
   },
   {
@@ -24,6 +26,7 @@ export const GARMENT_CATEGORY_LIBRARY:GarmentCategoryDefinition[]=[
     status:"live",
     stageLabel:"3D foundation live",
     description:"Fabric is mapped now. Trouser construction will progressively move from preview rules into the production 3D garment block.",
+    typeExamples:["Formal flat-front","Pleated","Straight classic","Tapered","Wide-leg drape","Korean wide"],
     detailFamilies:["Rise","Pleats","Leg shape","Waistband","Break","Pocket","Fit"],
   },
   {
@@ -32,6 +35,7 @@ export const GARMENT_CATEGORY_LIBRARY:GarmentCategoryDefinition[]=[
     status:"planned",
     stageLabel:"Future garment block",
     description:"Prepared as a separate garment family so blazer construction does not get forced into the shirt or trouser model.",
+    typeExamples:["Single-breasted","Double-breasted","Unstructured","Peak-lapel","Patch-pocket"],
     detailFamilies:["Lapel","Breast style","Button stance","Vent","Pocket","Length","Shoulder"],
   },
   {
@@ -40,6 +44,7 @@ export const GARMENT_CATEGORY_LIBRARY:GarmentCategoryDefinition[]=[
     status:"planned",
     stageLabel:"Future coordinated look",
     description:"Planned as a linked jacket-and-trouser system with shared fabric, proportion and formality rules.",
+    typeExamples:["2-piece business","3-piece","Double-breasted","Formal evening","Wedding"],
     detailFamilies:["Jacket","Trouser","Lapel","Vent","Waistcoat","Button stance","Trouser pairing"],
   },
 ];
