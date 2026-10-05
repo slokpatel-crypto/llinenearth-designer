@@ -11,6 +11,7 @@ type GlbPrimitive={
   attributes?:Record<string,number>;
 };
 type GlbMesh={name?:string;primitives?:GlbPrimitive[]};
+type GlbNode={mesh?:number};
 type GlbImage={uri?:string};
 type GlbBuffer={uri?:string};
 type GlbAccessor={count?:number;type?:string};
@@ -18,6 +19,7 @@ type GlbJson={
   asset?:{version?:string;generator?:string};
   materials?:GlbMaterial[];
   meshes?:GlbMesh[];
+  nodes?:GlbNode[];
   images?:GlbImage[];
   buffers?:GlbBuffer[];
   accessors?:GlbAccessor[];
@@ -107,14 +109,24 @@ export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):Garment
 
   for(const mesh of gltf.meshes||[]){
     for(const primitive of mesh.primitives||[]){
-      triangleCount+=primitiveTriangleCount(gltf,primitive);
-      vertexCount+=accessorCount(gltf,primitive.attributes?.POSITION);
       const index=Number(primitive.material);
       if(!Number.isInteger(index)||index<0||index>=materialNames.length) continue;
       const name=materialNames[index];
       if(panelUse.has(name)) panelUse.get(name)!.push(primitive);
     }
   }
+
+  const meshMetrics=(gltf.meshes||[]).map((mesh)=>({
+    triangles:(mesh.primitives||[]).reduce((sum,primitive)=>sum+primitiveTriangleCount(gltf,primitive),0),
+    vertices:(mesh.primitives||[]).reduce((sum,primitive)=>sum+accessorCount(gltf,primitive.attributes?.POSITION),0),
+  }));
+  const meshInstances=(gltf.nodes||[]).flatMap((node)=>{
+    const index=Number(node.mesh);
+    return Number.isInteger(index)&&index>=0&&index<meshMetrics.length?[index]:[];
+  });
+  const countedMeshes=meshInstances.length?meshInstances:meshMetrics.map((_,index)=>index);
+  triangleCount=countedMeshes.reduce((sum,index)=>sum+(meshMetrics[index]?.triangles||0),0);
+  vertexCount=countedMeshes.reduce((sum,index)=>sum+(meshMetrics[index]?.vertices||0),0);
 
   const panels=REQUIRED_GARMENT_VIEWER_MATERIALS.map((material)=>{
     const primitives=panelUse.get(material)||[];
