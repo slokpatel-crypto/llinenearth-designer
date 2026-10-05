@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { LINEN_EARTH_MODEL_IDENTITY_ID } from "./model-identity.ts";
 
 type SelectedLookCacheInput={
   shirt:{id:string};
@@ -90,7 +91,8 @@ export function selectedLookRenderCacheKey(
   frontImage?:string,
 ) {
   const canonical=stableValue({
-    version:"linen-final-render-cache-v2-locked-preview-source",
+    version:"linen-final-render-cache-v3-locked-studio-model",
+    modelIdentity:LINEN_EARTH_MODEL_IDENTITY_ID,
     view,
     shirtId:input.shirt.id,
     pantId:input.pant.id,

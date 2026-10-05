@@ -28,6 +28,8 @@ EXPORT_COLLECTION = "LinenEarthExport"
 REFERENCE_BODY = "Body"
 REFERENCE_HEIGHT_M = 1.727
 HEIGHT_TOLERANCE_M = 0.020
+MODEL_IDENTITY_ID = "linen-earth-studio-model-v1"
+MODEL_REFERENCE_IMAGE = "/designer/studio-tucked.webp"
 
 GARMENT_OBJECTS = (
     "ShirtTorsoFabric",
@@ -144,6 +146,18 @@ def scene_source_provenance(scene):
     return source
 
 
+def scene_model_identity(scene):
+    identity_id = str(scene.get("linen_earth_model_identity_id", "")).strip()
+    reference_image = str(scene.get("linen_earth_model_reference_image", "")).strip()
+    locked = bool(scene.get("linen_earth_model_identity_locked", False))
+    if identity_id != MODEL_IDENTITY_ID or reference_image != MODEL_REFERENCE_IMAGE or not locked:
+        raise RuntimeError(
+            "Production export requires the exact Linen Earth Real Model Designer identity. "
+            f"Expected {MODEL_IDENTITY_ID} / {MODEL_REFERENCE_IMAGE} with identity lock enabled."
+        )
+    return {"id": identity_id, "referenceImage": reference_image}
+
+
 def finite_number(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
@@ -200,11 +214,12 @@ def viewer_manifest_path(output_path):
     return root + ".viewer.json"
 
 
-def write_viewer_manifest(output_path, height, source, panel_spec):
+def write_viewer_manifest(output_path, height, source, model_identity, panel_spec):
     payload = {
         "version": CONTRACT_VERSION,
         "modelId": MODEL_ID,
         "referenceHeightMm": round(height * 1000),
+        "modelIdentity": model_identity,
         "source": source,
         "panels": panel_spec["panels"],
     }
@@ -245,15 +260,17 @@ def main():
     args = cli_args()
     panel_spec = load_panel_spec(args.panel_spec) if args.panel_spec else None
     source = scene_source_provenance(bpy.context.scene) if panel_spec else None
+    model_identity = scene_model_identity(bpy.context.scene) if panel_spec else None
     collection, height = validate_scene(args.collection, args.reference_body)
     export_glb(collection, args.output)
 
     manifest_path = None
     if panel_spec and source:
-        manifest_path = write_viewer_manifest(args.output, height, source, panel_spec)
+        manifest_path = write_viewer_manifest(args.output, height, source, model_identity, panel_spec)
 
     print(f"Linen Earth model exported: {os.path.abspath(args.output)}")
     print(f"Model ID: {MODEL_ID}")
+    print(f"Model identity: {MODEL_IDENTITY_ID}")
     print(f"Reference body height: {height * 1000:.1f} mm")
     if manifest_path:
         print(f"Measured viewer manifest written: {manifest_path}")

@@ -11,6 +11,7 @@ import { validateGarmentViewerModelContract, validateGarmentViewerModelManifest,
 import { GARMENT_VIEWER_LATENCY_STORAGE_KEY, garmentViewerAssetIdentityKey, type GarmentViewerAssetIdentity } from "@/lib/garment-viewer-readiness";
 import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
 import { optionById } from "@/lib/designer/options/library";
+import { LINEN_EARTH_MODEL_IDENTITY_ID, LINEN_EARTH_MODEL_REFERENCE_IMAGE, LINEN_EARTH_MODEL_VIEWS } from "@/lib/designer/model-identity";
 
 export type GarmentViewerFabric = {
   id:string;
@@ -79,12 +80,7 @@ type FabricTileManifest={
     renderAssetVersion?:string;
   }>;
 };
-const CAMERA_VIEWS=[
-  {id:"front",label:"Front",orbit:"0deg 76deg 2.65m"},
-  {id:"three-quarter",label:"3/4",orbit:"35deg 76deg 2.65m"},
-  {id:"side",label:"Side",orbit:"90deg 76deg 2.65m"},
-  {id:"back",label:"Back",orbit:"180deg 76deg 2.65m"},
-] as const;
+const CAMERA_VIEWS=LINEN_EARTH_MODEL_VIEWS;
 
 const SHIRT_GARMENT_CATEGORY=GARMENT_CATEGORY_LIBRARY.find((item)=>item.id==="shirt")!;
 const TROUSER_GARMENT_CATEGORY=GARMENT_CATEGORY_LIBRARY.find((item)=>item.id==="trouser")!;
@@ -396,7 +392,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     <div className="garmentViewerStage">
       <div className="garmentViewerStageHead">
         <span>GARMENTVIEWER · DEEP ENGINE</span>
-        <strong>SHIRT + TROUSER · BLAZER / SUIT NEXT</strong>
+        <strong>MODEL IDENTITY LOCKED · SHIRT + TROUSER</strong>
       </div>
       <div className="garmentViewerCanvas">
         {modelViewer}
@@ -406,7 +402,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       <div className="garmentCameraRail" role="group" aria-label="Garment camera views">
         {cameraViews.map((view)=><button key={view.id} type="button" aria-pressed={activeView===view.id} onClick={()=>setCamera(view)}>{view.label}</button>)}
       </div>
-      <p className="garmentViewerHint">Drag to rotate · pinch/scroll to zoom · fixed camera buttons interpolate smoothly.</p>
+      <p className="garmentViewerHint">Front · 3/4 · side · back are one locked turntable identity. Drag to rotate · pinch/scroll to zoom.</p>
     </div>
 
     <aside className="garmentViewerControls">
@@ -417,8 +413,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       </div>
 
       <div className="garmentViewerReference">
-        <div><span>SILHOUETTE / DRAPE TARGET</span><b>Current Linen Earth studio reference</b><small>Match the tucked shirt, clean neck/collar junction, hand clearance, waist overlap and straight premium officewear posture before any 3D model is promoted.</small></div>
-        <img src="/designer/studio-tucked.webp" alt="Current Linen Earth tucked officewear studio reference"/>
+        <div><span>EXACT REAL MODEL DESIGNER IDENTITY</span><b>{LINEN_EARTH_MODEL_IDENTITY_ID}</b><small>Every front, 3/4, side and back view must stay on this same faceless studio model: same shoulder width, torso taper, arm length, hand scale, hip width, leg length, stance and shoes.</small></div>
+        <img src={LINEN_EARTH_MODEL_REFERENCE_IMAGE} alt="Canonical Linen Earth Real Model Designer reference"/>
       </div>
 
       <section className="garmentTypeLibrary" aria-label="Garment type roadmap">

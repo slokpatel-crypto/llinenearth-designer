@@ -1,4 +1,5 @@
 import { GARMENT_PANEL_SPECS, PROTOTYPE_MODEL_ID } from "./garment-viewer-prototype.ts";
+import { LINEN_EARTH_MODEL_IDENTITY_ID, LINEN_EARTH_MODEL_REFERENCE_HEIGHT_MM, LINEN_EARTH_MODEL_REFERENCE_IMAGE } from "./designer/model-identity.ts";
 
 export const GARMENT_VIEWER_CONTRACT_VERSION = "linen-earth-garment-viewer-v2";
 
@@ -83,6 +84,10 @@ export type GarmentViewerModelManifest = {
   version: typeof GARMENT_VIEWER_CONTRACT_VERSION;
   modelId: string;
   referenceHeightMm: number;
+  modelIdentity?:{
+    id:string;
+    referenceImage:string;
+  };
   source?:GarmentViewerAssetSource;
   panels: Record<string,{widthMm:number;heightMm:number;offsetU?:number;offsetV?:number;rotationDeg?:number}>;
   cameraOrbits?: Partial<Record<"front"|"three-quarter"|"side"|"back",string>>;
@@ -105,6 +110,13 @@ export function validateGarmentViewerModelManifest(value:unknown,expectedModelId
   if(!String(manifest.modelId||"").trim()) reasons.push("Manifest modelId is required.");
   else if(expectedModelId && manifest.modelId!==expectedModelId) reasons.push(`Manifest modelId ${manifest.modelId} does not match ${expectedModelId}.`);
   if(!Number.isFinite(manifest.referenceHeightMm)||Number(manifest.referenceHeightMm)<1400||Number(manifest.referenceHeightMm)>2200) reasons.push("Reference height must be between 1400 and 2200 mm.");
+  const identityId=String(manifest.modelIdentity?.id||"").trim();
+  const identityReference=String(manifest.modelIdentity?.referenceImage||"").trim();
+  if(manifest.modelId!==PROTOTYPE_MODEL_ID) {
+    if(identityId!==LINEN_EARTH_MODEL_IDENTITY_ID) reasons.push(`Production model identity must be ${LINEN_EARTH_MODEL_IDENTITY_ID}.`);
+    if(identityReference!==LINEN_EARTH_MODEL_REFERENCE_IMAGE) reasons.push("Production model must reference the exact Real Model Designer studio image.");
+    if(Math.abs(Number(manifest.referenceHeightMm)-LINEN_EARTH_MODEL_REFERENCE_HEIGHT_MM)>20) reasons.push(`Production model height must stay within 20 mm of ${LINEN_EARTH_MODEL_REFERENCE_HEIGHT_MM} mm.`);
+  }
   const rawSource=manifest.source&&typeof manifest.source==="object"?manifest.source:null;
   const sourceName=String(rawSource?.name||"").trim();
   const sourceLicense=String(rawSource?.license||"").trim();

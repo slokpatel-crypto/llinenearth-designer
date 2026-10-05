@@ -89,3 +89,29 @@ test("Blender scene preflight catches structural garment quality risks without r
   ]) assert(preflight.includes(token),token);
   assert(!preflight.includes("non_manifold"),"Tailored garment openings must not be rejected as if clothing were watertight.");
 });
+
+
+test("canonical Real Model Designer identity is one four-view turntable contract",()=>{
+  const identity=JSON.parse(readFileSync("public/model-identity/linen-earth-studio-model-v1.json","utf8"));
+  assert.equal(identity.version,"linen-earth-studio-model-v1");
+  assert.equal(identity.referenceImage,"/designer/studio-tucked.webp");
+  assert.equal(identity.referenceHeightMm,1727);
+  assert.deepEqual(identity.views.map((view:{id:string})=>view.id),["front","three-quarter","side","back"]);
+  assert.deepEqual(identity.views.map((view:{yawDeg:number})=>view.yawDeg),[0,35,90,180]);
+  assert.equal(identity.frontSilhouetteAnchors.shirtShoulder.leftPx,351);
+  assert.equal(identity.frontSilhouetteAnchors.shirtShoulder.rightPx,669);
+});
+
+test("Blender body, preflight and exporter all carry the same locked model identity",()=>{
+  const prepare=readFileSync("scripts/blender/prepare-linen-earth-body.py","utf8");
+  const preflight=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
+  const exporter=readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
+  for(const source of [prepare,preflight,exporter]){
+    assert(source.includes('MODEL_IDENTITY_ID = "linen-earth-studio-model-v1"'));
+    assert(source.includes('MODEL_REFERENCE_IMAGE = "/designer/studio-tucked.webp"'));
+  }
+  assert(prepare.includes("linen_earth_model_identity_locked"));
+  assert(preflight.includes("Model identity lock is not enabled"));
+  assert(exporter.includes("scene_model_identity"));
+  assert(exporter.includes('"modelIdentity": model_identity'));
+});

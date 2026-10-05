@@ -14,6 +14,7 @@ import type { StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import { styleSpecRenderSummary } from "@/lib/designer/style-spec-v2";
 import type { BodyPreviewProfile } from "@/lib/designer/body-profile";
 import { bodyProfileRenderSummary } from "@/lib/designer/body-profile";
+import { LINEN_EARTH_MODEL_IDENTITY_ID, linenEarthModelIdentityPrompt, linenEarthViewPrompt } from "@/lib/designer/model-identity";
 import { compareRenderMeasuredColors, compareRenderMeasuredPatterns, worstRenderColorStatus, worstRenderPatternStatus, type RenderColorFidelityResult, type RenderPatternFidelityResult } from "@/lib/designer/render-fidelity-core";
 import { selectedLookRenderCacheKey } from "@/lib/designer/render-cache-key";
 import { classifyProtectedRegionChange, protectedRegionChangePercent, type ProtectedRegionStatus } from "@/lib/designer/render-protected-region";
@@ -708,6 +709,7 @@ export async function inspectSelectedLookFashnOutput(
     "You are a strict production QA inspector for a premium menswear visualizer.",
     "Judge render fidelity, not fashion taste. The customer already chose the outfit.",
     `Expected camera/view: ${view}. The locked studio reference may be front-facing; allow only the camera/body rotation needed for this requested view while preserving mannequin identity and outfit.`,
+    `Canonical model identity: ${LINEN_EARTH_MODEL_IDENTITY_ID}. ${linenEarthViewPrompt(view)} ${linenEarthModelIdentityPrompt()}`,
     `Required shirt: ${input.shirt.name}; ${input.shirt.line}; ${input.shirt.patternType}.`,
     `Required trousers: ${input.pant.name}; ${input.pant.line}; ${input.pant.patternType}.`,
     `Required construction: ${selectedLookConstruction(input)}.`,
@@ -1013,7 +1015,8 @@ function selectedLookPrompt(input:SelectedLookFashnRequest,usedLockedPreview=fal
   const sourceContract=usedLockedPreview
     ? "The edit source is the customer's deterministic locked live preview. Treat its mannequin identity, pose, garment boundaries, tuck layering, silhouette, cloth placement and visible pattern geometry as the primary visual contract. Add photographic realism without replacing or reinterpreting that layout."
     : "The edit source is the canonical Linen Earth studio photograph. Preserve its mannequin identity, pose, body proportions, camera angle, studio lighting and deep navy environment.";
-  return `Edit this existing premium menswear studio photograph into the exact Linen Earth outfit configured by the customer. ${sourceContract}
+  const identityContract=linenEarthModelIdentityPrompt();
+  return `Edit this existing premium menswear studio photograph into the exact Linen Earth outfit configured by the customer. ${sourceContract} ${identityContract}
 
 The image-context has two separated cloth panels: LEFT PANEL is the exact shirt-fabric reference; RIGHT PANEL is the exact trouser-fabric reference. Ignore the neutral strip between them. Use those references only for their matching garments.
 
@@ -1034,9 +1037,11 @@ function selectedLookViewPrompt(input:SelectedLookFashnRequest,view:Exclude<Sele
     : view==="side"
       ? "Rotate the same mannequin to a clean full-body side profile."
       : "Rotate the same mannequin to a clean full-body back view.";
-  return `Create the ${view} view of this exact Linen Earth outfit using the supplied front render as the identity and garment reference. ${camera}
+  const identityContract=linenEarthModelIdentityPrompt();
+  const viewContract=linenEarthViewPrompt(view);
+  return `Create the ${view} view of this exact Linen Earth outfit using the supplied front render as the identity and garment reference. ${camera} ${viewContract} ${identityContract}
 
-Do not redesign the outfit. Preserve the exact same faceless mannequin, body proportions, shirt fabric, trouser fabric, colour balance, weave character, collar, cuff, placket, shirt fit, tuck state, trouser shape, rise, waistband, break, shoes, lighting and deep navy studio environment.
+Do not redesign the outfit. Preserve the exact same faceless mannequin, body proportions, shoulder width, torso taper, arm length, hand scale, hip width, leg length, shirt fabric, trouser fabric, colour balance, weave character, collar, cuff, placket, shirt fit, tuck state, trouser shape, rise, waistband, break, shoes, lighting and deep navy studio environment.
 
 Shirt: ${safe(input.shirt.name)} ${safe(input.shirt.line)}, ${safe(input.shirt.patternType)}.
 Trousers: ${safe(input.pant.name)} ${safe(input.pant.line)}, ${safe(input.pant.patternType)}.
@@ -1168,7 +1173,7 @@ export async function repairSelectedLookFashnFront(
   const context=await creativeFabricContext(input.shirt.image,input.pant.image);
   const prompt=`Repair this existing Linen Earth photoreal render without redesigning it. QA defect to fix: ${instruction}
 
-Preserve the same faceless mannequin, pose, camera, body proportions, exposed skin tone, deep navy studio, shirt fabric, trouser fabric, footwear and every successful garment detail. Required construction remains ${selectedLookConstruction(input)}. Body/model target remains ${input.bodyProfile ? bodyProfileRenderSummary(input.bodyProfile) : "the existing model"}.
+Preserve the exact canonical Linen Earth faceless mannequin, pose, camera, shoulder width, torso taper, arm length, hand scale, hip width, leg length, exposed skin/resin tone, deep navy studio, shirt fabric, trouser fabric, footwear and every successful garment detail. ${linenEarthModelIdentityPrompt()} Required construction remains ${selectedLookConstruction(input)}. Body/model target remains ${input.bodyProfile ? bodyProfileRenderSummary(input.bodyProfile) : "the existing model"}.
 
 Use the supplied split fabric context only to restore the exact shirt and trouser cloth appearance. Fix the cited defect locally. Do not add styling ideas, decorative seams, contrast panels, prints, logos, props or extra garments. Keep cloth off the neck, hands, background and neighbouring garment. If tucked, keep the waistband physically in front of the shirt. Full-body front catalogue photograph.`;
   const generated=await runEdit(previousImage,prompt,context);

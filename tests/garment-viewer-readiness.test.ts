@@ -7,6 +7,7 @@ import {
   validateGarmentViewerModelContract,
   validateGarmentViewerModelManifest,
 } from "../src/lib/garment-viewer-model-contract.ts";
+import { LINEN_EARTH_MODEL_IDENTITY_ID, LINEN_EARTH_MODEL_REFERENCE_IMAGE } from "../src/lib/designer/model-identity.ts";
 
 const contract=validateGarmentViewerModelContract({
   modelId:"LE-OFFICEWEAR-V1",
@@ -16,6 +17,7 @@ const manifest=validateGarmentViewerModelManifest({
   version:GARMENT_VIEWER_CONTRACT_VERSION,
   modelId:"LE-OFFICEWEAR-V1",
   referenceHeightMm:1727,
+  modelIdentity:{id:LINEN_EARTH_MODEL_IDENTITY_ID,referenceImage:LINEN_EARTH_MODEL_REFERENCE_IMAGE},
   source:{name:"Blender Human Base Meshes",license:"CC0",verifiedAt:"2026-10-05"},
   panels:Object.fromEntries(REQUIRED_GARMENT_VIEWER_MATERIALS.map((name)=>[name,{widthMm:300,heightMm:600}])),
 },"LE-OFFICEWEAR-V1");
