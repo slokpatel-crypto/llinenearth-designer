@@ -185,8 +185,13 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         styleSpec:validateStyleSpecV2(parsed.styleSpec) ? parsed.styleSpec : undefined,
       };
       setDesignerDraftRecipe(normalized);
-      if(parsed.shirtId && shirtFabrics.some((fabric)=>fabric.id===parsed.shirtId)) setShirtId(parsed.shirtId);
-      if(parsed.pantId && trouserFabrics.some((fabric)=>fabric.id===parsed.pantId)) setTrouserId(parsed.pantId);
+      const params=new URLSearchParams(window.location.search);
+      const routedShirt=params.get("shirt");
+      const routedPant=params.get("pant");
+      const nextShirtId=routedShirt&&shirtFabrics.some((fabric)=>fabric.id===routedShirt) ? routedShirt : parsed.shirtId;
+      const nextPantId=routedPant&&trouserFabrics.some((fabric)=>fabric.id===routedPant) ? routedPant : parsed.pantId;
+      if(nextShirtId && shirtFabrics.some((fabric)=>fabric.id===nextShirtId)) setShirtId(nextShirtId);
+      if(nextPantId && trouserFabrics.some((fabric)=>fabric.id===nextPantId)) setTrouserId(nextPantId);
     }catch{/* 3D Lab stays usable without Designer browser state. */}
   },[shirtFabrics,trouserFabrics]);
 
