@@ -20,7 +20,11 @@ export type GarmentViewerFabric = {
 
 type ViewerSampler={
   scale?:{u:number;v:number}|null;
+  offset?:{u:number;v:number}|null;
+  rotation?:number|null;
   setScale?:(scale:{u:number;v:number}|null)=>void;
+  setOffset?:(offset:{u:number;v:number}|null)=>void;
+  setRotation?:(rotation:number|null)=>void;
 };
 type ViewerTexture={
   sampler?:ViewerSampler;
@@ -135,7 +139,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const productionManifestReady=!modelSrc || modelManifestValidation?.valid===true;
   const panelSpecs=useMemo(()=>GARMENT_PANEL_SPECS.map((panel)=>{
     const measured=modelManifest?.panels?.[panel.material];
-    return measured ? {...panel,widthMm:measured.widthMm,heightMm:measured.heightMm} : panel;
+    return measured ? {...panel,widthMm:measured.widthMm,heightMm:measured.heightMm,offsetU:measured.offsetU,offsetV:measured.offsetV,rotationDeg:measured.rotationDeg} : panel;
   }),[modelManifest]);
   const cameraViews=useMemo(()=>CAMERA_VIEWS.map((view)=>({
     ...view,
@@ -262,8 +266,14 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
             normalMapRef.current ? viewer.createTexture!(normalMapRef.current) : Promise.resolve(null),
           ]);
           const scale=garmentPanelTextureScale(panel.widthMm,panel.heightMm,tileMm);
+          const offset={u:Number(panel.offsetU)||0,v:Number(panel.offsetV)||0};
+          const rotation=(Number(panel.rotationDeg)||0)*Math.PI/180;
           texture.sampler?.setScale?.(scale);
+          texture.sampler?.setOffset?.(offset);
+          texture.sampler?.setRotation?.(rotation);
           normal?.sampler?.setScale?.({u:clamp(scale.u*1.35,.35,100),v:clamp(scale.v*1.35,.35,100)});
+          normal?.sampler?.setOffset?.(offset);
+          normal?.sampler?.setRotation?.(rotation);
           return {panel,texture,normal};
         }));
         if(token!==applyToken.current) return;
