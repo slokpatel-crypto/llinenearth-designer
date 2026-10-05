@@ -22,7 +22,10 @@
     "eval:engine": "node --experimental-strip-types scripts/eval-phase10-engine.mjs && npm run eval:designer-snapshots && node scripts/eval-designer-advisor.cjs",
     "eval:designer-snapshots": "node --experimental-strip-types scripts/eval-phase10-designer-snapshots.mjs",
     "eval:preview-performance": "node --experimental-strip-types scripts/eval-preview-performance.mjs",
-    "garment:model-check": "node --experimental-strip-types scripts/check-garment-viewer-model.mjs"
+    "garment:model-check": "node --experimental-strip-types scripts/check-garment-viewer-model.mjs",
+    "garment:model-base:fetch": "python3 scripts/blender/bootstrap-human-base-meshes.py",
+    "garment:model-body:prepare": "blender --background --factory-startup --python scripts/blender/prepare-linen-earth-body.py -- --asset-root .cache/linen-earth/blender-human-base-meshes-v1.4.1 --output .cache/linen-earth/linen-earth-officewear-body-base.blend",
+    "garment:model-scene:check": "blender --background .cache/linen-earth/linen-earth-officewear-body-base.blend --python scripts/blender/preflight-linen-earth-officewear.py"
   },
   "dependencies": {
     "fashn": "^0.15.0",
