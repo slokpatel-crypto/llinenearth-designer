@@ -392,7 +392,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     <div className="garmentViewerStage">
       <div className="garmentViewerStageHead">
         <span>GARMENTVIEWER · DEEP ENGINE</span>
-        <strong>SHIRT + TROUSER · BLAZER / SUIT NEXT</strong>
+        <strong>MODEL IDENTITY LOCKED · SHIRT + TROUSER</strong>
       </div>
       <div className="garmentViewerCanvas">
         {modelViewer}
