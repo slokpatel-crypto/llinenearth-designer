@@ -23,6 +23,13 @@ async function verifyViewport(browser, width) {
   const viewer = page.locator("model-viewer");
   await viewer.waitFor({ state: "visible" });
   await page.locator(".garmentViewerLoading").waitFor({ state: "hidden", timeout: 20000 });
+  await page.waitForFunction(() => document.querySelector(".garmentViewerShell")?.getAttribute("data-model-readiness") === "prototype");
+  const labReadiness = await page.locator(".garmentViewerShell").evaluate((element) => ({
+    model: element.getAttribute("data-model-readiness"),
+    manifest: element.getAttribute("data-manifest-ready"),
+  }));
+  assert.equal(labReadiness.model, "prototype", "default lab must remain on the non-production prototype");
+  assert.equal(labReadiness.manifest, "true", "prototype fallback must not require a production sidecar");
 
   const modelState = await viewer.evaluate((element) => {
     const materials = element.model?.materials || [];
@@ -43,6 +50,10 @@ async function verifyViewport(browser, width) {
   await page.getByRole("button", { name: "Back", exact: true }).click();
   await page.waitForFunction(() => document.querySelector("model-viewer")?.getAttribute("camera-orbit")?.startsWith("180deg"));
 
+  const reference=page.locator(".garmentViewerReference img");
+  await reference.waitFor({state:"visible"});
+  assert.match(await reference.getAttribute("src"),/studio-tucked\.webp$/, "3D lab must keep the approved studio reference target visible");
+
   const selects = page.locator(".garmentViewerControls select");
   assert.equal(await selects.count(), 2);
   for (let index = 0; index < 2; index++) {
@@ -55,6 +66,8 @@ async function verifyViewport(browser, width) {
   }
 
   await page.waitForTimeout(400);
+  const prototypeLatencyEvidence = await page.evaluate(() => localStorage.getItem("linen-earth-garment-viewer-latency-v1"));
+  assert.equal(prototypeLatencyEvidence, null, "prototype fabric changes must not create production latency evidence");
   const materialState = await viewer.evaluate((element) => {
     return (element.model?.materials || [])
       .filter((material) => /^(Shirt|Trouser)/.test(material.name))
@@ -65,6 +78,8 @@ async function verifyViewport(browser, width) {
         hasTexture: Boolean(current.pbrMetallicRoughness?.baseColorTexture?.texture),
         hasNormal: Boolean(current.normalTexture?.texture),
         scale: current.pbrMetallicRoughness?.baseColorTexture?.texture?.sampler?.scale || null,
+        offset: current.pbrMetallicRoughness?.baseColorTexture?.texture?.sampler?.offset || null,
+        rotation: current.pbrMetallicRoughness?.baseColorTexture?.texture?.sampler?.rotation ?? null,
       }));
   });
   assert.equal(materialState.length, 6);
@@ -74,6 +89,8 @@ async function verifyViewport(browser, width) {
     assert.equal(material.hasTexture, true, material.name + " must carry the selected swatch texture");
     assert.equal(material.hasNormal, true, material.name + " must carry linen normal detail");
     assert.ok(material.scale && material.scale.u > 0 && material.scale.v > 0, material.name + " must carry a panel-scale texture transform");
+    assert.ok(material.offset && Number.isFinite(material.offset.u) && Number.isFinite(material.offset.v), material.name + " must expose texture phase offset");
+    assert.ok(Number.isFinite(material.rotation), material.name + " must expose texture grain rotation");
   }
 
   const layout = await page.evaluate(() => ({
