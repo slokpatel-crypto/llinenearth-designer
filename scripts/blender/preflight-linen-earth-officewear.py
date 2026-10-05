@@ -20,6 +20,8 @@ MAX_TOTAL_TRIANGLES = 220_000
 MAX_TOTAL_VERTICES = 280_000
 MAX_DEGENERATE_FACE_RATIO = 0.001
 TRANSFORM_TOLERANCE = 1e-4
+MODEL_IDENTITY_ID = "linen-earth-studio-model-v1"
+MODEL_REFERENCE_IMAGE = "/designer/studio-tucked.webp"
 
 GARMENT_OBJECTS = (
     "ShirtTorsoFabric",
@@ -85,6 +87,15 @@ def main():
     objects = {}
     collection = bpy.data.collections.get(EXPORT_COLLECTION)
     body = bpy.data.objects.get(REFERENCE_BODY)
+    identity_id = str(bpy.context.scene.get("linen_earth_model_identity_id", "")).strip()
+    identity_reference = str(bpy.context.scene.get("linen_earth_model_reference_image", "")).strip()
+    identity_locked = bool(bpy.context.scene.get("linen_earth_model_identity_locked", False))
+    if identity_id != MODEL_IDENTITY_ID:
+        reasons.append(f"Model identity is {identity_id or 'missing'}; expected {MODEL_IDENTITY_ID}.")
+    if identity_reference != MODEL_REFERENCE_IMAGE:
+        reasons.append("Model identity reference does not point to the exact Real Model Designer studio image.")
+    if not identity_locked:
+        reasons.append("Model identity lock is not enabled in the Blender scene.")
 
     if collection is None:
         reasons.append(f"Missing export collection: {EXPORT_COLLECTION}.")
@@ -168,6 +179,12 @@ def main():
         "gate": "linen-earth-officewear-scene-preflight-v1",
         "ready": len(reasons) == 0,
         "referenceBody": REFERENCE_BODY,
+        "modelIdentity": {
+            "id": identity_id,
+            "referenceImage": identity_reference,
+            "locked": identity_locked,
+            "expectedId": MODEL_IDENTITY_ID,
+        },
         "bodyHeightMm": round(body_height * 1000, 2) if body_height else None,
         "requiredGarmentObjects": list(GARMENT_OBJECTS),
         "objects": objects,
