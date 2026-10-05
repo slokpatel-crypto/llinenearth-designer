@@ -41,7 +41,7 @@ test("Designer shows current and future garment types before fabric selection",(
 
 test("future blazer and suit taxonomy stays planned",()=>{
   const future=readFileSync("src/lib/designer/future-garment-options.ts","utf8");
-  for(const token of ["blazer.type","blazer.lapel","blazer.vent","blazer.pocket","blazer.shoulder","suit.type","suit.waistcoat","suit.jacket","suit.trouser"]) {
+  for(const token of ["blazer.type","blazer.lapel","blazer.vent","blazer.pocket","blazer.shoulder","blazer.button_stance","blazer.length","suit.type","suit.waistcoat","suit.jacket","suit.trouser","suit.lapel","suit.vent","suit.button_stance"]) {
     assert(future.includes(token),token);
   }
   assert(future.includes('status:"planned"'));
@@ -77,4 +77,22 @@ test("Designer exposes a direct bridge from garment details to the 3D Lab",()=>{
   assert(designer.includes('/lab/garment-viewer?from=designer&shirt='));
   assert(designer.includes("Open this shirt + trouser recipe in 3D"));
   assert(designer.indexOf("newDesigner3dBridge") < designer.indexOf("newDesignerFabricGrid"));
+});
+
+
+test("future blazer and suit displayed details have real planned options",()=>{
+  const future=readFileSync("src/lib/designer/future-garment-options.ts","utf8");
+  for(const token of [
+    'group:"blazer.lapel"',
+    'group:"blazer.vent"',
+    'group:"blazer.pocket"',
+    'group:"blazer.shoulder"',
+    'group:"blazer.button_stance"',
+    'group:"blazer.length"',
+    'group:"suit.lapel"',
+    'group:"suit.vent"',
+    'group:"suit.button_stance"',
+    'group:"suit.waistcoat"',
+    'group:"suit.trouser"',
+  ]) assert(future.includes(token),token);
 });
