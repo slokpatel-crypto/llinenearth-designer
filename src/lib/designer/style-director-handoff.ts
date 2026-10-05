@@ -2,13 +2,14 @@ import "server-only";
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { DesignerClimate, DesignerIntention, DesignerStyle, OccasionTier } from "./engine";
+import { validateStyleSpecV2, type StyleSpecV2 } from "./style-spec-v2";
 import { readBrandEnv } from "../runtime-compat";
 
-const VERSION="v1";
+const VERSION="v2";
 const MAX_AGE_MS=2*60*60*1000;
 
 export type StyleDirectorHandoffPayload={
-  version:"linen-earth-style-director-handoff-v1";
+  version:"linen-earth-style-director-handoff-v2";
   sourceLookId:string;
   shirtId:string;
   pantId:string;
@@ -16,6 +17,7 @@ export type StyleDirectorHandoffPayload={
   climate:DesignerClimate;
   intention:DesignerIntention;
   style:DesignerStyle;
+  styleSpec:StyleSpecV2;
   expiresAt:number;
 };
 
@@ -40,7 +42,7 @@ export function createStyleDirectorHandoffToken(
   now=Date.now(),
 ){
   const payload:StyleDirectorHandoffPayload={
-    version:"linen-earth-style-director-handoff-v1",
+    version:"linen-earth-style-director-handoff-v2",
     ...input,
     expiresAt:now+MAX_AGE_MS,
   };
@@ -59,8 +61,8 @@ export function verifyStyleDirectorHandoffToken(token:string,now=Date.now()):Sty
   if(a.length!==b.length||!timingSafeEqual(a,b)) return null;
   try{
     const payload=JSON.parse(decode(body)) as StyleDirectorHandoffPayload;
-    if(payload.version!=="linen-earth-style-director-handoff-v1") return null;
-    if(!payload.sourceLookId||!payload.shirtId||!payload.pantId) return null;
+    if(payload.version!=="linen-earth-style-director-handoff-v2") return null;
+    if(!payload.sourceLookId||!payload.shirtId||!payload.pantId||!validateStyleSpecV2(payload.styleSpec)) return null;
     if(!Number.isFinite(payload.expiresAt)||payload.expiresAt<now||payload.expiresAt>now+MAX_AGE_MS+60_000) return null;
     return payload;
   }catch{return null;}
@@ -76,12 +78,13 @@ function canonical(value:unknown):string{
 
 export function styleDirectorHandoffMatches(
   payload:StyleDirectorHandoffPayload,
-  observed:{shirtId:string;pantId:string;occasion:OccasionTier;climate:DesignerClimate;intention:DesignerIntention;style:DesignerStyle},
+  observed:{shirtId:string;pantId:string;occasion:OccasionTier;climate:DesignerClimate;intention:DesignerIntention;style:DesignerStyle;styleSpec:StyleSpecV2},
 ){
   return payload.shirtId===observed.shirtId
     && payload.pantId===observed.pantId
     && payload.occasion===observed.occasion
     && payload.climate===observed.climate
     && payload.intention===observed.intention
-    && canonical(payload.style)===canonical(observed.style);
+    && canonical(payload.style)===canonical(observed.style)
+    && canonical(payload.styleSpec)===canonical(observed.styleSpec);
 }
