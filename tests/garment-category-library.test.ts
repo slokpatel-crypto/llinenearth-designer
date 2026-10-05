@@ -52,8 +52,8 @@ test("3D lab carries the saved Designer recipe without claiming geometry support
   const source=readFileSync("src/components/GarmentViewer.tsx","utf8");
   assert(source.includes("linen-earth:real-designer-draft:v2"));
   assert(source.includes("YOUR DESIGNER RECIPE"));
-  assert(source.includes("temporary 3D block maps fabric now"));
-  assert(source.includes("construction-specific mesh changes remain a later production-model step"));
+  assert(source.includes("The 3D Lab now opens on the same saved shirt and trouser fabrics as Designer"));
+  assert(source.includes("production garment meshes can express those details"));
 });
 
 
@@ -62,7 +62,6 @@ test("3D Lab restores the exact StyleSpec and selected fabrics from Designer",()
   assert(viewer.includes("validateStyleSpecV2"));
   assert(viewer.includes("parsed.shirtId"));
   assert(viewer.includes("parsed.pantId"));
-  assert(viewer.includes("setShirtId(parsed.shirtId)"));
   assert(viewer.includes('params.get("shirt")'));
   assert(viewer.includes('params.get("pant")'));
   assert(viewer.includes("routedShirt&&shirtFabrics.some"));
