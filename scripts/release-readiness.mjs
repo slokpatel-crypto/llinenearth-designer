@@ -161,6 +161,9 @@ for (const path of [
   "src/lib/designer/stock-availability.ts",
   "src/lib/designer/stock-availability-server.ts",
   "src/lib/designer/catalog-stock-server.ts",
+  "src/lib/designer/garment-category-library.ts",
+  "src/lib/designer/future-garment-options.ts",
+  "src/components/DesignerModule.tsx",
   "src/lib/garment-viewer-model-contract.ts",
   "src/lib/garment-viewer-model-server.ts",
   "src/lib/garment-viewer-glb.ts",
@@ -794,6 +797,9 @@ requireTokens("tests/stock-availability.test.ts", ["availabilityVerified,true","
 requireTokens("src/lib/designer/stock-availability-server.ts", ["fabric_stock_snapshot_v2","applyLiveVerifiedStockAvailability","cache:\"no-store\""]);
 requireTokens("src/lib/designer/catalog-stock-server.ts", ["loadDesignerFabricMetadata","applyDesignerFabricMetadataToStock","applyLiveVerifiedStockAvailability","verifiedStockFabrics"]);
 requireTokens("src/app/api/designer/catalog/route.ts", ["loadActiveDesignerFabricStock","verifiedStockFabrics"]);
+requireTokens("src/lib/designer/garment-category-library.ts", ["shirt","trouser","blazer","suit","typeExamples","detailFamilies","status:\"planned\""]);
+requireTokens("src/components/DesignerModule.tsx", ["newDesignerGarmentScope","newDesigner3dBridge","Open this shirt + trouser recipe in 3D","href=\"/lab/garment-viewer\""]);
+requireTokens("src/components/GarmentViewer.tsx", ["validateStyleSpecV2","parsed.shirtId","parsed.pantId","setShirtId(parsed.shirtId)","setTrouserId(parsed.pantId)","optionLabel(designerDraftRecipe.styleSpec.shirt.type","optionLabel(designerDraftRecipe.styleSpec.pant.type","The 3D Lab now opens on the same saved shirt and trouser fabrics as Designer"]);
 requireTokens("src/lib/garment-viewer-model-contract.ts", ["linen-earth-garment-viewer-v2","REQUIRED_GARMENT_VIEWER_MATERIALS","approvedGarmentViewerModelSource","validateGarmentViewerModelManifest"]);
 requireTokens("src/lib/garment-viewer-glb.ts", ["parseGarmentViewerGlbJson","externalGlbUri","performanceBudgetReady","structuralReady"]);
 requireTokens("src/lib/garment-viewer-readiness.ts", ["garmentViewerPromotionReadiness","GARMENT_VIEWER_REALISM_RUBRIC_VERSION","ROADMAP_SCALE_TOLERANCE_PCT"]);
