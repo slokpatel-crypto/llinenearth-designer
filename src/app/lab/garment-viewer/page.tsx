@@ -39,7 +39,7 @@ export default async function GarmentViewerLabPage() {
     <Script
       id="linen-earth-model-viewer"
       type="module"
-      src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.3.1/model-viewer.min.js"
+      src="/vendor/model-viewer"
       strategy="afterInteractive"
       crossOrigin="anonymous"
     />
