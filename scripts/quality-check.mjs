@@ -1503,3 +1503,32 @@ for(const token of ["claim.duplicate","paidModelCalls:0","researchRefreshSources
 if(refreshServer.includes("analyzeFashionResearchSource"))throw Error("Scheduled research must not silently spend model credits.");
 for(const token of ["CRON_SECRET","timingSafeEqual"])if(!cronRoute.includes(token))throw Error("Cron authorization regression: "+token);
 console.log("Creative workflow gate passed: versioned craft, personal ownership, reset, bounded free research and explicit sample gates.");
+
+
+const garmentViewerSource=fs.readFileSync("src/components/GarmentViewer.tsx","utf8");
+const garmentViewerContract=fs.readFileSync("src/lib/garment-viewer-model-contract.ts","utf8");
+const garmentViewerGlb=fs.readFileSync("src/lib/garment-viewer-glb.ts","utf8");
+const garmentViewerReadiness=fs.readFileSync("src/lib/garment-viewer-readiness.ts","utf8");
+const garmentViewerOperator=fs.readFileSync("src/app/operator/garment-viewer/page.tsx","utf8");
+const garmentViewerMemory=fs.readFileSync("src/app/api/memory/event/route.ts","utf8");
+const protectedVisualRoute=fs.readFileSync("src/app/visual/page.tsx","utf8");
+for(const token of ["GARMENT_PANEL_SPECS","sampler?.setScale","modelManifestSrc","assetIdentity","GARMENT_VIEWER_LATENCY_STORAGE_KEY"]) {
+  if(!garmentViewerSource.includes(token)) throw new Error(`GarmentViewer M2 runtime regression: missing ${token}`);
+}
+for(const token of ["linen-earth-garment-viewer-v2","ShirtTorsoFabric","TrouserLegRFabric","approvedGarmentViewerModelSource","validateGarmentViewerModelManifest"]) {
+  if(!garmentViewerContract.includes(token)) throw new Error(`GarmentViewer production contract regression: missing ${token}`);
+}
+for(const token of ["parseGarmentViewerGlbJson","TEXCOORD_0","externalGlbUri","structuralReady"]) {
+  if(!garmentViewerGlb.includes(token)) throw new Error(`GarmentViewer GLB inspection regression: missing ${token}`);
+}
+for(const token of ["garmentViewerPromotionReadiness","ROADMAP_SCALE_TOLERANCE_PCT","PHASE1_PROOF_MIN_REALISM_VIEWERS","PHASE1_PROOF_MAX_P95_MS","garmentViewerAssetIdentityMatches"]) {
+  if(!garmentViewerReadiness.includes(token)) throw new Error(`GarmentViewer promotion gate regression: missing ${token}`);
+}
+for(const token of ["GarmentViewerEvidenceForm","CUSTOMER PROMOTION GATE","loadLatestGarmentViewerReadiness"]) {
+  if(!garmentViewerOperator.includes(token)) throw new Error(`GarmentViewer operator QA regression: missing ${token}`);
+}
+for(const token of ['subtype === "garment_viewer_readiness"',"modelSha256","manifestSha256","patternScaleSamples","realismAssessments"]) {
+  if(!garmentViewerMemory.includes(token)) throw new Error(`GarmentViewer evidence storage regression: missing ${token}`);
+}
+if(!protectedVisualRoute.includes('redirect("/style-director")')) throw new Error("GarmentViewer regression: public /visual must remain on Style Director until promotion evidence passes.");
+console.log("GarmentViewer M2 gate passed: reusable 3D stays isolated behind production asset, physical-scale, latency, realism and boundary evidence.");
