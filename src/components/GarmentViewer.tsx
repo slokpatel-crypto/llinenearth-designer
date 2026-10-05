@@ -373,7 +373,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       <div>
         <span className="garmentViewerEyebrow">REAL FABRIC → REUSABLE MODEL</span>
         <h1>3D fabric mapping proof.</h1>
-        <p>The same geometry stays fixed while seamless Linen Earth fabric tiles replace each shirt and trouser panel material. Calibrated tile widths are applied panel-by-panel when physical scale exists.</p>
+        <p>The same geometry stays fixed while the current live Designer fabric library replaces each shirt and trouser panel material. {shirtFabrics.length} shirt fabrics and {trouserFabrics.length} trouser fabrics use the same active stock source as Designer. Calibrated tile widths are applied panel-by-panel when physical scale exists.</p>
       </div>
 
       <label><span>Shirt fabric</span><select value={shirtId} onChange={(event)=>{beginFabricInteraction();setShirtId(event.target.value);}}>{shirtFabrics.map((fabric)=><option key={fabric.id} value={fabric.id}>{fabric.name} · {fabric.line}</option>)}</select></label>
