@@ -7,6 +7,7 @@ import {
   PROTOTYPE_MODEL_ID,
 } from "@/lib/garment-viewer-prototype";
 import { garmentPanelTextureScale, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
+import { validateGarmentViewerModelContract, validateGarmentViewerModelManifest, type GarmentViewerModelContractResult, type GarmentViewerModelManifest, type GarmentViewerManifestValidation } from "@/lib/garment-viewer-model-contract";
 
 export type GarmentViewerFabric = {
   id:string;
@@ -94,9 +95,12 @@ function measuredTileWidth(
   return resolveViewerTileWidthMm(manifest.assets?.[fabric.tileKey],runtimeScale[fabric.id]);
 }
 
-export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
+export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null,modelManifestSrc=null,modelId=PROTOTYPE_MODEL_ID}:{
   shirtFabrics:GarmentViewerFabric[];
   trouserFabrics:GarmentViewerFabric[];
+  modelSrc?:string|null;
+  modelManifestSrc?:string|null;
+  modelId?:string;
 }) {
   const viewerRef=useRef<ModelViewerElement|null>(null);
   const normalMapRef=useRef("");
@@ -106,10 +110,13 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
   const [modelReady,setModelReady]=useState(false);
   const [progress,setProgress]=useState(0);
   const [error,setError]=useState("");
+  const [modelContract,setModelContract]=useState<GarmentViewerModelContractResult|null>(null);
+  const [modelManifest,setModelManifest]=useState<GarmentViewerModelManifest|null>(null);
+  const [modelManifestValidation,setModelManifestValidation]=useState<GarmentViewerManifestValidation|null>(null);
   const [activeView,setActiveView]=useState("front");
   const [shirtId,setShirtId]=useState(shirtFabrics[0]?.id || "");
   const [trouserId,setTrouserId]=useState(trouserFabrics[0]?.id || "");
-  const [manifest,setManifest]=useState<FabricTileManifest>({});
+  const [tileManifest,setTileManifest]=useState<FabricTileManifest>({});
   const [runtimeScale,setRuntimeScale]=useState<Record<string,ViewerRuntimeRenderScale>>({});
   const [shirtManualTileMm,setShirtManualTileMm]=useState(120);
   const [trouserManualTileMm,setTrouserManualTileMm]=useState(120);
@@ -117,26 +124,65 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
 
   const shirt=useMemo(()=>shirtFabrics.find((fabric)=>fabric.id===shirtId) || shirtFabrics[0],[shirtFabrics,shirtId]);
   const trouser=useMemo(()=>trouserFabrics.find((fabric)=>fabric.id===trouserId) || trouserFabrics[0],[trouserFabrics,trouserId]);
-  const shirtMeasuredTileMm=useMemo(()=>measuredTileWidth(manifest,runtimeScale,shirt),[manifest,runtimeScale,shirt]);
-  const trouserMeasuredTileMm=useMemo(()=>measuredTileWidth(manifest,runtimeScale,trouser),[manifest,runtimeScale,trouser]);
+  const shirtMeasuredTileMm=useMemo(()=>measuredTileWidth(tileManifest,runtimeScale,shirt),[tileManifest,runtimeScale,shirt]);
+  const trouserMeasuredTileMm=useMemo(()=>measuredTileWidth(tileManifest,runtimeScale,trouser),[tileManifest,runtimeScale,trouser]);
   const shirtTileMm=shirtMeasuredTileMm ?? shirtManualTileMm;
   const trouserTileMm=trouserMeasuredTileMm ?? trouserManualTileMm;
+  const productionManifestReady=!modelSrc || modelManifestValidation?.valid===true;
+  const panelSpecs=useMemo(()=>GARMENT_PANEL_SPECS.map((panel)=>{
+    const measured=modelManifest?.panels?.[panel.material];
+    return measured ? {...panel,widthMm:measured.widthMm,heightMm:measured.heightMm} : panel;
+  }),[modelManifest]);
+  const cameraViews=useMemo(()=>CAMERA_VIEWS.map((view)=>({
+    ...view,
+    orbit:modelManifest?.cameraOrbits?.[view.id] || view.orbit,
+  })),[modelManifest]);
 
   useEffect(()=>{
+    normalMapRef.current=createLinenNormalMap();
+    if(modelSrc) {
+      setModelUrl(modelSrc);
+      return;
+    }
     const url=createPrototypeGarmentGlbUrl();
     setModelUrl(url);
-    normalMapRef.current=createLinenNormalMap();
     return ()=>URL.revokeObjectURL(url);
-  },[]);
+  },[modelSrc]);
 
   useEffect(()=>{
     let cancelled=false;
     void fetch("/fabric-tiles/manifest.json",{cache:"no-store"})
       .then((response)=>response.ok?response.json():null)
-      .then((value)=>{if(!cancelled&&value&&typeof value==="object")setManifest(value as FabricTileManifest);})
+      .then((value)=>{if(!cancelled&&value&&typeof value==="object")setTileManifest(value as FabricTileManifest);})
       .catch(()=>{});
     return ()=>{cancelled=true;};
   },[]);
+
+  useEffect(()=>{
+    let cancelled=false;
+    setModelManifest(null);
+    setModelManifestValidation(modelSrc ? null : {valid:true,missingPanels:[],invalidPanels:[],reasons:[]});
+    if(!modelSrc || !modelManifestSrc) {
+      if(modelSrc) setModelManifestValidation({valid:false,missingPanels:GARMENT_PANEL_SPECS.map((panel)=>panel.material),invalidPanels:[],reasons:["Approved production model needs a matching viewer manifest."]});
+      return ()=>{cancelled=true;};
+    }
+    void fetch(modelManifestSrc,{cache:"no-store"})
+      .then(async(response)=>{
+        if(!response.ok) throw new Error("Approved model manifest could not be loaded.");
+        return response.json();
+      })
+      .then((value)=>{
+        if(cancelled) return;
+        const validation=validateGarmentViewerModelManifest(value,modelId);
+        setModelManifestValidation(validation);
+        if(validation.valid) setModelManifest(value as GarmentViewerModelManifest);
+      })
+      .catch((reason)=>{
+        if(cancelled) return;
+        setModelManifestValidation({valid:false,missingPanels:GARMENT_PANEL_SPECS.map((panel)=>panel.material),invalidPanels:[],reasons:[reason instanceof Error?reason.message:"Approved model manifest could not be loaded."]});
+      });
+    return ()=>{cancelled=true;};
+  },[modelSrc,modelManifestSrc,modelId]);
 
   useEffect(()=>{
     let cancelled=false;
@@ -178,7 +224,10 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
   useEffect(()=>{
     const viewer=viewerRef.current;
     if(!viewer) return;
-    const load=()=>{setModelReady(true);setProgress(1);setError("");};
+    const load=()=>{
+      setModelReady(true);setProgress(1);setError("");
+      setModelContract(validateGarmentViewerModelContract({modelId,materialNames:(viewer.model?.materials||[]).map((material)=>material.name)}));
+    };
     const fail=()=>{setError("The 3D garment prototype could not be loaded.");setModelReady(false);};
     const update=(event:Event)=>{
       const detail=(event as CustomEvent<{totalProgress?:number}>).detail;
@@ -192,16 +241,16 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
       viewer.removeEventListener("error",fail);
       viewer.removeEventListener("progress",update);
     };
-  },[modelUrl]);
+  },[modelUrl,modelId]);
 
   useEffect(()=>{
-    if(!modelReady || !shirt || !trouser) return;
+    if(!modelReady || !shirt || !trouser || !productionManifestReady || modelContract?.readiness==="contract_failed") return;
     const viewer=viewerRef.current;
     if(!viewer?.createTexture) return;
     const token=++applyToken.current;
     const apply=async()=>{
       try{
-        const prepared=await Promise.all(GARMENT_PANEL_SPECS.map(async(panel)=>{
+        const prepared=await Promise.all(panelSpecs.map(async(panel)=>{
           const fabric=panel.garment==="shirt"?shirt:trouser;
           const tileMm=panel.garment==="shirt"?shirtTileMm:trouserTileMm;
           const [texture,normal]=await Promise.all([
@@ -228,19 +277,19 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
       }
     };
     void apply();
-  },[modelReady,shirt,trouser,shirtTileMm,trouserTileMm]);
+  },[modelReady,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract]);
 
   useEffect(()=>{
     if(!modelReady) return;
     const viewer=viewerRef.current;
     if(!viewer) return;
-    for(const panel of GARMENT_PANEL_SPECS){
+    for(const panel of panelSpecs){
       const material=materialByName(viewer,panel.material);
       material?.pbrMetallicRoughness.setRoughnessFactor(roughness);
     }
-  },[modelReady,roughness]);
+  },[modelReady,roughness,panelSpecs]);
 
-  function setCamera(view:(typeof CAMERA_VIEWS)[number]) {
+  function setCamera(view:(typeof cameraViews)[number]) {
     setActiveView(view.id);
     const viewer=viewerRef.current;
     if(!viewer) return;
@@ -254,7 +303,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
     alt:"Interactive Linen Earth prototype male garment mannequin wearing a shirt and trousers",
     "camera-controls":true,
     "touch-action":"pan-y",
-    "camera-orbit":CAMERA_VIEWS[0].orbit,
+    "camera-orbit":cameraViews[0].orbit,
     "min-camera-orbit":"auto 58deg 2.15m",
     "max-camera-orbit":"auto 92deg 3.6m",
     "interpolation-decay":"130",
@@ -267,11 +316,11 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
     className:"garmentModelViewer",
   }) : null;
 
-  return <section className="garmentViewerShell">
+  return <section className="garmentViewerShell" data-model-readiness={modelContract?.readiness || "loading"} data-manifest-ready={productionManifestReady}>
     <div className="garmentViewerStage">
       <div className="garmentViewerStageHead">
         <span>GARMENTVIEWER · MILESTONE 1</span>
-        <strong>{PROTOTYPE_MODEL_ID}</strong>
+        <strong>{modelId}</strong>
       </div>
       <div className="garmentViewerCanvas">
         {modelViewer}
@@ -279,7 +328,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
         {error&&<div className="garmentViewerError">{error}</div>}
       </div>
       <div className="garmentCameraRail" role="group" aria-label="Garment camera views">
-        {CAMERA_VIEWS.map((view)=><button key={view.id} type="button" aria-pressed={activeView===view.id} onClick={()=>setCamera(view)}>{view.label}</button>)}
+        {cameraViews.map((view)=><button key={view.id} type="button" aria-pressed={activeView===view.id} onClick={()=>setCamera(view)}>{view.label}</button>)}
       </div>
       <p className="garmentViewerHint">Drag to rotate · pinch/scroll to zoom · fixed camera buttons interpolate smoothly.</p>
     </div>
@@ -302,12 +351,12 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
       <label className="garmentRange"><span>Surface roughness <b>{roughness.toFixed(2)}</b></span><input type="range" min=".55" max=".98" step=".01" value={roughness} onChange={(event)=>setRoughness(Number(event.target.value))}/><small>Linen stays non-metallic; roughness controls how dry or polished the temporary PBR surface reads.</small></label>
 
       <div className="garmentViewerFacts">
-        <span><small>MODEL</small><b>Reusable GLB</b></span>
+        <span><small>MODEL</small><b>{modelContract?.readiness==="contract_ready"&&productionManifestReady?"Production contract":"Reusable GLB"}</b></span>
         <span><small>FABRIC</small><b>Panel-scaled PBR</b></span>
         <span><small>VIEWS</small><b>4 fixed + free</b></span>
         <span><small>AI CREDITS</small><b>0</b></span>
       </div>
-      <p className="garmentViewerGuardrail">Next realism step: replace this temporary block mannequin with the approved Linen Earth office-wear body/garment mesh. The panel material, physical-scale and camera architecture remains reusable.</p>
+      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Approved GLB + physical panel manifest are active. Continue realism and boundary QA before promotion to the customer Designer." : "Next realism step: replace this temporary block mannequin with the approved Linen Earth office-wear body/garment mesh. The panel material, physical-scale and camera architecture remains reusable."}</p>
     </aside>
   </section>;
 }
