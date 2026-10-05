@@ -370,6 +370,55 @@ function cleanPayload(type:string, input:unknown) {
       };
     }
 
+    if (subtype === "garment_viewer_readiness") {
+      const version=text(payload.version,80);
+      const status=text(payload.status,20);
+      const modelId=text(payload.modelId,100);
+      const modelSha256=text(payload.modelSha256,64).toLowerCase();
+      const manifestSha256=text(payload.manifestSha256,64).toLowerCase();
+      const realismRubricVersion=text(payload.realismRubricVersion,100);
+      if(version!=="linen-earth-garment-viewer-readiness-v1" || !["accepted","review"].includes(status)) return null;
+      if(realismRubricVersion!=="linen-earth-garment-viewer-realism-rubric-v1") return null;
+      if(!/^LE-[A-Z0-9-]{2,90}$/.test(modelId) || !/^[a-f0-9]{64}$/.test(modelSha256) || !/^[a-f0-9]{64}$/.test(manifestSha256)) return null;
+      const patternScaleSamples=Array.isArray(payload.patternScaleSamples)
+        ? payload.patternScaleSamples.slice(-20).flatMap((item)=>{
+          if(!item||typeof item!=="object"||Array.isArray(item)) return [];
+          const row=item as Record<string,unknown>;
+          const fabricId=text(row.fabricId,160);
+          const pattern=text(row.pattern,20);
+          const errorPct=Number(row.errorPct);
+          if(!fabricId || !["stripe","check","other"].includes(pattern) || !Number.isFinite(errorPct) || errorPct<0 || errorPct>100) return [];
+          return [{fabricId,pattern,errorPct:Math.round(errorPct*100)/100,verified:row.verified===true}];
+        })
+        : [];
+      const interactionLatencyMs=Array.isArray(payload.interactionLatencyMs)
+        ? payload.interactionLatencyMs.map(Number).filter((value)=>Number.isFinite(value)&&value>=0&&value<=10000).slice(-120).map((value)=>Math.round(value*10)/10)
+        : [];
+      const realismAssessments=Array.isArray(payload.realismAssessments)
+        ? payload.realismAssessments.slice(-50).flatMap((item)=>{
+          if(!item||typeof item!=="object"||Array.isArray(item)) return [];
+          const row=item as Record<string,unknown>;
+          const viewerId=text(row.viewerId,80).toLowerCase();
+          const rating=Math.round(Number(row.rating));
+          if(viewerId.length<2 || rating<1 || rating>5) return [];
+          return [{viewerId,rating,recordedAt:text(row.recordedAt,80)}];
+        })
+        : [];
+      const boundarySource=payload.boundaryChecks&&typeof payload.boundaryChecks==="object"&&!Array.isArray(payload.boundaryChecks)
+        ? payload.boundaryChecks as Record<string,unknown>
+        : {};
+      const boundaryChecks={
+        neck:boundarySource.neck===true,
+        cuffs:boundarySource.cuffs===true,
+        waist:boundarySource.waist===true,
+        trouserGap:boundarySource.trouserGap===true,
+      };
+      return {
+        subtype,version,status,modelId,modelSha256,manifestSha256,realismRubricVersion,patternScaleSamples,interactionLatencyMs,realismAssessments,boundaryChecks,
+        note:text(payload.note,700),
+      };
+    }
+
     if (subtype === "designer_device_qa") {
       const deviceClass=text(payload.deviceClass,20);
       const status=text(payload.status,20);
