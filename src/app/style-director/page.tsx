@@ -126,7 +126,7 @@ export default function StyleDirectorPage() {
     const request=renderScope.begin();
     if(!request) return;
     const sourceCalibrationIdentity=lockedPreviewCalibrationIdentity;
-    const lockedLook={shirt:{id:selectedLook.realModel.shirtId},pant:{id:selectedLook.realModel.pantId},style:selectedLook.realModel.style,locked:true};
+    const lockedLook={shirt:{id:selectedLook.realModel.shirtId},pant:{id:selectedLook.realModel.pantId},style:selectedLook.realModel.style,styleSpec:selectedLook.realModel.styleSpec,locked:true};
     let result=renderCalibrationIdentity===sourceCalibrationIdentity ? photoreal : null;
     setRendering(true); setError("");
     try {
