@@ -919,7 +919,11 @@ export function DesignerModule() {
   function applyStyleSpec(next:StyleSpecV2) {
     setActiveCreative(null);
     setStyleSpec(next);
-    setStyle(toLegacyStyle(next));
+    // Keep the legacy controls bound to the spec's explicit legacy snapshot.
+    // Deriving every legacy field from canonical garment types can mutate
+    // unrelated controls (for example a shirt-type edit changing trousers),
+    // which makes a reversible Style Director edit look permanently changed.
+    setStyle({...next.legacy});
     setRecommendation(null);
     setAssessment(null);
     setRecommendationId(null);
@@ -934,8 +938,14 @@ export function DesignerModule() {
       pant:{...styleSpec.pant},
       legacy:{...styleSpec.legacy},
     };
-    if(garment==="shirt") next.shirt.type=value;
-    else next.pant.type=value;
+    if(garment==="shirt") {
+      next.shirt.type=value;
+    } else {
+      next.pant.type=value;
+      // Pant type has a legacy DesignerStyle equivalent; update only that
+      // field instead of re-deriving the complete legacy style.
+      next.legacy.trouser=toLegacyStyle(next).trouser;
+    }
     applyStyleSpec(next);
   }
 
