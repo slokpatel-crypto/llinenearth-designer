@@ -1528,6 +1528,7 @@ for(const token of ["PHYSICS COMPATIBILITY · PROVISIONAL","GARMENT EXPANSION RE
 console.log("Fabric Physics gate passed: physical suitability stays evidence-aware, operator-visible and provisional before customer exposure.");
 
 const garmentViewerSource=fs.readFileSync("src/components/GarmentViewer.tsx","utf8");
+const garmentCategoryLibrary=fs.readFileSync("src/lib/designer/garment-category-library.ts","utf8");
 const garmentViewerContract=fs.readFileSync("src/lib/garment-viewer-model-contract.ts","utf8");
 const garmentViewerPrototype=fs.readFileSync("src/lib/garment-viewer-prototype.ts","utf8");
 const garmentViewerGlb=fs.readFileSync("src/lib/garment-viewer-glb.ts","utf8");
@@ -1540,7 +1541,10 @@ const designerCatalogStock=fs.readFileSync("src/lib/designer/catalog-stock-serve
 const garmentViewerMemory=fs.readFileSync("src/app/api/memory/event/route.ts","utf8");
 const garmentViewerReadinessClient=fs.readFileSync("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx","utf8");
 const protectedVisualRoute=fs.readFileSync("src/app/visual/page.tsx","utf8");
-for(const token of ["GARMENT_PANEL_SPECS","sampler?.setScale","sampler?.setOffset","sampler?.setRotation","modelManifestSrc","assetIdentity","GARMENT_VIEWER_LATENCY_STORAGE_KEY"]) {
+for(const token of ["shirt","trouser","blazer","suit","detailFamilies","status:\"planned\""]) {
+  if(!garmentCategoryLibrary.includes(token)) throw new Error(`Garment category library regression: missing ${token}`);
+}
+for(const token of ["GARMENT_CATEGORY_LIBRARY","GARMENT TYPES · CURRENT + FUTURE","Construction families: Collar","Construction families: Rise","GARMENT_PANEL_SPECS","sampler?.setScale","sampler?.setOffset","sampler?.setRotation","modelManifestSrc","assetIdentity","GARMENT_VIEWER_LATENCY_STORAGE_KEY"]) {
   if(!garmentViewerSource.includes(token)) throw new Error(`GarmentViewer M2 runtime regression: missing ${token}`);
 }
 for(const token of ["linen-earth-garment-viewer-v2","REQUIRED_GARMENT_VIEWER_MATERIALS","approvedGarmentViewerModelSource","validateGarmentViewerModelManifest"]) {
