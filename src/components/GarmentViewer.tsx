@@ -1,13 +1,18 @@
 "use client";
 
 import { createElement, useEffect, useMemo, useRef, useState } from "react";
-import { createPrototypeGarmentGlbUrl, PROTOTYPE_MODEL_ID } from "@/lib/garment-viewer-prototype";
+import {
+  createPrototypeGarmentGlbUrl,
+  GARMENT_PANEL_SPECS,
+  PROTOTYPE_MODEL_ID,
+} from "@/lib/garment-viewer-prototype";
 
 export type GarmentViewerFabric = {
   id:string;
   name:string;
   line:string;
   image:string;
+  tileKey:string;
 };
 
 type ViewerTexture={
@@ -32,6 +37,13 @@ type ModelViewerElement=HTMLElement&{
   createTexture?:(url:string)=>Promise<ViewerTexture>;
   updateFraming?:()=>void|Promise<void>;
 };
+type FabricTileManifest={
+  assets?:Record<string,{
+    tileRealWidthMm?:number|null;
+    scaleApproximate?:boolean;
+    renderAssetVersion?:string;
+  }>;
+};
 
 const CAMERA_VIEWS=[
   {id:"front",label:"Front",orbit:"0deg 76deg 2.65m"},
@@ -39,6 +51,8 @@ const CAMERA_VIEWS=[
   {id:"side",label:"Side",orbit:"90deg 76deg 2.65m"},
   {id:"back",label:"Back",orbit:"180deg 76deg 2.65m"},
 ] as const;
+
+const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
 
 function createLinenNormalMap() {
   if(typeof document==="undefined") return "";
@@ -52,8 +66,8 @@ function createLinenNormalMap() {
       const index=(y*64+x)*4;
       const warp=Math.sin(x*Math.PI*.5)*7;
       const weft=Math.sin(y*Math.PI*.4)*5;
-      image.data[index]=Math.max(0,Math.min(255,128+warp));
-      image.data[index+1]=Math.max(0,Math.min(255,128+weft));
+      image.data[index]=clamp(128+warp,0,255);
+      image.data[index+1]=clamp(128+weft,0,255);
       image.data[index+2]=252;
       image.data[index+3]=255;
     }
@@ -64,6 +78,13 @@ function createLinenNormalMap() {
 
 function materialByName(viewer:ModelViewerElement,name:string) {
   return viewer.model?.materials.find((material)=>material.name===name) || null;
+}
+
+function measuredTileWidth(manifest:FabricTileManifest,fabric:GarmentViewerFabric|undefined) {
+  if(!fabric) return null;
+  const asset=manifest.assets?.[fabric.tileKey];
+  const width=Number(asset?.tileRealWidthMm);
+  return asset?.scaleApproximate===false && Number.isFinite(width) && width>0 ? width : null;
 }
 
 export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
@@ -81,17 +102,32 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
   const [activeView,setActiveView]=useState("front");
   const [shirtId,setShirtId]=useState(shirtFabrics[0]?.id || "");
   const [trouserId,setTrouserId]=useState(trouserFabrics[0]?.id || "");
-  const [textureScale,setTextureScale]=useState(3.2);
+  const [manifest,setManifest]=useState<FabricTileManifest>({});
+  const [shirtManualTileMm,setShirtManualTileMm]=useState(120);
+  const [trouserManualTileMm,setTrouserManualTileMm]=useState(120);
   const [roughness,setRoughness]=useState(.84);
 
   const shirt=useMemo(()=>shirtFabrics.find((fabric)=>fabric.id===shirtId) || shirtFabrics[0],[shirtFabrics,shirtId]);
   const trouser=useMemo(()=>trouserFabrics.find((fabric)=>fabric.id===trouserId) || trouserFabrics[0],[trouserFabrics,trouserId]);
+  const shirtMeasuredTileMm=useMemo(()=>measuredTileWidth(manifest,shirt),[manifest,shirt]);
+  const trouserMeasuredTileMm=useMemo(()=>measuredTileWidth(manifest,trouser),[manifest,trouser]);
+  const shirtTileMm=shirtMeasuredTileMm ?? shirtManualTileMm;
+  const trouserTileMm=trouserMeasuredTileMm ?? trouserManualTileMm;
 
   useEffect(()=>{
     const url=createPrototypeGarmentGlbUrl();
     setModelUrl(url);
     normalMapRef.current=createLinenNormalMap();
     return ()=>URL.revokeObjectURL(url);
+  },[]);
+
+  useEffect(()=>{
+    let cancelled=false;
+    void fetch("/fabric-tiles/manifest.json",{cache:"no-store"})
+      .then((response)=>response.ok?response.json():null)
+      .then((value)=>{if(!cancelled&&value&&typeof value==="object")setManifest(value as FabricTileManifest);})
+      .catch(()=>{});
+    return ()=>{cancelled=true;};
   },[]);
 
   useEffect(()=>{
@@ -117,7 +153,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
     const fail=()=>{setError("The 3D garment prototype could not be loaded.");setModelReady(false);};
     const update=(event:Event)=>{
       const detail=(event as CustomEvent<{totalProgress?:number}>).detail;
-      if(typeof detail?.totalProgress==="number") setProgress(Math.max(0,Math.min(1,detail.totalProgress)));
+      if(typeof detail?.totalProgress==="number") setProgress(clamp(detail.totalProgress,0,1));
     };
     viewer.addEventListener("load",load);
     viewer.addEventListener("error",fail);
@@ -136,36 +172,45 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
     const token=++applyToken.current;
     const apply=async()=>{
       try{
-        const [shirtTexture,trouserTexture,shirtNormal,trouserNormal]=await Promise.all([
-          viewer.createTexture!(shirt.image),
-          viewer.createTexture!(trouser.image),
-          normalMapRef.current ? viewer.createTexture!(normalMapRef.current) : Promise.resolve(null),
-          normalMapRef.current ? viewer.createTexture!(normalMapRef.current) : Promise.resolve(null),
-        ]);
-        shirtTexture.setScale?.({u:textureScale,v:textureScale});
-        trouserTexture.setScale?.({u:textureScale,v:textureScale});
-        shirtNormal?.setScale?.({u:textureScale*1.35,v:textureScale*1.35});
-        trouserNormal?.setScale?.({u:textureScale*1.35,v:textureScale*1.35});
+        const prepared=await Promise.all(GARMENT_PANEL_SPECS.map(async(panel)=>{
+          const fabric=panel.garment==="shirt"?shirt:trouser;
+          const tileMm=panel.garment==="shirt"?shirtTileMm:trouserTileMm;
+          const [texture,normal]=await Promise.all([
+            viewer.createTexture!(fabric.image),
+            normalMapRef.current ? viewer.createTexture!(normalMapRef.current) : Promise.resolve(null),
+          ]);
+          const u=clamp(panel.widthMm/tileMm,.35,80);
+          const v=clamp(panel.heightMm/tileMm,.35,80);
+          texture.setScale?.({u,v});
+          normal?.setScale?.({u:clamp(u*1.35,.35,100),v:clamp(v*1.35,.35,100)});
+          return {panel,texture,normal};
+        }));
         if(token!==applyToken.current) return;
-        const entries=[
-          {name:"ShirtFabric",texture:shirtTexture,normal:shirtNormal},
-          {name:"TrouserFabric",texture:trouserTexture,normal:trouserNormal},
-        ];
-        for(const entry of entries){
-          const material=materialByName(viewer,entry.name);
+        for(const entry of prepared){
+          const material=materialByName(viewer,entry.panel.material);
           if(!material) continue;
           material.pbrMetallicRoughness.setBaseColorFactor("#ffffff");
           material.pbrMetallicRoughness.setMetallicFactor(0);
-          material.pbrMetallicRoughness.setRoughnessFactor(roughness);
           material.pbrMetallicRoughness.baseColorTexture?.setTexture(entry.texture);
           if(entry.normal) material.normalTexture?.setTexture(entry.normal);
         }
+        setError("");
       }catch{
         if(token===applyToken.current)setError("Fabric texture application failed. The base 3D model is still available.");
       }
     };
     void apply();
-  },[modelReady,shirt,trouser,textureScale,roughness]);
+  },[modelReady,shirt,trouser,shirtTileMm,trouserTileMm]);
+
+  useEffect(()=>{
+    if(!modelReady) return;
+    const viewer=viewerRef.current;
+    if(!viewer) return;
+    for(const panel of GARMENT_PANEL_SPECS){
+      const material=materialByName(viewer,panel.material);
+      material?.pbrMetallicRoughness.setRoughnessFactor(roughness);
+    }
+  },[modelReady,roughness]);
 
   function setCamera(view:(typeof CAMERA_VIEWS)[number]) {
     setActiveView(view.id);
@@ -215,25 +260,26 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
       <div>
         <span className="garmentViewerEyebrow">REAL FABRIC → REUSABLE MODEL</span>
         <h1>3D fabric mapping proof.</h1>
-        <p>This is the engineering viewer foundation, not the final realism target. The same geometry stays fixed while Linen Earth swatches replace the shirt and trouser PBR materials.</p>
+        <p>The same geometry stays fixed while seamless Linen Earth fabric tiles replace each shirt and trouser panel material. Calibrated tile widths are applied panel-by-panel when physical scale exists.</p>
       </div>
 
       <label><span>Shirt fabric</span><select value={shirtId} onChange={(event)=>setShirtId(event.target.value)}>{shirtFabrics.map((fabric)=><option key={fabric.id} value={fabric.id}>{fabric.name} · {fabric.line}</option>)}</select></label>
-      <div className="garmentSwatchPreview">{shirt&&<><img src={shirt.image} alt="" /><span><b>{shirt.name}</b><small>{shirt.line}</small></span></>}</div>
+      <div className="garmentSwatchPreview">{shirt&&<><img src={shirt.image} alt="" /><span><b>{shirt.name}</b><small>{shirt.line}</small><em data-calibrated={Boolean(shirtMeasuredTileMm)}>{shirtMeasuredTileMm?`Calibrated tile · ${shirtMeasuredTileMm.toFixed(1)} mm`:`Approximate tile · ${shirtManualTileMm} mm`}</em></span></>}</div>
+      {!shirtMeasuredTileMm&&<label className="garmentRange"><span>Approx. shirt tile width <b>{shirtManualTileMm} mm</b></span><input type="range" min="30" max="260" step="5" value={shirtManualTileMm} onChange={(event)=>setShirtManualTileMm(Number(event.target.value))}/><small>Temporary only until owner/supplier physical scale is verified.</small></label>}
 
       <label><span>Trouser fabric</span><select value={trouserId} onChange={(event)=>setTrouserId(event.target.value)}>{trouserFabrics.map((fabric)=><option key={fabric.id} value={fabric.id}>{fabric.name} · {fabric.line}</option>)}</select></label>
-      <div className="garmentSwatchPreview">{trouser&&<><img src={trouser.image} alt="" /><span><b>{trouser.name}</b><small>{trouser.line}</small></span></>}</div>
+      <div className="garmentSwatchPreview">{trouser&&<><img src={trouser.image} alt="" /><span><b>{trouser.name}</b><small>{trouser.line}</small><em data-calibrated={Boolean(trouserMeasuredTileMm)}>{trouserMeasuredTileMm?`Calibrated tile · ${trouserMeasuredTileMm.toFixed(1)} mm`:`Approximate tile · ${trouserManualTileMm} mm`}</em></span></>}</div>
+      {!trouserMeasuredTileMm&&<label className="garmentRange"><span>Approx. trouser tile width <b>{trouserManualTileMm} mm</b></span><input type="range" min="30" max="260" step="5" value={trouserManualTileMm} onChange={(event)=>setTrouserManualTileMm(Number(event.target.value))}/><small>Temporary only until owner/supplier physical scale is verified.</small></label>}
 
-      <label className="garmentRange"><span>Fabric repeat scale <b>{textureScale.toFixed(1)}×</b></span><input type="range" min=".8" max="7" step=".1" value={textureScale} onChange={(event)=>setTextureScale(Number(event.target.value))}/><small>Higher values repeat the real swatch more tightly across the garment UVs.</small></label>
       <label className="garmentRange"><span>Surface roughness <b>{roughness.toFixed(2)}</b></span><input type="range" min=".55" max=".98" step=".01" value={roughness} onChange={(event)=>setRoughness(Number(event.target.value))}/><small>Linen stays non-metallic; roughness controls how dry or polished the temporary PBR surface reads.</small></label>
 
       <div className="garmentViewerFacts">
         <span><small>MODEL</small><b>Reusable GLB</b></span>
-        <span><small>MATERIALS</small><b>PBR + normal</b></span>
+        <span><small>FABRIC</small><b>Panel-scaled PBR</b></span>
         <span><small>VIEWS</small><b>4 fixed + free</b></span>
         <span><small>AI CREDITS</small><b>0</b></span>
       </div>
-      <p className="garmentViewerGuardrail">Next realism step: replace this temporary block mannequin with the approved Linen Earth office-wear body/garment mesh. The viewer/material architecture remains reusable.</p>
+      <p className="garmentViewerGuardrail">Next realism step: replace this temporary block mannequin with the approved Linen Earth office-wear body/garment mesh. The panel material, physical-scale and camera architecture remains reusable.</p>
     </aside>
   </section>;
 }
