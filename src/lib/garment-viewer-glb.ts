@@ -11,12 +11,14 @@ type GlbPrimitive={
 type GlbMesh={name?:string;primitives?:GlbPrimitive[]};
 type GlbImage={uri?:string};
 type GlbBuffer={uri?:string};
+type GlbAccessor={count?:number;type?:string};
 type GlbJson={
   asset?:{version?:string;generator?:string};
   materials?:GlbMaterial[];
   meshes?:GlbMesh[];
   images?:GlbImage[];
   buffers?:GlbBuffer[];
+  accessors?:GlbAccessor[];
 };
 
 export type GarmentViewerGlbPanelInspection={
@@ -38,11 +40,19 @@ export type GarmentViewerGlbInspection={
   selfContained:boolean;
   remoteUris:string[];
   structuralReady:boolean;
+  fileBytes:number;
+  triangleCount:number;
+  vertexCount:number;
+  performanceBudgetReady:boolean;
+  performanceWarnings:string[];
   reasons:string[];
 };
 
 const GLB_MAGIC=0x46546c67;
 const JSON_CHUNK=0x4e4f534a;
+export const GARMENT_VIEWER_ADVISORY_MAX_GLB_BYTES=24*1024*1024;
+export const GARMENT_VIEWER_ADVISORY_MAX_TRIANGLES=220_000;
+export const GARMENT_VIEWER_ADVISORY_MAX_VERTICES=280_000;
 
 export function parseGarmentViewerGlbJson(bytes:Uint8Array):GlbJson {
   if(bytes.byteLength<20) throw new Error("GLB is too small.");
@@ -67,15 +77,36 @@ export function externalGlbUri(uri:string|undefined){
   return value;
 }
 
+function accessorCount(gltf:GlbJson,index:unknown){
+  const value=Number(index);
+  if(!Number.isInteger(value)||value<0) return 0;
+  const count=Number(gltf.accessors?.[value]?.count);
+  return Number.isFinite(count)&&count>0?count:0;
+}
+
+function primitiveTriangleCount(gltf:GlbJson,primitive:GlbPrimitive){
+  const elementCount=primitive.indices!==undefined
+    ? accessorCount(gltf,primitive.indices)
+    : accessorCount(gltf,primitive.attributes?.POSITION);
+  const mode=Number(primitive.mode ?? 4);
+  if(mode===4) return Math.floor(elementCount/3);
+  if(mode===5||mode===6) return Math.max(0,elementCount-2);
+  return 0;
+}
+
 export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):GarmentViewerGlbInspection {
   const gltf=parseGarmentViewerGlbJson(bytes);
   const materialNames=(gltf.materials||[]).map((material)=>String(material.name||"").trim());
+  let triangleCount=0;
+  let vertexCount=0;
   const contract=validateGarmentViewerModelContract({modelId,materialNames});
   const panelUse=new Map<string,GlbPrimitive[]>();
   for(const name of REQUIRED_GARMENT_VIEWER_MATERIALS) panelUse.set(name,[]);
 
   for(const mesh of gltf.meshes||[]){
     for(const primitive of mesh.primitives||[]){
+      triangleCount+=primitiveTriangleCount(gltf,primitive);
+      vertexCount+=accessorCount(gltf,primitive.attributes?.POSITION);
       const index=Number(primitive.material);
       if(!Number.isInteger(index)||index<0||index>=materialNames.length) continue;
       const name=materialNames[index];
@@ -100,6 +131,11 @@ export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):Garment
   ].filter((value):value is string=>Boolean(value));
   const uvReady=panels.every((panel)=>panel.primitiveCount>0&&panel.position&&panel.normal&&panel.uv0);
   const selfContained=remoteUris.length===0;
+  const performanceWarnings:string[]=[];
+  if(bytes.byteLength>GARMENT_VIEWER_ADVISORY_MAX_GLB_BYTES) performanceWarnings.push(`GLB is ${Math.round(bytes.byteLength/1024/1024*10)/10} MB; advisory mobile budget is 24 MB.`);
+  if(triangleCount>GARMENT_VIEWER_ADVISORY_MAX_TRIANGLES) performanceWarnings.push(`GLB has ${triangleCount.toLocaleString()} triangles; advisory mobile budget is 220,000.`);
+  if(vertexCount>GARMENT_VIEWER_ADVISORY_MAX_VERTICES) performanceWarnings.push(`GLB has ${vertexCount.toLocaleString()} rendered vertices; advisory mobile budget is 280,000.`);
+  const performanceBudgetReady=performanceWarnings.length===0;
   const reasons=[...contract.reasons];
   for(const panel of panels){
     if(panel.primitiveCount===0) reasons.push(`${panel.material} is not assigned to any mesh primitive.`);
@@ -122,6 +158,11 @@ export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):Garment
     selfContained,
     remoteUris,
     structuralReady:contract.readiness==="contract_ready"&&uvReady&&selfContained,
+    fileBytes:bytes.byteLength,
+    triangleCount,
+    vertexCount,
+    performanceBudgetReady,
+    performanceWarnings,
     reasons:[...new Set(reasons)],
   };
 }
