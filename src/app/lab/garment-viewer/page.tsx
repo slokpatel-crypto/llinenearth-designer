@@ -7,6 +7,7 @@ import "./garment-viewer.css";
 export const metadata={
   title:"GarmentViewer M1 · Linen Earth",
   description:"Reusable 3D garment material-mapping proof for Linen Earth.",
+  robots:{index:false,follow:false},
 };
 
 function viewerFabric(fabric:(typeof FABRIC_STOCK)[number]):GarmentViewerFabric {
