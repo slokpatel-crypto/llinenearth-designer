@@ -2,6 +2,16 @@
 
 Architecture and product decisions that must persist across coding sessions.
 
+## 2026-10-05 — Style Director signs the complete garment recipe
+
+**Contract:** handoff v2 signs both legacy controls and canonical StyleSpec v2, including shirt/trouser types and construction. The same spec travels through the result, explicit photoreal request, Designer assessment and saved draft used by the isolated 3D lab. Live edits remain deterministic.
+
+**Lifecycle:** malformed or inaccessible browser drafts cannot prevent URL restoration. A late opening assessment cannot overwrite an edited recipe or enter recommendation memory. Verification belongs to the original recipe; edits hide its audit badge, and a network failure never claims a matched handoff.
+
+**Compatibility:** existing v2 saved drafts and legacy-only URLs still restore. Old v1 tokens do not certify canonical garment types; their designs open without verified-handoff status. New links must be regenerated for v2 verification. No database migration or dependency change. Photographic preview limits and the production 3D asset gate remain in place.
+
+**Evidence:** behavioral tests cover generated recipe round trips, signed nested fields, expiry and the HTTP boundary. Chromium checks malformed/stale/blocked drafts, delayed assessment/audit responses, exact Designer-to-3D continuity and zero paid calls at 390/768/1440px.
+
 
 ## 2026-10-05 — GarmentViewer M1 stays isolated until realistic geometry passes QA
 

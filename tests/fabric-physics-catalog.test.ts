@@ -57,7 +57,7 @@ test("catalogue evidence follows the accepted value and preserves declared versu
 });
 
 test("overall approval, model judgement or unauditable reviews cannot supply physical truth", () => {
-  const cases = [
+  const cases: DesignerFabricIntelligence[] = [
     { ...reviewed(), trust: "high-confidence" as const },
     { ...reviewed(), fieldProvenance: {} },
     { ...reviewed(), fieldProvenance: { "verifiedPhysical.gsm": "modelJudged" as const, "verifiedPhysical.drape": "modelJudged" as const } },
