@@ -25,3 +25,15 @@ test("Designer Data desk exposes and filters all extended physical evidence gaps
   }
   assert.match(source,/evidenceFilter==="physical"/);
 });
+
+
+test("Designer Data desk exposes the provisional six-garment compatibility matrix",()=>{
+  const api=readFileSync("src/app/api/operator/designer-data/route.ts","utf8");
+  const ui=readFileSync("src/app/operator/designer-data/DesignerDataClient.tsx","utf8");
+  assert.match(api,/attachCatalogFabricPhysics/);
+  assert.match(api,/garmentCompatibility/);
+  assert.match(api,/evidenceConfidence/);
+  assert.match(ui,/PHYSICS COMPATIBILITY/);
+  assert.match(ui,/compatibilityMatrix/);
+  assert.match(ui,/Customer-facing claims remain disabled/);
+});
