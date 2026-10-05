@@ -1325,9 +1325,10 @@ export function DesignerModule() {
             <strong>{recommendation.shirt.name} + {recommendation.pant.name}</strong>
           </div>
           <div className="newDesignerResultChips">
+            <b>{optionById(styleSpec.shirt.type)?.label || "Shirt"}</b>
             <b>{recommendation.style.shirtFit}</b>
             <b>{recommendation.style.shirtWear}</b>
-            <b>{recommendation.style.trouser}</b>
+            <b>{optionById(styleSpec.pant.type)?.label || recommendation.style.trouser}</b>
             {brandLanguage && <b>{brandLanguage.mode}</b>}
           </div>
           <div className="newDesignerResultReasons">
