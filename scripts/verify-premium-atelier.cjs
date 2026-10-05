@@ -195,6 +195,14 @@ async function run() {
         summary.checks.push('runtime reduced-motion changes finish entrance animations');
         await page.goto(base + '/designer-studio', { waitUntil: 'networkidle' });
         await page.locator('#designerCreativeLab').waitFor();
+        const garmentScope=page.locator('.newDesignerGarmentScope article');
+        assert.equal(await garmentScope.count(),4,'Designer garment scope must show shirt, trouser, blazer and suit');
+        const scopeText=await garmentScope.allTextContents();
+        assert.ok(scopeText.some(value=>/Shirt/.test(value)&&/CURRENT/.test(value)),'shirt must stay current');
+        assert.ok(scopeText.some(value=>/Trouser/.test(value)&&/CURRENT/.test(value)),'trouser must stay current');
+        assert.ok(scopeText.some(value=>/Blazer/.test(value)&&/FUTURE/.test(value)),'blazer must stay future');
+        assert.ok(scopeText.some(value=>/Suit/.test(value)&&/FUTURE/.test(value)),'suit must stay future');
+        summary.checks.push('designer garment scope shows current and future categories before cloth');
         assert.equal(await page.locator('.brandSignature').count(), 0, 'homepage brand film is removed on studio navigation');
         assert.equal(await page.locator('.brandIntro').count(), 0, 'intro does not replay on same-session navigation');
         assert.equal(await page.locator('.atelierPageProgress').count(), 0, 'homepage motion does not leak into studio');

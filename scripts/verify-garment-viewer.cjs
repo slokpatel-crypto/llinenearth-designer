@@ -17,6 +17,22 @@ async function verifyViewport(browser, width) {
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(message.text());
   });
+  await page.addInitScript(()=>{
+    localStorage.setItem("linen-earth:real-designer-draft:v2",JSON.stringify({
+      occasion:"Semi-Formal",
+      style:{
+        collar:"Spread Collar",
+        cuff:"Barrel Cuff (2-button)",
+        placket:"French Placket",
+        shirtFit:"Regular / Classic Fit",
+        shirtWear:"Tucked",
+        trouser:"Pleated Trouser",
+        rise:"High Rise",
+        waistband:"Side-Adjuster Tabs",
+        break:"Slight Break",
+      },
+    }));
+  });
 
   await page.goto(baseURL + "/lab/garment-viewer", { waitUntil: "domcontentloaded", timeout: 30000 });
   await page.waitForFunction(() => Boolean(customElements.get("model-viewer")), null, { timeout: 20000 });
@@ -56,6 +72,23 @@ async function verifyViewport(browser, width) {
   const reference=page.locator(".garmentViewerReference img");
   await reference.waitFor({state:"visible"});
   assert.match(await reference.getAttribute("src"),/studio-tucked\.webp$/, "3D lab must keep the approved studio reference target visible");
+
+  const recipe=await page.locator(".garmentDraftRecipe").innerText();
+  assert.match(recipe,/YOUR DESIGNER RECIPE/);
+  assert.match(recipe,/Spread Collar/);
+  assert.match(recipe,/Pleated Trouser/);
+  assert.match(recipe,/temporary 3D block maps fabric now/i);
+
+  const stageScope=await page.locator(".garmentViewerStageHead").innerText();
+  assert.match(stageScope,/SHIRT \+ TROUSER · BLAZER \/ SUIT NEXT/,"3D stage must state current and future garment scope");
+
+  const garmentCards=page.locator(".garmentTypeGrid article");
+  assert.equal(await garmentCards.count(),4,"garment type roadmap must show current and future families");
+  const garmentText=await garmentCards.allTextContents();
+  assert.ok(garmentText.some((value)=>/Shirt/.test(value)&&/LIVE/.test(value)&&/Dress Shirt/.test(value)),"shirt types must be visible");
+  assert.ok(garmentText.some((value)=>/Trouser/.test(value)&&/LIVE/.test(value)&&/Pleated Trouser/.test(value)),"trouser types must be visible");
+  assert.ok(garmentText.some((value)=>/Blazer/.test(value)&&/FUTURE/.test(value)&&/Single-Breasted 2-Button/.test(value)),"future blazer types must be visible");
+  assert.ok(garmentText.some((value)=>/Suit/.test(value)&&/FUTURE/.test(value)&&/3-Piece Suit/.test(value)),"future suit types must be visible");
 
   const selects = page.locator(".garmentViewerControls select");
   assert.equal(await selects.count(), 2);

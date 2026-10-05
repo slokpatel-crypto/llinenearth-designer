@@ -9,6 +9,7 @@ import {
 import { garmentPanelTextureScale, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
 import { validateGarmentViewerModelContract, validateGarmentViewerModelManifest, type GarmentViewerModelContractResult, type GarmentViewerModelManifest, type GarmentViewerManifestValidation } from "@/lib/garment-viewer-model-contract";
 import { GARMENT_VIEWER_LATENCY_STORAGE_KEY, garmentViewerAssetIdentityKey, type GarmentViewerAssetIdentity } from "@/lib/garment-viewer-readiness";
+import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
 
 export type GarmentViewerFabric = {
   id:string;
@@ -48,6 +49,21 @@ type ModelViewerElement=HTMLElement&{
   createTexture?:(url:string)=>Promise<ViewerTexture>;
   updateFraming?:()=>void|Promise<void>;
 };
+type DesignerDraftRecipe={
+  occasion?:string;
+  style?:{
+    collar?:string;
+    cuff?:string;
+    placket?:string;
+    shirtFit?:string;
+    shirtWear?:string;
+    trouser?:string;
+    rise?:string;
+    waistband?:string;
+    break?:string;
+    button?:string;
+  };
+};
 type FabricTileManifest={
   assets?:Record<string,{
     tileRealWidthMm?:number|null;
@@ -63,6 +79,8 @@ const CAMERA_VIEWS=[
   {id:"back",label:"Back",orbit:"180deg 76deg 2.65m"},
 ] as const;
 
+const SHIRT_GARMENT_CATEGORY=GARMENT_CATEGORY_LIBRARY.find((item)=>item.id==="shirt")!;
+const TROUSER_GARMENT_CATEGORY=GARMENT_CATEGORY_LIBRARY.find((item)=>item.id==="trouser")!;
 const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
 
 function createLinenNormalMap() {
@@ -128,6 +146,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const [shirtManualTileMm,setShirtManualTileMm]=useState(120);
   const [trouserManualTileMm,setTrouserManualTileMm]=useState(120);
   const [roughness,setRoughness]=useState(.84);
+  const [designerDraftRecipe,setDesignerDraftRecipe]=useState<DesignerDraftRecipe|null>(null);
 
   const shirt=useMemo(()=>shirtFabrics.find((fabric)=>fabric.id===shirtId) || shirtFabrics[0],[shirtFabrics,shirtId]);
   const trouser=useMemo(()=>trouserFabrics.find((fabric)=>fabric.id===trouserId) || trouserFabrics[0],[trouserFabrics,trouserId]);
@@ -145,6 +164,14 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     ...view,
     orbit:modelManifest?.cameraOrbits?.[view.id] || view.orbit,
   })),[modelManifest]);
+
+  useEffect(()=>{
+    try{
+      const raw=localStorage.getItem("linen-earth:real-designer-draft:v2");
+      const parsed=raw?JSON.parse(raw) as DesignerDraftRecipe:null;
+      if(parsed?.style&&typeof parsed.style==="object") setDesignerDraftRecipe(parsed);
+    }catch{/* 3D Lab stays usable without Designer browser state. */}
+  },[]);
 
   useEffect(()=>{
     normalMapRef.current=createLinenNormalMap();
@@ -355,8 +382,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   return <section className="garmentViewerShell" data-model-readiness={modelContract?.readiness || "loading"} data-manifest-ready={productionManifestReady}>
     <div className="garmentViewerStage">
       <div className="garmentViewerStageHead">
-        <span>GARMENTVIEWER · MILESTONE 1</span>
-        <strong>{modelId}</strong>
+        <span>GARMENTVIEWER · DEEP ENGINE</span>
+        <strong>SHIRT + TROUSER · BLAZER / SUIT NEXT</strong>
       </div>
       <div className="garmentViewerCanvas">
         {modelViewer}
@@ -381,10 +408,34 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         <img src="/designer/studio-tucked.webp" alt="Current Linen Earth tucked officewear studio reference"/>
       </div>
 
+      <section className="garmentTypeLibrary" aria-label="Garment type roadmap">
+        <div className="garmentTypeLibraryHead"><span>GARMENT TYPES · CURRENT + FUTURE</span><b>Fabric is only one layer. Each garment keeps its own construction details.</b></div>
+        <div className="garmentTypeGrid">
+          {GARMENT_CATEGORY_LIBRARY.map((garment)=><article key={garment.id} data-status={garment.status}>
+            <div><strong>{garment.label}</strong><em>{garment.status==="live"?"LIVE":"FUTURE"}</em></div>
+            <small>{garment.stageLabel}</small>
+            <p>{garment.description}</p>
+            <div className="garmentTypeExamples"><b>Types</b><span>{garment.typeExamples.join(" · ")}</span></div>
+            <ul>{garment.detailFamilies.map((detail)=><li key={detail}>{detail}</li>)}</ul>
+          </article>)}
+        </div>
+      </section>
+
+      {designerDraftRecipe?.style&&<section className="garmentDraftRecipe" aria-label="Current Designer garment recipe">
+        <div><span>YOUR DESIGNER RECIPE</span><b>{designerDraftRecipe.occasion||"Saved look"}</b></div>
+        <div className="garmentDraftRecipeGrid">
+          <article><strong>Shirt</strong><p>{[designerDraftRecipe.style.collar,designerDraftRecipe.style.cuff,designerDraftRecipe.style.placket,designerDraftRecipe.style.shirtFit,designerDraftRecipe.style.shirtWear].filter(Boolean).join(" · ")}</p></article>
+          <article><strong>Trouser</strong><p>{[designerDraftRecipe.style.trouser,designerDraftRecipe.style.rise,designerDraftRecipe.style.waistband,designerDraftRecipe.style.break].filter(Boolean).join(" · ")}</p></article>
+        </div>
+        <small>Recipe is shown for continuity. The temporary 3D block maps fabric now; construction-specific mesh changes remain a later production-model step.</small>
+      </section>}
+
+      <div className="garmentCurrentType"><span>ACTIVE GARMENT</span><b>Shirt</b><small>Types: {SHIRT_GARMENT_CATEGORY.typeExamples.slice(0,6).join(" · ")}</small><small>Details: {SHIRT_GARMENT_CATEGORY.detailFamilies.join(" · ")}</small></div>
       <label><span>Shirt fabric</span><select value={shirtId} onChange={(event)=>{beginFabricInteraction();setShirtId(event.target.value);}}>{shirtFabrics.map((fabric)=><option key={fabric.id} value={fabric.id}>{fabric.name} · {fabric.line}</option>)}</select></label>
       <div className="garmentSwatchPreview">{shirt&&<><img src={shirt.image} alt="" /><span><b>{shirt.name}</b><small>{shirt.line}</small><em data-calibrated={Boolean(shirtMeasuredTileMm)}>{shirtMeasuredTileMm?`Calibrated tile · ${shirtMeasuredTileMm.toFixed(1)} mm`:`Approximate tile · ${shirtManualTileMm} mm`}</em></span></>}</div>
       {!shirtMeasuredTileMm&&<label className="garmentRange"><span>Approx. shirt tile width <b>{shirtManualTileMm} mm</b></span><input type="range" min="30" max="260" step="5" value={shirtManualTileMm} onChange={(event)=>setShirtManualTileMm(Number(event.target.value))}/><small>Temporary only until owner/supplier physical scale is verified.</small></label>}
 
+      <div className="garmentCurrentType"><span>ACTIVE GARMENT</span><b>Trouser</b><small>Types: {TROUSER_GARMENT_CATEGORY.typeExamples.slice(0,6).join(" · ")}</small><small>Details: {TROUSER_GARMENT_CATEGORY.detailFamilies.join(" · ")}</small></div>
       <label><span>Trouser fabric</span><select value={trouserId} onChange={(event)=>{beginFabricInteraction();setTrouserId(event.target.value);}}>{trouserFabrics.map((fabric)=><option key={fabric.id} value={fabric.id}>{fabric.name} · {fabric.line}</option>)}</select></label>
       <div className="garmentSwatchPreview">{trouser&&<><img src={trouser.image} alt="" /><span><b>{trouser.name}</b><small>{trouser.line}</small><em data-calibrated={Boolean(trouserMeasuredTileMm)}>{trouserMeasuredTileMm?`Calibrated tile · ${trouserMeasuredTileMm.toFixed(1)} mm`:`Approximate tile · ${trouserManualTileMm} mm`}</em></span></>}</div>
       {!trouserMeasuredTileMm&&<label className="garmentRange"><span>Approx. trouser tile width <b>{trouserManualTileMm} mm</b></span><input type="range" min="30" max="260" step="5" value={trouserManualTileMm} onChange={(event)=>setTrouserManualTileMm(Number(event.target.value))}/><small>Temporary only until owner/supplier physical scale is verified.</small></label>}
