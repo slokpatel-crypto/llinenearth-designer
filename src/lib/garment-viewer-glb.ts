@@ -6,6 +6,8 @@ import {
 type GlbMaterial={name?:string};
 type GlbPrimitive={
   material?:number;
+  indices?:number;
+  mode?:number;
   attributes?:Record<string,number>;
 };
 type GlbMesh={name?:string;primitives?:GlbPrimitive[]};
