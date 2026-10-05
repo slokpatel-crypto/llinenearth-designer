@@ -430,7 +430,7 @@ test("final photoreal render is seeded from the validated locked live preview",(
   assert.match(ai,/mask,/);
   assert.match(ai,/selectedLookGarmentEditMask\(input\.style\)/);
   assert.match(ai,/runEdit\(source,selectedLookPrompt\(input,usedLockedPreview\),context,garmentMask\)/);
-  assert.match(cache,/linen-final-render-cache-v2-locked-preview-source/);
+  assert.match(cache,/linen-final-render-cache-v3-locked-studio-model/);\n  assert.match(cache,/modelIdentity:LINEN_EARTH_MODEL_IDENTITY_ID/);
   assert.match(cache,/function lockedPreviewIdentity/);
   assert.match(cache,/createHash\("sha256"\)\.update\(raw\)\.digest\("hex"\)/);
   assert.match(cache,/lockedPreview:view==="front"\?lockedPreviewIdentity\(input\.lockedPreviewImage\):""/);
