@@ -16,6 +16,8 @@ import type {
 } from "./garment-viewer-model-contract.ts";
 
 export const GARMENT_VIEWER_MIN_PATTERN_SCALE_SAMPLES = 2;
+export const GARMENT_VIEWER_LATENCY_STORAGE_KEY = "linen-earth-garment-viewer-latency-v1";
+export const GARMENT_VIEWER_REALISM_STORAGE_KEY = "linen-earth-garment-viewer-realism-v1";
 
 export type GarmentViewerPatternScaleSample = {
   fabricId:string;
