@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { LINEN_EARTH_MODEL_IDENTITY_ID } from "@/lib/designer/model-identity";
+import { LINEN_EARTH_MODEL_IDENTITY_ID } from "./model-identity.ts";
 
 type SelectedLookCacheInput={
   shirt:{id:string};
