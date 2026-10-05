@@ -7,6 +7,7 @@ import {
   PROTOTYPE_MODEL_ID,
 } from "@/lib/garment-viewer-prototype";
 import { garmentPanelTextureScale, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
+import { validateGarmentViewerModelContract, type GarmentViewerModelContractResult } from "@/lib/garment-viewer-model-contract";
 
 export type GarmentViewerFabric = {
   id:string;
@@ -94,9 +95,11 @@ function measuredTileWidth(
   return resolveViewerTileWidthMm(manifest.assets?.[fabric.tileKey],runtimeScale[fabric.id]);
 }
 
-export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
+export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null,modelId=PROTOTYPE_MODEL_ID}:{
   shirtFabrics:GarmentViewerFabric[];
   trouserFabrics:GarmentViewerFabric[];
+  modelSrc?:string|null;
+  modelId?:string;
 }) {
   const viewerRef=useRef<ModelViewerElement|null>(null);
   const normalMapRef=useRef("");
@@ -106,6 +109,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
   const [modelReady,setModelReady]=useState(false);
   const [progress,setProgress]=useState(0);
   const [error,setError]=useState("");
+  const [modelContract,setModelContract]=useState<GarmentViewerModelContractResult|null>(null);
   const [activeView,setActiveView]=useState("front");
   const [shirtId,setShirtId]=useState(shirtFabrics[0]?.id || "");
   const [trouserId,setTrouserId]=useState(trouserFabrics[0]?.id || "");
@@ -123,11 +127,15 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
   const trouserTileMm=trouserMeasuredTileMm ?? trouserManualTileMm;
 
   useEffect(()=>{
+    normalMapRef.current=createLinenNormalMap();
+    if(modelSrc) {
+      setModelUrl(modelSrc);
+      return;
+    }
     const url=createPrototypeGarmentGlbUrl();
     setModelUrl(url);
-    normalMapRef.current=createLinenNormalMap();
     return ()=>URL.revokeObjectURL(url);
-  },[]);
+  },[modelSrc]);
 
   useEffect(()=>{
     let cancelled=false;
@@ -178,7 +186,10 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
   useEffect(()=>{
     const viewer=viewerRef.current;
     if(!viewer) return;
-    const load=()=>{setModelReady(true);setProgress(1);setError("");};
+    const load=()=>{
+      setModelReady(true);setProgress(1);setError("");
+      setModelContract(validateGarmentViewerModelContract({modelId,materialNames:(viewer.model?.materials||[]).map((material)=>material.name)}));
+    };
     const fail=()=>{setError("The 3D garment prototype could not be loaded.");setModelReady(false);};
     const update=(event:Event)=>{
       const detail=(event as CustomEvent<{totalProgress?:number}>).detail;
@@ -192,7 +203,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
       viewer.removeEventListener("error",fail);
       viewer.removeEventListener("progress",update);
     };
-  },[modelUrl]);
+  },[modelUrl,modelId]);
 
   useEffect(()=>{
     if(!modelReady || !shirt || !trouser) return;
@@ -271,7 +282,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
     <div className="garmentViewerStage">
       <div className="garmentViewerStageHead">
         <span>GARMENTVIEWER · MILESTONE 1</span>
-        <strong>{PROTOTYPE_MODEL_ID}</strong>
+        <strong>{modelId}</strong>
       </div>
       <div className="garmentViewerCanvas">
         {modelViewer}
@@ -302,12 +313,12 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
       <label className="garmentRange"><span>Surface roughness <b>{roughness.toFixed(2)}</b></span><input type="range" min=".55" max=".98" step=".01" value={roughness} onChange={(event)=>setRoughness(Number(event.target.value))}/><small>Linen stays non-metallic; roughness controls how dry or polished the temporary PBR surface reads.</small></label>
 
       <div className="garmentViewerFacts">
-        <span><small>MODEL</small><b>Reusable GLB</b></span>
+        <span><small>MODEL</small><b>{modelContract?.readiness==="contract_ready"?"Production contract":"Reusable GLB"}</b></span>
         <span><small>FABRIC</small><b>Panel-scaled PBR</b></span>
         <span><small>VIEWS</small><b>4 fixed + free</b></span>
         <span><small>AI CREDITS</small><b>0</b></span>
       </div>
-      <p className="garmentViewerGuardrail">Next realism step: replace this temporary block mannequin with the approved Linen Earth office-wear body/garment mesh. The panel material, physical-scale and camera architecture remains reusable.</p>
+      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelContract?.readiness==="contract_ready" ? "Approved GLB contract is active. Continue geometry, UV and realism QA before promotion to the customer Designer." : "Next realism step: replace this temporary block mannequin with the approved Linen Earth office-wear body/garment mesh. The panel material, physical-scale and camera architecture remains reusable."}</p>
     </aside>
   </section>;
 }
