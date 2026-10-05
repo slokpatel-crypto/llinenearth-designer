@@ -47,6 +47,18 @@ It downloads only the pinned Blender v1.4.1 CC0 bundle, checks the published arc
 
 This base body is not itself the finished Linen Earth asset. Shirt and trouser geometry still need to be authored/fitted around the body and exported to the six-panel GarmentViewer contract.
 
+### Automated realistic-body intake
+
+After the pinned source bundle is available and Blender 4.2+ is installed:
+
+```bash
+npm run garment:model-body:prepare
+```
+
+This scans the extracted Blender library without assuming one brittle filename, prefers a realistic male body/collection, appends it into a clean scene, explicitly normalizes the body to 1727 mm, records source/license/version metadata in the Blender scene, creates the `LinenEarthExport` collection, and saves `.cache/linen-earth/linen-earth-officewear-body-base.blend`.
+
+The body-preparation step is deliberately separate from garment authoring. It must not create a fake shirt/trouser shell and must not mark the viewer asset production-ready.
+
 ## Alternative base source
 
 ### 2. MakeHuman / MPFB — acceptable fallback
