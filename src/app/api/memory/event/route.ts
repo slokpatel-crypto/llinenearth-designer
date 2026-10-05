@@ -376,7 +376,9 @@ function cleanPayload(type:string, input:unknown) {
       const modelId=text(payload.modelId,100);
       const modelSha256=text(payload.modelSha256,64).toLowerCase();
       const manifestSha256=text(payload.manifestSha256,64).toLowerCase();
+      const realismRubricVersion=text(payload.realismRubricVersion,100);
       if(version!=="linen-earth-garment-viewer-readiness-v1" || !["accepted","review"].includes(status)) return null;
+      if(realismRubricVersion!=="linen-earth-garment-viewer-realism-rubric-v1") return null;
       if(!/^LE-[A-Z0-9-]{2,90}$/.test(modelId) || !/^[a-f0-9]{64}$/.test(modelSha256) || !/^[a-f0-9]{64}$/.test(manifestSha256)) return null;
       const patternScaleSamples=Array.isArray(payload.patternScaleSamples)
         ? payload.patternScaleSamples.slice(-20).flatMap((item)=>{
@@ -412,7 +414,7 @@ function cleanPayload(type:string, input:unknown) {
         trouserGap:boundarySource.trouserGap===true,
       };
       return {
-        subtype,version,status,modelId,modelSha256,manifestSha256,patternScaleSamples,interactionLatencyMs,realismAssessments,boundaryChecks,
+        subtype,version,status,modelId,modelSha256,manifestSha256,realismRubricVersion,patternScaleSamples,interactionLatencyMs,realismAssessments,boundaryChecks,
         note:text(payload.note,700),
       };
     }
