@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { loadLatestGarmentViewerReadiness } from "@/lib/garment-viewer-evidence-server";
+import GarmentViewerEvidenceForm from "./GarmentViewerEvidenceForm";
 import "./garment-viewer.css";
 
 export const dynamic="force-dynamic";
@@ -53,6 +54,8 @@ export default async function GarmentViewerOperatorPage(){
         </div>)}
       </div>
     </section>}
+
+    <GarmentViewerEvidenceForm assetIdentity={status.assetIdentity}/>
 
     <section className="garmentQaPanel">
       <div className="garmentQaPanelHead"><div><small>CUSTOMER PROMOTION GATE</small><h2>3D stays in the lab until every evidence gate passes</h2></div><b>{latest?.readiness.ready?"READY":"BLOCKED"}</b></div>
