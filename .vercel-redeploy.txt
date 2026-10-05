@@ -22,3 +22,8 @@ Mobile GarmentViewer ordering fix: show 3D stage before controls on phone/tablet
 3D viewer reliability hotfix: self-host pinned model-viewer engine through Linen Earth origin after verified CI 37290185631.
 Target merged commit: 43c6c411807bee34d1dd537ccf1eb23c52309d81
 Date: 2026-10-05
+
+Deep Engine realistic-model pipeline release: Style Director garment types + pinned CC0 Blender source intake + 1727 mm body preparation + measured viewer manifest + Blender scene preflight.
+Target merged commit: c4aa3e06fb2d699c65e8692d44cd0f41bf47015b
+Verification: realistic-model branch full CI 37317780740 passed; rebased integration quality/tests/engine/performance/release/build passed in CI 37318672947 before production release.
+Date: 2026-10-05
