@@ -290,7 +290,6 @@ function buildRealModelSpec(
   const occasion = realModelOccasion(a);
   const context = realModelContext(a);
   const style = styleForDirectorCandidate(a, candidate);
-  const styleSpec=styleSpecForDirectorCandidate(candidate,style);
   const hero = (a.garment === "shirt" ? shirts : pants).find((item) => item.id === fabric.id);
   if (!hero) return undefined;
 
@@ -309,6 +308,7 @@ function buildRealModelSpec(
 
   const best = ranked[0]?.recommendation;
   if (!best) return undefined;
+  const styleSpec=styleSpecForDirectorCandidate(candidate,best.style);
   return {
     shirtId: best.shirt.id,
     shirtName: best.shirt.name,
