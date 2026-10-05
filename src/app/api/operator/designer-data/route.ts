@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { FABRIC_STOCK } from "@/lib/fabric-stock";
 import { loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
 import { loadDesignerFabricIntelligence } from "@/lib/fabric-intelligence-server";
+import { designerFabricFromStock } from "@/lib/designer/engine";
+import { attachCatalogFabricPhysics } from "@/lib/designer/fabric-physics-catalog";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig } from "@/lib/supabase-admin";
 
@@ -31,6 +33,8 @@ export async function GET() {
         || String(analyzed.verifiedPhysical.evidenceNote||"").trim().length>=8
       )
     );
+    const physicsFabric=attachCatalogFabricPhysics(designerFabricFromStock(fabric),analyzed);
+    const compatibility=(physicsFabric.garmentCompatibility||[]).map((item)=>({garmentType:item.garmentType,label:item.label,score:item.score,status:item.status,evidenceCoverage:item.evidenceCoverage,evidenceConfidence:item.evidenceConfidence,criticalUnknowns:item.criticalUnknowns,warnings:item.warnings}));
     const physicalField=(field:string)=>Boolean(
       analyzerReviewed
       && analyzerPhysicalProvenance
@@ -104,6 +108,7 @@ export async function GET() {
       swatchImageUrl:fabric.swatchImageUrl,
       yarnCountLea:fabric.yarnCountLea || [],
       metadata:verified,
+      compatibility,
       evidence:{...evidence,gaps,priority},
     };
   });
