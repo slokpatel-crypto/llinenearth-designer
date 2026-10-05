@@ -38,9 +38,13 @@ The existing systems remain authoritative for:
 
 The compatibility layer must not invent physical truth.
 
-Existing catalogue values can enter as declared evidence. Unmeasured structure, breathability, wrinkle resistance and stretch remain unknown until operator/supplier/physical evidence exists.
+Existing catalogue GSM can enter as declared evidence. A reviewed Analyzer field can supply a missing value only through the existing auditable, field-level physical-evidence gate. Its original declared/reviewed status is retained; approval of a different Analyzer value cannot upgrade an existing catalogue declaration.
 
-A high physical-fit score does not become a `strong` recommendation unless critical fields and enough trusted evidence are present.
+Categorical drape is converted to a provisional **estimated index**, even when the category itself was reviewed. This mapping is not a measured drape coefficient. Unmeasured structure, breathability, wrinkle resistance and stretch remain unknown until operator/supplier/physical evidence exists.
+
+GSM accepts finite numbers from 20–1000, matching the existing physical-evidence contract. Other numeric indices accept finite numbers from 0–1. Nulls, strings, non-finite and out-of-range values stay unknown; they are never clamped into valid evidence. The scorer repeats this validation for direct profile callers, including climate adjustments. The Analyzer adapter also preserves missing GSM as null rather than coercing it to 20.
+
+A high physical-fit score does not become a `strong` recommendation unless critical fields and enough trusted evidence are present. An estimated critical field prevents `strong`, even when unrelated reviewed fields raise overall confidence. Every result retains the provisional-rules warning. Software scores do not approve a fabric or finished garment for production.
 
 ## Current integration
 
@@ -50,6 +54,18 @@ A high physical-fit score does not become a `strong` recommendation unless criti
 - `garmentCompatibility`
 
 to each calibrated Designer fabric. The customer-facing Designer UI is intentionally unchanged in v1; the data is available for later Style Director, operator calibration and garment-expansion work.
+
+The pure `attachCatalogFabricPhysics` adapter preserves accepted catalogue precedence, real stock filtering, existing allowed garment IDs and photographic facts. The six-family compatibility matrix does not expand the shop's currently offered garments or alter Designer ranking. Public results do not include private checker names or evidence notes. No database migration or paid provider call is introduced.
+
+## Regression coverage
+
+- Valid and invalid physical values, missing/unknown evidence, 0/1 index boundaries and bounded finite outputs.
+- Climate scoring cannot use facts marked unknown or invalid.
+- Critical estimates cannot be offset by unrelated reviewed evidence.
+- Category-to-index mapping remains estimated; explicit numeric inputs retain their own provenance.
+- Catalogue declarations retain their values and cannot inherit a different Analyzer review.
+- Missing GSM survives Analyzer adaptation as unknown, including legacy v3 records.
+- The actual catalogue GET handler preserves stock and metadata behavior while adding six-family results, with isolated data adapters and no external calls.
 
 ## Calibration next
 

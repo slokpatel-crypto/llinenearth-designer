@@ -2,6 +2,14 @@
 
 Architecture and product decisions that must persist across coding sessions.
 
+## 2026-10-05 — Adapt prototype physics as provisional evidence-aware suitability
+
+**Decision:** continue the accepted Fabric → Design Engine ZIP integration within the existing Designer. Attach a versioned six-family physical-suitability profile and matrix to the catalogue API; retain the existing photographic model, brand animation, advisor, measurements, immutable design lock and production flow. The prototype's SVG renderer and parallel design schema are not adopted.
+
+**Evidence:** keep missing physical facts unknown. Validate GSM against the existing 20–1000 contract and numeric indices against 0–1 at ingestion and scoring. Categorical drape maps to an estimated index, not a measured coefficient. Preserve the actual origin of each accepted value: an Analyzer review cannot relabel a retained catalogue declaration as reviewed. Unknown facts cannot affect climate scores, and critical estimates cannot produce a strong result through unrelated evidence. Every suitability result remains provisional pending cloth and finished-garment calibration.
+
+**Compatibility:** additive optional `physicsProfile` / `garmentCompatibility` catalogue fields; no database, saved StyleSpec, preview, lock or dependency changes. Missing or invalid Analyzer GSM now remains null instead of being coerced/clamped to 20. The existing shirt/pant availability filters stay authoritative. No automatic ranking change or customer six-garment claim; operator evidence stays private. Continue in draft PR #175 and batch deployment with the next major phase.
+
 ## 2026-10-04 — Preserve both controls and banner; use a calm three-second reveal
 
 **Owner preference:** keep the existing thread-and-logo homepage banner alongside the new premium buttons. Save their approved combined version at `checkpoint/brand-animation-and-premium-controls-20261004`; a preview cropped above the banner must not be treated as removing it.

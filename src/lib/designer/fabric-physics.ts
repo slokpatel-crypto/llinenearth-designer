@@ -167,14 +167,20 @@ function unknownValue(): FabricPhysicsValue {
   return { value: null, evidence: "unknown" };
 }
 
-function knownValue(value: number | null, evidence: FabricPhysicsEvidence, note?: string): FabricPhysicsValue {
-  if (value === null || !Number.isFinite(value)) return unknownValue();
+export function validFabricPhysicsValue(key: FabricPhysicsDimension, value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value)
+    && (key === "gsm" ? value >= 20 && value <= 1000 : value >= 0 && value <= 1);
+}
+
+function knownValue(key: FabricPhysicsDimension, value: unknown, evidence: FabricPhysicsEvidence, note?: string): FabricPhysicsValue {
+  if (!validFabricPhysicsValue(key, value) || !Object.hasOwn(qualityWeight, evidence) || evidence === "unknown") return unknownValue();
   return { value, evidence, ...(note ? { note } : {}) };
 }
 
 /**
- * Existing catalogue fields are mapped conservatively. GSM and the current
- * categorical drape can enter as declared evidence; no structure,
+ * Existing catalogue GSM enters as declared evidence. Categorical drape
+ * maps to an estimated index, even when the category was
+ * reviewed. A reviewed category does not measure its numeric coefficient. No structure,
  * breathability, wrinkle or stretch values are invented.
  */
 export function fabricPhysicsFromDesignerFabric(
@@ -187,7 +193,7 @@ export function fabricPhysicsFromDesignerFabric(
     Balanced: 0.55,
     Structured: 0.25,
   };
-  const baseDrape = fabric.drape ? drapeMap[fabric.drape] : null;
+  const baseDrape = fabric.drape ? drapeMap[fabric.drape] ?? null : null;
   const value = (key: FabricPhysicsDimension, fallback: number | null) =>
     Object.hasOwn(patch, key) ? patch[key] ?? null : fallback;
   const evidenceFor = (key: FabricPhysicsDimension, present: boolean): FabricPhysicsEvidence =>
@@ -203,12 +209,14 @@ export function fabricPhysicsFromDesignerFabric(
   return {
     version: "linen-earth-fabric-physics-v1",
     fabricId: fabric.id,
-    gsm: knownValue(gsm, evidenceFor("gsm", gsm !== null), "Physical fabric weight in GSM."),
-    drape: knownValue(drape, evidenceFor("drape", drape !== null), fabric.drape ? `Mapped from ${fabric.drape} drape classification.` : undefined),
-    structure: knownValue(structure, evidenceFor("structure", structure !== null)),
-    breathability: knownValue(breathability, evidenceFor("breathability", breathability !== null)),
-    wrinkleResistance: knownValue(wrinkleResistance, evidenceFor("wrinkleResistance", wrinkleResistance !== null)),
-    stretch: knownValue(stretch, evidenceFor("stretch", stretch !== null)),
+    gsm: knownValue("gsm", gsm, evidenceFor("gsm", gsm !== null), "Physical fabric weight in GSM."),
+    drape: knownValue("drape", drape,
+      Object.hasOwn(patch, "drape") ? evidenceFor("drape", drape !== null) : evidence.drape === "unknown" ? "unknown" : "estimated",
+      !Object.hasOwn(patch, "drape") && fabric.drape ? `Provisional index mapped from ${fabric.drape} drape classification; not a measured coefficient.` : undefined),
+    structure: knownValue("structure", structure, evidenceFor("structure", structure !== null)),
+    breathability: knownValue("breathability", breathability, evidenceFor("breathability", breathability !== null)),
+    wrinkleResistance: knownValue("wrinkleResistance", wrinkleResistance, evidenceFor("wrinkleResistance", wrinkleResistance !== null)),
+    stretch: knownValue("stretch", stretch, evidenceFor("stretch", stretch !== null)),
   };
 }
 
@@ -237,9 +245,9 @@ function dimensionLabel(key: FabricPhysicsDimension) {
   } as const)[key];
 }
 
-function normalizePhysicsValue(key: FabricPhysicsDimension, value: number) {
-  if (key === "gsm") return value;
-  return clamp01(value);
+function usableFact(profile: FabricPhysicsProfile, key: FabricPhysicsDimension): FabricPhysicsValue {
+  const fact = profile[key];
+  return knownValue(key, fact?.value, fact?.evidence, fact?.note);
 }
 
 function climateAdjustment(
@@ -250,15 +258,16 @@ function climateAdjustment(
 ) {
   if (context.climate !== "Hot / humid") return 0;
   let adjustment = 0;
-  if (profile.gsm.value !== null && profile.gsm.value > 300) {
+  const gsm = usableFact(profile, "gsm"), breathability = usableFact(profile, "breathability");
+  if (gsm.value !== null && gsm.value > 300) {
     adjustment -= 0.08;
     warnings.push("Heavy cloth needs extra comfort review for hot/humid wear.");
   }
-  if (profile.breathability.value !== null) {
-    if (profile.breathability.value >= 0.7) {
+  if (breathability.value !== null) {
+    if (breathability.value >= 0.7) {
       adjustment += 0.05;
-      reasons.push("Measured/declared breathability supports hot-humid wear.");
-    } else if (profile.breathability.value < 0.45) {
+      reasons.push(`${breathability.evidence === "estimated" ? "Estimated" : "Recorded"} breathability supports the provisional hot-humid score.`);
+    } else if (breathability.value < 0.45) {
       adjustment -= 0.08;
       warnings.push("Breathability is weak for hot/humid wear.");
     }
@@ -281,11 +290,10 @@ export function scoreFabricPhysicsForGarment(
   const warnings: string[] = [];
 
   for (const key of dimensions) {
-    const fact = profile[key];
-    if (fact.value === null || fact.evidence === "unknown") continue;
+    const fact = usableFact(profile, key);
+    if (fact.value === null) continue;
     const weight = garment.weights[key];
-    const value = normalizePhysicsValue(key, fact.value);
-    const fit = scoreTarget(value, garment.targets[key]);
+    const fit = scoreTarget(fact.value, garment.targets[key]);
     knownWeight += weight;
     scoredWeight += fit * weight;
     confidenceWeight += weight * qualityWeight[fact.evidence];
@@ -298,15 +306,18 @@ export function scoreFabricPhysicsForGarment(
   const baseScore = knownWeight ? (scoredWeight / knownWeight) : 0.5;
   const adjusted = clamp01(baseScore + climateAdjustment(profile, context, reasons, warnings));
   const score = round1(adjusted * 100);
-  const criticalUnknowns = garment.critical.filter((key) => profile[key].value === null || profile[key].evidence === "unknown");
+  const criticalUnknowns = garment.critical.filter((key) => usableFact(profile, key).value === null);
+  const criticalEstimated = garment.critical.filter((key) => usableFact(profile, key).evidence === "estimated");
 
   if (criticalUnknowns.length) {
-    warnings.push(`Need ${criticalUnknowns.map(dimensionLabel).join(", ")} before treating this as a production-grade compatibility result.`);
+    warnings.unshift(`Need ${criticalUnknowns.map(dimensionLabel).join(", ")} before assessing this garment's physical suitability.`);
   }
+  if (criticalEstimated.length) warnings.unshift(`Verify estimated ${criticalEstimated.map(dimensionLabel).join(", ")} before a strong compatibility result.`);
+  warnings.unshift("Provisional suitability rules; physical cloth and finished-garment approval are still required.");
 
   let status: FabricCompatibilityStatus;
   if (evidenceCoverage < 35 || criticalUnknowns.length) status = "insufficient_evidence";
-  else if (score >= 85 && evidenceConfidence >= 65) status = "strong";
+  else if (score >= 85 && evidenceConfidence >= 65 && !criticalEstimated.length) status = "strong";
   else if (score >= 70) status = "workable";
   else if (score >= 50) status = "review";
   else status = "not_recommended";

@@ -205,7 +205,9 @@ export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|nu
       sourceIds:arr(references.sourceIds,10),
     },
     verifiedPhysical:{
-      gsm:Number.isFinite(Number(obj(root.verifiedPhysical).gsm)) ? Math.max(20,Math.min(1000,Number(obj(root.verifiedPhysical).gsm))) : null,
+      gsm:typeof obj(root.verifiedPhysical).gsm === "number" && Number.isFinite(obj(root.verifiedPhysical).gsm)
+        && Number(obj(root.verifiedPhysical).gsm) >= 20 && Number(obj(root.verifiedPhysical).gsm) <= 1000
+        ? Number(obj(root.verifiedPhysical).gsm) : null,
       drape:["Fluid","Balanced","Structured"].includes(String(obj(root.verifiedPhysical).drape))
         ? String(obj(root.verifiedPhysical).drape) as "Fluid"|"Balanced"|"Structured" : null,
       fiberContent:str(obj(root.verifiedPhysical).fiberContent,220)||null,

@@ -85,9 +85,69 @@ test("existing categorical drape maps conservatively while unknown dimensions st
   assert.equal(physics.gsm.value, 160);
   assert.equal(physics.gsm.evidence, "declared");
   assert.equal(physics.drape.value, 0.55);
-  assert.equal(physics.drape.evidence, "declared");
+  assert.equal(physics.drape.evidence, "estimated");
+  assert.match(physics.drape.note || "", /not a measured coefficient/);
   assert.equal(physics.structure.value, null);
   assert.equal(physics.wrinkleResistance.evidence, "unknown");
+});
+
+test("invalid values are unknown at ingestion and scoring, never clamped into evidence", () => {
+  const invalid = [NaN, Infinity, -Infinity, -1, 1001, "150", "", true, null, undefined];
+  for (const value of invalid) {
+    const raw = value as number;
+    const physics = fabricPhysicsFromDesignerFabric({ id: "invalid", weightGsm: raw }, { breathability: raw });
+    assert.equal(physics.gsm.value, null, String(value));
+    assert.equal(physics.gsm.evidence, "unknown");
+    assert.equal(physics.breathability.value, null);
+    const direct = profile({ gsm: raw, structure: raw, breathability: raw });
+    const scored = scoreFabricPhysicsForGarment(direct, "suit", { climate: "Hot / humid" });
+    assert.equal(scored.evidenceCoverage, 0);
+    assert.equal(scored.evidenceConfidence, 0);
+    assert.equal(scored.status, "insufficient_evidence");
+    assert(Number.isFinite(scored.score));
+  }
+  for (const value of [0, 19.9]) {
+    assert.equal(fabricPhysicsFromDesignerFabric({ id: "invalid-gsm", weightGsm: value }).gsm.value, null);
+  }
+  const boundary = fabricPhysicsFromDesignerFabric({ id: "valid", weightGsm: 20 }, { stretch: 0, structure: 1 });
+  assert.equal(boundary.gsm.value, 20);
+  assert.equal(boundary.stretch.value, 0);
+  assert.equal(boundary.structure.value, 1);
+});
+
+test("unknown or invalid evidence cannot influence climate or confidence", () => {
+  const empty = profile({});
+  const disguised = profile({ gsm: 900, breathability: 1 });
+  disguised.gsm.evidence = "unknown";
+  disguised.breathability.evidence = "unknown";
+  assert.deepEqual(scoreFabricPhysicsForGarment(disguised, "shirt", { climate: "Hot / humid" }),
+    scoreFabricPhysicsForGarment(empty, "shirt", { climate: "Hot / humid" }));
+  disguised.gsm.evidence = "toString" as "reviewed";
+  disguised.breathability.evidence = "approved" as "reviewed";
+  assert.deepEqual(scoreFabricPhysicsForGarment(disguised, "shirt"), scoreFabricPhysicsForGarment(empty, "shirt"));
+});
+
+test("critical estimates prevent strong results even with high total confidence", () => {
+  const facts = profile({ gsm: 285, drape: 0.48, structure: 0.82, breathability: 0.55, wrinkleResistance: 0.75, stretch: 0.05 });
+  facts.gsm.evidence = "estimated";
+  const score = scoreFabricPhysicsForGarment(facts, "suit");
+  assert(score.evidenceConfidence > 65);
+  assert(score.score > 85);
+  assert.notEqual(score.status, "strong");
+  assert(score.warnings.some((warning) => /estimated GSM/.test(warning)));
+});
+
+test("reviewing a drape category does not verify its inferred coefficient", () => {
+  const source = { id: "category", weightGsm: 280, drape: "Balanced" as const };
+  const mapped = fabricPhysicsFromDesignerFabric(source, {}, { drape: "reviewed" });
+  assert.equal(mapped.drape.evidence, "estimated");
+  const explicit = fabricPhysicsFromDesignerFabric(source, { drape: 0.48 }, { drape: "reviewed" });
+  assert.equal(explicit.drape.value, 0.48);
+  assert.equal(explicit.drape.evidence, "reviewed");
+  assert.equal(explicit.drape.note, undefined);
+  const cleared = fabricPhysicsFromDesignerFabric(source, { gsm: null, drape: null });
+  assert.equal(cleared.gsm.value, null);
+  assert.equal(cleared.drape.value, null);
 });
 
 test("estimated physics lowers confidence without changing physical-fit math", () => {

@@ -1,26 +1,11 @@
 import { NextResponse } from "next/server";
 import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
 import { designerFabricFromStock } from "@/lib/designer/engine";
-import { enrichDesignerFabricsWithIntelligence } from "@/lib/fabric-intelligence-server";
+import { loadDesignerFabricIntelligence } from "@/lib/fabric-intelligence-server";
 import { applyLiveVerifiedStockAvailability } from "@/lib/designer/stock-availability-server";
-import { fabricCompatibilityMatrix, fabricPhysicsFromDesignerFabric } from "@/lib/designer/fabric-physics";
+import { attachCatalogFabricPhysics } from "@/lib/designer/fabric-physics-catalog";
 
 export const runtime = "nodejs";
-
-function reviewedPhysicsEvidence(intelligence: Awaited<ReturnType<typeof enrichDesignerFabricsWithIntelligence>>["intelligence"][string] | undefined) {
-  if(!intelligence || intelligence.trust !== "reviewed") return {};
-  const provenance = intelligence.fieldProvenance || {};
-  const auditable = Boolean(
-    String(intelligence.verifiedPhysical.sourceUrl || "").trim()
-    || String(intelligence.verifiedPhysical.evidenceNote || "").trim().length >= 8
-  );
-  if(!auditable) return {};
-  const reviewed = (field:string) => ["declared","reviewed"].includes(String(provenance[field] || ""));
-  return {
-    ...(reviewed("verifiedPhysical.gsm") ? { gsm:"reviewed" as const } : {}),
-    ...(reviewed("verifiedPhysical.drape") ? { drape:"reviewed" as const } : {}),
-  };
-}
 
 export async function GET() {
   const metadata = await loadDesignerFabricMetadata();
@@ -28,15 +13,8 @@ export async function GET() {
   const liveStock = await applyLiveVerifiedStockAvailability(metadataStock);
   const stock = liveStock.stock.filter((fabric)=>fabric.inStock);
   const base = stock.map(designerFabricFromStock);
-  const {fabrics,intelligence} = await enrichDesignerFabricsWithIntelligence(base);
-  const fabricsWithPhysics = fabrics.map((fabric)=>{
-    const physicsProfile = fabricPhysicsFromDesignerFabric(fabric,{},reviewedPhysicsEvidence(intelligence[fabric.id]));
-    return {
-      ...fabric,
-      physicsProfile,
-      garmentCompatibility:fabricCompatibilityMatrix(physicsProfile),
-    };
-  });
+  const intelligence = await loadDesignerFabricIntelligence(base.map((fabric)=>fabric.id));
+  const fabricsWithPhysics = base.map((fabric)=>attachCatalogFabricPhysics(fabric,intelligence[fabric.id]));
   return NextResponse.json({
     shirts:fabricsWithPhysics.filter((fabric)=>fabric.allowedGarments.includes("shirt")),
     pants:fabricsWithPhysics.filter((fabric)=>fabric.allowedGarments.includes("pant")),
