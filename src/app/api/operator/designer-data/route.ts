@@ -114,6 +114,18 @@ export async function GET() {
   });
 
   const active=fabrics.filter((fabric)=>fabric.metadata.availability!=="unavailable");
+  const garmentExpansion=["shirt","trouser","suit","blazer","kurta","bandhgala"].map((garmentType)=>{
+    const rows=active.flatMap((fabric)=>fabric.compatibility.filter((item)=>item.garmentType===garmentType));
+    return {
+      garmentType,
+      label:rows[0]?.label || garmentType,
+      evidenceReady:rows.filter((item)=>item.status!=="insufficient_evidence").length,
+      strongOrWorkable:rows.filter((item)=>item.status==="strong"||item.status==="workable").length,
+      strong:rows.filter((item)=>item.status==="strong").length,
+      total:active.length,
+    };
+  });
+
   const coverage={
     total:fabrics.length,
     activeCandidates:active.length,
@@ -134,6 +146,7 @@ export async function GET() {
   return NextResponse.json({
     configured:Boolean(cloud),
     coverage,
+    garmentExpansion,
     fabrics,
   });
 }
