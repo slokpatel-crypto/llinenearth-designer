@@ -6,6 +6,9 @@ export type GarmentPanelSpec = {
   widthMm:number;
   heightMm:number;
   normalScale:number;
+  offsetU?:number;
+  offsetV?:number;
+  rotationDeg?:number;
 };
 
 export const GARMENT_PANEL_SPECS:GarmentPanelSpec[]=[
