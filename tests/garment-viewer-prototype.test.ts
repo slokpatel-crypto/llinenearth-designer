@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { buildPrototypeGarmentGlb, PROTOTYPE_MODEL_ID } from "../src/lib/garment-viewer-prototype.ts";
 
 function parseJsonChunk(bytes:Uint8Array) {
@@ -42,4 +43,20 @@ test("prototype model is a reusable full outfit rather than one flattened garmen
   }
   assert.equal(gltf.scenes[0].nodes.length,gltf.nodes.length);
   assert.equal(gltf.meshes.length,4);
+});
+
+
+test("GarmentViewer lab route is isolated from the protected customer visual route",()=>{
+  const lab=readFileSync("src/app/lab/garment-viewer/page.tsx","utf8");
+  const legacy=readFileSync("src/app/visual/page.tsx","utf8");
+  assert(lab.includes("model-viewer/4.3.1/model-viewer.min.js"));
+  assert(lab.includes("<GarmentViewer"));
+  assert(legacy.includes('redirect("/style-director")'));
+});
+
+test("viewer surface exposes four cameras and independent shirt/trouser material controls",()=>{
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  for(const token of ['id:"front"','id:"three-quarter"','id:"side"','id:"back"',"ShirtFabric","TrouserFabric","createTexture","setRoughnessFactor","setNormalScale","textureScale"]) {
+    assert(viewer.includes(token),token);
+  }
 });
