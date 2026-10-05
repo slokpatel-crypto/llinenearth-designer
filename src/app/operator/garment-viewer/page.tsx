@@ -37,11 +37,12 @@ export default async function GarmentViewerOperatorPage(){
       <p>{status.configured ? status.modelSrc : "LINEN_GARMENT_MODEL_SRC is not configured."}</p>
     </section>
 
-    <section className="garmentQaGrid">
+    <section className="garmentQaGrid garmentQaGridFive">
       <article><small>MODEL FILE</small><strong>{status.configured?"Configured":"Missing"}</strong><p>{status.modelSrc||"Add an approved /models/*.glb source."}</p></article>
       <article><small>SIX-PANEL CONTRACT</small><strong>{model?.contract.readiness==="contract_ready"?"Pass":"Open"}</strong><p>{model?model.contract.reasons.join(" "):"GLB has not been structurally inspected."}</p></article>
       <article><small>UV + NORMALS</small><strong>{model?.uvReady?"Pass":"Open"}</strong><p>Every shirt/trouser panel needs POSITION, NORMAL and TEXCOORD_0.</p></article>
       <article><small>PHYSICAL SIDECAR</small><strong>{manifest?.valid?"Pass":"Open"}</strong><p>{status.manifestSrc||"Matching .viewer.json is required."}</p></article>
+      <article><small>MOBILE PREFLIGHT</small><strong>{model?.performanceBudgetReady?"Pass":"Review"}</strong><p>{model ? `${Math.round(model.fileBytes/1024/1024*10)/10} MB · ${model.triangleCount.toLocaleString()} triangles · ${model.vertexCount.toLocaleString()} vertices` : "Complexity will be checked after a production GLB is configured."}</p></article>
     </section>
 
     {panels.length>0&&<section className="garmentQaPanel">
@@ -75,7 +76,7 @@ export default async function GarmentViewerOperatorPage(){
 
     <section className="garmentQaPanel">
       <div className="garmentQaPanelHead"><div><small>BLOCKERS</small><h2>What still prevents asset approval</h2></div></div>
-      {status.reasons.length?<div className="garmentQaReasons">{status.reasons.map((reason,index)=><p key={index}>{reason}</p>)}</div>:<p className="garmentQaClear">No structural blockers. Continue to physical-scale, performance, boundary and independent-realism evidence before customer promotion.</p>}
+      {status.reasons.length||model?.performanceWarnings.length?<div className="garmentQaReasons">{[...status.reasons,...(model?.performanceWarnings||[])].map((reason,index)=><p key={index}>{reason}</p>)}</div>:<p className="garmentQaClear">No structural blockers. Continue to physical-scale, performance, boundary and independent-realism evidence before customer promotion.</p>}
     </section>
   </main>;
 }
