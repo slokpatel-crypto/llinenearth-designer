@@ -6,6 +6,7 @@ import {
   GARMENT_PANEL_SPECS,
   PROTOTYPE_MODEL_ID,
 } from "@/lib/garment-viewer-prototype";
+import { garmentPanelTextureScale, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
 
 export type GarmentViewerFabric = {
   id:string;
@@ -45,11 +46,6 @@ type FabricTileManifest={
     renderAssetVersion?:string;
   }>;
 };
-type RuntimeRenderScale={
-  physicalScaleStatus:"declared_repeat"|"declared_swatch_width"|"unknown";
-  repeatMm:number|null;
-};
-
 const CAMERA_VIEWS=[
   {id:"front",label:"Front",orbit:"0deg 76deg 2.65m"},
   {id:"three-quarter",label:"3/4",orbit:"35deg 76deg 2.65m"},
@@ -87,18 +83,11 @@ function materialByName(viewer:ModelViewerElement,name:string) {
 
 function measuredTileWidth(
   manifest:FabricTileManifest,
-  runtimeScale:Record<string,RuntimeRenderScale>,
+  runtimeScale:Record<string,ViewerRuntimeRenderScale>,
   fabric:GarmentViewerFabric|undefined,
 ) {
   if(!fabric) return null;
-  const asset=manifest.assets?.[fabric.tileKey];
-  const width=Number(asset?.tileRealWidthMm);
-  if(asset?.scaleApproximate===false && Number.isFinite(width) && width>0) return width;
-  const runtime=runtimeScale[fabric.id];
-  const repeatMm=Number(runtime?.repeatMm);
-  const repeatPx=Number(asset?.repeatPeriodPx);
-  if(!runtime || runtime.physicalScaleStatus==="unknown" || !Number.isFinite(repeatMm) || repeatMm<=0 || !Number.isFinite(repeatPx) || repeatPx<=0) return null;
-  return Math.round(200*128*repeatMm/repeatPx)/100;
+  return resolveViewerTileWidthMm(manifest.assets?.[fabric.tileKey],runtimeScale[fabric.id]);
 }
 
 export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
@@ -117,7 +106,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
   const [shirtId,setShirtId]=useState(shirtFabrics[0]?.id || "");
   const [trouserId,setTrouserId]=useState(trouserFabrics[0]?.id || "");
   const [manifest,setManifest]=useState<FabricTileManifest>({});
-  const [runtimeScale,setRuntimeScale]=useState<Record<string,RuntimeRenderScale>>({});
+  const [runtimeScale,setRuntimeScale]=useState<Record<string,ViewerRuntimeRenderScale>>({});
   const [shirtManualTileMm,setShirtManualTileMm]=useState(120);
   const [trouserManualTileMm,setTrouserManualTileMm]=useState(120);
   const [roughness,setRoughness]=useState(.84);
@@ -152,10 +141,10 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
       .then((value)=>{
         if(cancelled || !value || typeof value!=="object") return;
         const rows=[...((value as {shirts?:unknown[]}).shirts||[]),...((value as {pants?:unknown[]}).pants||[])];
-        const next:Record<string,RuntimeRenderScale>={};
+        const next:Record<string,ViewerRuntimeRenderScale>={};
         for(const row of rows){
           if(!row || typeof row!=="object") continue;
-          const item=row as {id?:unknown;renderScale?:RuntimeRenderScale|null};
+          const item=row as {id?:unknown;renderScale?:ViewerRuntimeRenderScale|null};
           const id=String(item.id||"");
           const scale=item.renderScale;
           if(id && scale && ["declared_repeat","declared_swatch_width","unknown"].includes(scale.physicalScaleStatus)) next[id]=scale;
@@ -215,10 +204,9 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics}:{
             viewer.createTexture!(fabric.image),
             normalMapRef.current ? viewer.createTexture!(normalMapRef.current) : Promise.resolve(null),
           ]);
-          const u=clamp(panel.widthMm/tileMm,.35,80);
-          const v=clamp(panel.heightMm/tileMm,.35,80);
-          texture.setScale?.({u,v});
-          normal?.setScale?.({u:clamp(u*1.35,.35,100),v:clamp(v*1.35,.35,100)});
+          const scale=garmentPanelTextureScale(panel.widthMm,panel.heightMm,tileMm);
+          texture.setScale?.(scale);
+          normal?.setScale?.({u:clamp(scale.u*1.35,.35,100),v:clamp(scale.v*1.35,.35,100)});
           return {panel,texture,normal};
         }));
         if(token!==applyToken.current) return;
