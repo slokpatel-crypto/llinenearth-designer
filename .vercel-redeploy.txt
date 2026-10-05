@@ -27,3 +27,8 @@ Deep Engine realistic-model pipeline release: Style Director garment types + pin
 Target merged commit: c4aa3e06fb2d699c65e8692d44cd0f41bf47015b
 Verification: realistic-model branch full CI 37317780740 passed; rebased integration quality/tests/engine/performance/release/build passed in CI 37318672947 before production release.
 Date: 2026-10-05
+
+Exact Real Model Designer identity release: front / 3/4 / side / back and production GarmentViewer now share canonical identity linen-earth-studio-model-v1, anchored to /designer/studio-tucked.webp. Blender prep/preflight/export and browser manifest validation reject model drift.
+Target merged commit: 414c2355faf664027bf09f4e1f17d6dc9196bb40
+Verification: CI 37326746746 passed quality, 551 tests, engine/performance, release, production build and full browser verification.
+Date: 2026-10-05
