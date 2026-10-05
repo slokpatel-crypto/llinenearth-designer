@@ -113,6 +113,32 @@ type Phase1ProofPayload={
   }|null;
 };
 
+type GarmentViewerPayload={
+  configured:boolean;
+  asset:{
+    assetReady:boolean;
+    model:{
+      performanceBudgetReady:boolean;
+      performanceWarnings:string[];
+    }|null;
+  };
+  latest:{
+    identityMatches:boolean;
+    readiness:{
+      ready:boolean;
+      contractReady:boolean;
+      manifestReady:boolean;
+      scaleReady:boolean;
+      latencyReady:boolean;
+      realismReady:boolean;
+      boundaryReady:boolean;
+      latency:{count:number;p95Ms:number|null};
+      realism:{uniqueViewers:number;strongRatings:number};
+      reasons:string[];
+    };
+  }|null;
+};
+
 type DeviceQaPayload={
   configured:boolean;
   latest:Record<string,{status:string;viewport:string;p95Ms:number|null;samples:number;at:string}>;
@@ -276,6 +302,7 @@ type NoviceDesignerStudyPayload={
 
 type LoadState={
   phase1Proof:Phase1ProofPayload|null;
+  garmentViewer:GarmentViewerPayload|null;
   measurementCalibration:MeasurementCalibrationPayload|null;
   launchMetrics:LaunchMetricsPayload|null;
   designerData:DesignerDataPayload|null;
@@ -318,7 +345,7 @@ function ratio(value:number,total:number){return total>0?clamp(value/total*100):
 
 export default function Phase10ReadinessClient(){
   const [data,setData]=useState<LoadState>({
-    phase1Proof:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,productionDeliveryEvidence:null,renderQa:null,launchReadiness:null,fabricColorCalibration:null,fabricTruthPolicy:null,styleDirectorValidation:null,easeCalibration:null,previewCoverage:null,noviceDesignerStudy:null,
+    phase1Proof:null,garmentViewer:null,measurementCalibration:null,launchMetrics:null,designerData:null,analyzer:null,analyzerScorecard:null,scorecard:null,construction:null,device:null,renderCache:null,productionCalibration:null,stock:null,production:null,productionDeliveryEvidence:null,renderQa:null,launchReadiness:null,fabricColorCalibration:null,fabricTruthPolicy:null,styleDirectorValidation:null,easeCalibration:null,previewCoverage:null,noviceDesignerStudy:null,
   });
   const [loading,setLoading]=useState(true);
   const [message,setMessage]=useState("");
@@ -336,8 +363,9 @@ export default function Phase10ReadinessClient(){
   async function load(){
     setLoading(true);setMessage("");
     try{
-      const [phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,productionDeliveryEvidence,renderQa,launchReadiness,fabricColorCalibration,fabricTruthPolicy,styleDirectorValidation,easeCalibration,previewCoverage,noviceDesignerStudy]=await Promise.all([
+      const [phase1Proof,garmentViewer,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,productionDeliveryEvidence,renderQa,launchReadiness,fabricColorCalibration,fabricTruthPolicy,styleDirectorValidation,easeCalibration,previewCoverage,noviceDesignerStudy]=await Promise.all([
         read<Phase1ProofPayload>("/api/operator/phase1-proof"),
+        read<GarmentViewerPayload>("/api/operator/garment-viewer"),
         read<MeasurementCalibrationPayload>("/api/operator/measurement-calibration"),
         read<LaunchMetricsPayload>("/api/operator/cloud-summary?days=60"),
         read<DesignerDataPayload>("/api/operator/designer-data"),
@@ -360,7 +388,7 @@ export default function Phase10ReadinessClient(){
         read<PreviewCoveragePayload>("/api/operator/preview-option-coverage"),
         read<NoviceDesignerStudyPayload>("/api/operator/novice-designer-study"),
       ]);
-      setData({phase1Proof,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,productionDeliveryEvidence,renderQa,launchReadiness,fabricColorCalibration,fabricTruthPolicy,styleDirectorValidation,easeCalibration,previewCoverage,noviceDesignerStudy});
+      setData({phase1Proof,garmentViewer,measurementCalibration,launchMetrics,designerData,analyzer,analyzerScorecard,scorecard,construction,device,renderCache,productionCalibration,stock,production,productionDeliveryEvidence,renderQa,launchReadiness,fabricColorCalibration,fabricTruthPolicy,styleDirectorValidation,easeCalibration,previewCoverage,noviceDesignerStudy});
     }catch(error){
       setMessage(error instanceof Error?error.message:"Readiness data could not be loaded.");
     }finally{
@@ -408,6 +436,21 @@ export default function Phase10ReadinessClient(){
     const proofMobileAccepted=data.device?.latest?.mobile?.status==="accepted";
     const proofProgress=ratio([proofScale,proofLatency,proofRealism,proofBoundaries,proofMobileAccepted].filter(Boolean).length,5);
     const proofDone=Boolean(proof?.coreAccepted===true && proofScale && proofLatency && proofRealism && proofBoundaries && proofMobileAccepted);
+
+    const garmentViewerEvidence=data.garmentViewer?.latest||null;
+    const garmentViewerAssetReady=data.garmentViewer?.asset.assetReady===true;
+    const garmentViewerMobilePreflight=data.garmentViewer?.asset.model?.performanceBudgetReady===true;
+    const garmentViewerReady=Boolean(garmentViewerEvidence?.identityMatches&&garmentViewerEvidence.readiness.ready&&garmentViewerAssetReady&&garmentViewerMobilePreflight);
+    const garmentViewerSignals=[
+      garmentViewerAssetReady,
+      garmentViewerMobilePreflight,
+      garmentViewerEvidence?.identityMatches===true,
+      garmentViewerEvidence?.readiness.scaleReady===true,
+      garmentViewerEvidence?.readiness.latencyReady===true,
+      garmentViewerEvidence?.readiness.realismReady===true,
+      garmentViewerEvidence?.readiness.boundaryReady===true,
+    ];
+    const garmentViewerProgress=ratio(garmentViewerSignals.filter(Boolean).length,garmentViewerSignals.length);
 
     const coverage=data.designerData?.coverage;
     let physicalPolicy=null;
@@ -524,6 +567,23 @@ export default function Phase10ReadinessClient(){
           : "No recorded proof",
         href:"/lab/proof",
         action:"Open Premium Shirt Proof",
+        ownerDependent:true,
+      },
+      {
+        id:"garment-viewer-m2",
+        title:"Reusable 3D GarmentViewer production gate",
+        detail:garmentViewerReady
+          ? "The exact production GLB revision has passed structure, physical pattern scale, mobile complexity, interaction latency, independent realism and garment-boundary evidence."
+          : garmentViewerEvidence
+            ? `3D remains lab-only. ${garmentViewerEvidence.readiness.reasons.join(" ")}${garmentViewerMobilePreflight?"":" Mobile GLB complexity also needs review."}`
+            : "No revision-bound production GarmentViewer evidence is recorded yet. The current customer Designer stays on the photographic preview.",
+        status:garmentViewerReady?"done":data.garmentViewer?.configured?"progress":"blocked",
+        progress:garmentViewerProgress,
+        metric:garmentViewerEvidence
+          ? `${garmentViewerEvidence.readiness.latency.count} latency samples · p95 ${garmentViewerEvidence.readiness.latency.p95Ms??"—"} ms · ${garmentViewerEvidence.readiness.realism.strongRatings}/${garmentViewerEvidence.readiness.realism.uniqueViewers} strong realism ratings`
+          : "No approved production GLB evidence",
+        href:"/operator/garment-viewer",
+        action:"Open 3D production gate",
         ownerDependent:true,
       },
       {

@@ -2,10 +2,13 @@ import Link from "next/link";
 import Script from "next/script";
 import GarmentViewer, { type GarmentViewerFabric } from "@/components/GarmentViewer";
 import { FABRIC_STOCK } from "@/lib/fabric-stock";
+import { loadGarmentViewerProductionAssetStatus } from "@/lib/garment-viewer-model-server";
+import { PROTOTYPE_MODEL_ID } from "@/lib/garment-viewer-prototype";
+import { loadActiveDesignerFabricStock } from "@/lib/designer/catalog-stock-server";
 import "./garment-viewer.css";
 
 export const metadata={
-  title:"GarmentViewer M1 · Linen Earth",
+  title:"GarmentViewer M2 · Linen Earth",
   description:"Reusable 3D garment material-mapping proof for Linen Earth.",
   robots:{index:false,follow:false},
 };
@@ -22,9 +25,15 @@ function viewerFabric(fabric:(typeof FABRIC_STOCK)[number]):GarmentViewerFabric 
   };
 }
 
-export default function GarmentViewerLabPage() {
-  const shirtFabrics=FABRIC_STOCK.filter((fabric)=>fabric.inStock&&fabric.suitableFor.includes("shirt")).slice(0,10).map(viewerFabric);
-  const trouserFabrics=FABRIC_STOCK.filter((fabric)=>fabric.inStock&&fabric.suitableFor.includes("trouser")).slice(0,10).map(viewerFabric);
+export default async function GarmentViewerLabPage() {
+  const production=await loadGarmentViewerProductionAssetStatus();
+  const live=await loadActiveDesignerFabricStock();
+  const activeStock=live.stock;
+  const approvedModelSrc=production.configured ? production.modelSrc : null;
+  const modelManifestSrc=production.configured ? production.manifestSrc : null;
+  const modelId=approvedModelSrc ? production.modelId : PROTOTYPE_MODEL_ID;
+  const shirtFabrics=activeStock.filter((fabric)=>fabric.suitableFor.includes("shirt")).map(viewerFabric);
+  const trouserFabrics=activeStock.filter((fabric)=>fabric.suitableFor.includes("trouser")).map(viewerFabric);
 
   return <>
     <Script
@@ -40,7 +49,7 @@ export default function GarmentViewerLabPage() {
         <div><span>LINEN EARTH · DEEP ENGINE</span><b>3D VIEWER LAB</b></div>
         <Link href="/designer-studio">Designer Studio ↗</Link>
       </header>
-      <GarmentViewer shirtFabrics={shirtFabrics} trouserFabrics={trouserFabrics}/>
+      <GarmentViewer shirtFabrics={shirtFabrics} trouserFabrics={trouserFabrics} modelSrc={approvedModelSrc} modelManifestSrc={modelManifestSrc} modelId={modelId} assetIdentity={production.assetIdentity}/>
     </main>
   </>;
 }

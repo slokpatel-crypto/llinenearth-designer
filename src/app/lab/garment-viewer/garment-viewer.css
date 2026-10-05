@@ -87,3 +87,5 @@
 @media(prefers-reduced-motion:reduce){
   .garmentCameraRail button{transition:none}
 }
+
+.garmentViewerReference{display:grid;grid-template-columns:minmax(0,1fr) 108px;gap:12px;align-items:center;padding:11px;border:1px solid rgba(76,62,43,.14);background:#f2ebe0}.garmentViewerReference>div{display:grid;gap:5px}.garmentViewerReference span{font-size:8px;letter-spacing:.14em;color:#95724a;font-weight:700}.garmentViewerReference b{font:500 14px/1.2 Georgia,"Times New Roman",serif}.garmentViewerReference small{font-size:9px;line-height:1.45;color:#756d62}.garmentViewerReference img{display:block;width:108px;height:144px;object-fit:cover;object-position:center 18%;border:1px solid rgba(76,62,43,.14);background:#e9e1d6}@media(max-width:520px){.garmentViewerReference{grid-template-columns:1fr 88px}.garmentViewerReference img{width:88px;height:122px}}

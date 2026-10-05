@@ -160,6 +160,16 @@ for (const path of [
   "src/lib/designer/stock-ledger.ts",
   "src/lib/designer/stock-availability.ts",
   "src/lib/designer/stock-availability-server.ts",
+  "src/lib/designer/catalog-stock-server.ts",
+  "src/lib/garment-viewer-model-contract.ts",
+  "src/lib/garment-viewer-model-server.ts",
+  "src/lib/garment-viewer-glb.ts",
+  "src/lib/garment-viewer-readiness.ts",
+  "src/lib/garment-viewer-evidence-server.ts",
+  "src/components/GarmentViewer.tsx",
+  "src/app/lab/garment-viewer/page.tsx",
+  "src/app/api/operator/garment-viewer/route.ts",
+  "src/app/operator/garment-viewer/page.tsx",
   "tests/stock-availability.test.ts",
   "src/app/recover-design/page.tsx",
   "src/app/operator/stock/page.tsx",
@@ -782,7 +792,14 @@ requireTokens("src/lib/designer/stock-availability.ts", ["verifiedStockAvailabil
 requireTokens("src/lib/designer/engine.ts", ["availabilityVerified?: boolean","verified physical stock status","provenance-ready positive stock status"]);
 requireTokens("tests/stock-availability.test.ts", ["availabilityVerified,true","availabilityVerified,undefined"]);
 requireTokens("src/lib/designer/stock-availability-server.ts", ["fabric_stock_snapshot_v2","applyLiveVerifiedStockAvailability","cache:\"no-store\""]);
-requireTokens("src/app/api/designer/catalog/route.ts", ["applyLiveVerifiedStockAvailability","verifiedStockFabrics"]);
+requireTokens("src/lib/designer/catalog-stock-server.ts", ["loadDesignerFabricMetadata","applyDesignerFabricMetadataToStock","applyLiveVerifiedStockAvailability","verifiedStockFabrics"]);
+requireTokens("src/app/api/designer/catalog/route.ts", ["loadActiveDesignerFabricStock","verifiedStockFabrics"]);
+requireTokens("src/lib/garment-viewer-model-contract.ts", ["linen-earth-garment-viewer-v2","REQUIRED_GARMENT_VIEWER_MATERIALS","approvedGarmentViewerModelSource","validateGarmentViewerModelManifest"]);
+requireTokens("src/lib/garment-viewer-glb.ts", ["parseGarmentViewerGlbJson","externalGlbUri","performanceBudgetReady","structuralReady"]);
+requireTokens("src/lib/garment-viewer-readiness.ts", ["garmentViewerPromotionReadiness","GARMENT_VIEWER_REALISM_RUBRIC_VERSION","ROADMAP_SCALE_TOLERANCE_PCT"]);
+requireTokens("src/components/GarmentViewer.tsx", ["sampler?.setScale","sampler?.setOffset","sampler?.setRotation","GARMENT_VIEWER_LATENCY_STORAGE_KEY","studio-tucked.webp"]);
+requireTokens("src/app/operator/garment-viewer/page.tsx", ["CUSTOMER PROMOTION GATE","GarmentViewerEvidenceForm","loadLatestGarmentViewerReadiness"]);
+requireTokens("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx", ["garment-viewer-m2","Reusable 3D GarmentViewer production gate","/api/operator/garment-viewer"]);
 requireTokens("src/app/api/designer/search/route.ts", ["applyLiveVerifiedStockAvailability","liveStock.stock.filter((fabric)=>fabric.inStock)"]);
 requireTokens("src/app/api/designer/brief/route.ts", ["applyLiveVerifiedStockAvailability","liveStock.stock.filter((fabric)=>fabric.inStock)"]);
 requireTokens("src/app/api/designer/assess/route.ts", ["applyLiveVerifiedStockAvailability","liveStock.stock.filter((fabric)=>fabric.inStock)"]);
@@ -919,6 +936,7 @@ requireTokens(".env.example", [
   "AI_GATEWAY_API_KEY=",
   "LINEN_VISUAL_CRITIC_MODEL=",
   "LINEN_RESEARCH_MODEL=",
+  "LINEN_GARMENT_MODEL_SRC=",
 ]);
 
 if (!failed) ok("Static website, desktop, cloud and installer release contracts are intact.");
