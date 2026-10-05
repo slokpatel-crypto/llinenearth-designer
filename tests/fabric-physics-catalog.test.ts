@@ -113,6 +113,28 @@ test("Analyzer adapters preserve absent or invalid GSM as unknown instead of man
   }
 });
 
+test("Analyzer adapter accepts only numeric 0-1 physics indices", () => {
+  const valid = adaptFabricProfileToV4({
+    version:"fabric-analyzer-v4",
+    verifiedPhysical:{structure:0,breathability:1,wrinkleResistance:.65,stretch:.08},
+  });
+  assert.equal(valid?.verifiedPhysical.structure,0);
+  assert.equal(valid?.verifiedPhysical.breathability,1);
+  assert.equal(valid?.verifiedPhysical.wrinkleResistance,.65);
+  assert.equal(valid?.verifiedPhysical.stretch,.08);
+
+  for(const value of [-.1,1.1,"0.5","",false,NaN,Infinity]) {
+    const adapted = adaptFabricProfileToV4({
+      version:"fabric-analyzer-v4",
+      verifiedPhysical:{structure:value,breathability:value,wrinkleResistance:value,stretch:value},
+    });
+    assert.equal(adapted?.verifiedPhysical.structure,null,String(value));
+    assert.equal(adapted?.verifiedPhysical.breathability,null,String(value));
+    assert.equal(adapted?.verifiedPhysical.wrinkleResistance,null,String(value));
+    assert.equal(adapted?.verifiedPhysical.stretch,null,String(value));
+  }
+});
+
 test("catalogue GET retains stock filtering and accepted metadata while attaching six bounded results", async (t) => {
   const originals = { metadata: metadata.loadDesignerFabricMetadata, intelligence: intelligenceStore.loadDesignerFabricIntelligence,
     stock: stockStore.applyLiveVerifiedStockAvailability, fetch: globalThis.fetch };
