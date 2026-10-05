@@ -83,6 +83,10 @@ export type FabricAnalyzerProfileV4 = {
     gsm:number|null;
     drape:"Fluid"|"Balanced"|"Structured"|null;
     fiberContent:string|null;
+    structure?:number|null;
+    breathability?:number|null;
+    wrinkleResistance?:number|null;
+    stretch?:number|null;
     sourceUrl:string|null;
     evidenceNote:string|null;
   };
@@ -205,10 +209,24 @@ export function adaptFabricProfileToV4(input:unknown):FabricAnalyzerProfileV4|nu
       sourceIds:arr(references.sourceIds,10),
     },
     verifiedPhysical:{
-      gsm:Number.isFinite(Number(obj(root.verifiedPhysical).gsm)) ? Math.max(20,Math.min(1000,Number(obj(root.verifiedPhysical).gsm))) : null,
+      gsm:typeof obj(root.verifiedPhysical).gsm === "number" && Number.isFinite(obj(root.verifiedPhysical).gsm)
+        && Number(obj(root.verifiedPhysical).gsm) >= 20 && Number(obj(root.verifiedPhysical).gsm) <= 1000
+        ? Number(obj(root.verifiedPhysical).gsm) : null,
       drape:["Fluid","Balanced","Structured"].includes(String(obj(root.verifiedPhysical).drape))
         ? String(obj(root.verifiedPhysical).drape) as "Fluid"|"Balanced"|"Structured" : null,
       fiberContent:str(obj(root.verifiedPhysical).fiberContent,220)||null,
+      structure:typeof obj(root.verifiedPhysical).structure === "number" && Number.isFinite(obj(root.verifiedPhysical).structure)
+        && Number(obj(root.verifiedPhysical).structure) >= 0 && Number(obj(root.verifiedPhysical).structure) <= 1
+        ? Number(obj(root.verifiedPhysical).structure) : null,
+      breathability:typeof obj(root.verifiedPhysical).breathability === "number" && Number.isFinite(obj(root.verifiedPhysical).breathability)
+        && Number(obj(root.verifiedPhysical).breathability) >= 0 && Number(obj(root.verifiedPhysical).breathability) <= 1
+        ? Number(obj(root.verifiedPhysical).breathability) : null,
+      wrinkleResistance:typeof obj(root.verifiedPhysical).wrinkleResistance === "number" && Number.isFinite(obj(root.verifiedPhysical).wrinkleResistance)
+        && Number(obj(root.verifiedPhysical).wrinkleResistance) >= 0 && Number(obj(root.verifiedPhysical).wrinkleResistance) <= 1
+        ? Number(obj(root.verifiedPhysical).wrinkleResistance) : null,
+      stretch:typeof obj(root.verifiedPhysical).stretch === "number" && Number.isFinite(obj(root.verifiedPhysical).stretch)
+        && Number(obj(root.verifiedPhysical).stretch) >= 0 && Number(obj(root.verifiedPhysical).stretch) <= 1
+        ? Number(obj(root.verifiedPhysical).stretch) : null,
       sourceUrl:str(obj(root.verifiedPhysical).sourceUrl,1800)||null,
       evidenceNote:str(obj(root.verifiedPhysical).evidenceNote,500)||null,
     },
