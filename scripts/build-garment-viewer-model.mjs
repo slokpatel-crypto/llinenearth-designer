@@ -10,6 +10,16 @@ const CONTRACT_VERSION="linen-earth-garment-viewer-v2";
 const IDENTITY_ID="linen-earth-studio-model-v1";
 const REFERENCE_IMAGE="/designer/studio-tucked.webp";
 const REFERENCE_HEIGHT_MM=1727;
+const IDENTITY_TARGETS_MM={
+  height:1727,
+  shoulderSeamWidth:388,
+  outerArmSilhouette:574,
+  shirtWaistWidth:294,
+  trouserWaistWidth:344,
+  handCenterSpacing:500,
+  legCenterSpacing:210,
+  hemWidth:64,
+};
 const WHITE_PIXEL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFUlEQVR4nGP8////fwYGBgYmBigAAD34BADaOyqcAAAAAElFTkSuQmCC";
 const NEUTRAL_NORMAL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGNsaPj/n4GBgYGJAQoALZkDAqlaHJYAAAAASUVORK5CYII=";
 
@@ -404,8 +414,8 @@ const nodes=[
   // The CC0 anatomical body is prepared as the next cloth-collision source but intentionally not rendered:
   // the visible mannequin stays locked to the exact Linen Earth studio silhouette without skin/garment clipping.
   // 1727 mm canonical Live Designer mannequin: slim shoulders, long legs, relaxed straight stance.
-  {name:"Head",mesh:meshHead,translation:[0,1.620,.004]},
-  {name:"Neck",mesh:meshHead,translation:[0,1.500,.001],scale:[.63,.58,.62]},
+  {name:"Head",mesh:meshHead,translation:[0,1.624,.004]},
+  {name:"Neck",mesh:meshHead,translation:[0,1.504,.001],scale:[.63,.58,.62]},
   {name:"ShirtTorsoFabric",mesh:meshShirtTorso,translation:[0,1.265,0]},
   {name:"ShirtSleeveLFabric",mesh:meshSleeveL,translation:[-.226,1.155,.030],rotation:qz(-2.4)},
   {name:"ShirtSleeveRFabric",mesh:meshSleeveR,translation:[.226,1.155,.030],rotation:qz(2.4)},
@@ -416,8 +426,8 @@ const nodes=[
   {name:"TrouserLegRFabric",mesh:meshLegR,translation:[.105,.555,0]},
   {name:"ShoeL",mesh:meshShoe,translation:[-.105,.056,.081],scale:[.068,.041,.150]},
   {name:"ShoeR",mesh:meshShoe,translation:[.105,.056,.081],scale:[.068,.041,.150]},
-  {name:"SoleL",mesh:meshSole,translation:[-.105,.016,.089],scale:[.140,.021,.300]},
-  {name:"SoleR",mesh:meshSole,translation:[.105,.016,.089],scale:[.140,.021,.300]},
+  {name:"SoleL",mesh:meshSole,translation:[-.105,.0105,.089],scale:[.140,.021,.300]},
+  {name:"SoleR",mesh:meshSole,translation:[.105,.0105,.089],scale:[.140,.021,.300]},
   {name:"CollarL",mesh:meshCollar,translation:[-.043,1.468,.096],scale:[.080,.088,.014],rotation:qz(-18)},
   {name:"CollarR",mesh:meshCollar,translation:[.043,1.468,.096],scale:[.080,.088,.014],rotation:qz(18)},
   {name:"CuffL",mesh:meshCuffL,translation:[-.250,.870,.030],scale:[.049,.021,.051],rotation:qz(-2.4)},
@@ -529,6 +539,32 @@ function toGlb(json,binary){
   return out;
 }
 
+function assertIdentityMeasurement(name,actualMm,targetMm,toleranceMm){
+  const delta=Math.abs(actualMm-targetMm);
+  if(!Number.isFinite(actualMm)||delta>toleranceMm){
+    throw new Error(`Live Designer identity drift: ${name} measured ${actualMm.toFixed(1)} mm; target ${targetMm} ± ${toleranceMm} mm.`);
+  }
+}
+
+const identityMeasurements={
+  heightMm:(1.624+.103)*1000,
+  shoulderSeamWidthMm:.194*2*1000,
+  outerArmSilhouetteMm:(.226+.061)*2*1000,
+  shirtWaistWidthMm:.147*2*1000,
+  trouserWaistWidthMm:.172*2*1000,
+  handCenterSpacingMm:.250*2*1000,
+  legCenterSpacingMm:.105*2*1000,
+  hemWidthMm:.032*2*1000,
+};
+assertIdentityMeasurement("height",identityMeasurements.heightMm,IDENTITY_TARGETS_MM.height,4);
+assertIdentityMeasurement("shoulder seam",identityMeasurements.shoulderSeamWidthMm,IDENTITY_TARGETS_MM.shoulderSeamWidth,2);
+assertIdentityMeasurement("outer arm silhouette",identityMeasurements.outerArmSilhouetteMm,IDENTITY_TARGETS_MM.outerArmSilhouette,3);
+assertIdentityMeasurement("shirt waist",identityMeasurements.shirtWaistWidthMm,IDENTITY_TARGETS_MM.shirtWaistWidth,2);
+assertIdentityMeasurement("trouser waist",identityMeasurements.trouserWaistWidthMm,IDENTITY_TARGETS_MM.trouserWaistWidth,2);
+assertIdentityMeasurement("hand spacing",identityMeasurements.handCenterSpacingMm,IDENTITY_TARGETS_MM.handCenterSpacing,2);
+assertIdentityMeasurement("leg spacing",identityMeasurements.legCenterSpacingMm,IDENTITY_TARGETS_MM.legCenterSpacing,2);
+assertIdentityMeasurement("trouser hem",identityMeasurements.hemWidthMm,IDENTITY_TARGETS_MM.hemWidth,2);
+
 const manifest={
   version:CONTRACT_VERSION,
   modelId:MODEL_ID,
@@ -551,14 +587,15 @@ const manifest={
     triangles:mannequinBodyStats.triangles
   },
   identityMeasurements:{
-    targetHeightMm:1727,
-    targetShoulderSeamWidthMm:388,
-    targetOuterArmSilhouetteMm:574,
-    targetShirtWaistWidthMm:294,
-    targetTrouserWaistWidthMm:344,
-    targetHandCenterSpacingMm:500,
-    targetLegCenterSpacingMm:210,
-    targetHemWidthMm:64,
+    targetHeightMm:IDENTITY_TARGETS_MM.height,
+    targetShoulderSeamWidthMm:IDENTITY_TARGETS_MM.shoulderSeamWidth,
+    targetOuterArmSilhouetteMm:IDENTITY_TARGETS_MM.outerArmSilhouette,
+    targetShirtWaistWidthMm:IDENTITY_TARGETS_MM.shirtWaistWidth,
+    targetTrouserWaistWidthMm:IDENTITY_TARGETS_MM.trouserWaistWidth,
+    targetHandCenterSpacingMm:IDENTITY_TARGETS_MM.handCenterSpacing,
+    targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
+    targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
+    measured:identityMeasurements,
     polishStage:"M5.2 Live Designer visible model polished; anatomical collision body prepared separately",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
