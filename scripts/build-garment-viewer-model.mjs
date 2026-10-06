@@ -768,7 +768,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M5.8 model complete: smooth tailored shells + anatomical hands + reference trouser taper + refined footwear + full-body framing",
+    polishStage:"M5.8 final tailored silhouette: model complete + smooth garment shells + anatomical hands + reference trouser taper + refined footwear + full-body framing",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   cameraOrbits:{front:"0deg 76deg 4.10m","three-quarter":"35deg 76deg 4.10m",side:"90deg 76deg 4.10m",back:"180deg 76deg 4.10m"},
