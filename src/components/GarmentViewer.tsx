@@ -272,7 +272,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       setModelReady(true);setProgress(1);setError("");
       setModelContract(validateGarmentViewerModelContract({modelId,materialNames:(viewer.model?.materials||[]).map((material)=>material.name)}));
     };
-    const fail=()=>{setError("The 3D garment prototype could not be loaded.");setModelReady(false);};
+    const fail=()=>{setError("The 3D garment model could not be loaded.");setModelReady(false);};
     const update=(event:Event)=>{
       const detail=(event as CustomEvent<{totalProgress?:number}>).detail;
       if(typeof detail?.totalProgress==="number") setProgress(clamp(detail.totalProgress,0,1));
@@ -372,7 +372,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const modelViewer=modelUrl ? createElement("model-viewer",{
     ref:(element:HTMLElement|null)=>{viewerRef.current=element as ModelViewerElement|null;},
     src:modelUrl,
-    alt:"Interactive Linen Earth prototype male garment mannequin wearing a shirt and trousers",
+    alt:"Interactive Linen Earth officewear 3D mannequin wearing a shirt and trousers",
     "camera-controls":true,
     "touch-action":"pan-y",
     "camera-orbit":cameraViews[0].orbit,
@@ -396,7 +396,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       </div>
       <div className="garmentViewerCanvas">
         {modelViewer}
-        {!modelReady&&<div className="garmentViewerLoading"><i style={{width:`${Math.round(progress*100)}%`}}/><strong>{engineReady?"Loading prototype garment…":"Starting 3D engine…"}</strong><span>{Math.round(progress*100)}%</span></div>}
+        {!modelReady&&<div className="garmentViewerLoading"><i style={{width:`${Math.round(progress*100)}%`}}/><strong>{engineReady?(modelSrc?"Loading officewear model…":"Loading prototype garment…"):"Starting 3D engine…"}</strong><span>{Math.round(progress*100)}%</span></div>}
         {error&&<div className="garmentViewerError">{error}</div>}
       </div>
       <div className="garmentCameraRail" role="group" aria-label="Garment camera views">
@@ -436,7 +436,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           <article><strong>Shirt · {draftShirtTypeLabel}</strong><p>{[designerDraftRecipe.style.collar,designerDraftRecipe.style.cuff,designerDraftRecipe.style.placket,designerDraftRecipe.style.shirtFit,designerDraftRecipe.style.shirtWear].filter(Boolean).join(" · ")}</p></article>
           <article><strong>Trouser · {draftTrouserTypeLabel}</strong><p>{[designerDraftRecipe.style.rise,designerDraftRecipe.style.waistband,designerDraftRecipe.style.break].filter(Boolean).join(" · ")}</p></article>
         </div>
-        <small>Recipe is shown for continuity. The temporary 3D block maps fabric now; construction-specific mesh changes remain a later production-model step.</small>
+        <small>Recipe is shown for continuity. The current production baseline maps fabric now; construction-specific mesh variants will progressively replace the shared base geometry.</small>
       </section>}
 
       <div className="garmentCurrentType"><span>ACTIVE GARMENT</span><b>Shirt</b><small>Types: {SHIRT_GARMENT_CATEGORY.typeExamples.slice(0,6).join(" · ")}</small><small>Details: {SHIRT_GARMENT_CATEGORY.detailFamilies.join(" · ")}</small></div>
@@ -457,7 +457,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         <span><small>VIEWS</small><b>4 fixed + free</b></span>
         <span><small>AI CREDITS</small><b>0</b></span>
       </div>
-      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Approved GLB + physical panel manifest are active. Continue realism and boundary QA before promotion to the customer Designer." : "Next realism step: replace this temporary block mannequin with the approved Linen Earth office-wear body/garment mesh. The panel material, physical-scale and camera architecture remains reusable."}</p>
+      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Approved GLB + physical panel manifest are active. Continue realism and boundary QA before promotion to the customer Designer." : "The parametric officewear baseline is active with curved shirt/trouser geometry, fabric-scale mapping and four-view rotation. Next realism step is the final tailored Blender mesh with higher-fidelity cloth folds and construction-specific variants."}</p>
     </aside>
   </section>;
 }
