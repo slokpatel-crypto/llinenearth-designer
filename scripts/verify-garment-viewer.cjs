@@ -42,13 +42,13 @@ async function verifyViewport(browser, width) {
   const viewer = page.locator("model-viewer");
   await viewer.waitFor({ state: "visible" });
   await page.locator(".garmentViewerLoading").waitFor({ state: "hidden", timeout: 20000 });
-  await page.waitForFunction(() => document.querySelector(".garmentViewerShell")?.getAttribute("data-model-readiness") === "prototype");
+  await page.waitForFunction(() => document.querySelector(".garmentViewerShell")?.getAttribute("data-model-readiness") === "contract_ready", null, { timeout: 30000 });
   const labReadiness = await page.locator(".garmentViewerShell").evaluate((element) => ({
     model: element.getAttribute("data-model-readiness"),
     manifest: element.getAttribute("data-manifest-ready"),
   }));
-  assert.equal(labReadiness.model, "prototype", "default lab must remain on the non-production prototype");
-  assert.equal(labReadiness.manifest, "true", "prototype fallback must not require a production sidecar");
+  assert.equal(labReadiness.model, "contract_ready", "3D lab must load the production M5.2 model contract");
+  assert.equal(labReadiness.manifest, "true", "production M5.2 model must load its verified physical-panel manifest");
 
   const modelState = await viewer.evaluate((element) => {
     const materials = element.model?.materials || [];
@@ -77,7 +77,7 @@ async function verifyViewport(browser, width) {
   assert.match(recipe,/YOUR DESIGNER RECIPE/);
   assert.match(recipe,/Spread Collar/);
   assert.match(recipe,/Pleated Trouser/);
-  assert.match(recipe,/temporary 3D block maps fabric now/i);
+  assert.match(recipe,/current production baseline maps fabric now/i);
 
   const stageScope=await page.locator(".garmentViewerStageHead").innerText();
   assert.match(stageScope,/MODEL IDENTITY LOCKED · SHIRT \+ TROUSER/,"3D stage must state the exact-model lock");
@@ -106,8 +106,11 @@ async function verifyViewport(browser, width) {
   }
 
   await page.waitForTimeout(400);
-  const prototypeLatencyEvidence = await page.evaluate(() => localStorage.getItem("linen-earth-garment-viewer-latency-v1"));
-  assert.equal(prototypeLatencyEvidence, null, "prototype fabric changes must not create production latency evidence");
+  const productionLatencyEvidence = await page.evaluate(() => localStorage.getItem("linen-earth-garment-viewer-latency-v1"));
+  assert.ok(productionLatencyEvidence, "production fabric changes must create model-bound interaction latency evidence");
+  const parsedLatencyEvidence=JSON.parse(productionLatencyEvidence);
+  assert.match(String(parsedLatencyEvidence.assetKey||""),/^LE-OFFICEWEAR-V1:/,"latency evidence must be bound to the production model identity");
+  assert.ok(Array.isArray(parsedLatencyEvidence.samples)&&parsedLatencyEvidence.samples.length>=1,"latency evidence must contain at least one production interaction sample");
   const materialState = await viewer.evaluate((element) => {
     return (element.model?.materials || [])
       .filter((material) => /^(Shirt|Trouser)/.test(material.name))
