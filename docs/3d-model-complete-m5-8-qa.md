@@ -25,3 +25,5 @@ This milestone closes the mannequin/model-identity phase before fabric/drape and
 
 ## Next boundary
 The model identity is frozen after this milestone. The next engineering work is the fabric-on-model/drape system, followed by real tailoring construction variants.
+
+QA rerun includes the final M5.8 identity-lock wording and production framing contract.
