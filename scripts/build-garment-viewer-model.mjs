@@ -18,7 +18,7 @@ const IDENTITY_TARGETS_MM={
   trouserWaistWidth:344,
   handCenterSpacing:500,
   legCenterSpacing:210,
-  hemWidth:64,
+  hemWidth:140,
 };
 const WHITE_PIXEL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFUlEQVR4nGP8////fwYGBgYmBigAAD34BADaOyqcAAAAAElFTkSuQmCC";
 const NEUTRAL_NORMAL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGNsaPj/n4GBgYGJAQoALZkDAqlaHJYAAAAASUVORK5CYII=";
@@ -458,18 +458,18 @@ const trouserWaist=profileGeometry({
 });
 const trouserLeg=profileGeometry({
   rings:[
-    {y:-.492,width:.032,depth:.054,z:.004},
-    {y:-.438,width:.033,depth:.055,z:-.002},
-    {y:-.365,width:.035,depth:.057,z:.003},
-    {y:-.255,width:.040,depth:.061,z:.002},
-    {y:-.105,width:.047,depth:.068,z:.005},
-    {y:.060,width:.056,depth:.075,z:.007},
-    {y:.220,width:.070,depth:.085,z:.005},
-    {y:.365,width:.081,depth:.094,z:.002},
-    {y:.492,width:.087,depth:.100,z:0},
+    {y:-.492,width:.070,depth:.055,z:.010},
+    {y:-.438,width:.070,depth:.056,z:.002},
+    {y:-.365,width:.071,depth:.058,z:.003},
+    {y:-.255,width:.072,depth:.061,z:.002},
+    {y:-.105,width:.073,depth:.066,z:.004},
+    {y:.060,width:.076,depth:.073,z:.006},
+    {y:.220,width:.080,depth:.082,z:.005},
+    {y:.365,width:.084,depth:.090,z:.002},
+    {y:.492,width:.087,depth:.094,z:0},
   ],
-  segments:30,
-  ripple:({theta,v})=>.004*Math.cos(theta*2)*(.35+v*.65)+.002*Math.sin(theta*6+v*3),
+  segments:32,
+  ripple:({theta,v})=>.0035*Math.cos(theta*2)*(.35+v*.65)+.0018*Math.sin(theta*6+v*3),
 });
 const head=profileGeometry({
   rings:[
@@ -641,7 +641,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M5.5 curved waist"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M5.6 straight trouser fall"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -684,7 +684,7 @@ const identityMeasurements={
   trouserWaistWidthMm:.172*2*1000,
   handCenterSpacingMm:.250*2*1000,
   legCenterSpacingMm:.105*2*1000,
-  hemWidthMm:.032*2*1000,
+  hemWidthMm:.070*2*1000,
 };
 assertIdentityMeasurement("height",identityMeasurements.heightMm,IDENTITY_TARGETS_MM.height,4);
 assertIdentityMeasurement("shoulder seam",identityMeasurements.shoulderSeamWidthMm,IDENTITY_TARGETS_MM.shoulderSeamWidth,2);
@@ -726,7 +726,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M5.5 curved shirt/sleeve/waist shells + anatomical hands + Live Designer identity lock; collision body prepared separately",
+    polishStage:"M5.6 curved shirt/sleeve/waist shells + anatomical hands + straight tailored trouser fall + Live Designer identity lock",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   cameraOrbits:{front:"0deg 76deg 2.72m","three-quarter":"35deg 76deg 2.72m",side:"90deg 76deg 2.72m",back:"180deg 76deg 2.72m"},
