@@ -27,3 +27,5 @@ Faceless ivory head, articulated mannequin hands, point collar, cuffs/cuff butto
 The CC0 MakeHuman body source is prepared separately as a non-visible collision source for the next fabric/drape phase. It is deliberately not rendered so the approved Linen Earth visible silhouette remains unchanged.
 
 QA rerun includes the patched source-map-js 1.2.2 dependency and updated M5.2 quality-gate expectations.
+
+Final rerun includes synchronized GarmentViewer tests for the production M5.2 baseline wording.
