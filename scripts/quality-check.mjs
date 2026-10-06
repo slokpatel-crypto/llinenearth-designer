@@ -1555,6 +1555,7 @@ const garmentCategoryLibrary=fs.readFileSync("src/lib/designer/garment-category-
 const futureGarmentOptions=fs.readFileSync("src/lib/designer/future-garment-options.ts","utf8");
 const garmentViewerContract=fs.readFileSync("src/lib/garment-viewer-model-contract.ts","utf8");
 const garmentViewerPrototype=fs.readFileSync("src/lib/garment-viewer-prototype.ts","utf8");
+const garmentViewerModelBuilder=fs.readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
 const garmentViewerGlb=fs.readFileSync("src/lib/garment-viewer-glb.ts","utf8");
 const garmentViewerReadiness=fs.readFileSync("src/lib/garment-viewer-readiness.ts","utf8");
 const garmentViewerOperator=fs.readFileSync("src/app/operator/garment-viewer/page.tsx","utf8");
@@ -1574,7 +1575,7 @@ for(const token of ["blazer.type","blazer.lapel","blazer.vent","blazer.pocket","
 for(const token of ["01 / GARMENT + CLOTH","Choose what you are making, then the fabric.","styleIdentity(direction.baseStyle),fromLegacyStyle(direction.baseStyle),climate","styleIdentity(result.style),fromLegacyStyle(result.style),nextContext.climate","GARMENT_CATEGORY_LIBRARY","newDesignerGarmentScope","garment.status===\"live\"?\"CURRENT\":\"FUTURE\"","aria-label=\"Shirt type\"","aria-label=\"Trouser type\"","changeGarmentType(\"shirt\"","changeGarmentType(\"pant\"","styleSpec.shirt.type","styleSpec.pant.type","PLANNED DETAILS · ","newDesignerOpen3D","href=\"/lab/garment-viewer\"","localStorage.setItem(DRAFT_KEY","detailFamilies.slice(0,5)"]) {
   if(!designerModuleGarmentScope.includes(token)) throw new Error(`Designer garment-scope regression: missing ${token}`);
 }
-for(const token of ["GARMENT_CATEGORY_LIBRARY","GARMENT TYPES · CURRENT + FUTURE","SHIRT_GARMENT_CATEGORY.typeExamples","SHIRT_GARMENT_CATEGORY.detailFamilies","TROUSER_GARMENT_CATEGORY.typeExamples","TROUSER_GARMENT_CATEGORY.detailFamilies","linen-earth:real-designer-draft:v2","YOUR DESIGNER RECIPE","draftShirtTypeLabel","draftTrouserTypeLabel","designerDraftRecipe.styleSpec.shirt.type","designerDraftRecipe.styleSpec.pant.type","setShirtId(parsed.shirtId)","setTrouserId(parsed.pantId)","construction-specific mesh changes remain a later production-model step","GARMENT_PANEL_SPECS","sampler?.setScale","sampler?.setOffset","sampler?.setRotation","modelManifestSrc","assetIdentity","GARMENT_VIEWER_LATENCY_STORAGE_KEY","LINEN_EARTH_MODEL_IDENTITY_ID","LINEN_EARTH_MODEL_REFERENCE_IMAGE","LINEN_EARTH_MODEL_VIEWS","MODEL IDENTITY LOCKED"]) {
+for(const token of ["GARMENT_CATEGORY_LIBRARY","GARMENT TYPES · CURRENT + FUTURE","SHIRT_GARMENT_CATEGORY.typeExamples","SHIRT_GARMENT_CATEGORY.detailFamilies","TROUSER_GARMENT_CATEGORY.typeExamples","TROUSER_GARMENT_CATEGORY.detailFamilies","linen-earth:real-designer-draft:v2","YOUR DESIGNER RECIPE","draftShirtTypeLabel","draftTrouserTypeLabel","designerDraftRecipe.styleSpec.shirt.type","designerDraftRecipe.styleSpec.pant.type","setShirtId(parsed.shirtId)","setTrouserId(parsed.pantId)","Live Designer identity M5.2 is locked","GARMENT_PANEL_SPECS","sampler?.setScale","sampler?.setOffset","sampler?.setRotation","modelManifestSrc","assetIdentity","GARMENT_VIEWER_LATENCY_STORAGE_KEY","LINEN_EARTH_MODEL_IDENTITY_ID","LINEN_EARTH_MODEL_REFERENCE_IMAGE","LINEN_EARTH_MODEL_VIEWS","MODEL IDENTITY LOCKED"]) {
   if(!garmentViewerSource.includes(token)) throw new Error(`GarmentViewer M2 runtime regression: missing ${token}`);
 }
 for(const token of ["LinenEarthExport","REFERENCE_HEIGHT_M = 1.727","ShirtTorsoFabric","TrouserLegRFabric","export_scene.gltf","export_format=\"GLB\"","load_panel_spec","scene_source_provenance","scene_model_identity","write_viewer_manifest","--panel-spec","MODEL_IDENTITY_ID = \"linen-earth-studio-model-v1\"","MODEL_REFERENCE_IMAGE = \"/designer/studio-tucked.webp\""]) {
@@ -1604,6 +1605,9 @@ for(const token of ["linen-earth-garment-viewer-v2","REQUIRED_GARMENT_VIEWER_MAT
 }
 for(const token of ["ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric","TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric"]) {
   if(!garmentViewerPrototype.includes(token)) throw new Error(`GarmentViewer panel contract regression: missing ${token}`);
+}
+for(const token of ["IDENTITY_TARGETS_MM","assertIdentityMeasurement","shoulderSeamWidth:388","shirtWaistWidth:294","trouserWaistWidth:344","handCenterSpacing:500","legCenterSpacing:210","hemWidth:64","makehuman-mannequin-base.glb","prepared-for-drape-engine","visible:false"]) {
+  if(!garmentViewerModelBuilder.includes(token)) throw new Error(`GarmentViewer M5.2 model-polish regression: missing ${token}`);
 }
 for(const token of ["parseGarmentViewerGlbJson","TEXCOORD_0","externalGlbUri","structuralReady"]) {
   if(!garmentViewerGlb.includes(token)) throw new Error(`GarmentViewer GLB inspection regression: missing ${token}`);
