@@ -371,8 +371,26 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         setDesignerDraftRecipe(parsed);
         if(parsed.shirtId&&shirtFabrics.some((fabric)=>fabric.id===parsed.shirtId)) setShirtId(parsed.shirtId);
         if(parsed.pantId&&trouserFabrics.some((fabric)=>fabric.id===parsed.pantId)) setTrouserId(parsed.pantId);
-        if(parsed.styleSpec?.shirt?.type&&styleVariants.shirtTypes.some((item)=>item.id===parsed.styleSpec?.shirt?.type)) setShirtTypeKey(parsed.styleSpec.shirt.type);
-        if(parsed.styleSpec?.pant?.type&&styleVariants.trouserTypes.some((item)=>item.id===parsed.styleSpec?.pant?.type)) setTrouserTypeKey(parsed.styleSpec.pant.type);
+        const savedShirtType=parsed.styleSpec?.shirt?.type;
+        if(savedShirtType&&styleVariants.shirtTypes.some((item)=>item.id===savedShirtType)){
+          setShirtTypeKey(savedShirtType);
+          const preset=styleVariants.shirtTypes.find((item)=>item.id===savedShirtType)?.preset;
+          if(preset){
+            setCollarConstructionKey(preset.collarConstruction);
+            setCuffConstructionKey(preset.cuffConstruction);
+            setYokeKey(preset.yoke);
+            setShirtHemKey(preset.hem);
+          }
+        }
+        const savedTrouserType=parsed.styleSpec?.pant?.type;
+        if(savedTrouserType&&styleVariants.trouserTypes.some((item)=>item.id===savedTrouserType)){
+          setTrouserTypeKey(savedTrouserType);
+          const preset=styleVariants.trouserTypes.find((item)=>item.id===savedTrouserType)?.preset;
+          if(preset){
+            setTrouserHemKey(preset.hem);
+            setTrouserPocketKey(preset.pocket);
+          }
+        }
         setButtonKey(variantIdForLabel(styleVariants.buttons,parsed.style.button,"mother_of_pearl"));
         setShirtFitKey(variantIdForLabel(styleVariants.shirtFits,parsed.style.shirtFit,"regular"));
         setShirtWearKey(variantIdForLabel(styleVariants.shirtWear,parsed.style.shirtWear,"tucked"));
@@ -385,7 +403,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         setRiseKey(variantIdForLabel(styleVariants.rises,parsed.style.rise,"mid"));
         setWaistbandKey(variantIdForLabel(styleVariants.waistbands,parsed.style.waistband,"belt_loops"));
         setBreakKey(variantIdForLabel(styleVariants.breaks,parsed.style.break,"slight"));
-        setPleatKey(normalizedStyleLabel(parsed.style.trouser).includes("pleat")?"single":"flat");
+        setPleatKey(pleatVariantFor(parsed.style.trouser));
       }
     }catch{/* 3D Lab stays usable without Designer browser state. */}
   },[shirtFabrics,trouserFabrics]);
@@ -603,9 +621,13 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     setShirtWearKey(preset.shirtWear);
     setSleeveKey(preset.sleeve);
     setCollarKey(preset.collar);
+    setCollarConstructionKey(preset.collarConstruction);
     setCuffKey(preset.cuff);
+    setCuffConstructionKey(preset.cuffConstruction);
     setPlacketKey(preset.placket);
     setPocketKey(preset.pocket);
+    setYokeKey(preset.yoke);
+    setShirtHemKey(preset.hem);
   }
 
   function applyTrouserTypePreset(id:string){
@@ -617,6 +639,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     setPleatKey(preset.pleat);
     setWaistbandKey(preset.waistband);
     setBreakKey(preset.breakStyle);
+    setTrouserHemKey(preset.hem);
+    setTrouserPocketKey(preset.pocket);
   }
 
   useEffect(()=>{
@@ -629,6 +653,19 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     material.pbrMetallicRoughness.setMetallicFactor(spec.metallic);
     material.pbrMetallicRoughness.setRoughnessFactor(spec.roughness);
   },[modelReady,buttonKey]);
+
+  useEffect(()=>{
+    if(!modelReady) return;
+    const viewer=viewerRef.current;
+    if(!viewer?.model) return;
+    const shirtBase=clamp(roughness+drapeRoughnessOffset(shirt),.55,.98);
+    const collarOffset=collarConstructionKey==="soft_unfused"?.07:collarConstructionKey==="soft_fused"?.035:0;
+    const cuffOffset=cuffConstructionKey==="soft"?.06:0;
+    for(const material of viewer.model.materials){
+      if(material.name===`ShirtCollarVariant__${collarKey}`) material.pbrMetallicRoughness.setRoughnessFactor(clamp(shirtBase+collarOffset,.55,.99));
+      if(material.name===`ShirtCuffVariant__${cuffKey}`) material.pbrMetallicRoughness.setRoughnessFactor(clamp(shirtBase+cuffOffset,.55,.99));
+    }
+  },[modelReady,roughness,shirt,collarKey,collarConstructionKey,cuffKey,cuffConstructionKey]);
 
   function beginFabricInteraction(){
     interactionStartedAt.current=performance.now();
@@ -687,7 +724,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       <div>
         <span className="garmentViewerEyebrow">REAL FABRIC → REUSABLE MODEL</span>
         <h1>Live tailoring + fabric model.</h1>
-        <p>The mannequin identity stays fixed while fabric, shirt fit, tuck, sleeves, collar, cuffs, placket, pocket and trouser silhouette/rise/pleats/waistband/break switch as deterministic 3D construction variants. {shirtFabrics.length} shirt fabrics and {trouserFabrics.length} trouser fabrics use the same live Designer stock.</p>
+        <p>The mannequin identity stays fixed while fabric and real tailoring construction switch independently: shirt type/fit/tuck/sleeves/collar construction/cuffs/placket/pockets/yoke/hem plus trouser type/shape/rise/pleat direction/waistband/break/turn-up/pockets. {shirtFabrics.length} shirt fabrics and {trouserFabrics.length} trouser fabrics use the same live Designer stock.</p>
       </div>
 
       <div className="garmentViewerReference">
