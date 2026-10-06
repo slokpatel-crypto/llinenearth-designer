@@ -289,8 +289,16 @@ async function loadMakeHumanGarmentShells(){
     kind:"sleeve",centerX:.226,yMin:.865,yMax:1.455,outward:.009,
     predicate:(p)=>p.y>=.865&&p.y<=1.455&&p.x>=.145,
   });
+  const handL=buildRegion({
+    kind:"skin",centerX:-.226,yMin:.80,yMax:.91,outward:0,
+    predicate:(p)=>p.y>=.80&&p.y<=.91&&p.x<=-.195,
+  });
+  const handR=buildRegion({
+    kind:"skin",centerX:.226,yMin:.80,yMax:.91,outward:0,
+    predicate:(p)=>p.y>=.80&&p.y<=.91&&p.x>=.195,
+  });
 
-  return {shirtTorso,sleeveL,sleeveR};
+  return {shirtTorso,sleeveL,sleeveR,handL,handR};
 }
 
 function profileGeometry({rings,segments=28,ripple=()=>0}){
@@ -517,9 +525,8 @@ const materialIndex=Object.fromEntries(materials.map((m,i)=>[m.name,i]));
 const assets=[];
 function addMesh(name,geometry,material){assets.push({name,geometry,material});return assets.length-1;}
 const meshHead=addMesh("HeadMesh",head,"MannequinSkin");
-const meshHand=addMesh("HandPalmMesh",hand,"MannequinSkin");
-const meshFinger=addMesh("HandFingerMesh",finger,"MannequinSkin");
-const meshThumb=addMesh("HandThumbMesh",thumb,"MannequinSkin");
+const meshHandL=addMesh("HandLMesh",garmentShells.handL,"MannequinSkin");
+const meshHandR=addMesh("HandRMesh",garmentShells.handR,"MannequinSkin");
 const meshShoe=addMesh("ShoeMesh",shoe,"Shoe");
 const meshShirtTorso=addMesh("ShirtTorsoMesh",garmentShells.shirtTorso,"ShirtTorsoFabric");
 const meshSleeveL=addMesh("ShirtSleeveLMesh",garmentShells.sleeveL,"ShirtSleeveLFabric");
@@ -548,8 +555,8 @@ const nodes=[
   {name:"ShirtTorsoFabric",mesh:meshShirtTorso},
   {name:"ShirtSleeveLFabric",mesh:meshSleeveL},
   {name:"ShirtSleeveRFabric",mesh:meshSleeveR},
-  {name:"HandPalmL",mesh:meshHand,translation:[-.250,.838,.012]},
-  {name:"HandPalmR",mesh:meshHand,translation:[.250,.838,.012]},
+  {name:"HandL",mesh:meshHandL},
+  {name:"HandR",mesh:meshHandR},
   {name:"TrouserWaistFabric",mesh:meshWaist,translation:[0,1.025,0]},
   {name:"TrouserLegLFabric",mesh:meshLegL,translation:[-.105,.555,0]},
   {name:"TrouserLegRFabric",mesh:meshLegR,translation:[.105,.555,0]},
@@ -572,26 +579,6 @@ const nodes=[
   {name:"BeltLoopR1",mesh:meshWaistDetail,translation:[.065,1.092,.109],scale:[.012,.072,.006]},
   {name:"BeltLoopR2",mesh:meshWaistDetail,translation:[.132,1.092,.108],scale:[.013,.072,.006]},
 ];
-for(const side of [-1,1]){
-  const handX=side*.250;
-  const fingerOffsets=[-.017,-.006,.006,.017];
-  const fingerLengthScale=[.90,1.02,1.00,.88];
-  for(let i=0;i<4;i++){
-    nodes.push({
-      name:`Finger${side<0?"L":"R"}${i+1}`,
-      mesh:meshFinger,
-      translation:[handX+fingerOffsets[i],.778,.013],
-      scale:[1,fingerLengthScale[i],1],
-      rotation:qz(side<0?-1.5:1.5),
-    });
-  }
-  nodes.push({
-    name:`Thumb${side<0?"L":"R"}`,
-    mesh:meshThumb,
-    translation:[handX+side*.029,.812,.018],
-    rotation:qz(side<0?34:-34),
-  });
-}
 for(let i=0;i<7;i++) nodes.push({name:`ShirtButton${i+1}`,mesh:meshButton,translation:[0,1.430-i*.055,.119],scale:[.006,.006,.004]});
 nodes.push({name:"TrouserButton",mesh:meshButton,translation:[0,1.100,.113],scale:[.0068,.0068,.0048]});
 nodes.push({name:"CuffButtonL",mesh:meshButton,translation:[-.250,.870,.057],scale:[.0048,.0048,.0035]});
@@ -640,7 +627,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M5.3 curved shirt shells"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M5.4 anatomical hands"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -725,7 +712,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M5.3 curved anatomical shirt shells + Live Designer identity lock; collision body prepared separately",
+    polishStage:"M5.4 curved shirt shells + anatomical hands + Live Designer identity lock; collision body prepared separately",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   cameraOrbits:{front:"0deg 76deg 2.72m","three-quarter":"35deg 76deg 2.72m",side:"90deg 76deg 2.72m",back:"180deg 76deg 2.72m"},
