@@ -154,3 +154,10 @@
   .garmentStyleControlGrid{grid-template-columns:1fr}
   .garmentStyleControls{padding:13px}
 }
+
+.garmentDrapeMeta{
+  color:#7b6b58!important;
+  font-size:9px!important;
+  letter-spacing:.03em;
+  text-transform:capitalize;
+}
