@@ -718,6 +718,8 @@ const button=uvSphereGeometry(6,10);
 
 const garmentMaterials=garmentPanels.map((panel,i)=>({
   name:panel.material,
+  alphaMode:"BLEND",
+  doubleSided:true,
   pbrMetallicRoughness:{baseColorFactor:[1,1,1,1],baseColorTexture:{index:0},metallicFactor:0,roughnessFactor:i<3?.84:.79},
   normalTexture:{index:1,scale:i<3?.34:.29},
 }));
