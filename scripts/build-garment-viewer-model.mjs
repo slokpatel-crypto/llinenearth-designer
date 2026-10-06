@@ -92,9 +92,11 @@ async function loadMakeHumanBodyGeometry(){
   const indexData=readAccessorValues(source,binary,primitive.indices);
   if(positions.components!==3||normals.components!==3||indexData.components!==1) throw new Error("Unexpected MakeHuman body accessor layout.");
 
-  const sx=.87;
+  // Slightly inset the anatomical source under the tailored shells so skin never clips through cloth.
+  // The transformed hand centres still land almost exactly on the Live Designer reference.
+  const sx=.84;
   const sy=(REFERENCE_HEIGHT_MM/1000)/1.7;
-  const sz=.68;
+  const sz=.64;
   const sourceYMin=.10;
   const sourceYMax=1.44;
   const remap=new Map();
