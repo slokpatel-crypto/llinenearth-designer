@@ -1,4 +1,5 @@
 import { optionsFor } from "./options/library.ts";
+import styleVariants from "../garment-viewer-style-variants.json" with { type:"json" };
 import { futureGarmentOptionsFor } from "./future-garment-options.ts";
 
 export type GarmentCategoryStatus="live"|"planned";
@@ -13,8 +14,8 @@ export type GarmentCategoryDefinition={
   detailFamilies:string[];
 };
 
-const shirtTypeExamples=optionsFor("shirt.type").map((option)=>option.label);
-const trouserTypeExamples=optionsFor("pant.type").map((option)=>option.label);
+const shirtTypeExamples=styleVariants.shirtTypes.map((option)=>option.label);
+const trouserTypeExamples=styleVariants.trouserTypes.map((option)=>option.label);
 const blazerTypeExamples=futureGarmentOptionsFor("blazer.type").map((option)=>option.label);
 const suitTypeExamples=futureGarmentOptionsFor("suit.type").map((option)=>option.label);
 
@@ -23,19 +24,19 @@ export const GARMENT_CATEGORY_LIBRARY:GarmentCategoryDefinition[]=[
     id:"shirt",
     label:"Shirt",
     status:"live",
-    stageLabel:"3D foundation live",
-    description:"Fabric is mapped now. Construction controls stay owned by Designer until the production shirt mesh can express them exactly.",
+    stageLabel:"3D tailoring variants live",
+    description:"The locked mannequin now carries researched shirt construction variants while fabric remains independently mapped at physical panel scale.",
     typeExamples:shirtTypeExamples,
-    detailFamilies:["Collar","Cuff","Placket","Fit","Sleeve","Pocket","Buttons"],
+    detailFamilies:["Type","Fit","Tuck","Sleeve","Collar","Collar build","Cuff","Cuff build","Placket","Pocket","Yoke","Hem","Buttons"],
   },
   {
     id:"trouser",
     label:"Trouser",
     status:"live",
-    stageLabel:"3D foundation live",
-    description:"Fabric is mapped now. Trouser construction will progressively move from preview rules into the production 3D garment block.",
+    stageLabel:"3D tailoring variants live",
+    description:"Trouser silhouette, rise, pleat direction, waistband, break, turn-up and pocket construction now switch on the same locked model.",
     typeExamples:trouserTypeExamples,
-    detailFamilies:["Rise","Pleats","Leg shape","Waistband","Break","Pocket","Fit"],
+    detailFamilies:["Type","Fit","Rise","Pleats","Pleat direction","Waistband","Break","Hem / turn-up","Pockets"],
   },
   {
     id:"blazer",
