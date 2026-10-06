@@ -353,6 +353,10 @@ const thumb=profileGeometry({
   segments:16,
 });
 const mannequinBody=await loadMakeHumanBodyGeometry();
+const mannequinBodyStats={
+  vertices:mannequinBody.positions.length/3,
+  triangles:mannequinBody.indices.length/3,
+};
 const shoe=uvSphereGeometry(10,20);
 const collar=collarPointGeometry();
 const detailBox=boxGeometry();
@@ -373,7 +377,6 @@ const materialIndex=Object.fromEntries(materials.map((m,i)=>[m.name,i]));
 
 const assets=[];
 function addMesh(name,geometry,material){assets.push({name,geometry,material});return assets.length-1;}
-const meshBody=addMesh("MakeHumanBodyMesh",mannequinBody,"MannequinSkin");
 const meshHead=addMesh("HeadMesh",head,"MannequinSkin");
 const meshHand=addMesh("HandPalmMesh",hand,"MannequinSkin");
 const meshFinger=addMesh("HandFingerMesh",finger,"MannequinSkin");
@@ -398,8 +401,8 @@ const meshShoeDetail=addMesh("ShoeDetailMesh",detailBox,"Shoe");
 
 const qz=(deg)=>{const r=deg*Math.PI/180/2;return [0,0,Math.sin(r),Math.cos(r)];};
 const nodes=[
-  // CC0 anatomical body sits under the garments; the customer-facing head remains the locked faceless studio identity.
-  {name:"MannequinBody",mesh:meshBody},
+  // The CC0 anatomical body is prepared as the next cloth-collision source but intentionally not rendered:
+  // the visible mannequin stays locked to the exact Linen Earth studio silhouette without skin/garment clipping.
   // 1727 mm canonical Live Designer mannequin: slim shoulders, long legs, relaxed straight stance.
   {name:"Head",mesh:meshHead,translation:[0,1.620,.004]},
   {name:"Neck",mesh:meshHead,translation:[0,1.500,.001],scale:[.63,.58,.62]},
@@ -539,6 +542,14 @@ const manifest={
     licenseUrl:"https://creativecommons.org/publicdomain/zero/1.0/"
   },
   panels:Object.fromEntries(garmentPanels.map(p=>[p.material,{widthMm:p.widthMm,heightMm:p.heightMm,offsetU:p.offsetU,offsetV:p.offsetV,rotationDeg:p.rotationDeg}])),
+  collisionSource:{
+    path:"assets/3d/makehuman-mannequin-base.glb",
+    source:"MakeHuman CC0",
+    visible:false,
+    status:"prepared-for-drape-engine",
+    vertices:mannequinBodyStats.vertices,
+    triangles:mannequinBodyStats.triangles
+  },
   identityMeasurements:{
     targetHeightMm:1727,
     targetShoulderSeamWidthMm:388,
@@ -548,7 +559,7 @@ const manifest={
     targetHandCenterSpacingMm:500,
     targetLegCenterSpacingMm:210,
     targetHemWidthMm:64,
-    polishStage:"M5.1 anatomical underbody + Live Designer visible identity polish complete",
+    polishStage:"M5.2 Live Designer visible model polished; anatomical collision body prepared separately",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   cameraOrbits:{front:"0deg 76deg 2.72m","three-quarter":"35deg 76deg 2.72m",side:"90deg 76deg 2.72m",back:"180deg 76deg 2.72m"},
