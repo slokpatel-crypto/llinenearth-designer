@@ -1,5 +1,6 @@
 import reference from "../reference-data.json" with { type: "json" };
 import type { GarmentOption, GarmentOptionGroup } from "./types.ts";
+import styleVariants from "../../garment-viewer-style-variants.json" with { type:"json" };
 
 type Row=Record<string,unknown>;
 const sheets=reference.sheets as unknown as Record<string,Row[]>;
@@ -185,7 +186,42 @@ const newOptions:GarmentOption[]=[
   provisional({id:"stacked_break",group:"pant.break",label:"Stacked Break",description:"Extra length creates deliberate stacking over footwear.",formality:1,climateTags:["all"],parameters:{lengthDeltaCm:4}}),
 ];
 
-export const GARMENT_OPTION_LIBRARY:readonly GarmentOption[]=[...referenceOptions,...newOptions];
+const seededOptions=[...referenceOptions,...newOptions];
+function researchedTypeFormality(id:string,garment:"shirt"|"pant"):1|2|3|4|5 {
+  if(garment==="shirt"){
+    if(id==="tuxedo") return 5;
+    if(["dress_shirt","business_spread"].includes(id)) return 4;
+    if(["ocbd","band_collar_shirt"].includes(id)) return 3;
+    if(["casual_shirt","popover","overshirt","western","safari"].includes(id)) return 2;
+    return 1;
+  }
+  if(["formal_flat_front","bespoke_side_adjuster","double_pleat_high_rise"].includes(id)) return 4;
+  if(["gurkha","wide_leg_relaxed_drape","chino"].includes(id)) return 3;
+  if(["cropped_ankle","linen_drawstring","jean_cut_suiting","korean_tapered"].includes(id)) return 2;
+  return 1;
+}
+const researchedTypeOptions:GarmentOption[]=[
+  ...styleVariants.shirtTypes
+    .filter((item)=>!seededOptions.some((existing)=>existing.group==="shirt.type"&&(existing.id===item.id||existing.label===item.label)))
+    .map((item)=>provisional({
+      id:item.id,group:"shirt.type",label:item.label,
+      description:`Research-normalized shirt family; preset ${item.id.replaceAll("_"," ")} drives the deterministic 3D tailoring matrix.`,
+      formality:researchedTypeFormality(item.id,"shirt"),climateTags:["all"],
+      parameters:{presetId:item.id},
+      renderSupport:{livePreview:"approximate",aiRender:"approximate"},
+    })),
+  ...styleVariants.trouserTypes
+    .filter((item)=>!seededOptions.some((existing)=>existing.group==="pant.type"&&(existing.id===item.id||existing.label===item.label)))
+    .map((item)=>provisional({
+      id:item.id,group:"pant.type",label:item.label,
+      description:`Research-normalized trouser family; preset ${item.id.replaceAll("_"," ")} drives the deterministic 3D tailoring matrix.`,
+      formality:researchedTypeFormality(item.id,"pant"),climateTags:["all"],
+      parameters:{presetId:item.id},
+      renderSupport:{livePreview:"approximate",aiRender:"approximate"},
+    })),
+];
+
+export const GARMENT_OPTION_LIBRARY:readonly GarmentOption[]=[...seededOptions,...researchedTypeOptions];
 
 export function optionsFor(group:GarmentOptionGroup) {
   return GARMENT_OPTION_LIBRARY.filter((option)=>option.group===group);
