@@ -12,6 +12,7 @@ import { GARMENT_VIEWER_LATENCY_STORAGE_KEY, garmentViewerAssetIdentityKey, type
 import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
 import { optionById } from "@/lib/designer/options/library";
 import { LINEN_EARTH_MODEL_IDENTITY_ID, LINEN_EARTH_MODEL_REFERENCE_IMAGE, LINEN_EARTH_MODEL_VIEWS } from "@/lib/designer/model-identity";
+import styleVariants from "@/lib/garment-viewer-style-variants.json";
 
 export type GarmentViewerFabric = {
   id:string;
@@ -65,6 +66,8 @@ type DesignerDraftRecipe={
     placket?:string;
     shirtFit?:string;
     shirtWear?:string;
+    sleeve?:string;
+    pocket?:string;
     trouser?:string;
     rise?:string;
     waistband?:string;
@@ -117,6 +120,89 @@ function preferredFabricId(fabrics:GarmentViewerFabric[],ids:string[]) {
   return fabrics[0]?.id || "";
 }
 
+type StyleVariantState={
+  shirtFit:string;
+  shirtWear:string;
+  sleeve:string;
+  collar:string;
+  cuff:string;
+  placket:string;
+  pocket:string;
+  trouserFit:string;
+  rise:string;
+  pleat:string;
+  waistband:string;
+  breakStyle:string;
+};
+
+function normalizedStyleLabel(value:string|undefined) {
+  return String(value||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+}
+function variantIdForLabel(items:ReadonlyArray<{id:string;label:string}>,label:string|undefined,fallback:string) {
+  const target=normalizedStyleLabel(label);
+  if(!target) return fallback;
+  const exact=items.find((item)=>normalizedStyleLabel(item.label)===target);
+  if(exact) return exact.id;
+  const byWords=items.find((item)=>{
+    const candidate=normalizedStyleLabel(item.label);
+    return candidate.includes(target)||target.includes(candidate);
+  });
+  return byWords?.id||fallback;
+}
+function collarVariantFor(label:string|undefined) {
+  const value=normalizedStyleLabel(label);
+  if(value.includes("cutaway")) return "cutaway";
+  if(value.includes("spread")) return "spread";
+  if(value.includes("button down")) return "button_down";
+  if(value.includes("mandarin")||value.includes("band collar")) return "mandarin";
+  if(value.includes("camp")||value.includes("cuban")) return "camp";
+  return "point";
+}
+function cuffVariantFor(label:string|undefined) {
+  const value=normalizedStyleLabel(label);
+  if(value.includes("french")||value.includes("double")) return "french";
+  if(value.includes("2 button")) return "barrel_2";
+  if(value.includes("rounded")||value.includes("soft")) return "rounded";
+  if(value.includes("cocktail")) return "cocktail";
+  return "barrel_1";
+}
+function trouserFitVariantFor(recipe:DesignerDraftRecipe|null) {
+  const type=normalizedStyleLabel(recipe?.styleSpec?.pant?.type);
+  const label=normalizedStyleLabel(recipe?.style?.trouser);
+  const value=`${type} ${label}`;
+  if(value.includes("baggy")) return "baggy";
+  if(value.includes("wide")||value.includes("korean straight")) return "wide";
+  if(value.includes("taper")) return "tapered";
+  if(value.includes("slim")) return "slim";
+  return "straight";
+}
+function setMaterialAlpha(material:Material|null|undefined,visible:boolean) {
+  material?.pbrMetallicRoughness.setBaseColorFactor([1,1,1,visible?1:0]);
+}
+function isGarmentVariantMaterial(name:string) {
+  return name.startsWith("Shirt")||name.startsWith("Trouser");
+}
+function variantMaterialVisible(name:string,state:StyleVariantState) {
+  if(name==="ShirtTorsoFabric") return state.shirtFit==="regular";
+  if(name==="ShirtSleeveLFabric"||name==="ShirtSleeveRFabric") return state.shirtFit==="regular"&&state.sleeve==="full";
+  if(name==="TrouserWaistFabric") return state.rise==="mid";
+  if(name==="TrouserLegLFabric"||name==="TrouserLegRFabric") return state.trouserFit==="straight";
+  if(name.startsWith("ShirtTorsoVariant__")) return name.endsWith(`__${state.shirtFit}`);
+  if(name.startsWith("ShirtSleeveLVariant__")||name.startsWith("ShirtSleeveRVariant__")) return state.sleeve==="full"&&name.endsWith(`__${state.shirtFit}`);
+  if(name.startsWith("ShirtHemVariant__")) return state.shirtWear==="untucked"&&name.endsWith(`__${state.shirtFit}`);
+  if(name.startsWith("ShirtSleeveLLength__")||name.startsWith("ShirtSleeveRLength__")) return state.sleeve!=="full"&&name.endsWith(`__${state.sleeve}`);
+  if(name.startsWith("ShirtCollarVariant__")) return name.endsWith(`__${state.collar}`);
+  if(name.startsWith("ShirtCuffVariant__")) return state.sleeve==="full"&&name.endsWith(`__${state.cuff}`);
+  if(name.startsWith("ShirtPlacketVariant__")) return state.placket!=="french"&&name.endsWith(`__${state.placket}`);
+  if(name.startsWith("ShirtPocketVariant__")) return state.pocket!=="none"&&name.endsWith(`__${state.pocket}`);
+  if(name.startsWith("TrouserLegLVariant__")||name.startsWith("TrouserLegRVariant__")) return name.endsWith(`__${state.trouserFit}`);
+  if(name.startsWith("TrouserWaistVariant__")) return state.rise!=="mid"&&name.endsWith(`__${state.rise}`);
+  if(name.startsWith("TrouserWaistbandVariant__")) return state.waistband!=="clean"&&name.endsWith(`__${state.waistband}`);
+  if(name.startsWith("TrouserPleatVariant__")) return state.pleat!=="flat"&&name.endsWith(`__${state.pleat}`);
+  if(name.startsWith("TrouserBreakVariant__")) return state.breakStyle!=="slight"&&name.endsWith(`__${state.breakStyle}`);
+  return true;
+}
+
 function measuredTileWidth(
   manifest:FabricTileManifest,
   runtimeScale:Record<string,ViewerRuntimeRenderScale>,
@@ -164,6 +250,18 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const [shirtManualTileMm,setShirtManualTileMm]=useState(120);
   const [trouserManualTileMm,setTrouserManualTileMm]=useState(120);
   const [roughness,setRoughness]=useState(.84);
+  const [shirtFitKey,setShirtFitKey]=useState("regular");
+  const [shirtWearKey,setShirtWearKey]=useState("tucked");
+  const [sleeveKey,setSleeveKey]=useState("full");
+  const [collarKey,setCollarKey]=useState("point");
+  const [cuffKey,setCuffKey]=useState("barrel_1");
+  const [placketKey,setPlacketKey]=useState("standard");
+  const [pocketKey,setPocketKey]=useState("none");
+  const [trouserFitKey,setTrouserFitKey]=useState("straight");
+  const [riseKey,setRiseKey]=useState("mid");
+  const [pleatKey,setPleatKey]=useState("flat");
+  const [waistbandKey,setWaistbandKey]=useState("belt_loops");
+  const [breakKey,setBreakKey]=useState("slight");
   const [designerDraftRecipe,setDesignerDraftRecipe]=useState<DesignerDraftRecipe|null>(null);
   const draftShirtTypeLabel=designerDraftRecipe?.styleSpec?.shirt?.type ? optionById(designerDraftRecipe.styleSpec.shirt.type)?.label || designerDraftRecipe.styleSpec.shirt.type.replaceAll("_"," ") : "Shirt type not saved";
   const draftTrouserTypeLabel=designerDraftRecipe?.styleSpec?.pant?.type ? optionById(designerDraftRecipe.styleSpec.pant.type)?.label || designerDraftRecipe.styleSpec.pant.type.replaceAll("_"," ") : designerDraftRecipe?.style?.trouser || "Trouser type not saved";
@@ -184,6 +282,20 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     ...view,
     orbit:modelManifest?.cameraOrbits?.[view.id] || view.orbit,
   })),[modelManifest]);
+  const styleState=useMemo<StyleVariantState>(()=>({
+    shirtFit:shirtFitKey,
+    shirtWear:shirtWearKey,
+    sleeve:sleeveKey,
+    collar:collarKey,
+    cuff:cuffKey,
+    placket:placketKey,
+    pocket:pocketKey,
+    trouserFit:trouserFitKey,
+    rise:riseKey,
+    pleat:pleatKey,
+    waistband:waistbandKey,
+    breakStyle:breakKey,
+  }),[shirtFitKey,shirtWearKey,sleeveKey,collarKey,cuffKey,placketKey,pocketKey,trouserFitKey,riseKey,pleatKey,waistbandKey,breakKey]);
 
   useEffect(()=>{
     try{
@@ -193,6 +305,18 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         setDesignerDraftRecipe(parsed);
         if(parsed.shirtId&&shirtFabrics.some((fabric)=>fabric.id===parsed.shirtId)) setShirtId(parsed.shirtId);
         if(parsed.pantId&&trouserFabrics.some((fabric)=>fabric.id===parsed.pantId)) setTrouserId(parsed.pantId);
+        setShirtFitKey(variantIdForLabel(styleVariants.shirtFits,parsed.style.shirtFit,"regular"));
+        setShirtWearKey(variantIdForLabel(styleVariants.shirtWear,parsed.style.shirtWear,"tucked"));
+        setSleeveKey(variantIdForLabel(styleVariants.sleeves,parsed.style.sleeve,"full"));
+        setCollarKey(collarVariantFor(parsed.style.collar));
+        setCuffKey(cuffVariantFor(parsed.style.cuff));
+        setPlacketKey(variantIdForLabel(styleVariants.plackets,parsed.style.placket,"standard"));
+        setPocketKey(variantIdForLabel(styleVariants.pockets,parsed.style.pocket,"none"));
+        setTrouserFitKey(trouserFitVariantFor(parsed));
+        setRiseKey(variantIdForLabel(styleVariants.rises,parsed.style.rise,"mid"));
+        setWaistbandKey(variantIdForLabel(styleVariants.waistbands,parsed.style.waistband,"belt_loops"));
+        setBreakKey(variantIdForLabel(styleVariants.breaks,parsed.style.break,"slight"));
+        setPleatKey(normalizedStyleLabel(parsed.style.trouser).includes("pleat")?"single":"flat");
       }
     }catch{/* 3D Lab stays usable without Designer browser state. */}
   },[shirtFabrics,trouserFabrics]);
@@ -331,10 +455,23 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         for(const entry of prepared){
           const material=materialByName(viewer,entry.panel.material);
           if(!material) continue;
-          material.pbrMetallicRoughness.setBaseColorFactor("#ffffff");
+          material.pbrMetallicRoughness.setBaseColorFactor([1,1,1,1]);
           material.pbrMetallicRoughness.setMetallicFactor(0);
           material.pbrMetallicRoughness.baseColorTexture?.setTexture(entry.texture);
           if(entry.normal) material.normalTexture?.setTexture(entry.normal);
+        }
+        const shirtSource=prepared.find((entry)=>entry.panel.material==="ShirtTorsoFabric");
+        const trouserSource=prepared.find((entry)=>entry.panel.material==="TrouserWaistFabric");
+        for(const material of viewer.model?.materials||[]){
+          if(!material.name.includes("Variant__")&&!material.name.includes("Length__")) continue;
+          const source=material.name.startsWith("Shirt")?shirtSource:trouserSource;
+          if(!source) continue;
+          material.pbrMetallicRoughness.setMetallicFactor(0);
+          material.pbrMetallicRoughness.baseColorTexture?.setTexture(source.texture);
+          if(source.normal) material.normalTexture?.setTexture(source.normal);
+        }
+        for(const material of viewer.model?.materials||[]){
+          if(isGarmentVariantMaterial(material.name)) setMaterialAlpha(material,variantMaterialVisible(material.name,styleState));
         }
         if(interactionStartedAt.current!==null && modelSrc && assetIdentityKey && modelContract?.readiness==="contract_ready"){
           const duration=performance.now()-interactionStartedAt.current;
@@ -360,17 +497,25 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       }
     };
     void apply();
-  },[modelReady,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract,modelSrc,assetIdentityKey]);
+  },[modelReady,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract,modelSrc,assetIdentityKey,styleState]);
 
   useEffect(()=>{
     if(!modelReady) return;
     const viewer=viewerRef.current;
     if(!viewer) return;
-    for(const panel of panelSpecs){
-      const material=materialByName(viewer,panel.material);
-      material?.pbrMetallicRoughness.setRoughnessFactor(roughness);
+    for(const material of viewer.model?.materials||[]){
+      if(isGarmentVariantMaterial(material.name)) material.pbrMetallicRoughness.setRoughnessFactor(roughness);
     }
-  },[modelReady,roughness,panelSpecs]);
+  },[modelReady,roughness]);
+
+  useEffect(()=>{
+    if(!modelReady) return;
+    const viewer=viewerRef.current;
+    if(!viewer?.model) return;
+    for(const material of viewer.model.materials){
+      if(isGarmentVariantMaterial(material.name)) setMaterialAlpha(material,variantMaterialVisible(material.name,styleState));
+    }
+  },[modelReady,styleState]);
 
   function beginFabricInteraction(){
     interactionStartedAt.current=performance.now();
@@ -428,8 +573,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     <aside className="garmentViewerControls">
       <div>
         <span className="garmentViewerEyebrow">REAL FABRIC → REUSABLE MODEL</span>
-        <h1>3D fabric mapping proof.</h1>
-        <p>The same geometry stays fixed while the current live Designer fabric library replaces each shirt and trouser panel material. {shirtFabrics.length} shirt fabrics and {trouserFabrics.length} trouser fabrics use the same active stock source as Designer. Calibrated tile widths are applied panel-by-panel when physical scale exists.</p>
+        <h1>Live tailoring + fabric model.</h1>
+        <p>The mannequin identity stays fixed while fabric, shirt fit, tuck, sleeves, collar, cuffs, placket, pocket and trouser silhouette/rise/pleats/waistband/break switch as deterministic 3D construction variants. {shirtFabrics.length} shirt fabrics and {trouserFabrics.length} trouser fabrics use the same live Designer stock.</p>
       </div>
 
       <div className="garmentViewerReference">
@@ -456,8 +601,30 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           <article><strong>Shirt · {draftShirtTypeLabel}</strong><p>{[designerDraftRecipe.style.collar,designerDraftRecipe.style.cuff,designerDraftRecipe.style.placket,designerDraftRecipe.style.shirtFit,designerDraftRecipe.style.shirtWear].filter(Boolean).join(" · ")}</p></article>
           <article><strong>Trouser · {draftTrouserTypeLabel}</strong><p>{[designerDraftRecipe.style.rise,designerDraftRecipe.style.waistband,designerDraftRecipe.style.break].filter(Boolean).join(" · ")}</p></article>
         </div>
-        <small>Recipe is shown for continuity. The current production baseline maps fabric now; construction-specific mesh variants will progressively replace the shared base geometry.</small>
+        <small>The saved Designer recipe now drives the same 3D tailoring-variant system; you can refine it below without changing the locked mannequin identity.</small>
       </section>}
+
+      <section className="garmentStyleControls" aria-label="Live tailoring variations">
+        <div className="garmentTypeLibraryHead"><span>LIVE TAILORING VARIATIONS</span><b>Geometry-backed · same locked mannequin</b></div>
+        <div className="garmentStyleControlGrid">
+          <label><span>Shirt fit</span><select aria-label="3D shirt fit" value={shirtFitKey} onChange={(e)=>setShirtFitKey(e.target.value)}>{styleVariants.shirtFits.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+          <label><span>Wear</span><select aria-label="3D shirt wear" value={shirtWearKey} onChange={(e)=>setShirtWearKey(e.target.value)}>{styleVariants.shirtWear.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+          <label><span>Sleeve</span><select aria-label="3D sleeve" value={sleeveKey} onChange={(e)=>setSleeveKey(e.target.value)}>{styleVariants.sleeves.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+          <label><span>Collar</span><select aria-label="3D collar" value={collarKey} onChange={(e)=>setCollarKey(e.target.value)}>{styleVariants.collars.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+          <label><span>Cuff</span><select aria-label="3D cuff" value={cuffKey} onChange={(e)=>setCuffKey(e.target.value)}>{styleVariants.cuffs.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+          <label><span>Placket</span><select aria-label="3D placket" value={placketKey} onChange={(e)=>setPlacketKey(e.target.value)}>{styleVariants.plackets.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+          <label><span>Pocket</span><select aria-label="3D pocket" value={pocketKey} onChange={(e)=>setPocketKey(e.target.value)}>{styleVariants.pockets.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+          <label><span>Trouser shape</span><select aria-label="3D trouser fit" value={trouserFitKey} onChange={(e)=>setTrouserFitKey(e.target.value)}>{styleVariants.trouserFits.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+          <label><span>Rise</span><select aria-label="3D trouser rise" value={riseKey} onChange={(e)=>setRiseKey(e.target.value)}>{styleVariants.rises.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+          <label><span>Pleat</span><select aria-label="3D trouser pleat" value={pleatKey} onChange={(e)=>setPleatKey(e.target.value)}>{styleVariants.pleats.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+          <label><span>Waistband</span><select aria-label="3D trouser waistband" value={waistbandKey} onChange={(e)=>setWaistbandKey(e.target.value)}>{styleVariants.waistbands.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+          <label><span>Break</span><select aria-label="3D trouser break" value={breakKey} onChange={(e)=>setBreakKey(e.target.value)}>{styleVariants.breaks.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+        </div>
+        <div className="garmentStyleLiveSummary">
+          <span><b>SHIRT</b>{styleVariants.shirtFits.find((x)=>x.id===shirtFitKey)?.label} · {styleVariants.collars.find((x)=>x.id===collarKey)?.label} · {styleVariants.shirtWear.find((x)=>x.id===shirtWearKey)?.label}</span>
+          <span><b>TROUSER</b>{styleVariants.trouserFits.find((x)=>x.id===trouserFitKey)?.label} · {styleVariants.rises.find((x)=>x.id===riseKey)?.label} · {styleVariants.breaks.find((x)=>x.id===breakKey)?.label}</span>
+        </div>
+      </section>
 
       <div className="garmentCurrentType"><span>ACTIVE GARMENT</span><b>Shirt</b><small>Types: {SHIRT_GARMENT_CATEGORY.typeExamples.slice(0,6).join(" · ")}</small><small>Details: {SHIRT_GARMENT_CATEGORY.detailFamilies.join(" · ")}</small></div>
       <label><span>Shirt fabric</span><select value={shirtId} onChange={(event)=>{beginFabricInteraction();setShirtId(event.target.value);}}>{shirtFabrics.map((fabric)=><option key={fabric.id} value={fabric.id}>{fabric.name} · {fabric.line}</option>)}</select></label>
@@ -472,12 +639,12 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       <label className="garmentRange"><span>Surface roughness <b>{roughness.toFixed(2)}</b></span><input type="range" min=".55" max=".98" step=".01" value={roughness} onChange={(event)=>setRoughness(Number(event.target.value))}/><small>Linen stays non-metallic; roughness controls how dry or polished the preview PBR surface reads.</small></label>
 
       <div className="garmentViewerFacts">
-        <span><small>MODEL</small><b>{modelContract?.readiness==="contract_ready"&&productionManifestReady?"Production contract":"Reusable GLB"}</b></span>
-        <span><small>FABRIC</small><b>Panel-scaled PBR</b></span>
+        <span><small>MODEL</small><b>{modelContract?.readiness==="contract_ready"&&productionManifestReady?"M7 Tailoring GLB":"Reusable GLB"}</b></span>
+        <span><small>FABRIC</small><b>Panel-scaled PBR + variants</b></span>
         <span><small>VIEWS</small><b>4 fixed + free</b></span>
         <span><small>AI CREDITS</small><b>0</b></span>
       </div>
-      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M5.8 is locked and model-complete: smooth tailored shirt/sleeve/trouser-waist shells, anatomical mannequin hands, exact reference taper, refined white footwear and consistent full head-to-shoe framing across Front / 3/4 / Side / Back. The faceless ivory head, collar/cuffs and tucked officewear identity are locked; future work now belongs to fabric/drape and tailoring variants, not mannequin identity." : "Fallback prototype is active. Production should use the identity-locked M5.8 officewear model before fabric/drape work continues."}</p>
+      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M7 is locked: the same mannequin now carries live geometry-backed tailoring variants for shirt fit, tucked/untucked wear, sleeve length, collar, cuff, placket, pocket and trouser fit/rise/pleat/waistband/break. Fabric remains panel-scaled and non-metallic; the next refinement layer is fabric-specific drape response, not another model identity." : "Fallback prototype is active. Production should use the identity-locked M7 tailoring model before fabric/drape work continues."}</p>
     </aside>
   </section>;
 }
