@@ -237,11 +237,42 @@ async function loadMakeHumanGarmentShells(){
     [1.440,.194],
     [1.470,.132],
   ];
+  const torsoDepthEnvelope=[
+    [1.060,.100],
+    [1.180,.108],
+    [1.255,.114],
+    [1.335,.119],
+    [1.400,.116],
+    [1.440,.108],
+    [1.470,.086],
+  ];
+  const sleeveWidthEnvelope=[
+    [.865,.041],
+    [.970,.043],
+    [1.080,.047],
+    [1.200,.051],
+    [1.330,.056],
+    [1.455,.061],
+  ];
+  const sleeveDepthEnvelope=[
+    [.865,.050],
+    [.970,.052],
+    [1.080,.055],
+    [1.200,.059],
+    [1.330,.064],
+    [1.455,.070],
+  ];
   const trouserWaistEnvelope=[
     [.940,.158],
     [.980,.166],
     [1.040,.172],
     [1.100,.170],
+  ];
+  const trouserWaistDepthEnvelope=[
+    [.940,.084],
+    [.980,.088],
+    [1.040,.090],
+    [1.100,.086],
   ];
 
   function buildRegion({predicate,centerX=0,yMin,yMax,outward=.008,kind}){
@@ -254,15 +285,26 @@ async function loadMakeHumanGarmentShells(){
       let {x,y,z,nx,ny,nz}=point;
       if(kind==="torso"){
         const targetHalf=lerpEnvelope(torsoEnvelope,y);
-        x=Math.max(-targetHalf,Math.min(targetHalf,x*1.08));
-        z=z*.90;
+        const targetDepth=lerpEnvelope(torsoDepthEnvelope,y);
+        const theta=Math.atan2(z,x);
+        x=Math.cos(theta)*targetHalf;
+        z=Math.sin(theta)*targetDepth+(Math.sin(theta)>.15?.004:0);
       }else if(kind==="sleeve"){
-        x=centerX+(x-centerX)*1.08;
-        z=z*.96+.012;
+        const targetHalf=lerpEnvelope(sleeveWidthEnvelope,y);
+        const targetDepth=lerpEnvelope(sleeveDepthEnvelope,y);
+        const t=Math.max(0,Math.min(1,(y-.865)/(1.455-.865)));
+        const side=Math.sign(centerX)||1;
+        const sleeveCenterX=centerX+side*.006*(t-.45);
+        const sleeveCenterZ=.024+.010*t;
+        const theta=Math.atan2(z-sleeveCenterZ,x-sleeveCenterX);
+        x=sleeveCenterX+Math.cos(theta)*targetHalf;
+        z=sleeveCenterZ+Math.sin(theta)*targetDepth;
       }else if(kind==="waist"){
         const targetHalf=lerpEnvelope(trouserWaistEnvelope,y);
-        x=Math.max(-targetHalf,Math.min(targetHalf,x*1.02));
-        z=Math.max(-.088,Math.min(.092,z*.76+.006));
+        const targetDepth=lerpEnvelope(trouserWaistDepthEnvelope,y);
+        const theta=Math.atan2(z-.005,x);
+        x=Math.cos(theta)*targetHalf;
+        z=.005+Math.sin(theta)*targetDepth;
       }
       x+=nx*outward;
       y+=ny*outward*.55;
@@ -288,15 +330,15 @@ async function loadMakeHumanGarmentShells(){
   }
 
   const shirtTorso=buildRegion({
-    kind:"torso",centerX:0,yMin:1.055,yMax:1.47,outward:.010,
+    kind:"torso",centerX:0,yMin:1.055,yMax:1.47,outward:.003,
     predicate:(p)=>p.y>=1.055&&p.y<=1.47&&(Math.abs(p.x)<=.18||(p.y>=1.30&&Math.abs(p.x)<=.205)),
   });
   const sleeveL=buildRegion({
-    kind:"sleeve",centerX:-.226,yMin:.865,yMax:1.455,outward:.009,
+    kind:"sleeve",centerX:-.226,yMin:.865,yMax:1.455,outward:.003,
     predicate:(p)=>p.y>=.865&&p.y<=1.455&&p.x<=-.145,
   });
   const sleeveR=buildRegion({
-    kind:"sleeve",centerX:.226,yMin:.865,yMax:1.455,outward:.009,
+    kind:"sleeve",centerX:.226,yMin:.865,yMax:1.455,outward:.003,
     predicate:(p)=>p.y>=.865&&p.y<=1.455&&p.x>=.145,
   });
   const handL=buildRegion({
@@ -308,7 +350,7 @@ async function loadMakeHumanGarmentShells(){
     predicate:(p)=>p.y>=.80&&p.y<=.91&&p.x>=.195,
   });
   const trouserWaist=buildRegion({
-    kind:"waist",centerX:0,yMin:.94,yMax:1.10,outward:.008,
+    kind:"waist",centerX:0,yMin:.94,yMax:1.10,outward:.003,
     predicate:(p)=>p.y>=.94&&p.y<=1.10&&Math.abs(p.x)<=.185,
   });
 
@@ -641,7 +683,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M5.6 final silhouette polish"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M5.7 tailored shell polish"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -726,7 +768,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M5.6 final silhouette: curved shirt/sleeve/waist shells + anatomical hands + reference trouser taper + refined footwear + full-body framing"
+    polishStage:"M5.7 final tailored silhouette: smooth garment shells + anatomical hands + reference trouser taper + refined footwear + full-body framing"
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   cameraOrbits:{front:"0deg 76deg 3.15m","three-quarter":"35deg 76deg 3.15m",side:"90deg 76deg 3.15m",back:"180deg 76deg 3.15m"},
