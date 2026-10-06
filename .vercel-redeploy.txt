@@ -51,3 +51,7 @@ Date: 2026-10-06.
 Live Designer model M3: faceless mannequin head/jaw geometry, simplified mannequin hands, raised shirt placket, tucked waist seam, trouser fly/waistband/belt loops and long front creases added to match the canonical studio-tucked silhouette.
 Target commit: f046b74f43871249ff813542c53d1ee406e12196.
 Date: 2026-10-06.
+
+M4 polished Live Designer model release: classic point collar, cuff buttons, four visible belt loops, tailored trouser break, white sneaker sole/lace details, tuned studio camera/lighting, and production model-contract QA gate.
+Target commits: 88175706 + 1dbe05bc + ce54e79b + a8dfe2ab.
+Date: 2026-10-06.
