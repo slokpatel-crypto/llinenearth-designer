@@ -47,8 +47,8 @@ async function verifyViewport(browser, width) {
     model: element.getAttribute("data-model-readiness"),
     manifest: element.getAttribute("data-manifest-ready"),
   }));
-  assert.equal(labReadiness.model, "contract_ready", "3D lab must load the production M5.8 model contract");
-  assert.equal(labReadiness.manifest, "true", "production M5.8 model must load its verified physical-panel manifest");
+  assert.equal(labReadiness.model, "contract_ready", "3D lab must load the production M7 model contract");
+  assert.equal(labReadiness.manifest, "true", "production M7 model must load its verified physical-panel manifest");
 
   const modelState = await viewer.evaluate((element) => {
     const materials = element.model?.materials || [];
@@ -60,7 +60,7 @@ async function verifyViewport(browser, width) {
       hasCreateTexture: typeof element.createTexture === "function",
     };
   });
-  assert.match(modelState.cameraOrbit||"",/4\.10m$/,"default locked camera must keep the full mannequin inside frame");
+  assert.match(modelState.cameraOrbit||"",/3\.60m$/,"default locked camera must keep the full mannequin inside frame");
   assert.equal(modelState.cameraTarget,"0m 0.86m 0m","camera target must stay centered on the 1727 mm mannequin");
   assert.equal(modelState.fieldOfView,"30deg","default field of view must preserve head-to-shoe framing");
   assert.equal(modelState.materialNames.filter((name) => name.startsWith("Shirt")).length, 3, "3D model must expose three independent shirt panels");
@@ -93,6 +93,27 @@ async function verifyViewport(browser, width) {
   assert.match(referenceBlock,/linen-earth-studio-model-v1/);
   assert.match(referenceBlock,/same shoulder width, torso taper, arm length, hand scale, hip width, leg length, stance and shoes/i);
 
+  const variantNames=await viewer.evaluate((element)=>(element.model?.materials||[]).map((material)=>material.name).filter((name)=>name.includes("Variant__")||name.includes("Length__")));
+  assert.ok(variantNames.some((name)=>name==="ShirtCollarVariant__spread"),"M7 must carry spread-collar geometry");
+  assert.ok(variantNames.some((name)=>name==="ShirtHemVariant__regular"),"M7 must carry untucked shirt geometry");
+  assert.ok(variantNames.some((name)=>name==="TrouserLegLVariant__wide"),"M7 must carry wide-trouser geometry");
+  assert.ok(variantNames.some((name)=>name==="TrouserWaistbandVariant__side_adjuster"),"M7 must carry side-adjuster geometry");
+
+  await page.getByLabel("3D shirt fit").selectOption("boxy");
+  await page.getByLabel("3D shirt wear").selectOption("untucked");
+  await page.getByLabel("3D collar").selectOption("mandarin");
+  await page.getByLabel("3D trouser fit").selectOption("wide");
+  await page.getByLabel("3D trouser rise").selectOption("high");
+  await page.getByLabel("3D trouser pleat").selectOption("double");
+  await page.getByLabel("3D trouser waistband").selectOption("side_adjuster");
+  await page.getByLabel("3D trouser break").selectOption("cropped");
+  await page.waitForTimeout(150);
+  const liveSummary=await page.locator(".garmentStyleLiveSummary").innerText();
+  assert.match(liveSummary,/Boxy \/ Oversized Fit/);
+  assert.match(liveSummary,/Mandarin \/ Band Collar/);
+  assert.match(liveSummary,/Wide-Leg Drape/);
+  assert.match(liveSummary,/Cropped \/ Above-ankle/);
+
   const garmentCards=page.locator(".garmentTypeGrid article");
   assert.equal(await garmentCards.count(),4,"garment type roadmap must show current and future families");
   const garmentText=await garmentCards.allTextContents();
@@ -101,8 +122,10 @@ async function verifyViewport(browser, width) {
   assert.ok(garmentText.some((value)=>/Blazer/.test(value)&&/FUTURE/.test(value)&&/Single-Breasted 2-Button/.test(value)),"future blazer types must be visible");
   assert.ok(garmentText.some((value)=>/Suit/.test(value)&&/FUTURE/.test(value)&&/3-Piece Suit/.test(value)),"future suit types must be visible");
 
-  const selects = page.locator(".garmentViewerControls select");
-  assert.equal(await selects.count(), 2);
+  const styleSelects = page.locator(".garmentStyleControlGrid select");
+  assert.equal(await styleSelects.count(), 12, "M7 must expose twelve live tailoring controls");
+  const selects = page.locator(".garmentViewerControls > label > select");
+  assert.equal(await selects.count(), 2, "fabric selectors remain separate from tailoring controls");
   for (let index = 0; index < 2; index++) {
     const select = selects.nth(index);
     const before = await select.inputValue();
