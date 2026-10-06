@@ -574,10 +574,10 @@ const nodes=[
   {name:"TrouserWaistFabric",mesh:meshWaist},
   {name:"TrouserLegLFabric",mesh:meshLegL,translation:[-.105,.555,0]},
   {name:"TrouserLegRFabric",mesh:meshLegR,translation:[.105,.555,0]},
-  {name:"ShoeL",mesh:meshShoe,translation:[-.105,.056,.081],scale:[.068,.041,.150]},
-  {name:"ShoeR",mesh:meshShoe,translation:[.105,.056,.081],scale:[.068,.041,.150]},
-  {name:"SoleL",mesh:meshSole,translation:[-.105,.0105,.089],scale:[.140,.021,.300]},
-  {name:"SoleR",mesh:meshSole,translation:[.105,.0105,.089],scale:[.140,.021,.300]},
+  {name:"ShoeL",mesh:meshShoe,translation:[-.105,.052,.081],scale:[.052,.034,.145]},
+  {name:"ShoeR",mesh:meshShoe,translation:[.105,.052,.081],scale:[.052,.034,.145]},
+  {name:"SoleL",mesh:meshSole,translation:[-.105,.010,.089],scale:[.108,.016,.292]},
+  {name:"SoleR",mesh:meshSole,translation:[.105,.010,.089],scale:[.108,.016,.292]},
   {name:"CollarL",mesh:meshCollar,translation:[-.043,1.468,.096],scale:[.080,.088,.014],rotation:qz(-18)},
   {name:"CollarR",mesh:meshCollar,translation:[.043,1.468,.096],scale:[.080,.088,.014],rotation:qz(18)},
   {name:"CuffL",mesh:meshCuffL,translation:[-.250,.870,.030],scale:[.049,.021,.051],rotation:qz(-2.4)},
@@ -602,7 +602,7 @@ for(const side of [-1,1]){
     name:`ShoeLace${side<0?"L":"R"}${i+1}`,
     mesh:meshShoeDetail,
     translation:[side*.105,.083,.135+i*.022],
-    scale:[.050,.005,.008],
+    scale:[.040,.0045,.007],
   });
 }
 
@@ -641,7 +641,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M5.5 curved waist"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M5.6 final silhouette polish"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -726,7 +726,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M5.5 curved shirt/sleeve/waist shells + anatomical hands + Live Designer identity lock; collision body prepared separately",
+    polishStage:"M5.6 final silhouette: curved shirt/sleeve/waist shells + anatomical hands + reference trouser taper + refined footwear + full-body framing"
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   cameraOrbits:{front:"0deg 76deg 3.15m","three-quarter":"35deg 76deg 3.15m",side:"90deg 76deg 3.15m",back:"180deg 76deg 3.15m"},
