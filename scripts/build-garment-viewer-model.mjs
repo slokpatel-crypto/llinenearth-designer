@@ -303,6 +303,63 @@ async function loadMakeHumanGarmentShells(){
     transformed[index]={x,y,z,nx,ny,nz};
   }
 
+  function sourceEnvelope({predicate,yMin,yMax,centerX=0,centerZ=0,bins=56}){
+    const widths=new Array(bins).fill(0),depths=new Array(bins).fill(0),counts=new Array(bins).fill(0);
+    for(const p of transformed){
+      if(p.y<yMin||p.y>yMax||!predicate(p)) continue;
+      const t=(p.y-yMin)/Math.max(1e-6,yMax-yMin);
+      const index=Math.max(0,Math.min(bins-1,Math.round(t*(bins-1))));
+      widths[index]=Math.max(widths[index],Math.abs(p.x-centerX));
+      depths[index]=Math.max(depths[index],Math.abs(p.z-centerZ));
+      counts[index]++;
+    }
+    for(let i=0;i<bins;i++){
+      if(counts[i]&&widths[i]>.005&&depths[i]>.005) continue;
+      let best=-1,bestDistance=Infinity;
+      for(let j=0;j<bins;j++){
+        if(!counts[j]||widths[j]<=.005||depths[j]<=.005) continue;
+        const distance=Math.abs(i-j);
+        if(distance<bestDistance){best=j;bestDistance=distance;}
+      }
+      if(best>=0){widths[i]=widths[best];depths[i]=depths[best];counts[i]=counts[best];}
+    }
+    return (y)=>{
+      const raw=(y-yMin)/Math.max(1e-6,yMax-yMin)*(bins-1);
+      const a=Math.max(0,Math.min(bins-1,Math.floor(raw)));
+      const b=Math.max(0,Math.min(bins-1,a+1));
+      const t=Math.max(0,Math.min(1,raw-a));
+      return {
+        width:Math.max(.01,widths[a]+(widths[b]-widths[a])*t),
+        depth:Math.max(.01,depths[a]+(depths[b]-depths[a])*t),
+      };
+    };
+  }
+
+  const torsoSourceEnvelope=sourceEnvelope({
+    yMin:1.055,yMax:1.47,centerX:0,centerZ:0,
+    predicate:(p)=>Math.abs(p.x)<=.22,
+  });
+  const sleeveLSourceEnvelope=sourceEnvelope({
+    yMin:.865,yMax:1.455,centerX:-.226,centerZ:.030,
+    predicate:(p)=>p.x<=-.145,
+  });
+  const sleeveRSourceEnvelope=sourceEnvelope({
+    yMin:.865,yMax:1.455,centerX:.226,centerZ:.030,
+    predicate:(p)=>p.x>=.145,
+  });
+  const waistSourceEnvelope=sourceEnvelope({
+    yMin:.94,yMax:1.10,centerX:0,centerZ:.005,
+    predicate:(p)=>Math.abs(p.x)<=.19,
+  });
+  const legLSourceEnvelope=sourceEnvelope({
+    yMin:.06,yMax:.985,centerX:-.105,centerZ:.020,
+    predicate:(p)=>p.x<-.025,
+  });
+  const legRSourceEnvelope=sourceEnvelope({
+    yMin:.06,yMax:.985,centerX:.105,centerZ:.020,
+    predicate:(p)=>p.x>.025,
+  });
+
   const torsoEnvelope=[
     [1.060,.147],
     [1.105,.151],
@@ -382,11 +439,14 @@ async function loadMakeHumanGarmentShells(){
       if(kind==="torso"){
         const targetHalf=lerpEnvelope(torsoEnvelope,y);
         const targetDepth=lerpEnvelope(torsoDepthEnvelope,y);
+        const source=torsoSourceEnvelope(y);
+        const sx=targetHalf/source.width,sz=targetDepth/source.depth;
         const theta=Math.atan2(z,x);
         const front=Math.max(0,Math.sin(theta));
-        x=Math.cos(theta)*targetHalf;
-        z=Math.sin(theta)*targetDepth+(front*.0035*Math.sin((y-1.055)*48+theta*2.4));
-        [nx,ny,nz]=normalize(Math.cos(theta)/targetHalf,ny*.18,Math.sin(theta)/targetDepth);
+        x*=sx;
+        z*=sz;
+        z+=front*.0032*Math.sin((y-1.055)*46+theta*2.2);
+        [nx,ny,nz]=normalize(nx/Math.max(.2,sx),ny*.28,nz/Math.max(.2,sz));
       }else if(kind==="sleeve"){
         const targetHalf=lerpEnvelope(sleeveWidthEnvelope,y);
         const targetDepth=lerpEnvelope(sleeveDepthEnvelope,y);
@@ -394,18 +454,23 @@ async function loadMakeHumanGarmentShells(){
         const side=Math.sign(centerX)||1;
         const sleeveCenterX=centerX+side*.006*(t-.45);
         const sleeveCenterZ=.024+.010*t;
+        const source=(side<0?sleeveLSourceEnvelope:sleeveRSourceEnvelope)(y);
+        const sx=targetHalf/source.width,sz=targetDepth/source.depth;
+        const originalX=x,originalZ=z;
+        x=sleeveCenterX+(originalX-centerX)*sx;
+        z=sleeveCenterZ+(originalZ-.030)*sz;
         const theta=Math.atan2(z-sleeveCenterZ,x-sleeveCenterX);
         const elbowFold=Math.exp(-Math.pow((y-1.075)/.095,2));
-        x=sleeveCenterX+Math.cos(theta)*targetHalf;
-        z=sleeveCenterZ+Math.sin(theta)*targetDepth+Math.max(0,Math.sin(theta))*.004*elbowFold*Math.sin(theta*4.5+(y-1.0)*35);
-        [nx,ny,nz]=normalize(Math.cos(theta)/targetHalf,ny*.22,Math.sin(theta)/targetDepth);
+        z+=Math.max(0,Math.sin(theta))*.0032*elbowFold*Math.sin(theta*4.3+(y-1.0)*34);
+        [nx,ny,nz]=normalize(nx/Math.max(.2,sx),ny*.30,nz/Math.max(.2,sz));
       }else if(kind==="waist"){
         const targetHalf=lerpEnvelope(trouserWaistEnvelope,y);
         const targetDepth=lerpEnvelope(trouserWaistDepthEnvelope,y);
-        const theta=Math.atan2(z-.005,x);
-        x=Math.cos(theta)*targetHalf;
-        z=.005+Math.sin(theta)*targetDepth;
-        [nx,ny,nz]=normalize(Math.cos(theta)/targetHalf,ny*.15,Math.sin(theta)/targetDepth);
+        const source=waistSourceEnvelope(y);
+        const sx=targetHalf/source.width,sz=targetDepth/source.depth;
+        x*=sx;
+        z=.005+(z-.005)*sz;
+        [nx,ny,nz]=normalize(nx/Math.max(.2,sx),ny*.25,nz/Math.max(.2,sz));
       }else if(kind==="leg"){
         const targetHalf=lerpEnvelope(trouserLegWidthEnvelope,y);
         const targetDepth=lerpEnvelope(trouserLegDepthEnvelope,y);
@@ -413,13 +478,17 @@ async function loadMakeHumanGarmentShells(){
         const t=Math.max(0,Math.min(1,(y-.060)/(.985-.060)));
         const legCenterX=centerX+side*.004*(t-.45);
         const legCenterZ=.020+.010*t;
+        const source=(side<0?legLSourceEnvelope:legRSourceEnvelope)(y);
+        const sx=targetHalf/source.width,sz=targetDepth/source.depth;
+        const originalX=x,originalZ=z;
+        x=legCenterX+(originalX-centerX)*sx;
+        z=legCenterZ+(originalZ-.020)*sz;
         const theta=Math.atan2(z-legCenterZ,x-legCenterX);
         const front=Math.max(0,Math.sin(theta));
         const kneeFold=Math.exp(-Math.pow((y-.50)/.11,2));
         const ankleFold=Math.exp(-Math.pow((y-.15)/.08,2));
-        x=legCenterX+Math.cos(theta)*targetHalf;
-        z=legCenterZ+Math.sin(theta)*targetDepth+front*(.0025*kneeFold*Math.sin(theta*5+y*28)+.0018*ankleFold*Math.sin(theta*4-y*34));
-        [nx,ny,nz]=normalize(Math.cos(theta)/targetHalf,ny*.16,Math.sin(theta)/targetDepth);
+        z+=front*(.0024*kneeFold*Math.sin(theta*4.8+y*27)+.0016*ankleFold*Math.sin(theta*4-y*32));
+        [nx,ny,nz]=normalize(nx/Math.max(.2,sx),ny*.25,nz/Math.max(.2,sz));
       }else if(kind==="shoe"){
         const side=Math.sign(centerX)||1;
         x=centerX+(x-centerX)*.72;
@@ -1016,7 +1085,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7 tailoring variants"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.1 anatomical-surface tailoring variants"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -1101,7 +1170,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7 model complete: locked mannequin + fabric-ready tailoring geometry variants for fit, collar, cuff, sleeve, tuck, trouser shape, rise, pleat, waistband and break",
+    polishStage:"M7.1 model complete: anatomically preserved garment surfaces + locked mannequin + live tailoring geometry variants + fabric drape response",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
