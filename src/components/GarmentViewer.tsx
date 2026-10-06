@@ -270,6 +270,9 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const [shirtManualTileMm,setShirtManualTileMm]=useState(120);
   const [trouserManualTileMm,setTrouserManualTileMm]=useState(120);
   const [roughness,setRoughness]=useState(.84);
+  const [shirtTypeKey,setShirtTypeKey]=useState("dress_shirt");
+  const [trouserTypeKey,setTrouserTypeKey]=useState("formal_flat_front");
+  const [buttonKey,setButtonKey]=useState("mother_of_pearl");
   const [shirtFitKey,setShirtFitKey]=useState("regular");
   const [shirtWearKey,setShirtWearKey]=useState("tucked");
   const [sleeveKey,setSleeveKey]=useState("full");
@@ -325,6 +328,9 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         setDesignerDraftRecipe(parsed);
         if(parsed.shirtId&&shirtFabrics.some((fabric)=>fabric.id===parsed.shirtId)) setShirtId(parsed.shirtId);
         if(parsed.pantId&&trouserFabrics.some((fabric)=>fabric.id===parsed.pantId)) setTrouserId(parsed.pantId);
+        if(parsed.styleSpec?.shirt?.type&&styleVariants.shirtTypes.some((item)=>item.id===parsed.styleSpec?.shirt?.type)) setShirtTypeKey(parsed.styleSpec.shirt.type);
+        if(parsed.styleSpec?.pant?.type&&styleVariants.trouserTypes.some((item)=>item.id===parsed.styleSpec?.pant?.type)) setTrouserTypeKey(parsed.styleSpec.pant.type);
+        setButtonKey(variantIdForLabel(styleVariants.buttons,parsed.style.button,"mother_of_pearl"));
         setShirtFitKey(variantIdForLabel(styleVariants.shirtFits,parsed.style.shirtFit,"regular"));
         setShirtWearKey(variantIdForLabel(styleVariants.shirtWear,parsed.style.shirtWear,"tucked"));
         setSleeveKey(variantIdForLabel(styleVariants.sleeves,parsed.style.sleeve,"full"));
@@ -546,6 +552,41 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     }
   },[modelReady,styleState]);
 
+  function applyShirtTypePreset(id:string){
+    setShirtTypeKey(id);
+    const preset=styleVariants.shirtTypes.find((item)=>item.id===id)?.preset;
+    if(!preset) return;
+    setShirtFitKey(preset.shirtFit);
+    setShirtWearKey(preset.shirtWear);
+    setSleeveKey(preset.sleeve);
+    setCollarKey(preset.collar);
+    setCuffKey(preset.cuff);
+    setPlacketKey(preset.placket);
+    setPocketKey(preset.pocket);
+  }
+
+  function applyTrouserTypePreset(id:string){
+    setTrouserTypeKey(id);
+    const preset=styleVariants.trouserTypes.find((item)=>item.id===id)?.preset;
+    if(!preset) return;
+    setTrouserFitKey(preset.trouserFit);
+    setRiseKey(preset.rise);
+    setPleatKey(preset.pleat);
+    setWaistbandKey(preset.waistband);
+    setBreakKey(preset.breakStyle);
+  }
+
+  useEffect(()=>{
+    if(!modelReady) return;
+    const viewer=viewerRef.current;
+    const material=viewer?materialByName(viewer,"ButtonAccent"):null;
+    const spec=styleVariants.buttons.find((item)=>item.id===buttonKey);
+    if(!material||!spec) return;
+    material.pbrMetallicRoughness.setBaseColorFactor(spec.rgba);
+    material.pbrMetallicRoughness.setMetallicFactor(spec.metallic);
+    material.pbrMetallicRoughness.setRoughnessFactor(spec.roughness);
+  },[modelReady,buttonKey]);
+
   function beginFabricInteraction(){
     interactionStartedAt.current=performance.now();
   }
@@ -636,11 +677,14 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       <section className="garmentStyleControls" aria-label="Live tailoring variations">
         <div className="garmentTypeLibraryHead"><span>LIVE TAILORING VARIATIONS</span><b>Geometry-backed · same locked mannequin</b></div>
         <div className="garmentStyleControlGrid">
+          <label><span>Shirt type</span><select aria-label="3D shirt type" value={shirtTypeKey} onChange={(e)=>applyShirtTypePreset(e.target.value)}>{styleVariants.shirtTypes.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+          <label><span>Trouser type</span><select aria-label="3D trouser type" value={trouserTypeKey} onChange={(e)=>applyTrouserTypePreset(e.target.value)}>{styleVariants.trouserTypes.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Shirt fit</span><select aria-label="3D shirt fit" value={shirtFitKey} onChange={(e)=>setShirtFitKey(e.target.value)}>{styleVariants.shirtFits.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Wear</span><select aria-label="3D shirt wear" value={shirtWearKey} onChange={(e)=>setShirtWearKey(e.target.value)}>{styleVariants.shirtWear.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Sleeve</span><select aria-label="3D sleeve" value={sleeveKey} onChange={(e)=>setSleeveKey(e.target.value)}>{styleVariants.sleeves.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Collar</span><select aria-label="3D collar" value={collarKey} onChange={(e)=>setCollarKey(e.target.value)}>{styleVariants.collars.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Cuff</span><select aria-label="3D cuff" value={cuffKey} onChange={(e)=>setCuffKey(e.target.value)}>{styleVariants.cuffs.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+          <label><span>Button material</span><select aria-label="3D button material" value={buttonKey} onChange={(e)=>setButtonKey(e.target.value)}>{styleVariants.buttons.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Placket</span><select aria-label="3D placket" value={placketKey} onChange={(e)=>setPlacketKey(e.target.value)}>{styleVariants.plackets.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Pocket</span><select aria-label="3D pocket" value={pocketKey} onChange={(e)=>setPocketKey(e.target.value)}>{styleVariants.pockets.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Trouser shape</span><select aria-label="3D trouser fit" value={trouserFitKey} onChange={(e)=>setTrouserFitKey(e.target.value)}>{styleVariants.trouserFits.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
@@ -650,8 +694,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           <label><span>Break</span><select aria-label="3D trouser break" value={breakKey} onChange={(e)=>setBreakKey(e.target.value)}>{styleVariants.breaks.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
         </div>
         <div className="garmentStyleLiveSummary">
-          <span><b>SHIRT</b>{styleVariants.shirtFits.find((x)=>x.id===shirtFitKey)?.label} · {styleVariants.collars.find((x)=>x.id===collarKey)?.label} · {styleVariants.shirtWear.find((x)=>x.id===shirtWearKey)?.label}</span>
-          <span><b>TROUSER</b>{styleVariants.trouserFits.find((x)=>x.id===trouserFitKey)?.label} · {styleVariants.rises.find((x)=>x.id===riseKey)?.label} · {styleVariants.breaks.find((x)=>x.id===breakKey)?.label}</span>
+          <span><b>SHIRT</b>{styleVariants.shirtTypes.find((x)=>x.id===shirtTypeKey)?.label} · {styleVariants.shirtFits.find((x)=>x.id===shirtFitKey)?.label} · {styleVariants.collars.find((x)=>x.id===collarKey)?.label} · {styleVariants.shirtWear.find((x)=>x.id===shirtWearKey)?.label}</span>
+          <span><b>TROUSER</b>{styleVariants.trouserTypes.find((x)=>x.id===trouserTypeKey)?.label} · {styleVariants.trouserFits.find((x)=>x.id===trouserFitKey)?.label} · {styleVariants.rises.find((x)=>x.id===riseKey)?.label} · {styleVariants.breaks.find((x)=>x.id===breakKey)?.label}</span>
         </div>
       </section>
 
@@ -673,7 +717,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         <span><small>VIEWS</small><b>4 fixed + free</b></span>
         <span><small>AI CREDITS</small><b>0</b></span>
       </div>
-      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M7 is locked: the same mannequin now carries live geometry-backed tailoring variants for shirt fit, tucked/untucked wear, sleeve length, collar, cuff, placket, pocket and trouser fit/rise/pleat/waistband/break. Fabric remains panel-scaled and non-metallic; verified drape/weight metadata now changes the surface fold-normal response and roughness without AI credits." : "Fallback prototype is active. Production should use the identity-locked M7 tailoring model before fabric/drape work continues."}</p>
+      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M7 is locked: the same mannequin now carries live geometry-backed tailoring variants for shirt type/fit, tucked/untucked wear, sleeve length, collar, cuff, button material, placket, pocket and trouser type/fit/rise/pleat/waistband/break. Fabric remains panel-scaled and non-metallic; verified drape/weight metadata now changes the surface fold-normal response and roughness without AI credits." : "Fallback prototype is active. Production should use the identity-locked M7 tailoring model before fabric/drape work continues."}</p>
     </aside>
   </section>;
 }
