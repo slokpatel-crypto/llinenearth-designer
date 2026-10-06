@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 const OUT_DIR=path.resolve(process.cwd(),"public/models");
+const BASE_BODY_PATH=path.resolve(process.cwd(),"assets/3d/makehuman-mannequin-base.glb");
 const GLB_NAME="linen-earth-officewear-v1.glb";
 const MANIFEST_NAME="linen-earth-officewear-v1.viewer.json";
 const MODEL_ID="LE-OFFICEWEAR-V1";
@@ -32,6 +33,104 @@ function typedGeometry(positions,normals,uvs,indices){
     uvs:new Float32Array(uvs),
     indices:new Uint16Array(indices),
   };
+}
+
+
+function accessorComponentCount(type){
+  if(type==="SCALAR") return 1;
+  if(type==="VEC2") return 2;
+  if(type==="VEC3") return 3;
+  if(type==="VEC4") return 4;
+  throw new Error(`Unsupported accessor type: ${type}`);
+}
+
+function readAccessorValues(gltf,binary,accessorIndex){
+  const accessor=gltf.accessors?.[accessorIndex];
+  if(!accessor) throw new Error(`Missing accessor ${accessorIndex}`);
+  const view=gltf.bufferViews?.[accessor.bufferView];
+  if(!view) throw new Error(`Missing bufferView for accessor ${accessorIndex}`);
+  const count=Number(accessor.count)||0;
+  const components=accessorComponentCount(accessor.type);
+  const bytesPerComponent=accessor.componentType===5126||accessor.componentType===5125?4
+    : accessor.componentType===5123||accessor.componentType===5122?2
+      : 1;
+  const stride=Number(view.byteStride)||components*bytesPerComponent;
+  const start=(Number(view.byteOffset)||0)+(Number(accessor.byteOffset)||0);
+  const data=new DataView(binary.buffer,binary.byteOffset,binary.byteLength);
+  const values=new Array(count*components);
+  function read(offset){
+    if(accessor.componentType===5126) return data.getFloat32(offset,true);
+    if(accessor.componentType===5125) return data.getUint32(offset,true);
+    if(accessor.componentType===5123) return data.getUint16(offset,true);
+    if(accessor.componentType===5122) return data.getInt16(offset,true);
+    if(accessor.componentType===5121) return data.getUint8(offset);
+    if(accessor.componentType===5120) return data.getInt8(offset);
+    throw new Error(`Unsupported component type: ${accessor.componentType}`);
+  }
+  for(let i=0;i<count;i++){
+    const base=start+i*stride;
+    for(let j=0;j<components;j++) values[i*components+j]=read(base+j*bytesPerComponent);
+  }
+  return {values,count,components};
+}
+
+async function loadMakeHumanBodyGeometry(){
+  const file=new Uint8Array(await fs.readFile(BASE_BODY_PATH));
+  const fileView=new DataView(file.buffer,file.byteOffset,file.byteLength);
+  if(fileView.getUint32(0,true)!==0x46546c67) throw new Error("MakeHuman body source is not a GLB.");
+  const jsonLength=fileView.getUint32(12,true);
+  const jsonText=new TextDecoder().decode(file.slice(20,20+jsonLength)).trim();
+  const source=JSON.parse(jsonText);
+  const binHeader=20+align4(jsonLength);
+  if(fileView.getUint32(binHeader+4,true)!==0x004e4942) throw new Error("MakeHuman GLB has no binary chunk.");
+  const binLength=fileView.getUint32(binHeader,true);
+  const binary=file.slice(binHeader+8,binHeader+8+binLength);
+  const primitive=source.meshes?.[0]?.primitives?.[0];
+  if(!primitive) throw new Error("MakeHuman GLB has no primary mesh.");
+  const positions=readAccessorValues(source,binary,primitive.attributes.POSITION);
+  const normals=readAccessorValues(source,binary,primitive.attributes.NORMAL);
+  const indexData=readAccessorValues(source,binary,primitive.indices);
+  if(positions.components!==3||normals.components!==3||indexData.components!==1) throw new Error("Unexpected MakeHuman body accessor layout.");
+
+  const sx=.87;
+  const sy=(REFERENCE_HEIGHT_MM/1000)/1.7;
+  const sz=.68;
+  const sourceYMin=.10;
+  const sourceYMax=1.44;
+  const remap=new Map();
+  const outPositions=[],outNormals=[],outUvs=[],outIndices=[];
+
+  function mapped(oldIndex){
+    let next=remap.get(oldIndex);
+    if(next!==undefined) return next;
+    next=remap.size;
+    remap.set(oldIndex,next);
+    const p=oldIndex*3;
+    const x=positions.values[p]*sx;
+    const y=positions.values[p+1]*sy;
+    const z=-positions.values[p+2]*sz;
+    outPositions.push(x,y,z);
+    const [nx,ny,nz]=normalize(
+      normals.values[p]/sx,
+      normals.values[p+1]/sy,
+      -normals.values[p+2]/sz,
+    );
+    outNormals.push(nx,ny,nz);
+    outUvs.push(.5,.5);
+    return next;
+  }
+
+  for(let i=0;i+2<indexData.values.length;i+=3){
+    const a=Number(indexData.values[i]),b=Number(indexData.values[i+1]),d=Number(indexData.values[i+2]);
+    const ay=positions.values[a*3+1],by=positions.values[b*3+1],dy=positions.values[d*3+1];
+    if(ay<sourceYMin||by<sourceYMin||dy<sourceYMin) continue;
+    if(ay>sourceYMax||by>sourceYMax||dy>sourceYMax) continue;
+    // Z is mirrored to align MakeHuman's front with Linen Earth's +Z garment front,
+    // so triangle winding must be flipped as well.
+    outIndices.push(mapped(a),mapped(d),mapped(b));
+  }
+  if(outIndices.length<3000) throw new Error("MakeHuman body crop produced too little geometry.");
+  return typedGeometry(outPositions,outNormals,outUvs,outIndices);
 }
 
 function profileGeometry({rings,segments=28,ripple=()=>0}){
@@ -231,6 +330,7 @@ const thumb=profileGeometry({
   ],
   segments:16,
 });
+const mannequinBody=await loadMakeHumanBodyGeometry();
 const shoe=uvSphereGeometry(10,20);
 const collar=collarPointGeometry();
 const detailBox=boxGeometry();
@@ -251,6 +351,7 @@ const materialIndex=Object.fromEntries(materials.map((m,i)=>[m.name,i]));
 
 const assets=[];
 function addMesh(name,geometry,material){assets.push({name,geometry,material});return assets.length-1;}
+const meshBody=addMesh("MakeHumanBodyMesh",mannequinBody,"MannequinSkin");
 const meshHead=addMesh("HeadMesh",head,"MannequinSkin");
 const meshHand=addMesh("HandPalmMesh",hand,"MannequinSkin");
 const meshFinger=addMesh("HandFingerMesh",finger,"MannequinSkin");
@@ -275,14 +376,14 @@ const meshShoeDetail=addMesh("ShoeDetailMesh",detailBox,"Shoe");
 
 const qz=(deg)=>{const r=deg*Math.PI/180/2;return [0,0,Math.sin(r),Math.cos(r)];};
 const nodes=[
+  // CC0 anatomical body sits under the garments; the customer-facing head remains the locked faceless studio identity.
+  {name:"MannequinBody",mesh:meshBody},
   // 1727 mm canonical Live Designer mannequin: slim shoulders, long legs, relaxed straight stance.
   {name:"Head",mesh:meshHead,translation:[0,1.620,.004]},
   {name:"Neck",mesh:meshHead,translation:[0,1.500,.001],scale:[.63,.58,.62]},
   {name:"ShirtTorsoFabric",mesh:meshShirtTorso,translation:[0,1.265,0]},
   {name:"ShirtSleeveLFabric",mesh:meshSleeveL,translation:[-.226,1.155,.002],rotation:qz(-2.4)},
   {name:"ShirtSleeveRFabric",mesh:meshSleeveR,translation:[.226,1.155,.002],rotation:qz(2.4)},
-  {name:"HandPalmL",mesh:meshHand,translation:[-.250,.838,.012]},
-  {name:"HandPalmR",mesh:meshHand,translation:[.250,.838,.012]},
   {name:"TrouserWaistFabric",mesh:meshWaist,translation:[0,1.025,0]},
   {name:"TrouserLegLFabric",mesh:meshLegL,translation:[-.105,.555,0]},
   {name:"TrouserLegRFabric",mesh:meshLegR,translation:[.105,.555,0]},
@@ -305,26 +406,6 @@ const nodes=[
   {name:"BeltLoopR1",mesh:meshWaistDetail,translation:[.065,1.092,.109],scale:[.012,.072,.006]},
   {name:"BeltLoopR2",mesh:meshWaistDetail,translation:[.132,1.092,.108],scale:[.013,.072,.006]},
 ];
-for(const side of [-1,1]){
-  const handX=side*.250;
-  const fingerOffsets=[-.017,-.006,.006,.017];
-  const fingerLengthScale=[.90,1.02,1.00,.88];
-  for(let i=0;i<4;i++){
-    nodes.push({
-      name:`Finger${side<0?"L":"R"}${i+1}`,
-      mesh:meshFinger,
-      translation:[handX+fingerOffsets[i],.778,.013],
-      scale:[1,fingerLengthScale[i],1],
-      rotation:qz(side<0?-1.5:1.5),
-    });
-  }
-  nodes.push({
-    name:`Thumb${side<0?"L":"R"}`,
-    mesh:meshThumb,
-    translation:[handX+side*.029,.812,.018],
-    rotation:qz(side<0?34:-34),
-  });
-}
 for(let i=0;i<7;i++) nodes.push({name:`ShirtButton${i+1}`,mesh:meshButton,translation:[0,1.430-i*.055,.119],scale:[.006,.006,.004]});
 nodes.push({name:"TrouserButton",mesh:meshButton,translation:[0,1.100,.113],scale:[.0068,.0068,.0048]});
 nodes.push({name:"CuffButtonL",mesh:meshButton,translation:[-.250,.870,.057],scale:[.0048,.0048,.0035]});
@@ -373,7 +454,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M4 polished"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M5 anatomical"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -406,7 +487,13 @@ const manifest={
   modelId:MODEL_ID,
   referenceHeightMm:REFERENCE_HEIGHT_MM,
   modelIdentity:{id:IDENTITY_ID,referenceImage:REFERENCE_IMAGE},
-  source:{name:"Linen Earth Live Designer identity-matched polished parametric model M4",license:"Linen Earth generated asset",verifiedAt:"2026-10-06"},
+  source:{
+    name:"MakeHuman CC0 body + Linen Earth identity-matched officewear M5",
+    license:"CC0 1.0 body source + Linen Earth generated garment geometry",
+    verifiedAt:"2026-10-06",
+    sourceUrl:"https://github.com/jeromydarling/rezene/blob/main/public/models/README.md",
+    licenseUrl:"https://creativecommons.org/publicdomain/zero/1.0/"
+  },
   panels:Object.fromEntries(garmentPanels.map(p=>[p.material,{widthMm:p.widthMm,heightMm:p.heightMm,offsetU:p.offsetU,offsetV:p.offsetV,rotationDeg:p.rotationDeg}])),
   identityMeasurements:{
     targetHeightMm:1727,
@@ -417,7 +504,7 @@ const manifest={
     targetHandCenterSpacingMm:500,
     targetLegCenterSpacingMm:210,
     targetHemWidthMm:64,
-    polishStage:"M4.2 identity + tailoring + mannequin anatomy polish complete",
+    polishStage:"M5 anatomical body + Live Designer identity polish complete",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   cameraOrbits:{front:"0deg 76deg 2.72m","three-quarter":"35deg 76deg 2.72m",side:"90deg 76deg 2.72m",back:"180deg 76deg 2.72m"},
