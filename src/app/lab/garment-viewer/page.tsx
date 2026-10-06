@@ -22,6 +22,10 @@ function viewerFabric(fabric:(typeof FABRIC_STOCK)[number]):GarmentViewerFabric 
     line:fabric.line,
     image:`/fabric-tiles/${tileKey}.webp`,
     tileKey,
+    drape:fabric.drape,
+    weightClass:fabric.weightClass,
+    weightGsm:fabric.weightGsm,
+    weave:fabric.weave,
   };
 }
 
