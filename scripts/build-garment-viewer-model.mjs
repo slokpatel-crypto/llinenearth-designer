@@ -824,6 +824,8 @@ const styleVariantMaterials=[
   ...styleVariants.cuffs.map((item)=>addVariantMaterial(`ShirtCuffVariant__${item.id}`,"shirt")),
   ...styleVariants.plackets.filter((item)=>item.id!=="french").map((item)=>addVariantMaterial(`ShirtPlacketVariant__${item.id}`,"shirt")),
   ...styleVariants.pockets.filter((item)=>item.id!=="none").map((item)=>addVariantMaterial(`ShirtPocketVariant__${item.id}`,"shirt")),
+  ...styleVariants.yokes.map((item)=>addVariantMaterial(`ShirtYokeVariant__${item.id}`,"shirt")),
+  ...styleVariants.shirtHems.map((item)=>addVariantMaterial(`ShirtHemShapeVariant__${item.id}`,"shirt")),
   ...styleVariants.trouserFits.filter((fit)=>fit.id!=="straight").flatMap((fit)=>[
     addVariantMaterial(`TrouserLegLVariant__${fit.id}`,"trouser"),
     addVariantMaterial(`TrouserLegRVariant__${fit.id}`,"trouser"),
@@ -832,6 +834,8 @@ const styleVariantMaterials=[
   ...styleVariants.waistbands.filter((item)=>item.id!=="clean").map((item)=>addVariantMaterial(`TrouserWaistbandVariant__${item.id}`,"trouser")),
   ...styleVariants.pleats.filter((item)=>item.id!=="flat").map((item)=>addVariantMaterial(`TrouserPleatVariant__${item.id}`,"trouser")),
   ...styleVariants.breaks.filter((item)=>item.id!=="slight").map((item)=>addVariantMaterial(`TrouserBreakVariant__${item.id}`,"trouser")),
+  ...styleVariants.trouserHems.filter((item)=>item.id!=="plain").map((item)=>addVariantMaterial(`TrouserHemVariant__${item.id}`,"trouser")),
+  ...styleVariants.trouserPockets.map((item)=>addVariantMaterial(`TrouserPocketVariant__${item.id}`,"trouser")),
 ];
 const materials=[
   {name:"MannequinSkin",pbrMetallicRoughness:{baseColorFactor:[.94,.93,.90,1],metallicFactor:0,roughnessFactor:.90}},
@@ -885,6 +889,8 @@ for(const fit of styleVariants.shirtFits){
     `ShirtHemVariant__${fit.id}`,
   );
 }
+const threeQuarterSleeveL=addMesh("ShirtSleeveLLengthMesh__three_quarter",cropGeometry(garmentShells.sleeveL,(p)=>p.y>=.990), "ShirtSleeveLLength__three_quarter");
+const threeQuarterSleeveR=addMesh("ShirtSleeveRLengthMesh__three_quarter",cropGeometry(garmentShells.sleeveR,(p)=>p.y>=.990), "ShirtSleeveRLength__three_quarter");
 const halfSleeveL=addMesh("ShirtSleeveLLengthMesh__half",cropGeometry(garmentShells.sleeveL,(p)=>p.y>=1.18), "ShirtSleeveLLength__half");
 const halfSleeveR=addMesh("ShirtSleeveRLengthMesh__half",cropGeometry(garmentShells.sleeveR,(p)=>p.y>=1.18), "ShirtSleeveRLength__half");
 const rollSleeveL=addMesh("ShirtSleeveLLengthMesh__roll",cropGeometry(garmentShells.sleeveL,(p)=>p.y>=1.08), "ShirtSleeveLLength__roll");
@@ -929,6 +935,22 @@ const breakVariantMeshes=Object.fromEntries(styleVariants.breaks.filter((item)=>
   item.id,
   addMesh(`TrouserBreakVariantMesh__${item.id}`,detailBox,`TrouserBreakVariant__${item.id}`)
 ]));
+const yokeVariantMeshes=Object.fromEntries(styleVariants.yokes.map((item)=>[
+  item.id,
+  addMesh(`ShirtYokeVariantMesh__${item.id}`,detailBox,`ShirtYokeVariant__${item.id}`)
+]));
+const shirtHemShapeMeshes=Object.fromEntries(styleVariants.shirtHems.map((item)=>[
+  item.id,
+  addMesh(`ShirtHemShapeVariantMesh__${item.id}`,detailBox,`ShirtHemShapeVariant__${item.id}`)
+]));
+const trouserHemVariantMeshes=Object.fromEntries(styleVariants.trouserHems.filter((item)=>item.id!=="plain").map((item)=>[
+  item.id,
+  addMesh(`TrouserHemVariantMesh__${item.id}`,detailBox,`TrouserHemVariant__${item.id}`)
+]));
+const trouserPocketVariantMeshes=Object.fromEntries(styleVariants.trouserPockets.map((item)=>[
+  item.id,
+  addMesh(`TrouserPocketVariantMesh__${item.id}`,detailBox,`TrouserPocketVariant__${item.id}`)
+]));
 
 const qz=(deg)=>{const r=deg*Math.PI/180/2;return [0,0,Math.sin(r),Math.cos(r)];};
 const nodes=[
@@ -969,46 +991,119 @@ for(const fit of styleVariants.shirtFits){
   nodes.push({name:`ShirtSleeveRVariant__${fit.id}`,mesh:mesh.right});
 }
 for(const fit of styleVariants.shirtFits) nodes.push({name:`ShirtHemVariant__${fit.id}`,mesh:shirtHemMeshes[fit.id]});
+nodes.push({name:"ShirtSleeveLLength__three_quarter",mesh:threeQuarterSleeveL},{name:"ShirtSleeveRLength__three_quarter",mesh:threeQuarterSleeveR});
 nodes.push({name:"ShirtSleeveLLength__half",mesh:halfSleeveL},{name:"ShirtSleeveRLength__half",mesh:halfSleeveR});
 nodes.push({name:"ShirtSleeveLLength__roll",mesh:rollSleeveL},{name:"ShirtSleeveRLength__roll",mesh:rollSleeveR});
 
 // Collar families.
 const collarNodeSpec={
-  point:{y:1.468,z:.096,scale:[.080,.088,.014],angle:18},
-  spread:{y:1.468,z:.096,scale:[.082,.080,.014],angle:30},
-  cutaway:{y:1.467,z:.096,scale:[.078,.070,.014],angle:48},
-  button_down:{y:1.467,z:.096,scale:[.083,.094,.014],angle:20},
-  camp:{y:1.446,z:.094,scale:[.095,.110,.014],angle:32},
+  point:{y:1.468,z:.096,scale:[.080,.090,.014],angle:16},
+  semi_spread:{y:1.468,z:.096,scale:[.082,.084,.014],angle:23},
+  spread:{y:1.468,z:.096,scale:[.083,.080,.014],angle:30},
+  cutaway:{y:1.467,z:.096,scale:[.080,.070,.014],angle:48},
+  button_down:{y:1.467,z:.096,scale:[.084,.095,.014],angle:20},
+  hidden_button_down:{y:1.467,z:.096,scale:[.083,.091,.014],angle:22},
+  club:{y:1.466,z:.096,scale:[.078,.078,.016],angle:20},
+  tab:{y:1.468,z:.097,scale:[.078,.088,.014],angle:16},
+  wingtip:{y:1.476,z:.097,scale:[.060,.052,.013],angle:50},
+  camp:{y:1.446,z:.094,scale:[.098,.112,.014],angle:32},
+  one_piece:{y:1.452,z:.094,scale:[.100,.118,.014],angle:28},
 };
 for(const item of styleVariants.collars){
   if(item.id==="mandarin"){
-    nodes.push({name:"ShirtCollarVariant__mandarin",mesh:collarVariantMeshes.mandarin,translation:[0,1.480,.010]});
+    nodes.push({name:"ShirtCollarVariant__mandarin",mesh:collarVariantMeshes.mandarin,translation:[0,1.480,.010],scale:[1,.92,1]});
     continue;
   }
   const spec=collarNodeSpec[item.id]||collarNodeSpec.point;
   nodes.push({name:`ShirtCollarL__${item.id}`,mesh:collarVariantMeshes[item.id],translation:[-.043,spec.y,spec.z],scale:spec.scale,rotation:qz(-spec.angle)});
   nodes.push({name:`ShirtCollarR__${item.id}`,mesh:collarVariantMeshes[item.id],translation:[.043,spec.y,spec.z],scale:spec.scale,rotation:qz(spec.angle)});
+  if(item.id==="button_down"||item.id==="tab"){
+    nodes.push({name:`ShirtCollarButtonL__${item.id}`,mesh:meshButton,translation:[-.050,1.438,.113],scale:[.004,.004,.003]});
+    nodes.push({name:`ShirtCollarButtonR__${item.id}`,mesh:meshButton,translation:[.050,1.438,.113],scale:[.004,.004,.003]});
+  }
 }
 
 // Cuff families.
 const cuffSpec={
   barrel_1:{scale:[.049,.021,.051],y:.870},
-  barrel_2:{scale:[.050,.025,.052],y:.872},
-  french:{scale:[.052,.038,.054],y:.880},
-  rounded:{scale:[1,1,1],y:.870},
-  cocktail:{scale:[.055,.044,.058],y:.888},
+  long_barrel_1:{scale:[.050,.028,.052],y:.874},
+  mitered_1:{scale:[.050,.024,.052],y:.872},
+  rounded_2:{scale:[.051,.028,.053],y:.874},
+  mitered_2:{scale:[.052,.030,.054],y:.876},
+  french:{scale:[.054,.039,.056],y:.884},
+  rounded_french:{scale:[.054,.039,.056],y:.884},
+  convertible:{scale:[.052,.032,.054],y:.879},
+  soft_barrel:{scale:[.049,.022,.052],y:.870},
+  cocktail:{scale:[.056,.045,.059],y:.890},
 };
 for(const item of styleVariants.cuffs){
-  const spec=cuffSpec[item.id];
+  const spec=cuffSpec[item.id]||cuffSpec.barrel_1;
   nodes.push({name:`ShirtCuffL__${item.id}`,mesh:cuffVariantMeshes[item.id],translation:[-.250,spec.y,.030],scale:spec.scale,rotation:qz(-2.4)});
   nodes.push({name:`ShirtCuffR__${item.id}`,mesh:cuffVariantMeshes[item.id],translation:[.250,spec.y,.030],scale:spec.scale,rotation:qz(2.4)});
 }
 
 // Plackets and pockets.
-nodes.push({name:"ShirtPlacketVariant__standard",mesh:placketVariantMeshes.standard,translation:[0,1.268,.112],scale:[.013,.374,.008]});
-nodes.push({name:"ShirtPlacketVariant__hidden",mesh:placketVariantMeshes.hidden,translation:[0,1.268,.114],scale:[.020,.374,.008]});
-nodes.push({name:"ShirtPocketVariant__patch",mesh:pocketVariantMeshes.patch,translation:[.085,1.292,.116],scale:[.105,.115,.010]});
-nodes.push({name:"ShirtPocketVariant__flap",mesh:pocketVariantMeshes.flap,translation:[.085,1.335,.119],scale:[.110,.035,.012]});
+const placketSpec={
+  standard:{scale:[.013,.374,.008],z:.112},
+  soft_front:{scale:[.014,.374,.007],z:.112},
+  hidden:{scale:[.022,.374,.008],z:.114},
+  popover:{scale:[.016,.170,.008],z:.113,y:1.375},
+  western:{scale:[.018,.374,.009],z:.114},
+  tuxedo_plain:{scale:[.017,.374,.008],z:.114},
+  tuxedo_pleated:{scale:[.100,.330,.010],z:.115},
+};
+for(const item of styleVariants.plackets){
+  if(item.id==="french") continue;
+  const spec=placketSpec[item.id]||placketSpec.standard;
+  nodes.push({name:`ShirtPlacketVariant__${item.id}`,mesh:placketVariantMeshes[item.id],translation:[0,spec.y||1.268,spec.z],scale:spec.scale});
+}
+
+const shirtPocketSpec={
+  rounded:{count:1,x:.085,y:1.292,scale:[.102,.112,.010]},
+  angled:{count:1,x:.085,y:1.292,scale:[.100,.115,.010],angle:4},
+  button_angled:{count:1,x:.085,y:1.292,scale:[.105,.118,.010],angle:4},
+  single_flap:{count:1,x:.085,y:1.302,scale:[.108,.120,.010]},
+  western_flap:{count:2,x:.085,y:1.302,scale:[.110,.120,.010],angle:6},
+  rounded_flap:{count:2,x:.085,y:1.302,scale:[.112,.125,.010]},
+  utility:{count:2,x:.088,y:1.290,scale:[.116,.130,.010]},
+  safari:{count:2,x:.090,y:1.292,scale:[.118,.132,.014]},
+  reverse_pleat:{count:2,x:.090,y:1.292,scale:[.116,.130,.013]},
+};
+for(const item of styleVariants.pockets){
+  if(item.id==="none") continue;
+  const spec=shirtPocketSpec[item.id]||shirtPocketSpec.rounded;
+  const xs=spec.count===2?[-spec.x,spec.x]:[spec.x];
+  for(const x of xs){
+    nodes.push({name:`ShirtPocketVariant__${item.id}__${x<0?"L":"R"}`,mesh:pocketVariantMeshes[item.id],translation:[x,spec.y,.116],scale:spec.scale,rotation:qz((x<0?-1:1)*(spec.angle||0))});
+  }
+}
+
+// Back-yoke construction cues.
+for(const item of styleVariants.yokes){
+  const mesh=yokeVariantMeshes[item.id];
+  if(item.id==="split"){
+    nodes.push({name:"ShirtYokeVariant__splitL",mesh,translation:[-.092,1.405,-.108],scale:[.180,.070,.007],rotation:qz(-3)});
+    nodes.push({name:"ShirtYokeVariant__splitR",mesh,translation:[.092,1.405,-.108],scale:[.180,.070,.007],rotation:qz(3)});
+  }else if(item.id==="western"||item.id==="bias_western"){
+    nodes.push({name:`ShirtYokeVariant__${item.id}L`,mesh,translation:[-.092,1.405,-.109],scale:[.188,.095,.007],rotation:qz(-14)});
+    nodes.push({name:`ShirtYokeVariant__${item.id}R`,mesh,translation:[.092,1.405,-.109],scale:[.188,.095,.007],rotation:qz(14)});
+  }else{
+    nodes.push({name:"ShirtYokeVariant__one_piece",mesh,translation:[0,1.405,-.108],scale:[.360,.070,.007]});
+  }
+}
+
+// Untucked hem-shape construction cues.
+for(const item of styleVariants.shirtHems){
+  const mesh=shirtHemShapeMeshes[item.id];
+  if(item.id==="rounded"){
+    nodes.push({name:"ShirtHemShapeVariant__rounded",mesh,translation:[0,.946,.005],scale:[.300,.030,.116]});
+  }else if(item.id==="polo"){
+    nodes.push({name:"ShirtHemShapeVariant__poloFront",mesh,translation:[0,.958,.116],scale:[.300,.022,.008]});
+    nodes.push({name:"ShirtHemShapeVariant__poloBack",mesh,translation:[0,.930,-.116],scale:[.300,.036,.008]});
+  }else{
+    nodes.push({name:"ShirtHemShapeVariant__straight",mesh,translation:[0,.958,.005],scale:[.300,.020,.116]});
+  }
+}
 
 // Trouser fit and rise.
 for(const fit of styleVariants.trouserFits){
@@ -1024,21 +1119,79 @@ nodes.push({name:"TrouserWaistVariant__high",mesh:highRiseWaist});
 for(const x of [-.132,-.065,.065,.132]) nodes.push({name:`TrouserBeltLoop__${x}`,mesh:waistbandVariantMeshes.belt_loops,translation:[x,1.086,.108],scale:[.010,.040,.006]});
 nodes.push({name:"TrouserSideAdjusterL",mesh:waistbandVariantMeshes.side_adjuster,translation:[-.150,1.085,.090],scale:[.045,.018,.012],rotation:qz(-8)});
 nodes.push({name:"TrouserSideAdjusterR",mesh:waistbandVariantMeshes.side_adjuster,translation:[.150,1.085,.090],scale:[.045,.018,.012],rotation:qz(8)});
+nodes.push({name:"TrouserExtendedTabL",mesh:waistbandVariantMeshes.extended_tab,translation:[-.055,1.092,.116],scale:[.115,.022,.008],rotation:qz(-2)});
+nodes.push({name:"TrouserExtendedTabR",mesh:waistbandVariantMeshes.extended_tab,translation:[.055,1.092,.116],scale:[.115,.022,.008],rotation:qz(2)});
 nodes.push({name:"TrouserDrawstringL",mesh:waistbandVariantMeshes.drawstring,translation:[-.018,1.072,.116],scale:[.008,.085,.006],rotation:qz(-8)});
 nodes.push({name:"TrouserDrawstringR",mesh:waistbandVariantMeshes.drawstring,translation:[.018,1.072,.116],scale:[.008,.085,.006],rotation:qz(8)});
+for(const x of [-.11,-.055,.055,.11]) nodes.push({name:`TrouserBraceButton__${x}`,mesh:waistbandVariantMeshes.braces,translation:[x,1.092,.114],scale:[.010,.010,.006]});
 
-// Pleat construction cues.
-for(const side of [-1,1]){
-  nodes.push({name:`TrouserSinglePleat${side<0?"L":"R"}`,mesh:pleatVariantMeshes.single,translation:[side*.070,1.010,.106],scale:[.008,.150,.006],rotation:qz(side<0?-4:4)});
-  nodes.push({name:`TrouserDoublePleatA${side<0?"L":"R"}`,mesh:pleatVariantMeshes.double,translation:[side*.060,1.010,.106],scale:[.007,.150,.006],rotation:qz(side<0?-3:3)});
-  nodes.push({name:`TrouserDoublePleatB${side<0?"L":"R"}`,mesh:pleatVariantMeshes.double,translation:[side*.095,1.005,.105],scale:[.007,.135,.006],rotation:qz(side<0?-5:5)});
+// Pleat construction cues: forward/reverse direction and single/double count.
+const pleatSpec={
+  single_forward:{count:1,direction:1},
+  single_reverse:{count:1,direction:-1},
+  double_forward:{count:2,direction:1},
+  double_reverse:{count:2,direction:-1},
+  kissing:{count:2,direction:0},
+};
+for(const item of styleVariants.pleats){
+  if(item.id==="flat") continue;
+  const spec=pleatSpec[item.id]||{count:item.count||1,direction:1};
+  for(const side of [-1,1]){
+    for(let index=0;index<spec.count;index++){
+      const base=.070+index*.032;
+      const angle=spec.direction===0?(index===0?-3:3):spec.direction*(4+index*2);
+      nodes.push({
+        name:`TrouserPleatVariant__${item.id}__${side<0?"L":"R"}${index+1}`,
+        mesh:pleatVariantMeshes[item.id],
+        translation:[side*base,1.012-index*.004,.107],
+        scale:[.007,.150-index*.012,.006],
+        rotation:qz(side*angle),
+      });
+    }
+  }
 }
 
-// Break/hem construction cues.
-for(const side of [-1,1]){
-  nodes.push({name:`TrouserNoBreak${side<0?"L":"R"}`,mesh:breakVariantMeshes.no_break,translation:[side*.105,.090,.078],scale:[.058,.018,.012]});
-  nodes.push({name:`TrouserFullBreak${side<0?"L":"R"}`,mesh:breakVariantMeshes.full,translation:[side*.105,.072,.082],scale:[.064,.034,.018],rotation:qz(side<0?-4:4)});
-  nodes.push({name:`TrouserCropped${side<0?"L":"R"}`,mesh:breakVariantMeshes.cropped,translation:[side*.105,.145,.080],scale:[.060,.020,.014]});
+// Break construction cues.
+for(const item of styleVariants.breaks){
+  if(item.id==="slight") continue;
+  const mesh=breakVariantMeshes[item.id];
+  for(const side of [-1,1]){
+    const name=side<0?"L":"R";
+    if(item.id==="negative") nodes.push({name:`TrouserBreakVariant__negative${name}`,mesh,translation:[side*.105,.142,.078],scale:[.060,.018,.012]});
+    else if(item.id==="no_break") nodes.push({name:`TrouserBreakVariant__no_break${name}`,mesh,translation:[side*.105,.100,.078],scale:[.058,.014,.012]});
+    else if(item.id==="quarter") nodes.push({name:`TrouserBreakVariant__quarter${name}`,mesh,translation:[side*.105,.086,.080],scale:[.060,.022,.014],rotation:qz(side*-2)});
+    else if(item.id==="full") nodes.push({name:`TrouserBreakVariant__full${name}`,mesh,translation:[side*.105,.070,.082],scale:[.066,.038,.020],rotation:qz(side*-5)});
+  }
+}
+
+// Trouser cuffs / turn-ups.
+for(const item of styleVariants.trouserHems){
+  if(item.id==="plain") continue;
+  const mesh=trouserHemVariantMeshes[item.id];
+  const height=item.id==="turnup_5"?.050:.040;
+  for(const side of [-1,1]){
+    nodes.push({name:`TrouserHemVariant__${item.id}__${side<0?"L":"R"}`,mesh,translation:[side*.105,.103,.020],scale:[.070,height,.103]});
+  }
+}
+
+// Trouser pocket constructions.
+for(const item of styleVariants.trouserPockets){
+  const mesh=trouserPocketVariantMeshes[item.id];
+  if(item.id==="single_welt_back"||item.id==="double_jetted_back"){
+    const count=item.id==="double_jetted_back"?2:1;
+    for(let i=0;i<count;i++){
+      const x=count===1?.080:(i===0?-.080:.080);
+      nodes.push({name:`TrouserPocketVariant__${item.id}__${i}`,mesh,translation:[x,.978,-.095],scale:[.095,.012,.006]});
+    }
+    continue;
+  }
+  for(const side of [-1,1]){
+    const x=side*.155;
+    const y=item.id==="frogmouth"?1.000:.980;
+    const scale=item.id==="jean"?[.070,.050,.007]:item.id==="frogmouth"?[.080,.016,.007]:[.020,.110,.007];
+    const angle=item.id==="slant"?side*-16:item.id==="jean"?side*-10:0;
+    nodes.push({name:`TrouserPocketVariant__${item.id}__${side<0?"L":"R"}`,mesh,translation:[x,y,.090],scale,rotation:qz(angle)});
+  }
 }
 
 for(let i=0;i<7;i++) nodes.push({name:`ShirtButton${i+1}`,mesh:meshButton,translation:[0,1.430-i*.055,.119],scale:[.006,.006,.004]});
@@ -1089,7 +1242,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.1 anatomical-surface tailoring variants"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.2 researched tailoring taxonomy"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -1174,7 +1327,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.1 model complete: anatomically preserved garment surfaces + locked mannequin + live tailoring geometry variants + fabric drape response",
+    polishStage:"M7.2 model complete: researched shirt/trouser tailoring taxonomy + anatomically preserved garment surfaces + fabric drape response",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
