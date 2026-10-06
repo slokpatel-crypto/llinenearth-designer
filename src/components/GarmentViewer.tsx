@@ -112,6 +112,11 @@ function materialByName(viewer:ModelViewerElement,name:string) {
   return viewer.model?.materials.find((material)=>material.name===name) || null;
 }
 
+function preferredFabricId(fabrics:GarmentViewerFabric[],ids:string[]) {
+  for(const id of ids) if(fabrics.some((fabric)=>fabric.id===id)) return id;
+  return fabrics[0]?.id || "";
+}
+
 function measuredTileWidth(
   manifest:FabricTileManifest,
   runtimeScale:Record<string,ViewerRuntimeRenderScale>,
@@ -142,8 +147,18 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const [modelManifest,setModelManifest]=useState<GarmentViewerModelManifest|null>(null);
   const [modelManifestValidation,setModelManifestValidation]=useState<GarmentViewerManifestValidation|null>(null);
   const [activeView,setActiveView]=useState("front");
-  const [shirtId,setShirtId]=useState(shirtFabrics[0]?.id || "");
-  const [trouserId,setTrouserId]=useState(trouserFabrics[0]?.id || "");
+  const [shirtId,setShirtId]=useState(()=>preferredFabricId(shirtFabrics,[
+    "linen-plain-60-sky-blue",
+    "linen-plain-60-light-grey",
+    "linen-plain-60-stresa",
+    "linen-plain-60-jute-black",
+  ]));
+  const [trouserId,setTrouserId]=useState(()=>preferredFabricId(trouserFabrics,[
+    "linen-suiting-beige",
+    "linen-suiting-taupe-beige",
+    "linen-suiting-perfect-taupe",
+    "linen-suiting-light-cream",
+  ]));
   const [tileManifest,setTileManifest]=useState<FabricTileManifest>({});
   const [runtimeScale,setRuntimeScale]=useState<Record<string,ViewerRuntimeRenderScale>>({});
   const [shirtManualTileMm,setShirtManualTileMm]=useState(120);
