@@ -43,3 +43,7 @@ Retry production deploy after 3D visibility fix. Requested 2026-10-05 22:37 IST.
 Generated production 3D officewear baseline: build-time GLB + viewer manifest, curved shirt/trouser geometry, collar/cuffs/buttons, six independent fabric material zones, default production asset wiring.
 Target merged commits: 0678d67f + f54a3cbd + da02cb1d + 776f6ebf + 9b3ac6c.
 Date: 2026-10-06.
+
+Live Designer 3D identity calibration: proportions, mannequin ivory finish, white shoes, slim tucked-shirt waist, longer straight trousers, narrower head/hands/arms matched to studio-tucked reference anchors.
+Target commits: 2ea894e4 + bf8704d2.
+Date: 2026-10-06.
