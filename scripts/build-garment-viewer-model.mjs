@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import styleVariants from "../src/lib/garment-viewer-style-variants.json" with { type:"json" };
 
 const OUT_DIR=path.resolve(process.cwd(),"public/models");
 const BASE_BODY_PATH=path.resolve(process.cwd(),"assets/3d/makehuman-mannequin-base.glb");
@@ -43,6 +44,81 @@ function typedGeometry(positions,normals,uvs,indices){
     uvs:new Float32Array(uvs),
     indices:new Uint16Array(indices),
   };
+}
+
+function cloneGeometryTransform(geometry,transform){
+  const positions=new Float32Array(geometry.positions.length);
+  const normals=new Float32Array(geometry.normals.length);
+  for(let i=0;i<geometry.positions.length;i+=3){
+    const next=transform({
+      x:geometry.positions[i],
+      y:geometry.positions[i+1],
+      z:geometry.positions[i+2],
+      nx:geometry.normals[i],
+      ny:geometry.normals[i+1],
+      nz:geometry.normals[i+2],
+      index:i/3,
+    });
+    positions[i]=next.x;positions[i+1]=next.y;positions[i+2]=next.z;
+    const [nx,ny,nz]=normalize(next.nx,next.ny,next.nz);
+    normals[i]=nx;normals[i+1]=ny;normals[i+2]=nz;
+  }
+  return {
+    positions,
+    normals,
+    uvs:new Float32Array(geometry.uvs),
+    indices:new Uint16Array(geometry.indices),
+  };
+}
+
+function cropGeometry(geometry,predicate,transform=(point)=>point){
+  const remap=new Map(),positions=[],normals=[],uvs=[],indices=[];
+  function mapVertex(oldIndex){
+    if(remap.has(oldIndex)) return remap.get(oldIndex);
+    const p=oldIndex*3,u=oldIndex*2;
+    const point=transform({
+      x:geometry.positions[p],y:geometry.positions[p+1],z:geometry.positions[p+2],
+      nx:geometry.normals[p],ny:geometry.normals[p+1],nz:geometry.normals[p+2],
+    });
+    const next=positions.length/3;
+    remap.set(oldIndex,next);
+    positions.push(point.x,point.y,point.z);
+    const [nx,ny,nz]=normalize(point.nx,point.ny,point.nz);
+    normals.push(nx,ny,nz);
+    uvs.push(geometry.uvs[u],geometry.uvs[u+1]);
+    return next;
+  }
+  for(let i=0;i<geometry.indices.length;i+=3){
+    const a=geometry.indices[i],b=geometry.indices[i+1],d=geometry.indices[i+2];
+    const pa={x:geometry.positions[a*3],y:geometry.positions[a*3+1],z:geometry.positions[a*3+2]};
+    const pb={x:geometry.positions[b*3],y:geometry.positions[b*3+1],z:geometry.positions[b*3+2]};
+    const pd={x:geometry.positions[d*3],y:geometry.positions[d*3+1],z:geometry.positions[d*3+2]};
+    if(!predicate(pa)||!predicate(pb)||!predicate(pd)) continue;
+    indices.push(mapVertex(a),mapVertex(b),mapVertex(d));
+  }
+  if(indices.length<6) throw new Error("Variant crop produced too little geometry.");
+  return typedGeometry(positions,normals,uvs,indices);
+}
+
+function shirtFitGeometry(base,fit,centerX=0){
+  return cloneGeometryTransform(base,(p)=>{
+    const t=Math.max(0,Math.min(1,(p.y-1.055)/(1.47-1.055)));
+    const torsoBlend=Math.max(0,Math.min(1,(t-.08)/.72));
+    const scale=fit.waistScale+(fit.chestScale-fit.waistScale)*torsoBlend;
+    const sleeveScale=fit.sleeveScale||scale;
+    const effective=centerX===0?scale:sleeveScale;
+    return {...p,x:centerX+(p.x-centerX)*effective,z:p.z*(1+(effective-1)*.70)};
+  });
+}
+
+function trouserFitGeometry(base,fit,centerX){
+  return cloneGeometryTransform(base,(p)=>{
+    const t=Math.max(0,Math.min(1,(p.y-.06)/(.985-.06)));
+    let scale;
+    if(t<.5) scale=fit.hemScale+(fit.kneeScale-fit.hemScale)*(t/.5);
+    else scale=fit.kneeScale+(fit.thighScale-fit.kneeScale)*((t-.5)/.5);
+    return {...p,x:centerX+(p.x-centerX)*scale,z:.02+(p.z-.02)*(1+(scale-1)*.62)};
+  });
 }
 
 
@@ -623,6 +699,20 @@ const mannequinBodyStats={
 };
 const shoe=uvSphereGeometry(10,20);
 const collar=collarPointGeometry();
+const mandarinCollar=profileGeometry({
+  rings:[
+    {y:-.020,width:.070,depth:.060,z:0},
+    {y:.020,width:.070,depth:.060,z:0},
+  ],
+  segments:32,
+});
+const roundedCuff=profileGeometry({
+  rings:[
+    {y:-.022,width:.049,depth:.052,z:0},
+    {y:.022,width:.049,depth:.052,z:0},
+  ],
+  segments:24,
+});
 const detailBox=boxGeometry();
 const button=uvSphereGeometry(6,10);
 
@@ -631,9 +721,50 @@ const garmentMaterials=garmentPanels.map((panel,i)=>({
   pbrMetallicRoughness:{baseColorFactor:[1,1,1,1],baseColorTexture:{index:0},metallicFactor:0,roughnessFactor:i<3?.84:.79},
   normalTexture:{index:1,scale:i<3?.34:.29},
 }));
+const variantMaterialNames=[];
+function addVariantMaterial(name,garment){
+  variantMaterialNames.push(name);
+  return {
+    name,
+    alphaMode:"BLEND",
+    doubleSided:true,
+    pbrMetallicRoughness:{
+      baseColorFactor:[1,1,1,0],
+      baseColorTexture:{index:0},
+      metallicFactor:0,
+      roughnessFactor:garment==="shirt"?.84:.79,
+    },
+    normalTexture:{index:1,scale:garment==="shirt"?.34:.29},
+  };
+}
+const styleVariantMaterials=[
+  ...styleVariants.shirtFits.filter((fit)=>fit.id!=="regular").flatMap((fit)=>[
+    addVariantMaterial(`ShirtTorsoVariant__${fit.id}`,"shirt"),
+    addVariantMaterial(`ShirtSleeveLVariant__${fit.id}`,"shirt"),
+    addVariantMaterial(`ShirtSleeveRVariant__${fit.id}`,"shirt"),
+  ]),
+  ...styleVariants.shirtFits.map((fit)=>addVariantMaterial(`ShirtHemVariant__${fit.id}`,"shirt")),
+  ...styleVariants.sleeves.filter((sleeve)=>sleeve.id!=="full").flatMap((sleeve)=>[
+    addVariantMaterial(`ShirtSleeveLLength__${sleeve.id}`,"shirt"),
+    addVariantMaterial(`ShirtSleeveRLength__${sleeve.id}`,"shirt"),
+  ]),
+  ...styleVariants.collars.map((item)=>addVariantMaterial(`ShirtCollarVariant__${item.id}`,"shirt")),
+  ...styleVariants.cuffs.map((item)=>addVariantMaterial(`ShirtCuffVariant__${item.id}`,"shirt")),
+  ...styleVariants.plackets.filter((item)=>item.id!=="french").map((item)=>addVariantMaterial(`ShirtPlacketVariant__${item.id}`,"shirt")),
+  ...styleVariants.pockets.filter((item)=>item.id!=="none").map((item)=>addVariantMaterial(`ShirtPocketVariant__${item.id}`,"shirt")),
+  ...styleVariants.trouserFits.filter((fit)=>fit.id!=="straight").flatMap((fit)=>[
+    addVariantMaterial(`TrouserLegLVariant__${fit.id}`,"trouser"),
+    addVariantMaterial(`TrouserLegRVariant__${fit.id}`,"trouser"),
+  ]),
+  ...styleVariants.rises.filter((rise)=>rise.id!=="mid").map((rise)=>addVariantMaterial(`TrouserWaistVariant__${rise.id}`,"trouser")),
+  ...styleVariants.waistbands.filter((item)=>item.id!=="clean").map((item)=>addVariantMaterial(`TrouserWaistbandVariant__${item.id}`,"trouser")),
+  ...styleVariants.pleats.filter((item)=>item.id!=="flat").map((item)=>addVariantMaterial(`TrouserPleatVariant__${item.id}`,"trouser")),
+  ...styleVariants.breaks.filter((item)=>item.id!=="slight").map((item)=>addVariantMaterial(`TrouserBreakVariant__${item.id}`,"trouser")),
+];
 const materials=[
   {name:"MannequinSkin",pbrMetallicRoughness:{baseColorFactor:[.94,.93,.90,1],metallicFactor:0,roughnessFactor:.90}},
   ...garmentMaterials,
+  ...styleVariantMaterials,
   {name:"Shoe",pbrMetallicRoughness:{baseColorFactor:[.91,.90,.87,1],metallicFactor:0,roughnessFactor:.58}},
   {name:"ButtonAccent",pbrMetallicRoughness:{baseColorFactor:[.09,.075,.06,1],metallicFactor:.05,roughnessFactor:.42}},
 ];
@@ -663,6 +794,69 @@ const meshWaistDetail=addMesh("TrouserWaistDetailMesh",detailBox,"TrouserWaistFa
 const meshSole=addMesh("SoleMesh",detailBox,"Shoe");
 const meshShoeDetail=addMesh("ShoeDetailMesh",detailBox,"Shoe");
 
+const shirtFitMeshes={};
+for(const fit of styleVariants.shirtFits){
+  if(fit.id==="regular") continue;
+  shirtFitMeshes[fit.id]={
+    torso:addMesh(`ShirtTorsoVariantMesh__${fit.id}`,shirtFitGeometry(garmentShells.shirtTorso,fit,0),`ShirtTorsoVariant__${fit.id}`),
+    left:addMesh(`ShirtSleeveLVariantMesh__${fit.id}`,shirtFitGeometry(garmentShells.sleeveL,fit,-.226),`ShirtSleeveLVariant__${fit.id}`),
+    right:addMesh(`ShirtSleeveRVariantMesh__${fit.id}`,shirtFitGeometry(garmentShells.sleeveR,fit,.226),`ShirtSleeveRVariant__${fit.id}`),
+  };
+}
+const shirtHemMeshes={};
+for(const fit of styleVariants.shirtFits){
+  const source=fit.id==="regular"?garmentShells.shirtTorso:shirtFitGeometry(garmentShells.shirtTorso,fit,0);
+  shirtHemMeshes[fit.id]=addMesh(
+    `ShirtHemVariantMesh__${fit.id}`,
+    cropGeometry(source,(p)=>p.y>=1.055&&p.y<=1.16,(p)=>({...p,y:1.16-(1.16-p.y)*1.95})),
+    `ShirtHemVariant__${fit.id}`,
+  );
+}
+const halfSleeveL=addMesh("ShirtSleeveLLengthMesh__half",cropGeometry(garmentShells.sleeveL,(p)=>p.y>=1.18), "ShirtSleeveLLength__half");
+const halfSleeveR=addMesh("ShirtSleeveRLengthMesh__half",cropGeometry(garmentShells.sleeveR,(p)=>p.y>=1.18), "ShirtSleeveRLength__half");
+const rollSleeveL=addMesh("ShirtSleeveLLengthMesh__roll",cropGeometry(garmentShells.sleeveL,(p)=>p.y>=1.08), "ShirtSleeveLLength__roll");
+const rollSleeveR=addMesh("ShirtSleeveRLengthMesh__roll",cropGeometry(garmentShells.sleeveR,(p)=>p.y>=1.08), "ShirtSleeveRLength__roll");
+
+const trouserFitMeshes={};
+for(const fit of styleVariants.trouserFits){
+  if(fit.id==="straight") continue;
+  trouserFitMeshes[fit.id]={
+    left:addMesh(`TrouserLegLVariantMesh__${fit.id}`,trouserFitGeometry(garmentShells.trouserLegL,fit,-.105),`TrouserLegLVariant__${fit.id}`),
+    right:addMesh(`TrouserLegRVariantMesh__${fit.id}`,trouserFitGeometry(garmentShells.trouserLegR,fit,.105),`TrouserLegRVariant__${fit.id}`),
+  };
+}
+const lowRiseWaist=addMesh("TrouserWaistVariantMesh__low",cloneGeometryTransform(garmentShells.trouserWaist,(p)=>({...p,y:p.y-.035})),"TrouserWaistVariant__low");
+const highRiseWaist=addMesh("TrouserWaistVariantMesh__high",cloneGeometryTransform(garmentShells.trouserWaist,(p)=>({...p,y:p.y+.035})),"TrouserWaistVariant__high");
+
+const collarVariantMeshes=Object.fromEntries(styleVariants.collars.map((item)=>[
+  item.id,
+  addMesh(`ShirtCollarVariantMesh__${item.id}`,item.id==="mandarin"?mandarinCollar:collar,`ShirtCollarVariant__${item.id}`)
+]));
+const cuffVariantMeshes=Object.fromEntries(styleVariants.cuffs.map((item)=>[
+  item.id,
+  addMesh(`ShirtCuffVariantMesh__${item.id}`,item.id==="rounded"?roundedCuff:detailBox,`ShirtCuffVariant__${item.id}`)
+]));
+const placketVariantMeshes=Object.fromEntries(styleVariants.plackets.filter((item)=>item.id!=="french").map((item)=>[
+  item.id,
+  addMesh(`ShirtPlacketVariantMesh__${item.id}`,detailBox,`ShirtPlacketVariant__${item.id}`)
+]));
+const pocketVariantMeshes=Object.fromEntries(styleVariants.pockets.filter((item)=>item.id!=="none").map((item)=>[
+  item.id,
+  addMesh(`ShirtPocketVariantMesh__${item.id}`,detailBox,`ShirtPocketVariant__${item.id}`)
+]));
+const waistbandVariantMeshes=Object.fromEntries(styleVariants.waistbands.filter((item)=>item.id!=="clean").map((item)=>[
+  item.id,
+  addMesh(`TrouserWaistbandVariantMesh__${item.id}`,detailBox,`TrouserWaistbandVariant__${item.id}`)
+]));
+const pleatVariantMeshes=Object.fromEntries(styleVariants.pleats.filter((item)=>item.id!=="flat").map((item)=>[
+  item.id,
+  addMesh(`TrouserPleatVariantMesh__${item.id}`,detailBox,`TrouserPleatVariant__${item.id}`)
+]));
+const breakVariantMeshes=Object.fromEntries(styleVariants.breaks.filter((item)=>item.id!=="slight").map((item)=>[
+  item.id,
+  addMesh(`TrouserBreakVariantMesh__${item.id}`,detailBox,`TrouserBreakVariant__${item.id}`)
+]));
+
 const qz=(deg)=>{const r=deg*Math.PI/180/2;return [0,0,Math.sin(r),Math.cos(r)];};
 const nodes=[
   // The CC0 anatomical body is prepared as the next cloth-collision source but intentionally not rendered:
@@ -682,21 +876,96 @@ const nodes=[
   {name:"ShoeR",mesh:meshShoeR},
   {name:"SoleL",mesh:meshSole,translation:[-.105,.010,.089],scale:[.108,.016,.292]},
   {name:"SoleR",mesh:meshSole,translation:[.105,.010,.089],scale:[.108,.016,.292]},
-  {name:"CollarL",mesh:meshCollar,translation:[-.043,1.468,.096],scale:[.080,.088,.014],rotation:qz(-18)},
-  {name:"CollarR",mesh:meshCollar,translation:[.043,1.468,.096],scale:[.080,.088,.014],rotation:qz(18)},
-  {name:"CuffL",mesh:meshCuffL,translation:[-.250,.870,.030],scale:[.049,.021,.051],rotation:qz(-2.4)},
-  {name:"CuffR",mesh:meshCuffR,translation:[.250,.870,.030],scale:[.049,.021,.051],rotation:qz(2.4)},
+  // Collar/cuff/placket/pocket geometry variants are appended below and toggled by material visibility.
   // Raised construction cues keep the 3D silhouette close to the Live Designer front reference.
-  {name:"ShirtFrontPlacket",mesh:meshShirtPlacket,translation:[0,1.268,.112],scale:[.013,.374,.008]},
   {name:"TrouserFrontCreaseL",mesh:meshTrouserCreaseL,translation:[-.105,.555,.071],scale:[.006,.905,.006]},
   {name:"TrouserFrontCreaseR",mesh:meshTrouserCreaseR,translation:[.105,.555,.071],scale:[.006,.905,.006]},
   {name:"TrouserFly",mesh:meshWaistDetail,translation:[0,.995,.106],scale:[.010,.105,.006]},
   {name:"WaistbandFront",mesh:meshWaistDetail,translation:[0,1.086,.105],scale:[.330,.020,.006]},
-  {name:"BeltLoopL1",mesh:meshWaistDetail,translation:[-.132,1.086,.108],scale:[.011,.040,.006]},
-  {name:"BeltLoopL2",mesh:meshWaistDetail,translation:[-.065,1.086,.109],scale:[.010,.040,.006]},
-  {name:"BeltLoopR1",mesh:meshWaistDetail,translation:[.065,1.086,.109],scale:[.010,.040,.006]},
-  {name:"BeltLoopR2",mesh:meshWaistDetail,translation:[.132,1.086,.108],scale:[.011,.040,.006]},
+  // Waistband/pleat/break variants are appended below and toggled by material visibility.
 ];
+
+// Shirt fit shells.
+for(const fit of styleVariants.shirtFits){
+  if(fit.id==="regular") continue;
+  const mesh=shirtFitMeshes[fit.id];
+  nodes.push({name:`ShirtTorsoVariant__${fit.id}`,mesh:mesh.torso});
+  nodes.push({name:`ShirtSleeveLVariant__${fit.id}`,mesh:mesh.left});
+  nodes.push({name:`ShirtSleeveRVariant__${fit.id}`,mesh:mesh.right});
+}
+for(const fit of styleVariants.shirtFits) nodes.push({name:`ShirtHemVariant__${fit.id}`,mesh:shirtHemMeshes[fit.id]});
+nodes.push({name:"ShirtSleeveLLength__half",mesh:halfSleeveL},{name:"ShirtSleeveRLength__half",mesh:halfSleeveR});
+nodes.push({name:"ShirtSleeveLLength__roll",mesh:rollSleeveL},{name:"ShirtSleeveRLength__roll",mesh:rollSleeveR});
+
+// Collar families.
+const collarNodeSpec={
+  point:{y:1.468,z:.096,scale:[.080,.088,.014],angle:18},
+  spread:{y:1.468,z:.096,scale:[.082,.080,.014],angle:30},
+  cutaway:{y:1.467,z:.096,scale:[.078,.070,.014],angle:48},
+  button_down:{y:1.467,z:.096,scale:[.083,.094,.014],angle:20},
+  camp:{y:1.446,z:.094,scale:[.095,.110,.014],angle:32},
+};
+for(const item of styleVariants.collars){
+  if(item.id==="mandarin"){
+    nodes.push({name:"ShirtCollarVariant__mandarin",mesh:collarVariantMeshes.mandarin,translation:[0,1.480,.010]});
+    continue;
+  }
+  const spec=collarNodeSpec[item.id]||collarNodeSpec.point;
+  nodes.push({name:`ShirtCollarL__${item.id}`,mesh:collarVariantMeshes[item.id],translation:[-.043,spec.y,spec.z],scale:spec.scale,rotation:qz(-spec.angle)});
+  nodes.push({name:`ShirtCollarR__${item.id}`,mesh:collarVariantMeshes[item.id],translation:[.043,spec.y,spec.z],scale:spec.scale,rotation:qz(spec.angle)});
+}
+
+// Cuff families.
+const cuffSpec={
+  barrel_1:{scale:[.049,.021,.051],y:.870},
+  barrel_2:{scale:[.050,.025,.052],y:.872},
+  french:{scale:[.052,.038,.054],y:.880},
+  rounded:{scale:[1,1,1],y:.870},
+  cocktail:{scale:[.055,.044,.058],y:.888},
+};
+for(const item of styleVariants.cuffs){
+  const spec=cuffSpec[item.id];
+  nodes.push({name:`ShirtCuffL__${item.id}`,mesh:cuffVariantMeshes[item.id],translation:[-.250,spec.y,.030],scale:spec.scale,rotation:qz(-2.4)});
+  nodes.push({name:`ShirtCuffR__${item.id}`,mesh:cuffVariantMeshes[item.id],translation:[.250,spec.y,.030],scale:spec.scale,rotation:qz(2.4)});
+}
+
+// Plackets and pockets.
+nodes.push({name:"ShirtPlacketVariant__standard",mesh:placketVariantMeshes.standard,translation:[0,1.268,.112],scale:[.013,.374,.008]});
+nodes.push({name:"ShirtPlacketVariant__hidden",mesh:placketVariantMeshes.hidden,translation:[0,1.268,.114],scale:[.020,.374,.008]});
+nodes.push({name:"ShirtPocketVariant__patch",mesh:pocketVariantMeshes.patch,translation:[.085,1.292,.116],scale:[.105,.115,.010]});
+nodes.push({name:"ShirtPocketVariant__flap",mesh:pocketVariantMeshes.flap,translation:[.085,1.335,.119],scale:[.110,.035,.012]});
+
+// Trouser fit and rise.
+for(const fit of styleVariants.trouserFits){
+  if(fit.id==="straight") continue;
+  const mesh=trouserFitMeshes[fit.id];
+  nodes.push({name:`TrouserLegLVariant__${fit.id}`,mesh:mesh.left});
+  nodes.push({name:`TrouserLegRVariant__${fit.id}`,mesh:mesh.right});
+}
+nodes.push({name:"TrouserWaistVariant__low",mesh:lowRiseWaist});
+nodes.push({name:"TrouserWaistVariant__high",mesh:highRiseWaist});
+
+// Waistband details.
+for(const x of [-.132,-.065,.065,.132]) nodes.push({name:`TrouserBeltLoop__${x}`,mesh:waistbandVariantMeshes.belt_loops,translation:[x,1.086,.108],scale:[.010,.040,.006]});
+nodes.push({name:"TrouserSideAdjusterL",mesh:waistbandVariantMeshes.side_adjuster,translation:[-.150,1.085,.090],scale:[.045,.018,.012],rotation:qz(-8)});
+nodes.push({name:"TrouserSideAdjusterR",mesh:waistbandVariantMeshes.side_adjuster,translation:[.150,1.085,.090],scale:[.045,.018,.012],rotation:qz(8)});
+nodes.push({name:"TrouserDrawstringL",mesh:waistbandVariantMeshes.drawstring,translation:[-.018,1.072,.116],scale:[.008,.085,.006],rotation:qz(-8)});
+nodes.push({name:"TrouserDrawstringR",mesh:waistbandVariantMeshes.drawstring,translation:[.018,1.072,.116],scale:[.008,.085,.006],rotation:qz(8)});
+
+// Pleat construction cues.
+for(const side of [-1,1]){
+  nodes.push({name:`TrouserSinglePleat${side<0?"L":"R"}`,mesh:pleatVariantMeshes.single,translation:[side*.070,1.010,.106],scale:[.008,.150,.006],rotation:qz(side<0?-4:4)});
+  nodes.push({name:`TrouserDoublePleatA${side<0?"L":"R"}`,mesh:pleatVariantMeshes.double,translation:[side*.060,1.010,.106],scale:[.007,.150,.006],rotation:qz(side<0?-3:3)});
+  nodes.push({name:`TrouserDoublePleatB${side<0?"L":"R"}`,mesh:pleatVariantMeshes.double,translation:[side*.095,1.005,.105],scale:[.007,.135,.006],rotation:qz(side<0?-5:5)});
+}
+
+// Break/hem construction cues.
+for(const side of [-1,1]){
+  nodes.push({name:`TrouserNoBreak${side<0?"L":"R"}`,mesh:breakVariantMeshes.no_break,translation:[side*.105,.090,.078],scale:[.058,.018,.012]});
+  nodes.push({name:`TrouserFullBreak${side<0?"L":"R"}`,mesh:breakVariantMeshes.full,translation:[side*.105,.072,.082],scale:[.064,.034,.018],rotation:qz(side<0?-4:4)});
+  nodes.push({name:`TrouserCropped${side<0?"L":"R"}`,mesh:breakVariantMeshes.cropped,translation:[side*.105,.145,.080],scale:[.060,.020,.014]});
+}
+
 for(let i=0;i<7;i++) nodes.push({name:`ShirtButton${i+1}`,mesh:meshButton,translation:[0,1.430-i*.055,.119],scale:[.006,.006,.004]});
 nodes.push({name:"TrouserButton",mesh:meshButton,translation:[0,1.100,.113],scale:[.0068,.0068,.0048]});
 nodes.push({name:"CuffButtonL",mesh:meshButton,translation:[-.250,.870,.057],scale:[.0048,.0048,.0035]});
@@ -745,7 +1014,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M6 realistic shell final"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7 tailoring variants"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -830,9 +1099,10 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M6 model complete: smoothed body-derived shirt, sleeve, trouser and footwear shells + anatomical hands + calibrated Live Designer silhouette",
+    polishStage:"M7 model complete: locked mannequin + fabric-ready tailoring geometry variants for fit, collar, cuff, sleeve, tuck, trouser shape, rise, pleat, waistband and break",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
+  styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
   cameraOrbits:{front:"0deg 76deg 3.60m","three-quarter":"35deg 76deg 3.60m",side:"90deg 76deg 3.60m",back:"180deg 76deg 3.60m"},
 };
 
