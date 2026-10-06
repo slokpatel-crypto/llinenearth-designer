@@ -165,6 +165,134 @@ async function loadMakeHumanBodyGeometry(){
   return typedGeometry(outPositions,outNormals,outUvs,outIndices);
 }
 
+
+function lerpEnvelope(stops,y){
+  if(y<=stops[0][0]) return stops[0][1];
+  for(let i=1;i<stops.length;i++){
+    const [y1,w1]=stops[i-1],[y2,w2]=stops[i];
+    if(y<=y2){
+      const t=(y-y1)/Math.max(1e-6,y2-y1);
+      return w1+(w2-w1)*t;
+    }
+  }
+  return stops.at(-1)[1];
+}
+
+async function loadMakeHumanGarmentShells(){
+  const file=new Uint8Array(await fs.readFile(BASE_BODY_PATH));
+  const fileView=new DataView(file.buffer,file.byteOffset,file.byteLength);
+  if(fileView.getUint32(0,true)!==0x46546c67) throw new Error("MakeHuman body source is not a GLB.");
+  const jsonLength=fileView.getUint32(12,true);
+  const source=JSON.parse(new TextDecoder().decode(file.slice(20,20+jsonLength)).trim());
+  const binHeader=20+align4(jsonLength);
+  if(fileView.getUint32(binHeader+4,true)!==0x004e4942) throw new Error("MakeHuman GLB has no binary chunk.");
+  const binLength=fileView.getUint32(binHeader,true);
+  const binary=file.slice(binHeader+8,binHeader+8+binLength);
+  const primitive=source.meshes?.[0]?.primitives?.[0];
+  if(!primitive) throw new Error("MakeHuman GLB has no primary mesh.");
+  const positions=readAccessorValues(source,binary,primitive.attributes.POSITION);
+  const normals=readAccessorValues(source,binary,primitive.attributes.NORMAL);
+  const indexData=readAccessorValues(source,binary,primitive.indices);
+  if(positions.components!==3||normals.components!==3||indexData.components!==1) throw new Error("Unexpected MakeHuman garment-shell accessor layout.");
+
+  const sx=.84;
+  const sy=(REFERENCE_HEIGHT_MM/1000)/1.7;
+  const sz=.58;
+  const armPoseRad=-20*Math.PI/180;
+  const armPoseCos=Math.cos(armPoseRad);
+  const armPoseSin=Math.sin(armPoseRad);
+  const armPivotY=1.31;
+  const armPivotZ=.040;
+  const transformed=new Array(positions.count);
+
+  for(let index=0;index<positions.count;index++){
+    const p=index*3;
+    let x=positions.values[p]*sx;
+    let y=positions.values[p+1]*sy;
+    let z=-positions.values[p+2]*sz;
+    let [nx,ny,nz]=normalize(
+      normals.values[p]/sx,
+      normals.values[p+1]/sy,
+      -normals.values[p+2]/sz,
+    );
+    const isArm=Math.abs(x)>.15&&y>.65&&y<1.32;
+    if(isArm){
+      const dy=y-armPivotY,dz=z-armPivotZ;
+      y=armPivotY+armPoseCos*dy-armPoseSin*dz;
+      z=armPivotZ+armPoseSin*dy+armPoseCos*dz;
+      const rotatedNy=armPoseCos*ny-armPoseSin*nz;
+      const rotatedNz=armPoseSin*ny+armPoseCos*nz;
+      [nx,ny,nz]=normalize(nx,rotatedNy,rotatedNz);
+    }
+    transformed[index]={x,y,z,nx,ny,nz};
+  }
+
+  const torsoEnvelope=[
+    [1.060,.147],
+    [1.105,.151],
+    [1.180,.154],
+    [1.255,.160],
+    [1.335,.171],
+    [1.400,.184],
+    [1.440,.194],
+    [1.470,.132],
+  ];
+
+  function buildRegion({predicate,centerX=0,yMin,yMax,outward=.008,kind}){
+    const remap=new Map();
+    const outPositions=[],outNormals=[],outUvs=[],outIndices=[];
+    function mapVertex(oldIndex){
+      let next=remap.get(oldIndex);
+      if(next!==undefined) return next;
+      const point=transformed[oldIndex];
+      let {x,y,z,nx,ny,nz}=point;
+      if(kind==="torso"){
+        const targetHalf=lerpEnvelope(torsoEnvelope,y);
+        x=Math.max(-targetHalf,Math.min(targetHalf,x*1.08));
+        z=z*.90;
+      }else if(kind==="sleeve"){
+        x=centerX+(x-centerX)*1.08;
+        z=z*.96+.012;
+      }
+      x+=nx*outward;
+      y+=ny*outward*.55;
+      z+=nz*outward;
+      next=remap.size;
+      remap.set(oldIndex,next);
+      outPositions.push(x,y,z);
+      outNormals.push(nx,ny,nz);
+      const angle=Math.atan2(z,x-centerX);
+      const u=(angle/(Math.PI*2)+1.5)%1;
+      const v=Math.max(0,Math.min(1,(y-yMin)/Math.max(1e-5,yMax-yMin)));
+      outUvs.push(u,v);
+      return next;
+    }
+    for(let i=0;i+2<indexData.values.length;i+=3){
+      const a=Number(indexData.values[i]),b=Number(indexData.values[i+1]),d=Number(indexData.values[i+2]);
+      const pa=transformed[a],pb=transformed[b],pd=transformed[d];
+      if(!predicate(pa)||!predicate(pb)||!predicate(pd)) continue;
+      outIndices.push(mapVertex(a),mapVertex(d),mapVertex(b));
+    }
+    if(outIndices.length<300) throw new Error(`MakeHuman ${kind} shell produced too little geometry.`);
+    return typedGeometry(outPositions,outNormals,outUvs,outIndices);
+  }
+
+  const shirtTorso=buildRegion({
+    kind:"torso",centerX:0,yMin:1.055,yMax:1.47,outward:.010,
+    predicate:(p)=>p.y>=1.055&&p.y<=1.47&&(Math.abs(p.x)<=.18||(p.y>=1.30&&Math.abs(p.x)<=.205)),
+  });
+  const sleeveL=buildRegion({
+    kind:"sleeve",centerX:-.226,yMin:.865,yMax:1.455,outward:.009,
+    predicate:(p)=>p.y>=.865&&p.y<=1.455&&p.x<=-.145,
+  });
+  const sleeveR=buildRegion({
+    kind:"sleeve",centerX:.226,yMin:.865,yMax:1.455,outward:.009,
+    predicate:(p)=>p.y>=.865&&p.y<=1.455&&p.x>=.145,
+  });
+
+  return {shirtTorso,sleeveL,sleeveR};
+}
+
 function profileGeometry({rings,segments=28,ripple=()=>0}){
   const positions=[],normals=[],uvs=[],indices=[];
   for(let r=0;r<rings.length;r++){
@@ -363,6 +491,7 @@ const thumb=profileGeometry({
   segments:16,
 });
 const mannequinBody=await loadMakeHumanBodyGeometry();
+const garmentShells=await loadMakeHumanGarmentShells();
 const mannequinBodyStats={
   vertices:mannequinBody.positions.length/3,
   triangles:mannequinBody.indices.length/3,
@@ -392,9 +521,9 @@ const meshHand=addMesh("HandPalmMesh",hand,"MannequinSkin");
 const meshFinger=addMesh("HandFingerMesh",finger,"MannequinSkin");
 const meshThumb=addMesh("HandThumbMesh",thumb,"MannequinSkin");
 const meshShoe=addMesh("ShoeMesh",shoe,"Shoe");
-const meshShirtTorso=addMesh("ShirtTorsoMesh",shirtTorso,"ShirtTorsoFabric");
-const meshSleeveL=addMesh("ShirtSleeveLMesh",sleeve,"ShirtSleeveLFabric");
-const meshSleeveR=addMesh("ShirtSleeveRMesh",sleeve,"ShirtSleeveRFabric");
+const meshShirtTorso=addMesh("ShirtTorsoMesh",garmentShells.shirtTorso,"ShirtTorsoFabric");
+const meshSleeveL=addMesh("ShirtSleeveLMesh",garmentShells.sleeveL,"ShirtSleeveLFabric");
+const meshSleeveR=addMesh("ShirtSleeveRMesh",garmentShells.sleeveR,"ShirtSleeveRFabric");
 const meshWaist=addMesh("TrouserWaistMesh",trouserWaist,"TrouserWaistFabric");
 const meshLegL=addMesh("TrouserLegLMesh",trouserLeg,"TrouserLegLFabric");
 const meshLegR=addMesh("TrouserLegRMesh",trouserLeg,"TrouserLegRFabric");
@@ -416,9 +545,9 @@ const nodes=[
   // 1727 mm canonical Live Designer mannequin: slim shoulders, long legs, relaxed straight stance.
   {name:"Head",mesh:meshHead,translation:[0,1.624,.004]},
   {name:"Neck",mesh:meshHead,translation:[0,1.504,.001],scale:[.63,.58,.62]},
-  {name:"ShirtTorsoFabric",mesh:meshShirtTorso,translation:[0,1.265,0]},
-  {name:"ShirtSleeveLFabric",mesh:meshSleeveL,translation:[-.226,1.155,.030],rotation:qz(-2.4)},
-  {name:"ShirtSleeveRFabric",mesh:meshSleeveR,translation:[.226,1.155,.030],rotation:qz(2.4)},
+  {name:"ShirtTorsoFabric",mesh:meshShirtTorso},
+  {name:"ShirtSleeveLFabric",mesh:meshSleeveL},
+  {name:"ShirtSleeveRFabric",mesh:meshSleeveR},
   {name:"HandPalmL",mesh:meshHand,translation:[-.250,.838,.012]},
   {name:"HandPalmR",mesh:meshHand,translation:[.250,.838,.012]},
   {name:"TrouserWaistFabric",mesh:meshWaist,translation:[0,1.025,0]},
@@ -511,7 +640,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M5 anatomical"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M5.3 curved shirt shells"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -596,7 +725,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M5.2 Live Designer visible model polished; anatomical collision body prepared separately",
+    polishStage:"M5.3 curved anatomical shirt shells + Live Designer identity lock; collision body prepared separately",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   cameraOrbits:{front:"0deg 76deg 2.72m","three-quarter":"35deg 76deg 2.72m",side:"90deg 76deg 2.72m",back:"180deg 76deg 2.72m"},
