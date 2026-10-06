@@ -377,11 +377,11 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     "touch-action":"pan-y",
     "camera-orbit":cameraViews[0].orbit,
     "camera-target":"0m 0.86m 0m",
-    "field-of-view":"27deg",
-    "min-field-of-view":"23deg",
-    "max-field-of-view":"38deg",
-    "min-camera-orbit":"auto 58deg 2.15m",
-    "max-camera-orbit":"auto 92deg 3.6m",
+    "field-of-view":"32deg",
+    "min-field-of-view":"27deg",
+    "max-field-of-view":"42deg",
+    "min-camera-orbit":"auto 58deg 2.45m",
+    "max-camera-orbit":"auto 92deg 4.0m",
     "interpolation-decay":"135",
     "environment-image":"neutral",
     "shadow-intensity":".78",
@@ -462,7 +462,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         <span><small>VIEWS</small><b>4 fixed + free</b></span>
         <span><small>AI CREDITS</small><b>0</b></span>
       </div>
-      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M5.6 is locked: curved anatomical shirt, sleeve and trouser-waist shells plus anatomical mannequin hands replace the block-like body pieces, while the faceless ivory head, classic collar/cuffs, tucked construction, corrected straight trouser fall with a slight break, white footwear and studio framing remain fixed. The separate anatomical collision body is ready for the fabric/drape engine." : "Fallback prototype is active. Production should use the identity-locked M5.2 officewear model before fabric/drape work continues."}</p>
+      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M5.5 is locked: curved anatomical shirt, sleeve and trouser-waist shells plus anatomical mannequin hands replace the block-like body pieces, while the faceless ivory head, classic collar/cuffs, tucked construction, reference trouser taper, white footwear and full-body studio framing remain fixed. The separate anatomical collision body is ready for the fabric/drape engine." : "Fallback prototype is active. Production should use the identity-locked M5.2 officewear model before fabric/drape work continues."}</p>
     </aside>
   </section>;
 }
