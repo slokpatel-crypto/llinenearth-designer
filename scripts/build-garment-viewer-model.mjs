@@ -237,6 +237,12 @@ async function loadMakeHumanGarmentShells(){
     [1.440,.194],
     [1.470,.132],
   ];
+  const trouserWaistEnvelope=[
+    [.940,.158],
+    [.980,.166],
+    [1.040,.172],
+    [1.100,.170],
+  ];
 
   function buildRegion({predicate,centerX=0,yMin,yMax,outward=.008,kind}){
     const remap=new Map();
@@ -253,6 +259,10 @@ async function loadMakeHumanGarmentShells(){
       }else if(kind==="sleeve"){
         x=centerX+(x-centerX)*1.08;
         z=z*.96+.012;
+      }else if(kind==="waist"){
+        const targetHalf=lerpEnvelope(trouserWaistEnvelope,y);
+        x=Math.max(-targetHalf,Math.min(targetHalf,x*1.02));
+        z=Math.max(-.088,Math.min(.092,z*.76+.006));
       }
       x+=nx*outward;
       y+=ny*outward*.55;
@@ -297,8 +307,12 @@ async function loadMakeHumanGarmentShells(){
     kind:"skin",centerX:.226,yMin:.80,yMax:.91,outward:0,
     predicate:(p)=>p.y>=.80&&p.y<=.91&&p.x>=.195,
   });
+  const trouserWaist=buildRegion({
+    kind:"waist",centerX:0,yMin:.94,yMax:1.10,outward:.008,
+    predicate:(p)=>p.y>=.94&&p.y<=1.10&&Math.abs(p.x)<=.185,
+  });
 
-  return {shirtTorso,sleeveL,sleeveR,handL,handR};
+  return {shirtTorso,sleeveL,sleeveR,handL,handR,trouserWaist};
 }
 
 function profileGeometry({rings,segments=28,ripple=()=>0}){
@@ -531,7 +545,7 @@ const meshShoe=addMesh("ShoeMesh",shoe,"Shoe");
 const meshShirtTorso=addMesh("ShirtTorsoMesh",garmentShells.shirtTorso,"ShirtTorsoFabric");
 const meshSleeveL=addMesh("ShirtSleeveLMesh",garmentShells.sleeveL,"ShirtSleeveLFabric");
 const meshSleeveR=addMesh("ShirtSleeveRMesh",garmentShells.sleeveR,"ShirtSleeveRFabric");
-const meshWaist=addMesh("TrouserWaistMesh",trouserWaist,"TrouserWaistFabric");
+const meshWaist=addMesh("TrouserWaistMesh",garmentShells.trouserWaist,"TrouserWaistFabric");
 const meshLegL=addMesh("TrouserLegLMesh",trouserLeg,"TrouserLegLFabric");
 const meshLegR=addMesh("TrouserLegRMesh",trouserLeg,"TrouserLegRFabric");
 const meshCollar=addMesh("CollarMesh",collar,"ShirtTorsoFabric");
@@ -557,7 +571,7 @@ const nodes=[
   {name:"ShirtSleeveRFabric",mesh:meshSleeveR},
   {name:"HandL",mesh:meshHandL},
   {name:"HandR",mesh:meshHandR},
-  {name:"TrouserWaistFabric",mesh:meshWaist,translation:[0,1.025,0]},
+  {name:"TrouserWaistFabric",mesh:meshWaist},
   {name:"TrouserLegLFabric",mesh:meshLegL,translation:[-.105,.555,0]},
   {name:"TrouserLegRFabric",mesh:meshLegR,translation:[.105,.555,0]},
   {name:"ShoeL",mesh:meshShoe,translation:[-.105,.056,.081],scale:[.068,.041,.150]},
@@ -627,7 +641,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M5.4 anatomical hands"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M5.5 curved waist"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -712,7 +726,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M5.4 curved shirt shells + anatomical hands + Live Designer identity lock; collision body prepared separately",
+    polishStage:"M5.5 curved shirt/sleeve/waist shells + anatomical hands + Live Designer identity lock; collision body prepared separately",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   cameraOrbits:{front:"0deg 76deg 2.72m","three-quarter":"35deg 76deg 2.72m",side:"90deg 76deg 2.72m",back:"180deg 76deg 2.72m"},
