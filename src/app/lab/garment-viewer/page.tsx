@@ -8,8 +8,8 @@ import { loadActiveDesignerFabricStock } from "@/lib/designer/catalog-stock-serv
 import "./garment-viewer.css";
 
 export const metadata={
-  title:"GarmentViewer M2 · Linen Earth",
-  description:"Reusable 3D garment material-mapping proof for Linen Earth.",
+  title:"GarmentViewer M7 · Linen Earth",
+  description:"Linen Earth locked 3D mannequin with live fabric mapping and tailoring construction variants.",
   robots:{index:false,follow:false},
 };
 
