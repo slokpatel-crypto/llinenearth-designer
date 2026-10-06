@@ -12,6 +12,7 @@ import {
 import { inspectGarmentViewerGlb } from "@/lib/garment-viewer-glb";
 
 export const GARMENT_VIEWER_PRODUCTION_MODEL_ID="LE-OFFICEWEAR-V1";
+export const GARMENT_VIEWER_DEFAULT_MODEL_SRC="/models/linen-earth-officewear-v1.glb";
 
 function publicAssetPath(source:string){
   const relative=source.replace(/\?.*$/,"").replace(/^\/+/,"");
@@ -22,7 +23,7 @@ function publicAssetPath(source:string){
 }
 
 export async function loadGarmentViewerProductionAssetStatus(){
-  const modelSrc=approvedGarmentViewerModelSource(process.env.LINEN_GARMENT_MODEL_SRC);
+  const modelSrc=approvedGarmentViewerModelSource(process.env.LINEN_GARMENT_MODEL_SRC || GARMENT_VIEWER_DEFAULT_MODEL_SRC);
   const manifestSrc=approvedGarmentViewerManifestSource(modelSrc);
   if(!modelSrc||!manifestSrc){
     return {
@@ -34,7 +35,7 @@ export async function loadGarmentViewerProductionAssetStatus(){
       manifest:null,
       assetReady:false,
       assetIdentity:null,
-      reasons:["No approved Linen Earth production GLB is configured."],
+      reasons:["No Linen Earth production GLB is available."],
     };
   }
 
