@@ -145,14 +145,20 @@ type StyleVariantState={
   shirtWear:string;
   sleeve:string;
   collar:string;
+  collarConstruction:string;
   cuff:string;
+  cuffConstruction:string;
   placket:string;
   pocket:string;
+  yoke:string;
+  shirtHem:string;
   trouserFit:string;
   rise:string;
   pleat:string;
   waistband:string;
   breakStyle:string;
+  trouserHem:string;
+  trouserPocket:string;
 };
 
 function normalizedStyleLabel(value:string|undefined) {
@@ -171,20 +177,41 @@ function variantIdForLabel(items:ReadonlyArray<{id:string;label:string}>,label:s
 }
 function collarVariantFor(label:string|undefined) {
   const value=normalizedStyleLabel(label);
-  if(value.includes("cutaway")) return "cutaway";
-  if(value.includes("spread")) return "spread";
+  if(value.includes("hidden")&&value.includes("button")) return "hidden_button_down";
   if(value.includes("button down")) return "button_down";
+  if(value.includes("cutaway")) return "cutaway";
+  if(value.includes("semi")&&value.includes("spread")) return "semi_spread";
+  if(value.includes("spread")) return "spread";
+  if(value.includes("club")||value.includes("rounded collar")) return "club";
+  if(value.includes("tab")) return "tab";
+  if(value.includes("wing")) return "wingtip";
   if(value.includes("mandarin")||value.includes("band collar")) return "mandarin";
   if(value.includes("camp")||value.includes("cuban")) return "camp";
+  if(value.includes("one piece")||value.includes("california")) return "one_piece";
   return "point";
 }
 function cuffVariantFor(label:string|undefined) {
   const value=normalizedStyleLabel(label);
-  if(value.includes("french")||value.includes("double")) return "french";
-  if(value.includes("2 button")) return "barrel_2";
-  if(value.includes("rounded")||value.includes("soft")) return "rounded";
-  if(value.includes("cocktail")) return "cocktail";
+  if(value.includes("rounded french")) return "rounded_french";
+  if(value.includes("french")||value.includes("double cuff")) return "french";
+  if(value.includes("convertible")) return "convertible";
+  if(value.includes("cocktail")||value.includes("turnback")) return "cocktail";
+  if(value.includes("mitered")&&value.includes("two")) return "mitered_2";
+  if(value.includes("mitered")) return "mitered_1";
+  if(value.includes("two button")||value.includes("2 button")) return "rounded_2";
+  if(value.includes("long")&&value.includes("button")) return "long_barrel_1";
+  if(value.includes("soft")) return "soft_barrel";
   return "barrel_1";
+}
+function pleatVariantFor(label:string|undefined) {
+  const value=normalizedStyleLabel(label);
+  if(value.includes("double")&&value.includes("forward")) return "double_forward";
+  if(value.includes("double")&&value.includes("reverse")) return "double_reverse";
+  if(value.includes("kissing")||value.includes("box pleat")) return "kissing";
+  if(value.includes("double")) return "double_reverse";
+  if(value.includes("forward")) return "single_forward";
+  if(value.includes("reverse")||value.includes("pleat")) return "single_reverse";
+  return "flat";
 }
 function trouserFitVariantFor(recipe:DesignerDraftRecipe|null) {
   const type=normalizedStyleLabel(recipe?.styleSpec?.pant?.type);
@@ -214,12 +241,16 @@ function variantMaterialVisible(name:string,state:StyleVariantState) {
   if(name.startsWith("ShirtCollarVariant__")) return name.endsWith(`__${state.collar}`);
   if(name.startsWith("ShirtCuffVariant__")) return state.sleeve==="full"&&name.endsWith(`__${state.cuff}`);
   if(name.startsWith("ShirtPlacketVariant__")) return state.placket!=="french"&&name.endsWith(`__${state.placket}`);
-  if(name.startsWith("ShirtPocketVariant__")) return state.pocket!=="none"&&name.endsWith(`__${state.pocket}`);
+  if(name.startsWith("ShirtPocketVariant__")) return state.pocket!=="none"&&name.includes(`ShirtPocketVariant__${state.pocket}`);
+  if(name.startsWith("ShirtYokeVariant__")) return name.endsWith(`__${state.yoke}`);
+  if(name.startsWith("ShirtHemShapeVariant__")) return state.shirtWear==="untucked"&&name.endsWith(`__${state.shirtHem}`);
   if(name.startsWith("TrouserLegLVariant__")||name.startsWith("TrouserLegRVariant__")) return name.endsWith(`__${state.trouserFit}`);
   if(name.startsWith("TrouserWaistVariant__")) return state.rise!=="mid"&&name.endsWith(`__${state.rise}`);
   if(name.startsWith("TrouserWaistbandVariant__")) return state.waistband!=="clean"&&name.endsWith(`__${state.waistband}`);
   if(name.startsWith("TrouserPleatVariant__")) return state.pleat!=="flat"&&name.endsWith(`__${state.pleat}`);
   if(name.startsWith("TrouserBreakVariant__")) return state.breakStyle!=="slight"&&name.endsWith(`__${state.breakStyle}`);
+  if(name.startsWith("TrouserHemVariant__")) return state.trouserHem!=="plain"&&name.endsWith(`__${state.trouserHem}`);
+  if(name.startsWith("TrouserPocketVariant__")) return name.endsWith(`__${state.trouserPocket}`);
   return true;
 }
 
@@ -277,14 +308,20 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const [shirtWearKey,setShirtWearKey]=useState("tucked");
   const [sleeveKey,setSleeveKey]=useState("full");
   const [collarKey,setCollarKey]=useState("point");
+  const [collarConstructionKey,setCollarConstructionKey]=useState("stiff_fused");
   const [cuffKey,setCuffKey]=useState("barrel_1");
+  const [cuffConstructionKey,setCuffConstructionKey]=useState("fused");
   const [placketKey,setPlacketKey]=useState("standard");
   const [pocketKey,setPocketKey]=useState("none");
+  const [yokeKey,setYokeKey]=useState("split");
+  const [shirtHemKey,setShirtHemKey]=useState("rounded");
   const [trouserFitKey,setTrouserFitKey]=useState("straight");
   const [riseKey,setRiseKey]=useState("mid");
   const [pleatKey,setPleatKey]=useState("flat");
   const [waistbandKey,setWaistbandKey]=useState("belt_loops");
   const [breakKey,setBreakKey]=useState("slight");
+  const [trouserHemKey,setTrouserHemKey]=useState("plain");
+  const [trouserPocketKey,setTrouserPocketKey]=useState("slant");
   const [designerDraftRecipe,setDesignerDraftRecipe]=useState<DesignerDraftRecipe|null>(null);
   const draftShirtTypeLabel=designerDraftRecipe?.styleSpec?.shirt?.type ? optionById(designerDraftRecipe.styleSpec.shirt.type)?.label || designerDraftRecipe.styleSpec.shirt.type.replaceAll("_"," ") : "Shirt type not saved";
   const draftTrouserTypeLabel=designerDraftRecipe?.styleSpec?.pant?.type ? optionById(designerDraftRecipe.styleSpec.pant.type)?.label || designerDraftRecipe.styleSpec.pant.type.replaceAll("_"," ") : designerDraftRecipe?.style?.trouser || "Trouser type not saved";
@@ -310,15 +347,21 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     shirtWear:shirtWearKey,
     sleeve:sleeveKey,
     collar:collarKey,
+    collarConstruction:collarConstructionKey,
     cuff:cuffKey,
+    cuffConstruction:cuffConstructionKey,
     placket:placketKey,
     pocket:pocketKey,
+    yoke:yokeKey,
+    shirtHem:shirtHemKey,
     trouserFit:trouserFitKey,
     rise:riseKey,
     pleat:pleatKey,
     waistband:waistbandKey,
     breakStyle:breakKey,
-  }),[shirtFitKey,shirtWearKey,sleeveKey,collarKey,cuffKey,placketKey,pocketKey,trouserFitKey,riseKey,pleatKey,waistbandKey,breakKey]);
+    trouserHem:trouserHemKey,
+    trouserPocket:trouserPocketKey,
+  }),[shirtFitKey,shirtWearKey,sleeveKey,collarKey,collarConstructionKey,cuffKey,cuffConstructionKey,placketKey,pocketKey,yokeKey,shirtHemKey,trouserFitKey,riseKey,pleatKey,waistbandKey,breakKey,trouserHemKey,trouserPocketKey]);
 
   useEffect(()=>{
     try{
