@@ -39,3 +39,7 @@ Target fix commits: fc0e7d2eb86c2c3ba81e24df3d4e164304c3ccdb + 1aac1edc486ffe88c
 Date: 2026-10-05
 
 Retry production deploy after 3D visibility fix. Requested 2026-10-05 22:37 IST.
+
+Generated production 3D officewear baseline: build-time GLB + viewer manifest, curved shirt/trouser geometry, collar/cuffs/buttons, six independent fabric material zones, default production asset wiring.
+Target merged commits: 0678d67f + f54a3cbd + da02cb1d + 776f6ebf + 9b3ac6c.
+Date: 2026-10-06.
