@@ -662,8 +662,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     const collarOffset=collarConstructionKey==="soft_unfused"?.07:collarConstructionKey==="soft_fused"?.035:0;
     const cuffOffset=cuffConstructionKey==="soft"?.06:0;
     for(const material of viewer.model.materials){
-      if(material.name===`ShirtCollarVariant__${collarKey}`) material.pbrMetallicRoughness.setRoughnessFactor(clamp(shirtBase+collarOffset,.55,.99));
-      if(material.name===`ShirtCuffVariant__${cuffKey}`) material.pbrMetallicRoughness.setRoughnessFactor(clamp(shirtBase+cuffOffset,.55,.99));
+      if(material.name===`ShirtCollarVariant__${collarKey}`) material.pbrMetallicRoughness.setRoughnessFactor(clamp(shirtBase+collarOffset,.55,.98));
+      if(material.name===`ShirtCuffVariant__${cuffKey}`) material.pbrMetallicRoughness.setRoughnessFactor(clamp(shirtBase+cuffOffset,.55,.98));
     }
   },[modelReady,roughness,shirt,collarKey,collarConstructionKey,cuffKey,cuffConstructionKey]);
 
