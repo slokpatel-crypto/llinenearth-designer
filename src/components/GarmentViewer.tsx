@@ -392,11 +392,11 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     "touch-action":"pan-y",
     "camera-orbit":cameraViews[0].orbit,
     "camera-target":"0m 0.86m 0m",
-    "field-of-view":"32deg",
-    "min-field-of-view":"27deg",
-    "max-field-of-view":"42deg",
-    "min-camera-orbit":"auto 58deg 2.45m",
-    "max-camera-orbit":"auto 92deg 4.0m",
+    "field-of-view":"30deg",
+    "min-field-of-view":"25deg",
+    "max-field-of-view":"40deg",
+    "min-camera-orbit":"auto 58deg 3.35m",
+    "max-camera-orbit":"auto 92deg 5.4m",
     "interpolation-decay":"135",
     "environment-image":"neutral",
     "shadow-intensity":".78",
@@ -477,7 +477,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         <span><small>VIEWS</small><b>4 fixed + free</b></span>
         <span><small>AI CREDITS</small><b>0</b></span>
       </div>
-      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M5.7 is locked: body-derived geometry is now smoothed into tailored shirt, sleeve and trouser-waist surfaces instead of following chest/arm anatomy, with anatomical mannequin hands, the exact reference trouser taper, refined white footwear and full head-to-shoe framing. The faceless ivory head, collar/cuffs and tucked officewear identity remain fixed; the collision body is ready for the fabric/drape engine." : "Fallback prototype is active. Production should use the identity-locked M5.2 officewear model before fabric/drape work continues."}</p>
+      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M5.8 is model-complete: smooth tailored shirt/sleeve/trouser-waist shells, anatomical mannequin hands, exact reference taper, refined white footwear and consistent full head-to-shoe framing across Front / 3/4 / Side / Back. The faceless ivory head, collar/cuffs and tucked officewear identity are locked; future work now belongs to fabric/drape and tailoring variants, not mannequin identity." : "Fallback prototype is active. Production should use the identity-locked M5.8 officewear model before fabric/drape work continues."}</p>
     </aside>
   </section>;
 }
