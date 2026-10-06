@@ -223,9 +223,9 @@ const garmentMaterials=garmentPanels.map((panel,i)=>({
   normalTexture:{index:1,scale:i<3?.34:.29},
 }));
 const materials=[
-  {name:"MannequinSkin",pbrMetallicRoughness:{baseColorFactor:[.88,.86,.81,1],metallicFactor:0,roughnessFactor:.86}},
+  {name:"MannequinSkin",pbrMetallicRoughness:{baseColorFactor:[.94,.93,.90,1],metallicFactor:0,roughnessFactor:.90}},
   ...garmentMaterials,
-  {name:"Shoe",pbrMetallicRoughness:{baseColorFactor:[.82,.81,.77,1],metallicFactor:0,roughnessFactor:.62}},
+  {name:"Shoe",pbrMetallicRoughness:{baseColorFactor:[.91,.90,.87,1],metallicFactor:0,roughnessFactor:.58}},
   {name:"ButtonAccent",pbrMetallicRoughness:{baseColorFactor:[.09,.075,.06,1],metallicFactor:.05,roughnessFactor:.42}},
 ];
 const materialIndex=Object.fromEntries(materials.map((m,i)=>[m.name,i]));
@@ -250,6 +250,7 @@ const meshTrouserCreaseL=addMesh("TrouserCreaseLMesh",detailBox,"TrouserLegLFabr
 const meshTrouserCreaseR=addMesh("TrouserCreaseRMesh",detailBox,"TrouserLegRFabric");
 const meshWaistDetail=addMesh("TrouserWaistDetailMesh",detailBox,"TrouserWaistFabric");
 const meshSole=addMesh("SoleMesh",detailBox,"Shoe");
+const meshShoeDetail=addMesh("ShoeDetailMesh",detailBox,"Shoe");
 
 const qz=(deg)=>{const r=deg*Math.PI/180/2;return [0,0,Math.sin(r),Math.cos(r)];};
 const nodes=[
@@ -259,8 +260,8 @@ const nodes=[
   {name:"ShirtTorsoFabric",mesh:meshShirtTorso,translation:[0,1.265,0]},
   {name:"ShirtSleeveLFabric",mesh:meshSleeveL,translation:[-.226,1.155,.002],rotation:qz(-2.4)},
   {name:"ShirtSleeveRFabric",mesh:meshSleeveR,translation:[.226,1.155,.002],rotation:qz(2.4)},
-  {name:"HandL",mesh:meshHand,translation:[-.250,.817,.012],scale:[.032,.070,.037]},
-  {name:"HandR",mesh:meshHand,translation:[.250,.817,.012],scale:[.032,.070,.037]},
+  {name:"HandL",mesh:meshHand,translation:[-.250,.817,.012]},
+  {name:"HandR",mesh:meshHand,translation:[.250,.817,.012]},
   {name:"TrouserWaistFabric",mesh:meshWaist,translation:[0,1.025,0]},
   {name:"TrouserLegLFabric",mesh:meshLegL,translation:[-.105,.555,0]},
   {name:"TrouserLegRFabric",mesh:meshLegR,translation:[.105,.555,0]},
@@ -290,7 +291,7 @@ nodes.push({name:"CuffButtonR",mesh:meshButton,translation:[.250,.870,.057],scal
 for(const side of [-1,1]){
   for(let i=0;i<3;i++) nodes.push({
     name:`ShoeLace${side<0?"L":"R"}${i+1}`,
-    mesh:meshWaistDetail,
+    mesh:meshShoeDetail,
     translation:[side*.105,.083,.135+i*.022],
     scale:[.050,.005,.008],
   });
@@ -375,7 +376,7 @@ const manifest={
     targetHandCenterSpacingMm:500,
     targetLegCenterSpacingMm:210,
     targetHemWidthMm:64,
-    polishStage:"M4 identity + tailoring silhouette complete",
+    polishStage:"M4.1 identity + tailoring silhouette polish complete",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   cameraOrbits:{front:"0deg 76deg 2.72m","three-quarter":"35deg 76deg 2.72m",side:"90deg 76deg 2.72m",back:"180deg 76deg 2.72m"},
