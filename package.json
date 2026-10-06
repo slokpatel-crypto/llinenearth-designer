@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "npm run fabric:tiles && npm run garment:model:build && next dev",
     "quality": "node scripts/quality-check.mjs",
-    "build": "npm run fabric:tiles && npm run garment:model:build && next build",
+    "build": "npm run fabric:tiles && npm run garment:model:build && npm run garment:model-check -- public/models/linen-earth-officewear-v1.glb && next build",
     "start": "next start",
     "local-memory": "node scripts/linen-local-bridge.mjs",
     "operator-password": "node scripts/hash-operator-password.mjs",
