@@ -1606,7 +1606,7 @@ for(const token of ["linen-earth-garment-viewer-v2","REQUIRED_GARMENT_VIEWER_MAT
 for(const token of ["ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric","TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric"]) {
   if(!garmentViewerPrototype.includes(token)) throw new Error(`GarmentViewer panel contract regression: missing ${token}`);
 }
-for(const token of ["IDENTITY_TARGETS_MM","assertIdentityMeasurement","shoulderSeamWidth:388","shirtWaistWidth:294","trouserWaistWidth:344","handCenterSpacing:500","legCenterSpacing:210","hemWidth:64","makehuman-mannequin-base.glb","prepared-for-drape-engine","visible:false","loadMakeHumanGarmentShells","lerpEnvelope","curved anatomical shirt shells","HandLMesh","HandRMesh","anatomical hands","trouserWaistEnvelope","kind:\"waist\"","curved shirt/sleeve/waist shells","M5.7 final tailored silhouette","refined footwear","torsoDepthEnvelope","sleeveWidthEnvelope","trouserWaistDepthEnvelope","smooth garment shells"]) {
+for(const token of ["IDENTITY_TARGETS_MM","assertIdentityMeasurement","shoulderSeamWidth:388","shirtWaistWidth:294","trouserWaistWidth:344","handCenterSpacing:500","legCenterSpacing:210","hemWidth:64","makehuman-mannequin-base.glb","prepared-for-drape-engine","visible:false","loadMakeHumanGarmentShells","lerpEnvelope","HandLMesh","HandRMesh","anatomical hands","trouserWaistEnvelope","kind:\"waist\"","M5.7 final tailored silhouette","refined footwear","torsoDepthEnvelope","sleeveWidthEnvelope","trouserWaistDepthEnvelope","smooth garment shells"]) {
   if(!garmentViewerModelBuilder.includes(token)) throw new Error(`GarmentViewer M5.7 model-polish regression: missing ${token}`);
 }
 for(const token of ["parseGarmentViewerGlbJson","TEXCOORD_0","externalGlbUri","structuralReady"]) {
