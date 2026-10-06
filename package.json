@@ -3,9 +3,9 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "dev": "npm run fabric:tiles && next dev",
+    "dev": "npm run fabric:tiles && npm run garment:model:build && next dev",
     "quality": "node scripts/quality-check.mjs",
-    "build": "npm run fabric:tiles && next build",
+    "build": "npm run fabric:tiles && npm run garment:model:build && next build",
     "start": "next start",
     "local-memory": "node scripts/linen-local-bridge.mjs",
     "operator-password": "node scripts/hash-operator-password.mjs",
@@ -23,6 +23,7 @@
     "eval:designer-snapshots": "node --experimental-strip-types scripts/eval-phase10-designer-snapshots.mjs",
     "eval:preview-performance": "node --experimental-strip-types scripts/eval-preview-performance.mjs",
     "garment:model-check": "node --experimental-strip-types scripts/check-garment-viewer-model.mjs",
+    "garment:model:build": "node scripts/build-garment-viewer-model.mjs",
     "garment:model-base:fetch": "python3 scripts/blender/bootstrap-human-base-meshes.py",
     "garment:model-body:prepare": "blender --background --factory-startup --python scripts/blender/prepare-linen-earth-body.py -- --asset-root .cache/linen-earth/blender-human-base-meshes-v1.4.1 --output .cache/linen-earth/linen-earth-officewear-body-base.blend",
     "garment:model-scene:check": "blender --background .cache/linen-earth/linen-earth-officewear-body-base.blend --python scripts/blender/preflight-linen-earth-officewear.py"
