@@ -274,6 +274,26 @@ async function loadMakeHumanGarmentShells(){
     [1.040,.090],
     [1.100,.086],
   ];
+  const trouserLegWidthEnvelope=[
+    [.060,.034],
+    [.160,.035],
+    [.300,.040],
+    [.460,.046],
+    [.620,.055],
+    [.780,.070],
+    [.930,.083],
+    [.985,.086],
+  ];
+  const trouserLegDepthEnvelope=[
+    [.060,.055],
+    [.160,.056],
+    [.300,.060],
+    [.460,.066],
+    [.620,.074],
+    [.780,.085],
+    [.930,.094],
+    [.985,.098],
+  ];
 
   function buildRegion({predicate,centerX=0,yMin,yMax,outward=.008,kind}){
     const remap=new Map();
@@ -287,8 +307,10 @@ async function loadMakeHumanGarmentShells(){
         const targetHalf=lerpEnvelope(torsoEnvelope,y);
         const targetDepth=lerpEnvelope(torsoDepthEnvelope,y);
         const theta=Math.atan2(z,x);
+        const front=Math.max(0,Math.sin(theta));
         x=Math.cos(theta)*targetHalf;
-        z=Math.sin(theta)*targetDepth+(Math.sin(theta)>.15?.004:0);
+        z=Math.sin(theta)*targetDepth+(front*.0035*Math.sin((y-1.055)*48+theta*2.4));
+        [nx,ny,nz]=normalize(Math.cos(theta)/targetHalf,ny*.18,Math.sin(theta)/targetDepth);
       }else if(kind==="sleeve"){
         const targetHalf=lerpEnvelope(sleeveWidthEnvelope,y);
         const targetDepth=lerpEnvelope(sleeveDepthEnvelope,y);
@@ -297,14 +319,37 @@ async function loadMakeHumanGarmentShells(){
         const sleeveCenterX=centerX+side*.006*(t-.45);
         const sleeveCenterZ=.024+.010*t;
         const theta=Math.atan2(z-sleeveCenterZ,x-sleeveCenterX);
+        const elbowFold=Math.exp(-Math.pow((y-1.075)/.095,2));
         x=sleeveCenterX+Math.cos(theta)*targetHalf;
-        z=sleeveCenterZ+Math.sin(theta)*targetDepth;
+        z=sleeveCenterZ+Math.sin(theta)*targetDepth+Math.max(0,Math.sin(theta))*.004*elbowFold*Math.sin(theta*4.5+(y-1.0)*35);
+        [nx,ny,nz]=normalize(Math.cos(theta)/targetHalf,ny*.22,Math.sin(theta)/targetDepth);
       }else if(kind==="waist"){
         const targetHalf=lerpEnvelope(trouserWaistEnvelope,y);
         const targetDepth=lerpEnvelope(trouserWaistDepthEnvelope,y);
         const theta=Math.atan2(z-.005,x);
         x=Math.cos(theta)*targetHalf;
         z=.005+Math.sin(theta)*targetDepth;
+        [nx,ny,nz]=normalize(Math.cos(theta)/targetHalf,ny*.15,Math.sin(theta)/targetDepth);
+      }else if(kind==="leg"){
+        const targetHalf=lerpEnvelope(trouserLegWidthEnvelope,y);
+        const targetDepth=lerpEnvelope(trouserLegDepthEnvelope,y);
+        const side=Math.sign(centerX)||1;
+        const t=Math.max(0,Math.min(1,(y-.060)/(.985-.060)));
+        const legCenterX=centerX+side*.004*(t-.45);
+        const legCenterZ=.020+.010*t;
+        const theta=Math.atan2(z-legCenterZ,x-legCenterX);
+        const front=Math.max(0,Math.sin(theta));
+        const kneeFold=Math.exp(-Math.pow((y-.50)/.11,2));
+        const ankleFold=Math.exp(-Math.pow((y-.15)/.08,2));
+        x=legCenterX+Math.cos(theta)*targetHalf;
+        z=legCenterZ+Math.sin(theta)*targetDepth+front*(.0025*kneeFold*Math.sin(theta*5+y*28)+.0018*ankleFold*Math.sin(theta*4-y*34));
+        [nx,ny,nz]=normalize(Math.cos(theta)/targetHalf,ny*.16,Math.sin(theta)/targetDepth);
+      }else if(kind==="shoe"){
+        const side=Math.sign(centerX)||1;
+        x=centerX+(x-centerX)*.72;
+        y=.010+y*.78;
+        z=.025+(z-.025)*1.55;
+        [nx,ny,nz]=normalize(nx,ny,nz);
       }
       x+=nx*outward;
       y+=ny*outward*.55;
@@ -350,11 +395,27 @@ async function loadMakeHumanGarmentShells(){
     predicate:(p)=>p.y>=.80&&p.y<=.91&&p.x>=.195,
   });
   const trouserWaist=buildRegion({
-    kind:"waist",centerX:0,yMin:.94,yMax:1.10,outward:.003,
+    kind:"waist",centerX:0,yMin:.94,yMax:1.10,outward:.0035,
     predicate:(p)=>p.y>=.94&&p.y<=1.10&&Math.abs(p.x)<=.185,
   });
+  const trouserLegL=buildRegion({
+    kind:"leg",centerX:-.105,yMin:.060,yMax:.985,outward:.0025,
+    predicate:(p)=>p.y>=.060&&p.y<=.985&&p.x<-.025,
+  });
+  const trouserLegR=buildRegion({
+    kind:"leg",centerX:.105,yMin:.060,yMax:.985,outward:.0025,
+    predicate:(p)=>p.y>=.060&&p.y<=.985&&p.x>.025,
+  });
+  const shoeL=buildRegion({
+    kind:"shoe",centerX:-.105,yMin:.010,yMax:.160,outward:.004,
+    predicate:(p)=>p.y>=0&&p.y<=.160&&p.x<-.025,
+  });
+  const shoeR=buildRegion({
+    kind:"shoe",centerX:.105,yMin:.010,yMax:.160,outward:.004,
+    predicate:(p)=>p.y>=0&&p.y<=.160&&p.x>.025,
+  });
 
-  return {shirtTorso,sleeveL,sleeveR,handL,handR,trouserWaist};
+  return {shirtTorso,sleeveL,sleeveR,handL,handR,trouserWaist,trouserLegL,trouserLegR,shoeL,shoeR};
 }
 
 function profileGeometry({rings,segments=28,ripple=()=>0}){
@@ -583,13 +644,14 @@ function addMesh(name,geometry,material){assets.push({name,geometry,material});r
 const meshHead=addMesh("HeadMesh",head,"MannequinSkin");
 const meshHandL=addMesh("HandLMesh",garmentShells.handL,"MannequinSkin");
 const meshHandR=addMesh("HandRMesh",garmentShells.handR,"MannequinSkin");
-const meshShoe=addMesh("ShoeMesh",shoe,"Shoe");
+const meshShoeL=addMesh("ShoeLMesh",garmentShells.shoeL,"Shoe");
+const meshShoeR=addMesh("ShoeRMesh",garmentShells.shoeR,"Shoe");
 const meshShirtTorso=addMesh("ShirtTorsoMesh",garmentShells.shirtTorso,"ShirtTorsoFabric");
 const meshSleeveL=addMesh("ShirtSleeveLMesh",garmentShells.sleeveL,"ShirtSleeveLFabric");
 const meshSleeveR=addMesh("ShirtSleeveRMesh",garmentShells.sleeveR,"ShirtSleeveRFabric");
 const meshWaist=addMesh("TrouserWaistMesh",garmentShells.trouserWaist,"TrouserWaistFabric");
-const meshLegL=addMesh("TrouserLegLMesh",trouserLeg,"TrouserLegLFabric");
-const meshLegR=addMesh("TrouserLegRMesh",trouserLeg,"TrouserLegRFabric");
+const meshLegL=addMesh("TrouserLegLMesh",garmentShells.trouserLegL,"TrouserLegLFabric");
+const meshLegR=addMesh("TrouserLegRMesh",garmentShells.trouserLegR,"TrouserLegRFabric");
 const meshCollar=addMesh("CollarMesh",collar,"ShirtTorsoFabric");
 const meshCuffL=addMesh("CuffLMesh",detailBox,"ShirtSleeveLFabric");
 const meshCuffR=addMesh("CuffRMesh",detailBox,"ShirtSleeveRFabric");
@@ -614,10 +676,10 @@ const nodes=[
   {name:"HandL",mesh:meshHandL},
   {name:"HandR",mesh:meshHandR},
   {name:"TrouserWaistFabric",mesh:meshWaist},
-  {name:"TrouserLegLFabric",mesh:meshLegL,translation:[-.105,.555,0]},
-  {name:"TrouserLegRFabric",mesh:meshLegR,translation:[.105,.555,0]},
-  {name:"ShoeL",mesh:meshShoe,translation:[-.105,.052,.081],scale:[.052,.034,.145]},
-  {name:"ShoeR",mesh:meshShoe,translation:[.105,.052,.081],scale:[.052,.034,.145]},
+  {name:"TrouserLegLFabric",mesh:meshLegL},
+  {name:"TrouserLegRFabric",mesh:meshLegR},
+  {name:"ShoeL",mesh:meshShoeL},
+  {name:"ShoeR",mesh:meshShoeR},
   {name:"SoleL",mesh:meshSole,translation:[-.105,.010,.089],scale:[.108,.016,.292]},
   {name:"SoleR",mesh:meshSole,translation:[.105,.010,.089],scale:[.108,.016,.292]},
   {name:"CollarL",mesh:meshCollar,translation:[-.043,1.468,.096],scale:[.080,.088,.014],rotation:qz(-18)},
@@ -683,7 +745,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M5.8 final model polish"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M6 realistic shell final"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -768,10 +830,10 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M5.8 final tailored silhouette: model complete + smooth garment shells + anatomical hands + reference trouser taper + refined footwear + full-body framing",
+    polishStage:"M6 model complete: smoothed body-derived shirt, sleeve, trouser and footwear shells + anatomical hands + calibrated Live Designer silhouette",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
-  cameraOrbits:{front:"0deg 76deg 4.10m","three-quarter":"35deg 76deg 4.10m",side:"90deg 76deg 4.10m",back:"180deg 76deg 4.10m"},
+  cameraOrbits:{front:"0deg 76deg 3.60m","three-quarter":"35deg 76deg 3.60m",side:"90deg 76deg 3.60m",back:"180deg 76deg 3.60m"},
 };
 
 await fs.mkdir(OUT_DIR,{recursive:true});
