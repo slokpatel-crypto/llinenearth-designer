@@ -683,7 +683,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M5.7 tailored shell polish"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M5.8 final model polish"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -768,10 +768,10 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M5.7 final tailored silhouette: smooth garment shells + anatomical hands + reference trouser taper + refined footwear + full-body framing"
+    polishStage:"M5.8 model complete: smooth tailored shells + anatomical hands + reference trouser taper + refined footwear + full-body framing",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
-  cameraOrbits:{front:"0deg 76deg 3.15m","three-quarter":"35deg 76deg 3.15m",side:"90deg 76deg 3.15m",back:"180deg 76deg 3.15m"},
+  cameraOrbits:{front:"0deg 76deg 4.10m","three-quarter":"35deg 76deg 4.10m",side:"90deg 76deg 4.10m",back:"180deg 76deg 4.10m"},
 };
 
 await fs.mkdir(OUT_DIR,{recursive:true});
