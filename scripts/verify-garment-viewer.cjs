@@ -68,6 +68,8 @@ async function verifyViewport(browser, width) {
   await page.waitForFunction(() => document.querySelector("model-viewer")?.getAttribute("camera-orbit")?.startsWith("90deg"));
   await page.getByRole("button", { name: "Back", exact: true }).click();
   await page.waitForFunction(() => document.querySelector("model-viewer")?.getAttribute("camera-orbit")?.startsWith("180deg"));
+  await page.getByRole("button", { name: "Front", exact: true }).click();
+  await page.waitForFunction(() => document.querySelector("model-viewer")?.getAttribute("camera-orbit")?.startsWith("0deg"));
 
   const reference=page.locator(".garmentViewerReference img");
   await reference.waitFor({state:"visible"});
