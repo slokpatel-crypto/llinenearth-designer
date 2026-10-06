@@ -767,6 +767,7 @@ const mannequinBodyStats={
   triangles:mannequinBody.indices.length/3,
 };
 const shoe=uvSphereGeometry(10,20);
+const ear=uvSphereGeometry(8,14);
 const collar=collarPointGeometry();
 const mandarinCollar=profileGeometry({
   rings:[
@@ -844,6 +845,7 @@ const materialIndex=Object.fromEntries(materials.map((m,i)=>[m.name,i]));
 const assets=[];
 function addMesh(name,geometry,material){assets.push({name,geometry,material});return assets.length-1;}
 const meshHead=addMesh("HeadMesh",head,"MannequinSkin");
+const meshEar=addMesh("EarMesh",ear,"MannequinSkin");
 const meshHandL=addMesh("HandLMesh",garmentShells.handL,"MannequinSkin");
 const meshHandR=addMesh("HandRMesh",garmentShells.handR,"MannequinSkin");
 const meshShoeL=addMesh("ShoeLMesh",garmentShells.shoeL,"Shoe");
@@ -934,6 +936,8 @@ const nodes=[
   // the visible mannequin stays locked to the exact Linen Earth studio silhouette without skin/garment clipping.
   // 1727 mm canonical Live Designer mannequin: slim shoulders, long legs, relaxed straight stance.
   {name:"Head",mesh:meshHead,translation:[0,1.624,.004]},
+  {name:"EarL",mesh:meshEar,translation:[-.077,1.630,.002],scale:[.010,.025,.008]},
+  {name:"EarR",mesh:meshEar,translation:[.077,1.630,.002],scale:[.010,.025,.008]},
   {name:"Neck",mesh:meshHead,translation:[0,1.504,.001],scale:[.63,.58,.62]},
   {name:"ShirtTorsoFabric",mesh:meshShirtTorso},
   {name:"ShirtSleeveLFabric",mesh:meshSleeveL},
@@ -949,8 +953,8 @@ const nodes=[
   {name:"SoleR",mesh:meshSole,translation:[.105,.010,.089],scale:[.108,.016,.292]},
   // Collar/cuff/placket/pocket geometry variants are appended below and toggled by material visibility.
   // Raised construction cues keep the 3D silhouette close to the Live Designer front reference.
-  {name:"TrouserFrontCreaseL",mesh:meshTrouserCreaseL,translation:[-.105,.555,.071],scale:[.006,.905,.006]},
-  {name:"TrouserFrontCreaseR",mesh:meshTrouserCreaseR,translation:[.105,.555,.071],scale:[.006,.905,.006]},
+  {name:"TrouserFrontCreaseL",mesh:meshTrouserCreaseL,translation:[-.105,.555,.071],scale:[.0035,.905,.004]},
+  {name:"TrouserFrontCreaseR",mesh:meshTrouserCreaseR,translation:[.105,.555,.071],scale:[.0035,.905,.004]},
   {name:"TrouserFly",mesh:meshWaistDetail,translation:[0,.995,.106],scale:[.010,.105,.006]},
   {name:"WaistbandFront",mesh:meshWaistDetail,translation:[0,1.086,.105],scale:[.330,.020,.006]},
   // Waistband/pleat/break variants are appended below and toggled by material visibility.
