@@ -20,6 +20,10 @@ export type GarmentViewerFabric = {
   line:string;
   image:string;
   tileKey:string;
+  drape?:string;
+  weightClass?:string;
+  weightGsm?:number;
+  weave?:string;
 };
 
 type ViewerSampler={
@@ -89,7 +93,23 @@ const SHIRT_GARMENT_CATEGORY=GARMENT_CATEGORY_LIBRARY.find((item)=>item.id==="sh
 const TROUSER_GARMENT_CATEGORY=GARMENT_CATEGORY_LIBRARY.find((item)=>item.id==="trouser")!;
 const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
 
-function createLinenNormalMap() {
+function fabricDrapeClass(fabric:GarmentViewerFabric|undefined) {
+  const declared=String(fabric?.drape||"").toLowerCase();
+  if(["fluid","soft","medium","structured"].includes(declared)) return declared;
+  const weight=String(fabric?.weightClass||"").toLowerCase();
+  if(weight==="light") return "soft";
+  if(weight==="heavy") return "structured";
+  return "medium";
+}
+function drapeNormalStrength(fabric:GarmentViewerFabric|undefined) {
+  const drape=fabricDrapeClass(fabric);
+  return drape==="fluid"?.55:drape==="soft"?.72:drape==="structured"?1.18:1;
+}
+function drapeRoughnessOffset(fabric:GarmentViewerFabric|undefined) {
+  const drape=fabricDrapeClass(fabric);
+  return drape==="fluid"?-.08:drape==="soft"?-.04:drape==="structured"?.04:0;
+}
+function createLinenNormalMap(strength=1) {
   if(typeof document==="undefined") return "";
   const canvas=document.createElement("canvas");
   canvas.width=64;canvas.height=64;
@@ -99,8 +119,8 @@ function createLinenNormalMap() {
   for(let y=0;y<64;y++){
     for(let x=0;x<64;x++){
       const index=(y*64+x)*4;
-      const warp=Math.sin(x*Math.PI*.5)*7;
-      const weft=Math.sin(y*Math.PI*.4)*5;
+      const warp=Math.sin(x*Math.PI*.5)*7*strength;
+      const weft=Math.sin(y*Math.PI*.4)*5*strength;
       image.data[index]=clamp(128+warp,0,255);
       image.data[index+1]=clamp(128+weft,0,255);
       image.data[index+2]=252;
