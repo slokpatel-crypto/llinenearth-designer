@@ -236,5 +236,226 @@
       "id": "cropped",
       "label": "Cropped / Above-ankle"
     }
+  ],
+  "shirtTypes": [
+    {
+      "id": "dress_shirt",
+      "label": "Dress Shirt",
+      "preset": {
+        "shirtFit": "regular",
+        "shirtWear": "tucked",
+        "sleeve": "full",
+        "collar": "point",
+        "cuff": "barrel_1",
+        "placket": "standard",
+        "pocket": "none"
+      }
+    },
+    {
+      "id": "casual_shirt",
+      "label": "Casual Shirt",
+      "preset": {
+        "shirtFit": "relaxed",
+        "shirtWear": "untucked",
+        "sleeve": "full",
+        "collar": "button_down",
+        "cuff": "barrel_1",
+        "placket": "standard",
+        "pocket": "patch"
+      }
+    },
+    {
+      "id": "camp_collar_resort",
+      "label": "Camp-Collar Resort Shirt",
+      "preset": {
+        "shirtFit": "relaxed",
+        "shirtWear": "untucked",
+        "sleeve": "half",
+        "collar": "camp",
+        "cuff": "rounded",
+        "placket": "french",
+        "pocket": "patch"
+      }
+    },
+    {
+      "id": "band_collar_shirt",
+      "label": "Band-Collar Shirt",
+      "preset": {
+        "shirtFit": "regular",
+        "shirtWear": "tucked",
+        "sleeve": "full",
+        "collar": "mandarin",
+        "cuff": "barrel_1",
+        "placket": "french",
+        "pocket": "none"
+      }
+    },
+    {
+      "id": "overshirt",
+      "label": "Overshirt",
+      "preset": {
+        "shirtFit": "boxy",
+        "shirtWear": "untucked",
+        "sleeve": "full",
+        "collar": "point",
+        "cuff": "barrel_2",
+        "placket": "standard",
+        "pocket": "flap"
+      }
+    },
+    {
+      "id": "short_sleeve_shirt",
+      "label": "Short-Sleeve Shirt",
+      "preset": {
+        "shirtFit": "regular",
+        "shirtWear": "untucked",
+        "sleeve": "half",
+        "collar": "spread",
+        "cuff": "rounded",
+        "placket": "standard",
+        "pocket": "patch"
+      }
+    }
+  ],
+  "trouserTypes": [
+    {
+      "id": "formal_flat_front",
+      "label": "Formal Flat-Front",
+      "preset": {
+        "trouserFit": "straight",
+        "rise": "mid",
+        "pleat": "flat",
+        "waistband": "belt_loops",
+        "breakStyle": "slight"
+      }
+    },
+    {
+      "id": "pleated_trouser",
+      "label": "Pleated Trouser",
+      "preset": {
+        "trouserFit": "straight",
+        "rise": "high",
+        "pleat": "single",
+        "waistband": "side_adjuster",
+        "breakStyle": "slight"
+      }
+    },
+    {
+      "id": "cropped_ankle",
+      "label": "Cropped / Ankle-Length",
+      "preset": {
+        "trouserFit": "tapered",
+        "rise": "mid",
+        "pleat": "flat",
+        "waistband": "belt_loops",
+        "breakStyle": "cropped"
+      }
+    },
+    {
+      "id": "wide_leg_relaxed_drape",
+      "label": "Wide-Leg / Relaxed Drape",
+      "preset": {
+        "trouserFit": "wide",
+        "rise": "high",
+        "pleat": "double",
+        "waistband": "side_adjuster",
+        "breakStyle": "no_break"
+      }
+    },
+    {
+      "id": "cargo_trouser",
+      "label": "Cargo Trouser",
+      "preset": {
+        "trouserFit": "baggy",
+        "rise": "mid",
+        "pleat": "flat",
+        "waistband": "drawstring",
+        "breakStyle": "no_break"
+      }
+    },
+    {
+      "id": "jean_cut_suiting",
+      "label": "Jean-Cut Suiting",
+      "preset": {
+        "trouserFit": "slim",
+        "rise": "low",
+        "pleat": "flat",
+        "waistband": "belt_loops",
+        "breakStyle": "no_break"
+      }
+    },
+    {
+      "id": "korean_tapered",
+      "label": "Korean High-Rise Tapered",
+      "preset": {
+        "trouserFit": "tapered",
+        "rise": "high",
+        "pleat": "single",
+        "waistband": "clean",
+        "breakStyle": "cropped"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "id": "mother_of_pearl",
+      "label": "Mother-of-Pearl",
+      "rgba": [
+        0.92,
+        0.91,
+        0.86,
+        1
+      ],
+      "metallic": 0.02,
+      "roughness": 0.3
+    },
+    {
+      "id": "corozo",
+      "label": "Corozo",
+      "rgba": [
+        0.65,
+        0.5,
+        0.3,
+        1
+      ],
+      "metallic": 0.02,
+      "roughness": 0.48
+    },
+    {
+      "id": "horn",
+      "label": "Horn",
+      "rgba": [
+        0.2,
+        0.14,
+        0.1,
+        1
+      ],
+      "metallic": 0.02,
+      "roughness": 0.42
+    },
+    {
+      "id": "resin",
+      "label": "Plastic / Resin",
+      "rgba": [
+        0.09,
+        0.075,
+        0.06,
+        1
+      ],
+      "metallic": 0.02,
+      "roughness": 0.4
+    },
+    {
+      "id": "metal",
+      "label": "Metal / Contrast",
+      "rgba": [
+        0.55,
+        0.56,
+        0.58,
+        1
+      ],
+      "metallic": 0.7,
+      "roughness": 0.28
+    }
   ]
 }
