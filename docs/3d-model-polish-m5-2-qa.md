@@ -29,3 +29,5 @@ The CC0 MakeHuman body source is prepared separately as a non-visible collision 
 QA rerun includes the patched source-map-js 1.2.2 dependency and updated M5.2 quality-gate expectations.
 
 Final rerun includes synchronized GarmentViewer tests for the production M5.2 baseline wording.
+
+Browser QA now targets production contract_ready state, verified model manifest and model-bound fabric interaction evidence.
