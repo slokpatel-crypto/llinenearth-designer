@@ -111,42 +111,58 @@ function boxGeometry(){
   return typedGeometry(p,n,uv,idx);
 }
 
+// Identity-first proportions tuned against /designer/studio-tucked.webp.
 const shirtTorso=profileGeometry({
   rings:[
-    {y:-.295,width:.287,depth:.126,z:.006},{y:-.235,width:.292,depth:.132,z:.008},
-    {y:-.145,width:.275,depth:.139,z:.010},{y:-.045,width:.265,depth:.145,z:.012},
-    {y:.070,width:.279,depth:.150,z:.016},{y:.185,width:.305,depth:.146,z:.018},
-    {y:.275,width:.293,depth:.133,z:.008},{y:.295,width:.252,depth:.118,z:0},
+    {y:-.295,width:.205,depth:.112,z:.004},
+    {y:-.240,width:.198,depth:.116,z:.006},
+    {y:-.155,width:.190,depth:.120,z:.009},
+    {y:-.060,width:.188,depth:.124,z:.011},
+    {y:.055,width:.202,depth:.128,z:.014},
+    {y:.165,width:.235,depth:.130,z:.016},
+    {y:.245,width:.248,depth:.124,z:.010},
+    {y:.285,width:.232,depth:.112,z:.004},
+    {y:.305,width:.215,depth:.104,z:0},
   ],
-  ripple:({theta,v})=>.018*Math.sin(theta*6)*(1-v)+.008*Math.sin(theta*3+v*5),
+  segments:32,
+  ripple:({theta,v})=>.010*Math.sin(theta*6)*(1-v)+.005*Math.sin(theta*3+v*4),
 });
 const sleeve=profileGeometry({
   rings:[
-    {y:-.285,width:.061,depth:.064},{y:-.22,width:.064,depth:.067,z:.004},
-    {y:-.11,width:.069,depth:.072,z:.007},{y:.02,width:.074,depth:.078,z:.010},
-    {y:.15,width:.083,depth:.086,z:.006},{y:.245,width:.092,depth:.092},
-    {y:.285,width:.087,depth:.088},
+    {y:-.300,width:.048,depth:.052,z:.002},
+    {y:-.245,width:.050,depth:.055,z:.004},
+    {y:-.135,width:.054,depth:.060,z:.006},
+    {y:-.010,width:.058,depth:.064,z:.008},
+    {y:.120,width:.064,depth:.069,z:.006},
+    {y:.235,width:.073,depth:.076,z:.002},
+    {y:.295,width:.078,depth:.080,z:0},
   ],
-  segments:22,
-  ripple:({theta,v})=>.013*Math.sin(theta*5+v*4)*(1-v*.45),
+  segments:24,
+  ripple:({theta,v})=>.008*Math.sin(theta*5+v*3)*(1-v*.35),
 });
 const trouserWaist=profileGeometry({
   rings:[
-    {y:-.115,width:.262,depth:.118,z:.003},{y:-.06,width:.270,depth:.125,z:.005},
-    {y:.02,width:.278,depth:.132,z:.008},{y:.085,width:.274,depth:.128,z:.004},
-    {y:.115,width:.267,depth:.120,z:0},
+    {y:-.115,width:.207,depth:.111,z:.003},
+    {y:-.060,width:.213,depth:.116,z:.004},
+    {y:.015,width:.222,depth:.122,z:.006},
+    {y:.080,width:.224,depth:.121,z:.003},
+    {y:.115,width:.218,depth:.116,z:0},
   ],
-  ripple:({theta})=>.006*Math.sin(theta*4),
+  segments:30,
+  ripple:({theta})=>.004*Math.sin(theta*4),
 });
 const trouserLeg=profileGeometry({
   rings:[
-    {y:-.385,width:.087,depth:.094,z:.003},{y:-.285,width:.090,depth:.099,z:.004},
-    {y:-.12,width:.098,depth:.107,z:.007},{y:.06,width:.106,depth:.114,z:.010},
-    {y:.235,width:.116,depth:.120,z:.008},{y:.355,width:.123,depth:.124,z:.003},
-    {y:.385,width:.119,depth:.121,z:0},
+    {y:-.405,width:.066,depth:.075,z:.002},
+    {y:-.315,width:.069,depth:.079,z:.003},
+    {y:-.160,width:.074,depth:.084,z:.005},
+    {y:.020,width:.082,depth:.091,z:.008},
+    {y:.190,width:.093,depth:.099,z:.007},
+    {y:.335,width:.103,depth:.106,z:.003},
+    {y:.405,width:.108,depth:.109,z:0},
   ],
-  segments:24,
-  ripple:({theta,v})=>.009*Math.cos(theta*2)*(.35+v*.65)+.005*Math.sin(theta*6+v*3),
+  segments:26,
+  ripple:({theta,v})=>.006*Math.cos(theta*2)*(.35+v*.65)+.0035*Math.sin(theta*6+v*3),
 });
 const head=uvSphereGeometry();
 const hand=uvSphereGeometry(10,18);
@@ -185,24 +201,25 @@ const meshButton=addMesh("ButtonMesh",button,"ButtonAccent");
 
 const qz=(deg)=>{const r=deg*Math.PI/180/2;return [0,0,Math.sin(r),Math.cos(r)];};
 const nodes=[
-  {name:"Head",mesh:meshHead,translation:[0,1.605,0],scale:[.165,.122,.148]},
-  {name:"Neck",mesh:meshHead,translation:[0,1.472,0],scale:[.075,.074,.072]},
-  {name:"ShirtTorsoFabric",mesh:meshShirtTorso,translation:[0,1.185,0]},
-  {name:"ShirtSleeveLFabric",mesh:meshSleeveL,translation:[-.365,1.115,0],rotation:qz(-4)},
-  {name:"ShirtSleeveRFabric",mesh:meshSleeveR,translation:[.365,1.115,0],rotation:qz(4)},
-  {name:"HandL",mesh:meshHand,translation:[-.405,.765,.008],scale:[.061,.088,.063]},
-  {name:"HandR",mesh:meshHand,translation:[.405,.765,.008],scale:[.061,.088,.063]},
-  {name:"TrouserWaistFabric",mesh:meshWaist,translation:[0,.880,0]},
-  {name:"TrouserLegLFabric",mesh:meshLegL,translation:[-.137,.505,0]},
-  {name:"TrouserLegRFabric",mesh:meshLegR,translation:[.137,.505,0]},
-  {name:"ShoeL",mesh:meshShoe,translation:[-.137,.060,.082],scale:[.125,.060,.210]},
-  {name:"ShoeR",mesh:meshShoe,translation:[.137,.060,.082],scale:[.125,.060,.210]},
-  {name:"CollarL",mesh:meshCollar,translation:[-.050,1.465,.113],scale:[.064,.020,.010],rotation:qz(-26)},
-  {name:"CollarR",mesh:meshCollar,translation:[.050,1.465,.113],scale:[.064,.020,.010],rotation:qz(26)},
-  {name:"CuffL",mesh:meshCuffL,translation:[-.405,.822,.002],scale:[.078,.025,.078],rotation:qz(-4)},
-  {name:"CuffR",mesh:meshCuffR,translation:[.405,.822,.002],scale:[.078,.025,.078],rotation:qz(4)},
+  // 1727 mm canonical Live Designer mannequin: slim shoulders, long legs, relaxed straight stance.
+  {name:"Head",mesh:meshHead,translation:[0,1.610,.002],scale:[.142,.117,.132]},
+  {name:"Neck",mesh:meshHead,translation:[0,1.477,.004],scale:[.060,.072,.058]},
+  {name:"ShirtTorsoFabric",mesh:meshShirtTorso,translation:[0,1.177,0]},
+  {name:"ShirtSleeveLFabric",mesh:meshSleeveL,translation:[-.278,1.120,.002],rotation:qz(-3.2)},
+  {name:"ShirtSleeveRFabric",mesh:meshSleeveR,translation:[.278,1.120,.002],rotation:qz(3.2)},
+  {name:"HandL",mesh:meshHand,translation:[-.312,.770,.012],scale:[.049,.083,.052]},
+  {name:"HandR",mesh:meshHand,translation:[.312,.770,.012],scale:[.049,.083,.052]},
+  {name:"TrouserWaistFabric",mesh:meshWaist,translation:[0,.870,0]},
+  {name:"TrouserLegLFabric",mesh:meshLegL,translation:[-.112,.475,0]},
+  {name:"TrouserLegRFabric",mesh:meshLegR,translation:[.112,.475,0]},
+  {name:"ShoeL",mesh:meshShoe,translation:[-.112,.055,.082],scale:[.104,.055,.195]},
+  {name:"ShoeR",mesh:meshShoe,translation:[.112,.055,.082],scale:[.104,.055,.195]},
+  {name:"CollarL",mesh:meshCollar,translation:[-.043,1.469,.101],scale:[.055,.018,.009],rotation:qz(-25)},
+  {name:"CollarR",mesh:meshCollar,translation:[.043,1.469,.101],scale:[.055,.018,.009],rotation:qz(25)},
+  {name:"CuffL",mesh:meshCuffL,translation:[-.312,.832,.004],scale:[.061,.022,.061],rotation:qz(-3.2)},
+  {name:"CuffR",mesh:meshCuffR,translation:[.312,.832,.004],scale:[.061,.022,.061],rotation:qz(3.2)},
 ];
-for(let i=0;i<6;i++) nodes.push({name:`ShirtButton${i+1}`,mesh:meshButton,translation:[0,1.405-i*.085,.145],scale:[.012,.012,.008]});
+for(let i=0;i<7;i++) nodes.push({name:`ShirtButton${i+1}`,mesh:meshButton,translation:[0,1.400-i*.075,.127],scale:[.0095,.0095,.0065]});
 
 const parts=[],views=[],accessors=[];
 let byteOffset=0;
@@ -272,9 +289,18 @@ const manifest={
   modelId:MODEL_ID,
   referenceHeightMm:REFERENCE_HEIGHT_MM,
   modelIdentity:{id:IDENTITY_ID,referenceImage:REFERENCE_IMAGE},
-  source:{name:"Linen Earth parametric officewear baseline",license:"Linen Earth generated asset",verifiedAt:"2026-10-06"},
+  source:{name:"Linen Earth Live Designer identity-matched parametric baseline",license:"Linen Earth generated asset",verifiedAt:"2026-10-06"},
   panels:Object.fromEntries(garmentPanels.map(p=>[p.material,{widthMm:p.widthMm,heightMm:p.heightMm,offsetU:p.offsetU,offsetV:p.offsetV,rotationDeg:p.rotationDeg}])),
-  cameraOrbits:{front:"0deg 76deg 2.58m","three-quarter":"35deg 76deg 2.58m",side:"90deg 76deg 2.58m",back:"180deg 76deg 2.58m"},
+  identityMeasurements:{
+    targetHeightMm:1727,
+    targetShoulderWidthMm:455,
+    targetShirtWaistWidthMm:376,
+    targetTrouserWaistWidthMm:436,
+    targetSleeveHandCenterMm:624,
+    targetLegCenterSpacingMm:224,
+    sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
+  },
+  cameraOrbits:{front:"0deg 76deg 2.72m","three-quarter":"35deg 76deg 2.72m",side:"90deg 76deg 2.72m",back:"180deg 76deg 2.72m"},
 };
 
 await fs.mkdir(OUT_DIR,{recursive:true});
