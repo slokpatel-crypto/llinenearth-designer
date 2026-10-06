@@ -376,12 +376,17 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     "camera-controls":true,
     "touch-action":"pan-y",
     "camera-orbit":cameraViews[0].orbit,
+    "camera-target":"0m 0.86m 0m",
+    "field-of-view":"27deg",
+    "min-field-of-view":"23deg",
+    "max-field-of-view":"38deg",
     "min-camera-orbit":"auto 58deg 2.15m",
     "max-camera-orbit":"auto 92deg 3.6m",
-    "interpolation-decay":"130",
-    "shadow-intensity":"1.15",
-    "shadow-softness":".85",
-    "exposure":"1.05",
+    "interpolation-decay":"135",
+    "environment-image":"neutral",
+    "shadow-intensity":".78",
+    "shadow-softness":".96",
+    "exposure":"1.12",
     "tone-mapping":"commerce",
     loading:"eager",
     "interaction-prompt":"auto",
@@ -457,7 +462,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         <span><small>VIEWS</small><b>4 fixed + free</b></span>
         <span><small>AI CREDITS</small><b>0</b></span>
       </div>
-      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Approved GLB + physical panel manifest are active. Continue realism and boundary QA before promotion to the customer Designer." : "The parametric officewear baseline is active with curved shirt/trouser geometry, fabric-scale mapping and four-view rotation. Next realism step is the final tailored Blender mesh with higher-fidelity cloth folds and construction-specific variants."}</p>
+      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M4 is active: tuned mannequin proportions, classic collar, tucked waist construction, tailored trouser fall and studio lighting. Fabric/drape simulation remains the next system layer." : "The parametric officewear baseline is active with curved shirt/trouser geometry, fabric-scale mapping and four-view rotation. Next realism step is the final tailored Blender mesh with higher-fidelity cloth folds and construction-specific variants."}</p>
     </aside>
   </section>;
 }
