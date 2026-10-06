@@ -1,0 +1,240 @@
+{
+  "version": "linen-earth-garment-style-v1",
+  "shirtFits": [
+    {
+      "id": "slim",
+      "label": "Slim Fit",
+      "waistScale": 0.9,
+      "chestScale": 0.94,
+      "sleeveScale": 0.94
+    },
+    {
+      "id": "regular",
+      "label": "Regular / Classic Fit",
+      "waistScale": 1,
+      "chestScale": 1,
+      "sleeveScale": 1
+    },
+    {
+      "id": "relaxed",
+      "label": "Relaxed Fit",
+      "waistScale": 1.07,
+      "chestScale": 1.05,
+      "sleeveScale": 1.05
+    },
+    {
+      "id": "boxy",
+      "label": "Boxy / Oversized Fit",
+      "waistScale": 1.16,
+      "chestScale": 1.09,
+      "sleeveScale": 1.1
+    }
+  ],
+  "shirtWear": [
+    {
+      "id": "tucked",
+      "label": "Tucked"
+    },
+    {
+      "id": "untucked",
+      "label": "Untucked"
+    }
+  ],
+  "sleeves": [
+    {
+      "id": "full",
+      "label": "Full Sleeve"
+    },
+    {
+      "id": "half",
+      "label": "Half Sleeve"
+    },
+    {
+      "id": "roll",
+      "label": "Roll-up Styled"
+    }
+  ],
+  "collars": [
+    {
+      "id": "point",
+      "label": "Point / Standard Collar"
+    },
+    {
+      "id": "spread",
+      "label": "Spread Collar"
+    },
+    {
+      "id": "cutaway",
+      "label": "Cutaway Collar"
+    },
+    {
+      "id": "button_down",
+      "label": "Button-Down Collar"
+    },
+    {
+      "id": "mandarin",
+      "label": "Mandarin / Band Collar"
+    },
+    {
+      "id": "camp",
+      "label": "Cuban / Camp Collar"
+    }
+  ],
+  "cuffs": [
+    {
+      "id": "barrel_1",
+      "label": "Barrel Cuff · 1 button"
+    },
+    {
+      "id": "barrel_2",
+      "label": "Barrel Cuff · 2 button"
+    },
+    {
+      "id": "french",
+      "label": "French / Double Cuff"
+    },
+    {
+      "id": "rounded",
+      "label": "Rounded / Soft Cuff"
+    },
+    {
+      "id": "cocktail",
+      "label": "Cocktail Cuff"
+    }
+  ],
+  "plackets": [
+    {
+      "id": "standard",
+      "label": "Standard Visible Placket"
+    },
+    {
+      "id": "french",
+      "label": "French Placket"
+    },
+    {
+      "id": "hidden",
+      "label": "Hidden / Fly-front"
+    }
+  ],
+  "pockets": [
+    {
+      "id": "none",
+      "label": "No Pocket"
+    },
+    {
+      "id": "patch",
+      "label": "Single Patch Pocket"
+    },
+    {
+      "id": "flap",
+      "label": "Flap Pocket"
+    }
+  ],
+  "trouserFits": [
+    {
+      "id": "slim",
+      "label": "Slim Tapered",
+      "thighScale": 0.94,
+      "kneeScale": 0.88,
+      "hemScale": 0.78
+    },
+    {
+      "id": "straight",
+      "label": "Straight Classic",
+      "thighScale": 1,
+      "kneeScale": 1,
+      "hemScale": 1
+    },
+    {
+      "id": "tapered",
+      "label": "Regular Tapered",
+      "thighScale": 1.06,
+      "kneeScale": 0.96,
+      "hemScale": 0.84
+    },
+    {
+      "id": "wide",
+      "label": "Wide-Leg Drape",
+      "thighScale": 1.14,
+      "kneeScale": 1.24,
+      "hemScale": 1.36
+    },
+    {
+      "id": "baggy",
+      "label": "Baggy Wide",
+      "thighScale": 1.24,
+      "kneeScale": 1.38,
+      "hemScale": 1.52
+    }
+  ],
+  "rises": [
+    {
+      "id": "low",
+      "label": "Low Rise",
+      "yOffsetM": -0.035
+    },
+    {
+      "id": "mid",
+      "label": "Mid Rise",
+      "yOffsetM": 0
+    },
+    {
+      "id": "high",
+      "label": "High Rise",
+      "yOffsetM": 0.035
+    }
+  ],
+  "pleats": [
+    {
+      "id": "flat",
+      "label": "Flat Front",
+      "count": 0
+    },
+    {
+      "id": "single",
+      "label": "Single Pleat",
+      "count": 1
+    },
+    {
+      "id": "double",
+      "label": "Double Pleat",
+      "count": 2
+    }
+  ],
+  "waistbands": [
+    {
+      "id": "clean",
+      "label": "Plain / Clean Front"
+    },
+    {
+      "id": "belt_loops",
+      "label": "Belt Loops"
+    },
+    {
+      "id": "side_adjuster",
+      "label": "Side-Adjuster Tabs"
+    },
+    {
+      "id": "drawstring",
+      "label": "Drawstring / Elastic"
+    }
+  ],
+  "breaks": [
+    {
+      "id": "no_break",
+      "label": "No Break"
+    },
+    {
+      "id": "slight",
+      "label": "Slight Break"
+    },
+    {
+      "id": "full",
+      "label": "Full Break"
+    },
+    {
+      "id": "cropped",
+      "label": "Cropped / Above-ankle"
+    }
+  ]
+}
