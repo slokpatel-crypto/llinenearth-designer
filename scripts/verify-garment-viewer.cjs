@@ -55,9 +55,14 @@ async function verifyViewport(browser, width) {
     return {
       materialNames: materials.map((material) => material.name),
       cameraOrbit: element.getAttribute("camera-orbit"),
+      cameraTarget: element.getAttribute("camera-target"),
+      fieldOfView: element.getAttribute("field-of-view"),
       hasCreateTexture: typeof element.createTexture === "function",
     };
   });
+  assert.match(modelState.cameraOrbit||"",/3\.15m$/,"default locked camera must keep the full mannequin inside frame");
+  assert.equal(modelState.cameraTarget,"0m 0.86m 0m","camera target must stay centered on the 1727 mm mannequin");
+  assert.equal(modelState.fieldOfView,"32deg","default field of view must preserve head-to-shoe framing");
   assert.equal(modelState.materialNames.filter((name) => name.startsWith("Shirt")).length, 3, "3D model must expose three independent shirt panels");
   assert.equal(modelState.materialNames.filter((name) => name.startsWith("Trouser")).length, 3, "3D model must expose three independent trouser panels");
   assert.equal(modelState.hasCreateTexture, true, "model-viewer scene graph texture API must be available");
