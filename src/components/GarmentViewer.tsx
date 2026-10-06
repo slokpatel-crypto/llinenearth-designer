@@ -712,12 +712,12 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       <label className="garmentRange"><span>Surface roughness base <b>{roughness.toFixed(2)}</b></span><input type="range" min=".55" max=".98" step=".01" value={roughness} onChange={(event)=>setRoughness(Number(event.target.value))}/><small>Fabric drape class automatically shifts linen normal strength and roughness around this base value; unknown fabrics stay on a conservative medium response.</small></label>
 
       <div className="garmentViewerFacts">
-        <span><small>MODEL</small><b>{modelContract?.readiness==="contract_ready"&&productionManifestReady?"M7 Tailoring GLB":"Reusable GLB"}</b></span>
+        <span><small>MODEL</small><b>{modelContract?.readiness==="contract_ready"&&productionManifestReady?"M7.1 Tailoring GLB":"Reusable GLB"}</b></span>
         <span><small>FABRIC</small><b>Panel-scaled PBR + variants</b></span>
         <span><small>VIEWS</small><b>4 fixed + free</b></span>
         <span><small>AI CREDITS</small><b>0</b></span>
       </div>
-      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M7 is locked: the same mannequin now carries live geometry-backed tailoring variants for shirt type/fit, tucked/untucked wear, sleeve length, collar, cuff, button material, placket, pocket and trouser type/fit/rise/pleat/waistband/break. Fabric remains panel-scaled and non-metallic; verified drape/weight metadata now changes the surface fold-normal response and roughness without AI credits." : "Fallback prototype is active. Production should use the identity-locked M7 tailoring model before fabric/drape work continues."}</p>
+      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M7.1 is locked: the same mannequin now carries live geometry-backed tailoring variants for shirt type/fit, tucked/untucked wear, sleeve length, collar, cuff, button material, placket, pocket and trouser type/fit/rise/pleat/waistband/break. Fabric remains panel-scaled and non-metallic; verified drape/weight metadata now changes the surface fold-normal response and roughness without AI credits." : "Fallback prototype is active. Production should use the identity-locked M7.1 tailoring model before fabric/drape work continues."}</p>
     </aside>
   </section>;
 }
