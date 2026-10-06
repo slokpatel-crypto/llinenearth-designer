@@ -629,11 +629,11 @@ const nodes=[
   {name:"TrouserFrontCreaseL",mesh:meshTrouserCreaseL,translation:[-.105,.555,.071],scale:[.006,.905,.006]},
   {name:"TrouserFrontCreaseR",mesh:meshTrouserCreaseR,translation:[.105,.555,.071],scale:[.006,.905,.006]},
   {name:"TrouserFly",mesh:meshWaistDetail,translation:[0,.995,.106],scale:[.010,.105,.006]},
-  {name:"WaistbandFront",mesh:meshWaistDetail,translation:[0,1.088,.105],scale:[.330,.026,.006]},
-  {name:"BeltLoopL1",mesh:meshWaistDetail,translation:[-.132,1.092,.108],scale:[.013,.072,.006]},
-  {name:"BeltLoopL2",mesh:meshWaistDetail,translation:[-.065,1.092,.109],scale:[.012,.072,.006]},
-  {name:"BeltLoopR1",mesh:meshWaistDetail,translation:[.065,1.092,.109],scale:[.012,.072,.006]},
-  {name:"BeltLoopR2",mesh:meshWaistDetail,translation:[.132,1.092,.108],scale:[.013,.072,.006]},
+  {name:"WaistbandFront",mesh:meshWaistDetail,translation:[0,1.086,.105],scale:[.330,.020,.006]},
+  {name:"BeltLoopL1",mesh:meshWaistDetail,translation:[-.132,1.086,.108],scale:[.011,.040,.006]},
+  {name:"BeltLoopL2",mesh:meshWaistDetail,translation:[-.065,1.086,.109],scale:[.010,.040,.006]},
+  {name:"BeltLoopR1",mesh:meshWaistDetail,translation:[.065,1.086,.109],scale:[.010,.040,.006]},
+  {name:"BeltLoopR2",mesh:meshWaistDetail,translation:[.132,1.086,.108],scale:[.011,.040,.006]},
 ];
 for(let i=0;i<7;i++) nodes.push({name:`ShirtButton${i+1}`,mesh:meshButton,translation:[0,1.430-i*.055,.119],scale:[.006,.006,.004]});
 nodes.push({name:"TrouserButton",mesh:meshButton,translation:[0,1.100,.113],scale:[.0068,.0068,.0048]});
