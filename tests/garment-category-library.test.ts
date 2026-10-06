@@ -48,12 +48,12 @@ test("future blazer and suit taxonomy stays planned",()=>{
 });
 
 
-test("3D lab carries the saved Designer recipe without claiming geometry support",()=>{
+test("3D lab carries the saved Designer recipe while advanced construction meshes remain staged",()=>{
   const source=readFileSync("src/components/GarmentViewer.tsx","utf8");
   assert(source.includes("linen-earth:real-designer-draft:v2"));
   assert(source.includes("YOUR DESIGNER RECIPE"));
-  assert(source.includes("temporary 3D block maps fabric now"));
-  assert(source.includes("construction-specific mesh changes remain a later production-model step"));
+  assert(source.includes("current production baseline maps fabric now"));
+  assert(source.includes("construction-specific mesh variants will progressively replace the shared base geometry"));
 });
 
 
