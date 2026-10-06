@@ -111,6 +111,31 @@ function boxGeometry(){
   return typedGeometry(p,n,uv,idx);
 }
 
+function collarPointGeometry(){
+  const p=[],n=[],uv=[],idx=[];
+  const front=[[-.5,.5,.5],[.5,.5,.5],[0,-.5,.5]];
+  const back=[[-.5,.5,-.5],[0,-.5,-.5],[.5,.5,-.5]];
+  const faces=[
+    {n:[0,0,1],v:front},
+    {n:[0,0,-1],v:back},
+    {n:[0,1,0],v:[[-.5,.5,-.5],[.5,.5,-.5],[.5,.5,.5],[-.5,.5,.5]]},
+    {n:[-.7,-.7,0],v:[[-.5,.5,-.5],[-.5,.5,.5],[0,-.5,.5],[0,-.5,-.5]]},
+    {n:[.7,-.7,0],v:[[.5,.5,.5],[.5,.5,-.5],[0,-.5,-.5],[0,-.5,.5]]},
+  ];
+  for(const face of faces){
+    const start=p.length/3;
+    for(const v of face.v){p.push(...v);n.push(...face.n);}
+    if(face.v.length===3){
+      uv.push(0,1,1,1,.5,0);
+      idx.push(start,start+1,start+2);
+    }else{
+      uv.push(0,0,1,0,1,1,0,1);
+      idx.push(start,start+1,start+2,start,start+2,start+3);
+    }
+  }
+  return typedGeometry(p,n,uv,idx);
+}
+
 // Identity-first proportions tuned against /designer/studio-tucked.webp.
 const shirtTorso=profileGeometry({
   rings:[
@@ -152,17 +177,18 @@ const trouserWaist=profileGeometry({
 });
 const trouserLeg=profileGeometry({
   rings:[
-    {y:-.485,width:.031,depth:.053,z:.001},
-    {y:-.405,width:.034,depth:.056,z:.002},
-    {y:-.260,width:.039,depth:.061,z:.003},
-    {y:-.085,width:.048,depth:.069,z:.005},
-    {y:.095,width:.060,depth:.078,z:.006},
-    {y:.265,width:.075,depth:.089,z:.004},
-    {y:.425,width:.084,depth:.097,z:.002},
-    {y:.485,width:.086,depth:.099,z:0},
+    {y:-.492,width:.032,depth:.054,z:.004},
+    {y:-.438,width:.033,depth:.055,z:-.002},
+    {y:-.365,width:.035,depth:.057,z:.003},
+    {y:-.255,width:.040,depth:.061,z:.002},
+    {y:-.105,width:.047,depth:.068,z:.005},
+    {y:.060,width:.056,depth:.075,z:.007},
+    {y:.220,width:.070,depth:.085,z:.005},
+    {y:.365,width:.081,depth:.094,z:.002},
+    {y:.492,width:.087,depth:.100,z:0},
   ],
-  segments:28,
-  ripple:({theta,v})=>.0045*Math.cos(theta*2)*(.35+v*.65)+.0025*Math.sin(theta*6+v*3),
+  segments:30,
+  ripple:({theta,v})=>.004*Math.cos(theta*2)*(.35+v*.65)+.002*Math.sin(theta*6+v*3),
 });
 const head=profileGeometry({
   rings:[
@@ -187,7 +213,8 @@ const hand=profileGeometry({
   segments:22,
 });
 const shoe=uvSphereGeometry(10,20);
-const collar=boxGeometry();
+const collar=collarPointGeometry();
+const detailBox=boxGeometry();
 const button=uvSphereGeometry(6,10);
 
 const garmentMaterials=garmentPanels.map((panel,i)=>({
@@ -215,13 +242,14 @@ const meshWaist=addMesh("TrouserWaistMesh",trouserWaist,"TrouserWaistFabric");
 const meshLegL=addMesh("TrouserLegLMesh",trouserLeg,"TrouserLegLFabric");
 const meshLegR=addMesh("TrouserLegRMesh",trouserLeg,"TrouserLegRFabric");
 const meshCollar=addMesh("CollarMesh",collar,"ShirtTorsoFabric");
-const meshCuffL=addMesh("CuffLMesh",collar,"ShirtSleeveLFabric");
-const meshCuffR=addMesh("CuffRMesh",collar,"ShirtSleeveRFabric");
+const meshCuffL=addMesh("CuffLMesh",detailBox,"ShirtSleeveLFabric");
+const meshCuffR=addMesh("CuffRMesh",detailBox,"ShirtSleeveRFabric");
 const meshButton=addMesh("ButtonMesh",button,"ButtonAccent");
-const meshShirtPlacket=addMesh("ShirtPlacketMesh",collar,"ShirtTorsoFabric");
-const meshTrouserCreaseL=addMesh("TrouserCreaseLMesh",collar,"TrouserLegLFabric");
-const meshTrouserCreaseR=addMesh("TrouserCreaseRMesh",collar,"TrouserLegRFabric");
-const meshWaistDetail=addMesh("TrouserWaistDetailMesh",collar,"TrouserWaistFabric");
+const meshShirtPlacket=addMesh("ShirtPlacketMesh",detailBox,"ShirtTorsoFabric");
+const meshTrouserCreaseL=addMesh("TrouserCreaseLMesh",detailBox,"TrouserLegLFabric");
+const meshTrouserCreaseR=addMesh("TrouserCreaseRMesh",detailBox,"TrouserLegRFabric");
+const meshWaistDetail=addMesh("TrouserWaistDetailMesh",detailBox,"TrouserWaistFabric");
+const meshSole=addMesh("SoleMesh",detailBox,"Shoe");
 
 const qz=(deg)=>{const r=deg*Math.PI/180/2;return [0,0,Math.sin(r),Math.cos(r)];};
 const nodes=[
@@ -236,10 +264,12 @@ const nodes=[
   {name:"TrouserWaistFabric",mesh:meshWaist,translation:[0,1.025,0]},
   {name:"TrouserLegLFabric",mesh:meshLegL,translation:[-.105,.555,0]},
   {name:"TrouserLegRFabric",mesh:meshLegR,translation:[.105,.555,0]},
-  {name:"ShoeL",mesh:meshShoe,translation:[-.105,.045,.073],scale:[.067,.045,.155]},
-  {name:"ShoeR",mesh:meshShoe,translation:[.105,.045,.073],scale:[.067,.045,.155]},
-  {name:"CollarL",mesh:meshCollar,translation:[-.038,1.475,.091],scale:[.049,.017,.008],rotation:qz(-25)},
-  {name:"CollarR",mesh:meshCollar,translation:[.038,1.475,.091],scale:[.049,.017,.008],rotation:qz(25)},
+  {name:"ShoeL",mesh:meshShoe,translation:[-.105,.056,.081],scale:[.068,.041,.150]},
+  {name:"ShoeR",mesh:meshShoe,translation:[.105,.056,.081],scale:[.068,.041,.150]},
+  {name:"SoleL",mesh:meshSole,translation:[-.105,.016,.089],scale:[.140,.021,.300]},
+  {name:"SoleR",mesh:meshSole,translation:[.105,.016,.089],scale:[.140,.021,.300]},
+  {name:"CollarL",mesh:meshCollar,translation:[-.043,1.468,.096],scale:[.080,.088,.014],rotation:qz(-18)},
+  {name:"CollarR",mesh:meshCollar,translation:[.043,1.468,.096],scale:[.080,.088,.014],rotation:qz(18)},
   {name:"CuffL",mesh:meshCuffL,translation:[-.250,.870,.004],scale:[.049,.021,.051],rotation:qz(-2.4)},
   {name:"CuffR",mesh:meshCuffR,translation:[.250,.870,.004],scale:[.049,.021,.051],rotation:qz(2.4)},
   // Raised construction cues keep the 3D silhouette close to the Live Designer front reference.
@@ -289,7 +319,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M3"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M4 polished"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -322,7 +352,7 @@ const manifest={
   modelId:MODEL_ID,
   referenceHeightMm:REFERENCE_HEIGHT_MM,
   modelIdentity:{id:IDENTITY_ID,referenceImage:REFERENCE_IMAGE},
-  source:{name:"Linen Earth Live Designer identity-matched parametric baseline",license:"Linen Earth generated asset",verifiedAt:"2026-10-06"},
+  source:{name:"Linen Earth Live Designer identity-matched polished parametric model M4",license:"Linen Earth generated asset",verifiedAt:"2026-10-06"},
   panels:Object.fromEntries(garmentPanels.map(p=>[p.material,{widthMm:p.widthMm,heightMm:p.heightMm,offsetU:p.offsetU,offsetV:p.offsetV,rotationDeg:p.rotationDeg}])),
   identityMeasurements:{
     targetHeightMm:1727,
@@ -332,7 +362,8 @@ const manifest={
     targetTrouserWaistWidthMm:344,
     targetHandCenterSpacingMm:500,
     targetLegCenterSpacingMm:210,
-    targetHemWidthMm:62,
+    targetHemWidthMm:64,
+    polishStage:"M4 identity + tailoring silhouette complete",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   cameraOrbits:{front:"0deg 76deg 2.72m","three-quarter":"35deg 76deg 2.72m",side:"90deg 76deg 2.72m",back:"180deg 76deg 2.72m"},
