@@ -1,5 +1,5 @@
 {
-  "version": "linen-earth-garment-style-v1",
+  "version": "linen-earth-garment-style-v2",
   "shirtFits": [
     {
       "id": "slim",
@@ -7,6 +7,13 @@
       "waistScale": 0.9,
       "chestScale": 0.94,
       "sleeveScale": 0.94
+    },
+    {
+      "id": "tailored",
+      "label": "Tailored Fit",
+      "waistScale": 0.95,
+      "chestScale": 0.98,
+      "sleeveScale": 0.97
     },
     {
       "id": "regular",
@@ -46,97 +53,259 @@
       "label": "Full Sleeve"
     },
     {
+      "id": "three_quarter",
+      "label": "Three-Quarter Sleeve"
+    },
+    {
       "id": "half",
-      "label": "Half Sleeve"
+      "label": "Short / Half Sleeve"
     },
     {
       "id": "roll",
-      "label": "Roll-up Styled"
+      "label": "Rolled Sleeve"
     }
   ],
   "collars": [
     {
       "id": "point",
-      "label": "Point / Standard Collar"
+      "label": "Point / Standard Collar",
+      "family": "dress",
+      "spreadDeg": 32
+    },
+    {
+      "id": "semi_spread",
+      "label": "Semi-Spread Collar",
+      "family": "dress",
+      "spreadDeg": 44
     },
     {
       "id": "spread",
-      "label": "Spread Collar"
+      "label": "Spread Collar",
+      "family": "dress",
+      "spreadDeg": 58
     },
     {
       "id": "cutaway",
-      "label": "Cutaway Collar"
+      "label": "Cutaway Collar",
+      "family": "dress",
+      "spreadDeg": 92
     },
     {
       "id": "button_down",
-      "label": "Button-Down Collar"
+      "label": "Button-Down Collar",
+      "family": "casual",
+      "spreadDeg": 38
+    },
+    {
+      "id": "hidden_button_down",
+      "label": "Hidden Button-Down Collar",
+      "family": "dress-casual",
+      "spreadDeg": 42
+    },
+    {
+      "id": "club",
+      "label": "Club / Rounded Collar",
+      "family": "vintage",
+      "spreadDeg": 40
+    },
+    {
+      "id": "tab",
+      "label": "Tab Collar",
+      "family": "dress",
+      "spreadDeg": 34
+    },
+    {
+      "id": "wingtip",
+      "label": "Wingtip / Tuxedo Collar",
+      "family": "formal",
+      "spreadDeg": 88
     },
     {
       "id": "mandarin",
-      "label": "Mandarin / Band Collar"
+      "label": "Mandarin / Band Collar",
+      "family": "band",
+      "spreadDeg": 0
     },
     {
       "id": "camp",
-      "label": "Cuban / Camp Collar"
+      "label": "Camp / Cuban Collar",
+      "family": "casual",
+      "spreadDeg": 66
+    },
+    {
+      "id": "one_piece",
+      "label": "One-Piece / California Collar",
+      "family": "casual",
+      "spreadDeg": 54
     }
   ],
   "cuffs": [
     {
       "id": "barrel_1",
-      "label": "Barrel Cuff · 1 button"
+      "label": "One-Button Barrel Cuff",
+      "family": "barrel"
     },
     {
-      "id": "barrel_2",
-      "label": "Barrel Cuff · 2 button"
+      "id": "long_barrel_1",
+      "label": "Long One-Button Barrel Cuff",
+      "family": "barrel"
+    },
+    {
+      "id": "mitered_1",
+      "label": "One-Button Mitered Cuff",
+      "family": "barrel"
+    },
+    {
+      "id": "rounded_2",
+      "label": "Two-Button Rounded Cuff",
+      "family": "barrel"
+    },
+    {
+      "id": "mitered_2",
+      "label": "Two-Button Mitered Cuff",
+      "family": "barrel"
     },
     {
       "id": "french",
-      "label": "French / Double Cuff"
+      "label": "Square French / Double Cuff",
+      "family": "french"
     },
     {
-      "id": "rounded",
-      "label": "Rounded / Soft Cuff"
+      "id": "rounded_french",
+      "label": "Rounded French Cuff",
+      "family": "french"
+    },
+    {
+      "id": "convertible",
+      "label": "Convertible Cuff",
+      "family": "convertible"
+    },
+    {
+      "id": "soft_barrel",
+      "label": "Soft One-Button Cuff",
+      "family": "soft"
     },
     {
       "id": "cocktail",
-      "label": "Cocktail Cuff"
+      "label": "Cocktail / Turnback Cuff",
+      "family": "turnback"
     }
   ],
   "plackets": [
     {
       "id": "standard",
-      "label": "Standard Visible Placket"
+      "label": "Standard Front Placket",
+      "family": "front"
+    },
+    {
+      "id": "soft_front",
+      "label": "Soft Front Placket",
+      "family": "front"
     },
     {
       "id": "french",
-      "label": "French Placket"
+      "label": "French Front / No Placket",
+      "family": "clean"
     },
     {
       "id": "hidden",
-      "label": "Hidden / Fly-front"
+      "label": "Covered / Fly Front",
+      "family": "formal"
+    },
+    {
+      "id": "popover",
+      "label": "Popover Front",
+      "family": "casual"
+    },
+    {
+      "id": "western",
+      "label": "Western Front",
+      "family": "western"
+    },
+    {
+      "id": "tuxedo_plain",
+      "label": "Tuxedo Front · Plain",
+      "family": "formal"
+    },
+    {
+      "id": "tuxedo_pleated",
+      "label": "Tuxedo Front · Pleated Bib",
+      "family": "formal"
     }
   ],
   "pockets": [
     {
       "id": "none",
-      "label": "No Pocket"
+      "label": "No Pocket",
+      "count": 0
     },
     {
-      "id": "patch",
-      "label": "Single Patch Pocket"
+      "id": "rounded",
+      "label": "Single Rounded Chest Pocket",
+      "count": 1
     },
     {
-      "id": "flap",
-      "label": "Flap Pocket"
+      "id": "angled",
+      "label": "Single Angled Chest Pocket",
+      "count": 1
+    },
+    {
+      "id": "button_angled",
+      "label": "Single Button Angled Pocket",
+      "count": 1
+    },
+    {
+      "id": "single_flap",
+      "label": "Single Flap Pocket",
+      "count": 1
+    },
+    {
+      "id": "western_flap",
+      "label": "Double Western Flap Pockets",
+      "count": 2
+    },
+    {
+      "id": "rounded_flap",
+      "label": "Double Rounded Flap Pockets",
+      "count": 2
+    },
+    {
+      "id": "utility",
+      "label": "Dual Utility Pockets",
+      "count": 2
+    },
+    {
+      "id": "safari",
+      "label": "Dual Safari Pleated Pockets",
+      "count": 2
+    },
+    {
+      "id": "reverse_pleat",
+      "label": "Dual Reverse-Pleat Pockets",
+      "count": 2
     }
   ],
   "trouserFits": [
+    {
+      "id": "skinny",
+      "label": "Skinny / Cigarette",
+      "thighScale": 0.9,
+      "kneeScale": 0.82,
+      "hemScale": 0.7
+    },
     {
       "id": "slim",
       "label": "Slim Tapered",
       "thighScale": 0.94,
       "kneeScale": 0.88,
       "hemScale": 0.78
+    },
+    {
+      "id": "tapered",
+      "label": "Regular Tapered",
+      "thighScale": 1.06,
+      "kneeScale": 0.96,
+      "hemScale": 0.84
     },
     {
       "id": "straight",
@@ -146,11 +315,11 @@
       "hemScale": 1
     },
     {
-      "id": "tapered",
-      "label": "Regular Tapered",
-      "thighScale": 1.06,
-      "kneeScale": 0.96,
-      "hemScale": 0.84
+      "id": "relaxed",
+      "label": "Relaxed Straight",
+      "thighScale": 1.1,
+      "kneeScale": 1.1,
+      "hemScale": 1.08
     },
     {
       "id": "wide",
@@ -161,7 +330,7 @@
     },
     {
       "id": "baggy",
-      "label": "Baggy Wide",
+      "label": "Baggy / Extra-Wide",
       "thighScale": 1.24,
       "kneeScale": 1.38,
       "hemScale": 1.52
@@ -180,7 +349,7 @@
     },
     {
       "id": "high",
-      "label": "High Rise",
+      "label": "High / Natural-Waist Rise",
       "yOffsetM": 0.035
     }
   ],
@@ -188,23 +357,44 @@
     {
       "id": "flat",
       "label": "Flat Front",
-      "count": 0
+      "count": 0,
+      "direction": "none"
     },
     {
-      "id": "single",
-      "label": "Single Pleat",
-      "count": 1
+      "id": "single_forward",
+      "label": "Single Forward Pleat",
+      "count": 1,
+      "direction": "forward"
     },
     {
-      "id": "double",
-      "label": "Double Pleat",
-      "count": 2
+      "id": "single_reverse",
+      "label": "Single Reverse Pleat",
+      "count": 1,
+      "direction": "reverse"
+    },
+    {
+      "id": "double_forward",
+      "label": "Double Forward Pleats",
+      "count": 2,
+      "direction": "forward"
+    },
+    {
+      "id": "double_reverse",
+      "label": "Double Reverse Pleats",
+      "count": 2,
+      "direction": "reverse"
+    },
+    {
+      "id": "kissing",
+      "label": "Kissing / Box Pleat",
+      "count": 2,
+      "direction": "inward"
     }
   ],
   "waistbands": [
     {
       "id": "clean",
-      "label": "Plain / Clean Front"
+      "label": "Plain / Clean Waistband"
     },
     {
       "id": "belt_loops",
@@ -215,26 +405,38 @@
       "label": "Side-Adjuster Tabs"
     },
     {
+      "id": "extended_tab",
+      "label": "Extended / Gurkha-Style Tab"
+    },
+    {
       "id": "drawstring",
       "label": "Drawstring / Elastic"
+    },
+    {
+      "id": "braces",
+      "label": "Brace / Suspender Buttons"
     }
   ],
   "breaks": [
+    {
+      "id": "negative",
+      "label": "Negative / Cropped Break"
+    },
     {
       "id": "no_break",
       "label": "No Break"
     },
     {
+      "id": "quarter",
+      "label": "Quarter Break"
+    },
+    {
       "id": "slight",
-      "label": "Slight Break"
+      "label": "Slight / Half Break"
     },
     {
       "id": "full",
       "label": "Full Break"
-    },
-    {
-      "id": "cropped",
-      "label": "Cropped / Above-ankle"
     }
   ],
   "shirtTypes": [
@@ -246,9 +448,47 @@
         "shirtWear": "tucked",
         "sleeve": "full",
         "collar": "point",
+        "collarConstruction": "stiff_fused",
         "cuff": "barrel_1",
+        "cuffConstruction": "fused",
         "placket": "standard",
-        "pocket": "none"
+        "pocket": "none",
+        "yoke": "split",
+        "hem": "rounded"
+      }
+    },
+    {
+      "id": "business_spread",
+      "label": "Business Spread-Collar Shirt",
+      "preset": {
+        "shirtFit": "tailored",
+        "shirtWear": "tucked",
+        "sleeve": "full",
+        "collar": "spread",
+        "collarConstruction": "stiff_fused",
+        "cuff": "long_barrel_1",
+        "cuffConstruction": "fused",
+        "placket": "french",
+        "pocket": "none",
+        "yoke": "split",
+        "hem": "rounded"
+      }
+    },
+    {
+      "id": "ocbd",
+      "label": "Oxford Button-Down Shirt",
+      "preset": {
+        "shirtFit": "regular",
+        "shirtWear": "tucked",
+        "sleeve": "full",
+        "collar": "button_down",
+        "collarConstruction": "soft_unfused",
+        "cuff": "soft_barrel",
+        "cuffConstruction": "soft",
+        "placket": "soft_front",
+        "pocket": "rounded",
+        "yoke": "split",
+        "hem": "rounded"
       }
     },
     {
@@ -259,9 +499,13 @@
         "shirtWear": "untucked",
         "sleeve": "full",
         "collar": "button_down",
-        "cuff": "barrel_1",
-        "placket": "standard",
-        "pocket": "patch"
+        "collarConstruction": "soft_unfused",
+        "cuff": "soft_barrel",
+        "cuffConstruction": "soft",
+        "placket": "soft_front",
+        "pocket": "rounded",
+        "yoke": "one_piece",
+        "hem": "straight"
       }
     },
     {
@@ -272,9 +516,13 @@
         "shirtWear": "untucked",
         "sleeve": "half",
         "collar": "camp",
-        "cuff": "rounded",
+        "collarConstruction": "soft_unfused",
+        "cuff": "rounded_2",
+        "cuffConstruction": "soft",
         "placket": "french",
-        "pocket": "patch"
+        "pocket": "rounded",
+        "yoke": "one_piece",
+        "hem": "straight"
       }
     },
     {
@@ -282,25 +530,101 @@
       "label": "Band-Collar Shirt",
       "preset": {
         "shirtFit": "regular",
-        "shirtWear": "tucked",
+        "shirtWear": "untucked",
         "sleeve": "full",
         "collar": "mandarin",
+        "collarConstruction": "soft_fused",
         "cuff": "barrel_1",
+        "cuffConstruction": "soft",
         "placket": "french",
-        "pocket": "none"
+        "pocket": "none",
+        "yoke": "one_piece",
+        "hem": "straight"
+      }
+    },
+    {
+      "id": "popover",
+      "label": "Popover Shirt",
+      "preset": {
+        "shirtFit": "relaxed",
+        "shirtWear": "untucked",
+        "sleeve": "full",
+        "collar": "spread",
+        "collarConstruction": "soft_unfused",
+        "cuff": "soft_barrel",
+        "cuffConstruction": "soft",
+        "placket": "popover",
+        "pocket": "rounded",
+        "yoke": "split",
+        "hem": "straight"
       }
     },
     {
       "id": "overshirt",
-      "label": "Overshirt",
+      "label": "Overshirt / Shirt-Jacket",
       "preset": {
         "shirtFit": "boxy",
         "shirtWear": "untucked",
         "sleeve": "full",
         "collar": "point",
-        "cuff": "barrel_2",
-        "placket": "standard",
-        "pocket": "flap"
+        "collarConstruction": "soft_fused",
+        "cuff": "rounded_2",
+        "cuffConstruction": "soft",
+        "placket": "soft_front",
+        "pocket": "rounded_flap",
+        "yoke": "one_piece",
+        "hem": "straight"
+      }
+    },
+    {
+      "id": "western",
+      "label": "Western Shirt",
+      "preset": {
+        "shirtFit": "regular",
+        "shirtWear": "untucked",
+        "sleeve": "full",
+        "collar": "point",
+        "collarConstruction": "soft_fused",
+        "cuff": "mitered_2",
+        "cuffConstruction": "soft",
+        "placket": "western",
+        "pocket": "western_flap",
+        "yoke": "western",
+        "hem": "straight"
+      }
+    },
+    {
+      "id": "safari",
+      "label": "Safari / Utility Shirt",
+      "preset": {
+        "shirtFit": "relaxed",
+        "shirtWear": "untucked",
+        "sleeve": "full",
+        "collar": "point",
+        "collarConstruction": "soft_fused",
+        "cuff": "barrel_1",
+        "cuffConstruction": "soft",
+        "placket": "soft_front",
+        "pocket": "safari",
+        "yoke": "one_piece",
+        "hem": "straight"
+      }
+    },
+    {
+      "id": "tuxedo",
+      "label": "Tuxedo / Formal Shirt",
+      "preset": {
+        "shirtFit": "tailored",
+        "shirtWear": "tucked",
+        "sleeve": "full",
+        "collar": "wingtip",
+        "collarConstruction": "stiff_fused",
+        "cuff": "french",
+        "cuffConstruction": "fused",
+        "placket": "tuxedo_plain",
+        "pocket": "none",
+        "yoke": "one_piece",
+        "hem": "rounded"
       }
     },
     {
@@ -310,10 +634,14 @@
         "shirtFit": "regular",
         "shirtWear": "untucked",
         "sleeve": "half",
-        "collar": "spread",
-        "cuff": "rounded",
+        "collar": "semi_spread",
+        "collarConstruction": "soft_fused",
+        "cuff": "rounded_2",
+        "cuffConstruction": "soft",
         "placket": "standard",
-        "pocket": "patch"
+        "pocket": "rounded",
+        "yoke": "one_piece",
+        "hem": "straight"
       }
     }
   ],
@@ -326,18 +654,48 @@
         "rise": "mid",
         "pleat": "flat",
         "waistband": "belt_loops",
-        "breakStyle": "slight"
+        "breakStyle": "slight",
+        "hem": "plain",
+        "pocket": "slant"
       }
     },
     {
-      "id": "pleated_trouser",
-      "label": "Pleated Trouser",
+      "id": "bespoke_side_adjuster",
+      "label": "Bespoke Side-Adjuster Trouser",
       "preset": {
         "trouserFit": "straight",
         "rise": "high",
-        "pleat": "single",
+        "pleat": "single_forward",
         "waistband": "side_adjuster",
-        "breakStyle": "slight"
+        "breakStyle": "slight",
+        "hem": "plain",
+        "pocket": "slant"
+      }
+    },
+    {
+      "id": "double_pleat_high_rise",
+      "label": "High-Rise Double-Pleat Trouser",
+      "preset": {
+        "trouserFit": "relaxed",
+        "rise": "high",
+        "pleat": "double_forward",
+        "waistband": "side_adjuster",
+        "breakStyle": "quarter",
+        "hem": "turnup_4",
+        "pocket": "slant"
+      }
+    },
+    {
+      "id": "gurkha",
+      "label": "Gurkha-Style Trouser",
+      "preset": {
+        "trouserFit": "relaxed",
+        "rise": "high",
+        "pleat": "double_forward",
+        "waistband": "extended_tab",
+        "breakStyle": "no_break",
+        "hem": "plain",
+        "pocket": "slant"
       }
     },
     {
@@ -348,7 +706,9 @@
         "rise": "mid",
         "pleat": "flat",
         "waistband": "belt_loops",
-        "breakStyle": "cropped"
+        "breakStyle": "negative",
+        "hem": "plain",
+        "pocket": "slant"
       }
     },
     {
@@ -357,31 +717,63 @@
       "preset": {
         "trouserFit": "wide",
         "rise": "high",
-        "pleat": "double",
+        "pleat": "double_reverse",
         "waistband": "side_adjuster",
-        "breakStyle": "no_break"
+        "breakStyle": "no_break",
+        "hem": "turnup_5",
+        "pocket": "slant"
       }
     },
     {
-      "id": "cargo_trouser",
-      "label": "Cargo Trouser",
+      "id": "linen_drawstring",
+      "label": "Relaxed Linen Drawstring Trouser",
       "preset": {
-        "trouserFit": "baggy",
+        "trouserFit": "relaxed",
         "rise": "mid",
         "pleat": "flat",
         "waistband": "drawstring",
-        "breakStyle": "no_break"
+        "breakStyle": "no_break",
+        "hem": "plain",
+        "pocket": "on_seam"
+      }
+    },
+    {
+      "id": "chino",
+      "label": "Tailored Chino",
+      "preset": {
+        "trouserFit": "tapered",
+        "rise": "mid",
+        "pleat": "flat",
+        "waistband": "belt_loops",
+        "breakStyle": "quarter",
+        "hem": "plain",
+        "pocket": "slant"
       }
     },
     {
       "id": "jean_cut_suiting",
-      "label": "Jean-Cut Suiting",
+      "label": "Jean-Cut Suiting Trouser",
       "preset": {
         "trouserFit": "slim",
         "rise": "low",
         "pleat": "flat",
         "waistband": "belt_loops",
-        "breakStyle": "no_break"
+        "breakStyle": "no_break",
+        "hem": "plain",
+        "pocket": "jean"
+      }
+    },
+    {
+      "id": "cargo_trouser",
+      "label": "Cargo / Utility Trouser",
+      "preset": {
+        "trouserFit": "baggy",
+        "rise": "mid",
+        "pleat": "flat",
+        "waistband": "drawstring",
+        "breakStyle": "no_break",
+        "hem": "plain",
+        "pocket": "frogmouth"
       }
     },
     {
@@ -390,9 +782,11 @@
       "preset": {
         "trouserFit": "tapered",
         "rise": "high",
-        "pleat": "single",
+        "pleat": "single_reverse",
         "waistband": "clean",
-        "breakStyle": "cropped"
+        "breakStyle": "negative",
+        "hem": "plain",
+        "pocket": "slant"
       }
     }
   ],
@@ -456,6 +850,102 @@
       ],
       "metallic": 0.7,
       "roughness": 0.28
+    }
+  ],
+  "collarConstruction": [
+    {
+      "id": "stiff_fused",
+      "label": "Stiff Fused"
+    },
+    {
+      "id": "soft_fused",
+      "label": "Soft Fused"
+    },
+    {
+      "id": "soft_unfused",
+      "label": "Soft / Unfused"
+    }
+  ],
+  "cuffConstruction": [
+    {
+      "id": "fused",
+      "label": "Fused / Crisp"
+    },
+    {
+      "id": "soft",
+      "label": "Soft / Unfused"
+    }
+  ],
+  "yokes": [
+    {
+      "id": "one_piece",
+      "label": "One-Piece Yoke"
+    },
+    {
+      "id": "split",
+      "label": "Split Yoke"
+    },
+    {
+      "id": "western",
+      "label": "Western Yoke"
+    },
+    {
+      "id": "bias_western",
+      "label": "Bias-Cut Western Yoke"
+    }
+  ],
+  "shirtHems": [
+    {
+      "id": "rounded",
+      "label": "Rounded / Shirttail Hem"
+    },
+    {
+      "id": "straight",
+      "label": "Straight Hem"
+    },
+    {
+      "id": "polo",
+      "label": "Polo / Drop-Tail Hem"
+    }
+  ],
+  "trouserHems": [
+    {
+      "id": "plain",
+      "label": "Plain Hem"
+    },
+    {
+      "id": "turnup_4",
+      "label": "4 cm Turn-Up / Cuff"
+    },
+    {
+      "id": "turnup_5",
+      "label": "5 cm Turn-Up / Cuff"
+    }
+  ],
+  "trouserPockets": [
+    {
+      "id": "slant",
+      "label": "Slant Side Pockets"
+    },
+    {
+      "id": "on_seam",
+      "label": "On-Seam Side Pockets"
+    },
+    {
+      "id": "frogmouth",
+      "label": "Frogmouth / Horizontal Pockets"
+    },
+    {
+      "id": "jean",
+      "label": "Jean / Scoop Pockets"
+    },
+    {
+      "id": "single_welt_back",
+      "label": "Single Welt Back Pocket"
+    },
+    {
+      "id": "double_jetted_back",
+      "label": "Double Jetted Back Pockets"
     }
   ]
 }
