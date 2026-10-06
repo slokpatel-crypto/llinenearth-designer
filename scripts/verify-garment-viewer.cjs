@@ -99,6 +99,16 @@ async function verifyViewport(browser, width) {
   assert.ok(variantNames.some((name)=>name==="TrouserLegLVariant__wide"),"M7 must carry wide-trouser geometry");
   assert.ok(variantNames.some((name)=>name==="TrouserWaistbandVariant__side_adjuster"),"M7 must carry side-adjuster geometry");
 
+  await page.getByLabel("3D shirt type").selectOption("camp_collar_resort");
+  assert.equal(await page.getByLabel("3D shirt wear").inputValue(),"untucked","camp shirt preset must switch to untucked wear");
+  assert.equal(await page.getByLabel("3D sleeve").inputValue(),"half","camp shirt preset must switch to half sleeve");
+  assert.equal(await page.getByLabel("3D collar").inputValue(),"camp","camp shirt preset must switch the collar geometry");
+  await page.getByLabel("3D trouser type").selectOption("wide_leg_relaxed_drape");
+  assert.equal(await page.getByLabel("3D trouser fit").inputValue(),"wide","wide-leg trouser preset must switch leg geometry");
+  assert.equal(await page.getByLabel("3D trouser rise").inputValue(),"high","wide-leg trouser preset must switch rise");
+  assert.equal(await page.getByLabel("3D trouser pleat").inputValue(),"double","wide-leg trouser preset must switch pleats");
+  await page.getByLabel("3D button material").selectOption("metal");
+
   await page.getByLabel("3D shirt fit").selectOption("boxy");
   await page.getByLabel("3D shirt wear").selectOption("untucked");
   await page.getByLabel("3D collar").selectOption("mandarin");
@@ -123,7 +133,7 @@ async function verifyViewport(browser, width) {
   assert.ok(garmentText.some((value)=>/Suit/.test(value)&&/FUTURE/.test(value)&&/3-Piece Suit/.test(value)),"future suit types must be visible");
 
   const styleSelects = page.locator(".garmentStyleControlGrid select");
-  assert.equal(await styleSelects.count(), 12, "M7 must expose twelve live tailoring controls");
+  assert.equal(await styleSelects.count(), 15, "M7 must expose fifteen live tailoring controls");
   const selects = page.locator(".garmentViewerControls > label > select");
   assert.equal(await selects.count(), 2, "fabric selectors remain separate from tailoring controls");
   for (let index = 0; index < 2; index++) {
