@@ -96,7 +96,12 @@ async function loadMakeHumanBodyGeometry(){
   // The transformed hand centres still land almost exactly on the Live Designer reference.
   const sx=.84;
   const sy=(REFERENCE_HEIGHT_MM/1000)/1.7;
-  const sz=.64;
+  const sz=.58;
+  const armPoseRad=-20*Math.PI/180;
+  const armPoseCos=Math.cos(armPoseRad);
+  const armPoseSin=Math.sin(armPoseRad);
+  const armPivotY=1.31;
+  const armPivotZ=.040;
   const sourceYMin=.10;
   const sourceYMax=1.44;
   const remap=new Map();
@@ -109,14 +114,23 @@ async function loadMakeHumanBodyGeometry(){
     remap.set(oldIndex,next);
     const p=oldIndex*3;
     const x=positions.values[p]*sx;
-    const y=positions.values[p+1]*sy;
-    const z=-positions.values[p+2]*sz;
-    outPositions.push(x,y,z);
-    const [nx,ny,nz]=normalize(
+    let y=positions.values[p+1]*sy;
+    let z=-positions.values[p+2]*sz;
+    let [nx,ny,nz]=normalize(
       normals.values[p]/sx,
       normals.values[p+1]/sy,
       -normals.values[p+2]/sz,
     );
+    const isArm=Math.abs(x)>.15&&y>.65&&y<1.32;
+    if(isArm){
+      const dy=y-armPivotY,dz=z-armPivotZ;
+      y=armPivotY+armPoseCos*dy-armPoseSin*dz;
+      z=armPivotZ+armPoseSin*dy+armPoseCos*dz;
+      const rotatedNy=armPoseCos*ny-armPoseSin*nz;
+      const rotatedNz=armPoseSin*ny+armPoseCos*nz;
+      [nx,ny,nz]=normalize(nx,rotatedNy,rotatedNz);
+    }
+    outPositions.push(x,y,z);
     outNormals.push(nx,ny,nz);
     outUvs.push(.5,.5);
     return next;
@@ -127,6 +141,12 @@ async function loadMakeHumanBodyGeometry(){
     const ay=positions.values[a*3+1],by=positions.values[b*3+1],dy=positions.values[d*3+1];
     if(ay<sourceYMin||by<sourceYMin||dy<sourceYMin) continue;
     if(ay>sourceYMax||by>sourceYMax||dy>sourceYMax) continue;
+    const handCut=(index)=>{
+      const px=Math.abs(positions.values[index*3]*sx);
+      const py=positions.values[index*3+1];
+      return px>.16&&py<.86;
+    };
+    if(handCut(a)||handCut(b)||handCut(d)) continue;
     // Z is mirrored to align MakeHuman's front with Linen Earth's +Z garment front,
     // so triangle winding must be flipped as well.
     outIndices.push(mapped(a),mapped(d),mapped(b));
@@ -254,13 +274,13 @@ const shirtTorso=profileGeometry({
 });
 const sleeve=profileGeometry({
   rings:[
-    {y:-.286,width:.041,depth:.046,z:.002},
-    {y:-.235,width:.043,depth:.049,z:.004},
-    {y:-.125,width:.047,depth:.053,z:.006},
-    {y:-.005,width:.050,depth:.057,z:.007},
-    {y:.115,width:.054,depth:.061,z:.005},
-    {y:.225,width:.058,depth:.064,z:.002},
-    {y:.286,width:.061,depth:.066,z:0},
+    {y:-.286,width:.041,depth:.055,z:.002},
+    {y:-.235,width:.043,depth:.058,z:.004},
+    {y:-.125,width:.047,depth:.062,z:.006},
+    {y:-.005,width:.050,depth:.067,z:.007},
+    {y:.115,width:.054,depth:.073,z:.005},
+    {y:.225,width:.058,depth:.085,z:.002},
+    {y:.286,width:.061,depth:.095,z:0},
   ],
   segments:26,
   ripple:({theta,v})=>.006*Math.sin(theta*5+v*3)*(1-v*.35),
@@ -384,8 +404,10 @@ const nodes=[
   {name:"Head",mesh:meshHead,translation:[0,1.620,.004]},
   {name:"Neck",mesh:meshHead,translation:[0,1.500,.001],scale:[.63,.58,.62]},
   {name:"ShirtTorsoFabric",mesh:meshShirtTorso,translation:[0,1.265,0]},
-  {name:"ShirtSleeveLFabric",mesh:meshSleeveL,translation:[-.226,1.155,.002],rotation:qz(-2.4)},
-  {name:"ShirtSleeveRFabric",mesh:meshSleeveR,translation:[.226,1.155,.002],rotation:qz(2.4)},
+  {name:"ShirtSleeveLFabric",mesh:meshSleeveL,translation:[-.226,1.155,.030],rotation:qz(-2.4)},
+  {name:"ShirtSleeveRFabric",mesh:meshSleeveR,translation:[.226,1.155,.030],rotation:qz(2.4)},
+  {name:"HandPalmL",mesh:meshHand,translation:[-.250,.838,.012]},
+  {name:"HandPalmR",mesh:meshHand,translation:[.250,.838,.012]},
   {name:"TrouserWaistFabric",mesh:meshWaist,translation:[0,1.025,0]},
   {name:"TrouserLegLFabric",mesh:meshLegL,translation:[-.105,.555,0]},
   {name:"TrouserLegRFabric",mesh:meshLegR,translation:[.105,.555,0]},
@@ -395,8 +417,8 @@ const nodes=[
   {name:"SoleR",mesh:meshSole,translation:[.105,.016,.089],scale:[.140,.021,.300]},
   {name:"CollarL",mesh:meshCollar,translation:[-.043,1.468,.096],scale:[.080,.088,.014],rotation:qz(-18)},
   {name:"CollarR",mesh:meshCollar,translation:[.043,1.468,.096],scale:[.080,.088,.014],rotation:qz(18)},
-  {name:"CuffL",mesh:meshCuffL,translation:[-.250,.870,.004],scale:[.049,.021,.051],rotation:qz(-2.4)},
-  {name:"CuffR",mesh:meshCuffR,translation:[.250,.870,.004],scale:[.049,.021,.051],rotation:qz(2.4)},
+  {name:"CuffL",mesh:meshCuffL,translation:[-.250,.870,.030],scale:[.049,.021,.051],rotation:qz(-2.4)},
+  {name:"CuffR",mesh:meshCuffR,translation:[.250,.870,.030],scale:[.049,.021,.051],rotation:qz(2.4)},
   // Raised construction cues keep the 3D silhouette close to the Live Designer front reference.
   {name:"ShirtFrontPlacket",mesh:meshShirtPlacket,translation:[0,1.268,.112],scale:[.013,.374,.008]},
   {name:"TrouserFrontCreaseL",mesh:meshTrouserCreaseL,translation:[-.105,.555,.071],scale:[.006,.905,.006]},
@@ -408,6 +430,26 @@ const nodes=[
   {name:"BeltLoopR1",mesh:meshWaistDetail,translation:[.065,1.092,.109],scale:[.012,.072,.006]},
   {name:"BeltLoopR2",mesh:meshWaistDetail,translation:[.132,1.092,.108],scale:[.013,.072,.006]},
 ];
+for(const side of [-1,1]){
+  const handX=side*.250;
+  const fingerOffsets=[-.017,-.006,.006,.017];
+  const fingerLengthScale=[.90,1.02,1.00,.88];
+  for(let i=0;i<4;i++){
+    nodes.push({
+      name:`Finger${side<0?"L":"R"}${i+1}`,
+      mesh:meshFinger,
+      translation:[handX+fingerOffsets[i],.778,.013],
+      scale:[1,fingerLengthScale[i],1],
+      rotation:qz(side<0?-1.5:1.5),
+    });
+  }
+  nodes.push({
+    name:`Thumb${side<0?"L":"R"}`,
+    mesh:meshThumb,
+    translation:[handX+side*.029,.812,.018],
+    rotation:qz(side<0?34:-34),
+  });
+}
 for(let i=0;i<7;i++) nodes.push({name:`ShirtButton${i+1}`,mesh:meshButton,translation:[0,1.430-i*.055,.119],scale:[.006,.006,.004]});
 nodes.push({name:"TrouserButton",mesh:meshButton,translation:[0,1.100,.113],scale:[.0068,.0068,.0048]});
 nodes.push({name:"CuffButtonL",mesh:meshButton,translation:[-.250,.870,.057],scale:[.0048,.0048,.0035]});
@@ -506,7 +548,7 @@ const manifest={
     targetHandCenterSpacingMm:500,
     targetLegCenterSpacingMm:210,
     targetHemWidthMm:64,
-    polishStage:"M5 anatomical body + Live Designer identity polish complete",
+    polishStage:"M5.1 anatomical underbody + Live Designer visible identity polish complete",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   cameraOrbits:{front:"0deg 76deg 2.72m","three-quarter":"35deg 76deg 2.72m",side:"90deg 76deg 2.72m",back:"180deg 76deg 2.72m"},
