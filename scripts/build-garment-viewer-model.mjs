@@ -164,9 +164,29 @@ const trouserLeg=profileGeometry({
   segments:28,
   ripple:({theta,v})=>.0045*Math.cos(theta*2)*(.35+v*.65)+.0025*Math.sin(theta*6+v*3),
 });
-const head=uvSphereGeometry();
-const hand=uvSphereGeometry(10,18);
-const shoe=uvSphereGeometry(9,18);
+const head=profileGeometry({
+  rings:[
+    {y:-.102,width:.044,depth:.052,z:.006},
+    {y:-.080,width:.060,depth:.068,z:.009},
+    {y:-.045,width:.071,depth:.078,z:.010},
+    {y:.000,width:.076,depth:.082,z:.008},
+    {y:.045,width:.074,depth:.080,z:.004},
+    {y:.082,width:.062,depth:.070,z:0},
+    {y:.103,width:.038,depth:.048,z:-.003},
+  ],
+  segments:34,
+});
+const hand=profileGeometry({
+  rings:[
+    {y:-.068,width:.019,depth:.023,z:.004},
+    {y:-.040,width:.026,depth:.030,z:.006},
+    {y:.005,width:.030,depth:.033,z:.006},
+    {y:.043,width:.027,depth:.030,z:.003},
+    {y:.069,width:.018,depth:.022,z:0},
+  ],
+  segments:22,
+});
+const shoe=uvSphereGeometry(10,20);
 const collar=boxGeometry();
 const button=uvSphereGeometry(6,10);
 
@@ -198,12 +218,16 @@ const meshCollar=addMesh("CollarMesh",collar,"ShirtTorsoFabric");
 const meshCuffL=addMesh("CuffLMesh",collar,"ShirtSleeveLFabric");
 const meshCuffR=addMesh("CuffRMesh",collar,"ShirtSleeveRFabric");
 const meshButton=addMesh("ButtonMesh",button,"ButtonAccent");
+const meshShirtPlacket=addMesh("ShirtPlacketMesh",collar,"ShirtTorsoFabric");
+const meshTrouserCreaseL=addMesh("TrouserCreaseLMesh",collar,"TrouserLegLFabric");
+const meshTrouserCreaseR=addMesh("TrouserCreaseRMesh",collar,"TrouserLegRFabric");
+const meshWaistDetail=addMesh("TrouserWaistDetailMesh",collar,"TrouserWaistFabric");
 
 const qz=(deg)=>{const r=deg*Math.PI/180/2;return [0,0,Math.sin(r),Math.cos(r)];};
 const nodes=[
   // 1727 mm canonical Live Designer mannequin: slim shoulders, long legs, relaxed straight stance.
-  {name:"Head",mesh:meshHead,translation:[0,1.620,.004],scale:[.078,.107,.086]},
-  {name:"Neck",mesh:meshHead,translation:[0,1.493,.004],scale:[.052,.067,.050]},
+  {name:"Head",mesh:meshHead,translation:[0,1.620,.004]},
+  {name:"Neck",mesh:meshHead,translation:[0,1.500,.001],scale:[.63,.58,.62]},
   {name:"ShirtTorsoFabric",mesh:meshShirtTorso,translation:[0,1.265,0]},
   {name:"ShirtSleeveLFabric",mesh:meshSleeveL,translation:[-.226,1.155,.002],rotation:qz(-2.4)},
   {name:"ShirtSleeveRFabric",mesh:meshSleeveR,translation:[.226,1.155,.002],rotation:qz(2.4)},
@@ -218,8 +242,17 @@ const nodes=[
   {name:"CollarR",mesh:meshCollar,translation:[.038,1.475,.091],scale:[.049,.017,.008],rotation:qz(25)},
   {name:"CuffL",mesh:meshCuffL,translation:[-.250,.870,.004],scale:[.049,.021,.051],rotation:qz(-2.4)},
   {name:"CuffR",mesh:meshCuffR,translation:[.250,.870,.004],scale:[.049,.021,.051],rotation:qz(2.4)},
+  // Raised construction cues keep the 3D silhouette close to the Live Designer front reference.
+  {name:"ShirtFrontPlacket",mesh:meshShirtPlacket,translation:[0,1.268,.112],scale:[.013,.374,.008]},
+  {name:"TrouserFrontCreaseL",mesh:meshTrouserCreaseL,translation:[-.105,.555,.071],scale:[.006,.905,.006]},
+  {name:"TrouserFrontCreaseR",mesh:meshTrouserCreaseR,translation:[.105,.555,.071],scale:[.006,.905,.006]},
+  {name:"TrouserFly",mesh:meshWaistDetail,translation:[0,.995,.106],scale:[.010,.105,.006]},
+  {name:"WaistbandFront",mesh:meshWaistDetail,translation:[0,1.088,.105],scale:[.330,.026,.006]},
+  {name:"BeltLoopL",mesh:meshWaistDetail,translation:[-.118,1.092,.108],scale:[.015,.072,.006]},
+  {name:"BeltLoopR",mesh:meshWaistDetail,translation:[.118,1.092,.108],scale:[.015,.072,.006]},
 ];
-for(let i=0;i<7;i++) nodes.push({name:`ShirtButton${i+1}`,mesh:meshButton,translation:[0,1.430-i*.055,.112],scale:[.0065,.0065,.0045]});
+for(let i=0;i<7;i++) nodes.push({name:`ShirtButton${i+1}`,mesh:meshButton,translation:[0,1.430-i*.055,.119],scale:[.006,.006,.004]});
+nodes.push({name:"TrouserButton",mesh:meshButton,translation:[0,1.100,.113],scale:[.0068,.0068,.0048]});
 
 const parts=[],views=[],accessors=[];
 let byteOffset=0;
@@ -256,7 +289,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth parametric officewear M2"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M3"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
