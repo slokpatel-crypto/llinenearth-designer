@@ -453,12 +453,15 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     const token=++applyToken.current;
     const apply=async()=>{
       try{
+        const shirtNormalMap=createLinenNormalMap(drapeNormalStrength(shirt));
+        const trouserNormalMap=createLinenNormalMap(drapeNormalStrength(trouser));
         const prepared=await Promise.all(panelSpecs.map(async(panel)=>{
           const fabric=panel.garment==="shirt"?shirt:trouser;
           const tileMm=panel.garment==="shirt"?shirtTileMm:trouserTileMm;
+          const normalUrl=panel.garment==="shirt"?shirtNormalMap:trouserNormalMap;
           const [texture,normal]=await Promise.all([
             viewer.createTexture!(fabric.image),
-            normalMapRef.current ? viewer.createTexture!(normalMapRef.current) : Promise.resolve(null),
+            normalUrl ? viewer.createTexture!(normalUrl) : Promise.resolve(null),
           ]);
           const scale=garmentPanelTextureScale(panel.widthMm,panel.heightMm,tileMm);
           const offset={u:Number(panel.offsetU)||0,v:Number(panel.offsetV)||0};
@@ -477,6 +480,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           if(!material) continue;
           material.pbrMetallicRoughness.setBaseColorFactor([1,1,1,1]);
           material.pbrMetallicRoughness.setMetallicFactor(0);
+          const fabric=entry.panel.garment==="shirt"?shirt:trouser;
+          material.pbrMetallicRoughness.setRoughnessFactor(clamp(roughness+drapeRoughnessOffset(fabric),.55,.98));
           material.pbrMetallicRoughness.baseColorTexture?.setTexture(entry.texture);
           if(entry.normal) material.normalTexture?.setTexture(entry.normal);
         }
@@ -487,6 +492,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           const source=material.name.startsWith("Shirt")?shirtSource:trouserSource;
           if(!source) continue;
           material.pbrMetallicRoughness.setMetallicFactor(0);
+          const fabric=material.name.startsWith("Shirt")?shirt:trouser;
+          material.pbrMetallicRoughness.setRoughnessFactor(clamp(roughness+drapeRoughnessOffset(fabric),.55,.98));
           material.pbrMetallicRoughness.baseColorTexture?.setTexture(source.texture);
           if(source.normal) material.normalTexture?.setTexture(source.normal);
         }
@@ -524,9 +531,11 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     const viewer=viewerRef.current;
     if(!viewer) return;
     for(const material of viewer.model?.materials||[]){
-      if(isGarmentVariantMaterial(material.name)) material.pbrMetallicRoughness.setRoughnessFactor(roughness);
+      if(!isGarmentVariantMaterial(material.name)) continue;
+      const fabric=material.name.startsWith("Shirt")?shirt:trouser;
+      material.pbrMetallicRoughness.setRoughnessFactor(clamp(roughness+drapeRoughnessOffset(fabric),.55,.98));
     }
-  },[modelReady,roughness]);
+  },[modelReady,roughness,shirt,trouser]);
 
   useEffect(()=>{
     if(!modelReady) return;
