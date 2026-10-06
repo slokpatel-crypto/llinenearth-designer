@@ -204,13 +204,32 @@ const head=profileGeometry({
 });
 const hand=profileGeometry({
   rings:[
-    {y:-.068,width:.019,depth:.023,z:.004},
-    {y:-.040,width:.026,depth:.030,z:.006},
-    {y:.005,width:.030,depth:.033,z:.006},
-    {y:.043,width:.027,depth:.030,z:.003},
-    {y:.069,width:.018,depth:.022,z:0},
+    {y:-.036,width:.022,depth:.016,z:.004},
+    {y:-.020,width:.026,depth:.019,z:.006},
+    {y:.010,width:.028,depth:.020,z:.006},
+    {y:.032,width:.025,depth:.018,z:.003},
+    {y:.038,width:.020,depth:.015,z:0},
   ],
-  segments:22,
+  segments:24,
+});
+const finger=profileGeometry({
+  rings:[
+    {y:-.030,width:.0048,depth:.0056,z:.001},
+    {y:-.020,width:.0058,depth:.0065,z:.002},
+    {y:.010,width:.0060,depth:.0068,z:.002},
+    {y:.026,width:.0054,depth:.0061,z:0},
+    {y:.030,width:.0042,depth:.0050,z:-.001},
+  ],
+  segments:16,
+});
+const thumb=profileGeometry({
+  rings:[
+    {y:-.025,width:.0060,depth:.0070,z:.001},
+    {y:-.010,width:.0070,depth:.0080,z:.002},
+    {y:.014,width:.0073,depth:.0080,z:.001},
+    {y:.025,width:.0058,depth:.0065,z:0},
+  ],
+  segments:16,
 });
 const shoe=uvSphereGeometry(10,20);
 const collar=collarPointGeometry();
@@ -233,7 +252,9 @@ const materialIndex=Object.fromEntries(materials.map((m,i)=>[m.name,i]));
 const assets=[];
 function addMesh(name,geometry,material){assets.push({name,geometry,material});return assets.length-1;}
 const meshHead=addMesh("HeadMesh",head,"MannequinSkin");
-const meshHand=addMesh("HandMesh",hand,"MannequinSkin");
+const meshHand=addMesh("HandPalmMesh",hand,"MannequinSkin");
+const meshFinger=addMesh("HandFingerMesh",finger,"MannequinSkin");
+const meshThumb=addMesh("HandThumbMesh",thumb,"MannequinSkin");
 const meshShoe=addMesh("ShoeMesh",shoe,"Shoe");
 const meshShirtTorso=addMesh("ShirtTorsoMesh",shirtTorso,"ShirtTorsoFabric");
 const meshSleeveL=addMesh("ShirtSleeveLMesh",sleeve,"ShirtSleeveLFabric");
@@ -260,8 +281,8 @@ const nodes=[
   {name:"ShirtTorsoFabric",mesh:meshShirtTorso,translation:[0,1.265,0]},
   {name:"ShirtSleeveLFabric",mesh:meshSleeveL,translation:[-.226,1.155,.002],rotation:qz(-2.4)},
   {name:"ShirtSleeveRFabric",mesh:meshSleeveR,translation:[.226,1.155,.002],rotation:qz(2.4)},
-  {name:"HandL",mesh:meshHand,translation:[-.250,.817,.012]},
-  {name:"HandR",mesh:meshHand,translation:[.250,.817,.012]},
+  {name:"HandPalmL",mesh:meshHand,translation:[-.250,.838,.012]},
+  {name:"HandPalmR",mesh:meshHand,translation:[.250,.838,.012]},
   {name:"TrouserWaistFabric",mesh:meshWaist,translation:[0,1.025,0]},
   {name:"TrouserLegLFabric",mesh:meshLegL,translation:[-.105,.555,0]},
   {name:"TrouserLegRFabric",mesh:meshLegR,translation:[.105,.555,0]},
@@ -284,6 +305,26 @@ const nodes=[
   {name:"BeltLoopR1",mesh:meshWaistDetail,translation:[.065,1.092,.109],scale:[.012,.072,.006]},
   {name:"BeltLoopR2",mesh:meshWaistDetail,translation:[.132,1.092,.108],scale:[.013,.072,.006]},
 ];
+for(const side of [-1,1]){
+  const handX=side*.250;
+  const fingerOffsets=[-.017,-.006,.006,.017];
+  const fingerLengthScale=[.90,1.02,1.00,.88];
+  for(let i=0;i<4;i++){
+    nodes.push({
+      name:`Finger${side<0?"L":"R"}${i+1}`,
+      mesh:meshFinger,
+      translation:[handX+fingerOffsets[i],.778,.013],
+      scale:[1,fingerLengthScale[i],1],
+      rotation:qz(side<0?-1.5:1.5),
+    });
+  }
+  nodes.push({
+    name:`Thumb${side<0?"L":"R"}`,
+    mesh:meshThumb,
+    translation:[handX+side*.029,.812,.018],
+    rotation:qz(side<0?34:-34),
+  });
+}
 for(let i=0;i<7;i++) nodes.push({name:`ShirtButton${i+1}`,mesh:meshButton,translation:[0,1.430-i*.055,.119],scale:[.006,.006,.004]});
 nodes.push({name:"TrouserButton",mesh:meshButton,translation:[0,1.100,.113],scale:[.0068,.0068,.0048]});
 nodes.push({name:"CuffButtonL",mesh:meshButton,translation:[-.250,.870,.057],scale:[.0048,.0048,.0035]});
@@ -376,7 +417,7 @@ const manifest={
     targetHandCenterSpacingMm:500,
     targetLegCenterSpacingMm:210,
     targetHemWidthMm:64,
-    polishStage:"M4.1 identity + tailoring silhouette polish complete",
+    polishStage:"M4.2 identity + tailoring + mannequin anatomy polish complete",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   cameraOrbits:{front:"0deg 76deg 2.72m","three-quarter":"35deg 76deg 2.72m",side:"90deg 76deg 2.72m",back:"180deg 76deg 2.72m"},
