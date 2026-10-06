@@ -1,4 +1,3 @@
-import { optionsFor } from "./options/library.ts";
 import styleVariants from "../garment-viewer-style-variants.json" with { type:"json" };
 import { futureGarmentOptionsFor } from "./future-garment-options.ts";
 
