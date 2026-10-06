@@ -63,8 +63,10 @@ async function verifyViewport(browser, width) {
   assert.match(modelState.cameraOrbit||"",/3\.60m$/,"default locked camera must keep the full mannequin inside frame");
   assert.equal(modelState.cameraTarget,"0m 0.86m 0m","camera target must stay centered on the 1727 mm mannequin");
   assert.equal(modelState.fieldOfView,"30deg","default field of view must preserve head-to-shoe framing");
-  assert.equal(modelState.materialNames.filter((name) => name.startsWith("Shirt")).length, 3, "3D model must expose three independent shirt panels");
-  assert.equal(modelState.materialNames.filter((name) => name.startsWith("Trouser")).length, 3, "3D model must expose three independent trouser panels");
+  const requiredPanels=["ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric","TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric"];
+  for(const name of requiredPanels) assert.equal(modelState.materialNames.filter((item)=>item===name).length,1,"required garment material must remain unique: "+name);
+  assert.ok(modelState.materialNames.filter((name)=>name.startsWith("Shirt")&&name.includes("Variant__")).length>=12,"M7 must expose multiple shirt construction-variant materials");
+  assert.ok(modelState.materialNames.filter((name)=>name.startsWith("Trouser")&&name.includes("Variant__")).length>=10,"M7 must expose multiple trouser construction-variant materials");
   assert.equal(modelState.hasCreateTexture, true, "model-viewer scene graph texture API must be available");
 
   const buttons = page.locator(".garmentCameraRail button");
@@ -84,7 +86,7 @@ async function verifyViewport(browser, width) {
   assert.match(recipe,/YOUR DESIGNER RECIPE/);
   assert.match(recipe,/Spread Collar/);
   assert.match(recipe,/Pleated Trouser/);
-  assert.match(recipe,/current production baseline maps fabric now/i);
+  assert.match(recipe,/saved Designer recipe now drives the same 3D tailoring-variant system/i);
 
   const stageScope=await page.locator(".garmentViewerStageHead").innerText();
   assert.match(stageScope,/MODEL IDENTITY LOCKED · SHIRT \+ TROUSER/,"3D stage must state the exact-model lock");
@@ -165,7 +167,7 @@ async function verifyViewport(browser, width) {
         rotation: current.pbrMetallicRoughness?.baseColorTexture?.texture?.sampler?.rotation ?? null,
       }));
   });
-  assert.equal(materialState.length, 6);
+  assert.ok(materialState.length > 20,"M7 must texture the six required panels plus live style-variant materials");
   for (const material of materialState) {
     assert.equal(material.metallic, 0, material.name + " must remain non-metallic");
     assert.ok(material.roughness >= .55 && material.roughness <= .98, material.name + " roughness must stay in the cloth range");
