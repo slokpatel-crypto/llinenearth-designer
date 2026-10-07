@@ -63,16 +63,29 @@ async function verifyViewport(browser, width) {
   const serverSeededReadiness=await page.locator(".garmentViewerShell").getAttribute("data-model-readiness");
   assert.equal(serverSeededReadiness,"contract_ready","server-verified production asset must seed M7.46 readiness before scene-graph hydration");
   await page.locator(".garmentViewerLoading").waitFor({ state: "hidden", timeout: 20000 });
-  const shellCount=await page.locator(".garmentViewerShell").count();
-  if(shellCount!==1){
-    const snapshot=await page.locator("body").innerText({timeout:5000}).catch(()=>"<body unavailable>");
-    throw new Error("3D shell disappeared after model load. url="+page.url()+" errors="+JSON.stringify(errors)+" body="+snapshot.slice(0,1600));
+  try {
+    // React can replace the server-rendered shell while the large scene graph hydrates.
+    // Re-resolve the current DOM node until both immutable production contracts settle.
+    await page.waitForFunction(()=>{
+      const shell=document.querySelector(".garmentViewerShell");
+      return shell?.getAttribute("data-model-readiness")==="contract_ready"
+        && shell?.getAttribute("data-manifest-ready")==="true";
+    },null,{timeout:20000});
+  } catch (error) {
+    const diagnostic=await page.evaluate(()=>({
+      body:document.body?.innerText?.slice(0,1600)||"<body unavailable>",
+      shellCount:document.querySelectorAll(".garmentViewerShell").length,
+      readiness:document.querySelector(".garmentViewerShell")?.getAttribute("data-model-readiness")||null,
+      manifestReady:document.querySelector(".garmentViewerShell")?.getAttribute("data-manifest-ready")||null,
+    })).catch(()=>({body:"<page unavailable>",shellCount:0,readiness:null,manifestReady:null}));
+    throw new Error("3D readiness did not settle after hydration. url="+page.url()+" errors="+JSON.stringify(errors)+" state="+JSON.stringify(diagnostic)+"; "+error.message);
   }
   const shell=page.locator(".garmentViewerShell");
-  const [labModelReadiness,labManifestReadiness]=await Promise.all([
-    shell.getAttribute("data-model-readiness",{timeout:5000}),
-    shell.getAttribute("data-manifest-ready",{timeout:5000}),
-  ]);
+  assert.equal(await shell.count(),1,"3D lab must keep exactly one hydrated viewer shell");
+  const [labModelReadiness,labManifestReadiness]=await page.evaluate(()=>{
+    const element=document.querySelector(".garmentViewerShell");
+    return [element?.getAttribute("data-model-readiness")||null,element?.getAttribute("data-manifest-ready")||null];
+  });
   assert.equal(labModelReadiness, "contract_ready", "3D lab must load the production M7.46 model contract");
   assert.equal(labManifestReadiness, "true", "production M7.46 model must load its verified physical-panel manifest");
 
