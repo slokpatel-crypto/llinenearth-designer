@@ -150,7 +150,10 @@ function materialByName(viewer:ModelViewerElement,name:string) {
 }
 async function ensureViewerMaterialLoaded(material:Material|null|undefined) {
   if(!material) return null;
-  if(material.ensureLoaded) await material.ensureLoaded();
+  // model-viewer exposes already-hydrated materials synchronously. Re-running
+  // ensureLoaded() for those materials on every style/fabric effect can serialize
+  // expensive WebGL work and block the browser even though the material is ready.
+  if(material.isLoaded!==true && material.ensureLoaded) await material.ensureLoaded();
   return material;
 }
 
