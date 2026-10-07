@@ -61,8 +61,13 @@ type DesignerDraftRecipe={
   pantId?:string;
   occasion?:string;
   styleSpec?:{
-    shirt?:{type?:string};
-    pant?:{type?:string};
+    shirt?:{
+      type?:string; collar?:string; cuff?:string; placket?:string; pocket?:string;
+      sleeve?:string; fit?:string; hem?:string; wear?:string; button?:string; back?:string;
+    };
+    pant?:{
+      type?:string; fit?:string; rise?:string; pleat?:string; waistband?:string; hem?:string; break?:string;
+    };
   };
   style?:{
     collar?:string;
@@ -371,39 +376,72 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         setDesignerDraftRecipe(parsed);
         if(parsed.shirtId&&shirtFabrics.some((fabric)=>fabric.id===parsed.shirtId)) setShirtId(parsed.shirtId);
         if(parsed.pantId&&trouserFabrics.some((fabric)=>fabric.id===parsed.pantId)) setTrouserId(parsed.pantId);
-        const savedShirtType=parsed.styleSpec?.shirt?.type;
-        if(savedShirtType&&styleVariants.shirtTypes.some((item)=>item.id===savedShirtType)){
+        const shirtSpec=parsed.styleSpec?.shirt;
+        const pantSpec=parsed.styleSpec?.pant;
+        const optionLabel=(id:string|undefined)=>id ? (optionById(id)?.label||id.replaceAll("_"," ")) : undefined;
+
+        const savedShirtType=shirtSpec?.type;
+        const savedShirtPreset=savedShirtType ? styleVariants.shirtTypes.find((item)=>item.id===savedShirtType)?.preset : undefined;
+        if(savedShirtType&&savedShirtPreset){
           setShirtTypeKey(savedShirtType);
-          const preset=styleVariants.shirtTypes.find((item)=>item.id===savedShirtType)?.preset;
-          if(preset){
-            setCollarConstructionKey(preset.collarConstruction);
-            setCuffConstructionKey(preset.cuffConstruction);
-            setYokeKey(preset.yoke);
-            setShirtHemKey(preset.hem);
-          }
+          setShirtFitKey(savedShirtPreset.shirtFit);
+          setShirtWearKey(savedShirtPreset.shirtWear);
+          setSleeveKey(savedShirtPreset.sleeve);
+          setCollarKey(savedShirtPreset.collar);
+          setCollarConstructionKey(savedShirtPreset.collarConstruction);
+          setCuffKey(savedShirtPreset.cuff);
+          setCuffConstructionKey(savedShirtPreset.cuffConstruction);
+          setPlacketKey(savedShirtPreset.placket);
+          setPocketKey(savedShirtPreset.pocket);
+          setYokeKey(savedShirtPreset.yoke);
+          setShirtHemKey(savedShirtPreset.hem);
+        }else{
+          setShirtFitKey(variantIdForLabel(styleVariants.shirtFits,parsed.style.shirtFit,"regular"));
+          setShirtWearKey(variantIdForLabel(styleVariants.shirtWear,parsed.style.shirtWear,"tucked"));
+          setSleeveKey(variantIdForLabel(styleVariants.sleeves,parsed.style.sleeve,"full"));
+          setCollarKey(collarVariantFor(parsed.style.collar));
+          setCuffKey(cuffVariantFor(parsed.style.cuff));
+          setPlacketKey(variantIdForLabel(styleVariants.plackets,parsed.style.placket,"standard"));
+          setPocketKey(variantIdForLabel(styleVariants.pockets,parsed.style.pocket,"none"));
         }
-        const savedTrouserType=parsed.styleSpec?.pant?.type;
-        if(savedTrouserType&&styleVariants.trouserTypes.some((item)=>item.id===savedTrouserType)){
+
+        // Canonical StyleSpec choices are more precise than the legacy summary and
+        // intentionally override only the construction fields the user edited.
+        if(shirtSpec?.fit) setShirtFitKey(variantIdForLabel(styleVariants.shirtFits,optionLabel(shirtSpec.fit),savedShirtPreset?.shirtFit||"regular"));
+        if(shirtSpec?.wear) setShirtWearKey(variantIdForLabel(styleVariants.shirtWear,shirtSpec.wear,savedShirtPreset?.shirtWear||"tucked"));
+        if(shirtSpec?.sleeve) setSleeveKey(variantIdForLabel(styleVariants.sleeves,optionLabel(shirtSpec.sleeve),savedShirtPreset?.sleeve||"full"));
+        if(shirtSpec?.collar) setCollarKey(collarVariantFor(optionLabel(shirtSpec.collar)));
+        if(shirtSpec?.cuff) setCuffKey(cuffVariantFor(optionLabel(shirtSpec.cuff)));
+        if(shirtSpec?.placket) setPlacketKey(variantIdForLabel(styleVariants.plackets,optionLabel(shirtSpec.placket),savedShirtPreset?.placket||"standard"));
+        if(shirtSpec?.pocket) setPocketKey(variantIdForLabel(styleVariants.pockets,optionLabel(shirtSpec.pocket),savedShirtPreset?.pocket||"none"));
+        if(shirtSpec?.hem) setShirtHemKey(variantIdForLabel(styleVariants.shirtHems,optionLabel(shirtSpec.hem),savedShirtPreset?.hem||"rounded"));
+        setButtonKey(variantIdForLabel(styleVariants.buttons,optionLabel(shirtSpec?.button)||parsed.style.button,"mother_of_pearl"));
+
+        const savedTrouserType=pantSpec?.type;
+        const savedTrouserPreset=savedTrouserType ? styleVariants.trouserTypes.find((item)=>item.id===savedTrouserType)?.preset : undefined;
+        if(savedTrouserType&&savedTrouserPreset){
           setTrouserTypeKey(savedTrouserType);
-          const preset=styleVariants.trouserTypes.find((item)=>item.id===savedTrouserType)?.preset;
-          if(preset){
-            setTrouserHemKey(preset.hem);
-            setTrouserPocketKey(preset.pocket);
-          }
+          setTrouserFitKey(savedTrouserPreset.trouserFit);
+          setRiseKey(savedTrouserPreset.rise);
+          setPleatKey(savedTrouserPreset.pleat);
+          setWaistbandKey(savedTrouserPreset.waistband);
+          setBreakKey(savedTrouserPreset.breakStyle);
+          setTrouserHemKey(savedTrouserPreset.hem);
+          setTrouserPocketKey(savedTrouserPreset.pocket);
+        }else{
+          setTrouserFitKey(trouserFitVariantFor(parsed));
+          setRiseKey(variantIdForLabel(styleVariants.rises,parsed.style.rise,"mid"));
+          setWaistbandKey(variantIdForLabel(styleVariants.waistbands,parsed.style.waistband,"belt_loops"));
+          setBreakKey(variantIdForLabel(styleVariants.breaks,parsed.style.break,"slight"));
+          setPleatKey(pleatVariantFor(parsed.style.trouser));
         }
-        setButtonKey(variantIdForLabel(styleVariants.buttons,parsed.style.button,"mother_of_pearl"));
-        setShirtFitKey(variantIdForLabel(styleVariants.shirtFits,parsed.style.shirtFit,"regular"));
-        setShirtWearKey(variantIdForLabel(styleVariants.shirtWear,parsed.style.shirtWear,"tucked"));
-        setSleeveKey(variantIdForLabel(styleVariants.sleeves,parsed.style.sleeve,"full"));
-        setCollarKey(collarVariantFor(parsed.style.collar));
-        setCuffKey(cuffVariantFor(parsed.style.cuff));
-        setPlacketKey(variantIdForLabel(styleVariants.plackets,parsed.style.placket,"standard"));
-        setPocketKey(variantIdForLabel(styleVariants.pockets,parsed.style.pocket,"none"));
-        setTrouserFitKey(trouserFitVariantFor(parsed));
-        setRiseKey(variantIdForLabel(styleVariants.rises,parsed.style.rise,"mid"));
-        setWaistbandKey(variantIdForLabel(styleVariants.waistbands,parsed.style.waistband,"belt_loops"));
-        setBreakKey(variantIdForLabel(styleVariants.breaks,parsed.style.break,"slight"));
-        setPleatKey(pleatVariantFor(parsed.style.trouser));
+
+        if(pantSpec?.fit) setTrouserFitKey(variantIdForLabel(styleVariants.trouserFits,optionLabel(pantSpec.fit),savedTrouserPreset?.trouserFit||"straight"));
+        if(pantSpec?.rise) setRiseKey(variantIdForLabel(styleVariants.rises,optionLabel(pantSpec.rise),savedTrouserPreset?.rise||"mid"));
+        if(pantSpec?.pleat) setPleatKey(pleatVariantFor(optionLabel(pantSpec.pleat)));
+        if(pantSpec?.waistband) setWaistbandKey(variantIdForLabel(styleVariants.waistbands,optionLabel(pantSpec.waistband),savedTrouserPreset?.waistband||"belt_loops"));
+        if(pantSpec?.break) setBreakKey(variantIdForLabel(styleVariants.breaks,optionLabel(pantSpec.break),savedTrouserPreset?.breakStyle||"slight"));
+        if(pantSpec?.hem) setTrouserHemKey(variantIdForLabel(styleVariants.trouserHems,optionLabel(pantSpec.hem),savedTrouserPreset?.hem||"plain"));
       }
     }catch{/* 3D Lab stays usable without Designer browser state. */}
   },[shirtFabrics,trouserFabrics]);
