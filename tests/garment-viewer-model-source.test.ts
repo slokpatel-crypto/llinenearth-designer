@@ -223,6 +223,29 @@ test("realistic production candidate renders front, three-quarter, side and back
   assert(workflow.includes("libgl1"));
 });
 
+test("realistic scene can absorb the deterministic tailoring variant library without a second mannequin",()=>{
+  const source=readFileSync("scripts/garment-import-tailoring-library.py","utf8");
+  for(const token of [
+    "bpy.ops.import_scene.gltf",
+    "linen_earth_tailoring_variant",
+    "deterministic-library-fit-to-locked-identity",
+    "Variant__",
+    "Length__",
+    "MannequinSkinArmVariant__",
+    "Deterministic base geometry leaked into realistic scene",
+    "Retained variant materials",
+  ]) assert(source.includes(token),token);
+  for(const name of [
+    "Body",
+    "ShirtTorsoFabric",
+    "ShirtSleeveLFabric",
+    "ShirtSleeveRFabric",
+    "TrouserWaistFabric",
+    "TrouserLegLFabric",
+    "TrouserLegRFabric",
+  ]) assert(source.includes(name),name);
+});
+
 test("production scene assembly chains realistic body preparation, garment authoring and Blender preflight",()=>{
   const packageJson=JSON.parse(readFileSync("package.json","utf8"));
   const source=readFileSync("scripts/assemble-production-garment-scene.mjs","utf8");
