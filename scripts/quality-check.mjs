@@ -1555,6 +1555,7 @@ const garmentViewerGarmentAuthor=fs.readFileSync("scripts/blender/author-linen-e
 const garmentViewerProductionBuild=fs.readFileSync("scripts/build-production-garment-model.mjs","utf8");
 const garmentViewerProductionAssembly=fs.readFileSync("scripts/assemble-production-garment-scene.mjs","utf8");
 const garmentViewerReviewRenderer=fs.readFileSync("scripts/blender/render-linen-earth-officewear-review.py","utf8");
+const garmentViewerReviewVisibility=fs.readFileSync("scripts/evaluate-realistic-review.mjs","utf8");
 const garmentViewerPanelWorksheet=fs.readFileSync("scripts/blender/write-panel-measurement-worksheet.py","utf8");
 const designerModuleGarmentScope=fs.readFileSync("src/components/DesignerModule.tsx","utf8");
 const garmentCategoryLibrary=fs.readFileSync("src/lib/designer/garment-category-library.ts","utf8");
@@ -1626,6 +1627,9 @@ for(const token of ["bootstrap-human-base-meshes.py","prepare-linen-earth-body.p
 }
 for(const token of ['("front", 0.0)','("three-quarter", 35.0)','("side", 90.0)','("back", 180.0)',"BLENDER_EEVEE_NEXT","LE_REVIEW_KEY","LE_REVIEW_FILL","LE_REVIEW_RIM","scene.view_settings.exposure = -0.65","#303843","#A97C62","SHOE_OBJECTS","#241B16","review-views.txt"]) {
   if(!garmentViewerReviewRenderer.includes(token)) throw new Error(`GarmentViewer review-render regression: missing ${token}`);
+}
+for(const token of ["linen-earth-realistic-review-visibility-v1","isTrouser","isShoe","trouserRatio","shoeRatio","review-visibility.json"]) {
+  if(!garmentViewerReviewVisibility.includes(token)) throw new Error(`GarmentViewer review-visibility regression: missing ${token}`);
 }
 for(const token of ["WORKSHEET_ONLY_NOT_PRODUCTION_EVIDENCE","geometryEstimate","verifiedPhysicalMeasurement","Do not copy the 3D bounding-box estimate into the production panel spec.","worldBoundingWidthMm","worldBoundingHeightMm"]) {
   if(!garmentViewerPanelWorksheet.includes(token)) throw new Error(`GarmentViewer panel-worksheet regression: missing ${token}`);
