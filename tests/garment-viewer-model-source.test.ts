@@ -131,6 +131,23 @@ test("Blender exporter carries fit and boundary preflight evidence into the prod
   for(const token of ["preflight_report = run_scene_preflight()","productionFitEvidence","\"ready\": preflight_report.get(\"ready\") is True","identityFitMeasurementsMm","boundaryIntersections","boundaryClearanceMm"]) assert(exporter.includes(token),token);
 });
 
+test("realistic candidate creates a physical-measurement worksheet without treating geometry estimates as evidence",()=>{
+  const packageJson=JSON.parse(readFileSync("package.json","utf8"));
+  const source=readFileSync("scripts/blender/write-panel-measurement-worksheet.py","utf8");
+  const workflow=readFileSync(".github/workflows/realistic-3d-candidate.yml","utf8");
+  assert.match(packageJson.scripts["garment:model-production:measurement-worksheet"],/write-panel-measurement-worksheet\.py/);
+  for(const token of [
+    "WORKSHEET_ONLY_NOT_PRODUCTION_EVIDENCE",
+    "geometryEstimate",
+    "verifiedPhysicalMeasurement",
+    "Do not copy the 3D bounding-box estimate into the production panel spec.",
+    "worldBoundingWidthMm",
+    "worldBoundingHeightMm",
+  ]) assert(source.includes(token),token);
+  assert(workflow.includes("Write physical panel measurement worksheet"));
+  assert(workflow.includes("garment:model-production:measurement-worksheet"));
+});
+
 test("realistic production candidate renders front, three-quarter, side and back review views",()=>{
   const packageJson=JSON.parse(readFileSync("package.json","utf8"));
   const source=readFileSync("scripts/blender/render-linen-earth-officewear-review.py","utf8");
