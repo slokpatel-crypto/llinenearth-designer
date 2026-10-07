@@ -113,7 +113,7 @@ export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):Garment
   let triangleCount=0;
   let vertexCount=0;
   const contract=validateGarmentViewerModelContract({modelId,materialNames});
-  const styleVariantCoverage=garmentViewerStyleMaterialCoverage(materialNames);
+  const usedMaterialNames=new Set<string>();
   const panelUse=new Map<string,GlbPrimitive[]>();
   for(const name of REQUIRED_GARMENT_VIEWER_MATERIALS) panelUse.set(name,[]);
 
@@ -122,9 +122,12 @@ export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):Garment
       const index=Number(primitive.material);
       if(!Number.isInteger(index)||index<0||index>=materialNames.length) continue;
       const name=materialNames[index];
+      usedMaterialNames.add(name);
       if(panelUse.has(name)) panelUse.get(name)!.push(primitive);
     }
   }
+
+  const styleVariantCoverage=garmentViewerStyleMaterialCoverage([...usedMaterialNames]);
 
   const meshMetrics=(gltf.meshes||[]).map((mesh)=>({
     triangles:(mesh.primitives||[]).reduce((sum,primitive)=>sum+primitiveTriangleCount(gltf,primitive),0),
