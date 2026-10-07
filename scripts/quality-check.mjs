@@ -1701,6 +1701,9 @@ for(const token of ["productionCandidateReady","REALISTIC CANDIDATE READY","STRU
 for(const token of ["productionCandidateReady","realistic production candidate","measured-panel","passed Blender fit evidence"]) {
   if(!garmentViewerEvidenceForm.includes(token)) throw new Error(`GarmentViewer evidence-lock regression: missing ${token}`);
 }
+for(const token of ["usedMaterialNames","usedMaterialNames.add(name)","garmentViewerStyleMaterialCoverage([...usedMaterialNames])"]) {
+  if(!garmentViewerGlb.includes(token)) throw new Error(`GarmentViewer primitive-backed tailoring coverage regression: missing ${token}`);
+}
 for(const token of ["productionCandidateReady","manifest?.productionAssetReady===true"]) {
   if(!garmentViewerModelServer.includes(token)) throw new Error(`GarmentViewer server readiness regression: missing ${token}`);
 }
