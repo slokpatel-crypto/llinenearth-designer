@@ -95,5 +95,24 @@ for(const view of views){
 const output=path.resolve(process.env.LINEN_REVIEW_VISIBILITY_REPORT||"artifacts/realistic-3d/review-visibility.json");
 fs.mkdirSync(path.dirname(output),{recursive:true});
 fs.writeFileSync(output,JSON.stringify(report,null,2)+"\n");
+
+const available=views.filter((view)=>fs.existsSync(path.join(root,view+".png")));
+if(available.length===4){
+  const tileWidth=360;
+  const tileHeight=540;
+  const tiles=await Promise.all(available.map(async(view)=>({
+    input:await sharp(path.join(root,view+".png")).resize(tileWidth,tileHeight,{fit:"contain",background:"#F8F6F0"}).png().toBuffer(),
+    view,
+  })));
+  const contact=sharp({
+    create:{width:tileWidth*2,height:tileHeight*2,channels:3,background:"#F8F6F0"}
+  });
+  await contact.composite(tiles.map((tile,index)=>({
+    input:tile.input,
+    left:(index%2)*tileWidth,
+    top:Math.floor(index/2)*tileHeight,
+  }))).png().toFile(path.resolve(root,"review-contact-sheet.png"));
+}
+
 console.log(JSON.stringify(report,null,2));
 if(!report.ready) process.exit(1);
