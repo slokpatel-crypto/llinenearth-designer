@@ -1636,6 +1636,20 @@ const trouserCoreDetailMeshes=Object.fromEntries(styleVariants.rises.map((rise)=
   rise.id,
   addMesh(`TrouserCoreDetailVariantMesh__${rise.id}`,detailBox,`TrouserCoreDetailVariant__${rise.id}`)
 ]));
+const trouserCoreBandMeshes=Object.fromEntries(styleVariants.rises.map((rise)=>{
+  const riseOffset=Number(rise.yOffsetM)||0;
+  const source=rise.id==="mid"
+    ?tailoredShells.trouserWaist
+    :cloneGeometryTransform(tailoredShells.trouserWaist,(p)=>({...p,y:p.y+riseOffset}));
+  return [
+    rise.id,
+    addMesh(
+      `TrouserCoreBandVariantMesh__${rise.id}`,
+      cropGeometry(source,(p)=>p.y>=1.066+riseOffset),
+      `TrouserCoreDetailVariant__${rise.id}`
+    )
+  ];
+}));
 const trouserPleatWaistMeshes={};
 for(const rise of styleVariants.rises){
   for(const pleat of styleVariants.pleats){
@@ -2096,24 +2110,23 @@ for(const rise of styleVariants.rises.filter((item)=>item.id!=="mid")){
 for(const rise of styleVariants.rises){
   const yOffset=Number(rise.yOffsetM)||0;
   const detailMesh=trouserCoreDetailMeshes[rise.id];
+  const bandMesh=trouserCoreBandMeshes[rise.id];
   const buttonMesh=trouserRiseButtonMeshes[rise.id];
   nodes.push({
     name:`TrouserCoreDetailVariant__${rise.id}__Fly`,
     mesh:detailMesh,
     translation:[0,.995+yOffset,.106],
-    scale:[.010,.105,.006]
+    scale:[.006,.094,.0035]
   });
   nodes.push({
     name:`TrouserCoreDetailVariant__${rise.id}__Waistband`,
-    mesh:detailMesh,
-    translation:[0,1.086+yOffset,.105],
-    scale:[.330,.020,.006]
+    mesh:bandMesh
   });
   nodes.push({
     name:`TrouserCoreDetailVariant__${rise.id}__BackRise`,
     mesh:detailMesh,
-    translation:[0,.995+yOffset,-.092],
-    scale:[.006,.145,.004]
+    translation:[0,.995+yOffset,-.098],
+    scale:[.004,.130,.003]
   });
   nodes.push({
     name:`TrouserButtonVariant__${rise.id}`,
@@ -2143,7 +2156,7 @@ for(const rise of styleVariants.rises){
       name:`TrouserBeltLoop__${rise.id}__${angle}`,
       mesh:beltMesh,
       translation:[Math.sin(rad)*waistRx,yBase,Math.cos(rad)*waistRz+.003],
-      scale:[.010,.040,.006],
+      scale:[.007,.028,.0035],
       rotation:qy(angle)
     });
   }
