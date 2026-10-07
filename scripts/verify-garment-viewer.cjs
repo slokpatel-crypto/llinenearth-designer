@@ -232,7 +232,7 @@ async function verifyViewport(browser, width) {
   assert.ok(garmentText.some((value)=>/Suit/.test(value)&&/FUTURE/.test(value)&&/3-Piece Suit/.test(value)),"future suit types must be visible");
 
   const styleSelects = page.locator(".garmentStyleControlGrid select");
-  assert.equal(await styleSelects.count(), 22, "M7.33 must expose twenty-two live tailoring controls");
+  assert.equal(await styleSelects.count(), 23, "M7.33 must expose twenty-three live tailoring controls");
   const selects = page.locator(".garmentViewerControls > label > select");
   assert.equal(await selects.count(), 2, "fabric selectors remain separate from tailoring controls");
   for (let index = 0; index < 2; index++) {
