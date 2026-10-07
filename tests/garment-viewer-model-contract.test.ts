@@ -130,6 +130,7 @@ test("production asset readiness requires measured panel and Blender fit evidenc
       gate:"linen-earth-officewear-scene-preflight-v1",
       ready:true,
       identityFitMeasurementsMm:{shirtWaistWidth:294},
+      identityShoeMeasurementsMm:{LE_ShoeL:{lengthMm:280},LE_ShoeR:{lengthMm:280},symmetry:{lengthDifferenceMm:0}},
       boundaryIntersections:{bodyShirtTorso:0},
       boundaryClearanceMm:{shirtWaistBody:{median:8}},
       totals:{triangles:120000,vertices:160000},
