@@ -106,6 +106,11 @@ test("Blender scene preflight verifies canonical identity guide geometry",()=>{
     "LE_GUIDE_OUTER_ARM_SILHOUETTE",
     "handCenterSpacing",
     "legCenterSpacing",
+    "shirtCenterOffsetMm",
+    "trouserCenterOffsetMm",
+    "hemWidthAsymmetryMm",
+    "legCenterSpacingMm",
+    "center_x_at_z",
     "must remain non-rendering",
   ]) assert(source.includes(token),`missing guide QA token: ${token}`);
 });
