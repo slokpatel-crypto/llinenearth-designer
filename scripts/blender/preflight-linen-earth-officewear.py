@@ -163,6 +163,82 @@ def nearest_distance_stats_mm(source, target, z_center=None, band=0.06, max_samp
         evaluated.to_mesh_clear()
 
 
+def world_normal_orientation_sign(obj, max_samples=160):
+    if obj is None or obj.type != "MESH":
+        return 1.0
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    evaluated = obj.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        if not mesh.polygons:
+            return 1.0
+        center = sum(world_bounds(obj), Vector((0.0, 0.0, 0.0))) / 8.0
+        matrix = evaluated.matrix_world
+        normal_matrix = matrix.to_3x3().inverted().transposed()
+        stride = max(1, len(mesh.polygons) // max_samples)
+        scores = []
+        for polygon in mesh.polygons[::stride][:max_samples]:
+            point = matrix @ polygon.center
+            normal = normal_matrix @ polygon.normal
+            if normal.length <= 1e-8:
+                continue
+            normal.normalize()
+            scores.append((point - center).dot(normal))
+        if not scores:
+            return 1.0
+        scores.sort()
+        return 1.0 if scores[len(scores) // 2] >= 0 else -1.0
+    finally:
+        evaluated.to_mesh_clear()
+
+
+def signed_clearance_stats_mm(source, target, z_center=None, band=0.06, max_samples=600):
+    if source is None or target is None or source.type != "MESH" or target.type != "MESH":
+        return None
+    target_tree = world_bvh(target, epsilon=0.0)
+    if target_tree is None:
+        return None
+    orientation = world_normal_orientation_sign(target)
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    evaluated = source.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        matrix = evaluated.matrix_world
+        candidates = []
+        for vertex in mesh.vertices:
+            point = matrix @ vertex.co
+            if z_center is not None and abs(point.z - z_center) > band:
+                continue
+            candidates.append(point)
+        if not candidates:
+            return None
+        stride = max(1, len(candidates) // max_samples)
+        signed = []
+        for point in candidates[::stride][:max_samples]:
+            nearest = target_tree.find_nearest(point)
+            if nearest is None or nearest[0] is None or nearest[1] is None:
+                continue
+            normal = nearest[1].normalized()
+            signed.append((point - nearest[0]).dot(normal) * orientation * 1000.0)
+        if not signed:
+            return None
+        signed.sort()
+        penetration_tolerance_mm = 0.8
+        penetration = [value for value in signed if value < -penetration_tolerance_mm]
+        p05 = signed[min(len(signed) - 1, int(round((len(signed) - 1) * 0.05)))]
+        return {
+            "minSigned": round(signed[0], 2),
+            "p05Signed": round(p05, 2),
+            "medianSigned": round(signed[len(signed) // 2], 2),
+            "penetrationSamples": len(penetration),
+            "maxPenetrationMm": round(abs(min(penetration)), 2) if penetration else 0.0,
+            "samples": len(signed),
+            "normalOrientation": "outward" if orientation > 0 else "corrected_inward",
+        }
+    finally:
+        evaluated.to_mesh_clear()
+
+
 def guide_world_points(obj):
     if obj is None or obj.type != "CURVE":
         return []
@@ -491,21 +567,27 @@ def main(json_output=None):
     boundary_clearance_mm = {}
     if body is not None:
         boundary_pairs = (
-            ("bodyShirtTorso", body, bpy.data.objects.get("ShirtTorsoFabric"), 0),
-            ("bodySleeveL", body, bpy.data.objects.get("ShirtSleeveLFabric"), 0),
-            ("bodySleeveR", body, bpy.data.objects.get("ShirtSleeveRFabric"), 0),
-            ("bodyTrouserWaist", body, bpy.data.objects.get("TrouserWaistFabric"), 0),
-            ("bodyTrouserLegL", body, bpy.data.objects.get("TrouserLegLFabric"), 0),
-            ("bodyTrouserLegR", body, bpy.data.objects.get("TrouserLegRFabric"), 0),
+            ("bodyShirtTorso", bpy.data.objects.get("ShirtTorsoFabric")),
+            ("bodySleeveL", bpy.data.objects.get("ShirtSleeveLFabric")),
+            ("bodySleeveR", bpy.data.objects.get("ShirtSleeveRFabric")),
+            ("bodyTrouserWaist", bpy.data.objects.get("TrouserWaistFabric")),
+            ("bodyTrouserLegL", bpy.data.objects.get("TrouserLegLFabric")),
+            ("bodyTrouserLegR", bpy.data.objects.get("TrouserLegRFabric")),
         )
-        for key, left_obj, right_obj, allowed_pairs in boundary_pairs:
-            count = intersection_pair_count(left_obj, right_obj)
+        for key, garment_obj in boundary_pairs:
+            stats = signed_clearance_stats_mm(garment_obj, body)
+            boundary_clearance_mm[key + "Signed"] = stats
+            if stats is None:
+                boundary_intersections[key] = None
+                warnings.append(f"Could not evaluate signed penetration QA for {key}.")
+                continue
+            count = int(stats["penetrationSamples"])
             boundary_intersections[key] = count
-            if count is None:
-                warnings.append(f"Could not evaluate intersection QA for {key}.")
-            elif count > allowed_pairs:
+            allowed_samples = max(2, int(math.ceil(stats["samples"] * 0.01)))
+            if count > allowed_samples or stats["maxPenetrationMm"] > 1.5:
                 reasons.append(
-                    f"{key} has {count} intersecting triangle pairs; production garment/body boundaries must be clean."
+                    f"{key} has {count}/{stats['samples']} sampled garment vertices inside the body "
+                    f"(max {stats['maxPenetrationMm']:.1f} mm); production garment/body boundaries must stay outside."
                 )
 
         upper_torso_z = body.matrix_world.translation.z + object_height(body) * 0.82
@@ -547,17 +629,26 @@ def main(json_output=None):
                 "production stance needs at least 6.0 mm to avoid fused leg silhouettes."
             )
 
-        tuck_overlap = intersection_pair_count(
+        tuck_stats = nearest_distance_stats_mm(
             bpy.data.objects.get("ShirtTorsoFabric"),
             bpy.data.objects.get("TrouserWaistFabric"),
+            trouser_waist_z,
+            0.075,
+            400,
         )
-        boundary_intersections["shirtTrouserTuck"] = tuck_overlap
-        if tuck_overlap is None:
-            warnings.append("Could not evaluate tucked shirt/trouser overlap.")
-        elif tuck_overlap > 120:
+        boundary_clearance_mm["shirtTrouserTuck"] = tuck_stats
+        boundary_intersections["shirtTrouserTuck"] = 0 if tuck_stats is not None else None
+        if tuck_stats is None:
+            warnings.append("Could not evaluate tucked shirt/trouser junction clearance.")
+        elif tuck_stats["median"] < 0.8:
             reasons.append(
-                f"Tucked shirt/trouser junction has {tuck_overlap} intersecting triangle pairs; "
-                "clean the waist overlap before production export."
+                f"Tucked shirt/trouser median separation is only {tuck_stats['median']:.1f} mm; "
+                "separate the layers to avoid z-fighting and fused geometry."
+            )
+        elif tuck_stats["median"] > 18.0:
+            reasons.append(
+                f"Tucked shirt/trouser median separation is {tuck_stats['median']:.1f} mm; "
+                "tighten the waist layering so the tuck reads as one tailored junction."
             )
 
     report = {
