@@ -898,6 +898,21 @@ const hemStraight=extrudedPolygonGeometry([
 const hemPolo=extrudedPolygonGeometry([
   [-.50,.50],[.50,.50],[.50,-.20],[.42,-.34],[.20,-.44],[0,-.50],[-.20,-.44],[-.42,-.34],[-.50,-.20],
 ],1);
+const trouserSlantPocket=extrudedPolygonGeometry([
+  [-.50,.50],[.18,.50],[.50,-.50],[-.18,-.50],
+],1);
+const trouserOnSeamPocket=extrudedPolygonGeometry([
+  [-.16,.50],[.16,.50],[.16,-.50],[-.16,-.50],
+],1);
+const trouserFrogmouthPocket=extrudedPolygonGeometry([
+  [-.50,.22],[.50,.22],[.50,-.22],[-.50,-.22],
+],1);
+const trouserScoopPocket=extrudedPolygonGeometry([
+  [-.50,.50],[.50,.50],[.44,.14],[.26,-.22],[0,-.48],[-.30,-.30],[-.46,.02],
+],1);
+const trouserWeltPocket=extrudedPolygonGeometry([
+  [-.50,.18],[.50,.18],[.50,-.18],[-.50,-.18],
+],1);
 const detailBox=boxGeometry();
 const button=uvSphereGeometry(6,10);
 
@@ -1214,10 +1229,14 @@ const trouserHemVariantMeshes=Object.fromEntries(styleVariants.trouserHems.filte
   item.id,
   addMesh(`TrouserHemVariantMesh__${item.id}`,detailBox,`TrouserHemVariant__${item.id}`)
 ]));
-const trouserPocketVariantMeshes=Object.fromEntries(styleVariants.trouserPockets.map((item)=>[
-  item.id,
-  addMesh(`TrouserPocketVariantMesh__${item.id}`,detailBox,`TrouserPocketVariant__${item.id}`)
-]));
+const trouserPocketVariantMeshes=Object.fromEntries(styleVariants.trouserPockets.map((item)=>{
+  const geometry=item.id==="slant"?trouserSlantPocket
+    : item.id==="on_seam"?trouserOnSeamPocket
+      : item.id==="frogmouth"?trouserFrogmouthPocket
+        : item.id==="jean"?trouserScoopPocket
+          : trouserWeltPocket;
+  return [item.id,addMesh(`TrouserPocketVariantMesh__${item.id}`,geometry,`TrouserPocketVariant__${item.id}`)];
+}));
 
 const qz=(deg)=>{const r=deg*Math.PI/180/2;return [0,0,Math.sin(r),Math.cos(r)];};
 const nodes=[
@@ -1658,7 +1677,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.11 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.12 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -1743,7 +1762,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.11 model complete: researched shirt/trouser construction geometry + fit-aware sleeve lengths/rolled bands + true trouser break silhouettes + pleat/back ease + collar/cuff stiffness + construction-aware closures + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
+    polishStage:"M7.12 model complete: researched shirt/trouser construction geometry + fit-aware sleeve lengths/rolled bands + true trouser break silhouettes + pleat/back ease + collar/cuff stiffness + construction-aware closures + shaped shirt/trouser pockets/yokes/hems + canonical Designer handoff + fabric drape response",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
