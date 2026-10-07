@@ -512,3 +512,12 @@ Architecture and product decisions that must persist across coding sessions.
 **Production-body workflow:** Blender body preparation now validates the identity file, normalizes the selected realistic body to 1727 mm and floor level, stamps the shared targets into the scene and creates a non-rendering `LinenEarthIdentityGuides` collection for shoulder, shirt waist, trouser waist and both trouser hems. Preflight rejects missing/drifted targets or guides.
 
 **Why:** this removes a major route for the future scan-based body to become a merely similar second mannequin. The production sculpt/garment-fit workflow and the current web model now converge on the same locked physical identity contract.
+
+
+## 2026-10-07 — Full silhouette identity guides for production-body fitting
+
+**Decision:** extend the shared Blender identity-guide layer beyond shoulder/waist/hem widths to cover every canonical physical target used by the locked Linen Earth model identity.
+
+**Construction:** the body-preparation step now creates non-rendering guides for total height, outer-arm silhouette, left/right hand centres and left/right leg centres in addition to shoulder, shirt waist, trouser waist and both hem widths. The production preflight requires the complete guide set before a garment scene can pass.
+
+**Why:** a scan-based or retopologized body can match the torso widths yet still drift in arm spread, hand clearance, stance or leg spacing. Carrying all shared physical targets into Blender makes the production body fitting workflow converge more tightly on the exact Real Model Designer identity instead of only matching a subset of the front silhouette.
