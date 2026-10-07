@@ -1,17 +1,58 @@
 {
   "status": "TEMPLATE_REPLACE_ZERO_VALUES_WITH_MEASURED_PATTERN_DIMENSIONS",
   "panels": {
-    "ShirtTorsoFabric": { "widthMm": 0, "heightMm": 0, "offsetU": 0, "offsetV": 0, "rotationDeg": 0 },
-    "ShirtSleeveLFabric": { "widthMm": 0, "heightMm": 0, "offsetU": 0, "offsetV": 0, "rotationDeg": 0 },
-    "ShirtSleeveRFabric": { "widthMm": 0, "heightMm": 0, "offsetU": 0, "offsetV": 0, "rotationDeg": 0 },
-    "TrouserWaistFabric": { "widthMm": 0, "heightMm": 0, "offsetU": 0, "offsetV": 0, "rotationDeg": 0 },
-    "TrouserLegLFabric": { "widthMm": 0, "heightMm": 0, "offsetU": 0, "offsetV": 0, "rotationDeg": 0 },
-    "TrouserLegRFabric": { "widthMm": 0, "heightMm": 0, "offsetU": 0, "offsetV": 0, "rotationDeg": 0 }
+    "ShirtTorsoFabric": {
+      "widthMm": 0,
+      "heightMm": 0,
+      "offsetU": 0,
+      "offsetV": 0,
+      "rotationDeg": 0
+    },
+    "ShirtSleeveLFabric": {
+      "widthMm": 0,
+      "heightMm": 0,
+      "offsetU": 0,
+      "offsetV": 0,
+      "rotationDeg": 0
+    },
+    "ShirtSleeveRFabric": {
+      "widthMm": 0,
+      "heightMm": 0,
+      "offsetU": 0,
+      "offsetV": 0,
+      "rotationDeg": 0
+    },
+    "TrouserWaistFabric": {
+      "widthMm": 0,
+      "heightMm": 0,
+      "offsetU": 0,
+      "offsetV": 0,
+      "rotationDeg": 0
+    },
+    "TrouserLegLFabric": {
+      "widthMm": 0,
+      "heightMm": 0,
+      "offsetU": 0,
+      "offsetV": 0,
+      "rotationDeg": 0
+    },
+    "TrouserLegRFabric": {
+      "widthMm": 0,
+      "heightMm": 0,
+      "offsetU": 0,
+      "offsetV": 0,
+      "rotationDeg": 0
+    }
   },
   "cameraOrbits": {
     "front": "0deg 82deg 3m",
     "three-quarter": "32deg 82deg 3m",
     "side": "90deg 82deg 3m",
     "back": "180deg 82deg 3m"
+  },
+  "measurementEvidence": {
+    "source": "REPLACE_WITH_OWNER_OR_TAILOR_MEASUREMENT",
+    "measuredAt": "YYYY-MM-DD",
+    "note": "Describe the physical panel measurement method before production export."
   }
 }
