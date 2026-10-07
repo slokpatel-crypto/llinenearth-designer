@@ -126,6 +126,27 @@ function shirtFitGeometry(base,fit,centerX=0){
   });
 }
 
+function shirtTuckGeometry(base){
+  return cloneGeometryTransform(base,(p)=>{
+    const waistZone=Math.max(0,Math.min(1,(1.205-p.y)/.150));
+    const lowerGate=Math.max(0,Math.min(1,(p.y-1.045)/.050));
+    const tuck=waistZone*lowerGate;
+    if(tuck<=0) return p;
+    const front=p.z>=0?1:.58;
+    const side=Math.max(0,Math.min(1,Math.abs(p.x)/.17));
+    const depthScale=1-.17*tuck;
+    const widthScale=1-.018*tuck+.008*side*tuck;
+    const bunch=Math.sin((p.x+.205)*48+(p.y-1.055)*29)
+      +.42*Math.sin((p.x-.035)*83-(p.y-1.055)*17);
+    const bunchDepth=front*tuck*.0022*bunch;
+    return {
+      ...p,
+      x:p.x*widthScale,
+      z:p.z*depthScale+bunchDepth,
+    };
+  });
+}
+
 function shirtBackConstructionGeometry(base,back){
   const addedUpperBackM=(Number(back.addedUpperBackIn)||0)*.0254;
   const removedFabricM=(Number(back.removedFabricIn)||0)*.0254;
@@ -938,7 +959,7 @@ const thumb=profileGeometry({
 const mannequinBody=await loadMakeHumanBodyGeometry();
 const garmentShells=await loadMakeHumanGarmentShells();
 
-// M7.33: the visible clothing uses clean identity-first tailoring shells rather than
+// M7.34: the visible clothing uses clean identity-first tailoring shells rather than
 // cropped anatomical body surfaces. MakeHuman stays as the hidden collision/skin source.
 // These world-space shells preserve the exact Linen Earth silhouette anchors while
 // producing continuous shirt/trouser surfaces with clean side and back views.
@@ -1067,6 +1088,10 @@ const styleVariantMaterials=[
   ]),
   ...styleVariants.shirtFits.flatMap((fit)=>styleVariants.shirtBacks.filter((back)=>back.id!=="plain").map((back)=>
     addVariantMaterial(`ShirtTorsoBackVariant__${fit.id}__${back.id}`,"shirt")
+  )),
+  ...styleVariants.shirtFits.map((fit)=>addVariantMaterial(`ShirtTorsoTuckedVariant__${fit.id}`,"shirt")),
+  ...styleVariants.shirtFits.flatMap((fit)=>styleVariants.shirtBacks.filter((back)=>back.id!=="plain").map((back)=>
+    addVariantMaterial(`ShirtTorsoTuckedBackVariant__${fit.id}__${back.id}`,"shirt")
   )),
   ...styleVariants.shirtFits.map((fit)=>addVariantMaterial(`ShirtHemVariant__${fit.id}`,"shirt")),
   ...styleVariants.shirtFits.flatMap((fit)=>styleVariants.sleeves.filter((sleeve)=>sleeve.id!=="full").flatMap((sleeve)=>[
@@ -1242,6 +1267,26 @@ for(const fit of styleVariants.shirtFits){
       `ShirtTorsoBackVariantMesh__${key}`,
       shirtBackConstructionGeometry(fitSource,back),
       `ShirtTorsoBackVariant__${key}`
+    );
+  }
+}
+
+const shirtTuckedTorsoMeshes={};
+const shirtTuckedBackTorsoMeshes={};
+for(const fit of styleVariants.shirtFits){
+  const fitSource=fit.id==="regular"?tailoredShells.shirtTorso:shirtFitGeometry(tailoredShells.shirtTorso,fit,0);
+  shirtTuckedTorsoMeshes[fit.id]=addMesh(
+    `ShirtTorsoTuckedVariantMesh__${fit.id}`,
+    shirtTuckGeometry(fitSource),
+    `ShirtTorsoTuckedVariant__${fit.id}`
+  );
+  for(const back of styleVariants.shirtBacks){
+    if(back.id==="plain") continue;
+    const key=`${fit.id}__${back.id}`;
+    shirtTuckedBackTorsoMeshes[key]=addMesh(
+      `ShirtTorsoTuckedBackVariantMesh__${key}`,
+      shirtTuckGeometry(shirtBackConstructionGeometry(fitSource,back)),
+      `ShirtTorsoTuckedBackVariant__${key}`
     );
   }
 }
@@ -1551,6 +1596,14 @@ for(const fit of styleVariants.shirtFits){
     if(back.id==="plain") continue;
     const key=`${fit.id}__${back.id}`;
     nodes.push({name:`ShirtTorsoBackVariant__${key}`,mesh:shirtBackTorsoMeshes[key]});
+  }
+}
+for(const fit of styleVariants.shirtFits){
+  nodes.push({name:`ShirtTorsoTuckedVariant__${fit.id}`,mesh:shirtTuckedTorsoMeshes[fit.id]});
+  for(const back of styleVariants.shirtBacks){
+    if(back.id==="plain") continue;
+    const key=`${fit.id}__${back.id}`;
+    nodes.push({name:`ShirtTorsoTuckedBackVariant__${key}`,mesh:shirtTuckedBackTorsoMeshes[key]});
   }
 }
 for(const fit of styleVariants.shirtFits) nodes.push({name:`ShirtHemVariant__${fit.id}`,mesh:shirtHemMeshes[fit.id]});
@@ -2063,7 +2116,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.33 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.34 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -2148,7 +2201,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.33 model complete: contrast-ready collar/cuff material isolation + tapered studio neck/jaw transition + tailored dress-shoe upper/heel silhouette + articulated studio-mannequin fingers/thumbs + clean hands/forearms + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
+    polishStage:"M7.34 model complete: fit-specific tucked waist compression + contrast-ready collar/cuff material isolation + tapered studio neck/jaw transition + tailored dress-shoe upper/heel silhouette + articulated studio-mannequin fingers/thumbs + clean hands/forearms + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},

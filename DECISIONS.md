@@ -422,3 +422,12 @@ Architecture and product decisions that must persist across coding sessions.
 **Compatibility:** no schema migration, new dependency, provider call or AI credit. Existing saved StyleSpec v2 recipes remain valid; missing collarFinish defaults to self-fabric. Switching back to self-fabric restores the prepared real shirt texture to the active collar/cuff materials.
 
 **Verification:** static quality gates protect the exact handoff and texture-detach path; responsive browser QA verifies the saved collar + cuffs choice reaches the new control, remains observable on the viewer shell, and collar-only contrast remains a distinct state.
+
+
+## 2026-10-07 — M7.34 fit-specific tucked waist geometry
+
+**Decision:** stop rendering a tucked shirt with the same lower-torso shell used for untucked wear. Every shirt fit now gets a dedicated tucked torso geometry that compresses depth at the waistband, slightly cleans the lower width and adds low-amplitude deterministic cloth bunching above the trouser waist. Back constructions keep their own tucked geometry so darts, side pleats and box pleats survive the tuck instead of reverting to a plain back.
+
+**Rendering rule:** tucked and untucked torso shells are mutually exclusive. Sleeve, collar, cuff, placket, yoke, pocket and fabric-scale systems remain independent and reuse the same locked model identity.
+
+**Acceptance boundary:** this is a deterministic visual fit model, not a body-physics simulation. It must remove the obvious shirt/trouser shell intersection while preserving instant updates and zero AI-credit rendering.
