@@ -118,6 +118,26 @@ function tailoredSleeveCapGeometry(base,centerX){
   });
 }
 
+function facelessStudioHeadGeometry(base){
+  return cloneGeometryTransform(base,(p)=>{
+    const frontBias=Math.max(0,Math.min(1,p.z/.090));
+    const backBias=Math.max(0,Math.min(1,-p.z/.082));
+    const faceBand=Math.exp(-Math.pow((p.y-.002)/.072,2));
+    const jaw=Math.max(0,Math.min(1,(.010-p.y)/.092));
+    const temple=Math.exp(-Math.pow((p.y-.040)/.045,2));
+    const chin=Math.exp(-Math.pow((p.y+.078)/.026,2));
+    const widthScale=1-.050*jaw+.010*temple;
+    const facePlane=.0075*frontBias*faceBand;
+    const chinProjection=.0032*frontBias*chin;
+    const occipital=.0024*backBias*Math.exp(-Math.pow((p.y-.020)/.075,2));
+    return {
+      ...p,
+      x:p.x*widthScale,
+      z:p.z-facePlane+chinProjection-occipital,
+    };
+  });
+}
+
 function shirtFitGeometry(base,fit,centerX=0){
   return cloneGeometryTransform(base,(p)=>{
     const t=Math.max(0,Math.min(1,(p.y-1.055)/(1.47-1.055)));
@@ -1018,7 +1038,7 @@ const thumb=profileGeometry({
 const mannequinBody=await loadMakeHumanBodyGeometry();
 const garmentShells=await loadMakeHumanGarmentShells();
 
-// M7.38: the visible clothing uses clean identity-first tailoring shells rather than
+// M7.39: the visible clothing uses clean identity-first tailoring shells rather than
 // cropped anatomical body surfaces. MakeHuman stays as the hidden collision/skin source.
 // These world-space shells preserve the exact Linen Earth silhouette anchors while
 // producing continuous shirt/trouser surfaces with clean side and back views.
@@ -1240,7 +1260,7 @@ const materialIndex=Object.fromEntries(materials.map((m,i)=>[m.name,i]));
 
 const assets=[];
 function addMesh(name,geometry,material){assets.push({name,geometry,material});return assets.length-1;}
-const meshHead=addMesh("HeadMesh",head,"MannequinSkin");
+const meshHead=addMesh("HeadMesh",facelessStudioHeadGeometry(head),"MannequinSkin");
 const meshNeck=addMesh("NeckMesh",neck,"MannequinSkin");
 const meshEar=addMesh("EarMesh",ear,"MannequinSkin");
 const meshHandL=addMesh("HandLMesh",mannequinSkinShells.handL,"MannequinSkin");
@@ -2182,7 +2202,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.38 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.39 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -2267,7 +2287,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.38 model complete: front-flat/back-seat trouser waist shaping + seat/crotch upper-trouser blend + tailored oval sleeve-cap pitch + English-spread/British collar geometry + fit-specific tucked waist compression + contrast-ready collar/cuff material isolation + tapered studio neck/jaw transition + tailored dress-shoe upper/heel silhouette + articulated studio-mannequin fingers/thumbs + clean hands/forearms + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
+    polishStage:"M7.39 model complete: faceless human head plane/jaw profile + front-flat/back-seat trouser waist shaping + seat/crotch upper-trouser blend + tailored oval sleeve-cap pitch + English-spread/British collar geometry + fit-specific tucked waist compression + contrast-ready collar/cuff material isolation + tapered studio neck/jaw transition + tailored dress-shoe upper/heel silhouette + articulated studio-mannequin fingers/thumbs + clean hands/forearms + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
