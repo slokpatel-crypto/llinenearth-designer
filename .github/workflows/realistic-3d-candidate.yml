@@ -8,6 +8,7 @@ on:
       - work/3d-finish-20261007-v7
       - work/3d-finish-20261007-v8
       - work/3d-finish-20261007-v9
+      - work/3d-finish-20261007-v10
     paths:
       - "scripts/blender/**"
       - "scripts/assemble-production-garment-scene.mjs"
@@ -32,6 +33,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libegl1 libgl1 libx11-6 libxi6 libxrender1 libxxf86vm1 libxfixes3 libxkbcommon0
           archive="/tmp/blender-${BLENDER_VERSION}-linux-x64.tar.xz"
           curl --fail --location --retry 3 --output "$archive"             "https://download.blender.org/release/Blender4.2/blender-${BLENDER_VERSION}-linux-x64.tar.xz"
           tar -xJf "$archive" -C /tmp
