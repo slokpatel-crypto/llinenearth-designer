@@ -164,6 +164,44 @@ def main():
 
     total_triangles = 0
     total_vertices = 0
+    identity_measurements = {}
+
+    # Coarse production-fit gate against the exact photographed model silhouette.
+    # Tailor review remains authoritative for ease and drape.
+    def width_at_z(obj, z_world, band=0.018):
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        evaluated = obj.evaluated_get(depsgraph)
+        mesh = evaluated.to_mesh()
+        try:
+            xs = []
+            matrix = evaluated.matrix_world
+            for vertex in mesh.vertices:
+                point = matrix @ vertex.co
+                if abs(point.z - z_world) <= band:
+                    xs.append(point.x)
+            return (max(xs) - min(xs)) * 1000.0 if len(xs) >= 4 else None
+        finally:
+            evaluated.to_mesh_clear()
+
+    frame_height = 1536.0
+    anchor_z = lambda y_px: TARGET_HEIGHT_M * (1.0 - y_px / frame_height)
+    silhouette_samples = (
+        ("shirtShoulderWidthMm", "ShirtTorsoFabric", 392, EXPECTED_IDENTITY_TARGETS_MM["shoulderSeamWidth"], 42.0, 0.018),
+        ("shirtWaistWidthMm", "ShirtTorsoFabric", 742, EXPECTED_IDENTITY_TARGETS_MM["shirtWaistWidth"], 38.0, 0.018),
+        ("trouserWaistWidthMm", "TrouserWaistFabric", 781, EXPECTED_IDENTITY_TARGETS_MM["trouserWaistWidth"], 38.0, 0.018),
+        ("leftHemWidthMm", "TrouserLegLFabric", 1395, EXPECTED_IDENTITY_TARGETS_MM["hemWidth"], 28.0, 0.028),
+        ("rightHemWidthMm", "TrouserLegRFabric", 1395, EXPECTED_IDENTITY_TARGETS_MM["hemWidth"], 28.0, 0.028),
+    )
+    for key, object_name, y_px, target, tolerance, band in silhouette_samples:
+        sample_object = bpy.data.objects.get(object_name)
+        measured = width_at_z(sample_object, anchor_z(y_px), band) if sample_object else None
+        identity_measurements[key] = round(measured, 2) if measured is not None else None
+        if sample_object and measured is None:
+            warnings.append(f"Could not sample {key} from garment geometry for identity-fit QA.")
+        elif measured is not None and abs(measured - target) > tolerance:
+            reasons.append(
+                f"{key} is {measured:.1f} mm; locked model target is {target:.1f} mm ± {tolerance:.1f} mm."
+            )
 
     for name in GARMENT_OBJECTS:
         obj = bpy.data.objects.get(name)
@@ -231,6 +269,7 @@ def main():
             "guideCollection": IDENTITY_GUIDE_COLLECTION,
         },
         "bodyHeightMm": round(body_height * 1000, 2) if body_height else None,
+        "identityFitMeasurementsMm": identity_measurements,
         "requiredGarmentObjects": list(GARMENT_OBJECTS),
         "objects": objects,
         "totals": {
