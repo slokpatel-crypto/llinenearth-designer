@@ -245,8 +245,8 @@ function variantMaterialVisible(name:string,state:StyleVariantState) {
   if(name.startsWith("ShirtSleeveLVariant__")||name.startsWith("ShirtSleeveRVariant__")) return state.sleeve==="full"&&name.endsWith(`__${state.shirtFit}`);
   if(name.startsWith("ShirtHemVariant__")) return state.shirtWear==="untucked"&&name.endsWith(`__${state.shirtFit}`);
   if(name.startsWith("ShirtSleeveLLength__")||name.startsWith("ShirtSleeveRLength__")) return state.sleeve!=="full"&&name.endsWith(`__${state.sleeve}`);
-  if(name.startsWith("ShirtCollarVariant__")) return name.endsWith(`__${state.collar}`);
-  if(name.startsWith("ShirtCuffVariant__")) return state.sleeve==="full"&&name.endsWith(`__${state.cuff}`);
+  if(name.startsWith("ShirtCollarVariant__")) return name.endsWith(`__${state.collar}__${state.collarConstruction}`);
+  if(name.startsWith("ShirtCuffVariant__")) return state.sleeve==="full"&&name.endsWith(`__${state.cuff}__${state.cuffConstruction}`);
   if(name.startsWith("ShirtPlacketVariant__")) return state.placket!=="french"&&name.endsWith(`__${state.placket}`);
   if(name.startsWith("ShirtPocketVariant__")) return state.pocket!=="none"&&name.includes(`ShirtPocketVariant__${state.pocket}`);
   if(name.startsWith("ShirtYokeVariant__")) return name.endsWith(`__${state.yoke}`);
@@ -739,8 +739,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     const collarOffset=collarConstructionKey==="soft_unfused"?.07:collarConstructionKey==="soft_fused"?.035:0;
     const cuffOffset=cuffConstructionKey==="soft"?.06:0;
     for(const material of viewer.model.materials){
-      if(material.name===`ShirtCollarVariant__${collarKey}`) material.pbrMetallicRoughness.setRoughnessFactor(clamp(shirtBase+collarOffset,.55,.98));
-      if(material.name===`ShirtCuffVariant__${cuffKey}`) material.pbrMetallicRoughness.setRoughnessFactor(clamp(shirtBase+cuffOffset,.55,.98));
+      if(material.name===`ShirtCollarVariant__${collarKey}__${collarConstructionKey}`) material.pbrMetallicRoughness.setRoughnessFactor(clamp(shirtBase+collarOffset,.55,.98));
+      if(material.name===`ShirtCuffVariant__${cuffKey}__${cuffConstructionKey}`) material.pbrMetallicRoughness.setRoughnessFactor(clamp(shirtBase+cuffOffset,.55,.98));
     }
   },[modelReady,roughness,shirt,collarKey,collarConstructionKey,cuffKey,cuffConstructionKey]);
 
