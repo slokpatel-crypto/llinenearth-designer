@@ -103,6 +103,7 @@ export type GarmentViewerModelManifest = {
   cameraOrbits?: Partial<Record<"front"|"three-quarter"|"side"|"back",string>>;
   productionFitEvidence?:{
     gate?:string|null;
+    ready?:boolean|null;
     identityFitMeasurementsMm?:Record<string,number|null>|null;
     boundaryIntersections?:Record<string,number|null>|null;
     boundaryClearanceMm?:Record<string,unknown>|null;
@@ -194,6 +195,7 @@ export function validateGarmentViewerModelManifest(value:unknown,expectedModelId
   const totals=fitEvidence?.totals;
   const fitEvidenceReady=Boolean(
     fitEvidence?.gate==="linen-earth-officewear-scene-preflight-v1"
+    && fitEvidence?.ready===true
     && identityFit && Object.keys(identityFit).length>0
     && intersections && Object.keys(intersections).length>0
     && clearances && Object.keys(clearances).length>0
