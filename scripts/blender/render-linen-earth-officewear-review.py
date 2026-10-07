@@ -39,8 +39,8 @@ def cli_args():
     argv = argv[argv.index("--") + 1 :] if "--" in argv else []
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", required=True)
-    parser.add_argument("--resolution-x", type=int, default=768)
-    parser.add_argument("--resolution-y", type=int, default=1024)
+    parser.add_argument("--resolution-x", type=int, default=480)
+    parser.add_argument("--resolution-y", type=int, default=720)
     return parser.parse_args(argv)
 
 
@@ -162,8 +162,8 @@ def studio_setup(body):
 def configure_scene(options):
     scene = bpy.context.scene
     scene.render.engine = "BLENDER_EEVEE_NEXT"
-    scene.render.resolution_x = max(320, options.resolution_x)
-    scene.render.resolution_y = max(480, options.resolution_y)
+    scene.render.resolution_x = max(360, options.resolution_x)
+    scene.render.resolution_y = max(540, options.resolution_y)
     scene.render.resolution_percentage = 100
     scene.render.image_settings.file_format = "PNG"
     scene.render.film_transparent = False
