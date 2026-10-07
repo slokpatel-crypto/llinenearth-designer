@@ -911,9 +911,10 @@ const collarVariantMeshes=Object.fromEntries(styleVariants.collars.map((item)=>[
   item.id,
   addMesh(`ShirtCollarVariantMesh__${item.id}`,item.id==="mandarin"?mandarinCollar:collar,`ShirtCollarVariant__${item.id}`)
 ]));
+const roundedCuffIds=new Set(["rounded_2","rounded_french","soft_barrel"]);
 const cuffVariantMeshes=Object.fromEntries(styleVariants.cuffs.map((item)=>[
   item.id,
-  addMesh(`ShirtCuffVariantMesh__${item.id}`,item.id==="rounded"?roundedCuff:detailBox,`ShirtCuffVariant__${item.id}`)
+  addMesh(`ShirtCuffVariantMesh__${item.id}`,roundedCuffIds.has(item.id)?roundedCuff:detailBox,`ShirtCuffVariant__${item.id}`)
 ]));
 const placketVariantMeshes=Object.fromEntries(styleVariants.plackets.filter((item)=>item.id!=="french").map((item)=>[
   item.id,
