@@ -640,6 +640,32 @@ function boxGeometry(){
   return typedGeometry(p,n,uv,idx);
 }
 
+function extrudedPolygonGeometry(points,depth=.16){
+  const positions=[],normals=[],uvs=[],indices=[];
+  const zFront=depth/2,zBack=-depth/2;
+  const minX=Math.min(...points.map((p)=>p[0])),maxX=Math.max(...points.map((p)=>p[0]));
+  const minY=Math.min(...points.map((p)=>p[1])),maxY=Math.max(...points.map((p)=>p[1]));
+  const uv=(x,y)=>[(x-minX)/Math.max(1e-6,maxX-minX),(y-minY)/Math.max(1e-6,maxY-minY)];
+  const frontStart=positions.length/3;
+  for(const [x,y] of points){positions.push(x,y,zFront);normals.push(0,0,1);uvs.push(...uv(x,y));}
+  for(let i=1;i<points.length-1;i++) indices.push(frontStart,frontStart+i,frontStart+i+1);
+  const backStart=positions.length/3;
+  for(const [x,y] of points){positions.push(x,y,zBack);normals.push(0,0,-1);uvs.push(...uv(x,y));}
+  for(let i=1;i<points.length-1;i++) indices.push(backStart,backStart+i+1,backStart+i);
+  for(let i=0;i<points.length;i++){
+    const j=(i+1)%points.length;
+    const [ax,ay]=points[i],[bx,by]=points[j];
+    const dx=bx-ax,dy=by-ay;
+    const [nx,ny,nz]=normalize(dy,-dx,0);
+    const start=positions.length/3;
+    positions.push(ax,ay,zFront,bx,by,zFront,bx,by,zBack,ax,ay,zBack);
+    for(let k=0;k<4;k++) normals.push(nx,ny,nz);
+    uvs.push(0,0,1,0,1,1,0,1);
+    indices.push(start,start+1,start+2,start,start+2,start+3);
+  }
+  return typedGeometry(positions,normals,uvs,indices);
+}
+
 function collarPointGeometry(){
   const p=[],n=[],uv=[],idx=[];
   const front=[[-.5,.5,.5],[.5,.5,.5],[0,-.5,.5]];
@@ -776,13 +802,16 @@ const mandarinCollar=profileGeometry({
   ],
   segments:32,
 });
-const roundedCuff=profileGeometry({
-  rings:[
-    {y:-.022,width:.049,depth:.052,z:0},
-    {y:.022,width:.049,depth:.052,z:0},
-  ],
-  segments:24,
-});
+const roundedCuff=extrudedPolygonGeometry([
+  [-.50,.50],[.50,.50],[.50,-.20],[.47,-.33],[.37,-.44],[.20,-.50],
+  [-.20,-.50],[-.37,-.44],[-.47,-.33],[-.50,-.20],
+],1);
+const miteredCuff=extrudedPolygonGeometry([
+  [-.50,.50],[.50,.50],[.50,-.20],[.24,-.50],[-.50,-.50],
+],1);
+const cocktailCuff=extrudedPolygonGeometry([
+  [-.50,.50],[.50,.50],[.50,-.36],[.28,-.50],[0,-.40],[-.28,-.50],[-.50,-.36],
+],1);
 const detailBox=boxGeometry();
 const button=uvSphereGeometry(6,10);
 
@@ -912,9 +941,14 @@ const collarVariantMeshes=Object.fromEntries(styleVariants.collars.map((item)=>[
   addMesh(`ShirtCollarVariantMesh__${item.id}`,item.id==="mandarin"?mandarinCollar:collar,`ShirtCollarVariant__${item.id}`)
 ]));
 const roundedCuffIds=new Set(["rounded_2","rounded_french","soft_barrel"]);
+const miteredCuffIds=new Set(["mitered_1","mitered_2"]);
 const cuffVariantMeshes=Object.fromEntries(styleVariants.cuffs.map((item)=>[
   item.id,
-  addMesh(`ShirtCuffVariantMesh__${item.id}`,roundedCuffIds.has(item.id)?roundedCuff:detailBox,`ShirtCuffVariant__${item.id}`)
+  addMesh(
+    `ShirtCuffVariantMesh__${item.id}`,
+    item.id==="cocktail"?cocktailCuff:miteredCuffIds.has(item.id)?miteredCuff:roundedCuffIds.has(item.id)?roundedCuff:detailBox,
+    `ShirtCuffVariant__${item.id}`
+  )
 ]));
 const placketVariantMeshes=Object.fromEntries(styleVariants.plackets.filter((item)=>item.id!=="french").map((item)=>[
   item.id,
@@ -1026,21 +1060,22 @@ for(const item of styleVariants.collars){
 
 // Cuff families.
 const cuffSpec={
-  barrel_1:{scale:[.049,.021,.051],y:.870},
-  long_barrel_1:{scale:[.050,.028,.052],y:.874},
-  mitered_1:{scale:[.050,.024,.052],y:.872},
-  rounded_2:{scale:[.051,.028,.053],y:.874},
-  mitered_2:{scale:[.052,.030,.054],y:.876},
-  french:{scale:[.054,.039,.056],y:.884},
-  rounded_french:{scale:[.054,.039,.056],y:.884},
-  convertible:{scale:[.052,.032,.054],y:.879},
-  soft_barrel:{scale:[.049,.022,.052],y:.870},
-  cocktail:{scale:[.056,.045,.059],y:.890},
+  barrel_1:{width:.086,length:.0603,depth:.108},
+  long_barrel_1:{width:.088,length:.0730,depth:.110},
+  mitered_1:{width:.088,length:.0667,depth:.110},
+  rounded_2:{width:.089,length:.0730,depth:.111},
+  mitered_2:{width:.090,length:.0730,depth:.112},
+  french:{width:.092,length:.0730,depth:.114},
+  rounded_french:{width:.092,length:.0730,depth:.114},
+  convertible:{width:.090,length:.0635,depth:.112},
+  soft_barrel:{width:.087,length:.0603,depth:.110},
+  cocktail:{width:.094,length:.0750,depth:.116},
 };
 for(const item of styleVariants.cuffs){
   const spec=cuffSpec[item.id]||cuffSpec.barrel_1;
-  nodes.push({name:`ShirtCuffL__${item.id}`,mesh:cuffVariantMeshes[item.id],translation:[-.250,spec.y,.030],scale:spec.scale,rotation:qz(-2.4)});
-  nodes.push({name:`ShirtCuffR__${item.id}`,mesh:cuffVariantMeshes[item.id],translation:[.250,spec.y,.030],scale:spec.scale,rotation:qz(2.4)});
+  const centerY=.865+spec.length/2;
+  nodes.push({name:`ShirtCuffL__${item.id}`,mesh:cuffVariantMeshes[item.id],translation:[-.250,centerY,.030],scale:[spec.width,spec.length,spec.depth],rotation:qz(-2.4)});
+  nodes.push({name:`ShirtCuffR__${item.id}`,mesh:cuffVariantMeshes[item.id],translation:[.250,centerY,.030],scale:[spec.width,spec.length,spec.depth],rotation:qz(2.4)});
 }
 
 // Plackets and pockets.
