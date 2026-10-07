@@ -11,6 +11,7 @@ on:
       - work/3d-finish-20261007-v10
       - work/3d-finish-20261007-v11
       - work/3d-finish-20261007-v12
+      - work/3d-finish-20261007-v14
     paths:
       - "scripts/blender/**"
       - "scripts/assemble-production-garment-scene.mjs"
