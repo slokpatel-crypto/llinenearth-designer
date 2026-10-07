@@ -50,10 +50,13 @@ def body_frame(body):
     points = world_bounds(body)
     min_x = min(point.x for point in points)
     max_x = max(point.x for point in points)
+    min_y = min(point.y for point in points)
+    max_y = max(point.y for point in points)
     min_z = min(point.z for point in points)
     max_z = max(point.z for point in points)
     return {
         "centerX": (min_x + max_x) * 0.5,
+        "centerY": (min_y + max_y) * 0.5,
         "minZ": min_z,
         "height": max_z - min_z,
     }
@@ -63,6 +66,209 @@ def remove_existing(name):
     obj = bpy.data.objects.get(name)
     if obj is not None:
         bpy.data.objects.remove(obj, do_unlink=True)
+
+
+def ensure_export_collection():
+    collection = bpy.data.collections.get(EXPORT_COLLECTION)
+    if collection is None:
+        collection = bpy.data.collections.new(EXPORT_COLLECTION)
+        bpy.context.scene.collection.children.link(collection)
+    return collection
+
+
+def build_ring_shell(name, rings, segments=48, neck_opening=None):
+    if len(rings) < 2:
+        raise RuntimeError(f"{name} requires at least two rings.")
+    collection = ensure_export_collection()
+    vertices = []
+    faces = []
+    for ring_index, ring in enumerate(rings):
+        z_value, center_x, center_y, radius_x, radius_y = ring
+        for segment in range(segments):
+            angle = 2.0 * math.pi * segment / segments
+            vertices.append((
+                center_x + math.cos(angle) * radius_x,
+                center_y + math.sin(angle) * radius_y,
+                z_value,
+            ))
+        if ring_index:
+            previous = (ring_index - 1) * segments
+            current = ring_index * segments
+            for segment in range(segments):
+                nxt = (segment + 1) % segments
+                faces.append((
+                    previous + segment,
+                    previous + nxt,
+                    current + nxt,
+                    current + segment,
+                ))
+
+    if neck_opening is not None:
+        top_index = (len(rings) - 1) * segments
+        z_value, center_x, center_y, neck_rx, neck_ry = neck_opening
+        neck_start = len(vertices)
+        for segment in range(segments):
+            angle = 2.0 * math.pi * segment / segments
+            vertices.append((
+                center_x + math.cos(angle) * neck_rx,
+                center_y + math.sin(angle) * neck_ry,
+                z_value,
+            ))
+        for segment in range(segments):
+            nxt = (segment + 1) % segments
+            faces.append((
+                top_index + segment,
+                top_index + nxt,
+                neck_start + nxt,
+                neck_start + segment,
+            ))
+
+    mesh = bpy.data.meshes.new(name + "Mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update(calc_edges=True)
+    obj = bpy.data.objects.new(name, mesh)
+    collection.objects.link(obj)
+    material = bpy.data.materials.get(name) or bpy.data.materials.new(name=name)
+    material.use_nodes = True
+    mesh.materials.append(material)
+    for polygon in mesh.polygons:
+        polygon.use_smooth = True
+    return obj
+
+
+def body_depth_at_z(body, z_world, center_x, half_window, band=0.030, minimum=0.10):
+    matrix = body.matrix_world
+    ys = []
+    for vertex in body.data.vertices:
+        point = matrix @ vertex.co
+        if abs(point.z - z_world) <= band and abs(point.x - center_x) <= half_window:
+            ys.append(point.y)
+    if len(ys) < 6:
+        return minimum
+    return max(minimum, (max(ys) - min(ys)) * 0.5)
+
+
+def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_clearance_m):
+    frame = body_frame(body)
+    cx = frame["centerX"]
+    cy = frame["centerY"]
+    shoulder_z = guide_center_z("LE_GUIDE_SHIRT_SHOULDER")
+    shirt_waist_z = guide_center_z("LE_GUIDE_SHIRT_WAIST")
+    trouser_waist_z = guide_center_z("LE_GUIDE_TROUSER_WAIST")
+    left_hem_z = guide_center_z("LE_GUIDE_LEFT_HEM")
+    right_hem_z = guide_center_z("LE_GUIDE_RIGHT_HEM")
+    left_hand_z = guide_center_z("LE_GUIDE_LEFT_HAND_CENTER_H")
+    right_hand_z = guide_center_z("LE_GUIDE_RIGHT_HAND_CENTER_H")
+    if any(value is None for value in (shoulder_z, shirt_waist_z, trouser_waist_z, left_hem_z, right_hem_z, left_hand_z, right_hand_z)):
+        raise RuntimeError("Locked identity guides are required for procedural officewear authoring.")
+
+    shoulder_half = float(targets["shoulderSeamWidth"]) / 2000.0
+    shirt_waist_half = float(targets["shirtWaistWidth"]) / 2000.0
+    trouser_waist_half = float(targets["trouserWaistWidth"]) / 2000.0
+    hand_half = float(targets["handCenterSpacing"]) / 2000.0
+    leg_center_half = float(targets["legCenterSpacing"]) / 2000.0
+    hem_half = float(targets["hemWidth"]) / 2000.0
+
+    chest_z = shoulder_z - 0.150
+    upper_waist_z = shirt_waist_z + 0.115
+    shirt_hem_z = trouser_waist_z - 0.035
+    shirt_depth_shoulder = body_depth_at_z(body, shoulder_z - 0.035, cx, 0.225, minimum=0.105) + shirt_clearance_m
+    shirt_depth_chest = body_depth_at_z(body, chest_z, cx, 0.210, minimum=0.115) + shirt_clearance_m
+    shirt_depth_waist = body_depth_at_z(body, shirt_waist_z, cx, 0.185, minimum=0.100) + shirt_clearance_m
+    shirt_depth_hem = max(0.100, shirt_depth_waist - 0.004)
+
+    shirt = build_ring_shell(
+        "ShirtTorsoFabric",
+        [
+            (shirt_hem_z, cx, cy, shirt_waist_half + 0.006, shirt_depth_hem),
+            (shirt_waist_z, cx, cy, shirt_waist_half, shirt_depth_waist),
+            (upper_waist_z, cx, cy, shirt_waist_half + 0.012, shirt_depth_waist + 0.006),
+            (chest_z, cx, cy, shoulder_half - 0.020, shirt_depth_chest),
+            (shoulder_z - 0.045, cx, cy, shoulder_half - 0.006, shirt_depth_shoulder),
+            (shoulder_z, cx, cy, shoulder_half, shirt_depth_shoulder * 0.96),
+        ],
+        segments=64,
+        neck_opening=(shoulder_z, cx, cy - 0.006, 0.061, 0.054),
+    )
+
+    sleeve_top_z = shoulder_z - 0.018
+    cuff_z = (left_hand_z + right_hand_z) * 0.5 + 0.055
+    sleeve_length = max(0.42, sleeve_top_z - cuff_z)
+    sleeve_top_center = shoulder_half + 0.030
+    sleeve_top_radius = 0.068
+    sleeve_elbow_radius = 0.052
+    cuff_radius_x = 0.038
+    cuff_radius_y = 0.032
+    sleeves = {}
+    for side, name in ((-1, "ShirtSleeveLFabric"), (1, "ShirtSleeveRFabric")):
+        top_x = cx + side * sleeve_top_center
+        cuff_x = cx + side * hand_half
+        elbow_z = cuff_z + sleeve_length * 0.48
+        elbow_x = top_x + (cuff_x - top_x) * 0.58
+        sleeves[name] = build_ring_shell(
+            name,
+            [
+                (sleeve_top_z, top_x, cy, sleeve_top_radius, sleeve_top_radius * 0.82),
+                (sleeve_top_z - 0.105, top_x + side * 0.010, cy, 0.062, 0.050),
+                (elbow_z, elbow_x, cy, sleeve_elbow_radius, 0.043),
+                (cuff_z + 0.085, cuff_x, cy, 0.043, 0.035),
+                (cuff_z, cuff_x, cy, cuff_radius_x, cuff_radius_y),
+            ],
+            segments=48,
+        )
+
+    seat_z = trouser_waist_z - 0.165
+    upper_thigh_z = trouser_waist_z - 0.260
+    trouser_depth_waist = body_depth_at_z(body, trouser_waist_z, cx, 0.205, minimum=0.115) + trouser_clearance_m
+    trouser_depth_seat = body_depth_at_z(body, seat_z, cx, 0.220, minimum=0.135) + trouser_clearance_m
+    trouser_waist = build_ring_shell(
+        "TrouserWaistFabric",
+        [
+            (upper_thigh_z, cx, cy, trouser_waist_half + 0.026, trouser_depth_seat),
+            (seat_z, cx, cy - 0.006, trouser_waist_half + 0.034, trouser_depth_seat + 0.006),
+            (trouser_waist_z - 0.070, cx, cy, trouser_waist_half + 0.010, trouser_depth_waist + 0.004),
+            (trouser_waist_z, cx, cy, trouser_waist_half, trouser_depth_waist),
+        ],
+        segments=64,
+    )
+
+    legs = {}
+    for side, name, hem_z in (
+        (-1, "TrouserLegLFabric", left_hem_z),
+        (1, "TrouserLegRFabric", right_hem_z),
+    ):
+        thigh_center_x = cx + side * (leg_center_half - 0.012)
+        lower_center_x = cx + side * leg_center_half
+        knee_z = hem_z + (upper_thigh_z - hem_z) * 0.48
+        calf_z = hem_z + (upper_thigh_z - hem_z) * 0.20
+        legs[name] = build_ring_shell(
+            name,
+            [
+                (upper_thigh_z + 0.050, thigh_center_x, cy - 0.002, 0.078, 0.082),
+                (upper_thigh_z - 0.070, thigh_center_x, cy, 0.071, 0.075),
+                (knee_z, lower_center_x, cy, 0.050, 0.052),
+                (calf_z, lower_center_x, cy, 0.042, 0.045),
+                (hem_z + 0.035, lower_center_x, cy, hem_half, 0.038),
+                (hem_z, lower_center_x, cy, hem_half, 0.037),
+            ],
+            segments=48,
+        )
+
+    authored = {
+        "ShirtTorsoFabric": shirt,
+        **sleeves,
+        "TrouserWaistFabric": trouser_waist,
+        **legs,
+    }
+    return authored, {
+        "method": "closed-tailoring-ring-shell-v2",
+        "shirtShoulderWidthMm": round(shoulder_half * 2000.0, 2),
+        "shirtWaistWidthMm": round(shirt_waist_half * 2000.0, 2),
+        "trouserWaistWidthMm": round(trouser_waist_half * 2000.0, 2),
+        "handCenterSpacingMm": round(hand_half * 2000.0, 2),
+        "legCenterSpacingMm": round(leg_center_half * 2000.0, 2),
+        "hemWidthMm": round(hem_half * 2000.0, 2),
+    }
 
 
 def selected_shell(body, name, predicate):
@@ -357,32 +563,9 @@ def main():
     if not math.isfinite(height) or abs(height - 1.727) > 0.02:
         raise RuntimeError(f"Body height is {height:.4f} m; expected the locked 1.727 m body.")
 
-    z = lambda ratio: min_z + height * ratio
-    shoulder_z = guide_center_z("LE_GUIDE_SHIRT_SHOULDER") or z(0.84)
-    waist_z = guide_center_z("LE_GUIDE_SHIRT_WAIST") or z(0.65)
-    arm_root = 0.150
-    hip_half = 0.195
-
-    def torso_half_at_height(z_value):
-        if z_value <= waist_z:
-            return 0.175
-        if z_value >= shoulder_z:
-            return 0.210
-        t = (z_value - waist_z) / max(shoulder_z - waist_z, 1e-6)
-        return 0.175 + (0.210 - 0.175) * t
-
-    regions = {
-        "ShirtTorsoFabric": lambda p: z(0.580) <= p.z <= z(0.905) and abs(p.x-center_x) <= torso_half_at_height(p.z),
-        "ShirtSleeveLFabric": lambda p: z(0.480) <= p.z <= z(0.875) and p.x-center_x <= -arm_root,
-        "ShirtSleeveRFabric": lambda p: z(0.480) <= p.z <= z(0.875) and p.x-center_x >= arm_root,
-        "TrouserWaistFabric": lambda p: z(0.500) <= p.z <= z(0.675) and abs(p.x-center_x) <= hip_half,
-        "TrouserLegLFabric": lambda p: z(0.055) <= p.z <= z(0.575) and p.x < center_x,
-        "TrouserLegRFabric": lambda p: z(0.055) <= p.z <= z(0.575) and p.x >= center_x,
-    }
-
     clearance_m = max(0.003, min(0.018, options.clearance_mm / 1000.0))
-    shirt_clearance_m = max(0.003, clearance_m - 0.0015)
-    trouser_clearance_m = min(0.018, clearance_m + 0.0025)
+    shirt_clearance_m = max(0.004, clearance_m - 0.0010)
+    trouser_clearance_m = min(0.020, clearance_m + 0.0030)
     thickness_m = max(0.0006, min(0.004, options.thickness_mm / 1000.0))
 
     for name in GARMENT_OBJECTS:
@@ -394,22 +577,18 @@ def main():
     except json.JSONDecodeError as error:
         raise RuntimeError("Locked model identity targets are not valid JSON.") from error
 
-    authored = {}
-    for name, predicate in regions.items():
-        obj = selected_shell(body, name, predicate)
-        garment_clearance = shirt_clearance_m if name.startswith("Shirt") else trouser_clearance_m
-        fit_shell(obj, body, garment_clearance, thickness_m)
+    authored, fit_profile = build_procedural_officewear(body, targets, shirt_clearance_m, trouser_clearance_m)
+    for name, obj in authored.items():
         obj["linen_earth_auto_authored"] = True
-        obj["linen_earth_fit_clearance_mm"] = round(garment_clearance * 1000.0, 3)
+        obj["linen_earth_fit_clearance_mm"] = round(
+            shirt_clearance_m if name.startswith("Shirt") else trouser_clearance_m,
+            3,
+        )
         obj["linen_earth_cloth_thickness_mm"] = round(thickness_m * 1000.0, 3)
-        authored[name] = obj
-
-    fit_profile = shape_officewear_to_identity(authored, body, targets)
-    for obj in authored.values():
         planar_grain_uv(obj)
 
     bpy.context.scene["linen_earth_asset_status"] = "auto-authored-production-candidate-needs-tailor-review"
-    bpy.context.scene["linen_earth_garment_authoring_method"] = "locked-body-surface-shell-v1"
+    bpy.context.scene["linen_earth_garment_authoring_method"] = "closed-tailoring-ring-shell-v2"
     bpy.context.scene["linen_earth_garment_clearance_mm"] = round(clearance_m * 1000.0, 3)
     bpy.context.scene["linen_earth_shirt_clearance_mm"] = round(shirt_clearance_m * 1000.0, 3)
     bpy.context.scene["linen_earth_trouser_clearance_mm"] = round(trouser_clearance_m * 1000.0, 3)
