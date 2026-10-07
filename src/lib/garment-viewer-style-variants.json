@@ -507,31 +507,41 @@
       "id": "single_forward",
       "label": "Single Forward Pleat",
       "count": 1,
-      "direction": "forward"
+      "direction": "forward",
+      "dressTrouserHipEaseIn": 0.8,
+      "source": "Proper Cloth trouser pleat fit reference"
     },
     {
       "id": "single_reverse",
       "label": "Single Reverse Pleat",
       "count": 1,
-      "direction": "reverse"
+      "direction": "reverse",
+      "dressTrouserHipEaseIn": 0.8,
+      "source": "Proper Cloth trouser pleat fit reference"
     },
     {
       "id": "double_forward",
       "label": "Double Forward Pleats",
       "count": 2,
-      "direction": "forward"
+      "direction": "forward",
+      "dressTrouserHipEaseIn": 1.3,
+      "source": "Proper Cloth trouser pleat fit reference"
     },
     {
       "id": "double_reverse",
       "label": "Double Reverse Pleats",
       "count": 2,
-      "direction": "reverse"
+      "direction": "reverse",
+      "dressTrouserHipEaseIn": 1.3,
+      "source": "Proper Cloth trouser pleat fit reference"
     },
     {
       "id": "kissing",
       "label": "Kissing / Box Pleat",
       "count": 2,
-      "direction": "inward"
+      "direction": "inward",
+      "dressTrouserHipEaseIn": 1.3,
+      "source": "Proper Cloth trouser pleat fit reference"
     }
   ],
   "waistbands": [
