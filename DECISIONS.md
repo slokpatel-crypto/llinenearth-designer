@@ -467,3 +467,12 @@ Architecture and product decisions that must persist across coding sessions.
 **Construction:** square, rounded, mitered and cocktail families now use separate wrap geometry while preserving the existing measured cuff widths/lengths, fused/soft construction scaling, buttons/cufflinks and white-contrast cloth behavior.
 
 **Acceptance boundary:** cuff shells improve visible tailoring form; they are not a physical button-opening simulation. No model identity, camera, fabric-scale or provider-cost change.
+
+
+## 2026-10-07 — M7.43 raised-back 360-degree collar bands
+
+**Decision:** replace the thin generic neck gasket behind dress collars with a true wrap-around collar band. The band sits lower at the front and rises at the back, so spread, cutaway, point, button-down and related collars now keep a believable neck silhouette in side and back views.
+
+**Construction:** collar-band geometry is keyed by both collar family and fused/soft construction. Soft constructions reduce band height/depth and follow the same drop as their collar leaves. White-contrast collar choices continue to recolor both the collar leaves and matching band together.
+
+**Acceptance boundary:** this remains deterministic tailoring geometry, not cloth simulation. Camp, one-piece and mandarin collars keep their dedicated construction paths.

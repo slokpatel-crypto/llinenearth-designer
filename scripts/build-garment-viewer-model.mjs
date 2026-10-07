@@ -898,6 +898,34 @@ function extrudedPolygonGeometry(points,depth=.16){
   return typedGeometry(positions,normals,uvs,indices);
 }
 
+function collarBandGeometry(segments=32){
+  const positions=[],normals=[],uvs=[],indices=[];
+  const ringPoint=(theta,top)=>{
+    const backBias=Math.max(0,-Math.sin(theta));
+    const frontBias=Math.max(0,Math.sin(theta));
+    const width=.067*(1+(top?.02:0));
+    const depth=.054*(1+(top?.05:0));
+    const y=top ? .017+backBias*.020-frontBias*.002 : -.018;
+    return {x:Math.cos(theta)*width,y,z:Math.sin(theta)*depth};
+  };
+  for(let ring=0;ring<2;ring++){
+    for(let s=0;s<segments;s++){
+      const theta=s/segments*Math.PI*2;
+      const p=ringPoint(theta,ring===1);
+      positions.push(p.x,p.y,p.z);
+      const [nx,ny,nz]=normalize(Math.cos(theta),0,Math.sin(theta));
+      normals.push(nx,ny,nz);
+      uvs.push(s/segments,ring);
+    }
+  }
+  for(let s=0;s<segments;s++){
+    const n=(s+1)%segments;
+    const a=s,b=n,c=segments+n,d=segments+s;
+    indices.push(a,d,c,a,c,b);
+  }
+  return typedGeometry(positions,normals,uvs,indices);
+}
+
 function cuffWrapGeometry(shape="square",segments=30){
   const positions=[],normals=[],uvs=[],indices=[];
   const bottomY=(theta)=>{
@@ -1077,7 +1105,7 @@ const thumb=profileGeometry({
 const mannequinBody=await loadMakeHumanBodyGeometry();
 const garmentShells=await loadMakeHumanGarmentShells();
 
-// M7.42: the visible clothing uses clean identity-first tailoring shells rather than
+// M7.43: the visible clothing uses clean identity-first tailoring shells rather than
 // cropped anatomical body surfaces. MakeHuman stays as the hidden collision/skin source.
 // These world-space shells preserve the exact Linen Earth silhouette anchors while
 // producing continuous shirt/trouser surfaces with clean side and back views.
@@ -1109,13 +1137,7 @@ const mandarinCollar=profileGeometry({
   ],
   segments:32,
 });
-const neckGasket=profileGeometry({
-  rings:[
-    {y:-.014,width:.066,depth:.052,z:0},
-    {y:.014,width:.066,depth:.052,z:0},
-  ],
-  segments:32,
-});
+const neckGasket=collarBandGeometry();
 const roundedCuff=extrudedPolygonGeometry([
   [-.50,.50],[.50,.50],[.50,-.20],[.47,-.33],[.37,-.44],[.20,-.50],
   [-.20,-.50],[-.37,-.44],[-.47,-.33],[-.50,-.20],
@@ -1229,9 +1251,9 @@ const styleVariantMaterials=[
   ...styleVariants.collars.flatMap((item)=>styleVariants.collarConstruction.map((construction)=>
     addVariantMaterial(`ShirtCollarVariant__${item.id}__${construction.id}`,"shirt")
   )),
-  ...styleVariants.collars.filter((item)=>!["camp","one_piece","mandarin"].includes(item.id)).map((item)=>
-    addVariantMaterial(`ShirtNeckGasketVariant__${item.id}`,"shirt")
-  ),
+  ...styleVariants.collars.filter((item)=>!["camp","one_piece","mandarin"].includes(item.id)).flatMap((item)=>styleVariants.collarConstruction.map((construction)=>
+    addVariantMaterial(`ShirtNeckGasketVariant__${item.id}__${construction.id}`,"shirt")
+  )),
   ...styleVariants.cuffs.flatMap((item)=>styleVariants.cuffConstruction.map((construction)=>
     addVariantMaterial(`ShirtCuffVariant__${item.id}__${construction.id}`,"shirt")
   )),
@@ -1540,10 +1562,13 @@ for(const rise of styleVariants.rises){
   }
 }
 
-const neckGasketMeshes=Object.fromEntries(styleVariants.collars.filter((item)=>!["camp","one_piece","mandarin"].includes(item.id)).map((item)=>[
-  item.id,
-  addMesh(`ShirtNeckGasketVariantMesh__${item.id}`,neckGasket,`ShirtNeckGasketVariant__${item.id}`)
-]));
+const neckGasketMeshes=Object.fromEntries(styleVariants.collars.filter((item)=>!["camp","one_piece","mandarin"].includes(item.id)).flatMap((item)=>styleVariants.collarConstruction.map((construction)=>{
+  const key=`${item.id}__${construction.id}`;
+  return [
+    key,
+    addMesh(`ShirtNeckGasketVariantMesh__${key}`,neckGasket,`ShirtNeckGasketVariant__${key}`)
+  ];
+})));
 const collarVariantMeshes={};
 for(const item of styleVariants.collars){
   collarVariantMeshes[item.id]={};
@@ -1822,13 +1847,17 @@ for(const item of styleVariants.collars){
 }
 
 for(const item of styleVariants.collars){
-  if(!neckGasketMeshes[item.id]) continue;
-  nodes.push({
-    name:`ShirtNeckGasketVariant__${item.id}`,
-    mesh:neckGasketMeshes[item.id],
-    translation:[0,1.474,.006],
-    scale:[1,1,1]
-  });
+  if(["camp","one_piece","mandarin"].includes(item.id)) continue;
+  for(const construction of styleVariants.collarConstruction){
+    const key=`${item.id}__${construction.id}`;
+    const buildSpec=collarBuildSpec[construction.id]||collarBuildSpec.stiff_fused;
+    nodes.push({
+      name:`ShirtNeckGasketVariant__${key}`,
+      mesh:neckGasketMeshes[key],
+      translation:[0,1.474+buildSpec.drop,.006],
+      scale:[1,buildSpec.mandarinHeight,buildSpec.depth]
+    });
+  }
 }
 // Cuff families.
 const cuffSpec={
@@ -2261,7 +2290,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.42 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.43 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -2346,7 +2375,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.42 model complete: 360-degree wrist cuff shells + rise-aware tucked-shirt waist junction + extra-high/Korean waist geometry + faceless human head plane/jaw profile + front-flat/back-seat trouser waist shaping + seat/crotch upper-trouser blend + tailored oval sleeve-cap pitch + English-spread/British collar geometry + fit-specific tucked waist compression + contrast-ready collar/cuff material isolation + tapered studio neck/jaw transition + tailored dress-shoe upper/heel silhouette + articulated studio-mannequin fingers/thumbs + clean hands/forearms + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
+    polishStage:"M7.43 model complete: 360-degree raised-back collar band + 360-degree wrist cuff shells + rise-aware tucked-shirt waist junction + extra-high/Korean waist geometry + faceless human head plane/jaw profile + front-flat/back-seat trouser waist shaping + seat/crotch upper-trouser blend + tailored oval sleeve-cap pitch + English-spread/British collar geometry + fit-specific tucked waist compression + contrast-ready collar/cuff material isolation + tapered studio neck/jaw transition + tailored dress-shoe upper/heel silhouette + articulated studio-mannequin fingers/thumbs + clean hands/forearms + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},

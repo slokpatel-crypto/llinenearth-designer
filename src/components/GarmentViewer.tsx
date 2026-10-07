@@ -312,7 +312,7 @@ function variantMaterialVisible(name:string,state:StyleVariantState) {
   if(name.startsWith("ShirtRollBandVariant__")) return state.sleeve==="roll"&&name.endsWith(`__${state.shirtFit}`);
   if(name.startsWith("ShirtSleeveFinishVariant__")) return (state.sleeve==="half"||state.sleeve==="three_quarter")&&name.endsWith(`__${state.shirtFit}__${state.sleeve}`);
   if(name.startsWith("ShirtCollarVariant__")) return name.endsWith(`__${state.collar}__${state.collarConstruction}`);
-  if(name.startsWith("ShirtNeckGasketVariant__")) return name.endsWith(`__${state.collar}`);
+  if(name.startsWith("ShirtNeckGasketVariant__")) return name.endsWith(`__${state.collar}__${state.collarConstruction}`);
   if(name.startsWith("ShirtCuffVariant__")) return state.sleeve==="full"&&name.endsWith(`__${state.cuff}__${state.cuffConstruction}`);
   if(name.startsWith("ShirtPlacketVariant__")) return state.placket!=="french"&&name.endsWith(`__${state.placket}`);
   if(name.startsWith("ShirtPocketVariant__")) return state.pocket!=="none"&&name.includes(`ShirtPocketVariant__${state.pocket}`);
@@ -866,7 +866,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         else if(shirtBodyPrepared) collar.pbrMetallicRoughness.baseColorTexture?.setTexture(shirtBodyPrepared.texture);
         collar.pbrMetallicRoughness.setRoughnessFactor(clamp(shirtBase+collarOffset,.55,.98));
       }
-      const neckGasket=await ensureViewerMaterialLoaded(materialsByName.get(`ShirtNeckGasketVariant__${collarKey}`));
+      const neckGasket=await ensureViewerMaterialLoaded(materialsByName.get(`ShirtNeckGasketVariant__${collarKey}__${collarConstructionKey}`));
       if(cancelled) return;
       if(neckGasket){
         neckGasket.pbrMetallicRoughness.setBaseColorFactor(whiteCollar?[.97,.97,.95,1]:[1,1,1,1]);
@@ -989,7 +989,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       <div>
         <span className="garmentViewerEyebrow">REAL FABRIC → REUSABLE MODEL</span>
         <h1>Live tailoring + fabric model.</h1>
-        <p>The mannequin identity stays fixed while fabric and real tailoring construction switch independently: shirt type/fit/rise-aware waist-shaped tuck/sleeves/360° cuffs/collar construction/white contrast collar-cuffs/placket/pockets/yoke/hem plus trouser type/shape/rise/pleat direction/waistband/break/turn-up/pockets. {shirtFabrics.length} shirt fabrics and {trouserFabrics.length} trouser fabrics use the same live Designer stock.</p>
+        <p>The mannequin identity stays fixed while fabric and real tailoring construction switch independently: shirt type/fit/rise-aware waist-shaped tuck/sleeves/360° cuffs/raised-back collar band/collar construction/white contrast collar-cuffs/placket/pockets/yoke/hem plus trouser type/shape/rise/pleat direction/waistband/break/turn-up/pockets. {shirtFabrics.length} shirt fabrics and {trouserFabrics.length} trouser fabrics use the same live Designer stock.</p>
       </div>
 
       <div className="garmentViewerReference">
@@ -1065,12 +1065,12 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       <label className="garmentRange"><span>Surface roughness base <b>{roughness.toFixed(2)}</b></span><input type="range" min=".55" max=".98" step=".01" value={roughness} onChange={(event)=>setRoughness(Number(event.target.value))}/><small>Fabric drape class automatically shifts linen normal strength and roughness around this base value; unknown fabrics stay on a conservative medium response.</small></label>
 
       <div className="garmentViewerFacts">
-        <span><small>MODEL</small><b>{modelContract?.readiness==="contract_ready"&&productionManifestReady?"M7.42 Tailoring GLB":"Reusable GLB"}</b></span>
+        <span><small>MODEL</small><b>{modelContract?.readiness==="contract_ready"&&productionManifestReady?"M7.43 Tailoring GLB":"Reusable GLB"}</b></span>
         <span><small>FABRIC</small><b>Panel-scaled PBR + variants</b></span>
         <span><small>VIEWS</small><b>4 fixed + free</b></span>
         <span><small>AI CREDITS</small><b>0</b></span>
       </div>
-      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M7.42 is locked: the same mannequin now carries a researched tailoring library covering shirt type/fit/tuck/sleeve/collar construction/cuff/placket/pocket/yoke/back/hem and trouser type/fit/low-to-extra-high rise/front-flat waist/back-seat shaping/seat-crotch transition/pleat direction/waistband/break/turn-up/pockets. Fabric remains panel-scaled and non-metallic; verified drape/weight metadata now changes the surface fold-normal response and roughness without AI credits." : "Fallback prototype is active. Production should use the identity-locked M7.3 tailoring model before fabric/drape work continues."}</p>
+      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M7.43 is locked: the same mannequin now carries a researched tailoring library covering shirt type/fit/tuck/sleeve/collar construction/cuff/placket/pocket/yoke/back/hem and trouser type/fit/low-to-extra-high rise/front-flat waist/back-seat shaping/seat-crotch transition/pleat direction/waistband/break/turn-up/pockets. Fabric remains panel-scaled and non-metallic; verified drape/weight metadata now changes the surface fold-normal response and roughness without AI credits." : "Fallback prototype is active. Production should use the identity-locked M7.3 tailoring model before fabric/drape work continues."}</p>
     </aside>
   </section>;
 }
