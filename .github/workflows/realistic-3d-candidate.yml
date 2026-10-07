@@ -1,0 +1,72 @@
+name: Realistic 3D Candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - work/3d-finish-20261007-v6
+    paths:
+      - "scripts/blender/**"
+      - "scripts/assemble-production-garment-scene.mjs"
+      - "public/model-identity/**"
+      - ".github/workflows/realistic-3d-candidate.yml"
+
+concurrency:
+  group: realistic-3d-candidate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BLENDER_VERSION: "4.2.23"
+      BLENDER_ROOT: "/tmp/blender-4.2.23-linux-x64"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Blender 4.2 LTS
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="/tmp/blender-${BLENDER_VERSION}-linux-x64.tar.xz"
+          curl --fail --location --retry 3 --output "$archive"             "https://download.blender.org/release/Blender4.2/blender-${BLENDER_VERSION}-linux-x64.tar.xz"
+          tar -xJf "$archive" -C /tmp
+          echo "${BLENDER_ROOT}" >> "$GITHUB_PATH"
+          "${BLENDER_ROOT}/blender" --version | head -n 2
+
+      - name: Cache pinned realistic body source
+        uses: actions/cache@v4
+        with:
+          path: .cache/linen-earth/blender-human-base-meshes-v1.4.1
+          key: linen-earth-human-base-meshes-v1.4.1
+
+      - name: Assemble realistic body and officewear candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/realistic-3d
+          npm run garment:model-production:assemble 2>&1 | tee artifacts/realistic-3d/assembly.log
+
+      - name: Capture production preflight report
+        shell: bash
+        run: |
+          set -euo pipefail
+          blender --background .cache/linen-earth/linen-earth-officewear-authored.blend             --python scripts/blender/preflight-linen-earth-officewear.py             2>&1 | tee artifacts/realistic-3d/preflight.log
+
+      - name: Copy candidate scene and provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp .cache/linen-earth/linen-earth-officewear-authored.blend artifacts/realistic-3d/
+          cp .cache/linen-earth/blender-human-base-meshes-v1.4.1/linen-earth-source-provenance.json artifacts/realistic-3d/
+
+      - name: Upload realistic 3D candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linen-earth-realistic-3d-candidate
+          path: artifacts/realistic-3d
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 1
