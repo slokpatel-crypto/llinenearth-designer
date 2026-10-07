@@ -108,6 +108,7 @@ export type GarmentViewerModelManifest = {
     boundaryClearanceMm?:Record<string,unknown>|null;
     totals?:Record<string,number>|null;
   };
+  productionAssetStatus?:"deterministic-preview-shell-not-realistic-production-asset"|"realistic-body-production-candidate";
 };
 
 export type GarmentViewerManifestValidation = {
