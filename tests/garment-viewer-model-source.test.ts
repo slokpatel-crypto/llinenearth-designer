@@ -67,6 +67,8 @@ test("realistic body intake is explicit, licensed and does not fake garment geom
     "discover_candidate",
     "normalize_height",
     "center_body_xy",
+    "for obj in objects",
+    "floating-object artifacts",
     "apply_body_transforms",
     "align_arm_stance_to_identity",
     "linen_earth_arm_stance_json",
