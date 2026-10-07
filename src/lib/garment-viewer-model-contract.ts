@@ -114,7 +114,12 @@ export type GarmentViewerModelManifest = {
     measuredAt:string;
     note:string;
   };
-  productionAssetStatus?:"deterministic-preview-shell-not-realistic-production-asset"|"realistic-body-production-candidate";
+  panelDimensionSource?:"geometry-estimate-unverified";
+  labPreviewScaleNotice?:string;
+  productionAssetStatus?:
+    |"deterministic-preview-shell-not-realistic-production-asset"
+    |"realistic-body-lab-preview-unverified-panel-scale"
+    |"realistic-body-production-candidate";
 };
 
 export type GarmentViewerManifestValidation = {
