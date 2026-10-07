@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import sys
 from pathlib import Path
@@ -148,6 +149,33 @@ def studio_setup(body):
     return frame, target, camera
 
 
+def image_exposure_metrics(path):
+    image = bpy.data.images.load(str(path), check_existing=False)
+    try:
+        pixels = image.pixels[:]
+        if not pixels:
+            return {"samples": 0, "clippedRatio": 1.0, "darkRatio": 1.0, "meanLuma": 0.0}
+        stride = max(4, (len(pixels) // 4) // 6000 * 4)
+        lumas = []
+        for index in range(0, len(pixels), stride):
+            if index + 2 >= len(pixels):
+                break
+            red, green, blue = pixels[index], pixels[index + 1], pixels[index + 2]
+            lumas.append(0.2126 * red + 0.7152 * green + 0.0722 * blue)
+        if not lumas:
+            return {"samples": 0, "clippedRatio": 1.0, "darkRatio": 1.0, "meanLuma": 0.0}
+        clipped = sum(1 for value in lumas if value >= 0.985)
+        dark = sum(1 for value in lumas if value <= 0.035)
+        return {
+            "samples": len(lumas),
+            "clippedRatio": round(clipped / len(lumas), 5),
+            "darkRatio": round(dark / len(lumas), 5),
+            "meanLuma": round(sum(lumas) / len(lumas), 5),
+        }
+    finally:
+        bpy.data.images.remove(image)
+
+
 def configure_scene(options):
     scene = bpy.context.scene
     scene.render.engine = "BLENDER_EEVEE_NEXT"
@@ -211,15 +239,30 @@ def main():
         output = output_dir / f"{label}.png"
         bpy.context.scene.render.filepath = str(output)
         bpy.ops.render.render(write_still=True)
-        manifest.append((label, yaw_deg, str(output)))
-        print(f"Rendered {label}: {output}")
+        metrics = image_exposure_metrics(output)
+        manifest.append((label, yaw_deg, str(output), metrics))
+        print(f"Rendered {label}: {output} · exposure {json.dumps(metrics, sort_keys=True)}")
+        if metrics["clippedRatio"] > 0.22:
+            raise RuntimeError(
+                f"{label} review render is overexposed: {metrics['clippedRatio']*100:.1f}% of sampled pixels are clipped."
+            )
+        if metrics["meanLuma"] < 0.12 or metrics["meanLuma"] > 0.88:
+            raise RuntimeError(
+                f"{label} review render mean luminance {metrics['meanLuma']:.3f} is outside the useful QA range."
+            )
 
     manifest_path = output_dir / "review-views.txt"
     manifest_path.write_text(
-        "\n".join(f"{label}\t{yaw:.1f}\t{path}" for label, yaw, path in manifest) + "\n",
+        "\n".join(f"{label}\t{yaw:.1f}\t{path}" for label, yaw, path, _ in manifest) + "\n",
+        encoding="utf-8",
+    )
+    metrics_path = output_dir / "review-metrics.json"
+    metrics_path.write_text(
+        json.dumps({label: metrics for label, _, _, metrics in manifest}, indent=2) + "\n",
         encoding="utf-8",
     )
     print(f"Rendered Linen Earth review set: {output_dir}")
+    print(f"Review exposure metrics: {metrics_path}")
 
 
 if __name__ == "__main__":
