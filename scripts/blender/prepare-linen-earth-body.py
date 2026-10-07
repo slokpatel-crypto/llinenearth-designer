@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import os
 import re
@@ -28,6 +29,8 @@ SOURCE_VERIFIED_AT = "2026-10-05"
 SOURCE_URL = "https://www.blender.org/download/demo-files/"
 MODEL_IDENTITY_ID = "linen-earth-studio-model-v1"
 MODEL_REFERENCE_IMAGE = "/designer/studio-tucked.webp"
+IDENTITY_GUIDE_COLLECTION = "LinenEarthIdentityGuides"
+DEFAULT_IDENTITY_SPEC = Path("public/model-identity/linen-earth-studio-model-v1.json")
 
 
 def cli_args():
@@ -36,6 +39,7 @@ def cli_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--asset-root", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--identity-spec", type=Path, default=DEFAULT_IDENTITY_SPEC)
     return parser.parse_args(argv)
 
 
@@ -83,6 +87,101 @@ def clear_scene():
     for collection in list(bpy.data.collections):
         if collection.users == 0:
             bpy.data.collections.remove(collection)
+
+
+def load_identity_spec(path: Path):
+    resolved = path.expanduser().resolve()
+    if not resolved.exists():
+        raise RuntimeError(f"Model identity spec does not exist: {resolved}")
+    payload = json.loads(resolved.read_text(encoding="utf-8"))
+    if payload.get("version") != MODEL_IDENTITY_ID:
+        raise RuntimeError("Identity spec version does not match the locked Linen Earth model.")
+    if payload.get("referenceImage") != MODEL_REFERENCE_IMAGE:
+        raise RuntimeError("Identity spec does not point to the exact Real Model Designer reference.")
+    if int(payload.get("referenceHeightMm", 0)) != int(TARGET_HEIGHT_M * 1000):
+        raise RuntimeError("Identity spec reference height does not match the 1727 mm model lock.")
+    targets = payload.get("physicalTargetsMm")
+    required = (
+        "height",
+        "shoulderSeamWidth",
+        "outerArmSilhouette",
+        "shirtWaistWidth",
+        "trouserWaistWidth",
+        "handCenterSpacing",
+        "legCenterSpacing",
+        "hemWidth",
+    )
+    if not isinstance(targets, dict) or any(not isinstance(targets.get(key), (int, float)) or targets[key] <= 0 for key in required):
+        raise RuntimeError("Identity spec is missing positive physicalTargetsMm values.")
+    return payload, resolved
+
+
+def normalize_floor(objects, body):
+    min_z = min(point.z for point in world_bounds(body))
+    for obj in objects:
+        obj.location.z -= min_z
+    bpy.context.view_layer.update()
+    residual = min(point.z for point in world_bounds(body))
+    if abs(residual) > 0.002:
+        raise RuntimeError(f"Body floor normalization failed: lowest point is {residual:.4f} m.")
+    return min_z
+
+
+def create_identity_guides(identity_spec):
+    existing = bpy.data.collections.get(IDENTITY_GUIDE_COLLECTION)
+    if existing is not None:
+        for obj in list(existing.objects):
+            bpy.data.objects.remove(obj, do_unlink=True)
+        bpy.data.collections.remove(existing)
+
+    collection = bpy.data.collections.new(IDENTITY_GUIDE_COLLECTION)
+    bpy.context.scene.collection.children.link(collection)
+    frame = identity_spec["referenceFrame"]
+    anchors = identity_spec["frontSilhouetteAnchors"]
+    targets = identity_spec["physicalTargetsMm"]
+    frame_height = float(frame["heightPx"])
+    leg_center = float(targets["legCenterSpacing"]) / 2000.0
+
+    def anchor_z(anchor):
+        return TARGET_HEIGHT_M * (1.0 - float(anchor["yPx"]) / frame_height)
+
+    def add_bar(name, center_x, z, width_m):
+        curve = bpy.data.curves.new(name=name, type="CURVE")
+        curve.dimensions = "3D"
+        curve.bevel_depth = 0.0015
+        curve.bevel_resolution = 1
+        spline = curve.splines.new("POLY")
+        spline.points.add(1)
+        half = width_m / 2.0
+        spline.points[0].co = (center_x - half, 0.0, z, 1.0)
+        spline.points[1].co = (center_x + half, 0.0, z, 1.0)
+        obj = bpy.data.objects.new(name, curve)
+        obj.hide_render = True
+        obj["linen_earth_identity_guide"] = True
+        collection.objects.link(obj)
+
+    add_bar(
+        "LE_GUIDE_SHIRT_SHOULDER",
+        0.0,
+        anchor_z(anchors["shirtShoulder"]),
+        float(targets["shoulderSeamWidth"]) / 1000.0,
+    )
+    add_bar(
+        "LE_GUIDE_SHIRT_WAIST",
+        0.0,
+        anchor_z(anchors["shirtWaist"]),
+        float(targets["shirtWaistWidth"]) / 1000.0,
+    )
+    add_bar(
+        "LE_GUIDE_TROUSER_WAIST",
+        0.0,
+        anchor_z(anchors["trouserWaist"]),
+        float(targets["trouserWaistWidth"]) / 1000.0,
+    )
+    hem_width = float(targets["hemWidth"]) / 1000.0
+    add_bar("LE_GUIDE_LEFT_HEM", -leg_center, anchor_z(anchors["leftTrouserHem"]), hem_width)
+    add_bar("LE_GUIDE_RIGHT_HEM", leg_center, anchor_z(anchors["rightTrouserHem"]), hem_width)
+    return collection
 
 
 def append_candidate(kind: str, blend_path: Path, name: str):
@@ -167,7 +266,7 @@ def ensure_export_collection(objects):
     return collection
 
 
-def stamp_provenance(scene, source_file: Path, source_datablock: str, original_height: float, factor: float):
+def stamp_provenance(scene, source_file: Path, source_datablock: str, original_height: float, factor: float, identity_spec, identity_spec_path: Path):
     scene["linen_earth_model_source_name"] = SOURCE_NAME
     scene["linen_earth_model_source_version"] = SOURCE_VERSION
     scene["linen_earth_model_source_license"] = SOURCE_LICENSE
@@ -182,12 +281,16 @@ def stamp_provenance(scene, source_file: Path, source_datablock: str, original_h
     scene["linen_earth_model_reference_image"] = MODEL_REFERENCE_IMAGE
     scene["linen_earth_model_identity_locked"] = True
     scene["linen_earth_asset_status"] = "body-source-prepared-garments-required"
+    scene["linen_earth_identity_spec_path"] = str(identity_spec_path)
+    scene["linen_earth_identity_targets_json"] = json.dumps(identity_spec["physicalTargetsMm"], sort_keys=True)
+    scene["linen_earth_identity_guide_collection"] = IDENTITY_GUIDE_COLLECTION
 
 
 def main():
     options = cli_args()
     asset_root = Path(options.asset_root).expanduser().resolve()
     output = Path(options.output).expanduser().resolve()
+    identity_spec, identity_spec_path = load_identity_spec(options.identity_spec)
 
     if not asset_root.exists():
         raise RuntimeError(
@@ -202,8 +305,18 @@ def main():
     original_name = body.name
     body.name = BODY_NAME
     original_height, factor, measured = normalize_height(objects, body)
+    floor_shift = normalize_floor(objects, body)
     ensure_export_collection(objects)
-    stamp_provenance(bpy.context.scene, blend_path, datablock, original_height, factor)
+    create_identity_guides(identity_spec)
+    stamp_provenance(
+        bpy.context.scene,
+        blend_path,
+        datablock,
+        original_height,
+        factor,
+        identity_spec,
+        identity_spec_path,
+    )
 
     output.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(output))
@@ -214,6 +327,9 @@ def main():
     print(f"Selected: {blend_path.name} :: {kind} {datablock} (score {score})")
     print(f"Body object: {original_name} -> {BODY_NAME}")
     print(f"Explicit height normalization: {original_height:.4f} m -> {measured:.4f} m")
+    print(f"Floor normalization shift: {floor_shift:.4f} m")
+    print(f"Identity guide collection: {IDENTITY_GUIDE_COLLECTION}")
+    print(f"Identity targets: {json.dumps(identity_spec['physicalTargetsMm'], sort_keys=True)}")
     print(
         "Next: author/finalize the tucked shirt and tailored trouser in this file, "
         "then use export-linen-earth-officewear.py. No production GLB has been approved."

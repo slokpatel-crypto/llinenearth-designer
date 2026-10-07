@@ -37,3 +37,10 @@ The production GLB can only be promoted when its sidecar declares:
 Blender preparation stamps this identity into the scene. Preflight rejects a missing or unlocked identity. Export propagates the identity into the viewer manifest. The browser then rejects a production manifest that points to any other mannequin.
 
 The four customer camera presets are the same turntable angles used by the Real Model Designer: **0°, 35°, 90°, 180°**.
+
+
+## Shared physical target metrics
+
+The identity JSON now owns the physical front-silhouette targets used by both the deterministic web model and the Blender production-body intake: 1727 mm height, 388 mm shoulder seam span, 574 mm outer arm silhouette, 294 mm shirt waist, 344 mm trouser waist, 500 mm hand-centre spacing, 210 mm leg-centre spacing and 64 mm trouser hem width.
+
+The Blender body-preparation script creates a non-rendering `LinenEarthIdentityGuides` collection from the same identity file. These guide bars are the production sculpt/fit target; they are not exported as customer geometry.

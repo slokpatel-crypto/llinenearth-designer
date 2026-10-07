@@ -503,3 +503,12 @@ Architecture and product decisions that must persist across coding sessions.
 **Construction:** on-seam pockets sit closest to the side seam, slant pockets sit on the front-side quarter, jean scoop pockets sit farther forward and frogmouth pockets stay mostly frontal. Rear welt/jetted pockets are explicitly back-facing. All pocket positions continue to follow the selected trouser rise.
 
 **Acceptance boundary:** these are visible pocket-opening constructions, not simulated pocket bags. The change improves front/3/4/side/back tailoring readability with no AI/provider cost.
+
+
+## 2026-10-07 — Shared physical identity targets for scan-based production body
+
+**Decision:** move the Linen Earth mannequin's physical silhouette targets into the canonical model-identity JSON and make both the deterministic GarmentViewer builder and Blender body-intake pipeline consume that shared source of truth.
+
+**Production-body workflow:** Blender body preparation now validates the identity file, normalizes the selected realistic body to 1727 mm and floor level, stamps the shared targets into the scene and creates a non-rendering `LinenEarthIdentityGuides` collection for shoulder, shirt waist, trouser waist and both trouser hems. Preflight rejects missing/drifted targets or guides.
+
+**Why:** this removes a major route for the future scan-based body to become a merely similar second mannequin. The production sculpt/garment-fit workflow and the current web model now converge on the same locked physical identity contract.

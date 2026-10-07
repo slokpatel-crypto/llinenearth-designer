@@ -194,3 +194,8 @@ It is finished only when the exact GLB + sidecar revision passes:
 ## Recommended immediate choice
 
 Use the Blender CC0 realistic male base as the body starting point, then create/finalize the Linen Earth shirt and trouser meshes around that locked body. Keep MakeHuman / MPFB as the fallback if body proportion generation is easier there.
+
+
+## Identity-guide handoff
+
+The realistic-body intake now reads `public/model-identity/linen-earth-studio-model-v1.json` directly, normalizes the body to 1727 mm and floor level, stamps the shared physical target metrics into the Blender scene, and creates the non-rendering `LinenEarthIdentityGuides` collection. Preflight rejects a scene whose target metrics or guide collection drift from this shared identity contract. This makes the future scan-based production body and the current deterministic GarmentViewer converge on one measured model target instead of two manually maintained sets of proportions.

@@ -22,6 +22,17 @@ MAX_DEGENERATE_FACE_RATIO = 0.001
 TRANSFORM_TOLERANCE = 1e-4
 MODEL_IDENTITY_ID = "linen-earth-studio-model-v1"
 MODEL_REFERENCE_IMAGE = "/designer/studio-tucked.webp"
+IDENTITY_GUIDE_COLLECTION = "LinenEarthIdentityGuides"
+EXPECTED_IDENTITY_TARGETS_MM = {
+    "height": 1727,
+    "shoulderSeamWidth": 388,
+    "outerArmSilhouette": 574,
+    "shirtWaistWidth": 294,
+    "trouserWaistWidth": 344,
+    "handCenterSpacing": 500,
+    "legCenterSpacing": 210,
+    "hemWidth": 64,
+}
 
 GARMENT_OBJECTS = (
     "ShirtTorsoFabric",
@@ -90,12 +101,34 @@ def main():
     identity_id = str(bpy.context.scene.get("linen_earth_model_identity_id", "")).strip()
     identity_reference = str(bpy.context.scene.get("linen_earth_model_reference_image", "")).strip()
     identity_locked = bool(bpy.context.scene.get("linen_earth_model_identity_locked", False))
+    identity_targets_raw = str(bpy.context.scene.get("linen_earth_identity_targets_json", "")).strip()
+    try:
+        identity_targets = json.loads(identity_targets_raw) if identity_targets_raw else None
+    except json.JSONDecodeError:
+        identity_targets = None
+    identity_guides = bpy.data.collections.get(IDENTITY_GUIDE_COLLECTION)
     if identity_id != MODEL_IDENTITY_ID:
         reasons.append(f"Model identity is {identity_id or 'missing'}; expected {MODEL_IDENTITY_ID}.")
     if identity_reference != MODEL_REFERENCE_IMAGE:
         reasons.append("Model identity reference does not point to the exact Real Model Designer studio image.")
     if not identity_locked:
         reasons.append("Model identity lock is not enabled in the Blender scene.")
+    if identity_targets != EXPECTED_IDENTITY_TARGETS_MM:
+        reasons.append("Scene identity physical targets do not match the Linen Earth shared model contract.")
+    if identity_guides is None:
+        reasons.append(f"Missing identity guide collection: {IDENTITY_GUIDE_COLLECTION}.")
+    else:
+        required_guides = {
+            "LE_GUIDE_SHIRT_SHOULDER",
+            "LE_GUIDE_SHIRT_WAIST",
+            "LE_GUIDE_TROUSER_WAIST",
+            "LE_GUIDE_LEFT_HEM",
+            "LE_GUIDE_RIGHT_HEM",
+        }
+        guide_names = {obj.name for obj in identity_guides.objects}
+        missing_guides = sorted(required_guides - guide_names)
+        if missing_guides:
+            reasons.append("Missing identity silhouette guides: " + ", ".join(missing_guides))
 
     if collection is None:
         reasons.append(f"Missing export collection: {EXPORT_COLLECTION}.")
@@ -184,6 +217,8 @@ def main():
             "referenceImage": identity_reference,
             "locked": identity_locked,
             "expectedId": MODEL_IDENTITY_ID,
+            "physicalTargetsMm": identity_targets,
+            "guideCollection": IDENTITY_GUIDE_COLLECTION,
         },
         "bodyHeightMm": round(body_height * 1000, 2) if body_height else None,
         "requiredGarmentObjects": list(GARMENT_OBJECTS),

@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import styleVariants from "../src/lib/garment-viewer-style-variants.json" with { type:"json" };
+import identitySpec from "../public/model-identity/linen-earth-studio-model-v1.json" with { type:"json" };
 
 const OUT_DIR=path.resolve(process.cwd(),"public/models");
 const BASE_BODY_PATH=path.resolve(process.cwd(),"assets/3d/makehuman-mannequin-base.glb");
@@ -8,19 +9,10 @@ const GLB_NAME="linen-earth-officewear-v1.glb";
 const MANIFEST_NAME="linen-earth-officewear-v1.viewer.json";
 const MODEL_ID="LE-OFFICEWEAR-V1";
 const CONTRACT_VERSION="linen-earth-garment-viewer-v2";
-const IDENTITY_ID="linen-earth-studio-model-v1";
-const REFERENCE_IMAGE="/designer/studio-tucked.webp";
-const REFERENCE_HEIGHT_MM=1727;
-const IDENTITY_TARGETS_MM={
-  height:1727,
-  shoulderSeamWidth:388,
-  outerArmSilhouette:574,
-  shirtWaistWidth:294,
-  trouserWaistWidth:344,
-  handCenterSpacing:500,
-  legCenterSpacing:210,
-  hemWidth:64,
-};
+const IDENTITY_ID=identitySpec.version;
+const REFERENCE_IMAGE=identitySpec.referenceImage;
+const REFERENCE_HEIGHT_MM=Number(identitySpec.referenceHeightMm);
+const IDENTITY_TARGETS_MM=Object.freeze({...identitySpec.physicalTargetsMm});
 const WHITE_PIXEL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFUlEQVR4nGP8////fwYGBgYmBigAAD34BADaOyqcAAAAAElFTkSuQmCC";
 const NEUTRAL_NORMAL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGNsaPj/n4GBgYGJAQoALZkDAqlaHJYAAAAASUVORK5CYII=";
 
