@@ -1620,7 +1620,7 @@ for(const token of ["LINEN_GARMENT_BLEND","LINEN_GARMENT_PANEL_SPEC","LINEN_GARM
 for(const token of ["bootstrap-human-base-meshes.py","prepare-linen-earth-body.py","author-linen-earth-officewear.py","preflight-linen-earth-officewear.py","linen-earth-officewear-authored.blend"]) {
   if(!garmentViewerProductionAssembly.includes(token)) throw new Error(`GarmentViewer production-assembly regression: missing ${token}`);
 }
-for(const token of ["preflight_report = run_scene_preflight()","productionFitEvidence","identityFitMeasurementsMm","boundaryIntersections","boundaryClearanceMm"]) {
+for(const token of ["preflight_report = run_scene_preflight()","productionFitEvidence","\"ready\": preflight_report.get(\"ready\") is True","identityFitMeasurementsMm","boundaryIntersections","boundaryClearanceMm"]) {
   if(!garmentViewerExporter.includes(token)) throw new Error(`GarmentViewer production-fit manifest regression: missing ${token}`);
 }
 for(const token of ["measurementEvidence","owner_measured","tailor_measured","pattern_room_measured","supplier_pattern_verified","panelMeasurementEvidence"]) {
