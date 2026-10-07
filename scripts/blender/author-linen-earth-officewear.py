@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import sys
 from pathlib import Path
@@ -141,6 +142,165 @@ def fit_shell(obj, body, clearance_m, thickness_m):
     apply_modifier(obj, solid)
 
 
+def guide_center_z(name):
+    obj = bpy.data.objects.get(name)
+    if obj is None or obj.type != "CURVE":
+        return None
+    points = []
+    for spline in obj.data.splines:
+        for point in spline.points:
+            points.append(obj.matrix_world @ Vector(point.co[:3]))
+    if not points:
+        return None
+    return sum(point.z for point in points) / len(points)
+
+
+def x_span_at_z(obj, z_world, band=0.025):
+    matrix = obj.matrix_world
+    xs = []
+    for vertex in obj.data.vertices:
+        point = matrix @ vertex.co
+        if abs(point.z - z_world) <= band:
+            xs.append(point.x)
+    if len(xs) < 4:
+        return None
+    return min(xs), max(xs)
+
+
+def width_at_z(obj, z_world, band=0.025):
+    span = x_span_at_z(obj, z_world, band)
+    return (span[1] - span[0]) if span else None
+
+
+def center_x_at_z(obj, z_world, band=0.040):
+    span = x_span_at_z(obj, z_world, band)
+    return ((span[0] + span[1]) * 0.5) if span else None
+
+
+def interpolate_profile(z, anchors):
+    ordered = sorted(anchors, key=lambda item: item[0])
+    if z <= ordered[0][0]:
+        return ordered[0][1]
+    if z >= ordered[-1][0]:
+        return ordered[-1][1]
+    for (z0, value0), (z1, value1) in zip(ordered, ordered[1:]):
+        if z0 <= z <= z1:
+            t = (z - z0) / max(z1 - z0, 1e-6)
+            t = t * t * (3.0 - 2.0 * t)
+            return value0 + (value1 - value0) * t
+    return ordered[-1][1]
+
+
+def scale_x_profile(obj, center_x, anchors):
+    matrix = obj.matrix_world
+    inverse = matrix.inverted()
+    for vertex in obj.data.vertices:
+        point = matrix @ vertex.co
+        factor = interpolate_profile(point.z, anchors)
+        point.x = center_x + (point.x - center_x) * factor
+        vertex.co = inverse @ point
+    obj.data.update()
+
+
+def shift_x_profile(obj, anchors):
+    matrix = obj.matrix_world
+    inverse = matrix.inverted()
+    for vertex in obj.data.vertices:
+        point = matrix @ vertex.co
+        point.x += interpolate_profile(point.z, anchors)
+        vertex.co = inverse @ point
+    obj.data.update()
+
+
+def shape_officewear_to_identity(authored, body, targets):
+    frame = body_frame(body)
+    center_x = frame["centerX"]
+    shoulder_z = guide_center_z("LE_GUIDE_SHIRT_SHOULDER")
+    shirt_waist_z = guide_center_z("LE_GUIDE_SHIRT_WAIST")
+    trouser_waist_z = guide_center_z("LE_GUIDE_TROUSER_WAIST")
+    left_hem_z = guide_center_z("LE_GUIDE_LEFT_HEM")
+    right_hem_z = guide_center_z("LE_GUIDE_RIGHT_HEM")
+    left_hand_z = guide_center_z("LE_GUIDE_LEFT_HAND_CENTER_H")
+    right_hand_z = guide_center_z("LE_GUIDE_RIGHT_HAND_CENTER_H")
+    required = (shoulder_z, shirt_waist_z, trouser_waist_z, left_hem_z, right_hem_z, left_hand_z, right_hand_z)
+    if any(value is None for value in required):
+        raise RuntimeError("Identity guides are incomplete; cannot fit the production garment candidate.")
+
+    shirt = authored["ShirtTorsoFabric"]
+    shoulder_width = width_at_z(shirt, shoulder_z, 0.035)
+    waist_width = width_at_z(shirt, shirt_waist_z, 0.035)
+    if not shoulder_width or not waist_width:
+        raise RuntimeError("Could not measure shirt shell at locked shoulder/waist guides.")
+    shoulder_factor = (float(targets["shoulderSeamWidth"]) / 1000.0) / shoulder_width
+    waist_factor = (float(targets["shirtWaistWidth"]) / 1000.0) / waist_width
+    scale_x_profile(
+        shirt,
+        center_x,
+        [
+            (shirt_waist_z - 0.16, waist_factor),
+            (shirt_waist_z, waist_factor),
+            (shoulder_z, shoulder_factor),
+            (shoulder_z + 0.07, shoulder_factor),
+        ],
+    )
+
+    trouser_waist = authored["TrouserWaistFabric"]
+    trouser_width = width_at_z(trouser_waist, trouser_waist_z, 0.040)
+    if not trouser_width:
+        raise RuntimeError("Could not measure trouser waist shell at the locked waist guide.")
+    trouser_factor = (float(targets["trouserWaistWidth"]) / 1000.0) / trouser_width
+    scale_x_profile(
+        trouser_waist,
+        center_x,
+        [(trouser_waist_z - 0.18, trouser_factor), (trouser_waist_z + 0.08, trouser_factor)],
+    )
+
+    target_hem = float(targets["hemWidth"]) / 1000.0
+    leg_center_half = float(targets["legCenterSpacing"]) / 2000.0
+    for name, hem_z, leg_center in (
+        ("TrouserLegLFabric", left_hem_z, -leg_center_half),
+        ("TrouserLegRFabric", right_hem_z, leg_center_half),
+    ):
+        leg = authored[name]
+        current_hem = width_at_z(leg, hem_z, 0.040)
+        if not current_hem:
+            raise RuntimeError(f"Could not measure {name} at the locked hem guide.")
+        hem_factor = target_hem / current_hem
+        scale_x_profile(
+            leg,
+            leg_center,
+            [
+                (hem_z - 0.03, hem_factor),
+                (hem_z + 0.10, hem_factor),
+                (trouser_waist_z - 0.28, 1.0),
+                (trouser_waist_z - 0.10, 1.0),
+            ],
+        )
+
+    target_hand_half = float(targets["handCenterSpacing"]) / 2000.0
+    for name, hand_z, target_center in (
+        ("ShirtSleeveLFabric", left_hand_z, -target_hand_half),
+        ("ShirtSleeveRFabric", right_hand_z, target_hand_half),
+    ):
+        sleeve = authored[name]
+        current_center = center_x_at_z(sleeve, hand_z, 0.070)
+        if current_center is None:
+            raise RuntimeError(f"Could not measure {name} at the locked cuff/hand guide.")
+        delta = target_center - current_center
+        shift_x_profile(
+            sleeve,
+            [(hand_z - 0.16, delta), (hand_z, delta), (shoulder_z - 0.05, 0.0), (shoulder_z + 0.05, 0.0)],
+        )
+
+    return {
+        "shirtShoulderScale": round(shoulder_factor, 5),
+        "shirtWaistScale": round(waist_factor, 5),
+        "trouserWaistScale": round(trouser_factor, 5),
+        "targetHemWidthMm": round(target_hem * 1000.0, 2),
+        "targetHandCenterSpacingMm": round(target_hand_half * 2000.0, 2),
+    }
+
+
 def planar_grain_uv(obj):
     mesh = obj.data
     if not mesh.uv_layers:
@@ -180,38 +340,62 @@ def main():
         raise RuntimeError(f"Body height is {height:.4f} m; expected the locked 1.727 m body.")
 
     z = lambda ratio: min_z + height * ratio
-    torso_half = 0.245
-    arm_root = 0.155
-    hip_half = 0.245
+    shoulder_z = guide_center_z("LE_GUIDE_SHIRT_SHOULDER") or z(0.84)
+    waist_z = guide_center_z("LE_GUIDE_SHIRT_WAIST") or z(0.65)
+    arm_root = 0.150
+    hip_half = 0.195
+
+    def torso_half_at_height(z_value):
+        if z_value <= waist_z:
+            return 0.175
+        if z_value >= shoulder_z:
+            return 0.210
+        t = (z_value - waist_z) / max(shoulder_z - waist_z, 1e-6)
+        return 0.175 + (0.210 - 0.175) * t
 
     regions = {
-        "ShirtTorsoFabric": lambda p: z(0.515) <= p.z <= z(0.895) and abs(p.x-center_x) <= torso_half,
-        "ShirtSleeveLFabric": lambda p: z(0.500) <= p.z <= z(0.875) and p.x-center_x <= -arm_root,
-        "ShirtSleeveRFabric": lambda p: z(0.500) <= p.z <= z(0.875) and p.x-center_x >= arm_root,
-        "TrouserWaistFabric": lambda p: z(0.455) <= p.z <= z(0.620) and abs(p.x-center_x) <= hip_half,
-        "TrouserLegLFabric": lambda p: z(0.055) <= p.z <= z(0.535) and p.x < center_x,
-        "TrouserLegRFabric": lambda p: z(0.055) <= p.z <= z(0.535) and p.x >= center_x,
+        "ShirtTorsoFabric": lambda p: z(0.580) <= p.z <= z(0.905) and abs(p.x-center_x) <= torso_half_at_height(p.z),
+        "ShirtSleeveLFabric": lambda p: z(0.480) <= p.z <= z(0.875) and p.x-center_x <= -arm_root,
+        "ShirtSleeveRFabric": lambda p: z(0.480) <= p.z <= z(0.875) and p.x-center_x >= arm_root,
+        "TrouserWaistFabric": lambda p: z(0.500) <= p.z <= z(0.675) and abs(p.x-center_x) <= hip_half,
+        "TrouserLegLFabric": lambda p: z(0.055) <= p.z <= z(0.575) and p.x < center_x,
+        "TrouserLegRFabric": lambda p: z(0.055) <= p.z <= z(0.575) and p.x >= center_x,
     }
 
     clearance_m = max(0.003, min(0.018, options.clearance_mm / 1000.0))
+    shirt_clearance_m = max(0.003, clearance_m - 0.0015)
+    trouser_clearance_m = min(0.018, clearance_m + 0.0025)
     thickness_m = max(0.0006, min(0.004, options.thickness_mm / 1000.0))
 
     for name in GARMENT_OBJECTS:
         remove_existing(name)
 
-    authored = []
+    targets_raw = str(bpy.context.scene.get("linen_earth_identity_targets_json", "")).strip()
+    try:
+        targets = json.loads(targets_raw)
+    except json.JSONDecodeError as error:
+        raise RuntimeError("Locked model identity targets are not valid JSON.") from error
+
+    authored = {}
     for name, predicate in regions.items():
         obj = selected_shell(body, name, predicate)
-        fit_shell(obj, body, clearance_m, thickness_m)
-        planar_grain_uv(obj)
+        garment_clearance = shirt_clearance_m if name.startswith("Shirt") else trouser_clearance_m
+        fit_shell(obj, body, garment_clearance, thickness_m)
         obj["linen_earth_auto_authored"] = True
-        obj["linen_earth_fit_clearance_mm"] = round(clearance_m * 1000.0, 3)
+        obj["linen_earth_fit_clearance_mm"] = round(garment_clearance * 1000.0, 3)
         obj["linen_earth_cloth_thickness_mm"] = round(thickness_m * 1000.0, 3)
-        authored.append(obj)
+        authored[name] = obj
+
+    fit_profile = shape_officewear_to_identity(authored, body, targets)
+    for obj in authored.values():
+        planar_grain_uv(obj)
 
     bpy.context.scene["linen_earth_asset_status"] = "auto-authored-production-candidate-needs-tailor-review"
     bpy.context.scene["linen_earth_garment_authoring_method"] = "locked-body-surface-shell-v1"
     bpy.context.scene["linen_earth_garment_clearance_mm"] = round(clearance_m * 1000.0, 3)
+    bpy.context.scene["linen_earth_shirt_clearance_mm"] = round(shirt_clearance_m * 1000.0, 3)
+    bpy.context.scene["linen_earth_trouser_clearance_mm"] = round(trouser_clearance_m * 1000.0, 3)
+    bpy.context.scene["linen_earth_identity_fit_profile_json"] = json.dumps(fit_profile, sort_keys=True)
     bpy.context.scene["linen_earth_garment_thickness_mm"] = round(thickness_m * 1000.0, 3)
 
     output = Path(options.output).expanduser().resolve()
@@ -219,8 +403,9 @@ def main():
     bpy.ops.wm.save_as_mainfile(filepath=str(output))
 
     print(f"Authored Linen Earth six-piece officewear candidate: {output}")
-    print("Garment objects: " + ", ".join(obj.name for obj in authored))
-    print(f"Body clearance: {clearance_m*1000:.1f} mm · cloth shell thickness: {thickness_m*1000:.1f} mm")
+    print("Garment objects: " + ", ".join(obj.name for obj in authored.values()))
+    print(f"Shirt/trouser clearances: {shirt_clearance_m*1000:.1f}/{trouser_clearance_m*1000:.1f} mm · cloth shell thickness: {thickness_m*1000:.1f} mm")
+    print("Identity fit profile: " + json.dumps(fit_profile, sort_keys=True))
     print("Status: candidate only; run Blender preflight and owner/tailor visual fit review before production export.")
 
 
