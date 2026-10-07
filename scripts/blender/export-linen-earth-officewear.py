@@ -257,6 +257,7 @@ def write_viewer_manifest(output_path, height, source, model_identity, panel_spe
         "modelIdentity": model_identity,
         "source": source,
         "panels": panel_spec["panels"],
+        "productionAssetStatus": "realistic-body-production-candidate",
     }
     if isinstance(preflight_report, dict):
         payload["productionFitEvidence"] = {
