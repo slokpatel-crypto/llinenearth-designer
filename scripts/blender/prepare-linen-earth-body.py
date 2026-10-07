@@ -31,6 +31,7 @@ MODEL_IDENTITY_ID = "linen-earth-studio-model-v1"
 MODEL_REFERENCE_IMAGE = "/designer/studio-tucked.webp"
 IDENTITY_GUIDE_COLLECTION = "LinenEarthIdentityGuides"
 DEFAULT_IDENTITY_SPEC = Path("public/model-identity/linen-earth-studio-model-v1.json")
+MODEL_SHOE_OBJECTS = ("LE_ShoeL", "LE_ShoeR")
 
 
 def cli_args():
@@ -125,6 +126,149 @@ def normalize_floor(objects, body):
     if abs(residual) > 0.002:
         raise RuntimeError(f"Body floor normalization failed: lowest point is {residual:.4f} m.")
     return min_z
+
+
+def center_body_xy(body):
+    points = world_bounds(body)
+    center_x = (min(point.x for point in points) + max(point.x for point in points)) * 0.5
+    center_y = (min(point.y for point in points) + max(point.y for point in points)) * 0.5
+    body.matrix_world.translation -= Vector((center_x, center_y, 0.0))
+    bpy.context.view_layer.update()
+    residual = world_bounds(body)
+    residual_x = (min(point.x for point in residual) + max(point.x for point in residual)) * 0.5
+    residual_y = (min(point.y for point in residual) + max(point.y for point in residual)) * 0.5
+    if abs(residual_x) > 0.002 or abs(residual_y) > 0.002:
+        raise RuntimeError(
+            f"Body XY centering failed: residual center is ({residual_x:.4f}, {residual_y:.4f}) m."
+        )
+    return center_x, center_y
+
+
+def apply_body_transforms(body):
+    bpy.context.view_layer.objects.active = body
+    body.select_set(True)
+    try:
+        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    finally:
+        body.select_set(False)
+    bpy.context.view_layer.update()
+
+
+def align_arm_stance_to_identity(body, identity_spec):
+    mesh = body.data
+    targets = identity_spec["physicalTargetsMm"]
+    frame = identity_spec["referenceFrame"]
+    shoulder_anchor = identity_spec["frontSilhouetteAnchors"]["shirtShoulder"]
+    shoulder_z = TARGET_HEIGHT_M * (1.0 - float(shoulder_anchor["yPx"]) / float(frame["heightPx"]))
+    hand_z = TARGET_HEIGHT_M * 0.54
+    target_half = float(targets["handCenterSpacing"]) / 2000.0
+
+    side_vertices = {
+        -1: [vertex for vertex in mesh.vertices if vertex.co.x < -0.16],
+        1: [vertex for vertex in mesh.vertices if vertex.co.x > 0.16],
+    }
+    deltas = {}
+    for side, vertices in side_vertices.items():
+        hand_band = [
+            vertex.co.x
+            for vertex in vertices
+            if abs(vertex.co.z - hand_z) <= 0.085
+        ]
+        if len(hand_band) < 8:
+            deltas[side] = 0.0
+            continue
+        hand_band.sort()
+        current = hand_band[len(hand_band) // 2]
+        target = side * target_half
+        delta = target - current
+        deltas[side] = delta
+        for vertex in vertices:
+            z = vertex.co.z
+            if z > shoulder_z + 0.03 or z < hand_z - 0.30:
+                continue
+            if z >= shoulder_z:
+                blend = 0.0
+            elif z <= hand_z:
+                blend = 1.0
+            else:
+                blend = (shoulder_z - z) / max(shoulder_z - hand_z, 1e-6)
+            blend = max(0.0, min(1.0, blend))
+            # Smoothstep keeps the shoulder fixed while bringing the hanging arm
+            # gradually into the locked straight-officewear stance.
+            blend = blend * blend * (3.0 - 2.0 * blend)
+            vertex.co.x += delta * blend
+
+    mesh.update()
+    bpy.context.view_layer.update()
+    return {
+        "leftDeltaMm": round(deltas.get(-1, 0.0) * 1000.0, 2),
+        "rightDeltaMm": round(deltas.get(1, 0.0) * 1000.0, 2),
+    }
+
+
+def create_identity_shoes(body):
+    for name in MODEL_SHOE_OBJECTS:
+        existing = bpy.data.objects.get(name)
+        if existing is not None:
+            bpy.data.objects.remove(existing, do_unlink=True)
+
+    points = [body.matrix_world @ vertex.co for vertex in body.data.vertices]
+    floor_z = min(point.z for point in points)
+    foot_band = [point for point in points if point.z <= floor_z + 0.14]
+    if len(foot_band) < 20:
+        raise RuntimeError("Could not isolate realistic body feet for the locked dress-shoe silhouette.")
+
+    collection = bpy.data.collections.get(EXPORT_COLLECTION)
+    if collection is None:
+        collection = bpy.data.collections.new(EXPORT_COLLECTION)
+        bpy.context.scene.collection.children.link(collection)
+
+    material = bpy.data.materials.get("LE_SHOE_MATERIAL") or bpy.data.materials.new(name="LE_SHOE_MATERIAL")
+    material.use_nodes = True
+    principled = material.node_tree.nodes.get("Principled BSDF")
+    if principled is not None:
+        principled.inputs["Base Color"].default_value = (0.055, 0.043, 0.034, 1.0)
+        principled.inputs["Roughness"].default_value = 0.42
+
+    created = []
+    for side, name in ((-1, "LE_ShoeL"), (1, "LE_ShoeR")):
+        side_points = [point for point in foot_band if point.x * side > 0.0]
+        if len(side_points) < 8:
+            raise RuntimeError(f"Could not isolate foot geometry for {name}.")
+        min_x, max_x = min(point.x for point in side_points), max(point.x for point in side_points)
+        min_y, max_y = min(point.y for point in side_points), max(point.y for point in side_points)
+        width = min(0.145, max(0.095, (max_x - min_x) + 0.014))
+        length = min(0.315, max(0.250, (max_y - min_y) + 0.050))
+        center_x = (min_x + max_x) * 0.5
+        center_y = (min_y + max_y) * 0.5 - 0.018
+
+        bpy.ops.mesh.primitive_uv_sphere_add(
+            segments=32,
+            ring_count=16,
+            location=(center_x, center_y, floor_z + 0.055),
+        )
+        shoe = bpy.context.object
+        shoe.name = name
+        shoe.scale = (width * 0.50, length * 0.50, 0.057)
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+
+        # A subtle toe taper prevents the upper from reading like a generic capsule.
+        for vertex in shoe.data.vertices:
+            if vertex.co.y < 0:
+                normalized = min(1.0, abs(vertex.co.y) / max(length * 0.52, 1e-6))
+                vertex.co.x *= 1.0 - 0.10 * normalized
+                vertex.co.z *= 0.92 + 0.08 * (1.0 - normalized)
+        shoe.data.update()
+        for polygon in shoe.data.polygons:
+            polygon.use_smooth = True
+        shoe.data.materials.append(material)
+        shoe["linen_earth_identity_shoe"] = True
+        shoe["linen_earth_shoe_style"] = "minimal-dress-shoe-v1"
+        if collection.objects.get(shoe.name) is None:
+            collection.objects.link(shoe)
+        created.append(shoe)
+
+    return created
 
 
 def create_identity_guides(identity_spec):
@@ -260,6 +404,17 @@ def choose_body_object(objects):
     return meshes[0]
 
 
+def retain_locked_body_only(objects, body):
+    removed = []
+    for obj in list(objects):
+        if obj is body:
+            continue
+        removed.append(obj.name)
+        bpy.data.objects.remove(obj, do_unlink=True)
+    bpy.context.view_layer.update()
+    return [body], removed
+
+
 def normalize_height(objects, body):
     height = mesh_height(body)
     if not math.isfinite(height) or height <= 0:
@@ -326,9 +481,14 @@ def main():
     body = choose_body_object(objects)
     original_name = body.name
     body.name = BODY_NAME
+    objects, removed_auxiliary_objects = retain_locked_body_only(objects, body)
     original_height, factor, measured = normalize_height(objects, body)
     floor_shift = normalize_floor(objects, body)
+    center_shift = center_body_xy(body)
+    apply_body_transforms(body)
+    arm_stance = align_arm_stance_to_identity(body, identity_spec)
     ensure_export_collection(objects)
+    identity_shoes = create_identity_shoes(body)
     create_identity_guides(identity_spec)
     stamp_provenance(
         bpy.context.scene,
@@ -339,6 +499,11 @@ def main():
         identity_spec,
         identity_spec_path,
     )
+    bpy.context.scene["linen_earth_body_center_shift_x_m"] = round(center_shift[0], 6)
+    bpy.context.scene["linen_earth_body_center_shift_y_m"] = round(center_shift[1], 6)
+    bpy.context.scene["linen_earth_arm_stance_json"] = json.dumps(arm_stance, sort_keys=True)
+    bpy.context.scene["linen_earth_removed_auxiliary_objects_json"] = json.dumps(removed_auxiliary_objects)
+    bpy.context.scene["linen_earth_identity_shoes_json"] = json.dumps([shoe.name for shoe in identity_shoes])
 
     output.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(output))
@@ -348,8 +513,12 @@ def main():
     print(f"Locked model identity: {MODEL_IDENTITY_ID} · {MODEL_REFERENCE_IMAGE}")
     print(f"Selected: {blend_path.name} :: {kind} {datablock} (score {score})")
     print(f"Body object: {original_name} -> {BODY_NAME}")
+    print(f"Removed non-body source objects: {len(removed_auxiliary_objects)}")
     print(f"Explicit height normalization: {original_height:.4f} m -> {measured:.4f} m")
     print(f"Floor normalization shift: {floor_shift:.4f} m")
+    print(f"Body XY source offset removed: ({center_shift[0]:.4f}, {center_shift[1]:.4f}) m")
+    print(f"Officewear arm stance adjustment: {json.dumps(arm_stance, sort_keys=True)}")
+    print("Identity shoes: " + ", ".join(shoe.name for shoe in identity_shoes))
     print(f"Identity guide collection: {IDENTITY_GUIDE_COLLECTION}")
     print(f"Identity targets: {json.dumps(identity_spec['physicalTargetsMm'], sort_keys=True)}")
     print(
