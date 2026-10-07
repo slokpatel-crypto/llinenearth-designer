@@ -48,12 +48,13 @@ test("future blazer and suit taxonomy stays planned",()=>{
 });
 
 
-test("3D lab carries the saved Designer recipe while advanced construction meshes remain staged",()=>{
+test("3D lab carries the saved Designer recipe into live construction variants",()=>{
   const source=readFileSync("src/components/GarmentViewer.tsx","utf8");
   assert(source.includes("linen-earth:real-designer-draft:v2"));
   assert(source.includes("YOUR DESIGNER RECIPE"));
-  assert(source.includes("current production baseline maps fabric now"));
-  assert(source.includes("construction-specific mesh variants will progressively replace the shared base geometry"));
+  assert(source.includes("saved Designer recipe now drives the same 3D tailoring-variant system"));
+  assert(source.includes("LIVE TAILORING VARIATIONS"));
+  assert(source.includes("variantMaterialVisible"));
 });
 
 
