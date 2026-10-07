@@ -27,7 +27,7 @@ function readStored<T>(key:string,assetKey:string,fallback:T):T{
   }catch{return fallback;}
 }
 
-export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity:GarmentViewerAssetIdentity|null}){
+export default function GarmentViewerEvidenceForm({assetIdentity,productionCandidateReady}:{assetIdentity:GarmentViewerAssetIdentity|null;productionCandidateReady:boolean}){
   const assetKey=useMemo(()=>garmentViewerAssetIdentityKey(assetIdentity),[assetIdentity]);
   const [latencies,setLatencies]=useState<number[]>([]);
   const [assessments,setAssessments]=useState<RealismAssessment[]>([]);
@@ -86,7 +86,7 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
   }
 
   async function recordEvidence(){
-    if(!assetIdentity||!assetKey){setMessage("Configure and validate the production GLB + manifest first.");return;}
+    if(!assetIdentity||!assetKey||!productionCandidateReady){setMessage("Load a realistic production candidate with measured-panel and passed Blender fit evidence first.");return;}
     const patternScaleSamples=[
       scaleSample(stripeFabricId,stripeError,"stripe",stripeVerified),
       scaleSample(checkFabricId,checkError,"check",checkVerified),
@@ -127,7 +127,7 @@ export default function GarmentViewerEvidenceForm({assetIdentity}:{assetIdentity
   const checks=Object.entries(boundaryChecks) as Array<[keyof Boundaries,boolean]>;
   return <section className="garmentQaPanel garmentQaEvidenceForm">
     <div className="garmentQaPanelHead"><div><small>RECORD QA EVIDENCE</small><h2>Evidence stays tied to this exact model revision</h2></div><button type="button" onClick={refreshLocalEvidence}>Refresh lab samples</button></div>
-    {!assetIdentity?<p className="garmentQaReasons">Production asset identity is unavailable, so evidence recording is locked.</p>:<>
+    {!assetIdentity||!productionCandidateReady?<p className="garmentQaReasons">{!assetIdentity?"Production asset identity is unavailable, so evidence recording is locked.":"Realism/scale evidence is locked until this revision is a realistic production candidate with measured-panel and passed Blender fit evidence."}</p>:<>
       <div className="garmentQaEvidenceMeta"><span><small>MODEL</small><b>{assetIdentity.modelId}</b></span><span><small>GLB HASH</small><b>{assetIdentity.modelSha256.slice(0,12)}…</b></span><span><small>MANIFEST HASH</small><b>{assetIdentity.manifestSha256.slice(0,12)}…</b></span></div>
       <div className="garmentQaEvidenceMetrics"><span><small>LAB LATENCY</small><b>{latencySummary.count}</b><em>{latencySummary.p95Ms===null?"p95 pending":`p95 ${latencySummary.p95Ms} ms`}</em></span><span><small>REALISM VIEWERS</small><b>{realismSummary.uniqueViewers}</b><em>{realismSummary.strongRatings} strong ratings</em></span></div>
       <div className="garmentQaEvidenceGrid">
