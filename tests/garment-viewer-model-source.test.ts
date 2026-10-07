@@ -110,6 +110,26 @@ test("Blender exporter carries fit and boundary preflight evidence into the prod
   for(const token of ["preflight_report = run_scene_preflight()","productionFitEvidence","\"ready\": preflight_report.get(\"ready\") is True","identityFitMeasurementsMm","boundaryIntersections","boundaryClearanceMm"]) assert(exporter.includes(token),token);
 });
 
+test("realistic production candidate renders front, three-quarter, side and back review views",()=>{
+  const packageJson=JSON.parse(readFileSync("package.json","utf8"));
+  const source=readFileSync("scripts/blender/render-linen-earth-officewear-review.py","utf8");
+  const workflow=readFileSync(".github/workflows/realistic-3d-candidate.yml","utf8");
+  assert.match(packageJson.scripts["garment:model-production:render-review"],/render-linen-earth-officewear-review\.py/);
+  for(const token of [
+    '("front", 0.0)',
+    '("three-quarter", 35.0)',
+    '("side", 90.0)',
+    '("back", 180.0)',
+    "BLENDER_EEVEE_NEXT",
+    "LE_REVIEW_KEY",
+    "LE_REVIEW_FILL",
+    "LE_REVIEW_RIM",
+    "review-views.txt",
+  ]) assert(source.includes(token),token);
+  assert(workflow.includes("Render four-angle fit review"));
+  assert(workflow.includes("garment:model-production:render-review"));
+});
+
 test("production scene assembly chains realistic body preparation, garment authoring and Blender preflight",()=>{
   const packageJson=JSON.parse(readFileSync("package.json","utf8"));
   const source=readFileSync("scripts/assemble-production-garment-scene.mjs","utf8");
