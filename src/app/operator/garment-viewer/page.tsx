@@ -65,6 +65,14 @@ export default async function GarmentViewerOperatorPage(){
       </div>
     </section>
 
+    {manifest?.panelMeasurementEvidence&&<section className="garmentQaPanel">
+      <div className="garmentQaPanelHead"><div><small>PANEL SCALE PROVENANCE</small><h2>Measured garment dimensions</h2></div><b>{manifest.panelMeasurementEvidence.source}</b></div>
+      <div className="garmentQaRows">
+        <div data-ready={true}><strong>Measured at</strong><span>{manifest.panelMeasurementEvidence.measuredAt}</span><em>Physical scale evidence</em></div>
+        <div data-ready={true}><strong>Measurement note</strong><span>{manifest.panelMeasurementEvidence.note}</span><em>No anonymous/guessed panel scale</em></div>
+      </div>
+    </section>}
+
     {manifest?.productionFitEvidence&&<section className="garmentQaPanel">
       <div className="garmentQaPanelHead"><div><small>PRODUCTION FIT EVIDENCE</small><h2>Blender preflight geometry checks</h2></div><b>{manifest.productionFitEvidence.gate||"RECORDED"}</b></div>
       <div className="garmentQaRows">
