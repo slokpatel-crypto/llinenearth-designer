@@ -231,7 +231,7 @@
     },
     {
       "id": "convertible",
-      "label": "Convertible Cuff",
+      "label": "Convertible Square Cuff",
       "family": "convertible",
       "lengthIn": 2.5,
       "construction": "fused",
@@ -246,52 +246,128 @@
       "source": "Proper Cloth reference"
     },
     {
+      "id": "soft_long_barrel",
+      "label": "Soft Long One-Button Cuff",
+      "family": "soft",
+      "lengthIn": 2.875,
+      "construction": "soft_unfused",
+      "source": "Proper Cloth reference"
+    },
+    {
+      "id": "soft_square_2",
+      "label": "Soft Square Two-Button Cuff",
+      "family": "soft",
+      "lengthIn": 3.125,
+      "construction": "soft_unfused",
+      "source": "Proper Cloth reference"
+    },
+    {
+      "id": "soft_french",
+      "label": "Soft French Cuff",
+      "family": "french",
+      "lengthIn": 2.875,
+      "construction": "soft_unfused",
+      "source": "Proper Cloth reference"
+    },
+    {
       "id": "cocktail",
       "label": "Cocktail / Turnback Cuff",
       "family": "turnback",
-      "source": "Proper Cloth reference"
+      "construction": "turnback"
     }
   ],
   "plackets": [
     {
       "id": "standard",
       "label": "Standard Front Placket",
-      "family": "front"
+      "family": "front",
+      "widthIn": 1.25,
+      "construction": "fused",
+      "source": "Proper Cloth reference"
     },
     {
       "id": "soft_front",
       "label": "Soft Front Placket",
-      "family": "front"
+      "family": "front",
+      "widthIn": 1.25,
+      "construction": "soft_unfused",
+      "source": "Proper Cloth reference"
     },
     {
       "id": "french",
       "label": "French Front / No Placket",
-      "family": "clean"
+      "family": "clean",
+      "source": "Proper Cloth reference"
+    },
+    {
+      "id": "stand_up_front",
+      "label": "Stand-Up Front Placket",
+      "family": "front",
+      "widthIn": 1.25,
+      "construction": "stiff_fused",
+      "source": "Proper Cloth reference"
+    },
+    {
+      "id": "stand_up_french",
+      "label": "Stand-Up French Front",
+      "family": "clean",
+      "construction": "stiff_fused",
+      "source": "Proper Cloth reference"
     },
     {
       "id": "hidden",
       "label": "Covered / Fly Front",
-      "family": "formal"
+      "family": "formal",
+      "source": "Proper Cloth reference"
     },
     {
       "id": "popover",
       "label": "Popover Front",
-      "family": "casual"
+      "family": "casual",
+      "buttons": 3,
+      "source": "Proper Cloth reference"
     },
     {
       "id": "western",
       "label": "Western Front",
-      "family": "western"
+      "family": "western",
+      "source": "Proper Cloth reference"
     },
     {
       "id": "tuxedo_plain",
       "label": "Tuxedo Front · Plain",
-      "family": "formal"
+      "family": "formal",
+      "source": "Proper Cloth reference"
+    },
+    {
+      "id": "tuxedo_pique",
+      "label": "Tuxedo Front · Piqué Bib",
+      "family": "formal",
+      "bibWidthIn": 10,
+      "source": "Proper Cloth reference"
     },
     {
       "id": "tuxedo_pleated",
-      "label": "Tuxedo Front · Pleated Bib",
-      "family": "formal"
+      "label": "Tuxedo Front · Pleated",
+      "family": "formal",
+      "pleatsPerSide": 10,
+      "pleatWidthIn": 0.4375,
+      "source": "Proper Cloth reference"
+    },
+    {
+      "id": "soft_wide",
+      "label": "Soft Wide Front Placket",
+      "family": "front",
+      "widthIn": 1.5,
+      "construction": "soft_unfused",
+      "source": "Proper Cloth reference"
+    },
+    {
+      "id": "italian",
+      "label": "Italian Front Placket",
+      "family": "clean",
+      "construction": "soft_topstitched",
+      "source": "Proper Cloth reference"
     }
   ],
   "pockets": [
@@ -521,7 +597,8 @@
         "placket": "standard",
         "pocket": "none",
         "yoke": "split",
-        "hem": "rounded"
+        "hem": "rounded",
+        "back": "plain"
       }
     },
     {
@@ -538,7 +615,8 @@
         "placket": "french",
         "pocket": "none",
         "yoke": "split",
-        "hem": "rounded"
+        "hem": "rounded",
+        "back": "plain"
       }
     },
     {
@@ -555,7 +633,8 @@
         "placket": "soft_front",
         "pocket": "rounded",
         "yoke": "split",
-        "hem": "rounded"
+        "hem": "rounded",
+        "back": "center_box_pleat"
       }
     },
     {
@@ -572,7 +651,8 @@
         "placket": "soft_front",
         "pocket": "rounded",
         "yoke": "one_piece",
-        "hem": "straight"
+        "hem": "straight",
+        "back": "rear_side_pleats"
       }
     },
     {
@@ -589,7 +669,8 @@
         "placket": "french",
         "pocket": "rounded",
         "yoke": "one_piece",
-        "hem": "straight"
+        "hem": "straight",
+        "back": "plain"
       }
     },
     {
@@ -606,7 +687,8 @@
         "placket": "french",
         "pocket": "none",
         "yoke": "one_piece",
-        "hem": "straight"
+        "hem": "straight",
+        "back": "plain"
       }
     },
     {
@@ -623,7 +705,8 @@
         "placket": "popover",
         "pocket": "rounded",
         "yoke": "split",
-        "hem": "straight"
+        "hem": "straight",
+        "back": "rear_side_pleats"
       }
     },
     {
@@ -640,7 +723,8 @@
         "placket": "soft_front",
         "pocket": "rounded_flap",
         "yoke": "one_piece",
-        "hem": "straight"
+        "hem": "straight",
+        "back": "plain"
       }
     },
     {
@@ -657,7 +741,8 @@
         "placket": "western",
         "pocket": "western_flap",
         "yoke": "western",
-        "hem": "straight"
+        "hem": "straight",
+        "back": "plain"
       }
     },
     {
@@ -674,7 +759,8 @@
         "placket": "soft_front",
         "pocket": "safari",
         "yoke": "one_piece",
-        "hem": "straight"
+        "hem": "straight",
+        "back": "plain"
       }
     },
     {
@@ -691,7 +777,8 @@
         "placket": "tuxedo_plain",
         "pocket": "none",
         "yoke": "one_piece",
-        "hem": "rounded"
+        "hem": "rounded",
+        "back": "plain"
       }
     },
     {
@@ -708,7 +795,8 @@
         "placket": "standard",
         "pocket": "rounded",
         "yoke": "one_piece",
-        "hem": "straight"
+        "hem": "straight",
+        "back": "plain"
       }
     }
   ],
@@ -1038,6 +1126,46 @@
     {
       "id": "double_jetted_back",
       "label": "Double Jetted Back Pockets"
+    }
+  ],
+  "shirtBacks": [
+    {
+      "id": "plain",
+      "label": "Plain Back",
+      "family": "clean",
+      "source": "Proper Cloth reference"
+    },
+    {
+      "id": "rear_side_pleats",
+      "label": "Side Pleats Back",
+      "family": "mobility",
+      "pleatWidthIn": 0.5,
+      "addedUpperBackIn": 2,
+      "source": "Proper Cloth reference"
+    },
+    {
+      "id": "center_box_pleat",
+      "label": "Box Pleat Back",
+      "family": "mobility",
+      "pleatSideAdditionIn": 0.75,
+      "addedUpperBackIn": 3,
+      "source": "Proper Cloth reference"
+    },
+    {
+      "id": "locker_loop_box",
+      "label": "Locker Loop + Box Pleat",
+      "family": "sport",
+      "pleatSideAdditionIn": 0.75,
+      "addedUpperBackIn": 3,
+      "source": "Proper Cloth reference"
+    },
+    {
+      "id": "darts",
+      "label": "Back Darts",
+      "family": "fitted",
+      "removedFabricIn": 1.5,
+      "dartMaxIn": 0.75,
+      "source": "Proper Cloth reference"
     }
   ]
 }
