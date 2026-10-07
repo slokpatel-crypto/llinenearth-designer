@@ -334,7 +334,7 @@ test("Blender scene preflight verifies canonical identity guide geometry",()=>{
   ]) assert(source.includes(token),`missing guide QA token: ${token}`);
 });
 
-test("Blender scene preflight catches structural garment quality risks without requiring watertight clothing",()=>{
+test("Blender scene preflight catches structural garment quality risks on finished cloth shells",()=>{
   const preflight=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8","utf8");
   for(const token of [
     "linen-earth-officewear-scene-preflight-v1",
@@ -342,11 +342,18 @@ test("Blender scene preflight catches structural garment quality risks without r
     "degenerateFaces",
     "activeUv",
     "transformApplied",
+    "connectedComponents",
+    "boundaryEdges",
+    "nonManifoldEdges",
+    "after cloth thickness",
     "MAX_TOTAL_TRIANGLES = 220_000",
     "MAX_TOTAL_VERTICES = 280_000",
     "Apply transforms before measuring panels or exporting",
   ]) assert(preflight.includes(token),token);
-  assert(!preflight.includes("non_manifold"),"Tailored garment openings must not be rejected as if clothing were watertight.");
+  assert(
+    preflight.includes('if stats["boundaryEdges"] != 0 or stats["nonManifoldEdges"] != 0:'),
+    "Finished cloth shells must reject broken/open mesh boundaries after rimmed thickness is applied.",
+  );
 });
 
 
