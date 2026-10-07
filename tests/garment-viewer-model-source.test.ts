@@ -93,6 +93,38 @@ test("realistic-body garment authoring creates the six canonical production shel
   ]) assert(source.includes(token),token);
 });
 
+test("deterministic shell and Blender production candidate are explicitly distinguished",()=>{
+  const builder=readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
+  const exporter=readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
+  const contract=readFileSync("src/lib/garment-viewer-model-contract.ts","utf8");
+  assert(builder.includes("deterministic-preview-shell-not-realistic-production-asset"));
+  assert(builder.includes("realistic production asset still requires Blender-source fit/evidence"));
+  assert(exporter.includes("realistic-body-production-candidate"));
+  assert(contract.includes('"deterministic-preview-shell-not-realistic-production-asset"|"realistic-body-production-candidate"'));
+});
+
+test("Blender exporter carries fit and boundary preflight evidence into the production manifest",()=>{
+  const preflight=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
+  const exporter=readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
+  for(const token of ["return report","boundaryClearanceMm","identityFitMeasurementsMm","boundaryIntersections"]) assert(preflight.includes(token),token);
+  for(const token of ["preflight_report = run_scene_preflight()","productionFitEvidence","identityFitMeasurementsMm","boundaryIntersections","boundaryClearanceMm"]) assert(exporter.includes(token),token);
+});
+
+test("production scene assembly chains realistic body preparation, garment authoring and Blender preflight",()=>{
+  const packageJson=JSON.parse(readFileSync("package.json","utf8"));
+  const source=readFileSync("scripts/assemble-production-garment-scene.mjs","utf8");
+  assert.equal(packageJson.scripts["garment:model-production:assemble"],"node scripts/assemble-production-garment-scene.mjs");
+  for(const token of [
+    "bootstrap-human-base-meshes.py",
+    'process.env.PYTHON||"python3"',
+    "prepare-linen-earth-body.py",
+    "author-linen-earth-officewear.py",
+    "preflight-linen-earth-officewear.py",
+    "linen-earth-officewear-authored.blend",
+    "visually/tailor review",
+  ]) assert(source.includes(token),token);
+});
+
 test("production 3D export command runs Blender export and structural validation in one path",()=>{
   const packageJson=JSON.parse(readFileSync("package.json","utf8"));
   const source=readFileSync("scripts/build-production-garment-model.mjs","utf8");
@@ -110,6 +142,8 @@ test("production 3D export command runs Blender export and structural validation
 test("panel spec template cannot pass as guessed production scale",()=>{
   const template=JSON.parse(readFileSync("docs/examples/linen-earth-officewear-panel-spec.template.json","utf8"));
   assert.equal(template.status,"TEMPLATE_REPLACE_ZERO_VALUES_WITH_MEASURED_PATTERN_DIMENSIONS");
+  assert.equal(template.measurementEvidence.source,"REPLACE_WITH_OWNER_OR_TAILOR_MEASUREMENT");
+  assert.equal(template.measurementEvidence.measuredAt,"YYYY-MM-DD");
   for(const panel of Object.values(template.panels) as Array<{widthMm:number;heightMm:number}>){
     assert.equal(panel.widthMm,0);
     assert.equal(panel.heightMm,0);
@@ -117,6 +151,12 @@ test("panel spec template cannot pass as guessed production scale",()=>{
   const exporter=readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
   assert(exporter.includes("widthMm must be a measured value between 0 and 2000 mm"));
   assert(exporter.includes("heightMm must be a measured value between 0 and 2500 mm"));
+  assert(exporter.includes("Panel spec requires measurementEvidence"));
+  assert(exporter.includes("owner_measured"));
+  assert(exporter.includes("tailor_measured"));
+  assert(exporter.includes("pattern_room_measured"));
+  assert(exporter.includes("supplier_pattern_verified"));
+  assert(exporter.includes("panelMeasurementEvidence"));
 });
 
 test("Blender scene preflight rejects garment/body boundary intersections",()=>{
@@ -146,6 +186,14 @@ test("Blender scene preflight verifies canonical identity guide geometry",()=>{
     "legCenterSpacingMm",
     "sleeveCenterSpacingMm",
     "cuffWidthAsymmetryMm",
+    "nearest_distance_stats_mm",
+    "boundaryClearanceMm",
+    "upperTorsoBody",
+    "shirtWaistBody",
+    "leftCuffBody",
+    "rightCuffBody",
+    "trouserWaistBody",
+    "trouserInnerGap",
     "center_x_at_z",
     "must remain non-rendering",
   ]) assert(source.includes(token),`missing guide QA token: ${token}`);

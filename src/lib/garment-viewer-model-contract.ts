@@ -101,12 +101,28 @@ export type GarmentViewerModelManifest = {
   source?:GarmentViewerAssetSource;
   panels: Record<string,{widthMm:number;heightMm:number;offsetU?:number;offsetV?:number;rotationDeg?:number}>;
   cameraOrbits?: Partial<Record<"front"|"three-quarter"|"side"|"back",string>>;
+  productionFitEvidence?:{
+    gate?:string|null;
+    identityFitMeasurementsMm?:Record<string,number|null>|null;
+    boundaryIntersections?:Record<string,number|null>|null;
+    boundaryClearanceMm?:Record<string,unknown>|null;
+    totals?:Record<string,number>|null;
+  };
+  panelMeasurementEvidence?:{
+    source:"owner_measured"|"tailor_measured"|"pattern_room_measured"|"supplier_pattern_verified";
+    measuredAt:string;
+    note:string;
+  };
+  productionAssetStatus?:"deterministic-preview-shell-not-realistic-production-asset"|"realistic-body-production-candidate";
 };
 
 export type GarmentViewerManifestValidation = {
   valid:boolean;
   sourceReady:boolean;
   source:GarmentViewerAssetSource|null;
+  panelMeasurementEvidence?:GarmentViewerModelManifest["panelMeasurementEvidence"]|null;
+  productionFitEvidence?:GarmentViewerModelManifest["productionFitEvidence"]|null;
+  productionAssetStatus?:GarmentViewerModelManifest["productionAssetStatus"]|null;
   missingPanels:string[];
   invalidPanels:string[];
   reasons:string[];
@@ -114,7 +130,17 @@ export type GarmentViewerManifestValidation = {
 
 export function validateGarmentViewerModelManifest(value:unknown,expectedModelId?:string):GarmentViewerManifestValidation {
   const reasons:string[]=[];
-  if(!value || typeof value!=="object") return {valid:false,sourceReady:false,source:null,missingPanels:[...REQUIRED_GARMENT_VIEWER_MATERIALS],invalidPanels:[],reasons:["Manifest is missing or invalid."]};
+  if(!value || typeof value!=="object") return {
+    valid:false,
+    sourceReady:false,
+    source:null,
+    panelMeasurementEvidence:null,
+    productionFitEvidence:null,
+    productionAssetStatus:null,
+    missingPanels:[...REQUIRED_GARMENT_VIEWER_MATERIALS],
+    invalidPanels:[],
+    reasons:["Manifest is missing or invalid."],
+  };
   const manifest=value as Partial<GarmentViewerModelManifest>;
   if(manifest.version!==GARMENT_VIEWER_CONTRACT_VERSION) reasons.push("Manifest contract version does not match the viewer.");
   if(!String(manifest.modelId||"").trim()) reasons.push("Manifest modelId is required.");
@@ -146,6 +172,48 @@ export function validateGarmentViewerModelManifest(value:unknown,expectedModelId
     ...(String(rawSource?.licenseUrl||"").trim()?{licenseUrl:String(rawSource?.licenseUrl).trim()}:{}),
   }:null;
   if(manifest.modelId!==PROTOTYPE_MODEL_ID&&!sourceReady) reasons.push("Model source provenance is required: source name, license and YYYY-MM-DD verification date.");
+
+  const rawPanelMeasurementEvidence=manifest.panelMeasurementEvidence&&typeof manifest.panelMeasurementEvidence==="object"
+    ?manifest.panelMeasurementEvidence
+    :null;
+  const panelEvidenceSources=new Set(["owner_measured","tailor_measured","pattern_room_measured","supplier_pattern_verified"]);
+  const panelEvidenceSource=String(rawPanelMeasurementEvidence?.source||"");
+  const panelEvidenceMeasuredAt=String(rawPanelMeasurementEvidence?.measuredAt||"").trim();
+  const panelEvidenceNote=String(rawPanelMeasurementEvidence?.note||"").trim();
+  const panelMeasurementEvidence=rawPanelMeasurementEvidence
+    && panelEvidenceSources.has(panelEvidenceSource)
+    && /^\d{4}-\d{2}-\d{2}$/.test(panelEvidenceMeasuredAt)
+    && panelEvidenceNote.length>=8
+      ?{
+        source:panelEvidenceSource as NonNullable<GarmentViewerModelManifest["panelMeasurementEvidence"]>["source"],
+        measuredAt:panelEvidenceMeasuredAt,
+        note:panelEvidenceNote,
+      }
+      :null;
+  if(manifest.panelMeasurementEvidence!==undefined&&!panelMeasurementEvidence) {
+    reasons.push("Panel measurement evidence must include an approved source, YYYY-MM-DD date and meaningful note.");
+  }
+
+  const rawProductionFitEvidence=manifest.productionFitEvidence;
+  const productionFitEvidence=rawProductionFitEvidence&&typeof rawProductionFitEvidence==="object"
+    ?rawProductionFitEvidence
+    :null;
+  if(manifest.productionFitEvidence!==undefined&&!productionFitEvidence) {
+    reasons.push("Production fit evidence must be an object when supplied.");
+  }
+
+  const productionAssetStatuses=new Set([
+    "deterministic-preview-shell-not-realistic-production-asset",
+    "realistic-body-production-candidate",
+  ]);
+  const rawProductionAssetStatus=String(manifest.productionAssetStatus||"");
+  const productionAssetStatus=productionAssetStatuses.has(rawProductionAssetStatus)
+    ?rawProductionAssetStatus as NonNullable<GarmentViewerModelManifest["productionAssetStatus"]>
+    :null;
+  if(manifest.productionAssetStatus!==undefined&&!productionAssetStatus) {
+    reasons.push("Production asset status is not recognized.");
+  }
+
   const panels=manifest.panels&&typeof manifest.panels==="object"?manifest.panels:{};
   const missingPanels=REQUIRED_GARMENT_VIEWER_MATERIALS.filter((name)=>!(name in panels));
   const invalidPanels=REQUIRED_GARMENT_VIEWER_MATERIALS.filter((name)=>{
@@ -162,7 +230,17 @@ export function validateGarmentViewerModelManifest(value:unknown,expectedModelId
   });
   if(missingPanels.length) reasons.push(`Manifest is missing panel dimensions for: ${missingPanels.join(", ")}.`);
   if(invalidPanels.length) reasons.push(`Manifest has invalid panel dimensions for: ${invalidPanels.join(", ")}.`);
-  return {valid:reasons.length===0,sourceReady,source,missingPanels,invalidPanels,reasons};
+  return {
+    valid:reasons.length===0,
+    sourceReady,
+    source,
+    panelMeasurementEvidence,
+    productionFitEvidence,
+    productionAssetStatus,
+    missingPanels,
+    invalidPanels,
+    reasons,
+  };
 }
 
 export function approvedGarmentViewerManifestSource(modelSource:string|undefined|null) {

@@ -161,3 +161,50 @@ test("wrong model identity fails production manifest",()=>{
   assert.equal(drifted.valid,false);
   assert(drifted.reasons.some((reason)=>reason.includes("handCenterSpacing")));
 });
+
+test("production metadata is validated and exposed to the operator gate",()=>{
+  const panels=Object.fromEntries(REQUIRED_GARMENT_VIEWER_MATERIALS.map((name)=>[name,{widthMm:300,heightMm:600}]));
+  const base={
+    version:GARMENT_VIEWER_CONTRACT_VERSION,
+    modelId:"LE-OFFICEWEAR-V1",
+    referenceHeightMm:1727,
+    modelIdentity:MODEL_IDENTITY,
+    source:{name:"Blender Human Base Meshes",license:"CC0",verifiedAt:"2026-10-05"},
+    panels,
+  };
+  const valid=validateGarmentViewerModelManifest({
+    ...base,
+    panelMeasurementEvidence:{
+      source:"tailor_measured",
+      measuredAt:"2026-10-07",
+      note:"Verified from the production pattern-room dimensions.",
+    },
+    productionFitEvidence:{
+      gate:"PASS",
+      identityFitMeasurementsMm:{height:1727},
+      boundaryIntersections:{bodyShirtTorso:0},
+      boundaryClearanceMm:{leftCuffBody:{min:4.2}},
+    },
+    productionAssetStatus:"realistic-body-production-candidate",
+  },"LE-OFFICEWEAR-V1");
+  assert.equal(valid.valid,true);
+  assert.equal(valid.panelMeasurementEvidence?.source,"tailor_measured");
+  assert.equal(valid.productionFitEvidence?.gate,"PASS");
+  assert.equal(valid.productionAssetStatus,"realistic-body-production-candidate");
+
+  const invalid=validateGarmentViewerModelManifest({
+    ...base,
+    panelMeasurementEvidence:{
+      source:"guessed",
+      measuredAt:"today",
+      note:"n/a",
+    },
+    productionAssetStatus:"production-ready",
+  },"LE-OFFICEWEAR-V1");
+  assert.equal(invalid.valid,false);
+  assert.equal(invalid.panelMeasurementEvidence,null);
+  assert.equal(invalid.productionAssetStatus,null);
+  assert(invalid.reasons.some((reason)=>reason.includes("Panel measurement evidence")));
+  assert(invalid.reasons.some((reason)=>reason.includes("asset status")));
+});
+

@@ -104,6 +104,47 @@ def intersection_pair_count(left, right):
     return len(left_tree.overlap(right_tree))
 
 
+def nearest_distance_stats_mm(source, target, z_center=None, band=0.06, max_samples=240):
+    if source is None or target is None or source.type != "MESH" or target.type != "MESH":
+        return None
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    target_tree = BVHTree.FromObject(target, depsgraph, epsilon=0.0)
+    if target_tree is None:
+        return None
+    evaluated = source.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        matrix = evaluated.matrix_world
+        candidates = []
+        for vertex in mesh.vertices:
+            point = matrix @ vertex.co
+            if z_center is not None and abs(point.z - z_center) > band:
+                continue
+            candidates.append(point)
+        if not candidates:
+            return None
+        stride = max(1, len(candidates) // max_samples)
+        distances = []
+        for point in candidates[::stride][:max_samples]:
+            nearest = target_tree.find_nearest(point)
+            if nearest is None or nearest[0] is None:
+                continue
+            distances.append((point - nearest[0]).length * 1000.0)
+        if not distances:
+            return None
+        distances.sort()
+        median = distances[len(distances) // 2]
+        p95 = distances[min(len(distances) - 1, int(round((len(distances) - 1) * 0.95)))]
+        return {
+            "min": round(distances[0], 2),
+            "median": round(median, 2),
+            "p95": round(p95, 2),
+            "samples": len(distances),
+        }
+    finally:
+        evaluated.to_mesh_clear()
+
+
 def guide_world_points(obj):
     if obj is None or obj.type != "CURVE":
         return []
@@ -429,6 +470,7 @@ def main():
         )
 
     boundary_intersections = {}
+    boundary_clearance_mm = {}
     if body is not None:
         boundary_pairs = (
             ("bodyShirtTorso", body, bpy.data.objects.get("ShirtTorsoFabric"), 0),
@@ -447,6 +489,45 @@ def main():
                 reasons.append(
                     f"{key} has {count} intersecting triangle pairs; production garment/body boundaries must be clean."
                 )
+
+        upper_torso_z = body.matrix_world.translation.z + object_height(body) * 0.82
+        waist_z = guide_center_z("LE_GUIDE_SHIRT_WAIST")
+        cuff_z = guide_center_z("LE_GUIDE_LEFT_HAND_CENTER_H")
+        fit_clearance_specs = (
+            ("upperTorsoBody", "ShirtTorsoFabric", upper_torso_z, 0.055, 2.0, 32.0),
+            ("shirtWaistBody", "ShirtTorsoFabric", waist_z, 0.050, 2.0, 28.0),
+            ("leftCuffBody", "ShirtSleeveLFabric", cuff_z, 0.070, 1.5, 32.0),
+            ("rightCuffBody", "ShirtSleeveRFabric", cuff_z, 0.070, 1.5, 32.0),
+            ("trouserWaistBody", "TrouserWaistFabric", trouser_waist_z, 0.050, 2.0, 32.0),
+        )
+        for key, object_name, z_center, band, minimum_mm, maximum_mm in fit_clearance_specs:
+            stats = nearest_distance_stats_mm(bpy.data.objects.get(object_name), body, z_center, band)
+            boundary_clearance_mm[key] = stats
+            if stats is None:
+                warnings.append(f"Could not measure {key} garment/body clearance.")
+                continue
+            if stats["median"] < minimum_mm:
+                reasons.append(
+                    f"{key} median clearance is {stats['median']:.1f} mm; "
+                    f"minimum production fit clearance is {minimum_mm:.1f} mm."
+                )
+            if stats["median"] > maximum_mm:
+                reasons.append(
+                    f"{key} median clearance is {stats['median']:.1f} mm; "
+                    f"maximum production fit clearance is {maximum_mm:.1f} mm."
+                )
+
+        left_leg_span = x_span_at_z(bpy.data.objects.get("TrouserLegLFabric"), left_leg_z, 0.035)
+        right_leg_span = x_span_at_z(bpy.data.objects.get("TrouserLegRFabric"), right_leg_z, 0.035)
+        trouser_gap_mm = (right_leg_span[0] - left_leg_span[1]) * 1000.0 if left_leg_span and right_leg_span else None
+        boundary_clearance_mm["trouserInnerGap"] = round(trouser_gap_mm, 2) if trouser_gap_mm is not None else None
+        if trouser_gap_mm is None:
+            warnings.append("Could not measure trouser inner-leg gap at the locked stance guide.")
+        elif trouser_gap_mm < 6.0:
+            reasons.append(
+                f"Trouser inner-leg gap is {trouser_gap_mm:.1f} mm; "
+                "production stance needs at least 6.0 mm to avoid fused leg silhouettes."
+            )
 
         tuck_overlap = intersection_pair_count(
             bpy.data.objects.get("ShirtTorsoFabric"),
@@ -477,6 +558,7 @@ def main():
         "identityGuideMeasurementsMm": guide_measurements,
         "identityFitMeasurementsMm": identity_measurements,
         "boundaryIntersections": boundary_intersections,
+        "boundaryClearanceMm": boundary_clearance_mm,
         "requiredGarmentObjects": list(GARMENT_OBJECTS),
         "objects": objects,
         "totals": {
@@ -491,6 +573,7 @@ def main():
     print(json.dumps(report, indent=2))
     if reasons:
         raise SystemExit(1)
+    return report
 
 
 if __name__ == "__main__":

@@ -115,18 +115,29 @@ async function verifyViewport(browser, width) {
   const buttons = page.locator(".garmentCameraRail button");
   assert.equal(await buttons.count(), 4);
   const canvas=page.locator(".garmentViewerCanvas");
+  const cdp=await context.newCDPSession(page);
   const captureCanvas=async(name)=>{
     if(width!==1440) return;
-    // model-viewer continuously animates its render surface, so Locator.screenshot can wait
-    // forever for DOM stability. Capture the already-laid-out bounding box directly instead.
+    // model-viewer continuously invalidates the compositor. Playwright's screenshot helper can
+    // spend its full timeout waiting for a stable frame even when layout/fonts are already ready.
+    // Capture the composed Chromium surface directly so evidence collection cannot block the gate.
     await page.waitForTimeout(180);
     const box=await canvas.boundingBox();
     assert.ok(box&&box.width>0&&box.height>0,"3D evidence canvas must have a measurable viewport");
-    await page.screenshot({
-      path:path.join(output,name),
-      clip:{x:Math.max(0,box.x),y:Math.max(0,box.y),width:box.width,height:box.height},
-      animations:"disabled",
+    const viewport=page.viewportSize();
+    assert.ok(viewport,"3D evidence capture requires a fixed browser viewport");
+    const x=Math.max(0,Math.min(box.x,viewport.width-1));
+    const y=Math.max(0,Math.min(box.y,viewport.height-1));
+    const clipWidth=Math.max(1,Math.min(box.width,viewport.width-x));
+    const clipHeight=Math.max(1,Math.min(box.height,viewport.height-y));
+    const shot=await cdp.send("Page.captureScreenshot",{
+      format:"png",
+      fromSurface:true,
+      captureBeyondViewport:false,
+      clip:{x,y,width:clipWidth,height:clipHeight,scale:1},
     });
+    assert.ok(shot?.data,"Chromium must return 3D evidence screenshot bytes");
+    await fs.writeFile(path.join(output,name),Buffer.from(shot.data,"base64"));
   };
   const selectCamera=async(label,orbitPrefix,activeView)=>{
     let lastError=null;
