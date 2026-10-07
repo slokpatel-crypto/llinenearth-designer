@@ -32,9 +32,9 @@ export default async function GarmentViewerOperatorPage(){
       <nav><Link href="/lab/garment-viewer">Open 3D Lab ↗</Link><Link href="/operator">Operator Desk</Link></nav>
     </header>
 
-    <section className="garmentQaHero" data-ready={status.assetReady}>
-      <small>APPROVED PRODUCTION ASSET</small>
-      <strong>{status.assetReady?"STRUCTURE READY":"NOT READY"}</strong>
+    <section className="garmentQaHero" data-ready={status.assetReady&&manifest?.productionAssetReady===true}>
+      <small>PRODUCTION ASSET STATUS</small>
+      <strong>{status.assetReady&&manifest?.productionAssetReady===true?"REALISTIC CANDIDATE READY":status.assetReady?"STRUCTURE READY / EVIDENCE OPEN":"NOT READY"}</strong>
       <p>{status.configured ? status.modelSrc : "LINEN_GARMENT_MODEL_SRC is not configured."}</p>
       {manifest?.productionAssetStatus&&<p><b>Asset status:</b> {manifest.productionAssetStatus}</p>}
     </section>
@@ -101,6 +101,7 @@ export default async function GarmentViewerOperatorPage(){
         {([
           ["Model contract",latest.readiness.contractReady],
           ["Physical manifest",latest.readiness.manifestReady],
+          ["Realistic production candidate",latest.readiness.productionAssetReady],
           ["Stripe + check scale",latest.readiness.scaleReady],
           ["Interaction p95",latest.readiness.latencyReady],
           ["Independent realism",latest.readiness.realismReady],
