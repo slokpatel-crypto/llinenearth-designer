@@ -121,22 +121,22 @@ def studio_setup(body):
     add_area_light(
         "LE_REVIEW_KEY",
         Vector((-1.55, -2.00, frame["min_z"] + frame["height"] * 1.15)),
-        900,
-        1.7,
+        170,
+        1.8,
         target,
     )
     add_area_light(
         "LE_REVIEW_FILL",
         Vector((1.55, -1.25, frame["min_z"] + frame["height"] * 0.85)),
-        520,
-        1.4,
+        85,
+        1.6,
         target,
     )
     add_area_light(
         "LE_REVIEW_RIM",
         Vector((0.0, 1.75, frame["min_z"] + frame["height"] * 1.05)),
-        700,
-        1.2,
+        125,
+        1.4,
         target,
     )
 
@@ -164,9 +164,10 @@ def configure_scene(options):
     background = world.node_tree.nodes.get("Background")
     if background is not None:
         background.inputs["Color"].default_value = rgba("#F8F6F0")
-        background.inputs["Strength"].default_value = 0.55
+        background.inputs["Strength"].default_value = 0.32
 
     scene.view_settings.look = "AgX - Medium High Contrast"
+    scene.view_settings.exposure = -0.65
 
 
 def main():
@@ -182,9 +183,9 @@ def main():
     if missing:
         raise RuntimeError("Review render is missing garment objects: " + ", ".join(missing))
 
-    skin = material("LE_REVIEW_SKIN", "#BFA58F", 0.64)
-    shirt = material("LE_REVIEW_SHIRT", "#EEE8DC", 0.72)
-    trouser = material("LE_REVIEW_TROUSER", "#4B5360", 0.70)
+    skin = material("LE_REVIEW_SKIN", "#A97C62", 0.58)
+    shirt = material("LE_REVIEW_SHIRT", "#E2D8C8", 0.78)
+    trouser = material("LE_REVIEW_TROUSER", "#303843", 0.74)
     assign_material(body, skin)
     for name in SHIRT_OBJECTS:
         assign_material(bpy.data.objects.get(name), shirt)
