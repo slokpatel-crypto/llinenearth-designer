@@ -857,6 +857,13 @@ const mandarinCollar=profileGeometry({
   ],
   segments:32,
 });
+const neckGasket=profileGeometry({
+  rings:[
+    {y:-.014,width:.066,depth:.052,z:0},
+    {y:.014,width:.066,depth:.052,z:0},
+  ],
+  segments:32,
+});
 const roundedCuff=extrudedPolygonGeometry([
   [-.50,.50],[.50,.50],[.50,-.20],[.47,-.33],[.37,-.44],[.20,-.50],
   [-.20,-.50],[-.37,-.44],[-.47,-.33],[-.50,-.20],
@@ -957,6 +964,9 @@ const styleVariantMaterials=[
   ...styleVariants.collars.flatMap((item)=>styleVariants.collarConstruction.map((construction)=>
     addVariantMaterial(`ShirtCollarVariant__${item.id}__${construction.id}`,"shirt")
   )),
+  ...styleVariants.collars.filter((item)=>!["camp","one_piece","mandarin"].includes(item.id)).map((item)=>
+    addVariantMaterial(`ShirtNeckGasketVariant__${item.id}`,"shirt")
+  ),
   ...styleVariants.cuffs.flatMap((item)=>styleVariants.cuffConstruction.map((construction)=>
     addVariantMaterial(`ShirtCuffVariant__${item.id}__${construction.id}`,"shirt")
   )),
@@ -1175,6 +1185,10 @@ for(const rise of styleVariants.rises){
   }
 }
 
+const neckGasketMeshes=Object.fromEntries(styleVariants.collars.filter((item)=>!["camp","one_piece","mandarin"].includes(item.id)).map((item)=>[
+  item.id,
+  addMesh(`ShirtNeckGasketVariantMesh__${item.id}`,neckGasket,`ShirtNeckGasketVariant__${item.id}`)
+]));
 const collarVariantMeshes={};
 for(const item of styleVariants.collars){
   collarVariantMeshes[item.id]={};
@@ -1401,6 +1415,16 @@ for(const item of styleVariants.collars){
       rotation:qz(spec.angle+build.angle)
     });
   }
+}
+
+for(const item of styleVariants.collars){
+  if(!neckGasketMeshes[item.id]) continue;
+  nodes.push({
+    name:`ShirtNeckGasketVariant__${item.id}`,
+    mesh:neckGasketMeshes[item.id],
+    translation:[0,1.474,.006],
+    scale:[1,1,1]
+  });
 }
 // Cuff families.
 const cuffSpec={
@@ -1911,7 +1935,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.19 model complete: researched shirt/trouser construction geometry + fit-aware sleeves + persistent tailored front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist shell/fly/waistband/button/pleat/pocket details + pleat/back ease + collar/cuff stiffness + construction-aware closures/cufflinks + tuxedo front pleats + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
+    polishStage:"M7.20 model complete: researched shirt/trouser construction geometry + collar-neck junction seal + fit-aware sleeves + persistent tailored front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist shell/fly/waistband/button/pleat/pocket details + pleat/back ease + collar/cuff stiffness + construction-aware closures/cufflinks + tuxedo front pleats + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
