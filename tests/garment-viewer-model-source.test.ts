@@ -138,6 +138,8 @@ test("Blender preflight performs world-space collision and clearance checks",()=
   }
   assert(!source.includes("BVHTree.FromObject(left"));
   assert(!source.includes("BVHTree.FromObject(target"));
+  assert(!source.includes("mesh.polygons[::stride]"));
+  assert(source.includes("for polygon_index in range(0, len(mesh.polygons), stride)"));
 });
 
 test("Blender exporter carries fit and boundary preflight evidence into the production manifest",()=>{
