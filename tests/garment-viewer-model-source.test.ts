@@ -66,6 +66,10 @@ test("realistic body intake is explicit, licensed and does not fake garment geom
     'SOURCE_LICENSE = "CC0"',
     "discover_candidate",
     "normalize_height",
+    "center_body_xy",
+    "apply_body_transforms",
+    "align_arm_stance_to_identity",
+    "linen_earth_arm_stance_json",
     "linen_earth_asset_status",
     "body-source-prepared-garments-required",
     "No production GLB has been approved",
@@ -89,6 +93,12 @@ test("realistic-body garment authoring creates the six canonical production shel
     "CORRECTIVE_SMOOTH",
     "SOLIDIFY",
     "planar_grain_uv",
+    "shape_officewear_to_identity",
+    "scale_x_profile",
+    "shift_x_profile",
+    "shirt_clearance_m",
+    "trouser_clearance_m",
+    "linen_earth_identity_fit_profile_json",
     "auto-authored-production-candidate-needs-tailor-review",
   ]) assert(source.includes(token),token);
 });
@@ -101,6 +111,15 @@ test("deterministic shell and Blender production candidate are explicitly distin
   assert(builder.includes("realistic production asset still requires Blender-source fit/evidence"));
   assert(exporter.includes("realistic-body-production-candidate"));
   assert(contract.includes('"deterministic-preview-shell-not-realistic-production-asset"|"realistic-body-production-candidate"'));
+});
+
+test("Blender preflight performs world-space collision and clearance checks",()=>{
+  const source=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
+  for(const token of ["world_bvh","BVHTree.FromPolygons","evaluated.matrix_world","intersection_pair_count","nearest_distance_stats_mm"]) {
+    assert(source.includes(token),token);
+  }
+  assert(!source.includes("BVHTree.FromObject(left"));
+  assert(!source.includes("BVHTree.FromObject(target"));
 });
 
 test("Blender exporter carries fit and boundary preflight evidence into the production manifest",()=>{
