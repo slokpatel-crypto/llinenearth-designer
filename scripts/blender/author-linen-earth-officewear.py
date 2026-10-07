@@ -16,6 +16,7 @@ import sys
 from pathlib import Path
 
 import bpy
+import bmesh
 from mathutils import Vector
 
 BODY_NAME = "Body"
@@ -120,6 +121,36 @@ def apply_modifier(obj, modifier):
         bpy.ops.object.modifier_apply(modifier=modifier.name)
     finally:
         obj.select_set(False)
+
+
+def smooth_open_boundaries(obj, iterations=5, factor=0.42):
+    mesh = obj.data
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    try:
+        boundary = {vertex for edge in bm.edges if edge.is_boundary for vertex in edge.verts}
+        if not boundary:
+            return
+        for _ in range(iterations):
+            updates = {}
+            for vertex in boundary:
+                neighbors = [
+                    edge.other_vert(vertex)
+                    for edge in vertex.link_edges
+                    if edge.other_vert(vertex) in boundary
+                ]
+                if len(neighbors) < 2:
+                    neighbors = [edge.other_vert(vertex) for edge in vertex.link_edges]
+                if not neighbors:
+                    continue
+                average = sum((neighbor.co for neighbor in neighbors), Vector()) / len(neighbors)
+                updates[vertex] = vertex.co.lerp(average, factor)
+            for vertex, position in updates.items():
+                vertex.co = position
+        bm.to_mesh(mesh)
+        mesh.update()
+    finally:
+        bm.free()
 
 
 def fit_shell(obj, body, clearance_m, thickness_m):
@@ -397,6 +428,7 @@ def main():
     authored = {}
     for name, predicate in regions.items():
         obj = selected_shell(body, name, predicate)
+        smooth_open_boundaries(obj)
         garment_clearance = shirt_clearance_m if name.startswith("Shirt") else trouser_clearance_m
         fit_shell(obj, body, garment_clearance, thickness_m)
         obj["linen_earth_auto_authored"] = True
@@ -414,6 +446,7 @@ def main():
     bpy.context.scene["linen_earth_shirt_clearance_mm"] = round(shirt_clearance_m * 1000.0, 3)
     bpy.context.scene["linen_earth_trouser_clearance_mm"] = round(trouser_clearance_m * 1000.0, 3)
     bpy.context.scene["linen_earth_identity_fit_profile_json"] = json.dumps(fit_profile, sort_keys=True)
+    bpy.context.scene["linen_earth_boundary_smoothing"] = "open-edge-laplacian-v1"
     bpy.context.scene["linen_earth_garment_thickness_mm"] = round(thickness_m * 1000.0, 3)
 
     output = Path(options.output).expanduser().resolve()
