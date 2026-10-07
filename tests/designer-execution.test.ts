@@ -65,7 +65,11 @@ test("direction counts stay bounded and oversized requests disclose the limit",(
   const result=ask("Design five outfit directions");assert.ok(result.results.length<=3);assert.match(result.advice.designPlan.notes.join(" "),/three reviewed directions/);
 });
 test("unmapped reference collars and exact image-copy requests need clarification",()=>{
-  for(const brief of ["Design a British collar shirt","Design an outfit identical to the image"]){const result=ask(brief);assert.equal(result.advice.task,"clarify");assert.deepEqual(result.results,[]);}
+  for(const brief of ["Design a sailor collar shirt","Design an outfit identical to the image"]){const result=ask(brief);assert.equal(result.advice.task,"clarify");assert.deepEqual(result.results,[]);}
+});
+test("researched British collar is now a supported construction",()=>{
+  const result=ask("Design a British collar shirt");assert.ok(result.results.length);
+  for(const direction of result.results) assert.equal(direction.style.collar,"English Spread / British Collar");
 });
 test("proposal cards disclose which construction choices are still photographic approximations",()=>{
   const result=ask("Keep both fabrics. Use mandarin collar and horn buttons");assert.ok(result.results.length);assert.ok(result.results[0].previewNotes.some((s:string)=>/Mandarin.*point-collar/.test(s)));assert.ok(result.results[0].previewNotes.some((s:string)=>/Horn.*specification-only/.test(s)));
