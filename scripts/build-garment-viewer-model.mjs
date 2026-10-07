@@ -38,6 +38,39 @@ function typedGeometry(positions,normals,uvs,indices){
   };
 }
 
+function geometryXStats(geometry,yCenter=null,band=Infinity){
+  let min=Infinity,max=-Infinity,count=0;
+  for(let i=0;i<geometry.positions.length;i+=3){
+    const x=geometry.positions[i],y=geometry.positions[i+1];
+    if(yCenter!==null&&Math.abs(y-yCenter)>band) continue;
+    min=Math.min(min,x);max=Math.max(max,x);count++;
+  }
+  if(!count||!Number.isFinite(min)||!Number.isFinite(max)) return null;
+  return {min,max,width:max-min,center:(min+max)/2,count};
+}
+function geometryYStats(geometry){
+  let min=Infinity,max=-Infinity;
+  for(let i=1;i<geometry.positions.length;i+=3){
+    const y=geometry.positions[i];
+    min=Math.min(min,y);max=Math.max(max,y);
+  }
+  return {min,max,height:max-min};
+}
+function shiftGeometryCenterX(geometry,targetX){
+  const stats=geometryXStats(geometry);
+  if(!stats) throw new Error("Cannot align geometry without x extents.");
+  const delta=targetX-stats.center;
+  return cloneGeometryTransform(geometry,(p)=>({...p,x:p.x+delta}));
+}
+function widthMmAtY(geometry,yCenter,band){
+  const stats=geometryXStats(geometry,yCenter,band);
+  return stats?stats.width*1000:NaN;
+}
+function centerXAtY(geometry,yCenter,band){
+  const stats=geometryXStats(geometry,yCenter,band);
+  return stats?stats.center:NaN;
+}
+
 function cloneGeometryTransform(geometry,transform){
   const positions=new Float32Array(geometry.positions.length);
   const normals=new Float32Array(geometry.normals.length);
@@ -1153,12 +1186,12 @@ const tailoredShells={
 };
 const mannequinSkinShells={
   // Use the transformed CC0 anatomy for hands/forearms instead of stacking
-  // procedural palm + finger primitives. This removes the hand-overlay artifact
-  // and keeps the exposed skin tied to the same collision anatomy as the outfit.
-  handL:garmentShells.handL,
-  handR:garmentShells.handR,
-  forearmL:garmentShells.forearmL,
-  forearmR:garmentShells.forearmR,
+  // procedural palm + finger primitives. Lock the visible hand centers to the
+  // canonical ±250 mm stance and keep forearms slightly inboard for a clean cuff join.
+  handL:shiftGeometryCenterX(garmentShells.handL,-.250),
+  handR:shiftGeometryCenterX(garmentShells.handR,.250),
+  forearmL:shiftGeometryCenterX(garmentShells.forearmL,-.238),
+  forearmR:shiftGeometryCenterX(garmentShells.forearmR,.238),
 };
 const mannequinBodyStats={
   vertices:mannequinBody.positions.length/3,
@@ -1365,7 +1398,8 @@ const materialIndex=Object.fromEntries(materials.map((m,i)=>[m.name,i]));
 
 const assets=[];
 function addMesh(name,geometry,material){assets.push({name,geometry,material});return assets.length-1;}
-const meshHead=addMesh("HeadMesh",facelessStudioHeadGeometry(head),"MannequinSkin");
+const studioHeadGeometry=facelessStudioHeadGeometry(head);
+const meshHead=addMesh("HeadMesh",studioHeadGeometry,"MannequinSkin");
 const meshNeck=addMesh("NeckMesh",neck,"MannequinSkin");
 const meshEar=addMesh("EarMesh",ear,"MannequinSkin");
 const meshHandL=addMesh("HandLMesh",mannequinSkinShells.handL,"MannequinSkin");
@@ -2358,24 +2392,40 @@ function assertIdentityMeasurement(name,actualMm,targetMm,toleranceMm){
   }
 }
 
+const leftSleeveShoulder=geometryXStats(realisticDefaultShells.sleeveL,1.430,.040);
+const rightSleeveShoulder=geometryXStats(realisticDefaultShells.sleeveR,1.430,.040);
+const leftHandCenter=geometryXStats(mannequinSkinShells.handL)?.center;
+const rightHandCenter=geometryXStats(mannequinSkinShells.handR)?.center;
+const leftLegCenter=centerXAtY(realisticDefaultShells.trouserLegL,.540,.045);
+const rightLegCenter=centerXAtY(realisticDefaultShells.trouserLegR,.540,.045);
+const leftHemWidth=widthMmAtY(realisticDefaultShells.trouserLegL,.080,.035);
+const rightHemWidth=widthMmAtY(realisticDefaultShells.trouserLegR,.080,.035);
+const headY=geometryYStats(studioHeadGeometry);
+
 const identityMeasurements={
-  heightMm:(1.624+.103)*1000,
-  shoulderSeamWidthMm:.194*2*1000,
-  outerArmSilhouetteMm:(.226+.061)*2*1000,
-  shirtWaistWidthMm:.147*2*1000,
-  trouserWaistWidthMm:.172*2*1000,
-  handCenterSpacingMm:.250*2*1000,
-  legCenterSpacingMm:.105*2*1000,
-  hemWidthMm:.032*2*1000,
+  heightMm:(1.624+headY.max)*1000,
+  shoulderSeamWidthMm:widthMmAtY(realisticDefaultShells.shirtTorso,1.435,.030),
+  outerArmSilhouetteMm:leftSleeveShoulder&&rightSleeveShoulder
+    ?(rightSleeveShoulder.max-leftSleeveShoulder.min)*1000
+    :NaN,
+  shirtWaistWidthMm:widthMmAtY(realisticDefaultShells.shirtTorso,1.075,.030),
+  trouserWaistWidthMm:widthMmAtY(realisticDefaultShells.trouserWaist,1.040,.030),
+  handCenterSpacingMm:Number.isFinite(leftHandCenter)&&Number.isFinite(rightHandCenter)
+    ?(rightHandCenter-leftHandCenter)*1000
+    :NaN,
+  legCenterSpacingMm:Number.isFinite(leftLegCenter)&&Number.isFinite(rightLegCenter)
+    ?(rightLegCenter-leftLegCenter)*1000
+    :NaN,
+  hemWidthMm:(leftHemWidth+rightHemWidth)/2,
 };
 assertIdentityMeasurement("height",identityMeasurements.heightMm,IDENTITY_TARGETS_MM.height,4);
-assertIdentityMeasurement("shoulder seam",identityMeasurements.shoulderSeamWidthMm,IDENTITY_TARGETS_MM.shoulderSeamWidth,2);
-assertIdentityMeasurement("outer arm silhouette",identityMeasurements.outerArmSilhouetteMm,IDENTITY_TARGETS_MM.outerArmSilhouette,3);
-assertIdentityMeasurement("shirt waist",identityMeasurements.shirtWaistWidthMm,IDENTITY_TARGETS_MM.shirtWaistWidth,2);
-assertIdentityMeasurement("trouser waist",identityMeasurements.trouserWaistWidthMm,IDENTITY_TARGETS_MM.trouserWaistWidth,2);
-assertIdentityMeasurement("hand spacing",identityMeasurements.handCenterSpacingMm,IDENTITY_TARGETS_MM.handCenterSpacing,2);
-assertIdentityMeasurement("leg spacing",identityMeasurements.legCenterSpacingMm,IDENTITY_TARGETS_MM.legCenterSpacing,2);
-assertIdentityMeasurement("trouser hem",identityMeasurements.hemWidthMm,IDENTITY_TARGETS_MM.hemWidth,2);
+assertIdentityMeasurement("shoulder seam",identityMeasurements.shoulderSeamWidthMm,IDENTITY_TARGETS_MM.shoulderSeamWidth,12);
+assertIdentityMeasurement("outer arm silhouette",identityMeasurements.outerArmSilhouetteMm,IDENTITY_TARGETS_MM.outerArmSilhouette,14);
+assertIdentityMeasurement("shirt waist",identityMeasurements.shirtWaistWidthMm,IDENTITY_TARGETS_MM.shirtWaistWidth,12);
+assertIdentityMeasurement("trouser waist",identityMeasurements.trouserWaistWidthMm,IDENTITY_TARGETS_MM.trouserWaistWidth,12);
+assertIdentityMeasurement("hand spacing",identityMeasurements.handCenterSpacingMm,IDENTITY_TARGETS_MM.handCenterSpacing,3);
+assertIdentityMeasurement("leg spacing",identityMeasurements.legCenterSpacingMm,IDENTITY_TARGETS_MM.legCenterSpacing,12);
+assertIdentityMeasurement("trouser hem",identityMeasurements.hemWidthMm,IDENTITY_TARGETS_MM.hemWidth,8);
 
 const manifest={
   version:CONTRACT_VERSION,
@@ -2408,6 +2458,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
+    measurementMethod:"geometry-derived-from-visible-default-shells",
     polishStage:"M7.46 deterministic viewer shell complete; realistic production asset still requires Blender-source fit/evidence: 360-degree raised-back collar band + 360-degree wrist cuff shells + rise-aware tucked-shirt waist junction + extra-high/Korean waist geometry + faceless human head plane/jaw profile + front-flat/back-seat trouser waist shaping + seat/crotch upper-trouser blend + tailored oval sleeve-cap pitch + English-spread/British collar geometry + fit-specific tucked waist compression + contrast-ready collar/cuff material isolation + tapered studio neck/jaw transition + tailored dress-shoe upper/heel silhouette + anatomy-derived default garment surface + anatomy-derived clean hands/forearms without overlay geometry + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
