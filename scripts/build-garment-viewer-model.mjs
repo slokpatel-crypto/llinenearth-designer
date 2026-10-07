@@ -1112,15 +1112,20 @@ const exposedArmMeshes={};
 for(const sleeve of styleVariants.sleeves){
   if(sleeve.id==="full") continue;
   const cutY=exposedArmCutY[sleeve.id]??1.075;
+  const armSourceTop=cutY+.17;
+  const armTransform=(p)=>({
+    ...p,
+    y:.905+Math.max(0,Math.min(1,(p.y-.88)/Math.max(.001,armSourceTop-.88)))*(cutY-.905),
+  });
   exposedArmMeshes[sleeve.id]={
     left:addMesh(
       `MannequinSkinArmLVariantMesh__${sleeve.id}`,
-      cropGeometry(mannequinSkinShells.forearmL,(p)=>p.y>=.905&&p.y<=cutY),
+      cropGeometry(mannequinSkinShells.forearmL,(p)=>p.y>=.88&&p.y<=armSourceTop,armTransform),
       `MannequinSkinArmVariant__${sleeve.id}`
     ),
     right:addMesh(
       `MannequinSkinArmRVariantMesh__${sleeve.id}`,
-      cropGeometry(mannequinSkinShells.forearmR,(p)=>p.y>=.905&&p.y<=cutY),
+      cropGeometry(mannequinSkinShells.forearmR,(p)=>p.y>=.88&&p.y<=armSourceTop,armTransform),
       `MannequinSkinArmVariant__${sleeve.id}`
     ),
   };
