@@ -75,6 +75,19 @@ test("panel spec template cannot pass as guessed production scale",()=>{
   assert(exporter.includes("heightMm must be a measured value between 0 and 2500 mm"));
 });
 
+test("Blender scene preflight verifies canonical identity guide geometry",()=>{
+  const source=read("scripts/blender/preflight-linen-earth-officewear.py");
+  for(const token of [
+    "identityGuideMeasurementsMm",
+    "guide_length_mm",
+    "guide_center",
+    "LE_GUIDE_OUTER_ARM_SILHOUETTE",
+    "handCenterSpacing",
+    "legCenterSpacing",
+    "must remain non-rendering",
+  ]) assert(source.includes(token),`missing guide QA token: ${token}`);
+});
+
 test("Blender scene preflight catches structural garment quality risks without requiring watertight clothing",()=>{
   const preflight=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
   for(const token of [
