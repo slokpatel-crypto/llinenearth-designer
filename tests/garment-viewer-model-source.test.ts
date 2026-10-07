@@ -125,6 +125,17 @@ test("production scene assembly chains realistic body preparation, garment autho
   ]) assert(source.includes(token),token);
 });
 
+test("operator reviewer evidence is locked to a realistic production candidate",()=>{
+  const page=readFileSync("src/app/operator/garment-viewer/page.tsx","utf8");
+  const form=readFileSync("src/app/operator/garment-viewer/GarmentViewerEvidenceForm.tsx","utf8");
+  const server=readFileSync("src/lib/garment-viewer-model-server.ts","utf8");
+  assert(page.includes("productionCandidateReady={status.productionCandidateReady}"));
+  assert(page.includes("STRUCTURE READY / EVIDENCE OPEN"));
+  assert(form.includes("productionCandidateReady:boolean"));
+  assert(form.includes("realistic production candidate with measured-panel and passed Blender fit evidence"));
+  assert(server.includes("const productionCandidateReady=Boolean(assetReady&&manifest?.productionAssetReady===true)"));
+});
+
 test("production 3D export command runs Blender export and structural validation in one path",()=>{
   const packageJson=JSON.parse(readFileSync("package.json","utf8"));
   const source=readFileSync("scripts/build-production-garment-model.mjs","utf8");
