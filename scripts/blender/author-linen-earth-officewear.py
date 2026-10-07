@@ -31,6 +31,16 @@ GARMENT_OBJECTS = (
     "TrouserLegRFabric",
 )
 
+TAILOR_DETAIL_OBJECTS = (
+    "LE_ShirtCollarBand",
+    "LE_ShirtCollarWingL",
+    "LE_ShirtCollarWingR",
+    "LE_ShirtPlacket",
+    "LE_ShirtCuffL",
+    "LE_ShirtCuffR",
+    "LE_TrouserWaistband",
+)
+
 
 def cli_args():
     argv = sys.argv
@@ -350,6 +360,167 @@ def shape_officewear_to_identity(authored, body, targets):
     }
 
 
+def assign_shared_material(obj, material_name):
+    material = bpy.data.materials.get(material_name)
+    if material is None:
+        material = bpy.data.materials.new(name=material_name)
+        material.use_nodes = True
+    obj.data.materials.clear()
+    obj.data.materials.append(material)
+    for polygon in obj.data.polygons:
+        polygon.material_index = 0
+    return material
+
+
+def front_y_at_z(body, z_world, band=0.035, x_half=0.10):
+    matrix = body.matrix_world
+    ys = []
+    for vertex in body.data.vertices:
+        point = matrix @ vertex.co
+        if abs(point.z - z_world) <= band and abs(point.x) <= x_half:
+            ys.append(point.y)
+    if not ys:
+        points = world_bounds(body)
+        return min(point.y for point in points)
+    return min(ys)
+
+
+def create_box_detail(name, location, dimensions, material_name, rotation=(0.0, 0.0, 0.0)):
+    remove_existing(name)
+    bpy.ops.mesh.primitive_cube_add(size=1.0, location=location, rotation=rotation)
+    obj = bpy.context.object
+    obj.name = name
+    obj.dimensions = dimensions
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    bevel = obj.modifiers.new("LE_DETAIL_BEVEL", "BEVEL")
+    bevel.width = min(dimensions) * 0.22
+    bevel.segments = 2
+    apply_modifier(obj, bevel)
+    assign_shared_material(obj, material_name)
+    collection = bpy.data.collections.get(EXPORT_COLLECTION)
+    if collection is not None and collection.objects.get(obj.name) is None:
+        collection.objects.link(obj)
+    planar_grain_uv(obj)
+    obj["linen_earth_base_tailoring_detail"] = True
+    return obj
+
+
+def create_button_detail(name, location):
+    remove_existing(name)
+    bpy.ops.mesh.primitive_cylinder_add(
+        vertices=24,
+        radius=0.0062,
+        depth=0.0045,
+        location=location,
+        rotation=(math.radians(90.0), 0.0, 0.0),
+    )
+    obj = bpy.context.object
+    obj.name = name
+    material = bpy.data.materials.get("LE_BUTTON_MATERIAL") or bpy.data.materials.new(name="LE_BUTTON_MATERIAL")
+    material.use_nodes = True
+    principled = material.node_tree.nodes.get("Principled BSDF")
+    if principled is not None:
+        principled.inputs["Base Color"].default_value = (0.11, 0.085, 0.065, 1.0)
+        principled.inputs["Roughness"].default_value = 0.36
+        if "Metallic" in principled.inputs:
+            principled.inputs["Metallic"].default_value = 0.08
+    obj.data.materials.append(material)
+    collection = bpy.data.collections.get(EXPORT_COLLECTION)
+    if collection is not None and collection.objects.get(obj.name) is None:
+        collection.objects.link(obj)
+    obj["linen_earth_base_tailoring_detail"] = True
+    return obj
+
+
+def author_base_tailoring_details(body, frame, shirt_clearance_m, trouser_clearance_m, thickness_m):
+    for name in (*TAILOR_DETAIL_OBJECTS, *[f"LE_ShirtButton{i}" for i in range(1, 6)]):
+        remove_existing(name)
+
+    center_x = frame["centerX"]
+    min_z = frame["minZ"]
+    height = frame["height"]
+    shoulder_z = guide_center_z("LE_GUIDE_SHIRT_SHOULDER") or min_z + height * 0.84
+    shirt_waist_z = guide_center_z("LE_GUIDE_SHIRT_WAIST") or min_z + height * 0.65
+    trouser_waist_z = guide_center_z("LE_GUIDE_TROUSER_WAIST") or min_z + height * 0.62
+    hand_z = guide_center_z("LE_GUIDE_LEFT_HAND_CENTER_H") or min_z + height * 0.54
+
+    details = []
+
+    collar_band = selected_shell(
+        body,
+        "LE_ShirtCollarBand",
+        lambda p: shoulder_z + 0.005 <= p.z <= shoulder_z + 0.072 and abs(p.x-center_x) <= 0.135,
+    )
+    smooth_open_boundaries(collar_band, iterations=6, factor=0.46)
+    fit_shell(collar_band, body, shirt_clearance_m + 0.0045, max(0.0010, thickness_m * 0.8))
+    assign_shared_material(collar_band, "ShirtTorsoFabric")
+    planar_grain_uv(collar_band)
+    collar_band["linen_earth_base_tailoring_detail"] = True
+    details.append(collar_band)
+
+    collar_front_y = front_y_at_z(body, shoulder_z + 0.035, 0.045, 0.12) - shirt_clearance_m - 0.010
+    details.append(create_box_detail(
+        "LE_ShirtCollarWingL",
+        (center_x - 0.038, collar_front_y, shoulder_z + 0.030),
+        (0.052, 0.011, 0.092),
+        "ShirtTorsoFabric",
+        rotation=(0.0, math.radians(-24.0), 0.0),
+    ))
+    details.append(create_box_detail(
+        "LE_ShirtCollarWingR",
+        (center_x + 0.038, collar_front_y, shoulder_z + 0.030),
+        (0.052, 0.011, 0.092),
+        "ShirtTorsoFabric",
+        rotation=(0.0, math.radians(24.0), 0.0),
+    ))
+
+    placket_top = shoulder_z - 0.020
+    placket_bottom = shirt_waist_z + 0.025
+    placket_z = (placket_top + placket_bottom) * 0.5
+    placket_front_y = front_y_at_z(body, placket_z, 0.10, 0.075) - shirt_clearance_m - 0.009
+    details.append(create_box_detail(
+        "LE_ShirtPlacket",
+        (center_x, placket_front_y, placket_z),
+        (0.026, 0.006, max(0.24, placket_top - placket_bottom)),
+        "ShirtTorsoFabric",
+    ))
+
+    button_top = placket_top - 0.040
+    button_bottom = placket_bottom + 0.045
+    for index in range(5):
+        t = index / 4.0
+        z_value = button_top + (button_bottom - button_top) * t
+        y_value = front_y_at_z(body, z_value, 0.045, 0.060) - shirt_clearance_m - 0.014
+        details.append(create_button_detail(f"LE_ShirtButton{index+1}", (center_x, y_value, z_value)))
+
+    for name, side in (("LE_ShirtCuffL", -1), ("LE_ShirtCuffR", 1)):
+        cuff = selected_shell(
+            body,
+            name,
+            lambda p, side=side: hand_z + 0.020 <= p.z <= hand_z + 0.088 and (p.x-center_x) * side >= 0.145,
+        )
+        smooth_open_boundaries(cuff, iterations=6, factor=0.48)
+        fit_shell(cuff, body, shirt_clearance_m + 0.0040, max(0.0010, thickness_m * 0.9))
+        assign_shared_material(cuff, "ShirtSleeveLFabric" if side < 0 else "ShirtSleeveRFabric")
+        planar_grain_uv(cuff)
+        cuff["linen_earth_base_tailoring_detail"] = True
+        details.append(cuff)
+
+    waistband = selected_shell(
+        body,
+        "LE_TrouserWaistband",
+        lambda p: trouser_waist_z - 0.030 <= p.z <= trouser_waist_z + 0.030 and abs(p.x-center_x) <= 0.205,
+    )
+    smooth_open_boundaries(waistband, iterations=6, factor=0.46)
+    fit_shell(waistband, body, trouser_clearance_m + 0.0035, max(0.0010, thickness_m * 0.9))
+    assign_shared_material(waistband, "TrouserWaistFabric")
+    planar_grain_uv(waistband)
+    waistband["linen_earth_base_tailoring_detail"] = True
+    details.append(waistband)
+
+    return details
+
+
 def planar_grain_uv(obj):
     mesh = obj.data
     if not mesh.uv_layers:
@@ -439,6 +610,13 @@ def main():
     fit_profile = shape_officewear_to_identity(authored, body, targets)
     for obj in authored.values():
         planar_grain_uv(obj)
+    tailoring_details = author_base_tailoring_details(
+        body,
+        frame,
+        shirt_clearance_m,
+        trouser_clearance_m,
+        thickness_m,
+    )
 
     bpy.context.scene["linen_earth_asset_status"] = "auto-authored-production-candidate-needs-tailor-review"
     bpy.context.scene["linen_earth_garment_authoring_method"] = "locked-body-surface-shell-v1"
@@ -447,6 +625,7 @@ def main():
     bpy.context.scene["linen_earth_trouser_clearance_mm"] = round(trouser_clearance_m * 1000.0, 3)
     bpy.context.scene["linen_earth_identity_fit_profile_json"] = json.dumps(fit_profile, sort_keys=True)
     bpy.context.scene["linen_earth_boundary_smoothing"] = "open-edge-laplacian-v1"
+    bpy.context.scene["linen_earth_base_tailoring_details_json"] = json.dumps([obj.name for obj in tailoring_details])
     bpy.context.scene["linen_earth_garment_thickness_mm"] = round(thickness_m * 1000.0, 3)
 
     output = Path(options.output).expanduser().resolve()
@@ -457,6 +636,7 @@ def main():
     print("Garment objects: " + ", ".join(obj.name for obj in authored.values()))
     print(f"Shirt/trouser clearances: {shirt_clearance_m*1000:.1f}/{trouser_clearance_m*1000:.1f} mm · cloth shell thickness: {thickness_m*1000:.1f} mm")
     print("Identity fit profile: " + json.dumps(fit_profile, sort_keys=True))
+    print("Base tailoring details: " + ", ".join(obj.name for obj in tailoring_details))
     print("Status: candidate only; run Blender preflight and owner/tailor visual fit review before production export.")
 
 
