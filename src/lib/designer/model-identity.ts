@@ -3,6 +3,16 @@ export type LinenEarthModelView="front"|"three-quarter"|"side"|"back";
 export const LINEN_EARTH_MODEL_IDENTITY_ID="linen-earth-studio-model-v1" as const;
 export const LINEN_EARTH_MODEL_REFERENCE_IMAGE="/designer/studio-tucked.webp" as const;
 export const LINEN_EARTH_MODEL_REFERENCE_HEIGHT_MM=1727 as const;
+export const LINEN_EARTH_MODEL_PHYSICAL_TARGETS_MM={
+  height:1727,
+  shoulderSeamWidth:388,
+  outerArmSilhouette:574,
+  shirtWaistWidth:294,
+  trouserWaistWidth:344,
+  handCenterSpacing:500,
+  legCenterSpacing:210,
+  hemWidth:64,
+} as const;
 
 export const LINEN_EARTH_MODEL_IDENTITY_RULES=[
   "same faceless matte warm-neutral head",
