@@ -237,21 +237,22 @@ async function apiContracts(){
     const index=await start(page,"Design a business outfit"),body=(await request(page,"question",index)).body;assert.equal(body.occasion,"Casual");assert.equal(body.tasteProfile.preferredConstruction.button,"Mother-of-Pearl");
     await panel(page).locator(".designerTaste>summary").click();assert.match(await panel(page).locator(".designerTaste").textContent(),/For semi-formal looks/);const reply=await answer(page,index);assert.equal(reply.interpretation.occasion,"Semi-Formal");assert.ok(reply.results.length);for(const result of reply.results)assert.equal(result.style.button,"Mother-of-Pearl");
   });
-  await regression("supported-british-collar-preserves-request-context-without-clarification",async page=>{
+  await regression("clarification-preserves-request-context-and-restores-proposal",async page=>{
     await answer(page,await start(page,"Create a capsule for office, dinner and weekend"));
     await panel(page).getByRole("button",{name:"Develop this direction",exact:true}).nth(2).click();await settle(page);
     const beforeVotes=(await memory(page)).filter(e=>e.type==="designer_feedback").length;
-    const original="Design a British collar shirt for a business meeting";
-    const index=await start(page,original),body=(await request(page,"question",index)).body;
-    const designed=await answer(page,index);
-    assert.equal(designed.interpretation.occasion,"Semi-Formal");
-    assert.equal(designed.advice.task,"design");
-    assert.ok(designed.results.length>0);
-    for(const option of designed.results) assert.equal(option.style.collar,"English Spread / British Collar");
-    assert.equal(body.judgement,undefined);
-    assert.equal(await panel(page).getByLabel("Designer clarification choices").count(),0);
-    assert.equal(await panel(page).getByLabel("Clarification follow-up draft").count(),0);
-    assert.equal(await question(page).inputValue(),original);
+    const original="Design a square collar shirt for a business meeting",clarify=await answer(page,await start(page,original));
+    assert.equal(clarify.interpretation.occasion,"Semi-Formal");
+    await panel(page).getByRole("button",{name:"Point vs spread",exact:true}).click();await settle(page);
+    const pending=await start(page,await question(page).inputValue()),body=(await request(page,"question",pending)).body;
+    assert.equal(body.occasion,clarify.interpretation.occasion);assert.deepEqual(body.context,clarify.interpretation.context);assert.equal(body.judgement,undefined);
+    await panel(page).getByRole("button",{name:"Restore original question",exact:true}).click();await settle(page);
+    assert.match(await panel(page).getByLabel("Designer starting point").textContent(),/Weekend direction.*Casual/);
+    assert.equal(await question(page).inputValue(),original);assert.equal((await request(page,"question",pending)).aborted,true);
+    await answer(page,pending);assert.equal(await panel(page).locator(".designerAdvice").count(),0);
+    await answer(page,await start(page,original));await panel(page).getByRole("button",{name:"Point vs spread",exact:true}).click();await settle(page);
+    const fit=page.getByLabel("Shirt fit",{exact:true});await fit.selectOption(await fit.inputValue()==="Relaxed Fit"?"Regular / Classic Fit":"Relaxed Fit");await settle(page);
+    assert.equal(await panel(page).getByLabel("Clarification follow-up draft").count(),0);assert.equal(await panel(page).getByLabel("Designer starting point").count(),0);
     assert.equal((await memory(page)).filter(e=>e.type==="designer_feedback").length,beforeVotes);
   });
   assert.deepEqual(summary.errors,[]);assert.equal(summary.regressions.filter(r=>r.status==="failed").length,0,"Designer advisor regressions failed");
