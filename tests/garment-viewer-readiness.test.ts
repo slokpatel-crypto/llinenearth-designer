@@ -34,6 +34,7 @@ const manifest=validateGarmentViewerModelManifest({
   panelMeasurementEvidence:{source:"tailor_measured",measuredAt:"2026-10-05",note:"Measured directly from the approved garment pattern."},
   productionFitEvidence:{
     gate:"linen-earth-officewear-scene-preflight-v1",
+    ready:true,
     identityFitMeasurementsMm:{shirtWaistWidth:294},
     boundaryIntersections:{bodyShirtTorso:0},
     boundaryClearanceMm:{shirtWaistBody:{median:8}},
