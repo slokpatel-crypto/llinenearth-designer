@@ -237,8 +237,8 @@ def create_identity_shoes(body):
             raise RuntimeError(f"Could not isolate foot geometry for {name}.")
         min_x, max_x = min(point.x for point in side_points), max(point.x for point in side_points)
         min_y, max_y = min(point.y for point in side_points), max(point.y for point in side_points)
-        width = max(0.095, (max_x - min_x) + 0.026)
-        length = max(0.250, (max_y - min_y) + 0.060)
+        width = min(0.145, max(0.095, (max_x - min_x) + 0.014))
+        length = min(0.315, max(0.250, (max_y - min_y) + 0.050))
         center_x = (min_x + max_x) * 0.5
         center_y = (min_y + max_y) * 0.5 - 0.018
 
@@ -249,7 +249,7 @@ def create_identity_shoes(body):
         )
         shoe = bpy.context.object
         shoe.name = name
-        shoe.scale = (width * 0.52, length * 0.52, 0.060)
+        shoe.scale = (width * 0.50, length * 0.50, 0.057)
         bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
 
         # A subtle toe taper prevents the upper from reading like a generic capsule.
