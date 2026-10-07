@@ -662,6 +662,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     if(!viewer) return;
     let cancelled=false;
     let contractTimer:number|undefined;
+    let readinessTimer:number|undefined;
     const syncModelContract=(attempt=0)=>{
       if(cancelled) return;
       const retry=()=>{
@@ -702,10 +703,22 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     // model-viewer can finish loading between React committing the element and this
     // effect attaching its listeners. Recover that missed event so the UI never
     // stays stuck behind the loading veil on a fast cache or CI/browser startup.
-    if(viewer.loaded || (viewer.model?.materials?.length||0)>0) load();
+    const recoverReadyState=(attempt=0)=>{
+      if(cancelled) return;
+      if(viewer.loaded || (viewer.model?.materials?.length||0)>0){
+        load();
+        return;
+      }
+      // Chromium/WebGL startup can upgrade <model-viewer> before its scene graph is
+      // hydrated without replaying the earlier load event. Poll the authoritative
+      // scene-graph state for a bounded window instead of hiding the QA failure.
+      if(attempt<80) readinessTimer=window.setTimeout(()=>recoverReadyState(attempt+1),125);
+    };
+    recoverReadyState();
     return ()=>{
       cancelled=true;
       if(contractTimer!==undefined) window.clearTimeout(contractTimer);
+      if(readinessTimer!==undefined) window.clearTimeout(readinessTimer);
       viewer.removeEventListener("load",load);
       viewer.removeEventListener("error",fail);
       viewer.removeEventListener("progress",update);
