@@ -67,6 +67,12 @@ test("GarmentViewer lab route is isolated from the protected customer visual rou
   assert(legacy.includes('redirect("/style-director")'));
 });
 
+test("viewer recovers a model-viewer load event that fires before React effect listeners attach",()=>{
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  assert(viewer.includes("loaded?:boolean"));
+  assert(viewer.includes("if(viewer.loaded || (viewer.model?.materials?.length||0)>0) load();"));
+});
+
 test("viewer surface exposes the shared four-angle turntable and independent shirt/trouser material controls",()=>{
   const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
   const identity=readFileSync("src/lib/designer/model-identity.ts","utf8");
