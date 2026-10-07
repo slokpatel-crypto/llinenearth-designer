@@ -1564,6 +1564,8 @@ const garmentViewerStyleVariants=fs.readFileSync("src/lib/garment-viewer-style-v
 const garmentViewerGlb=fs.readFileSync("src/lib/garment-viewer-glb.ts","utf8");
 const garmentViewerReadiness=fs.readFileSync("src/lib/garment-viewer-readiness.ts","utf8");
 const garmentViewerOperator=fs.readFileSync("src/app/operator/garment-viewer/page.tsx","utf8");
+const garmentViewerEvidenceForm=fs.readFileSync("src/app/operator/garment-viewer/GarmentViewerEvidenceForm.tsx","utf8");
+const garmentViewerModelServer=fs.readFileSync("src/lib/garment-viewer-model-server.ts","utf8");
 const garmentViewerLabPage=fs.readFileSync("src/app/lab/garment-viewer/page.tsx","utf8");
 const garmentViewerVendorRoute=fs.readFileSync("src/app/vendor/model-viewer/route.ts","utf8");
 const garmentViewerLabCss=fs.readFileSync("src/app/lab/garment-viewer/garment-viewer.css","utf8");
@@ -1664,6 +1666,15 @@ if(garmentViewerLabPage.includes("ajax.googleapis.com")) throw new Error("Garmen
 if(garmentViewerLabCss.includes(".garmentViewerControls{order:-1}")) throw new Error("GarmentViewer mobile regression: controls cannot appear before the 3D stage.");
 for(const token of ["GarmentViewerEvidenceForm","CUSTOMER PROMOTION GATE","Realistic production candidate","PRODUCTION ASSET STATUS","REALISTIC CANDIDATE READY","SOURCE / LICENSE","sourceReady","loadLatestGarmentViewerReadiness","LOCKED MODEL IDENTITY","LINEN_EARTH_MODEL_PHYSICAL_TARGETS_MM","Hand-center spacing","Leg-center spacing","PANEL SCALE PROVENANCE","panelMeasurementEvidence","Physical scale evidence","PRODUCTION FIT EVIDENCE","productionFitEvidence","Boundary clearances","Asset status:","productionAssetStatus"]) {
   if(!garmentViewerOperator.includes(token)) throw new Error(`GarmentViewer operator QA regression: missing ${token}`);
+}
+for(const token of ["productionCandidateReady","REALISTIC CANDIDATE READY","STRUCTURE READY / EVIDENCE OPEN"]) {
+  if(!garmentViewerOperator.includes(token)) throw new Error(`GarmentViewer operator production-candidate regression: missing ${token}`);
+}
+for(const token of ["productionCandidateReady","realistic production candidate","measured-panel","passed Blender fit evidence"]) {
+  if(!garmentViewerEvidenceForm.includes(token)) throw new Error(`GarmentViewer evidence-lock regression: missing ${token}`);
+}
+for(const token of ["productionCandidateReady","manifest?.productionAssetReady===true"]) {
+  if(!garmentViewerModelServer.includes(token)) throw new Error(`GarmentViewer server readiness regression: missing ${token}`);
 }
 for(const token of ["garment-viewer-m2","Reusable 3D GarmentViewer production gate","/api/operator/garment-viewer","The current customer Designer stays on the photographic preview"]) {
   if(!garmentViewerReadinessClient.includes(token)) throw new Error(`GarmentViewer roadmap-readiness regression: missing ${token}`);
