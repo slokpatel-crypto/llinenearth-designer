@@ -66,8 +66,8 @@ async function verifyViewport(browser, width) {
     model: element.getAttribute("data-model-readiness"),
     manifest: element.getAttribute("data-manifest-ready"),
   }));
-  assert.equal(labReadiness.model, "contract_ready", "3D lab must load the production M7.23 model contract");
-  assert.equal(labReadiness.manifest, "true", "production M7.23 model must load its verified physical-panel manifest");
+  assert.equal(labReadiness.model, "contract_ready", "3D lab must load the production M7.24 model contract");
+  assert.equal(labReadiness.manifest, "true", "production M7.24 model must load its verified physical-panel manifest");
 
   const modelState = await viewer.evaluate((element) => {
     const materials = element.model?.materials || [];
@@ -84,18 +84,29 @@ async function verifyViewport(browser, width) {
   assert.equal(modelState.fieldOfView,"30deg","default field of view must preserve head-to-shoe framing");
   const requiredPanels=["ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric","TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric"];
   for(const name of requiredPanels) assert.equal(modelState.materialNames.filter((item)=>item===name).length,1,"required garment material must remain unique: "+name);
-  assert.ok(modelState.materialNames.filter((name)=>name.startsWith("Shirt")&&name.includes("Variant__")).length>=12,"M7.23 must expose multiple shirt construction-variant materials");
-  assert.ok(modelState.materialNames.filter((name)=>name.startsWith("Trouser")&&name.includes("Variant__")).length>=10,"M7.23 must expose multiple trouser construction-variant materials");
+  assert.ok(modelState.materialNames.filter((name)=>name.startsWith("Shirt")&&name.includes("Variant__")).length>=12,"M7.24 must expose multiple shirt construction-variant materials");
+  assert.ok(modelState.materialNames.filter((name)=>name.startsWith("Trouser")&&name.includes("Variant__")).length>=10,"M7.24 must expose multiple trouser construction-variant materials");
   assert.equal(modelState.hasCreateTexture, true, "model-viewer scene graph texture API must be available");
 
   const buttons = page.locator(".garmentCameraRail button");
   assert.equal(await buttons.count(), 4);
+  const canvas=page.locator(".garmentViewerCanvas");
+  if(width===1440) await canvas.screenshot({path:path.join(output,"garment-angle-front.png")});
+  await page.getByRole("button", { name: "3/4", exact: true }).click();
+  await page.waitForFunction(() => document.querySelector("model-viewer")?.getAttribute("camera-orbit")?.startsWith("35deg"));
+  assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-active-view"),"three-quarter");
+  if(width===1440) await canvas.screenshot({path:path.join(output,"garment-angle-three-quarter.png")});
   await page.getByRole("button", { name: "Side", exact: true }).click();
   await page.waitForFunction(() => document.querySelector("model-viewer")?.getAttribute("camera-orbit")?.startsWith("90deg"));
+  assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-active-view"),"side");
+  if(width===1440) await canvas.screenshot({path:path.join(output,"garment-angle-side.png")});
   await page.getByRole("button", { name: "Back", exact: true }).click();
   await page.waitForFunction(() => document.querySelector("model-viewer")?.getAttribute("camera-orbit")?.startsWith("180deg"));
+  assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-active-view"),"back");
+  if(width===1440) await canvas.screenshot({path:path.join(output,"garment-angle-back.png")});
   await page.getByRole("button", { name: "Front", exact: true }).click();
   await page.waitForFunction(() => document.querySelector("model-viewer")?.getAttribute("camera-orbit")?.startsWith("0deg"));
+  assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-active-view"),"front");
 
   const reference=page.locator(".garmentViewerReference img");
   await reference.waitFor({state:"visible"});
@@ -123,37 +134,37 @@ async function verifyViewport(browser, width) {
   assert.match(referenceBlock,/same shoulder width, torso taper, arm length, hand scale, hip width, leg length, stance and shoes/i);
 
   const variantNames=await viewer.evaluate((element)=>(element.model?.materials||[]).map((material)=>material.name).filter((name)=>name.includes("Variant__")||name.includes("Length__")));
-  assert.ok(variantNames.some((name)=>name==="ShirtCollarVariant__spread__stiff_fused"),"M7.23 must carry spread-collar fused geometry");
-  assert.ok(variantNames.some((name)=>name==="ShirtCollarVariant__spread__soft_unfused"),"M7.23 must carry spread-collar soft geometry");
-  assert.ok(variantNames.some((name)=>name==="ShirtNeckGasketVariant__spread"),"M7.23 must seal the spread-collar neck junction with shirt fabric");
-  assert.ok(variantNames.some((name)=>name==="ShirtNeckGasketVariant__point"),"M7.23 must seal the point-collar neck junction with shirt fabric");
-  assert.ok(variantNames.some((name)=>name==="ShirtCuffVariant__cocktail__fused"),"M7.23 must carry cocktail-cuff construction geometry");
-  assert.ok(modelState.materialNames.some((name)=>name==="ButtonAccentVariant__shirt_placket__standard"),"M7.23 must carry construction-aware shirt front hardware");
-  assert.ok(modelState.materialNames.some((name)=>name==="ButtonAccentVariant__shirt_collar__button_down"),"M7.23 must carry button-down collar hardware");
+  assert.ok(variantNames.some((name)=>name==="ShirtCollarVariant__spread__stiff_fused"),"M7.24 must carry spread-collar fused geometry");
+  assert.ok(variantNames.some((name)=>name==="ShirtCollarVariant__spread__soft_unfused"),"M7.24 must carry spread-collar soft geometry");
+  assert.ok(variantNames.some((name)=>name==="ShirtNeckGasketVariant__spread"),"M7.24 must seal the spread-collar neck junction with shirt fabric");
+  assert.ok(variantNames.some((name)=>name==="ShirtNeckGasketVariant__point"),"M7.24 must seal the point-collar neck junction with shirt fabric");
+  assert.ok(variantNames.some((name)=>name==="ShirtCuffVariant__cocktail__fused"),"M7.24 must carry cocktail-cuff construction geometry");
+  assert.ok(modelState.materialNames.some((name)=>name==="ButtonAccentVariant__shirt_placket__standard"),"M7.24 must carry construction-aware shirt front hardware");
+  assert.ok(modelState.materialNames.some((name)=>name==="ButtonAccentVariant__shirt_collar__button_down"),"M7.24 must carry button-down collar hardware");
   assert.equal(modelState.materialNames.some((name)=>name==="ButtonAccentVariant__shirt_placket__hidden"),false,"hidden placket must not expose front buttons");
   assert.ok(variantNames.some((name)=>name==="ShirtHemVariant__regular"),"M7 must carry untucked shirt geometry");
-  assert.ok(variantNames.some((name)=>name==="ShirtSleeveLLength__boxy__half"),"M7.23 must carry fit-aware boxy half-sleeve geometry");
-  assert.ok(variantNames.some((name)=>name==="ShirtSleeveRLength__slim__roll"),"M7.23 must carry fit-aware slim rolled-sleeve geometry");
-  assert.ok(modelState.materialNames.some((name)=>name==="MannequinSkinArmVariant__half"),"M7.23 must expose forearm skin for half sleeves");
-  assert.ok(modelState.materialNames.some((name)=>name==="MannequinSkinArmVariant__roll"),"M7.23 must expose forearm skin for rolled sleeves");
-  assert.ok(modelState.materialNames.some((name)=>name==="MannequinSkinArmVariant__three_quarter"),"M7.23 must expose forearm skin for three-quarter sleeves");
-  assert.ok(variantNames.some((name)=>name==="ShirtSleeveFinishVariant__boxy__half"),"M7.23 must carry a tailored half-sleeve hem finish");
-  assert.ok(variantNames.some((name)=>name==="ShirtSleeveFinishVariant__slim__three_quarter"),"M7.23 must carry a tailored three-quarter sleeve hem finish");
+  assert.ok(variantNames.some((name)=>name==="ShirtSleeveLLength__boxy__half"),"M7.24 must carry fit-aware boxy half-sleeve geometry");
+  assert.ok(variantNames.some((name)=>name==="ShirtSleeveRLength__slim__roll"),"M7.24 must carry fit-aware slim rolled-sleeve geometry");
+  assert.ok(modelState.materialNames.some((name)=>name==="MannequinSkinArmVariant__half"),"M7.24 must expose forearm skin for half sleeves");
+  assert.ok(modelState.materialNames.some((name)=>name==="MannequinSkinArmVariant__roll"),"M7.24 must expose forearm skin for rolled sleeves");
+  assert.ok(modelState.materialNames.some((name)=>name==="MannequinSkinArmVariant__three_quarter"),"M7.24 must expose forearm skin for three-quarter sleeves");
+  assert.ok(variantNames.some((name)=>name==="ShirtSleeveFinishVariant__boxy__half"),"M7.24 must carry a tailored half-sleeve hem finish");
+  assert.ok(variantNames.some((name)=>name==="ShirtSleeveFinishVariant__slim__three_quarter"),"M7.24 must carry a tailored three-quarter sleeve hem finish");
   assert.ok(variantNames.some((name)=>name==="TrouserLegLVariant__wide"),"M7 must carry wide-trouser geometry");
-  assert.ok(variantNames.some((name)=>name==="TrouserLegLBreakVariant__wide__negative"),"M7.23 must carry cropped wide-leg break geometry");
-  assert.ok(variantNames.some((name)=>name==="TrouserLegRBreakVariant__straight__full"),"M7.23 must carry full-break straight-leg geometry");
-  assert.ok(variantNames.some((name)=>name==="TrouserHemVariant__wide__negative__turnup_4"),"M7.23 must carry cropped wide-leg 4 cm turn-up geometry");
-  assert.ok(variantNames.some((name)=>name==="TrouserHemVariant__straight__full__turnup_5"),"M7.23 must carry full-break straight-leg 5 cm turn-up geometry");
-  assert.ok(variantNames.some((name)=>name==="TrouserWaistbandVariant__high__side_adjuster"),"M7.23 must carry high-rise side-adjuster geometry");
-  assert.ok(variantNames.some((name)=>name==="TrouserWaistbandVariant__low__belt_loops"),"M7.23 must carry low-rise belt-loop geometry");
-  assert.ok(variantNames.some((name)=>name==="TrouserPleatVariant__high__double_reverse"),"M7.23 must carry high-rise double reverse pleat details");
-  assert.ok(variantNames.some((name)=>name==="TrouserPleatVariant__low__single_forward"),"M7.23 must carry low-rise single forward pleat details");
-  assert.ok(variantNames.some((name)=>name==="TrouserPocketVariant__high__jean"),"M7.23 must carry high-rise jean-pocket geometry");
-  assert.ok(variantNames.some((name)=>name==="TrouserPocketVariant__low__slant"),"M7.23 must carry low-rise slant-pocket geometry");
-  assert.ok(variantNames.some((name)=>name==="TrouserCreaseVariant__front"),"M7.23 must keep tailored front creases visible across trouser fits");
-  assert.ok(variantNames.some((name)=>name==="TrouserCoreDetailVariant__low"),"M7.23 must carry low-rise fly and waistband core detail");
-  assert.ok(variantNames.some((name)=>name==="TrouserCoreDetailVariant__high"),"M7.23 must carry high-rise fly and waistband core detail");
-  assert.ok(modelState.materialNames.some((name)=>name==="ButtonAccentVariant__trouser_rise__high"),"M7.23 must carry high-rise trouser closure hardware");
+  assert.ok(variantNames.some((name)=>name==="TrouserLegLBreakVariant__wide__negative"),"M7.24 must carry cropped wide-leg break geometry");
+  assert.ok(variantNames.some((name)=>name==="TrouserLegRBreakVariant__straight__full"),"M7.24 must carry full-break straight-leg geometry");
+  assert.ok(variantNames.some((name)=>name==="TrouserHemVariant__wide__negative__turnup_4"),"M7.24 must carry cropped wide-leg 4 cm turn-up geometry");
+  assert.ok(variantNames.some((name)=>name==="TrouserHemVariant__straight__full__turnup_5"),"M7.24 must carry full-break straight-leg 5 cm turn-up geometry");
+  assert.ok(variantNames.some((name)=>name==="TrouserWaistbandVariant__high__side_adjuster"),"M7.24 must carry high-rise side-adjuster geometry");
+  assert.ok(variantNames.some((name)=>name==="TrouserWaistbandVariant__low__belt_loops"),"M7.24 must carry low-rise belt-loop geometry");
+  assert.ok(variantNames.some((name)=>name==="TrouserPleatVariant__high__double_reverse"),"M7.24 must carry high-rise double reverse pleat details");
+  assert.ok(variantNames.some((name)=>name==="TrouserPleatVariant__low__single_forward"),"M7.24 must carry low-rise single forward pleat details");
+  assert.ok(variantNames.some((name)=>name==="TrouserPocketVariant__high__jean"),"M7.24 must carry high-rise jean-pocket geometry");
+  assert.ok(variantNames.some((name)=>name==="TrouserPocketVariant__low__slant"),"M7.24 must carry low-rise slant-pocket geometry");
+  assert.ok(variantNames.some((name)=>name==="TrouserCreaseVariant__front"),"M7.24 must keep tailored front creases visible across trouser fits");
+  assert.ok(variantNames.some((name)=>name==="TrouserCoreDetailVariant__low"),"M7.24 must carry low-rise fly and waistband core detail");
+  assert.ok(variantNames.some((name)=>name==="TrouserCoreDetailVariant__high"),"M7.24 must carry high-rise fly and waistband core detail");
+  assert.ok(modelState.materialNames.some((name)=>name==="ButtonAccentVariant__trouser_rise__high"),"M7.24 must carry high-rise trouser closure hardware");
 
   await page.getByLabel("3D shirt type").selectOption("camp_collar_resort");
   assert.equal(await page.getByLabel("3D shirt wear").inputValue(),"untucked","camp shirt preset must switch to untucked wear");
@@ -198,7 +209,7 @@ async function verifyViewport(browser, width) {
   assert.ok(garmentText.some((value)=>/Suit/.test(value)&&/FUTURE/.test(value)&&/3-Piece Suit/.test(value)),"future suit types must be visible");
 
   const styleSelects = page.locator(".garmentStyleControlGrid select");
-  assert.equal(await styleSelects.count(), 22, "M7.23 must expose twenty-two live tailoring controls");
+  assert.equal(await styleSelects.count(), 22, "M7.24 must expose twenty-two live tailoring controls");
   const selects = page.locator(".garmentViewerControls > label > select");
   assert.equal(await selects.count(), 2, "fabric selectors remain separate from tailoring controls");
   for (let index = 0; index < 2; index++) {
