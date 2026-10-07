@@ -29,7 +29,8 @@
     "garment:model-scene:check": "blender --background .cache/linen-earth/linen-earth-officewear-body-base.blend --python scripts/blender/preflight-linen-earth-officewear.py",
     "garment:model-production:export": "node scripts/build-production-garment-model.mjs",
     "garment:model-garments:author": "blender --background .cache/linen-earth/linen-earth-officewear-body-base.blend --python scripts/blender/author-linen-earth-officewear.py -- --output .cache/linen-earth/linen-earth-officewear-authored.blend",
-    "garment:model-production:assemble": "node scripts/assemble-production-garment-scene.mjs"
+    "garment:model-production:assemble": "node scripts/assemble-production-garment-scene.mjs",
+    "garment:model-production:render-review": "blender --background .cache/linen-earth/linen-earth-officewear-authored.blend --python scripts/blender/render-linen-earth-officewear-review.py -- --output-dir artifacts/realistic-3d/review"
   },
   "dependencies": {
     "fashn": "^0.15.0",
