@@ -885,7 +885,7 @@ const thumb=profileGeometry({
 const mannequinBody=await loadMakeHumanBodyGeometry();
 const garmentShells=await loadMakeHumanGarmentShells();
 
-// M7.29: the visible clothing uses clean identity-first tailoring shells rather than
+// M7.30: the visible clothing uses clean identity-first tailoring shells rather than
 // cropped anatomical body surfaces. MakeHuman stays as the hidden collision/skin source.
 // These world-space shells preserve the exact Linen Earth silhouette anchors while
 // producing continuous shirt/trouser surfaces with clean side and back views.
@@ -1107,6 +1107,8 @@ const meshHead=addMesh("HeadMesh",head,"MannequinSkin");
 const meshEar=addMesh("EarMesh",ear,"MannequinSkin");
 const meshHandL=addMesh("HandLMesh",mannequinSkinShells.handL,"MannequinSkin");
 const meshHandR=addMesh("HandRMesh",mannequinSkinShells.handR,"MannequinSkin");
+const meshFinger=addMesh("FingerMesh",finger,"MannequinSkin");
+const meshThumb=addMesh("ThumbMesh",thumb,"MannequinSkin");
 const exposedArmCutY={three_quarter:.985,half:1.175,roll:1.075};
 const exposedArmMeshes={};
 for(const sleeve of styleVariants.sleeves){
@@ -1439,6 +1441,28 @@ const nodes=[
   {name:"ShirtSleeveRFabric",mesh:meshSleeveR},
   {name:"HandL",mesh:meshHandL},
   {name:"HandR",mesh:meshHandR},
+  ...[-1,1].flatMap((side)=>{
+    const handSide=side<0?"L":"R";
+    const centerX=side*.250;
+    const fingerOffsets=[-.026,-.008,.009,.026];
+    const fingerLengths=[1.12,1.36,1.30,1.04];
+    return [
+      ...fingerOffsets.map((offset,index)=>({
+        name:`HandFinger${handSide}__${index+1}`,
+        mesh:meshFinger,
+        translation:[centerX+offset,.794-.030*fingerLengths[index],.029],
+        scale:[index===0||index===3?.92:1,fingerLengths[index],1.02],
+        rotation:qz(side*(index-1.5)*1.8),
+      })),
+      {
+        name:`HandThumb${handSide}`,
+        mesh:meshThumb,
+        translation:[centerX-side*.034,.792,.030],
+        scale:[1.02,1.10,1.04],
+        rotation:qz(side<0?-28:28),
+      },
+    ];
+  }),
   ...styleVariants.sleeves.filter((sleeve)=>sleeve.id!=="full").flatMap((sleeve)=>[
     {name:`MannequinSkinArmLVariant__${sleeve.id}`,mesh:exposedArmMeshes[sleeve.id].left},
     {name:`MannequinSkinArmRVariant__${sleeve.id}`,mesh:exposedArmMeshes[sleeve.id].right},
@@ -1983,7 +2007,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.29 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.30 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -2068,7 +2092,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.29 model complete: clean studio-mannequin hands/forearms/shoes + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
+    polishStage:"M7.30 model complete: articulated studio-mannequin fingers/thumbs + clean hands/forearms/shoes + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},

@@ -392,3 +392,10 @@ Architecture and product decisions that must persist across coding sessions.
 **Decision:** the premium button base sets relative positioning, which overrode the signature Replay button's original absolute placement and put it over the caption. Give the existing scoped premium Replay rule absolute positioning so its original responsive bottom-right offsets apply. The brass styling, keyboard focus, 44px target, three-second motion, logo and thread artwork are retained.
 
 **Verification:** add actual browser geometry checks at 390/768/1440 for caption clearance, the bottom-right inset, target height and containment. Existing timeline, strict pause/resume, reduced-motion and Designer/photo/Style Director verification remains unchanged. No dependency, data, API or deployment guard changes.
+
+
+## 2026-10-07 — M7.30 mannequin hand anatomy refinement
+
+**Decision:** keep the locked Linen Earth studio identity and existing palm/forearm proportions, but replace the mitten-like hand read with deterministic articulated finger and thumb geometry generated inside the same zero-credit GLB build. Four fingers now extend continuously from each palm with small mirrored spacing/length differences; the thumb sits on the body-facing side and is mirrored per hand. No face/body identity, garment scale, camera, fabric, API or paid-render behaviour changes.
+
+**Acceptance boundary:** this is a mannequin realism refinement, not a scanned anatomical hand claim. Finger geometry must remain subordinate to sleeve/cuff fit, preserve hand clearance from the trouser silhouette and stay consistent in front / 3/4 / side / back views. The production label advances to M7.30; existing model-contract, material, pattern-scale and browser gates remain authoritative.
