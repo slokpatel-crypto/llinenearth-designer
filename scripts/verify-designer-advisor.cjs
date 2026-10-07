@@ -241,7 +241,7 @@ async function apiContracts(){
     await answer(page,await start(page,"Create a capsule for office, dinner and weekend"));
     await panel(page).getByRole("button",{name:"Develop this direction",exact:true}).nth(2).click();await settle(page);
     const beforeVotes=(await memory(page)).filter(e=>e.type==="designer_feedback").length;
-    const original="Design a British collar shirt for a business meeting",clarify=await answer(page,await start(page,original));
+    const original="Design a square collar shirt for a business meeting",clarify=await answer(page,await start(page,original));
     assert.equal(clarify.interpretation.occasion,"Semi-Formal");
     await panel(page).getByRole("button",{name:"Point vs spread",exact:true}).click();await settle(page);
     const pending=await start(page,await question(page).inputValue()),body=(await request(page,"question",pending)).body;
