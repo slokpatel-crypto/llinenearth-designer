@@ -157,6 +157,24 @@ test("realistic candidate creates a physical-measurement worksheet without treat
   assert(workflow.includes("garment:model-production:measurement-worksheet"));
 });
 
+test("rendered realistic review has an automated garment/shoe visibility gate",()=>{
+  const packageJson=JSON.parse(readFileSync("package.json","utf8"));
+  const source=readFileSync("scripts/evaluate-realistic-review.mjs","utf8");
+  const workflow=readFileSync(".github/workflows/realistic-3d-candidate.yml","utf8");
+  assert.equal(packageJson.scripts["garment:model-production:review-check"],"node scripts/evaluate-realistic-review.mjs artifacts/realistic-3d/review");
+  for(const token of [
+    "linen-earth-realistic-review-visibility-v1",
+    "isTrouser",
+    "isShoe",
+    "trouserRatio",
+    "shoeRatio",
+    "review-visibility.json",
+  ]) assert(source.includes(token),token);
+  assert(workflow.includes("Verify garment and shoe visibility"));
+  assert(workflow.includes("review_visibility"));
+  assert(workflow.includes('test "${{ steps.review_visibility.outcome }}" = "success"'));
+});
+
 test("realistic production candidate renders front, three-quarter, side and back review views",()=>{
   const packageJson=JSON.parse(readFileSync("package.json","utf8"));
   const source=readFileSync("scripts/blender/render-linen-earth-officewear-review.py","utf8");
