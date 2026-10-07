@@ -115,11 +115,14 @@ async function verifyViewport(browser, width) {
     });
   };
   const selectCamera=async(label,orbitPrefix)=>{
-    const button=page.getByRole("button",{name:label,exact:true});
-    await button.waitFor({state:"attached",timeout:5000});
-    // model-viewer continuously paints its WebGL surface; use the native DOM click
-    // so Playwright does not wait for visual/actionability stability that never arrives.
-    await button.evaluate((element)=>element.click());
+    const clicked=await page.evaluate((cameraLabel)=>{
+      const button=[...document.querySelectorAll(".garmentCameraRail button")]
+        .find((element)=>element.textContent?.trim()===cameraLabel);
+      if(!(button instanceof HTMLButtonElement)) return false;
+      button.click();
+      return true;
+    },label);
+    assert.equal(clicked,true,`camera button must exist: ${label}`);
     await page.waitForFunction(
       (prefix)=>document.querySelector("model-viewer")?.getAttribute("camera-orbit")?.startsWith(prefix),
       orbitPrefix,
