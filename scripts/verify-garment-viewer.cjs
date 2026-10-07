@@ -115,34 +115,39 @@ async function verifyViewport(browser, width) {
       animations:"disabled",
     });
   };
-  const selectCamera=async(label,orbitPrefix)=>{
-    const clicked=await page.evaluate((cameraLabel)=>{
-      const button=[...document.querySelectorAll(".garmentCameraRail button")]
-        .find((element)=>element.textContent?.trim()===cameraLabel);
-      if(!(button instanceof HTMLButtonElement)) return false;
-      button.click();
-      return true;
-    },label);
-    assert.equal(clicked,true,`camera button must exist: ${label}`);
-    await page.waitForFunction(
-      (prefix)=>document.querySelector("model-viewer")?.getAttribute("camera-orbit")?.startsWith(prefix),
-      orbitPrefix,
-      {timeout:5000},
-    );
+  const selectCamera=async(label,orbitPrefix,activeView)=>{
+    const button=page.getByRole("button",{name:label,exact:true});
+    await button.waitFor({state:"visible",timeout:15000});
+    await button.click({timeout:15000});
+    try {
+      await page.waitForFunction(
+        ({prefix,view})=>{
+          const viewerElement=document.querySelector("model-viewer");
+          const shellElement=document.querySelector(".garmentViewerShell");
+          return viewerElement?.getAttribute("camera-orbit")?.startsWith(prefix)
+            && shellElement?.getAttribute("data-active-view")===view;
+        },
+        {prefix:orbitPrefix,view:activeView},
+        {timeout:15000},
+      );
+    } catch (error) {
+      const state=await page.evaluate(()=>({
+        orbit:document.querySelector("model-viewer")?.getAttribute("camera-orbit")||null,
+        activeView:document.querySelector(".garmentViewerShell")?.getAttribute("data-active-view")||null,
+        modelLoaded:Boolean(document.querySelector("model-viewer")?.loaded),
+      }));
+      throw new Error(`camera transition did not settle for ${label}: ${JSON.stringify(state)}; ${error.message}`);
+    }
   };
 
   await captureCanvas("garment-angle-front.png");
-  await selectCamera("3/4","35deg");
-  assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-active-view"),"three-quarter");
+  await selectCamera("3/4","35deg","three-quarter");
   await captureCanvas("garment-angle-three-quarter.png");
-  await selectCamera("Side","90deg");
-  assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-active-view"),"side");
+  await selectCamera("Side","90deg","side");
   await captureCanvas("garment-angle-side.png");
-  await selectCamera("Back","180deg");
-  assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-active-view"),"back");
+  await selectCamera("Back","180deg","back");
   await captureCanvas("garment-angle-back.png");
-  await selectCamera("Front","0deg");
-  assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-active-view"),"front");
+  await selectCamera("Front","0deg","front");
 
   const reference=page.locator(".garmentViewerReference img");
   await reference.waitFor({state:"visible"});
