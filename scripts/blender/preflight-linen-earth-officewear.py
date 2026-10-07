@@ -78,6 +78,34 @@ def evaluated_mesh_stats(obj):
         degenerate = sum(1 for polygon in mesh.polygons if not math.isfinite(polygon.area) or polygon.area <= 1e-10)
         uv_layers = len(mesh.uv_layers)
         uv_name = mesh.uv_layers.active.name if mesh.uv_layers.active else None
+
+        edge_use = {}
+        for polygon in mesh.polygons:
+            for edge_key in polygon.edge_keys:
+                edge_use[edge_key] = edge_use.get(edge_key, 0) + 1
+        boundary_edges = sum(1 for count in edge_use.values() if count == 1)
+        non_manifold_edges = sum(1 for count in edge_use.values() if count != 2)
+
+        adjacency = [[] for _ in range(vertices)]
+        for edge in mesh.edges:
+            left, right = edge.vertices
+            adjacency[left].append(right)
+            adjacency[right].append(left)
+        visited = bytearray(vertices)
+        components = 0
+        for start in range(vertices):
+            if visited[start] or not adjacency[start]:
+                continue
+            components += 1
+            stack = [start]
+            visited[start] = 1
+            while stack:
+                current = stack.pop()
+                for neighbor in adjacency[current]:
+                    if not visited[neighbor]:
+                        visited[neighbor] = 1
+                        stack.append(neighbor)
+
         return {
             "vertices": vertices,
             "polygons": polygons,
@@ -86,6 +114,9 @@ def evaluated_mesh_stats(obj):
             "degenerateRatio": (degenerate / polygons) if polygons else 1.0,
             "uvLayers": uv_layers,
             "activeUv": uv_name,
+            "connectedComponents": components,
+            "boundaryEdges": boundary_edges,
+            "nonManifoldEdges": non_manifold_edges,
         }
     finally:
         evaluated.to_mesh_clear()
@@ -599,6 +630,17 @@ def main(json_output=None):
             reasons.append(f"{name} has empty or non-renderable geometry.")
         if stats["uvLayers"] <= 0 or not stats["activeUv"]:
             reasons.append(f"{name} needs an active UV map.")
+        if stats["connectedComponents"] != 1:
+            reasons.append(
+                f"{name} is split into {stats['connectedComponents']} disconnected mesh components; "
+                "production garment panels must be continuous rather than fragmented body-surface crops."
+            )
+        if stats["boundaryEdges"] != 0 or stats["nonManifoldEdges"] != 0:
+            reasons.append(
+                f"{name} has {stats['boundaryEdges']} open boundary edges and "
+                f"{stats['nonManifoldEdges']} non-manifold edges after cloth thickness; "
+                "close the garment shell before production export."
+            )
         if stats["degenerateRatio"] > MAX_DEGENERATE_FACE_RATIO:
             reasons.append(
                 f"{name} has too many zero-area/degenerate faces: "
