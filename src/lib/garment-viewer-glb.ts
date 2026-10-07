@@ -2,6 +2,7 @@ import {
   REQUIRED_GARMENT_VIEWER_MATERIALS,
   validateGarmentViewerModelContract,
 } from "./garment-viewer-model-contract.ts";
+import { garmentViewerStyleMaterialCoverage } from "./garment-viewer-style-materials.ts";
 
 type GlbMaterial={
   name?:string;
@@ -45,6 +46,7 @@ export type GarmentViewerGlbInspection={
   generator:string|null;
   materialNames:string[];
   contract:ReturnType<typeof validateGarmentViewerModelContract>;
+  styleVariantCoverage:ReturnType<typeof garmentViewerStyleMaterialCoverage>;
   panels:GarmentViewerGlbPanelInspection[];
   uvReady:boolean;
   textureSlotsReady:boolean;
@@ -111,6 +113,7 @@ export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):Garment
   let triangleCount=0;
   let vertexCount=0;
   const contract=validateGarmentViewerModelContract({modelId,materialNames});
+  const styleVariantCoverage=garmentViewerStyleMaterialCoverage(materialNames);
   const panelUse=new Map<string,GlbPrimitive[]>();
   for(const name of REQUIRED_GARMENT_VIEWER_MATERIALS) panelUse.set(name,[]);
 
@@ -181,6 +184,7 @@ export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):Garment
     generator:gltf.asset?.generator?String(gltf.asset.generator):null,
     materialNames,
     contract,
+    styleVariantCoverage,
     panels,
     uvReady,
     textureSlotsReady,
