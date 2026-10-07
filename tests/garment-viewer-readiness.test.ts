@@ -36,6 +36,7 @@ const manifest=validateGarmentViewerModelManifest({
     gate:"linen-earth-officewear-scene-preflight-v1",
     ready:true,
     identityFitMeasurementsMm:{shirtWaistWidth:294},
+    identityShoeMeasurementsMm:{LE_ShoeL:{lengthMm:280},LE_ShoeR:{lengthMm:280},symmetry:{lengthDifferenceMm:0}},
     boundaryIntersections:{bodyShirtTorso:0},
     boundaryClearanceMm:{shirtWaistBody:{median:8}},
     totals:{triangles:120000,vertices:160000},
@@ -47,6 +48,7 @@ function passingInput() {
   return {
     contract,
     manifest,
+    styleVariantCoverage:{ready:true,required:320,present:320,missing:[]},
     patternScaleSamples:[
       {fabricId:"stripe-a",pattern:"stripe" as const,errorPct:4.1,verified:true},
       {fabricId:"check-b",pattern:"check" as const,errorPct:6.4,verified:true},
@@ -66,6 +68,7 @@ test("production GarmentViewer can only promote when every realism and physical 
   assert.equal(result.contractReady,true);
   assert.equal(result.manifestReady,true);
   assert.equal(result.productionAssetReady,true);
+  assert.equal(result.styleVariantReady,true);
   assert.equal(result.scaleReady,true);
   assert.equal(result.latencyReady,true);
   assert.equal(result.realismReady,true);
@@ -102,6 +105,15 @@ test("prototype or invalid model contract blocks promotion",()=>{
   const result=garmentViewerPromotionReadiness(input);
   assert.equal(result.ready,false);
   assert.equal(result.contractReady,false);
+});
+
+test("incomplete tailoring variant coverage blocks customer promotion",()=>{
+  const input=passingInput();
+  input.styleVariantCoverage={ready:false,required:320,present:118,missing:["ShirtCollarVariant__cutaway__stiff_fused"]};
+  const result=garmentViewerPromotionReadiness(input);
+  assert.equal(result.ready,false);
+  assert.equal(result.styleVariantReady,false);
+  assert(result.reasons.some((reason)=>reason.includes("tailoring variants are incomplete")));
 });
 
 test("scale gate requires both verified stripe and check samples within eight percent",()=>{
