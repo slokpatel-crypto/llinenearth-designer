@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { loadLatestGarmentViewerReadiness } from "@/lib/garment-viewer-evidence-server";
+import { LINEN_EARTH_MODEL_IDENTITY_ID, LINEN_EARTH_MODEL_REFERENCE_HEIGHT_MM, LINEN_EARTH_MODEL_PHYSICAL_TARGETS_MM } from "@/lib/designer/model-identity";
 import GarmentViewerEvidenceForm from "./GarmentViewerEvidenceForm";
 import "./garment-viewer.css";
 
@@ -44,6 +45,23 @@ export default async function GarmentViewerOperatorPage(){
       <article><small>UV + NORMALS</small><strong>{model?.uvReady?"Pass":"Open"}</strong><p>Every shirt/trouser panel needs POSITION, NORMAL and TEXCOORD_0.</p></article>
       <article><small>PHYSICAL SIDECAR</small><strong>{manifest?.valid?"Pass":"Open"}</strong><p>{status.manifestSrc||"Matching .viewer.json is required."}</p></article>
       <article><small>MOBILE PREFLIGHT</small><strong>{model?.performanceBudgetReady?"Pass":"Review"}</strong><p>{model ? `${Math.round(model.fileBytes/1024/1024*10)/10} MB · ${model.triangleCount.toLocaleString()} triangles · ${model.vertexCount.toLocaleString()} vertices` : "Complexity will be checked after a production GLB is configured."}</p></article>
+    </section>
+
+    <section className="garmentQaPanel">
+      <div className="garmentQaPanelHead"><div><small>LOCKED MODEL IDENTITY</small><h2>{LINEN_EARTH_MODEL_IDENTITY_ID}</h2></div><b>{LINEN_EARTH_MODEL_REFERENCE_HEIGHT_MM} mm</b></div>
+      <div className="garmentQaRows">
+        {([
+          ["Shoulder seam",LINEN_EARTH_MODEL_PHYSICAL_TARGETS_MM.shoulderSeamWidth],
+          ["Outer arm silhouette",LINEN_EARTH_MODEL_PHYSICAL_TARGETS_MM.outerArmSilhouette],
+          ["Shirt waist",LINEN_EARTH_MODEL_PHYSICAL_TARGETS_MM.shirtWaistWidth],
+          ["Trouser waist",LINEN_EARTH_MODEL_PHYSICAL_TARGETS_MM.trouserWaistWidth],
+          ["Hand-center spacing",LINEN_EARTH_MODEL_PHYSICAL_TARGETS_MM.handCenterSpacing],
+          ["Leg-center spacing",LINEN_EARTH_MODEL_PHYSICAL_TARGETS_MM.legCenterSpacing],
+          ["Trouser hem",LINEN_EARTH_MODEL_PHYSICAL_TARGETS_MM.hemWidth],
+        ] as const).map(([label,value])=><div key={label} data-ready={true}>
+          <strong>{label}</strong><span>{value} mm</span><em>Canonical production target</em>
+        </div>)}
+      </div>
     </section>
 
     {panels.length>0&&<section className="garmentQaPanel">
