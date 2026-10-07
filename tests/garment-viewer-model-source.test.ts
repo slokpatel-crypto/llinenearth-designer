@@ -75,6 +75,18 @@ test("panel spec template cannot pass as guessed production scale",()=>{
   assert(exporter.includes("heightMm must be a measured value between 0 and 2500 mm"));
 });
 
+test("Blender scene preflight rejects garment/body boundary intersections",()=>{
+  const source=read("scripts/blender/preflight-linen-earth-officewear.py");
+  for(const token of [
+    "BVHTree",
+    "intersection_pair_count",
+    "bodyShirtTorso",
+    "bodyTrouserWaist",
+    "shirtTrouserTuck",
+    "boundaryIntersections",
+  ]) assert(source.includes(token),`missing boundary QA token: ${token}`);
+});
+
 test("Blender scene preflight verifies canonical identity guide geometry",()=>{
   const source=read("scripts/blender/preflight-linen-earth-officewear.py");
   for(const token of [
