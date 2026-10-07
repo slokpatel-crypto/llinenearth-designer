@@ -127,11 +127,16 @@ def normalize_floor(objects, body):
     return min_z
 
 
-def center_body_xy(body):
+def center_body_xy(objects, body):
     points = world_bounds(body)
     center_x = (min(point.x for point in points) + max(point.x for point in points)) * 0.5
     center_y = (min(point.y for point in points) + max(point.y for point in points)) * 0.5
-    body.matrix_world.translation -= Vector((center_x, center_y, 0.0))
+    offset = Vector((center_x, center_y, 0.0))
+    # Keep every source sub-object (eyes/teeth/etc.) registered to the chosen
+    # realistic body. Moving only Body detaches those parts and creates the
+    # floating-object artifacts that the four-view review is designed to catch.
+    for obj in objects:
+        obj.matrix_world.translation -= offset
     bpy.context.view_layer.update()
     residual = world_bounds(body)
     residual_x = (min(point.x for point in residual) + max(point.x for point in residual)) * 0.5
@@ -406,7 +411,7 @@ def main():
     body.name = BODY_NAME
     original_height, factor, measured = normalize_height(objects, body)
     floor_shift = normalize_floor(objects, body)
-    center_shift = center_body_xy(body)
+    center_shift = center_body_xy(objects, body)
     apply_body_transforms(body)
     arm_stance = align_arm_stance_to_identity(body, identity_spec)
     ensure_export_collection(objects)
