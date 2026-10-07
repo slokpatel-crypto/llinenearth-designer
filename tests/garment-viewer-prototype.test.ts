@@ -67,6 +67,11 @@ test("GarmentViewer lab route is isolated from the protected customer visual rou
   assert(legacy.includes('redirect("/style-director")'));
 });
 
+test("viewer skips ensureLoaded for materials that model-viewer already hydrated",()=>{
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  assert(viewer.includes("if(material.isLoaded!==true && material.ensureLoaded) await material.ensureLoaded();"));
+});
+
 test("viewer recovers a model-viewer load event that fires before React effect listeners attach",()=>{
   const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
   assert(viewer.includes("loaded?:boolean"));
