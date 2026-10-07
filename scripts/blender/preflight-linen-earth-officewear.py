@@ -323,6 +323,33 @@ def main():
         elif abs(measured) > tolerance:
             reasons.append(f"{key} is {measured:.1f} mm from model center; allowed offset is ±{tolerance:.1f} mm.")
 
+    left_hand_z = guide_center_z("LE_GUIDE_LEFT_HAND_CENTER_H")
+    right_hand_z = guide_center_z("LE_GUIDE_RIGHT_HAND_CENTER_H")
+    left_sleeve_center = center_x_at_z(bpy.data.objects.get("ShirtSleeveLFabric"), left_hand_z, 0.060)
+    right_sleeve_center = center_x_at_z(bpy.data.objects.get("ShirtSleeveRFabric"), right_hand_z, 0.060)
+    left_sleeve_width = width_at_z(bpy.data.objects.get("ShirtSleeveLFabric"), left_hand_z, 0.060)
+    right_sleeve_width = width_at_z(bpy.data.objects.get("ShirtSleeveRFabric"), right_hand_z, 0.060)
+    sleeve_spacing = abs(right_sleeve_center - left_sleeve_center) if left_sleeve_center is not None and right_sleeve_center is not None else None
+    cuff_width_asymmetry = abs(left_sleeve_width - right_sleeve_width) if left_sleeve_width is not None and right_sleeve_width is not None else None
+    identity_measurements["sleeveCenterSpacingMm"] = round(sleeve_spacing, 2) if sleeve_spacing is not None else None
+    identity_measurements["cuffWidthAsymmetryMm"] = round(cuff_width_asymmetry, 2) if cuff_width_asymmetry is not None else None
+    if sleeve_spacing is None:
+        warnings.append("Could not sample sleeve-center spacing near the locked hand guides.")
+    else:
+        target_hand_spacing = EXPECTED_IDENTITY_TARGETS_MM["handCenterSpacing"]
+        if abs(sleeve_spacing - target_hand_spacing) > 36.0:
+            reasons.append(
+                f"Sleeve-center spacing near the cuffs is {sleeve_spacing:.1f} mm; "
+                f"locked hand-center target is {target_hand_spacing:.1f} mm ± 36.0 mm."
+            )
+    if cuff_width_asymmetry is None:
+        warnings.append("Could not calculate left/right cuff-zone width symmetry.")
+    elif cuff_width_asymmetry > 14.0:
+        reasons.append(
+            f"Left/right cuff-zone width asymmetry is {cuff_width_asymmetry:.1f} mm; "
+            "allowed difference is 14.0 mm."
+        )
+
     left_hem = identity_measurements.get("leftHemWidthMm")
     right_hem = identity_measurements.get("rightHemWidthMm")
     hem_asymmetry = abs(left_hem - right_hem) if left_hem is not None and right_hem is not None else None

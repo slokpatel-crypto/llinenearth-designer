@@ -119,6 +119,24 @@ The exporter now invokes the full Blender scene preflight itself before writing 
 
 For a production candidate, copy `docs/examples/linen-earth-officewear-panel-spec.template.json`, replace every zero width/height with measured garment/pattern dimensions, and pass it with `--panel-spec`. The exporter then transfers the verified body-source provenance from the Blender scene and writes the matching `.viewer.json` beside the GLB. Zero/unmeasured values are rejected, so a guessed physical scale cannot accidentally become production-ready.
 
+## One-command production candidate export
+
+Once the realistic body, shirt and trouser scene is authored and the six measured panel dimensions are filled, the repository can run export plus structural validation in one path:
+
+```bash
+LINEN_GARMENT_BLEND=/absolute/path/to/linen-earth-officewear.blend \
+LINEN_GARMENT_PANEL_SPEC=/absolute/path/to/linen-earth-officewear-panel-spec.json \
+npm run garment:model-production:export
+```
+
+Optional output override:
+
+```bash
+LINEN_GARMENT_OUTPUT=public/models/linen-earth-officewear-v1.glb
+```
+
+This command invokes the Blender exporter, which itself runs the full scene preflight, writes the GLB + sidecar, then runs the repository GLB/model-contract checker. It does not promote 3D to customers; physical-scale, interaction, realism and boundary evidence remain separate release gates.
+
 ## Pre-export scene gate
 
 Before exporting a garment candidate, run:

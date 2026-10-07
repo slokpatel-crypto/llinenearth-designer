@@ -73,6 +73,40 @@ test("realistic body intake is explicit, licensed and does not fake garment geom
   assert(!prepare.includes("ShirtTorsoFabric"),"Body intake must not invent garment meshes.");
 });
 
+test("realistic-body garment authoring creates the six canonical production shells without claiming tailor approval",()=>{
+  const packageJson=JSON.parse(readFileSync("package.json","utf8"));
+  const source=readFileSync("scripts/blender/author-linen-earth-officewear.py","utf8");
+  assert.match(packageJson.scripts["garment:model-garments:author"],/author-linen-earth-officewear\.py/);
+  for(const token of [
+    "ShirtTorsoFabric",
+    "ShirtSleeveLFabric",
+    "ShirtSleeveRFabric",
+    "TrouserWaistFabric",
+    "TrouserLegLFabric",
+    "TrouserLegRFabric",
+    "NEAREST_SURFACEPOINT",
+    "OUTSIDE_SURFACE",
+    "CORRECTIVE_SMOOTH",
+    "SOLIDIFY",
+    "planar_grain_uv",
+    "auto-authored-production-candidate-needs-tailor-review",
+  ]) assert(source.includes(token),token);
+});
+
+test("production 3D export command runs Blender export and structural validation in one path",()=>{
+  const packageJson=JSON.parse(readFileSync("package.json","utf8"));
+  const source=readFileSync("scripts/build-production-garment-model.mjs","utf8");
+  assert.equal(packageJson.scripts["garment:model-production:export"],"node scripts/build-production-garment-model.mjs");
+  for(const token of [
+    "LINEN_GARMENT_BLEND",
+    "LINEN_GARMENT_PANEL_SPEC",
+    "LINEN_GARMENT_OUTPUT",
+    "export-linen-earth-officewear.py",
+    "check-garment-viewer-model.mjs",
+    "Customer promotion still requires physical scale, latency, realism and boundary evidence",
+  ]) assert(source.includes(token),token);
+});
+
 test("panel spec template cannot pass as guessed production scale",()=>{
   const template=JSON.parse(readFileSync("docs/examples/linen-earth-officewear-panel-spec.template.json","utf8"));
   assert.equal(template.status,"TEMPLATE_REPLACE_ZERO_VALUES_WITH_MEASURED_PATTERN_DIMENSIONS");
@@ -110,6 +144,8 @@ test("Blender scene preflight verifies canonical identity guide geometry",()=>{
     "trouserCenterOffsetMm",
     "hemWidthAsymmetryMm",
     "legCenterSpacingMm",
+    "sleeveCenterSpacingMm",
+    "cuffWidthAsymmetryMm",
     "center_x_at_z",
     "must remain non-rendering",
   ]) assert(source.includes(token),`missing guide QA token: ${token}`);

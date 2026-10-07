@@ -580,8 +580,8 @@ async function loadMakeHumanGarmentShells(){
     [1.100,.086],
   ];
   const trouserLegWidthEnvelope=[
-    [.060,.034],
-    [.160,.035],
+    [.060,.032],
+    [.160,.034],
     [.300,.040],
     [.460,.046],
     [.620,.055],
@@ -1131,6 +1131,18 @@ const garmentShells=await loadMakeHumanGarmentShells();
 // cropped anatomical body surfaces. MakeHuman stays as the hidden collision/skin source.
 // These world-space shells preserve the exact Linen Earth silhouette anchors while
 // producing continuous shirt/trouser surfaces with clean side and back views.
+const realisticDefaultShells={
+  // Default officewear uses the transformed anatomy-derived shells for a more
+  // human shoulder/seat/limb surface. Variant geometry stays on the compact
+  // deterministic tailoring shells below so the full option library remains fast.
+  shirtTorso:garmentShells.shirtTorso,
+  sleeveL:garmentShells.sleeveL,
+  sleeveR:garmentShells.sleeveR,
+  trouserWaist:garmentShells.trouserWaist,
+  trouserLegL:garmentShells.trouserLegL,
+  trouserLegR:garmentShells.trouserLegR,
+};
+
 const tailoredShells={
   shirtTorso:cloneGeometryTransform(shirtTorso,(p)=>({...p,y:p.y+1.260})),
   sleeveL:tailoredSleeveCapGeometry(cloneGeometryTransform(sleeve,(p)=>({...p,x:p.x-.226,y:p.y+1.169,z:p.z+.020})),-.226),
@@ -1140,10 +1152,13 @@ const tailoredShells={
   trouserLegR:tailoredTrouserUpperGeometry(cloneGeometryTransform(trouserLeg,(p)=>({...p,x:p.x+.105,y:p.y*.94+.5225,z:p.z+.015})),.105),
 };
 const mannequinSkinShells={
-  handL:cloneGeometryTransform(hand,(p)=>({...p,x:p.x*1.15-.250,y:p.y*1.55+.850,z:p.z+.024})),
-  handR:cloneGeometryTransform(hand,(p)=>({...p,x:p.x*1.15+.250,y:p.y*1.55+.850,z:p.z+.024})),
-  forearmL:cloneGeometryTransform(mannequinForearm,(p)=>({...p,x:p.x-.236,y:p.y+1.045,z:p.z+.022})),
-  forearmR:cloneGeometryTransform(mannequinForearm,(p)=>({...p,x:p.x+.236,y:p.y+1.045,z:p.z+.022})),
+  // Use the transformed CC0 anatomy for hands/forearms instead of stacking
+  // procedural palm + finger primitives. This removes the hand-overlay artifact
+  // and keeps the exposed skin tied to the same collision anatomy as the outfit.
+  handL:garmentShells.handL,
+  handR:garmentShells.handR,
+  forearmL:garmentShells.forearmL,
+  forearmR:garmentShells.forearmR,
 };
 const mannequinBodyStats={
   vertices:mannequinBody.positions.length/3,
@@ -1355,8 +1370,6 @@ const meshNeck=addMesh("NeckMesh",neck,"MannequinSkin");
 const meshEar=addMesh("EarMesh",ear,"MannequinSkin");
 const meshHandL=addMesh("HandLMesh",mannequinSkinShells.handL,"MannequinSkin");
 const meshHandR=addMesh("HandRMesh",mannequinSkinShells.handR,"MannequinSkin");
-const meshFinger=addMesh("FingerMesh",finger,"MannequinSkin");
-const meshThumb=addMesh("ThumbMesh",thumb,"MannequinSkin");
 const exposedArmCutY={three_quarter:.985,half:1.175,roll:1.075};
 const exposedArmMeshes={};
 for(const sleeve of styleVariants.sleeves){
@@ -1381,12 +1394,12 @@ for(const sleeve of styleVariants.sleeves){
   };
 }
 const meshShoe=addMesh("DressShoeUpperMesh",shoe,"Shoe");
-const meshShirtTorso=addMesh("ShirtTorsoMesh",tailoredShells.shirtTorso,"ShirtTorsoFabric");
-const meshSleeveL=addMesh("ShirtSleeveLMesh",tailoredShells.sleeveL,"ShirtSleeveLFabric");
-const meshSleeveR=addMesh("ShirtSleeveRMesh",tailoredShells.sleeveR,"ShirtSleeveRFabric");
-const meshWaist=addMesh("TrouserWaistMesh",tailoredShells.trouserWaist,"TrouserWaistFabric");
-const meshLegL=addMesh("TrouserLegLMesh",tailoredShells.trouserLegL,"TrouserLegLFabric");
-const meshLegR=addMesh("TrouserLegRMesh",tailoredShells.trouserLegR,"TrouserLegRFabric");
+const meshShirtTorso=addMesh("ShirtTorsoMesh",realisticDefaultShells.shirtTorso,"ShirtTorsoFabric");
+const meshSleeveL=addMesh("ShirtSleeveLMesh",realisticDefaultShells.sleeveL,"ShirtSleeveLFabric");
+const meshSleeveR=addMesh("ShirtSleeveRMesh",realisticDefaultShells.sleeveR,"ShirtSleeveRFabric");
+const meshWaist=addMesh("TrouserWaistMesh",realisticDefaultShells.trouserWaist,"TrouserWaistFabric");
+const meshLegL=addMesh("TrouserLegLMesh",realisticDefaultShells.trouserLegL,"TrouserLegLFabric");
+const meshLegR=addMesh("TrouserLegRMesh",realisticDefaultShells.trouserLegR,"TrouserLegRFabric");
 const meshCollar=addMesh("CollarMesh",collar,"ShirtTorsoFabric");
 const meshCuffL=addMesh("CuffLMesh",detailBox,"ShirtSleeveLFabric");
 const meshCuffR=addMesh("CuffRMesh",detailBox,"ShirtSleeveRFabric");
@@ -1723,28 +1736,6 @@ const nodes=[
   {name:"ShirtSleeveRFabric",mesh:meshSleeveR},
   {name:"HandL",mesh:meshHandL},
   {name:"HandR",mesh:meshHandR},
-  ...[-1,1].flatMap((side)=>{
-    const handSide=side<0?"L":"R";
-    const centerX=side*.250;
-    const fingerOffsets=[-.026,-.008,.009,.026];
-    const fingerLengths=[1.12,1.36,1.30,1.04];
-    return [
-      ...fingerOffsets.map((offset,index)=>({
-        name:`HandFinger${handSide}__${index+1}`,
-        mesh:meshFinger,
-        translation:[centerX+offset,.794-.030*fingerLengths[index],.029],
-        scale:[index===0||index===3?.92:1,fingerLengths[index],1.02],
-        rotation:qz(side*(index-1.5)*1.8),
-      })),
-      {
-        name:`HandThumb${handSide}`,
-        mesh:meshThumb,
-        translation:[centerX-side*.034,.792,.030],
-        scale:[1.02,1.10,1.04],
-        rotation:qz(side<0?-28:28),
-      },
-    ];
-  }),
   ...styleVariants.sleeves.filter((sleeve)=>sleeve.id!=="full").flatMap((sleeve)=>[
     {name:`MannequinSkinArmLVariant__${sleeve.id}`,mesh:exposedArmMeshes[sleeve.id].left},
     {name:`MannequinSkinArmRVariant__${sleeve.id}`,mesh:exposedArmMeshes[sleeve.id].right},
@@ -2417,7 +2408,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.46 model complete: 360-degree raised-back collar band + 360-degree wrist cuff shells + rise-aware tucked-shirt waist junction + extra-high/Korean waist geometry + faceless human head plane/jaw profile + front-flat/back-seat trouser waist shaping + seat/crotch upper-trouser blend + tailored oval sleeve-cap pitch + English-spread/British collar geometry + fit-specific tucked waist compression + contrast-ready collar/cuff material isolation + tapered studio neck/jaw transition + tailored dress-shoe upper/heel silhouette + articulated studio-mannequin fingers/thumbs + clean hands/forearms + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
+    polishStage:"M7.46 model complete: 360-degree raised-back collar band + 360-degree wrist cuff shells + rise-aware tucked-shirt waist junction + extra-high/Korean waist geometry + faceless human head plane/jaw profile + front-flat/back-seat trouser waist shaping + seat/crotch upper-trouser blend + tailored oval sleeve-cap pitch + English-spread/British collar geometry + fit-specific tucked waist compression + contrast-ready collar/cuff material isolation + tapered studio neck/jaw transition + tailored dress-shoe upper/heel silhouette + anatomy-derived default garment surface + anatomy-derived clean hands/forearms without overlay geometry + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},

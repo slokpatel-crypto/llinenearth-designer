@@ -404,9 +404,23 @@ async function verifyViewport(browser, width) {
     if(expectedWidth<=640) assert.ok(layout.stageTop < layout.controlsTop, "mobile must show the 3D stage before controls");
   };
 
+  const captureViewportEvidence=async(name)=>{
+    const viewport=page.viewportSize();
+    assert.ok(viewport,"browser QA viewport must be available for evidence capture");
+    // This route is intentionally very tall because it exposes the full tailoring library.
+    // Capture the asserted viewport instead of asking Chromium to rasterize the entire
+    // continuously rendered WebGL page, which can exceed CI's screenshot deadline.
+    await page.screenshot({
+      path:path.join(output,name),
+      clip:{x:0,y:0,width:viewport.width,height:viewport.height},
+      animations:"disabled",
+      timeout:60000,
+    });
+  };
+
   const desktopLayout=await readLayout();
   assertLayout(desktopLayout,width);
-  await page.screenshot({ path: path.join(output, "garment-viewer-" + width + ".png"), fullPage: true });
+  await captureViewportEvidence("garment-viewer-" + width + ".png");
 
   // Reuse the already-loaded WebGL/model scene for mobile responsive QA. Reloading this
   // large contract a second time on CI duplicates shader/model startup cost without
@@ -415,7 +429,7 @@ async function verifyViewport(browser, width) {
   await page.waitForTimeout(250);
   const mobileLayout=await readLayout();
   assertLayout(mobileLayout,390);
-  await page.screenshot({ path: path.join(output, "garment-viewer-390.png"), fullPage: true });
+  await captureViewportEvidence("garment-viewer-390.png");
 
   assert.deepEqual(errors, [], "GarmentViewer must load without console/page errors");
   await context.close();
