@@ -851,6 +851,22 @@ const miteredCuff=extrudedPolygonGeometry([
 const cocktailCuff=extrudedPolygonGeometry([
   [-.50,.50],[.50,.50],[.50,-.36],[.28,-.50],[0,-.40],[-.28,-.50],[-.50,-.36],
 ],1);
+const roundedPocket=extrudedPolygonGeometry([
+  [-.50,.50],[.50,.50],[.50,-.25],[.46,-.36],[.36,-.45],[.20,-.50],
+  [-.20,-.50],[-.36,-.45],[-.46,-.36],[-.50,-.25],
+],1);
+const angledPocket=extrudedPolygonGeometry([
+  [-.50,.42],[.50,.50],[.50,-.50],[-.50,-.50],
+],1);
+const westernPocket=extrudedPolygonGeometry([
+  [-.50,.50],[.50,.50],[.48,-.28],[.24,-.44],[0,-.52],[-.24,-.44],[-.48,-.28],
+],1);
+const utilityPocket=extrudedPolygonGeometry([
+  [-.50,.50],[.50,.50],[.50,-.50],[-.50,-.50],
+],1);
+const pocketFlap=extrudedPolygonGeometry([
+  [-.50,.50],[.50,.50],[.50,-.12],[.18,-.50],[0,-.34],[-.18,-.50],[-.50,-.12],
+],1);
 const detailBox=boxGeometry();
 const button=uvSphereGeometry(6,10);
 
@@ -1075,9 +1091,20 @@ const placketVariantMeshes=Object.fromEntries(styleVariants.plackets.filter((ite
   item.id,
   addMesh(`ShirtPlacketVariantMesh__${item.id}`,detailBox,`ShirtPlacketVariant__${item.id}`)
 ]));
-const pocketVariantMeshes=Object.fromEntries(styleVariants.pockets.filter((item)=>item.id!=="none").map((item)=>[
+const pocketVariantMeshes=Object.fromEntries(styleVariants.pockets.filter((item)=>item.id!=="none").map((item)=>{
+  const geometry=item.id==="rounded"||item.id==="rounded_flap"?roundedPocket
+    : item.id==="angled"||item.id==="button_angled"?angledPocket
+      : item.id==="western_flap"?westernPocket
+        : utilityPocket;
+  return [item.id,addMesh(`ShirtPocketVariantMesh__${item.id}`,geometry,`ShirtPocketVariant__${item.id}`)];
+}));
+const pocketFlapVariantMeshes=Object.fromEntries(styleVariants.pockets.filter((item)=>["single_flap","western_flap","rounded_flap","safari"].includes(item.id)).map((item)=>[
   item.id,
-  addMesh(`ShirtPocketVariantMesh__${item.id}`,detailBox,`ShirtPocketVariant__${item.id}`)
+  addMesh(`ShirtPocketFlapVariantMesh__${item.id}`,pocketFlap,`ShirtPocketVariant__${item.id}`)
+]));
+const pocketPleatVariantMeshes=Object.fromEntries(styleVariants.pockets.filter((item)=>["safari","reverse_pleat"].includes(item.id)).map((item)=>[
+  item.id,
+  addMesh(`ShirtPocketPleatVariantMesh__${item.id}`,detailBox,`ShirtPocketVariant__${item.id}`)
 ]));
 const waistbandVariantMeshes=Object.fromEntries(styleVariants.waistbands.filter((item)=>item.id!=="clean").map((item)=>[
   item.id,
@@ -1282,7 +1309,27 @@ for(const item of styleVariants.pockets){
   const spec=shirtPocketSpec[item.id]||shirtPocketSpec.rounded;
   const xs=spec.count===2?[-spec.x,spec.x]:[spec.x];
   for(const x of xs){
-    nodes.push({name:`ShirtPocketVariant__${item.id}__${x<0?"L":"R"}`,mesh:pocketVariantMeshes[item.id],translation:[x,spec.y,.116],scale:spec.scale,rotation:qz((x<0?-1:1)*(spec.angle||0))});
+    const side=x<0?"L":"R";
+    const angle=(x<0?-1:1)*(spec.angle||0);
+    nodes.push({name:`ShirtPocketVariant__${item.id}__${side}`,mesh:pocketVariantMeshes[item.id],translation:[x,spec.y,.116],scale:spec.scale,rotation:qz(angle)});
+    if(pocketFlapVariantMeshes[item.id]!==undefined){
+      nodes.push({
+        name:`ShirtPocketFlapVariant__${item.id}__${side}`,
+        mesh:pocketFlapVariantMeshes[item.id],
+        translation:[x,spec.y+.064,.123],
+        scale:[spec.scale[0]*1.04,.034,.010],
+        rotation:qz(angle)
+      });
+    }
+    if(pocketPleatVariantMeshes[item.id]!==undefined){
+      nodes.push({
+        name:`ShirtPocketPleatVariant__${item.id}__${side}`,
+        mesh:pocketPleatVariantMeshes[item.id],
+        translation:[x,spec.y-.004,.124],
+        scale:[item.id==="safari"?.018:.012,spec.scale[1]*.72,.006],
+        rotation:qz(angle)
+      });
+    }
   }
 }
 
@@ -1510,7 +1557,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.6 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.7 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -1595,7 +1642,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.6 model complete: researched shirt/trouser construction geometry + pleat/back ease + collar/cuff stiffness + construction-aware closure hardware + canonical Designer handoff + fabric drape response",
+    polishStage:"M7.7 model complete: researched shirt/trouser construction geometry + pleat/back ease + collar/cuff stiffness + construction-aware closures + shaped/flapped/pleated shirt pockets + canonical Designer handoff + fabric drape response",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
