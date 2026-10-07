@@ -1038,7 +1038,7 @@ const thumb=profileGeometry({
 const mannequinBody=await loadMakeHumanBodyGeometry();
 const garmentShells=await loadMakeHumanGarmentShells();
 
-// M7.39: the visible clothing uses clean identity-first tailoring shells rather than
+// M7.40: the visible clothing uses clean identity-first tailoring shells rather than
 // cropped anatomical body surfaces. MakeHuman stays as the hidden collision/skin source.
 // These world-space shells preserve the exact Linen Earth silhouette anchors while
 // producing continuous shirt/trouser surfaces with clean side and back views.
@@ -1466,8 +1466,14 @@ for(const fit of styleVariants.trouserFits){
   }
 }
 
-const lowRiseWaist=addMesh("TrouserWaistVariantMesh__low",cloneGeometryTransform(tailoredShells.trouserWaist,(p)=>({...p,y:p.y-.035})),"TrouserWaistVariant__low");
-const highRiseWaist=addMesh("TrouserWaistVariantMesh__high",cloneGeometryTransform(tailoredShells.trouserWaist,(p)=>({...p,y:p.y+.035})),"TrouserWaistVariant__high");
+const trouserRiseWaistMeshes=Object.fromEntries(styleVariants.rises.filter((rise)=>rise.id!=="mid").map((rise)=>[
+  rise.id,
+  addMesh(
+    `TrouserWaistVariantMesh__${rise.id}`,
+    cloneGeometryTransform(tailoredShells.trouserWaist,(p)=>({...p,y:p.y+(Number(rise.yOffsetM)||0)})),
+    `TrouserWaistVariant__${rise.id}`
+  )
+]));
 const trouserCoreDetailMeshes=Object.fromEntries(styleVariants.rises.map((rise)=>[
   rise.id,
   addMesh(`TrouserCoreDetailVariantMesh__${rise.id}`,detailBox,`TrouserCoreDetailVariant__${rise.id}`)
@@ -1937,8 +1943,9 @@ for(const fit of styleVariants.trouserFits){
   nodes.push({name:`TrouserLegLVariant__${fit.id}`,mesh:mesh.left});
   nodes.push({name:`TrouserLegRVariant__${fit.id}`,mesh:mesh.right});
 }
-nodes.push({name:"TrouserWaistVariant__low",mesh:lowRiseWaist});
-nodes.push({name:"TrouserWaistVariant__high",mesh:highRiseWaist});
+for(const rise of styleVariants.rises.filter((item)=>item.id!=="mid")){
+  nodes.push({name:`TrouserWaistVariant__${rise.id}`,mesh:trouserRiseWaistMeshes[rise.id]});
+}
 for(const rise of styleVariants.rises){
   const yOffset=Number(rise.yOffsetM)||0;
   const detailMesh=trouserCoreDetailMeshes[rise.id];
@@ -2202,7 +2209,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.39 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.40 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -2287,7 +2294,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.39 model complete: faceless human head plane/jaw profile + front-flat/back-seat trouser waist shaping + seat/crotch upper-trouser blend + tailored oval sleeve-cap pitch + English-spread/British collar geometry + fit-specific tucked waist compression + contrast-ready collar/cuff material isolation + tapered studio neck/jaw transition + tailored dress-shoe upper/heel silhouette + articulated studio-mannequin fingers/thumbs + clean hands/forearms + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
+    polishStage:"M7.40 model complete: extra-high/Korean waist geometry + faceless human head plane/jaw profile + front-flat/back-seat trouser waist shaping + seat/crotch upper-trouser blend + tailored oval sleeve-cap pitch + English-spread/British collar geometry + fit-specific tucked waist compression + contrast-ready collar/cuff material isolation + tapered studio neck/jaw transition + tailored dress-shoe upper/heel silhouette + articulated studio-mannequin fingers/thumbs + clean hands/forearms + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},

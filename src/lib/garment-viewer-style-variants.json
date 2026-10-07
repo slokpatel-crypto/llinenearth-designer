@@ -506,6 +506,11 @@
       "id": "high",
       "label": "High / Natural-Waist Rise",
       "yOffsetM": 0.035
+    },
+    {
+      "id": "extra_high",
+      "label": "Extra-High / Korean High-Waist Rise",
+      "yOffsetM": 0.06
     }
   ],
   "pleats": [
@@ -971,7 +976,7 @@
       "label": "Korean High-Rise Tapered",
       "preset": {
         "trouserFit": "tapered",
-        "rise": "high",
+        "rise": "extra_high",
         "pleat": "single_reverse",
         "waistband": "clean",
         "breakStyle": "negative",

@@ -440,3 +440,12 @@ Architecture and product decisions that must persist across coding sessions.
 **Geometry basis:** the collar uses the current Proper Cloth English Spread reference dimensions: 2.75 in point length, 4.88 in spread, 0.38 in tie space, 1.00 in front band height and 1.38 in rear band height. The 3D shell uses a conservative spread angle between the existing semi-spread and broad spread families, with the same fused / soft-fused / soft-unfused construction variants.
 
 **Rendering:** the collar remains compatible with self-fabric, white contrast collar, and white contrast collar + cuffs, uses the existing physical-scale fabric texture path, and adds no AI/provider cost.
+
+
+## 2026-10-07 — M7.40 explicit extra-high / Korean trouser rise
+
+**Decision:** the 3D tailoring library now exposes the Designer's existing Extra-High Rise as a real geometry-backed option instead of collapsing it into ordinary high rise.
+
+**Geometry:** the explicit `extra_high` rise shifts the shaped trouser waist shell and all rise-attached fly, button, waistband, pleat and pocket details by 60 mm. Rise-shell generation is now data-driven for every non-mid rise, so future supported rise values do not require hand-written low/high mesh branches.
+
+**Preset:** `Korean High-Rise Tapered` now selects `extra_high` directly. The change stays deterministic, uses the same locked model and fabric materials, and adds no AI/provider cost.
