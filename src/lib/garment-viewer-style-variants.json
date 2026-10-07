@@ -70,125 +70,186 @@
       "id": "point",
       "label": "Point / Standard Collar",
       "family": "dress",
-      "spreadDeg": 32
+      "spreadDeg": 32,
+      "spreadInRange": [
+        1.5,
+        3.5
+      ],
+      "source": "Proper Cloth reference"
     },
     {
       "id": "semi_spread",
       "label": "Semi-Spread Collar",
       "family": "dress",
-      "spreadDeg": 44
+      "spreadDeg": 44,
+      "pointLengthIn": 2.75,
+      "spreadIn": 4.25,
+      "tieSpaceIn": 0.38,
+      "frontBandHeightIn": 1,
+      "rearBandHeightIn": 1.38,
+      "source": "Proper Cloth reference"
     },
     {
       "id": "spread",
       "label": "Spread Collar",
       "family": "dress",
-      "spreadDeg": 58
+      "spreadDeg": 58,
+      "source": "Proper Cloth reference"
     },
     {
       "id": "cutaway",
       "label": "Cutaway Collar",
       "family": "dress",
-      "spreadDeg": 92
+      "spreadDeg": 92,
+      "spreadInRange": [
+        6.5,
+        8.5
+      ],
+      "source": "Proper Cloth reference"
     },
     {
       "id": "button_down",
       "label": "Button-Down Collar",
       "family": "casual",
-      "spreadDeg": 38
+      "spreadDeg": 38,
+      "source": "Proper Cloth reference"
     },
     {
       "id": "hidden_button_down",
       "label": "Hidden Button-Down Collar",
       "family": "dress-casual",
-      "spreadDeg": 42
+      "spreadDeg": 42,
+      "pointLengthIn": 2.88,
+      "spreadIn": 4.25,
+      "tieSpaceIn": 0.25,
+      "frontBandHeightIn": 1,
+      "rearBandHeightIn": 1.5,
+      "source": "Proper Cloth reference"
     },
     {
       "id": "club",
       "label": "Club / Rounded Collar",
       "family": "vintage",
-      "spreadDeg": 40
+      "spreadDeg": 40,
+      "source": "Proper Cloth reference"
     },
     {
       "id": "tab",
       "label": "Tab Collar",
       "family": "dress",
-      "spreadDeg": 34
+      "spreadDeg": 34,
+      "source": "Proper Cloth reference"
     },
     {
       "id": "wingtip",
       "label": "Wingtip / Tuxedo Collar",
       "family": "formal",
-      "spreadDeg": 88
+      "spreadDeg": 88,
+      "source": "Proper Cloth reference"
     },
     {
       "id": "mandarin",
       "label": "Mandarin / Band Collar",
       "family": "band",
-      "spreadDeg": 0
+      "spreadDeg": 0,
+      "source": "Proper Cloth reference"
     },
     {
       "id": "camp",
       "label": "Camp / Cuban Collar",
       "family": "casual",
-      "spreadDeg": 66
+      "spreadDeg": 66,
+      "pointLengthIn": 2.63,
+      "spreadIn": 4.75,
+      "construction": "light_fused",
+      "source": "Proper Cloth reference"
     },
     {
       "id": "one_piece",
       "label": "One-Piece / California Collar",
       "family": "casual",
-      "spreadDeg": 54
+      "spreadDeg": 54,
+      "source": "Proper Cloth reference"
     }
   ],
   "cuffs": [
     {
       "id": "barrel_1",
       "label": "One-Button Barrel Cuff",
-      "family": "barrel"
+      "family": "barrel",
+      "lengthIn": 2.375,
+      "construction": "fused",
+      "source": "Proper Cloth reference"
     },
     {
       "id": "long_barrel_1",
       "label": "Long One-Button Barrel Cuff",
-      "family": "barrel"
+      "family": "barrel",
+      "lengthIn": 2.875,
+      "construction": "fused",
+      "source": "Proper Cloth reference"
     },
     {
       "id": "mitered_1",
       "label": "One-Button Mitered Cuff",
-      "family": "barrel"
+      "family": "barrel",
+      "lengthIn": 2.625,
+      "construction": "fused",
+      "source": "Proper Cloth reference"
     },
     {
       "id": "rounded_2",
       "label": "Two-Button Rounded Cuff",
-      "family": "barrel"
+      "family": "barrel",
+      "lengthIn": 2.875,
+      "construction": "fused",
+      "source": "Proper Cloth reference"
     },
     {
       "id": "mitered_2",
       "label": "Two-Button Mitered Cuff",
-      "family": "barrel"
+      "family": "barrel",
+      "lengthIn": 2.875,
+      "construction": "fused",
+      "source": "Proper Cloth reference"
     },
     {
       "id": "french",
       "label": "Square French / Double Cuff",
-      "family": "french"
+      "family": "french",
+      "lengthIn": 2.875,
+      "construction": "fused",
+      "source": "Proper Cloth reference"
     },
     {
       "id": "rounded_french",
       "label": "Rounded French Cuff",
-      "family": "french"
+      "family": "french",
+      "lengthIn": 2.875,
+      "construction": "fused",
+      "source": "Proper Cloth reference"
     },
     {
       "id": "convertible",
       "label": "Convertible Cuff",
-      "family": "convertible"
+      "family": "convertible",
+      "lengthIn": 2.5,
+      "construction": "fused",
+      "source": "Proper Cloth reference"
     },
     {
       "id": "soft_barrel",
       "label": "Soft One-Button Cuff",
-      "family": "soft"
+      "family": "soft",
+      "lengthIn": 2.375,
+      "construction": "soft_unfused",
+      "source": "Proper Cloth reference"
     },
     {
       "id": "cocktail",
       "label": "Cocktail / Turnback Cuff",
-      "family": "turnback"
+      "family": "turnback",
+      "source": "Proper Cloth reference"
     }
   ],
   "plackets": [
@@ -242,12 +303,18 @@
     {
       "id": "rounded",
       "label": "Single Rounded Chest Pocket",
-      "count": 1
+      "count": 1,
+      "widthIn": 4.75,
+      "heightIn": 5.1875,
+      "source": "Proper Cloth reference"
     },
     {
       "id": "angled",
       "label": "Single Angled Chest Pocket",
-      "count": 1
+      "count": 1,
+      "widthIn": 4.375,
+      "heightIn": 5.375,
+      "source": "Proper Cloth reference"
     },
     {
       "id": "button_angled",
@@ -910,15 +977,23 @@
   "shirtHems": [
     {
       "id": "rounded",
-      "label": "Rounded / Shirttail Hem"
+      "label": "Rounded / Shirttail Hem",
+      "sideRiseIn": 2,
+      "source": "Proper Cloth reference"
     },
     {
       "id": "straight",
-      "label": "Straight Hem"
+      "label": "Straight Hem",
+      "sideVentIn": 2.5,
+      "recommendedLengthAdjustmentIn": -0.7,
+      "source": "Proper Cloth reference"
     },
     {
       "id": "polo",
-      "label": "Polo / Drop-Tail Hem"
+      "label": "Polo / Drop-Tail Hem",
+      "backDropIn": 1,
+      "sideVentIn": 1,
+      "source": "Proper Cloth reference"
     }
   ],
   "trouserHems": [
@@ -928,11 +1003,15 @@
     },
     {
       "id": "turnup_4",
-      "label": "4 cm Turn-Up / Cuff"
+      "label": "4 cm Turn-Up / Cuff",
+      "heightCm": 4,
+      "source": "Permanent Style / English-tailoring range"
     },
     {
       "id": "turnup_5",
-      "label": "5 cm Turn-Up / Cuff"
+      "label": "5 cm Turn-Up / Cuff",
+      "heightCm": 5,
+      "source": "Permanent Style reference"
     }
   ],
   "trouserPockets": [
