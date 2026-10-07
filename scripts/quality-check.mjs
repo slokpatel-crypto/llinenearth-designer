@@ -1566,7 +1566,7 @@ const designerCatalogStock=fs.readFileSync("src/lib/designer/catalog-stock-serve
 const garmentViewerMemory=fs.readFileSync("src/app/api/memory/event/route.ts","utf8");
 const garmentViewerReadinessClient=fs.readFileSync("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx","utf8");
 const protectedVisualRoute=fs.readFileSync("src/app/visual/page.tsx","utf8");
-for(const token of ["shirt","trouser","blazer","suit","typeExamples","detailFamilies","status:\"planned\"","optionsFor(\"shirt.type\")","optionsFor(\"pant.type\")","futureGarmentOptionsFor(\"blazer.type\")","futureGarmentOptionsFor(\"suit.type\")"]) {
+for(const token of ["shirt","trouser","blazer","suit","typeExamples","detailFamilies","status:\"planned\"","garment-viewer-style-variants.json","styleVariants.shirtTypes","styleVariants.trouserTypes","futureGarmentOptionsFor(\"blazer.type\")","futureGarmentOptionsFor(\"suit.type\")"]) {
   if(!garmentCategoryLibrary.includes(token)) throw new Error(`Garment category library regression: missing ${token}`);
 }
 for(const token of ["blazer.type","blazer.lapel","blazer.vent","blazer.pocket","blazer.shoulder","suit.type","suit.waistcoat","suit.jacket","suit.trouser","status:\"planned\""]) {
