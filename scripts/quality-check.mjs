@@ -1633,6 +1633,9 @@ for(const token of ["WORKSHEET_ONLY_NOT_PRODUCTION_EVIDENCE","geometryEstimate",
 for(const token of ["preflight_report = run_scene_preflight()","productionFitEvidence","\"ready\": preflight_report.get(\"ready\") is True","identityFitMeasurementsMm","boundaryIntersections","boundaryClearanceMm"]) {
   if(!garmentViewerExporter.includes(token)) throw new Error(`GarmentViewer production-fit manifest regression: missing ${token}`);
 }
+for(const token of ["--lab-preview","geometry_panel_spec","geometry-estimate-unverified","realistic-body-lab-preview-unverified-panel-scale","Panel dimensions are geometry estimates only; physical pattern scale is unverified.","LAB-ONLY viewer manifest written"]) {
+  if(!garmentViewerExporter.includes(token)) throw new Error(`GarmentViewer lab-export truthfulness regression: missing ${token}`);
+}
 for(const token of ["measurementEvidence","owner_measured","tailor_measured","pattern_room_measured","supplier_pattern_verified","panelMeasurementEvidence"]) {
   if(!garmentViewerExporter.includes(token)) throw new Error(`GarmentViewer panel-scale provenance regression: missing ${token}`);
 }
