@@ -110,6 +110,7 @@ test("production asset readiness requires measured panel and Blender fit evidenc
     panelMeasurementEvidence:{source:"pattern_room_measured",measuredAt:"2026-10-05",note:"Measured on the approved physical pattern pieces."},
     productionFitEvidence:{
       gate:"linen-earth-officewear-scene-preflight-v1",
+      ready:true,
       identityFitMeasurementsMm:{shirtWaistWidth:294},
       boundaryIntersections:{bodyShirtTorso:0},
       boundaryClearanceMm:{shirtWaistBody:{median:8}},
@@ -120,6 +121,21 @@ test("production asset readiness requires measured panel and Blender fit evidenc
   assert.equal(ready.panelMeasurementReady,true);
   assert.equal(ready.fitEvidenceReady,true);
   assert.equal(ready.productionAssetReady,true);
+
+  const failedPreflight=validateGarmentViewerModelManifest({
+    ...base,
+    panelMeasurementEvidence:{source:"pattern_room_measured",measuredAt:"2026-10-05",note:"Measured on the approved physical pattern pieces."},
+    productionFitEvidence:{
+      gate:"linen-earth-officewear-scene-preflight-v1",
+      ready:false,
+      identityFitMeasurementsMm:{shirtWaistWidth:294},
+      boundaryIntersections:{bodyShirtTorso:0},
+      boundaryClearanceMm:{shirtWaistBody:{median:8}},
+      totals:{triangles:120000,vertices:160000},
+    },
+  },"LE-OFFICEWEAR-V1");
+  assert.equal(failedPreflight.fitEvidenceReady,false);
+  assert.equal(failedPreflight.productionAssetReady,false);
 });
 
 test("panel phase controls stay bounded for production texture alignment",()=>{
