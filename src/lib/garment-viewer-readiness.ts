@@ -54,6 +54,7 @@ export type GarmentViewerPatternScaleSample = {
 export type GarmentViewerPromotionInput = {
   contract:GarmentViewerModelContractResult|null;
   manifest:GarmentViewerManifestValidation|null;
+  styleVariantCoverage:{ready:boolean;required:number;present:number;missing:string[]}|null;
   patternScaleSamples:GarmentViewerPatternScaleSample[];
   interactionLatencyMs:number[];
   realismAssessments:RealismAssessment[];
@@ -64,6 +65,7 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
   const contractReady=input.contract?.readiness==="contract_ready" && input.contract.physicallyScalable;
   const manifestReady=input.manifest?.valid===true;
   const productionAssetReady=input.manifest?.productionAssetReady===true;
+  const styleVariantReady=input.styleVariantCoverage?.ready===true;
 
   const scaleSamples=input.patternScaleSamples
     .filter((sample)=>sample.verified&&Number.isFinite(sample.errorPct)&&sample.errorPct>=0)
@@ -89,6 +91,11 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
   if(!contractReady) reasons.push("Approved GLB has not passed the six-panel production material contract.");
   if(!manifestReady) reasons.push("Approved GLB physical panel manifest is missing or invalid.");
   if(!productionAssetReady) reasons.push("Production promotion requires a realistic-body Blender candidate with measured panel provenance and Blender fit/boundary evidence.");
+  if(!styleVariantReady) {
+    const present=input.styleVariantCoverage?.present||0;
+    const required=input.styleVariantCoverage?.required||0;
+    reasons.push(`Production 3D tailoring variants are incomplete (${present}/${required} variant material slots present).`);
+  }
   if(!scaleReady) reasons.push("Verified stripe and check renders must both stay within the <=8% physical-scale gate.");
   if(!latencyReady) reasons.push("3D interaction needs at least 12 samples with p95 below 300 ms.");
   if(!realismReady) reasons.push("At least 6 of 8 independent viewers must rate the realistic model 4/5 or 5/5.");
@@ -96,10 +103,12 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
 
   return {
     version:"linen-earth-garment-viewer-readiness-v1" as const,
-    ready:contractReady&&manifestReady&&productionAssetReady&&scaleReady&&latencyReady&&realismReady&&boundaryReady,
+    ready:contractReady&&manifestReady&&productionAssetReady&&styleVariantReady&&scaleReady&&latencyReady&&realismReady&&boundaryReady,
     contractReady,
     manifestReady,
     productionAssetReady,
+    styleVariantReady,
+    styleVariantCoverage:input.styleVariantCoverage,
     scaleReady,
     latencyReady,
     realismReady,
