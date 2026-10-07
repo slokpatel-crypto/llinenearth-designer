@@ -64,7 +64,7 @@ type DesignerDraftRecipe={
   occasion?:string;
   styleSpec?:{
     shirt?:{
-      type?:string; collar?:string; cuff?:string; placket?:string; pocket?:string;
+      type?:string; collar?:string; collarFinish?:string; cuff?:string; placket?:string; pocket?:string;
       sleeve?:string; fit?:string; hem?:string; wear?:string; button?:string; back?:string;
     };
     pant?:{
@@ -73,6 +73,7 @@ type DesignerDraftRecipe={
   };
   style?:{
     collar?:string;
+    collarFinish?:string;
     cuff?:string;
     placket?:string;
     shirtFit?:string;
@@ -99,6 +100,11 @@ const CAMERA_VIEWS=LINEN_EARTH_MODEL_VIEWS;
 const SHIRT_GARMENT_CATEGORY=GARMENT_CATEGORY_LIBRARY.find((item)=>item.id==="shirt")!;
 const TROUSER_GARMENT_CATEGORY=GARMENT_CATEGORY_LIBRARY.find((item)=>item.id==="trouser")!;
 const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
+const COLLAR_FINISH_OPTIONS=[
+  {id:"self",label:"Self-fabric"},
+  {id:"white_collar",label:"White contrast collar"},
+  {id:"white_collar_cuffs",label:"White contrast collar + cuffs"},
+] as const;
 
 function fabricDrapeClass(fabric:GarmentViewerFabric|undefined) {
   const declared=String(fabric?.drape||"").toLowerCase();
@@ -176,6 +182,12 @@ type StyleVariantState={
 
 function normalizedStyleLabel(value:string|undefined) {
   return String(value||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+}
+function collarFinishVariantFor(value:string|undefined) {
+  const normalized=normalizedStyleLabel(value);
+  if(normalized.includes("white")&&normalized.includes("collar")&&normalized.includes("cuff")) return "white_collar_cuffs";
+  if(normalized.includes("white")&&normalized.includes("collar")) return "white_collar";
+  return "self";
 }
 function variantIdForLabel(items:ReadonlyArray<{id:string;label:string}>,label:string|undefined,fallback:string) {
   const target=normalizedStyleLabel(label);
@@ -391,6 +403,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const [shirtWearKey,setShirtWearKey]=useState("tucked");
   const [sleeveKey,setSleeveKey]=useState("full");
   const [collarKey,setCollarKey]=useState("point");
+  const [collarFinishKey,setCollarFinishKey]=useState("self");
   const [collarConstructionKey,setCollarConstructionKey]=useState("stiff_fused");
   const [cuffKey,setCuffKey]=useState("barrel_1");
   const [cuffConstructionKey,setCuffConstructionKey]=useState("fused");
@@ -415,6 +428,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const draftTrouserTypeLabel=draftOptionLabel(designerDraftRecipe?.styleSpec?.pant?.type,designerDraftRecipe?.style?.trouser || "Trouser type not saved")!;
   const draftShirtDetails=[
     draftOptionLabel(designerDraftRecipe?.styleSpec?.shirt?.collar,designerDraftRecipe?.style?.collar),
+    designerDraftRecipe?.styleSpec?.shirt?.collarFinish || designerDraftRecipe?.style?.collarFinish,
     draftOptionLabel(designerDraftRecipe?.styleSpec?.shirt?.cuff,designerDraftRecipe?.style?.cuff),
     draftOptionLabel(designerDraftRecipe?.styleSpec?.shirt?.placket,designerDraftRecipe?.style?.placket),
     draftOptionLabel(designerDraftRecipe?.styleSpec?.shirt?.fit,designerDraftRecipe?.style?.shirtFit),
@@ -479,6 +493,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         const shirtSpec=parsed.styleSpec?.shirt;
         const pantSpec=parsed.styleSpec?.pant;
         const optionLabel=(id:string|undefined)=>id ? (optionById(id)?.label||id.replaceAll("_"," ")) : undefined;
+        setCollarFinishKey(collarFinishVariantFor(shirtSpec?.collarFinish||parsed.style.collarFinish));
 
         const savedShirtType=shirtSpec?.type;
         const savedShirtPreset=savedShirtType ? styleVariants.shirtTypes.find((item)=>item.id===savedShirtType)?.preset : undefined;
@@ -829,20 +844,42 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       setButtonMaterial(baseButton,buttonSpec,true);
 
       const shirtBase=clamp(roughness+drapeRoughnessOffset(shirt),.55,.98);
+      const shirtBodyPrepared=preparedTextureRef.current.get("ShirtTorsoFabric");
+      const shirtSleevePrepared=preparedTextureRef.current.get("ShirtSleeveLFabric");
       const collarOffset=collarConstructionKey==="soft_unfused"?.07:collarConstructionKey==="soft_fused"?.035:0;
       const collar=await ensureViewerMaterialLoaded(materialsByName.get(`ShirtCollarVariant__${collarKey}__${collarConstructionKey}`));
       if(cancelled) return;
-      collar?.pbrMetallicRoughness.setRoughnessFactor(clamp(shirtBase+collarOffset,.55,.98));
+      const whiteCollar=collarFinishKey!=="self";
+      if(collar){
+        collar.pbrMetallicRoughness.setBaseColorFactor(whiteCollar?[.97,.97,.95,1]:[1,1,1,1]);
+        if(whiteCollar) collar.pbrMetallicRoughness.baseColorTexture?.setTexture(null);
+        else if(shirtBodyPrepared) collar.pbrMetallicRoughness.baseColorTexture?.setTexture(shirtBodyPrepared.texture);
+        collar.pbrMetallicRoughness.setRoughnessFactor(clamp(shirtBase+collarOffset,.55,.98));
+      }
+      const neckGasket=await ensureViewerMaterialLoaded(materialsByName.get(`ShirtNeckGasketVariant__${collarKey}`));
+      if(cancelled) return;
+      if(neckGasket){
+        neckGasket.pbrMetallicRoughness.setBaseColorFactor(whiteCollar?[.97,.97,.95,1]:[1,1,1,1]);
+        if(whiteCollar) neckGasket.pbrMetallicRoughness.baseColorTexture?.setTexture(null);
+        else if(shirtBodyPrepared) neckGasket.pbrMetallicRoughness.baseColorTexture?.setTexture(shirtBodyPrepared.texture);
+        neckGasket.pbrMetallicRoughness.setRoughnessFactor(clamp(shirtBase+collarOffset,.55,.98));
+      }
       if(styleState.sleeve==="full"){
         const cuffOffset=cuffConstructionKey==="soft"?.06:0;
         const cuff=await ensureViewerMaterialLoaded(materialsByName.get(`ShirtCuffVariant__${cuffKey}__${cuffConstructionKey}`));
         if(cancelled) return;
-        cuff?.pbrMetallicRoughness.setRoughnessFactor(clamp(shirtBase+cuffOffset,.55,.98));
+        if(cuff){
+          const whiteCuff=collarFinishKey==="white_collar_cuffs";
+          cuff.pbrMetallicRoughness.setBaseColorFactor(whiteCuff?[.97,.97,.95,1]:[1,1,1,1]);
+          if(whiteCuff) cuff.pbrMetallicRoughness.baseColorTexture?.setTexture(null);
+          else if(shirtSleevePrepared) cuff.pbrMetallicRoughness.baseColorTexture?.setTexture(shirtSleevePrepared.texture);
+          cuff.pbrMetallicRoughness.setRoughnessFactor(clamp(shirtBase+cuffOffset,.55,.98));
+        }
       }
     };
     void apply().catch(()=>{if(!cancelled)setError("A tailoring variant could not be prepared. Try another option.");});
     return ()=>{cancelled=true;};
-  },[modelReady,styleState,buttonKey,textureRevision,roughness,shirt,trouser,collarKey,collarConstructionKey,cuffKey,cuffConstructionKey]);
+  },[modelReady,styleState,buttonKey,textureRevision,roughness,shirt,trouser,collarKey,collarFinishKey,collarConstructionKey,cuffKey,cuffConstructionKey]);
 
   function applyShirtTypePreset(id:string){
     setShirtTypeKey(id);
@@ -921,7 +958,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     className:"garmentModelViewer",
   }) : null;
 
-  return <section className="garmentViewerShell" data-model-readiness={modelContract?.readiness || "loading"} data-manifest-ready={productionManifestReady} data-active-view={activeView}>
+  return <section className="garmentViewerShell" data-model-readiness={modelContract?.readiness || "loading"} data-manifest-ready={productionManifestReady} data-active-view={activeView} data-collar-finish={collarFinishKey}>
     <div className="garmentViewerStage">
       <div className="garmentViewerStageHead">
         <span>GARMENTVIEWER · DEEP ENGINE</span>
@@ -942,7 +979,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       <div>
         <span className="garmentViewerEyebrow">REAL FABRIC → REUSABLE MODEL</span>
         <h1>Live tailoring + fabric model.</h1>
-        <p>The mannequin identity stays fixed while fabric and real tailoring construction switch independently: shirt type/fit/tuck/sleeves/collar construction/cuffs/placket/pockets/yoke/hem plus trouser type/shape/rise/pleat direction/waistband/break/turn-up/pockets. {shirtFabrics.length} shirt fabrics and {trouserFabrics.length} trouser fabrics use the same live Designer stock.</p>
+        <p>The mannequin identity stays fixed while fabric and real tailoring construction switch independently: shirt type/fit/tuck/sleeves/collar construction/white contrast collar-cuffs/placket/pockets/yoke/hem plus trouser type/shape/rise/pleat direction/waistband/break/turn-up/pockets. {shirtFabrics.length} shirt fabrics and {trouserFabrics.length} trouser fabrics use the same live Designer stock.</p>
       </div>
 
       <div className="garmentViewerReference">
@@ -982,6 +1019,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           <label><span>Sleeve</span><select aria-label="3D sleeve" value={sleeveKey} onChange={(e)=>setSleeveKey(e.target.value)}>{styleVariants.sleeves.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Collar</span><select aria-label="3D collar" value={collarKey} onChange={(e)=>setCollarKey(e.target.value)}>{styleVariants.collars.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Collar build</span><select aria-label="3D collar construction" value={collarConstructionKey} onChange={(e)=>setCollarConstructionKey(e.target.value)}>{styleVariants.collarConstruction.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+          <label><span>Collar cloth</span><select aria-label="3D collar cloth" value={collarFinishKey} onChange={(e)=>setCollarFinishKey(e.target.value)}>{COLLAR_FINISH_OPTIONS.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Cuff</span><select aria-label="3D cuff" value={cuffKey} onChange={(e)=>setCuffKey(e.target.value)}>{styleVariants.cuffs.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Cuff build</span><select aria-label="3D cuff construction" value={cuffConstructionKey} onChange={(e)=>setCuffConstructionKey(e.target.value)}>{styleVariants.cuffConstruction.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Button material</span><select aria-label="3D button material" value={buttonKey} onChange={(e)=>setButtonKey(e.target.value)}>{styleVariants.buttons.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
@@ -999,7 +1037,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           <label><span>Trouser pockets</span><select aria-label="3D trouser pockets" value={trouserPocketKey} onChange={(e)=>setTrouserPocketKey(e.target.value)}>{styleVariants.trouserPockets.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
         </div>
         <div className="garmentStyleLiveSummary">
-          <span><b>SHIRT</b>{styleVariants.shirtTypes.find((x)=>x.id===shirtTypeKey)?.label} · {styleVariants.shirtFits.find((x)=>x.id===shirtFitKey)?.label} · {styleVariants.collars.find((x)=>x.id===collarKey)?.label} · {styleVariants.yokes.find((x)=>x.id===yokeKey)?.label} · {styleVariants.shirtBacks.find((x)=>x.id===shirtBackKey)?.label} · {styleVariants.shirtHems.find((x)=>x.id===shirtHemKey)?.label}</span>
+          <span><b>SHIRT</b>{styleVariants.shirtTypes.find((x)=>x.id===shirtTypeKey)?.label} · {styleVariants.shirtFits.find((x)=>x.id===shirtFitKey)?.label} · {styleVariants.collars.find((x)=>x.id===collarKey)?.label} · {COLLAR_FINISH_OPTIONS.find((x)=>x.id===collarFinishKey)?.label} · {styleVariants.yokes.find((x)=>x.id===yokeKey)?.label} · {styleVariants.shirtBacks.find((x)=>x.id===shirtBackKey)?.label} · {styleVariants.shirtHems.find((x)=>x.id===shirtHemKey)?.label}</span>
           <span><b>TROUSER</b>{styleVariants.trouserTypes.find((x)=>x.id===trouserTypeKey)?.label} · {styleVariants.trouserFits.find((x)=>x.id===trouserFitKey)?.label} · {styleVariants.pleats.find((x)=>x.id===pleatKey)?.label} · {styleVariants.waistbands.find((x)=>x.id===waistbandKey)?.label} · {styleVariants.trouserHems.find((x)=>x.id===trouserHemKey)?.label}</span>
         </div>
       </section>
@@ -1017,12 +1055,12 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       <label className="garmentRange"><span>Surface roughness base <b>{roughness.toFixed(2)}</b></span><input type="range" min=".55" max=".98" step=".01" value={roughness} onChange={(event)=>setRoughness(Number(event.target.value))}/><small>Fabric drape class automatically shifts linen normal strength and roughness around this base value; unknown fabrics stay on a conservative medium response.</small></label>
 
       <div className="garmentViewerFacts">
-        <span><small>MODEL</small><b>{modelContract?.readiness==="contract_ready"&&productionManifestReady?"M7.32 Tailoring GLB":"Reusable GLB"}</b></span>
+        <span><small>MODEL</small><b>{modelContract?.readiness==="contract_ready"&&productionManifestReady?"M7.33 Tailoring GLB":"Reusable GLB"}</b></span>
         <span><small>FABRIC</small><b>Panel-scaled PBR + variants</b></span>
         <span><small>VIEWS</small><b>4 fixed + free</b></span>
         <span><small>AI CREDITS</small><b>0</b></span>
       </div>
-      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M7.32 is locked: the same mannequin now carries a researched tailoring library covering shirt type/fit/tuck/sleeve/collar construction/cuff/placket/pocket/yoke/back/hem and trouser type/fit/rise/pleat direction/waistband/break/turn-up/pockets. Fabric remains panel-scaled and non-metallic; verified drape/weight metadata now changes the surface fold-normal response and roughness without AI credits." : "Fallback prototype is active. Production should use the identity-locked M7.3 tailoring model before fabric/drape work continues."}</p>
+      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M7.33 is locked: the same mannequin now carries a researched tailoring library covering shirt type/fit/tuck/sleeve/collar construction/cuff/placket/pocket/yoke/back/hem and trouser type/fit/rise/pleat direction/waistband/break/turn-up/pockets. Fabric remains panel-scaled and non-metallic; verified drape/weight metadata now changes the surface fold-normal response and roughness without AI credits." : "Fallback prototype is active. Production should use the identity-locked M7.3 tailoring model before fabric/drape work continues."}</p>
     </aside>
   </section>;
 }

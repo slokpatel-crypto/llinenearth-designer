@@ -413,3 +413,12 @@ Architecture and product decisions that must persist across coding sessions.
 **Decision:** stop reusing a scaled copy of the head as the visible neck. The mannequin now has a dedicated tapered neck shell that narrows toward the jaw while preserving the locked collar height, head position and 1727 mm identity. This removes the bulbous neck read in 3/4 and side views and gives collar variants a cleaner human-like support surface without adding facial detail.
 
 **Acceptance boundary:** the mannequin remains intentionally faceless and identity-locked. This refinement changes only the visible neutral neck geometry; collar selection, neck gasket behaviour, garment scale, camera, fabric mapping and zero-credit rendering stay unchanged.
+
+
+## 2026-10-07 — M7.33 exact white contrast collar and cuff rendering
+
+**Decision:** carry the existing StyleSpec v2 `collarFinish` choice into the reusable 3D garment viewer instead of dropping it during Designer → 3D handoff. The live viewer now supports the same three closed choices already used by Designer: self-fabric, white contrast collar, and white contrast collar + cuffs. Contrast pieces keep the active construction geometry and linen normal/roughness behaviour, but deliberately detach the selected shirt colour/pattern texture and render as neutral off-white cloth. The collar neck-gasket follows the collar finish so no coloured seam appears at the neck.
+
+**Compatibility:** no schema migration, new dependency, provider call or AI credit. Existing saved StyleSpec v2 recipes remain valid; missing collarFinish defaults to self-fabric. Switching back to self-fabric restores the prepared real shirt texture to the active collar/cuff materials.
+
+**Verification:** static quality gates protect the exact handoff and texture-detach path; responsive browser QA verifies the saved collar + cuffs choice reaches the new control, remains observable on the viewer shell, and collar-only contrast remains a distinct state.
