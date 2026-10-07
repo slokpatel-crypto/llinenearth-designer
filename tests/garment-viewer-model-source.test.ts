@@ -100,6 +100,20 @@ test("Blender exporter carries fit and boundary preflight evidence into the prod
   for(const token of ["preflight_report = run_scene_preflight()","productionFitEvidence","identityFitMeasurementsMm","boundaryIntersections","boundaryClearanceMm"]) assert(exporter.includes(token),token);
 });
 
+test("production scene assembly chains realistic body preparation, garment authoring and Blender preflight",()=>{
+  const packageJson=JSON.parse(readFileSync("package.json","utf8"));
+  const source=readFileSync("scripts/assemble-production-garment-scene.mjs","utf8");
+  assert.equal(packageJson.scripts["garment:model-production:assemble"],"node scripts/assemble-production-garment-scene.mjs");
+  for(const token of [
+    "bootstrap-human-base-meshes.py",
+    "prepare-linen-earth-body.py",
+    "author-linen-earth-officewear.py",
+    "preflight-linen-earth-officewear.py",
+    "linen-earth-officewear-authored.blend",
+    "visually/tailor review",
+  ]) assert(source.includes(token),token);
+});
+
 test("production 3D export command runs Blender export and structural validation in one path",()=>{
   const packageJson=JSON.parse(readFileSync("package.json","utf8"));
   const source=readFileSync("scripts/build-production-garment-model.mjs","utf8");
