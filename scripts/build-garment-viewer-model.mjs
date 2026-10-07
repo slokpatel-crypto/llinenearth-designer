@@ -903,10 +903,10 @@ const styleVariantMaterials=[
     addVariantMaterial(`ShirtTorsoBackVariant__${fit.id}__${back.id}`,"shirt")
   )),
   ...styleVariants.shirtFits.map((fit)=>addVariantMaterial(`ShirtHemVariant__${fit.id}`,"shirt")),
-  ...styleVariants.sleeves.filter((sleeve)=>sleeve.id!=="full").flatMap((sleeve)=>[
-    addVariantMaterial(`ShirtSleeveLLength__${sleeve.id}`,"shirt"),
-    addVariantMaterial(`ShirtSleeveRLength__${sleeve.id}`,"shirt"),
-  ]),
+  ...styleVariants.shirtFits.flatMap((fit)=>styleVariants.sleeves.filter((sleeve)=>sleeve.id!=="full").flatMap((sleeve)=>[
+    addVariantMaterial(`ShirtSleeveLLength__${fit.id}__${sleeve.id}`,"shirt"),
+    addVariantMaterial(`ShirtSleeveRLength__${fit.id}__${sleeve.id}`,"shirt"),
+  ])),
   ...styleVariants.collars.flatMap((item)=>styleVariants.collarConstruction.map((construction)=>
     addVariantMaterial(`ShirtCollarVariant__${item.id}__${construction.id}`,"shirt")
   )),
@@ -1031,12 +1031,29 @@ for(const fit of styleVariants.shirtFits){
     `ShirtHemVariant__${fit.id}`,
   );
 }
-const threeQuarterSleeveL=addMesh("ShirtSleeveLLengthMesh__three_quarter",cropGeometry(garmentShells.sleeveL,(p)=>p.y>=.990), "ShirtSleeveLLength__three_quarter");
-const threeQuarterSleeveR=addMesh("ShirtSleeveRLengthMesh__three_quarter",cropGeometry(garmentShells.sleeveR,(p)=>p.y>=.990), "ShirtSleeveRLength__three_quarter");
-const halfSleeveL=addMesh("ShirtSleeveLLengthMesh__half",cropGeometry(garmentShells.sleeveL,(p)=>p.y>=1.18), "ShirtSleeveLLength__half");
-const halfSleeveR=addMesh("ShirtSleeveRLengthMesh__half",cropGeometry(garmentShells.sleeveR,(p)=>p.y>=1.18), "ShirtSleeveRLength__half");
-const rollSleeveL=addMesh("ShirtSleeveLLengthMesh__roll",cropGeometry(garmentShells.sleeveL,(p)=>p.y>=1.08), "ShirtSleeveLLength__roll");
-const rollSleeveR=addMesh("ShirtSleeveRLengthMesh__roll",cropGeometry(garmentShells.sleeveR,(p)=>p.y>=1.08), "ShirtSleeveRLength__roll");
+const shirtSleeveLengthMeshes={};
+const sleeveLengthCutY={three_quarter:.990,half:1.18,roll:1.08};
+for(const fit of styleVariants.shirtFits){
+  const sourceL=fit.id==="regular"?garmentShells.sleeveL:shirtFitGeometry(garmentShells.sleeveL,fit,-.226);
+  const sourceR=fit.id==="regular"?garmentShells.sleeveR:shirtFitGeometry(garmentShells.sleeveR,fit,.226);
+  for(const sleeve of styleVariants.sleeves){
+    if(sleeve.id==="full") continue;
+    const cutY=sleeveLengthCutY[sleeve.id]??1.08;
+    const key=`${fit.id}__${sleeve.id}`;
+    shirtSleeveLengthMeshes[key]={
+      left:addMesh(
+        `ShirtSleeveLLengthMesh__${key}`,
+        cropGeometry(sourceL,(p)=>p.y>=cutY),
+        `ShirtSleeveLLength__${key}`
+      ),
+      right:addMesh(
+        `ShirtSleeveRLengthMesh__${key}`,
+        cropGeometry(sourceR,(p)=>p.y>=cutY),
+        `ShirtSleeveRLength__${key}`
+      ),
+    };
+  }
+}
 
 const trouserFitMeshes={};
 for(const fit of styleVariants.trouserFits){
@@ -1185,9 +1202,15 @@ for(const fit of styleVariants.shirtFits){
   }
 }
 for(const fit of styleVariants.shirtFits) nodes.push({name:`ShirtHemVariant__${fit.id}`,mesh:shirtHemMeshes[fit.id]});
-nodes.push({name:"ShirtSleeveLLength__three_quarter",mesh:threeQuarterSleeveL},{name:"ShirtSleeveRLength__three_quarter",mesh:threeQuarterSleeveR});
-nodes.push({name:"ShirtSleeveLLength__half",mesh:halfSleeveL},{name:"ShirtSleeveRLength__half",mesh:halfSleeveR});
-nodes.push({name:"ShirtSleeveLLength__roll",mesh:rollSleeveL},{name:"ShirtSleeveRLength__roll",mesh:rollSleeveR});
+for(const fit of styleVariants.shirtFits){
+  for(const sleeve of styleVariants.sleeves){
+    if(sleeve.id==="full") continue;
+    const key=`${fit.id}__${sleeve.id}`;
+    const mesh=shirtSleeveLengthMeshes[key];
+    nodes.push({name:`ShirtSleeveLLength__${key}`,mesh:mesh.left});
+    nodes.push({name:`ShirtSleeveRLength__${key}`,mesh:mesh.right});
+  }
+}
 
 // Collar families.
 const collarNodeSpec={
@@ -1557,7 +1580,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.7 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.8 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -1642,7 +1665,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.7 model complete: researched shirt/trouser construction geometry + pleat/back ease + collar/cuff stiffness + construction-aware closures + shaped/flapped/pleated shirt pockets + canonical Designer handoff + fabric drape response",
+    polishStage:"M7.8 model complete: researched shirt/trouser construction geometry + fit-aware sleeve lengths + pleat/back ease + collar/cuff stiffness + construction-aware closures + shaped pockets + canonical Designer handoff + fabric drape response",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
