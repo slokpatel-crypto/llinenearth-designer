@@ -76,7 +76,7 @@ def ensure_export_collection():
     return collection
 
 
-def build_ring_shell(name, rings, segments=48, neck_opening=None):
+def build_ring_shell(name, rings, segments=48, neck_opening=None, collar_height=0.0):
     if len(rings) < 2:
         raise RuntimeError(f"{name} requires at least two rings.")
     collection = ensure_export_collection()
@@ -122,6 +122,25 @@ def build_ring_shell(name, rings, segments=48, neck_opening=None):
                 neck_start + nxt,
                 neck_start + segment,
             ))
+        if collar_height > 0:
+            collar_top = len(vertices)
+            for segment in range(segments):
+                angle = 2.0 * math.pi * segment / segments
+                front_bias = max(0.0, -math.sin(angle))
+                lift = collar_height * (0.78 + 0.22 * front_bias)
+                vertices.append((
+                    center_x + math.cos(angle) * (neck_rx + 0.006),
+                    center_y + math.sin(angle) * (neck_ry + 0.005),
+                    z_value + lift,
+                ))
+            for segment in range(segments):
+                nxt = (segment + 1) % segments
+                faces.append((
+                    neck_start + segment,
+                    neck_start + nxt,
+                    collar_top + nxt,
+                    collar_top + segment,
+                ))
 
     mesh = bpy.data.meshes.new(name + "Mesh")
     mesh.from_pydata(vertices, [], faces)
@@ -189,6 +208,7 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
         ],
         segments=64,
         neck_opening=(shoulder_z, cx, cy - 0.006, 0.061, 0.054),
+        collar_height=0.032,
     )
 
     sleeve_top_z = shoulder_z - 0.018
@@ -346,6 +366,17 @@ def fit_shell(obj, body, clearance_m, thickness_m):
     solid.offset = 1.0
     solid.use_rim = True
     apply_modifier(obj, solid)
+
+
+def finish_procedural_shell(obj, thickness_m):
+    solid = obj.modifiers.new("LE_CLOTH_THICKNESS", "SOLIDIFY")
+    solid.thickness = thickness_m
+    solid.offset = 1.0
+    solid.use_rim = True
+    solid.use_rim_only = False
+    apply_modifier(obj, solid)
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
 
 
 def guide_center_z(name):
@@ -579,6 +610,7 @@ def main():
 
     authored, fit_profile = build_procedural_officewear(body, targets, shirt_clearance_m, trouser_clearance_m)
     for name, obj in authored.items():
+        finish_procedural_shell(obj, thickness_m)
         obj["linen_earth_auto_authored"] = True
         obj["linen_earth_fit_clearance_mm"] = round(
             shirt_clearance_m if name.startswith("Shirt") else trouser_clearance_m,
