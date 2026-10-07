@@ -108,6 +108,11 @@ export type GarmentViewerModelManifest = {
     boundaryClearanceMm?:Record<string,unknown>|null;
     totals?:Record<string,number>|null;
   };
+  panelMeasurementEvidence?:{
+    source:"owner_measured"|"tailor_measured"|"pattern_room_measured"|"supplier_pattern_verified";
+    measuredAt:string;
+    note:string;
+  };
   productionAssetStatus?:"deterministic-preview-shell-not-realistic-production-asset"|"realistic-body-production-candidate";
 };
 
