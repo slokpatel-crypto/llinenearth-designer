@@ -93,6 +93,16 @@ test("realistic-body garment authoring creates the six canonical production shel
   ]) assert(source.includes(token),token);
 });
 
+test("deterministic shell and Blender production candidate are explicitly distinguished",()=>{
+  const builder=readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
+  const exporter=readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
+  const contract=readFileSync("src/lib/garment-viewer-model-contract.ts","utf8");
+  assert(builder.includes("deterministic-preview-shell-not-realistic-production-asset"));
+  assert(builder.includes("realistic production asset still requires Blender-source fit/evidence"));
+  assert(exporter.includes("realistic-body-production-candidate"));
+  assert(contract.includes('"deterministic-preview-shell-not-realistic-production-asset"|"realistic-body-production-candidate"'));
+});
+
 test("Blender exporter carries fit and boundary preflight evidence into the production manifest",()=>{
   const preflight=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
   const exporter=readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
