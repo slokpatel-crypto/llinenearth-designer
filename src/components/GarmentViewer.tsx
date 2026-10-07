@@ -279,6 +279,7 @@ function variantMaterialVisible(name:string,state:StyleVariantState) {
   if(name.startsWith("ButtonAccentVariant__shirt_placket__")) return name.endsWith(`__${state.placket}`);
   if(name.startsWith("ButtonAccentVariant__shirt_collar__")) return name.endsWith(`__${state.collar}`);
   if(name.startsWith("ButtonAccentVariant__shirt_cuff__")) return state.sleeve==="full"&&name.endsWith(`__${state.cuff}`);
+  if(name.startsWith("ButtonAccentVariant__shirt_cufflink__")) return state.sleeve==="full"&&name.endsWith(`__${state.cuff}`);
   return true;
 }
 
