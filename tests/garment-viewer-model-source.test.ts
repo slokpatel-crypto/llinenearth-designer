@@ -242,6 +242,17 @@ test("realistic lab export is explicit, unverified for physical scale and cannot
   assert(workflow.includes("garment:model-production:lab-export"));
 });
 
+test("production model checker can require realistic production readiness and staging never overwrites public by default",()=>{
+  const checker=readFileSync("scripts/check-garment-viewer-model.mjs","utf8");
+  const builder=readFileSync("scripts/build-production-garment-model.mjs","utf8");
+  assert(checker.includes("LINEN_GARMENT_REQUIRE_PRODUCTION"));
+  assert(checker.includes("manifest?.productionAssetReady===true"));
+  assert(checker.includes("requireProduction"));
+  assert(builder.includes(".cache/linen-earth/candidates/linen-earth-officewear-v1.glb"));
+  assert(builder.includes('LINEN_GARMENT_REQUIRE_PRODUCTION:"true"'));
+  assert(!builder.includes('||"public/models/linen-earth-officewear-v1.glb"'));
+});
+
 test("production 3D export command runs Blender export and structural validation in one path",()=>{
   const packageJson=JSON.parse(readFileSync("package.json","utf8"));
   const source=readFileSync("scripts/build-production-garment-model.mjs","utf8");
