@@ -977,7 +977,7 @@ const styleVariantMaterials=[
   ...styleVariants.rises.map((rise)=>addVariantMaterial(`TrouserCoreDetailVariant__${rise.id}`,"trouser")),
   ...styleVariants.rises.flatMap((rise)=>styleVariants.pleats.filter((pleat)=>pleat.id!=="flat").map((pleat)=>addVariantMaterial(`TrouserWaistPleatVariant__${rise.id}__${pleat.id}`,"trouser"))),
   ...styleVariants.rises.flatMap((rise)=>styleVariants.waistbands.filter((item)=>item.id!=="clean").map((item)=>addVariantMaterial(`TrouserWaistbandVariant__${rise.id}__${item.id}`,"trouser"))),
-  ...styleVariants.pleats.filter((item)=>item.id!=="flat").map((item)=>addVariantMaterial(`TrouserPleatVariant__${item.id}`,"trouser")),
+  ...styleVariants.rises.flatMap((rise)=>styleVariants.pleats.filter((item)=>item.id!=="flat").map((item)=>addVariantMaterial(`TrouserPleatVariant__${rise.id}__${item.id}`,"trouser"))),
   ...styleVariants.breaks.filter((item)=>item.id!=="slight").map((item)=>addVariantMaterial(`TrouserBreakVariant__${item.id}`,"trouser")),
   ...styleVariants.trouserFits.flatMap((fit)=>styleVariants.breaks.flatMap((breakStyle)=>styleVariants.trouserHems.filter((item)=>item.id!=="plain").map((item)=>addVariantMaterial(`TrouserHemVariant__${fit.id}__${breakStyle.id}__${item.id}`,"trouser")))),
   ...styleVariants.trouserPockets.map((item)=>addVariantMaterial(`TrouserPocketVariant__${item.id}`,"trouser")),
@@ -1232,10 +1232,18 @@ for(const rise of styleVariants.rises){
     );
   }
 }
-const pleatVariantMeshes=Object.fromEntries(styleVariants.pleats.filter((item)=>item.id!=="flat").map((item)=>[
-  item.id,
-  addMesh(`TrouserPleatVariantMesh__${item.id}`,detailBox,`TrouserPleatVariant__${item.id}`)
-]));
+const pleatVariantMeshes={};
+for(const rise of styleVariants.rises){
+  for(const item of styleVariants.pleats){
+    if(item.id==="flat") continue;
+    const key=`${rise.id}__${item.id}`;
+    pleatVariantMeshes[key]=addMesh(
+      `TrouserPleatVariantMesh__${key}`,
+      detailBox,
+      `TrouserPleatVariant__${key}`
+    );
+  }
+}
 const breakVariantMeshes=Object.fromEntries(styleVariants.breaks.filter((item)=>item.id!=="slight").map((item)=>[
   item.id,
   addMesh(`TrouserBreakVariantMesh__${item.id}`,detailBox,`TrouserBreakVariant__${item.id}`)
@@ -1618,7 +1626,7 @@ for(const rise of styleVariants.rises){
   });
 }
 
-// Pleat construction cues: forward/reverse direction and single/double count.
+// Pleat construction cues follow the selected rise as well as direction/count.
 const pleatSpec={
   single_forward:{count:1,direction:1},
   single_reverse:{count:1,direction:-1},
@@ -1626,20 +1634,25 @@ const pleatSpec={
   double_reverse:{count:2,direction:-1},
   kissing:{count:2,direction:0},
 };
-for(const item of styleVariants.pleats){
-  if(item.id==="flat") continue;
-  const spec=pleatSpec[item.id]||{count:item.count||1,direction:1};
-  for(const side of [-1,1]){
-    for(let index=0;index<spec.count;index++){
-      const base=.070+index*.032;
-      const angle=spec.direction===0?(index===0?-3:3):spec.direction*(4+index*2);
-      nodes.push({
-        name:`TrouserPleatVariant__${item.id}__${side<0?"L":"R"}${index+1}`,
-        mesh:pleatVariantMeshes[item.id],
-        translation:[side*base,1.012-index*.004,.107],
-        scale:[.007,.150-index*.012,.006],
-        rotation:qz(side*angle),
-      });
+for(const rise of styleVariants.rises){
+  const yOffset=Number(rise.yOffsetM)||0;
+  for(const item of styleVariants.pleats){
+    if(item.id==="flat") continue;
+    const key=`${rise.id}__${item.id}`;
+    const mesh=pleatVariantMeshes[key];
+    const spec=pleatSpec[item.id]||{count:item.count||1,direction:1};
+    for(const side of [-1,1]){
+      for(let index=0;index<spec.count;index++){
+        const base=.070+index*.032;
+        const angle=spec.direction===0?(index===0?-3:3):spec.direction*(4+index*2);
+        nodes.push({
+          name:`TrouserPleatVariant__${key}__${side<0?"L":"R"}${index+1}`,
+          mesh,
+          translation:[side*base,1.012+yOffset-index*.004,.107],
+          scale:[.007,.150-index*.012,.006],
+          rotation:qz(side*angle),
+        });
+      }
     }
   }
 }
@@ -1875,7 +1888,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.16 model complete: researched shirt/trouser construction geometry + fit-aware sleeves + true trouser breaks + fit/break-locked turn-ups + rise-locked waist shell/fly/waistband/button hardware + pleat/back ease + collar/cuff stiffness + construction-aware closures/cufflinks + tuxedo front pleats + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
+    polishStage:"M7.17 model complete: researched shirt/trouser construction geometry + fit-aware sleeves + true trouser breaks + fit/break-locked turn-ups + rise-locked waist shell/fly/waistband/button/pleat details + pleat/back ease + collar/cuff stiffness + construction-aware closures/cufflinks + tuxedo front pleats + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},

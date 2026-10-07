@@ -273,7 +273,7 @@ function variantMaterialVisible(name:string,state:StyleVariantState) {
   if(name.startsWith("TrouserCoreDetailVariant__")) return name.includes(`TrouserCoreDetailVariant__${state.rise}__`)||name.endsWith(`__${state.rise}`);
   if(name.startsWith("TrouserWaistPleatVariant__")) return state.pleat!=="flat"&&name.endsWith(`__${state.rise}__${state.pleat}`);
   if(name.startsWith("TrouserWaistbandVariant__")) return state.waistband!=="clean"&&name.endsWith(`__${state.rise}__${state.waistband}`);
-  if(name.startsWith("TrouserPleatVariant__")) return state.pleat!=="flat"&&name.endsWith(`__${state.pleat}`);
+  if(name.startsWith("TrouserPleatVariant__")) return state.pleat!=="flat"&&name.includes(`TrouserPleatVariant__${state.rise}__${state.pleat}__`);
   if(name.startsWith("TrouserBreakVariant__")) return state.breakStyle!=="slight"&&name.endsWith(`__${state.breakStyle}`);
   if(name.startsWith("TrouserHemVariant__")) return state.trouserHem!=="plain"&&name.endsWith(`__${state.trouserFit}__${state.breakStyle}__${state.trouserHem}`);
   if(name.startsWith("TrouserPocketVariant__")) return name.endsWith(`__${state.trouserPocket}`);
