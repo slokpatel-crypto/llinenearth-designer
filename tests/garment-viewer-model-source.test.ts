@@ -182,6 +182,9 @@ test("rendered realistic review has an automated garment/shoe visibility gate",(
     "trouserRatio",
     "shoeRatio",
     "review-visibility.json",
+    "review-contact-sheet.png",
+    "tileWidth=360",
+    "tileHeight=540",
   ]) assert(source.includes(token),token);
   assert(workflow.includes("Verify garment and shoe visibility"));
   assert(workflow.includes("review_visibility"));
@@ -203,6 +206,8 @@ test("realistic production candidate renders front, three-quarter, side and back
     "LE_REVIEW_FILL",
     "LE_REVIEW_RIM",
     "scene.view_settings.exposure = -0.65",
+    'default=480',
+    'default=720',
     '#303843',
     '#A97C62',
     "SHOE_OBJECTS",
