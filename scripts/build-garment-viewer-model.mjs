@@ -594,6 +594,14 @@ async function loadMakeHumanGarmentShells(){
     kind:"skin",centerX:.226,yMin:.80,yMax:.91,outward:0,
     predicate:(p)=>p.y>=.80&&p.y<=.91&&p.x>=.195,
   });
+  const forearmL=buildRegion({
+    kind:"skin",centerX:-.226,yMin:.895,yMax:1.20,outward:.0005,
+    predicate:(p)=>p.y>=.895&&p.y<=1.20&&p.x<=-.145,
+  });
+  const forearmR=buildRegion({
+    kind:"skin",centerX:.226,yMin:.895,yMax:1.20,outward:.0005,
+    predicate:(p)=>p.y>=.895&&p.y<=1.20&&p.x>=.145,
+  });
   const trouserWaist=buildRegion({
     kind:"waist",centerX:0,yMin:.94,yMax:1.10,outward:.0035,
     predicate:(p)=>p.y>=.94&&p.y<=1.10&&Math.abs(p.x)<=.185,
@@ -615,7 +623,7 @@ async function loadMakeHumanGarmentShells(){
     predicate:(p)=>p.y>=0&&p.y<=.160&&p.x>.025,
   });
 
-  return {shirtTorso,sleeveL,sleeveR,handL,handR,trouserWaist,trouserLegL,trouserLegR,shoeL,shoeR};
+  return {shirtTorso,sleeveL,sleeveR,handL,handR,forearmL,forearmR,trouserWaist,trouserLegL,trouserLegR,shoeL,shoeR};
 }
 
 function profileGeometry({rings,segments=28,ripple=()=>0}){
@@ -993,6 +1001,12 @@ const styleVariantMaterials=[
   ...styleVariants.rises.flatMap((rise)=>styleVariants.trouserPockets.map((item)=>addVariantMaterial(`TrouserPocketVariant__${rise.id}__${item.id}`,"trouser"))),
   addVariantMaterial("TrouserCreaseVariant__front","trouser"),
 ];
+const skinArmMaterials=styleVariants.sleeves.filter((sleeve)=>sleeve.id!=="full").map((sleeve)=>({
+  name:`MannequinSkinArmVariant__${sleeve.id}`,
+  alphaMode:"BLEND",
+  doubleSided:true,
+  pbrMetallicRoughness:{baseColorFactor:[.94,.93,.90,0],metallicFactor:0,roughnessFactor:.90},
+}));
 const buttonVariantMaterialNames=[];
 function addButtonVariantMaterial(name){
   buttonVariantMaterialNames.push(name);
@@ -1023,6 +1037,7 @@ const buttonVariantMaterials=[
 
 const materials=[
   {name:"MannequinSkin",pbrMetallicRoughness:{baseColorFactor:[.94,.93,.90,1],metallicFactor:0,roughnessFactor:.90}},
+  ...skinArmMaterials,
   ...garmentMaterials,
   ...styleVariantMaterials,
   ...buttonVariantMaterials,
@@ -1037,6 +1052,24 @@ const meshHead=addMesh("HeadMesh",head,"MannequinSkin");
 const meshEar=addMesh("EarMesh",ear,"MannequinSkin");
 const meshHandL=addMesh("HandLMesh",garmentShells.handL,"MannequinSkin");
 const meshHandR=addMesh("HandRMesh",garmentShells.handR,"MannequinSkin");
+const exposedArmCutY={three_quarter:.985,half:1.175,roll:1.075};
+const exposedArmMeshes={};
+for(const sleeve of styleVariants.sleeves){
+  if(sleeve.id==="full") continue;
+  const cutY=exposedArmCutY[sleeve.id]??1.075;
+  exposedArmMeshes[sleeve.id]={
+    left:addMesh(
+      `MannequinSkinArmLVariantMesh__${sleeve.id}`,
+      cropGeometry(garmentShells.forearmL,(p)=>p.y>=.905&&p.y<=cutY),
+      `MannequinSkinArmVariant__${sleeve.id}`
+    ),
+    right:addMesh(
+      `MannequinSkinArmRVariantMesh__${sleeve.id}`,
+      cropGeometry(garmentShells.forearmR,(p)=>p.y>=.905&&p.y<=cutY),
+      `MannequinSkinArmVariant__${sleeve.id}`
+    ),
+  };
+}
 const meshShoeL=addMesh("ShoeLMesh",garmentShells.shoeL,"Shoe");
 const meshShoeR=addMesh("ShoeRMesh",garmentShells.shoeR,"Shoe");
 const meshShirtTorso=addMesh("ShirtTorsoMesh",garmentShells.shirtTorso,"ShirtTorsoFabric");
@@ -1319,6 +1352,10 @@ const nodes=[
   {name:"ShirtSleeveRFabric",mesh:meshSleeveR},
   {name:"HandL",mesh:meshHandL},
   {name:"HandR",mesh:meshHandR},
+  ...styleVariants.sleeves.filter((sleeve)=>sleeve.id!=="full").flatMap((sleeve)=>[
+    {name:`MannequinSkinArmLVariant__${sleeve.id}`,mesh:exposedArmMeshes[sleeve.id].left},
+    {name:`MannequinSkinArmRVariant__${sleeve.id}`,mesh:exposedArmMeshes[sleeve.id].right},
+  ]),
   {name:"TrouserWaistFabric",mesh:meshWaist},
   {name:"TrouserLegLFabric",mesh:meshLegL},
   {name:"TrouserLegRFabric",mesh:meshLegR},
@@ -1935,7 +1972,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.20 model complete: researched shirt/trouser construction geometry + collar-neck junction seal + fit-aware sleeves + persistent tailored front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist shell/fly/waistband/button/pleat/pocket details + pleat/back ease + collar/cuff stiffness + construction-aware closures/cufflinks + tuxedo front pleats + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
+    polishStage:"M7.21 model complete: researched shirt/trouser construction geometry + exposed forearms for half/rolled/three-quarter sleeves + collar-neck junction seal + fit-aware sleeves + persistent tailored front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist shell/fly/waistband/button/pleat/pocket details + pleat/back ease + collar/cuff stiffness + construction-aware closures/cufflinks + tuxedo front pleats + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},

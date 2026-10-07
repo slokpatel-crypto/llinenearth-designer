@@ -238,6 +238,15 @@ function isGarmentVariantMaterial(name:string) {
 function isButtonVariantMaterial(name:string) {
   return name.startsWith("ButtonAccentVariant__");
 }
+function isSkinArmVariantMaterial(name:string) {
+  return name.startsWith("MannequinSkinArmVariant__");
+}
+function setSkinArmAlpha(material:Material|null|undefined,visible:boolean) {
+  if(!material) return;
+  material.pbrMetallicRoughness.setBaseColorFactor([.94,.93,.90,visible?1:0]);
+  material.pbrMetallicRoughness.setMetallicFactor(0);
+  material.pbrMetallicRoughness.setRoughnessFactor(.90);
+}
 function setButtonMaterial(
   material:Material|null|undefined,
   spec:(typeof styleVariants.buttons)[number]|undefined,
@@ -644,7 +653,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         const shirtSource=prepared.find((entry)=>entry.panel.material==="ShirtTorsoFabric");
         const trouserSource=prepared.find((entry)=>entry.panel.material==="TrouserWaistFabric");
         for(const material of viewer.model?.materials||[]){
-          if(!material.name.includes("Variant__")&&!material.name.includes("Length__")) continue;
+          if((!material.name.startsWith("Shirt")&&!material.name.startsWith("Trouser"))||(!material.name.includes("Variant__")&&!material.name.includes("Length__"))) continue;
           const source=material.name.startsWith("Shirt")?shirtSource:trouserSource;
           if(!source) continue;
           material.pbrMetallicRoughness.setMetallicFactor(0);
@@ -656,6 +665,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         const buttonSpec=styleVariants.buttons.find((item)=>item.id===buttonKey);
         for(const material of viewer.model?.materials||[]){
           if(isGarmentVariantMaterial(material.name)) setMaterialAlpha(material,variantMaterialVisible(material.name,styleState));
+          else if(isSkinArmVariantMaterial(material.name)) setSkinArmAlpha(material,styleState.sleeve!=="full"&&material.name.endsWith(`__${styleState.sleeve}`));
           else if(isButtonVariantMaterial(material.name)) setButtonMaterial(material,buttonSpec,variantMaterialVisible(material.name,styleState));
         }
         if(interactionStartedAt.current!==null && modelSrc && assetIdentityKey && modelContract?.readiness==="contract_ready"){
@@ -702,6 +712,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     const buttonSpec=styleVariants.buttons.find((item)=>item.id===buttonKey);
     for(const material of viewer.model.materials){
       if(isGarmentVariantMaterial(material.name)) setMaterialAlpha(material,variantMaterialVisible(material.name,styleState));
+      else if(isSkinArmVariantMaterial(material.name)) setSkinArmAlpha(material,styleState.sleeve!=="full"&&material.name.endsWith(`__${styleState.sleeve}`));
       else if(isButtonVariantMaterial(material.name)) setButtonMaterial(material,buttonSpec,variantMaterialVisible(material.name,styleState));
     }
   },[modelReady,styleState,buttonKey]);
