@@ -11,6 +11,7 @@ import sys
 
 import bpy
 from mathutils import Vector
+from mathutils.bvhtree import BVHTree
 
 EXPORT_COLLECTION = "LinenEarthExport"
 REFERENCE_BODY = "Body"
@@ -90,6 +91,17 @@ def evaluated_mesh_stats(obj):
 
 def material_slot_names(obj):
     return [slot.material.name if slot.material else "" for slot in obj.material_slots]
+
+
+def intersection_pair_count(left, right):
+    if left is None or right is None or left.type != "MESH" or right.type != "MESH":
+        return None
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    left_tree = BVHTree.FromObject(left, depsgraph, epsilon=0.0005)
+    right_tree = BVHTree.FromObject(right, depsgraph, epsilon=0.0005)
+    if left_tree is None or right_tree is None:
+        return None
+    return len(left_tree.overlap(right_tree))
 
 
 def guide_world_points(obj):
@@ -337,6 +349,39 @@ def main():
             f"Garment geometry has {total_vertices:,} evaluated vertices; advisory mobile budget is {MAX_TOTAL_VERTICES:,}."
         )
 
+    boundary_intersections = {}
+    if body is not None:
+        boundary_pairs = (
+            ("bodyShirtTorso", body, bpy.data.objects.get("ShirtTorsoFabric"), 0),
+            ("bodySleeveL", body, bpy.data.objects.get("ShirtSleeveLFabric"), 0),
+            ("bodySleeveR", body, bpy.data.objects.get("ShirtSleeveRFabric"), 0),
+            ("bodyTrouserWaist", body, bpy.data.objects.get("TrouserWaistFabric"), 0),
+            ("bodyTrouserLegL", body, bpy.data.objects.get("TrouserLegLFabric"), 0),
+            ("bodyTrouserLegR", body, bpy.data.objects.get("TrouserLegRFabric"), 0),
+        )
+        for key, left_obj, right_obj, allowed_pairs in boundary_pairs:
+            count = intersection_pair_count(left_obj, right_obj)
+            boundary_intersections[key] = count
+            if count is None:
+                warnings.append(f"Could not evaluate intersection QA for {key}.")
+            elif count > allowed_pairs:
+                reasons.append(
+                    f"{key} has {count} intersecting triangle pairs; production garment/body boundaries must be clean."
+                )
+
+        tuck_overlap = intersection_pair_count(
+            bpy.data.objects.get("ShirtTorsoFabric"),
+            bpy.data.objects.get("TrouserWaistFabric"),
+        )
+        boundary_intersections["shirtTrouserTuck"] = tuck_overlap
+        if tuck_overlap is None:
+            warnings.append("Could not evaluate tucked shirt/trouser overlap.")
+        elif tuck_overlap > 120:
+            reasons.append(
+                f"Tucked shirt/trouser junction has {tuck_overlap} intersecting triangle pairs; "
+                "clean the waist overlap before production export."
+            )
+
     report = {
         "gate": "linen-earth-officewear-scene-preflight-v1",
         "ready": len(reasons) == 0,
@@ -352,6 +397,7 @@ def main():
         "bodyHeightMm": round(body_height * 1000, 2) if body_height else None,
         "identityGuideMeasurementsMm": guide_measurements,
         "identityFitMeasurementsMm": identity_measurements,
+        "boundaryIntersections": boundary_intersections,
         "requiredGarmentObjects": list(GARMENT_OBJECTS),
         "objects": objects,
         "totals": {
