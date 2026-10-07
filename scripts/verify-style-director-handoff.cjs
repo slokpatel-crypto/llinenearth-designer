@@ -119,9 +119,8 @@ async function verify(browser,width){
     await page.locator(".garmentDraftRecipe").waitFor({state:"visible"});
     const recipe=await page.locator(".garmentDraftRecipe").innerText();
     assert.ok(recipe.includes(optionById(expectedType).label),"3D recipe must retain the current shirt type");
-    const selects=page.locator(".garmentViewerControls select");
-    assert.equal(await selects.nth(0).inputValue(),model.shirtId);
-    assert.equal(await selects.nth(1).inputValue(),model.pantId);
+    assert.equal(await page.getByLabel("Shirt fabric").inputValue(),model.shirtId);
+    assert.equal(await page.getByLabel("Trouser fabric").inputValue(),model.pantId);
   }
   assert.deepEqual(paid,[],"Navigation and live garment edits must not call paid providers");
   summary.viewports.push({width,draft:width===390?"malformed":width===768?"stale":"blocked",exactRecipe:true,lateResponse:width!==390,paidCalls:paid.length});
