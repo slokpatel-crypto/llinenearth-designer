@@ -24,7 +24,7 @@ if(!existsSync(provenance)){
 if(!existsSync(provenance)) fail("Pinned realistic-body source provenance is missing after bootstrap.");
 
 run("blender",[
-  "--background","--factory-startup",
+  "--background","--factory-startup","--python-exit-code","1",
   "--python",path.resolve("scripts/blender/prepare-linen-earth-body.py"),
   "--",
   "--asset-root",assetRoot,
@@ -32,14 +32,14 @@ run("blender",[
 ]);
 
 run("blender",[
-  "--background",bodyScene,
+  "--background",bodyScene,"--python-exit-code","1",
   "--python",path.resolve("scripts/blender/author-linen-earth-officewear.py"),
   "--",
   "--output",authoredScene,
 ]);
 
 run("blender",[
-  "--background",authoredScene,
+  "--background",authoredScene,"--python-exit-code","1",
   "--python",path.resolve("scripts/blender/preflight-linen-earth-officewear.py"),
 ]);
 
