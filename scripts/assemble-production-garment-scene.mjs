@@ -19,7 +19,7 @@ function run(command,args){
 }
 
 if(!existsSync(provenance)){
-  run(process.execPath,[path.resolve("scripts/blender/bootstrap-human-base-meshes.py")]);
+  run(process.env.PYTHON||"python3",[path.resolve("scripts/blender/bootstrap-human-base-meshes.py")]);
 }
 if(!existsSync(provenance)) fail("Pinned realistic-body source provenance is missing after bootstrap.");
 
