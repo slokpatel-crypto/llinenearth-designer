@@ -101,6 +101,13 @@ export type GarmentViewerModelManifest = {
   source?:GarmentViewerAssetSource;
   panels: Record<string,{widthMm:number;heightMm:number;offsetU?:number;offsetV?:number;rotationDeg?:number}>;
   cameraOrbits?: Partial<Record<"front"|"three-quarter"|"side"|"back",string>>;
+  productionFitEvidence?:{
+    gate?:string|null;
+    identityFitMeasurementsMm?:Record<string,number|null>|null;
+    boundaryIntersections?:Record<string,number|null>|null;
+    boundaryClearanceMm?:Record<string,unknown>|null;
+    totals?:Record<string,number>|null;
+  };
 };
 
 export type GarmentViewerManifestValidation = {
