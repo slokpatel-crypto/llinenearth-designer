@@ -18,6 +18,7 @@ from pathlib import Path
 import bpy
 import bmesh
 from mathutils import Vector
+from mathutils.bvhtree import BVHTree
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -131,6 +132,85 @@ def apply_modifier(obj, modifier):
         bpy.ops.object.modifier_apply(modifier=modifier.name)
     finally:
         obj.select_set(False)
+
+
+def body_world_bvh(body):
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    evaluated = body.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        matrix = evaluated.matrix_world
+        vertices = [matrix @ vertex.co for vertex in mesh.vertices]
+        polygons = [tuple(polygon.vertices) for polygon in mesh.polygons]
+        return BVHTree.FromPolygons(vertices, polygons, all_triangles=False, epsilon=0.0)
+    finally:
+        evaluated.to_mesh_clear()
+
+
+def body_normal_orientation(body, max_samples=160):
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    evaluated = body.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        if not mesh.polygons:
+            return 1.0
+        points = world_bounds(body)
+        center = sum(points, Vector()) / max(1, len(points))
+        matrix = evaluated.matrix_world
+        normal_matrix = matrix.to_3x3().inverted().transposed()
+        polygons = list(mesh.polygons)
+        stride = max(1, len(polygons) // max_samples)
+        scores = []
+        for polygon in polygons[::stride][:max_samples]:
+            point = matrix @ polygon.center
+            normal = normal_matrix @ polygon.normal
+            if normal.length <= 1e-8:
+                continue
+            normal.normalize()
+            scores.append((point-center).dot(normal))
+        if not scores:
+            return 1.0
+        scores.sort()
+        return 1.0 if scores[len(scores)//2] >= 0 else -1.0
+    finally:
+        evaluated.to_mesh_clear()
+
+
+def repair_outside_body(obj, body, minimum_clearance_m=0.0025, passes=2):
+    tree = body_world_bvh(body)
+    orientation = body_normal_orientation(body)
+    matrix = obj.matrix_world
+    inverse = matrix.inverted()
+    moved_total = 0
+    max_correction = 0.0
+    for _ in range(max(1, passes)):
+        moved = 0
+        for vertex in obj.data.vertices:
+            point = matrix @ vertex.co
+            nearest = tree.find_nearest(point)
+            if nearest is None or nearest[0] is None or nearest[1] is None:
+                continue
+            location, normal = nearest[0], nearest[1]
+            if normal.length <= 1e-8:
+                continue
+            outward = normal.normalized() * orientation
+            signed = (point-location).dot(outward)
+            if signed >= minimum_clearance_m:
+                continue
+            corrected = location + outward*minimum_clearance_m
+            correction = (corrected-point).length
+            vertex.co = inverse @ corrected
+            moved += 1
+            moved_total += 1
+            max_correction = max(max_correction, correction)
+        obj.data.update()
+        if moved == 0:
+            break
+    return {
+        "movedVertices": moved_total,
+        "maxCorrectionMm": round(max_correction*1000.0, 2),
+        "minimumClearanceMm": round(minimum_clearance_m*1000.0, 2),
+    }
 
 
 def smooth_open_boundaries(obj, iterations=5, factor=0.42):
@@ -608,7 +688,10 @@ def main():
         authored[name] = obj
 
     fit_profile = shape_officewear_to_identity(authored, body, targets)
-    for obj in authored.values():
+    penetration_repairs = {}
+    for name, obj in authored.items():
+        repair_clearance = 0.0028 if name.startswith("Shirt") else 0.0032
+        penetration_repairs[name] = repair_outside_body(obj, body, repair_clearance, passes=2)
         planar_grain_uv(obj)
     tailoring_details = author_base_tailoring_details(
         body,
@@ -624,6 +707,7 @@ def main():
     bpy.context.scene["linen_earth_shirt_clearance_mm"] = round(shirt_clearance_m * 1000.0, 3)
     bpy.context.scene["linen_earth_trouser_clearance_mm"] = round(trouser_clearance_m * 1000.0, 3)
     bpy.context.scene["linen_earth_identity_fit_profile_json"] = json.dumps(fit_profile, sort_keys=True)
+    bpy.context.scene["linen_earth_penetration_repair_json"] = json.dumps(penetration_repairs, sort_keys=True)
     bpy.context.scene["linen_earth_boundary_smoothing"] = "open-edge-laplacian-v1"
     bpy.context.scene["linen_earth_base_tailoring_details_json"] = json.dumps([obj.name for obj in tailoring_details])
     bpy.context.scene["linen_earth_garment_thickness_mm"] = round(thickness_m * 1000.0, 3)
@@ -636,6 +720,7 @@ def main():
     print("Garment objects: " + ", ".join(obj.name for obj in authored.values()))
     print(f"Shirt/trouser clearances: {shirt_clearance_m*1000:.1f}/{trouser_clearance_m*1000:.1f} mm · cloth shell thickness: {thickness_m*1000:.1f} mm")
     print("Identity fit profile: " + json.dumps(fit_profile, sort_keys=True))
+    print("Penetration repairs: " + json.dumps(penetration_repairs, sort_keys=True))
     print("Base tailoring details: " + ", ".join(obj.name for obj in tailoring_details))
     print("Status: candidate only; run Blender preflight and owner/tailor visual fit review before production export.")
 
