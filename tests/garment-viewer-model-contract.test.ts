@@ -80,11 +80,82 @@ test("production manifest identity and all panel dimensions must match the appro
     source:{name:"Blender Human Base Meshes",license:"CC0",verifiedAt:"2026-10-05"},
     panels,
   };
-  assert.equal(validateGarmentViewerModelManifest(good,"LE-OFFICEWEAR-V1").valid,true);
+  const validated=validateGarmentViewerModelManifest(good,"LE-OFFICEWEAR-V1");
+  assert.equal(validated.valid,true);
+  assert.equal(validated.productionAssetReady,false);
   assert.equal(validateGarmentViewerModelManifest({...good,modelId:"OTHER"},"LE-OFFICEWEAR-V1").valid,false);
   assert.equal(approvedGarmentViewerManifestSource("/models/linen-earth-officewear-v1.glb"),"/models/linen-earth-officewear-v1.viewer.json");
 });
 
+
+test("realistic-body lab preview can be structurally valid but never production-ready",()=>{
+  const panels=Object.fromEntries(REQUIRED_GARMENT_VIEWER_MATERIALS.map((name)=>[name,{widthMm:300,heightMm:600}]));
+  const lab=validateGarmentViewerModelManifest({
+    version:GARMENT_VIEWER_CONTRACT_VERSION,
+    modelId:"LE-OFFICEWEAR-V1",
+    referenceHeightMm:1727,
+    modelIdentity:MODEL_IDENTITY,
+    source:{name:"Blender Human Base Meshes",license:"CC0",verifiedAt:"2026-10-05"},
+    panels,
+    panelDimensionSource:"geometry-estimate-unverified",
+    labPreviewScaleNotice:"Panel dimensions are geometry estimates only; physical pattern scale is unverified.",
+    productionAssetStatus:"realistic-body-lab-preview-unverified-panel-scale",
+  },"LE-OFFICEWEAR-V1");
+  assert.equal(lab.valid,true);
+  assert.equal(lab.panelMeasurementReady,false);
+  assert.equal(lab.productionAssetReady,false);
+});
+
+test("production asset readiness requires measured panel and Blender fit evidence",()=>{
+  const panels=Object.fromEntries(REQUIRED_GARMENT_VIEWER_MATERIALS.map((name)=>[name,{widthMm:300,heightMm:600}]));
+  const base={
+    version:GARMENT_VIEWER_CONTRACT_VERSION,
+    modelId:"LE-OFFICEWEAR-V1",
+    referenceHeightMm:1727,
+    modelIdentity:MODEL_IDENTITY,
+    source:{name:"Blender Human Base Meshes",license:"CC0",verifiedAt:"2026-10-05"},
+    panels,
+    productionAssetStatus:"realistic-body-production-candidate" as const,
+  };
+  const missingEvidence=validateGarmentViewerModelManifest(base,"LE-OFFICEWEAR-V1");
+  assert.equal(missingEvidence.valid,true);
+  assert.equal(missingEvidence.panelMeasurementReady,false);
+  assert.equal(missingEvidence.fitEvidenceReady,false);
+  assert.equal(missingEvidence.productionAssetReady,false);
+
+  const ready=validateGarmentViewerModelManifest({
+    ...base,
+    panelMeasurementEvidence:{source:"pattern_room_measured",measuredAt:"2026-10-05",note:"Measured on the approved physical pattern pieces."},
+    productionFitEvidence:{
+      gate:"linen-earth-officewear-scene-preflight-v1",
+      ready:true,
+      identityFitMeasurementsMm:{shirtWaistWidth:294},
+      identityShoeMeasurementsMm:{LE_ShoeL:{lengthMm:280},LE_ShoeR:{lengthMm:280},symmetry:{lengthDifferenceMm:0}},
+      boundaryIntersections:{bodyShirtTorso:0},
+      boundaryClearanceMm:{shirtWaistBody:{median:8}},
+      totals:{triangles:120000,vertices:160000},
+    },
+  },"LE-OFFICEWEAR-V1");
+  assert.equal(ready.valid,true);
+  assert.equal(ready.panelMeasurementReady,true);
+  assert.equal(ready.fitEvidenceReady,true);
+  assert.equal(ready.productionAssetReady,true);
+
+  const failedPreflight=validateGarmentViewerModelManifest({
+    ...base,
+    panelMeasurementEvidence:{source:"pattern_room_measured",measuredAt:"2026-10-05",note:"Measured on the approved physical pattern pieces."},
+    productionFitEvidence:{
+      gate:"linen-earth-officewear-scene-preflight-v1",
+      ready:false,
+      identityFitMeasurementsMm:{shirtWaistWidth:294},
+      boundaryIntersections:{bodyShirtTorso:0},
+      boundaryClearanceMm:{shirtWaistBody:{median:8}},
+      totals:{triangles:120000,vertices:160000},
+    },
+  },"LE-OFFICEWEAR-V1");
+  assert.equal(failedPreflight.fitEvidenceReady,false);
+  assert.equal(failedPreflight.productionAssetReady,false);
+});
 
 test("panel phase controls stay bounded for production texture alignment",()=>{
   const panels=Object.fromEntries(REQUIRED_GARMENT_VIEWER_MATERIALS.map((name)=>[name,{widthMm:300,heightMm:600,offsetU:.25,offsetV:-.1,rotationDeg:90}]));
