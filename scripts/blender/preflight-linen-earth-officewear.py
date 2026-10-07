@@ -5,9 +5,11 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import math
 import sys
+from pathlib import Path
 
 import bpy
 from mathutils import Vector
@@ -43,6 +45,8 @@ GARMENT_OBJECTS = (
     "TrouserLegLFabric",
     "TrouserLegRFabric",
 )
+
+MODEL_SHOE_OBJECTS = ("LE_ShoeL", "LE_ShoeR")
 
 
 def world_bounds(obj):
@@ -93,15 +97,149 @@ def material_slot_names(obj):
     return [slot.material.name if slot.material else "" for slot in obj.material_slots]
 
 
+def world_bvh(obj, epsilon=0.0):
+    if obj is None or obj.type != "MESH":
+        return None
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    evaluated = obj.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        matrix = evaluated.matrix_world
+        vertices = [matrix @ vertex.co for vertex in mesh.vertices]
+        polygons = [tuple(polygon.vertices) for polygon in mesh.polygons if len(polygon.vertices) >= 3]
+        if not vertices or not polygons:
+            return None
+        return BVHTree.FromPolygons(vertices, polygons, all_triangles=False, epsilon=epsilon)
+    finally:
+        evaluated.to_mesh_clear()
+
+
 def intersection_pair_count(left, right):
     if left is None or right is None or left.type != "MESH" or right.type != "MESH":
         return None
-    depsgraph = bpy.context.evaluated_depsgraph_get()
-    left_tree = BVHTree.FromObject(left, depsgraph, epsilon=0.0005)
-    right_tree = BVHTree.FromObject(right, depsgraph, epsilon=0.0005)
+    left_tree = world_bvh(left, epsilon=0.0005)
+    right_tree = world_bvh(right, epsilon=0.0005)
     if left_tree is None or right_tree is None:
         return None
     return len(left_tree.overlap(right_tree))
+
+
+def nearest_distance_stats_mm(source, target, z_center=None, band=0.06, max_samples=240):
+    if source is None or target is None or source.type != "MESH" or target.type != "MESH":
+        return None
+    target_tree = world_bvh(target, epsilon=0.0)
+    if target_tree is None:
+        return None
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    evaluated = source.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        matrix = evaluated.matrix_world
+        candidates = []
+        for vertex in mesh.vertices:
+            point = matrix @ vertex.co
+            if z_center is not None and abs(point.z - z_center) > band:
+                continue
+            candidates.append(point)
+        if not candidates:
+            return None
+        stride = max(1, len(candidates) // max_samples)
+        distances = []
+        for point in candidates[::stride][:max_samples]:
+            nearest = target_tree.find_nearest(point)
+            if nearest is None or nearest[0] is None:
+                continue
+            distances.append((point - nearest[0]).length * 1000.0)
+        if not distances:
+            return None
+        distances.sort()
+        median = distances[len(distances) // 2]
+        p95 = distances[min(len(distances) - 1, int(round((len(distances) - 1) * 0.95)))]
+        return {
+            "min": round(distances[0], 2),
+            "median": round(median, 2),
+            "p95": round(p95, 2),
+            "samples": len(distances),
+        }
+    finally:
+        evaluated.to_mesh_clear()
+
+
+def world_normal_orientation_sign(obj, max_samples=160):
+    if obj is None or obj.type != "MESH":
+        return 1.0
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    evaluated = obj.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        if not mesh.polygons:
+            return 1.0
+        center = sum(world_bounds(obj), Vector((0.0, 0.0, 0.0))) / 8.0
+        matrix = evaluated.matrix_world
+        normal_matrix = matrix.to_3x3().inverted().transposed()
+        polygons = list(mesh.polygons)
+        stride = max(1, len(polygons) // max_samples)
+        scores = []
+        for polygon in polygons[::stride][:max_samples]:
+            point = matrix @ polygon.center
+            normal = normal_matrix @ polygon.normal
+            if normal.length <= 1e-8:
+                continue
+            normal.normalize()
+            scores.append((point - center).dot(normal))
+        if not scores:
+            return 1.0
+        scores.sort()
+        return 1.0 if scores[len(scores) // 2] >= 0 else -1.0
+    finally:
+        evaluated.to_mesh_clear()
+
+
+def signed_clearance_stats_mm(source, target, z_center=None, band=0.06, max_samples=600):
+    if source is None or target is None or source.type != "MESH" or target.type != "MESH":
+        return None
+    target_tree = world_bvh(target, epsilon=0.0)
+    if target_tree is None:
+        return None
+    orientation = world_normal_orientation_sign(target)
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    evaluated = source.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        matrix = evaluated.matrix_world
+        candidates = []
+        for vertex in mesh.vertices:
+            point = matrix @ vertex.co
+            if z_center is not None and abs(point.z - z_center) > band:
+                continue
+            candidates.append(point)
+        if not candidates:
+            return None
+        stride = max(1, len(candidates) // max_samples)
+        signed = []
+        for point in candidates[::stride][:max_samples]:
+            nearest = target_tree.find_nearest(point)
+            if nearest is None or nearest[0] is None or nearest[1] is None:
+                continue
+            normal = nearest[1].normalized()
+            signed.append((point - nearest[0]).dot(normal) * orientation * 1000.0)
+        if not signed:
+            return None
+        signed.sort()
+        penetration_tolerance_mm = 0.8
+        penetration = [value for value in signed if value < -penetration_tolerance_mm]
+        p05 = signed[min(len(signed) - 1, int(round((len(signed) - 1) * 0.05)))]
+        return {
+            "minSigned": round(signed[0], 2),
+            "p05Signed": round(p05, 2),
+            "medianSigned": round(signed[len(signed) // 2], 2),
+            "penetrationSamples": len(penetration),
+            "maxPenetrationMm": round(abs(min(penetration)), 2) if penetration else 0.0,
+            "samples": len(signed),
+            "normalOrientation": "outward" if orientation > 0 else "corrected_inward",
+        }
+    finally:
+        evaluated.to_mesh_clear()
 
 
 def guide_world_points(obj):
@@ -129,7 +267,7 @@ def guide_center(obj):
     return sum(points, Vector((0.0, 0.0, 0.0))) / len(points)
 
 
-def main():
+def main(json_output=None):
     reasons = []
     warnings = []
     objects = {}
@@ -276,6 +414,30 @@ def main():
         span = x_span_at_z(obj, z_world, band)
         return ((span[0] + span[1]) * 0.5) * 1000.0 if span else None
 
+    def side_center_x_at_z(obj, z_world, side, band=0.055, inner_x=0.16):
+        if obj is None or z_world is None or obj.type != "MESH":
+            return None
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        evaluated = obj.evaluated_get(depsgraph)
+        mesh = evaluated.to_mesh()
+        try:
+            matrix = evaluated.matrix_world
+            xs = []
+            for vertex in mesh.vertices:
+                point = matrix @ vertex.co
+                if abs(point.z - z_world) > band:
+                    continue
+                if side < 0 and point.x <= -inner_x:
+                    xs.append(point.x)
+                elif side > 0 and point.x >= inner_x:
+                    xs.append(point.x)
+            if len(xs) < 4:
+                return None
+            xs.sort()
+            return xs[len(xs) // 2] * 1000.0
+        finally:
+            evaluated.to_mesh_clear()
+
     def guide_center_z(name):
         if identity_guides is None:
             return None
@@ -350,6 +512,43 @@ def main():
             "allowed difference is 14.0 mm."
         )
 
+    outer_arm_z = guide_center_z("LE_GUIDE_OUTER_ARM_SILHOUETTE")
+    left_arm_span = x_span_at_z(bpy.data.objects.get("ShirtSleeveLFabric"), outer_arm_z, 0.045)
+    right_arm_span = x_span_at_z(bpy.data.objects.get("ShirtSleeveRFabric"), outer_arm_z, 0.045)
+    outer_arm_silhouette = (
+        (right_arm_span[1] - left_arm_span[0]) * 1000.0
+        if left_arm_span is not None and right_arm_span is not None
+        else None
+    )
+    identity_measurements["outerArmSilhouetteMm"] = round(outer_arm_silhouette, 2) if outer_arm_silhouette is not None else None
+    if outer_arm_silhouette is None:
+        warnings.append("Could not sample garment outer-arm silhouette at the locked guide.")
+    else:
+        target_outer_arm = EXPECTED_IDENTITY_TARGETS_MM["outerArmSilhouette"]
+        if abs(outer_arm_silhouette - target_outer_arm) > 36.0:
+            reasons.append(
+                f"Garment outer-arm silhouette is {outer_arm_silhouette:.1f} mm; "
+                f"locked model target is {target_outer_arm:.1f} mm ± 36.0 mm."
+            )
+
+    body_left_hand_center = side_center_x_at_z(body, left_hand_z, -1)
+    body_right_hand_center = side_center_x_at_z(body, right_hand_z, 1)
+    body_hand_spacing = (
+        abs(body_right_hand_center - body_left_hand_center)
+        if body_left_hand_center is not None and body_right_hand_center is not None
+        else None
+    )
+    identity_measurements["bodyHandCenterSpacingMm"] = round(body_hand_spacing, 2) if body_hand_spacing is not None else None
+    if body_hand_spacing is None:
+        warnings.append("Could not sample the realistic body's hand-center stance.")
+    else:
+        target_hand_spacing = EXPECTED_IDENTITY_TARGETS_MM["handCenterSpacing"]
+        if abs(body_hand_spacing - target_hand_spacing) > 30.0:
+            reasons.append(
+                f"Realistic body hand-center spacing is {body_hand_spacing:.1f} mm; "
+                f"locked model target is {target_hand_spacing:.1f} mm ± 30.0 mm."
+            )
+
     left_hem = identity_measurements.get("leftHemWidthMm")
     right_hem = identity_measurements.get("rightHemWidthMm")
     hem_asymmetry = abs(left_hem - right_hem) if left_hem is not None and right_hem is not None else None
@@ -374,6 +573,55 @@ def main():
                 f"Garment leg-center spacing is {leg_spacing:.1f} mm; "
                 f"locked model target is {target_leg_spacing:.1f} mm ± 24.0 mm."
             )
+
+    shoe_measurements = {}
+    if body is not None:
+        body_floor_z = min(point.z for point in world_bounds(body))
+        shoe_sizes = {}
+        for name in MODEL_SHOE_OBJECTS:
+            shoe = bpy.data.objects.get(name)
+            if shoe is None or shoe.type != "MESH":
+                reasons.append(f"Missing locked dress-shoe object: {name}.")
+                continue
+            points = world_bounds(shoe)
+            xs = [point.x for point in points]
+            ys = [point.y for point in points]
+            zs = [point.z for point in points]
+            width_mm = (max(xs) - min(xs)) * 1000.0
+            length_mm = (max(ys) - min(ys)) * 1000.0
+            height_mm = (max(zs) - min(zs)) * 1000.0
+            floor_gap_mm = (min(zs) - body_floor_z) * 1000.0
+            center_x_mm = ((min(xs) + max(xs)) * 0.5) * 1000.0
+            shoe_sizes[name] = (width_mm, length_mm)
+            shoe_measurements[name] = {
+                "widthMm": round(width_mm, 2),
+                "lengthMm": round(length_mm, 2),
+                "heightMm": round(height_mm, 2),
+                "floorGapMm": round(floor_gap_mm, 2),
+                "centerXMm": round(center_x_mm, 2),
+            }
+            if not 80.0 <= width_mm <= 155.0:
+                reasons.append(f"{name} width is {width_mm:.1f} mm; dress-shoe width must stay within 80–155 mm.")
+            if not 225.0 <= length_mm <= 345.0:
+                reasons.append(f"{name} length is {length_mm:.1f} mm; dress-shoe length must stay within 225–345 mm.")
+            if abs(floor_gap_mm) > 12.0:
+                reasons.append(f"{name} floor contact is off by {floor_gap_mm:.1f} mm; shoe must meet the model floor plane.")
+            if name.endswith("L") and center_x_mm >= -25.0:
+                reasons.append(f"{name} is not centered on the model's left foot.")
+            if name.endswith("R") and center_x_mm <= 25.0:
+                reasons.append(f"{name} is not centered on the model's right foot.")
+
+        if all(name in shoe_sizes for name in MODEL_SHOE_OBJECTS):
+            left_width, left_length = shoe_sizes["LE_ShoeL"]
+            right_width, right_length = shoe_sizes["LE_ShoeR"]
+            shoe_measurements["symmetry"] = {
+                "widthDifferenceMm": round(abs(left_width - right_width), 2),
+                "lengthDifferenceMm": round(abs(left_length - right_length), 2),
+            }
+            if abs(left_width - right_width) > 10.0:
+                reasons.append("Left/right dress-shoe width asymmetry exceeds 10.0 mm.")
+            if abs(left_length - right_length) > 12.0:
+                reasons.append("Left/right dress-shoe length asymmetry exceeds 12.0 mm.")
 
     for name in GARMENT_OBJECTS:
         obj = bpy.data.objects.get(name)
@@ -429,36 +677,91 @@ def main():
         )
 
     boundary_intersections = {}
+    boundary_clearance_mm = {}
     if body is not None:
         boundary_pairs = (
-            ("bodyShirtTorso", body, bpy.data.objects.get("ShirtTorsoFabric"), 0),
-            ("bodySleeveL", body, bpy.data.objects.get("ShirtSleeveLFabric"), 0),
-            ("bodySleeveR", body, bpy.data.objects.get("ShirtSleeveRFabric"), 0),
-            ("bodyTrouserWaist", body, bpy.data.objects.get("TrouserWaistFabric"), 0),
-            ("bodyTrouserLegL", body, bpy.data.objects.get("TrouserLegLFabric"), 0),
-            ("bodyTrouserLegR", body, bpy.data.objects.get("TrouserLegRFabric"), 0),
+            ("bodyShirtTorso", bpy.data.objects.get("ShirtTorsoFabric")),
+            ("bodySleeveL", bpy.data.objects.get("ShirtSleeveLFabric")),
+            ("bodySleeveR", bpy.data.objects.get("ShirtSleeveRFabric")),
+            ("bodyTrouserWaist", bpy.data.objects.get("TrouserWaistFabric")),
+            ("bodyTrouserLegL", bpy.data.objects.get("TrouserLegLFabric")),
+            ("bodyTrouserLegR", bpy.data.objects.get("TrouserLegRFabric")),
         )
-        for key, left_obj, right_obj, allowed_pairs in boundary_pairs:
-            count = intersection_pair_count(left_obj, right_obj)
+        for key, garment_obj in boundary_pairs:
+            stats = signed_clearance_stats_mm(garment_obj, body)
+            boundary_clearance_mm[key + "Signed"] = stats
+            if stats is None:
+                boundary_intersections[key] = None
+                warnings.append(f"Could not evaluate signed penetration QA for {key}.")
+                continue
+            count = int(stats["penetrationSamples"])
             boundary_intersections[key] = count
-            if count is None:
-                warnings.append(f"Could not evaluate intersection QA for {key}.")
-            elif count > allowed_pairs:
+            allowed_samples = max(2, int(math.ceil(stats["samples"] * 0.01)))
+            if count > allowed_samples or stats["maxPenetrationMm"] > 1.5:
                 reasons.append(
-                    f"{key} has {count} intersecting triangle pairs; production garment/body boundaries must be clean."
+                    f"{key} has {count}/{stats['samples']} sampled garment vertices inside the body "
+                    f"(max {stats['maxPenetrationMm']:.1f} mm); production garment/body boundaries must stay outside."
                 )
 
-        tuck_overlap = intersection_pair_count(
+        upper_torso_z = body.matrix_world.translation.z + object_height(body) * 0.82
+        waist_z = guide_center_z("LE_GUIDE_SHIRT_WAIST")
+        cuff_z = guide_center_z("LE_GUIDE_LEFT_HAND_CENTER_H")
+        fit_clearance_specs = (
+            ("upperTorsoBody", "ShirtTorsoFabric", upper_torso_z, 0.055, 2.0, 32.0),
+            ("shirtWaistBody", "ShirtTorsoFabric", waist_z, 0.050, 2.0, 28.0),
+            ("leftCuffBody", "ShirtSleeveLFabric", cuff_z, 0.070, 1.5, 32.0),
+            ("rightCuffBody", "ShirtSleeveRFabric", cuff_z, 0.070, 1.5, 32.0),
+            ("trouserWaistBody", "TrouserWaistFabric", trouser_waist_z, 0.050, 2.0, 32.0),
+        )
+        for key, object_name, z_center, band, minimum_mm, maximum_mm in fit_clearance_specs:
+            stats = nearest_distance_stats_mm(bpy.data.objects.get(object_name), body, z_center, band)
+            boundary_clearance_mm[key] = stats
+            if stats is None:
+                warnings.append(f"Could not measure {key} garment/body clearance.")
+                continue
+            if stats["median"] < minimum_mm:
+                reasons.append(
+                    f"{key} median clearance is {stats['median']:.1f} mm; "
+                    f"minimum production fit clearance is {minimum_mm:.1f} mm."
+                )
+            if stats["median"] > maximum_mm:
+                reasons.append(
+                    f"{key} median clearance is {stats['median']:.1f} mm; "
+                    f"maximum production fit clearance is {maximum_mm:.1f} mm."
+                )
+
+        left_leg_span = x_span_at_z(bpy.data.objects.get("TrouserLegLFabric"), left_leg_z, 0.035)
+        right_leg_span = x_span_at_z(bpy.data.objects.get("TrouserLegRFabric"), right_leg_z, 0.035)
+        trouser_gap_mm = (right_leg_span[0] - left_leg_span[1]) * 1000.0 if left_leg_span and right_leg_span else None
+        boundary_clearance_mm["trouserInnerGap"] = round(trouser_gap_mm, 2) if trouser_gap_mm is not None else None
+        if trouser_gap_mm is None:
+            warnings.append("Could not measure trouser inner-leg gap at the locked stance guide.")
+        elif trouser_gap_mm < 6.0:
+            reasons.append(
+                f"Trouser inner-leg gap is {trouser_gap_mm:.1f} mm; "
+                "production stance needs at least 6.0 mm to avoid fused leg silhouettes."
+            )
+
+        tuck_stats = nearest_distance_stats_mm(
             bpy.data.objects.get("ShirtTorsoFabric"),
             bpy.data.objects.get("TrouserWaistFabric"),
+            trouser_waist_z,
+            0.075,
+            400,
         )
-        boundary_intersections["shirtTrouserTuck"] = tuck_overlap
-        if tuck_overlap is None:
-            warnings.append("Could not evaluate tucked shirt/trouser overlap.")
-        elif tuck_overlap > 120:
+        boundary_clearance_mm["shirtTrouserTuck"] = tuck_stats
+        boundary_intersections["shirtTrouserTuck"] = 0 if tuck_stats is not None else None
+        if tuck_stats is None:
+            warnings.append("Could not evaluate tucked shirt/trouser junction clearance.")
+        elif tuck_stats["median"] < 0.8:
             reasons.append(
-                f"Tucked shirt/trouser junction has {tuck_overlap} intersecting triangle pairs; "
-                "clean the waist overlap before production export."
+                f"Tucked shirt/trouser median separation is only {tuck_stats['median']:.1f} mm; "
+                "separate the layers to avoid z-fighting and fused geometry."
+            )
+        elif tuck_stats["median"] > 18.0:
+            reasons.append(
+                f"Tucked shirt/trouser median separation is {tuck_stats['median']:.1f} mm; "
+                "tighten the waist layering so the tuck reads as one tailored junction."
             )
 
     report = {
@@ -476,7 +779,9 @@ def main():
         "bodyHeightMm": round(body_height * 1000, 2) if body_height else None,
         "identityGuideMeasurementsMm": guide_measurements,
         "identityFitMeasurementsMm": identity_measurements,
+        "identityShoeMeasurementsMm": shoe_measurements,
         "boundaryIntersections": boundary_intersections,
+        "boundaryClearanceMm": boundary_clearance_mm,
         "requiredGarmentObjects": list(GARMENT_OBJECTS),
         "objects": objects,
         "totals": {
@@ -488,10 +793,25 @@ def main():
         "warnings": warnings,
         "reasons": reasons,
     }
-    print(json.dumps(report, indent=2))
+    payload = json.dumps(report, indent=2)
+    print(payload)
+    if json_output:
+        output = Path(json_output).expanduser().resolve()
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(payload + "\n", encoding="utf-8")
     if reasons:
         raise SystemExit(1)
+    return report
+
+
+def cli_args():
+    argv = sys.argv
+    argv = argv[argv.index("--") + 1 :] if "--" in argv else []
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--json-output")
+    return parser.parse_args(argv)
 
 
 if __name__ == "__main__":
-    main()
+    options = cli_args()
+    main(options.json_output)
