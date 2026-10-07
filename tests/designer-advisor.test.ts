@@ -100,8 +100,14 @@ test("less formal feedback softens construction without reversing the recorded o
 test("unsupported garments and unknown tasks ask for a specific supported task",()=>{
   for(const question of ["Design a sherwani","Make a jacket","Tell me something random"]) {const answer=ask(question);assert.equal(answer.advice.task,"clarify");assert.deepEqual(answer.results,[]);}
 });
+test("British collar resolves to the researched English Spread construction",()=>{
+  const answer=ask("Keep both fabrics. Use a British collar.");
+  assert.equal(answer.advice.task,"refine");assert.equal(answer.results.length,1);
+  assert.equal(answer.results[0].style.collar,"English Spread / British Collar");
+  assert.equal(answer.results[0].shirt.id,input.currentShirt.id);assert.equal(answer.results[0].pant.id,input.currentPant.id);
+});
 test("unmapped collars offer supported, grounded comparison questions",()=>{
-  const before=JSON.stringify(input),answer=ask("Design a British collar shirt");
+  const before=JSON.stringify(input),answer=ask("Design a sailor collar shirt");
   assert.equal(answer.advice.task,"clarify");assert.deepEqual(answer.results,[]);
   assert.equal(answer.advice.clarification?.choices.length,2);
   for(const choice of answer.advice.clarification!.choices) {

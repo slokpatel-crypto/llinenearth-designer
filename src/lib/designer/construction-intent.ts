@@ -12,6 +12,7 @@ export type DesignerConstructionIntent={
 // Aliases resolve existing option IDs; the shared library owns the labels.
 const aliases:Array<[StyleKey,string,RegExp]>=[
   ["collar","spread_collar",/\bspread(?: collar)?\b/g],
+  ["collar","english_spread_collar",/\b(?:english spread|british(?: spread)?)(?: collar)?\b/g],
   ["collar","cutaway_collar",/\bcutaway(?: collar)?\b/g],
   ["collar","point_standard_collar",/\bpoint(?: standard)? collar\b/g],
   ["collar","button_down_collar",/\bbutton down(?: collar)?\b/g],
@@ -151,7 +152,7 @@ export function parseDesignerConstructionIntent(raw:string):DesignerConstruction
   for(const match of text.matchAll(/\b(?:slim|tapered)(?: fit)? (?:trousers?|pants)\b|\b(?:trousers?|pants)(?: fit)?(?: (?:is|to be))? (?:slim|tapered)\b/g)) {
     if(!designerMentionIsNegated(text,match.index!)) issues.push("A separate slim or tapered trouser fit is not editable in this question flow yet. Choose a supported trouser shape; your shirt fit is preserved.");
   }
-  for(const match of text.matchAll(/\b(?:british|square|peter pan|sailor|wing|detachable) collar\b/g)) {
+  for(const match of text.matchAll(/\b(?:square|peter pan|sailor|wing|detachable) collar\b/g)) {
     if(!designerMentionIsNegated(text,match.index!)) issues.push("Name a supported collar such as point, spread, cutaway, mandarin or camp. This collar reference is not a selectable construction in the current workspace.");
   }
   return {patch,excluded,issues:[...new Set(issues)]};
