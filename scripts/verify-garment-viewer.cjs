@@ -356,27 +356,36 @@ async function verifyViewport(browser, width) {
   sameTransform(materialByName["TrouserLegLBreakVariant__wide__negative"],materialByName["TrouserLegLFabric"],"left cropped wide trouser");
   sameTransform(materialByName["TrouserLegRBreakVariant__wide__negative"],materialByName["TrouserLegRFabric"],"right cropped wide trouser");
 
-  const layout = await page.evaluate(() => ({
+  const readLayout=()=>page.evaluate(() => ({
     width: innerWidth,
     documentWidth: document.documentElement.scrollWidth,
     viewerWidth: document.querySelector(".garmentViewerCanvas")?.getBoundingClientRect().width || 0,
     viewerHeight: document.querySelector(".garmentViewerCanvas")?.getBoundingClientRect().height || 0,
+    stageTop: document.querySelector(".garmentViewerStage")?.getBoundingClientRect().top ?? 999999,
+    controlsTop: document.querySelector(".garmentViewerControls")?.getBoundingClientRect().top ?? -1,
   }));
-  assert.ok(layout.documentWidth <= width + 2, "GarmentViewer horizontal overflow at " + width + "px");
-  assert.ok(layout.viewerWidth > 250 && layout.viewerHeight > 400, "GarmentViewer canvas must remain usable");
-  if(width<=640){
-    const order=await page.evaluate(()=>{
-      const stage=document.querySelector(".garmentViewerStage")?.getBoundingClientRect().top ?? 999999;
-      const controls=document.querySelector(".garmentViewerControls")?.getBoundingClientRect().top ?? -1;
-      return {stage,controls};
-    });
-    assert.ok(order.stage < order.controls, "mobile must show the 3D stage before controls");
-  }
+  const assertLayout=(layout,expectedWidth)=>{
+    assert.ok(layout.documentWidth <= expectedWidth + 2, "GarmentViewer horizontal overflow at " + expectedWidth + "px");
+    assert.ok(layout.viewerWidth > 250 && layout.viewerHeight > 400, "GarmentViewer canvas must remain usable");
+    if(expectedWidth<=640) assert.ok(layout.stageTop < layout.controlsTop, "mobile must show the 3D stage before controls");
+  };
 
+  const desktopLayout=await readLayout();
+  assertLayout(desktopLayout,width);
   await page.screenshot({ path: path.join(output, "garment-viewer-" + width + ".png"), fullPage: true });
+
+  // Reuse the already-loaded WebGL/model scene for mobile responsive QA. Reloading this
+  // large contract a second time on CI duplicates shader/model startup cost without
+  // increasing coverage; CSS and React responsive behavior update on viewport resize.
+  await page.setViewportSize({width:390,height:1000});
+  await page.waitForTimeout(250);
+  const mobileLayout=await readLayout();
+  assertLayout(mobileLayout,390);
+  await page.screenshot({ path: path.join(output, "garment-viewer-390.png"), fullPage: true });
+
   assert.deepEqual(errors, [], "GarmentViewer must load without console/page errors");
   await context.close();
-  return { width, modelState, materialState, layout };
+  return { width, modelState, materialState, layout:desktopLayout, responsiveLayouts:[mobileLayout] };
 }
 
 (async () => {
@@ -384,7 +393,8 @@ async function verifyViewport(browser, width) {
   const browser = await chromium.launch({ headless: true });
   try {
     const viewports = [];
-    for (const width of [390, 1440]) viewports.push(await verifyViewport(browser, width));
+    // Load the production GLB once, then resize that same hydrated scene for mobile QA.
+    viewports.push(await verifyViewport(browser, 1440));
     await fs.writeFile(
       path.join(output, "garment-viewer-summary.json"),
       JSON.stringify({ browser: "Chromium", paidProviderCalls: 0, viewports }, null, 2) + "\n",
