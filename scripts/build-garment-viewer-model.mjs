@@ -914,10 +914,33 @@ const styleVariantMaterials=[
   ...styleVariants.trouserHems.filter((item)=>item.id!=="plain").map((item)=>addVariantMaterial(`TrouserHemVariant__${item.id}`,"trouser")),
   ...styleVariants.trouserPockets.map((item)=>addVariantMaterial(`TrouserPocketVariant__${item.id}`,"trouser")),
 ];
+const buttonVariantMaterialNames=[];
+function addButtonVariantMaterial(name){
+  buttonVariantMaterialNames.push(name);
+  return {
+    name,
+    alphaMode:"BLEND",
+    doubleSided:true,
+    pbrMetallicRoughness:{baseColorFactor:[.09,.075,.06,0],metallicFactor:.05,roughnessFactor:.42},
+  };
+}
+const buttonVariantMaterials=[
+  ...styleVariants.plackets.filter((item)=>item.id!=="hidden").map((item)=>
+    addButtonVariantMaterial(`ButtonAccentVariant__shirt_placket__${item.id}`)
+  ),
+  ...styleVariants.collars.filter((item)=>item.id==="button_down"||item.id==="tab").map((item)=>
+    addButtonVariantMaterial(`ButtonAccentVariant__shirt_collar__${item.id}`)
+  ),
+  ...styleVariants.cuffs.filter((item)=>!["french","rounded_french","soft_french"].includes(item.id)).map((item)=>
+    addButtonVariantMaterial(`ButtonAccentVariant__shirt_cuff__${item.id}`)
+  ),
+];
+
 const materials=[
   {name:"MannequinSkin",pbrMetallicRoughness:{baseColorFactor:[.94,.93,.90,1],metallicFactor:0,roughnessFactor:.90}},
   ...garmentMaterials,
   ...styleVariantMaterials,
+  ...buttonVariantMaterials,
   {name:"Shoe",pbrMetallicRoughness:{baseColorFactor:[.91,.90,.87,1],metallicFactor:0,roughnessFactor:.58}},
   {name:"ButtonAccent",pbrMetallicRoughness:{baseColorFactor:[.09,.075,.06,1],metallicFactor:.05,roughnessFactor:.42}},
 ];
@@ -941,6 +964,18 @@ const meshCollar=addMesh("CollarMesh",collar,"ShirtTorsoFabric");
 const meshCuffL=addMesh("CuffLMesh",detailBox,"ShirtSleeveLFabric");
 const meshCuffR=addMesh("CuffRMesh",detailBox,"ShirtSleeveRFabric");
 const meshButton=addMesh("ButtonMesh",button,"ButtonAccent");
+const shirtPlacketButtonMeshes=Object.fromEntries(styleVariants.plackets.filter((item)=>item.id!=="hidden").map((item)=>[
+  item.id,
+  addMesh(`ShirtPlacketButtonMesh__${item.id}`,button,`ButtonAccentVariant__shirt_placket__${item.id}`)
+]));
+const shirtCollarButtonMeshes=Object.fromEntries(styleVariants.collars.filter((item)=>item.id==="button_down"||item.id==="tab").map((item)=>[
+  item.id,
+  addMesh(`ShirtCollarButtonMesh__${item.id}`,button,`ButtonAccentVariant__shirt_collar__${item.id}`)
+]));
+const shirtCuffButtonMeshes=Object.fromEntries(styleVariants.cuffs.filter((item)=>!["french","rounded_french","soft_french"].includes(item.id)).map((item)=>[
+  item.id,
+  addMesh(`ShirtCuffButtonMesh__${item.id}`,button,`ButtonAccentVariant__shirt_cuff__${item.id}`)
+]));
 const meshShirtPlacket=addMesh("ShirtPlacketMesh",detailBox,"ShirtTorsoFabric");
 const meshTrouserCreaseL=addMesh("TrouserCreaseLMesh",detailBox,"TrouserLegLFabric");
 const meshTrouserCreaseR=addMesh("TrouserCreaseRMesh",detailBox,"TrouserLegRFabric");
@@ -1391,10 +1426,46 @@ for(const item of styleVariants.trouserPockets){
   }
 }
 
-for(let i=0;i<7;i++) nodes.push({name:`ShirtButton${i+1}`,mesh:meshButton,translation:[0,1.430-i*.055,.119],scale:[.006,.006,.004]});
+// Closure hardware follows the selected construction instead of floating on every garment.
+for(const item of styleVariants.plackets){
+  if(item.id==="hidden") continue;
+  const mesh=shirtPlacketButtonMeshes[item.id];
+  const count=item.id==="popover"?3:7;
+  for(let i=0;i<count;i++) nodes.push({
+    name:`ShirtButtonVariant__${item.id}__${i+1}`,
+    mesh,
+    translation:[0,1.430-i*.055,.119],
+    scale:[.006,.006,.004]
+  });
+}
+for(const item of styleVariants.collars){
+  if(item.id==="button_down"){
+    const mesh=shirtCollarButtonMeshes[item.id];
+    nodes.push({name:"ShirtCollarButtonVariant__button_down__L",mesh,translation:[-.050,1.438,.113],scale:[.004,.004,.003]});
+    nodes.push({name:"ShirtCollarButtonVariant__button_down__R",mesh,translation:[.050,1.438,.113],scale:[.004,.004,.003]});
+  }else if(item.id==="tab"){
+    const mesh=shirtCollarButtonMeshes[item.id];
+    nodes.push({name:"ShirtCollarButtonVariant__tab",mesh,translation:[0,1.444,.119],scale:[.0042,.0042,.003]});
+  }
+}
+const twoButtonCuffIds=new Set(["rounded_2","mitered_2","soft_square_2"]);
+for(const item of styleVariants.cuffs){
+  if(["french","rounded_french","soft_french"].includes(item.id)) continue;
+  const mesh=shirtCuffButtonMeshes[item.id];
+  const count=twoButtonCuffIds.has(item.id)?2:1;
+  for(const side of [-1,1]){
+    for(let i=0;i<count;i++){
+      const y=count===1?.891:.879+i*.026;
+      nodes.push({
+        name:`ShirtCuffButtonVariant__${item.id}__${side<0?"L":"R"}${i+1}`,
+        mesh,
+        translation:[side*.250,y,.057],
+        scale:[.0048,.0048,.0035]
+      });
+    }
+  }
+}
 nodes.push({name:"TrouserButton",mesh:meshButton,translation:[0,1.100,.113],scale:[.0068,.0068,.0048]});
-nodes.push({name:"CuffButtonL",mesh:meshButton,translation:[-.250,.870,.057],scale:[.0048,.0048,.0035]});
-nodes.push({name:"CuffButtonR",mesh:meshButton,translation:[.250,.870,.057],scale:[.0048,.0048,.0035]});
 for(const side of [-1,1]){
   for(let i=0;i<3;i++) nodes.push({
     name:`ShoeLace${side<0?"L":"R"}${i+1}`,
@@ -1439,7 +1510,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.5 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.6 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -1524,7 +1595,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.5 model complete: researched shirt/trouser construction geometry + pleat/back ease volume + collar/cuff stiffness geometry + canonical Designer handoff + fabric drape response",
+    polishStage:"M7.6 model complete: researched shirt/trouser construction geometry + pleat/back ease + collar/cuff stiffness + construction-aware closure hardware + canonical Designer handoff + fabric drape response",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
