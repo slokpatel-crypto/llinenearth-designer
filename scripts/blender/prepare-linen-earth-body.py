@@ -338,6 +338,17 @@ def choose_body_object(objects):
     return meshes[0]
 
 
+def retain_locked_body_only(objects, body):
+    removed = []
+    for obj in list(objects):
+        if obj is body:
+            continue
+        removed.append(obj.name)
+        bpy.data.objects.remove(obj, do_unlink=True)
+    bpy.context.view_layer.update()
+    return [body], removed
+
+
 def normalize_height(objects, body):
     height = mesh_height(body)
     if not math.isfinite(height) or height <= 0:
@@ -404,6 +415,7 @@ def main():
     body = choose_body_object(objects)
     original_name = body.name
     body.name = BODY_NAME
+    objects, removed_auxiliary_objects = retain_locked_body_only(objects, body)
     original_height, factor, measured = normalize_height(objects, body)
     floor_shift = normalize_floor(objects, body)
     center_shift = center_body_xy(body)
@@ -423,6 +435,7 @@ def main():
     bpy.context.scene["linen_earth_body_center_shift_x_m"] = round(center_shift[0], 6)
     bpy.context.scene["linen_earth_body_center_shift_y_m"] = round(center_shift[1], 6)
     bpy.context.scene["linen_earth_arm_stance_json"] = json.dumps(arm_stance, sort_keys=True)
+    bpy.context.scene["linen_earth_removed_auxiliary_objects_json"] = json.dumps(removed_auxiliary_objects)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(output))
@@ -432,6 +445,7 @@ def main():
     print(f"Locked model identity: {MODEL_IDENTITY_ID} · {MODEL_REFERENCE_IMAGE}")
     print(f"Selected: {blend_path.name} :: {kind} {datablock} (score {score})")
     print(f"Body object: {original_name} -> {BODY_NAME}")
+    print(f"Removed non-body source objects: {len(removed_auxiliary_objects)}")
     print(f"Explicit height normalization: {original_height:.4f} m -> {measured:.4f} m")
     print(f"Floor normalization shift: {floor_shift:.4f} m")
     print(f"Body XY source offset removed: ({center_shift[0]:.4f}, {center_shift[1]:.4f}) m")
