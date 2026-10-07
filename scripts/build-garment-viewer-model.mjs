@@ -978,7 +978,7 @@ const styleVariantMaterials=[
   ...styleVariants.rises.flatMap((rise)=>styleVariants.waistbands.filter((item)=>item.id!=="clean").map((item)=>addVariantMaterial(`TrouserWaistbandVariant__${rise.id}__${item.id}`,"trouser"))),
   ...styleVariants.pleats.filter((item)=>item.id!=="flat").map((item)=>addVariantMaterial(`TrouserPleatVariant__${item.id}`,"trouser")),
   ...styleVariants.breaks.filter((item)=>item.id!=="slight").map((item)=>addVariantMaterial(`TrouserBreakVariant__${item.id}`,"trouser")),
-  ...styleVariants.trouserHems.filter((item)=>item.id!=="plain").map((item)=>addVariantMaterial(`TrouserHemVariant__${item.id}`,"trouser")),
+  ...styleVariants.trouserFits.flatMap((fit)=>styleVariants.breaks.flatMap((breakStyle)=>styleVariants.trouserHems.filter((item)=>item.id!=="plain").map((item)=>addVariantMaterial(`TrouserHemVariant__${fit.id}__${breakStyle.id}__${item.id}`,"trouser")))),
   ...styleVariants.trouserPockets.map((item)=>addVariantMaterial(`TrouserPocketVariant__${item.id}`,"trouser")),
 ];
 const buttonVariantMaterialNames=[];
@@ -1240,10 +1240,20 @@ const shirtBackVariantMeshes=Object.fromEntries(styleVariants.shirtBacks.filter(
   item.id,
   addMesh(`ShirtBackVariantMesh__${item.id}`,detailBox,`ShirtBackVariant__${item.id}`)
 ]));
-const trouserHemVariantMeshes=Object.fromEntries(styleVariants.trouserHems.filter((item)=>item.id!=="plain").map((item)=>[
-  item.id,
-  addMesh(`TrouserHemVariantMesh__${item.id}`,detailBox,`TrouserHemVariant__${item.id}`)
-]));
+const trouserHemVariantMeshes={};
+for(const fit of styleVariants.trouserFits){
+  for(const breakStyle of styleVariants.breaks){
+    for(const item of styleVariants.trouserHems){
+      if(item.id==="plain") continue;
+      const key=`${fit.id}__${breakStyle.id}__${item.id}`;
+      trouserHemVariantMeshes[key]=addMesh(
+        `TrouserHemVariantMesh__${key}`,
+        detailBox,
+        `TrouserHemVariant__${key}`
+      );
+    }
+  }
+}
 const trouserPocketVariantMeshes=Object.fromEntries(styleVariants.trouserPockets.map((item)=>{
   const geometry=item.id==="slant"?trouserSlantPocket
     : item.id==="on_seam"?trouserOnSeamPocket
@@ -1613,13 +1623,26 @@ for(const item of styleVariants.breaks){
   }
 }
 
-// Trouser cuffs / turn-ups.
-for(const item of styleVariants.trouserHems){
-  if(item.id==="plain") continue;
-  const mesh=trouserHemVariantMeshes[item.id];
-  const height=item.id==="turnup_5"?.050:.040;
-  for(const side of [-1,1]){
-    nodes.push({name:`TrouserHemVariant__${item.id}__${side<0?"L":"R"}`,mesh,translation:[side*.105,.103,.020],scale:[.070,height,.103]});
+// Trouser cuffs / turn-ups follow both leg silhouette and break height.
+const trouserBreakHemOffset={negative:.040,no_break:.020,quarter:.010,slight:0,full:-.010};
+for(const fit of styleVariants.trouserFits){
+  const hemWidth=.070*(Number(fit.hemScale)||1);
+  for(const breakStyle of styleVariants.breaks){
+    const breakOffset=trouserBreakHemOffset[breakStyle.id]||0;
+    for(const item of styleVariants.trouserHems){
+      if(item.id==="plain") continue;
+      const key=`${fit.id}__${breakStyle.id}__${item.id}`;
+      const mesh=trouserHemVariantMeshes[key];
+      const height=item.id==="turnup_5"?.050:.040;
+      for(const side of [-1,1]){
+        nodes.push({
+          name:`TrouserHemVariant__${key}__${side<0?"L":"R"}`,
+          mesh,
+          translation:[side*.105,.103+breakOffset,.020],
+          scale:[hemWidth,height,.103]
+        });
+      }
+    }
   }
 }
 
@@ -1733,7 +1756,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.14 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.15 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -1818,7 +1841,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.14 model complete: researched shirt/trouser construction geometry + fit-aware sleeves + true trouser breaks + rise-locked waistband hardware + pleat/back ease + collar/cuff stiffness + construction-aware closures/cufflinks + tuxedo front pleats + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
+    polishStage:"M7.15 model complete: researched shirt/trouser construction geometry + fit-aware sleeves + true trouser breaks + fit/break-locked turn-ups + rise-locked waistband hardware + pleat/back ease + collar/cuff stiffness + construction-aware closures/cufflinks + tuxedo front pleats + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
