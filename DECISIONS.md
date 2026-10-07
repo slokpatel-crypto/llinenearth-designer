@@ -476,3 +476,12 @@ Architecture and product decisions that must persist across coding sessions.
 **Construction:** collar-band geometry is keyed by both collar family and fused/soft construction. Soft constructions reduce band height/depth and follow the same drop as their collar leaves. White-contrast collar choices continue to recolor both the collar leaves and matching band together.
 
 **Acceptance boundary:** this remains deterministic tailoring geometry, not cloth simulation. Camp, one-piece and mandarin collars keep their dedicated construction paths.
+
+
+## 2026-10-07 — M7.44 360-degree trouser turn-up shells
+
+**Decision:** replace flat box-like trouser turn-up cues with closed elliptical hem shells that wrap each leg. Turn-ups now read as actual folded fabric in front, 3/4, side and back views.
+
+**Fit rule:** the wrap shell remains keyed by trouser fit, break and 4 cm / 5 cm turn-up choice. Its width still follows the selected leg hem scale and its vertical position still follows the selected break.
+
+**Acceptance boundary:** this improves visible tailoring geometry without adding cloth simulation, AI credits or a new model identity.
