@@ -107,7 +107,7 @@ test("Blender exporter carries fit and boundary preflight evidence into the prod
   const preflight=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
   const exporter=readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
   for(const token of ["return report","boundaryClearanceMm","identityFitMeasurementsMm","boundaryIntersections"]) assert(preflight.includes(token),token);
-  for(const token of ["preflight_report = run_scene_preflight()","productionFitEvidence","identityFitMeasurementsMm","boundaryIntersections","boundaryClearanceMm"]) assert(exporter.includes(token),token);
+  for(const token of ["preflight_report = run_scene_preflight()","productionFitEvidence","\"ready\": preflight_report.get(\"ready\") is True","identityFitMeasurementsMm","boundaryIntersections","boundaryClearanceMm"]) assert(exporter.includes(token),token);
 });
 
 test("production scene assembly chains realistic body preparation, garment authoring and Blender preflight",()=>{
