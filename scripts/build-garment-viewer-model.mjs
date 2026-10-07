@@ -2390,7 +2390,7 @@ const manifest={
   version:CONTRACT_VERSION,
   modelId:MODEL_ID,
   referenceHeightMm:REFERENCE_HEIGHT_MM,
-  modelIdentity:{id:IDENTITY_ID,referenceImage:REFERENCE_IMAGE},
+  modelIdentity:{id:IDENTITY_ID,referenceImage:REFERENCE_IMAGE,physicalTargetsMm:IDENTITY_TARGETS_MM},
   source:{
     name:"Linen Earth identity-tailored officewear shells over MakeHuman CC0 collision anatomy",
     license:"CC0 1.0 collision/skin source + Linen Earth generated tailoring geometry",
