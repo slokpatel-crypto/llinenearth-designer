@@ -348,7 +348,8 @@ def shape_officewear_to_identity(authored, body, targets):
     right_hem_z = guide_center_z("LE_GUIDE_RIGHT_HEM")
     left_hand_z = guide_center_z("LE_GUIDE_LEFT_HAND_CENTER_H")
     right_hand_z = guide_center_z("LE_GUIDE_RIGHT_HAND_CENTER_H")
-    required = (shoulder_z, shirt_waist_z, trouser_waist_z, left_hem_z, right_hem_z, left_hand_z, right_hand_z)
+    outer_arm_z = guide_center_z("LE_GUIDE_OUTER_ARM_SILHOUETTE")
+    required = (shoulder_z, shirt_waist_z, trouser_waist_z, left_hem_z, right_hem_z, left_hand_z, right_hand_z, outer_arm_z)
     if any(value is None for value in required):
         raise RuntimeError("Identity guides are incomplete; cannot fit the production garment candidate.")
 
@@ -435,6 +436,23 @@ def shape_officewear_to_identity(authored, body, targets):
             [(hand_z - 0.16, delta), (hand_z, delta), (shoulder_z - 0.05, 0.0), (shoulder_z + 0.05, 0.0)],
         )
 
+    left_span = x_span_at_z(authored["ShirtSleeveLFabric"], outer_arm_z, 0.045)
+    right_span = x_span_at_z(authored["ShirtSleeveRFabric"], outer_arm_z, 0.045)
+    if left_span is None or right_span is None:
+        raise RuntimeError("Could not measure garment outer-arm silhouette at the locked guide.")
+    current_outer_arm = right_span[1] - left_span[0]
+    target_outer_arm = float(targets["outerArmSilhouette"]) / 1000.0
+    arm_delta = max(-0.030, min(0.040, (target_outer_arm - current_outer_arm) * 0.5))
+    if abs(arm_delta) > 1e-6:
+        shift_x_profile(
+            authored["ShirtSleeveLFabric"],
+            [(left_hand_z, 0.0), (outer_arm_z, -arm_delta), (shoulder_z, 0.0)],
+        )
+        shift_x_profile(
+            authored["ShirtSleeveRFabric"],
+            [(right_hand_z, 0.0), (outer_arm_z, arm_delta), (shoulder_z, 0.0)],
+        )
+
     return {
         "shirtShoulderScale": round(shoulder_factor, 5),
         "shirtShoulderCorrection": round(shoulder_correction, 5),
@@ -442,6 +460,7 @@ def shape_officewear_to_identity(authored, body, targets):
         "trouserWaistScale": round(trouser_factor, 5),
         "targetHemWidthMm": round(target_hem * 1000.0, 2),
         "targetHandCenterSpacingMm": round(target_hand_half * 2000.0, 2),
+        "outerArmCorrectionPerSideMm": round(arm_delta * 1000.0, 2),
     }
 
 
