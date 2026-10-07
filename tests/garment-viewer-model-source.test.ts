@@ -253,8 +253,11 @@ test("production scene assembly chains realistic body preparation, garment autho
   for(const token of [
     "bootstrap-human-base-meshes.py",
     'process.env.PYTHON||"python3"',
+    "build-garment-viewer-model.mjs",
     "prepare-linen-earth-body.py",
     "author-linen-earth-officewear.py",
+    "garment-import-tailoring-library.py",
+    "LINEN_TAILORING_LIBRARY_GLB",
     "preflight-linen-earth-officewear.py",
     "linen-earth-officewear-authored.blend",
     '"--python-exit-code","1"',
