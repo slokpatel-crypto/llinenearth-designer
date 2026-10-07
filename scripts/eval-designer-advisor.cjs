@@ -29,7 +29,7 @@ const cases=[
   ["Design a cropped trouser","design"],
   ["Design an outfit with a linen shirt under 180 gsm","design"],
   ["Design a formal look with a camp collar and French cuffs","design"],
-  ["Design a British collar shirt","clarify"],
+  ["Design a British collar shirt","design"],
   ["Design five outfit directions","design"],
 ];
 const timings=[],tasks=[];
