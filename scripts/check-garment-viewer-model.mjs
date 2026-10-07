@@ -17,6 +17,7 @@ const manifestPath=manifestArg
   ? path.resolve(manifestArg)
   : absoluteModel.replace(/\.glb$/i,".viewer.json");
 const modelId=process.env.LINEN_GARMENT_MODEL_ID || "LE-OFFICEWEAR-V1";
+const requireProduction=["1","true","yes"].includes(String(process.env.LINEN_GARMENT_REQUIRE_PRODUCTION||"").toLowerCase());
 
 try{
   const bytes=new Uint8Array(await fs.readFile(absoluteModel));
@@ -35,12 +36,15 @@ try{
       reasons:[error instanceof Error ? error.message : "Manifest could not be read."],
     };
   }
-  const ready=model.structuralReady&&manifest.valid;
+  const productionReady=manifest?.productionAssetReady===true;
+  const ready=model.structuralReady&&manifest.valid&&(!requireProduction||productionReady);
   console.log(JSON.stringify({
     version:GARMENT_VIEWER_CONTRACT_VERSION,
     modelPath:absoluteModel,
     manifestPath,
     modelId,
+    requireProduction,
+    productionReady,
     ready,
     model,
     manifest,
