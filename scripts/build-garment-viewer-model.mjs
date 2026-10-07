@@ -132,12 +132,15 @@ function tailoredSleeveCapGeometry(base,centerX){
     if(shoulderZone<=0) return p;
     const outwardNormalized=Math.max(-1,Math.min(1,side*(p.x-centerX)/.061));
     const outerBias=(outwardNormalized+1)/2;
-    const shoulderDrop=.012*shoulderZone*outerBias;
+    const shoulderDrop=.038*shoulderZone*(.28+.72*outerBias);
+    const inwardShift=side*.010*shoulderZone*(1-outwardNormalized)*.5;
     const localZ=p.z-.020;
-    const ovalDepthScale=1-.08*shoulderZone;
+    const ovalDepthScale=1-.15*shoulderZone;
+    const capRound=.006*shoulderZone*(1-Math.abs(outwardNormalized));
     return {
       ...p,
-      y:p.y-shoulderDrop,
+      x:p.x-inwardShift,
+      y:p.y-shoulderDrop+capRound,
       z:.020+localZ*ovalDepthScale,
     };
   });
@@ -737,12 +740,12 @@ async function loadMakeHumanGarmentShells(){
     predicate:(p)=>p.y>=.865&&p.y<=1.455&&p.x>=.145,
   });
   const handL=buildRegion({
-    kind:"skin",centerX:-.226,yMin:.80,yMax:.91,outward:0,
-    predicate:(p)=>p.y>=.80&&p.y<=.91&&p.x<=-.195,
+    kind:"skin",centerX:-.226,yMin:.70,yMax:.92,outward:0,
+    predicate:(p)=>p.y>=.70&&p.y<=.92&&p.x<=-.175,
   });
   const handR=buildRegion({
-    kind:"skin",centerX:.226,yMin:.80,yMax:.91,outward:0,
-    predicate:(p)=>p.y>=.80&&p.y<=.91&&p.x>=.195,
+    kind:"skin",centerX:.226,yMin:.70,yMax:.92,outward:0,
+    predicate:(p)=>p.y>=.70&&p.y<=.92&&p.x>=.175,
   });
   const forearmL=buildRegion({
     kind:"skin",centerX:-.226,yMin:.895,yMax:1.20,outward:.0005,
@@ -1052,8 +1055,9 @@ const shirtTorso=profileGeometry({
     {y:-.085,width:.154,depth:.112,z:.009},
     {y:-.010,width:.160,depth:.118,z:.012},
     {y:.070,width:.171,depth:.122,z:.014},
-    {y:.135,width:.184,depth:.121,z:.012},
-    {y:.175,width:.194,depth:.116,z:.008},
+    {y:.125,width:.181,depth:.120,z:.012},
+    {y:.165,width:.194,depth:.114,z:.008},
+    {y:.190,width:.172,depth:.105,z:.004},
     {y:.205,width:.132,depth:.096,z:0},
   ],
   segments:34,
@@ -1164,18 +1168,6 @@ const garmentShells=await loadMakeHumanGarmentShells();
 // cropped anatomical body surfaces. MakeHuman stays as the hidden collision/skin source.
 // These world-space shells preserve the exact Linen Earth silhouette anchors while
 // producing continuous shirt/trouser surfaces with clean side and back views.
-const realisticDefaultShells={
-  // Default officewear uses the transformed anatomy-derived shells for a more
-  // human shoulder/seat/limb surface. Variant geometry stays on the compact
-  // deterministic tailoring shells below so the full option library remains fast.
-  shirtTorso:garmentShells.shirtTorso,
-  sleeveL:garmentShells.sleeveL,
-  sleeveR:garmentShells.sleeveR,
-  trouserWaist:garmentShells.trouserWaist,
-  trouserLegL:garmentShells.trouserLegL,
-  trouserLegR:garmentShells.trouserLegR,
-};
-
 const tailoredShells={
   shirtTorso:cloneGeometryTransform(shirtTorso,(p)=>({...p,y:p.y+1.260})),
   sleeveL:tailoredSleeveCapGeometry(cloneGeometryTransform(sleeve,(p)=>({...p,x:p.x-.226,y:p.y+1.169,z:p.z+.020})),-.226),
@@ -1184,6 +1176,9 @@ const tailoredShells={
   trouserLegL:tailoredTrouserUpperGeometry(cloneGeometryTransform(trouserLeg,(p)=>({...p,x:p.x-.105,y:p.y*.94+.5225,z:p.z+.015})),-.105),
   trouserLegR:tailoredTrouserUpperGeometry(cloneGeometryTransform(trouserLeg,(p)=>({...p,x:p.x+.105,y:p.y*.94+.5225,z:p.z+.015})),.105),
 };
+// Visible default clothing stays on closed tailoring shells. The scan-derived anatomy
+// remains the source for skin/collision and the Blender production fitting pipeline.
+const realisticDefaultShells=tailoredShells;
 const mannequinSkinShells={
   // Use the transformed CC0 anatomy for hands/forearms instead of stacking
   // procedural palm + finger primitives. Lock the visible hand centers to the
@@ -2459,7 +2454,7 @@ const manifest={
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
     measurementMethod:"geometry-derived-from-visible-default-shells",
-    polishStage:"M7.46 deterministic viewer shell complete; realistic production asset still requires Blender-source fit/evidence: 360-degree raised-back collar band + 360-degree wrist cuff shells + rise-aware tucked-shirt waist junction + extra-high/Korean waist geometry + faceless human head plane/jaw profile + front-flat/back-seat trouser waist shaping + seat/crotch upper-trouser blend + tailored oval sleeve-cap pitch + English-spread/British collar geometry + fit-specific tucked waist compression + contrast-ready collar/cuff material isolation + tapered studio neck/jaw transition + tailored dress-shoe upper/heel silhouette + anatomy-derived default garment surface + anatomy-derived clean hands/forearms without overlay geometry + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
+    polishStage:"M7.46 deterministic viewer shell complete; realistic production asset still requires Blender-source fit/evidence: 360-degree raised-back collar band + 360-degree wrist cuff shells + rise-aware tucked-shirt waist junction + extra-high/Korean waist geometry + faceless human head plane/jaw profile + front-flat/back-seat trouser waist shaping + seat/crotch upper-trouser blend + tailored oval sleeve-cap pitch + English-spread/British collar geometry + fit-specific tucked waist compression + contrast-ready collar/cuff material isolation + tapered studio neck/jaw transition + tailored dress-shoe upper/heel silhouette + closed identity-tailored default garment shells + anatomy-derived clean hands/forearms without overlay geometry + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
