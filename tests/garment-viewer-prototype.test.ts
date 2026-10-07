@@ -57,6 +57,22 @@ test("prototype model is a reusable full outfit rather than one flattened garmen
 });
 
 
+test("default officewear shapes shoulders, armholes and trouser seat while enforcing shoulder continuity",()=>{
+  const builder=readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
+  for(const token of [
+    "tailoredShirtTorsoGeometry",
+    "const shoulderDrop=.026",
+    "const armholeIn=.004",
+    "const shoulderDrop=.038",
+    "const capRound=.006",
+    "const seatScale=1+.095*backBias",
+    "const outerEase=.0045*upperZone",
+    "leftShoulderJoinOverlapMm",
+    "rightShoulderJoinOverlapMm",
+    "expected 4–45 mm",
+  ]) assert(builder.includes(token),token);
+});
+
 test("production model derives identity measurements from the visible default geometry",()=>{
   const builder=readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
   for(const token of [
