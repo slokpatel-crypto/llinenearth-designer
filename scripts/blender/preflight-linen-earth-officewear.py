@@ -92,6 +92,31 @@ def material_slot_names(obj):
     return [slot.material.name if slot.material else "" for slot in obj.material_slots]
 
 
+def guide_world_points(obj):
+    if obj is None or obj.type != "CURVE":
+        return []
+    points = []
+    for spline in obj.data.splines:
+        for point in spline.points:
+            local = Vector(point.co[:3])
+            points.append(obj.matrix_world @ local)
+    return points
+
+
+def guide_length_mm(obj):
+    points = guide_world_points(obj)
+    if len(points) < 2:
+        return None
+    return (points[-1] - points[0]).length * 1000.0
+
+
+def guide_center(obj):
+    points = guide_world_points(obj)
+    if not points:
+        return None
+    return sum(points, Vector((0.0, 0.0, 0.0))) / len(points)
+
+
 def main():
     reasons = []
     warnings = []
@@ -139,6 +164,52 @@ def main():
         missing_guides = sorted(required_guides - guide_names)
         if missing_guides:
             reasons.append("Missing identity silhouette guides: " + ", ".join(missing_guides))
+
+    guide_measurements = {}
+    if identity_guides is not None:
+        width_guides = {
+            "LE_GUIDE_SHIRT_SHOULDER": ("shoulderSeamWidth", 2.0),
+            "LE_GUIDE_SHIRT_WAIST": ("shirtWaistWidth", 2.0),
+            "LE_GUIDE_TROUSER_WAIST": ("trouserWaistWidth", 2.0),
+            "LE_GUIDE_LEFT_HEM": ("hemWidth", 2.0),
+            "LE_GUIDE_RIGHT_HEM": ("hemWidth", 2.0),
+            "LE_GUIDE_OUTER_ARM_SILHOUETTE": ("outerArmSilhouette", 3.0),
+            "LE_GUIDE_HEIGHT": ("height", 3.0),
+        }
+        for guide_name, (target_key, tolerance_mm) in width_guides.items():
+            guide = identity_guides.objects.get(guide_name)
+            measured = guide_length_mm(guide)
+            guide_measurements[guide_name] = round(measured, 2) if measured is not None else None
+            target = EXPECTED_IDENTITY_TARGETS_MM[target_key]
+            if measured is None:
+                reasons.append(f"Identity guide {guide_name} cannot be measured.")
+            elif abs(measured - target) > tolerance_mm:
+                reasons.append(
+                    f"Identity guide {guide_name} measures {measured:.1f} mm; "
+                    f"expected {target:.1f} mm ± {tolerance_mm:.1f} mm."
+                )
+            if guide is not None and not bool(guide.get("linen_earth_identity_guide", False)):
+                reasons.append(f"Identity guide {guide_name} is missing the canonical guide tag.")
+            if guide is not None and not guide.hide_render:
+                reasons.append(f"Identity guide {guide_name} must remain non-rendering.")
+
+        marker_pairs = (
+            ("handCenterSpacing", "LE_GUIDE_LEFT_HAND_CENTER_H", "LE_GUIDE_RIGHT_HAND_CENTER_H", 3.0),
+            ("legCenterSpacing", "LE_GUIDE_LEFT_LEG_CENTER_H", "LE_GUIDE_RIGHT_LEG_CENTER_H", 3.0),
+        )
+        for target_key, left_name, right_name, tolerance_mm in marker_pairs:
+            left_center = guide_center(identity_guides.objects.get(left_name))
+            right_center = guide_center(identity_guides.objects.get(right_name))
+            measured = None if left_center is None or right_center is None else abs(right_center.x - left_center.x) * 1000.0
+            guide_measurements[target_key] = round(measured, 2) if measured is not None else None
+            target = EXPECTED_IDENTITY_TARGETS_MM[target_key]
+            if measured is None:
+                reasons.append(f"Identity marker pair for {target_key} cannot be measured.")
+            elif abs(measured - target) > tolerance_mm:
+                reasons.append(
+                    f"Identity marker spacing {target_key} measures {measured:.1f} mm; "
+                    f"expected {target:.1f} mm ± {tolerance_mm:.1f} mm."
+                )
 
     if collection is None:
         reasons.append(f"Missing export collection: {EXPORT_COLLECTION}.")
@@ -279,6 +350,7 @@ def main():
             "guideCollection": IDENTITY_GUIDE_COLLECTION,
         },
         "bodyHeightMm": round(body_height * 1000, 2) if body_height else None,
+        "identityGuideMeasurementsMm": guide_measurements,
         "identityFitMeasurementsMm": identity_measurements,
         "requiredGarmentObjects": list(GARMENT_OBJECTS),
         "objects": objects,
