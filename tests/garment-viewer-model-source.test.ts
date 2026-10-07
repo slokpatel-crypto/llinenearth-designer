@@ -142,6 +142,8 @@ test("production 3D export command runs Blender export and structural validation
 test("panel spec template cannot pass as guessed production scale",()=>{
   const template=JSON.parse(readFileSync("docs/examples/linen-earth-officewear-panel-spec.template.json","utf8"));
   assert.equal(template.status,"TEMPLATE_REPLACE_ZERO_VALUES_WITH_MEASURED_PATTERN_DIMENSIONS");
+  assert.equal(template.measurementEvidence.source,"REPLACE_WITH_OWNER_OR_TAILOR_MEASUREMENT");
+  assert.equal(template.measurementEvidence.measuredAt,"YYYY-MM-DD");
   for(const panel of Object.values(template.panels) as Array<{widthMm:number;heightMm:number}>){
     assert.equal(panel.widthMm,0);
     assert.equal(panel.heightMm,0);
@@ -149,6 +151,12 @@ test("panel spec template cannot pass as guessed production scale",()=>{
   const exporter=readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
   assert(exporter.includes("widthMm must be a measured value between 0 and 2000 mm"));
   assert(exporter.includes("heightMm must be a measured value between 0 and 2500 mm"));
+  assert(exporter.includes("Panel spec requires measurementEvidence"));
+  assert(exporter.includes("owner_measured"));
+  assert(exporter.includes("tailor_measured"));
+  assert(exporter.includes("pattern_room_measured"));
+  assert(exporter.includes("supplier_pattern_verified"));
+  assert(exporter.includes("panelMeasurementEvidence"));
 });
 
 test("Blender scene preflight rejects garment/body boundary intersections",()=>{
