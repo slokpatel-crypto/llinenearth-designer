@@ -105,8 +105,8 @@ async function verifyViewport(browser, width) {
   assert.match(recipe,/Wide-leg \/ Relaxed Drape Trouser/);
   assert.match(recipe,/saved Designer recipe now drives the same 3D tailoring-variant system/i);
   assert.equal(await page.getByLabel("3D shirt type").inputValue(),"camp_collar_resort","saved Designer shirt type must reach 3D");
-  assert.equal(await page.getByLabel("3D collar").inputValue(),"cutaway","canonical StyleSpec collar must override the shirt-type preset");
-  assert.equal(await page.getByLabel("3D cuff").inputValue(),"cocktail","canonical StyleSpec cuff must override the shirt-type preset");
+  assert.equal(await page.getByLabel("3D collar",{exact:true}).inputValue(),"cutaway","canonical StyleSpec collar must override the shirt-type preset");
+  assert.equal(await page.getByLabel("3D cuff",{exact:true}).inputValue(),"cocktail","canonical StyleSpec cuff must override the shirt-type preset");
   assert.equal(await page.getByLabel("3D shirt wear").inputValue(),"untucked","canonical Designer wear must reach 3D");
   assert.equal(await page.getByLabel("3D shirt back").inputValue(),"center_box_pleat","canonical Designer shirt-back construction must reach 3D");
   assert.equal(await page.getByLabel("3D trouser type").inputValue(),"wide_leg_relaxed_drape","saved Designer trouser type must reach 3D");
@@ -128,7 +128,7 @@ async function verifyViewport(browser, width) {
   await page.getByLabel("3D shirt type").selectOption("camp_collar_resort");
   assert.equal(await page.getByLabel("3D shirt wear").inputValue(),"untucked","camp shirt preset must switch to untucked wear");
   assert.equal(await page.getByLabel("3D sleeve").inputValue(),"half","camp shirt preset must switch to half sleeve");
-  assert.equal(await page.getByLabel("3D collar").inputValue(),"camp","camp shirt preset must switch the collar geometry");
+  assert.equal(await page.getByLabel("3D collar",{exact:true}).inputValue(),"camp","camp shirt preset must switch the collar geometry");
   await page.getByLabel("3D trouser type").selectOption("wide_leg_relaxed_drape");
   assert.equal(await page.getByLabel("3D trouser fit").inputValue(),"wide","wide-leg trouser preset must switch leg geometry");
   assert.equal(await page.getByLabel("3D trouser rise").inputValue(),"high","wide-leg trouser preset must switch rise");
@@ -137,7 +137,7 @@ async function verifyViewport(browser, width) {
 
   await page.getByLabel("3D shirt fit").selectOption("boxy");
   await page.getByLabel("3D shirt wear").selectOption("untucked");
-  await page.getByLabel("3D collar").selectOption("mandarin");
+  await page.getByLabel("3D collar",{exact:true}).selectOption("mandarin");
   await page.getByLabel("3D trouser fit").selectOption("wide");
   await page.getByLabel("3D trouser rise").selectOption("high");
   await page.getByLabel("3D trouser pleat").selectOption("double_forward");
