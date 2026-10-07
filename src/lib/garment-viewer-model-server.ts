@@ -34,6 +34,7 @@ export async function loadGarmentViewerProductionAssetStatus(){
       model:null,
       manifest:null,
       assetReady:false,
+      productionCandidateReady:false,
       assetIdentity:null,
       reasons:["No Linen Earth production GLB is available."],
     };
@@ -64,6 +65,7 @@ export async function loadGarmentViewerProductionAssetStatus(){
   }
 
   const assetReady=Boolean(model?.structuralReady&&manifest?.valid&&modelSha256&&manifestSha256);
+  const productionCandidateReady=Boolean(assetReady&&manifest?.productionAssetReady===true);
   const assetIdentity=assetReady ? {modelId:GARMENT_VIEWER_PRODUCTION_MODEL_ID,modelSha256:modelSha256 as string,manifestSha256:manifestSha256 as string} : null;
   return {
     configured:true as const,
@@ -73,6 +75,7 @@ export async function loadGarmentViewerProductionAssetStatus(){
     model,
     manifest,
     assetReady,
+    productionCandidateReady,
     assetIdentity,
     reasons:[...new Set(reasons)],
   };
