@@ -494,3 +494,12 @@ Architecture and product decisions that must persist across coding sessions.
 **Construction:** belt-loop trousers use seven perimeter loops; side adjusters sit on the actual side quarters with tangent rotation; brace-button trousers carry front and rear pairs. Every hardware set continues to follow low, mid, high and extra-high rise positions.
 
 **Acceptance boundary:** this is deterministic tailoring geometry. Extended tabs and drawstrings remain front constructions by design; no cloth simulation, AI credit or model-identity change is introduced.
+
+
+## 2026-10-07 — M7.46 hip-wrapped trouser pocket openings
+
+**Decision:** front trouser pocket openings now follow the hip perimeter instead of sitting on one flat front plane.
+
+**Construction:** on-seam pockets sit closest to the side seam, slant pockets sit on the front-side quarter, jean scoop pockets sit farther forward and frogmouth pockets stay mostly frontal. Rear welt/jetted pockets are explicitly back-facing. All pocket positions continue to follow the selected trouser rise.
+
+**Acceptance boundary:** these are visible pocket-opening constructions, not simulated pocket bags. The change improves front/3/4/side/back tailoring readability with no AI/provider cost.
