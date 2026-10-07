@@ -162,6 +162,9 @@ test("realistic production candidate renders front, three-quarter, side and back
     "LE_REVIEW_KEY",
     "LE_REVIEW_FILL",
     "LE_REVIEW_RIM",
+    "scene.view_settings.exposure = -0.65",
+    '#303843',
+    '#A97C62',
     "review-views.txt",
   ]) assert(source.includes(token),token);
   assert(workflow.includes("Render four-angle fit review"));
@@ -184,8 +187,12 @@ test("production scene assembly chains realistic body preparation, garment autho
     "author-linen-earth-officewear.py",
     "preflight-linen-earth-officewear.py",
     "linen-earth-officewear-authored.blend",
+    '"--python-exit-code","1"',
     "visually/tailor review",
   ]) assert(source.includes(token),token);
+  for(const key of ["garment:model-body:prepare","garment:model-scene:check","garment:model-production:render-review","garment:model-production:lab-export","garment:model-production:measurement-worksheet"]){
+    assert.match(packageJson.scripts[key],/--python-exit-code 1/,key);
+  }
 });
 
 test("operator reviewer evidence is locked to a realistic production candidate",()=>{
