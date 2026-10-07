@@ -97,9 +97,75 @@ def object_height(obj):
     return max(point.z for point in points) - min(point.z for point in points)
 
 
+def ensure_generated_image(name, rgba, non_color=False):
+    image = bpy.data.images.get(name)
+    if image is None:
+        image = bpy.data.images.new(name=name, width=2, height=2, alpha=True)
+        image.pixels = list(rgba) * 4
+        image.pack()
+    if non_color:
+        try:
+            image.colorspace_settings.name = "Non-Color"
+        except Exception:
+            pass
+    return image
+
+
+def configure_texture_ready_material(material, visible=True):
+    material.use_nodes = True
+    nodes = material.node_tree.nodes
+    links = material.node_tree.links
+    principled = nodes.get("Principled BSDF")
+    if principled is None:
+        principled = nodes.new("ShaderNodeBsdfPrincipled")
+
+    base_node = nodes.get("LE_BASECOLOR_SLOT")
+    if base_node is None:
+        base_node = nodes.new("ShaderNodeTexImage")
+        base_node.name = "LE_BASECOLOR_SLOT"
+        base_node.label = "Linen Earth replaceable fabric texture"
+    base_node.image = ensure_generated_image("LE_FABRIC_PLACEHOLDER_WHITE", (1.0, 1.0, 1.0, 1.0))
+    if not any(link.from_node == base_node and link.to_node == principled and link.to_socket == principled.inputs["Base Color"] for link in links):
+        links.new(base_node.outputs["Color"], principled.inputs["Base Color"])
+
+    normal_tex = nodes.get("LE_NORMAL_SLOT")
+    if normal_tex is None:
+        normal_tex = nodes.new("ShaderNodeTexImage")
+        normal_tex.name = "LE_NORMAL_SLOT"
+        normal_tex.label = "Linen Earth replaceable linen normal"
+    normal_tex.image = ensure_generated_image("LE_NORMAL_PLACEHOLDER", (0.5, 0.5, 1.0, 1.0), non_color=True)
+
+    normal_map = nodes.get("LE_NORMAL_MAP")
+    if normal_map is None:
+        normal_map = nodes.new("ShaderNodeNormalMap")
+        normal_map.name = "LE_NORMAL_MAP"
+        normal_map.inputs["Strength"].default_value = 0.35
+    if not any(link.from_node == normal_tex and link.to_node == normal_map for link in links):
+        links.new(normal_tex.outputs["Color"], normal_map.inputs["Color"])
+    if not any(link.from_node == normal_map and link.to_node == principled for link in links):
+        links.new(normal_map.outputs["Normal"], principled.inputs["Normal"])
+
+    principled.inputs["Metallic"].default_value = 0.0
+    principled.inputs["Roughness"].default_value = 0.82
+    principled.inputs["Alpha"].default_value = 1.0 if visible else 0.0
+    material.diffuse_color = (1.0, 1.0, 1.0, 1.0 if visible else 0.0)
+    if hasattr(material, "surface_render_method"):
+        try:
+            material.surface_render_method = "DITHERED"
+        except Exception:
+            pass
+    elif hasattr(material, "blend_method"):
+        try:
+            material.blend_method = "BLEND"
+        except Exception:
+            pass
+    material.use_backface_culling = False
+    return material
+
+
 def ensure_material(obj, material_name):
     material = bpy.data.materials.get(material_name) or bpy.data.materials.new(material_name)
-    material.use_nodes = True
+    configure_texture_ready_material(material, visible=True)
     obj.data.materials.clear()
     obj.data.materials.append(material)
     for polygon in obj.data.polygons:
