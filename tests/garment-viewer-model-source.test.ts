@@ -37,6 +37,19 @@ test("Blender exporter cannot bypass the production scene preflight",()=>{
   ]) assert(source.includes(token),`missing exporter preflight token: ${token}`);
 });
 
+test("Blender exporter creates replaceable base-colour and linen-normal texture slots",()=>{
+  const exporter=readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
+  for(const token of [
+    "configure_texture_ready_material",
+    "LE_BASECOLOR_SLOT",
+    "LE_NORMAL_SLOT",
+    "LE_NORMAL_MAP",
+    "LE_FABRIC_PLACEHOLDER_WHITE",
+    "LE_NORMAL_PLACEHOLDER",
+    "surface_render_method",
+  ]) assert(exporter.includes(token),token);
+});
+
 test("Blender exporter refuses silent body scaling and requires garment UVs",()=>{
   const exporter=readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
   assert(exporter.includes("Adjust the body intentionally before export rather than auto-scaling"));
