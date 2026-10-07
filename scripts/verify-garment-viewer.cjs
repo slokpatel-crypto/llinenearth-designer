@@ -116,6 +116,19 @@ async function verifyViewport(browser, width) {
     });
   };
   const selectCamera=async(label,orbitPrefix)=>{
+    const result=await page.evaluate((cameraLabel)=>{
+      const button=[...document.querySelectorAll(".garmentCameraRail button")]
+        .find((element)=>element.textContent?.trim()===cameraLabel);
+      if(!(button instanceof HTMLButtonElement)) return {clicked:false,orbit:""};
+      button.click();
+      // GarmentViewer's setCamera writes the orbit attribute synchronously inside the
+      // click handler. Read it in the same task so QA is not coupled to model-viewer's
+      // later animated camera normalization/render loop.
+      const orbit=document.querySelector("model-viewer")?.getAttribute("camera-orbit")||"";
+      return {clicked:true,orbit};
+    },label);
+    assert.equal(result.clicked,true,`camera button must exist: ${label}`);
+    assert.match(result.orbit,new RegExp("^"+orbitPrefix.replace(/[.*+?^${\}()|[\]\\]/g,"\\  const selectCamera=async(label,orbitPrefix)=>{
     const clicked=await page.evaluate((cameraLabel)=>{
       const button=[...document.querySelectorAll(".garmentCameraRail button")]
         .find((element)=>element.textContent?.trim()===cameraLabel);
@@ -129,6 +142,7 @@ async function verifyViewport(browser, width) {
       orbitPrefix,
       {timeout:5000},
     );
+  };")),`camera preset must start at ${orbitPrefix}: ${label}`);
   };
 
   await captureCanvas("garment-angle-front.png");
