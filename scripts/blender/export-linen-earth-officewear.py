@@ -30,6 +30,16 @@ REFERENCE_HEIGHT_M = 1.727
 HEIGHT_TOLERANCE_M = 0.020
 MODEL_IDENTITY_ID = "linen-earth-studio-model-v1"
 MODEL_REFERENCE_IMAGE = "/designer/studio-tucked.webp"
+EXPECTED_IDENTITY_TARGETS_MM = {
+    "height": 1727,
+    "shoulderSeamWidth": 388,
+    "outerArmSilhouette": 574,
+    "shirtWaistWidth": 294,
+    "trouserWaistWidth": 344,
+    "handCenterSpacing": 500,
+    "legCenterSpacing": 210,
+    "hemWidth": 64,
+}
 
 GARMENT_OBJECTS = (
     "ShirtTorsoFabric",
@@ -150,12 +160,19 @@ def scene_model_identity(scene):
     identity_id = str(scene.get("linen_earth_model_identity_id", "")).strip()
     reference_image = str(scene.get("linen_earth_model_reference_image", "")).strip()
     locked = bool(scene.get("linen_earth_model_identity_locked", False))
+    targets_raw = str(scene.get("linen_earth_identity_targets_json", "")).strip()
+    try:
+        targets = json.loads(targets_raw) if targets_raw else None
+    except json.JSONDecodeError:
+        targets = None
     if identity_id != MODEL_IDENTITY_ID or reference_image != MODEL_REFERENCE_IMAGE or not locked:
         raise RuntimeError(
             "Production export requires the exact Linen Earth Real Model Designer identity. "
             f"Expected {MODEL_IDENTITY_ID} / {MODEL_REFERENCE_IMAGE} with identity lock enabled."
         )
-    return {"id": identity_id, "referenceImage": reference_image}
+    if targets != EXPECTED_IDENTITY_TARGETS_MM:
+        raise RuntimeError("Production export identity physical targets do not match the shared Linen Earth model contract.")
+    return {"id": identity_id, "referenceImage": reference_image, "physicalTargetsMm": targets}
 
 
 def finite_number(value):
