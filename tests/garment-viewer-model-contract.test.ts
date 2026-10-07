@@ -11,7 +11,17 @@ import {
 import { PROTOTYPE_MODEL_ID } from "../src/lib/garment-viewer-prototype.ts";
 import { LINEN_EARTH_MODEL_IDENTITY_ID, LINEN_EARTH_MODEL_REFERENCE_IMAGE } from "../src/lib/designer/model-identity.ts";
 
-const MODEL_IDENTITY={id:LINEN_EARTH_MODEL_IDENTITY_ID,referenceImage:LINEN_EARTH_MODEL_REFERENCE_IMAGE};
+const PHYSICAL_TARGETS={
+  height:1727,
+  shoulderSeamWidth:388,
+  outerArmSilhouette:574,
+  shirtWaistWidth:294,
+  trouserWaistWidth:344,
+  handCenterSpacing:500,
+  legCenterSpacing:210,
+  hemWidth:64,
+};
+const MODEL_IDENTITY={id:LINEN_EARTH_MODEL_IDENTITY_ID,referenceImage:LINEN_EARTH_MODEL_REFERENCE_IMAGE,physicalTargetsMm:PHYSICAL_TARGETS};
 
 test("prototype satisfies panel contract but remains explicitly non-production",()=>{
   const result=validateGarmentViewerModelContract({
@@ -137,10 +147,17 @@ test("wrong model identity fails production manifest",()=>{
   };
   const wrong=validateGarmentViewerModelManifest({
     ...base,
-    modelIdentity:{id:"another-model",referenceImage:"/designer/other.webp"},
+    modelIdentity:{id:"another-model",referenceImage:"/designer/other.webp",physicalTargetsMm:PHYSICAL_TARGETS},
   },"LE-OFFICEWEAR-V1");
   assert.equal(wrong.valid,false);
   assert(wrong.reasons.some((reason)=>reason.includes("model identity")));
   const exact=validateGarmentViewerModelManifest({...base,modelIdentity:MODEL_IDENTITY},"LE-OFFICEWEAR-V1");
   assert.equal(exact.valid,true);
+
+  const drifted=validateGarmentViewerModelManifest({
+    ...base,
+    modelIdentity:{...MODEL_IDENTITY,physicalTargetsMm:{...PHYSICAL_TARGETS,handCenterSpacing:510}},
+  },"LE-OFFICEWEAR-V1");
+  assert.equal(drifted.valid,false);
+  assert(drifted.reasons.some((reason)=>reason.includes("handCenterSpacing")));
 });
