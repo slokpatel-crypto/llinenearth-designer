@@ -660,6 +660,19 @@
       }
     },
     {
+      "id": "pleated_trouser",
+      "label": "Pleated Trouser",
+      "preset": {
+        "trouserFit": "straight",
+        "rise": "high",
+        "pleat": "single_forward",
+        "waistband": "side_adjuster",
+        "breakStyle": "slight",
+        "hem": "plain",
+        "pocket": "slant"
+      }
+    },
+    {
       "id": "bespoke_side_adjuster",
       "label": "Bespoke Side-Adjuster Trouser",
       "preset": {
