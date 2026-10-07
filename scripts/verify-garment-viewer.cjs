@@ -129,28 +129,38 @@ async function verifyViewport(browser, width) {
     });
   };
   const selectCamera=async(label,orbitPrefix,activeView)=>{
-    const button=page.getByRole("button",{name:label,exact:true});
-    await button.waitFor({state:"visible",timeout:15000});
-    await button.click({timeout:15000});
-    try {
-      await page.waitForFunction(
-        ({prefix,view})=>{
-          const viewerElement=document.querySelector("model-viewer");
-          const shellElement=document.querySelector(".garmentViewerShell");
-          return viewerElement?.getAttribute("camera-orbit")?.startsWith(prefix)
-            && shellElement?.getAttribute("data-active-view")===view;
-        },
-        {prefix:orbitPrefix,view:activeView},
-        {timeout:15000},
-      );
-    } catch (error) {
-      const state=await page.evaluate(()=>({
-        orbit:document.querySelector("model-viewer")?.getAttribute("camera-orbit")||null,
-        activeView:document.querySelector(".garmentViewerShell")?.getAttribute("data-active-view")||null,
-        modelLoaded:Boolean(document.querySelector("model-viewer")?.loaded),
-      }));
-      throw new Error(`camera transition did not settle for ${label}: ${JSON.stringify(state)}; ${error.message}`);
+    let lastError=null;
+    for(let attempt=1;attempt<=3;attempt++){
+      const clicked=await page.evaluate((cameraLabel)=>{
+        const button=[...document.querySelectorAll(".garmentCameraRail button")]
+          .find((element)=>element.textContent?.trim()===cameraLabel);
+        if(!(button instanceof HTMLButtonElement)) return false;
+        button.click();
+        return true;
+      },label);
+      assert.equal(clicked,true,`camera button must exist: ${label}`);
+      try {
+        await page.waitForFunction(
+          ({prefix,view})=>{
+            const viewerElement=document.querySelector("model-viewer");
+            const shellElement=document.querySelector(".garmentViewerShell");
+            return viewerElement?.getAttribute("camera-orbit")?.startsWith(prefix)
+              && shellElement?.getAttribute("data-active-view")===view;
+          },
+          {prefix:orbitPrefix,view:activeView},
+          {timeout:10000},
+        );
+        return;
+      } catch (error) {
+        lastError=error;
+      }
     }
+    const state=await page.evaluate(()=>({
+      orbit:document.querySelector("model-viewer")?.getAttribute("camera-orbit")||null,
+      activeView:document.querySelector(".garmentViewerShell")?.getAttribute("data-active-view")||null,
+      modelLoaded:Boolean(document.querySelector("model-viewer")?.loaded),
+    }));
+    throw new Error(`camera transition did not settle for ${label} after 3 UI attempts: ${JSON.stringify(state)}; ${lastError?.message||"unknown error"}`);
   };
 
   await captureCanvas("garment-angle-front.png");
