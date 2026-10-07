@@ -17,6 +17,7 @@ import json
 import math
 import os
 import re
+import runpy
 import sys
 
 import bpy
@@ -224,6 +225,22 @@ def load_panel_spec(path):
     return {"panels": normalized, "cameraOrbits": camera_orbits or None}
 
 
+def run_scene_preflight():
+    preflight_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "preflight-linen-earth-officewear.py")
+    if not os.path.exists(preflight_path):
+        raise RuntimeError(f"Production scene preflight is missing: {preflight_path}")
+    namespace = runpy.run_path(preflight_path, run_name="linen_earth_export_preflight")
+    preflight_main = namespace.get("main")
+    if not callable(preflight_main):
+        raise RuntimeError("Production scene preflight does not expose main().")
+    try:
+        preflight_main()
+    except SystemExit as error:
+        code = error.code if isinstance(error.code, int) else 1
+        if code:
+            raise RuntimeError("Production scene preflight failed; export is blocked.") from error
+
+
 def viewer_manifest_path(output_path):
     root, extension = os.path.splitext(os.path.abspath(output_path))
     if extension.lower() != ".glb":
@@ -275,6 +292,7 @@ def export_glb(collection, output_path):
 
 def main():
     args = cli_args()
+    run_scene_preflight()
     panel_spec = load_panel_spec(args.panel_spec) if args.panel_spec else None
     source = scene_source_provenance(bpy.context.scene) if panel_spec else None
     model_identity = scene_model_identity(bpy.context.scene) if panel_spec else None
