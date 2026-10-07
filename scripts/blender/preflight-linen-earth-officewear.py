@@ -183,18 +183,28 @@ def main():
         finally:
             evaluated.to_mesh_clear()
 
-    frame_height = 1536.0
-    anchor_z = lambda y_px: TARGET_HEIGHT_M * (1.0 - y_px / frame_height)
+    def guide_center_z(name):
+        if identity_guides is None:
+            return None
+        guide = identity_guides.objects.get(name)
+        if guide is None:
+            return None
+        points = [guide.matrix_world @ Vector(point.co[:3]) for spline in guide.data.splines for point in spline.points]
+        if not points:
+            return None
+        return sum(point.z for point in points) / len(points)
+
     silhouette_samples = (
-        ("shirtShoulderWidthMm", "ShirtTorsoFabric", 392, EXPECTED_IDENTITY_TARGETS_MM["shoulderSeamWidth"], 42.0, 0.018),
-        ("shirtWaistWidthMm", "ShirtTorsoFabric", 742, EXPECTED_IDENTITY_TARGETS_MM["shirtWaistWidth"], 38.0, 0.018),
-        ("trouserWaistWidthMm", "TrouserWaistFabric", 781, EXPECTED_IDENTITY_TARGETS_MM["trouserWaistWidth"], 38.0, 0.018),
-        ("leftHemWidthMm", "TrouserLegLFabric", 1395, EXPECTED_IDENTITY_TARGETS_MM["hemWidth"], 28.0, 0.028),
-        ("rightHemWidthMm", "TrouserLegRFabric", 1395, EXPECTED_IDENTITY_TARGETS_MM["hemWidth"], 28.0, 0.028),
+        ("shirtShoulderWidthMm", "ShirtTorsoFabric", "LE_GUIDE_SHIRT_SHOULDER", EXPECTED_IDENTITY_TARGETS_MM["shoulderSeamWidth"], 42.0, 0.018),
+        ("shirtWaistWidthMm", "ShirtTorsoFabric", "LE_GUIDE_SHIRT_WAIST", EXPECTED_IDENTITY_TARGETS_MM["shirtWaistWidth"], 38.0, 0.018),
+        ("trouserWaistWidthMm", "TrouserWaistFabric", "LE_GUIDE_TROUSER_WAIST", EXPECTED_IDENTITY_TARGETS_MM["trouserWaistWidth"], 38.0, 0.018),
+        ("leftHemWidthMm", "TrouserLegLFabric", "LE_GUIDE_LEFT_HEM", EXPECTED_IDENTITY_TARGETS_MM["hemWidth"], 28.0, 0.028),
+        ("rightHemWidthMm", "TrouserLegRFabric", "LE_GUIDE_RIGHT_HEM", EXPECTED_IDENTITY_TARGETS_MM["hemWidth"], 28.0, 0.028),
     )
-    for key, object_name, y_px, target, tolerance, band in silhouette_samples:
+    for key, object_name, guide_name, target, tolerance, band in silhouette_samples:
         sample_object = bpy.data.objects.get(object_name)
-        measured = width_at_z(sample_object, anchor_z(y_px), band) if sample_object else None
+        sample_z = guide_center_z(guide_name)
+        measured = width_at_z(sample_object, sample_z, band) if sample_object and sample_z is not None else None
         identity_measurements[key] = round(measured, 2) if measured is not None else None
         if sample_object and measured is None:
             warnings.append(f"Could not sample {key} from garment geometry for identity-fit QA.")
