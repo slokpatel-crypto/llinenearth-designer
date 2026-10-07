@@ -1,4 +1,4 @@
-import styleVariants from "./garment-viewer-style-variants.json";
+import styleVariants from "./garment-viewer-style-variants.json" with { type:"json" };
 
 type VariantId={id:string};
 
