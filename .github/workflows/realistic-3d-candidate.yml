@@ -2,21 +2,25 @@ name: Realistic 3D Candidate
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - work/3d-finish-20261007-v6
-      - work/3d-finish-20261007-v7
-      - work/3d-finish-20261007-v8
-      - work/3d-finish-20261007-v9
-      - work/3d-finish-20261007-v10
-      - work/3d-finish-20261007-v11
-      - work/3d-finish-20261007-v12
-      - work/3d-finish-20261007-v14
-      - work/3d-finish-20261007-v16
+  pull_request:
     paths:
       - "scripts/blender/**"
       - "scripts/assemble-production-garment-scene.mjs"
+      - "scripts/build-production-garment-model.mjs"
       - "scripts/evaluate-realistic-review.mjs"
+      - "scripts/garment-import-tailoring-library.py"
+      - "src/lib/garment-viewer-style-materials.ts"
+      - "public/model-identity/**"
+      - ".github/workflows/realistic-3d-candidate.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/blender/**"
+      - "scripts/assemble-production-garment-scene.mjs"
+      - "scripts/build-production-garment-model.mjs"
+      - "scripts/evaluate-realistic-review.mjs"
+      - "scripts/garment-import-tailoring-library.py"
+      - "src/lib/garment-viewer-style-materials.ts"
       - "public/model-identity/**"
       - ".github/workflows/realistic-3d-candidate.yml"
 
