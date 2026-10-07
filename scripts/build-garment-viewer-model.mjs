@@ -854,6 +854,15 @@ const hand=profileGeometry({
   ],
   segments:24,
 });
+const mannequinForearm=profileGeometry({
+  rings:[
+    {y:-.160,width:.020,depth:.024,z:.000},
+    {y:-.080,width:.024,depth:.029,z:.001},
+    {y:.080,width:.030,depth:.035,z:.002},
+    {y:.160,width:.036,depth:.042,z:.002},
+  ],
+  segments:26,
+});
 const finger=profileGeometry({
   rings:[
     {y:-.030,width:.0048,depth:.0056,z:.001},
@@ -876,7 +885,7 @@ const thumb=profileGeometry({
 const mannequinBody=await loadMakeHumanBodyGeometry();
 const garmentShells=await loadMakeHumanGarmentShells();
 
-// M7.28: the visible clothing uses clean identity-first tailoring shells rather than
+// M7.29: the visible clothing uses clean identity-first tailoring shells rather than
 // cropped anatomical body surfaces. MakeHuman stays as the hidden collision/skin source.
 // These world-space shells preserve the exact Linen Earth silhouette anchors while
 // producing continuous shirt/trouser surfaces with clean side and back views.
@@ -887,6 +896,12 @@ const tailoredShells={
   trouserWaist:cloneGeometryTransform(trouserWaist,(p)=>({...p,y:p.y+1.020,z:p.z+.003})),
   trouserLegL:cloneGeometryTransform(trouserLeg,(p)=>({...p,x:p.x-.105,y:p.y*.94+.5225,z:p.z+.015})),
   trouserLegR:cloneGeometryTransform(trouserLeg,(p)=>({...p,x:p.x+.105,y:p.y*.94+.5225,z:p.z+.015})),
+};
+const mannequinSkinShells={
+  handL:cloneGeometryTransform(hand,(p)=>({...p,x:p.x*1.15-.250,y:p.y*1.55+.850,z:p.z+.024})),
+  handR:cloneGeometryTransform(hand,(p)=>({...p,x:p.x*1.15+.250,y:p.y*1.55+.850,z:p.z+.024})),
+  forearmL:cloneGeometryTransform(mannequinForearm,(p)=>({...p,x:p.x-.236,y:p.y+1.045,z:p.z+.022})),
+  forearmR:cloneGeometryTransform(mannequinForearm,(p)=>({...p,x:p.x+.236,y:p.y+1.045,z:p.z+.022})),
 };
 const mannequinBodyStats={
   vertices:mannequinBody.positions.length/3,
@@ -1090,8 +1105,8 @@ const assets=[];
 function addMesh(name,geometry,material){assets.push({name,geometry,material});return assets.length-1;}
 const meshHead=addMesh("HeadMesh",head,"MannequinSkin");
 const meshEar=addMesh("EarMesh",ear,"MannequinSkin");
-const meshHandL=addMesh("HandLMesh",garmentShells.handL,"MannequinSkin");
-const meshHandR=addMesh("HandRMesh",garmentShells.handR,"MannequinSkin");
+const meshHandL=addMesh("HandLMesh",mannequinSkinShells.handL,"MannequinSkin");
+const meshHandR=addMesh("HandRMesh",mannequinSkinShells.handR,"MannequinSkin");
 const exposedArmCutY={three_quarter:.985,half:1.175,roll:1.075};
 const exposedArmMeshes={};
 for(const sleeve of styleVariants.sleeves){
@@ -1100,18 +1115,17 @@ for(const sleeve of styleVariants.sleeves){
   exposedArmMeshes[sleeve.id]={
     left:addMesh(
       `MannequinSkinArmLVariantMesh__${sleeve.id}`,
-      cropGeometry(garmentShells.forearmL,(p)=>p.y>=.905&&p.y<=cutY),
+      cropGeometry(mannequinSkinShells.forearmL,(p)=>p.y>=.905&&p.y<=cutY),
       `MannequinSkinArmVariant__${sleeve.id}`
     ),
     right:addMesh(
       `MannequinSkinArmRVariantMesh__${sleeve.id}`,
-      cropGeometry(garmentShells.forearmR,(p)=>p.y>=.905&&p.y<=cutY),
+      cropGeometry(mannequinSkinShells.forearmR,(p)=>p.y>=.905&&p.y<=cutY),
       `MannequinSkinArmVariant__${sleeve.id}`
     ),
   };
 }
-const meshShoeL=addMesh("ShoeLMesh",garmentShells.shoeL,"Shoe");
-const meshShoeR=addMesh("ShoeRMesh",garmentShells.shoeR,"Shoe");
+const meshShoe=addMesh("DressShoeUpperMesh",shoe,"Shoe");
 const meshShirtTorso=addMesh("ShirtTorsoMesh",tailoredShells.shirtTorso,"ShirtTorsoFabric");
 const meshSleeveL=addMesh("ShirtSleeveLMesh",tailoredShells.sleeveL,"ShirtSleeveLFabric");
 const meshSleeveR=addMesh("ShirtSleeveRMesh",tailoredShells.sleeveR,"ShirtSleeveRFabric");
@@ -1176,7 +1190,7 @@ for(const fit of styleVariants.shirtFits){
   const source=fit.id==="regular"?tailoredShells.shirtTorso:shirtFitGeometry(tailoredShells.shirtTorso,fit,0);
   shirtHemMeshes[fit.id]=addMesh(
     `ShirtHemVariantMesh__${fit.id}`,
-    cropGeometry(source,(p)=>p.y>=1.055&&p.y<=1.16,(p)=>({...p,y:1.16-(1.16-p.y)*1.95})),
+    cropGeometry(source,(p)=>p.y>=1.055&&p.y<=1.19,(p)=>({...p,y:1.19-(1.19-p.y)*1.95})),
     `ShirtHemVariant__${fit.id}`,
   );
 }
@@ -1219,18 +1233,18 @@ for(const fit of styleVariants.shirtFits){
     const finishTransform=(centerX)=>(p)=>({
       ...p,
       x:centerX+(p.x-centerX)*1.018,
-      y:p.y+.0015,
+      y:cutY+Math.max(0,Math.min(1,(p.y-cutY)/.25))*.026,
       z:p.z*1.018,
     });
     shirtSleeveFinishMeshes[key]={
       left:addMesh(
         `ShirtSleeveFinishLVariantMesh__${key}`,
-        cropGeometry(sourceL,(p)=>p.y>=cutY&&p.y<=cutY+.026,finishTransform(-.226)),
+        cropGeometry(sourceL,(p)=>p.y>=cutY&&p.y<=cutY+.25,finishTransform(-.226)),
         `ShirtSleeveFinishVariant__${key}`
       ),
       right:addMesh(
         `ShirtSleeveFinishRVariantMesh__${key}`,
-        cropGeometry(sourceR,(p)=>p.y>=cutY&&p.y<=cutY+.026,finishTransform(.226)),
+        cropGeometry(sourceR,(p)=>p.y>=cutY&&p.y<=cutY+.25,finishTransform(.226)),
         `ShirtSleeveFinishVariant__${key}`
       ),
     };
@@ -1427,10 +1441,10 @@ const nodes=[
   {name:"TrouserWaistFabric",mesh:meshWaist},
   {name:"TrouserLegLFabric",mesh:meshLegL},
   {name:"TrouserLegRFabric",mesh:meshLegR},
-  {name:"ShoeL",mesh:meshShoeL},
-  {name:"ShoeR",mesh:meshShoeR},
-  {name:"SoleL",mesh:meshSole,translation:[-.105,.010,.089],scale:[.108,.016,.292]},
-  {name:"SoleR",mesh:meshSole,translation:[.105,.010,.089],scale:[.108,.016,.292]},
+  {name:"ShoeL",mesh:meshShoe,translation:[-.105,.052,.082],scale:[.046,.040,.135]},
+  {name:"ShoeR",mesh:meshShoe,translation:[.105,.052,.082],scale:[.046,.040,.135]},
+  {name:"SoleL",mesh:meshSole,translation:[-.105,.012,.082],scale:[.092,.012,.270]},
+  {name:"SoleR",mesh:meshSole,translation:[.105,.012,.082],scale:[.092,.012,.270]},
   // Collar/cuff/placket/pocket geometry variants are appended below and toggled by material visibility.
   // Raised construction cues keep the 3D silhouette close to the Live Designer front reference.
   {name:"TrouserCreaseVariant__front__L",mesh:meshTrouserCrease,translation:[-.105,.555,.071],scale:[.0035,.905,.004]},
@@ -1964,7 +1978,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.28 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.29 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -2049,7 +2063,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.28 model complete: clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
+    polishStage:"M7.29 model complete: clean studio-mannequin hands/forearms/shoes + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
