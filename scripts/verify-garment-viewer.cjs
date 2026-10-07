@@ -94,19 +94,32 @@ async function verifyViewport(browser, width) {
   const buttons = page.locator(".garmentCameraRail button");
   assert.equal(await buttons.count(), 4);
   const canvas=page.locator(".garmentViewerCanvas");
-  if(width===1440) await canvas.screenshot({path:path.join(output,"garment-angle-front.png")});
+  const captureCanvas=async(name)=>{
+    if(width!==1440) return;
+    // model-viewer continuously animates its render surface, so Locator.screenshot can wait
+    // forever for DOM stability. Capture the already-laid-out bounding box directly instead.
+    await page.waitForTimeout(180);
+    const box=await canvas.boundingBox();
+    assert.ok(box&&box.width>0&&box.height>0,"3D evidence canvas must have a measurable viewport");
+    await page.screenshot({
+      path:path.join(output,name),
+      clip:{x:Math.max(0,box.x),y:Math.max(0,box.y),width:box.width,height:box.height},
+      animations:"disabled",
+    });
+  };
+  await captureCanvas("garment-angle-front.png");
   await page.getByRole("button", { name: "3/4", exact: true }).click();
   await page.waitForFunction(() => document.querySelector("model-viewer")?.getAttribute("camera-orbit")?.startsWith("35deg"));
   assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-active-view"),"three-quarter");
-  if(width===1440) await canvas.screenshot({path:path.join(output,"garment-angle-three-quarter.png")});
+  await captureCanvas("garment-angle-three-quarter.png");
   await page.getByRole("button", { name: "Side", exact: true }).click();
   await page.waitForFunction(() => document.querySelector("model-viewer")?.getAttribute("camera-orbit")?.startsWith("90deg"));
   assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-active-view"),"side");
-  if(width===1440) await canvas.screenshot({path:path.join(output,"garment-angle-side.png")});
+  await captureCanvas("garment-angle-side.png");
   await page.getByRole("button", { name: "Back", exact: true }).click();
   await page.waitForFunction(() => document.querySelector("model-viewer")?.getAttribute("camera-orbit")?.startsWith("180deg"));
   assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-active-view"),"back");
-  if(width===1440) await canvas.screenshot({path:path.join(output,"garment-angle-back.png")});
+  await captureCanvas("garment-angle-back.png");
   await page.getByRole("button", { name: "Front", exact: true }).click();
   await page.waitForFunction(() => document.querySelector("model-viewer")?.getAttribute("camera-orbit")?.startsWith("0deg"));
   assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-active-view"),"front");
