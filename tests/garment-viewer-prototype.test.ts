@@ -74,20 +74,17 @@ test("production model derives identity measurements from the visible default ge
   assert(!builder.includes("handCenterSpacingMm:.250*2*1000"));
 });
 
-test("production model uses anatomy-derived default garments, hands and forearms while keeping compact variant shells",()=>{
+test("production model keeps closed tailored default garments while using anatomy-derived clean skin",()=>{
   const builder=readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
   for(const token of [
-    "const realisticDefaultShells={",
-    "shirtTorso:garmentShells.shirtTorso",
-    "sleeveL:garmentShells.sleeveL",
-    "sleeveR:garmentShells.sleeveR",
-    "trouserWaist:garmentShells.trouserWaist",
-    "trouserLegL:garmentShells.trouserLegL",
-    "trouserLegR:garmentShells.trouserLegR",
-    "handL:garmentShells.handL",
-    "handR:garmentShells.handR",
-    "forearmL:garmentShells.forearmL",
-    "forearmR:garmentShells.forearmR",
+    "const realisticDefaultShells=tailoredShells",
+    "tailoredSleeveCapGeometry",
+    "const shoulderDrop=.038",
+    "const capRound=.006",
+    "handL:shiftGeometryCenterX(garmentShells.handL,-.250)",
+    "handR:shiftGeometryCenterX(garmentShells.handR,.250)",
+    "forearmL:shiftGeometryCenterX(garmentShells.forearmL,-.238)",
+    "forearmR:shiftGeometryCenterX(garmentShells.forearmR,.238)",
     'addMesh("ShirtTorsoMesh",realisticDefaultShells.shirtTorso',
     'addMesh("TrouserWaistMesh",realisticDefaultShells.trouserWaist',
   ]) assert(builder.includes(token),token);
