@@ -105,6 +105,7 @@ export type GarmentViewerModelManifest = {
     gate?:string|null;
     ready?:boolean|null;
     identityFitMeasurementsMm?:Record<string,number|null>|null;
+    identityShoeMeasurementsMm?:Record<string,unknown>|null;
     boundaryIntersections?:Record<string,number|null>|null;
     boundaryClearanceMm?:Record<string,unknown>|null;
     totals?:Record<string,number>|null;
@@ -195,6 +196,7 @@ export function validateGarmentViewerModelManifest(value:unknown,expectedModelId
   );
   const fitEvidence=manifest.productionFitEvidence;
   const identityFit=fitEvidence?.identityFitMeasurementsMm;
+  const identityShoes=fitEvidence?.identityShoeMeasurementsMm;
   const intersections=fitEvidence?.boundaryIntersections;
   const clearances=fitEvidence?.boundaryClearanceMm;
   const totals=fitEvidence?.totals;
@@ -202,6 +204,7 @@ export function validateGarmentViewerModelManifest(value:unknown,expectedModelId
     fitEvidence?.gate==="linen-earth-officewear-scene-preflight-v1"
     && fitEvidence?.ready===true
     && identityFit && Object.keys(identityFit).length>0
+    && identityShoes && ["LE_ShoeL","LE_ShoeR","symmetry"].every((key)=>key in identityShoes)
     && intersections && Object.keys(intersections).length>0
     && clearances && Object.keys(clearances).length>0
     && Number(totals?.triangles)>0
