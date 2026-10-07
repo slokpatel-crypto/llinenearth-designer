@@ -980,7 +980,7 @@ const styleVariantMaterials=[
   ...styleVariants.rises.flatMap((rise)=>styleVariants.pleats.filter((item)=>item.id!=="flat").map((item)=>addVariantMaterial(`TrouserPleatVariant__${rise.id}__${item.id}`,"trouser"))),
   ...styleVariants.breaks.filter((item)=>item.id!=="slight").map((item)=>addVariantMaterial(`TrouserBreakVariant__${item.id}`,"trouser")),
   ...styleVariants.trouserFits.flatMap((fit)=>styleVariants.breaks.flatMap((breakStyle)=>styleVariants.trouserHems.filter((item)=>item.id!=="plain").map((item)=>addVariantMaterial(`TrouserHemVariant__${fit.id}__${breakStyle.id}__${item.id}`,"trouser")))),
-  ...styleVariants.trouserPockets.map((item)=>addVariantMaterial(`TrouserPocketVariant__${item.id}`,"trouser")),
+  ...styleVariants.rises.flatMap((rise)=>styleVariants.trouserPockets.map((item)=>addVariantMaterial(`TrouserPocketVariant__${rise.id}__${item.id}`,"trouser"))),
 ];
 const buttonVariantMaterialNames=[];
 function addButtonVariantMaterial(name){
@@ -1274,14 +1274,22 @@ for(const fit of styleVariants.trouserFits){
     }
   }
 }
-const trouserPocketVariantMeshes=Object.fromEntries(styleVariants.trouserPockets.map((item)=>{
-  const geometry=item.id==="slant"?trouserSlantPocket
-    : item.id==="on_seam"?trouserOnSeamPocket
-      : item.id==="frogmouth"?trouserFrogmouthPocket
-        : item.id==="jean"?trouserScoopPocket
-          : trouserWeltPocket;
-  return [item.id,addMesh(`TrouserPocketVariantMesh__${item.id}`,geometry,`TrouserPocketVariant__${item.id}`)];
-}));
+const trouserPocketVariantMeshes={};
+for(const rise of styleVariants.rises){
+  for(const item of styleVariants.trouserPockets){
+    const geometry=item.id==="slant"?trouserSlantPocket
+      : item.id==="on_seam"?trouserOnSeamPocket
+        : item.id==="frogmouth"?trouserFrogmouthPocket
+          : item.id==="jean"?trouserScoopPocket
+            : trouserWeltPocket;
+    const key=`${rise.id}__${item.id}`;
+    trouserPocketVariantMeshes[key]=addMesh(
+      `TrouserPocketVariantMesh__${key}`,
+      geometry,
+      `TrouserPocketVariant__${key}`
+    );
+  }
+}
 
 const qz=(deg)=>{const r=deg*Math.PI/180/2;return [0,0,Math.sin(r),Math.cos(r)];};
 const nodes=[
@@ -1693,23 +1701,38 @@ for(const fit of styleVariants.trouserFits){
   }
 }
 
-// Trouser pocket constructions.
-for(const item of styleVariants.trouserPockets){
-  const mesh=trouserPocketVariantMeshes[item.id];
-  if(item.id==="single_welt_back"||item.id==="double_jetted_back"){
-    const count=item.id==="double_jetted_back"?2:1;
-    for(let i=0;i<count;i++){
-      const x=count===1?.080:(i===0?-.080:.080);
-      nodes.push({name:`TrouserPocketVariant__${item.id}__${i}`,mesh,translation:[x,.978,-.095],scale:[.095,.012,.006]});
+// Trouser pocket constructions follow rise so openings stay attached to the waistband/hip.
+for(const rise of styleVariants.rises){
+  const riseOffset=Number(rise.yOffsetM)||0;
+  for(const item of styleVariants.trouserPockets){
+    const key=`${rise.id}__${item.id}`;
+    const mesh=trouserPocketVariantMeshes[key];
+    if(item.id==="single_welt_back"||item.id==="double_jetted_back"){
+      const count=item.id==="double_jetted_back"?2:1;
+      for(let i=0;i<count;i++){
+        const x=count===1?.080:(i===0?-.080:.080);
+        nodes.push({
+          name:`TrouserPocketVariant__${key}__${i}`,
+          mesh,
+          translation:[x,.978+riseOffset,-.095],
+          scale:[.095,.012,.006]
+        });
+      }
+      continue;
     }
-    continue;
-  }
-  for(const side of [-1,1]){
-    const x=side*.155;
-    const y=item.id==="frogmouth"?1.000:.980;
-    const scale=item.id==="jean"?[.070,.050,.007]:item.id==="frogmouth"?[.080,.016,.007]:[.020,.110,.007];
-    const angle=item.id==="slant"?side*-16:item.id==="jean"?side*-10:0;
-    nodes.push({name:`TrouserPocketVariant__${item.id}__${side<0?"L":"R"}`,mesh,translation:[x,y,.090],scale,rotation:qz(angle)});
+    for(const side of [-1,1]){
+      const x=side*.155;
+      const y=(item.id==="frogmouth"?1.000:.980)+riseOffset;
+      const scale=item.id==="jean"?[.070,.050,.007]:item.id==="frogmouth"?[.080,.016,.007]:[.020,.110,.007];
+      const angle=item.id==="slant"?side*-16:item.id==="jean"?side*-10:0;
+      nodes.push({
+        name:`TrouserPocketVariant__${key}__${side<0?"L":"R"}`,
+        mesh,
+        translation:[x,y,.090],
+        scale,
+        rotation:qz(angle)
+      });
+    }
   }
 }
 
@@ -1888,7 +1911,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.17 model complete: researched shirt/trouser construction geometry + fit-aware sleeves + true trouser breaks + fit/break-locked turn-ups + rise-locked waist shell/fly/waistband/button/pleat details + pleat/back ease + collar/cuff stiffness + construction-aware closures/cufflinks + tuxedo front pleats + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
+    polishStage:"M7.18 model complete: researched shirt/trouser construction geometry + fit-aware sleeves + true trouser breaks + fit/break-locked turn-ups + rise-locked waist shell/fly/waistband/button/pleat/pocket details + pleat/back ease + collar/cuff stiffness + construction-aware closures/cufflinks + tuxedo front pleats + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
