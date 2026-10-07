@@ -43,7 +43,7 @@ export default async function GarmentViewerOperatorPage(){
       <article><small>MODEL FILE</small><strong>{status.configured?"Configured":"Missing"}</strong><p>{status.modelSrc||"Add an approved /models/*.glb source."}</p></article>
       <article><small>SOURCE / LICENSE</small><strong>{manifest?.sourceReady?"Verified":"Open"}</strong><p>{manifest?.source ? `${manifest.source.name} · ${manifest.source.license} · verified ${manifest.source.verifiedAt}` : "Production manifest must record source name, license and verification date."}</p></article>
       <article><small>SIX-PANEL CONTRACT</small><strong>{model?.contract.readiness==="contract_ready"?"Pass":"Open"}</strong><p>{model?model.contract.reasons.join(" "):"GLB has not been structurally inspected."}</p></article>
-      <article><small>UV + NORMALS</small><strong>{model?.uvReady?"Pass":"Open"}</strong><p>Every shirt/trouser panel needs POSITION, NORMAL and TEXCOORD_0.</p></article>
+      <article><small>UV + FABRIC SLOTS</small><strong>{model?.uvReady&&model?.textureSlotsReady?"Pass":"Open"}</strong><p>Every garment panel needs UVs plus replaceable base-colour and linen-normal texture slots.</p></article>
       <article><small>PHYSICAL SIDECAR</small><strong>{manifest?.valid?"Pass":"Open"}</strong><p>{status.manifestSrc||"Matching .viewer.json is required."}</p></article>
       <article><small>MOBILE PREFLIGHT</small><strong>{model?.performanceBudgetReady?"Pass":"Review"}</strong><p>{model ? `${Math.round(model.fileBytes/1024/1024*10)/10} MB · ${model.triangleCount.toLocaleString()} triangles · ${model.vertexCount.toLocaleString()} vertices` : "Complexity will be checked after a production GLB is configured."}</p></article>
     </section>
@@ -102,6 +102,7 @@ export default async function GarmentViewerOperatorPage(){
           ["Model contract",latest.readiness.contractReady],
           ["Physical manifest",latest.readiness.manifestReady],
           ["Realistic production candidate",latest.readiness.productionAssetReady],
+          ["Tailoring variants "+String(latest.readiness.styleVariantCoverage?.present||0)+"/"+String(latest.readiness.styleVariantCoverage?.required||0),latest.readiness.styleVariantReady],
           ["Stripe + check scale",latest.readiness.scaleReady],
           ["Interaction p95",latest.readiness.latencyReady],
           ["Independent realism",latest.readiness.realismReady],
