@@ -406,3 +406,10 @@ Architecture and product decisions that must persist across coding sessions.
 **Decision:** replace the generic scaled sphere used for the visible shoe upper with a deterministic multi-station dress-shoe shell. The new upper narrows through the heel, gains instep volume, tapers toward a lower rounded toe and adds a separate compact heel block above the existing sole. The locked 1727 mm mannequin stance, leg spacing, floor contact, camera system and zero-credit material path remain unchanged.
 
 **Acceptance boundary:** this is a premium mannequin shoe silhouette, not a footwear sizing or last-design system. It must improve front / 3/4 / side readability without changing the garment fit contract or introducing paid rendering.
+
+
+## 2026-10-07 — M7.32 neck and jaw transition refinement
+
+**Decision:** stop reusing a scaled copy of the head as the visible neck. The mannequin now has a dedicated tapered neck shell that narrows toward the jaw while preserving the locked collar height, head position and 1727 mm identity. This removes the bulbous neck read in 3/4 and side views and gives collar variants a cleaner human-like support surface without adding facial detail.
+
+**Acceptance boundary:** the mannequin remains intentionally faceless and identity-locked. This refinement changes only the visible neutral neck geometry; collar selection, neck gasket behaviour, garment scale, camera, fabric mapping and zero-credit rendering stay unchanged.
