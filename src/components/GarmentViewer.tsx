@@ -328,8 +328,27 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const [trouserHemKey,setTrouserHemKey]=useState("plain");
   const [trouserPocketKey,setTrouserPocketKey]=useState("slant");
   const [designerDraftRecipe,setDesignerDraftRecipe]=useState<DesignerDraftRecipe|null>(null);
-  const draftShirtTypeLabel=designerDraftRecipe?.styleSpec?.shirt?.type ? optionById(designerDraftRecipe.styleSpec.shirt.type)?.label || designerDraftRecipe.styleSpec.shirt.type.replaceAll("_"," ") : "Shirt type not saved";
-  const draftTrouserTypeLabel=designerDraftRecipe?.styleSpec?.pant?.type ? optionById(designerDraftRecipe.styleSpec.pant.type)?.label || designerDraftRecipe.styleSpec.pant.type.replaceAll("_"," ") : designerDraftRecipe?.style?.trouser || "Trouser type not saved";
+  const draftOptionLabel=(id:string|undefined,fallback?:string)=>{
+    if(!id) return fallback;
+    return optionById(id)?.label || id.replaceAll("_"," ");
+  };
+  const draftShirtTypeLabel=draftOptionLabel(designerDraftRecipe?.styleSpec?.shirt?.type,"Shirt type not saved")!;
+  const draftTrouserTypeLabel=draftOptionLabel(designerDraftRecipe?.styleSpec?.pant?.type,designerDraftRecipe?.style?.trouser || "Trouser type not saved")!;
+  const draftShirtDetails=[
+    draftOptionLabel(designerDraftRecipe?.styleSpec?.shirt?.collar,designerDraftRecipe?.style?.collar),
+    draftOptionLabel(designerDraftRecipe?.styleSpec?.shirt?.cuff,designerDraftRecipe?.style?.cuff),
+    draftOptionLabel(designerDraftRecipe?.styleSpec?.shirt?.placket,designerDraftRecipe?.style?.placket),
+    draftOptionLabel(designerDraftRecipe?.styleSpec?.shirt?.fit,designerDraftRecipe?.style?.shirtFit),
+    designerDraftRecipe?.styleSpec?.shirt?.wear ? (designerDraftRecipe.styleSpec.shirt.wear==="tucked"?"Tucked":"Untucked") : designerDraftRecipe?.style?.shirtWear,
+  ].filter(Boolean);
+  const draftTrouserDetails=[
+    draftOptionLabel(designerDraftRecipe?.styleSpec?.pant?.fit),
+    draftOptionLabel(designerDraftRecipe?.styleSpec?.pant?.rise,designerDraftRecipe?.style?.rise),
+    draftOptionLabel(designerDraftRecipe?.styleSpec?.pant?.pleat),
+    draftOptionLabel(designerDraftRecipe?.styleSpec?.pant?.waistband,designerDraftRecipe?.style?.waistband),
+    draftOptionLabel(designerDraftRecipe?.styleSpec?.pant?.hem),
+    draftOptionLabel(designerDraftRecipe?.styleSpec?.pant?.break,designerDraftRecipe?.style?.break),
+  ].filter(Boolean);
 
   const shirt=useMemo(()=>shirtFabrics.find((fabric)=>fabric.id===shirtId) || shirtFabrics[0],[shirtFabrics,shirtId]);
   const trouser=useMemo(()=>trouserFabrics.find((fabric)=>fabric.id===trouserId) || trouserFabrics[0],[trouserFabrics,trouserId]);
@@ -786,8 +805,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       {designerDraftRecipe?.style&&<section className="garmentDraftRecipe" aria-label="Current Designer garment recipe">
         <div><span>YOUR DESIGNER RECIPE</span><b>{designerDraftRecipe.occasion||"Saved look"}</b></div>
         <div className="garmentDraftRecipeGrid">
-          <article><strong>Shirt · {draftShirtTypeLabel}</strong><p>{[designerDraftRecipe.style.collar,designerDraftRecipe.style.cuff,designerDraftRecipe.style.placket,designerDraftRecipe.style.shirtFit,designerDraftRecipe.style.shirtWear].filter(Boolean).join(" · ")}</p></article>
-          <article><strong>Trouser · {draftTrouserTypeLabel}</strong><p>{[designerDraftRecipe.style.rise,designerDraftRecipe.style.waistband,designerDraftRecipe.style.break].filter(Boolean).join(" · ")}</p></article>
+          <article><strong>Shirt · {draftShirtTypeLabel}</strong><p>{draftShirtDetails.join(" · ")}</p></article>
+          <article><strong>Trouser · {draftTrouserTypeLabel}</strong><p>{draftTrouserDetails.join(" · ")}</p></article>
         </div>
         <small>The saved Designer recipe now drives the same 3D tailoring-variant system; you can refine it below without changing the locked mannequin identity.</small>
       </section>}
