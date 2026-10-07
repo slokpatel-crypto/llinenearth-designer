@@ -101,12 +101,34 @@ export type GarmentViewerModelManifest = {
   source?:GarmentViewerAssetSource;
   panels: Record<string,{widthMm:number;heightMm:number;offsetU?:number;offsetV?:number;rotationDeg?:number}>;
   cameraOrbits?: Partial<Record<"front"|"three-quarter"|"side"|"back",string>>;
+  productionFitEvidence?:{
+    gate?:string|null;
+    ready?:boolean|null;
+    identityFitMeasurementsMm?:Record<string,number|null>|null;
+    boundaryIntersections?:Record<string,number|null>|null;
+    boundaryClearanceMm?:Record<string,unknown>|null;
+    totals?:Record<string,number>|null;
+  };
+  panelMeasurementEvidence?:{
+    source:"owner_measured"|"tailor_measured"|"pattern_room_measured"|"supplier_pattern_verified";
+    measuredAt:string;
+    note:string;
+  };
+  panelDimensionSource?:"geometry-estimate-unverified";
+  labPreviewScaleNotice?:string;
+  productionAssetStatus?:
+    |"deterministic-preview-shell-not-realistic-production-asset"
+    |"realistic-body-lab-preview-unverified-panel-scale"
+    |"realistic-body-production-candidate";
 };
 
 export type GarmentViewerManifestValidation = {
   valid:boolean;
   sourceReady:boolean;
   source:GarmentViewerAssetSource|null;
+  panelMeasurementReady:boolean;
+  fitEvidenceReady:boolean;
+  productionAssetReady:boolean;
   missingPanels:string[];
   invalidPanels:string[];
   reasons:string[];
@@ -114,7 +136,7 @@ export type GarmentViewerManifestValidation = {
 
 export function validateGarmentViewerModelManifest(value:unknown,expectedModelId?:string):GarmentViewerManifestValidation {
   const reasons:string[]=[];
-  if(!value || typeof value!=="object") return {valid:false,sourceReady:false,source:null,missingPanels:[...REQUIRED_GARMENT_VIEWER_MATERIALS],invalidPanels:[],reasons:["Manifest is missing or invalid."]};
+  if(!value || typeof value!=="object") return {valid:false,sourceReady:false,source:null,panelMeasurementReady:false,fitEvidenceReady:false,productionAssetReady:false,missingPanels:[...REQUIRED_GARMENT_VIEWER_MATERIALS],invalidPanels:[],reasons:["Manifest is missing or invalid."]};
   const manifest=value as Partial<GarmentViewerModelManifest>;
   if(manifest.version!==GARMENT_VIEWER_CONTRACT_VERSION) reasons.push("Manifest contract version does not match the viewer.");
   if(!String(manifest.modelId||"").trim()) reasons.push("Manifest modelId is required.");
@@ -162,7 +184,36 @@ export function validateGarmentViewerModelManifest(value:unknown,expectedModelId
   });
   if(missingPanels.length) reasons.push(`Manifest is missing panel dimensions for: ${missingPanels.join(", ")}.`);
   if(invalidPanels.length) reasons.push(`Manifest has invalid panel dimensions for: ${invalidPanels.join(", ")}.`);
-  return {valid:reasons.length===0,sourceReady,source,missingPanels,invalidPanels,reasons};
+
+  const measurementEvidence=manifest.panelMeasurementEvidence;
+  const allowedMeasurementSources=new Set(["owner_measured","tailor_measured","pattern_room_measured","supplier_pattern_verified"]);
+  const panelMeasurementReady=Boolean(
+    measurementEvidence
+    && allowedMeasurementSources.has(String(measurementEvidence.source||""))
+    && /^\d{4}-\d{2}-\d{2}$/.test(String(measurementEvidence.measuredAt||""))
+    && String(measurementEvidence.note||"").trim().length>=8
+  );
+  const fitEvidence=manifest.productionFitEvidence;
+  const identityFit=fitEvidence?.identityFitMeasurementsMm;
+  const intersections=fitEvidence?.boundaryIntersections;
+  const clearances=fitEvidence?.boundaryClearanceMm;
+  const totals=fitEvidence?.totals;
+  const fitEvidenceReady=Boolean(
+    fitEvidence?.gate==="linen-earth-officewear-scene-preflight-v1"
+    && fitEvidence?.ready===true
+    && identityFit && Object.keys(identityFit).length>0
+    && intersections && Object.keys(intersections).length>0
+    && clearances && Object.keys(clearances).length>0
+    && Number(totals?.triangles)>0
+    && Number(totals?.vertices)>0
+  );
+  const productionAssetReady=Boolean(
+    manifest.modelId!==PROTOTYPE_MODEL_ID
+    && manifest.productionAssetStatus==="realistic-body-production-candidate"
+    && panelMeasurementReady
+    && fitEvidenceReady
+  );
+  return {valid:reasons.length===0,sourceReady,source,panelMeasurementReady,fitEvidenceReady,productionAssetReady,missingPanels,invalidPanels,reasons};
 }
 
 export function approvedGarmentViewerManifestSource(modelSource:string|undefined|null) {
