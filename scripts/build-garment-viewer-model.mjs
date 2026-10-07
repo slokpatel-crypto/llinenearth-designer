@@ -142,6 +142,22 @@ function trouserFitGeometry(base,fit,centerX){
   });
 }
 
+function trouserBreakGeometry(base,breakId){
+  const liftByBreak={negative:.040,no_break:.020,quarter:.010,full:-.010};
+  const lift=liftByBreak[breakId]??0;
+  return cloneGeometryTransform(base,(p)=>{
+    const hemInfluence=Math.max(0,Math.min(1,(.34-p.y)/.30));
+    const smooth=hemInfluence*hemInfluence*(3-2*hemInfluence);
+    const fullFold=breakId==="full"?Math.max(0,1-Math.abs(p.y-.10)/.09):0;
+    const front=Math.max(0,Math.min(1,(p.z+.01)/.13));
+    return {
+      ...p,
+      y:p.y+lift*smooth,
+      z:p.z+fullFold*front*.014,
+    };
+  });
+}
+
 function trouserPleatWaistGeometry(base,pleat,riseOffsetM=0){
   const extraWidthM=(Number(pleat.dressTrouserHipEaseIn)||0)*.0254;
   const scaleBoost=Math.min(.085,extraWidthM/.344*.62);
@@ -937,6 +953,10 @@ const styleVariantMaterials=[
     addVariantMaterial(`TrouserLegLVariant__${fit.id}`,"trouser"),
     addVariantMaterial(`TrouserLegRVariant__${fit.id}`,"trouser"),
   ]),
+  ...styleVariants.trouserFits.flatMap((fit)=>styleVariants.breaks.filter((item)=>item.id!=="slight").flatMap((item)=>[
+    addVariantMaterial(`TrouserLegLBreakVariant__${fit.id}__${item.id}`,"trouser"),
+    addVariantMaterial(`TrouserLegRBreakVariant__${fit.id}__${item.id}`,"trouser"),
+  ])),
   ...styleVariants.rises.filter((rise)=>rise.id!=="mid").map((rise)=>addVariantMaterial(`TrouserWaistVariant__${rise.id}`,"trouser")),
   ...styleVariants.rises.flatMap((rise)=>styleVariants.pleats.filter((pleat)=>pleat.id!=="flat").map((pleat)=>addVariantMaterial(`TrouserWaistPleatVariant__${rise.id}__${pleat.id}`,"trouser"))),
   ...styleVariants.waistbands.filter((item)=>item.id!=="clean").map((item)=>addVariantMaterial(`TrouserWaistbandVariant__${item.id}`,"trouser")),
@@ -1078,6 +1098,28 @@ for(const fit of styleVariants.trouserFits){
     right:addMesh(`TrouserLegRVariantMesh__${fit.id}`,trouserFitGeometry(garmentShells.trouserLegR,fit,.105),`TrouserLegRVariant__${fit.id}`),
   };
 }
+const trouserLegBreakMeshes={};
+for(const fit of styleVariants.trouserFits){
+  const sourceL=fit.id==="straight"?garmentShells.trouserLegL:trouserFitGeometry(garmentShells.trouserLegL,fit,-.105);
+  const sourceR=fit.id==="straight"?garmentShells.trouserLegR:trouserFitGeometry(garmentShells.trouserLegR,fit,.105);
+  for(const item of styleVariants.breaks){
+    if(item.id==="slight") continue;
+    const key=`${fit.id}__${item.id}`;
+    trouserLegBreakMeshes[key]={
+      left:addMesh(
+        `TrouserLegLBreakVariantMesh__${key}`,
+        trouserBreakGeometry(sourceL,item.id),
+        `TrouserLegLBreakVariant__${key}`
+      ),
+      right:addMesh(
+        `TrouserLegRBreakVariantMesh__${key}`,
+        trouserBreakGeometry(sourceR,item.id),
+        `TrouserLegRBreakVariant__${key}`
+      ),
+    };
+  }
+}
+
 const lowRiseWaist=addMesh("TrouserWaistVariantMesh__low",cloneGeometryTransform(garmentShells.trouserWaist,(p)=>({...p,y:p.y-.035})),"TrouserWaistVariant__low");
 const highRiseWaist=addMesh("TrouserWaistVariantMesh__high",cloneGeometryTransform(garmentShells.trouserWaist,(p)=>({...p,y:p.y+.035})),"TrouserWaistVariant__high");
 const trouserPleatWaistMeshes={};
@@ -1431,6 +1473,15 @@ for(const fit of styleVariants.trouserFits){
 }
 nodes.push({name:"TrouserWaistVariant__low",mesh:lowRiseWaist});
 nodes.push({name:"TrouserWaistVariant__high",mesh:highRiseWaist});
+for(const fit of styleVariants.trouserFits){
+  for(const item of styleVariants.breaks){
+    if(item.id==="slight") continue;
+    const key=`${fit.id}__${item.id}`;
+    const mesh=trouserLegBreakMeshes[key];
+    nodes.push({name:`TrouserLegLBreakVariant__${key}`,mesh:mesh.left});
+    nodes.push({name:`TrouserLegRBreakVariant__${key}`,mesh:mesh.right});
+  }
+}
 
 // Waistband details.
 for(const x of [-.132,-.065,.065,.132]) nodes.push({name:`TrouserBeltLoop__${x}`,mesh:waistbandVariantMeshes.belt_loops,translation:[x,1.086,.108],scale:[.010,.040,.006]});
@@ -1595,7 +1646,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.9 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.10 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -1680,7 +1731,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.9 model complete: researched shirt/trouser construction geometry + fit-aware sleeve lengths + pleat/back ease + collar/cuff stiffness + construction-aware closures + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
+    polishStage:"M7.10 model complete: researched shirt/trouser construction geometry + fit-aware sleeve lengths + true trouser break silhouettes + pleat/back ease + collar/cuff stiffness + construction-aware closures + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
