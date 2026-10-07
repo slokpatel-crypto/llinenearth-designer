@@ -2,8 +2,13 @@ import {
   REQUIRED_GARMENT_VIEWER_MATERIALS,
   validateGarmentViewerModelContract,
 } from "./garment-viewer-model-contract.ts";
+import { garmentViewerStyleMaterialCoverage } from "./garment-viewer-style-materials.ts";
 
-type GlbMaterial={name?:string};
+type GlbMaterial={
+  name?:string;
+  pbrMetallicRoughness?:{baseColorTexture?:{index?:number}};
+  normalTexture?:{index?:number};
+};
 type GlbPrimitive={
   material?:number;
   indices?:number;
@@ -31,6 +36,8 @@ export type GarmentViewerGlbPanelInspection={
   position:boolean;
   normal:boolean;
   uv0:boolean;
+  baseColorTexture:boolean;
+  normalTexture:boolean;
 };
 
 export type GarmentViewerGlbInspection={
@@ -39,8 +46,10 @@ export type GarmentViewerGlbInspection={
   generator:string|null;
   materialNames:string[];
   contract:ReturnType<typeof validateGarmentViewerModelContract>;
+  styleVariantCoverage:ReturnType<typeof garmentViewerStyleMaterialCoverage>;
   panels:GarmentViewerGlbPanelInspection[];
   uvReady:boolean;
+  textureSlotsReady:boolean;
   selfContained:boolean;
   remoteUris:string[];
   structuralReady:boolean;
@@ -104,6 +113,7 @@ export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):Garment
   let triangleCount=0;
   let vertexCount=0;
   const contract=validateGarmentViewerModelContract({modelId,materialNames});
+  const usedMaterialNames=new Set<string>();
   const panelUse=new Map<string,GlbPrimitive[]>();
   for(const name of REQUIRED_GARMENT_VIEWER_MATERIALS) panelUse.set(name,[]);
 
@@ -112,9 +122,12 @@ export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):Garment
       const index=Number(primitive.material);
       if(!Number.isInteger(index)||index<0||index>=materialNames.length) continue;
       const name=materialNames[index];
+      usedMaterialNames.add(name);
       if(panelUse.has(name)) panelUse.get(name)!.push(primitive);
     }
   }
+
+  const styleVariantCoverage=garmentViewerStyleMaterialCoverage([...usedMaterialNames]);
 
   const meshMetrics=(gltf.meshes||[]).map((mesh)=>({
     triangles:(mesh.primitives||[]).reduce((sum,primitive)=>sum+primitiveTriangleCount(gltf,primitive),0),
@@ -130,12 +143,16 @@ export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):Garment
 
   const panels=REQUIRED_GARMENT_VIEWER_MATERIALS.map((material)=>{
     const primitives=panelUse.get(material)||[];
+    const materialIndex=materialNames.findIndex((name)=>name===material);
+    const glbMaterial=materialIndex>=0?gltf.materials?.[materialIndex]:undefined;
     return {
       material,
       primitiveCount:primitives.length,
       position:primitives.length>0&&primitives.every((primitive)=>Number.isInteger(primitive.attributes?.POSITION)),
       normal:primitives.length>0&&primitives.every((primitive)=>Number.isInteger(primitive.attributes?.NORMAL)),
       uv0:primitives.length>0&&primitives.every((primitive)=>Number.isInteger(primitive.attributes?.TEXCOORD_0)),
+      baseColorTexture:Number.isInteger(glbMaterial?.pbrMetallicRoughness?.baseColorTexture?.index),
+      normalTexture:Number.isInteger(glbMaterial?.normalTexture?.index),
     };
   });
 
@@ -144,6 +161,7 @@ export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):Garment
     ...(gltf.buffers||[]).map((item)=>externalGlbUri(item.uri)),
   ].filter((value):value is string=>Boolean(value));
   const uvReady=panels.every((panel)=>panel.primitiveCount>0&&panel.position&&panel.normal&&panel.uv0);
+  const textureSlotsReady=panels.every((panel)=>panel.baseColorTexture&&panel.normalTexture);
   const selfContained=remoteUris.length===0;
   const performanceWarnings:string[]=[];
   if(bytes.byteLength>GARMENT_VIEWER_ADVISORY_MAX_GLB_BYTES) performanceWarnings.push(`GLB is ${Math.round(bytes.byteLength/1024/1024*10)/10} MB; advisory mobile budget is 24 MB.`);
@@ -157,6 +175,8 @@ export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):Garment
       if(!panel.position) reasons.push(`${panel.material} primitive is missing POSITION.`);
       if(!panel.normal) reasons.push(`${panel.material} primitive is missing NORMAL.`);
       if(!panel.uv0) reasons.push(`${panel.material} primitive is missing TEXCOORD_0.`);
+      if(!panel.baseColorTexture) reasons.push(`${panel.material} is missing a replaceable base-color texture slot.`);
+      if(!panel.normalTexture) reasons.push(`${panel.material} is missing a replaceable normal texture slot.`);
     }
   }
   if(!selfContained) reasons.push("Production GLB must be self-contained; external image or buffer URIs are not allowed.");
@@ -167,11 +187,13 @@ export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):Garment
     generator:gltf.asset?.generator?String(gltf.asset.generator):null,
     materialNames,
     contract,
+    styleVariantCoverage,
     panels,
     uvReady,
+    textureSlotsReady,
     selfContained,
     remoteUris,
-    structuralReady:contract.readiness==="contract_ready"&&uvReady&&selfContained,
+    structuralReady:contract.readiness==="contract_ready"&&uvReady&&textureSlotsReady&&selfContained,
     fileBytes:bytes.byteLength,
     triangleCount,
     vertexCount,
