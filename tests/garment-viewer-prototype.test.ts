@@ -57,6 +57,18 @@ test("prototype model is a reusable full outfit rather than one flattened garmen
 });
 
 
+test("trouser waistband uses a wrapped waist shell and restrained belt loops",()=>{
+  const builder=readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
+  for(const token of [
+    "trouserCoreBandMeshes",
+    "TrouserCoreBandVariantMesh__",
+    "cropGeometry(source,(p)=>p.y>=1.066+riseOffset)",
+    "mesh:bandMesh",
+    "scale:[.007,.028,.0035]",
+  ]) assert(builder.includes(token),token);
+  assert(!builder.includes("scale:[.330,.020,.006]"));
+});
+
 test("default officewear shapes shoulders, armholes and trouser seat while enforcing shoulder continuity",()=>{
   const builder=readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
   for(const token of [
