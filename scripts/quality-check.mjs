@@ -1554,6 +1554,7 @@ const garmentViewerExporter=fs.readFileSync("scripts/blender/export-linen-earth-
 const garmentViewerGarmentAuthor=fs.readFileSync("scripts/blender/author-linen-earth-officewear.py","utf8");
 const garmentViewerProductionBuild=fs.readFileSync("scripts/build-production-garment-model.mjs","utf8");
 const garmentViewerProductionAssembly=fs.readFileSync("scripts/assemble-production-garment-scene.mjs","utf8");
+const garmentViewerReviewRenderer=fs.readFileSync("scripts/blender/render-linen-earth-officewear-review.py","utf8");
 const designerModuleGarmentScope=fs.readFileSync("src/components/DesignerModule.tsx","utf8");
 const garmentCategoryLibrary=fs.readFileSync("src/lib/designer/garment-category-library.ts","utf8");
 const futureGarmentOptions=fs.readFileSync("src/lib/designer/future-garment-options.ts","utf8");
@@ -1621,6 +1622,9 @@ for(const token of ["LINEN_GARMENT_BLEND","LINEN_GARMENT_PANEL_SPEC","LINEN_GARM
 }
 for(const token of ["bootstrap-human-base-meshes.py","prepare-linen-earth-body.py","author-linen-earth-officewear.py","preflight-linen-earth-officewear.py","linen-earth-officewear-authored.blend"]) {
   if(!garmentViewerProductionAssembly.includes(token)) throw new Error(`GarmentViewer production-assembly regression: missing ${token}`);
+}
+for(const token of ['("front", 0.0)','("three-quarter", 35.0)','("side", 90.0)','("back", 180.0)',"BLENDER_EEVEE_NEXT","LE_REVIEW_KEY","LE_REVIEW_FILL","LE_REVIEW_RIM","review-views.txt"]) {
+  if(!garmentViewerReviewRenderer.includes(token)) throw new Error(`GarmentViewer review-render regression: missing ${token}`);
 }
 for(const token of ["preflight_report = run_scene_preflight()","productionFitEvidence","\"ready\": preflight_report.get(\"ready\") is True","identityFitMeasurementsMm","boundaryIntersections","boundaryClearanceMm"]) {
   if(!garmentViewerExporter.includes(token)) throw new Error(`GarmentViewer production-fit manifest regression: missing ${token}`);
