@@ -236,11 +236,12 @@ function isGarmentVariantMaterial(name:string) {
   return name.startsWith("Shirt")||name.startsWith("Trouser");
 }
 function variantMaterialVisible(name:string,state:StyleVariantState) {
-  if(name==="ShirtTorsoFabric") return state.shirtFit==="regular";
+  if(name==="ShirtTorsoFabric") return state.shirtFit==="regular"&&state.shirtBack==="plain";
   if(name==="ShirtSleeveLFabric"||name==="ShirtSleeveRFabric") return state.shirtFit==="regular"&&state.sleeve==="full";
   if(name==="TrouserWaistFabric") return state.rise==="mid"&&state.pleat==="flat";
   if(name==="TrouserLegLFabric"||name==="TrouserLegRFabric") return state.trouserFit==="straight";
-  if(name.startsWith("ShirtTorsoVariant__")) return name.endsWith(`__${state.shirtFit}`);
+  if(name.startsWith("ShirtTorsoVariant__")) return state.shirtBack==="plain"&&name.endsWith(`__${state.shirtFit}`);
+  if(name.startsWith("ShirtTorsoBackVariant__")) return state.shirtBack!=="plain"&&name.endsWith(`__${state.shirtFit}__${state.shirtBack}`);
   if(name.startsWith("ShirtSleeveLVariant__")||name.startsWith("ShirtSleeveRVariant__")) return state.sleeve==="full"&&name.endsWith(`__${state.shirtFit}`);
   if(name.startsWith("ShirtHemVariant__")) return state.shirtWear==="untucked"&&name.endsWith(`__${state.shirtFit}`);
   if(name.startsWith("ShirtSleeveLLength__")||name.startsWith("ShirtSleeveRLength__")) return state.sleeve!=="full"&&name.endsWith(`__${state.sleeve}`);
