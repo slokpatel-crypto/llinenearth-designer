@@ -26,7 +26,7 @@ export const GARMENT_CATEGORY_LIBRARY:GarmentCategoryDefinition[]=[
     stageLabel:"3D tailoring variants live",
     description:"The locked mannequin now carries researched shirt construction variants while fabric remains independently mapped at physical panel scale.",
     typeExamples:shirtTypeExamples,
-    detailFamilies:["Type","Fit","Tuck","Sleeve","Collar","Collar build","Cuff","Cuff build","Placket","Pocket","Yoke","Hem","Buttons"],
+    detailFamilies:["Type","Fit","Tuck","Sleeve","Collar","Collar build","Cuff","Cuff build","Placket","Pocket","Yoke","Back","Hem","Buttons"],
   },
   {
     id:"trouser",
