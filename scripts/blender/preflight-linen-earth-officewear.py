@@ -411,6 +411,30 @@ def main(json_output=None):
         span = x_span_at_z(obj, z_world, band)
         return ((span[0] + span[1]) * 0.5) * 1000.0 if span else None
 
+    def side_center_x_at_z(obj, z_world, side, band=0.055, inner_x=0.16):
+        if obj is None or z_world is None or obj.type != "MESH":
+            return None
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        evaluated = obj.evaluated_get(depsgraph)
+        mesh = evaluated.to_mesh()
+        try:
+            matrix = evaluated.matrix_world
+            xs = []
+            for vertex in mesh.vertices:
+                point = matrix @ vertex.co
+                if abs(point.z - z_world) > band:
+                    continue
+                if side < 0 and point.x <= -inner_x:
+                    xs.append(point.x)
+                elif side > 0 and point.x >= inner_x:
+                    xs.append(point.x)
+            if len(xs) < 4:
+                return None
+            xs.sort()
+            return xs[len(xs) // 2] * 1000.0
+        finally:
+            evaluated.to_mesh_clear()
+
     def guide_center_z(name):
         if identity_guides is None:
             return None
@@ -484,6 +508,43 @@ def main(json_output=None):
             f"Left/right cuff-zone width asymmetry is {cuff_width_asymmetry:.1f} mm; "
             "allowed difference is 14.0 mm."
         )
+
+    outer_arm_z = guide_center_z("LE_GUIDE_OUTER_ARM_SILHOUETTE")
+    left_arm_span = x_span_at_z(bpy.data.objects.get("ShirtSleeveLFabric"), outer_arm_z, 0.045)
+    right_arm_span = x_span_at_z(bpy.data.objects.get("ShirtSleeveRFabric"), outer_arm_z, 0.045)
+    outer_arm_silhouette = (
+        (right_arm_span[1] - left_arm_span[0]) * 1000.0
+        if left_arm_span is not None and right_arm_span is not None
+        else None
+    )
+    identity_measurements["outerArmSilhouetteMm"] = round(outer_arm_silhouette, 2) if outer_arm_silhouette is not None else None
+    if outer_arm_silhouette is None:
+        warnings.append("Could not sample garment outer-arm silhouette at the locked guide.")
+    else:
+        target_outer_arm = EXPECTED_IDENTITY_TARGETS_MM["outerArmSilhouette"]
+        if abs(outer_arm_silhouette - target_outer_arm) > 36.0:
+            reasons.append(
+                f"Garment outer-arm silhouette is {outer_arm_silhouette:.1f} mm; "
+                f"locked model target is {target_outer_arm:.1f} mm ± 36.0 mm."
+            )
+
+    body_left_hand_center = side_center_x_at_z(body, left_hand_z, -1)
+    body_right_hand_center = side_center_x_at_z(body, right_hand_z, 1)
+    body_hand_spacing = (
+        abs(body_right_hand_center - body_left_hand_center)
+        if body_left_hand_center is not None and body_right_hand_center is not None
+        else None
+    )
+    identity_measurements["bodyHandCenterSpacingMm"] = round(body_hand_spacing, 2) if body_hand_spacing is not None else None
+    if body_hand_spacing is None:
+        warnings.append("Could not sample the realistic body's hand-center stance.")
+    else:
+        target_hand_spacing = EXPECTED_IDENTITY_TARGETS_MM["handCenterSpacing"]
+        if abs(body_hand_spacing - target_hand_spacing) > 30.0:
+            reasons.append(
+                f"Realistic body hand-center spacing is {body_hand_spacing:.1f} mm; "
+                f"locked model target is {target_hand_spacing:.1f} mm ± 30.0 mm."
+            )
 
     left_hem = identity_measurements.get("leftHemWidthMm")
     right_hem = identity_measurements.get("rightHemWidthMm")
