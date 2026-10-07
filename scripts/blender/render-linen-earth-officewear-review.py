@@ -29,8 +29,8 @@ def cli_args():
     argv = argv[argv.index("--") + 1 :] if "--" in argv else []
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", required=True)
-    parser.add_argument("--resolution-x", type=int, default=768)
-    parser.add_argument("--resolution-y", type=int, default=1024)
+    parser.add_argument("--resolution-x", type=int, default=576)
+    parser.add_argument("--resolution-y", type=int, default=768)
     return parser.parse_args(argv)
 
 

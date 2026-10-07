@@ -31,7 +31,7 @@ concurrency:
 jobs:
   assemble:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     env:
       BLENDER_VERSION: "4.2.23"
       BLENDER_ROOT: "/tmp/blender-4.2.23-linux-x64"
@@ -100,6 +100,7 @@ jobs:
           npm run garment:model-production:review-check
 
       - name: Export realistic lab-only GLB
+        id: lab_export
         if: always()
         continue-on-error: true
         shell: bash
@@ -107,8 +108,10 @@ jobs:
           set -euo pipefail
           test -f .cache/linen-earth/linen-earth-officewear-authored.blend
           npm run garment:model-production:lab-export 2>&1 | tee artifacts/realistic-3d/lab-export.log
+          test -s artifacts/realistic-3d/linen-earth-officewear-realistic-lab.glb
 
       - name: Write physical panel measurement worksheet
+        id: measurement_worksheet
         if: always()
         continue-on-error: true
         shell: bash
@@ -116,6 +119,7 @@ jobs:
           set -euo pipefail
           test -f .cache/linen-earth/linen-earth-officewear-authored.blend
           npm run garment:model-production:measurement-worksheet
+          test -s artifacts/realistic-3d/panel-measurement-worksheet.json
 
       - name: Copy candidate scene and provenance
         if: always()
@@ -148,7 +152,11 @@ jobs:
           echo "preflight=${{ steps.preflight.outcome }}"
           echo "render=${{ steps.render.outcome }}"
           echo "review_visibility=${{ steps.review_visibility.outcome }}"
+          echo "lab_export=${{ steps.lab_export.outcome }}"
+          echo "measurement_worksheet=${{ steps.measurement_worksheet.outcome }}"
           test "${{ steps.assemble.outcome }}" = "success"
           test "${{ steps.preflight.outcome }}" = "success"
           test "${{ steps.render.outcome }}" = "success"
           test "${{ steps.review_visibility.outcome }}" = "success"
+          test "${{ steps.lab_export.outcome }}" = "success"
+          test "${{ steps.measurement_worksheet.outcome }}" = "success"
