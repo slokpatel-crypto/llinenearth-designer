@@ -6,6 +6,7 @@ on:
     branches:
       - work/3d-finish-20261007-v6
       - work/3d-finish-20261007-v7
+      - work/3d-finish-20261007-v8
     paths:
       - "scripts/blender/**"
       - "scripts/assemble-production-garment-scene.mjs"
