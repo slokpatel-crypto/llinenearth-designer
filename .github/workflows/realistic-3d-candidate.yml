@@ -15,6 +15,7 @@ on:
     paths:
       - "scripts/blender/**"
       - "scripts/assemble-production-garment-scene.mjs"
+      - "scripts/garment-import-tailoring-library.py"
       - "public/model-identity/**"
       - ".github/workflows/realistic-3d-candidate.yml"
 
