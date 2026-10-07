@@ -31,12 +31,24 @@ const manifest=validateGarmentViewerModelManifest({
   modelIdentity:{id:LINEN_EARTH_MODEL_IDENTITY_ID,referenceImage:LINEN_EARTH_MODEL_REFERENCE_IMAGE,physicalTargetsMm:PHYSICAL_TARGETS},
   source:{name:"Blender Human Base Meshes",license:"CC0",verifiedAt:"2026-10-05"},
   panels:Object.fromEntries(REQUIRED_GARMENT_VIEWER_MATERIALS.map((name)=>[name,{widthMm:300,heightMm:600}])),
+  panelMeasurementEvidence:{source:"tailor_measured",measuredAt:"2026-10-05",note:"Measured directly from the approved garment pattern."},
+  productionFitEvidence:{
+    gate:"linen-earth-officewear-scene-preflight-v1",
+    ready:true,
+    identityFitMeasurementsMm:{shirtWaistWidth:294},
+    identityShoeMeasurementsMm:{LE_ShoeL:{lengthMm:280},LE_ShoeR:{lengthMm:280},symmetry:{lengthDifferenceMm:0}},
+    boundaryIntersections:{bodyShirtTorso:0},
+    boundaryClearanceMm:{shirtWaistBody:{median:8}},
+    totals:{triangles:120000,vertices:160000},
+  },
+  productionAssetStatus:"realistic-body-production-candidate",
 },"LE-OFFICEWEAR-V1");
 
 function passingInput() {
   return {
     contract,
     manifest,
+    styleVariantCoverage:{ready:true,required:320,present:320,missing:[]},
     patternScaleSamples:[
       {fabricId:"stripe-a",pattern:"stripe" as const,errorPct:4.1,verified:true},
       {fabricId:"check-b",pattern:"check" as const,errorPct:6.4,verified:true},
@@ -55,11 +67,33 @@ test("production GarmentViewer can only promote when every realism and physical 
   assert.equal(result.ready,true);
   assert.equal(result.contractReady,true);
   assert.equal(result.manifestReady,true);
+  assert.equal(result.productionAssetReady,true);
+  assert.equal(result.styleVariantReady,true);
   assert.equal(result.scaleReady,true);
   assert.equal(result.latencyReady,true);
   assert.equal(result.realismReady,true);
   assert.equal(result.boundaryReady,true);
   assert.deepEqual(result.reasons,[]);
+});
+
+test("valid deterministic preview shell cannot be promoted as the production 3D model",()=>{
+  const deterministicManifest=validateGarmentViewerModelManifest({
+    version:GARMENT_VIEWER_CONTRACT_VERSION,
+    modelId:"LE-OFFICEWEAR-V1",
+    referenceHeightMm:1727,
+    modelIdentity:{id:LINEN_EARTH_MODEL_IDENTITY_ID,referenceImage:LINEN_EARTH_MODEL_REFERENCE_IMAGE,physicalTargetsMm:PHYSICAL_TARGETS},
+    source:{name:"Linen Earth deterministic viewer shell",license:"Project asset",verifiedAt:"2026-10-07"},
+    panels:Object.fromEntries(REQUIRED_GARMENT_VIEWER_MATERIALS.map((name)=>[name,{widthMm:300,heightMm:600}])),
+    productionAssetStatus:"deterministic-preview-shell-not-realistic-production-asset",
+  },"LE-OFFICEWEAR-V1");
+  assert.equal(deterministicManifest.valid,true);
+  assert.equal(deterministicManifest.productionAssetReady,false);
+  const input=passingInput();
+  input.manifest=deterministicManifest;
+  const result=garmentViewerPromotionReadiness(input);
+  assert.equal(result.ready,false);
+  assert.equal(result.productionAssetReady,false);
+  assert(result.reasons.some((reason)=>reason.includes("realistic-body Blender candidate")));
 });
 
 test("prototype or invalid model contract blocks promotion",()=>{
@@ -71,6 +105,15 @@ test("prototype or invalid model contract blocks promotion",()=>{
   const result=garmentViewerPromotionReadiness(input);
   assert.equal(result.ready,false);
   assert.equal(result.contractReady,false);
+});
+
+test("incomplete tailoring variant coverage blocks customer promotion",()=>{
+  const input=passingInput();
+  input.styleVariantCoverage={ready:false,required:320,present:118,missing:["ShirtCollarVariant__cutaway__stiff_fused"]};
+  const result=garmentViewerPromotionReadiness(input);
+  assert.equal(result.ready,false);
+  assert.equal(result.styleVariantReady,false);
+  assert(result.reasons.some((reason)=>reason.includes("tailoring variants are incomplete")));
 });
 
 test("scale gate requires both verified stripe and check samples within eight percent",()=>{
