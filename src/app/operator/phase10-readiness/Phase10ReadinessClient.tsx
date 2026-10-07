@@ -128,6 +128,9 @@ type GarmentViewerPayload={
       ready:boolean;
       contractReady:boolean;
       manifestReady:boolean;
+      productionAssetReady:boolean;
+      styleVariantReady:boolean;
+      styleVariantCoverage:{ready:boolean;required:number;present:number;missing:string[]}|null;
       scaleReady:boolean;
       latencyReady:boolean;
       realismReady:boolean;
@@ -445,6 +448,10 @@ export default function Phase10ReadinessClient(){
       garmentViewerAssetReady,
       garmentViewerMobilePreflight,
       garmentViewerEvidence?.identityMatches===true,
+      garmentViewerEvidence?.readiness.contractReady===true,
+      garmentViewerEvidence?.readiness.manifestReady===true,
+      garmentViewerEvidence?.readiness.productionAssetReady===true,
+      garmentViewerEvidence?.readiness.styleVariantReady===true,
       garmentViewerEvidence?.readiness.scaleReady===true,
       garmentViewerEvidence?.readiness.latencyReady===true,
       garmentViewerEvidence?.readiness.realismReady===true,
@@ -573,14 +580,14 @@ export default function Phase10ReadinessClient(){
         id:"garment-viewer-m2",
         title:"Reusable 3D GarmentViewer production gate",
         detail:garmentViewerReady
-          ? "The exact production GLB revision has passed structure, physical pattern scale, mobile complexity, interaction latency, independent realism and garment-boundary evidence."
+          ? "The exact production GLB revision has passed structure, full tailoring-variant coverage, physical pattern scale, mobile complexity, interaction latency, independent realism and garment-boundary evidence."
           : garmentViewerEvidence
             ? `3D remains lab-only. ${garmentViewerEvidence.readiness.reasons.join(" ")}${garmentViewerMobilePreflight?"":" Mobile GLB complexity also needs review."}`
             : "No revision-bound production GarmentViewer evidence is recorded yet. The current customer Designer stays on the photographic preview.",
         status:garmentViewerReady?"done":data.garmentViewer?.configured?"progress":"blocked",
         progress:garmentViewerProgress,
         metric:garmentViewerEvidence
-          ? `${garmentViewerEvidence.readiness.latency.count} latency samples · p95 ${garmentViewerEvidence.readiness.latency.p95Ms??"—"} ms · ${garmentViewerEvidence.readiness.realism.strongRatings}/${garmentViewerEvidence.readiness.realism.uniqueViewers} strong realism ratings`
+          ? `${garmentViewerEvidence.readiness.styleVariantCoverage?.present||0}/${garmentViewerEvidence.readiness.styleVariantCoverage?.required||0} tailoring variants · ${garmentViewerEvidence.readiness.latency.count} latency samples · p95 ${garmentViewerEvidence.readiness.latency.p95Ms??"—"} ms · ${garmentViewerEvidence.readiness.realism.strongRatings}/${garmentViewerEvidence.readiness.realism.uniqueViewers} strong realism ratings`
           : "No approved production GLB evidence",
         href:"/operator/garment-viewer",
         action:"Open 3D production gate",
