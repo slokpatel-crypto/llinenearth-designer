@@ -309,7 +309,12 @@ async function verifyViewport(browser, width) {
     const result=[];
     for(const current of element.model?.materials || []){
       if(!wanted.has(current.name)) continue;
-      if(typeof current.ensureLoaded==="function") await current.ensureLoaded();
+      if(current.isLoaded!==true && typeof current.ensureLoaded==="function") {
+        await Promise.race([
+          current.ensureLoaded(),
+          new Promise((_,reject)=>setTimeout(()=>reject(new Error("material hydration timeout: "+current.name)),5000)),
+        ]);
+      }
       result.push({
         name: current.name,
         roughness: current.pbrMetallicRoughness?.roughnessFactor,
