@@ -235,6 +235,20 @@ function setMaterialAlpha(material:Material|null|undefined,visible:boolean) {
 function isGarmentVariantMaterial(name:string) {
   return name.startsWith("Shirt")||name.startsWith("Trouser");
 }
+function isButtonVariantMaterial(name:string) {
+  return name.startsWith("ButtonAccentVariant__");
+}
+function setButtonMaterial(
+  material:Material|null|undefined,
+  spec:(typeof styleVariants.buttons)[number]|undefined,
+  visible=true,
+) {
+  if(!material||!spec) return;
+  const rgba=[spec.rgba[0],spec.rgba[1],spec.rgba[2],visible?spec.rgba[3]:0];
+  material.pbrMetallicRoughness.setBaseColorFactor(rgba);
+  material.pbrMetallicRoughness.setMetallicFactor(spec.metallic);
+  material.pbrMetallicRoughness.setRoughnessFactor(spec.roughness);
+}
 function variantMaterialVisible(name:string,state:StyleVariantState) {
   if(name==="ShirtTorsoFabric") return state.shirtFit==="regular"&&state.shirtBack==="plain";
   if(name==="ShirtSleeveLFabric"||name==="ShirtSleeveRFabric") return state.shirtFit==="regular"&&state.sleeve==="full";
@@ -260,6 +274,9 @@ function variantMaterialVisible(name:string,state:StyleVariantState) {
   if(name.startsWith("TrouserBreakVariant__")) return state.breakStyle!=="slight"&&name.endsWith(`__${state.breakStyle}`);
   if(name.startsWith("TrouserHemVariant__")) return state.trouserHem!=="plain"&&name.endsWith(`__${state.trouserHem}`);
   if(name.startsWith("TrouserPocketVariant__")) return name.endsWith(`__${state.trouserPocket}`);
+  if(name.startsWith("ButtonAccentVariant__shirt_placket__")) return name.endsWith(`__${state.placket}`);
+  if(name.startsWith("ButtonAccentVariant__shirt_collar__")) return name.endsWith(`__${state.collar}`);
+  if(name.startsWith("ButtonAccentVariant__shirt_cuff__")) return state.sleeve==="full"&&name.endsWith(`__${state.cuff}`);
   return true;
 }
 
@@ -630,8 +647,10 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           material.pbrMetallicRoughness.baseColorTexture?.setTexture(source.texture);
           if(source.normal) material.normalTexture?.setTexture(source.normal);
         }
+        const buttonSpec=styleVariants.buttons.find((item)=>item.id===buttonKey);
         for(const material of viewer.model?.materials||[]){
           if(isGarmentVariantMaterial(material.name)) setMaterialAlpha(material,variantMaterialVisible(material.name,styleState));
+          else if(isButtonVariantMaterial(material.name)) setButtonMaterial(material,buttonSpec,variantMaterialVisible(material.name,styleState));
         }
         if(interactionStartedAt.current!==null && modelSrc && assetIdentityKey && modelContract?.readiness==="contract_ready"){
           const duration=performance.now()-interactionStartedAt.current;
@@ -657,7 +676,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       }
     };
     void apply();
-  },[modelReady,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract,modelSrc,assetIdentityKey,styleState]);
+  },[modelReady,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract,modelSrc,assetIdentityKey,styleState,buttonKey]);
 
   useEffect(()=>{
     if(!modelReady) return;
@@ -674,10 +693,12 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     if(!modelReady) return;
     const viewer=viewerRef.current;
     if(!viewer?.model) return;
+    const buttonSpec=styleVariants.buttons.find((item)=>item.id===buttonKey);
     for(const material of viewer.model.materials){
       if(isGarmentVariantMaterial(material.name)) setMaterialAlpha(material,variantMaterialVisible(material.name,styleState));
+      else if(isButtonVariantMaterial(material.name)) setButtonMaterial(material,buttonSpec,variantMaterialVisible(material.name,styleState));
     }
-  },[modelReady,styleState]);
+  },[modelReady,styleState,buttonKey]);
 
   function applyShirtTypePreset(id:string){
     setShirtTypeKey(id);
@@ -723,13 +744,13 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   useEffect(()=>{
     if(!modelReady) return;
     const viewer=viewerRef.current;
-    const material=viewer?materialByName(viewer,"ButtonAccent"):null;
     const spec=styleVariants.buttons.find((item)=>item.id===buttonKey);
-    if(!material||!spec) return;
-    material.pbrMetallicRoughness.setBaseColorFactor(spec.rgba);
-    material.pbrMetallicRoughness.setMetallicFactor(spec.metallic);
-    material.pbrMetallicRoughness.setRoughnessFactor(spec.roughness);
-  },[modelReady,buttonKey]);
+    if(!viewer?.model||!spec) return;
+    for(const material of viewer.model.materials){
+      if(material.name==="ButtonAccent") setButtonMaterial(material,spec,true);
+      else if(isButtonVariantMaterial(material.name)) setButtonMaterial(material,spec,variantMaterialVisible(material.name,styleState));
+    }
+  },[modelReady,buttonKey,styleState]);
 
   useEffect(()=>{
     if(!modelReady) return;
