@@ -133,13 +133,13 @@ test("deterministic shell and Blender production candidate are explicitly distin
 
 test("Blender preflight performs world-space collision and clearance checks",()=>{
   const source=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
-  for(const token of ["world_bvh","BVHTree.FromPolygons","evaluated.matrix_world","intersection_pair_count","nearest_distance_stats_mm","signed_clearance_stats_mm","world_normal_orientation_sign","penetrationSamples","maxPenetrationMm","shirtTrouserTuck","--json-output","output.write_text"]) {
+  for(const token of ["world_bvh","BVHTree.FromPolygons","evaluated.matrix_world","intersection_pair_count","nearest_distance_stats_mm","signed_clearance_stats_mm","point_inside_closed_bvh","odd-even-bvh-ray-parity","penetrationSamples","maxPenetrationMm","shirtTrouserTuck","--json-output","output.write_text"]) {
     assert(source.includes(token),token);
   }
   assert(!source.includes("BVHTree.FromObject(left"));
   assert(!source.includes("BVHTree.FromObject(target"));
-  assert(!source.includes("mesh.polygons[::stride]"));
-  assert(source.includes("for polygon_index in range(0, len(mesh.polygons), stride)"));
+  assert(!source.includes("world_normal_orientation_sign"));
+  assert(source.includes("tree.ray_cast(origin, direction)"));
 });
 
 test("Blender exporter carries fit and boundary preflight evidence into the production manifest",()=>{
