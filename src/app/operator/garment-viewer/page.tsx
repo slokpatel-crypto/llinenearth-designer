@@ -103,6 +103,7 @@ export default async function GarmentViewerOperatorPage(){
           ["Model contract",latest.readiness.contractReady],
           ["Physical manifest",latest.readiness.manifestReady],
           ["Realistic production candidate",latest.readiness.productionAssetReady],
+          ["Tailoring variants "+String(latest.readiness.styleVariantCoverage?.present||0)+"/"+String(latest.readiness.styleVariantCoverage?.required||0),latest.readiness.styleVariantReady],
           ["Stripe + check scale",latest.readiness.scaleReady],
           ["Interaction p95",latest.readiness.latencyReady],
           ["Independent realism",latest.readiness.realismReady],
