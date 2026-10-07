@@ -1550,6 +1550,7 @@ const garmentViewerBlenderExporter=fs.readFileSync("scripts/blender/export-linen
 const garmentViewerBaseBootstrap=fs.readFileSync("scripts/blender/bootstrap-human-base-meshes.py","utf8");
 const garmentViewerBodyPreparer=fs.readFileSync("scripts/blender/prepare-linen-earth-body.py","utf8");
 const garmentViewerScenePreflight=fs.readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
+const garmentViewerProductionBuild=fs.readFileSync("scripts/build-production-garment-model.mjs","utf8");
 const designerModuleGarmentScope=fs.readFileSync("src/components/DesignerModule.tsx","utf8");
 const garmentCategoryLibrary=fs.readFileSync("src/lib/designer/garment-category-library.ts","utf8");
 const futureGarmentOptions=fs.readFileSync("src/lib/designer/future-garment-options.ts","utf8");
@@ -1610,7 +1611,10 @@ for(const token of ["MODEL IDENTITY LOCKED","LINEN_EARTH_MODEL_IDENTITY_ID","Fro
 for(const token of ["linenEarthModelIdentityPrompt","linenEarthViewPrompt","exact same faceless mannequin","Canonical model identity"]) {
   if(!aiVisualizationIdentity.includes(token)) throw new Error(`Real Model multi-view identity regression: missing ${token}`);
 }
-for(const token of ["linen-earth-officewear-scene-preflight-v1","evaluated_mesh_stats","degenerateFaces","activeUv","transformApplied","MAX_TOTAL_TRIANGLES = 220_000","MAX_TOTAL_VERTICES = 280_000","MODEL_IDENTITY_ID = \"linen-earth-studio-model-v1\"","EXPECTED_IDENTITY_TARGETS_MM","LinenEarthIdentityGuides","Missing identity silhouette guides","Model identity lock is not enabled","LE_GUIDE_HEIGHT","LE_GUIDE_OUTER_ARM_SILHOUETTE","LE_GUIDE_LEFT_HAND_CENTER_H","LE_GUIDE_RIGHT_HAND_CENTER_H","LE_GUIDE_LEFT_LEG_CENTER_H","LE_GUIDE_RIGHT_LEG_CENTER_H","identityGuideMeasurementsMm","guide_length_mm","guide_center","identityFitMeasurementsMm","shirtShoulderWidthMm","trouserWaistWidthMm","leftHemWidthMm","shirtCenterOffsetMm","trouserCenterOffsetMm","hemWidthAsymmetryMm","legCenterSpacingMm","center_x_at_z","BVHTree","intersection_pair_count","boundaryIntersections","shirtTrouserTuck"]) {
+for(const token of ["LINEN_GARMENT_BLEND","LINEN_GARMENT_PANEL_SPEC","LINEN_GARMENT_OUTPUT","export-linen-earth-officewear.py","check-garment-viewer-model.mjs"]) {
+  if(!garmentViewerProductionBuild.includes(token)) throw new Error(`GarmentViewer production-build regression: missing ${token}`);
+}
+for(const token of ["linen-earth-officewear-scene-preflight-v1","evaluated_mesh_stats","degenerateFaces","activeUv","transformApplied","MAX_TOTAL_TRIANGLES = 220_000","MAX_TOTAL_VERTICES = 280_000","MODEL_IDENTITY_ID = \"linen-earth-studio-model-v1\"","EXPECTED_IDENTITY_TARGETS_MM","LinenEarthIdentityGuides","Missing identity silhouette guides","Model identity lock is not enabled","LE_GUIDE_HEIGHT","LE_GUIDE_OUTER_ARM_SILHOUETTE","LE_GUIDE_LEFT_HAND_CENTER_H","LE_GUIDE_RIGHT_HAND_CENTER_H","LE_GUIDE_LEFT_LEG_CENTER_H","LE_GUIDE_RIGHT_LEG_CENTER_H","identityGuideMeasurementsMm","guide_length_mm","guide_center","identityFitMeasurementsMm","shirtShoulderWidthMm","trouserWaistWidthMm","leftHemWidthMm","shirtCenterOffsetMm","trouserCenterOffsetMm","hemWidthAsymmetryMm","legCenterSpacingMm","sleeveCenterSpacingMm","cuffWidthAsymmetryMm","center_x_at_z","BVHTree","intersection_pair_count","boundaryIntersections","shirtTrouserTuck"]) {
   if(!garmentViewerScenePreflight.includes(token)) throw new Error(`GarmentViewer Blender scene-preflight regression: missing ${token}`);
 }
 for(const token of ["linen-earth-garment-viewer-v2","REQUIRED_GARMENT_VIEWER_MATERIALS","approvedGarmentViewerModelSource","validateGarmentViewerModelManifest","GarmentViewerAssetSource","Model source provenance is required","sourceReady","LINEN_EARTH_MODEL_IDENTITY_ID","Production model identity must be","exact Real Model Designer studio image","physicalTargetsMm","Production model identity target"]) {
@@ -1642,7 +1646,7 @@ for(const token of ["@google/model-viewer@4.3.1","text/javascript","s-maxage=259
 }
 if(garmentViewerLabPage.includes("ajax.googleapis.com")) throw new Error("GarmentViewer browser must not load its 3D engine from Google CDN directly.");
 if(garmentViewerLabCss.includes(".garmentViewerControls{order:-1}")) throw new Error("GarmentViewer mobile regression: controls cannot appear before the 3D stage.");
-for(const token of ["GarmentViewerEvidenceForm","CUSTOMER PROMOTION GATE","SOURCE / LICENSE","sourceReady","loadLatestGarmentViewerReadiness"]) {
+for(const token of ["GarmentViewerEvidenceForm","CUSTOMER PROMOTION GATE","SOURCE / LICENSE","sourceReady","loadLatestGarmentViewerReadiness","LOCKED MODEL IDENTITY","LINEN_EARTH_MODEL_PHYSICAL_TARGETS_MM","Hand-center spacing","Leg-center spacing"]) {
   if(!garmentViewerOperator.includes(token)) throw new Error(`GarmentViewer operator QA regression: missing ${token}`);
 }
 for(const token of ["garment-viewer-m2","Reusable 3D GarmentViewer production gate","/api/operator/garment-viewer","The current customer Designer stays on the photographic preview"]) {
