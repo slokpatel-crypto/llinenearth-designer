@@ -50,6 +50,9 @@ jobs:
             if curl --fail --silent http://127.0.0.1:3000/designer-studio > /dev/null; then break; fi
             sleep 1
           done
+          # Run the 3D gate first: it is the largest production-asset contract and should fail fast
+          # before the longer photographic/style lifecycle suite when a GLB regression is present.
+          node scripts/verify-garment-viewer.cjs
           node scripts/verify-premium-atelier.cjs
           node scripts/verify-designer-advisor.cjs
           node scripts/verify-photo-form.cjs
@@ -58,7 +61,6 @@ jobs:
           node scripts/verify-preview-lifecycle.cjs
           node scripts/verify-style-director-lifecycle.cjs
           node scripts/verify-style-director-handoff.cjs
-          node scripts/verify-garment-viewer.cjs
       - name: Save browser verification evidence
         if: always()
         uses: actions/upload-artifact@v4
