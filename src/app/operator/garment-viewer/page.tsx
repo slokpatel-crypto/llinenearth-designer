@@ -32,10 +32,11 @@ export default async function GarmentViewerOperatorPage(){
       <nav><Link href="/lab/garment-viewer">Open 3D Lab ↗</Link><Link href="/operator">Operator Desk</Link></nav>
     </header>
 
-    <section className="garmentQaHero" data-ready={status.assetReady}>
-      <small>APPROVED PRODUCTION ASSET</small>
-      <strong>{status.assetReady?"STRUCTURE READY":"NOT READY"}</strong>
+    <section className="garmentQaHero" data-ready={status.productionCandidateReady}>
+      <small>PRODUCTION ASSET STATUS</small>
+      <strong>{status.productionCandidateReady?"REALISTIC CANDIDATE READY":status.assetReady?"STRUCTURE READY / EVIDENCE OPEN":"NOT READY"}</strong>
       <p>{status.configured ? status.modelSrc : "LINEN_GARMENT_MODEL_SRC is not configured."}</p>
+      {manifest?.productionAssetStatus&&<p><b>Asset status:</b> {manifest.productionAssetStatus}</p>}
     </section>
 
     <section className="garmentQaGrid garmentQaGridSix">
@@ -64,6 +65,23 @@ export default async function GarmentViewerOperatorPage(){
       </div>
     </section>
 
+    {manifest?.panelMeasurementEvidence&&<section className="garmentQaPanel">
+      <div className="garmentQaPanelHead"><div><small>PANEL SCALE PROVENANCE</small><h2>Measured garment dimensions</h2></div><b>{manifest.panelMeasurementEvidence.source}</b></div>
+      <div className="garmentQaRows">
+        <div data-ready={true}><strong>Measured at</strong><span>{manifest.panelMeasurementEvidence.measuredAt}</span><em>Physical scale evidence</em></div>
+        <div data-ready={true}><strong>Measurement note</strong><span>{manifest.panelMeasurementEvidence.note}</span><em>No anonymous/guessed panel scale</em></div>
+      </div>
+    </section>}
+
+    {manifest?.productionFitEvidence&&<section className="garmentQaPanel">
+      <div className="garmentQaPanelHead"><div><small>PRODUCTION FIT EVIDENCE</small><h2>Blender preflight geometry checks</h2></div><b>{manifest.productionFitEvidence.gate||"RECORDED"}</b></div>
+      <div className="garmentQaRows">
+        <div data-ready={true}><strong>Identity fit</strong><span>{Object.keys(manifest.productionFitEvidence.identityFitMeasurementsMm||{}).length} measurements</span><em>Locked silhouette + stance</em></div>
+        <div data-ready={true}><strong>Boundary intersections</strong><span>{Object.keys(manifest.productionFitEvidence.boundaryIntersections||{}).length} checks</span><em>Body / garment / tuck</em></div>
+        <div data-ready={true}><strong>Boundary clearances</strong><span>{Object.keys(manifest.productionFitEvidence.boundaryClearanceMm||{}).length} checks</span><em>Upper torso · waist · cuffs · trouser gap</em></div>
+      </div>
+    </section>}
+
     {panels.length>0&&<section className="garmentQaPanel">
       <div className="garmentQaPanelHead"><div><small>PANEL CONTRACT</small><h2>Fabric-mappable garment pieces</h2></div><b>{panels.filter((panel)=>panel.position&&panel.normal&&panel.uv0).length}/{panels.length}</b></div>
       <div className="garmentQaRows">
@@ -75,7 +93,7 @@ export default async function GarmentViewerOperatorPage(){
       </div>
     </section>}
 
-    <GarmentViewerEvidenceForm assetIdentity={status.assetIdentity}/>
+    <GarmentViewerEvidenceForm assetIdentity={status.assetIdentity} productionCandidateReady={status.productionCandidateReady}/>
 
     <section className="garmentQaPanel">
       <div className="garmentQaPanelHead"><div><small>CUSTOMER PROMOTION GATE</small><h2>3D stays in the lab until every evidence gate passes</h2></div><b>{latest?.readiness.ready?"READY":"BLOCKED"}</b></div>
@@ -83,6 +101,7 @@ export default async function GarmentViewerOperatorPage(){
         {([
           ["Model contract",latest.readiness.contractReady],
           ["Physical manifest",latest.readiness.manifestReady],
+          ["Realistic production candidate",latest.readiness.productionAssetReady],
           ["Stripe + check scale",latest.readiness.scaleReady],
           ["Interaction p95",latest.readiness.latencyReady],
           ["Independent realism",latest.readiness.realismReady],
