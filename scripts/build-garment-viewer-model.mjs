@@ -146,6 +146,26 @@ function tailoredSleeveCapGeometry(base,centerX){
   });
 }
 
+function tailoredShirtTorsoGeometry(base){
+  return cloneGeometryTransform(base,(p)=>{
+    const upper=Math.max(0,Math.min(1,(p.y-1.345)/.120));
+    const side=Math.max(0,Math.min(1,Math.abs(p.x)/.194));
+    const shoulderZone=upper*Math.pow(side,1.55);
+    const shoulderDrop=.026*shoulderZone;
+    const chestBlend=Math.max(0,Math.min(1,(p.y-1.18)/.20));
+    const front=Math.max(0,Math.min(1,(p.z-.010)/.115));
+    const back=Math.max(0,Math.min(1,(.010-p.z)/.115));
+    const chestShape=.0045*chestBlend*front-.0020*upper*back;
+    const armholeIn=.004*upper*Math.max(0,(side-.62)/.38);
+    return {
+      ...p,
+      x:p.x-Math.sign(p.x||1)*armholeIn,
+      y:p.y-shoulderDrop,
+      z:p.z+chestShape,
+    };
+  });
+}
+
 function facelessStudioHeadGeometry(base){
   return cloneGeometryTransform(base,(p)=>{
     const frontBias=Math.max(0,Math.min(1,p.z/.090));
@@ -243,14 +263,15 @@ function tailoredTrouserWaistGeometry(base){
     const backBias=Math.max(0,Math.min(1,-localZ/.108));
     const sideBias=Math.max(0,Math.min(1,Math.abs(p.x)/.172));
     const upper=Math.max(0,Math.min(1,(p.y-.945)/.150));
-    const frontScale=1-.055*frontBias;
-    const seatScale=1+.070*backBias;
-    const sideEase=1+.012*sideBias*(1-upper*.45);
-    const backRise=.006*backBias*upper;
+    const frontScale=1-.070*frontBias;
+    const seatScale=1+.095*backBias;
+    const sideEase=1+.018*sideBias*(1-upper*.40);
+    const backRise=.010*backBias*upper;
+    const frontDrop=.0025*frontBias*upper;
     return {
       ...p,
       x:p.x*sideEase,
-      y:p.y+backRise,
+      y:p.y+backRise-frontDrop,
       z:centerZ+localZ*frontScale*seatScale,
     };
   });
@@ -265,12 +286,13 @@ function tailoredTrouserUpperGeometry(base,centerX){
     const innerBias=(1-outwardNormalized)/2;
     const frontBias=Math.max(0,Math.min(1,(p.z-.015)/.100));
     const backBias=Math.max(0,Math.min(1,(.015-p.z)/.100));
-    const innerBlend=.012*upperZone*innerBias;
-    const seatDepth=.006*upperZone*backBias;
-    const frontClean=.002*upperZone*frontBias;
+    const innerBlend=.010*upperZone*innerBias;
+    const seatDepth=.010*upperZone*backBias;
+    const frontClean=.003*upperZone*frontBias;
+    const outerEase=.0045*upperZone*(1-innerBias);
     return {
       ...p,
-      x:p.x-side*innerBlend,
+      x:p.x+side*outerEase-side*innerBlend,
       z:p.z-seatDepth-frontClean,
     };
   });
@@ -1169,7 +1191,7 @@ const garmentShells=await loadMakeHumanGarmentShells();
 // These world-space shells preserve the exact Linen Earth silhouette anchors while
 // producing continuous shirt/trouser surfaces with clean side and back views.
 const tailoredShells={
-  shirtTorso:cloneGeometryTransform(shirtTorso,(p)=>({...p,y:p.y+1.260})),
+  shirtTorso:tailoredShirtTorsoGeometry(cloneGeometryTransform(shirtTorso,(p)=>({...p,y:p.y+1.260}))),
   sleeveL:tailoredSleeveCapGeometry(cloneGeometryTransform(sleeve,(p)=>({...p,x:p.x-.226,y:p.y+1.169,z:p.z+.020})),-.226),
   sleeveR:tailoredSleeveCapGeometry(cloneGeometryTransform(sleeve,(p)=>({...p,x:p.x+.226,y:p.y+1.169,z:p.z+.020})),.226),
   trouserWaist:tailoredTrouserWaistGeometry(cloneGeometryTransform(trouserWaist,(p)=>({...p,y:p.y+1.020,z:p.z+.003}))),
@@ -2454,7 +2476,7 @@ const manifest={
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
     measurementMethod:"geometry-derived-from-visible-default-shells",
-    polishStage:"M7.46 deterministic viewer shell complete; realistic production asset still requires Blender-source fit/evidence: 360-degree raised-back collar band + 360-degree wrist cuff shells + rise-aware tucked-shirt waist junction + extra-high/Korean waist geometry + faceless human head plane/jaw profile + front-flat/back-seat trouser waist shaping + seat/crotch upper-trouser blend + tailored oval sleeve-cap pitch + English-spread/British collar geometry + fit-specific tucked waist compression + contrast-ready collar/cuff material isolation + tapered studio neck/jaw transition + tailored dress-shoe upper/heel silhouette + closed identity-tailored default garment shells + anatomy-derived clean hands/forearms without overlay geometry + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
+    polishStage:"M7.46 deterministic viewer shell complete; realistic production asset still requires Blender-source fit/evidence: 360-degree raised-back collar band + 360-degree wrist cuff shells + rise-aware tucked-shirt waist junction + extra-high/Korean waist geometry + faceless human head plane/jaw profile + front-flat/back-seat trouser waist shaping + seat/crotch upper-trouser blend + tailored oval sleeve-cap pitch + English-spread/British collar geometry + fit-specific tucked waist compression + contrast-ready collar/cuff material isolation + tapered studio neck/jaw transition + tailored dress-shoe upper/heel silhouette + sloped shoulder/armhole shirt shaping + closed identity-tailored default garment shells + anatomy-derived clean hands/forearms without overlay geometry + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
