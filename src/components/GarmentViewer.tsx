@@ -238,7 +238,7 @@ function isGarmentVariantMaterial(name:string) {
 function variantMaterialVisible(name:string,state:StyleVariantState) {
   if(name==="ShirtTorsoFabric") return state.shirtFit==="regular";
   if(name==="ShirtSleeveLFabric"||name==="ShirtSleeveRFabric") return state.shirtFit==="regular"&&state.sleeve==="full";
-  if(name==="TrouserWaistFabric") return state.rise==="mid";
+  if(name==="TrouserWaistFabric") return state.rise==="mid"&&state.pleat==="flat";
   if(name==="TrouserLegLFabric"||name==="TrouserLegRFabric") return state.trouserFit==="straight";
   if(name.startsWith("ShirtTorsoVariant__")) return name.endsWith(`__${state.shirtFit}`);
   if(name.startsWith("ShirtSleeveLVariant__")||name.startsWith("ShirtSleeveRVariant__")) return state.sleeve==="full"&&name.endsWith(`__${state.shirtFit}`);
@@ -252,7 +252,8 @@ function variantMaterialVisible(name:string,state:StyleVariantState) {
   if(name.startsWith("ShirtBackVariant__")) return state.shirtBack!=="plain"&&name.endsWith(`__${state.shirtBack}`);
   if(name.startsWith("ShirtHemShapeVariant__")) return state.shirtWear==="untucked"&&name.endsWith(`__${state.shirtHem}`);
   if(name.startsWith("TrouserLegLVariant__")||name.startsWith("TrouserLegRVariant__")) return name.endsWith(`__${state.trouserFit}`);
-  if(name.startsWith("TrouserWaistVariant__")) return state.rise!=="mid"&&name.endsWith(`__${state.rise}`);
+  if(name.startsWith("TrouserWaistVariant__")) return state.pleat==="flat"&&state.rise!=="mid"&&name.endsWith(`__${state.rise}`);
+  if(name.startsWith("TrouserWaistPleatVariant__")) return state.pleat!=="flat"&&name.endsWith(`__${state.rise}__${state.pleat}`);
   if(name.startsWith("TrouserWaistbandVariant__")) return state.waistband!=="clean"&&name.endsWith(`__${state.waistband}`);
   if(name.startsWith("TrouserPleatVariant__")) return state.pleat!=="flat"&&name.endsWith(`__${state.pleat}`);
   if(name.startsWith("TrouserBreakVariant__")) return state.breakStyle!=="slight"&&name.endsWith(`__${state.breakStyle}`);
