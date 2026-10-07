@@ -15,6 +15,7 @@ from mathutils import Vector
 BODY_NAME = "Body"
 SHIRT_OBJECTS = ("ShirtTorsoFabric", "ShirtSleeveLFabric", "ShirtSleeveRFabric")
 TROUSER_OBJECTS = ("TrouserWaistFabric", "TrouserLegLFabric", "TrouserLegRFabric")
+SHOE_OBJECTS = ("LE_ShoeL", "LE_ShoeR")
 VIEWS = (
     ("front", 0.0),
     ("three-quarter", 35.0),
@@ -179,18 +180,21 @@ def main():
     if body is None or body.type != "MESH":
         raise RuntimeError("Realistic review render requires the prepared Body mesh.")
 
-    missing = [name for name in (*SHIRT_OBJECTS, *TROUSER_OBJECTS) if bpy.data.objects.get(name) is None]
+    missing = [name for name in (*SHIRT_OBJECTS, *TROUSER_OBJECTS, *SHOE_OBJECTS) if bpy.data.objects.get(name) is None]
     if missing:
         raise RuntimeError("Review render is missing garment objects: " + ", ".join(missing))
 
     skin = material("LE_REVIEW_SKIN", "#A97C62", 0.58)
     shirt = material("LE_REVIEW_SHIRT", "#E2D8C8", 0.78)
     trouser = material("LE_REVIEW_TROUSER", "#303843", 0.74)
+    shoe = material("LE_REVIEW_SHOE", "#241B16", 0.46)
     assign_material(body, skin)
     for name in SHIRT_OBJECTS:
         assign_material(bpy.data.objects.get(name), shirt)
     for name in TROUSER_OBJECTS:
         assign_material(bpy.data.objects.get(name), trouser)
+    for name in SHOE_OBJECTS:
+        assign_material(bpy.data.objects.get(name), shoe)
 
     configure_scene(options)
     frame, target, camera = studio_setup(body)
