@@ -1642,7 +1642,7 @@ for(const token of ["@google/model-viewer@4.3.1","text/javascript","s-maxage=259
 }
 if(garmentViewerLabPage.includes("ajax.googleapis.com")) throw new Error("GarmentViewer browser must not load its 3D engine from Google CDN directly.");
 if(garmentViewerLabCss.includes(".garmentViewerControls{order:-1}")) throw new Error("GarmentViewer mobile regression: controls cannot appear before the 3D stage.");
-for(const token of ["GarmentViewerEvidenceForm","CUSTOMER PROMOTION GATE","SOURCE / LICENSE","sourceReady","loadLatestGarmentViewerReadiness"]) {
+for(const token of ["GarmentViewerEvidenceForm","CUSTOMER PROMOTION GATE","SOURCE / LICENSE","sourceReady","loadLatestGarmentViewerReadiness","LOCKED MODEL IDENTITY","LINEN_EARTH_MODEL_PHYSICAL_TARGETS_MM","Hand-center spacing","Leg-center spacing"]) {
   if(!garmentViewerOperator.includes(token)) throw new Error(`GarmentViewer operator QA regression: missing ${token}`);
 }
 for(const token of ["garment-viewer-m2","Reusable 3D GarmentViewer production gate","/api/operator/garment-viewer","The current customer Designer stays on the photographic preview"]) {
