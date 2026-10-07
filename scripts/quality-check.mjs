@@ -1550,6 +1550,7 @@ const garmentViewerBlenderExporter=fs.readFileSync("scripts/blender/export-linen
 const garmentViewerBaseBootstrap=fs.readFileSync("scripts/blender/bootstrap-human-base-meshes.py","utf8");
 const garmentViewerBodyPreparer=fs.readFileSync("scripts/blender/prepare-linen-earth-body.py","utf8");
 const garmentViewerScenePreflight=fs.readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
+const garmentViewerGarmentAuthor=fs.readFileSync("scripts/blender/author-linen-earth-officewear.py","utf8");
 const garmentViewerProductionBuild=fs.readFileSync("scripts/build-production-garment-model.mjs","utf8");
 const designerModuleGarmentScope=fs.readFileSync("src/components/DesignerModule.tsx","utf8");
 const garmentCategoryLibrary=fs.readFileSync("src/lib/designer/garment-category-library.ts","utf8");
@@ -1613,6 +1614,9 @@ for(const token of ["linenEarthModelIdentityPrompt","linenEarthViewPrompt","exac
 }
 for(const token of ["LINEN_GARMENT_BLEND","LINEN_GARMENT_PANEL_SPEC","LINEN_GARMENT_OUTPUT","export-linen-earth-officewear.py","check-garment-viewer-model.mjs"]) {
   if(!garmentViewerProductionBuild.includes(token)) throw new Error(`GarmentViewer production-build regression: missing ${token}`);
+}
+for(const token of ["ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric","TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric","NEAREST_SURFACEPOINT","OUTSIDE_SURFACE","CORRECTIVE_SMOOTH","SOLIDIFY","planar_grain_uv","auto-authored-production-candidate-needs-tailor-review"]) {
+  if(!garmentViewerGarmentAuthor.includes(token)) throw new Error(`GarmentViewer garment-authoring regression: missing ${token}`);
 }
 for(const token of ["linen-earth-officewear-scene-preflight-v1","evaluated_mesh_stats","degenerateFaces","activeUv","transformApplied","MAX_TOTAL_TRIANGLES = 220_000","MAX_TOTAL_VERTICES = 280_000","MODEL_IDENTITY_ID = \"linen-earth-studio-model-v1\"","EXPECTED_IDENTITY_TARGETS_MM","LinenEarthIdentityGuides","Missing identity silhouette guides","Model identity lock is not enabled","LE_GUIDE_HEIGHT","LE_GUIDE_OUTER_ARM_SILHOUETTE","LE_GUIDE_LEFT_HAND_CENTER_H","LE_GUIDE_RIGHT_HAND_CENTER_H","LE_GUIDE_LEFT_LEG_CENTER_H","LE_GUIDE_RIGHT_LEG_CENTER_H","identityGuideMeasurementsMm","guide_length_mm","guide_center","identityFitMeasurementsMm","shirtShoulderWidthMm","trouserWaistWidthMm","leftHemWidthMm","shirtCenterOffsetMm","trouserCenterOffsetMm","hemWidthAsymmetryMm","legCenterSpacingMm","sleeveCenterSpacingMm","cuffWidthAsymmetryMm","center_x_at_z","BVHTree","intersection_pair_count","boundaryIntersections","shirtTrouserTuck"]) {
   if(!garmentViewerScenePreflight.includes(token)) throw new Error(`GarmentViewer Blender scene-preflight regression: missing ${token}`);
