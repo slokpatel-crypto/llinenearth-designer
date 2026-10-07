@@ -126,6 +126,9 @@ export type GarmentViewerManifestValidation = {
   valid:boolean;
   sourceReady:boolean;
   source:GarmentViewerAssetSource|null;
+  panelMeasurementEvidence?:GarmentViewerModelManifest["panelMeasurementEvidence"]|null;
+  productionFitEvidence?:GarmentViewerModelManifest["productionFitEvidence"]|null;
+  productionAssetStatus?:GarmentViewerModelManifest["productionAssetStatus"]|null;
   panelMeasurementReady:boolean;
   fitEvidenceReady:boolean;
   productionAssetReady:boolean;
@@ -213,7 +216,20 @@ export function validateGarmentViewerModelManifest(value:unknown,expectedModelId
     && panelMeasurementReady
     && fitEvidenceReady
   );
-  return {valid:reasons.length===0,sourceReady,source,panelMeasurementReady,fitEvidenceReady,productionAssetReady,missingPanels,invalidPanels,reasons};
+  return {
+    valid:reasons.length===0,
+    sourceReady,
+    source,
+    panelMeasurementEvidence:panelMeasurementReady?measurementEvidence:null,
+    productionFitEvidence:fitEvidence&&typeof fitEvidence==="object"?fitEvidence:null,
+    productionAssetStatus:manifest.productionAssetStatus||null,
+    panelMeasurementReady,
+    fitEvidenceReady,
+    productionAssetReady,
+    missingPanels,
+    invalidPanels,
+    reasons,
+  };
 }
 
 export function approvedGarmentViewerManifestSource(modelSource:string|undefined|null) {
