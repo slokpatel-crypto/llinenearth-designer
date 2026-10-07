@@ -114,21 +114,30 @@ async function verifyViewport(browser, width) {
       animations:"disabled",
     });
   };
+  const selectCamera=async(label,orbitPrefix)=>{
+    const button=page.getByRole("button",{name:label,exact:true});
+    await button.waitFor({state:"attached",timeout:5000});
+    // model-viewer continuously paints its WebGL surface; use the native DOM click
+    // so Playwright does not wait for visual/actionability stability that never arrives.
+    await button.evaluate((element)=>element.click());
+    await page.waitForFunction(
+      (prefix)=>document.querySelector("model-viewer")?.getAttribute("camera-orbit")?.startsWith(prefix),
+      orbitPrefix,
+      {timeout:5000},
+    );
+  };
+
   await captureCanvas("garment-angle-front.png");
-  await page.getByRole("button", { name: "3/4", exact: true }).click();
-  await page.waitForFunction(() => document.querySelector("model-viewer")?.getAttribute("camera-orbit")?.startsWith("35deg"));
+  await selectCamera("3/4","35deg");
   assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-active-view"),"three-quarter");
   await captureCanvas("garment-angle-three-quarter.png");
-  await page.getByRole("button", { name: "Side", exact: true }).click();
-  await page.waitForFunction(() => document.querySelector("model-viewer")?.getAttribute("camera-orbit")?.startsWith("90deg"));
+  await selectCamera("Side","90deg");
   assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-active-view"),"side");
   await captureCanvas("garment-angle-side.png");
-  await page.getByRole("button", { name: "Back", exact: true }).click();
-  await page.waitForFunction(() => document.querySelector("model-viewer")?.getAttribute("camera-orbit")?.startsWith("180deg"));
+  await selectCamera("Back","180deg");
   assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-active-view"),"back");
   await captureCanvas("garment-angle-back.png");
-  await page.getByRole("button", { name: "Front", exact: true }).click();
-  await page.waitForFunction(() => document.querySelector("model-viewer")?.getAttribute("camera-orbit")?.startsWith("0deg"));
+  await selectCamera("Front","0deg");
   assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-active-view"),"front");
 
   const reference=page.locator(".garmentViewerReference img");
