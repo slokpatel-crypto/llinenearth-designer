@@ -57,11 +57,23 @@ test("prototype model is a reusable full outfit rather than one flattened garmen
 });
 
 
-test("production model uses anatomy-derived hands and forearms without procedural overlay fingers",()=>{
+test("production model uses anatomy-derived default garments, hands and forearms while keeping compact variant shells",()=>{
   const builder=readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
-  for(const token of ["handL:garmentShells.handL","handR:garmentShells.handR","forearmL:garmentShells.forearmL","forearmR:garmentShells.forearmR"]) {
-    assert(builder.includes(token),token);
-  }
+  for(const token of [
+    "const realisticDefaultShells={",
+    "shirtTorso:garmentShells.shirtTorso",
+    "sleeveL:garmentShells.sleeveL",
+    "sleeveR:garmentShells.sleeveR",
+    "trouserWaist:garmentShells.trouserWaist",
+    "trouserLegL:garmentShells.trouserLegL",
+    "trouserLegR:garmentShells.trouserLegR",
+    "handL:garmentShells.handL",
+    "handR:garmentShells.handR",
+    "forearmL:garmentShells.forearmL",
+    "forearmR:garmentShells.forearmR",
+    'addMesh("ShirtTorsoMesh",realisticDefaultShells.shirtTorso',
+    'addMesh("TrouserWaistMesh",realisticDefaultShells.trouserWaist',
+  ]) assert(builder.includes(token),token);
   assert(!builder.includes("HandFinger\${handSide}"));
   assert(!builder.includes("HandThumb\${handSide}"));
   assert(!builder.includes('addMesh("FingerMesh"'));
