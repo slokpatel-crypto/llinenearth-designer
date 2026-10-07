@@ -242,6 +242,14 @@ test("production scene assembly chains realistic body preparation, garment autho
   }
 });
 
+test("tailoring coverage counts only materials actually assigned to GLB primitives",()=>{
+  const source=readFileSync("src/lib/garment-viewer-glb.ts","utf8");
+  assert(source.includes("const usedMaterialNames=new Set<string>()"));
+  assert(source.includes("usedMaterialNames.add(name)"));
+  assert(source.includes("garmentViewerStyleMaterialCoverage([...usedMaterialNames])"));
+  assert(!source.includes("garmentViewerStyleMaterialCoverage(materialNames)"));
+});
+
 test("operator reviewer evidence is locked to a realistic production candidate",()=>{
   const page=readFileSync("src/app/operator/garment-viewer/page.tsx","utf8");
   const form=readFileSync("src/app/operator/garment-viewer/GarmentViewerEvidenceForm.tsx","utf8");
