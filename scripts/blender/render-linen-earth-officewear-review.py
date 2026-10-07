@@ -121,29 +121,29 @@ def studio_setup(body):
     add_area_light(
         "LE_REVIEW_KEY",
         Vector((-1.55, -2.00, frame["min_z"] + frame["height"] * 1.15)),
-        900,
-        1.7,
+        280,
+        1.9,
         target,
     )
     add_area_light(
         "LE_REVIEW_FILL",
         Vector((1.55, -1.25, frame["min_z"] + frame["height"] * 0.85)),
-        520,
-        1.4,
+        135,
+        1.6,
         target,
     )
     add_area_light(
         "LE_REVIEW_RIM",
         Vector((0.0, 1.75, frame["min_z"] + frame["height"] * 1.05)),
-        700,
-        1.2,
+        220,
+        1.4,
         target,
     )
 
     bpy.ops.mesh.primitive_plane_add(size=7.0, location=(frame["center"].x, frame["center"].y, frame["min_z"] - 0.002))
     floor = bpy.context.object
     floor.name = "LE_REVIEW_FLOOR"
-    assign_material(floor, material("LE_REVIEW_FLOOR_MAT", "#E7E2D7", 0.76))
+    assign_material(floor, material("LE_REVIEW_FLOOR_MAT", "#DCD8CF", 0.80))
 
     return frame, target, camera
 
@@ -163,8 +163,8 @@ def configure_scene(options):
     world.use_nodes = True
     background = world.node_tree.nodes.get("Background")
     if background is not None:
-        background.inputs["Color"].default_value = rgba("#F8F6F0")
-        background.inputs["Strength"].default_value = 0.55
+        background.inputs["Color"].default_value = rgba("#DEDAD2")
+        background.inputs["Strength"].default_value = 0.24
 
     scene.view_settings.look = "AgX - Medium High Contrast"
 
@@ -182,9 +182,9 @@ def main():
     if missing:
         raise RuntimeError("Review render is missing garment objects: " + ", ".join(missing))
 
-    skin = material("LE_REVIEW_SKIN", "#BFA58F", 0.64)
-    shirt = material("LE_REVIEW_SHIRT", "#EEE8DC", 0.72)
-    trouser = material("LE_REVIEW_TROUSER", "#4B5360", 0.70)
+    skin = material("LE_REVIEW_SKIN", "#916F5A", 0.68)
+    shirt = material("LE_REVIEW_SHIRT", "#C8B58E", 0.76)
+    trouser = material("LE_REVIEW_TROUSER", "#343C49", 0.74)
     assign_material(body, skin)
     for name in SHIRT_OBJECTS:
         assign_material(bpy.data.objects.get(name), shirt)
