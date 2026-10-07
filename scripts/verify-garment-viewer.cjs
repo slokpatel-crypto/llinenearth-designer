@@ -60,10 +60,15 @@ async function verifyViewport(browser, width) {
   const serverSeededReadiness=await page.locator(".garmentViewerShell").getAttribute("data-model-readiness");
   assert.equal(serverSeededReadiness,"contract_ready","server-verified production asset must seed M7.26 readiness before scene-graph hydration");
   await page.locator(".garmentViewerLoading").waitFor({ state: "hidden", timeout: 20000 });
+  const shellCount=await page.locator(".garmentViewerShell").count();
+  if(shellCount!==1){
+    const snapshot=await page.locator("body").innerText({timeout:5000}).catch(()=>"<body unavailable>");
+    throw new Error("3D shell disappeared after model load. url="+page.url()+" errors="+JSON.stringify(errors)+" body="+snapshot.slice(0,1600));
+  }
   const labReadiness = await page.locator(".garmentViewerShell").evaluate((element) => ({
     model: element.getAttribute("data-model-readiness"),
     manifest: element.getAttribute("data-manifest-ready"),
-  }));
+  }),{timeout:5000});
   assert.equal(labReadiness.model, "contract_ready", "3D lab must load the production M7.26 model contract");
   assert.equal(labReadiness.manifest, "true", "production M7.26 model must load its verified physical-panel manifest");
 
