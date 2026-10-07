@@ -73,6 +73,20 @@ test("realistic body intake is explicit, licensed and does not fake garment geom
   assert(!prepare.includes("ShirtTorsoFabric"),"Body intake must not invent garment meshes.");
 });
 
+test("production 3D export command runs Blender export and structural validation in one path",()=>{
+  const packageJson=JSON.parse(readFileSync("package.json","utf8"));
+  const source=readFileSync("scripts/build-production-garment-model.mjs","utf8");
+  assert.equal(packageJson.scripts["garment:model-production:export"],"node scripts/build-production-garment-model.mjs");
+  for(const token of [
+    "LINEN_GARMENT_BLEND",
+    "LINEN_GARMENT_PANEL_SPEC",
+    "LINEN_GARMENT_OUTPUT",
+    "export-linen-earth-officewear.py",
+    "check-garment-viewer-model.mjs",
+    "Customer promotion still requires physical scale, latency, realism and boundary evidence",
+  ]) assert(source.includes(token),token);
+});
+
 test("panel spec template cannot pass as guessed production scale",()=>{
   const template=JSON.parse(readFileSync("docs/examples/linen-earth-officewear-panel-spec.template.json","utf8"));
   assert.equal(template.status,"TEMPLATE_REPLACE_ZERO_VALUES_WITH_MEASURED_PATTERN_DIMENSIONS");
