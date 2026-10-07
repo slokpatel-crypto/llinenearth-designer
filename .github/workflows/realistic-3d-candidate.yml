@@ -82,6 +82,15 @@ jobs:
           test -f .cache/linen-earth/linen-earth-officewear-authored.blend
           npm run garment:model-production:render-review 2>&1 | tee artifacts/realistic-3d/render-review.log
 
+      - name: Export realistic lab-only GLB
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .cache/linen-earth/linen-earth-officewear-authored.blend
+          npm run garment:model-production:lab-export 2>&1 | tee artifacts/realistic-3d/lab-export.log
+
       - name: Write physical panel measurement worksheet
         if: always()
         continue-on-error: true
