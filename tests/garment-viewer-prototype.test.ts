@@ -57,6 +57,23 @@ test("prototype model is a reusable full outfit rather than one flattened garmen
 });
 
 
+test("production model derives identity measurements from the visible default geometry",()=>{
+  const builder=readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
+  for(const token of [
+    "geometryXStats",
+    "geometryYStats",
+    "widthMmAtY",
+    "centerXAtY",
+    "shiftGeometryCenterX(garmentShells.handL,-.250)",
+    "shiftGeometryCenterX(garmentShells.handR,.250)",
+    "measurementMethod:\"geometry-derived-from-visible-default-shells\"",
+    "widthMmAtY(realisticDefaultShells.shirtTorso",
+    "widthMmAtY(realisticDefaultShells.trouserWaist",
+  ]) assert(builder.includes(token),token);
+  assert(!builder.includes("shoulderSeamWidthMm:.194*2*1000"));
+  assert(!builder.includes("handCenterSpacingMm:.250*2*1000"));
+});
+
 test("production model uses anatomy-derived default garments, hands and forearms while keeping compact variant shells",()=>{
   const builder=readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
   for(const token of [
