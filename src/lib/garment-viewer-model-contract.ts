@@ -120,9 +120,9 @@ export type GarmentViewerManifestValidation = {
   valid:boolean;
   sourceReady:boolean;
   source:GarmentViewerAssetSource|null;
-  panelMeasurementEvidence:GarmentViewerModelManifest["panelMeasurementEvidence"]|null;
-  productionFitEvidence:GarmentViewerModelManifest["productionFitEvidence"]|null;
-  productionAssetStatus:GarmentViewerModelManifest["productionAssetStatus"]|null;
+  panelMeasurementEvidence?:GarmentViewerModelManifest["panelMeasurementEvidence"]|null;
+  productionFitEvidence?:GarmentViewerModelManifest["productionFitEvidence"]|null;
+  productionAssetStatus?:GarmentViewerModelManifest["productionAssetStatus"]|null;
   missingPanels:string[];
   invalidPanels:string[];
   reasons:string[];
