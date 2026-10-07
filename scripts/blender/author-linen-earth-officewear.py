@@ -227,8 +227,8 @@ def shape_officewear_to_identity(authored, body, targets):
         raise RuntimeError("Identity guides are incomplete; cannot fit the production garment candidate.")
 
     shirt = authored["ShirtTorsoFabric"]
-    shoulder_width = width_at_z(shirt, shoulder_z, 0.035)
-    waist_width = width_at_z(shirt, shirt_waist_z, 0.035)
+    shoulder_width = width_at_z(shirt, shoulder_z, 0.018)
+    waist_width = width_at_z(shirt, shirt_waist_z, 0.025)
     if not shoulder_width or not waist_width:
         raise RuntimeError("Could not measure shirt shell at locked shoulder/waist guides.")
     shoulder_factor = (float(targets["shoulderSeamWidth"]) / 1000.0) / shoulder_width
@@ -241,6 +241,23 @@ def shape_officewear_to_identity(authored, body, targets):
             (shirt_waist_z, waist_factor),
             (shoulder_z, shoulder_factor),
             (shoulder_z + 0.07, shoulder_factor),
+        ],
+    )
+    # Re-measure at the same narrow guide band used by production preflight.
+    # Shoulder anatomy slopes quickly, so a wider sampling band can otherwise
+    # make the authoring pass believe the seam width is correct while the exact
+    # locked shoulder plane is still too narrow.
+    corrected_shoulder = width_at_z(shirt, shoulder_z, 0.018)
+    if not corrected_shoulder:
+        raise RuntimeError("Could not re-measure shirt shoulder after identity fitting.")
+    shoulder_correction = (float(targets["shoulderSeamWidth"]) / 1000.0) / corrected_shoulder
+    scale_x_profile(
+        shirt,
+        center_x,
+        [
+            (shoulder_z - 0.11, 1.0),
+            (shoulder_z - 0.035, shoulder_correction),
+            (shoulder_z + 0.07, shoulder_correction),
         ],
     )
 
@@ -294,6 +311,7 @@ def shape_officewear_to_identity(authored, body, targets):
 
     return {
         "shirtShoulderScale": round(shoulder_factor, 5),
+        "shirtShoulderCorrection": round(shoulder_correction, 5),
         "shirtWaistScale": round(waist_factor, 5),
         "trouserWaistScale": round(trouser_factor, 5),
         "targetHemWidthMm": round(target_hem * 1000.0, 2),
