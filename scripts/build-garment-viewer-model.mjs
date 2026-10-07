@@ -854,6 +854,7 @@ const styleVariantMaterials=[
   ...styleVariants.plackets.filter((item)=>item.id!=="french").map((item)=>addVariantMaterial(`ShirtPlacketVariant__${item.id}`,"shirt")),
   ...styleVariants.pockets.filter((item)=>item.id!=="none").map((item)=>addVariantMaterial(`ShirtPocketVariant__${item.id}`,"shirt")),
   ...styleVariants.yokes.map((item)=>addVariantMaterial(`ShirtYokeVariant__${item.id}`,"shirt")),
+  ...styleVariants.shirtBacks.filter((item)=>item.id!=="plain").map((item)=>addVariantMaterial(`ShirtBackVariant__${item.id}`,"shirt")),
   ...styleVariants.shirtHems.map((item)=>addVariantMaterial(`ShirtHemShapeVariant__${item.id}`,"shirt")),
   ...styleVariants.trouserFits.filter((fit)=>fit.id!=="straight").flatMap((fit)=>[
     addVariantMaterial(`TrouserLegLVariant__${fit.id}`,"trouser"),
@@ -978,6 +979,10 @@ const shirtHemShapeMeshes=Object.fromEntries(styleVariants.shirtHems.map((item)=
   item.id,
   addMesh(`ShirtHemShapeVariantMesh__${item.id}`,detailBox,`ShirtHemShapeVariant__${item.id}`)
 ]));
+const shirtBackVariantMeshes=Object.fromEntries(styleVariants.shirtBacks.filter((item)=>item.id!=="plain").map((item)=>[
+  item.id,
+  addMesh(`ShirtBackVariantMesh__${item.id}`,detailBox,`ShirtBackVariant__${item.id}`)
+]));
 const trouserHemVariantMeshes=Object.fromEntries(styleVariants.trouserHems.filter((item)=>item.id!=="plain").map((item)=>[
   item.id,
   addMesh(`TrouserHemVariantMesh__${item.id}`,detailBox,`TrouserHemVariant__${item.id}`)
@@ -1069,6 +1074,9 @@ const cuffSpec={
   rounded_french:{width:.092,length:.0730,depth:.114},
   convertible:{width:.090,length:.0635,depth:.112},
   soft_barrel:{width:.087,length:.0603,depth:.110},
+  soft_long_barrel:{width:.089,length:.0730,depth:.112},
+  soft_square_2:{width:.091,length:.0794,depth:.114},
+  soft_french:{width:.092,length:.0730,depth:.114},
   cocktail:{width:.094,length:.0750,depth:.116},
 };
 for(const item of styleVariants.cuffs){
@@ -1080,13 +1088,18 @@ for(const item of styleVariants.cuffs){
 
 // Plackets and pockets.
 const placketSpec={
-  standard:{scale:[.013,.374,.008],z:.112},
-  soft_front:{scale:[.014,.374,.007],z:.112},
-  hidden:{scale:[.022,.374,.008],z:.114},
-  popover:{scale:[.016,.170,.008],z:.113,y:1.375},
-  western:{scale:[.018,.374,.009],z:.114},
-  tuxedo_plain:{scale:[.017,.374,.008],z:.114},
-  tuxedo_pleated:{scale:[.100,.330,.010],z:.115},
+  standard:{scale:[.0318,.374,.003],z:.116},
+  soft_front:{scale:[.0318,.374,.0025],z:.116},
+  stand_up_front:{scale:[.0318,.374,.0035],z:.116},
+  stand_up_french:{scale:[.018,.374,.0025],z:.116},
+  hidden:{scale:[.034,.374,.004],z:.117},
+  popover:{scale:[.0318,.170,.003],z:.116,y:1.375},
+  western:{scale:[.032,.374,.0035],z:.116},
+  tuxedo_plain:{scale:[.018,.374,.0025],z:.116},
+  tuxedo_pique:{scale:[.254,.330,.003],z:.117},
+  tuxedo_pleated:{scale:[.235,.330,.004],z:.118},
+  soft_wide:{scale:[.0381,.374,.0025],z:.116},
+  italian:{scale:[.020,.374,.0025],z:.116},
 };
 for(const item of styleVariants.plackets){
   if(item.id==="french") continue;
@@ -1125,6 +1138,30 @@ for(const item of styleVariants.yokes){
     nodes.push({name:`ShirtYokeVariant__${item.id}R`,mesh,translation:[.092,1.405,-.109],scale:[.188,.095,.007],rotation:qz(14)});
   }else{
     nodes.push({name:"ShirtYokeVariant__one_piece",mesh,translation:[0,1.405,-.108],scale:[.360,.070,.007]});
+  }
+}
+
+// Back pleats / darts.
+for(const item of styleVariants.shirtBacks){
+  if(item.id==="plain") continue;
+  const mesh=shirtBackVariantMeshes[item.id];
+  if(item.id==="rear_side_pleats"){
+    for(const side of [-1,1]) nodes.push({
+      name:`ShirtBackVariant__rear_side_pleats__${side<0?"L":"R"}`,
+      mesh,translation:[side*.105,1.300,-.113],scale:[.010,.205,.003]
+    });
+  }else if(item.id==="center_box_pleat"||item.id==="locker_loop_box"){
+    nodes.push({name:`ShirtBackVariant__${item.id}__L`,mesh,translation:[-.014,1.300,-.113],scale:[.010,.205,.003]});
+    nodes.push({name:`ShirtBackVariant__${item.id}__R`,mesh,translation:[.014,1.300,-.113],scale:[.010,.205,.003]});
+    if(item.id==="locker_loop_box") nodes.push({
+      name:"ShirtBackVariant__locker_loop_box__Loop",mesh,
+      translation:[0,1.405,-.118],scale:[.032,.010,.004]
+    });
+  }else if(item.id==="darts"){
+    for(const side of [-1,1]) nodes.push({
+      name:`ShirtBackVariant__darts__${side<0?"L":"R"}`,mesh,
+      translation:[side*.075,1.155,-.113],scale:[.006,.230,.003],rotation:qz(side*3)
+    });
   }
 }
 
@@ -1278,7 +1315,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.2 researched tailoring taxonomy"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.3 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -1363,7 +1400,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.2 model complete: researched shirt/trouser tailoring taxonomy + anatomically preserved garment surfaces + fabric drape response",
+    polishStage:"M7.3 model complete: researched shirt/trouser construction geometry + canonical Designer handoff + fabric drape response",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
