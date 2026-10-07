@@ -57,6 +57,17 @@ test("prototype model is a reusable full outfit rather than one flattened garmen
 });
 
 
+test("production model uses anatomy-derived hands and forearms without procedural overlay fingers",()=>{
+  const builder=readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
+  for(const token of ["handL:garmentShells.handL","handR:garmentShells.handR","forearmL:garmentShells.forearmL","forearmR:garmentShells.forearmR"]) {
+    assert(builder.includes(token),token);
+  }
+  assert(!builder.includes("HandFinger\${handSide}"));
+  assert(!builder.includes("HandThumb\${handSide}"));
+  assert(!builder.includes('addMesh("FingerMesh"'));
+  assert(!builder.includes('addMesh("ThumbMesh"'));
+});
+
 test("GarmentViewer lab route is isolated from the protected customer visual route",()=>{
   const lab=readFileSync("src/app/lab/garment-viewer/page.tsx","utf8");
   const legacy=readFileSync("src/app/visual/page.tsx","utf8");
