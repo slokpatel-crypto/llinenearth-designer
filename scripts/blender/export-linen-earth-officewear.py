@@ -234,11 +234,12 @@ def run_scene_preflight():
     if not callable(preflight_main):
         raise RuntimeError("Production scene preflight does not expose main().")
     try:
-        preflight_main()
+        return preflight_main()
     except SystemExit as error:
         code = error.code if isinstance(error.code, int) else 1
         if code:
             raise RuntimeError("Production scene preflight failed; export is blocked.") from error
+        return None
 
 
 def viewer_manifest_path(output_path):
@@ -248,7 +249,7 @@ def viewer_manifest_path(output_path):
     return root + ".viewer.json"
 
 
-def write_viewer_manifest(output_path, height, source, model_identity, panel_spec):
+def write_viewer_manifest(output_path, height, source, model_identity, panel_spec, preflight_report=None):
     payload = {
         "version": CONTRACT_VERSION,
         "modelId": MODEL_ID,
@@ -257,6 +258,14 @@ def write_viewer_manifest(output_path, height, source, model_identity, panel_spe
         "source": source,
         "panels": panel_spec["panels"],
     }
+    if isinstance(preflight_report, dict):
+        payload["productionFitEvidence"] = {
+            "gate": preflight_report.get("gate"),
+            "identityFitMeasurementsMm": preflight_report.get("identityFitMeasurementsMm"),
+            "boundaryIntersections": preflight_report.get("boundaryIntersections"),
+            "boundaryClearanceMm": preflight_report.get("boundaryClearanceMm"),
+            "totals": preflight_report.get("totals"),
+        }
     if panel_spec.get("cameraOrbits"):
         payload["cameraOrbits"] = panel_spec["cameraOrbits"]
 
@@ -292,7 +301,7 @@ def export_glb(collection, output_path):
 
 def main():
     args = cli_args()
-    run_scene_preflight()
+    preflight_report = run_scene_preflight()
     panel_spec = load_panel_spec(args.panel_spec) if args.panel_spec else None
     source = scene_source_provenance(bpy.context.scene) if panel_spec else None
     model_identity = scene_model_identity(bpy.context.scene) if panel_spec else None
@@ -301,7 +310,7 @@ def main():
 
     manifest_path = None
     if panel_spec and source:
-        manifest_path = write_viewer_manifest(args.output, height, source, model_identity, panel_spec)
+        manifest_path = write_viewer_manifest(args.output, height, source, model_identity, panel_spec, preflight_report)
 
     print(f"Linen Earth model exported: {os.path.abspath(args.output)}")
     print(f"Model ID: {MODEL_ID}")
