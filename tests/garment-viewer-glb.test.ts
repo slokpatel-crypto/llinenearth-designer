@@ -8,16 +8,20 @@ test("prototype GLB is structurally valid but remains explicitly non-production"
   const inspection=inspectGarmentViewerGlb(bytes,PROTOTYPE_MODEL_ID);
   assert.equal(inspection.gltfVersion,"2.0");
   assert.equal(inspection.uvReady,true);
+  assert.equal(inspection.textureSlotsReady,true);
   assert.equal(inspection.selfContained,true);
   assert.equal(inspection.contract.readiness,"prototype");
   assert.equal(inspection.structuralReady,false);
-  assert(inspection.panels.every((panel)=>panel.primitiveCount>0&&panel.position&&panel.normal&&panel.uv0));
+  assert(inspection.panels.every((panel)=>panel.primitiveCount>0&&panel.position&&panel.normal&&panel.uv0&&panel.baseColorTexture&&panel.normalTexture));
 });
 
 test("same six-panel GLB structure satisfies the production structural contract for an approved model id",()=>{
   const inspection=inspectGarmentViewerGlb(buildPrototypeGarmentGlb(),"LE-OFFICEWEAR-V1");
   assert.equal(inspection.contract.readiness,"contract_ready");
   assert.equal(inspection.structuralReady,true);
+  assert.equal(inspection.styleVariantCoverage.ready,true);
+  assert.equal(inspection.styleVariantCoverage.present,inspection.styleVariantCoverage.required);
+  assert.deepEqual(inspection.styleVariantCoverage.missing,[]);
   assert.equal(inspection.remoteUris.length,0);
 });
 
