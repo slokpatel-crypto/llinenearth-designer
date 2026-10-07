@@ -175,9 +175,10 @@ def world_normal_orientation_sign(obj, max_samples=160):
         center = sum(world_bounds(obj), Vector((0.0, 0.0, 0.0))) / 8.0
         matrix = evaluated.matrix_world
         normal_matrix = matrix.to_3x3().inverted().transposed()
-        stride = max(1, len(mesh.polygons) // max_samples)
+        polygons = list(mesh.polygons)
+        stride = max(1, len(polygons) // max_samples)
         scores = []
-        for polygon in mesh.polygons[::stride][:max_samples]:
+        for polygon in polygons[::stride][:max_samples]:
             point = matrix @ polygon.center
             normal = normal_matrix @ polygon.normal
             if normal.length <= 1e-8:
