@@ -199,6 +199,23 @@ test("operator reviewer evidence is locked to a realistic production candidate",
   assert(server.includes("const productionCandidateReady=Boolean(assetReady&&manifest?.productionAssetReady===true)"));
 });
 
+test("realistic lab export is explicit, unverified for physical scale and cannot masquerade as production evidence",()=>{
+  const packageJson=JSON.parse(readFileSync("package.json","utf8"));
+  const exporter=readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
+  const workflow=readFileSync(".github/workflows/realistic-3d-candidate.yml","utf8");
+  assert.match(packageJson.scripts["garment:model-production:lab-export"],/--lab-preview/);
+  for(const token of [
+    "--lab-preview",
+    "geometry_panel_spec",
+    "geometry-estimate-unverified",
+    "realistic-body-lab-preview-unverified-panel-scale",
+    "Panel dimensions are geometry estimates only; physical pattern scale is unverified.",
+    "LAB-ONLY viewer manifest written",
+  ]) assert(exporter.includes(token),token);
+  assert(workflow.includes("Export realistic lab-only GLB"));
+  assert(workflow.includes("garment:model-production:lab-export"));
+});
+
 test("production 3D export command runs Blender export and structural validation in one path",()=>{
   const packageJson=JSON.parse(readFileSync("package.json","utf8"));
   const source=readFileSync("scripts/build-production-garment-model.mjs","utf8");
