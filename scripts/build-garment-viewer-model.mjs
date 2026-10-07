@@ -2409,8 +2409,15 @@ function assertIdentityMeasurement(name,actualMm,targetMm,toleranceMm){
   }
 }
 
-const leftSleeveShoulder=geometryXStats(realisticDefaultShells.sleeveL,1.430,.040);
-const rightSleeveShoulder=geometryXStats(realisticDefaultShells.sleeveR,1.430,.040);
+const shirtShoulderSpan=geometryXStats(realisticDefaultShells.shirtTorso,1.405,.035);
+const leftSleeveShoulder=geometryXStats(realisticDefaultShells.sleeveL,1.415,.050);
+const rightSleeveShoulder=geometryXStats(realisticDefaultShells.sleeveR,1.415,.050);
+const leftShoulderOverlapMm=shirtShoulderSpan&&leftSleeveShoulder
+  ?(leftSleeveShoulder.max-shirtShoulderSpan.min)*1000
+  :NaN;
+const rightShoulderOverlapMm=shirtShoulderSpan&&rightSleeveShoulder
+  ?(shirtShoulderSpan.max-rightSleeveShoulder.min)*1000
+  :NaN;
 const leftHandCenter=geometryXStats(mannequinSkinShells.handL)?.center;
 const rightHandCenter=geometryXStats(mannequinSkinShells.handR)?.center;
 const leftLegCenter=centerXAtY(realisticDefaultShells.trouserLegL,.540,.045);
@@ -2421,10 +2428,12 @@ const headY=geometryYStats(studioHeadGeometry);
 
 const identityMeasurements={
   heightMm:(1.624+headY.max)*1000,
-  shoulderSeamWidthMm:widthMmAtY(realisticDefaultShells.shirtTorso,1.435,.030),
+  shoulderSeamWidthMm:shirtShoulderSpan?shirtShoulderSpan.width*1000:NaN,
   outerArmSilhouetteMm:leftSleeveShoulder&&rightSleeveShoulder
     ?(rightSleeveShoulder.max-leftSleeveShoulder.min)*1000
     :NaN,
+  leftShoulderJoinOverlapMm:leftShoulderOverlapMm,
+  rightShoulderJoinOverlapMm:rightShoulderOverlapMm,
   shirtWaistWidthMm:widthMmAtY(realisticDefaultShells.shirtTorso,1.075,.030),
   trouserWaistWidthMm:widthMmAtY(realisticDefaultShells.trouserWaist,1.040,.030),
   handCenterSpacingMm:Number.isFinite(leftHandCenter)&&Number.isFinite(rightHandCenter)
@@ -2438,6 +2447,11 @@ const identityMeasurements={
 assertIdentityMeasurement("height",identityMeasurements.heightMm,IDENTITY_TARGETS_MM.height,4);
 assertIdentityMeasurement("shoulder seam",identityMeasurements.shoulderSeamWidthMm,IDENTITY_TARGETS_MM.shoulderSeamWidth,12);
 assertIdentityMeasurement("outer arm silhouette",identityMeasurements.outerArmSilhouetteMm,IDENTITY_TARGETS_MM.outerArmSilhouette,14);
+for(const [side,overlap] of [["left",leftShoulderOverlapMm],["right",rightShoulderOverlapMm]]){
+  if(!Number.isFinite(overlap)||overlap<4||overlap>45){
+    throw new Error(`Live Designer shoulder continuity drift: ${side} sleeve/torso overlap ${Number(overlap).toFixed(1)} mm; expected 4–45 mm.`);
+  }
+}
 assertIdentityMeasurement("shirt waist",identityMeasurements.shirtWaistWidthMm,IDENTITY_TARGETS_MM.shirtWaistWidth,12);
 assertIdentityMeasurement("trouser waist",identityMeasurements.trouserWaistWidthMm,IDENTITY_TARGETS_MM.trouserWaistWidth,12);
 assertIdentityMeasurement("hand spacing",identityMeasurements.handCenterSpacingMm,IDENTITY_TARGETS_MM.handCenterSpacing,3);
