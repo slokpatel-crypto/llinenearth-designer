@@ -449,3 +449,12 @@ Architecture and product decisions that must persist across coding sessions.
 **Geometry:** the explicit `extra_high` rise shifts the shaped trouser waist shell and all rise-attached fly, button, waistband, pleat and pocket details by 60 mm. Rise-shell generation is now data-driven for every non-mid rise, so future supported rise values do not require hand-written low/high mesh branches.
 
 **Preset:** `Korean High-Rise Tapered` now selects `extra_high` directly. The change stays deterministic, uses the same locked model and fabric materials, and adds no AI/provider cost.
+
+
+## 2026-10-07 — M7.41 rise-aware tucked-shirt waist junction
+
+**Decision:** tucked shirt geometry is now generated per shirt fit and trouser rise rather than using one fixed waist-compression zone for low, mid, high and extra-high trousers.
+
+**Fit rule:** the shirt compression/bunching zone follows the active trouser waistband top. This keeps the shirt visually inside the waistband across low rise through Korean extra-high rise, while preserving the selected shirt back construction and the same locked mannequin.
+
+**Rendering:** tucked materials are now keyed by `fit + rise`; untucked geometry is unchanged. The system remains deterministic, instant and zero-credit.
