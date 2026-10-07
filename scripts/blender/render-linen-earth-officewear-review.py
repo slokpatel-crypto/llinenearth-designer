@@ -16,6 +16,16 @@ BODY_NAME = "Body"
 SHIRT_OBJECTS = ("ShirtTorsoFabric", "ShirtSleeveLFabric", "ShirtSleeveRFabric")
 TROUSER_OBJECTS = ("TrouserWaistFabric", "TrouserLegLFabric", "TrouserLegRFabric")
 SHOE_OBJECTS = ("LE_ShoeL", "LE_ShoeR")
+SHIRT_DETAIL_OBJECTS = (
+    "LE_ShirtCollarBand",
+    "LE_ShirtCollarWingL",
+    "LE_ShirtCollarWingR",
+    "LE_ShirtPlacket",
+    "LE_ShirtCuffL",
+    "LE_ShirtCuffR",
+)
+TROUSER_DETAIL_OBJECTS = ("LE_TrouserWaistband",)
+BUTTON_OBJECTS = tuple(f"LE_ShirtButton{i}" for i in range(1, 6))
 VIEWS = (
     ("front", 0.0),
     ("three-quarter", 35.0),
@@ -180,7 +190,7 @@ def main():
     if body is None or body.type != "MESH":
         raise RuntimeError("Realistic review render requires the prepared Body mesh.")
 
-    missing = [name for name in (*SHIRT_OBJECTS, *TROUSER_OBJECTS, *SHOE_OBJECTS) if bpy.data.objects.get(name) is None]
+    missing = [name for name in (*SHIRT_OBJECTS, *TROUSER_OBJECTS, *SHOE_OBJECTS, *SHIRT_DETAIL_OBJECTS, *TROUSER_DETAIL_OBJECTS, *BUTTON_OBJECTS) if bpy.data.objects.get(name) is None]
     if missing:
         raise RuntimeError("Review render is missing garment objects: " + ", ".join(missing))
 
@@ -188,6 +198,7 @@ def main():
     shirt = material("LE_REVIEW_SHIRT", "#E2D8C8", 0.78)
     trouser = material("LE_REVIEW_TROUSER", "#303843", 0.74)
     shoe = material("LE_REVIEW_SHOE", "#241B16", 0.46)
+    button = material("LE_REVIEW_BUTTON", "#4A3528", 0.38)
     assign_material(body, skin)
     for name in SHIRT_OBJECTS:
         assign_material(bpy.data.objects.get(name), shirt)
@@ -195,6 +206,12 @@ def main():
         assign_material(bpy.data.objects.get(name), trouser)
     for name in SHOE_OBJECTS:
         assign_material(bpy.data.objects.get(name), shoe)
+    for name in SHIRT_DETAIL_OBJECTS:
+        assign_material(bpy.data.objects.get(name), shirt)
+    for name in TROUSER_DETAIL_OBJECTS:
+        assign_material(bpy.data.objects.get(name), trouser)
+    for name in BUTTON_OBJECTS:
+        assign_material(bpy.data.objects.get(name), button)
 
     configure_scene(options)
     frame, target, camera = studio_setup(body)
