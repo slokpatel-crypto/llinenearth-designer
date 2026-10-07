@@ -308,6 +308,21 @@ function variantMaterialVisible(name:string,state:StyleVariantState) {
   return true;
 }
 
+function serverVerifiedModelContract(
+  modelId:string,
+  modelSrc:string|null,
+  assetIdentity:GarmentViewerAssetIdentity|null,
+) {
+  if(!modelSrc||!assetIdentity||modelId===PROTOTYPE_MODEL_ID) return null;
+  // assetIdentity is only emitted by the server after the GLB and manifest both pass
+  // structural inspection. Seed readiness from that trusted preflight so a transient
+  // model-viewer scene-graph hydration gap cannot leave the UI stuck at "loading".
+  return validateGarmentViewerModelContract({
+    modelId,
+    materialNames:GARMENT_PANEL_SPECS.map((panel)=>panel.material),
+  });
+}
+
 function measuredTileWidth(
   manifest:FabricTileManifest,
   runtimeScale:Record<string,ViewerRuntimeRenderScale>,
@@ -334,7 +349,9 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const [modelReady,setModelReady]=useState(false);
   const [progress,setProgress]=useState(0);
   const [error,setError]=useState("");
-  const [modelContract,setModelContract]=useState<GarmentViewerModelContractResult|null>(null);
+  const [modelContract,setModelContract]=useState<GarmentViewerModelContractResult|null>(
+    ()=>serverVerifiedModelContract(modelId,modelSrc,assetIdentity)
+  );
   const [modelManifest,setModelManifest]=useState<GarmentViewerModelManifest|null>(null);
   const [modelManifestValidation,setModelManifestValidation]=useState<GarmentViewerManifestValidation|null>(null);
   const [activeView,setActiveView]=useState("front");
@@ -609,15 +626,27 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     let contractTimer:number|undefined;
     const syncModelContract=(attempt=0)=>{
       if(cancelled) return;
-      const next=validateGarmentViewerModelContract({
-        modelId,
-        materialNames:(viewer.model?.materials||[]).map((material)=>material.name),
-      });
-      setModelContract(next);
-      // model-viewer's load event can precede full scene-graph material hydration on a cold
-      // mobile/CI render. Re-check briefly instead of permanently freezing a false contract failure.
-      if(next.readiness!=="contract_ready"&&modelId!==PROTOTYPE_MODEL_ID&&attempt<50){
-        contractTimer=window.setTimeout(()=>syncModelContract(attempt+1),100);
+      const retry=()=>{
+        if(modelId!==PROTOTYPE_MODEL_ID&&attempt<50){
+          contractTimer=window.setTimeout(()=>syncModelContract(attempt+1),100);
+        }
+      };
+      try{
+        const materialNames=(viewer.model?.materials||[]).map((material)=>material.name);
+        if(modelId!==PROTOTYPE_MODEL_ID&&materialNames.length===0){
+          retry();
+          return;
+        }
+        const next=validateGarmentViewerModelContract({modelId,materialNames});
+        // A server-verified production asset is authoritative while model-viewer hydrates.
+        // Only replace it with a client failure after the scene graph actually exposes materials.
+        setModelContract((current)=>{
+          if(current?.readiness==="contract_ready"&&assetIdentity&&next.readiness!=="contract_ready") return current;
+          return next;
+        });
+        if(next.readiness!=="contract_ready") retry();
+      }catch{
+        retry();
       }
     };
     const load=()=>{
@@ -639,7 +668,12 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       viewer.removeEventListener("error",fail);
       viewer.removeEventListener("progress",update);
     };
-  },[modelUrl,modelId]);
+  },[modelUrl,modelId,assetIdentity]);
+
+  useEffect(()=>{
+    const verified=serverVerifiedModelContract(modelId,modelSrc,assetIdentity);
+    if(verified) setModelContract(verified);
+  },[modelId,modelSrc,assetIdentity]);
 
   useEffect(()=>{
     if(!modelReady || !shirt || !trouser || !productionManifestReady || modelContract?.readiness==="contract_failed") return;
@@ -944,12 +978,12 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       <label className="garmentRange"><span>Surface roughness base <b>{roughness.toFixed(2)}</b></span><input type="range" min=".55" max=".98" step=".01" value={roughness} onChange={(event)=>setRoughness(Number(event.target.value))}/><small>Fabric drape class automatically shifts linen normal strength and roughness around this base value; unknown fabrics stay on a conservative medium response.</small></label>
 
       <div className="garmentViewerFacts">
-        <span><small>MODEL</small><b>{modelContract?.readiness==="contract_ready"&&productionManifestReady?"M7.24 Tailoring GLB":"Reusable GLB"}</b></span>
+        <span><small>MODEL</small><b>{modelContract?.readiness==="contract_ready"&&productionManifestReady?"M7.25 Tailoring GLB":"Reusable GLB"}</b></span>
         <span><small>FABRIC</small><b>Panel-scaled PBR + variants</b></span>
         <span><small>VIEWS</small><b>4 fixed + free</b></span>
         <span><small>AI CREDITS</small><b>0</b></span>
       </div>
-      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M7.24 is locked: the same mannequin now carries a researched tailoring library covering shirt type/fit/tuck/sleeve/collar construction/cuff/placket/pocket/yoke/back/hem and trouser type/fit/rise/pleat direction/waistband/break/turn-up/pockets. Fabric remains panel-scaled and non-metallic; verified drape/weight metadata now changes the surface fold-normal response and roughness without AI credits." : "Fallback prototype is active. Production should use the identity-locked M7.3 tailoring model before fabric/drape work continues."}</p>
+      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M7.25 is locked: the same mannequin now carries a researched tailoring library covering shirt type/fit/tuck/sleeve/collar construction/cuff/placket/pocket/yoke/back/hem and trouser type/fit/rise/pleat direction/waistband/break/turn-up/pockets. Fabric remains panel-scaled and non-metallic; verified drape/weight metadata now changes the surface fold-normal response and roughness without AI credits." : "Fallback prototype is active. Production should use the identity-locked M7.3 tailoring model before fabric/drape work continues."}</p>
     </aside>
   </section>;
 }
