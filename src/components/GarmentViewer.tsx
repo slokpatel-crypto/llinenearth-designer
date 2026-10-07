@@ -269,6 +269,7 @@ function variantMaterialVisible(name:string,state:StyleVariantState) {
   if(name.startsWith("ShirtHemVariant__")) return state.shirtWear==="untucked"&&name.endsWith(`__${state.shirtFit}`);
   if(name.startsWith("ShirtSleeveLLength__")||name.startsWith("ShirtSleeveRLength__")) return state.sleeve!=="full"&&name.endsWith(`__${state.shirtFit}__${state.sleeve}`);
   if(name.startsWith("ShirtRollBandVariant__")) return state.sleeve==="roll"&&name.endsWith(`__${state.shirtFit}`);
+  if(name.startsWith("ShirtSleeveFinishVariant__")) return (state.sleeve==="half"||state.sleeve==="three_quarter")&&name.endsWith(`__${state.shirtFit}__${state.sleeve}`);
   if(name.startsWith("ShirtCollarVariant__")) return name.endsWith(`__${state.collar}__${state.collarConstruction}`);
   if(name.startsWith("ShirtNeckGasketVariant__")) return name.endsWith(`__${state.collar}`);
   if(name.startsWith("ShirtCuffVariant__")) return state.sleeve==="full"&&name.endsWith(`__${state.cuff}__${state.cuffConstruction}`);
@@ -592,9 +593,24 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   useEffect(()=>{
     const viewer=viewerRef.current;
     if(!viewer) return;
+    let cancelled=false;
+    let contractTimer:number|undefined;
+    const syncModelContract=(attempt=0)=>{
+      if(cancelled) return;
+      const next=validateGarmentViewerModelContract({
+        modelId,
+        materialNames:(viewer.model?.materials||[]).map((material)=>material.name),
+      });
+      setModelContract(next);
+      // model-viewer's load event can precede full scene-graph material hydration on a cold
+      // mobile/CI render. Re-check briefly instead of permanently freezing a false contract failure.
+      if(next.readiness!=="contract_ready"&&modelId!==PROTOTYPE_MODEL_ID&&attempt<50){
+        contractTimer=window.setTimeout(()=>syncModelContract(attempt+1),100);
+      }
+    };
     const load=()=>{
       setModelReady(true);setProgress(1);setError("");
-      setModelContract(validateGarmentViewerModelContract({modelId,materialNames:(viewer.model?.materials||[]).map((material)=>material.name)}));
+      syncModelContract();
     };
     const fail=()=>{setError("The 3D garment model could not be loaded.");setModelReady(false);};
     const update=(event:Event)=>{
@@ -605,6 +621,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     viewer.addEventListener("error",fail);
     viewer.addEventListener("progress",update);
     return ()=>{
+      cancelled=true;
+      if(contractTimer!==undefined) window.clearTimeout(contractTimer);
       viewer.removeEventListener("load",load);
       viewer.removeEventListener("error",fail);
       viewer.removeEventListener("progress",update);

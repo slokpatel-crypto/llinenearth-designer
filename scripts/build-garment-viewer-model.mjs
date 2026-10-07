@@ -969,6 +969,9 @@ const styleVariantMaterials=[
     addVariantMaterial(`ShirtSleeveRLength__${fit.id}__${sleeve.id}`,"shirt"),
   ])),
   ...styleVariants.shirtFits.map((fit)=>addVariantMaterial(`ShirtRollBandVariant__${fit.id}`,"shirt")),
+  ...styleVariants.shirtFits.flatMap((fit)=>styleVariants.sleeves.filter((sleeve)=>["half","three_quarter"].includes(sleeve.id)).map((sleeve)=>
+    addVariantMaterial(`ShirtSleeveFinishVariant__${fit.id}__${sleeve.id}`,"shirt")
+  )),
   ...styleVariants.collars.flatMap((item)=>styleVariants.collarConstruction.map((construction)=>
     addVariantMaterial(`ShirtCollarVariant__${item.id}__${construction.id}`,"shirt")
   )),
@@ -1168,6 +1171,34 @@ const shirtRollBandMeshes=Object.fromEntries(styleVariants.shirtFits.map((fit)=>
   fit.id,
   addMesh(`ShirtRollBandVariantMesh__${fit.id}`,detailBox,`ShirtRollBandVariant__${fit.id}`)
 ]));
+const shirtSleeveFinishMeshes={};
+for(const fit of styleVariants.shirtFits){
+  const sourceL=fit.id==="regular"?garmentShells.sleeveL:shirtFitGeometry(garmentShells.sleeveL,fit,-.226);
+  const sourceR=fit.id==="regular"?garmentShells.sleeveR:shirtFitGeometry(garmentShells.sleeveR,fit,.226);
+  for(const sleeve of styleVariants.sleeves){
+    if(!["half","three_quarter"].includes(sleeve.id)) continue;
+    const cutY=sleeveLengthCutY[sleeve.id];
+    const key=`${fit.id}__${sleeve.id}`;
+    const finishTransform=(centerX)=>(p)=>({
+      ...p,
+      x:centerX+(p.x-centerX)*1.018,
+      y:p.y+.0015,
+      z:p.z*1.018,
+    });
+    shirtSleeveFinishMeshes[key]={
+      left:addMesh(
+        `ShirtSleeveFinishLVariantMesh__${key}`,
+        cropGeometry(sourceL,(p)=>p.y>=cutY&&p.y<=cutY+.026,finishTransform(-.226)),
+        `ShirtSleeveFinishVariant__${key}`
+      ),
+      right:addMesh(
+        `ShirtSleeveFinishRVariantMesh__${key}`,
+        cropGeometry(sourceR,(p)=>p.y>=cutY&&p.y<=cutY+.026,finishTransform(.226)),
+        `ShirtSleeveFinishVariant__${key}`
+      ),
+    };
+  }
+}
 
 const trouserFitMeshes={};
 for(const fit of styleVariants.trouserFits){
@@ -1401,6 +1432,15 @@ for(const fit of styleVariants.shirtFits){
   const width=.090*(Number(fit.sleeveScale)||1);
   nodes.push({name:`ShirtRollBandL__${fit.id}`,mesh,translation:[-.226,1.095,.018],scale:[width,.040,.108],rotation:qz(-2.5)});
   nodes.push({name:`ShirtRollBandR__${fit.id}`,mesh,translation:[.226,1.095,.018],scale:[width,.040,.108],rotation:qz(2.5)});
+}
+for(const fit of styleVariants.shirtFits){
+  for(const sleeve of styleVariants.sleeves){
+    if(!["half","three_quarter"].includes(sleeve.id)) continue;
+    const key=`${fit.id}__${sleeve.id}`;
+    const mesh=shirtSleeveFinishMeshes[key];
+    nodes.push({name:`ShirtSleeveFinishLVariant__${key}`,mesh:mesh.left});
+    nodes.push({name:`ShirtSleeveFinishRVariant__${key}`,mesh:mesh.right});
+  }
 }
 
 // Collar families.
@@ -1887,7 +1927,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.15 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.22 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -1972,7 +2012,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.21 model complete: researched shirt/trouser construction geometry + exposed forearms for half/rolled/three-quarter sleeves + collar-neck junction seal + fit-aware sleeves + persistent tailored front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist shell/fly/waistband/button/pleat/pocket details + pleat/back ease + collar/cuff stiffness + construction-aware closures/cufflinks + tuxedo front pleats + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
+    polishStage:"M7.22 model complete: researched shirt/trouser construction geometry + tailored half/three-quarter sleeve finish bands + exposed forearms for shortened sleeves + collar-neck junction seal + fit-aware sleeves + persistent tailored front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist shell/fly/waistband/button/pleat/pocket details + pleat/back ease + collar/cuff stiffness + construction-aware closures/cufflinks + tuxedo front pleats + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
