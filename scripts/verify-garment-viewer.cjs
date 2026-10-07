@@ -158,7 +158,7 @@ async function verifyViewport(browser, width) {
   const referenceBlock=await page.locator(".garmentViewerReference").innerText();
   assert.match(referenceBlock,/EXACT REAL MODEL DESIGNER IDENTITY/);
   assert.match(referenceBlock,/linen-earth-studio-model-v1/);
-  assert.match(referenceBlock,/same shoulder width, torso taper, arm length, hand scale, hip width, leg length, stance and shoes/i);
+  assert.match(referenceBlock,/same (?:head height, )?shoulder width, torso taper, arm length, hand scale, hip width, leg length, stance and shoes/i);
   assert.match(referenceBlock,/sleeve cap is shaped to the locked shoulder/i);
   assert.match(referenceBlock,/flatter face plane and tapered jaw/i);
 
