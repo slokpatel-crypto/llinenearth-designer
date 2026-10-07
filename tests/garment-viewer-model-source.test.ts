@@ -116,6 +116,7 @@ test("production scene assembly chains realistic body preparation, garment autho
   assert.equal(packageJson.scripts["garment:model-production:assemble"],"node scripts/assemble-production-garment-scene.mjs");
   for(const token of [
     "bootstrap-human-base-meshes.py",
+    'process.env.PYTHON||"python3"',
     "prepare-linen-earth-body.py",
     "author-linen-earth-officewear.py",
     "preflight-linen-earth-officewear.py",
