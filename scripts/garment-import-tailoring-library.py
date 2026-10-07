@@ -14,6 +14,8 @@ import sys
 from pathlib import Path
 
 import bpy
+from mathutils import Vector
+from mathutils.bvhtree import BVHTree
 
 EXPORT_COLLECTION = "LinenEarthExport"
 BASE_OBJECT_NAMES = {
@@ -56,6 +58,95 @@ def is_tailoring_variant_material(name):
     )
 
 
+def world_bvh(obj):
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    evaluated = obj.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        matrix = evaluated.matrix_world
+        vertices = [matrix @ vertex.co for vertex in mesh.vertices]
+        polygons = [tuple(polygon.vertices) for polygon in mesh.polygons if len(polygon.vertices) >= 3]
+        if not vertices or not polygons:
+            return None
+        return BVHTree.FromPolygons(vertices, polygons, all_triangles=False, epsilon=0.0)
+    finally:
+        evaluated.to_mesh_clear()
+
+
+def normal_orientation(obj, max_samples=160):
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    evaluated = obj.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        if not mesh.polygons:
+            return 1.0
+        points = [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]
+        center = sum(points, Vector()) / max(1, len(points))
+        matrix = evaluated.matrix_world
+        normal_matrix = matrix.to_3x3().inverted().transposed()
+        polygons = list(mesh.polygons)
+        stride = max(1, len(polygons) // max_samples)
+        values = []
+        for polygon in polygons[::stride][:max_samples]:
+            point = matrix @ polygon.center
+            normal = normal_matrix @ polygon.normal
+            if normal.length <= 1e-8:
+                continue
+            normal.normalize()
+            values.append((point-center).dot(normal))
+        if not values:
+            return 1.0
+        values.sort()
+        return 1.0 if values[len(values)//2] >= 0 else -1.0
+    finally:
+        evaluated.to_mesh_clear()
+
+
+def repair_variant_outside_body(obj, body, minimum_clearance_m):
+    tree = world_bvh(body)
+    if tree is None or obj.type != "MESH":
+        return {"movedVertices": 0, "maxCorrectionMm": 0.0}
+    orientation = normal_orientation(body)
+    matrix = obj.matrix_world
+    inverse = matrix.inverted()
+    moved = 0
+    max_correction = 0.0
+    for vertex in obj.data.vertices:
+        point = matrix @ vertex.co
+        nearest = tree.find_nearest(point)
+        if nearest is None or nearest[0] is None or nearest[1] is None:
+            continue
+        location, normal = nearest[0], nearest[1]
+        if normal.length <= 1e-8:
+            continue
+        outward = normal.normalized() * orientation
+        signed = (point-location).dot(outward)
+        if signed >= minimum_clearance_m:
+            continue
+        corrected = location + outward*minimum_clearance_m
+        correction = (corrected-point).length
+        vertex.co = inverse @ corrected
+        moved += 1
+        max_correction = max(max_correction, correction)
+    obj.data.update()
+    return {
+        "movedVertices": moved,
+        "maxCorrectionMm": round(max_correction*1000.0, 2),
+        "minimumClearanceMm": round(minimum_clearance_m*1000.0, 2),
+    }
+
+
+def variant_clearance(materials):
+    joined = " ".join(materials)
+    if joined.startswith("MannequinSkinArmVariant__") or "MannequinSkinArmVariant__" in joined:
+        return None
+    if "Trouser" in joined:
+        return 0.0055
+    if "Shirt" in joined:
+        return 0.0045
+    return 0.0035
+
+
 def ensure_export_collection():
     collection = bpy.data.collections.get(EXPORT_COLLECTION)
     if collection is None:
@@ -83,6 +174,7 @@ def main():
         "TrouserWaistFabric", "TrouserLegLFabric", "TrouserLegRFabric",
     }
     missing_realistic = sorted(name for name in required_realistic if bpy.data.objects.get(name) is None)
+    body = bpy.data.objects.get("Body")
     if missing_realistic:
         raise RuntimeError(
             "Tailoring library import requires the authored realistic scene first. Missing: "
@@ -119,12 +211,18 @@ def main():
             bpy.data.objects.remove(obj, do_unlink=True)
 
     collection = ensure_export_collection()
+    repair_stats = {}
     for obj in kept:
         for current in list(obj.users_collection):
             current.objects.unlink(obj)
         collection.objects.link(obj)
         obj.hide_viewport = False
         obj.hide_render = False
+
+        names = material_names(obj)
+        clearance = variant_clearance(names)
+        if clearance is not None:
+            repair_stats[obj.name] = repair_variant_outside_body(obj, body, clearance)
 
         for material in obj.data.materials:
             if material is None:
@@ -160,6 +258,7 @@ def main():
     bpy.context.scene["linen_earth_tailoring_variant_object_count"] = len(kept)
     bpy.context.scene["linen_earth_tailoring_variant_material_count"] = len(variant_materials)
     bpy.context.scene["linen_earth_tailoring_variant_materials_json"] = json.dumps(sorted(variant_materials))
+    bpy.context.scene["linen_earth_tailoring_variant_repair_json"] = json.dumps(repair_stats, sort_keys=True)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(output))
@@ -167,6 +266,7 @@ def main():
     print(f"Imported Linen Earth tailoring library: {variant_glb}")
     print(f"Retained variant objects: {len(kept)}")
     print(f"Retained variant materials: {len(variant_materials)}")
+    print("Variant body-clearance repairs: " + json.dumps(repair_stats, sort_keys=True))
     print(f"Saved realistic + tailoring hybrid scene: {output}")
 
 
