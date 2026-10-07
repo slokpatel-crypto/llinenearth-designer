@@ -127,6 +127,8 @@ npm run garment:model-scene:check
 
 The Blender preflight inspects the evaluated shirt/trouser geometry without modifying it. It rejects missing six-panel objects, empty meshes, missing active UVs, excessive degenerate faces, unapplied garment transforms, incorrect body height, and garment geometry beyond the current mobile triangle/vertex budgets. Open garment boundaries such as cuffs and hems are not treated as errors because tailored clothing is not required to be watertight.
 
+The preflight also checks the complete locked identity-guide geometry, samples the production garment silhouette against those canonical guides and uses Blender BVH intersection checks to reject shirt/trouser penetration into the body. The tucked shirt/trouser junction gets a small dedicated tolerance because the fabrics intentionally overlap at the waist.
+
 Passing this gate means only that the scene is structurally ready to export; it does not certify premium drape, fit or visual realism.
 
 ## Production asset construction path
