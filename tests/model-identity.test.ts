@@ -1,8 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS,
   LINEN_EARTH_MODEL_IDENTITY_ID,
+  LINEN_EARTH_MODEL_PHYSICAL_TARGETS_MM,
   LINEN_EARTH_MODEL_REFERENCE_HEIGHT_MM,
   LINEN_EARTH_MODEL_REFERENCE_IMAGE,
   LINEN_EARTH_MODEL_VIEWS,
@@ -19,6 +21,15 @@ test("Real Model Designer identity is one locked four-view model",()=>{
   assert.match(linenEarthModelIdentityPrompt(),/one fixed faceless mannequin/);
   assert.match(linenEarthViewPrompt("side"),/yaw 90 degrees/);
   assert.match(linenEarthViewPrompt("back"),/do not morph the body between views/);
+});
+
+
+
+test("public identity spec and runtime physical targets cannot drift",()=>{
+  const identity=JSON.parse(readFileSync("public/model-identity/linen-earth-studio-model-v1.json","utf8"));
+  assert.deepEqual(identity.physicalTargetsMm,LINEN_EARTH_MODEL_PHYSICAL_TARGETS_MM);
+  assert.equal(identity.referenceHeightMm,LINEN_EARTH_MODEL_REFERENCE_HEIGHT_MM);
+  assert.equal(identity.referenceImage,LINEN_EARTH_MODEL_REFERENCE_IMAGE);
 });
 
 test("front silhouette anchors remain tied to the existing studio-tucked trace",()=>{
