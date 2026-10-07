@@ -4,6 +4,7 @@ export type DesignerOptionGroup="collar"|"cuff"|"shirtFit"|"trouser";
 
 export const collarOptions=[
   {id:"spread_collar",label:"Spread Collar",aliases:["spread"]},
+  {id:"english_spread_collar",label:"English Spread / British Collar",aliases:["english spread","british collar","british spread"]},
   {id:"cutaway_collar",label:"Cutaway Collar",aliases:["cutaway"]},
   {id:"point_standard_collar",label:"Point (Standard) Collar",aliases:["point collar","standard collar"]},
   {id:"button_down_collar",label:"Button-Down Collar",aliases:["button down collar","button-down"]},

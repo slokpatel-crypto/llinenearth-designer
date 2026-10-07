@@ -90,6 +90,18 @@
       "source": "Proper Cloth reference"
     },
     {
+      "id": "english_spread",
+      "label": "English Spread / British Collar",
+      "family": "dress",
+      "spreadDeg": 52,
+      "pointLengthIn": 2.75,
+      "spreadIn": 4.88,
+      "tieSpaceIn": 0.38,
+      "frontBandHeightIn": 1,
+      "rearBandHeightIn": 1.38,
+      "source": "Proper Cloth English Spread Collar reference"
+    },
+    {
       "id": "spread",
       "label": "Spread Collar",
       "family": "dress",

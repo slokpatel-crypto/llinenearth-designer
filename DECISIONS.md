@@ -431,3 +431,12 @@ Architecture and product decisions that must persist across coding sessions.
 **Rendering rule:** tucked and untucked torso shells are mutually exclusive. Sleeve, collar, cuff, placket, yoke, pocket and fabric-scale systems remain independent and reuse the same locked model identity.
 
 **Acceptance boundary:** this is a deterministic visual fit model, not a body-physics simulation. It must remove the obvious shirt/trouser shell intersection while preserving instant updates and zero AI-credit rendering.
+
+
+## 2026-10-07 — M7.35 English Spread / British collar
+
+**Decision:** add an explicit English Spread / British Collar instead of treating every British business collar as the generic spread shape. The shared Designer library, vocabulary and reusable 3D tailoring library now expose the same option.
+
+**Geometry basis:** the collar uses the current Proper Cloth English Spread reference dimensions: 2.75 in point length, 4.88 in spread, 0.38 in tie space, 1.00 in front band height and 1.38 in rear band height. The 3D shell uses a conservative spread angle between the existing semi-spread and broad spread families, with the same fused / soft-fused / soft-unfused construction variants.
+
+**Rendering:** the collar remains compatible with self-fabric, white contrast collar, and white contrast collar + cuffs, uses the existing physical-scale fabric texture path, and adds no AI/provider cost.
