@@ -8,7 +8,7 @@ import { loadActiveDesignerFabricStock } from "@/lib/designer/catalog-stock-serv
 import "./garment-viewer.css";
 
 export const metadata={
-  title:"GarmentViewer M7.1 · Linen Earth",
+  title:"GarmentViewer M7.3 · Linen Earth",
   description:"Linen Earth locked 3D mannequin with live fabric mapping and tailoring construction variants.",
   robots:{index:false,follow:false},
 };
