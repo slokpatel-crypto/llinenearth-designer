@@ -186,6 +186,7 @@ test("realistic production candidate renders front, three-quarter, side and back
     "image_exposure_metrics",
     "clippedRatio",
     "meanLuma",
+    "scene.view_settings.exposure = -0.65",
     "review-metrics.json",
     "review-views.txt",
   ]) assert(source.includes(token),token);
