@@ -96,6 +96,8 @@ test("realistic-body garment authoring creates the six canonical production shel
     "shape_officewear_to_identity",
     "scale_x_profile",
     "shift_x_profile",
+    "shirtShoulderCorrection",
+    "corrected_shoulder",
     "shirt_clearance_m",
     "trouser_clearance_m",
     "linen_earth_identity_fit_profile_json",
@@ -115,7 +117,7 @@ test("deterministic shell and Blender production candidate are explicitly distin
 
 test("Blender preflight performs world-space collision and clearance checks",()=>{
   const source=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
-  for(const token of ["world_bvh","BVHTree.FromPolygons","evaluated.matrix_world","intersection_pair_count","nearest_distance_stats_mm","--json-output","output.write_text"]) {
+  for(const token of ["world_bvh","BVHTree.FromPolygons","evaluated.matrix_world","intersection_pair_count","nearest_distance_stats_mm","signed_clearance_stats_mm","world_normal_orientation_sign","penetrationSamples","maxPenetrationMm","shirtTrouserTuck","--json-output","output.write_text"]) {
     assert(source.includes(token),token);
   }
   assert(!source.includes("BVHTree.FromObject(left"));
@@ -150,6 +152,8 @@ test("realistic production candidate renders front, three-quarter, side and back
   assert(workflow.includes("continue-on-error: true"));
   assert(workflow.includes("--json-output artifacts/realistic-3d/preflight.json"));
   assert(workflow.includes("Enforce candidate gates"));
+  assert(workflow.includes("libegl1"));
+  assert(workflow.includes("libgl1"));
 });
 
 test("production scene assembly chains realistic body preparation, garment authoring and Blender preflight",()=>{
