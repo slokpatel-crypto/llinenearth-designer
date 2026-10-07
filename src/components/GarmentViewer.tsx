@@ -200,6 +200,13 @@ function variantIdForLabel(items:ReadonlyArray<{id:string;label:string}>,label:s
   });
   return byWords?.id||fallback;
 }
+function riseVariantFor(label:string|undefined) {
+  const value=normalizedStyleLabel(label);
+  if(value.includes("extra high")||value.includes("korean high")) return "extra_high";
+  if(value.includes("high")) return "high";
+  if(value.includes("low")) return "low";
+  return variantIdForLabel(styleVariants.rises,label,"mid");
+}
 function collarVariantFor(label:string|undefined) {
   const value=normalizedStyleLabel(label);
   if(value.includes("english spread")||value.includes("british collar")||value.includes("british spread")) return "english_spread";
@@ -550,14 +557,14 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           setTrouserPocketKey(savedTrouserPreset.pocket);
         }else{
           setTrouserFitKey(trouserFitVariantFor(parsed));
-          setRiseKey(variantIdForLabel(styleVariants.rises,parsed.style.rise,"mid"));
+          setRiseKey(riseVariantFor(parsed.style.rise));
           setWaistbandKey(variantIdForLabel(styleVariants.waistbands,parsed.style.waistband,"belt_loops"));
           setBreakKey(variantIdForLabel(styleVariants.breaks,parsed.style.break,"slight"));
           setPleatKey(pleatVariantFor(parsed.style.trouser));
         }
 
         if(pantSpec?.fit) setTrouserFitKey(variantIdForLabel(styleVariants.trouserFits,optionLabel(pantSpec.fit),savedTrouserPreset?.trouserFit||"straight"));
-        if(pantSpec?.rise) setRiseKey(variantIdForLabel(styleVariants.rises,optionLabel(pantSpec.rise),savedTrouserPreset?.rise||"mid"));
+        if(pantSpec?.rise) setRiseKey(riseVariantFor(optionLabel(pantSpec.rise)));
         if(pantSpec?.pleat) setPleatKey(pleatVariantFor(optionLabel(pantSpec.pleat)));
         if(pantSpec?.waistband) setWaistbandKey(variantIdForLabel(styleVariants.waistbands,optionLabel(pantSpec.waistband),savedTrouserPreset?.waistband||"belt_loops"));
         if(pantSpec?.break) setBreakKey(variantIdForLabel(styleVariants.breaks,optionLabel(pantSpec.break),savedTrouserPreset?.breakStyle||"slight"));

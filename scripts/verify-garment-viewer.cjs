@@ -34,6 +34,7 @@ async function verifyViewport(browser, width) {
         },
         pant:{
           type:"wide_leg_relaxed_drape",
+          rise:"extra_high_rise",
           pleat:"double_pleat_reverse"
         }
       },
@@ -151,6 +152,7 @@ async function verifyViewport(browser, width) {
   await page.getByLabel("3D shirt wear").selectOption("untucked");
   assert.equal(await page.getByLabel("3D shirt back").inputValue(),"center_box_pleat","canonical Designer shirt-back construction must reach 3D");
   assert.equal(await page.getByLabel("3D trouser type").inputValue(),"wide_leg_relaxed_drape","saved Designer trouser type must reach 3D");
+  assert.equal(await page.getByLabel("3D trouser rise").inputValue(),"extra_high","canonical Extra-High Rise must override the trouser-type preset and reach 3D");
   assert.equal(await page.getByLabel("3D trouser pleat").inputValue(),"double_reverse","canonical trouser pleat must reach 3D");
 
   const stageScope=await page.locator(".garmentViewerStageHead").innerText();
