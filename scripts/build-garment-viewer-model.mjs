@@ -981,6 +981,7 @@ const styleVariantMaterials=[
   ...styleVariants.breaks.filter((item)=>item.id!=="slight").map((item)=>addVariantMaterial(`TrouserBreakVariant__${item.id}`,"trouser")),
   ...styleVariants.trouserFits.flatMap((fit)=>styleVariants.breaks.flatMap((breakStyle)=>styleVariants.trouserHems.filter((item)=>item.id!=="plain").map((item)=>addVariantMaterial(`TrouserHemVariant__${fit.id}__${breakStyle.id}__${item.id}`,"trouser")))),
   ...styleVariants.rises.flatMap((rise)=>styleVariants.trouserPockets.map((item)=>addVariantMaterial(`TrouserPocketVariant__${rise.id}__${item.id}`,"trouser"))),
+  addVariantMaterial("TrouserCreaseVariant__front","trouser"),
 ];
 const buttonVariantMaterialNames=[];
 function addButtonVariantMaterial(name){
@@ -1059,8 +1060,7 @@ const trouserRiseButtonMeshes=Object.fromEntries(styleVariants.rises.map((rise)=
   addMesh(`TrouserRiseButtonMesh__${rise.id}`,button,`ButtonAccentVariant__trouser_rise__${rise.id}`)
 ]));
 const meshShirtPlacket=addMesh("ShirtPlacketMesh",detailBox,"ShirtTorsoFabric");
-const meshTrouserCreaseL=addMesh("TrouserCreaseLMesh",detailBox,"TrouserLegLFabric");
-const meshTrouserCreaseR=addMesh("TrouserCreaseRMesh",detailBox,"TrouserLegRFabric");
+const meshTrouserCrease=addMesh("TrouserCreaseVariantMesh__front",detailBox,"TrouserCreaseVariant__front");
 const meshWaistDetail=addMesh("TrouserWaistDetailMesh",detailBox,"TrouserWaistFabric");
 const meshSole=addMesh("SoleMesh",detailBox,"Shoe");
 const meshShoeDetail=addMesh("ShoeDetailMesh",detailBox,"Shoe");
@@ -1314,8 +1314,8 @@ const nodes=[
   {name:"SoleR",mesh:meshSole,translation:[.105,.010,.089],scale:[.108,.016,.292]},
   // Collar/cuff/placket/pocket geometry variants are appended below and toggled by material visibility.
   // Raised construction cues keep the 3D silhouette close to the Live Designer front reference.
-  {name:"TrouserFrontCreaseL",mesh:meshTrouserCreaseL,translation:[-.105,.555,.071],scale:[.0035,.905,.004]},
-  {name:"TrouserFrontCreaseR",mesh:meshTrouserCreaseR,translation:[.105,.555,.071],scale:[.0035,.905,.004]},
+  {name:"TrouserCreaseVariant__front__L",mesh:meshTrouserCrease,translation:[-.105,.555,.071],scale:[.0035,.905,.004]},
+  {name:"TrouserCreaseVariant__front__R",mesh:meshTrouserCrease,translation:[.105,.555,.071],scale:[.0035,.905,.004]},
   // Rise-aware fly, waistband edge and closure button are appended below.
   // Waistband/pleat/break variants are appended below and toggled by material visibility.
 ];
@@ -1911,7 +1911,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.18 model complete: researched shirt/trouser construction geometry + fit-aware sleeves + true trouser breaks + fit/break-locked turn-ups + rise-locked waist shell/fly/waistband/button/pleat/pocket details + pleat/back ease + collar/cuff stiffness + construction-aware closures/cufflinks + tuxedo front pleats + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
+    polishStage:"M7.19 model complete: researched shirt/trouser construction geometry + fit-aware sleeves + persistent tailored front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist shell/fly/waistband/button/pleat/pocket details + pleat/back ease + collar/cuff stiffness + construction-aware closures/cufflinks + tuxedo front pleats + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
