@@ -181,6 +181,10 @@ test("realistic production candidate renders front, three-quarter, side and back
     "#916F5A",
     "#C8B58E",
     "#343C49",
+    "image_exposure_metrics",
+    "clippedRatio",
+    "meanLuma",
+    "review-metrics.json",
     "review-views.txt",
   ]) assert(source.includes(token),token);
   assert(workflow.includes("Render four-angle fit review"));
