@@ -34,6 +34,14 @@ One-piece; split; western; bias-cut western.
 ### Hem
 Rounded/shirttail; straight; polo/drop-tail.
 
+### Back construction
+Plain back; rear side/knife pleats; center box pleat; locker-loop box pleat; back darts.
+
+Reference dimensions used in the model:
+- rear side pleats: 0.5 in each, adding 2 in total upper-back ease
+- center box pleat: 0.75 in each side, adding 3 in total upper-back ease
+- back darts: two darts removing 1.5 in total, 0.75 in at each dart's widest point
+
 ## Trouser matrix
 
 ### Trouser families
@@ -86,6 +94,12 @@ https://propercloth.com/reference/dress-shirts-split-yoke-vs-one-piece-yoke/
 
 Proper Cloth — shirt hem types:
 https://propercloth.com/reference/dress-shirt-hem-types/
+
+Proper Cloth — shirt rear pleats:
+https://propercloth.com/reference/dress-shirt-back-pleat-options/
+
+Proper Cloth — shirt back darts:
+https://propercloth.com/reference/darts/
 
 Permanent Style — trouser pleat number/direction:
 https://www.permanentstyle.com/2019/11/suit-style-7-a-guide-to-pleats-on-trousers.html
