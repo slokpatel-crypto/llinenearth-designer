@@ -77,6 +77,7 @@ export default async function GarmentViewerOperatorPage(){
       <div className="garmentQaPanelHead"><div><small>PRODUCTION FIT EVIDENCE</small><h2>Blender preflight geometry checks</h2></div><b>{manifest.productionFitEvidence.gate||"RECORDED"}</b></div>
       <div className="garmentQaRows">
         <div data-ready={true}><strong>Identity fit</strong><span>{Object.keys(manifest.productionFitEvidence.identityFitMeasurementsMm||{}).length} measurements</span><em>Locked silhouette + stance</em></div>
+        <div data-ready={true}><strong>Dress-shoe identity</strong><span>{Object.keys(manifest.productionFitEvidence.identityShoeMeasurementsMm||{}).length} checks</span><em>Floor contact · symmetry · foot placement</em></div>
         <div data-ready={true}><strong>Boundary intersections</strong><span>{Object.keys(manifest.productionFitEvidence.boundaryIntersections||{}).length} checks</span><em>Body / garment / tuck</em></div>
         <div data-ready={true}><strong>Boundary clearances</strong><span>{Object.keys(manifest.productionFitEvidence.boundaryClearanceMm||{}).length} checks</span><em>Upper torso · waist · cuffs · trouser gap</em></div>
       </div>
