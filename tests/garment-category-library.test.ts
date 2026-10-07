@@ -86,8 +86,10 @@ test("3D recipe shows saved garment type selections from Designer StyleSpec",()=
   assert(source.includes("styleSpec?:"));
   assert(source.includes("draftShirtTypeLabel"));
   assert(source.includes("draftTrouserTypeLabel"));
-  assert(source.includes("designerDraftRecipe.styleSpec.shirt.type"));
-  assert(source.includes("designerDraftRecipe.styleSpec.pant.type"));
+  assert(source.includes("designerDraftRecipe?.styleSpec?.shirt?.type"));
+  assert(source.includes("designerDraftRecipe?.styleSpec?.pant?.type"));
+  assert(source.includes("draftShirtDetails"));
+  assert(source.includes("draftTrouserDetails"));
   assert(source.includes("Shirt · {draftShirtTypeLabel}"));
   assert(source.includes("Trouser · {draftTrouserTypeLabel}"));
 });
