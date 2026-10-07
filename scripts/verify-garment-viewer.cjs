@@ -269,8 +269,8 @@ async function verifyViewport(browser, width) {
   };
   sameTransform(materialByName["ShirtSleeveLLength__boxy__half"],materialByName["ShirtSleeveLFabric"],"left shortened sleeve");
   sameTransform(materialByName["ShirtSleeveRLength__boxy__half"],materialByName["ShirtSleeveRFabric"],"right shortened sleeve");
-  sameTransform(materialByName["TrouserLegLVariant__wide"],materialByName["TrouserLegLFabric"],"left wide trouser");
-  sameTransform(materialByName["TrouserLegRVariant__wide"],materialByName["TrouserLegRFabric"],"right wide trouser");
+  sameTransform(materialByName["TrouserLegLBreakVariant__wide__negative"],materialByName["TrouserLegLFabric"],"left cropped wide trouser");
+  sameTransform(materialByName["TrouserLegRBreakVariant__wide__negative"],materialByName["TrouserLegRFabric"],"right cropped wide trouser");
 
   const layout = await page.evaluate(() => ({
     width: innerWidth,
