@@ -10,6 +10,7 @@ on:
       - work/3d-finish-20261007-v9
       - work/3d-finish-20261007-v10
       - work/3d-finish-20261007-v11
+      - work/3d-finish-20261007-v12
     paths:
       - "scripts/blender/**"
       - "scripts/assemble-production-garment-scene.mjs"
@@ -80,6 +81,15 @@ jobs:
           set -euo pipefail
           test -f .cache/linen-earth/linen-earth-officewear-authored.blend
           npm run garment:model-production:render-review 2>&1 | tee artifacts/realistic-3d/render-review.log
+
+      - name: Write physical panel measurement worksheet
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .cache/linen-earth/linen-earth-officewear-authored.blend
+          npm run garment:model-production:measurement-worksheet
 
       - name: Copy candidate scene and provenance
         if: always()
