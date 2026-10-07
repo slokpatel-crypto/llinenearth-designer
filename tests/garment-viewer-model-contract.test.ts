@@ -88,6 +88,24 @@ test("production manifest identity and all panel dimensions must match the appro
 });
 
 
+test("realistic-body lab preview can be structurally valid but never production-ready",()=>{
+  const panels=Object.fromEntries(REQUIRED_GARMENT_VIEWER_MATERIALS.map((name)=>[name,{widthMm:300,heightMm:600}]));
+  const lab=validateGarmentViewerModelManifest({
+    version:GARMENT_VIEWER_CONTRACT_VERSION,
+    modelId:"LE-OFFICEWEAR-V1",
+    referenceHeightMm:1727,
+    modelIdentity:MODEL_IDENTITY,
+    source:{name:"Blender Human Base Meshes",license:"CC0",verifiedAt:"2026-10-05"},
+    panels,
+    panelDimensionSource:"geometry-estimate-unverified",
+    labPreviewScaleNotice:"Panel dimensions are geometry estimates only; physical pattern scale is unverified.",
+    productionAssetStatus:"realistic-body-lab-preview-unverified-panel-scale",
+  },"LE-OFFICEWEAR-V1");
+  assert.equal(lab.valid,true);
+  assert.equal(lab.panelMeasurementReady,false);
+  assert.equal(lab.productionAssetReady,false);
+});
+
 test("production asset readiness requires measured panel and Blender fit evidence",()=>{
   const panels=Object.fromEntries(REQUIRED_GARMENT_VIEWER_MATERIALS.map((name)=>[name,{widthMm:300,heightMm:600}]));
   const base={
