@@ -12,9 +12,11 @@ on:
       - work/3d-finish-20261007-v11
       - work/3d-finish-20261007-v12
       - work/3d-finish-20261007-v14
+      - work/3d-finish-20261007-v16
     paths:
       - "scripts/blender/**"
       - "scripts/assemble-production-garment-scene.mjs"
+      - "scripts/evaluate-realistic-review.mjs"
       - "public/model-identity/**"
       - ".github/workflows/realistic-3d-candidate.yml"
 
@@ -25,7 +27,7 @@ concurrency:
 jobs:
   assemble:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       BLENDER_VERSION: "4.2.23"
       BLENDER_ROOT: "/tmp/blender-4.2.23-linux-x64"
@@ -83,6 +85,16 @@ jobs:
           test -f .cache/linen-earth/linen-earth-officewear-authored.blend
           npm run garment:model-production:render-review 2>&1 | tee artifacts/realistic-3d/render-review.log
 
+      - name: Verify garment and shoe visibility
+        id: review_visibility
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run garment:model-production:review-check
+
       - name: Export realistic lab-only GLB
         if: always()
         continue-on-error: true
@@ -131,6 +143,8 @@ jobs:
           echo "assembly=${{ steps.assemble.outcome }}"
           echo "preflight=${{ steps.preflight.outcome }}"
           echo "render=${{ steps.render.outcome }}"
+          echo "review_visibility=${{ steps.review_visibility.outcome }}"
           test "${{ steps.assemble.outcome }}" = "success"
           test "${{ steps.preflight.outcome }}" = "success"
           test "${{ steps.render.outcome }}" = "success"
+          test "${{ steps.review_visibility.outcome }}" = "success"
