@@ -344,6 +344,9 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const normalMapRef=useRef("");
   const applyToken=useRef(0);
   const interactionStartedAt=useRef<number|null>(null);
+  const preparedTextureRef=useRef(new Map<string,{texture:ViewerTexture;normal:ViewerTexture|null;garment:"shirt"|"trouser"}>());
+  const visibleGarmentMaterialsRef=useRef(new Set(GARMENT_PANEL_SPECS.map((panel)=>panel.material)));
+  const [textureRevision,setTextureRevision]=useState(0);
   const [modelUrl,setModelUrl]=useState("");
   const [engineReady,setEngineReady]=useState(false);
   const [modelReady,setModelReady]=useState(false);
@@ -704,6 +707,10 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           return {panel,texture,normal};
         }));
         if(token!==applyToken.current) return;
+        preparedTextureRef.current=new Map(prepared.map((entry)=>[
+          entry.panel.material,
+          {texture:entry.texture,normal:entry.normal,garment:entry.panel.garment},
+        ]));
         for(const entry of prepared){
           const material=materialByName(viewer,entry.panel.material);
           if(!material) continue;
@@ -714,24 +721,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           material.pbrMetallicRoughness.baseColorTexture?.setTexture(entry.texture);
           if(entry.normal) material.normalTexture?.setTexture(entry.normal);
         }
-        const preparedByMaterial=new Map(prepared.map((entry)=>[entry.panel.material,entry]));
-        for(const material of viewer.model?.materials||[]){
-          if((!material.name.startsWith("Shirt")&&!material.name.startsWith("Trouser"))||(!material.name.includes("Variant__")&&!material.name.includes("Length__"))) continue;
-          const panelMaterial=variantPanelMaterial(material.name);
-          const source=panelMaterial?preparedByMaterial.get(panelMaterial):undefined;
-          if(!source) continue;
-          material.pbrMetallicRoughness.setMetallicFactor(0);
-          const fabric=material.name.startsWith("Shirt")?shirt:trouser;
-          material.pbrMetallicRoughness.setRoughnessFactor(clamp(roughness+drapeRoughnessOffset(fabric),.55,.98));
-          material.pbrMetallicRoughness.baseColorTexture?.setTexture(source.texture);
-          if(source.normal) material.normalTexture?.setTexture(source.normal);
-        }
-        const buttonSpec=styleVariants.buttons.find((item)=>item.id===buttonKey);
-        for(const material of viewer.model?.materials||[]){
-          if(isGarmentVariantMaterial(material.name)) setMaterialAlpha(material,variantMaterialVisible(material.name,styleState));
-          else if(isSkinArmVariantMaterial(material.name)) setSkinArmAlpha(material,styleState.sleeve!=="full"&&material.name.endsWith(`__${styleState.sleeve}`));
-          else if(isButtonVariantMaterial(material.name)) setButtonMaterial(material,buttonSpec,variantMaterialVisible(material.name,styleState));
-        }
+        setTextureRevision((value)=>value+1);
         if(interactionStartedAt.current!==null && modelSrc && assetIdentityKey && modelContract?.readiness==="contract_ready"){
           const duration=performance.now()-interactionStartedAt.current;
           interactionStartedAt.current=null;
@@ -756,30 +746,45 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       }
     };
     void apply();
-  },[modelReady,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract,modelSrc,assetIdentityKey,styleState,buttonKey]);
-
-  useEffect(()=>{
-    if(!modelReady) return;
-    const viewer=viewerRef.current;
-    if(!viewer) return;
-    for(const material of viewer.model?.materials||[]){
-      if(!isGarmentVariantMaterial(material.name)) continue;
-      const fabric=material.name.startsWith("Shirt")?shirt:trouser;
-      material.pbrMetallicRoughness.setRoughnessFactor(clamp(roughness+drapeRoughnessOffset(fabric),.55,.98));
-    }
-  },[modelReady,roughness,shirt,trouser]);
+  },[modelReady,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract,modelSrc,assetIdentityKey]);
 
   useEffect(()=>{
     if(!modelReady) return;
     const viewer=viewerRef.current;
     if(!viewer?.model) return;
+    const previous=visibleGarmentMaterialsRef.current;
+    const next=new Set<string>();
+    const materialsByName=new Map(viewer.model.materials.map((material)=>[material.name,material]));
+    for(const material of viewer.model.materials){
+      if(isGarmentVariantMaterial(material.name)&&variantMaterialVisible(material.name,styleState)) next.add(material.name);
+    }
+    for(const name of previous){
+      if(next.has(name)) continue;
+      setMaterialAlpha(materialsByName.get(name),false);
+    }
+    for(const name of next){
+      const material=materialsByName.get(name);
+      if(!material) continue;
+      const fabric=name.startsWith("Shirt")?shirt:trouser;
+      if(!previous.has(name)){
+        setMaterialAlpha(material,true);
+        material.pbrMetallicRoughness.setMetallicFactor(0);
+      }
+      material.pbrMetallicRoughness.setRoughnessFactor(clamp(roughness+drapeRoughnessOffset(fabric),.55,.98));
+      const panelMaterial=variantPanelMaterial(name);
+      const prepared=panelMaterial?preparedTextureRef.current.get(panelMaterial):undefined;
+      if(prepared){
+        material.pbrMetallicRoughness.baseColorTexture?.setTexture(prepared.texture);
+        if(prepared.normal) material.normalTexture?.setTexture(prepared.normal);
+      }
+    }
+    visibleGarmentMaterialsRef.current=next;
     const buttonSpec=styleVariants.buttons.find((item)=>item.id===buttonKey);
     for(const material of viewer.model.materials){
-      if(isGarmentVariantMaterial(material.name)) setMaterialAlpha(material,variantMaterialVisible(material.name,styleState));
-      else if(isSkinArmVariantMaterial(material.name)) setSkinArmAlpha(material,styleState.sleeve!=="full"&&material.name.endsWith(`__${styleState.sleeve}`));
+      if(isSkinArmVariantMaterial(material.name)) setSkinArmAlpha(material,styleState.sleeve!=="full"&&material.name.endsWith(`__${styleState.sleeve}`));
       else if(isButtonVariantMaterial(material.name)) setButtonMaterial(material,buttonSpec,variantMaterialVisible(material.name,styleState));
     }
-  },[modelReady,styleState,buttonKey]);
+  },[modelReady,styleState,buttonKey,textureRevision,roughness,shirt,trouser]);
 
   function applyShirtTypePreset(id:string){
     setShirtTypeKey(id);
@@ -978,12 +983,12 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       <label className="garmentRange"><span>Surface roughness base <b>{roughness.toFixed(2)}</b></span><input type="range" min=".55" max=".98" step=".01" value={roughness} onChange={(event)=>setRoughness(Number(event.target.value))}/><small>Fabric drape class automatically shifts linen normal strength and roughness around this base value; unknown fabrics stay on a conservative medium response.</small></label>
 
       <div className="garmentViewerFacts">
-        <span><small>MODEL</small><b>{modelContract?.readiness==="contract_ready"&&productionManifestReady?"M7.25 Tailoring GLB":"Reusable GLB"}</b></span>
+        <span><small>MODEL</small><b>{modelContract?.readiness==="contract_ready"&&productionManifestReady?"M7.26 Tailoring GLB":"Reusable GLB"}</b></span>
         <span><small>FABRIC</small><b>Panel-scaled PBR + variants</b></span>
         <span><small>VIEWS</small><b>4 fixed + free</b></span>
         <span><small>AI CREDITS</small><b>0</b></span>
       </div>
-      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M7.25 is locked: the same mannequin now carries a researched tailoring library covering shirt type/fit/tuck/sleeve/collar construction/cuff/placket/pocket/yoke/back/hem and trouser type/fit/rise/pleat direction/waistband/break/turn-up/pockets. Fabric remains panel-scaled and non-metallic; verified drape/weight metadata now changes the surface fold-normal response and roughness without AI credits." : "Fallback prototype is active. Production should use the identity-locked M7.3 tailoring model before fabric/drape work continues."}</p>
+      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M7.26 is locked: the same mannequin now carries a researched tailoring library covering shirt type/fit/tuck/sleeve/collar construction/cuff/placket/pocket/yoke/back/hem and trouser type/fit/rise/pleat direction/waistband/break/turn-up/pockets. Fabric remains panel-scaled and non-metallic; verified drape/weight metadata now changes the surface fold-normal response and roughness without AI credits." : "Fallback prototype is active. Production should use the identity-locked M7.3 tailoring model before fabric/drape work continues."}</p>
     </aside>
   </section>;
 }
