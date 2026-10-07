@@ -233,6 +233,10 @@ test("realistic scene can absorb the deterministic tailoring variant library wit
     "Length__",
     "MannequinSkinArmVariant__",
     "Deterministic base geometry leaked into realistic scene",
+    "repair_variant_outside_body",
+    "variant_clearance",
+    "linen_earth_tailoring_variant_repair_json",
+    "Variant body-clearance repairs",
     "Retained variant materials",
   ]) assert(source.includes(token),token);
   for(const name of [
