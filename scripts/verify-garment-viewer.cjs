@@ -20,6 +20,21 @@ async function verifyViewport(browser, width) {
   await page.addInitScript(()=>{
     localStorage.setItem("linen-earth:real-designer-draft:v2",JSON.stringify({
       occasion:"Semi-Formal",
+      styleSpec:{
+        shirt:{
+          type:"camp_collar_resort",
+          collar:"cutaway_collar",
+          cuff:"cocktail_cuff",
+          sleeve:"half_sleeve",
+          fit:"boxy_oversized",
+          wear:"untucked",
+          hem:"straight_flat_hem"
+        },
+        pant:{
+          type:"wide_leg_relaxed_drape",
+          pleat:"double_pleat_reverse"
+        }
+      },
       style:{
         collar:"Spread Collar",
         cuff:"Barrel Cuff (2-button)",
@@ -87,6 +102,12 @@ async function verifyViewport(browser, width) {
   assert.match(recipe,/Spread Collar/);
   assert.match(recipe,/Pleated Trouser/);
   assert.match(recipe,/saved Designer recipe now drives the same 3D tailoring-variant system/i);
+  assert.equal(await page.getByLabel("3D shirt type").inputValue(),"camp_collar_resort","saved Designer shirt type must reach 3D");
+  assert.equal(await page.getByLabel("3D collar").inputValue(),"cutaway","canonical StyleSpec collar must override the shirt-type preset");
+  assert.equal(await page.getByLabel("3D cuff").inputValue(),"cocktail","canonical StyleSpec cuff must override the shirt-type preset");
+  assert.equal(await page.getByLabel("3D shirt wear").inputValue(),"untucked","canonical Designer wear must reach 3D");
+  assert.equal(await page.getByLabel("3D trouser type").inputValue(),"wide_leg_relaxed_drape","saved Designer trouser type must reach 3D");
+  assert.equal(await page.getByLabel("3D trouser pleat").inputValue(),"double_reverse","canonical trouser pleat must reach 3D");
 
   const stageScope=await page.locator(".garmentViewerStageHead").innerText();
   assert.match(stageScope,/MODEL IDENTITY LOCKED · SHIRT \+ TROUSER/,"3D stage must state the exact-model lock");
