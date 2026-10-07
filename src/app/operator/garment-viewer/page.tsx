@@ -32,9 +32,9 @@ export default async function GarmentViewerOperatorPage(){
       <nav><Link href="/lab/garment-viewer">Open 3D Lab ↗</Link><Link href="/operator">Operator Desk</Link></nav>
     </header>
 
-    <section className="garmentQaHero" data-ready={status.assetReady&&manifest?.productionAssetReady===true}>
+    <section className="garmentQaHero" data-ready={status.productionCandidateReady}>
       <small>PRODUCTION ASSET STATUS</small>
-      <strong>{status.assetReady&&manifest?.productionAssetReady===true?"REALISTIC CANDIDATE READY":status.assetReady?"STRUCTURE READY / EVIDENCE OPEN":"NOT READY"}</strong>
+      <strong>{status.productionCandidateReady?"REALISTIC CANDIDATE READY":status.assetReady?"STRUCTURE READY / EVIDENCE OPEN":"NOT READY"}</strong>
       <p>{status.configured ? status.modelSrc : "LINEN_GARMENT_MODEL_SRC is not configured."}</p>
       {manifest?.productionAssetStatus&&<p><b>Asset status:</b> {manifest.productionAssetStatus}</p>}
     </section>
@@ -93,7 +93,7 @@ export default async function GarmentViewerOperatorPage(){
       </div>
     </section>}
 
-    <GarmentViewerEvidenceForm assetIdentity={status.assetIdentity}/>
+    <GarmentViewerEvidenceForm assetIdentity={status.assetIdentity} productionCandidateReady={status.productionCandidateReady}/>
 
     <section className="garmentQaPanel">
       <div className="garmentQaPanelHead"><div><small>CUSTOMER PROMOTION GATE</small><h2>3D stays in the lab until every evidence gate passes</h2></div><b>{latest?.readiness.ready?"READY":"BLOCKED"}</b></div>
