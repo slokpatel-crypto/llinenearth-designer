@@ -891,8 +891,12 @@ const styleVariantMaterials=[
     addVariantMaterial(`ShirtSleeveLLength__${sleeve.id}`,"shirt"),
     addVariantMaterial(`ShirtSleeveRLength__${sleeve.id}`,"shirt"),
   ]),
-  ...styleVariants.collars.map((item)=>addVariantMaterial(`ShirtCollarVariant__${item.id}`,"shirt")),
-  ...styleVariants.cuffs.map((item)=>addVariantMaterial(`ShirtCuffVariant__${item.id}`,"shirt")),
+  ...styleVariants.collars.flatMap((item)=>styleVariants.collarConstruction.map((construction)=>
+    addVariantMaterial(`ShirtCollarVariant__${item.id}__${construction.id}`,"shirt")
+  )),
+  ...styleVariants.cuffs.flatMap((item)=>styleVariants.cuffConstruction.map((construction)=>
+    addVariantMaterial(`ShirtCuffVariant__${item.id}__${construction.id}`,"shirt")
+  )),
   ...styleVariants.plackets.filter((item)=>item.id!=="french").map((item)=>addVariantMaterial(`ShirtPlacketVariant__${item.id}`,"shirt")),
   ...styleVariants.pockets.filter((item)=>item.id!=="none").map((item)=>addVariantMaterial(`ShirtPocketVariant__${item.id}`,"shirt")),
   ...styleVariants.yokes.map((item)=>addVariantMaterial(`ShirtYokeVariant__${item.id}`,"shirt")),
@@ -1006,20 +1010,32 @@ for(const rise of styleVariants.rises){
   }
 }
 
-const collarVariantMeshes=Object.fromEntries(styleVariants.collars.map((item)=>[
-  item.id,
-  addMesh(`ShirtCollarVariantMesh__${item.id}`,item.id==="mandarin"?mandarinCollar:collar,`ShirtCollarVariant__${item.id}`)
-]));
+const collarVariantMeshes={};
+for(const item of styleVariants.collars){
+  collarVariantMeshes[item.id]={};
+  for(const construction of styleVariants.collarConstruction){
+    const key=`${item.id}__${construction.id}`;
+    collarVariantMeshes[item.id][construction.id]=addMesh(
+      `ShirtCollarVariantMesh__${key}`,
+      item.id==="mandarin"?mandarinCollar:collar,
+      `ShirtCollarVariant__${key}`
+    );
+  }
+}
 const roundedCuffIds=new Set(["rounded_2","rounded_french","soft_barrel"]);
 const miteredCuffIds=new Set(["mitered_1","mitered_2"]);
-const cuffVariantMeshes=Object.fromEntries(styleVariants.cuffs.map((item)=>[
-  item.id,
-  addMesh(
-    `ShirtCuffVariantMesh__${item.id}`,
-    item.id==="cocktail"?cocktailCuff:miteredCuffIds.has(item.id)?miteredCuff:roundedCuffIds.has(item.id)?roundedCuff:detailBox,
-    `ShirtCuffVariant__${item.id}`
-  )
-]));
+const cuffVariantMeshes={};
+for(const item of styleVariants.cuffs){
+  cuffVariantMeshes[item.id]={};
+  for(const construction of styleVariants.cuffConstruction){
+    const key=`${item.id}__${construction.id}`;
+    cuffVariantMeshes[item.id][construction.id]=addMesh(
+      `ShirtCuffVariantMesh__${key}`,
+      item.id==="cocktail"?cocktailCuff:miteredCuffIds.has(item.id)?miteredCuff:roundedCuffIds.has(item.id)?roundedCuff:detailBox,
+      `ShirtCuffVariant__${key}`
+    );
+  }
+}
 const placketVariantMeshes=Object.fromEntries(styleVariants.plackets.filter((item)=>item.id!=="french").map((item)=>[
   item.id,
   addMesh(`ShirtPlacketVariantMesh__${item.id}`,detailBox,`ShirtPlacketVariant__${item.id}`)
@@ -1125,20 +1141,42 @@ const collarNodeSpec={
   camp:{y:1.446,z:.094,scale:[.098,.112,.014],angle:32},
   one_piece:{y:1.452,z:.094,scale:[.100,.118,.014],angle:28},
 };
+const collarBuildSpec={
+  stiff_fused:{length:1,depth:1,drop:0,angle:0,mandarinHeight:1},
+  soft_fused:{length:1.025,depth:.86,drop:-.002,angle:1.5,mandarinHeight:.95},
+  soft_unfused:{length:1.055,depth:.70,drop:-.005,angle:3.0,mandarinHeight:.88},
+};
 for(const item of styleVariants.collars){
-  if(item.id==="mandarin"){
-    nodes.push({name:"ShirtCollarVariant__mandarin",mesh:collarVariantMeshes.mandarin,translation:[0,1.480,.010],scale:[1,.92,1]});
-    continue;
-  }
   const spec=collarNodeSpec[item.id]||collarNodeSpec.point;
-  nodes.push({name:`ShirtCollarL__${item.id}`,mesh:collarVariantMeshes[item.id],translation:[-.043,spec.y,spec.z],scale:spec.scale,rotation:qz(-spec.angle)});
-  nodes.push({name:`ShirtCollarR__${item.id}`,mesh:collarVariantMeshes[item.id],translation:[.043,spec.y,spec.z],scale:spec.scale,rotation:qz(spec.angle)});
-  if(item.id==="button_down"||item.id==="tab"){
-    nodes.push({name:`ShirtCollarButtonL__${item.id}`,mesh:meshButton,translation:[-.050,1.438,.113],scale:[.004,.004,.003]});
-    nodes.push({name:`ShirtCollarButtonR__${item.id}`,mesh:meshButton,translation:[.050,1.438,.113],scale:[.004,.004,.003]});
+  for(const construction of styleVariants.collarConstruction){
+    const build=collarBuildSpec[construction.id]||collarBuildSpec.stiff_fused;
+    const mesh=collarVariantMeshes[item.id][construction.id];
+    if(item.id==="mandarin"){
+      nodes.push({
+        name:`ShirtCollarVariant__mandarin__${construction.id}`,
+        mesh,
+        translation:[0,1.480+build.drop,.010],
+        scale:[1,.92*build.mandarinHeight,build.depth]
+      });
+      continue;
+    }
+    const scale=[spec.scale[0],spec.scale[1]*build.length,spec.scale[2]*build.depth];
+    nodes.push({
+      name:`ShirtCollarL__${item.id}__${construction.id}`,
+      mesh,
+      translation:[-.043,spec.y+build.drop,spec.z],
+      scale,
+      rotation:qz(-(spec.angle+build.angle))
+    });
+    nodes.push({
+      name:`ShirtCollarR__${item.id}__${construction.id}`,
+      mesh,
+      translation:[.043,spec.y+build.drop,spec.z],
+      scale,
+      rotation:qz(spec.angle+build.angle)
+    });
   }
 }
-
 // Cuff families.
 const cuffSpec={
   barrel_1:{width:.086,length:.0603,depth:.108},
@@ -1155,11 +1193,21 @@ const cuffSpec={
   soft_french:{width:.092,length:.0730,depth:.114},
   cocktail:{width:.094,length:.0750,depth:.116},
 };
+const cuffBuildSpec={
+  fused:{width:1,length:1,depth:1,drop:0},
+  soft:{width:1.015,length:1.025,depth:.82,drop:-.0015},
+};
 for(const item of styleVariants.cuffs){
   const spec=cuffSpec[item.id]||cuffSpec.barrel_1;
-  const centerY=.865+spec.length/2;
-  nodes.push({name:`ShirtCuffL__${item.id}`,mesh:cuffVariantMeshes[item.id],translation:[-.250,centerY,.030],scale:[spec.width,spec.length,spec.depth],rotation:qz(-2.4)});
-  nodes.push({name:`ShirtCuffR__${item.id}`,mesh:cuffVariantMeshes[item.id],translation:[.250,centerY,.030],scale:[spec.width,spec.length,spec.depth],rotation:qz(2.4)});
+  for(const construction of styleVariants.cuffConstruction){
+    const build=cuffBuildSpec[construction.id]||cuffBuildSpec.fused;
+    const length=spec.length*build.length;
+    const centerY=.865+length/2+build.drop;
+    const scale=[spec.width*build.width,length,spec.depth*build.depth];
+    const mesh=cuffVariantMeshes[item.id][construction.id];
+    nodes.push({name:`ShirtCuffL__${item.id}__${construction.id}`,mesh,translation:[-.250,centerY,.030],scale,rotation:qz(-2.4)});
+    nodes.push({name:`ShirtCuffR__${item.id}__${construction.id}`,mesh,translation:[.250,centerY,.030],scale,rotation:qz(2.4)});
+  }
 }
 
 // Plackets and pockets.
@@ -1391,7 +1439,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.4 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.5 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -1476,7 +1524,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.4 model complete: researched shirt/trouser construction geometry + pleat and shirt-back ease volume + canonical Designer handoff + fabric drape response",
+    polishStage:"M7.5 model complete: researched shirt/trouser construction geometry + pleat/back ease volume + collar/cuff stiffness geometry + canonical Designer handoff + fabric drape response",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
