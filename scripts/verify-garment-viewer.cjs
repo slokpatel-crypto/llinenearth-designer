@@ -99,7 +99,8 @@ async function verifyViewport(browser, width) {
 
   const recipe=await page.locator(".garmentDraftRecipe").innerText();
   assert.match(recipe,/YOUR DESIGNER RECIPE/);
-  assert.match(recipe,/Spread Collar/);
+  assert.match(recipe,/Cutaway Collar/);
+  assert.match(recipe,/Cocktail Cuff/);
   assert.match(recipe,/Wide-leg \/ Relaxed Drape Trouser/);
   assert.match(recipe,/saved Designer recipe now drives the same 3D tailoring-variant system/i);
   assert.equal(await page.getByLabel("3D shirt type").inputValue(),"camp_collar_resort","saved Designer shirt type must reach 3D");
