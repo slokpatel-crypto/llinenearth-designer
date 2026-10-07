@@ -93,12 +93,28 @@ def material_slot_names(obj):
     return [slot.material.name if slot.material else "" for slot in obj.material_slots]
 
 
+def world_bvh(obj, epsilon=0.0):
+    if obj is None or obj.type != "MESH":
+        return None
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    evaluated = obj.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        matrix = evaluated.matrix_world
+        vertices = [matrix @ vertex.co for vertex in mesh.vertices]
+        polygons = [tuple(polygon.vertices) for polygon in mesh.polygons if len(polygon.vertices) >= 3]
+        if not vertices or not polygons:
+            return None
+        return BVHTree.FromPolygons(vertices, polygons, all_triangles=False, epsilon=epsilon)
+    finally:
+        evaluated.to_mesh_clear()
+
+
 def intersection_pair_count(left, right):
     if left is None or right is None or left.type != "MESH" or right.type != "MESH":
         return None
-    depsgraph = bpy.context.evaluated_depsgraph_get()
-    left_tree = BVHTree.FromObject(left, depsgraph, epsilon=0.0005)
-    right_tree = BVHTree.FromObject(right, depsgraph, epsilon=0.0005)
+    left_tree = world_bvh(left, epsilon=0.0005)
+    right_tree = world_bvh(right, epsilon=0.0005)
     if left_tree is None or right_tree is None:
         return None
     return len(left_tree.overlap(right_tree))
@@ -107,10 +123,10 @@ def intersection_pair_count(left, right):
 def nearest_distance_stats_mm(source, target, z_center=None, band=0.06, max_samples=240):
     if source is None or target is None or source.type != "MESH" or target.type != "MESH":
         return None
-    depsgraph = bpy.context.evaluated_depsgraph_get()
-    target_tree = BVHTree.FromObject(target, depsgraph, epsilon=0.0)
+    target_tree = world_bvh(target, epsilon=0.0)
     if target_tree is None:
         return None
+    depsgraph = bpy.context.evaluated_depsgraph_get()
     evaluated = source.evaluated_get(depsgraph)
     mesh = evaluated.to_mesh()
     try:
