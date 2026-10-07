@@ -238,6 +238,18 @@ function isGarmentVariantMaterial(name:string) {
 function isButtonVariantMaterial(name:string) {
   return name.startsWith("ButtonAccentVariant__");
 }
+function variantPanelMaterial(name:string) {
+  if(["ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric","TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric"].includes(name)) return name;
+  if(name.startsWith("ShirtSleeveL")) return "ShirtSleeveLFabric";
+  if(name.startsWith("ShirtSleeveR")) return "ShirtSleeveRFabric";
+  if(name.startsWith("ShirtRollBandVariant__")||name.startsWith("ShirtSleeveFinishVariant__")||name.startsWith("ShirtCuffVariant__")) return "ShirtSleeveLFabric";
+  if(name.startsWith("TrouserLegL")) return "TrouserLegLFabric";
+  if(name.startsWith("TrouserLegR")) return "TrouserLegRFabric";
+  if(name.startsWith("TrouserHemVariant__")||name.startsWith("TrouserBreakVariant__")||name.startsWith("TrouserCreaseVariant__")) return "TrouserLegLFabric";
+  if(name.startsWith("Shirt")) return "ShirtTorsoFabric";
+  if(name.startsWith("Trouser")) return "TrouserWaistFabric";
+  return null;
+}
 function isSkinArmVariantMaterial(name:string) {
   return name.startsWith("MannequinSkinArmVariant__");
 }
@@ -668,11 +680,11 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           material.pbrMetallicRoughness.baseColorTexture?.setTexture(entry.texture);
           if(entry.normal) material.normalTexture?.setTexture(entry.normal);
         }
-        const shirtSource=prepared.find((entry)=>entry.panel.material==="ShirtTorsoFabric");
-        const trouserSource=prepared.find((entry)=>entry.panel.material==="TrouserWaistFabric");
+        const preparedByMaterial=new Map(prepared.map((entry)=>[entry.panel.material,entry]));
         for(const material of viewer.model?.materials||[]){
           if((!material.name.startsWith("Shirt")&&!material.name.startsWith("Trouser"))||(!material.name.includes("Variant__")&&!material.name.includes("Length__"))) continue;
-          const source=material.name.startsWith("Shirt")?shirtSource:trouserSource;
+          const panelMaterial=variantPanelMaterial(material.name);
+          const source=panelMaterial?preparedByMaterial.get(panelMaterial):undefined;
           if(!source) continue;
           material.pbrMetallicRoughness.setMetallicFactor(0);
           const fabric=material.name.startsWith("Shirt")?shirt:trouser;

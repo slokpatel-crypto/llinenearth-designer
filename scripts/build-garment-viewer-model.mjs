@@ -107,7 +107,22 @@ function shirtFitGeometry(base,fit,centerX=0){
     const scale=fit.waistScale+(fit.chestScale-fit.waistScale)*torsoBlend;
     const sleeveScale=fit.sleeveScale||scale;
     const effective=centerX===0?scale:sleeveScale;
-    return {...p,x:centerX+(p.x-centerX)*effective,z:p.z*(1+(effective-1)*.70)};
+    const looseness=Math.max(0,Math.min(1,(effective-.92)/.22));
+    const isTorso=centerX===0;
+    const verticalZone=isTorso
+      ? Math.max(0,Math.min(1,(1.42-p.y)/.34))*Math.max(0,Math.min(1,(p.y-1.055)/.14))
+      : Math.max(0,Math.min(1,(1.36-p.y)/.42))*Math.max(0,Math.min(1,(p.y-.89)/.18));
+    const frontBack=p.z>=0?1:-.62;
+    const phase=isTorso
+      ? Math.sin((p.x+.23)*34+Math.sin((p.y-1.04)*11))
+      : Math.sin((p.y-.86)*24+(p.x-centerX)*31);
+    const foldAmplitude=(isTorso?.0011:.0008)+looseness*(isTorso?.0032:.0022);
+    const drapeDepth=frontBack*verticalZone*phase*foldAmplitude;
+    return {
+      ...p,
+      x:centerX+(p.x-centerX)*effective,
+      z:p.z*(1+(effective-1)*.70)+drapeDepth,
+    };
   });
 }
 
@@ -138,7 +153,16 @@ function trouserFitGeometry(base,fit,centerX){
     let scale;
     if(t<.5) scale=fit.hemScale+(fit.kneeScale-fit.hemScale)*(t/.5);
     else scale=fit.kneeScale+(fit.thighScale-fit.kneeScale)*((t-.5)/.5);
-    return {...p,x:centerX+(p.x-centerX)*scale,z:.02+(p.z-.02)*(1+(scale-1)*.62)};
+    const ease=Math.max(0,Math.min(1,(Number(fit.thighScale||1)-.86)/.34));
+    const gravityZone=Math.max(0,Math.min(1,(.94-p.y)/.80));
+    const frontBack=p.z>=.015?1:.48;
+    const phase=Math.sin((p.y-.055)*18+(p.x-centerX)*42)+.45*Math.sin((p.y-.055)*31-(p.x-centerX)*27);
+    const foldAmplitude=(.0007+ease*.0034)*gravityZone*frontBack;
+    return {
+      ...p,
+      x:centerX+(p.x-centerX)*scale,
+      z:.02+(p.z-.02)*(1+(scale-1)*.62)+phase*foldAmplitude,
+    };
   });
 }
 
@@ -1927,7 +1951,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.22 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.23 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -2012,7 +2036,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.22 model complete: researched shirt/trouser construction geometry + tailored half/three-quarter sleeve finish bands + exposed forearms for shortened sleeves + collar-neck junction seal + fit-aware sleeves + persistent tailored front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist shell/fly/waistband/button/pleat/pocket details + pleat/back ease + collar/cuff stiffness + construction-aware closures/cufflinks + tuxedo front pleats + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
+    polishStage:"M7.23 model complete: geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
