@@ -74,7 +74,18 @@ def cli_args():
             "When supplied, the exporter writes the matching .viewer.json sidecar."
         ),
     )
-    return parser.parse_args(argv)
+    parser.add_argument(
+        "--lab-preview",
+        action="store_true",
+        help=(
+            "Write an explicitly non-promotional realistic-body lab manifest using "
+            "geometry-estimated panel extents. Never use this mode for customer promotion."
+        ),
+    )
+    options = parser.parse_args(argv)
+    if options.lab_preview and options.panel_spec:
+        parser.error("--lab-preview and --panel-spec are mutually exclusive.")
+    return options
 
 
 def world_bounds(obj):
@@ -86,9 +97,75 @@ def object_height(obj):
     return max(point.z for point in points) - min(point.z for point in points)
 
 
+def ensure_generated_image(name, rgba, non_color=False):
+    image = bpy.data.images.get(name)
+    if image is None:
+        image = bpy.data.images.new(name=name, width=2, height=2, alpha=True)
+        image.pixels = list(rgba) * 4
+        image.pack()
+    if non_color:
+        try:
+            image.colorspace_settings.name = "Non-Color"
+        except Exception:
+            pass
+    return image
+
+
+def configure_texture_ready_material(material, visible=True):
+    material.use_nodes = True
+    nodes = material.node_tree.nodes
+    links = material.node_tree.links
+    principled = nodes.get("Principled BSDF")
+    if principled is None:
+        principled = nodes.new("ShaderNodeBsdfPrincipled")
+
+    base_node = nodes.get("LE_BASECOLOR_SLOT")
+    if base_node is None:
+        base_node = nodes.new("ShaderNodeTexImage")
+        base_node.name = "LE_BASECOLOR_SLOT"
+        base_node.label = "Linen Earth replaceable fabric texture"
+    base_node.image = ensure_generated_image("LE_FABRIC_PLACEHOLDER_WHITE", (1.0, 1.0, 1.0, 1.0))
+    if not any(link.from_node == base_node and link.to_node == principled and link.to_socket == principled.inputs["Base Color"] for link in links):
+        links.new(base_node.outputs["Color"], principled.inputs["Base Color"])
+
+    normal_tex = nodes.get("LE_NORMAL_SLOT")
+    if normal_tex is None:
+        normal_tex = nodes.new("ShaderNodeTexImage")
+        normal_tex.name = "LE_NORMAL_SLOT"
+        normal_tex.label = "Linen Earth replaceable linen normal"
+    normal_tex.image = ensure_generated_image("LE_NORMAL_PLACEHOLDER", (0.5, 0.5, 1.0, 1.0), non_color=True)
+
+    normal_map = nodes.get("LE_NORMAL_MAP")
+    if normal_map is None:
+        normal_map = nodes.new("ShaderNodeNormalMap")
+        normal_map.name = "LE_NORMAL_MAP"
+        normal_map.inputs["Strength"].default_value = 0.35
+    if not any(link.from_node == normal_tex and link.to_node == normal_map for link in links):
+        links.new(normal_tex.outputs["Color"], normal_map.inputs["Color"])
+    if not any(link.from_node == normal_map and link.to_node == principled for link in links):
+        links.new(normal_map.outputs["Normal"], principled.inputs["Normal"])
+
+    principled.inputs["Metallic"].default_value = 0.0
+    principled.inputs["Roughness"].default_value = 0.82
+    principled.inputs["Alpha"].default_value = 1.0 if visible else 0.0
+    material.diffuse_color = (1.0, 1.0, 1.0, 1.0 if visible else 0.0)
+    if hasattr(material, "surface_render_method"):
+        try:
+            material.surface_render_method = "DITHERED"
+        except Exception:
+            pass
+    elif hasattr(material, "blend_method"):
+        try:
+            material.blend_method = "BLEND"
+        except Exception:
+            pass
+    material.use_backface_culling = False
+    return material
+
+
 def ensure_material(obj, material_name):
     material = bpy.data.materials.get(material_name) or bpy.data.materials.new(material_name)
-    material.use_nodes = True
+    configure_texture_ready_material(material, visible=True)
     obj.data.materials.clear()
     obj.data.materials.append(material)
     for polygon in obj.data.polygons:
@@ -180,11 +257,56 @@ def finite_number(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
+def geometry_panel_spec():
+    panels = {}
+    for name in GARMENT_OBJECTS:
+        obj = bpy.data.objects.get(name)
+        if obj is None or obj.type != "MESH":
+            raise RuntimeError(f"Lab preview cannot estimate missing garment panel: {name}")
+        points = world_bounds(obj)
+        width_mm = (max(point.x for point in points) - min(point.x for point in points)) * 1000.0
+        height_mm = (max(point.z for point in points) - min(point.z for point in points)) * 1000.0
+        if width_mm <= 0 or height_mm <= 0:
+            raise RuntimeError(f"Lab preview panel estimate is invalid for {name}.")
+        panels[name] = {
+            "widthMm": round(width_mm, 2),
+            "heightMm": round(height_mm, 2),
+        }
+    return {
+        "panels": panels,
+        "cameraOrbits": None,
+        "measurementEvidence": None,
+        "dimensionSource": "geometry-estimate-unverified",
+    }
+
+
 def load_panel_spec(path):
     with open(path, "r", encoding="utf-8") as handle:
         payload = json.load(handle)
 
-    panels = payload.get("panels") if isinstance(payload, dict) else None
+    if not isinstance(payload, dict):
+        raise RuntimeError("Panel spec must be a JSON object.")
+
+    evidence = payload.get("measurementEvidence")
+    if not isinstance(evidence, dict):
+        raise RuntimeError(
+            "Panel spec requires measurementEvidence so production scale cannot be supplied as anonymous/guessed numbers."
+        )
+    evidence_source = str(evidence.get("source", "")).strip()
+    evidence_date = str(evidence.get("measuredAt", "")).strip()
+    evidence_note = str(evidence.get("note", "")).strip()
+    allowed_sources = {"owner_measured", "tailor_measured", "pattern_room_measured", "supplier_pattern_verified"}
+    if evidence_source not in allowed_sources:
+        raise RuntimeError(
+            "measurementEvidence.source must be owner_measured, tailor_measured, "
+            "pattern_room_measured or supplier_pattern_verified."
+        )
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", evidence_date):
+        raise RuntimeError("measurementEvidence.measuredAt must use YYYY-MM-DD.")
+    if len(evidence_note) < 8:
+        raise RuntimeError("measurementEvidence.note must briefly describe how the panel dimensions were measured.")
+
+    panels = payload.get("panels")
     if not isinstance(panels, dict):
         raise RuntimeError("Panel spec must contain a panels object.")
 
@@ -222,7 +344,15 @@ def load_panel_spec(path):
         if any(key not in allowed or not isinstance(value, str) or not value.strip() for key, value in camera_orbits.items()):
             raise RuntimeError("cameraOrbits may contain only non-empty front/three-quarter/side/back strings.")
 
-    return {"panels": normalized, "cameraOrbits": camera_orbits or None}
+    return {
+        "panels": normalized,
+        "cameraOrbits": camera_orbits or None,
+        "measurementEvidence": {
+            "source": evidence_source,
+            "measuredAt": evidence_date,
+            "note": evidence_note,
+        },
+    }
 
 
 def run_scene_preflight():
@@ -234,11 +364,12 @@ def run_scene_preflight():
     if not callable(preflight_main):
         raise RuntimeError("Production scene preflight does not expose main().")
     try:
-        preflight_main()
+        return preflight_main()
     except SystemExit as error:
         code = error.code if isinstance(error.code, int) else 1
         if code:
             raise RuntimeError("Production scene preflight failed; export is blocked.") from error
+        return None
 
 
 def viewer_manifest_path(output_path):
@@ -248,7 +379,7 @@ def viewer_manifest_path(output_path):
     return root + ".viewer.json"
 
 
-def write_viewer_manifest(output_path, height, source, model_identity, panel_spec):
+def write_viewer_manifest(output_path, height, source, model_identity, panel_spec, preflight_report=None, lab_preview=False):
     payload = {
         "version": CONTRACT_VERSION,
         "modelId": MODEL_ID,
@@ -256,7 +387,29 @@ def write_viewer_manifest(output_path, height, source, model_identity, panel_spe
         "modelIdentity": model_identity,
         "source": source,
         "panels": panel_spec["panels"],
+        "productionAssetStatus": (
+            "realistic-body-lab-preview-unverified-panel-scale"
+            if lab_preview
+            else "realistic-body-production-candidate"
+        ),
     }
+    if lab_preview:
+        payload["labPreviewScaleNotice"] = (
+            "Panel dimensions are geometry estimates only; physical pattern scale is unverified."
+        )
+        payload["panelDimensionSource"] = panel_spec.get("dimensionSource")
+    else:
+        payload["panelMeasurementEvidence"] = panel_spec["measurementEvidence"]
+    if isinstance(preflight_report, dict):
+        payload["productionFitEvidence"] = {
+            "gate": preflight_report.get("gate"),
+            "ready": preflight_report.get("ready") is True,
+            "identityFitMeasurementsMm": preflight_report.get("identityFitMeasurementsMm"),
+            "identityShoeMeasurementsMm": preflight_report.get("identityShoeMeasurementsMm"),
+            "boundaryIntersections": preflight_report.get("boundaryIntersections"),
+            "boundaryClearanceMm": preflight_report.get("boundaryClearanceMm"),
+            "totals": preflight_report.get("totals"),
+        }
     if panel_spec.get("cameraOrbits"):
         payload["cameraOrbits"] = panel_spec["cameraOrbits"]
 
@@ -292,8 +445,12 @@ def export_glb(collection, output_path):
 
 def main():
     args = cli_args()
-    run_scene_preflight()
-    panel_spec = load_panel_spec(args.panel_spec) if args.panel_spec else None
+    preflight_report = run_scene_preflight()
+    panel_spec = (
+        load_panel_spec(args.panel_spec)
+        if args.panel_spec
+        else geometry_panel_spec() if args.lab_preview else None
+    )
     source = scene_source_provenance(bpy.context.scene) if panel_spec else None
     model_identity = scene_model_identity(bpy.context.scene) if panel_spec else None
     collection, height = validate_scene(args.collection, args.reference_body)
@@ -301,14 +458,26 @@ def main():
 
     manifest_path = None
     if panel_spec and source:
-        manifest_path = write_viewer_manifest(args.output, height, source, model_identity, panel_spec)
+        manifest_path = write_viewer_manifest(
+            args.output,
+            height,
+            source,
+            model_identity,
+            panel_spec,
+            preflight_report,
+            lab_preview=args.lab_preview,
+        )
 
     print(f"Linen Earth model exported: {os.path.abspath(args.output)}")
     print(f"Model ID: {MODEL_ID}")
     print(f"Model identity: {MODEL_IDENTITY_ID}")
     print(f"Reference body height: {height * 1000:.1f} mm")
     if manifest_path:
-        print(f"Measured viewer manifest written: {manifest_path}")
+        if args.lab_preview:
+            print(f"LAB-ONLY viewer manifest written: {manifest_path}")
+            print("Panel scale is geometry-estimated and cannot satisfy production promotion evidence.")
+        else:
+            print(f"Measured viewer manifest written: {manifest_path}")
         print("Next: npm run garment:model-check -- " + os.path.abspath(args.output))
     else:
         print("No .viewer.json was written because --panel-spec was omitted.")
