@@ -25,10 +25,15 @@
     "garment:model-check": "node --experimental-strip-types scripts/check-garment-viewer-model.mjs",
     "garment:model:build": "node scripts/build-garment-viewer-model.mjs",
     "garment:model-base:fetch": "python3 scripts/blender/bootstrap-human-base-meshes.py",
-    "garment:model-body:prepare": "blender --background --factory-startup --python scripts/blender/prepare-linen-earth-body.py -- --asset-root .cache/linen-earth/blender-human-base-meshes-v1.4.1 --output .cache/linen-earth/linen-earth-officewear-body-base.blend",
-    "garment:model-scene:check": "blender --background .cache/linen-earth/linen-earth-officewear-body-base.blend --python scripts/blender/preflight-linen-earth-officewear.py",
+    "garment:model-body:prepare": "blender --background --python-exit-code 1 --factory-startup --python scripts/blender/prepare-linen-earth-body.py -- --asset-root .cache/linen-earth/blender-human-base-meshes-v1.4.1 --output .cache/linen-earth/linen-earth-officewear-body-base.blend",
+    "garment:model-scene:check": "blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-body-base.blend --python scripts/blender/preflight-linen-earth-officewear.py",
     "garment:model-production:export": "node scripts/build-production-garment-model.mjs",
-    "garment:model-garments:author": "blender --background .cache/linen-earth/linen-earth-officewear-body-base.blend --python scripts/blender/author-linen-earth-officewear.py -- --output .cache/linen-earth/linen-earth-officewear-authored.blend"
+    "garment:model-garments:author": "blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-body-base.blend --python scripts/blender/author-linen-earth-officewear.py -- --output .cache/linen-earth/linen-earth-officewear-authored.blend",
+    "garment:model-production:assemble": "node scripts/assemble-production-garment-scene.mjs",
+    "garment:model-production:render-review": "blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend --python scripts/blender/render-linen-earth-officewear-review.py -- --output-dir artifacts/realistic-3d/review",
+    "garment:model-production:measurement-worksheet": "blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend --python scripts/blender/write-panel-measurement-worksheet.py -- --output artifacts/realistic-3d/panel-measurement-worksheet.json",
+    "garment:model-production:lab-export": "blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend --python scripts/blender/export-linen-earth-officewear.py -- --lab-preview --output artifacts/realistic-3d/linen-earth-officewear-realistic-lab.glb",
+    "garment:model-production:review-check": "node scripts/evaluate-realistic-review.mjs artifacts/realistic-3d/review"
   },
   "dependencies": {
     "fashn": "^0.15.0",
