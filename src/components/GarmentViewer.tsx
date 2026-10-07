@@ -253,7 +253,7 @@ function variantMaterialVisible(name:string,state:StyleVariantState) {
   if(name==="ShirtTorsoFabric") return state.shirtFit==="regular"&&state.shirtBack==="plain";
   if(name==="ShirtSleeveLFabric"||name==="ShirtSleeveRFabric") return state.shirtFit==="regular"&&state.sleeve==="full";
   if(name==="TrouserWaistFabric") return state.rise==="mid"&&state.pleat==="flat";
-  if(name==="TrouserLegLFabric"||name==="TrouserLegRFabric") return state.trouserFit==="straight";
+  if(name==="TrouserLegLFabric"||name==="TrouserLegRFabric") return state.trouserFit==="straight"&&state.breakStyle==="slight";
   if(name.startsWith("ShirtTorsoVariant__")) return state.shirtBack==="plain"&&name.endsWith(`__${state.shirtFit}`);
   if(name.startsWith("ShirtTorsoBackVariant__")) return state.shirtBack!=="plain"&&name.endsWith(`__${state.shirtFit}__${state.shirtBack}`);
   if(name.startsWith("ShirtSleeveLVariant__")||name.startsWith("ShirtSleeveRVariant__")) return state.sleeve==="full"&&name.endsWith(`__${state.shirtFit}`);
@@ -266,7 +266,8 @@ function variantMaterialVisible(name:string,state:StyleVariantState) {
   if(name.startsWith("ShirtYokeVariant__")) return name.endsWith(`__${state.yoke}`);
   if(name.startsWith("ShirtBackVariant__")) return state.shirtBack!=="plain"&&name.endsWith(`__${state.shirtBack}`);
   if(name.startsWith("ShirtHemShapeVariant__")) return state.shirtWear==="untucked"&&name.endsWith(`__${state.shirtHem}`);
-  if(name.startsWith("TrouserLegLVariant__")||name.startsWith("TrouserLegRVariant__")) return name.endsWith(`__${state.trouserFit}`);
+  if(name.startsWith("TrouserLegLVariant__")||name.startsWith("TrouserLegRVariant__")) return state.breakStyle==="slight"&&name.endsWith(`__${state.trouserFit}`);
+  if(name.startsWith("TrouserLegLBreakVariant__")||name.startsWith("TrouserLegRBreakVariant__")) return state.breakStyle!=="slight"&&name.endsWith(`__${state.trouserFit}__${state.breakStyle}`);
   if(name.startsWith("TrouserWaistVariant__")) return state.pleat==="flat"&&state.rise!=="mid"&&name.endsWith(`__${state.rise}`);
   if(name.startsWith("TrouserWaistPleatVariant__")) return state.pleat!=="flat"&&name.endsWith(`__${state.rise}__${state.pleat}`);
   if(name.startsWith("TrouserWaistbandVariant__")) return state.waistband!=="clean"&&name.endsWith(`__${state.waistband}`);
