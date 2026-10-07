@@ -93,6 +93,13 @@ test("realistic-body garment authoring creates the six canonical production shel
   ]) assert(source.includes(token),token);
 });
 
+test("Blender exporter carries fit and boundary preflight evidence into the production manifest",()=>{
+  const preflight=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
+  const exporter=readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
+  for(const token of ["return report","boundaryClearanceMm","identityFitMeasurementsMm","boundaryIntersections"]) assert(preflight.includes(token),token);
+  for(const token of ["preflight_report = run_scene_preflight()","productionFitEvidence","identityFitMeasurementsMm","boundaryIntersections","boundaryClearanceMm"]) assert(exporter.includes(token),token);
+});
+
 test("production 3D export command runs Blender export and structural validation in one path",()=>{
   const packageJson=JSON.parse(readFileSync("package.json","utf8"));
   const source=readFileSync("scripts/build-production-garment-model.mjs","utf8");
