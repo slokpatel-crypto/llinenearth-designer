@@ -7,6 +7,7 @@ const assetRoot=path.resolve(process.env.LINEN_BODY_ASSET_ROOT||".cache/linen-ea
 const provenance=path.join(assetRoot,"linen-earth-source-provenance.json");
 const bodyScene=path.resolve(process.env.LINEN_BODY_SCENE||".cache/linen-earth/linen-earth-officewear-body-base.blend");
 const authoredScene=path.resolve(process.env.LINEN_AUTHORED_SCENE||".cache/linen-earth/linen-earth-officewear-authored.blend");
+const tailoringGlb=path.resolve(process.env.LINEN_TAILORING_LIBRARY_GLB||"public/models/linen-earth-officewear-v1.glb");
 
 function fail(message){
   console.error("Production scene assembly failed: "+message);
@@ -23,8 +24,11 @@ if(!existsSync(provenance)){
 }
 if(!existsSync(provenance)) fail("Pinned realistic-body source provenance is missing after bootstrap.");
 
+run(process.execPath,[path.resolve("scripts/build-garment-viewer-model.mjs")]);
+if(!existsSync(tailoringGlb)) fail("Deterministic tailoring library GLB was not generated: "+tailoringGlb);
+
 run("blender",[
-  "--background","--factory-startup",
+  "--background","--factory-startup","--python-exit-code","1",
   "--python",path.resolve("scripts/blender/prepare-linen-earth-body.py"),
   "--",
   "--asset-root",assetRoot,
@@ -32,16 +36,24 @@ run("blender",[
 ]);
 
 run("blender",[
-  "--background",bodyScene,
+  "--background",bodyScene,"--python-exit-code","1",
   "--python",path.resolve("scripts/blender/author-linen-earth-officewear.py"),
   "--",
   "--output",authoredScene,
 ]);
 
 run("blender",[
-  "--background",authoredScene,
+  "--background",authoredScene,"--python-exit-code","1",
+  "--python",path.resolve("scripts/garment-import-tailoring-library.py"),
+  "--",
+  "--variant-glb",tailoringGlb,
+  "--output",authoredScene,
+]);
+
+run("blender",[
+  "--background",authoredScene,"--python-exit-code","1",
   "--python",path.resolve("scripts/blender/preflight-linen-earth-officewear.py"),
 ]);
 
-console.log("Production 3D scene candidate assembled and preflight-clean: "+authoredScene);
+console.log("Production 3D scene candidate assembled with full tailoring library and preflight-clean: "+authoredScene);
 console.log("Next: visually/tailor review the authored scene, then provide measured panel dimensions to garment:model-production:export.");
