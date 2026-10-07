@@ -195,6 +195,7 @@ def configure_scene(options):
         background.inputs["Strength"].default_value = 0.24
 
     scene.view_settings.look = "AgX - Medium High Contrast"
+    scene.view_settings.exposure = -0.65
 
 
 def main():
