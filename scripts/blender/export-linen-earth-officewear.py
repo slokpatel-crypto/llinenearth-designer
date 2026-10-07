@@ -293,6 +293,7 @@ def write_viewer_manifest(output_path, height, source, model_identity, panel_spe
     if isinstance(preflight_report, dict):
         payload["productionFitEvidence"] = {
             "gate": preflight_report.get("gate"),
+            "ready": preflight_report.get("ready") is True,
             "identityFitMeasurementsMm": preflight_report.get("identityFitMeasurementsMm"),
             "boundaryIntersections": preflight_report.get("boundaryIntersections"),
             "boundaryClearanceMm": preflight_report.get("boundaryClearanceMm"),
