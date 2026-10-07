@@ -73,6 +73,26 @@ test("realistic body intake is explicit, licensed and does not fake garment geom
   assert(!prepare.includes("ShirtTorsoFabric"),"Body intake must not invent garment meshes.");
 });
 
+test("realistic-body garment authoring creates the six canonical production shells without claiming tailor approval",()=>{
+  const packageJson=JSON.parse(readFileSync("package.json","utf8"));
+  const source=readFileSync("scripts/blender/author-linen-earth-officewear.py","utf8");
+  assert.match(packageJson.scripts["garment:model-garments:author"],/author-linen-earth-officewear\.py/);
+  for(const token of [
+    "ShirtTorsoFabric",
+    "ShirtSleeveLFabric",
+    "ShirtSleeveRFabric",
+    "TrouserWaistFabric",
+    "TrouserLegLFabric",
+    "TrouserLegRFabric",
+    "NEAREST_SURFACEPOINT",
+    "OUTSIDE_SURFACE",
+    "CORRECTIVE_SMOOTH",
+    "SOLIDIFY",
+    "planar_grain_uv",
+    "auto-authored-production-candidate-needs-tailor-review",
+  ]) assert(source.includes(token),token);
+});
+
 test("production 3D export command runs Blender export and structural validation in one path",()=>{
   const packageJson=JSON.parse(readFileSync("package.json","utf8"));
   const source=readFileSync("scripts/build-production-garment-model.mjs","utf8");
