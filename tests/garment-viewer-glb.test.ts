@@ -19,6 +19,9 @@ test("same six-panel GLB structure satisfies the production structural contract 
   const inspection=inspectGarmentViewerGlb(buildPrototypeGarmentGlb(),"LE-OFFICEWEAR-V1");
   assert.equal(inspection.contract.readiness,"contract_ready");
   assert.equal(inspection.structuralReady,true);
+  assert.equal(inspection.styleVariantCoverage.ready,true);
+  assert.equal(inspection.styleVariantCoverage.present,inspection.styleVariantCoverage.required);
+  assert.deepEqual(inspection.styleVariantCoverage.missing,[]);
   assert.equal(inspection.remoteUris.length,0);
 });
 
