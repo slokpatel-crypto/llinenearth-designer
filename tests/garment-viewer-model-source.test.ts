@@ -27,6 +27,16 @@ test("realistic model source plan stays aligned with the production GarmentViewe
   ]) assert(exporter.includes(token),token);
 });
 
+test("Blender exporter cannot bypass the production scene preflight",()=>{
+  const source=read("scripts/blender/export-linen-earth-officewear.py");
+  for(const token of [
+    "run_scene_preflight",
+    "preflight-linen-earth-officewear.py",
+    "runpy.run_path",
+    "Production scene preflight failed; export is blocked",
+  ]) assert(source.includes(token),`missing exporter preflight token: ${token}`);
+});
+
 test("Blender exporter refuses silent body scaling and requires garment UVs",()=>{
   const exporter=readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
   assert(exporter.includes("Adjust the body intentionally before export rather than auto-scaling"));
