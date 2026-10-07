@@ -46,6 +46,8 @@ GARMENT_OBJECTS = (
     "TrouserLegRFabric",
 )
 
+MODEL_SHOE_OBJECTS = ("LE_ShoeL", "LE_ShoeR")
+
 
 def world_bounds(obj):
     return [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]
@@ -572,6 +574,55 @@ def main(json_output=None):
                 f"locked model target is {target_leg_spacing:.1f} mm ± 24.0 mm."
             )
 
+    shoe_measurements = {}
+    if body is not None:
+        body_floor_z = min(point.z for point in world_bounds(body))
+        shoe_sizes = {}
+        for name in MODEL_SHOE_OBJECTS:
+            shoe = bpy.data.objects.get(name)
+            if shoe is None or shoe.type != "MESH":
+                reasons.append(f"Missing locked dress-shoe object: {name}.")
+                continue
+            points = world_bounds(shoe)
+            xs = [point.x for point in points]
+            ys = [point.y for point in points]
+            zs = [point.z for point in points]
+            width_mm = (max(xs) - min(xs)) * 1000.0
+            length_mm = (max(ys) - min(ys)) * 1000.0
+            height_mm = (max(zs) - min(zs)) * 1000.0
+            floor_gap_mm = (min(zs) - body_floor_z) * 1000.0
+            center_x_mm = ((min(xs) + max(xs)) * 0.5) * 1000.0
+            shoe_sizes[name] = (width_mm, length_mm)
+            shoe_measurements[name] = {
+                "widthMm": round(width_mm, 2),
+                "lengthMm": round(length_mm, 2),
+                "heightMm": round(height_mm, 2),
+                "floorGapMm": round(floor_gap_mm, 2),
+                "centerXMm": round(center_x_mm, 2),
+            }
+            if not 80.0 <= width_mm <= 155.0:
+                reasons.append(f"{name} width is {width_mm:.1f} mm; dress-shoe width must stay within 80–155 mm.")
+            if not 225.0 <= length_mm <= 345.0:
+                reasons.append(f"{name} length is {length_mm:.1f} mm; dress-shoe length must stay within 225–345 mm.")
+            if abs(floor_gap_mm) > 12.0:
+                reasons.append(f"{name} floor contact is off by {floor_gap_mm:.1f} mm; shoe must meet the model floor plane.")
+            if name.endswith("L") and center_x_mm >= -25.0:
+                reasons.append(f"{name} is not centered on the model's left foot.")
+            if name.endswith("R") and center_x_mm <= 25.0:
+                reasons.append(f"{name} is not centered on the model's right foot.")
+
+        if all(name in shoe_sizes for name in MODEL_SHOE_OBJECTS):
+            left_width, left_length = shoe_sizes["LE_ShoeL"]
+            right_width, right_length = shoe_sizes["LE_ShoeR"]
+            shoe_measurements["symmetry"] = {
+                "widthDifferenceMm": round(abs(left_width - right_width), 2),
+                "lengthDifferenceMm": round(abs(left_length - right_length), 2),
+            }
+            if abs(left_width - right_width) > 10.0:
+                reasons.append("Left/right dress-shoe width asymmetry exceeds 10.0 mm.")
+            if abs(left_length - right_length) > 12.0:
+                reasons.append("Left/right dress-shoe length asymmetry exceeds 12.0 mm.")
+
     for name in GARMENT_OBJECTS:
         obj = bpy.data.objects.get(name)
         entry = {
@@ -728,6 +779,7 @@ def main(json_output=None):
         "bodyHeightMm": round(body_height * 1000, 2) if body_height else None,
         "identityGuideMeasurementsMm": guide_measurements,
         "identityFitMeasurementsMm": identity_measurements,
+        "identityShoeMeasurementsMm": shoe_measurements,
         "boundaryIntersections": boundary_intersections,
         "boundaryClearanceMm": boundary_clearance_mm,
         "requiredGarmentObjects": list(GARMENT_OBJECTS),
