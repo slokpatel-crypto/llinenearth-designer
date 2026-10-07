@@ -54,6 +54,7 @@ type Material={
 };
 type ModelViewerElement=HTMLElement&{
   model?:{materials:ReadonlyArray<Material>};
+  loaded?:boolean;
   cameraOrbit?:string;
   createTexture?:(url:string)=>Promise<ViewerTexture>;
   updateFraming?:()=>void|Promise<void>;
@@ -698,6 +699,10 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     viewer.addEventListener("load",load);
     viewer.addEventListener("error",fail);
     viewer.addEventListener("progress",update);
+    // model-viewer can finish loading between React committing the element and this
+    // effect attaching its listeners. Recover that missed event so the UI never
+    // stays stuck behind the loading veil on a fast cache or CI/browser startup.
+    if(viewer.loaded || (viewer.model?.materials?.length||0)>0) load();
     return ()=>{
       cancelled=true;
       if(contractTimer!==undefined) window.clearTimeout(contractTimer);
