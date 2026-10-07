@@ -867,6 +867,21 @@ const utilityPocket=extrudedPolygonGeometry([
 const pocketFlap=extrudedPolygonGeometry([
   [-.50,.50],[.50,.50],[.50,-.12],[.18,-.50],[0,-.34],[-.18,-.50],[-.50,-.12],
 ],1);
+const yokeOnePiece=extrudedPolygonGeometry([
+  [-.50,.50],[.50,.50],[.50,-.50],[-.50,-.50],
+],1);
+const yokeWestern=extrudedPolygonGeometry([
+  [-.50,.50],[.50,.50],[.42,-.12],[.18,-.42],[0,-.50],[-.18,-.42],[-.42,-.12],
+],1);
+const hemRounded=extrudedPolygonGeometry([
+  [-.50,.42],[-.44,.12],[-.30,-.18],[0,-.50],[.30,-.18],[.44,.12],[.50,.42],
+],1);
+const hemStraight=extrudedPolygonGeometry([
+  [-.50,.50],[.50,.50],[.50,-.50],[-.50,-.50],
+],1);
+const hemPolo=extrudedPolygonGeometry([
+  [-.50,.50],[.50,.50],[.50,-.20],[.42,-.34],[.20,-.44],[0,-.50],[-.20,-.44],[-.42,-.34],[-.50,-.20],
+],1);
 const detailBox=boxGeometry();
 const button=uvSphereGeometry(6,10);
 
@@ -1135,14 +1150,14 @@ const breakVariantMeshes=Object.fromEntries(styleVariants.breaks.filter((item)=>
   item.id,
   addMesh(`TrouserBreakVariantMesh__${item.id}`,detailBox,`TrouserBreakVariant__${item.id}`)
 ]));
-const yokeVariantMeshes=Object.fromEntries(styleVariants.yokes.map((item)=>[
-  item.id,
-  addMesh(`ShirtYokeVariantMesh__${item.id}`,detailBox,`ShirtYokeVariant__${item.id}`)
-]));
-const shirtHemShapeMeshes=Object.fromEntries(styleVariants.shirtHems.map((item)=>[
-  item.id,
-  addMesh(`ShirtHemShapeVariantMesh__${item.id}`,detailBox,`ShirtHemShapeVariant__${item.id}`)
-]));
+const yokeVariantMeshes=Object.fromEntries(styleVariants.yokes.map((item)=>{
+  const geometry=item.id==="western"||item.id==="bias_western"?yokeWestern:yokeOnePiece;
+  return [item.id,addMesh(`ShirtYokeVariantMesh__${item.id}`,geometry,`ShirtYokeVariant__${item.id}`)];
+}));
+const shirtHemShapeMeshes=Object.fromEntries(styleVariants.shirtHems.map((item)=>{
+  const geometry=item.id==="rounded"?hemRounded:item.id==="polo"?hemPolo:hemStraight;
+  return [item.id,addMesh(`ShirtHemShapeVariantMesh__${item.id}`,geometry,`ShirtHemShapeVariant__${item.id}`)];
+}));
 const shirtBackVariantMeshes=Object.fromEntries(styleVariants.shirtBacks.filter((item)=>item.id!=="plain").map((item)=>[
   item.id,
   addMesh(`ShirtBackVariantMesh__${item.id}`,detailBox,`ShirtBackVariant__${item.id}`)
@@ -1580,7 +1595,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.8 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.9 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -1665,7 +1680,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.8 model complete: researched shirt/trouser construction geometry + fit-aware sleeve lengths + pleat/back ease + collar/cuff stiffness + construction-aware closures + shaped pockets + canonical Designer handoff + fabric drape response",
+    polishStage:"M7.9 model complete: researched shirt/trouser construction geometry + fit-aware sleeve lengths + pleat/back ease + collar/cuff stiffness + construction-aware closures + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
