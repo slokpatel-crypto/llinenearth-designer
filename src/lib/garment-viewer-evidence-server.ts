@@ -93,6 +93,7 @@ export async function loadLatestGarmentViewerReadiness(){
       const readiness=garmentViewerPromotionReadiness({
         contract:identityMatches?asset.model?.contract||null:null,
         manifest:identityMatches?asset.manifest||null:null,
+        styleVariantCoverage:identityMatches?asset.model?.styleVariantCoverage||null:null,
         ...evidence,
       });
       if(!identityMatches) readiness.reasons.unshift("Recorded QA evidence belongs to a different or missing GarmentViewer asset revision.");
