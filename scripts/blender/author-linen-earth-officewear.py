@@ -243,7 +243,15 @@ def smooth_open_boundaries(obj, iterations=5, factor=0.42):
         bm.free()
 
 
-def fit_shell(obj, body, clearance_m, thickness_m):
+def add_cloth_thickness(obj, thickness_m):
+    solid = obj.modifiers.new("LE_CLOTH_THICKNESS", "SOLIDIFY")
+    solid.thickness = thickness_m
+    solid.offset = 1.0
+    solid.use_rim = True
+    apply_modifier(obj, solid)
+
+
+def fit_shell(obj, body, clearance_m, thickness_m, defer_thickness=False):
     shrink = obj.modifiers.new("LE_BODY_CLEARANCE", "SHRINKWRAP")
     shrink.target = body
     shrink.wrap_method = "NEAREST_SURFACEPOINT"
@@ -256,11 +264,8 @@ def fit_shell(obj, body, clearance_m, thickness_m):
     smooth.iterations = 3
     apply_modifier(obj, smooth)
 
-    solid = obj.modifiers.new("LE_CLOTH_THICKNESS", "SOLIDIFY")
-    solid.thickness = thickness_m
-    solid.offset = 1.0
-    solid.use_rim = True
-    apply_modifier(obj, solid)
+    if not defer_thickness:
+        add_cloth_thickness(obj, thickness_m)
 
 
 def guide_center_z(name):
@@ -681,7 +686,7 @@ def main():
         obj = selected_shell(body, name, predicate)
         smooth_open_boundaries(obj)
         garment_clearance = shirt_clearance_m if name.startswith("Shirt") else trouser_clearance_m
-        fit_shell(obj, body, garment_clearance, thickness_m)
+        fit_shell(obj, body, garment_clearance, thickness_m, defer_thickness=True)
         obj["linen_earth_auto_authored"] = True
         obj["linen_earth_fit_clearance_mm"] = round(garment_clearance * 1000.0, 3)
         obj["linen_earth_cloth_thickness_mm"] = round(thickness_m * 1000.0, 3)
@@ -690,9 +695,13 @@ def main():
     fit_profile = shape_officewear_to_identity(authored, body, targets)
     penetration_repairs = {}
     for name, obj in authored.items():
-        repair_clearance = 0.0028 if name.startswith("Shirt") else 0.0032
-        penetration_repairs[name] = repair_outside_body(obj, body, repair_clearance, passes=2)
+        repair_clearance = 0.0045 if name.startswith("Shirt") else 0.0055
+        penetration_repairs[name] = repair_outside_body(obj, body, repair_clearance, passes=4)
         planar_grain_uv(obj)
+        # Thickness is added only after the fitted surface is outside the body.
+        # With outward-only solidification this prevents the inner cloth face from
+        # being created inside the collision body and eliminates false fit clipping.
+        add_cloth_thickness(obj, thickness_m)
     tailoring_details = author_base_tailoring_details(
         body,
         frame,
