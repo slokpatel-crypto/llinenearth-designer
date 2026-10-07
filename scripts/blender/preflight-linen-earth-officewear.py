@@ -124,6 +124,16 @@ def main():
             "LE_GUIDE_TROUSER_WAIST",
             "LE_GUIDE_LEFT_HEM",
             "LE_GUIDE_RIGHT_HEM",
+            "LE_GUIDE_OUTER_ARM_SILHOUETTE",
+            "LE_GUIDE_LEFT_HAND_CENTER_H",
+            "LE_GUIDE_LEFT_HAND_CENTER_V",
+            "LE_GUIDE_RIGHT_HAND_CENTER_H",
+            "LE_GUIDE_RIGHT_HAND_CENTER_V",
+            "LE_GUIDE_LEFT_LEG_CENTER_H",
+            "LE_GUIDE_LEFT_LEG_CENTER_V",
+            "LE_GUIDE_RIGHT_LEG_CENTER_H",
+            "LE_GUIDE_RIGHT_LEG_CENTER_V",
+            "LE_GUIDE_HEIGHT",
         }
         guide_names = {obj.name for obj in identity_guides.objects}
         missing_guides = sorted(required_guides - guide_names)
