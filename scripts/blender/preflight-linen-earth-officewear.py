@@ -251,7 +251,9 @@ def main():
 
     # Coarse production-fit gate against the exact photographed model silhouette.
     # Tailor review remains authoritative for ease and drape.
-    def width_at_z(obj, z_world, band=0.018):
+    def x_span_at_z(obj, z_world, band=0.018):
+        if obj is None or z_world is None or obj.type != "MESH":
+            return None
         depsgraph = bpy.context.evaluated_depsgraph_get()
         evaluated = obj.evaluated_get(depsgraph)
         mesh = evaluated.to_mesh()
@@ -262,9 +264,17 @@ def main():
                 point = matrix @ vertex.co
                 if abs(point.z - z_world) <= band:
                     xs.append(point.x)
-            return (max(xs) - min(xs)) * 1000.0 if len(xs) >= 4 else None
+            return (min(xs), max(xs)) if len(xs) >= 4 else None
         finally:
             evaluated.to_mesh_clear()
+
+    def width_at_z(obj, z_world, band=0.018):
+        span = x_span_at_z(obj, z_world, band)
+        return (span[1] - span[0]) * 1000.0 if span else None
+
+    def center_x_at_z(obj, z_world, band=0.018):
+        span = x_span_at_z(obj, z_world, band)
+        return ((span[0] + span[1]) * 0.5) * 1000.0 if span else None
 
     def guide_center_z(name):
         if identity_guides is None:
@@ -294,6 +304,48 @@ def main():
         elif measured is not None and abs(measured - target) > tolerance:
             reasons.append(
                 f"{key} is {measured:.1f} mm; locked model target is {target:.1f} mm ± {tolerance:.1f} mm."
+            )
+
+    # Centerline/symmetry checks catch a production mesh that matches width targets
+    # but drifts sideways or breaks the locked officewear stance.
+    shirt_waist_z = guide_center_z("LE_GUIDE_SHIRT_WAIST")
+    trouser_waist_z = guide_center_z("LE_GUIDE_TROUSER_WAIST")
+    shirt_center = center_x_at_z(bpy.data.objects.get("ShirtTorsoFabric"), shirt_waist_z, 0.018)
+    trouser_center = center_x_at_z(bpy.data.objects.get("TrouserWaistFabric"), trouser_waist_z, 0.018)
+    identity_measurements["shirtCenterOffsetMm"] = round(shirt_center, 2) if shirt_center is not None else None
+    identity_measurements["trouserCenterOffsetMm"] = round(trouser_center, 2) if trouser_center is not None else None
+    for key, measured, tolerance in (
+        ("shirtCenterOffsetMm", shirt_center, 18.0),
+        ("trouserCenterOffsetMm", trouser_center, 18.0),
+    ):
+        if measured is None:
+            warnings.append(f"Could not sample {key} for garment centerline QA.")
+        elif abs(measured) > tolerance:
+            reasons.append(f"{key} is {measured:.1f} mm from model center; allowed offset is ±{tolerance:.1f} mm.")
+
+    left_hem = identity_measurements.get("leftHemWidthMm")
+    right_hem = identity_measurements.get("rightHemWidthMm")
+    hem_asymmetry = abs(left_hem - right_hem) if left_hem is not None and right_hem is not None else None
+    identity_measurements["hemWidthAsymmetryMm"] = round(hem_asymmetry, 2) if hem_asymmetry is not None else None
+    if hem_asymmetry is None:
+        warnings.append("Could not calculate left/right trouser hem symmetry.")
+    elif hem_asymmetry > 10.0:
+        reasons.append(f"Trouser hem width asymmetry is {hem_asymmetry:.1f} mm; allowed difference is 10.0 mm.")
+
+    left_leg_z = guide_center_z("LE_GUIDE_LEFT_LEG_CENTER_H")
+    right_leg_z = guide_center_z("LE_GUIDE_RIGHT_LEG_CENTER_H")
+    left_leg_center = center_x_at_z(bpy.data.objects.get("TrouserLegLFabric"), left_leg_z, 0.030)
+    right_leg_center = center_x_at_z(bpy.data.objects.get("TrouserLegRFabric"), right_leg_z, 0.030)
+    leg_spacing = abs(right_leg_center - left_leg_center) if left_leg_center is not None and right_leg_center is not None else None
+    identity_measurements["legCenterSpacingMm"] = round(leg_spacing, 2) if leg_spacing is not None else None
+    if leg_spacing is None:
+        warnings.append("Could not sample trouser leg-center spacing from production geometry.")
+    else:
+        target_leg_spacing = EXPECTED_IDENTITY_TARGETS_MM["legCenterSpacing"]
+        if abs(leg_spacing - target_leg_spacing) > 24.0:
+            reasons.append(
+                f"Garment leg-center spacing is {leg_spacing:.1f} mm; "
+                f"locked model target is {target_leg_spacing:.1f} mm ± 24.0 mm."
             )
 
     for name in GARMENT_OBJECTS:
