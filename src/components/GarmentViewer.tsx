@@ -156,6 +156,7 @@ type StyleVariantState={
   placket:string;
   pocket:string;
   yoke:string;
+  shirtBack:string;
   shirtHem:string;
   trouserFit:string;
   rise:string;
@@ -248,6 +249,7 @@ function variantMaterialVisible(name:string,state:StyleVariantState) {
   if(name.startsWith("ShirtPlacketVariant__")) return state.placket!=="french"&&name.endsWith(`__${state.placket}`);
   if(name.startsWith("ShirtPocketVariant__")) return state.pocket!=="none"&&name.includes(`ShirtPocketVariant__${state.pocket}`);
   if(name.startsWith("ShirtYokeVariant__")) return name.endsWith(`__${state.yoke}`);
+  if(name.startsWith("ShirtBackVariant__")) return state.shirtBack!=="plain"&&name.endsWith(`__${state.shirtBack}`);
   if(name.startsWith("ShirtHemShapeVariant__")) return state.shirtWear==="untucked"&&name.endsWith(`__${state.shirtHem}`);
   if(name.startsWith("TrouserLegLVariant__")||name.startsWith("TrouserLegRVariant__")) return name.endsWith(`__${state.trouserFit}`);
   if(name.startsWith("TrouserWaistVariant__")) return state.rise!=="mid"&&name.endsWith(`__${state.rise}`);
@@ -319,6 +321,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const [placketKey,setPlacketKey]=useState("standard");
   const [pocketKey,setPocketKey]=useState("none");
   const [yokeKey,setYokeKey]=useState("split");
+  const [shirtBackKey,setShirtBackKey]=useState("plain");
   const [shirtHemKey,setShirtHemKey]=useState("rounded");
   const [trouserFitKey,setTrouserFitKey]=useState("straight");
   const [riseKey,setRiseKey]=useState("mid");
@@ -377,6 +380,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     placket:placketKey,
     pocket:pocketKey,
     yoke:yokeKey,
+    shirtBack:shirtBackKey,
     shirtHem:shirtHemKey,
     trouserFit:trouserFitKey,
     rise:riseKey,
@@ -385,7 +389,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     breakStyle:breakKey,
     trouserHem:trouserHemKey,
     trouserPocket:trouserPocketKey,
-  }),[shirtFitKey,shirtWearKey,sleeveKey,collarKey,collarConstructionKey,cuffKey,cuffConstructionKey,placketKey,pocketKey,yokeKey,shirtHemKey,trouserFitKey,riseKey,pleatKey,waistbandKey,breakKey,trouserHemKey,trouserPocketKey]);
+  }),[shirtFitKey,shirtWearKey,sleeveKey,collarKey,collarConstructionKey,cuffKey,cuffConstructionKey,placketKey,pocketKey,yokeKey,shirtBackKey,shirtHemKey,trouserFitKey,riseKey,pleatKey,waistbandKey,breakKey,trouserHemKey,trouserPocketKey]);
 
   useEffect(()=>{
     try{
@@ -413,6 +417,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           setPlacketKey(savedShirtPreset.placket);
           setPocketKey(savedShirtPreset.pocket);
           setYokeKey(savedShirtPreset.yoke);
+          setShirtBackKey(savedShirtPreset.back||"plain");
           setShirtHemKey(savedShirtPreset.hem);
         }else{
           setShirtFitKey(variantIdForLabel(styleVariants.shirtFits,parsed.style.shirtFit,"regular"));
@@ -433,6 +438,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         if(shirtSpec?.cuff) setCuffKey(cuffVariantFor(optionLabel(shirtSpec.cuff)));
         if(shirtSpec?.placket) setPlacketKey(variantIdForLabel(styleVariants.plackets,optionLabel(shirtSpec.placket),savedShirtPreset?.placket||"standard"));
         if(shirtSpec?.pocket) setPocketKey(variantIdForLabel(styleVariants.pockets,optionLabel(shirtSpec.pocket),savedShirtPreset?.pocket||"none"));
+        if(shirtSpec?.back) setShirtBackKey(variantIdForLabel(styleVariants.shirtBacks,optionLabel(shirtSpec.back),savedShirtPreset?.back||"plain"));
         if(shirtSpec?.hem) setShirtHemKey(variantIdForLabel(styleVariants.shirtHems,optionLabel(shirtSpec.hem),savedShirtPreset?.hem||"rounded"));
         setButtonKey(variantIdForLabel(styleVariants.buttons,optionLabel(shirtSpec?.button)||parsed.style.button,"mother_of_pearl"));
 
@@ -684,6 +690,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     setPlacketKey(preset.placket);
     setPocketKey(preset.pocket);
     setYokeKey(preset.yoke);
+    setShirtBackKey(preset.back||"plain");
     setShirtHemKey(preset.hem);
   }
 
@@ -827,6 +834,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           <label><span>Placket</span><select aria-label="3D placket" value={placketKey} onChange={(e)=>setPlacketKey(e.target.value)}>{styleVariants.plackets.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Shirt pocket</span><select aria-label="3D pocket" value={pocketKey} onChange={(e)=>setPocketKey(e.target.value)}>{styleVariants.pockets.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Yoke</span><select aria-label="3D shirt yoke" value={yokeKey} onChange={(e)=>setYokeKey(e.target.value)}>{styleVariants.yokes.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+          <label><span>Back construction</span><select aria-label="3D shirt back" value={shirtBackKey} onChange={(e)=>setShirtBackKey(e.target.value)}>{styleVariants.shirtBacks.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Shirt hem</span><select aria-label="3D shirt hem" value={shirtHemKey} onChange={(e)=>setShirtHemKey(e.target.value)}>{styleVariants.shirtHems.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Trouser shape</span><select aria-label="3D trouser fit" value={trouserFitKey} onChange={(e)=>setTrouserFitKey(e.target.value)}>{styleVariants.trouserFits.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Rise</span><select aria-label="3D trouser rise" value={riseKey} onChange={(e)=>setRiseKey(e.target.value)}>{styleVariants.rises.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
@@ -837,7 +845,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           <label><span>Trouser pockets</span><select aria-label="3D trouser pockets" value={trouserPocketKey} onChange={(e)=>setTrouserPocketKey(e.target.value)}>{styleVariants.trouserPockets.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
         </div>
         <div className="garmentStyleLiveSummary">
-          <span><b>SHIRT</b>{styleVariants.shirtTypes.find((x)=>x.id===shirtTypeKey)?.label} · {styleVariants.shirtFits.find((x)=>x.id===shirtFitKey)?.label} · {styleVariants.collars.find((x)=>x.id===collarKey)?.label} · {styleVariants.yokes.find((x)=>x.id===yokeKey)?.label} · {styleVariants.shirtHems.find((x)=>x.id===shirtHemKey)?.label}</span>
+          <span><b>SHIRT</b>{styleVariants.shirtTypes.find((x)=>x.id===shirtTypeKey)?.label} · {styleVariants.shirtFits.find((x)=>x.id===shirtFitKey)?.label} · {styleVariants.collars.find((x)=>x.id===collarKey)?.label} · {styleVariants.yokes.find((x)=>x.id===yokeKey)?.label} · {styleVariants.shirtBacks.find((x)=>x.id===shirtBackKey)?.label} · {styleVariants.shirtHems.find((x)=>x.id===shirtHemKey)?.label}</span>
           <span><b>TROUSER</b>{styleVariants.trouserTypes.find((x)=>x.id===trouserTypeKey)?.label} · {styleVariants.trouserFits.find((x)=>x.id===trouserFitKey)?.label} · {styleVariants.pleats.find((x)=>x.id===pleatKey)?.label} · {styleVariants.waistbands.find((x)=>x.id===waistbandKey)?.label} · {styleVariants.trouserHems.find((x)=>x.id===trouserHemKey)?.label}</span>
         </div>
       </section>
@@ -855,12 +863,12 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       <label className="garmentRange"><span>Surface roughness base <b>{roughness.toFixed(2)}</b></span><input type="range" min=".55" max=".98" step=".01" value={roughness} onChange={(event)=>setRoughness(Number(event.target.value))}/><small>Fabric drape class automatically shifts linen normal strength and roughness around this base value; unknown fabrics stay on a conservative medium response.</small></label>
 
       <div className="garmentViewerFacts">
-        <span><small>MODEL</small><b>{modelContract?.readiness==="contract_ready"&&productionManifestReady?"M7.2 Tailoring GLB":"Reusable GLB"}</b></span>
+        <span><small>MODEL</small><b>{modelContract?.readiness==="contract_ready"&&productionManifestReady?"M7.3 Tailoring GLB":"Reusable GLB"}</b></span>
         <span><small>FABRIC</small><b>Panel-scaled PBR + variants</b></span>
         <span><small>VIEWS</small><b>4 fixed + free</b></span>
         <span><small>AI CREDITS</small><b>0</b></span>
       </div>
-      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M7.2 is locked: the same mannequin now carries a researched tailoring library covering shirt type/fit/tuck/sleeve/collar construction/cuff/placket/pocket/yoke/hem and trouser type/fit/rise/pleat direction/waistband/break/turn-up/pockets. Fabric remains panel-scaled and non-metallic; verified drape/weight metadata now changes the surface fold-normal response and roughness without AI credits." : "Fallback prototype is active. Production should use the identity-locked M7.2 tailoring model before fabric/drape work continues."}</p>
+      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M7.3 is locked: the same mannequin now carries a researched tailoring library covering shirt type/fit/tuck/sleeve/collar construction/cuff/placket/pocket/yoke/back/hem and trouser type/fit/rise/pleat direction/waistband/break/turn-up/pockets. Fabric remains panel-scaled and non-metallic; verified drape/weight metadata now changes the surface fold-normal response and roughness without AI credits." : "Fallback prototype is active. Production should use the identity-locked M7.3 tailoring model before fabric/drape work continues."}</p>
     </aside>
   </section>;
 }
