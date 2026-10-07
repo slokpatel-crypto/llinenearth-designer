@@ -898,6 +898,44 @@ function extrudedPolygonGeometry(points,depth=.16){
   return typedGeometry(positions,normals,uvs,indices);
 }
 
+function cuffWrapGeometry(shape="square",segments=30){
+  const positions=[],normals=[],uvs=[],indices=[];
+  const bottomY=(theta)=>{
+    const front=Math.max(0,Math.sin(theta));
+    const side=Math.abs(Math.cos(theta));
+    if(shape==="rounded") return -.48+.055*front*(1-side);
+    if(shape==="mitered") return -.50+.13*front*side;
+    if(shape==="cocktail") return -.42-.08*front+.035*Math.cos(theta*2);
+    return -.50;
+  };
+  for(let ring=0;ring<2;ring++){
+    for(let s=0;s<segments;s++){
+      const theta=s/segments*Math.PI*2;
+      const x=.5*Math.cos(theta),z=.5*Math.sin(theta);
+      const y=ring===0?bottomY(theta):.5;
+      positions.push(x,y,z);
+      const [nx,ny,nz]=normalize(Math.cos(theta),0,Math.sin(theta));
+      normals.push(nx,ny,nz);
+      uvs.push(s/segments,ring);
+    }
+  }
+  for(let s=0;s<segments;s++){
+    const n=(s+1)%segments;
+    const a=s,b=n,c=segments+n,d=segments+s;
+    indices.push(a,d,c,a,c,b);
+  }
+  const bottomCenter=positions.length/3;
+  positions.push(0,-.46,0);normals.push(0,-1,0);uvs.push(.5,.5);
+  const topCenter=positions.length/3;
+  positions.push(0,.5,0);normals.push(0,1,0);uvs.push(.5,.5);
+  for(let s=0;s<segments;s++){
+    const n=(s+1)%segments;
+    indices.push(bottomCenter,n,s);
+    indices.push(topCenter,segments+s,segments+n);
+  }
+  return typedGeometry(positions,normals,uvs,indices);
+}
+
 function collarPointGeometry(){
   const p=[],n=[],uv=[],idx=[];
   const front=[[-.5,.5,.5],[.5,.5,.5],[0,-.5,.5]];
@@ -1039,7 +1077,7 @@ const thumb=profileGeometry({
 const mannequinBody=await loadMakeHumanBodyGeometry();
 const garmentShells=await loadMakeHumanGarmentShells();
 
-// M7.41: the visible clothing uses clean identity-first tailoring shells rather than
+// M7.42: the visible clothing uses clean identity-first tailoring shells rather than
 // cropped anatomical body surfaces. MakeHuman stays as the hidden collision/skin source.
 // These world-space shells preserve the exact Linen Earth silhouette anchors while
 // producing continuous shirt/trouser surfaces with clean side and back views.
@@ -1088,6 +1126,10 @@ const miteredCuff=extrudedPolygonGeometry([
 const cocktailCuff=extrudedPolygonGeometry([
   [-.50,.50],[.50,.50],[.50,-.36],[.28,-.50],[0,-.40],[-.28,-.50],[-.50,-.36],
 ],1);
+const squareCuffWrap=cuffWrapGeometry("square");
+const roundedCuffWrap=cuffWrapGeometry("rounded");
+const miteredCuffWrap=cuffWrapGeometry("mitered");
+const cocktailCuffWrap=cuffWrapGeometry("cocktail");
 const roundedPocket=extrudedPolygonGeometry([
   [-.50,.50],[.50,.50],[.50,-.25],[.46,-.36],[.36,-.45],[.20,-.50],
   [-.20,-.50],[-.36,-.45],[-.46,-.36],[-.50,-.25],
@@ -1523,7 +1565,7 @@ for(const item of styleVariants.cuffs){
     const key=`${item.id}__${construction.id}`;
     cuffVariantMeshes[item.id][construction.id]=addMesh(
       `ShirtCuffVariantMesh__${key}`,
-      item.id==="cocktail"?cocktailCuff:miteredCuffIds.has(item.id)?miteredCuff:roundedCuffIds.has(item.id)?roundedCuff:detailBox,
+      item.id==="cocktail"?cocktailCuffWrap:miteredCuffIds.has(item.id)?miteredCuffWrap:roundedCuffIds.has(item.id)?roundedCuffWrap:squareCuffWrap,
       `ShirtCuffVariant__${key}`
     );
   }
@@ -2219,7 +2261,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.41 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.42 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -2304,7 +2346,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.41 model complete: rise-aware tucked-shirt waist junction + extra-high/Korean waist geometry + faceless human head plane/jaw profile + front-flat/back-seat trouser waist shaping + seat/crotch upper-trouser blend + tailored oval sleeve-cap pitch + English-spread/British collar geometry + fit-specific tucked waist compression + contrast-ready collar/cuff material isolation + tapered studio neck/jaw transition + tailored dress-shoe upper/heel silhouette + articulated studio-mannequin fingers/thumbs + clean hands/forearms + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
+    polishStage:"M7.42 model complete: 360-degree wrist cuff shells + rise-aware tucked-shirt waist junction + extra-high/Korean waist geometry + faceless human head plane/jaw profile + front-flat/back-seat trouser waist shaping + seat/crotch upper-trouser blend + tailored oval sleeve-cap pitch + English-spread/British collar geometry + fit-specific tucked waist compression + contrast-ready collar/cuff material isolation + tapered studio neck/jaw transition + tailored dress-shoe upper/heel silhouette + articulated studio-mannequin fingers/thumbs + clean hands/forearms + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},

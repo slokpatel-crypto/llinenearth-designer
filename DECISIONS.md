@@ -458,3 +458,12 @@ Architecture and product decisions that must persist across coding sessions.
 **Fit rule:** the shirt compression/bunching zone follows the active trouser waistband top. This keeps the shirt visually inside the waistband across low rise through Korean extra-high rise, while preserving the selected shirt back construction and the same locked mannequin.
 
 **Rendering:** tucked materials are now keyed by `fit + rise`; untucked geometry is unchanged. The system remains deterministic, instant and zero-credit.
+
+
+## 2026-10-07 — M7.42 360-degree cuff shells
+
+**Decision:** replace flat front-facing cuff plates with closed elliptical cuff shells that wrap the full wrist so cuffs remain believable in front, 3/4, side and back views.
+
+**Construction:** square, rounded, mitered and cocktail families now use separate wrap geometry while preserving the existing measured cuff widths/lengths, fused/soft construction scaling, buttons/cufflinks and white-contrast cloth behavior.
+
+**Acceptance boundary:** cuff shells improve visible tailoring form; they are not a physical button-opening simulation. No model identity, camera, fabric-scale or provider-cost change.
