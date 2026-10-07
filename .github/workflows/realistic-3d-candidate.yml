@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - work/3d-finish-20261007-v6
+      - work/3d-finish-20261007-v7
     paths:
       - "scripts/blender/**"
       - "scripts/assemble-production-garment-scene.mjs"
@@ -53,6 +54,12 @@ jobs:
         run: |
           set -euo pipefail
           blender --background .cache/linen-earth/linen-earth-officewear-authored.blend             --python scripts/blender/preflight-linen-earth-officewear.py             2>&1 | tee artifacts/realistic-3d/preflight.log
+
+      - name: Render four-angle fit review
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run garment:model-production:render-review 2>&1 | tee artifacts/realistic-3d/render-review.log
 
       - name: Copy candidate scene and provenance
         shell: bash
