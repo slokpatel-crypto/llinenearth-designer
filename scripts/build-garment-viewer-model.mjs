@@ -938,6 +938,7 @@ const styleVariantMaterials=[
     addVariantMaterial(`ShirtSleeveLLength__${fit.id}__${sleeve.id}`,"shirt"),
     addVariantMaterial(`ShirtSleeveRLength__${fit.id}__${sleeve.id}`,"shirt"),
   ])),
+  ...styleVariants.shirtFits.map((fit)=>addVariantMaterial(`ShirtRollBandVariant__${fit.id}`,"shirt")),
   ...styleVariants.collars.flatMap((item)=>styleVariants.collarConstruction.map((construction)=>
     addVariantMaterial(`ShirtCollarVariant__${item.id}__${construction.id}`,"shirt")
   )),
@@ -1089,6 +1090,11 @@ for(const fit of styleVariants.shirtFits){
     };
   }
 }
+
+const shirtRollBandMeshes=Object.fromEntries(styleVariants.shirtFits.map((fit)=>[
+  fit.id,
+  addMesh(`ShirtRollBandVariantMesh__${fit.id}`,detailBox,`ShirtRollBandVariant__${fit.id}`)
+]));
 
 const trouserFitMeshes={};
 for(const fit of styleVariants.trouserFits){
@@ -1267,6 +1273,12 @@ for(const fit of styleVariants.shirtFits){
     nodes.push({name:`ShirtSleeveLLength__${key}`,mesh:mesh.left});
     nodes.push({name:`ShirtSleeveRLength__${key}`,mesh:mesh.right});
   }
+}
+for(const fit of styleVariants.shirtFits){
+  const mesh=shirtRollBandMeshes[fit.id];
+  const width=.090*(Number(fit.sleeveScale)||1);
+  nodes.push({name:`ShirtRollBandL__${fit.id}`,mesh,translation:[-.226,1.095,.018],scale:[width,.040,.108],rotation:qz(-2.5)});
+  nodes.push({name:`ShirtRollBandR__${fit.id}`,mesh,translation:[.226,1.095,.018],scale:[width,.040,.108],rotation:qz(2.5)});
 }
 
 // Collar families.
@@ -1646,7 +1658,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.10 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.11 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -1731,7 +1743,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.10 model complete: researched shirt/trouser construction geometry + fit-aware sleeve lengths + true trouser break silhouettes + pleat/back ease + collar/cuff stiffness + construction-aware closures + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
+    polishStage:"M7.11 model complete: researched shirt/trouser construction geometry + fit-aware sleeve lengths/rolled bands + true trouser break silhouettes + pleat/back ease + collar/cuff stiffness + construction-aware closures + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
