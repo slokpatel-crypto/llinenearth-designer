@@ -708,6 +708,50 @@ function uvSphereGeometry(latSegments=14,lonSegments=24){
   return typedGeometry(positions,normals,uvs,indices);
 }
 
+function dressShoeUpperGeometry(){
+  const stations=[
+    {z:-1.00,width:.70,height:.58,centerY:.10},
+    {z:-.72,width:.84,height:.76,centerY:.14},
+    {z:-.34,width:.98,height:.98,centerY:.16},
+    {z:.08,width:1.04,height:.94,centerY:.12},
+    {z:.48,width:.98,height:.74,centerY:.05},
+    {z:.82,width:.78,height:.48,centerY:-.03},
+    {z:1.00,width:.44,height:.28,centerY:-.08},
+  ];
+  const segments=24,positions=[],normals=[],uvs=[],indices=[];
+  for(let r=0;r<stations.length;r++){
+    const ring=stations[r];
+    const v=r/(stations.length-1);
+    for(let s=0;s<segments;s++){
+      const theta=s/segments*Math.PI*2;
+      const c=Math.cos(theta),q=Math.sin(theta);
+      positions.push(c*ring.width,ring.centerY+q*ring.height,ring.z);
+      const [nx,ny,nz]=normalize(c/Math.max(.001,ring.width),q/Math.max(.001,ring.height),0);
+      normals.push(nx,ny,nz);
+      uvs.push(s/segments,v);
+    }
+  }
+  for(let r=0;r<stations.length-1;r++){
+    for(let s=0;s<segments;s++){
+      const n=(s+1)%segments;
+      const a=r*segments+s,b=r*segments+n,c=(r+1)*segments+n,d=(r+1)*segments+s;
+      indices.push(a,d,c,a,c,b);
+    }
+  }
+  const heelCenter=positions.length/3;
+  positions.push(0,stations[0].centerY,stations[0].z);normals.push(0,0,-1);uvs.push(.5,.5);
+  const toeCenter=positions.length/3;
+  const toe=stations.at(-1);
+  positions.push(0,toe.centerY,toe.z);normals.push(0,0,1);uvs.push(.5,.5);
+  for(let s=0;s<segments;s++){
+    const n=(s+1)%segments;
+    indices.push(heelCenter,s,n);
+    const base=(stations.length-1)*segments;
+    indices.push(toeCenter,base+n,base+s);
+  }
+  return typedGeometry(positions,normals,uvs,indices);
+}
+
 function boxGeometry(){
   const p=[],n=[],uv=[],idx=[];
   const faces=[
@@ -885,7 +929,7 @@ const thumb=profileGeometry({
 const mannequinBody=await loadMakeHumanBodyGeometry();
 const garmentShells=await loadMakeHumanGarmentShells();
 
-// M7.30: the visible clothing uses clean identity-first tailoring shells rather than
+// M7.31: the visible clothing uses clean identity-first tailoring shells rather than
 // cropped anatomical body surfaces. MakeHuman stays as the hidden collision/skin source.
 // These world-space shells preserve the exact Linen Earth silhouette anchors while
 // producing continuous shirt/trouser surfaces with clean side and back views.
@@ -907,7 +951,7 @@ const mannequinBodyStats={
   vertices:mannequinBody.positions.length/3,
   triangles:mannequinBody.indices.length/3,
 };
-const shoe=uvSphereGeometry(10,20);
+const shoe=dressShoeUpperGeometry();
 const ear=uvSphereGeometry(8,14);
 const collar=collarPointGeometry();
 const mandarinCollar=profileGeometry({
@@ -1474,6 +1518,8 @@ const nodes=[
   {name:"ShoeR",mesh:meshShoe,translation:[.105,.052,.082],scale:[.046,.040,.135]},
   {name:"SoleL",mesh:meshSole,translation:[-.105,.012,.082],scale:[.092,.012,.270]},
   {name:"SoleR",mesh:meshSole,translation:[.105,.012,.082],scale:[.092,.012,.270]},
+  {name:"HeelL",mesh:meshSole,translation:[-.105,.032,-.015],scale:[.070,.038,.060]},
+  {name:"HeelR",mesh:meshSole,translation:[.105,.032,-.015],scale:[.070,.038,.060]},
   // Collar/cuff/placket/pocket geometry variants are appended below and toggled by material visibility.
   // Raised construction cues keep the 3D silhouette close to the Live Designer front reference.
   {name:"TrouserCreaseVariant__front__L",mesh:meshTrouserCrease,translation:[-.105,.555,.071],scale:[.0035,.905,.004]},
@@ -2007,7 +2053,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.30 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.31 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -2092,7 +2138,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.30 model complete: articulated studio-mannequin fingers/thumbs + clean hands/forearms/shoes + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
+    polishStage:"M7.31 model complete: tailored dress-shoe upper/heel silhouette + articulated studio-mannequin fingers/thumbs + clean hands/forearms + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},

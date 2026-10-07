@@ -399,3 +399,10 @@ Architecture and product decisions that must persist across coding sessions.
 **Decision:** keep the locked Linen Earth studio identity and existing palm/forearm proportions, but replace the mitten-like hand read with deterministic articulated finger and thumb geometry generated inside the same zero-credit GLB build. Four fingers now extend continuously from each palm with small mirrored spacing/length differences; the thumb sits on the body-facing side and is mirrored per hand. No face/body identity, garment scale, camera, fabric, API or paid-render behaviour changes.
 
 **Acceptance boundary:** this is a mannequin realism refinement, not a scanned anatomical hand claim. Finger geometry must remain subordinate to sleeve/cuff fit, preserve hand clearance from the trouser silhouette and stay consistent in front / 3/4 / side / back views. The production label advances to M7.30; existing model-contract, material, pattern-scale and browser gates remain authoritative.
+
+
+## 2026-10-07 — M7.31 dress-shoe silhouette refinement
+
+**Decision:** replace the generic scaled sphere used for the visible shoe upper with a deterministic multi-station dress-shoe shell. The new upper narrows through the heel, gains instep volume, tapers toward a lower rounded toe and adds a separate compact heel block above the existing sole. The locked 1727 mm mannequin stance, leg spacing, floor contact, camera system and zero-credit material path remain unchanged.
+
+**Acceptance boundary:** this is a premium mannequin shoe silhouette, not a footwear sizing or last-design system. It must improve front / 3/4 / side readability without changing the garment fit contract or introducing paid rendering.
