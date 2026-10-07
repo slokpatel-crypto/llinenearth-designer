@@ -111,6 +111,27 @@ function shirtFitGeometry(base,fit,centerX=0){
   });
 }
 
+function shirtBackConstructionGeometry(base,back){
+  const addedUpperBackM=(Number(back.addedUpperBackIn)||0)*.0254;
+  const removedFabricM=(Number(back.removedFabricIn)||0)*.0254;
+  const addScale=Math.min(.14,addedUpperBackM/.388*.72);
+  const removeScale=Math.min(.10,removedFabricM/.294*.72);
+  return cloneGeometryTransform(base,(p)=>{
+    const upper=Math.max(0,Math.min(1,(p.y-1.16)/.25));
+    const upperFade=Math.sin(Math.PI*Math.min(1,upper));
+    const waist=Math.max(0,Math.min(1,(p.y-1.06)/.30));
+    const waistFade=Math.sin(Math.PI*waist);
+    const backBlend=Math.max(0,Math.min(1,(-p.z+.015)/.13));
+    const sideScale=1+addScale*upperFade*backBlend-removeScale*waistFade*backBlend;
+    const depthDelta=addedUpperBackM*.18*upperFade*backBlend-removedFabricM*.10*waistFade*backBlend;
+    return {
+      ...p,
+      x:p.x*sideScale,
+      z:p.z-depthDelta,
+    };
+  });
+}
+
 function trouserFitGeometry(base,fit,centerX){
   return cloneGeometryTransform(base,(p)=>{
     const t=Math.max(0,Math.min(1,(p.y-.06)/(.985-.06)));
@@ -862,6 +883,9 @@ const styleVariantMaterials=[
     addVariantMaterial(`ShirtSleeveLVariant__${fit.id}`,"shirt"),
     addVariantMaterial(`ShirtSleeveRVariant__${fit.id}`,"shirt"),
   ]),
+  ...styleVariants.shirtFits.flatMap((fit)=>styleVariants.shirtBacks.filter((back)=>back.id!=="plain").map((back)=>
+    addVariantMaterial(`ShirtTorsoBackVariant__${fit.id}__${back.id}`,"shirt")
+  )),
   ...styleVariants.shirtFits.map((fit)=>addVariantMaterial(`ShirtHemVariant__${fit.id}`,"shirt")),
   ...styleVariants.sleeves.filter((sleeve)=>sleeve.id!=="full").flatMap((sleeve)=>[
     addVariantMaterial(`ShirtSleeveLLength__${sleeve.id}`,"shirt"),
@@ -929,6 +953,20 @@ for(const fit of styleVariants.shirtFits){
     right:addMesh(`ShirtSleeveRVariantMesh__${fit.id}`,shirtFitGeometry(garmentShells.sleeveR,fit,.226),`ShirtSleeveRVariant__${fit.id}`),
   };
 }
+const shirtBackTorsoMeshes={};
+for(const fit of styleVariants.shirtFits){
+  const fitSource=fit.id==="regular"?garmentShells.shirtTorso:shirtFitGeometry(garmentShells.shirtTorso,fit,0);
+  for(const back of styleVariants.shirtBacks){
+    if(back.id==="plain") continue;
+    const key=`${fit.id}__${back.id}`;
+    shirtBackTorsoMeshes[key]=addMesh(
+      `ShirtTorsoBackVariantMesh__${key}`,
+      shirtBackConstructionGeometry(fitSource,back),
+      `ShirtTorsoBackVariant__${key}`
+    );
+  }
+}
+
 const shirtHemMeshes={};
 for(const fit of styleVariants.shirtFits){
   const source=fit.id==="regular"?garmentShells.shirtTorso:shirtFitGeometry(garmentShells.shirtTorso,fit,0);
@@ -1060,6 +1098,13 @@ for(const fit of styleVariants.shirtFits){
   nodes.push({name:`ShirtTorsoVariant__${fit.id}`,mesh:mesh.torso});
   nodes.push({name:`ShirtSleeveLVariant__${fit.id}`,mesh:mesh.left});
   nodes.push({name:`ShirtSleeveRVariant__${fit.id}`,mesh:mesh.right});
+}
+for(const fit of styleVariants.shirtFits){
+  for(const back of styleVariants.shirtBacks){
+    if(back.id==="plain") continue;
+    const key=`${fit.id}__${back.id}`;
+    nodes.push({name:`ShirtTorsoBackVariant__${key}`,mesh:shirtBackTorsoMeshes[key]});
+  }
 }
 for(const fit of styleVariants.shirtFits) nodes.push({name:`ShirtHemVariant__${fit.id}`,mesh:shirtHemMeshes[fit.id]});
 nodes.push({name:"ShirtSleeveLLength__three_quarter",mesh:threeQuarterSleeveL},{name:"ShirtSleeveRLength__three_quarter",mesh:threeQuarterSleeveR});
@@ -1346,7 +1391,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.3 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.4 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -1431,7 +1476,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.3 model complete: researched shirt/trouser construction geometry + pleat-volume ease + canonical Designer handoff + fabric drape response",
+    polishStage:"M7.4 model complete: researched shirt/trouser construction geometry + pleat and shirt-back ease volume + canonical Designer handoff + fabric drape response",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
