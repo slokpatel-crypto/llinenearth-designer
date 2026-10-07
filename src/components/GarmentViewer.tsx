@@ -342,6 +342,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     draftOptionLabel(designerDraftRecipe?.styleSpec?.shirt?.cuff,designerDraftRecipe?.style?.cuff),
     draftOptionLabel(designerDraftRecipe?.styleSpec?.shirt?.placket,designerDraftRecipe?.style?.placket),
     draftOptionLabel(designerDraftRecipe?.styleSpec?.shirt?.fit,designerDraftRecipe?.style?.shirtFit),
+    draftOptionLabel(designerDraftRecipe?.styleSpec?.shirt?.back),
     designerDraftRecipe?.styleSpec?.shirt?.wear ? (designerDraftRecipe.styleSpec.shirt.wear==="tucked"?"Tucked":"Untucked") : designerDraftRecipe?.style?.shirtWear,
   ].filter(Boolean);
   const draftTrouserDetails=[
@@ -694,6 +695,16 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     setShirtHemKey(preset.hem);
   }
 
+  function applyYokeVariant(id:string){
+    setYokeKey(id);
+    if(id==="western"||id==="bias_western") setShirtBackKey("plain");
+  }
+
+  function applyShirtBackVariant(id:string){
+    setShirtBackKey(id);
+    if(id!=="plain"&&(yokeKey==="western"||yokeKey==="bias_western")) setYokeKey("split");
+  }
+
   function applyTrouserTypePreset(id:string){
     setTrouserTypeKey(id);
     const preset=styleVariants.trouserTypes.find((item)=>item.id===id)?.preset;
@@ -833,8 +844,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           <label><span>Button material</span><select aria-label="3D button material" value={buttonKey} onChange={(e)=>setButtonKey(e.target.value)}>{styleVariants.buttons.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Placket</span><select aria-label="3D placket" value={placketKey} onChange={(e)=>setPlacketKey(e.target.value)}>{styleVariants.plackets.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Shirt pocket</span><select aria-label="3D pocket" value={pocketKey} onChange={(e)=>setPocketKey(e.target.value)}>{styleVariants.pockets.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
-          <label><span>Yoke</span><select aria-label="3D shirt yoke" value={yokeKey} onChange={(e)=>setYokeKey(e.target.value)}>{styleVariants.yokes.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
-          <label><span>Back construction</span><select aria-label="3D shirt back" value={shirtBackKey} onChange={(e)=>setShirtBackKey(e.target.value)}>{styleVariants.shirtBacks.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+          <label><span>Yoke</span><select aria-label="3D shirt yoke" value={yokeKey} onChange={(e)=>applyYokeVariant(e.target.value)}>{styleVariants.yokes.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+          <label><span>Back construction</span><select aria-label="3D shirt back" value={shirtBackKey} onChange={(e)=>applyShirtBackVariant(e.target.value)}>{styleVariants.shirtBacks.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Shirt hem</span><select aria-label="3D shirt hem" value={shirtHemKey} onChange={(e)=>setShirtHemKey(e.target.value)}>{styleVariants.shirtHems.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Trouser shape</span><select aria-label="3D trouser fit" value={trouserFitKey} onChange={(e)=>setTrouserFitKey(e.target.value)}>{styleVariants.trouserFits.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
           <label><span>Rise</span><select aria-label="3D trouser rise" value={riseKey} onChange={(e)=>setRiseKey(e.target.value)}>{styleVariants.rises.map((item)=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
