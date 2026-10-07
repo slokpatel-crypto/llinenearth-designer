@@ -1001,6 +1001,9 @@ const buttonVariantMaterials=[
   ...styleVariants.cuffs.filter((item)=>!["french","rounded_french","soft_french"].includes(item.id)).map((item)=>
     addButtonVariantMaterial(`ButtonAccentVariant__shirt_cuff__${item.id}`)
   ),
+  ...styleVariants.cuffs.filter((item)=>["french","rounded_french","soft_french"].includes(item.id)).map((item)=>
+    addButtonVariantMaterial(`ButtonAccentVariant__shirt_cufflink__${item.id}`)
+  ),
 ];
 
 const materials=[
@@ -1042,6 +1045,10 @@ const shirtCollarButtonMeshes=Object.fromEntries(styleVariants.collars.filter((i
 const shirtCuffButtonMeshes=Object.fromEntries(styleVariants.cuffs.filter((item)=>!["french","rounded_french","soft_french"].includes(item.id)).map((item)=>[
   item.id,
   addMesh(`ShirtCuffButtonMesh__${item.id}`,button,`ButtonAccentVariant__shirt_cuff__${item.id}`)
+]));
+const shirtCufflinkMeshes=Object.fromEntries(styleVariants.cuffs.filter((item)=>["french","rounded_french","soft_french"].includes(item.id)).map((item)=>[
+  item.id,
+  addMesh(`ShirtCufflinkMesh__${item.id}`,button,`ButtonAccentVariant__shirt_cufflink__${item.id}`)
 ]));
 const meshShirtPlacket=addMesh("ShirtPlacketMesh",detailBox,"ShirtTorsoFabric");
 const meshTrouserCreaseL=addMesh("TrouserCreaseLMesh",detailBox,"TrouserLegLFabric");
@@ -1402,6 +1409,19 @@ for(const item of styleVariants.plackets){
   if(item.id==="french") continue;
   const spec=placketSpec[item.id]||placketSpec.standard;
   nodes.push({name:`ShirtPlacketVariant__${item.id}`,mesh:placketVariantMeshes[item.id],translation:[0,spec.y||1.268,spec.z],scale:spec.scale});
+  if(item.id==="tuxedo_pleated"){
+    for(const side of [-1,1]){
+      for(let i=0;i<5;i++){
+        const x=side*(.030+i*.018);
+        nodes.push({
+          name:`ShirtTuxedoPleat__${side<0?"L":"R"}${i+1}`,
+          mesh:placketVariantMeshes[item.id],
+          translation:[x,1.270,.124],
+          scale:[.0045,.285,.0045]
+        });
+      }
+    }
+  }
 }
 
 const shirtPocketSpec={
@@ -1632,6 +1652,12 @@ for(const item of styleVariants.cuffs){
     }
   }
 }
+for(const item of styleVariants.cuffs){
+  if(!["french","rounded_french","soft_french"].includes(item.id)) continue;
+  const mesh=shirtCufflinkMeshes[item.id];
+  nodes.push({name:`ShirtCufflinkVariant__${item.id}__L`,mesh,translation:[-.250,.895,.061],scale:[.0055,.0055,.004]});
+  nodes.push({name:`ShirtCufflinkVariant__${item.id}__R`,mesh,translation:[.250,.895,.061],scale:[.0055,.0055,.004]});
+}
 nodes.push({name:"TrouserButton",mesh:meshButton,translation:[0,1.100,.113],scale:[.0068,.0068,.0048]});
 for(const side of [-1,1]){
   for(let i=0;i<3;i++) nodes.push({
@@ -1677,7 +1703,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.12 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.13 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -1762,7 +1788,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.12 model complete: researched shirt/trouser construction geometry + fit-aware sleeve lengths/rolled bands + true trouser break silhouettes + pleat/back ease + collar/cuff stiffness + construction-aware closures + shaped shirt/trouser pockets/yokes/hems + canonical Designer handoff + fabric drape response",
+    polishStage:"M7.13 model complete: researched shirt/trouser construction geometry + fit-aware sleeves + true trouser breaks + pleat/back ease + collar/cuff stiffness + construction-aware closures/cufflinks + tuxedo front pleats + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
