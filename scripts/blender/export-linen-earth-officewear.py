@@ -184,7 +184,29 @@ def load_panel_spec(path):
     with open(path, "r", encoding="utf-8") as handle:
         payload = json.load(handle)
 
-    panels = payload.get("panels") if isinstance(payload, dict) else None
+    if not isinstance(payload, dict):
+        raise RuntimeError("Panel spec must be a JSON object.")
+
+    evidence = payload.get("measurementEvidence")
+    if not isinstance(evidence, dict):
+        raise RuntimeError(
+            "Panel spec requires measurementEvidence so production scale cannot be supplied as anonymous/guessed numbers."
+        )
+    evidence_source = str(evidence.get("source", "")).strip()
+    evidence_date = str(evidence.get("measuredAt", "")).strip()
+    evidence_note = str(evidence.get("note", "")).strip()
+    allowed_sources = {"owner_measured", "tailor_measured", "pattern_room_measured", "supplier_pattern_verified"}
+    if evidence_source not in allowed_sources:
+        raise RuntimeError(
+            "measurementEvidence.source must be owner_measured, tailor_measured, "
+            "pattern_room_measured or supplier_pattern_verified."
+        )
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", evidence_date):
+        raise RuntimeError("measurementEvidence.measuredAt must use YYYY-MM-DD.")
+    if len(evidence_note) < 8:
+        raise RuntimeError("measurementEvidence.note must briefly describe how the panel dimensions were measured.")
+
+    panels = payload.get("panels")
     if not isinstance(panels, dict):
         raise RuntimeError("Panel spec must contain a panels object.")
 
@@ -222,7 +244,15 @@ def load_panel_spec(path):
         if any(key not in allowed or not isinstance(value, str) or not value.strip() for key, value in camera_orbits.items()):
             raise RuntimeError("cameraOrbits may contain only non-empty front/three-quarter/side/back strings.")
 
-    return {"panels": normalized, "cameraOrbits": camera_orbits or None}
+    return {
+        "panels": normalized,
+        "cameraOrbits": camera_orbits or None,
+        "measurementEvidence": {
+            "source": evidence_source,
+            "measuredAt": evidence_date,
+            "note": evidence_note,
+        },
+    }
 
 
 def run_scene_preflight():
@@ -234,11 +264,12 @@ def run_scene_preflight():
     if not callable(preflight_main):
         raise RuntimeError("Production scene preflight does not expose main().")
     try:
-        preflight_main()
+        return preflight_main()
     except SystemExit as error:
         code = error.code if isinstance(error.code, int) else 1
         if code:
             raise RuntimeError("Production scene preflight failed; export is blocked.") from error
+        return None
 
 
 def viewer_manifest_path(output_path):
@@ -248,7 +279,7 @@ def viewer_manifest_path(output_path):
     return root + ".viewer.json"
 
 
-def write_viewer_manifest(output_path, height, source, model_identity, panel_spec):
+def write_viewer_manifest(output_path, height, source, model_identity, panel_spec, preflight_report=None):
     payload = {
         "version": CONTRACT_VERSION,
         "modelId": MODEL_ID,
@@ -256,7 +287,17 @@ def write_viewer_manifest(output_path, height, source, model_identity, panel_spe
         "modelIdentity": model_identity,
         "source": source,
         "panels": panel_spec["panels"],
+        "panelMeasurementEvidence": panel_spec["measurementEvidence"],
+        "productionAssetStatus": "realistic-body-production-candidate",
     }
+    if isinstance(preflight_report, dict):
+        payload["productionFitEvidence"] = {
+            "gate": preflight_report.get("gate"),
+            "identityFitMeasurementsMm": preflight_report.get("identityFitMeasurementsMm"),
+            "boundaryIntersections": preflight_report.get("boundaryIntersections"),
+            "boundaryClearanceMm": preflight_report.get("boundaryClearanceMm"),
+            "totals": preflight_report.get("totals"),
+        }
     if panel_spec.get("cameraOrbits"):
         payload["cameraOrbits"] = panel_spec["cameraOrbits"]
 
@@ -292,7 +333,7 @@ def export_glb(collection, output_path):
 
 def main():
     args = cli_args()
-    run_scene_preflight()
+    preflight_report = run_scene_preflight()
     panel_spec = load_panel_spec(args.panel_spec) if args.panel_spec else None
     source = scene_source_provenance(bpy.context.scene) if panel_spec else None
     model_identity = scene_model_identity(bpy.context.scene) if panel_spec else None
@@ -301,7 +342,7 @@ def main():
 
     manifest_path = None
     if panel_spec and source:
-        manifest_path = write_viewer_manifest(args.output, height, source, model_identity, panel_spec)
+        manifest_path = write_viewer_manifest(args.output, height, source, model_identity, panel_spec, preflight_report)
 
     print(f"Linen Earth model exported: {os.path.abspath(args.output)}")
     print(f"Model ID: {MODEL_ID}")
