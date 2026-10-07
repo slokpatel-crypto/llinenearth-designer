@@ -339,6 +339,7 @@ def write_viewer_manifest(output_path, height, source, model_identity, panel_spe
             "gate": preflight_report.get("gate"),
             "ready": preflight_report.get("ready") is True,
             "identityFitMeasurementsMm": preflight_report.get("identityFitMeasurementsMm"),
+            "identityShoeMeasurementsMm": preflight_report.get("identityShoeMeasurementsMm"),
             "boundaryIntersections": preflight_report.get("boundaryIntersections"),
             "boundaryClearanceMm": preflight_report.get("boundaryClearanceMm"),
             "totals": preflight_report.get("totals"),
