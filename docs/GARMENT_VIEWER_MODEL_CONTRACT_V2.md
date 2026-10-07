@@ -116,7 +116,7 @@ Every approved GLB requires a same-name sidecar:
 `/models/linen-earth-officewear-v1.glb`  
 `/models/linen-earth-officewear-v1.viewer.json`
 
-The sidecar binds physical panel dimensions and optional camera orbits to the exact model identity:
+The sidecar binds physical panel dimensions and optional camera orbits to the exact model identity. It also carries the canonical physical silhouette targets; production validation rejects any missing or drifted target:
 
 Production validation rejects a sidecar that does not declare `linen-earth-studio-model-v1` and the exact existing Real Model Designer reference image. This prevents a structurally valid but visually different 3D mannequin from being promoted.
 
@@ -127,7 +127,17 @@ Production validation rejects a sidecar that does not declare `linen-earth-studi
   "referenceHeightMm": 1727,
   "modelIdentity": {
     "id": "linen-earth-studio-model-v1",
-    "referenceImage": "/designer/studio-tucked.webp"
+    "referenceImage": "/designer/studio-tucked.webp",
+    "physicalTargetsMm": {
+      "height": 1727,
+      "shoulderSeamWidth": 388,
+      "outerArmSilhouette": 574,
+      "shirtWaistWidth": 294,
+      "trouserWaistWidth": 344,
+      "handCenterSpacing": 500,
+      "legCenterSpacing": 210,
+      "hemWidth": 64
+    }
   },
   "source": {
     "name": "Blender Human Base Meshes",
