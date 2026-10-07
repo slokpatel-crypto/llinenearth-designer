@@ -28,7 +28,8 @@ async function verifyViewport(browser, width) {
           sleeve:"half_sleeve",
           fit:"boxy_oversized",
           wear:"untucked",
-          hem:"straight_flat_hem"
+          hem:"straight_flat_hem",
+          back:"box_pleat_back"
         },
         pant:{
           type:"wide_leg_relaxed_drape",
@@ -62,8 +63,8 @@ async function verifyViewport(browser, width) {
     model: element.getAttribute("data-model-readiness"),
     manifest: element.getAttribute("data-manifest-ready"),
   }));
-  assert.equal(labReadiness.model, "contract_ready", "3D lab must load the production M7.2 model contract");
-  assert.equal(labReadiness.manifest, "true", "production M7.2 model must load its verified physical-panel manifest");
+  assert.equal(labReadiness.model, "contract_ready", "3D lab must load the production M7.3 model contract");
+  assert.equal(labReadiness.manifest, "true", "production M7.3 model must load its verified physical-panel manifest");
 
   const modelState = await viewer.evaluate((element) => {
     const materials = element.model?.materials || [];
@@ -80,8 +81,8 @@ async function verifyViewport(browser, width) {
   assert.equal(modelState.fieldOfView,"30deg","default field of view must preserve head-to-shoe framing");
   const requiredPanels=["ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric","TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric"];
   for(const name of requiredPanels) assert.equal(modelState.materialNames.filter((item)=>item===name).length,1,"required garment material must remain unique: "+name);
-  assert.ok(modelState.materialNames.filter((name)=>name.startsWith("Shirt")&&name.includes("Variant__")).length>=12,"M7.2 must expose multiple shirt construction-variant materials");
-  assert.ok(modelState.materialNames.filter((name)=>name.startsWith("Trouser")&&name.includes("Variant__")).length>=10,"M7.2 must expose multiple trouser construction-variant materials");
+  assert.ok(modelState.materialNames.filter((name)=>name.startsWith("Shirt")&&name.includes("Variant__")).length>=12,"M7.3 must expose multiple shirt construction-variant materials");
+  assert.ok(modelState.materialNames.filter((name)=>name.startsWith("Trouser")&&name.includes("Variant__")).length>=10,"M7.3 must expose multiple trouser construction-variant materials");
   assert.equal(modelState.hasCreateTexture, true, "model-viewer scene graph texture API must be available");
 
   const buttons = page.locator(".garmentCameraRail button");
@@ -107,6 +108,7 @@ async function verifyViewport(browser, width) {
   assert.equal(await page.getByLabel("3D collar").inputValue(),"cutaway","canonical StyleSpec collar must override the shirt-type preset");
   assert.equal(await page.getByLabel("3D cuff").inputValue(),"cocktail","canonical StyleSpec cuff must override the shirt-type preset");
   assert.equal(await page.getByLabel("3D shirt wear").inputValue(),"untucked","canonical Designer wear must reach 3D");
+  assert.equal(await page.getByLabel("3D shirt back").inputValue(),"center_box_pleat","canonical Designer shirt-back construction must reach 3D");
   assert.equal(await page.getByLabel("3D trouser type").inputValue(),"wide_leg_relaxed_drape","saved Designer trouser type must reach 3D");
   assert.equal(await page.getByLabel("3D trouser pleat").inputValue(),"double_reverse","canonical trouser pleat must reach 3D");
 
@@ -144,6 +146,9 @@ async function verifyViewport(browser, width) {
   await page.getByLabel("3D collar construction").selectOption("soft_unfused");
   await page.getByLabel("3D cuff construction").selectOption("soft");
   await page.getByLabel("3D shirt yoke").selectOption("western");
+  assert.equal(await page.getByLabel("3D shirt back").inputValue(),"plain","western yoke must clear incompatible rear pleats");
+  await page.getByLabel("3D shirt back").selectOption("rear_side_pleats");
+  assert.equal(await page.getByLabel("3D shirt yoke").inputValue(),"split","rear pleats must switch an incompatible western yoke to split");
   await page.getByLabel("3D shirt hem").selectOption("straight");
   await page.getByLabel("3D trouser hem").selectOption("turnup_4");
   await page.getByLabel("3D trouser pockets").selectOption("jean");
@@ -163,7 +168,7 @@ async function verifyViewport(browser, width) {
   assert.ok(garmentText.some((value)=>/Suit/.test(value)&&/FUTURE/.test(value)&&/3-Piece Suit/.test(value)),"future suit types must be visible");
 
   const styleSelects = page.locator(".garmentStyleControlGrid select");
-  assert.equal(await styleSelects.count(), 21, "M7.2 must expose twenty-one live tailoring controls");
+  assert.equal(await styleSelects.count(), 22, "M7.3 must expose twenty-two live tailoring controls");
   const selects = page.locator(".garmentViewerControls > label > select");
   assert.equal(await selects.count(), 2, "fabric selectors remain separate from tailoring controls");
   for (let index = 0; index < 2; index++) {
