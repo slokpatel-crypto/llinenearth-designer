@@ -1553,6 +1553,7 @@ const garmentViewerScenePreflight=fs.readFileSync("scripts/blender/preflight-lin
 const garmentViewerExporter=fs.readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
 const garmentViewerGarmentAuthor=fs.readFileSync("scripts/blender/author-linen-earth-officewear.py","utf8");
 const garmentViewerProductionBuild=fs.readFileSync("scripts/build-production-garment-model.mjs","utf8");
+const garmentViewerModelCheck=fs.readFileSync("scripts/check-garment-viewer-model.mjs","utf8");
 const garmentViewerProductionAssembly=fs.readFileSync("scripts/assemble-production-garment-scene.mjs","utf8");
 const garmentViewerReviewRenderer=fs.readFileSync("scripts/blender/render-linen-earth-officewear-review.py","utf8");
 const garmentViewerPanelWorksheet=fs.readFileSync("scripts/blender/write-panel-measurement-worksheet.py","utf8");
@@ -1620,6 +1621,12 @@ for(const token of ["linenEarthModelIdentityPrompt","linenEarthViewPrompt","exac
 }
 for(const token of ["LINEN_GARMENT_BLEND","LINEN_GARMENT_PANEL_SPEC","LINEN_GARMENT_OUTPUT","export-linen-earth-officewear.py","check-garment-viewer-model.mjs"]) {
   if(!garmentViewerProductionBuild.includes(token)) throw new Error(`GarmentViewer production-build regression: missing ${token}`);
+}
+for(const token of [".cache/linen-earth/candidates/linen-earth-officewear-v1.glb","LINEN_GARMENT_REQUIRE_PRODUCTION:\"true\"","strict realistic-production validation"]) {
+  if(!garmentViewerProductionBuild.includes(token)) throw new Error(`GarmentViewer staged-production regression: missing ${token}`);
+}
+for(const token of ["LINEN_GARMENT_REQUIRE_PRODUCTION","productionAssetReady===true","requireProduction","productionReady"]) {
+  if(!garmentViewerModelCheck.includes(token)) throw new Error(`GarmentViewer strict model-check regression: missing ${token}`);
 }
 for(const token of ["bootstrap-human-base-meshes.py","prepare-linen-earth-body.py","author-linen-earth-officewear.py","preflight-linen-earth-officewear.py","linen-earth-officewear-authored.blend"]) {
   if(!garmentViewerProductionAssembly.includes(token)) throw new Error(`GarmentViewer production-assembly regression: missing ${token}`);
