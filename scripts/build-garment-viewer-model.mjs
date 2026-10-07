@@ -1135,7 +1135,7 @@ const thumb=profileGeometry({
 const mannequinBody=await loadMakeHumanBodyGeometry();
 const garmentShells=await loadMakeHumanGarmentShells();
 
-// M7.44: the visible clothing uses clean identity-first tailoring shells rather than
+// M7.45: the visible clothing uses clean identity-first tailoring shells rather than
 // cropped anatomical body surfaces. MakeHuman stays as the hidden collision/skin source.
 // These world-space shells preserve the exact Linen Earth silhouette anchors while
 // producing continuous shirt/trouser surfaces with clean side and back views.
@@ -1717,6 +1717,7 @@ for(const rise of styleVariants.rises){
 }
 
 const qz=(deg)=>{const r=deg*Math.PI/180/2;return [0,0,Math.sin(r),Math.cos(r)];};
+const qy=(deg)=>{const r=deg*Math.PI/180/2;return [0,Math.sin(r),0,Math.cos(r)];};
 const nodes=[
   // The CC0 anatomical body is prepared as the next cloth-collision source but intentionally not rendered:
   // the visible mannequin stays locked to the exact Linen Earth studio silhouette without skin/garment clipping.
@@ -2097,20 +2098,34 @@ for(const fit of styleVariants.trouserFits){
   }
 }
 
-// Waistband details follow the actual selected rise so hardware never floats above or below the waist shell.
+// Waistband details follow the selected rise and wrap the whole waist so side/back views stay tailored.
 for(const rise of styleVariants.rises){
   const yBase=1.086+(Number(rise.yOffsetM)||0);
+  const waistRx=.171,waistRz=.106;
   const beltMesh=waistbandVariantMeshes[`${rise.id}__belt_loops`];
-  for(const x of [-.132,-.065,.065,.132]) nodes.push({
-    name:`TrouserBeltLoop__${rise.id}__${x}`,
-    mesh:beltMesh,
-    translation:[x,yBase,.108],
-    scale:[.010,.040,.006]
-  });
+  for(const angle of [-145,-92,-32,32,92,145,180]){
+    const rad=angle*Math.PI/180;
+    nodes.push({
+      name:`TrouserBeltLoop__${rise.id}__${angle}`,
+      mesh:beltMesh,
+      translation:[Math.sin(rad)*waistRx,yBase,Math.cos(rad)*waistRz+.003],
+      scale:[.010,.040,.006],
+      rotation:qy(angle)
+    });
+  }
 
   const adjusterMesh=waistbandVariantMeshes[`${rise.id}__side_adjuster`];
-  nodes.push({name:`TrouserSideAdjusterL__${rise.id}`,mesh:adjusterMesh,translation:[-.150,yBase-.001,.090],scale:[.045,.018,.012],rotation:qz(-8)});
-  nodes.push({name:`TrouserSideAdjusterR__${rise.id}`,mesh:adjusterMesh,translation:[.150,yBase-.001,.090],scale:[.045,.018,.012],rotation:qz(8)});
+  for(const side of [-1,1]){
+    const angle=side*78;
+    const rad=angle*Math.PI/180;
+    nodes.push({
+      name:`TrouserSideAdjuster${side<0?"L":"R"}__${rise.id}`,
+      mesh:adjusterMesh,
+      translation:[Math.sin(rad)*waistRx,yBase-.001,Math.cos(rad)*waistRz+.003],
+      scale:[.045,.018,.012],
+      rotation:qy(angle)
+    });
+  }
 
   const tabMesh=waistbandVariantMeshes[`${rise.id}__extended_tab`];
   nodes.push({name:`TrouserExtendedTabL__${rise.id}`,mesh:tabMesh,translation:[-.055,yBase+.006,.116],scale:[.115,.022,.008],rotation:qz(-2)});
@@ -2121,11 +2136,12 @@ for(const rise of styleVariants.rises){
   nodes.push({name:`TrouserDrawstringR__${rise.id}`,mesh:drawMesh,translation:[.018,yBase-.014,.116],scale:[.008,.085,.006],rotation:qz(8)});
 
   const braceMesh=waistbandVariantMeshes[`${rise.id}__braces`];
-  for(const x of [-.11,-.055,.055,.11]) nodes.push({
-    name:`TrouserBraceButton__${rise.id}__${x}`,
+  for(const [x,z] of [[-.105,.111],[.105,.111],[-.105,-.103],[.105,-.103]]) nodes.push({
+    name:`TrouserBraceButton__${rise.id}__${x}__${z}`,
     mesh:braceMesh,
-    translation:[x,yBase+.006,.114],
-    scale:[.010,.010,.006]
+    translation:[x,yBase+.006,z],
+    scale:[.010,.010,.006],
+    rotation:z<0?qy(180):qy(0)
   });
 }
 
@@ -2321,7 +2337,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.44 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.45 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -2406,7 +2422,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.44 model complete: 360-degree raised-back collar band + 360-degree wrist cuff shells + rise-aware tucked-shirt waist junction + extra-high/Korean waist geometry + faceless human head plane/jaw profile + front-flat/back-seat trouser waist shaping + seat/crotch upper-trouser blend + tailored oval sleeve-cap pitch + English-spread/British collar geometry + fit-specific tucked waist compression + contrast-ready collar/cuff material isolation + tapered studio neck/jaw transition + tailored dress-shoe upper/heel silhouette + articulated studio-mannequin fingers/thumbs + clean hands/forearms + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
+    polishStage:"M7.45 model complete: 360-degree raised-back collar band + 360-degree wrist cuff shells + rise-aware tucked-shirt waist junction + extra-high/Korean waist geometry + faceless human head plane/jaw profile + front-flat/back-seat trouser waist shaping + seat/crotch upper-trouser blend + tailored oval sleeve-cap pitch + English-spread/British collar geometry + fit-specific tucked waist compression + contrast-ready collar/cuff material isolation + tapered studio neck/jaw transition + tailored dress-shoe upper/heel silhouette + articulated studio-mannequin fingers/thumbs + clean hands/forearms + robust tailored hem bands + clean identity-tailored visible garment shells + lazy-safe material hydration +  active-variant texture streaming +  server-verified production readiness + resilient scene-graph hydration + all-angle identity/camera contract + geometry-level gravity folds by shirt/trouser ease + panel-correct physical texture scale on style variants + tailored shortened-sleeve finishes + exposed forearms + collar-neck seal + fit-aware sleeves + persistent front creases + true trouser breaks + fit/break-locked turn-ups + rise-locked waist details + pleat/back ease + collar/cuff construction + shaped pockets/yokes/hems + canonical Designer handoff",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},

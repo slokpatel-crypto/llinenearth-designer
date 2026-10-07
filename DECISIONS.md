@@ -485,3 +485,12 @@ Architecture and product decisions that must persist across coding sessions.
 **Fit rule:** the wrap shell remains keyed by trouser fit, break and 4 cm / 5 cm turn-up choice. Its width still follows the selected leg hem scale and its vertical position still follows the selected break.
 
 **Acceptance boundary:** this improves visible tailoring geometry without adding cloth simulation, AI credits or a new model identity.
+
+
+## 2026-10-07 — M7.45 360-degree waistband hardware
+
+**Decision:** waistband hardware now follows the waist around front, sides and back instead of being drawn only on the front plane.
+
+**Construction:** belt-loop trousers use seven perimeter loops; side adjusters sit on the actual side quarters with tangent rotation; brace-button trousers carry front and rear pairs. Every hardware set continues to follow low, mid, high and extra-high rise positions.
+
+**Acceptance boundary:** this is deterministic tailoring geometry. Extended tabs and drawstrings remain front constructions by design; no cloth simulation, AI credit or model-identity change is introduced.
