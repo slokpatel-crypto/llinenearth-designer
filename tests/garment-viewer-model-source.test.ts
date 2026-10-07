@@ -77,6 +77,16 @@ test("realistic body intake is explicit, licensed and does not fake garment geom
   assert(!prepare.includes("ShirtTorsoFabric"),"Body intake must not invent garment meshes.");
 });
 
+test("realistic garment authoring uses closed continuous ring shells instead of cropped body surface fragments",()=>{
+  const source=readFileSync("scripts/blender/author-linen-earth-officewear.py","utf8");
+  assert(source.includes('bpy.context.scene["linen_earth_garment_authoring_method"] = "closed-tailoring-ring-shell-v2"'));
+  assert(source.includes("authored, fit_profile = build_procedural_officewear"));
+  assert(source.includes("neck_opening=(shoulder_z"));
+  assert(source.includes('"ShirtTorsoFabric"'));
+  assert(source.includes('"TrouserLegRFabric"'));
+  assert(!source.includes("for name, predicate in regions.items():"));
+});
+
 test("realistic-body garment authoring creates the six canonical production shells without claiming tailor approval",()=>{
   const packageJson=JSON.parse(readFileSync("package.json","utf8"));
   const source=readFileSync("scripts/blender/author-linen-earth-officewear.py","utf8");
@@ -93,11 +103,12 @@ test("realistic-body garment authoring creates the six canonical production shel
     "CORRECTIVE_SMOOTH",
     "SOLIDIFY",
     "planar_grain_uv",
-    "shape_officewear_to_identity",
-    "scale_x_profile",
-    "shift_x_profile",
-    "shirtShoulderCorrection",
-    "corrected_shoulder",
+    "build_procedural_officewear",
+    "build_ring_shell",
+    "closed-tailoring-ring-shell-v2",
+    "neck_opening",
+    "body_depth_at_z",
+    "segments=64",
     "shirt_clearance_m",
     "trouser_clearance_m",
     "linen_earth_identity_fit_profile_json",
@@ -162,6 +173,9 @@ test("realistic production candidate renders front, three-quarter, side and back
     "LE_REVIEW_KEY",
     "LE_REVIEW_FILL",
     "LE_REVIEW_RIM",
+    "#916F5A",
+    "#C8B58E",
+    "#343C49",
     "review-views.txt",
   ]) assert(source.includes(token),token);
   assert(workflow.includes("Render four-angle fit review"));
