@@ -1564,6 +1564,7 @@ const garmentViewerContract=fs.readFileSync("src/lib/garment-viewer-model-contra
 const garmentViewerPrototype=fs.readFileSync("src/lib/garment-viewer-prototype.ts","utf8");
 const garmentViewerModelBuilder=fs.readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
 const garmentViewerStyleVariants=fs.readFileSync("src/lib/garment-viewer-style-variants.json","utf8");
+const garmentViewerStyleMaterials=fs.readFileSync("src/lib/garment-viewer-style-materials.ts","utf8");
 const garmentViewerGlb=fs.readFileSync("src/lib/garment-viewer-glb.ts","utf8");
 const garmentViewerReadiness=fs.readFileSync("src/lib/garment-viewer-readiness.ts","utf8");
 const garmentViewerOperator=fs.readFileSync("src/app/operator/garment-viewer/page.tsx","utf8");
@@ -1653,6 +1654,15 @@ for(const token of ["linen-earth-officewear-scene-preflight-v1","evaluated_mesh_
 for(const token of ["textureSlotsReady","baseColorTexture","normalTexture","replaceable base-color texture slot","replaceable normal texture slot"]) {
   if(!garmentViewerGlb.includes(token)) throw new Error(`GarmentViewer runtime-texture GLB regression: missing ${token}`);
 }
+for(const token of ["requiredGarmentViewerStyleMaterials","REQUIRED_GARMENT_VIEWER_STYLE_MATERIALS","garmentViewerStyleMaterialCoverage","ShirtCollarVariant__","ShirtCuffVariant__","TrouserWaistbandVariant__","TrouserHemVariant__","ButtonAccentVariant__"]) {
+  if(!garmentViewerStyleMaterials.includes(token)) throw new Error(`GarmentViewer tailoring-material contract regression: missing ${token}`);
+}
+for(const token of ["garmentViewerStyleMaterialCoverage","styleVariantCoverage"]) {
+  if(!garmentViewerGlb.includes(token)) throw new Error(`GarmentViewer tailoring-coverage inspection regression: missing ${token}`);
+}
+for(const token of ["styleVariantCoverage","styleVariantReady","tailoring variants are incomplete"]) {
+  if(!garmentViewerReadiness.includes(token)) throw new Error(`GarmentViewer tailoring-promotion gate regression: missing ${token}`);
+}
 for(const token of ["linen-earth-garment-viewer-v2","REQUIRED_GARMENT_VIEWER_MATERIALS","approvedGarmentViewerModelSource","validateGarmentViewerModelManifest","GarmentViewerAssetSource","Model source provenance is required","sourceReady","panelMeasurementReady","fitEvidenceReady","productionAssetReady","realistic-body-production-candidate","linen-earth-officewear-scene-preflight-v1","LINEN_EARTH_MODEL_IDENTITY_ID","Production model identity must be","exact Real Model Designer studio image","physicalTargetsMm","Production model identity target"]) {
   if(!garmentViewerContract.includes(token)) throw new Error(`GarmentViewer production contract regression: missing ${token}`);
 }
@@ -1682,7 +1692,7 @@ for(const token of ["@google/model-viewer@4.3.1","text/javascript","s-maxage=259
 }
 if(garmentViewerLabPage.includes("ajax.googleapis.com")) throw new Error("GarmentViewer browser must not load its 3D engine from Google CDN directly.");
 if(garmentViewerLabCss.includes(".garmentViewerControls{order:-1}")) throw new Error("GarmentViewer mobile regression: controls cannot appear before the 3D stage.");
-for(const token of ["GarmentViewerEvidenceForm","CUSTOMER PROMOTION GATE","Realistic production candidate","PRODUCTION ASSET STATUS","REALISTIC CANDIDATE READY","SOURCE / LICENSE","sourceReady","loadLatestGarmentViewerReadiness","LOCKED MODEL IDENTITY","LINEN_EARTH_MODEL_PHYSICAL_TARGETS_MM","Hand-center spacing","Leg-center spacing","PANEL SCALE PROVENANCE","panelMeasurementEvidence","Physical scale evidence","PRODUCTION FIT EVIDENCE","productionFitEvidence","Boundary clearances","Asset status:","productionAssetStatus"]) {
+for(const token of ["GarmentViewerEvidenceForm","CUSTOMER PROMOTION GATE","Realistic production candidate","Tailoring variants ","styleVariantReady","PRODUCTION ASSET STATUS","REALISTIC CANDIDATE READY","SOURCE / LICENSE","sourceReady","loadLatestGarmentViewerReadiness","LOCKED MODEL IDENTITY","LINEN_EARTH_MODEL_PHYSICAL_TARGETS_MM","Hand-center spacing","Leg-center spacing","PANEL SCALE PROVENANCE","panelMeasurementEvidence","Physical scale evidence","PRODUCTION FIT EVIDENCE","productionFitEvidence","Boundary clearances","Asset status:","productionAssetStatus"]) {
   if(!garmentViewerOperator.includes(token)) throw new Error(`GarmentViewer operator QA regression: missing ${token}`);
 }
 for(const token of ["productionCandidateReady","REALISTIC CANDIDATE READY","STRUCTURE READY / EVIDENCE OPEN"]) {
