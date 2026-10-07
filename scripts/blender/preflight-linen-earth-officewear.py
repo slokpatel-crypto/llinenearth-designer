@@ -194,38 +194,22 @@ def nearest_distance_stats_mm(source, target, z_center=None, band=0.06, max_samp
         evaluated.to_mesh_clear()
 
 
-def world_normal_orientation_sign(obj, max_samples=160):
-    if obj is None or obj.type != "MESH":
-        return 1.0
-    depsgraph = bpy.context.evaluated_depsgraph_get()
-    evaluated = obj.evaluated_get(depsgraph)
-    mesh = evaluated.to_mesh()
-    try:
-        if not mesh.polygons:
-            return 1.0
-        center = sum(world_bounds(obj), Vector((0.0, 0.0, 0.0))) / 8.0
-        matrix = evaluated.matrix_world
-        normal_matrix = matrix.to_3x3().inverted().transposed()
-        stride = max(1, len(mesh.polygons) // max_samples)
-        scores = []
-        sampled = 0
-        for polygon_index in range(0, len(mesh.polygons), stride):
-            if sampled >= max_samples:
-                break
-            polygon = mesh.polygons[polygon_index]
-            sampled += 1
-            point = matrix @ polygon.center
-            normal = normal_matrix @ polygon.normal
-            if normal.length <= 1e-8:
-                continue
-            normal.normalize()
-            scores.append((point - center).dot(normal))
-        if not scores:
-            return 1.0
-        scores.sort()
-        return 1.0 if scores[len(scores) // 2] >= 0 else -1.0
-    finally:
-        evaluated.to_mesh_clear()
+def point_inside_closed_bvh(tree, point, epsilon=1e-5, max_hits=64):
+    # Odd/even ray parity is more robust than nearest-normal sign on concave
+    # anatomy (armpits/crotch/seat), where the closest triangle normal can face
+    # away from an otherwise exterior garment point.
+    direction = Vector((1.0, 0.371, 0.117)).normalized()
+    origin = point + direction * epsilon
+    hits = 0
+    for _ in range(max_hits):
+        result = tree.ray_cast(origin, direction)
+        location = result[0] if result else None
+        distance = result[3] if result and len(result) > 3 else None
+        if location is None or distance is None:
+            break
+        hits += 1
+        origin = location + direction * epsilon
+    return (hits % 2) == 1
 
 
 def signed_clearance_stats_mm(source, target, z_center=None, band=0.06, max_samples=600):
@@ -234,7 +218,6 @@ def signed_clearance_stats_mm(source, target, z_center=None, band=0.06, max_samp
     target_tree = world_bvh(target, epsilon=0.0)
     if target_tree is None:
         return None
-    orientation = world_normal_orientation_sign(target)
     depsgraph = bpy.context.evaluated_depsgraph_get()
     evaluated = source.evaluated_get(depsgraph)
     mesh = evaluated.to_mesh()
@@ -249,31 +232,33 @@ def signed_clearance_stats_mm(source, target, z_center=None, band=0.06, max_samp
         if not candidates:
             return None
         stride = max(1, len(candidates) // max_samples)
-        signed = []
+        distances = []
+        penetration = []
+        penetration_tolerance_mm = 0.8
         for point in candidates[::stride][:max_samples]:
             nearest = target_tree.find_nearest(point)
-            if nearest is None or nearest[0] is None or nearest[1] is None:
+            if nearest is None or nearest[0] is None:
                 continue
-            normal = nearest[1].normalized()
-            signed.append((point - nearest[0]).dot(normal) * orientation * 1000.0)
-        if not signed:
+            distance_mm = (point - nearest[0]).length * 1000.0
+            distances.append(distance_mm)
+            if distance_mm > penetration_tolerance_mm and point_inside_closed_bvh(target_tree, point):
+                penetration.append(distance_mm)
+        if not distances:
             return None
-        signed.sort()
-        penetration_tolerance_mm = 0.8
-        penetration = [value for value in signed if value < -penetration_tolerance_mm]
-        p05 = signed[min(len(signed) - 1, int(round((len(signed) - 1) * 0.05)))]
+        distances.sort()
+        penetration.sort()
+        p05 = distances[min(len(distances) - 1, int(round((len(distances) - 1) * 0.05)))]
         return {
-            "minSigned": round(signed[0], 2),
+            "minSigned": round(distances[0], 2),
             "p05Signed": round(p05, 2),
-            "medianSigned": round(signed[len(signed) // 2], 2),
+            "medianSigned": round(distances[len(distances) // 2], 2),
             "penetrationSamples": len(penetration),
-            "maxPenetrationMm": round(abs(min(penetration)), 2) if penetration else 0.0,
-            "samples": len(signed),
-            "normalOrientation": "outward" if orientation > 0 else "corrected_inward",
+            "maxPenetrationMm": round(penetration[-1], 2) if penetration else 0.0,
+            "samples": len(distances),
+            "insideMethod": "odd-even-bvh-ray-parity",
         }
     finally:
         evaluated.to_mesh_clear()
-
 
 def guide_world_points(obj):
     if obj is None or obj.type != "CURVE":
