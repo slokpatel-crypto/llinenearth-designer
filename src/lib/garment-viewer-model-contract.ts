@@ -87,6 +87,16 @@ export type GarmentViewerModelManifest = {
   modelIdentity?:{
     id:string;
     referenceImage:string;
+    physicalTargetsMm?:{
+      height:number;
+      shoulderSeamWidth:number;
+      outerArmSilhouette:number;
+      shirtWaistWidth:number;
+      trouserWaistWidth:number;
+      handCenterSpacing:number;
+      legCenterSpacing:number;
+      hemWidth:number;
+    };
   };
   source?:GarmentViewerAssetSource;
   panels: Record<string,{widthMm:number;heightMm:number;offsetU?:number;offsetV?:number;rotationDeg?:number}>;
@@ -112,10 +122,25 @@ export function validateGarmentViewerModelManifest(value:unknown,expectedModelId
   if(!Number.isFinite(manifest.referenceHeightMm)||Number(manifest.referenceHeightMm)<1400||Number(manifest.referenceHeightMm)>2200) reasons.push("Reference height must be between 1400 and 2200 mm.");
   const identityId=String(manifest.modelIdentity?.id||"").trim();
   const identityReference=String(manifest.modelIdentity?.referenceImage||"").trim();
+  const identityTargets=manifest.modelIdentity?.physicalTargetsMm;
+  const expectedIdentityTargets={
+    height:LINEN_EARTH_MODEL_REFERENCE_HEIGHT_MM,
+    shoulderSeamWidth:388,
+    outerArmSilhouette:574,
+    shirtWaistWidth:294,
+    trouserWaistWidth:344,
+    handCenterSpacing:500,
+    legCenterSpacing:210,
+    hemWidth:64,
+  } as const;
   if(manifest.modelId!==PROTOTYPE_MODEL_ID) {
     if(identityId!==LINEN_EARTH_MODEL_IDENTITY_ID) reasons.push(`Production model identity must be ${LINEN_EARTH_MODEL_IDENTITY_ID}.`);
     if(identityReference!==LINEN_EARTH_MODEL_REFERENCE_IMAGE) reasons.push("Production model must reference the exact Real Model Designer studio image.");
     if(Math.abs(Number(manifest.referenceHeightMm)-LINEN_EARTH_MODEL_REFERENCE_HEIGHT_MM)>20) reasons.push(`Production model height must stay within 20 mm of ${LINEN_EARTH_MODEL_REFERENCE_HEIGHT_MM} mm.`);
+    for(const [key,target] of Object.entries(expectedIdentityTargets)){
+      const actual=Number(identityTargets?.[key as keyof typeof expectedIdentityTargets]);
+      if(!Number.isFinite(actual)||Math.abs(actual-target)>0.5) reasons.push(`Production model identity target ${key} must equal ${target} mm.`);
+    }
   }
   const rawSource=manifest.source&&typeof manifest.source==="object"?manifest.source:null;
   const sourceName=String(rawSource?.name||"").trim();
