@@ -128,7 +128,8 @@ test("deterministic shell and Blender production candidate are explicitly distin
   assert(builder.includes("deterministic-preview-shell-not-realistic-production-asset"));
   assert(builder.includes("realistic production asset still requires Blender-source fit/evidence"));
   assert(exporter.includes("realistic-body-production-candidate"));
-  assert(contract.includes('"deterministic-preview-shell-not-realistic-production-asset"|"realistic-body-production-candidate"'));
+  assert(contract.includes('"deterministic-preview-shell-not-realistic-production-asset"'));
+  assert(contract.includes('"realistic-body-production-candidate"'));
 });
 
 test("Blender preflight performs world-space collision and clearance checks",()=>{
@@ -164,6 +165,16 @@ test("realistic candidate creates a physical-measurement worksheet without treat
   ]) assert(source.includes(token),token);
   assert(workflow.includes("Write physical panel measurement worksheet"));
   assert(workflow.includes("garment:model-production:measurement-worksheet"));
+});
+
+test("rendered realistic review has an automated garment and shoe visibility gate",()=>{
+  const packageJson=JSON.parse(readFileSync("package.json","utf8"));
+  const source=readFileSync("scripts/evaluate-realistic-review.mjs","utf8");
+  const workflow=readFileSync(".github/workflows/realistic-3d-candidate.yml","utf8");
+  assert.equal(packageJson.scripts["garment:model-production:review-check"],"node scripts/evaluate-realistic-review.mjs artifacts/realistic-3d/review");
+  for(const token of ["linen-earth-realistic-review-visibility-v1","isTrouser","isShoe","trouserRatio","shoeRatio","review-visibility.json","review-contact-sheet.png"]) assert(source.includes(token),token);
+  assert(workflow.includes("Verify garment and shoe visibility"));
+  assert(workflow.includes("review_visibility"));
 });
 
 test("realistic production candidate renders front, three-quarter, side and back review views",()=>{
@@ -206,12 +217,29 @@ test("production scene assembly chains realistic body preparation, garment autho
   for(const token of [
     "bootstrap-human-base-meshes.py",
     'process.env.PYTHON||"python3"',
+    "build-garment-viewer-model.mjs",
     "prepare-linen-earth-body.py",
     "author-linen-earth-officewear.py",
+    "garment-import-tailoring-library.py",
+    "LINEN_TAILORING_LIBRARY_GLB",
     "preflight-linen-earth-officewear.py",
     "linen-earth-officewear-authored.blend",
+    '"--python-exit-code","1"',
     "visually/tailor review",
   ]) assert(source.includes(token),token);
+});
+
+test("realistic scene absorbs the deterministic tailoring variant library without a second mannequin",()=>{
+  const source=readFileSync("scripts/garment-import-tailoring-library.py","utf8");
+  for(const token of ["bpy.ops.import_scene.gltf","linen_earth_tailoring_variant","deterministic-library-fit-to-locked-identity","Variant__","Length__","MannequinSkinArmVariant__","Deterministic base geometry leaked into realistic scene","repair_variant_outside_body","variant_clearance","linen_earth_tailoring_variant_repair_json","Retained variant materials"]) assert(source.includes(token),token);
+});
+
+test("tailoring coverage counts only materials assigned to GLB primitives",()=>{
+  const source=readFileSync("src/lib/garment-viewer-glb.ts","utf8");
+  assert(source.includes("const usedMaterialNames=new Set<string>()"));
+  assert(source.includes("usedMaterialNames.add(name)"));
+  assert(source.includes("garmentViewerStyleMaterialCoverage([...usedMaterialNames])"));
+  assert(!source.includes("garmentViewerStyleMaterialCoverage(materialNames)"));
 });
 
 test("operator reviewer evidence is locked to a realistic production candidate",()=>{
