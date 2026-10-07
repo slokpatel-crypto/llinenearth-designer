@@ -70,6 +70,10 @@ test("realistic body intake is explicit, licensed and does not fake garment geom
     "apply_body_transforms",
     "retain_locked_body_only",
     "linen_earth_removed_auxiliary_objects_json",
+    "create_identity_shoes",
+    "LE_ShoeL",
+    "LE_ShoeR",
+    "minimal-dress-shoe-v1",
     "align_arm_stance_to_identity",
     "linen_earth_arm_stance_json",
     "linen_earth_asset_status",
@@ -122,7 +126,7 @@ test("deterministic shell and Blender production candidate are explicitly distin
 
 test("Blender preflight performs world-space collision and clearance checks",()=>{
   const source=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
-  for(const token of ["world_bvh","BVHTree.FromPolygons","evaluated.matrix_world","intersection_pair_count","nearest_distance_stats_mm","signed_clearance_stats_mm","world_normal_orientation_sign","penetrationSamples","maxPenetrationMm","shirtTrouserTuck","--json-output","output.write_text"]) {
+  for(const token of ["world_bvh","BVHTree.FromPolygons","evaluated.matrix_world","intersection_pair_count","nearest_distance_stats_mm","signed_clearance_stats_mm","world_normal_orientation_sign","penetrationSamples","maxPenetrationMm","identityShoeMeasurementsMm","LE_ShoeL","LE_ShoeR","floor contact","shirtTrouserTuck","--json-output","output.write_text"]) {
     assert(source.includes(token),token);
   }
   assert(!source.includes("BVHTree.FromObject(left"));
@@ -133,7 +137,7 @@ test("Blender exporter carries fit and boundary preflight evidence into the prod
   const preflight=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
   const exporter=readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
   for(const token of ["return report","boundaryClearanceMm","identityFitMeasurementsMm","boundaryIntersections"]) assert(preflight.includes(token),token);
-  for(const token of ["preflight_report = run_scene_preflight()","productionFitEvidence","\"ready\": preflight_report.get(\"ready\") is True","identityFitMeasurementsMm","boundaryIntersections","boundaryClearanceMm"]) assert(exporter.includes(token),token);
+  for(const token of ["preflight_report = run_scene_preflight()","productionFitEvidence","\"ready\": preflight_report.get(\"ready\") is True","identityFitMeasurementsMm","identityShoeMeasurementsMm","boundaryIntersections","boundaryClearanceMm"]) assert(exporter.includes(token),token);
 });
 
 test("realistic candidate creates a physical-measurement worksheet without treating geometry estimates as evidence",()=>{
@@ -170,6 +174,8 @@ test("realistic production candidate renders front, three-quarter, side and back
     "scene.view_settings.exposure = -0.65",
     '#303843',
     '#A97C62',
+    "SHOE_OBJECTS",
+    '#241B16',
     "review-views.txt",
   ]) assert(source.includes(token),token);
   assert(workflow.includes("Render four-angle fit review"));
