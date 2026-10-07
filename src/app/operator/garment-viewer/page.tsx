@@ -64,6 +64,15 @@ export default async function GarmentViewerOperatorPage(){
       </div>
     </section>
 
+    {manifest?.productionFitEvidence&&<section className="garmentQaPanel">
+      <div className="garmentQaPanelHead"><div><small>PRODUCTION FIT EVIDENCE</small><h2>Blender preflight geometry checks</h2></div><b>{manifest.productionFitEvidence.gate||"RECORDED"}</b></div>
+      <div className="garmentQaRows">
+        <div data-ready={true}><strong>Identity fit</strong><span>{Object.keys(manifest.productionFitEvidence.identityFitMeasurementsMm||{}).length} measurements</span><em>Locked silhouette + stance</em></div>
+        <div data-ready={true}><strong>Boundary intersections</strong><span>{Object.keys(manifest.productionFitEvidence.boundaryIntersections||{}).length} checks</span><em>Body / garment / tuck</em></div>
+        <div data-ready={true}><strong>Boundary clearances</strong><span>{Object.keys(manifest.productionFitEvidence.boundaryClearanceMm||{}).length} checks</span><em>Upper torso · waist · cuffs · trouser gap</em></div>
+      </div>
+    </section>}
+
     {panels.length>0&&<section className="garmentQaPanel">
       <div className="garmentQaPanelHead"><div><small>PANEL CONTRACT</small><h2>Fabric-mappable garment pieces</h2></div><b>{panels.filter((panel)=>panel.position&&panel.normal&&panel.uv0).length}/{panels.length}</b></div>
       <div className="garmentQaRows">
