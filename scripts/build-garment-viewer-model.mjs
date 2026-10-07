@@ -975,7 +975,7 @@ const styleVariantMaterials=[
   ])),
   ...styleVariants.rises.filter((rise)=>rise.id!=="mid").map((rise)=>addVariantMaterial(`TrouserWaistVariant__${rise.id}`,"trouser")),
   ...styleVariants.rises.flatMap((rise)=>styleVariants.pleats.filter((pleat)=>pleat.id!=="flat").map((pleat)=>addVariantMaterial(`TrouserWaistPleatVariant__${rise.id}__${pleat.id}`,"trouser"))),
-  ...styleVariants.waistbands.filter((item)=>item.id!=="clean").map((item)=>addVariantMaterial(`TrouserWaistbandVariant__${item.id}`,"trouser")),
+  ...styleVariants.rises.flatMap((rise)=>styleVariants.waistbands.filter((item)=>item.id!=="clean").map((item)=>addVariantMaterial(`TrouserWaistbandVariant__${rise.id}__${item.id}`,"trouser"))),
   ...styleVariants.pleats.filter((item)=>item.id!=="flat").map((item)=>addVariantMaterial(`TrouserPleatVariant__${item.id}`,"trouser")),
   ...styleVariants.breaks.filter((item)=>item.id!=="slight").map((item)=>addVariantMaterial(`TrouserBreakVariant__${item.id}`,"trouser")),
   ...styleVariants.trouserHems.filter((item)=>item.id!=="plain").map((item)=>addVariantMaterial(`TrouserHemVariant__${item.id}`,"trouser")),
@@ -1208,10 +1208,18 @@ const pocketPleatVariantMeshes=Object.fromEntries(styleVariants.pockets.filter((
   item.id,
   addMesh(`ShirtPocketPleatVariantMesh__${item.id}`,detailBox,`ShirtPocketVariant__${item.id}`)
 ]));
-const waistbandVariantMeshes=Object.fromEntries(styleVariants.waistbands.filter((item)=>item.id!=="clean").map((item)=>[
-  item.id,
-  addMesh(`TrouserWaistbandVariantMesh__${item.id}`,detailBox,`TrouserWaistbandVariant__${item.id}`)
-]));
+const waistbandVariantMeshes={};
+for(const rise of styleVariants.rises){
+  for(const item of styleVariants.waistbands){
+    if(item.id==="clean") continue;
+    const key=`${rise.id}__${item.id}`;
+    waistbandVariantMeshes[key]=addMesh(
+      `TrouserWaistbandVariantMesh__${key}`,
+      detailBox,
+      `TrouserWaistbandVariant__${key}`
+    );
+  }
+}
 const pleatVariantMeshes=Object.fromEntries(styleVariants.pleats.filter((item)=>item.id!=="flat").map((item)=>[
   item.id,
   addMesh(`TrouserPleatVariantMesh__${item.id}`,detailBox,`TrouserPleatVariant__${item.id}`)
@@ -1534,15 +1542,37 @@ for(const fit of styleVariants.trouserFits){
   }
 }
 
-// Waistband details.
-for(const x of [-.132,-.065,.065,.132]) nodes.push({name:`TrouserBeltLoop__${x}`,mesh:waistbandVariantMeshes.belt_loops,translation:[x,1.086,.108],scale:[.010,.040,.006]});
-nodes.push({name:"TrouserSideAdjusterL",mesh:waistbandVariantMeshes.side_adjuster,translation:[-.150,1.085,.090],scale:[.045,.018,.012],rotation:qz(-8)});
-nodes.push({name:"TrouserSideAdjusterR",mesh:waistbandVariantMeshes.side_adjuster,translation:[.150,1.085,.090],scale:[.045,.018,.012],rotation:qz(8)});
-nodes.push({name:"TrouserExtendedTabL",mesh:waistbandVariantMeshes.extended_tab,translation:[-.055,1.092,.116],scale:[.115,.022,.008],rotation:qz(-2)});
-nodes.push({name:"TrouserExtendedTabR",mesh:waistbandVariantMeshes.extended_tab,translation:[.055,1.092,.116],scale:[.115,.022,.008],rotation:qz(2)});
-nodes.push({name:"TrouserDrawstringL",mesh:waistbandVariantMeshes.drawstring,translation:[-.018,1.072,.116],scale:[.008,.085,.006],rotation:qz(-8)});
-nodes.push({name:"TrouserDrawstringR",mesh:waistbandVariantMeshes.drawstring,translation:[.018,1.072,.116],scale:[.008,.085,.006],rotation:qz(8)});
-for(const x of [-.11,-.055,.055,.11]) nodes.push({name:`TrouserBraceButton__${x}`,mesh:waistbandVariantMeshes.braces,translation:[x,1.092,.114],scale:[.010,.010,.006]});
+// Waistband details follow the actual selected rise so hardware never floats above or below the waist shell.
+for(const rise of styleVariants.rises){
+  const yBase=1.086+(Number(rise.yOffsetM)||0);
+  const beltMesh=waistbandVariantMeshes[`${rise.id}__belt_loops`];
+  for(const x of [-.132,-.065,.065,.132]) nodes.push({
+    name:`TrouserBeltLoop__${rise.id}__${x}`,
+    mesh:beltMesh,
+    translation:[x,yBase,.108],
+    scale:[.010,.040,.006]
+  });
+
+  const adjusterMesh=waistbandVariantMeshes[`${rise.id}__side_adjuster`];
+  nodes.push({name:`TrouserSideAdjusterL__${rise.id}`,mesh:adjusterMesh,translation:[-.150,yBase-.001,.090],scale:[.045,.018,.012],rotation:qz(-8)});
+  nodes.push({name:`TrouserSideAdjusterR__${rise.id}`,mesh:adjusterMesh,translation:[.150,yBase-.001,.090],scale:[.045,.018,.012],rotation:qz(8)});
+
+  const tabMesh=waistbandVariantMeshes[`${rise.id}__extended_tab`];
+  nodes.push({name:`TrouserExtendedTabL__${rise.id}`,mesh:tabMesh,translation:[-.055,yBase+.006,.116],scale:[.115,.022,.008],rotation:qz(-2)});
+  nodes.push({name:`TrouserExtendedTabR__${rise.id}`,mesh:tabMesh,translation:[.055,yBase+.006,.116],scale:[.115,.022,.008],rotation:qz(2)});
+
+  const drawMesh=waistbandVariantMeshes[`${rise.id}__drawstring`];
+  nodes.push({name:`TrouserDrawstringL__${rise.id}`,mesh:drawMesh,translation:[-.018,yBase-.014,.116],scale:[.008,.085,.006],rotation:qz(-8)});
+  nodes.push({name:`TrouserDrawstringR__${rise.id}`,mesh:drawMesh,translation:[.018,yBase-.014,.116],scale:[.008,.085,.006],rotation:qz(8)});
+
+  const braceMesh=waistbandVariantMeshes[`${rise.id}__braces`];
+  for(const x of [-.11,-.055,.055,.11]) nodes.push({
+    name:`TrouserBraceButton__${rise.id}__${x}`,
+    mesh:braceMesh,
+    translation:[x,yBase+.006,.114],
+    scale:[.010,.010,.006]
+  });
+}
 
 // Pleat construction cues: forward/reverse direction and single/double count.
 const pleatSpec={
@@ -1703,7 +1733,7 @@ const binary=new Uint8Array(align4(byteOffset));
 for(const p of parts) binary.set(p.bytes,p.byteOffset);
 
 const gltf={
-  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.13 researched tailoring construction"},
+  asset:{version:"2.0",generator:"Linen Earth Live Designer identity model M7.14 researched tailoring construction"},
   scene:0,
   scenes:[{name:"Linen Earth Officewear V1",nodes:nodes.map((_,i)=>i)}],
   nodes,
@@ -1788,7 +1818,7 @@ const manifest={
     targetLegCenterSpacingMm:IDENTITY_TARGETS_MM.legCenterSpacing,
     targetHemWidthMm:IDENTITY_TARGETS_MM.hemWidth,
     measured:identityMeasurements,
-    polishStage:"M7.13 model complete: researched shirt/trouser construction geometry + fit-aware sleeves + true trouser breaks + pleat/back ease + collar/cuff stiffness + construction-aware closures/cufflinks + tuxedo front pleats + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
+    polishStage:"M7.14 model complete: researched shirt/trouser construction geometry + fit-aware sleeves + true trouser breaks + rise-locked waistband hardware + pleat/back ease + collar/cuff stiffness + construction-aware closures/cufflinks + tuxedo front pleats + shaped pockets/yokes/hems + canonical Designer handoff + fabric drape response",
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
