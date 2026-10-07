@@ -1,5 +1,5 @@
 import { GARMENT_PANEL_SPECS, PROTOTYPE_MODEL_ID } from "./garment-viewer-prototype.ts";
-import { LINEN_EARTH_MODEL_IDENTITY_ID, LINEN_EARTH_MODEL_REFERENCE_HEIGHT_MM, LINEN_EARTH_MODEL_REFERENCE_IMAGE } from "./designer/model-identity.ts";
+import { LINEN_EARTH_MODEL_IDENTITY_ID, LINEN_EARTH_MODEL_PHYSICAL_TARGETS_MM, LINEN_EARTH_MODEL_REFERENCE_HEIGHT_MM, LINEN_EARTH_MODEL_REFERENCE_IMAGE } from "./designer/model-identity.ts";
 
 export const GARMENT_VIEWER_CONTRACT_VERSION = "linen-earth-garment-viewer-v2";
 
@@ -123,16 +123,7 @@ export function validateGarmentViewerModelManifest(value:unknown,expectedModelId
   const identityId=String(manifest.modelIdentity?.id||"").trim();
   const identityReference=String(manifest.modelIdentity?.referenceImage||"").trim();
   const identityTargets=manifest.modelIdentity?.physicalTargetsMm;
-  const expectedIdentityTargets={
-    height:LINEN_EARTH_MODEL_REFERENCE_HEIGHT_MM,
-    shoulderSeamWidth:388,
-    outerArmSilhouette:574,
-    shirtWaistWidth:294,
-    trouserWaistWidth:344,
-    handCenterSpacing:500,
-    legCenterSpacing:210,
-    hemWidth:64,
-  } as const;
+  const expectedIdentityTargets=LINEN_EARTH_MODEL_PHYSICAL_TARGETS_MM;
   if(manifest.modelId!==PROTOTYPE_MODEL_ID) {
     if(identityId!==LINEN_EARTH_MODEL_IDENTITY_ID) reasons.push(`Production model identity must be ${LINEN_EARTH_MODEL_IDENTITY_ID}.`);
     if(identityReference!==LINEN_EARTH_MODEL_REFERENCE_IMAGE) reasons.push("Production model must reference the exact Real Model Designer studio image.");
