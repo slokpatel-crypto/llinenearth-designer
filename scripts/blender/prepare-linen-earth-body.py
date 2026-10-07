@@ -141,24 +141,35 @@ def create_identity_guides(identity_spec):
     targets = identity_spec["physicalTargetsMm"]
     frame_height = float(frame["heightPx"])
     leg_center = float(targets["legCenterSpacing"]) / 2000.0
+    hand_center = float(targets["handCenterSpacing"]) / 2000.0
+    outer_arm_half = float(targets["outerArmSilhouette"]) / 2000.0
 
     def anchor_z(anchor):
         return TARGET_HEIGHT_M * (1.0 - float(anchor["yPx"]) / frame_height)
 
-    def add_bar(name, center_x, z, width_m):
+    def add_segment(name, start, end):
         curve = bpy.data.curves.new(name=name, type="CURVE")
         curve.dimensions = "3D"
         curve.bevel_depth = 0.0015
         curve.bevel_resolution = 1
         spline = curve.splines.new("POLY")
         spline.points.add(1)
-        half = width_m / 2.0
-        spline.points[0].co = (center_x - half, 0.0, z, 1.0)
-        spline.points[1].co = (center_x + half, 0.0, z, 1.0)
+        spline.points[0].co = (*start, 1.0)
+        spline.points[1].co = (*end, 1.0)
         obj = bpy.data.objects.new(name, curve)
         obj.hide_render = True
+        obj.hide_viewport = False
+        obj.display_type = "WIRE"
         obj["linen_earth_identity_guide"] = True
         collection.objects.link(obj)
+
+    def add_bar(name, center_x, z, width_m):
+        half = width_m / 2.0
+        add_segment(name, (center_x - half, 0.0, z), (center_x + half, 0.0, z))
+
+    def add_marker(name, x, z, half_size=0.012):
+        add_segment(name + "_H", (x - half_size, 0.0, z), (x + half_size, 0.0, z))
+        add_segment(name + "_V", (x, 0.0, z - half_size), (x, 0.0, z + half_size))
 
     add_bar(
         "LE_GUIDE_SHIRT_SHOULDER",
@@ -179,8 +190,19 @@ def create_identity_guides(identity_spec):
         float(targets["trouserWaistWidth"]) / 1000.0,
     )
     hem_width = float(targets["hemWidth"]) / 1000.0
-    add_bar("LE_GUIDE_LEFT_HEM", -leg_center, anchor_z(anchors["leftTrouserHem"]), hem_width)
-    add_bar("LE_GUIDE_RIGHT_HEM", leg_center, anchor_z(anchors["rightTrouserHem"]), hem_width)
+    left_hem_z = anchor_z(anchors["leftTrouserHem"])
+    right_hem_z = anchor_z(anchors["rightTrouserHem"])
+    shoulder_z = anchor_z(anchors["shirtShoulder"])
+    hand_z = TARGET_HEIGHT_M * 0.54
+
+    add_bar("LE_GUIDE_LEFT_HEM", -leg_center, left_hem_z, hem_width)
+    add_bar("LE_GUIDE_RIGHT_HEM", leg_center, right_hem_z, hem_width)
+    add_bar("LE_GUIDE_OUTER_ARM_SILHOUETTE", 0.0, shoulder_z - 0.19, outer_arm_half * 2.0)
+    add_marker("LE_GUIDE_LEFT_HAND_CENTER", -hand_center, hand_z)
+    add_marker("LE_GUIDE_RIGHT_HAND_CENTER", hand_center, hand_z)
+    add_marker("LE_GUIDE_LEFT_LEG_CENTER", -leg_center, (left_hem_z + anchor_z(anchors["trouserWaist"])) / 2.0)
+    add_marker("LE_GUIDE_RIGHT_LEG_CENTER", leg_center, (right_hem_z + anchor_z(anchors["trouserWaist"])) / 2.0)
+    add_segment("LE_GUIDE_HEIGHT", (0.0, 0.0, 0.0), (0.0, 0.0, TARGET_HEIGHT_M))
     return collection
 
 
