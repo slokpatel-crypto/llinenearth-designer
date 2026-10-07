@@ -1621,10 +1621,10 @@ for(const token of ["linenEarthModelIdentityPrompt","linenEarthViewPrompt","exac
 for(const token of ["LINEN_GARMENT_BLEND","LINEN_GARMENT_PANEL_SPEC","LINEN_GARMENT_OUTPUT","export-linen-earth-officewear.py","check-garment-viewer-model.mjs"]) {
   if(!garmentViewerProductionBuild.includes(token)) throw new Error(`GarmentViewer production-build regression: missing ${token}`);
 }
-for(const token of ["bootstrap-human-base-meshes.py","prepare-linen-earth-body.py","author-linen-earth-officewear.py","preflight-linen-earth-officewear.py","linen-earth-officewear-authored.blend"]) {
+for(const token of ["bootstrap-human-base-meshes.py","prepare-linen-earth-body.py","author-linen-earth-officewear.py","preflight-linen-earth-officewear.py","linen-earth-officewear-authored.blend","\"--python-exit-code\",\"1\""]) {
   if(!garmentViewerProductionAssembly.includes(token)) throw new Error(`GarmentViewer production-assembly regression: missing ${token}`);
 }
-for(const token of ['("front", 0.0)','("three-quarter", 35.0)','("side", 90.0)','("back", 180.0)',"BLENDER_EEVEE_NEXT","LE_REVIEW_KEY","LE_REVIEW_FILL","LE_REVIEW_RIM","review-views.txt"]) {
+for(const token of ['("front", 0.0)','("three-quarter", 35.0)','("side", 90.0)','("back", 180.0)',"BLENDER_EEVEE_NEXT","LE_REVIEW_KEY","LE_REVIEW_FILL","LE_REVIEW_RIM","scene.view_settings.exposure = -0.65","#303843","#A97C62","review-views.txt"]) {
   if(!garmentViewerReviewRenderer.includes(token)) throw new Error(`GarmentViewer review-render regression: missing ${token}`);
 }
 for(const token of ["WORKSHEET_ONLY_NOT_PRODUCTION_EVIDENCE","geometryEstimate","verifiedPhysicalMeasurement","Do not copy the 3D bounding-box estimate into the production panel spec.","worldBoundingWidthMm","worldBoundingHeightMm"]) {
