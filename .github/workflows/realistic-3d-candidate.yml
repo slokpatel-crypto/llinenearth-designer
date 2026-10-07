@@ -11,6 +11,7 @@ on:
       - work/3d-finish-20261007-v10
       - work/3d-finish-20261007-v11
       - work/3d-finish-20261007-v12
+      - work/3d-finish-20261007-v13
     paths:
       - "scripts/blender/**"
       - "scripts/assemble-production-garment-scene.mjs"
@@ -67,7 +68,7 @@ jobs:
           set -euo pipefail
           scene=".cache/linen-earth/linen-earth-officewear-authored.blend"
           test -f "$scene"
-          blender --background "$scene" \
+          blender --background "$scene" --python-exit-code 1 \
             --python scripts/blender/preflight-linen-earth-officewear.py -- \
             --json-output artifacts/realistic-3d/preflight.json \
             2>&1 | tee artifacts/realistic-3d/preflight.log
