@@ -5,9 +5,11 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import math
 import sys
+from pathlib import Path
 
 import bpy
 from mathutils import Vector
@@ -186,7 +188,7 @@ def guide_center(obj):
     return sum(points, Vector((0.0, 0.0, 0.0))) / len(points)
 
 
-def main():
+def main(json_output=None):
     reasons = []
     warnings = []
     objects = {}
@@ -586,11 +588,25 @@ def main():
         "warnings": warnings,
         "reasons": reasons,
     }
-    print(json.dumps(report, indent=2))
+    payload = json.dumps(report, indent=2)
+    print(payload)
+    if json_output:
+        output = Path(json_output).expanduser().resolve()
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(payload + "\n", encoding="utf-8")
     if reasons:
         raise SystemExit(1)
     return report
 
 
+def cli_args():
+    argv = sys.argv
+    argv = argv[argv.index("--") + 1 :] if "--" in argv else []
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--json-output")
+    return parser.parse_args(argv)
+
+
 if __name__ == "__main__":
-    main()
+    options = cli_args()
+    main(options.json_output)
