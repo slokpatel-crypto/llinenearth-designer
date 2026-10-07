@@ -36,6 +36,7 @@ export default async function GarmentViewerOperatorPage(){
       <small>APPROVED PRODUCTION ASSET</small>
       <strong>{status.assetReady?"STRUCTURE READY":"NOT READY"}</strong>
       <p>{status.configured ? status.modelSrc : "LINEN_GARMENT_MODEL_SRC is not configured."}</p>
+      {manifest?.productionAssetStatus&&<p><b>Asset status:</b> {manifest.productionAssetStatus}</p>}
     </section>
 
     <section className="garmentQaGrid garmentQaGridSix">
