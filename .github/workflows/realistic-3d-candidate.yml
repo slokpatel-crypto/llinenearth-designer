@@ -9,6 +9,7 @@ on:
       - work/3d-finish-20261007-v8
       - work/3d-finish-20261007-v9
       - work/3d-finish-20261007-v10
+      - work/3d-finish-20261007-v11
     paths:
       - "scripts/blender/**"
       - "scripts/assemble-production-garment-scene.mjs"
