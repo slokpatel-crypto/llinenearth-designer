@@ -110,6 +110,8 @@ test("Blender scene preflight verifies canonical identity guide geometry",()=>{
     "trouserCenterOffsetMm",
     "hemWidthAsymmetryMm",
     "legCenterSpacingMm",
+    "sleeveCenterSpacingMm",
+    "cuffWidthAsymmetryMm",
     "center_x_at_z",
     "must remain non-rendering",
   ]) assert(source.includes(token),`missing guide QA token: ${token}`);
