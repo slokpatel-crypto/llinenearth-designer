@@ -831,7 +831,10 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       if(cancelled) return;
       const materials=[...viewer.model!.materials];
       const materialsByName=new Map(materials.map((material)=>[material.name,material]));
-      const previous=visibleGarmentMaterialsRef.current;
+      // Snapshot for comparison, but update refs incrementally after EACH
+      // successful GPU mutation. Rapid edits can cancel this async effect;
+      // otherwise half-hidden/half-shown materials survive as ghost clothing.
+      const previous=new Set(visibleGarmentMaterialsRef.current);
       const appearance={textureRevision,roughness,shirtId,trouserId};
       const next=new Set<string>();
       for(const material of materials){
@@ -844,6 +847,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         const material=await ensureViewerMaterialLoaded(materialsByName.get(name));
         if(cancelled) return;
         setMaterialAlpha(material,false);
+        visibleGarmentMaterialsRef.current.delete(name);
       }
       for(const name of next){
         // Style-only edits often retain most visible variants. Re-uploading the
@@ -856,7 +860,6 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         if(!material) continue;
         const fabric=name.startsWith("Shirt")?shirt:trouser;
         if(!previous.has(name)){
-          setMaterialAlpha(material,true);
           material.pbrMetallicRoughness.setMetallicFactor(0);
         }
         material.pbrMetallicRoughness.setRoughnessFactor(clamp(roughness+drapeRoughnessOffset(fabric),.55,.98));
@@ -866,6 +869,10 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           material.pbrMetallicRoughness.baseColorTexture?.setTexture(prepared.texture);
           if(prepared.normal) material.normalTexture?.setTexture(prepared.normal);
         }
+        // Show a newly selected garment only after its cloth appearance is
+        // fully uploaded. A cancelled GPU task must not flash raw white panels.
+        if(!previous.has(name)) setMaterialAlpha(material,true);
+        visibleGarmentMaterialsRef.current.add(name);
       }
       visibleGarmentMaterialsRef.current=next;
       lastVariantAppearanceRef.current=appearance;
@@ -878,16 +885,18 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         const material=await ensureViewerMaterialLoaded(materialsByName.get(previousSkin));
         if(cancelled) return;
         setSkinArmAlpha(material,false);
+        visibleSkinArmMaterialRef.current=null;
       }
       if(nextSkin){
         const material=await ensureViewerMaterialLoaded(materialsByName.get(nextSkin));
         if(cancelled) return;
         setSkinArmAlpha(material,true);
+        visibleSkinArmMaterialRef.current=nextSkin;
       }
       visibleSkinArmMaterialRef.current=nextSkin;
 
       const buttonSpec=styleVariants.buttons.find((item)=>item.id===buttonKey);
-      const previousButtons=visibleButtonMaterialsRef.current;
+      const previousButtons=new Set(visibleButtonMaterialsRef.current);
       const nextButtons=new Set(materials.filter((material)=>isButtonVariantMaterial(material.name)&&variantMaterialVisible(material.name,styleState)).map((material)=>material.name));
       for(const name of previousButtons){
         if(nextButtons.has(name)) continue;
@@ -896,6 +905,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         const material=await ensureViewerMaterialLoaded(materialsByName.get(name));
         if(cancelled) return;
         setButtonMaterial(material,buttonSpec,false);
+        visibleButtonMaterialsRef.current.delete(name);
       }
       for(const name of nextButtons){
         await yieldForInput();
@@ -903,6 +913,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         const material=await ensureViewerMaterialLoaded(materialsByName.get(name));
         if(cancelled) return;
         setButtonMaterial(material,buttonSpec,true);
+        visibleButtonMaterialsRef.current.add(name);
       }
       visibleButtonMaterialsRef.current=nextButtons;
       await yieldForInput();
