@@ -911,7 +911,7 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
     # One coherent face/edge patch can move an adjacent connected quad back
     # inside the real armpit. Permit at most THREE additional measured and
     # independently revalidated local seam patches before refusing export.
-    terminal_patch_budget=3
+    terminal_patch_budget=6
     for iteration in range(max_rounds+1+terminal_patch_budget):
         bm=bmesh.new()
         terminal_poked=False
@@ -1131,7 +1131,16 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                 bm.verts.index_update()
                 for vertex,corrections in proposed.items():
                     original=matrix @ vertex.co
-                    average=sum(corrections,Vector((0.0,0.0,0.0)))/len(corrections)
+                    # Terminal neighbours can request opposing directions;
+                    # equal means cancelled a deep 4mm edge correction and
+                    # alternated between 1 face / 1 edge for three passes.
+                    # Prioritize the larger ACTUALLY BVH-measured movement
+                    # while still sharing one smooth vertex displacement.
+                    weights=[max(delta.length,0.001)**2 for delta in corrections]
+                    average=sum(
+                        (delta*weight for delta,weight in zip(corrections,weights)),
+                        Vector((0.0,0.0,0.0))
+                    )/sum(weights)
                     # A local face suggestion can exceed the remaining source
                     # radius although a smaller coherent correction is still
                     # legal. Clip exactly to the 95mm original cloth source
