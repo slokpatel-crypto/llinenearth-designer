@@ -354,3 +354,19 @@ def reproject_vertex_to_fitted_ring(point, previous_ring, fitted_ring):
         fitted_ring[2]+(point[1]-previous_ring[2])*sy,
         point[2],
     )
+
+
+def belongs_to_locked_shirt_trunk(z, shoulder_guide_z, *, tolerance_m=0.002):
+    """Classify genuine shirt trunk rings, excluding collar/neck construction.
+
+    The real collar stand is physically narrower than the torso and extends
+    ABOVE the locked shoulder seam. Running full-chest body-enclosure against
+    that neck ring invents hundreds of mm of cloth and fails correctly. Leave
+    collar construction to its own neck-junction/skin clearance QA.
+    """
+    for value in (z, shoulder_guide_z, tolerance_m):
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+            raise ValueError("Locked shoulder and shirt ring heights must be finite.")
+    if not 0 <= tolerance_m <= 0.005:
+        raise ValueError("Shirt shoulder guide tolerance must remain physically bounded.")
+    return z <= shoulder_guide_z + tolerance_m
