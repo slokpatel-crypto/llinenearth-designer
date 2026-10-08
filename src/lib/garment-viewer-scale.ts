@@ -54,3 +54,22 @@ export function garmentPanelTextureScale(
     v:clamp(heightMm/tileWidthMm,1/4096,4096),
   };
 }
+
+
+/**
+ * Linen's microscopic warp/weft normals must not scale with the fabric's
+ * macroscopic photographed print or stripe repeat. The generated 64px
+ * normal texture has a four-pixel warp cycle; a 16mm visual tile gives an
+ * approximately 1mm simulated yarn cycle. This is an ART-DIRECTION
+ * estimate, not a supplier-verified yarn count or physical drape claim.
+ */
+export const GARMENT_ESTIMATED_WEAVE_NORMAL_TILE_MM=16;
+
+export function garmentPanelWeaveNormalScale(
+  widthMm:number,
+  heightMm:number,
+):{u:number;v:number} {
+  return garmentPanelTextureScale(
+    widthMm,heightMm,GARMENT_ESTIMATED_WEAVE_NORMAL_TILE_MM,
+  );
+}
