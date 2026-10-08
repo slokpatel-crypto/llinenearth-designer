@@ -370,3 +370,20 @@ def belongs_to_locked_shirt_trunk(z, shoulder_guide_z, *, tolerance_m=0.002):
     if not 0 <= tolerance_m <= 0.005:
         raise ValueError("Shirt shoulder guide tolerance must remain physically bounded.")
     return z <= shoulder_guide_z + tolerance_m
+
+
+def terminal_face_poke_allowed(face_hits, edge_hits, *, limit=8):
+    """Only repair a tiny FACE-ONLY residue after bounded edge projection.
+
+    After five actual BVH subdivisions the remaining issue can be a handful
+    of triangle interiors lying through curved human anatomy although every
+    edge is clear. One real centroid vertex per face is preferable to
+    needlessly re-subdividing hundreds of already safe edges. This never
+    declares a penetration safe: the resulting mesh must be re-tested.
+    """
+    for value in (face_hits,edge_hits,limit):
+        if isinstance(value,bool) or not isinstance(value,int) or value<0:
+            raise ValueError("Collision refinement must use exact nonnegative face counts.")
+    if not 1 <= limit <= 16:
+        raise ValueError("Terminal cloth patch count must remain tightly bounded.")
+    return 0 < face_hits <= limit and edge_hits == 0
