@@ -526,7 +526,7 @@ def main(json_output=None):
     identity_measurements["sleeveCenterSpacingMm"] = round(sleeve_spacing, 2) if sleeve_spacing is not None else None
     identity_measurements["cuffWidthAsymmetryMm"] = round(cuff_width_asymmetry, 2) if cuff_width_asymmetry is not None else None
     if sleeve_spacing is None:
-        warnings.append("Could not sample sleeve-center spacing near the locked hand guides.")
+        reasons.append("Could not sample sleeve-center spacing near the locked hand guides.")
     else:
         target_hand_spacing = EXPECTED_IDENTITY_TARGETS_MM["handCenterSpacing"]
         if abs(sleeve_spacing - target_hand_spacing) > 36.0:
@@ -535,7 +535,7 @@ def main(json_output=None):
                 f"locked hand-center target is {target_hand_spacing:.1f} mm ± 36.0 mm."
             )
     if cuff_width_asymmetry is None:
-        warnings.append("Could not calculate left/right cuff-zone width symmetry.")
+        reasons.append("Could not calculate left/right cuff-zone width symmetry.")
     elif cuff_width_asymmetry > 14.0:
         reasons.append(
             f"Left/right cuff-zone width asymmetry is {cuff_width_asymmetry:.1f} mm; "
@@ -584,7 +584,7 @@ def main(json_output=None):
     hem_asymmetry = abs(left_hem - right_hem) if left_hem is not None and right_hem is not None else None
     identity_measurements["hemWidthAsymmetryMm"] = round(hem_asymmetry, 2) if hem_asymmetry is not None else None
     if hem_asymmetry is None:
-        warnings.append("Could not calculate left/right trouser hem symmetry.")
+        reasons.append("Could not calculate left/right trouser hem symmetry.")
     elif hem_asymmetry > 10.0:
         reasons.append(f"Trouser hem width asymmetry is {hem_asymmetry:.1f} mm; allowed difference is 10.0 mm.")
 
