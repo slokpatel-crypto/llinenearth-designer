@@ -653,8 +653,26 @@ def refine_collision_faces(obj, max_edge_m=0.025, max_faces=80000):
                     "surface fitting cannot safely expand indefinitely."
                 )
             bmesh.ops.subdivide_edges(bm,edges=long_edges,cuts=1,use_grid_fill=True)
-        if len(bm.faces)>max_faces:
-            raise RuntimeError(f"{obj.name} exceeded safe post-subdivision face limit.")
+            # Subdividing only some edges of an otherwise regular ring shell
+            # creates enormous non-planar n-gons; Blender may triangulate their
+            # interiors across the real torso even when all corners pass BVH.
+            # Normalize topology AFTER EACH round, before the next cut or
+            # body-surface correction, rather than repeatedly bisecting n-gons.
+            nonlocal_faces=[
+                face for face in bm.faces
+                if needs_tailoring_face_triangulation(len(face.verts))
+            ]
+            if nonlocal_faces:
+                bmesh.ops.triangulate(
+                    bm, faces=nonlocal_faces,
+                    quad_method="BEAUTY", ngon_method="BEAUTY",
+                )
+            if len(bm.faces)>max_faces:
+                raise RuntimeError(
+                    f"{obj.name} exceeded {max_faces} real triangulated garment faces."
+                )
+        if any(needs_tailoring_face_triangulation(len(face.verts)) for face in bm.faces):
+            raise RuntimeError(f"{obj.name} has non-local polygon faces after refinement.")
         bm.normal_update()
         bm.to_mesh(obj.data)
         obj.data.update(calc_edges=True)
