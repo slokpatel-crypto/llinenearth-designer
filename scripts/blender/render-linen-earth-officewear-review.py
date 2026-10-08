@@ -214,11 +214,19 @@ def main():
     skin = material("LE_REVIEW_SKIN", "#916F5A", 0.68)
     shirt = material("LE_REVIEW_SHIRT", "#C8B58E", 0.76)
     trouser = material("LE_REVIEW_TROUSER", "#343C49", 0.74)
+    leather = material("LE_REVIEW_DRESS_SHOE", "#382C24", 0.38)
     assign_material(body, skin)
     for name in SHIRT_OBJECTS:
         assign_material(bpy.data.objects.get(name), shirt)
     for name in TROUSER_OBJECTS:
         assign_material(bpy.data.objects.get(name), trouser)
+    # Footwear has intentionally distinct dark-brown leather in a neutral
+    # four-view scene; colour masks can then detect *worn* shoes instead of
+    # confusing pale floor fragments with a correctly shod foot.
+    for obj in bpy.data.objects:
+        clean = obj.name.split(".")[0]
+        if clean in {"ShoeL","ShoeR","SoleL","SoleR","HeelL","HeelR"} or clean.startswith("ShoeLace"):
+            assign_material(obj, leather)
 
     configure_scene(options)
     frame, target, camera = studio_setup(body)
