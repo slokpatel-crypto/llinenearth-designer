@@ -677,3 +677,39 @@ def preserve_trouser_leg_outer_seam_with_inseam_gap(
             "check crotch construction against the real anatomy."
         )
     return new_centre,new_radius,shift
+
+
+def waist_panel_ease_pull_m(
+    measured_clearance_m, distance_from_waist_z_m,
+    desired_clearance_m, max_pull_m, *, waist_band_m=0.050,
+):
+    """Small, guide-safe cloth-only reduction of measured waist excess ease.
+
+    Native Blender preflight measured 29.0mm shirt and 35.9mm trouser median
+    body clearance against strict 28/32mm ceilings. This returns a smooth
+    radial inward move of actual non-guide cloth vertices only: it stops at
+    a generous >=12mm target, fades to zero at +/-50mm, and never shifts the
+    photographed +/-2mm exact waist guide. Callers MUST check body BVH and
+    re-run independent face/edge preflight; this is NOT fit approval.
+    """
+    values=(measured_clearance_m,distance_from_waist_z_m,
+            desired_clearance_m,max_pull_m,waist_band_m)
+    if any(isinstance(value,bool) or not isinstance(value,(int,float))
+           or not math.isfinite(value) for value in values):
+        raise ValueError("Waist fit ease must use finite physical dimensions.")
+    if not (measured_clearance_m>=0 and
+            0.012<=desired_clearance_m<=0.032 and
+            0<=max_pull_m<=0.012 and
+            0.040<=waist_band_m<=0.060):
+        raise ValueError("Waist shaping requires bounded physical ease and source shift.")
+    offset=abs(distance_from_waist_z_m)
+    if offset<=0.002 or offset>=waist_band_m or measured_clearance_m<=desired_clearance_m:
+        return 0.0
+    # Keep the central 35mm sewing ease uniform, soften only the 15mm
+    # transition into the unchanged chest/seat panel.
+    if offset<=0.035:
+        fade=1.0
+    else:
+        progress=max(0.0,min(1.0,(waist_band_m-offset)/(waist_band_m-0.035)))
+        fade=progress*progress*(3-2*progress)
+    return min(max_pull_m,measured_clearance_m-desired_clearance_m)*fade
