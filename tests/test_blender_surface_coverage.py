@@ -372,7 +372,11 @@ class TerminalMeasuredSeamRepairTests(unittest.TestCase):
         beginning=source.index("def repair_between_vertex_collisions(")
         ending=source.index("def finish_procedural_shell(",beginning)
         section=source[beginning:ending]
-        self.assertIn("0 < edge_hits <= 4",section)
+        # Edges may receive EXTRA bounded patch passes, never an exception to
+        # the final >1.5mm skin penetration gate. Face+edge contact retains
+        # the tighter four-edge bound; edge-only residue may have up to eight.
+        self.assertIn("0 <= edge_hits <= 4",section)
+        self.assertIn("or centroid_hits == 0 and 0 < edge_hits <= 8",section)
         self.assertIn("if not penetration(centre):",section)
         self.assertIn("if distance>0.025:",section)
         self.assertIn("source_world_positions[vertex.index]",section)
@@ -792,5 +796,9 @@ class UniformRealClothTopologyContractTests(unittest.TestCase):
         section=source[start:end]
         self.assertIn("(point-nearest[0]).length > 0.0015",section)
         self.assertIn("0 < centroid_hits <= 8",section)
-        self.assertIn("0 < edge_hits <= 4",section)
+        # Edges may receive EXTRA bounded patch passes, never an exception to
+        # the final >1.5mm skin penetration gate. Face+edge contact retains
+        # the tighter four-edge bound; edge-only residue may have up to eight.
+        self.assertIn("0 <= edge_hits <= 4",section)
+        self.assertIn("or centroid_hits == 0 and 0 < edge_hits <= 8",section)
         self.assertIn("len(bm.faces)>80000",section)
