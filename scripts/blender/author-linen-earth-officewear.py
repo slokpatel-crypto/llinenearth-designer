@@ -19,6 +19,10 @@ import bpy
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
+# Share the exact world-space section contract with Blender production preflight.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from section_geometry import triangle_section_x_span
+
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
 MODEL_IDENTITY_ID = "linen-earth-studio-model-v1"
@@ -498,15 +502,29 @@ def guide_center_z(name):
 
 
 def x_span_at_z(obj, z_world, band=0.025):
-    matrix = obj.matrix_world
-    xs = []
-    for vertex in obj.data.vertices:
-        point = matrix @ vertex.co
-        if abs(point.z - z_world) <= band:
-            xs.append(point.x)
-    if len(xs) < 4:
+    """Measure the authored garment at its actual guide plane.
+
+    Sparse ring meshes normally have no vertices at waist/hem or cuff guides.
+    Using a +/-band around guide Z incorrectly measures a different ring,
+    causing fit authoring and production preflight to disagree.
+    """
+    if obj is None or z_world is None or obj.type != "MESH":
         return None
-    return min(xs), max(xs)
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    evaluated = obj.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        mesh.calc_loop_triangles()
+        matrix = evaluated.matrix_world
+        points = [matrix @ vertex.co for vertex in mesh.vertices]
+        triangles = (
+            tuple((points[index].x, points[index].y, points[index].z) for index in triangle.vertices)
+            for triangle in mesh.loop_triangles
+        )
+        # Fail closed; this must agree with the production scene preflight.
+        return triangle_section_x_span(triangles, z_world)
+    finally:
+        evaluated.to_mesh_clear()
 
 
 def width_at_z(obj, z_world, band=0.025):
