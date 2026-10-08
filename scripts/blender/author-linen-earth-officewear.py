@@ -643,36 +643,30 @@ def refine_collision_faces(obj, max_edge_m=0.025, max_faces=80000):
         largest=max(edge.calc_length() for edge in bm.edges)
         rounds=adaptive_surface_cut_rounds(largest,max_edge_m)
         before=len(bm.verts)
+        # A partial edge split of ring-shell quads turns adjacent quads into
+        # huge non-planar n-gons, which Blender may triangulate THROUGH the
+        # real body. Refine the WHOLE structured panel uniformly each round:
+        # contiguous cloth retains its true local quad topology and original
+        # locked guide vertices, and only new vertices need BVH projection.
         for _ in range(rounds):
-            long_edges=[edge for edge in bm.edges if edge.calc_length() > max_edge_m]
-            if not long_edges:
+            if max((edge.calc_length() for edge in bm.edges),default=0)<=max_edge_m:
                 break
-            if len(bm.faces) > max_faces:
+            # Regular quads become four quads, not disconnected edge fans.
+            # Refuse mesh explosion instead of diluting physical collision QA.
+            if len(bm.faces)*4>max_faces:
                 raise RuntimeError(
-                    f"{obj.name} exceeded {max_faces} garment faces; "
-                    "surface fitting cannot safely expand indefinitely."
+                    f"{obj.name} uniform cloth surface would exceed "
+                    f"{max_faces} physical faces; remodel panel resolution."
                 )
-            bmesh.ops.subdivide_edges(bm,edges=long_edges,cuts=1,use_grid_fill=True)
-            # Subdividing only some edges of an otherwise regular ring shell
-            # creates enormous non-planar n-gons; Blender may triangulate their
-            # interiors across the real torso even when all corners pass BVH.
-            # Normalize topology AFTER EACH round, before the next cut or
-            # body-surface correction, rather than repeatedly bisecting n-gons.
-            nonlocal_faces=[
-                face for face in bm.faces
-                if needs_tailoring_face_triangulation(len(face.verts))
-            ]
-            if nonlocal_faces:
-                bmesh.ops.triangulate(
-                    bm, faces=nonlocal_faces,
-                    quad_method="BEAUTY", ngon_method="BEAUTY",
-                )
+            bmesh.ops.subdivide_edges(
+                bm,edges=list(bm.edges),cuts=1,use_grid_fill=True
+            )
             if len(bm.faces)>max_faces:
+                raise RuntimeError(f"{obj.name} exceeded safe garment topology limit.")
+            if any(needs_tailoring_face_triangulation(len(face.verts)) for face in bm.faces):
                 raise RuntimeError(
-                    f"{obj.name} exceeded {max_faces} real triangulated garment faces."
+                    f"{obj.name} uniform refinement produced non-local cloth polygons."
                 )
-        if any(needs_tailoring_face_triangulation(len(face.verts)) for face in bm.faces):
-            raise RuntimeError(f"{obj.name} has non-local polygon faces after refinement.")
         bm.normal_update()
         bm.to_mesh(obj.data)
         obj.data.update(calc_edges=True)
