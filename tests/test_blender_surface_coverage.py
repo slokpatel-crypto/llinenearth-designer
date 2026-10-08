@@ -6,6 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "blender"))
 from surface_coverage import (
+    anatomically_enclose_intermediate_rings,
     penetrating_surface_samples,
     subdivide_ring_profiles,
     vertical_subdivision_cuts,
@@ -63,6 +64,39 @@ class VerticalRefinementTests(unittest.TestCase):
         self.assertEqual(vertical_subdivision_cuts(0.12), 2)
         with self.assertRaises(ValueError):
             vertical_subdivision_cuts(0.55)
+
+
+class LockedTorsoEnvelopeTests(unittest.TestCase):
+    def test_real_body_bulge_at_intermediate_ring_is_enclosed_without_changing_guides(self):
+        a = (0.4, 0.0, 0.0, 0.10, 0.08)
+        b = (0.5, 0.0, 0.0, 0.10, 0.08)
+        middle = (0.45, 0.0, 0.0, 0.10, 0.08)
+        # Original rings are legitimate but the body expands between them.
+        points = [(0.118 * math.cos(i * math.tau / 40),
+                   0.090 * math.sin(i * math.tau / 40), 0.45) for i in range(40)]
+        result = anatomically_enclose_intermediate_rings([a,b], [a,middle,b], points)
+        self.assertEqual(result[0], a)
+        self.assertEqual(result[-1], b)
+        self.assertGreater(result[1][3], middle[3])
+        self.assertGreater(result[1][4], middle[4])
+        self.assertTrue(all(
+            ((p[0]/result[1][3])**2+(p[1]/result[1][4])**2) <= 1
+            for p in points
+        ))
+
+    def test_large_anatomical_expansion_fails_without_hiding_identity_mismatch(self):
+        a = (0.4, 0.0, 0.0, 0.10, 0.08)
+        b = (0.5, 0.0, 0.0, 0.10, 0.08)
+        midpoint = (0.45, 0.0, 0.0, 0.10, 0.08)
+        body = [(0.20 * math.cos(i * math.tau/30), 0.15 * math.sin(i * math.tau/30), 0.45) for i in range(30)]
+        with self.assertRaisesRegex(ValueError, "remodel the original panel"):
+            anatomically_enclose_intermediate_rings([a,b], [a,midpoint,b], body)
+
+    def test_missing_section_fails_closed(self):
+        a, b = (0.4, 0, 0, 0.10, 0.08), (0.5, 0, 0, 0.10, 0.08)
+        body = [(0.0, 0.0, 0.9) for _ in range(25)]
+        with self.assertRaisesRegex(ValueError, "torso samples"):
+            anatomically_enclose_intermediate_rings([a,b], [a,(0.45, 0, 0, 0.10, 0.08),b], body)
 
 
 class SurfaceSamplingTests(unittest.TestCase):
