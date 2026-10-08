@@ -23,7 +23,7 @@ from mathutils.bvhtree import BVHTree
 # Authoring and Blender preflight use the same exact triangle/guide intersection.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
-from surface_coverage import waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
+from surface_coverage import body_aware_sleeve_ring, waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -345,22 +345,35 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
     sleeve_elbow_radius = 0.052
     cuff_radius_x = 0.038
     cuff_radius_y = 0.032
+    body_points = [body.matrix_world @ vertex.co for vertex in body.data.vertices]
+    sleeve_profile_evidence = {}
     sleeves = {}
     for side, name in ((-1, "ShirtSleeveLFabric"), (1, "ShirtSleeveRFabric")):
         top_x = cx + side * sleeve_top_center
         cuff_x = cx + side * hand_half
         elbow_z = cuff_z + sleeve_length * 0.48
         elbow_x = top_x + (cuff_x - top_x) * 0.58
+        source_sleeve_rings=[
+            (sleeve_top_z, top_x, cy, sleeve_top_radius, sleeve_top_radius * 0.82),
+            (sleeve_top_z - 0.105, top_x + side * 0.010, cy, 0.062, 0.050),
+            (elbow_z, elbow_x, cy, sleeve_elbow_radius, 0.043),
+            (cuff_z + 0.085, cuff_x, cy, 0.043, 0.035),
+            (cuff_z, cuff_x, cy, cuff_radius_x, cuff_radius_y),
+        ]
+        fitted_sleeve_rings=[]
+        sleeve_profile_evidence[name]=[]
+        for index, ring in enumerate(source_sleeve_rings):
+            # The photographed hand centre stays locked. Nearby arm rings
+            # follow real source-body forearm and elbow depths, NOT global Y=0.
+            fit,evidence=body_aware_sleeve_ring(
+                body_points,ring,body_center_x=cx,side=side,
+                clearance_m=shirt_clearance_m,
+                locked_hand_center=index==len(source_sleeve_rings)-1,
+            )
+            fitted_sleeve_rings.append(fit)
+            sleeve_profile_evidence[name].append(evidence)
         sleeves[name] = build_ring_shell(
-            name,
-            [
-                (sleeve_top_z, top_x, cy, sleeve_top_radius, sleeve_top_radius * 0.82),
-                (sleeve_top_z - 0.105, top_x + side * 0.010, cy, 0.062, 0.050),
-                (elbow_z, elbow_x, cy, sleeve_elbow_radius, 0.043),
-                (cuff_z + 0.085, cuff_x, cy, 0.043, 0.035),
-                (cuff_z, cuff_x, cy, cuff_radius_x, cuff_radius_y),
-            ],
-            segments=48,
+            name, fitted_sleeve_rings, segments=48,
         )
 
     seat_z = trouser_waist_z - 0.165
@@ -380,7 +393,7 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
 
     # Register candidate garment rings to the real body at each height.
     # A fixed global Y center makes thigh/calf skin poke through the cloth.
-    body_points = [body.matrix_world @ vertex.co for vertex in body.data.vertices]
+    # Reuse same immutable locked source body samples for sleeve and leg fit.
     leg_profile_evidence = {}
     legs = {}
     for side, name, hem_z in (
@@ -431,6 +444,7 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
         "handCenterSpacingMm": round(hand_half * 2000.0, 2),
         "legCenterSpacingMm": round(leg_center_half * 2000.0, 2),
         "hemWidthMm": round(hem_half * 2000.0, 2),
+        "bodyAwareSleeveProfileEvidence": sleeve_profile_evidence,
         "bodyAwareLegProfileEvidence": leg_profile_evidence,
         "source": "geometry-estimated-locked-body-not-physical-panel-evidence",
     }
