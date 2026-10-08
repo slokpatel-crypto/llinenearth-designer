@@ -372,9 +372,20 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
                 # Native Blender found only 11 upper-arm vertices near z=1.4347m;
                 # keep the 16-real-sample minimum, widen shoulder band only.
                 sample_band_m=0.060 if index==0 else 0.035,
+                # Near elbow, only the actual hanging arm is sampled.
+                # The torso at x=+-0.17m otherwise widens the cylindrical
+                # sleeve INWARD until it collides with the locked chest.
+                min_arm_distance_m=0.172 if index==0 else (
+                    0.197 if index==1 else 0.202
+                ),
             )
             fitted_sleeve_rings.append(fit)
             sleeve_profile_evidence[name].append(evidence)
+        print("Linen Earth measured sleeve source fit: "
+              + name + " " + json.dumps({
+                  "rings":[[round(v,5) for v in row] for row in fitted_sleeve_rings],
+                  "evidence":sleeve_profile_evidence[name],
+              },sort_keys=True),flush=True)
         sleeves[name] = build_ring_shell(
             name, fitted_sleeve_rings, segments=48,
         )
