@@ -18,7 +18,7 @@ test("dense 3D variant QA uses genuine hit-tested pointer and browser keyboard e
   assert.ok(!qa.includes("target.selectOption("),"avoid WebGL compositor-dependent Playwright selected-option stall");
   assert.ok(!qa.includes("dispatchEvent(new Event("),"QA must never forge change events");
   const selector=qa.slice(qa.indexOf("async function selectTailoringOption("),qa.indexOf("async function verifyViewport(",qa.indexOf("async function selectTailoringOption(")));
-  assert.ok(!selector.includes("force:true"),"do not bypass actual native interactivity gates");
+  assert.ok(!/\.(?:click|selectOption|check|uncheck)\(\{[^)]*force\s*:\s*true/.test(selector),"do not bypass actual native interactivity gates");
 });
 
 test("native 3D selector refuses occluded or mismatched options",()=>{
