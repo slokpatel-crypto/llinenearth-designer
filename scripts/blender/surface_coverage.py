@@ -166,3 +166,23 @@ def anatomically_enclose_intermediate_rings(
             )
         result.append((z, cx, cy, next_rx, next_ry))
     return result
+
+
+def outward_ring_quad(previous, current, segment, next_segment, *, ascending):
+    """Consistently orient a vertical garment panel's outward normals.
+
+    CCW X/Y rings are indexed at each level. Faces joining low -> high use
+    one winding; high -> low (sleeves and trousers) MUST reverse it. Blender's
+    SOLIDIFY uses the face normal to choose the physical cloth-thickness side.
+    A wrong winding extrudes the trousers and cuffs INTO the real model.
+    """
+    if not all(isinstance(v,int) and not isinstance(v,bool) and v >= 0
+               for v in (previous,current,segment,next_segment)):
+        raise ValueError("Ring quad indices must be finite nonnegative integers.")
+    if not isinstance(ascending,bool):
+        raise ValueError("Ring direction must be explicit.")
+    if ascending:
+        return (previous+segment,previous+next_segment,
+                current+next_segment,current+segment)
+    return (previous+segment,current+segment,
+            current+next_segment,previous+next_segment)
