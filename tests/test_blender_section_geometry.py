@@ -34,6 +34,15 @@ class TriangleSectionTests(unittest.TestCase):
         ]
         self.assertIsNone(triangle_section_x_span(triangles, 0.5))
 
+    def test_collinear_flat_triangles_cannot_fake_a_shirt_waist(self):
+        # Three collinear points have a valid-looking X span but zero cloth area.
+        fake_shell = [((-0.15, 0, 0.70), (0.15, 0, 0.70), (0.0, 0, 0.70))]
+        self.assertIsNone(triangle_section_x_span(fake_shell, 0.70))
+
+    def test_non_numeric_points_do_not_create_fake_dimensions(self):
+        fake_shell = [((-0.15, 0, 0.70), ("bad", 0, 0.70), (0.15, 0, 0.80))]
+        self.assertIsNone(triangle_section_x_span(fake_shell, 0.70))
+
     def test_left_and_right_leg_sections_are_independent(self):
         left = [
             ((-0.14, 0, 0.2), (-0.06, 0, 0.2), (-0.08, 0, 0.8)),
