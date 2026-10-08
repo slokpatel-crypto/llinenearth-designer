@@ -23,7 +23,7 @@ from mathutils.bvhtree import BVHTree
 # Authoring and Blender preflight use the same exact triangle/guide intersection.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
-from surface_coverage import belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
+from surface_coverage import terminal_face_poke_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -801,16 +801,19 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
 
     for iteration in range(max_rounds+1):
         bm=bmesh.new()
+        terminal_poked=False
         try:
             bm.from_mesh(obj.data)
             if len(bm.faces)>80000:
                 raise RuntimeError(f"{obj.name}: unsafe cloth mesh complexity in body-fit refinement.")
             selected=set()
+            penetrated_faces=[]
             centroid_hits=0
             edge_hits=0
             for face in bm.faces:
                 if penetration(matrix @ face.calc_center_median()):
                     selected.update(face.edges)
+                    penetrated_faces.append(face)
                     centroid_hits+=1
             for edge in bm.edges:
                 mid=(edge.verts[0].co+edge.verts[1].co)*0.5
@@ -834,17 +837,29 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
                     "minimumInsideDepthMm":1.5,
                     "boundedPassEvidence":progress,
                 }
-            if iteration>=max_rounds:
-                raise RuntimeError(
-                    f"{obj.name} retains {centroid_hits} face and {edge_hits} edge "
-                    f"body penetrations deeper than 1.5mm after {max_rounds} "
-                    f"bounded physical mesh-projection passes, progression={json.dumps(progress)}; "
-                    "reshape source garment panels rather than relaxing clearance."
-                )
             before=len(bm.verts)
-            bmesh.ops.subdivide_edges(
-                bm,edges=list(selected),cuts=1,use_grid_fill=True
-            )
+            if iteration>=max_rounds:
+                if not terminal_face_poke_allowed(centroid_hits,edge_hits):
+                    raise RuntimeError(
+                        f"{obj.name} retains {centroid_hits} face and {edge_hits} edge "
+                        f"body penetrations deeper than 1.5mm after {max_rounds} "
+                        f"bounded physical mesh-projection passes, progression={json.dumps(progress)}; "
+                        "reshape source garment panels rather than relaxing clearance."
+                    )
+                # The remaining triangle-centre points are genuine *skin*
+                # intersections, despite every perimeter edge now clear.
+                # Insert one real centroid mesh vertex per affected face;
+                # its next strict BVH repair projects it out of the body.
+                # This is NOT a waived check. Verify every new face afterward.
+                bmesh.ops.poke(
+                    bm,faces=penetrated_faces,offset=0.0,
+                    use_relative_offset=False,
+                )
+                terminal_poked=True
+            else:
+                bmesh.ops.subdivide_edges(
+                    bm,edges=list(selected),cuts=1,use_grid_fill=True
+                )
             if len(bm.faces)>80000:
                 raise RuntimeError(f"{obj.name}: local face repair exceeds cloth complexity limit.")
             bm.normal_update()
@@ -855,6 +870,45 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
             bm.free()
         repair=repair_body_penetrations(obj,body,clearance_m)
         moved_total+=repair["movedVertices"]
+        if terminal_poked:
+            # A centroid poke is permitted only as a final, bounded physical
+            # correction; all newly created triangles and edges must STILL
+            # pass the same exact 1.5mm BVH predicate before we claim success.
+            verify=bmesh.new()
+            try:
+                verify.from_mesh(obj.data)
+                remaining_face=sum(
+                    1 for face in verify.faces
+                    if penetration(matrix @ face.calc_center_median())
+                )
+                remaining_edge=sum(
+                    1 for edge in verify.edges
+                    if penetration(matrix @ ((edge.verts[0].co+edge.verts[1].co)*0.5))
+                )
+                progress.append({
+                    "pass":iteration+1,
+                    "terminalCentroidPoke":True,
+                    "bodyFaceHits":remaining_face,
+                    "bodyEdgeHits":remaining_edge,
+                    "faces":len(verify.faces),
+                })
+            finally:
+                verify.free()
+            if remaining_face or remaining_edge:
+                raise RuntimeError(
+                    f"{obj.name} final centroid repair still crosses real skin "
+                    f"({remaining_face} faces, {remaining_edge} edges); "
+                    f"progression={json.dumps(progress)}; fix garment geometry."
+                )
+            return {
+                "passes":iteration+1,
+                "terminalCentroidPoke":True,
+                "newVertices":refined_total,
+                "projectedVertices":moved_total,
+                "remainingDeepFaceHits":0,"remainingDeepEdgeHits":0,
+                "minimumInsideDepthMm":1.5,
+                "boundedPassEvidence":progress,
+            }
     raise RuntimeError(f"{obj.name}: unreachable face-repair state.")
 
 def finish_procedural_shell(obj, thickness_m):
