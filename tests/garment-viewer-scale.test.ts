@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { garmentPanelTextureScale, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
+import { garmentPanelTextureScale, garmentPanelWeaveNormalScale, GARMENT_ESTIMATED_WEAVE_NORMAL_TILE_MM, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
 
 test("verified render tile width stays authoritative",()=>{
   assert.equal(resolveViewerTileWidthMm(
@@ -61,4 +61,19 @@ test("large checks are not artificially reduced on narrow cuffs",()=>{
   assert.ok(cuff.v<.35);
   assert.ok(Math.abs(80/cuff.u-600)<1e-9);
   assert.ok(Math.abs(160/cuff.v-600)<1e-9);
+});
+
+
+test("weave yarn relief stays fine when print tile changes from tiny stripes to giant checks",()=>{
+  assert.equal(GARMENT_ESTIMATED_WEAVE_NORMAL_TILE_MM,16);
+  const normalTorso=garmentPanelWeaveNormalScale(480,750);
+  const normalCuff=garmentPanelWeaveNormalScale(80,160);
+  assert.deepEqual(normalTorso,{u:30,v:46.875});
+  assert.deepEqual(normalCuff,{u:5,v:10});
+  // Cloth weave is independent of the measured COLOR tile (2–600 mm).
+  for(const repeat of [2,40,120,600]){
+    const color=garmentPanelTextureScale(480,750,repeat);
+    assert.equal(480/normalTorso.u,16);
+    assert.equal(480/color.u,repeat);
+  }
 });
