@@ -135,6 +135,21 @@ class PhysicalClothTopologyTests(unittest.TestCase):
                     needs_tailoring_face_triangulation(bad)
 
 
+class TerminalMeasuredSeamRepairTests(unittest.TestCase):
+    def test_final_patch_accounts_for_real_edge_contacts_without_waiving_bvh(self):
+        source=(Path(__file__).resolve().parents[1] / "scripts" / "blender" /
+                "author-linen-earth-officewear.py").read_text()
+        beginning=source.index("def repair_between_vertex_collisions(")
+        ending=source.index("def finish_procedural_shell(",beginning)
+        section=source[beginning:ending]
+        self.assertIn("0 < edge_hits <= 4",section)
+        self.assertIn("if not penetration(centre):",section)
+        self.assertIn("if distance>0.025:",section)
+        self.assertIn("source_world_positions[vertex.index]",section)
+        self.assertIn("if remaining_face or remaining_edge:",section)
+        self.assertIn("(point-nearest[0]).length > 0.0015",section)
+
+
 class TerminalCoherentClothPatchTests(unittest.TestCase):
     def test_real_four_face_zero_edge_residue_requires_coherent_patch(self):
         self.assertTrue(terminal_face_patch_allowed(4,0))
@@ -546,5 +561,6 @@ class UniformRealClothTopologyContractTests(unittest.TestCase):
         end=source.index("def finish_procedural_shell(",start)
         section=source[start:end]
         self.assertIn("(point-nearest[0]).length > 0.0015",section)
-        self.assertIn("terminal_face_patch_allowed(centroid_hits,edge_hits)",section)
+        self.assertIn("0 < centroid_hits <= 8",section)
+        self.assertIn("0 < edge_hits <= 4",section)
         self.assertIn("len(bm.faces)>80000",section)
