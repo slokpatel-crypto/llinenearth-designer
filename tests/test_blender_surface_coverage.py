@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "blende
 from surface_coverage import (
     anatomically_enclose_intermediate_rings,
     outward_ring_quad,
+    nested_tucked_hem_ring,
     penetrating_surface_samples,
     subdivide_ring_profiles,
     vertical_subdivision_cuts,
@@ -40,6 +41,26 @@ class PhysicalPanelWindingTests(unittest.TestCase):
             with self.subTest(kwargs=kwargs):
                 with self.assertRaises(ValueError):
                     outward_ring_quad(**kwargs)
+
+
+class PhysicalTuckEnvelopeTests(unittest.TestCase):
+    def test_tucked_hem_follows_real_trouser_waist_with_seven_mm_layering(self):
+        ring=nested_tucked_hem_ring(0.88,0.0,-0.02,0.172,0.137)
+        self.assertAlmostEqual(ring[0],0.88)
+        self.assertAlmostEqual(ring[2],-0.02)
+        self.assertAlmostEqual((0.172-ring[3])*1000,7)
+        self.assertAlmostEqual((0.137-ring[4])*1000,7)
+        self.assertGreater(ring[3],0)
+        self.assertGreater(ring[4],0)
+
+    def test_tucked_hem_does_not_hide_invalid_physical_fit(self):
+        for radius_x,radius_y,inset in (
+            (0.003,0.12,0.007), (0.172,0.01,0.012),
+            (0.172,0.12,0), (0.172,0.12,0.030),
+        ):
+            with self.subTest(params=(radius_x,radius_y,inset)):
+                with self.assertRaises(ValueError):
+                    nested_tucked_hem_ring(0.88,0,0,radius_x,radius_y,inset_m=inset)
 
 
 class VerticalRefinementTests(unittest.TestCase):
