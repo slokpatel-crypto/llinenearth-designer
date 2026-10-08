@@ -951,8 +951,15 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         }
       }
     };
-    void apply().catch(()=>{if(!cancelled)setError("A tailoring variant could not be prepared. Try another option.");});
-    return ()=>{cancelled=true;};
+    // The React <select> value must commit and paint BEFORE cold WebGL shader
+    // updates begin. Without a bounded input-first interval, Chromium may
+    // apply the real change but Playwright/native input remains stuck in GPU
+    // work for 12+ seconds. Cancel obsolete appearance work on each edit.
+    const inputSettleTimer=window.setTimeout(()=>{
+      if(cancelled) return;
+      void apply().catch(()=>{if(!cancelled)setError("A tailoring variant could not be prepared. Try another option.");});
+    },180);
+    return ()=>{cancelled=true;window.clearTimeout(inputSettleTimer);};
   },[modelReady,styleState,buttonKey,textureRevision,roughness,shirt,trouser,collarKey,collarFinishKey,collarConstructionKey,cuffKey,cuffConstructionKey]);
 
   function applyShirtTypePreset(id:string){
