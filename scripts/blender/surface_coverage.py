@@ -201,3 +201,21 @@ def nested_tucked_hem_ring(z, center_x, waist_y, trouser_radius_x, trouser_radiu
     if not (0.001 <= inset_m <= 0.015) or trouser_radius_x <= inset_m or trouser_radius_y <= inset_m:
         raise ValueError("Tuck inset must leave positive cloth radii and a genuine layering gap.")
     return (z,center_x,waist_y,trouser_radius_x-inset_m,trouser_radius_y-inset_m)
+
+
+def sampled_mesh_face_indices(face_count, max_samples=600):
+    """Bound Blender mesh face sampling without slicing RNA collections.
+
+    Blender 4.2 bpy_prop_collection loop_triangles does not reliably support
+    stepped slices. Return ordinary Python range indices for indexed access.
+    """
+    if (
+        isinstance(face_count,bool) or not isinstance(face_count,int) or face_count<0
+        or isinstance(max_samples,bool) or not isinstance(max_samples,int)
+        or not 1 <= max_samples <= 2000
+    ):
+        raise ValueError("Face-sampling limits must be nonnegative integer counts.")
+    if not face_count:
+        return range(0)
+    stride=max(1,math.ceil(face_count/max_samples))
+    return range(0,face_count,stride)[:max_samples]
