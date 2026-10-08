@@ -17,3 +17,26 @@ export function needsVariantMaterialRefresh(
     ||previous.shirtId!==current.shirtId
     ||previous.trouserId!==current.trouserId;
 }
+
+/** Avoid re-uploading unchanged button material parameters on every style edit. */
+export function needsButtonMaterialRefresh(
+  wasVisible:boolean,
+  previousButtonKey:string|null,
+  currentButtonKey:string,
+):boolean {
+  return !wasVisible || previousButtonKey!==currentButtonKey;
+}
+
+/** Cache only fully applied trim appearances; a fabric revision invalidates the cache. */
+export function trimAppearanceKey(parts:{
+  collar:string; collarConstruction:string; collarFinish:string;
+  cuff:string; cuffConstruction:string; sleeve:string;
+  shirtId:string; textureRevision:number; roughness:number;
+  shirtDrape:string;
+}):string {
+  return JSON.stringify([
+    parts.collar,parts.collarConstruction,parts.collarFinish,
+    parts.cuff,parts.cuffConstruction,parts.sleeve,
+    parts.shirtId,parts.textureRevision,parts.roughness,parts.shirtDrape,
+  ]);
+}
