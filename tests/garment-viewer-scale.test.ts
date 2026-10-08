@@ -45,3 +45,20 @@ test("invalid panel geometry falls back safely",()=>{
   assert.deepEqual(garmentPanelTextureScale(0,540,40),{u:1,v:1});
   assert.deepEqual(garmentPanelTextureScale(180,540,0),{u:1,v:1});
 });
+
+test("fine physical pinstripes keep exact 2 mm repeat size on every garment",()=>{
+  const torso=garmentPanelTextureScale(480,750,2);
+  const cuff=garmentPanelTextureScale(84,80,2);
+  assert.deepEqual(torso,{u:240,v:375});
+  assert.deepEqual(cuff,{u:42,v:40});
+  assert.equal(480/torso.u,2);
+  assert.equal(84/cuff.u,2);
+});
+
+test("large checks are not artificially reduced on narrow cuffs",()=>{
+  const cuff=garmentPanelTextureScale(80,160,600);
+  assert.ok(cuff.u<.35);
+  assert.ok(cuff.v<.35);
+  assert.ok(Math.abs(80/cuff.u-600)<1e-9);
+  assert.ok(Math.abs(160/cuff.v-600)<1e-9);
+});
