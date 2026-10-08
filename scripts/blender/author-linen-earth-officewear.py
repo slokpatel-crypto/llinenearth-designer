@@ -797,6 +797,7 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
     if body_tree is None:
         raise RuntimeError("Locked body BVH unavailable for face fitting.")
     matrix=obj.matrix_world
+    source_world_positions=[matrix @ vertex.co for vertex in obj.data.vertices]
     moved_total=0
     refined_total=0
     progress=[]
@@ -1031,6 +1032,7 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
                         f"{obj.name}: actual BVH contacts had no candidate source-panel vertices."
                     )
                 patched=0
+                bm.verts.index_update()
                 for vertex,changes in proposals.items():
                     original=matrix @ vertex.co
                     if any(guide is not None and abs(original.z-guide)<0.002
@@ -1040,8 +1042,10 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
                     # vertex, so share one coherent vector rather than poking
                     # multiple artificial centroid vertices into the fabric.
                     delta=sum(changes,Vector((0,0,0)))/len(changes)
-                    if delta.length>0.095:
-                        raise RuntimeError(f"{obj.name}: local cloth correction exceeds 95mm.")
+                    if ((original+delta)-source_world_positions[vertex.index]).length>0.095:
+                        raise RuntimeError(
+                            f"{obj.name}: cumulative physical cloth correction exceeds 95mm."
+                        )
                     vertex.co=inverse @ (original+delta)
                     patched+=1
                 if not patched:
@@ -1059,6 +1063,13 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
             bm.free()
         repair=repair_body_penetrations(obj,body,clearance_m)
         moved_total+=repair["movedVertices"]
+        if len(obj.data.vertices)!=len(source_world_positions) or any(
+            ((matrix @ vertex.co)-source_world_positions[i]).length>0.095
+            for i,vertex in enumerate(obj.data.vertices)
+        ):
+            raise RuntimeError(
+                f"{obj.name}: connected cloth crossed the 95mm TOTAL source-panel correction guard."
+            )
         if terminal_poked:
             # A centroid poke is permitted only as a final, bounded physical
             # correction; all newly created triangles and edges must STILL
