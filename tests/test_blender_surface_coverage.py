@@ -7,6 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "blender"))
 from surface_coverage import (
     adaptive_surface_cut_rounds,
+    body_aware_sleeve_ring,
     waist_to_chest_taper_radius,
     anatomically_enclose_intermediate_rings,
     bounded_body_section_center_y,
@@ -22,6 +23,67 @@ from surface_coverage import (
     subdivide_ring_profiles,
     vertical_subdivision_cuts,
 )
+
+
+class AnatomicalSleeveConstructionTests(unittest.TestCase):
+    def test_real_arm_pose_moves_sleeve_y_but_preserves_hand_center(self):
+        ring=(1.1,-.255,0.0,.042,.034)
+        body=[
+            (-.242+.029*math.cos(i*math.tau/64),
+             .025+.033*math.sin(i*math.tau/64),1.1)
+            for i in range(64)
+        ]
+        fitted,info=body_aware_sleeve_ring(
+            body,ring,body_center_x=0.0,side=-1,clearance_m=.006)
+        self.assertEqual(fitted[0],ring[0])
+        self.assertGreater(fitted[2],.018)
+        self.assertLessEqual(abs(fitted[1]-ring[1]),.02800001)
+        self.assertEqual(fitted[1],ring[1],
+                         "upper sleeve must never recenter INWARD into chest")
+        builder=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
+                 "author-linen-earth-officewear.py").read_text()
+        self.assertIn("sleeve_top_center = shoulder_half + 0.037",builder)
+        self.assertIn("sleeve_top_radius = 0.056",builder)
+        self.assertGreaterEqual(fitted[3],ring[3])
+        self.assertGreaterEqual(fitted[4],ring[4])
+        self.assertEqual(info["sampleCount"],64)
+        self.assertEqual(info["sampleBandMm"],35.0)
+        self.assertEqual(info["armInnerBoundaryMm"],172.0)
+        with self.assertRaises(ValueError):
+            body_aware_sleeve_ring(
+                body,ring,body_center_x=0,side=-1,min_arm_distance_m=.26)
+        expanded,_=body_aware_sleeve_ring(
+            body,ring,body_center_x=0.0,side=-1,
+            clearance_m=.006,sample_band_m=.060)
+        self.assertEqual(expanded[0],ring[0])
+        with self.assertRaises(ValueError):
+            body_aware_sleeve_ring(
+                body,ring,body_center_x=0,side=-1,sample_band_m=.075)
+        cuff,evidence=body_aware_sleeve_ring(
+            body,ring,body_center_x=0.0,side=-1,
+            clearance_m=.006,locked_hand_center=True)
+        self.assertAlmostEqual(cuff[1],ring[1])
+        self.assertTrue(evidence["handCenterLocked"])
+
+    def test_torso_vertices_are_not_mistaken_for_arm_cross_section(self):
+        torso=[(-.10,.0,1.1)]*80
+        with self.assertRaisesRegex(ValueError,"measured arm samples"):
+            body_aware_sleeve_ring(
+                torso,(1.1,-.24,0,.05,.04),
+                body_center_x=0,side=-1)
+
+    def test_unmeasured_sleeve_and_unphysical_clearance_fail_closed(self):
+        ring=(1.1,.25,0,.04,.034)
+        for bad_side in (0,True,2):
+            with self.subTest(side=bad_side):
+                with self.assertRaises(ValueError):
+                    body_aware_sleeve_ring(
+                        [],ring,body_center_x=0,side=bad_side)
+        with self.assertRaises(ValueError):
+            body_aware_sleeve_ring([],ring,body_center_x=0,side=1)
+        with self.assertRaises(ValueError):
+            body_aware_sleeve_ring(
+                [],ring,body_center_x=0,side=1,clearance_m=.2)
 
 
 class SourceShirtSideSeamContinuityTests(unittest.TestCase):
