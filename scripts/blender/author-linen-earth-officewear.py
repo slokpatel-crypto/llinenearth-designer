@@ -867,6 +867,32 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
                 + obj.name + " " + json.dumps(progress[-1],sort_keys=True),
                 flush=True,
             )
+            if iteration==0 and selected:
+                # Real Blender telemetry identifies WHICH measured cloth
+                # locations need source-panel correction; face counts alone
+                # cannot distinguish shoulder, armpit and waist problems.
+                sample_evidence=[]
+                for face in penetrated_faces[:8]:
+                    point=matrix @ face.calc_center_median()
+                    nearest=body_tree.find_nearest(point)
+                    sample_evidence.append({
+                        "kind":"face","xyz":[round(v,5) for v in point],
+                        "depthMm":round((point-nearest[0]).length*1000,2)
+                        if nearest and nearest[0] is not None else None,
+                        "zExtents":[round(min((matrix @ v.co).z for v in face.verts),5),
+                                    round(max((matrix @ v.co).z for v in face.verts),5)],
+                    })
+                for edge in list(selected)[:8]:
+                    point=matrix @ ((edge.verts[0].co+edge.verts[1].co)*0.5)
+                    if not penetration(point): continue
+                    nearest=body_tree.find_nearest(point)
+                    sample_evidence.append({
+                        "kind":"edge","xyz":[round(v,5) for v in point],
+                        "depthMm":round((point-nearest[0]).length*1000,2)
+                        if nearest and nearest[0] is not None else None,
+                    })
+                print("Linen Earth real cloth contact samples: "
+                      + obj.name + " " + json.dumps(sample_evidence,sort_keys=True),flush=True)
             if not selected:
                 # The pass inspected REAL triangles rather than an enormous
                 # synthetic ngon. Persist exactly the validated triangulated
