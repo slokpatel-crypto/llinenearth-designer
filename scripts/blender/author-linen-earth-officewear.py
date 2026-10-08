@@ -1029,7 +1029,22 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                         if alternatives:
                             break
                     if not alternatives:
-                        raise RuntimeError(f"{obj.name}: last cloth face cannot be projected physically outside.")
+                        # A shoulder/elbow valley can have a tangent nearest
+                        # normal. Probe physical axial directions from the
+                        # measured collision point, still within 25mm and
+                        # explicitly outside the same locked-body BVH.
+                        for distance in (0.004,0.008,0.012,0.018,0.024):
+                            for direction in (
+                                Vector((1,0,0)),Vector((-1,0,0)),
+                                Vector((0,1,0)),Vector((0,-1,0)),
+                                Vector((0,0,1)),Vector((0,0,-1)),
+                            ):
+                                candidate=centre+direction*distance
+                                if not point_inside_closed_bvh(body_tree,candidate):
+                                    alternatives.append((distance,candidate))
+                            if alternatives: break
+                    if not alternatives:
+                        raise RuntimeError(f"{obj.name}: last cloth face cannot clear locked skin within 25mm.")
                     distance,outside=min(alternatives,key=lambda proposal:proposal[0])
                     if distance>0.025:
                         raise RuntimeError(
@@ -1068,7 +1083,18 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                         if alternatives:
                             break
                     if not alternatives:
-                        raise RuntimeError(f"{obj.name}: residual edge cannot clear real skin.")
+                        for distance in (0.004,0.008,0.012,0.018,0.024):
+                            for direction in (
+                                Vector((1,0,0)),Vector((-1,0,0)),
+                                Vector((0,1,0)),Vector((0,-1,0)),
+                                Vector((0,0,1)),Vector((0,0,-1)),
+                            ):
+                                candidate=centre+direction*distance
+                                if not point_inside_closed_bvh(body_tree,candidate):
+                                    alternatives.append((distance,candidate))
+                            if alternatives: break
+                    if not alternatives:
+                        raise RuntimeError(f"{obj.name}: residual edge cannot clear locked skin within 25mm.")
                     distance,outside=min(alternatives,key=lambda pair:pair[0])
                     if distance>0.025:
                         raise RuntimeError(f"{obj.name}: last seam requires >25mm correction.")
