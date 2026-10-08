@@ -24,7 +24,7 @@ from mathutils.bvhtree import BVHTree
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
 from fabric_arc_uv import frame_at_height, ellipse_arc_uv
-from surface_coverage import trouser_waist_side_seam_limit_m, precision_safe_source_radius, bounded_source_cloth_shift, underarm_inboard_relief_m, body_aware_sleeve_ring, waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
+from surface_coverage import preserve_trouser_leg_outer_seam_with_inseam_gap, trouser_waist_side_seam_limit_m, precision_safe_source_radius, bounded_source_cloth_shift, underarm_inboard_relief_m, body_aware_sleeve_ring, waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -442,6 +442,20 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
                 thigh_center_x if index < 2 else lower_center_x,
                 trouser_clearance_m, keep_locked_hem_width=index >= 4,
             )
+            if index < 2:
+                # The real crotch has TWO legs, not an inflated ellipse that
+                # sweeps all the way across into the opposite thigh. Preserve
+                # each measured outside seam and reshape the source INSEAM
+                # before faces are built. The native BVH still rejects any
+                # residual pelvic/leg intersection; nothing is force-approved.
+                next_x, next_radius, recenter = preserve_trouser_leg_outer_seam_with_inseam_gap(
+                    fitted[1], fitted[3], cx, side,
+                )
+                fitted = (fitted[0], next_x, fitted[2], next_radius, fitted[4])
+                evidence["inseamSourceRecenterMm"] = round(recenter * 1000, 2)
+                evidence["innerEdgeToMidlineMm"] = round(
+                    (side * (next_x-cx)-next_radius)*1000, 2
+                )
             leg_profile_evidence[name].append(evidence)
             if evidence["status"] != "anatomy-fitted-geometry-only":
                 raise RuntimeError(
@@ -450,6 +464,11 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
                     "Refusing to substitute the generic tube without visible-body fit evidence."
                 )
             fitted_rings.append(fitted)
+        print("Linen Earth measured trouser leg source fit: "
+              + name + " " + json.dumps({
+                  "rings": [[round(v,5) for v in row] for row in fitted_rings],
+                  "evidence": leg_profile_evidence[name],
+              },sort_keys=True),flush=True)
         legs[name] = build_ring_shell(name, fitted_rings, segments=48)
 
     authored = {
@@ -1271,7 +1290,7 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                         raise RuntimeError(
                             f"{obj.name}: physical contact {position} cannot "
                             "clear real body within the SOURCE-LOCKED 95mm "
-                            "cloth displacement budget; remodel the sleeve."
+                            "cloth displacement budget; remodel the affected garment panel."
                         )
                     return min(options,key=lambda item:(item[0],item[1],item[2]))[3]
                 proposals={}
