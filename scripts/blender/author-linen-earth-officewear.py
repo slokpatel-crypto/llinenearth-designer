@@ -19,6 +19,10 @@ import bpy
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
+# Authoring and Blender preflight use the same exact triangle/guide intersection.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from section_geometry import triangle_section_x_span
+
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
 MODEL_IDENTITY_ID = "linen-earth-studio-model-v1"
@@ -169,6 +173,33 @@ def body_depth_at_z(body, z_world, center_x, half_window, band=0.030, minimum=0.
 
 
 
+def body_section_y_depth(body, z_world, center_x, half_window, minimum=0.10, band=0.045):
+    """Fit the shirt/seat around real locked torso posture, not global Y=0.
+
+    The scan's shoulder blades and seat are offset from its waist centre;
+    a single global Y used by all ring cylinders exposes the back and glutes.
+    Quantile bounds ignore isolated fingers near the same height while still
+    enclosing the observed trunk with an intentional clearance.
+    """
+    matrix = body.matrix_world
+    section = [
+        (matrix @ vertex.co).y for vertex in body.data.vertices
+        if abs((matrix @ vertex.co).z - z_world) <= band
+        and abs((matrix @ vertex.co).x - center_x) <= half_window
+    ]
+    if len(section) < 16:
+        raise RuntimeError(
+            f"Locked body has only {len(section)} torso/seat samples at z={z_world:.3f}m; "
+            "cannot certify garment depth or posture."
+        )
+    section.sort()
+    low = section[int(len(section) * 0.01)]
+    high = section[min(len(section)-1, int(len(section) * 0.99))]
+    if high - low < 0.04:
+        raise RuntimeError("Locked body torso/seat section is implausibly thin.")
+    return (low + high) * 0.5, max(minimum, (high - low) * 0.5)
+
+
 def body_aware_leg_ring(body_points, ring, side, body_center_x, target_leg_x,
                         clearance_m, keep_locked_hem_width=False):
     """Match leg-shell depth and calf/thigh extent to the actual locked body.
@@ -246,23 +277,26 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
     chest_z = shoulder_z - 0.150
     upper_waist_z = shirt_waist_z + 0.115
     shirt_hem_z = trouser_waist_z - 0.035
-    shirt_depth_shoulder = body_depth_at_z(body, shoulder_z - 0.035, cx, 0.225, minimum=0.105) + shirt_clearance_m
-    shirt_depth_chest = body_depth_at_z(body, chest_z, cx, 0.210, minimum=0.115) + shirt_clearance_m
-    shirt_depth_waist = body_depth_at_z(body, shirt_waist_z, cx, 0.185, minimum=0.100) + shirt_clearance_m
+    shoulder_y, shoulder_depth = body_section_y_depth(body, shoulder_z - 0.035, cx, 0.225, minimum=0.105)
+    chest_y, chest_depth = body_section_y_depth(body, chest_z, cx, 0.210, minimum=0.115)
+    waist_y, waist_depth = body_section_y_depth(body, shirt_waist_z, cx, 0.185, minimum=0.100)
+    shirt_depth_shoulder = shoulder_depth + shirt_clearance_m
+    shirt_depth_chest = chest_depth + shirt_clearance_m
+    shirt_depth_waist = waist_depth + shirt_clearance_m
     shirt_depth_hem = max(0.100, shirt_depth_waist - 0.004)
 
     shirt = build_ring_shell(
         "ShirtTorsoFabric",
         [
-            (shirt_hem_z, cx, cy, shirt_waist_half + 0.006, shirt_depth_hem),
-            (shirt_waist_z, cx, cy, shirt_waist_half, shirt_depth_waist),
-            (upper_waist_z, cx, cy, shirt_waist_half + 0.012, shirt_depth_waist + 0.006),
-            (chest_z, cx, cy, shoulder_half - 0.020, shirt_depth_chest),
-            (shoulder_z - 0.045, cx, cy, shoulder_half - 0.006, shirt_depth_shoulder),
-            (shoulder_z, cx, cy, shoulder_half, shirt_depth_shoulder * 0.96),
+            (shirt_hem_z, cx, waist_y, shirt_waist_half + 0.006, shirt_depth_hem),
+            (shirt_waist_z, cx, waist_y, shirt_waist_half, shirt_depth_waist),
+            (upper_waist_z, cx, (waist_y+chest_y)*0.5, shirt_waist_half + 0.012, shirt_depth_waist + 0.006),
+            (chest_z, cx, chest_y, shoulder_half - 0.020, shirt_depth_chest),
+            (shoulder_z - 0.045, cx, shoulder_y, shoulder_half - 0.006, shirt_depth_shoulder),
+            (shoulder_z, cx, shoulder_y, shoulder_half, shirt_depth_shoulder * 0.96),
         ],
         segments=64,
-        neck_opening=(shoulder_z, cx, cy - 0.006, 0.061, 0.054),
+        neck_opening=(shoulder_z, cx, shoulder_y - 0.006, 0.061, 0.054),
         collar_height=0.032,
     )
 
@@ -294,15 +328,17 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
 
     seat_z = trouser_waist_z - 0.165
     upper_thigh_z = trouser_waist_z - 0.260
-    trouser_depth_waist = body_depth_at_z(body, trouser_waist_z, cx, 0.205, minimum=0.115) + trouser_clearance_m
-    trouser_depth_seat = body_depth_at_z(body, seat_z, cx, 0.220, minimum=0.135) + trouser_clearance_m
+    trouser_waist_y, waist_depth_at_hip = body_section_y_depth(body, trouser_waist_z, cx, 0.205, minimum=0.115)
+    seat_y, depth_at_seat = body_section_y_depth(body, seat_z, cx, 0.220, minimum=0.135)
+    trouser_depth_waist = waist_depth_at_hip + trouser_clearance_m
+    trouser_depth_seat = depth_at_seat + trouser_clearance_m
     trouser_waist = build_ring_shell(
         "TrouserWaistFabric",
         [
-            (upper_thigh_z, cx, cy, trouser_waist_half + 0.026, trouser_depth_seat),
-            (seat_z, cx, cy - 0.006, trouser_waist_half + 0.034, trouser_depth_seat + 0.006),
-            (trouser_waist_z - 0.070, cx, cy, trouser_waist_half + 0.010, trouser_depth_waist + 0.004),
-            (trouser_waist_z, cx, cy, trouser_waist_half, trouser_depth_waist),
+            (upper_thigh_z, cx, seat_y, trouser_waist_half + 0.026, trouser_depth_seat),
+            (seat_z, cx, seat_y - 0.006, trouser_waist_half + 0.034, trouser_depth_seat + 0.006),
+            (trouser_waist_z - 0.070, cx, (seat_y+trouser_waist_y)*0.5, trouser_waist_half + 0.010, trouser_depth_waist + 0.004),
+            (trouser_waist_z, cx, trouser_waist_y, trouser_waist_half, trouser_depth_waist),
         ],
         segments=64,
     )
@@ -336,8 +372,14 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
                 thigh_center_x if index < 2 else lower_center_x,
                 trouser_clearance_m, keep_locked_hem_width=index >= 4,
             )
-            fitted_rings.append(fitted)
             leg_profile_evidence[name].append(evidence)
+            if evidence["status"] != "anatomy-fitted-geometry-only":
+                raise RuntimeError(
+                    f"{name} cannot be fitted at z={ring[0]:.3f}m: "
+                    f"{evidence['sampleCount']} realistic-body cross-section samples. "
+                    "Refusing to substitute the generic tube without visible-body fit evidence."
+                )
+            fitted_rings.append(fitted)
         legs[name] = build_ring_shell(name, fitted_rings, segments=48)
 
     authored = {
@@ -565,15 +607,29 @@ def guide_center_z(name):
 
 
 def x_span_at_z(obj, z_world, band=0.025):
-    matrix = obj.matrix_world
-    xs = []
-    for vertex in obj.data.vertices:
-        point = matrix @ vertex.co
-        if abs(point.z - z_world) <= band:
-            xs.append(point.x)
-    if len(xs) < 4:
+    """Measure the authored garment at its actual guide plane.
+
+    Sparse ring meshes normally have no vertices at waist/hem or cuff guides.
+    Using a +/-band around guide Z incorrectly measures a different ring,
+    causing fit authoring and production preflight to disagree.
+    """
+    if obj is None or z_world is None or obj.type != "MESH":
         return None
-    return min(xs), max(xs)
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    evaluated = obj.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        mesh.calc_loop_triangles()
+        matrix = evaluated.matrix_world
+        points = [matrix @ vertex.co for vertex in mesh.vertices]
+        triangles = (
+            tuple((points[index].x, points[index].y, points[index].z) for index in triangle.vertices)
+            for triangle in mesh.loop_triangles
+        )
+        # Fail closed; this must agree with the production scene preflight.
+        return triangle_section_x_span(triangles, z_world)
+    finally:
+        evaluated.to_mesh_clear()
 
 
 def width_at_z(obj, z_world, band=0.025):
