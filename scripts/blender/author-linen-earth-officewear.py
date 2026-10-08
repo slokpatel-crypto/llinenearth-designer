@@ -363,15 +363,23 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
             (cuff_z + 0.085, cuff_x, cy, 0.043, 0.035),
             (cuff_z, cuff_x, cy, cuff_radius_x, cuff_radius_y),
         ]
+        # Source rings alone are 85-200mm apart. The real elbow crosses
+        # through several interpolated sections, so fitting only five anchors
+        # forces later per-vertex BVH projection to displace cloth by >95mm.
+        # Sample every 55mm (or finer) construction section against the
+        # unchanged realistic body's arm corridor BEFORE building the shell.
+        dense_source_sleeve_rings=subdivide_ring_profiles(
+            source_sleeve_rings,max_vertical_step_m=0.040
+        )
         fitted_sleeve_rings=[]
         sleeve_profile_evidence[name]=[]
-        for index, ring in enumerate(source_sleeve_rings):
+        for index, ring in enumerate(dense_source_sleeve_rings):
             # The photographed hand centre stays locked. Nearby arm rings
             # follow real source-body forearm and elbow depths, NOT global Y=0.
             fit,evidence=body_aware_sleeve_ring(
                 body_points,ring,body_center_x=cx,side=side,
                 clearance_m=shirt_clearance_m,
-                locked_hand_center=index==len(source_sleeve_rings)-1,
+                locked_hand_center=index==len(dense_source_sleeve_rings)-1,
                 # Native Blender found only 11 upper-arm vertices near z=1.4347m;
                 # keep the 16-real-sample minimum, widen shoulder band only.
                 sample_band_m=0.060 if index==0 else 0.035,
