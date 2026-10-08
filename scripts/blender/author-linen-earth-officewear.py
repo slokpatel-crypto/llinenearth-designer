@@ -24,7 +24,7 @@ from mathutils.bvhtree import BVHTree
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
 from fabric_arc_uv import frame_at_height, ellipse_arc_uv
-from surface_coverage import underarm_centreline_contact_relief_m, preserve_trouser_leg_outer_seam_with_inseam_gap, trouser_waist_side_seam_limit_m, precision_safe_source_radius, bounded_source_cloth_shift, underarm_inboard_relief_m, body_aware_sleeve_ring, waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
+from surface_coverage import waist_panel_ease_pull_m, underarm_centreline_contact_relief_m, preserve_trouser_leg_outer_seam_with_inseam_gap, trouser_waist_side_seam_limit_m, precision_safe_source_radius, bounded_source_cloth_shift, underarm_inboard_relief_m, body_aware_sleeve_ring, waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -695,6 +695,56 @@ def enclose_post_identity_torso_profile(
             "maxRadiusGrowthMm":round(max_growth*1000,2),
             "lockedGuideCount":len(protected),
             "maxAllowedRadiusGrowthMm":70.0}
+
+def tighten_waist_to_measured_body_ease(obj, body, waist_guide_z, *,
+                                      desired_clearance_m, max_pull_m):
+    """Make the actual shirt/trouser waist less baggy, preserving locked guides.
+
+    Native preflight still owns the approval decision. Each proposed panel
+    vertex is verified OUTSIDE real body BVH, and subsequent face/edge repair
+    and physical preflight remain mandatory. Never alter model body/guide.
+    """
+    tree=world_bvh(body,epsilon=0.0)
+    if tree is None:
+        raise RuntimeError("Locked body mesh is required for actual waist-ease fit.")
+    matrix=obj.matrix_world
+    inverse=matrix.inverted()
+    pulled=0
+    max_applied=0.0
+    for vertex in obj.data.vertices:
+        point=matrix @ vertex.co
+        if abs(point.z-waist_guide_z)>=0.050 or abs(point.z-waist_guide_z)<=0.002:
+            continue
+        if point_inside_closed_bvh(tree,point):
+            continue
+        nearest=tree.find_nearest(point)
+        if nearest is None or nearest[0] is None:
+            continue
+        surface=nearest[0]
+        distance=(point-surface).length
+        proposed=waist_panel_ease_pull_m(
+            distance,point.z-waist_guide_z,desired_clearance_m,max_pull_m
+        )
+        if proposed<=0 or distance<1e-6:
+            continue
+        candidate=point+(surface-point)*(proposed/distance)
+        if point_inside_closed_bvh(tree,candidate):
+            continue
+        vertex.co=inverse @ candidate
+        pulled+=1
+        max_applied=max(max_applied,proposed)
+    obj.data.update()
+    evidence={
+        "nonGuideVerticesMoved":pulled,
+        "maxClothOnlyPullMm":round(max_applied*1000,2),
+        "targetClearanceMm":round(desired_clearance_m*1000,2),
+        "guideProtectedBandMm":2.0,
+        "requiresIndependentBodyFaceBVH":True,
+    }
+    print("Linen Earth measured waist ease fit: "+obj.name+" "+
+          json.dumps(evidence,sort_keys=True),flush=True)
+    return evidence
+
 
 def restore_trouser_waist_side_seam(obj, locked_waist_z, locked_half_width_m, center_x):
     """Reshape a real trouser HIP panel away from the mannequin's hanging arms.
@@ -1848,6 +1898,21 @@ def main():
         guide_center_z("LE_GUIDE_SHIRT_SHOULDER"),
         center_x,
     )
+    # Preflight observed waist clearance medians just outside measured fit
+    # envelopes: 29mm shirt vs 28mm max, 35.9mm trouser vs 32mm max.
+    # Move only garment mid-rings TOWARD observed skin, not landmarks.
+    fit_profile["waistEaseConvergence"]={
+        "ShirtTorsoFabric":tighten_waist_to_measured_body_ease(
+            authored["ShirtTorsoFabric"],body,
+            guide_center_z("LE_GUIDE_SHIRT_WAIST"),
+            desired_clearance_m=0.022,max_pull_m=0.008,
+        ),
+        "TrouserWaistFabric":tighten_waist_to_measured_body_ease(
+            authored["TrouserWaistFabric"],body,
+            guide_center_z("LE_GUIDE_TROUSER_WAIST"),
+            desired_clearance_m=0.026,max_pull_m=0.012,
+        ),
+    }
     collision_repairs = {}
     face_refinements = {}
     for name, obj in authored.items():
