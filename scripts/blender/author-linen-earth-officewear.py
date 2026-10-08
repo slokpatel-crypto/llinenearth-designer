@@ -24,7 +24,7 @@ from mathutils.bvhtree import BVHTree
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
 from fabric_arc_uv import frame_at_height, ellipse_arc_uv
-from surface_coverage import precision_safe_source_radius, bounded_source_cloth_shift, underarm_inboard_relief_m, body_aware_sleeve_ring, waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
+from surface_coverage import trouser_waist_side_seam_limit_m, precision_safe_source_radius, bounded_source_cloth_shift, underarm_inboard_relief_m, body_aware_sleeve_ring, waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -661,6 +661,57 @@ def enclose_post_identity_torso_profile(
             "maxRadiusGrowthMm":round(max_growth*1000,2),
             "lockedGuideCount":len(protected),
             "maxAllowedRadiusGrowthMm":70.0}
+
+def restore_trouser_waist_side_seam(obj, locked_waist_z, locked_half_width_m, center_x):
+    """Reshape a real trouser HIP panel away from the mannequin's hanging arms.
+
+    Only the original garment's non-guide upper hip rings are reshaped. The
+    photographed 344mm waist guide is unchanged; no body vertices are touched.
+    Native BVH must subsequently validate the actual hip/hand clearance.
+    """
+    if obj.name!="TrouserWaistFabric":
+        raise RuntimeError("Waist seam source fitting requires a trouser-waist panel.")
+    matrix=obj.matrix_world
+    inverse=matrix.inverted()
+    rings={}
+    for vertex in obj.data.vertices:
+        point=matrix @ vertex.co
+        rings.setdefault(round(point.z,6),[]).append((vertex,point))
+    changed=0
+    maximum=0.0
+    for z,items in rings.items():
+        below=locked_waist_z-z
+        if not 0.002<below<0.24:
+            continue
+        actual=max(abs(point.x-center_x) for _,point in items)
+        allowed=trouser_waist_side_seam_limit_m(
+            locked_half_width_m,below
+        )
+        if actual<=allowed+1e-8:
+            continue
+        ratio=allowed/actual
+        for vertex,point in items:
+            candidate_x=center_x+(point.x-center_x)*ratio
+            distance=abs(candidate_x-point.x)
+            if distance>0.095:
+                raise RuntimeError(
+                    f"{obj.name}: source hip taper needs >95mm at z={z:.5f}m; "
+                    "remeasure the actual garment instead of moving its model."
+                )
+            vertex.co=inverse @ Vector((candidate_x,point.y,point.z))
+            maximum=max(maximum,distance)
+        changed+=1
+    obj.data.update()
+    evidence={
+        "reshapedNonGuideRings":changed,
+        "maximumSideSeamCorrectionMm":round(maximum*1000,3),
+        "lockedWaistGuideMm":round(locked_half_width_m*2000,2),
+        "realBodyCollisionStillRequiresBVH":True,
+    }
+    print("Linen Earth trouser hip source taper: "+
+          json.dumps(evidence,sort_keys=True),flush=True)
+    return evidence
+
 
 def restore_shirt_waist_side_seam(obj, waist_z, waist_half_width_m, shoulder_z, center_x):
     """Reshape the SOURCE garment near a locked waist, not the locked body.
@@ -1733,6 +1784,12 @@ def main():
             (-1,"ShirtSleeveLFabric"),(1,"ShirtSleeveRFabric")
         )
     }
+    fit_profile["trouserWaistSideSeamContinuity"] = restore_trouser_waist_side_seam(
+        authored["TrouserWaistFabric"],
+        guide_center_z("LE_GUIDE_TROUSER_WAIST"),
+        float(targets["trouserWaistWidth"])/2000.0,
+        center_x,
+    )
     fit_profile["shirtWaistSeamContinuity"] = restore_shirt_waist_side_seam(
         authored["ShirtTorsoFabric"],
         guide_center_z("LE_GUIDE_SHIRT_WAIST"),
