@@ -183,6 +183,23 @@ class SourceBoundedBVHCorrectionTests(unittest.TestCase):
         self.assertIn("SOURCE-LOCKED 95mm",correction)
 
 
+class BoundedMultiPassSeamConvergenceTests(unittest.TestCase):
+    def test_repeated_coherent_patch_is_bounded_and_revalidates_real_bvh(self):
+        source=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
+                "author-linen-earth-officewear.py").read_text()
+        start=source.index("def repair_between_vertex_collisions(")
+        end=source.index("def finish_procedural_shell(",start)
+        body=source[start:end]
+        self.assertIn("terminal_patch_budget=3",body)
+        self.assertIn("range(max_rounds+1+terminal_patch_budget)",body)
+        self.assertIn("if iteration < max_rounds+terminal_patch_budget:",body)
+        self.assertIn("if remaining_face or remaining_edge:",body)
+        self.assertIn("if distance>0.025:",body)
+        self.assertIn("source_world_positions[vertex.index]",body)
+        self.assertIn("(point-nearest[0]).length > 0.0015",body)
+        self.assertIn("raise RuntimeError(",body)
+
+
 class TerminalMeasuredSeamRepairTests(unittest.TestCase):
     def test_final_patch_accounts_for_real_edge_contacts_without_waiving_bvh(self):
         source=(Path(__file__).resolve().parents[1] / "scripts" / "blender" /
