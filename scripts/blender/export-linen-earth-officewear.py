@@ -378,7 +378,9 @@ def export_glb(collection, output_path):
 
 def main():
     args = cli_args()
+    print("Linen Earth GLB export: running independent scene preflight", flush=True)
     preflight_report = run_scene_preflight()
+    print("Linen Earth GLB export: preflight complete", flush=True)
     panel_spec = (
         load_panel_spec(args.panel_spec)
         if args.panel_spec
@@ -386,8 +388,11 @@ def main():
     )
     source = scene_source_provenance(bpy.context.scene) if panel_spec else None
     model_identity = scene_model_identity(bpy.context.scene) if panel_spec else None
+    print("Linen Earth GLB export: validating source identity and materials", flush=True)
     collection, height = validate_scene(args.collection, args.reference_body)
+    print("Linen Earth GLB export: exporting approved collection", flush=True)
     export_glb(collection, args.output)
+    print("Linen Earth GLB export: glTF exporter returned successfully", flush=True)
 
     manifest_path = None
     if panel_spec and source:
