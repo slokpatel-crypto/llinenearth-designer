@@ -9,6 +9,7 @@ from surface_coverage import (
     adaptive_surface_cut_rounds,
     body_aware_sleeve_ring,
     underarm_inboard_relief_m,
+    underarm_centreline_contact_relief_m,
     trouser_waist_side_seam_limit_m,
     preserve_trouser_leg_outer_seam_with_inseam_gap,
     bounded_source_cloth_shift,
@@ -136,6 +137,48 @@ class InnerSleeveBodyContactReliefTests(unittest.TestCase):
                         underarm_inboard_relief_m(*bad[:3],half_span_m=bad[3])
         with self.assertRaises(ValueError):
             underarm_inboard_relief_m(1.15,.03,1.1,max_relief_m=.06)
+
+
+class MeasuredPostThicknessSleeveSeamTests(unittest.TestCase):
+    def test_left_native_bvh_contact_has_small_local_smooth_notch(self):
+        waist=1.11423
+        # Real source Blender preflight: x=-244mm, z=1.116m,
+        # two sleeve points penetrate by more than 1.5mm.
+        self.assertAlmostEqual(
+            underarm_centreline_contact_relief_m(1.11623,.006,waist),
+            .008,
+        )
+        self.assertGreater(
+            underarm_centreline_contact_relief_m(1.10807,.006,waist),
+            .005,
+        )
+        self.assertEqual(
+            underarm_centreline_contact_relief_m(1.11623,0,waist),0,
+        )
+        self.assertEqual(
+            underarm_centreline_contact_relief_m(1.11623,-.015,waist),0,
+        )
+        self.assertEqual(
+            underarm_centreline_contact_relief_m(1.11623,.029,waist),0,
+        )
+        self.assertEqual(
+            underarm_centreline_contact_relief_m(1.160,.006,waist),0,
+        )
+
+    def test_original_45mm_source_and_real_bvh_gates_remain_strict(self):
+        source=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
+                "author-linen-earth-officewear.py").read_text()
+        self.assertIn(
+            "min(0.045,displacement+underarm_centreline_contact_relief_m(",source
+        )
+        self.assertIn("repair_between_vertex_collisions(",source)
+        for bad in (float("nan"),True,float("inf")):
+            with self.assertRaises(ValueError):
+                underarm_centreline_contact_relief_m(1.116,bad,1.114)
+        with self.assertRaises(ValueError):
+            underarm_centreline_contact_relief_m(
+                1.116,.006,1.114,max_relief_m=.012
+            )
 
 
 class AnatomicalSleeveConstructionTests(unittest.TestCase):
