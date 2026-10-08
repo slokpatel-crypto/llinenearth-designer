@@ -88,7 +88,9 @@ class LockedTorsoEnvelopeTests(unittest.TestCase):
         a = (0.4, 0.0, 0.0, 0.10, 0.08)
         b = (0.5, 0.0, 0.0, 0.10, 0.08)
         midpoint = (0.45, 0.0, 0.0, 0.10, 0.08)
-        body = [(0.20 * math.cos(i * math.tau/30), 0.15 * math.sin(i * math.tau/30), 0.45) for i in range(30)]
+        # Keep enough samples inside the anatomical trunk corridor while
+        # requiring a genuinely unreasonable diagonal expansion.
+        body = [(0.145 + 0.002 * math.sin(i), 0.120 + 0.002 * math.cos(i), 0.45) for i in range(30)]
         with self.assertRaisesRegex(ValueError, "remodel the original panel"):
             anatomically_enclose_intermediate_rings([a,b], [a,midpoint,b], body)
 
