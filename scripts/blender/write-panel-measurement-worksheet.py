@@ -14,6 +14,7 @@ from pathlib import Path
 
 import bpy
 from mathutils import Vector
+from fabric_arc_uv import frame_at_height, ellipse_ring_perimeter_m
 
 GARMENT_OBJECTS = (
     "ShirtTorsoFabric",
@@ -51,12 +52,39 @@ def geometry_estimate(obj):
     xs = [point.x for point in points]
     ys = [point.y for point in points]
     zs = [point.z for point in points]
-    return {
+    result = {
         "worldBoundingWidthMm": round((max(xs) - min(xs)) * 1000.0, 2),
         "worldBoundingDepthMm": round((max(ys) - min(ys)) * 1000.0, 2),
         "worldBoundingHeightMm": round((max(zs) - min(zs)) * 1000.0, 2),
         "note": "Reference only. This is a 3D world-space bounding box, not a flat-pattern measurement.",
     }
+    if obj.name.startswith(("ShirtSleeve","TrouserLeg")):
+        raw=obj.get("linen_earth_source_ring_uv")
+        if not raw:
+            raise RuntimeError(
+                f"{obj.name}: cannot estimate full-wrap UV circumference without source construction rings."
+            )
+        ring=frame_at_height(json.loads(raw),(min(zs)+max(zs))*0.5)
+        result["estimatedUvMidHeightWrapMm"]=round(
+            ellipse_ring_perimeter_m(ring)*1000.0,2
+        )
+        result["estimatedUvBasis"]="entire tubular arc circumference; geometry-only estimate, not measured fabric"
+    return result
+
+
+def uv_width_measurement_instructions(name):
+    if name.startswith(("ShirtSleeve","TrouserLeg")):
+        return (
+            "Texture U goes around the ENTIRE finished tube at mid-height. "
+            "Measure the full circumference with a flexible tape; if using "
+            "flat pattern pieces, add their sewn widths excluding allowances "
+            "to obtain one closed circumference. Never use X diameter."
+        )
+    return (
+        "Texture U follows the X-span across the visible garment panel. "
+        "Measure the approved physical cloth/pattern reference for this "
+        "corresponding map extent and document the method."
+    )
 
 
 def main():
@@ -75,6 +103,9 @@ def main():
                 "measuredBy": "",
                 "measuredAt": "",
                 "method": "",
+                "uvWidthDefinition": uv_width_measurement_instructions(name),
+                "physicalPrintedRepeatMm": None,
+                "physicalRepeatMeasurementMethod": "",
             },
         }
 
@@ -87,6 +118,8 @@ def main():
             "Measure the physical approved pattern or finished-garment panel with a ruler/tape.",
             "Record widthMm and heightMm in millimetres, plus who measured it, date and method.",
             "Do not copy the 3D bounding-box estimate into the production panel spec.",
+            "For sleeve and trouser legs measure a full 360-degree mid-height circumference; flat-pattern widths must exclude seam allowances.",
+            "Separately measure and record a supplier/owner verified stripe/check repeat in millimetres. Never infer a repeat from pixels alone.",
         ],
         "panels": panels,
     }

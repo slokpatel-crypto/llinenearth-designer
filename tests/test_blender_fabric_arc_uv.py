@@ -33,6 +33,19 @@ class RealGarmentTubeUVTests(unittest.TestCase):
         # X strip; otherwise one 20mm check becomes >50mm around the arm.
         self.assertGreater(perimeter/(2*oval[3]),2.4)
 
+    def test_tailor_worksheet_requires_actual_full_wrap_and_measured_repeat(self):
+        source=(ROOT/"scripts"/"blender"/
+                "write-panel-measurement-worksheet.py").read_text()
+        self.assertIn("ellipse_ring_perimeter_m(ring)*1000.0",source)
+        self.assertIn("estimatedUvMidHeightWrapMm",source)
+        self.assertIn("uvWidthDefinition",source)
+        self.assertIn("physicalPrintedRepeatMm",source)
+        self.assertIn("physicalRepeatMeasurementMethod",source)
+        self.assertIn('"widthMm": None',source)
+        self.assertIn('"heightMm": None',source)
+        self.assertIn("Never use X diameter",source)
+        self.assertIn("excluding allowances",source)
+
     def test_lab_export_uses_circumference_but_never_fakes_verified_scale(self):
         source=(ROOT/"scripts"/"blender"/"export-linen-earth-officewear.py").read_text()
         self.assertIn("frame_at_height(rings,(min_z+max_z)*0.5)",source)
