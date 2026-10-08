@@ -142,6 +142,16 @@ test("viewer skips hydrated materials and shares in-flight WebGL material loads"
     "completed/rejected GPU work must be evicted to allow retry");
 });
 
+test("native 3D tailoring input commits before cancellable WebGL material mutations",()=>{
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  assert(viewer.includes("const inputSettleTimer=window.setTimeout("),
+    "heavy shader updates must not run in the same immediate customer input frame");
+  assert(viewer.includes("},180);"),
+    "native selection requires a bounded, sub-second opportunity to commit before GPU hydration");
+  assert(viewer.includes("window.clearTimeout(inputSettleTimer)"),
+    "superseded outfit edits must cancel pending material work");
+});
+
 test("viewer recovers a model-viewer load event that fires before React effect listeners attach",()=>{
   const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
   assert(viewer.includes("loaded?:boolean"));
