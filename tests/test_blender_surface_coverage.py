@@ -632,6 +632,9 @@ class ProximalSleeveBodyExitContract(unittest.TestCase):
         self.assertIn('abs(point.x-frame["centerX"])<0.205',author)
         self.assertIn("if (medial_arm_contact",author)
         self.assertIn("sleeve_side*(candidate.x-point.x)<-0.002",author)
+        local=author[author.index("def outside_correction(point):"):]
+        self.assertLess(local.index("sleeve_side=("),local.index("for distance in (clearance_m+0.002"))
+        self.assertLess(local.index("medial_arm_contact=("),local.index("for distance in (clearance_m+0.002"))
         self.assertIn("if (target - point).length > 0.095:",author)
         self.assertIn("(point-nearest[0]).length > 0.0015",author)
         # The other forearm and actual cuff remain free to follow the measured
