@@ -146,8 +146,8 @@ test("native 3D tailoring input commits before cancellable WebGL material mutati
   const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
   assert(viewer.includes("const inputSettleTimer=window.setTimeout("),
     "heavy shader updates must not run in the same immediate customer input frame");
-  assert(viewer.includes("},180);"),
-    "native selection requires a bounded, sub-second opportunity to commit before GPU hydration");
+  assert(viewer.includes("tailoringInputSettleMs(viewer.model?.materials.length||0)"),
+    "dense production scenes must defer GPU hydration until the real native control commits");
   assert(viewer.includes("window.clearTimeout(inputSettleTimer)"),
     "superseded outfit edits must cancel pending material work");
 });
@@ -177,9 +177,9 @@ test("viewer surface exposes the shared four-angle turntable and independent shi
 test("real garment tailoring controls remain schedulable during WebGL hydration",()=>{
   const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
   assert(viewer.includes("createCooperativeMaterialBatch"),"live 3D viewer must actually wire the cooperative material scheduler");
-  assert(viewer.includes("window.setTimeout(resolve,0)"),"shader material work must yield a browser macrotask");
+  assert(viewer.includes("window.setTimeout(resolve,8)"),"shader material work must yield real input time between GPU mutations");
   assert(viewer.includes("await yieldForInput()"),"long material loops must release control to customer input");
-  assert(viewer.includes("window.setTimeout(resolve,0)),1"),
+  assert(viewer.includes("window.setTimeout(resolve,8)),1"),
     "large model must yield a macrotask before each shader mutation rather than after four blocking operations");
   assert(viewer.includes("Allow the real native form-control action to settle before any"),
     "customer control state should settle before expensive WebGL material work");
