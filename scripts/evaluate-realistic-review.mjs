@@ -24,6 +24,12 @@ function isShoe(r,g,b){
   const y=luma(r,g,b);
   return y<105 && r-g>=3 && g-b>=2;
 }
+function isUncoveredSkin(r,g,b){
+  // In neutral review lighting, visible realistic-body skin has warm
+  // red > green > blue chroma; navy trousers and neutral stage do not.
+  // Exclude the shirt region by checking only below the trouser rise.
+  return r>125 && r-g>=6 && g-b>=6;
+}
 function statsForRoi(data,width,height,channels,roi,predicate){
   const box=roiBounds(width,height,roi);
   let total=0,matched=0,sumLuma=0;
@@ -73,11 +79,17 @@ for(const view of views){
     {x0:.18,y0:.82,x1:.82,y1:1},
     isShoe,
   );
+  const exposedLegSkin=statsForRoi(
+    data,info.width,info.height,info.channels,
+    {x0:.25,y0:.45,x1:.75,y1:.85},
+    isUncoveredSkin,
+  );
   report.views[view]={
     width:info.width,
     height:info.height,
     trouserRatio:Number(trouser.ratio.toFixed(4)),
     shoeRatio:Number(shoe.ratio.toFixed(4)),
+    exposedLegSkinRatio:Number(exposedLegSkin.ratio.toFixed(4)),
     lowerBodyMeanLuma:Number(trouser.meanLuma.toFixed(2)),
   };
   const trouserMin=view==="side"?.025:.04;
@@ -89,6 +101,12 @@ for(const view of views){
   if(shoe.ratio<shoeMin){
     report.ready=false;
     report.reasons.push(`${view}: locked dress shoes are not visibly readable (${(shoe.ratio*100).toFixed(2)}%).`);
+  }
+  // A collision-free mesh can still show bare thighs/calves when procedural
+  // garment panels are too narrow or absent. Reject that visual mismatch.
+  if(exposedLegSkin.ratio>.05){
+    report.ready=false;
+    report.reasons.push(`${view}: bare leg/body skin is visible through the trouser silhouette (${(exposedLegSkin.ratio*100).toFixed(1)}% of leg review region).`);
   }
 }
 
