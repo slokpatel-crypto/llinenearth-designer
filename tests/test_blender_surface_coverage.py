@@ -9,6 +9,7 @@ from surface_coverage import (
     adaptive_surface_cut_rounds,
     anatomically_enclose_intermediate_rings,
     bounded_body_section_center_y,
+    belongs_to_locked_shirt_trunk,
     reproject_vertex_to_fitted_ring,
     rounded_tailoring_ring_xy,
     outward_ring_quad,
@@ -18,6 +19,26 @@ from surface_coverage import (
     subdivide_ring_profiles,
     vertical_subdivision_cuts,
 )
+
+
+class ShirtCollarVersusTorsoRingTests(unittest.TestCase):
+    def test_collared_neck_cap_is_not_forced_over_chest(self):
+        shoulder_z=1.46
+        self.assertTrue(belongs_to_locked_shirt_trunk(1.32,shoulder_z))
+        self.assertTrue(belongs_to_locked_shirt_trunk(shoulder_z,shoulder_z))
+        # Native Blender 37781653509: p=3.2 collar cap at 1.4776 m,
+        # radius 67 x 29.5 mm. It is not a full torso enclosure ring.
+        self.assertFalse(belongs_to_locked_shirt_trunk(1.4776,shoulder_z))
+        self.assertFalse(belongs_to_locked_shirt_trunk(1.50,shoulder_z))
+
+    def test_neck_exclusion_cannot_consume_shoulder_guide(self):
+        shoulder_z=1.455
+        self.assertTrue(belongs_to_locked_shirt_trunk(shoulder_z,shoulder_z))
+        self.assertTrue(belongs_to_locked_shirt_trunk(shoulder_z-0.001,shoulder_z))
+        for bad in (float("nan"),float("inf"),True):
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError):
+                    belongs_to_locked_shirt_trunk(bad,shoulder_z)
 
 
 class PostIdentityGarmentReprojectionTests(unittest.TestCase):
