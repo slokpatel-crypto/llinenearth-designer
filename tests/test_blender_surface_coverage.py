@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "blende
 from surface_coverage import (
     adaptive_surface_cut_rounds,
     anatomically_enclose_intermediate_rings,
+    bounded_body_section_center_y,
     rounded_tailoring_ring_xy,
     outward_ring_quad,
     nested_tucked_hem_ring,
@@ -16,6 +17,50 @@ from surface_coverage import (
     subdivide_ring_profiles,
     vertical_subdivision_cuts,
 )
+
+
+class MeasuredAnatomicalPostureTests(unittest.TestCase):
+    def test_real_front_and_back_skin_permit_only_small_cloth_center_adjustments(self):
+        before=(1.17,0.0,-0.03,0.1590,0.1264)
+        after=(1.29,0.0,-0.03,0.1590,0.1264)
+        middle=(1.2292,0.0,-0.03,0.1590,0.1264)
+        section=(
+            [(0.18,0.11,1.2530)]*73 +
+            [(-0.10,-0.14,1.2530)]*73
+        )
+        with self.assertRaisesRegex(ValueError,"70mm"):
+            anatomically_enclose_intermediate_rings(
+                [before,after],[before,middle,after],section,
+                profile_power=3.2,max_center_shift_m=0,
+            )
+        result=anatomically_enclose_intermediate_rings(
+            [before,after],[before,middle,after],section,
+            profile_power=3.2,max_center_shift_m=0.018,
+        )
+        self.assertEqual(result[0],before)
+        self.assertEqual(result[-1],after)
+        self.assertGreater(result[1][2],middle[2])
+        self.assertLessEqual(abs(result[1][2]-middle[2]),.01800001)
+        self.assertLessEqual(result[1][3]-middle[3],.07000001)
+
+    def test_one_sided_arm_section_does_not_shift_entire_locked_shirt(self):
+        body=[(.15,.11,.45)]*25
+        cy=bounded_body_section_center_y(
+            body,0,-.03,.159,.1264,profile_power=3.2,max_shift_m=.018)
+        self.assertAlmostEqual(cy,-.03)
+
+    def test_invalid_or_unmeasured_posture_cannot_be_approved(self):
+        for bad in (-0.01,.021,float("nan"),True):
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError):
+                    bounded_body_section_center_y(
+                        [(0,0,.45)]*20,0,0,.159,.1264,
+                        profile_power=3.2,max_shift_m=bad
+                    )
+        with self.assertRaises(ValueError):
+            bounded_body_section_center_y(
+                [],0,0,.159,.1264,profile_power=3.2,max_shift_m=.018
+            )
 
 
 class RoundedAnatomySectionTests(unittest.TestCase):
