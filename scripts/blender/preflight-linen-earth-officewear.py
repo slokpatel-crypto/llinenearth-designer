@@ -17,7 +17,7 @@ from mathutils.bvhtree import BVHTree
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
-from surface_coverage import penetrating_surface_samples
+from surface_coverage import penetrating_surface_samples, sampled_mesh_face_indices
 
 EXPORT_COLLECTION = "LinenEarthExport"
 REFERENCE_BODY = "Body"
@@ -254,10 +254,10 @@ def signed_clearance_stats_mm(source, target, z_center=None, band=0.06, max_samp
         # a trouser calf/torso can protrude through a face with every vertex
         # outside. Bound native BVH work to 600 deterministic mesh triangles.
         mesh.calc_loop_triangles()
-        stride_faces=max(1, math.ceil(len(mesh.loop_triangles) / max_samples))
-        sampled_faces=[
-            tuple(face.vertices) for face in mesh.loop_triangles[::stride_faces][:max_samples]
-        ]
+        # Blender 4.2.23 RNA triangle collections crash on stepped slicing;
+        # use bounded Python integer indices (verified by native crash log).
+        indices=sampled_mesh_face_indices(len(mesh.loop_triangles), max_samples)
+        sampled_faces=[tuple(mesh.loop_triangles[index].vertices) for index in indices]
         face_vertices=[matrix @ vertex.co for vertex in mesh.vertices]
         def deep_body_surface(point):
             world=Vector(point)
