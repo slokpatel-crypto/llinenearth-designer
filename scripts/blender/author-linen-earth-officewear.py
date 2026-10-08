@@ -24,7 +24,7 @@ from mathutils.bvhtree import BVHTree
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
 from fabric_arc_uv import frame_at_height, ellipse_arc_uv
-from surface_coverage import bounded_source_cloth_shift, underarm_inboard_relief_m, body_aware_sleeve_ring, waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
+from surface_coverage import precision_safe_source_radius, bounded_source_cloth_shift, underarm_inboard_relief_m, body_aware_sleeve_ring, waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -1289,6 +1289,27 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
             ((matrix @ vertex.co)-source_world_positions[i]).length
             for i,vertex in enumerate(obj.data.vertices)
         ]
+        # Blender's float32 mesh storage can round an exact 95.000000mm
+        # displacement to 95.000004mm. Move the physically identical
+        # point 0.2um INSIDE the original source sphere (never expand it),
+        # re-read the real stored mesh and retain both BVH validations.
+        reprojected_rounding=0
+        for index,distance in enumerate(deviations):
+            if distance<=0.095: continue
+            safe=precision_safe_source_radius(distance)
+            current=matrix @ obj.data.vertices[index].co
+            source=source_world_positions[index]
+            direction=(current-source).normalized()
+            obj.data.vertices[index].co=matrix.inverted() @ (
+                source+direction*safe
+            )
+            reprojected_rounding+=1
+        if reprojected_rounding:
+            obj.data.update()
+            deviations=[
+                ((matrix @ vertex.co)-source_world_positions[i]).length
+                for i,vertex in enumerate(obj.data.vertices)
+            ]
         worst=max(range(len(deviations)),key=deviations.__getitem__)
         if deviations[worst]>0.095:
             raise RuntimeError(
