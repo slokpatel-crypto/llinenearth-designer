@@ -40,3 +40,25 @@ export function trimAppearanceKey(parts:{
     parts.shirtId,parts.textureRevision,parts.roughness,parts.shirtDrape,
   ]);
 }
+
+
+/**
+ * De-duplicate simultaneous lazy WebGL material hydration across interrupted
+ * recipe updates. A rejected promise must be evicted so a retry is possible;
+ * the WeakMap must never retain an abandoned 3D model's material objects.
+ */
+export function createInFlightMaterialLoader<T extends object>() {
+  const active=new WeakMap<T,Promise<void>>();
+  return async (material:T, load:()=>Promise<void>)=>{
+    let pending=active.get(material);
+    if(!pending){
+      pending=Promise.resolve().then(load);
+      active.set(material,pending);
+    }
+    try{
+      await pending;
+    }finally{
+      if(active.get(material)===pending) active.delete(material);
+    }
+  };
+}
