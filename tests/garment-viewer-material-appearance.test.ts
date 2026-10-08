@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {createInFlightMaterialLoader,needsVariantMaterialRefresh,needsButtonMaterialRefresh,trimAppearanceKey} from "../src/lib/garment-viewer-material-appearance.ts";
+import {createCooperativeMaterialBatch,createInFlightMaterialLoader,needsVariantMaterialRefresh,needsButtonMaterialRefresh,trimAppearanceKey} from "../src/lib/garment-viewer-material-appearance.ts";
 
 const base={textureRevision:3,roughness:.72,shirtId:"linen-sky",trouserId:"linen-beige"};
 
@@ -67,4 +67,22 @@ test("failed WebGL load is evicted to permit recovery",async()=>{
   }),/GPU context/);
   await loadOnce(material,async()=>{attempts++;});
   assert.equal(attempts,2);
+});
+
+
+test("cooperative material scheduler yields after each bounded batch",async()=>{
+  let yields=0;
+  const pace=createCooperativeMaterialBatch(async()=>{yields++;},3);
+  await pace();await pace();
+  assert.equal(yields,0);
+  await pace();
+  assert.equal(yields,1);
+  for(let i=0;i<3;i++) await pace();
+  assert.equal(yields,2);
+});
+
+test("cooperative batching rejects invalid GPU workload limits",()=>{
+  for(const bad of [0,-1,65,NaN,2.5]){
+    assert.throws(()=>createCooperativeMaterialBatch(async()=>{},bad));
+  }
 });
