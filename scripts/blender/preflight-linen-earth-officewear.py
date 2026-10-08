@@ -17,6 +17,7 @@ from mathutils.bvhtree import BVHTree
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
+from surface_coverage import penetrating_surface_samples
 
 EXPORT_COLLECTION = "LinenEarthExport"
 REFERENCE_BODY = "Body"
@@ -248,6 +249,26 @@ def signed_clearance_stats_mm(source, target, z_center=None, band=0.06, max_samp
                 penetration.append(distance_mm)
         if not distances:
             return None
+        # Vertex-only parity cannot certify a panel stretched between sparse
+        # construction rings. Probe REAL triangle centres and edge midpoints:
+        # a trouser calf/torso can protrude through a face with every vertex
+        # outside. Bound native BVH work to 600 deterministic mesh triangles.
+        mesh.calc_loop_triangles()
+        stride_faces=max(1, math.ceil(len(mesh.loop_triangles) / max_samples))
+        sampled_faces=[
+            tuple(face.vertices) for face in mesh.loop_triangles[::stride_faces][:max_samples]
+        ]
+        face_vertices=[matrix @ vertex.co for vertex in mesh.vertices]
+        def deep_body_surface(point):
+            world=Vector(point)
+            if not point_inside_closed_bvh(target_tree,world):
+                return False
+            nearest=target_tree.find_nearest(world)
+            return nearest is not None and nearest[0] is not None and (world-nearest[0]).length > 0.0015
+        surface_hits=penetrating_surface_samples(
+            [(p.x,p.y,p.z) for p in face_vertices],
+            sampled_faces, deep_body_surface, max_hits=32
+        )
         distances.sort()
         penetration.sort()
         p05 = distances[min(len(distances) - 1, int(round((len(distances) - 1) * 0.05)))]
@@ -259,6 +280,14 @@ def signed_clearance_stats_mm(source, target, z_center=None, band=0.06, max_samp
             "maxPenetrationMm": round(penetration[-1], 2) if penetration else 0.0,
             "samples": len(distances),
             "insideMethod": "odd-even-bvh-ray-parity",
+            "sampledSurfaceFaces": len(sampled_faces),
+            "deepSurfacePenetrationSamples": len(surface_hits),
+            "deepSurfaceSamplesCapped": len(surface_hits) >= 32,
+            "deepSurfaceLocations": [
+                {"face":hit["face"],"location":hit["location"],
+                 "xyzMm":[round(v*1000,1) for v in hit["point"]]}
+                for hit in surface_hits[:8]
+            ],
         }
     finally:
         evaluated.to_mesh_clear()
@@ -698,6 +727,14 @@ def main(json_output=None):
                 reasons.append(
                     f"{key} has {count}/{stats['samples']} sampled garment vertices inside the body "
                     f"(max {stats['maxPenetrationMm']:.1f} mm); production garment/body boundaries must stay outside."
+                )
+            surface_count = int(stats.get("deepSurfacePenetrationSamples",0))
+            if surface_count:
+                reasons.append(
+                    f"{key} has {surface_count} independently sampled cloth face/edge points "
+                    f"over 1.5 mm inside the locked human body "
+                    f"({stats['sampledSurfaceFaces']} sampled faces); "
+                    "repair real panel geometry, never certify a surface from vertices alone."
                 )
 
         upper_torso_z = body.matrix_world.translation.z + object_height(body) * 0.82
