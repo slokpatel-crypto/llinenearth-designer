@@ -23,7 +23,7 @@ from mathutils.bvhtree import BVHTree
 # Authoring and Blender preflight use the same exact triangle/guide intersection.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
-from surface_coverage import terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
+from surface_coverage import needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -806,6 +806,26 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
             bm.from_mesh(obj.data)
             if len(bm.faces)>80000:
                 raise RuntimeError(f"{obj.name}: unsafe cloth mesh complexity in body-fit refinement.")
+            # BMesh edge subdivision can leave a huge 80+ vertex ngon. Its
+            # arithmetic face centre is NOT a local cloth triangle; such a
+            # centre is often embedded 32mm inside a real waist even though
+            # its perimeter is skin-safe. Triangulate only nonquad regions,
+            # then test their TRUE physical surface instead of moving a giant
+            # polygon or inventing isolated centre spikes.
+            giant_faces=[
+                face for face in bm.faces
+                if needs_tailoring_face_triangulation(len(face.verts))
+            ]
+            if giant_faces:
+                bmesh.ops.triangulate(
+                    bm,faces=giant_faces,
+                    quad_method="BEAUTY",ngon_method="BEAUTY",
+                )
+                if len(bm.faces)>80000:
+                    raise RuntimeError(f"{obj.name}: ngon correction exceeds physical cloth face limit.")
+                bm.normal_update()
+                print(f"Linen Earth cloth topology normalized: {obj.name} "
+                      f"pass={iteration} nGons={len(giant_faces)} faces={len(bm.faces)}",flush=True)
             selected=set()
             penetrated_faces=[]
             centroid_hits=0
