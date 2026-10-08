@@ -219,6 +219,41 @@ class LockedTorsoEnvelopeTests(unittest.TestCase):
             anatomically_enclose_intermediate_rings([a,b], [a,(0.45, 0, 0, 0.10, 0.08),b], body)
 
 
+class LocalTorsoCrossSectionTests(unittest.TestCase):
+    def test_adjacent_arm_must_not_inflate_a_different_chest_height(self):
+        import math
+        measured_z=1.2292
+        torso=[
+            (0.145*math.cos(i*math.tau/60),
+             0.110*math.sin(i*math.tau/60),measured_z)
+            for i in range(60)
+        ]
+        # Observed Blender contaminant: adjacent arm near the wider upper
+        # chest, 23.8mm above the ring being authored.
+        torso.append((0.1804,0.1151,1.253))
+        original=[(1.0,0.0,0.0,0.159,0.126)]
+        ring=(measured_z,0.0,0.0,0.159,0.126)
+        with self.assertRaisesRegex(ValueError,"remodel the original panel"):
+            anatomically_enclose_intermediate_rings(
+                original,[ring],torso,sample_band_m=0.024
+            )
+        result=anatomically_enclose_intermediate_rings(
+            original,[ring],torso,sample_band_m=0.012
+        )
+        self.assertAlmostEqual(result[0][3],ring[3])
+        self.assertAlmostEqual(result[0][4],ring[4])
+
+    def test_local_cut_must_fail_if_actual_torso_cannot_fit_within_70mm(self):
+        z=1.2292
+        body=[(0.177,0.13,z) for _ in range(40)]
+        with self.assertRaises(ValueError):
+            anatomically_enclose_intermediate_rings(
+                [(1.0,0.0,0.0,0.159,0.126)],
+                [(z,0.0,0.0,0.159,0.126)],
+                body,sample_band_m=0.012,max_growth_m=0.070,
+            )
+
+
 class SurfaceSamplingTests(unittest.TestCase):
     def test_face_centroid_catches_skin_when_all_vertices_outside(self):
         points = [(-1, -1, 0), (1, -1, 0), (1, 1, 0), (-1, 1, 0)]
