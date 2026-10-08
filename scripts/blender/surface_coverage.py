@@ -549,7 +549,8 @@ def underarm_centreline_contact_relief_m(
     if not (0.015<=band_half_height_m<=0.045 and
             0.0<=max_relief_m<=0.008):
         raise ValueError("Sleeve centreline seam cannot exceed bounded 8mm relief.")
-    # Contact measured at 1.116m, 2mm ABOVE the locked 1.114m shirt waist.\n    vertical=abs(z-(waist_guide_z+0.002))/band_half_height_m
+    # Contact measured at 1.116m, 2mm ABOVE the locked 1.114m shirt waist.
+    vertical=abs(z-(waist_guide_z+0.002))/band_half_height_m
     if vertical>=1 or signed_inboard_m<=0 or signed_inboard_m>=0.028:
         return 0.0
     entry=min(1.0,signed_inboard_m/0.005)
