@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {createCooperativeMaterialBatch,createInFlightMaterialLoader,needsVariantMaterialRefresh,needsButtonMaterialRefresh,trimAppearanceKey} from "../src/lib/garment-viewer-material-appearance.ts";
+import {createCooperativeMaterialBatch,createInFlightMaterialLoader,needsVariantMaterialRefresh,needsButtonMaterialRefresh,trimAppearanceKey,tailoringInputSettleMs} from "../src/lib/garment-viewer-material-appearance.ts";
 
 const base={textureRevision:3,roughness:.72,shirtId:"linen-sky",trouserId:"linen-beige"};
 
@@ -85,4 +85,14 @@ test("cooperative batching rejects invalid GPU workload limits",()=>{
   for(const bad of [0,-1,65,NaN,2.5]){
     assert.throws(()=>createCooperativeMaterialBatch(async()=>{},bad));
   }
+});
+
+
+test("dense 3D shaders must not run during real native input batching",()=>{
+  assert.equal(tailoringInputSettleMs(6),180);
+  assert.equal(tailoringInputSettleMs(299),180);
+  assert.equal(tailoringInputSettleMs(300),650);
+  assert.equal(tailoringInputSettleMs(586),650);
+  assert.ok(tailoringInputSettleMs(586)<1000);
+  for(const invalid of [-1,3.7,NaN,5001]) assert.throws(()=>tailoringInputSettleMs(invalid));
 });
