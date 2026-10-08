@@ -22,6 +22,7 @@ from mathutils.bvhtree import BVHTree
 # Authoring and Blender preflight use the same exact triangle/guide intersection.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
+from surface_coverage import subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -84,6 +85,10 @@ def ensure_export_collection():
 def build_ring_shell(name, rings, segments=48, neck_opening=None, collar_height=0.0):
     if len(rings) < 2:
         raise RuntimeError(f"{name} requires at least two rings.")
+    # Sparse garment ring faces can pass through the locked human body between
+    # otherwise collision-free vertices. Refine BEFORE body penetration repair,
+    # retaining the original garment dimensions and identity target rings.
+    rings = subdivide_ring_profiles(rings)
     collection = ensure_export_collection()
     vertices = []
     faces = []
