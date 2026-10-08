@@ -111,11 +111,16 @@ def normal_orientation(obj, max_samples=160):
         evaluated.to_mesh_clear()
 
 
-def repair_variant_outside_body(obj, body, minimum_clearance_m):
-    tree = world_bvh(body)
-    if tree is None or obj.type != "MESH":
-        return {"movedVertices": 0, "maxCorrectionMm": 0.0}
-    orientation = normal_orientation(body)
+def repair_variant_outside_body(obj, body, minimum_clearance_m, body_tree=None, body_orientation=None):
+    # The locked body geometry does not change during variant import. Reusing its
+    # BVH and surface orientation prevents an expensive body mesh evaluation
+    # for each of the many independently fitted tailoring variants.
+    if obj.type != "MESH":
+        raise RuntimeError("Tailoring clearance requires a mesh variant.")
+    tree = body_tree if body_tree is not None else world_bvh(body)
+    if tree is None:
+        raise RuntimeError("Locked body BVH is unavailable; cannot certify tailoring clearance.")
+    orientation = body_orientation if body_orientation is not None else normal_orientation(body)
     matrix = obj.matrix_world
     inverse = matrix.inverted()
     moved = 0
@@ -225,6 +230,13 @@ def main():
             bpy.data.objects.remove(obj, do_unlink=True)
 
     collection = ensure_export_collection()
+    # Build the immutable locked-body collision reference once. Per-variant
+    # repairs must be checked against the same human body, never a stale
+    # deterministic mannequin or silently skipped because BVH is missing.
+    body_tree = world_bvh(body)
+    if body_tree is None:
+        raise RuntimeError("Locked body collision tree could not be built.")
+    body_orientation = normal_orientation(body)
     repair_stats = {}
     for obj in kept:
         for current in list(obj.users_collection):
@@ -237,7 +249,9 @@ def main():
         footwear = is_footwear_object(obj)
         clearance = None if footwear else variant_clearance(names)
         if clearance is not None:
-            repair_stats[obj.name] = repair_variant_outside_body(obj, body, clearance)
+            repair_stats[obj.name] = repair_variant_outside_body(
+                obj, body, clearance, body_tree, body_orientation
+            )
 
         if footwear:
             # Genuine shoe, sole and lace surfaces stay visible during four-angle
