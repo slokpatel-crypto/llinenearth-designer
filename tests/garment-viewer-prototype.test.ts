@@ -142,6 +142,14 @@ test("viewer skips hydrated materials and shares in-flight WebGL material loads"
     "completed/rejected GPU work must be evicted to allow retry");
 });
 
+test("3D viewer avoids continuous idle prompt rendering over heavyweight transparent tailoring meshes",()=>{
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  assert(viewer.includes('"interaction-prompt":"none"'));
+  assert(!viewer.includes('"interaction-prompt":"auto"'));
+  assert(viewer.includes('aria-label="Garment camera views"'),
+    "front, three-quarter, side and back controls must remain discoverable");
+});
+
 test("native 3D tailoring input commits before cancellable WebGL material mutations",()=>{
   const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
   assert(viewer.includes("const inputSettleTimer=window.setTimeout("),
