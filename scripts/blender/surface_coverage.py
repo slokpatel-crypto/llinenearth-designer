@@ -506,7 +506,11 @@ def underarm_inboard_relief_m(z, signed_inboard_m, waist_guide_z, *,
         raise ValueError("Underarm relief requires finite garment coordinates.")
     if not (0.04 <= half_span_m <= 0.13 and 0 <= max_relief_m <= 0.045):
         raise ValueError("Underarm relief must remain a bounded cloth-only alteration.")
-    centre_z=waist_guide_z+0.050
+    # Native Blender 37807386532 measured the tightest trapped side/arm
+    # contact at z=1.108m, just 6mm BELOW the shirt-waist guide, NOT 50mm
+    # above it. Centre cloth-source relief on that actual junction so the
+    # ring is reshaped BEFORE cumulative body-fitting exhausts its budget.
+    centre_z=waist_guide_z+0.008
     normalized_z=abs(z-centre_z)/half_span_m
     if normalized_z>=1 or signed_inboard_m<=0:
         return 0.0
