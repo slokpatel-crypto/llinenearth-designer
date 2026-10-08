@@ -23,6 +23,9 @@ import sys
 import bpy
 from mathutils import Vector
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from fabric_arc_uv import frame_at_height, ellipse_ring_perimeter_m
+
 MODEL_ID = "LE-OFFICEWEAR-V1"
 CONTRACT_VERSION = "linen-earth-garment-viewer-v2"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -198,8 +201,23 @@ def geometry_panel_spec():
         if obj is None or obj.type != "MESH":
             raise RuntimeError(f"Lab preview cannot estimate missing garment panel: {name}")
         points = world_bounds(obj)
+        min_z,max_z=min(point.z for point in points),max(point.z for point in points)
         width_mm = (max(point.x for point in points) - min(point.x for point in points)) * 1000.0
-        height_mm = (max(point.z for point in points) - min(point.z for point in points)) * 1000.0
+        height_mm = (max_z - min_z) * 1000.0
+        if name.startswith(("ShirtSleeve","TrouserLeg")):
+            # Tubular fabric UV U wraps once around the entire cylinder, not
+            # the X diameter. X-only width made verified repeat appear 2x
+            # oversized on side/back of sleeves and trouser legs.
+            # Lab preview ONLY: original construction frames are geometry
+            # estimates, never owner-verified flat-pattern measurements.
+            source_frames=obj.get("linen_earth_source_ring_uv")
+            if not source_frames:
+                raise RuntimeError(
+                    f"Lab tube scale needs real construction-ring UV provenance: {name}."
+                )
+            rings=json.loads(source_frames)
+            frame=frame_at_height(rings,(min_z+max_z)*0.5)
+            width_mm=ellipse_ring_perimeter_m(frame)*1000.0
         if width_mm <= 0 or height_mm <= 0:
             raise RuntimeError(f"Lab preview panel estimate is invalid for {name}.")
         panels[name] = {
