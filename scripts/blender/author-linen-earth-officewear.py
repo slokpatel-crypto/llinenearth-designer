@@ -340,8 +340,11 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
     sleeve_top_z = shoulder_z - 0.018
     cuff_z = (left_hand_z + right_hand_z) * 0.5 + 0.055
     sleeve_length = max(0.42, sleeve_top_z - cuff_z)
-    sleeve_top_center = shoulder_half + 0.030
-    sleeve_top_radius = 0.068
+    # Sleeve cap must start OUTSIDE the locked shoulder seam, not run a
+    # complete tube inside the chest. The photographed 574mm outer-arm
+    # silhouette remains the construction bound at this upper armhole.
+    sleeve_top_center = shoulder_half + 0.037
+    sleeve_top_radius = 0.056
     sleeve_elbow_radius = 0.052
     cuff_radius_x = 0.038
     cuff_radius_y = 0.032
