@@ -23,7 +23,7 @@ from mathutils.bvhtree import BVHTree
 # Authoring and Blender preflight use the same exact triangle/guide intersection.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
-from surface_coverage import body_aware_sleeve_ring, waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
+from surface_coverage import bounded_source_panel_displacement, body_aware_sleeve_ring, waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -1160,9 +1160,20 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                             if (shift.length<=0.095
                                     and not point_inside_closed_bvh(body_tree,candidate)):
                                 options.append((shift.length,shift))
-                    # A nearest surface normal can be tangent to a bent arm.
-                    # In that case, search real lateral/anterior directions;
-                    # never assume a candidate is safe without BVH parity.
+                    # A bent arm has a different outward clearance direction
+                    # from the neighboring torso. Always consider laterally
+                    # OUTWARD sleeve proposals before choosing a correction:
+                    # the nearest triangle can be on the *wrong* side of an
+                    # armpit crease, leading to 95mm oscillating projections.
+                    sleeve_side=(
+                        -1 if obj.name=="ShirtSleeveLFabric"
+                        else 1 if obj.name=="ShirtSleeveRFabric" else 0
+                    )
+                    if sleeve_side:
+                        for distance in (0.008,0.016,0.024,0.035,0.048,0.070,0.090):
+                            candidate=point+Vector((sleeve_side*distance,0,0))
+                            if not point_inside_closed_bvh(body_tree,candidate):
+                                options.append((distance,candidate-point))
                     if not options:
                         for distance in (0.012,0.024,0.040,0.060,0.080,0.095):
                             for direction in (
@@ -1178,7 +1189,9 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                             f"{obj.name}: actual cloth contact cannot clear "
                             "the locked anatomy within 95mm; remodel source panels."
                         )
-                    return min(options,key=lambda item:item[0])[1]
+                    return min(options,key=lambda item:(
+                        item[0]+max(0,-sleeve_side*item[1].x)*2.5
+                    ))[1]
                 proposals={}
                 def add_contact(vertices,point):
                     shift=outside_correction(point)
@@ -1196,6 +1209,7 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                         f"{obj.name}: actual BVH contacts had no candidate source-panel vertices."
                     )
                 patched=0
+                capped=0
                 bm.verts.index_update()
                 for vertex,changes in proposals.items():
                     original=matrix @ vertex.co
@@ -1212,17 +1226,23 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                     weights=[max(shift.length,0.001)**2 for shift in changes]
                     delta=sum((shift*weight for shift,weight in zip(changes,weights)),
                               Vector((0,0,0)))/sum(weights)
-                    if ((original+delta)-source_world_positions[vertex.index]).length>0.095:
-                        raise RuntimeError(
-                            f"{obj.name}: cumulative physical cloth correction exceeds 95mm."
-                        )
-                    vertex.co=inverse @ (original+delta)
+                    bounded,was_capped=bounded_source_panel_displacement(
+                        tuple(source_world_positions[vertex.index]),
+                        tuple(original+delta),
+                        limit_m=0.09495,
+                    )
+                    # Every vertex remains under 95mm TOTAL displacement from
+                    # its actual fitted source; clipping a proposal does not
+                    # waive independent BVH face/edge/vertex inspection.
+                    if was_capped: capped+=1
+                    vertex.co=inverse @ Vector(bounded)
                     patched+=1
                 if not patched:
                     raise RuntimeError(
                         f"{obj.name}: measured contacts touch only identity-locked guide vertices."
                     )
                 progress[-1]["coherentContactVertices"]=patched
+                progress[-1]["boundedAt95mmVertices"]=capped
             if len(bm.faces)>80000:
                 raise RuntimeError(f"{obj.name}: local face repair exceeds cloth complexity limit.")
             bm.normal_update()
