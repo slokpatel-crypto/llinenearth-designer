@@ -1197,8 +1197,15 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                     delta=sum((shift*weight for shift,weight in zip(changes,weights)),
                               Vector((0,0,0)))/sum(weights)
                     if ((original+delta)-source_world_positions[vertex.index]).length>0.095:
+                        source=source_world_positions[vertex.index]
+                        candidate=original+delta
                         raise RuntimeError(
-                            f"{obj.name}: cumulative physical cloth correction exceeds 95mm."
+                            f"{obj.name}: cumulative physical cloth correction exceeds 95mm; "
+                            f"source={tuple(round(v,5) for v in source)}, "
+                            f"current={tuple(round(v,5) for v in original)}, "
+                            f"candidate={tuple(round(v,5) for v in candidate)}, "
+                            f"totalMm={round((candidate-source).length*1000,2)}, "
+                            f"pass={iteration}; reshape actual sleeve panel, not the body."
                         )
                     vertex.co=inverse @ (original+delta)
                     patched+=1
