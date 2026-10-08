@@ -31,7 +31,7 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
             'len(points[::vertex_stride][:600])',
             'body_bvh.find_nearest(point)',
             'count%2==1',
-            'distance<=0.0015',
+            '.length<=0.0015',
             '"mobileTriangleBudget":220000',
             '"mobileVertexBudget":280000',
             'delta_mm=max(',
