@@ -276,7 +276,8 @@ class BoundedMultiPassSeamConvergenceTests(unittest.TestCase):
         start=source.index("def repair_between_vertex_collisions(")
         end=source.index("def finish_procedural_shell(",start)
         body=source[start:end]
-        self.assertIn("terminal_patch_budget=3",body)
+        self.assertIn("terminal_patch_budget=6",body)
+        self.assertIn("weights=[max(delta.length,0.001)**2 for delta in corrections]",body)
         self.assertIn("range(max_rounds+1+terminal_patch_budget)",body)
         self.assertIn("if iteration < max_rounds+terminal_patch_budget:",body)
         self.assertIn("if remaining_face or remaining_edge:",body)
