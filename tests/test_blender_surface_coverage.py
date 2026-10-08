@@ -41,6 +41,14 @@ class AnatomicalSleeveConstructionTests(unittest.TestCase):
         self.assertGreaterEqual(fitted[3],ring[3])
         self.assertGreaterEqual(fitted[4],ring[4])
         self.assertEqual(info["sampleCount"],64)
+        self.assertEqual(info["sampleBandMm"],35.0)
+        expanded,_=body_aware_sleeve_ring(
+            body,ring,body_center_x=0.0,side=-1,
+            clearance_m=.006,sample_band_m=.060)
+        self.assertEqual(expanded[0],ring[0])
+        with self.assertRaises(ValueError):
+            body_aware_sleeve_ring(
+                body,ring,body_center_x=0,side=-1,sample_band_m=.075)
         cuff,evidence=body_aware_sleeve_ring(
             body,ring,body_center_x=0.0,side=-1,
             clearance_m=.006,locked_hand_center=True)
