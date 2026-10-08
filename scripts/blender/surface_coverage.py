@@ -104,6 +104,7 @@ def subdivide_ring_profiles(rings, max_vertical_step_m=0.055, max_cuts=8):
 def anatomically_enclose_intermediate_rings(
     original_rings, refined_rings, body_points, *,
     clearance_m=0.007, max_growth_m=0.070, sample_band_m=0.024,
+    profile_power=2.0,
 ):
     """Enclose real torso/seat at NEW rings only; preserve locked original guides.
 
@@ -117,6 +118,9 @@ def anatomically_enclose_intermediate_rings(
         raise ValueError("Cannot preserve an empty locked garment profile.")
     if not (0 < clearance_m <= 0.025 and 0 < max_growth_m <= 0.10 and 0 < sample_band_m <= 0.05):
         raise ValueError("Garment envelope limits must be positive physical metre values.")
+    if (isinstance(profile_power, bool) or not isinstance(profile_power, (int, float))
+            or not math.isfinite(profile_power) or not 2.0 <= profile_power <= 4.0):
+        raise ValueError("Tailored cross-section curvature must be between ellipse and rounded rectangle.")
     body = [tuple(p) for p in body_points]
     if len(body) < 20 or not all(
         len(p) == 3 and all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in p)
@@ -149,8 +153,14 @@ def anatomically_enclose_intermediate_rings(
             raise ValueError(f"Only {len(section)} locked-body torso samples near z={z:.4f}m.")
         # This is an enclosing ellipse: cover simultaneous X/Y excursions,
         # not independent bounding boxes that can clip a diagonal shoulder.
+        # Shirt chests and anatomical seats are rounded rectangles, not
+        # perfect cylinders: a real front/side torso corner inside the observed
+        # trunk corridor should not force both radii to inflate uniformly.
+        # For p=2 this is exactly the original ellipse, while p=3 gently
+        # flattens the visible shirt front/back without changing guide widths.
         radial_samples = [
-            (math.hypot((p[0] - cx) / rx, (p[1] - cy) / ry), p)
+            (((abs(p[0] - cx) / rx) ** profile_power
+               + (abs(p[1] - cy) / ry) ** profile_power) ** (1.0 / profile_power), p)
             for p in section
         ]
         required_scale, extreme = max(radial_samples, key=lambda item: item[0])
@@ -166,6 +176,27 @@ def anatomically_enclose_intermediate_rings(
             )
         result.append((z, cx, cy, next_rx, next_ry))
     return result
+
+
+
+def rounded_tailoring_ring_xy(angle, cx, cy, radius_x, radius_y, *, profile_power=2.0):
+    """A smooth physically bounded garment cross-section preserving X/Y widths.
+
+    p=2 is the conventional ellipse; p=3 is a softly squared shirt torso.
+    Changes construction shape without scaling the locked body or increasing
+    garment waist/shoulder guide measurements.
+    """
+    values = (angle, cx, cy, radius_x, radius_y, profile_power)
+    if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in values):
+        raise ValueError("Garment ring section needs finite numeric coordinates.")
+    if not 2.0 <= profile_power <= 4.0 or radius_x <= 0 or radius_y <= 0:
+        raise ValueError("Garment ring cross-section requires bounded curvature and positive radii.")
+    cosine, sine = math.cos(angle), math.sin(angle)
+    power = 2.0 / profile_power
+    return (
+        cx + math.copysign(abs(cosine) ** power, cosine) * radius_x,
+        cy + math.copysign(abs(sine) ** power, sine) * radius_y,
+    )
 
 
 def outward_ring_quad(previous, current, segment, next_segment, *, ascending):
