@@ -340,8 +340,14 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
                 thigh_center_x if index < 2 else lower_center_x,
                 trouser_clearance_m, keep_locked_hem_width=index >= 4,
             )
-            fitted_rings.append(fitted)
             leg_profile_evidence[name].append(evidence)
+            if evidence["status"] != "anatomy-fitted-geometry-only":
+                raise RuntimeError(
+                    f"{name} cannot be fitted at z={ring[0]:.3f}m: "
+                    f"{evidence['sampleCount']} realistic-body cross-section samples. "
+                    "Refusing to substitute the generic tube without visible-body fit evidence."
+                )
+            fitted_rings.append(fitted)
         legs[name] = build_ring_shell(name, fitted_rings, segments=48)
 
     authored = {
