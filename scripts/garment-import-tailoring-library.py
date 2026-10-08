@@ -17,6 +17,9 @@ import bpy
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from footwear_fit_geometry import shoe_depth_bounds
+
 EXPORT_COLLECTION = "LinenEarthExport"
 BASE_OBJECT_NAMES = {
     "Head", "EarL", "EarR", "Neck", "HandL", "HandR",
@@ -61,6 +64,7 @@ def fit_footwear_to_locked_body(footwear, body):
     if len(world_body) < 100:
         raise RuntimeError("Locked realistic body has too few vertices for footwear fitting.")
     floor = min(point.z for point in world_body)
+    stature = max(point.z for point in world_body) - floor
     middle_x = (min(point.x for point in world_body) + max(point.x for point in world_body)) * 0.5
     evidence = {}
     for side, label in ((-1, "left"), (1, "right")):
@@ -84,9 +88,13 @@ def fit_footwear_to_locked_body(footwear, body):
             (min(point[axis] for point in points), max(point[axis] for point in points))
             for axis in range(3)
         ]
+        # The low-ankle slice omits much of the toe; its raw Y bbox
+        # collapsed a 540 mm source sole to 25% in the Blender candidate.
+        # Use a bounded stature-based shoe depth and retain visual review.
+        shoe_y_low, shoe_y_high = shoe_depth_bounds((point.y for point in samples), stature)
         target = [
             (min(point.x for point in samples)-0.010, max(point.x for point in samples)+0.010),
-            (min(point.y for point in samples)-0.014, max(point.y for point in samples)+0.014),
+            (shoe_y_low, shoe_y_high),
             (floor-0.002, floor+0.128),
         ]
         scales = []
@@ -121,9 +129,10 @@ def fit_footwear_to_locked_body(footwear, body):
             "scaleX":round(scales[0],4),
             "scaleY":round(scales[1],4),
             "scaleZ":round(scales[2],4),
-            "requiresHumanGeometryReview": any(scale < 0.45 or scale > 2.75 for scale in scales),
+            "requiresHumanGeometryReview": True,  # Provisional even within plausible scale
             "shoeVisibilityGateRequired": True,
             "floorMm":round(floor*1000,2),
+            "targetShoeLengthMm":round((shoe_y_high-shoe_y_low)*1000,2),
             "source":"body-sampled-provisional-not-tailor-approved",
         }
     return evidence
