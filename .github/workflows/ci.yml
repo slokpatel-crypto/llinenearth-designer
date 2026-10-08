@@ -52,7 +52,9 @@ jobs:
           done
           # Run the 3D gate first: it is the largest production-asset contract and should fail fast
           # before the longer photographic/style lifecycle suite when a GLB regression is present.
-          node scripts/verify-garment-viewer.cjs
+          # A stalled WebGL browser must fail with usable evidence instead of
+          # consuming the full 45-minute CI budget.
+          timeout --signal=TERM --kill-after=20s 9m node scripts/verify-garment-viewer.cjs
           node scripts/verify-premium-atelier.cjs
           node scripts/verify-designer-advisor.cjs
           node scripts/verify-photo-form.cjs
