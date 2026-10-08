@@ -528,6 +528,37 @@ def underarm_inboard_relief_m(z, signed_inboard_m, waist_guide_z, *,
     return min(max_relief_m, max(max_relief_m*low,0.040*upper)*eased_across)
 
 
+
+def underarm_centreline_contact_relief_m(
+    z, signed_inboard_m, waist_guide_z, *,
+    band_half_height_m=0.033, max_relief_m=0.008,
+):
+    """Bounded source-panel correction for REAL post-solidify sleeve contact.
+
+    Native Blender scene preflight detected two 1.5mm+ collisions of the LEFT
+    sleeve around x=-244mm/z=1.116m, on the inner seam almost exactly at the
+    fitted sleeve centre. The broad inboard gusset is intentionally nearly
+    zero on its centreline. Add a tiny, smooth 8mm maximum outward notch to
+    that seam only; preserve the outer sleeve, cuff and identity guides.
+    All faces still require independent real-body BVH preflight.
+    """
+    dimensions=(z,signed_inboard_m,waist_guide_z,band_half_height_m,max_relief_m)
+    if any(isinstance(value,bool) or not isinstance(value,(int,float))
+           or not math.isfinite(value) for value in dimensions):
+        raise ValueError("Measured sleeve centreline relief needs finite metre values.")
+    if not (0.015<=band_half_height_m<=0.045 and
+            0.0<=max_relief_m<=0.008):
+        raise ValueError("Sleeve centreline seam cannot exceed bounded 8mm relief.")
+    vertical=abs(z-(waist_guide_z+0.040))/band_half_height_m
+    if vertical>=1 or signed_inboard_m<=0 or signed_inboard_m>=0.028:
+        return 0.0
+    entry=min(1.0,signed_inboard_m/0.005)
+    exit=min(1.0,(0.028-signed_inboard_m)/0.010)
+    across=max(0.0,min(entry,exit))
+    smooth=across*across*(3-2*across)
+    return max_relief_m*(1-vertical*vertical)**2*smooth
+
+
 def bounded_source_cloth_shift(source_xyz,current_xyz,requested_xyz,max_m=0.095):
     """Clip a local seam change to the ORIGINAL garment's 95mm radius.
 
