@@ -1,6 +1,7 @@
 "use client";
 
 import { createElement, useEffect, useMemo, useRef, useState } from "react";
+import {needsVariantMaterialRefresh, type VariantMaterialAppearance} from "@/lib/garment-viewer-material-appearance";
 import {
   createPrototypeGarmentGlbUrl,
   GARMENT_PANEL_SPECS,
@@ -379,6 +380,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const interactionStartedAt=useRef<number|null>(null);
   const preparedTextureRef=useRef(new Map<string,{texture:ViewerTexture;normal:ViewerTexture|null;garment:"shirt"|"trouser"}>());
   const visibleGarmentMaterialsRef=useRef(new Set(GARMENT_PANEL_SPECS.map((panel)=>panel.material)));
+  const lastVariantAppearanceRef=useRef<VariantMaterialAppearance|null>(null);
   const visibleButtonMaterialsRef=useRef(new Set<string>());
   const visibleSkinArmMaterialRef=useRef<string|null>(null);
   const [textureRevision,setTextureRevision]=useState(0);
@@ -817,6 +819,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       const materials=[...viewer.model!.materials];
       const materialsByName=new Map(materials.map((material)=>[material.name,material]));
       const previous=visibleGarmentMaterialsRef.current;
+      const appearance={textureRevision,roughness,shirtId,trouserId};
       const next=new Set<string>();
       for(const material of materials){
         if(isGarmentVariantMaterial(material.name)&&variantMaterialVisible(material.name,styleState)) next.add(material.name);
@@ -828,6 +831,9 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         setMaterialAlpha(material,false);
       }
       for(const name of next){
+        // Style-only edits often retain most visible variants. Re-uploading the
+        // same texture/normal for each retained variant stalls WebGL Chromium.
+        if(!needsVariantMaterialRefresh(previous.has(name),lastVariantAppearanceRef.current,appearance)) continue;
         const material=await ensureViewerMaterialLoaded(materialsByName.get(name));
         if(cancelled) return;
         if(!material) continue;
@@ -845,6 +851,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         }
       }
       visibleGarmentMaterialsRef.current=next;
+      lastVariantAppearanceRef.current=appearance;
 
       const nextSkin=styleState.sleeve==="full"?null:`MannequinSkinArmVariant__${styleState.sleeve}`;
       const previousSkin=visibleSkinArmMaterialRef.current;

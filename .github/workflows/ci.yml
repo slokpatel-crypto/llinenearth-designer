@@ -25,6 +25,8 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
       - run: npm run quality
       - run: npm test
+      - name: Run Blender-independent physical geometry regression tests
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
       - run: npm run eval:engine
       - run: npm run eval:preview-performance
       - run: npm run release:check

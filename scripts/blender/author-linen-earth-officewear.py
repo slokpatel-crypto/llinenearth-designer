@@ -22,6 +22,7 @@ from mathutils.bvhtree import BVHTree
 # Authoring and Blender preflight use the same exact triangle/guide intersection.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
+from surface_coverage import anatomically_enclose_intermediate_rings, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -84,6 +85,22 @@ def ensure_export_collection():
 def build_ring_shell(name, rings, segments=48, neck_opening=None, collar_height=0.0):
     if len(rings) < 2:
         raise RuntimeError(f"{name} requires at least two rings.")
+    # Refine sparse garment surfaces BEFORE body collision repair. Merely
+    # linearly interpolating torso and seat radii created a 95+mm collision
+    # at 1.1909m in native Blender: the body bulges between construction rings.
+    # Enclose measured anatomy at NEW levels while leaving every locked guide
+    # and original production panel measurement ring exactly unchanged.
+    intermediate = subdivide_ring_profiles(rings)
+    if name in ("ShirtTorsoFabric", "TrouserWaistFabric"):
+        body = bpy.data.objects.get(BODY_NAME)
+        if body is None or body.type != "MESH":
+            raise RuntimeError("Locked realistic body required for intermediate ring fitting.")
+        body_samples = [body.matrix_world @ vertex.co for vertex in body.data.vertices]
+        rings = anatomically_enclose_intermediate_rings(
+            rings, intermediate, body_samples
+        )
+    else:
+        rings = intermediate
     collection = ensure_export_collection()
     vertices = []
     faces = []
