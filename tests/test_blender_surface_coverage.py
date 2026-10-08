@@ -35,7 +35,11 @@ class InnerSleeveBodyContactReliefTests(unittest.TestCase):
         self.assertGreater(underarm_inboard_relief_m(1.17501,.07,waist),.04)
         self.assertEqual(underarm_inboard_relief_m(center,-.02,waist),0.0)
         self.assertEqual(underarm_inboard_relief_m(center,0,waist),0.0)
-        self.assertEqual(underarm_inboard_relief_m(center+.16,.07,waist),0.0)
+        self.assertEqual(underarm_inboard_relief_m(center+.28,.07,waist),0.0)
+        # The left sleeve lower gusset already passed the strict native
+        # BVH gate; cover the new right-side shoulder/armpit contact too.
+        self.assertGreater(underarm_inboard_relief_m(1.2706,.07,waist),.039)
+        self.assertLessEqual(underarm_inboard_relief_m(1.2706,.07,waist),.045)
         self.assertGreater(
             underarm_inboard_relief_m(center+.03,.06,waist),0)
         self.assertLess(
