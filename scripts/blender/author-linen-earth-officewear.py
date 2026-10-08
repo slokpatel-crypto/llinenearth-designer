@@ -1175,16 +1175,20 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                         raise RuntimeError(f"{obj.name}: cannot project measured contact.")
                     surface,normal=nearest[0],nearest[1].normalized()
                     options=[]
+                    sleeve_side=(
+                        -1 if obj.name=="ShirtSleeveLFabric"
+                        else 1 if obj.name=="ShirtSleeveRFabric" else 0
+                    )
+                    medial_arm_contact=(
+                        bool(sleeve_side) and 1.075<=point.z<=1.245
+                        and abs(point.x-body_frame(body)["centerX"])<0.205
+                    )
                     # Test both BVH normal directions; mesh normals may face
                     # either way around armpit concavities and shoulder seams.
                     for distance in (clearance_m+0.002,0.012,0.025,0.045,0.070):
                         for direction in (normal,-normal):
                             candidate=surface+direction*distance
                             shift=candidate-point
-                            medial_arm_contact=(
-                                bool(sleeve_side) and 1.075<=point.z<=1.245
-                                and abs(point.x-body_frame(body)["centerX"])<0.205
-                            )
                             if (shift.length<=0.095
                                     and (not medial_arm_contact or sleeve_side*shift.x>=-0.002)
                                     and not point_inside_closed_bvh(body_tree,candidate)):
@@ -1194,10 +1198,6 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                     # OUTWARD sleeve proposals before choosing a correction:
                     # the nearest triangle can be on the *wrong* side of an
                     # armpit crease, leading to 95mm oscillating projections.
-                    sleeve_side=(
-                        -1 if obj.name=="ShirtSleeveLFabric"
-                        else 1 if obj.name=="ShirtSleeveRFabric" else 0
-                    )
                     if sleeve_side:
                         for distance in (0.008,0.016,0.024,0.035,0.048,0.070,0.090):
                             candidate=point+Vector((sleeve_side*distance,0,0))
