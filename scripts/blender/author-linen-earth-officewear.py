@@ -784,24 +784,25 @@ def repair_body_penetrations(obj, body, clearance_m, max_passes=4):
 
 
 
-def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
+def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
     """Fix true face-centre and edge-midpoint body penetrations, not just vertices.
 
     A mesh can pass the original vertex BVH gate while its planar faces cut
-    into the curved torso, shoulder and calves. Subdivide only the affected
-    faces/edges into actual new mesh vertices; reapply the exact SAME <=95mm
-    hard-body clearance projection used on authored guide geometry.
-    Stop and reject the candidate if the bounded process cannot resolve it.
+    into the curved torso, shoulder and calves. Correct local connected panel
+    vertices against physically measured body contact, within the SAME 95mm
+    clearance and locked-identity bounds. Re-test real face/edge samples after
+    each bounded pass; reject the candidate if it still collides.
     """
     body_tree=world_bvh(body)
     if body_tree is None:
         raise RuntimeError("Locked body BVH unavailable for face fitting.")
     matrix=obj.matrix_world
+    source_world_positions=[matrix @ vertex.co for vertex in obj.data.vertices]
     moved_total=0
     refined_total=0
     progress=[]
-    if not isinstance(max_rounds,int) or isinstance(max_rounds,bool) or not 1<=max_rounds<=5:
-        raise RuntimeError("Real garment face collision fitting must use 1..5 bounded passes.")
+    if not isinstance(max_rounds,int) or isinstance(max_rounds,bool) or not 1<=max_rounds<=8:
+        raise RuntimeError("Real garment face collision fitting must use 1..8 bounded passes.")
     def penetration(point):
         if not point_inside_closed_bvh(body_tree,point):
             return False
@@ -861,7 +862,7 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
                 + obj.name + " " + json.dumps(progress[-1],sort_keys=True),
                 flush=True,
             )
-            if iteration==0 and selected:
+            if (iteration==0 or iteration==max_rounds) and selected:
                 # Real Blender telemetry identifies WHICH measured cloth
                 # locations need source-panel correction; face counts alone
                 # cannot distinguish shoulder, armpit and waist problems.
@@ -875,6 +876,15 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
                         if nearest and nearest[0] is not None else None,
                         "zExtents":[round(min((matrix @ v.co).z for v in face.verts),5),
                                     round(max((matrix @ v.co).z for v in face.verts),5)],
+                        "lockedGuideVertexCount":sum(1 for vertex in face.verts if any(
+                            guide_center_z(name) is not None and
+                            abs((matrix @ vertex.co).z-guide_center_z(name))<0.002
+                            for name in ("LE_GUIDE_SHIRT_SHOULDER","LE_GUIDE_SHIRT_WAIST")
+                        )),
+                        "sourceDisplacementMm":round(max(
+                            ((matrix @ vertex.co)-source_world_positions[vertex.index]).length*1000
+                            for vertex in face.verts
+                        ),2),
                     })
                 for edge in list(selected)[:8]:
                     point=matrix @ ((edge.verts[0].co+edge.verts[1].co)*0.5)
@@ -886,7 +896,8 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
                         if nearest and nearest[0] is not None else None,
                     })
                 print("Linen Earth real cloth contact samples: "
-                      + obj.name + " " + json.dumps(sample_evidence,sort_keys=True),flush=True)
+                      + obj.name + " pass=" + str(iteration)
+                      + " " + json.dumps(sample_evidence,sort_keys=True),flush=True)
             if not selected:
                 # The pass inspected REAL triangles rather than an enormous
                 # synthetic ngon. Persist exactly the validated triangulated
@@ -965,9 +976,99 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
                     vertex.co=inverse @ (original+average)
                 terminal_poked=True
             else:
-                bmesh.ops.subdivide_edges(
-                    bm,edges=list(selected),cuts=1,use_grid_fill=True
+                # Blender 4.2 real-body telemetry exposed 35mm crossings where
+                # the hanging arms meet the shirt side. Repeatedly subdividing
+                # already small panels created more skin-crossing triangles:
+                # 25 face / 29 edge hits became 19/20 after 5 cuts (46k faces).
+                # Fit existing, connected cloth instead of creating yet more
+                # disconnected spikes. Every proposal is independently tested
+                # OUTSIDE the locked body; no collision threshold is waived.
+                inverse=matrix.inverted()
+                protected=[
+                    guide_center_z("LE_GUIDE_SHIRT_SHOULDER"),
+                    guide_center_z("LE_GUIDE_SHIRT_WAIST"),
+                ] if obj.name=="ShirtTorsoFabric" else (
+                    [guide_center_z("LE_GUIDE_TROUSER_WAIST")]
+                    if obj.name=="TrouserWaistFabric" else []
                 )
+                def outside_correction(point):
+                    nearest=body_tree.find_nearest(point)
+                    if nearest is None or nearest[0] is None or nearest[1] is None:
+                        raise RuntimeError(f"{obj.name}: cannot project measured contact.")
+                    surface,normal=nearest[0],nearest[1].normalized()
+                    options=[]
+                    # Test both BVH normal directions; mesh normals may face
+                    # either way around armpit concavities and shoulder seams.
+                    for distance in (clearance_m+0.002,0.012,0.025,0.045,0.070):
+                        for direction in (normal,-normal):
+                            candidate=surface+direction*distance
+                            shift=candidate-point
+                            if (shift.length<=0.095
+                                    and not point_inside_closed_bvh(body_tree,candidate)):
+                                options.append((shift.length,shift))
+                    # A nearest surface normal can be tangent to a bent arm.
+                    # In that case, search real lateral/anterior directions;
+                    # never assume a candidate is safe without BVH parity.
+                    if not options:
+                        for distance in (0.012,0.024,0.040,0.060,0.080,0.095):
+                            for direction in (
+                                Vector((1,0,0)),Vector((-1,0,0)),
+                                Vector((0,1,0)),Vector((0,-1,0)),
+                            ):
+                                candidate=point+direction*distance
+                                if not point_inside_closed_bvh(body_tree,candidate):
+                                    options.append((distance,candidate-point))
+                            if options: break
+                    if not options:
+                        raise RuntimeError(
+                            f"{obj.name}: actual cloth contact cannot clear "
+                            "the locked anatomy within 95mm; remodel source panels."
+                        )
+                    return min(options,key=lambda item:item[0])[1]
+                proposals={}
+                def add_contact(vertices,point):
+                    shift=outside_correction(point)
+                    for vertex in vertices:
+                        if vertex not in proposals: proposals[vertex]=[]
+                        proposals[vertex].append(shift)
+                for face in penetrated_faces:
+                    add_contact(face.verts,matrix @ face.calc_center_median())
+                for edge in bm.edges:
+                    centre=matrix @ ((edge.verts[0].co+edge.verts[1].co)*0.5)
+                    if penetration(centre):
+                        add_contact(edge.verts,centre)
+                if not proposals:
+                    raise RuntimeError(
+                        f"{obj.name}: actual BVH contacts had no candidate source-panel vertices."
+                    )
+                patched=0
+                bm.verts.index_update()
+                for vertex,changes in proposals.items():
+                    original=matrix @ vertex.co
+                    if any(guide is not None and abs(original.z-guide)<0.002
+                           for guide in protected):
+                        continue
+                    # Neighbouring face and edge corrections must agree on one
+                    # vertex, so share one coherent vector rather than poking
+                    # multiple artificial centroid vertices into the fabric.
+                    # Deep (measured) face/edge contacts take precedence
+                    # over neighbouring shallow intersections. Equal averaging
+                    # cancelled opposite local normals and stalled with 1/1
+                    # intersections even after five genuinely measured passes.
+                    weights=[max(shift.length,0.001)**2 for shift in changes]
+                    delta=sum((shift*weight for shift,weight in zip(changes,weights)),
+                              Vector((0,0,0)))/sum(weights)
+                    if ((original+delta)-source_world_positions[vertex.index]).length>0.095:
+                        raise RuntimeError(
+                            f"{obj.name}: cumulative physical cloth correction exceeds 95mm."
+                        )
+                    vertex.co=inverse @ (original+delta)
+                    patched+=1
+                if not patched:
+                    raise RuntimeError(
+                        f"{obj.name}: measured contacts touch only identity-locked guide vertices."
+                    )
+                progress[-1]["coherentContactVertices"]=patched
             if len(bm.faces)>80000:
                 raise RuntimeError(f"{obj.name}: local face repair exceeds cloth complexity limit.")
             bm.normal_update()
@@ -978,6 +1079,13 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
             bm.free()
         repair=repair_body_penetrations(obj,body,clearance_m)
         moved_total+=repair["movedVertices"]
+        if len(obj.data.vertices)!=len(source_world_positions) or any(
+            ((matrix @ vertex.co)-source_world_positions[i]).length>0.095
+            for i,vertex in enumerate(obj.data.vertices)
+        ):
+            raise RuntimeError(
+                f"{obj.name}: connected cloth crossed the 95mm TOTAL source-panel correction guard."
+            )
         if terminal_poked:
             # A centroid poke is permitted only as a final, bounded physical
             # correction; all newly created triangles and edges must STILL
