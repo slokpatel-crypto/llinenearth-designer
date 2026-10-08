@@ -400,3 +400,23 @@ def needs_tailoring_face_triangulation(vertex_count):
     if isinstance(vertex_count, bool) or not isinstance(vertex_count, int) or vertex_count < 0:
         raise ValueError("Real cloth faces require nonnegative vertex counts.")
     return vertex_count > 4
+
+
+def waist_to_chest_taper_radius(waist_half_width_m, height_above_waist_m,
+                                *, ease_m=0.008, slope=0.45):
+    """Limit false arm-driven inflation of a REAL tucked shirt side seam.
+
+    Near the locked waist a garment cannot gain 90mm of radius in only 16mm
+    height. The body-fit sampler may include a hanging arm in the shirt torso
+    band; enforce source PANEL continuity before strict body/cloth BVH fitting.
+    This never loosens skin clearance, moves the model, or edits the waist ring.
+    """
+    values=(waist_half_width_m,height_above_waist_m,ease_m,slope)
+    if any(isinstance(v,bool) or not isinstance(v,(int,float)) or not math.isfinite(v)
+           for v in values):
+        raise ValueError("Shirt waist taper requires finite physical dimensions.")
+    if not (0.08 <= waist_half_width_m <= 0.25
+            and 0 <= height_above_waist_m <= 0.50
+            and 0 <= ease_m <= 0.025 and 0.20 <= slope <= 0.9):
+        raise ValueError("Shirt waist taper exceeds physically bounded tailoring shape.")
+    return waist_half_width_m + ease_m + slope * height_above_waist_m
