@@ -9,6 +9,7 @@ from surface_coverage import (
     adaptive_surface_cut_rounds,
     body_aware_sleeve_ring,
     underarm_inboard_relief_m,
+    bounded_source_cloth_shift,
     waist_to_chest_taper_radius,
     anatomically_enclose_intermediate_rings,
     bounded_body_section_center_y,
@@ -181,6 +182,51 @@ class SourceBoundedBVHCorrectionTests(unittest.TestCase):
         self.assertIn("Vector((0,1,0)),Vector((0,-1,0))",correction)
         self.assertIn("if not options:",correction)
         self.assertIn("SOURCE-LOCKED 95mm",correction)
+
+
+class LockedClothSourceSphereTests(unittest.TestCase):
+    def test_small_safe_shift_is_exact(self):
+        self.assertEqual(bounded_source_cloth_shift((0,0,0),(.01,0,0),
+                          (.012,0,0)),(.012,0,0))
+
+    def test_terminal_shift_is_clipped_to_original_95mm_radius(self):
+        # Native right-sleeve run had one face inside at a source
+        # displacement of 87.89mm; coherent correction may overshoot.
+        source=(0,0,0)
+        current=(.08789,0,0)
+        delta=bounded_source_cloth_shift(source,current,(.02,0,0))
+        result=current[0]+delta[0]
+        self.assertLessEqual(result,.095)
+        self.assertGreater(result,.0949)
+        self.assertGreater(delta[0],0)
+
+    def test_lateral_safe_direction_is_not_zeroed_by_radial_budget(self):
+        delta=bounded_source_cloth_shift((0,0,0),(.093,0,0),
+                                         (-.012,.018,0))
+        self.assertGreater(delta[1],.017)
+        self.assertLessEqual(sum((a+b)**2 for a,b in
+                                  zip((.093,0,0),delta)),.095**2+1e-9)
+
+    def test_source_violation_and_invalid_input_fail_closed(self):
+        with self.assertRaises(ValueError):
+            bounded_source_cloth_shift((0,0,0),(.12,0,0),(.01,0,0))
+        with self.assertRaises(ValueError):
+            bounded_source_cloth_shift((0,0,0),(.03,0,0),
+                                       (.02,0,0),max_m=.2)
+        with self.assertRaises(ValueError):
+            bounded_source_cloth_shift((0,0,0),(float("nan"),0,0),
+                                       (.01,0,0))
+
+    def test_terminal_patch_still_measures_contacts_after_clipping(self):
+        source=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
+                "author-linen-earth-officewear.py").read_text()
+        start=source.index("def repair_between_vertex_collisions(")
+        end=source.index("def finish_procedural_shell(",start)
+        body=source[start:end]
+        self.assertIn("bounded_source_cloth_shift(",body)
+        self.assertIn("if remaining_face or remaining_edge:",body)
+        self.assertIn("source_world_positions[vertex.index]",body)
+        self.assertIn("point_inside_closed_bvh(body_tree",body)
 
 
 class BoundedMultiPassSeamConvergenceTests(unittest.TestCase):
