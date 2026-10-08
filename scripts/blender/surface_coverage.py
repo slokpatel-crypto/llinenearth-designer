@@ -219,3 +219,28 @@ def sampled_mesh_face_indices(face_count, max_samples=600):
         return range(0)
     stride=max(1,math.ceil(face_count/max_samples))
     return range(0,face_count,stride)[:max_samples]
+
+
+def adaptive_surface_cut_rounds(longest_edge_m, target_edge_m=0.025, max_rounds=3):
+    """Bound mesh refinement before resolving hidden face/body intersections.
+
+    Each pass bisects the overlong edges on a physical cloth surface. Repeating
+    vertex/BVH repair after refinement lets the original 95mm limit remain
+    strict while exposing body penetrations between the old guide vertices.
+    """
+    if (
+        isinstance(longest_edge_m, bool) or
+        not isinstance(longest_edge_m,(int,float)) or
+        not math.isfinite(longest_edge_m) or longest_edge_m < 0 or
+        isinstance(target_edge_m,bool) or
+        not isinstance(target_edge_m,(int,float)) or
+        not math.isfinite(target_edge_m) or not 0.008 <= target_edge_m <= 0.055 or
+        isinstance(max_rounds,bool) or not isinstance(max_rounds,int) or not 1 <= max_rounds <= 5
+    ):
+        raise ValueError("Adaptive garment refinement requires finite physical lengths and bounded passes.")
+    if longest_edge_m <= target_edge_m:
+        return 0
+    rounds=math.ceil(math.log2(longest_edge_m/target_edge_m))
+    if rounds > max_rounds:
+        raise ValueError("Garment face spans exceed safe collision-refinement limits.")
+    return rounds
