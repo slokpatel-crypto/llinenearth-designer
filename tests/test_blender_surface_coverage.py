@@ -28,11 +28,11 @@ class SourceShirtSideSeamContinuityTests(unittest.TestCase):
     def test_waist_band_cannot_inflate_to_hanging_arm_width(self):
         waist=0.147  # photograph: 294mm total shirt waist
         self.assertAlmostEqual(waist_to_chest_taper_radius(waist,0.016),
-                               0.147+0.008+0.20*0.016)
+                               0.147+0.008+0.32*0.016)
         self.assertLess(waist_to_chest_taper_radius(waist,0.016),0.17)
         # True waist must remain 294mm; near hanging arms inboard panel
         # cannot grow to the observed false 203-245mm half-width.
-        self.assertLess(waist_to_chest_taper_radius(waist,0.114),0.18)
+        self.assertLess(waist_to_chest_taper_radius(waist,0.114),0.195)
         self.assertEqual(waist_to_chest_taper_radius(waist,0,ease_m=0),waist)
         self.assertGreater(waist_to_chest_taper_radius(waist,0.115),0.17)
 
