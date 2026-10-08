@@ -489,3 +489,25 @@ def body_aware_sleeve_ring(body_points, ring, *, body_center_x, side,
                          round((next_ry-ry)*1000,2)],
         "handCenterLocked":locked_hand_center,
     })
+
+
+def bounded_source_panel_displacement(source_xyz, target_xyz, *, limit_m=0.095):
+    """Project a proposed cloth correction onto its hard source-panel budget.
+
+    A shared face/edge vertex can receive mutually inconsistent corrections.
+    Do not abort all neighboring valid geometry just because one proposal
+    exceeds its lifetime 95mm bound. Clip that single candidate to the SAME
+    physical bound, then let unchanged deep BVH checks reject any penetration.
+    This is not a tolerance relaxation and never alters the source model.
+    """
+    values=tuple(source_xyz)+tuple(target_xyz)+(limit_m,)
+    if len(source_xyz)!=3 or len(target_xyz)!=3 or any(
+        isinstance(v,bool) or not isinstance(v,(int,float)) or not math.isfinite(v)
+        for v in values
+    ) or not 0.001 <= limit_m <= 0.095:
+        raise ValueError("Source-panel constraint requires valid 3D coordinates and <=95mm.")
+    delta=tuple(target_xyz[i]-source_xyz[i] for i in range(3))
+    norm=math.sqrt(sum(v*v for v in delta))
+    if norm<=limit_m: return tuple(target_xyz),False
+    scale=limit_m/norm
+    return tuple(source_xyz[i]+delta[i]*scale for i in range(3)),True
