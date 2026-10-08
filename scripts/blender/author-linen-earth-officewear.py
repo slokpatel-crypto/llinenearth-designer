@@ -784,7 +784,7 @@ def repair_body_penetrations(obj, body, clearance_m, max_passes=4):
 
 
 
-def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
+def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
     """Fix true face-centre and edge-midpoint body penetrations, not just vertices.
 
     A mesh can pass the original vertex BVH gate while its planar faces cut
@@ -801,8 +801,8 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
     moved_total=0
     refined_total=0
     progress=[]
-    if not isinstance(max_rounds,int) or isinstance(max_rounds,bool) or not 1<=max_rounds<=5:
-        raise RuntimeError("Real garment face collision fitting must use 1..5 bounded passes.")
+    if not isinstance(max_rounds,int) or isinstance(max_rounds,bool) or not 1<=max_rounds<=8:
+        raise RuntimeError("Real garment face collision fitting must use 1..8 bounded passes.")
     def penetration(point):
         if not point_inside_closed_bvh(body_tree,point):
             return False
