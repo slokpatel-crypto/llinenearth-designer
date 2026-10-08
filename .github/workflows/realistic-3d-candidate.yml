@@ -79,6 +79,22 @@ jobs:
             --json-output artifacts/realistic-3d/preflight.json \
             2>&1 | tee artifacts/realistic-3d/preflight.log
 
+      - name: Probe mobile candidate from immutable source (diagnostic only)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          scene=".cache/linen-earth/linen-earth-officewear-authored.blend"
+          if [ -f "$scene" ]; then
+            blender --background --python-exit-code 1 "$scene" \
+              --python scripts/blender/probe-mobile-lod.py -- \
+              --output artifacts/realistic-3d/mobile-lod-diagnostic.json \
+              2>&1 | tee artifacts/realistic-3d/mobile-lod-diagnostic.log
+          else
+            echo "No authored scene; mobile LOD diagnostic is unavailable."
+          fi
+
       - name: Render four-angle fit review
         id: render
         if: always() && steps.assemble.outcome == 'success' && steps.preflight.outcome == 'success'
