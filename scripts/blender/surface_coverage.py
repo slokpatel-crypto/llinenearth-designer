@@ -99,3 +99,58 @@ def subdivide_ring_profiles(rings, max_vertical_step_m=0.055, max_cuts=8):
             result.append(tuple(prev[axis] + (nxt[axis] - prev[axis]) * t for axis in range(5)))
         result.append(nxt)
     return result
+
+
+def anatomically_enclose_intermediate_rings(
+    original_rings, refined_rings, body_points, *,
+    clearance_m=0.007, max_growth_m=0.070, sample_band_m=0.024,
+):
+    """Enclose real torso/seat at NEW rings only; preserve locked original guides.
+
+    Linear interpolation of endpoints can put an entire new shell section deep
+    inside the body. Use measured locked-body sections to grow intermediate
+    ellipses without moving the production measurement rings. Return concrete
+    geometry, not a waiver of the 95mm collision-repair safety limit.
+    """
+    originals = set(tuple(r) for r in original_rings)
+    if not originals:
+        raise ValueError("Cannot preserve an empty locked garment profile.")
+    if not (0 < clearance_m <= 0.025 and 0 < max_growth_m <= 0.10 and 0 < sample_band_m <= 0.05):
+        raise ValueError("Garment envelope limits must be positive physical metre values.")
+    body = [tuple(p) for p in body_points]
+    if len(body) < 20 or not all(
+        len(p) == 3 and all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in p)
+        for p in body
+    ):
+        raise ValueError("Locked human body samples are insufficient or nonfinite.")
+
+    result = []
+    for ring in refined_rings:
+        z, cx, cy, rx, ry = ring
+        if tuple(ring) in originals:
+            result.append(tuple(ring))
+            continue
+        # Arms/hands can share chest/waist height: fit only the anatomical
+        # torso corridor. Any excluded body surface is still checked by BVH QA.
+        section = [
+            p for p in body
+            if abs(p[2] - z) <= sample_band_m
+            and abs(p[0] - cx) <= 0.225
+            and abs(p[1] - cy) <= 0.260
+        ]
+        if len(section) < 16:
+            raise ValueError(f"Only {len(section)} locked-body torso samples near z={z:.4f}m.")
+        # This is an enclosing ellipse: cover simultaneous X/Y excursions,
+        # not independent bounding boxes that can clip a diagonal shoulder.
+        required_scale = max(
+            math.hypot((p[0] - cx) / rx, (p[1] - cy) / ry) for p in section
+        )
+        scale = max(1.0, required_scale + clearance_m / min(rx, ry))
+        next_rx, next_ry = rx * scale, ry * scale
+        if next_rx - rx > max_growth_m or next_ry - ry > max_growth_m:
+            raise ValueError(
+                f"Locked-body ring z={z:.4f}m needs more than {max_growth_m*1000:.0f}mm "
+                "garment-envelope growth; remodel the original panel rather than invent oversized cloth."
+            )
+        result.append((z, cx, cy, next_rx, next_ry))
+    return result
