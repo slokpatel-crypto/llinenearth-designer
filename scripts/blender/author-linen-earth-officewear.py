@@ -756,7 +756,7 @@ def refine_collision_faces(obj, max_edge_m=0.025, max_faces=80000):
     finally:
         bm.free()
 
-def repair_body_penetrations(obj, body, clearance_m, max_passes=4):
+def repair_body_penetrations(obj, body, clearance_m, max_passes=4, original_source=None):
     """Push only garment vertices that are actually inside the locked body outside.
 
     The procedural tailoring shell keeps its authored ease/drape everywhere else.
@@ -769,6 +769,10 @@ def repair_body_penetrations(obj, body, clearance_m, max_passes=4):
 
     matrix = obj.matrix_world
     inverse = matrix.inverted()
+    if original_source is not None and len(original_source)!=len(obj.data.vertices):
+        raise RuntimeError(
+            f"{obj.name}: skin-safe correction needs each original panel vertex."
+        )
     total_moved = 0
     max_before_mm = 0.0
 
@@ -818,15 +822,24 @@ def repair_body_penetrations(obj, body, clearance_m, max_passes=4):
                     # vertex so the shirt cannot jump across the body.
                     start = surface if direction in (normal, -normal) else point
                     candidate = start + direction * probe_distance
-                    if not point_inside_closed_bvh(body_tree, candidate):
-                        possible.append(((candidate - point).length, candidate))
+                    if point_inside_closed_bvh(body_tree, candidate):
+                        continue
+                    if (original_source is not None and
+                        (candidate-original_source[vertex.index]).length>0.095):
+                        # The *current* vertex can be within 95mm of this
+                        # projection even if the original garment construction
+                        # ring would exceed the immutable 95mm source guard.
+                        # Reject the proposal before mutating any panel.
+                        continue
+                    possible.append(((candidate - point).length, candidate))
                 if possible:
                     target = min(possible, key=lambda item: item[0])[1]
                     break
             if target is None:
                 raise RuntimeError(
                     f"{obj.name} could not find an outside body projection "
-                    f"for embedded vertex near {tuple(round(value,4) for value in point)}."
+                    f"for embedded vertex near {tuple(round(value,4) for value in point)}; "
+                    "the real body and original 95mm cloth-source radius must both pass."
                 )
             if (target - point).length > 0.095:
                 raise RuntimeError(
@@ -1255,7 +1268,9 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
             obj.data.update(calc_edges=True)
         finally:
             bm.free()
-        repair=repair_body_penetrations(obj,body,clearance_m)
+        repair=repair_body_penetrations(
+            obj,body,clearance_m,original_source=source_world_positions
+        )
         moved_total+=repair["movedVertices"]
         if len(obj.data.vertices)!=len(source_world_positions) or any(
             ((matrix @ vertex.co)-source_world_positions[i]).length>0.095
