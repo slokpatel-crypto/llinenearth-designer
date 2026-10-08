@@ -463,7 +463,11 @@ def body_aware_sleeve_ring(body_points, ring, *, body_center_x, side,
     fitted_cy=(ys[low]+ys[high])/2
     # Lock photographed 500mm hand-centre identity at the cuff. Else let
     # the upper sleeve follow the actual arm up to 28mm laterally.
-    shift_x=0 if locked_hand_center else max(-0.028,min(0.028,fitted_cx-cx))
+    # Inward shifts collapse the upper sleeve into the torso, causing real
+    # BVH 95mm failures. Keep the armhole lateral, following only measured
+    # OUTWARD changes without moving the locked cuff hand centre.
+    measured_x=max(0.0,side*(fitted_cx-cx))
+    shift_x=0.0 if locked_hand_center else side*min(0.028,measured_x)
     shift_y=max(-0.050,min(0.050,fitted_cy-cy))
     next_cx=cx+shift_x
     next_cy=cy+shift_y
