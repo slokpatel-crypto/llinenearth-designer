@@ -429,3 +429,27 @@ class SurfaceSamplingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UniformRealClothTopologyContractTests(unittest.TestCase):
+    def test_base_panel_refinement_preserves_local_quad_connections(self):
+        # Regression for native Blender run 37793153217: splitting only
+        # long edges created irregular faces which intersected real anatomy
+        # despite vertex-level BVH clearance. Sampled surface QA is unchanged.
+        source=(Path(__file__).resolve().parents[1] / "scripts" / "blender" / "author-linen-earth-officewear.py").read_text()
+        start=source.index("def refine_collision_faces(")
+        end=source.index("def repair_body_penetrations(",start)
+        section=source[start:end]
+        self.assertIn("edges=list(bm.edges),cuts=1,use_grid_fill=True",section)
+        self.assertNotIn("edges=long_edges",section)
+        self.assertIn("len(bm.faces)*4>max_faces",section)
+        self.assertIn("needs_tailoring_face_triangulation",section)
+
+    def test_deep_contact_checks_remain_physically_strict(self):
+        source=(Path(__file__).resolve().parents[1] / "scripts" / "blender" / "author-linen-earth-officewear.py").read_text()
+        start=source.index("def repair_between_vertex_collisions(")
+        end=source.index("def finish_procedural_shell(",start)
+        section=source[start:end]
+        self.assertIn("(point-nearest[0]).length > 0.0015",section)
+        self.assertIn("terminal_face_patch_allowed(centroid_hits,edge_hits)",section)
+        self.assertIn("len(bm.faces)>80000",section)
