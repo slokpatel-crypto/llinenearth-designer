@@ -604,3 +604,44 @@ def trouser_waist_side_seam_limit_m(locked_waist_half_width_m,
             and 0<=ease_m<=0.020 and 0.18<=hip_slope<=0.70):
         raise ValueError("Hip taper must stay within plausible physical construction limits.")
     return locked_waist_half_width_m+ease_m+hip_slope*distance_below_waist_m
+
+
+def preserve_trouser_leg_outer_seam_with_inseam_gap(
+    fitted_center_x_m, fitted_half_width_m, body_center_x_m, side,
+    *, minimum_midline_gap_m=0.004, max_center_shift_m=0.050,
+):
+    """Tailor distinct L/R leg tubes around the REAL crotch inseam.
+
+    A symmetric hip/thigh ellipse enclosing only the left (or right) body
+    samples can grow across the midline and cover the OTHER thigh. On the
+    locked pose this put the left leg at x=+35mm near z=.87m and 58mm
+    INSIDE the opposite thigh. Keep the observed OUTER trouser side seam
+    unchanged, while recentering and narrowing ONLY the inward ellipse
+    half so the sewing inseam remains on its anatomical side. Actual
+    garment-to-body BVH must still pass independently afterward.
+    """
+    values=(fitted_center_x_m,fitted_half_width_m,body_center_x_m,
+            minimum_midline_gap_m,max_center_shift_m)
+    if (side not in (-1,1) or isinstance(side,bool) or
+            any(isinstance(v,bool) or not isinstance(v,(int,float))
+                or not math.isfinite(v) for v in values)):
+        raise ValueError("Leg inseam bound needs real finite coordinates and side.")
+    if (not 0.035 <= fitted_half_width_m <= 0.250
+            or not 0.0 <= minimum_midline_gap_m <= 0.012
+            or not 0.0 < max_center_shift_m <= 0.060):
+        raise ValueError("Leg inseam bound must preserve physical sewing ease.")
+    outboard=side*(fitted_center_x_m-body_center_x_m)+fitted_half_width_m
+    if outboard <= minimum_midline_gap_m+0.035:
+        raise ValueError("The anatomical thigh is too narrow for the source-locked leg tube.")
+    inboard=side*(fitted_center_x_m-body_center_x_m)-fitted_half_width_m
+    if inboard >= minimum_midline_gap_m:
+        return fitted_center_x_m,fitted_half_width_m,0.0
+    new_centre=body_center_x_m+side*((outboard+minimum_midline_gap_m)/2.0)
+    new_radius=(outboard-minimum_midline_gap_m)/2.0
+    shift=abs(new_centre-fitted_center_x_m)
+    if shift > max_center_shift_m:
+        raise ValueError(
+            f"Leg source would need {shift*1000:.1f}mm inseam recentering; "
+            "check crotch construction against the real anatomy."
+        )
+    return new_centre,new_radius,shift
