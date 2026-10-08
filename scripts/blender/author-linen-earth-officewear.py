@@ -1273,16 +1273,33 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
             obj.data.update(calc_edges=True)
         finally:
             bm.free()
+        before_skin=[
+            ((matrix @ vertex.co)-source_world_positions[i]).length
+            for i,vertex in enumerate(obj.data.vertices)
+        ]
         repair=repair_body_penetrations(
             obj,body,clearance_m,original_source=source_world_positions
         )
         moved_total+=repair["movedVertices"]
-        if len(obj.data.vertices)!=len(source_world_positions) or any(
-            ((matrix @ vertex.co)-source_world_positions[i]).length>0.095
-            for i,vertex in enumerate(obj.data.vertices)
-        ):
+        if len(obj.data.vertices)!=len(source_world_positions):
             raise RuntimeError(
-                f"{obj.name}: connected cloth crossed the 95mm TOTAL source-panel correction guard."
+                f"{obj.name}: real-body correction changed original fabric topology."
+            )
+        deviations=[
+            ((matrix @ vertex.co)-source_world_positions[i]).length
+            for i,vertex in enumerate(obj.data.vertices)
+        ]
+        worst=max(range(len(deviations)),key=deviations.__getitem__)
+        if deviations[worst]>0.095:
+            raise RuntimeError(
+                f"{obj.name}: connected cloth crossed 95mm source guard; "
+                f"worstVertex={worst}, "
+                f"beforeSkinMm={round(before_skin[worst]*1000,6)}, "
+                f"afterSkinMm={round(deviations[worst]*1000,6)}, "
+                f"source={tuple(round(v,5) for v in source_world_positions[worst])}, "
+                f"actual={tuple(round(v,5) for v in matrix @ obj.data.vertices[worst].co)}, "
+                f"postSkinMoved={repair['movedVertices']}; "
+                "fix physical panel rather than accepting collision."
             )
         if terminal_poked:
             # A centroid poke is permitted only as a final, bounded physical
