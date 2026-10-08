@@ -88,7 +88,14 @@ class LockedTorsoEnvelopeTests(unittest.TestCase):
         a = (0.4, 0.0, 0.0, 0.10, 0.08)
         b = (0.5, 0.0, 0.0, 0.10, 0.08)
         midpoint = (0.45, 0.0, 0.0, 0.10, 0.08)
-        body = [(0.20 * math.cos(i * math.tau/30), 0.15 * math.sin(i * math.tau/30), 0.45) for i in range(30)]
+        # Section samples must remain inside the actual torso corridor.
+        # An outer ellipse outside that corridor only exercises insufficient
+        # evidence, not the intended impossible-garment-envelope failure.
+        body = [
+            (0.14 + 0.005 * math.cos(i * math.tau / 30),
+             0.12 + 0.005 * math.sin(i * math.tau / 30), 0.45)
+            for i in range(30)
+        ]
         with self.assertRaisesRegex(ValueError, "remodel the original panel"):
             anatomically_enclose_intermediate_rings([a,b], [a,midpoint,b], body)
 
