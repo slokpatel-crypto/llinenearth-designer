@@ -10,6 +10,7 @@ from surface_coverage import (
     body_aware_sleeve_ring,
     underarm_inboard_relief_m,
     underarm_centreline_contact_relief_m,
+    waist_panel_ease_pull_m,
     trouser_waist_side_seam_limit_m,
     preserve_trouser_leg_outer_seam_with_inseam_gap,
     bounded_source_cloth_shift,
@@ -179,6 +180,40 @@ class MeasuredPostThicknessSleeveSeamTests(unittest.TestCase):
             underarm_centreline_contact_relief_m(
                 1.116,.006,1.114,max_relief_m=.012
             )
+
+
+class MeasuredWaistEaseConvergenceTests(unittest.TestCase):
+    def test_inward_fit_uses_real_skin_distance_and_never_alters_guides(self):
+        # 29mm shirt median needs a small take-in to pass the 28mm gate.
+        self.assertAlmostEqual(
+            waist_panel_ease_pull_m(.029,.018,.022,.008),.007
+        )
+        # 35.9mm trouser median: 12mm physical maximum inward movement.
+        self.assertAlmostEqual(
+            waist_panel_ease_pull_m(.0359,.015,.026,.012),.0099
+        )
+        self.assertEqual(waist_panel_ease_pull_m(.050,0,.022,.008),0)
+        self.assertEqual(waist_panel_ease_pull_m(.050,.002,.022,.008),0)
+        self.assertEqual(waist_panel_ease_pull_m(.050,.050,.022,.008),0)
+        self.assertEqual(waist_panel_ease_pull_m(.005,.018,.022,.008),0)
+        self.assertLess(
+            waist_panel_ease_pull_m(.050,.045,.022,.008),.008
+        )
+
+    def test_no_fake_tailor_evidence_or_body_bvh_exemption(self):
+        source=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
+                "author-linen-earth-officewear.py").read_text()
+        body=source[source.index("def tighten_waist_to_measured_body_ease("):
+                    source.index("def restore_trouser_waist_side_seam(")]
+        self.assertIn("point_inside_closed_bvh(tree,candidate)",body)
+        self.assertIn("waist_panel_ease_pull_m(",body)
+        self.assertIn("fit_profile[\"waistEaseConvergence\"]",source)
+        self.assertIn("repair_between_vertex_collisions(",source)
+        for bad in [float("nan"),float("inf"),True,-.005]:
+            with self.assertRaises(ValueError):
+                waist_panel_ease_pull_m(bad,.015,.026,.012)
+        with self.assertRaises(ValueError):
+            waist_panel_ease_pull_m(.04,.012,.026,.015)
 
 
 class AnatomicalSleeveConstructionTests(unittest.TestCase):
