@@ -643,18 +643,30 @@ def refine_collision_faces(obj, max_edge_m=0.025, max_faces=80000):
         largest=max(edge.calc_length() for edge in bm.edges)
         rounds=adaptive_surface_cut_rounds(largest,max_edge_m)
         before=len(bm.verts)
+        # A partial edge split of ring-shell quads turns adjacent quads into
+        # huge non-planar n-gons, which Blender may triangulate THROUGH the
+        # real body. Refine the WHOLE structured panel uniformly each round:
+        # contiguous cloth retains its true local quad topology and original
+        # locked guide vertices, and only new vertices need BVH projection.
         for _ in range(rounds):
-            long_edges=[edge for edge in bm.edges if edge.calc_length() > max_edge_m]
-            if not long_edges:
+            if max((edge.calc_length() for edge in bm.edges),default=0)<=max_edge_m:
                 break
-            if len(bm.faces) > max_faces:
+            # Regular quads become four quads, not disconnected edge fans.
+            # Refuse mesh explosion instead of diluting physical collision QA.
+            if len(bm.faces)*4>max_faces:
                 raise RuntimeError(
-                    f"{obj.name} exceeded {max_faces} garment faces; "
-                    "surface fitting cannot safely expand indefinitely."
+                    f"{obj.name} uniform cloth surface would exceed "
+                    f"{max_faces} physical faces; remodel panel resolution."
                 )
-            bmesh.ops.subdivide_edges(bm,edges=long_edges,cuts=1,use_grid_fill=True)
-        if len(bm.faces)>max_faces:
-            raise RuntimeError(f"{obj.name} exceeded safe post-subdivision face limit.")
+            bmesh.ops.subdivide_edges(
+                bm,edges=list(bm.edges),cuts=1,use_grid_fill=True
+            )
+            if len(bm.faces)>max_faces:
+                raise RuntimeError(f"{obj.name} exceeded safe garment topology limit.")
+            if any(needs_tailoring_face_triangulation(len(face.verts)) for face in bm.faces):
+                raise RuntimeError(
+                    f"{obj.name} uniform refinement produced non-local cloth polygons."
+                )
         bm.normal_update()
         bm.to_mesh(obj.data)
         obj.data.update(calc_edges=True)
@@ -849,6 +861,32 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
                 + obj.name + " " + json.dumps(progress[-1],sort_keys=True),
                 flush=True,
             )
+            if iteration==0 and selected:
+                # Real Blender telemetry identifies WHICH measured cloth
+                # locations need source-panel correction; face counts alone
+                # cannot distinguish shoulder, armpit and waist problems.
+                sample_evidence=[]
+                for face in penetrated_faces[:8]:
+                    point=matrix @ face.calc_center_median()
+                    nearest=body_tree.find_nearest(point)
+                    sample_evidence.append({
+                        "kind":"face","xyz":[round(v,5) for v in point],
+                        "depthMm":round((point-nearest[0]).length*1000,2)
+                        if nearest and nearest[0] is not None else None,
+                        "zExtents":[round(min((matrix @ v.co).z for v in face.verts),5),
+                                    round(max((matrix @ v.co).z for v in face.verts),5)],
+                    })
+                for edge in list(selected)[:8]:
+                    point=matrix @ ((edge.verts[0].co+edge.verts[1].co)*0.5)
+                    if not penetration(point): continue
+                    nearest=body_tree.find_nearest(point)
+                    sample_evidence.append({
+                        "kind":"edge","xyz":[round(v,5) for v in point],
+                        "depthMm":round((point-nearest[0]).length*1000,2)
+                        if nearest and nearest[0] is not None else None,
+                    })
+                print("Linen Earth real cloth contact samples: "
+                      + obj.name + " " + json.dumps(sample_evidence,sort_keys=True),flush=True)
             if not selected:
                 # The pass inspected REAL triangles rather than an enormous
                 # synthetic ngon. Persist exactly the validated triangulated
