@@ -25,10 +25,14 @@ function isShoe(r,g,b){
   return y<105 && r-g>=3 && g-b>=2;
 }
 function isUncoveredSkin(r,g,b){
-  // In neutral review lighting, visible realistic-body skin has warm
-  // red > green > blue chroma; navy trousers and neutral stage do not.
-  // Exclude the shirt region by checking only below the trouser rise.
-  return r>125 && r-g>=6 && g-b>=6;
+  // The locked realistic body uses a warm brown (#916F5A), but the neutral
+  // review shirt is also warm sandstone (#C8B58E). Merely testing R>G>B
+  // mistakes real shirt cloth for bare chest/back and falsely blocks every
+  // candidate. Realistic skin has a stronger red-vs-green slope relative to
+  // the green-vs-blue slope than the golden shirt under studio lighting.
+  const redGreen=r-g;
+  const greenBlue=g-b;
+  return r>110 && redGreen>=7 && greenBlue>=4 && redGreen>greenBlue*1.05;
 }
 function statsForRoi(data,width,height,channels,roi,predicate){
   const box=roiBounds(width,height,roi);
