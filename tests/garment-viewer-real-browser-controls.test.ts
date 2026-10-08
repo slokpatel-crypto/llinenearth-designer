@@ -30,5 +30,9 @@ test("native 3D selector refuses occluded or mismatched options",()=>{
   assert.ok(qa.includes("options.filter((option)=>"));
   assert.ok(qa.includes("part.toLowerCase()"));
   assert.ok(qa.includes("hitbox.withinViewport,true"));
-  assert.ok(qa.includes("Date.now()-started<6000"));
+  assert.ok(qa.includes("const inputStarted=Date.now();"));
+  assert.ok(qa.includes("if(!changed) await page.keyboard.press(\"Enter\")"));
+  assert.ok(qa.includes("nativeTypeAhead"));
+  assert.ok(qa.includes("nativeChangeProbe"));
+  assert.ok(qa.includes("Date.now()-inputStarted<6000"));
 });
