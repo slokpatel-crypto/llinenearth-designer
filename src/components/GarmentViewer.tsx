@@ -822,8 +822,13 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       // Material shader hydration can block Chromium's native <select> input.
       // Cooperatively yield the main thread after each bounded batch.
       const yieldForInput=createCooperativeMaterialBatch(
-        ()=>new Promise<void>((resolve)=>window.setTimeout(resolve,0)),4
+        ()=>new Promise<void>((resolve)=>window.setTimeout(resolve,0)),1
       );
+      // Allow the real native form-control action to settle before any
+      // expensive GLB shader/material mutation starts. Yield between every
+      // material rather than batches of four on low-powered GPUs.
+      await yieldForInput();
+      if(cancelled) return;
       const materials=[...viewer.model!.materials];
       const materialsByName=new Map(materials.map((material)=>[material.name,material]));
       const previous=visibleGarmentMaterialsRef.current;
@@ -865,6 +870,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       visibleGarmentMaterialsRef.current=next;
       lastVariantAppearanceRef.current=appearance;
 
+      await yieldForInput();
+      if(cancelled) return;
       const nextSkin=styleState.sleeve==="full"?null:`MannequinSkinArmVariant__${styleState.sleeve}`;
       const previousSkin=visibleSkinArmMaterialRef.current;
       if(previousSkin&&previousSkin!==nextSkin){
@@ -898,6 +905,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         setButtonMaterial(material,buttonSpec,true);
       }
       visibleButtonMaterialsRef.current=nextButtons;
+      await yieldForInput();
+      if(cancelled) return;
       const baseButton=await ensureViewerMaterialLoaded(materialsByName.get("ButtonAccent"));
       if(cancelled) return;
       setButtonMaterial(baseButton,buttonSpec,true);
@@ -906,6 +915,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       const shirtBodyPrepared=preparedTextureRef.current.get("ShirtTorsoFabric");
       const shirtSleevePrepared=preparedTextureRef.current.get("ShirtSleeveLFabric");
       const collarOffset=collarConstructionKey==="soft_unfused"?.07:collarConstructionKey==="soft_fused"?.035:0;
+      await yieldForInput();
+      if(cancelled) return;
       const collar=await ensureViewerMaterialLoaded(materialsByName.get(`ShirtCollarVariant__${collarKey}__${collarConstructionKey}`));
       if(cancelled) return;
       const whiteCollar=collarFinishKey!=="self";
@@ -915,6 +926,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         else if(shirtBodyPrepared) collar.pbrMetallicRoughness.baseColorTexture?.setTexture(shirtBodyPrepared.texture);
         collar.pbrMetallicRoughness.setRoughnessFactor(clamp(shirtBase+collarOffset,.55,.98));
       }
+      await yieldForInput();
+      if(cancelled) return;
       const neckGasket=await ensureViewerMaterialLoaded(materialsByName.get(`ShirtNeckGasketVariant__${collarKey}__${collarConstructionKey}`));
       if(cancelled) return;
       if(neckGasket){
@@ -925,6 +938,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       }
       if(styleState.sleeve==="full"){
         const cuffOffset=cuffConstructionKey==="soft"?.06:0;
+        await yieldForInput();
+        if(cancelled) return;
         const cuff=await ensureViewerMaterialLoaded(materialsByName.get(`ShirtCuffVariant__${cuffKey}__${cuffConstructionKey}`));
         if(cancelled) return;
         if(cuff){
