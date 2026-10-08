@@ -168,6 +168,60 @@ def body_depth_at_z(body, z_world, center_x, half_window, band=0.030, minimum=0.
     return max(minimum, (max(ys) - min(ys)) * 0.5)
 
 
+
+def body_aware_leg_ring(body_points, ring, side, body_center_x, target_leg_x,
+                        clearance_m, keep_locked_hem_width=False):
+    """Match leg-shell depth and calf/thigh extent to the actual locked body.
+
+    The old tubes were centered on a global body Y center and sat behind local
+    knee/calves, leaving skin exposed even when 3D intersection QA passed.
+    This is geometric ease estimation, NOT a physical-panel measurement.
+    """
+    z, center_x, center_y, radius_x, radius_y = ring
+    corridor = 0.145
+    samples = [
+        point for point in body_points
+        if abs(point.z - z) <= 0.040
+        and abs(point.x - target_leg_x) <= corridor
+        and side * (point.x - body_center_x) >= 0.006
+    ]
+    if len(samples) < 16:
+        return ring, {
+            "status": "unverified-insufficient-body-cross-section",
+            "sampleCount": len(samples),
+            "zMm": round(z * 1000, 2),
+        }
+
+    xs = sorted(point.x for point in samples)
+    ys = sorted(point.y for point in samples)
+    lo = max(0, int(len(xs) * 0.015))
+    hi = min(len(xs) - 1, int(len(xs) * 0.985))
+    anatomical_center_x = (xs[lo] + xs[hi]) * 0.5
+    anatomical_center_y = (ys[lo] + ys[hi]) * 0.5
+    # Model identity fixes the overall stance. Move each tube at most 8 mm
+    # laterally; follow the local anatomical front/back depth without drifting
+    # the locked leg spacing.
+    fitted_x = target_leg_x + max(-0.008, min(0.008, anatomical_center_x - target_leg_x))
+    fitted_y = anatomical_center_y
+    half_x = max(radius_x, max(fitted_x - xs[lo], xs[hi] - fitted_x) + clearance_m + 0.008)
+    half_y = max(radius_y, max(fitted_y - ys[lo], ys[hi] - fitted_y) + clearance_m + 0.010)
+    if keep_locked_hem_width:
+        # The photographed identity locks the hem silhouette; do not invent a
+        # wider physical opening without owner/tailor measurement evidence.
+        half_x = radius_x
+
+    return (z, fitted_x, fitted_y, half_x, half_y), {
+        "status": "anatomy-fitted-geometry-only",
+        "sampleCount": len(samples),
+        "zMm": round(z * 1000, 2),
+        "widthChangeMm": round((half_x - radius_x) * 2000, 2),
+        "depthChangeMm": round((half_y - radius_y) * 2000, 2),
+        "lateralShiftMm": round((fitted_x - target_leg_x) * 1000, 2),
+        "depthShiftMm": round((fitted_y - center_y) * 1000, 2),
+        "hemWidthLocked": keep_locked_hem_width,
+    }
+
+
 def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_clearance_m):
     frame = body_frame(body)
     cx = frame["centerX"]
@@ -253,6 +307,10 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
         segments=64,
     )
 
+    # Register candidate garment rings to the real body at each height.
+    # A fixed global Y center makes thigh/calf skin poke through the cloth.
+    body_points = [body.matrix_world @ vertex.co for vertex in body.data.vertices]
+    leg_profile_evidence = {}
     legs = {}
     for side, name, hem_z in (
         (-1, "TrouserLegLFabric", left_hem_z),
@@ -262,18 +320,25 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
         lower_center_x = cx + side * leg_center_half
         knee_z = hem_z + (upper_thigh_z - hem_z) * 0.48
         calf_z = hem_z + (upper_thigh_z - hem_z) * 0.20
-        legs[name] = build_ring_shell(
-            name,
-            [
-                (upper_thigh_z + 0.050, thigh_center_x, cy - 0.002, 0.078, 0.082),
-                (upper_thigh_z - 0.070, thigh_center_x, cy, 0.071, 0.075),
-                (knee_z, lower_center_x, cy, 0.050, 0.052),
-                (calf_z, lower_center_x, cy, 0.042, 0.045),
-                (hem_z + 0.035, lower_center_x, cy, hem_half, 0.038),
-                (hem_z, lower_center_x, cy, hem_half, 0.037),
-            ],
-            segments=48,
-        )
+        base_rings = [
+            (upper_thigh_z + 0.050, thigh_center_x, cy - 0.002, 0.078, 0.082),
+            (upper_thigh_z - 0.070, thigh_center_x, cy, 0.071, 0.075),
+            (knee_z, lower_center_x, cy, 0.050, 0.052),
+            (calf_z, lower_center_x, cy, 0.042, 0.045),
+            (hem_z + 0.035, lower_center_x, cy, hem_half, 0.038),
+            (hem_z, lower_center_x, cy, hem_half, 0.037),
+        ]
+        fitted_rings = []
+        leg_profile_evidence[name] = []
+        for index, ring in enumerate(base_rings):
+            fitted, evidence = body_aware_leg_ring(
+                body_points, ring, side, cx,
+                thigh_center_x if index < 2 else lower_center_x,
+                trouser_clearance_m, keep_locked_hem_width=index >= 4,
+            )
+            fitted_rings.append(fitted)
+            leg_profile_evidence[name].append(evidence)
+        legs[name] = build_ring_shell(name, fitted_rings, segments=48)
 
     authored = {
         "ShirtTorsoFabric": shirt,
@@ -289,6 +354,8 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
         "handCenterSpacingMm": round(hand_half * 2000.0, 2),
         "legCenterSpacingMm": round(leg_center_half * 2000.0, 2),
         "hemWidthMm": round(hem_half * 2000.0, 2),
+        "bodyAwareLegProfileEvidence": leg_profile_evidence,
+        "source": "geometry-estimated-locked-body-not-physical-panel-evidence",
     }
 
 
