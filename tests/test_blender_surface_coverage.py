@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "blende
 from surface_coverage import (
     adaptive_surface_cut_rounds,
     body_aware_sleeve_ring,
+    underarm_inboard_relief_m,
     waist_to_chest_taper_radius,
     anatomically_enclose_intermediate_rings,
     bounded_body_section_center_y,
@@ -23,6 +24,32 @@ from surface_coverage import (
     subdivide_ring_profiles,
     vertical_subdivision_cuts,
 )
+
+
+class InnerSleeveBodyContactReliefTests(unittest.TestCase):
+    def test_torso_facing_quadrant_relief_tapers_to_zero_at_outer_sleeve(self):
+        waist=1.11423
+        center=waist+0.050
+        self.assertAlmostEqual(underarm_inboard_relief_m(center,.07,waist),.032)
+        self.assertEqual(underarm_inboard_relief_m(center,-.02,waist),0.0)
+        self.assertEqual(underarm_inboard_relief_m(center,0,waist),0.0)
+        self.assertEqual(underarm_inboard_relief_m(center+.10,.07,waist),0.0)
+        self.assertGreater(
+            underarm_inboard_relief_m(center+.03,.06,waist),0)
+        self.assertLess(
+            underarm_inboard_relief_m(center+.03,.06,waist),.032)
+
+    def test_source_underarm_relief_cannot_distort_arms_or_waist_unboundedly(self):
+        for bad in [(float("nan"),.05,1.1), (1.15,True,1.1),
+                    (1.15,.05,1.1,0.16), (1.15,.05,1.1,-0.1)]:
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError):
+                    if len(bad)==3:
+                        underarm_inboard_relief_m(*bad)
+                    else:
+                        underarm_inboard_relief_m(*bad[:3],half_span_m=bad[3])
+        with self.assertRaises(ValueError):
+            underarm_inboard_relief_m(1.15,.03,1.1,max_relief_m=.06)
 
 
 class AnatomicalSleeveConstructionTests(unittest.TestCase):
