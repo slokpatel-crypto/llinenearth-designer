@@ -162,3 +162,11 @@ test("viewer surface exposes the shared four-angle turntable and independent shi
     assert(identity.includes(token),token);
   }
 });
+
+
+test("real garment tailoring controls remain schedulable during WebGL hydration",()=>{
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  assert(viewer.includes("createCooperativeMaterialBatch"),"live 3D viewer must actually wire the cooperative material scheduler");
+  assert(viewer.includes("window.setTimeout(resolve,0)"),"shader material work must yield a browser macrotask");
+  assert(viewer.includes("await yieldForInput()"),"long material loops must release control to customer input");
+});

@@ -1,7 +1,7 @@
 "use client";
 
 import { createElement, useEffect, useMemo, useRef, useState } from "react";
-import {createInFlightMaterialLoader, needsVariantMaterialRefresh, type VariantMaterialAppearance} from "@/lib/garment-viewer-material-appearance";
+import {createCooperativeMaterialBatch, createInFlightMaterialLoader, needsVariantMaterialRefresh, type VariantMaterialAppearance} from "@/lib/garment-viewer-material-appearance";
 import {
   createPrototypeGarmentGlbUrl,
   GARMENT_PANEL_SPECS,
@@ -819,6 +819,11 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     if(!viewer?.model) return;
     let cancelled=false;
     const apply=async()=>{
+      // Material shader hydration can block Chromium's native <select> input.
+      // Cooperatively yield the main thread after each bounded batch.
+      const yieldForInput=createCooperativeMaterialBatch(
+        ()=>new Promise<void>((resolve)=>window.setTimeout(resolve,0)),4
+      );
       const materials=[...viewer.model!.materials];
       const materialsByName=new Map(materials.map((material)=>[material.name,material]));
       const previous=visibleGarmentMaterialsRef.current;
@@ -829,6 +834,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       }
       for(const name of previous){
         if(next.has(name)) continue;
+        await yieldForInput();
+        if(cancelled) return;
         const material=await ensureViewerMaterialLoaded(materialsByName.get(name));
         if(cancelled) return;
         setMaterialAlpha(material,false);
@@ -837,6 +844,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         // Style-only edits often retain most visible variants. Re-uploading the
         // same texture/normal for each retained variant stalls WebGL Chromium.
         if(!needsVariantMaterialRefresh(previous.has(name),lastVariantAppearanceRef.current,appearance)) continue;
+        await yieldForInput();
+        if(cancelled) return;
         const material=await ensureViewerMaterialLoaded(materialsByName.get(name));
         if(cancelled) return;
         if(!material) continue;
@@ -875,11 +884,15 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       const nextButtons=new Set(materials.filter((material)=>isButtonVariantMaterial(material.name)&&variantMaterialVisible(material.name,styleState)).map((material)=>material.name));
       for(const name of previousButtons){
         if(nextButtons.has(name)) continue;
+        await yieldForInput();
+        if(cancelled) return;
         const material=await ensureViewerMaterialLoaded(materialsByName.get(name));
         if(cancelled) return;
         setButtonMaterial(material,buttonSpec,false);
       }
       for(const name of nextButtons){
+        await yieldForInput();
+        if(cancelled) return;
         const material=await ensureViewerMaterialLoaded(materialsByName.get(name));
         if(cancelled) return;
         setButtonMaterial(material,buttonSpec,true);
