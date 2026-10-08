@@ -776,11 +776,16 @@ def main(json_output=None):
                 "production stance needs at least 6.0 mm to avoid fused leg silhouettes."
             )
 
+        # Measure the ACTUAL overlapping tucked-hem/waistband band: 35 mm
+        # below the trouser waist. A former +/-75 mm sample included the upper
+        # shirt *above* the waistband, where cloth separation is unrelated to
+        # tuck fit and artificially inflated the median by tens of millimetres.
+        # Keep the strict 0.8..18 mm clearance limits on the real junction.
         tuck_stats = nearest_distance_stats_mm(
             bpy.data.objects.get("ShirtTorsoFabric"),
             bpy.data.objects.get("TrouserWaistFabric"),
-            trouser_waist_z,
-            0.075,
+            trouser_waist_z - 0.0175,
+            0.020,
             400,
         )
         boundary_clearance_mm["shirtTrouserTuck"] = tuck_stats
