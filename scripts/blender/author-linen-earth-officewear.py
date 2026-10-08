@@ -23,6 +23,7 @@ from mathutils.bvhtree import BVHTree
 # Authoring and Blender preflight use the same exact triangle/guide intersection.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
+from fabric_arc_uv import frame_at_height, ellipse_arc_uv
 from surface_coverage import underarm_inboard_relief_m, body_aware_sleeve_ring, waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
@@ -178,6 +179,10 @@ def build_ring_shell(name, rings, segments=48, neck_opening=None, collar_height=
     mesh.update(calc_edges=True)
     obj = bpy.data.objects.new(name, mesh)
     collection.objects.link(obj)
+    # Preserve construction-axis provenance across real BVH tailoring.
+    # It is a geometry estimate, NOT an owner-verified cloth repeat length.
+    if name.startswith(("ShirtSleeve","TrouserLeg")):
+        obj["linen_earth_source_ring_uv"] = json.dumps(rings)
     material = bpy.data.materials.get(name) or bpy.data.materials.new(name=name)
     material.use_nodes = True
     mesh.materials.append(material)
@@ -1539,23 +1544,52 @@ def shape_sleeve_underarm_relief(sleeve, side, waist_guide_z):
 
 
 def planar_grain_uv(obj):
-    mesh = obj.data
-    if not mesh.uv_layers:
-        uv_layer = mesh.uv_layers.new(name="UVMap")
-    else:
-        uv_layer = mesh.uv_layers.active
-    xs = [vertex.co.x for vertex in mesh.vertices]
-    zs = [vertex.co.z for vertex in mesh.vertices]
-    min_x, max_x = min(xs), max(xs)
-    min_z, max_z = min(zs), max(zs)
-    span_x = max(max_x - min_x, 1e-6)
-    span_z = max(max_z - min_z, 1e-6)
+    """Real X/Z grain on flat panels; seam-aware arc grain on curved tubes.
+
+    The prior flat X projection collapsed pinstripes on sleeve/calf sides.
+    Normalized circumference from *actual source construction frames* retains
+    physical wrap topology while verified panel dimensions remain an
+    independent, human-measured promotion requirement.
+    """
+    mesh=obj.data
+    uv_layer=mesh.uv_layers.active if mesh.uv_layers else mesh.uv_layers.new(name="UVMap")
+    xs=[vertex.co.x for vertex in mesh.vertices]
+    zs=[vertex.co.z for vertex in mesh.vertices]
+    min_x,max_x=min(xs),max(xs)
+    min_z,max_z=min(zs),max(zs)
+    span_x=max(max_x-min_x,1e-6)
+    span_z=max(max_z-min_z,1e-6)
+    raw=obj.get("linen_earth_source_ring_uv") if obj.name.startswith(
+        ("ShirtSleeve","TrouserLeg")
+    ) else None
+    if raw:
+        frames=json.loads(raw)
+        side=1 if obj.name.startswith(("ShirtSleeveL","TrouserLegL")) else -1
+        vertex_uv={}
+        for vertex in mesh.vertices:
+            axis=frame_at_height(frames,vertex.co.z)
+            u=ellipse_arc_uv(
+                vertex.co.x,vertex.co.y,axis,inward_seam_side=side
+            )
+            vertex_uv[vertex.index]=(u,(vertex.co.z-min_z)/span_z)
+        for polygon in mesh.polygons:
+            loops=list(polygon.loop_indices)
+            values=[
+                vertex_uv[mesh.loops[index].vertex_index] for index in loops
+            ]
+            seam_crossing=max(u for u,_ in values)-min(u for u,_ in values)>.5
+            for index,(u,v) in zip(loops,values):
+                if seam_crossing and u<.5: u+=1.
+                uv_layer.data[index].uv=(u,v)
+        obj["linen_earth_uv_source"]="construction-ring-arc-geometry-estimate"
+        return
     for polygon in mesh.polygons:
         for loop_index in polygon.loop_indices:
-            vertex = mesh.vertices[mesh.loops[loop_index].vertex_index]
-            u = (vertex.co.x - min_x) / span_x
-            v = (vertex.co.z - min_z) / span_z
-            uv_layer.data[loop_index].uv = (u, v)
+            vertex=mesh.vertices[mesh.loops[loop_index].vertex_index]
+            u=(vertex.co.x-min_x)/span_x
+            v=(vertex.co.z-min_z)/span_z
+            uv_layer.data[loop_index].uv=(u,v)
+    obj["linen_earth_uv_source"]="planar-xz-geometry-estimate"
 
 
 def main():
