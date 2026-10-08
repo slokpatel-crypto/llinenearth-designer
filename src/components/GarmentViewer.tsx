@@ -1,7 +1,7 @@
 "use client";
 
 import { createElement, useEffect, useMemo, useRef, useState } from "react";
-import {needsVariantMaterialRefresh, type VariantMaterialAppearance} from "@/lib/garment-viewer-material-appearance";
+import {needsButtonMaterialRefresh, needsVariantMaterialRefresh, type VariantMaterialAppearance} from "@/lib/garment-viewer-material-appearance";
 import {
   createPrototypeGarmentGlbUrl,
   GARMENT_PANEL_SPECS,
@@ -382,6 +382,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const visibleGarmentMaterialsRef=useRef(new Set(GARMENT_PANEL_SPECS.map((panel)=>panel.material)));
   const lastVariantAppearanceRef=useRef<VariantMaterialAppearance|null>(null);
   const visibleButtonMaterialsRef=useRef(new Set<string>());
+  const lastButtonKeyRef=useRef<string|null>(null);
   const visibleSkinArmMaterialRef=useRef<string|null>(null);
   const [textureRevision,setTextureRevision]=useState(0);
   const [modelUrl,setModelUrl]=useState("");
@@ -665,6 +666,12 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   useEffect(()=>{
     const viewer=viewerRef.current;
     if(!viewer) return;
+    // A new 3D asset must not inherit visible-material caches from the old GLB.
+    visibleGarmentMaterialsRef.current=new Set();
+    lastVariantAppearanceRef.current=null;
+    visibleButtonMaterialsRef.current=new Set();
+    lastButtonKeyRef.current=null;
+    visibleSkinArmMaterialRef.current=null;
     let cancelled=false;
     let contractTimer:number|undefined;
     let readinessTimer:number|undefined;
@@ -877,14 +884,20 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         setButtonMaterial(material,buttonSpec,false);
       }
       for(const name of nextButtons){
+        // Hundreds of selection-only edits reuse the same button appearance.
+        // Avoid repeating material writes that can stall low-end WebGL devices.
+        if(!needsButtonMaterialRefresh(previousButtons.has(name),lastButtonKeyRef.current,buttonKey)) continue;
         const material=await ensureViewerMaterialLoaded(materialsByName.get(name));
         if(cancelled) return;
         setButtonMaterial(material,buttonSpec,true);
       }
       visibleButtonMaterialsRef.current=nextButtons;
-      const baseButton=await ensureViewerMaterialLoaded(materialsByName.get("ButtonAccent"));
-      if(cancelled) return;
-      setButtonMaterial(baseButton,buttonSpec,true);
+      if(lastButtonKeyRef.current!==buttonKey){
+        const baseButton=await ensureViewerMaterialLoaded(materialsByName.get("ButtonAccent"));
+        if(cancelled) return;
+        setButtonMaterial(baseButton,buttonSpec,true);
+      }
+      lastButtonKeyRef.current=buttonKey;
 
       const shirtBase=clamp(roughness+drapeRoughnessOffset(shirt),.55,.98);
       const shirtBodyPrepared=preparedTextureRef.current.get("ShirtTorsoFabric");
