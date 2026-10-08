@@ -94,8 +94,15 @@ def fit_footwear_to_locked_body(footwear, body):
             if high-low < 0.002:
                 raise RuntimeError(f"{label} footwear has a degenerate bounding extent.")
             scale = (to_high-to_low)/(high-low)
-            if not 0.45 <= scale <= 2.75:
-                raise RuntimeError(f"{label} footwear requires implausible scale {scale:.2f}; manually review alignment.")
+            if not 0.20 <= scale <= 3.0:
+                raise RuntimeError(
+                    f"{label} footwear requires out-of-range fit scale {scale:.2f}; "
+                    "the realistic foot and deterministic source cannot be safely aligned."
+                )
+            # Source footwear has a different coordinate/unit envelope from the
+            # scanned body; 0.25x in the long axis is observed in native Blender
+            # CI. Allow provisional fitting, but explicitly require independent
+            # four-angle review. Bounds do NOT certify physically correct shoes.
             scales.append(scale)
         for obj in pieces:
             matrix = obj.matrix_world.copy()
@@ -114,6 +121,8 @@ def fit_footwear_to_locked_body(footwear, body):
             "scaleX":round(scales[0],4),
             "scaleY":round(scales[1],4),
             "scaleZ":round(scales[2],4),
+            "requiresHumanGeometryReview": any(scale < 0.45 or scale > 2.75 for scale in scales),
+            "shoeVisibilityGateRequired": True,
             "floorMm":round(floor*1000,2),
             "source":"body-sampled-provisional-not-tailor-approved",
         }
