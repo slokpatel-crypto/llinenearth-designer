@@ -6,6 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "blender"))
 from surface_coverage import (
+    adaptive_surface_cut_rounds,
     anatomically_enclose_intermediate_rings,
     outward_ring_quad,
     nested_tucked_hem_ring,
@@ -80,6 +81,36 @@ class BlenderMeshSamplingTests(unittest.TestCase):
             with self.subTest(count=count,limit=limit):
                 with self.assertRaises(ValueError):
                     sampled_mesh_face_indices(count,limit)
+
+
+class AdaptiveCollisionResolutionTests(unittest.TestCase):
+    def test_short_edges_stay_unchanged_and_original_guides_preserved(self):
+        self.assertEqual(adaptive_surface_cut_rounds(0.024,0.025),0)
+        self.assertEqual(adaptive_surface_cut_rounds(0.025,0.025),0)
+
+    def test_long_diagonals_gain_real_surface_vertices(self):
+        self.assertEqual(adaptive_surface_cut_rounds(0.041,0.025),1)
+        self.assertEqual(adaptive_surface_cut_rounds(0.080,0.025),2)
+        self.assertEqual(adaptive_surface_cut_rounds(0.190,0.025),3)
+        for length in (0.041,0.08,0.19):
+            with self.subTest(length=length):
+                rounds=adaptive_surface_cut_rounds(length,0.025)
+                self.assertLessEqual(length / 2**rounds,0.025+1e-12)
+
+    def test_impossible_surface_spans_fail_instead_of_loosening_collision_gate(self):
+        with self.assertRaisesRegex(ValueError,"safe collision"):
+            adaptive_surface_cut_rounds(0.300,0.025)
+
+    def test_nonfinite_and_unphysical_limits_fail_closed(self):
+        for length,target,passes in (
+            (math.nan,0.025,3),(-0.01,0.025,3),
+            (0.030,0.001,3),(0.030,0.060,3),
+            (0.030,0.025,0),(0.030,0.025,8),
+            (True,0.025,3),
+        ):
+            with self.subTest(length=length,target=target,passes=passes):
+                with self.assertRaises(ValueError):
+                    adaptive_surface_cut_rounds(length,target,passes)
 
 
 class VerticalRefinementTests(unittest.TestCase):
