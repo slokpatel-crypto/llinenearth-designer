@@ -23,7 +23,7 @@ from mathutils.bvhtree import BVHTree
 # Authoring and Blender preflight use the same exact triangle/guide intersection.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
-from surface_coverage import adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
+from surface_coverage import rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -97,10 +97,15 @@ def build_ring_shell(name, rings, segments=48, neck_opening=None, collar_height=
         if body is None or body.type != "MESH":
             raise RuntimeError("Locked realistic body required for intermediate ring fitting.")
         body_samples = [body.matrix_world @ vertex.co for vertex in body.data.vertices]
+        # Broad chest/seat sections are softly squared rather than circular
+        # cylinders. A real anatomical front-side corner no longer requires
+        # >70 mm fake expansion from a mathematically inappropriate ellipse.
+        section_power = 3.0 if name == "ShirtTorsoFabric" else 2.6
         rings = anatomically_enclose_intermediate_rings(
-            rings, intermediate, body_samples
+            rings, intermediate, body_samples, profile_power=section_power
         )
     else:
+        section_power = 2.0
         rings = intermediate
     collection = ensure_export_collection()
     vertices = []
@@ -113,11 +118,11 @@ def build_ring_shell(name, rings, segments=48, neck_opening=None, collar_height=
         z_value, center_x, center_y, radius_x, radius_y = ring
         for segment in range(segments):
             angle = 2.0 * math.pi * segment / segments
-            vertices.append((
-                center_x + math.cos(angle) * radius_x,
-                center_y + math.sin(angle) * radius_y,
-                z_value,
-            ))
+            px, py = rounded_tailoring_ring_xy(
+                angle, center_x, center_y, radius_x, radius_y,
+                profile_power=section_power
+            )
+            vertices.append((px, py, z_value))
         if ring_index:
             previous = (ring_index - 1) * segments
             current = ring_index * segments
