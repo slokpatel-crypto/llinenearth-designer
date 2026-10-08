@@ -29,15 +29,17 @@ from surface_coverage import (
 class InnerSleeveBodyContactReliefTests(unittest.TestCase):
     def test_torso_facing_quadrant_relief_tapers_to_zero_at_outer_sleeve(self):
         waist=1.11423
-        center=waist+0.050
-        self.assertAlmostEqual(underarm_inboard_relief_m(center,.07,waist),.032)
+        center=waist+0.040
+        self.assertAlmostEqual(underarm_inboard_relief_m(center,.07,waist),.045)
+        self.assertGreater(underarm_inboard_relief_m(1.10807,.07,waist),.03)
+        self.assertGreater(underarm_inboard_relief_m(1.17501,.07,waist),.04)
         self.assertEqual(underarm_inboard_relief_m(center,-.02,waist),0.0)
         self.assertEqual(underarm_inboard_relief_m(center,0,waist),0.0)
-        self.assertEqual(underarm_inboard_relief_m(center+.10,.07,waist),0.0)
+        self.assertEqual(underarm_inboard_relief_m(center+.16,.07,waist),0.0)
         self.assertGreater(
             underarm_inboard_relief_m(center+.03,.06,waist),0)
         self.assertLess(
-            underarm_inboard_relief_m(center+.03,.06,waist),.032)
+            underarm_inboard_relief_m(center+.03,.06,waist),.045)
 
     def test_source_underarm_relief_cannot_distort_arms_or_waist_unboundedly(self):
         for bad in [(float("nan"),.05,1.1), (1.15,True,1.1),
