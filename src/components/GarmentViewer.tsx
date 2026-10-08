@@ -1021,7 +1021,11 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     "exposure":"1.12",
     "tone-mapping":"commerce",
     loading:"eager",
-    "interaction-prompt":"auto",
+    // The default model-viewer hand-gesture discovery animation keeps
+    // re-rasterizing hundreds of transparent tailoring meshes on low-power
+    // mobile/CI WebGL, starving real native form controls. The visible
+    // orbit rail plus drag hint already teaches users to rotate.
+    "interaction-prompt":"none",
     className:"garmentModelViewer",
   }) : null;
 
