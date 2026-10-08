@@ -29,11 +29,15 @@ from surface_coverage import (
 class InnerSleeveBodyContactReliefTests(unittest.TestCase):
     def test_torso_facing_quadrant_relief_tapers_to_zero_at_outer_sleeve(self):
         waist=1.11423
-        center=waist+0.050
+        center=waist+0.008
         self.assertAlmostEqual(underarm_inboard_relief_m(center,.07,waist),.032)
         self.assertEqual(underarm_inboard_relief_m(center,-.02,waist),0.0)
         self.assertEqual(underarm_inboard_relief_m(center,0,waist),0.0)
         self.assertEqual(underarm_inboard_relief_m(center+.10,.07,waist),0.0)
+        # Native contact at 1.10807m must get most of the local source
+        # clearance, while the upper sleeve fades towards shoulder seam.
+        self.assertGreater(underarm_inboard_relief_m(1.10807,.07,waist),.029)
+        self.assertLess(underarm_inboard_relief_m(1.23,.07,waist),.002)
         self.assertGreater(
             underarm_inboard_relief_m(center+.03,.06,waist),0)
         self.assertLess(
