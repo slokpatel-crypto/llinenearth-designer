@@ -132,25 +132,37 @@ def anatomically_enclose_intermediate_rings(
             continue
         # Arms/hands can share chest/waist height: fit only the anatomical
         # torso corridor. Any excluded body surface is still checked by BVH QA.
+        # At waist/chest height the *arms* share Z with the trunk. A fixed
+        # 225mm X corridor admitted forearms into shirt torso envelopes,
+        # demanding >70mm fake cloth expansion. Bound this to the currently
+        # authored trunk envelope + a measured 24/40mm guard region; excluded
+        # anatomy remains independently subject to four-view review and BVH.
+        x_corridor = min(0.225, max(0.155, rx + 0.024))
+        y_corridor = min(0.260, max(0.135, ry + 0.040))
         section = [
             p for p in body
             if abs(p[2] - z) <= sample_band_m
-            and abs(p[0] - cx) <= 0.225
-            and abs(p[1] - cy) <= 0.260
+            and abs(p[0] - cx) <= x_corridor
+            and abs(p[1] - cy) <= y_corridor
         ]
         if len(section) < 16:
             raise ValueError(f"Only {len(section)} locked-body torso samples near z={z:.4f}m.")
         # This is an enclosing ellipse: cover simultaneous X/Y excursions,
         # not independent bounding boxes that can clip a diagonal shoulder.
-        required_scale = max(
-            math.hypot((p[0] - cx) / rx, (p[1] - cy) / ry) for p in section
-        )
+        radial_samples = [
+            (math.hypot((p[0] - cx) / rx, (p[1] - cy) / ry), p)
+            for p in section
+        ]
+        required_scale, extreme = max(radial_samples, key=lambda item: item[0])
         scale = max(1.0, required_scale + clearance_m / min(rx, ry))
         next_rx, next_ry = rx * scale, ry * scale
         if next_rx - rx > max_growth_m or next_ry - ry > max_growth_m:
             raise ValueError(
                 f"Locked-body ring z={z:.4f}m needs more than {max_growth_m*1000:.0f}mm "
-                "garment-envelope growth; remodel the original panel rather than invent oversized cloth."
+                f"garment-envelope growth (radius={rx:.4f}/{ry:.4f}m, scale={scale:.3f}, "
+                f"extreme={tuple(round(q,4) for q in extreme)}, samples={len(section)}, "
+                f"corridor={x_corridor:.4f}/{y_corridor:.4f}m); "
+                "remodel the original panel rather than invent oversized cloth."
             )
         result.append((z, cx, cy, next_rx, next_ry))
     return result
