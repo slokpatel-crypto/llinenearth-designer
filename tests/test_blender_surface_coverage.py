@@ -7,6 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "blender"))
 from surface_coverage import (
     adaptive_surface_cut_rounds,
+    waist_to_chest_taper_radius,
     anatomically_enclose_intermediate_rings,
     bounded_body_section_center_y,
     belongs_to_locked_shirt_trunk,
@@ -21,6 +22,38 @@ from surface_coverage import (
     subdivide_ring_profiles,
     vertical_subdivision_cuts,
 )
+
+
+class SourceShirtSideSeamContinuityTests(unittest.TestCase):
+    def test_waist_band_cannot_inflate_to_hanging_arm_width(self):
+        waist=0.147  # photograph: 294mm total shirt waist
+        self.assertAlmostEqual(waist_to_chest_taper_radius(waist,0.016),
+                               0.147+0.008+0.32*0.016)
+        self.assertLess(waist_to_chest_taper_radius(waist,0.016),0.17)
+        # True waist must remain 294mm; near hanging arms inboard panel
+        # cannot grow to the observed false 203-245mm half-width.
+        self.assertLess(waist_to_chest_taper_radius(waist,0.114),0.195)
+        self.assertEqual(waist_to_chest_taper_radius(waist,0,ease_m=0),waist)
+        self.assertGreater(waist_to_chest_taper_radius(waist,0.115),0.17)
+
+    def test_waist_taper_rejects_unbounded_or_nonfinite_source_geometry(self):
+        for args in [(-1,0),(0.30,0),(0.147,-0.01),
+                     (0.147,0.51),(0.147,float("nan")),(True,.01)]:
+            with self.subTest(args=args):
+                with self.assertRaises(ValueError):
+                    waist_to_chest_taper_radius(*args)
+
+    def test_source_reshape_preserves_measured_waist_and_retests_skin(self):
+        author=(Path(__file__).resolve().parents[1] / "scripts" / "blender" /
+                "author-linen-earth-officewear.py").read_text()
+        start=author.index("def restore_shirt_waist_side_seam(")
+        end=author.index("def refine_collision_faces(",start)
+        section=author[start:end]
+        self.assertIn("waist_z+0.002 < z",section)
+        self.assertIn("if movement>0.095:",section)
+        self.assertIn("waist_to_chest_taper_radius",section)
+        self.assertLess(author.index('fit_profile["shirtWaistSeamContinuity"]'),
+                        author.index('collision_repairs = {}'))
 
 
 class PhysicalClothTopologyTests(unittest.TestCase):

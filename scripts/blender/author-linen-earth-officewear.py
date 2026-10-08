@@ -23,7 +23,7 @@ from mathutils.bvhtree import BVHTree
 # Authoring and Blender preflight use the same exact triangle/guide intersection.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
-from surface_coverage import needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
+from surface_coverage import waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -625,6 +625,52 @@ def enclose_post_identity_torso_profile(
             "maxRadiusGrowthMm":round(max_growth*1000,2),
             "lockedGuideCount":len(protected),
             "maxAllowedRadiusGrowthMm":70.0}
+
+def restore_shirt_waist_side_seam(obj, waist_z, waist_half_width_m, shoulder_z, center_x):
+    """Reshape the SOURCE garment near a locked waist, not the locked body.
+
+    Native Blender showed an absurd 245mm shirt half-width merely 16-30mm
+    above the photographed 147mm waist guide: torso section fitting had
+    accidentally enclosed the adjacent hanging arm. Reconstruct a smooth,
+    physically bounded waist-to-chest taper before the strict BVH clearance
+    phase, while preserving every photographed identity guide unchanged.
+    """
+    matrix=obj.matrix_world
+    inverse=matrix.inverted()
+    groups={}
+    for vertex in obj.data.vertices:
+        point=matrix @ vertex.co
+        groups.setdefault(round(point.z,6),[]).append((vertex,point))
+    corrected=0
+    max_shaping_mm=0.0
+    for z,items in groups.items():
+        if not (waist_z+0.002 < z < min(waist_z+0.160,shoulder_z-0.002)):
+            continue
+        actual=max(abs(point.x-center_x) for _,point in items)
+        # Only correct the arm-driven flare; maintain genuine natural chest
+        # breadth where there is sufficient height to taper from the waist.
+        allowed=waist_to_chest_taper_radius(waist_half_width_m,z-waist_z)
+        if actual<=allowed+1e-7: continue
+        factor=allowed/actual
+        for vertex,point in items:
+            update_x=center_x+(point.x-center_x)*factor
+            movement=abs(update_x-point.x)
+            if movement>0.095:
+                raise RuntimeError(
+                    f"{obj.name}: source side seam needs >95mm reshape near z={z:.4f}m."
+                )
+            vertex.co=inverse @ Vector((update_x,point.y,point.z))
+            max_shaping_mm=max(max_shaping_mm,movement*1000)
+        corrected+=1
+    obj.data.update()
+    print("Linen Earth shirt-source waist taper: "
+          + json.dumps({"reshapedRings":corrected,
+                        "maximumSideSeamCorrectionMm":round(max_shaping_mm,2),
+                        "lockedWaistZ":round(waist_z,5)},sort_keys=True),flush=True)
+    return {"reshapedRings":corrected,
+            "maximumSideSeamCorrectionMm":round(max_shaping_mm,2),
+            "lockedWaistPreserved":True}
+
 
 def refine_collision_faces(obj, max_edge_m=0.025, max_faces=80000):
     """Add genuine surface vertices at long shell edges before body-fit repair.
@@ -1404,6 +1450,13 @@ def main():
         ),
     }
     fit_profile["postIdentityAnatomyFit"] = post_identity_fit
+    fit_profile["shirtWaistSeamContinuity"] = restore_shirt_waist_side_seam(
+        authored["ShirtTorsoFabric"],
+        guide_center_z("LE_GUIDE_SHIRT_WAIST"),
+        float(targets["shirtWaistWidth"])/2000.0,
+        guide_center_z("LE_GUIDE_SHIRT_SHOULDER"),
+        center_x,
+    )
     collision_repairs = {}
     face_refinements = {}
     for name, obj in authored.items():
