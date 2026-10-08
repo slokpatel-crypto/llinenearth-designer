@@ -539,6 +539,71 @@ def point_inside_closed_bvh(tree, point, epsilon=1e-5, max_hits=64):
 
 
 
+
+def enclose_post_identity_torso_profile(obj, body, locked_z_planes, clearance_m):
+    """Re-fit true body sections AFTER shoulder/waist guide normalization.
+
+    Identity shaping scales X after authoring. That can pull intermediate
+    chest/seat rings back into the locked human at an armpit. Re-check every
+    non-guide ring against actual human cross-sections before making smaller
+    faces. Never alter the photographed shoulder, shirt-waist or trouser-waist
+    guide rings. The existing 70mm envelope and 95mm vertex-repair caps stay.
+    """
+    matrix=obj.matrix_world
+    inverse=matrix.inverted()
+    grouped={}
+    for vertex in obj.data.vertices:
+        point=matrix @ vertex.co
+        grouped.setdefault(round(point.z,6),[]).append((vertex,point))
+    if len(grouped)<3:
+        raise RuntimeError(f"{obj.name} lacks enough garment construction rings.")
+    entries=[]
+    for z,items in sorted(grouped.items()):
+        if len(items)<24:
+            continue
+        # The original torso neck opening shares the shoulder Z guide and
+        # must remain untouched. All real shoulder/waist guide planes lock.
+        xs=[point.x for _,point in items]
+        ys=[point.y for _,point in items]
+        row=(z,(min(xs)+max(xs))*0.5,(min(ys)+max(ys))*0.5,
+             (max(xs)-min(xs))*0.5,(max(ys)-min(ys))*0.5)
+        entries.append((items,row))
+    profile=[row for _,row in entries]
+    protected=[
+        row for row in profile
+        if any(abs(row[0]-guide_z)<0.002 for guide_z in locked_z_planes)
+    ]
+    if not protected:
+        raise RuntimeError(f"{obj.name} missing physical guide rings.")
+    body_points=[body.matrix_world @ vertex.co for vertex in body.data.vertices]
+    enclosed=anatomically_enclose_intermediate_rings(
+        protected, profile, body_points,
+        clearance_m=max(0.004,min(0.012,clearance_m)),
+        max_growth_m=0.070,
+    )
+    altered=0
+    max_growth=0.0
+    for (items,row),target in zip(entries,enclosed):
+        _,cx,cy,rx,ry=row
+        added=max(target[3]-rx,target[4]-ry)
+        if added<=1e-7:
+            continue
+        # Preserve the original physically locked guide positions.
+        if any(abs(row[0]-guide_z)<0.002 for guide_z in locked_z_planes):
+            raise RuntimeError(f"{obj.name} cannot change a locked physical guide.")
+        sx,sy=target[3]/rx,target[4]/ry
+        for vertex,point in items:
+            point.x=cx+(point.x-cx)*sx
+            point.y=cy+(point.y-cy)*sy
+            vertex.co=inverse @ point
+        altered+=1
+        max_growth=max(max_growth,added)
+    obj.data.update()
+    return {"nonGuideRingsExpanded":altered,
+            "maxRadiusGrowthMm":round(max_growth*1000,2),
+            "lockedGuideCount":len(protected),
+            "maxAllowedRadiusGrowthMm":70.0}
+
 def refine_collision_faces(obj, max_edge_m=0.025, max_faces=80000):
     """Add genuine surface vertices at long shell edges before body-fit repair.
 
@@ -1017,6 +1082,20 @@ def main():
 
     authored, fit_profile = build_procedural_officewear(body, targets, shirt_clearance_m, trouser_clearance_m)
     identity_fit = shape_officewear_to_identity(authored, body, targets)
+    # Reconstruct skin-safe middle rings AFTER exact identity-scale transforms.
+    # The locked shoulder/waist guides are never moved by this operation.
+    post_identity_fit = {
+        "ShirtTorsoFabric": enclose_post_identity_torso_profile(
+            authored["ShirtTorsoFabric"],body,
+            (guide_center_z("LE_GUIDE_SHIRT_SHOULDER"),
+             guide_center_z("LE_GUIDE_SHIRT_WAIST")),shirt_clearance_m
+        ),
+        "TrouserWaistFabric": enclose_post_identity_torso_profile(
+            authored["TrouserWaistFabric"],body,
+            (guide_center_z("LE_GUIDE_TROUSER_WAIST"),),trouser_clearance_m
+        ),
+    }
+    fit_profile["postIdentityAnatomyFit"] = post_identity_fit
     collision_repairs = {}
     face_refinements = {}
     for name, obj in authored.items():
