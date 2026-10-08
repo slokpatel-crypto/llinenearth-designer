@@ -22,7 +22,7 @@ from mathutils.bvhtree import BVHTree
 # Authoring and Blender preflight use the same exact triangle/guide intersection.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
-from surface_coverage import anatomically_enclose_intermediate_rings, outward_ring_quad, subdivide_ring_profiles
+from surface_coverage import anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -309,16 +309,15 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
         body, trouser_waist_z, cx, 0.205, minimum=0.115
     )
     trouser_depth_waist = waist_depth_at_hip + trouser_clearance_m
-    tuck_inset_m = 0.007
-    tucked_shirt_hem_x = trouser_waist_half - tuck_inset_m
-    tucked_shirt_hem_y = trouser_depth_waist - tuck_inset_m
-    if tucked_shirt_hem_x <= 0 or tucked_shirt_hem_y <= 0:
-        raise RuntimeError("Locked model waist cannot accommodate a physically nested shirt hem.")
+    tucked_hem = nested_tucked_hem_ring(
+        shirt_hem_z, cx, trouser_waist_y, trouser_waist_half, trouser_depth_waist,
+        inset_m=0.007,
+    )
 
     shirt = build_ring_shell(
         "ShirtTorsoFabric",
         [
-            (shirt_hem_z, cx, trouser_waist_y, tucked_shirt_hem_x, tucked_shirt_hem_y),
+            tucked_hem,
             (shirt_waist_z, cx, waist_y, shirt_waist_half, shirt_depth_waist),
             (upper_waist_z, cx, (waist_y+chest_y)*0.5, shirt_waist_half + 0.012, shirt_depth_waist + 0.006),
             (chest_z, cx, chest_y, shoulder_half - 0.020, shirt_depth_chest),
