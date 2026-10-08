@@ -684,6 +684,78 @@ def repair_body_penetrations(obj, body, clearance_m, max_passes=4):
     }
 
 
+
+def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=3):
+    """Fix true face-centre and edge-midpoint body penetrations, not just vertices.
+
+    A mesh can pass the original vertex BVH gate while its planar faces cut
+    into the curved torso, shoulder and calves. Subdivide only the affected
+    faces/edges into actual new mesh vertices; reapply the exact SAME <=95mm
+    hard-body clearance projection used on authored guide geometry.
+    Stop and reject the candidate if the bounded process cannot resolve it.
+    """
+    body_tree=world_bvh(body)
+    if body_tree is None:
+        raise RuntimeError("Locked body BVH unavailable for face fitting.")
+    matrix=obj.matrix_world
+    moved_total=0
+    refined_total=0
+    def penetration(point):
+        if not point_inside_closed_bvh(body_tree,point):
+            return False
+        nearest=body_tree.find_nearest(point)
+        return (
+            nearest is not None and nearest[0] is not None
+            and (point-nearest[0]).length > 0.0015
+        )
+
+    for iteration in range(max_rounds+1):
+        bm=bmesh.new()
+        try:
+            bm.from_mesh(obj.data)
+            if len(bm.faces)>80000:
+                raise RuntimeError(f"{obj.name}: unsafe cloth mesh complexity in body-fit refinement.")
+            selected=set()
+            centroid_hits=0
+            edge_hits=0
+            for face in bm.faces:
+                if penetration(matrix @ face.calc_center_median()):
+                    selected.update(face.edges)
+                    centroid_hits+=1
+            for edge in bm.edges:
+                mid=(edge.verts[0].co+edge.verts[1].co)*0.5
+                if penetration(matrix @ mid):
+                    selected.add(edge)
+                    edge_hits+=1
+            if not selected:
+                return {
+                    "passes":iteration, "newVertices":refined_total,
+                    "projectedVertices":moved_total,
+                    "remainingDeepFaceHits":0, "remainingDeepEdgeHits":0,
+                    "minimumInsideDepthMm":1.5,
+                }
+            if iteration>=max_rounds:
+                raise RuntimeError(
+                    f"{obj.name} retains {centroid_hits} face and {edge_hits} edge "
+                    f"body penetrations deeper than 1.5mm after {max_rounds} "
+                    "physical mesh-projection passes; reshape source garment panels."
+                )
+            before=len(bm.verts)
+            bmesh.ops.subdivide_edges(
+                bm,edges=list(selected),cuts=1,use_grid_fill=True
+            )
+            if len(bm.faces)>80000:
+                raise RuntimeError(f"{obj.name}: local face repair exceeds cloth complexity limit.")
+            bm.normal_update()
+            refined_total+=len(bm.verts)-before
+            bm.to_mesh(obj.data)
+            obj.data.update(calc_edges=True)
+        finally:
+            bm.free()
+        repair=repair_body_penetrations(obj,body,clearance_m)
+        moved_total+=repair["movedVertices"]
+    raise RuntimeError(f"{obj.name}: unreachable face-repair state.")
+
 def finish_procedural_shell(obj, thickness_m):
     solid = obj.modifiers.new("LE_CLOTH_THICKNESS", "SOLIDIFY")
     solid.thickness = thickness_m
@@ -951,6 +1023,9 @@ def main():
         object_clearance = shirt_clearance_m if name.startswith("Shirt") else trouser_clearance_m
         face_refinements[name] = refine_collision_faces(obj)
         collision_repairs[name] = repair_body_penetrations(obj, body, object_clearance)
+        face_refinements[name]["deepSurfaceCorrection"] = repair_between_vertex_collisions(
+            obj, body, object_clearance
+        )
         finish_procedural_shell(obj, thickness_m)
         obj["linen_earth_auto_authored"] = True
         obj["linen_earth_fit_clearance_mm"] = round(
