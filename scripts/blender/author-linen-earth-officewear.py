@@ -1129,43 +1129,62 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                     [guide_center_z("LE_GUIDE_TROUSER_WAIST")]
                     if obj.name=="TrouserWaistFabric" else []
                 )
-                def outside_correction(point):
+                bm.verts.index_update()
+                def outside_correction(point,vertices):
                     nearest=body_tree.find_nearest(point)
                     if nearest is None or nearest[0] is None or nearest[1] is None:
                         raise RuntimeError(f"{obj.name}: cannot project measured contact.")
                     surface,normal=nearest[0],nearest[1].normalized()
                     options=[]
-                    # Test both BVH normal directions; mesh normals may face
-                    # either way around armpit concavities and shoulder seams.
-                    for distance in (clearance_m+0.002,0.012,0.025,0.045,0.070):
-                        for direction in (normal,-normal):
-                            candidate=surface+direction*distance
+                    # The original nearest-only projection repeatedly sent
+                    # a left-sleeve vertex from x=-0.24969 to -0.35653,
+                    # violating the locked TOTAL 95mm cloth fit guard.
+                    # Search physically safe alternatives in *all* local axes
+                    # and both surface normal directions; an arm can have a
+                    # closer exterior route in Y instead of growing its X width.
+                    directions=(
+                        normal,-normal,
+                        Vector((1,0,0)),Vector((-1,0,0)),
+                        Vector((0,1,0)),Vector((0,-1,0)),
+                        Vector((0,0,1)),Vector((0,0,-1)),
+                    )
+                    for distance in (
+                        clearance_m+0.002,0.008,0.012,0.018,0.025,
+                        0.035,0.045,0.060,0.075,0.090
+                    ):
+                        for direction in directions:
+                            candidate=(surface+direction*distance
+                                if direction==normal or direction==-normal
+                                else point+direction*distance)
                             shift=candidate-point
-                            if (shift.length<=0.095
-                                    and not point_inside_closed_bvh(body_tree,candidate)):
-                                options.append((shift.length,shift))
-                    # A nearest surface normal can be tangent to a bent arm.
-                    # In that case, search real lateral/anterior directions;
-                    # never assume a candidate is safe without BVH parity.
+                            if shift.length>0.095 or point_inside_closed_bvh(body_tree,candidate):
+                                continue
+                            # All affected source panel vertices must remain
+                            # within their ORIGINAL cumulative budget, not
+                            # just within 95mm of their already-moved position.
+                            totals=[
+                                ((matrix @ vertex.co)+shift-source_world_positions[vertex.index]).length
+                                for vertex in vertices
+                            ]
+                            max_total=max(totals)
+                            if max_total>0.095:
+                                continue
+                            # Prefer the shortest safe correction, favouring
+                            # solutions that retain a margin for subsequent
+                            # shared-edge and independent preflight fitting.
+                            score=shift.length+max_total*0.22
+                            options.append((score,shift.length,max_total,shift))
                     if not options:
-                        for distance in (0.012,0.024,0.040,0.060,0.080,0.095):
-                            for direction in (
-                                Vector((1,0,0)),Vector((-1,0,0)),
-                                Vector((0,1,0)),Vector((0,-1,0)),
-                            ):
-                                candidate=point+direction*distance
-                                if not point_inside_closed_bvh(body_tree,candidate):
-                                    options.append((distance,candidate-point))
-                            if options: break
-                    if not options:
+                        position=tuple(round(v,5) for v in point)
                         raise RuntimeError(
-                            f"{obj.name}: actual cloth contact cannot clear "
-                            "the locked anatomy within 95mm; remodel source panels."
+                            f"{obj.name}: physical contact {position} cannot "
+                            "clear real body within the SOURCE-LOCKED 95mm "
+                            "cloth displacement budget; remodel the sleeve."
                         )
-                    return min(options,key=lambda item:item[0])[1]
+                    return min(options,key=lambda item:(item[0],item[1],item[2]))[3]
                 proposals={}
                 def add_contact(vertices,point):
-                    shift=outside_correction(point)
+                    shift=outside_correction(point,vertices)
                     for vertex in vertices:
                         if vertex not in proposals: proposals[vertex]=[]
                         proposals[vertex].append(shift)

@@ -13,6 +13,7 @@ import { GARMENT_VIEWER_LATENCY_STORAGE_KEY, garmentViewerAssetIdentityKey, type
 import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
 import { optionById } from "@/lib/designer/options/library";
 import { LINEN_EARTH_MODEL_IDENTITY_ID, LINEN_EARTH_MODEL_REFERENCE_IMAGE, LINEN_EARTH_MODEL_VIEWS } from "@/lib/designer/model-identity";
+import { fabricDrapeSurface } from "@/lib/garment-viewer-fabric-surface";
 import styleVariants from "@/lib/garment-viewer-style-variants.json";
 
 export type GarmentViewerFabric = {
@@ -108,22 +109,6 @@ const COLLAR_FINISH_OPTIONS=[
   {id:"white_collar_cuffs",label:"White contrast collar + cuffs"},
 ] as const;
 
-function fabricDrapeClass(fabric:GarmentViewerFabric|undefined) {
-  const declared=String(fabric?.drape||"").toLowerCase();
-  if(["fluid","soft","medium","structured"].includes(declared)) return declared;
-  const weight=String(fabric?.weightClass||"").toLowerCase();
-  if(weight==="light") return "soft";
-  if(weight==="heavy") return "structured";
-  return "medium";
-}
-function drapeNormalStrength(fabric:GarmentViewerFabric|undefined) {
-  const drape=fabricDrapeClass(fabric);
-  return drape==="fluid"?.55:drape==="soft"?.72:drape==="structured"?1.18:1;
-}
-function drapeRoughnessOffset(fabric:GarmentViewerFabric|undefined) {
-  const drape=fabricDrapeClass(fabric);
-  return drape==="fluid"?-.08:drape==="soft"?-.04:drape==="structured"?.04:0;
-}
 function createLinenNormalMap(strength=1) {
   if(typeof document==="undefined") return "";
   const canvas=document.createElement("canvas");
@@ -750,8 +735,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     const token=++applyToken.current;
     const apply=async()=>{
       try{
-        const shirtNormalMap=createLinenNormalMap(drapeNormalStrength(shirt));
-        const trouserNormalMap=createLinenNormalMap(drapeNormalStrength(trouser));
+        const shirtNormalMap=createLinenNormalMap(fabricDrapeSurface(shirt).normalStrength);
+        const trouserNormalMap=createLinenNormalMap(fabricDrapeSurface(trouser).normalStrength);
         const prepared=await Promise.all(panelSpecs.map(async(panel)=>{
           const fabric=panel.garment==="shirt"?shirt:trouser;
           const tileMm=panel.garment==="shirt"?shirtTileMm:trouserTileMm;
@@ -783,7 +768,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           material.pbrMetallicRoughness.setBaseColorFactor([1,1,1,1]);
           material.pbrMetallicRoughness.setMetallicFactor(0);
           const fabric=entry.panel.garment==="shirt"?shirt:trouser;
-          material.pbrMetallicRoughness.setRoughnessFactor(clamp(roughness+drapeRoughnessOffset(fabric),.55,.98));
+          material.pbrMetallicRoughness.setRoughnessFactor(clamp(roughness+fabricDrapeSurface(fabric).roughnessOffset,.55,.98));
           material.pbrMetallicRoughness.baseColorTexture?.setTexture(entry.texture);
           if(entry.normal) material.normalTexture?.setTexture(entry.normal);
         }
@@ -860,7 +845,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           setMaterialAlpha(material,true);
           material.pbrMetallicRoughness.setMetallicFactor(0);
         }
-        material.pbrMetallicRoughness.setRoughnessFactor(clamp(roughness+drapeRoughnessOffset(fabric),.55,.98));
+        material.pbrMetallicRoughness.setRoughnessFactor(clamp(roughness+fabricDrapeSurface(fabric).roughnessOffset,.55,.98));
         const panelMaterial=variantPanelMaterial(name);
         const prepared=panelMaterial?preparedTextureRef.current.get(panelMaterial):undefined;
         if(prepared){
@@ -912,7 +897,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       if(cancelled) return;
       setButtonMaterial(baseButton,buttonSpec,true);
 
-      const shirtBase=clamp(roughness+drapeRoughnessOffset(shirt),.55,.98);
+      const shirtBase=clamp(roughness+fabricDrapeSurface(shirt).roughnessOffset,.55,.98);
       const shirtBodyPrepared=preparedTextureRef.current.get("ShirtTorsoFabric");
       const shirtSleevePrepared=preparedTextureRef.current.get("ShirtSleeveLFabric");
       const collarOffset=collarConstructionKey==="soft_unfused"?.07:collarConstructionKey==="soft_fused"?.035:0;
@@ -1126,15 +1111,15 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
 
       <div className="garmentCurrentType"><span>ACTIVE GARMENT</span><b>Shirt</b><small>Types: {SHIRT_GARMENT_CATEGORY.typeExamples.slice(0,6).join(" · ")}</small><small>Details: {SHIRT_GARMENT_CATEGORY.detailFamilies.join(" · ")}</small></div>
       <label><span>Shirt fabric</span><select value={shirtId} onChange={(event)=>{beginFabricInteraction();setShirtId(event.target.value);}}>{shirtFabrics.map((fabric)=><option key={fabric.id} value={fabric.id}>{fabric.name} · {fabric.line}</option>)}</select></label>
-      <div className="garmentSwatchPreview">{shirt&&<><img src={shirt.image} alt="" /><span><b>{shirt.name}</b><small>{shirt.line}</small><small className="garmentDrapeMeta">Drape · {fabricDrapeClass(shirt)}{shirt.weightGsm ? " · "+shirt.weightGsm+" GSM" : ""}{shirt.weave ? " · "+shirt.weave : ""}</small><em data-calibrated={Boolean(shirtMeasuredTileMm)}>{shirtMeasuredTileMm?`Calibrated tile · ${shirtMeasuredTileMm.toFixed(1)} mm`:`Approximate tile · ${shirtManualTileMm} mm`}</em></span></>}</div>
+      <div className="garmentSwatchPreview">{shirt&&<><img src={shirt.image} alt="" /><span><b>{shirt.name}</b><small>{shirt.line}</small><small className="garmentDrapeMeta">Drape appearance · {fabricDrapeSurface(shirt).category}{fabricDrapeSurface(shirt).evidence==="gsm_estimated"?" (GSM estimate)":""}{shirt.weightGsm ? " · "+shirt.weightGsm+" GSM" : ""}{shirt.weave ? " · "+shirt.weave : ""}</small><em data-calibrated={Boolean(shirtMeasuredTileMm)}>{shirtMeasuredTileMm?`Calibrated tile · ${shirtMeasuredTileMm.toFixed(1)} mm`:`Approximate tile · ${shirtManualTileMm} mm`}</em></span></>}</div>
       {!shirtMeasuredTileMm&&<label className="garmentRange"><span>Approx. shirt tile width <b>{shirtManualTileMm} mm</b></span><input type="range" min="30" max="260" step="5" value={shirtManualTileMm} onChange={(event)=>setShirtManualTileMm(Number(event.target.value))}/><small>Temporary only until owner/supplier physical scale is verified.</small></label>}
 
       <div className="garmentCurrentType"><span>ACTIVE GARMENT</span><b>Trouser</b><small>Types: {TROUSER_GARMENT_CATEGORY.typeExamples.slice(0,6).join(" · ")}</small><small>Details: {TROUSER_GARMENT_CATEGORY.detailFamilies.join(" · ")}</small></div>
       <label><span>Trouser fabric</span><select value={trouserId} onChange={(event)=>{beginFabricInteraction();setTrouserId(event.target.value);}}>{trouserFabrics.map((fabric)=><option key={fabric.id} value={fabric.id}>{fabric.name} · {fabric.line}</option>)}</select></label>
-      <div className="garmentSwatchPreview">{trouser&&<><img src={trouser.image} alt="" /><span><b>{trouser.name}</b><small>{trouser.line}</small><small className="garmentDrapeMeta">Drape · {fabricDrapeClass(trouser)}{trouser.weightGsm ? " · "+trouser.weightGsm+" GSM" : ""}{trouser.weave ? " · "+trouser.weave : ""}</small><em data-calibrated={Boolean(trouserMeasuredTileMm)}>{trouserMeasuredTileMm?`Calibrated tile · ${trouserMeasuredTileMm.toFixed(1)} mm`:`Approximate tile · ${trouserManualTileMm} mm`}</em></span></>}</div>
+      <div className="garmentSwatchPreview">{trouser&&<><img src={trouser.image} alt="" /><span><b>{trouser.name}</b><small>{trouser.line}</small><small className="garmentDrapeMeta">Drape appearance · {fabricDrapeSurface(trouser).category}{fabricDrapeSurface(trouser).evidence==="gsm_estimated"?" (GSM estimate)":""}{trouser.weightGsm ? " · "+trouser.weightGsm+" GSM" : ""}{trouser.weave ? " · "+trouser.weave : ""}</small><em data-calibrated={Boolean(trouserMeasuredTileMm)}>{trouserMeasuredTileMm?`Calibrated tile · ${trouserMeasuredTileMm.toFixed(1)} mm`:`Approximate tile · ${trouserManualTileMm} mm`}</em></span></>}</div>
       {!trouserMeasuredTileMm&&<label className="garmentRange"><span>Approx. trouser tile width <b>{trouserManualTileMm} mm</b></span><input type="range" min="30" max="260" step="5" value={trouserManualTileMm} onChange={(event)=>setTrouserManualTileMm(Number(event.target.value))}/><small>Temporary only until owner/supplier physical scale is verified.</small></label>}
 
-      <label className="garmentRange"><span>Surface roughness base <b>{roughness.toFixed(2)}</b></span><input type="range" min=".55" max=".98" step=".01" value={roughness} onChange={(event)=>setRoughness(Number(event.target.value))}/><small>Fabric drape class automatically shifts linen normal strength and roughness around this base value; unknown fabrics stay on a conservative medium response.</small></label>
+      <label className="garmentRange"><span>Surface roughness base <b>{roughness.toFixed(2)}</b></span><input type="range" min=".55" max=".98" step=".01" value={roughness} onChange={(event)=>setRoughness(Number(event.target.value))}/><small>Surface-only visual approximation: declared drape or conservative weight estimates adjust linen normals and roughness. Physical fold shape still requires fitting and review.</small></label>
 
       <div className="garmentViewerFacts">
         <span><small>MODEL</small><b>{modelContract?.readiness==="contract_ready"&&productionManifestReady?"M7.46 Tailoring GLB":"Reusable GLB"}</b></span>
@@ -1142,7 +1127,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         <span><small>VIEWS</small><b>4 fixed + free</b></span>
         <span><small>AI CREDITS</small><b>0</b></span>
       </div>
-      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M7.46 is locked: the same mannequin now carries a researched tailoring library covering shirt type/fit/tuck/sleeve/collar construction/cuff/placket/pocket/yoke/back/hem and trouser type/fit/low-to-extra-high rise/front-flat waist/back-seat shaping/seat-crotch transition/pleat direction/360° waistband hardware/break/360° turn-up/hip-wrapped pockets. Fabric remains panel-scaled and non-metallic; verified drape/weight metadata now changes the surface fold-normal response and roughness without AI credits." : "Fallback prototype is active. Production should use the identity-locked M7.3 tailoring model before fabric/drape work continues."}</p>
+      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M7.46 is locked: the same mannequin now carries a researched tailoring library covering shirt type/fit/tuck/sleeve/collar construction/cuff/placket/pocket/yoke/back/hem and trouser type/fit/low-to-extra-high rise/front-flat waist/back-seat shaping/seat-crotch transition/pleat direction/360° waistband hardware/break/360° turn-up/hip-wrapped pockets. Fabric remains panel-scaled and non-metallic; declared drape or clearly estimated weight metadata changes surface normal response and roughness without AI credits; this is not a physical cloth simulation." : "Fallback prototype is active. Production should use the identity-locked M7.3 tailoring model before fabric/drape work continues."}</p>
     </aside>
   </section>;
 }
