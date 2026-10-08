@@ -9,6 +9,25 @@ const { chromium } = createRequire(path.join(runtime, "package.json"))("playwrig
 const baseURL = process.env.LINEN_BROWSER_QA_URL || "http://127.0.0.1:3000";
 const output = path.resolve("artifacts/preview-lifecycle");
 
+async function captureStableWebGLFrame(page, destination, clip) {
+  // Playwright page.screenshot waits for a stable frame, which model-viewer's
+  // continuously repainted WebGL surface may never reach on CI cold starts.
+  // Chromium CDP captures the compositor directly without that stability wait.
+  const session=await page.context().newCDPSession(page);
+  try {
+    const frame=await session.send("Page.captureScreenshot",{
+      format:"png",
+      captureBeyondViewport:false,
+      fromSurface:true,
+      clip:{x:clip.x,y:clip.y,width:clip.width,height:clip.height,scale:1},
+    });
+    assert.ok(typeof frame.data==="string"&&frame.data.length>100,"WebGL compositor did not return a review image");
+    await fs.writeFile(destination,Buffer.from(frame.data,"base64"));
+  } finally {
+    await session.detach().catch(()=>{});
+  }
+}
+
 async function verifyViewport(browser, width) {
   const context = await browser.newContext({ viewport: { width, height: 1000 } });
   const page = await context.newPage();
@@ -62,7 +81,25 @@ async function verifyViewport(browser, width) {
   await viewer.waitFor({ state: "visible" });
   const serverSeededReadiness=await page.locator(".garmentViewerShell").getAttribute("data-model-readiness");
   assert.equal(serverSeededReadiness,"contract_ready","server-verified production asset must seed M7.46 readiness before scene-graph hydration");
-  await page.locator(".garmentViewerLoading").waitFor({ state: "hidden", timeout: 20000 });
+  try {
+    // Blender-backed GLB parsing and shader compilation can exceed 20 seconds
+    // on cold GitHub-hosted Chromium. The customer UI has a bounded 60-second
+    // recovery window; the gate must wait for that real readiness outcome.
+    await page.locator(".garmentViewerLoading").waitFor({ state: "hidden", timeout: 70000 });
+    const loadError=await page.locator(".garmentViewerError").allInnerTexts();
+    assert.equal(loadError.length,0,"3D viewer must not report a model-load error: "+loadError.join(" | "));
+  } catch(error) {
+    const state=await page.evaluate(()=>({
+      modelLoaded:Boolean(document.querySelector("model-viewer")?.loaded),
+      materials:document.querySelector("model-viewer")?.model?.materials?.length??null,
+      loading:document.querySelector(".garmentViewerLoading")?.innerText??null,
+      error:document.querySelector(".garmentViewerError")?.innerText??null,
+      readiness:document.querySelector(".garmentViewerShell")?.getAttribute("data-model-readiness")??null,
+    }));
+    await fs.writeFile(path.join(output,"garment-loading-failure.json"),JSON.stringify({state,errors},null,2)+"\\n");
+    await page.screenshot({path:path.join(output,"garment-loading-failure.png"),timeout:15000}).catch(()=>{});
+    throw new Error("3D model loading did not complete during bounded hydration: "+JSON.stringify(state)+"; "+error.message);
+  }
   try {
     // React can replace the server-rendered shell while the large scene graph hydrates.
     // Re-resolve the current DOM node until both immutable production contracts settle.
@@ -122,10 +159,11 @@ async function verifyViewport(browser, width) {
     await page.waitForTimeout(180);
     const box=await canvas.boundingBox();
     assert.ok(box&&box.width>0&&box.height>0,"3D evidence canvas must have a measurable viewport");
-    await page.screenshot({
-      path:path.join(output,name),
-      clip:{x:Math.max(0,box.x),y:Math.max(0,box.y),width:box.width,height:box.height},
-      animations:"disabled",
+    await captureStableWebGLFrame(page,path.join(output,name),{
+      x:Math.max(0,box.x),
+      y:Math.max(0,box.y),
+      width:Math.max(1,Math.min(box.width,width-Math.max(0,box.x))),
+      height:Math.max(1,Math.min(box.height,1000-Math.max(0,box.y))),
     });
   };
   const selectCamera=async(label,orbitPrefix,activeView)=>{
@@ -410,11 +448,8 @@ async function verifyViewport(browser, width) {
     // This route is intentionally very tall because it exposes the full tailoring library.
     // Capture the asserted viewport instead of asking Chromium to rasterize the entire
     // continuously rendered WebGL page, which can exceed CI's screenshot deadline.
-    await page.screenshot({
-      path:path.join(output,name),
-      clip:{x:0,y:0,width:viewport.width,height:viewport.height},
-      animations:"disabled",
-      timeout:60000,
+    await captureStableWebGLFrame(page,path.join(output,name),{
+      x:0,y:0,width:viewport.width,height:viewport.height,
     });
   };
 

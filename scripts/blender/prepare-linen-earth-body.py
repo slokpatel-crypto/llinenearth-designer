@@ -127,6 +127,89 @@ def normalize_floor(objects, body):
     return min_z
 
 
+def center_body_xy(objects, body):
+    points = world_bounds(body)
+    center_x = (min(point.x for point in points) + max(point.x for point in points)) * 0.5
+    center_y = (min(point.y for point in points) + max(point.y for point in points)) * 0.5
+    offset = Vector((center_x, center_y, 0.0))
+    # Keep every source sub-object (eyes/teeth/etc.) registered to the chosen
+    # realistic body. Moving only Body detaches those parts and creates the
+    # floating-object artifacts that the four-view review is designed to catch.
+    for obj in objects:
+        obj.matrix_world.translation -= offset
+    bpy.context.view_layer.update()
+    residual = world_bounds(body)
+    residual_x = (min(point.x for point in residual) + max(point.x for point in residual)) * 0.5
+    residual_y = (min(point.y for point in residual) + max(point.y for point in residual)) * 0.5
+    if abs(residual_x) > 0.002 or abs(residual_y) > 0.002:
+        raise RuntimeError(
+            f"Body XY centering failed: residual center is ({residual_x:.4f}, {residual_y:.4f}) m."
+        )
+    return center_x, center_y
+
+
+def apply_body_transforms(body):
+    bpy.context.view_layer.objects.active = body
+    body.select_set(True)
+    try:
+        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    finally:
+        body.select_set(False)
+    bpy.context.view_layer.update()
+
+
+def align_arm_stance_to_identity(body, identity_spec):
+    mesh = body.data
+    targets = identity_spec["physicalTargetsMm"]
+    frame = identity_spec["referenceFrame"]
+    shoulder_anchor = identity_spec["frontSilhouetteAnchors"]["shirtShoulder"]
+    shoulder_z = TARGET_HEIGHT_M * (1.0 - float(shoulder_anchor["yPx"]) / float(frame["heightPx"]))
+    hand_z = TARGET_HEIGHT_M * 0.54
+    target_half = float(targets["handCenterSpacing"]) / 2000.0
+
+    side_vertices = {
+        -1: [vertex for vertex in mesh.vertices if vertex.co.x < -0.16],
+        1: [vertex for vertex in mesh.vertices if vertex.co.x > 0.16],
+    }
+    deltas = {}
+    for side, vertices in side_vertices.items():
+        hand_band = [
+            vertex.co.x
+            for vertex in vertices
+            if abs(vertex.co.z - hand_z) <= 0.085
+        ]
+        if len(hand_band) < 8:
+            deltas[side] = 0.0
+            continue
+        hand_band.sort()
+        current = hand_band[len(hand_band) // 2]
+        target = side * target_half
+        delta = target - current
+        deltas[side] = delta
+        for vertex in vertices:
+            z = vertex.co.z
+            if z > shoulder_z + 0.03 or z < hand_z - 0.30:
+                continue
+            if z >= shoulder_z:
+                blend = 0.0
+            elif z <= hand_z:
+                blend = 1.0
+            else:
+                blend = (shoulder_z - z) / max(shoulder_z - hand_z, 1e-6)
+            blend = max(0.0, min(1.0, blend))
+            # Smoothstep keeps the shoulder fixed while bringing the hanging arm
+            # gradually into the locked straight-officewear stance.
+            blend = blend * blend * (3.0 - 2.0 * blend)
+            vertex.co.x += delta * blend
+
+    mesh.update()
+    bpy.context.view_layer.update()
+    return {
+        "leftDeltaMm": round(deltas.get(-1, 0.0) * 1000.0, 2),
+        "rightDeltaMm": round(deltas.get(1, 0.0) * 1000.0, 2),
+    }
+
+
 def create_identity_guides(identity_spec):
     existing = bpy.data.collections.get(IDENTITY_GUIDE_COLLECTION)
     if existing is not None:
@@ -328,6 +411,9 @@ def main():
     body.name = BODY_NAME
     original_height, factor, measured = normalize_height(objects, body)
     floor_shift = normalize_floor(objects, body)
+    center_shift = center_body_xy(objects, body)
+    apply_body_transforms(body)
+    arm_stance = align_arm_stance_to_identity(body, identity_spec)
     ensure_export_collection(objects)
     create_identity_guides(identity_spec)
     stamp_provenance(
@@ -339,6 +425,9 @@ def main():
         identity_spec,
         identity_spec_path,
     )
+    bpy.context.scene["linen_earth_body_center_shift_x_m"] = round(center_shift[0], 6)
+    bpy.context.scene["linen_earth_body_center_shift_y_m"] = round(center_shift[1], 6)
+    bpy.context.scene["linen_earth_arm_stance_json"] = json.dumps(arm_stance, sort_keys=True)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(output))
@@ -350,6 +439,8 @@ def main():
     print(f"Body object: {original_name} -> {BODY_NAME}")
     print(f"Explicit height normalization: {original_height:.4f} m -> {measured:.4f} m")
     print(f"Floor normalization shift: {floor_shift:.4f} m")
+    print(f"Body XY source offset removed: ({center_shift[0]:.4f}, {center_shift[1]:.4f}) m")
+    print(f"Officewear arm stance adjustment: {json.dumps(arm_stance, sort_keys=True)}")
     print(f"Identity guide collection: {IDENTITY_GUIDE_COLLECTION}")
     print(f"Identity targets: {json.dumps(identity_spec['physicalTargetsMm'], sort_keys=True)}")
     print(

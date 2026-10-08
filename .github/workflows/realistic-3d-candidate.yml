@@ -1,0 +1,173 @@
+name: Realistic 3D Candidate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "scripts/blender/**"
+      - "scripts/assemble-production-garment-scene.mjs"
+      - "scripts/build-production-garment-model.mjs"
+      - "scripts/evaluate-realistic-review.mjs"
+      - "scripts/garment-import-tailoring-library.py"
+      - "src/lib/garment-viewer-style-materials.ts"
+      - "public/model-identity/**"
+      - ".github/workflows/realistic-3d-candidate.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/blender/**"
+      - "scripts/assemble-production-garment-scene.mjs"
+      - "scripts/build-production-garment-model.mjs"
+      - "scripts/evaluate-realistic-review.mjs"
+      - "scripts/garment-import-tailoring-library.py"
+      - "src/lib/garment-viewer-style-materials.ts"
+      - "public/model-identity/**"
+      - ".github/workflows/realistic-3d-candidate.yml"
+
+concurrency:
+  group: realistic-3d-candidate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      BLENDER_VERSION: "4.2.23"
+      BLENDER_ROOT: "/tmp/blender-4.2.23-linux-x64"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Blender 4.2 LTS
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libegl1 libgl1 libx11-6 libxi6 libxrender1 libxxf86vm1 libxfixes3 libxkbcommon0
+          archive="/tmp/blender-${BLENDER_VERSION}-linux-x64.tar.xz"
+          curl --fail --location --retry 3 --output "$archive"             "https://download.blender.org/release/Blender4.2/blender-${BLENDER_VERSION}-linux-x64.tar.xz"
+          tar -xJf "$archive" -C /tmp
+          echo "${BLENDER_ROOT}" >> "$GITHUB_PATH"
+          "${BLENDER_ROOT}/blender" --version | head -n 2
+
+      - name: Cache pinned realistic body source
+        uses: actions/cache@v4
+        with:
+          path: .cache/linen-earth/blender-human-base-meshes-v1.4.1
+          key: linen-earth-human-base-meshes-v1.4.1
+
+      - name: Assemble realistic body and officewear candidate
+        id: assemble
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/realistic-3d
+          npm run garment:model-production:assemble 2>&1 | tee artifacts/realistic-3d/assembly.log
+
+      - name: Capture production preflight report
+        id: preflight
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          scene=".cache/linen-earth/linen-earth-officewear-authored.blend"
+          test -f "$scene"
+          blender --background "$scene" \
+            --python scripts/blender/preflight-linen-earth-officewear.py -- \
+            --json-output artifacts/realistic-3d/preflight.json \
+            2>&1 | tee artifacts/realistic-3d/preflight.log
+
+      - name: Render four-angle fit review
+        id: render
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .cache/linen-earth/linen-earth-officewear-authored.blend
+          npm run garment:model-production:render-review 2>&1 | tee artifacts/realistic-3d/render-review.log
+
+      - name: Verify garment and shoe visibility
+        id: review_visibility
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run garment:model-production:review-check
+
+      - name: Export realistic lab-only GLB
+        id: lab_export
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .cache/linen-earth/linen-earth-officewear-authored.blend
+          npm run garment:model-production:lab-export 2>&1 | tee artifacts/realistic-3d/lab-export.log
+          test -s artifacts/realistic-3d/linen-earth-officewear-realistic-lab.glb
+
+      - name: Write physical panel measurement worksheet
+        id: measurement_worksheet
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .cache/linen-earth/linen-earth-officewear-authored.blend
+          npm run garment:model-production:measurement-worksheet
+          test -s artifacts/realistic-3d/panel-measurement-worksheet.json
+
+      - name: Copy candidate scene and provenance
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f .cache/linen-earth/linen-earth-officewear-authored.blend ]; then
+            cp .cache/linen-earth/linen-earth-officewear-authored.blend artifacts/realistic-3d/
+          fi
+          if [ -f .cache/linen-earth/blender-human-base-meshes-v1.4.1/linen-earth-source-provenance.json ]; then
+            cp .cache/linen-earth/blender-human-base-meshes-v1.4.1/linen-earth-source-provenance.json artifacts/realistic-3d/
+          fi
+
+      - name: Preserve Blender crash evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/realistic-3d/crash-reports
+          shopt -s nullglob
+          for crash in /tmp/*.crash.txt .cache/linen-earth/*.crash.txt; do
+            cp "$crash" "artifacts/realistic-3d/crash-reports/$(basename "$crash")"
+          done
+
+      - name: Upload realistic 3D candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linen-earth-realistic-3d-candidate
+          path: artifacts/realistic-3d
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 1
+
+      - name: Enforce candidate gates
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "assembly=${{ steps.assemble.outcome }}"
+          echo "preflight=${{ steps.preflight.outcome }}"
+          echo "render=${{ steps.render.outcome }}"
+          echo "review_visibility=${{ steps.review_visibility.outcome }}"
+          echo "lab_export=${{ steps.lab_export.outcome }}"
+          echo "measurement_worksheet=${{ steps.measurement_worksheet.outcome }}"
+          test "${{ steps.assemble.outcome }}" = "success"
+          test "${{ steps.preflight.outcome }}" = "success"
+          test "${{ steps.render.outcome }}" = "success"
+          test "${{ steps.review_visibility.outcome }}" = "success"
+          test "${{ steps.lab_export.outcome }}" = "success"
+          test "${{ steps.measurement_worksheet.outcome }}" = "success"

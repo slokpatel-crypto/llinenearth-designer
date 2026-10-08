@@ -57,20 +57,62 @@ test("prototype model is a reusable full outfit rather than one flattened garmen
 });
 
 
-test("production model uses anatomy-derived default garments, hands and forearms while keeping compact variant shells",()=>{
+test("trouser waistband uses a wrapped waist shell and restrained belt loops",()=>{
   const builder=readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
   for(const token of [
-    "const realisticDefaultShells={",
-    "shirtTorso:garmentShells.shirtTorso",
-    "sleeveL:garmentShells.sleeveL",
-    "sleeveR:garmentShells.sleeveR",
-    "trouserWaist:garmentShells.trouserWaist",
-    "trouserLegL:garmentShells.trouserLegL",
-    "trouserLegR:garmentShells.trouserLegR",
-    "handL:garmentShells.handL",
-    "handR:garmentShells.handR",
-    "forearmL:garmentShells.forearmL",
-    "forearmR:garmentShells.forearmR",
+    "trouserCoreBandMeshes",
+    "TrouserCoreBandVariantMesh__",
+    "cropGeometry(source,(p)=>p.y>=1.066+riseOffset)",
+    "mesh:bandMesh",
+    "scale:[.007,.028,.0035]",
+  ]) assert(builder.includes(token),token);
+  assert(!builder.includes("scale:[.330,.020,.006]"));
+});
+
+test("default officewear shapes shoulders, armholes and trouser seat while enforcing shoulder continuity",()=>{
+  const builder=readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
+  for(const token of [
+    "tailoredShirtTorsoGeometry",
+    "const shoulderDrop=.026",
+    "const armholeIn=.004",
+    "const shoulderDrop=.038",
+    "const capRound=.006",
+    "const seatScale=1+.095*backBias",
+    "const outerEase=.0045*upperZone",
+    "leftShoulderJoinOverlapMm",
+    "rightShoulderJoinOverlapMm",
+    "expected 4–45 mm",
+  ]) assert(builder.includes(token),token);
+});
+
+test("production model derives identity measurements from the visible default geometry",()=>{
+  const builder=readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
+  for(const token of [
+    "geometryXStats",
+    "geometryYStats",
+    "widthMmAtY",
+    "centerXAtY",
+    "shiftGeometryCenterX(garmentShells.handL,-.250)",
+    "shiftGeometryCenterX(garmentShells.handR,.250)",
+    "measurementMethod:\"geometry-derived-from-visible-default-shells\"",
+    "widthMmAtY(realisticDefaultShells.shirtTorso",
+    "widthMmAtY(realisticDefaultShells.trouserWaist",
+  ]) assert(builder.includes(token),token);
+  assert(!builder.includes("shoulderSeamWidthMm:.194*2*1000"));
+  assert(!builder.includes("handCenterSpacingMm:.250*2*1000"));
+});
+
+test("production model keeps closed tailored default garments while using anatomy-derived clean skin",()=>{
+  const builder=readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
+  for(const token of [
+    "const realisticDefaultShells=tailoredShells",
+    "tailoredSleeveCapGeometry",
+    "const shoulderDrop=.038",
+    "const capRound=.006",
+    "handL:shiftGeometryCenterX(garmentShells.handL,-.250)",
+    "handR:shiftGeometryCenterX(garmentShells.handR,.250)",
+    "forearmL:shiftGeometryCenterX(garmentShells.forearmL,-.238)",
+    "forearmR:shiftGeometryCenterX(garmentShells.forearmR,.238)",
     'addMesh("ShirtTorsoMesh",realisticDefaultShells.shirtTorso',
     'addMesh("TrouserWaistMesh",realisticDefaultShells.trouserWaist',
   ]) assert(builder.includes(token),token);
@@ -100,7 +142,9 @@ test("viewer recovers a model-viewer load event that fires before React effect l
   assert(viewer.includes("loaded?:boolean"));
   assert(viewer.includes("const recoverReadyState=(attempt=0)=>"));
   assert(viewer.includes("viewer.loaded || (viewer.model?.materials?.length||0)>0"));
-  assert(viewer.includes("if(attempt<80) readinessTimer=window.setTimeout(()=>recoverReadyState(attempt+1),125);"));
+  assert(viewer.includes("if(attempt<240)"),"hydration recovery must keep a 60-second bounded window");
+  assert(viewer.includes("readinessTimer=window.setTimeout(()=>recoverReadyState(attempt+1),250);"));
+  assert(viewer.includes('setError("The 3D model did not become ready within 60 seconds. Refresh to try again.");'),"hydration must fail visibly rather than spin forever");
 });
 
 test("viewer surface exposes the shared four-angle turntable and independent shirt/trouser material controls",()=>{
