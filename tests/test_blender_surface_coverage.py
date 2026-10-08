@@ -10,6 +10,7 @@ from surface_coverage import (
     body_aware_sleeve_ring,
     underarm_inboard_relief_m,
     trouser_waist_side_seam_limit_m,
+    preserve_trouser_leg_outer_seam_with_inseam_gap,
     bounded_source_cloth_shift,
     precision_safe_source_radius,
     waist_to_chest_taper_radius,
@@ -27,6 +28,46 @@ from surface_coverage import (
     subdivide_ring_profiles,
     vertical_subdivision_cuts,
 )
+
+
+class DistinctRealThighInseamTests(unittest.TestCase):
+    def test_left_thigh_no_longer_sweeps_into_opposite_leg(self):
+        # Blender measured +35mm left-tube overshoot near z=.868m.
+        centre, radius, shift=preserve_trouser_leg_outer_seam_with_inseam_gap(
+            -.105,.140,0,-1,
+        )
+        self.assertGreater(shift,.025)
+        self.assertAlmostEqual(centre-radius,-.245)
+        self.assertAlmostEqual(centre+radius,-.004)
+        self.assertAlmostEqual(shift,.039/2,delta=.001)
+
+    def test_mirror_symmetry_preserves_outer_side_seam(self):
+        left=preserve_trouser_leg_outer_seam_with_inseam_gap(-.105,.140,0,-1)
+        right=preserve_trouser_leg_outer_seam_with_inseam_gap(.105,.140,0,1)
+        self.assertAlmostEqual(left[0],-right[0])
+        self.assertAlmostEqual(left[1],right[1])
+        self.assertAlmostEqual(left[0]-left[1],-.245)
+        self.assertAlmostEqual(right[0]+right[1],.245)
+
+    def test_safe_inseam_needs_no_edit_and_extreme_fail_closed(self):
+        self.assertEqual(
+            preserve_trouser_leg_outer_seam_with_inseam_gap(-.14,.09,0,-1),
+            (-.14,.09,0.0),
+        )
+        with self.assertRaisesRegex(ValueError,"source would need"):
+            preserve_trouser_leg_outer_seam_with_inseam_gap(
+                -.06,.180,0,-1,max_center_shift_m=.030
+            )
+        for invalid in [float("nan"),float("inf"),True]:
+            with self.assertRaises(ValueError):
+                preserve_trouser_leg_outer_seam_with_inseam_gap(-.10,invalid,0,-1)
+
+    def test_native_candidate_uses_body_measured_sources_and_real_bvh(self):
+        source=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
+                "author-linen-earth-officewear.py").read_text()
+        self.assertIn("preserve_trouser_leg_outer_seam_with_inseam_gap(",source)
+        self.assertIn("Linen Earth measured trouser leg source fit:",source)
+        self.assertIn("repair_between_vertex_collisions(",source)
 
 
 class MeasuredTrouserSeatClearanceTests(unittest.TestCase):
