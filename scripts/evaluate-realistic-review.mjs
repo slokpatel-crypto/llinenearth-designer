@@ -25,10 +25,14 @@ function isShoe(r,g,b){
   return y<105 && r-g>=3 && g-b>=2;
 }
 function isUncoveredSkin(r,g,b){
-  // In neutral review lighting, visible realistic-body skin has warm
-  // red > green > blue chroma; navy trousers and neutral stage do not.
-  // Exclude the shirt region by checking only below the trouser rise.
-  return r>125 && r-g>=6 && g-b>=6;
+  // The locked realistic body uses a warm brown (#916F5A), but the neutral
+  // review shirt is also warm sandstone (#C8B58E). Merely testing R>G>B
+  // mistakes real shirt cloth for bare chest/back and falsely blocks every
+  // candidate. Realistic skin has a stronger red-vs-green slope relative to
+  // the green-vs-blue slope than the golden shirt under studio lighting.
+  const redGreen=r-g;
+  const greenBlue=g-b;
+  return r>110 && redGreen>=7 && greenBlue>=4 && redGreen>greenBlue*1.05;
 }
 function statsForRoi(data,width,height,channels,roi,predicate){
   const box=roiBounds(width,height,roi);
@@ -84,12 +88,22 @@ for(const view of views){
     {x0:.25,y0:.45,x1:.75,y1:.85},
     isUncoveredSkin,
   );
+  // The upper-back shirt can disappear while the numeric six-panel geometry
+  // gate stays green; make exposed torso skin fail visual review explicitly.
+  // Keep the central ROI below the legitimate open collar and inside the
+  // shoulders, excluding hands/face from the skin test.
+  const exposedTorsoSkin=statsForRoi(
+    data,info.width,info.height,info.channels,
+    {x0:.34,y0:.28,x1:.66,y1:.44},
+    isUncoveredSkin,
+  );
   report.views[view]={
     width:info.width,
     height:info.height,
     trouserRatio:Number(trouser.ratio.toFixed(4)),
     shoeRatio:Number(shoe.ratio.toFixed(4)),
     exposedLegSkinRatio:Number(exposedLegSkin.ratio.toFixed(4)),
+    exposedTorsoSkinRatio:Number(exposedTorsoSkin.ratio.toFixed(4)),
     lowerBodyMeanLuma:Number(trouser.meanLuma.toFixed(2)),
   };
   const trouserMin=view==="side"?.025:.04;
@@ -107,6 +121,10 @@ for(const view of views){
   if(exposedLegSkin.ratio>.05){
     report.ready=false;
     report.reasons.push(`${view}: bare leg/body skin is visible through the trouser silhouette (${(exposedLegSkin.ratio*100).toFixed(1)}% of leg review region).`);
+  }
+  if(exposedTorsoSkin.ratio>.06){
+    report.ready=false;
+    report.reasons.push(`${view}: bare torso/back skin is visible through the shirt silhouette (${(exposedTorsoSkin.ratio*100).toFixed(1)}% of central torso region).`);
   }
 }
 
