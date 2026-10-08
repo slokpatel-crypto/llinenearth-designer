@@ -547,7 +547,10 @@ def point_inside_closed_bvh(tree, point, epsilon=1e-5, max_hits=64):
 
 
 
-def enclose_post_identity_torso_profile(obj, body, locked_z_planes, clearance_m):
+def enclose_post_identity_torso_profile(
+    obj, body, locked_z_planes, clearance_m, *,
+    profile_power=2.0, max_center_shift_m=0.0,
+):
     """Re-fit true body sections AFTER shoulder/waist guide normalization.
 
     Identity shaping scales X after authoring. That can pull intermediate
@@ -587,21 +590,26 @@ def enclose_post_identity_torso_profile(obj, body, locked_z_planes, clearance_m)
         protected, profile, body_points,
         clearance_m=max(0.004,min(0.012,clearance_m)),
         max_growth_m=0.070,
+        # This mesh already uses a softly rectangular profile. Re-checking it
+        # as an ellipse artificially rejects real chest/seat corner geometry.
+        profile_power=profile_power,
+        max_center_shift_m=max_center_shift_m,
     )
     altered=0
     max_growth=0.0
     for (items,row),target in zip(entries,enclosed):
         _,cx,cy,rx,ry=row
         added=max(target[3]-rx,target[4]-ry)
-        if added<=1e-7:
+        center_shift_y=target[2]-cy
+        if added<=1e-7 and abs(center_shift_y)<=1e-7:
             continue
         # Preserve the original physically locked guide positions.
         if any(abs(row[0]-guide_z)<0.002 for guide_z in locked_z_planes):
             raise RuntimeError(f"{obj.name} cannot change a locked physical guide.")
         sx,sy=target[3]/rx,target[4]/ry
         for vertex,point in items:
-            point.x=cx+(point.x-cx)*sx
-            point.y=cy+(point.y-cy)*sy
+            point.x=target[1]+(point.x-cx)*sx
+            point.y=target[2]+(point.y-cy)*sy
             vertex.co=inverse @ point
         altered+=1
         max_growth=max(max_growth,added)
@@ -1095,11 +1103,13 @@ def main():
         "ShirtTorsoFabric": enclose_post_identity_torso_profile(
             authored["ShirtTorsoFabric"],body,
             (guide_center_z("LE_GUIDE_SHIRT_SHOULDER"),
-             guide_center_z("LE_GUIDE_SHIRT_WAIST")),shirt_clearance_m
+             guide_center_z("LE_GUIDE_SHIRT_WAIST")),shirt_clearance_m,
+            profile_power=3.2,max_center_shift_m=0.018,
         ),
         "TrouserWaistFabric": enclose_post_identity_torso_profile(
             authored["TrouserWaistFabric"],body,
-            (guide_center_z("LE_GUIDE_TROUSER_WAIST"),),trouser_clearance_m
+            (guide_center_z("LE_GUIDE_TROUSER_WAIST"),),trouser_clearance_m,
+            profile_power=2.6,max_center_shift_m=0.012,
         ),
     }
     fit_profile["postIdentityAnatomyFit"] = post_identity_fit
