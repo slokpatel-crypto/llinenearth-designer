@@ -329,3 +329,28 @@ def adaptive_surface_cut_rounds(longest_edge_m, target_edge_m=0.025, max_rounds=
     if rounds > max_rounds:
         raise ValueError("Garment face spans exceed safe collision-refinement limits.")
     return rounds
+
+
+def reproject_vertex_to_fitted_ring(point, previous_ring, fitted_ring):
+    """Apply the real body fit to a mesh vertex while retaining construction Z.
+
+    This geometry-only helper is used after Blender's identity normalization,
+    so a measured intermediate ring that moves toward the actual torso posture
+    cannot be silently discarded by the subsequent mesh-reprojection pass.
+    """
+    if len(point) != 3 or len(previous_ring) != 5 or len(fitted_ring) != 5:
+        raise ValueError("Fitted garments require 3D points and five-field ring profiles.")
+    values=tuple(point)+tuple(previous_ring)+tuple(fitted_ring)
+    if any(isinstance(v,bool) or not isinstance(v,(int,float)) or not math.isfinite(v) for v in values):
+        raise ValueError("Fitted clothing vertices and guide rings must be finite.")
+    if previous_ring[3] <= 0 or previous_ring[4] <= 0 or fitted_ring[3] <= 0 or fitted_ring[4] <= 0:
+        raise ValueError("Physical garment ring radii must stay positive.")
+    if abs(point[2]-previous_ring[0]) > 0.001 or abs(fitted_ring[0]-previous_ring[0]) > 1e-8:
+        raise ValueError("Posture fitting must preserve garment construction height.")
+    sx=fitted_ring[3]/previous_ring[3]
+    sy=fitted_ring[4]/previous_ring[4]
+    return (
+        fitted_ring[1]+(point[0]-previous_ring[1])*sx,
+        fitted_ring[2]+(point[1]-previous_ring[2])*sy,
+        point[2],
+    )

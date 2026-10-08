@@ -9,6 +9,7 @@ from surface_coverage import (
     adaptive_surface_cut_rounds,
     anatomically_enclose_intermediate_rings,
     bounded_body_section_center_y,
+    reproject_vertex_to_fitted_ring,
     rounded_tailoring_ring_xy,
     outward_ring_quad,
     nested_tucked_hem_ring,
@@ -17,6 +18,36 @@ from surface_coverage import (
     subdivide_ring_profiles,
     vertical_subdivision_cuts,
 )
+
+
+class PostIdentityGarmentReprojectionTests(unittest.TestCase):
+    def test_real_chest_ring_recenters_without_changing_body_or_shoulder_height(self):
+        original=(1.22,0.0,-0.03,0.15,0.12)
+        target=(1.22,0.0,-0.015,0.17,0.14)
+        point=(0.15,0.09,1.22)
+        fitted=reproject_vertex_to_fitted_ring(point,original,target)
+        self.assertAlmostEqual(fitted[0],.17)
+        self.assertAlmostEqual(fitted[1],.125)
+        self.assertEqual(fitted[2],point[2])
+        self.assertEqual(original,(1.22,0.0,-.03,.15,.12))
+        self.assertEqual(target,(1.22,0.0,-.015,.17,.14))
+
+    def test_no_op_reprojection_is_exact_for_guide_rings(self):
+        locked=(1.25,-.012,.015,.194,.136)
+        p=(.182,.137,1.25)
+        self.assertEqual(reproject_vertex_to_fitted_ring(p,locked,locked),p)
+
+    def test_nonfinite_or_z_changing_body_fit_is_rejected(self):
+        ring=(1.22,0,-.03,.15,.12)
+        for point,target in [
+            ((0,0,1.24),ring),
+            ((0,0,1.22),(1.24,0,0,.15,.12)),
+            ((float("nan"),0,1.22),ring),
+            ((0,0,1.22),(1.22,0,0,-.1,.12)),
+        ]:
+            with self.subTest(point=point,target=target):
+                with self.assertRaises(ValueError):
+                    reproject_vertex_to_fitted_ring(point,ring,target)
 
 
 class MeasuredAnatomicalPostureTests(unittest.TestCase):
