@@ -30,6 +30,10 @@ class SourceShirtSideSeamContinuityTests(unittest.TestCase):
         self.assertAlmostEqual(waist_to_chest_taper_radius(waist,0.016),
                                0.147+0.008+0.20*0.016)
         self.assertLess(waist_to_chest_taper_radius(waist,0.016),0.17)
+        # True waist must remain 294mm; near hanging arms inboard panel
+        # cannot grow to the observed false 203-245mm half-width.
+        self.assertLess(waist_to_chest_taper_radius(waist,0.114),0.18)
+        self.assertEqual(waist_to_chest_taper_radius(waist,0,ease_m=0),waist)
         self.assertGreater(waist_to_chest_taper_radius(waist,0.115),0.17)
 
     def test_waist_taper_rejects_unbounded_or_nonfinite_source_geometry(self):
