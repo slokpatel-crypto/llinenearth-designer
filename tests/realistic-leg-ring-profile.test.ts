@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 
 test("realistic trouser ring authoring covers actual calf/thigh depth without inventing a larger hem",()=>{
   // Execute the real Blender author's pure geometry helper in isolation:
@@ -45,4 +46,11 @@ print(json.dumps({"left":"pass","right":"pass","lockedHem":"pass","insufficientD
   assert.equal(report.right,"pass");
   assert.equal(report.lockedHem,"pass");
   assert.equal(report.insufficientData,"fail_closed");
+});
+
+test("production author rejects generic trouser cylinders when real leg geometry is not sampled",()=>{
+  const source=readFileSync("scripts/blender/author-linen-earth-officewear.py","utf8");
+  assert.ok(source.includes('if evidence["status"] != "anatomy-fitted-geometry-only":'));
+  assert.ok(source.includes("Refusing to substitute the generic tube without visible-body fit evidence."));
+  assert.ok(source.includes('leg_profile_evidence[name].append(evidence)'));
 });
