@@ -36,7 +36,7 @@ class DistinctRealThighInseamTests(unittest.TestCase):
         centre, radius, shift=preserve_trouser_leg_outer_seam_with_inseam_gap(
             -.105,.140,0,-1,
         )
-        self.assertGreater(shift,.025)
+        self.assertAlmostEqual(shift,.0195)
         self.assertAlmostEqual(centre-radius,-.245)
         self.assertAlmostEqual(centre+radius,-.004)
         self.assertAlmostEqual(shift,.039/2,delta=.001)
