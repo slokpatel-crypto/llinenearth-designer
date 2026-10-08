@@ -7,7 +7,7 @@ import {
   GARMENT_PANEL_SPECS,
   PROTOTYPE_MODEL_ID,
 } from "@/lib/garment-viewer-prototype";
-import { garmentPanelTextureScale, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
+import { garmentPanelTextureScale, garmentPanelWeaveNormalScale, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
 import { validateGarmentViewerModelContract, validateGarmentViewerModelManifest, type GarmentViewerModelContractResult, type GarmentViewerModelManifest, type GarmentViewerManifestValidation } from "@/lib/garment-viewer-model-contract";
 import { GARMENT_VIEWER_LATENCY_STORAGE_KEY, garmentViewerAssetIdentityKey, type GarmentViewerAssetIdentity } from "@/lib/garment-viewer-readiness";
 import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
@@ -766,7 +766,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           texture.sampler?.setScale?.(scale);
           texture.sampler?.setOffset?.(offset);
           texture.sampler?.setRotation?.(rotation);
-          normal?.sampler?.setScale?.({u:clamp(scale.u*1.35,.35,100),v:clamp(scale.v*1.35,.35,100)});
+          // Yarn relief is independent of the macroscopic swatch / stripe tile.
+          normal?.sampler?.setScale?.(garmentPanelWeaveNormalScale(panel.widthMm,panel.heightMm));
           normal?.sampler?.setOffset?.(offset);
           normal?.sampler?.setRotation?.(rotation);
           return {panel,texture,normal};
