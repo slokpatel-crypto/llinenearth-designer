@@ -563,3 +563,31 @@ class MedialSleeveReliefSourceContract(unittest.TestCase):
         self.assertIn('fit_profile["medialSleeveRelief"]',code)
         self.assertLess(code.index('fit_profile["medialSleeveRelief"]'),
                         code.index("collision_repairs = {}"))
+
+
+class MeasuredIntermediateSleevePanelsContract(unittest.TestCase):
+    def test_every_new_arm_section_is_measured_against_locked_body(self):
+        author=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
+                "author-linen-earth-officewear.py").read_text()
+        begin=author.index('elif name in ("ShirtSleeveLFabric","ShirtSleeveRFabric"):')
+        end=author.index("    collection = ensure_export_collection()",begin)
+        section=author[begin:end]
+        self.assertIn("for row in intermediate:",section)
+        self.assertIn("body_aware_sleeve_ring(",section)
+        self.assertIn('if round(row[0],8) in originals:',section)
+        self.assertIn("locked_hand_center=row[0]<1.025",section)
+        self.assertIn('fitted.append(measured)',section)
+        self.assertIn('rings=fitted',section)
+        self.assertIn('clearance_m=0.006',section)
+
+    def test_bounded_anatomical_interpolation_already_requires_true_samples(self):
+        row=(1.135,-.242,.045,.058,.062)
+        body=[(-.24+.033*math.cos(i*math.tau/40),
+               .047+.029*math.sin(i*math.tau/40),1.135) for i in range(40)]
+        fitted,evidence=body_aware_sleeve_ring(
+            body,row,body_center_x=0,side=-1,
+            sample_band_m=.035,min_arm_distance_m=.202)
+        self.assertEqual(evidence["sampleCount"],40)
+        self.assertEqual(fitted[0],row[0])
+        self.assertGreaterEqual(fitted[3],row[3])
+        self.assertGreaterEqual(fitted[4],row[4])

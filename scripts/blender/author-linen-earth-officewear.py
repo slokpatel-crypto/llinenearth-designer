@@ -106,6 +106,40 @@ def build_ring_shell(name, rings, segments=48, neck_opening=None, collar_height=
             profile_power=section_power,
             max_center_shift_m=0.018 if name == "ShirtTorsoFabric" else 0.012,
         )
+    elif name in ("ShirtSleeveLFabric","ShirtSleeveRFabric"):
+        # Six rings alone do not reproduce the bent real forearm. Linear
+        # interpolation between upper-arm/elbow/cuff guides introduced actual
+        # penetrations deep in the inboard sleeve despite fully fitted endpoints.
+        # Measure the LOCKED body at every new 55mm (or shorter) real sleeve
+        # construction section before generating cloth faces. Preserve the
+        # original five source rings and the photographed hand-centre guide.
+        section_power = 2.0
+        body = bpy.data.objects.get(BODY_NAME)
+        if body is None or body.type!="MESH":
+            raise RuntimeError("Real locked body required for intermediate arm fitting.")
+        body_samples=[body.matrix_world @ vertex.co for vertex in body.data.vertices]
+        originals={round(row[0],8) for row in rings}
+        body_cx=body_frame(body)["centerX"]
+        side=-1 if name=="ShirtSleeveLFabric" else 1
+        fitted=[]
+        evidence=[]
+        for row in intermediate:
+            if round(row[0],8) in originals:
+                fitted.append(row)
+                continue
+            upper=row[0] > 1.31
+            measured,info=body_aware_sleeve_ring(
+                body_samples,row,body_center_x=body_cx,side=side,
+                clearance_m=0.006,
+                sample_band_m=0.060 if upper else 0.035,
+                min_arm_distance_m=0.172 if upper else 0.202,
+                locked_hand_center=row[0]<1.025,
+            )
+            fitted.append(measured)
+            evidence.append({"zMm":round(row[0]*1000,2),**info})
+        rings=fitted
+        print("Linen Earth real intermediate arm panels: "+name+" "
+              +json.dumps(evidence,sort_keys=True),flush=True)
     else:
         section_power = 2.0
         rings = intermediate
