@@ -489,3 +489,30 @@ def body_aware_sleeve_ring(body_points, ring, *, body_center_x, side,
                          round((next_ry-ry)*1000,2)],
         "handCenterLocked":locked_hand_center,
     })
+
+
+def underarm_inboard_relief_m(z, signed_inboard_m, waist_guide_z, *,
+                              half_span_m=0.095, max_relief_m=0.032):
+    """Smoothly shape the INTERIOR upper sleeve away from the real side torso.
+
+    Real Blender QA consistently found a stubborn 1.12-1.18m armpit contact:
+    at the waist+41mm ring the inward sleeve quadrant cuts across torso
+    while arm-centred outer sleeve mesh is clean. This is a *bounded source
+    garment panel shaping*, never an edit to the locked human body.
+    """
+    values=(z,signed_inboard_m,waist_guide_z,half_span_m,max_relief_m)
+    if any(isinstance(v,bool) or not isinstance(v,(int,float))
+           or not math.isfinite(v) for v in values):
+        raise ValueError("Underarm relief requires finite garment coordinates.")
+    if not (0.04 <= half_span_m <= 0.13 and 0 <= max_relief_m <= 0.045):
+        raise ValueError("Underarm relief must remain a bounded cloth-only alteration.")
+    centre_z=waist_guide_z+0.050
+    normalized_z=abs(z-centre_z)/half_span_m
+    if normalized_z>=1 or signed_inboard_m<=0:
+        return 0.0
+    # Only the sleeve's anatomical torso-facing quadrant is reshaped;
+    # the outside silhouette, hand centre, shoulder seam and forearm remain.
+    across=min(1.0,signed_inboard_m/0.055)
+    eased_z=(1-normalized_z**2)**2
+    eased_across=across*across*(3-2*across)
+    return max_relief_m*eased_z*eased_across

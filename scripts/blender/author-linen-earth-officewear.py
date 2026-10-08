@@ -23,7 +23,7 @@ from mathutils.bvhtree import BVHTree
 # Authoring and Blender preflight use the same exact triangle/guide intersection.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
-from surface_coverage import body_aware_sleeve_ring, waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
+from surface_coverage import underarm_inboard_relief_m, body_aware_sleeve_ring, waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -1197,8 +1197,15 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                     delta=sum((shift*weight for shift,weight in zip(changes,weights)),
                               Vector((0,0,0)))/sum(weights)
                     if ((original+delta)-source_world_positions[vertex.index]).length>0.095:
+                        source=source_world_positions[vertex.index]
+                        candidate=original+delta
                         raise RuntimeError(
-                            f"{obj.name}: cumulative physical cloth correction exceeds 95mm."
+                            f"{obj.name}: cumulative physical cloth correction exceeds 95mm; "
+                            f"source={tuple(round(v,5) for v in source)}, "
+                            f"current={tuple(round(v,5) for v in original)}, "
+                            f"candidate={tuple(round(v,5) for v in candidate)}, "
+                            f"totalMm={round((candidate-source).length*1000,2)}, "
+                            f"pass={iteration}; reshape actual sleeve panel, not the body."
                         )
                     vertex.co=inverse @ (original+delta)
                     patched+=1
@@ -1472,6 +1479,46 @@ def shape_officewear_to_identity(authored, body, targets):
     }
 
 
+def shape_sleeve_underarm_relief(sleeve, side, waist_guide_z):
+    """Remodel only the upper sleeve's torso-facing panel, preserving arm pose.
+
+    Native Blender 37799271731 left a 5.3mm underarm face cut at z=1.155m
+    after eight real BVH passes. Geometry has a huge shoulder-body crossing
+    on its *inboard* sleeve quadrant, rather than a whole-arm misalignment.
+    The photographed cuffs/hands, shoulders and outer sleeve stay unchanged.
+    """
+    if side not in (-1, 1):
+        raise RuntimeError("Shirt sleeve side must be left or right.")
+    matrix=sleeve.matrix_world
+    inverse=matrix.inverted()
+    rings={}
+    for vertex in sleeve.data.vertices:
+        point=matrix @ vertex.co
+        rings.setdefault(round(point.z,6),[]).append((vertex,point))
+    altered=0
+    maximum_mm=0.0
+    for items in rings.values():
+        center=(min(point.x for _,point in items)
+                +max(point.x for _,point in items))*0.5
+        for vertex,point in items:
+            # Signed distance toward the torso (left positive X, right
+            # negative X). Opposite side of this ring is not altered.
+            inside=-side*(point.x-center)
+            displacement=underarm_inboard_relief_m(
+                point.z,inside,waist_guide_z
+            )
+            if displacement<=0: continue
+            vertex.co=inverse @ Vector(
+                (point.x+side*displacement,point.y,point.z)
+            )
+            altered+=1
+            maximum_mm=max(maximum_mm,displacement*1000)
+    sleeve.data.update()
+    return {"reshapedVertices":altered,
+            "maxInboardReliefMm":round(maximum_mm,2),
+            "photographedHandAndShoulderUnchanged":True}
+
+
 def planar_grain_uv(obj):
     mesh = obj.data
     if not mesh.uv_layers:
@@ -1542,6 +1589,14 @@ def main():
         ),
     }
     fit_profile["postIdentityAnatomyFit"] = post_identity_fit
+    fit_profile["underarmSideSeam"]={
+        name:shape_sleeve_underarm_relief(
+            authored[name],side,guide_center_z("LE_GUIDE_SHIRT_WAIST")
+        )
+        for side,name in (
+            (-1,"ShirtSleeveLFabric"),(1,"ShirtSleeveRFabric")
+        )
+    }
     fit_profile["shirtWaistSeamContinuity"] = restore_shirt_waist_side_seam(
         authored["ShirtTorsoFabric"],
         guide_center_z("LE_GUIDE_SHIRT_WAIST"),
