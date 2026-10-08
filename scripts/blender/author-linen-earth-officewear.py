@@ -23,7 +23,7 @@ from mathutils.bvhtree import BVHTree
 # Authoring and Blender preflight use the same exact triangle/guide intersection.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
-from surface_coverage import terminal_face_poke_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
+from surface_coverage import needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -806,6 +806,26 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
             bm.from_mesh(obj.data)
             if len(bm.faces)>80000:
                 raise RuntimeError(f"{obj.name}: unsafe cloth mesh complexity in body-fit refinement.")
+            # BMesh edge subdivision can leave a huge 80+ vertex ngon. Its
+            # arithmetic face centre is NOT a local cloth triangle; such a
+            # centre is often embedded 32mm inside a real waist even though
+            # its perimeter is skin-safe. Triangulate only nonquad regions,
+            # then test their TRUE physical surface instead of moving a giant
+            # polygon or inventing isolated centre spikes.
+            giant_faces=[
+                face for face in bm.faces
+                if needs_tailoring_face_triangulation(len(face.verts))
+            ]
+            if giant_faces:
+                bmesh.ops.triangulate(
+                    bm,faces=giant_faces,
+                    quad_method="BEAUTY",ngon_method="BEAUTY",
+                )
+                if len(bm.faces)>80000:
+                    raise RuntimeError(f"{obj.name}: ngon correction exceeds physical cloth face limit.")
+                bm.normal_update()
+                print(f"Linen Earth cloth topology normalized: {obj.name} "
+                      f"pass={iteration} nGons={len(giant_faces)} faces={len(bm.faces)}",flush=True)
             selected=set()
             penetrated_faces=[]
             centroid_hits=0
@@ -830,6 +850,13 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
                 flush=True,
             )
             if not selected:
+                # The pass inspected REAL triangles rather than an enormous
+                # synthetic ngon. Persist exactly the validated triangulated
+                # topology before returning, so Blender export and independent
+                # BVH preflight assess the same garment surface.
+                if giant_faces:
+                    bm.to_mesh(obj.data)
+                    obj.data.update(calc_edges=True)
                 return {
                     "passes":iteration, "newVertices":refined_total,
                     "projectedVertices":moved_total,
@@ -839,22 +866,65 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
                 }
             before=len(bm.verts)
             if iteration>=max_rounds:
-                if not terminal_face_poke_allowed(centroid_hits,edge_hits):
+                if not terminal_face_patch_allowed(centroid_hits,edge_hits):
                     raise RuntimeError(
                         f"{obj.name} retains {centroid_hits} face and {edge_hits} edge "
                         f"body penetrations deeper than 1.5mm after {max_rounds} "
                         f"bounded physical mesh-projection passes, progression={json.dumps(progress)}; "
                         "reshape source garment panels rather than relaxing clearance."
                     )
-                # The remaining triangle-centre points are genuine *skin*
-                # intersections, despite every perimeter edge now clear.
-                # Insert one real centroid mesh vertex per affected face;
-                # its next strict BVH repair projects it out of the body.
-                # This is NOT a waived check. Verify every new face afterward.
-                bmesh.ops.poke(
-                    bm,faces=penetrated_faces,offset=0.0,
-                    use_relative_offset=False,
+                # Native Blender proof showed that poking a single point
+                # produced 183 NEW face crossings from four old ones: the
+                # centre was pulled away from its intact perimeter. Instead
+                # move the entire local cloth FACE coherently by the nearest
+                # small real-body surface correction, averaging corrections
+                # at shared vertices to avoid jagged disconnected seams.
+                # Original photographed shirt guide planes must not move.
+                inverse=matrix.inverted()
+                guide_zs=(
+                    [guide_center_z("LE_GUIDE_SHIRT_SHOULDER"),
+                     guide_center_z("LE_GUIDE_SHIRT_WAIST")]
+                    if obj.name=="ShirtTorsoFabric" else []
                 )
+                proposed={}
+                for affected in penetrated_faces:
+                    centre=matrix @ affected.calc_center_median()
+                    nearest=body_tree.find_nearest(centre)
+                    if nearest is None or nearest[0] is None or nearest[1] is None:
+                        raise RuntimeError(f"{obj.name}: cannot measure the final body-facing cloth patch.")
+                    surface,normal=nearest[0],nearest[1].normalized()
+                    alternatives=[]
+                    for distance in (clearance_m+0.002,0.012,0.020):
+                        for direction in (normal,-normal):
+                            outside=surface+direction*distance
+                            if not point_inside_closed_bvh(body_tree,outside):
+                                alternatives.append(((outside-centre).length,outside))
+                        if alternatives:
+                            break
+                    if not alternatives:
+                        raise RuntimeError(f"{obj.name}: last cloth face cannot be projected physically outside.")
+                    distance,outside=min(alternatives,key=lambda proposal:proposal[0])
+                    if distance>0.025:
+                        raise RuntimeError(
+                            f"{obj.name}: terminal cloth face needs {distance*1000:.1f}mm "
+                            f"physical correction at centre={tuple(round(v,4) for v in centre)} "
+                            f"nearestBody={tuple(round(v,4) for v in surface)} "
+                            f"normal={tuple(round(v,3) for v in normal)} "
+                            f"faceHeights={[round((matrix @ v.co).z,4) for v in affected.verts]}; "
+                            "reshape actual source panel, never exceed the 25mm face-patch bound."
+                        )
+                    delta=outside-centre
+                    for vertex in affected.verts:
+                        world=matrix @ vertex.co
+                        if any(z is not None and abs(world.z-z)<0.002 for z in guide_zs):
+                            continue
+                        proposed.setdefault(vertex,[]).append(delta)
+                if not proposed:
+                    raise RuntimeError(f"{obj.name}: last cloth face touches only locked guides; source pattern correction required.")
+                for vertex,corrections in proposed.items():
+                    original=matrix @ vertex.co
+                    average=sum(corrections,Vector((0.0,0.0,0.0)))/len(corrections)
+                    vertex.co=inverse @ (original+average)
                 terminal_poked=True
             else:
                 bmesh.ops.subdivide_edges(
@@ -887,7 +957,7 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
                 )
                 progress.append({
                     "pass":iteration+1,
-                    "terminalCentroidPoke":True,
+                    "terminalCoherentPatch":True,
                     "bodyFaceHits":remaining_face,
                     "bodyEdgeHits":remaining_edge,
                     "faces":len(verify.faces),
@@ -896,7 +966,7 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
                 verify.free()
             if remaining_face or remaining_edge:
                 raise RuntimeError(
-                    f"{obj.name} final centroid repair still crosses real skin "
+                    f"{obj.name} final coherent face patch still crosses real skin "
                     f"({remaining_face} faces, {remaining_edge} edges); "
                     f"progression={json.dumps(progress)}; fix garment geometry."
                 )

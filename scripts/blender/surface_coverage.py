@@ -372,12 +372,12 @@ def belongs_to_locked_shirt_trunk(z, shoulder_guide_z, *, tolerance_m=0.002):
     return z <= shoulder_guide_z + tolerance_m
 
 
-def terminal_face_poke_allowed(face_hits, edge_hits, *, limit=8):
-    """Only repair a tiny FACE-ONLY residue after bounded edge projection.
+def terminal_face_patch_allowed(face_hits, edge_hits, *, limit=8):
+    """Only patch a tiny FACE-ONLY residue after bounded edge projection.
 
     After five actual BVH subdivisions the remaining issue can be a handful
     of triangle interiors lying through curved human anatomy although every
-    edge is clear. One real centroid vertex per face is preferable to
+    edge is clear. A coherent, bounded movement of whole adjacent face regions is preferable to
     needlessly re-subdividing hundreds of already safe edges. This never
     declares a penetration safe: the resulting mesh must be re-tested.
     """
@@ -387,3 +387,16 @@ def terminal_face_poke_allowed(face_hits, edge_hits, *, limit=8):
     if not 1 <= limit <= 16:
         raise ValueError("Terminal cloth patch count must remain tightly bounded.")
     return 0 < face_hits <= limit and edge_hits == 0
+
+
+def needs_tailoring_face_triangulation(vertex_count):
+    """A giant BMesh ngon is not a physical cloth panel for centre collision QA.
+
+    Blender edge subdivision can leave one polygon with dozens of ring points.
+    Its arithmetic 'centroid' may sit well inside human anatomy even though
+    the actual visible mesh is triangulated differently. Split only n-gons
+    (>4 vertices) into genuine local triangles before BVH face tests.
+    """
+    if isinstance(vertex_count, bool) or not isinstance(vertex_count, int) or vertex_count < 0:
+        raise ValueError("Real cloth faces require nonnegative vertex counts.")
+    return vertex_count > 4

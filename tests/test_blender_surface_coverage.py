@@ -10,7 +10,8 @@ from surface_coverage import (
     anatomically_enclose_intermediate_rings,
     bounded_body_section_center_y,
     belongs_to_locked_shirt_trunk,
-    terminal_face_poke_allowed,
+    terminal_face_patch_allowed,
+    needs_tailoring_face_triangulation,
     reproject_vertex_to_fitted_ring,
     rounded_tailoring_ring_xy,
     outward_ring_quad,
@@ -22,14 +23,31 @@ from surface_coverage import (
 )
 
 
-class TerminalClothCentroidTests(unittest.TestCase):
-    def test_real_four_face_zero_edge_residue_can_be_physically_poked(self):
-        self.assertTrue(terminal_face_poke_allowed(4,0))
-        self.assertTrue(terminal_face_poke_allowed(8,0))
-        self.assertFalse(terminal_face_poke_allowed(0,0))
-        self.assertFalse(terminal_face_poke_allowed(9,0))
-        self.assertFalse(terminal_face_poke_allowed(4,1))
-        self.assertFalse(terminal_face_poke_allowed(100,200))
+class PhysicalClothTopologyTests(unittest.TestCase):
+    def test_only_nonlocal_giant_ngons_are_triangulated(self):
+        # Native Blender 37783648648 showed one purported face with over
+        # 80 distinct waist-ring heights; its arithmetic centre was 32.4mm
+        # inside skin. A proper physical cloth panel is a triangle or quad.
+        self.assertFalse(needs_tailoring_face_triangulation(3))
+        self.assertFalse(needs_tailoring_face_triangulation(4))
+        self.assertTrue(needs_tailoring_face_triangulation(5))
+        self.assertTrue(needs_tailoring_face_triangulation(88))
+
+    def test_invalid_topology_counts_fail_closed(self):
+        for bad in (-1,3.14,True,float("nan")):
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError):
+                    needs_tailoring_face_triangulation(bad)
+
+
+class TerminalCoherentClothPatchTests(unittest.TestCase):
+    def test_real_four_face_zero_edge_residue_requires_coherent_patch(self):
+        self.assertTrue(terminal_face_patch_allowed(4,0))
+        self.assertTrue(terminal_face_patch_allowed(8,0))
+        self.assertFalse(terminal_face_patch_allowed(0,0))
+        self.assertFalse(terminal_face_patch_allowed(9,0))
+        self.assertFalse(terminal_face_patch_allowed(4,1))
+        self.assertFalse(terminal_face_patch_allowed(100,200))
 
     def test_centroid_repair_budget_never_accepts_invalid_or_unbounded_counts(self):
         for face,edge,limit in (
@@ -37,7 +55,7 @@ class TerminalClothCentroidTests(unittest.TestCase):
         ):
             with self.subTest(f=face,e=edge,limit=limit):
                 with self.assertRaises(ValueError):
-                    terminal_face_poke_allowed(face,edge,limit=limit)
+                    terminal_face_patch_allowed(face,edge,limit=limit)
 
 
 class ShirtCollarVersusTorsoRingTests(unittest.TestCase):
