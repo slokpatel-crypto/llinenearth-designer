@@ -622,3 +622,22 @@ class StrictSourcePanelProjectionBudget(unittest.TestCase):
         self.assertIn("bounded_source_panel_displacement(",code)
         self.assertIn('raise RuntimeError(\n                f"{obj.name}: connected cloth crossed the 95mm TOTAL',code)
         self.assertIn("if remaining_face or remaining_edge:",code)
+
+
+class ConnectedSleeveSkinExitContract(unittest.TestCase):
+    def test_real_blender_source_edge_must_not_split_across_body(self):
+        # Blender run 37802828837: source edge endpoints both at x=-157mm,
+        # but separate nearest-surface repair sent one to -107mm, the other
+        # to -250mm. Their real segment then cut through 9.74mm of arm skin.
+        source_a=(-.16106,.06738,1.11311)
+        source_b=(-.15709,.03533,1.11332)
+        wrong_a=(-.10773,.09610,1.10455)
+        wrong_b=(-.22406,-.01190,1.11524)
+        self.assertLess(math.dist(source_a,source_b),.04)
+        self.assertGreater(math.dist(wrong_a,wrong_b),.12)
+        author=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
+                "author-linen-earth-officewear.py").read_text()
+        self.assertIn("sleeve_side*(candidate.x-point.x)<-0.002",author)
+        self.assertIn("sleeve_side*shift.x>=-0.002",author)
+        self.assertIn("not point_inside_closed_bvh(body_tree, candidate)",author)
+        self.assertIn("(target - point).length > 0.095",author)
