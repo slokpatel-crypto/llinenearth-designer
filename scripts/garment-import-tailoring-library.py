@@ -29,6 +29,15 @@ VARIANT_MARKERS = (
     "Length__",
 )
 SKIN_VARIANT_PREFIX = "MannequinSkinArmVariant__"
+# Unlike the deterministic mannequin, the base dress-shoe meshes have no
+# realistic-body replacement. Retain them in the candidate until reviewed.
+FOOTWEAR_OBJECT_NAMES = {"ShoeL", "ShoeR", "SoleL", "SoleR", "HeelL", "HeelR"}
+
+
+def is_footwear_object(obj):
+    name = normalized_name(obj.name)
+    return name in FOOTWEAR_OBJECT_NAMES or bool(re.fullmatch(r"ShoeLace[LR][0-9]+", name))
+
 
 
 def cli_args():
@@ -192,14 +201,19 @@ def main():
     variant_materials = set()
     for obj in imported:
         names = material_names(obj)
-        keep = obj.type == "MESH" and any(is_tailoring_variant_material(name) for name in names)
+        footwear = obj.type == "MESH" and is_footwear_object(obj)
+        keep = obj.type == "MESH" and (footwear or any(is_tailoring_variant_material(name) for name in names))
         if keep:
             detach_keep_world(obj)
             for name in names:
                 if is_tailoring_variant_material(name):
                     variant_materials.add(name)
-            obj["linen_earth_tailoring_variant"] = True
-            obj["linen_earth_tailoring_source"] = "deterministic-library-fit-to-locked-identity"
+            if footwear:
+                obj["linen_earth_footwear_source"] = "deterministic-library-fit-review-required"
+                obj["linen_earth_footwear_unverified"] = True
+            else:
+                obj["linen_earth_tailoring_variant"] = True
+                obj["linen_earth_tailoring_source"] = "deterministic-library-fit-to-locked-identity"
             kept.append(obj)
         else:
             discarded.append(obj)
@@ -220,10 +234,16 @@ def main():
         obj.hide_render = False
 
         names = material_names(obj)
-        clearance = variant_clearance(names)
+        footwear = is_footwear_object(obj)
+        clearance = None if footwear else variant_clearance(names)
         if clearance is not None:
             repair_stats[obj.name] = repair_variant_outside_body(obj, body, clearance)
 
+        if footwear:
+            # Genuine shoe, sole and lace surfaces stay visible during four-angle
+            # review; hiding them like selectable shirt variants left a barefoot
+            # human in the alleged officewear production candidate.
+            continue
         for material in obj.data.materials:
             if material is None:
                 continue
@@ -250,10 +270,16 @@ def main():
 
     # Guard against accidentally retaining a second deterministic body/base garment.
     retained_names = {normalized_name(obj.name) for obj in kept}
-    leaked_base = sorted(retained_names.intersection(BASE_OBJECT_NAMES))
+    leaked_base = sorted(retained_names.intersection(BASE_OBJECT_NAMES - FOOTWEAR_OBJECT_NAMES))
     if leaked_base:
         raise RuntimeError("Deterministic base geometry leaked into realistic scene: " + ", ".join(leaked_base))
 
+    footwear_kept = sorted(normalized_name(obj.name) for obj in kept if is_footwear_object(obj))
+    missing_footwear = sorted(FOOTWEAR_OBJECT_NAMES - set(footwear_kept))
+    if missing_footwear:
+        raise RuntimeError("Dress-shoe geometry is missing after library import: " + ", ".join(missing_footwear))
+    bpy.context.scene["linen_earth_footwear_source"] = "deterministic-library-fit-review-required"
+    bpy.context.scene["linen_earth_footwear_object_names_json"] = json.dumps(footwear_kept)
     bpy.context.scene["linen_earth_tailoring_library_source"] = str(variant_glb)
     bpy.context.scene["linen_earth_tailoring_variant_object_count"] = len(kept)
     bpy.context.scene["linen_earth_tailoring_variant_material_count"] = len(variant_materials)
