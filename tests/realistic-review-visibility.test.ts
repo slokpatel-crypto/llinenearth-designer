@@ -15,7 +15,7 @@ async function writeReview(file: string, skinGap: boolean, exposedTorso = false)
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       let color = [220, 216, 207]; // neutral studio, not skin
-      if (x >= 190 && x < 386 && y >= 170 && y < 350) color = [235, 232, 224]; // neutral shirt
+      if (x >= 190 && x < 386 && y >= 170 && y < 350) color = [200, 181, 142]; // sandstone review shirt; warm R>G>B must NOT be bare skin
       if (x >= 185 && x < 391 && y >= 315 && y < 710) color = [52, 60, 73]; // navy trouser
       if (exposedTorso && x >= 245 && x < 325 && y >= 222 && y < 320) color = [217, 180, 155]; // bare back skin
       if (x >= 201 && x < 258 && y >= 672 && y < 741) color = [58, 44, 35]; // left leather shoe
@@ -60,6 +60,7 @@ test("covered officewear legs and visible leather shoes pass photographic gate",
     const report = JSON.parse(fs.readFileSync(f.reportPath, "utf8"));
     assert.equal(report.ready, true);
     assert.ok(views.every((view) => report.views[view].exposedLegSkinRatio < 0.05));
+    assert.ok(views.every((view) => report.views[view].exposedTorsoSkinRatio < 0.06), "Warm sandstone shirt must not be mistaken for the model's exposed body.");
   } finally { f.cleanup(); }
 });
 
