@@ -558,8 +558,13 @@ def enclose_post_identity_torso_profile(obj, body, locked_z_planes, clearance_m)
     if len(grouped)<3:
         raise RuntimeError(f"{obj.name} lacks enough garment construction rings.")
     entries=[]
+    upper_locked_z=max(locked_z_planes)
     for z,items in sorted(grouped.items()):
-        if len(items)<24:
+        if len(items)<24 or z>upper_locked_z+0.002:
+            # Above the shoulder guide are the legitimate narrow shirt collar
+            # and neck opening, NOT torso fabric. Native Blender caught a
+            # 67mm collar radius at z=1.4776m being falsely enlarged 4.36x
+            # to fit the chest. Preserve that neck construction unchanged.
             continue
         # The original torso neck opening shares the shoulder Z guide and
         # must remain untouched. All real shoulder/waist guide planes lock.
