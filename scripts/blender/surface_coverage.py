@@ -403,7 +403,7 @@ def needs_tailoring_face_triangulation(vertex_count):
 
 
 def waist_to_chest_taper_radius(waist_half_width_m, height_above_waist_m,
-                                *, ease_m=0.008, slope=0.20):
+                                *, ease_m=0.008, slope=0.32):
     """Limit false arm-driven inflation of a REAL tucked shirt side seam.
 
     Near the locked waist a garment cannot gain 90mm of radius in only 16mm
