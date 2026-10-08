@@ -31,6 +31,8 @@ async function captureStableWebGLFrame(page, destination, clip) {
 
 async function selectTailoringOption(page, label, value) {
   const started=Date.now();
+  const phaseMs={};
+  const markPhase=(stage)=>{phaseMs[stage]=Date.now()-started;};
   const target=page.getByLabel(label,{exact:true});
   try {
     // Playwright selectOption may remain in its compositor actionability
@@ -42,9 +44,11 @@ async function selectTailoringOption(page, label, value) {
     // DOM value assignments or force:true bypasses are permitted.
     assert.equal(await target.isVisible(),true,`3D selector ${label} must be visible`);
     assert.equal(await target.isEnabled(),true,`3D selector ${label} must be enabled`);
+    markPhase("visibleAndEnabled");
     const options=await target.locator("option").evaluateAll((nodes)=>nodes.map(
       (node)=>({value:node.value,label:node.textContent?.trim()||""})
     ));
+    markPhase("nativeOptionCatalog");
     const requested=options.find((option)=>option.value===value);
     assert.ok(requested,`3D selector ${label} must contain option ${value}`);
     const first=requested.label.charAt(0).toLowerCase();
@@ -79,18 +83,24 @@ async function selectTailoringOption(page, label, value) {
       `3D selector ${label} must have a real click target`);
     assert.equal(hitbox.withinViewport,true,`3D selector ${label} must be in viewport`);
     assert.equal(hitbox.uncovered,true,`3D selector ${label} must not be covered by the WebGL stage`);
+    markPhase("scrollAndHitTest");
     const {x,y}=hitbox;
     await page.mouse.click(x,y);
+    markPhase("nativePointerClick");
     if(prefix.length===1) await page.keyboard.press(first);
     else await page.keyboard.type(prefix,{delay:0});
     await page.keyboard.press("Enter");
+    markPhase("nativeKeyboardCommit");
     await page.waitForFunction(({label,value})=>{
       const select=document.querySelector(`select[aria-label="${label}"]`);
       return select instanceof HTMLSelectElement&&select.value===value;
     },{label,value},{timeout:4000});
+    markPhase("committedReactValue");
     const actual=await target.inputValue({timeout:3000});
+    markPhase("nativeReadBack");
     assert.equal(actual,value,`Native browser input for ${label} must commit ${value}`);
-    assert.ok(Date.now()-started<6000,`3D tailoring native mouse+keyboard update must stay under 6 seconds`);
+    assert.ok(Date.now()-started<6000,
+      `3D tailoring native mouse+keyboard update must stay under 6 seconds: ${JSON.stringify(phaseMs)}`);
   } catch(error) {
     let state={unavailable:true};
     try {
@@ -112,7 +122,7 @@ async function selectTailoringOption(page, label, value) {
         new Promise((_,reject)=>setTimeout(()=>reject(new Error("diagnostics main-thread timeout")),2000))
       ]);
     } catch(e) {state={error:String(e)};}
-    const record={label,requested:value,durationMs:Date.now()-started,state,error:String(error)};
+    const record={label,requested:value,durationMs:Date.now()-started,phaseMs,state,error:String(error)};
     await fs.writeFile(path.join(output,"garment-select-failure.json"),JSON.stringify(record,null,2)+"\n");
     throw new Error("Real tailoring select failed in bounded browser QA: "+JSON.stringify(record));
   }
