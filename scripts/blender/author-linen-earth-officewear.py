@@ -992,7 +992,8 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                 }
             before=len(bm.verts)
             if iteration>=max_rounds:
-                if not terminal_face_patch_allowed(centroid_hits,edge_hits):
+                if not (0 < centroid_hits <= 8 and 0 <= edge_hits <= 4
+                        or centroid_hits == 0 and 0 < edge_hits <= 4):
                     raise RuntimeError(
                         f"{obj.name} retains {centroid_hits} face and {edge_hits} edge "
                         f"body penetrations deeper than 1.5mm after {max_rounds} "
@@ -1045,11 +1046,45 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                         if any(z is not None and abs(world.z-z)<0.002 for z in guide_zs):
                             continue
                         proposed.setdefault(vertex,[]).append(delta)
+                # After eight strict projection passes a seam may retain
+                # only one or two edge-midpoint crossings, even though every
+                # face centre is safe. Add these REAL edge contact locations
+                # to the same coherent local patch, with the identical 25mm
+                # physical correction bound and no threshold relaxation.
+                for edge in bm.edges:
+                    centre=matrix @ ((edge.verts[0].co+edge.verts[1].co)*0.5)
+                    if not penetration(centre):
+                        continue
+                    nearest=body_tree.find_nearest(centre)
+                    if nearest is None or nearest[0] is None or nearest[1] is None:
+                        raise RuntimeError(f"{obj.name}: residual seam contact has no body surface.")
+                    surface,normal=nearest[0],nearest[1].normalized()
+                    alternatives=[]
+                    for distance in (clearance_m+0.002,0.012,0.020):
+                        for direction in (normal,-normal):
+                            candidate=surface+direction*distance
+                            if not point_inside_closed_bvh(body_tree,candidate):
+                                alternatives.append(((candidate-centre).length,candidate))
+                        if alternatives:
+                            break
+                    if not alternatives:
+                        raise RuntimeError(f"{obj.name}: residual edge cannot clear real skin.")
+                    distance,outside=min(alternatives,key=lambda pair:pair[0])
+                    if distance>0.025:
+                        raise RuntimeError(f"{obj.name}: last seam requires >25mm correction.")
+                    for vertex in edge.verts:
+                        original=matrix @ vertex.co
+                        if any(z is not None and abs(original.z-z)<0.002 for z in guide_zs):
+                            continue
+                        proposed.setdefault(vertex,[]).append(outside-centre)
                 if not proposed:
-                    raise RuntimeError(f"{obj.name}: last cloth face touches only locked guides; source pattern correction required.")
+                    raise RuntimeError(f"{obj.name}: residual contacts touch only locked guides; source correction required.")
+                bm.verts.index_update()
                 for vertex,corrections in proposed.items():
                     original=matrix @ vertex.co
                     average=sum(corrections,Vector((0.0,0.0,0.0)))/len(corrections)
+                    if ((original+average)-source_world_positions[vertex.index]).length>0.095:
+                        raise RuntimeError(f"{obj.name}: terminal seam exceeds cumulative 95mm source guard.")
                     vertex.co=inverse @ (original+average)
                 terminal_poked=True
             else:
