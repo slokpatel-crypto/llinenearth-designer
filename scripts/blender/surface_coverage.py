@@ -65,3 +65,37 @@ def penetrating_surface_samples(vertices, faces, inside, max_hits=32):
                 if len(hits) >= max_hits:
                     return hits
     return hits
+
+
+def subdivide_ring_profiles(rings, max_vertical_step_m=0.055, max_cuts=8):
+    """Densify a five-field (z, cx, cy, rx, ry) tailoring shell profile.
+
+    Preserve original construction rings exactly. Linear intermediate rings
+    create real vertices where collision fitting can see a curved body instead
+    of stretching one large face across chest, seat or calf. Works with both
+    top-down sleeves/legs and bottom-up torso/waist panels.
+    """
+    rows = tuple(tuple(row) for row in rings)
+    if len(rows) < 2:
+        raise ValueError("Garment profile requires at least two tailoring rings.")
+    for row in rows:
+        if (
+            len(row) != 5
+            or any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in row)
+            or row[3] <= 0 or row[4] <= 0
+        ):
+            raise ValueError("Tailoring rings need five finite coordinates and positive radii.")
+    direction = rows[1][0] - rows[0][0]
+    if direction == 0:
+        raise ValueError("Tailoring rings must have distinct height positions.")
+    result = [rows[0]]
+    for prev, nxt in zip(rows, rows[1:]):
+        vertical = nxt[0] - prev[0]
+        if vertical == 0 or vertical * direction <= 0:
+            raise ValueError("Tailoring rings must progress monotonically in height.")
+        cuts = vertical_subdivision_cuts(abs(vertical), max_vertical_step_m, max_cuts)
+        for index in range(1, cuts + 1):
+            t = index / (cuts + 1)
+            result.append(tuple(prev[axis] + (nxt[axis] - prev[axis]) * t for axis in range(5)))
+        result.append(nxt)
+    return result
