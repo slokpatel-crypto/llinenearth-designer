@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "blende
 from surface_coverage import (
     adaptive_surface_cut_rounds,
     body_aware_sleeve_ring,
+    bounded_source_panel_displacement,
     waist_to_chest_taper_radius,
     anatomically_enclose_intermediate_rings,
     bounded_body_section_center_y,
@@ -591,3 +592,33 @@ class MeasuredIntermediateSleevePanelsContract(unittest.TestCase):
         self.assertEqual(fitted[0],row[0])
         self.assertGreaterEqual(fitted[3],row[3])
         self.assertGreaterEqual(fitted[4],row[4])
+
+
+class StrictSourcePanelProjectionBudget(unittest.TestCase):
+    def test_chosen_cloth_correction_always_stays_within_95mm(self):
+        original=(.180,.017,1.152)
+        small,clipped=bounded_source_panel_displacement(original,(.190,.017,1.152))
+        self.assertEqual(small,(.190,.017,1.152))
+        self.assertFalse(clipped)
+        large,clipped=bounded_source_panel_displacement(original,(.320,.017,1.152))
+        self.assertTrue(clipped)
+        self.assertLessEqual(math.dist(large,original),.09500000001)
+        bounded,_=bounded_source_panel_displacement(original,(-.180,.017,1.152),limit_m=.09495)
+        self.assertLessEqual(math.dist(bounded,original),.094950001)
+
+    def test_invalid_geometry_or_relaxed_threshold_are_rejected(self):
+        for bad in (0,.096,True,float("nan")):
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError):
+                    bounded_source_panel_displacement((0,0,0),(0,1,0),limit_m=bad)
+        for source,target in (((0,float("inf"),0),(0,0,0)),((0,0,0),(0,0))):
+            with self.assertRaises(ValueError):
+                bounded_source_panel_displacement(source,target)
+
+    def test_original_zero_deep_penetration_gate_is_not_diluted(self):
+        code=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
+              "author-linen-earth-officewear.py").read_text()
+        self.assertIn("(point-nearest[0]).length > 0.0015",code)
+        self.assertIn("bounded_source_panel_displacement(",code)
+        self.assertIn('raise RuntimeError(\n                f"{obj.name}: connected cloth crossed the 95mm TOTAL',code)
+        self.assertIn("if remaining_face or remaining_edge:",code)
