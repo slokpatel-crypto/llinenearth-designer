@@ -38,6 +38,12 @@ class AnatomicalSleeveConstructionTests(unittest.TestCase):
         self.assertEqual(fitted[0],ring[0])
         self.assertGreater(fitted[2],.018)
         self.assertLessEqual(abs(fitted[1]-ring[1]),.02800001)
+        self.assertEqual(fitted[1],ring[1],
+                         "upper sleeve must never recenter INWARD into chest")
+        builder=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
+                 "author-linen-earth-officewear.py").read_text()
+        self.assertIn("sleeve_top_center = shoulder_half + 0.037",builder)
+        self.assertIn("sleeve_top_radius = 0.056",builder)
         self.assertGreaterEqual(fitted[3],ring[3])
         self.assertGreaterEqual(fitted[4],ring[4])
         self.assertEqual(info["sampleCount"],64)
