@@ -48,19 +48,37 @@ async function selectTailoringOption(page, label, value) {
     const requested=options.find((option)=>option.value===value);
     assert.ok(requested,`3D selector ${label} must contain option ${value}`);
     const first=requested.label.charAt(0).toLowerCase();
-    assert.ok(first&&options.filter((option)=>
-      option.label.charAt(0).toLowerCase()===first).length===1,
-      `Native keyboard QA needs an unambiguous option initial for ${label}`);
-    const box=await target.boundingBox({timeout:4000});
-    assert.ok(box&&box.width>=5&&box.height>=5,`3D selector ${label} must have a real click target`);
-    const x=box.x+box.width*.5,y=box.y+box.height*.5;
-    const uncovered=await page.evaluate(({x,y,label})=>{
+    // A native select can have several names with the same initial (English
+    // Spread / Extra High, different cuff shapes, etc.). Type the shortest
+    // UNIQUE option-label prefix, using actual Chromium keyboard events.
+    const prefix=Array.from(requested.label,(letter,index)=>
+      requested.label.slice(0,index+1)).find((part)=>
+        options.filter((option)=>option.label.toLowerCase().startsWith(part.toLowerCase())).length===1);
+    assert.ok(first&&prefix,`No unambiguous native option label for ${label}=${value}`);
+    // Locator.boundingBox waits for Playwright element stability/compositing.
+    // The 586-material WebGL stage can continuously repaint and starve that
+    // actionability check even while the select is visible and enabled.
+    // Read a real DOMClientRect directly and verify native browser hit testing.
+    const hitbox=await page.evaluate(({label})=>{
+      const select=[...document.querySelectorAll("select")]
+        .find((node)=>node.getAttribute("aria-label")===label);
+      if(!(select instanceof HTMLSelectElement)||select.disabled) return null;
+      select.scrollIntoView({block:"center",inline:"nearest"});
+      const rect=select.getBoundingClientRect();
+      const x=rect.left+rect.width/2,y=rect.top+rect.height/2;
       const hit=document.elementFromPoint(x,y);
-      return hit instanceof HTMLSelectElement&&hit.getAttribute("aria-label")===label;
-    },{x,y,label});
-    assert.equal(uncovered,true,`3D selector ${label} must not be covered by the WebGL stage`);
+      return {x,y,width:rect.width,height:rect.height,
+        withinViewport:x>=0&&y>=0&&x<innerWidth&&y<innerHeight,
+        uncovered:hit===select};
+    },{label});
+    assert.ok(hitbox&&hitbox.width>=5&&hitbox.height>=5,
+      `3D selector ${label} must have a real click target`);
+    assert.equal(hitbox.withinViewport,true,`3D selector ${label} must be in viewport`);
+    assert.equal(hitbox.uncovered,true,`3D selector ${label} must not be covered by the WebGL stage`);
+    const {x,y}=hitbox;
     await page.mouse.click(x,y);
-    await page.keyboard.press(first);
+    if(prefix.length===1) await page.keyboard.press(first);
+    else await page.keyboard.type(prefix,{delay:0});
     await page.keyboard.press("Enter");
     await page.waitForFunction(({label,value})=>{
       const select=document.querySelector(`select[aria-label="${label}"]`);
