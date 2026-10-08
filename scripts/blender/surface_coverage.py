@@ -104,7 +104,7 @@ def subdivide_ring_profiles(rings, max_vertical_step_m=0.055, max_cuts=8):
 def anatomically_enclose_intermediate_rings(
     original_rings, refined_rings, body_points, *,
     clearance_m=0.007, max_growth_m=0.070, sample_band_m=0.024,
-    profile_power=2.0,
+    profile_power=2.0, max_center_shift_m=0.0,
 ):
     """Enclose real torso/seat at NEW rings only; preserve locked original guides.
 
@@ -121,6 +121,9 @@ def anatomically_enclose_intermediate_rings(
     if (isinstance(profile_power, bool) or not isinstance(profile_power, (int, float))
             or not math.isfinite(profile_power) or not 2.0 <= profile_power <= 4.0):
         raise ValueError("Tailored cross-section curvature must be between ellipse and rounded rectangle.")
+    if (isinstance(max_center_shift_m,bool) or not isinstance(max_center_shift_m,(int,float))
+            or not math.isfinite(max_center_shift_m) or not 0 <= max_center_shift_m <= 0.020):
+        raise ValueError("Locked body posture permits no more than 20mm of garment-only ring recentering.")
     body = [tuple(p) for p in body_points]
     if len(body) < 20 or not all(
         len(p) == 3 and all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in p)
@@ -158,9 +161,18 @@ def anatomically_enclose_intermediate_rings(
         # trunk corridor should not force both radii to inflate uniformly.
         # For p=2 this is exactly the original ellipse, while p=3 gently
         # flattens the visible shirt front/back without changing guide widths.
+        # Original guide levels stay locked. Between the guides, posture
+        # changes the anatomical front/back centre; simply interpolating the
+        # old Y centre can project a real shirt seam through the chest or back.
+        # Recenter by no more than 18mm, only if both anterior AND posterior
+        # body surfaces are sampled. This cannot hide one-sided arm outliers.
+        fitted_cy = bounded_body_section_center_y(
+            section, cx, cy, rx, ry, profile_power=profile_power,
+            max_shift_m=max_center_shift_m,
+        )
         radial_samples = [
             (((abs(p[0] - cx) / rx) ** profile_power
-               + (abs(p[1] - cy) / ry) ** profile_power) ** (1.0 / profile_power), p)
+               + (abs(p[1] - fitted_cy) / ry) ** profile_power) ** (1.0 / profile_power), p)
             for p in section
         ]
         required_scale, extreme = max(radial_samples, key=lambda item: item[0])
@@ -171,12 +183,54 @@ def anatomically_enclose_intermediate_rings(
                 f"Locked-body ring z={z:.4f}m needs more than {max_growth_m*1000:.0f}mm "
                 f"garment-envelope growth (radius={rx:.4f}/{ry:.4f}m, scale={scale:.3f}, "
                 f"extreme={tuple(round(q,4) for q in extreme)}, samples={len(section)}, "
+                f"centerY={cy:.4f}m fittedCenterY={fitted_cy:.4f}m power={profile_power:.2f}, "
                 f"corridor={x_corridor:.4f}/{y_corridor:.4f}m); "
                 "remodel the original panel rather than invent oversized cloth."
             )
-        result.append((z, cx, cy, next_rx, next_ry))
+        result.append((z, cx, fitted_cy, next_rx, next_ry))
     return result
 
+
+
+
+def bounded_body_section_center_y(
+    section, cx, cy, rx, ry, *, profile_power=2.0, max_shift_m=0.0
+):
+    """Bound a garment ring's Y centre to actual measured torso front/back.
+
+    A fixed guide-to-guide centre cannot follow the locked body's gentle
+    spinal posture. This moves only intermediate clothing rings; the real
+    model and physical guide rings are never changed. If the section lacks
+    both front and back skin, fail conservatively by retaining the old centre.
+    """
+    values=(cx,cy,rx,ry,profile_power,max_shift_m)
+    if any(isinstance(v,bool) or not isinstance(v,(int,float)) or not math.isfinite(v) for v in values):
+        raise ValueError("Anatomical centre fitting requires finite physical coordinates.")
+    if rx <= 0 or ry <= 0 or not 2 <= profile_power <= 4 or not 0 <= max_shift_m <= 0.020:
+        raise ValueError("Anatomical centre fit cannot alter locked garment bounds.")
+    points=[tuple(p) for p in section]
+    if not points or not all(
+        len(p)==3 and all(isinstance(v,(int,float)) and math.isfinite(v) for v in p)
+        for p in points
+    ):
+        raise ValueError("Cannot fit a garment section without real body samples.")
+    if max_shift_m==0:
+        return cy
+    ys=sorted(p[1] for p in points)
+    lower=ys[min(len(ys)-1,int(len(ys)*0.05))]
+    upper=ys[min(len(ys)-1,int(len(ys)*0.95))]
+    # If the cross-section is all front OR all back, it may be a hanging arm:
+    # do not move the entire locked shirt just to enclose a false torso point.
+    if lower >= cy-0.035 or upper <= cy+0.035:
+        return cy
+    def peak(candidate):
+        return max(
+            ((abs(p[0]-cx)/rx)**profile_power
+             + (abs(p[1]-candidate)/ry)**profile_power)**(1/profile_power)
+            for p in points
+        )
+    candidates=[cy + max_shift_m * i/6 for i in range(-6,7)]
+    return min(candidates,key=lambda y:(peak(y),abs(y-cy)))
 
 
 def rounded_tailoring_ring_xy(angle, cx, cy, radius_x, radius_y, *, profile_power=2.0):
