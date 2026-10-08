@@ -581,3 +581,26 @@ def precision_safe_source_radius(distance_m,limit_m=0.095):
     if distance_m>limit_m+1e-8:
         raise ValueError("Actual physical cloth correction exceeds 95mm source lock.")
     return limit_m-2e-7
+
+
+def trouser_waist_side_seam_limit_m(locked_waist_half_width_m,
+                                   distance_below_waist_m,
+                                   *, ease_m=0.007, hip_slope=0.36):
+    """Clip fake hip bulk introduced by nearby lowered hands/forearms.
+
+    Native Blender face BVH on the REAL pose reaches (x=-.252, z=1.0425)
+    despite the locked 344mm trouser waist and natural hip construction. This
+    is an anomalous ~80mm flare just 70mm below the waist guide. A smooth
+    waist-to-seat SIDE PANEL profile must taper independently of the hanging
+    forearm; BODY is never moved, and all real garment/body collisions are
+    still independently tested before approval.
+    """
+    values=(locked_waist_half_width_m,distance_below_waist_m,ease_m,hip_slope)
+    if any(isinstance(v,bool) or not isinstance(v,(int,float))
+           or not math.isfinite(v) for v in values):
+        raise ValueError("Trouser waist side seam requires finite physical coordinates.")
+    if not (0.12<=locked_waist_half_width_m<=0.24
+            and 0<=distance_below_waist_m<=0.40
+            and 0<=ease_m<=0.020 and 0.18<=hip_slope<=0.70):
+        raise ValueError("Hip taper must stay within plausible physical construction limits.")
+    return locked_waist_half_width_m+ease_m+hip_slope*distance_below_waist_m
