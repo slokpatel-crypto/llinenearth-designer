@@ -184,6 +184,23 @@ class SourceBoundedBVHCorrectionTests(unittest.TestCase):
         self.assertIn("SOURCE-LOCKED 95mm",correction)
 
 
+class OriginalPanelVertexReprojectionGuards(unittest.TestCase):
+    def test_skin_reprojection_must_look_back_to_prepatch_source(self):
+        source=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
+                "author-linen-earth-officewear.py").read_text()
+        start=source.index("def repair_body_penetrations(")
+        end=source.index("def repair_between_vertex_collisions(",start)
+        skin=source[start:end]
+        self.assertIn("original_source=None",skin)
+        self.assertIn("len(original_source)!=len(obj.data.vertices)",skin)
+        self.assertIn("(candidate-original_source[vertex.index]).length>0.095",skin)
+        self.assertIn("point_inside_closed_bvh(body_tree, candidate)",skin)
+        self.assertIn("original 95mm cloth-source radius",skin)
+        face=source[end:source.index("def finish_procedural_shell(",end)]
+        self.assertIn("original_source=source_world_positions",face)
+        self.assertIn("remaining_face or remaining_edge",face)
+
+
 class LockedClothSourceSphereTests(unittest.TestCase):
     def test_small_safe_shift_is_exact(self):
         self.assertEqual(bounded_source_cloth_shift((0,0,0),(.01,0,0),
