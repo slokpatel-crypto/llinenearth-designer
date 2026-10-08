@@ -512,11 +512,17 @@ def underarm_inboard_relief_m(z, signed_inboard_m, waist_guide_z, *,
     # over both sites; no model body geometry or photographed exterior moves.
     centre_z=waist_guide_z+0.040
     normalized_z=abs(z-centre_z)/half_span_m
-    if normalized_z>=1 or signed_inboard_m<=0:
+    if signed_inboard_m<=0:
         return 0.0
-    # Only the sleeve's anatomical torso-facing quadrant is reshaped;
-    # the outside silhouette, hand centre, shoulder seam and forearm remain.
+    # The opposite shoulder/body crossing lives at 1.2706m, above the
+    # first observed 1.108/1.175m pair. A second softly rounded, tightly
+    # bounded SOURCE gusset is required; a single enlarged low lobe would
+    # distort the whole photographed sleeve and cuff. Preserve the maximum
+    # 45mm of actual source-panel relief by taking max(), not summing lobes.
+    upper_centre_z=waist_guide_z+0.158
+    upper_normalized=abs(z-upper_centre_z)/0.104
+    low=(1-normalized_z**2)**2 if normalized_z<1 else 0.0
+    upper=(1-upper_normalized**2)**2 if upper_normalized<1 else 0.0
     across=min(1.0,signed_inboard_m/0.055)
-    eased_z=(1-normalized_z**2)**2
     eased_across=across*across*(3-2*across)
-    return max_relief_m*eased_z*eased_across
+    return min(max_relief_m, max(max_relief_m*low,0.040*upper)*eased_across)
