@@ -92,6 +92,19 @@ class LockedTorsoEnvelopeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "remodel the original panel"):
             anatomically_enclose_intermediate_rings([a,b], [a,midpoint,b], body)
 
+    def test_arm_at_waist_height_does_not_become_fake_torso_width(self):
+        a = (0.40, 0.0, 0.0, 0.12, 0.09)
+        b = (0.50, 0.0, 0.0, 0.12, 0.09)
+        mid = (0.45, 0.0, 0.0, 0.12, 0.09)
+        torso = [(0.125 * math.cos(i*math.tau/50),
+                  0.095 * math.sin(i*math.tau/50), 0.45) for i in range(50)]
+        hanging_arms = [(0.205, 0.12, 0.45), (-0.205, -0.12, 0.45)]
+        result = anatomically_enclose_intermediate_rings(
+            [a,b], [a,mid,b], torso + hanging_arms)
+        self.assertEqual(result[0], a)
+        self.assertEqual(result[-1], b)
+        self.assertLess(result[1][3] - mid[3], 0.04)
+
     def test_missing_section_fails_closed(self):
         a, b = (0.4, 0, 0, 0.10, 0.08), (0.5, 0, 0, 0.10, 0.08)
         body = [(0.0, 0.0, 0.9) for _ in range(25)]
