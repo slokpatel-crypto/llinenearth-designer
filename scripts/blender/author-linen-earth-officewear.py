@@ -850,6 +850,13 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
                 flush=True,
             )
             if not selected:
+                # The pass inspected REAL triangles rather than an enormous
+                # synthetic ngon. Persist exactly the validated triangulated
+                # topology before returning, so Blender export and independent
+                # BVH preflight assess the same garment surface.
+                if giant_faces:
+                    bm.to_mesh(obj.data)
+                    obj.data.update(calc_edges=True)
                 return {
                     "passes":iteration, "newVertices":refined_total,
                     "projectedVertices":moved_total,
