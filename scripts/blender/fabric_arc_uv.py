@@ -58,3 +58,23 @@ def ellipse_arc_uv(x,y,frame, *, inward_seam_side=1, steps=64):
         return length
     perimeter=integrate(math.tau)
     return integrate(phase)/perimeter
+
+
+def ellipse_ring_perimeter_m(frame,steps=128):
+    """Geometry-only circumference represented by one full UV U period.
+
+    Do not confuse X-diameter with full-around cloth length. Lab-preview
+    geometry estimates are never sufficient as physical panel measurements.
+    """
+    if len(frame)!=5:
+        raise ValueError("Garment perimeter requires a physical ring frame.")
+    rx,ry=frame[3],frame[4]
+    if any(isinstance(v,bool) or not isinstance(v,(int,float))
+           or not math.isfinite(v) for v in (rx,ry)) or rx<=0 or ry<=0:
+        raise ValueError("Garment frame must have finite positive radii.")
+    if not isinstance(steps,int) or isinstance(steps,bool) or not 32<=steps<=1024:
+        raise ValueError("Garment perimeter integration must be bounded.")
+    delta=math.tau/steps
+    return sum(math.hypot(rx*math.sin((index+.5)*delta),
+                          ry*math.cos((index+.5)*delta))*delta
+               for index in range(steps))

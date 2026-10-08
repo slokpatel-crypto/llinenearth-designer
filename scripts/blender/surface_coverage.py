@@ -560,3 +560,24 @@ def bounded_source_cloth_shift(source_xyz,current_xyz,requested_xyz,max_m=0.095)
     # Guard numerical overshoot even with finite quadratic arithmetic.
     fraction=max(0.,min(1.,maximal-1e-7))
     return tuple(component*fraction for component in shift)
+
+
+def precision_safe_source_radius(distance_m,limit_m=0.095):
+    """Recover an original-cloth displacement from Blender float32 rounding.
+
+    Blender mesh coordinates store float32 and a computed exactly-95mm
+    displacement can emerge as 95.000004mm. This function NEVER accepts a
+    vertex outside the 95mm sphere: a <=10-nanometre rounding artifact is
+    INSET by 0.2 micrometres and then actual geometry is rechecked.
+    Genuine >10nm overshoots remain hard errors, not fake fit evidence.
+    """
+    for item in (distance_m,limit_m):
+        if isinstance(item,bool) or not isinstance(item,(int,float)) or not math.isfinite(item):
+            raise ValueError("Source correction radius must be finite.")
+    if not 0<limit_m<=0.095 or distance_m<0:
+        raise ValueError("Garment source radius must be within locked 95mm limit.")
+    if distance_m<=limit_m:
+        return distance_m
+    if distance_m>limit_m+1e-8:
+        raise ValueError("Actual physical cloth correction exceeds 95mm source lock.")
+    return limit_m-2e-7
