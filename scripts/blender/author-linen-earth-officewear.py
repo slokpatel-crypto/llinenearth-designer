@@ -765,13 +765,18 @@ def shape_officewear_to_identity(authored, body, targets):
         ("ShirtSleeveRFabric", right_hand_z, target_hand_half),
     ):
         sleeve = authored[name]
-        current_center = center_x_at_z(sleeve, hand_z, 0.070)
+        # The actual cuff edge finishes 55 mm ABOVE the bare-hand landmark.
+        # Exact triangle-plane QA correctly fails at hand_z: that plane is
+        # outside the sleeve. Measure and align the real cloth hem instead of
+        # widening tolerance until an unrelated elbow ring is sampled.
+        cuff_hem_z = hand_z + 0.055
+        current_center = center_x_at_z(sleeve, cuff_hem_z, 0.018)
         if current_center is None:
-            raise RuntimeError(f"Could not measure {name} at the locked cuff/hand guide.")
+            raise RuntimeError(f"Could not measure {name} at the physical cuff hem above the locked hand guide.")
         delta = target_center - current_center
         shift_x_profile(
             sleeve,
-            [(hand_z - 0.16, delta), (hand_z, delta), (shoulder_z - 0.05, 0.0), (shoulder_z + 0.05, 0.0)],
+            [(hand_z - 0.10, delta), (cuff_hem_z, delta), (shoulder_z - 0.05, 0.0), (shoulder_z + 0.05, 0.0)],
         )
 
     return {
