@@ -641,3 +641,26 @@ class ConnectedSleeveSkinExitContract(unittest.TestCase):
         self.assertIn("sleeve_side*shift.x>=-0.002",author)
         self.assertIn("not point_inside_closed_bvh(body_tree, candidate)",author)
         self.assertIn("(target - point).length > 0.095",author)
+
+
+class BoundedSleeveSeamContinuityContract(unittest.TestCase):
+    def test_blender_contact_repair_preserves_real_local_source_edges(self):
+        author=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
+                "author-linen-earth-officewear.py").read_text()
+        start=author.index("def repair_between_vertex_collisions(")
+        end=author.index("def finish_procedural_shell(",start)
+        code=author[start:end]
+        # Genuine native Blender proof: moving just ONE end of the same source
+        # 5.3mm edge by 41mm made a new 3.9mm-deep skin crossing.
+        source_a=(-.20456,-.01992,1.07258)
+        source_b=(-.20404,-.02030,1.06727)
+        unsafe_a=(-.24554,-.02042,1.07258)
+        unsafe_b=source_b
+        self.assertLess(math.dist(source_a,source_b),.006)
+        self.assertGreater(math.dist(unsafe_a,unsafe_b),.04)
+        self.assertIn("src_length*1.50+0.006",code)
+        self.assertIn("for smoothing_pass in range(4):",code)
+        self.assertIn("point_inside_closed_bvh(body_tree,position)",code)
+        self.assertIn("limit_m=0.09495",code)
+        self.assertIn("coherentSeamPropagations",code)
+        self.assertIn("if remaining_face or remaining_edge:",code)
