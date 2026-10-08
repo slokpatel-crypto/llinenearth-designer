@@ -1165,7 +1165,13 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                     guide_center_z("LE_GUIDE_SHIRT_WAIST"),
                 ] if obj.name=="ShirtTorsoFabric" else (
                     [guide_center_z("LE_GUIDE_TROUSER_WAIST")]
-                    if obj.name=="TrouserWaistFabric" else []
+                    if obj.name=="TrouserWaistFabric" else (
+                        [guide_center_z("LE_GUIDE_LEFT_HAND_CENTER_H")+0.055]
+                        if obj.name=="ShirtSleeveLFabric" else (
+                            [guide_center_z("LE_GUIDE_RIGHT_HAND_CENTER_H")+0.055]
+                            if obj.name=="ShirtSleeveRFabric" else []
+                        )
+                    )
                 )
                 def outside_correction(point):
                     nearest=body_tree.find_nearest(point)
@@ -1278,6 +1284,59 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                     raise RuntimeError(
                         f"{obj.name}: measured contacts touch only identity-locked guide vertices."
                     )
+                # The last two *real* sleeve intersections were created
+                # when one vertex of an original 5mm seam moved 41mm outward
+                # while its safe neighbor stayed put. Even though both
+                # vertices were BVH-outside, the connecting FACE/EDGE cut
+                # through the locked arm. Preserve source cloth connectivity:
+                # spread the needed outward displacement to nearby vertices,
+                # verify EVERY new vertex outside, and keep the <=95mm cap.
+                # No extra vertices or skipped surface penetration checks.
+                edge_propagations=0
+                if obj.name in ("ShirtSleeveLFabric","ShirtSleeveRFabric"):
+                    for smoothing_pass in range(4):
+                        transfers={}
+                        for edge in bm.edges:
+                            a,b=edge.verts
+                            src_a=source_world_positions[a.index]
+                            src_b=source_world_positions[b.index]
+                            src_length=(src_a-src_b).length
+                            now_a=matrix@a.co
+                            now_b=matrix@b.co
+                            stretch=(now_a-now_b).length
+                            allowed=max(0.012,src_length*1.50+0.006)
+                            if stretch<=allowed:continue
+                            delta_a=now_a-src_a
+                            delta_b=now_b-src_b
+                            if delta_a.length>=delta_b.length:
+                                moved,source,original,wanted=b,src_b,now_b,delta_a
+                            else:
+                                moved,source,original,wanted=a,src_a,now_a,delta_b
+                            if any(z is not None and abs(original.z-z)<0.002 for z in protected):
+                                continue
+                            shift=(wanted-(original-source))*0.55
+                            if shift.length<0.0001:continue
+                            bounded,_=bounded_source_panel_displacement(
+                                tuple(source),tuple(original+shift),limit_m=0.09495
+                            )
+                            position=Vector(bounded)
+                            if point_inside_closed_bvh(body_tree,position):
+                                continue
+                            transfers.setdefault(moved,[]).append(position-original)
+                        if not transfers: break
+                        for vertex,shifts in transfers.items():
+                            original=matrix@vertex.co
+                            proposal=original+sum(shifts,Vector((0,0,0)))/len(shifts)
+                            bounded,_=bounded_source_panel_displacement(
+                                tuple(source_world_positions[vertex.index]),
+                                tuple(proposal),limit_m=0.09495
+                            )
+                            position=Vector(bounded)
+                            if point_inside_closed_bvh(body_tree,position):
+                                continue
+                            vertex.co=inverse@position
+                            edge_propagations+=1
+                    progress[-1]["coherentSeamPropagations"]=edge_propagations
                 progress[-1]["coherentContactVertices"]=patched
                 progress[-1]["boundedAt95mmVertices"]=capped
                 if capped:
