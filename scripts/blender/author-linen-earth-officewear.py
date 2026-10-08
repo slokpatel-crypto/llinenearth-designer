@@ -1021,8 +1021,17 @@ def main():
     face_refinements = {}
     for name, obj in authored.items():
         object_clearance = shirt_clearance_m if name.startswith("Shirt") else trouser_clearance_m
+        # Project authored construction rings BEFORE interpolation. Subdividing
+        # a deeply embedded original face first caused a new shoulder vertex
+        # at (0.1385,0.0468,1.2646) to require >95mm projection. Correct the
+        # actual source silhouette within the unchanged limit, then interpolate
+        # that safe geometry and repair newly introduced face/edge samples.
+        guide_projection = repair_body_penetrations(obj, body, object_clearance)
         face_refinements[name] = refine_collision_faces(obj)
-        collision_repairs[name] = repair_body_penetrations(obj, body, object_clearance)
+        projection = repair_body_penetrations(obj, body, object_clearance)
+        projection["guidePassMovedVertices"] = guide_projection["movedVertices"]
+        projection["guidePassMaxPenetrationMm"] = guide_projection["maxPenetrationBeforeMm"]
+        collision_repairs[name] = projection
         face_refinements[name]["deepSurfaceCorrection"] = repair_between_vertex_collisions(
             obj, body, object_clearance
         )
