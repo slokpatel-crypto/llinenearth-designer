@@ -23,7 +23,7 @@ from mathutils.bvhtree import BVHTree
 # Authoring and Blender preflight use the same exact triangle/guide intersection.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
-from surface_coverage import underarm_inboard_relief_m, body_aware_sleeve_ring, waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
+from surface_coverage import bounded_source_cloth_shift, underarm_inboard_relief_m, body_aware_sleeve_ring, waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -1114,9 +1114,18 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                 for vertex,corrections in proposed.items():
                     original=matrix @ vertex.co
                     average=sum(corrections,Vector((0.0,0.0,0.0)))/len(corrections)
-                    if ((original+average)-source_world_positions[vertex.index]).length>0.095:
-                        raise RuntimeError(f"{obj.name}: terminal seam exceeds cumulative 95mm source guard.")
-                    vertex.co=inverse @ (original+average)
+                    # A local face suggestion can exceed the remaining source
+                    # radius although a smaller coherent correction is still
+                    # legal. Clip exactly to the 95mm original cloth source
+                    # sphere; NEVER accept resulting intersections: the next
+                    # BVH pass and independent preflight check every face/edge.
+                    clipped=bounded_source_cloth_shift(
+                        tuple(source_world_positions[vertex.index]),
+                        tuple(original),tuple(average),
+                    )
+                    if not any(abs(value)>1e-9 for value in clipped):
+                        continue
+                    vertex.co=inverse @ (original+Vector(clipped))
                 terminal_poked=True
             else:
                 # Blender 4.2 real-body telemetry exposed 35mm crossings where
