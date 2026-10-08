@@ -23,7 +23,7 @@ from mathutils.bvhtree import BVHTree
 # Authoring and Blender preflight use the same exact triangle/guide intersection.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
-from surface_coverage import reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
+from surface_coverage import belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -568,8 +568,15 @@ def enclose_post_identity_torso_profile(
     if len(grouped)<3:
         raise RuntimeError(f"{obj.name} lacks enough garment construction rings.")
     entries=[]
+    shirt_shoulder_z=max(locked_z_planes) if obj.name=="ShirtTorsoFabric" else None
     for z,items in sorted(grouped.items()):
         if len(items)<24:
+            continue
+        # Raised collar-band and neck-gasket levels are NOT torso cross-sections.
+        # The native Blender candidate previously tried to expand a 67x29.5mm
+        # collar cap around full shoulders (4.778x growth). The collar stays
+        # real, but is checked by separate neck/collar coverage gates instead.
+        if shirt_shoulder_z is not None and not belongs_to_locked_shirt_trunk(z,shirt_shoulder_z):
             continue
         # The original torso neck opening shares the shoulder Z guide and
         # must remain untouched. All real shoulder/waist guide planes lock.
