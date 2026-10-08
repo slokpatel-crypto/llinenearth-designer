@@ -539,22 +539,27 @@ def repair_body_penetrations(obj, body, clearance_m, max_passes=4):
             distance = (point - surface).length
             max_before_mm = max(max_before_mm, distance * 1000.0)
 
-            # BVH polygon winding can be inconsistent around concave anatomy.
-            # Probe both normal directions and choose the side classified outside.
-            candidate_a = surface + normal * clearance_m
-            candidate_b = surface - normal * clearance_m
-            a_inside = point_inside_closed_bvh(body_tree, candidate_a)
-            b_inside = point_inside_closed_bvh(body_tree, candidate_b)
-            if not a_inside:
-                target = candidate_a
-            elif not b_inside:
-                target = candidate_b
-            else:
-                # If both probes are still inside at a deep concavity, move farther
-                # along the less-penetrating direction and let the next pass verify.
-                far_a = surface + normal * max(clearance_m * 2.0, 0.012)
-                far_b = surface - normal * max(clearance_m * 2.0, 0.012)
-                target = far_a if not point_inside_closed_bvh(body_tree, far_a) else far_b
+            # The old fallback picked a point that could STILL be classified
+            # inside at deep shoulder/waist concavities. In the real Blender
+            # candidate this left one torso vertex embedded after four passes.
+            # Search both normal directions at increasing distances and choose
+            # the nearest point actually verified OUTSIDE the locked body.
+            target = None
+            possible = []
+            for scale in (1.0, 2.0, 4.0, 8.0, 12.0, 16.0):
+                probe_distance = clearance_m * scale
+                for sign in (1.0, -1.0):
+                    candidate = surface + normal * sign * probe_distance
+                    if not point_inside_closed_bvh(body_tree, candidate):
+                        possible.append(((candidate - point).length, candidate))
+                if possible:
+                    target = min(possible, key=lambda item: item[0])[1]
+                    break
+            if target is None:
+                raise RuntimeError(
+                    f"{obj.name} could not find an outside body projection "
+                    f"for embedded vertex near {tuple(round(value,4) for value in point)}."
+                )
 
             vertex.co = inverse @ target
             moved_this_pass += 1
