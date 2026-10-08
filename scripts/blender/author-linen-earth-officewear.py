@@ -23,7 +23,7 @@ from mathutils.bvhtree import BVHTree
 # Authoring and Blender preflight use the same exact triangle/guide intersection.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
-from surface_coverage import rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
+from surface_coverage import reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -606,11 +606,11 @@ def enclose_post_identity_torso_profile(
         # Preserve the original physically locked guide positions.
         if any(abs(row[0]-guide_z)<0.002 for guide_z in locked_z_planes):
             raise RuntimeError(f"{obj.name} cannot change a locked physical guide.")
-        sx,sy=target[3]/rx,target[4]/ry
         for vertex,point in items:
-            point.x=target[1]+(point.x-cx)*sx
-            point.y=target[2]+(point.y-cy)*sy
-            vertex.co=inverse @ point
+            fitted_xyz=reproject_vertex_to_fitted_ring(
+                (point.x,point.y,point.z), row, target
+            )
+            vertex.co=inverse @ Vector(fitted_xyz)
         altered+=1
         max_growth=max(max_growth,added)
     obj.data.update()
