@@ -526,3 +526,37 @@ def underarm_inboard_relief_m(z, signed_inboard_m, waist_guide_z, *,
     across=min(1.0,signed_inboard_m/0.055)
     eased_across=across*across*(3-2*across)
     return min(max_relief_m, max(max_relief_m*low,0.040*upper)*eased_across)
+
+
+def bounded_source_cloth_shift(source_xyz,current_xyz,requested_xyz,max_m=0.095):
+    """Clip a local seam change to the ORIGINAL garment's 95mm radius.
+
+    This is a mathematical constraint, NOT a collision approval. Every
+    resulting face and edge must still independently clear native body BVH.
+    Coherent cloth proposals may overshoot the safety radius by a few mm near
+    an armpit; raising immediately can reject a smaller safe direction.
+    """
+    if any(len(values)!=3 for values in (source_xyz,current_xyz,requested_xyz)):
+        raise ValueError("Source-limited seam vectors must have three axes.")
+    values=(*source_xyz,*current_xyz,*requested_xyz,max_m)
+    if any(isinstance(value,bool) or not isinstance(value,(int,float))
+           or not math.isfinite(value) for value in values):
+        raise ValueError("Source-limited seam shift requires finite coordinates.")
+    if not 0.001<=max_m<=0.095:
+        raise ValueError("Garment seam displacement must not exceed 95mm.")
+    current=tuple(current_xyz[i]-source_xyz[i] for i in range(3))
+    shift=tuple(requested_xyz)
+    a=sum(v*v for v in shift)
+    c=sum(v*v for v in current)-max_m*max_m
+    if c>1e-9:
+        raise ValueError("Cloth has already exceeded its source displacement budget.")
+    if a<1e-18:
+        return (0.0,0.0,0.0)
+    b=2*sum(current[i]*shift[i] for i in range(3))
+    if a+b+c<=1e-12:
+        return shift
+    discriminant=max(0.0,b*b-4*a*c)
+    maximal=(-b+math.sqrt(discriminant))/(2*a)
+    # Guard numerical overshoot even with finite quadratic arithmetic.
+    fraction=max(0.,min(1.,maximal-1e-7))
+    return tuple(component*fraction for component in shift)
