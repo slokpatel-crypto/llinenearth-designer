@@ -636,7 +636,7 @@ class ProximalSleeveBodyExitContract(unittest.TestCase):
         self.assertIn("(point-nearest[0]).length > 0.0015",author)
         # The other forearm and actual cuff remain free to follow the measured
         # body posture; do not apply global one-direction extrusion.
-        def guarded(x,z):return .075+1 <= z <= 1.245 and abs(x)<.205
+        def guarded(x,z): return 1.075 <= z <= 1.245 and abs(x)<.205
         self.assertTrue(guarded(-.157,1.114))
         self.assertFalse(guarded(-.250,1.114))
         self.assertFalse(guarded(-.157,1.272))
