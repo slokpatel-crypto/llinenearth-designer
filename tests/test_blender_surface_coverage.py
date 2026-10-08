@@ -11,6 +11,7 @@ from surface_coverage import (
     bounded_body_section_center_y,
     belongs_to_locked_shirt_trunk,
     terminal_face_patch_allowed,
+    needs_tailoring_face_triangulation,
     reproject_vertex_to_fitted_ring,
     rounded_tailoring_ring_xy,
     outward_ring_quad,
@@ -20,6 +21,23 @@ from surface_coverage import (
     subdivide_ring_profiles,
     vertical_subdivision_cuts,
 )
+
+
+class PhysicalClothTopologyTests(unittest.TestCase):
+    def test_only_nonlocal_giant_ngons_are_triangulated(self):
+        # Native Blender 37783648648 showed one purported face with over
+        # 80 distinct waist-ring heights; its arithmetic centre was 32.4mm
+        # inside skin. A proper physical cloth panel is a triangle or quad.
+        self.assertFalse(needs_tailoring_face_triangulation(3))
+        self.assertFalse(needs_tailoring_face_triangulation(4))
+        self.assertTrue(needs_tailoring_face_triangulation(5))
+        self.assertTrue(needs_tailoring_face_triangulation(88))
+
+    def test_invalid_topology_counts_fail_closed(self):
+        for bad in (-1,3.14,True,float("nan")):
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError):
+                    needs_tailoring_face_triangulation(bad)
 
 
 class TerminalCoherentClothPatchTests(unittest.TestCase):
