@@ -22,7 +22,7 @@ from mathutils.bvhtree import BVHTree
 # Authoring and Blender preflight use the same exact triangle/guide intersection.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
-from surface_coverage import anatomically_enclose_intermediate_rings, subdivide_ring_profiles
+from surface_coverage import anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -104,6 +104,10 @@ def build_ring_shell(name, rings, segments=48, neck_opening=None, collar_height=
     collection = ensure_export_collection()
     vertices = []
     faces = []
+    # Sleeves/trouser legs are authored high->low but torso/waist low->high.
+    # Inverting these quads is essential: SOLIDIFY offset=+1 must add cloth
+    # thickness OUTSIDE, never toward the locked real body's skin.
+    rings_ascending = rings[-1][0] > rings[0][0]
     for ring_index, ring in enumerate(rings):
         z_value, center_x, center_y, radius_x, radius_y = ring
         for segment in range(segments):
@@ -118,11 +122,8 @@ def build_ring_shell(name, rings, segments=48, neck_opening=None, collar_height=
             current = ring_index * segments
             for segment in range(segments):
                 nxt = (segment + 1) % segments
-                faces.append((
-                    previous + segment,
-                    previous + nxt,
-                    current + nxt,
-                    current + segment,
+                faces.append(outward_ring_quad(
+                    previous, current, segment, nxt, ascending=rings_ascending
                 ))
 
     if neck_opening is not None:
@@ -300,12 +301,23 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
     shirt_depth_shoulder = shoulder_depth + shirt_clearance_m
     shirt_depth_chest = chest_depth + shirt_clearance_m
     shirt_depth_waist = waist_depth + shirt_clearance_m
-    shirt_depth_hem = max(0.100, shirt_depth_waist - 0.004)
+    # A tucked shirt's final 35 mm must sit directly UNDER the trouser waistband.
+    # Earlier we anchored it to the higher shirt-waist guide instead, leaving a
+    # visible floating shirt/trouser gap (Blender proof: 32.7 mm median).
+    # Use the SAME locked-body hip cross-section and actual trouser waist ease.
+    trouser_waist_y, waist_depth_at_hip = body_section_y_depth(
+        body, trouser_waist_z, cx, 0.205, minimum=0.115
+    )
+    trouser_depth_waist = waist_depth_at_hip + trouser_clearance_m
+    tucked_hem = nested_tucked_hem_ring(
+        shirt_hem_z, cx, trouser_waist_y, trouser_waist_half, trouser_depth_waist,
+        inset_m=0.007,
+    )
 
     shirt = build_ring_shell(
         "ShirtTorsoFabric",
         [
-            (shirt_hem_z, cx, waist_y, shirt_waist_half + 0.006, shirt_depth_hem),
+            tucked_hem,
             (shirt_waist_z, cx, waist_y, shirt_waist_half, shirt_depth_waist),
             (upper_waist_z, cx, (waist_y+chest_y)*0.5, shirt_waist_half + 0.012, shirt_depth_waist + 0.006),
             (chest_z, cx, chest_y, shoulder_half - 0.020, shirt_depth_chest),
@@ -345,9 +357,7 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
 
     seat_z = trouser_waist_z - 0.165
     upper_thigh_z = trouser_waist_z - 0.260
-    trouser_waist_y, waist_depth_at_hip = body_section_y_depth(body, trouser_waist_z, cx, 0.205, minimum=0.115)
     seat_y, depth_at_seat = body_section_y_depth(body, seat_z, cx, 0.220, minimum=0.135)
-    trouser_depth_waist = waist_depth_at_hip + trouser_clearance_m
     trouser_depth_seat = depth_at_seat + trouser_clearance_m
     trouser_waist = build_ring_shell(
         "TrouserWaistFabric",

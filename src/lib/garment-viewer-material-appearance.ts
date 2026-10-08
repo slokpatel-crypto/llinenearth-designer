@@ -62,3 +62,18 @@ export function createInFlightMaterialLoader<T extends object>() {
     }
   };
 }
+
+
+/** Give real user input a chance to run while hydrating many GLB materials. */
+export function createCooperativeMaterialBatch(
+  yieldToBrowser:()=>Promise<void>,
+  batchSize=4,
+):()=>Promise<void> {
+  if(!Number.isSafeInteger(batchSize)||batchSize<1||batchSize>64)
+    throw new Error("WebGL material batch size must be a bounded positive integer.");
+  let operations=0;
+  return async()=>{
+    operations++;
+    if(operations%batchSize===0) await yieldToBrowser();
+  };
+}

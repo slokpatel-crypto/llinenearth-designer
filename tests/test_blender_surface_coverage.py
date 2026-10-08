@@ -7,10 +7,60 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "blender"))
 from surface_coverage import (
     anatomically_enclose_intermediate_rings,
+    outward_ring_quad,
+    nested_tucked_hem_ring,
     penetrating_surface_samples,
     subdivide_ring_profiles,
     vertical_subdivision_cuts,
 )
+
+
+class PhysicalPanelWindingTests(unittest.TestCase):
+    def test_shell_normals_point_outwards_for_both_ring_directions(self):
+        # Circle around positive X at segment 0. XY rings authored top->bottom
+        # must have the SAME positive outward X normal as bottom->top.
+        for ascending in (True, False):
+            with self.subTest(ascending=ascending):
+                lower, upper = 0.0, 1.0
+                z_first, z_next = (lower, upper) if ascending else (upper, lower)
+                vertices = [(1,0,z_first),(0,1,z_first),(-1,0,z_first),(0,-1,z_first),
+                            (1,0,z_next),(0,1,z_next),(-1,0,z_next),(0,-1,z_next)]
+                face = outward_ring_quad(0,4,0,1,ascending=ascending)
+                p,q,r = (vertices[i] for i in face[:3])
+                a=[q[k]-p[k] for k in range(3)]
+                b=[r[k]-p[k] for k in range(3)]
+                normal_x=a[1]*b[2]-a[2]*b[1]
+                self.assertGreater(normal_x,0,"Outward cloth thickness must avoid bare-body penetrations")
+
+    def test_ring_winding_rejects_ambiguous_geometry(self):
+        for kwargs in (
+            dict(previous=0,current=4,segment=-1,next_segment=1,ascending=True),
+            dict(previous=0,current=4,segment=True,next_segment=1,ascending=True),
+            dict(previous=0,current=4,segment=0,next_segment=1,ascending="down"),
+        ):
+            with self.subTest(kwargs=kwargs):
+                with self.assertRaises(ValueError):
+                    outward_ring_quad(**kwargs)
+
+
+class PhysicalTuckEnvelopeTests(unittest.TestCase):
+    def test_tucked_hem_follows_real_trouser_waist_with_seven_mm_layering(self):
+        ring=nested_tucked_hem_ring(0.88,0.0,-0.02,0.172,0.137)
+        self.assertAlmostEqual(ring[0],0.88)
+        self.assertAlmostEqual(ring[2],-0.02)
+        self.assertAlmostEqual((0.172-ring[3])*1000,7)
+        self.assertAlmostEqual((0.137-ring[4])*1000,7)
+        self.assertGreater(ring[3],0)
+        self.assertGreater(ring[4],0)
+
+    def test_tucked_hem_does_not_hide_invalid_physical_fit(self):
+        for radius_x,radius_y,inset in (
+            (0.003,0.12,0.007), (0.172,0.01,0.012),
+            (0.172,0.12,0), (0.172,0.12,0.030),
+        ):
+            with self.subTest(params=(radius_x,radius_y,inset)):
+                with self.assertRaises(ValueError):
+                    nested_tucked_hem_ring(0.88,0,0,radius_x,radius_y,inset_m=inset)
 
 
 class VerticalRefinementTests(unittest.TestCase):
