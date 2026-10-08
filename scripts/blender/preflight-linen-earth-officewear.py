@@ -15,6 +15,9 @@ import bpy
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from section_geometry import triangle_section_x_span
+
 EXPORT_COLLECTION = "LinenEarthExport"
 REFERENCE_BODY = "Body"
 TARGET_HEIGHT_M = 1.727
@@ -414,8 +417,17 @@ def main(json_output=None):
         evaluated = obj.evaluated_get(depsgraph)
         mesh = evaluated.to_mesh()
         try:
-            xs = []
             matrix = evaluated.matrix_world
+            if obj.name in GARMENT_OBJECTS:
+                # Exact cross-section works even between sparse tailoring rings.
+                mesh.calc_loop_triangles()
+                points = [matrix @ vertex.co for vertex in mesh.vertices]
+                triangles = (
+                    tuple((points[index].x, points[index].y, points[index].z) for index in face.vertices)
+                    for face in mesh.loop_triangles
+                )
+                return triangle_section_x_span(triangles, z_world)
+            xs = []
             for vertex in mesh.vertices:
                 point = matrix @ vertex.co
                 if abs(point.z - z_world) <= band:
@@ -480,7 +492,7 @@ def main(json_output=None):
         measured = width_at_z(sample_object, sample_z, band) if sample_object and sample_z is not None else None
         identity_measurements[key] = round(measured, 2) if measured is not None else None
         if sample_object and measured is None:
-            warnings.append(f"Could not sample {key} from garment geometry for identity-fit QA.")
+            reasons.append(f"Could not sample {key} from garment geometry for identity-fit QA.")
         elif measured is not None and abs(measured - target) > tolerance:
             reasons.append(
                 f"{key} is {measured:.1f} mm; locked model target is {target:.1f} mm ± {tolerance:.1f} mm."
@@ -499,7 +511,7 @@ def main(json_output=None):
         ("trouserCenterOffsetMm", trouser_center, 18.0),
     ):
         if measured is None:
-            warnings.append(f"Could not sample {key} for garment centerline QA.")
+            reasons.append(f"Could not sample {key} for garment centerline QA.")
         elif abs(measured) > tolerance:
             reasons.append(f"{key} is {measured:.1f} mm from model center; allowed offset is ±{tolerance:.1f} mm.")
 
@@ -540,7 +552,7 @@ def main(json_output=None):
     )
     identity_measurements["outerArmSilhouetteMm"] = round(outer_arm_silhouette, 2) if outer_arm_silhouette is not None else None
     if outer_arm_silhouette is None:
-        warnings.append("Could not sample garment outer-arm silhouette at the locked guide.")
+        reasons.append("Could not sample garment outer-arm silhouette at the locked guide.")
     else:
         target_outer_arm = EXPECTED_IDENTITY_TARGETS_MM["outerArmSilhouette"]
         if abs(outer_arm_silhouette - target_outer_arm) > 36.0:
@@ -583,7 +595,7 @@ def main(json_output=None):
     leg_spacing = abs(right_leg_center - left_leg_center) if left_leg_center is not None and right_leg_center is not None else None
     identity_measurements["legCenterSpacingMm"] = round(leg_spacing, 2) if leg_spacing is not None else None
     if leg_spacing is None:
-        warnings.append("Could not sample trouser leg-center spacing from production geometry.")
+        reasons.append("Could not sample trouser leg-center spacing from production geometry.")
     else:
         target_leg_spacing = EXPECTED_IDENTITY_TARGETS_MM["legCenterSpacing"]
         if abs(leg_spacing - target_leg_spacing) > 24.0:
@@ -672,7 +684,7 @@ def main(json_output=None):
             boundary_clearance_mm[key + "Signed"] = stats
             if stats is None:
                 boundary_intersections[key] = None
-                warnings.append(f"Could not evaluate signed penetration QA for {key}.")
+                reasons.append(f"Could not evaluate signed penetration QA for {key}.")
                 continue
             count = int(stats["penetrationSamples"])
             boundary_intersections[key] = count
@@ -715,7 +727,7 @@ def main(json_output=None):
         trouser_gap_mm = (right_leg_span[0] - left_leg_span[1]) * 1000.0 if left_leg_span and right_leg_span else None
         boundary_clearance_mm["trouserInnerGap"] = round(trouser_gap_mm, 2) if trouser_gap_mm is not None else None
         if trouser_gap_mm is None:
-            warnings.append("Could not measure trouser inner-leg gap at the locked stance guide.")
+            reasons.append("Could not measure trouser inner-leg gap at the locked stance guide.")
         elif trouser_gap_mm < 6.0:
             reasons.append(
                 f"Trouser inner-leg gap is {trouser_gap_mm:.1f} mm; "
