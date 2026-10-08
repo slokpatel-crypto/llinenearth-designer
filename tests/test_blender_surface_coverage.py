@@ -7,10 +7,39 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "blender"))
 from surface_coverage import (
     anatomically_enclose_intermediate_rings,
+    outward_ring_quad,
     penetrating_surface_samples,
     subdivide_ring_profiles,
     vertical_subdivision_cuts,
 )
+
+
+class PhysicalPanelWindingTests(unittest.TestCase):
+    def test_shell_normals_point_outwards_for_both_ring_directions(self):
+        # Circle around positive X at segment 0. XY rings authored top->bottom
+        # must have the SAME positive outward X normal as bottom->top.
+        for ascending in (True, False):
+            with self.subTest(ascending=ascending):
+                lower, upper = 0.0, 1.0
+                z_first, z_next = (lower, upper) if ascending else (upper, lower)
+                vertices = [(1,0,z_first),(0,1,z_first),(-1,0,z_first),(0,-1,z_first),
+                            (1,0,z_next),(0,1,z_next),(-1,0,z_next),(0,-1,z_next)]
+                face = outward_ring_quad(0,4,0,1,ascending=ascending)
+                p,q,r = (vertices[i] for i in face[:3])
+                a=[q[k]-p[k] for k in range(3)]
+                b=[r[k]-p[k] for k in range(3)]
+                normal_x=a[1]*b[2]-a[2]*b[1]
+                self.assertGreater(normal_x,0,"Outward cloth thickness must avoid bare-body penetrations")
+
+    def test_ring_winding_rejects_ambiguous_geometry(self):
+        for kwargs in (
+            dict(previous=0,current=4,segment=-1,next_segment=1,ascending=True),
+            dict(previous=0,current=4,segment=True,next_segment=1,ascending=True),
+            dict(previous=0,current=4,segment=0,next_segment=1,ascending="down"),
+        ):
+            with self.subTest(kwargs=kwargs):
+                with self.assertRaises(ValueError):
+                    outward_ring_quad(**kwargs)
 
 
 class VerticalRefinementTests(unittest.TestCase):
