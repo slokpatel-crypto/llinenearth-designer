@@ -369,6 +369,9 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
                 body_points,ring,body_center_x=cx,side=side,
                 clearance_m=shirt_clearance_m,
                 locked_hand_center=index==len(source_sleeve_rings)-1,
+                # Native Blender found only 11 upper-arm vertices near z=1.4347m;
+                # keep the 16-real-sample minimum, widen shoulder band only.
+                sample_band_m=0.060 if index==0 else 0.035,
             )
             fitted_sleeve_rings.append(fit)
             sleeve_profile_evidence[name].append(evidence)
