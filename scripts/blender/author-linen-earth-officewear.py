@@ -345,7 +345,7 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
             (shoulder_z - 0.045, cx, shoulder_y, shoulder_half - 0.006, shirt_depth_shoulder),
             (shoulder_z, cx, shoulder_y, shoulder_half, shirt_depth_shoulder * 0.96),
         ],
-        segments=60,
+        segments=64,
         neck_opening=(shoulder_z, cx, shoulder_y - 0.006, 0.061, 0.054),
         collar_height=0.032,
     )
@@ -403,7 +403,7 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
                   "evidence":sleeve_profile_evidence[name],
               },sort_keys=True),flush=True)
         sleeves[name] = build_ring_shell(
-            name, fitted_sleeve_rings, segments=44,
+            name, fitted_sleeve_rings, segments=48,
         )
 
     seat_z = trouser_waist_z - 0.165
@@ -418,7 +418,7 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
             (trouser_waist_z - 0.070, cx, (seat_y+trouser_waist_y)*0.5, trouser_waist_half + 0.010, trouser_depth_waist + 0.004),
             (trouser_waist_z, cx, trouser_waist_y, trouser_waist_half, trouser_depth_waist),
         ],
-        segments=60,
+        segments=64,
     )
 
     # Register candidate garment rings to the real body at each height.
@@ -484,7 +484,7 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
                   "rings": [[round(v,5) for v in row] for row in fitted_rings],
                   "evidence": leg_profile_evidence[name],
               },sort_keys=True),flush=True)
-        legs[name] = build_ring_shell(name, fitted_rings, segments=44)
+        legs[name] = build_ring_shell(name, fitted_rings, segments=48)
 
     authored = {
         "ShirtTorsoFabric": shirt,
@@ -793,7 +793,7 @@ def restore_shirt_waist_side_seam(obj, waist_z, waist_half_width_m, shoulder_z, 
             "lockedWaistPreserved":True}
 
 
-def refine_collision_faces(obj, max_edge_m=0.050, max_faces=80000):
+def refine_collision_faces(obj, max_edge_m=0.025, max_faces=80000):
     """Add genuine surface vertices at long shell edges before body-fit repair.
 
     A previously sparse six-piece panel can cut through the locked human even
@@ -802,13 +802,10 @@ def refine_collision_faces(obj, max_edge_m=0.050, max_faces=80000):
     vertices outside, rather than hiding face penetration in the preflight.
     Original guide-plane vertices and target dimensions are preserved.
     """
-    # Adaptive source tessellation uses a native face/edge BVH verifier that
-    # still rejects EVERY contact deeper than 1.5mm. The earlier 25mm uniform
-    # edge target produced 903,168 evaluated triangles (4.1x the 220k mobile
-    # production cap). Two global quad refinements at 50mm, together with
-    # 60/44 azimuth seams, keep smoothly shaded drape while preserving the
-    # EXACT same skin and identity gates. If actual BVH fitting fails on this
-    # geometry, the source must be remodeled rather than waiving the gate.
+    # Native Blender established that globally coarsening the production
+    # contact mesh from 25mm to 50mm creates unrepairable underarm contacts.
+    # Retain the high-detail contact-safe source; mobile LOD needs a separate,
+    # independently BVH-verified reduction path, not a coarser collision shell.
     bm=bmesh.new()
     try:
         bm.from_mesh(obj.data)
