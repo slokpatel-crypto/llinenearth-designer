@@ -862,7 +862,7 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                 + obj.name + " " + json.dumps(progress[-1],sort_keys=True),
                 flush=True,
             )
-            if iteration==0 and selected:
+            if (iteration==0 or iteration==max_rounds) and selected:
                 # Real Blender telemetry identifies WHICH measured cloth
                 # locations need source-panel correction; face counts alone
                 # cannot distinguish shoulder, armpit and waist problems.
@@ -876,6 +876,15 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                         if nearest and nearest[0] is not None else None,
                         "zExtents":[round(min((matrix @ v.co).z for v in face.verts),5),
                                     round(max((matrix @ v.co).z for v in face.verts),5)],
+                        "lockedGuideVertexCount":sum(1 for vertex in face.verts if any(
+                            guide_center_z(name) is not None and
+                            abs((matrix @ vertex.co).z-guide_center_z(name))<0.002
+                            for name in ("LE_GUIDE_SHIRT_SHOULDER","LE_GUIDE_SHIRT_WAIST")
+                        )),
+                        "sourceDisplacementMm":round(max(
+                            ((matrix @ vertex.co)-source_world_positions[vertex.index]).length*1000
+                            for vertex in face.verts
+                        ),2),
                     })
                 for edge in list(selected)[:8]:
                     point=matrix @ ((edge.verts[0].co+edge.verts[1].co)*0.5)
@@ -887,7 +896,8 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                         if nearest and nearest[0] is not None else None,
                     })
                 print("Linen Earth real cloth contact samples: "
-                      + obj.name + " " + json.dumps(sample_evidence,sort_keys=True),flush=True)
+                      + obj.name + " pass=" + str(iteration)
+                      + " " + json.dumps(sample_evidence,sort_keys=True),flush=True)
             if not selected:
                 # The pass inspected REAL triangles rather than an enormous
                 # synthetic ngon. Persist exactly the validated triangulated
