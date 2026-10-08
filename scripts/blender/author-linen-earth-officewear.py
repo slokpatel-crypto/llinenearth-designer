@@ -301,12 +301,24 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
     shirt_depth_shoulder = shoulder_depth + shirt_clearance_m
     shirt_depth_chest = chest_depth + shirt_clearance_m
     shirt_depth_waist = waist_depth + shirt_clearance_m
-    shirt_depth_hem = max(0.100, shirt_depth_waist - 0.004)
+    # A tucked shirt's final 35 mm must sit directly UNDER the trouser waistband.
+    # Earlier we anchored it to the higher shirt-waist guide instead, leaving a
+    # visible floating shirt/trouser gap (Blender proof: 32.7 mm median).
+    # Use the SAME locked-body hip cross-section and actual trouser waist ease.
+    trouser_waist_y, waist_depth_at_hip = body_section_y_depth(
+        body, trouser_waist_z, cx, 0.205, minimum=0.115
+    )
+    trouser_depth_waist = waist_depth_at_hip + trouser_clearance_m
+    tuck_inset_m = 0.007
+    tucked_shirt_hem_x = trouser_waist_half - tuck_inset_m
+    tucked_shirt_hem_y = trouser_depth_waist - tuck_inset_m
+    if tucked_shirt_hem_x <= 0 or tucked_shirt_hem_y <= 0:
+        raise RuntimeError("Locked model waist cannot accommodate a physically nested shirt hem.")
 
     shirt = build_ring_shell(
         "ShirtTorsoFabric",
         [
-            (shirt_hem_z, cx, waist_y, shirt_waist_half + 0.006, shirt_depth_hem),
+            (shirt_hem_z, cx, trouser_waist_y, tucked_shirt_hem_x, tucked_shirt_hem_y),
             (shirt_waist_z, cx, waist_y, shirt_waist_half, shirt_depth_waist),
             (upper_waist_z, cx, (waist_y+chest_y)*0.5, shirt_waist_half + 0.012, shirt_depth_waist + 0.006),
             (chest_z, cx, chest_y, shoulder_half - 0.020, shirt_depth_chest),
@@ -346,9 +358,7 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
 
     seat_z = trouser_waist_z - 0.165
     upper_thigh_z = trouser_waist_z - 0.260
-    trouser_waist_y, waist_depth_at_hip = body_section_y_depth(body, trouser_waist_z, cx, 0.205, minimum=0.115)
     seat_y, depth_at_seat = body_section_y_depth(body, seat_z, cx, 0.220, minimum=0.135)
-    trouser_depth_waist = waist_depth_at_hip + trouser_clearance_m
     trouser_depth_seat = depth_at_seat + trouser_clearance_m
     trouser_waist = build_ring_shell(
         "TrouserWaistFabric",
