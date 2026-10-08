@@ -738,19 +738,21 @@ def restore_shirt_waist_side_seam(obj, waist_z, waist_half_width_m, shoulder_z, 
 
 
 def relieve_inboard_sleeve_contact(obj, body_center_x, *, side, contact_z=1.155,
-                                  amplitude_m=0.016, half_span_m=0.125):
+                                  amplitude_m=0.030, half_span_m=0.125):
     """Tuck the *medial* sleeve seam out of a bent hanging arm / torso crease.
 
-    The real body left 1 face + 2 edge contacts on a 30k-face left sleeve
-    after eight bounded BVH passes. Sparse 5-ring tube construction creates
-    an inboard concavity at the elbow which cannot be repaired indefinitely
-    by averaging opposite closest-surface normals. Reform only the cloth's
+    Measured body-contact samples show the source sleeve *itself* crosses
+    the armpit/body near z=1.11m. Even after repeated projection, a 5mm
+    source edge split into a 120mm crossing between two opposite skin exits.
+    Correct the MEDIAL source pattern by up to 30mm before BVH projection,
+    rather than distorting safe neighbors or weakening the 95mm guard.
+    Reform only the cloth's
     inner side in the contact band before BVH fitting, retaining the outside
     silhouette, shoulder, photographed cuff/hand centre and locked body.
     """
     if side not in (-1,1) or isinstance(side,bool):
         raise RuntimeError("Sleeve medial relief requires a real left/right side.")
-    if not 0.002 <= amplitude_m <= 0.020 or not 0.09 <= half_span_m <= 0.16:
+    if not 0.002 <= amplitude_m <= 0.035 or not 0.09 <= half_span_m <= 0.16:
         raise RuntimeError("Medial sleeve relief exceeds a small tailoring adjustment.")
     if not obj.name.startswith("ShirtSleeve"):
         raise RuntimeError("Only the shirt's real sleeve panels support medial relief.")
