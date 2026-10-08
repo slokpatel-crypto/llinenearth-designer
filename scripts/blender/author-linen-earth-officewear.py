@@ -870,6 +870,14 @@ def repair_body_penetrations(obj, body, clearance_m, max_passes=4):
             target = None
             possible = []
             frame = body_frame(body)
+            sleeve_side=(-1 if obj.name=="ShirtSleeveLFabric" else
+                         1 if obj.name=="ShirtSleeveRFabric" else 0)
+            # Only the photographed ARMPIT/torso seam is ambiguous: elsewhere
+            # a curved sleeve must be free to follow the actual elbow/forearm.
+            medial_arm_contact=(
+                bool(sleeve_side) and 1.075<=point.z<=1.245
+                and abs(point.x-frame["centerX"])<0.205
+            )
             radial = Vector((
                 point.x - frame["centerX"],
                 point.y - frame["centerY"],
@@ -895,6 +903,12 @@ def repair_body_penetrations(obj, body, clearance_m, max_passes=4):
                     # vertex so the shirt cannot jump across the body.
                     start = surface if direction in (normal, -normal) else point
                     candidate = start + direction * probe_distance
+                    # Avoid the wrong-side torso exit proven in real native BVH
+                    # only at the proximal/medial shirt sleeve. Do NOT enforce
+                    # this restriction on outer sleeve/cuff geometry.
+                    if (medial_arm_contact
+                            and sleeve_side*(candidate.x-point.x)<-0.002):
+                        continue
                     if not point_inside_closed_bvh(body_tree, candidate):
                         possible.append(((candidate - point).length, candidate))
                 if possible:
@@ -1167,7 +1181,12 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                         for direction in (normal,-normal):
                             candidate=surface+direction*distance
                             shift=candidate-point
+                            medial_arm_contact=(
+                                bool(sleeve_side) and 1.075<=point.z<=1.245
+                                and abs(point.x-body_frame(body)["centerX"])<0.205
+                            )
                             if (shift.length<=0.095
+                                    and (not medial_arm_contact or sleeve_side*shift.x>=-0.002)
                                     and not point_inside_closed_bvh(body_tree,candidate)):
                                 options.append((shift.length,shift))
                     # A bent arm has a different outward clearance direction
@@ -1191,7 +1210,8 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                                 Vector((0,1,0)),Vector((0,-1,0)),
                             ):
                                 candidate=point+direction*distance
-                                if not point_inside_closed_bvh(body_tree,candidate):
+                                if ((not medial_arm_contact or sleeve_side*(candidate.x-point.x)>=-0.002)
+                                        and not point_inside_closed_bvh(body_tree,candidate)):
                                     options.append((distance,candidate-point))
                             if options: break
                     if not options:
