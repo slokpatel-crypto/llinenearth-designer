@@ -186,3 +186,18 @@ def outward_ring_quad(previous, current, segment, next_segment, *, ascending):
                 current+next_segment,current+segment)
     return (previous+segment,current+segment,
             current+next_segment,previous+next_segment)
+
+
+def nested_tucked_hem_ring(z, center_x, waist_y, trouser_radius_x, trouser_radius_y, *, inset_m=0.007):
+    """Position the last 35mm of a tucked shirt under its actual trouser waist.
+
+    Both rings reference the same locked human hip section. The tucked shirt
+    must be inside the waistband with a finite (non-z-fighting) cloth gap;
+    otherwise a barrel-shaped floating shirt appears in front/side/back.
+    """
+    values=(z,center_x,waist_y,trouser_radius_x,trouser_radius_y,inset_m)
+    if any(isinstance(v,bool) or not isinstance(v,(int,float)) or not math.isfinite(v) for v in values):
+        raise ValueError("Tucked shirt dimensions must be finite.")
+    if not (0.001 <= inset_m <= 0.015) or trouser_radius_x <= inset_m or trouser_radius_y <= inset_m:
+        raise ValueError("Tuck inset must leave positive cloth radii and a genuine layering gap.")
+    return (z,center_x,waist_y,trouser_radius_x-inset_m,trouser_radius_y-inset_m)
