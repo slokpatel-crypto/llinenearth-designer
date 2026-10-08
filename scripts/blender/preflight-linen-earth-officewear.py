@@ -414,13 +414,30 @@ def main(json_output=None):
         evaluated = obj.evaluated_get(depsgraph)
         mesh = evaluated.to_mesh()
         try:
-            xs = []
+            # Six-piece tailoring shells are authored with discrete horizontal
+            # rings. A guide usually falls between rings, where vertex-only
+            # sampling silently returned None and falsely marked production
+            # preflight ready. Interpolate actual mesh-edge/guide crossings.
             matrix = evaluated.matrix_world
-            for vertex in mesh.vertices:
-                point = matrix @ vertex.co
-                if abs(point.z - z_world) <= band:
-                    xs.append(point.x)
-            return (min(xs), max(xs)) if len(xs) >= 4 else None
+            points = [matrix @ vertex.co for vertex in mesh.vertices]
+            intersections = []
+            for edge in mesh.edges:
+                left, right = edge.vertices
+                a, b = points[left], points[right]
+                delta_z = b.z - a.z
+                if abs(delta_z) <= 1e-9:
+                    if abs(a.z - z_world) <= 1e-6:
+                        intersections.extend((a.x, b.x))
+                    continue
+                alpha = (z_world - a.z) / delta_z
+                if 0 <= alpha <= 1:
+                    intersections.append(a.x + (b.x - a.x) * alpha)
+            if len(intersections) >= 4:
+                return min(intersections), max(intersections)
+            # The fallback is only for sparse or degenerate meshes where a
+            # crossing cannot be resolved at the guide plane.
+            nearby = [point.x for point in points if abs(point.z - z_world) <= band]
+            return (min(nearby), max(nearby)) if len(nearby) >= 4 else None
         finally:
             evaluated.to_mesh_clear()
 
