@@ -1291,7 +1291,8 @@ const button=uvSphereGeometry(6,10);
 
 const garmentMaterials=garmentPanels.map((panel,i)=>({
   name:panel.material,
-  alphaMode:"BLEND",
+  // Strictly binary visibility: avoid sorting 586 translucent shader slots.
+  alphaMode:"MASK",alphaCutoff:0.5,
   doubleSided:true,
   pbrMetallicRoughness:{baseColorFactor:[1,1,1,1],baseColorTexture:{index:0},metallicFactor:0,roughnessFactor:i<3?.84:.79},
   normalTexture:{index:1,scale:i<3?.34:.29},
@@ -1301,7 +1302,8 @@ function addVariantMaterial(name,garment){
   variantMaterialNames.push(name);
   return {
     name,
-    alphaMode:"BLEND",
+    // Strictly binary visibility: avoid sorting 586 translucent shader slots.
+  alphaMode:"MASK",alphaCutoff:0.5,
     doubleSided:true,
     pbrMetallicRoughness:{
       baseColorFactor:[1,1,1,0],
@@ -1370,7 +1372,8 @@ const styleVariantMaterials=[
 ];
 const skinArmMaterials=styleVariants.sleeves.filter((sleeve)=>sleeve.id!=="full").map((sleeve)=>({
   name:`MannequinSkinArmVariant__${sleeve.id}`,
-  alphaMode:"BLEND",
+  // Strictly binary visibility: avoid sorting 586 translucent shader slots.
+  alphaMode:"MASK",alphaCutoff:0.5,
   doubleSided:true,
   pbrMetallicRoughness:{baseColorFactor:[.94,.93,.90,0],metallicFactor:0,roughnessFactor:.90},
 }));
@@ -1379,7 +1382,8 @@ function addButtonVariantMaterial(name){
   buttonVariantMaterialNames.push(name);
   return {
     name,
-    alphaMode:"BLEND",
+    // Strictly binary visibility: avoid sorting 586 translucent shader slots.
+  alphaMode:"MASK",alphaCutoff:0.5,
     doubleSided:true,
     pbrMetallicRoughness:{baseColorFactor:[.09,.075,.06,0],metallicFactor:.05,roughnessFactor:.42},
   };
