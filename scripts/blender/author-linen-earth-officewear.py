@@ -16,13 +16,14 @@ import sys
 from pathlib import Path
 
 import bpy
+import bmesh
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
 # Authoring and Blender preflight use the same exact triangle/guide intersection.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
-from surface_coverage import anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
+from surface_coverage import adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -537,6 +538,48 @@ def point_inside_closed_bvh(tree, point, epsilon=1e-5, max_hits=64):
     return (hits % 2) == 1
 
 
+
+def refine_collision_faces(obj, max_edge_m=0.025, max_faces=80000):
+    """Add genuine surface vertices at long shell edges before body-fit repair.
+
+    A previously sparse six-piece panel can cut through the locked human even
+    though its corner/ring vertices pass containment. Blender's BMesh halves
+    long edges; the existing strict body-BVH repair then moves *real* new
+    vertices outside, rather than hiding face penetration in the preflight.
+    Original guide-plane vertices and target dimensions are preserved.
+    """
+    bm=bmesh.new()
+    try:
+        bm.from_mesh(obj.data)
+        if not bm.verts or not bm.faces:
+            raise RuntimeError(f"{obj.name} has no physical garment surface to refine.")
+        largest=max(edge.calc_length() for edge in bm.edges)
+        rounds=adaptive_surface_cut_rounds(largest,max_edge_m)
+        before=len(bm.verts)
+        for _ in range(rounds):
+            long_edges=[edge for edge in bm.edges if edge.calc_length() > max_edge_m]
+            if not long_edges:
+                break
+            if len(bm.faces) > max_faces:
+                raise RuntimeError(
+                    f"{obj.name} exceeded {max_faces} garment faces; "
+                    "surface fitting cannot safely expand indefinitely."
+                )
+            bmesh.ops.subdivide_edges(bm,edges=long_edges,cuts=1,use_grid_fill=True)
+        if len(bm.faces)>max_faces:
+            raise RuntimeError(f"{obj.name} exceeded safe post-subdivision face limit.")
+        bm.normal_update()
+        bm.to_mesh(obj.data)
+        obj.data.update(calc_edges=True)
+        return {
+            "newVertices": len(obj.data.vertices)-before,
+            "refinementRounds": rounds,
+            "faces": len(obj.data.polygons),
+            "maxEdgeTargetMm": round(max_edge_m*1000,1),
+        }
+    finally:
+        bm.free()
+
 def repair_body_penetrations(obj, body, clearance_m, max_passes=4):
     """Push only garment vertices that are actually inside the locked body outside.
 
@@ -903,8 +946,10 @@ def main():
     authored, fit_profile = build_procedural_officewear(body, targets, shirt_clearance_m, trouser_clearance_m)
     identity_fit = shape_officewear_to_identity(authored, body, targets)
     collision_repairs = {}
+    face_refinements = {}
     for name, obj in authored.items():
         object_clearance = shirt_clearance_m if name.startswith("Shirt") else trouser_clearance_m
+        face_refinements[name] = refine_collision_faces(obj)
         collision_repairs[name] = repair_body_penetrations(obj, body, object_clearance)
         finish_procedural_shell(obj, thickness_m)
         obj["linen_earth_auto_authored"] = True
@@ -922,6 +967,7 @@ def main():
     bpy.context.scene["linen_earth_trouser_clearance_mm"] = round(trouser_clearance_m * 1000.0, 3)
     fit_profile["identityShaping"] = identity_fit
     fit_profile["collisionRepairs"] = collision_repairs
+    fit_profile["adaptiveFaceRefinements"] = face_refinements
     bpy.context.scene["linen_earth_identity_fit_profile_json"] = json.dumps(fit_profile, sort_keys=True)
     bpy.context.scene["linen_earth_garment_thickness_mm"] = round(thickness_m * 1000.0, 3)
 
