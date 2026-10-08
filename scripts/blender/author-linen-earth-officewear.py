@@ -546,10 +546,32 @@ def repair_body_penetrations(obj, body, clearance_m, max_passes=4):
             # the nearest point actually verified OUTSIDE the locked body.
             target = None
             possible = []
-            for scale in (1.0, 2.0, 4.0, 8.0, 12.0, 16.0):
-                probe_distance = clearance_m * scale
-                for sign in (1.0, -1.0):
-                    candidate = surface + normal * sign * probe_distance
+            frame = body_frame(body)
+            radial = Vector((
+                point.x - frame["centerX"],
+                point.y - frame["centerY"],
+                0.0,
+            ))
+            directions = [normal, -normal]
+            if radial.length > 1e-7:
+                directions.append(radial.normalized())
+            # The closest polygon normal can be nearly tangent at an armpit
+            # crease. A real locked-body vertex at (-.167,.056,1.303) resisted
+            # both normal signs even 96mm away. Probe lateral/fore-aft outward
+            # too; every chosen point is still validated by identical BVH parity.
+            directions += [
+                Vector((-1.0 if point.x < frame["centerX"] else 1.0,0.0,0.0)),
+                Vector((0.0,-1.0 if point.y < frame["centerY"] else 1.0,0.0)),
+            ]
+            for probe_distance in (
+                clearance_m, 0.012, 0.024, 0.045, 0.075, 0.110, 0.160
+            ):
+                for direction in directions:
+                    # Local projected surface keeps normal-based repairs
+                    # minimal; radial proposals are measured from the original
+                    # vertex so the shirt cannot jump across the body.
+                    start = surface if direction in (normal, -normal) else point
+                    candidate = start + direction * probe_distance
                     if not point_inside_closed_bvh(body_tree, candidate):
                         possible.append(((candidate - point).length, candidate))
                 if possible:
@@ -559,6 +581,11 @@ def repair_body_penetrations(obj, body, clearance_m, max_passes=4):
                 raise RuntimeError(
                     f"{obj.name} could not find an outside body projection "
                     f"for embedded vertex near {tuple(round(value,4) for value in point)}."
+                )
+            if (target - point).length > 0.095:
+                raise RuntimeError(
+                    f"{obj.name} needs more than 95mm anatomy correction at "
+                    f"{tuple(round(value,4) for value in point)}; reshape panels instead."
                 )
 
             vertex.co = inverse @ target
