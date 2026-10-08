@@ -420,3 +420,65 @@ def waist_to_chest_taper_radius(waist_half_width_m, height_above_waist_m,
             and 0 <= ease_m <= 0.025 and 0.15 <= slope <= 0.9):
         raise ValueError("Shirt waist taper exceeds physically bounded tailoring shape.")
     return waist_half_width_m + ease_m + slope * height_above_waist_m
+
+
+def body_aware_sleeve_ring(body_points, ring, *, body_center_x, side,
+                           clearance_m=0.007, locked_hand_center=False):
+    """Fit sleeve surface to the actual independent arm, excluding torso points.
+
+    The locked studio pose places hands at +/-250mm, but the real arm bends
+    slightly through elbow/forearm. A global-Y tube crosses real skin even
+    when its sparse guide vertices pass BVH tests. Locally sample the OUTER
+    arm corridor, retain the actual 3D identity and cuff centre, and reshape
+    only cloth radii/centres within strict, measured bounds.
+    """
+    if side not in (-1,1) or isinstance(side,bool):
+        raise ValueError("Arm side must be explicitly -1 or +1.")
+    vals=tuple(ring)+(body_center_x,clearance_m)
+    if len(ring)!=5 or any(isinstance(v,bool) or not isinstance(v,(int,float))
+            or not math.isfinite(v) for v in vals):
+        raise ValueError("Arm sleeve profile requires five finite physical dimensions.")
+    z,cx,cy,rx,ry=ring
+    if rx<=0 or ry<=0 or not 0.003<=clearance_m<=0.020:
+        raise ValueError("Sleeve fit must preserve positive physical clearances.")
+    points=[
+        point for point in body_points
+        if len(point)==3 and all(isinstance(v,(int,float)) and math.isfinite(v) for v in point)
+        and abs(point[2]-z)<=0.035
+        and abs(point[0]-cx)<=0.100
+        and abs(point[1]-cy)<=0.145
+        and side*(point[0]-body_center_x)>=0.172
+    ]
+    if len(points)<16:
+        raise ValueError(
+            f"Locked body offers only {len(points)} measured arm samples "
+            f"at z={z:.4f}m: refusing generic sleeve tube."
+        )
+    xs=sorted(point[0] for point in points)
+    ys=sorted(point[1] for point in points)
+    low=min(len(points)-1,int(len(points)*0.02))
+    high=min(len(points)-1,int(len(points)*0.98))
+    fitted_cx=(xs[low]+xs[high])/2
+    fitted_cy=(ys[low]+ys[high])/2
+    # Lock photographed 500mm hand-centre identity at the cuff. Else let
+    # the upper sleeve follow the actual arm up to 28mm laterally.
+    shift_x=0 if locked_hand_center else max(-0.028,min(0.028,fitted_cx-cx))
+    shift_y=max(-0.050,min(0.050,fitted_cy-cy))
+    next_cx=cx+shift_x
+    next_cy=cy+shift_y
+    # Preserve original ease, then include real arm samples and modest
+    # 8mm sewing allowance. Never flatten the sleeve against bare skin.
+    next_rx=max(rx,abs(xs[low]-next_cx)+clearance_m+0.008,
+                abs(xs[high]-next_cx)+clearance_m+0.008)
+    next_ry=max(ry,abs(ys[low]-next_cy)+clearance_m+0.008,
+                abs(ys[high]-next_cy)+clearance_m+0.008)
+    if next_rx-rx>0.070 or next_ry-ry>0.070:
+        raise ValueError("Measured arm would need >70mm sleeve radius growth.")
+    return ((z,next_cx,next_cy,next_rx,next_ry),{
+        "method":"real-body-arm-only-quantile-envelope",
+        "sampleCount":len(points),
+        "centerShiftMm":[round(shift_x*1000,2),round(shift_y*1000,2)],
+        "radiusGrowthMm":[round((next_rx-rx)*1000,2),
+                         round((next_ry-ry)*1000,2)],
+        "handCenterLocked":locked_hand_center,
+    })
