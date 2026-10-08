@@ -354,11 +354,27 @@ def write_viewer_manifest(output_path, height, source, model_identity, panel_spe
 
 
 def export_glb(collection, output_path):
+    # Blender 4.2.23 crashes inside the native glTF operator when asked to
+    # apply imported modifiers in-process (CI crash trace, Oct 8). Meshes
+    # were explicitly preflighted and baked during scene authoring, so export
+    # their evaluated static topology WITHOUT export_apply. Rigged, animated
+    # or non-mesh assets are not part of the fixed 3D viewer contract.
+    if bpy.context.object is not None and bpy.context.object.mode != "OBJECT":
+        bpy.ops.object.mode_set(mode="OBJECT")
     bpy.ops.object.select_all(action="DESELECT")
-    for obj in collection.all_objects:
+    selected = [obj for obj in collection.all_objects if obj.type == "MESH"]
+    if len(selected) < len(GARMENT_OBJECTS) + 1:
+        raise RuntimeError("Blender GLB export selection is missing realistic body/garment meshes.")
+    for obj in selected:
         obj.hide_set(False)
         obj.hide_viewport = False
         obj.select_set(True)
+    bpy.context.view_layer.objects.active = selected[0]
+    print(
+        "Linen Earth GLB export: static mesh count="
+        + str(len(selected)) + "; applying modifiers during export=off",
+        flush=True,
+    )
 
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
 
@@ -369,8 +385,11 @@ def export_glb(collection, output_path):
         export_texcoords=True,
         export_normals=True,
         export_materials="EXPORT",
-        export_apply=True,
+        export_apply=False,
         export_yup=True,
+        export_animations=False,
+        export_skins=False,
+        export_morph=False,
         export_cameras=False,
         export_lights=False,
     )

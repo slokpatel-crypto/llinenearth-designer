@@ -46,7 +46,11 @@ export function garmentPanelTextureScale(
     return {u:1,v:1};
   }
   return {
-    u:clamp(widthMm/tileWidthMm,.35,80),
-    v:clamp(heightMm/tileWidthMm,.35,80),
+    // Sub-5 mm pinstripes need hundreds of physically sized repeats across
+    // the body. The old 80-repeat cap enlarged them by 2-5x; likewise the
+    // .35 floor shrank a wide check on narrow collars/cuffs. Limit only
+    // astronomically small/large sampler transforms, not valid cloth scales.
+    u:clamp(widthMm/tileWidthMm,1/4096,4096),
+    v:clamp(heightMm/tileWidthMm,1/4096,4096),
   };
 }

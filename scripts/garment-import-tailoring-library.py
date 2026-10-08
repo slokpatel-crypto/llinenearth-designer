@@ -40,6 +40,95 @@ def is_footwear_object(obj):
 
 
 
+def foot_side(obj):
+    name = normalized_name(obj.name)
+    if name in ("ShoeL", "SoleL", "HeelL") or re.fullmatch(r"ShoeLaceL[0-9]+", name):
+        return -1
+    if name in ("ShoeR", "SoleR", "HeelR") or re.fullmatch(r"ShoeLaceR[0-9]+", name):
+        return 1
+    return None
+
+
+def fit_footwear_to_locked_body(footwear, body):
+    """Map the entire shoe/sole/heel group onto the real body's feet in world space.
+
+    The deterministic source was authored around a different ankle/depth centre.
+    Merely retaining its footwear gives a barefoot mannequin and shoes lying in
+    front of the foot in four-view renders. This is provisional geometry fitting,
+    not an approved physical footwear pattern or replacement model identity.
+    """
+    world_body = [body.matrix_world @ vertex.co for vertex in body.data.vertices]
+    if len(world_body) < 100:
+        raise RuntimeError("Locked realistic body has too few vertices for footwear fitting.")
+    floor = min(point.z for point in world_body)
+    middle_x = (min(point.x for point in world_body) + max(point.x for point in world_body)) * 0.5
+    evidence = {}
+    for side, label in ((-1, "left"), (1, "right")):
+        pieces = [obj for obj in footwear if foot_side(obj) == side]
+        if len(pieces) < 3:
+            raise RuntimeError(f"Missing {label} shoe, sole or heel pieces for real-foot fitting.")
+        samples = [
+            point for point in world_body
+            if floor - 0.005 <= point.z <= floor + 0.135
+            and side * (point.x - middle_x) >= 0.015
+        ]
+        if len(samples) < 20:
+            raise RuntimeError(f"Cannot identify {label} foot on the locked human body.")
+        points = [
+            obj.matrix_world @ vertex.co
+            for obj in pieces for vertex in obj.data.vertices
+        ]
+        if not points:
+            raise RuntimeError(f"Missing {label} footwear mesh vertices.")
+        original = [
+            (min(point[axis] for point in points), max(point[axis] for point in points))
+            for axis in range(3)
+        ]
+        target = [
+            (min(point.x for point in samples)-0.010, max(point.x for point in samples)+0.010),
+            (min(point.y for point in samples)-0.014, max(point.y for point in samples)+0.014),
+            (floor-0.002, floor+0.128),
+        ]
+        scales = []
+        for (low, high), (to_low, to_high) in zip(original, target):
+            if high-low < 0.002:
+                raise RuntimeError(f"{label} footwear has a degenerate bounding extent.")
+            scale = (to_high-to_low)/(high-low)
+            if not 0.20 <= scale <= 3.0:
+                raise RuntimeError(
+                    f"{label} footwear requires out-of-range fit scale {scale:.2f}; "
+                    "the realistic foot and deterministic source cannot be safely aligned."
+                )
+            # Source footwear has a different coordinate/unit envelope from the
+            # scanned body; 0.25x in the long axis is observed in native Blender
+            # CI. Allow provisional fitting, but explicitly require independent
+            # four-angle review. Bounds do NOT certify physically correct shoes.
+            scales.append(scale)
+        for obj in pieces:
+            matrix = obj.matrix_world.copy()
+            inverse = matrix.inverted()
+            for vertex in obj.data.vertices:
+                point = matrix @ vertex.co
+                aligned = Vector(tuple(
+                    (target[axis][0]+(point[axis]-original[axis][0])*scales[axis])
+                    for axis in range(3)
+                ))
+                vertex.co = inverse @ aligned
+            obj.data.update()
+            obj["linen_earth_footwear_fit_method"] = "locked-body-foot-cross-section-provisional"
+        evidence[label] = {
+            "sampleCount":len(samples),
+            "scaleX":round(scales[0],4),
+            "scaleY":round(scales[1],4),
+            "scaleZ":round(scales[2],4),
+            "requiresHumanGeometryReview": any(scale < 0.45 or scale > 2.75 for scale in scales),
+            "shoeVisibilityGateRequired": True,
+            "floorMm":round(floor*1000,2),
+            "source":"body-sampled-provisional-not-tailor-approved",
+        }
+    return evidence
+
+
 def cli_args():
     argv = sys.argv
     argv = argv[argv.index("--") + 1 :] if "--" in argv else []
@@ -111,11 +200,16 @@ def normal_orientation(obj, max_samples=160):
         evaluated.to_mesh_clear()
 
 
-def repair_variant_outside_body(obj, body, minimum_clearance_m):
-    tree = world_bvh(body)
-    if tree is None or obj.type != "MESH":
-        return {"movedVertices": 0, "maxCorrectionMm": 0.0}
-    orientation = normal_orientation(body)
+def repair_variant_outside_body(obj, body, minimum_clearance_m, body_tree=None, body_orientation=None):
+    # The locked body geometry does not change during variant import. Reusing its
+    # BVH and surface orientation prevents an expensive body mesh evaluation
+    # for each of the many independently fitted tailoring variants.
+    if obj.type != "MESH":
+        raise RuntimeError("Tailoring clearance requires a mesh variant.")
+    tree = body_tree if body_tree is not None else world_bvh(body)
+    if tree is None:
+        raise RuntimeError("Locked body BVH is unavailable; cannot certify tailoring clearance.")
+    orientation = body_orientation if body_orientation is not None else normal_orientation(body)
     matrix = obj.matrix_world
     inverse = matrix.inverted()
     moved = 0
@@ -225,6 +319,13 @@ def main():
             bpy.data.objects.remove(obj, do_unlink=True)
 
     collection = ensure_export_collection()
+    # Build the immutable locked-body collision reference once. Per-variant
+    # repairs must be checked against the same human body, never a stale
+    # deterministic mannequin or silently skipped because BVH is missing.
+    body_tree = world_bvh(body)
+    if body_tree is None:
+        raise RuntimeError("Locked body collision tree could not be built.")
+    body_orientation = normal_orientation(body)
     repair_stats = {}
     for obj in kept:
         for current in list(obj.users_collection):
@@ -237,7 +338,9 @@ def main():
         footwear = is_footwear_object(obj)
         clearance = None if footwear else variant_clearance(names)
         if clearance is not None:
-            repair_stats[obj.name] = repair_variant_outside_body(obj, body, clearance)
+            repair_stats[obj.name] = repair_variant_outside_body(
+                obj, body, clearance, body_tree, body_orientation
+            )
 
         if footwear:
             # Genuine shoe, sole and lace surfaces stay visible during four-angle
@@ -278,6 +381,10 @@ def main():
     missing_footwear = sorted(FOOTWEAR_OBJECT_NAMES - set(footwear_kept))
     if missing_footwear:
         raise RuntimeError("Dress-shoe geometry is missing after library import: " + ", ".join(missing_footwear))
+    footwear_fit = fit_footwear_to_locked_body(
+        [obj for obj in kept if is_footwear_object(obj)], body
+    )
+    bpy.context.scene["linen_earth_footwear_fit_evidence_json"] = json.dumps(footwear_fit, sort_keys=True)
     bpy.context.scene["linen_earth_footwear_source"] = "deterministic-library-fit-review-required"
     bpy.context.scene["linen_earth_footwear_object_names_json"] = json.dumps(footwear_kept)
     bpy.context.scene["linen_earth_tailoring_library_source"] = str(variant_glb)

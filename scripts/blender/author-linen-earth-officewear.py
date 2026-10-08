@@ -19,6 +19,10 @@ import bpy
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
+# Authoring and Blender preflight use the same exact triangle/guide intersection.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from section_geometry import triangle_section_x_span
+
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
 MODEL_IDENTITY_ID = "linen-earth-studio-model-v1"
@@ -169,6 +173,33 @@ def body_depth_at_z(body, z_world, center_x, half_window, band=0.030, minimum=0.
 
 
 
+def body_section_y_depth(body, z_world, center_x, half_window, minimum=0.10, band=0.045):
+    """Fit the shirt/seat around real locked torso posture, not global Y=0.
+
+    The scan's shoulder blades and seat are offset from its waist centre;
+    a single global Y used by all ring cylinders exposes the back and glutes.
+    Quantile bounds ignore isolated fingers near the same height while still
+    enclosing the observed trunk with an intentional clearance.
+    """
+    matrix = body.matrix_world
+    section = [
+        (matrix @ vertex.co).y for vertex in body.data.vertices
+        if abs((matrix @ vertex.co).z - z_world) <= band
+        and abs((matrix @ vertex.co).x - center_x) <= half_window
+    ]
+    if len(section) < 16:
+        raise RuntimeError(
+            f"Locked body has only {len(section)} torso/seat samples at z={z_world:.3f}m; "
+            "cannot certify garment depth or posture."
+        )
+    section.sort()
+    low = section[int(len(section) * 0.01)]
+    high = section[min(len(section)-1, int(len(section) * 0.99))]
+    if high - low < 0.04:
+        raise RuntimeError("Locked body torso/seat section is implausibly thin.")
+    return (low + high) * 0.5, max(minimum, (high - low) * 0.5)
+
+
 def body_aware_leg_ring(body_points, ring, side, body_center_x, target_leg_x,
                         clearance_m, keep_locked_hem_width=False):
     """Match leg-shell depth and calf/thigh extent to the actual locked body.
@@ -246,23 +277,26 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
     chest_z = shoulder_z - 0.150
     upper_waist_z = shirt_waist_z + 0.115
     shirt_hem_z = trouser_waist_z - 0.035
-    shirt_depth_shoulder = body_depth_at_z(body, shoulder_z - 0.035, cx, 0.225, minimum=0.105) + shirt_clearance_m
-    shirt_depth_chest = body_depth_at_z(body, chest_z, cx, 0.210, minimum=0.115) + shirt_clearance_m
-    shirt_depth_waist = body_depth_at_z(body, shirt_waist_z, cx, 0.185, minimum=0.100) + shirt_clearance_m
+    shoulder_y, shoulder_depth = body_section_y_depth(body, shoulder_z - 0.035, cx, 0.225, minimum=0.105)
+    chest_y, chest_depth = body_section_y_depth(body, chest_z, cx, 0.210, minimum=0.115)
+    waist_y, waist_depth = body_section_y_depth(body, shirt_waist_z, cx, 0.185, minimum=0.100)
+    shirt_depth_shoulder = shoulder_depth + shirt_clearance_m
+    shirt_depth_chest = chest_depth + shirt_clearance_m
+    shirt_depth_waist = waist_depth + shirt_clearance_m
     shirt_depth_hem = max(0.100, shirt_depth_waist - 0.004)
 
     shirt = build_ring_shell(
         "ShirtTorsoFabric",
         [
-            (shirt_hem_z, cx, cy, shirt_waist_half + 0.006, shirt_depth_hem),
-            (shirt_waist_z, cx, cy, shirt_waist_half, shirt_depth_waist),
-            (upper_waist_z, cx, cy, shirt_waist_half + 0.012, shirt_depth_waist + 0.006),
-            (chest_z, cx, cy, shoulder_half - 0.020, shirt_depth_chest),
-            (shoulder_z - 0.045, cx, cy, shoulder_half - 0.006, shirt_depth_shoulder),
-            (shoulder_z, cx, cy, shoulder_half, shirt_depth_shoulder * 0.96),
+            (shirt_hem_z, cx, waist_y, shirt_waist_half + 0.006, shirt_depth_hem),
+            (shirt_waist_z, cx, waist_y, shirt_waist_half, shirt_depth_waist),
+            (upper_waist_z, cx, (waist_y+chest_y)*0.5, shirt_waist_half + 0.012, shirt_depth_waist + 0.006),
+            (chest_z, cx, chest_y, shoulder_half - 0.020, shirt_depth_chest),
+            (shoulder_z - 0.045, cx, shoulder_y, shoulder_half - 0.006, shirt_depth_shoulder),
+            (shoulder_z, cx, shoulder_y, shoulder_half, shirt_depth_shoulder * 0.96),
         ],
         segments=64,
-        neck_opening=(shoulder_z, cx, cy - 0.006, 0.061, 0.054),
+        neck_opening=(shoulder_z, cx, shoulder_y - 0.006, 0.061, 0.054),
         collar_height=0.032,
     )
 
@@ -294,15 +328,17 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
 
     seat_z = trouser_waist_z - 0.165
     upper_thigh_z = trouser_waist_z - 0.260
-    trouser_depth_waist = body_depth_at_z(body, trouser_waist_z, cx, 0.205, minimum=0.115) + trouser_clearance_m
-    trouser_depth_seat = body_depth_at_z(body, seat_z, cx, 0.220, minimum=0.135) + trouser_clearance_m
+    trouser_waist_y, waist_depth_at_hip = body_section_y_depth(body, trouser_waist_z, cx, 0.205, minimum=0.115)
+    seat_y, depth_at_seat = body_section_y_depth(body, seat_z, cx, 0.220, minimum=0.135)
+    trouser_depth_waist = waist_depth_at_hip + trouser_clearance_m
+    trouser_depth_seat = depth_at_seat + trouser_clearance_m
     trouser_waist = build_ring_shell(
         "TrouserWaistFabric",
         [
-            (upper_thigh_z, cx, cy, trouser_waist_half + 0.026, trouser_depth_seat),
-            (seat_z, cx, cy - 0.006, trouser_waist_half + 0.034, trouser_depth_seat + 0.006),
-            (trouser_waist_z - 0.070, cx, cy, trouser_waist_half + 0.010, trouser_depth_waist + 0.004),
-            (trouser_waist_z, cx, cy, trouser_waist_half, trouser_depth_waist),
+            (upper_thigh_z, cx, seat_y, trouser_waist_half + 0.026, trouser_depth_seat),
+            (seat_z, cx, seat_y - 0.006, trouser_waist_half + 0.034, trouser_depth_seat + 0.006),
+            (trouser_waist_z - 0.070, cx, (seat_y+trouser_waist_y)*0.5, trouser_waist_half + 0.010, trouser_depth_waist + 0.004),
+            (trouser_waist_z, cx, trouser_waist_y, trouser_waist_half, trouser_depth_waist),
         ],
         segments=64,
     )
@@ -336,8 +372,14 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
                 thigh_center_x if index < 2 else lower_center_x,
                 trouser_clearance_m, keep_locked_hem_width=index >= 4,
             )
-            fitted_rings.append(fitted)
             leg_profile_evidence[name].append(evidence)
+            if evidence["status"] != "anatomy-fitted-geometry-only":
+                raise RuntimeError(
+                    f"{name} cannot be fitted at z={ring[0]:.3f}m: "
+                    f"{evidence['sampleCount']} realistic-body cross-section samples. "
+                    "Refusing to substitute the generic tube without visible-body fit evidence."
+                )
+            fitted_rings.append(fitted)
         legs[name] = build_ring_shell(name, fitted_rings, segments=48)
 
     authored = {
@@ -497,22 +539,54 @@ def repair_body_penetrations(obj, body, clearance_m, max_passes=4):
             distance = (point - surface).length
             max_before_mm = max(max_before_mm, distance * 1000.0)
 
-            # BVH polygon winding can be inconsistent around concave anatomy.
-            # Probe both normal directions and choose the side classified outside.
-            candidate_a = surface + normal * clearance_m
-            candidate_b = surface - normal * clearance_m
-            a_inside = point_inside_closed_bvh(body_tree, candidate_a)
-            b_inside = point_inside_closed_bvh(body_tree, candidate_b)
-            if not a_inside:
-                target = candidate_a
-            elif not b_inside:
-                target = candidate_b
-            else:
-                # If both probes are still inside at a deep concavity, move farther
-                # along the less-penetrating direction and let the next pass verify.
-                far_a = surface + normal * max(clearance_m * 2.0, 0.012)
-                far_b = surface - normal * max(clearance_m * 2.0, 0.012)
-                target = far_a if not point_inside_closed_bvh(body_tree, far_a) else far_b
+            # The old fallback picked a point that could STILL be classified
+            # inside at deep shoulder/waist concavities. In the real Blender
+            # candidate this left one torso vertex embedded after four passes.
+            # Search both normal directions at increasing distances and choose
+            # the nearest point actually verified OUTSIDE the locked body.
+            target = None
+            possible = []
+            frame = body_frame(body)
+            radial = Vector((
+                point.x - frame["centerX"],
+                point.y - frame["centerY"],
+                0.0,
+            ))
+            directions = [normal, -normal]
+            if radial.length > 1e-7:
+                directions.append(radial.normalized())
+            # The closest polygon normal can be nearly tangent at an armpit
+            # crease. A real locked-body vertex at (-.167,.056,1.303) resisted
+            # both normal signs even 96mm away. Probe lateral/fore-aft outward
+            # too; every chosen point is still validated by identical BVH parity.
+            directions += [
+                Vector((-1.0 if point.x < frame["centerX"] else 1.0,0.0,0.0)),
+                Vector((0.0,-1.0 if point.y < frame["centerY"] else 1.0,0.0)),
+            ]
+            for probe_distance in (
+                clearance_m, 0.012, 0.024, 0.045, 0.075, 0.110, 0.160
+            ):
+                for direction in directions:
+                    # Local projected surface keeps normal-based repairs
+                    # minimal; radial proposals are measured from the original
+                    # vertex so the shirt cannot jump across the body.
+                    start = surface if direction in (normal, -normal) else point
+                    candidate = start + direction * probe_distance
+                    if not point_inside_closed_bvh(body_tree, candidate):
+                        possible.append(((candidate - point).length, candidate))
+                if possible:
+                    target = min(possible, key=lambda item: item[0])[1]
+                    break
+            if target is None:
+                raise RuntimeError(
+                    f"{obj.name} could not find an outside body projection "
+                    f"for embedded vertex near {tuple(round(value,4) for value in point)}."
+                )
+            if (target - point).length > 0.095:
+                raise RuntimeError(
+                    f"{obj.name} needs more than 95mm anatomy correction at "
+                    f"{tuple(round(value,4) for value in point)}; reshape panels instead."
+                )
 
             vertex.co = inverse @ target
             moved_this_pass += 1
@@ -565,15 +639,29 @@ def guide_center_z(name):
 
 
 def x_span_at_z(obj, z_world, band=0.025):
-    matrix = obj.matrix_world
-    xs = []
-    for vertex in obj.data.vertices:
-        point = matrix @ vertex.co
-        if abs(point.z - z_world) <= band:
-            xs.append(point.x)
-    if len(xs) < 4:
+    """Measure the authored garment at its actual guide plane.
+
+    Sparse ring meshes normally have no vertices at waist/hem or cuff guides.
+    Using a +/-band around guide Z incorrectly measures a different ring,
+    causing fit authoring and production preflight to disagree.
+    """
+    if obj is None or z_world is None or obj.type != "MESH":
         return None
-    return min(xs), max(xs)
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    evaluated = obj.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        mesh.calc_loop_triangles()
+        matrix = evaluated.matrix_world
+        points = [matrix @ vertex.co for vertex in mesh.vertices]
+        triangles = (
+            tuple((points[index].x, points[index].y, points[index].z) for index in triangle.vertices)
+            for triangle in mesh.loop_triangles
+        )
+        # Fail closed; this must agree with the production scene preflight.
+        return triangle_section_x_span(triangles, z_world)
+    finally:
+        evaluated.to_mesh_clear()
 
 
 def width_at_z(obj, z_world, band=0.025):
@@ -709,13 +797,18 @@ def shape_officewear_to_identity(authored, body, targets):
         ("ShirtSleeveRFabric", right_hand_z, target_hand_half),
     ):
         sleeve = authored[name]
-        current_center = center_x_at_z(sleeve, hand_z, 0.070)
+        # The actual cuff edge finishes 55 mm ABOVE the bare-hand landmark.
+        # Exact triangle-plane QA correctly fails at hand_z: that plane is
+        # outside the sleeve. Measure and align the real cloth hem instead of
+        # widening tolerance until an unrelated elbow ring is sampled.
+        cuff_hem_z = hand_z + 0.055
+        current_center = center_x_at_z(sleeve, cuff_hem_z, 0.018)
         if current_center is None:
-            raise RuntimeError(f"Could not measure {name} at the locked cuff/hand guide.")
+            raise RuntimeError(f"Could not measure {name} at the physical cuff hem above the locked hand guide.")
         delta = target_center - current_center
         shift_x_profile(
             sleeve,
-            [(hand_z - 0.16, delta), (hand_z, delta), (shoulder_z - 0.05, 0.0), (shoulder_z + 0.05, 0.0)],
+            [(hand_z - 0.10, delta), (cuff_hem_z, delta), (shoulder_z - 0.05, 0.0), (shoulder_z + 0.05, 0.0)],
         )
 
     return {
