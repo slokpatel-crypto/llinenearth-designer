@@ -17,6 +17,7 @@ from pathlib import Path
 
 import bpy
 from mathutils import Vector
+from mathutils.bvhtree import BVHTree
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -368,6 +369,110 @@ def fit_shell(obj, body, clearance_m, thickness_m):
     apply_modifier(obj, solid)
 
 
+def world_bvh(obj, epsilon=0.0):
+    if obj is None or obj.type != "MESH":
+        return None
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    evaluated = obj.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        matrix = evaluated.matrix_world
+        vertices = [matrix @ vertex.co for vertex in mesh.vertices]
+        polygons = [tuple(polygon.vertices) for polygon in mesh.polygons if len(polygon.vertices) >= 3]
+        if not vertices or not polygons:
+            return None
+        return BVHTree.FromPolygons(vertices, polygons, all_triangles=False, epsilon=epsilon)
+    finally:
+        evaluated.to_mesh_clear()
+
+
+def point_inside_closed_bvh(tree, point, epsilon=1e-5, max_hits=64):
+    direction = Vector((1.0, 0.371, 0.117)).normalized()
+    origin = point + direction * epsilon
+    hits = 0
+    for _ in range(max_hits):
+        result = tree.ray_cast(origin, direction)
+        location = result[0] if result else None
+        distance = result[3] if result and len(result) > 3 else None
+        if location is None or distance is None:
+            break
+        hits += 1
+        origin = location + direction * epsilon
+    return (hits % 2) == 1
+
+
+def repair_body_penetrations(obj, body, clearance_m, max_passes=4):
+    """Push only garment vertices that are actually inside the locked body outside.
+
+    The procedural tailoring shell keeps its authored ease/drape everywhere else.
+    This deliberately uses the same odd/even BVH containment rule as production
+    preflight, so authoring and QA agree on what counts as a penetration.
+    """
+    body_tree = world_bvh(body, epsilon=0.0)
+    if body_tree is None:
+        raise RuntimeError("Could not build locked-body BVH for garment collision repair.")
+
+    matrix = obj.matrix_world
+    inverse = matrix.inverted()
+    total_moved = 0
+    max_before_mm = 0.0
+
+    for _ in range(max_passes):
+        moved_this_pass = 0
+        for vertex in obj.data.vertices:
+            point = matrix @ vertex.co
+            if not point_inside_closed_bvh(body_tree, point):
+                continue
+            nearest = body_tree.find_nearest(point)
+            if nearest is None or nearest[0] is None or nearest[1] is None:
+                continue
+            surface, normal = nearest[0], nearest[1].normalized()
+            distance = (point - surface).length
+            max_before_mm = max(max_before_mm, distance * 1000.0)
+
+            # BVH polygon winding can be inconsistent around concave anatomy.
+            # Probe both normal directions and choose the side classified outside.
+            candidate_a = surface + normal * clearance_m
+            candidate_b = surface - normal * clearance_m
+            a_inside = point_inside_closed_bvh(body_tree, candidate_a)
+            b_inside = point_inside_closed_bvh(body_tree, candidate_b)
+            if not a_inside:
+                target = candidate_a
+            elif not b_inside:
+                target = candidate_b
+            else:
+                # If both probes are still inside at a deep concavity, move farther
+                # along the less-penetrating direction and let the next pass verify.
+                far_a = surface + normal * max(clearance_m * 2.0, 0.012)
+                far_b = surface - normal * max(clearance_m * 2.0, 0.012)
+                target = far_a if not point_inside_closed_bvh(body_tree, far_a) else far_b
+
+            vertex.co = inverse @ target
+            moved_this_pass += 1
+            total_moved += 1
+
+        obj.data.update()
+        if moved_this_pass == 0:
+            break
+
+    remaining_inside = 0
+    for vertex in obj.data.vertices:
+        if point_inside_closed_bvh(body_tree, matrix @ vertex.co):
+            remaining_inside += 1
+
+    if remaining_inside:
+        raise RuntimeError(
+            f"{obj.name} collision repair left {remaining_inside} garment vertices inside the locked body."
+        )
+
+    return {
+        "movedVertices": total_moved,
+        "maxPenetrationBeforeMm": round(max_before_mm, 2),
+        "clearanceMm": round(clearance_m * 1000.0, 2),
+        "remainingInsideVertices": remaining_inside,
+    }
+
+
 def finish_procedural_shell(obj, thickness_m):
     solid = obj.modifiers.new("LE_CLOTH_THICKNESS", "SOLIDIFY")
     solid.thickness = thickness_m
@@ -609,7 +714,11 @@ def main():
         raise RuntimeError("Locked model identity targets are not valid JSON.") from error
 
     authored, fit_profile = build_procedural_officewear(body, targets, shirt_clearance_m, trouser_clearance_m)
+    identity_fit = shape_officewear_to_identity(authored, body, targets)
+    collision_repairs = {}
     for name, obj in authored.items():
+        object_clearance = shirt_clearance_m if name.startswith("Shirt") else trouser_clearance_m
+        collision_repairs[name] = repair_body_penetrations(obj, body, object_clearance)
         finish_procedural_shell(obj, thickness_m)
         obj["linen_earth_auto_authored"] = True
         obj["linen_earth_fit_clearance_mm"] = round(
@@ -624,6 +733,8 @@ def main():
     bpy.context.scene["linen_earth_garment_clearance_mm"] = round(clearance_m * 1000.0, 3)
     bpy.context.scene["linen_earth_shirt_clearance_mm"] = round(shirt_clearance_m * 1000.0, 3)
     bpy.context.scene["linen_earth_trouser_clearance_mm"] = round(trouser_clearance_m * 1000.0, 3)
+    fit_profile["identityShaping"] = identity_fit
+    fit_profile["collisionRepairs"] = collision_repairs
     bpy.context.scene["linen_earth_identity_fit_profile_json"] = json.dumps(fit_profile, sort_keys=True)
     bpy.context.scene["linen_earth_garment_thickness_mm"] = round(thickness_m * 1000.0, 3)
 
