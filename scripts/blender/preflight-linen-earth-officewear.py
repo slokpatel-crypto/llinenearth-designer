@@ -517,10 +517,15 @@ def main(json_output=None):
 
     left_hand_z = guide_center_z("LE_GUIDE_LEFT_HAND_CENTER_H")
     right_hand_z = guide_center_z("LE_GUIDE_RIGHT_HAND_CENTER_H")
-    left_sleeve_center = center_x_at_z(bpy.data.objects.get("ShirtSleeveLFabric"), left_hand_z, 0.060)
-    right_sleeve_center = center_x_at_z(bpy.data.objects.get("ShirtSleeveRFabric"), right_hand_z, 0.060)
-    left_sleeve_width = width_at_z(bpy.data.objects.get("ShirtSleeveLFabric"), left_hand_z, 0.060)
-    right_sleeve_width = width_at_z(bpy.data.objects.get("ShirtSleeveRFabric"), right_hand_z, 0.060)
+    # The cuff physically ends 55 mm ABOVE the bare-hand guide. Sampling the
+    # hand plane yields None with exact triangle/plane intersection, even when
+    # the authored sleeve is valid. Keep the production gate at the cloth hem.
+    left_cuff_z = left_hand_z + 0.055 if left_hand_z is not None else None
+    right_cuff_z = right_hand_z + 0.055 if right_hand_z is not None else None
+    left_sleeve_center = center_x_at_z(bpy.data.objects.get("ShirtSleeveLFabric"), left_cuff_z, 0.018)
+    right_sleeve_center = center_x_at_z(bpy.data.objects.get("ShirtSleeveRFabric"), right_cuff_z, 0.018)
+    left_sleeve_width = width_at_z(bpy.data.objects.get("ShirtSleeveLFabric"), left_cuff_z, 0.018)
+    right_sleeve_width = width_at_z(bpy.data.objects.get("ShirtSleeveRFabric"), right_cuff_z, 0.018)
     sleeve_spacing = abs(right_sleeve_center - left_sleeve_center) if left_sleeve_center is not None and right_sleeve_center is not None else None
     cuff_width_asymmetry = abs(left_sleeve_width - right_sleeve_width) if left_sleeve_width is not None and right_sleeve_width is not None else None
     identity_measurements["sleeveCenterSpacingMm"] = round(sleeve_spacing, 2) if sleeve_spacing is not None else None
@@ -697,7 +702,7 @@ def main(json_output=None):
 
         upper_torso_z = body.matrix_world.translation.z + object_height(body) * 0.82
         waist_z = guide_center_z("LE_GUIDE_SHIRT_WAIST")
-        cuff_z = guide_center_z("LE_GUIDE_LEFT_HAND_CENTER_H")
+        cuff_z = left_cuff_z
         fit_clearance_specs = (
             ("upperTorsoBody", "ShirtTorsoFabric", upper_torso_z, 0.055, 2.0, 32.0),
             ("shirtWaistBody", "ShirtTorsoFabric", waist_z, 0.050, 2.0, 28.0),
