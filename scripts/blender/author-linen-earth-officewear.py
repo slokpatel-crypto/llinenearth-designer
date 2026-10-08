@@ -1048,6 +1048,16 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                         "kind":"edge","xyz":[round(v,5) for v in point],
                         "depthMm":round((point-nearest[0]).length*1000,2)
                         if nearest and nearest[0] is not None else None,
+                        "endpoints":[
+                            {
+                                "xyz":[round(x,5) for x in (matrix @ v.co)],
+                                "totalSourceShiftMm":round(
+                                    ((matrix@v.co)-source_world_positions[v.index]).length*1000,2
+                                ),
+                                "source":[round(x,5) for x in source_world_positions[v.index]]
+                            }
+                            for v in edge.verts
+                        ] if iteration==max_rounds else [],
                     })
                 print("Linen Earth real cloth contact samples: "
                       + obj.name + " pass=" + str(iteration)
@@ -1210,6 +1220,7 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                     )
                 patched=0
                 capped=0
+                cap_evidence=[]
                 bm.verts.index_update()
                 for vertex,changes in proposals.items():
                     original=matrix @ vertex.co
@@ -1234,7 +1245,15 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                     # Every vertex remains under 95mm TOTAL displacement from
                     # its actual fitted source; clipping a proposal does not
                     # waive independent BVH face/edge/vertex inspection.
-                    if was_capped: capped+=1
+                    if was_capped:
+                        capped+=1
+                        if len(cap_evidence)<8:
+                            cap_evidence.append({
+                                "at":[round(v,5) for v in original],
+                                "requested":[round(v,5) for v in original+delta],
+                                "bounded":[round(v,5) for v in bounded],
+                                "source":[round(v,5) for v in source_world_positions[vertex.index]],
+                            })
                     vertex.co=inverse @ Vector(bounded)
                     patched+=1
                 if not patched:
@@ -1243,6 +1262,10 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                     )
                 progress[-1]["coherentContactVertices"]=patched
                 progress[-1]["boundedAt95mmVertices"]=capped
+                if capped:
+                    print("Linen Earth bounded real source panel contacts: "
+                          +obj.name+" pass="+str(iteration)+" "
+                          +json.dumps(cap_evidence,sort_keys=True),flush=True)
             if len(bm.faces)>80000:
                 raise RuntimeError(f"{obj.name}: local face repair exceeds cloth complexity limit.")
             bm.normal_update()
