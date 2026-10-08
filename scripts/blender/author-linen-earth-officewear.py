@@ -580,6 +580,11 @@ def enclose_post_identity_torso_profile(obj, body, locked_z_planes, clearance_m)
         protected, profile, body_points,
         clearance_m=max(0.004,min(0.012,clearance_m)),
         max_growth_m=0.070,
+        # Do not inflate a torso ring from an adjacent ARM sampled 24mm above
+        # its actual cutting plane. Native Blender showed such an arm point at
+        # z=1.253m corrupting the ring at z=1.229m (71mm false growth).
+        # A ±12mm real cross-section still retains dense body scan evidence.
+        sample_band_m=0.012,
     )
     altered=0
     max_growth=0.0
