@@ -22,7 +22,7 @@ from mathutils.bvhtree import BVHTree
 # Authoring and Blender preflight use the same exact triangle/guide intersection.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
-from surface_coverage import anatomically_enclose_intermediate_rings, subdivide_ring_profiles
+from surface_coverage import anatomically_enclose_intermediate_rings, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -104,6 +104,10 @@ def build_ring_shell(name, rings, segments=48, neck_opening=None, collar_height=
     collection = ensure_export_collection()
     vertices = []
     faces = []
+    # Sleeves/trouser legs are authored high->low but torso/waist low->high.
+    # Inverting these quads is essential: SOLIDIFY offset=+1 must add cloth
+    # thickness OUTSIDE, never toward the locked real body's skin.
+    rings_ascending = rings[-1][0] > rings[0][0]
     for ring_index, ring in enumerate(rings):
         z_value, center_x, center_y, radius_x, radius_y = ring
         for segment in range(segments):
@@ -118,11 +122,8 @@ def build_ring_shell(name, rings, segments=48, neck_opening=None, collar_height=
             current = ring_index * segments
             for segment in range(segments):
                 nxt = (segment + 1) % segments
-                faces.append((
-                    previous + segment,
-                    previous + nxt,
-                    current + nxt,
-                    current + segment,
+                faces.append(outward_ring_quad(
+                    previous, current, segment, nxt, ascending=rings_ascending
                 ))
 
     if neck_opening is not None:
