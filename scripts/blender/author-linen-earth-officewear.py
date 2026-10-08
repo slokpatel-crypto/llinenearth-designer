@@ -889,7 +889,12 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
             and (point-nearest[0]).length > 0.0015
         )
 
-    for iteration in range(max_rounds+1):
+    # Do not waive 1.5mm real-body collision or 95mm original-vertex budget.
+    # One coherent face/edge patch can move an adjacent connected quad back
+    # inside the real armpit. Permit at most THREE additional measured and
+    # independently revalidated local seam patches before refusing export.
+    terminal_patch_budget=3
+    for iteration in range(max_rounds+1+terminal_patch_budget):
         bm=bmesh.new()
         terminal_poked=False
         try:
@@ -1275,9 +1280,16 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
             finally:
                 verify.free()
             if remaining_face or remaining_edge:
+                if iteration < max_rounds+terminal_patch_budget:
+                    # Re-evaluate actual current BVH contact on the next pass.
+                    # The original 25mm LOCAL and 95mm CUMULATIVE guards still
+                    # apply to each shared vertex, and failed convergence
+                    # remains an error rather than accepted hidden clipping.
+                    continue
                 raise RuntimeError(
                     f"{obj.name} final coherent face patch still crosses real skin "
-                    f"({remaining_face} faces, {remaining_edge} edges); "
+                    f"({remaining_face} faces, {remaining_edge} edges) after "
+                    f"{terminal_patch_budget} extra measured seam corrections; "
                     f"progression={json.dumps(progress)}; fix garment geometry."
                 )
             return {
