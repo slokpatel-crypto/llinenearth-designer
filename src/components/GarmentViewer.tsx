@@ -1,7 +1,7 @@
 "use client";
 
 import { createElement, useEffect, useMemo, useRef, useState } from "react";
-import {createCooperativeMaterialBatch, createInFlightMaterialLoader, needsVariantMaterialRefresh, type VariantMaterialAppearance} from "@/lib/garment-viewer-material-appearance";
+import {createCooperativeMaterialBatch, createInFlightMaterialLoader, needsVariantMaterialRefresh, tailoringInputSettleMs, type VariantMaterialAppearance} from "@/lib/garment-viewer-material-appearance";
 import {
   createPrototypeGarmentGlbUrl,
   GARMENT_PANEL_SPECS,
@@ -822,7 +822,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       // Material shader hydration can block Chromium's native <select> input.
       // Cooperatively yield the main thread after each bounded batch.
       const yieldForInput=createCooperativeMaterialBatch(
-        ()=>new Promise<void>((resolve)=>window.setTimeout(resolve,0)),1
+        ()=>new Promise<void>((resolve)=>window.setTimeout(resolve,8)),1
       );
       // Allow the real native form-control action to settle before any
       // expensive GLB shader/material mutation starts. Yield between every
@@ -958,7 +958,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     const inputSettleTimer=window.setTimeout(()=>{
       if(cancelled) return;
       void apply().catch(()=>{if(!cancelled)setError("A tailoring variant could not be prepared. Try another option.");});
-    },180);
+    },tailoringInputSettleMs(viewer.model?.materials.length||0));
     return ()=>{cancelled=true;window.clearTimeout(inputSettleTimer);};
   },[modelReady,styleState,buttonKey,textureRevision,roughness,shirt,trouser,collarKey,collarFinishKey,collarConstructionKey,cuffKey,cuffConstructionKey]);
 
