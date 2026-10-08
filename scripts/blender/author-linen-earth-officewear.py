@@ -24,7 +24,7 @@ from mathutils.bvhtree import BVHTree
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
 from fabric_arc_uv import frame_at_height, ellipse_arc_uv
-from surface_coverage import preserve_trouser_leg_outer_seam_with_inseam_gap, trouser_waist_side_seam_limit_m, precision_safe_source_radius, bounded_source_cloth_shift, underarm_inboard_relief_m, body_aware_sleeve_ring, waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
+from surface_coverage import underarm_centreline_contact_relief_m, preserve_trouser_leg_outer_seam_with_inseam_gap, trouser_waist_side_seam_limit_m, precision_safe_source_radius, bounded_source_cloth_shift, underarm_inboard_relief_m, body_aware_sleeve_ring, waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -1710,6 +1710,12 @@ def shape_sleeve_underarm_relief(sleeve, side, waist_guide_z):
             displacement=underarm_inboard_relief_m(
                 point.z,inside,waist_guide_z
             )
+            # The broad underarm gusset has almost no effect where real
+            # preflight measured a small post-thickness centreline intrusion.
+            # Stay inside the EXISTING 45mm cloth-only source shape cap.
+            displacement=min(0.045,displacement+underarm_centreline_contact_relief_m(
+                point.z,inside,waist_guide_z
+            ))
             if displacement<=0: continue
             vertex.co=inverse @ Vector(
                 (point.x+side*displacement,point.y,point.z)
