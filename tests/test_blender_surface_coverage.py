@@ -9,6 +9,7 @@ from surface_coverage import (
     anatomically_enclose_intermediate_rings,
     outward_ring_quad,
     nested_tucked_hem_ring,
+    sampled_mesh_face_indices,
     penetrating_surface_samples,
     subdivide_ring_profiles,
     vertical_subdivision_cuts,
@@ -61,6 +62,24 @@ class PhysicalTuckEnvelopeTests(unittest.TestCase):
             with self.subTest(params=(radius_x,radius_y,inset)):
                 with self.assertRaises(ValueError):
                     nested_tucked_hem_ring(0.88,0,0,radius_x,radius_y,inset_m=inset)
+
+
+class BlenderMeshSamplingTests(unittest.TestCase):
+    def test_sampled_indices_are_integer_only_and_bounded(self):
+        for face_count, limit in ((0,600),(10,600),(2000,600),(50317,600)):
+            with self.subTest(face_count=face_count):
+                indices=sampled_mesh_face_indices(face_count,limit)
+                self.assertLessEqual(len(indices),limit)
+                self.assertEqual(len(indices),len(set(indices)))
+                self.assertTrue(all(isinstance(i,int) and 0<=i<face_count for i in indices))
+                if face_count:
+                    self.assertEqual(indices[0],0)
+
+    def test_invalid_face_count_or_sample_limit_is_not_silently_used(self):
+        for count,limit in ((-1,600),(20,0),(20,2001),(3.2,600),(True,600)):
+            with self.subTest(count=count,limit=limit):
+                with self.assertRaises(ValueError):
+                    sampled_mesh_face_indices(count,limit)
 
 
 class VerticalRefinementTests(unittest.TestCase):
