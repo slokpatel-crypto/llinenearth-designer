@@ -878,7 +878,14 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
                         raise RuntimeError(f"{obj.name}: last cloth face cannot be projected physically outside.")
                     distance,outside=min(alternatives,key=lambda proposal:proposal[0])
                     if distance>0.025:
-                        raise RuntimeError(f"{obj.name}: terminal cloth face needs {distance*1000:.1f}mm correction; reshape its source panel.")
+                        raise RuntimeError(
+                            f"{obj.name}: terminal cloth face needs {distance*1000:.1f}mm "
+                            f"physical correction at centre={tuple(round(v,4) for v in centre)} "
+                            f"nearestBody={tuple(round(v,4) for v in surface)} "
+                            f"normal={tuple(round(v,3) for v in normal)} "
+                            f"faceHeights={[round((matrix @ v.co).z,4) for v in affected.verts]}; "
+                            "reshape actual source panel, never exceed the 25mm face-patch bound."
+                        )
                     delta=outside-centre
                     for vertex in affected.verts:
                         world=matrix @ vertex.co
