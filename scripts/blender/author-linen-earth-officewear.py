@@ -119,11 +119,19 @@ def build_ring_shell(name, rings, segments=48, neck_opening=None, collar_height=
     rings_ascending = rings[-1][0] > rings[0][0]
     for ring_index, ring in enumerate(rings):
         z_value, center_x, center_y, radius_x, radius_y = ring
+        ring_power=section_power
+        if name.startswith("TrouserLeg"):
+            # Pressed trouser fronts are softly flat at the upper join,
+            # not circular tubes through the pelvis. Round smoothly toward
+            # the knee without altering X/Y fabric panel measurements.
+            fraction=max(0.0,min(1.0,(z_value-(rings[0][0]-0.260))/0.260))
+            fraction=fraction*fraction*(3.0-2.0*fraction)
+            ring_power=2.0+1.4*fraction
         for segment in range(segments):
             angle = 2.0 * math.pi * segment / segments
             px, py = rounded_tailoring_ring_xy(
                 angle, center_x, center_y, radius_x, radius_y,
-                profile_power=section_power
+                profile_power=ring_power
             )
             vertices.append((px, py, z_value))
         if ring_index:
