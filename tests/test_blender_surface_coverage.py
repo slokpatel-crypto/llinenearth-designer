@@ -10,6 +10,7 @@ from surface_coverage import (
     body_aware_sleeve_ring,
     underarm_inboard_relief_m,
     bounded_source_cloth_shift,
+    precision_safe_source_radius,
     waist_to_chest_taper_radius,
     anatomically_enclose_intermediate_rings,
     bounded_body_section_center_y,
@@ -182,6 +183,28 @@ class SourceBoundedBVHCorrectionTests(unittest.TestCase):
         self.assertIn("Vector((0,1,0)),Vector((0,-1,0))",correction)
         self.assertIn("if not options:",correction)
         self.assertIn("SOURCE-LOCKED 95mm",correction)
+
+
+class Float32PrecisionWithoutRelaxedClothLimit(unittest.TestCase):
+    def test_exact_95mm_and_float32_nanometre_roundoff(self):
+        self.assertEqual(precision_safe_source_radius(.095),.095)
+        self.assertAlmostEqual(
+            precision_safe_source_radius(.095000004),
+            .095-.0000002,places=12
+        )
+        self.assertLess(precision_safe_source_radius(.095000004),.095)
+        with self.assertRaises(ValueError):
+            precision_safe_source_radius(.0950001)
+        with self.assertRaises(ValueError):
+            precision_safe_source_radius(float("nan"))
+
+    def test_native_roundoff_goes_inward_not_outward(self):
+        source=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
+                "author-linen-earth-officewear.py").read_text()
+        self.assertIn("safe=precision_safe_source_radius(distance)",source)
+        self.assertIn("source+direction*safe",source)
+        self.assertIn("if deviations[worst]>0.095:",source)
+        self.assertIn("if remaining_face or remaining_edge:",source)
 
 
 class OriginalPanelVertexReprojectionGuards(unittest.TestCase):
