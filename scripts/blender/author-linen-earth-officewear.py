@@ -772,7 +772,7 @@ def repair_body_penetrations(obj, body, clearance_m, max_passes=4):
 
 
 
-def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=3):
+def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=5):
     """Fix true face-centre and edge-midpoint body penetrations, not just vertices.
 
     A mesh can pass the original vertex BVH gate while its planar faces cut
@@ -787,6 +787,9 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=3):
     matrix=obj.matrix_world
     moved_total=0
     refined_total=0
+    progress=[]
+    if not isinstance(max_rounds,int) or isinstance(max_rounds,bool) or not 1<=max_rounds<=5:
+        raise RuntimeError("Real garment face collision fitting must use 1..5 bounded passes.")
     def penetration(point):
         if not point_inside_closed_bvh(body_tree,point):
             return False
@@ -814,18 +817,29 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=3):
                 if penetration(matrix @ mid):
                     selected.add(edge)
                     edge_hits+=1
+            progress.append({
+                "pass":iteration, "bodyFaceHits":centroid_hits,
+                "bodyEdgeHits":edge_hits, "faces":len(bm.faces)
+            })
+            print(
+                "Linen Earth measured face fit: "
+                + obj.name + " " + json.dumps(progress[-1],sort_keys=True),
+                flush=True,
+            )
             if not selected:
                 return {
                     "passes":iteration, "newVertices":refined_total,
                     "projectedVertices":moved_total,
                     "remainingDeepFaceHits":0, "remainingDeepEdgeHits":0,
                     "minimumInsideDepthMm":1.5,
+                    "boundedPassEvidence":progress,
                 }
             if iteration>=max_rounds:
                 raise RuntimeError(
                     f"{obj.name} retains {centroid_hits} face and {edge_hits} edge "
                     f"body penetrations deeper than 1.5mm after {max_rounds} "
-                    "physical mesh-projection passes; reshape source garment panels."
+                    f"bounded physical mesh-projection passes, progression={json.dumps(progress)}; "
+                    "reshape source garment panels rather than relaxing clearance."
                 )
             before=len(bm.verts)
             bmesh.ops.subdivide_edges(
