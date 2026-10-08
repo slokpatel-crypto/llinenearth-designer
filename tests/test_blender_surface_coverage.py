@@ -162,6 +162,21 @@ class PhysicalClothTopologyTests(unittest.TestCase):
                     needs_tailoring_face_triangulation(bad)
 
 
+class SourceBoundedBVHCorrectionTests(unittest.TestCase):
+    def test_cloth_shift_checks_all_affected_source_vertices_and_real_body(self):
+        source=(Path(__file__).resolve().parents[1] / "scripts" / "blender" /
+                "author-linen-earth-officewear.py").read_text()
+        start=source.index("def outside_correction(point,vertices):")
+        end=source.index("                proposals={}",start)
+        correction=source[start:end]
+        self.assertIn("point_inside_closed_bvh(body_tree,candidate)",correction)
+        self.assertIn("source_world_positions[vertex.index]",correction)
+        self.assertIn("if max_total>0.095:",correction)
+        self.assertIn("Vector((0,1,0)),Vector((0,-1,0))",correction)
+        self.assertIn("if not options:",correction)
+        self.assertIn("SOURCE-LOCKED 95mm",correction)
+
+
 class TerminalMeasuredSeamRepairTests(unittest.TestCase):
     def test_final_patch_accounts_for_real_edge_contacts_without_waiving_bvh(self):
         source=(Path(__file__).resolve().parents[1] / "scripts" / "blender" /
