@@ -423,7 +423,8 @@ def waist_to_chest_taper_radius(waist_half_width_m, height_above_waist_m,
 
 
 def body_aware_sleeve_ring(body_points, ring, *, body_center_x, side,
-                           clearance_m=0.007, locked_hand_center=False):
+                           clearance_m=0.007, locked_hand_center=False,
+                           sample_band_m=0.035):
     """Fit sleeve surface to the actual independent arm, excluding torso points.
 
     The locked studio pose places hands at +/-250mm, but the real arm bends
@@ -434,17 +435,17 @@ def body_aware_sleeve_ring(body_points, ring, *, body_center_x, side,
     """
     if side not in (-1,1) or isinstance(side,bool):
         raise ValueError("Arm side must be explicitly -1 or +1.")
-    vals=tuple(ring)+(body_center_x,clearance_m)
+    vals=tuple(ring)+(body_center_x,clearance_m,sample_band_m)
     if len(ring)!=5 or any(isinstance(v,bool) or not isinstance(v,(int,float))
             or not math.isfinite(v) for v in vals):
         raise ValueError("Arm sleeve profile requires five finite physical dimensions.")
     z,cx,cy,rx,ry=ring
-    if rx<=0 or ry<=0 or not 0.003<=clearance_m<=0.020:
+    if rx<=0 or ry<=0 or not 0.003<=clearance_m<=0.020 or not 0.020<=sample_band_m<=0.060:
         raise ValueError("Sleeve fit must preserve positive physical clearances.")
     points=[
         point for point in body_points
         if len(point)==3 and all(isinstance(v,(int,float)) and math.isfinite(v) for v in point)
-        and abs(point[2]-z)<=0.035
+        and abs(point[2]-z)<=sample_band_m
         and abs(point[0]-cx)<=0.100
         and abs(point[1]-cy)<=0.145
         and side*(point[0]-body_center_x)>=0.172
@@ -477,6 +478,7 @@ def body_aware_sleeve_ring(body_points, ring, *, body_center_x, side,
     return ((z,next_cx,next_cy,next_rx,next_ry),{
         "method":"real-body-arm-only-quantile-envelope",
         "sampleCount":len(points),
+        "sampleBandMm":round(sample_band_m*1000,2),
         "centerShiftMm":[round(shift_x*1000,2),round(shift_y*1000,2)],
         "radiusGrowthMm":[round((next_rx-rx)*1000,2),
                          round((next_ry-ry)*1000,2)],
