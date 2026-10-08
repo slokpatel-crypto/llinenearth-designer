@@ -561,5 +561,6 @@ class UniformRealClothTopologyContractTests(unittest.TestCase):
         end=source.index("def finish_procedural_shell(",start)
         section=source[start:end]
         self.assertIn("(point-nearest[0]).length > 0.0015",section)
-        self.assertIn("terminal_face_patch_allowed(centroid_hits,edge_hits)",section)
+        self.assertIn("0 < centroid_hits <= 8",section)
+        self.assertIn("0 < edge_hits <= 4",section)
         self.assertIn("len(bm.faces)>80000",section)
