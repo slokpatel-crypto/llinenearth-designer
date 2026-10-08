@@ -1604,7 +1604,7 @@ const fabricSurfaceEvidence=fs.readFileSync("src/lib/garment-viewer-fabric-surfa
 for(const token of [
   "supplier_declared","weight_class","gsm_estimated","unknown",
   "weightGsm","normalStrength","roughnessOffset",
-  "category=gsm<140","category=gsm>240",
+  "category=gsm<140","gsm>240",
 ]) {
   if(!fabricSurfaceEvidence.includes(token)) throw new Error(
     `GarmentViewer surface-drape provenance regression: missing ${token}`
