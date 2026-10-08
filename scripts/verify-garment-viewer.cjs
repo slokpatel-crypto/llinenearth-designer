@@ -33,12 +33,42 @@ async function selectTailoringOption(page, label, value) {
   const started=Date.now();
   const target=page.getByLabel(label,{exact:true});
   try {
-    // A live WebGL render once left Playwright waiting nine minutes for a
-    // trouser-hem option. Use a bounded REAL browser select, never a synthetic
-    // event that could conceal an unresponsive customer control.
-    await target.selectOption(value,{timeout:12000});
+    // Playwright selectOption may remain in its compositor actionability
+    // loop for 12 seconds EVEN AFTER the DOM's real selected value changes,
+    // because the 586-material GPU renderer continuously paints. Instead
+    // exercise REAL Chromium mouse+keyboard input: verify a visible enabled
+    // control is hit-testable, click it at the viewport, and type a native
+    // unique first-letter option. No synthetic input/change events, direct
+    // DOM value assignments or force:true bypasses are permitted.
+    assert.equal(await target.isVisible(),true,`3D selector ${label} must be visible`);
+    assert.equal(await target.isEnabled(),true,`3D selector ${label} must be enabled`);
+    const options=await target.locator("option").evaluateAll((nodes)=>nodes.map(
+      (node)=>({value:node.value,label:node.textContent?.trim()||""})
+    ));
+    const requested=options.find((option)=>option.value===value);
+    assert.ok(requested,`3D selector ${label} must contain option ${value}`);
+    const first=requested.label.charAt(0).toLowerCase();
+    assert.ok(first&&options.filter((option)=>
+      option.label.charAt(0).toLowerCase()===first).length===1,
+      `Native keyboard QA needs an unambiguous option initial for ${label}`);
+    const box=await target.boundingBox({timeout:4000});
+    assert.ok(box&&box.width>=5&&box.height>=5,`3D selector ${label} must have a real click target`);
+    const x=box.x+box.width*.5,y=box.y+box.height*.5;
+    const uncovered=await page.evaluate(({x,y,label})=>{
+      const hit=document.elementFromPoint(x,y);
+      return hit instanceof HTMLSelectElement&&hit.getAttribute("aria-label")===label;
+    },{x,y,label});
+    assert.equal(uncovered,true,`3D selector ${label} must not be covered by the WebGL stage`);
+    await page.mouse.click(x,y);
+    await page.keyboard.press(first);
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(({label,value})=>{
+      const select=document.querySelector(`select[aria-label="${label}"]`);
+      return select instanceof HTMLSelectElement&&select.value===value;
+    },{label,value},{timeout:4000});
     const actual=await target.inputValue({timeout:3000});
-    assert.equal(actual,value,`Tailoring control ${label} must commit the requested value`);
+    assert.equal(actual,value,`Native browser input for ${label} must commit ${value}`);
+    assert.ok(Date.now()-started<6000,`3D tailoring native mouse+keyboard update must stay under 6 seconds`);
   } catch(error) {
     let state={unavailable:true};
     try {
