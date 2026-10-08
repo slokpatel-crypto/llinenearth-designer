@@ -387,3 +387,16 @@ def terminal_face_patch_allowed(face_hits, edge_hits, *, limit=8):
     if not 1 <= limit <= 16:
         raise ValueError("Terminal cloth patch count must remain tightly bounded.")
     return 0 < face_hits <= limit and edge_hits == 0
+
+
+def needs_tailoring_face_triangulation(vertex_count):
+    """A giant BMesh ngon is not a physical cloth panel for centre collision QA.
+
+    Blender edge subdivision can leave one polygon with dozens of ring points.
+    Its arithmetic 'centroid' may sit well inside human anatomy even though
+    the actual visible mesh is triangulated differently. Split only n-gons
+    (>4 vertices) into genuine local triangles before BVH face tests.
+    """
+    if isinstance(vertex_count, bool) or not isinstance(vertex_count, int) or vertex_count < 0:
+        raise ValueError("Real cloth faces require nonnegative vertex counts.")
+    return vertex_count > 4
