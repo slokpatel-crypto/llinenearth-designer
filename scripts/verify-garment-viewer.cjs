@@ -63,7 +63,11 @@ async function selectTailoringOption(page, label, value) {
       const select=[...document.querySelectorAll("select")]
         .find((node)=>node.getAttribute("aria-label")===label);
       if(!(select instanceof HTMLSelectElement)||select.disabled) return null;
-      select.scrollIntoView({block:"center",inline:"nearest"});
+      // The website supports smooth scrolling. Its default async scroll
+      // animation leaves the select far below the viewport when read
+      // immediately, producing a false control failure under busy WebGL.
+      // The QA user action must be preceded by an INSTANT real scroll.
+      select.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"});
       const rect=select.getBoundingClientRect();
       const x=rect.left+rect.width/2,y=rect.top+rect.height/2;
       const hit=document.elementFromPoint(x,y);
