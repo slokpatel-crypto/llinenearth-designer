@@ -10,6 +10,7 @@ from surface_coverage import (
     anatomically_enclose_intermediate_rings,
     bounded_body_section_center_y,
     belongs_to_locked_shirt_trunk,
+    terminal_face_poke_allowed,
     reproject_vertex_to_fitted_ring,
     rounded_tailoring_ring_xy,
     outward_ring_quad,
@@ -19,6 +20,24 @@ from surface_coverage import (
     subdivide_ring_profiles,
     vertical_subdivision_cuts,
 )
+
+
+class TerminalClothCentroidTests(unittest.TestCase):
+    def test_real_four_face_zero_edge_residue_can_be_physically_poked(self):
+        self.assertTrue(terminal_face_poke_allowed(4,0))
+        self.assertTrue(terminal_face_poke_allowed(8,0))
+        self.assertFalse(terminal_face_poke_allowed(0,0))
+        self.assertFalse(terminal_face_poke_allowed(9,0))
+        self.assertFalse(terminal_face_poke_allowed(4,1))
+        self.assertFalse(terminal_face_poke_allowed(100,200))
+
+    def test_centroid_repair_budget_never_accepts_invalid_or_unbounded_counts(self):
+        for face,edge,limit in (
+            (-1,0,8),(1,-1,8),(True,0,8),(3,False,8),(3,0,17),(3,0,0)
+        ):
+            with self.subTest(f=face,e=edge,limit=limit):
+                with self.assertRaises(ValueError):
+                    terminal_face_poke_allowed(face,edge,limit=limit)
 
 
 class ShirtCollarVersusTorsoRingTests(unittest.TestCase):
