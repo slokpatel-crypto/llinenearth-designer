@@ -184,3 +184,17 @@ test("real garment tailoring controls remain schedulable during WebGL hydration"
   assert(viewer.includes("Allow the real native form-control action to settle before any"),
     "customer control state should settle before expensive WebGL material work");
 });
+
+
+test("interrupted live tailoring edits do not leave ghost shirt, trouser or skin materials",()=>{
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  assert(viewer.includes("const previous=new Set(visibleGarmentMaterialsRef.current)"));
+  assert(viewer.includes("visibleGarmentMaterialsRef.current.delete(name)"));
+  assert(viewer.includes("visibleGarmentMaterialsRef.current.add(name)"));
+  assert(viewer.includes("if(!previous.has(name)) setMaterialAlpha(material,true)"));
+  assert(viewer.includes("visibleSkinArmMaterialRef.current=null"));
+  assert(viewer.includes("visibleSkinArmMaterialRef.current=nextSkin"));
+  assert(viewer.includes("visibleButtonMaterialsRef.current.delete(name)"));
+  assert(viewer.includes("visibleButtonMaterialsRef.current.add(name)"));
+  assert(viewer.includes("if(cancelled) return"));
+});
