@@ -434,8 +434,15 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
         lower_center_x = cx + side * leg_center_half
         knee_z = hem_z + (upper_thigh_z - hem_z) * 0.48
         calf_z = hem_z + (upper_thigh_z - hem_z) * 0.20
+        # The pelvic shell already reaches the actual upper-thigh seam.
+        # A separate closed leg tube extending 50mm ABOVE that junction
+        # runs through the joined crotch of the LOCKED body. Blender BVH
+        # measured 10-58mm penetrations near z=.86-.90m on that overlap.
+        # Start both leg tubes at the real lower edge of the pelvic panel,
+        # leaving the 344mm waist guide and body geometry untouched.
+        # Independent face/edge BVH still decides if this source fits.
         base_rings = [
-            (upper_thigh_z + 0.050, thigh_center_x, cy - 0.002, 0.078, 0.082),
+            (upper_thigh_z, thigh_center_x, cy - 0.002, 0.078, 0.082),
             (upper_thigh_z - 0.070, thigh_center_x, cy, 0.071, 0.075),
             (knee_z, lower_center_x, cy, 0.050, 0.052),
             (calf_z, lower_center_x, cy, 0.042, 0.045),
