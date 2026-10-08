@@ -492,7 +492,7 @@ def body_aware_sleeve_ring(body_points, ring, *, body_center_x, side,
 
 
 def underarm_inboard_relief_m(z, signed_inboard_m, waist_guide_z, *,
-                              half_span_m=0.095, max_relief_m=0.032):
+                              half_span_m=0.135, max_relief_m=0.045):
     """Smoothly shape the INTERIOR upper sleeve away from the real side torso.
 
     Real Blender QA consistently found a stubborn 1.12-1.18m armpit contact:
@@ -504,9 +504,13 @@ def underarm_inboard_relief_m(z, signed_inboard_m, waist_guide_z, *,
     if any(isinstance(v,bool) or not isinstance(v,(int,float))
            or not math.isfinite(v) for v in values):
         raise ValueError("Underarm relief requires finite garment coordinates.")
-    if not (0.04 <= half_span_m <= 0.13 and 0 <= max_relief_m <= 0.045):
+    if not (0.04 <= half_span_m <= 0.15 and 0 <= max_relief_m <= 0.045):
         raise ValueError("Underarm relief must remain a bounded cloth-only alteration.")
-    centre_z=waist_guide_z+0.050
+    # Real Blender runs located separate 1.108m and 1.175m inboard sleeve
+    # contact islands. A single narrow lobe merely moves the collision from
+    # one to the other. Broaden the same bounded source-gusset allowance
+    # over both sites; no model body geometry or photographed exterior moves.
+    centre_z=waist_guide_z+0.040
     normalized_z=abs(z-centre_z)/half_span_m
     if normalized_z>=1 or signed_inboard_m<=0:
         return 0.0
