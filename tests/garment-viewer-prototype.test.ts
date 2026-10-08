@@ -132,9 +132,14 @@ test("GarmentViewer lab route is isolated from the protected customer visual rou
   assert(legacy.includes('redirect("/style-director")'));
 });
 
-test("viewer skips ensureLoaded for materials that model-viewer already hydrated",()=>{
+test("viewer skips hydrated materials and shares in-flight WebGL material loads",()=>{
   const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
-  assert(viewer.includes("if(material.isLoaded!==true && material.ensureLoaded) await material.ensureLoaded();"));
+  assert(viewer.includes("material.isLoaded!==true && material.ensureLoaded"),"already hydrated materials must not reload");
+  assert(viewer.includes("await loadMaterialOnce(material,()=>material.ensureLoaded!())"),
+    "overlapping style changes must share in-flight lazy material hydration");
+  const loader=readFileSync("src/lib/garment-viewer-material-appearance.ts","utf8");
+  assert(loader.includes("if(active.get(material)===pending) active.delete(material)"),
+    "completed/rejected GPU work must be evicted to allow retry");
 });
 
 test("viewer recovers a model-viewer load event that fires before React effect listeners attach",()=>{

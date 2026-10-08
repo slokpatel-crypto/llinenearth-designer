@@ -28,6 +28,44 @@ async function captureStableWebGLFrame(page, destination, clip) {
   }
 }
 
+
+async function selectTailoringOption(page, label, value) {
+  const started=Date.now();
+  const target=page.getByLabel(label,{exact:true});
+  try {
+    // A live WebGL render once left Playwright waiting nine minutes for a
+    // trouser-hem option. Use a bounded REAL browser select, never a synthetic
+    // event that could conceal an unresponsive customer control.
+    await target.selectOption(value,{timeout:12000});
+    const actual=await target.inputValue({timeout:3000});
+    assert.equal(actual,value,`Tailoring control ${label} must commit the requested value`);
+  } catch(error) {
+    let state={unavailable:true};
+    try {
+      state=await Promise.race([
+        page.evaluate(({label})=>{
+          const controls=[...document.querySelectorAll("select")];
+          const element=controls.find(node=>node.getAttribute("aria-label")===label);
+          const shell=document.querySelector(".garmentViewerShell");
+          const viewer=document.querySelector("model-viewer");
+          return {
+            label,value:element?.value??null,
+            optionCount:element?.options.length??0,disabled:element?.disabled??null,
+            modelLoaded:Boolean(viewer?.loaded),
+            modelReadiness:shell?.getAttribute("data-model-readiness")??null,
+            manifestReady:shell?.getAttribute("data-manifest-ready")??null,
+            sceneMaterials:viewer?.model?.materials.length??null,
+          };
+        },{label}),
+        new Promise((_,reject)=>setTimeout(()=>reject(new Error("diagnostics main-thread timeout")),2000))
+      ]);
+    } catch(e) {state={error:String(e)};}
+    const record={label,requested:value,durationMs:Date.now()-started,state,error:String(error)};
+    await fs.writeFile(path.join(output,"garment-select-failure.json"),JSON.stringify(record,null,2)+"\n");
+    throw new Error("Real tailoring select failed in bounded browser QA: "+JSON.stringify(record));
+  }
+}
+
 async function verifyViewport(browser, width) {
   const context = await browser.newContext({ viewport: { width, height: 1000 } });
   const page = await context.newPage();
@@ -227,11 +265,11 @@ async function verifyViewport(browser, width) {
   assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-collar-finish"),"white_collar_cuffs","3D shell must expose active contrast-cloth state");
   assert.equal(await page.getByLabel("3D cuff",{exact:true}).inputValue(),"cocktail","canonical StyleSpec cuff must override the shirt-type preset");
   assert.equal(await page.getByLabel("3D shirt wear").inputValue(),"untucked","canonical Designer wear must reach 3D");
-  await page.getByLabel("3D shirt wear").selectOption("tucked");
+  await selectTailoringOption(page,"3D shirt wear","tucked");
   assert.equal(await page.getByLabel("3D shirt wear").inputValue(),"tucked","tucked state must switch to waist-compressed torso geometry");
-  await page.getByLabel("3D trouser rise").selectOption("extra_high");
+  await selectTailoringOption(page,"3D trouser rise","extra_high");
   assert.equal(await page.getByLabel("3D trouser rise").inputValue(),"extra_high","tucked shirt must remain valid at extra-high rise");
-  await page.getByLabel("3D shirt wear").selectOption("untucked");
+  await selectTailoringOption(page,"3D shirt wear","untucked");
   assert.equal(await page.getByLabel("3D shirt back").inputValue(),"center_box_pleat","canonical Designer shirt-back construction must reach 3D");
   assert.equal(await page.getByLabel("3D trouser type").inputValue(),"wide_leg_relaxed_drape","saved Designer trouser type must reach 3D");
   assert.equal(await page.getByLabel("3D trouser rise").inputValue(),"extra_high","canonical Extra-High Rise must override the trouser-type preset and reach 3D");
@@ -293,43 +331,43 @@ async function verifyViewport(browser, width) {
   assert.ok(modelState.materialNames.some((name)=>name==="ButtonAccentVariant__trouser_rise__extra_high"),"M7.46 must carry extra-high rise closure hardware");
   assert.ok(modelState.materialNames.some((name)=>name==="ButtonAccentVariant__trouser_rise__high"),"M7.46 must carry high-rise trouser closure hardware");
 
-  await page.getByLabel("3D shirt type").selectOption("camp_collar_resort");
+  await selectTailoringOption(page,"3D shirt type","camp_collar_resort");
   assert.equal(await page.getByLabel("3D shirt wear").inputValue(),"untucked","camp shirt preset must switch to untucked wear");
   assert.equal(await page.getByLabel("3D sleeve").inputValue(),"half","camp shirt preset must switch to half sleeve");
   assert.equal(await page.getByLabel("3D collar",{exact:true}).inputValue(),"camp","camp shirt preset must switch the collar geometry");
-  await page.getByLabel("3D trouser type").selectOption("wide_leg_relaxed_drape");
+  await selectTailoringOption(page,"3D trouser type","wide_leg_relaxed_drape");
   assert.equal(await page.getByLabel("3D trouser fit").inputValue(),"wide","wide-leg trouser preset must switch leg geometry");
   assert.equal(await page.getByLabel("3D trouser rise").inputValue(),"high","wide-leg trouser preset must switch rise");
   assert.equal(await page.getByLabel("3D trouser pleat").inputValue(),"double_reverse","wide-leg trouser preset must switch to double reverse pleats");
-  await page.getByLabel("3D trouser type").selectOption("korean_high_rise_tapered");
+  await selectTailoringOption(page,"3D trouser type","korean_high_rise_tapered");
   assert.equal(await page.getByLabel("3D trouser fit").inputValue(),"tapered","Korean trouser preset must keep a tapered leg");
   assert.equal(await page.getByLabel("3D trouser rise").inputValue(),"extra_high","Korean trouser preset must switch to the explicit extra-high rise");
-  await page.getByLabel("3D trouser type").selectOption("wide_leg_relaxed_drape");
-  await page.getByLabel("3D button material").selectOption("metal");
-  await page.getByLabel("3D collar cloth").selectOption("white_collar");
+  await selectTailoringOption(page,"3D trouser type","wide_leg_relaxed_drape");
+  await selectTailoringOption(page,"3D button material","metal");
+  await selectTailoringOption(page,"3D collar cloth","white_collar");
   assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-collar-finish"),"white_collar","collar-only contrast must stay distinct from collar + cuffs");
 
-  await page.getByLabel("3D collar",{exact:true}).selectOption("english_spread");
+  await selectTailoringOption(page,"3D collar","english_spread");
   assert.equal(await page.getByLabel("3D collar",{exact:true}).inputValue(),"english_spread","English Spread / British Collar must be selectable in the live 3D tailoring library");
-  await page.getByLabel("3D shirt fit").selectOption("boxy");
-  await page.getByLabel("3D shirt wear").selectOption("untucked");
-  await page.getByLabel("3D collar",{exact:true}).selectOption("mandarin");
-  await page.getByLabel("3D trouser fit").selectOption("wide");
-  await page.getByLabel("3D trouser rise").selectOption("extra_high");
+  await selectTailoringOption(page,"3D shirt fit","boxy");
+  await selectTailoringOption(page,"3D shirt wear","untucked");
+  await selectTailoringOption(page,"3D collar","mandarin");
+  await selectTailoringOption(page,"3D trouser fit","wide");
+  await selectTailoringOption(page,"3D trouser rise","extra_high");
   assert.equal(await page.getByLabel("3D trouser rise").inputValue(),"extra_high","extra-high rise must be directly selectable");
-  await page.getByLabel("3D trouser rise").selectOption("high");
-  await page.getByLabel("3D trouser pleat").selectOption("double_forward");
-  await page.getByLabel("3D trouser waistband").selectOption("side_adjuster");
-  await page.getByLabel("3D trouser break").selectOption("negative");
-  await page.getByLabel("3D collar construction").selectOption("soft_unfused");
-  await page.getByLabel("3D cuff construction").selectOption("soft");
-  await page.getByLabel("3D shirt yoke").selectOption("western");
+  await selectTailoringOption(page,"3D trouser rise","high");
+  await selectTailoringOption(page,"3D trouser pleat","double_forward");
+  await selectTailoringOption(page,"3D trouser waistband","side_adjuster");
+  await selectTailoringOption(page,"3D trouser break","negative");
+  await selectTailoringOption(page,"3D collar construction","soft_unfused");
+  await selectTailoringOption(page,"3D cuff construction","soft");
+  await selectTailoringOption(page,"3D shirt yoke","western");
   assert.equal(await page.getByLabel("3D shirt back").inputValue(),"plain","western yoke must clear incompatible rear pleats");
-  await page.getByLabel("3D shirt back").selectOption("rear_side_pleats");
+  await selectTailoringOption(page,"3D shirt back","rear_side_pleats");
   assert.equal(await page.getByLabel("3D shirt yoke").inputValue(),"split","rear pleats must switch an incompatible western yoke to split");
-  await page.getByLabel("3D shirt hem").selectOption("straight");
-  await page.getByLabel("3D trouser hem").selectOption("turnup_4");
-  await page.getByLabel("3D trouser pockets").selectOption("jean");
+  await selectTailoringOption(page,"3D shirt hem","straight");
+  await selectTailoringOption(page,"3D trouser hem","turnup_4");
+  await selectTailoringOption(page,"3D trouser pockets","jean");
   await page.waitForTimeout(150);
   const liveSummary=await page.locator(".garmentStyleLiveSummary").innerText();
   assert.match(liveSummary,/Boxy \/ Oversized Fit/);

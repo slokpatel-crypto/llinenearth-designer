@@ -1,7 +1,7 @@
 "use client";
 
 import { createElement, useEffect, useMemo, useRef, useState } from "react";
-import {needsVariantMaterialRefresh, type VariantMaterialAppearance} from "@/lib/garment-viewer-material-appearance";
+import {createInFlightMaterialLoader, needsVariantMaterialRefresh, type VariantMaterialAppearance} from "@/lib/garment-viewer-material-appearance";
 import {
   createPrototypeGarmentGlbUrl,
   GARMENT_PANEL_SPECS,
@@ -149,12 +149,15 @@ function createLinenNormalMap(strength=1) {
 function materialByName(viewer:ModelViewerElement,name:string) {
   return viewer.model?.materials.find((material)=>material.name===name) || null;
 }
+const loadMaterialOnce=createInFlightMaterialLoader<Material>();
 async function ensureViewerMaterialLoaded(material:Material|null|undefined) {
   if(!material) return null;
-  // model-viewer exposes already-hydrated materials synchronously. Re-running
-  // ensureLoaded() for those materials on every style/fabric effect can serialize
-  // expensive WebGL work and block the browser even though the material is ready.
-  if(material.isLoaded!==true && material.ensureLoaded) await material.ensureLoaded();
+  // Multiple short-lived React style effects can hit the same still-unloaded
+  // material concurrently. Coalesce those promises rather than requesting
+  // duplicate scene-graph shader hydration for rapid tailoring interactions.
+  if(material.isLoaded!==true && material.ensureLoaded){
+    await loadMaterialOnce(material,()=>material.ensureLoaded!());
+  }
   return material;
 }
 

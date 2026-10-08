@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {needsVariantMaterialRefresh,needsButtonMaterialRefresh,trimAppearanceKey} from "../src/lib/garment-viewer-material-appearance.ts";
+import {createInFlightMaterialLoader,needsVariantMaterialRefresh,needsButtonMaterialRefresh,trimAppearanceKey} from "../src/lib/garment-viewer-material-appearance.ts";
 
 const base={textureRevision:3,roughness:.72,shirtId:"linen-sky",trouserId:"linen-beige"};
 
@@ -38,4 +38,33 @@ test("collar/cuff cache invalidates for construction, contrast cloth, fabric and
     {cuffConstruction:"soft"},{sleeve:"half"},{shirtId:"linen-white"},
     {textureRevision:4},{roughness:.8},{shirtDrape:"fluid"},
   ]) assert.notEqual(trimAppearanceKey({...trim,...changed}),key);
+});
+
+
+test("overlapping style edits hydrate each lazy WebGL material only once",async()=>{
+  const loadOnce=createInFlightMaterialLoader<object>();
+  const material={id:"ShirtCuffVariant__cocktail"};
+  let count=0;
+  let resolveLoad:()=>void=()=>{};
+  const task=new Promise<void>((resolve)=>{resolveLoad=resolve;});
+  const first=loadOnce(material,()=>{count++;return task;});
+  const second=loadOnce(material,()=>{count++;return task;});
+  await Promise.resolve();
+  assert.equal(count,1,"concurrent effects must reuse the same shader load");
+  resolveLoad();
+  await Promise.all([first,second]);
+  await loadOnce(material,async()=>{count++;});
+  assert.equal(count,2,"completed material loads must not leave a stale in-flight entry");
+});
+
+test("failed WebGL load is evicted to permit recovery",async()=>{
+  const loadOnce=createInFlightMaterialLoader<object>();
+  const material={id:"ShirtCollarVariant__spread"};
+  let attempts=0;
+  await assert.rejects(()=>loadOnce(material,async()=>{
+    attempts++;
+    throw new Error("GPU context temporarily unavailable");
+  }),/GPU context/);
+  await loadOnce(material,async()=>{attempts++;});
+  assert.equal(attempts,2);
 });
