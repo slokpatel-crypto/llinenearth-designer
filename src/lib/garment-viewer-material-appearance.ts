@@ -77,3 +77,13 @@ export function createCooperativeMaterialBatch(
     if(operations%batchSize===0) await yieldToBrowser();
   };
 }
+
+
+/** Sub-second quiet window for native inputs on dense production 3D scenes. */
+export function tailoringInputSettleMs(materialCount:number):number {
+  if(!Number.isSafeInteger(materialCount)||materialCount<0||materialCount>5000)
+    throw new Error("3D material count must be a bounded nonnegative integer.");
+  // Hydrating 586 materials in a CPU-backed CI browser can starve real select
+  // actionability. Coalesce consecutive changes; keep the smaller prototype fast.
+  return materialCount>=300?520:180;
+}
