@@ -560,7 +560,7 @@ class MedialSleeveReliefSourceContract(unittest.TestCase):
         relief=code[start:end]
         self.assertIn("if inward>=0.0: continue",relief)
         self.assertIn("if normalized_z>=1.0: continue",relief)
-        self.assertIn("0.002 <= amplitude_m <= 0.020",relief)
+        self.assertIn("0.002 <= amplitude_m <= 0.035",relief)
         self.assertIn('fit_profile["medialSleeveRelief"]',code)
         self.assertLess(code.index('fit_profile["medialSleeveRelief"]'),
                         code.index("collision_repairs = {}"))
@@ -622,3 +622,15 @@ class StrictSourcePanelProjectionBudget(unittest.TestCase):
         self.assertIn("bounded_source_panel_displacement(",code)
         self.assertIn('raise RuntimeError(\n                f"{obj.name}: connected cloth crossed the 95mm TOTAL',code)
         self.assertIn("if remaining_face or remaining_edge:",code)
+
+
+class RealSourceSleeveMedialPanelAdjustment(unittest.TestCase):
+    def test_fits_inboard_panel_before_skin_projection_not_after(self):
+        code=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
+              "author-linen-earth-officewear.py").read_text()
+        self.assertIn("amplitude_m=0.030, half_span_m=0.125",code)
+        self.assertIn("if inward>=0.0: continue",code)
+        self.assertLess(code.index('fit_profile["medialSleeveRelief"]'),
+                        code.index("collision_repairs = {}"))
+        self.assertIn("if remaining_face or remaining_edge:",code)
+        self.assertIn("if (target - point).length > 0.095:",code)
