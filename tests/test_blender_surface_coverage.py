@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts" / "blende
 from surface_coverage import (
     adaptive_surface_cut_rounds,
     anatomically_enclose_intermediate_rings,
+    rounded_tailoring_ring_xy,
     outward_ring_quad,
     nested_tucked_hem_ring,
     sampled_mesh_face_indices,
@@ -15,6 +16,57 @@ from surface_coverage import (
     subdivide_ring_profiles,
     vertical_subdivision_cuts,
 )
+
+
+class RoundedAnatomySectionTests(unittest.TestCase):
+    def test_real_locked_chest_corner_fits_within_unchanged_seventy_mm_growth_guard(self):
+        # Native Blender 4.2 run 37780010855 failed the elliptical assumption:
+        # a true torso point at x=.1804,y=.1151,z=1.253 from a section centred
+        # at z=1.2292 caused 70+mm needless growth of BOTH shell radii.
+        start=(1.17,0.0,0.0,0.1590,0.1264)
+        end=(1.29,0.0,0.0,0.1590,0.1264)
+        mid=(1.2292,0.0,0.0,0.1590,0.1264)
+        body=[(0.1804,0.1151,1.2530) for _ in range(146)]
+        with self.assertRaisesRegex(ValueError,"70mm"):
+            anatomically_enclose_intermediate_rings(
+                [start,end],[start,mid,end],body,profile_power=2.0
+            )
+        result=anatomically_enclose_intermediate_rings(
+            [start,end],[start,mid,end],body,profile_power=3.0
+        )
+        self.assertEqual(result[0],start)
+        self.assertEqual(result[-1],end)
+        fitted=result[1]
+        self.assertLessEqual(fitted[3]-mid[3],0.070)
+        self.assertLessEqual(fitted[4]-mid[4],0.070)
+        normalized=((0.1804/fitted[3])**3+(0.1151/fitted[4])**3)
+        self.assertLess(normalized,1.0)
+
+    def test_softly_squarish_torso_preserves_shoulder_and_waist_extrema(self):
+        cx,cy,rx,ry=.011,-.027,.194,.133
+        for theta,expected in (
+            (0,(cx+rx,cy)), (math.pi/2,(cx,cy+ry)),
+            (math.pi,(cx-rx,cy)), (3*math.pi/2,(cx,cy-ry))
+        ):
+            x,y=rounded_tailoring_ring_xy(theta,cx,cy,rx,ry,profile_power=3.0)
+            self.assertAlmostEqual(x,expected[0])
+            self.assertAlmostEqual(y,expected[1])
+        circular=rounded_tailoring_ring_xy(math.pi/4,0,0,rx,ry,profile_power=2)
+        shirt=rounded_tailoring_ring_xy(math.pi/4,0,0,rx,ry,profile_power=3)
+        self.assertGreater(shirt[0],circular[0])
+        self.assertGreater(shirt[1],circular[1])
+
+    def test_invalid_curvature_does_not_silently_inflate_figure(self):
+        for power in (0,1.9,4.1,float("nan"),True):
+            with self.subTest(power=power):
+                with self.assertRaises(ValueError):
+                    rounded_tailoring_ring_xy(0,0,0,.15,.12,profile_power=power)
+                with self.assertRaises(ValueError):
+                    anatomically_enclose_intermediate_rings(
+                        [(0.4,0,0,.15,.12),(0.5,0,0,.15,.12)],
+                        [(0.4,0,0,.15,.12),(0.45,0,0,.15,.12),(0.5,0,0,.15,.12)],
+                        [(0,0,.45)]*25, profile_power=power
+                    )
 
 
 class PhysicalPanelWindingTests(unittest.TestCase):
