@@ -52,6 +52,34 @@ class InnerSleeveBodyContactReliefTests(unittest.TestCase):
             underarm_inboard_relief_m(1.15,.03,1.1,max_relief_m=.06)
 
 
+class DenseRealArmProfileConstructionTests(unittest.TestCase):
+    def test_sparse_elbow_and_cuff_are_fitted_at_all_intermediate_slices(self):
+        source=(Path(__file__).resolve().parents[1] / "scripts" / "blender" /
+                "author-linen-earth-officewear.py").read_text()
+        start=source.index("source_sleeve_rings=[")
+        end=source.index("    seat_z =",start)
+        sleeve=source[start:end]
+        self.assertIn("dense_source_sleeve_rings=subdivide_ring_profiles(",sleeve)
+        self.assertIn("source_sleeve_rings,max_vertical_step_m=0.040",sleeve)
+        self.assertIn("enumerate(dense_source_sleeve_rings)",sleeve)
+        self.assertIn("body_aware_sleeve_ring(",sleeve)
+        self.assertIn("locked_hand_center=index==len(dense_source_sleeve_rings)-1",sleeve)
+
+    def test_40mm_sections_keep_original_sleeve_guides(self):
+        source=[
+            (1.40,-.23,0,.068,.055),
+            (1.30,-.24,.01,.064,.050),
+            (1.13,-.25,.02,.052,.043),
+            (.91,-.25,.02,.038,.032)
+        ]
+        dense=subdivide_ring_profiles(source,max_vertical_step_m=.040)
+        self.assertGreater(len(dense),len(source))
+        self.assertEqual(dense[0],source[0])
+        self.assertEqual(dense[-1],source[-1])
+        self.assertTrue(all(tuple(row) in dense for row in source))
+        self.assertTrue(all(abs(a[0]-b[0])<=.0400001 for a,b in zip(dense,dense[1:])))
+
+
 class AnatomicalSleeveConstructionTests(unittest.TestCase):
     def test_real_arm_pose_moves_sleeve_y_but_preserves_hand_center(self):
         ring=(1.1,-.255,0.0,.042,.034)
