@@ -9,6 +9,7 @@ from surface_coverage import (
     adaptive_surface_cut_rounds,
     body_aware_sleeve_ring,
     underarm_inboard_relief_m,
+    trouser_waist_side_seam_limit_m,
     bounded_source_cloth_shift,
     precision_safe_source_radius,
     waist_to_chest_taper_radius,
@@ -26,6 +27,42 @@ from surface_coverage import (
     subdivide_ring_profiles,
     vertical_subdivision_cuts,
 )
+
+
+class MeasuredTrouserSeatClearanceTests(unittest.TestCase):
+    def test_locked_344mm_waist_tapers_toward_real_hip(self):
+        self.assertAlmostEqual(
+            trouser_waist_side_seam_limit_m(.172,0),.179
+        )
+        # At the measured 1.0425m failed intersection (~70mm below waist)
+        # the panel cannot arbitrarily expand to 252mm half-width around
+        # hands. True hip and arm clearance remain independently BVH-tested.
+        self.assertLess(
+            trouser_waist_side_seam_limit_m(.172,.070),.22
+        )
+        self.assertGreater(
+            trouser_waist_side_seam_limit_m(.172,.160),.22
+        )
+        self.assertLess(
+            trouser_waist_side_seam_limit_m(.172,.230),.30
+        )
+
+    def test_source_hip_shaping_never_edits_locked_waist_or_body(self):
+        source=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
+                "author-linen-earth-officewear.py").read_text()
+        begin=source.index("def restore_trouser_waist_side_seam(")
+        end=source.index("def restore_shirt_waist_side_seam(",begin)
+        body=source[begin:end]
+        self.assertIn("if not 0.002<below<0.24:",body)
+        self.assertIn("if distance>0.095:",body)
+        self.assertIn("trouser_waist_side_seam_limit_m(",body)
+        self.assertIn("realBodyCollisionStillRequiresBVH",body)
+        self.assertIn('fit_profile["trouserWaistSideSeamContinuity"]',source)
+        for bad in [float("nan"),float("inf"),-1]:
+            with self.assertRaises(ValueError):
+                trouser_waist_side_seam_limit_m(.172,bad)
+        with self.assertRaises(ValueError):
+            trouser_waist_side_seam_limit_m(.172,.06,hip_slope=.90)
 
 
 class InnerSleeveBodyContactReliefTests(unittest.TestCase):
