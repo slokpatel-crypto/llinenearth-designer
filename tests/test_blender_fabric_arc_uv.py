@@ -5,7 +5,7 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/"scripts"/"blender"))
-from fabric_arc_uv import frame_at_height, ellipse_arc_uv
+from fabric_arc_uv import frame_at_height, ellipse_arc_uv, ellipse_ring_perimeter_m
 
 
 class RealGarmentTubeUVTests(unittest.TestCase):
@@ -20,6 +20,25 @@ class RealGarmentTubeUVTests(unittest.TestCase):
         self.assertAlmostEqual(midpoint[3],.055)
         self.assertEqual(frame_at_height(rings,.9),rings[0])
         self.assertEqual(frame_at_height(rings,1.3),rings[1])
+
+    def test_wrap_uv_width_is_full_ring_perimeter_not_x_diameter(self):
+        circle=(1.2,.2,.01,.06,.06)
+        self.assertAlmostEqual(ellipse_ring_perimeter_m(circle),
+                               2*math.pi*.06,places=10)
+        oval=(1.2,.2,.01,.06,.04)
+        perimeter=ellipse_ring_perimeter_m(oval)
+        self.assertGreater(perimeter,.06*2)
+        self.assertLess(perimeter,2*math.pi*.06)
+        # Flat panel spans a full circumference, not a two-radius projected
+        # X strip; otherwise one 20mm check becomes >50mm around the arm.
+        self.assertGreater(perimeter/(2*oval[3]),2.4)
+
+    def test_lab_export_uses_circumference_but_never_fakes_verified_scale(self):
+        source=(ROOT/"scripts"/"blender"/"export-linen-earth-officewear.py").read_text()
+        self.assertIn("frame_at_height(rings,(min_z+max_z)*0.5)",source)
+        self.assertIn("width_mm=ellipse_ring_perimeter_m(frame)*1000.0",source)
+        self.assertIn('"dimensionSource": "geometry-estimate-unverified"',source)
+        self.assertIn("Panel spec requires measurementEvidence",source)
 
     def test_seam_and_quarters_follow_ellipse_arc_not_flat_x(self):
         frame=(1.1,-.25,.02,.06,.04)
