@@ -622,3 +622,22 @@ class StrictSourcePanelProjectionBudget(unittest.TestCase):
         self.assertIn("bounded_source_panel_displacement(",code)
         self.assertIn('raise RuntimeError(\n                f"{obj.name}: connected cloth crossed the 95mm TOTAL',code)
         self.assertIn("if remaining_face or remaining_edge:",code)
+
+
+class ProximalSleeveBodyExitContract(unittest.TestCase):
+    def test_only_medial_armpit_uses_outward_body_exit(self):
+        author=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
+                "author-linen-earth-officewear.py").read_text()
+        self.assertIn("1.075<=point.z<=1.245",author)
+        self.assertIn('abs(point.x-frame["centerX"])<0.205',author)
+        self.assertIn("if (medial_arm_contact",author)
+        self.assertIn("sleeve_side*(candidate.x-point.x)<-0.002",author)
+        self.assertIn("if (target - point).length > 0.095:",author)
+        self.assertIn("(point-nearest[0]).length > 0.0015",author)
+        # The other forearm and actual cuff remain free to follow the measured
+        # body posture; do not apply global one-direction extrusion.
+        def guarded(x,z):return .075+1 <= z <= 1.245 and abs(x)<.205
+        self.assertTrue(guarded(-.157,1.114))
+        self.assertFalse(guarded(-.250,1.114))
+        self.assertFalse(guarded(-.157,1.272))
+        self.assertFalse(guarded(-.157,.987))
