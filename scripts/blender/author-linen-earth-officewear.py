@@ -100,9 +100,11 @@ def build_ring_shell(name, rings, segments=48, neck_opening=None, collar_height=
         # Broad chest/seat sections are softly squared rather than circular
         # cylinders. A real anatomical front-side corner no longer requires
         # >70 mm fake expansion from a mathematically inappropriate ellipse.
-        section_power = 3.0 if name == "ShirtTorsoFabric" else 2.6
+        section_power = 3.2 if name == "ShirtTorsoFabric" else 2.6
         rings = anatomically_enclose_intermediate_rings(
-            rings, intermediate, body_samples, profile_power=section_power
+            rings, intermediate, body_samples,
+            profile_power=section_power,
+            max_center_shift_m=0.018 if name == "ShirtTorsoFabric" else 0.012,
         )
     else:
         section_power = 2.0
