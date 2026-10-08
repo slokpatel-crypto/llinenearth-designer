@@ -409,3 +409,19 @@ test("Blender body, preflight and exporter all carry the same locked model ident
   assert(exporter.includes("scene_model_identity"));
   assert(exporter.includes('"modelIdentity": model_identity'));
 });
+
+test("Blender 3D identity QA samples garment cross-sections between sparse mesh rings",()=>{
+  const preflight=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
+  for(const token of [
+    "delta_z = b.z - a.z",
+    "alpha = (z_world - a.z) / delta_z",
+    "if 0 <= alpha <= 1:",
+    "intersections.append(a.x + (b.x - a.x) * alpha)",
+    "if len(intersections) >= 4:",
+  ]) assert(preflight.includes(token),"3D QA must intersect sparse mesh edges at physical guides: "+token);
+  for(const important of [
+    'reasons.append("Could not sample garment outer-arm silhouette at the locked guide.")',
+    'reasons.append("Could not sample trouser leg-center spacing from production geometry.")',
+    'reasons.append("Could not measure trouser inner-leg gap at the locked stance guide.")',
+  ]) assert(preflight.includes(important),"Unmeasured critical identity QA must block production: "+important);
+});
