@@ -548,3 +548,18 @@ class UniformRealClothTopologyContractTests(unittest.TestCase):
         self.assertIn("(point-nearest[0]).length > 0.0015",section)
         self.assertIn("terminal_face_patch_allowed(centroid_hits,edge_hits)",section)
         self.assertIn("len(bm.faces)>80000",section)
+
+
+class MedialSleeveReliefSourceContract(unittest.TestCase):
+    def test_3d_source_relief_never_moves_outer_silhouette(self):
+        code=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
+              "author-linen-earth-officewear.py").read_text()
+        start=code.index("def relieve_inboard_sleeve_contact(")
+        end=code.index("def refine_collision_faces(",start)
+        relief=code[start:end]
+        self.assertIn("if inward>=0.0: continue",relief)
+        self.assertIn("if normalized_z>=1.0: continue",relief)
+        self.assertIn("0.002 <= amplitude_m <= 0.020",relief)
+        self.assertIn('fit_profile["medialSleeveRelief"]',code)
+        self.assertLess(code.index('fit_profile["medialSleeveRelief"]'),
+                        code.index("collision_repairs = {}"))

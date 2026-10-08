@@ -77,3 +77,11 @@ export function createCooperativeMaterialBatch(
     if(operations%batchSize===0) await yieldToBrowser();
   };
 }
+
+
+/** Batch native tailoring selections before shader mutation on dense 3D assets. */
+export function tailoringInputSettleMs(materialCount:number):number {
+  if(!Number.isSafeInteger(materialCount)||materialCount<0||materialCount>5000)
+    throw new Error("3D material count must be bounded and nonnegative.");
+  return materialCount>=300?650:180;
+}

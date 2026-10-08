@@ -703,6 +703,49 @@ def restore_shirt_waist_side_seam(obj, waist_z, waist_half_width_m, shoulder_z, 
             "lockedWaistPreserved":True}
 
 
+def relieve_inboard_sleeve_contact(obj, body_center_x, *, side, contact_z=1.155,
+                                  amplitude_m=0.016, half_span_m=0.125):
+    """Tuck the *medial* sleeve seam out of a bent hanging arm / torso crease.
+
+    The real body left 1 face + 2 edge contacts on a 30k-face left sleeve
+    after eight bounded BVH passes. Sparse 5-ring tube construction creates
+    an inboard concavity at the elbow which cannot be repaired indefinitely
+    by averaging opposite closest-surface normals. Reform only the cloth's
+    inner side in the contact band before BVH fitting, retaining the outside
+    silhouette, shoulder, photographed cuff/hand centre and locked body.
+    """
+    if side not in (-1,1) or isinstance(side,bool):
+        raise RuntimeError("Sleeve medial relief requires a real left/right side.")
+    if not 0.002 <= amplitude_m <= 0.020 or not 0.09 <= half_span_m <= 0.16:
+        raise RuntimeError("Medial sleeve relief exceeds a small tailoring adjustment.")
+    if not obj.name.startswith("ShirtSleeve"):
+        raise RuntimeError("Only the shirt's real sleeve panels support medial relief.")
+    matrix=obj.matrix_world
+    inverse=matrix.inverted()
+    sleeve_center_x=body_center_x+side*0.242
+    displaced=0
+    max_delta=0.0
+    for vertex in obj.data.vertices:
+        point=matrix@vertex.co
+        normalized_z=abs(point.z-contact_z)/half_span_m
+        if normalized_z>=1.0: continue
+        # Leave the outward half completely unchanged: the locked overall
+        # model silhouette and outer-arm width must stay the same.
+        inward=side*(point.x-sleeve_center_x)
+        if inward>=0.0: continue
+        lateral_weight=min(1.0, max(0.0,-inward/0.050))
+        axial_weight=(1-normalized_z**2)**2
+        delta=amplitude_m*lateral_weight*axial_weight
+        if delta<0.000001: continue
+        vertex.co=inverse@Vector((point.x+side*delta,point.y,point.z))
+        displaced+=1
+        max_delta=max(max_delta,delta)
+    obj.data.update()
+    return {"physicalSleeveMedialReliefMm":round(max_delta*1000,2),
+            "sourceVerticesReshaped":displaced,
+            "bodyAndOutsideSilhouetteUnchanged":True}
+
+
 def refine_collision_faces(obj, max_edge_m=0.025, max_faces=80000):
     """Add genuine surface vertices at long shell edges before body-fit repair.
 
@@ -1488,6 +1531,12 @@ def main():
         guide_center_z("LE_GUIDE_SHIRT_SHOULDER"),
         center_x,
     )
+    fit_profile["medialSleeveRelief"] = {
+        name:relieve_inboard_sleeve_contact(
+            authored[name],center_x,side=(-1 if "SleeveL" in name else 1)
+        )
+        for name in ("ShirtSleeveLFabric","ShirtSleeveRFabric")
+    }
     collision_repairs = {}
     face_refinements = {}
     for name, obj in authored.items():
