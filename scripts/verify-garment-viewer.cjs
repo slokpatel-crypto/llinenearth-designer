@@ -62,7 +62,25 @@ async function verifyViewport(browser, width) {
   await viewer.waitFor({ state: "visible" });
   const serverSeededReadiness=await page.locator(".garmentViewerShell").getAttribute("data-model-readiness");
   assert.equal(serverSeededReadiness,"contract_ready","server-verified production asset must seed M7.46 readiness before scene-graph hydration");
-  await page.locator(".garmentViewerLoading").waitFor({ state: "hidden", timeout: 20000 });
+  try {
+    // Blender-backed GLB parsing and shader compilation can exceed 20 seconds
+    // on cold GitHub-hosted Chromium. The customer UI has a bounded 60-second
+    // recovery window; the gate must wait for that real readiness outcome.
+    await page.locator(".garmentViewerLoading").waitFor({ state: "hidden", timeout: 70000 });
+    const loadError=await page.locator(".garmentViewerError").allInnerTexts();
+    assert.equal(loadError.length,0,"3D viewer must not report a model-load error: "+loadError.join(" | "));
+  } catch(error) {
+    const state=await page.evaluate(()=>({
+      modelLoaded:Boolean(document.querySelector("model-viewer")?.loaded),
+      materials:document.querySelector("model-viewer")?.model?.materials?.length??null,
+      loading:document.querySelector(".garmentViewerLoading")?.innerText??null,
+      error:document.querySelector(".garmentViewerError")?.innerText??null,
+      readiness:document.querySelector(".garmentViewerShell")?.getAttribute("data-model-readiness")??null,
+    }));
+    await fs.writeFile(path.join(output,"garment-loading-failure.json"),JSON.stringify({state,errors},null,2)+"\\n");
+    await page.screenshot({path:path.join(output,"garment-loading-failure.png"),timeout:15000}).catch(()=>{});
+    throw new Error("3D model loading did not complete during bounded hydration: "+JSON.stringify(state)+"; "+error.message);
+  }
   try {
     // React can replace the server-rendered shell while the large scene graph hydrates.
     // Re-resolve the current DOM node until both immutable production contracts settle.
