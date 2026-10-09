@@ -43,6 +43,29 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
         ):
             self.assertIn(token,PROBE)
 
+    def test_final_cloth_thickness_is_measured_against_actual_body_triangles(self):
+        # SOLIDIFY changes rendered skin-contact triangles AFTER the original
+        # source-mesh BVH pass. Do not fake approval from quad/vertex probes.
+        for token in (
+            'def repair_post_solidify_sleeve_contact(',
+            'sampled_mesh_face_indices(len(mesh.loop_triangles),600)',
+            'penetrating_surface_samples(points,sample_faces,deep_skin,max_hits=32)',
+            'and (value-closest[0]).length>0.0015',
+            'point_inside_closed_bvh(tree,value)',
+            'if obj.name!="ShirtSleeveLFabric" or not (0<max_patch_m<=0.012)',
+            'if any(abs(current.z-z)<0.002 for z in protected_z)',
+            'if cumulative.length>max_patch_m:',
+            'if iteration==max_passes:',
+            '"Final thickened left sleeve still intersects real body',
+            'if name=="ShirtSleeveLFabric":',
+            '"postSolidifyTriangleContact"',
+        ):
+            self.assertIn(token,AUTHOR)
+        self.assertLess(
+            AUTHOR.index("finish_procedural_shell(obj, thickness_m)"),
+            AUTHOR.index('face_refinements[name]["postSolidifyTriangleContact"]'),
+        )
+
     def test_unapproved_four_angle_diagnostics_never_unlock_lab_or_production(self):
         before=WORKFLOW.index("name: Render unapproved scene for geometry diagnosis")
         after=WORKFLOW.index("name: Render four-angle fit review",before)
