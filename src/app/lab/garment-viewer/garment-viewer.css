@@ -39,6 +39,15 @@
 .garmentViewerIdentityAudit span{
   font-size:9px;letter-spacing:.10em;font-weight:700;color:#71452c;
 }
+.garmentViewerMatchStudio{
+  width:fit-content;max-width:100%;padding:8px 11px;
+  background:#3e3a33;border:1px solid #3e3a33;border-radius:0;
+  color:#fffaf0;font:600 10px/1.3 Arial,sans-serif;
+  letter-spacing:.02em;cursor:pointer;text-align:left;
+}
+.garmentViewerMatchStudio:hover,.garmentViewerMatchStudio:focus-visible{
+  background:#66513c;border-color:#66513c;outline-offset:2px;
+}
 @media(max-width:640px){
   .garmentViewerIdentityAudit{grid-template-columns:88px minmax(0,1fr);gap:9px;padding:8px}
   .garmentViewerIdentityAudit img{width:88px;height:132px}
