@@ -55,6 +55,14 @@ async function preserveOriginalVs3DReference(actualName,comparisonName="studio-o
       {input:label,left:0,top:0},
     ])
     .png().toFile(path.join(output,comparisonName));
+  // Examine actual cloth/skin tonal contrast, not generated photographs or
+  // made-up realism scores. A photo-matching diagnostic is NOT a release gate
+  // substitute; both mismatches and good results keep visualMatchApproved false.
+  const {writeStudioPhotoToneAudit}=await import("./studio-photo-tone-audit.mjs");
+  await writeStudioPhotoToneAudit(
+    "public/designer/studio-tucked.webp",input,
+    path.join(output,"studio-appearance-diagnostic.json"),
+  );
   await fs.writeFile(path.join(output,"studio-3d-visual-parity.json"),JSON.stringify({
     originalSource:"public/designer/studio-tucked.webp",unmodified3DSource:actualName,
     visualMatchApproved:false,stage:"human-review-required",
