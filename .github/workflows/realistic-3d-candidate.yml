@@ -189,6 +189,30 @@ jobs:
             echo "No authored scene to visualize; production gates remain blocked."
           fi
 
+      - name: Optional CPU-shaded four-angle real mobile model (UNAPPROVED)
+        if: always() && steps.mobile_independent_preflight.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          scene="artifacts/realistic-3d/mobile-lod-unapproved.blend"
+          test -s "$scene"
+          mkdir -p artifacts/realistic-3d/shaded-lod-UNAPPROVED
+          # Software EGL hung even for Workbench. CPU Cycles is independent
+          # of a GL screen; use a disposable low-poly GLB source and bounded
+          # 3-sample shading for actual real-mesh visual evidence. This
+          # is NOT final studio image parity, cloth-drape or fabric approval.
+          timeout --signal=TERM --kill-after=15s 8m \
+            blender --background --python-exit-code 1 "$scene" \
+            --python scripts/blender/render-linen-earth-officewear-review.py -- \
+            --output-dir artifacts/realistic-3d/shaded-lod-UNAPPROVED \
+            --resolution-x 320 --resolution-y 480 --diagnostic-cycles-cpu \
+            2>&1 | tee artifacts/realistic-3d/shaded-lod-UNAPPROVED.log
+          for view in front three-quarter side back; do
+            test -s "artifacts/realistic-3d/shaded-lod-UNAPPROVED/$view.png"
+          done
+          test -s artifacts/realistic-3d/shaded-lod-UNAPPROVED/UNAPPROVED-CPU-SHADED-REVIEW.txt
+
       - name: Render four-angle fit review
         id: render
         if: always() && steps.assemble.outcome == 'success' && steps.preflight.outcome == 'success'
