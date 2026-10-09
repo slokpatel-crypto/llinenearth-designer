@@ -179,7 +179,7 @@ test("real garment tailoring controls remain schedulable during WebGL hydration"
   assert(viewer.includes("createCooperativeMaterialBatch"),"live 3D viewer must actually wire the cooperative material scheduler");
   assert(viewer.includes("window.setTimeout(resolve,8)"),"shader material work must yield real input time between GPU mutations");
   assert(viewer.includes("await yieldForInput()"),"long material loops must release control to customer input");
-  assert(viewer.includes("coldFirstLook?6:1"),
+  assert(viewer.includes("coldFirstLook?64:1"),
     "only the initial untouched 3D load may batch cosmetic shaders; native edits must yield after EACH material");
   assert(viewer.includes("interactionStartedAt.current===null") &&
     viewer.includes("lastVariantAppearanceRef.current===null"),
