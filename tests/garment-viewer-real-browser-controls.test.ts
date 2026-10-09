@@ -129,6 +129,16 @@ test("four camera views require actual stable 3D shirt and trousers, never float
   assert.ok(!ready.includes('setBaseColorFactor('),"QA cannot fake visible clothing");
 });
 
+test("Mandarin stand collar includes a separate fabric-backed neck seal, also for white contrast",()=>{
+  const source=readFileSync(new URL("../scripts/build-garment-viewer-model.mjs",import.meta.url),"utf8");
+  assert.ok(source.includes('styleVariants.collars.filter((item)=>!["camp","one_piece"].includes(item.id))'));
+  assert.ok(source.includes('if(["camp","one_piece"].includes(item.id)) continue;'));
+  assert.ok(source.includes('addMesh(`ShirtNeckGasketVariantMesh__${key}`,neckGasket,`ShirtNeckGasketVariant__${key}`)'));
+  assert.ok(qa.includes('"ShirtNeckGasketVariant__mandarin__soft_unfused"'));
+  assert.ok(actualViewerComponent.includes('const neckGasket=await ensureViewerMaterialLoaded('));
+  assert.ok(actualViewerComponent.includes('if(whiteCollar) neckGasket.pbrMetallicRoughness.baseColorTexture?.setTexture(null)'));
+});
+
 test("white-collar QA reports actual shader state instead of silently waiving real failures",()=>{
   assert.ok(qa.includes('garment-trim-failure.json'));
   assert.ok(qa.includes('texturePresent:Boolean(pbr?.baseColorTexture?.texture)'));
