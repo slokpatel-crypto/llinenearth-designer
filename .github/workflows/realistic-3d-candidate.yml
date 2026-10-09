@@ -38,6 +38,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Test actual UV, footwear and diagnostic release contracts without Blender
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_uv_*.py' -v
+          python3 -m unittest discover -s tests -p 'test_footwear_fit_geometry.py' -v
+          python3 -m unittest discover -s tests -p 'test_mobile_lod_probe_contract.py' -v
+
       - name: Install Blender 4.2 LTS
         shell: bash
         run: |
