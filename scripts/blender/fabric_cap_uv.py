@@ -10,7 +10,7 @@ import math
 
 
 def terminal_cap_uses_flat_uv(vertices, normal, lower_z, upper_z,
-                              normal_threshold=.75, terminal_band_m=.012):
+                              normal_threshold=.75, terminal_band_m=.040, flatness_band_m=.012):
     if not vertices or any(len(v)!=3 for v in vertices) or len(normal)!=3:
         raise ValueError("Need actual 3D polygon and 3D normal.")
     if not all(math.isfinite(value) for v in (*vertices,normal) for value in v):
@@ -19,7 +19,7 @@ def terminal_cap_uses_flat_uv(vertices, normal, lower_z, upper_z,
         return False
     heights=[v[2] for v in vertices]
     # Reject steep near-collar cloth walls and cap-like interior topology.
-    if max(heights)-min(heights)>terminal_band_m:
+    if max(heights)-min(heights)>flatness_band_m:
         return False
     return (all(abs(v-upper_z)<=terminal_band_m for v in heights)
             or all(abs(v-lower_z)<=terminal_band_m for v in heights))
