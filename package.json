@@ -32,6 +32,7 @@
     "garment:model-production:assemble": "node scripts/assemble-production-garment-scene.mjs",
     "garment:model-production:render-review": "blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend --python scripts/blender/render-linen-earth-officewear-review.py -- --output-dir artifacts/realistic-3d/review",
     "garment:model-production:measurement-worksheet": "blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend --python scripts/blender/write-panel-measurement-worksheet.py -- --output artifacts/realistic-3d/panel-measurement-worksheet.json",
+    "garment:textile-measurement-worksheet": "node --experimental-strip-types scripts/generate-textile-measurement-worksheet.mjs",
     "garment:model-production:lab-export": "blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend --python scripts/blender/export-linen-earth-officewear.py -- --lab-preview --output artifacts/realistic-3d/linen-earth-officewear-realistic-lab.glb",
     "garment:model-production:review-check": "node scripts/evaluate-realistic-review.mjs artifacts/realistic-3d/review"
   },
