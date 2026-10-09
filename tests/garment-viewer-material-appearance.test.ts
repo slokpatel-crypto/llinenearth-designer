@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {applyCurrentMaterialBatch,createCooperativeMaterialBatch,createInFlightMaterialLoader,needsVariantMaterialRefresh,needsButtonMaterialRefresh,garmentSurfaceVisibilityPriority,trimAppearanceKey,tailoringInputSettleMs} from "../src/lib/garment-viewer-material-appearance.ts";
+import {applyCurrentMaterialBatch,createCooperativeMaterialBatch,createInFlightMaterialLoader,createBoundedMaterialPrefetch,needsVariantMaterialRefresh,needsButtonMaterialRefresh,garmentSurfaceVisibilityPriority,trimAppearanceKey,tailoringInputSettleMs} from "../src/lib/garment-viewer-material-appearance.ts";
 
 test("a superseded fabric cannot overwrite the new fabric after lazy hydration",async()=>{
   let current=1;
@@ -186,4 +186,57 @@ test("real 3D garment silhouette materials hydrate before cosmetic details",()=>
   ]);
   assert.ok(names.indexOf("ShirtCollarVariant__mandarin__soft_unfused")>=6);
   assert.ok(names.indexOf("ShirtPlacketVariant__standard")>=6);
+});
+
+test("real garment shader prefetch starts only two panels and retains selected silhouette order",async()=>{
+  const started:string[]=[];
+  const release=new Map<string,()=>void>();
+  const queue=createBoundedMaterialPrefetch(
+    ["ShirtTorso","ShirtSleeveL","ShirtSleeveR","TrouserWaist","TrouserLegL","TrouserLegR"],
+    (panel)=>new Promise<string>((resolve)=>{
+      started.push(panel);
+      release.set(panel,()=>resolve(panel));
+    }),2,
+  );
+  await Promise.resolve();
+  assert.deepEqual(started,["ShirtTorso","ShirtSleeveL"]);
+  release.get("ShirtSleeveL")!();
+  await Promise.resolve();
+  assert.equal(started.length,2,"third GPU compile waits until the first panel is actually consumed");
+  release.get("ShirtTorso")!();
+  assert.equal(await queue.take("ShirtTorso"),"ShirtTorso");
+  await Promise.resolve();
+  assert.deepEqual(started.slice(0,3),["ShirtTorso","ShirtSleeveL","ShirtSleeveR"]);
+  assert.equal(await queue.take("ShirtSleeveL"),"ShirtSleeveL");
+  await Promise.resolve();
+  assert.deepEqual(started.slice(0,4),["ShirtTorso","ShirtSleeveL","ShirtSleeveR","TrouserWaist"]);
+  release.get("ShirtSleeveR")!();
+  assert.equal(await queue.take("ShirtSleeveR"),"ShirtSleeveR");
+  await Promise.resolve();
+  release.get("TrouserWaist")!();
+  assert.equal(await queue.take("TrouserWaist"),"TrouserWaist");
+  await Promise.resolve();
+  release.get("TrouserLegL")!();
+  assert.equal(await queue.take("TrouserLegL"),"TrouserLegL");
+  await Promise.resolve();
+  release.get("TrouserLegR")!();
+  assert.equal(await queue.take("TrouserLegR"),"TrouserLegR");
+  assert.equal(started.length,6,"no selected garment may be skipped");
+});
+
+test("prefetch failure is observed and propagated when core material is applied",async()=>{
+  const queue=createBoundedMaterialPrefetch(
+    ["shirt","trouser"],async(panel)=>{
+      if(panel==="shirt") throw new Error("real WebGL material failed");
+      return panel;
+    },2,
+  );
+  await assert.rejects(queue.take("shirt"),/real WebGL material failed/);
+  assert.equal(await queue.take("trouser"),"trouser");
+});
+
+test("bounded core GPU hydration rejects duplicate panels and unsafe capacity",()=>{
+  for(const capacity of [0,5,NaN,1.2])
+    assert.throws(()=>createBoundedMaterialPrefetch([],async(v)=>v,capacity));
+  assert.throws(()=>createBoundedMaterialPrefetch(["shirt","shirt"],async(v)=>v));
 });
