@@ -4,6 +4,11 @@ export type VariantMaterialAppearance={
   roughness:number;
   shirtId:string;
   trouserId:string;
+  // True per-garment sampler/UV/fabric cache signatures. Global React
+  // textureRevision changes on EITHER shirt or trouser edits, and must not
+  // force 15 unrelated variants to recompile on every single-stock change.
+  shirtSurfaceRevision?:string;
+  trouserSurfaceRevision?:string;
 };
 
 /** Never let a superseded fabric edit write after lazy material hydration. */
@@ -29,10 +34,20 @@ export function needsVariantMaterialRefresh(
   wasVisible:boolean,
   previous:VariantMaterialAppearance|null,
   current:VariantMaterialAppearance,
+  garment?:"shirt"|"trouser",
 ):boolean {
   if(!wasVisible||!previous) return true;
+  if(previous.roughness!==current.roughness) return true;
+  if(garment==="shirt"&&previous.shirtSurfaceRevision!==undefined
+    &&current.shirtSurfaceRevision!==undefined)
+    return previous.shirtId!==current.shirtId
+      ||previous.shirtSurfaceRevision!==current.shirtSurfaceRevision;
+  if(garment==="trouser"&&previous.trouserSurfaceRevision!==undefined
+    &&current.trouserSurfaceRevision!==undefined)
+    return previous.trouserId!==current.trouserId
+      ||previous.trouserSurfaceRevision!==current.trouserSurfaceRevision;
+  // Legacy/unknown cache state stays strictly conservative.
   return previous.textureRevision!==current.textureRevision
-    ||previous.roughness!==current.roughness
     ||previous.shirtId!==current.shirtId
     ||previous.trouserId!==current.trouserId;
 }
