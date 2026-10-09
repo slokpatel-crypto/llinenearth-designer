@@ -364,7 +364,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const normalMapRef=useRef("");
   const applyToken=useRef(0);
   const interactionStartedAt=useRef<number|null>(null);
-  const preparedTextureRef=useRef(new Map<string,{texture:ViewerTexture;normal:ViewerTexture|null;garment:"shirt"|"trouser"}>());
+  const preparedTextureRef=useRef(new Map<string,{texture:ViewerTexture;normal:ViewerTexture|null;garment:"shirt"|"trouser";cacheKey?:string}>());
   const visibleGarmentMaterialsRef=useRef(new Set(GARMENT_PANEL_SPECS.map((panel)=>panel.material)));
   const lastVariantAppearanceRef=useRef<VariantMaterialAppearance|null>(null);
   const visibleButtonMaterialsRef=useRef(new Set<string>());
@@ -781,17 +781,30 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         // tiles first and hold off twelve concurrent diffuse+normal decodes.
         // The studio outfit must never sit white while optional weave maps
         // block the complete torso/sleeve/trouser texture transaction.
+        // Reuse all unchanged REAL PBR textures and sampler transforms.
+        // A shirt-only change must not decode three trouser textures again.
+        // Keys include panel UV, real tile width, fabric drape/weight and model
+        // revision: never share differently scaled collared/sleeved images or
+        // keep stale GL handles from an older model-viewer scene.
         const prepared=await Promise.all(panelSpecs.map(async(panel)=>{
           const fabric=panel.garment==="shirt"?shirt:trouser;
           const tileMm=panel.garment==="shirt"?shirtTileMm:trouserTileMm;
-          const texture=await viewer.createTexture!(fabric.image);
-          const scale=garmentPanelTextureScale(panel.widthMm,panel.heightMm,tileMm);
           const offset={u:Number(panel.offsetU)||0,v:Number(panel.offsetV)||0};
           const rotation=(Number(panel.rotationDeg)||0)*Math.PI/180;
+          const scale=garmentPanelTextureScale(panel.widthMm,panel.heightMm,tileMm);
+          const cacheKey=JSON.stringify([
+            modelRevision,panel.material,fabric.id,fabric.image,
+            fabric.drape,fabric.weightGsm,fabric.weave,
+            tileMm,panel.widthMm,panel.heightMm,offset.u,offset.v,rotation,
+          ]);
+          const retained=preparedTextureRef.current.get(panel.material);
+          if(retained?.cacheKey===cacheKey)
+            return {panel,texture:retained.texture,normal:retained.normal,cacheKey,unchanged:true};
+          const texture=await viewer.createTexture!(fabric.image);
           texture.sampler?.setScale?.(scale);
           texture.sampler?.setOffset?.(offset);
           texture.sampler?.setRotation?.(rotation);
-          return {panel,texture,normal:null as ViewerTexture|null};
+          return {panel,texture,normal:null as ViewerTexture|null,cacheKey,unchanged:false};
         }));
         if(!isCurrent()) return;
         setFabricHydrationPhase("applying-color-to-all-six-panels");
@@ -814,13 +827,15 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           material.pbrMetallicRoughness.setMetallicFactor(0);
           const fabric=entry.panel.garment==="shirt"?shirt:trouser;
           material.pbrMetallicRoughness.setRoughnessFactor(clamp(roughness+fabricDrapeSurface(fabric).roughnessOffset,.55,.98));
-          material.pbrMetallicRoughness.baseColorTexture?.setTexture(entry.texture);
-          material.normalTexture?.setTexture(entry.normal);
+          if(!entry.unchanged){
+            material.pbrMetallicRoughness.baseColorTexture?.setTexture(entry.texture);
+            material.normalTexture?.setTexture(entry.normal);
+          }
         }
         if(!isCurrent()) return;
         preparedTextureRef.current=new Map(prepared.map((entry)=>[
           entry.panel.material,
-          {texture:entry.texture,normal:entry.normal,garment:entry.panel.garment},
+          {texture:entry.texture,normal:entry.normal,garment:entry.panel.garment,cacheKey:entry.cacheKey},
         ]));
         setPreparedFabricVersion(requestedFabricVersion);
         setFabricHydrationPhase("color-ready");
