@@ -34,6 +34,8 @@ def args():
     parser=argparse.ArgumentParser()
     parser.add_argument("--output",required=True)
     parser.add_argument("--ratio",type=float,default=0.21)
+    parser.add_argument("--diagnostic-scene",default=None,
+                        help="Separate UNAPPROVED Blend for independent scene preflight; input stays unchanged")
     parsed=parser.parse_args(argv)
     if not math.isfinite(parsed.ratio) or not .12<=parsed.ratio<=.34:
         raise ValueError("Mobile diagnostic decimation ratio must be in [0.12, 0.34].")
@@ -446,6 +448,8 @@ def main():
     target_verts=0
     source_tris=0
     temporary_objects=[]
+    selected_lods={}
+    diagnostic_scene_written=False
     try:
         for name in GARMENTS:
             original=bpy.data.objects.get(name)
@@ -515,6 +519,7 @@ def main():
                     # release safety from the search result alone.
                     repair=fit_candidate_mobile_contacts(copy,tree,guides[name])
             points,faces,tris=world_geometry(copy)
+            selected_lods[name]=copy
             target_tris+=len(tris)
             target_verts+=len(points)
             deltas=[]
@@ -551,6 +556,34 @@ def main():
             }
             print("Linen Earth mobile LOD PROBE "+name+" "+
                   json.dumps(probe_results[name],sort_keys=True),flush=True)
+        preliminary_guide_pass=all(
+            row["lockedSectionMaxBoundaryShiftMm"]<=2.0 and row["sourceMeshUnchanged"]
+            for row in probe_results.values()
+        )
+        preliminary_skin_pass=all(row["sampledSkinPass"] for row in probe_results.values())
+        preliminary_budget_pass=target_tris<=220000 and target_verts<=280000
+        if cfg.diagnostic_scene and preliminary_guide_pass and preliminary_skin_pass and preliminary_budget_pass:
+            # A separate UNAPPROVED file, never the original authored source.
+            # The original garment geometry has already passed an immutable
+            # before/after verification, and Body/guide geometry is unchanged.
+            destination=Path(cfg.diagnostic_scene).expanduser().resolve()
+            if destination.suffix.lower()!=".blend":
+                raise RuntimeError("Mobile diagnostic scene must be a .blend.")
+            if destination==Path(bpy.data.filepath).resolve():
+                raise RuntimeError("Never overwrite original authored Blender scene.")
+            destination.parent.mkdir(parents=True,exist_ok=True)
+            for name in GARMENTS:
+                authored=bpy.data.objects.get(name)
+                if authored is None or selected_lods.get(name) is None:
+                    raise RuntimeError("LOD scene missing original source: "+name)
+                bpy.data.objects.remove(authored,do_unlink=True)
+                selected_lods[name].name=name
+            bpy.context.scene["linen_earth_derived_mobile_lod_unapproved"]=True
+            bpy.context.scene["linen_earth_mobile_lod_diagnostic_only"]=True
+            bpy.context.scene["linen_earth_mobile_lod_source"]="real BVH sampled, NOT independent preflight or tailor approved"
+            bpy.ops.wm.save_as_mainfile(filepath=str(destination),check_existing=False)
+            diagnostic_scene_written=destination.is_file() and destination.stat().st_size>0
+            print("Linen Earth UNAPPROVED mobile candidate for INDEPENDENT preflight: "+str(destination),flush=True)
     finally:
         for copy in temporary_objects:
             mesh=copy.data
@@ -580,6 +613,8 @@ def main():
         "sampledBVHPass":contact_pass,
         "lockedSectionPass":guide_pass,
         "polygonBudgetPass":budget_pass,
+        "diagnosticSceneSavedForIndependentPreflight":diagnostic_scene_written,
+        "independentFullPreflightPassed":False,
         "investigateFurther":contact_pass and guide_pass and budget_pass,
         "requiredNext":"Full independent low-poly BVH preflight, 360-degree fit, UV repeat, measured textile panels, and owner/tailor signoff.",
         "panels":probe_results,
