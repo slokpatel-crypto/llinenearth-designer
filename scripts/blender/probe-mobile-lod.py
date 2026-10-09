@@ -576,8 +576,15 @@ def main():
                 authored=bpy.data.objects.get(name)
                 if authored is None or selected_lods.get(name) is None:
                     raise RuntimeError("LOD scene missing original source: "+name)
+                selected=selected_lods[name]
+                # Preserve the ORIGINAL export-collection membership, not
+                # only scene visibility; separate Blender export validation
+                # must see exactly the independently measured six panels.
+                for collection in tuple(authored.users_collection):
+                    if selected.name not in collection.objects:
+                        collection.objects.link(selected)
                 bpy.data.objects.remove(authored,do_unlink=True)
-                selected_lods[name].name=name
+                selected.name=name
             bpy.context.scene["linen_earth_derived_mobile_lod_unapproved"]=True
             bpy.context.scene["linen_earth_mobile_lod_diagnostic_only"]=True
             bpy.context.scene["linen_earth_mobile_lod_source"]="real BVH sampled, NOT independent preflight or tailor approved"
