@@ -22,6 +22,17 @@ class FabricCapUvTests(unittest.TestCase):
         mins=(-.20,-.15,.99)
         spans=(.40,.30,.47)
         self.assertTrue(terminal_cap_uses_flat_uv(triangle,(0,0,1),.99,1.454))
+        # Independent archived production candidate GLB has top garment
+        # bound 1.483304m but actual horizontal collar-cap triangles at
+        # 1.454259m -- 29.045mm BELOW the global mesh max. A <=12mm
+        # proximity rule would miss the exact real-world defect.
+        measured_top=1.483304
+        measured_neck=1.454259
+        collar=(
+            (-.08,-.11,measured_neck),(.03,-.117,measured_neck),
+            (.055,-.045,measured_neck),
+        )
+        self.assertTrue(terminal_cap_uses_flat_uv(collar,(0,0,1),1.07455,measured_top))
         old=tuple(fabric_planar_uv(p,mins,spans) for p in triangle)
         new=tuple(fabric_planar_uv(p,mins,spans,True) for p in triangle)
         self.assertEqual(triangle_world_mm_per_uv_unit(triangle,old),math.inf)
