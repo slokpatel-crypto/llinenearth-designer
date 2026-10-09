@@ -158,11 +158,15 @@ export function tailoringInputSettleMs(materialCount:number):number {
  * same WebGL QA time limit, but prioritize core clothing within that work.
  */
 export function garmentSurfaceVisibilityPriority(name:string):number {
-  if(/^ShirtTorso(?:TuckedBack|Tucked|Back)?Variant__/.test(name)) return 0;
-  if(/^ShirtSleeveL(?:Variant|Length)__/.test(name)) return 1;
-  if(/^ShirtSleeveR(?:Variant|Length)__/.test(name)) return 2;
-  if(/^TrouserWaist(?:Pleat)?Variant__/.test(name)) return 3;
-  if(/^TrouserLegL(?:Break)?Variant__/.test(name)) return 4;
-  if(/^TrouserLegR(?:Break)?Variant__/.test(name)) return 5;
+  // Base material panels are REAL full-size garment shells, not trim. The
+  // default straight trouser and regular sleeves use these six names; if
+  // omitted here they wait behind cosmetic variants and 20-second native
+  // screenshots can show a white torso or legless mannequin.
+  if(name==="ShirtTorsoFabric"||/^ShirtTorso(?:TuckedBack|Tucked|Back)?Variant__/.test(name)) return 0;
+  if(name==="ShirtSleeveLFabric"||/^ShirtSleeveL(?:Variant|Length)__/.test(name)) return 1;
+  if(name==="ShirtSleeveRFabric"||/^ShirtSleeveR(?:Variant|Length)__/.test(name)) return 2;
+  if(name==="TrouserWaistFabric"||/^TrouserWaist(?:Pleat)?Variant__/.test(name)) return 3;
+  if(name==="TrouserLegLFabric"||/^TrouserLegL(?:Break)?Variant__/.test(name)) return 4;
+  if(name==="TrouserLegRFabric"||/^TrouserLegR(?:Break)?Variant__/.test(name)) return 5;
   return 10;
 }
