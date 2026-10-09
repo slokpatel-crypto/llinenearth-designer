@@ -1161,9 +1161,14 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       // 586 material variants to add subtle fibre relief.
       for(const material of model.materials){
         if(material.isLoaded!==true) continue;
-        const pbr=material.pbrMetallicRoughness;
         const panel=variantPanelMaterial(material.name);
-        if(!panel || !visibleGarmentMaterialsRef.current.has(material.name)) continue;
+        // The six immutable base panel materials must retain the same
+        // measured-UV linen weave even when a selected tailoring variant
+        // temporarily replaces their visible geometry. Otherwise switching
+        // back to a straight/regular fit reveals flat, untextured cloth.
+        // Do NOT touch the other 500+ unused variant shaders.
+        const basePanel=panelSpecs.some((item)=>item.material===material.name);
+        if(!panel || (!basePanel && !visibleGarmentMaterialsRef.current.has(material.name))) continue;
         const normal=normalsByPanel.get(panel);
         if(normal) material.normalTexture?.setTexture(normal);
       }
