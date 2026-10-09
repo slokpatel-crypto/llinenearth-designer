@@ -921,23 +921,19 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       // sequentially even though the same six selected garment panels are
       // needed. Start at most two structural loads concurrently, preserving
       // the ordered reveal and all native browser readiness checks.
-      const coreToHydrate=replacements.filter((name)=>
-        garmentSurfaceVisibilityPriority(name)<6
-        &&needsVariantMaterialRefresh(previous.has(name),lastVariantAppearanceRef.current,appearance)
+      // A real desktop reset after the half-sleeve/wide style reached 571
+      // of 589 loaded GLTF materials but was STILL blocked on the unchanged
+      // 20-second readiness gate at "loading-replacement-cloth". The prior
+      // edit path prefetched the six major panels but hydrated every accent
+      // (collar, hem, pockets, cuffs) serially. Keep strict structural order,
+      // but prefetch ALL newly selected variants with only TWO concurrent
+      // material loads for interactive edits; the cold first look gets three.
+      // No skipped geometry, fake alpha, relaxed timer or forced DOM change.
+      const selectedToHydrate=replacements.filter((name)=>
+        needsVariantMaterialRefresh(previous.has(name),lastVariantAppearanceRef.current,appearance)
       );
-      // CI's actual 20-second native scene occasionally reached the final
-      // skin-and-hardware step too late despite all six cloth panels loading.
-      // The FIRST model frame has no live selector input: prefetch every
-      // selected collar/pocket/hem shader behind the six structural panels
-      // with at most three concurrent GPU loads, not sequential cold loads.
-      // Subsequent user edits retain strict two-core prefetch and one-shader
-      // cooperative pacing; nothing is skipped or prematurely approved.
-      const firstLookToHydrate=coldFirstLook
-        ? replacements.filter((name)=>
-            needsVariantMaterialRefresh(previous.has(name),lastVariantAppearanceRef.current,appearance))
-        : coreToHydrate;
-      const corePrefetch=createBoundedMaterialPrefetch(
-        firstLookToHydrate,
+      const replacementPrefetch=createBoundedMaterialPrefetch(
+        selectedToHydrate,
         (name)=>ensureViewerMaterialLoaded(materialsByName.get(name)),
         coldFirstLook?3:2,
       );
@@ -952,9 +948,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         if(!needsVariantMaterialRefresh(previous.has(name),lastVariantAppearanceRef.current,appearance)) continue;
         await yieldForInput();
         if(!isCurrent()) return;
-        const material=(coldFirstLook||garmentSurfaceVisibilityPriority(name)<6)
-          ? await corePrefetch.take(name)
-          : await ensureViewerMaterialLoaded(materialsByName.get(name));
+        const material=await replacementPrefetch.take(name);
         if(!isCurrent()) return;
         if(!material) continue;
         const fabric=name.startsWith("Shirt")?shirt:trouser;
