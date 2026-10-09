@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const sharp = require("sharp");
 const { createRequire } = require("node:module");
 
 const runtime = process.env.LINEN_BROWSER_QA_RUNTIME;
@@ -28,6 +29,38 @@ async function captureStableWebGLFrame(page, destination, clip) {
   }
 }
 
+
+/**
+ * Artifact-only visual review: put REAL model-viewer compositor pixels next
+ * to the unchanged 1024x1536 Real Model Designer source. No AI rendition,
+ * visual-matching score, synthetic approval, or replacement for tailor review.
+ */
+async function preserveOriginalVs3DReference(actualName) {
+  const input=path.join(output,actualName);
+  const actual=await fs.readFile(input);
+  const metadata=await sharp(actual).metadata();
+  if(!metadata.width||!metadata.height) throw new Error("No genuine browser 3D pixels for visual comparison.");
+  const original=await sharp("public/designer/studio-tucked.webp")
+    .resize({height:metadata.height}).png().toBuffer();
+  const originalInfo=await sharp(original).metadata();
+  const leftWidth=originalInfo.width;
+  if(!leftWidth) throw new Error("Real Model Designer reference image could not be measured.");
+  const gutter=12,header=36;
+  const width=leftWidth+gutter+metadata.width;
+  const label=Buffer.from('<svg width="'+width+'" height="'+header+'"><rect width="100%" height="100%" fill="#eee6dc"/><text x="12" y="24" font-size="13" font-family="Arial" fill="#322b21">ORIGINAL REAL MODEL DESIGNER</text><text x="'+(leftWidth+gutter+12)+'" y="24" font-size="13" font-family="Arial" fill="#8a3c2f">CURRENT 3D · VISUAL MATCH UNAPPROVED</text></svg>');
+  await sharp({create:{width,height:metadata.height+header,channels:3,background:"#f3ede5"}})
+    .composite([
+      {input:original,left:0,top:header},
+      {input:actual,left:leftWidth+gutter,top:header},
+      {input:label,left:0,top:0},
+    ])
+    .png().toFile(path.join(output,"studio-original-vs-3d-UNAPPROVED.png"));
+  await fs.writeFile(path.join(output,"studio-3d-visual-parity.json"),JSON.stringify({
+    originalSource:"public/designer/studio-tucked.webp",unmodified3DSource:actualName,
+    visualMatchApproved:false,stage:"human-review-required",
+    note:"Side by side is diagnostic evidence only; background/camera/garment selection can differ.",
+  },null,2)+"\n");
+}
 
 async function selectTailoringOption(page, label, value) {
   const started=Date.now();
@@ -394,6 +427,7 @@ async function verifyViewport(browser, width) {
     // candidate fails visual-readiness. This is explicitly rejected visual
     // evidence, never an approved garment image or promotion substitute.
     await captureCanvas("garment-current-exact-front-UNAPPROVED.png")
+      .then(()=>preserveOriginalVs3DReference("garment-current-exact-front-UNAPPROVED.png"))
       .catch(async(captureError)=>{
         await fs.writeFile(path.join(output,"garment-current-render-capture-error.txt"),
           String(captureError)+"\n");
@@ -403,6 +437,7 @@ async function verifyViewport(browser, width) {
   }
 
   await captureCanvas("garment-angle-front.png");
+  await preserveOriginalVs3DReference("garment-angle-front.png");
   await selectCamera("3/4","35deg","three-quarter");
   await captureCanvas("garment-angle-three-quarter.png");
   await selectCamera("Side","90deg","side");
