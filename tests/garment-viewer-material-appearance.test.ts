@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {applyCurrentMaterialBatch,createCooperativeMaterialBatch,createInFlightMaterialLoader,needsVariantMaterialRefresh,needsButtonMaterialRefresh,trimAppearanceKey,tailoringInputSettleMs} from "../src/lib/garment-viewer-material-appearance.ts";
+import {applyCurrentMaterialBatch,createCooperativeMaterialBatch,createInFlightMaterialLoader,needsVariantMaterialRefresh,needsButtonMaterialRefresh,garmentSurfaceVisibilityPriority,trimAppearanceKey,tailoringInputSettleMs} from "../src/lib/garment-viewer-material-appearance.ts";
 
 test("a superseded fabric cannot overwrite the new fabric after lazy hydration",async()=>{
   let current=1;
@@ -162,4 +162,28 @@ test("dense production GLB defers shaders until native tailoring inputs settle",
   assert.ok(tailoringInputSettleMs(586)<1000,"style changes remain sub-second scheduled");
   for(const invalid of [-1,3.7,NaN,5001])
     assert.throws(()=>tailoringInputSettleMs(invalid));
+});
+
+test("real 3D garment silhouette materials hydrate before cosmetic details",()=>{
+  const names=[
+    "ShirtPlacketVariant__standard",
+    "TrouserLegRBreakVariant__wide__negative",
+    "ShirtTorsoTuckedBackVariant__boxy__high__center_box_pleat",
+    "ShirtSleeveLLength__boxy__half",
+    "TrouserWaistPleatVariant__high__double_forward",
+    "ShirtCollarVariant__mandarin__soft_unfused",
+    "ShirtSleeveRVariant__regular",
+    "TrouserLegLVariant__wide",
+  ];
+  names.sort((a,b)=>garmentSurfaceVisibilityPriority(a)-garmentSurfaceVisibilityPriority(b));
+  assert.deepEqual(names.slice(0,6),[
+    "ShirtTorsoTuckedBackVariant__boxy__high__center_box_pleat",
+    "ShirtSleeveLLength__boxy__half",
+    "ShirtSleeveRVariant__regular",
+    "TrouserWaistPleatVariant__high__double_forward",
+    "TrouserLegLVariant__wide",
+    "TrouserLegRBreakVariant__wide__negative",
+  ]);
+  assert.ok(names.indexOf("ShirtCollarVariant__mandarin__soft_unfused")>=6);
+  assert.ok(names.indexOf("ShirtPlacketVariant__standard")>=6);
 });
