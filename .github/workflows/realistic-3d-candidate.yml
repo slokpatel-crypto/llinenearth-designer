@@ -116,6 +116,32 @@ jobs:
             --json-output artifacts/realistic-3d/mobile-lod-independent-preflight.json \
             2>&1 | tee artifacts/realistic-3d/mobile-lod-independent-preflight.log
 
+      - name: Export mobile LOD GLB for LAB ONLY after independent BVH preflight
+        id: mobile_lab_export
+        if: always() && steps.mobile_independent_preflight.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          scene="artifacts/realistic-3d/mobile-lod-unapproved.blend"
+          report="artifacts/realistic-3d/mobile-lod-independent-preflight.json"
+          test -s "$scene"
+          test -s "$report"
+          python3 - "$report" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],encoding="utf-8"))
+          totals=data.get("totals") or {}
+          assert data.get("ready") is True, "Independent full real-body Blender preflight is not green"
+          assert (totals.get("triangles") or 10**9)<=220000, "Mobile triangle budget exceeded"
+          assert (totals.get("vertices") or 10**9)<=280000, "Mobile vertex budget exceeded"
+          PY
+          blender --background --python-exit-code 1 "$scene" \
+            --python scripts/blender/export-linen-earth-officewear.py -- \
+            --lab-preview --output artifacts/realistic-3d/mobile-lod-LAB-UNAPPROVED.glb \
+            2>&1 | tee artifacts/realistic-3d/mobile-lod-lab-export.log
+          test -s artifacts/realistic-3d/mobile-lod-LAB-UNAPPROVED.glb
+          echo "LAB-only diagnostic GLB exported, NOT approved for customer/production."
+
       - name: Upload early independent 3D blocking evidence
         if: always() && (steps.assemble.outcome != 'success' || steps.preflight.outcome != 'success')
         uses: actions/upload-artifact@v4
