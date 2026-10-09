@@ -59,6 +59,36 @@ class WarpWeftUvTests(unittest.TestCase):
         self.assertFalse(result["needsDetailedFabricRepeatInvestigation"])
         self.assertFalse(result["verifiedPhysicalRepeatWithinTolerance"])
 
+    def test_uv_area_weighted_axes_catch_changed_tessellation_density(self):
+        # Same physical region with many micro triangles must not overwhelm
+        # the exact wider textile axis while downsampling to the mobile LOD.
+        authored=[
+            {"uMm":800,"vMm":1000,"shearCosine":0,"worldAreaMm2":10}
+            for _ in range(99)
+        ]+[{"uMm":1000,"vMm":1000,"shearCosine":0,"worldAreaMm2":10000}]
+        mobile=[
+            {"uMm":800,"vMm":1000,"shearCosine":0,"worldAreaMm2":990},
+            {"uMm":1000,"vMm":1000,"shearCosine":0,"worldAreaMm2":10000},
+        ]
+        source=summarise_uv_fabric_axes(authored)
+        candidate=summarise_uv_fabric_axes(mobile)
+        self.assertEqual(source["medianUmmPerUvUnit"],800)
+        self.assertEqual(candidate["medianUmmPerUvUnit"],800)
+        self.assertEqual(source["areaWeightedMedianUmmPerUvUnit"],1000)
+        self.assertEqual(candidate["areaWeightedMedianUmmPerUvUnit"],1000)
+        drift=axis_drift_against_authored(source,candidate)
+        self.assertEqual(drift["uAxisAreaWeightedDriftPct"],0)
+        self.assertFalse(drift["verifiedPhysicalRepeatWithinTolerance"])
+
+    def test_area_weighted_source_uv_distortion_still_blocks_diagnostic_pass(self):
+        source=summarise_uv_fabric_axes([uv_fabric_axes_mm(self.xy,self.uv)])
+        candidate=summarise_uv_fabric_axes([uv_fabric_axes_mm(
+            self.xy,((0,0),(1.3,0),(0,1))
+        )])
+        drift=axis_drift_against_authored(source,candidate)
+        self.assertGreater(drift["uAxisAreaWeightedDriftPct"],8)
+        self.assertTrue(drift["needsDetailedFabricRepeatInvestigation"])
+
     def test_invalid_parameters_never_make_a_green_texture_proof(self):
         for uv in (((0,0),(1,0)),((0,0),(math.nan,0),(0,1))):
             with self.assertRaises(ValueError):
