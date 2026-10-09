@@ -528,6 +528,38 @@ def underarm_inboard_relief_m(z, signed_inboard_m, waist_guide_z, *,
     return min(max_relief_m, max(max_relief_m*low,0.040*upper)*eased_across)
 
 
+
+def underarm_centreline_contact_relief_m(
+    z, signed_inboard_m, waist_guide_z, *,
+    band_half_height_m=0.033, max_relief_m=0.008,
+):
+    """Bounded source-panel correction for REAL post-solidify sleeve contact.
+
+    Native Blender scene preflight detected two 1.5mm+ collisions of the LEFT
+    sleeve around x=-244mm/z=1.116m, on the inner seam almost exactly at the
+    fitted sleeve centre. The broad inboard gusset is intentionally nearly
+    zero on its centreline. Add a tiny, smooth 8mm maximum outward notch to
+    that seam only; preserve the outer sleeve, cuff and identity guides.
+    All faces still require independent real-body BVH preflight.
+    """
+    dimensions=(z,signed_inboard_m,waist_guide_z,band_half_height_m,max_relief_m)
+    if any(isinstance(value,bool) or not isinstance(value,(int,float))
+           or not math.isfinite(value) for value in dimensions):
+        raise ValueError("Measured sleeve centreline relief needs finite metre values.")
+    if not (0.015<=band_half_height_m<=0.045 and
+            0.0<=max_relief_m<=0.008):
+        raise ValueError("Sleeve centreline seam cannot exceed bounded 8mm relief.")
+    # Contact measured at 1.116m, 2mm ABOVE the locked 1.114m shirt waist.
+    vertical=abs(z-(waist_guide_z+0.002))/band_half_height_m
+    if vertical>=1 or signed_inboard_m<=0 or signed_inboard_m>=0.028:
+        return 0.0
+    entry=min(1.0,signed_inboard_m/0.005)
+    exit=min(1.0,(0.028-signed_inboard_m)/0.010)
+    across=max(0.0,min(entry,exit))
+    smooth=across*across*(3-2*across)
+    return max_relief_m*(1-vertical*vertical)**2*smooth
+
+
 def bounded_source_cloth_shift(source_xyz,current_xyz,requested_xyz,max_m=0.095):
     """Clip a local seam change to the ORIGINAL garment's 95mm radius.
 
@@ -581,3 +613,103 @@ def precision_safe_source_radius(distance_m,limit_m=0.095):
     if distance_m>limit_m+1e-8:
         raise ValueError("Actual physical cloth correction exceeds 95mm source lock.")
     return limit_m-2e-7
+
+
+def trouser_waist_side_seam_limit_m(locked_waist_half_width_m,
+                                   distance_below_waist_m,
+                                   *, ease_m=0.007, hip_slope=0.36):
+    """Clip fake hip bulk introduced by nearby lowered hands/forearms.
+
+    Native Blender face BVH on the REAL pose reaches (x=-.252, z=1.0425)
+    despite the locked 344mm trouser waist and natural hip construction. This
+    is an anomalous ~80mm flare just 70mm below the waist guide. A smooth
+    waist-to-seat SIDE PANEL profile must taper independently of the hanging
+    forearm; BODY is never moved, and all real garment/body collisions are
+    still independently tested before approval.
+    """
+    values=(locked_waist_half_width_m,distance_below_waist_m,ease_m,hip_slope)
+    if any(isinstance(v,bool) or not isinstance(v,(int,float))
+           or not math.isfinite(v) for v in values):
+        raise ValueError("Trouser waist side seam requires finite physical coordinates.")
+    if not (0.12<=locked_waist_half_width_m<=0.24
+            and 0<=distance_below_waist_m<=0.40
+            and 0<=ease_m<=0.020 and 0.18<=hip_slope<=0.70):
+        raise ValueError("Hip taper must stay within plausible physical construction limits.")
+    return locked_waist_half_width_m+ease_m+hip_slope*distance_below_waist_m
+
+
+def preserve_trouser_leg_outer_seam_with_inseam_gap(
+    fitted_center_x_m, fitted_half_width_m, body_center_x_m, side,
+    *, minimum_midline_gap_m=0.004, max_center_shift_m=0.050,
+):
+    """Tailor distinct L/R leg tubes around the REAL crotch inseam.
+
+    A symmetric hip/thigh ellipse enclosing only the left (or right) body
+    samples can grow across the midline and cover the OTHER thigh. On the
+    locked pose this put the left leg at x=+35mm near z=.87m and 58mm
+    INSIDE the opposite thigh. Keep the observed OUTER trouser side seam
+    unchanged, while recentering and narrowing ONLY the inward ellipse
+    half so the sewing inseam remains on its anatomical side. Actual
+    garment-to-body BVH must still pass independently afterward.
+    """
+    values=(fitted_center_x_m,fitted_half_width_m,body_center_x_m,
+            minimum_midline_gap_m,max_center_shift_m)
+    if (side not in (-1,1) or isinstance(side,bool) or
+            any(isinstance(v,bool) or not isinstance(v,(int,float))
+                or not math.isfinite(v) for v in values)):
+        raise ValueError("Leg inseam bound needs real finite coordinates and side.")
+    if (not 0.035 <= fitted_half_width_m <= 0.250
+            or not 0.0 <= minimum_midline_gap_m <= 0.012
+            or not 0.0 < max_center_shift_m <= 0.060):
+        raise ValueError("Leg inseam bound must preserve physical sewing ease.")
+    outboard=side*(fitted_center_x_m-body_center_x_m)+fitted_half_width_m
+    if outboard <= minimum_midline_gap_m+0.035:
+        raise ValueError("The anatomical thigh is too narrow for the source-locked leg tube.")
+    inboard=side*(fitted_center_x_m-body_center_x_m)-fitted_half_width_m
+    if inboard >= minimum_midline_gap_m:
+        return fitted_center_x_m,fitted_half_width_m,0.0
+    new_centre=body_center_x_m+side*((outboard+minimum_midline_gap_m)/2.0)
+    new_radius=(outboard-minimum_midline_gap_m)/2.0
+    shift=abs(new_centre-fitted_center_x_m)
+    if shift > max_center_shift_m:
+        raise ValueError(
+            f"Leg source would need {shift*1000:.1f}mm inseam recentering; "
+            "check crotch construction against the real anatomy."
+        )
+    return new_centre,new_radius,shift
+
+
+def waist_panel_ease_pull_m(
+    measured_clearance_m, distance_from_waist_z_m,
+    desired_clearance_m, max_pull_m, *, waist_band_m=0.050,
+):
+    """Small, guide-safe cloth-only reduction of measured waist excess ease.
+
+    Native Blender preflight measured 29.0mm shirt and 35.9mm trouser median
+    body clearance against strict 28/32mm ceilings. This returns a smooth
+    radial inward move of actual non-guide cloth vertices only: it stops at
+    a generous >=12mm target, fades to zero at +/-50mm, and never shifts the
+    photographed +/-2mm exact waist guide. Callers MUST check body BVH and
+    re-run independent face/edge preflight; this is NOT fit approval.
+    """
+    values=(measured_clearance_m,distance_from_waist_z_m,
+            desired_clearance_m,max_pull_m,waist_band_m)
+    if any(isinstance(value,bool) or not isinstance(value,(int,float))
+           or not math.isfinite(value) for value in values):
+        raise ValueError("Waist fit ease must use finite physical dimensions.")
+    if not (measured_clearance_m>=0 and
+            0.012<=desired_clearance_m<=0.032 and
+            0<=max_pull_m<=0.012 and
+            0.040<=waist_band_m<=0.060):
+        raise ValueError("Waist shaping requires bounded physical ease and source shift.")
+    offset=abs(distance_from_waist_z_m)
+    if offset<=0.002 or offset>=waist_band_m or measured_clearance_m<=desired_clearance_m:
+        return 0.0
+    # Keep the central 35mm sewing ease uniform, soften only the 15mm
+    # transition into the unchanged chest/seat panel.
+    if offset<=0.035:
+        fade=1.0
+    else:
+        progress=max(0.0,min(1.0,(waist_band_m-offset)/(waist_band_m-0.035)))
+        fade=progress*progress*(3-2*progress)
+    return min(max_pull_m,measured_clearance_m-desired_clearance_m)*fade

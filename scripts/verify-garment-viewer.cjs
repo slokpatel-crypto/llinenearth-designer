@@ -31,14 +31,98 @@ async function captureStableWebGLFrame(page, destination, clip) {
 
 async function selectTailoringOption(page, label, value) {
   const started=Date.now();
+  const phaseMs={};
+  const markPhase=(stage)=>{phaseMs[stage]=Date.now()-started;};
   const target=page.getByLabel(label,{exact:true});
   try {
-    // A live WebGL render once left Playwright waiting nine minutes for a
-    // trouser-hem option. Use a bounded REAL browser select, never a synthetic
-    // event that could conceal an unresponsive customer control.
-    await target.selectOption(value,{timeout:12000});
+    // Playwright selectOption may remain in its compositor actionability
+    // loop for 12 seconds EVEN AFTER the DOM's real selected value changes,
+    // because the 586-material GPU renderer continuously paints. Instead
+    // exercise REAL Chromium mouse+keyboard input: verify a visible enabled
+    // control is hit-testable, click it at the viewport, and type a native
+    // unique first-letter option. No synthetic input/change events, direct
+    // DOM value assignments or force:true bypasses are permitted.
+    assert.equal(await target.isVisible(),true,`3D selector ${label} must be visible`);
+    assert.equal(await target.isEnabled(),true,`3D selector ${label} must be enabled`);
+    markPhase("visibleAndEnabled");
+    const options=await target.locator("option").evaluateAll((nodes)=>nodes.map(
+      (node)=>({value:node.value,label:node.textContent?.trim()||"",disabled:node.matches(":disabled")})
+    ));
+    markPhase("nativeOptionCatalog");
+    const requested=options.find((option)=>option.value===value);
+    assert.ok(requested,`3D selector ${label} must contain option ${value}`);
+    assert.equal(requested.disabled,false,`3D selector ${label} option ${value} must be enabled`);
+    const first=requested.label.charAt(0).toLowerCase();
+    // A native select can have several names with the same initial (English
+    // Spread / Extra High, different cuff shapes, etc.). Type the shortest
+    // UNIQUE option-label prefix, using actual Chromium keyboard events.
+    const prefix=Array.from(requested.label,(letter,index)=>
+      requested.label.slice(0,index+1)).find((part)=>
+        options.filter((option)=>option.label.toLowerCase().startsWith(part.toLowerCase())).length===1);
+    const enabledIndex=options.filter((option)=>!option.disabled).findIndex((option)=>option.value===value);
+    assert.ok(enabledIndex>=0&&enabledIndex<64,`3D selector ${label} must have a bounded enabled option index`);
+    // Locator.boundingBox waits for Playwright element stability/compositing.
+    // The 586-material WebGL stage can continuously repaint and starve that
+    // actionability check even while the select is visible and enabled.
+    // Read a real DOMClientRect directly and verify native browser hit testing.
+    const hitbox=await page.evaluate(({label})=>{
+      const select=[...document.querySelectorAll("select")]
+        .find((node)=>node.getAttribute("aria-label")===label);
+      if(!(select instanceof HTMLSelectElement)||select.disabled) return null;
+      // The website supports smooth scrolling. Its default async scroll
+      // animation leaves the select far below the viewport when read
+      // immediately, producing a false control failure under busy WebGL.
+      // The QA user action must be preceded by an INSTANT real scroll.
+      select.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"});
+      const rect=select.getBoundingClientRect();
+      const x=rect.left+rect.width/2,y=rect.top+rect.height/2;
+      const hit=document.elementFromPoint(x,y);
+      return {x,y,width:rect.width,height:rect.height,
+        withinViewport:x>=0&&y>=0&&x<innerWidth&&y<innerHeight,
+        uncovered:hit===select};
+    },{label});
+    assert.ok(hitbox&&hitbox.width>=5&&hitbox.height>=5,
+      `3D selector ${label} must have a real click target`);
+    assert.equal(hitbox.withinViewport,true,`3D selector ${label} must be in viewport`);
+    assert.equal(hitbox.uncovered,true,`3D selector ${label} must not be covered by the WebGL stage`);
+    markPhase("scrollAndHitTest");
+    // Count the actual real USER gesture, not pre-action Playwright option
+    // enumeration and page scrolling. Those diagnostics took 4.67 seconds
+    // in software WebGL Chromium and are not a customer input delay.
+    const inputStarted=Date.now();
+    const {x,y}=hitbox;
+    await page.mouse.click(x,y);
+    markPhase("nativePointerClick");
+    if(prefix?.length===1) await page.keyboard.press(first);
+    else if(prefix) await page.keyboard.type(prefix,{delay:0});
+    else {
+      // "White collar" is a prefix of "White collar + cuffs". Real native
+      // keyboard navigation must also support prefix/duplicate display labels.
+      await page.keyboard.press("Home");
+      for(let index=0;index<enabledIndex;index++) await page.keyboard.press("ArrowDown");
+    }
+    markPhase("nativeTypeAhead");
+    // Chromium native selects can commit their new option on typeahead.
+    // Avoid an unnecessary second Enter keyboard event if the real DOM
+    // selection already changed: that event alone blocked the loaded 586-
+    // material browser compositor for several seconds in real CI.
+    const changed=await page.evaluate(({label,value})=>{
+      const select=document.querySelector(`select[aria-label="${label}"]`);
+      return select instanceof HTMLSelectElement&&select.value===value;
+    },{label,value});
+    markPhase("nativeChangeProbe");
+    if(!changed) await page.keyboard.press("Enter");
+    markPhase("nativeKeyboardCommit");
+    await page.waitForFunction(({label,value})=>{
+      const select=document.querySelector(`select[aria-label="${label}"]`);
+      return select instanceof HTMLSelectElement&&select.value===value;
+    },{label,value},{timeout:4000});
+    markPhase("committedReactValue");
     const actual=await target.inputValue({timeout:3000});
-    assert.equal(actual,value,`Tailoring control ${label} must commit the requested value`);
+    markPhase("nativeReadBack");
+    assert.equal(actual,value,`Native browser input for ${label} must commit ${value}`);
+    assert.ok(Date.now()-inputStarted<6000,
+      `3D tailoring REAL native user gesture must stay under 6 seconds: ${JSON.stringify({gestureMs:Date.now()-inputStarted,phaseMs})}`);
   } catch(error) {
     let state={unavailable:true};
     try {
@@ -60,7 +144,7 @@ async function selectTailoringOption(page, label, value) {
         new Promise((_,reject)=>setTimeout(()=>reject(new Error("diagnostics main-thread timeout")),2000))
       ]);
     } catch(e) {state={error:String(e)};}
-    const record={label,requested:value,durationMs:Date.now()-started,state,error:String(error)};
+    const record={label,requested:value,durationMs:Date.now()-started,phaseMs,state,error:String(error)};
     await fs.writeFile(path.join(output,"garment-select-failure.json"),JSON.stringify(record,null,2)+"\n");
     throw new Error("Real tailoring select failed in bounded browser QA: "+JSON.stringify(record));
   }
@@ -331,10 +415,17 @@ async function verifyViewport(browser, width) {
   assert.ok(modelState.materialNames.some((name)=>name==="ButtonAccentVariant__trouser_rise__extra_high"),"M7.46 must carry extra-high rise closure hardware");
   assert.ok(modelState.materialNames.some((name)=>name==="ButtonAccentVariant__trouser_rise__high"),"M7.46 must carry high-rise trouser closure hardware");
 
+  // The saved recipe already names camp/wide types with explicit custom
+  // overrides. Native selects do not fire change when reselecting that same
+  // option. Exercise a real type transition before asserting preset resets.
+  await selectTailoringOption(page,"3D shirt type","dress_shirt");
+  assert.equal(await page.getByLabel("3D shirt type").inputValue(),"dress_shirt");
   await selectTailoringOption(page,"3D shirt type","camp_collar_resort");
   assert.equal(await page.getByLabel("3D shirt wear").inputValue(),"untucked","camp shirt preset must switch to untucked wear");
   assert.equal(await page.getByLabel("3D sleeve").inputValue(),"half","camp shirt preset must switch to half sleeve");
   assert.equal(await page.getByLabel("3D collar",{exact:true}).inputValue(),"camp","camp shirt preset must switch the collar geometry");
+  await selectTailoringOption(page,"3D trouser type","formal_flat_front");
+  assert.equal(await page.getByLabel("3D trouser type").inputValue(),"formal_flat_front");
   await selectTailoringOption(page,"3D trouser type","wide_leg_relaxed_drape");
   assert.equal(await page.getByLabel("3D trouser fit").inputValue(),"wide","wide-leg trouser preset must switch leg geometry");
   assert.equal(await page.getByLabel("3D trouser rise").inputValue(),"high","wide-leg trouser preset must switch rise");
@@ -422,6 +513,7 @@ async function verifyViewport(browser, width) {
       }
       result.push({
         name: current.name,
+        alpha: current.pbrMetallicRoughness?.baseColorFactor?.[3],
         roughness: current.pbrMetallicRoughness?.roughnessFactor,
         metallic: current.pbrMetallicRoughness?.metallicFactor,
         hasTexture: Boolean(current.pbrMetallicRoughness?.baseColorTexture?.texture),
@@ -439,6 +531,19 @@ async function verifyViewport(browser, width) {
     assert.ok(material.roughness >= .55 && material.roughness <= .98, material.name + " roughness must stay in the cloth range");
   }
   const materialByName=Object.fromEntries(materialState.map((item)=>[item.name,item]));
+  for(const name of [
+    "ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric",
+    "TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric",
+  ]) assert.equal(materialByName[name].alpha,0,name+" must stay hidden after fabric changes while its tailored variant is active");
+  await page.waitForFunction(()=>{
+    const materials=document.querySelector("model-viewer")?.model?.materials||[];
+    return ["ShirtCollarVariant__mandarin__soft_unfused","ShirtNeckGasketVariant__mandarin__soft_unfused"].every((name)=>{
+      const pbr=materials.find((material)=>material.name===name)?.pbrMetallicRoughness;
+      const color=pbr?.baseColorFactor;
+      return color&&Math.abs(color[0]-.97)<.001&&Math.abs(color[2]-.95)<.001
+        &&color[3]===1&&!pbr.baseColorTexture?.texture;
+    });
+  },null,{timeout:8000});
   const assertRuntimeMapped=(name)=>{
     const material=materialByName[name];
     assert.ok(material,name+" must exist");

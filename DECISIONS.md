@@ -521,3 +521,19 @@ Architecture and product decisions that must persist across coding sessions.
 **Construction:** the body-preparation step now creates non-rendering guides for total height, outer-arm silhouette, left/right hand centres and left/right leg centres in addition to shoulder, shirt waist, trouser waist and both hem widths. The production preflight requires the complete guide set before a garment scene can pass.
 
 **Why:** a scan-based or retopologized body can match the torso widths yet still drift in arm spread, hand clearance, stance or leg spacing. Carrying all shared physical targets into Blender makes the production body fitting workflow converge more tightly on the exact Real Model Designer identity instead of only matching a subset of the front silhouette.
+
+## 2026-10-08 — Avoid redundant material uploads during live 3D tailoring
+
+**Decision:** connect the existing tested button and collar/cuff appearance caches to GarmentViewer, skip unchanged skin-arm uploads, and disable the automatic idle interaction animation. Style changes still use the public model-viewer material API and the same saved recipe IDs.
+
+**Correctness:** update visibility bookkeeping as each material actually changes, invalidate appearance caches before a partial update, and reset caches for each new model object. An interrupted edit or a reverted fabric choice must not leave ghost variants or stale colours.
+
+**Compatibility:** no saved-design, asset, measurement, or physical-scale contract changes. The existing real native-control latency and responsive browser checks remain required; no timing limit is relaxed. The Blender candidate remains unapproved: native baseline preflight rejects mesh size, left-sleeve contact and waist ease, and its rendered silhouette needs further work.
+
+## 2026-10-09 — Cancel superseded fabric writes through material hydration
+
+**Decision:** validate the current fabric transaction both before and after every asynchronous material load, yield between base-panel updates, and publish prepared textures only after the current batch completes. Model reloads invalidate texture/appearance caches and trigger reapplication even when the ready boolean was already true.
+
+**Correctness:** preserve each base panel's current visibility during fabric uploads so old regular-fit shells cannot reappear beneath selected tailoring variants. Reapply contrast collar/cuff finishes after generic fabric refreshes, including trouser-only changes. Cancelled failures cannot clear newer interaction timing or display an obsolete error. Tests exercise genuinely overlapping old/new loads, cancellation during yielding and between panels, and hydration failure.
+
+**Verification boundary:** software gates do not certify physical drape or exact human identity. Latest upstream native preflight still reports 903,168 garment triangles against a 220,000 budget, two left-sleeve surface penetrations and 32.4 mm trouser-waist median clearance against a 32.0 mm limit. The low-poly diagnostic reaches the budget but fails body-contact sampling. Keep these production blockers intact; do not deploy the candidate based on software tests alone.

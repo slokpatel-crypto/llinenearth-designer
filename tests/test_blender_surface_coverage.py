@@ -9,6 +9,10 @@ from surface_coverage import (
     adaptive_surface_cut_rounds,
     body_aware_sleeve_ring,
     underarm_inboard_relief_m,
+    underarm_centreline_contact_relief_m,
+    waist_panel_ease_pull_m,
+    trouser_waist_side_seam_limit_m,
+    preserve_trouser_leg_outer_seam_with_inseam_gap,
     bounded_source_cloth_shift,
     precision_safe_source_radius,
     waist_to_chest_taper_radius,
@@ -26,6 +30,82 @@ from surface_coverage import (
     subdivide_ring_profiles,
     vertical_subdivision_cuts,
 )
+
+
+class DistinctRealThighInseamTests(unittest.TestCase):
+    def test_left_thigh_no_longer_sweeps_into_opposite_leg(self):
+        # Blender measured +35mm left-tube overshoot near z=.868m.
+        centre, radius, shift=preserve_trouser_leg_outer_seam_with_inseam_gap(
+            -.105,.140,0,-1,
+        )
+        self.assertAlmostEqual(shift,.0195)
+        self.assertAlmostEqual(centre-radius,-.245)
+        self.assertAlmostEqual(centre+radius,-.004)
+        self.assertAlmostEqual(shift,.039/2,delta=.001)
+
+    def test_mirror_symmetry_preserves_outer_side_seam(self):
+        left=preserve_trouser_leg_outer_seam_with_inseam_gap(-.105,.140,0,-1)
+        right=preserve_trouser_leg_outer_seam_with_inseam_gap(.105,.140,0,1)
+        self.assertAlmostEqual(left[0],-right[0])
+        self.assertAlmostEqual(left[1],right[1])
+        self.assertAlmostEqual(left[0]-left[1],-.245)
+        self.assertAlmostEqual(right[0]+right[1],.245)
+
+    def test_safe_inseam_needs_no_edit_and_extreme_fail_closed(self):
+        self.assertEqual(
+            preserve_trouser_leg_outer_seam_with_inseam_gap(-.14,.09,0,-1),
+            (-.14,.09,0.0),
+        )
+        with self.assertRaisesRegex(ValueError,"source would need"):
+            preserve_trouser_leg_outer_seam_with_inseam_gap(
+                -.06,.180,0,-1,max_center_shift_m=.030
+            )
+        for invalid in [float("nan"),float("inf"),True]:
+            with self.assertRaises(ValueError):
+                preserve_trouser_leg_outer_seam_with_inseam_gap(-.10,invalid,0,-1)
+
+    def test_native_candidate_uses_body_measured_sources_and_real_bvh(self):
+        source=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
+                "author-linen-earth-officewear.py").read_text()
+        self.assertIn("preserve_trouser_leg_outer_seam_with_inseam_gap(",source)
+        self.assertIn("Linen Earth measured trouser leg source fit:",source)
+        self.assertIn("repair_between_vertex_collisions(",source)
+
+
+class MeasuredTrouserSeatClearanceTests(unittest.TestCase):
+    def test_locked_344mm_waist_tapers_toward_real_hip(self):
+        self.assertAlmostEqual(
+            trouser_waist_side_seam_limit_m(.172,0),.179
+        )
+        # At the measured 1.0425m failed intersection (~70mm below waist)
+        # the panel cannot arbitrarily expand to 252mm half-width around
+        # hands. True hip and arm clearance remain independently BVH-tested.
+        self.assertLess(
+            trouser_waist_side_seam_limit_m(.172,.070),.22
+        )
+        self.assertGreater(
+            trouser_waist_side_seam_limit_m(.172,.160),.22
+        )
+        self.assertLess(
+            trouser_waist_side_seam_limit_m(.172,.230),.30
+        )
+
+    def test_source_hip_shaping_never_edits_locked_waist_or_body(self):
+        source=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
+                "author-linen-earth-officewear.py").read_text()
+        begin=source.index("def restore_trouser_waist_side_seam(")
+        end=source.index("def restore_shirt_waist_side_seam(",begin)
+        body=source[begin:end]
+        self.assertIn("if not 0.002<below<0.24:",body)
+        self.assertIn("if distance>0.095:",body)
+        self.assertIn("trouser_waist_side_seam_limit_m(",body)
+        self.assertIn("realBodyCollisionStillRequiresBVH",body)
+        self.assertIn('fit_profile["trouserWaistSideSeamContinuity"]',source)
+        for bad in [float("nan"),float("inf"),-1]:
+            with self.assertRaises(ValueError):
+                trouser_waist_side_seam_limit_m(.172,bad)
+        with self.assertRaises(ValueError):
+            trouser_waist_side_seam_limit_m(.172,.06,hip_slope=.90)
 
 
 class InnerSleeveBodyContactReliefTests(unittest.TestCase):
@@ -58,6 +138,82 @@ class InnerSleeveBodyContactReliefTests(unittest.TestCase):
                         underarm_inboard_relief_m(*bad[:3],half_span_m=bad[3])
         with self.assertRaises(ValueError):
             underarm_inboard_relief_m(1.15,.03,1.1,max_relief_m=.06)
+
+
+class MeasuredPostThicknessSleeveSeamTests(unittest.TestCase):
+    def test_left_native_bvh_contact_has_small_local_smooth_notch(self):
+        waist=1.11423
+        # Real source Blender preflight: x=-244mm, z=1.116m,
+        # two sleeve points penetrate by more than 1.5mm.
+        self.assertAlmostEqual(
+            underarm_centreline_contact_relief_m(1.11623,.006,waist),
+            .008,
+        )
+        self.assertGreater(
+            underarm_centreline_contact_relief_m(1.10807,.006,waist),
+            .005,
+        )
+        self.assertEqual(
+            underarm_centreline_contact_relief_m(1.11623,0,waist),0,
+        )
+        self.assertEqual(
+            underarm_centreline_contact_relief_m(1.11623,-.015,waist),0,
+        )
+        self.assertEqual(
+            underarm_centreline_contact_relief_m(1.11623,.029,waist),0,
+        )
+        self.assertEqual(
+            underarm_centreline_contact_relief_m(1.160,.006,waist),0,
+        )
+
+    def test_original_45mm_source_and_real_bvh_gates_remain_strict(self):
+        source=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
+                "author-linen-earth-officewear.py").read_text()
+        self.assertIn(
+            "min(0.045,displacement+underarm_centreline_contact_relief_m(",source
+        )
+        self.assertIn("repair_between_vertex_collisions(",source)
+        for bad in (float("nan"),True,float("inf")):
+            with self.assertRaises(ValueError):
+                underarm_centreline_contact_relief_m(1.116,bad,1.114)
+        with self.assertRaises(ValueError):
+            underarm_centreline_contact_relief_m(
+                1.116,.006,1.114,max_relief_m=.012
+            )
+
+
+class MeasuredWaistEaseConvergenceTests(unittest.TestCase):
+    def test_inward_fit_uses_real_skin_distance_and_never_alters_guides(self):
+        # 29mm shirt median needs a small take-in to pass the 28mm gate.
+        self.assertAlmostEqual(
+            waist_panel_ease_pull_m(.029,.018,.022,.008),.007
+        )
+        # 35.9mm trouser median: 12mm physical maximum inward movement.
+        self.assertAlmostEqual(
+            waist_panel_ease_pull_m(.0359,.015,.026,.012),.0099
+        )
+        self.assertEqual(waist_panel_ease_pull_m(.050,0,.022,.008),0)
+        self.assertEqual(waist_panel_ease_pull_m(.050,.002,.022,.008),0)
+        self.assertEqual(waist_panel_ease_pull_m(.050,.050,.022,.008),0)
+        self.assertEqual(waist_panel_ease_pull_m(.005,.018,.022,.008),0)
+        self.assertLess(
+            waist_panel_ease_pull_m(.050,.045,.022,.008),.008
+        )
+
+    def test_no_fake_tailor_evidence_or_body_bvh_exemption(self):
+        source=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
+                "author-linen-earth-officewear.py").read_text()
+        body=source[source.index("def tighten_waist_to_measured_body_ease("):
+                    source.index("def restore_trouser_waist_side_seam(")]
+        self.assertIn("point_inside_closed_bvh(tree,candidate)",body)
+        self.assertIn("waist_panel_ease_pull_m(",body)
+        self.assertIn("fit_profile[\"waistEaseConvergence\"]",source)
+        self.assertIn("repair_between_vertex_collisions(",source)
+        for bad in [float("nan"),float("inf"),True,-.005]:
+            with self.assertRaises(ValueError):
+                waist_panel_ease_pull_m(bad,.015,.026,.012)
+        with self.assertRaises(ValueError):
+            waist_panel_ease_pull_m(.04,.012,.026,.015)
 
 
 class AnatomicalSleeveConstructionTests(unittest.TestCase):
@@ -294,7 +450,11 @@ class TerminalMeasuredSeamRepairTests(unittest.TestCase):
         beginning=source.index("def repair_between_vertex_collisions(")
         ending=source.index("def finish_procedural_shell(",beginning)
         section=source[beginning:ending]
-        self.assertIn("0 < edge_hits <= 4",section)
+        # Edges may receive EXTRA bounded patch passes, never an exception to
+        # the final >1.5mm skin penetration gate. Face+edge contact retains
+        # the tighter four-edge bound; edge-only residue may have up to eight.
+        self.assertIn("0 <= edge_hits <= 4",section)
+        self.assertIn("or centroid_hits == 0 and 0 < edge_hits <= 8",section)
         self.assertIn("if not penetration(centre):",section)
         self.assertIn("if distance>0.025:",section)
         self.assertIn("source_world_positions[vertex.index]",section)
@@ -714,5 +874,9 @@ class UniformRealClothTopologyContractTests(unittest.TestCase):
         section=source[start:end]
         self.assertIn("(point-nearest[0]).length > 0.0015",section)
         self.assertIn("0 < centroid_hits <= 8",section)
-        self.assertIn("0 < edge_hits <= 4",section)
+        # Edges may receive EXTRA bounded patch passes, never an exception to
+        # the final >1.5mm skin penetration gate. Face+edge contact retains
+        # the tighter four-edge bound; edge-only residue may have up to eight.
+        self.assertIn("0 <= edge_hits <= 4",section)
+        self.assertIn("or centroid_hits == 0 and 0 < edge_hits <= 8",section)
         self.assertIn("len(bm.faces)>80000",section)

@@ -1,7 +1,7 @@
 "use client";
 
 import { createElement, useEffect, useMemo, useRef, useState } from "react";
-import {createCooperativeMaterialBatch, createInFlightMaterialLoader, needsVariantMaterialRefresh, tailoringInputSettleMs, type VariantMaterialAppearance} from "@/lib/garment-viewer-material-appearance";
+import {applyCurrentMaterialBatch,createCooperativeMaterialBatch, createInFlightMaterialLoader, needsVariantMaterialRefresh, needsButtonMaterialRefresh, trimAppearanceKey, tailoringInputSettleMs, type VariantMaterialAppearance} from "@/lib/garment-viewer-material-appearance";
 import {
   createPrototypeGarmentGlbUrl,
   GARMENT_PANEL_SPECS,
@@ -131,9 +131,6 @@ function createLinenNormalMap(strength=1) {
   return canvas.toDataURL("image/png");
 }
 
-function materialByName(viewer:ModelViewerElement,name:string) {
-  return viewer.model?.materials.find((material)=>material.name===name) || null;
-}
 const loadMaterialOnce=createInFlightMaterialLoader<Material>();
 async function ensureViewerMaterialLoaded(material:Material|null|undefined) {
   if(!material) return null;
@@ -370,11 +367,15 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const visibleGarmentMaterialsRef=useRef(new Set(GARMENT_PANEL_SPECS.map((panel)=>panel.material)));
   const lastVariantAppearanceRef=useRef<VariantMaterialAppearance|null>(null);
   const visibleButtonMaterialsRef=useRef(new Set<string>());
+  const appliedButtonKeyRef=useRef<string|null>(null);
+  const appliedTrimKeyRef=useRef<string|null>(null);
+  const appliedModelRef=useRef<ModelViewerElement["model"]>(undefined);
   const visibleSkinArmMaterialRef=useRef<string|null>(null);
   const [textureRevision,setTextureRevision]=useState(0);
   const [modelUrl,setModelUrl]=useState("");
   const [engineReady,setEngineReady]=useState(false);
   const [modelReady,setModelReady]=useState(false);
+  const [modelRevision,setModelRevision]=useState(0);
   const [progress,setProgress]=useState(0);
   const [error,setError]=useState("");
   const [modelContract,setModelContract]=useState<GarmentViewerModelContractResult|null>(
@@ -682,6 +683,18 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       }
     };
     const load=()=>{
+      if(viewer.model && appliedModelRef.current!==viewer.model){
+        appliedModelRef.current=viewer.model;
+        applyToken.current++;
+        preparedTextureRef.current.clear();
+        setModelRevision((revision)=>revision+1);
+        visibleGarmentMaterialsRef.current=new Set(GARMENT_PANEL_SPECS.map((panel)=>panel.material));
+        visibleButtonMaterialsRef.current=new Set();
+        visibleSkinArmMaterialRef.current=null;
+        lastVariantAppearanceRef.current=null;
+        appliedButtonKeyRef.current=null;
+        appliedTrimKeyRef.current=null;
+      }
       setModelReady(true);setProgress(1);setError("");
       syncModelContract();
     };
@@ -731,8 +744,11 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   useEffect(()=>{
     if(!modelReady || !shirt || !trouser || !productionManifestReady || modelContract?.readiness==="contract_failed") return;
     const viewer=viewerRef.current;
-    if(!viewer?.createTexture) return;
+    if(!viewer?.createTexture || !viewer.model) return;
+    const model=viewer.model;
     const token=++applyToken.current;
+    let cancelled=false;
+    const isCurrent=()=>!cancelled && token===applyToken.current && viewer.model===model;
     const apply=async()=>{
       try{
         const shirtNormalMap=createLinenNormalMap(fabricDrapeSurface(shirt).normalStrength);
@@ -757,21 +773,29 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           normal?.sampler?.setRotation?.(rotation);
           return {panel,texture,normal};
         }));
-        if(token!==applyToken.current) return;
+        const applied=await applyCurrentMaterialBatch({
+          entries:prepared,
+          isCurrent,
+          yieldToBrowser:()=>new Promise<void>((resolve)=>window.setTimeout(resolve,8)),
+          load:(entry)=>ensureViewerMaterialLoaded(model.materials.find((material)=>material.name===entry.panel.material)),
+          apply:(material,entry)=>{
+            if(!material) return;
+            // Base panels must stay hidden when a tailoring variant owns the
+            // silhouette; changing fabric must not resurrect the default fit.
+            const alpha=visibleGarmentMaterialsRef.current.has(entry.panel.material)?1:0;
+            material.pbrMetallicRoughness.setBaseColorFactor([1,1,1,alpha]);
+            material.pbrMetallicRoughness.setMetallicFactor(0);
+            const fabric=entry.panel.garment==="shirt"?shirt:trouser;
+            material.pbrMetallicRoughness.setRoughnessFactor(clamp(roughness+fabricDrapeSurface(fabric).roughnessOffset,.55,.98));
+            material.pbrMetallicRoughness.baseColorTexture?.setTexture(entry.texture);
+            material.normalTexture?.setTexture(entry.normal);
+          },
+        });
+        if(!applied || !isCurrent()) return;
         preparedTextureRef.current=new Map(prepared.map((entry)=>[
           entry.panel.material,
           {texture:entry.texture,normal:entry.normal,garment:entry.panel.garment},
         ]));
-        for(const entry of prepared){
-          const material=await ensureViewerMaterialLoaded(materialByName(viewer,entry.panel.material));
-          if(!material) continue;
-          material.pbrMetallicRoughness.setBaseColorFactor([1,1,1,1]);
-          material.pbrMetallicRoughness.setMetallicFactor(0);
-          const fabric=entry.panel.garment==="shirt"?shirt:trouser;
-          material.pbrMetallicRoughness.setRoughnessFactor(clamp(roughness+fabricDrapeSurface(fabric).roughnessOffset,.55,.98));
-          material.pbrMetallicRoughness.baseColorTexture?.setTexture(entry.texture);
-          if(entry.normal) material.normalTexture?.setTexture(entry.normal);
-        }
         setTextureRevision((value)=>value+1);
         if(interactionStartedAt.current!==null && modelSrc && assetIdentityKey && modelContract?.readiness==="contract_ready"){
           const duration=performance.now()-interactionStartedAt.current;
@@ -792,18 +816,23 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         }
         setError("");
       }catch{
-        interactionStartedAt.current=null;
-        if(token===applyToken.current)setError("Fabric texture application failed. The base 3D model is still available.");
+        if(isCurrent()){
+          interactionStartedAt.current=null;
+          setError("Fabric texture application failed. The base 3D model is still available.");
+        }
       }
     };
     void apply();
-  },[modelReady,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract,modelSrc,assetIdentityKey]);
+    return ()=>{cancelled=true;};
+  },[modelReady,modelRevision,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract,modelSrc,assetIdentityKey]);
 
   useEffect(()=>{
     if(!modelReady) return;
     const viewer=viewerRef.current;
     if(!viewer?.model) return;
+    const model=viewer.model;
     let cancelled=false;
+    const isCurrent=()=>!cancelled && viewer.model===model;
     const apply=async()=>{
       // Material shader hydration can block Chromium's native <select> input.
       // Cooperatively yield the main thread after each bounded batch.
@@ -814,11 +843,19 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       // expensive GLB shader/material mutation starts. Yield between every
       // material rather than batches of four on low-powered GPUs.
       await yieldForInput();
-      if(cancelled) return;
-      const materials=[...viewer.model!.materials];
+      if(!isCurrent()) return;
+      const materials=[...model.materials];
       const materialsByName=new Map(materials.map((material)=>[material.name,material]));
-      const previous=visibleGarmentMaterialsRef.current;
+      const previous=new Set(visibleGarmentMaterialsRef.current);
       const appearance={textureRevision,roughness,shirtId,trouserId};
+      // An interrupted appearance update can leave a mixture of old/new
+      // materials. Invalidate before mutation so reverting also refreshes it.
+      if(needsVariantMaterialRefresh(true,lastVariantAppearanceRef.current,appearance)){
+        lastVariantAppearanceRef.current=null;
+        // Generic fabric refresh writes collar/cuff textures too. Reapply
+        // contrast finishes even when only the trouser fabric changed.
+        appliedTrimKeyRef.current=null;
+      }
       const next=new Set<string>();
       for(const material of materials){
         if(isGarmentVariantMaterial(material.name)&&variantMaterialVisible(material.name,styleState)) next.add(material.name);
@@ -826,23 +863,25 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       for(const name of previous){
         if(next.has(name)) continue;
         await yieldForInput();
-        if(cancelled) return;
+        if(!isCurrent()) return;
         const material=await ensureViewerMaterialLoaded(materialsByName.get(name));
-        if(cancelled) return;
+        if(!isCurrent()) return;
         setMaterialAlpha(material,false);
+        visibleGarmentMaterialsRef.current.delete(name);
       }
       for(const name of next){
         // Style-only edits often retain most visible variants. Re-uploading the
         // same texture/normal for each retained variant stalls WebGL Chromium.
         if(!needsVariantMaterialRefresh(previous.has(name),lastVariantAppearanceRef.current,appearance)) continue;
         await yieldForInput();
-        if(cancelled) return;
+        if(!isCurrent()) return;
         const material=await ensureViewerMaterialLoaded(materialsByName.get(name));
-        if(cancelled) return;
+        if(!isCurrent()) return;
         if(!material) continue;
         const fabric=name.startsWith("Shirt")?shirt:trouser;
         if(!previous.has(name)){
           setMaterialAlpha(material,true);
+          visibleGarmentMaterialsRef.current.add(name);
           material.pbrMetallicRoughness.setMetallicFactor(0);
         }
         material.pbrMetallicRoughness.setRoughnessFactor(clamp(roughness+fabricDrapeSurface(fabric).roughnessOffset,.55,.98));
@@ -857,54 +896,70 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       lastVariantAppearanceRef.current=appearance;
 
       await yieldForInput();
-      if(cancelled) return;
+      if(!isCurrent()) return;
       const nextSkin=styleState.sleeve==="full"?null:`MannequinSkinArmVariant__${styleState.sleeve}`;
       const previousSkin=visibleSkinArmMaterialRef.current;
       if(previousSkin&&previousSkin!==nextSkin){
         const material=await ensureViewerMaterialLoaded(materialsByName.get(previousSkin));
-        if(cancelled) return;
+        if(!isCurrent()) return;
         setSkinArmAlpha(material,false);
+        visibleSkinArmMaterialRef.current=null;
       }
-      if(nextSkin){
+      if(nextSkin&&nextSkin!==previousSkin){
         const material=await ensureViewerMaterialLoaded(materialsByName.get(nextSkin));
-        if(cancelled) return;
+        if(!isCurrent()) return;
         setSkinArmAlpha(material,true);
       }
       visibleSkinArmMaterialRef.current=nextSkin;
 
       const buttonSpec=styleVariants.buttons.find((item)=>item.id===buttonKey);
-      const previousButtons=visibleButtonMaterialsRef.current;
+      const previousButtons=new Set(visibleButtonMaterialsRef.current);
+      if(appliedButtonKeyRef.current!==buttonKey) appliedButtonKeyRef.current=null;
       const nextButtons=new Set(materials.filter((material)=>isButtonVariantMaterial(material.name)&&variantMaterialVisible(material.name,styleState)).map((material)=>material.name));
       for(const name of previousButtons){
         if(nextButtons.has(name)) continue;
         await yieldForInput();
-        if(cancelled) return;
+        if(!isCurrent()) return;
         const material=await ensureViewerMaterialLoaded(materialsByName.get(name));
-        if(cancelled) return;
+        if(!isCurrent()) return;
         setButtonMaterial(material,buttonSpec,false);
+        visibleButtonMaterialsRef.current.delete(name);
       }
       for(const name of nextButtons){
+        if(!needsButtonMaterialRefresh(previousButtons.has(name),appliedButtonKeyRef.current,buttonKey)) continue;
         await yieldForInput();
-        if(cancelled) return;
+        if(!isCurrent()) return;
         const material=await ensureViewerMaterialLoaded(materialsByName.get(name));
-        if(cancelled) return;
+        if(!isCurrent()) return;
         setButtonMaterial(material,buttonSpec,true);
+        visibleButtonMaterialsRef.current.add(name);
       }
       visibleButtonMaterialsRef.current=nextButtons;
       await yieldForInput();
-      if(cancelled) return;
-      const baseButton=await ensureViewerMaterialLoaded(materialsByName.get("ButtonAccent"));
-      if(cancelled) return;
-      setButtonMaterial(baseButton,buttonSpec,true);
+      if(!isCurrent()) return;
+      if(appliedButtonKeyRef.current!==buttonKey){
+        const baseButton=await ensureViewerMaterialLoaded(materialsByName.get("ButtonAccent"));
+        if(!isCurrent()) return;
+        setButtonMaterial(baseButton,buttonSpec,true);
+      }
+      appliedButtonKeyRef.current=buttonKey;
+
+      const trimKey=trimAppearanceKey({
+        collar:collarKey,collarConstruction:collarConstructionKey,collarFinish:collarFinishKey,
+        cuff:cuffKey,cuffConstruction:cuffConstructionKey,sleeve:styleState.sleeve,
+        shirtId,textureRevision,roughness,shirtDrape:shirt?.drape||"",
+      });
+      if(appliedTrimKeyRef.current===trimKey) return;
+      appliedTrimKeyRef.current=null;
 
       const shirtBase=clamp(roughness+fabricDrapeSurface(shirt).roughnessOffset,.55,.98);
       const shirtBodyPrepared=preparedTextureRef.current.get("ShirtTorsoFabric");
       const shirtSleevePrepared=preparedTextureRef.current.get("ShirtSleeveLFabric");
       const collarOffset=collarConstructionKey==="soft_unfused"?.07:collarConstructionKey==="soft_fused"?.035:0;
       await yieldForInput();
-      if(cancelled) return;
+      if(!isCurrent()) return;
       const collar=await ensureViewerMaterialLoaded(materialsByName.get(`ShirtCollarVariant__${collarKey}__${collarConstructionKey}`));
-      if(cancelled) return;
+      if(!isCurrent()) return;
       const whiteCollar=collarFinishKey!=="self";
       if(collar){
         collar.pbrMetallicRoughness.setBaseColorFactor(whiteCollar?[.97,.97,.95,1]:[1,1,1,1]);
@@ -913,9 +968,9 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         collar.pbrMetallicRoughness.setRoughnessFactor(clamp(shirtBase+collarOffset,.55,.98));
       }
       await yieldForInput();
-      if(cancelled) return;
+      if(!isCurrent()) return;
       const neckGasket=await ensureViewerMaterialLoaded(materialsByName.get(`ShirtNeckGasketVariant__${collarKey}__${collarConstructionKey}`));
-      if(cancelled) return;
+      if(!isCurrent()) return;
       if(neckGasket){
         neckGasket.pbrMetallicRoughness.setBaseColorFactor(whiteCollar?[.97,.97,.95,1]:[1,1,1,1]);
         if(whiteCollar) neckGasket.pbrMetallicRoughness.baseColorTexture?.setTexture(null);
@@ -925,9 +980,9 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       if(styleState.sleeve==="full"){
         const cuffOffset=cuffConstructionKey==="soft"?.06:0;
         await yieldForInput();
-        if(cancelled) return;
+        if(!isCurrent()) return;
         const cuff=await ensureViewerMaterialLoaded(materialsByName.get(`ShirtCuffVariant__${cuffKey}__${cuffConstructionKey}`));
-        if(cancelled) return;
+        if(!isCurrent()) return;
         if(cuff){
           const whiteCuff=collarFinishKey==="white_collar_cuffs";
           cuff.pbrMetallicRoughness.setBaseColorFactor(whiteCuff?[.97,.97,.95,1]:[1,1,1,1]);
@@ -936,17 +991,18 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           cuff.pbrMetallicRoughness.setRoughnessFactor(clamp(shirtBase+cuffOffset,.55,.98));
         }
       }
+      appliedTrimKeyRef.current=trimKey;
     };
     // The React <select> value must commit and paint BEFORE cold WebGL shader
     // updates begin. Without a bounded input-first interval, Chromium may
     // apply the real change but Playwright/native input remains stuck in GPU
     // work for 12+ seconds. Cancel obsolete appearance work on each edit.
     const inputSettleTimer=window.setTimeout(()=>{
-      if(cancelled) return;
-      void apply().catch(()=>{if(!cancelled)setError("A tailoring variant could not be prepared. Try another option.");});
+      if(!isCurrent()) return;
+      void apply().catch(()=>{if(isCurrent())setError("A tailoring variant could not be prepared. Try another option.");});
     },tailoringInputSettleMs(viewer.model?.materials.length||0));
     return ()=>{cancelled=true;window.clearTimeout(inputSettleTimer);};
-  },[modelReady,styleState,buttonKey,textureRevision,roughness,shirt,trouser,collarKey,collarFinishKey,collarConstructionKey,cuffKey,cuffConstructionKey]);
+  },[modelReady,modelRevision,styleState,buttonKey,textureRevision,roughness,shirt,trouser,collarKey,collarFinishKey,collarConstructionKey,cuffKey,cuffConstructionKey]);
 
   function applyShirtTypePreset(id:string){
     setShirtTypeKey(id);
@@ -1021,7 +1077,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     "exposure":"1.12",
     "tone-mapping":"commerce",
     loading:"eager",
-    "interaction-prompt":"auto",
+    "interaction-prompt":"none",
     className:"garmentModelViewer",
   }) : null;
 

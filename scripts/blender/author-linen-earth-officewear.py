@@ -24,7 +24,7 @@ from mathutils.bvhtree import BVHTree
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
 from fabric_arc_uv import frame_at_height, ellipse_arc_uv
-from surface_coverage import precision_safe_source_radius, bounded_source_cloth_shift, underarm_inboard_relief_m, body_aware_sleeve_ring, waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
+from surface_coverage import waist_panel_ease_pull_m, underarm_centreline_contact_relief_m, preserve_trouser_leg_outer_seam_with_inseam_gap, trouser_waist_side_seam_limit_m, precision_safe_source_radius, bounded_source_cloth_shift, underarm_inboard_relief_m, body_aware_sleeve_ring, waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -119,11 +119,19 @@ def build_ring_shell(name, rings, segments=48, neck_opening=None, collar_height=
     rings_ascending = rings[-1][0] > rings[0][0]
     for ring_index, ring in enumerate(rings):
         z_value, center_x, center_y, radius_x, radius_y = ring
+        ring_power=section_power
+        if name.startswith("TrouserLeg"):
+            # Pressed trouser fronts are softly flat at the upper join,
+            # not circular tubes through the pelvis. Round smoothly toward
+            # the knee without altering X/Y fabric panel measurements.
+            fraction=max(0.0,min(1.0,(z_value-(rings[0][0]-0.260))/0.260))
+            fraction=fraction*fraction*(3.0-2.0*fraction)
+            ring_power=2.0+1.4*fraction
         for segment in range(segments):
             angle = 2.0 * math.pi * segment / segments
             px, py = rounded_tailoring_ring_xy(
                 angle, center_x, center_y, radius_x, radius_y,
-                profile_power=section_power
+                profile_power=ring_power
             )
             vertices.append((px, py, z_value))
         if ring_index:
@@ -426,8 +434,15 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
         lower_center_x = cx + side * leg_center_half
         knee_z = hem_z + (upper_thigh_z - hem_z) * 0.48
         calf_z = hem_z + (upper_thigh_z - hem_z) * 0.20
+        # The pelvic shell already reaches the actual upper-thigh seam.
+        # A separate closed leg tube extending 50mm ABOVE that junction
+        # runs through the joined crotch of the LOCKED body. Blender BVH
+        # measured 10-58mm penetrations near z=.86-.90m on that overlap.
+        # Start both leg tubes at the real lower edge of the pelvic panel,
+        # leaving the 344mm waist guide and body geometry untouched.
+        # Independent face/edge BVH still decides if this source fits.
         base_rings = [
-            (upper_thigh_z + 0.050, thigh_center_x, cy - 0.002, 0.078, 0.082),
+            (upper_thigh_z, thigh_center_x, cy - 0.002, 0.078, 0.082),
             (upper_thigh_z - 0.070, thigh_center_x, cy, 0.071, 0.075),
             (knee_z, lower_center_x, cy, 0.050, 0.052),
             (calf_z, lower_center_x, cy, 0.042, 0.045),
@@ -442,6 +457,20 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
                 thigh_center_x if index < 2 else lower_center_x,
                 trouser_clearance_m, keep_locked_hem_width=index >= 4,
             )
+            if index < 2:
+                # The real crotch has TWO legs, not an inflated ellipse that
+                # sweeps all the way across into the opposite thigh. Preserve
+                # each measured outside seam and reshape the source INSEAM
+                # before faces are built. The native BVH still rejects any
+                # residual pelvic/leg intersection; nothing is force-approved.
+                next_x, next_radius, recenter = preserve_trouser_leg_outer_seam_with_inseam_gap(
+                    fitted[1], fitted[3], cx, side,
+                )
+                fitted = (fitted[0], next_x, fitted[2], next_radius, fitted[4])
+                evidence["inseamSourceRecenterMm"] = round(recenter * 1000, 2)
+                evidence["innerEdgeToMidlineMm"] = round(
+                    (side * (next_x-cx)-next_radius)*1000, 2
+                )
             leg_profile_evidence[name].append(evidence)
             if evidence["status"] != "anatomy-fitted-geometry-only":
                 raise RuntimeError(
@@ -450,6 +479,11 @@ def build_procedural_officewear(body, targets, shirt_clearance_m, trouser_cleara
                     "Refusing to substitute the generic tube without visible-body fit evidence."
                 )
             fitted_rings.append(fitted)
+        print("Linen Earth measured trouser leg source fit: "
+              + name + " " + json.dumps({
+                  "rings": [[round(v,5) for v in row] for row in fitted_rings],
+                  "evidence": leg_profile_evidence[name],
+              },sort_keys=True),flush=True)
         legs[name] = build_ring_shell(name, fitted_rings, segments=48)
 
     authored = {
@@ -662,6 +696,107 @@ def enclose_post_identity_torso_profile(
             "lockedGuideCount":len(protected),
             "maxAllowedRadiusGrowthMm":70.0}
 
+def tighten_waist_to_measured_body_ease(obj, body, waist_guide_z, *,
+                                      desired_clearance_m, max_pull_m):
+    """Make the actual shirt/trouser waist less baggy, preserving locked guides.
+
+    Native preflight still owns the approval decision. Each proposed panel
+    vertex is verified OUTSIDE real body BVH, and subsequent face/edge repair
+    and physical preflight remain mandatory. Never alter model body/guide.
+    """
+    tree=world_bvh(body,epsilon=0.0)
+    if tree is None:
+        raise RuntimeError("Locked body mesh is required for actual waist-ease fit.")
+    matrix=obj.matrix_world
+    inverse=matrix.inverted()
+    pulled=0
+    max_applied=0.0
+    for vertex in obj.data.vertices:
+        point=matrix @ vertex.co
+        if abs(point.z-waist_guide_z)>=0.050 or abs(point.z-waist_guide_z)<=0.002:
+            continue
+        if point_inside_closed_bvh(tree,point):
+            continue
+        nearest=tree.find_nearest(point)
+        if nearest is None or nearest[0] is None:
+            continue
+        surface=nearest[0]
+        distance=(point-surface).length
+        proposed=waist_panel_ease_pull_m(
+            distance,point.z-waist_guide_z,desired_clearance_m,max_pull_m
+        )
+        if proposed<=0 or distance<1e-6:
+            continue
+        candidate=point+(surface-point)*(proposed/distance)
+        if point_inside_closed_bvh(tree,candidate):
+            continue
+        vertex.co=inverse @ candidate
+        pulled+=1
+        max_applied=max(max_applied,proposed)
+    obj.data.update()
+    evidence={
+        "nonGuideVerticesMoved":pulled,
+        "maxClothOnlyPullMm":round(max_applied*1000,2),
+        "targetClearanceMm":round(desired_clearance_m*1000,2),
+        "guideProtectedBandMm":2.0,
+        "requiresIndependentBodyFaceBVH":True,
+    }
+    print("Linen Earth measured waist ease fit: "+obj.name+" "+
+          json.dumps(evidence,sort_keys=True),flush=True)
+    return evidence
+
+
+def restore_trouser_waist_side_seam(obj, locked_waist_z, locked_half_width_m, center_x):
+    """Reshape a real trouser HIP panel away from the mannequin's hanging arms.
+
+    Only the original garment's non-guide upper hip rings are reshaped. The
+    photographed 344mm waist guide is unchanged; no body vertices are touched.
+    Native BVH must subsequently validate the actual hip/hand clearance.
+    """
+    if obj.name!="TrouserWaistFabric":
+        raise RuntimeError("Waist seam source fitting requires a trouser-waist panel.")
+    matrix=obj.matrix_world
+    inverse=matrix.inverted()
+    rings={}
+    for vertex in obj.data.vertices:
+        point=matrix @ vertex.co
+        rings.setdefault(round(point.z,6),[]).append((vertex,point))
+    changed=0
+    maximum=0.0
+    for z,items in rings.items():
+        below=locked_waist_z-z
+        if not 0.002<below<0.24:
+            continue
+        actual=max(abs(point.x-center_x) for _,point in items)
+        allowed=trouser_waist_side_seam_limit_m(
+            locked_half_width_m,below
+        )
+        if actual<=allowed+1e-8:
+            continue
+        ratio=allowed/actual
+        for vertex,point in items:
+            candidate_x=center_x+(point.x-center_x)*ratio
+            distance=abs(candidate_x-point.x)
+            if distance>0.095:
+                raise RuntimeError(
+                    f"{obj.name}: source hip taper needs >95mm at z={z:.5f}m; "
+                    "remeasure the actual garment instead of moving its model."
+                )
+            vertex.co=inverse @ Vector((candidate_x,point.y,point.z))
+            maximum=max(maximum,distance)
+        changed+=1
+    obj.data.update()
+    evidence={
+        "reshapedNonGuideRings":changed,
+        "maximumSideSeamCorrectionMm":round(maximum*1000,3),
+        "lockedWaistGuideMm":round(locked_half_width_m*2000,2),
+        "realBodyCollisionStillRequiresBVH":True,
+    }
+    print("Linen Earth trouser hip source taper: "+
+          json.dumps(evidence,sort_keys=True),flush=True)
+    return evidence
+
+
 def restore_shirt_waist_side_seam(obj, waist_z, waist_half_width_m, shoulder_z, center_x):
     """Reshape the SOURCE garment near a locked waist, not the locked body.
 
@@ -717,6 +852,10 @@ def refine_collision_faces(obj, max_edge_m=0.025, max_faces=80000):
     vertices outside, rather than hiding face penetration in the preflight.
     Original guide-plane vertices and target dimensions are preserved.
     """
+    # Native Blender established that globally coarsening the production
+    # contact mesh from 25mm to 50mm creates unrepairable underarm contacts.
+    # Retain the high-detail contact-safe source; mobile LOD needs a separate,
+    # independently BVH-verified reduction path, not a coarser collision shell.
     bm=bmesh.new()
     try:
         bm.from_mesh(obj.data)
@@ -1015,8 +1154,15 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                 }
             before=len(bm.verts)
             if iteration>=max_rounds:
+                # Native Blender now clears BOTH thigh face-contact sets, but
+                # the right inseam can retain six shallow edge-only contacts
+                # at round eight. They are physical measured edges (NOT an
+                # accepted collision). Permit an additional local, 25mm-max
+                # coherent patch for up to eight edges; every subsequent pass
+                # still must reach ZERO >1.5mm BVH crossings, and the original
+                # 95mm cloth budget remains unchanged.
                 if not (0 < centroid_hits <= 8 and 0 <= edge_hits <= 4
-                        or centroid_hits == 0 and 0 < edge_hits <= 4):
+                        or centroid_hits == 0 and 0 < edge_hits <= 8):
                     raise RuntimeError(
                         f"{obj.name} retains {centroid_hits} face and {edge_hits} edge "
                         f"body penetrations deeper than 1.5mm after {max_rounds} "
@@ -1220,7 +1366,7 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                         raise RuntimeError(
                             f"{obj.name}: physical contact {position} cannot "
                             "clear real body within the SOURCE-LOCKED 95mm "
-                            "cloth displacement budget; remodel the sleeve."
+                            "cloth displacement budget; remodel the affected garment panel."
                         )
                     return min(options,key=lambda item:(item[0],item[1],item[2]))[3]
                 proposals={}
@@ -1614,6 +1760,12 @@ def shape_sleeve_underarm_relief(sleeve, side, waist_guide_z):
             displacement=underarm_inboard_relief_m(
                 point.z,inside,waist_guide_z
             )
+            # The broad underarm gusset has almost no effect where real
+            # preflight measured a small post-thickness centreline intrusion.
+            # Stay inside the EXISTING 45mm cloth-only source shape cap.
+            displacement=min(0.045,displacement+underarm_centreline_contact_relief_m(
+                point.z,inside,waist_guide_z
+            ))
             if displacement<=0: continue
             vertex.co=inverse @ Vector(
                 (point.x+side*displacement,point.y,point.z)
@@ -1733,6 +1885,12 @@ def main():
             (-1,"ShirtSleeveLFabric"),(1,"ShirtSleeveRFabric")
         )
     }
+    fit_profile["trouserWaistSideSeamContinuity"] = restore_trouser_waist_side_seam(
+        authored["TrouserWaistFabric"],
+        guide_center_z("LE_GUIDE_TROUSER_WAIST"),
+        float(targets["trouserWaistWidth"])/2000.0,
+        center_x,
+    )
     fit_profile["shirtWaistSeamContinuity"] = restore_shirt_waist_side_seam(
         authored["ShirtTorsoFabric"],
         guide_center_z("LE_GUIDE_SHIRT_WAIST"),
@@ -1740,6 +1898,21 @@ def main():
         guide_center_z("LE_GUIDE_SHIRT_SHOULDER"),
         center_x,
     )
+    # Preflight observed waist clearance medians just outside measured fit
+    # envelopes: 29mm shirt vs 28mm max, 35.9mm trouser vs 32mm max.
+    # Move only garment mid-rings TOWARD observed skin, not landmarks.
+    fit_profile["waistEaseConvergence"]={
+        "ShirtTorsoFabric":tighten_waist_to_measured_body_ease(
+            authored["ShirtTorsoFabric"],body,
+            guide_center_z("LE_GUIDE_SHIRT_WAIST"),
+            desired_clearance_m=0.022,max_pull_m=0.008,
+        ),
+        "TrouserWaistFabric":tighten_waist_to_measured_body_ease(
+            authored["TrouserWaistFabric"],body,
+            guide_center_z("LE_GUIDE_TROUSER_WAIST"),
+            desired_clearance_m=0.026,max_pull_m=0.012,
+        ),
+    }
     collision_repairs = {}
     face_refinements = {}
     for name, obj in authored.items():

@@ -6,6 +6,25 @@ export type VariantMaterialAppearance={
   trouserId:string;
 };
 
+/** Never let a superseded fabric edit write after lazy material hydration. */
+export async function applyCurrentMaterialBatch<T, M>(options:{
+  entries:readonly T[];
+  isCurrent:()=>boolean;
+  yieldToBrowser:()=>Promise<void>;
+  load:(entry:T)=>Promise<M>;
+  apply:(material:M,entry:T)=>void;
+}):Promise<boolean> {
+  for(const entry of options.entries){
+    if(!options.isCurrent()) return false;
+    await options.yieldToBrowser();
+    if(!options.isCurrent()) return false;
+    const material=await options.load(entry);
+    if(!options.isCurrent()) return false;
+    options.apply(material,entry);
+  }
+  return options.isCurrent();
+}
+
 export function needsVariantMaterialRefresh(
   wasVisible:boolean,
   previous:VariantMaterialAppearance|null,
