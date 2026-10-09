@@ -164,19 +164,25 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          scene=".cache/linen-earth/linen-earth-officewear-authored.blend"
+          scene="artifacts/realistic-3d/mobile-lod-unapproved.blend"
+          # The immutable 903k source cannot provide a responsive preview on
+          # software EEVEE, and its strict mobile polygon gate is still red.
+          # Prefer the separately independent-BVH-checked disposable LOD for
+          # geometry-only evidence. Never mistake it for the release master.
+          if [ "${{ steps.mobile_independent_preflight.outcome }}" != "success" ] || [ ! -s "$scene" ]; then
+            scene=".cache/linen-earth/linen-earth-officewear-authored.blend"
+          fi
           if [ -s "$scene" ]; then
             mkdir -p artifacts/realistic-3d/review-unapproved
-            printf '%s\n' 'UNAPPROVED GEOMETRY DIAGNOSTIC ONLY. The scene failed independent physical preflight; images are not production or tailor acceptance evidence.' > artifacts/realistic-3d/review-unapproved/UNAPPROVED.txt
-            # Software EEVEE may take an hour on GitHub runners when the
-            # 903k-triangle scene already FAILED physical preflight. Do not
-            # let this optional unapproved visualization delay preserving the
-            # actual failure report and CI release rejection.
+            printf '%s\n' 'UNAPPROVED GEOMETRY DIAGNOSTIC ONLY. Scene: %s. Workbench colours are not calibrated linen texture/drape or photo-realism. These images are not production or tailor acceptance evidence.\n' "$scene" > artifacts/realistic-3d/review-unapproved/UNAPPROVED.txt
+            # A fast Workbench silhouette snapshot is useful even if final
+            # source physical preflight failed. Keep the unchanged strict
+            # native render / visual acceptance path completely separate.
             timeout --signal=TERM --kill-after=15s 4m \
               blender --background --python-exit-code 1 "$scene" \
               --python scripts/blender/render-linen-earth-officewear-review.py -- \
               --output-dir artifacts/realistic-3d/review-unapproved \
-              --resolution-x 448 --resolution-y 600 \
+              --resolution-x 448 --resolution-y 600 --diagnostic-workbench \
               2>&1 | tee artifacts/realistic-3d/review-unapproved.log
           else
             echo "No authored scene to visualize; production gates remain blocked."
