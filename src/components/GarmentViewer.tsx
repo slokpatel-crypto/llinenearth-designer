@@ -926,15 +926,25 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       const materials=[...model.materials];
       const materialsByName=new Map(materials.map((material)=>[material.name,material]));
       const previous=new Set(visibleGarmentMaterialsRef.current);
-      const appearance={textureRevision,roughness,shirtId,trouserId};
-      // An interrupted appearance update can leave a mixture of old/new
-      // materials. Invalidate before mutation so reverting also refreshes it.
-      if(needsVariantMaterialRefresh(true,lastVariantAppearanceRef.current,appearance)){
+      const garmentSurfaceRevision=(garment:"shirt"|"trouser")=>JSON.stringify(
+        panelSpecs.filter((panel)=>panel.garment===garment)
+          .map((panel)=>[panel.material,preparedTextureRef.current.get(panel.material)?.cacheKey])
+      );
+      const shirtSurfaceRevision=garmentSurfaceRevision("shirt");
+      const trouserSurfaceRevision=garmentSurfaceRevision("trouser");
+      const appearance={textureRevision,roughness,shirtId,trouserId,shirtSurfaceRevision,trouserSurfaceRevision};
+      // Keep the last FULLY committed appearance as the comparison for this
+      // one transaction, while invalidating shared state until every chosen
+      // garment material has finished. If interrupted, a new run must
+      // reapply ALL surfaces rather than retaining a half-switched look.
+      const previousAppearance=lastVariantAppearanceRef.current;
+      if(needsVariantMaterialRefresh(true,previousAppearance,appearance))
         lastVariantAppearanceRef.current=null;
-        // Generic fabric refresh writes collar/cuff textures too. Reapply
-        // contrast finishes even when only the trouser fabric changed.
-        appliedTrimKeyRef.current=null;
-      }
+      // Cuff/collar cloth must only refresh for shirt changes. Replacing a
+      // trouser swatch cannot force another 3D neck/cuff shader cycle.
+      if(!previousAppearance
+        ||previousAppearance.shirtSurfaceRevision!==shirtSurfaceRevision
+        ||previousAppearance.roughness!==roughness) appliedTrimKeyRef.current=null;
       if(isCurrent()) setTailoringPhase("enumerating-variants");
       const next=new Set<string>();
       for(const material of materials){
@@ -960,7 +970,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       // material loads for interactive edits; the cold first look gets three.
       // No skipped geometry, fake alpha, relaxed timer or forced DOM change.
       const selectedToHydrate=replacements.filter((name)=>
-        needsVariantMaterialRefresh(previous.has(name),lastVariantAppearanceRef.current,appearance)
+        needsVariantMaterialRefresh(previous.has(name),previousAppearance,appearance,
+          name.startsWith("Shirt")?"shirt":"trouser")
       );
       const replacementPrefetch=createBoundedMaterialPrefetch(
         selectedToHydrate,
@@ -987,7 +998,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       for(const name of replacements){
         // Style-only edits often retain most visible variants. Re-uploading the
         // same texture/normal for each retained variant stalls WebGL Chromium.
-        if(!needsVariantMaterialRefresh(previous.has(name),lastVariantAppearanceRef.current,appearance)) continue;
+        if(!needsVariantMaterialRefresh(previous.has(name),previousAppearance,appearance,
+          name.startsWith("Shirt")?"shirt":"trouser")) continue;
         // The 589-slot software GPU can delay even an 8ms event-loop yield by
         // seconds. Log the exact native operation without changing the 20s
         // customer-visible ready gate or spoofing browser material state.
@@ -1106,7 +1118,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       const trimKey=trimAppearanceKey({
         collar:collarKey,collarConstruction:collarConstructionKey,collarFinish:collarFinishKey,
         cuff:cuffKey,cuffConstruction:cuffConstructionKey,sleeve:styleState.sleeve,
-        shirtId,textureRevision,roughness,shirtDrape:shirt?.drape||"",
+        shirtId,textureRevision:shirtSurfaceRevision,roughness,shirtDrape:shirt?.drape||"",
       });
       if(appliedTrimKeyRef.current===trimKey) {
         if(isCurrent()) {setTailoringMaterialsReady(true);setTailoringPhase("ready");}
