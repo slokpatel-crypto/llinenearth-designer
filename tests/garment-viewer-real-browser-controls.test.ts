@@ -197,6 +197,14 @@ test("actual 3D model is compared to the original studio with equivalent full-sl
     "classify actual WebGL phase instead of silently extending timing limits");
   assert.ok(qa.includes('loadedMaterialCount:loaded.length'),
     "verify the actual GPU-loaded PBR count when the 3D scene is not ready");
+  for(const key of ["tailoringSelectedCount","tailoringLoadedOrdinal","tailoringLoadingMaterial","tailoringLastLoadedMaterial"]){
+    assert.ok(actualViewerComponent.includes("viewer.dataset."+key+"="),
+      "the production WebGL loader must expose real in-flight shader progress: "+key);
+  }
+  assert.ok(qa.includes('currentLoadingMaterial:viewer?.dataset?.tailoringLoadingMaterial'),
+    "browser failure evidence must name the exact expensive shader without a new fake-ready signal");
+  assert.ok(qa.includes('selectedMaterialApplied:Number(viewer?.dataset?.tailoringLoadedOrdinal'),
+    "browser failure evidence must retain how many real selected style materials were committed");
   assert.ok(qa.includes('identityVisualParity:shell?.getAttribute("data-identity-visual-parity")'),
     "the comparison must explicitly retain independent studio-image approval");
 });
