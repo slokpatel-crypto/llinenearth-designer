@@ -95,6 +95,25 @@ jobs:
             echo "No authored scene; mobile LOD diagnostic is unavailable."
           fi
 
+      - name: Render unapproved scene for geometry diagnosis
+        if: always() && (steps.assemble.outcome != 'success' || steps.preflight.outcome != 'success')
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          scene=".cache/linen-earth/linen-earth-officewear-authored.blend"
+          if [ -s "$scene" ]; then
+            mkdir -p artifacts/realistic-3d/review-unapproved
+            printf '%s\n' 'UNAPPROVED GEOMETRY DIAGNOSTIC ONLY. The scene failed independent physical preflight; images are not production or tailor acceptance evidence.' > artifacts/realistic-3d/review-unapproved/UNAPPROVED.txt
+            blender --background --python-exit-code 1 "$scene" \
+              --python scripts/blender/render-linen-earth-officewear-review.py -- \
+              --output-dir artifacts/realistic-3d/review-unapproved \
+              --resolution-x 448 --resolution-y 600 \
+              2>&1 | tee artifacts/realistic-3d/review-unapproved.log
+          else
+            echo "No authored scene to visualize; production gates remain blocked."
+          fi
+
       - name: Render four-angle fit review
         id: render
         if: always() && steps.assemble.outcome == 'success' && steps.preflight.outcome == 'success'

@@ -537,3 +537,25 @@ Architecture and product decisions that must persist across coding sessions.
 **Correctness:** preserve each base panel's current visibility during fabric uploads so old regular-fit shells cannot reappear beneath selected tailoring variants. Reapply contrast collar/cuff finishes after generic fabric refreshes, including trouser-only changes. Cancelled failures cannot clear newer interaction timing or display an obsolete error. Tests exercise genuinely overlapping old/new loads, cancellation during yielding and between panels, and hydration failure.
 
 **Verification boundary:** software gates do not certify physical drape or exact human identity. Latest upstream native preflight still reports 903,168 garment triangles against a 220,000 budget, two left-sleeve surface penetrations and 32.4 mm trouser-waist median clearance against a 32.0 mm limit. The low-poly diagnostic reaches the budget but fails body-contact sampling. Keep these production blockers intact; do not deploy the candidate based on software tests alone.
+
+## 2026-10-09 — Address independently sampled left-sleeve centreline and marginal trouser waist ease
+
+**Evidence:** native run 37877249911 on PR #287 reports two left-sleeve face/edge contact samples at (-244.3, 7.8, 1116.1)mm and (-236.7, 9.1, 1114.7)mm with unchanged >1.5mm collision rejection. A previous 8mm notch only affected the inboard (positive) half of the seam and missed signed-negative vertices. The same run finds 32.37mm median trouser waist clearance versus a strict 32mm maximum.
+
+**Code change:** feather the same capped 8mm SOURCE-cloth seam relief across 10mm of outboard sleeve centreline while preserving cuffs, locked body, the 45mm local source-shaping cap and independent BVH. For trousers only, widen the non-guide 50mm-to-60mm waist easing envelope; preserve exact +/-2mm guide, 12mm per-vertex take-in cap, observed skin BVH tests and all later source-distance and face/edge contact gates. The 60mm region is an *experimental candidate*, not fitted/tailor-certified cloth.
+
+**Release status:** 903,168 source garment triangles exceed the 220,000 mobile budget; 0.21 diagnostic LOD clears the polygon count but produces real skin penetrations. Browser CI on run 37877249901 failed a genuine 7.9s native shirt-wear select against the unchanged 6s gesture budget. Neither performance nor physical evidence may be waived. Keep this follow-on candidate in draft pending independent Blender, responsive browser, four-angle, physical textile and owner review.
+
+## 2026-10-09 — Native retest: 8mm notch and 26mm trouser target did not clear real body BVH
+
+**Evidence:** native run 37877912475 still reports two left-sleeve post-thickness BVH contacts and 32.37mm trouser waist median after a 60mm shaping band; model/guide identity stayed locked. The diagnostic mobile decimation reaches 189,656 triangles / 94,828 vertices within budget but independently FAILS actual body-surface sampling, and may never ship without native full-scene and owner review.
+
+**Follow-on candidate:** Increase ONLY the localized seam notch peak from 8mm to 12mm inside the unchanged 45mm source-shaping cap, and reduce trouser midring desired skin clearance from 26mm to 19mm (inside unchanged 12-32mm target contract), with the same 12mm cloth-only vertex movement, +/-2mm exact guide lock and real body BVH checks. Neither preflight nor performance acceptance thresholds change; this is testable experimental construction, not production approval.
+
+## 2026-10-09 — Triangulate actual left-sleeve cloth before measured body fitting; retain rejected four-angle diagnostic images
+
+**Native evidence:** run 37878440877 improves measured trouser waist median to 31.93mm, under unchanged strict <=32mm fit ceiling; two left sleeve penetration samples remain at (-244.3, 7.8, 1116.1)mm and (-236.7, 9.1, 1114.7)mm after the 12mm shaping notch. Original garment still totals 903,168 triangles / 451,584 vertices; the 189,656-triangle experimental mobile LOD still fails independently sampled actual body contacts. The production preflight is RED.
+
+**Physical construction:** original face-collision solver checked non-planar quad centres while independent Blender preflight checks rendered triangle centres. Triangulate only the left sleeve's existing quads before measured BVH repair; preserve original cloth vertices, locked body/guide, <=95mm original source budget, <=45mm source shaping, <=80k per-panel face guard and >1.5mm collision rejection. Reject rather than disguise any residual. Output evaluated triangle IDs, vertex IDs and actual penetration depths for diagnosis.
+
+**Visibility while blocked:** allow a separated `review-unapproved` four-angle render ONLY when actual authored .blend exists and official preflight fails, with explicit UNAPPROVED evidence labeling; independent approved render, lab export, owner/tailor evidence and production gating stay unchanged.

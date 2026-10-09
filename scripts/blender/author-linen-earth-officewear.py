@@ -697,7 +697,8 @@ def enclose_post_identity_torso_profile(
             "maxAllowedRadiusGrowthMm":70.0}
 
 def tighten_waist_to_measured_body_ease(obj, body, waist_guide_z, *,
-                                      desired_clearance_m, max_pull_m):
+                                      desired_clearance_m, max_pull_m,
+                                      waist_band_m=0.050):
     """Make the actual shirt/trouser waist less baggy, preserving locked guides.
 
     Native preflight still owns the approval decision. Each proposed panel
@@ -713,7 +714,7 @@ def tighten_waist_to_measured_body_ease(obj, body, waist_guide_z, *,
     max_applied=0.0
     for vertex in obj.data.vertices:
         point=matrix @ vertex.co
-        if abs(point.z-waist_guide_z)>=0.050 or abs(point.z-waist_guide_z)<=0.002:
+        if abs(point.z-waist_guide_z)>=waist_band_m or abs(point.z-waist_guide_z)<=0.002:
             continue
         if point_inside_closed_bvh(tree,point):
             continue
@@ -723,7 +724,8 @@ def tighten_waist_to_measured_body_ease(obj, body, waist_guide_z, *,
         surface=nearest[0]
         distance=(point-surface).length
         proposed=waist_panel_ease_pull_m(
-            distance,point.z-waist_guide_z,desired_clearance_m,max_pull_m
+            distance,point.z-waist_guide_z,desired_clearance_m,max_pull_m,
+            waist_band_m=waist_band_m,
         )
         if proposed<=0 or distance<1e-6:
             continue
@@ -739,6 +741,7 @@ def tighten_waist_to_measured_body_ease(obj, body, waist_guide_z, *,
         "maxClothOnlyPullMm":round(max_applied*1000,2),
         "targetClearanceMm":round(desired_clearance_m*1000,2),
         "guideProtectedBandMm":2.0,
+        "waistBandMm":round(waist_band_m*1000,1),
         "requiresIndependentBodyFaceBVH":True,
     }
     print("Linen Earth measured waist ease fit: "+obj.name+" "+
@@ -1056,6 +1059,30 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
         terminal_poked=False
         try:
             bm.from_mesh(obj.data)
+            # Physical preflight samples RENDERED triangles, not quad medians.
+            # Earlier sleeve fitting could miss a triangle that penetrated
+            # real skin while its non-planar parent quad centre remained safe.
+            # Triangulate the measured LEFT sleeve BEFORE BVH correction,
+            # preserving ALL original cloth vertices and identity landmarks.
+            triangulated_for_preflight=False
+            if iteration==0 and obj.name=="ShirtSleeveLFabric":
+                quads=[face for face in bm.faces if len(face.verts)==4]
+                if len(bm.faces)+len(quads)>80000:
+                    raise RuntimeError(
+                        f"{obj.name}: real triangle fitting exceeds 80000 physical faces."
+                    )
+                if quads:
+                    bmesh.ops.triangulate(
+                        bm,faces=quads,
+                        quad_method="BEAUTY",ngon_method="BEAUTY",
+                    )
+                    bm.normal_update()
+                    triangulated_for_preflight=True
+                    print(
+                        f"Linen Earth triangle-true sleeve fitting: {obj.name} "
+                        f"sourceTriangles={len(bm.faces)} originalVertices={len(bm.verts)}",
+                        flush=True,
+                    )
             if len(bm.faces)>80000:
                 raise RuntimeError(f"{obj.name}: unsafe cloth mesh complexity in body-fit refinement.")
             # BMesh edge subdivision can leave a huge 80+ vertex ngon. Its
@@ -1142,7 +1169,7 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                 # synthetic ngon. Persist exactly the validated triangulated
                 # topology before returning, so Blender export and independent
                 # BVH preflight assess the same garment surface.
-                if giant_faces:
+                if giant_faces or triangulated_for_preflight:
                     bm.to_mesh(obj.data)
                     obj.data.update(calc_edges=True)
                 return {
@@ -1910,7 +1937,8 @@ def main():
         "TrouserWaistFabric":tighten_waist_to_measured_body_ease(
             authored["TrouserWaistFabric"],body,
             guide_center_z("LE_GUIDE_TROUSER_WAIST"),
-            desired_clearance_m=0.026,max_pull_m=0.012,
+            desired_clearance_m=0.019,max_pull_m=0.012,
+            waist_band_m=0.060,
         ),
     }
     collision_repairs = {}

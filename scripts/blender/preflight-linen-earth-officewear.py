@@ -269,6 +269,20 @@ def signed_clearance_stats_mm(source, target, z_center=None, band=0.06, max_samp
             [(p.x,p.y,p.z) for p in face_vertices],
             sampled_faces, deep_body_surface, max_hits=32
         )
+        def native_surface_contact_record(hit):
+            # Link failures to the ACTUAL evaluated triangle and depth, not
+            # just the sampled face ordinal, so source cloth can be repaired.
+            world=Vector(hit["point"])
+            nearest=target_tree.find_nearest(world)
+            return {
+                "face":hit["face"],
+                "evaluatedTriangleIndex":indices[hit["face"]],
+                "triangleVertexIndices":list(sampled_faces[hit["face"]]),
+                "location":hit["location"],
+                "xyzMm":[round(v*1000,1) for v in hit["point"]],
+                "depthMm":round((world-nearest[0]).length*1000,2)
+                    if nearest is not None and nearest[0] is not None else None,
+            }
         distances.sort()
         penetration.sort()
         p05 = distances[min(len(distances) - 1, int(round((len(distances) - 1) * 0.05)))]
@@ -284,9 +298,7 @@ def signed_clearance_stats_mm(source, target, z_center=None, band=0.06, max_samp
             "deepSurfacePenetrationSamples": len(surface_hits),
             "deepSurfaceSamplesCapped": len(surface_hits) >= 32,
             "deepSurfaceLocations": [
-                {"face":hit["face"],"location":hit["location"],
-                 "xyzMm":[round(v*1000,1) for v in hit["point"]]}
-                for hit in surface_hits[:8]
+                native_surface_contact_record(hit) for hit in surface_hits[:8]
             ],
         }
     finally:

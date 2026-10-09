@@ -531,14 +531,14 @@ def underarm_inboard_relief_m(z, signed_inboard_m, waist_guide_z, *,
 
 def underarm_centreline_contact_relief_m(
     z, signed_inboard_m, waist_guide_z, *,
-    band_half_height_m=0.033, max_relief_m=0.008,
+    band_half_height_m=0.033, max_relief_m=0.012,
 ):
     """Bounded source-panel correction for REAL post-solidify sleeve contact.
 
     Native Blender scene preflight detected two 1.5mm+ collisions of the LEFT
-    sleeve around x=-244mm/z=1.116m, on the inner seam almost exactly at the
+    sleeve around x=-244mm/z=1.116m, on both sides of the seam centre at the
     fitted sleeve centre. The broad inboard gusset is intentionally nearly
-    zero on its centreline. Add a tiny, smooth 8mm maximum outward notch to
+    zero on its centreline. Add a tiny, smooth 12mm maximum outward notch to
     that seam only; preserve the outer sleeve, cuff and identity guides.
     All faces still require independent real-body BVH preflight.
     """
@@ -547,13 +547,18 @@ def underarm_centreline_contact_relief_m(
            or not math.isfinite(value) for value in dimensions):
         raise ValueError("Measured sleeve centreline relief needs finite metre values.")
     if not (0.015<=band_half_height_m<=0.045 and
-            0.0<=max_relief_m<=0.008):
-        raise ValueError("Sleeve centreline seam cannot exceed bounded 8mm relief.")
+            0.0<=max_relief_m<=0.012):
+        raise ValueError("Sleeve centreline seam cannot exceed bounded 12mm relief.")
     # Contact measured at 1.116m, 2mm ABOVE the locked 1.114m shirt waist.
     vertical=abs(z-(waist_guide_z+0.002))/band_half_height_m
-    if vertical>=1 or signed_inboard_m<=0 or signed_inboard_m>=0.028:
+    if vertical>=1 or signed_inboard_m<=-0.010 or signed_inboard_m>=0.028:
         return 0.0
-    entry=min(1.0,signed_inboard_m/0.005)
+    # Native sampled crossings straddle the sleeve centreline (x=-244.3
+    # and -236.7mm). The old strictly-positive window missed the outer
+    # half of that same physical seam. Feather a 10mm OUTBOARD extension,
+    # with full 12mm relief only within 4mm of centre; never move the cuff
+    # or the photographed outer sleeve silhouette.
+    entry=min(1.0,(signed_inboard_m+0.010)/0.006)
     exit=min(1.0,(0.028-signed_inboard_m)/0.010)
     across=max(0.0,min(entry,exit))
     smooth=across*across*(3-2*across)
@@ -688,7 +693,7 @@ def waist_panel_ease_pull_m(
     Native Blender preflight measured 29.0mm shirt and 35.9mm trouser median
     body clearance against strict 28/32mm ceilings. This returns a smooth
     radial inward move of actual non-guide cloth vertices only: it stops at
-    a generous >=12mm target, fades to zero at +/-50mm, and never shifts the
+    a generous >=12mm target, fades to zero at the bounded 50-60mm band, and never shifts the
     photographed +/-2mm exact waist guide. Callers MUST check body BVH and
     re-run independent face/edge preflight; this is NOT fit approval.
     """

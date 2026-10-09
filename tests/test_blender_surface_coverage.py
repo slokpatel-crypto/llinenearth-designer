@@ -147,14 +147,25 @@ class MeasuredPostThicknessSleeveSeamTests(unittest.TestCase):
         # two sleeve points penetrate by more than 1.5mm.
         self.assertAlmostEqual(
             underarm_centreline_contact_relief_m(1.11623,.006,waist),
-            .008,
+            .012,
         )
         self.assertGreater(
             underarm_centreline_contact_relief_m(1.10807,.006,waist),
             .005,
         )
+        # Real final BVH contacts at -244.3 and -236.7mm straddle the
+        # centre of the left sleeve. Preserve a bounded outboard notch.
+        self.assertAlmostEqual(
+            underarm_centreline_contact_relief_m(1.11623,0,waist),.012,
+        )
+        self.assertAlmostEqual(
+            underarm_centreline_contact_relief_m(1.11623,-.004,waist),.012,
+        )
+        self.assertGreater(
+            underarm_centreline_contact_relief_m(1.11623,-.007,waist),0,
+        )
         self.assertEqual(
-            underarm_centreline_contact_relief_m(1.11623,0,waist),0,
+            underarm_centreline_contact_relief_m(1.11623,-.010,waist),0,
         )
         self.assertEqual(
             underarm_centreline_contact_relief_m(1.11623,-.015,waist),0,
@@ -178,7 +189,7 @@ class MeasuredPostThicknessSleeveSeamTests(unittest.TestCase):
                 underarm_centreline_contact_relief_m(1.116,bad,1.114)
         with self.assertRaises(ValueError):
             underarm_centreline_contact_relief_m(
-                1.116,.006,1.114,max_relief_m=.012
+                1.116,.006,1.114,max_relief_m=.014
             )
 
 
@@ -199,6 +210,17 @@ class MeasuredWaistEaseConvergenceTests(unittest.TestCase):
         self.assertLess(
             waist_panel_ease_pull_m(.050,.045,.022,.008),.008
         )
+        # New measured 32.37mm trouser median is 0.37mm outside the
+        # unchanged strict 32mm production limit. Broaden ONLY the
+        # cloth's non-guide hip transition to 60mm for native retest.
+        self.assertGreater(
+            waist_panel_ease_pull_m(.036,.050,.026,.012,waist_band_m=.060),0
+        )
+        self.assertEqual(
+            waist_panel_ease_pull_m(.036,.060,.026,.012,waist_band_m=.060),0
+        )
+        with self.assertRaises(ValueError):
+            waist_panel_ease_pull_m(.036,.050,.026,.012,waist_band_m=.075)
 
     def test_no_fake_tailor_evidence_or_body_bvh_exemption(self):
         source=(Path(__file__).resolve().parents[1]/"scripts"/"blender"/
@@ -208,6 +230,8 @@ class MeasuredWaistEaseConvergenceTests(unittest.TestCase):
         self.assertIn("point_inside_closed_bvh(tree,candidate)",body)
         self.assertIn("waist_panel_ease_pull_m(",body)
         self.assertIn("fit_profile[\"waistEaseConvergence\"]",source)
+        self.assertIn("waist_band_m=0.060",source)
+        self.assertIn("waist_band_m=waist_band_m",source)
         self.assertIn("repair_between_vertex_collisions(",source)
         for bad in [float("nan"),float("inf"),True,-.005]:
             with self.assertRaises(ValueError):
