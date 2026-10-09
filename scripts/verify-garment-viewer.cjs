@@ -339,6 +339,22 @@ async function verifyViewport(browser, width) {
     throw new Error(`camera transition did not settle for ${label} after 3 UI attempts: ${JSON.stringify(state)}; ${lastError?.message||"unknown error"}`);
   };
 
+  // M7.46 originally captured a pale floating head, legless side view and
+  // disjoint cloth tubes because the initial panel set was hidden BEFORE the
+  // new variants were loaded. Camera screenshots must show a SETTLED design,
+  // not an intermediate shader-hydration frame. Fail closed, never forge
+  // alpha values or hide visual evidence that takes too long to become ready.
+  await page.waitForFunction(()=>{
+    const shell=document.querySelector(".garmentViewerShell");
+    const materials=document.querySelector("model-viewer")?.model?.materials||[];
+    const visible=(prefix)=>materials.some((material)=>
+      material.name.startsWith(prefix)&&
+      material.name.includes("Variant__")&&
+      material.pbrMetallicRoughness?.baseColorFactor?.[3]>.95);
+    return shell?.getAttribute("data-tailoring-ready")==="true"
+      && visible("Shirt")&&visible("Trouser");
+  },null,{timeout:20000});
+
   await captureCanvas("garment-angle-front.png");
   await selectCamera("3/4","35deg","three-quarter");
   await captureCanvas("garment-angle-three-quarter.png");

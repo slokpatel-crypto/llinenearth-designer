@@ -372,6 +372,10 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const appliedModelRef=useRef<ModelViewerElement["model"]>(undefined);
   const visibleSkinArmMaterialRef=useRef<string|null>(null);
   const [textureRevision,setTextureRevision]=useState(0);
+  // Customer-visible outfit must stay complete during lazy 586-material GPU
+  // hydration. Mark the settled state only AFTER every new physical-panel
+  // variant, visible buttons, collar band and cuff have been committed.
+  const [tailoringMaterialsReady,setTailoringMaterialsReady]=useState(false);
   const [modelUrl,setModelUrl]=useState("");
   const [engineReady,setEngineReady]=useState(false);
   const [modelReady,setModelReady]=useState(false);
@@ -827,9 +831,16 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   },[modelReady,modelRevision,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract,modelSrc,assetIdentityKey]);
 
   useEffect(()=>{
-    if(!modelReady) return;
+    if(!modelReady) {
+      setTailoringMaterialsReady(false);
+      return;
+    }
     const viewer=viewerRef.current;
-    if(!viewer?.model) return;
+    if(!viewer?.model) {
+      setTailoringMaterialsReady(false);
+      return;
+    }
+    setTailoringMaterialsReady(false);
     const model=viewer.model;
     let cancelled=false;
     const isCurrent=()=>!cancelled && viewer.model===model;
@@ -860,15 +871,11 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       for(const material of materials){
         if(isGarmentVariantMaterial(material.name)&&variantMaterialVisible(material.name,styleState)) next.add(material.name);
       }
-      for(const name of previous){
-        if(next.has(name)) continue;
-        await yieldForInput();
-        if(!isCurrent()) return;
-        const material=await ensureViewerMaterialLoaded(materialsByName.get(name));
-        if(!isCurrent()) return;
-        setMaterialAlpha(material,false);
-        visibleGarmentMaterialsRef.current.delete(name);
-      }
+      // REPLACEMENT FIRST: never hide the previous outfit before its next
+      // shirt, sleeves and two trouser legs are loaded. Earlier code hid all
+      // old panels, then awaited GPU hydration of the new variants; real
+      // Chromium screenshots showed a floating shirt/legless mannequin.
+      // Keep the previous garment visible until every new material is ready.
       for(const name of next){
         // Style-only edits often retain most visible variants. Re-uploading the
         // same texture/normal for each retained variant stalls WebGL Chromium.
@@ -891,6 +898,18 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           material.pbrMetallicRoughness.baseColorTexture?.setTexture(prepared.texture);
           if(prepared.normal) material.normalTexture?.setTexture(prepared.normal);
         }
+      }
+      // New garment material variants are now visible (or were already
+      // visible). Only now hide the superseded geometry. Cancellation keeps
+      // both old and newly revealed panels tracked for the next transaction.
+      for(const name of previous){
+        if(next.has(name)) continue;
+        await yieldForInput();
+        if(!isCurrent()) return;
+        const material=await ensureViewerMaterialLoaded(materialsByName.get(name));
+        if(!isCurrent()) return;
+        setMaterialAlpha(material,false);
+        visibleGarmentMaterialsRef.current.delete(name);
       }
       visibleGarmentMaterialsRef.current=next;
       lastVariantAppearanceRef.current=appearance;
@@ -949,7 +968,10 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         cuff:cuffKey,cuffConstruction:cuffConstructionKey,sleeve:styleState.sleeve,
         shirtId,textureRevision,roughness,shirtDrape:shirt?.drape||"",
       });
-      if(appliedTrimKeyRef.current===trimKey) return;
+      if(appliedTrimKeyRef.current===trimKey) {
+        if(isCurrent()) setTailoringMaterialsReady(true);
+        return;
+      }
       appliedTrimKeyRef.current=null;
 
       const shirtBase=clamp(roughness+fabricDrapeSurface(shirt).roughnessOffset,.55,.98);
@@ -992,6 +1014,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         }
       }
       appliedTrimKeyRef.current=trimKey;
+      if(isCurrent()) setTailoringMaterialsReady(true);
     };
     // The React <select> value must commit and paint BEFORE cold WebGL shader
     // updates begin. Without a bounded input-first interval, Chromium may
@@ -999,7 +1022,12 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     // work for 12+ seconds. Cancel obsolete appearance work on each edit.
     const inputSettleTimer=window.setTimeout(()=>{
       if(!isCurrent()) return;
-      void apply().catch(()=>{if(isCurrent())setError("A tailoring variant could not be prepared. Try another option.");});
+      void apply().catch(()=>{
+        if(isCurrent()){
+          setTailoringMaterialsReady(false);
+          setError("A tailoring variant could not be prepared. Try another option.");
+        }
+      });
     },tailoringInputSettleMs(viewer.model?.materials.length||0));
     return ()=>{cancelled=true;window.clearTimeout(inputSettleTimer);};
   },[modelReady,modelRevision,styleState,buttonKey,textureRevision,roughness,shirt,trouser,collarKey,collarFinishKey,collarConstructionKey,cuffKey,cuffConstructionKey]);
@@ -1081,7 +1109,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     className:"garmentModelViewer",
   }) : null;
 
-  return <section className="garmentViewerShell" data-model-readiness={modelContract?.readiness || "loading"} data-manifest-ready={productionManifestReady} data-active-view={activeView} data-collar-finish={collarFinishKey}>
+  return <section className="garmentViewerShell" data-model-readiness={modelContract?.readiness || "loading"} data-manifest-ready={productionManifestReady} data-tailoring-ready={tailoringMaterialsReady?"true":"false"} data-active-view={activeView} data-collar-finish={collarFinishKey}>
     <div className="garmentViewerStage">
       <div className="garmentViewerStageHead">
         <span>GARMENTVIEWER · DEEP ENGINE</span>
