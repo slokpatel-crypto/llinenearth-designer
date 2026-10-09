@@ -105,7 +105,8 @@ def physical_body_probe(body_bvh, points, faces):
         return count%2==1
 
     vertex_stride=max(1,len(points)//600)
-    vertex_hits=sum(1 for p in points[::vertex_stride][:600] if penetrating(p))
+    deep_vertices=[p for p in points[::vertex_stride][:600] if penetrating(p)]
+    vertex_hits=len(deep_vertices)
     # Use EXACT rendered triangles, not the unsplit original quad face.
     # This matches independent preflight's ceil-stride 600-triangle sweep.
     face_stride=max(1,math.ceil(len(faces)/600))
@@ -117,6 +118,10 @@ def physical_body_probe(body_bvh, points, faces):
         "sampledVertexCount":len(points[::vertex_stride][:600]),
         "sampledFaceCount":len(sampled_faces),
         "deepVertexHits":vertex_hits,
+        "sampleDeepVertexPositionsMm":[
+            [round(value*1000,2) for value in point]
+            for point in deep_vertices[:24]
+        ],
         "deepFaceOrEdgeHits":len(surfaces),
         "contactTriangles":[
             {"vertices":list(sampled_faces[hit["face"]]),
@@ -281,6 +286,90 @@ def fit_candidate_mobile_contacts(copy, body_bvh, guides, *,
     }
 
 
+
+def measured_skin_contact_anchors(probe):
+    """Use actual failed low-poly skin contacts, never invented body coordinates."""
+    points=[Vector(item["point"]) for item in probe["contactTriangles"]]
+    points.extend(Vector(tuple(v/1000 for v in point))
+                  for point in probe["sampleDeepVertexPositionsMm"])
+    return points
+
+
+def skin_protection_weight(distance_m):
+    """Smoothly retain real source cloth geometry around measured LOD collisions."""
+    if not math.isfinite(distance_m) or distance_m<0:
+        raise ValueError("Contact distance must be finite and nonnegative.")
+    if distance_m<=0.055:
+        return 1.0
+    if distance_m>=0.115:
+        return 0.0
+    linear=(0.115-distance_m)/0.060
+    return linear*linear*(3-2*linear)
+
+
+def adaptive_skin_guard_trial(original, body_bvh, baseline_probe, ratio, name, temporary_objects):
+    """Fresh, disposable decimation protecting SOURCE cloth near real BVH hits.
+
+    The first unweighted LOD can shortcut a curved sleeve or thigh and slice
+    through skin by >30mm. A 12mm post-collapse vertex nudge cannot safely
+    undo that. Preserve the original cloth's curvature *during* edge collapse
+    instead; never touch the mannequin or production garment, and only accept
+    an independently re-probed diagnostic improvement.
+    """
+    baseline_hits=baseline_probe["deepFaceOrEdgeHits"]+baseline_probe["deepVertexHits"]
+    if baseline_hits==0:
+        return None, {"attempted":False,"reason":"Unweighted LOD has no sampled skin contacts."}
+    anchors=measured_skin_contact_anchors(baseline_probe)
+    if not anchors:
+        return None, {"attempted":False,"reason":"No measured BVH contact coordinates."}
+    trial=original.copy()
+    trial.data=original.data.copy()
+    bpy.context.scene.collection.objects.link(trial)
+    trial.name="LE_UNAPPROVED_SKIN_GUARDED__"+name
+    temporary_objects.append(trial)
+    group=trial.vertex_groups.new(name="LE_DiagnosticSkinGuard")
+    protected=0
+    world=trial.matrix_world
+    for vertex in trial.data.vertices:
+        point=world @ vertex.co
+        weight=skin_protection_weight(min((point-anchor).length for anchor in anchors))
+        if weight>=0.03:
+            group.add([vertex.index],weight,"REPLACE")
+            protected+=1
+    if protected==0:
+        return None, {"attempted":True,"protectedVertices":0,
+                      "reason":"No authored source cloth lies near measured contacts."}
+    modifier=trial.modifiers.new("LE_SKIN_AWARE_DIAGNOSTIC_LOD","DECIMATE")
+    modifier.decimate_type="COLLAPSE"
+    modifier.ratio=ratio
+    modifier.use_collapse_triangulate=True
+    modifier.vertex_group=group.name
+    # Invert group so low-risk regions collapse first. This is a 4.2-supported
+    # vertex-group influence, not a hidden exemption from BVH or budget gates.
+    modifier.invert_vertex_group=True
+    modifier.vertex_group_factor=40.0
+    bpy.ops.object.select_all(action="DESELECT")
+    trial.select_set(True)
+    bpy.context.view_layer.objects.active=trial
+    bpy.ops.object.modifier_apply(modifier=modifier.name)
+    if not trial.data.uv_layers:
+        raise RuntimeError("Skin-guarded candidate lost source fabric grain UV.")
+    points,_,triangles=world_geometry(trial)
+    probe=physical_body_probe(body_bvh,points,triangles)
+    trial_hits=probe["deepFaceOrEdgeHits"]+probe["deepVertexHits"]
+    return trial, {
+        "attempted":True,
+        "sourceMeasuredContactAnchors":len(anchors),
+        "protectedSourceVertices":protected,
+        "sourceVertexCount":len(original.data.vertices),
+        "unweightedDeepContacts":baseline_hits,
+        "guardedDeepContacts":trial_hits,
+        "guardedTriangles":len(triangles),
+        "improved":trial_hits<baseline_hits,
+        "keptForFurtherProbe":trial_hits<baseline_hits,
+    }
+
+
 def main():
     cfg=args()
     output=Path(cfg.output).expanduser().resolve()
@@ -325,6 +414,15 @@ def main():
             bpy.ops.object.modifier_apply(modifier=modifier.name)
             if not copy.data.uv_layers or not original.data.uv_layers:
                 raise RuntimeError("Mobile cloth candidate must retain actual source fabric UV grain.")
+            initial_points,_,initial_triangles=world_geometry(copy)
+            baseline_probe=physical_body_probe(tree,initial_points,initial_triangles)
+            trial,skin_guard=adaptive_skin_guard_trial(
+                original,tree,baseline_probe,cfg.ratio,name,temporary_objects,
+            )
+            if trial is not None and skin_guard["keptForFurtherProbe"]:
+                # A contact improvement alone does NOT certify skin clearance,
+                # construction-guide fidelity, actual UV scale or mobile budget.
+                copy=trial
             repair=fit_candidate_mobile_contacts(copy,tree,guides[name])
             points,faces,tris=world_geometry(copy)
             target_tris+=len(tris)
@@ -345,6 +443,12 @@ def main():
                 "lockedSectionMaxBoundaryShiftMm":max(deltas,default=0),
                 "protectedSectionSampleShiftsMm":deltas,
                 "measuredRealBody":intersections,
+                "unweightedBeforeRepair":{
+                    "triangles":len(initial_triangles),
+                    "deepVertexHits":baseline_probe["deepVertexHits"],
+                    "deepFaceOrEdgeHits":baseline_probe["deepFaceOrEdgeHits"],
+                },
+                "sourceSkinAwareCollapse":skin_guard,
                 "boundedContactRepair":repair,
                 "sampledSkinPass":repair["succeeded"] and
                                   intersections["deepVertexHits"]==0 and
@@ -374,7 +478,7 @@ def main():
         "eligibleForProduction":False,
         "realBodyUnmodified":True,
         "lockedIdentityId":EXPECTED_ID,
-        "decimateMethod":"Blender 4.2 COLLAPSE + capped 12mm real-body cloth contact fitting - temporary diagnostic copies only",
+        "decimateMethod":"Blender 4.2 COLLAPSE + optional measured-contact source-vertex skin guards + capped 12mm real-body cloth fitting; diagnostic copies only",
         "ratio":cfg.ratio,
         "sourceTriangles":source_tris,
         "candidateTriangles":target_tris,
