@@ -60,7 +60,9 @@ test("dense WebGL tailoring changes never hide the existing dressed mannequin be
     actualViewerComponent.indexOf('const yieldForInput=createCooperativeMaterialBatch('),
     actualViewerComponent.indexOf('function applyShirtTypePreset(')
   );
-  const reveal=effect.indexOf('for(const name of next){');
+  const reveal=effect.indexOf('for(const name of replacements){');
+  assert.ok(effect.includes('garmentSurfaceVisibilityPriority(a)-garmentSurfaceVisibilityPriority(b)'),
+    'hydrate the six structural shirt/trouser surfaces before minor cosmetic trim');
   const hide=effect.indexOf('for(const name of previous){');
   assert.ok(reveal>=0&&hide>reveal,"hydrate replacement garment before hiding old clothing");
   assert.ok(effect.includes('visibleGarmentMaterialsRef.current.delete(name)'));
