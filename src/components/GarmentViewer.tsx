@@ -1217,7 +1217,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     "camera-controls":true,
     "touch-action":"pan-y",
     "camera-orbit":cameraViews[0].orbit,
-    "camera-target":"0m 0.86m 0m",
+    "camera-target":"0m 0.78m 0m",
     "field-of-view":"30deg",
     "min-field-of-view":"25deg",
     "max-field-of-view":"40deg",
