@@ -1220,6 +1220,43 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     setTrouserPocketKey(preset.pocket);
   }
 
+  function applyOriginalStudioOutfit(){
+    // Same look, not the same 3D body: the authentic two-dimensional reference
+    // shows a fitted, tucked, full-sleeve charcoal shirt and warm brown,
+    // straight office trousers. Use real in-stock catalogue swatches only.
+    // This does NOT replace the user's saved Designer recipe in localStorage.
+    beginFabricInteraction();
+    setShirtId(preferredFabricId(shirtFabrics,[
+      "linen-plain-60-stresa","linen-plain-60-boulder-gray","linen-plain-60-jute-black"
+    ]));
+    setTrouserId(preferredFabricId(trouserFabrics,[
+      "linen-suiting-turkish-rose","linen-suiting-charcoal-oak-wood","linen-suiting-perfect-taupe"
+    ]));
+    setShirtTypeKey("dress_shirt");
+    setShirtFitKey("regular");
+    setShirtWearKey("tucked");
+    setSleeveKey("full");
+    setCollarKey("point");
+    setCollarFinishKey("self");
+    setCollarConstructionKey("stiff_fused");
+    setCuffKey("barrel_1");
+    setCuffConstructionKey("fused");
+    setPlacketKey("standard");
+    setPocketKey("none");
+    setYokeKey("split");
+    setShirtBackKey("plain");
+    setShirtHemKey("rounded");
+    setTrouserTypeKey("formal_flat_front");
+    setTrouserFitKey("straight");
+    setRiseKey("mid");
+    setPleatKey("flat");
+    setWaistbandKey("belt_loops");
+    setBreakKey("slight");
+    setTrouserHemKey("plain");
+    setTrouserPocketKey("slant");
+    setCamera(cameraViews[0]);
+  }
+
   function beginFabricInteraction(){
     interactionStartedAt.current=performance.now();
   }
@@ -1268,6 +1305,9 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           <strong>Original Real Model Designer model</strong>
           <p>THIS is the appearance to match. The 3D viewer below currently uses a separate MakeHuman-derived body and procedural garments. Matching its measurements does not establish the same visual identity. Front, 3/4, side and back still require independent visual approval.</p>
           <span>3D SOURCE · UNAPPROVED VISUAL MATCH</span>
+          <button className="garmentViewerMatchStudio" type="button" onClick={applyOriginalStudioOutfit}>
+            View original studio outfit styling
+          </button>
         </div>
       </div>
       <div className="garmentViewerCanvas">
