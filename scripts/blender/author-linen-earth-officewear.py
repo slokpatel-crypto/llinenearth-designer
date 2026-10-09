@@ -1913,7 +1913,7 @@ def main():
         "TrouserWaistFabric":tighten_waist_to_measured_body_ease(
             authored["TrouserWaistFabric"],body,
             guide_center_z("LE_GUIDE_TROUSER_WAIST"),
-            desired_clearance_m=0.026,max_pull_m=0.012,
+            desired_clearance_m=0.019,max_pull_m=0.012,
             waist_band_m=0.060,
         ),
     }
