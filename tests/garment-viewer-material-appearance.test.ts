@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {applyCurrentMaterialBatch,createCooperativeMaterialBatch,createInFlightMaterialLoader,needsVariantMaterialRefresh,needsButtonMaterialRefresh,trimAppearanceKey,tailoringInputSettleMs} from "../src/lib/garment-viewer-material-appearance.ts";
+import {readFileSync} from "node:fs";
+import {applyCurrentMaterialBatch,createCooperativeMaterialBatch,createInFlightMaterialLoader,createBoundedMaterialPrefetch,needsVariantMaterialRefresh,needsButtonMaterialRefresh,garmentSurfaceVisibilityPriority,trimAppearanceKey,tailoringInputSettleMs} from "../src/lib/garment-viewer-material-appearance.ts";
 
 test("a superseded fabric cannot overwrite the new fabric after lazy hydration",async()=>{
   let current=1;
@@ -84,6 +85,41 @@ test("fabric, normal texture revision or finish changes still refresh",()=>{
   assert.equal(needsVariantMaterialRefresh(true,base,{...base,roughness:.78}),true);
 });
 
+test("shirt-only swatches cannot rebind unrelated trouser/waist/leg PBR",()=>{
+  const previous={...base,shirtSurfaceRevision:"shirt-uv-A",trouserSurfaceRevision:"trouser-uv-A"};
+  const shirtChange={...previous,textureRevision:4,shirtId:"linen-white",shirtSurfaceRevision:"shirt-uv-B"};
+  assert.equal(needsVariantMaterialRefresh(true,previous,shirtChange,"shirt"),true);
+  assert.equal(needsVariantMaterialRefresh(true,previous,shirtChange,"trouser"),false);
+  const trouserChange={...previous,textureRevision:4,trouserId:"linen-black",trouserSurfaceRevision:"trouser-uv-B"};
+  assert.equal(needsVariantMaterialRefresh(true,previous,trouserChange,"shirt"),false);
+  assert.equal(needsVariantMaterialRefresh(true,previous,trouserChange,"trouser"),true);
+  // Physical scale/UV or atlas revision changes the corresponding garment,
+  // even if the fabric SKU and uploaded photo are unchanged.
+  assert.equal(needsVariantMaterialRefresh(true,previous,
+    {...previous,shirtSurfaceRevision:"shirt-new-physical-repeat"},"shirt"),true);
+  assert.equal(needsVariantMaterialRefresh(true,previous,
+    {...previous,trouserSurfaceRevision:"trouser-new-physical-repeat"},"trouser"),true);
+  assert.equal(needsVariantMaterialRefresh(true,previous,{...previous,roughness:.81},"trouser"),true);
+  assert.equal(needsVariantMaterialRefresh(true,previous,{...previous,roughness:.81},"shirt"),true);
+  assert.equal(needsVariantMaterialRefresh(true,null,shirtChange,"trouser"),true,
+    "never reuse a partly committed interrupted wardrobe state");
+  assert.equal(needsVariantMaterialRefresh(false,previous,shirtChange,"trouser"),true,
+    "newly revealed material must really be loaded");
+});
+
+test("live shader scheduler compares committed appearance and exact panel cache per garment",()=>{
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  for(const token of [
+    'const previousAppearance=lastVariantAppearanceRef.current',
+    'const shirtSurfaceRevision=garmentSurfaceRevision("shirt")',
+    'const trouserSurfaceRevision=garmentSurfaceRevision("trouser")',
+    'previousAppearance.shirtSurfaceRevision!==shirtSurfaceRevision',
+    'name.startsWith("Shirt")?"shirt":"trouser"',
+    'textureRevision:shirtSurfaceRevision',
+    'lastVariantAppearanceRef.current=appearance',
+  ]) assert.ok(viewer.includes(token),token);
+});
+
 test("button materials only refresh when newly visible or material selection changes",()=>{
   assert.equal(needsButtonMaterialRefresh(true,"metal","metal"),false);
   assert.equal(needsButtonMaterialRefresh(false,"metal","metal"),true);
@@ -162,4 +198,159 @@ test("dense production GLB defers shaders until native tailoring inputs settle",
   assert.ok(tailoringInputSettleMs(586)<1000,"style changes remain sub-second scheduled");
   for(const invalid of [-1,3.7,NaN,5001])
     assert.throws(()=>tailoringInputSettleMs(invalid));
+});
+
+test("real 3D garment silhouette materials hydrate before cosmetic details",()=>{
+  const names=[
+    "ShirtPlacketVariant__standard",
+    "TrouserLegRBreakVariant__wide__negative",
+    "ShirtTorsoTuckedBackVariant__boxy__high__center_box_pleat",
+    "ShirtSleeveLLength__boxy__half",
+    "TrouserWaistPleatVariant__high__double_forward",
+    "ShirtCollarVariant__mandarin__soft_unfused",
+    "ShirtSleeveRVariant__regular",
+    "TrouserLegLVariant__wide",
+  ];
+  names.sort((a,b)=>garmentSurfaceVisibilityPriority(a)-garmentSurfaceVisibilityPriority(b));
+  assert.deepEqual(names.slice(0,6),[
+    "ShirtTorsoTuckedBackVariant__boxy__high__center_box_pleat",
+    "ShirtSleeveLLength__boxy__half",
+    "ShirtSleeveRVariant__regular",
+    "TrouserWaistPleatVariant__high__double_forward",
+    "TrouserLegLVariant__wide",
+    "TrouserLegRBreakVariant__wide__negative",
+  ]);
+  assert.ok(names.indexOf("ShirtCollarVariant__mandarin__soft_unfused")>=6);
+  assert.ok(names.indexOf("ShirtPlacketVariant__standard")>=6);
+});
+
+
+test("default straight trousers, waist and regular sleeves are core visible cloth, not trim",()=>{
+  const panels=[
+    "ShirtTorsoFabric",
+    "ShirtSleeveLFabric",
+    "ShirtSleeveRFabric",
+    "TrouserWaistFabric",
+    "TrouserLegLFabric",
+    "TrouserLegRFabric",
+  ];
+  panels.forEach((name,index)=>assert.equal(garmentSurfaceVisibilityPriority(name),index,name));
+  const shuffled=[
+    "ShirtCollarVariant__point__stiff_fused",
+    "ShirtPlacketVariant__standard",
+    ...panels.slice().reverse(),
+    "TrouserPocketVariant__mid__slanted",
+    "ShirtTorsoTuckedVariant__regular__mid",
+  ];
+  shuffled.sort((a,b)=>garmentSurfaceVisibilityPriority(a)-garmentSurfaceVisibilityPriority(b));
+  assert.ok(shuffled.slice(0,7).every(name=>garmentSurfaceVisibilityPriority(name)<6));
+  assert.ok(shuffled.slice(7).every(name=>garmentSurfaceVisibilityPriority(name)>=6));
+  assert.equal(shuffled[0],"ShirtTorsoFabric");
+});
+
+test("real garment shader prefetch starts only two panels and retains selected silhouette order",async()=>{
+  const started:string[]=[];
+  const release=new Map<string,()=>void>();
+  const queue=createBoundedMaterialPrefetch(
+    ["ShirtTorso","ShirtSleeveL","ShirtSleeveR","TrouserWaist","TrouserLegL","TrouserLegR"],
+    (panel)=>new Promise<string>((resolve)=>{
+      started.push(panel);
+      release.set(panel,()=>resolve(panel));
+    }),2,
+  );
+  await Promise.resolve();
+  assert.deepEqual(started,["ShirtTorso","ShirtSleeveL"]);
+  release.get("ShirtSleeveL")!();
+  await Promise.resolve();
+  assert.equal(started.length,2,"third GPU compile waits until the first panel is actually consumed");
+  release.get("ShirtTorso")!();
+  assert.equal(await queue.take("ShirtTorso"),"ShirtTorso");
+  await Promise.resolve();
+  assert.deepEqual(started.slice(0,3),["ShirtTorso","ShirtSleeveL","ShirtSleeveR"]);
+  assert.equal(await queue.take("ShirtSleeveL"),"ShirtSleeveL");
+  await Promise.resolve();
+  assert.deepEqual(started.slice(0,4),["ShirtTorso","ShirtSleeveL","ShirtSleeveR","TrouserWaist"]);
+  release.get("ShirtSleeveR")!();
+  assert.equal(await queue.take("ShirtSleeveR"),"ShirtSleeveR");
+  await Promise.resolve();
+  release.get("TrouserWaist")!();
+  assert.equal(await queue.take("TrouserWaist"),"TrouserWaist");
+  await Promise.resolve();
+  release.get("TrouserLegL")!();
+  assert.equal(await queue.take("TrouserLegL"),"TrouserLegL");
+  await Promise.resolve();
+  release.get("TrouserLegR")!();
+  assert.equal(await queue.take("TrouserLegR"),"TrouserLegR");
+  assert.equal(started.length,6,"no selected garment may be skipped");
+});
+
+test("cold studio look can concurrently prewarm cosmetics ONLY behind six structural garment panels",async()=>{
+  const garment=[
+    "ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric",
+    "TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric",
+    "ShirtCollarVariant__point__stiff_fused","ShirtPlacketVariant__standard",
+  ];
+  const starts:string[]=[];
+  const release=new Map<string,()=>void>();
+  const q=createBoundedMaterialPrefetch(garment,name=>new Promise<string>(resolve=>{
+    starts.push(name);release.set(name,()=>resolve(name));
+  }),3);
+  await Promise.resolve();
+  assert.deepEqual(starts,garment.slice(0,3),"initial GPU warmup uses only 3 real cloth materials");
+  release.get(garment[0])!();
+  assert.equal(await q.take(garment[0]),garment[0]);
+  await Promise.resolve();
+  assert.deepEqual(starts,garment.slice(0,4),"next structural garment prefetches before trim");
+  for(let i=1;i<garment.length;i++){
+    if(!release.has(garment[i])) await Promise.resolve();
+    release.get(garment[i])!();
+    assert.equal(await q.take(garment[i]),garment[i]);
+  }
+  assert.deepEqual(starts,garment,"no collar or style option omitted from first-look hydration");
+});
+
+
+test("interactive 3D style changes prefetch actual selected cloth AND trim without skipping old-style retirement",async()=>{
+  const viewer=readFileSync(new URL("../src/components/GarmentViewer.tsx",import.meta.url),"utf8");
+  assert.ok(viewer.includes('const selectedToHydrate=replacements.filter((name)=>'),
+    "interactive style reset needs to prefetch its actual 3D accent variants too");
+  assert.ok(viewer.includes('const replacementPrefetch=createBoundedMaterialPrefetch('));
+  assert.ok(viewer.includes('coldFirstLook?3:2'));
+  assert.ok(viewer.includes('const material=await replacementPrefetch.take(name);'));
+  assert.ok(viewer.includes('for(const name of previous){'));
+  assert.ok(viewer.includes('setMaterialAlpha(existing,false);'));
+  assert.ok(viewer.includes('if(isCurrent()) {setTailoringMaterialsReady(true);setTailoringPhase("ready");}'));
+  assert.ok(!viewer.includes('const coreToHydrate=replacements.filter('),
+    "do not accidentally revert to serial cosmetic shader loads");
+  const list=[
+    "ShirtTorsoTuckedVariant__regular__mid",
+    "ShirtSleeveLFabric",
+    "TrouserWaistFabric",
+    "ShirtCollarVariant__point__stiff_fused",
+    "ShirtPlacketVariant__standard",
+  ];
+  const started:string[]=[];
+  const queue=createBoundedMaterialPrefetch(list,async(key)=>{
+    started.push(key);
+    return key;
+  },2);
+  for(const name of list) assert.equal(await queue.take(name),name);
+  assert.deepEqual(started,list,"complete real outfit (including styling) must hydrate");
+});
+
+test("prefetch failure is observed and propagated when core material is applied",async()=>{
+  const queue=createBoundedMaterialPrefetch(
+    ["shirt","trouser"],async(panel)=>{
+      if(panel==="shirt") throw new Error("real WebGL material failed");
+      return panel;
+    },2,
+  );
+  await assert.rejects(queue.take("shirt"),/real WebGL material failed/);
+  assert.equal(await queue.take("trouser"),"trouser");
+});
+
+test("bounded core GPU hydration rejects duplicate panels and unsafe capacity",()=>{
+  for(const capacity of [0,5,NaN,1.2])
+    assert.throws(()=>createBoundedMaterialPrefetch([],async(v)=>v,capacity));
+  assert.throws(()=>createBoundedMaterialPrefetch(["shirt","shirt"],async(v)=>v));
 });

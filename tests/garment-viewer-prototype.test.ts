@@ -179,8 +179,11 @@ test("real garment tailoring controls remain schedulable during WebGL hydration"
   assert(viewer.includes("createCooperativeMaterialBatch"),"live 3D viewer must actually wire the cooperative material scheduler");
   assert(viewer.includes("window.setTimeout(resolve,8)"),"shader material work must yield real input time between GPU mutations");
   assert(viewer.includes("await yieldForInput()"),"long material loops must release control to customer input");
-  assert(viewer.includes("window.setTimeout(resolve,8)),1"),
-    "large model must yield a macrotask before each shader mutation rather than after four blocking operations");
-  assert(viewer.includes("Allow the real native form-control action to settle before any"),
-    "customer control state should settle before expensive WebGL material work");
+  assert(viewer.includes("coldFirstLook?64:1"),
+    "only the initial untouched 3D load may batch cosmetic shaders; native edits must yield after EACH material");
+  assert(viewer.includes("interactionStartedAt.current===null") &&
+    viewer.includes("lastVariantAppearanceRef.current===null"),
+    "never batch active customer selections like a cold initial render");
+  assert(viewer.includes("Once a look has fully hydrated or a user interacted"),
+    "customer controls must regain strict one-material-per-turn scheduling");
 });

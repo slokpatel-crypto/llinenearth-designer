@@ -38,6 +38,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Test actual UV, footwear and diagnostic release contracts without Blender
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_uv_*.py' -v
+          python3 -m unittest discover -s tests -p 'test_footwear_fit_geometry.py' -v
+          python3 -m unittest discover -s tests -p 'test_mobile_lod_probe_contract.py' -v
+
       - name: Install Blender 4.2 LTS
         shell: bash
         run: |
@@ -90,10 +98,57 @@ jobs:
             blender --background --python-exit-code 1 "$scene" \
               --python scripts/blender/probe-mobile-lod.py -- \
               --output artifacts/realistic-3d/mobile-lod-diagnostic.json \
+              --diagnostic-scene artifacts/realistic-3d/mobile-lod-unapproved.blend \
               2>&1 | tee artifacts/realistic-3d/mobile-lod-diagnostic.log
           else
             echo "No authored scene; mobile LOD diagnostic is unavailable."
           fi
+
+      # This step must never be an export/promotion gate: independently probe
+      # ALL post-Decimate mesh boundaries against the locked real body, even
+      # when the separate six-panel 205k-triangle diagnostic itself passed.
+      - name: Independently preflight mobile LOD (UNAPPROVED evidence only)
+        id: mobile_independent_preflight
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          scene="artifacts/realistic-3d/mobile-lod-unapproved.blend"
+          if [ ! -s "$scene" ]; then
+            echo "No independently testable mobile diagnostic scene. No LOD approval."
+            exit 0
+          fi
+          blender --background --python-exit-code 1 "$scene" \
+            --python scripts/blender/preflight-linen-earth-officewear.py -- \
+            --json-output artifacts/realistic-3d/mobile-lod-independent-preflight.json \
+            2>&1 | tee artifacts/realistic-3d/mobile-lod-independent-preflight.log
+
+      - name: Export mobile LOD GLB for LAB ONLY after independent BVH preflight
+        id: mobile_lab_export
+        if: always() && steps.mobile_independent_preflight.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          scene="artifacts/realistic-3d/mobile-lod-unapproved.blend"
+          report="artifacts/realistic-3d/mobile-lod-independent-preflight.json"
+          test -s "$scene"
+          test -s "$report"
+          python3 - "$report" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],encoding="utf-8"))
+          totals=data.get("totals") or {}
+          assert data.get("ready") is True, "Independent full real-body Blender preflight is not green"
+          assert (totals.get("triangles") or 10**9)<=220000, "Mobile triangle budget exceeded"
+          assert (totals.get("vertices") or 10**9)<=280000, "Mobile vertex budget exceeded"
+          PY
+          blender --background --python-exit-code 1 "$scene" \
+            --python scripts/blender/export-linen-earth-officewear.py -- \
+            --lab-preview --output artifacts/realistic-3d/mobile-lod-LAB-UNAPPROVED.glb \
+            2>&1 | tee artifacts/realistic-3d/mobile-lod-lab-export.log
+          test -s artifacts/realistic-3d/mobile-lod-LAB-UNAPPROVED.glb
+          echo "LAB-only diagnostic GLB exported, NOT approved for customer/production."
 
       - name: Upload early independent 3D blocking evidence
         if: always() && (steps.assemble.outcome != 'success' || steps.preflight.outcome != 'success')
@@ -106,6 +161,8 @@ jobs:
             artifacts/realistic-3d/preflight.json
             artifacts/realistic-3d/mobile-lod-diagnostic.json
             artifacts/realistic-3d/mobile-lod-diagnostic.log
+            artifacts/realistic-3d/mobile-lod-independent-preflight.json
+            artifacts/realistic-3d/mobile-lod-independent-preflight.log
           if-no-files-found: warn
           retention-days: 14
 
@@ -115,23 +172,54 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          scene=".cache/linen-earth/linen-earth-officewear-authored.blend"
+          scene="artifacts/realistic-3d/mobile-lod-unapproved.blend"
+          # The immutable 903k source cannot provide a responsive preview on
+          # software EEVEE, and its strict mobile polygon gate is still red.
+          # Prefer the separately independent-BVH-checked disposable LOD for
+          # geometry-only evidence. Never mistake it for the release master.
+          if [ "${{ steps.mobile_independent_preflight.outcome }}" != "success" ] || [ ! -s "$scene" ]; then
+            scene=".cache/linen-earth/linen-earth-officewear-authored.blend"
+          fi
           if [ -s "$scene" ]; then
             mkdir -p artifacts/realistic-3d/review-unapproved
-            printf '%s\n' 'UNAPPROVED GEOMETRY DIAGNOSTIC ONLY. The scene failed independent physical preflight; images are not production or tailor acceptance evidence.' > artifacts/realistic-3d/review-unapproved/UNAPPROVED.txt
-            # Software EEVEE may take an hour on GitHub runners when the
-            # 903k-triangle scene already FAILED physical preflight. Do not
-            # let this optional unapproved visualization delay preserving the
-            # actual failure report and CI release rejection.
+            printf '%s\n' 'UNAPPROVED GEOMETRY DIAGNOSTIC ONLY. Scene: %s. Workbench colours are not calibrated linen texture/drape or photo-realism. These images are not production or tailor acceptance evidence.\n' "$scene" > artifacts/realistic-3d/review-unapproved/UNAPPROVED.txt
+            # EGL software WebGL/EEVEE/Workbench timed out even on independent
+            # low-poly evidence. Project ALL evaluated REAL mesh triangles on
+            # CPU to four depth-ordered SVGs; no display context or GPU needed.
+            # Explicitly NOT a photoreal, cloth shader, studio or tailor gate.
             timeout --signal=TERM --kill-after=15s 4m \
               blender --background --python-exit-code 1 "$scene" \
-              --python scripts/blender/render-linen-earth-officewear-review.py -- \
+              --python scripts/blender/diagnose-unapproved-cpu-silhouettes.py -- \
               --output-dir artifacts/realistic-3d/review-unapproved \
-              --resolution-x 448 --resolution-y 600 \
+              --resolution-x 448 --resolution-y 600 --unapproved \
               2>&1 | tee artifacts/realistic-3d/review-unapproved.log
           else
             echo "No authored scene to visualize; production gates remain blocked."
           fi
+
+      - name: Optional CPU-shaded four-angle real mobile model (UNAPPROVED)
+        if: always() && steps.mobile_independent_preflight.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          scene="artifacts/realistic-3d/mobile-lod-unapproved.blend"
+          test -s "$scene"
+          mkdir -p artifacts/realistic-3d/shaded-lod-UNAPPROVED
+          # Software EGL hung even for Workbench. CPU Cycles is independent
+          # of a GL screen; use a disposable low-poly GLB source and bounded
+          # 3-sample shading for actual real-mesh visual evidence. This
+          # is NOT final studio image parity, cloth-drape or fabric approval.
+          timeout --signal=TERM --kill-after=15s 8m \
+            blender --background --python-exit-code 1 "$scene" \
+            --python scripts/blender/render-linen-earth-officewear-review.py -- \
+            --output-dir artifacts/realistic-3d/shaded-lod-UNAPPROVED \
+            --resolution-x 320 --resolution-y 480 --diagnostic-cycles-cpu \
+            2>&1 | tee artifacts/realistic-3d/shaded-lod-UNAPPROVED.log
+          for view in front three-quarter side back; do
+            test -s "artifacts/realistic-3d/shaded-lod-UNAPPROVED/$view.png"
+          done
+          test -s artifacts/realistic-3d/shaded-lod-UNAPPROVED/UNAPPROVED-CPU-SHADED-REVIEW.txt
 
       - name: Render four-angle fit review
         id: render
@@ -174,6 +262,15 @@ jobs:
           test -f .cache/linen-earth/linen-earth-officewear-authored.blend
           npm run garment:model-production:measurement-worksheet
           test -s artifacts/realistic-3d/panel-measurement-worksheet.json
+
+      - name: Prepare full-stock physical repeat, colour and drape measurement worksheet
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --experimental-strip-types scripts/generate-textile-measurement-worksheet.mjs
+          test -s artifacts/realistic-3d/textile-measurement-worksheet.csv
 
       - name: Copy candidate scene and provenance
         if: always()

@@ -24,6 +24,7 @@ from mathutils.bvhtree import BVHTree
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
 from fabric_arc_uv import frame_at_height, ellipse_arc_uv
+from fabric_cap_uv import terminal_cap_uses_flat_uv, fabric_planar_uv
 from surface_coverage import penetrating_surface_samples, sampled_mesh_face_indices, waist_panel_ease_pull_m, underarm_centreline_contact_relief_m, preserve_trouser_leg_outer_seam_with_inseam_gap, trouser_waist_side_seam_limit_m, precision_safe_source_radius, bounded_source_cloth_shift, underarm_inboard_relief_m, body_aware_sleeve_ring, waist_to_chest_taper_radius, needs_tailoring_face_triangulation, terminal_face_patch_allowed, belongs_to_locked_shirt_trunk, reproject_vertex_to_fitted_ring, rounded_tailoring_ring_xy, adaptive_surface_cut_rounds, anatomically_enclose_intermediate_rings, nested_tucked_hem_ring, outward_ring_quad, subdivide_ring_profiles
 
 BODY_NAME = "Body"
@@ -1929,10 +1930,13 @@ def planar_grain_uv(obj):
     mesh=obj.data
     uv_layer=mesh.uv_layers.active if mesh.uv_layers else mesh.uv_layers.new(name="UVMap")
     xs=[vertex.co.x for vertex in mesh.vertices]
+    ys=[vertex.co.y for vertex in mesh.vertices]
     zs=[vertex.co.z for vertex in mesh.vertices]
     min_x,max_x=min(xs),max(xs)
+    min_y,max_y=min(ys),max(ys)
     min_z,max_z=min(zs),max(zs)
     span_x=max(max_x-min_x,1e-6)
+    span_y=max(max_y-min_y,1e-6)
     span_z=max(max_z-min_z,1e-6)
     raw=obj.get("linen_earth_source_ring_uv") if obj.name.startswith(
         ("ShirtSleeve","TrouserLeg")
@@ -1958,13 +1962,24 @@ def planar_grain_uv(obj):
                 uv_layer.data[index].uv=(u,v)
         obj["linen_earth_uv_source"]="construction-ring-arc-geometry-estimate"
         return
+    remapped_terminal_caps=0
     for polygon in mesh.polygons:
-        for loop_index in polygon.loop_indices:
+        # Horizontal neckline/endcap geometry has positive physical XY area
+        # but zero x/z UV area when all heights are equal. Add a separate
+        # projected x/y chart ONLY on terminal cap polygons. Do not change
+        # the upright cloth, identity landmarks, or physical repeat claims.
+        loops=tuple(polygon.loop_indices)
+        points=[tuple(mesh.vertices[mesh.loops[i].vertex_index].co) for i in loops]
+        cap=terminal_cap_uses_flat_uv(points,tuple(polygon.normal),min_z,max_z)
+        if cap: remapped_terminal_caps+=1
+        for loop_index in loops:
             vertex=mesh.vertices[mesh.loops[loop_index].vertex_index]
-            u=(vertex.co.x-min_x)/span_x
-            v=(vertex.co.z-min_z)/span_z
-            uv_layer.data[loop_index].uv=(u,v)
-    obj["linen_earth_uv_source"]="planar-xz-geometry-estimate"
+            uv_layer.data[loop_index].uv=fabric_planar_uv(
+                tuple(vertex.co),(min_x,min_y,min_z),(span_x,span_y,span_z),
+                use_horizontal_cap=cap,
+            )
+    obj["linen_earth_uv_cap_faces"]=remapped_terminal_caps
+    obj["linen_earth_uv_source"]="planar-xz-geometry-estimate-with-xy-terminal-cap-charts"
 
 
 def main():
