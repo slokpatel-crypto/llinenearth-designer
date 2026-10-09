@@ -66,6 +66,14 @@ test("cold-start garment tailoring cannot hydrate white default shaders before r
   assert.ok(textureDone>=0&&variantGate>textureDone,"do not mark complete before six physically textured panels were applied");
 });
 
+test("deferred six-panel linen normals remain ready on inactive base shells without hydrating all variants",()=>{
+  assert.ok(actualViewerComponent.includes('const basePanel=panelSpecs.some((item)=>item.material===material.name)'));
+  assert.ok(actualViewerComponent.includes('!basePanel && !visibleGarmentMaterialsRef.current.has(material.name)'));
+  assert.ok(qa.includes('data-fabric-phase")==="weave-ready"'));
+  assert.ok(qa.includes('garment-weave-failure.json'));
+  assert.ok(qa.includes("timeout:12000"),"physical weave must remain a bounded independent secondary QA gate");
+});
+
 test("fabric colour reaches all six real panels before optional costly weave shader textures",()=>{
   const begin=actualViewerComponent.indexOf('setFabricHydrationPhase("creating-color-tiles")');
   const applied=actualViewerComponent.indexOf('setPreparedFabricVersion(requestedFabricVersion)',begin);
