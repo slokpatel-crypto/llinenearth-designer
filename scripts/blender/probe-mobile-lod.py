@@ -106,7 +106,9 @@ def physical_body_probe(body_bvh, points, faces):
 
     vertex_stride=max(1,len(points)//600)
     vertex_hits=sum(1 for p in points[::vertex_stride][:600] if penetrating(p))
-    face_stride=max(1,len(faces)//600)
+    # Use EXACT rendered triangles, not the unsplit original quad face.
+    # This matches independent preflight's ceil-stride 600-triangle sweep.
+    face_stride=max(1,math.ceil(len(faces)/600))
     sampled_faces=faces[::face_stride][:600]
     surfaces=penetrating_surface_samples(
         points,sampled_faces,penetrating,max_hits=32,
@@ -116,10 +118,128 @@ def physical_body_probe(body_bvh, points, faces):
         "sampledFaceCount":len(sampled_faces),
         "deepVertexHits":vertex_hits,
         "deepFaceOrEdgeHits":len(surfaces),
+        "contactTriangles":[
+            {"vertices":list(sampled_faces[hit["face"]]),
+             "point":list(hit["point"]),"location":hit["location"]}
+            for hit in surfaces
+        ],
         "sampleContactPositionsMm":[
             {"location":hit["location"],"xyz":[round(v*1000,2) for v in hit["point"]]}
             for hit in surfaces[:8]
         ],
+    }
+
+
+
+def candidate_point_inside_locked_body(body_bvh, point):
+    """Independent parity check on the SAME immutable real body BVH."""
+    direction=Vector((1.0,.371,.117)).normalized()
+    origin=Vector(point)+direction*.00001
+    count=0
+    for _ in range(64):
+        hit=body_bvh.ray_cast(origin,direction)
+        if hit[0] is None or hit[3] is None:
+            break
+        count+=1
+        origin=hit[0]+direction*.00001
+    return count%2==1
+
+
+def fit_candidate_mobile_contacts(copy, body_bvh, guides, *,
+                                  max_shift_m=0.012, max_passes=6):
+    """Diagnostic-only bounded cloth-vertex repairs on the disposable LOD.
+
+    A naive collapse can create 1..8 cloth/skin triangle crossings while all
+    original high-resolution triangles were exterior. Move only the collapsed
+    garment's existing vertices, NEVER Body, original panels, UV data or
+    locked tailoring-guide vertices. Every local edit is independently checked
+    against the real body; zero deep contacts + guide widths are necessary
+    but NOT sufficient for production. Return RED if not physically repaired.
+    """
+    if not (0<max_shift_m<=0.012 and isinstance(max_passes,int)
+            and not isinstance(max_passes,bool) and 1<=max_passes<=6):
+        raise RuntimeError("Mobile cloth repair must stay inside strict 12mm/6-pass bounds.")
+    matrix=copy.matrix_world
+    inverse=matrix.inverted()
+    mesh=copy.data
+    original_points=[matrix @ vertex.co for vertex in mesh.vertices]
+    original_topology=(len(mesh.vertices),len(mesh.polygons))
+    history=[]
+    for iteration in range(max_passes+1):
+        points,faces,tris=world_geometry(copy)
+        contact=physical_body_probe(body_bvh,points,tris)
+        report={
+            "pass":iteration,"sampledTriangles":contact["sampledFaceCount"],
+            "deepFaceOrEdgeHits":contact["deepFaceOrEdgeHits"],
+            "deepVertexHits":contact["deepVertexHits"],
+        }
+        history.append(report)
+        if contact["deepFaceOrEdgeHits"]==0 and contact["deepVertexHits"]==0:
+            return {
+                "succeeded":True,"passes":iteration,
+                "maxLocalVertexShiftMm":round(max(
+                    ((matrix @ v.co)-original_points[i]).length*1000
+                    for i,v in enumerate(mesh.vertices)
+                ),2),
+                "sourceGeometryUntouched":True,"history":history,
+            }
+        if iteration>=max_passes:
+            break
+        proposals={}
+        for contact_triangle in contact["contactTriangles"]:
+            point=Vector(contact_triangle["point"])
+            nearest=body_bvh.find_nearest(point)
+            if nearest is None or nearest[0] is None or nearest[1] is None:
+                break
+            surface,normal=nearest[0],nearest[1].normalized()
+            candidates=[]
+            for direction in (normal,-normal):
+                destination=surface+direction*.003
+                delta=destination-point
+                if (delta.length<=max_shift_m and
+                        not candidate_point_inside_locked_body(body_bvh,destination)):
+                    candidates.append((delta.length,delta))
+            if not candidates:
+                continue
+            shift=min(candidates,key=lambda row:row[0])[1]
+            for index in contact_triangle["vertices"]:
+                if index>=len(mesh.vertices):
+                    raise RuntimeError("Decimated face used nonexistent source vertex.")
+                proposals.setdefault(index,[]).append(shift)
+        if not proposals:
+            history[-1]["reason"]="No safe measured exterior patch fits 12mm."
+            break
+        changed=0
+        for index,shifts in proposals.items():
+            vertex=mesh.vertices[index]
+            current=matrix @ vertex.co
+            if any(abs(current.z-z)<.002 for z in guides):
+                continue
+            weights=[max(shift.length,.001)**2 for shift in shifts]
+            correction=sum((delta*w for delta,w in zip(shifts,weights)),
+                           Vector((0,0,0)))/sum(weights)
+            candidate=current+correction
+            # Preserve a HARD source-space distance cap even after 6 passes.
+            total=candidate-original_points[index]
+            if total.length>max_shift_m:
+                candidate=original_points[index]+total.normalized()*max_shift_m
+            if (candidate-current).length<1e-8:
+                continue
+            vertex.co=inverse @ candidate
+            changed+=1
+        mesh.update(calc_edges=True)
+        if (len(mesh.vertices),len(mesh.polygons))!=original_topology:
+            raise RuntimeError("Temporary mobile repair changed collapsed mesh topology.")
+        history[-1]["locallyMovedClothVertices"]=changed
+        if not changed:
+            break
+    return {
+        "succeeded":False,"passes":len(history)-1,
+        "maxLocalVertexShiftMm":round(max(
+            ((matrix @ v.co)-original_points[i]).length*1000
+            for i,v in enumerate(mesh.vertices)
+        ),2),
+        "sourceGeometryUntouched":True,"history":history,
     }
 
 
@@ -149,6 +269,7 @@ def main():
             if original is None or original.type!="MESH":
                 raise RuntimeError("Missing authored real cloth panel "+name)
             before=(len(original.data.vertices),len(original.data.polygons))
+            before_points=[tuple(vertex.co) for vertex in original.data.vertices]
             source_points,_,source_triangles=world_geometry(original)
             source_tris+=len(source_triangles)
             copy=original.copy()
@@ -164,6 +285,9 @@ def main():
             copy.select_set(True)
             bpy.context.view_layer.objects.active=copy
             bpy.ops.object.modifier_apply(modifier=modifier.name)
+            if not copy.data.uv_layers or not original.data.uv_layers:
+                raise RuntimeError("Mobile cloth candidate must retain actual source fabric UV grain.")
+            repair=fit_candidate_mobile_contacts(copy,tree,guides[name])
             points,faces,tris=world_geometry(copy)
             target_tris+=len(tris)
             target_verts+=len(points)
@@ -175,7 +299,7 @@ def main():
                     raise RuntimeError("LOD lost exact tailoring identity plane for "+name)
                 delta_mm=max(abs(candidate_span[i]-original_span[i]) for i in (0,1))*1000
                 deltas.append(round(delta_mm,3))
-            intersections=physical_body_probe(tree,points,faces)
+            intersections=physical_body_probe(tree,points,tris)
             probe_results[name]={
                 "sourceTriangles":len(source_triangles),
                 "candidateTriangles":len(tris),
@@ -183,10 +307,13 @@ def main():
                 "lockedSectionMaxBoundaryShiftMm":max(deltas,default=0),
                 "protectedSectionSampleShiftsMm":deltas,
                 "measuredRealBody":intersections,
-                "sampledSkinPass":intersections["deepVertexHits"]==0 and
+                "boundedContactRepair":repair,
+                "sampledSkinPass":repair["succeeded"] and
+                                  intersections["deepVertexHits"]==0 and
                                   intersections["deepFaceOrEdgeHits"]==0,
                 "sourceMeshUnchanged":before==(
-                    len(original.data.vertices),len(original.data.polygons)),
+                    len(original.data.vertices),len(original.data.polygons)) and
+                    before_points==[tuple(vertex.co) for vertex in original.data.vertices],
             }
             print("Linen Earth mobile LOD PROBE "+name+" "+
                   json.dumps(probe_results[name],sort_keys=True),flush=True)
@@ -209,7 +336,7 @@ def main():
         "eligibleForProduction":False,
         "realBodyUnmodified":True,
         "lockedIdentityId":EXPECTED_ID,
-        "decimateMethod":"Blender 4.2 COLLAPSE - experimental copies only",
+        "decimateMethod":"Blender 4.2 COLLAPSE + capped 12mm real-body cloth contact fitting - temporary diagnostic copies only",
         "ratio":cfg.ratio,
         "sourceTriangles":source_tris,
         "candidateTriangles":target_tris,

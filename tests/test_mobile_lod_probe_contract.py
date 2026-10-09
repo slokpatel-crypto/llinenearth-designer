@@ -38,6 +38,18 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
             '"mobileVertexBudget":280000',
             'delta_mm=max(',
             '"sampledBVHPass"',
+            'def fit_candidate_mobile_contacts(',
+            'max_shift_m=0.012, max_passes=6',
+            'physical_body_probe(body_bvh,points,tris)',
+            'contact["deepFaceOrEdgeHits"]==0 and contact["deepVertexHits"]==0',
+            'candidate_point_inside_locked_body(body_bvh,destination)',
+            'if total.length>max_shift_m:',
+            'if any(abs(current.z-z)<.002 for z in guides)',
+            'before_points==[tuple(vertex.co) for vertex in original.data.vertices]',
+            'if not copy.data.uv_layers or not original.data.uv_layers:',
+            '"boundedContactRepair":repair',
+            '"sampledSkinPass":repair["succeeded"]',
+
             '"lockedSectionPass"',
             '"polygonBudgetPass"',
         ):

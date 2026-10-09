@@ -65,7 +65,8 @@ test("dense WebGL tailoring changes never hide the existing dressed mannequin be
   assert.ok(reveal>=0&&hide>reveal,"hydrate replacement garment before hiding old clothing");
   assert.ok(effect.includes('visibleGarmentMaterialsRef.current.delete(name)'));
   assert.ok(effect.includes('visibleGarmentMaterialsRef.current.add(name)'));
-  assert.ok(effect.includes('if(isCurrent()) setTailoringMaterialsReady(true)'));
+  assert.ok(effect.includes('if(isCurrent()) {setTailoringMaterialsReady(true);setTailoringPhase("ready");}'),
+    "only physically finished shader work can mark the outfit visually ready");
   assert.ok(effect.includes('setTailoringMaterialsReady(false)'));
   assert.ok(actualViewerComponent.includes('data-tailoring-ready={tailoringMaterialsReady?"true":"false"}'));
 });
