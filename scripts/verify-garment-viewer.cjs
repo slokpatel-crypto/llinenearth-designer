@@ -390,6 +390,14 @@ async function verifyViewport(browser, width) {
     }).catch(e=>({diagnosticError:String(e)}));
     await fs.writeFile(path.join(output,"garment-initial-style-failure.json"),
       JSON.stringify({diagnostic,error:String(error)},null,2)+"\n");
+    // Preserve *actual* GPU-rendered viewport even when the unfinished
+    // candidate fails visual-readiness. This is explicitly rejected visual
+    // evidence, never an approved garment image or promotion substitute.
+    await captureCanvas("garment-current-exact-front-UNAPPROVED.png")
+      .catch(async(captureError)=>{
+        await fs.writeFile(path.join(output,"garment-current-render-capture-error.txt"),
+          String(captureError)+"\n");
+      });
     throw new Error("A complete 3D tailored outfit was not visible within the native 20-second gate: "+
       JSON.stringify({diagnostic,error:String(error)}));
   }
