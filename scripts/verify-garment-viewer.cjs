@@ -411,9 +411,10 @@ async function verifyViewport(browser, width) {
   await captureCanvas("garment-angle-back.png");
   await selectCamera("Front","0deg","front");
 
-  const reference=page.locator(".garmentViewerReference img");
+  const reference=page.locator(".garmentViewerIdentityAudit img");
   await reference.waitFor({state:"visible"});
   assert.match(await reference.getAttribute("src"),/studio-tucked\.webp$/, "3D lab must keep the approved studio reference target visible");
+  assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-identity-visual-parity"),"unverified","a different mannequin cannot claim studio-image visual equivalence");
 
   const recipe=await page.locator(".garmentDraftRecipe").innerText();
   assert.match(recipe,/YOUR DESIGNER RECIPE/);
