@@ -351,6 +351,7 @@ async function verifyViewport(browser, width) {
       const visible=(prefix)=>materials.some((material)=>
         material.name.startsWith(prefix)&&
         material.name.includes("Variant__")&&
+        material.isLoaded===true&&
         material.pbrMetallicRoughness?.baseColorFactor?.[3]>.95);
       return shell?.getAttribute("data-tailoring-ready")==="true"
         && visible("Shirt")&&visible("Trouser");
@@ -362,6 +363,7 @@ async function verifyViewport(browser, width) {
       const materials=model?.model?.materials||[];
       const visible=materials.filter((m)=>
         (m.name.startsWith("Shirt")||m.name.startsWith("Trouser"))
+        &&m.isLoaded===true
         &&m.pbrMetallicRoughness?.baseColorFactor?.[3]>.95);
       return {
         tailoringReady:shell?.getAttribute("data-tailoring-ready"),
@@ -372,9 +374,11 @@ async function verifyViewport(browser, width) {
         error:document.querySelector(".garmentViewerError")?.textContent??null,
         visibleMaterialNames:visible.map((m)=>m.name).slice(0,60),
         sampleShirt:materials.filter((m)=>m.name.startsWith("Shirt")&&m.name.includes("Variant__"))
-          .slice(0,8).map((m)=>({name:m.name,alpha:m.pbrMetallicRoughness?.baseColorFactor?.[3],loaded:m.isLoaded})),
+          .slice(0,8).map((m)=>({name:m.name,loaded:Boolean(m.isLoaded),
+            alpha:m.isLoaded===true?m.pbrMetallicRoughness?.baseColorFactor?.[3]:null})),
         sampleTrouser:materials.filter((m)=>m.name.startsWith("Trouser")&&m.name.includes("Variant__"))
-          .slice(0,8).map((m)=>({name:m.name,alpha:m.pbrMetallicRoughness?.baseColorFactor?.[3],loaded:m.isLoaded})),
+          .slice(0,8).map((m)=>({name:m.name,loaded:Boolean(m.isLoaded),
+            alpha:m.isLoaded===true?m.pbrMetallicRoughness?.baseColorFactor?.[3]:null})),
       };
     }).catch(e=>({diagnosticError:String(e)}));
     await fs.writeFile(path.join(output,"garment-initial-style-failure.json"),
@@ -599,7 +603,9 @@ async function verifyViewport(browser, width) {
     await page.waitForFunction(()=>{
       const materials=document.querySelector("model-viewer")?.model?.materials||[];
       return ["ShirtCollarVariant__mandarin__soft_unfused","ShirtNeckGasketVariant__mandarin__soft_unfused"].every((name)=>{
-        const pbr=materials.find((material)=>material.name===name)?.pbrMetallicRoughness;
+        const material=materials.find((item)=>item.name===name);
+        if(material?.isLoaded!==true) return false;
+        const pbr=material.pbrMetallicRoughness;
         const color=pbr?.baseColorFactor;
         return color&&Math.abs(color[0]-.97)<.001&&Math.abs(color[2]-.95)<.001
           &&color[3]===1&&!pbr.baseColorTexture?.texture;
@@ -622,7 +628,7 @@ async function verifyViewport(browser, width) {
         materialCount:materials.length,
         trim:focus.map((name)=>{
           const material=materials.find((item)=>item.name===name);
-          const pbr=material?.pbrMetallicRoughness;
+          const pbr=material?.isLoaded===true?material.pbrMetallicRoughness:null;
           return {name,exists:Boolean(material),loaded:material?.isLoaded??null,
             rgba:pbr?.baseColorFactor??null,
             texturePresent:Boolean(pbr?.baseColorTexture?.texture),
@@ -630,6 +636,7 @@ async function verifyViewport(browser, width) {
         }),
         garmentVisibility:materials.filter((m)=>
           (m.name.startsWith("Shirt")||m.name.startsWith("Trouser"))
+          &&m.isLoaded===true
           &&m.pbrMetallicRoughness?.baseColorFactor?.[3]>.95).map((m)=>m.name).slice(0,45),
       };
     }).catch(e=>({error:String(e)}));
