@@ -882,14 +882,18 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       // after every cosmetic shader can paint ~30 half-dressed frames and
       // exceed the strict native 20s complete-outfit gate. During the initial
       // look, batch up to six material changes per cooperative browser turn.
-      // Once a look has fully hydrated or a user interacted, return to ONE
-      // expensive shader per turn so real <select> controls stay responsive.
+      // Warm studio reset has 589 GLTF slots and an observed 15-material
+      // replacement: yielding for EVERY PBR write still missed the 20-second
+      // fully dressed gate, even though 571 shader handles were loaded.
+      // Process four selected materials per browser turn, preserving bounded
+      // input yields and cancellation checks after each material. This does
+      // NOT shorten the real 20-second acceptance gate or skip any cloth.
       const coldFirstLook=lastVariantAppearanceRef.current===null
         &&visibleButtonMaterialsRef.current.size===0
         &&interactionStartedAt.current===null;
       const yieldForInput=createCooperativeMaterialBatch(
         ()=>new Promise<void>((resolve)=>window.setTimeout(resolve,8)),
-        coldFirstLook?64:1
+        coldFirstLook?64:4
       );
       await yieldForInput();
       if(!isCurrent()) return;
