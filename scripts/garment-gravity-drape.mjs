@@ -8,6 +8,16 @@
 const clamp01=value=>Math.min(1,Math.max(0,value));
 const smooth01=value=>{const t=clamp01(value);return t*t*(3-2*t);};
 
+/**
+ * Preview officewear sleeve silhouette, not measured tailor ease. Preserve
+ * the full-width shoulder above 1.260 m while tapering up to 10.5% at the
+ * 0.925 m wrist; matching anatomy and cuffs still needs fit evidence.
+ */
+export function studioSleeveRadiusScale(heightM){
+  if(!Number.isFinite(heightM))throw new Error("Sleeve height must be finite.");
+  return 1-.105*(1-smooth01((heightM-.925)/.335));
+}
+
 const PARTS={
   shirt:{bottom:1.055,top:1.465,amplitudeMm:4.0,sideMm:1.1},
   sleeve:{bottom:.883,top:1.455,amplitudeMm:3.0,sideMm:.7},
