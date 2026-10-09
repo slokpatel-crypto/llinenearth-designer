@@ -5,6 +5,8 @@ import unittest
 ROOT=Path(__file__).resolve().parents[1]
 PROBE=(ROOT/"scripts/blender/probe-mobile-lod.py").read_text()
 WORKFLOW=(ROOT/".github/workflows/realistic-3d-candidate.yml").read_text()
+PREFLIGHT=(ROOT/"scripts/blender/preflight-linen-earth-officewear.py").read_text()
+AUTHOR=(ROOT/"scripts/blender/author-linen-earth-officewear.py").read_text()
 
 
 class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
@@ -40,6 +42,30 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
             '"polygonBudgetPass"',
         ):
             self.assertIn(token,PROBE)
+
+    def test_unapproved_four_angle_diagnostics_never_unlock_lab_or_production(self):
+        before=WORKFLOW.index("name: Render unapproved scene for geometry diagnosis")
+        after=WORKFLOW.index("name: Render four-angle fit review",before)
+        unapproved=WORKFLOW[before:after]
+        self.assertIn("if: always() && (steps.assemble.outcome != 'success' || steps.preflight.outcome != 'success')",unapproved)
+        self.assertIn("review-unapproved/UNAPPROVED.txt",unapproved)
+        self.assertIn("--resolution-x 448 --resolution-y 600",unapproved)
+        production=WORKFLOW[after:]
+        self.assertIn("steps.preflight.outcome == 'success'",production)
+        self.assertIn("steps.review_visibility.outcome == 'success'",production)
+        self.assertIn('test "${{ steps.preflight.outcome }}" = "success"',production)
+        self.assertNotIn("steps.review_unapproved",production)
+
+    def test_left_sleeve_uses_real_rendered_triangles_for_native_bvh_fit(self):
+        self.assertIn('iteration==0 and obj.name=="ShirtSleeveLFabric"',AUTHOR)
+        self.assertIn('bmesh.ops.triangulate(',AUTHOR)
+        self.assertIn('if len(bm.faces)+len(quads)>80000:',AUTHOR)
+        self.assertIn('if giant_faces or triangulated_for_preflight:',AUTHOR)
+        self.assertIn('minimumInsideDepthMm',AUTHOR)
+        self.assertIn('bounded_source_cloth_shift(',AUTHOR)
+        self.assertIn('evaluatedTriangleIndex',PREFLIGHT)
+        self.assertIn('triangleVertexIndices',PREFLIGHT)
+        self.assertIn('"depthMm":round(',PREFLIGHT)
 
     def test_experimental_probe_cannot_enable_render_export_or_production_gate(self):
         assert 'name: Probe mobile candidate from immutable source (diagnostic only)' in WORKFLOW

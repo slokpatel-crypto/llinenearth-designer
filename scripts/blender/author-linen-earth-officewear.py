@@ -1059,6 +1059,30 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
         terminal_poked=False
         try:
             bm.from_mesh(obj.data)
+            # Physical preflight samples RENDERED triangles, not quad medians.
+            # Earlier sleeve fitting could miss a triangle that penetrated
+            # real skin while its non-planar parent quad centre remained safe.
+            # Triangulate the measured LEFT sleeve BEFORE BVH correction,
+            # preserving ALL original cloth vertices and identity landmarks.
+            triangulated_for_preflight=False
+            if iteration==0 and obj.name=="ShirtSleeveLFabric":
+                quads=[face for face in bm.faces if len(face.verts)==4]
+                if len(bm.faces)+len(quads)>80000:
+                    raise RuntimeError(
+                        f"{obj.name}: real triangle fitting exceeds 80000 physical faces."
+                    )
+                if quads:
+                    bmesh.ops.triangulate(
+                        bm,faces=quads,
+                        quad_method="BEAUTY",ngon_method="BEAUTY",
+                    )
+                    bm.normal_update()
+                    triangulated_for_preflight=True
+                    print(
+                        f"Linen Earth triangle-true sleeve fitting: {obj.name} "
+                        f"sourceTriangles={len(bm.faces)} originalVertices={len(bm.verts)}",
+                        flush=True,
+                    )
             if len(bm.faces)>80000:
                 raise RuntimeError(f"{obj.name}: unsafe cloth mesh complexity in body-fit refinement.")
             # BMesh edge subdivision can leave a huge 80+ vertex ngon. Its
@@ -1145,7 +1169,7 @@ def repair_between_vertex_collisions(obj, body, clearance_m, max_rounds=8):
                 # synthetic ngon. Persist exactly the validated triangulated
                 # topology before returning, so Blender export and independent
                 # BVH preflight assess the same garment surface.
-                if giant_faces:
+                if giant_faces or triangulated_for_preflight:
                     bm.to_mesh(obj.data)
                     obj.data.update(calc_edges=True)
                 return {
