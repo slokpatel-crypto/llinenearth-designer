@@ -206,6 +206,16 @@ test("actual 3D model is compared to the original studio with equivalent full-sl
     "browser failure evidence must name the exact expensive shader without a new fake-ready signal");
   assert.ok(qa.includes('selectedMaterialApplied:Number(viewer?.dataset?.tailoringLoadedOrdinal'),
     "browser failure evidence must retain how many real selected style materials were committed");
+  for(const key of ["tailoringOperation","tailoringLastYieldMs","tailoringLastLoadMs","tailoringLastBindMs"]){
+    assert.ok(actualViewerComponent.includes("viewer.dataset."+key+"="),
+      "diagnose genuine WebGL slowness without inventing visual readiness: "+key);
+  }
+  for(const marker of [
+    'nativeOperation:viewer?.dataset?.tailoringOperation',
+    'lastYieldMs:Number(viewer?.dataset?.tailoringLastYieldMs',
+    'lastLoadMs:Number(viewer?.dataset?.tailoringLastLoadMs',
+    'lastPbrBindMs:Number(viewer?.dataset?.tailoringLastBindMs',
+  ]) assert.ok(qa.includes(marker),marker);
   assert.ok(qa.includes('identityVisualParity:shell?.getAttribute("data-identity-visual-parity")'),
     "the comparison must explicitly retain independent studio-image approval");
 });
