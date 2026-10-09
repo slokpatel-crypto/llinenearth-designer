@@ -175,14 +175,15 @@ jobs:
           if [ -s "$scene" ]; then
             mkdir -p artifacts/realistic-3d/review-unapproved
             printf '%s\n' 'UNAPPROVED GEOMETRY DIAGNOSTIC ONLY. Scene: %s. Workbench colours are not calibrated linen texture/drape or photo-realism. These images are not production or tailor acceptance evidence.\n' "$scene" > artifacts/realistic-3d/review-unapproved/UNAPPROVED.txt
-            # A fast Workbench silhouette snapshot is useful even if final
-            # source physical preflight failed. Keep the unchanged strict
-            # native render / visual acceptance path completely separate.
+            # EGL software WebGL/EEVEE/Workbench timed out even on independent
+            # low-poly evidence. Project ALL evaluated REAL mesh triangles on
+            # CPU to four depth-ordered SVGs; no display context or GPU needed.
+            # Explicitly NOT a photoreal, cloth shader, studio or tailor gate.
             timeout --signal=TERM --kill-after=15s 4m \
               blender --background --python-exit-code 1 "$scene" \
-              --python scripts/blender/render-linen-earth-officewear-review.py -- \
+              --python scripts/blender/diagnose-unapproved-cpu-silhouettes.py -- \
               --output-dir artifacts/realistic-3d/review-unapproved \
-              --resolution-x 448 --resolution-y 600 --diagnostic-workbench \
+              --resolution-x 448 --resolution-y 600 --unapproved \
               2>&1 | tee artifacts/realistic-3d/review-unapproved.log
           else
             echo "No authored scene to visualize; production gates remain blocked."
