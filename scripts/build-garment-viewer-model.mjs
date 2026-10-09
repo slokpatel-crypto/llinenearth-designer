@@ -3,7 +3,7 @@ import path from "node:path";
 import styleVariants from "../src/lib/garment-viewer-style-variants.json" with { type:"json" };
 import identitySpec from "../public/model-identity/linen-earth-studio-model-v1.json" with { type:"json" };
 import studioPalette from "../public/model-identity/studio-material-palette.json" with { type:"json" };
-import {garmentGravityFoldDisplacement} from "./garment-gravity-drape.mjs";
+import {garmentGravityFoldDisplacement,studioSleeveRadiusScale} from "./garment-gravity-drape.mjs";
 
 const OUT_DIR=path.resolve(process.cwd(),"public/models");
 const BASE_BODY_PATH=path.resolve(process.cwd(),"assets/3d/makehuman-mannequin-base.glb");
@@ -169,9 +169,7 @@ function tailoredSleeveCapGeometry(base,centerX){
     // tailored cuff. A constant-width pipe looked visibly wrong next to the
     // real studio shirt. Constrain this deterministic preview contour to
     // the lower ~330 mm: the locked shoulder, hands and cuff centres stay fixed.
-    const wristT=Math.max(0,Math.min(1,(p.y-.925)/.335));
-    const wristEase=wristT*wristT*(3-2*wristT);
-    const sleeveTaper=1-.105*(1-wristEase);
+    const sleeveTaper=studioSleeveRadiusScale(p.y);
     const shaped={
       ...p,
       x:centerX+(p.x-centerX)*sleeveTaper,
