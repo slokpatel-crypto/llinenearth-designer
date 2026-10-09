@@ -106,3 +106,19 @@ export function tailoringInputSettleMs(materialCount:number):number {
   // actionability. Coalesce consecutive changes; keep the smaller prototype fast.
   return materialCount>=300?520:180;
 }
+
+/** Prepare the dressed silhouette before buttons, trim and minor geometry.
+
+ * Real CI showed several shirt accents already visible while no replacement
+ * trouser legs had hydrated. Preserve ALL selected fabrics/variations and the
+ * same WebGL QA time limit, but prioritize core clothing within that work.
+ */
+export function garmentSurfaceVisibilityPriority(name:string):number {
+  if(/^ShirtTorso(?:TuckedBack|Tucked|Back)?Variant__/.test(name)) return 0;
+  if(/^ShirtSleeveL(?:Variant|Length)__/.test(name)) return 1;
+  if(/^ShirtSleeveR(?:Variant|Length)__/.test(name)) return 2;
+  if(/^TrouserWaist(?:Pleat)?Variant__/.test(name)) return 3;
+  if(/^TrouserLegL(?:Break)?Variant__/.test(name)) return 4;
+  if(/^TrouserLegR(?:Break)?Variant__/.test(name)) return 5;
+  return 10;
+}
