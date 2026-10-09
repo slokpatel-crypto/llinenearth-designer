@@ -46,11 +46,12 @@ async function selectTailoringOption(page, label, value) {
     assert.equal(await target.isEnabled(),true,`3D selector ${label} must be enabled`);
     markPhase("visibleAndEnabled");
     const options=await target.locator("option").evaluateAll((nodes)=>nodes.map(
-      (node)=>({value:node.value,label:node.textContent?.trim()||""})
+      (node)=>({value:node.value,label:node.textContent?.trim()||"",disabled:node.matches(":disabled")})
     ));
     markPhase("nativeOptionCatalog");
     const requested=options.find((option)=>option.value===value);
     assert.ok(requested,`3D selector ${label} must contain option ${value}`);
+    assert.equal(requested.disabled,false,`3D selector ${label} option ${value} must be enabled`);
     const first=requested.label.charAt(0).toLowerCase();
     // A native select can have several names with the same initial (English
     // Spread / Extra High, different cuff shapes, etc.). Type the shortest
@@ -58,7 +59,8 @@ async function selectTailoringOption(page, label, value) {
     const prefix=Array.from(requested.label,(letter,index)=>
       requested.label.slice(0,index+1)).find((part)=>
         options.filter((option)=>option.label.toLowerCase().startsWith(part.toLowerCase())).length===1);
-    assert.ok(first&&prefix,`No unambiguous native option label for ${label}=${value}`);
+    const enabledIndex=options.filter((option)=>!option.disabled).findIndex((option)=>option.value===value);
+    assert.ok(enabledIndex>=0&&enabledIndex<64,`3D selector ${label} must have a bounded enabled option index`);
     // Locator.boundingBox waits for Playwright element stability/compositing.
     // The 586-material WebGL stage can continuously repaint and starve that
     // actionability check even while the select is visible and enabled.
@@ -91,8 +93,14 @@ async function selectTailoringOption(page, label, value) {
     const {x,y}=hitbox;
     await page.mouse.click(x,y);
     markPhase("nativePointerClick");
-    if(prefix.length===1) await page.keyboard.press(first);
-    else await page.keyboard.type(prefix,{delay:0});
+    if(prefix?.length===1) await page.keyboard.press(first);
+    else if(prefix) await page.keyboard.type(prefix,{delay:0});
+    else {
+      // "White collar" is a prefix of "White collar + cuffs". Real native
+      // keyboard navigation must also support prefix/duplicate display labels.
+      await page.keyboard.press("Home");
+      for(let index=0;index<enabledIndex;index++) await page.keyboard.press("ArrowDown");
+    }
     markPhase("nativeTypeAhead");
     // Chromium native selects can commit their new option on typeahead.
     // Avoid an unnecessary second Enter keyboard event if the real DOM
