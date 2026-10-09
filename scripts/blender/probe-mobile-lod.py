@@ -19,6 +19,7 @@ from mathutils.bvhtree import BVHTree
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
 from surface_coverage import penetrating_surface_samples
+from mobile_lod_skin_guard import skin_protection_weight
 
 GARMENTS=(
     "ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric",
@@ -294,17 +295,6 @@ def measured_skin_contact_anchors(probe):
                   for point in probe["sampleDeepVertexPositionsMm"])
     return points
 
-
-def skin_protection_weight(distance_m):
-    """Smoothly retain real source cloth geometry around measured LOD collisions."""
-    if not math.isfinite(distance_m) or distance_m<0:
-        raise ValueError("Contact distance must be finite and nonnegative.")
-    if distance_m<=0.055:
-        return 1.0
-    if distance_m>=0.115:
-        return 0.0
-    linear=(0.115-distance_m)/0.060
-    return linear*linear*(3-2*linear)
 
 
 def adaptive_skin_guard_trial(original, body_bvh, baseline_probe, ratio, name, temporary_objects):
