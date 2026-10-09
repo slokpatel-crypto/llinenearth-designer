@@ -128,7 +128,7 @@ test("initial scene failures report actual material hydration phase and visible 
   }
 });
 
-test("provisional studio mannequin skin and formal leather shoes use a single nonwhite palette",()=>{
+test("the original faceless ivory studio mannequin and white shoes use a matte nonmetallic provisional palette",()=>{
   const palette=JSON.parse(readFileSync(new URL("../public/model-identity/studio-material-palette.json",import.meta.url),"utf8"));
   const build=readFileSync(new URL("../scripts/build-garment-viewer-model.mjs",import.meta.url),"utf8");
   assert.equal(palette.identityId,"linen-earth-studio-model-v1");
@@ -136,9 +136,9 @@ test("provisional studio mannequin skin and formal leather shoes use a single no
   for(const part of [palette.skin,palette.leather]){
     assert.equal(part.rgba.length,4);
     assert.equal(part.rgba[3],1);
-    assert.ok(part.rgba.slice(0,3).every(value=>Number.isFinite(value)&&value>0&&value<.75),
-      "do not show white head/hands or white shoes when studio reference needs natural color");
-    assert.ok(part.roughness>.2&&part.roughness<1);
+    assert.ok(part.rgba.slice(0,3).every(value=>Number.isFinite(value)&&value>=.78&&value<=.94),
+      "preserve the original matte white mannequin and white shoes; peach skin and dark shoes are wrong");
+    assert.ok(part.roughness>=.75&&part.roughness<1);
   }
   assert.ok(build.includes("studioPalette.skin.rgba"));
   assert.ok(build.includes("studioPalette.leather.rgba"));
