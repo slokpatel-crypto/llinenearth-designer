@@ -187,6 +187,32 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
         self.assertIn('test "${{ steps.preflight.outcome }}" = "success"',production)
         self.assertNotIn("steps.review_unapproved",production)
 
+    def test_real_blender_review_does_not_render_all_586_tailoring_variants_at_once(self):
+        # Real native candidate looked like a striped overlapping shell
+        # because Blender import gave every alternate mesh hide_render=False.
+        # Quality review must show a neutral, measured six-panel garment only,
+        # never every available collar/sleeve/trouser geometry at once.
+        for token in (
+            'def isolate_neutral_six_panel_fit_review():',
+            'bool(obj.get("linen_earth_tailoring_variant",False))',
+            'obj.hide_render=True',
+            'obj.hide_render=False',
+            'hidden_alternates = isolate_neutral_six_panel_fit_review()',
+            'review-geometry-provenance.json',
+            '"selectedTailoringRecipeVerified":False',
+            '"referencePhotoVisualParityApproved":False',
+        ):
+            self.assertIn(token,RENDER,token)
+        self.assertLess(
+            RENDER.index('hidden_alternates = isolate_neutral_six_panel_fit_review()'),
+            RENDER.index('    configure_scene(options)'),
+            "Baking all geometry before isolation would invalidate the four-angle review."
+        )
+        # Source tailoring geometry is retained in the exported customer GLB;
+        # render-only isolation cannot quietly remove a style variation.
+        self.assertIn('EXPORT_COLLECTION = "LinenEarthExport"',EXPORT)
+        self.assertNotIn('bpy.data.objects.remove(obj',RENDER)
+
     def test_unapproved_mobile_four_angle_workbench_cannot_masquerade_as_premium_render(self):
         diagnostic=WORKFLOW[
             WORKFLOW.index("name: Render unapproved scene for geometry diagnosis"):
