@@ -7,6 +7,32 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"scripts"))
 from footwear_fit_geometry import shoe_depth_bounds
 
 class ShoeDepthFitTests(unittest.TestCase):
+    def test_real_shared_glb_footwear_instancing_must_detach_before_bilateral_fit(self):
+        # True LAB GLB had SAME DressShoeUpperMesh for ShoeL and ShoeR,
+        # SAME SoleMesh for both soles and heels; modifying shared data for
+        # each foot placed BOTH shoes to the right of the locked body.
+        code=(Path(__file__).resolve().parents[1]/
+              "scripts/garment-import-tailoring-library.py").read_text()
+        required=(
+            'if obj.data.users > 1:',
+            'obj.data = obj.data.copy()',
+            'detached += 1',
+            'aligned_points=[',
+            'side*(shoe_center_x-middle_x)<0.015',
+            'postFitWorldCenterXmm',
+            'sharedSourceMeshCopiesDetached',
+        )
+        for marker in required:
+            self.assertIn(marker,code,marker)
+        self.assertLess(code.index('obj.data = obj.data.copy()'),
+                        code.index('world_body = [body.matrix_world'),
+                        "No footwear vertex may be mutated before mesh instances are independent.")
+        self.assertLess(code.index('postFitWorldCenterXmm'),
+                        code.index('return evidence'),
+                        "The geometry evidence must be measured before accepting fitting.")
+        self.assertNotIn('body.data.vertices[',code,
+                         "Shoe fitting must not reshape the locked body.")
+
     def test_ankle_slice_does_not_crush_540mm_source_shoe(self):
         samples=[-0.075+0.135*i/31 for i in range(32)]
         low,high=shoe_depth_bounds(samples,1.727)
