@@ -48,6 +48,13 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
             'before_points==[tuple(vertex.co) for vertex in original.data.vertices]',
             'if not copy.data.uv_layers or not original.data.uv_layers:',
             '"boundedContactRepair":repair',
+            'for sx,sy,sz in (',
+            'for distance in (.003,.005,.007,.009,.011,max_shift_m):',
+            'candidate_point_inside_locked_body(body_bvh,destination)',
+            'if (destination-measure[0]).length<.002:',
+            '"unresolvedContactSamples"',
+            '"nearestBodyDepthMm"',
+
             '"sampledSkinPass":repair["succeeded"]',
 
             '"lockedSectionPass"',

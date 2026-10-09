@@ -186,6 +186,7 @@ def fit_candidate_mobile_contacts(copy, body_bvh, guides, *,
         if iteration>=max_passes:
             break
         proposals={}
+        unresolved=[]
         for contact_triangle in contact["contactTriangles"]:
             point=Vector(contact_triangle["point"])
             nearest=body_bvh.find_nearest(point)
@@ -199,15 +200,52 @@ def fit_candidate_mobile_contacts(copy, body_bvh, guides, *,
                 if (delta.length<=max_shift_m and
                         not candidate_point_inside_locked_body(body_bvh,destination)):
                     candidates.append((delta.length,delta))
+            # Concave thigh/crotch and underarm skin can have a misleading
+            # NEAREST surface normal: native probe 37881607915 could not
+            # repair one real right sleeve + left trouser-leg hit at 12mm.
+            # Sample actual exterior along bounded WORLD-space directions,
+            # rather than increasing the limit or accepting intersections.
+            # Search contact-relative X/Y/Z and diagonals, no new vertices,
+            # preserve user identity and independently verify every result.
+            axes=[
+                Vector((sx,sy,sz)).normalized()
+                for sx,sy,sz in (
+                    (1,0,0),(-1,0,0),(0,1,0),(0,-1,0),
+                    (0,0,1),(0,0,-1),
+                    (1,1,0),(1,-1,0),(-1,1,0),(-1,-1,0),
+                    (1,0,1),(1,0,-1),(-1,0,1),(-1,0,-1),
+                    (0,1,1),(0,1,-1),(0,-1,1),(0,-1,-1),
+                )
+            ]
+            for distance in (.003,.005,.007,.009,.011,max_shift_m):
+                for direction in axes:
+                    destination=point+direction*distance
+                    if candidate_point_inside_locked_body(body_bvh,destination):
+                        continue
+                    measure=body_bvh.find_nearest(destination)
+                    if measure is None or measure[0] is None:
+                        continue
+                    if (destination-measure[0]).length<.002:
+                        continue
+                    candidates.append((distance,destination-point))
+                if candidates:
+                    break
             if not candidates:
+                unresolved.append({
+                    "xyzMm":[round(v*1000,2) for v in point],
+                    "nearestBodyDepthMm":round((point-surface).length*1000,2),
+                    "reason":"No real exterior displacement in 12mm X/Y/Z+tangent search.",
+                })
                 continue
             shift=min(candidates,key=lambda row:row[0])[1]
             for index in contact_triangle["vertices"]:
                 if index>=len(mesh.vertices):
                     raise RuntimeError("Decimated face used nonexistent source vertex.")
                 proposals.setdefault(index,[]).append(shift)
+        if unresolved:
+            history[-1]["unresolvedContactSamples"]=unresolved[:8]
         if not proposals:
-            history[-1]["reason"]="No safe measured exterior patch fits 12mm."
+            history[-1]["reason"]="No safe measured exterior patch fits 12mm in body-normal or multi-axis directions."
             break
         changed=0
         for index,shifts in proposals.items():
