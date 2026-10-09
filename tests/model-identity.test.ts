@@ -37,3 +37,22 @@ test("front silhouette anchors remain tied to the existing studio-tucked trace",
   assert.deepEqual(LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS.shirtWaist,{yPx:545,leftPx:387,rightPx:628});
   assert.deepEqual(LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS.trouserWaist,{yPx:542,leftPx:368,rightPx:650});
 });
+
+test("3D candidate cannot claim visual equivalence merely by locking the original image path",()=>{
+  const builder=readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
+  const source=readFileSync("assets/3d/README.md","utf8");
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  const css=readFileSync("src/app/lab/garment-viewer/garment-viewer.css","utf8");
+  assert.match(builder,/makehuman-mannequin-base\.glb/);
+  assert.match(source,/MakeHuman base mesh/);
+  assert.match(viewer,/data-identity-visual-parity="unverified"/,
+    "geometry-slot and measurement matching cannot automatically establish visual identity");
+  assert.ok(viewer.includes('<img src={LINEN_EARTH_MODEL_REFERENCE_IMAGE}'),
+    "comparison must use the unchanged original Real Model Designer image");
+  assert.ok(viewer.includes('garmentViewerIdentityAudit'),
+    "the original should be visible alongside the experimental 3D model");
+  assert.ok(css.includes('.garmentViewerIdentityAudit img'),
+    "reference visibility must remain styled and prominent");
+  assert.ok(!viewer.includes("EXACT REAL MODEL DESIGNER IDENTITY"),
+    "do not advertise visual sameness without original-mannequin parity approval");
+});
