@@ -878,14 +878,19 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     let cancelled=false;
     const isCurrent=()=>!cancelled && viewer.model===model;
     const apply=async()=>{
-      // Material shader hydration can block Chromium's native <select> input.
-      // Cooperatively yield the main thread after each bounded batch.
+      // First render has NO native user input competing for WebGL. Yielding
+      // after every cosmetic shader can paint ~30 half-dressed frames and
+      // exceed the strict native 20s complete-outfit gate. During the initial
+      // look, batch up to six material changes per cooperative browser turn.
+      // Once a look has fully hydrated or a user interacted, return to ONE
+      // expensive shader per turn so real <select> controls stay responsive.
+      const coldFirstLook=lastVariantAppearanceRef.current===null
+        &&visibleButtonMaterialsRef.current.size===0
+        &&interactionStartedAt.current===null;
       const yieldForInput=createCooperativeMaterialBatch(
-        ()=>new Promise<void>((resolve)=>window.setTimeout(resolve,8)),1
+        ()=>new Promise<void>((resolve)=>window.setTimeout(resolve,8)),
+        coldFirstLook?6:1
       );
-      // Allow the real native form-control action to settle before any
-      // expensive GLB shader/material mutation starts. Yield between every
-      // material rather than batches of four on low-powered GPUs.
       await yieldForInput();
       if(!isCurrent()) return;
       const materials=[...model.materials];
