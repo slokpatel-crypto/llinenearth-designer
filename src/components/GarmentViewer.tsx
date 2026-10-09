@@ -1,7 +1,7 @@
 "use client";
 
 import { createElement, useEffect, useMemo, useRef, useState } from "react";
-import {applyCurrentMaterialBatch,createCooperativeMaterialBatch, createInFlightMaterialLoader, needsVariantMaterialRefresh, needsButtonMaterialRefresh, garmentSurfaceVisibilityPriority, trimAppearanceKey, tailoringInputSettleMs, type VariantMaterialAppearance} from "@/lib/garment-viewer-material-appearance";
+import {applyCurrentMaterialBatch,createCooperativeMaterialBatch, createInFlightMaterialLoader, createBoundedMaterialPrefetch, needsVariantMaterialRefresh, needsButtonMaterialRefresh, garmentSurfaceVisibilityPriority, trimAppearanceKey, tailoringInputSettleMs, type VariantMaterialAppearance} from "@/lib/garment-viewer-material-appearance";
 import {
   createPrototypeGarmentGlbUrl,
   GARMENT_PANEL_SPECS,
@@ -884,6 +884,19 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       const replacements=[...next].sort((a,b)=>
         garmentSurfaceVisibilityPriority(a)-garmentSurfaceVisibilityPriority(b)
       );
+      // A cold 586-material GLB can spend >20 seconds compiling shaders
+      // sequentially even though the same six selected garment panels are
+      // needed. Start at most two structural loads concurrently, preserving
+      // the ordered reveal and all native browser readiness checks.
+      const coreToHydrate=replacements.filter((name)=>
+        garmentSurfaceVisibilityPriority(name)<6
+        &&needsVariantMaterialRefresh(previous.has(name),lastVariantAppearanceRef.current,appearance)
+      );
+      const corePrefetch=createBoundedMaterialPrefetch(
+        coreToHydrate,
+        (name)=>ensureViewerMaterialLoaded(materialsByName.get(name)),
+        2,
+      );
       // REPLACEMENT FIRST: never hide the previous outfit before its next
       // shirt, sleeves and two trouser legs are loaded. Earlier code hid all
       // old panels, then awaited GPU hydration of the new variants; real
@@ -895,7 +908,9 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         if(!needsVariantMaterialRefresh(previous.has(name),lastVariantAppearanceRef.current,appearance)) continue;
         await yieldForInput();
         if(!isCurrent()) return;
-        const material=await ensureViewerMaterialLoaded(materialsByName.get(name));
+        const material=garmentSurfaceVisibilityPriority(name)<6
+          ? await corePrefetch.take(name)
+          : await ensureViewerMaterialLoaded(materialsByName.get(name));
         if(!isCurrent()) return;
         if(!material) continue;
         const fabric=name.startsWith("Shirt")?shirt:trouser;
