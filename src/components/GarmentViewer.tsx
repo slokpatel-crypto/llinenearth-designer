@@ -1,7 +1,7 @@
 "use client";
 
 import { createElement, useEffect, useMemo, useRef, useState } from "react";
-import {applyCurrentMaterialBatch,createCooperativeMaterialBatch, createInFlightMaterialLoader, needsVariantMaterialRefresh, needsButtonMaterialRefresh, trimAppearanceKey, tailoringInputSettleMs, type VariantMaterialAppearance} from "@/lib/garment-viewer-material-appearance";
+import {applyCurrentMaterialBatch,createCooperativeMaterialBatch, createInFlightMaterialLoader, needsVariantMaterialRefresh, needsButtonMaterialRefresh, garmentSurfaceVisibilityPriority, trimAppearanceKey, tailoringInputSettleMs, type VariantMaterialAppearance} from "@/lib/garment-viewer-material-appearance";
 import {
   createPrototypeGarmentGlbUrl,
   GARMENT_PANEL_SPECS,
@@ -878,12 +878,18 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         if(isGarmentVariantMaterial(material.name)&&variantMaterialVisible(material.name,styleState)) next.add(material.name);
       }
       if(isCurrent()) setTailoringPhase("loading-replacement-cloth");
+      // Native Chromium should get the torso, both sleeves, trouser waist and
+      // BOTH trouser legs visible before spending time loading 3D accent
+      // details. Keep selection intact and track every rendered material.
+      const replacements=[...next].sort((a,b)=>
+        garmentSurfaceVisibilityPriority(a)-garmentSurfaceVisibilityPriority(b)
+      );
       // REPLACEMENT FIRST: never hide the previous outfit before its next
       // shirt, sleeves and two trouser legs are loaded. Earlier code hid all
       // old panels, then awaited GPU hydration of the new variants; real
       // Chromium screenshots showed a floating shirt/legless mannequin.
       // Keep the previous garment visible until every new material is ready.
-      for(const name of next){
+      for(const name of replacements){
         // Style-only edits often retain most visible variants. Re-uploading the
         // same texture/normal for each retained variant stalls WebGL Chromium.
         if(!needsVariantMaterialRefresh(previous.has(name),lastVariantAppearanceRef.current,appearance)) continue;
