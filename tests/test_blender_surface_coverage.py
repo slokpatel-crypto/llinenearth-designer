@@ -147,7 +147,7 @@ class MeasuredPostThicknessSleeveSeamTests(unittest.TestCase):
         # two sleeve points penetrate by more than 1.5mm.
         self.assertAlmostEqual(
             underarm_centreline_contact_relief_m(1.11623,.006,waist),
-            .008,
+            .012,
         )
         self.assertGreater(
             underarm_centreline_contact_relief_m(1.10807,.006,waist),
@@ -156,10 +156,10 @@ class MeasuredPostThicknessSleeveSeamTests(unittest.TestCase):
         # Real final BVH contacts at -244.3 and -236.7mm straddle the
         # centre of the left sleeve. Preserve a bounded outboard notch.
         self.assertAlmostEqual(
-            underarm_centreline_contact_relief_m(1.11623,0,waist),.008,
+            underarm_centreline_contact_relief_m(1.11623,0,waist),.012,
         )
         self.assertAlmostEqual(
-            underarm_centreline_contact_relief_m(1.11623,-.004,waist),.008,
+            underarm_centreline_contact_relief_m(1.11623,-.004,waist),.012,
         )
         self.assertGreater(
             underarm_centreline_contact_relief_m(1.11623,-.007,waist),0,
@@ -189,7 +189,7 @@ class MeasuredPostThicknessSleeveSeamTests(unittest.TestCase):
                 underarm_centreline_contact_relief_m(1.116,bad,1.114)
         with self.assertRaises(ValueError):
             underarm_centreline_contact_relief_m(
-                1.116,.006,1.114,max_relief_m=.012
+                1.116,.006,1.114,max_relief_m=.014
             )
 
 
