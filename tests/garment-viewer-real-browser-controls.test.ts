@@ -89,3 +89,35 @@ test("white-collar QA reports actual shader state instead of silently waiving re
   assert.ok(qa.includes('timeout:8000'),"keep actual 8-second interactive material gate");
   assert.ok(!qa.includes('setBaseColorFactor([.97'),"tests must never forge contrasting cloth");
 });
+
+test("initial scene failures report actual material hydration phase and visible cloth",()=>{
+  assert.ok(qa.includes("garment-initial-style-failure.json"));
+  assert.ok(qa.includes("tailoringPhase:shell?.getAttribute"));
+  assert.ok(qa.includes("visibleMaterialNames:visible.map("));
+  assert.ok(qa.includes("sampleShirt:materials.filter("));
+  assert.ok(qa.includes("sampleTrouser:materials.filter("));
+  assert.ok(qa.includes("timeout:20000"),"real visual completeness gate must remain bounded");
+  assert.ok(!qa.includes('setAttribute("data-tailoring-ready"'),"QA must not fabricate readiness");
+  assert.ok(actualViewerComponent.includes("data-tailoring-phase={tailoringPhase}"));
+  for(const stage of ["queued","enumerating-variants","loading-replacement-cloth","retiring-old-cloth","skin-and-hardware","collar-and-cuff","ready","error"]){
+    assert.ok(actualViewerComponent.includes('setTailoringPhase("'+stage+'")'),stage);
+  }
+});
+
+test("provisional studio mannequin skin and formal leather shoes use a single nonwhite palette",()=>{
+  const palette=JSON.parse(readFileSync(new URL("../public/model-identity/studio-material-palette.json",import.meta.url),"utf8"));
+  const build=readFileSync(new URL("../scripts/build-garment-viewer-model.mjs",import.meta.url),"utf8");
+  assert.equal(palette.identityId,"linen-earth-studio-model-v1");
+  assert.equal(palette.status,"art-direction-only-unverified");
+  for(const part of [palette.skin,palette.leather]){
+    assert.equal(part.rgba.length,4);
+    assert.equal(part.rgba[3],1);
+    assert.ok(part.rgba.slice(0,3).every(value=>Number.isFinite(value)&&value>0&&value<.75),
+      "do not show white head/hands or white shoes when studio reference needs natural color");
+    assert.ok(part.roughness>.2&&part.roughness<1);
+  }
+  assert.ok(build.includes("studioPalette.skin.rgba"));
+  assert.ok(build.includes("studioPalette.leather.rgba"));
+  assert.ok(actualViewerComponent.includes("studioPalette.skin.rgba.slice(0,3)"));
+  assert.ok(actualViewerComponent.includes("studioPalette.skin.roughness"));
+});
