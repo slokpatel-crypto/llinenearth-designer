@@ -937,6 +937,14 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         (name)=>ensureViewerMaterialLoaded(materialsByName.get(name)),
         coldFirstLook?3:2,
       );
+      // Zero-cost DOM diagnostics on the actual GLTF host: no React rerender,
+      // fake load, extra frame or release-gate exception. Native Chromium
+      // must identify WHICH actual costume slot stalls 20-second readiness.
+      viewer.dataset.tailoringSelectedCount=String(selectedToHydrate.length);
+      viewer.dataset.tailoringLoadedOrdinal="0";
+      viewer.dataset.tailoringLoadingMaterial="";
+      viewer.dataset.tailoringLastLoadedMaterial="";
+      let appliedVariants=0;
       // REPLACEMENT FIRST: never hide the previous outfit before its next
       // shirt, sleeves and two trouser legs are loaded. Earlier code hid all
       // old panels, then awaited GPU hydration of the new variants; real
@@ -948,9 +956,14 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         if(!needsVariantMaterialRefresh(previous.has(name),lastVariantAppearanceRef.current,appearance)) continue;
         await yieldForInput();
         if(!isCurrent()) return;
+        if(isCurrent()) viewer.dataset.tailoringLoadingMaterial=name;
         const material=await replacementPrefetch.take(name);
         if(!isCurrent()) return;
         if(!material) continue;
+        appliedVariants++;
+        viewer.dataset.tailoringLoadedOrdinal=String(appliedVariants);
+        viewer.dataset.tailoringLastLoadedMaterial=name;
+        viewer.dataset.tailoringLoadingMaterial="";
         const fabric=name.startsWith("Shirt")?shirt:trouser;
         if(!previous.has(name)){
           setMaterialAlpha(material,true);
