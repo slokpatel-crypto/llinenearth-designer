@@ -790,25 +790,29 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         }));
         if(!isCurrent()) return;
         setFabricHydrationPhase("applying-color-to-all-six-panels");
-        const applied=await applyCurrentMaterialBatch({
-          entries:prepared,
-          isCurrent,
-          yieldToBrowser:()=>new Promise<void>((resolve)=>window.setTimeout(resolve,8)),
-          load:(entry)=>ensureViewerMaterialLoaded(model.materials.find((material)=>material.name===entry.panel.material)),
-          apply:(material,entry)=>{
-            if(!material) return;
-            // Base panels must stay hidden when a tailoring variant owns the
-            // silhouette; changing fabric must not resurrect the default fit.
-            const alpha=visibleGarmentMaterialsRef.current.has(entry.panel.material)?1:0;
-            material.pbrMetallicRoughness.setBaseColorFactor([1,1,1,alpha]);
-            material.pbrMetallicRoughness.setMetallicFactor(0);
-            const fabric=entry.panel.garment==="shirt"?shirt:trouser;
-            material.pbrMetallicRoughness.setRoughnessFactor(clamp(roughness+fabricDrapeSurface(fabric).roughnessOffset,.55,.98));
-            material.pbrMetallicRoughness.baseColorTexture?.setTexture(entry.texture);
-            material.normalTexture?.setTexture(entry.normal);
-          },
-        });
-        if(!applied || !isCurrent()) return;
+        // The six loaded base panels must be committed in ONE browser task.
+        // Yielding to Chromium after each .setTexture lets the renderer paint
+        // half-dressed frames and incurs repeated 586-slot GL material work.
+        // Resolve all six material handles first; never apply superseded
+        // swatches, and keep the outfit complete until the whole batch lands.
+        const materialByName=new Map(model.materials.map((material)=>[material.name,material]));
+        const loaded=await Promise.all(prepared.map(async(entry)=>({
+          entry,material:await ensureViewerMaterialLoaded(materialByName.get(entry.panel.material)),
+        })));
+        if(!isCurrent()) return;
+        if(loaded.some(({material})=>!material))
+          throw new Error("Actual base garment panel material missing");
+        for(const {entry,material} of loaded){
+          if(!material) continue;
+          const alpha=visibleGarmentMaterialsRef.current.has(entry.panel.material)?1:0;
+          material.pbrMetallicRoughness.setBaseColorFactor([1,1,1,alpha]);
+          material.pbrMetallicRoughness.setMetallicFactor(0);
+          const fabric=entry.panel.garment==="shirt"?shirt:trouser;
+          material.pbrMetallicRoughness.setRoughnessFactor(clamp(roughness+fabricDrapeSurface(fabric).roughnessOffset,.55,.98));
+          material.pbrMetallicRoughness.baseColorTexture?.setTexture(entry.texture);
+          material.normalTexture?.setTexture(entry.normal);
+        }
+        if(!isCurrent()) return;
         preparedTextureRef.current=new Map(prepared.map((entry)=>[
           entry.panel.material,
           {texture:entry.texture,normal:entry.normal,garment:entry.panel.garment},
