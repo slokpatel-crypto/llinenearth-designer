@@ -231,6 +231,15 @@ jobs:
           npm run garment:model-production:measurement-worksheet
           test -s artifacts/realistic-3d/panel-measurement-worksheet.json
 
+      - name: Prepare full-stock physical repeat, colour and drape measurement worksheet
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --experimental-strip-types scripts/generate-textile-measurement-worksheet.mjs
+          test -s artifacts/realistic-3d/textile-measurement-worksheet.csv
+
       - name: Copy candidate scene and provenance
         if: always()
         shell: bash
