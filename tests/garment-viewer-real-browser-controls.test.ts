@@ -91,7 +91,11 @@ test("fast first full outfit batches cold shaders but real subsequent selector e
   assert.ok(actualViewerComponent.includes('const coldFirstLook=lastVariantAppearanceRef.current===null'));
   assert.ok(actualViewerComponent.includes('visibleButtonMaterialsRef.current.size===0'));
   assert.ok(actualViewerComponent.includes('interactionStartedAt.current===null'));
-  assert.ok(actualViewerComponent.includes('coldFirstLook?6:1'));
+  assert.ok(actualViewerComponent.includes('coldFirstLook?64:1'));
+  assert.ok(actualViewerComponent.includes('if(existing?.isLoaded===true)'),
+    "warm default cloth must retire instantly without a redundant shader load");
+  assert.ok(actualViewerComponent.includes('setMaterialAlpha(existing,false)'),
+    "old geometry still gets hidden ONLY after new garment is ready");
   assert.ok(actualViewerComponent.includes('setTailoringMaterialsReady(true);setTailoringPhase("ready")'),
     "faster batching must not claim visual readiness before all selected materials finish");
 });
