@@ -62,6 +62,34 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
         ):
             self.assertIn(token,PROBE)
 
+    def test_contact_safe_fidelity_trials_do_not_weaken_identity_or_budget(self):
+        # Real October 9 Blender evidence: source guards cleared LEFT leg,
+        # right sleeve still clipped or shifted its locked guide by 4.267mm.
+        # Test more of the SAME original cloth before any 12mm repair, but
+        # accept only independent zero-hit BVH + <=2mm guide fidelity.
+        for token in (
+            'def adaptive_contact_safe_ratio_trial(',
+            'for ratio in (.265, .30, .34):',
+            'trial=original.copy()',
+            'trial.data=original.data.copy()',
+            'modifier.decimate_type="COLLAPSE"',
+            'modifier.use_collapse_triangulate=True',
+            'max(\n                abs(span[i]-source_span[i]) for i in (0,1)',
+            '"lockedGuidesPass":guide_shift<=2.0',
+            'fit_candidate_mobile_contacts(trial,body_bvh,guides)',
+            'physical_body_probe(body_bvh,points,triangles)',
+            '"independentlySkinSafe"',
+            'repair["succeeded"] and body_contact["deepFaceOrEdgeHits"]==0',
+            'if not trial.data.uv_layers:',
+            '"effectiveReductionRatio":measured_ratio',
+            '"higherSourceFidelityTrials":higher_ratio',
+            'target_tris<=220000 and target_verts<=280000',
+            '"eligibleForProduction":False',
+        ):
+            self.assertIn(token,PROBE,token)
+        self.assertNotIn("ratio=0.50",PROBE)
+        self.assertNotIn("original.data=trial.data",PROBE)
+
     def test_final_cloth_thickness_is_measured_against_actual_body_triangles(self):
         # SOLIDIFY changes rendered skin-contact triangles AFTER the original
         # source-mesh BVH pass. Do not fake approval from quad/vertex probes.
