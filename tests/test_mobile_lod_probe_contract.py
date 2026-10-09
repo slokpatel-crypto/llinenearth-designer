@@ -196,18 +196,24 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
             'scene="artifacts/realistic-3d/mobile-lod-unapproved.blend"',
             'steps.mobile_independent_preflight.outcome',
             'scene=".cache/linen-earth/linen-earth-officewear-authored.blend"',
-            '--diagnostic-workbench',
+            'scripts/blender/diagnose-unapproved-cpu-silhouettes.py',
+            '--unapproved',
             'review-unapproved/UNAPPROVED.txt',
             'timeout --signal=TERM --kill-after=15s 4m',
         ):
             self.assertIn(token,diagnostic,token)
+        cpu=(ROOT/"scripts/blender/diagnose-unapproved-cpu-silhouettes.py").read_text()
         for token in (
-            'parser.add_argument("--diagnostic-workbench", action="store_true"',
-            '"BLENDER_WORKBENCH" if options.diagnostic_workbench else "BLENDER_EEVEE_NEXT"',
-            'scene.display.shading.color_type = "MATERIAL"',
-            '"GEOMETRY-ONLY-NOT-REALISM.txt"',
+            'parser.add_argument("--unapproved",action="store_true",required=True)',
+            'for name,yaw in VIEWS:',
+            'mesh.calc_loop_triangles()',
+            'evaluated.to_mesh_clear()',
+            '"visualApproval":False',
+            'physicalFabricRepeatVerified',
+            'UNAPPROVED',
+            'geometry.svg',
         ):
-            self.assertIn(token,RENDER,token)
+            self.assertIn(token,cpu,token)
         production=WORKFLOW[WORKFLOW.index("name: Render four-angle fit review"):]
         self.assertIn("steps.preflight.outcome == 'success'",production)
         self.assertIn('npm run garment:model-production:render-review',production)
