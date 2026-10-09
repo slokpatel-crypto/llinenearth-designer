@@ -397,17 +397,22 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const [modelManifest,setModelManifest]=useState<GarmentViewerModelManifest|null>(null);
   const [modelManifestValidation,setModelManifestValidation]=useState<GarmentViewerManifestValidation|null>(null);
   const [activeView,setActiveView]=useState("front");
+  // The first view should visually recall the original charcoal shirt and
+  // warm taupe-brown trouser studio reference, using REAL active catalogue
+  // swatches (never recoloring or generating a fabric that is not stocked).
+  // A saved Designer recipe remains authoritative and overrides these only
+  // on first-load when its exact SKU exists.
   const [shirtId,setShirtId]=useState(()=>preferredFabricId(shirtFabrics,[
-    "linen-plain-60-sky-blue",
-    "linen-plain-60-light-grey",
     "linen-plain-60-stresa",
+    "linen-plain-60-boulder-gray",
     "linen-plain-60-jute-black",
+    "linen-plain-60-sky-blue",
   ]));
   const [trouserId,setTrouserId]=useState(()=>preferredFabricId(trouserFabrics,[
-    "linen-suiting-beige",
-    "linen-suiting-taupe-beige",
+    "linen-suiting-turkish-rose",
+    "linen-suiting-charcoal-oak-wood",
     "linen-suiting-perfect-taupe",
-    "linen-suiting-light-cream",
+    "linen-suiting-beige",
   ]));
   const [tileManifest,setTileManifest]=useState<FabricTileManifest>({});
   const [runtimeScale,setRuntimeScale]=useState<Record<string,ViewerRuntimeRenderScale>>({});
