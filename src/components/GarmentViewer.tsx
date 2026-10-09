@@ -889,7 +889,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         &&interactionStartedAt.current===null;
       const yieldForInput=createCooperativeMaterialBatch(
         ()=>new Promise<void>((resolve)=>window.setTimeout(resolve,8)),
-        coldFirstLook?6:1
+        coldFirstLook?64:1
       );
       await yieldForInput();
       if(!isCurrent()) return;
@@ -977,9 +977,20 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       // both old and newly revealed panels tracked for the next transaction.
       for(const name of previous){
         if(next.has(name)) continue;
+        // These six default shirt/trouser surfaces were already hydrated by
+        // the atomic true-colour pass. No second GPU shader compile or forced
+        // event-loop delay is needed to retire their old geometry after all
+        // replacements are visible.
+        const existing=materialsByName.get(name);
+        if(existing?.isLoaded===true){
+          if(!isCurrent()) return;
+          setMaterialAlpha(existing,false);
+          visibleGarmentMaterialsRef.current.delete(name);
+          continue;
+        }
         await yieldForInput();
         if(!isCurrent()) return;
-        const material=await ensureViewerMaterialLoaded(materialsByName.get(name));
+        const material=await ensureViewerMaterialLoaded(existing);
         if(!isCurrent()) return;
         setMaterialAlpha(material,false);
         visibleGarmentMaterialsRef.current.delete(name);
