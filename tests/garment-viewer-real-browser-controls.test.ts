@@ -55,6 +55,17 @@ const actualViewerComponent=readFileSync(
   new URL("../src/components/GarmentViewer.tsx",import.meta.url),"utf8"
 );
 
+test("cold-start garment tailoring cannot hydrate white default shaders before real cloth textures",()=>{
+  assert.ok(actualViewerComponent.includes('const [preparedFabricVersion,setPreparedFabricVersion]=useState("")'));
+  assert.ok(actualViewerComponent.includes('preparedFabricVersion!==requestedFabricVersion'));
+  assert.ok(actualViewerComponent.includes('preparedTextureRef.current.size!==panelSpecs.length'));
+  assert.ok(actualViewerComponent.includes('setTailoringPhase("awaiting-fabric-textures")'));
+  assert.ok(actualViewerComponent.includes("setPreparedFabricVersion(requestedFabricVersion)"));
+  const textureDone=actualViewerComponent.indexOf('setPreparedFabricVersion(requestedFabricVersion)');
+  const variantGate=actualViewerComponent.indexOf('if(preparedFabricVersion!==requestedFabricVersion');
+  assert.ok(textureDone>=0&&variantGate>textureDone,"do not mark complete before six physically textured panels were applied");
+});
+
 test("dense WebGL tailoring changes never hide the existing dressed mannequin before replacement loads",()=>{
   const effect=actualViewerComponent.slice(
     actualViewerComponent.indexOf('const yieldForInput=createCooperativeMaterialBatch('),
