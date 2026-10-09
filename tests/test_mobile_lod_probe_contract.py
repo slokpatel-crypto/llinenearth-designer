@@ -90,6 +90,31 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
         self.assertNotIn("ratio=0.50",PROBE)
         self.assertNotIn("original.data=trial.data",PROBE)
 
+    def test_mobile_lod_is_saved_separately_and_independently_preflighted_without_promotion(self):
+        for token in (
+            'parser.add_argument("--diagnostic-scene"',
+            'if cfg.diagnostic_scene and preliminary_guide_pass and preliminary_skin_pass and preliminary_budget_pass:',
+            'if destination==Path(bpy.data.filepath).resolve():',
+            'bpy.context.scene["linen_earth_derived_mobile_lod_unapproved"]=True',
+            'bpy.context.scene["linen_earth_mobile_lod_diagnostic_only"]=True',
+            'bpy.ops.wm.save_as_mainfile(filepath=str(destination),check_existing=False)',
+            '"diagnosticSceneSavedForIndependentPreflight":diagnostic_scene_written',
+            '"independentFullPreflightPassed":False',
+            '"eligibleForProduction":False',
+        ):
+            self.assertIn(token,PROBE,token)
+        independent=WORKFLOW[WORKFLOW.index("name: Independently preflight mobile LOD (UNAPPROVED evidence only)"):]
+        self.assertIn('mobile-lod-independent-preflight.json',independent)
+        self.assertIn('--python scripts/blender/preflight-linen-earth-officewear.py',independent)
+        self.assertIn('--diagnostic-scene artifacts/realistic-3d/mobile-lod-unapproved.blend',WORKFLOW)
+        self.assertIn('continue-on-error: true',independent)
+        gate=WORKFLOW[WORKFLOW.index('name: Enforce candidate gates'):]
+        self.assertNotIn('mobile_independent_preflight.outcome',gate)
+        self.assertNotIn('mobile-lod-unapproved.blend',gate)
+        # The production authoring .blend is never overwritten by this probe.
+        self.assertIn('bpy.data.objects.remove(authored,do_unlink=True)',PROBE)
+        self.assertIn('diagnostic_scene_written=destination.is_file()',PROBE)
+
     def test_final_cloth_thickness_is_measured_against_actual_body_triangles(self):
         # SOLIDIFY changes rendered skin-contact triangles AFTER the original
         # source-mesh BVH pass. Do not fake approval from quad/vertex probes.
