@@ -946,6 +946,10 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       viewer.dataset.tailoringLoadedOrdinal="0";
       viewer.dataset.tailoringLoadingMaterial="";
       viewer.dataset.tailoringLastLoadedMaterial="";
+      viewer.dataset.tailoringOperation="preparing";
+      viewer.dataset.tailoringLastYieldMs="0";
+      viewer.dataset.tailoringLastLoadMs="0";
+      viewer.dataset.tailoringLastBindMs="0";
       let appliedVariants=0;
       // REPLACEMENT FIRST: never hide the previous outfit before its next
       // shirt, sleeves and two trouser legs are loaded. Earlier code hid all
@@ -956,12 +960,23 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         // Style-only edits often retain most visible variants. Re-uploading the
         // same texture/normal for each retained variant stalls WebGL Chromium.
         if(!needsVariantMaterialRefresh(previous.has(name),lastVariantAppearanceRef.current,appearance)) continue;
+        // The 589-slot software GPU can delay even an 8ms event-loop yield by
+        // seconds. Log the exact native operation without changing the 20s
+        // customer-visible ready gate or spoofing browser material state.
+        const yieldAt=performance.now();
+        viewer.dataset.tailoringOperation="yield:"+name;
         await yieldForInput();
         if(!isCurrent()) return;
-        if(isCurrent()) viewer.dataset.tailoringLoadingMaterial=name;
+        viewer.dataset.tailoringLastYieldMs=(performance.now()-yieldAt).toFixed(1);
+        viewer.dataset.tailoringLoadingMaterial=name;
+        viewer.dataset.tailoringOperation="load:"+name;
+        const loadAt=performance.now();
         const material=await replacementPrefetch.take(name);
         if(!isCurrent()) return;
+        viewer.dataset.tailoringLastLoadMs=(performance.now()-loadAt).toFixed(1);
         if(!material) continue;
+        const bindAt=performance.now();
+        viewer.dataset.tailoringOperation="bind:"+name;
         appliedVariants++;
         viewer.dataset.tailoringLoadedOrdinal=String(appliedVariants);
         viewer.dataset.tailoringLastLoadedMaterial=name;
@@ -979,7 +994,9 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           material.pbrMetallicRoughness.baseColorTexture?.setTexture(prepared.texture);
           if(prepared.normal) material.normalTexture?.setTexture(prepared.normal);
         }
+        viewer.dataset.tailoringLastBindMs=(performance.now()-bindAt).toFixed(1);
       }
+      viewer.dataset.tailoringOperation="retiring-old-cloth";
       if(isCurrent()) setTailoringPhase("retiring-old-cloth");
       // New garment material variants are now visible (or were already
       // visible). Only now hide the superseded geometry. Cancellation keeps
