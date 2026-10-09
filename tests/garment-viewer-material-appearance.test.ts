@@ -248,6 +248,31 @@ test("real garment shader prefetch starts only two panels and retains selected s
   assert.equal(started.length,6,"no selected garment may be skipped");
 });
 
+test("cold studio look can concurrently prewarm cosmetics ONLY behind six structural garment panels",async()=>{
+  const garment=[
+    "ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric",
+    "TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric",
+    "ShirtCollarVariant__point__stiff_fused","ShirtPlacketVariant__standard",
+  ];
+  const starts:string[]=[];
+  const release=new Map<string,()=>void>();
+  const q=createBoundedMaterialPrefetch(garment,name=>new Promise<string>(resolve=>{
+    starts.push(name);release.set(name,()=>resolve(name));
+  }),3);
+  await Promise.resolve();
+  assert.deepEqual(starts,garment.slice(0,3),"initial GPU warmup uses only 3 real cloth materials");
+  release.get(garment[0])!();
+  assert.equal(await q.take(garment[0]),garment[0]);
+  await Promise.resolve();
+  assert.deepEqual(starts,garment.slice(0,4),"next structural garment prefetches before trim");
+  for(let i=1;i<garment.length;i++){
+    if(!release.has(garment[i])) await Promise.resolve();
+    release.get(garment[i])!();
+    assert.equal(await q.take(garment[i]),garment[i]);
+  }
+  assert.deepEqual(starts,garment,"no collar or style option omitted from first-look hydration");
+});
+
 test("prefetch failure is observed and propagated when core material is applied",async()=>{
   const queue=createBoundedMaterialPrefetch(
     ["shirt","trouser"],async(panel)=>{
