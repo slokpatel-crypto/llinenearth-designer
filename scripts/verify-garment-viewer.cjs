@@ -70,6 +70,7 @@ async function preserveOriginalVs3DReference(actualName,comparisonName="studio-o
   },null,2)+"\n");
 }
 
+const nativeGestureDurationsMs=[];
 async function selectTailoringOption(page, label, value) {
   const started=Date.now();
   const phaseMs={};
@@ -162,8 +163,10 @@ async function selectTailoringOption(page, label, value) {
     const actual=await target.inputValue({timeout:3000});
     markPhase("nativeReadBack");
     assert.equal(actual,value,`Native browser input for ${label} must commit ${value}`);
-    assert.ok(Date.now()-inputStarted<6000,
-      `3D tailoring REAL native user gesture must stay under 6 seconds: ${JSON.stringify({gestureMs:Date.now()-inputStarted,phaseMs})}`);
+    const gestureMs=Date.now()-inputStarted;
+    assert.ok(gestureMs<6000,
+      `3D tailoring REAL native user gesture must stay under 6 seconds: ${JSON.stringify({gestureMs,phaseMs})}`);
+    nativeGestureDurationsMs.push({label,value,gestureMs});
   } catch(error) {
     let state={unavailable:true};
     try {
@@ -895,6 +898,25 @@ async function verifyViewport(browser, width) {
     "studio-original-vs-styled-3d-UNAPPROVED.png",
   );
 
+  // All real browser mouse+keyboard transitions are recorded; no forged
+  // dispatch/change, no repeated synthetic test samples and no lab runtime
+  // substituted for a customer device. A failed <300ms p95 is evidence of a
+  // production blocker, not a reason to weaken the target.
+  const actualGestureValues=nativeGestureDurationsMs.map(row=>row.gestureMs);
+  const ordered=[...actualGestureValues].sort((a,b)=>a-b);
+  const p95=ordered.length?ordered[Math.ceil(ordered.length*.95)-1]:null;
+  const latencyEvidence={
+    version:"linen-earth-native-3d-interaction-latency-v1",
+    actualBrowser:"Chromium",
+    realUserInputs:actualGestureValues.length,
+    p95Ms:p95,
+    targetP95Ms:300,
+    meetsProductionSpeedGate:actualGestureValues.length>=12&&p95!==null&&p95<300,
+    productionSpeedCertified:false,
+    samples:nativeGestureDurationsMs,
+  };
+  await fs.writeFile(path.join(output,"native-tailoring-interaction-latency.json"),
+    JSON.stringify(latencyEvidence,null,2)+"\n");
   assert.deepEqual(errors, [], "GarmentViewer must load without console/page errors");
   await context.close();
   return { width, modelState, materialState, layout:desktopLayout, responsiveLayouts:[mobileLayout] };
