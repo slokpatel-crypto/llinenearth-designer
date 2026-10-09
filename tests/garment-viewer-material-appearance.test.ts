@@ -188,6 +188,30 @@ test("real 3D garment silhouette materials hydrate before cosmetic details",()=>
   assert.ok(names.indexOf("ShirtPlacketVariant__standard")>=6);
 });
 
+
+test("default straight trousers, waist and regular sleeves are core visible cloth, not trim",()=>{
+  const panels=[
+    "ShirtTorsoFabric",
+    "ShirtSleeveLFabric",
+    "ShirtSleeveRFabric",
+    "TrouserWaistFabric",
+    "TrouserLegLFabric",
+    "TrouserLegRFabric",
+  ];
+  panels.forEach((name,index)=>assert.equal(garmentSurfaceVisibilityPriority(name),index,name));
+  const shuffled=[
+    "ShirtCollarVariant__point__stiff_fused",
+    "ShirtPlacketVariant__standard",
+    ...panels.slice().reverse(),
+    "TrouserPocketVariant__mid__slanted",
+    "ShirtTorsoTuckedVariant__regular__mid",
+  ];
+  shuffled.sort((a,b)=>garmentSurfaceVisibilityPriority(a)-garmentSurfaceVisibilityPriority(b));
+  assert.ok(shuffled.slice(0,7).every(name=>garmentSurfaceVisibilityPriority(name)<6));
+  assert.ok(shuffled.slice(7).every(name=>garmentSurfaceVisibilityPriority(name)>=6));
+  assert.equal(shuffled[0],"ShirtTorsoFabric");
+});
+
 test("real garment shader prefetch starts only two panels and retains selected silhouette order",async()=>{
   const started:string[]=[];
   const release=new Map<string,()=>void>();
