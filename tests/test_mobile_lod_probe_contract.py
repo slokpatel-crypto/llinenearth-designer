@@ -211,7 +211,9 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
         # Source tailoring geometry is retained in the exported customer GLB;
         # render-only isolation cannot quietly remove a style variation.
         self.assertIn('EXPORT_COLLECTION = "LinenEarthExport"',EXPORT)
-        self.assertNotIn('bpy.data.objects.remove(obj',RENDER)
+        self.assertIn('if obj.name.startswith("LE_REVIEW_"):',RENDER,
+                      "only temporary review-stage objects may be discarded")
+        self.assertNotIn('bpy.data.objects.remove(bpy.data.objects.get(name)',RENDER)
 
     def test_unapproved_mobile_four_angle_workbench_cannot_masquerade_as_premium_render(self):
         diagnostic=WORKFLOW[
