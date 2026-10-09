@@ -122,3 +122,18 @@ test("provisional studio mannequin skin and formal leather shoes use a single no
   assert.ok(actualViewerComponent.includes("studioPalette.skin.rgba.slice(0,3)"));
   assert.ok(actualViewerComponent.includes("studioPalette.skin.roughness"));
 });
+
+test("native WebGL QA observes only actually loaded materials",()=>{
+  const initial=qa.slice(
+    qa.indexOf('// M7.46 originally captured'),
+    qa.indexOf('await captureCanvas("garment-angle-front.png")',qa.indexOf('// M7.46 originally captured'))
+  );
+  assert.ok(initial.includes('material.isLoaded===true&&'));
+  assert.ok(initial.includes('&&m.isLoaded===true'));
+  assert.ok(initial.includes('alpha:m.isLoaded===true?m.pbrMetallicRoughness?.baseColorFactor?.[3]:null'));
+  const trim=qa.slice(qa.indexOf('  try {\n    await page.waitForFunction(()=>{\n      const materials=document.querySelector("model-viewer")?.model?.materials||[];'));
+  assert.ok(trim.includes('if(material?.isLoaded!==true) return false;'));
+  assert.ok(trim.includes('const pbr=material?.isLoaded===true?material.pbrMetallicRoughness:null;'));
+  assert.ok(!initial.includes('material.ensureLoaded()'),"readiness checker must not hydrate unloaded shader slots");
+  assert.ok(initial.includes('timeout:20000'),"do not weaken real full-outfit visual limit");
+});
