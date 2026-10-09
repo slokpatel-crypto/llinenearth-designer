@@ -882,9 +882,10 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       // after every cosmetic shader can paint ~30 half-dressed frames and
       // exceed the strict native 20s complete-outfit gate. During the initial
       // look, batch up to six material changes per cooperative browser turn.
-      // Preserve a real browser event-loop yield for EVERY active native
-      // wardrobe edit. Cold initial outfits may batch shader mutations, but
-      // grouped edits were rejected by the responsiveness regression.
+      // Once a look has fully hydrated or a user interacted, restore strict
+      // one-material-per-turn scheduling. Preserve a real browser event-loop
+      // yield for EVERY active native wardrobe edit. Cold initial outfits may
+      // batch shaders, but grouped edits failed the responsiveness regression.
       const coldFirstLook=lastVariantAppearanceRef.current===null
         &&visibleButtonMaterialsRef.current.size===0
         &&interactionStartedAt.current===null;
