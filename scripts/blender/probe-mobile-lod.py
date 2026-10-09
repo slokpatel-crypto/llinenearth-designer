@@ -409,10 +409,30 @@ def main():
             trial,skin_guard=adaptive_skin_guard_trial(
                 original,tree,baseline_probe,cfg.ratio,name,temporary_objects,
             )
-            if trial is not None and skin_guard["keptForFurtherProbe"]:
-                # A contact improvement alone does NOT certify skin clearance,
-                # construction-guide fidelity, actual UV scale or mobile budget.
-                copy=trial
+            if trial is not None:
+                guarded_points,_,guarded_tris=world_geometry(trial)
+                guard_deltas=[]
+                for z in guides[name]:
+                    source_span=section_span(source_points,source_triangles,z)
+                    guarded_span=section_span(guarded_points,guarded_tris,z)
+                    if not source_span or not guarded_span:
+                        guard_deltas.append(float("inf"))
+                    else:
+                        guard_deltas.append(max(
+                            abs(guarded_span[i]-source_span[i]) for i in (0,1)
+                        )*1000)
+                max_guide_shift=max(guard_deltas,default=float("inf"))
+                skin_guard["guardedLockedSectionMaxBoundaryShiftMm"]=(
+                    round(max_guide_shift,3) if math.isfinite(max_guide_shift) else None
+                )
+                # Never trade a better contact sample for wrong shirt/trouser
+                # tailoring widths. Diagnostic must remain within the SAME
+                # strict 2mm source-measurement gate as a normal LOD.
+                skin_guard["keptForFurtherProbe"]=(
+                    skin_guard["improved"] and max_guide_shift<=2.0
+                )
+                if skin_guard["keptForFurtherProbe"]:
+                    copy=trial
             repair=fit_candidate_mobile_contacts(copy,tree,guides[name])
             points,faces,tris=world_geometry(copy)
             target_tris+=len(tris)
