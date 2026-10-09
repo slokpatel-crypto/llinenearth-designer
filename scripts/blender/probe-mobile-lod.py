@@ -21,6 +21,7 @@ from section_geometry import triangle_section_x_span
 from surface_coverage import penetrating_surface_samples, sampled_mesh_face_indices
 from mobile_lod_skin_guard import skin_protection_weight
 from uv_surface_metrics import triangle_world_mm_per_uv_unit, uv_density_summary
+from uv_fabric_axis_qa import uv_fabric_axes_mm, summarise_uv_fabric_axes, axis_drift_against_authored
 
 GARMENTS=(
     "ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric",
@@ -444,6 +445,7 @@ def measured_geometry_uv_density(obj, max_samples=600):
         uv=mesh.uv_layers.active.data
         matrix=evaluated.matrix_world
         density=[]
+        axis_samples=[]
         for index in sampled_mesh_face_indices(len(mesh.loop_triangles),max_samples):
             face=mesh.loop_triangles[index]
             xyz=[
@@ -452,7 +454,10 @@ def measured_geometry_uv_density(obj, max_samples=600):
             ]
             uvs=[tuple(uv[loop_index].uv) for loop_index in face.loops]
             density.append(triangle_world_mm_per_uv_unit(xyz,uvs))
-        return uv_density_summary(density)
+            axis_samples.append(uv_fabric_axes_mm(xyz,uvs))
+        result=uv_density_summary(density)
+        result["uvAxisGeometry"]=summarise_uv_fabric_axes(axis_samples)
+        return result
     finally:
         evaluated.to_mesh_clear()
 
@@ -587,6 +592,11 @@ def main():
                     "source":source_uv_density,
                     "mobileCandidate":candidate_uv_density,
                     "medianDensityDriftPercent":uv_density_drift,
+                    "warpWeftGeometryQA":axis_drift_against_authored(
+                        source_uv_density["uvAxisGeometry"],
+                        candidate_uv_density["uvAxisGeometry"],
+                        tolerance_pct=8,
+                    ),
                     "verifiedPhysicalFabricRepeat":False,
                 },
                 "boundedContactRepair":repair,
