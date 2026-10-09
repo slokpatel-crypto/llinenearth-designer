@@ -95,6 +95,20 @@ jobs:
             echo "No authored scene; mobile LOD diagnostic is unavailable."
           fi
 
+      - name: Upload early independent 3D blocking evidence
+        if: always() && (steps.assemble.outcome != 'success' || steps.preflight.outcome != 'success')
+        uses: actions/upload-artifact@v4
+        with:
+          name: linen-earth-3d-blocking-evidence
+          path: |
+            artifacts/realistic-3d/assembly.log
+            artifacts/realistic-3d/preflight.log
+            artifacts/realistic-3d/preflight.json
+            artifacts/realistic-3d/mobile-lod-diagnostic.json
+            artifacts/realistic-3d/mobile-lod-diagnostic.log
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Render unapproved scene for geometry diagnosis
         if: always() && (steps.assemble.outcome != 'success' || steps.preflight.outcome != 'success')
         continue-on-error: true
@@ -105,7 +119,12 @@ jobs:
           if [ -s "$scene" ]; then
             mkdir -p artifacts/realistic-3d/review-unapproved
             printf '%s\n' 'UNAPPROVED GEOMETRY DIAGNOSTIC ONLY. The scene failed independent physical preflight; images are not production or tailor acceptance evidence.' > artifacts/realistic-3d/review-unapproved/UNAPPROVED.txt
-            blender --background --python-exit-code 1 "$scene" \
+            # Software EEVEE may take an hour on GitHub runners when the
+            # 903k-triangle scene already FAILED physical preflight. Do not
+            # let this optional unapproved visualization delay preserving the
+            # actual failure report and CI release rejection.
+            timeout --signal=TERM --kill-after=15s 4m \
+              blender --background --python-exit-code 1 "$scene" \
               --python scripts/blender/render-linen-earth-officewear-review.py -- \
               --output-dir artifacts/realistic-3d/review-unapproved \
               --resolution-x 448 --resolution-y 600 \

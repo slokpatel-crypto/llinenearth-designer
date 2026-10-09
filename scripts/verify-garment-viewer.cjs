@@ -567,15 +567,49 @@ async function verifyViewport(browser, width) {
     "ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric",
     "TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric",
   ]) assert.equal(materialByName[name].alpha,0,name+" must stay hidden after fabric changes while its tailored variant is active");
-  await page.waitForFunction(()=>{
-    const materials=document.querySelector("model-viewer")?.model?.materials||[];
-    return ["ShirtCollarVariant__mandarin__soft_unfused","ShirtNeckGasketVariant__mandarin__soft_unfused"].every((name)=>{
-      const pbr=materials.find((material)=>material.name===name)?.pbrMetallicRoughness;
-      const color=pbr?.baseColorFactor;
-      return color&&Math.abs(color[0]-.97)<.001&&Math.abs(color[2]-.95)<.001
-        &&color[3]===1&&!pbr.baseColorTexture?.texture;
-    });
-  },null,{timeout:8000});
+  try {
+    await page.waitForFunction(()=>{
+      const materials=document.querySelector("model-viewer")?.model?.materials||[];
+      return ["ShirtCollarVariant__mandarin__soft_unfused","ShirtNeckGasketVariant__mandarin__soft_unfused"].every((name)=>{
+        const pbr=materials.find((material)=>material.name===name)?.pbrMetallicRoughness;
+        const color=pbr?.baseColorFactor;
+        return color&&Math.abs(color[0]-.97)<.001&&Math.abs(color[2]-.95)<.001
+          &&color[3]===1&&!pbr.baseColorTexture?.texture;
+      });
+    },null,{timeout:8000});
+  } catch(error) {
+    // A previous native CI run reached correct fabric-selected values but
+    // never displayed the actual white collar and neck band in 8 seconds.
+    // Capture real GLTF material state, current visible pieces and shell
+    // readiness; NEVER force test-only white material values to pass.
+    const snapshot=await page.evaluate(()=>{
+      const viewer=document.querySelector("model-viewer");
+      const materials=viewer?.model?.materials||[];
+      const focus=["ShirtCollarVariant__mandarin__soft_unfused",
+        "ShirtNeckGasketVariant__mandarin__soft_unfused"];
+      return {
+        whiteCollarRequested:document.querySelector(".garmentViewerShell")?.getAttribute("data-collar-finish")??null,
+        tailoringReady:document.querySelector(".garmentViewerShell")?.getAttribute("data-tailoring-ready")??null,
+        modelLoaded:Boolean(viewer?.loaded),
+        materialCount:materials.length,
+        trim:focus.map((name)=>{
+          const material=materials.find((item)=>item.name===name);
+          const pbr=material?.pbrMetallicRoughness;
+          return {name,exists:Boolean(material),loaded:material?.isLoaded??null,
+            rgba:pbr?.baseColorFactor??null,
+            texturePresent:Boolean(pbr?.baseColorTexture?.texture),
+            roughness:pbr?.roughnessFactor??null};
+        }),
+        garmentVisibility:materials.filter((m)=>
+          (m.name.startsWith("Shirt")||m.name.startsWith("Trouser"))
+          &&m.pbrMetallicRoughness?.baseColorFactor?.[3]>.95).map((m)=>m.name).slice(0,45),
+      };
+    }).catch(e=>({error:String(e)}));
+    await fs.writeFile(path.join(output,"garment-trim-failure.json"),
+      JSON.stringify({snapshot,error:String(error)},null,2)+"\n");
+    throw new Error("3D collar and neck contrast did not complete after real browser input: "+
+      JSON.stringify({snapshot,error:String(error)}));
+  }
   const assertRuntimeMapped=(name)=>{
     const material=materialByName[name];
     assert.ok(material,name+" must exist");

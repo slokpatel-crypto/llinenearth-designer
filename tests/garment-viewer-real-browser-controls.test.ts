@@ -80,3 +80,12 @@ test("four camera views require actual stable 3D shirt and trousers, never float
   assert.ok(ready.includes('timeout:20000'));
   assert.ok(!ready.includes('setBaseColorFactor('),"QA cannot fake visible clothing");
 });
+
+test("white-collar QA reports actual shader state instead of silently waiving real failures",()=>{
+  assert.ok(qa.includes('garment-trim-failure.json'));
+  assert.ok(qa.includes('texturePresent:Boolean(pbr?.baseColorTexture?.texture)'));
+  assert.ok(qa.includes('whiteCollarRequested'));
+  assert.ok(qa.includes('garmentVisibility:materials.filter('));
+  assert.ok(qa.includes('timeout:8000'),"keep actual 8-second interactive material gate");
+  assert.ok(!qa.includes('setBaseColorFactor([.97'),"tests must never forge contrasting cloth");
+});
