@@ -59,6 +59,21 @@ function passingInput() {
       rating:index<6?4:3,
     })),
     boundaryChecks:{neck:true,cuffs:true,waist:true,trouserGap:true},
+    assetIdentity:{modelId:"LE-OFFICEWEAR-V1",modelSha256:"c".repeat(64),manifestSha256:"d".repeat(64)},
+    uvAxisEvidence:{
+      modelSha256:"c".repeat(64),
+      panels:Object.fromEntries(REQUIRED_GARMENT_VIEWER_MATERIALS.map((name)=>[
+        name,{uAxisMedianDriftPct:2,vAxisMedianDriftPct:4,sourceOrCandidateCollapsedUvTriangles:0,physicalRepeatVerified:true}
+      ])),
+    },
+    studioDrapeApproval:{
+      modelSha256:"c".repeat(64),
+      referenceImage:LINEN_EARTH_MODEL_REFERENCE_IMAGE,
+      selectedStyleMatchesReference:true,
+      approvedAngles:["front","three-quarter","side","back"],
+      reviewedByOwner:true,
+      calibratedLinenColourAndDrape:true,
+    },
   };
 }
 
@@ -73,6 +88,8 @@ test("production GarmentViewer can only promote when every realism and physical 
   assert.equal(result.latencyReady,true);
   assert.equal(result.realismReady,true);
   assert.equal(result.boundaryReady,true);
+  assert.equal(result.uvAxisReady,true);
+  assert.equal(result.studioReady,true);
   assert.deepEqual(result.reasons,[]);
 });
 
@@ -139,6 +156,41 @@ test("realism, latency and boundary evidence cannot be bypassed",()=>{
   assert(result.reasons.length>=3);
 });
 
+
+test("production cannot promote visually mismatched or physically uncalibrated garment UVs",()=>{
+  const noPhoto=passingInput();
+  noPhoto.studioDrapeApproval.reviewedByOwner=false;
+  let result=garmentViewerPromotionReadiness(noPhoto);
+  assert.equal(result.ready,false);
+  assert.equal(result.studioReady,false);
+  assert(result.reasons.some((reason)=>reason.includes("four-angle reference identity")));
+
+  const unsafeUv=passingInput();
+  unsafeUv.uvAxisEvidence.panels.ShirtTorsoFabric.uAxisMedianDriftPct=20.765;
+  result=garmentViewerPromotionReadiness(unsafeUv);
+  assert.equal(result.ready,false);
+  assert.equal(result.uvAxisReady,false);
+
+  const unmeasured=passingInput();
+  unmeasured.uvAxisEvidence.panels.TrouserWaistFabric.physicalRepeatVerified=false;
+  assert.equal(garmentViewerPromotionReadiness(unmeasured).uvAxisReady,false);
+
+  const collapsed=passingInput();
+  collapsed.uvAxisEvidence.panels.ShirtSleeveLFabric.sourceOrCandidateCollapsedUvTriangles=1;
+  assert.equal(garmentViewerPromotionReadiness(collapsed).uvAxisReady,false);
+
+  const stale=passingInput();
+  stale.uvAxisEvidence.modelSha256="e".repeat(64);
+  assert.equal(garmentViewerPromotionReadiness(stale).uvAxisReady,false);
+
+  const wrongView=passingInput();
+  wrongView.studioDrapeApproval.approvedAngles=["front","side"];
+  assert.equal(garmentViewerPromotionReadiness(wrongView).studioReady,false);
+
+  const candidateOnly=passingInput();
+  candidateOnly.studioDrapeApproval.calibratedLinenColourAndDrape=false;
+  assert.equal(garmentViewerPromotionReadiness(candidateOnly).ready,false);
+});
 
 test("QA evidence identity is invalidated by any GLB or manifest revision",()=>{
   const current={modelId:"LE-OFFICEWEAR-V1",modelSha256:"a".repeat(64),manifestSha256:"b".repeat(64)};
