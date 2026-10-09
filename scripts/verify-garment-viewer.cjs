@@ -613,6 +613,26 @@ async function verifyViewport(browser, width) {
   }
 
   await page.waitForTimeout(400);
+  // Real fabric colour/cloth completeness is a 20-second gate; *secondary*
+  // measured-UV weave detail hydrates only after the selected outfit renders.
+  // Wait independently for all six authentic base-panel normal maps before
+  // asserting their GLTF sampler state. Do not fake shader textures in QA.
+  try {
+    await page.waitForFunction(()=>{
+      const shell=document.querySelector(".garmentViewerShell");
+      return shell?.getAttribute("data-fabric-phase")==="weave-ready";
+    },null,{timeout:12000});
+  }catch(error){
+    const actual=await page.evaluate(()=>{
+      const shell=document.querySelector(".garmentViewerShell");
+      return {phase:shell?.getAttribute("data-fabric-phase"),
+        tailoringPhase:shell?.getAttribute("data-tailoring-phase"),
+        tailoringReady:shell?.getAttribute("data-tailoring-ready")};
+    });
+    await fs.writeFile(path.join(output,"garment-weave-failure.json"),
+      JSON.stringify({actual,error:String(error)},null,2)+"\n");
+    throw new Error("The actual six-panel linen normal maps did not finish after base colour: "+JSON.stringify(actual));
+  }
   const productionLatencyEvidence = await page.evaluate(() => localStorage.getItem("linen-earth-garment-viewer-latency-v1"));
   assert.ok(productionLatencyEvidence, "production fabric changes must create model-bound interaction latency evidence");
   const parsedLatencyEvidence=JSON.parse(productionLatencyEvidence);
