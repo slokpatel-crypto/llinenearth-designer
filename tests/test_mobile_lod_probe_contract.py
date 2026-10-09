@@ -126,6 +126,24 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
         self.assertIn('preflight_report = run_scene_preflight()',EXPORT)
         self.assertIn('geometry_panel_spec() if args.lab_preview else None',EXPORT)
 
+    def test_mobile_lab_asset_requires_separate_green_preflight_and_never_promotes(self):
+        marker='name: Export mobile LOD GLB for LAB ONLY after independent BVH preflight'
+        self.assertIn(marker,WORKFLOW)
+        section=WORKFLOW[WORKFLOW.index(marker):WORKFLOW.index('name: Upload early independent 3D blocking evidence')]
+        for token in (
+            "steps.mobile_independent_preflight.outcome == 'success'",
+            'data.get("ready") is True',
+            'totals.get("triangles")',
+            'totals.get("vertices")',
+            'scripts/blender/export-linen-earth-officewear.py',
+            '--lab-preview --output artifacts/realistic-3d/mobile-lod-LAB-UNAPPROVED.glb',
+            "LAB-only diagnostic GLB exported, NOT approved",
+        ):
+            self.assertIn(token,section,token)
+        gate=WORKFLOW[WORKFLOW.index("name: Enforce candidate gates"):]
+        self.assertNotIn("mobile_lab_export",gate)
+        self.assertNotIn("mobile-lod-LAB-UNAPPROVED.glb",gate)
+
     def test_final_cloth_thickness_is_measured_against_actual_body_triangles(self):
         # SOLIDIFY changes rendered skin-contact triangles AFTER the original
         # source-mesh BVH pass. Do not fake approval from quad/vertex probes.
