@@ -248,7 +248,14 @@ async function verifyViewport(browser, width) {
   assert.equal(labModelReadiness, "contract_ready", "3D lab must load the production M7.46 model contract");
   assert.equal(labManifestReadiness, "true", "production M7.46 model must load its verified physical-panel manifest");
 
-  const modelState = await viewer.evaluate((element) => {
+  // The real GLTF model is already visible and contract-verified above.
+  // locator.evaluate still enters Playwright's compositor/actionability path,
+  // which stalled for 30s on this 586-material scene in native CI. Read
+  // the identical live element and material graph directly from the page;
+  // do NOT replace real browser state with test-side fixtures.
+  const modelState = await page.evaluate(() => {
+    const element=document.querySelector("model-viewer");
+    if(!element) throw new Error("Real 3D model-viewer disappeared during verification");
     const materials = element.model?.materials || [];
     return {
       materialNames: materials.map((material) => material.name),
