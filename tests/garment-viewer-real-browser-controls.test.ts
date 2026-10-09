@@ -66,6 +66,18 @@ test("cold-start garment tailoring cannot hydrate white default shaders before r
   assert.ok(textureDone>=0&&variantGate>textureDone,"do not mark complete before six physically textured panels were applied");
 });
 
+test("fabric colour reaches all six real panels before optional costly weave shader textures",()=>{
+  const begin=actualViewerComponent.indexOf('setFabricHydrationPhase("creating-color-tiles")');
+  const applied=actualViewerComponent.indexOf('setPreparedFabricVersion(requestedFabricVersion)',begin);
+  const weave=actualViewerComponent.indexOf('setFabricHydrationPhase("weave-normals-in-background")',applied);
+  assert.ok(begin>=0&&applied>begin&&weave>applied,"no cold weave texture should gate first fully dressed 3D");
+  assert.ok(actualViewerComponent.includes('if(!tailoringMaterialsReady || preparedFabricVersion!==requestedFabricVersion'));
+  assert.ok(actualViewerComponent.includes('visibleGarmentMaterialsRef.current.has(material.name)'),
+    "weave must only touch already loaded visible materials after first dressed frame");
+  assert.ok(actualViewerComponent.includes('data-fabric-phase={fabricHydrationPhase}'),
+    "browser QA must diagnose the exact fabric hydration phase");
+});
+
 test("dense WebGL tailoring changes never hide the existing dressed mannequin before replacement loads",()=>{
   const effect=actualViewerComponent.slice(
     actualViewerComponent.indexOf('const yieldForInput=createCooperativeMaterialBatch('),
