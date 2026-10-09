@@ -248,6 +248,37 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
         self.assertNotIn('--diagnostic-workbench',production)
         self.assertNotIn('steps.mobile_independent_preflight.outcome',production)
 
+    def test_cpu_cycles_four_angle_review_is_genuine_but_cannot_override_release(self):
+        # The old software EGL render never finished: a separate CPU-only
+        # 3-sample real-geometry review now produces inspectable shaded pixels
+        # without treating visual photos as a passing native production gate.
+        for token in (
+            'parser.add_argument("--diagnostic-cycles-cpu",action="store_true"',
+            '"CYCLES" if options.diagnostic_cycles_cpu',
+            'scene.cycles.device="CPU"',
+            'scene.cycles.samples=3',
+            'scene.render.threads=2',
+            'hidden_alternates = isolate_neutral_six_panel_fit_review()',
+            '"cpuCyclesLaboratoryReviewOnly":bool(options.diagnostic_cycles_cpu)',
+            'UNAPPROVED-CPU-SHADED-REVIEW.txt',
+        ):
+            self.assertIn(token,RENDER,token)
+        self.assertIn('name: Optional CPU-shaded four-angle real mobile model (UNAPPROVED)',WORKFLOW)
+        start=WORKFLOW.index('name: Optional CPU-shaded four-angle real mobile model (UNAPPROVED)')
+        end=WORKFLOW.index('name: Render four-angle fit review',start)
+        diagnostic=WORKFLOW[start:end]
+        self.assertIn('steps.mobile_independent_preflight.outcome',diagnostic)
+        self.assertIn('continue-on-error: true',diagnostic)
+        self.assertIn('--diagnostic-cycles-cpu',diagnostic)
+        self.assertIn('timeout --signal=TERM --kill-after=15s 8m',diagnostic)
+        self.assertIn('shaded-lod-UNAPPROVED',diagnostic)
+        self.assertNotIn('steps.preflight.outcome == \'success\'',diagnostic)
+        strict=WORKFLOW[WORKFLOW.index('name: Enforce candidate gates'):]
+        self.assertIn('test "${{ steps.render.outcome }}" = "success"',strict)
+        self.assertNotIn('shaded-lod-UNAPPROVED',strict)
+        self.assertIn('"referencePhotoVisualParityApproved":False',RENDER)
+        self.assertIn('"fabricColourRepeatOrDrapeApproved":False',RENDER)
+
     def test_left_sleeve_uses_real_rendered_triangles_for_native_bvh_fit(self):
         self.assertIn('iteration==0 and obj.name=="ShirtSleeveLFabric"',AUTHOR)
         self.assertIn('bmesh.ops.triangulate(',AUTHOR)
