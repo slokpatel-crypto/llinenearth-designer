@@ -25,6 +25,22 @@ test("dense 3D variant QA uses genuine hit-tested pointer and browser keyboard e
   assert.ok(!/\.(?:click|selectOption|check|uncheck)\(\{[^)]*force\s*:\s*true/.test(selector),"do not bypass actual native interactivity gates");
 });
 
+test("native customer style transitions record real, reproducible p95 rather than fake speed",()=>{
+  for(const marker of [
+    'const nativeGestureDurationsMs=[]',
+    'const inputStarted=Date.now();',
+    'const gestureMs=Date.now()-inputStarted',
+    'nativeGestureDurationsMs.push({label,value,gestureMs})',
+    'p95Ms:p95',
+    'actualGestureValues.length>=12&&p95!==null&&p95<300',
+    'productionSpeedCertified:false',
+    'native-tailoring-interaction-latency.json',
+  ]) assert.ok(qa.includes(marker),marker);
+  assert.ok(!qa.includes('nativeGestureDurationsMs.push({label,value,gestureMs:0})'));
+  assert.ok(qa.includes('page.mouse.click(x,y)'));
+  assert.ok(qa.includes('page.keyboard.type(prefix,{delay:0})'));
+});
+
 test("native 3D selector refuses occluded or mismatched options",()=>{
   assert.ok(qa.includes("uncovered,true"));
   assert.ok(qa.includes("options.filter((option)=>"));
