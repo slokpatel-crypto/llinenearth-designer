@@ -33,7 +33,12 @@ def cli_args():
     parser.add_argument("--resolution-y", type=int, default=768)
     parser.add_argument("--diagnostic-workbench", action="store_true",
                         help="Fast silhouette-only render of an UNAPPROVED scene; never used for production visual approval.")
-    return parser.parse_args(argv)
+    parser.add_argument("--diagnostic-cycles-cpu",action="store_true",
+                        help="CPU path-traced colour/shadow evidence of real LAB geometry; never fabric, tailor or studio acceptance.")
+    options=parser.parse_args(argv)
+    if options.diagnostic_workbench and options.diagnostic_cycles_cpu:
+        raise ValueError("Only one unapproved review backend may be selected.")
+    return options
 
 
 def rgba(hex_value: str):
@@ -183,7 +188,23 @@ def image_exposure_metrics(path):
 
 def configure_scene(options):
     scene = bpy.context.scene
-    scene.render.engine = "BLENDER_WORKBENCH" if options.diagnostic_workbench else "BLENDER_EEVEE_NEXT"
+    scene.render.engine = (
+        "CYCLES" if options.diagnostic_cycles_cpu
+        else "BLENDER_WORKBENCH" if options.diagnostic_workbench
+        else "BLENDER_EEVEE_NEXT"
+    )
+    if options.diagnostic_cycles_cpu:
+        # Blender EEVEE/Workbench both timed out initialising headless EGL on
+        # CI. CPU Cycles builds a physically shaded review of the independently
+        # checked REAL 205k-triangle LAB geometry without a GPU/display.
+        # Three samples and 320x480 keep this auxiliary stage bounded. It is
+        # NOT calibrated linen PBR or a visual approval for the original model.
+        scene.cycles.device="CPU"
+        scene.cycles.samples=3
+        scene.render.threads_mode="FIXED"
+        scene.render.threads=2
+        scene.render.use_simplify=True
+        scene.render.simplify_subdivision=0
     if options.diagnostic_workbench:
         scene.display.shading.light = "STUDIO"
         scene.display.shading.color_type = "MATERIAL"
@@ -308,6 +329,7 @@ def main():
         "hiddenAlternates":hidden_alternates[:20],
         "productionAssetAltered":False,
         "selectedTailoringRecipeVerified":False,
+        "cpuCyclesLaboratoryReviewOnly":bool(options.diagnostic_cycles_cpu),
         "referencePhotoVisualParityApproved":False,
         "fabricColourRepeatOrDrapeApproved":False,
     },indent=2)+"\n",encoding="utf-8")
@@ -316,6 +338,13 @@ def main():
         "\n".join(f"{label}\t{yaw:.1f}\t{path}" for label, yaw, path, _ in manifest) + "\n",
         encoding="utf-8",
     )
+    if options.diagnostic_cycles_cpu:
+        (output_dir / "UNAPPROVED-CPU-SHADED-REVIEW.txt").write_text(
+            "Real BLENDER CPU Cycles colour/shadow on disposable LOD geometry. "
+            "NOT the original studio model, supplier-calibrated linen, true "
+            "drape, final production export or owner/tailor visual approval.\\n",
+            encoding="utf-8",
+        )
     if options.diagnostic_workbench:
         (output_dir / "GEOMETRY-ONLY-NOT-REALISM.txt").write_text(
             "UNAPPROVED low-poly Workbench silhouette only. Fabric texture, drape optics, studio parity, and photorealism are NOT evaluated.\\n",
