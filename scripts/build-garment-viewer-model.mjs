@@ -2555,7 +2555,7 @@ const manifest={
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
-  cameraOrbits:{front:"0deg 76deg 3.60m","three-quarter":"35deg 76deg 3.60m",side:"90deg 76deg 3.60m",back:"180deg 76deg 3.60m"},
+  cameraOrbits:{front:"0deg 76deg 3.95m","three-quarter":"35deg 76deg 3.95m",side:"90deg 76deg 3.95m",back:"180deg 76deg 3.95m"},
   productionAssetStatus:"deterministic-preview-shell-not-realistic-production-asset",
 };
 
