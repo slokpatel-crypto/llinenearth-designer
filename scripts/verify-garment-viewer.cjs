@@ -407,10 +407,17 @@ async function verifyViewport(browser, width) {
   assert.ok(modelState.materialNames.some((name)=>name==="ButtonAccentVariant__trouser_rise__extra_high"),"M7.46 must carry extra-high rise closure hardware");
   assert.ok(modelState.materialNames.some((name)=>name==="ButtonAccentVariant__trouser_rise__high"),"M7.46 must carry high-rise trouser closure hardware");
 
+  // The saved recipe already names camp/wide types with explicit custom
+  // overrides. Native selects do not fire change when reselecting that same
+  // option. Exercise a real type transition before asserting preset resets.
+  await selectTailoringOption(page,"3D shirt type","dress_shirt");
+  assert.equal(await page.getByLabel("3D shirt type").inputValue(),"dress_shirt");
   await selectTailoringOption(page,"3D shirt type","camp_collar_resort");
   assert.equal(await page.getByLabel("3D shirt wear").inputValue(),"untucked","camp shirt preset must switch to untucked wear");
   assert.equal(await page.getByLabel("3D sleeve").inputValue(),"half","camp shirt preset must switch to half sleeve");
   assert.equal(await page.getByLabel("3D collar",{exact:true}).inputValue(),"camp","camp shirt preset must switch the collar geometry");
+  await selectTailoringOption(page,"3D trouser type","formal_flat_front");
+  assert.equal(await page.getByLabel("3D trouser type").inputValue(),"formal_flat_front");
   await selectTailoringOption(page,"3D trouser type","wide_leg_relaxed_drape");
   assert.equal(await page.getByLabel("3D trouser fit").inputValue(),"wide","wide-leg trouser preset must switch leg geometry");
   assert.equal(await page.getByLabel("3D trouser rise").inputValue(),"high","wide-leg trouser preset must switch rise");
