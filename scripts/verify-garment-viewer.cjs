@@ -298,8 +298,8 @@ async function verifyViewport(browser, width) {
       hasCreateTexture: typeof element.createTexture === "function",
     };
   });
-  assert.match(modelState.cameraOrbit||"",/3\.60m$/,"default locked camera must keep the full mannequin inside frame");
-  assert.equal(modelState.cameraTarget,"0m 0.86m 0m","camera target must stay centered on the 1727 mm mannequin");
+  assert.match(modelState.cameraOrbit||"",/3\.95m$/,"locked full-body studio camera must retain the wider head-to-white-shoe frame");
+  assert.equal(modelState.cameraTarget,"0m 0.78m 0m","camera target must keep feet and head in the 1727 mm mannequin frame");
   assert.equal(modelState.fieldOfView,"30deg","default field of view must preserve head-to-shoe framing");
   const requiredPanels=["ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric","TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric"];
   for(const name of requiredPanels) assert.equal(modelState.materialNames.filter((item)=>item===name).length,1,"required garment material must remain unique: "+name);
