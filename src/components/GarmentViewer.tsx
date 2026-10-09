@@ -373,6 +373,11 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const appliedModelRef=useRef<ModelViewerElement["model"]>(undefined);
   const visibleSkinArmMaterialRef=useRef<string|null>(null);
   const [textureRevision,setTextureRevision]=useState(0);
+  // The first <model-viewer> cold start must finish six physically textured
+  // base surfaces BEFORE variant shader hydration. Otherwise 586 unloaded
+  // shader slots can reveal a white torso beside coloured sleeves, even
+  // though the same fabric was chosen for the entire shirt.
+  const [preparedFabricVersion,setPreparedFabricVersion]=useState("");
   // Customer-visible outfit must stay complete during lazy 586-material GPU
   // hydration. Mark the settled state only AFTER every new physical-panel
   // variant, visible buttons, collar band and cuff have been committed.
@@ -467,6 +472,13 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     const measured=modelManifest?.panels?.[panel.material];
     return measured ? {...panel,widthMm:measured.widthMm,heightMm:measured.heightMm,offsetU:measured.offsetU,offsetV:measured.offsetV,rotationDeg:measured.rotationDeg} : panel;
   }),[modelManifest]);
+  // Include the literal model revision, cloth images, weight and UV scale.
+  // Superseded user selections cannot mark shader work on OLD fabric ready.
+  const requestedFabricVersion=JSON.stringify([
+    modelRevision,shirt?.id,shirt?.image,shirt?.drape,shirt?.weightGsm,shirtTileMm,
+    trouser?.id,trouser?.image,trouser?.drape,trouser?.weightGsm,trouserTileMm,
+    panelSpecs.map((panel)=>[panel.material,panel.widthMm,panel.heightMm,panel.offsetU,panel.offsetV,panel.rotationDeg]),
+  ]);
   const cameraViews=useMemo(()=>CAMERA_VIEWS.map((view)=>({
     ...view,
     orbit:modelManifest?.cameraOrbits?.[view.id] || view.orbit,
@@ -802,6 +814,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           entry.panel.material,
           {texture:entry.texture,normal:entry.normal,garment:entry.panel.garment},
         ]));
+        setPreparedFabricVersion(requestedFabricVersion);
         setTextureRevision((value)=>value+1);
         if(interactionStartedAt.current!==null && modelSrc && assetIdentityKey && modelContract?.readiness==="contract_ready"){
           const duration=performance.now()-interactionStartedAt.current;
@@ -830,7 +843,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     };
     void apply();
     return ()=>{cancelled=true;};
-  },[modelReady,modelRevision,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract,modelSrc,assetIdentityKey]);
+  },[modelReady,modelRevision,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract,modelSrc,assetIdentityKey,requestedFabricVersion]);
 
   useEffect(()=>{
     if(!modelReady) {
@@ -842,6 +855,12 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     if(!viewer?.model) {
       setTailoringPhase("awaiting-materials");
       setTailoringMaterialsReady(false);
+      return;
+    }
+    if(preparedFabricVersion!==requestedFabricVersion
+      || preparedTextureRef.current.size!==panelSpecs.length){
+      setTailoringMaterialsReady(false);
+      setTailoringPhase("awaiting-fabric-textures");
       return;
     }
     setTailoringMaterialsReady(false);
@@ -1062,7 +1081,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       });
     },tailoringInputSettleMs(viewer.model?.materials.length||0));
     return ()=>{cancelled=true;window.clearTimeout(inputSettleTimer);};
-  },[modelReady,modelRevision,styleState,buttonKey,textureRevision,roughness,shirt,trouser,collarKey,collarFinishKey,collarConstructionKey,cuffKey,cuffConstructionKey]);
+  },[modelReady,modelRevision,styleState,buttonKey,textureRevision,preparedFabricVersion,requestedFabricVersion,panelSpecs.length,roughness,shirt,trouser,collarKey,collarFinishKey,collarConstructionKey,cuffKey,cuffConstructionKey]);
 
   function applyShirtTypePreset(id:string){
     setShirtTypeKey(id);
