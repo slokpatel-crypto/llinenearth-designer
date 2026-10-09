@@ -175,8 +175,14 @@ test("actual 3D model is compared to the original studio with equivalent full-sl
   assert.ok(viewer.includes('setTrouserFitKey("straight")'));
   assert.ok(qa.includes("page.mouse.click(referenceButton.x,referenceButton.y)"),
     "native action must trigger the real React state flow");
-  assert.ok(qa.includes("document.elementFromPoint(x,y)===button"),
+  assert.ok(qa.includes('block:"center",inline:"nearest",behavior:"instant"'),
+    "mobile-to-desktop transition must not race a smooth scroll before the real pointer click");
+  assert.ok(qa.includes("document.elementFromPoint(x,y)"),
     "do not claim a native control was hit without hit testing");
+  assert.ok(qa.includes("withinViewport&&hit===button"),
+    "require a real unobstructed browser hit target inside the viewport");
+  assert.ok(qa.includes("blockerTag:hit?.tagName"),
+    "report the actual element blocking pointer actions when browser QA fails");
   assert.ok(qa.includes('studio-default-exact-front-UNAPPROVED.png'));
   assert.ok(qa.includes('studio-original-vs-styled-3d-UNAPPROVED.png'));
   assert.ok(qa.includes('shell?.getAttribute("data-tailoring-ready")==="true"'),
