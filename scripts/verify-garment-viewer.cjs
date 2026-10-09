@@ -829,12 +829,47 @@ async function verifyViewport(browser, width) {
     const actual=await page.getByLabel(label,{exact:true}).inputValue();
     assert.equal(actual,value,"native original studio style action must reset "+label);
   }
-  await page.waitForFunction(()=>{
-    const shell=document.querySelector(".garmentViewerShell");
-    const model=document.querySelector("model-viewer");
-    return model?.loaded===true&&shell?.getAttribute("data-tailoring-ready")==="true"
-      &&shell?.getAttribute("data-active-view")==="front";
-  },null,{timeout:20000});
+  try {
+    await page.waitForFunction(()=>{
+      const shell=document.querySelector(".garmentViewerShell");
+      const model=document.querySelector("model-viewer");
+      return model?.loaded===true&&shell?.getAttribute("data-tailoring-ready")==="true"
+        &&shell?.getAttribute("data-active-view")==="front";
+    },null,{timeout:20000});
+  } catch (cause) {
+    // CI has proved the REAL reference button can be clicked and its native
+    // form values reset. The remaining failure is WebGL appearance readiness,
+    // not pointer actionability. Capture the actual phase/material state, not
+    // an invented green signal or a longer completion-time allowance.
+    const evidence=await page.evaluate(()=>{
+      const shell=document.querySelector(".garmentViewerShell");
+      const viewer=document.querySelector("model-viewer");
+      const materials=viewer?.model?.materials||[];
+      const loaded=materials.filter((material)=>material.isLoaded===true);
+      return {
+        modelLoaded:viewer?.loaded===true,
+        modelMaterialCount:materials.length,
+        loadedMaterialCount:loaded.length,
+        tailoringReady:shell?.getAttribute("data-tailoring-ready"),
+        tailoringPhase:shell?.getAttribute("data-tailoring-phase"),
+        fabricPhase:shell?.getAttribute("data-fabric-phase"),
+        activeView:shell?.getAttribute("data-active-view"),
+        identityVisualParity:shell?.getAttribute("data-identity-visual-parity"),
+        error:document.querySelector(".garmentViewerError")?.textContent||null,
+        visibleCloth:loaded.filter((material)=>
+          /^(Shirt|Trouser)/.test(material.name)&&
+          material.pbrMetallicRoughness?.baseColorFactor?.[3]>.5
+        ).slice(0,30).map((material)=>material.name),
+        selectors:[...document.querySelectorAll(".garmentViewerControls select")]
+          .slice(0,20).map((select)=>({value:select.value,disabled:select.disabled})),
+      };
+    });
+    await fs.writeFile(path.join(output,"studio-style-reset-readiness-failure.json"),
+      JSON.stringify({gate:"real-20s-studio-style-readiness",evidence},null,2)+"\n");
+    await captureViewportEvidence("studio-style-reset-readiness-failure.png").catch(()=>{});
+    throw new Error("Native studio-style reset failed real 20s WebGL readiness: "
+      +JSON.stringify(evidence),{cause});
+  }
   await page.evaluate(()=>{
     document.querySelector(".garmentViewerCanvas")?.scrollIntoView({block:"start"});
   });
