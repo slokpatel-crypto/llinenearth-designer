@@ -697,7 +697,8 @@ def enclose_post_identity_torso_profile(
             "maxAllowedRadiusGrowthMm":70.0}
 
 def tighten_waist_to_measured_body_ease(obj, body, waist_guide_z, *,
-                                      desired_clearance_m, max_pull_m):
+                                      desired_clearance_m, max_pull_m,
+                                      waist_band_m=0.050):
     """Make the actual shirt/trouser waist less baggy, preserving locked guides.
 
     Native preflight still owns the approval decision. Each proposed panel
@@ -713,7 +714,7 @@ def tighten_waist_to_measured_body_ease(obj, body, waist_guide_z, *,
     max_applied=0.0
     for vertex in obj.data.vertices:
         point=matrix @ vertex.co
-        if abs(point.z-waist_guide_z)>=0.050 or abs(point.z-waist_guide_z)<=0.002:
+        if abs(point.z-waist_guide_z)>=waist_band_m or abs(point.z-waist_guide_z)<=0.002:
             continue
         if point_inside_closed_bvh(tree,point):
             continue
@@ -723,7 +724,8 @@ def tighten_waist_to_measured_body_ease(obj, body, waist_guide_z, *,
         surface=nearest[0]
         distance=(point-surface).length
         proposed=waist_panel_ease_pull_m(
-            distance,point.z-waist_guide_z,desired_clearance_m,max_pull_m
+            distance,point.z-waist_guide_z,desired_clearance_m,max_pull_m,
+            waist_band_m=waist_band_m,
         )
         if proposed<=0 or distance<1e-6:
             continue
@@ -739,6 +741,7 @@ def tighten_waist_to_measured_body_ease(obj, body, waist_guide_z, *,
         "maxClothOnlyPullMm":round(max_applied*1000,2),
         "targetClearanceMm":round(desired_clearance_m*1000,2),
         "guideProtectedBandMm":2.0,
+        "waistBandMm":round(waist_band_m*1000,1),
         "requiresIndependentBodyFaceBVH":True,
     }
     print("Linen Earth measured waist ease fit: "+obj.name+" "+
@@ -1911,6 +1914,7 @@ def main():
             authored["TrouserWaistFabric"],body,
             guide_center_z("LE_GUIDE_TROUSER_WAIST"),
             desired_clearance_m=0.026,max_pull_m=0.012,
+            waist_band_m=0.060,
         ),
     }
     collision_repairs = {}
