@@ -85,6 +85,41 @@ test("fabric, normal texture revision or finish changes still refresh",()=>{
   assert.equal(needsVariantMaterialRefresh(true,base,{...base,roughness:.78}),true);
 });
 
+test("shirt-only swatches cannot rebind unrelated trouser/waist/leg PBR",()=>{
+  const previous={...base,shirtSurfaceRevision:"shirt-uv-A",trouserSurfaceRevision:"trouser-uv-A"};
+  const shirtChange={...previous,textureRevision:4,shirtId:"linen-white",shirtSurfaceRevision:"shirt-uv-B"};
+  assert.equal(needsVariantMaterialRefresh(true,previous,shirtChange,"shirt"),true);
+  assert.equal(needsVariantMaterialRefresh(true,previous,shirtChange,"trouser"),false);
+  const trouserChange={...previous,textureRevision:4,trouserId:"linen-black",trouserSurfaceRevision:"trouser-uv-B"};
+  assert.equal(needsVariantMaterialRefresh(true,previous,trouserChange,"shirt"),false);
+  assert.equal(needsVariantMaterialRefresh(true,previous,trouserChange,"trouser"),true);
+  // Physical scale/UV or atlas revision changes the corresponding garment,
+  // even if the fabric SKU and uploaded photo are unchanged.
+  assert.equal(needsVariantMaterialRefresh(true,previous,
+    {...previous,shirtSurfaceRevision:"shirt-new-physical-repeat"},"shirt"),true);
+  assert.equal(needsVariantMaterialRefresh(true,previous,
+    {...previous,trouserSurfaceRevision:"trouser-new-physical-repeat"},"trouser"),true);
+  assert.equal(needsVariantMaterialRefresh(true,previous,{...previous,roughness:.81},"trouser"),true);
+  assert.equal(needsVariantMaterialRefresh(true,previous,{...previous,roughness:.81},"shirt"),true);
+  assert.equal(needsVariantMaterialRefresh(true,null,shirtChange,"trouser"),true,
+    "never reuse a partly committed interrupted wardrobe state");
+  assert.equal(needsVariantMaterialRefresh(false,previous,shirtChange,"trouser"),true,
+    "newly revealed material must really be loaded");
+});
+
+test("live shader scheduler compares committed appearance and exact panel cache per garment",()=>{
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  for(const token of [
+    'const previousAppearance=lastVariantAppearanceRef.current',
+    'const shirtSurfaceRevision=garmentSurfaceRevision("shirt")',
+    'const trouserSurfaceRevision=garmentSurfaceRevision("trouser")',
+    'previousAppearance.shirtSurfaceRevision!==shirtSurfaceRevision',
+    'name.startsWith("Shirt")?"shirt":"trouser"',
+    'textureRevision:shirtSurfaceRevision',
+    'lastVariantAppearanceRef.current=appearance',
+  ]) assert.ok(viewer.includes(token),token);
+});
+
 test("button materials only refresh when newly visible or material selection changes",()=>{
   assert.equal(needsButtonMaterialRefresh(true,"metal","metal"),false);
   assert.equal(needsButtonMaterialRefresh(false,"metal","metal"),true);
