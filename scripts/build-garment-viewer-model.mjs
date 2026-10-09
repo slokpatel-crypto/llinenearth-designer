@@ -174,7 +174,7 @@ function tailoredSleeveCapGeometry(base,centerX){
     // 10mm left a visible daylight seam on the straight studio front.
     // Only the underarm-facing sleeve arc moves; no outer-arm guide,
     // hand centre, shoulder width or mannequin is altered.
-    const inwardShift=side*.018*shoulderZone*(1-outwardNormalized)*.5;
+    const inwardShift=side*.017*shoulderZone*(1-outwardNormalized)*.5;
     const localZ=p.z-.020;
     const ovalDepthScale=1-.15*shoulderZone;
     const capRound=.006*shoulderZone*(1-Math.abs(outwardNormalized));
