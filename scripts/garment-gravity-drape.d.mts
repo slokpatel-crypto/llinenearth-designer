@@ -5,3 +5,4 @@ export function garmentGravityFoldDisplacement(
   centerX?:number,
   depthCenter?:number,
 ):{x:number;z:number};
+export function studioSleeveRadiusScale(heightM:number):number;
