@@ -476,15 +476,21 @@ async function verifyViewport(browser, width) {
   assert.equal(await page.getByLabel("3D trouser pleat").inputValue(),"double_reverse","canonical trouser pleat must reach 3D");
 
   const stageScope=await page.locator(".garmentViewerStageHead").innerText();
-  assert.match(stageScope,/MODEL IDENTITY LOCKED · SHIRT \+ TROUSER/,"3D stage must state the exact-model lock");
-  const referenceBlock=await page.locator(".garmentViewerReference").innerText();
-  assert.match(referenceBlock,/EXACT REAL MODEL DESIGNER IDENTITY/);
-  assert.match(referenceBlock,/linen-earth-studio-model-v1/);
-  assert.match(referenceBlock,/same (?:head height, )?shoulder width, torso taper, arm length, hand scale, hip width, leg length, stance and shoes/i);
-  assert.match(referenceBlock,/sleeve cap is shaped to the locked shoulder/i);
-  assert.match(referenceBlock,/flatter face plane and tapered jaw/i);
+  assert.match(stageScope,/STUDIO REFERENCE LOCKED · 3D VISUAL MATCH PENDING/,
+    "matching physical measurements must not falsely approve the studio mannequin's visual identity");
+  const referenceBlock=await page.locator(".garmentViewerIdentityAudit").innerText();
+  assert.match(referenceBlock,/Original Real Model Designer model/);
+  assert.match(referenceBlock,/MakeHuman-derived body and procedural garments/i);
+  assert.match(referenceBlock,/3D SOURCE · UNAPPROVED VISUAL MATCH/);
+  assert.doesNotMatch(referenceBlock,/EXACT REAL MODEL DESIGNER IDENTITY/,
+    "source-derived mannequins require actual multi-angle/tailor approval");
+  assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-identity-visual-parity"),"unverified");
 
-  const variantNames=await viewer.evaluate((element)=>(element.model?.materials||[]).map((material)=>material.name).filter((name)=>name.includes("Variant__")||name.includes("Length__")));
+  const variantNames=await page.evaluate(()=>
+    [...(document.querySelector("model-viewer")?.model?.materials||[])]
+      .map((material)=>material.name)
+      .filter((name)=>name.includes("Variant__")||name.includes("Length__"))
+  );
   assert.ok(variantNames.some((name)=>name==="ShirtCollarVariant__spread__stiff_fused"),"M7.46 must carry spread-collar fused geometry");
   assert.ok(variantNames.some((name)=>name==="ShirtCollarVariant__english_spread__stiff_fused"),"M7.46 must carry explicit English-spread/British collar geometry");
   assert.ok(variantNames.some((name)=>name==="ShirtNeckGasketVariant__english_spread__stiff_fused"),"M7.46 must carry the English-spread raised-back collar band");
