@@ -1141,11 +1141,19 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     className:"garmentModelViewer",
   }) : null;
 
-  return <section className="garmentViewerShell" data-model-readiness={modelContract?.readiness || "loading"} data-manifest-ready={productionManifestReady} data-tailoring-ready={tailoringMaterialsReady?"true":"false"} data-tailoring-phase={tailoringPhase} data-active-view={activeView} data-collar-finish={collarFinishKey}>
+  return <section className="garmentViewerShell" data-model-readiness={modelContract?.readiness || "loading"} data-manifest-ready={productionManifestReady} data-tailoring-ready={tailoringMaterialsReady?"true":"false"} data-tailoring-phase={tailoringPhase} data-active-view={activeView} data-collar-finish={collarFinishKey} data-identity-visual-parity="unverified">
     <div className="garmentViewerStage">
       <div className="garmentViewerStageHead">
         <span>GARMENTVIEWER · DEEP ENGINE</span>
-        <strong>MODEL IDENTITY LOCKED · SHIRT + TROUSER</strong>
+        <strong>STUDIO REFERENCE LOCKED · 3D VISUAL MATCH PENDING</strong>
+      </div>
+      <div className="garmentViewerIdentityAudit" role="note" aria-label="Compare the original Real Model Designer model with the unfinished 3D candidate">
+        <img src={LINEN_EARTH_MODEL_REFERENCE_IMAGE} alt="Original Real Model Designer reference, not the current 3D render" />
+        <div>
+          <strong>Original Real Model Designer model</strong>
+          <p>THIS is the appearance to match. The 3D viewer below currently uses a separate MakeHuman-derived body and procedural garments. Matching its measurements does not establish the same visual identity. Front, 3/4, side and back still require independent visual approval.</p>
+          <span>3D SOURCE · UNAPPROVED VISUAL MATCH</span>
+        </div>
       </div>
       <div className="garmentViewerCanvas">
         {modelViewer}
@@ -1155,20 +1163,17 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       <div className="garmentCameraRail" role="group" aria-label="Garment camera views">
         {cameraViews.map((view)=><button key={view.id} type="button" aria-pressed={activeView===view.id} onClick={()=>setCamera(view)}>{view.label}</button>)}
       </div>
-      <p className="garmentViewerHint">Front · 3/4 · side · back are one locked turntable identity. Drag to rotate · pinch/scroll to zoom.</p>
+      <p className="garmentViewerHint">Front · 3/4 · side · back rotate the current 3D candidate, not a verified copy of the studio model. Drag to rotate · pinch/scroll to zoom.</p>
     </div>
 
     <aside className="garmentViewerControls">
       <div>
         <span className="garmentViewerEyebrow">REAL FABRIC → REUSABLE MODEL</span>
         <h1>Live tailoring + fabric model.</h1>
-        <p>The mannequin identity stays fixed while fabric and real tailoring construction switch independently: shirt type/fit/rise-aware waist-shaped tuck/sleeves/360° cuffs/raised-back collar band/collar construction/white contrast collar-cuffs/placket/pockets/yoke/hem plus trouser type/shape/rise/pleat direction/waistband/break/turn-up/pockets. {shirtFabrics.length} shirt fabrics and {trouserFabrics.length} trouser fabrics use the same live Designer stock.</p>
+        <p>The experimental 3D mannequin remains fixed between views, but its appearance has not matched the original Real Model Designer image. Fabric and tailoring construction switch independently: shirt type/fit/rise-aware waist-shaped tuck/sleeves/360° cuffs/raised-back collar band/collar construction/white contrast collar-cuffs/placket/pockets/yoke/hem plus trouser type/shape/rise/pleat direction/waistband/break/turn-up/pockets. {shirtFabrics.length} shirt fabrics and {trouserFabrics.length} trouser fabrics use the same live Designer stock.</p>
       </div>
 
-      <div className="garmentViewerReference">
-        <div><span>EXACT REAL MODEL DESIGNER IDENTITY</span><b>{LINEN_EARTH_MODEL_IDENTITY_ID}</b><small>Every front, 3/4, side and back view must stay on this same faceless studio model: same head height, shoulder width, torso taper, arm length, hand scale, hip width, leg length, stance and shoes; the neutral head now keeps a flatter face plane and tapered jaw without adding facial identity; the shirt sleeve cap is shaped to the locked shoulder instead of reading as a straight tube.</small></div>
-        <img src={LINEN_EARTH_MODEL_REFERENCE_IMAGE} alt="Canonical Linen Earth Real Model Designer reference"/>
-      </div>
+
 
       <section className="garmentTypeLibrary" aria-label="Garment type roadmap">
         <div className="garmentTypeLibraryHead"><span>GARMENT TYPES · CURRENT + FUTURE</span><b>Fabric is only one layer. Each garment keeps its own construction details.</b></div>
@@ -1243,7 +1248,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         <span><small>VIEWS</small><b>4 fixed + free</b></span>
         <span><small>AI CREDITS</small><b>0</b></span>
       </div>
-      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M7.46 is locked: the same mannequin now carries a researched tailoring library covering shirt type/fit/tuck/sleeve/collar construction/cuff/placket/pocket/yoke/back/hem and trouser type/fit/low-to-extra-high rise/front-flat waist/back-seat shaping/seat-crotch transition/pleat direction/360° waistband hardware/break/360° turn-up/hip-wrapped pockets. Fabric remains panel-scaled and non-metallic; declared drape or clearly estimated weight metadata changes surface normal response and roughness without AI credits; this is not a physical cloth simulation." : "Fallback prototype is active. Production should use the identity-locked M7.3 tailoring model before fabric/drape work continues."}</p>
+      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer reference and measured proportions are locked, but visual identity equivalence is unverified: this 3D candidate carries a researched tailoring library covering shirt type/fit/tuck/sleeve/collar construction/cuff/placket/pocket/yoke/back/hem and trouser type/fit/low-to-extra-high rise/front-flat waist/back-seat shaping/seat-crotch transition/pleat direction/360° waistband hardware/break/360° turn-up/hip-wrapped pockets. Fabric remains panel-scaled and non-metallic; declared drape or clearly estimated weight metadata changes surface normal response and roughness without AI credits; this is not a physical cloth simulation." : "Fallback prototype is active. Production should use the identity-locked M7.3 tailoring model before fabric/drape work continues."}</p>
     </aside>
   </section>;
 }
