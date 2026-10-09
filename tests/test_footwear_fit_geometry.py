@@ -33,6 +33,29 @@ class ShoeDepthFitTests(unittest.TestCase):
         self.assertNotIn('body.data.vertices[',code,
                          "Shoe fitting must not reshape the locked body.")
 
+    def test_independent_native_preflight_checks_actual_world_footwear_on_both_feet(self):
+        # The previous 205,830-triangle mobile candidate passed cloth BVH
+        # despite visibly bare feet: both shared-mesh shoes had moved to +X.
+        # The secondary preflight must now reject that false-ready result.
+        preflight=(Path(__file__).resolve().parents[1]/
+                   "scripts/blender/preflight-linen-earth-officewear.py").read_text()
+        for marker in (
+            'expected_names = tuple(piece+foot_suffix for piece in ("Shoe","Sole","Heel"))',
+            'part.matrix_world @ vertex.co',
+            'shoe_center_x=(min(point.x for point in points)',
+            'target_center_x=(min(point.x for point in anatomy)',
+            'footprint_side_ok=foot_side*(shoe_center_x-mid_x)>=.015',
+            'separation_mm>50',
+            'foot_floor-.025<=min_shoe_z<=foot_floor+.035',
+            '"independentFootwearFit": footwear_fit',
+            'independentPhysicalPatternApproved',
+            'reasons.append(',
+        ):
+            self.assertIn(marker,preflight,marker)
+        self.assertLess(preflight.index('if not footprint_side_ok or separation_mm>50'),
+                        preflight.index('report = {'),
+                        "No candidate can report ready before real shoe-foot spatial gates run.")
+
     def test_ankle_slice_does_not_crush_540mm_source_shoe(self):
         samples=[-0.075+0.135*i/31 for i in range(32)]
         low,high=shoe_depth_bounds(samples,1.727)
