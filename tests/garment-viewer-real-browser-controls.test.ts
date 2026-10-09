@@ -50,7 +50,7 @@ test("native 3D selector refuses occluded or mismatched options",()=>{
   assert.ok(qa.includes("if(!changed) await page.keyboard.press(\"Enter\")"));
   assert.ok(qa.includes("nativeTypeAhead"));
   assert.ok(qa.includes("nativeChangeProbe"));
-  assert.ok(qa.includes("Date.now()-inputStarted<6000"));
+  assert.ok(qa.includes("assert.ok(gestureMs<6000"));
 });
 
 test("four-angle evidence still captures actual WebGL compositor pixels without compositor-bound locator layout",()=>{
