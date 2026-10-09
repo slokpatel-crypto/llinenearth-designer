@@ -165,23 +165,33 @@ function cropGeometry(geometry,predicate,transform=(point)=>point){
 function tailoredSleeveCapGeometry(base,centerX){
   const side=Math.sign(centerX)||1;
   return cloneGeometryTransform(base,(p)=>{
+    // Reference sleeves narrow naturally from the upper arm toward the
+    // tailored cuff. A constant-width pipe looked visibly wrong next to the
+    // real studio shirt. Constrain this deterministic preview contour to
+    // the lower ~330 mm: the locked shoulder, hands and cuff centres stay fixed.
+    const wristT=Math.max(0,Math.min(1,(p.y-.925)/.335));
+    const wristEase=wristT*wristT*(3-2*wristT);
+    const sleeveTaper=1-.105*(1-wristEase);
+    const shaped={
+      ...p,
+      x:centerX+(p.x-centerX)*sleeveTaper,
+      z:.020+(p.z-.020)*sleeveTaper,
+    };
     const shoulderZone=Math.max(0,Math.min(1,(p.y-1.235)/.220));
-    if(shoulderZone<=0) return p;
-    const outwardNormalized=Math.max(-1,Math.min(1,side*(p.x-centerX)/.061));
+    if(shoulderZone<=0) return shaped;
+    const outwardNormalized=Math.max(-1,Math.min(1,side*(shaped.x-centerX)/.061));
     const outerBias=(outwardNormalized+1)/2;
     const shoulderDrop=.038*shoulderZone*(.28+.72*outerBias);
-    // Bring the inboard sleeve seam beneath the actual shirt shoulder:
-    // 10mm left a visible daylight seam on the straight studio front.
-    // Only the underarm-facing sleeve arc moves; no outer-arm guide,
-    // hand centre, shoulder width or mannequin is altered.
+    // Bring the inboard sleeve seam beneath the actual shirt shoulder.
+    // Only the underarm-facing arc shifts; no outer-arm identity guide moves.
     const inwardShift=side*.017*shoulderZone*(1-outwardNormalized)*.5;
-    const localZ=p.z-.020;
+    const localZ=shaped.z-.020;
     const ovalDepthScale=1-.15*shoulderZone;
     const capRound=.006*shoulderZone*(1-Math.abs(outwardNormalized));
     return {
-      ...p,
-      x:p.x-inwardShift,
-      y:p.y-shoulderDrop+capRound,
+      ...shaped,
+      x:shaped.x-inwardShift,
+      y:shaped.y-shoulderDrop+capRound,
       z:.020+localZ*ovalDepthScale,
     };
   });
