@@ -30,6 +30,7 @@ test("public identity spec and runtime physical targets cannot drift",()=>{
   assert.deepEqual(identity.physicalTargetsMm,LINEN_EARTH_MODEL_PHYSICAL_TARGETS_MM);
   assert.equal(identity.referenceHeightMm,LINEN_EARTH_MODEL_REFERENCE_HEIGHT_MM);
   assert.equal(identity.referenceImage,LINEN_EARTH_MODEL_REFERENCE_IMAGE);
+  assert.deepEqual(identity.views,LINEN_EARTH_MODEL_VIEWS,"published identity camera poses must not drift from the runtime");
 });
 
 test("front silhouette anchors remain tied to the existing studio-tucked trace",()=>{
