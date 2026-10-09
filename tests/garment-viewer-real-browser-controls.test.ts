@@ -137,3 +137,14 @@ test("native WebGL QA observes only actually loaded materials",()=>{
   assert.ok(!initial.includes('material.ensureLoaded()'),"readiness checker must not hydrate unloaded shader slots");
   assert.ok(initial.includes('timeout:20000'),"do not weaken real full-outfit visual limit");
 });
+
+
+test("production 3D model contract is read from real DOM without compositor-blocked locator.evaluate",()=>{
+  assert.ok(qa.includes('const modelState = await page.evaluate(() => {'));
+  assert.ok(qa.includes('const element=document.querySelector("model-viewer");'));
+  assert.ok(qa.includes('materialNames: materials.map((material) => material.name)'));
+  assert.ok(!qa.includes('const modelState = await viewer.evaluate('),
+    "native GitHub Chromium stalled 30 seconds on compositor-bound locator.evaluate");
+  assert.ok(qa.includes('assert.equal(modelState.hasCreateTexture, true'),
+    "do not replace actual production GLTF material checks with synthetic fixtures");
+});
