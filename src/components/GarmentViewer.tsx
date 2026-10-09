@@ -925,10 +925,21 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         garmentSurfaceVisibilityPriority(name)<6
         &&needsVariantMaterialRefresh(previous.has(name),lastVariantAppearanceRef.current,appearance)
       );
+      // CI's actual 20-second native scene occasionally reached the final
+      // skin-and-hardware step too late despite all six cloth panels loading.
+      // The FIRST model frame has no live selector input: prefetch every
+      // selected collar/pocket/hem shader behind the six structural panels
+      // with at most three concurrent GPU loads, not sequential cold loads.
+      // Subsequent user edits retain strict two-core prefetch and one-shader
+      // cooperative pacing; nothing is skipped or prematurely approved.
+      const firstLookToHydrate=coldFirstLook
+        ? replacements.filter((name)=>
+            needsVariantMaterialRefresh(previous.has(name),lastVariantAppearanceRef.current,appearance))
+        : coreToHydrate;
       const corePrefetch=createBoundedMaterialPrefetch(
-        coreToHydrate,
+        firstLookToHydrate,
         (name)=>ensureViewerMaterialLoaded(materialsByName.get(name)),
-        2,
+        coldFirstLook?3:2,
       );
       // REPLACEMENT FIRST: never hide the previous outfit before its next
       // shirt, sleeves and two trouser legs are loaded. Earlier code hid all
@@ -941,7 +952,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         if(!needsVariantMaterialRefresh(previous.has(name),lastVariantAppearanceRef.current,appearance)) continue;
         await yieldForInput();
         if(!isCurrent()) return;
-        const material=garmentSurfaceVisibilityPriority(name)<6
+        const material=(coldFirstLook||garmentSurfaceVisibilityPriority(name)<6)
           ? await corePrefetch.take(name)
           : await ensureViewerMaterialLoaded(materialsByName.get(name));
         if(!isCurrent()) return;
