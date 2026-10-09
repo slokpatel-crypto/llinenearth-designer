@@ -799,17 +799,27 @@ async function verifyViewport(browser, width) {
   // Use a genuine mouse click on the UI's reference-style button; never
   // assign React state or fabricate a 3D image from the static reference.
   await page.setViewportSize({width:1440,height:1000});
+  // A mobile-to-desktop resize can leave a CSS smooth-scroll animation in
+  // progress; the next coordinate hit test then samples the wrong viewport
+  // location while Chromium/WebGL is busy. Perform an instant real scroll,
+  // just as the native select QA does. Never force-click or mutate React.
   await page.evaluate(()=>{
-    document.querySelector(".garmentViewerMatchStudio")?.scrollIntoView({block:"center"});
+    document.querySelector(".garmentViewerMatchStudio")?.scrollIntoView({
+      block:"center",inline:"nearest",behavior:"instant"
+    });
   });
   const referenceButton=await page.evaluate(()=>{
     const button=document.querySelector(".garmentViewerMatchStudio");
     if(!(button instanceof HTMLButtonElement))return null;
     const rect=button.getBoundingClientRect(),x=rect.x+rect.width/2,y=rect.y+rect.height/2;
-    return {x,y,visible:rect.width>0&&rect.height>0&&
-      document.elementFromPoint(x,y)===button};
+    const hit=document.elementFromPoint(x,y);
+    const withinViewport=x>=0&&y>=0&&x<innerWidth&&y<innerHeight;
+    return {x,y,visible:rect.width>=5&&rect.height>=5&&withinViewport&&hit===button,
+      withinViewport,width:rect.width,height:rect.height,
+      blockerTag:hit?.tagName||null,blockerClass:typeof hit?.className==="string"?hit.className.slice(0,100):null};
   });
-  assert.ok(referenceButton?.visible,"actual reference-style control must be hit-testable");
+  assert.ok(referenceButton?.visible,
+    `actual reference-style control must be hit-testable: ${JSON.stringify(referenceButton)}`);
   await page.mouse.click(referenceButton.x,referenceButton.y);
   for(const [label,value] of [
     ["3D shirt fit","regular"],["3D shirt wear","tucked"],
