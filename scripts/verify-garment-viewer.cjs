@@ -344,16 +344,44 @@ async function verifyViewport(browser, width) {
   // new variants were loaded. Camera screenshots must show a SETTLED design,
   // not an intermediate shader-hydration frame. Fail closed, never forge
   // alpha values or hide visual evidence that takes too long to become ready.
-  await page.waitForFunction(()=>{
-    const shell=document.querySelector(".garmentViewerShell");
-    const materials=document.querySelector("model-viewer")?.model?.materials||[];
-    const visible=(prefix)=>materials.some((material)=>
-      material.name.startsWith(prefix)&&
-      material.name.includes("Variant__")&&
-      material.pbrMetallicRoughness?.baseColorFactor?.[3]>.95);
-    return shell?.getAttribute("data-tailoring-ready")==="true"
-      && visible("Shirt")&&visible("Trouser");
-  },null,{timeout:20000});
+  try {
+    await page.waitForFunction(()=>{
+      const shell=document.querySelector(".garmentViewerShell");
+      const materials=document.querySelector("model-viewer")?.model?.materials||[];
+      const visible=(prefix)=>materials.some((material)=>
+        material.name.startsWith(prefix)&&
+        material.name.includes("Variant__")&&
+        material.pbrMetallicRoughness?.baseColorFactor?.[3]>.95);
+      return shell?.getAttribute("data-tailoring-ready")==="true"
+        && visible("Shirt")&&visible("Trouser");
+    },null,{timeout:20000});
+  } catch(error) {
+    const diagnostic=await page.evaluate(()=>{
+      const shell=document.querySelector(".garmentViewerShell");
+      const model=document.querySelector("model-viewer");
+      const materials=model?.model?.materials||[];
+      const visible=materials.filter((m)=>
+        (m.name.startsWith("Shirt")||m.name.startsWith("Trouser"))
+        &&m.pbrMetallicRoughness?.baseColorFactor?.[3]>.95);
+      return {
+        tailoringReady:shell?.getAttribute("data-tailoring-ready"),
+        tailoringPhase:shell?.getAttribute("data-tailoring-phase"),
+        modelReady:shell?.getAttribute("data-model-readiness"),
+        manifestReady:shell?.getAttribute("data-manifest-ready"),
+        loaded:Boolean(model?.loaded),materialCount:materials.length,
+        error:document.querySelector(".garmentViewerError")?.textContent??null,
+        visibleMaterialNames:visible.map((m)=>m.name).slice(0,60),
+        sampleShirt:materials.filter((m)=>m.name.startsWith("Shirt")&&m.name.includes("Variant__"))
+          .slice(0,8).map((m)=>({name:m.name,alpha:m.pbrMetallicRoughness?.baseColorFactor?.[3],loaded:m.isLoaded})),
+        sampleTrouser:materials.filter((m)=>m.name.startsWith("Trouser")&&m.name.includes("Variant__"))
+          .slice(0,8).map((m)=>({name:m.name,alpha:m.pbrMetallicRoughness?.baseColorFactor?.[3],loaded:m.isLoaded})),
+      };
+    }).catch(e=>({diagnosticError:String(e)}));
+    await fs.writeFile(path.join(output,"garment-initial-style-failure.json"),
+      JSON.stringify({diagnostic,error:String(error)},null,2)+"\n");
+    throw new Error("A complete 3D tailored outfit was not visible within the native 20-second gate: "+
+      JSON.stringify({diagnostic,error:String(error)}));
+  }
 
   await captureCanvas("garment-angle-front.png");
   await selectCamera("3/4","35deg","three-quarter");

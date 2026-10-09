@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import styleVariants from "../src/lib/garment-viewer-style-variants.json" with { type:"json" };
 import identitySpec from "../public/model-identity/linen-earth-studio-model-v1.json" with { type:"json" };
+import studioPalette from "../public/model-identity/studio-material-palette.json" with { type:"json" };
 
 const OUT_DIR=path.resolve(process.cwd(),"public/models");
 const BASE_BODY_PATH=path.resolve(process.cwd(),"assets/3d/makehuman-mannequin-base.glb");
@@ -1375,7 +1376,7 @@ const skinArmMaterials=styleVariants.sleeves.filter((sleeve)=>sleeve.id!=="full"
   // Strictly binary visibility: avoid sorting 586 translucent shader slots.
   alphaMode:"MASK",alphaCutoff:0.5,
   doubleSided:true,
-  pbrMetallicRoughness:{baseColorFactor:[.94,.93,.90,0],metallicFactor:0,roughnessFactor:.90},
+  pbrMetallicRoughness:{baseColorFactor:[...studioPalette.skin.rgba.slice(0,3),0],metallicFactor:0,roughnessFactor:studioPalette.skin.roughness},
 }));
 const buttonVariantMaterialNames=[];
 function addButtonVariantMaterial(name){
@@ -1407,12 +1408,12 @@ const buttonVariantMaterials=[
 ];
 
 const materials=[
-  {name:"MannequinSkin",pbrMetallicRoughness:{baseColorFactor:[.94,.93,.90,1],metallicFactor:0,roughnessFactor:.90}},
+  {name:"MannequinSkin",pbrMetallicRoughness:{baseColorFactor:studioPalette.skin.rgba,metallicFactor:0,roughnessFactor:studioPalette.skin.roughness}},
   ...skinArmMaterials,
   ...garmentMaterials,
   ...styleVariantMaterials,
   ...buttonVariantMaterials,
-  {name:"Shoe",pbrMetallicRoughness:{baseColorFactor:[.91,.90,.87,1],metallicFactor:0,roughnessFactor:.58}},
+  {name:"Shoe",pbrMetallicRoughness:{baseColorFactor:studioPalette.leather.rgba,metallicFactor:0,roughnessFactor:studioPalette.leather.roughness}},
   {name:"ButtonAccent",pbrMetallicRoughness:{baseColorFactor:[.09,.075,.06,1],metallicFactor:.05,roughnessFactor:.42}},
 ];
 const materialIndex=Object.fromEntries(materials.map((m,i)=>[m.name,i]));

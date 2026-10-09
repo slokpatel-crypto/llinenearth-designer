@@ -15,6 +15,7 @@ import { optionById } from "@/lib/designer/options/library";
 import { LINEN_EARTH_MODEL_IDENTITY_ID, LINEN_EARTH_MODEL_REFERENCE_IMAGE, LINEN_EARTH_MODEL_VIEWS } from "@/lib/designer/model-identity";
 import { fabricDrapeSurface } from "@/lib/garment-viewer-fabric-surface";
 import styleVariants from "@/lib/garment-viewer-style-variants.json";
+import studioPalette from "../../public/model-identity/studio-material-palette.json";
 
 export type GarmentViewerFabric = {
   id:string;
@@ -272,9 +273,9 @@ function isSkinArmVariantMaterial(name:string) {
 }
 function setSkinArmAlpha(material:Material|null|undefined,visible:boolean) {
   if(!material) return;
-  material.pbrMetallicRoughness.setBaseColorFactor([.94,.93,.90,visible?1:0]);
+  material.pbrMetallicRoughness.setBaseColorFactor([...studioPalette.skin.rgba.slice(0,3),visible?1:0]);
   material.pbrMetallicRoughness.setMetallicFactor(0);
-  material.pbrMetallicRoughness.setRoughnessFactor(.90);
+  material.pbrMetallicRoughness.setRoughnessFactor(studioPalette.skin.roughness);
 }
 function setButtonMaterial(
   material:Material|null|undefined,
@@ -376,6 +377,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   // hydration. Mark the settled state only AFTER every new physical-panel
   // variant, visible buttons, collar band and cuff have been committed.
   const [tailoringMaterialsReady,setTailoringMaterialsReady]=useState(false);
+  const [tailoringPhase,setTailoringPhase]=useState("awaiting-model");
   const [modelUrl,setModelUrl]=useState("");
   const [engineReady,setEngineReady]=useState(false);
   const [modelReady,setModelReady]=useState(false);
@@ -832,15 +834,18 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
 
   useEffect(()=>{
     if(!modelReady) {
+      setTailoringPhase("awaiting-model");
       setTailoringMaterialsReady(false);
       return;
     }
     const viewer=viewerRef.current;
     if(!viewer?.model) {
+      setTailoringPhase("awaiting-materials");
       setTailoringMaterialsReady(false);
       return;
     }
     setTailoringMaterialsReady(false);
+    setTailoringPhase("queued");
     const model=viewer.model;
     let cancelled=false;
     const isCurrent=()=>!cancelled && viewer.model===model;
@@ -867,10 +872,12 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         // contrast finishes even when only the trouser fabric changed.
         appliedTrimKeyRef.current=null;
       }
+      if(isCurrent()) setTailoringPhase("enumerating-variants");
       const next=new Set<string>();
       for(const material of materials){
         if(isGarmentVariantMaterial(material.name)&&variantMaterialVisible(material.name,styleState)) next.add(material.name);
       }
+      if(isCurrent()) setTailoringPhase("loading-replacement-cloth");
       // REPLACEMENT FIRST: never hide the previous outfit before its next
       // shirt, sleeves and two trouser legs are loaded. Earlier code hid all
       // old panels, then awaited GPU hydration of the new variants; real
@@ -899,6 +906,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           if(prepared.normal) material.normalTexture?.setTexture(prepared.normal);
         }
       }
+      if(isCurrent()) setTailoringPhase("retiring-old-cloth");
       // New garment material variants are now visible (or were already
       // visible). Only now hide the superseded geometry. Cancellation keeps
       // both old and newly revealed panels tracked for the next transaction.
@@ -916,6 +924,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
 
       await yieldForInput();
       if(!isCurrent()) return;
+      if(isCurrent()) setTailoringPhase("skin-and-hardware");
       const nextSkin=styleState.sleeve==="full"?null:`MannequinSkinArmVariant__${styleState.sleeve}`;
       const previousSkin=visibleSkinArmMaterialRef.current;
       if(previousSkin&&previousSkin!==nextSkin){
@@ -963,13 +972,14 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       }
       appliedButtonKeyRef.current=buttonKey;
 
+      if(isCurrent()) setTailoringPhase("collar-and-cuff");
       const trimKey=trimAppearanceKey({
         collar:collarKey,collarConstruction:collarConstructionKey,collarFinish:collarFinishKey,
         cuff:cuffKey,cuffConstruction:cuffConstructionKey,sleeve:styleState.sleeve,
         shirtId,textureRevision,roughness,shirtDrape:shirt?.drape||"",
       });
       if(appliedTrimKeyRef.current===trimKey) {
-        if(isCurrent()) setTailoringMaterialsReady(true);
+        if(isCurrent()) {setTailoringMaterialsReady(true);setTailoringPhase("ready");}
         return;
       }
       appliedTrimKeyRef.current=null;
@@ -1014,7 +1024,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         }
       }
       appliedTrimKeyRef.current=trimKey;
-      if(isCurrent()) setTailoringMaterialsReady(true);
+      if(isCurrent()) {setTailoringMaterialsReady(true);setTailoringPhase("ready");}
     };
     // The React <select> value must commit and paint BEFORE cold WebGL shader
     // updates begin. Without a bounded input-first interval, Chromium may
@@ -1025,6 +1035,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       void apply().catch(()=>{
         if(isCurrent()){
           setTailoringMaterialsReady(false);
+          setTailoringPhase("error");
           setError("A tailoring variant could not be prepared. Try another option.");
         }
       });
@@ -1109,7 +1120,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     className:"garmentModelViewer",
   }) : null;
 
-  return <section className="garmentViewerShell" data-model-readiness={modelContract?.readiness || "loading"} data-manifest-ready={productionManifestReady} data-tailoring-ready={tailoringMaterialsReady?"true":"false"} data-active-view={activeView} data-collar-finish={collarFinishKey}>
+  return <section className="garmentViewerShell" data-model-readiness={modelContract?.readiness || "loading"} data-manifest-ready={productionManifestReady} data-tailoring-ready={tailoringMaterialsReady?"true":"false"} data-tailoring-phase={tailoringPhase} data-active-view={activeView} data-collar-finish={collarFinishKey}>
     <div className="garmentViewerStage">
       <div className="garmentViewerStageHead">
         <span>GARMENTVIEWER · DEEP ENGINE</span>
