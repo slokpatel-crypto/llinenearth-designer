@@ -50,3 +50,42 @@ test("four-angle evidence still captures actual WebGL compositor pixels without 
   assert.ok(qa.includes('session.send("Page.captureScreenshot"'));
   assert.ok(qa.includes('Buffer.from(frame.data,"base64")'),"real pixels must reach artifact");
 });
+
+const actualViewerComponent=readFileSync(
+  new URL("../src/components/GarmentViewer.tsx",import.meta.url),"utf8"
+);
+
+test("dense WebGL tailoring changes never hide the existing dressed mannequin before replacement loads",()=>{
+  const effect=actualViewerComponent.slice(
+    actualViewerComponent.indexOf('const yieldForInput=createCooperativeMaterialBatch('),
+    actualViewerComponent.indexOf('function applyShirtTypePreset(')
+  );
+  const reveal=effect.indexOf('for(const name of next){');
+  const hide=effect.indexOf('for(const name of previous){');
+  assert.ok(reveal>=0&&hide>reveal,"hydrate replacement garment before hiding old clothing");
+  assert.ok(effect.includes('visibleGarmentMaterialsRef.current.delete(name)'));
+  assert.ok(effect.includes('visibleGarmentMaterialsRef.current.add(name)'));
+  assert.ok(effect.includes('if(isCurrent()) setTailoringMaterialsReady(true)'));
+  assert.ok(effect.includes('setTailoringMaterialsReady(false)'));
+  assert.ok(actualViewerComponent.includes('data-tailoring-ready={tailoringMaterialsReady?"true":"false"}'));
+});
+
+test("four camera views require actual stable 3D shirt and trousers, never floating fragments",()=>{
+  const ready=qa.slice(
+    qa.indexOf('// M7.46 originally captured'),
+    qa.indexOf('await captureCanvas("garment-angle-front.png")',qa.indexOf('// M7.46 originally captured'))
+  );
+  assert.ok(ready.includes('data-tailoring-ready'));
+  assert.ok(ready.includes('visible("Shirt")&&visible("Trouser")'));
+  assert.ok(ready.includes('timeout:20000'));
+  assert.ok(!ready.includes('setBaseColorFactor('),"QA cannot fake visible clothing");
+});
+
+test("white-collar QA reports actual shader state instead of silently waiving real failures",()=>{
+  assert.ok(qa.includes('garment-trim-failure.json'));
+  assert.ok(qa.includes('texturePresent:Boolean(pbr?.baseColorTexture?.texture)'));
+  assert.ok(qa.includes('whiteCollarRequested'));
+  assert.ok(qa.includes('garmentVisibility:materials.filter('));
+  assert.ok(qa.includes('timeout:8000'),"keep actual 8-second interactive material gate");
+  assert.ok(!qa.includes('setBaseColorFactor([.97'),"tests must never forge contrasting cloth");
+});

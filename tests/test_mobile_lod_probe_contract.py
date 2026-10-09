@@ -70,6 +70,12 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
         before=WORKFLOW.index("name: Render unapproved scene for geometry diagnosis")
         after=WORKFLOW.index("name: Render four-angle fit review",before)
         unapproved=WORKFLOW[before:after]
+        early=WORKFLOW[WORKFLOW.index("name: Upload early independent 3D blocking evidence"):before]
+        self.assertIn('name: linen-earth-3d-blocking-evidence',early)
+        self.assertIn('artifacts/realistic-3d/preflight.json',early)
+        self.assertIn('artifacts/realistic-3d/mobile-lod-diagnostic.json',early)
+        self.assertIn('if: always() && (steps.assemble.outcome != \'success\' || steps.preflight.outcome != \'success\')',early)
+        self.assertIn('timeout --signal=TERM --kill-after=15s 4m',unapproved)
         self.assertIn("if: always() && (steps.assemble.outcome != 'success' || steps.preflight.outcome != 'success')",unapproved)
         self.assertIn("review-unapproved/UNAPPROVED.txt",unapproved)
         self.assertIn("--resolution-x 448 --resolution-y 600",unapproved)
