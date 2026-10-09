@@ -415,6 +415,12 @@ def export_glb(collection, output_path):
 
 def main():
     args = cli_args()
+    # A diagnostic LOD that passed sampled real-body BVH is NOT an approved
+    # 3D model. Only explicit LAB preview, with independent full preflight
+    # still required below, may use a derived diagnostic scene. Never export
+    # it as production or issue an anonymous measured-scale manifest.
+    if bool(bpy.context.scene.get("linen_earth_derived_mobile_lod_unapproved",False)) and not args.lab_preview:
+        raise RuntimeError("UNAPPROVED derived mobile LOD: production GLB export is forbidden until independently promoted with measured textile evidence.")
     print("Linen Earth GLB export: running independent scene preflight", flush=True)
     preflight_report = run_scene_preflight()
     print("Linen Earth GLB export: preflight complete", flush=True)
