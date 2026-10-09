@@ -78,6 +78,15 @@ test("fabric colour reaches all six real panels before optional costly weave sha
     "browser QA must diagnose the exact fabric hydration phase");
 });
 
+test("native initial scene keeps the full 20-second ready gate while bounded-prefetching secondary tailoring",()=>{
+  assert.ok(actualViewerComponent.includes('const firstLookToHydrate=coldFirstLook'));
+  assert.ok(actualViewerComponent.includes('coldFirstLook?3:2'));
+  assert.ok(actualViewerComponent.includes('coldFirstLook||garmentSurfaceVisibilityPriority(name)<6'));
+  assert.ok(actualViewerComponent.includes('setTailoringPhase("skin-and-hardware")'));
+  assert.ok(actualViewerComponent.includes('setTailoringPhase("collar-and-cuff")'));
+  assert.ok(qa.includes('timeout:20000'),"do not weaken real WebGL full-dress timing");
+});
+
 test("fast first full outfit batches cold shaders but real subsequent selector edits remain paced",()=>{
   assert.ok(actualViewerComponent.includes('const coldFirstLook=lastVariantAppearanceRef.current===null'));
   assert.ok(actualViewerComponent.includes('visibleButtonMaterialsRef.current.size===0'));
