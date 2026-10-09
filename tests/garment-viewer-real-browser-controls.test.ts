@@ -188,6 +188,14 @@ test("actual 3D model is compared to the original studio with equivalent full-sl
   assert.ok(qa.includes('shell?.getAttribute("data-tailoring-ready")==="true"'),
     "capture actual completed shirt and trouser geometry, not an intermediate frame");
   assert.ok(qa.includes("timeout:20000"),"retain the strict fully dressed WebGL timing gate");
+  assert.ok(qa.includes('studio-style-reset-readiness-failure.json'),
+    "a native studio-style readiness failure must retain actual material evidence");
+  assert.ok(qa.includes('tailoringPhase:shell?.getAttribute("data-tailoring-phase")'),
+    "classify actual WebGL phase instead of silently extending timing limits");
+  assert.ok(qa.includes('loadedMaterialCount:loaded.length'),
+    "verify the actual GPU-loaded PBR count when the 3D scene is not ready");
+  assert.ok(qa.includes('identityVisualParity:shell?.getAttribute("data-identity-visual-parity")'),
+    "the comparison must explicitly retain independent studio-image approval");
 });
 
 test("initial scene failures report actual material hydration phase and visible cloth",()=>{
