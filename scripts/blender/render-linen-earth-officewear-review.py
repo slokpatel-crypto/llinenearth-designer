@@ -342,7 +342,7 @@ def main():
         (output_dir / "UNAPPROVED-CPU-SHADED-REVIEW.txt").write_text(
             "Real BLENDER CPU Cycles colour/shadow on disposable LOD geometry. "
             "NOT the original studio model, supplier-calibrated linen, true "
-            "drape, final production export or owner/tailor visual approval.\\n",
+            "drape, final production export or owner/tailor visual approval.\n",
             encoding="utf-8",
         )
     if options.diagnostic_workbench:
