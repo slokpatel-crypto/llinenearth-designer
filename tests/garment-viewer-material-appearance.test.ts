@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {applyCurrentMaterialBatch,createCooperativeMaterialBatch,createInFlightMaterialLoader,createBoundedMaterialPrefetch,needsVariantMaterialRefresh,needsButtonMaterialRefresh,garmentSurfaceVisibilityPriority,trimAppearanceKey,tailoringInputSettleMs} from "../src/lib/garment-viewer-material-appearance.ts";
 
 test("a superseded fabric cannot overwrite the new fabric after lazy hydration",async()=>{
@@ -271,6 +272,35 @@ test("cold studio look can concurrently prewarm cosmetics ONLY behind six struct
     assert.equal(await q.take(garment[i]),garment[i]);
   }
   assert.deepEqual(starts,garment,"no collar or style option omitted from first-look hydration");
+});
+
+
+test("interactive 3D style changes prefetch actual selected cloth AND trim without skipping old-style retirement",async()=>{
+  const viewer=readFileSync(new URL("../src/components/GarmentViewer.tsx",import.meta.url),"utf8");
+  assert.ok(viewer.includes('const selectedToHydrate=replacements.filter((name)=>'),
+    "interactive style reset needs to prefetch its actual 3D accent variants too");
+  assert.ok(viewer.includes('const replacementPrefetch=createBoundedMaterialPrefetch('));
+  assert.ok(viewer.includes('coldFirstLook?3:2'));
+  assert.ok(viewer.includes('const material=await replacementPrefetch.take(name);'));
+  assert.ok(viewer.includes('for(const name of previous){'));
+  assert.ok(viewer.includes('setMaterialAlpha(existing,false);'));
+  assert.ok(viewer.includes('if(isCurrent()) {setTailoringMaterialsReady(true);setTailoringPhase("ready");}'));
+  assert.ok(!viewer.includes('const coreToHydrate=replacements.filter('),
+    "do not accidentally revert to serial cosmetic shader loads");
+  const list=[
+    "ShirtTorsoTuckedVariant__regular__mid",
+    "ShirtSleeveLFabric",
+    "TrouserWaistFabric",
+    "ShirtCollarVariant__point__stiff_fused",
+    "ShirtPlacketVariant__standard",
+  ];
+  const started:string[]=[];
+  const queue=createBoundedMaterialPrefetch(list,async(key)=>{
+    started.push(key);
+    return key;
+  },2);
+  for(const name of list) assert.equal(await queue.take(name),name);
+  assert.deepEqual(started,list,"complete real outfit (including styling) must hydrate");
 });
 
 test("prefetch failure is observed and propagated when core material is applied",async()=>{
