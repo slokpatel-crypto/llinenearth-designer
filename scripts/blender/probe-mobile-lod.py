@@ -360,6 +360,72 @@ def adaptive_skin_guard_trial(original, body_bvh, baseline_probe, ratio, name, t
     }
 
 
+def adaptive_contact_safe_ratio_trial(original, body_bvh, guides, source_points,
+                                      source_triangles, base_ratio, name, temporary_objects):
+    """Try higher SOURCE fidelity only for a REAL low-poly BVH failure.
+
+    0.21 COLLAPSE saves the mobile triangle budget, but can shortcut a curved
+    right sleeve across the real underarm even when source is skin-safe. Try
+    three bounded ratios, verify locked construction sections to 2mm, then
+    independently probe/repair each disposable candidate. Never change Body,
+    the authored source, UVs or mobile promotion gates.
+    """
+    attempts=[]
+    source_spans=[section_span(source_points, source_triangles, z) for z in guides]
+    for ratio in (.265, .30, .34):
+        if ratio<=base_ratio+1e-6:
+            continue
+        trial=original.copy()
+        trial.data=original.data.copy()
+        bpy.context.scene.collection.objects.link(trial)
+        trial.name="LE_DIAGNOSTIC_FIDELITY_TRIAL__"+name+"__"+str(ratio)
+        temporary_objects.append(trial)
+        modifier=trial.modifiers.new("LE_CONTACT_SAFE_FIDELITY","DECIMATE")
+        modifier.decimate_type="COLLAPSE"
+        modifier.ratio=ratio
+        modifier.use_collapse_triangulate=True
+        bpy.ops.object.select_all(action="DESELECT")
+        trial.select_set(True)
+        bpy.context.view_layer.objects.active=trial
+        bpy.ops.object.modifier_apply(modifier=modifier.name)
+        if not trial.data.uv_layers:
+            raise RuntimeError("Diagnostic cloth reduction lost true weave UV.")
+        points, _, triangles=world_geometry(trial)
+        deviations=[]
+        for source_span,z in zip(source_spans,guides):
+            span=section_span(points,triangles,z)
+            deviations.append(max(
+                abs(span[i]-source_span[i]) for i in (0,1)
+            )*1000 if source_span and span else float("inf"))
+        guide_shift=max(deviations, default=float("inf"))
+        evidence={
+            "ratio":ratio,"candidateTriangles":len(triangles),
+            "lockedSectionMaxBoundaryShiftMm":round(guide_shift,3)
+                if math.isfinite(guide_shift) else None,
+            "lockedGuidesPass":guide_shift<=2.0,
+        }
+        if guide_shift<=2.0:
+            repair=fit_candidate_mobile_contacts(trial,body_bvh,guides)
+            points, _, triangles=world_geometry(trial)
+            body_contact=physical_body_probe(body_bvh,points,triangles)
+            evidence.update({
+                "boundedRepair":repair,
+                "deepFaceOrEdgeHits":body_contact["deepFaceOrEdgeHits"],
+                "deepVertexHits":body_contact["deepVertexHits"],
+                "candidateTriangles":len(triangles),
+            })
+            evidence["independentlySkinSafe"]=(
+                repair["succeeded"] and body_contact["deepFaceOrEdgeHits"]==0
+                and body_contact["deepVertexHits"]==0
+            )
+        else:
+            evidence["independentlySkinSafe"]=False
+        attempts.append(evidence)
+        if evidence["independentlySkinSafe"] and evidence["lockedGuidesPass"]:
+            return trial, {"attempted":True,"acceptedRatio":ratio,"attempts":attempts}
+    return None, {"attempted":True,"acceptedRatio":None,"attempts":attempts}
+
+
 def main():
     cfg=args()
     output=Path(cfg.output).expanduser().resolve()
@@ -434,6 +500,20 @@ def main():
                 if skin_guard["keptForFurtherProbe"]:
                     copy=trial
             repair=fit_candidate_mobile_contacts(copy,tree,guides[name])
+            measured_ratio=cfg.ratio
+            higher_ratio={"attempted":False,"reason":"Initial contact repair passed."}
+            if not repair["succeeded"]:
+                alternative,higher_ratio=adaptive_contact_safe_ratio_trial(
+                    original,tree,guides[name],source_points,source_triangles,
+                    cfg.ratio,name,temporary_objects,
+                )
+                if alternative is not None:
+                    copy=alternative
+                    measured_ratio=higher_ratio["acceptedRatio"]
+                    # The fidelity trial ALREADY passed independent BVH and
+                    # <=12mm repair. Recheck final mesh below, never infer
+                    # release safety from the search result alone.
+                    repair=fit_candidate_mobile_contacts(copy,tree,guides[name])
             points,faces,tris=world_geometry(copy)
             target_tris+=len(tris)
             target_verts+=len(points)
@@ -459,6 +539,8 @@ def main():
                     "deepFaceOrEdgeHits":baseline_probe["deepFaceOrEdgeHits"],
                 },
                 "sourceSkinAwareCollapse":skin_guard,
+                "higherSourceFidelityTrials":higher_ratio,
+                "effectiveReductionRatio":measured_ratio,
                 "boundedContactRepair":repair,
                 "sampledSkinPass":repair["succeeded"] and
                                   intersections["deepVertexHits"]==0 and
@@ -488,7 +570,7 @@ def main():
         "eligibleForProduction":False,
         "realBodyUnmodified":True,
         "lockedIdentityId":EXPECTED_ID,
-        "decimateMethod":"Blender 4.2 COLLAPSE + optional measured-contact source-vertex skin guards + capped 12mm real-body cloth fitting; diagnostic copies only",
+        "decimateMethod":"Blender 4.2 COLLAPSE + real-contact source guards + bounded panel-specific source fidelity trials up to 0.34 + strict 12mm BVH repair; diagnostic copies only",
         "ratio":cfg.ratio,
         "sourceTriangles":source_tris,
         "candidateTriangles":target_tris,
