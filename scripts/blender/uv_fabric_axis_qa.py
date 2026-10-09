@@ -34,12 +34,30 @@ def uv_fabric_axes_mm(points, uvs):
     if lu<=1e-14 or lv<=1e-14:
         return {"uMm":math.inf,"vMm":math.inf,"shearCosine":math.inf}
     dot=sum(du[i]*dv[i] for i in range(3))
-    return {"uMm":lu*1000,"vMm":lv*1000,"shearCosine":dot/(lu*lv)}
+    return {"uMm":lu*1000,"vMm":lv*1000,"shearCosine":dot/(lu*lv),
+            "worldAreaMm2":twice_area*500000}
 
 
 def _quantile(numbers,fraction):
     ordered=sorted(numbers)
     return round(ordered[min(len(ordered)-1,int((len(ordered)-1)*fraction))],4) if ordered else None
+
+
+def _area_weighted_quantile(rows,field,fraction):
+    # A source mesh may contain 10x more triangles on a shirt shoulder than
+    # its flat waist, while the 0.21 mobile mesh redistributes that sampling.
+    # A triangle-count median would report a *different* repeat merely from
+    # tessellation density. Weight by actual rendered world area as a second,
+    # separately labelled diagnostic; do NOT claim local distortion is gone.
+    samples=sorted((row[field],row["worldAreaMm2"]) for row in rows
+                   if row.get("worldAreaMm2",0)>0 and math.isfinite(row["worldAreaMm2"]))
+    total=sum(area for _,area in samples)
+    if total<=0:return None
+    cumulative=0
+    for value,area in samples:
+        cumulative+=area
+        if cumulative>=fraction*total:return round(value,4)
+    return round(samples[-1][0],4)
 
 
 def summarise_uv_fabric_axes(triangles):
@@ -56,6 +74,8 @@ def summarise_uv_fabric_axes(triangles):
         "degenerateWorldTriangles":sum(row is None for row in all_samples),
         "medianUmmPerUvUnit":_quantile([row["uMm"] for row in finite],.5),
         "medianVmmPerUvUnit":_quantile([row["vMm"] for row in finite],.5),
+        "areaWeightedMedianUmmPerUvUnit":_area_weighted_quantile(finite,"uMm",.5),
+        "areaWeightedMedianVmmPerUvUnit":_area_weighted_quantile(finite,"vMm",.5),
         "p90AbsShearCosine":_quantile([abs(row["shearCosine"]) for row in finite],.9),
         "verifiedPhysicalTextileRepeat":False,
     }
@@ -73,10 +93,20 @@ def axis_drift_against_authored(source,candidate,tolerance_pct=8):
             isinstance(original,(int,float)) and original>0 and math.isfinite(original)
             and isinstance(changed,(int,float)) and changed>0 and math.isfinite(changed)
         ) else None
+    weighted={}
+    for axis,field in (("u","areaWeightedMedianUmmPerUvUnit"),("v","areaWeightedMedianVmmPerUvUnit")):
+        original=source.get(field)
+        changed=candidate.get(field)
+        weighted[axis]=round(abs(changed/original-1)*100,3) if (
+            isinstance(original,(int,float)) and original>0 and math.isfinite(original)
+            and isinstance(changed,(int,float)) and changed>0 and math.isfinite(changed)
+        ) else None
     collapsed=int(source.get("collapsedUvTriangles",0))+int(candidate.get("collapsedUvTriangles",0))
-    investigate=collapsed>0 or any(percent is None or percent>tolerance_pct for percent in drift.values())
+    investigate=collapsed>0 or any(percent is None or percent>tolerance_pct for percent in
+        (*drift.values(),*weighted.values()))
     return {
         "uAxisMedianDriftPct":drift["u"],"vAxisMedianDriftPct":drift["v"],
+        "uAxisAreaWeightedDriftPct":weighted["u"],"vAxisAreaWeightedDriftPct":weighted["v"],
         "sourceOrCandidateCollapsedUvTriangles":collapsed,
         "maxDiagnosticRelativeDriftPct":tolerance_pct,
         "needsDetailedFabricRepeatInvestigation":investigate,
