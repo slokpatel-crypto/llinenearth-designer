@@ -56,3 +56,17 @@ test("3D candidate cannot claim visual equivalence merely by locking the origina
   assert.ok(!viewer.includes("EXACT REAL MODEL DESIGNER IDENTITY"),
     "do not advertise visual sameness without original-mannequin parity approval");
 });
+
+test("studio identity keeps white shoes inside one same-scale four-angle viewer framing",()=>{
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  const model=readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
+  for(const view of LINEN_EARTH_MODEL_VIEWS){
+    assert.match(view.orbit,/3\.95m$/);
+    assert.ok(model.includes(view.orbit),
+      "model manifest and identity camera must retain identical radius for "+view.id);
+  }
+  assert.ok(viewer.includes('"camera-target":"0m 0.78m 0m"'),
+    "show the trouser hem and shoes instead of cropping the full body");
+  assert.ok(viewer.includes('"max-camera-orbit":"auto 92deg 5.4m"'),
+    "retain native orbit zoom controls after the framing correction");
+});
