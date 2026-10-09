@@ -83,6 +83,50 @@ export function createInFlightMaterialLoader<T extends object>() {
 }
 
 
+
+/**
+ * Speculatively hydrate at most two expensive structural garment materials
+ * while retaining ordered application of the actual selected look.
+ *
+ * Failed/abandoned loads are always observed to prevent unhandled rejections
+ * when React cancels an obsolete style effect. No visual-ready signal is
+ * emitted by this queue: the caller must still apply every material and pass
+ * the native WebGL QA gate.
+ */
+export function createBoundedMaterialPrefetch<T, M>(
+  entries:readonly T[],
+  load:(entry:T)=>Promise<M>,
+  capacity=2,
+):{take:(entry:T)=>Promise<M>} {
+  if(!Number.isSafeInteger(capacity)||capacity<1||capacity>4)
+    throw new Error("Cloth GPU prefetch capacity must be between 1 and 4.");
+  if(new Set(entries).size!==entries.length)
+    throw new Error("Cloth GPU prefetch must not contain duplicate panels.");
+  type Outcome={ok:true;value:M}|{ok:false;error:unknown};
+  const pending=new Map<T,Promise<Outcome>>();
+  let next=0;
+  const fill=()=>{
+    while(pending.size<capacity&&next<entries.length){
+      const entry=entries[next++];
+      const task:Promise<Outcome>=Promise.resolve().then(()=>load(entry)).then(
+        (value):Outcome=>({ok:true,value}),
+        (error):Outcome=>({ok:false,error}),
+      );
+      pending.set(entry,task);
+    }
+  };
+  fill();
+  return {async take(entry:T):Promise<M>{
+    const task=pending.get(entry);
+    if(!task) throw new Error("Panel must be taken in declared structural order.");
+    const result=await task;
+    pending.delete(entry);
+    fill();
+    if(!result.ok) throw result.error;
+    return result.value;
+  }};
+}
+
 /** Give real user input a chance to run while hydrating many GLB materials. */
 export function createCooperativeMaterialBatch(
   yieldToBrowser:()=>Promise<void>,
