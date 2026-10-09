@@ -35,7 +35,7 @@ async function captureStableWebGLFrame(page, destination, clip) {
  * to the unchanged 1024x1536 Real Model Designer source. No AI rendition,
  * visual-matching score, synthetic approval, or replacement for tailor review.
  */
-async function preserveOriginalVs3DReference(actualName) {
+async function preserveOriginalVs3DReference(actualName,comparisonName="studio-original-vs-3d-UNAPPROVED.png") {
   const input=path.join(output,actualName);
   const actual=await fs.readFile(input);
   const metadata=await sharp(actual).metadata();
@@ -54,7 +54,7 @@ async function preserveOriginalVs3DReference(actualName) {
       {input:actual,left:leftWidth+gutter,top:header},
       {input:label,left:0,top:0},
     ])
-    .png().toFile(path.join(output,"studio-original-vs-3d-UNAPPROVED.png"));
+    .png().toFile(path.join(output,comparisonName));
   await fs.writeFile(path.join(output,"studio-3d-visual-parity.json"),JSON.stringify({
     originalSource:"public/designer/studio-tucked.webp",unmodified3DSource:actualName,
     visualMatchApproved:false,stage:"human-review-required",
@@ -772,6 +772,47 @@ async function verifyViewport(browser, width) {
   const mobileLayout=await readLayout();
   assertLayout(mobileLayout,390);
   await captureViewportEvidence("garment-viewer-390.png");
+
+  // Compare the *same* garment styling as the original studio image, rather
+  // than misleadingly comparing its full-sleeve tucked shirt/straight pants
+  // to this test's deliberately seeded boxy HALF-sleeve/WIDE-leg recipe.
+  // Use a genuine mouse click on the UI's reference-style button; never
+  // assign React state or fabricate a 3D image from the static reference.
+  await page.setViewportSize({width:1440,height:1000});
+  await page.evaluate(()=>{
+    document.querySelector(".garmentViewerMatchStudio")?.scrollIntoView({block:"center"});
+  });
+  const referenceButton=await page.evaluate(()=>{
+    const button=document.querySelector(".garmentViewerMatchStudio");
+    if(!(button instanceof HTMLButtonElement))return null;
+    const rect=button.getBoundingClientRect(),x=rect.x+rect.width/2,y=rect.y+rect.height/2;
+    return {x,y,visible:rect.width>0&&rect.height>0&&
+      document.elementFromPoint(x,y)===button};
+  });
+  assert.ok(referenceButton?.visible,"actual reference-style control must be hit-testable");
+  await page.mouse.click(referenceButton.x,referenceButton.y);
+  for(const [label,value] of [
+    ["3D shirt fit","regular"],["3D shirt wear","tucked"],
+    ["3D sleeve","full"],["3D collar","point"],
+    ["3D trouser fit","straight"],["3D trouser rise","mid"],
+  ]){
+    const actual=await page.getByLabel(label,{exact:true}).inputValue();
+    assert.equal(actual,value,"native original studio style action must reset "+label);
+  }
+  await page.waitForFunction(()=>{
+    const shell=document.querySelector(".garmentViewerShell");
+    const model=document.querySelector("model-viewer");
+    return model?.loaded===true&&shell?.getAttribute("data-tailoring-ready")==="true"
+      &&shell?.getAttribute("data-active-view")==="front";
+  },null,{timeout:20000});
+  await page.evaluate(()=>{
+    document.querySelector(".garmentViewerCanvas")?.scrollIntoView({block:"start"});
+  });
+  await captureCanvas("studio-default-exact-front-UNAPPROVED.png");
+  await preserveOriginalVs3DReference(
+    "studio-default-exact-front-UNAPPROVED.png",
+    "studio-original-vs-styled-3d-UNAPPROVED.png",
+  );
 
   assert.deepEqual(errors, [], "GarmentViewer must load without console/page errors");
   await context.close();
