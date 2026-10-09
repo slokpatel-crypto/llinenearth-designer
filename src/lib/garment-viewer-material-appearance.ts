@@ -65,7 +65,7 @@ export function needsButtonMaterialRefresh(
 export function trimAppearanceKey(parts:{
   collar:string; collarConstruction:string; collarFinish:string;
   cuff:string; cuffConstruction:string; sleeve:string;
-  shirtId:string; textureRevision:number; roughness:number;
+  shirtId:string; textureRevision:number|string; roughness:number;
   shirtDrape:string;
 }):string {
   return JSON.stringify([
