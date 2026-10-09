@@ -8,6 +8,7 @@ WORKFLOW=(ROOT/".github/workflows/realistic-3d-candidate.yml").read_text()
 PREFLIGHT=(ROOT/"scripts/blender/preflight-linen-earth-officewear.py").read_text()
 AUTHOR=(ROOT/"scripts/blender/author-linen-earth-officewear.py").read_text()
 EXPORT=(ROOT/"scripts/blender/export-linen-earth-officewear.py").read_text()
+RENDER=(ROOT/"scripts/blender/render-linen-earth-officewear-review.py").read_text()
 
 
 class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
@@ -185,6 +186,33 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
         self.assertIn("steps.review_visibility.outcome == 'success'",production)
         self.assertIn('test "${{ steps.preflight.outcome }}" = "success"',production)
         self.assertNotIn("steps.review_unapproved",production)
+
+    def test_unapproved_mobile_four_angle_workbench_cannot_masquerade_as_premium_render(self):
+        diagnostic=WORKFLOW[
+            WORKFLOW.index("name: Render unapproved scene for geometry diagnosis"):
+            WORKFLOW.index("name: Render four-angle fit review")
+        ]
+        for token in (
+            'scene="artifacts/realistic-3d/mobile-lod-unapproved.blend"',
+            'steps.mobile_independent_preflight.outcome',
+            'scene=".cache/linen-earth/linen-earth-officewear-authored.blend"',
+            '--diagnostic-workbench',
+            'review-unapproved/UNAPPROVED.txt',
+            'timeout --signal=TERM --kill-after=15s 4m',
+        ):
+            self.assertIn(token,diagnostic,token)
+        for token in (
+            'parser.add_argument("--diagnostic-workbench", action="store_true"',
+            '"BLENDER_WORKBENCH" if options.diagnostic_workbench else "BLENDER_EEVEE_NEXT"',
+            'scene.display.shading.color_type = "MATERIAL"',
+            '"GEOMETRY-ONLY-NOT-REALISM.txt"',
+        ):
+            self.assertIn(token,RENDER,token)
+        production=WORKFLOW[WORKFLOW.index("name: Render four-angle fit review"):]
+        self.assertIn("steps.preflight.outcome == 'success'",production)
+        self.assertIn('npm run garment:model-production:render-review',production)
+        self.assertNotIn('--diagnostic-workbench',production)
+        self.assertNotIn('steps.mobile_independent_preflight.outcome',production)
 
     def test_left_sleeve_uses_real_rendered_triangles_for_native_bvh_fit(self):
         self.assertIn('iteration==0 and obj.name=="ShirtSleeveLFabric"',AUTHOR)
