@@ -889,8 +889,21 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       const coldFirstLook=lastVariantAppearanceRef.current===null
         &&visibleButtonMaterialsRef.current.size===0
         &&interactionStartedAt.current===null;
+      // Native 2026-10-09 Chromium found the REAL bottleneck: after five
+      // of fifteen replacements, a nominal 8ms timer callback was delayed
+      // 9,218.5ms by software WebGL task saturation. Yield to the browser's
+      // priority-preserving task scheduler where available; fall back to a
+      // real 8ms browser task on older engines. BOTH paths yield the event
+      // loop for customer input, and the unchanged 20s visual gate still
+      // must pass before the outfit can be called ready.
+      const taskScheduler=(window as Window & {scheduler?:{yield?:()=>Promise<void>}}).scheduler;
+      const nativeYieldAvailable=typeof taskScheduler?.yield==="function";
+      viewer.dataset.tailoringYieldMechanism=nativeYieldAvailable?"scheduler-yield":"timer-8ms";
+      const yieldToNativeInput=()=>nativeYieldAvailable
+        ? taskScheduler!.yield!()
+        : new Promise<void>((resolve)=>window.setTimeout(resolve,8));
       const yieldForInput=createCooperativeMaterialBatch(
-        ()=>new Promise<void>((resolve)=>window.setTimeout(resolve,8)),
+        yieldToNativeInput,
         coldFirstLook?64:1
       );
       await yieldForInput();
