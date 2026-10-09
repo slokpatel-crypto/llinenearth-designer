@@ -7,6 +7,7 @@ PROBE=(ROOT/"scripts/blender/probe-mobile-lod.py").read_text()
 WORKFLOW=(ROOT/".github/workflows/realistic-3d-candidate.yml").read_text()
 PREFLIGHT=(ROOT/"scripts/blender/preflight-linen-earth-officewear.py").read_text()
 AUTHOR=(ROOT/"scripts/blender/author-linen-earth-officewear.py").read_text()
+EXPORT=(ROOT/"scripts/blender/export-linen-earth-officewear.py").read_text()
 
 
 class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
@@ -114,6 +115,16 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
         # The production authoring .blend is never overwritten by this probe.
         self.assertIn('bpy.data.objects.remove(authored,do_unlink=True)',PROBE)
         self.assertIn('diagnostic_scene_written=destination.is_file()',PROBE)
+
+    def test_derived_lod_retains_export_slots_but_can_never_export_as_production(self):
+        self.assertIn('for collection in tuple(authored.users_collection):',PROBE)
+        self.assertIn('collection.objects.link(selected)',PROBE)
+        self.assertIn('selected.name=name',PROBE)
+        self.assertIn('linen_earth_derived_mobile_lod_unapproved',PROBE)
+        self.assertIn('if bool(bpy.context.scene.get("linen_earth_derived_mobile_lod_unapproved",False)) and not args.lab_preview:',EXPORT)
+        self.assertIn('production GLB export is forbidden',EXPORT)
+        self.assertIn('preflight_report = run_scene_preflight()',EXPORT)
+        self.assertIn('geometry_panel_spec() if args.lab_preview else None',EXPORT)
 
     def test_final_cloth_thickness_is_measured_against_actual_body_triangles(self):
         # SOLIDIFY changes rendered skin-contact triangles AFTER the original
