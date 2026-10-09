@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {garmentGravityFoldDisplacement} from "../scripts/garment-gravity-drape.mjs";
+import {garmentGravityFoldDisplacement,studioSleeveRadiusScale} from "../scripts/garment-gravity-drape.mjs";
 
 test("gravity folds vanish exactly at measurement-locked shirt, sleeve and trouser guides",()=>{
   for(const [part,ends,cx] of [
@@ -39,4 +39,20 @@ test("preview fold geometry keeps physical UV grain and cannot claim simulated d
 test("fabric relief rejects invalid coordinates or unknown garment types",()=>{
   assert.throws(()=>garmentGravityFoldDisplacement("blazer",{x:0,y:1,z:0}),/Unknown/);
   assert.throws(()=>garmentGravityFoldDisplacement("shirt",{x:NaN,y:1.2,z:0}),/finite/);
+});
+
+test("tailored sleeve eases smoothly from cuff to unchanged shoulder geometry",()=>{
+  assert.equal(studioSleeveRadiusScale(.925),.895);
+  assert.equal(studioSleeveRadiusScale(1.26),1);
+  assert.equal(studioSleeveRadiusScale(1.45),1);
+  assert.equal(studioSleeveRadiusScale(.88),.895);
+  const sample=Array.from({length:100},(_,i)=>studioSleeveRadiusScale(.925+i*.335/99));
+  assert.ok(sample.every((scale)=>scale>=.895&&scale<=1));
+  assert.ok(sample.every((v,i)=>i===0||v>=sample[i-1]),"lower cuff is smaller than the upper arm");
+  assert.throws(()=>studioSleeveRadiusScale(NaN),/finite/);
+  assert.throws(()=>studioSleeveRadiusScale(Infinity),/finite/);
+  const source=readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
+  assert.ok(source.includes("const sleeveTaper=studioSleeveRadiusScale(p.y)"));
+  assert.ok(source.includes("x:centerX+(p.x-centerX)*sleeveTaper"));
+  assert.ok(source.includes("z:.020+(p.z-.020)*sleeveTaper"));
 });
