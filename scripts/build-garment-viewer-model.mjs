@@ -1385,7 +1385,7 @@ const styleVariantMaterials=[
   ...styleVariants.collars.flatMap((item)=>styleVariants.collarConstruction.map((construction)=>
     addVariantMaterial(`ShirtCollarVariant__${item.id}__${construction.id}`,"shirt")
   )),
-  ...styleVariants.collars.filter((item)=>!["camp","one_piece","mandarin"].includes(item.id)).flatMap((item)=>styleVariants.collarConstruction.map((construction)=>
+  ...styleVariants.collars.filter((item)=>!["camp","one_piece"].includes(item.id)).flatMap((item)=>styleVariants.collarConstruction.map((construction)=>
     addVariantMaterial(`ShirtNeckGasketVariant__${item.id}__${construction.id}`,"shirt")
   )),
   ...styleVariants.cuffs.flatMap((item)=>styleVariants.cuffConstruction.map((construction)=>
@@ -1711,7 +1711,7 @@ for(const rise of styleVariants.rises){
   }
 }
 
-const neckGasketMeshes=Object.fromEntries(styleVariants.collars.filter((item)=>!["camp","one_piece","mandarin"].includes(item.id)).flatMap((item)=>styleVariants.collarConstruction.map((construction)=>{
+const neckGasketMeshes=Object.fromEntries(styleVariants.collars.filter((item)=>!["camp","one_piece"].includes(item.id)).flatMap((item)=>styleVariants.collarConstruction.map((construction)=>{
   const key=`${item.id}__${construction.id}`;
   return [
     key,
@@ -1975,7 +1975,7 @@ for(const item of styleVariants.collars){
 }
 
 for(const item of styleVariants.collars){
-  if(["camp","one_piece","mandarin"].includes(item.id)) continue;
+  if(["camp","one_piece"].includes(item.id)) continue;
   for(const construction of styleVariants.collarConstruction){
     const key=`${item.id}__${construction.id}`;
     const buildSpec=collarBuildSpec[construction.id]||collarBuildSpec.stiff_fused;
