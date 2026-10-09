@@ -208,6 +208,37 @@ def configure_scene(options):
     scene.view_settings.exposure = -0.65
 
 
+def isolate_neutral_six_panel_fit_review():
+    """Hide ALL alternate tailoring meshes ONLY in this throwaway render.
+
+    The source .blend imported 586+ variant nodes with hide_render=False.
+    Rendering those on top of each other created z-fighting horizontal bands,
+    detached sleeves and a false open waist despite a green six-panel BVH.
+    This view measures ONLY the real fitted master shirt/trousers plus body
+    and genuine fitted footwear; it cannot represent a specific selected
+    collar/cuff recipe or prove original-studio photographic identity.
+    """
+    alternate=[]
+    for obj in bpy.data.objects:
+        if obj.type != "MESH":
+            continue
+        if bool(obj.get("linen_earth_tailoring_variant",False)):
+            obj.hide_render=True
+            alternate.append(obj.name)
+    essentials=(BODY_NAME,*SHIRT_OBJECTS,*TROUSER_OBJECTS)
+    for name in essentials:
+        obj=bpy.data.objects.get(name)
+        if obj is None or obj.type!="MESH":
+            raise RuntimeError("Missing neutral real-mesh geometry for fit review: "+name)
+        obj.hide_render=False
+    for obj in bpy.data.objects:
+        if obj.type=="MESH" and (obj.name.split(".")[0] in {
+            "ShoeL","ShoeR","SoleL","SoleR","HeelL","HeelR"
+        } or obj.name.startswith("ShoeLace")):
+            obj.hide_render=False
+    return alternate
+
+
 def main():
     options = cli_args()
     output_dir = Path(options.output_dir).expanduser().resolve()
@@ -220,6 +251,7 @@ def main():
     missing = [name for name in (*SHIRT_OBJECTS, *TROUSER_OBJECTS) if bpy.data.objects.get(name) is None]
     if missing:
         raise RuntimeError("Review render is missing garment objects: " + ", ".join(missing))
+    hidden_alternates = isolate_neutral_six_panel_fit_review()
 
     skin = material("LE_REVIEW_SKIN", "#916F5A", 0.68)
     shirt = material("LE_REVIEW_SHIRT", "#C8B58E", 0.76)
@@ -270,6 +302,15 @@ def main():
                 f"{label} review render mean luminance {metrics['meanLuma']:.3f} is outside the useful QA range."
             )
 
+    (output_dir / "review-geometry-provenance.json").write_text(json.dumps({
+        "viewType":"neutral-six-panel-real-body-geometry",
+        "variantsHiddenForReview":len(hidden_alternates),
+        "hiddenAlternates":hidden_alternates[:20],
+        "productionAssetAltered":False,
+        "selectedTailoringRecipeVerified":False,
+        "referencePhotoVisualParityApproved":False,
+        "fabricColourRepeatOrDrapeApproved":False,
+    },indent=2)+"\\n",encoding="utf-8")
     manifest_path = output_dir / "review-views.txt"
     manifest_path.write_text(
         "\n".join(f"{label}\t{yaw:.1f}\t{path}" for label, yaw, path, _ in manifest) + "\n",
