@@ -603,7 +603,10 @@ async function verifyViewport(browser, width) {
   for (let index = 0; index < 2; index++) {
     const select = selects.nth(index);
     const before = await select.inputValue();
-    const next = await select.evaluate((node) => [...node.options].find((option) => option.value !== node.value)?.value || "");
+    const next = await page.evaluate(({index}) => {
+      const node=document.querySelectorAll(".garmentViewerControls > label > select")[index];
+      return node?[...node.options].find((option)=>option.value!==node.value)?.value||"":"";
+    },{index});
     assert.ok(next, "Each garment selector needs an alternate Linen Earth fabric");
     await select.selectOption(next);
     assert.notEqual(await select.inputValue(), before);
@@ -622,7 +625,9 @@ async function verifyViewport(browser, width) {
     "ShirtSleeveLLength__boxy__half","ShirtSleeveRLength__boxy__half",
     "TrouserLegLBreakVariant__wide__negative","TrouserLegRBreakVariant__wide__negative"
   ];
-  const materialState = await viewer.evaluate(async (element,names) => {
+  const materialState = await page.evaluate(async (names) => {
+    const element=document.querySelector("model-viewer");
+    if(!element?.model) throw new Error("Native 3D model unavailable for material inspection");
     const wanted=new Set(names);
     const result=[];
     for(const current of element.model?.materials || []){
