@@ -90,10 +90,31 @@ jobs:
             blender --background --python-exit-code 1 "$scene" \
               --python scripts/blender/probe-mobile-lod.py -- \
               --output artifacts/realistic-3d/mobile-lod-diagnostic.json \
+              --diagnostic-scene artifacts/realistic-3d/mobile-lod-unapproved.blend \
               2>&1 | tee artifacts/realistic-3d/mobile-lod-diagnostic.log
           else
             echo "No authored scene; mobile LOD diagnostic is unavailable."
           fi
+
+      # This step must never be an export/promotion gate: independently probe
+      # ALL post-Decimate mesh boundaries against the locked real body, even
+      # when the separate six-panel 205k-triangle diagnostic itself passed.
+      - name: Independently preflight mobile LOD (UNAPPROVED evidence only)
+        id: mobile_independent_preflight
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          scene="artifacts/realistic-3d/mobile-lod-unapproved.blend"
+          if [ ! -s "$scene" ]; then
+            echo "No independently testable mobile diagnostic scene. No LOD approval."
+            exit 0
+          fi
+          blender --background --python-exit-code 1 "$scene" \
+            --python scripts/blender/preflight-linen-earth-officewear.py -- \
+            --json-output artifacts/realistic-3d/mobile-lod-independent-preflight.json \
+            2>&1 | tee artifacts/realistic-3d/mobile-lod-independent-preflight.log
 
       - name: Upload early independent 3D blocking evidence
         if: always() && (steps.assemble.outcome != 'success' || steps.preflight.outcome != 'success')
@@ -106,6 +127,8 @@ jobs:
             artifacts/realistic-3d/preflight.json
             artifacts/realistic-3d/mobile-lod-diagnostic.json
             artifacts/realistic-3d/mobile-lod-diagnostic.log
+            artifacts/realistic-3d/mobile-lod-independent-preflight.json
+            artifacts/realistic-3d/mobile-lod-independent-preflight.log
           if-no-files-found: warn
           retention-days: 14
 
