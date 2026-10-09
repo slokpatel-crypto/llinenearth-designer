@@ -378,6 +378,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   // shader slots can reveal a white torso beside coloured sleeves, even
   // though the same fabric was chosen for the entire shirt.
   const [preparedFabricVersion,setPreparedFabricVersion]=useState("");
+  const [fabricHydrationPhase,setFabricHydrationPhase]=useState("idle");
+  const [weavePreparedVersion,setWeavePreparedVersion]=useState("");
   // Customer-visible outfit must stay complete during lazy 586-material GPU
   // hydration. Mark the settled state only AFTER every new physical-panel
   // variant, visible buttons, collar band and cuff have been committed.
@@ -769,28 +771,25 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     const isCurrent=()=>!cancelled && token===applyToken.current && viewer.model===model;
     const apply=async()=>{
       try{
-        const shirtNormalMap=createLinenNormalMap(fabricDrapeSurface(shirt).normalStrength);
-        const trouserNormalMap=createLinenNormalMap(fabricDrapeSurface(trouser).normalStrength);
+        setFabricHydrationPhase("creating-color-tiles");
+        // Cold WebGL startup is CPU/GPU-bound. Fetch six REAL fabric colour
+        // tiles first and hold off twelve concurrent diffuse+normal decodes.
+        // The studio outfit must never sit white while optional weave maps
+        // block the complete torso/sleeve/trouser texture transaction.
         const prepared=await Promise.all(panelSpecs.map(async(panel)=>{
           const fabric=panel.garment==="shirt"?shirt:trouser;
           const tileMm=panel.garment==="shirt"?shirtTileMm:trouserTileMm;
-          const normalUrl=panel.garment==="shirt"?shirtNormalMap:trouserNormalMap;
-          const [texture,normal]=await Promise.all([
-            viewer.createTexture!(fabric.image),
-            normalUrl ? viewer.createTexture!(normalUrl) : Promise.resolve(null),
-          ]);
+          const texture=await viewer.createTexture!(fabric.image);
           const scale=garmentPanelTextureScale(panel.widthMm,panel.heightMm,tileMm);
           const offset={u:Number(panel.offsetU)||0,v:Number(panel.offsetV)||0};
           const rotation=(Number(panel.rotationDeg)||0)*Math.PI/180;
           texture.sampler?.setScale?.(scale);
           texture.sampler?.setOffset?.(offset);
           texture.sampler?.setRotation?.(rotation);
-          // Yarn relief is independent of the macroscopic swatch / stripe tile.
-          normal?.sampler?.setScale?.(garmentPanelWeaveNormalScale(panel.widthMm,panel.heightMm));
-          normal?.sampler?.setOffset?.(offset);
-          normal?.sampler?.setRotation?.(rotation);
-          return {panel,texture,normal};
+          return {panel,texture,normal:null as ViewerTexture|null};
         }));
+        if(!isCurrent()) return;
+        setFabricHydrationPhase("applying-color-to-all-six-panels");
         const applied=await applyCurrentMaterialBatch({
           entries:prepared,
           isCurrent,
@@ -815,6 +814,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           {texture:entry.texture,normal:entry.normal,garment:entry.panel.garment},
         ]));
         setPreparedFabricVersion(requestedFabricVersion);
+        setFabricHydrationPhase("color-ready");
         setTextureRevision((value)=>value+1);
         if(interactionStartedAt.current!==null && modelSrc && assetIdentityKey && modelContract?.readiness==="contract_ready"){
           const duration=performance.now()-interactionStartedAt.current;
@@ -1083,6 +1083,66 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     return ()=>{cancelled=true;window.clearTimeout(inputSettleTimer);};
   },[modelReady,modelRevision,styleState,buttonKey,textureRevision,preparedFabricVersion,requestedFabricVersion,panelSpecs.length,roughness,shirt,trouser,collarKey,collarFinishKey,collarConstructionKey,cuffKey,cuffConstructionKey]);
 
+  // Weave normals are SECONDARY detail. Hydrate them only after the entire
+  // selected outfit actually passes the honest WebGL-ready state. Applying
+  // twelve cold textures together previously starved six key colour panels.
+  useEffect(()=>{
+    if(!tailoringMaterialsReady || preparedFabricVersion!==requestedFabricVersion
+      || weavePreparedVersion===requestedFabricVersion || !modelReady) return;
+    const viewer=viewerRef.current;
+    if(!viewer?.model||!viewer.createTexture) return;
+    const model=viewer.model;
+    let cancelled=false;
+    const valid=()=>!cancelled&&viewer.model===model&&
+      preparedFabricVersion===requestedFabricVersion;
+    const hydrateWeave=async()=>{
+      const normalsByPanel=new Map<string,ViewerTexture>();
+      const urls={
+        shirt:createLinenNormalMap(fabricDrapeSurface(shirt).normalStrength),
+        trouser:createLinenNormalMap(fabricDrapeSurface(trouser).normalStrength),
+      };
+      setFabricHydrationPhase("weave-normals-in-background");
+      for(const panel of panelSpecs){
+        if(!valid()) return;
+        // Lower-priority linen microrelief must yield to real customer input.
+        await new Promise<void>((resolve)=>window.setTimeout(resolve,8));
+        if(!valid()) return;
+        const normal=await viewer.createTexture!(panel.garment==="shirt"?urls.shirt:urls.trouser);
+        if(!valid()) return;
+        normal.sampler?.setScale?.(garmentPanelWeaveNormalScale(panel.widthMm,panel.heightMm));
+        normal.sampler?.setOffset?.({u:Number(panel.offsetU)||0,v:Number(panel.offsetV)||0});
+        normal.sampler?.setRotation?.((Number(panel.rotationDeg)||0)*Math.PI/180);
+        normalsByPanel.set(panel.material,normal);
+      }
+      if(!valid()) return;
+      for(const panel of panelSpecs){
+        const existing=preparedTextureRef.current.get(panel.material);
+        if(existing) preparedTextureRef.current.set(panel.material,{
+          ...existing,normal:normalsByPanel.get(panel.material)||null,
+        });
+      }
+      // Touch only ALREADY loaded, visible garment shaders. Do not reload
+      // 586 material variants to add subtle fibre relief.
+      for(const material of model.materials){
+        if(material.isLoaded!==true) continue;
+        const pbr=material.pbrMetallicRoughness;
+        const panel=variantPanelMaterial(material.name);
+        if(!panel || !visibleGarmentMaterialsRef.current.has(material.name)) continue;
+        const normal=normalsByPanel.get(panel);
+        if(normal) material.normalTexture?.setTexture(normal);
+      }
+      if(valid()){
+        setWeavePreparedVersion(requestedFabricVersion);
+        setFabricHydrationPhase("weave-ready");
+      }
+    };
+    void hydrateWeave().catch(()=>{
+      if(valid())setFabricHydrationPhase("color-ready-weave-pending");
+    });
+    return ()=>{cancelled=true;};
+  },[tailoringMaterialsReady,preparedFabricVersion,requestedFabricVersion,
+      weavePreparedVersion,modelReady,modelRevision,shirt,trouser,panelSpecs]);
+
   function applyShirtTypePreset(id:string){
     setShirtTypeKey(id);
     const preset=styleVariants.shirtTypes.find((item)=>item.id===id)?.preset;
@@ -1160,7 +1220,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     className:"garmentModelViewer",
   }) : null;
 
-  return <section className="garmentViewerShell" data-model-readiness={modelContract?.readiness || "loading"} data-manifest-ready={productionManifestReady} data-tailoring-ready={tailoringMaterialsReady?"true":"false"} data-tailoring-phase={tailoringPhase} data-active-view={activeView} data-collar-finish={collarFinishKey} data-identity-visual-parity="unverified">
+  return <section className="garmentViewerShell" data-model-readiness={modelContract?.readiness || "loading"} data-manifest-ready={productionManifestReady} data-tailoring-ready={tailoringMaterialsReady?"true":"false"} data-tailoring-phase={tailoringPhase} data-active-view={activeView} data-collar-finish={collarFinishKey} data-identity-visual-parity="unverified" data-fabric-phase={fabricHydrationPhase}>
     <div className="garmentViewerStage">
       <div className="garmentViewerStageHead">
         <span>GARMENTVIEWER · DEEP ENGINE</span>
