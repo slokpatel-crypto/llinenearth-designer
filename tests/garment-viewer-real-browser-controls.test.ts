@@ -36,3 +36,17 @@ test("native 3D selector refuses occluded or mismatched options",()=>{
   assert.ok(qa.includes("nativeChangeProbe"));
   assert.ok(qa.includes("Date.now()-inputStarted<6000"));
 });
+
+test("four-angle evidence still captures actual WebGL compositor pixels without compositor-bound locator layout",()=>{
+  const capture=qa.slice(qa.indexOf('const captureCanvas=async(name)=>'),qa.indexOf('const selectCamera=async('));
+  assert.ok(capture.includes('document.querySelector(".garmentViewerCanvas")'));
+  assert.ok(capture.includes('node.getBoundingClientRect()'),"measure a genuine rendered DOM canvas");
+  assert.ok(capture.includes('box.visible'),"a hidden canvas cannot generate approved visual evidence");
+  assert.ok(capture.includes('box.x<width&&box.y<1000'),"ensure evidence source intersects viewport");
+  assert.ok(capture.includes('captureStableWebGLFrame('),"preserve genuine WebGL compositor image");
+  assert.ok(!capture.includes('canvas.boundingBox('),"never block real four-angle capture on compositor stability");
+  const screenshots=qa.match(/captureCanvas\("garment-angle-(?:front|three-quarter|side|back)\.png"\)/g)||[];
+  assert.equal(screenshots.length,4,"keep all four physical inspection camera views");
+  assert.ok(qa.includes('session.send("Page.captureScreenshot"'));
+  assert.ok(qa.includes('Buffer.from(frame.data,"base64")'),"real pixels must reach artifact");
+});

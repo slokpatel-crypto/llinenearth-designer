@@ -279,8 +279,24 @@ async function verifyViewport(browser, width) {
     // model-viewer continuously animates its render surface, so Locator.screenshot can wait
     // forever for DOM stability. Capture the already-laid-out bounding box directly instead.
     await page.waitForTimeout(180);
-    const box=await canvas.boundingBox();
-    assert.ok(box&&box.width>0&&box.height>0,"3D evidence canvas must have a measurable viewport");
+    // Locator.boundingBox also goes through Playwright's compositor-backed
+    // layout/stability machinery. Cold WebGL on CI blocked it for 30 seconds,
+    // even after the canvas was visibly rendered and the contract was ready.
+    // Read the ACTUAL DOM layout rectangle and keep the unchanged CDP real
+    // compositor screenshot, four directions and nonzero viewport checks.
+    const box=await page.evaluate(()=>{
+      const node=document.querySelector(".garmentViewerCanvas");
+      if(!(node instanceof HTMLElement)) return null;
+      const rect=node.getBoundingClientRect();
+      return {
+        x:rect.x,y:rect.y,width:rect.width,height:rect.height,
+        visible:getComputedStyle(node).visibility!=="hidden",
+      };
+    });
+    assert.ok(box&&box.visible&&box.width>0&&box.height>0,
+      "3D evidence canvas must be actually visible and have measurable DOM bounds");
+    assert.ok(box.x<width&&box.y<1000&&box.x+box.width>0&&box.y+box.height>0,
+      "3D evidence canvas must intersect the real Chromium viewport");
     await captureStableWebGLFrame(page,path.join(output,name),{
       x:Math.max(0,box.x),
       y:Math.max(0,box.y),
