@@ -18,8 +18,9 @@ from mathutils.bvhtree import BVHTree
 
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from section_geometry import triangle_section_x_span
-from surface_coverage import penetrating_surface_samples
+from surface_coverage import penetrating_surface_samples, sampled_mesh_face_indices
 from mobile_lod_skin_guard import skin_protection_weight
+from uv_surface_metrics import triangle_world_mm_per_uv_unit, uv_density_summary
 
 GARMENTS=(
     "ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric",
@@ -428,6 +429,34 @@ def adaptive_contact_safe_ratio_trial(original, body_bvh, guides, source_points,
     return None, {"attempted":True,"acceptedRatio":None,"attempts":attempts}
 
 
+def measured_geometry_uv_density(obj, max_samples=600):
+    """Read actual evaluated GLB-facing cloth triangles and their UV loops.
+
+    This is a GEOMETRY density comparison against the original authored mesh,
+    never a measurement of a supplier's fabric repeat or real linen drape.
+    """
+    evaluated=obj.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    mesh=evaluated.to_mesh()
+    try:
+        mesh.calc_loop_triangles()
+        if not mesh.uv_layers or mesh.uv_layers.active is None:
+            raise RuntimeError("Cannot assess fabric UV without an active source map: "+obj.name)
+        uv=mesh.uv_layers.active.data
+        matrix=evaluated.matrix_world
+        density=[]
+        for index in sampled_mesh_face_indices(len(mesh.loop_triangles),max_samples):
+            face=mesh.loop_triangles[index]
+            xyz=[
+                tuple(matrix @ mesh.vertices[vertex_index].co)
+                for vertex_index in face.vertices
+            ]
+            uvs=[tuple(uv[loop_index].uv) for loop_index in face.loops]
+            density.append(triangle_world_mm_per_uv_unit(xyz,uvs))
+        return uv_density_summary(density)
+    finally:
+        evaluated.to_mesh_clear()
+
+
 def main():
     cfg=args()
     output=Path(cfg.output).expanduser().resolve()
@@ -458,6 +487,7 @@ def main():
             before=(len(original.data.vertices),len(original.data.polygons))
             before_points=[tuple(vertex.co) for vertex in original.data.vertices]
             source_points,_,source_triangles=world_geometry(original)
+            source_uv_density=measured_geometry_uv_density(original)
             source_tris+=len(source_triangles)
             copy=original.copy()
             copy.data=original.data.copy()
@@ -519,6 +549,13 @@ def main():
                     # release safety from the search result alone.
                     repair=fit_candidate_mobile_contacts(copy,tree,guides[name])
             points,faces,tris=world_geometry(copy)
+            candidate_uv_density=measured_geometry_uv_density(copy)
+            original_density=source_uv_density["medianWorldMmPerUvUnit"]
+            candidate_density=candidate_uv_density["medianWorldMmPerUvUnit"]
+            uv_density_drift=(
+                round(abs(candidate_density/original_density-1)*100,3)
+                if original_density and candidate_density else None
+            )
             selected_lods[name]=copy
             target_tris+=len(tris)
             target_verts+=len(points)
@@ -546,6 +583,12 @@ def main():
                 "sourceSkinAwareCollapse":skin_guard,
                 "higherSourceFidelityTrials":higher_ratio,
                 "effectiveReductionRatio":measured_ratio,
+                "geometryOnlyUvDensity":{
+                    "source":source_uv_density,
+                    "mobileCandidate":candidate_uv_density,
+                    "medianDensityDriftPercent":uv_density_drift,
+                    "verifiedPhysicalFabricRepeat":False,
+                },
                 "boundedContactRepair":repair,
                 "sampledSkinPass":repair["succeeded"] and
                                   intersections["deepVertexHits"]==0 and
