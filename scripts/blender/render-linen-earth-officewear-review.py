@@ -31,6 +31,8 @@ def cli_args():
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--resolution-x", type=int, default=576)
     parser.add_argument("--resolution-y", type=int, default=768)
+    parser.add_argument("--diagnostic-workbench", action="store_true",
+                        help="Fast silhouette-only render of an UNAPPROVED scene; never used for production visual approval.")
     return parser.parse_args(argv)
 
 
@@ -45,6 +47,9 @@ def material(name: str, color: str, roughness: float):
     existing = bpy.data.materials.get(name)
     mat = existing or bpy.data.materials.new(name=name)
     mat.use_nodes = True
+    # Workbench's fast geometry-only diagnostic reads the material diffuse
+    # swatch, while normal EEVEE review keeps its Principled shader unchanged.
+    mat.diffuse_color = rgba(color)
     nodes = mat.node_tree.nodes
     principled = nodes.get("Principled BSDF")
     if principled is not None:
@@ -178,7 +183,12 @@ def image_exposure_metrics(path):
 
 def configure_scene(options):
     scene = bpy.context.scene
-    scene.render.engine = "BLENDER_EEVEE_NEXT"
+    scene.render.engine = "BLENDER_WORKBENCH" if options.diagnostic_workbench else "BLENDER_EEVEE_NEXT"
+    if options.diagnostic_workbench:
+        scene.display.shading.light = "STUDIO"
+        scene.display.shading.color_type = "MATERIAL"
+        scene.display.shading.show_shadows = True
+        scene.display.shading.show_cavity = True
     scene.render.resolution_x = max(320, options.resolution_x)
     scene.render.resolution_y = max(480, options.resolution_y)
     scene.render.resolution_percentage = 100
@@ -265,6 +275,11 @@ def main():
         "\n".join(f"{label}\t{yaw:.1f}\t{path}" for label, yaw, path, _ in manifest) + "\n",
         encoding="utf-8",
     )
+    if options.diagnostic_workbench:
+        (output_dir / "GEOMETRY-ONLY-NOT-REALISM.txt").write_text(
+            "UNAPPROVED low-poly Workbench silhouette only. Fabric texture, drape optics, studio parity, and photorealism are NOT evaluated.\\n",
+            encoding="utf-8",
+        )
     metrics_path = output_dir / "review-metrics.json"
     metrics_path.write_text(
         json.dumps({label: metrics for label, _, _, metrics in manifest}, indent=2) + "\n",
