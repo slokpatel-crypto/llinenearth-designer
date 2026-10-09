@@ -93,6 +93,16 @@ test("white-collar QA reports actual shader state instead of silently waiving re
   assert.ok(!qa.includes('setBaseColorFactor([.97'),"tests must never forge contrasting cloth");
 });
 
+test("every 3D visual capture preserves an unapproved comparison with the original studio model",()=>{
+  assert.ok(qa.includes('sharp("public/designer/studio-tucked.webp")'));
+  assert.ok(qa.includes('unmodified3DSource:actualName'));
+  assert.ok(qa.includes('visualMatchApproved:false'),"compositing pictures cannot certify model identity");
+  assert.ok(qa.includes('studio-original-vs-3d-UNAPPROVED.png'));
+  assert.ok(qa.includes('preserveOriginalVs3DReference("garment-angle-front.png")'));
+  assert.ok(qa.includes('preserveOriginalVs3DReference("garment-current-exact-front-UNAPPROVED.png")'));
+  assert.ok(qa.includes('Page.captureScreenshot'),"real Chromium compositor pixels are required");
+});
+
 test("initial scene failures report actual material hydration phase and visible cloth",()=>{
   assert.ok(qa.includes("garment-initial-style-failure.json"));
   assert.ok(qa.includes("tailoringPhase:shell?.getAttribute"));
