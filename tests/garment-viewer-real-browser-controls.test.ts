@@ -158,6 +158,24 @@ test("every 3D visual capture preserves an unapproved comparison with the origin
   assert.ok(qa.includes('Page.captureScreenshot'),"real Chromium compositor pixels are required");
 });
 
+test("actual 3D model is compared to the original studio with equivalent full-sleeve tucked styling",()=>{
+  const viewer=readFileSync(new URL("../src/components/GarmentViewer.tsx",import.meta.url),"utf8");
+  assert.ok(viewer.includes('function applyOriginalStudioOutfit()'));
+  assert.ok(viewer.includes('onClick={applyOriginalStudioOutfit}'));
+  assert.ok(viewer.includes('setShirtWearKey("tucked")'));
+  assert.ok(viewer.includes('setSleeveKey("full")'));
+  assert.ok(viewer.includes('setTrouserFitKey("straight")'));
+  assert.ok(qa.includes("page.mouse.click(referenceButton.x,referenceButton.y)"),
+    "native action must trigger the real React state flow");
+  assert.ok(qa.includes("document.elementFromPoint(x,y)===button"),
+    "do not claim a native control was hit without hit testing");
+  assert.ok(qa.includes('studio-default-exact-front-UNAPPROVED.png'));
+  assert.ok(qa.includes('studio-original-vs-styled-3d-UNAPPROVED.png'));
+  assert.ok(qa.includes('shell?.getAttribute("data-tailoring-ready")==="true"'),
+    "capture actual completed shirt and trouser geometry, not an intermediate frame");
+  assert.ok(qa.includes("timeout:20000"),"retain the strict fully dressed WebGL timing gate");
+});
+
 test("initial scene failures report actual material hydration phase and visible cloth",()=>{
   assert.ok(qa.includes("garment-initial-style-failure.json"));
   assert.ok(qa.includes("tailoringPhase:shell?.getAttribute"));
