@@ -310,7 +310,7 @@ def main():
         "selectedTailoringRecipeVerified":False,
         "referencePhotoVisualParityApproved":False,
         "fabricColourRepeatOrDrapeApproved":False,
-    },indent=2)+"\\n",encoding="utf-8")
+    },indent=2)+"\n",encoding="utf-8")
     manifest_path = output_dir / "review-views.txt"
     manifest_path.write_text(
         "\n".join(f"{label}\t{yaw:.1f}\t{path}" for label, yaw, path, _ in manifest) + "\n",
