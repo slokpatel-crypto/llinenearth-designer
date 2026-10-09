@@ -408,6 +408,7 @@ async function verifyViewport(browser, width) {
       return {
         tailoringReady:shell?.getAttribute("data-tailoring-ready"),
         tailoringPhase:shell?.getAttribute("data-tailoring-phase"),
+        fabricPhase:shell?.getAttribute("data-fabric-phase"),
         modelReady:shell?.getAttribute("data-model-readiness"),
         manifestReady:shell?.getAttribute("data-manifest-ready"),
         loaded:Boolean(model?.loaded),materialCount:materials.length,
