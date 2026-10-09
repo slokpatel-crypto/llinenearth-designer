@@ -1,6 +1,72 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {createCooperativeMaterialBatch,createInFlightMaterialLoader,needsVariantMaterialRefresh,needsButtonMaterialRefresh,trimAppearanceKey,tailoringInputSettleMs} from "../src/lib/garment-viewer-material-appearance.ts";
+import {applyCurrentMaterialBatch,createCooperativeMaterialBatch,createInFlightMaterialLoader,needsVariantMaterialRefresh,needsButtonMaterialRefresh,trimAppearanceKey,tailoringInputSettleMs} from "../src/lib/garment-viewer-material-appearance.ts";
+
+test("a superseded fabric cannot overwrite the new fabric after lazy hydration",async()=>{
+  let current=1;
+  let finishOld:()=>void=()=>{};
+  let startedOld:()=>void=()=>{};
+  const loading=new Promise<void>((resolve)=>{startedOld=resolve;});
+  const pending=new Promise<void>((resolve)=>{finishOld=resolve;});
+  const model={fabric:"initial"};
+  const old=applyCurrentMaterialBatch({
+    entries:["old"],isCurrent:()=>current===1,yieldToBrowser:async()=>{},
+    load:async()=>{startedOld();await pending;return model;},
+    apply:(material,fabric)=>{material.fabric=fabric;},
+  });
+  await loading;
+  current=2;
+  assert.equal(await applyCurrentMaterialBatch({
+    entries:["new"],isCurrent:()=>current===2,yieldToBrowser:async()=>{},
+    load:async()=>model,apply:(material,fabric)=>{material.fabric=fabric;},
+  }),true);
+  finishOld();
+  assert.equal(await old,false);
+  assert.equal(model.fabric,"new");
+});
+
+test("unmount or model replacement stops remaining panel writes",async()=>{
+  const writes:string[]=[];
+  let current=true;
+  const complete=await applyCurrentMaterialBatch({
+    entries:["torso","sleeve","trouser"],isCurrent:()=>current,
+    yieldToBrowser:async()=>{},load:async(panel)=>panel,
+    apply:(panel)=>{writes.push(panel);current=false;},
+  });
+  assert.equal(complete,false);
+  assert.deepEqual(writes,["torso"]);
+});
+
+test("cancellation during an input yield never starts shader hydration",async()=>{
+  let current=true;
+  let loads=0;
+  const complete=await applyCurrentMaterialBatch({
+    entries:[1],isCurrent:()=>current,
+    yieldToBrowser:async()=>{current=false;},load:async()=>{loads++;return {};},
+    apply:()=>assert.fail("cancelled material must not be written"),
+  });
+  assert.equal(complete,false);
+  assert.equal(loads,0);
+});
+
+test("successful panel application yields and commits every entry in order",async()=>{
+  const events:string[]=[];
+  assert.equal(await applyCurrentMaterialBatch({
+    entries:["shirt","trouser"],isCurrent:()=>true,
+    yieldToBrowser:async()=>{events.push("yield");},
+    load:async(entry)=>{events.push(`load:${entry}`);return entry;},
+    apply:(entry)=>{events.push(`apply:${entry}`);},
+  }),true);
+  assert.deepEqual(events,["yield","load:shirt","apply:shirt","yield","load:trouser","apply:trouser"]);
+});
+
+test("a failed panel upload cannot report a completed fabric transaction",async()=>{
+  await assert.rejects(applyCurrentMaterialBatch({
+    entries:[1,2],isCurrent:()=>true,yieldToBrowser:async()=>{},
+    load:async()=>{throw new Error("GPU unavailable");},
+    apply:()=>assert.fail("failed hydration must not write"),
+  }),/GPU unavailable/);
+});
 
 const base={textureRevision:3,roughness:.72,shirtId:"linen-sky",trouserId:"linen-beige"};
 

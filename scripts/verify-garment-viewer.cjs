@@ -498,6 +498,7 @@ async function verifyViewport(browser, width) {
       }
       result.push({
         name: current.name,
+        alpha: current.pbrMetallicRoughness?.baseColorFactor?.[3],
         roughness: current.pbrMetallicRoughness?.roughnessFactor,
         metallic: current.pbrMetallicRoughness?.metallicFactor,
         hasTexture: Boolean(current.pbrMetallicRoughness?.baseColorTexture?.texture),
@@ -515,6 +516,19 @@ async function verifyViewport(browser, width) {
     assert.ok(material.roughness >= .55 && material.roughness <= .98, material.name + " roughness must stay in the cloth range");
   }
   const materialByName=Object.fromEntries(materialState.map((item)=>[item.name,item]));
+  for(const name of [
+    "ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric",
+    "TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric",
+  ]) assert.equal(materialByName[name].alpha,0,name+" must stay hidden after fabric changes while its tailored variant is active");
+  await page.waitForFunction(()=>{
+    const materials=document.querySelector("model-viewer")?.model?.materials||[];
+    return ["ShirtCollarVariant__mandarin__soft_unfused","ShirtNeckGasketVariant__mandarin__soft_unfused"].every((name)=>{
+      const pbr=materials.find((material)=>material.name===name)?.pbrMetallicRoughness;
+      const color=pbr?.baseColorFactor;
+      return color&&Math.abs(color[0]-.97)<.001&&Math.abs(color[2]-.95)<.001
+        &&color[3]===1&&!pbr.baseColorTexture?.texture;
+    });
+  },null,{timeout:8000});
   const assertRuntimeMapped=(name)=>{
     const material=materialByName[name];
     assert.ok(material,name+" must exist");
