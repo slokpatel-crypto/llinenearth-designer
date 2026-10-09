@@ -1330,7 +1330,13 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     "environment-image":"neutral",
     "shadow-intensity":".78",
     "shadow-softness":".96",
-    "exposure":"1.12",
+    // The previously emitted exact-studio photo comparison showed clipped
+    // matte-ivory head/hands and washed-out stock trouser cloth. Reduce the
+    // provisional overexposure without recolouring actual fabric pixels or
+    // altering model geometry. This is an unapproved image-grade experiment;
+    // independent four-angle parity and physical swatch calibration still gate
+    // production approval.
+    "exposure":".98",
     "tone-mapping":"commerce",
     loading:"eager",
     "interaction-prompt":"none",
