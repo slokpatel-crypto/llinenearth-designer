@@ -78,6 +78,15 @@ test("fabric colour reaches all six real panels before optional costly weave sha
     "browser QA must diagnose the exact fabric hydration phase");
 });
 
+test("fast first full outfit batches cold shaders but real subsequent selector edits remain paced",()=>{
+  assert.ok(actualViewerComponent.includes('const coldFirstLook=lastVariantAppearanceRef.current===null'));
+  assert.ok(actualViewerComponent.includes('visibleButtonMaterialsRef.current.size===0'));
+  assert.ok(actualViewerComponent.includes('interactionStartedAt.current===null'));
+  assert.ok(actualViewerComponent.includes('coldFirstLook?6:1'));
+  assert.ok(actualViewerComponent.includes('setTailoringMaterialsReady(true);setTailoringPhase("ready")'),
+    "faster batching must not claim visual readiness before all selected materials finish");
+});
+
 test("dense WebGL tailoring changes never hide the existing dressed mannequin before replacement loads",()=>{
   const effect=actualViewerComponent.slice(
     actualViewerComponent.indexOf('const yieldForInput=createCooperativeMaterialBatch('),
