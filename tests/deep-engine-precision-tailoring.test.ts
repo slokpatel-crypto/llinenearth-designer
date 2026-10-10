@@ -27,6 +27,16 @@ test("actual expanded tailoring choices are visible only in optional precision d
   assert.ok(designer.includes("photographed mannequin"));
 });
 
+test("photographic preview cannot claim a verified direct render for an advanced garment cut",()=>{
+  assert.ok(designer.includes("const photographed=fromLegacyStyle(style)"));
+  assert.ok(designer.includes("styleSpec.shirt[field]!==photographed.shirt[field]"));
+  assert.ok(designer.includes("styleSpec.pant[field]!==photographed.pant[field]"));
+  assert.ok(designer.includes('support:{status:"approximate" as const'));
+  assert.ok(designer.includes("const rows=[...legacyRows,...advancedRows]"));
+  assert.ok(designer.includes("},[style,styleSpec]);"));
+  assert.ok(designer.includes("PHOTO MATCH · MIXED"));
+});
+
 test("advanced-cut state reaches server rule evaluation and NEVER silently downgrades to unrelated old cut",()=>{
   assert.ok(engine.includes("spec:expandedStyleSpec??fromLegacyStyle(style)"));
   assert.ok(server.includes("body.context,styleSpec"));
