@@ -1,4 +1,5 @@
 import type { MeasurementProfile } from "@/lib/measurements";
+import { mergeLegacyIntoStyleSpec, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
 import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import type { DesignerFabricIntelligence } from "@/lib/fabric-intelligence-types";
 import {
@@ -60,6 +61,7 @@ export type DesignerSearchResult = {
   shirt: DesignerFabric;
   pant: DesignerFabric;
   style: DesignerStyle;
+  styleSpec?:StyleSpecV2|null;
   recommendation: DesignerRecommendation;
   fitConstruction: FitConstructionAssessment;
   brandLanguage: BrandLanguageEvaluation;
@@ -82,6 +84,7 @@ export type DesignerSearchInput = {
   currentPant: DesignerFabric;
   occasion: OccasionTier;
   chosenStyle: DesignerStyle;
+  styleSpec?:StyleSpecV2|null;
   context: DesignerContext;
   measurements?: MeasurementProfile | null;
   observations?: TailorObservationProfile | null;
@@ -626,7 +629,8 @@ function tradeoffsFor(
 function currentMetrics(input:DesignerSearchInput,tier:DesignerSearchTier) {
   const baseStyle=styleForTier(tier,input.occasion,input.chosenStyle);
   const style=fitAdaptedStyle(baseStyle,input.measurements,input.observations).style;
-  const recommendation=evaluateDesignerCombo(input.currentShirt,input.currentPant,input.occasion,style,undefined,input.context);
+  const advanced=input.styleSpec?mergeLegacyIntoStyleSpec(input.styleSpec,style):null;
+  const recommendation=evaluateDesignerCombo(input.currentShirt,input.currentPant,input.occasion,style,undefined,input.context,advanced);
   const fit=assessFitConstruction(input.measurements,style,{climate:input.context.climate,shirtFabric:input.currentShirt,trouserFabric:input.currentPant,observations:input.observations,easeModel:input.easeModel});
   const brand=evaluateLinenEarthBrandLanguage(input.currentShirt,input.currentPant,style,input.occasion,input.context);
   const block=assessBlockStrategy(input.measurements,style,input.observations);
@@ -689,12 +693,13 @@ export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearc
     const baseStyle=styleForTier(tier,input.occasion,input.chosenStyle);
     const adapted=fitAdaptedStyle(baseStyle,input.measurements,input.observations);
     const style={...adapted.style,...input.stylePatch};
+    const expanded=input.styleSpec?mergeLegacyIntoStyleSpec(input.styleSpec,style):null;
     if(Object.entries(input.excludedStyle || {}).some(([key,values])=>values?.includes(style[key as keyof DesignerStyle]))) continue;
     const ranked:RankedCandidate[]=[];
     for(const shirt of shirts) {
       for(const pant of pants) {
         if(!designerFabricAllowedForBrief(shirt,input.preference,"shirt") || !designerFabricAllowedForBrief(pant,input.preference,"pant")) continue;
-        const recommendation=evaluateDesignerCombo(shirt,pant,input.occasion,style,undefined,input.context);
+        const recommendation=evaluateDesignerCombo(shirt,pant,input.occasion,style,undefined,input.context,expanded);
         const fit=assessFitConstruction(input.measurements,style,{climate:input.context.climate,shirtFabric:shirt,trouserFabric:pant,observations:input.observations,easeModel:input.easeModel});
         if(hardBlocked(recommendation,fit)) continue;
         const brand=evaluateLinenEarthBrandLanguage(shirt,pant,style,input.occasion,input.context);
@@ -714,7 +719,7 @@ export function searchDesignerCatalogue(input:DesignerSearchInput):DesignerSearc
         const occasionReason=occasionFabricReason(input.occasion,shirt);
         ranked.push({
           id:`${tier.toLowerCase()}:${shirt.id}:${pant.id}`,
-          tier,shirt,pant,style,recommendation,fitConstruction:fit,brandLanguage:brand,blockStrategy:block,casebookSignal,fitOutcomeSignal,decision,
+          tier,shirt,pant,style,...(expanded?{styleSpec:expanded}:{}),recommendation,fitConstruction:fit,brandLanguage:brand,blockStrategy:block,casebookSignal,fitOutcomeSignal,decision,
           searchScore:clampScore(decision.overall+briefScore+occasionScore+intelligenceScore),
           noveltyScore:novelty,
           reasons:[...(adapted.reason?[adapted.reason]:[]),...reasonsFor(tier,scope,recommendation,fit,brand,block,novelty,casebookSignal,fitOutcomeSignal),...(occasionReason?[occasionReason]:[]),...(briefReason?[briefReason]:[])].slice(0,4),
