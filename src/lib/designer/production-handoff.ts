@@ -1,5 +1,5 @@
 import type { LockedDesignRevision } from "@/lib/designer/design-lock";
-import { verifyLockedDesignRevision } from "@/lib/designer/design-lock";
+import { verifyLockedDesignRevision } from "./design-lock.ts";
 
 export const PRODUCTION_HANDOFF_VERSION="linen-earth-production-handoff-v1" as const;
 
