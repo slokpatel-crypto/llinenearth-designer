@@ -82,12 +82,13 @@ async function testViewport(width){
       .some(t=>t.includes("Scale not measured")));
     // Advanced tailoring must survive a REAL click, preserve valid legacy
     // photo controls and be sent to the *server* as stable canonical v2 IDs.
+    const originalLegacyCuff=await page.locator('select[aria-label="Shirt cuff"]').inputValue();
     const precision=page.locator(".newDesignerPrecisionCut");
     await precision.locator("summary").click();
     await page.getByRole("combobox",{name:"Sleeve length"}).selectOption("half_sleeve");
     await page.getByRole("combobox",{name:"Cuff construction"}).selectOption("open_short_hem_cuff");
     await page.getByRole("combobox",{name:"Trouser leg shape"}).selectOption("korean_straight_wide");
-    assert.equal(await page.locator('select[aria-label="Shirt cuff"]').inputValue(),"Barrel Cuff (1-button)");
+    assert.equal(await page.locator('select[aria-label="Shirt cuff"]').inputValue(),originalLegacyCuff);
     await page.getByRole("button",{name:/Check this look/}).click();
     await page.waitForTimeout(100);
     assert.equal(capturedAssessments.length,1,"A real customer cut must reach the assessment API once");
@@ -95,7 +96,7 @@ async function testViewport(width){
     assert.equal(submitted.styleSpec.shirt.sleeve,"half_sleeve");
     assert.equal(submitted.styleSpec.shirt.cuff,"open_short_hem_cuff");
     assert.equal(submitted.styleSpec.pant.fit,"korean_straight_wide");
-    assert.equal(submitted.style.cuff,"Barrel Cuff (1-button)","Legacy photo preview stays a supported style");
+    assert.equal(submitted.style.cuff,originalLegacyCuff,"Legacy photo preview stays exactly as selected");
     await page.screenshot({path:path.join(output,`designer-discovery-${width}.png`),fullPage:true});
     summary.devices.push({width,initialShirt,initialPant,shirtStock:allShirts,
       pantStock:allPants,initialVisibleShirts:visibleStart,
