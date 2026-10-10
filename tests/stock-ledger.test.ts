@@ -82,3 +82,30 @@ test("stock release requires a named operational reason source",()=>{
   assert.equal(result.releasedBy,"SP");
   assert.equal(result.sourceReference,"Order cancellation ORD-42");
 });
+
+
+test("physical stock replay fails closed on overselling, overrelease and consumption without reservations",()=>{
+  const receipt={type:"receipt",quantityMetres:5} as const;
+  for(const events of [
+    [receipt,{type:"reserve",quantityMetres:6} as const],
+    [receipt,{type:"adjustment_out",quantityMetres:5.001} as const],
+    [receipt,{type:"release",quantityMetres:1} as const],
+    [receipt,{type:"consume",quantityMetres:1} as const],
+    [receipt,{type:"reserve",quantityMetres:4} as const,{type:"adjustment_out",quantityMetres:2} as const],
+    [receipt,{type:"reserve",quantityMetres:1} as const,{type:"consume",quantityMetres:2} as const],
+    [receipt,{type:"reserve",quantityMetres:1} as const,{type:"release",quantityMetres:2} as const],
+  ])assert.throws(()=>stockSnapshot(events),/exceed|reserved|unavailable/i);
+});
+test("ledger handles 0.001m precision, decimal float representations, and retains no negative stock",()=>{
+  const sample=stockSnapshot([
+    {type:"receipt",quantityMetres:1.005},
+    {type:"reserve",quantityMetres:.251},
+    {type:"consume",quantityMetres:.101},
+    {type:"release",quantityMetres:.15},
+    {type:"adjustment_out",quantityMetres:.004},
+  ]);
+  assert.deepEqual(sample,{physicalMetres:.9,reservedMetres:0,availableMetres:.9});
+  assert.throws(()=>stockSnapshot([{type:"receipt",quantityMetres:0.0001}]),/decimal places/);
+  assert.throws(()=>stockSnapshot([{type:"receipt",quantityMetres:-3}]),/positive/);
+  assert.throws(()=>stockSnapshot([{type:"unknown" as never,quantityMetres:4}]),/Unsupported stock/);
+});
