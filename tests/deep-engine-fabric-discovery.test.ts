@@ -1,9 +1,31 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {
-  DESIGNER_PANTS,DESIGNER_SHIRTS,type DesignerFabric,
-} from "../src/lib/designer/engine.ts";
+import type { DesignerFabric } from "../src/lib/designer/engine.ts";
+import { FABRIC_STOCK } from "../src/lib/fabric-stock.ts";
+
+// Use actual supplier PDF-backed stock rows but do not import the legacy
+// Designer engine's JSON module (requires runtime import attributes).
+// Matching behaviour is independent of outfit ranking or photo rendering.
+const catalogue=FABRIC_STOCK.filter(row=>row.inStock).map(row=>{
+  const channels=[1,3,5].map(i=>parseInt(row.hex.slice(i,i+2),16));
+  const lightness=(Math.min(...channels)+Math.max(...channels))/2;
+  const tone:DesignerFabric["tone"]=lightness<94?"Dark":lightness>169?"Light":"Medium";
+  return {
+    id:row.id,name:row.colorName,line:row.line,image:row.swatchImageUrl,
+    hex:row.hex,patternType:row.pattern,tone,source:`${row.sourceDocument}, page ${row.sourcePage}`,
+    colorFamily:null,formalityScore:null,patternScale:null,weightGsm:null,weightClass:null,
+    bestSeason:null,roleTags:null,weave:null,texture:null,fiberContent:null,
+    confirmedAvailableMetres:null,availabilityVerified:false,
+    colorVerified:false,patternScaleVerified:false,
+    allowedGarments:[
+      ...(row.suitableFor.includes("shirt")?["shirt" as const]:[]),
+      ...(row.suitableFor.includes("trouser")?["pant" as const]:[]),
+    ],
+  } satisfies DesignerFabric;
+});
+const DESIGNER_SHIRTS=catalogue.filter(row=>row.allowedGarments.includes("shirt"));
+const DESIGNER_PANTS=catalogue.filter(row=>row.allowedGarments.includes("pant"));
 import {
   SHIRT_FABRIC_FAMILIES,TROUSER_FABRIC_TONES,
   discoverFabrics,fabricEvidence,fabricFamily,
