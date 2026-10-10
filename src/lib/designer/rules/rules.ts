@@ -118,6 +118,51 @@ export const CROSS_GARMENT_RULES:readonly CrossGarmentRule[]=[
     reviewStatus:"provisional",
   },
   {
+    id:"CG-SLEEVE-CUFF",
+    name:"Sleeve and cuff construction compatibility",
+    appliesWhen:({spec})=>spec.shirt.sleeve==="half_sleeve"
+      && spec.shirt.cuff!=="open_short_hem_cuff",
+    effect:"block",
+    severity:"High",
+    explanation:()=> "A short sleeve cannot have a wrist barrel, French, cocktail or convertible cuff. Select the open short-sleeve hem, or a full sleeve for this cuff.",
+    provenance:"reference-source",
+    reviewStatus:"provisional",
+  },
+  {
+    id:"CG-FULL-SLEEVE-HEM",
+    name:"Full sleeve versus open short-sleeve hem",
+    appliesWhen:({spec})=>spec.shirt.sleeve==="full_sleeve"
+      && spec.shirt.cuff==="open_short_hem_cuff",
+    effect:"block",
+    severity:"High",
+    explanation:()=> "The open short-sleeve hem is not a wrist cuff for a full-length sleeve. Select a barrel/convertible cuff or switch to the short-sleeve construction.",
+    provenance:"reference-source",
+    reviewStatus:"provisional",
+  },
+  {
+    id:"CG-HEM-TUCK",
+    name:"Flat or vented hem tucked as a dress shirt",
+    appliesWhen:({spec,occasion})=>spec.shirt.wear==="tucked"
+      && (spec.shirt.hem==="straight_flat_hem"||spec.shirt.hem==="side_vents_hem")
+      && formalOrSemi.has(occasion),
+    effect:"penalty",
+    severity:"Medium",
+    explanation:()=> "A straight or side-vented casual hem may pull free of the waistband. For a formal tucked shirt, verify sufficient body length and consider a curved shirttail.",
+    provenance:"owner-provided",
+    reviewStatus:"provisional",
+  },
+  {
+    id:"CG-CROP-BREAK",
+    name:"Trouser cropped hem and full break conflict",
+    appliesWhen:({spec})=>spec.pant.hem==="cropped_above_ankle_hem"
+      && ["full_break","stacked_break"].includes(spec.pant.break),
+    effect:"block",
+    severity:"High",
+    explanation:()=> "An above-ankle cropped trouser hem cannot also stack or have a full break at the shoe. Choose the matching cropped/no-break length.",
+    provenance:"reference-source",
+    reviewStatus:"provisional",
+  },
+  {
     id:"CG-FESTIVE-BAND",
     name:"Festive band-collar direction",
     appliesWhen:({spec,occasion})=>["Semi-Formal","Smart-Casual"].includes(occasion)
