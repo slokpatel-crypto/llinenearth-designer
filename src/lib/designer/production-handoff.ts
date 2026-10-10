@@ -17,9 +17,9 @@ export type ProductionHandoff={
     // Exact advanced cut, body settings and occasion are copied from the
     // cryptographically locked recipe; the older shorthand fields below
     // are not a substitute for a cutting specification.
-    styleSpec:LockedDesignRevision["garmentSpec"]["styleSpec"];
-    bodyProfile:LockedDesignRevision["garmentSpec"]["bodyProfile"];
-    context:LockedDesignRevision["garmentSpec"]["context"];
+    styleSpec?:LockedDesignRevision["garmentSpec"]["styleSpec"];
+    bodyProfile?:LockedDesignRevision["garmentSpec"]["bodyProfile"];
+    context?:LockedDesignRevision["garmentSpec"]["context"];
     fitProvenance:{
       fitConstructionVersion:LockedDesignRevision["garmentSpec"]["source"]["fitConstructionVersion"];
       easeSource:LockedDesignRevision["garmentSpec"]["source"]["fitEaseSource"];
