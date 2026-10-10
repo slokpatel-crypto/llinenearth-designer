@@ -127,3 +127,16 @@ test("manual, reservation and consumption movements must not round to phantom ze
     }),/at least 0.001 metres/);
   }
 });
+
+test("stock ledger rejects malformed events, coerced quantities and unsafe millimetre totals",()=>{
+  assert.throws(()=>stockSnapshot(null as never),/must be an array/);
+  assert.throws(()=>stockSnapshot([null as never]),/Invalid stock event/);
+  for(const quantity of ["2",true,undefined,Number.MAX_SAFE_INTEGER]){
+    assert.throws(()=>stockSnapshot([{type:"receipt",quantityMetres:quantity as number}]),/positive|precision/);
+  }
+  const nearSafe=Number.MAX_SAFE_INTEGER/1000;
+  assert.throws(()=>stockSnapshot([
+    {type:"receipt",quantityMetres:Math.floor(nearSafe*1000)/1000},
+    {type:"receipt",quantityMetres:1},
+  ]),/precision/);
+});
