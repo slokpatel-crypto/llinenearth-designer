@@ -35,3 +35,33 @@ test("invalid ledger quantities never become verified availability",()=>{
   ]);
   assert.equal(map.size,0);
 });
+
+
+test("conflicting or repeated supplier snapshot IDs must not be treated as verified stock",()=>{
+  const map=verifiedStockAvailabilityMap([
+    {fabric_id:"shirt",available_metres:4,provenance_ready:true},
+    {fabric_id:"shirt",available_metres:0,provenance_ready:true},
+    {fabric_id:"trouser",available_metres:1,provenance_ready:true},
+  ]);
+  assert.equal(map.has("shirt"),false);
+  assert.equal(map.get("trouser"),true);
+  const result=applyVerifiedStockAvailability([fabric("shirt"),fabric("trouser")],[
+    {fabric_id:"shirt",available_metres:4,provenance_ready:true},
+    {fabric_id:"shirt",available_metres:0,provenance_ready:true},
+    {fabric_id:"trouser",available_metres:1,provenance_ready:true},
+  ]);
+  assert.deepEqual(result.verifiedFabricIds,["trouser"]);
+  assert.equal(result.stock[0].availabilityVerified,undefined);
+});
+test("negative, empty and malformed physical quantities cannot certify a fabric as available",()=>{
+  const map=verifiedStockAvailabilityMap([
+    {fabric_id:"negative",available_metres:-0.3,provenance_ready:true},
+    {fabric_id:"empty",available_metres:"",provenance_ready:true},
+    {fabric_id:"bad",available_metres:"not-a-number",provenance_ready:true},
+    {fabric_id:"zero",available_metres:0,provenance_ready:true},
+  ]);
+  assert.equal(map.size,1);
+  assert.equal(map.get("zero"),false);
+  assert.equal(map.has("negative"),false);
+  assert.equal(map.has("empty"),false);
+});
