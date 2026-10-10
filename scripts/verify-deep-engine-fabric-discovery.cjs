@@ -17,8 +17,13 @@ const input=(page,id)=>page.locator(id);
 
 async function testViewport(width){
   const context=await browser.newContext({viewport:{width,height:930},reducedMotion:"reduce"});
+  const capturedAssessments=[];
   await context.route("**/api/**",route=>{
     const p=new URL(route.request().url()).pathname;
+    if(p==="/api/designer/assess"){
+      capturedAssessments.push(JSON.parse(route.request().postData()||"{}"));
+      return route.fulfill({status:422,json:{error:"QA deliberately mocked server assessment"}});
+    }
     if(/(?:creative-render|look-render|creative-inspect|look-inspect)/.test(p))
       summary.paidCalls++;
     return route.fulfill({status:200,json:{verified:false}});
@@ -28,6 +33,7 @@ async function testViewport(width){
   try{
     await page.goto(base+"/designer-studio",{waitUntil:"domcontentloaded"});
     await page.locator(".newDesignerFabricSearch").first().waitFor({state:"visible",timeout:20000});
+    await page.locator(".brandIntro").waitFor({state:"hidden",timeout:20000});
     // 16/50+ actual supplier records, not a made-up 10-row selector.
     const shirt=input(page,"#designer-shirt"),pant=input(page,"#designer-pant");
     const initialShirt=await shirt.inputValue(),initialPant=await pant.inputValue();
@@ -42,7 +48,7 @@ async function testViewport(width){
     // shirt or trouser, including when the selected item is outside results.
     const shirtSearch=input(page,"#designer-shirt-search");
     await shirtSearch.fill("NO SUCH INVENTORY 2026");
-    await page.getByText("No matching shirt fabrics.").waitFor({state:"visible"});
+    await page.locator(".newDesignerFabricNoMatch").filter({hasText:"No matching shirt fabrics."}).waitFor({state:"visible"});
     assert.equal(await shirt.inputValue(),initialShirt);
     assert.equal(await pant.inputValue(),initialPant);
     assert.ok((await shirt.locator("option").allTextContents()).some(t=>t.includes("outside filter")));
@@ -51,7 +57,7 @@ async function testViewport(width){
     assert.equal(await shirt.inputValue(),initialShirt);
     const pantSearch=input(page,"#designer-pant-search");
     await pantSearch.fill("NO SUCH TROUSER INVENTORY 2026");
-    await page.getByText("No matching trouser fabrics.").waitFor({state:"visible"});
+    await page.locator(".newDesignerFabricNoMatch").filter({hasText:"No matching trouser fabrics."}).waitFor({state:"visible"});
     assert.equal(await pant.inputValue(),initialPant);
     assert.equal(await shirt.inputValue(),initialShirt);
     await page.getByRole("button",{name:"Clear search"}).last().click();
@@ -74,10 +80,27 @@ async function testViewport(width){
     assert.ok(await page.locator(".newDesignerFabricEvidence").count()>=2);
     assert.ok((await page.locator(".newDesignerFabricEvidence").allTextContents())
       .some(t=>t.includes("Scale not measured")));
+    // Advanced tailoring must survive a REAL click, preserve valid legacy
+    // photo controls and be sent to the *server* as stable canonical v2 IDs.
+    const precision=page.locator(".newDesignerPrecisionCut");
+    await precision.locator("summary").click();
+    await page.getByRole("combobox",{name:"Sleeve length"}).selectOption("half_sleeve");
+    await page.getByRole("combobox",{name:"Cuff construction"}).selectOption("open_short_hem_cuff");
+    await page.getByRole("combobox",{name:"Trouser leg shape"}).selectOption("korean_straight_wide");
+    assert.equal(await page.getByRole("combobox",{name:"Shirt cuff"}).inputValue(),"Barrel Cuff (1-button)");
+    await page.getByRole("button",{name:/Check this look/}).click();
+    await page.waitForTimeout(100);
+    assert.equal(capturedAssessments.length,1,"A real customer cut must reach the assessment API once");
+    const submitted=capturedAssessments[0];
+    assert.equal(submitted.styleSpec.shirt.sleeve,"half_sleeve");
+    assert.equal(submitted.styleSpec.shirt.cuff,"open_short_hem_cuff");
+    assert.equal(submitted.styleSpec.pant.fit,"korean_straight_wide");
+    assert.equal(submitted.style.cuff,"Barrel Cuff (1-button)","Legacy photo preview stays a supported style");
     await page.screenshot({path:path.join(output,`designer-discovery-${width}.png`),fullPage:true});
     summary.devices.push({width,initialShirt,initialPant,shirtStock:allShirts,
       pantStock:allPants,initialVisibleShirts:visibleStart,
-      formalCount,selectionStable:true,unverifiedScalePresented:true});
+      formalCount,selectionStable:true,unverifiedScalePresented:true,
+      advancedCutServerRoundTrip:true});
   }finally{await context.close();}
 }
 
