@@ -50,6 +50,10 @@ test("tailor HTML uses exact StyleSpec v2 cut instead of pretending the old phot
   assert.ok(html.includes("108.0–112.0 cm"));
   assert.ok(html.includes("TAILOR REQUIRED"));
   assert.ok(html.includes("PENDING"));
+  assert.ok(html.includes("Operator and tailor physical acceptance"));
+  assert.ok(html.includes("NO CUTTING AUTHORISATION"));
+  assert.ok(html.includes("Actual stripe/check repeat and swatch ruler reference"));
+  assert.ok(html.includes("Customer preview versus exact chosen cut discrepancy explained"));
 });
 
 test("real customer or operator-entered fabric/source labels cannot inject markup",()=>{
