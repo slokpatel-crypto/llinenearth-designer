@@ -1183,54 +1183,64 @@ export function DesignerModule() {
         </div>
         <div className="newDesignerFabricGrid">
           <article className="newDesignerFabric">
+
             <div className="newDesignerFabricFilters" aria-label="Filter shirt fabrics">
-              {SHIRT_FILTERS.map((filter)=><button key={filter} type="button" className={shirtFilter===filter?"selected":""} aria-pressed={shirtFilter===filter} onClick={()=>{
-                setShirtFilter(filter);
-                const next=filter==="All"?shirtOptions:shirtOptions.filter((item)=>shirtFilterFor(item)===filter);
-                if(next.length && !next.some((item)=>item.id===shirtId)) setShirtId(next[0].id);
-                setRecommendation(null); setRecommendationId(null);
-              }}>{filter}</button>)}
+              {SHIRT_FILTERS.map((filter)=><button key={filter} type="button" className={shirtFilter===filter?"selected":""} aria-pressed={shirtFilter===filter} onClick={()=>{setShirtFilter(filter);setShowMoreShirts(false);}}>{filter} <span>{shirtFilterCounts[filter]}</span></button>)}
             </div>
+            <label className="newDesignerFabricSearch" htmlFor="designer-shirt-search">
+              <span>Find shirt cloth</span>
+              <input id="designer-shirt-search" type="search" value={shirtSearch} placeholder="Colour, pattern or collection" onChange={(event)=>{setShirtSearch(event.target.value);setShowMoreShirts(false);}} />
+            </label>
             <div className="newDesignerSwatch" style={{ backgroundColor: shirt?.hex || "#172339" }}>
               {shirt && <img src={shirt.image} alt={`${shirt.name} shirting fabric swatch`} loading="lazy" decoding="async" />}
             </div>
             <div className="newDesignerFabricChoices" aria-label="Browse shirt fabrics">
-              {visibleShirts.map((fabric)=><button key={fabric.id} type="button" className={fabric.id===shirtId?"selected":""} aria-pressed={fabric.id===shirtId} onClick={()=>{setShirtId(fabric.id);setRecommendation(null);setRecommendationId(null);}}>
+              {shownShirts.map((fabric)=><button key={fabric.id} type="button" className={fabric.id===shirtId?"selected":""} aria-pressed={fabric.id===shirtId} onClick={()=>{setShirtId(fabric.id);setRecommendation(null);setRecommendationId(null);}}>
                 <img src={fabric.image} alt={`${fabric.name} shirt fabric`} loading="lazy" decoding="async" />
                 <span>{fabric.name}</span>
               </button>)}
             </div>
-            <label htmlFor="designer-shirt">Shirt fabric <span>{visibleShirts.length} choices</span></label>
+            {visibleShirts.length>shownShirts.length&&<button className="newDesignerFabricShowMore" type="button" onClick={()=>setShowMoreShirts(true)}>Show all {visibleShirts.length} shirt fabrics</button>}
+            {visibleShirts.length===0&&<p className="newDesignerFabricNoMatch" role="status">No matching shirt fabrics. <button type="button" onClick={()=>{setShirtSearch("");setShirtFilter("All");}}>Clear search</button></p>}
+            <label htmlFor="designer-shirt">Shirt fabric <span>{visibleShirts.length} matches</span></label>
             <select id="designer-shirt" value={shirtId} onChange={(event) => { setShirtId(event.target.value); setRecommendation(null); setRecommendationId(null); }}>
+              {selectedShirtOutsideFilter&&shirt&&<option value={shirt.id}>Currently chosen · {shirt.name} (outside filter)</option>}
               {visibleShirts.map((fabric) => <option key={fabric.id} value={fabric.id}>{customerFabricLine(fabric.line)} · {fabric.name}</option>)}
             </select>
+            {selectedShirtOutsideFilter&&<small className="newDesignerFabricSelectedNote">Your selected shirt cloth stays unchanged while browsing.</small>}
             <small>{shirt?.patternType} · {customerFabricLine(shirt?.line || "")}</small>
-            {shirt && /lea/i.test(shirt.line) && <details className="newDesignerFabricSpecs"><summary>ⓘ Fabric specs</summary><p><b>{shirt.line}</b> · “Lea” is a yarn-count term used in the textile trade; it stays here as a technical fabric reference.</p></details>}
+            {shirtEvidence&&<small className="newDesignerFabricEvidence">{shirtEvidence.stock} · {shirtEvidence.scale} · {shirtEvidence.colour}</small>}
+            {shirt && /lea/i.test(shirt.line) && <details className="newDesignerFabricSpecs"><summary>ⓘ Fabric specs</summary><p><b>{shirt.line}</b> · “Lea” describes yarn count, not independently measured GSM or drape. {shirtEvidence?.weight}.</p></details>}
           </article>
           <article className="newDesignerFabric">
+
             <div className="newDesignerFabricFilters" aria-label="Filter trouser fabrics">
-              {PANT_FILTERS.map((filter)=><button key={filter} type="button" className={pantFilter===filter?"selected":""} aria-pressed={pantFilter===filter} onClick={()=>{
-                setPantFilter(filter);
-                const next=filter==="All"?pantOptions:pantOptions.filter((item)=>pantFilterFor(item)===filter);
-                if(next.length && !next.some((item)=>item.id===pantId)) setPantId(next[0].id);
-                setRecommendation(null); setRecommendationId(null);
-              }}>{filter}</button>)}
+              {PANT_FILTERS.map((filter)=><button key={filter} type="button" className={pantFilter===filter?"selected":""} aria-pressed={pantFilter===filter} onClick={()=>{setPantFilter(filter);setShowMorePants(false);}}>{filter} <span>{pantFilterCounts[filter]}</span></button>)}
             </div>
+            <label className="newDesignerFabricSearch" htmlFor="designer-pant-search">
+              <span>Find trouser cloth</span>
+              <input id="designer-pant-search" type="search" value={pantSearch} placeholder="Colour, pattern or collection" onChange={(event)=>{setPantSearch(event.target.value);setShowMorePants(false);}} />
+            </label>
             <div className="newDesignerSwatch" style={{ backgroundColor: pant?.hex || "#172339" }}>
               {pant && <img src={pant.image} alt={`${pant.name} trouser fabric swatch`} loading="lazy" decoding="async" />}
             </div>
             <div className="newDesignerFabricChoices" aria-label="Browse trouser fabrics">
-              {visiblePants.map((fabric)=><button key={fabric.id} type="button" className={fabric.id===pantId?"selected":""} aria-pressed={fabric.id===pantId} onClick={()=>{setPantId(fabric.id);setRecommendation(null);setRecommendationId(null);}}>
+              {shownPants.map((fabric)=><button key={fabric.id} type="button" className={fabric.id===pantId?"selected":""} aria-pressed={fabric.id===pantId} onClick={()=>{setPantId(fabric.id);setRecommendation(null);setRecommendationId(null);}}>
                 <img src={fabric.image} alt={`${fabric.name} trouser fabric`} loading="lazy" decoding="async" />
                 <span>{fabric.name}</span>
               </button>)}
             </div>
-            <label htmlFor="designer-pant">Trouser fabric <span>{visiblePants.length} choices</span></label>
+            {visiblePants.length>shownPants.length&&<button className="newDesignerFabricShowMore" type="button" onClick={()=>setShowMorePants(true)}>Show all {visiblePants.length} trouser fabrics</button>}
+            {visiblePants.length===0&&<p className="newDesignerFabricNoMatch" role="status">No matching trouser fabrics. <button type="button" onClick={()=>{setPantSearch("");setPantFilter("All");}}>Clear search</button></p>}
+            <label htmlFor="designer-pant">Trouser fabric <span>{visiblePants.length} matches</span></label>
             <select id="designer-pant" value={pantId} onChange={(event) => { setPantId(event.target.value); setRecommendation(null); setRecommendationId(null); }}>
+              {selectedPantOutsideFilter&&pant&&<option value={pant.id}>Currently chosen · {pant.name} (outside filter)</option>}
               {visiblePants.map((fabric) => <option key={fabric.id} value={fabric.id}>{customerFabricLine(fabric.line)} · {fabric.name}</option>)}
             </select>
+            {selectedPantOutsideFilter&&<small className="newDesignerFabricSelectedNote">Your selected trouser cloth stays unchanged while browsing.</small>}
             <small>{pant?.patternType} · {pant?.tone || "Tone not classified"}</small>
-            {pant && /lea/i.test(pant.line) && <details className="newDesignerFabricSpecs"><summary>ⓘ Fabric specs</summary><p><b>{pant.line}</b> · “Lea” is a yarn-count term used in the textile trade; it stays here as a technical fabric reference.</p></details>}
+            {pantEvidence&&<small className="newDesignerFabricEvidence">{pantEvidence.stock} · {pantEvidence.scale} · {pantEvidence.colour}</small>}
+            {pant && /lea/i.test(pant.line) && <details className="newDesignerFabricSpecs"><summary>ⓘ Fabric specs</summary><p><b>{pant.line}</b> · “Lea” describes yarn count, not independently measured GSM or drape. {pantEvidence?.weight}.</p></details>}
           </article>
         </div>
         <a className="newDesignerCreativeTeaser" href="#designerCreativeLab"><span>✦ CREATIVE LAB</span><strong>Your cloth can become 5 original design directions.</strong><b>Explore after occasion →</b></a>
