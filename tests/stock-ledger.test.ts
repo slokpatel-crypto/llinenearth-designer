@@ -109,3 +109,21 @@ test("ledger handles 0.001m precision, decimal float representations, and retain
   assert.throws(()=>stockSnapshot([{type:"receipt",quantityMetres:-3}]),/positive/);
   assert.throws(()=>stockSnapshot([{type:"unknown" as never,quantityMetres:4}]),/Unsupported stock/);
 });
+
+
+test("manual, reservation and consumption movements must not round to phantom zero-metres",()=>{
+  for(const q of [0.00001,0.0001,0.00049]){
+    assert.throws(()=>normalizeManualStockEvent({
+      fabricId:"shirt-1",eventType:"receipt",quantityMetres:q,
+      recordedBy:"Checker",sourceReference:"Roll LE-001",
+    }),/at least 0.001 metres/);
+    assert.throws(()=>normalizeStockReservation({
+      fabricId:"shirt-1",revisionId:"LOCKED-20261010",requestKey:"RESERVE-20261010",
+      quantityMetres:q,requestedBy:"Checker",sourceReference:"Meterage LE-001",
+    }),/at least 0.001 metres/);
+    assert.throws(()=>normalizeStockConsumption({
+      reservationId:"11111111-1111-4111-8111-111111111111",
+      actualMetres:q,checkedBy:"Checker",sourceReference:"Cutting LE-001",
+    }),/at least 0.001 metres/);
+  }
+});
