@@ -142,9 +142,9 @@ footer{margin-top:14px;padding-top:10px;border-top:1px solid #cfd3d6;color:#6872
         ["Waistband",handoff.construction.styleSpec.pant.waistband],
         ["Hem",handoff.construction.styleSpec.pant.hem],
         ["Break",handoff.construction.styleSpec.pant.break],
-        ["Occasion",handoff.construction.context.occasion],
-        ["Climate",handoff.construction.context.climate],
-        ["Intention",handoff.construction.context.intention],
+        ["Occasion",handoff.construction.context?.occasion],
+        ["Climate",handoff.construction.context?.climate],
+        ["Intention",handoff.construction.context?.intention],
       ])}</table>
     </div>
     <p class="muted">Raw option identifiers are included intentionally to avoid ambiguous label substitutions. Tailor must confirm construction, ease and actual garment dimensions.</p>
