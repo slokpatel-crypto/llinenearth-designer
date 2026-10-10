@@ -190,6 +190,25 @@ ${handoff.construction.creative?`<section class="card" style="margin-bottom:12px
   <article class="card"><h2>Caveats</h2><ul>${list(handoff.caveats)}</ul></article>
 </section>
 
+<section class="card" style="margin-top:14px;break-inside:avoid">
+  <h2>Operator and tailor physical acceptance · unsigned</h2>
+  <p class="muted">All fields below intentionally require a real human review. Nothing is considered checked or signed merely because this document was generated.</p>
+  <table>${rows([
+    ["Physical shirt roll/lot and stock checked","________________________"],
+    ["Physical trouser roll/lot and stock checked","________________________"],
+    ["Measured composition, weight (GSM), shrinkage","________________________"],
+    ["Actual stripe/check repeat and swatch ruler reference","________________________"],
+    ["Colour calibration and fabric drape checked","________________________"],
+    ["Collar/cuff/sleeve/hem and trouser construction checked","________________________"],
+    ["Body landmarks, ease table and all finished targets checked","________________________"],
+    ["Customer preview versus exact chosen cut discrepancy explained","________________________"],
+    ["Required cloth metres confirmed and stock reserved","________________________"],
+    ["Operator, date and actual tailor approval","________________________"],
+    ["Approved cutting/block/pattern ID","________________________"],
+  ])}</table>
+  <p><b>Status: PENDING HUMAN ACCEPTANCE — NO CUTTING AUTHORISATION.</b></p>
+</section>
+
 <footer>
 This document is generated from an immutable Linen Earth design revision. It is a tailoring handoff, not a cutting pattern. Physical cloth, final measurements, stock and meterage must be verified before cutting.
 </footer>
