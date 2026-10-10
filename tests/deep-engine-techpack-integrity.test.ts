@@ -18,8 +18,7 @@ function packet():ProductionHandoff{
           hem:"curved_shirttail",back:"plain_back",wear:"untucked",button:"corozo"},
         pant:{type:"formal_flat_front",fit:"korean_straight_wide",rise:"mid_rise",pleat:"flat_front",
           waistband:"belt_loops",hem:"plain_hem",break:"no_break"},
-        legacy:{} as ProductionHandoff["construction"]["styleSpec"] extends infer T
-          ?NonNullable<T>["legacy"]:never,
+        legacy:{} as NonNullable<ProductionHandoff["construction"]["styleSpec"]>["legacy"],
       },
       bodyProfile:null,context:{occasion:"Smart-Casual",climate:"Hot / humid",intention:"Balanced"},
       fitProvenance:{fitConstructionVersion:null,easeSource:null,easeTableVersion:null},
