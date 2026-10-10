@@ -15,6 +15,7 @@ import { enrichDesignerFabricsWithIntelligence } from "@/lib/fabric-intelligence
 import { loadApprovedHouseEaseModel } from "@/lib/designer/house-ease-server";
 import { applyLiveVerifiedStockAvailability } from "@/lib/designer/stock-availability-server";
 import type { MeasurementProfile } from "@/lib/measurements";
+import {validateStyleSpecV2,type StyleSpecV2} from "@/lib/designer/style-spec-v2";
 import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
 
 export const runtime="nodejs";
@@ -103,6 +104,7 @@ export async function POST(request:Request) {
       pantId?:unknown;
       occasion?:unknown;
       style?:unknown;
+      styleSpec?:unknown;
       context?:unknown;
       scope?:unknown;
       measurements?:unknown;
@@ -116,6 +118,11 @@ export async function POST(request:Request) {
       return NextResponse.json({error:"A valid fabric pair, occasion and supported style are required."},{status:400});
     }
 
+    const advanced=body.styleSpec!==null&&body.styleSpec!==undefined
+      ?validateStyleSpecV2(body.styleSpec)?body.styleSpec as StyleSpecV2:null
+      :null;
+    if(body.styleSpec!=null&&!advanced)
+      return NextResponse.json({error:"Invalid advanced tailoring choices; select supported construction options."},{status:422});
     const [metadata,evidence,easeModel]=await Promise.all([
       loadDesignerFabricMetadata(),
       loadDesignerEvidenceContext(),
@@ -138,6 +145,7 @@ export async function POST(request:Request) {
       currentPant,
       occasion,
       chosenStyle:body.style,
+      styleSpec:advanced,
       context:body.context,
       measurements:safeMeasurements(body.measurements),
       observations:safeObservations(body.observations),
@@ -154,6 +162,7 @@ export async function POST(request:Request) {
       shirt:result.shirt,
       pant:result.pant,
       style:result.style,
+      ...(result.styleSpec?{styleSpec:result.styleSpec}:{}),
       recommendation:result.recommendation,
     }));
     return NextResponse.json({results:presentation},{headers:{"cache-control":"no-store"}});
