@@ -1174,12 +1174,25 @@ console.log("Designer advanced-search V4 gate passed: decision matrix and review
 
 const retailDesignerUi = fs.readFileSync("src/components/DesignerModule.tsx","utf8");
 for (const token of [
-  "newDesignerFabricFilters","newDesignerFabricChoices","Plain","Print","Blend","Formal",
+  "newDesignerFabricFilters","newDesignerFabricChoices","SHIRT_FABRIC_FAMILIES","TROUSER_FABRIC_TONES",
   "customerFabricLine","Fabric specs","Creative Lab","designerWhatsAppHref","WhatsApp this exact look","Creative details:","Pattern concept:",
   "Final colour, drape and fit still need physical fabric and sample verification in store.",
   'loading="lazy"'
 ]) {
   if (!retailDesignerUi.includes(token)) throw new Error(`Designer retail UX regression: missing ${token}`);
+}
+// Taxonomy is now a pure, tested rule library rather than magic labels
+// embedded in a 2,000-line React component. Guard BOTH the filter vocabulary
+// and the prohibition on surprising customer garment substitutions.
+const fabricDiscoverySource=fs.readFileSync("src/lib/designer/fabric-discovery.ts","utf8");
+for(const token of ['"Plain"', '"Print"', '"Blend"', '"Formal"', "fabricMatchesSearch", "discoverFabrics", "fabricEvidence"]) {
+  if(!fabricDiscoverySource.includes(token)) throw new Error(`Deep Engine fabric discovery regression: missing ${token}`);
+}
+for(const [kind,setter] of [["shirt","setShirtId("],["trouser","setPantId("]]) {
+  const start=retailDesignerUi.indexOf(`aria-label="Filter ${kind} fabrics"`);
+  const end=retailDesignerUi.indexOf("</div>",start);
+  if(start<0||end<0||retailDesignerUi.slice(start,end).includes(setter))
+    throw new Error(`Fabric filtering must not silently replace selected ${kind} fabric.`);
 }
 const retailDesignerCss = fs.readFileSync("src/app/designer-studio/designer-light.css","utf8");
 for (const token of [".newDesignerFabricFilters",".newDesignerFabricChoices",".newDesignerCreativeTeaser",".newDesignerTruthNearCta",".newDesignerWhatsAppLook"]) {
