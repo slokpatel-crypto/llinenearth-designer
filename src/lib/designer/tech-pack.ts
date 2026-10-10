@@ -114,6 +114,43 @@ footer{margin-top:14px;padding-top:10px;border-top:1px solid #cfd3d6;color:#6872
   </article>
 </section>
 
+<section class="card" style="margin-bottom:12px">
+  <h2>Exact selected cut · StyleSpec v2</h2>
+  ${handoff.construction.styleSpec?`
+    <p class="muted">These are the actual locked tailoring choices. The earlier shorthand above may only describe the closest photographic preview.</p>
+    <div class="grid">
+      <table>${rows([
+        ["Shirt construction",handoff.construction.styleSpec.shirt.type],
+        ["Collar",handoff.construction.styleSpec.shirt.collar],
+        ["Collar finish",handoff.construction.styleSpec.shirt.collarFinish],
+        ["Sleeve length",handoff.construction.styleSpec.shirt.sleeve],
+        ["Cuff construction",handoff.construction.styleSpec.shirt.cuff],
+        ["Placket",handoff.construction.styleSpec.shirt.placket],
+        ["Pocket",handoff.construction.styleSpec.shirt.pocket],
+        ["Fit",handoff.construction.styleSpec.shirt.fit],
+        ["Body length",handoff.construction.styleSpec.shirt.length],
+        ["Shirt hem",handoff.construction.styleSpec.shirt.hem],
+        ["Back shaping",handoff.construction.styleSpec.shirt.back],
+        ["Wear",handoff.construction.styleSpec.shirt.wear],
+        ["Button",handoff.construction.styleSpec.shirt.button],
+      ])}</table>
+      <table>${rows([
+        ["Trouser construction",handoff.construction.styleSpec.pant.type],
+        ["Leg shape",handoff.construction.styleSpec.pant.fit],
+        ["Rise",handoff.construction.styleSpec.pant.rise],
+        ["Pleat",handoff.construction.styleSpec.pant.pleat],
+        ["Waistband",handoff.construction.styleSpec.pant.waistband],
+        ["Hem",handoff.construction.styleSpec.pant.hem],
+        ["Break",handoff.construction.styleSpec.pant.break],
+        ["Occasion",handoff.construction.context.occasion],
+        ["Climate",handoff.construction.context.climate],
+        ["Intention",handoff.construction.context.intention],
+      ])}</table>
+    </div>
+    <p class="muted">Raw option identifiers are included intentionally to avoid ambiguous label substitutions. Tailor must confirm construction, ease and actual garment dimensions.</p>
+  `:`<p>Older legacy design: confirm the cut in person before pattern making; no StyleSpec v2 construction details were locked.</p>`}
+</section>
+
 ${handoff.construction.creative?`<section class="card" style="margin-bottom:12px"><h2>Creative recipe / sample review</h2><p>${esc(handoff.construction.creative.name)} · ${esc(handoff.construction.creative.thesis)}</p><ul>${list(handoff.construction.creative.treatments.map(t=>`${t.zone}: ${t.instruction}`))}</ul>${handoff.construction.creative.craft?`<p>Craft version: ${esc(handoff.construction.creative.craft.version)} · Proposed sample dimensions</p><ul>${list(handoff.construction.creative.craft.panels.map(p=>`${p.zone}: ${p.fabric.name} (${p.fabric.id}); provenance: ${p.fabric.source}`))}</ul><pre>${esc(JSON.stringify(handoff.construction.creative.craft.decoration,null,2))}</pre>`:""}</section>`:""}
 <section class="card" style="margin-bottom:12px">
   <h2>Shirt finished-garment targets</h2>
