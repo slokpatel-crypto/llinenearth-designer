@@ -62,5 +62,5 @@ test("operator worksheet runs independently of paused 3D/Blender model",()=>{
   const generator=readFileSync("scripts/export-fabric-calibration.mjs","utf8");
   assert.ok(!generator.includes("blender --background"));
   assert.ok(!generator.includes("garment:model-production"));
-  assert.ok(!generator.includes("PENDING_PHYSICAL_SUPPLIER_AND_TAILOR_REVIEW\" ?"));
+  assert.ok(generator.includes('approvalState:"PENDING_PHYSICAL_SUPPLIER_AND_TAILOR_REVIEW"'));
 });
