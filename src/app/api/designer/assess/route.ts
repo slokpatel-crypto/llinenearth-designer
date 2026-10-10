@@ -155,6 +155,12 @@ export async function POST(request:Request) {
     const pantId=String(body.pantId||"").slice(0,160);
     const occasion=String(body.occasion||"") as OccasionTier;
     const styleSpec=validateStyleSpecV2(body.styleSpec) ? body.styleSpec as StyleSpecV2 : null;
+    // Invalid new-format cut choices must not silently downgrade to legacy
+    // style fields and return a falsely favourable compatibility assessment.
+    // Old clients with no expanded style remain supported unchanged.
+    if(body.styleSpec!==undefined && body.styleSpec!==null && !styleSpec) {
+      return NextResponse.json({error:"Invalid advanced tailoring specification; please reselect the cut options."},{status:422});
+    }
     const bodyProfile=validBodyPreviewProfile(body.bodyProfile) ? body.bodyProfile as BodyPreviewProfile : null;
     const resolvedStyle=styleSpec ? toLegacyStyle(styleSpec) : body.style;
     if(!shirtId || !pantId || !OCCASIONS.includes(occasion) || !validStyle(resolvedStyle) || !validContext(body.context)) {
