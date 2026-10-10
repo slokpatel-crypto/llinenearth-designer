@@ -22,7 +22,7 @@ export const FABRIC_CALIBRATION_COLUMNS=[
 ];
 
 export function makeFabricCalibrationRows(stock){
-  const seen=new Set<string>();
+  const seen=new Set();
   return stock.filter(fabric=>fabric.inStock).map(fabric=>{
     if(!fabric.id||seen.has(fabric.id)) throw new Error("Duplicate or missing catalogue fabric ID");
     seen.add(fabric.id);
