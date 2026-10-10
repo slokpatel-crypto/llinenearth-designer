@@ -6,13 +6,17 @@ export function stockSnapshot(events:StockEvent[]){
   // Local ledger replay must agree with the server's no-oversell invariants.
   // A "plausible" negative number is not usable physical stock evidence.
   // Quantities are millimetres of fabric in metres rounded to 0.001.
+  if(!Array.isArray(events)) throw new Error("Stock ledger events must be an array.");
   let physicalMillis=0;
   let reservedMillis=0;
   for(const [index,event] of events.entries()){
-    const q=Number(event.quantityMetres);
+    if(!event||typeof event!=="object") throw new Error(`Invalid stock event #${index+1}.`);
+    const q=event.quantityMetres;
     if(!Number.isFinite(q)||q<=0||Math.abs(Math.round(q*1000)-q*1000)>1e-7)
       throw new Error("Stock event quantity must be positive and have at most 3 decimal places.");
     const millimetres=Math.round(q*1000);
+    if(!Number.isSafeInteger(millimetres)||!Number.isSafeInteger(physicalMillis+millimetres)||!Number.isSafeInteger(reservedMillis+millimetres))
+      throw new Error("Stock quantity exceeds exact ledger precision.");
     if(event.type==="receipt"||event.type==="adjustment_in") physicalMillis+=millimetres;
     else if(event.type==="adjustment_out"){
       if(physicalMillis-reservedMillis<millimetres)
