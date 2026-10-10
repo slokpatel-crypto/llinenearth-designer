@@ -87,7 +87,7 @@ async function testViewport(width){
     await page.getByRole("combobox",{name:"Sleeve length"}).selectOption("half_sleeve");
     await page.getByRole("combobox",{name:"Cuff construction"}).selectOption("open_short_hem_cuff");
     await page.getByRole("combobox",{name:"Trouser leg shape"}).selectOption("korean_straight_wide");
-    assert.equal(await page.getByRole("combobox",{name:"Shirt cuff"}).inputValue(),"Barrel Cuff (1-button)");
+    assert.equal(await page.locator('select[aria-label="Shirt cuff"]').inputValue(),"Barrel Cuff (1-button)");
     await page.getByRole("button",{name:/Check this look/}).click();
     await page.waitForTimeout(100);
     assert.equal(capturedAssessments.length,1,"A real customer cut must reach the assessment API once");
