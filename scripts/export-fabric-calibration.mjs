@@ -8,7 +8,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { FABRIC_STOCK, type FabricColorway } from "../src/lib/fabric-stock.ts";
+import { FABRIC_STOCK } from "../src/lib/fabric-stock.ts";
 
 export const FABRIC_CALIBRATION_COLUMNS=[
   "fabricId","garmentRoles","collection","colour","cataloguePattern",
@@ -19,11 +19,9 @@ export const FABRIC_CALIBRATION_COLUMNS=[
   "rulerPhotoReference","colourReferencePhoto","measuredWarpBendingCm",
   "measuredWeftBendingCm","tailorDrapeReview",
   "measuredBy","independentlyApprovedBy","approvalState",
-] as const;
-type CalibrationColumn=typeof FABRIC_CALIBRATION_COLUMNS[number];
-export type FabricCalibrationRow=Record<CalibrationColumn,string>;
+];
 
-export function makeFabricCalibrationRows(stock:readonly FabricColorway[]):FabricCalibrationRow[]{
+export function makeFabricCalibrationRows(stock){
   const seen=new Set<string>();
   return stock.filter(fabric=>fabric.inStock).map(fabric=>{
     if(!fabric.id||seen.has(fabric.id)) throw new Error("Duplicate or missing catalogue fabric ID");
@@ -60,14 +58,14 @@ export function makeFabricCalibrationRows(stock:readonly FabricColorway[]):Fabri
   });
 }
 
-function csvCell(value:string):string {
+function csvCell(value) {
   // Keep spreadsheet import safe: even user-entered supplier names must not
   // become formula expressions after CSV export.
   const safe=/^[\s]*[=+@-]/.test(value)?"'"+value:value;
   return '"'+safe.replace(/"/g,'""')+'"';
 }
 
-export function fabricCalibrationCsv(rows:readonly FabricCalibrationRow[]):string {
+export function fabricCalibrationCsv(rows) {
   const headers=FABRIC_CALIBRATION_COLUMNS.map(csvCell).join(",");
   return [headers,...rows.map(row=>
     FABRIC_CALIBRATION_COLUMNS.map(column=>csvCell(row[column])).join(",")
