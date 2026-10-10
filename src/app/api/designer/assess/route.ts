@@ -18,6 +18,7 @@ import { buildCanonicalGarmentSpec, type CanonicalCreativeVisualReview } from "@
 import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
 import { enrichDesignerFabricsWithIntelligence } from "@/lib/fabric-intelligence-server";
 import type { MeasurementProfile } from "@/lib/measurements";
+import { normalizeMeasuredBodyInput } from "@/lib/designer/measurement-input-validation";
 import type { TailorObservationProfile } from "@/lib/designer/tailor-observations";
 import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import { toLegacyStyle, validateStyleSpecV2, type StyleSpecV2 } from "@/lib/designer/style-spec-v2";
@@ -61,23 +62,7 @@ function validContext(value:unknown):value is DesignerContext {
 }
 
 function safeMeasurements(value:unknown):MeasurementProfile|null {
-  if(!value || typeof value!=="object" || Array.isArray(value)) return null;
-  const input=value as Partial<MeasurementProfile>;
-  if(input.version!==1 || !["cm","in"].includes(String(input.unit)) || !input.shirt || !input.pants) return null;
-  const clean=(source:Record<string,unknown>)=>Object.fromEntries(
-    Object.entries(source).filter(([,raw])=>{
-      if(raw===undefined || raw===null || raw==="") return false;
-      const n=Number(raw);
-      return Number.isFinite(n) && n>0 && n<=350;
-    }).map(([key,raw])=>[key,Number(raw)])
-  );
-  return {
-    version:1,
-    unit:input.unit as "cm"|"in",
-    shirt:clean(input.shirt as unknown as Record<string,unknown>),
-    pants:clean(input.pants as unknown as Record<string,unknown>),
-    updatedAt:typeof input.updatedAt==="string"?input.updatedAt.slice(0,80):new Date().toISOString(),
-  };
+  return normalizeMeasuredBodyInput(value);
 }
 
 function safeObservations(value:unknown):TailorObservationProfile|null {
@@ -179,7 +164,13 @@ export async function POST(request:Request) {
     const pant=fabrics.find((fabric)=>fabric.id===pantId && fabric.allowedGarments.includes("pant"));
     if(!shirt || !pant) return NextResponse.json({error:"The selected fabrics are no longer available in the current Designer catalogue."},{status:409});
 
-    const measurements=safeMeasurements(body.measurements);
+    let measurements:MeasurementProfile|null;
+    try{ measurements=safeMeasurements(body.measurements); }
+    catch(error){
+      return NextResponse.json({
+        error:error instanceof Error?error.message:"Invalid body measurements.",
+      },{status:422});
+    }
     const observations=safeObservations(body.observations);
     const creative=safeCreative(body.creative);
     if(body.creative&&!creative)return NextResponse.json({error:"Invalid creative recipe."},{status:400});
