@@ -3,21 +3,42 @@ export type StockEventType="receipt"|"adjustment_in"|"adjustment_out"|"reserve"|
 export type StockEvent={type:StockEventType;quantityMetres:number};
 
 export function stockSnapshot(events:StockEvent[]){
-  let physicalMetres=0;
-  let reservedMetres=0;
-  for(const event of events){
+  // Local ledger replay must agree with the server's no-oversell invariants.
+  // A "plausible" negative number is not usable physical stock evidence.
+  // Quantities are millimetres of fabric in metres rounded to 0.001.
+  let physicalMillis=0;
+  let reservedMillis=0;
+  for(const [index,event] of events.entries()){
     const q=Number(event.quantityMetres);
-    if(!Number.isFinite(q)||q<=0) throw new Error("Stock event quantity must be positive.");
-    if(event.type==="receipt"||event.type==="adjustment_in") physicalMetres+=q;
-    if(event.type==="adjustment_out"||event.type==="consume") physicalMetres-=q;
-    if(event.type==="reserve") reservedMetres+=q;
-    if(event.type==="release"||event.type==="consume") reservedMetres-=q;
+    if(!Number.isFinite(q)||q<=0||Math.round(q*1000)!==q*1000)
+      throw new Error("Stock event quantity must be positive and have at most 3 decimal places.");
+    const millimetres=Math.round(q*1000);
+    if(event.type==="receipt"||event.type==="adjustment_in") physicalMillis+=millimetres;
+    else if(event.type==="adjustment_out"){
+      if(physicalMillis-reservedMillis<millimetres)
+        throw new Error(`Stock adjustment #${index+1} would remove reserved or unavailable fabric.`);
+      physicalMillis-=millimetres;
+    }else if(event.type==="reserve"){
+      if(physicalMillis-reservedMillis<millimetres)
+        throw new Error(`Stock reservation #${index+1} exceeds available real fabric.`);
+      reservedMillis+=millimetres;
+    }else if(event.type==="release"){
+      if(reservedMillis<millimetres)
+        throw new Error(`Stock release #${index+1} exceeds the recorded reservation.`);
+      reservedMillis-=millimetres;
+    }else if(event.type==="consume"){
+      if(reservedMillis<millimetres||physicalMillis<millimetres)
+        throw new Error(`Stock consumption #${index+1} exceeds physically reserved fabric.`);
+      physicalMillis-=millimetres;
+      reservedMillis-=millimetres;
+    }else throw new Error("Unsupported stock event type.");
+    if(physicalMillis<reservedMillis||reservedMillis<0)
+      throw new Error("Physical fabric ledger violates reservation invariants.");
   }
-  const availableMetres=physicalMetres-reservedMetres;
   return {
-    physicalMetres:Math.round(physicalMetres*1000)/1000,
-    reservedMetres:Math.round(reservedMetres*1000)/1000,
-    availableMetres:Math.round(availableMetres*1000)/1000,
+    physicalMetres:physicalMillis/1000,
+    reservedMetres:reservedMillis/1000,
+    availableMetres:(physicalMillis-reservedMillis)/1000,
   };
 }
 
