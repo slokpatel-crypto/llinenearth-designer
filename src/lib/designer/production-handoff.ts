@@ -1,4 +1,5 @@
 import type { LockedDesignRevision } from "@/lib/designer/design-lock";
+import { verifyLockedDesignRevision } from "@/lib/designer/design-lock";
 
 export const PRODUCTION_HANDOFF_VERSION="linen-earth-production-handoff-v1" as const;
 
@@ -13,6 +14,12 @@ export type ProductionHandoff={
     trouser:{id:string;name:string;line:string;source:string};
   };
   construction:{
+    // Exact advanced cut, body settings and occasion are copied from the
+    // cryptographically locked recipe; the older shorthand fields below
+    // are not a substitute for a cutting specification.
+    styleSpec:LockedDesignRevision["garmentSpec"]["styleSpec"];
+    bodyProfile:LockedDesignRevision["garmentSpec"]["bodyProfile"];
+    context:LockedDesignRevision["garmentSpec"]["context"];
     fitProvenance:{
       fitConstructionVersion:LockedDesignRevision["garmentSpec"]["source"]["fitConstructionVersion"];
       easeSource:LockedDesignRevision["garmentSpec"]["source"]["fitEaseSource"];
@@ -64,6 +71,9 @@ export function buildProductionHandoff(
       trouser:{id:spec.fabrics.trouser.id,name:spec.fabrics.trouser.name,line:spec.fabrics.trouser.line,source:spec.fabrics.trouser.source},
     },
     construction:{
+      styleSpec:spec.styleSpec?JSON.parse(JSON.stringify(spec.styleSpec)):null,
+      bodyProfile:spec.bodyProfile?JSON.parse(JSON.stringify(spec.bodyProfile)):null,
+      context:{...spec.context},
       fitProvenance:{
         fitConstructionVersion:spec.source.fitConstructionVersion,
         easeSource:spec.source.fitEaseSource,
@@ -92,4 +102,42 @@ export function buildProductionHandoff(
       "Cloth estimate, stock reservation and price must come from validated production systems; they are never inferred here.",
     ],
   };
+}
+
+
+/**
+ * Customer design edits and revisions MUST be verified before a tailor packet
+ * can be trusted. This check uses the original locked SHA256, then verifies
+ * every material, full StyleSpec v2 option, measurement/ease target, and
+ * remaining blocking note against a newly constructed canonical handoff.
+ * It does not assert stock reservation, cutting-pattern validation or approval.
+ */
+export async function buildVerifiedProductionHandoff(
+  revision:LockedDesignRevision,
+  generatedAt=new Date().toISOString(),
+):Promise<ProductionHandoff> {
+  if(!await verifyLockedDesignRevision(revision))
+    throw new Error("Locked design hash no longer matches the exact garment and tailoring recipe.");
+  return buildProductionHandoff(revision,generatedAt);
+}
+
+export async function verifyProductionHandoff(
+  handoff:ProductionHandoff,
+  revision:LockedDesignRevision,
+):Promise<boolean> {
+  if(!await verifyLockedDesignRevision(revision)) return false;
+  if(handoff.version!==PRODUCTION_HANDOFF_VERSION
+     ||handoff.recipeHash!==revision.recipeHash
+     ||handoff.designRevisionId!==revision.revisionId) return false;
+  try {
+    const expected=buildProductionHandoff(revision,handoff.generatedAt);
+    // Canonical comparisons do not rely on JS object insertion order and
+    // include all 2D photo-vs-cut caveats, source and customer measurements.
+    const sorted=(input:unknown):unknown=>Array.isArray(input)?input.map(sorted)
+      :input&&typeof input==="object"
+        ?Object.fromEntries(Object.entries(input).sort(([a],[b])=>a.localeCompare(b))
+          .map(([key,value])=>[key,sorted(value)]))
+        :input;
+    return JSON.stringify(sorted(handoff))===JSON.stringify(sorted(expected));
+  }catch{return false;}
 }
