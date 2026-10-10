@@ -1200,7 +1200,7 @@ export function DesignerModule() {
                 <span>{fabric.name}</span>
               </button>)}
             </div>
-            {visibleShirts.length>shownShirts.length&&<button className="newDesignerFabricShowMore" type="button" onClick={()=>setShowMoreShirts(true)}>Show all {visibleShirts.length} shirt fabrics</button>}
+            {visibleShirts.length>FIRST_FABRIC_CHOICES&&<button className="newDesignerFabricShowMore" type="button" aria-expanded={showMoreShirts} onClick={()=>setShowMoreShirts(current=>!current)}>{showMoreShirts?"Show fewer shirt fabrics":`Show all ${visibleShirts.length} shirt fabrics`}</button>}
             {visibleShirts.length===0&&<p className="newDesignerFabricNoMatch" role="status">No matching shirt fabrics. <button type="button" onClick={()=>{setShirtSearch("");setShirtFilter("All");}}>Clear search</button></p>}
             <label htmlFor="designer-shirt">Shirt fabric <span>{visibleShirts.length} matches</span></label>
             <select id="designer-shirt" value={shirtId} onChange={(event) => { setShirtId(event.target.value); setRecommendation(null); setRecommendationId(null); }}>
@@ -1230,7 +1230,7 @@ export function DesignerModule() {
                 <span>{fabric.name}</span>
               </button>)}
             </div>
-            {visiblePants.length>shownPants.length&&<button className="newDesignerFabricShowMore" type="button" onClick={()=>setShowMorePants(true)}>Show all {visiblePants.length} trouser fabrics</button>}
+            {visiblePants.length>FIRST_FABRIC_CHOICES&&<button className="newDesignerFabricShowMore" type="button" aria-expanded={showMorePants} onClick={()=>setShowMorePants(current=>!current)}>{showMorePants?"Show fewer trouser fabrics":`Show all ${visiblePants.length} trouser fabrics`}</button>
             {visiblePants.length===0&&<p className="newDesignerFabricNoMatch" role="status">No matching trouser fabrics. <button type="button" onClick={()=>{setPantSearch("");setPantFilter("All");}}>Clear search</button></p>}
             <label htmlFor="designer-pant">Trouser fabric <span>{visiblePants.length} matches</span></label>
             <select id="designer-pant" value={pantId} onChange={(event) => { setPantId(event.target.value); setRecommendation(null); setRecommendationId(null); }}>
