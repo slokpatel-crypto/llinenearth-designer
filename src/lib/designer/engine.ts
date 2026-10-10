@@ -1,7 +1,7 @@
 import { FABRIC_STOCK, type FabricColorway } from "../fabric-stock.ts";
 import reference from "./reference-data.json";
 import { optionsFor } from "./options/library.ts";
-import { fromLegacyStyle } from "./style-spec-v2.ts";
+import { fromLegacyStyle, type StyleSpecV2 } from "./style-spec-v2.ts";
 import { evaluateCrossGarmentRules } from "./rules/evaluator.ts";
 import type { FabricCompatibilityResult, FabricPhysicsProfile } from "./fabric-physics.ts";
 
@@ -407,7 +407,7 @@ function directionLine(shirt: DesignerFabric, pant: DesignerFabric, style: Desig
   return `${shirt.name} with ${pant.name} ${palette}; ${shape} for ${occasion.toLowerCase()} wear.${shirtFinish}${contrastCollar}`;
 }
 
-export function evaluateDesignerCombo(shirt: DesignerFabric, pant: DesignerFabric, occasion: OccasionTier, overrides?: DesignerStyleOverrides, accent?: DesignerAccent, context: DesignerContext = DEFAULT_DESIGNER_CONTEXT): DesignerRecommendation {
+export function evaluateDesignerCombo(shirt: DesignerFabric, pant: DesignerFabric, occasion: OccasionTier, overrides?: DesignerStyleOverrides, accent?: DesignerAccent, context: DesignerContext = DEFAULT_DESIGNER_CONTEXT, expandedStyleSpec?:StyleSpecV2|null): DesignerRecommendation {
   if (!shirt.allowedGarments.includes("shirt") || !pant.allowedGarments.includes("pant")) {
     throw new Error("Select a shirting fabric and a trouser fabric from the catalogue.");
   }
@@ -512,7 +512,9 @@ export function evaluateDesignerCombo(shirt: DesignerFabric, pant: DesignerFabri
   }
 
   const crossRules=evaluateCrossGarmentRules({
-    spec:fromLegacyStyle(style),
+    // Use the actual validated v2 cut when supplied by Designer Studio.
+    // A legacy-only assessment still uses the exact previous behaviour.
+    spec:expandedStyleSpec??fromLegacyStyle(style),
     occasion,
     climate:context.climate,
     shirtPatternScale:shirt.patternScale,
