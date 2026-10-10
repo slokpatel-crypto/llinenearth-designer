@@ -88,6 +88,21 @@ const MORE_DETAILS = [
   ["waistband", "Trouser waistband"], ["break", "Trouser break"],
   ["button", "Button material"],
 ] as const;
+/* Only the first few controls appear by default. These advanced, stable v2
+   fields are genuine construction specifications, NOT new photoreal templates. */
+const ADVANCED_SHIRT_DETAILS=[
+  ["sleeve","Sleeve length","shirt.sleeve"],
+  ["cuff","Cuff construction","shirt.cuff"],
+  ["pocket","Shirt pocket","shirt.pocket"],
+  ["length","Shirt length","shirt.length"],
+  ["hem","Shirt hem","shirt.hem"],
+  ["back","Back shaping","shirt.back"],
+] as const;
+const ADVANCED_TROUSER_DETAILS=[
+  ["fit","Trouser leg shape","pant.fit"],
+  ["pleat","Trouser pleats","pant.pleat"],
+  ["hem","Trouser hem","pant.hem"],
+] as const;
 
 function designerSession() {
   try {
@@ -935,6 +950,33 @@ export function DesignerModule() {
     setFeedbackReason(null);
   }
 
+  function changeExpandedCut(
+    garment:"shirt"|"pant",
+    field:keyof StyleSpecV2["shirt"]|keyof StyleSpecV2["pant"],
+    value:string,
+  ) {
+    const option=optionById(value);
+    if(!option || option.group!==`${garment}.${field}`) return;
+    const next:StyleSpecV2={
+      ...styleSpec,
+      shirt:{...styleSpec.shirt},
+      pant:{...styleSpec.pant},
+      legacy:{...styleSpec.legacy},
+    };
+    if(garment==="shirt") {
+      (next.shirt as unknown as Record<string,string>)[field]=value;
+      // Synchronize the older photographic selector only when it has a
+      // genuine compatible legacy label; future-only details stay v2-only.
+      if(field==="cuff" && option.legacyLabel
+        && DESIGNER_STYLE_CHOICES.cuff.includes(option.legacyLabel)) {
+        next.legacy.cuff=option.legacyLabel;
+      }
+    } else {
+      (next.pant as unknown as Record<string,string>)[field]=value;
+    }
+    applyStyleSpec(next);
+  }
+
   function changeGarmentType(garment:"shirt"|"pant",value:string) {
     const next:StyleSpecV2={
       ...styleSpec,
@@ -1329,6 +1371,22 @@ export function DesignerModule() {
                 {DESIGNER_STYLE_CHOICES[key].map((option)=><option key={option} value={option}>{option}</option>)}
               </select>
             </label>)}</div>
+          </details>
+          <details className="newDesignerTechnicalDrawer newDesignerPrecisionCut">
+            <summary>Precision tailoring · optional</summary>
+            <div className="newDesignerStyleGrid">
+              {ADVANCED_SHIRT_DETAILS.map(([field,label,group])=><label key={group}>{label}
+                <select aria-label={label} value={styleSpec.shirt[field]} onChange={(event)=>changeExpandedCut("shirt",field,event.target.value)}>
+                  {optionsFor(group).map((option)=><option value={option.id} key={option.id}>{option.label}</option>)}
+                </select>
+              </label>)}
+              {ADVANCED_TROUSER_DETAILS.map(([field,label,group])=><label key={group}>{label}
+                <select aria-label={label} value={styleSpec.pant[field]} onChange={(event)=>changeExpandedCut("pant",field,event.target.value)}>
+                  {optionsFor(group).map((option)=><option value={option.id} key={option.id}>{option.label}</option>)}
+                </select>
+              </label>)}
+            </div>
+            <p>These are tailor specifications. Where a cut differs from the photographed mannequin, the instant photo remains an approximation until matching real references are verified.</p>
           </details>
           <div className="newDesignerPhotoMatch" data-state={photoMatchSummary.unsupported.length?"unsupported":photoMatchSummary.approximate.length?"mixed":"matched"}>
             <span>{photoMatchSummary.approximate.length||photoMatchSummary.unsupported.length?"PHOTO MATCH · MIXED":"PHOTO MATCH · DIRECT"}</span>
