@@ -201,10 +201,24 @@ export function DesignerModule() {
   const pantEvidence=pant?fabricEvidence(pant):null;
   const photoMatchSummary=useMemo(()=>{
     const choices=[...MAIN_DETAILS,...MORE_DETAILS] as const;
-    const rows=choices.map(([key,label])=>({
+    const photographed=fromLegacyStyle(style);
+    const legacyRows=choices.map(([key,label])=>({
       key,label,
       support:photoPreviewSupportForChoice(key,style[key]),
     }));
+    // The live photograph must not report DIRECT when the selected v2 cut
+    // is only a tailor specification and has no matching photographed shape.
+    const advancedRows=[
+      ...ADVANCED_SHIRT_DETAILS
+        .filter(([field])=>styleSpec.shirt[field]!==photographed.shirt[field])
+        .map(([field,label])=>({key:`v2-shirt-${field}`,label,
+          support:{status:"approximate" as const,reason:"Selected cut is not represented by a matching Studio photograph."}})),
+      ...ADVANCED_TROUSER_DETAILS
+        .filter(([field])=>styleSpec.pant[field]!==photographed.pant[field])
+        .map(([field,label])=>({key:`v2-pant-${field}`,label,
+          support:{status:"approximate" as const,reason:"Selected cut is not represented by a matching Studio photograph."}})),
+    ];
+    const rows=[...legacyRows,...advancedRows];
     const exact=rows.filter((row)=>row.support.status==="exact");
     const approximate=rows.filter((row)=>row.support.status==="approximate");
     const unsupported=rows.filter((row)=>row.support.status==="none");
@@ -214,7 +228,7 @@ export function DesignerModule() {
       approximate,
       unsupported,
     };
-  },[style]);
+  },[style,styleSpec]);
   const designerWhatsAppHref=useMemo(()=>{
     if(!shirt || !pant) return "#";
     const creative=activeCreative ? [
