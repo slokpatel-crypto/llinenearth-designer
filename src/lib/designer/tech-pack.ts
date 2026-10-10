@@ -114,6 +114,43 @@ footer{margin-top:14px;padding-top:10px;border-top:1px solid #cfd3d6;color:#6872
   </article>
 </section>
 
+<section class="card" style="margin-bottom:12px">
+  <h2>Exact selected cut · StyleSpec v2</h2>
+  ${handoff.construction.styleSpec?`
+    <p class="muted">These are the actual locked tailoring choices. The earlier shorthand above may only describe the closest photographic preview.</p>
+    <div class="grid">
+      <table>${rows([
+        ["Shirt construction",handoff.construction.styleSpec.shirt.type],
+        ["Collar",handoff.construction.styleSpec.shirt.collar],
+        ["Collar finish",handoff.construction.styleSpec.shirt.collarFinish],
+        ["Sleeve length",handoff.construction.styleSpec.shirt.sleeve],
+        ["Cuff construction",handoff.construction.styleSpec.shirt.cuff],
+        ["Placket",handoff.construction.styleSpec.shirt.placket],
+        ["Pocket",handoff.construction.styleSpec.shirt.pocket],
+        ["Fit",handoff.construction.styleSpec.shirt.fit],
+        ["Body length",handoff.construction.styleSpec.shirt.length],
+        ["Shirt hem",handoff.construction.styleSpec.shirt.hem],
+        ["Back shaping",handoff.construction.styleSpec.shirt.back],
+        ["Wear",handoff.construction.styleSpec.shirt.wear],
+        ["Button",handoff.construction.styleSpec.shirt.button],
+      ])}</table>
+      <table>${rows([
+        ["Trouser construction",handoff.construction.styleSpec.pant.type],
+        ["Leg shape",handoff.construction.styleSpec.pant.fit],
+        ["Rise",handoff.construction.styleSpec.pant.rise],
+        ["Pleat",handoff.construction.styleSpec.pant.pleat],
+        ["Waistband",handoff.construction.styleSpec.pant.waistband],
+        ["Hem",handoff.construction.styleSpec.pant.hem],
+        ["Break",handoff.construction.styleSpec.pant.break],
+        ["Occasion",handoff.construction.context?.occasion],
+        ["Climate",handoff.construction.context?.climate],
+        ["Intention",handoff.construction.context?.intention],
+      ])}</table>
+    </div>
+    <p class="muted">Raw option identifiers are included intentionally to avoid ambiguous label substitutions. Tailor must confirm construction, ease and actual garment dimensions.</p>
+  `:`<p>Older legacy design: confirm the cut in person before pattern making; no StyleSpec v2 construction details were locked.</p>`}
+</section>
+
 ${handoff.construction.creative?`<section class="card" style="margin-bottom:12px"><h2>Creative recipe / sample review</h2><p>${esc(handoff.construction.creative.name)} · ${esc(handoff.construction.creative.thesis)}</p><ul>${list(handoff.construction.creative.treatments.map(t=>`${t.zone}: ${t.instruction}`))}</ul>${handoff.construction.creative.craft?`<p>Craft version: ${esc(handoff.construction.creative.craft.version)} · Proposed sample dimensions</p><ul>${list(handoff.construction.creative.craft.panels.map(p=>`${p.zone}: ${p.fabric.name} (${p.fabric.id}); provenance: ${p.fabric.source}`))}</ul><pre>${esc(JSON.stringify(handoff.construction.creative.craft.decoration,null,2))}</pre>`:""}</section>`:""}
 <section class="card" style="margin-bottom:12px">
   <h2>Shirt finished-garment targets</h2>
@@ -151,6 +188,25 @@ ${handoff.construction.creative?`<section class="card" style="margin-bottom:12px
 <section class="grid">
   <article class="card"><h2>Unresolved before production</h2><ul>${list(handoff.unresolved)}</ul></article>
   <article class="card"><h2>Caveats</h2><ul>${list(handoff.caveats)}</ul></article>
+</section>
+
+<section class="card" style="margin-top:14px;break-inside:avoid">
+  <h2>Operator and tailor physical acceptance · unsigned</h2>
+  <p class="muted">All fields below intentionally require a real human review. Nothing is considered checked or signed merely because this document was generated.</p>
+  <table>${rows([
+    ["Physical shirt roll/lot and stock checked","________________________"],
+    ["Physical trouser roll/lot and stock checked","________________________"],
+    ["Measured composition, weight (GSM), shrinkage","________________________"],
+    ["Actual stripe/check repeat and swatch ruler reference","________________________"],
+    ["Colour calibration and fabric drape checked","________________________"],
+    ["Collar/cuff/sleeve/hem and trouser construction checked","________________________"],
+    ["Body landmarks, ease table and all finished targets checked","________________________"],
+    ["Customer preview versus exact chosen cut discrepancy explained","________________________"],
+    ["Required cloth metres confirmed and stock reserved","________________________"],
+    ["Operator, date and actual tailor approval","________________________"],
+    ["Approved cutting/block/pattern ID","________________________"],
+  ])}</table>
+  <p><b>Status: PENDING HUMAN ACCEPTANCE — NO CUTTING AUTHORISATION.</b></p>
 </section>
 
 <footer>

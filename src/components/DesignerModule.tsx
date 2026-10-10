@@ -19,7 +19,7 @@ import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObserv
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
 import { canonicalGarmentSpecSummary } from "@/lib/designer/garment-spec";
 import { lockGarmentSpec, type LockedDesignRevision } from "@/lib/designer/design-lock";
-import { buildProductionHandoff } from "@/lib/designer/production-handoff";
+import { buildVerifiedProductionHandoff } from "@/lib/designer/production-handoff";
 import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-pack";
 import type { DesignerAssessmentResponse } from "@/lib/designer/assessment-types";
 import type { DesignerSearchScope, DesignerSearchTier } from "@/lib/designer/search";
@@ -27,6 +27,10 @@ import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import { creativeFamilyFromConceptId, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
+import {
+  SHIRT_FABRIC_FAMILIES, TROUSER_FABRIC_TONES, discoverFabrics,
+  fabricEvidence, fabricFilterCounts, type ShirtFabricFamily, type TrouserFabricTone,
+} from "@/lib/designer/fabric-discovery";
 import { optionById, optionsFor } from "@/lib/designer/options/library";
 import {
   fromLegacyStyle,
@@ -48,20 +52,22 @@ const INTENTIONS: DesignerIntention[] = ["Understated", "Balanced", "Expressive"
 const SESSION_KEY = "linen-earth:designer-session:v1";
 const DRAFT_KEY = "linen-earth:real-designer-draft:v2";
 const FACT_INTERVAL_MS = 15_000;
-type ShirtFabricFilter = "All" | "Plain" | "Print" | "Blend" | "Formal";
-type PantFabricFilter = "All" | "Light" | "Medium" | "Dark";
+type ShirtFabricFilter = ShirtFabricFamily;
+type PantFabricFilter = TrouserFabricTone;
 type DesignerSearchOption = {
   id:string;
   tier:DesignerSearchTier;
   shirt:DesignerFabric;
   pant:DesignerFabric;
   style:DesignerStyle;
+  styleSpec?:StyleSpecV2|null;
   recommendation:DesignerRecommendation;
   fitAdaptation?:string;
 };
 
-const SHIRT_FILTERS:ShirtFabricFilter[]=["All","Plain","Print","Blend","Formal"];
-const PANT_FILTERS:PantFabricFilter[]=["All","Light","Medium","Dark"];
+const SHIRT_FILTERS=SHIRT_FABRIC_FAMILIES;
+const PANT_FILTERS=TROUSER_FABRIC_TONES;
+const FIRST_FABRIC_CHOICES=8;
 const SHIRT_TYPE_OPTIONS=optionsFor("shirt.type");
 const TROUSER_TYPE_OPTIONS=optionsFor("pant.type");
 
@@ -73,19 +79,6 @@ function customerFabricLine(line:string) {
     .trim() || "Fabric collection";
 }
 
-function shirtFilterFor(fabric:DesignerFabric):Exclude<ShirtFabricFilter,"All"> {
-  const text=`${fabric.line} ${fabric.patternType}`.toLowerCase();
-  if(text.includes("formal")) return "Formal";
-  if(text.includes("blend")) return "Blend";
-  if(text.includes("print")) return "Print";
-  return "Plain";
-}
-
-function pantFilterFor(fabric:DesignerFabric):Exclude<PantFabricFilter,"All"> {
-  return fabric.tone || "Medium";
-}
-
-
 const MAIN_DETAILS = [
   ["shirtWear", "Shirt finish"], ["collar", "Shirt collar"],
   ["collarFinish", "Collar cloth"], ["shirtFit", "Shirt fit"],
@@ -95,6 +88,21 @@ const MORE_DETAILS = [
   ["cuff", "Shirt cuff"], ["placket", "Shirt placket"],
   ["waistband", "Trouser waistband"], ["break", "Trouser break"],
   ["button", "Button material"],
+] as const;
+/* Only the first few controls appear by default. These advanced, stable v2
+   fields are genuine construction specifications, NOT new photoreal templates. */
+const ADVANCED_SHIRT_DETAILS=[
+  ["sleeve","Sleeve length","shirt.sleeve"],
+  ["cuff","Cuff construction","shirt.cuff"],
+  ["pocket","Shirt pocket","shirt.pocket"],
+  ["length","Shirt length","shirt.length"],
+  ["hem","Shirt hem","shirt.hem"],
+  ["back","Back shaping","shirt.back"],
+] as const;
+const ADVANCED_TROUSER_DETAILS=[
+  ["fit","Trouser leg shape","pant.fit"],
+  ["pleat","Trouser pleats","pant.pleat"],
+  ["hem","Trouser hem","pant.hem"],
 ] as const;
 
 function designerSession() {
@@ -166,6 +174,10 @@ export function DesignerModule() {
   const [creativeGenerating,setCreativeGenerating]=useState(false);
   const [shirtFilter,setShirtFilter]=useState<ShirtFabricFilter>("All");
   const [pantFilter,setPantFilter]=useState<PantFabricFilter>("All");
+  const [shirtSearch,setShirtSearch]=useState("");
+  const [pantSearch,setPantSearch]=useState("");
+  const [showMoreShirts,setShowMoreShirts]=useState(false);
+  const [showMorePants,setShowMorePants]=useState(false);
   const fact = DESIGNER_FASHION_FACTS[factIndex];
   const shirt = useMemo(() => shirtOptions.find((item) => item.id === shirtId), [shirtId, shirtOptions]);
   const pant = useMemo(() => pantOptions.find((item) => item.id === pantId), [pantId, pantOptions]);
@@ -178,14 +190,36 @@ export function DesignerModule() {
   const committedCreativeId=useRef(activeCreative?.id||null);
   useLayoutEffect(()=>{committedCreativeId.current=activeCreative?.id||null;},[activeCreative?.id]);
   useLayoutEffect(()=>{committedAssessmentIdentity.current=assessmentIdentity;},[assessmentIdentity]);
-  const visibleShirts=useMemo(()=>shirtFilter==="All" ? shirtOptions : shirtOptions.filter((item)=>shirtFilterFor(item)===shirtFilter),[shirtFilter,shirtOptions]);
-  const visiblePants=useMemo(()=>pantFilter==="All" ? pantOptions : pantOptions.filter((item)=>pantFilterFor(item)===pantFilter),[pantFilter,pantOptions]);
+  const visibleShirts=useMemo(()=>discoverFabrics(shirtOptions,"shirt",shirtFilter,shirtSearch),[shirtFilter,shirtOptions,shirtSearch]);
+  const visiblePants=useMemo(()=>discoverFabrics(pantOptions,"trouser",pantFilter,pantSearch),[pantFilter,pantOptions,pantSearch]);
+  const shirtFilterCounts=useMemo(()=>fabricFilterCounts(shirtOptions,"shirt",shirtSearch),[shirtOptions,shirtSearch]);
+  const pantFilterCounts=useMemo(()=>fabricFilterCounts(pantOptions,"trouser",pantSearch),[pantOptions,pantSearch]);
+  const shownShirts=showMoreShirts?visibleShirts:visibleShirts.slice(0,FIRST_FABRIC_CHOICES);
+  const shownPants=showMorePants?visiblePants:visiblePants.slice(0,FIRST_FABRIC_CHOICES);
+  const selectedShirtOutsideFilter=Boolean(shirt&&!visibleShirts.some((item)=>item.id===shirt.id));
+  const selectedPantOutsideFilter=Boolean(pant&&!visiblePants.some((item)=>item.id===pant.id));
+  const shirtEvidence=shirt?fabricEvidence(shirt):null;
+  const pantEvidence=pant?fabricEvidence(pant):null;
   const photoMatchSummary=useMemo(()=>{
     const choices=[...MAIN_DETAILS,...MORE_DETAILS] as const;
-    const rows=choices.map(([key,label])=>({
+    const photographed=fromLegacyStyle(style);
+    const legacyRows=choices.map(([key,label])=>({
       key,label,
       support:photoPreviewSupportForChoice(key,style[key]),
     }));
+    // The live photograph must not report DIRECT when the selected v2 cut
+    // is only a tailor specification and has no matching photographed shape.
+    const advancedRows=[
+      ...ADVANCED_SHIRT_DETAILS
+        .filter(([field])=>styleSpec.shirt[field]!==photographed.shirt[field])
+        .map(([field,label])=>({key:`v2-shirt-${field}`,label,
+          support:{status:"approximate" as const,reason:"Selected cut is not represented by a matching Studio photograph."}})),
+      ...ADVANCED_TROUSER_DETAILS
+        .filter(([field])=>styleSpec.pant[field]!==photographed.pant[field])
+        .map(([field,label])=>({key:`v2-pant-${field}`,label,
+          support:{status:"approximate" as const,reason:"Selected cut is not represented by a matching Studio photograph."}})),
+    ];
+    const rows=[...legacyRows,...advancedRows];
     const exact=rows.filter((row)=>row.support.status==="exact");
     const approximate=rows.filter((row)=>row.support.status==="approximate");
     const unsupported=rows.filter((row)=>row.support.status==="none");
@@ -195,7 +229,7 @@ export function DesignerModule() {
       approximate,
       unsupported,
     };
-  },[style]);
+  },[style,styleSpec]);
   const designerWhatsAppHref=useMemo(()=>{
     if(!shirt || !pant) return "#";
     const creative=activeCreative ? [
@@ -569,6 +603,7 @@ export function DesignerModule() {
           pantId:pant.id,
           occasion,
           style,
+          styleSpec,
           context:{climate,intention},
           scope:searchScope,
           measurements:measurementProfile,
@@ -788,7 +823,8 @@ export function DesignerModule() {
   function useSearchResult(result:DesignerSearchOption,source?:{occasion?:OccasionTier;context?:DesignerContext;name?:string}) {
     const nextOccasion=source?.occasion || result.recommendation.occasion;
     const nextContext=source?.context || {climate,intention};
-    const expectedIdentity=JSON.stringify([result.shirt.id,result.pant.id,nextOccasion,styleIdentity(result.style),fromLegacyStyle(result.style),nextContext.climate,nextContext.intention,measurementProfile,tailorObservations,bodyProfile]);
+    const nextStyleSpec=result.styleSpec??fromLegacyStyle(result.style);
+    const expectedIdentity=JSON.stringify([result.shirt.id,result.pant.id,nextOccasion,styleIdentity(result.style),nextStyleSpec,nextContext.climate,nextContext.intention,measurementProfile,tailorObservations,bodyProfile]);
     setActiveCreative(null);
     setCreativeVisualReview(null);
     setShirtId(result.shirt.id);
@@ -797,7 +833,7 @@ export function DesignerModule() {
     setClimate(nextContext.climate);
     setIntention(nextContext.intention);
     setStyle({...result.style});
-    setStyleSpec(fromLegacyStyle(result.style));
+    setStyleSpec(nextStyleSpec);
     setRecommendation(result.recommendation);
     setAssessment(null);
     setSearchResults([]);
@@ -807,7 +843,7 @@ export function DesignerModule() {
 
     void requestLookAssessment({
       shirtId:result.shirt.id,pantId:result.pant.id,occasion:nextOccasion,
-      style:result.style,styleSpec:fromLegacyStyle(result.style),context:nextContext,
+      style:result.style,styleSpec:nextStyleSpec,context:nextContext,
     }).then((next)=>{
       if(committedAssessmentIdentity.current!==expectedIdentity) return;
       if(next.recommendation.shirt.id!==result.shirt.id || next.recommendation.pant.id!==result.pant.id || JSON.stringify(styleIdentity(next.recommendation.style))!==JSON.stringify(styleIdentity(result.style))) throw new Error("The assessment does not match the applied direction. Assess the current look again.");
@@ -931,6 +967,33 @@ export function DesignerModule() {
     setFeedbackReason(null);
   }
 
+  function changeExpandedCut(
+    garment:"shirt"|"pant",
+    field:keyof StyleSpecV2["shirt"]|keyof StyleSpecV2["pant"],
+    value:string,
+  ) {
+    const option=optionById(value);
+    if(!option || option.group!==`${garment}.${field}`) return;
+    const next:StyleSpecV2={
+      ...styleSpec,
+      shirt:{...styleSpec.shirt},
+      pant:{...styleSpec.pant},
+      legacy:{...styleSpec.legacy},
+    };
+    if(garment==="shirt") {
+      (next.shirt as unknown as Record<string,string>)[field]=value;
+      // Synchronize the older photographic selector only when it has a
+      // genuine compatible legacy label; future-only details stay v2-only.
+      if(field==="cuff" && option.legacyLabel
+        && DESIGNER_STYLE_CHOICES.cuff.includes(option.legacyLabel)) {
+        next.legacy.cuff=option.legacyLabel;
+      }
+    } else {
+      (next.pant as unknown as Record<string,string>)[field]=value;
+    }
+    applyStyleSpec(next);
+  }
+
   function changeGarmentType(garment:"shirt"|"pant",value:string) {
     const next:StyleSpecV2={
       ...styleSpec,
@@ -1033,9 +1096,16 @@ export function DesignerModule() {
     }
   }
 
-  function downloadProductionHandoff() {
+  async function downloadProductionHandoff() {
     if(!lockedRevision) return;
-    const handoff=buildProductionHandoff(lockedRevision);
+    // Verify locked SHA-256 before a customer can generate a production
+    // handoff. If any editable measurement or selected cut was changed in
+    // the revision, fail closed rather than exporting an untrusted packet.
+    const handoff=await buildVerifiedProductionHandoff(lockedRevision).catch(()=>{
+      setShareMessage("The locked recipe is no longer valid. Review the design and lock a new revision before downloading.");
+      return null;
+    });
+    if(!handoff) return;
     const blob=new Blob([JSON.stringify(handoff,null,2)],{type:"application/json"});
     const url=URL.createObjectURL(blob);
     const anchor=document.createElement("a");
@@ -1047,9 +1117,13 @@ export function DesignerModule() {
     URL.revokeObjectURL(url);
   }
 
-  function downloadTailorTechPack() {
+  async function downloadTailorTechPack() {
     if(!lockedRevision) return;
-    const handoff=buildProductionHandoff(lockedRevision);
+    const handoff=await buildVerifiedProductionHandoff(lockedRevision).catch(()=>{
+      setShareMessage("The locked recipe is no longer valid. Lock a new design before exporting its tailor tech pack.");
+      return null;
+    });
+    if(!handoff) return;
     const html=buildTailorTechPackHtml(handoff);
     const blob=new Blob([html],{type:"text/html;charset=utf-8"});
     const url=URL.createObjectURL(blob);
@@ -1179,54 +1253,64 @@ export function DesignerModule() {
         </div>
         <div className="newDesignerFabricGrid">
           <article className="newDesignerFabric">
+
             <div className="newDesignerFabricFilters" aria-label="Filter shirt fabrics">
-              {SHIRT_FILTERS.map((filter)=><button key={filter} type="button" className={shirtFilter===filter?"selected":""} aria-pressed={shirtFilter===filter} onClick={()=>{
-                setShirtFilter(filter);
-                const next=filter==="All"?shirtOptions:shirtOptions.filter((item)=>shirtFilterFor(item)===filter);
-                if(next.length && !next.some((item)=>item.id===shirtId)) setShirtId(next[0].id);
-                setRecommendation(null); setRecommendationId(null);
-              }}>{filter}</button>)}
+              {SHIRT_FILTERS.map((filter)=><button key={filter} type="button" className={shirtFilter===filter?"selected":""} aria-pressed={shirtFilter===filter} onClick={()=>{setShirtFilter(filter);setShowMoreShirts(false);}}>{filter} <span>{shirtFilterCounts[filter]}</span></button>)}
             </div>
+            <label className="newDesignerFabricSearch" htmlFor="designer-shirt-search">
+              <span>Find shirt cloth</span>
+              <input id="designer-shirt-search" type="search" value={shirtSearch} placeholder="Colour, pattern or collection" onChange={(event)=>{setShirtSearch(event.target.value);setShowMoreShirts(false);}} />
+            </label>
             <div className="newDesignerSwatch" style={{ backgroundColor: shirt?.hex || "#172339" }}>
               {shirt && <img src={shirt.image} alt={`${shirt.name} shirting fabric swatch`} loading="lazy" decoding="async" />}
             </div>
             <div className="newDesignerFabricChoices" aria-label="Browse shirt fabrics">
-              {visibleShirts.map((fabric)=><button key={fabric.id} type="button" className={fabric.id===shirtId?"selected":""} aria-pressed={fabric.id===shirtId} onClick={()=>{setShirtId(fabric.id);setRecommendation(null);setRecommendationId(null);}}>
+              {shownShirts.map((fabric)=><button key={fabric.id} type="button" className={fabric.id===shirtId?"selected":""} aria-pressed={fabric.id===shirtId} onClick={()=>{setShirtId(fabric.id);setRecommendation(null);setRecommendationId(null);}}>
                 <img src={fabric.image} alt={`${fabric.name} shirt fabric`} loading="lazy" decoding="async" />
                 <span>{fabric.name}</span>
               </button>)}
             </div>
-            <label htmlFor="designer-shirt">Shirt fabric <span>{visibleShirts.length} choices</span></label>
+            {visibleShirts.length>FIRST_FABRIC_CHOICES&&<button className="newDesignerFabricShowMore" type="button" aria-expanded={showMoreShirts} onClick={()=>setShowMoreShirts(current=>!current)}>{showMoreShirts?"Show fewer shirt fabrics":`Show all ${visibleShirts.length} shirt fabrics`}</button>}
+            {visibleShirts.length===0&&<p className="newDesignerFabricNoMatch" role="status">No matching shirt fabrics. <button type="button" onClick={()=>{setShirtSearch("");setShirtFilter("All");}}>Clear search</button></p>}
+            <label htmlFor="designer-shirt">Shirt fabric <span>{visibleShirts.length} matches</span></label>
             <select id="designer-shirt" value={shirtId} onChange={(event) => { setShirtId(event.target.value); setRecommendation(null); setRecommendationId(null); }}>
+              {selectedShirtOutsideFilter&&shirt&&<option value={shirt.id}>Currently chosen · {shirt.name} (outside filter)</option>}
               {visibleShirts.map((fabric) => <option key={fabric.id} value={fabric.id}>{customerFabricLine(fabric.line)} · {fabric.name}</option>)}
             </select>
+            {selectedShirtOutsideFilter&&<small className="newDesignerFabricSelectedNote">Your selected shirt cloth stays unchanged while browsing.</small>}
             <small>{shirt?.patternType} · {customerFabricLine(shirt?.line || "")}</small>
-            {shirt && /lea/i.test(shirt.line) && <details className="newDesignerFabricSpecs"><summary>ⓘ Fabric specs</summary><p><b>{shirt.line}</b> · “Lea” is a yarn-count term used in the textile trade; it stays here as a technical fabric reference.</p></details>}
+            {shirtEvidence&&<small className="newDesignerFabricEvidence">{shirtEvidence.stock} · {shirtEvidence.scale} · {shirtEvidence.colour}</small>}
+            {shirt&&shirtEvidence&&<details className="newDesignerFabricSpecs"><summary>ⓘ Fabric specs & evidence</summary><p><b>{shirt.line}</b> · Catalogue: {shirt.source}.</p><p>{shirtEvidence.weight} · {shirtEvidence.stock} · {shirtEvidence.scale}.</p><p>A Lea yarn-count label, screen-colour swatch or collection name does not verify fabric composition, GSM, drape or physical availability.</p></details>}
           </article>
           <article className="newDesignerFabric">
+
             <div className="newDesignerFabricFilters" aria-label="Filter trouser fabrics">
-              {PANT_FILTERS.map((filter)=><button key={filter} type="button" className={pantFilter===filter?"selected":""} aria-pressed={pantFilter===filter} onClick={()=>{
-                setPantFilter(filter);
-                const next=filter==="All"?pantOptions:pantOptions.filter((item)=>pantFilterFor(item)===filter);
-                if(next.length && !next.some((item)=>item.id===pantId)) setPantId(next[0].id);
-                setRecommendation(null); setRecommendationId(null);
-              }}>{filter}</button>)}
+              {PANT_FILTERS.map((filter)=><button key={filter} type="button" className={pantFilter===filter?"selected":""} aria-pressed={pantFilter===filter} onClick={()=>{setPantFilter(filter);setShowMorePants(false);}}>{filter} <span>{pantFilterCounts[filter]}</span></button>)}
             </div>
+            <label className="newDesignerFabricSearch" htmlFor="designer-pant-search">
+              <span>Find trouser cloth</span>
+              <input id="designer-pant-search" type="search" value={pantSearch} placeholder="Colour, pattern or collection" onChange={(event)=>{setPantSearch(event.target.value);setShowMorePants(false);}} />
+            </label>
             <div className="newDesignerSwatch" style={{ backgroundColor: pant?.hex || "#172339" }}>
               {pant && <img src={pant.image} alt={`${pant.name} trouser fabric swatch`} loading="lazy" decoding="async" />}
             </div>
             <div className="newDesignerFabricChoices" aria-label="Browse trouser fabrics">
-              {visiblePants.map((fabric)=><button key={fabric.id} type="button" className={fabric.id===pantId?"selected":""} aria-pressed={fabric.id===pantId} onClick={()=>{setPantId(fabric.id);setRecommendation(null);setRecommendationId(null);}}>
+              {shownPants.map((fabric)=><button key={fabric.id} type="button" className={fabric.id===pantId?"selected":""} aria-pressed={fabric.id===pantId} onClick={()=>{setPantId(fabric.id);setRecommendation(null);setRecommendationId(null);}}>
                 <img src={fabric.image} alt={`${fabric.name} trouser fabric`} loading="lazy" decoding="async" />
                 <span>{fabric.name}</span>
               </button>)}
             </div>
-            <label htmlFor="designer-pant">Trouser fabric <span>{visiblePants.length} choices</span></label>
+            {visiblePants.length>FIRST_FABRIC_CHOICES&&<button className="newDesignerFabricShowMore" type="button" aria-expanded={showMorePants} onClick={()=>setShowMorePants(current=>!current)}>{showMorePants?"Show fewer trouser fabrics":`Show all ${visiblePants.length} trouser fabrics`}</button>}
+            {visiblePants.length===0&&<p className="newDesignerFabricNoMatch" role="status">No matching trouser fabrics. <button type="button" onClick={()=>{setPantSearch("");setPantFilter("All");}}>Clear search</button></p>}
+            <label htmlFor="designer-pant">Trouser fabric <span>{visiblePants.length} matches</span></label>
             <select id="designer-pant" value={pantId} onChange={(event) => { setPantId(event.target.value); setRecommendation(null); setRecommendationId(null); }}>
+              {selectedPantOutsideFilter&&pant&&<option value={pant.id}>Currently chosen · {pant.name} (outside filter)</option>}
               {visiblePants.map((fabric) => <option key={fabric.id} value={fabric.id}>{customerFabricLine(fabric.line)} · {fabric.name}</option>)}
             </select>
+            {selectedPantOutsideFilter&&<small className="newDesignerFabricSelectedNote">Your selected trouser cloth stays unchanged while browsing.</small>}
             <small>{pant?.patternType} · {pant?.tone || "Tone not classified"}</small>
-            {pant && /lea/i.test(pant.line) && <details className="newDesignerFabricSpecs"><summary>ⓘ Fabric specs</summary><p><b>{pant.line}</b> · “Lea” is a yarn-count term used in the textile trade; it stays here as a technical fabric reference.</p></details>}
+            {pantEvidence&&<small className="newDesignerFabricEvidence">{pantEvidence.stock} · {pantEvidence.scale} · {pantEvidence.colour}</small>}
+            {pant&&pantEvidence&&<details className="newDesignerFabricSpecs"><summary>ⓘ Fabric specs & evidence</summary><p><b>{pant.line}</b> · Catalogue: {pant.source}.</p><p>{pantEvidence.weight} · {pantEvidence.stock} · {pantEvidence.scale}.</p><p>A Lea yarn-count label, screen-colour swatch or collection name does not verify fabric composition, GSM, drape or physical availability.</p></details>}
           </article>
         </div>
         <a className="newDesignerCreativeTeaser" href="#designerCreativeLab"><span>✦ CREATIVE LAB</span><strong>Your cloth can become 5 original design directions.</strong><b>Explore after occasion →</b></a>
@@ -1315,6 +1399,22 @@ export function DesignerModule() {
                 {DESIGNER_STYLE_CHOICES[key].map((option)=><option key={option} value={option}>{option}</option>)}
               </select>
             </label>)}</div>
+          </details>
+          <details className="newDesignerTechnicalDrawer newDesignerPrecisionCut">
+            <summary>Precision tailoring · optional</summary>
+            <div className="newDesignerStyleGrid">
+              {ADVANCED_SHIRT_DETAILS.map(([field,label,group])=><label key={group}>{label}
+                <select aria-label={label} value={styleSpec.shirt[field]} onChange={(event)=>changeExpandedCut("shirt",field,event.target.value)}>
+                  {optionsFor(group).map((option)=><option value={option.id} key={option.id}>{option.label}</option>)}
+                </select>
+              </label>)}
+              {ADVANCED_TROUSER_DETAILS.map(([field,label,group])=><label key={group}>{label}
+                <select aria-label={label} value={styleSpec.pant[field]} onChange={(event)=>changeExpandedCut("pant",field,event.target.value)}>
+                  {optionsFor(group).map((option)=><option value={option.id} key={option.id}>{option.label}</option>)}
+                </select>
+              </label>)}
+            </div>
+            <p>These are tailor specifications. Where a cut differs from the photographed mannequin, the instant photo remains an approximation until matching real references are verified.</p>
           </details>
           <div className="newDesignerPhotoMatch" data-state={photoMatchSummary.unsupported.length?"unsupported":photoMatchSummary.approximate.length?"mixed":"matched"}>
             <span>{photoMatchSummary.approximate.length||photoMatchSummary.unsupported.length?"PHOTO MATCH · MIXED":"PHOTO MATCH · DIRECT"}</span>

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
+import { assertCurrentFabricId, stockMutationRequestError } from "@/lib/designer/operator-stock-safety";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation } from "@/lib/designer/stock-ledger";
 
@@ -46,11 +47,15 @@ export async function GET(){
 
 export async function POST(request:Request){
   if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
+  // Browser Origin and strict JSON are checked before the privileged RPC.
+  const unsafe=stockMutationRequestError(request);
+  if(unsafe) return NextResponse.json({error:unsafe.error},{status:unsafe.status});
   try{
     const body=await request.json() as Record<string,unknown>;
     const action=String(body.action||"");
     if(action==="record"){
       const draft=normalizeManualStockEvent(body);
+      assertCurrentFabricId(draft.fabricId);
       const eventId=await rpc<string>("fabric_stock_record_v2",{
         p_fabric_id:draft.fabricId,
         p_event_type:draft.eventType,
@@ -63,6 +68,7 @@ export async function POST(request:Request){
     }
     if(action==="reserve"){
       const draft=normalizeStockReservation(body);
+      assertCurrentFabricId(draft.fabricId);
       const reservationId=await rpc<string>("fabric_stock_reserve_v2",{
         p_fabric_id:draft.fabricId,
         p_quantity_metres:draft.quantityMetres,
