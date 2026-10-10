@@ -1,19 +1,11 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
-import { FABRIC_STOCK } from "@/lib/fabric-stock";
+import { assertCurrentFabricId, stockMutationRequestError } from "@/lib/designer/operator-stock-safety";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation } from "@/lib/designer/stock-ledger";
 
 export const runtime="nodejs";
-
-const KNOWN_CATALOGUE_FABRICS=new Set(FABRIC_STOCK.map((fabric)=>fabric.id));
-
-/** No invented catalogue codes may enter the physical roll ledger. */
-export function assertCurrentFabricId(id:string){
-  if(!KNOWN_CATALOGUE_FABRICS.has(id))
-    throw new Error("Selected fabric is not in the published Linen Earth supplier catalogue.");
-}
 
 async function rpc<T>(name:string,payload:Record<string,unknown>):Promise<T>{
   const config=getSupabaseAdminConfig();
@@ -55,16 +47,9 @@ export async function GET(){
 
 export async function POST(request:Request){
   if(!await authorized()) return NextResponse.json({error:"Unauthorized."},{status:401});
-  // Reject cross-site browser writes and non-JSON body submissions before
-  // the service-role Supabase RPC. The session cookie alone is not CSRF proof.
-  const origin=request.headers.get("origin");
-  if(origin&&origin!==new URL(request.url).origin)
-    return NextResponse.json({error:"Cross-site stock changes are not allowed."},{status:403});
-  if(!/^application\/json(?:\s*;|$)/i.test(request.headers.get("content-type")||""))
-    return NextResponse.json({error:"Stock mutations require JSON."},{status:415});
-  const bodySize=Number(request.headers.get("content-length")||0);
-  if(Number.isFinite(bodySize)&&bodySize>24_000)
-    return NextResponse.json({error:"Stock mutation payload is too large."},{status:413});
+  // Browser Origin and strict JSON are checked before the privileged RPC.
+  const unsafe=stockMutationRequestError(request);
+  if(unsafe) return NextResponse.json({error:unsafe.error},{status:unsafe.status});
   try{
     const body=await request.json() as Record<string,unknown>;
     const action=String(body.action||"");
