@@ -55,7 +55,7 @@ export function normalizeManualStockEvent(input:unknown){
 
   if(!fabricId) throw new Error("Fabric ID is required.");
   if(!["receipt","adjustment_in","adjustment_out"].includes(eventType)) throw new Error("Unsupported manual stock event.");
-  if(!Number.isFinite(quantityMetres)||quantityMetres<=0||quantityMetres>100000) throw new Error("Stock quantity must be positive.");
+  if(!Number.isFinite(quantityMetres)||Math.round(quantityMetres*1000)<1||quantityMetres>100000) throw new Error("Stock quantity must be at least 0.001 metres.");
   if(recordedBy.length<2) throw new Error("Named stock checker / recorder is required.");
   if(sourceReference.length<3) throw new Error("Physical stock source reference is required.");
 
@@ -79,7 +79,7 @@ export function normalizeStockReservation(input:unknown){
   if(!fabricId) throw new Error("Fabric ID is required.");
   if(revisionId.length<12) throw new Error("Locked revision ID is required.");
   if(requestKey.length<12) throw new Error("Reservation request key is required.");
-  if(!Number.isFinite(quantityMetres)||quantityMetres<=0||quantityMetres>100) throw new Error("Reservation quantity must be positive.");
+  if(!Number.isFinite(quantityMetres)||Math.round(quantityMetres*1000)<1||quantityMetres>100) throw new Error("Reservation quantity must be at least 0.001 metres.");
   if(requestedBy.length<2) throw new Error("Named reservation checker / requester is required.");
   if(sourceReference.length<3) throw new Error("Reservation quantity evidence reference is required.");
 
@@ -101,7 +101,7 @@ export function normalizeStockConsumption(input:unknown){
   const sourceReference=String(source.sourceReference||"").replace(/\s+/g," ").trim().slice(0,240);
 
   if(!/^[0-9a-f-]{36}$/i.test(reservationId)) throw new Error("Valid reservation ID is required.");
-  if(!Number.isFinite(actualMetres)||actualMetres<=0||actualMetres>100) throw new Error("Actual consumed metres must be positive.");
+  if(!Number.isFinite(actualMetres)||Math.round(actualMetres*1000)<1||actualMetres>100) throw new Error("Actual consumed metres must be at least 0.001 metres.");
   if(checkedBy.length<2) throw new Error("Named consumption checker is required.");
   if(sourceReference.length<3) throw new Error("Actual cloth-usage evidence reference is required.");
 
