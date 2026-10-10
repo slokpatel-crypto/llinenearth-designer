@@ -19,7 +19,7 @@ import { TAILOR_OBSERVATION_STORAGE_KEY, tailorObservationCoverage, tailorObserv
 import { DESIGNER_FEEDBACK_REASONS } from "@/lib/designer/outcome-learning";
 import { canonicalGarmentSpecSummary } from "@/lib/designer/garment-spec";
 import { lockGarmentSpec, type LockedDesignRevision } from "@/lib/designer/design-lock";
-import { buildProductionHandoff } from "@/lib/designer/production-handoff";
+import { buildVerifiedProductionHandoff } from "@/lib/designer/production-handoff";
 import { buildTailorTechPackHtml, techPackFilename } from "@/lib/designer/tech-pack";
 import type { DesignerAssessmentResponse } from "@/lib/designer/assessment-types";
 import type { DesignerSearchScope, DesignerSearchTier } from "@/lib/designer/search";
@@ -1093,9 +1093,16 @@ export function DesignerModule() {
     }
   }
 
-  function downloadProductionHandoff() {
+  async function downloadProductionHandoff() {
     if(!lockedRevision) return;
-    const handoff=buildProductionHandoff(lockedRevision);
+    // Verify locked SHA-256 before a customer can generate a production
+    // handoff. If any editable measurement or selected cut was changed in
+    // the revision, fail closed rather than exporting an untrusted packet.
+    const handoff=await buildVerifiedProductionHandoff(lockedRevision).catch(()=>{
+      setShareMessage("The locked recipe is no longer valid. Review the design and lock a new revision before downloading.");
+      return null;
+    });
+    if(!handoff) return;
     const blob=new Blob([JSON.stringify(handoff,null,2)],{type:"application/json"});
     const url=URL.createObjectURL(blob);
     const anchor=document.createElement("a");
@@ -1107,9 +1114,13 @@ export function DesignerModule() {
     URL.revokeObjectURL(url);
   }
 
-  function downloadTailorTechPack() {
+  async function downloadTailorTechPack() {
     if(!lockedRevision) return;
-    const handoff=buildProductionHandoff(lockedRevision);
+    const handoff=await buildVerifiedProductionHandoff(lockedRevision).catch(()=>{
+      setShareMessage("The locked recipe is no longer valid. Lock a new design before exporting its tailor tech pack.");
+      return null;
+    });
+    if(!handoff) return;
     const html=buildTailorTechPackHtml(handoff);
     const blob=new Blob([html],{type:"text/html;charset=utf-8"});
     const url=URL.createObjectURL(blob);
