@@ -1210,7 +1210,7 @@ export function DesignerModule() {
             {selectedShirtOutsideFilter&&<small className="newDesignerFabricSelectedNote">Your selected shirt cloth stays unchanged while browsing.</small>}
             <small>{shirt?.patternType} · {customerFabricLine(shirt?.line || "")}</small>
             {shirtEvidence&&<small className="newDesignerFabricEvidence">{shirtEvidence.stock} · {shirtEvidence.scale} · {shirtEvidence.colour}</small>}
-            {shirt && /lea/i.test(shirt.line) && <details className="newDesignerFabricSpecs"><summary>ⓘ Fabric specs</summary><p><b>{shirt.line}</b> · “Lea” describes yarn count, not independently measured GSM or drape. {shirtEvidence?.weight}.</p></details>}
+            {shirt&&shirtEvidence&&<details className="newDesignerFabricSpecs"><summary>ⓘ Fabric specs & evidence</summary><p><b>{shirt.line}</b> · Catalogue: {shirt.source}.</p><p>{shirtEvidence.weight} · {shirtEvidence.stock} · {shirtEvidence.scale}.</p><p>A Lea yarn-count label, screen-colour swatch or collection name does not verify fabric composition, GSM, drape or physical availability.</p></details>}
           </article>
           <article className="newDesignerFabric">
 
@@ -1240,7 +1240,7 @@ export function DesignerModule() {
             {selectedPantOutsideFilter&&<small className="newDesignerFabricSelectedNote">Your selected trouser cloth stays unchanged while browsing.</small>}
             <small>{pant?.patternType} · {pant?.tone || "Tone not classified"}</small>
             {pantEvidence&&<small className="newDesignerFabricEvidence">{pantEvidence.stock} · {pantEvidence.scale} · {pantEvidence.colour}</small>}
-            {pant && /lea/i.test(pant.line) && <details className="newDesignerFabricSpecs"><summary>ⓘ Fabric specs</summary><p><b>{pant.line}</b> · “Lea” describes yarn count, not independently measured GSM or drape. {pantEvidence?.weight}.</p></details>}
+            {pant&&pantEvidence&&<details className="newDesignerFabricSpecs"><summary>ⓘ Fabric specs & evidence</summary><p><b>{pant.line}</b> · Catalogue: {pant.source}.</p><p>{pantEvidence.weight} · {pantEvidence.stock} · {pantEvidence.scale}.</p><p>A Lea yarn-count label, screen-colour swatch or collection name does not verify fabric composition, GSM, drape or physical availability.</p></details>}
           </article>
         </div>
         <a className="newDesignerCreativeTeaser" href="#designerCreativeLab"><span>✦ CREATIVE LAB</span><strong>Your cloth can become 5 original design directions.</strong><b>Explore after occasion →</b></a>
