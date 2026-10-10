@@ -60,6 +60,7 @@ type DesignerSearchOption = {
   shirt:DesignerFabric;
   pant:DesignerFabric;
   style:DesignerStyle;
+  styleSpec?:StyleSpecV2|null;
   recommendation:DesignerRecommendation;
   fitAdaptation?:string;
 };
@@ -602,6 +603,7 @@ export function DesignerModule() {
           pantId:pant.id,
           occasion,
           style,
+          styleSpec,
           context:{climate,intention},
           scope:searchScope,
           measurements:measurementProfile,
@@ -821,7 +823,8 @@ export function DesignerModule() {
   function useSearchResult(result:DesignerSearchOption,source?:{occasion?:OccasionTier;context?:DesignerContext;name?:string}) {
     const nextOccasion=source?.occasion || result.recommendation.occasion;
     const nextContext=source?.context || {climate,intention};
-    const expectedIdentity=JSON.stringify([result.shirt.id,result.pant.id,nextOccasion,styleIdentity(result.style),fromLegacyStyle(result.style),nextContext.climate,nextContext.intention,measurementProfile,tailorObservations,bodyProfile]);
+    const nextStyleSpec=result.styleSpec??fromLegacyStyle(result.style);
+    const expectedIdentity=JSON.stringify([result.shirt.id,result.pant.id,nextOccasion,styleIdentity(result.style),nextStyleSpec,nextContext.climate,nextContext.intention,measurementProfile,tailorObservations,bodyProfile]);
     setActiveCreative(null);
     setCreativeVisualReview(null);
     setShirtId(result.shirt.id);
@@ -830,7 +833,7 @@ export function DesignerModule() {
     setClimate(nextContext.climate);
     setIntention(nextContext.intention);
     setStyle({...result.style});
-    setStyleSpec(fromLegacyStyle(result.style));
+    setStyleSpec(nextStyleSpec);
     setRecommendation(result.recommendation);
     setAssessment(null);
     setSearchResults([]);
@@ -840,7 +843,7 @@ export function DesignerModule() {
 
     void requestLookAssessment({
       shirtId:result.shirt.id,pantId:result.pant.id,occasion:nextOccasion,
-      style:result.style,styleSpec:fromLegacyStyle(result.style),context:nextContext,
+      style:result.style,styleSpec:nextStyleSpec,context:nextContext,
     }).then((next)=>{
       if(committedAssessmentIdentity.current!==expectedIdentity) return;
       if(next.recommendation.shirt.id!==result.shirt.id || next.recommendation.pant.id!==result.pant.id || JSON.stringify(styleIdentity(next.recommendation.style))!==JSON.stringify(styleIdentity(result.style))) throw new Error("The assessment does not match the applied direction. Assess the current look again.");
