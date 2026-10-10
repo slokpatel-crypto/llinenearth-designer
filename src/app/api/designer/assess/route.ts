@@ -179,7 +179,7 @@ export async function POST(request:Request) {
     if(body.creative&&!creative)return NextResponse.json({error:"Invalid creative recipe."},{status:400});
     if(creative?.craft){const canonical=resolveCraftFabrics(creative.craft,fabrics,shirtId,pantId);if(!canonical)return NextResponse.json({error:"Craft fabrics are unavailable or do not match this look."},{status:409});creative.craft=canonical;}
     const visualReview=safeVisualReview(body.creativeVisualReview);
-    const recommendation=evaluateDesignerCombo(shirt,pant,occasion,resolvedStyle,undefined,body.context);
+    const recommendation=evaluateDesignerCombo(shirt,pant,occasion,resolvedStyle,undefined,body.context,styleSpec);
     const fitConstruction=assessFitConstruction(measurements,resolvedStyle,{
       climate:body.context.climate,
       shirtFabric:shirt,
