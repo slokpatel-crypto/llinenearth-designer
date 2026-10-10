@@ -1230,7 +1230,7 @@ export function DesignerModule() {
                 <span>{fabric.name}</span>
               </button>)}
             </div>
-            {visiblePants.length>FIRST_FABRIC_CHOICES&&<button className="newDesignerFabricShowMore" type="button" aria-expanded={showMorePants} onClick={()=>setShowMorePants(current=>!current)}>{showMorePants?"Show fewer trouser fabrics":`Show all ${visiblePants.length} trouser fabrics`}</button>
+            {visiblePants.length>FIRST_FABRIC_CHOICES&&<button className="newDesignerFabricShowMore" type="button" aria-expanded={showMorePants} onClick={()=>setShowMorePants(current=>!current)}>{showMorePants?"Show fewer trouser fabrics":`Show all ${visiblePants.length} trouser fabrics`}</button>}
             {visiblePants.length===0&&<p className="newDesignerFabricNoMatch" role="status">No matching trouser fabrics. <button type="button" onClick={()=>{setPantSearch("");setPantFilter("All");}}>Clear search</button></p>}
             <label htmlFor="designer-pant">Trouser fabric <span>{visiblePants.length} matches</span></label>
             <select id="designer-pant" value={pantId} onChange={(event) => { setPantId(event.target.value); setRecommendation(null); setRecommendationId(null); }}>
