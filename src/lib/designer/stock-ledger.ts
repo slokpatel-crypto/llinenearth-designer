@@ -10,7 +10,7 @@ export function stockSnapshot(events:StockEvent[]){
   let reservedMillis=0;
   for(const [index,event] of events.entries()){
     const q=Number(event.quantityMetres);
-    if(!Number.isFinite(q)||q<=0||Math.round(q*1000)!==q*1000)
+    if(!Number.isFinite(q)||q<=0||Math.abs(Math.round(q*1000)-q*1000)>1e-7)
       throw new Error("Stock event quantity must be positive and have at most 3 decimal places.");
     const millimetres=Math.round(q*1000);
     if(event.type==="receipt"||event.type==="adjustment_in") physicalMillis+=millimetres;
