@@ -27,6 +27,10 @@ import type { CreativeDirection } from "@/lib/designer/creative-engine";
 import { creativeFamilyFromConceptId, type CreativeFeedbackReason } from "@/lib/designer/creative-learning";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
+import {
+  SHIRT_FABRIC_FAMILIES, TROUSER_FABRIC_TONES, discoverFabrics,
+  fabricEvidence, fabricFilterCounts, type ShirtFabricFamily, type TrouserFabricTone,
+} from "@/lib/designer/fabric-discovery";
 import { optionById, optionsFor } from "@/lib/designer/options/library";
 import {
   fromLegacyStyle,
@@ -48,8 +52,8 @@ const INTENTIONS: DesignerIntention[] = ["Understated", "Balanced", "Expressive"
 const SESSION_KEY = "linen-earth:designer-session:v1";
 const DRAFT_KEY = "linen-earth:real-designer-draft:v2";
 const FACT_INTERVAL_MS = 15_000;
-type ShirtFabricFilter = "All" | "Plain" | "Print" | "Blend" | "Formal";
-type PantFabricFilter = "All" | "Light" | "Medium" | "Dark";
+type ShirtFabricFilter = ShirtFabricFamily;
+type PantFabricFilter = TrouserFabricTone;
 type DesignerSearchOption = {
   id:string;
   tier:DesignerSearchTier;
@@ -60,8 +64,9 @@ type DesignerSearchOption = {
   fitAdaptation?:string;
 };
 
-const SHIRT_FILTERS:ShirtFabricFilter[]=["All","Plain","Print","Blend","Formal"];
-const PANT_FILTERS:PantFabricFilter[]=["All","Light","Medium","Dark"];
+const SHIRT_FILTERS=SHIRT_FABRIC_FAMILIES;
+const PANT_FILTERS=TROUSER_FABRIC_TONES;
+const FIRST_FABRIC_CHOICES=8;
 const SHIRT_TYPE_OPTIONS=optionsFor("shirt.type");
 const TROUSER_TYPE_OPTIONS=optionsFor("pant.type");
 
@@ -72,19 +77,6 @@ function customerFabricLine(line:string) {
     .replace(/\s*[-·|]\s*$/,"")
     .trim() || "Fabric collection";
 }
-
-function shirtFilterFor(fabric:DesignerFabric):Exclude<ShirtFabricFilter,"All"> {
-  const text=`${fabric.line} ${fabric.patternType}`.toLowerCase();
-  if(text.includes("formal")) return "Formal";
-  if(text.includes("blend")) return "Blend";
-  if(text.includes("print")) return "Print";
-  return "Plain";
-}
-
-function pantFilterFor(fabric:DesignerFabric):Exclude<PantFabricFilter,"All"> {
-  return fabric.tone || "Medium";
-}
-
 
 const MAIN_DETAILS = [
   ["shirtWear", "Shirt finish"], ["collar", "Shirt collar"],
@@ -166,6 +158,10 @@ export function DesignerModule() {
   const [creativeGenerating,setCreativeGenerating]=useState(false);
   const [shirtFilter,setShirtFilter]=useState<ShirtFabricFilter>("All");
   const [pantFilter,setPantFilter]=useState<PantFabricFilter>("All");
+  const [shirtSearch,setShirtSearch]=useState("");
+  const [pantSearch,setPantSearch]=useState("");
+  const [showMoreShirts,setShowMoreShirts]=useState(false);
+  const [showMorePants,setShowMorePants]=useState(false);
   const fact = DESIGNER_FASHION_FACTS[factIndex];
   const shirt = useMemo(() => shirtOptions.find((item) => item.id === shirtId), [shirtId, shirtOptions]);
   const pant = useMemo(() => pantOptions.find((item) => item.id === pantId), [pantId, pantOptions]);
@@ -178,8 +174,16 @@ export function DesignerModule() {
   const committedCreativeId=useRef(activeCreative?.id||null);
   useLayoutEffect(()=>{committedCreativeId.current=activeCreative?.id||null;},[activeCreative?.id]);
   useLayoutEffect(()=>{committedAssessmentIdentity.current=assessmentIdentity;},[assessmentIdentity]);
-  const visibleShirts=useMemo(()=>shirtFilter==="All" ? shirtOptions : shirtOptions.filter((item)=>shirtFilterFor(item)===shirtFilter),[shirtFilter,shirtOptions]);
-  const visiblePants=useMemo(()=>pantFilter==="All" ? pantOptions : pantOptions.filter((item)=>pantFilterFor(item)===pantFilter),[pantFilter,pantOptions]);
+  const visibleShirts=useMemo(()=>discoverFabrics(shirtOptions,"shirt",shirtFilter,shirtSearch),[shirtFilter,shirtOptions,shirtSearch]);
+  const visiblePants=useMemo(()=>discoverFabrics(pantOptions,"trouser",pantFilter,pantSearch),[pantFilter,pantOptions,pantSearch]);
+  const shirtFilterCounts=useMemo(()=>fabricFilterCounts(shirtOptions,"shirt",shirtSearch),[shirtOptions,shirtSearch]);
+  const pantFilterCounts=useMemo(()=>fabricFilterCounts(pantOptions,"trouser",pantSearch),[pantOptions,pantSearch]);
+  const shownShirts=showMoreShirts?visibleShirts:visibleShirts.slice(0,FIRST_FABRIC_CHOICES);
+  const shownPants=showMorePants?visiblePants:visiblePants.slice(0,FIRST_FABRIC_CHOICES);
+  const selectedShirtOutsideFilter=Boolean(shirt&&!visibleShirts.some((item)=>item.id===shirt.id));
+  const selectedPantOutsideFilter=Boolean(pant&&!visiblePants.some((item)=>item.id===pant.id));
+  const shirtEvidence=shirt?fabricEvidence(shirt):null;
+  const pantEvidence=pant?fabricEvidence(pant):null;
   const photoMatchSummary=useMemo(()=>{
     const choices=[...MAIN_DETAILS,...MORE_DETAILS] as const;
     const rows=choices.map(([key,label])=>({
