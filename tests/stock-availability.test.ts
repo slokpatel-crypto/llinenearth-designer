@@ -65,3 +65,17 @@ test("negative, empty and malformed physical quantities cannot certify a fabric 
   assert.equal(map.has("negative"),false);
   assert.equal(map.has("empty"),false);
 });
+
+test("an invalid numeric notation or missing RPC metreage cannot certify supplier stock",()=>{
+  const rows=[
+    ...["0x10","0b101","1e3","2_000","  ","Infinity","-0.5"].map((available_metres,i)=>({
+      fabric_id:`malformed-${i}`,available_metres,provenance_ready:true,
+    })),
+    // Runtime RPC values can be null even when an incorrect type assertion says numeric.
+    {fabric_id:"missing",available_metres:null as unknown as number,provenance_ready:true},
+    {fabric_id:"zero",available_metres:"0.000",provenance_ready:true},
+    {fabric_id:"valid",available_metres:"4.250",provenance_ready:true},
+  ];
+  const map=verifiedStockAvailabilityMap(rows);
+  assert.deepEqual([...map.entries()],[["zero",false],["valid",true]]);
+});
