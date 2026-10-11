@@ -64,7 +64,7 @@ export default function StockClient(){
       <article><small>FABRICS TRACKED</small><strong>{stock.length}</strong></article>
       <article><small>AVAILABLE</small><strong>{totalAvailable.toFixed(3)} m</strong></article>
       <article><small>RESERVED</small><strong>{totalReserved.toFixed(3)} m</strong></article>
-      <article><small>PHYSICAL PROVENANCE</small><strong>{provenanceReady?"VERIFIED":"OPEN"}</strong><small>{legacyUnverified} legacy/unverified manual event(s)</small></article>
+      <article><small>LEDGER REFERENCES</small><strong>{provenanceReady?"RECORDED":"PENDING"}</strong><small>{legacyUnverified} legacy/unverified manual event(s)</small></article>
       <article><small>BACKEND</small><strong>{configured?"LIVE":"NOT CONFIGURED"}</strong></article>
     </section>
 
@@ -107,14 +107,14 @@ export default function StockClient(){
     {message&&<p className="stockMessage">{message}</p>}
 
     <section className="stockTable">
-      <div><span>LIVE SNAPSHOT</span><h2>Available metres by fabric.</h2></div>
+      <div><span>LIVE SNAPSHOT</span><h2>Available metres by fabric.</h2><p>Named ledger references alone do not certify physical roll counts or independently verify supplier measurements.</p></div>
       {!stock.length&&<p>No physical stock has been recorded yet.</p>}
       {stock.map((row)=><article key={row.fabric_id}>
         <b>{row.fabric_id}</b>
         <span>Physical <strong>{Number(row.physical_metres).toFixed(3)} m</strong></span>
         <span>Reserved <strong>{Number(row.reserved_metres).toFixed(3)} m</strong></span>
         <span>Available <strong>{Number(row.available_metres).toFixed(3)} m</strong></span>
-        <span>Provenance <strong>{row.provenance_ready?"verified":"open"}</strong></span>
+        <span>Ledger references <strong>{row.provenance_ready?"recorded":"incomplete"}</strong></span>
         <small>{Number(row.provenance_event_count||0)}/{Number(row.manual_event_count||0)} manual events verified · {row.last_event_at?new Date(row.last_event_at).toLocaleString("en-IN"):"—"}</small>
       </article>)}
     </section>
