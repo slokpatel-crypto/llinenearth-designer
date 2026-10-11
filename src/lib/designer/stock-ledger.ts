@@ -1,6 +1,20 @@
 export type StockEventType="receipt"|"adjustment_in"|"adjustment_out"|"reserve"|"release"|"consume";
 
 export type StockEvent={type:StockEventType;quantityMetres:number};
+/**
+ * Operators must supply actual measured quantities at ledger precision.
+ * Silently rounding incoming evidence (especially a receipt) can mint fabric,
+ * misstate usage or create a different reserved quantity from the approved sheet.
+ */
+function exactStockMetres(raw:unknown,field:string,maxMetres:number):number{
+  if(typeof raw!=="number"||!Number.isFinite(raw)||raw<0.001||raw>maxMetres)
+    throw new Error(`${field} must be at least 0.001 metres and no more than ${maxMetres} metres.`);
+  const millimetres=Math.round(raw*1000);
+  if(!Number.isSafeInteger(millimetres)||Math.abs(raw*1000-millimetres)>1e-7)
+    throw new Error(`${field} must have at most 3 decimal places (0.001m precision).`);
+  return millimetres/1000;
+}
+
 
 export function stockSnapshot(events:StockEvent[]){
   // Local ledger replay must agree with the server's no-oversell invariants.
@@ -52,19 +66,19 @@ export function normalizeManualStockEvent(input:unknown){
   const source=input as Record<string,unknown>;
   const fabricId=String(source.fabricId||"").trim().slice(0,160);
   const eventType=String(source.eventType||"") as StockEventType;
-  const quantityMetres=Number(source.quantityMetres);
+  const quantityMetres=exactStockMetres(source.quantityMetres,"Stock quantity",100000);
   const note=String(source.note||"").replace(/\s+/g," ").trim().slice(0,600);
   const recordedBy=String(source.recordedBy||"").replace(/\s+/g," ").trim().slice(0,120);
   const sourceReference=String(source.sourceReference||"").replace(/\s+/g," ").trim().slice(0,240);
 
   if(!fabricId) throw new Error("Fabric ID is required.");
   if(!["receipt","adjustment_in","adjustment_out"].includes(eventType)) throw new Error("Unsupported manual stock event.");
-  if(!Number.isFinite(quantityMetres)||Math.round(quantityMetres*1000)<1||quantityMetres>100000) throw new Error("Stock quantity must be at least 0.001 metres.");
+  
   if(recordedBy.length<2) throw new Error("Named stock checker / recorder is required.");
   if(sourceReference.length<3) throw new Error("Physical stock source reference is required.");
 
   return {
-    fabricId,eventType,quantityMetres:Math.round(quantityMetres*1000)/1000,
+    fabricId,eventType,quantityMetres,
     note,recordedBy,sourceReference,
   };
 }
@@ -76,20 +90,20 @@ export function normalizeStockReservation(input:unknown){
   const fabricId=String(source.fabricId||"").trim().slice(0,160);
   const revisionId=String(source.revisionId||"").trim().slice(0,220);
   const requestKey=String(source.requestKey||"").trim().slice(0,180);
-  const quantityMetres=Number(source.quantityMetres);
+  const quantityMetres=exactStockMetres(source.quantityMetres,"Stock quantity",100000);
   const requestedBy=String(source.requestedBy||"").replace(/\s+/g," ").trim().slice(0,120);
   const sourceReference=String(source.sourceReference||"").replace(/\s+/g," ").trim().slice(0,240);
 
   if(!fabricId) throw new Error("Fabric ID is required.");
   if(revisionId.length<12) throw new Error("Locked revision ID is required.");
   if(requestKey.length<12) throw new Error("Reservation request key is required.");
-  if(!Number.isFinite(quantityMetres)||Math.round(quantityMetres*1000)<1||quantityMetres>100) throw new Error("Reservation quantity must be at least 0.001 metres.");
+  
   if(requestedBy.length<2) throw new Error("Named reservation checker / requester is required.");
   if(sourceReference.length<3) throw new Error("Reservation quantity evidence reference is required.");
 
   return {
     fabricId,revisionId,requestKey,
-    quantityMetres:Math.round(quantityMetres*1000)/1000,
+    quantityMetres,
     requestedBy,sourceReference,
   };
 }
@@ -99,19 +113,19 @@ export function normalizeStockConsumption(input:unknown){
   if(!input||typeof input!=="object"||Array.isArray(input)) throw new Error("Stock consumption evidence is required.");
   const source=input as Record<string,unknown>;
   const reservationId=String(source.reservationId||"").trim();
-  const actualMetres=Number(source.actualMetres);
+  const actualMetres=exactStockMetres(source.actualMetres,"Actual consumed metres",100);
   const note=String(source.note||"").replace(/\s+/g," ").trim().slice(0,600);
   const checkedBy=String(source.checkedBy||"").replace(/\s+/g," ").trim().slice(0,120);
   const sourceReference=String(source.sourceReference||"").replace(/\s+/g," ").trim().slice(0,240);
 
   if(!/^[0-9a-f-]{36}$/i.test(reservationId)) throw new Error("Valid reservation ID is required.");
-  if(!Number.isFinite(actualMetres)||Math.round(actualMetres*1000)<1||actualMetres>100) throw new Error("Actual consumed metres must be at least 0.001 metres.");
+  
   if(checkedBy.length<2) throw new Error("Named consumption checker is required.");
   if(sourceReference.length<3) throw new Error("Actual cloth-usage evidence reference is required.");
 
   return {
     reservationId,
-    actualMetres:Math.round(actualMetres*1000)/1000,
+    actualMetres,
     note,checkedBy,sourceReference,
   };
 }
