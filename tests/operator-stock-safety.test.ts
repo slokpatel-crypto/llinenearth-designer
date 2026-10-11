@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {FABRIC_STOCK} from "../src/lib/fabric-stock.ts";
-import {assertCurrentFabricId,stockMutationRequestError}
+import {assertCurrentFabricId,readBoundedStockMutationJson,StockMutationPayloadTooLarge,stockMutationRequestError}
   from "../src/lib/designer/operator-stock-safety.ts";
 import {readFileSync} from "node:fs";
 
@@ -55,4 +55,27 @@ test("actual operator route enforces verification before every recording or rese
     assert.ok(start>=0&&end>start);
     assert.ok(s.slice(start,end).includes("assertCurrentFabricId(draft.fabricId)"));
   }
+});
+
+test("streamed operator stock body is limited even without Content-Length header",async()=>{
+  const make=(body:string)=>new Request("https://linenearth.example/api/operator/stock",{
+    method:"POST",headers:{"content-type":"application/json"},body,
+  });
+  const good=make(JSON.stringify({action:"record",note:"roll checker"}));
+  assert.equal(good.headers.get("content-length"),null);
+  assert.deepEqual(await readBoundedStockMutationJson(good),{action:"record",note:"roll checker"});
+  const oversized=make(JSON.stringify({action:"record",note:"₹".repeat(8_200)}));
+  assert.equal(stockMutationRequestError(oversized),null);
+  await assert.rejects(()=>readBoundedStockMutationJson(oversized),StockMutationPayloadTooLarge);
+  await assert.rejects(()=>readBoundedStockMutationJson(make("[]")) ,/must be an object/);
+  await assert.rejects(()=>readBoundedStockMutationJson(make("{oops")),/valid UTF-8 JSON/);
+});
+
+test("actual stock mutation handler applies byte limit before privileged RPC",()=>{
+  const code=readFileSync("src/app/api/operator/stock/route.ts","utf8");
+  const parse=code.indexOf("readBoundedStockMutationJson(request)");
+  const firstRpc=code.indexOf('rpc<string>("fabric_stock_record_v2"');
+  assert.ok(parse>0&&firstRpc>parse);
+  assert.ok(code.includes("error instanceof StockMutationPayloadTooLarge"));
+  assert.ok(code.includes("{status:413}"));
 });
