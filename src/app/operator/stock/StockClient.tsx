@@ -64,7 +64,7 @@ export default function StockClient(){
       <article><small>FABRICS TRACKED</small><strong>{stock.length}</strong></article>
       <article><small>AVAILABLE</small><strong>{totalAvailable.toFixed(3)} m</strong></article>
       <article><small>RESERVED</small><strong>{totalReserved.toFixed(3)} m</strong></article>
-      <article><small>LEDGER REFERENCES</small><strong>{provenanceReady?"RECORDED":"PENDING"}</strong><small>{legacyUnverified} legacy/unverified manual event(s)</small></article>
+      <article><small>PHYSICAL PROVENANCE</small><strong>{provenanceReady?"RECORDED":"PENDING"}</strong><small>Documented entries only; not independent roll or metreage certification. {legacyUnverified} legacy/unverified manual event(s)</small></article>
       <article><small>BACKEND</small><strong>{configured?"LIVE":"NOT CONFIGURED"}</strong></article>
     </section>
 
