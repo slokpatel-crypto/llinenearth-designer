@@ -16,6 +16,7 @@ test("body measurement input preserves exact known centimetre values and does no
   assert.equal(normalizeMeasuredBodyInput(null),null);
   assert.equal(normalizeMeasuredBodyInput(undefined),null);
   assert.deepEqual(normalizeMeasuredBodyInput({...body,shirt:{chest:"98.7"},pants:{inseam:"75.2"}})?.shirt,{chest:98.7});
+  assert.deepEqual(normalizeMeasuredBodyInput({...body,shirt:{neck:" 39.0 ",chest:".5"},pants:{inseam:"76."}})?.shirt,{neck:39,chest:.5});
 });
 
 test("invalid or impossible supplied tape readings must not vanish from server assessment",()=>{
@@ -23,6 +24,10 @@ test("invalid or impossible supplied tape readings must not vanish from server a
     {...body,shirt:{...body.shirt,chest:-4}},
     {...body,shirt:{...body.shirt,chest:0}},
     {...body,shirt:{...body.shirt,chest:"NaN"}},
+    {...body,shirt:{...body.shirt,chest:"0x63"}},
+    {...body,shirt:{...body.shirt,chest:"9.9e1"}},
+    {...body,pants:{...body.pants,inseam:"0b1001011"}},
+    {...body,pants:{...body.pants,inseam:"76cm"}},
     {...body,shirt:{...body.shirt,chest:Infinity}},
     {...body,pants:{...body.pants,outseam:351}},
     {...body,pants:{...body.pants,frontRise:"oops"}},
