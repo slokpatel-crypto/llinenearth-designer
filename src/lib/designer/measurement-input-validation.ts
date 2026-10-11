@@ -26,7 +26,11 @@ export function normalizeMeasuredBodyInput(value:unknown):MeasurementProfile|nul
       if(!keys.has(key))
         throw new Error(`Unsupported ${name} measurement ${key.slice(0,50)}.`);
       if(raw===undefined||raw===null||raw==="") continue;
-      const n=typeof raw==="number"?raw:typeof raw==="string"&&raw.trim()!==""?Number(raw):NaN;
+      // Accept decimal tape readings only. JS Number() also accepts hex, binary and
+      // scientific notation; those are ambiguous for a human-entered cm value.
+      const decimal=typeof raw==="string"?raw.trim():null;
+      const n=typeof raw==="number"?raw:
+        decimal!==null&&/^(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)$/.test(decimal)?Number(decimal):NaN;
       if(!Number.isFinite(n)||n<=0||n>350)
         throw new Error(`Invalid ${name} ${key} measurement in centimetres.`);
       measurements[key]=n;
