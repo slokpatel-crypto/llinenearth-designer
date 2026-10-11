@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
-import { assertCurrentFabricId, stockMutationRequestError } from "@/lib/designer/operator-stock-safety";
+import { assertCurrentFabricId, readBoundedStockMutationJson, StockMutationPayloadTooLarge, stockMutationRequestError } from "@/lib/designer/operator-stock-safety";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { normalizeManualStockEvent, normalizeStockConsumption, normalizeStockRelease, normalizeStockReservation } from "@/lib/designer/stock-ledger";
 
@@ -51,7 +51,7 @@ export async function POST(request:Request){
   const unsafe=stockMutationRequestError(request);
   if(unsafe) return NextResponse.json({error:unsafe.error},{status:unsafe.status});
   try{
-    const body=await request.json() as Record<string,unknown>;
+    const body=await readBoundedStockMutationJson(request);
     const action=String(body.action||"");
     if(action==="record"){
       const draft=normalizeManualStockEvent(body);
@@ -102,6 +102,8 @@ export async function POST(request:Request){
     }
     return NextResponse.json({error:"Unsupported stock action."},{status:400});
   }catch(error){
+    if(error instanceof StockMutationPayloadTooLarge)
+      return NextResponse.json({error:error.message},{status:413});
     console.error("[operator/stock]",error);
     return NextResponse.json({error:error instanceof Error?error.message:"Stock operation failed."},{status:409});
   }
