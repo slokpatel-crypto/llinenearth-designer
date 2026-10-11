@@ -93,6 +93,8 @@ test("operator release UI supplies the real named checker and physical cancellat
 test("operator stock display does not equate a typed source reference with physical verification",()=>{
   const code=readFileSync("src/app/operator/stock/StockClient.tsx","utf8");
   assert.ok(code.includes("Named ledger references alone do not certify physical roll counts"));
+  assert.ok(code.includes("PHYSICAL PROVENANCE"));
+  assert.ok(code.includes("not independent roll or metreage certification"));
   assert.ok(code.includes('provenanceReady?"RECORDED":"PENDING"'));
   assert.ok(code.includes('row.provenance_ready?"recorded":"incomplete"'));
   assert.ok(!code.includes('provenanceReady?"VERIFIED":"OPEN"'));
