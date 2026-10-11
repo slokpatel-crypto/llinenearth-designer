@@ -87,7 +87,8 @@ export async function POST(request:Request){
         p_released_by:draft.releasedBy,
         p_source_reference:draft.sourceReference,
       });
-      return NextResponse.json({released:Boolean(released)});
+      if(released!==true) return NextResponse.json({error:"Reservation was not active; no cloth was released."},{status:409});
+      return NextResponse.json({released:true});
     }
     if(action==="consume"){
       const draft=normalizeStockConsumption(body);
@@ -98,7 +99,8 @@ export async function POST(request:Request){
         p_checked_by:draft.checkedBy,
         p_source_reference:draft.sourceReference,
       });
-      return NextResponse.json({consumed:Boolean(consumed)});
+      if(consumed!==true) return NextResponse.json({error:"Reservation was not active; no cloth was consumed."},{status:409});
+      return NextResponse.json({consumed:true});
     }
     return NextResponse.json({error:"Unsupported stock action."},{status:400});
   }catch(error){
