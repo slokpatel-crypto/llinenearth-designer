@@ -79,7 +79,13 @@ export function fromLegacyStyle(style:DesignerStyle):StyleSpecV2 {
 
 function labelFor(id:string,fallback:string) {
   const option=optionById(id);
-  return option?.legacyLabel || option?.label || fallback;
+  // Advanced cuts such as an open short-sleeve hem, Korean-wide trouser,
+  // and box pleats have no legacy DesignerStyle label. Do NOT substitute
+  // their new customer-facing labels into the closed legacy vocabulary:
+  // server-side validStyle would reject the entire advanced recipe.
+  // Keep the last valid legacy value for the photographic compositor, while
+  // preserving the real selected construction in StyleSpec v2.
+  return option?.legacyLabel || fallback;
 }
 
 export function toLegacyStyle(spec:StyleSpecV2):DesignerStyle {

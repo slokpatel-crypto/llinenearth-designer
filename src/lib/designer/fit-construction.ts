@@ -1,4 +1,5 @@
 import type { MeasurementProfile } from "../measurements.ts";
+import { reviewMeasurementConsistency } from "./measurement-consistency.ts";
 import type { DesignerClimate, DesignerFabric, DesignerStyle } from "./engine.ts";
 import type { TailorObservationProfile } from "./tailor-observations.ts";
 import { HOUSE_EASE_TABLE_VERSION, HOUSE_SHIRT_EASE, HOUSE_TROUSER_EASE, type ShirtEaseClass, type TrouserEaseClass } from "./house-ease.ts";
@@ -95,7 +96,10 @@ export function assessFitConstruction(
     };
   }
 
-  const checks:ConstructionCheck[]=[];
+  const measurementIssues=reviewMeasurementConsistency(profile);
+  const checks:ConstructionCheck[]=measurementIssues.map(issue=>({
+    id:issue.id,severity:issue.severity,message:issue.explanation,
+  }));
   const shirtTargets:FinishedTarget[]=[];
   const trouserTargets:FinishedTarget[]=[];
   const sf=shirtFitClass(style);
@@ -210,7 +214,8 @@ export function assessFitConstruction(
 
   return {
     version:fitVersion,
-    status:dataCount>=6?"provisional":"insufficient_measurements",
+    status:dataCount>=6&&!measurementIssues.some(issue=>issue.severity==="warning")
+      ?"provisional":"insufficient_measurements",
     source:easeSource,
     easeTableVersion:easeVersion,
     shirtTargets,trouserTargets,checks,fitScore,caveats,

@@ -1,0 +1,79 @@
+name: Deep Engine — Non-3D QA
+
+# Deliberately independent of the legacy 3D model candidate gate while model
+# engineering is on hold. This job NEVER replaces or weakens full CI or its
+# 20-second model-viewer requirement. No main merge or deployment implied.
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: deep-engine-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  studio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    env:
+      LINEN_BROWSER_QA_RUNTIME: /tmp/linen-deep-engine-browser
+      LINEN_OPERATOR_SESSION_SECRET: deep-engine-browser-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install exact dependencies
+        run: npm ci --include=optional
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Source, unit, engine, preview, release and build gates
+        run: |
+          set -euo pipefail
+          npm run quality
+          npm test
+          npm run eval:engine
+          npm run eval:preview-performance
+          npm run release:check
+          npm run fabric:calibration-worksheet
+          test -s artifacts/fabric-calibration-worksheet.csv
+          npm run build
+      - name: Load immutable original Studio photo regression
+        run: git fetch --depth=1 origin 5126ebb6f82179b7fe25106e71f234248af3a677
+      - name: Install pinned real-browser runtime
+        run: |
+          npm install --prefix "$LINEN_BROWSER_QA_RUNTIME" --no-audit --no-fund playwright@1.63.0
+          node "$LINEN_BROWSER_QA_RUNTIME/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Actual photographic Studio and mobile fabric browser checks
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/deep-engine-browser artifacts/preview-lifecycle
+          npm run start > artifacts/deep-engine-browser/server.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 40); do
+            if curl --fail --silent http://127.0.0.1:3000/designer-studio > /dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:3000/designer-studio > /dev/null
+          node scripts/verify-deep-engine-fabric-discovery.cjs
+          node scripts/verify-designer-advisor.cjs
+          node scripts/verify-photo-form.cjs
+          node scripts/verify-photo-craft.cjs
+          node scripts/verify-preview-lifecycle.cjs
+          node scripts/verify-style-director-lifecycle.cjs
+          node scripts/verify-style-director-handoff.cjs
+      - name: Save real evidence and pending fabric QA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linen-earth-deep-engine-non3d-evidence
+          path: |
+            artifacts/deep-engine-browser
+            artifacts/preview-lifecycle
+            artifacts/fabric-calibration-worksheet.csv
+          retention-days: 14
+          if-no-files-found: ignore

@@ -23,7 +23,10 @@ export async function loadVerifiedStockSnapshot(fabricIds:string[]):Promise<Veri
     const rows=await response.json() as Array<Record<string,unknown>>;
     return rows.map((row)=>({
       fabric_id:String(row.fabric_id||""),
-      available_metres:Number(row.available_metres),
+      // Never convert a missing/null RPC value into the number zero: that
+      // would falsely label an absent measurement as verified zero stock.
+      available_metres:typeof row.available_metres==="number"||typeof row.available_metres==="string"
+        ?row.available_metres:NaN,
       provenance_ready:row.provenance_ready===true,
     }));
   }catch(error){

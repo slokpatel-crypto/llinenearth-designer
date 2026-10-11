@@ -737,3 +737,25 @@
 .newDesignerGarmentScope article label{display:grid;gap:5px}.newDesignerGarmentScope article label>span{font-size:7px;letter-spacing:.14em;color:#8b6b4d;font-weight:700}.newDesignerGarmentScope article select{width:100%;min-height:36px;border:1px solid #d8d0c5;background:#fff;color:#24364e;padding:0 9px;font-size:9px;border-radius:0}.newDesignerGarmentScope article[data-status="live"]{background:#fbf8f2;border-color:#d6c8b7}.newDesignerGarmentScope article[data-status="live"] strong{color:#24364e}.newDesignerGarmentScope article[data-status="live"] small{color:#6c6258}.newDesignerGarmentScope article[data-status="planned"]{opacity:.72}.newDesignerGarmentScope article[data-status="planned"] p{min-height:34px}
 
 .newDesignerOpen3D{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;margin:14px 0 0;padding:13px 14px;border:1px solid #c8d5df;background:linear-gradient(135deg,#f6fafc,#fff);color:#24364e;text-decoration:none}.newDesignerOpen3D span{font-size:8px;letter-spacing:.15em;color:#3f6d91;font-weight:700}.newDesignerOpen3D strong{font:400 13px/1.35 Georgia,"Times New Roman",serif}.newDesignerOpen3D b{font-size:9px;color:#245d8f;white-space:nowrap}.newDesignerOpen3D:hover{border-color:#7fa2bd;background:#f1f7fb}@media(max-width:620px){.newDesignerOpen3D{grid-template-columns:1fr}.newDesignerOpen3D b{justify-self:start}}
+
+
+/* Deep Engine: quiet, searchable fabric discovery. Search does not change the
+   selected garment or invalidate a locked recipe until a swatch is chosen. */
+.newDesignerFabricSearch{display:grid!important;gap:7px;margin:0 0 12px!important;color:#637183!important;font-size:10px!important;letter-spacing:.04em!important}
+.newDesignerFabricSearch span{font-weight:600;text-transform:none}
+.newDesignerFabricSearch input{width:100%;min-height:42px;padding:11px 12px;border:1px solid #d9d0c3;border-radius:6px;background:#fff;color:#1f3044;font:12px/1.4 Arial,sans-serif;letter-spacing:0;outline-offset:2px}
+.newDesignerFabricSearch input:focus-visible{outline:2px solid #9a6046}
+.newDesignerFabricFilters button{min-height:34px;padding:7px 11px;font-size:10px;white-space:nowrap;touch-action:manipulation}
+.newDesignerFabricFilters button span{margin-left:2px;opacity:.7;font-variant-numeric:tabular-nums}
+.newDesignerFabricShowMore{display:block;margin:11px 0 16px;width:100%;padding:12px;background:#f6f3ec;color:#2e4c68;border:1px solid #d9d0c3;border-radius:4px;cursor:pointer;font-size:11px;text-align:center}
+.newDesignerFabricShowMore:hover{background:#eee8df}
+.newDesignerFabricNoMatch{min-height:68px;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;padding:12px;background:#faf7f0;border:1px dashed #d8cbba;color:#6b6258;font:11px/1.5 Arial,sans-serif}
+.newDesignerFabricNoMatch button{min-height:35px;background:transparent;color:#784c35;border:0;text-decoration:underline;cursor:pointer;font-size:11px}
+.newDesignerFabricSelectedNote{color:#71533e!important;background:#fbf4e9;padding:7px 9px;border-radius:4px}
+.newDesignerFabricEvidence{display:block!important;margin:9px 0!important;color:#6d5f4d!important;font-size:10px!important;line-height:1.6!important}
+@media(max-width:700px){
+  .newDesignerFabricSearch input{font-size:16px}
+  .newDesignerFabricFilters{gap:7px;scroll-padding-inline:10px}
+  .newDesignerFabricFilters button{font-size:11px;min-height:42px;padding:8px 13px}
+  .newDesignerFabricShowMore{min-height:44px}
+}

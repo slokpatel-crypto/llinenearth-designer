@@ -35,9 +35,9 @@ test("manual physical stock evidence requires named provenance",()=>{
     fabricId:"shirt-1",eventType:"receipt",quantityMetres:12,recordedBy:"SP",sourceReference:"",
   }),/source reference/i);
   assert.deepEqual(normalizeManualStockEvent({
-    fabricId:"shirt-1",eventType:"receipt",quantityMetres:12.34567,recordedBy:" SP ",sourceReference:" Roll tag LE-42 ",
+    fabricId:"shirt-1",eventType:"receipt",quantityMetres:12.345,recordedBy:" SP ",sourceReference:" Roll tag LE-42 ",
   }),{
-    fabricId:"shirt-1",eventType:"receipt",quantityMetres:12.346,note:"",recordedBy:"SP",sourceReference:"Roll tag LE-42",
+    fabricId:"shirt-1",eventType:"receipt",quantityMetres:12.345,note:"",recordedBy:"SP",sourceReference:"Roll tag LE-42",
   });
 });
 
@@ -49,7 +49,7 @@ test("stock reservation quantity requires a named source of truth",()=>{
   }),/quantity evidence reference/i);
   const result=normalizeStockReservation({
     fabricId:"shirt-1",revisionId:"LE-LOCK-123456",requestKey:"REQUEST-123456",
-    quantityMetres:2.1237,requestedBy:" RJ ",sourceReference:" Approved meterage sheet M-19 ",
+    quantityMetres:2.124,requestedBy:" RJ ",sourceReference:" Approved meterage sheet M-19 ",
   });
   assert.equal(result.quantityMetres,2.124);
   assert.equal(result.requestedBy,"RJ");
@@ -62,7 +62,7 @@ test("stock consumption requires measured usage provenance",()=>{
     reservationId:"11111111-1111-4111-8111-111111111111",actualMetres:1.82,checkedBy:"SP",sourceReference:"",
   }),/cloth-usage evidence reference/i);
   const result=normalizeStockConsumption({
-    reservationId:"11111111-1111-4111-8111-111111111111",actualMetres:1.8237,
+    reservationId:"11111111-1111-4111-8111-111111111111",actualMetres:1.824,
     checkedBy:" RJ ",sourceReference:" Cutting sheet CUT-42 ",note:" Actual cut usage. ",
   });
   assert.equal(result.actualMetres,1.824);
@@ -81,4 +81,83 @@ test("stock release requires a named operational reason source",()=>{
   });
   assert.equal(result.releasedBy,"SP");
   assert.equal(result.sourceReference,"Order cancellation ORD-42");
+});
+
+
+test("physical stock replay fails closed on overselling, overrelease and consumption without reservations",()=>{
+  const receipt={type:"receipt",quantityMetres:5} as const;
+  for(const events of [
+    [receipt,{type:"reserve",quantityMetres:6} as const],
+    [receipt,{type:"adjustment_out",quantityMetres:5.001} as const],
+    [receipt,{type:"release",quantityMetres:1} as const],
+    [receipt,{type:"consume",quantityMetres:1} as const],
+    [receipt,{type:"reserve",quantityMetres:4} as const,{type:"adjustment_out",quantityMetres:2} as const],
+    [receipt,{type:"reserve",quantityMetres:1} as const,{type:"consume",quantityMetres:2} as const],
+    [receipt,{type:"reserve",quantityMetres:1} as const,{type:"release",quantityMetres:2} as const],
+  ])assert.throws(()=>stockSnapshot(events),/exceed|reserved|unavailable/i);
+});
+test("ledger handles 0.001m precision, decimal float representations, and retains no negative stock",()=>{
+  const sample=stockSnapshot([
+    {type:"receipt",quantityMetres:1.005},
+    {type:"reserve",quantityMetres:.251},
+    {type:"consume",quantityMetres:.101},
+    {type:"release",quantityMetres:.15},
+    {type:"adjustment_out",quantityMetres:.004},
+  ]);
+  assert.deepEqual(sample,{physicalMetres:.9,reservedMetres:0,availableMetres:.9});
+  assert.throws(()=>stockSnapshot([{type:"receipt",quantityMetres:0.0001}]),/decimal places/);
+  assert.throws(()=>stockSnapshot([{type:"receipt",quantityMetres:-3}]),/positive/);
+  assert.throws(()=>stockSnapshot([{type:"unknown" as never,quantityMetres:4}]),/Unsupported stock/);
+});
+
+
+test("manual, reservation and consumption movements must not round to phantom zero-metres",()=>{
+  for(const q of [0.00001,0.0001,0.00049]){
+    assert.throws(()=>normalizeManualStockEvent({
+      fabricId:"shirt-1",eventType:"receipt",quantityMetres:q,
+      recordedBy:"Checker",sourceReference:"Roll LE-001",
+    }),/at least 0.001 metres/);
+    assert.throws(()=>normalizeStockReservation({
+      fabricId:"shirt-1",revisionId:"LOCKED-20261010",requestKey:"RESERVE-20261010",
+      quantityMetres:q,requestedBy:"Checker",sourceReference:"Meterage LE-001",
+    }),/at least 0.001 metres/);
+    assert.throws(()=>normalizeStockConsumption({
+      reservationId:"11111111-1111-4111-8111-111111111111",
+      actualMetres:q,checkedBy:"Checker",sourceReference:"Cutting LE-001",
+    }),/at least 0.001 metres/);
+  }
+});
+
+test("stock ledger rejects malformed events, coerced quantities and unsafe millimetre totals",()=>{
+  assert.throws(()=>stockSnapshot(null as never),/must be an array/);
+  assert.throws(()=>stockSnapshot([null as never]),/Invalid stock event/);
+  for(const quantity of ["2",true,undefined,Number.MAX_SAFE_INTEGER]){
+    assert.throws(()=>stockSnapshot([{type:"receipt",quantityMetres:quantity as number}]),/positive|precision/);
+  }
+  const nearSafe=Number.MAX_SAFE_INTEGER/1000;
+  assert.throws(()=>stockSnapshot([
+    {type:"receipt",quantityMetres:Math.floor(nearSafe*1000)/1000},
+    {type:"receipt",quantityMetres:1},
+  ]),/precision/);
+});
+
+test("operator writes never silently round stock receipts, reservations or cutting usage",()=>{
+  const base={
+    fabricId:"shirt-1",eventType:"receipt",recordedBy:"Physical stock checker",
+    revisionId:"LOCKED-20261011",requestKey:"RESERVE-20261011",
+    requestedBy:"Tailor reviewer",reservationId:"11111111-1111-4111-8111-111111111111",
+    checkedBy:"Cutting checker",sourceReference:"Physical roll ledger LE-111",
+  };
+  for(const quantity of [0.00051,0.00099,1.2345,2.0000001,1.123456789,"2.125",null,true,Infinity]){
+    assert.throws(()=>normalizeManualStockEvent({...base,quantityMetres:quantity}),
+      /at least 0.001|decimal places/i,`receipt: ${String(quantity)}`);
+    assert.throws(()=>normalizeStockReservation({...base,quantityMetres:quantity}),
+      /at least 0.001|decimal places/i,`reservation: ${String(quantity)}`);
+    assert.throws(()=>normalizeStockConsumption({...base,actualMetres:quantity}),
+      /at least 0.001|decimal places/i,`consumption: ${String(quantity)}`);
+  }
+  const q=0.001;
+  assert.equal(normalizeManualStockEvent({...base,quantityMetres:q}).quantityMetres,q);
+  assert.equal(normalizeStockReservation({...base,quantityMetres:q}).quantityMetres,q);
+  assert.equal(normalizeStockConsumption({...base,actualMetres:q}).actualMetres,q);
 });

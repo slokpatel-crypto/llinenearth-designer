@@ -35,3 +35,47 @@ test("invalid ledger quantities never become verified availability",()=>{
   ]);
   assert.equal(map.size,0);
 });
+
+
+test("conflicting or repeated supplier snapshot IDs must not be treated as verified stock",()=>{
+  const map=verifiedStockAvailabilityMap([
+    {fabric_id:"shirt",available_metres:4,provenance_ready:true},
+    {fabric_id:"shirt",available_metres:0,provenance_ready:true},
+    {fabric_id:"trouser",available_metres:1,provenance_ready:true},
+  ]);
+  assert.equal(map.has("shirt"),false);
+  assert.equal(map.get("trouser"),true);
+  const result=applyVerifiedStockAvailability([fabric("shirt"),fabric("trouser")],[
+    {fabric_id:"shirt",available_metres:4,provenance_ready:true},
+    {fabric_id:"shirt",available_metres:0,provenance_ready:true},
+    {fabric_id:"trouser",available_metres:1,provenance_ready:true},
+  ]);
+  assert.deepEqual(result.verifiedFabricIds,["trouser"]);
+  assert.equal(result.stock[0].availabilityVerified,undefined);
+});
+test("negative, empty and malformed physical quantities cannot certify a fabric as available",()=>{
+  const map=verifiedStockAvailabilityMap([
+    {fabric_id:"negative",available_metres:-0.3,provenance_ready:true},
+    {fabric_id:"empty",available_metres:"",provenance_ready:true},
+    {fabric_id:"bad",available_metres:"not-a-number",provenance_ready:true},
+    {fabric_id:"zero",available_metres:0,provenance_ready:true},
+  ]);
+  assert.equal(map.size,1);
+  assert.equal(map.get("zero"),false);
+  assert.equal(map.has("negative"),false);
+  assert.equal(map.has("empty"),false);
+});
+
+test("an invalid numeric notation or missing RPC metreage cannot certify supplier stock",()=>{
+  const rows=[
+    ...["0x10","0b101","1e3","2_000","  ","Infinity","-0.5","1.2345","0.0001"].map((available_metres,i)=>({
+      fabric_id:`malformed-${i}`,available_metres,provenance_ready:true,
+    })),
+    // Runtime RPC values can be null even when an incorrect type assertion says numeric.
+    {fabric_id:"missing",available_metres:null as unknown as number,provenance_ready:true},
+    {fabric_id:"zero",available_metres:"0.000",provenance_ready:true},
+    {fabric_id:"valid",available_metres:"4.250",provenance_ready:true},
+  ];
+  const map=verifiedStockAvailabilityMap(rows);
+  assert.deepEqual([...map.entries()],[["zero",false],["valid",true]]);
+});

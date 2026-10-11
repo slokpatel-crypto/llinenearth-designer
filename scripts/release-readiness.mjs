@@ -647,7 +647,7 @@ requireTokens("src/lib/fabric-intelligence-adapter.ts", ["fabric-analyzer-v3","f
 requireTokens("src/lib/fabric-intelligence-server.ts", ["adaptFabricProfileToV4","reviewNeeded"]);
 requireTokens("src/lib/vocab/intelligence.ts", ["colorFamilyPairSignal"]);
 requireTokens("src/app/api/designer/brief/route.ts", ["parseDesignerBrief","searchDesignerCatalogue",'scope:"open"',"tierOrder","safeMeasurements","safeObservations"]);
-requireTokens("src/components/DesignerModule.tsx", ["DesignerAdvisorPanel","one_line_designer_brief","expectedIdentity","styleSpec:fromLegacyStyle(result.style)"]);
+requireTokens("src/components/DesignerModule.tsx", ["DesignerAdvisorPanel","one_line_designer_brief","expectedIdentity","styleSpec:nextStyleSpec","result.styleSpec??fromLegacyStyle(result.style)"]);
 requireTokens("src/components/DesignerAdvisorPanel.tsx", ["/api/designer/brief","Ask Designer","newDesignerBrief","StyleDirectorRealModelPreview","newDesignerBriefModel","SAME LINEN EARTH MODEL","newDesignerBriefCut","Revise this direction","request.isCurrent()","request.signal","recordJudgement"]);
 requireTokens("src/lib/designer/search.ts",["Occasion match:"]);
 requireTokens("src/lib/browser-style-memory.ts", ["readLocalDesignerTasteProfile","aggregateDesignerTaste"]);

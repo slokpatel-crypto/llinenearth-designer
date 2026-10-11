@@ -28,6 +28,16 @@ jobs:
       - run: npm run eval:engine
       - run: npm run eval:preview-performance
       - run: npm run release:check
+      - name: Generate physical fabric calibration queue (unverified)
+        run: |
+          npm run fabric:calibration-worksheet
+          test -s artifacts/fabric-calibration-worksheet.csv
+      - name: Preserve operator fabric calibration worksheet
+        uses: actions/upload-artifact@v4
+        with:
+          name: linen-earth-fabric-calibration-pending
+          path: artifacts/fabric-calibration-worksheet.csv
+          retention-days: 14
       - run: npm run build
       - name: Load immutable photographic regression baseline
         run: git fetch --depth=1 origin 5126ebb6f82179b7fe25106e71f234248af3a677
