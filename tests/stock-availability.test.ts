@@ -68,7 +68,7 @@ test("negative, empty and malformed physical quantities cannot certify a fabric 
 
 test("an invalid numeric notation or missing RPC metreage cannot certify supplier stock",()=>{
   const rows=[
-    ...["0x10","0b101","1e3","2_000","  ","Infinity","-0.5"].map((available_metres,i)=>({
+    ...["0x10","0b101","1e3","2_000","  ","Infinity","-0.5","1.2345","0.0001"].map((available_metres,i)=>({
       fabric_id:`malformed-${i}`,available_metres,provenance_ready:true,
     })),
     // Runtime RPC values can be null even when an incorrect type assertion says numeric.
