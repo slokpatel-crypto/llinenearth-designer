@@ -110,3 +110,18 @@ test("a missing or already closed reservation is never falsely reported as consu
   assert.ok(route.includes("return NextResponse.json({released:true})"));
   assert.ok(route.includes("return NextResponse.json({consumed:true})"));
 });
+
+
+test("operator stock dashboard fails closed when the live ledger cannot load",()=>{
+  const code=readFileSync("src/app/operator/stock/StockClient.tsx","utf8");
+  assert.ok(code.includes('const [snapshotState,setSnapshotState]=useState<"loading"|"ready"|"error">("loading")'));
+  assert.ok(code.includes('if(!response.ok) throw new Error("Stock ledger request failed.")'));
+  assert.ok(code.includes('setSnapshotState("error")'));
+  assert.ok(code.includes('setStock([])'));
+  assert.ok(code.includes('snapshotState==="ready"?`${totalAvailable.toFixed(3)} m`:"—"'));
+  assert.ok(code.includes('snapshotState==="ready"?`${totalReserved.toFixed(3)} m`:"—"'));
+  assert.ok(code.includes('snapshotState==="error"?"UNAVAILABLE"'));
+  assert.ok(code.includes('snapshotState==="ready"?(provenanceReady?"RECORDED":"PENDING"):"UNAVAILABLE"'));
+  assert.ok(code.includes('disabled={busy||snapshotState!=="ready"||'));
+  assert.ok(code.includes("do not reserve or cut against a missing snapshot"));
+});
