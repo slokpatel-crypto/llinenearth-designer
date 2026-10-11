@@ -35,9 +35,9 @@ test("manual physical stock evidence requires named provenance",()=>{
     fabricId:"shirt-1",eventType:"receipt",quantityMetres:12,recordedBy:"SP",sourceReference:"",
   }),/source reference/i);
   assert.deepEqual(normalizeManualStockEvent({
-    fabricId:"shirt-1",eventType:"receipt",quantityMetres:12.34567,recordedBy:" SP ",sourceReference:" Roll tag LE-42 ",
+    fabricId:"shirt-1",eventType:"receipt",quantityMetres:12.345,recordedBy:" SP ",sourceReference:" Roll tag LE-42 ",
   }),{
-    fabricId:"shirt-1",eventType:"receipt",quantityMetres:12.346,note:"",recordedBy:"SP",sourceReference:"Roll tag LE-42",
+    fabricId:"shirt-1",eventType:"receipt",quantityMetres:12.345,note:"",recordedBy:"SP",sourceReference:"Roll tag LE-42",
   });
 });
 
@@ -49,7 +49,7 @@ test("stock reservation quantity requires a named source of truth",()=>{
   }),/quantity evidence reference/i);
   const result=normalizeStockReservation({
     fabricId:"shirt-1",revisionId:"LE-LOCK-123456",requestKey:"REQUEST-123456",
-    quantityMetres:2.1237,requestedBy:" RJ ",sourceReference:" Approved meterage sheet M-19 ",
+    quantityMetres:2.124,requestedBy:" RJ ",sourceReference:" Approved meterage sheet M-19 ",
   });
   assert.equal(result.quantityMetres,2.124);
   assert.equal(result.requestedBy,"RJ");
@@ -62,7 +62,7 @@ test("stock consumption requires measured usage provenance",()=>{
     reservationId:"11111111-1111-4111-8111-111111111111",actualMetres:1.82,checkedBy:"SP",sourceReference:"",
   }),/cloth-usage evidence reference/i);
   const result=normalizeStockConsumption({
-    reservationId:"11111111-1111-4111-8111-111111111111",actualMetres:1.8237,
+    reservationId:"11111111-1111-4111-8111-111111111111",actualMetres:1.824,
     checkedBy:" RJ ",sourceReference:" Cutting sheet CUT-42 ",note:" Actual cut usage. ",
   });
   assert.equal(result.actualMetres,1.824);
@@ -139,4 +139,25 @@ test("stock ledger rejects malformed events, coerced quantities and unsafe milli
     {type:"receipt",quantityMetres:Math.floor(nearSafe*1000)/1000},
     {type:"receipt",quantityMetres:1},
   ]),/precision/);
+});
+
+test("operator writes never silently round stock receipts, reservations or cutting usage",()=>{
+  const base={
+    fabricId:"shirt-1",eventType:"receipt",recordedBy:"Physical stock checker",
+    revisionId:"LOCKED-20261011",requestKey:"RESERVE-20261011",
+    requestedBy:"Tailor reviewer",reservationId:"11111111-1111-4111-8111-111111111111",
+    checkedBy:"Cutting checker",sourceReference:"Physical roll ledger LE-111",
+  };
+  for(const quantity of [0.00051,0.00099,1.2345,2.0000001,1.123456789,"2.125",null,true,Infinity]){
+    assert.throws(()=>normalizeManualStockEvent({...base,quantityMetres:quantity}),
+      /at least 0.001|decimal places/i,`receipt: ${String(quantity)}`);
+    assert.throws(()=>normalizeStockReservation({...base,quantityMetres:quantity}),
+      /at least 0.001|decimal places/i,`reservation: ${String(quantity)}`);
+    assert.throws(()=>normalizeStockConsumption({...base,actualMetres:quantity}),
+      /at least 0.001|decimal places/i,`consumption: ${String(quantity)}`);
+  }
+  const q=0.001;
+  assert.equal(normalizeManualStockEvent({...base,quantityMetres:q}).quantityMetres,q);
+  assert.equal(normalizeStockReservation({...base,quantityMetres:q}).quantityMetres,q);
+  assert.equal(normalizeStockConsumption({...base,actualMetres:q}).actualMetres,q);
 });
