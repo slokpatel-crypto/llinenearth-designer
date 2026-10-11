@@ -79,3 +79,13 @@ test("actual stock mutation handler applies byte limit before privileged RPC",()
   assert.ok(code.includes("error instanceof StockMutationPayloadTooLarge"));
   assert.ok(code.includes("{status:413}"));
 });
+
+test("operator release UI supplies the real named checker and physical cancellation reference",()=>{
+  const code=readFileSync("src/app/operator/stock/StockClient.tsx","utf8");
+  const action=code.slice(code.indexOf('action:"release"'));
+  assert.ok(action.includes("releasedBy:close.checkedBy"));
+  assert.ok(action.includes("sourceReference:close.sourceReference"));
+  assert.ok(code.includes('close.sourceReference.trim().length<3} onClick={()=>void post({action:"release"'));
+  assert.ok(code.includes("totalAvailable.toFixed(3)"));
+  assert.ok(code.includes("totalReserved.toFixed(3)"));
+});
