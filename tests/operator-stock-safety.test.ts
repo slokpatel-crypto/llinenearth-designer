@@ -99,3 +99,14 @@ test("operator stock display does not equate a typed source reference with physi
   assert.ok(code.includes('row.provenance_ready?"recorded":"incomplete"'));
   assert.ok(!code.includes('provenanceReady?"VERIFIED":"OPEN"'));
 });
+
+
+test("a missing or already closed reservation is never falsely reported as consumed or released",()=>{
+  const route=readFileSync("src/app/api/operator/stock/route.ts","utf8");
+  assert.ok(route.includes("if(released!==true) return NextResponse.json"));
+  assert.ok(route.includes('error:"Reservation was not active; no cloth was released."},{status:409}'));
+  assert.ok(route.includes("if(consumed!==true) return NextResponse.json"));
+  assert.ok(route.includes('error:"Reservation was not active; no cloth was consumed."},{status:409}'));
+  assert.ok(route.includes("return NextResponse.json({released:true})"));
+  assert.ok(route.includes("return NextResponse.json({consumed:true})"));
+});
