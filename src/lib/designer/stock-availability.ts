@@ -25,8 +25,13 @@ export function verifiedStockAvailabilityMap(rows:VerifiedStockSnapshotRow[]){
     const decimal=typeof raw==="string"?raw.trim():null;
     const available=typeof raw==="number"?raw:
       decimal!==null&&/^(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)$/.test(decimal)?Number(decimal):NaN;
+    // Availability is the sum of exact 0.001m ledger movements. A finer
+    // fraction or an unsafe integer is inconsistent with physical provenance.
+    const millimetres=Math.round(available*1000);
     if(!id||counts.get(id)!==1||row.provenance_ready!==true
-       ||!Number.isFinite(available)||available<0) continue;
+       ||!Number.isFinite(available)||available<0
+       ||!Number.isSafeInteger(millimetres)
+       ||Math.abs(available*1000-millimetres)>1e-7) continue;
     out.set(id,available>0);
   }
   return out;
