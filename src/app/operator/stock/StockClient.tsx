@@ -62,8 +62,8 @@ export default function StockClient(){
 
     <section className="stockStats">
       <article><small>FABRICS TRACKED</small><strong>{stock.length}</strong></article>
-      <article><small>AVAILABLE</small><strong>{totalAvailable.toFixed(2)} m</strong></article>
-      <article><small>RESERVED</small><strong>{totalReserved.toFixed(2)} m</strong></article>
+      <article><small>AVAILABLE</small><strong>{totalAvailable.toFixed(3)} m</strong></article>
+      <article><small>RESERVED</small><strong>{totalReserved.toFixed(3)} m</strong></article>
       <article><small>PHYSICAL PROVENANCE</small><strong>{provenanceReady?"VERIFIED":"OPEN"}</strong><small>{legacyUnverified} legacy/unverified manual event(s)</small></article>
       <article><small>BACKEND</small><strong>{configured?"LIVE":"NOT CONFIGURED"}</strong></article>
     </section>
@@ -99,7 +99,7 @@ export default function StockClient(){
         <label>Note<textarea rows={2} value={close.note} onChange={(e)=>setClose({...close,note:e.target.value})}/></label>
         <div className="stockActions">
           <button disabled={busy||!configured||!close.reservationId||Number(close.actualMetres)<=0||close.checkedBy.trim().length<2||close.sourceReference.trim().length<3} onClick={()=>void post({action:"consume",reservationId:close.reservationId,actualMetres:Number(close.actualMetres),checkedBy:close.checkedBy,sourceReference:close.sourceReference,note:close.note},"Reservation consumed from measured usage and unused metres released.")}>Consume</button>
-          <button disabled={busy||!configured||!close.reservationId} onClick={()=>void post({action:"release",reservationId:close.reservationId,note:close.note},"Reservation released.")}>Release</button>
+          <button disabled={busy||!configured||!close.reservationId||close.checkedBy.trim().length<2||close.sourceReference.trim().length<3} onClick={()=>void post({action:"release",reservationId:close.reservationId,releasedBy:close.checkedBy,sourceReference:close.sourceReference,note:close.note},"Reservation released.")}>Release</button>
         </div>
       </article>
     </section>
