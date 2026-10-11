@@ -20,7 +20,11 @@ export function verifiedStockAvailabilityMap(rows:VerifiedStockSnapshotRow[]){
   for(const row of rows){
     const id=typeof row.fabric_id==="string"?row.fabric_id.trim():"";
     const raw=row.available_metres;
-    const available=typeof raw==="number"?raw:typeof raw==="string"&&raw.trim()!==""?Number(raw):NaN;
+    // Postgres decimal strings are acceptable; JS Number() also accepts hex,
+    // binary and exponent spellings that are not measured metreage evidence.
+    const decimal=typeof raw==="string"?raw.trim():null;
+    const available=typeof raw==="number"?raw:
+      decimal!==null&&/^(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)$/.test(decimal)?Number(decimal):NaN;
     if(!id||counts.get(id)!==1||row.provenance_ready!==true
        ||!Number.isFinite(available)||available<0) continue;
     out.set(id,available>0);
