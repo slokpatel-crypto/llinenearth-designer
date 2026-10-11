@@ -21,3 +21,43 @@ export function stockMutationRequestError(request:Pick<Request,"url"|"headers">)
     return {status:413,error:"Stock mutation payload is too large."};
   return null;
 }
+
+/**
+ * Content-Length can be omitted (e.g. chunked requests), so a header-only
+ * check does not bound service-role mutation input. Count actual UTF-8 bytes
+ * before ever parsing JSON; reject rather than truncating a physical record.
+ */
+export class StockMutationPayloadTooLarge extends Error {}
+
+export async function readBoundedStockMutationJson(request:Request):Promise<Record<string,unknown>>{
+  if(!request.body) throw new Error("Stock mutation body is required.");
+  const reader=request.body.getReader();
+  const chunks:Uint8Array[]=[];
+  let total=0;
+  try{
+    while(true){
+      const next=await reader.read();
+      if(next.done) break;
+      total+=next.value.byteLength;
+      if(total>24_000){
+        await reader.cancel();
+        throw new StockMutationPayloadTooLarge("Stock mutation payload is too large.");
+      }
+      chunks.push(next.value);
+    }
+  }finally{
+    reader.releaseLock();
+  }
+  const data=new Uint8Array(total);
+  let offset=0;
+  for(const chunk of chunks){data.set(chunk,offset);offset+=chunk.byteLength;}
+  let parsed:unknown;
+  try{
+    parsed=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(data));
+  }catch{
+    throw new Error("Stock mutation body must be valid UTF-8 JSON.");
+  }
+  if(!parsed||typeof parsed!=="object"||Array.isArray(parsed))
+    throw new Error("Stock mutation JSON must be an object.");
+  return parsed as Record<string,unknown>;
+}
