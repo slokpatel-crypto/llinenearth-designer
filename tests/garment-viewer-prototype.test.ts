@@ -123,6 +123,19 @@ test("viewer surface exposes the shared four-angle turntable and independent shi
 });
 
 
+
+test("slow GLB startup fails closed with a real fallback instead of an infinite loading overlay",()=>{
+  const source=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  assert(source.includes("if(!modelUrl || modelReady) return"));
+  assert(source.includes('if(!scene?.loaded) setError("3D preview is taking longer than expected.'));
+  assert(source.includes("},20_000)"));
+  assert(source.includes('{!modelReady&&!error&&<div className="garmentViewerLoading">'));
+  assert(source.includes('className="garmentViewerError"'));
+  assert(source.includes('setModelReady(true);'));
+  assert(source.includes('setError("");'));
+});
+
+
 test("real browser 3D QA records GPU/asset diagnosis without silently relaxing the twenty-second threshold",()=>{
   const code=readFileSync("scripts/verify-garment-viewer.cjs","utf8");
   assert(code.includes('},null,{timeout:20000,polling:100})'));
