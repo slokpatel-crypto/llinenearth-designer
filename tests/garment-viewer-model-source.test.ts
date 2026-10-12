@@ -6,9 +6,9 @@ test("unverified configured GLB never masquerades as the real studio model",()=>
   const page=readFileSync("src/app/lab/garment-viewer/page.tsx","utf8");
   const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
   assert.match(page,/approvedModelSrc=production\.assetReady\s*\?/);
-  assert.match(page,/candidateModelSrc=!production\\.assetReady/);
-  assert.match(page,/production\\.model\\?\\.placeholderGeometry/);
-  assert.match(page,/modelManifestSrc=previewModelSrc\\s*\\?/);
+  assert.match(page,/candidateModelSrc=!production\.assetReady/);
+  assert.match(page,/production\.model\?\.placeholderGeometry/);
+  assert.match(page,/modelManifestSrc=previewModelSrc\s*\?/);
   assert.match(viewer,/PROTOTYPE GEOMETRY · NOT THE STUDIO MODEL/);
   assert.match(viewer,/ENGINEERING CANDIDATE · NOT APPROVED STUDIO MODEL/);
   assert.match(viewer,/modelSrc&&assetIdentity/);
