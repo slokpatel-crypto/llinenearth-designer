@@ -234,15 +234,34 @@ def main():
         raise RuntimeError(f"Body height is {height:.4f} m; expected the locked 1.727 m body.")
 
     z = lambda ratio: min_z + height * ratio
-    torso_half = 0.245
     arm_root = 0.155
-    hip_half = 0.245
+    hip_half = 0.205
+
+    def torso_half_width(z_world):
+        # The original fixed 245-mm radius unintentionally captured forearms
+        # beside the abdomen: the waist then measured ~491 mm instead of the
+        # studio's locked 294-mm front silhouette. Shape a separate torso
+        # region from the source body without moving/shrinking its arms.
+        ratio = (z_world - min_z) / height
+        start, end = 0.645, 0.841
+        if ratio <= start:
+            return 0.158
+        if ratio >= end:
+            return 0.205
+        t = (ratio - start) / (end - start)
+        t = t * t * (3.0 - 2.0 * t)
+        return 0.158 + (0.205 - 0.158) * t
 
     regions = {
-        "ShirtTorsoFabric": lambda p: z(0.515) <= p.z <= z(0.895) and abs(p.x-center_x) <= torso_half,
+        # A real tucked shirt reaches the trouser waistband; its lower
+        # boundary is not a free-hanging hem halfway down the pelvis.
+        "ShirtTorsoFabric": lambda p: z(0.615) <= p.z <= z(0.895)
+        and abs(p.x-center_x) <= torso_half_width(p.z),
         "ShirtSleeveLFabric": lambda p: z(0.500) <= p.z <= z(0.875) and p.x-center_x <= -arm_root,
         "ShirtSleeveRFabric": lambda p: z(0.500) <= p.z <= z(0.875) and p.x-center_x >= arm_root,
-        "TrouserWaistFabric": lambda p: z(0.455) <= p.z <= z(0.620) and abs(p.x-center_x) <= hip_half,
+        # The reference waistband lies at z ~= 0.647 of body height; the
+        # previous .620 upper cap never reached its own identity guide.
+        "TrouserWaistFabric": lambda p: z(0.455) <= p.z <= z(0.675) and abs(p.x-center_x) <= hip_half,
         "TrouserLegLFabric": lambda p: z(0.055) <= p.z <= z(0.535) and p.x < center_x,
         "TrouserLegRFabric": lambda p: z(0.055) <= p.z <= z(0.535) and p.x >= center_x,
     }
