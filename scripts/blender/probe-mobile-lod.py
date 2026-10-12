@@ -22,7 +22,8 @@ from surface_coverage import penetrating_surface_samples, sampled_mesh_face_indi
 from mobile_lod_skin_guard import skin_protection_weight
 from uv_surface_metrics import triangle_world_mm_per_uv_unit, uv_density_summary
 from uv_fabric_axis_qa import (uv_fabric_axes_mm, summarise_uv_fabric_axes,
-    axis_drift_against_authored, summarise_vertical_uv_zones, vertical_uv_zone_drift)
+    axis_drift_against_authored, summarise_vertical_uv_zones, vertical_uv_zone_drift,
+    paired_spatial_uv_drift)
 
 GARMENTS=(
     "ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric",
@@ -469,11 +470,13 @@ def measured_geometry_uv_density(obj, max_samples=600):
             density.append(triangle_world_mm_per_uv_unit(xyz,uvs))
             axis=uv_fabric_axes_mm(xyz,uvs)
             if axis is not None:
-                axis={**axis,"centroidZ":sum(p[2] for p in xyz)/3}
+                axis={**axis,"centroidZ":sum(p[2] for p in xyz)/3,
+                      "centroidXYZ":tuple(sum(p[i] for p in xyz)/3 for i in range(3))}
             axis_samples.append(axis)
         result=uv_density_summary(density)
         result["uvAxisGeometry"]=summarise_uv_fabric_axes(axis_samples)
         result["verticalUvZones"]=summarise_vertical_uv_zones(axis_samples,z_min,z_max)
+        result["axisSampleRows"]=axis_samples
         return result
     finally:
         evaluated.to_mesh_clear()
@@ -577,6 +580,12 @@ def main():
                     repair=fit_candidate_mobile_contacts(copy,tree,guides[name])
             points,faces,tris=world_geometry(copy)
             candidate_uv_density=measured_geometry_uv_density(copy)
+            # Match derivatives near the SAME physical garment coordinates,
+            # before removing large per-triangle rows from the saved evidence.
+            paired_uv_drift=paired_spatial_uv_drift(
+                source_uv_density.pop("axisSampleRows"),
+                candidate_uv_density.pop("axisSampleRows"),
+            )
             original_density=source_uv_density["medianWorldMmPerUvUnit"]
             candidate_density=candidate_uv_density["medianWorldMmPerUvUnit"]
             uv_density_drift=(
@@ -624,6 +633,7 @@ def main():
                         candidate_uv_density["verticalUvZones"],
                         tolerance_pct=8,
                     ),
+                    "pairedGarmentSpaceGeometryQA":paired_uv_drift,
                     "verifiedPhysicalFabricRepeat":False,
                 },
                 "boundedContactRepair":repair,
