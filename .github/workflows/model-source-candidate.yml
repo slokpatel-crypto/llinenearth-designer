@@ -6,6 +6,7 @@ on:
       - 'scripts/blender/**'
       - 'tests/python/**'
       - 'tests/blender/**'
+      - 'scripts/qa/model-reference-contact-sheet.py'
       - 'docs/REALISTIC_MODEL_SOURCE_PLAN.md'
       - '.github/workflows/model-source-candidate.yml'
   workflow_dispatch:
@@ -91,6 +92,20 @@ jobs:
           blender --background .cache/linen-earth/linen-earth-officewear-authored.blend \
             --python scripts/blender/render-linen-earth-model-qa.py -- \
             --output-dir artifacts/model-qa --width 480 --height 640 --samples 8
+
+      - name: Archive honest photo-versus-3D comparison for owner review
+        if: always()
+        run: |
+          if [ ! -f artifacts/model-qa/linen-earth-model-front.png ]; then
+            echo "No valid front candidate frame; do not fabricate photo parity."
+            exit 1
+          fi
+          python3 -m venv "$RUNNER_TEMP/le-qa-pillow"
+          "$RUNNER_TEMP/le-qa-pillow/bin/python" -m pip install --quiet Pillow==11.3.0
+          "$RUNNER_TEMP/le-qa-pillow/bin/python" scripts/qa/model-reference-contact-sheet.py \
+            --reference public/designer/studio-tucked.webp \
+            --candidate artifacts/model-qa/linen-earth-model-front.png \
+            --output artifacts/model-qa/original-vs-3d-UNAPPROVED.jpg
 
       - name: Keep production candidate gate closed on failed preflight
         if: steps.scene_preflight.outcome != 'success'
