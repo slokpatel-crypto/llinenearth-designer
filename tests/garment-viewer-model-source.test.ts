@@ -191,3 +191,18 @@ test("Blender body, preflight and exporter all carry the same locked model ident
   assert(exporter.includes("scene_model_identity"));
   assert(exporter.includes('"modelIdentity": model_identity'));
 });
+
+
+test("opaque garment alternatives use binary alpha cutouts instead of blending hundreds of shells",()=>{
+  const exporter=readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  assert.equal(exporter.split('alphaMode:"MASK",alphaCutoff:.5,').length-1,4);
+  assert(!exporter.includes('alphaMode:"BLEND"'));
+  assert(exporter.includes('baseColorFactor:[1,1,1,0]'));
+  assert(exporter.includes('baseColorFactor:[1,1,1,1]'));
+  assert(viewer.includes('visible?1:0'));
+  assert(viewer.includes('material?.pbrMetallicRoughness.setBaseColorFactor'));
+  // Material-cutout optimization cannot touch model identity or measured fabric.
+  assert(exporter.includes('MODEL_ID="LE-OFFICEWEAR-V1"'));
+  assert(exporter.includes('const garmentPanels=['));
+});
