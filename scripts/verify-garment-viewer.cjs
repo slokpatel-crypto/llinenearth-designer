@@ -127,6 +127,59 @@ async function verifyViewport(browser, width) {
   qaStage("engine custom element defined");
   const viewer = page.locator("model-viewer");
   await viewer.waitFor({ state: "visible" });
+  // The build currently includes an internal generated engineering prototype.
+  // Only a structurally approved GLB may enter the full production scene,
+  // scale/latency and four-angle pixel-evidence suite below. A prototype still
+  // receives genuine browser smoke coverage, but never counts as production QA.
+  const stageLabel=await page.locator(".garmentViewerStageHead").innerText();
+  const prototypeMode=stageLabel.includes("PROTOTYPE GEOMETRY · NOT THE STUDIO MODEL");
+  if(prototypeMode){
+    const referenceImage=page.locator(".garmentViewerReference img");
+    await referenceImage.waitFor({state:"visible"});
+    assert.match(await referenceImage.getAttribute("src"),/studio-tucked\\.webp$/);
+    assert.match(await page.locator(".garmentViewerReference").innerText(),/linen-earth-studio-model-v1/);
+    await page.waitForFunction(()=>{
+      const model=document.querySelector("model-viewer");
+      const shell=document.querySelector(".garmentViewerShell");
+      return Boolean(model?.loaded) && (model.model?.materials?.length||0)>=6
+        && shell?.getAttribute("data-model-readiness")==="prototype"
+        && !document.querySelector(".garmentViewerError");
+    },null,{timeout:30000,polling:100});
+    qaStage("real prototype model loaded; production proof deliberately not claimed");
+    const materials=await viewer.evaluate(element=>element.model?.materials?.map(material=>material.name)||[]);
+    for(const name of ["ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric","TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric"]){
+      assert.equal(materials.filter(value=>value===name).length,1,"prototype material wiring: "+name);
+    }
+    for(const [label,expectedView] of [["3/4","three-quarter"],["Side","side"],["Back","back"],["Front","front"]]){
+      await page.getByRole("button",{name:label,exact:true}).click();
+      await page.waitForFunction(view=>document.querySelector(".garmentViewerShell")?.getAttribute("data-active-view")===view,
+        expectedView,{timeout:10000});
+    }
+    const wear=page.getByLabel("3D shirt wear");
+    await wear.selectOption("tucked");
+    assert.equal(await wear.inputValue(),"tucked");
+    const shirt=page.getByLabel("3D shirt fabric");
+    if(await shirt.count()){
+      const initial=await shirt.inputValue();
+      const alternative=await shirt.evaluate(element=>[...element.options].find(option=>option.value!==element.value)?.value||"");
+      if(alternative){await shirt.selectOption(alternative);assert.notEqual(await shirt.inputValue(),initial);}
+    }
+    const desktopWidth=await page.evaluate(()=>document.documentElement.scrollWidth);
+    assert.ok(desktopWidth<=width+2,"prototype must not overflow desktop");
+    await page.setViewportSize({width:390,height:1000});
+    await page.waitForTimeout(150);
+    const mobileWidth=await page.evaluate(()=>document.documentElement.scrollWidth);
+    assert.ok(mobileWidth<=392,"prototype must not overflow mobile");
+    assert.deepEqual(errors,[],"prototype viewer must not emit runtime errors");
+    await fs.writeFile(path.join(output,"garment-viewer-prototype-qa.json"),
+      JSON.stringify({prototype:true,productionProof:false,reference:"/designer/studio-tucked.webp",
+        testedViews:["front","three-quarter","side","back"],browser:"Chromium",viewportWidths:[width,390],
+        note:"Interactive prototype smoke test only. No photorealistic GLB, scale or drape approval."},null,2)+"\\n");
+    await context.close();
+    return {width,prototype:true,productionProof:false,materialCount:materials.length};
+  }
+  assert.match(stageLabel,/MODEL IDENTITY LOCKED · STRUCTURALLY VERIFIED 3D/,
+    "only a structurally verified production GLB may enter four-angle production proof");
   const serverSeededReadiness=await page.locator(".garmentViewerShell").getAttribute("data-model-readiness");
   assert.equal(serverSeededReadiness,"contract_ready","server-verified production asset must seed M7.46 readiness before scene-graph hydration");
   try {
