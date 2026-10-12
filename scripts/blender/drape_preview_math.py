@@ -32,8 +32,15 @@ def candidate_drape_offset_mm(
     if panel not in GARMENT_PANELS:
         raise ValueError(f"Unknown Linen Earth garment panel: {panel}")
     values = (lateral, vertical, peak_mm)
-    if any(not math.isfinite(float(value)) for value in values):
-        raise ValueError("Drape coordinates and strength must be finite")
+    # Require real numeric scalars; implicit string/bool conversion would let
+    # malformed operator inputs reach Blender geometry and release receipts.
+    if any(
+        isinstance(value, (str, bytes, bool))
+        or not isinstance(value, (int, float))
+        or not math.isfinite(value)
+        for value in values
+    ):
+        raise ValueError("Drape coordinates and strength must be finite numeric scalars")
     if not 0.0 <= peak_mm <= MAX_PREVIEW_RELIEF_MM:
         raise ValueError("Candidate relief must be between 0 and 6 mm")
     if not -1.0 <= lateral <= 1.0 or not 0.0 <= vertical <= 1.0:
