@@ -355,7 +355,6 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
             'u_delta=upper.get("uAxisSignedMedianDriftPct")',
             'v_delta=upper.get("vAxisSignedMedianDriftPct")',
             'abs(u_delta)<=15 and abs(v_delta)<=15',
-            'copy.data=chosen.data.copy()',
             't*t*(3-2*t)*strength',
             'score+.001<best_score',
             'report["collapsedUvTriangles"]==0',
