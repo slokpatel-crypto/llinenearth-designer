@@ -511,6 +511,53 @@ def main():
                     "lateral zone; a trouser mesh may not contain glove/hand faces."
                 )
 
+    # A narrow cylindrical trouser band can hit the correct hem width while
+    # leaving uncovered calf/shin skin in side and back views. Independently
+    # sample scan vertices in three lower-leg bands against REAL world-space
+    # trouser BVHs. This is an anatomical coverage check, not fabric drape.
+    lower_leg_coverage = {}
+    if body is not None and body_height:
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        evaluated_body = body.evaluated_get(depsgraph)
+        body_mesh = evaluated_body.to_mesh()
+        try:
+            skin_points = [evaluated_body.matrix_world @ vertex.co for vertex in body_mesh.vertices]
+        finally:
+            evaluated_body.to_mesh_clear()
+        floor_z = min(point.z for point in world_bounds(body))
+        for name, side in (("TrouserLegLFabric", -1), ("TrouserLegRFabric", 1)):
+            cloth = bpy.data.objects.get(name)
+            cloth_bvh = evaluated_world_bvh(cloth, depsgraph) if cloth and cloth.type == "MESH" else None
+            samples = 0
+            exposed = 0
+            largest_gap_mm = 0.0
+            if cloth_bvh is not None:
+                for point in skin_points:
+                    z_ratio = (point.z - floor_z) / body_height
+                    signed_x = point.x * side
+                    if not (0.12 <= z_ratio <= 0.39 and 0.035 <= signed_x <= 0.38):
+                        continue
+                    # Deterministic stride keeps native Blender CI bounded.
+                    samples += 1
+                    nearest = cloth_bvh.find_nearest(point)
+                    distance_mm = nearest[3] * 1000 if nearest else float("inf")
+                    largest_gap_mm = max(largest_gap_mm, distance_mm)
+                    if distance_mm > 32.0:
+                        exposed += 1
+            lower_leg_coverage[name] = {
+                "sampledSkinVertices": samples,
+                "uncoveredOver32Mm": exposed,
+                "maxNearestClothGapMm": round(largest_gap_mm, 2) if math.isfinite(largest_gap_mm) else None,
+                "thresholdMm": 32.0,
+            }
+            if samples < 20:
+                reasons.append(f"{name} coverage QA did not find enough independent calf/shin skin samples.")
+            elif exposed:
+                reasons.append(
+                    f"{name} leaves {exposed}/{samples} sampled calf/shin body vertices "
+                    "more than 32 mm from actual trouser geometry."
+                )
+
     report = {
         "gate": "linen-earth-officewear-scene-preflight-v1",
         "ready": len(reasons) == 0,
@@ -528,6 +575,7 @@ def main():
         "identityFitMeasurementsMm": identity_measurements,
         "boundaryIntersections": boundary_intersections,
         "anatomicalRegionIntrusions": anatomy_region_hits,
+        "lowerLegCoverage": lower_leg_coverage,
         "requiredGarmentObjects": list(GARMENT_OBJECTS),
         "objects": objects,
         "totals": {
