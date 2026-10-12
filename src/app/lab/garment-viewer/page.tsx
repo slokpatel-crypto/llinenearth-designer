@@ -33,8 +33,11 @@ export default async function GarmentViewerLabPage() {
   const production=await loadGarmentViewerProductionAssetStatus();
   const live=await loadActiveDesignerFabricStock();
   const activeStock=live.stock;
-  const approvedModelSrc=production.configured ? production.modelSrc : null;
-  const modelManifestSrc=production.configured ? production.manifestSrc : null;
+  // `configured` only means a path was supplied; the file may be missing or
+  // fail structural/identity manifest preflight. Never offer that URL as an
+  // approved 3D model. The internal lab can still inspect its named prototype.
+  const approvedModelSrc=production.assetReady ? production.modelSrc : null;
+  const modelManifestSrc=production.assetReady ? production.manifestSrc : null;
   const modelId=approvedModelSrc ? production.modelId : PROTOTYPE_MODEL_ID;
   const shirtFabrics=activeStock.filter((fabric)=>fabric.suitableFor.includes("shirt")).map(viewerFabric);
   const trouserFabrics=activeStock.filter((fabric)=>fabric.suitableFor.includes("trouser")).map(viewerFabric);
