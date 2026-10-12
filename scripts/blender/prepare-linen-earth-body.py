@@ -111,8 +111,13 @@ def load_identity_spec(path: Path):
         "legCenterSpacing",
         "hemWidth",
     )
-    if not isinstance(targets, dict) or any(not isinstance(targets.get(key), (int, float)) or targets[key] <= 0 for key in required):
-        raise RuntimeError("Identity spec is missing positive physicalTargetsMm values.")
+    if not isinstance(targets, dict) or any(
+        type(targets.get(key)) not in (int, float)
+        or not math.isfinite(targets[key])
+        or targets[key] <= 0
+        for key in required
+    ):
+        raise RuntimeError("Identity spec is missing positive finite numeric physicalTargetsMm values.")
     return payload, resolved
 
 
@@ -350,6 +355,12 @@ def stamp_provenance(scene, source_file: Path, source_datablock: str, original_h
     scene["linen_earth_model_identity_id"] = MODEL_IDENTITY_ID
     scene["linen_earth_model_reference_image"] = MODEL_REFERENCE_IMAGE
     scene["linen_earth_model_identity_locked"] = True
+    # A locked photo reference is NOT proof this generic CC0 male scan has the
+    # exact photographed faceless identity, stance, shoes or tailored garment.
+    # Never silently promote a different person merely by sharing an ID tag.
+    scene["linen_earth_source_photo_visual_parity_approved"] = False
+    scene["linen_earth_source_photo_visual_parity_status"] = "different_source_scan_requires_independent_four_angle_owner_review"
+    scene["linen_earth_source_photo_reference_count"] = 1
     scene["linen_earth_asset_status"] = "body-source-prepared-garments-required"
     scene["linen_earth_identity_spec_path"] = str(identity_spec_path)
     scene["linen_earth_identity_targets_json"] = json.dumps(identity_spec["physicalTargetsMm"], sort_keys=True)
