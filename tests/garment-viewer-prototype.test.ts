@@ -122,4 +122,6 @@ test("real browser 3D QA records GPU/asset diagnosis without silently relaxing t
   assert(code.includes('modelLoaded:Boolean(document.querySelector("model-viewer")?.loaded)'));
   assert(code.includes('modelReadiness:document.querySelector(".garmentViewerShell")'));
   assert(code.includes("failed the original 20-second genuine-load gate"));
+  assert(code.includes('"--enable-unsafe-swiftshader"'));
+  assert(code.includes('"--use-angle=swiftshader-webgl"'));
 });
