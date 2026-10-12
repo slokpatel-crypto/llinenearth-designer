@@ -31,7 +31,16 @@ def cli_args():
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--resolution-x", type=int, default=576)
     parser.add_argument("--resolution-y", type=int, default=768)
-    return parser.parse_args(argv)
+    parser.add_argument("--diagnostic-workbench", action="store_true",
+                        help="Fast silhouette-only render of an UNAPPROVED scene; never used for production visual approval.")
+    parser.add_argument("--diagnostic-tailoring-recipe",action="store_true",
+                        help="Render one actual collar/band/cuff recipe in an UNAPPROVED lab only. Never owner fit acceptance.")
+    parser.add_argument("--diagnostic-cycles-cpu",action="store_true",
+                        help="CPU path-traced colour/shadow evidence of real LAB geometry; never fabric, tailor or studio acceptance.")
+    options=parser.parse_args(argv)
+    if options.diagnostic_workbench and options.diagnostic_cycles_cpu:
+        raise ValueError("Only one unapproved review backend may be selected.")
+    return options
 
 
 def rgba(hex_value: str):
@@ -45,6 +54,9 @@ def material(name: str, color: str, roughness: float):
     existing = bpy.data.materials.get(name)
     mat = existing or bpy.data.materials.new(name=name)
     mat.use_nodes = True
+    # Workbench's fast geometry-only diagnostic reads the material diffuse
+    # swatch, while normal EEVEE review keeps its Principled shader unchanged.
+    mat.diffuse_color = rgba(color)
     nodes = mat.node_tree.nodes
     principled = nodes.get("Principled BSDF")
     if principled is not None:
@@ -178,7 +190,28 @@ def image_exposure_metrics(path):
 
 def configure_scene(options):
     scene = bpy.context.scene
-    scene.render.engine = "BLENDER_EEVEE_NEXT"
+    scene.render.engine = (
+        "CYCLES" if options.diagnostic_cycles_cpu
+        else "BLENDER_WORKBENCH" if options.diagnostic_workbench
+        else "BLENDER_EEVEE_NEXT"
+    )
+    if options.diagnostic_cycles_cpu:
+        # Blender EEVEE/Workbench both timed out initialising headless EGL on
+        # CI. CPU Cycles builds a physically shaded review of the independently
+        # checked REAL 205k-triangle LAB geometry without a GPU/display.
+        # Three samples and 320x480 keep this auxiliary stage bounded. It is
+        # NOT calibrated linen PBR or a visual approval for the original model.
+        scene.cycles.device="CPU"
+        scene.cycles.samples=3
+        scene.render.threads_mode="FIXED"
+        scene.render.threads=2
+        scene.render.use_simplify=True
+        scene.render.simplify_subdivision=0
+    if options.diagnostic_workbench:
+        scene.display.shading.light = "STUDIO"
+        scene.display.shading.color_type = "MATERIAL"
+        scene.display.shading.show_shadows = True
+        scene.display.shading.show_cavity = True
     scene.render.resolution_x = max(320, options.resolution_x)
     scene.render.resolution_y = max(480, options.resolution_y)
     scene.render.resolution_percentage = 100
@@ -198,6 +231,69 @@ def configure_scene(options):
     scene.view_settings.exposure = -0.65
 
 
+def isolate_neutral_six_panel_fit_review():
+    """Hide ALL alternate tailoring meshes ONLY in this throwaway render.
+
+    The source .blend imported 586+ variant nodes with hide_render=False.
+    Rendering those on top of each other created z-fighting horizontal bands,
+    detached sleeves and a false open waist despite a green six-panel BVH.
+    This view measures ONLY the real fitted master shirt/trousers plus body
+    and genuine fitted footwear; it cannot represent a specific selected
+    collar/cuff recipe or prove original-studio photographic identity.
+    """
+    alternate=[]
+    for obj in bpy.data.objects:
+        if obj.type != "MESH":
+            continue
+        if bool(obj.get("linen_earth_tailoring_variant",False)):
+            obj.hide_render=True
+            alternate.append(obj.name)
+    essentials=(BODY_NAME,*SHIRT_OBJECTS,*TROUSER_OBJECTS)
+    for name in essentials:
+        obj=bpy.data.objects.get(name)
+        if obj is None or obj.type!="MESH":
+            raise RuntimeError("Missing neutral real-mesh geometry for fit review: "+name)
+        obj.hide_render=False
+    for obj in bpy.data.objects:
+        if obj.type=="MESH" and (obj.name.split(".")[0] in {
+            "ShoeL","ShoeR","SoleL","SoleR","HeelL","HeelR"
+        } or obj.name.startswith("ShoeLace")):
+            obj.hide_render=False
+    return alternate
+
+
+def show_single_actual_tailoring_recipe(shirt_material):
+    """Expose exactly one fitted construction recipe on the REAL model.
+
+    Never render every imported option at once: 958 hidden alternatives overlaid
+    on the same garment previously created thick floating waist/cuff artifacts.
+    This lab mode proves just the chosen British-collar/cocktail-cuff meshes are
+    present and visible in all four views. It is NOT a cloth-drape signoff.
+    """
+    required=(
+        "ShirtCollarVariant__english_spread__stiff_fused",
+        "ShirtNeckGasketVariant__english_spread__stiff_fused",
+        "ShirtCuffVariant__cocktail__fused",
+    )
+    selected=[]
+    for name in required:
+        matches=[o for o in bpy.data.objects
+                 if o.type=="MESH" and o.name.split(".")[0]==name
+                 and bool(o.get("linen_earth_tailoring_variant",False))]
+        if len(matches)!=1:
+            raise RuntimeError(
+                "Laboratory tailoring render needs exactly one real imported construction "
+                f"variant '{name}', found {len(matches)}. Refusing generic geometry or fake fit."
+            )
+        item=matches[0]
+        item.hide_render=False
+        assign_material(item,shirt_material)
+        selected.append(item.name)
+    if len(selected)!=len(required):
+        raise RuntimeError("Tailoring construction selection is incomplete.")
+    return selected
+
+
 def main():
     options = cli_args()
     output_dir = Path(options.output_dir).expanduser().resolve()
@@ -210,6 +306,7 @@ def main():
     missing = [name for name in (*SHIRT_OBJECTS, *TROUSER_OBJECTS) if bpy.data.objects.get(name) is None]
     if missing:
         raise RuntimeError("Review render is missing garment objects: " + ", ".join(missing))
+    hidden_alternates = isolate_neutral_six_panel_fit_review()
 
     skin = material("LE_REVIEW_SKIN", "#916F5A", 0.68)
     shirt = material("LE_REVIEW_SHIRT", "#C8B58E", 0.76)
@@ -218,6 +315,10 @@ def main():
     assign_material(body, skin)
     for name in SHIRT_OBJECTS:
         assign_material(bpy.data.objects.get(name), shirt)
+    selected_construction=(
+        show_single_actual_tailoring_recipe(shirt)
+        if options.diagnostic_tailoring_recipe else []
+    )
     for name in TROUSER_OBJECTS:
         assign_material(bpy.data.objects.get(name), trouser)
     # Footwear has intentionally distinct dark-brown leather in a neutral
@@ -260,11 +361,35 @@ def main():
                 f"{label} review render mean luminance {metrics['meanLuma']:.3f} is outside the useful QA range."
             )
 
+    (output_dir / "review-geometry-provenance.json").write_text(json.dumps({
+        "viewType":"selected-laboratory-tailoring-recipe" if options.diagnostic_tailoring_recipe
+                   else "neutral-six-panel-real-body-geometry",
+        "selectedConstructionVariantObjects":selected_construction,
+        "variantsHiddenForReview":len(hidden_alternates)-len(selected_construction),
+        "hiddenAlternates":hidden_alternates[:20],
+        "productionAssetAltered":False,
+        "selectedTailoringRecipeVerified":False,
+        "cpuCyclesLaboratoryReviewOnly":bool(options.diagnostic_cycles_cpu),
+        "referencePhotoVisualParityApproved":False,
+        "fabricColourRepeatOrDrapeApproved":False,
+    },indent=2)+"\n",encoding="utf-8")
     manifest_path = output_dir / "review-views.txt"
     manifest_path.write_text(
         "\n".join(f"{label}\t{yaw:.1f}\t{path}" for label, yaw, path, _ in manifest) + "\n",
         encoding="utf-8",
     )
+    if options.diagnostic_cycles_cpu:
+        (output_dir / "UNAPPROVED-CPU-SHADED-REVIEW.txt").write_text(
+            "Real BLENDER CPU Cycles colour/shadow on disposable LOD geometry. "
+            "NOT the original studio model, supplier-calibrated linen, true "
+            "drape, final production export or owner/tailor visual approval.\n",
+            encoding="utf-8",
+        )
+    if options.diagnostic_workbench:
+        (output_dir / "GEOMETRY-ONLY-NOT-REALISM.txt").write_text(
+            "UNAPPROVED low-poly Workbench silhouette only. Fabric texture, drape optics, studio parity, and photorealism are NOT evaluated.\\n",
+            encoding="utf-8",
+        )
     metrics_path = output_dir / "review-metrics.json"
     metrics_path.write_text(
         json.dumps({label: metrics for label, _, _, metrics in manifest}, indent=2) + "\n",

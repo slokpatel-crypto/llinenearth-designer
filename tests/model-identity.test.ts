@@ -30,10 +30,44 @@ test("public identity spec and runtime physical targets cannot drift",()=>{
   assert.deepEqual(identity.physicalTargetsMm,LINEN_EARTH_MODEL_PHYSICAL_TARGETS_MM);
   assert.equal(identity.referenceHeightMm,LINEN_EARTH_MODEL_REFERENCE_HEIGHT_MM);
   assert.equal(identity.referenceImage,LINEN_EARTH_MODEL_REFERENCE_IMAGE);
+  assert.deepEqual(identity.views,LINEN_EARTH_MODEL_VIEWS,"published identity camera poses must not drift from the runtime");
 });
 
 test("front silhouette anchors remain tied to the existing studio-tucked trace",()=>{
   assert.deepEqual(LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS.shirtShoulder,{yPx:244,leftPx:351,rightPx:669});
   assert.deepEqual(LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS.shirtWaist,{yPx:545,leftPx:387,rightPx:628});
   assert.deepEqual(LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS.trouserWaist,{yPx:542,leftPx:368,rightPx:650});
+});
+
+test("3D candidate cannot claim visual equivalence merely by locking the original image path",()=>{
+  const builder=readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
+  const source=readFileSync("assets/3d/README.md","utf8");
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  const css=readFileSync("src/app/lab/garment-viewer/garment-viewer.css","utf8");
+  assert.match(builder,/makehuman-mannequin-base\.glb/);
+  assert.match(source,/MakeHuman base mesh/);
+  assert.match(viewer,/data-identity-visual-parity="unverified"/,
+    "geometry-slot and measurement matching cannot automatically establish visual identity");
+  assert.ok(viewer.includes('<img src={LINEN_EARTH_MODEL_REFERENCE_IMAGE}'),
+    "comparison must use the unchanged original Real Model Designer image");
+  assert.ok(viewer.includes('garmentViewerIdentityAudit'),
+    "the original should be visible alongside the experimental 3D model");
+  assert.ok(css.includes('.garmentViewerIdentityAudit img'),
+    "reference visibility must remain styled and prominent");
+  assert.ok(!viewer.includes("EXACT REAL MODEL DESIGNER IDENTITY"),
+    "do not advertise visual sameness without original-mannequin parity approval");
+});
+
+test("studio identity keeps white shoes inside one same-scale four-angle viewer framing",()=>{
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  const model=readFileSync("scripts/build-garment-viewer-model.mjs","utf8");
+  for(const view of LINEN_EARTH_MODEL_VIEWS){
+    assert.match(view.orbit,/3\.95m$/);
+    assert.ok(model.includes(view.orbit),
+      "model manifest and identity camera must retain identical radius for "+view.id);
+  }
+  assert.ok(viewer.includes('"camera-target":"0m 0.78m 0m"'),
+    "show the trouser hem and shoes instead of cropping the full body");
+  assert.ok(viewer.includes('"max-camera-orbit":"auto 92deg 5.4m"'),
+    "retain native orbit zoom controls after the framing correction");
 });

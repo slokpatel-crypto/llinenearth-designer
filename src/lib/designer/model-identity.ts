@@ -24,10 +24,10 @@ export const LINEN_EARTH_MODEL_IDENTITY_RULES=[
 ] as const;
 
 export const LINEN_EARTH_MODEL_VIEWS=[
-  {id:"front",label:"Front",yawDeg:0,orbit:"0deg 76deg 3.60m"},
-  {id:"three-quarter",label:"3/4",yawDeg:35,orbit:"35deg 76deg 3.60m"},
-  {id:"side",label:"Side",yawDeg:90,orbit:"90deg 76deg 3.60m"},
-  {id:"back",label:"Back",yawDeg:180,orbit:"180deg 76deg 3.60m"},
+  {id:"front",label:"Front",yawDeg:0,orbit:"0deg 76deg 3.95m"},
+  {id:"three-quarter",label:"3/4",yawDeg:35,orbit:"35deg 76deg 3.95m"},
+  {id:"side",label:"Side",yawDeg:90,orbit:"90deg 76deg 3.95m"},
+  {id:"back",label:"Back",yawDeg:180,orbit:"180deg 76deg 3.95m"},
 ] as const satisfies ReadonlyArray<{
   id:LinenEarthModelView;
   label:string;

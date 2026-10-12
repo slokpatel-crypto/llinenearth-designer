@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const sharp = require("sharp");
 const { createRequire } = require("node:module");
 
 const runtime = process.env.LINEN_BROWSER_QA_RUNTIME;
@@ -29,6 +30,47 @@ async function captureStableWebGLFrame(page, destination, clip) {
 }
 
 
+/**
+ * Artifact-only visual review: put REAL model-viewer compositor pixels next
+ * to the unchanged 1024x1536 Real Model Designer source. No AI rendition,
+ * visual-matching score, synthetic approval, or replacement for tailor review.
+ */
+async function preserveOriginalVs3DReference(actualName,comparisonName="studio-original-vs-3d-UNAPPROVED.png") {
+  const input=path.join(output,actualName);
+  const actual=await fs.readFile(input);
+  const metadata=await sharp(actual).metadata();
+  if(!metadata.width||!metadata.height) throw new Error("No genuine browser 3D pixels for visual comparison.");
+  const original=await sharp("public/designer/studio-tucked.webp")
+    .resize({height:metadata.height}).png().toBuffer();
+  const originalInfo=await sharp(original).metadata();
+  const leftWidth=originalInfo.width;
+  if(!leftWidth) throw new Error("Real Model Designer reference image could not be measured.");
+  const gutter=12,header=36;
+  const width=leftWidth+gutter+metadata.width;
+  const label=Buffer.from('<svg width="'+width+'" height="'+header+'"><rect width="100%" height="100%" fill="#eee6dc"/><text x="12" y="24" font-size="13" font-family="Arial" fill="#322b21">ORIGINAL REAL MODEL DESIGNER</text><text x="'+(leftWidth+gutter+12)+'" y="24" font-size="13" font-family="Arial" fill="#8a3c2f">CURRENT 3D · VISUAL MATCH UNAPPROVED</text></svg>');
+  await sharp({create:{width,height:metadata.height+header,channels:3,background:"#f3ede5"}})
+    .composite([
+      {input:original,left:0,top:header},
+      {input:actual,left:leftWidth+gutter,top:header},
+      {input:label,left:0,top:0},
+    ])
+    .png().toFile(path.join(output,comparisonName));
+  // Examine actual cloth/skin tonal contrast, not generated photographs or
+  // made-up realism scores. A photo-matching diagnostic is NOT a release gate
+  // substitute; both mismatches and good results keep visualMatchApproved false.
+  const {writeStudioPhotoToneAudit}=await import("./studio-photo-tone-audit.mjs");
+  await writeStudioPhotoToneAudit(
+    "public/designer/studio-tucked.webp",input,
+    path.join(output,"studio-appearance-diagnostic.json"),
+  );
+  await fs.writeFile(path.join(output,"studio-3d-visual-parity.json"),JSON.stringify({
+    originalSource:"public/designer/studio-tucked.webp",unmodified3DSource:actualName,
+    visualMatchApproved:false,stage:"human-review-required",
+    note:"Side by side is diagnostic evidence only; background/camera/garment selection can differ.",
+  },null,2)+"\n");
+}
+
+const nativeGestureDurationsMs=[];
 async function selectTailoringOption(page, label, value) {
   const started=Date.now();
   const phaseMs={};
@@ -121,8 +163,10 @@ async function selectTailoringOption(page, label, value) {
     const actual=await target.inputValue({timeout:3000});
     markPhase("nativeReadBack");
     assert.equal(actual,value,`Native browser input for ${label} must commit ${value}`);
-    assert.ok(Date.now()-inputStarted<6000,
-      `3D tailoring REAL native user gesture must stay under 6 seconds: ${JSON.stringify({gestureMs:Date.now()-inputStarted,phaseMs})}`);
+    const gestureMs=Date.now()-inputStarted;
+    assert.ok(gestureMs<6000,
+      `3D tailoring REAL native user gesture must stay under 6 seconds: ${JSON.stringify({gestureMs,phaseMs})}`);
+    nativeGestureDurationsMs.push({label,value,gestureMs});
   } catch(error) {
     let state={unavailable:true};
     try {
@@ -248,7 +292,14 @@ async function verifyViewport(browser, width) {
   assert.equal(labModelReadiness, "contract_ready", "3D lab must load the production M7.46 model contract");
   assert.equal(labManifestReadiness, "true", "production M7.46 model must load its verified physical-panel manifest");
 
-  const modelState = await viewer.evaluate((element) => {
+  // The real GLTF model is already visible and contract-verified above.
+  // locator.evaluate still enters Playwright's compositor/actionability path,
+  // which stalled for 30s on this 586-material scene in native CI. Read
+  // the identical live element and material graph directly from the page;
+  // do NOT replace real browser state with test-side fixtures.
+  const modelState = await page.evaluate(() => {
+    const element=document.querySelector("model-viewer");
+    if(!element) throw new Error("Real 3D model-viewer disappeared during verification");
     const materials = element.model?.materials || [];
     return {
       materialNames: materials.map((material) => material.name),
@@ -258,8 +309,8 @@ async function verifyViewport(browser, width) {
       hasCreateTexture: typeof element.createTexture === "function",
     };
   });
-  assert.match(modelState.cameraOrbit||"",/3\.60m$/,"default locked camera must keep the full mannequin inside frame");
-  assert.equal(modelState.cameraTarget,"0m 0.86m 0m","camera target must stay centered on the 1727 mm mannequin");
+  assert.match(modelState.cameraOrbit||"",/3\.95m$/,"locked full-body studio camera must retain the wider head-to-white-shoe frame");
+  assert.equal(modelState.cameraTarget,"0m 0.78m 0m","camera target must keep feet and head in the 1727 mm mannequin frame");
   assert.equal(modelState.fieldOfView,"30deg","default field of view must preserve head-to-shoe framing");
   const requiredPanels=["ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric","TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric"];
   for(const name of requiredPanels) assert.equal(modelState.materialNames.filter((item)=>item===name).length,1,"required garment material must remain unique: "+name);
@@ -368,6 +419,7 @@ async function verifyViewport(browser, width) {
       return {
         tailoringReady:shell?.getAttribute("data-tailoring-ready"),
         tailoringPhase:shell?.getAttribute("data-tailoring-phase"),
+        fabricPhase:shell?.getAttribute("data-fabric-phase"),
         modelReady:shell?.getAttribute("data-model-readiness"),
         manifestReady:shell?.getAttribute("data-manifest-ready"),
         loaded:Boolean(model?.loaded),materialCount:materials.length,
@@ -383,11 +435,21 @@ async function verifyViewport(browser, width) {
     }).catch(e=>({diagnosticError:String(e)}));
     await fs.writeFile(path.join(output,"garment-initial-style-failure.json"),
       JSON.stringify({diagnostic,error:String(error)},null,2)+"\n");
+    // Preserve *actual* GPU-rendered viewport even when the unfinished
+    // candidate fails visual-readiness. This is explicitly rejected visual
+    // evidence, never an approved garment image or promotion substitute.
+    await captureCanvas("garment-current-exact-front-UNAPPROVED.png")
+      .then(()=>preserveOriginalVs3DReference("garment-current-exact-front-UNAPPROVED.png"))
+      .catch(async(captureError)=>{
+        await fs.writeFile(path.join(output,"garment-current-render-capture-error.txt"),
+          String(captureError)+"\n");
+      });
     throw new Error("A complete 3D tailored outfit was not visible within the native 20-second gate: "+
       JSON.stringify({diagnostic,error:String(error)}));
   }
 
   await captureCanvas("garment-angle-front.png");
+  await preserveOriginalVs3DReference("garment-angle-front.png");
   await selectCamera("3/4","35deg","three-quarter");
   await captureCanvas("garment-angle-three-quarter.png");
   await selectCamera("Side","90deg","side");
@@ -396,9 +458,10 @@ async function verifyViewport(browser, width) {
   await captureCanvas("garment-angle-back.png");
   await selectCamera("Front","0deg","front");
 
-  const reference=page.locator(".garmentViewerReference img");
+  const reference=page.locator(".garmentViewerIdentityAudit img");
   await reference.waitFor({state:"visible"});
   assert.match(await reference.getAttribute("src"),/studio-tucked\.webp$/, "3D lab must keep the approved studio reference target visible");
+  assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-identity-visual-parity"),"unverified","a different mannequin cannot claim studio-image visual equivalence");
 
   const recipe=await page.locator(".garmentDraftRecipe").innerText();
   assert.match(recipe,/YOUR DESIGNER RECIPE/);
@@ -424,15 +487,21 @@ async function verifyViewport(browser, width) {
   assert.equal(await page.getByLabel("3D trouser pleat").inputValue(),"double_reverse","canonical trouser pleat must reach 3D");
 
   const stageScope=await page.locator(".garmentViewerStageHead").innerText();
-  assert.match(stageScope,/MODEL IDENTITY LOCKED · SHIRT \+ TROUSER/,"3D stage must state the exact-model lock");
-  const referenceBlock=await page.locator(".garmentViewerReference").innerText();
-  assert.match(referenceBlock,/EXACT REAL MODEL DESIGNER IDENTITY/);
-  assert.match(referenceBlock,/linen-earth-studio-model-v1/);
-  assert.match(referenceBlock,/same (?:head height, )?shoulder width, torso taper, arm length, hand scale, hip width, leg length, stance and shoes/i);
-  assert.match(referenceBlock,/sleeve cap is shaped to the locked shoulder/i);
-  assert.match(referenceBlock,/flatter face plane and tapered jaw/i);
+  assert.match(stageScope,/STUDIO REFERENCE LOCKED · 3D VISUAL MATCH PENDING/,
+    "matching physical measurements must not falsely approve the studio mannequin's visual identity");
+  const referenceBlock=await page.locator(".garmentViewerIdentityAudit").innerText();
+  assert.match(referenceBlock,/Original Real Model Designer model/);
+  assert.match(referenceBlock,/MakeHuman-derived body and procedural garments/i);
+  assert.match(referenceBlock,/3D SOURCE · UNAPPROVED VISUAL MATCH/);
+  assert.doesNotMatch(referenceBlock,/EXACT REAL MODEL DESIGNER IDENTITY/,
+    "source-derived mannequins require actual multi-angle/tailor approval");
+  assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-identity-visual-parity"),"unverified");
 
-  const variantNames=await viewer.evaluate((element)=>(element.model?.materials||[]).map((material)=>material.name).filter((name)=>name.includes("Variant__")||name.includes("Length__")));
+  const variantNames=await page.evaluate(()=>
+    [...(document.querySelector("model-viewer")?.model?.materials||[])]
+      .map((material)=>material.name)
+      .filter((name)=>name.includes("Variant__")||name.includes("Length__"))
+  );
   assert.ok(variantNames.some((name)=>name==="ShirtCollarVariant__spread__stiff_fused"),"M7.46 must carry spread-collar fused geometry");
   assert.ok(variantNames.some((name)=>name==="ShirtCollarVariant__english_spread__stiff_fused"),"M7.46 must carry explicit English-spread/British collar geometry");
   assert.ok(variantNames.some((name)=>name==="ShirtNeckGasketVariant__english_spread__stiff_fused"),"M7.46 must carry the English-spread raised-back collar band");
@@ -545,13 +614,36 @@ async function verifyViewport(browser, width) {
   for (let index = 0; index < 2; index++) {
     const select = selects.nth(index);
     const before = await select.inputValue();
-    const next = await select.evaluate((node) => [...node.options].find((option) => option.value !== node.value)?.value || "");
+    const next = await page.evaluate(({index}) => {
+      const node=document.querySelectorAll(".garmentViewerControls > label > select")[index];
+      return node?[...node.options].find((option)=>option.value!==node.value)?.value||"":"";
+    },{index});
     assert.ok(next, "Each garment selector needs an alternate Linen Earth fabric");
     await select.selectOption(next);
     assert.notEqual(await select.inputValue(), before);
   }
 
   await page.waitForTimeout(400);
+  // Real fabric colour/cloth completeness is a 20-second gate; *secondary*
+  // measured-UV weave detail hydrates only after the selected outfit renders.
+  // Wait independently for all six authentic base-panel normal maps before
+  // asserting their GLTF sampler state. Do not fake shader textures in QA.
+  try {
+    await page.waitForFunction(()=>{
+      const shell=document.querySelector(".garmentViewerShell");
+      return shell?.getAttribute("data-fabric-phase")==="weave-ready";
+    },null,{timeout:12000});
+  }catch(error){
+    const actual=await page.evaluate(()=>{
+      const shell=document.querySelector(".garmentViewerShell");
+      return {phase:shell?.getAttribute("data-fabric-phase"),
+        tailoringPhase:shell?.getAttribute("data-tailoring-phase"),
+        tailoringReady:shell?.getAttribute("data-tailoring-ready")};
+    });
+    await fs.writeFile(path.join(output,"garment-weave-failure.json"),
+      JSON.stringify({actual,error:String(error)},null,2)+"\n");
+    throw new Error("The actual six-panel linen normal maps did not finish after base colour: "+JSON.stringify(actual));
+  }
   const productionLatencyEvidence = await page.evaluate(() => localStorage.getItem("linen-earth-garment-viewer-latency-v1"));
   assert.ok(productionLatencyEvidence, "production fabric changes must create model-bound interaction latency evidence");
   const parsedLatencyEvidence=JSON.parse(productionLatencyEvidence);
@@ -564,7 +656,9 @@ async function verifyViewport(browser, width) {
     "ShirtSleeveLLength__boxy__half","ShirtSleeveRLength__boxy__half",
     "TrouserLegLBreakVariant__wide__negative","TrouserLegRBreakVariant__wide__negative"
   ];
-  const materialState = await viewer.evaluate(async (element,names) => {
+  const materialState = await page.evaluate(async (names) => {
+    const element=document.querySelector("model-viewer");
+    if(!element?.model) throw new Error("Native 3D model unavailable for material inspection");
     const wanted=new Set(names);
     const result=[];
     for(const current of element.model?.materials || []){
@@ -710,6 +804,119 @@ async function verifyViewport(browser, width) {
   assertLayout(mobileLayout,390);
   await captureViewportEvidence("garment-viewer-390.png");
 
+  // Compare the *same* garment styling as the original studio image, rather
+  // than misleadingly comparing its full-sleeve tucked shirt/straight pants
+  // to this test's deliberately seeded boxy HALF-sleeve/WIDE-leg recipe.
+  // Use a genuine mouse click on the UI's reference-style button; never
+  // assign React state or fabricate a 3D image from the static reference.
+  await page.setViewportSize({width:1440,height:1000});
+  // A mobile-to-desktop resize can leave a CSS smooth-scroll animation in
+  // progress; the next coordinate hit test then samples the wrong viewport
+  // location while Chromium/WebGL is busy. Perform an instant real scroll,
+  // just as the native select QA does. Never force-click or mutate React.
+  await page.evaluate(()=>{
+    document.querySelector(".garmentViewerMatchStudio")?.scrollIntoView({
+      block:"center",inline:"nearest",behavior:"instant"
+    });
+  });
+  const referenceButton=await page.evaluate(()=>{
+    const button=document.querySelector(".garmentViewerMatchStudio");
+    if(!(button instanceof HTMLButtonElement))return null;
+    const rect=button.getBoundingClientRect(),x=rect.x+rect.width/2,y=rect.y+rect.height/2;
+    const hit=document.elementFromPoint(x,y);
+    const withinViewport=x>=0&&y>=0&&x<innerWidth&&y<innerHeight;
+    return {x,y,visible:rect.width>=5&&rect.height>=5&&withinViewport&&hit===button,
+      withinViewport,width:rect.width,height:rect.height,
+      blockerTag:hit?.tagName||null,blockerClass:typeof hit?.className==="string"?hit.className.slice(0,100):null};
+  });
+  assert.ok(referenceButton?.visible,
+    `actual reference-style control must be hit-testable: ${JSON.stringify(referenceButton)}`);
+  await page.mouse.click(referenceButton.x,referenceButton.y);
+  for(const [label,value] of [
+    ["3D shirt fit","regular"],["3D shirt wear","tucked"],
+    ["3D sleeve","full"],["3D collar","point"],
+    ["3D trouser fit","straight"],["3D trouser rise","mid"],
+  ]){
+    const actual=await page.getByLabel(label,{exact:true}).inputValue();
+    assert.equal(actual,value,"native original studio style action must reset "+label);
+  }
+  try {
+    await page.waitForFunction(()=>{
+      const shell=document.querySelector(".garmentViewerShell");
+      const model=document.querySelector("model-viewer");
+      return model?.loaded===true&&shell?.getAttribute("data-tailoring-ready")==="true"
+        &&shell?.getAttribute("data-active-view")==="front";
+    },null,{timeout:20000});
+  } catch (cause) {
+    // CI has proved the REAL reference button can be clicked and its native
+    // form values reset. The remaining failure is WebGL appearance readiness,
+    // not pointer actionability. Capture the actual phase/material state, not
+    // an invented green signal or a longer completion-time allowance.
+    const evidence=await page.evaluate(()=>{
+      const shell=document.querySelector(".garmentViewerShell");
+      const viewer=document.querySelector("model-viewer");
+      const materials=viewer?.model?.materials||[];
+      const loaded=materials.filter((material)=>material.isLoaded===true);
+      return {
+        modelLoaded:viewer?.loaded===true,
+        modelMaterialCount:materials.length,
+        loadedMaterialCount:loaded.length,
+        selectedMaterialCount:Number(viewer?.dataset?.tailoringSelectedCount||0),
+        selectedMaterialApplied:Number(viewer?.dataset?.tailoringLoadedOrdinal||0),
+        currentLoadingMaterial:viewer?.dataset?.tailoringLoadingMaterial||null,
+        lastLoadedMaterial:viewer?.dataset?.tailoringLastLoadedMaterial||null,
+        nativeOperation:viewer?.dataset?.tailoringOperation||null,
+        lastYieldMs:Number(viewer?.dataset?.tailoringLastYieldMs||0),
+        lastLoadMs:Number(viewer?.dataset?.tailoringLastLoadMs||0),
+        lastPbrBindMs:Number(viewer?.dataset?.tailoringLastBindMs||0),
+        tailoringReady:shell?.getAttribute("data-tailoring-ready"),
+        tailoringPhase:shell?.getAttribute("data-tailoring-phase"),
+        fabricPhase:shell?.getAttribute("data-fabric-phase"),
+        activeView:shell?.getAttribute("data-active-view"),
+        identityVisualParity:shell?.getAttribute("data-identity-visual-parity"),
+        error:document.querySelector(".garmentViewerError")?.textContent||null,
+        visibleCloth:loaded.filter((material)=>
+          /^(Shirt|Trouser)/.test(material.name)&&
+          material.pbrMetallicRoughness?.baseColorFactor?.[3]>.5
+        ).slice(0,30).map((material)=>material.name),
+        selectors:[...document.querySelectorAll(".garmentViewerControls select")]
+          .slice(0,20).map((select)=>({value:select.value,disabled:select.disabled})),
+      };
+    });
+    await fs.writeFile(path.join(output,"studio-style-reset-readiness-failure.json"),
+      JSON.stringify({gate:"real-20s-studio-style-readiness",evidence},null,2)+"\n");
+    await captureViewportEvidence("studio-style-reset-readiness-failure.png").catch(()=>{});
+    throw new Error("Native studio-style reset failed real 20s WebGL readiness: "
+      +JSON.stringify(evidence),{cause});
+  }
+  await page.evaluate(()=>{
+    document.querySelector(".garmentViewerCanvas")?.scrollIntoView({block:"start"});
+  });
+  await captureCanvas("studio-default-exact-front-UNAPPROVED.png");
+  await preserveOriginalVs3DReference(
+    "studio-default-exact-front-UNAPPROVED.png",
+    "studio-original-vs-styled-3d-UNAPPROVED.png",
+  );
+
+  // All real browser mouse+keyboard transitions are recorded; no forged
+  // dispatch/change, no repeated synthetic test samples and no lab runtime
+  // substituted for a customer device. A failed <300ms p95 is evidence of a
+  // production blocker, not a reason to weaken the target.
+  const actualGestureValues=nativeGestureDurationsMs.map(row=>row.gestureMs);
+  const ordered=[...actualGestureValues].sort((a,b)=>a-b);
+  const p95=ordered.length?ordered[Math.ceil(ordered.length*.95)-1]:null;
+  const latencyEvidence={
+    version:"linen-earth-native-3d-interaction-latency-v1",
+    actualBrowser:"Chromium",
+    realUserInputs:actualGestureValues.length,
+    p95Ms:p95,
+    targetP95Ms:300,
+    meetsProductionSpeedGate:actualGestureValues.length>=12&&p95!==null&&p95<300,
+    productionSpeedCertified:false,
+    samples:nativeGestureDurationsMs,
+  };
+  await fs.writeFile(path.join(output,"native-tailoring-interaction-latency.json"),
+    JSON.stringify(latencyEvidence,null,2)+"\n");
   assert.deepEqual(errors, [], "GarmentViewer must load without console/page errors");
   await context.close();
   return { width, modelState, materialState, layout:desktopLayout, responsiveLayouts:[mobileLayout] };

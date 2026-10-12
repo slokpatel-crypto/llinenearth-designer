@@ -60,6 +60,19 @@ def fit_footwear_to_locked_body(footwear, body):
     front of the foot in four-view renders. This is provisional geometry fitting,
     not an approved physical footwear pattern or replacement model identity.
     """
+    # Source GLB instances share a SINGLE DressShoeUpperMesh across ShoeL/R
+    # and a SINGLE SoleMesh across SoleL/R/HeelL/R. Editing shared mesh
+    # vertices in a left-foot pass then a right-foot pass moves BOTH feet:
+    # real 2026-10-09 GLB showed ShoeL and ShoeR incorrectly on +X and the
+    # rendered mannequin was barefoot. Break mesh datablock aliasing BEFORE
+    # taking group bounds or moving even one footwear vertex. No body edits.
+    detached = 0
+    for obj in footwear:
+        if obj.type != "MESH":
+            raise RuntimeError("Footwear fitting requires a real mesh object.")
+        if obj.data.users > 1:
+            obj.data = obj.data.copy()
+            detached += 1
     world_body = [body.matrix_world @ vertex.co for vertex in body.data.vertices]
     if len(world_body) < 100:
         raise RuntimeError("Locked realistic body has too few vertices for footwear fitting.")
@@ -124,7 +137,20 @@ def fit_footwear_to_locked_body(footwear, body):
                 vertex.co = inverse @ aligned
             obj.data.update()
             obj["linen_earth_footwear_fit_method"] = "locked-body-foot-cross-section-provisional"
+        # Verify ACTUAL post-fit world coordinates, not just calculated
+        # targets; an aliased mesh or double transformation must fail here.
+        aligned_points=[
+            obj.matrix_world @ vertex.co
+            for obj in pieces for vertex in obj.data.vertices
+        ]
+        shoe_center_x=(min(p.x for p in aligned_points)+max(p.x for p in aligned_points))*0.5
+        if side*(shoe_center_x-middle_x)<0.015:
+            raise RuntimeError(
+                f"{label} footwear remained on the wrong side of the locked human body."
+            )
         evidence[label] = {
+            "postFitWorldCenterXmm":round(shoe_center_x*1000,2),
+            "sharedSourceMeshCopiesDetached":detached,
             "sampleCount":len(samples),
             "scaleX":round(scales[0],4),
             "scaleY":round(scales[1],4),

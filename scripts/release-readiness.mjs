@@ -797,7 +797,7 @@ requireTokens("src/app/api/designer/catalog/route.ts", ["loadActiveDesignerFabri
 requireTokens("src/lib/garment-viewer-model-contract.ts", ["linen-earth-garment-viewer-v2","REQUIRED_GARMENT_VIEWER_MATERIALS","approvedGarmentViewerModelSource","validateGarmentViewerModelManifest"]);
 requireTokens("src/lib/garment-viewer-glb.ts", ["parseGarmentViewerGlbJson","externalGlbUri","performanceBudgetReady","structuralReady"]);
 requireTokens("src/lib/garment-viewer-readiness.ts", ["garmentViewerPromotionReadiness","GARMENT_VIEWER_REALISM_RUBRIC_VERSION","ROADMAP_SCALE_TOLERANCE_PCT"]);
-requireTokens("src/components/GarmentViewer.tsx", ["sampler?.setScale","sampler?.setOffset","sampler?.setRotation","GARMENT_VIEWER_LATENCY_STORAGE_KEY","LINEN_EARTH_MODEL_IDENTITY_ID","LINEN_EARTH_MODEL_REFERENCE_IMAGE","LINEN_EARTH_MODEL_VIEWS","MODEL IDENTITY LOCKED"]);
+requireTokens("src/components/GarmentViewer.tsx", ["sampler?.setScale","sampler?.setOffset","sampler?.setRotation","GARMENT_VIEWER_LATENCY_STORAGE_KEY","LINEN_EARTH_MODEL_IDENTITY_ID","LINEN_EARTH_MODEL_REFERENCE_IMAGE","LINEN_EARTH_MODEL_VIEWS","STUDIO REFERENCE LOCKED · 3D VISUAL MATCH PENDING","data-identity-visual-parity=\"unverified\"","garmentViewerIdentityAudit"]);
 requireTokens("src/lib/designer/model-identity.ts", ["linen-earth-studio-model-v1","/designer/studio-tucked.webp","yawDeg:0","yawDeg:35","yawDeg:90","yawDeg:180"]);
 requireTokens("src/app/operator/garment-viewer/page.tsx", ["CUSTOMER PROMOTION GATE","GarmentViewerEvidenceForm","loadLatestGarmentViewerReadiness"]);
 requireTokens("src/app/operator/phase10-readiness/Phase10ReadinessClient.tsx", ["garment-viewer-m2","Reusable 3D GarmentViewer production gate","/api/operator/garment-viewer"]);

@@ -1,7 +1,7 @@
 "use client";
 
 import { createElement, useEffect, useMemo, useRef, useState } from "react";
-import {applyCurrentMaterialBatch,createCooperativeMaterialBatch, createInFlightMaterialLoader, needsVariantMaterialRefresh, needsButtonMaterialRefresh, trimAppearanceKey, tailoringInputSettleMs, type VariantMaterialAppearance} from "@/lib/garment-viewer-material-appearance";
+import {applyCurrentMaterialBatch,createCooperativeMaterialBatch, createInFlightMaterialLoader, createBoundedMaterialPrefetch, needsVariantMaterialRefresh, needsButtonMaterialRefresh, garmentSurfaceVisibilityPriority, trimAppearanceKey, tailoringInputSettleMs, type VariantMaterialAppearance} from "@/lib/garment-viewer-material-appearance";
 import {
   createPrototypeGarmentGlbUrl,
   GARMENT_PANEL_SPECS,
@@ -364,7 +364,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const normalMapRef=useRef("");
   const applyToken=useRef(0);
   const interactionStartedAt=useRef<number|null>(null);
-  const preparedTextureRef=useRef(new Map<string,{texture:ViewerTexture;normal:ViewerTexture|null;garment:"shirt"|"trouser"}>());
+  const preparedTextureRef=useRef(new Map<string,{texture:ViewerTexture;normal:ViewerTexture|null;garment:"shirt"|"trouser";cacheKey?:string}>());
   const visibleGarmentMaterialsRef=useRef(new Set(GARMENT_PANEL_SPECS.map((panel)=>panel.material)));
   const lastVariantAppearanceRef=useRef<VariantMaterialAppearance|null>(null);
   const visibleButtonMaterialsRef=useRef(new Set<string>());
@@ -373,6 +373,13 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const appliedModelRef=useRef<ModelViewerElement["model"]>(undefined);
   const visibleSkinArmMaterialRef=useRef<string|null>(null);
   const [textureRevision,setTextureRevision]=useState(0);
+  // The first <model-viewer> cold start must finish six physically textured
+  // base surfaces BEFORE variant shader hydration. Otherwise 586 unloaded
+  // shader slots can reveal a white torso beside coloured sleeves, even
+  // though the same fabric was chosen for the entire shirt.
+  const [preparedFabricVersion,setPreparedFabricVersion]=useState("");
+  const [fabricHydrationPhase,setFabricHydrationPhase]=useState("idle");
+  const [weavePreparedVersion,setWeavePreparedVersion]=useState("");
   // Customer-visible outfit must stay complete during lazy 586-material GPU
   // hydration. Mark the settled state only AFTER every new physical-panel
   // variant, visible buttons, collar band and cuff have been committed.
@@ -390,17 +397,22 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const [modelManifest,setModelManifest]=useState<GarmentViewerModelManifest|null>(null);
   const [modelManifestValidation,setModelManifestValidation]=useState<GarmentViewerManifestValidation|null>(null);
   const [activeView,setActiveView]=useState("front");
+  // The first view should visually recall the original charcoal shirt and
+  // warm taupe-brown trouser studio reference, using REAL active catalogue
+  // swatches (never recoloring or generating a fabric that is not stocked).
+  // A saved Designer recipe remains authoritative and overrides these only
+  // on first-load when its exact SKU exists.
   const [shirtId,setShirtId]=useState(()=>preferredFabricId(shirtFabrics,[
-    "linen-plain-60-sky-blue",
-    "linen-plain-60-light-grey",
     "linen-plain-60-stresa",
+    "linen-plain-60-boulder-gray",
     "linen-plain-60-jute-black",
+    "linen-plain-60-sky-blue",
   ]));
   const [trouserId,setTrouserId]=useState(()=>preferredFabricId(trouserFabrics,[
-    "linen-suiting-beige",
-    "linen-suiting-taupe-beige",
+    "linen-suiting-turkish-rose",
+    "linen-suiting-charcoal-oak-wood",
     "linen-suiting-perfect-taupe",
-    "linen-suiting-light-cream",
+    "linen-suiting-beige",
   ]));
   const [tileManifest,setTileManifest]=useState<FabricTileManifest>({});
   const [runtimeScale,setRuntimeScale]=useState<Record<string,ViewerRuntimeRenderScale>>({});
@@ -467,6 +479,13 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     const measured=modelManifest?.panels?.[panel.material];
     return measured ? {...panel,widthMm:measured.widthMm,heightMm:measured.heightMm,offsetU:measured.offsetU,offsetV:measured.offsetV,rotationDeg:measured.rotationDeg} : panel;
   }),[modelManifest]);
+  // Include the literal model revision, cloth images, weight and UV scale.
+  // Superseded user selections cannot mark shader work on OLD fabric ready.
+  const requestedFabricVersion=JSON.stringify([
+    modelRevision,shirt?.id,shirt?.image,shirt?.drape,shirt?.weightGsm,shirtTileMm,
+    trouser?.id,trouser?.image,trouser?.drape,trouser?.weightGsm,trouserTileMm,
+    panelSpecs.map((panel)=>[panel.material,panel.widthMm,panel.heightMm,panel.offsetU,panel.offsetV,panel.rotationDeg]),
+  ]);
   const cameraViews=useMemo(()=>CAMERA_VIEWS.map((view)=>({
     ...view,
     orbit:modelManifest?.cameraOrbits?.[view.id] || view.orbit,
@@ -757,51 +776,69 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     const isCurrent=()=>!cancelled && token===applyToken.current && viewer.model===model;
     const apply=async()=>{
       try{
-        const shirtNormalMap=createLinenNormalMap(fabricDrapeSurface(shirt).normalStrength);
-        const trouserNormalMap=createLinenNormalMap(fabricDrapeSurface(trouser).normalStrength);
+        setFabricHydrationPhase("creating-color-tiles");
+        // Cold WebGL startup is CPU/GPU-bound. Fetch six REAL fabric colour
+        // tiles first and hold off twelve concurrent diffuse+normal decodes.
+        // The studio outfit must never sit white while optional weave maps
+        // block the complete torso/sleeve/trouser texture transaction.
+        // Reuse all unchanged REAL PBR textures and sampler transforms.
+        // A shirt-only change must not decode three trouser textures again.
+        // Keys include panel UV, real tile width, fabric drape/weight and model
+        // revision: never share differently scaled collared/sleeved images or
+        // keep stale GL handles from an older model-viewer scene.
         const prepared=await Promise.all(panelSpecs.map(async(panel)=>{
           const fabric=panel.garment==="shirt"?shirt:trouser;
           const tileMm=panel.garment==="shirt"?shirtTileMm:trouserTileMm;
-          const normalUrl=panel.garment==="shirt"?shirtNormalMap:trouserNormalMap;
-          const [texture,normal]=await Promise.all([
-            viewer.createTexture!(fabric.image),
-            normalUrl ? viewer.createTexture!(normalUrl) : Promise.resolve(null),
-          ]);
-          const scale=garmentPanelTextureScale(panel.widthMm,panel.heightMm,tileMm);
           const offset={u:Number(panel.offsetU)||0,v:Number(panel.offsetV)||0};
           const rotation=(Number(panel.rotationDeg)||0)*Math.PI/180;
+          const scale=garmentPanelTextureScale(panel.widthMm,panel.heightMm,tileMm);
+          const cacheKey=JSON.stringify([
+            modelRevision,panel.material,fabric.id,fabric.image,
+            fabric.drape,fabric.weightGsm,fabric.weave,
+            tileMm,panel.widthMm,panel.heightMm,offset.u,offset.v,rotation,
+          ]);
+          const retained=preparedTextureRef.current.get(panel.material);
+          if(retained?.cacheKey===cacheKey)
+            return {panel,texture:retained.texture,normal:retained.normal,cacheKey,unchanged:true};
+          const texture=await viewer.createTexture!(fabric.image);
           texture.sampler?.setScale?.(scale);
           texture.sampler?.setOffset?.(offset);
           texture.sampler?.setRotation?.(rotation);
-          // Yarn relief is independent of the macroscopic swatch / stripe tile.
-          normal?.sampler?.setScale?.(garmentPanelWeaveNormalScale(panel.widthMm,panel.heightMm));
-          normal?.sampler?.setOffset?.(offset);
-          normal?.sampler?.setRotation?.(rotation);
-          return {panel,texture,normal};
+          return {panel,texture,normal:null as ViewerTexture|null,cacheKey,unchanged:false};
         }));
-        const applied=await applyCurrentMaterialBatch({
-          entries:prepared,
-          isCurrent,
-          yieldToBrowser:()=>new Promise<void>((resolve)=>window.setTimeout(resolve,8)),
-          load:(entry)=>ensureViewerMaterialLoaded(model.materials.find((material)=>material.name===entry.panel.material)),
-          apply:(material,entry)=>{
-            if(!material) return;
-            // Base panels must stay hidden when a tailoring variant owns the
-            // silhouette; changing fabric must not resurrect the default fit.
-            const alpha=visibleGarmentMaterialsRef.current.has(entry.panel.material)?1:0;
-            material.pbrMetallicRoughness.setBaseColorFactor([1,1,1,alpha]);
-            material.pbrMetallicRoughness.setMetallicFactor(0);
-            const fabric=entry.panel.garment==="shirt"?shirt:trouser;
-            material.pbrMetallicRoughness.setRoughnessFactor(clamp(roughness+fabricDrapeSurface(fabric).roughnessOffset,.55,.98));
+        if(!isCurrent()) return;
+        setFabricHydrationPhase("applying-color-to-all-six-panels");
+        // The six loaded base panels must be committed in ONE browser task.
+        // Yielding to Chromium after each .setTexture lets the renderer paint
+        // half-dressed frames and incurs repeated 586-slot GL material work.
+        // Resolve all six material handles first; never apply superseded
+        // swatches, and keep the outfit complete until the whole batch lands.
+        const materialByName=new Map(model.materials.map((material)=>[material.name,material]));
+        const loaded=await Promise.all(prepared.map(async(entry)=>({
+          entry,material:await ensureViewerMaterialLoaded(materialByName.get(entry.panel.material)),
+        })));
+        if(!isCurrent()) return;
+        if(loaded.some(({material})=>!material))
+          throw new Error("Actual base garment panel material missing");
+        for(const {entry,material} of loaded){
+          if(!material) continue;
+          const alpha=visibleGarmentMaterialsRef.current.has(entry.panel.material)?1:0;
+          material.pbrMetallicRoughness.setBaseColorFactor([1,1,1,alpha]);
+          material.pbrMetallicRoughness.setMetallicFactor(0);
+          const fabric=entry.panel.garment==="shirt"?shirt:trouser;
+          material.pbrMetallicRoughness.setRoughnessFactor(clamp(roughness+fabricDrapeSurface(fabric).roughnessOffset,.55,.98));
+          if(!entry.unchanged){
             material.pbrMetallicRoughness.baseColorTexture?.setTexture(entry.texture);
             material.normalTexture?.setTexture(entry.normal);
-          },
-        });
-        if(!applied || !isCurrent()) return;
+          }
+        }
+        if(!isCurrent()) return;
         preparedTextureRef.current=new Map(prepared.map((entry)=>[
           entry.panel.material,
-          {texture:entry.texture,normal:entry.normal,garment:entry.panel.garment},
+          {texture:entry.texture,normal:entry.normal,garment:entry.panel.garment,cacheKey:entry.cacheKey},
         ]));
+        setPreparedFabricVersion(requestedFabricVersion);
+        setFabricHydrationPhase("color-ready");
         setTextureRevision((value)=>value+1);
         if(interactionStartedAt.current!==null && modelSrc && assetIdentityKey && modelContract?.readiness==="contract_ready"){
           const duration=performance.now()-interactionStartedAt.current;
@@ -830,7 +867,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     };
     void apply();
     return ()=>{cancelled=true;};
-  },[modelReady,modelRevision,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract,modelSrc,assetIdentityKey]);
+  },[modelReady,modelRevision,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract,modelSrc,assetIdentityKey,requestedFabricVersion]);
 
   useEffect(()=>{
     if(!modelReady) {
@@ -844,54 +881,146 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       setTailoringMaterialsReady(false);
       return;
     }
+    if(preparedFabricVersion!==requestedFabricVersion
+      || preparedTextureRef.current.size!==panelSpecs.length){
+      setTailoringMaterialsReady(false);
+      setTailoringPhase("awaiting-fabric-textures");
+      return;
+    }
     setTailoringMaterialsReady(false);
     setTailoringPhase("queued");
     const model=viewer.model;
     let cancelled=false;
     const isCurrent=()=>!cancelled && viewer.model===model;
     const apply=async()=>{
-      // Material shader hydration can block Chromium's native <select> input.
-      // Cooperatively yield the main thread after each bounded batch.
+      // First render has NO native user input competing for WebGL. Yielding
+      // after every cosmetic shader can paint ~30 half-dressed frames and
+      // exceed the strict native 20s complete-outfit gate. During the initial
+      // look, batch up to six material changes per cooperative browser turn.
+      // Once a look has fully hydrated or a user interacted, restore strict
+      // one-material-per-turn scheduling. Preserve a real browser event-loop
+      // yield for EVERY active native wardrobe edit. Cold initial outfits may
+      // batch shaders, but grouped edits failed the responsiveness regression.
+      const coldFirstLook=lastVariantAppearanceRef.current===null
+        &&visibleButtonMaterialsRef.current.size===0
+        &&interactionStartedAt.current===null;
+      // Native 2026-10-09 Chromium found the REAL bottleneck: after five
+      // of fifteen replacements, a nominal 8ms timer callback was delayed
+      // 9,218.5ms by software WebGL task saturation. Yield to the browser's
+      // priority-preserving task scheduler where available; fall back to a
+      // real 8ms browser task on older engines. BOTH paths yield the event
+      // loop for customer input, and the unchanged 20s visual gate still
+      // must pass before the outfit can be called ready.
+      const taskScheduler=(window as Window & {scheduler?:{yield?:()=>Promise<void>}}).scheduler;
+      const nativeYieldAvailable=typeof taskScheduler?.yield==="function";
+      viewer.dataset.tailoringYieldMechanism=nativeYieldAvailable?"scheduler-yield":"timer-8ms";
+      const yieldToNativeInput=()=>nativeYieldAvailable
+        ? taskScheduler!.yield!()
+        : new Promise<void>((resolve)=>window.setTimeout(resolve,8));
       const yieldForInput=createCooperativeMaterialBatch(
-        ()=>new Promise<void>((resolve)=>window.setTimeout(resolve,8)),1
+        yieldToNativeInput,
+        coldFirstLook?64:1
       );
-      // Allow the real native form-control action to settle before any
-      // expensive GLB shader/material mutation starts. Yield between every
-      // material rather than batches of four on low-powered GPUs.
       await yieldForInput();
       if(!isCurrent()) return;
       const materials=[...model.materials];
       const materialsByName=new Map(materials.map((material)=>[material.name,material]));
       const previous=new Set(visibleGarmentMaterialsRef.current);
-      const appearance={textureRevision,roughness,shirtId,trouserId};
-      // An interrupted appearance update can leave a mixture of old/new
-      // materials. Invalidate before mutation so reverting also refreshes it.
-      if(needsVariantMaterialRefresh(true,lastVariantAppearanceRef.current,appearance)){
+      const garmentSurfaceRevision=(garment:"shirt"|"trouser")=>JSON.stringify(
+        panelSpecs.filter((panel)=>panel.garment===garment)
+          .map((panel)=>[panel.material,preparedTextureRef.current.get(panel.material)?.cacheKey])
+      );
+      const shirtSurfaceRevision=garmentSurfaceRevision("shirt");
+      const trouserSurfaceRevision=garmentSurfaceRevision("trouser");
+      const appearance={textureRevision,roughness,shirtId,trouserId,shirtSurfaceRevision,trouserSurfaceRevision};
+      // Keep the last FULLY committed appearance as the comparison for this
+      // one transaction, while invalidating shared state until every chosen
+      // garment material has finished. If interrupted, a new run must
+      // reapply ALL surfaces rather than retaining a half-switched look.
+      const previousAppearance=lastVariantAppearanceRef.current;
+      if(needsVariantMaterialRefresh(true,previousAppearance,appearance))
         lastVariantAppearanceRef.current=null;
-        // Generic fabric refresh writes collar/cuff textures too. Reapply
-        // contrast finishes even when only the trouser fabric changed.
-        appliedTrimKeyRef.current=null;
-      }
+      // Cuff/collar cloth must only refresh for shirt changes. Replacing a
+      // trouser swatch cannot force another 3D neck/cuff shader cycle.
+      if(!previousAppearance
+        ||previousAppearance.shirtSurfaceRevision!==shirtSurfaceRevision
+        ||previousAppearance.roughness!==roughness) appliedTrimKeyRef.current=null;
       if(isCurrent()) setTailoringPhase("enumerating-variants");
       const next=new Set<string>();
       for(const material of materials){
         if(isGarmentVariantMaterial(material.name)&&variantMaterialVisible(material.name,styleState)) next.add(material.name);
       }
       if(isCurrent()) setTailoringPhase("loading-replacement-cloth");
+      // Native Chromium should get the torso, both sleeves, trouser waist and
+      // BOTH trouser legs visible before spending time loading 3D accent
+      // details. Keep selection intact and track every rendered material.
+      const replacements=[...next].sort((a,b)=>
+        garmentSurfaceVisibilityPriority(a)-garmentSurfaceVisibilityPriority(b)
+      );
+      // A cold 586-material GLB can spend >20 seconds compiling shaders
+      // sequentially even though the same six selected garment panels are
+      // needed. Start at most two structural loads concurrently, preserving
+      // the ordered reveal and all native browser readiness checks.
+      // A real desktop reset after the half-sleeve/wide style reached 571
+      // of 589 loaded GLTF materials but was STILL blocked on the unchanged
+      // 20-second readiness gate at "loading-replacement-cloth". The prior
+      // edit path prefetched the six major panels but hydrated every accent
+      // (collar, hem, pockets, cuffs) serially. Keep strict structural order,
+      // but prefetch ALL newly selected variants with only TWO concurrent
+      // material loads for interactive edits; the cold first look gets three.
+      // No skipped geometry, fake alpha, relaxed timer or forced DOM change.
+      const selectedToHydrate=replacements.filter((name)=>
+        needsVariantMaterialRefresh(previous.has(name),previousAppearance,appearance,
+          name.startsWith("Shirt")?"shirt":"trouser")
+      );
+      const replacementPrefetch=createBoundedMaterialPrefetch(
+        selectedToHydrate,
+        (name)=>ensureViewerMaterialLoaded(materialsByName.get(name)),
+        coldFirstLook?3:2,
+      );
+      // Zero-cost DOM diagnostics on the actual GLTF host: no React rerender,
+      // fake load, extra frame or release-gate exception. Native Chromium
+      // must identify WHICH actual costume slot stalls 20-second readiness.
+      viewer.dataset.tailoringSelectedCount=String(selectedToHydrate.length);
+      viewer.dataset.tailoringLoadedOrdinal="0";
+      viewer.dataset.tailoringLoadingMaterial="";
+      viewer.dataset.tailoringLastLoadedMaterial="";
+      viewer.dataset.tailoringOperation="preparing";
+      viewer.dataset.tailoringLastYieldMs="0";
+      viewer.dataset.tailoringLastLoadMs="0";
+      viewer.dataset.tailoringLastBindMs="0";
+      let appliedVariants=0;
       // REPLACEMENT FIRST: never hide the previous outfit before its next
       // shirt, sleeves and two trouser legs are loaded. Earlier code hid all
       // old panels, then awaited GPU hydration of the new variants; real
       // Chromium screenshots showed a floating shirt/legless mannequin.
       // Keep the previous garment visible until every new material is ready.
-      for(const name of next){
+      for(const name of replacements){
         // Style-only edits often retain most visible variants. Re-uploading the
         // same texture/normal for each retained variant stalls WebGL Chromium.
-        if(!needsVariantMaterialRefresh(previous.has(name),lastVariantAppearanceRef.current,appearance)) continue;
+        if(!needsVariantMaterialRefresh(previous.has(name),previousAppearance,appearance,
+          name.startsWith("Shirt")?"shirt":"trouser")) continue;
+        // The 589-slot software GPU can delay even an 8ms event-loop yield by
+        // seconds. Log the exact native operation without changing the 20s
+        // customer-visible ready gate or spoofing browser material state.
+        const yieldAt=performance.now();
+        viewer.dataset.tailoringOperation="yield:"+name;
         await yieldForInput();
         if(!isCurrent()) return;
-        const material=await ensureViewerMaterialLoaded(materialsByName.get(name));
+        viewer.dataset.tailoringLastYieldMs=(performance.now()-yieldAt).toFixed(1);
+        viewer.dataset.tailoringLoadingMaterial=name;
+        viewer.dataset.tailoringOperation="load:"+name;
+        const loadAt=performance.now();
+        const material=await replacementPrefetch.take(name);
         if(!isCurrent()) return;
+        viewer.dataset.tailoringLastLoadMs=(performance.now()-loadAt).toFixed(1);
         if(!material) continue;
+        const bindAt=performance.now();
+        viewer.dataset.tailoringOperation="bind:"+name;
+        appliedVariants++;
+        viewer.dataset.tailoringLoadedOrdinal=String(appliedVariants);
+        viewer.dataset.tailoringLastLoadedMaterial=name;
+        viewer.dataset.tailoringLoadingMaterial="";
         const fabric=name.startsWith("Shirt")?shirt:trouser;
         if(!previous.has(name)){
           setMaterialAlpha(material,true);
@@ -905,16 +1034,29 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           material.pbrMetallicRoughness.baseColorTexture?.setTexture(prepared.texture);
           if(prepared.normal) material.normalTexture?.setTexture(prepared.normal);
         }
+        viewer.dataset.tailoringLastBindMs=(performance.now()-bindAt).toFixed(1);
       }
+      viewer.dataset.tailoringOperation="retiring-old-cloth";
       if(isCurrent()) setTailoringPhase("retiring-old-cloth");
       // New garment material variants are now visible (or were already
       // visible). Only now hide the superseded geometry. Cancellation keeps
       // both old and newly revealed panels tracked for the next transaction.
       for(const name of previous){
         if(next.has(name)) continue;
+        // These six default shirt/trouser surfaces were already hydrated by
+        // the atomic true-colour pass. No second GPU shader compile or forced
+        // event-loop delay is needed to retire their old geometry after all
+        // replacements are visible.
+        const existing=materialsByName.get(name);
+        if(existing?.isLoaded===true){
+          if(!isCurrent()) return;
+          setMaterialAlpha(existing,false);
+          visibleGarmentMaterialsRef.current.delete(name);
+          continue;
+        }
         await yieldForInput();
         if(!isCurrent()) return;
-        const material=await ensureViewerMaterialLoaded(materialsByName.get(name));
+        const material=await ensureViewerMaterialLoaded(existing);
         if(!isCurrent()) return;
         setMaterialAlpha(material,false);
         visibleGarmentMaterialsRef.current.delete(name);
@@ -976,7 +1118,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       const trimKey=trimAppearanceKey({
         collar:collarKey,collarConstruction:collarConstructionKey,collarFinish:collarFinishKey,
         cuff:cuffKey,cuffConstruction:cuffConstructionKey,sleeve:styleState.sleeve,
-        shirtId,textureRevision,roughness,shirtDrape:shirt?.drape||"",
+        shirtId,textureRevision:shirtSurfaceRevision,roughness,shirtDrape:shirt?.drape||"",
       });
       if(appliedTrimKeyRef.current===trimKey) {
         if(isCurrent()) {setTailoringMaterialsReady(true);setTailoringPhase("ready");}
@@ -1041,7 +1183,72 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       });
     },tailoringInputSettleMs(viewer.model?.materials.length||0));
     return ()=>{cancelled=true;window.clearTimeout(inputSettleTimer);};
-  },[modelReady,modelRevision,styleState,buttonKey,textureRevision,roughness,shirt,trouser,collarKey,collarFinishKey,collarConstructionKey,cuffKey,cuffConstructionKey]);
+  },[modelReady,modelRevision,styleState,buttonKey,textureRevision,preparedFabricVersion,requestedFabricVersion,panelSpecs.length,roughness,shirt,trouser,collarKey,collarFinishKey,collarConstructionKey,cuffKey,cuffConstructionKey]);
+
+  // Weave normals are SECONDARY detail. Hydrate them only after the entire
+  // selected outfit actually passes the honest WebGL-ready state. Applying
+  // twelve cold textures together previously starved six key colour panels.
+  useEffect(()=>{
+    if(!tailoringMaterialsReady || preparedFabricVersion!==requestedFabricVersion
+      || weavePreparedVersion===requestedFabricVersion || !modelReady) return;
+    const viewer=viewerRef.current;
+    if(!viewer?.model||!viewer.createTexture) return;
+    const model=viewer.model;
+    let cancelled=false;
+    const valid=()=>!cancelled&&viewer.model===model&&
+      preparedFabricVersion===requestedFabricVersion;
+    const hydrateWeave=async()=>{
+      const normalsByPanel=new Map<string,ViewerTexture>();
+      const urls={
+        shirt:createLinenNormalMap(fabricDrapeSurface(shirt).normalStrength),
+        trouser:createLinenNormalMap(fabricDrapeSurface(trouser).normalStrength),
+      };
+      setFabricHydrationPhase("weave-normals-in-background");
+      for(const panel of panelSpecs){
+        if(!valid()) return;
+        // Lower-priority linen microrelief must yield to real customer input.
+        await new Promise<void>((resolve)=>window.setTimeout(resolve,8));
+        if(!valid()) return;
+        const normal=await viewer.createTexture!(panel.garment==="shirt"?urls.shirt:urls.trouser);
+        if(!valid()) return;
+        normal.sampler?.setScale?.(garmentPanelWeaveNormalScale(panel.widthMm,panel.heightMm));
+        normal.sampler?.setOffset?.({u:Number(panel.offsetU)||0,v:Number(panel.offsetV)||0});
+        normal.sampler?.setRotation?.((Number(panel.rotationDeg)||0)*Math.PI/180);
+        normalsByPanel.set(panel.material,normal);
+      }
+      if(!valid()) return;
+      for(const panel of panelSpecs){
+        const existing=preparedTextureRef.current.get(panel.material);
+        if(existing) preparedTextureRef.current.set(panel.material,{
+          ...existing,normal:normalsByPanel.get(panel.material)||null,
+        });
+      }
+      // Touch only ALREADY loaded, visible garment shaders. Do not reload
+      // 586 material variants to add subtle fibre relief.
+      for(const material of model.materials){
+        if(material.isLoaded!==true) continue;
+        const panel=variantPanelMaterial(material.name);
+        // The six immutable base panel materials must retain the same
+        // measured-UV linen weave even when a selected tailoring variant
+        // temporarily replaces their visible geometry. Otherwise switching
+        // back to a straight/regular fit reveals flat, untextured cloth.
+        // Do NOT touch the other 500+ unused variant shaders.
+        const basePanel=panelSpecs.some((item)=>item.material===material.name);
+        if(!panel || (!basePanel && !visibleGarmentMaterialsRef.current.has(material.name))) continue;
+        const normal=normalsByPanel.get(panel);
+        if(normal) material.normalTexture?.setTexture(normal);
+      }
+      if(valid()){
+        setWeavePreparedVersion(requestedFabricVersion);
+        setFabricHydrationPhase("weave-ready");
+      }
+    };
+    void hydrateWeave().catch(()=>{
+      if(valid())setFabricHydrationPhase("color-ready-weave-pending");
+    });
+    return ()=>{cancelled=true;};
+  },[tailoringMaterialsReady,preparedFabricVersion,requestedFabricVersion,
+      weavePreparedVersion,modelReady,modelRevision,shirt,trouser,panelSpecs]);
 
   function applyShirtTypePreset(id:string){
     setShirtTypeKey(id);
@@ -1084,6 +1291,43 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     setTrouserPocketKey(preset.pocket);
   }
 
+  function applyOriginalStudioOutfit(){
+    // Same look, not the same 3D body: the authentic two-dimensional reference
+    // shows a fitted, tucked, full-sleeve charcoal shirt and warm brown,
+    // straight office trousers. Use real in-stock catalogue swatches only.
+    // This does NOT replace the user's saved Designer recipe in localStorage.
+    beginFabricInteraction();
+    setShirtId(preferredFabricId(shirtFabrics,[
+      "linen-plain-60-stresa","linen-plain-60-boulder-gray","linen-plain-60-jute-black"
+    ]));
+    setTrouserId(preferredFabricId(trouserFabrics,[
+      "linen-suiting-turkish-rose","linen-suiting-charcoal-oak-wood","linen-suiting-perfect-taupe"
+    ]));
+    setShirtTypeKey("dress_shirt");
+    setShirtFitKey("regular");
+    setShirtWearKey("tucked");
+    setSleeveKey("full");
+    setCollarKey("point");
+    setCollarFinishKey("self");
+    setCollarConstructionKey("stiff_fused");
+    setCuffKey("barrel_1");
+    setCuffConstructionKey("fused");
+    setPlacketKey("standard");
+    setPocketKey("none");
+    setYokeKey("split");
+    setShirtBackKey("plain");
+    setShirtHemKey("rounded");
+    setTrouserTypeKey("formal_flat_front");
+    setTrouserFitKey("straight");
+    setRiseKey("mid");
+    setPleatKey("flat");
+    setWaistbandKey("belt_loops");
+    setBreakKey("slight");
+    setTrouserHemKey("plain");
+    setTrouserPocketKey("slant");
+    setCamera(cameraViews[0]);
+  }
+
   function beginFabricInteraction(){
     interactionStartedAt.current=performance.now();
   }
@@ -1103,7 +1347,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     "camera-controls":true,
     "touch-action":"pan-y",
     "camera-orbit":cameraViews[0].orbit,
-    "camera-target":"0m 0.86m 0m",
+    "camera-target":"0m 0.78m 0m",
     "field-of-view":"30deg",
     "min-field-of-view":"25deg",
     "max-field-of-view":"40deg",
@@ -1113,18 +1357,35 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     "environment-image":"neutral",
     "shadow-intensity":".78",
     "shadow-softness":".96",
-    "exposure":"1.12",
+    // The previously emitted exact-studio photo comparison showed clipped
+    // matte-ivory head/hands and washed-out stock trouser cloth. Reduce the
+    // provisional overexposure without recolouring actual fabric pixels or
+    // altering model geometry. This is an unapproved image-grade experiment;
+    // independent four-angle parity and physical swatch calibration still gate
+    // production approval.
+    "exposure":".98",
     "tone-mapping":"commerce",
     loading:"eager",
     "interaction-prompt":"none",
     className:"garmentModelViewer",
   }) : null;
 
-  return <section className="garmentViewerShell" data-model-readiness={modelContract?.readiness || "loading"} data-manifest-ready={productionManifestReady} data-tailoring-ready={tailoringMaterialsReady?"true":"false"} data-tailoring-phase={tailoringPhase} data-active-view={activeView} data-collar-finish={collarFinishKey}>
+  return <section className="garmentViewerShell" data-model-readiness={modelContract?.readiness || "loading"} data-manifest-ready={productionManifestReady} data-tailoring-ready={tailoringMaterialsReady?"true":"false"} data-tailoring-phase={tailoringPhase} data-active-view={activeView} data-collar-finish={collarFinishKey} data-identity-visual-parity="unverified" data-fabric-phase={fabricHydrationPhase}>
     <div className="garmentViewerStage">
       <div className="garmentViewerStageHead">
         <span>GARMENTVIEWER · DEEP ENGINE</span>
-        <strong>MODEL IDENTITY LOCKED · SHIRT + TROUSER</strong>
+        <strong>STUDIO REFERENCE LOCKED · 3D VISUAL MATCH PENDING</strong>
+      </div>
+      <div className="garmentViewerIdentityAudit" role="note" aria-label="Compare the original Real Model Designer model with the unfinished 3D candidate">
+        <img src={LINEN_EARTH_MODEL_REFERENCE_IMAGE} alt="Original Real Model Designer reference, not the current 3D render" />
+        <div>
+          <strong>Original Real Model Designer model</strong>
+          <p>THIS is the appearance to match. The 3D viewer below currently uses a separate MakeHuman-derived body and procedural garments. Matching its measurements does not establish the same visual identity. Front, 3/4, side and back still require independent visual approval.</p>
+          <span>3D SOURCE · UNAPPROVED VISUAL MATCH</span>
+          <button className="garmentViewerMatchStudio" type="button" onClick={applyOriginalStudioOutfit}>
+            View original studio outfit styling
+          </button>
+        </div>
       </div>
       <div className="garmentViewerCanvas">
         {modelViewer}
@@ -1134,20 +1395,17 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       <div className="garmentCameraRail" role="group" aria-label="Garment camera views">
         {cameraViews.map((view)=><button key={view.id} type="button" aria-pressed={activeView===view.id} onClick={()=>setCamera(view)}>{view.label}</button>)}
       </div>
-      <p className="garmentViewerHint">Front · 3/4 · side · back are one locked turntable identity. Drag to rotate · pinch/scroll to zoom.</p>
+      <p className="garmentViewerHint">Front · 3/4 · side · back rotate the current 3D candidate, not a verified copy of the studio model. Drag to rotate · pinch/scroll to zoom.</p>
     </div>
 
     <aside className="garmentViewerControls">
       <div>
         <span className="garmentViewerEyebrow">REAL FABRIC → REUSABLE MODEL</span>
         <h1>Live tailoring + fabric model.</h1>
-        <p>The mannequin identity stays fixed while fabric and real tailoring construction switch independently: shirt type/fit/rise-aware waist-shaped tuck/sleeves/360° cuffs/raised-back collar band/collar construction/white contrast collar-cuffs/placket/pockets/yoke/hem plus trouser type/shape/rise/pleat direction/waistband/break/turn-up/pockets. {shirtFabrics.length} shirt fabrics and {trouserFabrics.length} trouser fabrics use the same live Designer stock.</p>
+        <p>The experimental 3D mannequin remains fixed between views, but its appearance has not matched the original Real Model Designer image. Fabric and tailoring construction switch independently: shirt type/fit/rise-aware waist-shaped tuck/sleeves/360° cuffs/raised-back collar band/collar construction/white contrast collar-cuffs/placket/pockets/yoke/hem plus trouser type/shape/rise/pleat direction/waistband/break/turn-up/pockets. {shirtFabrics.length} shirt fabrics and {trouserFabrics.length} trouser fabrics use the same live Designer stock.</p>
       </div>
 
-      <div className="garmentViewerReference">
-        <div><span>EXACT REAL MODEL DESIGNER IDENTITY</span><b>{LINEN_EARTH_MODEL_IDENTITY_ID}</b><small>Every front, 3/4, side and back view must stay on this same faceless studio model: same head height, shoulder width, torso taper, arm length, hand scale, hip width, leg length, stance and shoes; the neutral head now keeps a flatter face plane and tapered jaw without adding facial identity; the shirt sleeve cap is shaped to the locked shoulder instead of reading as a straight tube.</small></div>
-        <img src={LINEN_EARTH_MODEL_REFERENCE_IMAGE} alt="Canonical Linen Earth Real Model Designer reference"/>
-      </div>
+
 
       <section className="garmentTypeLibrary" aria-label="Garment type roadmap">
         <div className="garmentTypeLibraryHead"><span>GARMENT TYPES · CURRENT + FUTURE</span><b>Fabric is only one layer. Each garment keeps its own construction details.</b></div>
@@ -1222,7 +1480,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         <span><small>VIEWS</small><b>4 fixed + free</b></span>
         <span><small>AI CREDITS</small><b>0</b></span>
       </div>
-      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M7.46 is locked: the same mannequin now carries a researched tailoring library covering shirt type/fit/tuck/sleeve/collar construction/cuff/placket/pocket/yoke/back/hem and trouser type/fit/low-to-extra-high rise/front-flat waist/back-seat shaping/seat-crotch transition/pleat direction/360° waistband hardware/break/360° turn-up/hip-wrapped pockets. Fabric remains panel-scaled and non-metallic; declared drape or clearly estimated weight metadata changes surface normal response and roughness without AI credits; this is not a physical cloth simulation." : "Fallback prototype is active. Production should use the identity-locked M7.3 tailoring model before fabric/drape work continues."}</p>
+      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer reference and measured proportions are locked, but visual identity equivalence is unverified: this 3D candidate carries a researched tailoring library covering shirt type/fit/tuck/sleeve/collar construction/cuff/placket/pocket/yoke/back/hem and trouser type/fit/low-to-extra-high rise/front-flat waist/back-seat shaping/seat-crotch transition/pleat direction/360° waistband hardware/break/360° turn-up/hip-wrapped pockets. Fabric remains panel-scaled and non-metallic; declared drape or clearly estimated weight metadata changes surface normal response and roughness without AI credits; this is not a physical cloth simulation." : "Fallback prototype is active. Production should use the identity-locked M7.3 tailoring model before fabric/drape work continues."}</p>
     </aside>
   </section>;
 }

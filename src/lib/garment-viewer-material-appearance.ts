@@ -4,6 +4,11 @@ export type VariantMaterialAppearance={
   roughness:number;
   shirtId:string;
   trouserId:string;
+  // True per-garment sampler/UV/fabric cache signatures. Global React
+  // textureRevision changes on EITHER shirt or trouser edits, and must not
+  // force 15 unrelated variants to recompile on every single-stock change.
+  shirtSurfaceRevision?:string;
+  trouserSurfaceRevision?:string;
 };
 
 /** Never let a superseded fabric edit write after lazy material hydration. */
@@ -29,10 +34,20 @@ export function needsVariantMaterialRefresh(
   wasVisible:boolean,
   previous:VariantMaterialAppearance|null,
   current:VariantMaterialAppearance,
+  garment?:"shirt"|"trouser",
 ):boolean {
   if(!wasVisible||!previous) return true;
+  if(previous.roughness!==current.roughness) return true;
+  if(garment==="shirt"&&previous.shirtSurfaceRevision!==undefined
+    &&current.shirtSurfaceRevision!==undefined)
+    return previous.shirtId!==current.shirtId
+      ||previous.shirtSurfaceRevision!==current.shirtSurfaceRevision;
+  if(garment==="trouser"&&previous.trouserSurfaceRevision!==undefined
+    &&current.trouserSurfaceRevision!==undefined)
+    return previous.trouserId!==current.trouserId
+      ||previous.trouserSurfaceRevision!==current.trouserSurfaceRevision;
+  // Legacy/unknown cache state stays strictly conservative.
   return previous.textureRevision!==current.textureRevision
-    ||previous.roughness!==current.roughness
     ||previous.shirtId!==current.shirtId
     ||previous.trouserId!==current.trouserId;
 }
@@ -50,7 +65,7 @@ export function needsButtonMaterialRefresh(
 export function trimAppearanceKey(parts:{
   collar:string; collarConstruction:string; collarFinish:string;
   cuff:string; cuffConstruction:string; sleeve:string;
-  shirtId:string; textureRevision:number; roughness:number;
+  shirtId:string; textureRevision:number|string; roughness:number;
   shirtDrape:string;
 }):string {
   return JSON.stringify([
@@ -83,6 +98,50 @@ export function createInFlightMaterialLoader<T extends object>() {
 }
 
 
+
+/**
+ * Speculatively hydrate at most two expensive structural garment materials
+ * while retaining ordered application of the actual selected look.
+ *
+ * Failed/abandoned loads are always observed to prevent unhandled rejections
+ * when React cancels an obsolete style effect. No visual-ready signal is
+ * emitted by this queue: the caller must still apply every material and pass
+ * the native WebGL QA gate.
+ */
+export function createBoundedMaterialPrefetch<T, M>(
+  entries:readonly T[],
+  load:(entry:T)=>Promise<M>,
+  capacity=2,
+):{take:(entry:T)=>Promise<M>} {
+  if(!Number.isSafeInteger(capacity)||capacity<1||capacity>4)
+    throw new Error("Cloth GPU prefetch capacity must be between 1 and 4.");
+  if(new Set(entries).size!==entries.length)
+    throw new Error("Cloth GPU prefetch must not contain duplicate panels.");
+  type Outcome={ok:true;value:M}|{ok:false;error:unknown};
+  const pending=new Map<T,Promise<Outcome>>();
+  let next=0;
+  const fill=()=>{
+    while(pending.size<capacity&&next<entries.length){
+      const entry=entries[next++];
+      const task:Promise<Outcome>=Promise.resolve().then(()=>load(entry)).then(
+        (value):Outcome=>({ok:true,value}),
+        (error):Outcome=>({ok:false,error}),
+      );
+      pending.set(entry,task);
+    }
+  };
+  fill();
+  return {async take(entry:T):Promise<M>{
+    const task=pending.get(entry);
+    if(!task) throw new Error("Panel must be taken in declared structural order.");
+    const result=await task;
+    pending.delete(entry);
+    fill();
+    if(!result.ok) throw result.error;
+    return result.value;
+  }};
+}
+
 /** Give real user input a chance to run while hydrating many GLB materials. */
 export function createCooperativeMaterialBatch(
   yieldToBrowser:()=>Promise<void>,
@@ -105,4 +164,24 @@ export function tailoringInputSettleMs(materialCount:number):number {
   // Hydrating 586 materials in a CPU-backed CI browser can starve real select
   // actionability. Coalesce consecutive changes; keep the smaller prototype fast.
   return materialCount>=300?520:180;
+}
+
+/** Prepare the dressed silhouette before buttons, trim and minor geometry.
+
+ * Real CI showed several shirt accents already visible while no replacement
+ * trouser legs had hydrated. Preserve ALL selected fabrics/variations and the
+ * same WebGL QA time limit, but prioritize core clothing within that work.
+ */
+export function garmentSurfaceVisibilityPriority(name:string):number {
+  // Base material panels are REAL full-size garment shells, not trim. The
+  // default straight trouser and regular sleeves use these six names; if
+  // omitted here they wait behind cosmetic variants and 20-second native
+  // screenshots can show a white torso or legless mannequin.
+  if(name==="ShirtTorsoFabric"||/^ShirtTorso(?:TuckedBack|Tucked|Back)?Variant__/.test(name)) return 0;
+  if(name==="ShirtSleeveLFabric"||/^ShirtSleeveL(?:Variant|Length)__/.test(name)) return 1;
+  if(name==="ShirtSleeveRFabric"||/^ShirtSleeveR(?:Variant|Length)__/.test(name)) return 2;
+  if(name==="TrouserWaistFabric"||/^TrouserWaist(?:Pleat)?Variant__/.test(name)) return 3;
+  if(name==="TrouserLegLFabric"||/^TrouserLegL(?:Break)?Variant__/.test(name)) return 4;
+  if(name==="TrouserLegRFabric"||/^TrouserLegR(?:Break)?Variant__/.test(name)) return 5;
+  return 10;
 }

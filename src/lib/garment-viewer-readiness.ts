@@ -10,10 +10,12 @@ import {
   type Phase1BoundaryChecks,
   type RealismAssessment,
 } from "./designer/proof-scale.ts";
+import { REQUIRED_GARMENT_VIEWER_MATERIALS } from "./garment-viewer-model-contract.ts";
 import type {
   GarmentViewerManifestValidation,
   GarmentViewerModelContractResult,
 } from "./garment-viewer-model-contract.ts";
+import { LINEN_EARTH_MODEL_REFERENCE_IMAGE } from "./designer/model-identity.ts";
 
 export const GARMENT_VIEWER_MIN_PATTERN_SCALE_SAMPLES = 2;
 export const GARMENT_VIEWER_LATENCY_STORAGE_KEY = "linen-earth-garment-viewer-latency-v1";
@@ -51,6 +53,24 @@ export type GarmentViewerPatternScaleSample = {
   verified:boolean;
 };
 
+export type GarmentViewerProductionUvEvidence={
+  modelSha256:string;
+  panels:Record<string,{
+    uAxisMedianDriftPct:number|null;
+    vAxisMedianDriftPct:number|null;
+    sourceOrCandidateCollapsedUvTriangles:number;
+    physicalRepeatVerified:boolean;
+  }>;
+};
+export type GarmentViewerStudioDrapeApproval={
+  modelSha256:string;
+  referenceImage:string;
+  selectedStyleMatchesReference:boolean;
+  approvedAngles:string[];
+  reviewedByOwner:boolean;
+  calibratedLinenColourAndDrape:boolean;
+};
+
 export type GarmentViewerPromotionInput = {
   contract:GarmentViewerModelContractResult|null;
   manifest:GarmentViewerManifestValidation|null;
@@ -59,6 +79,12 @@ export type GarmentViewerPromotionInput = {
   interactionLatencyMs:number[];
   realismAssessments:RealismAssessment[];
   boundaryChecks:Phase1BoundaryChecks|null;
+  // Required to promote a REALISTIC material/UV/photo candidate. No generated
+  // geometry screenshot or "verified:true" flag can substitute for signed
+  // photographic, textile, and exact-GLB source evidence.
+  assetIdentity?:GarmentViewerAssetIdentity|null;
+  uvAxisEvidence?:GarmentViewerProductionUvEvidence|null;
+  studioDrapeApproval?:GarmentViewerStudioDrapeApproval|null;
 };
 
 export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInput) {
@@ -87,6 +113,30 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
     && realism.strongRatings>=PHASE1_PROOF_MIN_STRONG_REALISM;
 
   const boundaryReady=phase1BoundaryChecksReady(input.boundaryChecks);
+  const identity=input.assetIdentity;
+  const uvEvidence=input.uvAxisEvidence;
+  const uvAxisReady=Boolean(identity&&uvEvidence
+    &&uvEvidence.modelSha256===identity.modelSha256
+    &&REQUIRED_GARMENT_VIEWER_MATERIALS.every((name)=>{
+      const panel=uvEvidence.panels[name];
+      return Boolean(panel
+        &&panel.physicalRepeatVerified===true
+        &&Number.isFinite(panel.uAxisMedianDriftPct)
+        &&Number.isFinite(panel.vAxisMedianDriftPct)
+        &&(panel.uAxisMedianDriftPct as number)>=0
+        &&(panel.vAxisMedianDriftPct as number)>=0
+        &&(panel.uAxisMedianDriftPct as number)<=ROADMAP_SCALE_TOLERANCE_PCT
+        &&(panel.vAxisMedianDriftPct as number)<=ROADMAP_SCALE_TOLERANCE_PCT
+        &&panel.sourceOrCandidateCollapsedUvTriangles===0);
+    }));
+  const studio=input.studioDrapeApproval;
+  const studioReady=Boolean(identity&&studio
+    &&studio.modelSha256===identity.modelSha256
+    &&studio.referenceImage===LINEN_EARTH_MODEL_REFERENCE_IMAGE
+    &&studio.selectedStyleMatchesReference===true
+    &&studio.reviewedByOwner===true
+    &&studio.calibratedLinenColourAndDrape===true
+    &&["front","three-quarter","side","back"].every((view)=>studio.approvedAngles.includes(view)));
   const reasons:string[]=[];
   if(!contractReady) reasons.push("Approved GLB has not passed the six-panel production material contract.");
   if(!manifestReady) reasons.push("Approved GLB physical panel manifest is missing or invalid.");
@@ -100,10 +150,12 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
   if(!latencyReady) reasons.push("3D interaction needs at least 12 samples with p95 below 300 ms.");
   if(!realismReady) reasons.push("At least 6 of 8 independent viewers must rate the realistic model 4/5 or 5/5.");
   if(!boundaryReady) reasons.push("Neck, cuffs, waist and trouser-gap boundaries must all pass visual QA.");
+  if(!uvAxisReady) reasons.push("All six garment UV axes require <=8% verified physical repeat drift, no collapsed UVs and evidence tied to the current GLB.");
+  if(!studioReady) reasons.push("Owner must approve four-angle reference identity and real calibrated linen colour/drape for the current GLB.");
 
   return {
     version:"linen-earth-garment-viewer-readiness-v1" as const,
-    ready:contractReady&&manifestReady&&productionAssetReady&&styleVariantReady&&scaleReady&&latencyReady&&realismReady&&boundaryReady,
+    ready:contractReady&&manifestReady&&productionAssetReady&&styleVariantReady&&scaleReady&&latencyReady&&realismReady&&boundaryReady&&uvAxisReady&&studioReady,
     contractReady,
     manifestReady,
     productionAssetReady,
@@ -113,6 +165,8 @@ export function garmentViewerPromotionReadiness(input:GarmentViewerPromotionInpu
     latencyReady,
     realismReady,
     boundaryReady,
+    uvAxisReady,
+    studioReady,
     scaleSamples,
     latency,
     realism,

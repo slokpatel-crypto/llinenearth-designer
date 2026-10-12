@@ -815,6 +815,60 @@ def main(json_output=None):
                 "tighten the waist layering so the tuck reads as one tailored junction."
             )
 
+    # Independent REAL finished-footwear placement QA. The original Blender
+    # import used two GLB Shoe objects sharing one mesh datablock: fitting the
+    # right shoe also moved the already fitted left shoe. Prior preflight
+    # certified 205,830 contact-safe cloth triangles while review showed a
+    # barefoot mannequin and shoes lying outside the feet. A physically green
+    # shirt cannot excuse off-body soles or missing shoes.
+    footwear_fit = {}
+    if body is not None:
+        foot_world = [body.matrix_world @ vertex.co for vertex in body.data.vertices]
+        if foot_world:
+            foot_floor = min(point.z for point in foot_world)
+            mid_x = (min(point.x for point in foot_world)+max(point.x for point in foot_world))*0.5
+            for foot_side,foot_label,foot_suffix in ((-1,"left","L"),(1,"right","R")):
+                expected_names = tuple(piece+foot_suffix for piece in ("Shoe","Sole","Heel"))
+                shoe_parts=[bpy.data.objects.get(name) for name in expected_names]
+                absent=[name for name,part in zip(expected_names,shoe_parts)
+                        if part is None or part.type!="MESH" or not part.data.vertices]
+                if absent:
+                    reasons.append("Missing real fitted "+foot_label+" footwear meshes: "+", ".join(absent))
+                    continue
+                points=[part.matrix_world @ vertex.co
+                        for part in shoe_parts for vertex in part.data.vertices]
+                anatomy=[point for point in foot_world
+                         if foot_floor-.005<=point.z<=foot_floor+.135
+                         and foot_side*(point.x-mid_x)>=.015]
+                if len(anatomy)<20 or not points:
+                    reasons.append("Missing measurable "+foot_label+" locked foot/footwear contact evidence.")
+                    continue
+                shoe_center_x=(min(point.x for point in points)+max(point.x for point in points))*0.5
+                target_center_x=(min(point.x for point in anatomy)+max(point.x for point in anatomy))*0.5
+                min_shoe_z=min(point.z for point in points)
+                separation_mm=abs(shoe_center_x-target_center_x)*1000
+                footprint_side_ok=foot_side*(shoe_center_x-mid_x)>=.015
+                floor_ok=foot_floor-.025<=min_shoe_z<=foot_floor+.035
+                footwear_fit[foot_label]={
+                    "shoeCenterXmm":round(shoe_center_x*1000,2),
+                    "lockedFootCenterXmm":round(target_center_x*1000,2),
+                    "lateralOffsetMm":round(separation_mm,2),
+                    "lowestShoePointMm":round(min_shoe_z*1000,2),
+                    "floorMm":round(foot_floor*1000,2),
+                    "correctFootSide":footprint_side_ok,"floorContactPlausible":floor_ok,
+                    "independentPhysicalPatternApproved":False,
+                }
+                if not footprint_side_ok or separation_mm>50:
+                    reasons.append(
+                        f"{foot_label} fitted footwear is on the wrong foot/offset from real anatomy "
+                        f"({separation_mm:.1f} mm). Verify independent shoe/sole/heel meshes."
+                    )
+                if not floor_ok:
+                    reasons.append(
+                        f"{foot_label} footwear misses the real foot floor envelope: "
+                        f"shoe bottom {min_shoe_z*1000:.1f}mm vs floor {foot_floor*1000:.1f}mm."
+                    )
+
     report = {
         "gate": "linen-earth-officewear-scene-preflight-v1",
         "ready": len(reasons) == 0,
@@ -833,6 +887,7 @@ def main(json_output=None):
         "boundaryIntersections": boundary_intersections,
         "boundaryClearanceMm": boundary_clearance_mm,
         "requiredGarmentObjects": list(GARMENT_OBJECTS),
+        "independentFootwearFit": footwear_fit,
         "objects": objects,
         "totals": {
             "triangles": total_triangles,

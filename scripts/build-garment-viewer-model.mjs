@@ -3,6 +3,7 @@ import path from "node:path";
 import styleVariants from "../src/lib/garment-viewer-style-variants.json" with { type:"json" };
 import identitySpec from "../public/model-identity/linen-earth-studio-model-v1.json" with { type:"json" };
 import studioPalette from "../public/model-identity/studio-material-palette.json" with { type:"json" };
+import {garmentGravityFoldDisplacement,studioSleeveRadiusScale} from "./garment-gravity-drape.mjs";
 
 const OUT_DIR=path.resolve(process.cwd(),"public/models");
 const BASE_BODY_PATH=path.resolve(process.cwd(),"assets/3d/makehuman-mannequin-base.glb");
@@ -97,6 +98,41 @@ function cloneGeometryTransform(geometry,transform){
   };
 }
 
+// Normal gradients must follow the displaced physical cloth, not the
+// original smooth cylinders. Preserve cap normals and all independent UVs.
+function recomputeClothSideNormals(geometry){
+  const n=geometry.positions.length/3;
+  const normals=new Float32Array(n*3);
+  const capStart=n-2;
+  for(let k=0;k<geometry.indices.length;k+=3){
+    const a=geometry.indices[k],b=geometry.indices[k+1],c=geometry.indices[k+2];
+    if(a>=capStart||b>=capStart||c>=capStart) continue;
+    const p=geometry.positions;
+    const ab=[p[b*3]-p[a*3],p[b*3+1]-p[a*3+1],p[b*3+2]-p[a*3+2]];
+    const ac=[p[c*3]-p[a*3],p[c*3+1]-p[a*3+1],p[c*3+2]-p[a*3+2]];
+    const cross=[ab[1]*ac[2]-ab[2]*ac[1],ab[2]*ac[0]-ab[0]*ac[2],ab[0]*ac[1]-ab[1]*ac[0]];
+    for(const i of [a,b,c]){
+      normals[i*3]+=cross[0];normals[i*3+1]+=cross[1];normals[i*3+2]+=cross[2];
+    }
+  }
+  for(let i=0;i<n;i++){
+    const j=i*3,mag=Math.hypot(normals[j],normals[j+1],normals[j+2]);
+    if(i>=capStart||mag<1e-10){
+      normals[j]=geometry.normals[j];normals[j+1]=geometry.normals[j+1];normals[j+2]=geometry.normals[j+2];
+    }else{
+      normals[j]/=mag;normals[j+1]/=mag;normals[j+2]/=mag;
+    }
+  }
+  return {...geometry,normals};
+}
+function previewGravityDrapeGeometry(base,part,centerX=0,depthCenter=.015){
+  const draped=cloneGeometryTransform(base,(p)=>{
+    const fold=garmentGravityFoldDisplacement(part,p,centerX,depthCenter);
+    return {...p,x:p.x+fold.x,z:p.z+fold.z};
+  });
+  return recomputeClothSideNormals(draped);
+}
+
 function cropGeometry(geometry,predicate,transform=(point)=>point){
   const remap=new Map(),positions=[],normals=[],uvs=[],indices=[];
   function mapVertex(oldIndex){
@@ -129,19 +165,31 @@ function cropGeometry(geometry,predicate,transform=(point)=>point){
 function tailoredSleeveCapGeometry(base,centerX){
   const side=Math.sign(centerX)||1;
   return cloneGeometryTransform(base,(p)=>{
+    // Reference sleeves narrow naturally from the upper arm toward the
+    // tailored cuff. A constant-width pipe looked visibly wrong next to the
+    // real studio shirt. Constrain this deterministic preview contour to
+    // the lower ~330 mm: the locked shoulder, hands and cuff centres stay fixed.
+    const sleeveTaper=studioSleeveRadiusScale(p.y);
+    const shaped={
+      ...p,
+      x:centerX+(p.x-centerX)*sleeveTaper,
+      z:.020+(p.z-.020)*sleeveTaper,
+    };
     const shoulderZone=Math.max(0,Math.min(1,(p.y-1.235)/.220));
-    if(shoulderZone<=0) return p;
-    const outwardNormalized=Math.max(-1,Math.min(1,side*(p.x-centerX)/.061));
+    if(shoulderZone<=0) return shaped;
+    const outwardNormalized=Math.max(-1,Math.min(1,side*(shaped.x-centerX)/.061));
     const outerBias=(outwardNormalized+1)/2;
     const shoulderDrop=.038*shoulderZone*(.28+.72*outerBias);
-    const inwardShift=side*.010*shoulderZone*(1-outwardNormalized)*.5;
-    const localZ=p.z-.020;
+    // Bring the inboard sleeve seam beneath the actual shirt shoulder.
+    // Only the underarm-facing arc shifts; no outer-arm identity guide moves.
+    const inwardShift=side*.017*shoulderZone*(1-outwardNormalized)*.5;
+    const localZ=shaped.z-.020;
     const ovalDepthScale=1-.15*shoulderZone;
     const capRound=.006*shoulderZone*(1-Math.abs(outwardNormalized));
     return {
-      ...p,
-      x:p.x-inwardShift,
-      y:p.y-shoulderDrop+capRound,
+      ...shaped,
+      x:shaped.x-inwardShift,
+      y:shaped.y-shoulderDrop+capRound,
       z:.020+localZ*ovalDepthScale,
     };
   });
@@ -1191,13 +1239,16 @@ const garmentShells=await loadMakeHumanGarmentShells();
 // cropped anatomical body surfaces. MakeHuman stays as the hidden collision/skin source.
 // These world-space shells preserve the exact Linen Earth silhouette anchors while
 // producing continuous shirt/trouser surfaces with clean side and back views.
+// Default model and every geometry-backed tailoring variation inherit the
+// same seam-safe, low-amplitude gravity folds. Real drape calibration still
+// requires measured material data + actual studio-fit signoff.
 const tailoredShells={
-  shirtTorso:tailoredShirtTorsoGeometry(cloneGeometryTransform(shirtTorso,(p)=>({...p,y:p.y+1.260}))),
-  sleeveL:tailoredSleeveCapGeometry(cloneGeometryTransform(sleeve,(p)=>({...p,x:p.x-.226,y:p.y+1.169,z:p.z+.020})),-.226),
-  sleeveR:tailoredSleeveCapGeometry(cloneGeometryTransform(sleeve,(p)=>({...p,x:p.x+.226,y:p.y+1.169,z:p.z+.020})),.226),
+  shirtTorso:previewGravityDrapeGeometry(tailoredShirtTorsoGeometry(cloneGeometryTransform(shirtTorso,(p)=>({...p,y:p.y+1.260}))),"shirt",0,.012),
+  sleeveL:previewGravityDrapeGeometry(tailoredSleeveCapGeometry(cloneGeometryTransform(sleeve,(p)=>({...p,x:p.x-.226,y:p.y+1.169,z:p.z+.020})),-.226),"sleeve",-.226,.020),
+  sleeveR:previewGravityDrapeGeometry(tailoredSleeveCapGeometry(cloneGeometryTransform(sleeve,(p)=>({...p,x:p.x+.226,y:p.y+1.169,z:p.z+.020})),.226),"sleeve",.226,.020),
   trouserWaist:tailoredTrouserWaistGeometry(cloneGeometryTransform(trouserWaist,(p)=>({...p,y:p.y+1.020,z:p.z+.003}))),
-  trouserLegL:tailoredTrouserUpperGeometry(cloneGeometryTransform(trouserLeg,(p)=>({...p,x:p.x-.105,y:p.y*.94+.5225,z:p.z+.015})),-.105),
-  trouserLegR:tailoredTrouserUpperGeometry(cloneGeometryTransform(trouserLeg,(p)=>({...p,x:p.x+.105,y:p.y*.94+.5225,z:p.z+.015})),.105),
+  trouserLegL:previewGravityDrapeGeometry(tailoredTrouserUpperGeometry(cloneGeometryTransform(trouserLeg,(p)=>({...p,x:p.x-.105,y:p.y*.94+.5225,z:p.z+.015})),-.105),"leg",-.105,.015),
+  trouserLegR:previewGravityDrapeGeometry(tailoredTrouserUpperGeometry(cloneGeometryTransform(trouserLeg,(p)=>({...p,x:p.x+.105,y:p.y*.94+.5225,z:p.z+.015})),.105),"leg",.105,.015),
 };
 // Visible default clothing stays on closed tailoring shells. The scan-derived anatomy
 // remains the source for skin/collision and the Blender production fitting pipeline.
@@ -1342,7 +1393,7 @@ const styleVariantMaterials=[
   ...styleVariants.collars.flatMap((item)=>styleVariants.collarConstruction.map((construction)=>
     addVariantMaterial(`ShirtCollarVariant__${item.id}__${construction.id}`,"shirt")
   )),
-  ...styleVariants.collars.filter((item)=>!["camp","one_piece","mandarin"].includes(item.id)).flatMap((item)=>styleVariants.collarConstruction.map((construction)=>
+  ...styleVariants.collars.filter((item)=>!["camp","one_piece"].includes(item.id)).flatMap((item)=>styleVariants.collarConstruction.map((construction)=>
     addVariantMaterial(`ShirtNeckGasketVariant__${item.id}__${construction.id}`,"shirt")
   )),
   ...styleVariants.cuffs.flatMap((item)=>styleVariants.cuffConstruction.map((construction)=>
@@ -1668,7 +1719,7 @@ for(const rise of styleVariants.rises){
   }
 }
 
-const neckGasketMeshes=Object.fromEntries(styleVariants.collars.filter((item)=>!["camp","one_piece","mandarin"].includes(item.id)).flatMap((item)=>styleVariants.collarConstruction.map((construction)=>{
+const neckGasketMeshes=Object.fromEntries(styleVariants.collars.filter((item)=>!["camp","one_piece"].includes(item.id)).flatMap((item)=>styleVariants.collarConstruction.map((construction)=>{
   const key=`${item.id}__${construction.id}`;
   return [
     key,
@@ -1932,7 +1983,7 @@ for(const item of styleVariants.collars){
 }
 
 for(const item of styleVariants.collars){
-  if(["camp","one_piece","mandarin"].includes(item.id)) continue;
+  if(["camp","one_piece"].includes(item.id)) continue;
   for(const construction of styleVariants.collarConstruction){
     const key=`${item.id}__${construction.id}`;
     const buildSpec=collarBuildSpec[construction.id]||collarBuildSpec.stiff_fused;
@@ -2512,7 +2563,7 @@ const manifest={
     sourceAnchors:"LINEN_EARTH_FRONT_SILHOUETTE_ANCHORS"
   },
   styleVariants:{version:styleVariants.version,materialNames:variantMaterialNames,config:styleVariants},
-  cameraOrbits:{front:"0deg 76deg 3.60m","three-quarter":"35deg 76deg 3.60m",side:"90deg 76deg 3.60m",back:"180deg 76deg 3.60m"},
+  cameraOrbits:{front:"0deg 76deg 3.95m","three-quarter":"35deg 76deg 3.95m",side:"90deg 76deg 3.95m",back:"180deg 76deg 3.95m"},
   productionAssetStatus:"deterministic-preview-shell-not-realistic-production-asset",
 };
 
