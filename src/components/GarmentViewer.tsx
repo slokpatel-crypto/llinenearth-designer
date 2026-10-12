@@ -1006,7 +1006,9 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     "max-camera-orbit":"auto 92deg 5.4m",
     "interpolation-decay":"135",
     "environment-image":"neutral",
-    "shadow-intensity":".78",
+    // Defer costly contact shadow compilation until the actual GLB is ready.
+    // Restores the exact intended premium shadow on the first ready render.
+    "shadow-intensity":modelReady?".78":"0",
     "shadow-softness":".96",
     "exposure":"1.12",
     "tone-mapping":"commerce",
