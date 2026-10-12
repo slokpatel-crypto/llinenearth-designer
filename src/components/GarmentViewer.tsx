@@ -772,21 +772,27 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     if(verified) setModelContract(verified);
   },[modelId,modelSrc,assetIdentity]);
 
-  // The immutable 586-material lab GLB can saturate CPU/software WebGL shader
-  // compilation at startup. Never initialize six fabric textures and hundreds
-  // of variant materials during the SAME frame as the first loaded scene.
-  // Let the actual verified model paint twice before material mutations. This
-  // does not classify a blank scene as ready or hide any model contract failure.
+  // Measured headless native model "load" at 15.5s, but uploading hundreds
+  // of extra variant/material GPU resources immediately prevented the first
+  // actual interactive frame until after 24s. Give the real loaded GLB a
+  // bounded 3-second shader/paint quiet window BEFORE optional fabric texture
+  // replacement and style-variant material updates. Production material edits
+  // still run, and neither the model contract nor the 20s native-load QA is
+  // waived. A real scene, not a poster, remains mandatory for readiness.
   useEffect(()=>{
     setMaterialPipelineReady(false);
     if(!modelReady) return;
     let frame2=0;
+    let settleTimer:number|undefined;
     const frame1=requestAnimationFrame(()=>{
-      frame2=requestAnimationFrame(()=>setMaterialPipelineReady(true));
+      frame2=requestAnimationFrame(()=>{
+        settleTimer=window.setTimeout(()=>setMaterialPipelineReady(true),3000);
+      });
     });
     return ()=>{
       cancelAnimationFrame(frame1);
       if(frame2) cancelAnimationFrame(frame2);
+      if(settleTimer!==undefined) window.clearTimeout(settleTimer);
     };
   },[modelReady]);
 
