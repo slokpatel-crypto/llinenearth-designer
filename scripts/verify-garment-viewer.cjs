@@ -454,15 +454,42 @@ async function verifyViewport(browser, width) {
   const captureViewportEvidence=async(name)=>{
     const viewport=page.viewportSize();
     assert.ok(viewport,"browser QA viewport must be available for evidence capture");
-    // This route is intentionally very tall because it exposes the full tailoring library.
-    // Capture the asserted viewport instead of asking Chromium to rasterize the entire
-    // continuously rendered WebGL page, which can exceed CI's screenshot deadline.
-    await page.screenshot({
-      path:path.join(output,name),
-      clip:{x:0,y:0,width:viewport.width,height:viewport.height},
-      animations:"disabled",
-      timeout:60000,
+
+    // Capture actual GLB pixels through model-viewer's documented async Blob
+    // API. A conventional full-page Chromium screenshot stalls software-WebGL
+    // ReadPixels for minutes. The 3D pixel evidence is still mandatory.
+    const render=await viewer.evaluate(async(element)=>{
+      if(!element.loaded || typeof element.toBlob!=="function"){
+        throw new Error("Actual rendered 3D model screenshot API is unavailable.");
+      }
+      const blob=await element.toBlob({mimeType:"image/png"});
+      const data=await new Promise((resolve,reject)=>{
+        const reader=new FileReader();
+        reader.onerror=()=>reject(new Error("3D pixel evidence could not be decoded."));
+        reader.onload=()=>resolve(String(reader.result||""));
+        reader.readAsDataURL(blob);
+      });
+      return {size:blob.size,base64:data.split(",")[1]};
     });
+    assert.ok(render.size>=12000,"Actual garment render PNG is too small; possible blank WebGL capture.");
+    const pixels=Buffer.from(render.base64||"","base64");
+    assert.equal(pixels.subarray(1,4).toString("ascii"),"PNG","Garment pixels must be a real PNG.");
+    await fs.writeFile(path.join(output,name.replace(".png","-model.png")),pixels);
+
+    // Independently capture the exact responsive UI layout without re-reading
+    // the continuously rendering WebGL framebuffer. This layout shot is NOT
+    // used as model-fidelity evidence; the real-model PNG above is required.
+    await viewer.evaluate(element=>{element.style.visibility="hidden";});
+    try{
+      await page.screenshot({
+        path:path.join(output,name),
+        clip:{x:0,y:0,width:viewport.width,height:viewport.height},
+        animations:"disabled",
+        timeout:45000,
+      });
+    } finally {
+      await viewer.evaluate(element=>{element.style.visibility="";});
+    }
   };
 
   const desktopLayout=await readLayout();
