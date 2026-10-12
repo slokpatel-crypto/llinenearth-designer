@@ -482,6 +482,63 @@ def measured_geometry_uv_density(obj, max_samples=600):
         evaluated.to_mesh_clear()
 
 
+def diagnostic_source_uv_transfer(original, candidate, source_uv_density,
+                                  temporary_objects):
+    """Try authoritative authored UV interpolation on a disposable cloth copy.
+
+    UV is transferred from the SAME locked authored garment surface, not
+    guessed from a photo. Keep it only if matched U/V fidelity improves and
+    no UV triangles collapse. This cannot certify supplier repeat or drape.
+    Original, body, guide measurements and strict release gate remain intact.
+    """
+    baseline=measured_geometry_uv_density(candidate)
+    reference=source_uv_density["axisSampleRows"]
+    before=paired_spatial_uv_drift(reference,baseline["axisSampleRows"])
+    details={"attempted":True,"retained":False,"sourceMeshUnchanged":True,
+             "baselinePairedUvQA":before,
+             "physicalFabricVerified":False}
+    trial=candidate.copy()
+    trial.data=candidate.data.copy()
+    bpy.context.scene.collection.objects.link(trial)
+    trial.name="LE_DIAGNOSTIC_AUTHORED_UV_TRANSFER__"+candidate.name
+    temporary_objects.append(trial)
+    try:
+        modifier=trial.modifiers.new("LE_TRANSFER_AUTHORED_CLOTH_UV","DATA_TRANSFER")
+        modifier.object=original
+        modifier.use_loop_data=True
+        modifier.data_types_loops={"UV"}
+        modifier.loop_mapping="POLYINTERP_NEAREST"
+        bpy.ops.object.select_all(action="DESELECT")
+        trial.select_set(True)
+        bpy.context.view_layer.objects.active=trial
+        bpy.ops.object.modifier_apply(modifier=modifier.name)
+        if not trial.data.uv_layers or trial.data.uv_layers.active is None:
+            raise RuntimeError("Data transfer removed authentic garment UV maps.")
+        transferred=measured_geometry_uv_density(trial)
+        after=paired_spatial_uv_drift(reference,transferred["axisSampleRows"])
+        details["transferredPairedUvQA"]=after
+        details["collapsedUvTriangles"]=transferred["collapsedUvTriangles"]
+        before_metrics=(before.get("medianUErrorPct"),before.get("medianVErrorPct"),
+                        before.get("areaWeightedMedianUErrorPct"),
+                        before.get("areaWeightedMedianVErrorPct"))
+        after_metrics=(after.get("medianUErrorPct"),after.get("medianVErrorPct"),
+                       after.get("areaWeightedMedianUErrorPct"),
+                       after.get("areaWeightedMedianVErrorPct"))
+        improves=(
+            all(v is not None and math.isfinite(v) for v in (*before_metrics,*after_metrics))
+            and max(after_metrics)+.10 < max(before_metrics)
+            and after["matchedSourcePct"]>=before["matchedSourcePct"]-.1
+            and transferred["collapsedUvTriangles"]==0
+            and transferred["validUvTriangles"]>=baseline["validUvTriangles"]*.97
+        )
+        details["retained"]=improves
+        if improves:
+            return trial,details
+    except Exception as error:
+        details["transferError"]=str(error)
+    return candidate,details
+
+
 def main():
     cfg=args()
     output=Path(cfg.output).expanduser().resolve()
@@ -578,6 +635,11 @@ def main():
                     # <=12mm repair. Recheck final mesh below, never infer
                     # release safety from the search result alone.
                     repair=fit_candidate_mobile_contacts(copy,tree,guides[name])
+            uv_transfer={"attempted":False,"reason":"Other panels use immutable authored UV."}
+            if name=="ShirtSleeveLFabric" and repair["succeeded"]:
+                copy,uv_transfer=diagnostic_source_uv_transfer(
+                    original,copy,source_uv_density,temporary_objects,
+                )
             points,faces,tris=world_geometry(copy)
             candidate_uv_density=measured_geometry_uv_density(copy)
             # Match derivatives near the SAME physical garment coordinates,
@@ -619,6 +681,7 @@ def main():
                 "sourceSkinAwareCollapse":skin_guard,
                 "higherSourceFidelityTrials":higher_ratio,
                 "effectiveReductionRatio":measured_ratio,
+                "sourceUvTransferTrial":uv_transfer,
                 "geometryOnlyUvDensity":{
                     "source":source_uv_density,
                     "mobileCandidate":candidate_uv_density,
