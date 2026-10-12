@@ -382,7 +382,10 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const visibleButtonMaterialsRef=useRef(new Set<string>());
   const visibleSkinArmMaterialRef=useRef<string|null>(null);
   const [textureRevision,setTextureRevision]=useState(0);
-  const [modelUrl,setModelUrl]=useState("");
+  // The production GLB URL is already verified by the server. Emit it during
+  // SSR hydration so Chromium can fetch it immediately, instead of waiting
+  // for an extra client-side useEffect/render before scene startup.
+  const [modelUrl,setModelUrl]=useState(()=>modelSrc||"");
   const [engineReady,setEngineReady]=useState(false);
   const [modelReady,setModelReady]=useState(false);
   const [progress,setProgress]=useState(0);
