@@ -58,6 +58,27 @@ async function verifyViewport(browser, width) {
   // Measure launch from navigation, not from a later Playwright poll that
   // software WebGL can delay past its own timeout under a stalled main thread.
   const navigationStartedAt=Date.now();
+  // Capture native first-load timing BEFORE hydration and regardless of React.
+  // If 20s fails, distinguish slow GLB decode/shaders from delayed UI paint.
+  await page.addInitScript(()=>{
+    const timeline={firstProgressMs:null,firstNativeLoadMs:null,firstNativeErrorMs:null,
+      lastProgress:null,progressEvents:0,scriptStartedMs:performance.now()};
+    Object.defineProperty(window,"__linen3dQaTimeline",{value:timeline});
+    document.addEventListener("progress",(event)=>{
+      if(event.target?.tagName!=="MODEL-VIEWER") return;
+      timeline.progressEvents++;
+      if(timeline.firstProgressMs===null) timeline.firstProgressMs=performance.now();
+      if(typeof event.detail?.totalProgress==="number") timeline.lastProgress=event.detail.totalProgress;
+    },true);
+    document.addEventListener("load",(event)=>{
+      if(event.target?.tagName==="MODEL-VIEWER" && timeline.firstNativeLoadMs===null)
+        timeline.firstNativeLoadMs=performance.now();
+    },true);
+    document.addEventListener("error",(event)=>{
+      if(event.target?.tagName==="MODEL-VIEWER" && timeline.firstNativeErrorMs===null)
+        timeline.firstNativeErrorMs=performance.now();
+    },true);
+  });
   await page.goto(baseURL + "/lab/garment-viewer", { waitUntil: "domcontentloaded", timeout: 30000 });
   await page.waitForFunction(() => Boolean(customElements.get("model-viewer")), null, { timeout: 20000 });
   const engineResources=await page.evaluate(()=>performance.getEntriesByType("resource").map((entry)=>entry.name).filter((name)=>name.includes("model-viewer")));
@@ -93,6 +114,8 @@ async function verifyViewport(browser, width) {
       loadingMessage:document.querySelector(".garmentViewerLoading")?.textContent?.trim().slice(0,240)||null,
       userVisibleError:document.querySelector(".garmentViewerError")?.textContent?.trim().slice(0,240)||null,
       engineDefined:Boolean(customElements.get("model-viewer")),
+      nativeEventTimeline:window.__linen3dQaTimeline||null,
+      browserUptimeMs:Math.round(performance.now()),
       modelLoaded:Boolean(document.querySelector("model-viewer")?.loaded),
       materialCount:document.querySelector("model-viewer")?.model?.materials?.length??0,
       modelSource:document.querySelector("model-viewer")?.getAttribute("src")||null,
