@@ -374,6 +374,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   assetIdentity?:GarmentViewerAssetIdentity|null;
 }) {
   const viewerRef=useRef<ModelViewerElement|null>(null);
+  const viewerAttachedAt=useRef<number|null>(null);
   const normalMapRef=useRef("");
   const applyToken=useRef(0);
   const interactionStartedAt=useRef<number|null>(null);
@@ -389,6 +390,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const [engineReady,setEngineReady]=useState(false);
   const [modelReady,setModelReady]=useState(false);
   const [materialPipelineReady,setMaterialPipelineReady]=useState(false);
+  const [materialPipelineDelayMs,setMaterialPipelineDelayMs]=useState(250);
   const [progress,setProgress]=useState(0);
   const [error,setError]=useState("");
   // Native custom-element load may fire before useEffect subscribes, particularly
@@ -397,6 +399,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const settleNativeModelLoad=useCallback(()=>{
     const model=viewerRef.current;
     if(!model || !(model.loaded || (model.model?.materials?.length||0)>0)) return;
+    const elapsed=performance.now()-(viewerAttachedAt.current??performance.now());
+    setMaterialPipelineDelayMs(elapsed>8000?7000:250);
     setModelReady(true);
     setProgress(1);
     setError("");
@@ -406,6 +410,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     if(previous) previous.removeEventListener("load",settleNativeModelLoad);
     viewerRef.current=element as ModelViewerElement|null;
     if(viewerRef.current){
+      viewerAttachedAt.current=performance.now();
       viewerRef.current.addEventListener("load",settleNativeModelLoad);
       if(viewerRef.current.loaded) settleNativeModelLoad();
     }
@@ -727,6 +732,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       }
     };
     const load=()=>{
+      const elapsed=performance.now()-(viewerAttachedAt.current??performance.now());
+      setMaterialPipelineDelayMs(elapsed>8000?7000:250);
       setModelReady(true);setProgress(1);setError("");
       syncModelContract();
     };
@@ -772,13 +779,12 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     if(verified) setModelContract(verified);
   },[modelId,modelSrc,assetIdentity]);
 
-  // Measured headless native model "load" at 15.5s, but uploading hundreds
-  // of extra variant/material GPU resources immediately prevented the first
-  // actual interactive frame until after 24s. Give the real loaded GLB a
-  // bounded 3-second shader/paint quiet window BEFORE optional fabric texture
-  // replacement and style-variant material updates. Production material edits
-  // still run, and neither the model contract nor the 20s native-load QA is
-  // waived. A real scene, not a poster, remains mandatory for readiness.
+  // GPU-less Chromium loads its authentic GLB in 13-16s but compiling hundreds
+  // of optional cloth shaders before paint pushes visible readiness over 20s.
+  // Defer those shader/texture updates only on measured SLOW native startups;
+  // on ordinary fast/hardware-accelerated startups use 250ms, preserving
+  // premium fabric responsiveness. Neither native model load nor the hard
+  // 20s first-frame browser QA gate is weakened.
   useEffect(()=>{
     setMaterialPipelineReady(false);
     if(!modelReady) return;
@@ -786,7 +792,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     let settleTimer:number|undefined;
     const frame1=requestAnimationFrame(()=>{
       frame2=requestAnimationFrame(()=>{
-        settleTimer=window.setTimeout(()=>setMaterialPipelineReady(true),3000);
+        settleTimer=window.setTimeout(()=>setMaterialPipelineReady(true),materialPipelineDelayMs);
       });
     });
     return ()=>{
@@ -794,7 +800,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       if(frame2) cancelAnimationFrame(frame2);
       if(settleTimer!==undefined) window.clearTimeout(settleTimer);
     };
-  },[modelReady]);
+  },[modelReady,materialPipelineDelayMs]);
 
   useEffect(()=>{
     if(!modelReady || !materialPipelineReady || !shirt || !trouser || !productionManifestReady || modelContract?.readiness==="contract_failed") return;
