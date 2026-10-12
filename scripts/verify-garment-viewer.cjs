@@ -12,6 +12,8 @@ const output = path.resolve("artifacts/preview-lifecycle");
 async function verifyViewport(browser, width) {
   const context = await browser.newContext({ viewport: { width, height: 1000 } });
   const page = await context.newPage();
+  const startedAt=Date.now();
+  const qaStage=(label)=>console.log(`[3D browser QA] ${label} · ${Date.now()-startedAt}ms`);
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
@@ -58,6 +60,7 @@ async function verifyViewport(browser, width) {
   const engineResources=await page.evaluate(()=>performance.getEntriesByType("resource").map((entry)=>entry.name).filter((name)=>name.includes("model-viewer")));
   assert.ok(engineResources.some((name)=>name.includes("/vendor/model-viewer")), "3D engine must load through the Linen Earth origin");
   assert.equal(engineResources.some((name)=>name.includes("ajax.googleapis.com")), false, "Browser must not depend on the Google CDN for the 3D engine");
+  qaStage("engine custom element defined");
   const viewer = page.locator("model-viewer");
   await viewer.waitFor({ state: "visible" });
   const serverSeededReadiness=await page.locator(".garmentViewerShell").getAttribute("data-model-readiness");
@@ -118,6 +121,7 @@ async function verifyViewport(browser, width) {
     })).catch(()=>({body:"<page unavailable>",shellCount:0,readiness:null,manifestReady:null}));
     throw new Error("3D readiness did not settle after hydration. url="+page.url()+" errors="+JSON.stringify(errors)+" state="+JSON.stringify(diagnostic)+"; "+error.message);
   }
+  qaStage("GLB and scene contract hydrated, loading veil gone");
   const shell=page.locator(".garmentViewerShell");
   assert.equal(await shell.count(),1,"3D lab must keep exactly one hydrated viewer shell");
   const [labModelReadiness,labManifestReadiness]=await page.evaluate(()=>{
@@ -459,6 +463,7 @@ async function verifyViewport(browser, width) {
   const desktopLayout=await readLayout();
   assertLayout(desktopLayout,width);
   await captureViewportEvidence("garment-viewer-" + width + ".png");
+  qaStage("desktop viewport screenshot captured");
 
   // Reuse the already-loaded WebGL/model scene for mobile responsive QA. Reloading this
   // large contract a second time on CI duplicates shader/model startup cost without
@@ -468,6 +473,7 @@ async function verifyViewport(browser, width) {
   const mobileLayout=await readLayout();
   assertLayout(mobileLayout,390);
   await captureViewportEvidence("garment-viewer-390.png");
+  qaStage("mobile viewport screenshot captured");
 
   assert.deepEqual(errors, [], "GarmentViewer must load without console/page errors");
   await context.close();
