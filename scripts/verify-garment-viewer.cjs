@@ -62,7 +62,32 @@ async function verifyViewport(browser, width) {
   await viewer.waitFor({ state: "visible" });
   const serverSeededReadiness=await page.locator(".garmentViewerShell").getAttribute("data-model-readiness");
   assert.equal(serverSeededReadiness,"contract_ready","server-verified production asset must seed M7.46 readiness before scene-graph hydration");
-  await page.locator(".garmentViewerLoading").waitFor({ state: "hidden", timeout: 20000 });
+  try {
+    await page.locator(".garmentViewerLoading").waitFor({ state: "hidden", timeout: 20000 });
+  } catch (error) {
+    // Preserve objective WebGL/asset evidence instead of a generic timeout.
+    // Do not waive the 20s production loading gate or fabricate loaded state.
+    const diagnostics=await page.evaluate(()=>({
+      pathname:location.pathname,
+      loadingMessage:document.querySelector(".garmentViewerLoading")?.textContent?.trim().slice(0,240)||null,
+      userVisibleError:document.querySelector(".garmentViewerError")?.textContent?.trim().slice(0,240)||null,
+      engineDefined:Boolean(customElements.get("model-viewer")),
+      modelLoaded:Boolean(document.querySelector("model-viewer")?.loaded),
+      materialCount:document.querySelector("model-viewer")?.model?.materials?.length??0,
+      modelSource:document.querySelector("model-viewer")?.getAttribute("src")||null,
+      modelReadiness:document.querySelector(".garmentViewerShell")?.getAttribute("data-model-readiness")||null,
+      manifestReady:document.querySelector(".garmentViewerShell")?.getAttribute("data-manifest-ready")||null,
+      assets:performance.getEntriesByType("resource")
+        .filter(entry=>/\\.glb(?:\\?|$)|model-viewer|\\.json(?:\\?|$)/i.test(entry.name))
+        .map(entry=>({path:new URL(entry.name).pathname,durationMs:Math.round(entry.duration),
+          transferSize:entry.transferSize??0,decodedBodySize:entry.decodedBodySize??0})).slice(-16),
+    })).catch(()=>({diagnosticUnavailable:true}));
+    await fs.mkdir(output,{recursive:true});
+    await fs.writeFile(path.join(output,"garment-loading-timeout.json"),
+      JSON.stringify({diagnostics,browserErrors:errors},null,2)+"\\n");
+    throw new Error("3D model failed the original 20-second genuine-load gate: "+
+      JSON.stringify({diagnostics,browserErrors:errors})+"; "+error.message);
+  }
   try {
     // React can replace the server-rendered shell while the large scene graph hydrates.
     // Re-resolve the current DOM node until both immutable production contracts settle.
