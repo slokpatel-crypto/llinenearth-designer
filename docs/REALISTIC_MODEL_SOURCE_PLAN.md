@@ -235,3 +235,20 @@ This creates `artifacts/model-qa/linen-earth-model-front.png`, `linen-earth-mode
 The renderer refuses a missing/wrong identity lock, missing realistic Body mesh, incomplete six-panel garment scene or incorrect body height. It does not modify/save the original scene, substitute another person, fabricate hidden garment details, declare a measured cloth drape or claim any tailor approval.
 
 **These are inspection candidates, not finished production assets.** Compare all four images manually against the current `/designer/studio-tucked.webp` target, including neck, shoulder slope, wrists, hand clearance, tuck, seat/thigh, trouser break and back silhouette. Record evidence in the existing operator gates before promotion. Unmeasured fabric mechanical properties and supplier repeat width must remain unknown until provided.
+
+## Bounded six-panel surface relief — source-locked engineering candidate
+
+The Blender six-panel authoring helper now adds conservative **outward-only** microfold relief to the same source body mesh, leaving the faceless identity and camera landmarks unchanged. This is a reproducible geometric sculpt, **not measured linen physics or a sewn-cloth simulation**.
+
+```bash
+npm run garment:model-garments:author
+# Optional clean-shell comparison, without artificial microfolds:
+blender --background .cache/linen-earth/linen-earth-officewear-body-base.blend \
+  --python scripts/blender/author-linen-earth-officewear.py -- \
+  --output .cache/linen-earth/linen-earth-officewear-authored-clean.blend \
+  --candidate-relief-mm 0
+```
+
+Default candidate relief is bounded to 3 mm peak (allowed 0–6 mm) and fades to zero at the garment-panel borders to protect cuffs, tuck, ankle hems and seams. This is checked by Blender-independent Python tests in CI. Every garment panel is tagged `linen_earth_drape_method=unverified_art_directed_candidate_relief_v1`; the scene records `linen_earth_measured_fabric_physics=False`. **No physical GSM, bending, shear, shrinkage, stiffness, fabric repeat or drape calibration is inferred.** Outward-only movement must still pass the Blender BVH body and garment boundary inspection before export.
+
+The art-directed relief is strictly a candidate finishing step. Before release, use a supplier-specified mechanical textile profile, actual garment pattern geometry, sewn construction, fitted cloth simulation and independent four-angle tailor approval. The customer-facing 3D approval gate remains closed in the absence of that evidence.
