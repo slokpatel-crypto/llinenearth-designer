@@ -99,6 +99,11 @@ test("viewer recovers a model-viewer load event that fires before React effect l
   const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
   assert(viewer.includes("loaded?:boolean"));
   assert(viewer.includes("const recoverReadyState=(attempt=0)=>"));
+  assert(viewer.includes('ref:attachViewerRef'));
+  assert(viewer.includes('viewerRef.current.addEventListener("load",settleNativeModelLoad)'));
+  assert(viewer.includes('previous.removeEventListener("load",settleNativeModelLoad)'));
+  assert(viewer.includes('if(viewerRef.current.loaded) settleNativeModelLoad()'));
+  assert(viewer.includes("if(!model || !(model.loaded || (model.model?.materials?.length||0)>0)) return"));
   assert(viewer.includes("viewer.loaded || (viewer.model?.materials?.length||0)>0"));
   assert(viewer.includes("if(attempt<160) readinessTimer=window.setTimeout(()=>recoverReadyState(attempt+1),125);"));
 });
