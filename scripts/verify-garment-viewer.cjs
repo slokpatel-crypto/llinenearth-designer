@@ -463,7 +463,12 @@ async function verifyViewport(browser, width) {
 
 (async () => {
   await fs.mkdir(output, { recursive: true });
-  const browser = await chromium.launch({ headless: true });
+  // Chromium 139+ removed implicit SwiftShader WebGL fallback on GPU-less CI.
+  // Opt into CPU WebGL ONLY in this local, trusted test browser. Production
+  // browsers keep their normal security and hardware acceleration policies.
+  const browser = await chromium.launch({ headless: true,
+    args:["--use-gl=angle","--use-angle=swiftshader-webgl","--enable-unsafe-swiftshader"],
+  });
   try {
     const viewports = [];
     // Load the production GLB once, then resize that same hydrated scene for mobile QA.
