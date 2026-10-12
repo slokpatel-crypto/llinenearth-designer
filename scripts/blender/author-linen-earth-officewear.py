@@ -128,6 +128,35 @@ def apply_modifier(obj, modifier):
         obj.select_set(False)
 
 
+def fit_shirt_shoulder_to_locked_guide(obj, body_floor_z, body_height):
+    """Expand only the shirt shoulder to the existing photo's 388-mm guide.
+
+    The scan base has narrower shoulders than the photographed officewear
+    target. Outward garment ease adds contour without scaling the model's
+    anatomical torso or substituting an unrelated mannequin.
+    """
+    mesh = obj.data
+    mesh.update()
+    shoulder_ratio = 1.0 - 244.0 / 1536.0
+    shoulder_z = body_floor_z + body_height * shoulder_ratio
+    band = 0.020
+    section = [v.co.x for v in mesh.vertices if abs(v.co.z - shoulder_z) <= band]
+    if len(section) < 4:
+        raise RuntimeError("Cannot fit shoulder silhouette: no shirt section at identity guide.")
+    center = 0.5 * (max(section) + min(section))
+    initial_width = max(section) - min(section)
+    if initial_width <= 0.005:
+        raise RuntimeError("Cannot fit shoulder silhouette from degenerate source geometry.")
+    target_width = 0.388
+    scale = min(1.34, max(1.0, target_width / initial_width))
+    for v in mesh.vertices:
+        z_distance = (v.co.z - shoulder_z) / 0.080
+        influence = math.exp(-0.5 * z_distance * z_distance)
+        v.co.x = center + (v.co.x - center) * (1.0 + (scale - 1.0) * influence)
+    mesh.update()
+    return initial_width * 1000, scale
+
+
 def sculpt_unverified_preview_relief(obj, panel, peak_mm):
     """Small outward folds on the existing body-fitted mesh, no new model.
 
@@ -166,7 +195,7 @@ def sculpt_unverified_preview_relief(obj, panel, peak_mm):
     return max(offsets)
 
 
-def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm):
+def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm, body_floor_z, body_height):
     shrink = obj.modifiers.new("LE_BODY_CLEARANCE", "SHRINKWRAP")
     shrink.target = body
     shrink.wrap_method = "NEAREST_SURFACEPOINT"
@@ -179,6 +208,9 @@ def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm):
     smooth.iterations = 3
     apply_modifier(obj, smooth)
 
+    shoulder_guide = None
+    if panel == "ShirtTorsoFabric":
+        shoulder_guide = fit_shirt_shoulder_to_locked_guide(obj, body_floor_z, body_height)
     max_relief = sculpt_unverified_preview_relief(obj, panel, relief_mm)
 
     solid = obj.modifiers.new("LE_CLOTH_THICKNESS", "SOLIDIFY")
@@ -186,7 +218,7 @@ def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm):
     solid.offset = 1.0
     solid.use_rim = True
     apply_modifier(obj, solid)
-    return max_relief
+    return max_relief, shoulder_guide
 
 
 def planar_grain_uv(obj):
@@ -275,13 +307,16 @@ def main():
     authored = []
     for name, predicate in regions.items():
         obj = selected_shell(body, name, predicate)
-        max_relief = fit_shell(obj, body, clearance_m, thickness_m, name, options.candidate_relief_mm)
+        max_relief, shoulder_guide = fit_shell(obj, body, clearance_m, thickness_m, name, options.candidate_relief_mm, min_z, height)
         planar_grain_uv(obj)
         obj["linen_earth_auto_authored"] = True
         obj["linen_earth_fit_clearance_mm"] = round(clearance_m * 1000.0, 3)
         obj["linen_earth_cloth_thickness_mm"] = round(thickness_m * 1000.0, 3)
         obj["linen_earth_drape_method"] = "unverified_art_directed_candidate_relief_v1"
         obj["linen_earth_drape_max_relief_mm"] = round(max_relief, 3)
+        if shoulder_guide:
+            obj["linen_earth_shoulder_width_source_mm"] = round(shoulder_guide[0], 2)
+            obj["linen_earth_shoulder_contour_scale"] = round(shoulder_guide[1], 6)
         authored.append(obj)
 
     bpy.context.scene["linen_earth_asset_status"] = "auto-authored-production-candidate-needs-tailor-review"
