@@ -484,59 +484,94 @@ def measured_geometry_uv_density(obj, max_samples=600):
 
 def diagnostic_source_uv_transfer(original, candidate, source_uv_density,
                                   temporary_objects):
-    """Try authoritative authored UV interpolation on a disposable cloth copy.
+    """Compare real authored UV interpolation modes on disposable garment copies.
 
-    UV is transferred from the SAME locked authored garment surface, not
-    guessed from a photo. Keep it only if matched U/V fidelity improves and
-    no UV triangles collapse. This cannot certify supplier repeat or drape.
-    Original, body, guide measurements and strict release gate remain intact.
+    Never alter source cloth, body or tailoring guides. Keep only an actual
+    measured fidelity improvement; missing samples, UV collapse, or a failed
+    Blender transfer cannot pass. No physical textile approval is implied.
     """
     baseline=measured_geometry_uv_density(candidate)
     reference=source_uv_density["axisSampleRows"]
     before=paired_spatial_uv_drift(reference,baseline["axisSampleRows"])
-    details={"attempted":True,"retained":False,"sourceMeshUnchanged":True,
-             "baselinePairedUvQA":before,
-             "physicalFabricVerified":False}
-    trial=candidate.copy()
-    trial.data=candidate.data.copy()
-    bpy.context.scene.collection.objects.link(trial)
-    trial.name="LE_DIAGNOSTIC_AUTHORED_UV_TRANSFER__"+candidate.name
-    temporary_objects.append(trial)
-    try:
-        modifier=trial.modifiers.new("LE_TRANSFER_AUTHORED_CLOTH_UV","DATA_TRANSFER")
-        modifier.object=original
-        modifier.use_loop_data=True
-        modifier.data_types_loops={"UV"}
-        modifier.loop_mapping="POLYINTERP_NEAREST"
-        bpy.ops.object.select_all(action="DESELECT")
-        trial.select_set(True)
-        bpy.context.view_layer.objects.active=trial
-        bpy.ops.object.modifier_apply(modifier=modifier.name)
-        if not trial.data.uv_layers or trial.data.uv_layers.active is None:
-            raise RuntimeError("Data transfer removed authentic garment UV maps.")
-        transferred=measured_geometry_uv_density(trial)
-        after=paired_spatial_uv_drift(reference,transferred["axisSampleRows"])
-        details["transferredPairedUvQA"]=after
-        details["collapsedUvTriangles"]=transferred["collapsedUvTriangles"]
-        before_metrics=(before.get("medianUErrorPct"),before.get("medianVErrorPct"),
-                        before.get("areaWeightedMedianUErrorPct"),
-                        before.get("areaWeightedMedianVErrorPct"))
-        after_metrics=(after.get("medianUErrorPct"),after.get("medianVErrorPct"),
-                       after.get("areaWeightedMedianUErrorPct"),
-                       after.get("areaWeightedMedianVErrorPct"))
-        improves=(
-            all(v is not None and math.isfinite(v) for v in (*before_metrics,*after_metrics))
-            and max(after_metrics)+.10 < max(before_metrics)
-            and after["matchedSourcePct"]>=before["matchedSourcePct"]-.1
-            and transferred["collapsedUvTriangles"]==0
-            and transferred["validUvTriangles"]>=baseline["validUvTriangles"]*.97
-        )
-        details["retained"]=improves
-        if improves:
-            return trial,details
-    except Exception as error:
-        details["transferError"]=str(error)
-    return candidate,details
+
+    def quality(uv,paired):
+        overall=axis_drift_against_authored(
+            source_uv_density["uvAxisGeometry"],uv["uvAxisGeometry"],8)
+        zones=vertical_uv_zone_drift(
+            source_uv_density["verticalUvZones"],uv["verticalUvZones"],8)
+        values=[
+            paired.get(key) for key in
+            ("medianUErrorPct","medianVErrorPct",
+             "areaWeightedMedianUErrorPct","areaWeightedMedianVErrorPct")
+        ]
+        for group in (overall,*zones["zones"].values()):
+            values.extend(group.get(key) for key in
+                ("uAxisMedianDriftPct","vAxisMedianDriftPct",
+                 "uAxisAreaWeightedDriftPct","vAxisAreaWeightedDriftPct"))
+        if not all(isinstance(v,(float,int)) and math.isfinite(v) for v in values):
+            return None,overall,zones
+        return round(max(values),4),overall,zones
+
+    original_score,_,_=quality(baseline,before)
+    best_score=original_score
+    chosen=candidate
+    details={
+        "attempted":True,"retained":False,"sourceMeshUnchanged":True,
+        "baselinePairedUvQA":before,"baselineWorstUvMetricPct":original_score,
+        "physicalFabricVerified":False,"mappingTrials":[],
+    }
+    for mapping in ("POLYINTERP_NEAREST","POLYINTERP_LNORPROJ","NEAREST_POLYNOR"):
+        trial=candidate.copy()
+        trial.data=candidate.data.copy()
+        bpy.context.scene.collection.objects.link(trial)
+        trial.name="LE_DIAGNOSTIC_UV__"+mapping+"__"+candidate.name
+        temporary_objects.append(trial)
+        attempt={"mapping":mapping,"retained":False}
+        try:
+            modifier=trial.modifiers.new("LE_TRANSFER_AUTHORED_CLOTH_UV","DATA_TRANSFER")
+            modifier.object=original
+            modifier.use_loop_data=True
+            modifier.data_types_loops={"UV"}
+            modifier.loop_mapping=mapping
+            bpy.ops.object.select_all(action="DESELECT")
+            trial.select_set(True)
+            bpy.context.view_layer.objects.active=trial
+            bpy.ops.object.modifier_apply(modifier=modifier.name)
+            if not trial.data.uv_layers or trial.data.uv_layers.active is None:
+                raise RuntimeError("Data transfer removed authentic garment UV maps.")
+            transferred=measured_geometry_uv_density(trial)
+            after=paired_spatial_uv_drift(reference,transferred["axisSampleRows"])
+            score,overall,zones=quality(transferred,after)
+            attempt.update({
+                "pairedUvQA":after,"overallUvQA":overall,
+                "verticalZonesUvQA":zones,
+                "worstUvMetricPct":score,
+                "collapsedUvTriangles":transferred["collapsedUvTriangles"],
+            })
+            improves=(
+                score is not None and best_score is not None
+                and score+.10<best_score
+                and after["matchedSourcePct"]>=before["matchedSourcePct"]-.1
+                and transferred["collapsedUvTriangles"]==0
+                and transferred["validUvTriangles"]>=baseline["validUvTriangles"]*.97
+            )
+            if improves:
+                if details.get("selectedMapping"):
+                    for earlier in details["mappingTrials"]:
+                        earlier["retained"]=False
+                best_score=score
+                chosen=trial
+                attempt["retained"]=True
+                details.update({
+                    "retained":True,"selectedMapping":mapping,
+                    "transferredPairedUvQA":after,
+                    "worstSelectedUvMetricPct":score,
+                    "collapsedUvTriangles":transferred["collapsedUvTriangles"],
+                })
+        except Exception as error:
+            attempt["transferError"]=str(error)
+        details["mappingTrials"].append(attempt)
+    return chosen,details
 
 
 def main():
