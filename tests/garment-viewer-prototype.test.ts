@@ -117,7 +117,10 @@ test("viewer surface exposes the shared four-angle turntable and independent shi
 
 test("real browser 3D QA records GPU/asset diagnosis without silently relaxing the twenty-second threshold",()=>{
   const code=readFileSync("scripts/verify-garment-viewer.cjs","utf8");
-  assert(code.includes('waitFor({ state: "hidden", timeout: 20000 })'));
+  assert(code.includes('},null,{timeout:20000,polling:100})'));
+  assert(code.includes('Boolean(model?.loaded)'));
+  assert(code.includes('(model?.model?.materials?.length||0)>=6'));
+  assert(code.includes('!document.querySelector(".garmentViewerLoading")'));
   assert(code.includes('"garment-loading-timeout.json"'));
   assert(code.includes('modelLoaded:Boolean(document.querySelector("model-viewer")?.loaded)'));
   assert(code.includes('modelReadiness:document.querySelector(".garmentViewerShell")'));
