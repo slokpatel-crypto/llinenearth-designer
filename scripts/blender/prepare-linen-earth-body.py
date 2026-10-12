@@ -153,6 +153,28 @@ def normalize_body_origin_xy(objects, body):
     return center_x, center_y
 
 
+def apply_static_body_mesh_transforms(objects, body):
+    """Bake imported static body scale/rotation before surface/UV/BVH work.
+
+    The licensed mesh is kept, not swapped for another person. Unapplied
+    source-library transforms can make body-shell shrinkwrap and BVH collision
+    checks disagree on coordinate frames, even after the body is recentered.
+    """
+    for obj in objects:
+        if obj.type != "MESH":
+            continue
+        bpy.ops.object.select_all(action="DESELECT")
+        bpy.context.view_layer.objects.active = obj
+        obj.select_set(True)
+        bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+        obj.select_set(False)
+    bpy.context.view_layer.update()
+    if any(abs(value - 1.0) > 1e-5 for value in body.scale):
+        raise RuntimeError("Imported body scale was not applied for garment collision work.")
+    if abs(mesh_height(body) - TARGET_HEIGHT_M) > 0.002:
+        raise RuntimeError("Body transform baking changed the locked reference height.")
+
+
 def create_identity_guides(identity_spec):
     existing = bpy.data.collections.get(IDENTITY_GUIDE_COLLECTION)
     if existing is not None:
@@ -355,6 +377,7 @@ def main():
     original_height, factor, measured = normalize_height(objects, body)
     source_offset_x, source_offset_y = normalize_body_origin_xy(objects, body)
     floor_shift = normalize_floor(objects, body)
+    apply_static_body_mesh_transforms(objects, body)
     ensure_export_collection(objects)
     create_identity_guides(identity_spec)
     stamp_provenance(
