@@ -36,11 +36,19 @@ def args():
     parser=argparse.ArgumentParser()
     parser.add_argument("--output",required=True)
     parser.add_argument("--ratio",type=float,default=0.21)
+    parser.add_argument("--left-sleeve-ratio",type=float,default=None,
+                        help="Optional higher-fidelity UNAPPROVED left sleeve UV trial")
     parser.add_argument("--diagnostic-scene",default=None,
                         help="Separate UNAPPROVED Blend for independent scene preflight; input stays unchanged")
     parsed=parser.parse_args(argv)
     if not math.isfinite(parsed.ratio) or not .12<=parsed.ratio<=.34:
         raise ValueError("Mobile diagnostic decimation ratio must be in [0.12, 0.34].")
+    if parsed.left_sleeve_ratio is not None and (
+        not math.isfinite(parsed.left_sleeve_ratio)
+        or not .12<=parsed.left_sleeve_ratio<=.34
+        or parsed.left_sleeve_ratio<parsed.ratio
+    ):
+        raise ValueError("Left sleeve diagnostic ratio must stay >= base ratio and <= 0.34.")
     return parsed
 
 
@@ -494,6 +502,11 @@ def main():
             source_points,_,source_triangles=world_geometry(original)
             source_uv_density=measured_geometry_uv_density(original)
             source_tris+=len(source_triangles)
+            # Do not alter the authored source. Trial ONLY the left sleeve at
+            # higher mesh fidelity to measure the remaining 8.117% UV-axis
+            # discrepancy before considering any physical supplier repeat.
+            panel_ratio=(cfg.left_sleeve_ratio if name=="ShirtSleeveLFabric"
+                         and cfg.left_sleeve_ratio is not None else cfg.ratio)
             copy=original.copy()
             copy.data=original.data.copy()
             bpy.context.scene.collection.objects.link(copy)
@@ -501,7 +514,7 @@ def main():
             temporary_objects.append(copy)
             modifier=copy.modifiers.new("LE_EXPERIMENTAL_LOD","DECIMATE")
             modifier.decimate_type="COLLAPSE"
-            modifier.ratio=cfg.ratio
+            modifier.ratio=panel_ratio
             modifier.use_collapse_triangulate=True
             bpy.ops.object.select_all(action="DESELECT")
             copy.select_set(True)
@@ -512,7 +525,7 @@ def main():
             initial_points,_,initial_triangles=world_geometry(copy)
             baseline_probe=physical_body_probe(tree,initial_points,initial_triangles)
             trial,skin_guard=adaptive_skin_guard_trial(
-                original,tree,baseline_probe,cfg.ratio,name,temporary_objects,
+                original,tree,baseline_probe,panel_ratio,name,temporary_objects,
             )
             if trial is not None:
                 guarded_points,_,guarded_tris=world_geometry(trial)
@@ -539,12 +552,12 @@ def main():
                 if skin_guard["keptForFurtherProbe"]:
                     copy=trial
             repair=fit_candidate_mobile_contacts(copy,tree,guides[name])
-            measured_ratio=cfg.ratio
+            measured_ratio=panel_ratio
             higher_ratio={"attempted":False,"reason":"Initial contact repair passed."}
             if not repair["succeeded"]:
                 alternative,higher_ratio=adaptive_contact_safe_ratio_trial(
                     original,tree,guides[name],source_points,source_triangles,
-                    cfg.ratio,name,temporary_objects,
+                    panel_ratio,name,temporary_objects,
                 )
                 if alternative is not None:
                     copy=alternative
@@ -665,6 +678,7 @@ def main():
         "lockedIdentityId":EXPECTED_ID,
         "decimateMethod":"Blender 4.2 COLLAPSE + real-contact source guards + bounded panel-specific source fidelity trials up to 0.34 + strict 12mm BVH repair; diagnostic copies only",
         "ratio":cfg.ratio,
+        "unapprovedLeftSleeveFidelityTrialRatio":cfg.left_sleeve_ratio,
         "sourceTriangles":source_tris,
         "candidateTriangles":target_tris,
         "candidateVertices":target_verts,
