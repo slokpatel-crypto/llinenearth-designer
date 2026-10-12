@@ -1051,7 +1051,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     "environment-image":"neutral",
     // Defer costly contact shadow compilation until the actual GLB is ready.
     // Restores the exact intended premium shadow on the first ready render.
-    "shadow-intensity":modelReady?".78":"0",
+    "shadow-intensity":modelReady&&materialPipelineReady?".78":"0",
     "shadow-softness":".96",
     "exposure":"1.12",
     "tone-mapping":"commerce",
