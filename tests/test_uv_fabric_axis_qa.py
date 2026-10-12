@@ -6,7 +6,8 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/"scripts"/"blender"))
-from uv_fabric_axis_qa import uv_fabric_axes_mm,summarise_uv_fabric_axes,axis_drift_against_authored
+from uv_fabric_axis_qa import (uv_fabric_axes_mm,summarise_uv_fabric_axes,axis_drift_against_authored,
+    summarise_vertical_uv_zones,vertical_uv_zone_drift)
 
 
 class WarpWeftUvTests(unittest.TestCase):
@@ -106,6 +107,43 @@ class WarpWeftUvTests(unittest.TestCase):
         self.assertIn('"warpWeftGeometryQA":axis_drift_against_authored(',code)
         self.assertIn('"verifiedPhysicalFabricRepeat":False',code)
         self.assertIn('"eligibleForProduction":False',code)
+
+
+    def test_mid_sleeve_region_detects_drift_hidden_by_global_median(self):
+        # A tiny out-of-scale panel may be concealed when pooled with two
+        # healthy sections; local evidence must never promote that fabric.
+        baseline=[
+            {"uMm":100,"vMm":100,"shearCosine":0,
+             "worldAreaMm2":1000,"centroidZ":z}
+            for z in (1,4,7)
+        ]
+        changed=[dict(x) for x in baseline]
+        changed[1]["vMm"]=150
+        src=summarise_vertical_uv_zones(baseline,0,9)
+        dst=summarise_vertical_uv_zones(changed,0,9)
+        self.assertEqual(src["zones"]["lower"]["validTriangles"],1)
+        self.assertEqual(src["zones"]["middle"]["validTriangles"],1)
+        self.assertEqual(src["zones"]["upper"]["validTriangles"],1)
+        self.assertEqual(dst["zones"]["middle"]["areaWeightedMedianVmmPerUvUnit"],150)
+        local=vertical_uv_zone_drift(src,dst,tolerance_pct=8)
+        self.assertFalse(local["zones"]["lower"]["needsDetailedFabricRepeatInvestigation"])
+        self.assertTrue(local["zones"]["middle"]["needsDetailedFabricRepeatInvestigation"])
+        self.assertEqual(local["zones"]["middle"]["vAxisAreaWeightedDriftPct"],50)
+        self.assertTrue(local["anyZoneNeedsInvestigation"])
+        self.assertFalse(local["supplierRepeatVerified"])
+        self.assertFalse(src["supplierRepeatVerified"])
+
+    def test_empty_or_nonfinite_uv_regions_cannot_be_called_verified(self):
+        with self.assertRaises(ValueError):
+            summarise_vertical_uv_zones([],1,1)
+        with self.assertRaises(ValueError):
+            summarise_vertical_uv_zones([{"centroidZ":float("nan")}],0,9)
+        with self.assertRaises(ValueError):
+            summarise_vertical_uv_zones([{"centroidZ":20}],0,9)
+        empty=summarise_vertical_uv_zones([],0,9)
+        self.assertTrue(vertical_uv_zone_drift(empty,empty)["anyZoneNeedsInvestigation"])
+        self.assertFalse(empty["supplierRepeatVerified"])
+
 
 
 if __name__=="__main__":
