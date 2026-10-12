@@ -588,12 +588,16 @@ def diagnostic_source_uv_transfer(original, candidate, source_uv_density,
         if (isinstance(u_delta,(float,int)) and math.isfinite(u_delta)
             and isinstance(v_delta,(float,int)) and math.isfinite(v_delta)
             and abs(u_delta)<=15 and abs(v_delta)<=15):
-            # Bracket the observed 0.5 optimum to reduce the remaining
-            # spatially weighted 8.338% U mismatch without regressing upper UV.
+            # Freeze the selected authored-UV transfer as the common parent
+            # for EVERY taper trial. Repeatedly cloning the just-accepted trial
+            # compounds its correction, invalidates strength comparisons, and
+            # can over-stretch the actual sleeve print without showing up in
+            # a single declared "strength" value.
+            taper_base=chosen
             for strength in (.245,.248,.250,.251,.252,.253,.254,.255,.257):
                 attempt={"strength":strength,"retained":False}
-                copy=chosen.copy()
-                copy.data=chosen.data.copy()
+                copy=taper_base.copy()
+                copy.data=taper_base.data.copy()
                 bpy.context.scene.collection.objects.link(copy)
                 copy.name="LE_UNAPPROVED_UPPER_UV_TAPER__"+str(strength)
                 temporary_objects.append(copy)
