@@ -349,6 +349,9 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
         for token in (
             'details["upperZoneTaperTrials"]=[]',
             'for strength in (.245,.248,.250,.251,.252,.253,.254,.255,.257):',
+            'taper_base=chosen',
+            'copy=taper_base.copy()',
+            'copy.data=taper_base.data.copy()',
             'u_delta=upper.get("uAxisSignedMedianDriftPct")',
             'v_delta=upper.get("vAxisSignedMedianDriftPct")',
             'abs(u_delta)<=15 and abs(v_delta)<=15',
@@ -368,6 +371,20 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
         strict=WORKFLOW[WORKFLOW.index("name: Enforce candidate gates"):]
         self.assertNotIn("upperZoneTaperAcceptedStrength",strict)
 
+
+    def test_uv_taper_never_compounds_an_accepted_candidate_between_trials(self):
+        start=PROBE.index("taper_base=chosen")
+        end=PROBE.index("return chosen,details",start)
+        candidate_loop=PROBE[start:end]
+        self.assertIn("copy=taper_base.copy()",candidate_loop)
+        self.assertIn("copy.data=taper_base.data.copy()",candidate_loop)
+        self.assertNotIn("copy=chosen.copy()",candidate_loop)
+        self.assertNotIn("copy.data=chosen.data.copy()",candidate_loop)
+        self.assertIn("chosen=copy",candidate_loop)
+        self.assertIn("if (score is not None and best_score is not None",candidate_loop)
+        # The only actual retained trial is selected by independent evaluation,
+        # not by stacking uv transforms across the loop.
+        self.assertIn('details["upperZoneTaperAcceptedStrength"]=strength',candidate_loop)
 
 
 if __name__=="__main__":
