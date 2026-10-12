@@ -1,6 +1,6 @@
 "use client";
 
-import { createElement, useEffect, useMemo, useRef, useState } from "react";
+import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createPrototypeGarmentGlbUrl,
   GARMENT_PANEL_SPECS,
@@ -387,6 +387,25 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const [modelReady,setModelReady]=useState(false);
   const [progress,setProgress]=useState(0);
   const [error,setError]=useState("");
+  // Native custom-element load may fire before useEffect subscribes, particularly
+  // after browser cache hits. Bind at DOM-ref commit instead of waiting for an
+  // effect (and keep the effect's authoritative material/contract checks).
+  const settleNativeModelLoad=useCallback(()=>{
+    const model=viewerRef.current;
+    if(!model || !(model.loaded || (model.model?.materials?.length||0)>0)) return;
+    setModelReady(true);
+    setProgress(1);
+    setError("");
+  },[]);
+  const attachViewerRef=useCallback((element:HTMLElement|null)=>{
+    const previous=viewerRef.current;
+    if(previous) previous.removeEventListener("load",settleNativeModelLoad);
+    viewerRef.current=element as ModelViewerElement|null;
+    if(viewerRef.current){
+      viewerRef.current.addEventListener("load",settleNativeModelLoad);
+      if(viewerRef.current.loaded) settleNativeModelLoad();
+    }
+  },[settleNativeModelLoad]);
   const [modelContract,setModelContract]=useState<GarmentViewerModelContractResult|null>(
     ()=>serverVerifiedModelContract(modelId,modelSrc,assetIdentity)
   );
@@ -970,7 +989,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   }
 
   const modelViewer=modelUrl ? createElement("model-viewer",{
-    ref:(element:HTMLElement|null)=>{viewerRef.current=element as ModelViewerElement|null;},
+    ref:attachViewerRef,
     src:modelUrl,
     alt:"Interactive Linen Earth officewear 3D mannequin wearing a shirt and trousers",
     "camera-controls":true,
