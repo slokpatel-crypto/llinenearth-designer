@@ -95,6 +95,17 @@ test("viewer skips ensureLoaded for materials that model-viewer already hydrated
   assert(viewer.includes("if(material.isLoaded!==true && material.ensureLoaded) await material.ensureLoaded();"));
 });
 
+test("3D scene gets two real paint frames before GPU texture and variant uploads",()=>{
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  assert(viewer.includes("const [materialPipelineReady,setMaterialPipelineReady]=useState(false)"));
+  assert(viewer.includes("frame2=requestAnimationFrame(()=>setMaterialPipelineReady(true))"));
+  assert(viewer.includes("cancelAnimationFrame(frame1)"));
+  assert(viewer.includes("if(!modelReady || !materialPipelineReady || !shirt || !trouser"));
+  assert(viewer.includes("if(!modelReady || !materialPipelineReady) return;"));
+  assert(viewer.includes("[modelReady,materialPipelineReady,styleState"));
+  assert(viewer.includes("[modelReady,materialPipelineReady,shirt,trouser"));
+});
+
 test("viewer recovers a model-viewer load event that fires before React effect listeners attach",()=>{
   const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
   assert(viewer.includes("loaded?:boolean"));
