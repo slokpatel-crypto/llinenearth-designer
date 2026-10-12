@@ -68,19 +68,35 @@ jobs:
       - name: Author body-attached candidate shirt / trouser relief
         run: npm run garment:model-garments:author
 
-      - name: Render genuine four-angle candidate images
+      - name: Check exact-source candidate geometry before expensive rendering
+        id: scene_preflight
+        continue-on-error: true
         run: |
           mkdir -p artifacts/model-qa
-          blender --background .cache/linen-earth/linen-earth-officewear-authored.blend \
-            --python scripts/blender/render-linen-earth-model-qa.py -- \
-            --output-dir artifacts/model-qa --width 576 --height 864 --samples 24
-
-      - name: Run structural / silhouette / collision candidate preflight
-        run: |
           set -o pipefail
           blender --background .cache/linen-earth/linen-earth-officewear-authored.blend \
             --python scripts/blender/preflight-linen-earth-officewear.py \
             | tee artifacts/model-qa/scene-preflight.log
+
+      - name: Render full four-angle QA for structurally passing candidate
+        if: steps.scene_preflight.outcome == 'success'
+        run: |
+          blender --background .cache/linen-earth/linen-earth-officewear-authored.blend \
+            --python scripts/blender/render-linen-earth-model-qa.py -- \
+            --output-dir artifacts/model-qa --width 576 --height 864 --samples 24
+
+      - name: Render diagnostic four-angle QA for rejected candidate
+        if: steps.scene_preflight.outcome != 'success'
+        run: |
+          blender --background .cache/linen-earth/linen-earth-officewear-authored.blend \
+            --python scripts/blender/render-linen-earth-model-qa.py -- \
+            --output-dir artifacts/model-qa --width 320 --height 480 --samples 8
+
+      - name: Keep production candidate gate closed on failed preflight
+        if: steps.scene_preflight.outcome != 'success'
+        run: |
+          echo "::error::Source candidate fails native Blender fit, silhouette, or collision preflight. Four-angle frames are REJECTED DIAGNOSTICS, not production approval."
+          exit 1
 
       - name: Upload source-locked candidate images and evidence
         if: always()
