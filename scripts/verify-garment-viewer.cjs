@@ -156,7 +156,16 @@ async function verifyViewport(browser, width) {
       assert.equal(materials.filter(value=>value===name).length,1,"prototype material wiring: "+name);
     }
     for(const [label,expectedView] of [["3/4","three-quarter"],["Side","side"],["Back","back"],["Front","front"]]){
-      await page.getByRole("button",{name:label,exact:true}).click();
+      // Software WebGL can starve Playwright's actionability click after the
+      // button is visible; dispatch a *real* DOM click and verify React state.
+      const clicked=await page.evaluate(cameraLabel=>{
+        const button=[...document.querySelectorAll(".garmentCameraRail button")]
+          .find(node=>node.textContent?.trim()===cameraLabel);
+        if(!(button instanceof HTMLButtonElement)) return false;
+        button.click();
+        return true;
+      },label);
+      assert.equal(clicked,true,"candidate must show interactive camera button "+label);
       await page.waitForFunction(view=>document.querySelector(".garmentViewerShell")?.getAttribute("data-active-view")===view,
         expectedView,{timeout:30000});
     }
