@@ -174,7 +174,7 @@ async function verifyViewport(browser, width) {
     await fs.writeFile(path.join(output,"garment-viewer-prototype-qa.json"),
       JSON.stringify({prototype:true,productionProof:false,reference:"/designer/studio-tucked.webp",
         testedViews:["front","three-quarter","side","back"],browser:"Chromium",viewportWidths:[width,390],
-        note:"Interactive prototype smoke test only. No photorealistic GLB, scale or drape approval."},null,2)+"\\n");
+        note:"Interactive prototype smoke test only. No photorealistic GLB, scale or drape approval."},null,2)+"\n");
     await context.close();
     return {width,prototype:true,productionProof:false,materialCount:materials.length};
   }
