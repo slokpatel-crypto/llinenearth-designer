@@ -33,6 +33,8 @@ def cli_args():
     parser.add_argument("--resolution-y", type=int, default=768)
     parser.add_argument("--diagnostic-workbench", action="store_true",
                         help="Fast silhouette-only render of an UNAPPROVED scene; never used for production visual approval.")
+    parser.add_argument("--diagnostic-tailoring-recipe",action="store_true",
+                        help="Render one actual collar/band/cuff recipe in an UNAPPROVED lab only. Never owner fit acceptance.")
     parser.add_argument("--diagnostic-cycles-cpu",action="store_true",
                         help="CPU path-traced colour/shadow evidence of real LAB geometry; never fabric, tailor or studio acceptance.")
     options=parser.parse_args(argv)
@@ -260,6 +262,38 @@ def isolate_neutral_six_panel_fit_review():
     return alternate
 
 
+def show_single_actual_tailoring_recipe(shirt_material):
+    """Expose exactly one fitted construction recipe on the REAL model.
+
+    Never render every imported option at once: 958 hidden alternatives overlaid
+    on the same garment previously created thick floating waist/cuff artifacts.
+    This lab mode proves just the chosen British-collar/cocktail-cuff meshes are
+    present and visible in all four views. It is NOT a cloth-drape signoff.
+    """
+    required=(
+        "ShirtCollarVariant__english_spread__stiff_fused",
+        "ShirtNeckGasketVariant__english_spread__stiff_fused",
+        "ShirtCuffVariant__cocktail__fused",
+    )
+    selected=[]
+    for name in required:
+        matches=[o for o in bpy.data.objects
+                 if o.type=="MESH" and o.name.split(".")[0]==name
+                 and bool(o.get("linen_earth_tailoring_variant",False))]
+        if len(matches)!=1:
+            raise RuntimeError(
+                "Laboratory tailoring render needs exactly one real imported construction "
+                f"variant '{name}', found {len(matches)}. Refusing generic geometry or fake fit."
+            )
+        item=matches[0]
+        item.hide_render=False
+        assign_material(item,shirt_material)
+        selected.append(item.name)
+    if len(selected)!=len(required):
+        raise RuntimeError("Tailoring construction selection is incomplete.")
+    return selected
+
+
 def main():
     options = cli_args()
     output_dir = Path(options.output_dir).expanduser().resolve()
@@ -281,6 +315,10 @@ def main():
     assign_material(body, skin)
     for name in SHIRT_OBJECTS:
         assign_material(bpy.data.objects.get(name), shirt)
+    selected_construction=(
+        show_single_actual_tailoring_recipe(shirt)
+        if options.diagnostic_tailoring_recipe else []
+    )
     for name in TROUSER_OBJECTS:
         assign_material(bpy.data.objects.get(name), trouser)
     # Footwear has intentionally distinct dark-brown leather in a neutral
@@ -324,8 +362,10 @@ def main():
             )
 
     (output_dir / "review-geometry-provenance.json").write_text(json.dumps({
-        "viewType":"neutral-six-panel-real-body-geometry",
-        "variantsHiddenForReview":len(hidden_alternates),
+        "viewType":"selected-laboratory-tailoring-recipe" if options.diagnostic_tailoring_recipe
+                   else "neutral-six-panel-real-body-geometry",
+        "selectedConstructionVariantObjects":selected_construction,
+        "variantsHiddenForReview":len(hidden_alternates)-len(selected_construction),
         "hiddenAlternates":hidden_alternates[:20],
         "productionAssetAltered":False,
         "selectedTailoringRecipeVerified":False,
