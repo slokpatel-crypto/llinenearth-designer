@@ -63,7 +63,20 @@ async function verifyViewport(browser, width) {
   const serverSeededReadiness=await page.locator(".garmentViewerShell").getAttribute("data-model-readiness");
   assert.equal(serverSeededReadiness,"contract_ready","server-verified production asset must seed M7.46 readiness before scene-graph hydration");
   try {
-    await page.locator(".garmentViewerLoading").waitFor({ state: "hidden", timeout: 20000 });
+    // The WebGL renderer can replace its React overlay while Playwright's
+    // Locator.waitFor still holds a stale element handle. Inspect the actual
+    // current DOM and hydrated GLB on each poll, under the SAME strict 20s cap.
+    // Loaded model and all real scene materials are mandatory, not inferred.
+    await page.waitForFunction(()=>{
+      const model=document.querySelector("model-viewer");
+      const shell=document.querySelector(".garmentViewerShell");
+      return Boolean(model?.loaded)
+        && (model?.model?.materials?.length||0)>=6
+        && shell?.getAttribute("data-model-readiness")==="contract_ready"
+        && shell?.getAttribute("data-manifest-ready")==="true"
+        && !document.querySelector(".garmentViewerLoading")
+        && !document.querySelector(".garmentViewerError");
+    },null,{timeout:20000,polling:100});
   } catch (error) {
     // Preserve objective WebGL/asset evidence instead of a generic timeout.
     // Do not waive the 20s production loading gate or fabricate loaded state.
