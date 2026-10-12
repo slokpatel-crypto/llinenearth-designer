@@ -37,8 +37,15 @@ export default async function GarmentViewerLabPage() {
   // fail structural/identity manifest preflight. Never offer that URL as an
   // approved 3D model. The internal lab can still inspect its named prototype.
   const approvedModelSrc=production.assetReady ? production.modelSrc : null;
-  const modelManifestSrc=production.assetReady ? production.manifestSrc : null;
-  const modelId=approvedModelSrc ? production.modelId : PROTOTYPE_MODEL_ID;
+  // Keep the existing sophisticated M7 tailoring geometry in the *internal*
+  // lab only, explicitly unapproved. Never collapse back to a cube just to
+  // satisfy a production gate or assign a production asset identity to it.
+  const candidateModelSrc=!production.assetReady && production.model?.placeholderGeometry
+    && production.model.contract.readiness==="contract_ready" && production.manifest?.valid
+    ? production.modelSrc : null;
+  const previewModelSrc=approvedModelSrc || candidateModelSrc;
+  const modelManifestSrc=previewModelSrc ? production.manifestSrc : null;
+  const modelId=previewModelSrc ? production.modelId : PROTOTYPE_MODEL_ID;
   const shirtFabrics=activeStock.filter((fabric)=>fabric.suitableFor.includes("shirt")).map(viewerFabric);
   const trouserFabrics=activeStock.filter((fabric)=>fabric.suitableFor.includes("trouser")).map(viewerFabric);
 
@@ -56,7 +63,7 @@ export default async function GarmentViewerLabPage() {
         <div><span>LINEN EARTH · DEEP ENGINE</span><b>3D VIEWER LAB</b></div>
         <Link href="/designer-studio">Designer Studio ↗</Link>
       </header>
-      <GarmentViewer shirtFabrics={shirtFabrics} trouserFabrics={trouserFabrics} modelSrc={approvedModelSrc} modelManifestSrc={modelManifestSrc} modelId={modelId} assetIdentity={production.assetIdentity}/>
+      <GarmentViewer shirtFabrics={shirtFabrics} trouserFabrics={trouserFabrics} modelSrc={previewModelSrc} modelManifestSrc={modelManifestSrc} modelId={modelId} assetIdentity={production.assetIdentity}/>
     </main>
   </>;
 }
