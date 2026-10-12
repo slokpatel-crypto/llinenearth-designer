@@ -100,7 +100,7 @@ test("viewer recovers a model-viewer load event that fires before React effect l
   assert(viewer.includes("loaded?:boolean"));
   assert(viewer.includes("const recoverReadyState=(attempt=0)=>"));
   assert(viewer.includes("viewer.loaded || (viewer.model?.materials?.length||0)>0"));
-  assert(viewer.includes("if(attempt<80) readinessTimer=window.setTimeout(()=>recoverReadyState(attempt+1),125);"));
+  assert(viewer.includes("if(attempt<160) readinessTimer=window.setTimeout(()=>recoverReadyState(attempt+1),125);"));
 });
 
 test("viewer surface exposes the shared four-angle turntable and independent shirt/trouser material controls",()=>{
