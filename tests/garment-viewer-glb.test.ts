@@ -14,10 +14,12 @@ test("prototype GLB is structurally valid but remains explicitly non-production"
   assert(inspection.panels.every((panel)=>panel.primitiveCount>0&&panel.position&&panel.normal&&panel.uv0));
 });
 
-test("same six-panel GLB structure satisfies the production structural contract for an approved model id",()=>{
+test("a renamed cube prototype cannot masquerade as the approved realistic studio GLB",()=>{
   const inspection=inspectGarmentViewerGlb(buildPrototypeGarmentGlb(),"LE-OFFICEWEAR-V1");
   assert.equal(inspection.contract.readiness,"contract_ready");
-  assert.equal(inspection.structuralReady,true);
+  assert.equal(inspection.placeholderGeometry,true);
+  assert.equal(inspection.structuralReady,false);
+  assert(inspection.reasons.some((reason)=>reason.includes("cube prototype")));
   assert.equal(inspection.remoteUris.length,0);
 });
 
