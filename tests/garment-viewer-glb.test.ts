@@ -14,11 +14,39 @@ test("prototype GLB is structurally valid but remains explicitly non-production"
   assert(inspection.panels.every((panel)=>panel.primitiveCount>0&&panel.position&&panel.normal&&panel.uv0));
 });
 
-test("same six-panel GLB structure satisfies the production structural contract for an approved model id",()=>{
+test("a renamed cube prototype cannot masquerade as the approved realistic studio GLB",()=>{
   const inspection=inspectGarmentViewerGlb(buildPrototypeGarmentGlb(),"LE-OFFICEWEAR-V1");
   assert.equal(inspection.contract.readiness,"contract_ready");
-  assert.equal(inspection.structuralReady,true);
+  assert.equal(inspection.placeholderGeometry,true);
+  assert.equal(inspection.structuralReady,false);
+  assert(inspection.reasons.some((reason)=>reason.includes("cube prototype")));
   assert.equal(inspection.remoteUris.length,0);
+});
+
+test("procedural M7 styling geometry cannot be promoted as photorealistic studio source",()=>{
+  const original=buildPrototypeGarmentGlb();
+  const json=parseGarmentViewerGlbJson(original);
+  if(!json.asset) throw new Error("Missing GLB asset metadata.");
+  json.asset.generator="Linen Earth Live Designer identity model M7.46 researched tailoring construction";
+  const payload=new TextEncoder().encode(JSON.stringify(json));
+  const jsonSize=(payload.byteLength+3)&~3;
+  const originalJsonSize=new DataView(original.buffer,original.byteOffset,original.byteLength).getUint32(12,true);
+  const binaryTail=original.subarray(20+originalJsonSize);
+  const updated=new Uint8Array(20+jsonSize+binaryTail.length);
+  const view=new DataView(updated.buffer);
+  view.setUint32(0,0x46546c67,true);
+  view.setUint32(4,2,true);
+  view.setUint32(8,updated.byteLength,true);
+  view.setUint32(12,jsonSize,true);
+  view.setUint32(16,0x4e4f534a,true);
+  updated.fill(32,20,20+jsonSize);
+  updated.set(payload,20);
+  updated.set(binaryTail,20+jsonSize);
+  const inspection=inspectGarmentViewerGlb(updated,"LE-OFFICEWEAR-V1");
+  assert.equal(inspection.contract.readiness,"contract_ready");
+  assert.equal(inspection.placeholderGeometry,true);
+  assert.equal(inspection.structuralReady,false);
+  assert(inspection.reasons.some(reason=>reason.includes("Procedural M7")));
 });
 
 test("GLB parser rejects corrupt headers and declared lengths",()=>{

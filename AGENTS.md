@@ -54,6 +54,14 @@ For architecture changes:
 - include migration / compatibility notes
 - do not introduce a new dependency or schema shape silently
 
+## Locked existing-model development directive (2026-10-12)
+- **Continue means implement repository changes, not generate standalone AI images.** The user specifically rejected new people, substitute mannequins and new static turnaround renders as development progress.
+- The fixed reference is `/designer/studio-tucked.webp`, identity `linen-earth-studio-model-v1`. Preserve the existing photographic Designer Studio UI and its intended faceless studio model, proportions and clothing silhouette. Do not infer a replacement person's face or hairstyle from speculative images.
+- Work on the real source path in order: existing identity and Blender scene/mesh → body/garment alignment → neckline, shoulder, cuff/hand, waistband, seat, thigh and hems → UV orientation and measured physical textile scale → plausible fabric physics/drape and tailored construction → four-angle browser QA → operator physical/tailor evidence → production release.
+- Keep prototype/demo geometry and approved realistic 3D sharply separated in labels, model selection, contracts and rollout. A configured GLB path or six material names are **not** proof of a finished realistic model. An asset must pass independent preflight before being presented as approved.
+- Any actual model change must use the existing model identity contract, test regressions and preserve the canonical photo. Do not claim improved likeness without visual comparison to the source in all four angles, and never claim measured drape, stock truth, fit signoff or deployment without corresponding evidence.
+- For a request to 'continue work', prioritize committed code, tests and a concise verified result over narration. Deploy only after a major clean milestone as previously directed; do not trigger per-phase production deploys.
+
 ## Working style for GPT / coding agents
 - one scoped task at a time
 - plan before editing

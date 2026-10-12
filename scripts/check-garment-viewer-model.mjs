@@ -6,8 +6,10 @@ import {
   validateGarmentViewerModelManifest,
 } from "../src/lib/garment-viewer-model-contract.ts";
 
-const modelPath=process.argv[2];
-const manifestArg=process.argv[3];
+const candidateMode=process.argv.includes("--candidate");
+const args=process.argv.slice(2).filter((arg)=>arg!=="--candidate");
+const modelPath=args[0];
+const manifestArg=args[1];
 if(!modelPath){
   console.error("Usage: npm run garment:model-check -- public/models/model.glb [public/models/model.viewer.json]");
   process.exit(2);
@@ -35,13 +37,19 @@ try{
       reasons:[error instanceof Error ? error.message : "Manifest could not be read."],
     };
   }
-  const ready=model.structuralReady&&manifest.valid;
+  // Build-time checks validate the existing M7 procedural tailoring candidate,
+  // whereas production export must reject generated/placeholder geometry.
+  const candidateReady=model.contract.physicallyScalable && model.uvReady
+    && model.selfContained && model.placeholderGeometry && manifest.valid;
+  const ready=candidateMode ? candidateReady : model.structuralReady&&manifest.valid;
   console.log(JSON.stringify({
     version:GARMENT_VIEWER_CONTRACT_VERSION,
     modelPath:absoluteModel,
     manifestPath,
     modelId,
     ready,
+    mode:candidateMode ? "engineering_candidate" : "production_approval",
+    productionApproved:!candidateMode&&ready,
     model,
     manifest,
   },null,2));

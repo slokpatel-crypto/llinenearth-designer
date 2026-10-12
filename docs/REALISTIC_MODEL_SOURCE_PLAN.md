@@ -221,3 +221,17 @@ Use the Blender CC0 realistic male base as the body starting point, then create/
 ## Identity-guide handoff
 
 The realistic-body intake now reads `public/model-identity/linen-earth-studio-model-v1.json` directly, normalizes the body to 1727 mm and floor level, stamps the shared physical target metrics into the Blender scene, and creates the non-rendering `LinenEarthIdentityGuides` collection. Preflight rejects a scene whose target metrics or guide collection drift from this shared identity contract. This makes the future scan-based production body and the current deterministic GarmentViewer converge on one measured model target instead of two manually maintained sets of proportions.
+
+## Four-angle render evidence from the existing model (candidate only)
+
+Do **not** generate a new mannequin or treat a face synthesized from a static image as the locked Designer Studio asset. Once the same Blender source scene contains the approved-provenance body and six authored garment meshes, render direct, reproducible QA frames with:
+
+```bash
+npm run garment:model-qa:render
+```
+
+This creates `artifacts/model-qa/linen-earth-model-front.png`, `linen-earth-model-three-quarter.png`, `linen-earth-model-side.png`, `linen-earth-model-back.png`, and `model-qa-manifest.json`. The single loaded Blender scene, shared 1727-mm body and fixed camera rig provide the real visual evidence for front, three-quarter, side and back. The manifest fingerprints the source .blend and all render files for traceability.
+
+The renderer refuses a missing/wrong identity lock, missing realistic Body mesh, incomplete six-panel garment scene or incorrect body height. It does not modify/save the original scene, substitute another person, fabricate hidden garment details, declare a measured cloth drape or claim any tailor approval.
+
+**These are inspection candidates, not finished production assets.** Compare all four images manually against the current `/designer/studio-tucked.webp` target, including neck, shoulder slope, wrists, hand clearance, tuck, seat/thigh, trouser break and back silhouette. Record evidence in the existing operator gates before promotion. Unmeasured fabric mechanical properties and supplier repeat width must remain unknown until provided.

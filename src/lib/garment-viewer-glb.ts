@@ -49,6 +49,7 @@ export type GarmentViewerGlbInspection={
   vertexCount:number;
   performanceBudgetReady:boolean;
   performanceWarnings:string[];
+  placeholderGeometry:boolean;
   reasons:string[];
 };
 
@@ -150,7 +151,19 @@ export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):Garment
   if(triangleCount>GARMENT_VIEWER_ADVISORY_MAX_TRIANGLES) performanceWarnings.push(`GLB has ${triangleCount.toLocaleString()} triangles; advisory mobile budget is 220,000.`);
   if(vertexCount>GARMENT_VIEWER_ADVISORY_MAX_VERTICES) performanceWarnings.push(`GLB has ${vertexCount.toLocaleString()} rendered vertices; advisory mobile budget is 280,000.`);
   const performanceBudgetReady=performanceWarnings.length===0;
+  // Renaming a demo GLB's modelId must never turn the box mannequin into an
+  // approved studio identity. This is a source/structure gate, not a claim
+  // that passing it proves photographic similarity or physically correct drape.
+  const generator=String(gltf.asset?.generator||"");
+  // Both the simple cube and the richer MakeHuman-derived M7.46 procedural
+  // tailoring scene are engineering previews. They cannot prove photographic
+  // identity, real fabric drape or physically measured garment construction.
+  const cubePrototype=generator==="Linen Earth GarmentViewer M1";
+  const proceduralCandidate=generator.startsWith("Linen Earth Live Designer identity model M");
+  const placeholderGeometry=cubePrototype||proceduralCandidate;
   const reasons=[...contract.reasons];
+  if(cubePrototype) reasons.push("Generated cube prototype cannot be promoted as the realistic Linen Earth studio model.");
+  if(proceduralCandidate) reasons.push("Procedural M7 garment geometry is an engineering candidate, not a verified photorealistic studio model.");
   for(const panel of panels){
     if(panel.primitiveCount===0) reasons.push(`${panel.material} is not assigned to any mesh primitive.`);
     else {
@@ -171,12 +184,13 @@ export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):Garment
     uvReady,
     selfContained,
     remoteUris,
-    structuralReady:contract.readiness==="contract_ready"&&uvReady&&selfContained,
+    structuralReady:contract.readiness==="contract_ready"&&uvReady&&selfContained&&!placeholderGeometry,
     fileBytes:bytes.byteLength,
     triangleCount,
     vertexCount,
     performanceBudgetReady,
     performanceWarnings,
+    placeholderGeometry,
     reasons:[...new Set(reasons)],
   };
 }
