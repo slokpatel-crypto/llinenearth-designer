@@ -570,6 +570,14 @@ def main():
             "id": identity_id,
             "referenceImage": identity_reference,
             "locked": identity_locked,
+            # Source identity parity is a separate human review gate; the
+            # canonical photo reference does not prove scan-model sameness.
+            "sourcePhotoVisualParityApproved": bool(
+                bpy.context.scene.get("linen_earth_source_photo_visual_parity_approved", False)
+            ),
+            "sourcePhotoVisualParityStatus": str(
+                bpy.context.scene.get("linen_earth_source_photo_visual_parity_status", "not_verified")
+            ),
             "expectedId": MODEL_IDENTITY_ID,
             "physicalTargetsMm": identity_targets,
             "guideCollection": IDENTITY_GUIDE_COLLECTION,
