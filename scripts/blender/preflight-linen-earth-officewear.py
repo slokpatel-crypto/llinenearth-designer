@@ -482,6 +482,35 @@ def main():
                 "clean the waist overlap before production export."
             )
 
+    # The source body's hands descend to the same height as the upper legs.
+    # A z-only, left/right split of the scan deceptively exports hand surfaces
+    # as trouser cloth. Audit lateral hand-space intrusion independently from
+    # ordinary BVH contact and silhouette counts.
+    anatomy_region_hits = {}
+    if body is not None and body_height:
+        floor_z = min(point.z for point in world_bounds(body))
+        for panel in ("TrouserLegLFabric", "TrouserLegRFabric"):
+            garment = bpy.data.objects.get(panel)
+            hand_zone_vertices = []
+            if garment is not None and garment.type == "MESH":
+                depsgraph = bpy.context.evaluated_depsgraph_get()
+                evaluated = garment.evaluated_get(depsgraph)
+                mesh = evaluated.to_mesh()
+                try:
+                    for vert in mesh.vertices:
+                        world = evaluated.matrix_world @ vert.co
+                        z_ratio = (world.z - floor_z) / body_height
+                        if 0.44 <= z_ratio <= 0.56 and abs(world.x) > 0.265:
+                            hand_zone_vertices.append(vert.index)
+                finally:
+                    evaluated.to_mesh_clear()
+            anatomy_region_hits[panel] = len(hand_zone_vertices)
+            if hand_zone_vertices:
+                reasons.append(
+                    f"{panel} exports {len(hand_zone_vertices)} vertices into the hands' "
+                    "lateral zone; a trouser mesh may not contain glove/hand faces."
+                )
+
     report = {
         "gate": "linen-earth-officewear-scene-preflight-v1",
         "ready": len(reasons) == 0,
@@ -498,6 +527,7 @@ def main():
         "identityGuideMeasurementsMm": guide_measurements,
         "identityFitMeasurementsMm": identity_measurements,
         "boundaryIntersections": boundary_intersections,
+        "anatomicalRegionIntrusions": anatomy_region_hits,
         "requiredGarmentObjects": list(GARMENT_OBJECTS),
         "objects": objects,
         "totals": {
