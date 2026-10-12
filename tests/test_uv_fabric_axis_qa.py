@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/"scripts"/"blender"))
 from uv_fabric_axis_qa import (uv_fabric_axes_mm,summarise_uv_fabric_axes,axis_drift_against_authored,
-    summarise_vertical_uv_zones,vertical_uv_zone_drift)
+    summarise_vertical_uv_zones,vertical_uv_zone_drift,paired_spatial_uv_drift)
 
 
 class WarpWeftUvTests(unittest.TestCase):
@@ -143,6 +143,45 @@ class WarpWeftUvTests(unittest.TestCase):
         empty=summarise_vertical_uv_zones([],0,9)
         self.assertTrue(vertical_uv_zone_drift(empty,empty)["anyZoneNeedsInvestigation"])
         self.assertFalse(empty["supplierRepeatVerified"])
+
+
+
+    def test_paired_world_space_uv_metrics_separate_sampling_from_real_warp(self):
+        a=[
+            {"centroidXYZ":(i*.04,0,.5),"uMm":450,"vMm":460,
+             "worldAreaMm2":100}
+            for i in range(10)
+        ]
+        # Candidates are located close to the SAME physical points but
+        # reverse observation order (remeshing changes rendered triangle IDs).
+        same=[{**row,"centroidXYZ":(row["centroidXYZ"][0]+.001,0,.5)}
+              for row in reversed(a)]
+        clean=paired_spatial_uv_drift(a,same,max_distance_mm=20)
+        self.assertEqual(clean["matchedSourceCount"],10)
+        self.assertEqual(clean["medianUErrorPct"],0)
+        self.assertEqual(clean["medianVErrorPct"],0)
+        self.assertFalse(clean["needsDetailedFabricRepeatInvestigation"])
+        self.assertFalse(clean["verifiedPhysicalRepeatWithinTolerance"])
+        # The same geometry with altered warp on a corresponding patch is RED.
+        distorted=[dict(row) for row in same]
+        for row in distorted:
+            row["vMm"]*=1.25
+        bad=paired_spatial_uv_drift(a,distorted,max_distance_mm=20)
+        self.assertEqual(bad["medianVErrorPct"],25)
+        self.assertTrue(bad["needsDetailedFabricRepeatInvestigation"])
+
+    def test_paired_uv_unmatched_source_is_not_false_positive_proof(self):
+        src=[{"centroidXYZ":(0,0,0),"uMm":400,"vMm":440,"worldAreaMm2":1}]
+        shifted=[{**src[0],"centroidXYZ":(.2,0,0)}]
+        missing=paired_spatial_uv_drift(src,shifted,max_distance_mm=25)
+        self.assertEqual(missing["matchedSourceCount"],0)
+        self.assertEqual(missing["matchedSourcePct"],0)
+        self.assertTrue(missing["needsDetailedFabricRepeatInvestigation"])
+        self.assertIsNone(missing["medianUErrorPct"])
+        with self.assertRaises(ValueError):
+            paired_spatial_uv_drift(src,shifted,max_distance_mm=0)
+        with self.assertRaises(ValueError):
+            paired_spatial_uv_drift([{**src[0],"uMm":float("nan")}],shifted)
 
 
 
