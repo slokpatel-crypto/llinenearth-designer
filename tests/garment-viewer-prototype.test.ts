@@ -98,6 +98,7 @@ test("viewer skips ensureLoaded for materials that model-viewer already hydrated
 test("viewer recovers a model-viewer load event that fires before React effect listeners attach",()=>{
   const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
   assert(viewer.includes("loaded?:boolean"));
+  assert(viewer.includes('const [modelUrl,setModelUrl]=useState(()=>modelSrc||"")'));
   assert(viewer.includes("const recoverReadyState=(attempt=0)=>"));
   assert(viewer.includes('ref:attachViewerRef'));
   assert(viewer.includes('viewerRef.current.addEventListener("load",settleNativeModelLoad)'));
