@@ -112,3 +112,50 @@ def axis_drift_against_authored(source,candidate,tolerance_pct=8):
         "needsDetailedFabricRepeatInvestigation":investigate,
         "verifiedPhysicalRepeatWithinTolerance":False,
     }
+
+
+
+def summarise_vertical_uv_zones(samples, z_min, z_max):
+    """Localize garment-axis stretch in three physical-height regions.
+
+    Input rows are real evaluated triangle UV derivative measurements with
+    centroidZ from the actual mesh. These are diagnostic-only, never supplier
+    repeat or cloth-drape approval. Do not auto-select better-looking samples.
+    """
+    if (not all(math.isfinite(z) for z in (z_min,z_max))
+            or z_max<=z_min):
+        raise ValueError("Garment world-space vertical bounds must be finite and increasing.")
+    zones={"lower":[],"middle":[],"upper":[]}
+    span=z_max-z_min
+    for row in samples:
+        if row is None:
+            continue
+        height=row.get("centroidZ")
+        if not isinstance(height,(float,int)) or not math.isfinite(height):
+            raise ValueError("UV zone samples require finite world-height centroids.")
+        relative=(height-z_min)/span
+        if relative < -0.0001 or relative > 1.0001:
+            raise ValueError("UV sample lies outside measured garment height bounds.")
+        zone="lower" if relative < 1/3 else "middle" if relative < 2/3 else "upper"
+        zones[zone].append(row)
+    return {
+        "kind":"evaluated_mesh_local_uv_geometry_unapproved",
+        "zones":{name:summarise_uv_fabric_axes(rows)
+                 for name,rows in zones.items()},
+        "supplierRepeatVerified":False,
+    }
+
+
+def vertical_uv_zone_drift(source,candidate,tolerance_pct=8):
+    """Keep bad vertical local UV drift visible even when global medians pass."""
+    if source.get("kind")!="evaluated_mesh_local_uv_geometry_unapproved" or candidate.get("kind")!="evaluated_mesh_local_uv_geometry_unapproved":
+        raise ValueError("Zone comparison must use real evaluated geometry observations.")
+    drift={}
+    for zone in ("lower","middle","upper"):
+        drift[zone]=axis_drift_against_authored(
+            source["zones"][zone],candidate["zones"][zone],tolerance_pct)
+    return {
+        "zones":drift,
+        "anyZoneNeedsInvestigation":any(row["needsDetailedFabricRepeatInvestigation"] for row in drift.values()),
+        "supplierRepeatVerified":False,
+    }
