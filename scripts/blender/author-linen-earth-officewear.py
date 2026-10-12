@@ -10,12 +10,14 @@
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import sys
 from pathlib import Path
 
 import bpy
 from mathutils import Vector
+from mathutils.bvhtree import BVHTree
 
 # The conservative drape preview is local, deterministic and testable without
 # Blender. It must not be mistaken for a material-calibrated cloth simulation.
@@ -195,30 +197,56 @@ def sculpt_unverified_preview_relief(obj, panel, peak_mm):
     return max(offsets)
 
 
+def _world_mesh_bvh(obj, depsgraph):
+    """Evaluate source and fitted garments in the same world coordinate frame."""
+    evaluated = obj.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        coords = [evaluated.matrix_world @ vert.co for vert in mesh.vertices]
+        faces = [tuple(poly.vertices) for poly in mesh.polygons]
+        return BVHTree.FromPolygons(coords, faces, all_triangles=False, epsilon=0.0005)
+    finally:
+        evaluated.to_mesh_clear()
+
+
+def source_fit_collision_pairs(body, shell):
+    """Independent, *diagnostic* count; it never overrides release preflight."""
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    body_bvh = _world_mesh_bvh(body, depsgraph)
+    shell_bvh = _world_mesh_bvh(shell, depsgraph)
+    return len(body_bvh.overlap(shell_bvh))
+
+
 def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm, body_floor_z, body_height):
+    phase_pairs = {"source_surface": source_fit_collision_pairs(body, obj)}
     shrink = obj.modifiers.new("LE_BODY_CLEARANCE", "SHRINKWRAP")
     shrink.target = body
     shrink.wrap_method = "NEAREST_SURFACEPOINT"
     shrink.wrap_mode = "OUTSIDE_SURFACE"
     shrink.offset = clearance_m
     apply_modifier(obj, shrink)
+    phase_pairs["shrinkwrap"] = source_fit_collision_pairs(body, obj)
 
     smooth = obj.modifiers.new("LE_GARMENT_SMOOTH", "CORRECTIVE_SMOOTH")
     smooth.factor = 0.22
     smooth.iterations = 3
     apply_modifier(obj, smooth)
+    phase_pairs["corrective_smooth"] = source_fit_collision_pairs(body, obj)
 
     shoulder_guide = None
     if panel == "ShirtTorsoFabric":
         shoulder_guide = fit_shirt_shoulder_to_locked_guide(obj, body_floor_z, body_height)
     max_relief = sculpt_unverified_preview_relief(obj, panel, relief_mm)
+    phase_pairs["candidate_relief"] = source_fit_collision_pairs(body, obj)
 
     solid = obj.modifiers.new("LE_CLOTH_THICKNESS", "SOLIDIFY")
     solid.thickness = thickness_m
     solid.offset = 1.0
     solid.use_rim = True
     apply_modifier(obj, solid)
-    return max_relief, shoulder_guide
+    phase_pairs["solidify"] = source_fit_collision_pairs(body, obj)
+    obj["linen_earth_fit_collision_stages_json"] = json.dumps(phase_pairs, sort_keys=True)
+    return max_relief, shoulder_guide, phase_pairs
 
 
 def planar_grain_uv(obj):
@@ -305,9 +333,11 @@ def main():
         remove_existing(name)
 
     authored = []
+    fit_stage_report = {}
     for name, predicate in regions.items():
         obj = selected_shell(body, name, predicate)
-        max_relief, shoulder_guide = fit_shell(obj, body, clearance_m, thickness_m, name, options.candidate_relief_mm, min_z, height)
+        max_relief, shoulder_guide, phase_pairs = fit_shell(obj, body, clearance_m, thickness_m, name, options.candidate_relief_mm, min_z, height)
+        fit_stage_report[name] = phase_pairs
         planar_grain_uv(obj)
         obj["linen_earth_auto_authored"] = True
         obj["linen_earth_fit_clearance_mm"] = round(clearance_m * 1000.0, 3)
@@ -319,6 +349,8 @@ def main():
             obj["linen_earth_shoulder_contour_scale"] = round(shoulder_guide[1], 6)
         authored.append(obj)
 
+    bpy.context.scene["linen_earth_fit_collision_stages_json"] = json.dumps(fit_stage_report, sort_keys=True)
+    print("SOURCE_FIT_COLLISION_STAGES_WORLD_SPACE=" + json.dumps(fit_stage_report, sort_keys=True))
     bpy.context.scene["linen_earth_asset_status"] = "auto-authored-production-candidate-needs-tailor-review"
     bpy.context.scene["linen_earth_garment_authoring_method"] = "locked-body-surface-shell-v2-bounded-preview-folds"
     bpy.context.scene["linen_earth_drape_provenance"] = "art_directed_unverified_visual_candidate"
