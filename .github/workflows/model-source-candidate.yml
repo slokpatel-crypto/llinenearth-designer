@@ -90,7 +90,7 @@ jobs:
         run: |
           blender --background .cache/linen-earth/linen-earth-officewear-authored.blend \
             --python scripts/blender/render-linen-earth-model-qa.py -- \
-            --output-dir artifacts/model-qa --width 320 --height 480 --samples 8
+            --output-dir artifacts/model-qa --width 480 --height 640 --samples 8
 
       - name: Keep production candidate gate closed on failed preflight
         if: steps.scene_preflight.outcome != 'success'
