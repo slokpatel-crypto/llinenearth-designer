@@ -81,14 +81,17 @@ async function verifyViewport(browser, width) {
     };
     let paintPending=false;
     const captureRealScene=()=>{
-      if(!sceneIsTrulyReady() || timeline.firstHydratedDomMs!==null) return;
-      timeline.firstHydratedDomMs=performance.now();
-      if(paintPending) return;
+      if(!sceneIsTrulyReady()) return;
+      if(timeline.firstHydratedDomMs===null)
+        timeline.firstHydratedDomMs=performance.now();
+      if(paintPending || timeline.firstTwoFramePaintMs!==null) return;
       paintPending=true;
       requestAnimationFrame(()=>requestAnimationFrame(()=>{
         paintPending=false;
         if(sceneIsTrulyReady() && timeline.firstTwoFramePaintMs===null)
           timeline.firstTwoFramePaintMs=performance.now();
+        else if(timeline.firstTwoFramePaintMs===null)
+          requestAnimationFrame(captureRealScene);
       }));
     };
     document.addEventListener("DOMContentLoaded",()=>{
