@@ -348,13 +348,13 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
     def test_upper_sleeve_uv_taper_requires_measured_signed_error_and_strict_fidelity(self):
         for token in (
             'details["upperZoneTaperTrials"]=[]',
-            'for strength in (.25,.26,.265,.27,.275,.28,.285,.29):',
+            'for strength in (.245,.248,.250,.251,.252,.253,.254,.255,.257):',
             'u_delta=upper.get("uAxisSignedMedianDriftPct")',
             'v_delta=upper.get("vAxisSignedMedianDriftPct")',
             'abs(u_delta)<=15 and abs(v_delta)<=15',
             'copy.data=chosen.data.copy()',
             't*t*(3-2*t)*strength',
-            'score+.10<best_score',
+            'score+.001<best_score',
             'report["collapsedUvTriangles"]==0',
             'report["validUvTriangles"]>=baseline["validUvTriangles"]*.97',
             'details["upperZoneTaperAcceptedStrength"]=strength',
