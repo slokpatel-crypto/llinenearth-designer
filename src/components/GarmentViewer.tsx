@@ -388,6 +388,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const [modelUrl,setModelUrl]=useState(()=>modelSrc||"");
   const [engineReady,setEngineReady]=useState(false);
   const [modelReady,setModelReady]=useState(false);
+  const [materialPipelineReady,setMaterialPipelineReady]=useState(false);
   const [progress,setProgress]=useState(0);
   const [error,setError]=useState("");
   // Native custom-element load may fire before useEffect subscribes, particularly
@@ -771,8 +772,26 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     if(verified) setModelContract(verified);
   },[modelId,modelSrc,assetIdentity]);
 
+  // The immutable 586-material lab GLB can saturate CPU/software WebGL shader
+  // compilation at startup. Never initialize six fabric textures and hundreds
+  // of variant materials during the SAME frame as the first loaded scene.
+  // Let the actual verified model paint twice before material mutations. This
+  // does not classify a blank scene as ready or hide any model contract failure.
   useEffect(()=>{
-    if(!modelReady || !shirt || !trouser || !productionManifestReady || modelContract?.readiness==="contract_failed") return;
+    setMaterialPipelineReady(false);
+    if(!modelReady) return;
+    let frame2=0;
+    const frame1=requestAnimationFrame(()=>{
+      frame2=requestAnimationFrame(()=>setMaterialPipelineReady(true));
+    });
+    return ()=>{
+      cancelAnimationFrame(frame1);
+      if(frame2) cancelAnimationFrame(frame2);
+    };
+  },[modelReady]);
+
+  useEffect(()=>{
+    if(!modelReady || !materialPipelineReady || !shirt || !trouser || !productionManifestReady || modelContract?.readiness==="contract_failed") return;
     const viewer=viewerRef.current;
     if(!viewer?.createTexture) return;
     const token=++applyToken.current;
@@ -839,10 +858,10 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       }
     };
     void apply();
-  },[modelReady,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract,modelSrc,assetIdentityKey]);
+  },[modelReady,materialPipelineReady,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract,modelSrc,assetIdentityKey]);
 
   useEffect(()=>{
-    if(!modelReady) return;
+    if(!modelReady || !materialPipelineReady) return;
     const viewer=viewerRef.current;
     if(!viewer?.model) return;
     let cancelled=false;
@@ -948,7 +967,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     };
     void apply().catch(()=>{if(!cancelled)setError("A tailoring variant could not be prepared. Try another option.");});
     return ()=>{cancelled=true;};
-  },[modelReady,styleState,buttonKey,textureRevision,roughness,shirt,trouser,collarKey,collarFinishKey,collarConstructionKey,cuffKey,cuffConstructionKey]);
+  },[modelReady,materialPipelineReady,styleState,buttonKey,textureRevision,roughness,shirt,trouser,collarKey,collarFinishKey,collarConstructionKey,cuffKey,cuffConstructionKey]);
 
   function applyShirtTypePreset(id:string){
     setShirtTypeKey(id);
