@@ -590,7 +590,7 @@ def diagnostic_source_uv_transfer(original, candidate, source_uv_density,
             and abs(u_delta)<=15 and abs(v_delta)<=15):
             # Bracket the observed 0.5 optimum to reduce the remaining
             # spatially weighted 8.338% U mismatch without regressing upper UV.
-            for strength in (.25,.30,.35,.40,.45,.50):
+            for strength in (.25,.26,.265,.27,.275,.28,.285,.29):
                 attempt={"strength":strength,"retained":False}
                 copy=chosen.copy()
                 copy.data=chosen.data.copy()
