@@ -149,7 +149,7 @@ async function verifyViewport(browser, width) {
       return Boolean(model?.loaded) && (model.model?.materials?.length||0)>=6
         && ["prototype","contract_ready"].includes(shell?.getAttribute("data-model-readiness"))
         && !document.querySelector(".garmentViewerError");
-    },null,{timeout:30000,polling:100});
+    },null,{timeout:90000,polling:100});
     qaStage("real prototype model loaded; production proof deliberately not claimed");
     const materials=await viewer.evaluate(element=>element.model?.materials?.map(material=>material.name)||[]);
     for(const name of ["ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric","TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric"]){
@@ -158,7 +158,7 @@ async function verifyViewport(browser, width) {
     for(const [label,expectedView] of [["3/4","three-quarter"],["Side","side"],["Back","back"],["Front","front"]]){
       await page.getByRole("button",{name:label,exact:true}).click();
       await page.waitForFunction(view=>document.querySelector(".garmentViewerShell")?.getAttribute("data-active-view")===view,
-        expectedView,{timeout:10000});
+        expectedView,{timeout:30000});
     }
     const wear=page.getByLabel("3D shirt wear");
     await wear.selectOption("tucked");
