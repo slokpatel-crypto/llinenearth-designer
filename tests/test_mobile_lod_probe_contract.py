@@ -312,7 +312,7 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
         self.assertIn('name=="ShirtSleeveLFabric"',PROBE)
         self.assertIn("modifier.ratio=panel_ratio",PROBE)
         self.assertIn('"unapprovedLeftSleeveFidelityTrialRatio"',PROBE)
-        self.assertIn("--left-sleeve-ratio 0.225",WORKFLOW)
+        self.assertIn("--left-sleeve-ratio 0.30",WORKFLOW)
         self.assertIn('"eligibleForProduction":False',PROBE)
         final=WORKFLOW[WORKFLOW.index("name: Enforce candidate gates"):]
         self.assertNotIn("left_sleeve",final)
