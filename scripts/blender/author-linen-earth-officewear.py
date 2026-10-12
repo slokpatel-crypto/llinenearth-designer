@@ -267,6 +267,10 @@ def repair_body_intersections(body, shell, max_passes):
             vertex_moves[vertex_index] = already_moved + displacement
             moved += 1
         shell.data.update()
+        # Direct mesh edits do not necessarily invalidate evaluated modifier/BVH
+        # snapshots until the view layer is refreshed. Using stale contacts
+        # re-moves already cleared vertices six times and falsifies diagnostics.
+        bpy.context.view_layer.update()
         if moved == 0:
             break
     return {
@@ -393,6 +397,26 @@ def main():
         t = t * t * (3.0 - 2.0 * t)
         return 0.158 + (0.205 - 0.158) * t
 
+    def leg_half_width(z_world):
+        """Anatomical thigh/calf band around the locked ±105-mm leg axis.
+
+        The source scan has hands alongside the hips, at nearly the same
+        *height* as upper thighs. A z-only left/right half-plane classified
+        hands as trouser fabric, producing blue 'gloves' in true four-angle QA.
+        Keep lower limb panels away from the hand coordinates.
+        """
+        ratio = (z_world - min_z) / height
+        t = max(0.0, min(1.0, (ratio - 0.10) / 0.40))
+        t = t * t * (3.0 - 2.0 * t)
+        return 0.082 + 0.038 * t
+
+    def leg_region(point, side):
+        if not z(0.055) <= point.z <= z(0.535):
+            return False
+        signed_x = (point.x - center_x) * side
+        locked_leg_center_m = 0.105
+        return signed_x > 0 and abs(signed_x - locked_leg_center_m) <= leg_half_width(point.z)
+
     regions = {
         # A real tucked shirt reaches the trouser waistband; its lower
         # boundary is not a free-hanging hem halfway down the pelvis.
@@ -403,8 +427,8 @@ def main():
         # The reference waistband lies at z ~= 0.647 of body height; the
         # previous .620 upper cap never reached its own identity guide.
         "TrouserWaistFabric": lambda p: z(0.455) <= p.z <= z(0.675) and abs(p.x-center_x) <= hip_half,
-        "TrouserLegLFabric": lambda p: z(0.055) <= p.z <= z(0.535) and p.x < center_x,
-        "TrouserLegRFabric": lambda p: z(0.055) <= p.z <= z(0.535) and p.x >= center_x,
+        "TrouserLegLFabric": lambda p: leg_region(p, -1),
+        "TrouserLegRFabric": lambda p: leg_region(p, +1),
     }
 
     clearance_m = options.clearance_mm / 1000.0
