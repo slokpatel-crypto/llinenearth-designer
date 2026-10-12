@@ -96,6 +96,7 @@ def add_area(name, location, power, size, target):
 def setup_studio(mid_height, floor_z, options):
     scene = bpy.context.scene
     scene.render.engine = "BLENDER_EEVEE_NEXT"
+    scene.eevee.taa_render_samples = options.samples
     scene.render.resolution_x = options.width
     scene.render.resolution_y = options.height
     scene.render.resolution_percentage = 100
@@ -112,6 +113,20 @@ def setup_studio(mid_height, floor_z, options):
         world_background.inputs["Strength"].default_value = 0.8
     scene.render.image_settings.color_mode = "RGBA"
     scene.view_settings.view_transform = "AgX"
+
+    # QA-only diagnostic cloth colors distinguish the garment shells from
+    # imported skin. The file is NEVER saved: no customer swatch/color is
+    # fabricated or applied to the persistent source scene.
+    shirt_mat = material("LE_QA_UNVERIFIED_SHIRT", (0.74, 0.56, 0.42), 0.87)
+    trouser_mat = material("LE_QA_UNVERIFIED_TROUSERS", (0.23, 0.30, 0.42), 0.88)
+    body_mat = material("LE_QA_MATTE_BODY", (0.77, 0.71, 0.65), 0.94)
+    for name in GARMENT_OBJECTS:
+        obj = bpy.data.objects[name]
+        obj.data.materials.clear()
+        obj.data.materials.append(shirt_mat if name.startswith("Shirt") else trouser_mat)
+    body_obj = bpy.data.objects["Body"]
+    body_obj.data.materials.clear()
+    body_obj.data.materials.append(body_mat)
 
     camera_data = bpy.data.cameras.new("LE_QA_TURNTABLE_CAMERA")
     camera = bpy.data.objects.new("LE_QA_TURNTABLE_CAMERA", camera_data)
