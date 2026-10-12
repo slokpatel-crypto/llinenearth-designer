@@ -158,6 +158,10 @@ test("real browser 3D QA records GPU/asset diagnosis without silently relaxing t
   assert(code.includes('firstTwoFramePaintMs=performance.now()'));
   assert(code.includes('firstHydratedDomMs=performance.now()'));
   assert(code.includes('new MutationObserver(captureRealScene)'));
+  assert(code.includes('if(timeline.firstHydratedDomMs===null)'));
+  assert(code.includes('if(paintPending || timeline.firstTwoFramePaintMs!==null) return'));
+  assert(code.includes('requestAnimationFrame(captureRealScene)'));
+
   assert(code.includes('requestAnimationFrame(()=>requestAnimationFrame(()=>'));
   assert(code.includes("const frameAtMs=timeline.firstTwoFramePaintMs-timeline.scriptStartedMs"));
   assert(code.includes("assert.ok(frameAtMs<=20000"));
