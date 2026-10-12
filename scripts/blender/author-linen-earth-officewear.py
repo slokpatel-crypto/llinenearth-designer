@@ -45,8 +45,10 @@ def cli_args():
     parser.add_argument("--body", default=BODY_NAME)
     parser.add_argument("--clearance-mm", type=float, default=7.0)
     parser.add_argument("--thickness-mm", type=float, default=1.6)
-    parser.add_argument("--surface-refine", type=int, choices=(0, 1), default=1,
+    parser.add_argument("--surface-refine", type=int, choices=(0, 1), default=0,
                         help="0/1 simple topology subdivision before body-clearance fitting")
+    parser.add_argument("--contact-repair-passes", type=int, default=6,
+                        help="0..6 world-space collision correction passes; max 12 mm per source vertex")
     parser.add_argument("--waist-layer-extra-mm", type=float, default=5.0,
                         help="Unverified waistband-over-tuck layer separation, 0..7 mm")
     parser.add_argument("--candidate-relief-mm", type=float, default=3.0,
@@ -221,7 +223,63 @@ def source_fit_collision_pairs(body, shell):
     return len(body_bvh.overlap(shell_bvh))
 
 
-def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm, body_floor_z, body_height, surface_refine):
+def repair_body_intersections(body, shell, max_passes):
+    """Bounded source-body contact corrections on the SAME garment vertices.
+
+    The mesh stays source-derived. An intersection marks a triangle, not a
+    proof that all its vertices are inside; move touched vertices along the
+    closest actual body-surface normal in small, strictly capped increments.
+    This is a candidate collision repair, not calibrated ease or cloth physics.
+    """
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    body_bvh = _world_mesh_bvh(body, depsgraph)
+    shell_matrix = shell.matrix_world.copy()
+    inverse = shell_matrix.inverted()
+    vertex_moves = {}
+    counts = []
+    for pass_number in range(max_passes + 1):
+        shell_bvh = _world_mesh_bvh(shell, depsgraph)
+        pairs = body_bvh.overlap(shell_bvh)
+        counts.append(len(pairs))
+        if not pairs or pass_number == max_passes:
+            break
+        affected = set()
+        for _body_poly, shell_poly in pairs:
+            if 0 <= shell_poly < len(shell.data.polygons):
+                affected.update(shell.data.polygons[shell_poly].vertices)
+        if not affected:
+            break
+        moved = 0
+        for vertex_index in sorted(affected):
+            already_moved = vertex_moves.get(vertex_index, 0.0)
+            budget_m = 0.012 - already_moved
+            if budget_m <= 1e-8:
+                continue
+            vertex = shell.data.vertices[vertex_index]
+            point = shell_matrix @ vertex.co
+            closest = body_bvh.find_nearest(point)
+            if closest is None or closest[1] is None or closest[1].length_squared <= 1e-10:
+                continue
+            # Never invent negative cloth clearance: displaced geometry always
+            # follows the genuine scanned skin's world-space outward normal.
+            displacement = min(0.002, budget_m)
+            vertex.co = inverse @ (point + closest[1].normalized() * displacement)
+            vertex_moves[vertex_index] = already_moved + displacement
+            moved += 1
+        shell.data.update()
+        if moved == 0:
+            break
+    return {
+        "contactPairsByPass": counts,
+        "remainingContactPairs": counts[-1],
+        "affectedVertexCount": len(vertex_moves),
+        "maxVertexCorrectionMm": round(max(vertex_moves.values(), default=0.0) * 1000, 3),
+        "candidateOnly": True,
+        "measuredEaseApproved": False,
+    }
+
+
+def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm, body_floor_z, body_height, surface_refine, repair_passes):
     phase_pairs = {"source_surface": source_fit_collision_pairs(body, obj)}
     if surface_refine:
         # SIMPLE subdivides existing source faces without moving the body-derived
@@ -259,8 +317,11 @@ def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm, body_floor_
     solid.use_rim = True
     apply_modifier(obj, solid)
     phase_pairs["solidify"] = source_fit_collision_pairs(body, obj)
+    contact_repair = repair_body_intersections(body, obj, repair_passes)
+    phase_pairs["bounded_contact_repair"] = contact_repair["remainingContactPairs"]
+    obj["linen_earth_contact_repair_json"] = json.dumps(contact_repair, sort_keys=True)
     obj["linen_earth_fit_collision_stages_json"] = json.dumps(phase_pairs, sort_keys=True)
-    return max_relief, shoulder_guide, phase_pairs
+    return max_relief, shoulder_guide, phase_pairs, contact_repair
 
 
 def planar_grain_uv(obj):
@@ -291,6 +352,8 @@ def main():
         raise RuntimeError("Source-body clearance must be 3 to 18 mm; do not silently clamp measured ease.")
     if not math.isfinite(options.thickness_mm) or not 0.6 <= options.thickness_mm <= 4.0:
         raise RuntimeError("Candidate shell thickness must be 0.6 to 4.0 mm.")
+    if not 0 <= options.contact_repair_passes <= 6:
+        raise RuntimeError("Candidate body-contact repair must use between 0 and 6 bounded passes.")
     if not math.isfinite(options.waist_layer_extra_mm) or not 0 <= options.waist_layer_extra_mm <= 7:
         raise RuntimeError("Unverified tuck/waist layer separation must be between 0 and 7 mm.")
     if options.clearance_mm + options.waist_layer_extra_mm > 18:
@@ -352,13 +415,15 @@ def main():
 
     authored = []
     fit_stage_report = {}
+    contact_repair_report = {}
     for name, predicate in regions.items():
         obj = selected_shell(body, name, predicate)
         # Outer waistband is outside the tucked shirt instead of z-fighting
         # against an identically offset body-derived surface for 10 cm.
         panel_clearance = clearance_m + (options.waist_layer_extra_mm / 1000.0 if name == "TrouserWaistFabric" else 0.0)
-        max_relief, shoulder_guide, phase_pairs = fit_shell(obj, body, panel_clearance, thickness_m, name, options.candidate_relief_mm, min_z, height, options.surface_refine)
+        max_relief, shoulder_guide, phase_pairs, repair = fit_shell(obj, body, panel_clearance, thickness_m, name, options.candidate_relief_mm, min_z, height, options.surface_refine, options.contact_repair_passes)
         fit_stage_report[name] = phase_pairs
+        contact_repair_report[name] = repair
         planar_grain_uv(obj)
         obj["linen_earth_auto_authored"] = True
         obj["linen_earth_fit_clearance_mm"] = round(panel_clearance * 1000.0, 3)
@@ -370,6 +435,8 @@ def main():
             obj["linen_earth_shoulder_contour_scale"] = round(shoulder_guide[1], 6)
         authored.append(obj)
 
+    bpy.context.scene["linen_earth_contact_repair_json"] = json.dumps(contact_repair_report, sort_keys=True)
+    print("SOURCE_FIT_BOUNDED_CONTACT_REPAIR=" + json.dumps(contact_repair_report, sort_keys=True))
     bpy.context.scene["linen_earth_fit_collision_stages_json"] = json.dumps(fit_stage_report, sort_keys=True)
     print("SOURCE_FIT_COLLISION_STAGES_WORLD_SPACE=" + json.dumps(fit_stage_report, sort_keys=True))
     bpy.context.scene["linen_earth_asset_status"] = "auto-authored-production-candidate-needs-tailor-review"
@@ -378,6 +445,7 @@ def main():
     bpy.context.scene["linen_earth_measured_fabric_physics"] = False
     bpy.context.scene["linen_earth_preview_relief_requested_mm"] = options.candidate_relief_mm
     bpy.context.scene["linen_earth_surface_refine_level"] = options.surface_refine
+    bpy.context.scene["linen_earth_contact_repair_passes"] = options.contact_repair_passes
     bpy.context.scene["linen_earth_waist_layer_extra_mm"] = options.waist_layer_extra_mm
     bpy.context.scene["linen_earth_garment_clearance_mm"] = round(clearance_m * 1000.0, 3)
     bpy.context.scene["linen_earth_garment_thickness_mm"] = round(thickness_m * 1000.0, 3)
