@@ -439,6 +439,10 @@ def main():
             warnings.append(
                 f"{name} does not yet carry its canonical material slot name; exporter will replace it."
             )
+        # Every real sampled garment must appear in the evidence receipt.
+        # The previous report silently emitted objects={} despite verifying
+        # six meshes, concealing panel-level topology/UV/material statistics.
+        objects[name] = entry
 
     if total_triangles > MAX_TOTAL_TRIANGLES:
         reasons.append(
