@@ -222,6 +222,44 @@ jobs:
           done
           test -s artifacts/realistic-3d/shaded-lod-UNAPPROVED/UNAPPROVED-CPU-SHADED-REVIEW.txt
 
+      - name: Render one actual tailoring-recipe in four real 3D views (UNAPPROVED)
+        if: always() && steps.mobile_independent_preflight.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          scene="artifacts/realistic-3d/mobile-lod-unapproved.blend"
+          test -s "$scene"
+          output="artifacts/realistic-3d/constructed-recipe-UNAPPROVED"
+          mkdir -p "$output"
+          # This is separate from the neutral six-panel body-fit review.
+          # Select EXACTLY ONE real imported collar, neck band and cuff.
+          # The rest of ~958 alternate style meshes stay hidden, preventing
+          # fake layered waist/collar seams and unreadable silhouette.
+          timeout --signal=TERM --kill-after=15s 12m \
+            blender --background --python-exit-code 1 "$scene" \
+            --python scripts/blender/render-linen-earth-officewear-review.py -- \
+            --output-dir "$output" --resolution-x 320 --resolution-y 480 \
+            --diagnostic-cycles-cpu --diagnostic-tailoring-recipe \
+            2>&1 | tee artifacts/realistic-3d/constructed-recipe-UNAPPROVED.log
+          for view in front three-quarter side back; do
+            test -s "$output/$view.png"
+          done
+          python3 - "$output/review-geometry-provenance.json" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],encoding="utf-8"))
+          required={
+            "ShirtCollarVariant__english_spread__stiff_fused",
+            "ShirtNeckGasketVariant__english_spread__stiff_fused",
+            "ShirtCuffVariant__cocktail__fused",
+          }
+          assert data["viewType"]=="selected-laboratory-tailoring-recipe"
+          assert set(data["selectedConstructionVariantObjects"])==required
+          assert data["referencePhotoVisualParityApproved"] is False
+          assert data["fabricColourRepeatOrDrapeApproved"] is False
+          assert data["productionAssetAltered"] is False
+          PY
+
       - name: Render four-angle fit review
         id: render
         if: always() && steps.assemble.outcome == 'success' && steps.preflight.outcome == 'success'
