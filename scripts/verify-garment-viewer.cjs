@@ -57,7 +57,6 @@ async function verifyViewport(browser, width) {
 
   // Measure launch from navigation, not from a later Playwright poll that
   // software WebGL can delay past its own timeout under a stalled main thread.
-  const navigationStartedAt=Date.now();
   // Capture native first-load timing BEFORE hydration and regardless of React.
   // If 20s fails, distinguish slow GLB decode/shaders from delayed UI paint.
   await page.addInitScript(()=>{
@@ -136,7 +135,7 @@ async function verifyViewport(browser, width) {
     // SwiftShader. Poll at most 30s for RECORDED real event timestamps; reject
     // any first two-frame paint after the original 20s production SLA.
     await page.waitForFunction(
-      ()=>window.__linen3dQaTimeline?.firstTwoFramePaintMs!==null,
+      ()=>typeof window.__linen3dQaTimeline?.firstTwoFramePaintMs==="number",
       null,{timeout:30000,polling:100}
     );
     const timeline=await page.evaluate(()=>window.__linen3dQaTimeline);
