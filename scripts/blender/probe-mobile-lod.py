@@ -590,7 +590,7 @@ def diagnostic_source_uv_transfer(original, candidate, source_uv_density,
             and abs(u_delta)<=15 and abs(v_delta)<=15):
             # Bracket the observed 0.5 optimum to reduce the remaining
             # spatially weighted 8.338% U mismatch without regressing upper UV.
-            for strength in (.25,.26,.265,.27,.275,.28,.285,.29):
+            for strength in (.245,.248,.250,.251,.252,.253,.254,.255,.257):
                 attempt={"strength":strength,"retained":False}
                 copy=chosen.copy()
                 copy.data=chosen.data.copy()
@@ -630,7 +630,7 @@ def diagnostic_source_uv_transfer(original, candidate, source_uv_density,
                         "overallUvQA":globalQA,"verticalZonesUvQA":zonesQA,
                         "collapsedUvTriangles":report["collapsedUvTriangles"]})
                     if (score is not None and best_score is not None
-                        and score+.10<best_score
+                        and score+.001<best_score
                         and after["matchedSourcePct"]>=before["matchedSourcePct"]-.1
                         and report["collapsedUvTriangles"]==0
                         and report["validUvTriangles"]>=baseline["validUvTriangles"]*.97):
