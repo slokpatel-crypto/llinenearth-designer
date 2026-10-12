@@ -2,6 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
+test("unverified configured GLB never masquerades as the real studio model",()=>{
+  const page=readFileSync("src/app/lab/garment-viewer/page.tsx","utf8");
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  assert.match(page,/approvedModelSrc=production\.assetReady\s*\?/);
+  assert.match(page,/modelManifestSrc=production\.assetReady\s*\?/);
+  assert.match(viewer,/PROTOTYPE GEOMETRY · NOT THE STUDIO MODEL/);
+  assert.match(viewer,/modelSrc&&assetIdentity/);
+});
+
 test("realistic model source plan stays aligned with the production GarmentViewer contract",()=>{
   const plan=readFileSync("docs/REALISTIC_MODEL_SOURCE_PLAN.md","utf8");
   const exporter=readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8","utf8");
