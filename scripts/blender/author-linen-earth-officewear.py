@@ -45,6 +45,10 @@ def cli_args():
     parser.add_argument("--body", default=BODY_NAME)
     parser.add_argument("--clearance-mm", type=float, default=7.0)
     parser.add_argument("--thickness-mm", type=float, default=1.6)
+    parser.add_argument("--surface-refine", type=int, choices=(0, 1), default=1,
+                        help="0/1 simple topology subdivision before body-clearance fitting")
+    parser.add_argument("--waist-layer-extra-mm", type=float, default=5.0,
+                        help="Unverified waistband-over-tuck layer separation, 0..7 mm")
     parser.add_argument("--candidate-relief-mm", type=float, default=3.0,
                         help="0 for a clean shell; 0..6 mm art-directed visual microfolds, not physical drape")
     return parser.parse_args(argv)
@@ -217,8 +221,18 @@ def source_fit_collision_pairs(body, shell):
     return len(body_bvh.overlap(shell_bvh))
 
 
-def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm, body_floor_z, body_height):
+def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm, body_floor_z, body_height, surface_refine):
     phase_pairs = {"source_surface": source_fit_collision_pairs(body, obj)}
+    if surface_refine:
+        # SIMPLE subdivides existing source faces without moving the body-derived
+        # shell. The subsequent outward shrinkwrap fits intermediate vertices
+        # at concave arm/hip bends instead of spanning the skin with coarse faces.
+        refine = obj.modifiers.new("LE_CONTACT_FACE_REFINEMENT", "SUBSURF")
+        refine.subdivision_type = "SIMPLE"
+        refine.levels = 1
+        refine.render_levels = 1
+        apply_modifier(obj, refine)
+        phase_pairs["refined_source_surface"] = source_fit_collision_pairs(body, obj)
     shrink = obj.modifiers.new("LE_BODY_CLEARANCE", "SHRINKWRAP")
     shrink.target = body
     shrink.wrap_method = "NEAREST_SURFACEPOINT"
@@ -277,6 +291,10 @@ def main():
         raise RuntimeError("Source-body clearance must be 3 to 18 mm; do not silently clamp measured ease.")
     if not math.isfinite(options.thickness_mm) or not 0.6 <= options.thickness_mm <= 4.0:
         raise RuntimeError("Candidate shell thickness must be 0.6 to 4.0 mm.")
+    if not math.isfinite(options.waist_layer_extra_mm) or not 0 <= options.waist_layer_extra_mm <= 7:
+        raise RuntimeError("Unverified tuck/waist layer separation must be between 0 and 7 mm.")
+    if options.clearance_mm + options.waist_layer_extra_mm > 18:
+        raise RuntimeError("Waistband clearance must not exceed the fixed 18 mm candidate limit.")
     body = bpy.data.objects.get(options.body)
     if body is None or body.type != "MESH":
         raise RuntimeError(f"Locked realistic body mesh not found: {options.body}")
@@ -336,11 +354,14 @@ def main():
     fit_stage_report = {}
     for name, predicate in regions.items():
         obj = selected_shell(body, name, predicate)
-        max_relief, shoulder_guide, phase_pairs = fit_shell(obj, body, clearance_m, thickness_m, name, options.candidate_relief_mm, min_z, height)
+        # Outer waistband is outside the tucked shirt instead of z-fighting
+        # against an identically offset body-derived surface for 10 cm.
+        panel_clearance = clearance_m + (options.waist_layer_extra_mm / 1000.0 if name == "TrouserWaistFabric" else 0.0)
+        max_relief, shoulder_guide, phase_pairs = fit_shell(obj, body, panel_clearance, thickness_m, name, options.candidate_relief_mm, min_z, height, options.surface_refine)
         fit_stage_report[name] = phase_pairs
         planar_grain_uv(obj)
         obj["linen_earth_auto_authored"] = True
-        obj["linen_earth_fit_clearance_mm"] = round(clearance_m * 1000.0, 3)
+        obj["linen_earth_fit_clearance_mm"] = round(panel_clearance * 1000.0, 3)
         obj["linen_earth_cloth_thickness_mm"] = round(thickness_m * 1000.0, 3)
         obj["linen_earth_drape_method"] = "unverified_art_directed_candidate_relief_v1"
         obj["linen_earth_drape_max_relief_mm"] = round(max_relief, 3)
@@ -356,6 +377,8 @@ def main():
     bpy.context.scene["linen_earth_drape_provenance"] = "art_directed_unverified_visual_candidate"
     bpy.context.scene["linen_earth_measured_fabric_physics"] = False
     bpy.context.scene["linen_earth_preview_relief_requested_mm"] = options.candidate_relief_mm
+    bpy.context.scene["linen_earth_surface_refine_level"] = options.surface_refine
+    bpy.context.scene["linen_earth_waist_layer_extra_mm"] = options.waist_layer_extra_mm
     bpy.context.scene["linen_earth_garment_clearance_mm"] = round(clearance_m * 1000.0, 3)
     bpy.context.scene["linen_earth_garment_thickness_mm"] = round(thickness_m * 1000.0, 3)
 
