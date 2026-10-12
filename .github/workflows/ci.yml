@@ -26,6 +26,8 @@ jobs:
       - run: npm run quality
       - name: Verify Blender helper syntax without requiring a render farm
         run: python3 -m py_compile scripts/blender/*.py
+      - name: Verify bounded preview drape profiles
+        run: python3 -m unittest discover -s tests/python -p 'test_*.py' -v
       - run: npm test
       - run: npm run eval:engine
       - run: npm run eval:preview-performance
