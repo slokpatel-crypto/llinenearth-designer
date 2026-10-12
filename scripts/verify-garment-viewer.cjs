@@ -229,16 +229,32 @@ async function verifyViewport(browser, width) {
   const canvas=page.locator(".garmentViewerCanvas");
   const captureCanvas=async(name)=>{
     if(width!==1440) return;
-    // model-viewer continuously animates its render surface, so Locator.screenshot can wait
-    // forever for DOM stability. Capture the already-laid-out bounding box directly instead.
-    await page.waitForTimeout(180);
-    const box=await canvas.boundingBox();
-    assert.ok(box&&box.width>0&&box.height>0,"3D evidence canvas must have a measurable viewport");
-    await page.screenshot({
-      path:path.join(output,name),
-      clip:{x:Math.max(0,box.x),y:Math.max(0,box.y),width:box.width,height:box.height},
-      animations:"disabled",
+    // Chromium's software renderer can deadlock on compositor screenshot
+    // ReadPixels when the live model-viewer is continuously repainting.
+    // Use model-viewer's OWN real canvas snapshot API for each camera angle,
+    // then preserve its PNG bytes as independently testable visual evidence.
+    // Never substitute a blank page, a photographic poster or mocked pixels.
+    const bounds=await canvas.boundingBox();
+    assert.ok(bounds&&bounds.width>0&&bounds.height>0,
+      "3D evidence canvas must have a measurable viewport");
+    const frame=await viewer.evaluate(async(element)=>{
+      if(!element.loaded || typeof element.toBlob!=="function")
+        throw new Error("Four-angle 3D evidence requires the live loaded GLB.");
+      const blob=await element.toBlob({mimeType:"image/png"});
+      const encoded=await new Promise((resolve,reject)=>{
+        const fileReader=new FileReader();
+        fileReader.onerror=()=>reject(new Error("GLB scene snapshot could not be encoded."));
+        fileReader.onload=()=>resolve(String(fileReader.result||""));
+        fileReader.readAsDataURL(blob);
+      });
+      return {byteSize:blob.size,base64:encoded.split(",")[1]};
     });
+    assert.ok(frame.byteSize>=12000,"Four-angle 3D image must contain real rendered pixels.");
+    const pixels=Buffer.from(frame.base64||"","base64");
+    assert.equal(pixels.subarray(1,4).toString("ascii"),"PNG",
+      "Four-angle GLB pixels must be actual PNG evidence.");
+    await fs.writeFile(path.join(output,name),pixels);
+    qaStage("live GLB camera pixels saved: "+name);
   };
   const selectCamera=async(label,orbitPrefix,activeView)=>{
     let lastError=null;
