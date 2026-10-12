@@ -55,6 +55,9 @@ async function verifyViewport(browser, width) {
     }));
   });
 
+  // Measure launch from navigation, not from a later Playwright poll that
+  // software WebGL can delay past its own timeout under a stalled main thread.
+  const navigationStartedAt=Date.now();
   await page.goto(baseURL + "/lab/garment-viewer", { waitUntil: "domcontentloaded", timeout: 30000 });
   await page.waitForFunction(() => Boolean(customElements.get("model-viewer")), null, { timeout: 20000 });
   const engineResources=await page.evaluate(()=>performance.getEntriesByType("resource").map((entry)=>entry.name).filter((name)=>name.includes("model-viewer")));
@@ -80,6 +83,8 @@ async function verifyViewport(browser, width) {
         && !document.querySelector(".garmentViewerLoading")
         && !document.querySelector(".garmentViewerError");
     },null,{timeout:20000,polling:100});
+    const launchMs=Date.now()-navigationStartedAt;
+    assert.ok(launchMs<=20000,`Real 3D first frame exceeded 20s: ${launchMs}ms`);
   } catch (error) {
     // Preserve objective WebGL/asset evidence instead of a generic timeout.
     // Do not waive the 20s production loading gate or fabricate loaded state.
