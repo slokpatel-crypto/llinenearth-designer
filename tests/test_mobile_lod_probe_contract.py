@@ -345,5 +345,29 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
 
 
 
+    def test_upper_sleeve_uv_taper_requires_measured_signed_error_and_strict_fidelity(self):
+        for token in (
+            'details["upperZoneTaperTrials"]=[]',
+            'u_delta=upper.get("uAxisSignedMedianDriftPct")',
+            'v_delta=upper.get("vAxisSignedMedianDriftPct")',
+            'abs(u_delta)<=15 and abs(v_delta)<=15',
+            'copy.data=chosen.data.copy()',
+            't*t*(3-2*t)*strength',
+            'score+.10<best_score',
+            'report["collapsedUvTriangles"]==0',
+            'report["validUvTriangles"]>=baseline["validUvTriangles"]*.97',
+            'details["upperZoneTaperAcceptedStrength"]=strength',
+        ):
+            self.assertIn(token,PROBE,token)
+        # Experiment never changes approved/supplier stock, locked body,
+        # independent master gate, or authored source cloth UV loops.
+        self.assertNotIn('original.data.uv_layers.active.data[',PROBE)
+        self.assertIn('"physicalFabricVerified":False',PROBE)
+        self.assertIn('"eligibleForProduction":False',PROBE)
+        strict=WORKFLOW[WORKFLOW.index("name: Enforce candidate gates"):]
+        self.assertNotIn("upperZoneTaperAcceptedStrength",strict)
+
+
+
 if __name__=="__main__":
     unittest.main()
