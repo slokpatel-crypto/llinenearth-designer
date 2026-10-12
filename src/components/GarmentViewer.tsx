@@ -1064,7 +1064,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     <div className="garmentViewerStage">
       <div className="garmentViewerStageHead">
         <span>GARMENTVIEWER · DEEP ENGINE</span>
-        <strong>{modelSrc&&assetIdentity ? "MODEL IDENTITY LOCKED · STRUCTURALLY VERIFIED 3D" : "PROTOTYPE GEOMETRY · NOT THE STUDIO MODEL"}</strong>
+        <strong>{modelSrc&&assetIdentity ? "MODEL IDENTITY LOCKED · STRUCTURALLY VERIFIED 3D" : modelSrc ? "ENGINEERING CANDIDATE · NOT APPROVED STUDIO MODEL" : "PROTOTYPE GEOMETRY · NOT THE STUDIO MODEL"}</strong>
       </div>
       <div className="garmentViewerCanvas">
         {modelViewer}
