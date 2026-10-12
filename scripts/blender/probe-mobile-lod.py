@@ -571,6 +571,80 @@ def diagnostic_source_uv_transfer(original, candidate, source_uv_density,
         except Exception as error:
             attempt["transferError"]=str(error)
         details["mappingTrials"].append(attempt)
+    # Explore a tapered UV correction ONLY in the upper sleeve where real
+    # authored-vs-mobile tests measured +8.334% U, +10.128% V median drift.
+    # Signed drift is measured from actual source geometry each run; it is
+    # never fabricated from a supplier reference. We keep a modification only
+    # if the strict maximum error across paired, whole-panel and all three
+    # zones actually improves and no UV triangles collapse.
+    details["upperZoneTaperTrials"]=[]
+    if details["retained"]:
+        currentUv=measured_geometry_uv_density(chosen)
+        _,_,currentZones=quality(
+            currentUv,paired_spatial_uv_drift(reference,currentUv["axisSampleRows"]))
+        upper=currentZones["zones"]["upper"]
+        u_delta=upper.get("uAxisSignedMedianDriftPct")
+        v_delta=upper.get("vAxisSignedMedianDriftPct")
+        if (isinstance(u_delta,(float,int)) and math.isfinite(u_delta)
+            and isinstance(v_delta,(float,int)) and math.isfinite(v_delta)
+            and abs(u_delta)<=15 and abs(v_delta)<=15):
+            for strength in (.5,.8,1.0):
+                attempt={"strength":strength,"retained":False}
+                copy=chosen.copy()
+                copy.data=chosen.data.copy()
+                bpy.context.scene.collection.objects.link(copy)
+                copy.name="LE_UNAPPROVED_UPPER_UV_TAPER__"+str(strength)
+                temporary_objects.append(copy)
+                try:
+                    mesh=copy.data
+                    uv=mesh.uv_layers.active
+                    if uv is None:
+                        raise RuntimeError("Upper-sleeve experiment requires source UV.")
+                    matrix=copy.matrix_world
+                    heights=[(matrix @ vertex.co).z for vertex in mesh.vertices]
+                    lo,hi=min(heights),max(heights)
+                    if not hi>lo:
+                        raise RuntimeError("Garment has no measurable world-height span.")
+                    upperUv=[tuple(uv.data[loop.index].uv)
+                             for loop in mesh.loops
+                             if (heights[loop.vertex_index]-lo)/(hi-lo)>=.70]
+                    if not upperUv:
+                        raise RuntimeError("Upper-sleeve UV loops are unavailable.")
+                    anchorU=sum(v[0] for v in upperUv)/len(upperUv)
+                    anchorV=sum(v[1] for v in upperUv)/len(upperUv)
+                    for loop in mesh.loops:
+                        h=(heights[loop.vertex_index]-lo)/(hi-lo)
+                        t=min(1.,max(0.,(h-.55)/.30))
+                        weight=t*t*(3-2*t)*strength
+                        coord=uv.data[loop.index].uv.copy()
+                        coord.x=anchorU+(coord.x-anchorU)*(1+u_delta/100*weight)
+                        coord.y=anchorV+(coord.y-anchorV)*(1+v_delta/100*weight)
+                        uv.data[loop.index].uv=coord
+                    mesh.update()
+                    report=measured_geometry_uv_density(copy)
+                    after=paired_spatial_uv_drift(reference,report["axisSampleRows"])
+                    score,globalQA,zonesQA=quality(report,after)
+                    attempt.update({"worstUvMetricPct":score,"pairedUvQA":after,
+                        "overallUvQA":globalQA,"verticalZonesUvQA":zonesQA,
+                        "collapsedUvTriangles":report["collapsedUvTriangles"]})
+                    if (score is not None and best_score is not None
+                        and score+.10<best_score
+                        and after["matchedSourcePct"]>=before["matchedSourcePct"]-.1
+                        and report["collapsedUvTriangles"]==0
+                        and report["validUvTriangles"]>=baseline["validUvTriangles"]*.97):
+                        best_score=score
+                        chosen=copy
+                        attempt["retained"]=True
+                        for old in details["upperZoneTaperTrials"]:
+                            old["retained"]=False
+                        details["upperZoneTaperAcceptedStrength"]=strength
+                        details["worstSelectedUvMetricPct"]=score
+                        details["transferredPairedUvQA"]=after
+                        details["selectedGlobalUvQA"]=globalQA
+                        details["selectedZoneUvQA"]=zonesQA
+                except Exception as error:
+                    attempt["error"]=str(error)
+                details["upperZoneTaperTrials"].append(attempt)
     return chosen,details
 
 
