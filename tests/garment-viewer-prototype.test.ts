@@ -159,6 +159,11 @@ test("real browser 3D QA records GPU/asset diagnosis without silently relaxing t
   assert(code.includes('(model?.model?.materials?.length||0)>=6'));
   assert(code.includes('!document.querySelector(".garmentViewerLoading")'));
   assert(code.includes('"garment-loading-timeout.json"'));
+  assert(code.includes('Object.defineProperty(window,"__linen3dQaTimeline"'));
+  assert(code.includes('timeline.firstNativeLoadMs=performance.now()'));
+  assert(code.includes('timeline.lastProgress=event.detail.totalProgress'));
+  assert(code.includes('nativeEventTimeline:window.__linen3dQaTimeline||null'));
+
   assert(code.includes('modelLoaded:Boolean(document.querySelector("model-viewer")?.loaded)'));
   assert(code.includes('modelReadiness:document.querySelector(".garmentViewerShell")'));
   assert(code.includes("failed the original 20-second genuine-load gate"));
