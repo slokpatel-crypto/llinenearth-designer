@@ -139,7 +139,7 @@ async function verifyViewport(browser, width) {
     assert.match(await referenceImage.getAttribute("src"),/studio-tucked\\.webp$/);
     assert.match(await page.locator(".garmentViewerReference").innerText(),/linen-earth-studio-model-v1/);
     if(stageLabel.includes("ENGINEERING CANDIDATE")){
-      assert.match(await viewer.getAttribute("src"),/^\\/models\\/linen-earth-officewear-v1\\.glb$/,
+      assert.match(await viewer.getAttribute("src"),/^\/models\/linen-earth-officewear-v1\.glb$/,
         "procedural M7 candidate must remain the real source lab GLB, never a substitute person");
       assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-model-readiness"),"contract_ready");
     }
