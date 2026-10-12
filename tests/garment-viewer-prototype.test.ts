@@ -114,7 +114,7 @@ test("viewer recovers a model-viewer load event that fires before React effect l
   const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
   assert(viewer.includes("loaded?:boolean"));
   assert(viewer.includes('const [modelUrl,setModelUrl]=useState(()=>modelSrc||"")'));
-  assert(viewer.includes('"shadow-intensity":modelReady?".78":"0"'));
+  assert(viewer.includes('"shadow-intensity":modelReady&&materialPipelineReady?".78":"0"'));
   assert(viewer.includes('"environment-image":"neutral"'));
   assert(viewer.includes("const recoverReadyState=(attempt=0)=>"));
   assert(viewer.includes('ref:attachViewerRef'));
