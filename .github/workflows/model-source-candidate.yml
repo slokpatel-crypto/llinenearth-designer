@@ -66,6 +66,11 @@ jobs:
       - name: Build existing-model identity-locked body
         run: npm run garment:model-body:prepare
 
+      - name: Verify photo lock does not approve a different CC0 model source
+        run: |
+          blender --background .cache/linen-earth/linen-earth-officewear-body-base.blend \
+            --python tests/blender/test_source_photo_identity_provenance.py
+
       - name: Author body-attached candidate shirt / trouser relief
         run: npm run garment:model-garments:author
 
