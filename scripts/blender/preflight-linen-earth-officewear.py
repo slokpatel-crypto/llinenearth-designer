@@ -76,7 +76,27 @@ def evaluated_mesh_stats(obj):
         degenerate = sum(1 for polygon in mesh.polygons if not math.isfinite(polygon.area) or polygon.area <= 1e-10)
         uv_layers = len(mesh.uv_layers)
         uv_name = mesh.uv_layers.active.name if mesh.uv_layers.active else None
+        # Face-count and a named UV channel alone do not establish fabric
+        # repeat viability. Vertical projected front/back UVs commonly
+        # collapse at cloth sides, and can silently compress stripes.
+        uv_collapsed = 0
+        uv_nonfinite = 0
+        uv_channel = mesh.uv_layers.active
+        if uv_channel is not None:
+            for triangle in mesh.loop_triangles:
+                coords = [uv_channel.data[loop_idx].uv for loop_idx in triangle.loops]
+                if any(not math.isfinite(axis) for uv in coords for axis in uv):
+                    uv_nonfinite += 1
+                    continue
+                dux = coords[1].x - coords[0].x
+                duy = coords[1].y - coords[0].y
+                dvx = coords[2].x - coords[0].x
+                dvy = coords[2].y - coords[0].y
+                if abs(dux * dvy - duy * dvx) <= 1e-10:
+                    uv_collapsed += 1
         return {
+            "uvCollapsedTriangles": uv_collapsed,
+            "uvNonFiniteTriangles": uv_nonfinite,
             "vertices": vertices,
             "polygons": polygons,
             "triangles": triangles,
@@ -424,6 +444,15 @@ def main():
             reasons.append(f"{name} has empty or non-renderable geometry.")
         if stats["uvLayers"] <= 0 or not stats["activeUv"]:
             reasons.append(f"{name} needs an active UV map.")
+        if stats["uvNonFiniteTriangles"] > 0:
+            reasons.append(
+                f"{name} has {stats['uvNonFiniteTriangles']} triangles with non-finite UV coordinates."
+            )
+        if stats["uvCollapsedTriangles"] > 0:
+            reasons.append(
+                f"{name} has {stats['uvCollapsedTriangles']} collapsed UV triangles; "
+                "no real stripe/check physical pattern scale can be approved from this surface."
+            )
         if stats["degenerateRatio"] > MAX_DEGENERATE_FACE_RATIO:
             reasons.append(
                 f"{name} has too many zero-area/degenerate faces: "
