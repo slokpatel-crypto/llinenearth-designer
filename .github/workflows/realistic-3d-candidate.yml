@@ -99,7 +99,7 @@ jobs:
               --python scripts/blender/probe-mobile-lod.py -- \
               --output artifacts/realistic-3d/mobile-lod-diagnostic.json \
               --diagnostic-scene artifacts/realistic-3d/mobile-lod-unapproved.blend \
-              --left-sleeve-ratio 0.32 \
+              --left-sleeve-ratio 0.30 \
               2>&1 | tee artifacts/realistic-3d/mobile-lod-diagnostic.log
           else
             echo "No authored scene; mobile LOD diagnostic is unavailable."
