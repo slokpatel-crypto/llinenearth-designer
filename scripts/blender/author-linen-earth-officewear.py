@@ -397,25 +397,29 @@ def main():
         t = t * t * (3.0 - 2.0 * t)
         return 0.158 + (0.205 - 0.158) * t
 
-    def leg_half_width(z_world):
-        """Anatomical thigh/calf band around the locked ±105-mm leg axis.
+    def leg_outer_boundary(z_world):
+        """Allow the FULL scanned calf/ankle silhouette while separating
+        upper thighs from the hands near the hips.
 
-        The source scan has hands alongside the hips, at nearly the same
-        *height* as upper thighs. A z-only left/right half-plane classified
-        hands as trouser fabric, producing blue 'gloves' in true four-angle QA.
-        Keep lower limb panels away from the hand coordinates.
+        Restricting every leg section to a guessed narrow cylinder made the
+        hem pass the width gate but left exposed white strips at the knees and
+        shins in actual four-angle Blender evidence. Below hand height the
+        original scan's complete leg cross-section must stay covered.
         """
         ratio = (z_world - min_z) / height
-        t = max(0.0, min(1.0, (ratio - 0.10) / 0.40))
+        if ratio <= 0.36:
+            return 0.40
+        if ratio >= 0.43:
+            return 0.255
+        t = (ratio - 0.36) / 0.07
         t = t * t * (3.0 - 2.0 * t)
-        return 0.082 + 0.038 * t
+        return 0.40 + (0.255 - 0.40) * t
 
     def leg_region(point, side):
         if not z(0.055) <= point.z <= z(0.535):
             return False
         signed_x = (point.x - center_x) * side
-        locked_leg_center_m = 0.105
-        return signed_x > 0 and abs(signed_x - locked_leg_center_m) <= leg_half_width(point.z)
+        return signed_x > 0 and signed_x <= leg_outer_boundary(point.z)
 
     regions = {
         # A real tucked shirt reaches the trouser waistband; its lower
