@@ -99,7 +99,7 @@ test("3D scene gets two real paint frames before GPU texture and variant uploads
   const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
   assert(viewer.includes("const [materialPipelineReady,setMaterialPipelineReady]=useState(false)"));
   assert(viewer.includes("settleTimer=window.setTimeout(()=>setMaterialPipelineReady(true),materialPipelineDelayMs)"));
-  assert(viewer.includes("setMaterialPipelineDelayMs(elapsed>8000?7000:250)"));
+  assert(viewer.includes("setMaterialPipelineDelayMs(elapsed>8000?12000:250)"));
   assert(viewer.includes("const viewerAttachedAt=useRef<number|null>(null)"));
   assert(viewer.includes("[modelReady,materialPipelineDelayMs]"));
   assert(viewer.includes("if(settleTimer!==undefined) window.clearTimeout(settleTimer)"));
