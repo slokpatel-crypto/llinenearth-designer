@@ -62,7 +62,10 @@ jobs:
           done
           # Run the 3D gate first: it is the largest production-asset contract and should fail fast
           # before the longer photographic/style lifecycle suite when a GLB regression is present.
-          node scripts/verify-garment-viewer.cjs
+          # A stalled 3D renderer must fail closed and upload logs rather than
+          # consuming the entire 30-minute job before other browser gates run.
+          # This is an outer process cap, NOT a relaxation of the 20s load gate.
+          timeout --signal=TERM --kill-after=10s 5m node scripts/verify-garment-viewer.cjs
           node scripts/verify-premium-atelier.cjs
           node scripts/verify-designer-advisor.cjs
           node scripts/verify-photo-form.cjs
