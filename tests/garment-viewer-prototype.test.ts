@@ -113,3 +113,13 @@ test("viewer surface exposes the shared four-angle turntable and independent shi
     assert(identity.includes(token),token);
   }
 });
+
+
+test("real browser 3D QA records GPU/asset diagnosis without silently relaxing the twenty-second threshold",()=>{
+  const code=readFileSync("scripts/verify-garment-viewer.cjs","utf8");
+  assert(code.includes('waitFor({ state: "hidden", timeout: 20000 })'));
+  assert(code.includes('"garment-loading-timeout.json"'));
+  assert(code.includes('modelLoaded:Boolean(document.querySelector("model-viewer")?.loaded)'));
+  assert(code.includes('modelReadiness:document.querySelector(".garmentViewerShell")'));
+  assert(code.includes("failed the original 20-second genuine-load gate"));
+});
