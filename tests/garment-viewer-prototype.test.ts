@@ -95,12 +95,35 @@ test("viewer skips ensureLoaded for materials that model-viewer already hydrated
   assert(viewer.includes("if(material.isLoaded!==true && material.ensureLoaded) await material.ensureLoaded();"));
 });
 
+test("3D scene gets two real paint frames before GPU texture and variant uploads",()=>{
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  assert(viewer.includes("const [materialPipelineReady,setMaterialPipelineReady]=useState(false)"));
+  assert(viewer.includes("settleTimer=window.setTimeout(()=>setMaterialPipelineReady(true),materialPipelineDelayMs)"));
+  assert(viewer.includes("setMaterialPipelineDelayMs(elapsed>8000?12000:250)"));
+  assert(viewer.includes("const viewerAttachedAt=useRef<number|null>(null)"));
+  assert(viewer.includes("[modelReady,materialPipelineDelayMs]"));
+  assert(viewer.includes("if(settleTimer!==undefined) window.clearTimeout(settleTimer)"));
+  assert(viewer.includes("cancelAnimationFrame(frame1)"));
+  assert(viewer.includes("if(!modelReady || !materialPipelineReady || !shirt || !trouser"));
+  assert(viewer.includes("if(!modelReady || !materialPipelineReady) return;"));
+  assert(viewer.includes("[modelReady,materialPipelineReady,styleState"));
+  assert(viewer.includes("[modelReady,materialPipelineReady,shirt,trouser"));
+});
+
 test("viewer recovers a model-viewer load event that fires before React effect listeners attach",()=>{
   const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
   assert(viewer.includes("loaded?:boolean"));
+  assert(viewer.includes('const [modelUrl,setModelUrl]=useState(()=>modelSrc||"")'));
+  assert(viewer.includes('"shadow-intensity":modelReady&&materialPipelineReady?".78":"0"'));
+  assert(viewer.includes('"environment-image":"neutral"'));
   assert(viewer.includes("const recoverReadyState=(attempt=0)=>"));
+  assert(viewer.includes('ref:attachViewerRef'));
+  assert(viewer.includes('viewerRef.current.addEventListener("load",settleNativeModelLoad)'));
+  assert(viewer.includes('previous.removeEventListener("load",settleNativeModelLoad)'));
+  assert(viewer.includes('if(viewerRef.current.loaded) settleNativeModelLoad()'));
+  assert(viewer.includes("if(!model || !(model.loaded || (model.model?.materials?.length||0)>0)) return"));
   assert(viewer.includes("viewer.loaded || (viewer.model?.materials?.length||0)>0"));
-  assert(viewer.includes("if(attempt<80) readinessTimer=window.setTimeout(()=>recoverReadyState(attempt+1),125);"));
+  assert(viewer.includes("if(attempt<160) readinessTimer=window.setTimeout(()=>recoverReadyState(attempt+1),125);"));
 });
 
 test("viewer surface exposes the shared four-angle turntable and independent shirt/trouser material controls",()=>{
@@ -112,4 +135,67 @@ test("viewer surface exposes the shared four-angle turntable and independent shi
   for(const token of ['id:"front"','id:"three-quarter"','id:"side"','id:"back"',"yawDeg:0","yawDeg:35","yawDeg:90","yawDeg:180"]) {
     assert(identity.includes(token),token);
   }
+});
+
+
+
+test("slow GLB startup fails closed with a real fallback instead of an infinite loading overlay",()=>{
+  const source=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  assert(source.includes("if(!modelUrl || modelReady) return"));
+  assert(source.includes('if(!scene?.loaded) setError("3D preview is taking longer than expected.'));
+  assert(source.includes("},20_000)"));
+  assert(source.includes('{!modelReady&&!error&&<div className="garmentViewerLoading">'));
+  assert(source.includes('className="garmentViewerError"'));
+  assert(source.includes('setModelReady(true);'));
+  assert(source.includes('setError("");'));
+});
+
+
+test("real browser 3D QA records GPU/asset diagnosis without silently relaxing the twenty-second threshold",()=>{
+  const code=readFileSync("scripts/verify-garment-viewer.cjs","utf8");
+  assert(code.includes('null,{timeout:30000,polling:100}'));
+  assert(code.includes('typeof window.__linen3dQaTimeline?.firstTwoFramePaintMs==="number"'));
+  assert(code.includes('firstTwoFramePaintMs=performance.now()'));
+  assert(code.includes('firstHydratedDomMs=performance.now()'));
+  assert(code.includes('new MutationObserver(captureRealScene)'));
+  assert(code.includes('if(timeline.firstHydratedDomMs===null)'));
+  assert(code.includes('if(paintPending || timeline.firstTwoFramePaintMs!==null) return'));
+  assert(code.includes('requestAnimationFrame(captureRealScene)'));
+
+  assert(code.includes('requestAnimationFrame(()=>requestAnimationFrame(()=>'));
+  assert(code.includes("const frameAtMs=timeline.firstTwoFramePaintMs-timeline.scriptStartedMs"));
+  assert(code.includes("assert.ok(frameAtMs<=20000"));
+  assert(code.includes("Real 3D first frame exceeded 20s"));
+
+  assert(code.includes('Boolean(model?.loaded)'));
+  assert(code.includes('(model?.model?.materials?.length||0)>=6'));
+  assert(code.includes('!document.querySelector(".garmentViewerLoading")'));
+  assert(code.includes('"garment-loading-timeout.json"'));
+  assert(code.includes('Object.defineProperty(window,"__linen3dQaTimeline"'));
+  assert(code.includes('timeline.firstNativeLoadMs=performance.now()'));
+  assert(code.includes('timeline.lastProgress=event.detail.totalProgress'));
+  assert(code.includes('nativeEventTimeline:window.__linen3dQaTimeline||null'));
+
+  assert(code.includes('modelLoaded:Boolean(document.querySelector("model-viewer")?.loaded)'));
+  assert(code.includes('modelReadiness:document.querySelector(".garmentViewerShell")'));
+  assert(code.includes("failed the original 20-second genuine-load gate"));
+  assert(code.includes('"--enable-unsafe-swiftshader"'));
+  assert(code.includes('"--use-angle=swiftshader-webgl"'));
+  assert(code.includes('element.toBlob({mimeType:"image/png"})'));
+  const fourAngles=code.slice(code.indexOf("const captureCanvas=async(name)=>"),code.indexOf("const selectCamera=async("));
+  assert(fourAngles.includes('element.toBlob({mimeType:"image/png"})'));
+  assert(fourAngles.includes('frame.byteSize>=12000'));
+  assert(fourAngles.includes('"Four-angle GLB pixels must be actual PNG evidence."'));
+  assert(!fourAngles.includes("page.screenshot("),"Do not GPU-readback the live four-angle GLB via Chromium compositor");
+  assert(code.includes('await captureCanvas("garment-angle-front.png")'));
+  assert(code.includes('await captureCanvas("garment-angle-three-quarter.png")'));
+  assert(code.includes('await captureCanvas("garment-angle-side.png")'));
+  assert(code.includes('await captureCanvas("garment-angle-back.png")'));
+  assert(code.includes('render.size>=12000'));
+  assert(code.includes('"Garment pixels must be a real PNG."'));
+  assert(code.includes('name.replace(".png","-model.png")'));
+  assert(code.includes('element.style.visibility="hidden"'));
+  assert(code.includes('element.style.visibility=""'));
+  assert(code.includes('timeout:45000'));
+
 });

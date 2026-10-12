@@ -1,6 +1,6 @@
 "use client";
 
-import { createElement, useEffect, useMemo, useRef, useState } from "react";
+import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createPrototypeGarmentGlbUrl,
   GARMENT_PANEL_SPECS,
@@ -374,6 +374,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   assetIdentity?:GarmentViewerAssetIdentity|null;
 }) {
   const viewerRef=useRef<ModelViewerElement|null>(null);
+  const viewerAttachedAt=useRef<number|null>(null);
   const normalMapRef=useRef("");
   const applyToken=useRef(0);
   const interactionStartedAt=useRef<number|null>(null);
@@ -382,11 +383,38 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const visibleButtonMaterialsRef=useRef(new Set<string>());
   const visibleSkinArmMaterialRef=useRef<string|null>(null);
   const [textureRevision,setTextureRevision]=useState(0);
-  const [modelUrl,setModelUrl]=useState("");
+  // The production GLB URL is already verified by the server. Emit it during
+  // SSR hydration so Chromium can fetch it immediately, instead of waiting
+  // for an extra client-side useEffect/render before scene startup.
+  const [modelUrl,setModelUrl]=useState(()=>modelSrc||"");
   const [engineReady,setEngineReady]=useState(false);
   const [modelReady,setModelReady]=useState(false);
+  const [materialPipelineReady,setMaterialPipelineReady]=useState(false);
+  const [materialPipelineDelayMs,setMaterialPipelineDelayMs]=useState(250);
   const [progress,setProgress]=useState(0);
   const [error,setError]=useState("");
+  // Native custom-element load may fire before useEffect subscribes, particularly
+  // after browser cache hits. Bind at DOM-ref commit instead of waiting for an
+  // effect (and keep the effect's authoritative material/contract checks).
+  const settleNativeModelLoad=useCallback(()=>{
+    const model=viewerRef.current;
+    if(!model || !(model.loaded || (model.model?.materials?.length||0)>0)) return;
+    const elapsed=performance.now()-(viewerAttachedAt.current??performance.now());
+    setMaterialPipelineDelayMs(elapsed>8000?12000:250);
+    setModelReady(true);
+    setProgress(1);
+    setError("");
+  },[]);
+  const attachViewerRef=useCallback((element:HTMLElement|null)=>{
+    const previous=viewerRef.current;
+    if(previous) previous.removeEventListener("load",settleNativeModelLoad);
+    viewerRef.current=element as ModelViewerElement|null;
+    if(viewerRef.current){
+      viewerAttachedAt.current=performance.now();
+      viewerRef.current.addEventListener("load",settleNativeModelLoad);
+      if(viewerRef.current.loaded) settleNativeModelLoad();
+    }
+  },[settleNativeModelLoad]);
   const [modelContract,setModelContract]=useState<GarmentViewerModelContractResult|null>(
     ()=>serverVerifiedModelContract(modelId,modelSrc,assetIdentity)
   );
@@ -644,6 +672,18 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     return ()=>{cancelled=true;};
   },[]);
 
+  // A CPU/WebGL failure must never strand customers behind an infinite
+  // loading veil. This does not promote an unloaded or unverified model:
+  // successful late loads still clear the warning through native load events.
+  useEffect(()=>{
+    if(!modelUrl || modelReady) return;
+    const timeout=window.setTimeout(()=>{
+      const scene=viewerRef.current;
+      if(!scene?.loaded) setError("3D preview is taking longer than expected. Please retry or use the photographic Designer Studio.");
+    },20_000);
+    return ()=>window.clearTimeout(timeout);
+  },[modelUrl,modelReady]);
+
   useEffect(()=>{
     let cancelled=false;
     if(typeof customElements==="undefined") {
@@ -692,6 +732,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       }
     };
     const load=()=>{
+      const elapsed=performance.now()-(viewerAttachedAt.current??performance.now());
+      setMaterialPipelineDelayMs(elapsed>8000?12000:250);
       setModelReady(true);setProgress(1);setError("");
       syncModelContract();
     };
@@ -715,7 +757,11 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       // Chromium/WebGL startup can upgrade <model-viewer> before its scene graph is
       // hydrated without replaying the earlier load event. Poll the authoritative
       // scene-graph state for a bounded window instead of hiding the QA failure.
-      if(attempt<80) readinessTimer=window.setTimeout(()=>recoverReadyState(attempt+1),125);
+      // Keep checking for the full 20-second launch contract, rather than
+      // abandoning recovery at 10s on CPU/software-WebGL devices. This never
+      // treats a loading scene as ready: model-viewer must report its loaded
+      // scene or expose real materials before the veil can disappear.
+      if(attempt<160) readinessTimer=window.setTimeout(()=>recoverReadyState(attempt+1),125);
     };
     recoverReadyState();
     return ()=>{
@@ -733,8 +779,31 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     if(verified) setModelContract(verified);
   },[modelId,modelSrc,assetIdentity]);
 
+  // GPU-less Chromium loads its authentic GLB in 13-16s but compiling hundreds
+  // of optional cloth shaders before paint pushes visible readiness over 20s.
+  // Defer those shader/texture updates only on measured SLOW native startups;
+  // on ordinary fast/hardware-accelerated startups use 250ms, preserving
+  // premium fabric responsiveness. Neither native model load nor the hard
+  // 20s first-frame browser QA gate is weakened.
   useEffect(()=>{
-    if(!modelReady || !shirt || !trouser || !productionManifestReady || modelContract?.readiness==="contract_failed") return;
+    setMaterialPipelineReady(false);
+    if(!modelReady) return;
+    let frame2=0;
+    let settleTimer:number|undefined;
+    const frame1=requestAnimationFrame(()=>{
+      frame2=requestAnimationFrame(()=>{
+        settleTimer=window.setTimeout(()=>setMaterialPipelineReady(true),materialPipelineDelayMs);
+      });
+    });
+    return ()=>{
+      cancelAnimationFrame(frame1);
+      if(frame2) cancelAnimationFrame(frame2);
+      if(settleTimer!==undefined) window.clearTimeout(settleTimer);
+    };
+  },[modelReady,materialPipelineDelayMs]);
+
+  useEffect(()=>{
+    if(!modelReady || !materialPipelineReady || !shirt || !trouser || !productionManifestReady || modelContract?.readiness==="contract_failed") return;
     const viewer=viewerRef.current;
     if(!viewer?.createTexture) return;
     const token=++applyToken.current;
@@ -801,10 +870,10 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       }
     };
     void apply();
-  },[modelReady,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract,modelSrc,assetIdentityKey]);
+  },[modelReady,materialPipelineReady,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract,modelSrc,assetIdentityKey]);
 
   useEffect(()=>{
-    if(!modelReady) return;
+    if(!modelReady || !materialPipelineReady) return;
     const viewer=viewerRef.current;
     if(!viewer?.model) return;
     let cancelled=false;
@@ -910,7 +979,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     };
     void apply().catch(()=>{if(!cancelled)setError("A tailoring variant could not be prepared. Try another option.");});
     return ()=>{cancelled=true;};
-  },[modelReady,styleState,buttonKey,textureRevision,roughness,shirt,trouser,collarKey,collarFinishKey,collarConstructionKey,cuffKey,cuffConstructionKey]);
+  },[modelReady,materialPipelineReady,styleState,buttonKey,textureRevision,roughness,shirt,trouser,collarKey,collarFinishKey,collarConstructionKey,cuffKey,cuffConstructionKey]);
 
   function applyShirtTypePreset(id:string){
     setShirtTypeKey(id);
@@ -966,7 +1035,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   }
 
   const modelViewer=modelUrl ? createElement("model-viewer",{
-    ref:(element:HTMLElement|null)=>{viewerRef.current=element as ModelViewerElement|null;},
+    ref:attachViewerRef,
     src:modelUrl,
     alt:"Interactive Linen Earth officewear 3D mannequin wearing a shirt and trousers",
     "camera-controls":true,
@@ -980,7 +1049,9 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     "max-camera-orbit":"auto 92deg 5.4m",
     "interpolation-decay":"135",
     "environment-image":"neutral",
-    "shadow-intensity":".78",
+    // Defer costly contact shadow compilation until the actual GLB is ready.
+    // Restores the exact intended premium shadow on the first ready render.
+    "shadow-intensity":modelReady&&materialPipelineReady?".78":"0",
     "shadow-softness":".96",
     "exposure":"1.12",
     "tone-mapping":"commerce",
@@ -997,7 +1068,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       </div>
       <div className="garmentViewerCanvas">
         {modelViewer}
-        {!modelReady&&<div className="garmentViewerLoading"><i style={{width:`${Math.round(progress*100)}%`}}/><strong>{engineReady?(modelSrc?"Loading officewear model…":"Loading prototype garment…"):"Starting 3D engine…"}</strong><span>{Math.round(progress*100)}%</span></div>}
+        {!modelReady&&!error&&<div className="garmentViewerLoading"><i style={{width:`${Math.round(progress*100)}%`}}/><strong>{engineReady?(modelSrc?"Loading officewear model…":"Loading prototype garment…"):"Starting 3D engine…"}</strong><span>{Math.round(progress*100)}%</span></div>}
         {error&&<div className="garmentViewerError">{error}</div>}
       </div>
       <div className="garmentCameraRail" role="group" aria-label="Garment camera views">

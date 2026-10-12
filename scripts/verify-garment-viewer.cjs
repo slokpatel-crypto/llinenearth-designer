@@ -12,6 +12,8 @@ const output = path.resolve("artifacts/preview-lifecycle");
 async function verifyViewport(browser, width) {
   const context = await browser.newContext({ viewport: { width, height: 1000 } });
   const page = await context.newPage();
+  const startedAt=Date.now();
+  const qaStage=(label)=>console.log(`[3D browser QA] ${label} · ${Date.now()-startedAt}ms`);
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
@@ -53,16 +55,125 @@ async function verifyViewport(browser, width) {
     }));
   });
 
+  // Measure launch from navigation, not from a later Playwright poll that
+  // software WebGL can delay past its own timeout under a stalled main thread.
+  // Capture native first-load timing BEFORE hydration and regardless of React.
+  // If 20s fails, distinguish slow GLB decode/shaders from delayed UI paint.
+  await page.addInitScript(()=>{
+    const timeline={firstProgressMs:null,firstNativeLoadMs:null,firstNativeErrorMs:null,
+      lastProgress:null,progressEvents:0,scriptStartedMs:performance.now(),
+      firstHydratedDomMs:null,firstTwoFramePaintMs:null};
+    Object.defineProperty(window,"__linen3dQaTimeline",{value:timeline});
+    // Chromium's CPU WebGL may defer CDP's waitForFunction polling while
+    // running real shader work. Record the actual readiness event in-page,
+    // at the moment it occurs, independent of Playwright polling latency.
+    // We still demand the authentic loaded scene, >=6 actual GLB materials,
+    // verified manifest, and no loading overlay or visible error.
+    const sceneIsTrulyReady=()=>{
+      const model=document.querySelector("model-viewer");
+      const shell=document.querySelector(".garmentViewerShell");
+      return Boolean(model?.loaded)
+        && (model?.model?.materials?.length||0)>=6
+        && shell?.getAttribute("data-model-readiness")==="contract_ready"
+        && shell?.getAttribute("data-manifest-ready")==="true"
+        && !document.querySelector(".garmentViewerLoading")
+        && !document.querySelector(".garmentViewerError");
+    };
+    let paintPending=false;
+    const captureRealScene=()=>{
+      if(!sceneIsTrulyReady()) return;
+      if(timeline.firstHydratedDomMs===null)
+        timeline.firstHydratedDomMs=performance.now();
+      if(paintPending || timeline.firstTwoFramePaintMs!==null) return;
+      paintPending=true;
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        paintPending=false;
+        if(sceneIsTrulyReady() && timeline.firstTwoFramePaintMs===null)
+          timeline.firstTwoFramePaintMs=performance.now();
+        else if(timeline.firstTwoFramePaintMs===null)
+          requestAnimationFrame(captureRealScene);
+      }));
+    };
+    document.addEventListener("DOMContentLoaded",()=>{
+      captureRealScene();
+      new MutationObserver(captureRealScene).observe(document.documentElement,{
+        childList:true,subtree:true,attributes:true,
+        attributeFilter:["data-model-readiness","data-manifest-ready","class"],
+      });
+    },{once:true});
+    document.addEventListener("load",(event)=>{
+      if(event.target?.tagName==="MODEL-VIEWER") captureRealScene();
+    },true);
+    document.addEventListener("progress",(event)=>{
+      if(event.target?.tagName!=="MODEL-VIEWER") return;
+      timeline.progressEvents++;
+      if(timeline.firstProgressMs===null) timeline.firstProgressMs=performance.now();
+      if(typeof event.detail?.totalProgress==="number") timeline.lastProgress=event.detail.totalProgress;
+    },true);
+    document.addEventListener("load",(event)=>{
+      if(event.target?.tagName==="MODEL-VIEWER" && timeline.firstNativeLoadMs===null)
+        timeline.firstNativeLoadMs=performance.now();
+    },true);
+    document.addEventListener("error",(event)=>{
+      if(event.target?.tagName==="MODEL-VIEWER" && timeline.firstNativeErrorMs===null)
+        timeline.firstNativeErrorMs=performance.now();
+    },true);
+  });
   await page.goto(baseURL + "/lab/garment-viewer", { waitUntil: "domcontentloaded", timeout: 30000 });
   await page.waitForFunction(() => Boolean(customElements.get("model-viewer")), null, { timeout: 20000 });
   const engineResources=await page.evaluate(()=>performance.getEntriesByType("resource").map((entry)=>entry.name).filter((name)=>name.includes("model-viewer")));
   assert.ok(engineResources.some((name)=>name.includes("/vendor/model-viewer")), "3D engine must load through the Linen Earth origin");
   assert.equal(engineResources.some((name)=>name.includes("ajax.googleapis.com")), false, "Browser must not depend on the Google CDN for the 3D engine");
+  qaStage("engine custom element defined");
   const viewer = page.locator("model-viewer");
   await viewer.waitFor({ state: "visible" });
   const serverSeededReadiness=await page.locator(".garmentViewerShell").getAttribute("data-model-readiness");
   assert.equal(serverSeededReadiness,"contract_ready","server-verified production asset must seed M7.46 readiness before scene-graph hydration");
-  await page.locator(".garmentViewerLoading").waitFor({ state: "hidden", timeout: 20000 });
+  try {
+    // The WebGL renderer can replace its React overlay while Playwright's
+    // Locator.waitFor still holds a stale element handle. Inspect the actual
+    // current DOM and hydrated GLB on each poll, under the SAME strict 20s cap.
+    // Loaded model and all real scene materials are mandatory, not inferred.
+    // CDP/Playwright callback scheduling can lag the actual loaded frame on
+    // SwiftShader. Poll at most 30s for RECORDED real event timestamps; reject
+    // any first two-frame paint after the original 20s production SLA.
+    await page.waitForFunction(
+      ()=>typeof window.__linen3dQaTimeline?.firstTwoFramePaintMs==="number",
+      null,{timeout:30000,polling:100}
+    );
+    const timeline=await page.evaluate(()=>window.__linen3dQaTimeline);
+    assert.ok(timeline.firstHydratedDomMs!==null,
+      "3D model cannot be ready before genuine hydrated GLB/material contracts");
+    const frameAtMs=timeline.firstTwoFramePaintMs-timeline.scriptStartedMs;
+    assert.ok(frameAtMs<=20000,
+      `Real 3D first frame exceeded 20s: ${frameAtMs.toFixed(1)}ms`);
+    qaStage(`two genuine painted frames recorded at ${frameAtMs.toFixed(1)}ms`);
+  } catch (error) {
+    // Preserve objective WebGL/asset evidence instead of a generic timeout.
+    // Do not waive the 20s production loading gate or fabricate loaded state.
+    const diagnostics=await page.evaluate(()=>({
+      pathname:location.pathname,
+      loadingMessage:document.querySelector(".garmentViewerLoading")?.textContent?.trim().slice(0,240)||null,
+      userVisibleError:document.querySelector(".garmentViewerError")?.textContent?.trim().slice(0,240)||null,
+      engineDefined:Boolean(customElements.get("model-viewer")),
+      nativeEventTimeline:window.__linen3dQaTimeline||null,
+      browserUptimeMs:Math.round(performance.now()),
+      modelLoaded:Boolean(document.querySelector("model-viewer")?.loaded),
+      materialCount:document.querySelector("model-viewer")?.model?.materials?.length??0,
+      modelSource:document.querySelector("model-viewer")?.getAttribute("src")||null,
+      modelReadiness:document.querySelector(".garmentViewerShell")?.getAttribute("data-model-readiness")||null,
+      manifestReady:document.querySelector(".garmentViewerShell")?.getAttribute("data-manifest-ready")||null,
+      assets:performance.getEntriesByType("resource")
+        .filter(entry=>/\.glb(?:\?|$)|model-viewer|\.json(?:\?|$)/i.test(entry.name))
+        .map(entry=>({path:new URL(entry.name).pathname,durationMs:Math.round(entry.duration),
+          transferSize:entry.transferSize??0,decodedBodySize:entry.decodedBodySize??0})).slice(-16),
+    })).catch(()=>({diagnosticUnavailable:true}));
+    await fs.mkdir(output,{recursive:true});
+    await fs.writeFile(path.join(output,"garment-loading-timeout.json"),
+      JSON.stringify({diagnostics,browserErrors:errors},null,2)+"\n");
+    throw new Error("3D model failed the original 20-second genuine-load gate: "+
+      JSON.stringify({diagnostics,browserErrors:errors})+"; "+error.message);
+  }
   try {
     // React can replace the server-rendered shell while the large scene graph hydrates.
     // Re-resolve the current DOM node until both immutable production contracts settle.
@@ -80,6 +191,7 @@ async function verifyViewport(browser, width) {
     })).catch(()=>({body:"<page unavailable>",shellCount:0,readiness:null,manifestReady:null}));
     throw new Error("3D readiness did not settle after hydration. url="+page.url()+" errors="+JSON.stringify(errors)+" state="+JSON.stringify(diagnostic)+"; "+error.message);
   }
+  qaStage("GLB and scene contract hydrated, loading veil gone");
   const shell=page.locator(".garmentViewerShell");
   assert.equal(await shell.count(),1,"3D lab must keep exactly one hydrated viewer shell");
   const [labModelReadiness,labManifestReadiness]=await page.evaluate(()=>{
@@ -117,16 +229,32 @@ async function verifyViewport(browser, width) {
   const canvas=page.locator(".garmentViewerCanvas");
   const captureCanvas=async(name)=>{
     if(width!==1440) return;
-    // model-viewer continuously animates its render surface, so Locator.screenshot can wait
-    // forever for DOM stability. Capture the already-laid-out bounding box directly instead.
-    await page.waitForTimeout(180);
-    const box=await canvas.boundingBox();
-    assert.ok(box&&box.width>0&&box.height>0,"3D evidence canvas must have a measurable viewport");
-    await page.screenshot({
-      path:path.join(output,name),
-      clip:{x:Math.max(0,box.x),y:Math.max(0,box.y),width:box.width,height:box.height},
-      animations:"disabled",
+    // Chromium's software renderer can deadlock on compositor screenshot
+    // ReadPixels when the live model-viewer is continuously repainting.
+    // Use model-viewer's OWN real canvas snapshot API for each camera angle,
+    // then preserve its PNG bytes as independently testable visual evidence.
+    // Never substitute a blank page, a photographic poster or mocked pixels.
+    const bounds=await canvas.boundingBox();
+    assert.ok(bounds&&bounds.width>0&&bounds.height>0,
+      "3D evidence canvas must have a measurable viewport");
+    const frame=await viewer.evaluate(async(element)=>{
+      if(!element.loaded || typeof element.toBlob!=="function")
+        throw new Error("Four-angle 3D evidence requires the live loaded GLB.");
+      const blob=await element.toBlob({mimeType:"image/png"});
+      const encoded=await new Promise((resolve,reject)=>{
+        const fileReader=new FileReader();
+        fileReader.onerror=()=>reject(new Error("GLB scene snapshot could not be encoded."));
+        fileReader.onload=()=>resolve(String(fileReader.result||""));
+        fileReader.readAsDataURL(blob);
+      });
+      return {byteSize:blob.size,base64:encoded.split(",")[1]};
     });
+    assert.ok(frame.byteSize>=12000,"Four-angle 3D image must contain real rendered pixels.");
+    const pixels=Buffer.from(frame.base64||"","base64");
+    assert.equal(pixels.subarray(1,4).toString("ascii"),"PNG",
+      "Four-angle GLB pixels must be actual PNG evidence.");
+    await fs.writeFile(path.join(output,name),pixels);
+    qaStage("live GLB camera pixels saved: "+name);
   };
   const selectCamera=async(label,orbitPrefix,activeView)=>{
     let lastError=null;
@@ -407,20 +535,48 @@ async function verifyViewport(browser, width) {
   const captureViewportEvidence=async(name)=>{
     const viewport=page.viewportSize();
     assert.ok(viewport,"browser QA viewport must be available for evidence capture");
-    // This route is intentionally very tall because it exposes the full tailoring library.
-    // Capture the asserted viewport instead of asking Chromium to rasterize the entire
-    // continuously rendered WebGL page, which can exceed CI's screenshot deadline.
-    await page.screenshot({
-      path:path.join(output,name),
-      clip:{x:0,y:0,width:viewport.width,height:viewport.height},
-      animations:"disabled",
-      timeout:60000,
+
+    // Capture actual GLB pixels through model-viewer's documented async Blob
+    // API. A conventional full-page Chromium screenshot stalls software-WebGL
+    // ReadPixels for minutes. The 3D pixel evidence is still mandatory.
+    const render=await viewer.evaluate(async(element)=>{
+      if(!element.loaded || typeof element.toBlob!=="function"){
+        throw new Error("Actual rendered 3D model screenshot API is unavailable.");
+      }
+      const blob=await element.toBlob({mimeType:"image/png"});
+      const data=await new Promise((resolve,reject)=>{
+        const reader=new FileReader();
+        reader.onerror=()=>reject(new Error("3D pixel evidence could not be decoded."));
+        reader.onload=()=>resolve(String(reader.result||""));
+        reader.readAsDataURL(blob);
+      });
+      return {size:blob.size,base64:data.split(",")[1]};
     });
+    assert.ok(render.size>=12000,"Actual garment render PNG is too small; possible blank WebGL capture.");
+    const pixels=Buffer.from(render.base64||"","base64");
+    assert.equal(pixels.subarray(1,4).toString("ascii"),"PNG","Garment pixels must be a real PNG.");
+    await fs.writeFile(path.join(output,name.replace(".png","-model.png")),pixels);
+
+    // Independently capture the exact responsive UI layout without re-reading
+    // the continuously rendering WebGL framebuffer. This layout shot is NOT
+    // used as model-fidelity evidence; the real-model PNG above is required.
+    await viewer.evaluate(element=>{element.style.visibility="hidden";});
+    try{
+      await page.screenshot({
+        path:path.join(output,name),
+        clip:{x:0,y:0,width:viewport.width,height:viewport.height},
+        animations:"disabled",
+        timeout:45000,
+      });
+    } finally {
+      await viewer.evaluate(element=>{element.style.visibility="";});
+    }
   };
 
   const desktopLayout=await readLayout();
   assertLayout(desktopLayout,width);
   await captureViewportEvidence("garment-viewer-" + width + ".png");
+  qaStage("desktop viewport screenshot captured");
 
   // Reuse the already-loaded WebGL/model scene for mobile responsive QA. Reloading this
   // large contract a second time on CI duplicates shader/model startup cost without
@@ -430,6 +586,7 @@ async function verifyViewport(browser, width) {
   const mobileLayout=await readLayout();
   assertLayout(mobileLayout,390);
   await captureViewportEvidence("garment-viewer-390.png");
+  qaStage("mobile viewport screenshot captured");
 
   assert.deepEqual(errors, [], "GarmentViewer must load without console/page errors");
   await context.close();
@@ -438,7 +595,12 @@ async function verifyViewport(browser, width) {
 
 (async () => {
   await fs.mkdir(output, { recursive: true });
-  const browser = await chromium.launch({ headless: true });
+  // Chromium 139+ removed implicit SwiftShader WebGL fallback on GPU-less CI.
+  // Opt into CPU WebGL ONLY in this local, trusted test browser. Production
+  // browsers keep their normal security and hardware acceleration policies.
+  const browser = await chromium.launch({ headless: true,
+    args:["--use-gl=angle","--use-angle=swiftshader-webgl","--enable-unsafe-swiftshader"],
+  });
   try {
     const viewports = [];
     // Load the production GLB once, then resize that same hydrated scene for mobile QA.

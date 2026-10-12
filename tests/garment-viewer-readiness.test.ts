@@ -1,3 +1,4 @@
+import {readFileSync} from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { garmentViewerAssetIdentityKey, garmentViewerAssetIdentityMatches, garmentViewerPromotionReadiness } from "../src/lib/garment-viewer-readiness.ts";
@@ -103,4 +104,13 @@ test("QA evidence identity is invalidated by any GLB or manifest revision",()=>{
   assert.equal(garmentViewerAssetIdentityMatches(current,{...current,modelSha256:"c".repeat(64)}),false);
   assert.equal(garmentViewerAssetIdentityMatches(current,{...current,manifestSha256:"d".repeat(64)}),false);
   assert.equal(garmentViewerAssetIdentityKey(current),`LE-OFFICEWEAR-V1:${"a".repeat(64)}:${"b".repeat(64)}`);
+});
+
+
+test("viewer late-load recovery is bounded by the original twenty-second loading contract",()=>{
+  const source=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  assert.ok(source.includes("viewer.loaded || (viewer.model?.materials?.length||0)>0"));
+  assert.ok(source.includes("if(attempt<160) readinessTimer=window.setTimeout(()=>recoverReadyState(attempt+1),125)"));
+  assert.ok(source.includes("setModelReady(true);setProgress(1);setError(\"\")"));
+  assert.ok(!source.includes("if(attempt<80) readinessTimer="));
 });
