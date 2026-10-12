@@ -17,6 +17,11 @@ from pathlib import Path
 import bpy
 from mathutils import Vector
 
+# The conservative drape preview is local, deterministic and testable without
+# Blender. It must not be mistaken for a material-calibrated cloth simulation.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from drape_preview_math import MAX_PREVIEW_RELIEF_MM, candidate_drape_offset_mm
+
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
 MODEL_IDENTITY_ID = "linen-earth-studio-model-v1"
@@ -38,6 +43,8 @@ def cli_args():
     parser.add_argument("--body", default=BODY_NAME)
     parser.add_argument("--clearance-mm", type=float, default=7.0)
     parser.add_argument("--thickness-mm", type=float, default=1.6)
+    parser.add_argument("--candidate-relief-mm", type=float, default=3.0,
+                        help="0 for a clean shell; 0..6 mm art-directed visual microfolds, not physical drape")
     return parser.parse_args(argv)
 
 
@@ -121,7 +128,45 @@ def apply_modifier(obj, modifier):
         obj.select_set(False)
 
 
-def fit_shell(obj, body, clearance_m, thickness_m):
+def sculpt_unverified_preview_relief(obj, panel, peak_mm):
+    """Small outward folds on the existing body-fitted mesh, no new model.
+
+    This is art-directed geometry only. Real bending, GSM, shear and gravity
+    require measured textile input and a cloth solver with independently
+    reviewed collision/ease and sewn construction.
+    """
+    if peak_mm <= 0:
+        return 0.0
+    mesh = obj.data
+    mesh.update()
+    if not mesh.vertices:
+        raise RuntimeError(f"No vertices for candidate drape panel {panel}")
+    min_x = min(vertex.co.x for vertex in mesh.vertices)
+    max_x = max(vertex.co.x for vertex in mesh.vertices)
+    min_z = min(vertex.co.z for vertex in mesh.vertices)
+    max_z = max(vertex.co.z for vertex in mesh.vertices)
+    span_x = max_x - min_x
+    span_z = max_z - min_z
+    if span_x <= 1e-5 or span_z <= 1e-5:
+        raise RuntimeError(f"Candidate drape panel has degenerate dimensions: {panel}")
+    offsets = []
+    for vertex in mesh.vertices:
+        lateral = max(-1.0, min(1.0, 2 * (vertex.co.x - min_x) / span_x - 1.0))
+        vertical = max(0.0, min(1.0, (vertex.co.z - min_z) / span_z))
+        delta_mm = candidate_drape_offset_mm(panel, lateral, vertical, peak_mm)
+        normal = vertex.normal.copy()
+        if normal.length_squared < 1e-10:
+            raise RuntimeError(f"Unusable garment vertex normal: {panel}")
+        # Relief is strictly positive along the existing surface normal,
+        # retaining the shrinkwrap body clearance rather than inventing an
+        # inward crease that intersects the model.
+        vertex.co += normal.normalized() * (delta_mm / 1000.0)
+        offsets.append(delta_mm)
+    mesh.update()
+    return max(offsets)
+
+
+def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm):
     shrink = obj.modifiers.new("LE_BODY_CLEARANCE", "SHRINKWRAP")
     shrink.target = body
     shrink.wrap_method = "NEAREST_SURFACEPOINT"
@@ -134,11 +179,14 @@ def fit_shell(obj, body, clearance_m, thickness_m):
     smooth.iterations = 3
     apply_modifier(obj, smooth)
 
+    max_relief = sculpt_unverified_preview_relief(obj, panel, relief_mm)
+
     solid = obj.modifiers.new("LE_CLOTH_THICKNESS", "SOLIDIFY")
     solid.thickness = thickness_m
     solid.offset = 1.0
     solid.use_rim = True
     apply_modifier(obj, solid)
+    return max_relief
 
 
 def planar_grain_uv(obj):
@@ -163,6 +211,12 @@ def planar_grain_uv(obj):
 
 def main():
     options = cli_args()
+    if not math.isfinite(options.candidate_relief_mm) or not 0 <= options.candidate_relief_mm <= MAX_PREVIEW_RELIEF_MM:
+        raise RuntimeError("Art-directed preview relief must be a finite value from 0 to 6 mm.")
+    if not math.isfinite(options.clearance_mm) or not 3 <= options.clearance_mm <= 18:
+        raise RuntimeError("Source-body clearance must be 3 to 18 mm; do not silently clamp measured ease.")
+    if not math.isfinite(options.thickness_mm) or not 0.6 <= options.thickness_mm <= 4.0:
+        raise RuntimeError("Candidate shell thickness must be 0.6 to 4.0 mm.")
     body = bpy.data.objects.get(options.body)
     if body is None or body.type != "MESH":
         raise RuntimeError(f"Locked realistic body mesh not found: {options.body}")
@@ -193,8 +247,8 @@ def main():
         "TrouserLegRFabric": lambda p: z(0.055) <= p.z <= z(0.535) and p.x >= center_x,
     }
 
-    clearance_m = max(0.003, min(0.018, options.clearance_mm / 1000.0))
-    thickness_m = max(0.0006, min(0.004, options.thickness_mm / 1000.0))
+    clearance_m = options.clearance_mm / 1000.0
+    thickness_m = options.thickness_mm / 1000.0
 
     for name in GARMENT_OBJECTS:
         remove_existing(name)
@@ -202,15 +256,20 @@ def main():
     authored = []
     for name, predicate in regions.items():
         obj = selected_shell(body, name, predicate)
-        fit_shell(obj, body, clearance_m, thickness_m)
+        max_relief = fit_shell(obj, body, clearance_m, thickness_m, name, options.candidate_relief_mm)
         planar_grain_uv(obj)
         obj["linen_earth_auto_authored"] = True
         obj["linen_earth_fit_clearance_mm"] = round(clearance_m * 1000.0, 3)
         obj["linen_earth_cloth_thickness_mm"] = round(thickness_m * 1000.0, 3)
+        obj["linen_earth_drape_method"] = "unverified_art_directed_candidate_relief_v1"
+        obj["linen_earth_drape_max_relief_mm"] = round(max_relief, 3)
         authored.append(obj)
 
     bpy.context.scene["linen_earth_asset_status"] = "auto-authored-production-candidate-needs-tailor-review"
-    bpy.context.scene["linen_earth_garment_authoring_method"] = "locked-body-surface-shell-v1"
+    bpy.context.scene["linen_earth_garment_authoring_method"] = "locked-body-surface-shell-v2-bounded-preview-folds"
+    bpy.context.scene["linen_earth_drape_provenance"] = "art_directed_unverified_visual_candidate"
+    bpy.context.scene["linen_earth_measured_fabric_physics"] = False
+    bpy.context.scene["linen_earth_preview_relief_requested_mm"] = options.candidate_relief_mm
     bpy.context.scene["linen_earth_garment_clearance_mm"] = round(clearance_m * 1000.0, 3)
     bpy.context.scene["linen_earth_garment_thickness_mm"] = round(thickness_m * 1000.0, 3)
 
@@ -220,7 +279,8 @@ def main():
 
     print(f"Authored Linen Earth six-piece officewear candidate: {output}")
     print("Garment objects: " + ", ".join(obj.name for obj in authored))
-    print(f"Body clearance: {clearance_m*1000:.1f} mm · cloth shell thickness: {thickness_m*1000:.1f} mm")
+    print(f"Body clearance: {clearance_m*1000:.1f} mm · shell thickness: {thickness_m*1000:.1f} mm")
+    print(f"Art-directed microfold relief (not physical cloth simulation): {options.candidate_relief_mm:.1f} mm peak")
     print("Status: candidate only; run Blender preflight and owner/tailor visual fit review before production export.")
 
 
