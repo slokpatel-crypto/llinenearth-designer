@@ -5,6 +5,7 @@ on:
     paths:
       - 'scripts/blender/**'
       - 'tests/python/**'
+      - 'tests/blender/**'
       - 'docs/REALISTIC_MODEL_SOURCE_PLAN.md'
       - '.github/workflows/model-source-candidate.yml'
   workflow_dispatch:
@@ -54,6 +55,9 @@ jobs:
           tar -xf "$archive"
           "$PWD/blender-4.5.14-linux-x64/blender" --background --factory-startup --python-expr "import bpy; print('BLENDER_SOURCE_QA_VERSION', bpy.app.version_string)"
           echo "$PWD/blender-4.5.14-linux-x64" >> "$GITHUB_PATH"
+
+      - name: Verify independent Blender world-space contact regression
+        run: blender --background --factory-startup --python tests/blender/test_world_collision_bvh.py
 
       - name: Download pinned CC0 realistic human body source
         run: npm run garment:model-base:fetch
