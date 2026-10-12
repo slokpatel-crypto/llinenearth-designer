@@ -328,7 +328,9 @@ async function verifyViewport(browser, width) {
   assert.equal(await page.getByLabel("3D trouser pleat").inputValue(),"double_reverse","canonical trouser pleat must reach 3D");
 
   const stageScope=await page.locator(".garmentViewerStageHead").innerText();
-  assert.match(stageScope,/MODEL IDENTITY LOCKED · SHIRT \+ TROUSER/,"3D stage must state the exact-model lock");
+  // The engineering cube cannot claim to be the exact studio model in CI;
+  // the canonical identity remains checked separately against its reference.
+  assert.match(stageScope,/PROTOTYPE GEOMETRY · NOT THE STUDIO MODEL/,"3D stage must disclose the current non-production geometry");
   const referenceBlock=await page.locator(".garmentViewerReference").innerText();
   assert.match(referenceBlock,/EXACT REAL MODEL DESIGNER IDENTITY/);
   assert.match(referenceBlock,/linen-earth-studio-model-v1/);
