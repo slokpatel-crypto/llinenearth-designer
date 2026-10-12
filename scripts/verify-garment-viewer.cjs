@@ -136,7 +136,7 @@ async function verifyViewport(browser, width) {
   if(prototypeMode){
     const referenceImage=page.locator(".garmentViewerReference img");
     await referenceImage.waitFor({state:"visible"});
-    assert.match(await referenceImage.getAttribute("src"),/studio-tucked\\.webp$/);
+    assert.match(await referenceImage.getAttribute("src"),/studio-tucked\.webp$/);
     assert.match(await page.locator(".garmentViewerReference").innerText(),/linen-earth-studio-model-v1/);
     if(stageLabel.includes("ENGINEERING CANDIDATE")){
       assert.match(await viewer.getAttribute("src"),/^\/models\/linen-earth-officewear-v1\.glb$/,
