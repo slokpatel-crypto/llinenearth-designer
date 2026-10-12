@@ -521,3 +521,14 @@ Architecture and product decisions that must persist across coding sessions.
 **Construction:** the body-preparation step now creates non-rendering guides for total height, outer-arm silhouette, left/right hand centres and left/right leg centres in addition to shoulder, shirt waist, trouser waist and both hem widths. The production preflight requires the complete guide set before a garment scene can pass.
 
 **Why:** a scan-based or retopologized body can match the torso widths yet still drift in arm spread, hand clearance, stance or leg spacing. Carrying all shared physical targets into Blender makes the production body fitting workflow converge more tightly on the exact Real Model Designer identity instead of only matching a subset of the front silhouette.
+
+
+## 2026-10-12 — Production model identity cannot be replaced by an image or cube prototype
+
+**Decision:** continue the existing Linen Earth Designer Studio model path. Repeated AI-generated images or a new photorealistic person are not acceptable 3D engineering outputs and must not replace the canonical studio reference `/designer/studio-tucked.webp` / `linen-earth-studio-model-v1`.
+
+**Implementation:** the internal GarmentViewer lab selects the production GLB only after server-side asset+manifest preflight (`assetReady`), not merely because an environment/default path is configured. When the lab runs its engineering prototype, it labels that geometry explicitly as *not the studio model*. The structural inspector refuses to promote the known box-prototype generator even if its declared model ID is renamed to `LE-OFFICEWEAR-V1` and its six material slots exist.
+
+**Compatibility:** no schema/database migration; existing saved Designer designs, model identity IDs, source photographs and versioned option contracts are unchanged. Internal prototype rendering remains available to engineers, never as evidence of a completed realistic model. Passing structural preflight is still not visual realism approval, verified textile scale, tailor fit approval or deployment authorization.
+
+**Next engineering gate:** exact single identity body mesh, production garment/drape fit and UV evidence, independent front/3-4/side/back visual comparisons, verified supplier physical scale and tailor approval before customer-facing 3D promotion.
