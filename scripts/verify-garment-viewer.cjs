@@ -132,17 +132,22 @@ async function verifyViewport(browser, width) {
   // scale/latency and four-angle pixel-evidence suite below. A prototype still
   // receives genuine browser smoke coverage, but never counts as production QA.
   const stageLabel=await page.locator(".garmentViewerStageHead").innerText();
-  const prototypeMode=stageLabel.includes("PROTOTYPE GEOMETRY · NOT THE STUDIO MODEL");
+  const prototypeMode=/PROTOTYPE GEOMETRY · NOT THE STUDIO MODEL|ENGINEERING CANDIDATE · NOT APPROVED STUDIO MODEL/.test(stageLabel);
   if(prototypeMode){
     const referenceImage=page.locator(".garmentViewerReference img");
     await referenceImage.waitFor({state:"visible"});
     assert.match(await referenceImage.getAttribute("src"),/studio-tucked\\.webp$/);
     assert.match(await page.locator(".garmentViewerReference").innerText(),/linen-earth-studio-model-v1/);
+    if(stageLabel.includes("ENGINEERING CANDIDATE")){
+      assert.match(await viewer.getAttribute("src"),/^\\/models\\/linen-earth-officewear-v1\\.glb$/,
+        "procedural M7 candidate must remain the real source lab GLB, never a substitute person");
+      assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-model-readiness"),"contract_ready");
+    }
     await page.waitForFunction(()=>{
       const model=document.querySelector("model-viewer");
       const shell=document.querySelector(".garmentViewerShell");
       return Boolean(model?.loaded) && (model.model?.materials?.length||0)>=6
-        && shell?.getAttribute("data-model-readiness")==="prototype"
+        && ["prototype","contract_ready"].includes(shell?.getAttribute("data-model-readiness"))
         && !document.querySelector(".garmentViewerError");
     },null,{timeout:30000,polling:100});
     qaStage("real prototype model loaded; production proof deliberately not claimed");
