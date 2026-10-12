@@ -86,27 +86,34 @@ def axis_drift_against_authored(source,candidate,tolerance_pct=8):
     if not math.isfinite(tolerance_pct) or tolerance_pct<0:
         raise ValueError("Finite tolerance required")
     drift={}
+    signed={}
     for axis,field in (("u","medianUmmPerUvUnit"),("v","medianVmmPerUvUnit")):
         original=source.get(field)
         changed=candidate.get(field)
-        drift[axis]=round(abs(changed/original-1)*100,3) if (
+        signed[axis]=round((changed/original-1)*100,3) if (
             isinstance(original,(int,float)) and original>0 and math.isfinite(original)
             and isinstance(changed,(int,float)) and changed>0 and math.isfinite(changed)
         ) else None
+        drift[axis]=abs(signed[axis]) if signed[axis] is not None else None
     weighted={}
+    weighted_signed={}
     for axis,field in (("u","areaWeightedMedianUmmPerUvUnit"),("v","areaWeightedMedianVmmPerUvUnit")):
         original=source.get(field)
         changed=candidate.get(field)
-        weighted[axis]=round(abs(changed/original-1)*100,3) if (
+        weighted_signed[axis]=round((changed/original-1)*100,3) if (
             isinstance(original,(int,float)) and original>0 and math.isfinite(original)
             and isinstance(changed,(int,float)) and changed>0 and math.isfinite(changed)
         ) else None
+        weighted[axis]=abs(weighted_signed[axis]) if weighted_signed[axis] is not None else None
     collapsed=int(source.get("collapsedUvTriangles",0))+int(candidate.get("collapsedUvTriangles",0))
     investigate=collapsed>0 or any(percent is None or percent>tolerance_pct for percent in
         (*drift.values(),*weighted.values()))
     return {
         "uAxisMedianDriftPct":drift["u"],"vAxisMedianDriftPct":drift["v"],
         "uAxisAreaWeightedDriftPct":weighted["u"],"vAxisAreaWeightedDriftPct":weighted["v"],
+        "uAxisSignedMedianDriftPct":signed["u"],"vAxisSignedMedianDriftPct":signed["v"],
+        "uAxisSignedAreaWeightedDriftPct":weighted_signed["u"],
+        "vAxisSignedAreaWeightedDriftPct":weighted_signed["v"],
         "sourceOrCandidateCollapsedUvTriangles":collapsed,
         "maxDiagnosticRelativeDriftPct":tolerance_pct,
         "needsDetailedFabricRepeatInvestigation":investigate,
