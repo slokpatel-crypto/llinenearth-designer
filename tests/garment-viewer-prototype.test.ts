@@ -153,4 +153,12 @@ test("real browser 3D QA records GPU/asset diagnosis without silently relaxing t
   assert(code.includes("failed the original 20-second genuine-load gate"));
   assert(code.includes('"--enable-unsafe-swiftshader"'));
   assert(code.includes('"--use-angle=swiftshader-webgl"'));
+  assert(code.includes('element.toBlob({mimeType:"image/png"})'));
+  assert(code.includes('render.size>=12000'));
+  assert(code.includes('"Garment pixels must be a real PNG."'));
+  assert(code.includes('name.replace(".png","-model.png")'));
+  assert(code.includes('element.style.visibility="hidden"'));
+  assert(code.includes('element.style.visibility=""'));
+  assert(code.includes('timeout:45000'));
+
 });
