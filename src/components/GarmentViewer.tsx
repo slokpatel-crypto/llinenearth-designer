@@ -715,7 +715,11 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       // Chromium/WebGL startup can upgrade <model-viewer> before its scene graph is
       // hydrated without replaying the earlier load event. Poll the authoritative
       // scene-graph state for a bounded window instead of hiding the QA failure.
-      if(attempt<80) readinessTimer=window.setTimeout(()=>recoverReadyState(attempt+1),125);
+      // Keep checking for the full 20-second launch contract, rather than
+      // abandoning recovery at 10s on CPU/software-WebGL devices. This never
+      // treats a loading scene as ready: model-viewer must report its loaded
+      // scene or expose real materials before the veil can disappear.
+      if(attempt<160) readinessTimer=window.setTimeout(()=>recoverReadyState(attempt+1),125);
     };
     recoverReadyState();
     return ()=>{
