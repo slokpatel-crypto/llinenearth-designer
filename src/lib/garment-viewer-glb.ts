@@ -154,9 +154,16 @@ export function inspectGarmentViewerGlb(bytes:Uint8Array,modelId:string):Garment
   // Renaming a demo GLB's modelId must never turn the box mannequin into an
   // approved studio identity. This is a source/structure gate, not a claim
   // that passing it proves photographic similarity or physically correct drape.
-  const placeholderGeometry=gltf.asset?.generator==="Linen Earth GarmentViewer M1";
+  const generator=String(gltf.asset?.generator||"");
+  // Both the simple cube and the richer MakeHuman-derived M7.46 procedural
+  // tailoring scene are engineering previews. They cannot prove photographic
+  // identity, real fabric drape or physically measured garment construction.
+  const cubePrototype=generator==="Linen Earth GarmentViewer M1";
+  const proceduralCandidate=generator.startsWith("Linen Earth Live Designer identity model M");
+  const placeholderGeometry=cubePrototype||proceduralCandidate;
   const reasons=[...contract.reasons];
-  if(placeholderGeometry) reasons.push("Generated cube prototype cannot be promoted as the realistic Linen Earth studio model.");
+  if(cubePrototype) reasons.push("Generated cube prototype cannot be promoted as the realistic Linen Earth studio model.");
+  if(proceduralCandidate) reasons.push("Procedural M7 garment geometry is an engineering candidate, not a verified photorealistic studio model.");
   for(const panel of panels){
     if(panel.primitiveCount===0) reasons.push(`${panel.material} is not assigned to any mesh primitive.`);
     else {
