@@ -306,5 +306,18 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
         self.assertNotIn('mobile_lod_probe.outcome',final)
 
 
+    def test_left_sleeve_fidelity_trial_is_measurement_only_and_never_weakens_production(self):
+        self.assertIn('parser.add_argument("--left-sleeve-ratio"',PROBE)
+        self.assertIn("parsed.left_sleeve_ratio<parsed.ratio",PROBE)
+        self.assertIn('name=="ShirtSleeveLFabric"',PROBE)
+        self.assertIn("modifier.ratio=panel_ratio",PROBE)
+        self.assertIn('"unapprovedLeftSleeveFidelityTrialRatio"',PROBE)
+        self.assertIn("--left-sleeve-ratio 0.225",WORKFLOW)
+        self.assertIn('"eligibleForProduction":False',PROBE)
+        final=WORKFLOW[WORKFLOW.index("name: Enforce candidate gates"):]
+        self.assertNotIn("left_sleeve",final)
+
+
+
 if __name__=="__main__":
     unittest.main()
