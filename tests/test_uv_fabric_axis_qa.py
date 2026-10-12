@@ -185,5 +185,22 @@ class WarpWeftUvTests(unittest.TestCase):
 
 
 
+    def test_signed_warp_weft_drift_reports_direction_but_absolute_gate_stays(self):
+        source=summarise_uv_fabric_axes([uv_fabric_axes_mm(self.xy,self.uv)])
+        candidate=summarise_uv_fabric_axes([uv_fabric_axes_mm(
+            self.xy,((0,0),(1.25,0),(0,.8))
+        )])
+        drift=axis_drift_against_authored(source,candidate)
+        self.assertEqual(drift["uAxisMedianDriftPct"],20)
+        self.assertEqual(drift["uAxisSignedMedianDriftPct"],-20)
+        self.assertEqual(drift["vAxisMedianDriftPct"],25)
+        self.assertEqual(drift["vAxisSignedMedianDriftPct"],25)
+        self.assertEqual(drift["uAxisSignedAreaWeightedDriftPct"],-20)
+        self.assertEqual(drift["vAxisSignedAreaWeightedDriftPct"],25)
+        self.assertTrue(drift["needsDetailedFabricRepeatInvestigation"])
+        self.assertFalse(drift["verifiedPhysicalRepeatWithinTolerance"])
+
+
+
 if __name__=="__main__":
     unittest.main()
