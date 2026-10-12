@@ -98,7 +98,8 @@ test("viewer skips ensureLoaded for materials that model-viewer already hydrated
 test("3D scene gets two real paint frames before GPU texture and variant uploads",()=>{
   const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
   assert(viewer.includes("const [materialPipelineReady,setMaterialPipelineReady]=useState(false)"));
-  assert(viewer.includes("frame2=requestAnimationFrame(()=>setMaterialPipelineReady(true))"));
+  assert(viewer.includes("settleTimer=window.setTimeout(()=>setMaterialPipelineReady(true),3000)"));
+  assert(viewer.includes("if(settleTimer!==undefined) window.clearTimeout(settleTimer)"));
   assert(viewer.includes("cancelAnimationFrame(frame1)"));
   assert(viewer.includes("if(!modelReady || !materialPipelineReady || !shirt || !trouser"));
   assert(viewer.includes("if(!modelReady || !materialPipelineReady) return;"));
