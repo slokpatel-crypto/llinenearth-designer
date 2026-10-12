@@ -400,7 +400,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     const model=viewerRef.current;
     if(!model || !(model.loaded || (model.model?.materials?.length||0)>0)) return;
     const elapsed=performance.now()-(viewerAttachedAt.current??performance.now());
-    setMaterialPipelineDelayMs(elapsed>8000?7000:250);
+    setMaterialPipelineDelayMs(elapsed>8000?12000:250);
     setModelReady(true);
     setProgress(1);
     setError("");
@@ -733,7 +733,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     };
     const load=()=>{
       const elapsed=performance.now()-(viewerAttachedAt.current??performance.now());
-      setMaterialPipelineDelayMs(elapsed>8000?7000:250);
+      setMaterialPipelineDelayMs(elapsed>8000?12000:250);
       setModelReady(true);setProgress(1);setError("");
       syncModelContract();
     };
