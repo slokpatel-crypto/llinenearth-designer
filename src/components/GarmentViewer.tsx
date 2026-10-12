@@ -666,6 +666,18 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     return ()=>{cancelled=true;};
   },[]);
 
+  // A CPU/WebGL failure must never strand customers behind an infinite
+  // loading veil. This does not promote an unloaded or unverified model:
+  // successful late loads still clear the warning through native load events.
+  useEffect(()=>{
+    if(!modelUrl || modelReady) return;
+    const timeout=window.setTimeout(()=>{
+      const scene=viewerRef.current;
+      if(!scene?.loaded) setError("3D preview is taking longer than expected. Please retry or use the photographic Designer Studio.");
+    },20_000);
+    return ()=>window.clearTimeout(timeout);
+  },[modelUrl,modelReady]);
+
   useEffect(()=>{
     let cancelled=false;
     if(typeof customElements==="undefined") {
@@ -1025,7 +1037,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       </div>
       <div className="garmentViewerCanvas">
         {modelViewer}
-        {!modelReady&&<div className="garmentViewerLoading"><i style={{width:`${Math.round(progress*100)}%`}}/><strong>{engineReady?(modelSrc?"Loading officewear model…":"Loading prototype garment…"):"Starting 3D engine…"}</strong><span>{Math.round(progress*100)}%</span></div>}
+        {!modelReady&&!error&&<div className="garmentViewerLoading"><i style={{width:`${Math.round(progress*100)}%`}}/><strong>{engineReady?(modelSrc?"Loading officewear model…":"Loading prototype garment…"):"Starting 3D engine…"}</strong><span>{Math.round(progress*100)}%</span></div>}
         {error&&<div className="garmentViewerError">{error}</div>}
       </div>
       <div className="garmentCameraRail" role="group" aria-label="Garment camera views">
