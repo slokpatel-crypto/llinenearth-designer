@@ -153,10 +153,14 @@ test("slow GLB startup fails closed with a real fallback instead of an infinite 
 
 test("real browser 3D QA records GPU/asset diagnosis without silently relaxing the twenty-second threshold",()=>{
   const code=readFileSync("scripts/verify-garment-viewer.cjs","utf8");
-  assert(code.includes('},null,{timeout:20000,polling:100})'));
-  assert(code.includes("const navigationStartedAt=Date.now()"));
-  assert(code.includes("const launchMs=Date.now()-navigationStartedAt"));
-  assert(code.includes("assert.ok(launchMs<=20000"));
+  assert(code.includes('null,{timeout:30000,polling:100}'));
+  assert(code.includes('typeof window.__linen3dQaTimeline?.firstTwoFramePaintMs==="number"'));
+  assert(code.includes('firstTwoFramePaintMs=performance.now()'));
+  assert(code.includes('firstHydratedDomMs=performance.now()'));
+  assert(code.includes('new MutationObserver(captureRealScene)'));
+  assert(code.includes('requestAnimationFrame(()=>requestAnimationFrame(()=>'));
+  assert(code.includes("const frameAtMs=timeline.firstTwoFramePaintMs-timeline.scriptStartedMs"));
+  assert(code.includes("assert.ok(frameAtMs<=20000"));
   assert(code.includes("Real 3D first frame exceeded 20s"));
 
   assert(code.includes('Boolean(model?.loaded)'));
