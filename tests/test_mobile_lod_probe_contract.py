@@ -319,5 +319,29 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
 
 
 
+    def test_disposable_authored_uv_transfer_cannot_mutate_real_cloth_or_fake_approval(self):
+        for token in (
+            "def diagnostic_source_uv_transfer(",
+            'trial=candidate.copy()',
+            'trial.data=candidate.data.copy()',
+            'modifier=trial.modifiers.new("LE_TRANSFER_AUTHORED_CLOTH_UV","DATA_TRANSFER")',
+            'modifier.object=original',
+            'modifier.data_types_loops={"UV"}',
+            'modifier.loop_mapping="POLYINTERP_NEAREST"',
+            'transferred["collapsedUvTriangles"]==0',
+            'max(after_metrics)+.10 < max(before_metrics)',
+            '"physicalFabricVerified":False',
+            '"sourceUvTransferTrial":uv_transfer',
+            'if name=="ShirtSleeveLFabric" and repair["succeeded"]:',
+        ):
+            self.assertIn(token,PROBE,token)
+        self.assertNotIn("original.data.uv_layers.active.data[",PROBE)
+        self.assertIn('"eligibleForProduction":False',PROBE)
+        self.assertIn('sourceMeshUnchanged',PROBE)
+        strict=WORKFLOW[WORKFLOW.index("name: Enforce candidate gates"):]
+        self.assertNotIn("sourceUvTransferTrial",strict)
+
+
+
 if __name__=="__main__":
     unittest.main()
