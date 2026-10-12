@@ -386,5 +386,34 @@ class RealBodySafeMobileLodDiagnostics(unittest.TestCase):
         self.assertIn('details["upperZoneTaperAcceptedStrength"]=strength',candidate_loop)
 
 
+    def test_real_construction_recipe_review_is_separate_and_never_photographic_proof(self):
+        for required in (
+            'parser.add_argument("--diagnostic-tailoring-recipe"',
+            'def show_single_actual_tailoring_recipe(shirt_material):',
+            '"ShirtCollarVariant__english_spread__stiff_fused"',
+            '"ShirtNeckGasketVariant__english_spread__stiff_fused"',
+            '"ShirtCuffVariant__cocktail__fused"',
+            'len(matches)!=1',
+            'item.hide_render=False',
+            'assign_material(item,shirt_material)',
+            'selectedTailoringRecipeVerified":False',
+            'referencePhotoVisualParityApproved":False',
+            'fabricColourRepeatOrDrapeApproved":False',
+        ):
+            self.assertIn(required,RENDER,required)
+        self.assertIn('if bool(obj.get("linen_earth_tailoring_variant",False)):',RENDER)
+        self.assertIn('"selectedConstructionVariantObjects":selected_construction',RENDER)
+        self.assertIn('selected-laboratory-tailoring-recipe',RENDER)
+        self.assertIn('Render one actual tailoring-recipe in four real 3D views (UNAPPROVED)',WORKFLOW)
+        self.assertIn('--diagnostic-cycles-cpu --diagnostic-tailoring-recipe',WORKFLOW)
+        self.assertIn('data["productionAssetAltered"] is False',WORKFLOW)
+        self.assertIn('data["referencePhotoVisualParityApproved"] is False',WORKFLOW)
+        self.assertIn('data["fabricColourRepeatOrDrapeApproved"] is False',WORKFLOW)
+        strict=WORKFLOW[WORKFLOW.index("name: Enforce candidate gates"):]
+        self.assertNotIn("constructed-recipe",strict)
+        self.assertIn('test "${{ steps.preflight.outcome }}" = "success"',strict)
+
+
+
 if __name__=="__main__":
     unittest.main()
