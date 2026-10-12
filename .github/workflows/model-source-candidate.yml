@@ -48,7 +48,7 @@ jobs:
           curl -fL --retry 3 --connect-timeout 30 -o "$archive" "$base/$archive"
           test "$(stat -c%s "$archive")" -eq 378045212
           curl -fL --retry 3 --connect-timeout 30 -o official.sha256 "$base/blender-4.5.14.sha256"
-          grep -F "$archive" official.sha256 | sed 's/ \\*/  /' > wanted.sha256
+          awk -v file="$archive" '$2 == file || $2 == "*" file { print $1 "  " file; found=1 } END { if (!found) exit 1 }' official.sha256 > wanted.sha256
           test -s wanted.sha256
           sha256sum --check wanted.sha256
           tar -xf "$archive"
