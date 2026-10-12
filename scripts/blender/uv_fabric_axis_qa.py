@@ -159,3 +159,67 @@ def vertical_uv_zone_drift(source,candidate,tolerance_pct=8):
         "anyZoneNeedsInvestigation":any(row["needsDetailedFabricRepeatInvestigation"] for row in drift.values()),
         "supplierRepeatVerified":False,
     }
+
+
+def paired_spatial_uv_drift(source_samples,candidate_samples,max_distance_mm=70):
+    """Compare true source/candidate UV derivatives at nearby WORLD positions.
+
+    Mesh decimation changes triangle tessellation: independent 600-triangle
+    medians can show drift only from sampling different garment locations.
+    This diagnostic pairs actual sampled triangle centroids in metres, then
+    measures U/V drift and unpaired coverage. Nearest centroids can cross folds,
+    so even passing metrics CANNOT certify woven fabric or 3D drape.
+    """
+    if not isinstance(max_distance_mm,(float,int)) or not math.isfinite(max_distance_mm) or not 0<max_distance_mm<=150:
+        raise ValueError("Finite maximum pairing distance must be within (0,150] mm.")
+    source=[row for row in source_samples if row and row.get("centroidXYZ")]
+    candidate=[row for row in candidate_samples if row and row.get("centroidXYZ")]
+    def valid(row):
+        p=row.get("centroidXYZ")
+        return (isinstance(p,(list,tuple)) and len(p)==3
+                and all(isinstance(z,(float,int)) and math.isfinite(z) for z in p)
+                and all(isinstance(row.get(k),(int,float)) and math.isfinite(row[k]) and row[k]>0
+                        for k in ("uMm","vMm")))
+    if any(not valid(row) for row in source+candidate):
+        raise ValueError("Spatial UV matching requires finite real centroids and axis metrics.")
+    distances=[]
+    paired=[]
+    max_distance_sq=(max_distance_mm/1000)**2
+    for src in source:
+        nearest=min(candidate,key=lambda dst:sum(
+            (src["centroidXYZ"][i]-dst["centroidXYZ"][i])**2 for i in range(3)
+        ),default=None)
+        if nearest is None:
+            continue
+        distance_sq=sum((src["centroidXYZ"][i]-nearest["centroidXYZ"][i])**2 for i in range(3))
+        if distance_sq>max_distance_sq:
+            continue
+        distances.append(math.sqrt(distance_sq)*1000)
+        paired.append({
+            "uErrorPct":abs(nearest["uMm"]/src["uMm"]-1)*100,
+            "vErrorPct":abs(nearest["vMm"]/src["vMm"]-1)*100,
+            "worldAreaMm2":src.get("worldAreaMm2",0),
+        })
+    count=len(paired)
+    coverage=count/len(source) if source else 0
+    median_u=_quantile([row["uErrorPct"] for row in paired],.5)
+    median_v=_quantile([row["vErrorPct"] for row in paired],.5)
+    weighted_u=_area_weighted_quantile(paired,"uErrorPct",.5)
+    weighted_v=_area_weighted_quantile(paired,"vErrorPct",.5)
+    values=(median_u,median_v,weighted_u,weighted_v)
+    return {
+        "method":"spatially_paired_evaluated_triangle_centroids_diagnostic",
+        "sourceSampleCount":len(source),
+        "candidateSampleCount":len(candidate),
+        "matchedSourceCount":count,
+        "matchedSourcePct":round(coverage*100,3),
+        "matchingDistanceLimitMm":max_distance_mm,
+        "medianMatchDistanceMm":_quantile(distances,.5),
+        "medianUErrorPct":median_u,
+        "medianVErrorPct":median_v,
+        "areaWeightedMedianUErrorPct":weighted_u,
+        "areaWeightedMedianVErrorPct":weighted_v,
+        "needsDetailedFabricRepeatInvestigation":coverage<.85 or
+            any(v is None or v>8 for v in values),
+        "verifiedPhysicalRepeatWithinTolerance":False,
+    }
