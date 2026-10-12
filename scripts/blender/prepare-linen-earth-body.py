@@ -127,6 +127,32 @@ def normalize_floor(objects, body):
     return min_z
 
 
+def normalize_body_origin_xy(objects, body):
+    """Center the ORIGINAL imported body in the shared photo/3D origin.
+
+    Blender's demo bundle stores multiple male and female assets on a grid;
+    their source object origins can be metres from world zero. Without this,
+    three camera angles can render completely blank despite a valid body mesh.
+    The same rigid translation is applied to every imported mesh/rig: no
+    proportions or character identity are fabricated or changed.
+    """
+    points = world_bounds(body)
+    center_x = (min(point.x for point in points) + max(point.x for point in points)) / 2.0
+    center_y = (min(point.y for point in points) + max(point.y for point in points)) / 2.0
+    for obj in objects:
+        matrix = obj.matrix_world.copy()
+        matrix.translation.x -= center_x
+        matrix.translation.y -= center_y
+        obj.matrix_world = matrix
+    bpy.context.view_layer.update()
+    residual = world_bounds(body)
+    remaining_x = (min(p.x for p in residual) + max(p.x for p in residual)) / 2.0
+    remaining_y = (min(p.y for p in residual) + max(p.y for p in residual)) / 2.0
+    if abs(remaining_x) > 0.002 or abs(remaining_y) > 0.002:
+        raise RuntimeError("Imported body could not be centered on the locked studio axis.")
+    return center_x, center_y
+
+
 def create_identity_guides(identity_spec):
     existing = bpy.data.collections.get(IDENTITY_GUIDE_COLLECTION)
     if existing is not None:
@@ -327,6 +353,7 @@ def main():
     original_name = body.name
     body.name = BODY_NAME
     original_height, factor, measured = normalize_height(objects, body)
+    source_offset_x, source_offset_y = normalize_body_origin_xy(objects, body)
     floor_shift = normalize_floor(objects, body)
     ensure_export_collection(objects)
     create_identity_guides(identity_spec)
@@ -339,6 +366,8 @@ def main():
         identity_spec,
         identity_spec_path,
     )
+    bpy.context.scene["linen_earth_import_source_offset_x_m"] = round(source_offset_x, 6)
+    bpy.context.scene["linen_earth_import_source_offset_y_m"] = round(source_offset_y, 6)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(output))
@@ -349,6 +378,7 @@ def main():
     print(f"Selected: {blend_path.name} :: {kind} {datablock} (score {score})")
     print(f"Body object: {original_name} -> {BODY_NAME}")
     print(f"Explicit height normalization: {original_height:.4f} m -> {measured:.4f} m")
+    print(f"Imported body grid offset removed: x={source_offset_x:.4f} m y={source_offset_y:.4f} m")
     print(f"Floor normalization shift: {floor_shift:.4f} m")
     print(f"Identity guide collection: {IDENTITY_GUIDE_COLLECTION}")
     print(f"Identity targets: {json.dumps(identity_spec['physicalTargetsMm'], sort_keys=True)}")
