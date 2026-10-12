@@ -78,13 +78,13 @@ async function verifyViewport(browser, width) {
       modelReadiness:document.querySelector(".garmentViewerShell")?.getAttribute("data-model-readiness")||null,
       manifestReady:document.querySelector(".garmentViewerShell")?.getAttribute("data-manifest-ready")||null,
       assets:performance.getEntriesByType("resource")
-        .filter(entry=>/\\.glb(?:\\?|$)|model-viewer|\\.json(?:\\?|$)/i.test(entry.name))
+        .filter(entry=>/\.glb(?:\?|$)|model-viewer|\.json(?:\?|$)/i.test(entry.name))
         .map(entry=>({path:new URL(entry.name).pathname,durationMs:Math.round(entry.duration),
           transferSize:entry.transferSize??0,decodedBodySize:entry.decodedBodySize??0})).slice(-16),
     })).catch(()=>({diagnosticUnavailable:true}));
     await fs.mkdir(output,{recursive:true});
     await fs.writeFile(path.join(output,"garment-loading-timeout.json"),
-      JSON.stringify({diagnostics,browserErrors:errors},null,2)+"\\n");
+      JSON.stringify({diagnostics,browserErrors:errors},null,2)+"\n");
     throw new Error("3D model failed the original 20-second genuine-load gate: "+
       JSON.stringify({diagnostics,browserErrors:errors})+"; "+error.message);
   }
