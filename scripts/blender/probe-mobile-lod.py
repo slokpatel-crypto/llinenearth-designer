@@ -588,7 +588,9 @@ def diagnostic_source_uv_transfer(original, candidate, source_uv_density,
         if (isinstance(u_delta,(float,int)) and math.isfinite(u_delta)
             and isinstance(v_delta,(float,int)) and math.isfinite(v_delta)
             and abs(u_delta)<=15 and abs(v_delta)<=15):
-            for strength in (.5,.8,1.0):
+            # Bracket the observed 0.5 optimum to reduce the remaining
+            # spatially weighted 8.338% U mismatch without regressing upper UV.
+            for strength in (.25,.30,.35,.40,.45,.50):
                 attempt={"strength":strength,"retained":False}
                 copy=chosen.copy()
                 copy.data=chosen.data.copy()
