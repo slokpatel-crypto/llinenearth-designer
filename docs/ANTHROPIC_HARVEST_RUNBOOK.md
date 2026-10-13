@@ -1,14 +1,23 @@
-# Claude knowledge harvest runbook
+# Claude knowledge sprint — operator runbook
 
-Run the script from the repository root **only in a trusted environment already holding the secret**.
+## What is already generated
+- First pass: `data/anthropic-unverified/2026-10-13/` — **52 proposals** across six domains.
+- Second-model Sonnet audit: `data/anthropic-audited/2026-10-13/` — **44 improved proposals**, **not** human approved.
+- Manifests in both folders record source model, version, counts, available usage and conservative provenance.
 
-```bash
-node scripts/anthropic-knowledge-harvest.mjs --dry-run
-# Only after confirming API access, operator authorization and budget:
-node scripts/anthropic-knowledge-harvest.mjs --execute --max-requests=1
-node scripts/anthropic-knowledge-harvest.mjs --execute --max-requests=6
-```
+The previous `scripts/anthropic-knowledge-harvest.mjs` draft command is **not available in the repository** and must not be followed. The verified harvest used isolated Vercel preview builds from inline, ephemeral code; all usable non-secret model outputs were archived into the PR.
 
-The execution cap is explicit. Each job makes at most one paid request. It stops on the first HTTP, JSON or schema error. Outputs are stored under `artifacts/anthropic-knowledge-proposals` and marked **UNVERIFIED_PROPOSAL**. Do not promote them into production rules without human review. This is not a replacement for fabric calibration, supplier proof, measured pattern scale, physical drape or tailor approval.
+## Review and use after expiry
+1. Open `/operator/anthropic-knowledge` **after** the PR has passed CI and is deployed in the authorized Designer environment; authenticate with the existing operator login.
+2. Begin with the AI-audited tier. The original tier is retained for comparison and rejection traceability.
+3. Each recommendation is provisional. Record reviewer name, rationale and a decision; reviews are stored as immutable operator events when Supabase persistence is configured.
+4. Never treat a proposal or a model's rejection list as verified supplier data. Actual roll measurements, colour and pattern calibration, physical drape, available metres, and tailor acceptance are separate gates.
+5. A review receipt does **not** automatically activate a new customer-facing rule. Engineering promotion requires its own regression and business acceptance.
 
-**Deployment gap:** The configured Anthropic secret is in Vercel project `llinen-earth-live-preview`, not automatically available to this repository's runtime. Do not export or copy the key into GitHub. Execute only after securely linking the code to the project that already has the secret, or configuring an authorized server-side runtime. The existing readiness endpoint is a presence check, not a live API test.
+## If provider access is available later
+The authenticated `/api/operator/anthropic-readiness` endpoint can generate **one domain per request**, with a durable one-claim-per-task-per-day limiter and a provider-native JSON schema. It requires **the Anthropic credential, operator session configuration and Supabase ledger all in the same server runtime**. These conditions are not guaranteed by simply seeing a key on an unrelated Vercel project.
+
+Do not place secrets in GitHub, output logs, browser code, downloadable assets or client-side environment variables. Do not widen the key's deployment scope without a reviewed security plan.
+
+## Quality status
+The provider call and 96 total archived original + AI-audited entries were verified, but that total includes second-model revisions of the same source ideas, not 96 unique physical facts. Static tests and app build/CI may still require correction; do not claim deployment or merge before verification.
