@@ -4,6 +4,7 @@ import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig, supabaseAdminHeaders } from "@/lib/supabase-admin";
 import { appendCreativeEvent } from "@/lib/designer/creative-profile-server";
 import { KNOWLEDGE_DOMAINS } from "@/lib/designer/intelligence/proposal-contract";
+import { archivedKnowledgeForOperator, archivedKnowledgeIndex } from "@/lib/designer/intelligence/archive";
 
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
@@ -31,13 +32,13 @@ function json(body:unknown,status=200){
 }
 export async function GET(){
   if(!await authorized()) return json({error:"Operator login required."},401);
-  if(!getSupabaseAdminConfig()) return json({configured:false,proposals:[],reviews:[]});
+  if(!getSupabaseAdminConfig()) return json({configured:false,archiveIndex:archivedKnowledgeIndex(),archive:archivedKnowledgeForOperator(),proposals:[],reviews:[]});
   try{
     const [proposals,reviews]=await Promise.all([
       readOperatorNotes("anthropic_intelligence_proposal",25),
       readOperatorNotes("anthropic_knowledge_review",200)
     ]);
-    return json({configured:true,proposals,reviews,disclaimer:"Unreviewed proposals cannot modify live tailoring or physical-fabric facts."});
+    return json({configured:true,archiveIndex:archivedKnowledgeIndex(),archive:archivedKnowledgeForOperator(),proposals,reviews,disclaimer:"Unreviewed proposals cannot modify live tailoring or physical-fabric facts."});
   }catch{return json({error:"Knowledge review ledger unavailable."},503);}
 }
 export async function POST(request:Request){
@@ -64,7 +65,8 @@ export async function POST(request:Request){
   }
   try{
     const proposals=await readOperatorNotes("anthropic_intelligence_proposal",25);
-    const matching=proposals.some(row=>row.payload.task===task&&
+    const localMatch=archivedKnowledgeForOperator().some(entry=>entry.domain===task && entry.proposals.some(p=>p.id===proposalId));
+    const matching=localMatch || proposals.some(row=>row.payload.task===task&&
       Array.isArray(row.payload.proposals)&&row.payload.proposals.some((v:unknown)=>{
         const item=v as {id?:unknown}|null;
         return item?.id===proposalId;
