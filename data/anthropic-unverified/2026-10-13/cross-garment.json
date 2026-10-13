@@ -1,0 +1,150 @@
+{
+  "version": "linen-earth-anthropic-proposals-v1",
+  "domain": "cross-garment",
+  "status": "UNVERIFIED_PROPOSAL",
+  "model": "claude-haiku-4-5-20251001",
+  "usage": {
+    "input_tokens": 506,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 1518,
+    "service_tier": "standard",
+    "inference_geo": "not_available"
+  },
+  "proposals": [
+    {
+      "id": "high-rise-plus-tuck-styling",
+      "domain": "cross-garment",
+      "claim": "High-rise trousers paired with front-tucked boxy tops create visual elongation and proportion balance for varied body types",
+      "rationale": "Front tucks on boxy tops when combined with high-rise waistbands establish a defined waistline and create vertical sightlines that counterbalance wider silhouettes, while distributing fabric strategically",
+      "constraints": [
+        "Tuck depth and placement must be tested on intended wearer silhouettes",
+        "Fabric weight compatibility between top and trouser required to avoid bulk at tuck point",
+        "Top length must clear hip points to avoid unflattering bunching"
+      ],
+      "evidenceNeeded": [
+        "Fit testing across 3+ body type categories",
+        "Photographic documentation of tuck stability throughout wear",
+        "Feedback on visual proportion perception from diverse wearers"
+      ]
+    },
+    {
+      "id": "korean-wide-trouser-boxy-top-pairing",
+      "domain": "cross-garment",
+      "claim": "Korean-style wide-leg trousers with structured boxy crop-length tops create balanced proportions and contemporary silhouette",
+      "rationale": "Korean wide trousers with relaxed inseam and high rise pair effectively with shorter boxy cuts to avoid overwhelming the upper body; the cropped length prevents visual heaviness while maintaining proportional balance",
+      "constraints": [
+        "Inseam measurement must account for regional sizing variations",
+        "Boxy top length must be tested to ensure it doesn't create bottom-heavy visual weight",
+        "Trouser rise compatibility with undergarment visibility requires validation"
+      ],
+      "evidenceNeeded": [
+        "Measurement specifications for Korean trouser width standards",
+        "Proportion studies comparing top length to trouser volume",
+        "Wearer feedback on mobility and comfort in cropped/wide combinations"
+      ]
+    },
+    {
+      "id": "pattern-load-conflict-avoidance",
+      "domain": "cross-garment",
+      "claim": "Limit patterned cross-garment combinations to single focal pattern plus solid anchors to prevent visual noise and maintain design coherence",
+      "rationale": "Pairing two or more competing patterns across upper and lower body creates visual fragmentation; strategic use of one printed/textured piece with solid partners maintains design hierarchy and wearer focus",
+      "constraints": [
+        "Pattern scale, color saturation, and frequency must be defined per combination",
+        "Solid piece selection requires consideration of pattern color pulls and undertones",
+        "Context of wear (casual vs. formal) impacts pattern appropriateness thresholds"
+      ],
+      "evidenceNeeded": [
+        "Visual coherence assessments from design professionals",
+        "Wearer comfort/confidence feedback on pattern combinations",
+        "Documentation of pattern scale relationships and color interaction"
+      ]
+    },
+    {
+      "id": "formality-gradient-cross-dressing",
+      "domain": "cross-garment",
+      "claim": "Cross-garment formality requires intentional matching of fabric refinement and construction detail between top and bottom pieces to maintain cohesive dresscode compliance",
+      "rationale": "Mixing formal tailoring (sharp creases, premium fabric) on trousers with casual construction (soft drape, relaxed seaming) on tops creates visual contradiction; formality perception depends on consistent signal across both garments",
+      "constraints": [
+        "Fabric hand and finish must be comparable between pieces",
+        "Seam construction detail visibility impacts perceived formality level",
+        "Occasion context determines formality standards and acceptable mixing"
+      ],
+      "evidenceNeeded": [
+        "Professional assessment of formality consistency across garment pairs",
+        "Feedback from appropriate social/workplace contexts on dresscode perception",
+        "Documentation of construction details influencing formality read"
+      ]
+    },
+    {
+      "id": "climate-layering-compatibility",
+      "domain": "cross-garment",
+      "claim": "Cross-garment climate appropriateness requires testing sleeve length, fabric weight, and neckline combinations to ensure functional layering capacity and temperature regulation",
+      "rationale": "Boxy tops with high-rise trousers must accommodate climate-appropriate layering; sleeve length affects jacket integration, fabric weight impacts insulation needs, and neckline determines base-layer visibility and weather protection",
+      "constraints": [
+        "Regional climate data must inform fiber content and weight recommendations",
+        "Sleeve length must be tested with intended outer-layer dimensions",
+        "Neckline height impacts thermal protection and layering versatility"
+      ],
+      "evidenceNeeded": [
+        "Thermal comfort testing across seasonal temperature ranges",
+        "Layering compatibility trials with standard outerwear pieces",
+        "Wearer feedback on climate adaptation functionality"
+      ]
+    },
+    {
+      "id": "visual-proportion-balance-strategy",
+      "domain": "cross-garment",
+      "claim": "Wide-leg trouser volume must be balanced by structured top silhouettes; cropped boxy tops reduce visual weight distribution more effectively than standard-length pieces",
+      "rationale": "Volume concentration at lower body requires visual weight mitigation at upper body; boxy crop-length tops interrupt the vertical sightline and create horizontal emphasis that counterbalances wide trouser legs, whereas longer tops extend downward volume",
+      "constraints": [
+        "Body height and proportional measurements affect ideal crop length",
+        "Top structure and seaming impact visual weight perception",
+        "Trouser inseam length interacts with top length ratio in proportion equation"
+      ],
+      "evidenceNeeded": [
+        "Proportion analysis across height ranges (petite, average, tall)",
+        "Side-by-side visual documentation of different top lengths with same trouser",
+        "Wearer feedback on silhouette perception and confidence"
+      ]
+    },
+    {
+      "id": "neckline-shoulder-coherence",
+      "domain": "cross-garment",
+      "claim": "Boxy top shoulder width and neckline treatment must align with trouser waistline visual weight to maintain upper-lower body proportion harmony",
+      "rationale": "Oversized or exaggerated shoulder treatment on boxy tops can overpower high-rise waistbands if neckline creates excessive width; coherent shoulder-to-hip visual flow depends on intentional relationship between these three anchor points",
+      "constraints": [
+        "Shoulder seam placement must be documented and tested",
+        "Neckline width perception interacts with face shape and frame size",
+        "Waistband prominence and color affect perception of shoulder-hip balance"
+      ],
+      "evidenceNeeded": [
+        "Measurement documentation of shoulder width relative to waistband width",
+        "Visual studies comparing different neckline treatments with same trouser",
+        "Diverse wearer feedback on upper-lower body coherence and balance"
+      ]
+    },
+    {
+      "id": "fabric-texture-cross-garment-interest",
+      "domain": "cross-garment",
+      "claim": "Combining complementary fabric textures (structured on top, smooth on bottom or vice versa) creates cross-garment visual interest without pattern conflict",
+      "rationale": "When pattern-loading is constrained, strategic texture pairing (e.g., textured linen boxy top with smooth cotton sateen wide trousers) provides design dimension and tactile interest while maintaining visual simplicity and formality coherence",
+      "constraints": [
+        "Texture must not conflict with stated formality level or occasion context",
+        "Fabric texture interaction with lighting and body movement requires documentation",
+        "Care and durability of mixed-texture combinations must be verified"
+      ],
+      "evidenceNeeded": [
+        "Documentation of texture combinations and visual effect across lighting conditions",
+        "Wearer feedback on perceived sophistication and design coherence",
+        "Durability and maintenance testing of recommended texture pairings"
+      ]
+    }
+  ],
+  "harvestDeploymentId": "dpl_4LwAVnoX768Nb8ytsEb8nvLHbm9T",
+  "humanReviewed": false
+}

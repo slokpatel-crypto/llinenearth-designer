@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "purpose": "Deterministic engineering regression cases only. These are not owner taste labels and are not used to claim styling accuracy.",
+  "purpose": "Deterministic engineering regression cases only. These are not owner taste labels and are not used to claim styling accuracy. Six additional checks informed by unverified October 13 Claude audit; validated only against existing deterministic rule logic.",
   "cases": [
     {
       "id": "high-rise-untucked",
@@ -145,6 +145,100 @@
         "CG-CASUAL-TOP-FORMAL",
         "CG-PATTERN-LOAD"
       ]
+    },
+    {
+      "id": "ai-audit-short-sleeve-french-cuff",
+      "occasion": "Smart-Casual",
+      "climate": "Hot / humid",
+      "patch": {
+        "shirt": {
+          "sleeve": "half_sleeve",
+          "cuff": "french_double_cuff"
+        }
+      },
+      "expected": [
+        "CG-SLEEVE-CUFF"
+      ],
+      "forbidden": []
+    },
+    {
+      "id": "ai-audit-long-sleeve-short-hem",
+      "occasion": "Casual",
+      "climate": "Not specified",
+      "patch": {
+        "shirt": {
+          "sleeve": "full_sleeve",
+          "cuff": "open_short_hem_cuff"
+        }
+      },
+      "expected": [
+        "CG-FULL-SLEEVE-HEM"
+      ],
+      "forbidden": []
+    },
+    {
+      "id": "ai-audit-cropped-trouser-full-break",
+      "occasion": "Smart-Casual",
+      "climate": "Not specified",
+      "patch": {
+        "pant": {
+          "hem": "cropped_above_ankle_hem",
+          "break": "full_break"
+        }
+      },
+      "expected": [
+        "CG-CROP-BREAK"
+      ],
+      "forbidden": []
+    },
+    {
+      "id": "ai-audit-low-rise-long-tuck",
+      "occasion": "Casual",
+      "climate": "Not specified",
+      "patch": {
+        "shirt": {
+          "wear": "tucked",
+          "length": "shirt_length_tuck"
+        },
+        "pant": {
+          "rise": "low_rise"
+        }
+      },
+      "expected": [
+        "CG-LOW-RISE-TAIL"
+      ],
+      "forbidden": []
+    },
+    {
+      "id": "ai-audit-wide-drape-with-verification",
+      "occasion": "Smart-Casual",
+      "climate": "Not specified",
+      "patch": {
+        "pant": {
+          "fit": "korean_straight_wide"
+        }
+      },
+      "signals": {
+        "pantDrapeVerified": true
+      },
+      "expected": [],
+      "forbidden": [
+        "CG-WIDE-DRAPE-VERIFY"
+      ]
+    },
+    {
+      "id": "ai-audit-competing-high-contrast",
+      "occasion": "Casual",
+      "climate": "Not specified",
+      "patch": {},
+      "signals": {
+        "shirtPatternContrast": "high",
+        "pantPatternContrast": "high"
+      },
+      "expected": [
+        "CG-PATTERN-LOAD"
+      ],
+      "forbidden": []
     }
   ]
 }

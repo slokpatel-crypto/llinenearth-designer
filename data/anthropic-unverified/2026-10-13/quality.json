@@ -1,0 +1,166 @@
+{
+  "version": "linen-earth-anthropic-proposals-v1",
+  "domain": "quality",
+  "status": "UNVERIFIED_PROPOSAL",
+  "model": "claude-haiku-4-5-20251001",
+  "usage": {
+    "input_tokens": 517,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 1717,
+    "service_tier": "standard",
+    "inference_geo": "not_available"
+  },
+  "proposals": [
+    {
+      "id": "unverifiable-fiber-claim",
+      "domain": "quality",
+      "claim": "Garment labeled as 100% silk without third-party fiber analysis documentation",
+      "rationale": "Claims about fiber composition lack verifiable evidence and expose quality assurance gaps. Unsubstantiated material claims mislead consumers and undermine trust in product specifications.",
+      "constraints": [
+        "Requires independent lab testing (ISO 1833 methods)",
+        "Must distinguish between claimed and actual fiber content",
+        "Cannot rely solely on supplier documentation without verification",
+        "Testing must be conducted by accredited textile laboratory"
+      ],
+      "evidenceNeeded": [
+        "Third-party fiber analysis report from ISO 17050 accredited lab",
+        "Chain of custody documentation for tested samples",
+        "Comparison between claimed composition and test results",
+        "Photomicrograph evidence of fiber identification"
+      ]
+    },
+    {
+      "id": "stripe-repeat-tolerance",
+      "domain": "quality",
+      "claim": "Stripe repeat pattern specified at 25mm ±0.5mm without pattern continuity verification",
+      "rationale": "Precise stripe measurements on sewn garments require validation across seams and across full pattern. Tolerance specification without measurement methodology or acceptance criteria creates ambiguity in production quality control.",
+      "constraints": [
+        "Must specify measurement location (seam to seam vs pattern to pattern)",
+        "Requires documentation of how repeat is measured on curved surfaces",
+        "Cannot specify tolerance tighter than manufacturing capability",
+        "Must account for fabric shrinkage post-dyeing"
+      ],
+      "evidenceNeeded": [
+        "Calibrated measurement documentation across minimum 5 pattern repeats",
+        "Photographic evidence with scale reference showing stripe continuity at seams",
+        "Fabric shrinkage test results (ISO 5077)",
+        "Production specification sheet with clearly defined tolerance acceptance zones"
+      ]
+    },
+    {
+      "id": "color-match-calibration",
+      "domain": "quality",
+      "claim": "Garment color matches approved Pantone reference without spectrophotometer documentation or lighting condition specification",
+      "rationale": "Color perception varies significantly with lighting, observer angle, and reference fatigue. Without controlled measurement conditions and instrumental validation, color matching claims remain subjective and unverifiable.",
+      "constraints": [
+        "Requires spectrophotometer readings at standardized illuminants (D65, A, or specified)",
+        "Must specify deltaE acceptable variance (CIE76, CIE94, or CIEDE2000)",
+        "Visual assessment alone insufficient without instrument backing",
+        "Cannot claim match without documented reference swatch age and storage conditions"
+      ],
+      "evidenceNeeded": [
+        "Spectrophotometric measurement data (L*, a*, b* values) with illuminant specification",
+        "DeltaE calculation with stated acceptable threshold",
+        "Digital color reference photograph under standardized lighting (5000K minimum)",
+        "Documented reference swatch with manufacture date and storage conditions"
+      ]
+    },
+    {
+      "id": "trouser-seat-drape",
+      "domain": "quality",
+      "claim": "Trousers provide optimal seat drape and fit without specification of body type, fabric weight, or measurement point validation",
+      "rationale": "Garment drape is subjective and dependent on wearer morphology, movement, and fabric properties. Claims of optimal fit require quantified measurements, defined body parameters, and acceptance criteria linked to specific wear conditions.",
+      "constraints": [
+        "Cannot claim drape quality without specifying intended body type ranges",
+        "Requires fabric weight/hand measurements (oz/yd² or g/m²)",
+        "Seat/ease measurement must be referenced to specific size grading",
+        "Must distinguish between as-sewn and worn appearance"
+      ],
+      "evidenceNeeded": [
+        "Fabric weight specification with tolerance (ISO 3801)",
+        "Detailed grading specifications showing ease at seat across size range",
+        "Flat pattern measurements at seat level with defined reference points",
+        "Fit test documentation on specified demographic (age range, height/weight ranges)"
+      ]
+    },
+    {
+      "id": "tucked-collar-conflict",
+      "domain": "quality",
+      "claim": "Shirt collar functions equally well when worn untucked or with necktie without design conflict analysis",
+      "rationale": "Collar construction, stand height, and point angle create geometric constraints. Wearing modes have conflicting requirements (tie knot coverage vs untucked visibility). Claims must address design resolution or acknowledge limitation.",
+      "constraints": [
+        "Collar stand height must be specified (mm) relative to neckline seam",
+        "Point length and angle cannot simultaneously optimize both wear modes",
+        "Necktie knot width creates minimum required collar throat depth",
+        "Must document whether design favors one wear mode"
+      ],
+      "evidenceNeeded": [
+        "Detailed collar pattern specifications including stand height and point angles",
+        "Neckline seam location measurement relative to collar stand",
+        "Visual documentation of collar appearance in both untucked and with-tie configurations",
+        "Design trade-off analysis explaining compromises or resolution method"
+      ]
+    },
+    {
+      "id": "short-sleeve-french-cuff",
+      "domain": "quality",
+      "claim": "Short sleeve shirt features French cuff construction without acknowledgment of functional conflict",
+      "rationale": "French cuffs require wrist-length sleeves and cufflinks for closure. Short sleeves cannot accommodate this construction. Simultaneous claim of both features represents design impossibility or unclear specification.",
+      "constraints": [
+        "Cannot claim French cuff on sleeves shorter than wrist length",
+        "Must specify exact sleeve length measurement (center back neck to cuff edge)",
+        "Must clarify whether cuff is decorative or functional",
+        "Cufflink accommodation requires minimum sleeve opening diameter"
+      ],
+      "evidenceNeeded": [
+        "Sleeve length specification in inches/centimeters with measurement point definition",
+        "Pattern detail showing cuff construction method (fold-back, attached, sewn-through)",
+        "Cufflink hole/button specification or acknowledgment of decorative-only function",
+        "Photographic documentation of actual sleeve on specified size (with measurements visible)"
+      ]
+    },
+    {
+      "id": "cropped-break-definition",
+      "domain": "quality",
+      "claim": "Trousers deliver proper cropped length with full break without defining break type or rise measurement",
+      "rationale": "Cropped and full break represent contradictory length specifications. Cropped implies shortened/minimal fabric break at shoe; full break means fabric covers shoe opening with fold. Claims must resolve contradiction with measured specifications.",
+      "constraints": [
+        "Cannot specify both cropped and full break simultaneously without clarification",
+        "Break specification requires inseam measurement from rise point to hem",
+        "Must account for shoe heel height variation (1-2 inches difference common)",
+        "Cropped length typically 1-2 inches shorter than full break"
+      ],
+      "evidenceNeeded": [
+        "Inseam measurement specification (center crotch seam to hem edge) in inches/centimeters",
+        "Visual reference photos showing trouser break on multiple shoe heel heights",
+        "Definition of break type used (no break, slight break, full break, cropped)",
+        "Size-specific length documentation with grading increment between sizes"
+      ]
+    },
+    {
+      "id": "owner-tailor-acceptance",
+      "domain": "quality",
+      "claim": "Garment quality accepted by owner and tailor without pre-defined acceptance criteria or dispute resolution mechanism",
+      "rationale": "Subjective acceptance by different parties creates undefined standards and unresolvable disputes. Quality claims require documented criteria, measurement points, and pre-agreed acceptance thresholds before delivery or wear.",
+      "constraints": [
+        "Acceptance criteria must be documented before garment completion",
+        "Cannot rely on single party assessment for multi-party use cases",
+        "Requires written acknowledgment of specific measured points",
+        "Must specify who makes final determination and dispute resolution path"
+      ],
+      "evidenceNeeded": [
+        "Written quality specification signed before production begins",
+        "Documented acceptance checklist with specific measurements (seam straightness, hem level, button placement) in mm",
+        "Pre-agreed photograph standards for visual acceptance (lighting, angles, wear duration)",
+        "Owner and tailor sign-off documentation on delivery, with specific accepted/rejected elements listed"
+      ]
+    }
+  ],
+  "harvestDeploymentId": "dpl_4LwAVnoX768Nb8ytsEb8nvLHbm9T",
+  "humanReviewed": false
+}

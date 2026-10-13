@@ -1,0 +1,214 @@
+{
+  "version": "linen-earth-anthropic-proposals-v1",
+  "domain": "trouser",
+  "status": "UNVERIFIED_PROPOSAL",
+  "model": "claude-haiku-4-5-20251001",
+  "usage": {
+    "input_tokens": 202,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 3044,
+    "service_tier": "standard",
+    "inference_geo": "not_available"
+  },
+  "proposals": [
+    {
+      "id": "high-rise-pleated-adjuster",
+      "domain": "trouser",
+      "claim": "Construct high-rise (12-14cm) pleated front with side-adjuster tabs instead of belt loops to reduce waistband compression in hot humid climates",
+      "rationale": "Side adjusters eliminate continuous waistband pressure, allowing perspiration evaporation at the torso; pleats at high rise create expansion capacity for abdominal comfort during humidity-induced fabric relaxation",
+      "constraints": [
+        "Requires 2-3cm side adjuster webbing tape reinforcement",
+        "Pleats must be stitched to side seam only, not across full width",
+        "Linen shrinkage contingency of 3-5% affects waistband sizing"
+      ],
+      "evidenceNeeded": [
+        "Linen fabric weight specification (gsm)",
+        "Humidity exposure duration data",
+        "Wearer abdominal relaxation measurements pre/post wear"
+      ]
+    },
+    {
+      "id": "mid-rise-flat-front-belt-loops",
+      "domain": "trouser",
+      "claim": "Construct mid-rise (10-11cm) flat-front with reinforced belt loops using cross-grain linen binding to maximize dimensional stability in tropical environments",
+      "rationale": "Mid-rise with flat front minimizes fabric bulk at waistband; cross-grain binding counters bias stretch in high-humidity conditions where linen's hygroscopic properties increase lateral expansion",
+      "constraints": [
+        "Belt loops must be interfaced with 100% linen twill tape minimum 15mm width",
+        "Cross-grain binding adds 0.5mm to loop seam allowance",
+        "Requires bar-tack reinforcement at each loop base"
+      ],
+      "evidenceNeeded": [
+        "Linen count and weave structure data",
+        "Dimensional stability test results under 85%+ relative humidity",
+        "Thread tension calibration for reinforced loops"
+      ]
+    },
+    {
+      "id": "high-rise-pleated-belt-loops",
+      "domain": "trouser",
+      "claim": "Construct high-rise pleated front with traditional belt loops but reduce loop diameter to 18mm to minimize moisture absorption points while maintaining waistband security",
+      "rationale": "Smaller loop diameter reduces fabric surface area exposed to humidity; pleats provide volume accommodation; traditional loops preserve aesthetic while micro-sizing limits sweat permeation",
+      "constraints": [
+        "18mm maximum loop width requires precise folder attachment",
+        "Pleat stitching must extend 8cm minimum down leg to maintain crease definition",
+        "May not accommodate belts wider than 35mm"
+      ],
+      "evidenceNeeded": [
+        "Belt loop moisture absorption comparison data at standard vs reduced diameters",
+        "Crease retention testing under humid conditions",
+        "Wearer feedback on belt retention during perspiration"
+      ]
+    },
+    {
+      "id": "mid-rise-flat-front-adjuster",
+      "domain": "trouser",
+      "claim": "Construct mid-rise flat-front with side-adjuster mechanism using 3cm webbing tabs with button-hole adjustment for minimal waistband contact and maximum ventilation in high-humidity wear",
+      "rationale": "Flat front eliminates pleat bulk; side adjusters with gaps enable air circulation; button-hole adjustment allows waistband loosening without complete removal, managing sweat-induced fabric expansion",
+      "constraints": [
+        "Webbing tabs must have minimum 3cm spacing between button stations",
+        "Fly construction must not interface with adjuster mechanism",
+        "Button holes weaken fabric; require reinforcement patches on inside"
+      ],
+      "evidenceNeeded": [
+        "Airflow measurement data through adjuster gap zones",
+        "Button hole durability testing under repeated adjustment cycles",
+        "Fabric reinforcement patch adhesion stability post-laundering"
+      ]
+    },
+    {
+      "id": "tapered-leg-flat-front-high",
+      "domain": "trouser",
+      "claim": "Construct high-rise flat-front with tapered leg (17cm hem opening) using gradual side-seam taper starting at knee to reduce fabric volume while maintaining thigh ease in humid climates",
+      "rationale": "Gradual taper preserves thigh expansion space needed for sitting/movement in heat while tapering ankles reduces lower-leg moisture retention; flat front minimizes abdominal compression",
+      "constraints": [
+        "Taper curve must not exceed 2.5cm reduction per 10cm of inseam length",
+        "Thigh ease minimum 5cm over body measurement to accommodate heat-swelling",
+        "Hem construction must allow for potential future width adjustment"
+      ],
+      "evidenceNeeded": [
+        "Thigh circumference measurements at seated and standing positions in hot conditions",
+        "Moisture absorption rate comparison for tapered vs straight legs",
+        "Gait analysis data showing movement restriction thresholds"
+      ]
+    },
+    {
+      "id": "straight-leg-pleated-mid",
+      "domain": "trouser",
+      "claim": "Construct mid-rise straight-leg (22cm hem opening) with one-sided pleat on each front using structured linen to maintain volume and crease definition throughout humid day wear",
+      "rationale": "Straight leg with consistent width accommodates swelling without silhouette distortion; single-sided pleats (vs double) reduce fabric bulk; structured linen resists the drape collapse common in sagging humid conditions",
+      "constraints": [
+        "One pleat per front requires precise pleat stitching 12-14cm from center front",
+        "Structured linen finish may reduce breathability; select open-weave constructions",
+        "Single pleat asymmetry requires visual balance testing"
+      ],
+      "evidenceNeeded": [
+        "Crease retention testing on single vs double pleats at 80%+ humidity",
+        "Breathability/air permeability specifications for structured linen",
+        "Visual symmetry assessment under various lighting conditions"
+      ]
+    },
+    {
+      "id": "korean-wide-flat-front-adjuster",
+      "domain": "trouser",
+      "claim": "Construct Korean-wide silhouette (24-26cm hem opening, minimal taper) with flat front and side adjusters to maximize thigh/hip volume while managing excess fabric drape in humid conditions",
+      "rationale": "Wide silhouette provides maximum ease for perspiration-induced body swelling; flat front reduces waistband torso contact; side adjusters prevent waistband slip common in draping over-sized garments when wet",
+      "constraints": [
+        "Wide hem requires reinforced side seams to prevent stress-point rupture",
+        "Excess fabric volume increases drying time post-laundering",
+        "May require internal horizontal darts at hip to control excess waistband fabric"
+      ],
+      "evidenceNeeded": [
+        "Hip circumference variation data under thermal stress conditions",
+        "Seam stress distribution testing at side seams with wide leg volume",
+        "Garment drying time comparison with straight/tapered silhouettes"
+      ]
+    },
+    {
+      "id": "crop-length-straight-pleated",
+      "domain": "trouser",
+      "claim": "Construct crop-length (72-75cm inseam) straight-leg with pleated front and reinforced cuff hem using 1cm double-fold allowance to enable rapid moisture evaporation from ankle zone",
+      "rationale": "Crop length exposes ankle for maximum ventilation; straight leg maintains pleat structure; double-fold reinforced cuff accommodates repeated cuffing adjustments in high-sweat scenarios without fraying",
+      "constraints": [
+        "Crop length requires proportional rise adjustment relative to torso length",
+        "Reinforced cuff adds 0.3cm to hem bulk; may feel restrictive",
+        "Visual balance requires coordinated footwear proportions"
+      ],
+      "evidenceNeeded": [
+        "Ankle microclimate humidity measurements at crop vs standard lengths",
+        "Cuff reinforcement stitch durability under repeated cuffing cycles",
+        "Proportionality feedback from diverse body types"
+      ]
+    },
+    {
+      "id": "full-break-tapered-belt-loops",
+      "domain": "trouser",
+      "claim": "Construct tapered leg (18cm hem opening) with full break (1.5-2cm hem coverage over shoe) and reinforced belt loops to maintain formal silhouette while reducing upper-leg fabric volume in humid wear",
+      "rationale": "Full break provides formal aesthetic; taper from knee reduces thigh-area moisture accumulation while maintaining traditional crease line; reinforced loops prevent slippage when garment softens with perspiration saturation",
+      "constraints": [
+        "Full break requires precise inseam measurement accounting for shoe heel height variation",
+        "Hem break may catch moisture on shoe upper if insufficient tapering",
+        "Formal aesthetic may conflict with casual ventilation-optimized designs"
+      ],
+      "evidenceNeeded": [
+        "Shoe break consistency data across multiple footwear styles",
+        "Fabric contact-moisture transfer testing at hem-shoe interface",
+        "Visual assessment of formal proportions with taper gradient"
+      ]
+    },
+    {
+      "id": "slight-break-flat-front-adjuster",
+      "domain": "trouser",
+      "claim": "Construct flat-front with slight break (0.5-0.8cm) hem coverage, side adjusters, and open-weave linen to balance formal proportions with maximum ankle ventilation in tropical climates",
+      "rationale": "Slight break maintains dress-code compliance without full moisture-trapping coverage; open-weave linen maximizes air permeability; flat front and adjusters minimize torso compression in heat",
+      "constraints": [
+        "Slight break is visually subtle; requires precise tailoring to appear intentional",
+        "Open-weave linen sacrifices structure; may show lower garment through fabric",
+        "Requires coordinated undertones/lining selection for transparency management"
+      ],
+      "evidenceNeeded": [
+        "Visual assessment of slight break across postures and distances",
+        "Transparency testing of open-weave linen against standard body garments",
+        "Lining fabric selection impact on aesthetic and breathability"
+      ]
+    },
+    {
+      "id": "no-break-straight-pleated-adjuster",
+      "domain": "trouser",
+      "claim": "Construct no-break (hem just touching shoe) straight-leg with single-sided pleats and side adjusters to maximize lower-leg exposure while minimizing moisture pooling at ankle",
+      "rationale": "No break eliminates hem fabric moisture absorption; straight leg distributes leg volume evenly; single pleat provides modest silhouette volume without bulk; adjusters manage waistband in high-sweat conditions",
+      "constraints": [
+        "No break is highly visible with footwear; creates modern casual aesthetic unsuitable for formal contexts",
+        "Requires very precise inseam measurement; minimal alteration tolerance",
+        "Shoe interface exposure demands clean hem finish quality"
+      ],
+      "evidenceNeeded": [
+        "Ankle-zone humidity differential compared to break and full-break options",
+        "Inseam measurement tolerance data for no-break construction",
+        "Aesthetic acceptability across workplace dress codes"
+      ]
+    },
+    {
+      "id": "mid-rise-korean-wide-pleated",
+      "domain": "trouser",
+      "claim": "Construct mid-rise Korean-wide silhouette (25cm hem opening) with two-sided pleats and reinforced side seams using natural linen drape to create volume accommodation and formal silhouette integration for humid climates",
+      "rationale": "Korean-wide profile with pleats provides expansion capacity for heat-induced body volume increases; mid-rise avoids high-rise compression; two-sided pleats create balanced aesthetic; reinforced seams manage stress from fabric weight when saturated with perspiration",
+      "constraints": [
+        "Wide leg with pleats requires minimum 8cm pleat depth to appear intentional",
+        "Mid-rise may not provide sufficient torso coverage for some body types in oversized garments",
+        "Pleat crease maintenance becomes critical with increased fabric volume"
+      ],
+      "evidenceNeeded": [
+        "Body volume expansion measurements under varied humidity and thermal loads",
+        "Pleat depth optimization data for aesthetic and functional drape",
+        "Crease retention protocols for high-volume pleated constructions in humid storage"
+      ]
+    }
+  ],
+  "harvestDeploymentId": "dpl_4cgZko3de7dgCjcUciunxDw688di",
+  "humanReviewed": false
+}

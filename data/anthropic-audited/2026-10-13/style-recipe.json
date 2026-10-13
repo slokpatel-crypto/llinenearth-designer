@@ -1,0 +1,190 @@
+{
+  "version": "linen-earth-audited-knowledge-v1",
+  "domain": "style-recipe",
+  "status": "AI_AUDITED_HUMAN_REVIEW_REQUIRED",
+  "model": "claude-sonnet-5-5",
+  "usage": {
+    "input_tokens": 2109,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 4186,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "service_tier": "standard",
+    "inference_geo": "global"
+  },
+  "proposals": [
+    {
+      "id": "office-linen-neutral",
+      "domain": "style-recipe",
+      "claim": "For office wear, a white or off-white linen shirt can be paired with trousers in a mid-weight, tighter-weave linen or linen blend in navy, stone or grey. Treat linen as relaxed business-casual dress, and expect wrinkling to read as a feature of the fabric. The shirt should have enough body to hold its collar and a hem length that stays tucked or lies cleanly untucked.",
+      "rationale": "Linen creases easily and stays creased, so its polish depends on weave density, weight and fit rather than on crispness. A very oversized shirt over tapered trousers can look sloppy in conservative offices, so it works only when the shoulders, collar and sleeves still look deliberate.",
+      "constraints": [
+        "Only suitable where business-casual or relaxed tailoring is acceptable; strict formal codes may need wool or a hard-finish cotton.",
+        "Avoid sheer white linen; check opacity against skin tone and undershirt.",
+        "Oversize should come from cut, not from poor shoulder fit.",
+        "A pressed or steamed finish is realistic only briefly; do not promise wrinkle-free results."
+      ],
+      "evidenceNeeded": [
+        "Garment spec sheet or label for fibre content, weight (gsm) and weave",
+        "Full-length photo seated and standing, to judge opacity and creasing",
+        "Employer dress-code context",
+        "Tailor or fit review of shoulder, collar and hem"
+      ]
+    },
+    {
+      "id": "summer-dinner-contrast",
+      "domain": "style-recipe",
+      "claim": "For a summer evening, a muted sage or other soft-green linen shirt can pair with cream or ecru linen trousers. A relaxed or wide-leg cut works only if the waist fit and hem length are right, and the trousers should be fully opaque and ideally lined at the front or in a heavier weave.",
+      "rationale": "Low-contrast, earthy tones read as relaxed and appropriate for warm evenings. Cream or pale linen trousers are often semi-sheer and mark easily, so fabric weight and opacity matter more than the colour story. Wide legs add airflow but can swamp shorter or slighter frames if the hem breaks badly.",
+      "constraints": [
+        "Pale trousers risk see-through at the thigh; check weight and lining before committing.",
+        "Wide-leg trousers need correct hem length for the shoe worn.",
+        "The claim that wide legs elongate the figure is not reliable and should not be promised.",
+        "Linen drape varies by weave and finish; do not predict it from colour or a photo."
+      ],
+      "evidenceNeeded": [
+        "Fabric weight/opacity check in daylight and under artificial light",
+        "Fit photos in motion or seated",
+        "Tailor confirmation of hem, waist and leg width balance",
+        "Fibre content from the label"
+      ]
+    },
+    {
+      "id": "resort-layered-palms",
+      "domain": "style-recipe",
+      "claim": "For resort or hot-climate wear, a light base shirt can be layered open under a looser linen overshirt, with soft pull-on trousers in a coordinating neutral. Keep the layers genuinely light so the combination adds shade and pockets without adding heat.",
+      "rationale": "An open overshirt can add sun cover and evening warmth, but layering linen over linen traps heat if both pieces are heavy or closely woven. Elasticated or drawstring trousers suit travel and heat, though waistband bulk and gathering can disrupt the line under a tucked shirt.",
+      "constraints": [
+        "Layering only benefits comfort where the overshirt is loosely woven or unlined.",
+        "Pull-on waists look best worn with the shirt untucked or with a smooth, flat waistband.",
+        "Tonal cream/ecru/taupe layers need textural or value variation to avoid looking flat.",
+        "Pull-on does not make trousers lower-maintenance; linen still creases and needs laundering care."
+      ],
+      "evidenceNeeded": [
+        "Fabric weight of each layer",
+        "Photos of the waistband construction and how it sits under the shirt",
+        "Climate and use context (beach, town, evening)",
+        "Care labels"
+      ]
+    },
+    {
+      "id": "wedding-guest-structured",
+      "domain": "style-recipe",
+      "claim": "For a wedding guest look in linen, favour more structured linen or a linen blend, with a clean collar, tailored shirt and trousers with a defined waistband, pleats if they suit the wearer, and a deliberate hem. A soft blush or similar low-saturation colour can work, but dress code and venue formality come first.",
+      "rationale": "Linen alone seldom delivers formal sharpness, so structure has to come from cutting, weight and tailoring, and a blend can improve crease recovery but changes comfort. Pleats add room at the hip and can look refined on trousers cut to take them, but can pull or flare if the rise and hip fit are wrong. Blush and similar colours are sensitive to skin tone and lighting.",
+      "constraints": [
+        "Check the invitation dress code; linen may be too casual for black tie or very formal daytime.",
+        "A shirt alone is not enough; a jacket or equivalent may be expected.",
+        "Do not assume a rise measurement; fit the waistband to the natural waist with a tailor.",
+        "Pleat suitability depends on hip and thigh shape.",
+        "Light pink shirts can look washed out or very sheer in linen."
+      ],
+      "evidenceNeeded": [
+        "Dress code and venue/season details",
+        "Fibre content and weave from the label",
+        "Tailor fitting of waist, rise and pleat behaviour",
+        "Daylight photos of the colour on the wearer"
+      ]
+    },
+    {
+      "id": "festival-bold-movement",
+      "domain": "style-recipe",
+      "claim": "For a festival or outdoor event, a loose button shirt in a warm colour such as ochre can pair with drawstring trousers in an earthy neutral. Prioritise breathability, cut and ease of movement over strict coordination.",
+      "rationale": "Loose cuts and drawstring waists suit long days, and warm earth tones coordinate easily. Strong ochre or mustard shows sweat, dust and creasing quickly, and linen will crease and stain, so the look needs to be chosen with that in mind. A loose shirt can ride up or catch on a bag strap.",
+      "constraints": [
+        "Photographic claims about how ochre shows in festival light are unverifiable; do not state them as fact.",
+        "Drawstring trousers can look unfinished if the waist is too loose or the cord too long.",
+        "Bold tones and loose linen can swamp small frames; check shoulder drop and sleeve length.",
+        "Expect staining and rapid creasing; choose a colour and weave that tolerate it."
+      ],
+      "evidenceNeeded": [
+        "Fabric weight and opacity",
+        "Photos of shirt length and drop shoulder when worn",
+        "Laundering and stain tolerance for the chosen dye",
+        "Event conditions (heat, dust, distance walked)"
+      ]
+    },
+    {
+      "id": "smart-casual-tonal",
+      "domain": "style-recipe",
+      "claim": "A tonal caramel or camel linen outfit can work in smart-casual settings if the two pieces differ slightly in shade, texture or weave so they read as intentional rather than a mismatched set. Fit the shirt cleanly through the shoulders and body and keep the trousers moderately tapered, with the rise set by tailor fit rather than a fixed figure.",
+      "rationale": "Monochrome dressing is easy to wear but can read as a uniform if shades match exactly or the fabrics are identical, and linen dye lots vary between garments. Camel suits many warm complexions but can wash out others. A fitted shirt in linen will wrinkle more visibly across the torso, so cut should allow some ease.",
+      "constraints": [
+        "Do not claim the colour suits all skin tones.",
+        "Exact shade matching between separately bought linen pieces is unreliable.",
+        "A fitted linen shirt tightens and creases at the belly and underarms; allow ease.",
+        "Rise should be determined by the tailor against the wearer's body, not by a stated centimetre number."
+      ],
+      "evidenceNeeded": [
+        "Both garments photographed together in natural light to compare shade",
+        "Full-length fit photos standing and seated",
+        "Tailor review of rise and leg shape",
+        "Fibre and weave details from the labels"
+      ]
+    },
+    {
+      "id": "creative-pro-textured-layering",
+      "domain": "style-recipe",
+      "claim": "For a creative or relaxed professional look, a charcoal linen shirt can be worn with a lightweight unlined vest and neutral trousers, with texture (slub, herringbone or open weave) adding interest. The vest should be cut to sit properly at the waist and chest so it does not gape or ride up.",
+      "rationale": "Charcoal anchors the look and slubby linen adds visible texture, but dark linen shows lint, fading and uneven dye. A vest adds structure without sleeve bulk, though it also adds a layer in hot conditions. Unlined linen vests can lose shape if the weave is loose.",
+      "constraints": [
+        "A vest is warmer than a shirt alone; confirm the climate suits it.",
+        "Describing texture as signalling professionalism or craft is subjective; treat it as a styling choice, not a fact.",
+        "Charcoal linen can fade unevenly with washing.",
+        "Vest fit (armhole, length, closure) needs tailoring to avoid looking costume-like."
+      ],
+      "evidenceNeeded": [
+        "Close-up fabric photos of weave and colour",
+        "Vest fit photos from front and side",
+        "Care and dye-fastness information",
+        "Workplace dress-code context"
+      ]
+    },
+    {
+      "id": "travel-packable-neutral",
+      "domain": "style-recipe",
+      "claim": "For travel, a white or off-white linen shirt and stone or grey straight-leg trousers can serve as a flexible base, helped by easy-care finishing or a linen-blend fabric if crease tolerance is a priority. Pack lightweight, quick-drying pieces and accept that linen will crease in a bag.",
+      "rationale": "Neutral pieces combine across several outfits, and linen dries quickly and breathes in heat. White linen can show dirt and become see-through when damp, and linen takes up more space than nylon or technical fabrics once creased. A straight leg is a moderate, widely wearable cut but is not guaranteed to fit every body or shoe.",
+      "constraints": [
+        "The term 'reversible neutral tones' is not meaningful for these garments and should be dropped.",
+        "Do not promise that linen reduces maintenance compared with other fabrics.",
+        "Straight-leg cut suits many wearers but ease and hem length still need checking.",
+        "Wrinkle expectations are realistic, but heavy creasing can look untidy in some contexts."
+      ],
+      "evidenceNeeded": [
+        "Fabric weight, fibre content and care label",
+        "Packed-size and creasing test",
+        "Shoe and hem-length check for the trousers",
+        "Travel climate and expected activities"
+      ]
+    }
+  ],
+  "rejectedIds": [
+    "Original claim that linen's wrinkle texture automatically aligns with office standards and provides temperature regulation (office-linen-neutral)",
+    "Original claim that wide-leg trousers reliably elongate proportions (summer-dinner-contrast)",
+    "Original claim that relaxed fit is required by linen's drape qualities, as drape cannot be asserted from a photo (summer-dinner-contrast)",
+    "Original claim that pull-on construction reduces maintenance needs in resort settings (resort-layered-palms)",
+    "Original claim that high-waisted pleated trousers counteract linen's relaxation, and the specification of high waist as a rule (wedding-guest-structured)",
+    "Original claim that ochre photographs well in outdoor festival lighting (festival-bold-movement)",
+    "Original claim that caramel suits diverse skin tones (smart-casual-tonal)",
+    "Original reference to a fixed mid-rise (smart-casual-tonal), as arbitrary rise figures are not trustworthy",
+    "Original claim that textured fabric signals attention to craft and that charcoal reads professional with personality expression (creative-pro-textured-layering)",
+    "Original 'reversible neutral tones' framing and claim that linen's wrinkles reduce maintenance burden versus rigid fabrics (travel-packable-neutral)"
+  ],
+  "reviewNotes": [
+    "All proposals await human/tailor review; none should be treated as verified fact.",
+    "Photos cannot establish fibre composition, origin, weight, or exact drape; labels, spec sheets or physical inspection are required.",
+    "Shirt-front buttons are not sleeve plackets; any construction detail claim must be checked against the actual garment.",
+    "No fixed rise measurements were retained; rise and fit must be set by a tailor on the wearer.",
+    "Several originals used vague or appealing but unfalsifiable language such as 'elegant', 'sophisticated' and 'elongating'; these were removed or recast as conditional guidance.",
+    "Opacity, creasing, staining and dye behaviour are the main practical risks in linen and were added where the originals omitted them."
+  ],
+  "auditDeploymentId": "dpl_HucuuVJCVHyowMTxBhyicLMfevkK",
+  "humanReviewed": false
+}

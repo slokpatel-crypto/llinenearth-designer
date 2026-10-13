@@ -1,0 +1,148 @@
+{
+  "version": "linen-earth-sonnet-audit-manifest-v1",
+  "date": "2026-10-13",
+  "humanApproved": false,
+  "automaticallyApplicable": false,
+  "physicalEvidenceSupplied": false,
+  "supplierDataVerified": false,
+  "scope": "AI critique of untrusted suggestions; not a technical or tailoring signoff",
+  "originalProposals": 52,
+  "auditedProposals": 44,
+  "analyzedInputTokens": 12401,
+  "analyzedOutputTokens": 20541,
+  "domains": [
+    {
+      "domain": "fabric",
+      "originalCount": 8,
+      "auditedCount": 7,
+      "matchedRejectedOriginalIds": [
+        "linen-plain-visual-classification",
+        "print-pattern-provenance-tracking",
+        "unknown-fibre-identification-protocol",
+        "gsm-estimation-bounds-establishment",
+        "formal-lea-shirting-suiting-specification"
+      ],
+      "unmatchedRejectionDescriptions": 0,
+      "reviewModel": "claude-sonnet-5-5",
+      "reviewTokenUsage": {
+        "input": 1990,
+        "output": 3155
+      },
+      "archive": "fabric.json"
+    },
+    {
+      "domain": "shirt",
+      "originalCount": 8,
+      "auditedCount": 7,
+      "matchedRejectedOriginalIds": [
+        "collar-cuff-contrast-compatibility",
+        "half-sleeve-placket-contradiction",
+        "shirt-length-tuck-protocol",
+        "narrow-collar-spread-limitation",
+        "french-cuff-fit-compatibility",
+        "contrast-cuff-collar-balance",
+        "button-through-half-sleeve-exclusion",
+        "structured-collar-fitted-body-rule"
+      ],
+      "unmatchedRejectionDescriptions": 0,
+      "reviewModel": "claude-sonnet-5-5",
+      "reviewTokenUsage": {
+        "input": 1800,
+        "output": 3566
+      },
+      "archive": "shirt.json"
+    },
+    {
+      "domain": "trouser",
+      "originalCount": 12,
+      "auditedCount": 7,
+      "matchedRejectedOriginalIds": [
+        "high-rise-pleated-adjuster",
+        "mid-rise-flat-front-belt-loops",
+        "high-rise-pleated-belt-loops",
+        "mid-rise-flat-front-adjuster",
+        "tapered-leg-flat-front-high",
+        "straight-leg-pleated-mid",
+        "korean-wide-flat-front-adjuster",
+        "crop-length-straight-pleated",
+        "full-break-tapered-belt-loops",
+        "slight-break-flat-front-adjuster",
+        "no-break-straight-pleated-adjuster",
+        "mid-rise-korean-wide-pleated"
+      ],
+      "unmatchedRejectionDescriptions": 0,
+      "reviewModel": "claude-sonnet-5-5",
+      "reviewTokenUsage": {
+        "input": 2741,
+        "output": 3354
+      },
+      "archive": "trouser.json"
+    },
+    {
+      "domain": "cross-garment",
+      "originalCount": 8,
+      "auditedCount": 7,
+      "matchedRejectedOriginalIds": [
+        "high-rise-plus-tuck-styling",
+        "korean-wide-trouser-boxy-top-pairing",
+        "pattern-load-conflict-avoidance",
+        "formality-gradient-cross-dressing",
+        "climate-layering-compatibility",
+        "visual-proportion-balance-strategy",
+        "neckline-shoulder-coherence",
+        "fabric-texture-cross-garment-interest"
+      ],
+      "unmatchedRejectionDescriptions": 0,
+      "reviewModel": "claude-sonnet-5-5",
+      "reviewTokenUsage": {
+        "input": 1986,
+        "output": 2947
+      },
+      "archive": "cross-garment.json"
+    },
+    {
+      "domain": "style-recipe",
+      "originalCount": 8,
+      "auditedCount": 8,
+      "matchedRejectedOriginalIds": [
+        "office-linen-neutral",
+        "summer-dinner-contrast",
+        "resort-layered-palms",
+        "wedding-guest-structured",
+        "festival-bold-movement",
+        "smart-casual-tonal",
+        "creative-pro-textured-layering",
+        "travel-packable-neutral"
+      ],
+      "unmatchedRejectionDescriptions": 1,
+      "reviewModel": "claude-sonnet-5-5",
+      "reviewTokenUsage": {
+        "input": 2109,
+        "output": 4186
+      },
+      "archive": "style-recipe.json"
+    },
+    {
+      "domain": "quality",
+      "originalCount": 8,
+      "auditedCount": 8,
+      "matchedRejectedOriginalIds": [
+        "unverifiable-fiber-claim",
+        "stripe-repeat-tolerance",
+        "color-match-calibration",
+        "trouser-seat-drape",
+        "tucked-collar-conflict",
+        "short-sleeve-french-cuff",
+        "cropped-break-definition",
+        "owner-tailor-acceptance"
+      ],
+      "unmatchedRejectionDescriptions": 0,
+      "reviewModel": "claude-sonnet-5-5",
+      "reviewTokenUsage": {
+        "input": 1775,
+        "output": 3333
+      },
+      "archive": "quality.json"
+    }
+  ]
+}

@@ -156,7 +156,24 @@ async function verifyViewport(browser, width) {
       assert.equal(materials.filter(value=>value===name).length,1,"prototype material wiring: "+name);
     }
     for(const [label,expectedView] of [["3/4","three-quarter"],["Side","side"],["Back","back"],["Front","front"]]){
-      await page.getByRole("button",{name:label,exact:true}).click();
+      // On software WebGL, Playwright's actionability scroll/stability
+      // polling can time out even when the button is already present and
+      // visible. Read a real DOM rectangle without triggering that polling,
+      // then send genuine CDP pointer input and require the state to change.
+      const hit=await page.evaluate((name)=>{
+        const button=[...document.querySelectorAll("button")].find(item=>
+          item.textContent?.trim()===name && item.hasAttribute("aria-pressed"));
+        if(!button || button.disabled) return null;
+        button.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"});
+        const rect=button.getBoundingClientRect(),styles=getComputedStyle(button);
+        if(styles.visibility!=="visible" || styles.display==="none") return null;
+        return {x:rect.x+rect.width/2,y:rect.y+rect.height/2,
+          width:rect.width,height:rect.height,viewportWidth:innerWidth,viewportHeight:innerHeight};
+      },label);
+      assert.ok(hit && hit.width>0 && hit.height>0
+        && hit.x>=0 && hit.x<hit.viewportWidth && hit.y>=0 && hit.y<hit.viewportHeight,
+        "camera control must have a visible pointer hit target: "+label);
+      await page.mouse.click(hit.x,hit.y);
       await page.waitForFunction(view=>document.querySelector(".garmentViewerShell")?.getAttribute("data-active-view")===view,
         expectedView,{timeout:30000});
     }

@@ -1,0 +1,166 @@
+{
+  "version": "linen-earth-anthropic-proposals-v1",
+  "domain": "fabric",
+  "status": "UNVERIFIED_PROPOSAL",
+  "model": "claude-haiku-4-5-20251001",
+  "usage": {
+    "input_tokens": 519,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 1807,
+    "service_tier": "standard",
+    "inference_geo": "not_available"
+  },
+  "proposals": [
+    {
+      "id": "linen-plain-visual-classification",
+      "domain": "fabric",
+      "claim": "Plain linen fabrics can be reliably classified by surface texture analysis from catalogue photography without requiring physical samples",
+      "rationale": "Catalogue photography with standardized lighting conditions captures surface characteristics distinctive to plain linens (slub frequency, yarn irregularity, light reflection patterns) that correlate with quality grades and fibre source origins",
+      "constraints": [
+        "Photography must use consistent backlighting and sidelighting angles",
+        "Minimum 4x optical zoom resolution required to resolve individual yarns",
+        "Images must be taken within 24 hours of production batch creation",
+        "Classification must remain conditional pending physical hand-feel verification"
+      ],
+      "evidenceNeeded": [
+        "Standardized photography protocol documentation showing lighting setup, camera settings, and zoom specifications",
+        "Cross-reference samples of classified fabrics with independently verified supplier certifications",
+        "Digital comparison matrix showing visual signatures of different linen qualities from known origins",
+        "Photographic baseline standards for each classification grade tested against 50+ catalogue images"
+      ]
+    },
+    {
+      "id": "print-pattern-provenance-tracking",
+      "domain": "fabric",
+      "claim": "Print pattern scale and repeat measurement from catalogue photography can establish fibre source provenance when combined with supplier documentation",
+      "rationale": "Pattern repeat dimensions, screen registration precision, and color separation quality visible in high-resolution catalogue imagery correlate with specific production facilities and technical capabilities that have documented geographical origins",
+      "constraints": [
+        "Pattern analysis limited to printed fabrics with geometric or measurable repeats only",
+        "Provenance claims require cross-validation with supplier mill certifications and dye-lot records",
+        "Photography angle must be perpendicular to fabric surface with calibrated scale reference",
+        "Analysis cannot determine fibre type or country of origin independently"
+      ],
+      "evidenceNeeded": [
+        "High-resolution catalogue photography with embedded scale reference (minimum 600 DPI)",
+        "Supplier documentation linking pattern repeats to specific printing facilities",
+        "Documented printing capability specifications for 10+ known production locations",
+        "Verification samples from claimed origin mills with matching pattern signatures"
+      ]
+    },
+    {
+      "id": "unknown-fibre-identification-protocol",
+      "domain": "fabric",
+      "claim": "Unknown fibre content in blended linens can be classified into probability categories using visual and photographic characteristics without making absolute fibre composition claims",
+      "rationale": "Luster patterns, yarn twist consistency, and surface pilling behavior visible in catalogue photography provide indicators for fibre category hypotheses (linen-rich vs. cotton-rich vs. synthetic-blend) requiring laboratory confirmation",
+      "constraints": [
+        "Classification must be explicitly labeled as 'probability-based pending lab testing'",
+        "Cannot claim specific percentage compositions without supplier testing certificates",
+        "Visual analysis cannot distinguish between fibre types with identical lustre properties",
+        "Photography artifacts (gloss, shadow, angle) can create false indicators and must be documented"
+      ],
+      "evidenceNeeded": [
+        "Controlled photographic comparison series showing luster signatures of known fibre blends (50/50, 60/40, 75/25 ratios)",
+        "Lab test results (FTIR or fibre microscopy) from 30+ sample fabrics with corresponding catalogue images",
+        "Documentation of visual misclassifications that have occurred with similar visual profiles",
+        "Supplier witness testing protocol for unknown fibre validation"
+      ]
+    },
+    {
+      "id": "gsm-estimation-bounds-establishment",
+      "domain": "fabric",
+      "claim": "Catalogue photography can establish plausible GSM weight ranges for unknown linen fabrics by comparing yarn density and colour saturation indicators",
+      "rationale": "Yarn count visibility, fabric hand opacity shown through backlighting, and dye saturation patterns correlate with typical weight ranges in commercial linen production (100-400 GSM for fashion linens), establishing investigation boundaries rather than precise measurements",
+      "constraints": [
+        "GSM estimation limited to ±50 point uncertainty range minimum",
+        "Cannot claim exact weight values from photography alone",
+        "Estimates valid only for plain-weave linens; complex weaves require structural analysis",
+        "Saturation-based estimates unreliable for overdyed or reactive-dyed fabrics"
+      ],
+      "evidenceNeeded": [
+        "Photographic comparison library of 20+ linen fabrics with certified GSM values and corresponding imagery",
+        "Documented correlation analysis between yarn visibility/density in photos and actual measured weights",
+        "Supplier specification sheets showing typical GSM ranges for visual categories",
+        "Technical note on saturation levels and their limits in weight estimation accuracy"
+      ]
+    },
+    {
+      "id": "formal-lea-shirting-suiting-specification",
+      "domain": "fabric",
+      "claim": "Formal 60/75 Lea shirting and suiting linens can be validated for count specification through documented supplier certification and pattern consistency without requiring physical thread count analysis",
+      "rationale": "60-75 Lea specifications (approximately 80-100 thread count per inch) are manufacturing standards documented by suppliers; catalogue photography showing pattern regularity combined with supplier attestation provides evidence for specification conformance when physical testing unavailable",
+      "constraints": [
+        "Specification claim requires primary supplier documentation as mandatory supporting evidence",
+        "Catalogue photography can show regularity consistency but cannot measure actual Lea count independently",
+        "Formal grade claims require thread count verification certificates from original supplier",
+        "Visual uniformity alone insufficient; supplier historical production records required"
+      ],
+      "evidenceNeeded": [
+        "Original supplier specification sheets for the specific fabric line photographed",
+        "Thread count test certificates (within 12 months of catalogue image date) from accredited testing laboratory",
+        "Catalogue image date alignment with supplier batch production documentation",
+        "Written supplier attestation linking specific SKU to 60 or 75 Lea classification"
+      ]
+    },
+    {
+      "id": "blend-composition-catalogue-verification",
+      "domain": "fabric",
+      "claim": "Linen-blend composition percentages stated in catalogues must be verified against supplier test certificates and batch records before acceptance as factual claims",
+      "rationale": "Visual appearance of linen-blend fabrics varies significantly based on actual fibre percentages; catalogue descriptions can contain aspirational or outdated information requiring independent supplier documentation to establish accuracy",
+      "constraints": [
+        "No blend percentage claims accepted without corresponding laboratory test evidence",
+        "Supplier attestation alone insufficient without supporting lab data from accredited facilities",
+        "Batch numbers and test dates must align with catalogue publication dates within 6-month window",
+        "Changes in supplier formulations invalidate historical catalogue specifications"
+      ],
+      "evidenceNeeded": [
+        "Laboratory test certificates (FTIR or wet chemical analysis) for each claimed blend ratio",
+        "Supplier batch records showing fibre sourcing dates and percentage formulations",
+        "Documented cases where catalogue claims differed from test-verified compositions",
+        "Verification protocol for establishing which supplier certifications are current and valid"
+      ]
+    },
+    {
+      "id": "linen-stock-verification-catalogue-alignment",
+      "domain": "fabric",
+      "claim": "Catalogue fabric images must be verified as representing current active stock items with available inventory before proposing them for sourcing or specification decisions",
+      "rationale": "Catalogue photographs often remain published long after stock depletion, production discontinuation, or supplier changeovers; visual authenticity requires matching current inventory records with image publication dates to confirm actual availability",
+      "constraints": [
+        "Catalogue age limit: images older than 12 months require current stock confirmation from supplier",
+        "Visual similarity between photographs does not confirm product identity or availability",
+        "Stock status changes rapidly in fashion; weekly verification required for sourcing decisions",
+        "Archived/historical fabric images must be clearly labeled as such in all proposals"
+      ],
+      "evidenceNeeded": [
+        "Current supplier inventory management system documentation showing stock status for catalogued SKUs",
+        "Correlation between catalogue image publication dates and supplier production/stock records",
+        "Documented cases of catalogue images remaining available for discontinued products",
+        "Supplier communication protocol for confirming active status of specific fabric lines"
+      ]
+    },
+    {
+      "id": "catalogue-photography-condition-disclosure",
+      "domain": "fabric",
+      "claim": "All linen fabric classification proposals based on catalogue photography must explicitly disclose photography conditions, processing, and known limitations as evidence context",
+      "rationale": "Catalogue photographs undergo color correction, contrast enhancement, and digital processing that can misrepresent actual fabric properties; transparent disclosure of these conditions is essential for evaluating reliability of visual evidence-based claims",
+      "constraints": [
+        "Photography condition documentation mandatory for every catalogue-based proposal",
+        "Post-processing treatments (brightness, saturation, sharpening) must be specified or acknowledged as unknown",
+        "Lighting type (studio, window, flash) and angle must be documented when known",
+        "Unknown photography conditions require explicit notation and reduce evidence reliability rating"
+      ],
+      "evidenceNeeded": [
+        "Catalogue image metadata analysis report identifying color profile, compression, and known processing",
+        "Photographer/production documentation describing intended color representation protocols",
+        "Side-by-side comparison of same fabric in raw catalogue photo vs. actual physical sample",
+        "Guidelines establishing reliability tiers based on photography documentation completeness"
+      ]
+    }
+  ],
+  "harvestDeploymentId": "dpl_4LwAVnoX768Nb8ytsEb8nvLHbm9T",
+  "humanReviewed": false
+}

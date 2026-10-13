@@ -1,0 +1,166 @@
+{
+  "version": "linen-earth-anthropic-proposals-v1",
+  "domain": "style-recipe",
+  "status": "UNVERIFIED_PROPOSAL",
+  "model": "claude-haiku-4-5-20251001",
+  "usage": {
+    "input_tokens": 514,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 1854,
+    "service_tier": "standard",
+    "inference_geo": "not_available"
+  },
+  "proposals": [
+    {
+      "id": "office-linen-neutral",
+      "domain": "style-recipe",
+      "claim": "A linen office outfit combining a crisp white oversized shirt with tapered neutral trousers creates a professional yet breathable aesthetic suitable for business environments",
+      "rationale": "Linen's natural wrinkle texture aligns with contemporary office standards while providing temperature regulation. Neutral color pairing maintains formality expectations. Oversized-to-tapered silhouette balance modernizes traditional office codes without compromising polish.",
+      "constraints": [
+        "Requires verification of fabric weight suitable for structured appearance in professional settings",
+        "Must validate that supplier linen maintains acceptable wrinkle profiles for office contexts",
+        "Color family selections pending actual product availability review",
+        "Silhouette recommendations contingent on individual body proportions and preference"
+      ],
+      "evidenceNeeded": [
+        "Photographic documentation of linen garments in actual office environments",
+        "Supplier specifications on fabric weight and wrinkle-recovery characteristics",
+        "Professional dress code compatibility assessment from workplace style consultants",
+        "Durability and maintenance data for linen in frequent business wear scenarios"
+      ]
+    },
+    {
+      "id": "summer-dinner-contrast",
+      "domain": "style-recipe",
+      "claim": "A summer dinner linen outfit pairing a sage green relaxed-fit shirt with cream wide-leg trousers creates an elegant, cooling silhouette with subtle color sophistication",
+      "rationale": "Soft earth tones suit evening contexts while linen's breathability addresses warm-weather entertaining. Wide-leg trousers elongate proportions while maintaining movement. Relaxed fit prevents overconstruction that contradicts linen's drape qualities.",
+      "constraints": [
+        "Color family selections require vendor confirmation of actual product dye lots",
+        "Wide-leg trouser construction pending verification of appropriate hem and inseam options",
+        "Sage green undertone consistency unconfirmed across different linen suppliers",
+        "Visual pairing contingent on personal skin tone compatibility"
+      ],
+      "evidenceNeeded": [
+        "Swatch comparisons of sage green and cream linen from actual production batches",
+        "Styling photography from evening wear contexts",
+        "Fabric care guidance specific to these color formulations",
+        "Seasonal availability confirmation from manufacturers"
+      ]
+    },
+    {
+      "id": "resort-layered-palms",
+      "domain": "style-recipe",
+      "claim": "A resort linen outfit utilizing a lightweight cream base shirt layered under an open ecru overshirt with soft taupe pull-on trousers provides versatile warm-climate layering",
+      "rationale": "Multi-piece construction allows thermal adjustment in variable resort environments. Neutral progression creates visual interest while maintaining cohesion. Pull-on construction reduces friction and maintenance needs in casual resort settings.",
+      "constraints": [
+        "Layering proportions contingent on individual frame and personal layering preferences",
+        "Taupe undertone availability unconfirmed across linen sources",
+        "Pull-on trouser construction quality standards require supplier verification",
+        "Overshirt weight and opacity pending actual product evaluation"
+      ],
+      "evidenceNeeded": [
+        "Manufacturer specifications on yarn weight for each garment component",
+        "Documentation of color matching across multiple separate pieces from different suppliers",
+        "Resort environment styling case studies with linen layering combinations",
+        "Care instructions for maintaining neutrals through resort laundry scenarios"
+      ]
+    },
+    {
+      "id": "wedding-guest-structured",
+      "domain": "style-recipe",
+      "claim": "A wedding guest linen outfit combining a tailored blush-pink shirt with high-waisted pleated neutral trousers delivers understated elegance with refined proportions",
+      "rationale": "Blush pink adds celebratory warmth while remaining sophisticated. High-waisted silhouette with pleats creates structure that counteracts linen's natural relaxation, appropriate for formal occasions. Neutral trouser grounds the tonal shirt.",
+      "constraints": [
+        "Blush pink saturation and undertone pending color standard verification",
+        "Pleat construction quality and permanence unconfirmed without supplier testing data",
+        "High-waist placement varies by manufacturer and requires individual sizing confirmation",
+        "Occasion-appropriateness contingent on specific wedding dress code guidelines"
+      ],
+      "evidenceNeeded": [
+        "Swatch documentation of blush pink linen from intended supplier",
+        "Supplier data on pleat retention through washing cycles",
+        "Styling precedent in formal wedding guest contexts",
+        "Fabric weight specifications confirming structured appearance potential"
+      ]
+    },
+    {
+      "id": "festival-bold-movement",
+      "domain": "style-recipe",
+      "claim": "A festival linen outfit pairing a loose ochre button shirt with drawstring earth-tone trousers in relaxed fit creates freedom of movement and warm-toned visual energy",
+      "rationale": "Ochre's warm saturation photographs well in outdoor festival lighting. Loose silhouette and drawstring construction accommodate movement and comfort through long event days. Earth tones coordinate naturally without appearing matched.",
+      "constraints": [
+        "Ochre intensity and warmth pending actual dye lot review from suppliers",
+        "Drawstring construction functionality and comfort levels unconfirmed for extended wear",
+        "Loose fit proportions require personal silhouette assessment to avoid shapelessness",
+        "Festival context appropriateness varies by event type and venue"
+      ],
+      "evidenceNeeded": [
+        "Photographic documentation of ochre linen in natural outdoor lighting",
+        "Manufacturer testing data on drawstring durability and adjustment range",
+        "Styling examples from actual festival attendance scenarios",
+        "Feedback on comfort levels during extended wear periods"
+      ]
+    },
+    {
+      "id": "smart-casual-tonal",
+      "domain": "style-recipe",
+      "claim": "A smart casual linen outfit in monochromatic caramel tones—matching a fitted shirt with mid-rise slightly tapered trousers—delivers understated sophistication through tonal coordination",
+      "rationale": "Single-color approach simplifies styling while demonstrating intentionality. Caramel suits diverse skin tones and combines warmly with accessories. Fitted-to-tapered silhouette avoids shapelessness while respecting linen's movement qualities.",
+      "constraints": [
+        "Caramel undertone consistency unconfirmed across garment dyes from same or different suppliers",
+        "Fitted proportions at shirt require personal measurements to prevent overtightness",
+        "Mid-rise trouser placement compatibility varies by body type and personal preference",
+        "Tonal matching requires side-by-side color comparison between shirt and trouser samples"
+      ],
+      "evidenceNeeded": [
+        "Actual color swatches of both garments under various lighting conditions",
+        "Sizing guidance specific to fitted linen shirt construction",
+        "Style reference images showing similar tonal monochromatic combinations in practice",
+        "Feedback on color matching durability through multiple wash cycles"
+      ]
+    },
+    {
+      "id": "creative-pro-textured-layering",
+      "domain": "style-recipe",
+      "claim": "A creative professional outfit combining a textured linen shirt in charcoal with an open lightweight linen vest and neutral trouser creates dimensional visual interest while maintaining approachability",
+      "rationale": "Textured fabric adds visual sophistication beyond solid colors, signaling attention to craft. Vest layering introduces proportion play without formality burden. Charcoal reads professional while allowing personality expression through texture play.",
+      "constraints": [
+        "Textured linen weave construction and visual consistency pending supplier confirmation",
+        "Vest fit and proportion relative to shirt requires personal frame assessment",
+        "Charcoal depth and undertone unconfirmed across different linen production batches",
+        "Creative professional context varies significantly across different industries and roles"
+      ],
+      "evidenceNeeded": [
+        "High-resolution imagery of actual textile surface showing weave structure",
+        "Vest construction details and layering proportions with fitted garments underneath",
+        "Style documentation from creative professional environments (design, media, arts sectors)",
+        "Durability data for textured weave quality through repeated wear and washing"
+      ]
+    },
+    {
+      "id": "travel-packable-neutral",
+      "domain": "style-recipe",
+      "claim": "A travel linen outfit in reversible neutral tones—a white shirt pairing with stone-gray trousers in straight-leg cut—maximizes versatility and minimizes luggage space while maintaining wrinkle-appropriate aesthetics",
+      "rationale": "Neutral palette extends coordination range across multiple travel days. Straight-leg silhouette provides visual consistency and ease of fit across size variations. Linen's natural wrinkles align with traveler expectations, reducing maintenance burden versus rigid fabrics.",
+      "constraints": [
+        "Reversible construction viability and practicality pending actual product design verification",
+        "Stone gray undertone consistency unconfirmed across production",
+        "Straight-leg proportions may not suit all body types and travel footwear pairings",
+        "Packing efficiency gains contingent on garment weights and actual luggage capacity"
+      ],
+      "evidenceNeeded": [
+        "Specifications on reversible construction durability and comfort in wear",
+        "Documentation of actual packing volume and weight for travel scenarios",
+        "Styling versatility analysis across multiple day-outfit combinations",
+        "Feedback from actual travel contexts on wrinkle management and practical functionality"
+      ]
+    }
+  ],
+  "harvestDeploymentId": "dpl_4LwAVnoX768Nb8ytsEb8nvLHbm9T",
+  "humanReviewed": false
+}

@@ -1,0 +1,160 @@
+{
+  "version": "linen-earth-audited-knowledge-v1",
+  "domain": "shirt",
+  "status": "AI_AUDITED_HUMAN_REVIEW_REQUIRED",
+  "model": "claude-sonnet-5-5",
+  "usage": {
+    "input_tokens": 1800,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 3566,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "service_tier": "standard",
+    "inference_geo": "global"
+  },
+  "proposals": [
+    {
+      "id": "linen-collar-structure-conditional",
+      "domain": "shirt",
+      "claim": "On a linen shirt, collar construction (unlined/soft versus fused or lightly interlined) should be chosen to match the intended formality and how the collar must behave: unlined or lightly interlined collars suit a relaxed, open-neck look and collapse without a tie, while a tie-ready or collar-stay-dependent shirt needs added structure.",
+      "rationale": "Linen is crisp and wrinkles easily, so a soft collar will roll and crease, which is acceptable and often desirable in casual wear but undermines a tied look. Structure is a function of interlining and stays, not of the cloth alone. This replaces the original unsupported 'spread collars must not pair with unlined collars' prohibition with a conditional rule.",
+      "constraints": [
+        "Casual or open-neck intent tolerates and favours an unlined or soft collar",
+        "Tie-ready intent calls for interlining or removable stays",
+        "A wide spread collar is more forgiving when worn open if moderately structured, so this is guidance rather than a prohibition"
+      ],
+      "evidenceNeeded": [
+        "Tailor or garment inspection to confirm presence and type of interlining",
+        "Collar stay pocket check",
+        "Wear-testing of collar behaviour open versus tied",
+        "Maker construction specification"
+      ]
+    },
+    {
+      "id": "contrast-cuff-conditional-coordination",
+      "domain": "shirt",
+      "claim": "A contrast cuff (and optionally collar) is a deliberate stylistic choice; it works best when the contrast is clearly intentional, typically a solid or tone-on-tone difference with a consistent weave weight, and when it is repeated or echoed elsewhere (collar, placket, or pocket) rather than appearing on the cuff alone. Whether a contrast cuff suits a particular shirt is a matter of taste and context, not a hard rule.",
+      "rationale": "This merges the original duplicated 'collar-cuff contrast' claims and removes the unsupported assertion that contrast cuffs signal manufacturing error or mismatched assembly. Contrast trim is a long-established deliberate design device; the only reasonable caution is about legibility of intent and fabric-weight compatibility (a heavy contrast cloth on a light linen cuff can pucker or behave differently when laundered).",
+      "constraints": [
+        "Match fabric weight and shrinkage behaviour of contrast and body cloth",
+        "Judgement of visual balance is subjective and should not be treated as a defect test",
+        "Do not infer assembly error from contrast alone"
+      ],
+      "evidenceNeeded": [
+        "Fabric specification for both body and contrast cloths",
+        "Wash-shrinkage testing of both fabrics together",
+        "Tailor or designer review of overall composition",
+        "Wearer preference"
+      ]
+    },
+    {
+      "id": "hem-length-for-untucked-wear-conditional",
+      "domain": "shirt",
+      "claim": "A shirt intended to be worn untucked generally needs a shorter, often curved or shirt-tail hem than a shirt intended to be tucked, but the right length depends on the wearer's torso, trouser rise, and desired silhouette, so no fixed shortening in inches or centimetres should be assumed without fitting.",
+      "rationale": "The directional idea is plausible: tuck-in shirts are cut longer to stay anchored, while untucked shirts are shorter to avoid excess bulk at the hips. The original fixed '2-3 inch' figure is arbitrary and not trustworthy because it ignores body proportions and style, so it is rewritten as a conditional range determined by fitting.",
+      "constraints": [
+        "Treat the direction (shorter for untucked) as a guideline only",
+        "Final length to be set against wearer measurements and a typical outfit",
+        "Straight versus curved hem changes the effective visible length"
+      ],
+      "evidenceNeeded": [
+        "Tailor fitting on the actual wearer",
+        "Measurement of wearer torso length and typical trouser rise",
+        "Photographs of proposed length untucked and tucked in worn context (valid for judging proportion, not exact drape)"
+      ]
+    },
+    {
+      "id": "french-cuff-formality-conditional",
+      "domain": "shirt",
+      "claim": "French (double) cuffs are a formal, cufflink-closed design and are best suited to dressier shirts; on a relaxed or casual linen shirt a single (barrel) cuff is usually more coherent. Fit is a secondary factor: a fuller sleeve can accommodate a French cuff, but the cuff must still close at the wrist without gaping or excess bulk.",
+      "rationale": "This replaces the original claim that French cuffs are only compatible with slim or tailored fits. Cuff style is driven primarily by formality and wrist-closure geometry, not by overall body fit; relaxed or generously cut shirts can and do carry French cuffs. The honest constraint is cuff circumference and sleeve-to-cuff proportion.",
+      "constraints": [
+        "Requires cufflinks and a cuff that can be folded and secured at the wrist",
+        "Casual linen intent usually favours a barrel cuff",
+        "Sleeve fullness at the cuff opening must be managed with pleats or gathers so the cuff sits cleanly"
+      ],
+      "evidenceNeeded": [
+        "Wrist and cuff-opening measurements",
+        "Tailor review of sleeve-to-cuff proportion",
+        "Intended formality and occasion",
+        "Trial closure with cufflinks"
+      ]
+    },
+    {
+      "id": "sleeve-length-and-closure-clarity",
+      "domain": "shirt",
+      "claim": "A shirt should not be assumed to have a sleeve placket simply because it has a front button placket; short or half-sleeve designs normally end in a hem or simple turn-up rather than a cuff with a placket, while long sleeves have a cuff and a separate sleeve placket/gauntlet or a placketless alternative. Specify sleeve length and cuff termination explicitly for each design.",
+      "rationale": "The original 'button-through plackets on half-sleeves' claims conflated the front placket (the buttoned centre-front opening) with the sleeve placket (the small opening above the cuff on long sleeves). They are separate components and cannot be inferred from one another. A short sleeve has no sleeve placket function at all, so there is nothing to contradict, and the claims were rejected as category errors.",
+      "constraints": [
+        "Front placket and sleeve placket are independent constructions",
+        "Rolled long sleeves keep their cuff and sleeve placket intact",
+        "Termination of short sleeves (plain hem versus turned-up band) is a design choice"
+      ],
+      "evidenceNeeded": [
+        "Pattern or technical drawing showing sleeve length and termination",
+        "Clarification of which placket is meant (front closure versus sleeve opening)",
+        "Garment inspection"
+      ]
+    },
+    {
+      "id": "collar-proportion-versus-front-opening-conditional",
+      "domain": "shirt",
+      "claim": "Collar size and the visual weight of the front placket should be considered together as a proportion question, but any specific numeric limits (such as a particular collar spread paired with a particular placket width) are not reliable without fitting and should be set by a pattern-maker or tailor against the wearer's face, neck, and chest.",
+      "rationale": "This preserves the plausible kernel of the original 'narrow collar versus wide placket' claim (relative proportion matters visually) but rejects its fixed numbers (2.5 inch spread, 1.5 inch placket), which are unsupported thresholds. Proportion is relative to the wearer and cloth, and a wider placket can be a deliberate style (such as a grandad or banded-collar shirt).",
+      "constraints": [
+        "Avoid asserting universal dimensional cutoffs",
+        "Banded or collarless styles legitimately pair with distinctive placket treatments",
+        "Judge proportion on the actual wearer and in context"
+      ],
+      "evidenceNeeded": [
+        "Wearer face and neck measurements",
+        "Mock-up or toile of collar and placket combination",
+        "Photographs for relative proportion only, not exact measurements",
+        "Tailor or pattern-maker judgement"
+      ]
+    },
+    {
+      "id": "collar-structure-versus-body-fit-conditional",
+      "domain": "shirt",
+      "claim": "A collar's structure (soft versus fused or stayed) and the body fit are largely independent choices, though a heavily structured collar can look incongruous on a very loose, soft-cut body, and a soft collar can look underbuilt on a very sharp tailored body. Neck size and collar-to-neck fit matter more to how the collar sits than body volume does.",
+      "rationale": "This rewrites the original rule that structured collars only belong on fitted bodies and that oversized bodies cause collar separation or rolling. Collar sit is governed mainly by neck circumference, collar height, shoulder slope, and interlining, not by body looseness. Pairing structure with a relaxed body is a style decision, not a defect, and the original causal mechanism was unsupported.",
+      "constraints": [
+        "Collar neck size must match the wearer regardless of body fit",
+        "Heavy structure on linen may fight the cloth's natural softness",
+        "Treat harmony of structure and body as a taste matter, not a rule"
+      ],
+      "evidenceNeeded": [
+        "Neck measurement and collar fit trial",
+        "Garment construction details (interlining, stays, collar height)",
+        "Wear-testing to observe collar sit throughout the day",
+        "Tailor review"
+      ]
+    }
+  ],
+  "rejectedIds": [
+    "collar-cuff-contrast-compatibility",
+    "half-sleeve-placket-contradiction",
+    "shirt-length-tuck-protocol",
+    "narrow-collar-spread-limitation",
+    "french-cuff-fit-compatibility",
+    "contrast-cuff-collar-balance",
+    "button-through-half-sleeve-exclusion",
+    "structured-collar-fitted-body-rule"
+  ],
+  "reviewNotes": [
+    "All eight original claims are rejected as stated and replaced with conditional guidance; none is endorsed as written. All proposals remain awaiting human or tailor review.",
+    "Two original claims (half-sleeve-placket-contradiction and button-through-half-sleeve-exclusion) confused the front button placket with the sleeve placket and were collapsed into a single clarification rule; short sleeves do not have a sleeve-placket requirement to violate.",
+    "The two contrast-cuff claims were duplicates and are merged; the assertion that contrast cuffs indicate manufacturing error or incomplete review is rejected as unsupported.",
+    "Fixed numeric figures (2-3 inch hem shortening, 2.5 inch collar spread, 1.5 inch placket width) are rejected as untrustworthy arbitrary thresholds and replaced with fitting-based judgement.",
+    "Photographs can inform judgement of proportion and styling intent but cannot establish fibre composition, fibre origin, or exact drape; any such determinations require lab testing, supplier documentation, or physical handling by a tailor.",
+    "Collar-rolling and separation causal claims tied to body looseness were not accepted; collar sit depends chiefly on neck fit, collar height, shoulder slope, and interlining."
+  ],
+  "auditDeploymentId": "dpl_HucuuVJCVHyowMTxBhyicLMfevkK",
+  "humanReviewed": false
+}
