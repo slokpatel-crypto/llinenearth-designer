@@ -9,7 +9,7 @@ type Proposal={
 type KnowledgeGroup={domain:string;model?:string;source?:string;reviewNotes?:string[];proposals:Proposal[]};
 type KnowledgeLedger={
   configured:boolean;audited:KnowledgeGroup[];archive:KnowledgeGroup[];
-  reviews:Array<{id:string;payload:{proposalId?:string;task?:string;decision?:string;signedBy?:string;note?:string}}>;
+  reviews:Array<{id:string;payload:{proposalId?:string;task?:string;decision?:string;sourceTier?:string;signedBy?:string;note?:string}}>;
 };
 type Tier="audited"|"archive";
 const domains=["fabric","shirt","trouser","cross-garment","style-recipe","quality"] as const;
@@ -37,7 +37,7 @@ export default function AnthropicKnowledgeClient(){
  const selected=useMemo(()=>groups.find(g=>g.domain===domain),[groups,domain]);
  const count=groups.reduce((n,g)=>n+g.proposals.length,0);
  const reviewFor=(proposalId:string)=>{
-   return data?.reviews?.find(r=>r.payload.proposalId===proposalId&&r.payload.task===domain)?.payload;
+   return data?.reviews?.find(r=>r.payload.proposalId===proposalId&&r.payload.task===domain&&r.payload.sourceTier===tier)?.payload;
  };
  async function review(proposalId:string,decision:"approved_as_proposal"|"rejected"){
    if(!data?.configured)return;
@@ -49,7 +49,7 @@ export default function AnthropicKnowledgeClient(){
    try{
      const response=await fetch("/api/operator/anthropic-knowledge",{
        method:"POST",headers:{"content-type":"application/json"},credentials:"same-origin",
-       body:JSON.stringify({task:domain,proposalId,decision,signedBy:signedBy.trim(),note:note.trim()})
+       body:JSON.stringify({task:domain,proposalId,decision,sourceTier:tier,signedBy:signedBy.trim(),note:note.trim()})
      });
      if(!response.ok)throw Error("Could not save this human review.");
      setActive(null);setNote("");setMessage("Review recorded. Live garment rules were not changed.");
