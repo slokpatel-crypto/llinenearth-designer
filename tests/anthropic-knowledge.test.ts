@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { parseAnthropicEditorialIdeas, maybeEnrichStyleDirectorLooks } from "../src/lib/designer/anthropic-editorial.ts";
+// @ts-ignore -- standalone operational .mjs CLI intentionally has no TS declaration
 import { KNOWLEDGE_PACKS, validatePack, runHarvest } from "../scripts/harvest-anthropic-knowledge.mjs";
 import type { StyleDirectorLook } from "../src/lib/style-director-agent.ts";
 
