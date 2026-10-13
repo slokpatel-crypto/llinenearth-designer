@@ -1,0 +1,171 @@
+{
+  "version": "linen-earth-audited-knowledge-v1",
+  "domain": "quality",
+  "status": "AI_AUDITED_HUMAN_REVIEW_REQUIRED",
+  "model": "claude-sonnet-5-5",
+  "usage": {
+    "input_tokens": 1775,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 3333,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "service_tier": "standard",
+    "inference_geo": "global"
+  },
+  "proposals": [
+    {
+      "id": "fibre-composition-conditional",
+      "domain": "quality",
+      "claim": "Treat any fibre-composition statement (linen, linen blend, silk-linen, etc.) as unverified unless backed by a care label plus mill or lab documentation. Photos and handling cannot establish fibre content or origin.",
+      "rationale": "Linen can be visually and tactilely mimicked by linen-look viscose, cotton slub or blends. Heavy slubbiness, crispness and wrinkling are suggestive only. Silk is not a plausible default for a linen-menswear brief, so a bare '100% silk' label is a red flag to query, not an assumption to accept.",
+      "constraints": [
+        "Applies to any composition claim, including the original silk claim",
+        "Lab testing (microscopy or chemical/burn-test equivalents) is proportionate only for high-value or disputed pieces",
+        "Do not infer origin (e.g. Belgian or Irish flax) from appearance"
+      ],
+      "evidenceNeeded": [
+        "Sewn-in care label and swing-tag composition",
+        "Mill certificate or supplier spec sheet, or an independent lab fibre report",
+        "Fabric weight (gsm) and weave details from the supplier"
+      ]
+    },
+    {
+      "id": "stripe-matching-conditional",
+      "domain": "quality",
+      "claim": "On striped linen, judge pattern matching at the seams that matter (centre front, side seams, pocket, yoke, sleeve-to-body) and set tolerance as a practical visual-alignment criterion. Do not rely on a micro-tolerance such as ±0.5mm on a repeat.",
+      "rationale": "Linen's slubs, loose weave and relaxed grain make sub-millimetre stripe tolerances unrealistic, and stripes shift with seam allowance, pressing and washing. The original ±0.5mm claim is false precision. The valid concern is whether stripes visibly align and run straight across seams.",
+      "constraints": [
+        "Stripe repeat width should be measured on the flat cloth, not on a worn garment",
+        "Expect some drift in loosely woven or slubbed linen",
+        "Tolerance is a tailor's judgement call per seam, not a universal number"
+      ],
+      "evidenceNeeded": [
+        "Flat measurement of the stripe repeat on the fabric before cutting",
+        "Close-up photos of matched seams under neutral light",
+        "Tailor's stated matching policy for the garment"
+      ]
+    },
+    {
+      "id": "colour-match-conditional",
+      "domain": "quality",
+      "claim": "Treat colour matching as conditional on stated viewing conditions. Photos and uncontrolled screens are unreliable for judging linen colour. Pantone or other references are guides, not proof, unless measured instrumentally.",
+      "rationale": "Linen's uneven yarn and matte texture shift apparent colour with light, and camera white balance and screen calibration further distort it. Colour naming from photos should be hedged. Without a spectrophotometer reading or a controlled-light comparison against a physical swatch, a match claim is subjective.",
+      "constraints": [
+        "Compare against a physical swatch, not a screen image",
+        "Specify the lighting (e.g. D65 or north daylight) for any acceptance check",
+        "Garment-dyed or washed linen may legitimately vary between pieces"
+      ],
+      "evidenceNeeded": [
+        "Physical reference swatch",
+        "Spectrophotometer delta-E reading if a hard tolerance is required",
+        "Photos with a grey card or colour reference in the same frame"
+      ]
+    },
+    {
+      "id": "trouser-fit-drape-conditional",
+      "domain": "quality",
+      "claim": "Judge linen trouser seat and leg drape in person, on the intended wearer, in the stated fabric weight. Never certify 'optimal' drape from photos. Fit guidance is conditional on body shape, cloth weight and intended wear.",
+      "rationale": "Drape depends on gsm, weave, wearer's seat and thigh shape, and how much linen creases when seated. Exact drape cannot be read from a flat or posed image. Arbitrary rise figures in cm are not trustworthy, so rise should be assessed relative to the wearer's waist and seat, not against a generic number.",
+      "constraints": [
+        "Linen will crease and relax with wear, so assess fit after seated movement",
+        "Lighter linen drapes more fluidly, heavier linen holds shape, so the same cut reads differently",
+        "Avoid universal rise or seat measurements"
+      ],
+      "evidenceNeeded": [
+        "Fitting on the actual wearer, standing and seated",
+        "Fabric weight (gsm) and weave",
+        "Tailor's own measured rise and seat taken from the wearer"
+      ]
+    },
+    {
+      "id": "collar-tie-untucked-conflict",
+      "domain": "quality",
+      "claim": "A shirt collar cannot be assumed to serve both tie-wearing and open or untucked wear equally. Collar stand height, point length and interlining decide which mode it favours, and linen's softness limits structure.",
+      "rationale": "A tie needs enough stand and collar spread to hold the knot and cover the shirt neckband. Open-collar wear favours a lower stand and a softer, rolling collar. Unlined or lightly fused linen collars will collapse under a tie, while firmer ones sit stiffly open. The original claim ignores this trade-off.",
+      "constraints": [
+        "The 'tucked' vs 'untucked' distinction concerns shirt hem length and is separate from collar function",
+        "State the primary intended mode rather than claiming both",
+        "Interlining choice (none, light, firm) changes the answer"
+      ],
+      "evidenceNeeded": [
+        "Collar stand height and point length in measured mm",
+        "Interlining type and whether the collar is fused or floating",
+        "Try-on test with and without a tie"
+      ]
+    },
+    {
+      "id": "cuff-sleeve-feature-conflict",
+      "domain": "quality",
+      "claim": "A short-sleeve shirt cannot have a French (double) cuff. Treat any such listing as a specification error. Do not confuse cuffs with the front button placket, which is a separate part, and note that buttons on the shirt front are not sleeve plackets.",
+      "rationale": "A French cuff is a fold-back wrist cuff closed with cufflinks, so it only exists on long sleeves. Short sleeves end above the wrist, with a plain hem or a turned cuff at most. The earlier claim either mislabels the garment or describes something physically impossible. Front-placket buttons also must not be mistaken for a sleeve placket (the vent and placket at the cuff).",
+      "constraints": [
+        "Rolled or turn-up short sleeves are not French cuffs",
+        "Cufflink holes or double-fold cuffs require a wrist-length sleeve",
+        "Check front placket, sleeve placket and cuff as three separate features"
+      ],
+      "evidenceNeeded": [
+        "Garment spec sheet naming sleeve length and cuff type",
+        "Photos of the sleeve end and wrist-area construction",
+        "Clarification from the maker if the listing is contradictory"
+      ]
+    },
+    {
+      "id": "trouser-length-break-conditional",
+      "domain": "quality",
+      "claim": "Describe trouser hem as either cropped (hem clearly above the shoe or ankle, little or no break) or full break (hem rests on the shoe with a fold), never both. Judge by hem position relative to the shoe on the wearer, not by a generic cm-rise figure.",
+      "rationale": "Cropped and full break are mutually exclusive hem outcomes. Linen's softness causes a slightly different break when seated or after washing and relaxation, so finished length should account for that. Arbitrary rise or length numbers in cm are untrustworthy because they ignore body proportion and shoe height.",
+      "constraints": [
+        "Pin hem against the intended shoe, not a different one",
+        "Allow for linen relaxing or shrinking after wash",
+        "Vary hem choice by silhouette (tapered vs straight)"
+      ],
+      "evidenceNeeded": [
+        "Hem length measured on the wearer in the intended shoes",
+        "Pre- and post-wash length for the actual fabric",
+        "Tailor's marked hem with break type stated"
+      ]
+    },
+    {
+      "id": "acceptance-criteria-conditional",
+      "domain": "quality",
+      "claim": "Before commissioning or accepting linen menswear, agree written, checkable acceptance criteria between owner and tailor (fabric spec, seam matching, hem, fit-on-body, tolerance for linen creasing). Awaiting human or tailor review for all thresholds.",
+      "rationale": "Without a pre-agreed standard, owner and tailor judge by different, subjective bars, and linen's natural slubs and creasing make 'defects' ambiguous. The original point is sound in principle but vague. A short documented checklist with measurement points and a fitting step resolves disputes.",
+      "constraints": [
+        "Criteria must distinguish inherent linen character (slubs, creasing) from true defects (skipped stitches, misaligned seams)",
+        "Final thresholds are set by the tailor and owner, not by this advice",
+        "Dispute handling (remake, adjust, refund) should be agreed up front"
+      ],
+      "evidenceNeeded": [
+        "Written spec or checklist signed before cutting",
+        "Fitting notes from at least one in-person try-on",
+        "Agreed definition of acceptable vs rejectable flaws"
+      ]
+    }
+  ],
+  "rejectedIds": [
+    "unverifiable-fiber-claim",
+    "stripe-repeat-tolerance",
+    "color-match-calibration",
+    "trouser-seat-drape",
+    "tucked-collar-conflict",
+    "short-sleeve-french-cuff",
+    "cropped-break-definition",
+    "owner-tailor-acceptance"
+  ],
+  "reviewNotes": [
+    "All eight original ids are rejected as written: they are untested assertions or false-precision specs, and the rewritten rules replace them.",
+    "The silk claim was dropped as a default because it is implausible for a linen menswear brief; the corrected rule treats any composition claim as unverified until documented.",
+    "Photos cannot establish fibre composition, origin or exact drape, and this is stated explicitly in the relevant rules.",
+    "The ±0.5mm stripe tolerance and any cm-rise figures were rejected as untrustworthy for slubbed, relaxing linen.",
+    "The short-sleeve French cuff claim was kept only as a flagged specification error. Front-shirt buttons are not sleeve plackets, and the rule keeps these features separate.",
+    "All rules are conditional guidance only and remain awaiting human or tailor review; none are certified."
+  ],
+  "auditDeploymentId": "dpl_HucuuVJCVHyowMTxBhyicLMfevkK",
+  "humanReviewed": false
+}
