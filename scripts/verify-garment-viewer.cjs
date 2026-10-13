@@ -156,7 +156,15 @@ async function verifyViewport(browser, width) {
       assert.equal(materials.filter(value=>value===name).length,1,"prototype material wiring: "+name);
     }
     for(const [label,expectedView] of [["3/4","three-quarter"],["Side","side"],["Back","back"],["Front","front"]]){
-      await page.getByRole("button",{name:label,exact:true}).click();
+      const button=page.getByRole("button",{name:label,exact:true});
+      await button.scrollIntoViewIfNeeded();
+      assert.ok(await button.isVisible() && await button.isEnabled(),"camera control must be interactable: "+label);
+      const bounds=await button.boundingBox();
+      assert.ok(bounds && bounds.width>0 && bounds.height>0,"camera control needs a real hit target: "+label);
+      // A real pointer click still tests the visible control, but unlike
+      // Locator.click it does not wait for unrelated Next/model-viewer
+      // navigation bookkeeping. The DOM state assertion remains mandatory.
+      await page.mouse.click(bounds.x+bounds.width/2,bounds.y+bounds.height/2);
       await page.waitForFunction(view=>document.querySelector(".garmentViewerShell")?.getAttribute("data-active-view")===view,
         expectedView,{timeout:30000});
     }
