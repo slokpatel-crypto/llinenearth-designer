@@ -123,6 +123,12 @@ test("source-locked garment drape only adds bounded unverified candidate geometr
   assert(source.includes('"ShirtTorsoFabric": lambda p: z(0.615) <= p.z <= z(0.875)'));
 
   assert(source.includes("LE_CONTACT_FACE_REFINEMENT"));
+  for(const token of [
+    "--hem-taper-fraction","taper_candidate_trouser_hem",
+    "linen_earth_hem_taper_candidate_max_move_mm",
+    "linen_earth_hem_taper_candidate_fraction",
+    "Candidate hem taper must be finite and within 0 to 12 percent."
+  ]) assert(source.includes(token),token);
   for(const field of ["remainingContactFaceCount","remainingContactHeightDeciles","remainingContactLateralZones","remainingContactSampleWorldMetres"]) assert(source.includes(field),field);
   assert(math.includes("MAX_PREVIEW_RELIEF_MM = 6.0"));
   assert(math.includes("_edge_fade"));
