@@ -1,0 +1,150 @@
+{
+  "version": "linen-earth-anthropic-proposals-v1",
+  "domain": "shirt",
+  "status": "UNVERIFIED_PROPOSAL",
+  "model": "claude-haiku-4-5-20251001",
+  "usage": {
+    "input_tokens": 503,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 1106,
+    "service_tier": "standard",
+    "inference_geo": "not_available"
+  },
+  "proposals": [
+    {
+      "id": "collar-cuff-contrast-compatibility",
+      "domain": "shirt",
+      "claim": "Spread collar shirts should not pair contrast cuffs with unlined collar construction",
+      "rationale": "Spread collars with wider angles require balanced visual weight; unlined collars appear flat and delicate while contrast cuffs draw attention downward, creating visual discord and suggesting mismatched garment assembly",
+      "constraints": [
+        "Requires documentation of collar construction methods (lined vs unlined)",
+        "Requires visual design guidelines or historical construction standards",
+        "Needs manufacturer assembly specifications"
+      ],
+      "evidenceNeeded": [
+        "Collar lining technical specifications",
+        "Design precedent documentation",
+        "Quality control assembly guidelines"
+      ]
+    },
+    {
+      "id": "half-sleeve-placket-contradiction",
+      "domain": "shirt",
+      "claim": "Half-sleeve or rolled-sleeve designs should not feature button-through plackets designed for full-length sleeves",
+      "rationale": "Button-through plackets are engineered for continuous arm coverage; half-sleeves expose forearm and create non-functional placket segments, indicating design misalignment or incomplete pattern grading",
+      "constraints": [
+        "Requires sleeve length specifications and measurements",
+        "Requires placket design documentation",
+        "Needs pattern grading records"
+      ],
+      "evidenceNeeded": [
+        "Sleeve length technical specifications",
+        "Placket construction engineering drawings",
+        "Pattern grading documentation"
+      ]
+    },
+    {
+      "id": "shirt-length-tuck-protocol",
+      "domain": "shirt",
+      "claim": "Shirts designed for untucked wear should measure 2-3 inches shorter than tucked-fit equivalents to maintain proportional silhouettes",
+      "rationale": "Untucked shirts require shorter hem lengths to avoid overwhelming proportions; equal length creates excess fabric and visual bulk, indicating design specification mismatch",
+      "constraints": [
+        "Requires documented measurement standards for tucked vs untucked styles",
+        "Needs size chart specifications for different wear styles",
+        "Requires visual proportion guidelines"
+      ],
+      "evidenceNeeded": [
+        "Size chart documentation by wear style",
+        "Design specification sheets",
+        "Proportion ratio standards"
+      ]
+    },
+    {
+      "id": "narrow-collar-spread-limitation",
+      "domain": "shirt",
+      "claim": "Narrow collar styles (under 2.5 inches spread) should not be paired with wide button-through plackets exceeding 1.5 inches width",
+      "rationale": "Narrow collars create delicate visual framing; wide plackets dominate the front closure area, causing proportional imbalance and suggesting incomplete design coordination",
+      "constraints": [
+        "Requires collar spread measurement specifications",
+        "Requires placket width technical standards",
+        "Needs proportion ratio documentation"
+      ],
+      "evidenceNeeded": [
+        "Collar spread measurements and standards",
+        "Placket width specifications",
+        "Design proportion guidelines"
+      ]
+    },
+    {
+      "id": "french-cuff-fit-compatibility",
+      "domain": "shirt",
+      "claim": "French cuffs should only appear on tailored or slim-fit shirts; they are incompatible with oversized or relaxed-fit constructions",
+      "rationale": "French cuffs require precise wrist measurement alignment and crisp cuff stands; oversized sleeves prevent proper cuff closure and appearance, indicating misaligned design intent",
+      "constraints": [
+        "Requires fit category definitions and specifications",
+        "Requires sleeve taper measurements",
+        "Needs cuff closure technical requirements"
+      ],
+      "evidenceNeeded": [
+        "Fit category standards documentation",
+        "Sleeve taper specifications by fit type",
+        "Cuff closure and function requirements"
+      ]
+    },
+    {
+      "id": "contrast-cuff-collar-balance",
+      "domain": "shirt",
+      "claim": "Contrast cuffs must coordinate with collar treatment; solid-color unlined collars should not pair with contrast cuffs featuring patterns or different weaves",
+      "rationale": "Visual balance requires coordinated design; mismatched treatments between collar and cuff suggest incomplete design review or manufacturing error",
+      "constraints": [
+        "Requires collar construction specifications",
+        "Requires cuff fabric and pattern documentation",
+        "Needs design coordination guidelines"
+      ],
+      "evidenceNeeded": [
+        "Collar fabric and construction standards",
+        "Cuff treatment specifications",
+        "Design coordination principles"
+      ]
+    },
+    {
+      "id": "button-through-half-sleeve-exclusion",
+      "domain": "shirt",
+      "claim": "Half-sleeve constructions (finished at mid-forearm) should utilize cuff-band closures only, never button-through plackets",
+      "rationale": "Button-through plackets require extended sleeve coverage for functional button placement; half-sleeves cannot accommodate proper button placement, indicating design incompatibility",
+      "constraints": [
+        "Requires sleeve length definitions",
+        "Requires button placement specifications",
+        "Needs closure method engineering documentation"
+      ],
+      "evidenceNeeded": [
+        "Sleeve length category standards",
+        "Button placement technical specifications",
+        "Closure method engineering requirements"
+      ]
+    },
+    {
+      "id": "structured-collar-fitted-body-rule",
+      "domain": "shirt",
+      "claim": "Structured, heavily-starched collars should only appear on fitted or tailored shirt bodies, not on relaxed or oversized cuts",
+      "rationale": "Structured collars require precise shoulder and neck measurements to sit properly; oversized bodies create collar separation and rolling, indicating foundational design mismatch",
+      "constraints": [
+        "Requires collar starch and stiffness specifications",
+        "Requires fit category and body measurement standards",
+        "Needs collar stability technical requirements"
+      ],
+      "evidenceNeeded": [
+        "Collar starch specifications and standards",
+        "Fit category body measurement ranges",
+        "Collar stability and performance requirements"
+      ]
+    }
+  ],
+  "harvestDeploymentId": "dpl_4LwAVnoX768Nb8ytsEb8nvLHbm9T",
+  "humanReviewed": false
+}
