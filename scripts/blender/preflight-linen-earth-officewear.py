@@ -76,7 +76,27 @@ def evaluated_mesh_stats(obj):
         degenerate = sum(1 for polygon in mesh.polygons if not math.isfinite(polygon.area) or polygon.area <= 1e-10)
         uv_layers = len(mesh.uv_layers)
         uv_name = mesh.uv_layers.active.name if mesh.uv_layers.active else None
+        # Face-count and a named UV channel alone do not establish fabric
+        # repeat viability. Vertical projected front/back UVs commonly
+        # collapse at cloth sides, and can silently compress stripes.
+        uv_collapsed = 0
+        uv_nonfinite = 0
+        uv_channel = mesh.uv_layers.active
+        if uv_channel is not None:
+            for triangle in mesh.loop_triangles:
+                coords = [uv_channel.data[loop_idx].uv for loop_idx in triangle.loops]
+                if any(not math.isfinite(axis) for uv in coords for axis in uv):
+                    uv_nonfinite += 1
+                    continue
+                dux = coords[1].x - coords[0].x
+                duy = coords[1].y - coords[0].y
+                dvx = coords[2].x - coords[0].x
+                dvy = coords[2].y - coords[0].y
+                if abs(dux * dvy - duy * dvx) <= 1e-10:
+                    uv_collapsed += 1
         return {
+            "uvCollapsedTriangles": uv_collapsed,
+            "uvNonFiniteTriangles": uv_nonfinite,
             "vertices": vertices,
             "polygons": polygons,
             "triangles": triangles,
@@ -93,12 +113,33 @@ def material_slot_names(obj):
     return [slot.material.name if slot.material else "" for slot in obj.material_slots]
 
 
+def evaluated_world_bvh(obj, depsgraph, epsilon=0.0005):
+    """Construct a world-space BVH so translated source bodies and garment
+    meshes with identity transforms can be compared in the SAME frame.
+
+    BVHTree.FromObject is defined in object-local space; testing a
+    downloaded/normalized scan against a world-authored garment with two
+    local-space BVHs reports invalid collision evidence.
+    """
+    evaluated = obj.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        transform = evaluated.matrix_world
+        vertices = [transform @ vertex.co for vertex in mesh.vertices]
+        polygons = [tuple(polygon.vertices) for polygon in mesh.polygons]
+        if not vertices or not polygons:
+            return None
+        return BVHTree.FromPolygons(vertices, polygons, all_triangles=False, epsilon=epsilon)
+    finally:
+        evaluated.to_mesh_clear()
+
+
 def intersection_pair_count(left, right):
     if left is None or right is None or left.type != "MESH" or right.type != "MESH":
         return None
     depsgraph = bpy.context.evaluated_depsgraph_get()
-    left_tree = BVHTree.FromObject(left, depsgraph, epsilon=0.0005)
-    right_tree = BVHTree.FromObject(right, depsgraph, epsilon=0.0005)
+    left_tree = evaluated_world_bvh(left, depsgraph)
+    right_tree = evaluated_world_bvh(right, depsgraph)
     if left_tree is None or right_tree is None:
         return None
     return len(left_tree.overlap(right_tree))
@@ -403,6 +444,15 @@ def main():
             reasons.append(f"{name} has empty or non-renderable geometry.")
         if stats["uvLayers"] <= 0 or not stats["activeUv"]:
             reasons.append(f"{name} needs an active UV map.")
+        if stats["uvNonFiniteTriangles"] > 0:
+            reasons.append(
+                f"{name} has {stats['uvNonFiniteTriangles']} triangles with non-finite UV coordinates."
+            )
+        if stats["uvCollapsedTriangles"] > 0:
+            reasons.append(
+                f"{name} has {stats['uvCollapsedTriangles']} collapsed UV triangles; "
+                "no real stripe/check physical pattern scale can be approved from this surface."
+            )
         if stats["degenerateRatio"] > MAX_DEGENERATE_FACE_RATIO:
             reasons.append(
                 f"{name} has too many zero-area/degenerate faces: "
@@ -418,6 +468,10 @@ def main():
             warnings.append(
                 f"{name} does not yet carry its canonical material slot name; exporter will replace it."
             )
+        # Every real sampled garment must appear in the evidence receipt.
+        # The previous report silently emitted objects={} despite verifying
+        # six meshes, concealing panel-level topology/UV/material statistics.
+        objects[name] = entry
 
     if total_triangles > MAX_TOTAL_TRIANGLES:
         reasons.append(
@@ -461,6 +515,82 @@ def main():
                 "clean the waist overlap before production export."
             )
 
+    # The source body's hands descend to the same height as the upper legs.
+    # A z-only, left/right split of the scan deceptively exports hand surfaces
+    # as trouser cloth. Audit lateral hand-space intrusion independently from
+    # ordinary BVH contact and silhouette counts.
+    anatomy_region_hits = {}
+    if body is not None and body_height:
+        floor_z = min(point.z for point in world_bounds(body))
+        for panel in ("TrouserLegLFabric", "TrouserLegRFabric"):
+            garment = bpy.data.objects.get(panel)
+            hand_zone_vertices = []
+            if garment is not None and garment.type == "MESH":
+                depsgraph = bpy.context.evaluated_depsgraph_get()
+                evaluated = garment.evaluated_get(depsgraph)
+                mesh = evaluated.to_mesh()
+                try:
+                    for vert in mesh.vertices:
+                        world = evaluated.matrix_world @ vert.co
+                        z_ratio = (world.z - floor_z) / body_height
+                        if 0.44 <= z_ratio <= 0.56 and abs(world.x) > 0.265:
+                            hand_zone_vertices.append(vert.index)
+                finally:
+                    evaluated.to_mesh_clear()
+            anatomy_region_hits[panel] = len(hand_zone_vertices)
+            if hand_zone_vertices:
+                reasons.append(
+                    f"{panel} exports {len(hand_zone_vertices)} vertices into the hands' "
+                    "lateral zone; a trouser mesh may not contain glove/hand faces."
+                )
+
+    # A narrow cylindrical trouser band can hit the correct hem width while
+    # leaving uncovered calf/shin skin in side and back views. Independently
+    # sample scan vertices in three lower-leg bands against REAL world-space
+    # trouser BVHs. This is an anatomical coverage check, not fabric drape.
+    lower_leg_coverage = {}
+    if body is not None and body_height:
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        evaluated_body = body.evaluated_get(depsgraph)
+        body_mesh = evaluated_body.to_mesh()
+        try:
+            skin_points = [evaluated_body.matrix_world @ vertex.co for vertex in body_mesh.vertices]
+        finally:
+            evaluated_body.to_mesh_clear()
+        floor_z = min(point.z for point in world_bounds(body))
+        for name, side in (("TrouserLegLFabric", -1), ("TrouserLegRFabric", 1)):
+            cloth = bpy.data.objects.get(name)
+            cloth_bvh = evaluated_world_bvh(cloth, depsgraph) if cloth and cloth.type == "MESH" else None
+            samples = 0
+            exposed = 0
+            largest_gap_mm = 0.0
+            if cloth_bvh is not None:
+                for point in skin_points:
+                    z_ratio = (point.z - floor_z) / body_height
+                    signed_x = point.x * side
+                    if not (0.12 <= z_ratio <= 0.39 and 0.035 <= signed_x <= 0.38):
+                        continue
+                    # Deterministic stride keeps native Blender CI bounded.
+                    samples += 1
+                    nearest = cloth_bvh.find_nearest(point)
+                    distance_mm = nearest[3] * 1000 if nearest else float("inf")
+                    largest_gap_mm = max(largest_gap_mm, distance_mm)
+                    if distance_mm > 32.0:
+                        exposed += 1
+            lower_leg_coverage[name] = {
+                "sampledSkinVertices": samples,
+                "uncoveredOver32Mm": exposed,
+                "maxNearestClothGapMm": round(largest_gap_mm, 2) if math.isfinite(largest_gap_mm) else None,
+                "thresholdMm": 32.0,
+            }
+            if samples < 20:
+                reasons.append(f"{name} coverage QA did not find enough independent calf/shin skin samples.")
+            elif exposed:
+                reasons.append(
+                    f"{name} leaves {exposed}/{samples} sampled calf/shin body vertices "
+                    "more than 32 mm from actual trouser geometry."
+                )
+
     report = {
         "gate": "linen-earth-officewear-scene-preflight-v1",
         "ready": len(reasons) == 0,
@@ -469,6 +599,14 @@ def main():
             "id": identity_id,
             "referenceImage": identity_reference,
             "locked": identity_locked,
+            # Source identity parity is a separate human review gate; the
+            # canonical photo reference does not prove scan-model sameness.
+            "sourcePhotoVisualParityApproved": bool(
+                bpy.context.scene.get("linen_earth_source_photo_visual_parity_approved", False)
+            ),
+            "sourcePhotoVisualParityStatus": str(
+                bpy.context.scene.get("linen_earth_source_photo_visual_parity_status", "not_verified")
+            ),
             "expectedId": MODEL_IDENTITY_ID,
             "physicalTargetsMm": identity_targets,
             "guideCollection": IDENTITY_GUIDE_COLLECTION,
@@ -477,6 +615,8 @@ def main():
         "identityGuideMeasurementsMm": guide_measurements,
         "identityFitMeasurementsMm": identity_measurements,
         "boundaryIntersections": boundary_intersections,
+        "anatomicalRegionIntrusions": anatomy_region_hits,
+        "lowerLegCoverage": lower_leg_coverage,
         "requiredGarmentObjects": list(GARMENT_OBJECTS),
         "objects": objects,
         "totals": {

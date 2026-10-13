@@ -96,6 +96,7 @@ def add_area(name, location, power, size, target):
 def setup_studio(mid_height, floor_z, options):
     scene = bpy.context.scene
     scene.render.engine = "BLENDER_EEVEE_NEXT"
+    scene.eevee.taa_render_samples = options.samples
     scene.render.resolution_x = options.width
     scene.render.resolution_y = options.height
     scene.render.resolution_percentage = 100
@@ -112,6 +113,27 @@ def setup_studio(mid_height, floor_z, options):
         world_background.inputs["Strength"].default_value = 0.8
     scene.render.image_settings.color_mode = "RGBA"
     scene.view_settings.view_transform = "AgX"
+
+    # QA-only diagnostic cloth colors distinguish the garment shells from
+    # imported skin. The file is NEVER saved: no customer swatch/color is
+    # fabricated or applied to the persistent source scene.
+    shirt_mat = material("LE_QA_UNVERIFIED_SHIRT", (0.22, 0.045, 0.072), 0.87)
+    trouser_mat = material("LE_QA_UNVERIFIED_TROUSERS", (0.055, 0.085, 0.155), 0.88)
+    body_mat = material("LE_QA_MATTE_BODY", (0.53, 0.51, 0.47), 0.94)
+    for name in GARMENT_OBJECTS:
+        obj = bpy.data.objects[name]
+        obj.data.materials.clear()
+        obj.data.materials.append(shirt_mat if name.startswith("Shirt") else trouser_mat)
+        # Scan polygons can retain indexes into old material slots. With just
+        # one QA slot, out-of-range polygon indices render misleading white
+        # body/shirt patches instead of the intended diagnostic garment color.
+        for polygon in obj.data.polygons:
+            polygon.material_index = 0
+    body_obj = bpy.data.objects["Body"]
+    body_obj.data.materials.clear()
+    body_obj.data.materials.append(body_mat)
+    for polygon in body_obj.data.polygons:
+        polygon.material_index = 0
 
     camera_data = bpy.data.cameras.new("LE_QA_TURNTABLE_CAMERA")
     camera = bpy.data.objects.new("LE_QA_TURNTABLE_CAMERA", camera_data)
@@ -149,6 +171,8 @@ def main():
         "sourceBlendSha256": hashlib.sha256(source.read_bytes()).hexdigest(),
         "identityLocked": True,
         "candidateOnly": True,
+        "diagnosticColorsOnly": True,
+        "supplierColorCalibration": False,
         "photographicMatchApproved": False,
         "realismApproved": False,
         "tailorApproved": False,

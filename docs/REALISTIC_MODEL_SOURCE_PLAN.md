@@ -235,3 +235,40 @@ This creates `artifacts/model-qa/linen-earth-model-front.png`, `linen-earth-mode
 The renderer refuses a missing/wrong identity lock, missing realistic Body mesh, incomplete six-panel garment scene or incorrect body height. It does not modify/save the original scene, substitute another person, fabricate hidden garment details, declare a measured cloth drape or claim any tailor approval.
 
 **These are inspection candidates, not finished production assets.** Compare all four images manually against the current `/designer/studio-tucked.webp` target, including neck, shoulder slope, wrists, hand clearance, tuck, seat/thigh, trouser break and back silhouette. Record evidence in the existing operator gates before promotion. Unmeasured fabric mechanical properties and supplier repeat width must remain unknown until provided.
+
+## October 12 — independent photo-versus-actual-3D rejection evidence
+
+The customer **must retain** the current original `/designer/studio-tucked.webp` photograph until genuine photo/3D identity equivalence is approved. The Blender CC0 "Body Male - Realistic" scan is an independently obtained **different** body source, despite having the same target height and copied identity metadata. **Model reference lock ≠ source-mesh visual parity.**
+
+Actual GitHub Actions native Blender candidate run 38274734800 generated front, 35°, side and back real-mesh images, a SHA-bound front-photo comparison, true evaluated-mesh preflight and the unapproved Blender scene artifact. The photo has a smooth **faceless mannequin**, fully constructed charcoal button-placket/collar/cuffs, tailored tucked shirt, straight taupe trousers and white shoes. The candidate has **anatomical human facial detail**, incomplete shirt tailoring with exposed waist/shoulder construction and bare feet. This is not an acceptable replacement for the existing model or a deployable photorealistic preview.
+
+The source-derived candidate's latest independent measurable outcomes (from 38274734800) are:
+
+- zero evaluated body contact pairs for both sleeves, trouser waist, both trouser legs, and the tucked shirt/trouser junction after strictly limited candidate-only movements;
+- **2,049 remaining shirt torso/body triangle intersection pairs** despite the hard 12-mm/vertex movement cap; do not expand the cap or misreport clearance;
+- cuffs **574.76 mm** apart versus the 500 ±36-mm existing target (not a pose match);
+- left/right hem widths **93.28 / 98.58 mm** versus the 64 ±28-mm locked targets;
+- no hand-as-trouser classification in the measured lateral QA zone;
+- full lower-leg scan coverage: 0/19,130 and 0/19,115 source vertices over the separate 32-mm gap threshold (10.07/10.32-mm maximum measured separation), but that does not establish exact trousers or physically validated fabric;
+- **21,036** garment triangles (within the mobile 220,000 budget), not proof of realistic garments or browser appearance.
+
+The front comparison is archived by `scripts/qa/model-reference-contact-sheet.py` as `original-vs-3d-UNAPPROVED.jpg` with SHA256 evidence manifest. This deliberately contains no "image matched" score or automatic human acceptance. The scanned-source scene stamps `linen_earth_source_photo_visual_parity_approved=False` separately from the scene's canonical reference lock. The user has not supplied an approved exact 3D master, independently verified hidden 3D views or real fabric mechanical tests. These are real external dependencies, not inferred from the photograph.
+
+Future engineering should derive legitimate collar, placket, cuff, shirt hem/tuck, waistband, fly, leg silhouette and shoes from the *approved same model and real tailoring pattern*, then prove body contacts and source/photo continuity. Do not keep adding random garment relief or coerce an unrelated scan to a superficial photographic match. Continue safe independent software QA; do not merge or deploy this rejected candidate.
+
+## Bounded six-panel surface relief — source-locked engineering candidate
+
+The Blender six-panel authoring helper now adds conservative **outward-only** microfold relief to the same source body mesh, leaving the faceless identity and camera landmarks unchanged. This is a reproducible geometric sculpt, **not measured linen physics or a sewn-cloth simulation**.
+
+```bash
+npm run garment:model-garments:author
+# Optional clean-shell comparison, without artificial microfolds:
+blender --background .cache/linen-earth/linen-earth-officewear-body-base.blend \
+  --python scripts/blender/author-linen-earth-officewear.py -- \
+  --output .cache/linen-earth/linen-earth-officewear-authored-clean.blend \
+  --candidate-relief-mm 0
+```
+
+Default candidate relief is bounded to 3 mm peak (allowed 0–6 mm) and fades to zero at the garment-panel borders to protect cuffs, tuck, ankle hems and seams. This is checked by Blender-independent Python tests in CI. Every garment panel is tagged `linen_earth_drape_method=unverified_art_directed_candidate_relief_v1`; the scene records `linen_earth_measured_fabric_physics=False`. **No physical GSM, bending, shear, shrinkage, stiffness, fabric repeat or drape calibration is inferred.** Outward-only movement must still pass the Blender BVH body and garment boundary inspection before export.
+
+The art-directed relief is strictly a candidate finishing step. Before release, use a supplier-specified mechanical textile profile, actual garment pattern geometry, sewn construction, fitted cloth simulation and independent four-angle tailor approval. The customer-facing 3D approval gate remains closed in the absence of that evidence.

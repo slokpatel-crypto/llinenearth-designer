@@ -1,0 +1,133 @@
+name: Linen Earth — Source-Locked 3D Candidate Evidence
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/blender/**'
+      - 'tests/python/**'
+      - 'tests/blender/**'
+      - 'scripts/qa/model-reference-contact-sheet.py'
+      - 'docs/REALISTIC_MODEL_SOURCE_PLAN.md'
+      - '.github/workflows/model-source-candidate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-3d-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  candidate:
+    name: Real Blender source / four-angle candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      LIBGL_ALWAYS_SOFTWARE: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify candidate math and Python syntax
+        run: |
+          python3 -m py_compile scripts/blender/*.py
+          python3 -m unittest discover -s tests/python -p 'test_*.py' -v
+
+      - name: Install headless Blender runtime dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libgl1-mesa-dri libegl1 libxi6 libxrender1 libxfixes3 \
+            libxxf86vm1 libxrandr2 libxinerama1 libxkbcommon0 libsm6 libglu1-mesa
+
+      - name: Download checksummed official Blender 4.5.14 LTS
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/linen-blender"
+          cd "$RUNNER_TEMP/linen-blender"
+          base="https://download.blender.org/release/Blender4.5"
+          archive="blender-4.5.14-linux-x64.tar.xz"
+          curl -fL --retry 3 --connect-timeout 30 -o "$archive" "$base/$archive"
+          test "$(stat -c%s "$archive")" -eq 378045212
+          curl -fL --retry 3 --connect-timeout 30 -o official.sha256 "$base/blender-4.5.14.sha256"
+          awk -v file="$archive" '$2 == file || $2 == "*" file { print $1 "  " file; found=1 } END { if (!found) exit 1 }' official.sha256 > wanted.sha256
+          test -s wanted.sha256
+          sha256sum --check wanted.sha256
+          tar -xf "$archive"
+          "$PWD/blender-4.5.14-linux-x64/blender" --background --factory-startup --python-expr "import bpy; print('BLENDER_SOURCE_QA_VERSION', bpy.app.version_string)"
+          echo "$PWD/blender-4.5.14-linux-x64" >> "$GITHUB_PATH"
+
+      - name: Verify independent Blender world-space contact regression
+        run: blender --background --factory-startup --python tests/blender/test_world_collision_bvh.py
+
+      - name: Verify Blender contact spatial evidence without changing geometry
+        run: blender --background --factory-startup --python tests/blender/test_contact_height_diagnostics.py
+
+      - name: Download pinned CC0 realistic human body source
+        run: npm run garment:model-base:fetch
+
+      - name: Build existing-model identity-locked body
+        run: npm run garment:model-body:prepare
+
+      - name: Verify photo lock does not approve a different CC0 model source
+        run: |
+          blender --background .cache/linen-earth/linen-earth-officewear-body-base.blend \
+            --python tests/blender/test_source_photo_identity_provenance.py
+
+      - name: Author body-attached candidate shirt / trouser relief
+        run: npm run garment:model-garments:author
+
+      - name: Check exact-source candidate geometry before expensive rendering
+        id: scene_preflight
+        continue-on-error: true
+        run: |
+          mkdir -p artifacts/model-qa
+          set -o pipefail
+          blender --background .cache/linen-earth/linen-earth-officewear-authored.blend \
+            --python scripts/blender/preflight-linen-earth-officewear.py \
+            | tee artifacts/model-qa/scene-preflight.log
+
+      - name: Render full four-angle QA for structurally passing candidate
+        if: steps.scene_preflight.outcome == 'success'
+        run: |
+          blender --background .cache/linen-earth/linen-earth-officewear-authored.blend \
+            --python scripts/blender/render-linen-earth-model-qa.py -- \
+            --output-dir artifacts/model-qa --width 576 --height 864 --samples 24
+
+      - name: Render diagnostic four-angle QA for rejected candidate
+        if: steps.scene_preflight.outcome != 'success'
+        run: |
+          blender --background .cache/linen-earth/linen-earth-officewear-authored.blend \
+            --python scripts/blender/render-linen-earth-model-qa.py -- \
+            --output-dir artifacts/model-qa --width 480 --height 640 --samples 8
+
+      - name: Archive honest photo-versus-3D comparison for owner review
+        if: always()
+        run: |
+          if [ ! -f artifacts/model-qa/linen-earth-model-front.png ]; then
+            echo "No valid front candidate frame; do not fabricate photo parity."
+            exit 1
+          fi
+          python3 -m venv "$RUNNER_TEMP/le-qa-pillow"
+          "$RUNNER_TEMP/le-qa-pillow/bin/python" -m pip install --quiet Pillow==11.3.0
+          "$RUNNER_TEMP/le-qa-pillow/bin/python" scripts/qa/model-reference-contact-sheet.py \
+            --reference public/designer/studio-tucked.webp \
+            --candidate artifacts/model-qa/linen-earth-model-front.png \
+            --output artifacts/model-qa/original-vs-3d-UNAPPROVED.jpg
+
+      - name: Keep production candidate gate closed on failed preflight
+        if: steps.scene_preflight.outcome != 'success'
+        run: |
+          echo "::error::Source candidate fails native Blender fit, silhouette, or collision preflight. Four-angle frames are REJECTED DIAGNOSTICS, not production approval."
+          exit 1
+
+      - name: Upload source-locked candidate images and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linen-earth-3d-source-candidate-${{ github.run_id }}
+          path: |
+            artifacts/model-qa/**
+            .cache/linen-earth/linen-earth-officewear-authored.blend
+          if-no-files-found: warn
+          retention-days: 14

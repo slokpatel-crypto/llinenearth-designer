@@ -111,8 +111,13 @@ def load_identity_spec(path: Path):
         "legCenterSpacing",
         "hemWidth",
     )
-    if not isinstance(targets, dict) or any(not isinstance(targets.get(key), (int, float)) or targets[key] <= 0 for key in required):
-        raise RuntimeError("Identity spec is missing positive physicalTargetsMm values.")
+    if not isinstance(targets, dict) or any(
+        type(targets.get(key)) not in (int, float)
+        or not math.isfinite(targets[key])
+        or targets[key] <= 0
+        for key in required
+    ):
+        raise RuntimeError("Identity spec is missing positive finite numeric physicalTargetsMm values.")
     return payload, resolved
 
 
@@ -125,6 +130,54 @@ def normalize_floor(objects, body):
     if abs(residual) > 0.002:
         raise RuntimeError(f"Body floor normalization failed: lowest point is {residual:.4f} m.")
     return min_z
+
+
+def normalize_body_origin_xy(objects, body):
+    """Center the ORIGINAL imported body in the shared photo/3D origin.
+
+    Blender's demo bundle stores multiple male and female assets on a grid;
+    their source object origins can be metres from world zero. Without this,
+    three camera angles can render completely blank despite a valid body mesh.
+    The same rigid translation is applied to every imported mesh/rig: no
+    proportions or character identity are fabricated or changed.
+    """
+    points = world_bounds(body)
+    center_x = (min(point.x for point in points) + max(point.x for point in points)) / 2.0
+    center_y = (min(point.y for point in points) + max(point.y for point in points)) / 2.0
+    for obj in objects:
+        matrix = obj.matrix_world.copy()
+        matrix.translation.x -= center_x
+        matrix.translation.y -= center_y
+        obj.matrix_world = matrix
+    bpy.context.view_layer.update()
+    residual = world_bounds(body)
+    remaining_x = (min(p.x for p in residual) + max(p.x for p in residual)) / 2.0
+    remaining_y = (min(p.y for p in residual) + max(p.y for p in residual)) / 2.0
+    if abs(remaining_x) > 0.002 or abs(remaining_y) > 0.002:
+        raise RuntimeError("Imported body could not be centered on the locked studio axis.")
+    return center_x, center_y
+
+
+def apply_static_body_mesh_transforms(objects, body):
+    """Bake imported static body scale/rotation before surface/UV/BVH work.
+
+    The licensed mesh is kept, not swapped for another person. Unapplied
+    source-library transforms can make body-shell shrinkwrap and BVH collision
+    checks disagree on coordinate frames, even after the body is recentered.
+    """
+    for obj in objects:
+        if obj.type != "MESH":
+            continue
+        bpy.ops.object.select_all(action="DESELECT")
+        bpy.context.view_layer.objects.active = obj
+        obj.select_set(True)
+        bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+        obj.select_set(False)
+    bpy.context.view_layer.update()
+    if any(abs(value - 1.0) > 1e-5 for value in body.scale):
+        raise RuntimeError("Imported body scale was not applied for garment collision work.")
+    if abs(mesh_height(body) - TARGET_HEIGHT_M) > 0.002:
+        raise RuntimeError("Body transform baking changed the locked reference height.")
 
 
 def create_identity_guides(identity_spec):
@@ -302,6 +355,12 @@ def stamp_provenance(scene, source_file: Path, source_datablock: str, original_h
     scene["linen_earth_model_identity_id"] = MODEL_IDENTITY_ID
     scene["linen_earth_model_reference_image"] = MODEL_REFERENCE_IMAGE
     scene["linen_earth_model_identity_locked"] = True
+    # A locked photo reference is NOT proof this generic CC0 male scan has the
+    # exact photographed faceless identity, stance, shoes or tailored garment.
+    # Never silently promote a different person merely by sharing an ID tag.
+    scene["linen_earth_source_photo_visual_parity_approved"] = False
+    scene["linen_earth_source_photo_visual_parity_status"] = "different_source_scan_requires_independent_four_angle_owner_review"
+    scene["linen_earth_source_photo_reference_count"] = 1
     scene["linen_earth_asset_status"] = "body-source-prepared-garments-required"
     scene["linen_earth_identity_spec_path"] = str(identity_spec_path)
     scene["linen_earth_identity_targets_json"] = json.dumps(identity_spec["physicalTargetsMm"], sort_keys=True)
@@ -327,7 +386,9 @@ def main():
     original_name = body.name
     body.name = BODY_NAME
     original_height, factor, measured = normalize_height(objects, body)
+    source_offset_x, source_offset_y = normalize_body_origin_xy(objects, body)
     floor_shift = normalize_floor(objects, body)
+    apply_static_body_mesh_transforms(objects, body)
     ensure_export_collection(objects)
     create_identity_guides(identity_spec)
     stamp_provenance(
@@ -339,6 +400,8 @@ def main():
         identity_spec,
         identity_spec_path,
     )
+    bpy.context.scene["linen_earth_import_source_offset_x_m"] = round(source_offset_x, 6)
+    bpy.context.scene["linen_earth_import_source_offset_y_m"] = round(source_offset_y, 6)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(output))
@@ -349,6 +412,7 @@ def main():
     print(f"Selected: {blend_path.name} :: {kind} {datablock} (score {score})")
     print(f"Body object: {original_name} -> {BODY_NAME}")
     print(f"Explicit height normalization: {original_height:.4f} m -> {measured:.4f} m")
+    print(f"Imported body grid offset removed: x={source_offset_x:.4f} m y={source_offset_y:.4f} m")
     print(f"Floor normalization shift: {floor_shift:.4f} m")
     print(f"Identity guide collection: {IDENTITY_GUIDE_COLLECTION}")
     print(f"Identity targets: {json.dumps(identity_spec['physicalTargetsMm'], sort_keys=True)}")
