@@ -33,7 +33,7 @@
 **Neither Claude nor this harvest can generate real physical measurements, guarantee a photographic 3D model identity, certify UV pattern scale, establish body/garment collisions or approve a physical tailor sample.** Reuse the existing canonical Studio model; keep the independent 3D prototype branch separate until the full Blender, four-view, mobile latency, true fabric-scale and human acceptance gates pass. No key is needed to continue those engineering tasks.
 
 ## Privacy and cost limits
-- The editorial adapter sends only up to 3 look IDs, canonical garment descriptors, catalogue colour/line and deterministic reasons; no profile measurements, phone number, customer photos, secrets, financial data or personal identity.
+- The editorial adapter only runs for a verified operator session (never for anonymous public visitors) and sends only up to 3 look IDs, canonical garment descriptors, catalogue colour/line and deterministic reasons; no profile measurements, phone number, customer photos, secrets, financial data or personal identity.
 - Editorial requests cap at 500 output tokens, time out after 3.5 s and silently fall back to existing style output. Only enable deliberately.
 - The harvest sends no customer or supplier-private photos, uses 8 bounded 2,800-output-token requests and **requires** `--execute`. No unbounded retries and no background task.
 - Generated packs have `source=ai-generated-suggestions`, `reviewStatus=unreviewed`, `physicalEvidenceVerified=false`.
