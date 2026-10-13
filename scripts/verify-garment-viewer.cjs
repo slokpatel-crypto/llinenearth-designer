@@ -164,6 +164,7 @@ async function verifyViewport(browser, width) {
         const button=[...document.querySelectorAll("button")].find(item=>
           item.textContent?.trim()===name && item.hasAttribute("aria-pressed"));
         if(!button || button.disabled) return null;
+        button.scrollIntoView({block:"center",inline:"nearest",behavior:"instant"});
         const rect=button.getBoundingClientRect(),styles=getComputedStyle(button);
         if(styles.visibility!=="visible" || styles.display==="none") return null;
         return {x:rect.x+rect.width/2,y:rect.y+rect.height/2,
