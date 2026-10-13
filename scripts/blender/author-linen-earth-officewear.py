@@ -451,7 +451,10 @@ def main():
     regions = {
         # A real tucked shirt reaches the trouser waistband; its lower
         # boundary is not a free-hanging hem halfway down the pelvis.
-        "ShirtTorsoFabric": lambda p: z(0.615) <= p.z <= z(0.895)
+        # Native spatial BVH evidence localizes all 82 residual torso faces to the
+        # uppermost neck-edge band (around z=1.546m). Stop the unsewn torso
+        # shell at the sleeve-root height; a real collar must be separate.
+        "ShirtTorsoFabric": lambda p: z(0.615) <= p.z <= z(0.875)
         and abs(p.x-center_x) <= torso_half_width(p.z),
         "ShirtSleeveLFabric": lambda p: z(0.500) <= p.z <= z(0.875) and p.x-center_x <= -arm_root,
         "ShirtSleeveRFabric": lambda p: z(0.500) <= p.z <= z(0.875) and p.x-center_x >= arm_root,
