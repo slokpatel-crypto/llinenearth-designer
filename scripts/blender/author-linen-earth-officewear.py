@@ -45,8 +45,8 @@ def cli_args():
     parser.add_argument("--body", default=BODY_NAME)
     parser.add_argument("--clearance-mm", type=float, default=7.0)
     parser.add_argument("--thickness-mm", type=float, default=1.6)
-    parser.add_argument("--surface-refine", type=int, choices=(0, 1), default=1,
-                        help="0/1 simple topology subdivision before body-clearance fitting; default 1 for concave body-contact safety")
+    parser.add_argument("--surface-refine", type=int, choices=(0, 1), default=0,
+                        help="0/1 optional candidate surface subdivision; compare native collision evidence before enabling")
     parser.add_argument("--contact-repair-passes", type=int, default=6,
                         help="0..6 world-space collision correction passes; max 12 mm per source vertex")
     parser.add_argument("--waist-layer-extra-mm", type=float, default=5.0,
@@ -273,9 +273,36 @@ def repair_body_intersections(body, shell, max_passes):
         bpy.context.view_layer.update()
         if moved == 0:
             break
+    # Count unique *physical garment faces*, not only overlapping triangle
+    # pairs: a few badly embedded shirt patches can create thousands of pairs.
+    # These 10-height-band diagnostics never change the source mesh, fitted
+    # silhouette, 12 mm movement ceiling or the independent release preflight.
+    frame = body_frame(body)
+    remaining_faces = sorted({
+        shell_poly for _body_poly, shell_poly in pairs
+        if 0 <= shell_poly < len(shell.data.polygons)
+    })
+    height_bins = {str(index): 0 for index in range(10)}
+    lateral_bins = {"left": 0, "centre": 0, "right": 0}
+    contact_samples = []
+    for polygon_index in remaining_faces:
+        point = shell_matrix @ shell.data.polygons[polygon_index].center
+        height_ratio = (point.z - frame["minZ"]) / frame["height"]
+        band = max(0, min(9, math.floor(height_ratio * 10)))
+        height_bins[str(band)] += 1
+        side = "left" if point.x < frame["centerX"] - 0.02 else (
+            "right" if point.x > frame["centerX"] + 0.02 else "centre"
+        )
+        lateral_bins[side] += 1
+        if len(contact_samples) < 12:
+            contact_samples.append([round(point.x, 4), round(point.y, 4), round(point.z, 4)])
     return {
         "contactPairsByPass": counts,
         "remainingContactPairs": counts[-1],
+        "remainingContactFaceCount": len(remaining_faces),
+        "remainingContactHeightDeciles": height_bins,
+        "remainingContactLateralZones": lateral_bins,
+        "remainingContactSampleWorldMetres": contact_samples,
         "affectedVertexCount": len(vertex_moves),
         "maxVertexCorrectionMm": round(max(vertex_moves.values(), default=0.0) * 1000, 3),
         "candidateOnly": True,
