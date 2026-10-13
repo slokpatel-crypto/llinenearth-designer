@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { createStyleDirectorLooks, type StyleDirectorAnswers } from "@/lib/style-director-agent";
 import { maybeEnrichStyleDirectorLooks } from "@/lib/designer/anthropic-editorial";
 import { applyDesignerFabricMetadataToStock, loadDesignerFabricMetadata } from "@/lib/designer-fabric-metadata";
@@ -26,7 +28,10 @@ export async function POST(request: Request) {
     const looks=createStyleDirectorLooks(body,stock,fabricIntelligence);
     if (!looks.length) return NextResponse.json({ error: "No matching Linen Earth stock is available for this direction yet." }, { status: 404 });
     // Optional editorial never changes garment selection, stock or handoff token content.
-    const editorialLooks=await maybeEnrichStyleDirectorLooks(looks);
+    // Paid editorial is currently operator-only. Public visitors keep deterministic Style Director.
+    const jar=await cookies();
+    const operatorAuthorized=await verifyOperatorSession(jar.get(OPERATOR_COOKIE.name)?.value);
+    const editorialLooks=operatorAuthorized?await maybeEnrichStyleDirectorLooks(looks):looks;
     const signedLooks=editorialLooks.map((look)=>({
       ...look,
       handoffToken:look.realModel ? createStyleDirectorHandoffToken({
