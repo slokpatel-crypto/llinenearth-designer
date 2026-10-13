@@ -1,0 +1,154 @@
+{
+  "version": "linen-earth-audited-knowledge-v1",
+  "domain": "fabric",
+  "status": "AI_AUDITED_HUMAN_REVIEW_REQUIRED",
+  "model": "claude-sonnet-5-5",
+  "usage": {
+    "input_tokens": 1990,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 3155,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "service_tier": "standard",
+    "inference_geo": "global"
+  },
+  "proposals": [
+    {
+      "id": "linen-photo-limited-screening",
+      "domain": "fabric",
+      "claim": "Catalogue photography may support only provisional screening of linen cloths (apparent slub, visible weave openness, relative sheen, rough colour family); it must not be used to classify quality grade, confirm fibre content, or state fibre origin.",
+      "rationale": "Slub and yarn irregularity are shared by linen, linen-cotton, viscose-linen and slubbed synthetics, and finishing (enzyme wash, calendering, resin) alters surface appearance. Photos can narrow the candidates to a shortlist but cannot rank quality or identify the fibre.",
+      "constraints": [
+        "Screening output is a shortlist for physical sampling, never a specification.",
+        "Words such as 'pure linen' or 'Belgian/Irish/French' must be sourced from mill documentation, not from images.",
+        "Conclusions are conditional on the stated lighting, scale reference and image processing."
+      ],
+      "evidenceNeeded": [
+        "Physical swatch handled by a tailor or buyer",
+        "Mill or supplier fibre declaration",
+        "Photo metadata: lighting, colour correction, magnification, presence of a scale reference"
+      ]
+    },
+    {
+      "id": "fibre-composition-needs-lab-or-certificate",
+      "domain": "fabric",
+      "claim": "Fibre composition of a linen or linen blend must be taken from supplier declaration backed by a test report or certificate (burn and microscopy or chemical dissolution testing per the relevant ISO/AATCC methods); appearance may only suggest which blends to test first.",
+      "rationale": "Luster, twist and pilling hints are non-diagnostic: mercerised cotton, linen-look viscose and slubbed polyester can mimic linen in images. Percentage claims in catalogues can be stale, rounded or aspirational.",
+      "constraints": [
+        "Treat a stated percentage as unverified until documented, including tolerance and batch reference.",
+        "Never convert a visual impression into a composition percentage or a 'probably x%' figure in a spec.",
+        "Care instructions and shrinkage allowances should follow the verified composition, not the apparent one."
+      ],
+      "evidenceNeeded": [
+        "Batch-specific test report or fibre certificate",
+        "Supplier documentation with lot number",
+        "Lab confirmation for any fabric with disputed or missing composition"
+      ]
+    },
+    {
+      "id": "weight-needs-measured-gsm",
+      "domain": "fabric",
+      "claim": "Fabric weight must come from a stated or measured GSM; photographs can at most indicate relative lightness or sheerness. Weight bands should be used only as conditional guidance (e.g. lighter cloths drape and wrinkle differently from heavier ones, and may need lining or a shirt-weight construction) and are not an estimate derived from the image.",
+      "rationale": "Backlit opacity, yarn visibility and dye saturation depend on weave density, yarn count, finish and exposure, so they do not map reliably to grams per square metre. A broad plausible range is not a substitute for the real figure.",
+      "constraints": [
+        "Do not assign a numeric GSM from a photo for specification or costing.",
+        "Garment-type suitability (shirt, trouser, jacket) must be judged on the actual weight and a hand-felt swatch.",
+        "Opacity and lining decisions require a physical check against skin tone and underlayers."
+      ],
+      "evidenceNeeded": [
+        "Supplier-stated GSM with weighing method",
+        "Measured GSM from a cut swatch (e.g. ISO 3801)",
+        "Hand-feel and opacity test on a physical sample"
+      ]
+    },
+    {
+      "id": "lea-count-is-yarn-spec-not-thread-count",
+      "domain": "fabric",
+      "claim": "Lea is a yarn-count system for linen (number of 300-yard leas per pound), so it describes yarn fineness and cannot be equated to a thread count per inch; any lea figure used in a spec needs supplier documentation, and fabric construction (ends and picks per inch) must be verified separately.",
+      "rationale": "The earlier claim converted 60/75 lea to roughly 80-100 threads per inch, which conflates yarn fineness with weave density. Pattern regularity in a photograph demonstrates neither yarn count nor construction.",
+      "constraints": [
+        "Record lea and ends/picks per inch as separate fields.",
+        "Do not use image regularity as proof of count or as a substitute for testing.",
+        "Lea figures do not by themselves determine finished hand, weight or suitability for shirting versus suiting."
+      ],
+      "evidenceNeeded": [
+        "Mill technical sheet listing warp and weft yarn counts and construction",
+        "Physical thread-density check on a swatch (pick glass or lab count)",
+        "Finished weight and finish description"
+      ]
+    },
+    {
+      "id": "print-pattern-is-not-provenance",
+      "domain": "fabric",
+      "claim": "Print repeat size, registration and colour-separation quality in a catalogue image cannot establish fibre origin or specific production facility; provenance rests on supplier traceability documents, and pattern scale is a design and cutting consideration only.",
+      "rationale": "Repeat size and registration reflect the print method and the file, not where the fibre was grown or the cloth woven. Many mills run similar screens or digital printers, and a printer may be in a different country from the fibre source.",
+      "constraints": [
+        "Never list fibre origin or mill on the strength of a pattern or image.",
+        "Pattern repeat and scale must be measured on a physical sample against the pattern-matching needs of the garment.",
+        "Digital print on linen should be checked for colourfastness and hand change after washing."
+      ],
+      "evidenceNeeded": [
+        "Traceability documents or origin certificates (e.g. mill and fibre-origin statements)",
+        "Printer or finisher identity from the supplier",
+        "Measured repeat on a physical sample in warp and weft directions"
+      ]
+    },
+    {
+      "id": "catalogue-claims-need-batch-and-stock-verification",
+      "domain": "fabric",
+      "claim": "Catalogue composition, specification and availability must be confirmed with the supplier before sourcing or specification decisions: confirm current stock or reorder lead time, minimum order, and that the batch matches the image and documentation.",
+      "rationale": "Catalogue images and text can outlive stock, production runs or supplier arrangements, and colour and hand vary lot to lot. Availability and batch consistency are commercial facts photographs cannot show.",
+      "constraints": [
+        "Treat all catalogue data as provisional until confirmed in writing for the specific lot.",
+        "Check for shade variation between lots and request a pre-production swatch for bulk orders.",
+        "Alternatives should be named before committing to a style whose cloth may be discontinued."
+      ],
+      "evidenceNeeded": [
+        "Written supplier confirmation of stock or lead time",
+        "Lot or batch number tied to test data",
+        "Pre-production or strike-off swatch from the actual bulk"
+      ]
+    },
+    {
+      "id": "photo-conditions-must-be-disclosed",
+      "domain": "fabric",
+      "claim": "Any photo-based observation about linen must state its image context (lighting, white balance, colour correction, retouching, scale reference, flat or draped presentation) and be explicitly labelled low-confidence, because colour, sheen and wrinkling in images do not reliably represent the physical cloth or how a made garment will drape.",
+      "rationale": "Catalogue photos are colour-corrected, lit for effect and often steamed or pressed. Linen's drape, crease recovery and hand depend on weight, weave, finish and construction, none of which a photograph establishes.",
+      "constraints": [
+        "Do not make drape, crease-resistance or comfort claims from images.",
+        "Colour matching must be done on a physical swatch under standardised lighting.",
+        "Flag any image-derived inference as awaiting tailor or buyer review."
+      ],
+      "evidenceNeeded": [
+        "Original uncompressed images with metadata where available",
+        "Physical swatch evaluated under controlled lighting",
+        "Tailor trial of drape and crease behaviour on a sample garment or toile"
+      ]
+    }
+  ],
+  "rejectedIds": [
+    "linen-plain-visual-classification",
+    "print-pattern-provenance-tracking",
+    "unknown-fibre-identification-protocol",
+    "gsm-estimation-bounds-establishment",
+    "formal-lea-shirting-suiting-specification"
+  ],
+  "reviewNotes": [
+    "linen-plain-visual-classification rejected as written: surface texture in photos cannot reliably give quality grade or fibre origin; rewritten as a limited screening rule.",
+    "print-pattern-provenance-tracking rejected: pattern repeat or registration does not establish fibre origin or facility; rewritten as provenance-needs-documents.",
+    "unknown-fibre-identification-protocol rejected: luster, twist and pilling in photos cannot sort blends into probability categories reliably; replaced by a rule requiring certificate or lab confirmation.",
+    "gsm-estimation-bounds-establishment rejected: a GSM range inferred from yarn visibility or colour saturation is not trustworthy; replaced by a rule requiring stated or measured GSM.",
+    "formal-lea-shirting-suiting-specification rejected: lea is a yarn count, not a per-inch thread count, and the claimed 80-100 conversion is invalid; rewritten to keep lea and construction separate and sourced from technical sheets.",
+    "blend-composition-catalogue-verification and linen-stock-verification-catalogue-alignment were sound in intent but folded into the rewritten composition and batch-stock rules; catalogue-photography-condition-disclosure was kept but narrowed to low-confidence labelling and explicit exclusion of drape claims.",
+    "No drape, shirt-front button, sleeve placket or numeric rise claims were retained; none were supportable from the supplied material.",
+    "All output remains provisional and awaiting human or tailor review."
+  ],
+  "auditDeploymentId": "dpl_HucuuVJCVHyowMTxBhyicLMfevkK",
+  "humanReviewed": false
+}
