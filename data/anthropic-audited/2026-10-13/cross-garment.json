@@ -1,0 +1,160 @@
+{
+  "version": "linen-earth-audited-knowledge-v1",
+  "domain": "cross-garment",
+  "status": "AI_AUDITED_HUMAN_REVIEW_REQUIRED",
+  "model": "claude-sonnet-5-5",
+  "usage": {
+    "input_tokens": 1986,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 2947,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "service_tier": "standard",
+    "inference_geo": "global"
+  },
+  "proposals": [
+    {
+      "id": "tucked-boxy-top-high-rise-conditional",
+      "domain": "cross-garment",
+      "claim": "A boxy linen top worn partly tucked (front tuck or half-tuck) with a high-waisted trouser can define the waist and shorten the visual torso-to-leg ratio, but only if the top's body is not so wide or long that the tucked fabric bunches at the waistband.",
+      "rationale": "Linen is crisp and creases readily; excess tucked volume creates bulk and ridge lines at the waistband. The effect is conditional on top length, body width and trouser waistband sitting at or near the natural waist. It is a styling tendency, not a guarantee of elongation for every body type.",
+      "constraints": [
+        "Applies to relaxed or boxy tops, not fitted shirts",
+        "Top must be long enough to stay tucked when seated and moving",
+        "Waistband should sit at or near natural waist; true 'high rise' varies by brand and cannot be given as a trustworthy cm figure",
+        "Belt or waist tape recommended with tucked linen to prevent sagging"
+      ],
+      "evidenceNeeded": [
+        "Flat-lay measurements of top body width and front length",
+        "Trouser rise measured by tailor on the actual garment",
+        "Fit photos standing and seated, tucked and untucked",
+        "Tailor assessment of bulk at the waistband"
+      ]
+    },
+    {
+      "id": "wide-trouser-shorter-top-balance",
+      "domain": "cross-garment",
+      "claim": "Wide-leg linen trousers generally pair better with tops that end at or near the hip/waistband (cropped-boxy or tucked) than with long untucked tops, because a long top over a wide leg can read as shapeless; this is a proportion preference, not a rule.",
+      "rationale": "Linen wide legs add volume through the lower body and linen tops hold shape stiffly; reducing top length keeps the waist/hip area legible. 'Korean-style' is a marketing label that carries no fixed construction meaning, so guidance should rest on the actual cut (leg width, hem circumference, top length), not the label.",
+      "constraints": [
+        "Depends on leg opening width, trouser length and hem break, which must be measured not inferred from photos",
+        "Very cropped tops may expose midriff or ride up when sitting; test in motion",
+        "Longer tops can work if hip-length with side vents and a defined hem"
+      ],
+      "evidenceNeeded": [
+        "Measured hem circumference and inseam of trousers",
+        "Measured top length from high point shoulder",
+        "Full-length fit photos from front and side",
+        "Wearer height for context"
+      ]
+    },
+    {
+      "id": "single-focal-pattern-with-solids",
+      "domain": "cross-garment",
+      "claim": "In a linen top-and-trouser pairing, one patterned piece (stripe, check, print) with a solid companion is the lower-risk approach; two competing patterns need clear scale contrast and shared colour to avoid visual clash.",
+      "rationale": "Linen's slub texture and weave irregularity already add surface interest, so layering a second strong pattern easily becomes busy. This is a conventional styling heuristic, not a physical law.",
+      "constraints": [
+        "Stripe or check on loosely woven linen can distort at seams and appear uneven",
+        "Sheer or light colours may show pocket bags or underlayers through the fabric",
+        "Pattern scale should be judged on the worn garment, not on a flat swatch photo"
+      ],
+      "evidenceNeeded": [
+        "Photos of pattern at actual scale on a body",
+        "Seam matching quality at side seams and centre front",
+        "Opacity check against light"
+      ]
+    },
+    {
+      "id": "formality-signal-consistency",
+      "domain": "cross-garment",
+      "claim": "Top and trouser should signal a compatible level of formality through construction details (collar structure, waistband finish, pocket and hem treatment, pressing), not through fabric name alone; linen skews casual and mismatched finishing between pieces makes a set look unintentional.",
+      "rationale": "Formality is read from tailoring cues like canvassed structure, finished vs raw hems, belt loops, and crease sharpness. Photos cannot establish fibre content, yarn quality or exact drape, so any 'premium' claim needs a physical inspection.",
+      "constraints": [
+        "Do not infer fibre composition, blend ratio or origin from photos",
+        "Linen creases by nature; a sharp crease is pressed, not inherent",
+        "Judge construction by inspecting seams, linings and interfacing in person"
+      ],
+      "evidenceNeeded": [
+        "Care label and fibre content statement from the physical garment",
+        "Close-up photos of seams, hems, waistband and collar construction",
+        "Tailor or buyer hands-on handle assessment"
+      ]
+    },
+    {
+      "id": "climate-and-layering-check",
+      "domain": "cross-garment",
+      "claim": "For warm-weather linen sets, sleeve length, body ease and trouser rise should be checked together for breathability and layering clearance, and the set should be tested with the intended base layer or light jacket before approval.",
+      "rationale": "Linen is valued for airflow, but a close fit or an added layer reduces it. A boxy top with ample body ease generally accommodates a light layer more easily than a fitted one, though armhole depth and sleeve opening are what actually limit layering, and these require measurement.",
+      "constraints": [
+        "Fabric weight in gsm cannot be reliably determined from photos",
+        "Warmth or breathability claims are untested without wear trials",
+        "Neckline affects base-layer visibility, not insulation in any meaningful way for linen"
+      ],
+      "evidenceNeeded": [
+        "Fabric weight (gsm) from supplier spec or measurement",
+        "Armhole and sleeve opening measurements",
+        "Wear test in intended temperature range"
+      ]
+    },
+    {
+      "id": "shoulder-and-hem-structure-check",
+      "domain": "cross-garment",
+      "claim": "A boxy top should have its shoulder seam position and hem finish verified so that dropped or wide shoulders and a straight hem sit cleanly over the trouser waistband without dominating the overall silhouette.",
+      "rationale": "A dropped shoulder is a deliberate boxy-cut feature, but it combined with a wide neckline and a wide-leg trouser can make the whole outfit read oversized. Whether the balance works depends on the wearer's own frame and cannot be judged from product photos alone.",
+      "constraints": [
+        "Shoulder width and drop depth must be measured on the garment",
+        "Cannot be assessed reliably from flat or model photos with unknown posing",
+        "Button placement on a shirt front is a front closure detail, not a sleeve or cuff feature, and should not be conflated with sleeve placket design"
+      ],
+      "evidenceNeeded": [
+        "Measured shoulder width, drop and chest width from flat lay",
+        "Fit photos on at least two body types",
+        "Tailor review of fit balance"
+      ]
+    },
+    {
+      "id": "texture-contrast-within-linen",
+      "domain": "cross-garment",
+      "claim": "If both pieces are linen or linen-look, texture variation (e.g., a rougher slub next to a smoother, finer weave) can add interest without pattern, but fibre type and finish cannot be confirmed from photos, so this should be judged by touch and light inspection.",
+      "rationale": "Two garments of similar weave and colour can look flat together, while a deliberate shift in surface texture adds depth. However, apparent texture in photos is heavily affected by lighting and image processing, and 'cotton sateen' or 'linen' labels need verification.",
+      "constraints": [
+        "Do not assume fibre content from visual texture",
+        "Colour should be close enough that texture, not colour clash, is the contrast",
+        "Different fibre blends may shrink or crease differently after washing"
+      ],
+      "evidenceNeeded": [
+        "Care labels for both garments",
+        "Physical swatch or in-person handle comparison",
+        "Wash/shrinkage test results if worn as a matched set"
+      ]
+    }
+  ],
+  "rejectedIds": [
+    "high-rise-plus-tuck-styling",
+    "korean-wide-trouser-boxy-top-pairing",
+    "pattern-load-conflict-avoidance",
+    "formality-gradient-cross-dressing",
+    "climate-layering-compatibility",
+    "visual-proportion-balance-strategy",
+    "neckline-shoulder-coherence",
+    "fabric-texture-cross-garment-interest"
+  ],
+  "reviewNotes": [
+    "All originals rejected as stated: each overclaimed universal effects such as 'elongation for varied body types', 'counterbalances', and 'cannot overpower' without conditions or evidence.",
+    "'Korean-style' is a marketing label with no fixed construction meaning; rewritten guidance relies on measurable cut properties.",
+    "Rewrites avoid arbitrary rise-in-cm figures; rise must be measured by a tailor on the actual garment.",
+    "Fibre composition, origin, gsm and exact drape cannot be established from photos and are flagged as physical-inspection items.",
+    "Shirt front buttons were not treated as sleeve plackets; front closure and sleeve/cuff details are distinct.",
+    "The reference to 'cotton sateen' in an original was dropped as unverifiable and unrelated to linen focus.",
+    "Rewrites are conditional styling heuristics, not physical or aesthetic laws.",
+    "All proposals remain awaiting human and tailor review before use."
+  ],
+  "auditDeploymentId": "dpl_HucuuVJCVHyowMTxBhyicLMfevkK",
+  "humanReviewed": false
+}
