@@ -1,31 +1,26 @@
-# Anthropic expiry readiness — 13 October 2026
+# Anthropic intelligence sprint — verified 13 October 2026
 
-## Verified
-- A sensitive `ANTHROPIC_API_KEY` is configured for **production** on Vercel project `llinen-earth-live-preview`.
-- The main Linen Earth Designer repository does not currently show an Anthropic integration in the default-branch code search.
-- A configured key does **not** establish that it is valid or that requests can be made from this project.
+## Real provider verification
+- A sensitive provider key was present on Vercel `llinen-earth-live-preview`; it was never committed or shown in logs.
+- An isolated Vercel preview-build probe made a **successful real Anthropic API request (HTTP 200)** using `claude-haiku-4-5-20251001`. The diagnostic returned `LINEN_EARTH_API_OK` with 22 input and 13 output tokens.
+- Six bounded domain jobs generated **52 unreviewed model proposals**; a follow-on `claude-sonnet-5-5` critique generated **44 additional AI-audited but still unapproved proposals**.
+- Earlier uncontrolled-text JSON attempts were rejected if malformed; later requests used Anthropic's native `output_config.format` JSON schema. The successful outputs are preserved separately, with usage/provenance in `data/anthropic-unverified/2026-10-13` and `data/anthropic-audited/2026-10-13`.
+- For the six *saved* first-pass results, reported usage totals were 2,761 input and 11,046 output tokens; for the six *saved* audit results, 12,401 input and 20,541 output tokens. These are not total billing across discarded/diagnostic requests.
+- Provider validity was confirmed for those runs; **the owner's reported 14 October key expiry was not independently verified**.
 
-## Security and scope
-- Never print, commit, export or embed the key in browser code, logs, CI artifacts or static assets.
-- Do not move the key to another project without an explicit secure transfer mechanism.
-- Verify API access only via a server-side route on the Vercel project already holding the key; require operator authorization and rate limits. Do not deploy a public unauthenticated test endpoint.
-- Treat provider responses as untrusted; schema-validate before storing.
+## Security
+- Temporary preview-scope access to the secret was used only to run isolated build jobs; it was then **reverted and rechecked as production-only** on `llinen-earth-live-preview`.
+- No customer interface receives the key. No production deployment was triggered by these jobs.
+- GitHub holds only non-secret outputs and source code. Untrusted AI suggestions are never treated as measured fibre composition, stock levels, exact repeat mm, realistic physical drape, owner-approved aesthetics or tailor fit.
+- Production Designer projects do not automatically inherit the credential from `llinen-earth-live-preview`. The operator request client cannot run against the key in an unconfigured project.
 
-## Priority deliverables while provider access remains
-1. Fabric intelligence closed-vocabulary annotation proposals with provenance, uncertainty, and physical-measurement gaps; do not invent composition, repeat millimetres, stock or drape measurements.
-2. Style Director deterministic outfit recipes: compatible collar/cuff/placket, fit, rise, trouser silhouette, climate, and formality.
-3. Tailoring option knowledge base and cross-garment constraints, preserving existing option IDs.
-4. Evaluation fixtures for consistency, hallucinations, and fabric scale; human-review before promotion.
-5. Export validated **nonsecret** JSON/TS rules and fixtures to the repository so the engine remains functional after provider access ends.
+## Engineering deliverables
+- Secure operator-only `/api/operator/anthropic-readiness` supports presence checks and capped one-domain requests with durable spend claims where operator sessions and Supabase are configured.
+- `/api/operator/anthropic-knowledge` and `/operator/anthropic-knowledge` expose the archived knowledge, including audited and original tiers, for explicit human review. Review receipts cannot auto-promote live Style Director rules.
+- Knowledge input is schema checked, provenance tagged and quarantined. Three regression suites check proposal schema and presence of 52 original and 44 audited items.
+- The content remains usable offline from source control after the key stops working.
 
-## Acceptance gates
-- Server-only access and operator authentication.
-- Explicit model identifier and token/cost limits; bounded batch processing.
-- No automatic overwrite of human-approved fabric facts.
-- Test + quality + build gates before merging.
-- Deployment only at a clean major milestone.
-
-## Current blockers
-- Actual Anthropic API validity and available credits have not been verified.
-- Key expiration date was reported by the owner, not verified with the provider.
-- No verified source measurements or tailor approval for production claims.
+## Remaining gates
+- Confirm latest PR CI/build/QA and review the actual operator page before merging/promoting.
+- Seek owner and tailor approval for production-safe rules, plus supplier physical measurements and stock verification. Model critique is not equivalent to physical evidence.
+- Don't deploy the entire Designer milestone to production until broader Deep Engine release gates pass.
