@@ -1,0 +1,80 @@
+{
+  "version": "linen-earth-anthropic-knowledge-manifest-v1",
+  "date": "2026-10-13",
+  "source": "direct-claude-api",
+  "status": "unverified-human-review-required",
+  "canAutoActivate": false,
+  "measurementProof": false,
+  "tailorApproval": false,
+  "datasets": [
+    {
+      "domain": "fabric",
+      "file": "fabric.json",
+      "count": 8,
+      "model": "claude-haiku-4-5-20251001",
+      "usage": {
+        "inputTokens": 519,
+        "outputTokens": 1807
+      },
+      "sourceDeployment": "dpl_4LwAVnoX768Nb8ytsEb8nvLHbm9T"
+    },
+    {
+      "domain": "shirt",
+      "file": "shirt.json",
+      "count": 8,
+      "model": "claude-haiku-4-5-20251001",
+      "usage": {
+        "inputTokens": 503,
+        "outputTokens": 1106
+      },
+      "sourceDeployment": "dpl_4LwAVnoX768Nb8ytsEb8nvLHbm9T"
+    },
+    {
+      "domain": "trouser",
+      "file": "trouser.json",
+      "count": 12,
+      "model": "claude-haiku-4-5-20251001",
+      "usage": {
+        "inputTokens": 202,
+        "outputTokens": 3044
+      },
+      "sourceDeployment": "dpl_4cgZko3de7dgCjcUciunxDw688di"
+    },
+    {
+      "domain": "cross-garment",
+      "file": "cross-garment.json",
+      "count": 8,
+      "model": "claude-haiku-4-5-20251001",
+      "usage": {
+        "inputTokens": 506,
+        "outputTokens": 1518
+      },
+      "sourceDeployment": "dpl_4LwAVnoX768Nb8ytsEb8nvLHbm9T"
+    },
+    {
+      "domain": "style-recipe",
+      "file": "style-recipe.json",
+      "count": 8,
+      "model": "claude-haiku-4-5-20251001",
+      "usage": {
+        "inputTokens": 514,
+        "outputTokens": 1854
+      },
+      "sourceDeployment": "dpl_4LwAVnoX768Nb8ytsEb8nvLHbm9T"
+    },
+    {
+      "domain": "quality",
+      "file": "quality.json",
+      "count": 8,
+      "model": "claude-haiku-4-5-20251001",
+      "usage": {
+        "inputTokens": 517,
+        "outputTokens": 1717
+      },
+      "sourceDeployment": "dpl_4LwAVnoX768Nb8ytsEb8nvLHbm9T"
+    }
+  ],
+  "totalProposals": 52,
+  "totalInputTokens": 2761,
+  "totalOutputTokens": 11046
+}
