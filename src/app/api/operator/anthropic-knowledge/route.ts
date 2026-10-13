@@ -56,25 +56,28 @@ export async function POST(request:Request){
     body=input as Record<string,unknown>;
   }catch{return json({error:"Invalid JSON"},400);}
   const task=body.task,proposalId=body.proposalId,decision=body.decision;
+  const sourceTier=String(body.sourceTier||"audited");
   const signedBy=String(body.signedBy||"").trim().slice(0,100);
   const note=String(body.note||"").trim().slice(0,750);
   if(typeof task!=="string"||!KNOWLEDGE_DOMAINS.includes(task as typeof KNOWLEDGE_DOMAINS[number])
    ||typeof proposalId!=="string"||!/^[a-z][a-z0-9-]{2,89}$/.test(proposalId)
+   ||!["audited","archive","generated"].includes(sourceTier)
    ||!["approved_as_proposal","rejected"].includes(String(decision))
    ||signedBy.length<2||note.length<8){
     return json({error:"Valid task, proposal ID, decision, signedBy and review rationale are required."},400);
   }
   try{
     const proposals=await readOperatorNotes("anthropic_intelligence_proposal",25);
-    const localMatch=[...archivedKnowledgeForOperator(),...auditedKnowledgeForOperator()].some(entry=>entry.domain===task && entry.proposals.some(p=>p.id===proposalId));
-    const matching=localMatch || proposals.some(row=>row.payload.task===task&&
+    const localGroups=sourceTier==="audited"?auditedKnowledgeForOperator():sourceTier==="archive"?archivedKnowledgeForOperator():[];
+    const localMatch=localGroups.some(entry=>entry.domain===task && entry.proposals.some(p=>p.id===proposalId));
+    const matching=localMatch || (sourceTier==="generated"&&proposals.some(row=>row.payload.task===task&&
       Array.isArray(row.payload.proposals)&&row.payload.proposals.some((v:unknown)=>{
         const item=v as {id?:unknown}|null;
         return item?.id===proposalId;
-      }));
+      })));
     if(!matching)return json({error:"Proposal was not found in generated knowledge ledger."},404);
     const receipt=await appendCreativeEvent("operator_note",{
-      subtype:"anthropic_knowledge_review",task,proposalId,decision,signedBy,note,
+      subtype:"anthropic_knowledge_review",task,proposalId,decision,sourceTier,signedBy,note,
       scope:"knowledge_proposal_only",physicalFactsApproved:false,automaticRulesPromotion:false
     },{source:"operator",session:"anthropic-intelligence"});
     return json({ok:true,receipt,scope:"proposal_only"});
