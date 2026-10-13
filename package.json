@@ -16,6 +16,8 @@
     "fabric:sync-references": "node scripts/sync-fabric-reference-index.mjs",
     "fabric:calibration-worksheet": "node --experimental-strip-types scripts/export-fabric-calibration.mjs",
     "fabric:quality": "npm run quality && npm run release:check",
+    "ai:knowledge:plan": "node scripts/harvest-anthropic-knowledge.mjs",
+    "ai:knowledge:harvest": "node scripts/harvest-anthropic-knowledge.mjs --execute",
     "fabric:tiles": "node --experimental-strip-types scripts/build-fabric-render-assets.mjs",
     "eval:analyzer": "node --experimental-strip-types scripts/eval-phase10.mjs analyzer",
     "eval:designer": "node --experimental-strip-types scripts/eval-phase10.mjs designer",
