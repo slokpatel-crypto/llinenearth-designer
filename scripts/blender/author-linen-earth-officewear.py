@@ -45,8 +45,8 @@ def cli_args():
     parser.add_argument("--body", default=BODY_NAME)
     parser.add_argument("--clearance-mm", type=float, default=7.0)
     parser.add_argument("--thickness-mm", type=float, default=1.6)
-    parser.add_argument("--surface-refine", type=int, choices=(0, 1), default=0,
-                        help="0/1 simple topology subdivision before body-clearance fitting")
+    parser.add_argument("--surface-refine", type=int, choices=(0, 1), default=1,
+                        help="0/1 simple topology subdivision before body-clearance fitting; default 1 for concave body-contact safety")
     parser.add_argument("--contact-repair-passes", type=int, default=6,
                         help="0..6 world-space collision correction passes; max 12 mm per source vertex")
     parser.add_argument("--waist-layer-extra-mm", type=float, default=5.0,
