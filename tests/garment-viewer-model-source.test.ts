@@ -120,6 +120,8 @@ test("source-locked garment drape only adds bounded unverified candidate geometr
   // increased rather than cleared embedded torso/sleeve contacts. Keep the
   // source-derived base geometry unchanged by default; opt-in stays testable.
   assert(source.includes('choices=(0, 1), default=0'));
+  assert(source.includes('"ShirtTorsoFabric": lambda p: z(0.615) <= p.z <= z(0.875)'));
+
   assert(source.includes("LE_CONTACT_FACE_REFINEMENT"));
   for(const field of ["remainingContactFaceCount","remainingContactHeightDeciles","remainingContactLateralZones","remainingContactSampleWorldMetres"]) assert(source.includes(field),field);
   assert(math.includes("MAX_PREVIEW_RELIEF_MM = 6.0"));
