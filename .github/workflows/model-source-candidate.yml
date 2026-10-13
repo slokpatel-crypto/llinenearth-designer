@@ -60,6 +60,9 @@ jobs:
       - name: Verify independent Blender world-space contact regression
         run: blender --background --factory-startup --python tests/blender/test_world_collision_bvh.py
 
+      - name: Verify Blender contact spatial evidence without changing geometry
+        run: blender --background --factory-startup --python tests/blender/test_contact_height_diagnostics.py
+
       - name: Download pinned CC0 realistic human body source
         run: npm run garment:model-base:fetch
 
