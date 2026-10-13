@@ -116,7 +116,8 @@ test("source-locked garment drape only adds bounded unverified candidate geometr
     'linen_earth_measured_fabric_physics"] = False',
     "NEAREST_SURFACEPOINT", "OUTSIDE_SURFACE"
   ]) assert(source.includes(token),token);
-  // The source scan has actual concave torso/arm sections; refuse to regress\n  // to coarse face fitting that previously left embedded body/cloth triangles.\n  assert(source.includes('choices=(0, 1), default=1'));\n  assert(source.includes("LE_CONTACT_FACE_REFINEMENT"));\n  assert(math.includes("MAX_PREVIEW_RELIEF_MM = 6.0"));
+  // Independently measured native Blender QA showed whole-surface subdivision\n  // increased rather than cleared embedded torso/sleeve contacts. Keep the\n  // source-derived base geometry unchanged by default; opt-in stays testable.\n  assert(source.includes('choices=(0, 1), default=0'));\n  assert(source.includes("LE_CONTACT_FACE_REFINEMENT"));
+  for(const field of ["remainingContactFaceCount","remainingContactHeightDeciles","remainingContactLateralZones","remainingContactSampleWorldMetres"]) assert(source.includes(field),field);\n  assert(math.includes("MAX_PREVIEW_RELIEF_MM = 6.0"));
   assert(math.includes("_edge_fade"));
   assert(math.includes("math.isfinite"));
   assert(workflow.includes("python3 -m unittest discover -s tests/python"));
