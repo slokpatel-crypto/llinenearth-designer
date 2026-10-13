@@ -1,0 +1,158 @@
+{
+  "version": "linen-earth-audited-knowledge-v1",
+  "domain": "trouser",
+  "status": "AI_AUDITED_HUMAN_REVIEW_REQUIRED",
+  "model": "claude-sonnet-5-5",
+  "usage": {
+    "input_tokens": 2741,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 3354,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "service_tier": "standard",
+    "inference_geo": "global"
+  },
+  "proposals": [
+    {
+      "id": "waist-closure-conditional",
+      "domain": "trouser",
+      "claim": "Choose between belt loops and side adjusters based on intended use: belt loops suit a conventional or dressier look and wearers who use a belt; side adjusters suit belt-free, summer-casual or tailored-casual wear. Neither closure demonstrably improves sweat evaporation. The comfort variable is how the waistband is shaped, lined and sized, not the closure type.",
+      "rationale": "Adjusters remove belt bulk but do not make a waistband breathable. A waistband still sits against the body whichever closure is used. Comfort comes from fit, waistband width and lining choice. Claims about reducing 'compression' or enabling evaporation via adjusters are unsupported.",
+      "constraints": [
+        "Treat as a style and fit choice, not a climate-performance feature",
+        "Adjusters need reinforced attachment points because linen frays and loosens at stress points",
+        "Avoid heavy or stiff waistband interlining in hot-weather linen"
+      ],
+      "evidenceNeeded": [
+        "Tailor confirmation that the adjuster hardware and tab construction hold on the chosen cloth weight",
+        "Wearer trial in actual heat comparing the two closures",
+        "Fit-on-body check for waistband gapping, rolling or shifting"
+      ]
+    },
+    {
+      "id": "rise-by-fit-not-number",
+      "domain": "trouser",
+      "claim": "Choose rise by where the waistband should sit on the wearer's torso (at or slightly below the natural waist for mid-rise, a little above it for high-rise), then confirm on the body. Do not specify a rise in centimetres from a general rule.",
+      "rationale": "Correct rise depends on the wearer's torso length, seat and thigh proportions, and on how the pattern is drafted, so a single cm figure does not transfer between people or patterns. Higher rise can feel supportive with pleats, and it can feel hot or restrictive on some bodies. That is a fit judgement, not a rule.",
+      "constraints": [
+        "Pair rise with the wearer's seat and thigh measurements, not rise alone",
+        "Check sitting comfort and crotch depth, since linen creases and binds at the fork when sitting",
+        "No specific rise figures should be trusted without a pattern and a fitting"
+      ],
+      "evidenceNeeded": [
+        "Wearer's measurements, including natural waist and body rise",
+        "Fitting sample or toile on the actual wearer",
+        "Pattern or garment spec from the tailor or maker"
+      ]
+    },
+    {
+      "id": "pleat-vs-flat-linen",
+      "domain": "trouser",
+      "claim": "Pleats are a reasonable choice for linen trousers when the wearer wants seat and thigh room, a fuller leg or a traditional line. Flat fronts give a cleaner, slimmer look but leave less room for sitting and may crease more tightly across the lap. Choose on silhouette and wearer proportions. Pleats do not 'adapt' to humidity.",
+      "rationale": "Pleats add fabric volume at the front, which eases sitting and softens the leg. The 'expansion for humidity-induced relaxation' framing is not physically justified: linen does not meaningfully swell the waist in damp air, and any change is minor next to fit and cut. Single versus double pleat is a stylistic and volume decision.",
+      "constraints": [
+        "Pleats must be sized to the wearer so they stay closed when standing, not gape",
+        "Heavier pleat volume adds fabric bulk and heat, which works against warm-weather use",
+        "Pleat direction (forward or reverse) affects how the front hangs"
+      ],
+      "evidenceNeeded": [
+        "On-body check that pleats lie flat standing and open acceptably sitting",
+        "Cloth weight and handle from the actual fabric",
+        "Tailor judgement on pleat depth for the chosen leg width"
+      ]
+    },
+    {
+      "id": "leg-width-and-taper-proportion",
+      "domain": "trouser",
+      "claim": "Set hem opening in proportion to the wearer's thigh and knee width and to the shoes: a straight or gently tapering leg is the conservative linen choice, and wide cuts work if the waist and seat are well fitted and the shoes can balance the volume. Treat specific hem figures as starting points to confirm in a fitting, not rules. Taper does not meaningfully reduce 'moisture retention'.",
+      "rationale": "Linen hangs and creases more freely than wool, so a very slim leg shows stress creasing at the knee and thigh, and a very wide leg can look shapeless without enough waist structure. Ankle moisture claims are unfounded. Hem width is a proportion and comfort question.",
+      "constraints": [
+        "Keep enough thigh and knee ease that the cloth does not pull and crease sharply when sitting",
+        "Wide silhouettes need accurate waist and seat fit or they hang awkwardly",
+        "Balance leg opening with shoe volume"
+      ],
+      "evidenceNeeded": [
+        "Wearer's thigh, knee and height proportions",
+        "Sample trouser fitted and checked while sitting, standing and walking",
+        "Intended shoes for the final proportion check"
+      ]
+    },
+    {
+      "id": "hem-length-and-break",
+      "domain": "trouser",
+      "claim": "Choose break and length for appearance and function: no or slight break reads cleaner and more casual and keeps cloth off the ground, while a fuller break reads more traditional and needs more fabric weight to hang well. Pick a length that works with the intended footwear and finish the hem so it holds in linen. Break choice does not change moisture handling in any meaningful way.",
+      "rationale": "Break is a proportion and dress-code matter. Linen frays readily, so hem construction matters: a clean turn-up or well-finished plain hem holds up better than a thin, loosely finished edge. Cuff reinforcement and double-fold ideas are construction choices, not climate performance, and exact millimetre figures are not trustworthy without the garment.",
+      "constraints": [
+        "Hem length depends on shoe height and the wearer's stance, so confirm on the body",
+        "Linen hems need a secure finish to resist fraying and dragging",
+        "A fuller break calls for adequate cloth weight so it hangs rather than folds awkwardly"
+      ],
+      "evidenceNeeded": [
+        "Intended footwear and the wearer standing in it",
+        "Tailor's hem finish and allowance on the actual cloth",
+        "Wear test for hem fraying or distortion"
+      ]
+    },
+    {
+      "id": "fabric-weight-weave-claims",
+      "domain": "trouser",
+      "claim": "Treat weave openness, weight and handle as properties to read from a swatch or fabric specification, not to assume. A lighter, more open linen generally feels cooler and drapes more fluidly. A heavier or tighter linen generally holds creases and structure better. Choose to balance the wearer's priority between airiness and shape retention.",
+      "rationale": "Breathability, weight and drape trade off with structure and opacity, and none of these can be confirmed from a photo or a label word like 'open-weave'. Open weaves can also become sheer or lose shape with wear. Structure and creasing are largely a function of yarn, weave and weight.",
+      "constraints": [
+        "Fibre content, weight and weave cannot be verified from a photograph",
+        "Sheerness should be tested, since pale or light linen can show through",
+        "Heavier cloth resists collapse but sacrifices airiness"
+      ],
+      "evidenceNeeded": [
+        "Mill or merchant specification for fibre content, weight and weave",
+        "Physical swatch handled and held to light for opacity",
+        "Wear or fitting trial for creasing and shape retention"
+      ]
+    },
+    {
+      "id": "belt-loop-and-detail-sizing",
+      "domain": "trouser",
+      "claim": "Size and reinforce belt loops and other stress details for function, not for moisture claims: make loops wide enough to take the belt the wearer will actually use, attach them securely, and bar-tack stress points since linen frays easily. Do not specify a loop width to limit sweat absorption, and do not specify cross-grain binding as a humidity fix.",
+      "rationale": "Loop width should match the belt. A narrower loop will not meaningfully reduce moisture. Reinforcement matters because linen is prone to fraying and loosening at stress points. The idea that cross-grain binding counters humidity-driven bias stretch misstates how the cloth behaves, so binding grain is a construction decision for the maker, not a climate rule.",
+      "constraints": [
+        "Match loop width to the belt width the wearer will use",
+        "Reinforce attachment points, especially on lighter cloth",
+        "Leave binding and grain decisions to the maker, not to a humidity rule"
+      ],
+      "evidenceNeeded": [
+        "Wearer's belt and intended use",
+        "Maker's construction method for loops and waistband",
+        "Wear test for loop or waistband stress failures"
+      ]
+    }
+  ],
+  "rejectedIds": [
+    "high-rise-pleated-adjuster",
+    "mid-rise-flat-front-belt-loops",
+    "high-rise-pleated-belt-loops",
+    "mid-rise-flat-front-adjuster",
+    "tapered-leg-flat-front-high",
+    "straight-leg-pleated-mid",
+    "korean-wide-flat-front-adjuster",
+    "crop-length-straight-pleated",
+    "full-break-tapered-belt-loops",
+    "slight-break-flat-front-adjuster",
+    "no-break-straight-pleated-adjuster",
+    "mid-rise-korean-wide-pleated"
+  ],
+  "reviewNotes": [
+    "All outputs are awaiting human or tailor review and are conditional guidance, not verified specification.",
+    "Every original item was rejected as written because each bundled a style choice with unsupported humidity or sweat-performance claims, and several relied on arbitrary cm figures for rise, hem opening or loop width. The replacements keep only the defensible design question inside each original and drop the climate-performance framing.",
+    "Rejected claim types include adjusters or pleats reducing waistband compression or aiding evaporation, humidity-induced waist or body swelling, taper or break reducing ankle moisture retention, cross-grain binding countering humidity stretch, and loop diameter limiting sweat absorption. None is physically supported.",
+    "Specific rise, hem, break and loop figures in the originals were not carried over because they cannot be validated without the wearer's measurements, the pattern and a fitting.",
+    "Photos cannot establish fibre composition, origin, weave openness or exact drape, so any such claim needs a mill specification, a physical swatch or a garment-in-hand check."
+  ],
+  "auditDeploymentId": "dpl_HucuuVJCVHyowMTxBhyicLMfevkK",
+  "humanReviewed": false
+}
