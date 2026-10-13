@@ -49,6 +49,8 @@ def cli_args():
                         help="0/1 optional candidate surface subdivision; compare native collision evidence before enabling")
     parser.add_argument("--contact-repair-passes", type=int, default=6,
                         help="0..6 world-space collision correction passes; max 12 mm per source vertex")
+    parser.add_argument("--hem-taper-fraction", type=float, default=0.10,
+                        help="0..0.12 subtle lower-leg cloth taper, candidate only; not measured tailor ease")
     parser.add_argument("--waist-layer-extra-mm", type=float, default=5.0,
                         help="Unverified waistband-over-tuck layer separation, 0..7 mm")
     parser.add_argument("--candidate-relief-mm", type=float, default=3.0,
@@ -163,6 +165,36 @@ def fit_shirt_shoulder_to_locked_guide(obj, body_floor_z, body_height):
         v.co.x = center + (v.co.x - center) * (1.0 + (scale - 1.0) * influence)
     mesh.update()
     return initial_width * 1000, scale
+
+
+def taper_candidate_trouser_hem(obj, body_floor_z, body_height, fraction):
+    """Bounded lower-leg trouser silhouette taper; does not deform the body.
+
+    The source-based pants stay too wide at the real photographed identity
+    guide. A small cloth-only calf-to-hem taper is a construction experiment,
+    not an approved human fit or a calibrated textile mechanics measurement.
+    Native source-contact preflight must still reject any embedded cloth.
+    """
+    if fraction <= 0:
+        return 0.0
+    mesh = obj.data
+    band = [vertex.co.x for vertex in mesh.vertices
+            if 0.06 <= (vertex.co.z - body_floor_z) / body_height <= 0.15]
+    if len(band) < 4:
+        raise RuntimeError("Cannot taper trouser hem: lower-leg band is missing")
+    centre_x = (min(band) + max(band)) * 0.5
+    max_move = 0.0
+    for vertex in mesh.vertices:
+        ratio = (vertex.co.z - body_floor_z) / body_height
+        if ratio >= 0.31:
+            continue
+        position = max(0.0, min(1.0, (0.31 - ratio) / 0.20))
+        influence = position * position * (3.0 - 2.0 * position)
+        original_x = vertex.co.x
+        vertex.co.x = centre_x + (original_x - centre_x) * (1.0 - fraction * influence)
+        max_move = max(max_move, abs(vertex.co.x - original_x))
+    mesh.update()
+    return round(max_move * 1000.0, 3)
 
 
 def sculpt_unverified_preview_relief(obj, panel, peak_mm):
@@ -310,7 +342,7 @@ def repair_body_intersections(body, shell, max_passes):
     }
 
 
-def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm, body_floor_z, body_height, surface_refine, repair_passes):
+def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm, body_floor_z, body_height, surface_refine, repair_passes, hem_taper_fraction):
     phase_pairs = {"source_surface": source_fit_collision_pairs(body, obj)}
     if surface_refine:
         # SIMPLE subdivides existing source faces without moving the body-derived
@@ -339,6 +371,9 @@ def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm, body_floor_
     shoulder_guide = None
     if panel == "ShirtTorsoFabric":
         shoulder_guide = fit_shirt_shoulder_to_locked_guide(obj, body_floor_z, body_height)
+    hem_taper_mm = (taper_candidate_trouser_hem(obj, body_floor_z, body_height, hem_taper_fraction)
+                    if panel.startswith("TrouserLeg") else 0.0)
+    obj["linen_earth_hem_taper_candidate_max_move_mm"] = hem_taper_mm
     max_relief = sculpt_unverified_preview_relief(obj, panel, relief_mm)
     phase_pairs["candidate_relief"] = source_fit_collision_pairs(body, obj)
 
@@ -385,6 +420,8 @@ def main():
         raise RuntimeError("Candidate shell thickness must be 0.6 to 4.0 mm.")
     if not 0 <= options.contact_repair_passes <= 6:
         raise RuntimeError("Candidate body-contact repair must use between 0 and 6 bounded passes.")
+    if not math.isfinite(options.hem_taper_fraction) or not 0 <= options.hem_taper_fraction <= 0.12:
+        raise RuntimeError("Candidate hem taper must be finite and within 0 to 12 percent.")
     if not math.isfinite(options.waist_layer_extra_mm) or not 0 <= options.waist_layer_extra_mm <= 7:
         raise RuntimeError("Unverified tuck/waist layer separation must be between 0 and 7 mm.")
     if options.clearance_mm + options.waist_layer_extra_mm > 18:
@@ -479,7 +516,7 @@ def main():
         # Outer waistband is outside the tucked shirt instead of z-fighting
         # against an identically offset body-derived surface for 10 cm.
         panel_clearance = clearance_m + (options.waist_layer_extra_mm / 1000.0 if name == "TrouserWaistFabric" else 0.0)
-        max_relief, shoulder_guide, phase_pairs, repair = fit_shell(obj, body, panel_clearance, thickness_m, name, options.candidate_relief_mm, min_z, height, options.surface_refine, options.contact_repair_passes)
+        max_relief, shoulder_guide, phase_pairs, repair = fit_shell(obj, body, panel_clearance, thickness_m, name, options.candidate_relief_mm, min_z, height, options.surface_refine, options.contact_repair_passes, options.hem_taper_fraction)
         fit_stage_report[name] = phase_pairs
         contact_repair_report[name] = repair
         planar_grain_uv(obj)
@@ -505,6 +542,7 @@ def main():
     bpy.context.scene["linen_earth_surface_refine_level"] = options.surface_refine
     bpy.context.scene["linen_earth_contact_repair_passes"] = options.contact_repair_passes
     bpy.context.scene["linen_earth_waist_layer_extra_mm"] = options.waist_layer_extra_mm
+    bpy.context.scene["linen_earth_hem_taper_candidate_fraction"] = options.hem_taper_fraction
     bpy.context.scene["linen_earth_garment_clearance_mm"] = round(clearance_m * 1000.0, 3)
     bpy.context.scene["linen_earth_garment_thickness_mm"] = round(thickness_m * 1000.0, 3)
 
