@@ -103,6 +103,33 @@ function parseMessage(payload) {
   return JSON.parse(value);
 }
 
+export async function harvestOnePack(pack, key, model) {
+  if (!pack || !KNOWLEDGE_PACKS.some((item) => item.id === pack.id)) throw Error("Unknown research pack");
+  if (typeof key !== "string" || !key) throw Error("Missing Anthropic key");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 45_000);
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST", signal: controller.signal,
+      headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({
+        model, max_tokens: 2800, temperature: 0.2, system: SYSTEM,
+        messages: [{ role: "user", content: JSON.stringify({
+          project: "Linen Earth Deep Engine",
+          status: "research suggestions, not physically reviewed",
+          task: pack.objective,
+          focus: pack.focus,
+        }) }],
+      }),
+    });
+    if (!response.ok) throw Error("Anthropic returned HTTP " + response.status + " for " + pack.id);
+    const body = await response.json();
+    return { entries: validatePack(parseMessage(body)), usage: body.usage || null };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function runHarvest({ execute = false, out = "artifacts/anthropic-knowledge" } = {}) {
   if (!execute) {
     return { dryRun: true, packCount: KNOWLEDGE_PACKS.length, packs: KNOWLEDGE_PACKS.map((pack) => pack.id) };
@@ -114,44 +141,23 @@ export async function runHarvest({ execute = false, out = "artifacts/anthropic-k
   await mkdir(target, { recursive: true });
   const manifest = { version: 1, generator: "Anthropic Messages API", model, reviewStatus: "unreviewed", source: "ai-generated-suggestions", createdAt: new Date().toISOString(), packs: [] };
   for (const pack of KNOWLEDGE_PACKS) {
-    // 8 independent requests only, bounded token use, no open-ended recursion.
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 45_000);
-    try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", signal: controller.signal,
-        headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-        body: JSON.stringify({
-          model, max_tokens: 2800, temperature: 0.2, system: SYSTEM,
-          messages: [{ role: "user", content: JSON.stringify({
-            project: "Linen Earth Deep Engine",
-            status: "research suggestions, not physically reviewed",
-            task: pack.objective,
-            focus: pack.focus,
-          }) }],
-        }),
-      });
-      if (!response.ok) throw Error("Anthropic returned HTTP " + response.status + " for " + pack.id);
-      const body = await response.json();
-      const entries = validatePack(parseMessage(body));
-      const file = pack.id + ".json";
-      const document = {
-        schemaVersion: 1,
-        id: pack.id,
-        source: "ai-generated-suggestions",
-        reviewStatus: "unreviewed",
-        physicalEvidenceVerified: false,
-        createdAt: manifest.createdAt,
-        model,
-        objective: pack.objective,
-        entries,
-      };
-      await writeFile(path.join(target, file), JSON.stringify(document, null, 2) + "\n", { flag: "w", mode: 0o600 });
-      manifest.packs.push({ id: pack.id, file, count: entries.length, inputTokens: body.usage?.input_tokens ?? null, outputTokens: body.usage?.output_tokens ?? null });
-      process.stdout.write("Saved " + pack.id + " (" + entries.length + " unreviewed entries)\n");
-    } finally {
-      clearTimeout(timeout);
-    }
+    // Explicit eight-request maximum, without retries or fabricated completions.
+    const { entries, usage } = await harvestOnePack(pack, key, model);
+    const file = pack.id + ".json";
+    const document = {
+      schemaVersion: 1,
+      id: pack.id,
+      source: "ai-generated-suggestions",
+      reviewStatus: "unreviewed",
+      physicalEvidenceVerified: false,
+      createdAt: manifest.createdAt,
+      model,
+      objective: pack.objective,
+      entries,
+    };
+    await writeFile(path.join(target, file), JSON.stringify(document, null, 2) + "\n", { flag: "w", mode: 0o600 });
+    manifest.packs.push({ id: pack.id, file, count: entries.length, inputTokens: usage?.input_tokens ?? null, outputTokens: usage?.output_tokens ?? null });
+    process.stdout.write("Saved " + pack.id + " (" + entries.length + " unreviewed entries)\n");
   }
   await writeFile(path.join(target, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n", { flag: "w", mode: 0o600 });
   return { dryRun: false, output: target, packs: manifest.packs.length, entries: manifest.packs.reduce((total, pack) => total + pack.count, 0) };
