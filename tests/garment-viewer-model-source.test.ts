@@ -11,7 +11,7 @@ test("unverified configured GLB never masquerades as the real studio model",()=>
   assert.match(page,/modelManifestSrc=previewModelSrc\s*\?/);
   assert.match(viewer,/PROTOTYPE GEOMETRY · NOT THE STUDIO MODEL/);
   assert.match(viewer,/ENGINEERING CANDIDATE · NOT APPROVED STUDIO MODEL/);
-  assert.match(viewer,/modelSrc&&assetIdentity/);
+  assert.match(viewer,/modelSrc&&assetIdentity&&productionManifestReady&&modelContract\?\.readiness===\"contract_ready\"/);\n  assert.match(viewer,/PHOTO PARITY NOT YET APPROVED/);\n  assert.doesNotMatch(viewer,/MODEL IDENTITY LOCKED · STRUCTURALLY VERIFIED 3D/);
 });
 
 test("realistic model source plan stays aligned with the production GarmentViewer contract",()=>{
