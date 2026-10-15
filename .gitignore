@@ -5,3 +5,6 @@ node_modules
 .DS_Store
 public/fabric-tiles/
 artifacts/preview-lifecycle/
+
+# AI knowledge harvest suggestions require explicit review before being committed.
+artifacts/anthropic-knowledge/
