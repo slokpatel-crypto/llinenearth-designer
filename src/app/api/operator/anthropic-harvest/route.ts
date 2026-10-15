@@ -3,18 +3,13 @@ import { NextResponse } from "next/server";
 import { OPERATOR_COOKIE, verifyOperatorSession } from "@/lib/operator-session";
 import { getSupabaseAdminConfig } from "@/lib/supabase-admin";
 import { appendCreativeEvent } from "@/lib/designer/creative-profile-server";
-// @ts-ignore -- shared, pure operational ESM module deliberately has no TS declaration
+// @ts-ignore -- shared operational ESM module
 import { KNOWLEDGE_PACKS, harvestOnePack } from "../../../../../scripts/harvest-anthropic-knowledge.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-/**
- * Operator-only, one pack per authenticated request. A durable daily claim
- * prevents repeated clicks or concurrent serverless instances from purchasing
- * the same pack more than once per UTC day. Claims stay consumed on failure.
- */
 export async function POST(request: Request) {
   const jar = await cookies();
   if (!(await verifyOperatorSession(jar.get(OPERATOR_COOKIE.name)?.value))) {
@@ -27,7 +22,6 @@ export async function POST(request: Request) {
   if (!request.headers.get("content-type")?.startsWith("application/json") || Number(request.headers.get("content-length") || "0") > 800) {
     return NextResponse.json({ error: "Invalid request." }, { status: 415, headers: { "cache-control": "no-store" } });
   }
-
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) {
     return NextResponse.json({ error: "No Anthropic key is configured in this server environment." }, { status: 503, headers: { "cache-control": "no-store" } });
@@ -95,15 +89,22 @@ export async function POST(request: Request) {
       headers: { "cache-control": "no-store", "x-content-type-options": "nosniff" },
     });
   } catch (error) {
-    // Provider and persistence errors may contain sensitive account information.
-    console.error("[operator/anthropic-harvest] Research pack failed", JSON.stringify({
+    const raw = error instanceof Error ? error.message : "";
+    const safeMessage = /Anthropic returned HTTP (400|401|403|404|413|429|500|502|503|529) for [a-z0-9-]+/.test(raw)
+      ? raw
+      : /Claude did not return a JSON object|Missing entries|Entry count must be 8-12|Malformed entry|Duplicate\/unsafe entry id|Unsafe evidence level/.test(raw)
+        ? raw
+        : /Invalid field length: (id|guideline|reason|applicableWhen|verifyWith|riskIfWrong|evidenceLevel)/.test(raw)
+          ? raw
+          : "Network timeout or unexpected response; inspect recent Vercel function logs.";
+    console.error("[operator/anthropic-harvest] failed", JSON.stringify({
       packId: pack.id,
-      errorType: error instanceof Error ? error.name : "unknown",
+      diagnostic: safeMessage,
       runId,
       spendClaimRetained: true,
     }));
     return NextResponse.json({
-      error: "Harvest failed or could not be persisted. No pack was approved; today's claim remains consumed to prevent duplicate billing.",
+      error: safeMessage + " No pack was approved; today's claim remains consumed to prevent duplicate billing.",
       packId: pack.id,
       runId,
     }, { status: 502, headers: { "cache-control": "no-store" } });
