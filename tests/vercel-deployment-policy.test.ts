@@ -44,7 +44,18 @@ test("primary Vercel project ignores preview branches",()=>{
   assert.match(result.stdout,/preserve production build quota/);
 });
 
-test("approved identity-honesty branch builds only as preview",()=>{\n  const result=runIgnore({\n    VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,\n    VERCEL_GIT_COMMIT_REF:"fix/garment-viewer-identity-honesty-20261015",\n    VERCEL_GIT_COMMIT_MESSAGE:"test viewer identity honesty",\n    VERCEL_ENV:"preview",\n  });\n  assert.equal(result.status,1);\n  assert.match(result.stdout,/Approved protected preview branch/);\n});\n\ntest("ordinary primary main commits are ignored until a deployment milestone",()=>{
+test("approved identity-honesty branch builds only as preview",()=>{
+  const result=runIgnore({
+    VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
+    VERCEL_GIT_COMMIT_REF:"fix/garment-viewer-identity-honesty-20261015",
+    VERCEL_GIT_COMMIT_MESSAGE:"test viewer identity honesty",
+    VERCEL_ENV:"preview",
+  });
+  assert.equal(result.status,1);
+  assert.match(result.stdout,/Approved protected preview branch/);
+});
+
+test("ordinary primary main commits are ignored until a deployment milestone",()=>{
   const result=runIgnore({
     VERCEL_PROJECT_ID:PRIMARY_PROJECT_ID,
     VERCEL_GIT_COMMIT_REF:"main",
