@@ -1,6 +1,6 @@
 const PRIMARY_PROJECT_ID = "prj_b3rwwOl5OI0VV3qYyKXPFOloCllT";
 const PRODUCTION_BRANCH = "main";
-const ANTHROPIC_PREVIEW_BRANCH = "work/anthropic-knowledge-harvest-20261013-v1";
+const APPROVED_PREVIEW_BRANCHES = new Set(["work/anthropic-knowledge-harvest-20261013-v1", "fix/garment-viewer-identity-honesty-20261015"]);
 const DEPLOY_MARKER = "[deploy]";
 
 const current = process.env.VERCEL_PROJECT_ID;
@@ -18,10 +18,10 @@ if (current !== PRIMARY_PROJECT_ID) {
   process.exit(0);
 }
 
-// Allow only the explicitly named Anthropic integration branch to build as a
-// protected preview in the primary project. This never authorizes production.
-if (branch === ANTHROPIC_PREVIEW_BRANCH && environment === "preview") {
-  console.log("Approved Anthropic integration preview; continue protected preview build.");
+// Allow only explicitly named review branches to build as protected previews.
+// This never authorizes production deployment.
+if (branch && APPROVED_PREVIEW_BRANCHES.has(branch) && environment === "preview") {
+  console.log(`Approved protected preview branch ${branch}; continue preview build.`);
   process.exit(1);
 }
 

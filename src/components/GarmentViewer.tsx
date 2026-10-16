@@ -1064,7 +1064,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     <div className="garmentViewerStage">
       <div className="garmentViewerStageHead">
         <span>GARMENTVIEWER · DEEP ENGINE</span>
-        <strong>{modelSrc&&assetIdentity ? "MODEL IDENTITY LOCKED · STRUCTURALLY VERIFIED 3D" : modelSrc ? "ENGINEERING CANDIDATE · NOT APPROVED STUDIO MODEL" : "PROTOTYPE GEOMETRY · NOT THE STUDIO MODEL"}</strong>
+        <strong>{modelSrc&&assetIdentity&&productionManifestReady&&modelContract?.readiness==="contract_ready" ? "MODEL CONTRACT PASSED · PHOTO PARITY NOT YET APPROVED" : modelSrc ? "ENGINEERING CANDIDATE · NOT APPROVED STUDIO MODEL" : "PROTOTYPE GEOMETRY · NOT THE STUDIO MODEL"}</strong>
       </div>
       <div className="garmentViewerCanvas">
         {modelViewer}
@@ -1162,7 +1162,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         <span><small>VIEWS</small><b>4 fixed + free</b></span>
         <span><small>AI CREDITS</small><b>0</b></span>
       </div>
-      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "Live Designer identity M7.46 is locked: the same mannequin now carries a researched tailoring library covering shirt type/fit/tuck/sleeve/collar construction/cuff/placket/pocket/yoke/back/hem and trouser type/fit/low-to-extra-high rise/front-flat waist/back-seat shaping/seat-crotch transition/pleat direction/360° waistband hardware/break/360° turn-up/hip-wrapped pockets. Fabric remains panel-scaled and non-metallic; verified drape/weight metadata now changes the surface fold-normal response and roughness without AI credits." : "Fallback prototype is active. Production should use the identity-locked M7.3 tailoring model before fabric/drape work continues."}</p>
+      <p className="garmentViewerGuardrail">{modelContract?.readiness==="contract_failed" ? `Model contract blocked: ${modelContract.reasons.join(" ")}` : modelSrc&&!productionManifestReady ? `Model manifest blocked: ${(modelManifestValidation?.reasons||["Manifest verification is pending."]).join(" ")}` : modelContract?.readiness==="contract_ready" ? "The viewer keeps one configured model asset while you compare tailoring options. A passing structural contract does not prove photographic identity, physical drape, or tailor approval. The candidate supports a tailoring library covering shirt type/fit/tuck/sleeve/collar construction/cuff/placket/pocket/yoke/back/hem and trouser type/fit/low-to-extra-high rise/front-flat waist/back-seat shaping/seat-crotch transition/pleat direction/360° waistband hardware/break/360° turn-up/hip-wrapped pockets. Fabric remains panel-scaled and non-metallic; available drape/weight metadata can affect the surface fold-normal response and roughness without AI credits; physical drape remains unverified until measured." : "Fallback prototype is active. Production should use the identity-locked M7.3 tailoring model before fabric/drape work continues."}</p>
     </aside>
   </section>;
 }
