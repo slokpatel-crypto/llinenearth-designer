@@ -96,5 +96,7 @@ test("unknown UV convention and renderer-clamped repeats refuse physical approva
   assert.equal(garmentUvRepeatsForUnits("panel_normalized",9000,780,40),null);
   assert.equal(garmentUvRepeatsForUnits("mesh_metres",580,780,1),null);
   assert.equal(garmentUvRepeatsForUnits("mesh_metres",580,780,0),null);
+  assert.equal(garmentUvRepeatsForUnits("mesh_metres",0,780,40),null);
+  assert.equal(garmentUvRepeatsForUnits("mesh_metres",580,NaN,40),null);
   assert.equal(garmentUvRepeatsForUnits("unexpected" as "mesh_metres",580,780,40),null);
 });
