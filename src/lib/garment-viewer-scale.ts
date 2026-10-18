@@ -58,6 +58,12 @@ export function resolveViewerTileHeightMm(asset:ViewerTileScaleAsset|undefined):
  * malformed measured height is not. Refuse rendering a counterfeit physical
  * vertical repeat instead of silently treating it as the U width.
  */
+export function hasInvalidVerifiedViewerTileWidth(asset:ViewerTileScaleAsset|undefined):boolean {
+  if(asset?.scaleApproximate!==false || asset.tileRealWidthMm==null) return false;
+  const width=asset.tileRealWidthMm;
+  return typeof width!=="number" || !Number.isFinite(width) || width<=0;
+}
+
 export function hasInvalidVerifiedViewerTileHeight(asset:ViewerTileScaleAsset|undefined):boolean {
   if(asset?.scaleApproximate!==false || asset.tileRealHeightMm==null) return false;
   const height=asset.tileRealHeightMm;
