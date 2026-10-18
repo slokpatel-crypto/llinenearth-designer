@@ -308,6 +308,11 @@ def main():
         bpy.data.objects[name].get("linen_earth_uv_coordinate_units")
         for name in GARMENT_OBJECTS
     ])
+    if uv_coordinate_units is not None and panel_spec is None:
+        raise RuntimeError(
+            "Explicit source UV coordinate units require --panel-spec and a matching "
+            ".viewer.json sidecar; cannot export a unit-ambiguous GLB."
+        )
     export_glb(collection, args.output)
 
     manifest_path = None
