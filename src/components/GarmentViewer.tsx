@@ -6,7 +6,7 @@ import {
   GARMENT_PANEL_SPECS,
   PROTOTYPE_MODEL_ID,
 } from "@/lib/garment-viewer-prototype";
-import { garmentPanelTextureScale, garmentUvRepeatsForUnits, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
+import { garmentPanelTextureScale, garmentPanelTexturePreparationKey, garmentUvRepeatsForUnits, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
 import { validateGarmentViewerModelContract, validateGarmentViewerModelManifest, type GarmentViewerModelContractResult, type GarmentViewerModelManifest, type GarmentViewerManifestValidation } from "@/lib/garment-viewer-model-contract";
 import { GARMENT_VIEWER_LATENCY_STORAGE_KEY, garmentViewerAssetIdentityKey, type GarmentViewerAssetIdentity } from "@/lib/garment-viewer-readiness";
 import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
@@ -388,7 +388,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const normalMapRef=useRef("");
   const applyToken=useRef(0);
   const interactionStartedAt=useRef<number|null>(null);
-  const preparedTextureRef=useRef(new Map<string,{texture:ViewerTexture;normal:ViewerTexture|null;garment:"shirt"|"trouser"}>());
+  const preparedTextureRef=useRef(new Map<string,{texture:ViewerTexture;normal:ViewerTexture|null;garment:"shirt"|"trouser";key:string}>());
   const visibleGarmentMaterialsRef=useRef(new Set(GARMENT_PANEL_SPECS.map((panel)=>panel.material)));
   const visibleButtonMaterialsRef=useRef(new Set<string>());
   const visibleSkinArmMaterialRef=useRef<string|null>(null);
@@ -841,19 +841,27 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
             : garmentPanelTextureScale(panel.widthMm,panel.heightMm,tileMm,tileHeightMm);
           if(!scale) throw new Error("Unknown or renderer-clamped candidate physical fabric scale");
           if(token!==applyToken.current) throw new Error("Superseded fabric selection");
+          const offset={u:Number(panel.offsetU)||0,v:Number(panel.offsetV)||0};
+          const rotation=(Number(panel.rotationDeg)||0)*Math.PI/180;
+          const key=garmentPanelTexturePreparationKey({
+            modelKey:modelUrl, panelMaterial:panel.material, fabricUrl:fabric.image, normalUrl,
+            u:scale.u,v:scale.v,offsetU:offset.u,offsetV:offset.v,rotation,
+          });
+          // A shirt-only swatch change must not create new trouser GPU textures.
+          // Reuse only the same panel's own sampler at the same exact settings.
+          const previous=preparedTextureRef.current.get(panel.material);
+          if(previous?.key===key) return {panel,texture:previous.texture,normal:previous.normal,key};
           const [texture,normal]=await Promise.all([
             viewer.createTexture!(fabric.image),
             normalUrl ? viewer.createTexture!(normalUrl) : Promise.resolve(null),
           ]);
-          const offset={u:Number(panel.offsetU)||0,v:Number(panel.offsetV)||0};
-          const rotation=(Number(panel.rotationDeg)||0)*Math.PI/180;
           texture.sampler?.setScale?.(scale);
           texture.sampler?.setOffset?.(offset);
           texture.sampler?.setRotation?.(rotation);
           normal?.sampler?.setScale?.({u:clamp(scale.u*1.35,.35,100),v:clamp(scale.v*1.35,.35,100)});
           normal?.sampler?.setOffset?.(offset);
           normal?.sampler?.setRotation?.(rotation);
-          return {panel,texture,normal};
+          return {panel,texture,normal,key};
         }));
         if(token!==applyToken.current) return;
         // Resolve EVERY material before changing any visible garment panel.
@@ -865,7 +873,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         if(token!==applyToken.current) return;
         preparedTextureRef.current=new Map(prepared.map((entry)=>[
           entry.panel.material,
-          {texture:entry.texture,normal:entry.normal,garment:entry.panel.garment},
+          {texture:entry.texture,normal:entry.normal,garment:entry.panel.garment,key:entry.key},
         ]));
         for(const [index,entry] of prepared.entries()){
           const material=materials[index];
@@ -909,7 +917,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
     // Cancels an in-flight texture/material pass when the viewer unmounts
     // or its dependencies change, even before the next render effect starts.
     return ()=>{if(applyToken.current===token) applyToken.current++;};
-  },[modelReady,materialPipelineReady,shirt,trouser,shirtTileMm,trouserTileMm,tileManifest,panelSpecs,productionManifestReady,modelManifest,modelContract,modelSrc,assetIdentityKey]);
+  },[modelReady,materialPipelineReady,shirt,trouser,shirtTileMm,trouserTileMm,tileManifest,panelSpecs,productionManifestReady,modelManifest,modelContract,modelSrc,modelUrl,assetIdentityKey]);
 
   useEffect(()=>{
     if(!modelReady || !materialPipelineReady) return;
