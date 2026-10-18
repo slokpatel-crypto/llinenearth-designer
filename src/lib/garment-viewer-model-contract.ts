@@ -139,7 +139,13 @@ export function validateGarmentViewerModelManifest(value:unknown,expectedModelId
   const sourceName=String(rawSource?.name||"").trim();
   const sourceLicense=String(rawSource?.license||"").trim();
   const sourceVerifiedAt=String(rawSource?.verifiedAt||"").trim();
-  const sourceReady=Boolean(sourceName&&sourceLicense&&/^\d{4}-\d{2}-\d{2}$/.test(sourceVerifiedAt));
+  // An impossible calendar day is not a verification date (e.g. 2026-02-31).
+  // Explicit ISO round-trip also rejects JS Date's day/month normalization.
+  const sourceDate=/^\d{4}-\d{2}-\d{2}$/.test(sourceVerifiedAt)
+    ? new Date(`${sourceVerifiedAt}T00:00:00.000Z`) : null;
+  const sourceReady=Boolean(sourceName&&sourceLicense&&sourceDate
+    &&!Number.isNaN(sourceDate.getTime())
+    &&sourceDate.toISOString().slice(0,10)===sourceVerifiedAt);
   const source=sourceReady?{
     name:sourceName,
     license:sourceLicense,
