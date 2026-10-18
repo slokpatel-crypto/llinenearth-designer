@@ -59,8 +59,8 @@ def cli_args():
                         help="Unverified waistband-over-tuck layer separation, 0..7 mm")
     parser.add_argument("--candidate-relief-mm", type=float, default=3.0,
                         help="0 for a clean shell; 0..6 mm art-directed visual microfolds, not physical drape")
-    parser.add_argument("--sleeve-cuff-inboard-mm", type=float, default=20.0,
-                        help="Experimental cloth-only cuff shift, 0..22mm/side; never moves hands or certifies pose")
+    parser.add_argument("--sleeve-cuff-inboard-mm", type=float, default=0.0,
+                        help="OFF by default: native 20mm experiment intersected locked body; 0..22mm/side for diagnostic only")
     parser.add_argument("--trouser-leg-inboard-mm", type=float, default=7.0,
                         help="Experimental inward trouser shell shaping, 0..8mm/leg, no body movement")
     return parser.parse_args(argv)
