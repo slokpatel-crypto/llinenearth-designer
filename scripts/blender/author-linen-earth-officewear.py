@@ -23,7 +23,7 @@ from mathutils.bvhtree import BVHTree
 # Blender. It must not be mistaken for a material-calibrated cloth simulation.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from drape_preview_math import MAX_PREVIEW_RELIEF_MM, candidate_drape_offset_mm
-from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical_metric_face_uv, cylindrical_ambiguous_face_diagnostic, metric_tangent_chart_uv, audit_shared_uv_edges, phase_align_cylindrical_charts
+from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical_metric_face_uv, cylindrical_ambiguous_face_diagnostic, metric_tangent_chart_uv, audit_shared_uv_edges, phase_align_cylindrical_charts, align_metric_tangent_charts
 from region_islands import keep_ankle_connected_faces
 from sleeve_stance_math import MAX_INBOARD_MM, candidate_sleeve_inboard_mm
 from leg_stance_math import MAX_INBOARD_MM as MAX_LEG_INBOARD_MM, candidate_leg_inboard_mm, candidate_inner_seam_relief_mm
@@ -849,9 +849,15 @@ def planar_grain_uv(obj):
             chart_faces, radius_m=radius_m,
             excluded_face_indices=unapproved_tangent_indices,
         )
+        aligned_faces, tangent_report = align_metric_tangent_charts(
+            aligned_faces, tangent_face_indices=unapproved_tangent_indices
+        )
         for polygon, face in zip(mesh.polygons, aligned_faces):
             for loop_index, (_, uv_xy) in zip(polygon.loop_indices, face):
                 uv_layer.data[loop_index].uv = uv_xy
+        obj["linen_earth_uv_tangent_alignment_evidence_json"] = json.dumps(
+            tangent_report, sort_keys=True
+        )
         obj["linen_earth_uv_phase_alignment_evidence_json"] = json.dumps(
             phase_report, sort_keys=True
         )
