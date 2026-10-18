@@ -152,8 +152,9 @@ export function fitOutcomeSignalFor(
   input:{occasion:OccasionTier;style:Pick<DesignerStyle,"shirtFit"|"trouser">;proportion:{torso:string;seat:string}},
   book?:FitOutcomeBook|null,
 ):FitOutcomeSignal{
-  if(!book||!Number.isSafeInteger(book.totalReviews)||book.totalReviews<3
+  if(!book||!Number.isSafeInteger(book.totalReviews)||book.totalReviews<0
     ||!Array.isArray(book.buckets)) return {score:0,evidence:0,summary:"Post-fitting evidence is still collecting."};
+  if(book.totalReviews<3) return {score:0,evidence:book.totalReviews,summary:"Post-fitting evidence is still collecting."};
   const trustworthy=book.buckets.filter((bucket)=>reliableFitOutcomeBucket(bucket,book.totalReviews));
   const key=fitOutcomeKey({occasion:input.occasion,shirtFit:input.style.shirtFit,trouser:input.style.trouser,torso:input.proportion.torso,seat:input.proportion.seat});
   const bucket=trustworthy.find((b)=>b.key===key&&b.total>=3);
