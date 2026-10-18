@@ -63,6 +63,27 @@ class CandidateUvAuditTests(unittest.TestCase):
         self.assertAlmostEqual(uv[1][0] - uv[0][0], 0.02, places=6)
         self.assertLess(max(p[0] for p in uv)-min(p[0] for p in uv), 0.04)
 
+    def test_cylinder_seam_phase_stays_stable_across_face_vertex_winding(self):
+        import math
+        radius = 0.1
+        angles = [math.pi - 0.11, -math.pi + 0.10, math.pi - 0.05]
+        points = [(radius * math.cos(angle), radius * math.sin(angle), 0.01 * index)
+                  for index, angle in enumerate(angles)]
+        reference = audit.cylindrical_metric_face_uv(
+            points, center_xy=(0, 0), radius_m=radius, origin_z=0
+        )
+        # Adjacent triangles can list identical vertices in a different
+        # cyclic order or opposite winding. Neither may shift a stripe by 2*pi*r.
+        for order in ((1, 2, 0), (2, 0, 1), (1, 0, 2), (2, 1, 0)):
+            with self.subTest(order=order):
+                remapped = audit.cylindrical_metric_face_uv(
+                    [points[index] for index in order],
+                    center_xy=(0, 0), radius_m=radius, origin_z=0
+                )
+                for actual, original_index in zip(remapped, order):
+                    self.assertAlmostEqual(actual[0], reference[original_index][0], places=8)
+                    self.assertAlmostEqual(actual[1], reference[original_index][1], places=8)
+
     def test_cylinder_rejects_ambiguous_polygon_and_invalid_radius(self):
         import math
         angles = [0, 0.25 * math.pi, 0.75 * math.pi, -0.75 * math.pi]
