@@ -15,7 +15,7 @@ from mathutils.bvhtree import BVHTree
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from uv_candidate_audit import audit_shared_uv_edges, audit_uv_triangles, classify_unapproved_uv_seams, validate_recomputed_source_cut_evidence, verify_evaluated_tube_radius_m
+from uv_candidate_audit import audit_shared_uv_edges, audit_uv_triangles, classify_unapproved_uv_seams, validate_recomputed_source_cut_evidence, verify_evaluated_tube_radius_m, validate_independent_uv_hotspots
 from sleeve_stance_math import source_arm_band_geometry, optimistic_sleeve_spacing_budget
 
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -89,6 +89,8 @@ def evaluated_mesh_stats(obj):
         uv_channel = mesh.uv_layers.active
         metric_uv_scan = None
         metric_uv_scan_error = None
+        hotspot_integrity = None
+        hotspot_integrity_error = None
         if uv_channel is not None:
             try:
                 # Independent, evaluated 3D triangle geometry: unlike triangle
@@ -102,8 +104,15 @@ def evaluated_mesh_stats(obj):
                     )
                     for triangle in mesh.loop_triangles
                 ])
-            except (ValueError, OverflowError, ZeroDivisionError) as exc:
+                authored_uv = json.loads(str(obj.get(
+                    "linen_earth_uv_candidate_audit_json", ""
+                )))
+                hotspot_integrity = validate_independent_uv_hotspots(
+                    authored_uv, metric_uv_scan
+                )
+            except (ValueError, TypeError, OverflowError, ZeroDivisionError, KeyError) as exc:
                 metric_uv_scan_error = str(exc)
+                hotspot_integrity_error = str(exc)
             for triangle in mesh.loop_triangles:
                 coords = [uv_channel.data[loop_idx].uv for loop_idx in triangle.loops]
                 if any(not math.isfinite(axis) for uv in coords for axis in uv):
@@ -174,6 +183,8 @@ def evaluated_mesh_stats(obj):
         return {
             "uvIndependentMetricDistortionScan": metric_uv_scan,
             "uvIndependentMetricDistortionError": metric_uv_scan_error,
+            "uvIndependentSourceHotspotIntegrity": hotspot_integrity,
+            "uvIndependentSourceHotspotError": hotspot_integrity_error,
             "uvSharedEdgeAudit": seam_audit,
             "uvSharedEdgeAuditError": seam_audit_error,
             "uvIndependentSourceCutReport": source_cut_report,
