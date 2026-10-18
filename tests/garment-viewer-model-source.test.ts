@@ -249,3 +249,13 @@ test("opaque garment alternatives use binary alpha cutouts instead of blending h
   assert(exporter.includes('MODEL_ID="LE-OFFICEWEAR-V1"'));
   assert(exporter.includes('const garmentPanels=['));
 });
+
+test("structural export inspection never silently certifies human approval or real fabric",()=>{
+  const checker=readFileSync("scripts/check-garment-viewer-model.mjs","utf8");
+  assert(checker.includes('mode:candidateMode ? "engineering_candidate" : "structural_export_check"'));
+  assert(checker.includes("productionApproved:false"));
+  assert(checker.includes("ownerPhotoParityApproved:false"));
+  assert(checker.includes("tailorFitApproved:false"));
+  assert(checker.includes("supplierPhysicalRepeatVerified:false"));
+  assert(!checker.includes("productionApproved:!candidateMode&&ready"));
+});
