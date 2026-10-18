@@ -941,13 +941,25 @@ def metric_uv_triangle_stretches(xyz, uv):
     return smallest, largest
 
 
-def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-12):
-    """Triangles: iterable of (three XYZ triples, three UV pairs). Fail closed."""
+def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-12,
+                       source_face_sample_limit=12):
+    """Audit actual source triangle XYZ/UV, optionally with polygon indices.
+
+    Triangle records may contain a third value: the source polygon's integer
+    index. Every record must provide the index, or none may. The optional
+    attribution locates distortion; it cannot certify fabric grain or scale.
+    """
     if any(isinstance(v, (str, bytes, bool)) or not isinstance(v, (float, int))
            or not math.isfinite(v) or v <= 0
            for v in (min_uv_area, min_surface_area_m2)):
         raise ValueError("Area thresholds must be finite positive numbers")
+    if (isinstance(source_face_sample_limit, (str, bytes, bool))
+            or not isinstance(source_face_sample_limit, int)
+            or not 0 <= source_face_sample_limit <= 32):
+        raise ValueError("Source face sample limit must be an integer in [0,32]")
     total = collapsed = degenerate = 0
+    sourced_records = unsourced_records = 0
+    damaged_faces = {}
     densities = []
     anisotropies = []
     metric_deviations = []
@@ -958,7 +970,17 @@ def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-1
     distortion_surface = []
     z_min, z_max = float("inf"), float("-inf")
     distorted_area_m2 = measured_area_m2 = 0.0
-    for xyz, uv in triangles:
+    for record in triangles:
+        if not isinstance(record, (tuple, list)) or len(record) not in (2, 3):
+            raise ValueError("UV triangle must include XYZ/UV and optional source polygon index")
+        xyz, uv = record[:2]
+        polygon_index = record[2] if len(record) == 3 else None
+        if polygon_index is not None:
+            if isinstance(polygon_index, bool) or not isinstance(polygon_index, int) or polygon_index < 0:
+                raise ValueError("Source polygon index must be a nonnegative integer")
+            sourced_records += 1
+        else:
+            unsourced_records += 1
         if len(xyz) != 3 or len(uv) != 3 or any(len(v) != 3 for v in xyz) or any(len(v) != 2 for v in uv):
             raise ValueError("Expected three XYZ and three UV points per triangle")
         flat = [v for point in (*xyz, *uv) for v in point]
@@ -1006,6 +1028,25 @@ def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-1
             distorted_area_m2 += surface_area
         distortion_surface.append((sum(point[2] for point in xyz) / 3.0,
                                    surface_area, distorted))
+        if polygon_index is not None:
+            receipt = damaged_faces.setdefault(polygon_index, {
+                "sourcePolygonIndex": polygon_index,
+                "validTriangleCount": 0, "distortedTriangleCount": 0,
+                "surfaceAreaM2": 0.0, "distortedAreaM2": 0.0,
+                "maxMetricAnisotropy": 1.0, "maxMetricStretchDeviation": 0.0,
+                "zMinMetres": float("inf"), "zMaxMetres": float("-inf"),
+            })
+            receipt["validTriangleCount"] += 1
+            receipt["surfaceAreaM2"] += surface_area
+            receipt["maxMetricAnisotropy"] = max(receipt["maxMetricAnisotropy"], ratio)
+            receipt["maxMetricStretchDeviation"] = max(receipt["maxMetricStretchDeviation"], deviation)
+            receipt["zMinMetres"] = min(receipt["zMinMetres"], *(point[2] for point in xyz))
+            receipt["zMaxMetres"] = max(receipt["zMaxMetres"], *(point[2] for point in xyz))
+            if distorted:
+                receipt["distortedTriangleCount"] += 1
+                receipt["distortedAreaM2"] += surface_area
+    if sourced_records and unsourced_records:
+        raise ValueError("Mixed attributed and anonymous UV triangle records")
     if not total:
         raise ValueError("No evaluated UV triangles; candidate must fail closed")
     if not math.isfinite(measured_area_m2) or not math.isfinite(distorted_area_m2):
@@ -1031,6 +1072,23 @@ def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-1
         cell["distortedSurfacePct"] = round(100.0 * cell["distortedAreaM2"] / area, 2) if area else None
         cell["surfaceAreaM2"] = round(area, 12)
         cell["distortedAreaM2"] = round(cell["distortedAreaM2"], 12)
+    # Reconstruct the full per-source-face inventory before truncating
+    # examples. Sorting by real distorted surface area is stable under a
+    # triangle split that preserves the exact source polygon index.
+    damaged = sorted(
+        (receipt for receipt in damaged_faces.values() if receipt["distortedTriangleCount"]),
+        key=lambda item: (-item["distortedAreaM2"], -item["maxMetricAnisotropy"],
+                          item["sourcePolygonIndex"]),
+    )
+    face_samples = [{
+        **receipt,
+        "surfaceAreaM2": round(receipt["surfaceAreaM2"], 12),
+        "distortedAreaM2": round(receipt["distortedAreaM2"], 12),
+        "maxMetricAnisotropy": round(receipt["maxMetricAnisotropy"], 5),
+        "maxMetricStretchDeviation": round(receipt["maxMetricStretchDeviation"], 5),
+        "zMinMetres": round(receipt["zMinMetres"], 5),
+        "zMaxMetres": round(receipt["zMaxMetres"], 5),
+    } for receipt in damaged[:source_face_sample_limit]]
     densities.sort()
     median = densities[len(densities)//2] if densities else None
     # Relative area-scale variance can flag inconsistent pattern density even
@@ -1050,6 +1108,11 @@ def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-1
         return values[min(len(values)-1, math.ceil(.95*len(values))-1)]
 
     return {
+        "sourceFaceAttributionAvailable": bool(sourced_records),
+        "distortedSourcePolygonCount": len(damaged) if sourced_records else None,
+        "distortedSourcePolygonSamples": face_samples,
+        "distortedSourcePolygonSamplesOmitted": (max(0, len(damaged)-len(face_samples))
+                                                if sourced_records else None),
         "uvMeasuredSurfaceAreaM2": round(measured_area_m2, 12),
         "uvDistortedSurfaceAreaM2": round(distorted_area_m2, 12),
         "uvDistortedSurfacePct": (round(100.0 * distorted_area_m2 / measured_area_m2, 2)
