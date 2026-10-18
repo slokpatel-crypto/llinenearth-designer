@@ -703,6 +703,53 @@ class CandidateUvAuditTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             audit.validate_recomputed_source_cut_evidence({}, authored)
 
+    def test_metric_jacobian_detects_area_preserving_stripe_distortion(self):
+        # Double U / halve V has unchanged UV area, but fabric features
+        # change shape fourfold. An area-only test misses this failure.
+        mapped = ((0, 0), (2, 0), (0, 0.5))
+        result = audit.audit_uv_triangles([(XYZ, mapped)])
+        self.assertTrue(result["candidateUvTopologyPass"])
+        self.assertAlmostEqual(result["medianUvAreaPerSquareMetre"], 1.0)
+        self.assertAlmostEqual(result["p95UvMetricAnisotropy"], 4.0)
+        self.assertAlmostEqual(result["p95UvMetricStretchDeviation"], 1.0)
+        self.assertEqual(result["uvTrianglesAnisotropyOver2"], 1)
+        self.assertTrue(result["candidateUvMetricDistortionReviewRequired"])
+        self.assertFalse(result["physicalFabricRepeatVerified"])
+
+    def test_metric_jacobian_on_world_tilted_triangle_and_shear(self):
+        # Frame must come from XYZ geometry and remain rotation invariant.
+        tilted = ((0, 0, 0), (0, 1, 0), (0, 0, 1))
+        undistorted = audit.audit_uv_triangles([(tilted, UV)])
+        self.assertAlmostEqual(undistorted["p95UvMetricAnisotropy"], 1.0)
+        self.assertAlmostEqual(undistorted["p95UvMetricStretchDeviation"], 0.0)
+        self.assertFalse(undistorted["candidateUvMetricDistortionReviewRequired"])
+        shear = audit.audit_uv_triangles([(tilted, ((0, 0), (1, 0), (1, 1)))])
+        self.assertAlmostEqual(shear["medianUvAreaPerSquareMetre"], 1.0)
+        self.assertGreater(shear["p95UvMetricAnisotropy"], 2.5)
+        self.assertTrue(shear["candidateUvMetricDistortionReviewRequired"])
+
+    def test_metric_scan_tracks_absolute_length_rescaling(self):
+        mapped = ((0, 0), (0.2, 0), (0, 0.2))
+        result = audit.audit_uv_triangles([(XYZ, mapped)])
+        self.assertAlmostEqual(result["p95UvMetricAnisotropy"], 1.0)
+        self.assertAlmostEqual(result["p95UvMetricStretchDeviation"], 0.8)
+        self.assertEqual(result["uvTrianglesAnisotropyOver2"], 0)
+        self.assertEqual(result["uvTrianglesMetricScaleDeviationOver50Pct"], 1)
+        self.assertTrue(result["candidateUvMetricDistortionReviewRequired"])
+
+    def test_metric_scan_rejects_numeric_strings_booleans_and_overflow(self):
+        for invalid in (((0, 0), ("1", 0), (0, 1)),
+                        ((0, 0), (True, 0), (0, 1))):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                audit.audit_uv_triangles([(XYZ, invalid)])
+        for bad in (True, "1e-10", float("nan"), float("inf")):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                audit.audit_uv_triangles([(XYZ, UV)], min_uv_area=bad)
+        with self.assertRaises(ValueError):
+            audit.audit_uv_triangles([
+                (((0, 0, 0), (1e308, 0, 0), (0, 1e308, 0)), UV)
+            ])
+
     def test_valid_uv_is_not_a_physical_fabric_certificate(self):
         result = audit.audit_uv_triangles([(XYZ, UV)])
         self.assertTrue(result["candidateUvTopologyPass"])
