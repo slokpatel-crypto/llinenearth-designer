@@ -6,7 +6,7 @@ import {
   GARMENT_PANEL_SPECS,
   PROTOTYPE_MODEL_ID,
 } from "@/lib/garment-viewer-prototype";
-import { canPaintGarmentPanelMaterial, canApplyViewerTextureUvTransform, applyViewerTextureUvTransform, garmentPanelTexturePreparationKey, prepareGarmentPanelUvTransforms, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
+import { canPaintGarmentPanelMaterial, canPaintGarmentPanelNormalMaterial, canApplyViewerTextureUvTransform, applyViewerTextureUvTransform, garmentPanelTexturePreparationKey, prepareGarmentPanelUvTransforms, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
 import { validateGarmentViewerModelContract, validateGarmentViewerModelManifest, type GarmentViewerModelContractResult, type GarmentViewerModelManifest, type GarmentViewerManifestValidation } from "@/lib/garment-viewer-model-contract";
 import { GARMENT_VIEWER_LATENCY_STORAGE_KEY, garmentViewerAssetIdentityKey, type GarmentViewerAssetIdentity } from "@/lib/garment-viewer-readiness";
 import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
@@ -891,6 +891,14 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         // pass before mutating ANY visible fabric or material cache.
         if(materials.some((material)=>!canPaintGarmentPanelMaterial(material)))
           throw new Error("Required garment panel is missing a paintable texture slot");
+        // A declared UV unit contract is a production-oriented metric claim.
+        // Never publish a six-panel texture revision with a silently missing
+        // weave-normal slot, but retain colour-only support in the explicitly
+        // approximate legacy prototype path (which may lack that GLB slot).
+        if(modelManifest?.uvCoordinateUnits
+          && materials.some((material,index)=>Boolean(prepared[index]?.normal)
+            && !canPaintGarmentPanelNormalMaterial(material)))
+          throw new Error("Required garment panel is missing a paintable normal-map slot");
         preparedTextureRef.current=new Map(prepared.map((entry)=>[
           entry.panel.material,
           {texture:entry.texture,normal:entry.normal,garment:entry.panel.garment,key:entry.key},
