@@ -190,6 +190,51 @@ class CandidateUvAuditTests(unittest.TestCase):
             with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
                 audit.audit_shared_uv_edges([[(0, (0, 0)), (1, (1, 0)), (2, (1, 1))]], **kwargs)
 
+
+    def test_cylindrical_phase_alignment_only_removes_exact_full_turn_jump(self):
+        import math
+        radius = .1
+        wrap = 2*math.pi*radius
+        faces = [
+            [(0, (0, 0)), (1, (.02, 0)), (2, (.02, .05))],
+            [(2, (.02-wrap, .05)), (1, (.02-wrap, 0)), (3, (.04-wrap, .05))],
+        ]
+        before = audit.audit_shared_uv_edges(faces)
+        corrected, evidence = audit.phase_align_cylindrical_charts(faces, radius_m=radius)
+        after = audit.audit_shared_uv_edges(corrected)
+        self.assertEqual(before["unapprovedInteriorUvSeams"], 1)
+        self.assertEqual(after["unapprovedInteriorUvSeams"], 0)
+        self.assertEqual(evidence["phaseShiftedFaces"], 1)
+        self.assertAlmostEqual(corrected[1][0][1][0], .02, places=7)
+        self.assertFalse(evidence["supplierRepeatVerified"])
+        self.assertFalse(evidence["productionApproved"])
+
+    def test_phase_stitching_never_fakes_tangent_chart_or_twisted_seam(self):
+        import math
+        wrap = 2*math.pi*.1
+        faces = [
+            [(0, (0, 0)), (1, (.02, 0)), (2, (.02, .05))],
+            [(2, (.02-wrap, .05)), (1, (.02-wrap, .01)), (3, (.04-wrap, .05))],
+        ]
+        # Conflicting grain (V) cannot be corrected by moving U.
+        corrected, evidence = audit.phase_align_cylindrical_charts(faces, radius_m=.1)
+        self.assertEqual(corrected, faces)
+        self.assertEqual(evidence["unapprovedInteriorUvSeamsAfter"], 1)
+        # Even exactly alignable U phase must not silently stitch an unapproved
+        # geometry-estimated local tangent chart.
+        faces[1][1] = (1, (.02-wrap, 0))
+        corrected, evidence = audit.phase_align_cylindrical_charts(
+            faces, radius_m=.1, excluded_face_indices=[1]
+        )
+        self.assertEqual(corrected, faces)
+        self.assertEqual(evidence["excludedUnapprovedFaceCharts"], 1)
+        self.assertEqual(evidence["unapprovedInteriorUvSeamsAfter"], 1)
+        for radius in (float("nan"), 0, True, -.1):
+            with self.subTest(radius=radius), self.assertRaises(ValueError):
+                audit.phase_align_cylindrical_charts(faces, radius_m=radius)
+        with self.assertRaises(ValueError):
+            audit.phase_align_cylindrical_charts(faces, radius_m=.1, excluded_face_indices=[2])
+
     def test_valid_uv_is_not_a_physical_fabric_certificate(self):
         result = audit.audit_uv_triangles([(XYZ, UV)])
         self.assertTrue(result["candidateUvTopologyPass"])
