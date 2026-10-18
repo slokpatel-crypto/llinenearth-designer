@@ -156,3 +156,18 @@ export function garmentUvRepeatsForUnits(
   }
   return null;
 }
+
+/**
+ * Cache only a fully prepared per-panel texture with identical UV settings.
+ * The model key prevents texture objects being reused on a different GLB.
+ * Different panels must never share the mutable model-viewer sampler object.
+ */
+export function garmentPanelTexturePreparationKey(input:{
+  modelKey:string;panelMaterial:string;fabricUrl:string;normalUrl:string;
+  u:number;v:number;offsetU:number;offsetV:number;rotation:number;
+}):string {
+  return JSON.stringify([
+    input.modelKey,input.panelMaterial,input.fabricUrl,input.normalUrl,
+    input.u,input.v,input.offsetU,input.offsetV,input.rotation,
+  ]);
+}
