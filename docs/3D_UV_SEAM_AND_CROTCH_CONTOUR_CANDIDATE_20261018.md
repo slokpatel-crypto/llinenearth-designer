@@ -77,3 +77,34 @@ workflows on the exact final commit are required before any further claim.
 The six-pane customer garment and original photographic Designer Studio are
 not replaced, PR #311 remains **DRAFT**, and no main merge/deployment is
 authorized.
+
+
+## Next Task 2 increment — actual-triangle anisotropy and release preflight (2026-10-18)
+
+Previously the candidate audit primarily tested UV triangle area and shared-edge
+continuity. Two different maps can have identical UV area while one shears a
+check pattern or doubles stripe width and halves length. New pure-Python
+`metric_uv_triangle_stretches` computes both principal metre-length ratios
+from each actual 3D triangle's **orthonormal tangent frame**, independent of
+world-axis orientation. It reports the P95 principal anisotropy and absolute
+unit-length deviation, plus counts over conservative 2x anisotropy and 50%
+length-deviation *review* thresholds. Surface area alone cannot certify
+physically faithful weaving scale.
+
+`audit_uv_triangles` now rejects numeric-looking strings, booleans and
+nonfinite/overflowed metric values, as well as degenerate UV/geometry.
+The genuine evaluated Blender preflight independently recalculates metric
+stretch/shear using the current garment triangles and flags large local
+distortions as **release blockers**; no authored JSON can bypass that check.
+Unit tests cover same-area distorted UVs, shear, a world-rotated triangle,
+global rescale and invalid values. These numerical review limits are software
+candidate safeguards, **not supplier-authenticated textile tolerances**.
+
+Commits: `a0f0fc2` (metric Jacobian), `86d34e0` (regressions),
+`b0141c4` (native independent gate). Associated [CI](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/39138271888),
+[non-3D browser QA](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/39138271925)
+and [actual Blender scene preflight](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/39138271918)
+must reach terminal conclusions before pass/fail claims. The existing body
+identity/pose, garment geometry, unapproved UV seam counts and measured sleeve
+centre spacing were not altered by this instrumentation. Preserve draft
+status and **do not merge or deploy**.
