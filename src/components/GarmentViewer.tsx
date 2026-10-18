@@ -6,7 +6,7 @@ import {
   GARMENT_PANEL_SPECS,
   PROTOTYPE_MODEL_ID,
 } from "@/lib/garment-viewer-prototype";
-import { garmentPanelTextureScale, garmentUvRepeatsForUnits, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
+import { garmentPanelTextureScale, garmentUvRepeatsForUnits, resolveViewerTileHeightMm, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
 import { validateGarmentViewerModelContract, validateGarmentViewerModelManifest, type GarmentViewerModelContractResult, type GarmentViewerModelManifest, type GarmentViewerManifestValidation } from "@/lib/garment-viewer-model-contract";
 import { GARMENT_VIEWER_LATENCY_STORAGE_KEY, garmentViewerAssetIdentityKey, type GarmentViewerAssetIdentity } from "@/lib/garment-viewer-readiness";
 import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
@@ -91,6 +91,7 @@ type DesignerDraftRecipe={
 type FabricTileManifest={
   assets?:Record<string,{
     tileRealWidthMm?:number|null;
+    tileRealHeightMm?:number|null;
     repeatPeriodPx?:number|null;
     scaleApproximate?:boolean;
     renderAssetVersion?:string;
@@ -814,6 +815,9 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         const prepared=await Promise.all(panelSpecs.map(async(panel)=>{
           const fabric=panel.garment==="shirt"?shirt:trouser;
           const tileMm=panel.garment==="shirt"?shirtTileMm:trouserTileMm;
+          // Use independent physical V repeat only with verified tile metadata;
+          // otherwise preserve the old square-tile preview, not false evidence.
+          const tileHeightMm=resolveViewerTileHeightMm(tileManifest.assets?.[fabric.tileKey])??tileMm;
           const normalUrl=panel.garment==="shirt"?shirtNormalMap:trouserNormalMap;
           const [texture,normal]=await Promise.all([
             viewer.createTexture!(fabric.image),
@@ -823,8 +827,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           // A new source-authored metre-UV GLB must declare its convention in
           // the validated manifest; never apply a normalized repeat factor to it.
           const scale=modelManifest?.uvCoordinateUnits
-            ? garmentUvRepeatsForUnits(modelManifest.uvCoordinateUnits,panel.widthMm,panel.heightMm,tileMm)
-            : garmentPanelTextureScale(panel.widthMm,panel.heightMm,tileMm);
+            ? garmentUvRepeatsForUnits(modelManifest.uvCoordinateUnits,panel.widthMm,panel.heightMm,tileMm,tileHeightMm)
+            : garmentPanelTextureScale(panel.widthMm,panel.heightMm,tileMm,tileHeightMm);
           if(!scale) throw new Error("Unknown or renderer-clamped candidate physical fabric scale");
           const offset={u:Number(panel.offsetU)||0,v:Number(panel.offsetV)||0};
           const rotation=(Number(panel.rotationDeg)||0)*Math.PI/180;
@@ -876,7 +880,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       }
     };
     void apply();
-  },[modelReady,materialPipelineReady,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelManifest,modelContract,modelSrc,assetIdentityKey]);
+  },[modelReady,materialPipelineReady,shirt,trouser,shirtTileMm,trouserTileMm,tileManifest,panelSpecs,productionManifestReady,modelManifest,modelContract,modelSrc,assetIdentityKey]);
 
   useEffect(()=>{
     if(!modelReady || !materialPipelineReady) return;
