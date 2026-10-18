@@ -30,7 +30,9 @@ def cube(name, center, dimensions):
 
 body = cube("TEST_LOCKED_SOURCE_BODY", (1.0, 0.0, 0.35), (0.04, 0.04, 0.1))
 left = cube("TrouserLegLFabric", (-0.009, 0.0, 0.35), (0.02, 0.04, 0.1))
-right = cube("TrouserLegRFabric", (0.009, 0.0, 0.35), (0.02, 0.04, 0.1))
+# Deliberately avoid coplanar cube faces: BVH overlap requires real
+# intersecting surfaces rather than ambiguous coincident rectangles.
+right = cube("TrouserLegRFabric", (0.009, 0.006, 0.345), (0.02, 0.04, 0.1))
 source_body_before = (tuple(tuple(v.co) for v in body.data.vertices),
                       tuple(body.matrix_world))
 
