@@ -453,6 +453,13 @@ def main():
                 f"{name} has {stats['uvCollapsedTriangles']} collapsed UV triangles; "
                 "no real stripe/check physical pattern scale can be approved from this surface."
             )
+        uv_fallback_faces = int(obj.get("linen_earth_uv_mixed_projection_fallback_faces", 0))
+        entry["candidateUvFallbackFaces"] = uv_fallback_faces
+        if uv_fallback_faces > 0:
+            reasons.append(
+                f"{name} uses {uv_fallback_faces} uncalibrated planar UV fallback faces "
+                "on a cylindrical garment; resolve genuine seams before production."
+            )
         if stats["degenerateRatio"] > MAX_DEGENERATE_FACE_RATIO:
             reasons.append(
                 f"{name} has too many zero-area/degenerate faces: "
