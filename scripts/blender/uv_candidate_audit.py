@@ -156,6 +156,90 @@ def metric_tangent_chart_uv(points_xyz):
     ]
 
 
+
+def audit_shared_uv_edges(faces, *, tolerance_m=1e-5, sample_limit=12):
+    """Audit UV continuity across ACTUALLY shared source-mesh polygon edges.
+
+    Faces are ordered polygons of (vertex_id, (u, v)) corners. Coordinates are
+    mesh metres; a local face chart starting at the origin is not stitched.
+    Intentionally cut seams still need separate approval and fabric evidence.
+    """
+    from collections import defaultdict
+
+    if (isinstance(tolerance_m, (str, bytes, bool))
+            or not isinstance(tolerance_m, (float, int))
+            or not math.isfinite(tolerance_m) or tolerance_m <= 0):
+        raise ValueError("UV seam tolerance must be finite and positive")
+    if isinstance(sample_limit, bool) or not isinstance(sample_limit, int) or sample_limit < 0:
+        raise ValueError("UV seam sample limit must be a nonnegative integer")
+    edges = defaultdict(list)
+    polygon_count = 0
+    for face_index, face in enumerate(faces):
+        polygon_count += 1
+        if len(face) < 3:
+            raise ValueError("UV seam audit requires polygon faces of >=3 corners")
+        corners = []
+        for corner in face:
+            if len(corner) != 2:
+                raise ValueError("Each UV face corner needs a vertex id and UV pair")
+            vertex, uv = corner
+            if isinstance(vertex, bool) or not isinstance(vertex, int) or vertex < 0:
+                raise ValueError("UV seam audit requires nonnegative integer vertex ids")
+            if len(uv) != 2 or any(
+                isinstance(n, (str, bytes, bool)) or not isinstance(n, (float, int))
+                or not math.isfinite(n) for n in uv
+            ):
+                raise ValueError("UV seam audit requires finite metre UVs")
+            corners.append((vertex, (float(uv[0]), float(uv[1]))))
+        if len({vertex for vertex, _ in corners}) != len(corners):
+            raise ValueError("UV seam audit rejects repeated polygon corner vertices")
+        for a, b in zip(corners, corners[1:] + corners[:1]):
+            vertex_a, uv_a = a
+            vertex_b, uv_b = b
+            key = (min(vertex_a, vertex_b), max(vertex_a, vertex_b))
+            # Compare shared edges by SOURCE vertex, not by opposite loop order.
+            edges[key].append((face_index, {vertex_a: uv_a, vertex_b: uv_b}))
+
+    if not polygon_count:
+        raise ValueError("UV seam audit cannot certify an empty mesh")
+    shared = nonmanifold = boundary = unapproved = 0
+    max_jump_m = 0.0
+    sample = []
+    for edge, entries in edges.items():
+        if len(entries) == 1:
+            boundary += 1
+        elif len(entries) > 2:
+            nonmanifold += 1
+        else:
+            shared += 1
+            first, second = entries
+            jump_m = max(
+                math.dist(first[1][vertex], second[1][vertex]) for vertex in edge
+            )
+            max_jump_m = max(max_jump_m, jump_m)
+            if jump_m > tolerance_m:
+                unapproved += 1
+                if len(sample) < sample_limit:
+                    sample.append({
+                        "sourceEdgeVertices": list(edge),
+                        "sourcePolygonIndices": [first[0], second[0]],
+                        "maxUvEndpointJumpMm": round(jump_m * 1000, 5),
+                    })
+    return {
+        "polygonCount": polygon_count,
+        "sharedInteriorEdges": shared,
+        "boundaryEdges": boundary,
+        "nonManifoldEdges": nonmanifold,
+        "unapprovedInteriorUvSeams": unapproved,
+        "maxInteriorUvJumpMm": round(max_jump_m * 1000, 5),
+        "sampleUnapprovedSeams": sample,
+        "topologicalUvContinuityPass": unapproved == 0 and nonmanifold == 0,
+        "supplierRepeatVerified": False,
+        "supplierGrainVerified": False,
+        "productionApproved": False,
+    }
+
+
 def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-12):
     """Triangles: iterable of (three XYZ triples, three UV pairs). Fail closed."""
     if not (math.isfinite(min_uv_area) and min_uv_area > 0
