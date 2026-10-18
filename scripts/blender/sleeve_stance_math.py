@@ -119,3 +119,32 @@ def source_arm_band_geometry(points_xyz, *, guide_z_m, side,
         "photoPoseApproved": False,
         "productionApproved": False,
     }
+
+
+def bounded_sleeve_cuff_refinement_trials(unsafe_above_mm, safe_below_mm, *, subdivisions=4):
+    """Only probe in the independently BVH-measured rejected/safe bracket.
+
+    A coarse 1-mm rollback can conceal a further safe submillimetre cloth
+    correction. These descending probes are *not* proof of monotonic body
+    clearance: every candidate needs a fresh two-sleeve/world-space BVH test.
+    Never move the source human or increase the existing 22-mm contour cap.
+    """
+    values = (unsafe_above_mm, safe_below_mm)
+    if any(isinstance(v, (bool, str, bytes)) or not isinstance(v, (int, float))
+           or not math.isfinite(v) for v in values):
+        raise ValueError("Sleeve refinement needs finite numeric shifts")
+    if (not 0 <= safe_below_mm < unsafe_above_mm <= MAX_INBOARD_MM
+            or unsafe_above_mm - safe_below_mm > 1.000001
+            or unsafe_above_mm - safe_below_mm <= 0.00001):
+        raise ValueError("Sleeve refinement needs a resolvable <=1-mm contact bracket")
+    if (isinstance(subdivisions, bool) or not isinstance(subdivisions, int)
+            or not 2 <= subdivisions <= 8):
+        raise ValueError("Sleeve refinement subdivisions must be 2..8")
+    candidates = tuple(round(
+        unsafe_above_mm - (unsafe_above_mm-safe_below_mm)*step/subdivisions, 6
+    ) for step in range(1, subdivisions))
+    if not all(safe_below_mm < value < unsafe_above_mm for value in candidates):
+        raise ValueError("Sleeve refinement precision must stay inside source bracket")
+    if not all(a > b for a, b in zip(candidates, candidates[1:])):
+        raise ValueError("Sleeve refinement has duplicate measured candidates")
+    return candidates
