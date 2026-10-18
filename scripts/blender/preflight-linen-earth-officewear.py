@@ -375,7 +375,7 @@ def main():
     identity_measurements["sleeveCenterSpacingMm"] = round(sleeve_spacing, 2) if sleeve_spacing is not None else None
     identity_measurements["cuffWidthAsymmetryMm"] = round(cuff_width_asymmetry, 2) if cuff_width_asymmetry is not None else None
     if sleeve_spacing is None:
-        warnings.append("Could not sample sleeve-center spacing near the locked hand guides.")
+        reasons.append("Could not sample sleeve-center spacing near the locked hand guides; spacing gate cannot pass without measurement.")
     else:
         target_hand_spacing = EXPECTED_IDENTITY_TARGETS_MM["handCenterSpacing"]
         if abs(sleeve_spacing - target_hand_spacing) > 36.0:
@@ -407,7 +407,7 @@ def main():
     leg_spacing = abs(right_leg_center - left_leg_center) if left_leg_center is not None and right_leg_center is not None else None
     identity_measurements["legCenterSpacingMm"] = round(leg_spacing, 2) if leg_spacing is not None else None
     if leg_spacing is None:
-        warnings.append("Could not sample trouser leg-center spacing from production geometry.")
+        reasons.append("Could not sample trouser leg-center spacing from production geometry; spacing gate cannot pass without measurement.")
     else:
         target_leg_spacing = EXPECTED_IDENTITY_TARGETS_MM["legCenterSpacing"]
         if abs(leg_spacing - target_leg_spacing) > 24.0:
