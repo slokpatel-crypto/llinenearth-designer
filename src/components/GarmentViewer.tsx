@@ -124,8 +124,14 @@ function drapeRoughnessOffset(fabric:GarmentViewerFabric|undefined) {
   const drape=fabricDrapeClass(fabric);
   return drape==="fluid"?-.08:drape==="soft"?-.04:drape==="structured"?.04:0;
 }
+// Drape classes use a small fixed strength vocabulary. Reusing their
+// procedural weave PNG avoids doing 4,096 pixel writes and PNG encoding on
+// every instant-preview fabric choice. No physical weave/drape is inferred.
+const normalMapDataUrls=new Map<number,string>();
 function createLinenNormalMap(strength=1) {
-  if(typeof document==="undefined") return "";
+  if(typeof document==="undefined" || !Number.isFinite(strength)) return "";
+  const cached=normalMapDataUrls.get(strength);
+  if(cached!==undefined) return cached;
   const canvas=document.createElement("canvas");
   canvas.width=64;canvas.height=64;
   const ctx=canvas.getContext("2d");
@@ -143,7 +149,10 @@ function createLinenNormalMap(strength=1) {
     }
   }
   ctx.putImageData(image,0,0);
-  return canvas.toDataURL("image/png");
+  const dataUrl=canvas.toDataURL("image/png");
+  if(normalMapDataUrls.size>=6) normalMapDataUrls.clear();
+  normalMapDataUrls.set(strength,dataUrl);
+  return dataUrl;
 }
 
 function materialByName(viewer:ModelViewerElement,name:string) {
