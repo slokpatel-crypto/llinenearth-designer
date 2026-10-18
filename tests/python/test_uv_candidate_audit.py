@@ -359,6 +359,88 @@ class CandidateUvAuditTests(unittest.TestCase):
             with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
                 audit.classify_unapproved_uv_seams(faces, **kwargs)
 
+    def test_phase_cycle_conflict_rolls_back_every_uv_face(self):
+        import math
+        period = 2 * math.pi * .1
+        # A closed ring of source quads gives inconsistent integer U phase
+        # constraints. A spanning-tree shift must not manufacture a new tear.
+        faces = [
+            [(0, (0, 0)), (1, (0, 0)), (4, (0, .1)), (3, (0, .1))],
+            [(1, (-period, 0)), (2, (0, 0)),
+             (5, (0, .1)), (4, (-period, .1))],
+            [(2, (-period, 0)), (0, (period, 0)),
+             (3, (period, .1)), (5, (-period, .1))],
+        ]
+        original = audit.audit_shared_uv_edges(faces)
+        candidate, report = audit.phase_align_cylindrical_charts(
+            faces, radius_m=.1
+        )
+        self.assertEqual(candidate, faces)
+        self.assertGreater(report["phaseCycleConflicts"], 0)
+        self.assertTrue(report["phaseCandidateRolledBack"])
+        self.assertEqual(report["phaseRollbackReason"], "inconsistent_phase_cycle")
+        self.assertEqual(report["phaseShiftedFaces"], 0)
+        self.assertEqual(report["unapprovedInteriorUvSeamsAfter"],
+                         original["unapprovedInteriorUvSeams"])
+        self.assertFalse(report["productionApproved"])
+
+    def test_phase_alignment_never_breaks_continuous_excluded_chart_edge(self):
+        import math
+        period = 2 * math.pi * .1
+        faces = [
+            [(0, (0, 0)), (1, (.02, 0)), (2, (.02, .05))],
+            [(2, (.02-period, .05)), (1, (.02-period, 0)),
+             (3, (.04-period, .05))],
+            [(3, (.04-period, .05)), (2, (.02-period, .05)),
+             (4, (.06-period, .08))],
+        ]
+        baseline = audit.audit_shared_uv_edges(faces)
+        self.assertEqual(baseline["unapprovedInteriorUvSeams"], 1)
+        candidate, report = audit.phase_align_cylindrical_charts(
+            faces, radius_m=.1, excluded_face_indices=[2]
+        )
+        self.assertEqual(candidate, faces)
+        self.assertTrue(report["phaseCandidateRolledBack"])
+        self.assertEqual(report["phaseRollbackReason"],
+                         "previously_continuous_edge_broken")
+        self.assertGreater(report["wouldBreakPreviouslyContinuousSourceEdges"], 0)
+        self.assertEqual(report["unapprovedInteriorUvSeamsAfter"], 1)
+
+    def test_genuine_source_seam_edges_group_into_open_chain(self):
+        import math
+        period = 2 * math.pi * .1
+        faces = [
+            [(0, (0, 0)), (1, (.02, 0)), (2, (.02, .05))],
+            [(2, (.02-period, .05)), (1, (.02-period, 0)),
+             (3, (.04-period, .05))],
+            [(3, (.04-2*period, .05)), (2, (.02-2*period, .05)),
+             (4, (.06-2*period, .08))],
+        ]
+        result = audit.classify_unapproved_uv_seams(faces, radius_m=.1)
+        self.assertEqual(result["unapprovedInteriorUvSeams"], 2)
+        self.assertEqual(result["exactFullTurnCutCandidates"], 2)
+        self.assertEqual(result["sourceSeamGroupCountByClass"]
+                         ["exactFullTurnCutCandidate"], 1)
+        self.assertEqual(result["sourceSeamChainShapes"]["openPath"], 1)
+        chain = result["sourceSeamChainSamples"][0]
+        self.assertEqual(chain["sourceEdgeSamples"], [[1, 2], [2, 3]])
+        self.assertEqual(chain["openEndSourceVertices"], [1, 3])
+        self.assertFalse(chain["seamPlacementApproved"])
+        self.assertFalse(result["cutPlacementApproved"])
+
+        # Reclassifying one edge as irregular must NOT merge it into an
+        # apparent continuous periodic garment seam at the shared vertex.
+        irregular = [[(v, ((u+.015, w) if v == 2 else (u, w)))
+                      for v, (u, w) in faces[2]]]
+        mixed = audit.classify_unapproved_uv_seams(
+            faces[:2]+irregular, radius_m=.1, sample_limit=0
+        )
+        self.assertEqual(mixed["exactFullTurnCutCandidates"], 1)
+        self.assertEqual(mixed["nonPeriodicUvTears"], 1)
+        self.assertEqual(mixed["sourceSeamChainShapes"]["openPath"], 2)
+        self.assertEqual(mixed["sourceSeamChainSamples"], [])
+        self.assertEqual(sum(mixed["sourceSeamGroupCountByClass"].values()), 2)
+
     def test_valid_uv_is_not_a_physical_fabric_certificate(self):
         result = audit.audit_uv_triangles([(XYZ, UV)])
         self.assertTrue(result["candidateUvTopologyPass"])
