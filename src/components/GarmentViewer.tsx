@@ -819,10 +819,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           // otherwise preserve the old square-tile preview, not false evidence.
           const tileHeightMm=resolveViewerTileHeightMm(tileManifest.assets?.[fabric.tileKey])??tileMm;
           const normalUrl=panel.garment==="shirt"?shirtNormalMap:trouserNormalMap;
-          const [texture,normal]=await Promise.all([
-            viewer.createTexture!(fabric.image),
-            normalUrl ? viewer.createTexture!(normalUrl) : Promise.resolve(null),
-          ]);
+          // Validate repeat factors BEFORE allocating GPU textures: an invalid
+          // candidate scale should never allocate six unusable maps.
           // Legacy live-model GLBs use one normalized UV span per panel.
           // A new source-authored metre-UV GLB must declare its convention in
           // the validated manifest; never apply a normalized repeat factor to it.
@@ -830,6 +828,11 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
             ? garmentUvRepeatsForUnits(modelManifest.uvCoordinateUnits,panel.widthMm,panel.heightMm,tileMm,tileHeightMm)
             : garmentPanelTextureScale(panel.widthMm,panel.heightMm,tileMm,tileHeightMm);
           if(!scale) throw new Error("Unknown or renderer-clamped candidate physical fabric scale");
+          if(token!==applyToken.current) throw new Error("Superseded fabric selection");
+          const [texture,normal]=await Promise.all([
+            viewer.createTexture!(fabric.image),
+            normalUrl ? viewer.createTexture!(normalUrl) : Promise.resolve(null),
+          ]);
           const offset={u:Number(panel.offsetU)||0,v:Number(panel.offsetV)||0};
           const rotation=(Number(panel.rotationDeg)||0)*Math.PI/180;
           texture.sampler?.setScale?.(scale);
@@ -846,7 +849,12 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           {texture:entry.texture,normal:entry.normal,garment:entry.panel.garment},
         ]));
         for(const entry of prepared){
+          // Model-viewer material hydration is asynchronous; a later fabric
+          // selection may supersede this one DURING the await. Never allow the
+          // old selection to overwrite a newly chosen colour or print.
+          if(token!==applyToken.current) return;
           const material=await ensureViewerMaterialLoaded(materialByName(viewer,entry.panel.material));
+          if(token!==applyToken.current) return;
           if(!material) continue;
           material.pbrMetallicRoughness.setBaseColorFactor([1,1,1,1]);
           material.pbrMetallicRoughness.setMetallicFactor(0);
@@ -880,6 +888,9 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       }
     };
     void apply();
+    // Cancels an in-flight texture/material pass when the viewer unmounts
+    // or its dependencies change, even before the next render effect starts.
+    return ()=>{if(applyToken.current===token) applyToken.current++;};
   },[modelReady,materialPipelineReady,shirt,trouser,shirtTileMm,trouserTileMm,tileManifest,panelSpecs,productionManifestReady,modelManifest,modelContract,modelSrc,assetIdentityKey]);
 
   useEffect(()=>{
