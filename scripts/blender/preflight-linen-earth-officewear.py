@@ -679,6 +679,12 @@ def main():
                     "shared-edge UV discontinuities on real garment topology; "
                     "authored fabric seam placement, repeat and grain need review."
                 )
+            if seam_audit["inconsistentWindingEdges"] > 0:
+                reasons.append(
+                    f"{name} has {seam_audit['inconsistentWindingEdges']} shared garment "
+                    "edges with matching face traversal direction; UV agreement "
+                    "cannot certify an incorrectly wound cloth shell."
+                )
             if seam_audit["nonManifoldEdges"] > 0:
                 reasons.append(
                     f"{name} has {seam_audit['nonManifoldEdges']} nonmanifold "
