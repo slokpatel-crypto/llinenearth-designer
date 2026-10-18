@@ -454,8 +454,15 @@ def main():
                 "no real stripe/check physical pattern scale can be approved from this surface."
             )
         uv_fallback_faces = int(obj.get("linen_earth_uv_mixed_projection_fallback_faces", 0))
+        uv_tangent_faces = int(obj.get("linen_earth_uv_unapproved_local_tangent_chart_faces", 0))
         entry["candidateUvFallbackFaces"] = uv_fallback_faces
-        if uv_fallback_faces > 0:
+        entry["candidateUvTangentChartFaces"] = uv_tangent_faces
+        if uv_tangent_faces > 0:
+            reasons.append(
+                f"{name} uses {uv_tangent_faces} unapproved local metric tangent UV charts "
+                "on a cylindrical garment; stitch and verify true pattern seams before production."
+            )
+        elif uv_fallback_faces > 0:
             reasons.append(
                 f"{name} uses {uv_fallback_faces} uncalibrated planar UV fallback faces "
                 "on a cylindrical garment; resolve genuine seams before production."
