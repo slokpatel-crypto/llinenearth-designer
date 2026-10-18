@@ -162,6 +162,25 @@ def planar_grain_uv(obj):
             uv_layer.data[loop_index].uv = (u, v)
 
 
+def record_uv_diagnostics(obj):
+    # Geometry-only audit. Report folded/collapsed UVs; never pass this off as
+    # supplier-calibrated fabric repeat or as a successful UV approval gate.
+    mesh = obj.data
+    mesh.calc_loop_triangles()
+    uv = mesh.uv_layers.active
+    triangles = len(mesh.loop_triangles)
+    collapsed = 0
+    for triangle in mesh.loop_triangles:
+        a, b, c = (uv.data[index].uv for index in triangle.loops)
+        area_twice = abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x))
+        if not math.isfinite(area_twice) or area_twice <= 1e-12:
+            collapsed += 1
+    obj["linen_earth_uv_triangle_count"] = triangles
+    obj["linen_earth_uv_collapsed_triangles"] = collapsed
+    obj["linen_earth_uv_collapsed_ratio"] = round(collapsed / triangles, 6) if triangles else 1.0
+    return collapsed, triangles
+
+
 def main():
     options = cli_args()
     body = bpy.data.objects.get(options.body)
@@ -209,6 +228,8 @@ def main():
         obj = selected_shell(body, name, predicate)
         fit_shell(obj, body, clearance_m, thickness_m)
         planar_grain_uv(obj)
+        collapsed, triangles = record_uv_diagnostics(obj)
+        print(f"Candidate UV audit {name}: {collapsed}/{triangles} collapsed triangles (uncalibrated)")
         obj["linen_earth_auto_authored"] = True
         obj["linen_earth_uv_units"] = "metres-geometry-only"
         obj["linen_earth_supplier_repeat_verified"] = False
