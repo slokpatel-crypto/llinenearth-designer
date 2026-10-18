@@ -861,7 +861,7 @@ class CandidateUvAuditTests(unittest.TestCase):
         # A tiny scene-file coordinate-rounding drift is tolerated but a
         # changed local damage extent, even with unchanged global total, is not.
         rounded = deepcopy(source)
-        rounded["uvDistortionHeightBands"][4]["distortedAreaM2"] += .000001
+        rounded["uvDistortionHeightBands"][4]["distortedAreaM2"] -= .000001
         self.assertTrue(audit.validate_independent_uv_hotspots(
             source, rounded)["evaluatedSourceUvHotspotProvenanceConsistent"])
         shifted = deepcopy(source)
