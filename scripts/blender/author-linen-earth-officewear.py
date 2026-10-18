@@ -23,7 +23,7 @@ from mathutils.bvhtree import BVHTree
 # Blender. It must not be mistaken for a material-calibrated cloth simulation.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from drape_preview_math import MAX_PREVIEW_RELIEF_MM, candidate_drape_offset_mm
-from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical_metric_face_uv
+from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical_metric_face_uv, cylindrical_ambiguous_face_diagnostic
 from region_islands import keep_ankle_connected_faces
 from sleeve_stance_math import MAX_INBOARD_MM, candidate_sleeve_inboard_mm
 from leg_stance_math import MAX_INBOARD_MM as MAX_LEG_INBOARD_MM, candidate_leg_inboard_mm, candidate_inner_seam_relief_mm
@@ -788,6 +788,7 @@ def planar_grain_uv(obj):
         if radius_m <= 0.015:
             raise RuntimeError(f"Degenerate source tube for candidate UV: {obj.name}")
         fallback_faces = 0
+        fallback_receipts = []
         for polygon in mesh.polygons:
             loops = tuple(polygon.loop_indices)
             xyz = [
@@ -808,6 +809,11 @@ def planar_grain_uv(obj):
                 if "ambiguous half-cylinder seam" not in str(error):
                     raise
                 fallback_faces += 1
+                receipt = cylindrical_ambiguous_face_diagnostic(
+                    xyz, center_xy=(cx, cy)
+                )
+                receipt["sourcePolygonIndex"] = polygon.index
+                fallback_receipts.append(receipt)
                 uv_points = [
                     metric_planar_uv(point, origin_x=min_x, origin_z=min_z)
                     for point in xyz
@@ -816,6 +822,14 @@ def planar_grain_uv(obj):
                 uv_layer.data[i].uv = uv_point
         obj["linen_earth_uv_geometry_radius_estimate_mm"] = round(radius_m * 1000, 3)
         obj["linen_earth_uv_mixed_projection_fallback_faces"] = fallback_faces
+        obj["linen_earth_uv_fallback_spatial_evidence_json"] = json.dumps({
+            "faceCount": fallback_faces,
+            "sourcePolygonIndices": [face["sourcePolygonIndex"] for face in fallback_receipts],
+            "sampledFaceBounds": fallback_receipts[:12],
+            "originalSourceModelPreserved": True,
+            "seamLayoutApproved": False,
+            "productionApproved": False,
+        }, sort_keys=True)
         obj["linen_earth_uv_seam_certified"] = False
         method = "uncalibrated_metric_cylindrical_tube"
     else:
@@ -1016,6 +1030,11 @@ def main():
     for obj in authored:
         planar_grain_uv(obj)
         candidate_uv_report[obj.name] = audit_authored_panel_uv(obj)
+    uv_seam_evidence = {
+        obj.name: json.loads(obj["linen_earth_uv_fallback_spatial_evidence_json"])
+        for obj in authored if "linen_earth_uv_fallback_spatial_evidence_json" in obj
+    }
+    print("SOURCE_FIT_UV_SEAM_SPATIAL_EVIDENCE=" + json.dumps(uv_seam_evidence, sort_keys=True))
 
     bpy.context.scene["linen_earth_uv_candidate_audit_json"] = json.dumps(candidate_uv_report, sort_keys=True)
     bpy.context.scene["linen_earth_uv_coordinate_units"] = "mesh_metres"
