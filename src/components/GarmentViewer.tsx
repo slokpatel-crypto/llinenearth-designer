@@ -899,10 +899,6 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           && materials.some((material,index)=>Boolean(prepared[index]?.normal)
             && !canPaintGarmentPanelNormalMaterial(material)))
           throw new Error("Required garment panel is missing a paintable normal-map slot");
-        preparedTextureRef.current=new Map(prepared.map((entry)=>[
-          entry.panel.material,
-          {texture:entry.texture,normal:entry.normal,garment:entry.panel.garment,key:entry.key},
-        ]));
         for(const [index,entry] of prepared.entries()){
           const material=materials[index];
           if(!material) throw new Error("Required garment material vanished before paint");
@@ -913,6 +909,13 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           material.pbrMetallicRoughness.baseColorTexture?.setTexture(entry.texture);
           if(entry.normal) material.normalTexture?.setTexture(entry.normal);
         }
+        // Cache only fully painted outfits. A graphics-adapter setter can
+        // throw despite capability preflight, and must not cause a failed
+        // half-paint to be advertised as a reusable committed texture set.
+        preparedTextureRef.current=new Map(prepared.map((entry)=>[
+          entry.panel.material,
+          {texture:entry.texture,normal:entry.normal,garment:entry.panel.garment,key:entry.key},
+        ]));
         setTextureRevision((value)=>value+1);
         if(interactionStartedAt.current!==null && modelSrc && assetIdentityKey && modelContract?.readiness==="contract_ready"){
           const duration=performance.now()-interactionStartedAt.current;
