@@ -595,6 +595,9 @@ def main():
             if coverage is None:
                 coverage_label = "unmeasurable (no usable UV surface)"
                 zone_label = "no valid region available to localize"
+            elif coverage == 0:
+                coverage_label = "0.00% of usable UV surface"
+                zone_label = "no qualifying metric-distortion region (other UV defects may exist)"
             else:
                 worst = max(bands, key=lambda band: band["distortedAreaM2"])
                 span = worst["heightBandPct"]
