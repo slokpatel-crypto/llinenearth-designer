@@ -21,16 +21,20 @@ export function resolveViewerTileWidthMm(
   asset:ViewerTileScaleAsset|undefined,
   runtime:ViewerRuntimeRenderScale|undefined,
 ):number|null {
-  const width=Number(asset?.tileRealWidthMm);
-  if(asset?.scaleApproximate===false && Number.isFinite(width) && width>0) return width;
+  // JSON input is untrusted: a numeric-looking string is not a measured
+  // supplier dimension and must not be coerced into a physical-scale claim.
+  const width=asset?.tileRealWidthMm;
+  if(asset?.scaleApproximate===false && typeof width==="number"
+    && Number.isFinite(width) && width>0) return width;
 
-  const repeatMm=Number(runtime?.repeatMm);
-  const repeatPx=Number(asset?.repeatPeriodPx);
+  const repeatMm=runtime?.repeatMm;
+  const repeatPx=asset?.repeatPeriodPx;
   if(!runtime || !["declared_repeat","declared_swatch_width"].includes(runtime.physicalScaleStatus)
-    || !Number.isFinite(repeatMm) || repeatMm<=0
-    || !Number.isFinite(repeatPx) || repeatPx<=0) return null;
+    || typeof repeatMm!=="number" || !Number.isFinite(repeatMm) || repeatMm<=0
+    || typeof repeatPx!=="number" || !Number.isFinite(repeatPx) || repeatPx<=0) return null;
 
-  return Math.round(200*128*repeatMm/repeatPx)/100;
+  const resolved=Math.round(200*128*repeatMm/repeatPx)/100;
+  return Number.isFinite(resolved) && resolved>0 ? resolved : null;
 }
 
 /**
