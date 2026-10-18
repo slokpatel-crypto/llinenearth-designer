@@ -1,5 +1,6 @@
 export type ViewerTileScaleAsset={
   tileRealWidthMm?:number|null;
+  tileRealHeightMm?:number|null;
   repeatPeriodPx?:number|null;
   scaleApproximate?:boolean;
 };
@@ -33,6 +34,17 @@ export function resolveViewerTileWidthMm(
 }
 
 /**
+ * A supplier-measured rectangular swatch may declare the physical V tile
+ * height separately. Unreviewed/approximate tile heights never gain a
+ * physical-scale label. Legacy swatches remain width-only.
+ */
+export function resolveViewerTileHeightMm(asset:ViewerTileScaleAsset|undefined):number|null {
+  if(asset?.scaleApproximate!==false) return null;
+  const height=asset.tileRealHeightMm;
+  return typeof height==="number" && Number.isFinite(height) && height>0 ? height : null;
+}
+
+/**
  * The temporary M1 model uses one UV span across the visible width/height of
  * each garment panel. Converting both axes through the same physical tile width
  * keeps repeat size consistent between torso, sleeves, waist and trouser legs.
@@ -41,13 +53,15 @@ export function garmentPanelTextureScale(
   widthMm:number,
   heightMm:number,
   tileWidthMm:number,
+  tileHeightMm:number=tileWidthMm,
 ):{u:number;v:number} {
-  if(!Number.isFinite(widthMm)||widthMm<=0||!Number.isFinite(heightMm)||heightMm<=0||!Number.isFinite(tileWidthMm)||tileWidthMm<=0) {
+  if(!Number.isFinite(widthMm)||widthMm<=0||!Number.isFinite(heightMm)||heightMm<=0
+    ||!Number.isFinite(tileWidthMm)||tileWidthMm<=0||!Number.isFinite(tileHeightMm)||tileHeightMm<=0) {
     return {u:1,v:1};
   }
   return {
     u:clamp(widthMm/tileWidthMm,.35,80),
-    v:clamp(heightMm/tileWidthMm,.35,80),
+    v:clamp(heightMm/tileHeightMm,.35,80),
   };
 }
 
@@ -62,17 +76,19 @@ export function garmentPanelTextureScaleEvidence(
   widthMm:number,
   heightMm:number,
   tileWidthMm:number,
+  tileHeightMm:number=tileWidthMm,
 ):{
   applied:{u:number;v:number};
   exactScaleWithinRendererLimits:boolean;
   rawRepeats:{u:number;v:number}|null;
   reason:"exact_within_limits"|"missing_physical_dimensions"|"renderer_clamped_repeat";
 } {
-  const applied=garmentPanelTextureScale(widthMm,heightMm,tileWidthMm);
-  if(!Number.isFinite(widthMm)||widthMm<=0||!Number.isFinite(heightMm)||heightMm<=0||!Number.isFinite(tileWidthMm)||tileWidthMm<=0) {
+  const applied=garmentPanelTextureScale(widthMm,heightMm,tileWidthMm,tileHeightMm);
+  if(!Number.isFinite(widthMm)||widthMm<=0||!Number.isFinite(heightMm)||heightMm<=0
+    ||!Number.isFinite(tileWidthMm)||tileWidthMm<=0||!Number.isFinite(tileHeightMm)||tileHeightMm<=0) {
     return {applied,exactScaleWithinRendererLimits:false,rawRepeats:null,reason:"missing_physical_dimensions"};
   }
-  const rawRepeats={u:widthMm/tileWidthMm,v:heightMm/tileWidthMm};
+  const rawRepeats={u:widthMm/tileWidthMm,v:heightMm/tileHeightMm};
   if(rawRepeats.u<.35||rawRepeats.u>80||rawRepeats.v<.35||rawRepeats.v>80) {
     return {applied,exactScaleWithinRendererLimits:false,rawRepeats,reason:"renderer_clamped_repeat"};
   }
@@ -95,18 +111,22 @@ export function garmentUvRepeatsForUnits(
   widthMm:number,
   heightMm:number,
   tileWidthMm:number,
+  tileHeightMm:number=tileWidthMm,
 ):{u:number;v:number}|null {
   if(!Number.isFinite(widthMm)||widthMm<=0
     ||!Number.isFinite(heightMm)||heightMm<=0
-    ||!Number.isFinite(tileWidthMm)||tileWidthMm<=0) return null;
+    ||!Number.isFinite(tileWidthMm)||tileWidthMm<=0
+    ||!Number.isFinite(tileHeightMm)||tileHeightMm<=0) return null;
   if(uvUnits==="panel_normalized") {
-    const evidence=garmentPanelTextureScaleEvidence(widthMm,heightMm,tileWidthMm);
+    const evidence=garmentPanelTextureScaleEvidence(widthMm,heightMm,tileWidthMm,tileHeightMm);
     return evidence.exactScaleWithinRendererLimits ? evidence.applied : null;
   }
   if(uvUnits==="mesh_metres") {
-    const repeatsPerMetre=1000/tileWidthMm;
-    if(!Number.isFinite(repeatsPerMetre)||repeatsPerMetre<.35||repeatsPerMetre>80) return null;
-    return {u:repeatsPerMetre,v:repeatsPerMetre};
+    const repeatsU=1000/tileWidthMm;
+    const repeatsV=1000/tileHeightMm;
+    if(!Number.isFinite(repeatsU)||repeatsU<.35||repeatsU>80
+      ||!Number.isFinite(repeatsV)||repeatsV<.35||repeatsV>80) return null;
+    return {u:repeatsU,v:repeatsV};
   }
   return null;
 }
