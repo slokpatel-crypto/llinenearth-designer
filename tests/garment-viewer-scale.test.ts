@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { garmentPanelTextureScale, garmentPanelTexturePreparationKey, garmentPanelTextureScaleEvidence, garmentUvRepeatsForUnits, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
+import { garmentPanelTextureScale, garmentPanelTexturePreparationKey, prepareGarmentPanelUvTransforms, garmentPanelTextureScaleEvidence, garmentUvRepeatsForUnits, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
 
 
 test("physical-scale resolution never coerces unreviewed JSON strings",()=>{
@@ -197,4 +197,50 @@ test("texture re-use signature preserves unchanged opposite garment and isolates
     {fabricUrl:"/cloth/cream.png"},{modelKey:"model-b"},{panelMaterial:"TrouserLegRFabric"},
     {u:20},{v:49},{offsetU:0.1},{offsetV:0.1},{rotation:1},{normalUrl:"data:other-normal"},
   ]) assert.notEqual(key,garmentPanelTexturePreparationKey({...original,...change}));
+});
+
+test("six garment panels are planned together using independent verified U/V repeats",()=>{
+  const panels=["ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric",
+    "TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric"].map((material,index)=>({
+    material,widthMm:580,heightMm:780,tileWidthMm:40,tileHeightMm:20,
+    offsetU:index===1?.25:0,offsetV:index===2?-.125:0,rotationDeg:index===3?45:0,
+  }));
+  const metric=prepareGarmentPanelUvTransforms("mesh_metres",panels)!;
+  assert.equal(metric.length,6);
+  assert.deepEqual(metric[0].scale,{u:25,v:50});
+  assert.deepEqual(metric[1].offset,{u:.25,v:0});
+  assert.deepEqual(metric[2].offset,{u:0,v:-.125});
+  assert.equal(metric[3].rotation,Math.PI/4);
+  assert.deepEqual(prepareGarmentPanelUvTransforms("panel_normalized",panels)![0].scale,{u:14.5,v:39});
+});
+
+test("invalid final panel rejects the entire preparation instead of allowing partial GPU allocation",()=>{
+  const valid={material:"ShirtTorsoFabric",widthMm:580,heightMm:780,tileWidthMm:40,tileHeightMm:20};
+  for(const invalid of [
+    {...valid,material:"TrouserLegRFabric",tileHeightMm:0},
+    {...valid,material:"TrouserLegRFabric",widthMm:Infinity},
+    {...valid,material:"TrouserLegRFabric",rotationDeg:"90" as unknown as number},
+    {...valid,material:"TrouserLegRFabric",offsetV:NaN},
+    {...valid,material:"TrouserLegRFabric",offsetU:11},
+    {...valid,material:"TrouserLegRFabric",tileWidthMm:"40" as unknown as number},
+  ]) assert.equal(prepareGarmentPanelUvTransforms("mesh_metres",[valid,invalid]),null);
+});
+
+test("metric scale limits, unknown units, duplicate panels and invalid phase controls fail closed",()=>{
+  const valid={material:"ShirtTorsoFabric",widthMm:580,heightMm:780,tileWidthMm:40,tileHeightMm:20};
+  assert.equal(prepareGarmentPanelUvTransforms("mesh_metres",[]),null);
+  assert.equal(prepareGarmentPanelUvTransforms("unknown",[valid]),null);
+  assert.equal(prepareGarmentPanelUvTransforms("mesh_metres",[valid,valid]),null);
+  assert.equal(prepareGarmentPanelUvTransforms("mesh_metres",[{...valid,tileHeightMm:1}]),null);
+  assert.equal(prepareGarmentPanelUvTransforms("panel_normalized",[{...valid,heightMm:9000}]),null);
+  assert.equal(prepareGarmentPanelUvTransforms("mesh_metres",[{...valid,offsetU:true as unknown as number}]),null);
+  assert.equal(prepareGarmentPanelUvTransforms("mesh_metres",[{...valid,rotationDeg:361}]),null);
+});
+
+test("legacy prototype retains its explicitly approximate bounded scale only",()=>{
+  const valid={material:"ShirtTorsoFabric",widthMm:9000,heightMm:780,tileWidthMm:40,tileHeightMm:20};
+  const legacy=prepareGarmentPanelUvTransforms(null,[valid]);
+  assert.deepEqual(legacy?.[0].scale,{u:80,v:39});
+  // Production with declared units must refuse the same clamped repeat.
+  assert.equal(prepareGarmentPanelUvTransforms("panel_normalized",[valid]),null);
 });

@@ -6,7 +6,7 @@ import {
   GARMENT_PANEL_SPECS,
   PROTOTYPE_MODEL_ID,
 } from "@/lib/garment-viewer-prototype";
-import { garmentPanelTextureScale, garmentPanelTexturePreparationKey, garmentUvRepeatsForUnits, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
+import { garmentPanelTexturePreparationKey, prepareGarmentPanelUvTransforms, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
 import { validateGarmentViewerModelContract, validateGarmentViewerModelManifest, type GarmentViewerModelContractResult, type GarmentViewerModelManifest, type GarmentViewerManifestValidation } from "@/lib/garment-viewer-model-contract";
 import { GARMENT_VIEWER_LATENCY_STORAGE_KEY, garmentViewerAssetIdentityKey, type GarmentViewerAssetIdentity } from "@/lib/garment-viewer-readiness";
 import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
@@ -821,34 +821,37 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       try{
         const shirtNormalMap=createLinenNormalMap(drapeNormalStrength(shirt));
         const trouserNormalMap=createLinenNormalMap(drapeNormalStrength(trouser));
-        const prepared=await Promise.all(panelSpecs.map(async(panel)=>{
+        // Synchronous, all-panel preflight must complete before even the FIRST
+        // asynchronous createTexture call. Do not allocate part of an outfit
+        // when a later panel or a measured tile has malformed metadata.
+        const candidates=panelSpecs.map((panel)=>{
           const fabric=panel.garment==="shirt"?shirt:trouser;
           const tileMm=panel.garment==="shirt"?shirtTileMm:trouserTileMm;
-          // Use independent physical V repeat only with verified tile metadata;
-          // otherwise preserve the old square-tile preview, not false evidence.
           const tileAsset=tileManifest.assets?.[fabric.tileKey];
           if(hasInvalidVerifiedViewerTileWidth(tileAsset)) throw new Error("Invalid verified horizontal textile dimension");
           if(hasInvalidVerifiedViewerTileHeight(tileAsset)) throw new Error("Invalid verified vertical textile dimension");
           const tileHeightMm=resolveViewerTileHeightMm(tileAsset)??tileMm;
           const normalUrl=panel.garment==="shirt"?shirtNormalMap:trouserNormalMap;
-          // Validate repeat factors BEFORE allocating GPU textures: an invalid
-          // candidate scale should never allocate six unusable maps.
-          // Legacy live-model GLBs use one normalized UV span per panel.
-          // A new source-authored metre-UV GLB must declare its convention in
-          // the validated manifest; never apply a normalized repeat factor to it.
-          const scale=modelManifest?.uvCoordinateUnits
-            ? garmentUvRepeatsForUnits(modelManifest.uvCoordinateUnits,panel.widthMm,panel.heightMm,tileMm,tileHeightMm)
-            : garmentPanelTextureScale(panel.widthMm,panel.heightMm,tileMm,tileHeightMm);
-          if(!scale) throw new Error("Unknown or renderer-clamped candidate physical fabric scale");
-          if(token!==applyToken.current) throw new Error("Superseded fabric selection");
-          const offset={u:Number(panel.offsetU)||0,v:Number(panel.offsetV)||0};
-          const rotation=(Number(panel.rotationDeg)||0)*Math.PI/180;
+          return {panel,fabric,normalUrl,uv:{
+            material:panel.material,widthMm:panel.widthMm,heightMm:panel.heightMm,
+            tileWidthMm:tileMm,tileHeightMm,
+            offsetU:panel.offsetU,offsetV:panel.offsetV,rotationDeg:panel.rotationDeg,
+          }};
+        });
+        const transforms=prepareGarmentPanelUvTransforms(
+          modelManifest?.uvCoordinateUnits??null,candidates.map((candidate)=>candidate.uv),
+        );
+        if(!transforms) throw new Error("Invalid, unmeasured or renderer-clamped fabric UV scale");
+        if(token!==applyToken.current) return;
+        const prepared=await Promise.all(candidates.map(async(candidate,index)=>{
+          const {panel,fabric,normalUrl}=candidate;
+          const {scale,offset,rotation}=transforms[index];
           const key=garmentPanelTexturePreparationKey({
-            modelKey:modelUrl, panelMaterial:panel.material, fabricUrl:fabric.image, normalUrl,
+            modelKey:modelUrl,panelMaterial:panel.material,fabricUrl:fabric.image,normalUrl,
             u:scale.u,v:scale.v,offsetU:offset.u,offsetV:offset.v,rotation,
           });
-          // A shirt-only swatch change must not create new trouser GPU textures.
-          // Reuse only the same panel's own sampler at the same exact settings.
+          // An unchanged trouser panel can reuse its independently prepared
+          // sampler when only the shirt's fabric or repeat changes.
           const previous=preparedTextureRef.current.get(panel.material);
           if(previous?.key===key) return {panel,texture:previous.texture,normal:previous.normal,key};
           const [texture,normal]=await Promise.all([

@@ -171,3 +171,58 @@ export function garmentPanelTexturePreparationKey(input:{
     input.u,input.v,input.offsetU,input.offsetV,input.rotation,
   ]);
 }
+
+/**
+ * Resolve every visible garment panel's UV transform before any asynchronous
+ * GPU texture allocation. An invalid sixth panel must not leave five created
+ * textures behind or paint a partly refreshed outfit.
+ *
+ * "null" units intentionally retains the old approximate, safety-clamped
+ * prototype preview. A production GLB with declared metric/normalized units
+ * cannot use that fallback: its repeat factors must satisfy the strict
+ * renderer scale contract for BOTH axes.
+ */
+export type GarmentPanelUvPreparationInput={
+  material:string;
+  widthMm:number;
+  heightMm:number;
+  tileWidthMm:number;
+  tileHeightMm:number;
+  offsetU?:number;
+  offsetV?:number;
+  rotationDeg?:number;
+};
+export type GarmentPanelUvPreparation={
+  material:string;
+  scale:{u:number;v:number};
+  offset:{u:number;v:number};
+  rotation:number;
+};
+export function prepareGarmentPanelUvTransforms(
+  units:GarmentUvCoordinateUnits|null,
+  panels:readonly GarmentPanelUvPreparationInput[],
+):GarmentPanelUvPreparation[]|null {
+  if(!Array.isArray(panels)||panels.length===0
+    ||(units!==null&&units!=="mesh_metres"&&units!=="panel_normalized")) return null;
+  const seen=new Set<string>();
+  const plans:GarmentPanelUvPreparation[]=[];
+  for(const panel of panels) {
+    if(!panel||typeof panel.material!=="string"||!panel.material.trim()||seen.has(panel.material)) return null;
+    seen.add(panel.material);
+    if(![panel.widthMm,panel.heightMm,panel.tileWidthMm,panel.tileHeightMm]
+      .every((value)=>typeof value==="number"&&Number.isFinite(value)&&value>0)) return null;
+    // Manifest inputs are untrusted. Never coerce missing-but-malformed phase
+    // coordinates, booleans, or strings into physical seam alignment.
+    const offsetU=panel.offsetU===undefined?0:panel.offsetU;
+    const offsetV=panel.offsetV===undefined?0:panel.offsetV;
+    const rotationDeg=panel.rotationDeg===undefined?0:panel.rotationDeg;
+    if(![offsetU,offsetV,rotationDeg].every((value)=>typeof value==="number"&&Number.isFinite(value))
+      ||Math.abs(offsetU)>10||Math.abs(offsetV)>10||Math.abs(rotationDeg)>360) return null;
+    const scale=units===null
+      ? garmentPanelTextureScale(panel.widthMm,panel.heightMm,panel.tileWidthMm,panel.tileHeightMm)
+      : garmentUvRepeatsForUnits(units,panel.widthMm,panel.heightMm,panel.tileWidthMm,panel.tileHeightMm);
+    if(!scale||![scale.u,scale.v].every((value)=>Number.isFinite(value)&&value>0)) return null;
+    plans.push({material:panel.material,scale,offset:{u:offsetU,v:offsetV},rotation:rotationDeg*Math.PI/180});
+  }
+  return plans;
+}
