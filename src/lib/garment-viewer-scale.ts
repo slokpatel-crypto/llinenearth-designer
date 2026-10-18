@@ -254,6 +254,17 @@ export function canPaintGarmentPanelMaterial(material: unknown): boolean {
     && typeof paint.setRoughnessFactor==="function";
 }
 
+/**
+ * A verified production 3D textile also needs a writable normal-map material
+ * slot. Base-colour success alone does not prove the weave was applied.
+ * Legacy prototype GLBs can still use their approximate colour-only preview.
+ */
+export function canPaintGarmentPanelNormalMaterial(material:unknown):boolean {
+  if(!material||typeof material!=="object") return false;
+  const normal=(material as {normalTexture?:{setTexture?:unknown}|null}).normalTexture;
+  return typeof normal?.setTexture==="function";
+}
+
 type ViewerUvTexture={
   sampler?:{
     setScale?:(scale:{u:number;v:number})=>void;
