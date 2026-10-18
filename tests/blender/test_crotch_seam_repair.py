@@ -125,4 +125,27 @@ assert tuple(tuple(vertex.co) for vertex in body.data.vertices) == body_before
 assert refined["tailorFitApproved"] is False
 assert refined["productionApproved"] is False
 
+# Reject every fine probe after one valid coarse shift: the final mesh
+# MUST return to that accepted coarse stance, not the last colliding 3.125 mm.
+def reject_fine_probes(one, two):
+    if one is left and two is right:
+        actual_mm = (left.data.vertices[sample_index].co.x-start_x)*1000/unit_factor
+        return 1 if actual_mm > 3.01 else 0
+    return 0
+
+
+try:
+    author.source_fit_collision_pairs = reject_fine_probes
+    coarse_only = author.restore_collision_free_leg_gap(
+        body, 0.0, 1.0, 3.5, applied_mm=3.125
+    )
+finally:
+    author.source_fit_collision_pairs = physical_pairs
+assert coarse_only["nativeWorldSpaceCollisionFree"] is True, coarse_only
+assert coarse_only["selectedMmPerLeg"] == 3.0, coarse_only
+assert coarse_only["trials"][-1]["candidateInboardMmPerLeg"] == 3.0
+assert coarse_only["trials"][-1]["legToLegIntersectionPairs"] == 0
+assert abs((left.data.vertices[sample_index].co.x-start_x)*1000/unit_factor-3.0) < .0001
+assert tuple(tuple(vertex.co) for vertex in body.data.vertices) == body_before
+
 print("LINEN_EARTH_NATIVE_CROTCH_SEAM_CONTACT_REPAIR: PASS")
