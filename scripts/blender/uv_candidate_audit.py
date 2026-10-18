@@ -8,6 +8,74 @@ from __future__ import annotations
 import math
 
 
+
+def estimate_source_tube_radius_m(source_vertex_positions):
+    """Estimate candidate tube radius ONLY from indexed garment XYZ in metres.
+
+    Both the author and independent preflight must derive the estimate from
+    the actual garment mesh; an unchecked scene property must never decide
+    whether a UV jump resembles an integer cylinder circumference. This is
+    geometrical provenance, not mill textile dimensions or grain approval.
+    """
+    try:
+        points = list(source_vertex_positions)
+    except TypeError as exc:
+        raise ValueError("Tube radius estimate needs iterable mesh XYZ") from exc
+    if len(points) < 3:
+        raise ValueError("Tube radius estimate needs at least three source vertices")
+    for point in points:
+        try:
+            values = tuple(point)
+        except TypeError as exc:
+            raise ValueError("Tube radius estimate requires XYZ triples") from exc
+        if (len(values) != 3 or any(
+            isinstance(value, (str, bytes, bool))
+            or not isinstance(value, (float, int))
+            or not math.isfinite(value) for value in values
+        )):
+            raise ValueError("Tube radius estimate requires finite mesh metres")
+    xs = [point[0] for point in points]
+    ys = [point[1] for point in points]
+    cx, cy = (min(xs)+max(xs))*0.5, (min(ys)+max(ys))*0.5
+    radii = sorted(math.hypot(point[0]-cx, point[1]-cy) for point in points)
+    radius_m = radii[len(radii)//2]
+    if not math.isfinite(radius_m) or radius_m <= 0.015:
+        raise ValueError("Degenerate geometry-only source tube estimate")
+    return radius_m
+
+
+def verify_evaluated_tube_radius_m(source_vertex_positions, declared_radius_mm, *,
+                                   max_delta_mm=0.05):
+    """Reject altered or stale tube metadata against evaluated Blender vertices.
+
+    Scene float32 quantization and author's 0.001-mm metadata rounding are
+    bounded to 0.05 mm. This does not authenticate fabric circumference.
+    """
+    if (isinstance(max_delta_mm, (str, bytes, bool))
+            or not isinstance(max_delta_mm, (int, float))
+            or not math.isfinite(max_delta_mm)
+            or not 0 <= max_delta_mm <= 0.05):
+        raise ValueError("Source radius tolerance must be finite and <=0.05 mm")
+    if (isinstance(declared_radius_mm, (str, bytes, bool))
+            or not isinstance(declared_radius_mm, (int, float))
+            or not math.isfinite(declared_radius_mm) or declared_radius_mm <= 15):
+        raise ValueError("Missing valid geometry radius metadata in millimetres")
+    evaluated_radius_mm = estimate_source_tube_radius_m(source_vertex_positions)*1000
+    delta_mm = abs(evaluated_radius_mm - declared_radius_mm)
+    if delta_mm > max_delta_mm:
+        raise ValueError(
+            f"Tube radius metadata contradicts evaluated source geometry "
+            f"by {delta_mm:.4f} mm"
+        )
+    return {
+        "geometryRadiusIndependentlyVerified": True,
+        "evaluatedGeometryRadiusMm": round(evaluated_radius_mm, 4),
+        "metadataDeltaMm": round(delta_mm, 4),
+        "physicalTextileCircumferenceVerified": False,
+        "productionApproved": False,
+    }
+
+
 def metric_planar_uv(point_xyz, *, origin_x, origin_z):
     """Return geometry-only X/Z UV in mesh metres, not per-panel 0..1.
 
