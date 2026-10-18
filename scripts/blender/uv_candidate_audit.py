@@ -967,6 +967,65 @@ def validate_independent_uv_hotspots(authored, evaluated, *,
             raise ValueError(f"Indexed source UV hotspot metric mismatch: {key}")
         max_delta = max(max_delta, delta)
 
+    # A whole-panel total can hide tampering in the height-localized
+    # diagnostic. Check each independent evaluated band, not just the printed
+    # top source-face samples. Never claim a distorted band is clean.
+    for key in ("candidateUvMetricDistortionReviewRequired", "candidateUvTopologyPass"):
+        for source in (authored, evaluated):
+            if type(source.get(key)) is not bool:
+                raise ValueError(f"Missing/invalid UV metric gate: {key}")
+        if authored[key] != evaluated[key]:
+            raise ValueError(f"Independent UV metric gate differs: {key}")
+
+    for source in (authored, evaluated):
+        extent = source.get("uvSourceZExtentMetres")
+        if (not isinstance(extent, list) or len(extent) != 2
+                or any(type(v) not in (int, float) or not math.isfinite(v) for v in extent)
+                or extent[0] > extent[1]):
+            raise ValueError("Invalid source UV Z extent")
+    if any(abs(a-b) > 0.00025 for a, b in zip(
+            authored["uvSourceZExtentMetres"], evaluated["uvSourceZExtentMetres"])):
+        raise ValueError("Independent source UV Z extent differs")
+
+    for source in (authored, evaluated):
+        bands = source.get("uvDistortionHeightBands")
+        if not isinstance(bands, list) or len(bands) != 5:
+            raise ValueError("Missing independent UV distortion height bands")
+        for i, band in enumerate(bands):
+            if not isinstance(band, dict) or band.get("heightBandPct") != [i*20, (i+1)*20]:
+                raise ValueError("Invalid UV distortion height band ranges")
+            for key in ("validTriangleCount", "distortedTriangleCount"):
+                value = band.get(key)
+                if type(value) is not int or value < 0:
+                    raise ValueError(f"Invalid UV distortion height band {key}")
+            if band["distortedTriangleCount"] > band["validTriangleCount"]:
+                raise ValueError("Distorted UV height band count exceeds valid triangles")
+            for key in ("surfaceAreaM2", "distortedAreaM2"):
+                value = band.get(key)
+                if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
+                    raise ValueError(f"Invalid UV distortion height band {key}")
+            if band["distortedAreaM2"] > band["surfaceAreaM2"] + 1e-12:
+                raise ValueError("Distorted UV band area exceeds measured area")
+            pct = band.get("distortedSurfacePct")
+            if band["surfaceAreaM2"] == 0:
+                if pct is not None:
+                    raise ValueError("Empty UV band cannot declare a distortion percentage")
+            elif (type(pct) not in (int, float) or not math.isfinite(pct)
+                  or not 0 <= pct <= 100):
+                raise ValueError("Measured UV band needs a finite distortion percentage")
+    for i in range(5):
+        left, right = authored["uvDistortionHeightBands"][i], evaluated["uvDistortionHeightBands"][i]
+        for key in ("validTriangleCount", "distortedTriangleCount"):
+            if left[key] != right[key]:
+                raise ValueError(f"Independent UV height band {i} count mismatch: {key}")
+        for key in ("surfaceAreaM2", "distortedAreaM2"):
+            if abs(left[key] - right[key]) > max_area_delta_m2:
+                raise ValueError(f"Independent UV height band {i} area mismatch: {key}")
+        lp, rp = left["distortedSurfacePct"], right["distortedSurfacePct"]
+        if (lp is None) != (rp is None) or (
+                lp is not None and abs(lp-rp) > max_coverage_delta_pct):
+            raise ValueError(f"Independent UV height band {i} coverage mismatch")
+
     def sample_map(source):
         samples = source.get("distortedSourcePolygonSamples")
         if not isinstance(samples, list) or len(samples) > 32:
