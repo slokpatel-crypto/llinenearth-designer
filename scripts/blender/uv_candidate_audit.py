@@ -96,6 +96,66 @@ def cylindrical_ambiguous_face_diagnostic(points_xyz, *, center_xy):
     }
 
 
+
+def metric_tangent_chart_uv(points_xyz):
+    """Local metric face chart for geometry crossing a cylindrical-axis seam.
+
+    The UV distances use orthonormal surface tangent axes in METRES, avoiding
+    near-axis angular singularities and compressed XZ planar fallback. This
+    intentionally creates a separate unapproved chart island: joining its
+    stripes/grain to surrounding tubular faces requires actual seam authoring
+    and review. It never certifies supplier scale, grain or production.
+    """
+    if len(points_xyz) < 3:
+        raise ValueError("Metric tangent chart requires at least three vertices")
+    values = []
+    for p in points_xyz:
+        if len(p) != 3:
+            raise ValueError("Metric tangent chart needs XYZ coordinates")
+        values.extend(p)
+    if any(isinstance(v, (bool, str, bytes)) or not isinstance(v, (int, float))
+           or not math.isfinite(v) for v in values):
+        raise ValueError("Metric tangent chart needs finite mesh coordinates")
+    # Newell's polygon normal accommodates source quads and avoids choosing
+    # the first three almost-collinear vertices.
+    nx = ny = nz = 0.0
+    for a, b in zip(points_xyz, points_xyz[1:] + points_xyz[:1]):
+        nx += (a[1] - b[1]) * (a[2] + b[2])
+        ny += (a[2] - b[2]) * (a[0] + b[0])
+        nz += (a[0] - b[0]) * (a[1] + b[1])
+    length = math.sqrt(nx*nx + ny*ny + nz*nz)
+    if length < 1e-10:
+        raise ValueError("Metric tangent chart rejects degenerate source face")
+    normal = (nx/length, ny/length, nz/length)
+    # Keep grain V aligned with garment vertical wherever geometrically
+    # possible. Horizontal cap faces have no meaningful vertical tangent;
+    # there choose the face's longest physical edge and retain review flag.
+    up_projection = (-normal[0]*normal[2], -normal[1]*normal[2],
+                     1-normal[2]*normal[2])
+    v_norm = math.sqrt(sum(t*t for t in up_projection))
+    if v_norm < 1e-5:
+        edges = [tuple(b[k]-a[k] for k in range(3))
+                 for a, b in zip(points_xyz, points_xyz[1:] + points_xyz[:1])]
+        chosen = max(edges, key=lambda edge: sum(t*t for t in edge))
+        v_norm = math.sqrt(sum(t*t for t in chosen))
+        if v_norm < 1e-10:
+            raise ValueError("Metric tangent chart has no nonzero edge")
+        v_axis = tuple(t/v_norm for t in chosen)
+    else:
+        v_axis = tuple(t/v_norm for t in up_projection)
+    # u = v cross n produces a true orthogonal unit tangent basis; no scale
+    # normalization by panel dimensions or silently inferred fabric repeat.
+    u_axis = (v_axis[1]*normal[2]-v_axis[2]*normal[1],
+              v_axis[2]*normal[0]-v_axis[0]*normal[2],
+              v_axis[0]*normal[1]-v_axis[1]*normal[0])
+    origin = points_xyz[0]
+    return [
+        (sum((p[k]-origin[k])*u_axis[k] for k in range(3)),
+         sum((p[k]-origin[k])*v_axis[k] for k in range(3)))
+        for p in points_xyz
+    ]
+
+
 def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-12):
     """Triangles: iterable of (three XYZ triples, three UV pairs). Fail closed."""
     if not (math.isfinite(min_uv_area) and min_uv_area > 0
