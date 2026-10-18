@@ -179,3 +179,36 @@ test("explicit source UV unit convention is validated; legacy manifests remain c
   assert.equal(bad.valid,false);
   assert(bad.reasons.some(reason=>reason.includes("UV coordinate units")));
 });
+
+test("invalid garment-panel JSON entries cannot pass the physical-scale manifest gate",()=>{
+  const panels=Object.fromEntries(REQUIRED_GARMENT_VIEWER_MATERIALS.map((name)=>[name,{widthMm:300,heightMm:600}]));
+  const base={
+    version:GARMENT_VIEWER_CONTRACT_VERSION,
+    modelId:"LE-OFFICEWEAR-V1",
+    referenceHeightMm:1727,
+    modelIdentity:MODEL_IDENTITY,
+    source:{name:"Blender Human Base Meshes",license:"CC0",verifiedAt:"2026-10-05"},
+    panels,
+    uvCoordinateUnits:"mesh_metres",
+  };
+  const target=REQUIRED_GARMENT_VIEWER_MATERIALS[0];
+  const invalidEntries=[
+    null,false,0,"",[],{},
+    {widthMm:"300",heightMm:600},
+    {widthMm:300,heightMm:"600"},
+    {widthMm:300,heightMm:600,offsetU:"0"},
+    {widthMm:300,heightMm:600,offsetV:null},
+    {widthMm:300,heightMm:600,rotationDeg:false},
+    {widthMm:300,heightMm:600,rotationDeg:361},
+    {widthMm:300,heightMm:600,offsetV:Number.POSITIVE_INFINITY},
+  ];
+  for(const badPanel of invalidEntries){
+    const checked=validateGarmentViewerModelManifest({...base,panels:{...panels,[target]:badPanel}},"LE-OFFICEWEAR-V1");
+    assert.equal(checked.valid,false,`bad panel: ${JSON.stringify(badPanel)}`);
+    assert(checked.invalidPanels.includes(target));
+  }
+  const valid=validateGarmentViewerModelManifest({
+    ...base,panels:{...panels,[target]:{widthMm:300,heightMm:600,offsetU:0,offsetV:-10,rotationDeg:360}},
+  },"LE-OFFICEWEAR-V1");
+  assert.equal(valid.valid,true);
+});
