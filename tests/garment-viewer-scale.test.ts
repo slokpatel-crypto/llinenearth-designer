@@ -77,3 +77,35 @@ test("repeat exactness uses the unchanged inclusive renderer limits",()=>{
   assert.equal(garmentPanelTextureScaleEvidence(34,8000,100).exactScaleWithinRendererLimits,false);
   assert.equal(garmentPanelTextureScaleEvidence(35,8001,100).exactScaleWithinRendererLimits,false);
 });
+
+test("metric-UV garments use a single millimetre tile basis irrespective of garment width",()=>{
+  const torso=garmentPanelTextureScale(580,780,40,"mesh_metres");
+  const sleeve=garmentPanelTextureScale(180,540,40,"mesh_metres");
+  const leg=garmentPanelTextureScale(220,930,40,"mesh_metres");
+  assert.deepEqual(torso,{u:25,v:25});
+  assert.deepEqual(sleeve,torso);
+  assert.deepEqual(leg,torso);
+  // One UV metre * 25 repeats = 25 tiles; .58m * 25 = 14.5 physical tiles.
+  assert.equal(.58*torso.u,580/40);
+  assert.equal(.18*sleeve.u,180/40);
+  assert.equal(.93*leg.v,930/40);
+});
+
+test("UV contract evidence cannot certify unmeasured or clamped metric repeat",()=>{
+  const exact=garmentPanelTextureScaleEvidence(180,540,40,"mesh_metres");
+  assert.equal(exact.exactScaleWithinRendererLimits,true);
+  assert.deepEqual(exact.rawRepeats,{u:25,v:25});
+  const clamped=garmentPanelTextureScaleEvidence(180,540,5,"mesh_metres");
+  assert.equal(clamped.exactScaleWithinRendererLimits,false);
+  assert.equal(clamped.reason,"renderer_clamped_repeat");
+  assert.equal(clamped.applied.u,80);
+  const unknown=garmentPanelTextureScaleEvidence(180,540,0,"mesh_metres");
+  assert.equal(unknown.exactScaleWithinRendererLimits,false);
+  assert.equal(unknown.reason,"missing_physical_dimensions");
+});
+
+test("legacy panel normalized UV interpretation is unaffected by optional metric contract",()=>{
+  assert.deepEqual(garmentPanelTextureScale(580,780,40),
+                   garmentPanelTextureScale(580,780,40,"normalized_panel"));
+  assert.deepEqual(garmentPanelTextureScale(580,780,40,"normalized_panel"),{u:14.5,v:19.5});
+});
