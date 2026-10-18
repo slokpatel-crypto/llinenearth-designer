@@ -876,13 +876,18 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           ensureViewerMaterialLoaded(materialByName(viewer,entry.panel.material))
         ));
         if(token!==applyToken.current) return;
+        // One missing material would otherwise be silently skipped while the
+        // other five panels and "success" state were committed. Fail the entire
+        // pass before mutating ANY visible fabric or material cache.
+        if(materials.some((material)=>!material))
+          throw new Error("Required garment panel did not hydrate");
         preparedTextureRef.current=new Map(prepared.map((entry)=>[
           entry.panel.material,
           {texture:entry.texture,normal:entry.normal,garment:entry.panel.garment,key:entry.key},
         ]));
         for(const [index,entry] of prepared.entries()){
           const material=materials[index];
-          if(!material) continue;
+          if(!material) throw new Error("Required garment material vanished before paint");
           material.pbrMetallicRoughness.setBaseColorFactor([1,1,1,1]);
           material.pbrMetallicRoughness.setMetallicFactor(0);
           const fabric=entry.panel.garment==="shirt"?shirt:trouser;

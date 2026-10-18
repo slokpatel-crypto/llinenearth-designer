@@ -281,6 +281,10 @@ test("rapid fabric selections cannot commit a superseded asynchronous garment ma
   assert.match(source.slice(preflight,preparation),/if\(!transforms\) throw/);
   // All material promises settle BEFORE the synchronous visible update.
   assert.equal(source.slice(mutate,revision).includes("await "),false);
+  // Never paint five panels, call the sixth missing, and report success.
+  const hydrated=source.indexOf("if(materials.some((material)=>!material))",ready);
+  const cached=source.indexOf("preparedTextureRef.current=new Map",hydrated);
+  assert.ok(hydrated>active&&cached>hydrated&&mutate>cached);
   assert.ok(source.includes("return ()=>{if(applyToken.current===token) applyToken.current++;};"));
   // Errors from a superseded selection must not clear timing or state.
   assert.ok(source.includes("if(token===applyToken.current){") &&
