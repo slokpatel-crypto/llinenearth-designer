@@ -584,14 +584,25 @@ def trial_inner_crotch_seam_relief(body, floor_z, height, centre_x):
         )
 
     attempts = []
-    for peak_mm in (2.0, 4.0, 6.0, 8.0, 10.0):
+    # Keep the measured default 65-mm taper trials first. If those cannot
+    # separate cloth without touching source skin, try smaller/larger LOCAL
+    # falloff footprints before rejecting the candidate. Every trial restores
+    # full XYZ and is independently checked against both real leg/body BVHs.
+    # These are experiments, never a bypass of the zero-contact rule.
+    contours = [(peak, .065) for peak in (2.0, 4.0, 6.0, 8.0, 10.0)]
+    contours += [
+        (peak, taper) for taper in (.03, .045, .08)
+        for peak in (3.0, 4.0, 5.0)
+    ]
+    for peak_mm, taper_width_m in contours:
         restore()
         for obj in legs:
             for index, vertex in enumerate(obj.data.vertices):
                 position = original[obj.name][index]
                 ratio = (position.z - floor_z) / height
                 vertex.co.x = position.x + candidate_inner_seam_relief_mm(
-                    obj.name, ratio, position.x - centre_x, peak_mm
+                    obj.name, ratio, position.x - centre_x, peak_mm,
+                    taper_width_m=taper_width_m
                 ) / 1000.0
             obj.data.update()
         bpy.context.view_layer.update()
@@ -612,6 +623,7 @@ def trial_inner_crotch_seam_relief(body, floor_z, height, centre_x):
         after = contacts()
         trial = {
             "peakSeamReliefMm": peak_mm,
+            "contourTaperWidthMm": round(taper_width_m * 1000, 3),
             "legToLegPairsBeforeRepair": before[0],
             "leftBodyPairsBeforeRepair": before[1],
             "rightBodyPairsBeforeRepair": before[2],
@@ -624,6 +636,7 @@ def trial_inner_crotch_seam_relief(body, floor_z, height, centre_x):
         if after == (0, 0, 0):
             evidence = {
                 "selectedPeakSeamReliefMm": peak_mm,
+                "selectedContourTaperWidthMm": round(taper_width_m * 1000, 3),
                 "nativeWorldSpaceCollisionFree": True,
                 "trials": attempts,
                 "photographicPoseApproved": False,
@@ -641,6 +654,7 @@ def trial_inner_crotch_seam_relief(body, floor_z, height, centre_x):
     restore()
     evidence = {
         "selectedPeakSeamReliefMm": 0.0,
+        "selectedContourTaperWidthMm": None,
         "nativeWorldSpaceCollisionFree": False,
         "trials": attempts,
         "photographicPoseApproved": False,
