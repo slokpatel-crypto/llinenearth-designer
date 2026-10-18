@@ -16,7 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from uv_candidate_audit import audit_shared_uv_edges, audit_uv_triangles, classify_unapproved_uv_seams, validate_recomputed_source_cut_evidence, verify_evaluated_tube_radius_m
-from sleeve_stance_math import source_arm_band_geometry
+from sleeve_stance_math import source_arm_band_geometry, optimistic_sleeve_spacing_budget
 
 EXPORT_COLLECTION = "LinenEarthExport"
 REFERENCE_BODY = "Body"
@@ -497,6 +497,35 @@ def main():
                   left_body_arm_band["sourceSideBandCentreXMm"]), 2)
         if left_body_arm_band is not None and right_body_arm_band is not None else None
     )
+    # Quantify whether even the ideal remaining bounded contour could reach
+    # the locked photographed hand-spacing guide. This is optimistic arithmetic
+    # on measured garment spacing plus candidate metadata, NOT clearance or
+    # permission to shift a sleeve through the unchanged source-body skin.
+    selected_contour_mm = []
+    for panel_name in ("ShirtSleeveLFabric", "ShirtSleeveRFabric"):
+        sleeve_obj = bpy.data.objects.get(panel_name)
+        candidate_mm = (sleeve_obj.get("linen_earth_sleeve_cuff_inboard_candidate_mm")
+                        if sleeve_obj is not None else None)
+        if (isinstance(candidate_mm, (int, float)) and not isinstance(candidate_mm, bool)
+                and math.isfinite(candidate_mm) and 0 <= candidate_mm <= 22):
+            selected_contour_mm.append(float(candidate_mm))
+    budget = None
+    if (sleeve_spacing is not None and len(selected_contour_mm) == 2
+            and abs(selected_contour_mm[0] - selected_contour_mm[1]) <= 0.001):
+        budget = optimistic_sleeve_spacing_budget(
+            sleeve_spacing, selected_contour_mm[0],
+            target_mm=EXPECTED_IDENTITY_TARGETS_MM["handCenterSpacing"],
+            tolerance_mm=36.0,
+        )
+        if not budget["guideNumericallyReachableWithinExistingContourCap"]:
+            warnings.append(
+                "Optimistic sleeve contour budget cannot reach the locked hand-spacing "
+                f"guide: even full remaining <=22 mm/side contour effect leaves "
+                f"{budget['optimisticMinimumSpacingMm']:.1f} mm; "
+                f"guide upper limit is {budget['guideBandMm'][1]:.1f} mm. "
+                "This does not authorize body edits or new sleeve collisions."
+            )
+    identity_measurements["sleeveContourOptimisticBudgetNotFitApproval"] = budget
     identity_measurements["sleeveCenterSpacingMm"] = round(sleeve_spacing, 2) if sleeve_spacing is not None else None
     identity_measurements["cuffWidthAsymmetryMm"] = round(cuff_width_asymmetry, 2) if cuff_width_asymmetry is not None else None
     if sleeve_spacing is None:
