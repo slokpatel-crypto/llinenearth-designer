@@ -46,3 +46,34 @@ The source-derived UV cut classifier now groups **all** genuinely shared, discon
 The previously existing full-turn UV phase stitcher is now **transactional per connected candidate chart component**: after each candidate phase change, the audit requires (1) no inconsistent graph cycle in that component, (2) no pre-existing shared-edge continuity lost anywhere, including across deliberately excluded tangent faces, and (3) no increase in the full real shared-edge tear count. An unsafe component trial leaves *all* of its source face UVs unchanged and records an explicit rollback reason and count; a separate, provably safe component can still be accepted. Geometry positions are never changed. Dedicated tests exercise the inconsistent closed ring, protected tangent-chart continuity, independent safe-component salvage, two-edge paths, forked topology, and closed UV tear cycles.
 
 **No seam-placement approval or fabrication claim:** a connected UV-cut group does not establish sewing allowance, true factory selvage, grain direction, material repeat, likeness to the locked reference photograph, calibrated drape, correct sleeve spacing, or tailor authorization. Native Blender workflow and independent preflight remain authoritative; after every commit, read the exact HEAD's run status. Keep PR #311 **DRAFT / NO MERGE / NO DEPLOY**.
+
+
+## Continued Task 2 — full source-cut inventory and independent scene verification
+
+A 16-item sample can hide a source UV seam group even when its edge count was
+aggregated correctly. The candidate diagnostic now inventories **every** cut
+component separately by classification (periodic cylinder cut, near unapproved
+tangent face, or nonperiodic tear), recording total edge count, number of
+branches, highest junction degree and, only when actual source vertex XYZ is
+available, summed path length, longest path and maximum vertical span in mesh
+millimetres. Group totals are independent of the sample limit, including zero.
+No numerical output describes real cloth grain, actual flat pattern, sewn
+allowance, factory repeat, GSM, bending, verified drape or clothing approval.
+
+A new separate evaluated-Blender preflight now recomputes each sleeve/leg cut
+report from its **evaluated** mesh UV loops and mesh XYZ, then compares the
+**complete unsampled group inventories**, classification totals and metric
+extents to the author's stored receipt. Missing authoring evidence, changed
+topology, altered metrics, unmeasured geometry or spoofed approval flags fail
+closed. Metric comparison permits at most 0.25 mm numerical drift for floating
+point source-scene quantization; no release threshold is relaxed. Unit
+regressions check disconnected hidden groups, absent XYZ, tampering, scale
+drift, false approval and invalid tolerances.
+
+This remains an unapproved diagnostic on the **original** locked source body,
+not a fix for the locked hand spacing, an authored seam, fabric construction or
+photo identity. Native Blender and independently completed CI/browser
+workflows on the exact final commit are required before any further claim.
+The six-pane customer garment and original photographic Designer Studio are
+not replaced, PR #311 remains **DRAFT**, and no main merge/deployment is
+authorized.
