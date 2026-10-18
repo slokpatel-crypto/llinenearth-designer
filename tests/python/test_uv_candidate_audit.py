@@ -568,6 +568,57 @@ class CandidateUvAuditTests(unittest.TestCase):
                     faces, radius_m=.1, source_vertex_positions=positions
                 )
 
+    def test_source_tube_uv_radius_uses_genuine_mesh_millimetres(self):
+        import math
+        points = [(0.1, 0, .2), (0, .1, .4), (-.1, 0, .6),
+                  (0, -.1, .8), (.1, .0, 1)]
+        radius = audit.estimate_source_tube_radius_m(points)
+        self.assertAlmostEqual(radius, .1, places=9)
+        displaced = [(x+.8, y-.9, z+3) for x, y, z in points]
+        self.assertAlmostEqual(
+            audit.estimate_source_tube_radius_m(displaced), radius, places=9
+        )
+        evidence = audit.verify_evaluated_tube_radius_m(
+            displaced, round(radius*1000, 3)
+        )
+        self.assertTrue(evidence["geometryRadiusIndependentlyVerified"])
+        self.assertAlmostEqual(evidence["evaluatedGeometryRadiusMm"], 100)
+        self.assertFalse(evidence["physicalTextileCircumferenceVerified"])
+        self.assertFalse(evidence["productionApproved"])
+
+    def test_source_tube_radius_metadata_never_overrides_actual_mesh(self):
+        points = [(.1, 0, 0), (0, .1, .1), (-.1, 0, .2),
+                  (0, -.1, .3), (.1, 0, .4)]
+        for fake_mm in (90, 101, float("nan"), float("inf"),
+                        "100", True, None):
+            with self.subTest(fake_mm=fake_mm), self.assertRaises(ValueError):
+                audit.verify_evaluated_tube_radius_m(points, fake_mm)
+        with self.assertRaisesRegex(ValueError, "contradicts evaluated"):
+            audit.verify_evaluated_tube_radius_m(points, 100.1)
+        # Float32 scene receipts differ by a tiny numerical fraction of a mm,
+        # not an invented supplier measurement.
+        good = audit.verify_evaluated_tube_radius_m(points, 100.02)
+        self.assertAlmostEqual(good["metadataDeltaMm"], .02)
+        for bad_tolerance in (-.001, .051, True, "0.05", float("nan")):
+            with self.subTest(bad_tolerance=bad_tolerance), self.assertRaises(ValueError):
+                audit.verify_evaluated_tube_radius_m(
+                    points, 100, max_delta_mm=bad_tolerance
+                )
+
+    def test_source_tube_radius_refuses_missing_fake_or_degenerate_geometry(self):
+        valid = [(.1, 0, 0), (0, .1, 0), (-.1, 0, 0)]
+        invalid = ([], [(.1, 0, 0)]*2, [(.1, 0, 0)]*3,
+                   [(0, 0, 0)]*3,
+                   [(0, 0, 0), (0, 0, 0), (.0001, 0, 0)],
+                   [(0, 0), (0, .1, 0), (.1, 0, 0)],
+                   [(0, False, 0), (0, .1, 0), (.1, 0, 0)],
+                   [(0, 0, 0), (0, .1, 0), (float("inf"), 0, 0)],
+                   [(0, 0, 0), (0, .1, 0), ("0.1", 0, 0)])
+        for xyz in invalid:
+            with self.subTest(xyz=xyz), self.assertRaises(ValueError):
+                audit.estimate_source_tube_radius_m(xyz)
+        self.assertGreater(audit.estimate_source_tube_radius_m(valid), .015)
+
     def test_complete_source_cut_inventory_is_not_sample_limited(self):
         import math
         wrap = 2*math.pi*.1
