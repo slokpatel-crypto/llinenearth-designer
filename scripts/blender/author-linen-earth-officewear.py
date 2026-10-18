@@ -587,10 +587,12 @@ def main():
     print("SOURCE_FIT_BOUNDED_CONTACT_REPAIR=" + json.dumps(contact_repair_report, sort_keys=True))
     bpy.context.scene["linen_earth_fit_collision_stages_json"] = json.dumps(fit_stage_report, sort_keys=True)
     print("SOURCE_FIT_COLLISION_STAGES_WORLD_SPACE=" + json.dumps(fit_stage_report, sort_keys=True))
-    bpy.context.scene["linen_earth_asset_status"] = "unapproved-source-derived-3d-candidate"
+    bpy.context.scene["linen_earth_asset_status"] = "auto-authored-production-candidate-needs-tailor-review"
     bpy.context.scene["linen_earth_garment_authoring_method"] = "locked-body-surface-shell-v2-bounded-preview-folds"
     bpy.context.scene["linen_earth_drape_provenance"] = "art_directed_unverified_visual_candidate"
     bpy.context.scene["linen_earth_measured_fabric_physics"] = False
+    bpy.context.scene["linen_earth_production_approved"] = False
+    bpy.context.scene["linen_earth_photo_parity_verified"] = False
     bpy.context.scene["linen_earth_preview_relief_requested_mm"] = options.candidate_relief_mm
     bpy.context.scene["linen_earth_surface_refine_level"] = options.surface_refine
     bpy.context.scene["linen_earth_contact_repair_passes"] = options.contact_repair_passes
