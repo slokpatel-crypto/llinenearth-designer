@@ -908,6 +908,103 @@ def validate_recomputed_source_cut_evidence(authored, independent, *,
     }
 
 
+
+def validate_independent_uv_hotspots(authored, evaluated, *,
+                                    max_area_delta_m2=0.00002,
+                                    max_coverage_delta_pct=0.10):
+    """Compare author source-face UV receipts to independent evaluated mesh.
+
+    This is a provenance/integrity check: authenticating a diagnostic is NOT
+    textile repeat, seam placement, calibrated drape or production permission.
+    Bounded deltas account only for Blender's persisted float32 coordinates.
+    """
+    for name, value, maximum in (
+        ("max_area_delta_m2", max_area_delta_m2, .00002),
+        ("max_coverage_delta_pct", max_coverage_delta_pct, .10),
+    ):
+        if (isinstance(value, (bool, str, bytes)) or not isinstance(value, (int, float))
+                or not math.isfinite(value) or not 0 <= value <= maximum):
+            raise ValueError(f"{name} must be finite within [0,{maximum}]")
+    if not isinstance(authored, dict) or not isinstance(evaluated, dict):
+        raise ValueError("UV hotspot receipts must be dictionaries")
+    for source in (authored, evaluated):
+        if source.get("sourceFaceAttributionAvailable") is not True:
+            raise ValueError("Missing indexed source polygon hotspot provenance")
+        if (source.get("physicalFabricRepeatVerified") is not False
+                or source.get("supplierGrainVerified") is not False
+                or source.get("productionApproved") is not False):
+            raise ValueError("UV diagnostic may not claim fabric or production approval")
+
+    for key in ("distortedSourcePolygonCount", "distortedSourcePolygonSamplesOmitted",
+                "triangleCount", "collapsedUvTriangles", "degenerateSurfaceTriangles",
+                "uvTrianglesAnisotropyOver2", "uvTrianglesMetricScaleDeviationOver50Pct"):
+        for source in (authored, evaluated):
+            value = source.get(key)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ValueError(f"Invalid UV hotspot inventory: {key}")
+        if authored[key] != evaluated[key]:
+            raise ValueError(f"Indexed source UV hotspot receipt differs at {key}")
+
+    max_delta = 0.0
+    for key, tolerance in (
+        ("uvMeasuredSurfaceAreaM2", max_area_delta_m2),
+        ("uvDistortedSurfaceAreaM2", max_area_delta_m2),
+        ("uvDistortedSurfacePct", max_coverage_delta_pct),
+    ):
+        left, right = authored.get(key), evaluated.get(key)
+        if left is None and right is None and key == "uvDistortedSurfacePct":
+            continue
+        if any(isinstance(v, (bool, str, bytes)) or not isinstance(v, (int, float))
+               or not math.isfinite(v) or v < 0 for v in (left, right)):
+            raise ValueError(f"Missing/invalid UV hotspot metric: {key}")
+        delta = abs(left-right)
+        if delta > tolerance:
+            raise ValueError(f"Indexed source UV hotspot metric mismatch: {key}")
+        max_delta = max(max_delta, delta)
+
+    def sample_map(source):
+        samples = source.get("distortedSourcePolygonSamples")
+        if not isinstance(samples, list) or len(samples) > 32:
+            raise ValueError("Invalid indexed UV hotspot samples")
+        entries = {}
+        for item in samples:
+            if not isinstance(item, dict):
+                raise ValueError("Invalid indexed UV hotspot sample")
+            index = item.get("sourcePolygonIndex")
+            if isinstance(index, bool) or not isinstance(index, int) or index < 0 or index in entries:
+                raise ValueError("Duplicated or invalid source polygon index")
+            entries[index] = item
+        if len(entries) + source["distortedSourcePolygonSamplesOmitted"] != source["distortedSourcePolygonCount"]:
+            raise ValueError("Source polygon hotspot inventory/sample count mismatch")
+        return entries
+    author_samples, evaluated_samples = sample_map(authored), sample_map(evaluated)
+    # Top face ordering can legitimately flip for near-equal areas after
+    # saved-scene float32 rounding. Do not assert rank-order equivalence,
+    # but never allow an independently *shared* sampled face to be forged.
+    for index in author_samples.keys() & evaluated_samples.keys():
+        author, independent = author_samples[index], evaluated_samples[index]
+        for key in ("validTriangleCount", "distortedTriangleCount"):
+            if (isinstance(author.get(key), bool) or not isinstance(author.get(key), int)
+                    or author[key] != independent.get(key)):
+                raise ValueError(f"Source polygon {index} hotspot {key} disagrees")
+        for key in ("surfaceAreaM2", "distortedAreaM2"):
+            left, right = author.get(key), independent.get(key)
+            if any(isinstance(v, (bool, str, bytes)) or not isinstance(v, (int, float))
+                   or not math.isfinite(v) for v in (left, right)):
+                raise ValueError(f"Invalid source polygon {index} metric: {key}")
+            if abs(left-right) > max_area_delta_m2:
+                raise ValueError(f"Source polygon {index} metric area mismatch: {key}")
+    return {
+        "evaluatedSourceUvHotspotProvenanceConsistent": True,
+        "maxSurfaceMetricDelta": round(max_delta, 7),
+        "sharedSampledSourcePolygonsVerified": len(author_samples.keys() & evaluated_samples.keys()),
+        "fullIndexedSourceFaceCountVerified": True,
+        "supplierGrainVerified": False,
+        "productionApproved": False,
+    }
+
+
+
 def metric_uv_triangle_stretches(xyz, uv):
     """Principal UV/mesh length ratios; metric QA, never cloth authentication.
 
