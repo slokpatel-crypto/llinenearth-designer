@@ -27,6 +27,7 @@ from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical
 from region_islands import keep_ankle_connected_faces
 from sleeve_stance_math import MAX_INBOARD_MM, candidate_sleeve_inboard_mm
 from leg_stance_math import MAX_INBOARD_MM as MAX_LEG_INBOARD_MM, candidate_leg_inboard_mm
+from leg_gap_safety import bounded_leg_gap_trials
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -440,6 +441,76 @@ def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm, body_floor_
     return max_relief, shoulder_guide, phase_pairs, contact_repair
 
 
+
+def restore_collision_free_leg_gap(body, body_floor_z, body_height, requested_mm):
+    """Retreat a garment-only gap trial until TWO leg shells AND skin do not collide.
+
+    The requested shift was applied during individual shell fitting. Record
+    each post-fit X baseline so the rollback only undoes part of that shift;
+    it never moves the source body or overwrites the bounded contact repairs.
+    Independent release preflight remains mandatory for all other panels.
+    """
+    names = ("TrouserLegLFabric", "TrouserLegRFabric")
+    legs = [bpy.data.objects.get(name) for name in names]
+    if any(obj is None or obj.type != "MESH" for obj in legs):
+        raise RuntimeError("Both source-derived trouser shells are required for gap QA")
+
+    base_x = {}
+    for name, obj in zip(names, legs):
+        base_x[name] = [
+            vertex.co.x - candidate_leg_inboard_mm(
+                name, (vertex.co.z - body_floor_z) / body_height, requested_mm
+            ) / 1000.0
+            for vertex in obj.data.vertices
+        ]
+
+    attempts = []
+    for candidate_mm in bounded_leg_gap_trials(requested_mm):
+        for name, obj in zip(names, legs):
+            for index, vertex in enumerate(obj.data.vertices):
+                ratio = (vertex.co.z - body_floor_z) / body_height
+                vertex.co.x = base_x[name][index] + candidate_leg_inboard_mm(
+                    name, ratio, candidate_mm
+                ) / 1000.0
+            obj.data.update()
+        bpy.context.view_layer.update()
+
+        # A smaller visual gap is NEVER allowed to penetrate either leg or
+        # the original model. These are real evaluated world-space BVH pairs.
+        leg_pairs = source_fit_collision_pairs(legs[0], legs[1])
+        left_body = source_fit_collision_pairs(body, legs[0])
+        right_body = source_fit_collision_pairs(body, legs[1])
+        trial = {
+            "candidateInboardMmPerLeg": candidate_mm,
+            "legToLegIntersectionPairs": leg_pairs,
+            "leftBodyIntersectionPairs": left_body,
+            "rightBodyIntersectionPairs": right_body,
+        }
+        attempts.append(trial)
+        if leg_pairs == left_body == right_body == 0:
+            evidence = {
+                "requestedMmPerLeg": requested_mm,
+                "selectedMmPerLeg": candidate_mm,
+                "trials": attempts,
+                "nativeWorldSpaceCollisionFree": True,
+                "photographicPoseApproved": False,
+                "tailorFitApproved": False,
+                "productionApproved": False,
+            }
+            for obj in legs:
+                obj["linen_earth_trouser_leg_inboard_candidate_mm"] = candidate_mm
+                obj["linen_earth_leg_gap_rollback_audit_json"] = json.dumps(evidence, sort_keys=True)
+            print("SOURCE_FIT_LEG_GAP_COLLISION_ROLLBACK=" + json.dumps(evidence, sort_keys=True))
+            return evidence
+
+    # A fully reverted 0-mm trial may still overlap due to a bad source shell.
+    # Do not report a nominal gap improvement or export a broken replacement.
+    raise RuntimeError(
+        "No zero-contact garment leg-gap candidate, even at 0 mm. "
+        "Real BVH trials: " + json.dumps(attempts, sort_keys=True)
+    )
+
+
 def planar_grain_uv(obj):
     """Candidate X/Z UV uses mesh metres, not an arbitrary 0..1 per panel.
 
@@ -648,8 +719,6 @@ def main():
         max_relief, shoulder_guide, phase_pairs, repair = fit_shell(obj, body, panel_clearance, thickness_m, name, options.candidate_relief_mm, min_z, height, options.surface_refine, options.contact_repair_passes, options.hem_taper_fraction, options.sleeve_cuff_inboard_mm, options.trouser_leg_inboard_mm)
         fit_stage_report[name] = phase_pairs
         contact_repair_report[name] = repair
-        planar_grain_uv(obj)
-        candidate_uv_report[name] = audit_authored_panel_uv(obj)
         obj["linen_earth_auto_authored"] = True
         obj["linen_earth_fit_clearance_mm"] = round(panel_clearance * 1000.0, 3)
         obj["linen_earth_cloth_thickness_mm"] = round(thickness_m * 1000.0, 3)
@@ -659,6 +728,21 @@ def main():
             obj["linen_earth_shoulder_width_source_mm"] = round(shoulder_guide[0], 2)
             obj["linen_earth_shoulder_contour_scale"] = round(shoulder_guide[1], 6)
         authored.append(obj)
+
+    # The default 3-mm trial created 138 actual leg/leg triangle intersections
+    # in CI. Back off in <=0.5-mm steps using the measured final thickened
+    # cloth, not just the apparent spacing. UVs are rebuilt AFTER geometry
+    # settles, avoiding stale texture coordinates from the rejected trial.
+    leg_gap_audit = restore_collision_free_leg_gap(
+        body, min_z, height, options.trouser_leg_inboard_mm
+    )
+    for name in ("TrouserLegLFabric", "TrouserLegRFabric"):
+        fit_stage_report[name]["postGapRollbackBodyPairs"] = 0
+        fit_stage_report[name]["postGapRollbackLegPairs"] = 0
+        fit_stage_report[name]["postGapRollbackSelectedMm"] = leg_gap_audit["selectedMmPerLeg"]
+    for obj in authored:
+        planar_grain_uv(obj)
+        candidate_uv_report[obj.name] = audit_authored_panel_uv(obj)
 
     bpy.context.scene["linen_earth_uv_candidate_audit_json"] = json.dumps(candidate_uv_report, sort_keys=True)
     bpy.context.scene["linen_earth_uv_coordinate_units"] = "mesh_metres"
@@ -682,7 +766,9 @@ def main():
     bpy.context.scene["linen_earth_waist_layer_extra_mm"] = options.waist_layer_extra_mm
     bpy.context.scene["linen_earth_hem_taper_candidate_fraction"] = options.hem_taper_fraction
     bpy.context.scene["linen_earth_candidate_sleeve_inboard_mm"] = options.sleeve_cuff_inboard_mm
-    bpy.context.scene["linen_earth_candidate_trouser_leg_inboard_mm"] = options.trouser_leg_inboard_mm
+    bpy.context.scene["linen_earth_candidate_trouser_leg_inboard_mm"] = leg_gap_audit["selectedMmPerLeg"]
+    bpy.context.scene["linen_earth_candidate_trouser_leg_inboard_requested_mm"] = options.trouser_leg_inboard_mm
+    bpy.context.scene["linen_earth_leg_gap_rollback_audit_json"] = json.dumps(leg_gap_audit, sort_keys=True)
     bpy.context.scene["linen_earth_source_body_pose_changed"] = False
     bpy.context.scene["linen_earth_garment_clearance_mm"] = round(clearance_m * 1000.0, 3)
     bpy.context.scene["linen_earth_garment_thickness_mm"] = round(thickness_m * 1000.0, 3)
