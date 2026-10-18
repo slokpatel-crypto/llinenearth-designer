@@ -532,3 +532,14 @@ Architecture and product decisions that must persist across coding sessions.
 **Compatibility:** no schema/database migration; existing saved Designer designs, model identity IDs, source photographs and versioned option contracts are unchanged. Internal prototype rendering remains available to engineers, never as evidence of a completed realistic model. Passing structural preflight is still not visual realism approval, verified textile scale, tailor fit approval or deployment authorization.
 
 **Next engineering gate:** exact single identity body mesh, production garment/drape fit and UV evidence, independent front/3-4/side/back visual comparisons, verified supplier physical scale and tailor approval before customer-facing 3D promotion.
+
+
+## 2026-10-18 — source-body garment isolation and metric UV remain candidate-only (draft PR #306)
+
+**Scope:** continue the existing six-panel Blender source-model authoring branch without replacing the fixed `linen-earth-studio-model-v1` reference or changing customer Designer, site assets, schema or production deployment. Keep draft PR #306 stacked on unapproved PR #300; do not merge or ship.
+
+**Task 1 — trouser source topology:** rectangular height/side masks may include arms/hands around hip height. In `scripts/blender/region_islands.py`, segment candidate polygons by **shared source-mesh edges** and retain exactly one continuous ankle-to-thigh island per leg. A detached hand at the same X/Z must be excluded. A missing ankle anchor, cropped thigh or multiple competing full-height islands fails closed rather than inventing a fitted leg. This does not change the locked mannequin; actual body/garment overlap and photographed stance remain independent native gates.
+
+**Task 2 — material projection:** authored UV U/V now express **mesh-space metres**, not an individual panel's normalized 0–1 box, with a pure input-validated helper and UV triangle-area audit. Record `uncalibrated_metric_xz_planar`; this is not cylindrical sleeve/leg unwrapping or proof of real supplier stripe/check repeat, grain direction, textile physics or colour. Report UV degeneracy and density deviation without turning geometric statistics into fabric certification.
+
+**Tests and release truth:** pure Python regressions exercise ankle-connected component separation, malformed input, scale-invariant metre mapping and UV triangles. Real native Blender six-piece collision/identity, front/three-quarter/side/back silhouette comparison, source mesh hand/cuff/leg spacing, measured supplier data, mobile WebGL and tailor signoff must still pass. The immediately preceding actual Blender workflow 39105743107 rejected the candidate because cuff-centre spacing was **574.92 mm** against a **500 ±36 mm** lock, even though contact collision checks cleared. Do not move scanned hands, override thresholds or claim model approval merely to pass CI. Latest branch CI remains a separate verifiable receipt, not assumed successful.
