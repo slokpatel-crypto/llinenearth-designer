@@ -151,6 +151,22 @@ class CandidateUvAuditTests(unittest.TestCase):
         self.assertTrue(r["topologicalUvContinuityPass"])
         self.assertFalse(r["supplierGrainVerified"])
 
+    def test_matching_uvs_cannot_hide_same_direction_shared_face_winding(self):
+        faces = [
+            [(0, (0, 0)), (1, (.02, 0)), (2, (.02, .05))],
+            # Shared source edge 1 -> 2 is traversed in the SAME direction.
+            [(1, (.02, 0)), (2, (.02, .05)), (3, (.04, .02))],
+        ]
+        report = audit.audit_shared_uv_edges(faces)
+        self.assertEqual(report["sharedInteriorEdges"], 1)
+        self.assertEqual(report["unapprovedInteriorUvSeams"], 0)
+        self.assertEqual(report["inconsistentWindingEdges"], 1)
+        self.assertFalse(report["topologicalUvContinuityPass"])
+        faces[1] = list(reversed(faces[1]))
+        repaired = audit.audit_shared_uv_edges(faces)
+        self.assertEqual(repaired["inconsistentWindingEdges"], 0)
+        self.assertTrue(repaired["topologicalUvContinuityPass"])
+
     def test_face_local_origin_is_reported_as_real_uv_seam(self):
         faces = [
             [(0, (0.0, 0.0)), (1, (.02, 0.0)), (2, (.02, .05))],
