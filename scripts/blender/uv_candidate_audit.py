@@ -503,7 +503,8 @@ def align_metric_tangent_charts(faces, *, tangent_face_indices, tolerance_m=1e-5
 
 
 def classify_unapproved_uv_seams(faces, *, radius_m, tangent_face_indices=(),
-                                 tolerance_m=1e-5, sample_limit=16):
+                                 tolerance_m=1e-5, sample_limit=16,
+                                 source_vertex_positions=None):
     """Partition REAL shared-edge UV tears; every candidate cut stays unapproved.
 
     A valid full-turn jump is topologically unlike an arbitrary texture tear:
@@ -527,6 +528,37 @@ def classify_unapproved_uv_seams(faces, *, radius_m, tangent_face_indices=(),
     if any(isinstance(i, bool) or not isinstance(i, int) or i < 0 or i >= len(faces)
            for i in tangent_indices):
         raise ValueError("Invalid source tangent chart face index")
+    # Positions come from the actual current source mesh, not supplier fabric.
+    # Only calculate physical cut-path lengths when metre XYZ is explicitly
+    # supplied; pure UV-only regressions remain valid with no invented lengths.
+    positions = None
+    if source_vertex_positions is not None:
+        try:
+            positions = list(source_vertex_positions)
+        except TypeError as exc:
+            raise ValueError("Source seam geometry needs indexed XYZ coordinates") from exc
+        if not positions:
+            raise ValueError("Source seam geometry cannot be empty")
+        for vertex in positions:
+            if (len(vertex) != 3 or any(
+                isinstance(v, (str, bytes, bool)) or not isinstance(v, (int, float))
+                or not math.isfinite(v) for v in vertex
+            )):
+                raise ValueError("Source seam geometry needs finite metre XYZ")
+        source_ids = [vid for face in faces for vid, _ in face]
+        if any(vid >= len(positions) for vid in source_ids):
+            raise ValueError("Source seam geometry missing actual vertex IDs")
+
+    def source_edge_metric(edge):
+        if positions is None:
+            return None
+        a, b = (positions[vertex] for vertex in edge)
+        length = math.dist(a, b)
+        vertical = abs(a[2] - b[2])
+        if not math.isfinite(length) or not math.isfinite(vertical):
+            raise ValueError("Source seam edge has nonfinite geometric length")
+        return length, vertical
+
     period = 2*math.pi*radius_m
     edge_uses = defaultdict(list)
     for face_index, face in enumerate(faces):
@@ -541,6 +573,9 @@ def classify_unapproved_uv_seams(faces, *, radius_m, tangent_face_indices=(),
     }
     sample = []
     classified_source_edges = []
+    source_metric_length_by_class = {name: 0.0 for name in counts}
+    source_metric_vertical_by_class = {name: 0.0 for name in counts}
+    zero_length_source_edges = 0
     for edge, uses in edge_uses.items():
         if len(uses) != 2:
             continue
@@ -564,14 +599,25 @@ def classify_unapproved_uv_seams(faces, *, radius_m, tangent_face_indices=(),
             classification = "nonPeriodicUvTear"
         counts[classification] += 1
         classified_source_edges.append((edge, classification))
+        source_metric = source_edge_metric(edge)
+        if source_metric is not None:
+            length_m, vertical_m = source_metric
+            source_metric_length_by_class[classification] += length_m
+            source_metric_vertical_by_class[classification] += vertical_m
+            if length_m <= 1e-10:
+                zero_length_source_edges += 1
         if len(sample) < sample_limit:
-            sample.append({
+            edge_sample = {
                 "sourceEdgeVertices": list(edge),
                 "sourcePolygonIndices": [left_index, right_index],
                 "classification": classification,
                 "integerCircumferenceTurns": turns if is_full_turn else None,
                 "maxUvEndpointJumpMm": round(jump*1000, 5),
-            })
+            }
+            if source_metric is not None:
+                edge_sample["geometryEdgeLengthMm"] = round(source_metric[0]*1000, 5)
+                edge_sample["geometryAbsoluteVerticalRiseMm"] = round(source_metric[1]*1000, 5)
+            sample.append(edge_sample)
     if sum(counts.values()) != topology["unapprovedInteriorUvSeams"]:
         raise RuntimeError("UV cut classification lost a genuine shared-edge discontinuity")
 
@@ -612,7 +658,7 @@ def classify_unapproved_uv_seams(faces, *, radius_m, tangent_face_indices=(),
             chain_shape_counts[shape] += 1
             class_groups[name] += 1
             if len(chain_samples) < sample_limit:
-                chain_samples.append({
+                chain_sample = {
                     "classification": name,
                     "edgeCount": len(component),
                     "sourceVertexCount": len(degree),
@@ -621,7 +667,20 @@ def classify_unapproved_uv_seams(faces, *, radius_m, tangent_face_indices=(),
                     "chainShape": shape,
                     "sourceEdgeSamples": [list(edge) for edge in sorted(component)[:sample_limit]],
                     "seamPlacementApproved": False,
-                })
+                }
+                if positions is not None:
+                    metric = [source_edge_metric(edge) for edge in component]
+                    length_m = sum(v[0] for v in metric)
+                    vertical_m = sum(v[1] for v in metric)
+                    zs = [positions[vid][2] for vid in degree]
+                    chain_sample.update({
+                        "geometryPathLengthMm": round(length_m*1000, 4),
+                        "geometryZSpanMm": round((max(zs)-min(zs))*1000, 4),
+                        "geometryVerticalEdgeFraction": (
+                            round(vertical_m/length_m, 5) if length_m > 1e-10 else None
+                        ),
+                    })
+                chain_samples.append(chain_sample)
     return {
         "unapprovedInteriorUvSeams": topology["unapprovedInteriorUvSeams"],
         "geometryEstimatedPeriodMm": round(period*1000, 5),
@@ -631,6 +690,19 @@ def classify_unapproved_uv_seams(faces, *, radius_m, tangent_face_indices=(),
         "sourceSeamGroupCountByClass": class_groups,
         "sourceSeamChainShapes": chain_shape_counts,
         "sourceSeamChainSamples": chain_samples,
+        "sourceMetricGeometryAvailable": positions is not None,
+        "sourceGeometryCoordinateUnits": "mesh_metres" if positions is not None else None,
+        "sourceMetricEdgeLengthByClassMm": (
+            {name: round(length*1000, 4)
+             for name, length in source_metric_length_by_class.items()}
+            if positions is not None else None
+        ),
+        "sourceMetricVerticalRiseByClassMm": (
+            {name: round(length*1000, 4)
+             for name, length in source_metric_vertical_by_class.items()}
+            if positions is not None else None
+        ),
+        "zeroLengthSourceUvTearEdges": zero_length_source_edges if positions is not None else None,
         "unapprovedSourceEdgeSamples": sample,
         "sourceNonManifoldEdges": topology["nonManifoldEdges"],
         "cutPlacementApproved": False,
