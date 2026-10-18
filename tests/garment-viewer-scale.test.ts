@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { garmentPanelTextureScale, garmentPanelTextureScaleEvidence, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
+import { garmentPanelTextureScale, garmentPanelTextureScaleEvidence, garmentUvRepeatsForUnits, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
 
 test("verified render tile width stays authoritative",()=>{
   assert.equal(resolveViewerTileWidthMm(
@@ -76,4 +76,25 @@ test("repeat exactness uses the unchanged inclusive renderer limits",()=>{
   assert.equal(garmentPanelTextureScaleEvidence(35,8000,100).exactScaleWithinRendererLimits,true);
   assert.equal(garmentPanelTextureScaleEvidence(34,8000,100).exactScaleWithinRendererLimits,false);
   assert.equal(garmentPanelTextureScaleEvidence(35,8001,100).exactScaleWithinRendererLimits,false);
+});
+
+test("normalized and metre UV coordinate units preserve equal real repeat distance",()=>{
+  const tileMm=40;
+  const panel={widthMm:580,heightMm:780};
+  const normalized=garmentUvRepeatsForUnits("panel_normalized",panel.widthMm,panel.heightMm,tileMm);
+  const metric=garmentUvRepeatsForUnits("mesh_metres",panel.widthMm,panel.heightMm,tileMm);
+  assert.deepEqual(normalized,{u:14.5,v:19.5});
+  assert.deepEqual(metric,{u:25,v:25});
+  assert.equal(panel.widthMm/normalized!.u,tileMm);
+  assert.equal(panel.heightMm/normalized!.v,tileMm);
+  assert.equal(1000/metric!.u,tileMm);
+  assert.equal(1000/metric!.v,tileMm);
+});
+
+test("unknown UV convention and renderer-clamped repeats refuse physical approval",()=>{
+  assert.equal(garmentUvRepeatsForUnits("unknown",580,780,40),null);
+  assert.equal(garmentUvRepeatsForUnits("panel_normalized",9000,780,40),null);
+  assert.equal(garmentUvRepeatsForUnits("mesh_metres",580,780,1),null);
+  assert.equal(garmentUvRepeatsForUnits("mesh_metres",580,780,0),null);
+  assert.equal(garmentUvRepeatsForUnits("unexpected" as "mesh_metres",580,780,40),null);
 });
