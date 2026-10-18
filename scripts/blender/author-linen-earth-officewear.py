@@ -23,7 +23,7 @@ from mathutils.bvhtree import BVHTree
 # Blender. It must not be mistaken for a material-calibrated cloth simulation.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from drape_preview_math import MAX_PREVIEW_RELIEF_MM, candidate_drape_offset_mm
-from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical_metric_face_uv, cylindrical_ambiguous_face_diagnostic, metric_tangent_chart_uv
+from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical_metric_face_uv, cylindrical_ambiguous_face_diagnostic, metric_tangent_chart_uv, audit_shared_uv_edges
 from region_islands import keep_ankle_connected_faces
 from sleeve_stance_math import MAX_INBOARD_MM, candidate_sleeve_inboard_mm
 from leg_stance_math import MAX_INBOARD_MM as MAX_LEG_INBOARD_MM, candidate_leg_inboard_mm, candidate_inner_seam_relief_mm
@@ -859,6 +859,16 @@ def audit_authored_panel_uv(obj):
         uv_coords = tuple(tuple(uv.data[i].uv) for i in tri.loops)
         triangles.append((xyz, uv_coords))
     result = audit_uv_triangles(triangles)
+    faces = [
+        [
+            (mesh.loops[loop_index].vertex_index, tuple(uv.data[loop_index].uv))
+            for loop_index in polygon.loop_indices
+        ]
+        for polygon in mesh.polygons
+    ]
+    seam_audit = audit_shared_uv_edges(faces)
+    result["sharedEdgeContinuity"] = seam_audit
+    obj["linen_earth_uv_shared_edge_audit_json"] = json.dumps(seam_audit, sort_keys=True)
     obj["linen_earth_uv_candidate_audit_json"] = json.dumps(result, sort_keys=True)
     return result
 
