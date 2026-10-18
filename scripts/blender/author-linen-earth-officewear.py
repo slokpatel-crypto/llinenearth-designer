@@ -23,7 +23,7 @@ from mathutils.bvhtree import BVHTree
 # Blender. It must not be mistaken for a material-calibrated cloth simulation.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from drape_preview_math import MAX_PREVIEW_RELIEF_MM, candidate_drape_offset_mm
-from uv_candidate_audit import audit_uv_triangles, metric_planar_uv
+from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical_metric_face_uv
 from region_islands import keep_ankle_connected_faces
 
 BODY_NAME = "Body"
@@ -425,15 +425,47 @@ def planar_grain_uv(obj):
         uv_layer = mesh.uv_layers.active
     min_x = min(vertex.co.x for vertex in mesh.vertices)
     min_z = min(vertex.co.z for vertex in mesh.vertices)
-    for polygon in mesh.polygons:
-        for loop_index in polygon.loop_indices:
-            vertex = mesh.vertices[mesh.loops[loop_index].vertex_index]
-            uv_layer.data[loop_index].uv = metric_planar_uv(
-                (vertex.co.x, vertex.co.y, vertex.co.z),
-                origin_x=min_x, origin_z=min_z,
+    tubular = "Sleeve" in obj.name or "TrouserLeg" in obj.name
+    if tubular:
+        # Sleeve/leg are narrow vertical tubes. XY-angle * metre-radius avoids
+        # flattening the back/sides to almost zero U density in an XZ projection.
+        # Radius is a geometry ESTIMATE: never convert to measured textile scale.
+        min_y = min(vertex.co.y for vertex in mesh.vertices)
+        max_y = max(vertex.co.y for vertex in mesh.vertices)
+        max_x = max(vertex.co.x for vertex in mesh.vertices)
+        cx, cy = (min_x + max_x) * 0.5, (min_y + max_y) * 0.5
+        radial_distances = sorted(
+            math.hypot(vertex.co.x - cx, vertex.co.y - cy) for vertex in mesh.vertices
+        )
+        radius_m = radial_distances[len(radial_distances) // 2]
+        if radius_m <= 0.015:
+            raise RuntimeError(f"Degenerate source tube for candidate UV: {obj.name}")
+        for polygon in mesh.polygons:
+            loops = tuple(polygon.loop_indices)
+            xyz = [
+                (mesh.vertices[mesh.loops[i].vertex_index].co.x,
+                 mesh.vertices[mesh.loops[i].vertex_index].co.y,
+                 mesh.vertices[mesh.loops[i].vertex_index].co.z)
+                for i in loops
+            ]
+            uv_points = cylindrical_metric_face_uv(
+                xyz, center_xy=(cx, cy), radius_m=radius_m, origin_z=min_z
             )
+            for i, uv_point in zip(loops, uv_points):
+                uv_layer.data[i].uv = uv_point
+        obj["linen_earth_uv_geometry_radius_estimate_mm"] = round(radius_m * 1000, 3)
+        method = "uncalibrated_metric_cylindrical_tube"
+    else:
+        for polygon in mesh.polygons:
+            for loop_index in polygon.loop_indices:
+                vertex = mesh.vertices[mesh.loops[loop_index].vertex_index]
+                uv_layer.data[loop_index].uv = metric_planar_uv(
+                    (vertex.co.x, vertex.co.y, vertex.co.z),
+                    origin_x=min_x, origin_z=min_z,
+                )
+        method = "uncalibrated_metric_xz_planar"
     obj["linen_earth_uv_coordinate_units"] = "mesh_metres"
-    obj["linen_earth_uv_method"] = "uncalibrated_metric_xz_planar"
+    obj["linen_earth_uv_method"] = method
     obj["linen_earth_supplier_repeat_verified"] = False
     obj["linen_earth_grain_direction_verified"] = False
 
@@ -579,7 +611,7 @@ def main():
 
     bpy.context.scene["linen_earth_uv_candidate_audit_json"] = json.dumps(candidate_uv_report, sort_keys=True)
     bpy.context.scene["linen_earth_uv_coordinate_units"] = "mesh_metres"
-    bpy.context.scene["linen_earth_uv_method"] = "uncalibrated_metric_xz_planar"
+    bpy.context.scene["linen_earth_uv_method"] = "uncalibrated_metric_xz_torso_waist_cylindrical_sleeves_legs"
     bpy.context.scene["linen_earth_uv_supplier_repeat_verified"] = False
     bpy.context.scene["linen_earth_uv_grain_direction_verified"] = False
     print("SOURCE_FIT_UV_TOPOLOGY_UNAPPROVED=" + json.dumps(candidate_uv_report, sort_keys=True))
