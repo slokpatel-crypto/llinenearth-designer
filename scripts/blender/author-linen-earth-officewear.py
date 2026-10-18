@@ -151,13 +151,14 @@ def planar_grain_uv(obj):
     zs = [vertex.co.z for vertex in mesh.vertices]
     min_x, max_x = min(xs), max(xs)
     min_z, max_z = min(zs), max(zs)
-    span_x = max(max_x - min_x, 1e-6)
-    span_z = max(max_z - min_z, 1e-6)
     for polygon in mesh.polygons:
         for loop_index in polygon.loop_indices:
             vertex = mesh.vertices[mesh.loops[loop_index].vertex_index]
-            u = (vertex.co.x - min_x) / span_x
-            v = (vertex.co.z - min_z) / span_z
+            # Geometry-space metres, NOT normalized 0..1 per panel. This avoids
+            # re-scaling the same motif across differently sized shells. Physical
+            # textile repeat, warp/weft orientation and seams remain UNCALIBRATED.
+            u = vertex.co.x - min_x
+            v = vertex.co.z - min_z
             uv_layer.data[loop_index].uv = (u, v)
 
 
@@ -189,12 +190,16 @@ def main():
         "ShirtSleeveLFabric": lambda p: z(0.500) <= p.z <= z(0.875) and p.x-center_x <= -arm_root,
         "ShirtSleeveRFabric": lambda p: z(0.500) <= p.z <= z(0.875) and p.x-center_x >= arm_root,
         "TrouserWaistFabric": lambda p: z(0.455) <= p.z <= z(0.620) and abs(p.x-center_x) <= hip_half,
-        "TrouserLegLFabric": lambda p: z(0.055) <= p.z <= z(0.535) and p.x < center_x,
-        "TrouserLegRFabric": lambda p: z(0.055) <= p.z <= z(0.535) and p.x >= center_x,
+        "TrouserLegLFabric": lambda p: z(0.055) <= p.z <= z(0.535) and -hip_half <= p.x - center_x < 0,
+        "TrouserLegRFabric": lambda p: z(0.055) <= p.z <= z(0.535) and 0 <= p.x - center_x <= hip_half,
     }
 
-    clearance_m = max(0.003, min(0.018, options.clearance_mm / 1000.0))
-    thickness_m = max(0.0006, min(0.004, options.thickness_mm / 1000.0))
+    if not math.isfinite(options.clearance_mm) or not (3.0 <= options.clearance_mm <= 18.0):
+        raise RuntimeError("Clearance must be finite and within 3–18 mm; refusing silent fit changes.")
+    if not math.isfinite(options.thickness_mm) or not (0.6 <= options.thickness_mm <= 4.0):
+        raise RuntimeError("Thickness must be finite and within 0.6–4 mm; refusing silent fit changes.")
+    clearance_m = options.clearance_mm / 1000.0
+    thickness_m = options.thickness_mm / 1000.0
 
     for name in GARMENT_OBJECTS:
         remove_existing(name)
@@ -205,10 +210,14 @@ def main():
         fit_shell(obj, body, clearance_m, thickness_m)
         planar_grain_uv(obj)
         obj["linen_earth_auto_authored"] = True
+        obj["linen_earth_uv_units"] = "metres-geometry-only"
+        obj["linen_earth_supplier_repeat_verified"] = False
+        obj["linen_earth_grain_direction_verified"] = False
         obj["linen_earth_fit_clearance_mm"] = round(clearance_m * 1000.0, 3)
         obj["linen_earth_cloth_thickness_mm"] = round(thickness_m * 1000.0, 3)
         authored.append(obj)
 
+    bpy.context.scene["linen_earth_uv_calibration_status"] = "uncalibrated-metric-projection"
     bpy.context.scene["linen_earth_asset_status"] = "auto-authored-production-candidate-needs-tailor-review"
     bpy.context.scene["linen_earth_garment_authoring_method"] = "locked-body-surface-shell-v1"
     bpy.context.scene["linen_earth_garment_clearance_mm"] = round(clearance_m * 1000.0, 3)
