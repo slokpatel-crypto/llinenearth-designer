@@ -266,11 +266,11 @@ def audit_shared_uv_edges(faces, *, tolerance_m=1e-5, sample_limit=12):
             vertex_b, uv_b = b
             key = (min(vertex_a, vertex_b), max(vertex_a, vertex_b))
             # Compare shared edges by SOURCE vertex, not by opposite loop order.
-            edges[key].append((face_index, {vertex_a: uv_a, vertex_b: uv_b}))
+            edges[key].append((face_index, {vertex_a: uv_a, vertex_b: uv_b}, vertex_a == key[0]))
 
     if not polygon_count:
         raise ValueError("UV seam audit cannot certify an empty mesh")
-    shared = nonmanifold = boundary = unapproved = 0
+    shared = nonmanifold = boundary = unapproved = inconsistent_winding = 0
     max_jump_m = 0.0
     sample = []
     for edge, entries in edges.items():
@@ -281,6 +281,10 @@ def audit_shared_uv_edges(faces, *, tolerance_m=1e-5, sample_limit=12):
         else:
             shared += 1
             first, second = entries
+            # Adjacent oriented cloth faces must traverse their common edge
+            # in opposite directions, even when their UV endpoints agree.
+            if first[2] == second[2]:
+                inconsistent_winding += 1
             jump_m = max(
                 math.dist(first[1][vertex], second[1][vertex]) for vertex in edge
             )
@@ -298,10 +302,11 @@ def audit_shared_uv_edges(faces, *, tolerance_m=1e-5, sample_limit=12):
         "sharedInteriorEdges": shared,
         "boundaryEdges": boundary,
         "nonManifoldEdges": nonmanifold,
+        "inconsistentWindingEdges": inconsistent_winding,
         "unapprovedInteriorUvSeams": unapproved,
         "maxInteriorUvJumpMm": round(max_jump_m * 1000, 5),
         "sampleUnapprovedSeams": sample,
-        "topologicalUvContinuityPass": unapproved == 0 and nonmanifold == 0,
+        "topologicalUvContinuityPass": unapproved == 0 and nonmanifold == 0 and inconsistent_winding == 0,
         "supplierRepeatVerified": False,
         "supplierGrainVerified": False,
         "productionApproved": False,
