@@ -40,12 +40,23 @@ def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-1
         raise ValueError("No evaluated UV triangles; candidate must fail closed")
     densities.sort()
     median = densities[len(densities)//2] if densities else None
+    # Relative area-scale variance can flag inconsistent pattern density even
+    # without supplier repeat measurements. Do not treat it as calibrated mm.
+    relative_deviation = (
+        sorted(abs(value - median) / median for value in densities)
+        if median and median > 0 else []
+    )
+    p95_deviation = (
+        relative_deviation[min(len(relative_deviation)-1, math.ceil(.95 * len(relative_deviation))-1)]
+        if relative_deviation else None
+    )
     return {
         "triangleCount": total,
         "collapsedUvTriangles": collapsed,
         "degenerateSurfaceTriangles": degenerate,
         "noncollapsedTriangleCount": len(densities),
         "medianUvAreaPerSquareMetre": median,
+        "p95RelativeUvDensityDeviation": p95_deviation,
         "candidateUvTopologyPass": collapsed == 0 and degenerate == 0,
         "physicalFabricRepeatVerified": False,
         "supplierGrainVerified": False,
