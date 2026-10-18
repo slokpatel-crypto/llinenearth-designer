@@ -587,11 +587,22 @@ def main():
                 f"{stats['uvIndependentMetricDistortionError']}."
             )
         elif metric_scan is not None and metric_scan["candidateUvMetricDistortionReviewRequired"]:
+            # Report the *real distorted surface coverage*, rather than
+            # letting uneven triangulation hide problems in a percentage of
+            # faces. Find the Z band with the largest affected cloth area.
+            bands = metric_scan["uvDistortionHeightBands"]
+            worst = max(bands, key=lambda band: band["distortedAreaM2"])
+            span = worst["heightBandPct"]
+            coverage = metric_scan["uvDistortedSurfacePct"]
+            coverage_label = f"{coverage:.2f}%" if coverage is not None else "unmeasurable"
             reasons.append(
                 f"{name} needs true texture metric review: "
                 f"{metric_scan['uvTrianglesAnisotropyOver2']} triangles exceed 2x anisotropy; "
                 f"{metric_scan['uvTrianglesMetricScaleDeviationOver50Pct']} exceed "
-                "50% local mesh-metre stretch deviation. Textile scale is unapproved."
+                "50% local mesh-metre stretch deviation; "
+                f"{coverage_label} of usable actual garment surface is distorted; "
+                f"most affected local height zone {span[0]}–{span[1]}%. "
+                "Textile scale is unapproved."
             )
         seam_audit = stats["uvSharedEdgeAudit"]
         if stats["uvIndependentSourceCutError"]:
