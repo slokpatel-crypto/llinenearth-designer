@@ -36,3 +36,37 @@ test("an invalid garment dimension does not contaminate an independently valid b
     {torso:"unknown",seat:"pronounced"},
   );
 });
+
+import {aggregateFitOutcomes,fitOutcomeSignalFor} from "../src/lib/designer/fit-outcomes.ts";
+
+test("unmeasured or corrupt profiles cannot improve a measured customer's fit-learning signal",()=>{
+  const event=(id:string,torso:string,seat:string,verdict:string)=>({
+    type:"operator_note",source:"operator",payload:{subtype:"designer_fit_outcome",
+      recommendationId:id,verdict,occasion:"Formal",shirtFit:"regular",trouser:"straight",torso,seat,areas:[]},
+  });
+  const book=aggregateFitOutcomes([
+    ...Array.from({length:6},(_,i)=>event(`unknown-${i}`,"unknown","unknown","clean_first_fit")),
+    event("known-1","straight","balanced","major_alteration"),
+    event("known-2","straight","balanced","major_alteration"),
+  ]);
+  const known=fitOutcomeSignalFor({occasion:"Formal",style:{shirtFit:"regular",trouser:"straight"},
+    proportion:{torso:"tapered",seat:"pronounced"}},book);
+  assert.equal(known.evidence,2);
+  assert.equal(known.score,0);
+  const unknown=fitOutcomeSignalFor({occasion:"Formal",style:{shirtFit:"regular",trouser:"straight"},
+    proportion:{torso:"unknown",seat:"unknown"}},book);
+  assert.equal(unknown.evidence,6);
+  assert.ok(unknown.score>0);
+});
+
+test("unknown seat data cannot boost a customer with a measured seat proportion",()=>{
+  const book=aggregateFitOutcomes(Array.from({length:5},(_,i)=>({
+    type:"operator_note",source:"operator",payload:{subtype:"designer_fit_outcome",
+      recommendationId:`unknown-seat-${i}`,verdict:"clean_first_fit",occasion:"Formal",
+      shirtFit:"regular",trouser:"straight",torso:"tapered",seat:"unknown",areas:[]},
+  })));
+  const signal=fitOutcomeSignalFor({occasion:"Formal",style:{shirtFit:"regular",trouser:"straight"},
+    proportion:{torso:"straight",seat:"balanced"}},book);
+  assert.equal(signal.score,0);
+  assert.equal(signal.evidence,0);
+});
