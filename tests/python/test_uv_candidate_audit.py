@@ -501,6 +501,73 @@ class CandidateUvAuditTests(unittest.TestCase):
         self.assertEqual(graph["sourceSeamChainSamples"][0]["openEndSourceVertices"], [])
         self.assertFalse(graph["sourceSeamChainSamples"][0]["seamPlacementApproved"])
 
+    def test_uv_cut_path_receipts_use_original_3d_edge_metres(self):
+        import math
+        wrap = 2*math.pi*.1
+        faces = [
+            [(0, (0, 0)), (1, (.02, 0)), (2, (.02, .05))],
+            [(2, (.02-wrap, .05)), (1, (.02-wrap, 0)),
+             (3, (.04-wrap, .05))],
+            [(3, (.04-2*wrap, .05)), (2, (.02-2*wrap, .05)),
+             (4, (.06-2*wrap, .08))],
+        ]
+        xyz = [
+            (0, 0, 0), (.02, 0, 0), (.02, 0, .05),
+            (.04, 0, .05), (.06, 0, .08)
+        ]
+        result = audit.classify_unapproved_uv_seams(
+            faces, radius_m=.1, source_vertex_positions=xyz
+        )
+        self.assertTrue(result["sourceMetricGeometryAvailable"])
+        self.assertEqual(result["sourceGeometryCoordinateUnits"], "mesh_metres")
+        self.assertEqual(result["sourceMetricEdgeLengthByClassMm"]
+                         ["exactFullTurnCutCandidate"], 70)
+        self.assertEqual(result["sourceMetricVerticalRiseByClassMm"]
+                         ["exactFullTurnCutCandidate"], 50)
+        self.assertEqual(result["zeroLengthSourceUvTearEdges"], 0)
+        self.assertEqual(result["sourceSeamChainSamples"][0]["geometryPathLengthMm"], 70)
+        self.assertEqual(result["sourceSeamChainSamples"][0]["geometryZSpanMm"], 50)
+        self.assertAlmostEqual(
+            result["sourceSeamChainSamples"][0]["geometryVerticalEdgeFraction"],
+            50/70, places=5
+        )
+        self.assertEqual(result["unapprovedSourceEdgeSamples"][0]["geometryEdgeLengthMm"], 50)
+        self.assertFalse(result["cutPlacementApproved"])
+        self.assertFalse(result["supplierGrainVerified"])
+
+        # The sample limit must never make the complete real-mesh length look
+        # artificially small, even when no individual seam receipt is emitted.
+        unsampled = audit.classify_unapproved_uv_seams(
+            faces, radius_m=.1, source_vertex_positions=xyz, sample_limit=0
+        )
+        self.assertEqual(unsampled["sourceSeamChainSamples"], [])
+        self.assertEqual(unsampled["unapprovedSourceEdgeSamples"], [])
+        self.assertEqual(unsampled["sourceMetricEdgeLengthByClassMm"],
+                         result["sourceMetricEdgeLengthByClassMm"])
+        absent = audit.classify_unapproved_uv_seams(faces, radius_m=.1)
+        self.assertFalse(absent["sourceMetricGeometryAvailable"])
+        self.assertIsNone(absent["sourceMetricEdgeLengthByClassMm"])
+
+    def test_uv_cut_length_never_accepts_missing_or_fake_mesh_geometry(self):
+        import math
+        wrap = 2*math.pi*.1
+        faces = [
+            [(0, (0, 0)), (1, (.02, 0)), (2, (.02, .05))],
+            [(2, (.02-wrap, .05)), (1, (.02-wrap, 0)),
+             (3, (.04-wrap, .05))],
+        ]
+        invalid = [
+            [], [(0, 0, 0)], [(0, 0)]*4,
+            [(0, 0, 0), (.02, 0, 0), (.02, 0, .05), ("0", 0, .05)],
+            [(0, 0, 0), (.02, 0, 0), (.02, 0, .05), (0, True, .05)],
+            [(0, 0, 0), (.02, 0, 0), (.02, 0, .05), (0, math.inf, .05)],
+        ]
+        for positions in invalid:
+            with self.subTest(positions=positions), self.assertRaises(ValueError):
+                audit.classify_unapproved_uv_seams(
+                    faces, radius_m=.1, source_vertex_positions=positions
+                )
+
     def test_valid_uv_is_not_a_physical_fabric_certificate(self):
         result = audit.audit_uv_triangles([(XYZ, UV)])
         self.assertTrue(result["candidateUvTopologyPass"])
