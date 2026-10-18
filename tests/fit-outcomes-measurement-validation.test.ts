@@ -70,3 +70,28 @@ test("unknown seat data cannot boost a customer with a measured seat proportion"
   assert.equal(signal.score,0);
   assert.equal(signal.evidence,0);
 });
+
+test("seat-waist readings already requiring tailor review never become confident learning labels",()=>{
+  const otherwiseValid={shirt:{chest:102,waist:84},pants:{waist:82,seat:158}};
+  assert.deepEqual(fitOutcomeProportionFromMeasurements(otherwiseValid),
+    {torso:"tapered",seat:"pronounced"});
+  const contradictory={...otherwiseValid,pants:{waist:82,seat:158.01}};
+  assert.deepEqual(fitOutcomeProportionFromMeasurements(contradictory),
+    {torso:"tapered",seat:"unknown"});
+  assert.deepEqual(fitOutcomeProportionFromMeasurements({
+    shirt:{chest:103,waist:87},pants:{waist:160,seat:84.99},
+  }),{torso:"balanced",seat:"unknown"});
+});
+
+test("learning cutoff and human measurement-consistency review share one threshold",async()=>{
+  const {SEAT_WAIST_REVIEW_DELTA_CM,reviewMeasurementConsistency}=await import(
+    "../src/lib/designer/measurement-consistency.ts");
+  assert.equal(SEAT_WAIST_REVIEW_DELTA_CM,75);
+  const profile={version:1 as const,unit:"cm" as const,
+    shirt:{chest:105,waist:85},pants:{waist:80,seat:155.001},updatedAt:"2026-10-18"};
+  assert(reviewMeasurementConsistency(profile).some((issue)=>issue.id==="MEASURE-SEAT-WAIST"));
+  assert.equal(fitOutcomeProportionFromMeasurements(profile).seat,"unknown");
+  const within={...profile,pants:{waist:80,seat:155}};
+  assert(!reviewMeasurementConsistency(within).some((issue)=>issue.id==="MEASURE-SEAT-WAIST"));
+  assert.equal(fitOutcomeProportionFromMeasurements(within).seat,"pronounced");
+});

@@ -1,5 +1,9 @@
 import type {MeasurementProfile} from "../measurements.ts";
 
+// Shared contradiction threshold: this is a request for human review, not
+// a universal anthropometric or supplier-certified fit tolerance.
+export const SEAT_WAIST_REVIEW_DELTA_CM=75;
+
 /** Conservative geometric contradictions only; these are not body-shape
  * judgements or claimed tailoring tolerances. All stored measurements are cm
  * irrespective of the UI's cm/in presentation preference.
@@ -34,7 +38,7 @@ export function reviewMeasurementConsistency(profile:MeasurementProfile|null|und
     issues.push({id:"MEASURE-NECK-CHEST",severity:"review",
       explanation:"The recorded neck circumference is not smaller than the chest; verify the body landmarks rather than calculating a finished collar automatically."});
   }
-  if(p.waist&&p.seat&&Math.abs(p.seat-p.waist)>75){
+  if(p.waist&&p.seat&&Math.abs(p.seat-p.waist)>SEAT_WAIST_REVIEW_DELTA_CM){
     issues.push({id:"MEASURE-SEAT-WAIST",severity:"review",
       explanation:"The recorded seat and waist circumference differ unusually widely; the tailor should confirm both measurements before choosing a trouser block."});
   }

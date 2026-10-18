@@ -1,4 +1,5 @@
 import type { DesignerStyle, OccasionTier } from "@/lib/designer/engine";
+import { SEAT_WAIST_REVIEW_DELTA_CM } from "@/lib/designer/measurement-consistency";
 
 export type FitOutcomeVerdict = "clean_first_fit" | "minor_alteration" | "major_alteration";
 export type FitOutcomeArea =
@@ -67,6 +68,10 @@ function torsoBucket(chest?:number,waist?:number){
 }
 function seatBucket(seat?:number,waist?:number){
   if(!validBodyCm(seat)||!validBodyCm(waist)) return "unknown" as const;
+  // A finite tape reading can still contradict the existing tailor-review
+  // check. Never learn a confident seat class from an unreviewed extreme
+  // seat-waist discrepancy; preserve the independently valid torso bucket.
+  if(Math.abs(seat-waist)>SEAT_WAIST_REVIEW_DELTA_CM) return "unknown" as const;
   return seat-waist>=24 ? "pronounced" as const : "balanced" as const;
 }
 
