@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { canPaintGarmentPanelMaterial, canApplyViewerTextureUvTransform, applyViewerTextureUvTransform, garmentPanelTextureScale, garmentPanelTexturePreparationKey, prepareGarmentPanelUvTransforms, garmentPanelTextureScaleEvidence, garmentUvRepeatsForUnits, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
+import { canPaintGarmentPanelMaterial, canPaintGarmentPanelNormalMaterial, canApplyViewerTextureUvTransform, applyViewerTextureUvTransform, garmentPanelTextureScale, garmentPanelTexturePreparationKey, prepareGarmentPanelUvTransforms, garmentPanelTextureScaleEvidence, garmentUvRepeatsForUnits, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
 
 
 test("the complete six-panel texture adapter must be paintable before any visible update",()=>{
@@ -347,4 +347,13 @@ test("a malformed UV transform never partially updates a model-viewer sampler",(
   }
   assert.equal(applyViewerTextureUvTransform(texture,valid),true);
   assert.equal(writes,3);
+});
+
+test("production 3D normal-map slot cannot silently drop a prepared weave texture",()=>{
+  const valid={normalTexture:{setTexture:(_texture:unknown)=>{}}};
+  assert.equal(canPaintGarmentPanelNormalMaterial(valid),true);
+  for(const invalid of [
+    undefined,null,{}, {normalTexture:null}, {normalTexture:{}},
+    {normalTexture:{setTexture:false}},
+  ]) assert.equal(canPaintGarmentPanelNormalMaterial(invalid),false);
 });
