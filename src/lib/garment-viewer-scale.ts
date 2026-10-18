@@ -25,7 +25,7 @@ export function resolveViewerTileWidthMm(
 
   const repeatMm=Number(runtime?.repeatMm);
   const repeatPx=Number(asset?.repeatPeriodPx);
-  if(!runtime || runtime.physicalScaleStatus==="unknown"
+  if(!runtime || !["declared_repeat","declared_swatch_width"].includes(runtime.physicalScaleStatus)
     || !Number.isFinite(repeatMm) || repeatMm<=0
     || !Number.isFinite(repeatPx) || repeatPx<=0) return null;
 
