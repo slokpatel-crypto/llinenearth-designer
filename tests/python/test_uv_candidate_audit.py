@@ -315,6 +315,50 @@ class CandidateUvAuditTests(unittest.TestCase):
         self.assertTrue(evidence["nonManifoldTopologyRejected"])
         self.assertEqual(evidence["rigidlyAlignedTangentChartFaces"], 0)
 
+
+    def test_source_seam_classifier_separates_exact_periodic_cut_from_other_tears(self):
+        import math
+        wrap = 2*math.pi*.1
+        base = [(0, (0, 0)), (1, (.02, 0)), (2, (.02, .05))]
+        periodic = [(2, (.02-wrap, .05)), (1, (.02-wrap, 0)), (3, (.04-wrap, .05))]
+        faces = [base, periodic]
+        result = audit.classify_unapproved_uv_seams(faces, radius_m=.1)
+        self.assertEqual(result["unapprovedInteriorUvSeams"], 1)
+        self.assertEqual(result["exactFullTurnCutCandidates"], 1)
+        self.assertEqual(result["nonPeriodicUvTears"], 0)
+        self.assertFalse(result["cutPlacementApproved"])
+        self.assertFalse(result["supplierGrainVerified"])
+        irregular = [periodic[0], (1, (.02-wrap, .01)), periodic[2]]
+        result = audit.classify_unapproved_uv_seams([base, irregular], radius_m=.1)
+        self.assertEqual(result["nonPeriodicUvTears"], 1)
+        self.assertEqual(result["exactFullTurnCutCandidates"], 0)
+
+    def test_unapproved_tangent_face_cannot_claim_automatic_periodic_seam(self):
+        import math
+        wrap = 2*math.pi*.1
+        faces = [
+            [(0, (0, 0)), (1, (.02, 0)), (2, (.02, .05))],
+            [(2, (.02-wrap, .05)), (1, (.02-wrap, 0)), (3, (.04-wrap, .05))],
+        ]
+        result = audit.classify_unapproved_uv_seams(
+            faces, radius_m=.1, tangent_face_indices=[1]
+        )
+        self.assertEqual(result["nearUnapprovedTangentChart"], 1)
+        self.assertEqual(result["exactFullTurnCutCandidates"], 0)
+        self.assertFalse(result["productionApproved"])
+
+    def test_cut_classification_refuses_unknown_radius_or_bad_tangent_index(self):
+        faces = [[(0, (0, 0)), (1, (.02, 0)), (2, (.02, .05))]]
+        for kwargs in (
+            {"radius_m": 0},
+            {"radius_m": float("nan")},
+            {"radius_m": True},
+            {"radius_m": .1, "tangent_face_indices": [1]},
+            {"radius_m": .1, "tangent_face_indices": [True]},
+        ):
+            with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                audit.classify_unapproved_uv_seams(faces, **kwargs)
+
     def test_valid_uv_is_not_a_physical_fabric_certificate(self):
         result = audit.audit_uv_triangles([(XYZ, UV)])
         self.assertTrue(result["candidateUvTopologyPass"])
