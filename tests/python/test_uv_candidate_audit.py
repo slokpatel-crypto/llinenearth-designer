@@ -300,7 +300,7 @@ class CandidateUvAuditTests(unittest.TestCase):
             {"tangent_face_indices": [True]},
         ):
             with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
-                audit.align_metric_tangent_charts(faces, **kwargs)
+                audit.align_metric_tangent_charts(faces, **dict({"tangent_face_indices": [1]}, **kwargs))
 
     def test_nonmanifold_geometry_never_receives_tangent_chart_stitch(self):
         faces = [
