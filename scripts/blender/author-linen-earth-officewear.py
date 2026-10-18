@@ -27,7 +27,7 @@ from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical
 from region_islands import keep_ankle_connected_faces
 from sleeve_stance_math import MAX_INBOARD_MM, candidate_sleeve_inboard_mm
 from leg_stance_math import MAX_INBOARD_MM as MAX_LEG_INBOARD_MM, candidate_leg_inboard_mm, candidate_inner_seam_relief_mm
-from leg_gap_safety import bounded_leg_gap_trials
+from leg_gap_safety import bounded_leg_gap_trials, bounded_leg_gap_refinement_trials
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -467,7 +467,10 @@ def restore_collision_free_leg_gap(body, body_floor_z, body_height, requested_mm
         ]
 
     attempts = []
-    for candidate_mm in bounded_leg_gap_trials(requested_mm):
+
+    def evaluate_trial(candidate_mm):
+        # Always start with the SAME post-fitting XYZ base. Failed probes
+        # must never accumulate a previous contour or alter body coordinates.
         for name, obj in zip(names, legs):
             for index, vertex in enumerate(obj.data.vertices):
                 ratio = (vertex.co.z - body_floor_z) / body_height
@@ -476,23 +479,52 @@ def restore_collision_free_leg_gap(body, body_floor_z, body_height, requested_mm
                 ) / 1000.0
             obj.data.update()
         bpy.context.view_layer.update()
-
-        # A smaller visual gap is NEVER allowed to penetrate either leg or
-        # the original model. These are real evaluated world-space BVH pairs.
-        leg_pairs = source_fit_collision_pairs(legs[0], legs[1])
-        left_body = source_fit_collision_pairs(body, legs[0])
-        right_body = source_fit_collision_pairs(body, legs[1])
         trial = {
             "candidateInboardMmPerLeg": candidate_mm,
-            "legToLegIntersectionPairs": leg_pairs,
-            "leftBodyIntersectionPairs": left_body,
-            "rightBodyIntersectionPairs": right_body,
+            "legToLegIntersectionPairs": source_fit_collision_pairs(legs[0], legs[1]),
+            "leftBodyIntersectionPairs": source_fit_collision_pairs(body, legs[0]),
+            "rightBodyIntersectionPairs": source_fit_collision_pairs(body, legs[1]),
         }
         attempts.append(trial)
-        if leg_pairs == left_body == right_body == 0:
+        return trial
+
+    def collision_free(trial):
+        return (trial["legToLegIntersectionPairs"] ==
+                trial["leftBodyIntersectionPairs"] ==
+                trial["rightBodyIntersectionPairs"] == 0)
+
+    last_rejected_mm = None
+    for candidate_mm in bounded_leg_gap_trials(requested_mm):
+        trial = evaluate_trial(candidate_mm)
+        if collision_free(trial):
+            selected_mm = candidate_mm
+            coarse_safe_mm = candidate_mm
+            refinement_candidates = ()
+            if last_rejected_mm is not None:
+                # The 0.5-mm coarse rollback may leave a visibly unnecessary
+                # remainder. Make at most three smaller, physical-BVH-checked
+                # probes within the last rejected/safe bracket. A failed probe
+                # is NEVER treated as numerically or physically safe.
+                refinement_candidates = bounded_leg_gap_refinement_trials(
+                    last_rejected_mm, candidate_mm
+                )
+                for refined_mm in refinement_candidates:
+                    refined_trial = evaluate_trial(refined_mm)
+                    if collision_free(refined_trial):
+                        selected_mm = refined_mm
+                        break
+            if attempts[-1]["candidateInboardMmPerLeg"] != selected_mm:
+                # The final rejected fine probe changed real mesh positions.
+                # Reapply and independently remeasure the accepted candidate;
+                # never leave the scene at its last rejected trial.
+                restored_trial = evaluate_trial(selected_mm)
+                if not collision_free(restored_trial):
+                    raise RuntimeError("Previously safe trouser fit did not survive BVH restoration")
             evidence = {
                 "requestedMmPerLeg": requested_mm,
-                "selectedMmPerLeg": candidate_mm,
+                "coarseSafeMmPerLeg": coarse_safe_mm,
+                "selectedMmPerLeg": selected_mm,
+                "fineProbesRequested": list(refinement_candidates),
                 "trials": attempts,
                 "nativeWorldSpaceCollisionFree": True,
                 "photographicPoseApproved": False,
@@ -500,10 +532,11 @@ def restore_collision_free_leg_gap(body, body_floor_z, body_height, requested_mm
                 "productionApproved": False,
             }
             for obj in legs:
-                obj["linen_earth_trouser_leg_inboard_candidate_mm"] = candidate_mm
+                obj["linen_earth_trouser_leg_inboard_candidate_mm"] = selected_mm
                 obj["linen_earth_leg_gap_rollback_audit_json"] = json.dumps(evidence, sort_keys=True)
             print("SOURCE_FIT_LEG_GAP_COLLISION_ROLLBACK=" + json.dumps(evidence, sort_keys=True))
             return evidence
+        last_rejected_mm = candidate_mm
 
     # Even the original post-fit candidate may have a colliding crotch seam.
     # Preserve this rejected scene for FOUR-angle diagnostic rendering, but
