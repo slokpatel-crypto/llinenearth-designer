@@ -24,6 +24,7 @@ from mathutils.bvhtree import BVHTree
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from drape_preview_math import MAX_PREVIEW_RELIEF_MM, candidate_drape_offset_mm
 from uv_candidate_audit import audit_uv_triangles
+from region_islands import keep_ankle_connected_faces
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -87,19 +88,33 @@ def selected_shell(body, name, predicate):
     matrix = body.matrix_world
     inverse = matrix.inverted()
     selected = []
-    used = set()
+    selected_z = []
 
     for polygon in source_mesh.polygons:
         world_center = matrix @ polygon.center
         if not predicate(world_center):
             continue
-        indices = tuple(polygon.vertices)
-        selected.append(indices)
-        used.update(indices)
+        selected.append(tuple(polygon.vertices))
+        selected_z.append(world_center.z)
 
     if not selected:
         raise RuntimeError(f"No body surface polygons matched garment region: {name}")
 
+    excluded_islands = 0
+    if name.startswith("TrouserLeg"):
+        frame = body_frame(body)
+        try:
+            retained = keep_ankle_connected_faces(
+                selected, selected_z,
+                ankle_z_max=frame["minZ"] + frame["height"] * 0.16,
+                thigh_z_min=frame["minZ"] + frame["height"] * 0.475,
+            )
+        except ValueError as error:
+            raise RuntimeError(f"Unsafe trouser-leg source segmentation for {name}: {error}") from error
+        excluded_islands = len(selected) - len(retained)
+        selected = [selected[index] for index in retained]
+
+    used = {index for face in selected for index in face}
     ordered = sorted(used)
     remap = {old: index for index, old in enumerate(ordered)}
     vertices = [matrix @ source_mesh.vertices[index].co for index in ordered]
@@ -119,6 +134,9 @@ def selected_shell(body, name, predicate):
         collection = bpy.data.collections.new(EXPORT_COLLECTION)
         bpy.context.scene.collection.children.link(collection)
     collection.objects.link(obj)
+    if name.startswith("TrouserLeg"):
+        obj["linen_earth_excluded_disconnected_leg_faces"] = excluded_islands
+        obj["linen_earth_leg_source_island_rule"] = "shared_edges_ankle_to_thigh_candidate_only"
 
     material = bpy.data.materials.get(name) or bpy.data.materials.new(name=name)
     material.use_nodes = True
@@ -392,23 +410,31 @@ def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm, body_floor_
 
 
 def planar_grain_uv(obj):
+    """Candidate X/Z UV uses mesh metres, not an arbitrary 0..1 per panel.
+
+    A stripe must not double in width merely because the sleeve shell is
+    narrower than the torso. The geometric planar projection is still NOT
+    cylindrical grain calibration, fabric-mill repeat or approved drape.
+    """
     mesh = obj.data
+    if not mesh.vertices:
+        raise RuntimeError(f"Cannot UV-map an empty garment shell: {obj.name}")
     if not mesh.uv_layers:
         uv_layer = mesh.uv_layers.new(name="UVMap")
     else:
         uv_layer = mesh.uv_layers.active
-    xs = [vertex.co.x for vertex in mesh.vertices]
-    zs = [vertex.co.z for vertex in mesh.vertices]
-    min_x, max_x = min(xs), max(xs)
-    min_z, max_z = min(zs), max(zs)
-    span_x = max(max_x - min_x, 1e-6)
-    span_z = max(max_z - min_z, 1e-6)
+    min_x = min(vertex.co.x for vertex in mesh.vertices)
+    min_z = min(vertex.co.z for vertex in mesh.vertices)
     for polygon in mesh.polygons:
         for loop_index in polygon.loop_indices:
             vertex = mesh.vertices[mesh.loops[loop_index].vertex_index]
-            u = (vertex.co.x - min_x) / span_x
-            v = (vertex.co.z - min_z) / span_z
+            u = vertex.co.x - min_x
+            v = vertex.co.z - min_z
             uv_layer.data[loop_index].uv = (u, v)
+    obj["linen_earth_uv_coordinate_units"] = "mesh_metres"
+    obj["linen_earth_uv_method"] = "uncalibrated_metric_xz_planar"
+    obj["linen_earth_supplier_repeat_verified"] = False
+    obj["linen_earth_grain_direction_verified"] = False
 
 
 def audit_authored_panel_uv(obj):
@@ -551,13 +577,16 @@ def main():
         authored.append(obj)
 
     bpy.context.scene["linen_earth_uv_candidate_audit_json"] = json.dumps(candidate_uv_report, sort_keys=True)
+    bpy.context.scene["linen_earth_uv_coordinate_units"] = "mesh_metres"
+    bpy.context.scene["linen_earth_uv_method"] = "uncalibrated_metric_xz_planar"
     bpy.context.scene["linen_earth_uv_supplier_repeat_verified"] = False
+    bpy.context.scene["linen_earth_uv_grain_direction_verified"] = False
     print("SOURCE_FIT_UV_TOPOLOGY_UNAPPROVED=" + json.dumps(candidate_uv_report, sort_keys=True))
     bpy.context.scene["linen_earth_contact_repair_json"] = json.dumps(contact_repair_report, sort_keys=True)
     print("SOURCE_FIT_BOUNDED_CONTACT_REPAIR=" + json.dumps(contact_repair_report, sort_keys=True))
     bpy.context.scene["linen_earth_fit_collision_stages_json"] = json.dumps(fit_stage_report, sort_keys=True)
     print("SOURCE_FIT_COLLISION_STAGES_WORLD_SPACE=" + json.dumps(fit_stage_report, sort_keys=True))
-    bpy.context.scene["linen_earth_asset_status"] = "auto-authored-production-candidate-needs-tailor-review"
+    bpy.context.scene["linen_earth_asset_status"] = "unapproved-source-derived-3d-candidate"
     bpy.context.scene["linen_earth_garment_authoring_method"] = "locked-body-surface-shell-v2-bounded-preview-folds"
     bpy.context.scene["linen_earth_drape_provenance"] = "art_directed_unverified_visual_candidate"
     bpy.context.scene["linen_earth_measured_fabric_physics"] = False
