@@ -89,4 +89,40 @@ for obj in (left, right):
         "Rejected garment seam trial retained a Y/Z correction: " + obj.name
     )
 assert tuple(tuple(vertex.co) for vertex in body.data.vertices) == body_before
+# Test the separate leg-gap coarse-to-fine transition with a deterministic
+# simulated collision boundary on ACTUAL Blender mesh transforms. This checks
+# that a failed fine trial never remains on the garment and the locked source
+# body remains byte-for-byte unchanged; source-scene BVH is tested separately.
+sample_index = next(i for i, vertex in enumerate(left.data.vertices)
+                    if abs(author.candidate_leg_inboard_mm(
+                        left.name, vertex.co.z, 1.0)) > .01)
+start_x = left.data.vertices[sample_index].co.x
+unit_factor = author.candidate_leg_inboard_mm(
+    left.name, left.data.vertices[sample_index].co.z, 1.0)
+
+
+def bounded_simulated_contact(one, two):
+    if one is left and two is right:
+        actual_mm = (left.data.vertices[sample_index].co.x-start_x)*1000/unit_factor
+        return 1 if actual_mm > 3.2 else 0
+    return 0
+
+
+try:
+    author.source_fit_collision_pairs = bounded_simulated_contact
+    refined = author.restore_collision_free_leg_gap(
+        body, 0.0, 1.0, 3.5, applied_mm=0.0
+    )
+finally:
+    author.source_fit_collision_pairs = physical_pairs
+assert refined["nativeWorldSpaceCollisionFree"] is True, refined
+assert refined["coarseSafeMmPerLeg"] == 3.0, refined
+assert refined["selectedMmPerLeg"] == 3.125, refined
+assert refined["fineProbesRequested"] == [3.375, 3.25, 3.125]
+assert refined["trials"][-1]["candidateInboardMmPerLeg"] == 3.125
+assert refined["trials"][-1]["legToLegIntersectionPairs"] == 0
+assert tuple(tuple(vertex.co) for vertex in body.data.vertices) == body_before
+assert refined["tailorFitApproved"] is False
+assert refined["productionApproved"] is False
+
 print("LINEN_EARTH_NATIVE_CROTCH_SEAM_CONTACT_REPAIR: PASS")
