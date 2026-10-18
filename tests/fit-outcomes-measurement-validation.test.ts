@@ -95,3 +95,29 @@ test("learning cutoff and human measurement-consistency review share one thresho
   assert(!reviewMeasurementConsistency(within).some((issue)=>issue.id==="MEASURE-SEAT-WAIST"));
   assert.equal(fitOutcomeProportionFromMeasurements(within).seat,"pronounced");
 });
+
+test("corrupt persisted fitting counters and mismatched recommendation keys cannot fabricate confidence",()=>{
+  const input={occasion:"Formal" as const,style:{shirtFit:"regular",trouser:"straight"},
+    proportion:{torso:"tapered",seat:"balanced"}};
+  const key=["Formal","regular","straight","tapered","balanced"].join("::");
+  const book={
+    version:"designer-fit-outcomes-v1" as const,totalReviews:6,usableBuckets:1,
+    buckets:[{key,occasion:"Formal" as const,shirtFit:"regular",trouser:"straight",
+      torso:"tapered",seat:"balanced",clean:6,minor:0,major:0,total:6}],
+  };
+  assert.ok(fitOutcomeSignalFor(input,book).score>0);
+  for(const forged of [
+    {...book,buckets:[{...book.buckets[0],total:5}]},
+    {...book,buckets:[{...book.buckets[0],clean:Infinity}]},
+    {...book,buckets:[{...book.buckets[0],major:-2}]},
+    {...book,buckets:[{...book.buckets[0],clean:"6" as unknown as number}]},
+    {...book,buckets:[{...book.buckets[0],key:key+"-forged"}]},
+    {...book,buckets:[{...book.buckets[0],total:7,clean:7}]},
+  ]){
+    const signal=fitOutcomeSignalFor(input,forged);
+    assert.equal(signal.score,0,"Invalid persisted data must not generate a tailoring bonus");
+    assert.equal(signal.evidence,0);
+  }
+  assert.equal(fitOutcomeSignalFor(input,{...book,totalReviews:NaN}).score,0);
+  assert.equal(fitOutcomeSignalFor(input,{...book,buckets:null as unknown as typeof book.buckets}).score,0);
+});
