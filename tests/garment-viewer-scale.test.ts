@@ -2,6 +2,32 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { garmentPanelTextureScale, garmentPanelTextureScaleEvidence, garmentUvRepeatsForUnits, resolveViewerTileHeightMm, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
 
+
+test("physical-scale resolution never coerces unreviewed JSON strings",()=>{
+  const declared={physicalScaleStatus:"declared_repeat" as const,repeatMm:20};
+  assert.equal(resolveViewerTileWidthMm(
+    {tileRealWidthMm:"40" as unknown as number,scaleApproximate:false}, declared
+  ),null);
+  assert.equal(resolveViewerTileWidthMm(
+    {repeatPeriodPx:"32" as unknown as number,scaleApproximate:true}, declared
+  ),null);
+  assert.equal(resolveViewerTileWidthMm(
+    {repeatPeriodPx:32,scaleApproximate:true},
+    {physicalScaleStatus:"declared_repeat",repeatMm:"20" as unknown as number}
+  ),null);
+});
+
+test("computed textile repeat must stay finite and positive",()=>{
+  assert.equal(resolveViewerTileWidthMm(
+    {repeatPeriodPx:1,scaleApproximate:true},
+    {physicalScaleStatus:"declared_repeat",repeatMm:1e308}
+  ),null);
+  assert.equal(resolveViewerTileWidthMm(
+    {repeatPeriodPx:1e308,scaleApproximate:true},
+    {physicalScaleStatus:"declared_repeat",repeatMm:1e-300}
+  ),null);
+});
+
 test("verified render tile width stays authoritative",()=>{
   assert.equal(resolveViewerTileWidthMm(
     {tileRealWidthMm:120,repeatPeriodPx:32,scaleApproximate:false},
