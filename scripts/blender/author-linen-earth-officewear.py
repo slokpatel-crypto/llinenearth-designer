@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from drape_preview_math import MAX_PREVIEW_RELIEF_MM, candidate_drape_offset_mm
 from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical_metric_face_uv, cylindrical_ambiguous_face_diagnostic, metric_tangent_chart_uv, audit_shared_uv_edges, phase_align_cylindrical_charts, align_metric_tangent_charts, classify_unapproved_uv_seams, estimate_source_tube_radius_m
 from region_islands import keep_ankle_connected_faces
-from sleeve_stance_math import MAX_INBOARD_MM, candidate_sleeve_inboard_mm
+from sleeve_stance_math import MAX_INBOARD_MM, candidate_sleeve_inboard_mm, bounded_sleeve_cuff_refinement_trials
 from leg_stance_math import MAX_INBOARD_MM as MAX_LEG_INBOARD_MM, candidate_leg_inboard_mm, candidate_inner_seam_relief_mm
 from leg_gap_safety import bounded_leg_gap_trials, bounded_leg_gap_refinement_trials
 
@@ -703,51 +703,52 @@ def trial_inner_crotch_seam_relief(body, floor_z, height, centre_x):
 
 
 def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
-    """Find a bounded cloth-only cuff correction without moving either arm.
+    """Independently contact-gated cloth-only sleeve correction.
 
-    The source sleeves sit about 75 mm wider than the locked 500-mm centre
-    guide. A raw 20-mm/side inboard experiment pierced the original body.
-    Now trial the already-bounded 0..22-mm contour on FINAL solidified cloth,
-    repair only real source-skin contacts along measured normals (<=12 mm
-    per affected vertex), and reject/restore all XYZ on any failed trial.
-    This is NOT a human posture edit, sewn sleeve fit, or photo approval.
+    Probe at 1-mm resolution, then sample ONLY the last measured rejected/safe
+    bracket at submillimetre resolution. Rebuild every trial from untouched
+    post-fit garment XYZ; keep the original human/body pose immutable. A fine
+    candidate is never called safe from arithmetic alone: repair and remeasure
+    both sleeve/body and sleeve/sleeve world-space BVH contacts every time.
     """
-    if not math.isfinite(requested_mm) or not 0 <= requested_mm <= MAX_INBOARD_MM:
-        raise RuntimeError("Unapproved sleeve gap request must be within 0..22 mm")
+    required = (requested_mm, floor_z, height)
+    if any(isinstance(v, (bool, str, bytes)) or not isinstance(v, (int, float))
+           or not math.isfinite(v) for v in required):
+        raise RuntimeError("Cuff trial requires finite numeric source-frame values")
+    if not 0 <= requested_mm <= MAX_INBOARD_MM or height <= 0:
+        raise RuntimeError("Cuff trial exceeds 0..22 mm contour or source-frame bounds")
     names = ("ShirtSleeveLFabric", "ShirtSleeveRFabric")
     sleeves = [bpy.data.objects.get(name) for name in names]
     if any(obj is None or obj.type != "MESH" for obj in sleeves):
         raise RuntimeError("Both source-derived sleeves are required for cuff spacing QA")
-    if not all(math.isfinite(x) for x in (floor_z, height)) or height <= 0:
-        raise RuntimeError("Cuff trial requires a positive finite source frame")
     original = {
         obj.name: [vertex.co.copy() for vertex in obj.data.vertices]
         for obj in sleeves
     }
 
-    def restore():
+    def restore(source):
         for obj in sleeves:
-            for vertex, position in zip(obj.data.vertices, original[obj.name]):
+            if len(obj.data.vertices) != len(source[obj.name]):
+                raise RuntimeError("Source sleeve topology changed during a contact trial")
+            for vertex, position in zip(obj.data.vertices, source[obj.name]):
                 vertex.co = position
             obj.data.update()
         bpy.context.view_layer.update()
 
-    attempts = []
-    # Largest correction first; all trials use the ORIGINAL post-fit cloth.
-    # Half-millimetre tuning would be possible, but cannot substitute for a
-    # photographic/cuff-coverage gate and would add needless BVH passes.
-    values = [round(max(0.0, requested_mm - i), 6)
-              for i in range(math.ceil(requested_mm) + 1)]
-    if values[-1] != 0.0:
-        values.append(0.0)
-    for mm in dict.fromkeys(values):
-        restore()
+    def snapshot():
+        return {obj.name: [vertex.co.copy() for vertex in obj.data.vertices]
+                for obj in sleeves}
+
+    def evaluate(mm):
+        # A rejected repair may have changed X, Y and Z, not only horizontal
+        # spacing. Every candidate starts from the same source-locked shell.
+        restore(original)
         for obj in sleeves:
             for index, vertex in enumerate(obj.data.vertices):
                 position = original[obj.name][index]
-                height_ratio = (position.z - floor_z) / height
+                ratio = (position.z - floor_z) / height
                 vertex.co.x = position.x + candidate_sleeve_inboard_mm(
-                    obj.name, height_ratio, mm
+                    obj.name, ratio, mm
                 ) / 1000.0
             obj.data.update()
         bpy.context.view_layer.update()
@@ -763,35 +764,66 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
                 }
         after = [source_fit_collision_pairs(body, obj) for obj in sleeves]
         sleeve_pairs = source_fit_collision_pairs(sleeves[0], sleeves[1])
-        attempts.append({
+        evidence = {
             "requestedCuffInboardMmPerSleeve": mm,
             "bodyPairsBeforeRepair": before,
             "bodyPairsAfterRepair": after,
             "sleeveToSleevePairs": sleeve_pairs,
             "boundedBodyContactCorrections": repairs,
-        })
-        if after == [0, 0] and sleeve_pairs == 0:
-            evidence = {
-                "requestedMmPerSleeve": requested_mm,
-                "selectedMmPerSleeve": mm,
-                "nativeWorldSpaceCollisionFree": True,
-                "trials": attempts,
-                "photographicPoseApproved": False,
-                "tailorSleeveApproved": False,
-                "productionApproved": False,
-            }
-            for obj in sleeves:
-                obj["linen_earth_sleeve_cuff_inboard_candidate_mm"] = mm
-                obj["linen_earth_sleeve_spacing_evidence_json"] = json.dumps(evidence, sort_keys=True)
-            print("SOURCE_FIT_SLEEVE_GAP_COLLISION_ROLLBACK=" + json.dumps(evidence, sort_keys=True))
-            return evidence
+        }
+        return evidence, after == [0, 0] and sleeve_pairs == 0
 
-    restore()
+    values = [round(max(0.0, requested_mm-i), 6)
+              for i in range(math.ceil(requested_mm)+1)]
+    if values[-1] != 0.0:
+        values.append(0.0)
+    attempts = []
+    last_rejected = None
+    for mm in dict.fromkeys(values):
+        trial, safe = evaluate(mm)
+        attempts.append(trial)
+        if not safe:
+            last_rejected = mm
+            continue
+
+        selected_mm = mm
+        safe_positions = snapshot()
+        # Every fine candidate is separately contact-checked. Never assume
+        # monotonically improving clearance as cloth moves towards the body.
+        if last_rejected is not None and last_rejected > mm:
+            for fine_mm in bounded_sleeve_cuff_refinement_trials(last_rejected, mm):
+                fine_trial, fine_safe = evaluate(fine_mm)
+                attempts.append(fine_trial)
+                if fine_safe:
+                    selected_mm = fine_mm
+                    safe_positions = snapshot()
+                    break
+        # Failed fine probes may alter all XYZ through normal-direction
+        # repairs. Commit ONLY the last independently safe full XYZ snapshot.
+        restore(safe_positions)
+        evidence = {
+            "requestedMmPerSleeve": requested_mm,
+            "selectedMmPerSleeve": selected_mm,
+            "nativeWorldSpaceCollisionFree": True,
+            "trials": attempts,
+            "submillimetreContactRefinementAttempted": last_rejected is not None,
+            "photographicPoseApproved": False,
+            "tailorSleeveApproved": False,
+            "productionApproved": False,
+        }
+        for obj in sleeves:
+            obj["linen_earth_sleeve_cuff_inboard_candidate_mm"] = selected_mm
+            obj["linen_earth_sleeve_spacing_evidence_json"] = json.dumps(evidence, sort_keys=True)
+        print("SOURCE_FIT_SLEEVE_GAP_COLLISION_ROLLBACK=" + json.dumps(evidence, sort_keys=True))
+        return evidence
+
+    restore(original)
     evidence = {
         "requestedMmPerSleeve": requested_mm,
         "selectedMmPerSleeve": 0.0,
         "nativeWorldSpaceCollisionFree": False,
         "trials": attempts,
+        "submillimetreContactRefinementAttempted": False,
         "photographicPoseApproved": False,
         "tailorSleeveApproved": False,
         "productionApproved": False,
