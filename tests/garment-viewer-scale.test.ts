@@ -27,6 +27,14 @@ test("unknown or invalid scale remains unknown",()=>{
   ),null);
 });
 
+test("unrecognized scale provenance never upgrades an approximate UV tile",()=>{
+  // Runtime data can come from persisted JSON; an arbitrary status must fail closed.
+  assert.equal(resolveViewerTileWidthMm(
+    {tileRealWidthMm:null,repeatPeriodPx:32,scaleApproximate:true},
+    {physicalScaleStatus:"estimated" as "declared_repeat",repeatMm:20},
+  ),null);
+});
+
 test("panel UV scale preserves one physical tile size across unequal garment panels",()=>{
   const tileMm=40;
   const torso=garmentPanelTextureScale(580,780,tileMm);
