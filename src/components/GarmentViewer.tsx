@@ -6,7 +6,7 @@ import {
   GARMENT_PANEL_SPECS,
   PROTOTYPE_MODEL_ID,
 } from "@/lib/garment-viewer-prototype";
-import { garmentPanelTextureScale, garmentUvRepeatsForUnits, hasInvalidVerifiedViewerTileHeight, resolveViewerTileHeightMm, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
+import { garmentPanelTextureScale, garmentUvRepeatsForUnits, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
 import { validateGarmentViewerModelContract, validateGarmentViewerModelManifest, type GarmentViewerModelContractResult, type GarmentViewerModelManifest, type GarmentViewerManifestValidation } from "@/lib/garment-viewer-model-contract";
 import { GARMENT_VIEWER_LATENCY_STORAGE_KEY, garmentViewerAssetIdentityKey, type GarmentViewerAssetIdentity } from "@/lib/garment-viewer-readiness";
 import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
@@ -827,6 +827,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           // Use independent physical V repeat only with verified tile metadata;
           // otherwise preserve the old square-tile preview, not false evidence.
           const tileAsset=tileManifest.assets?.[fabric.tileKey];
+          if(hasInvalidVerifiedViewerTileWidth(tileAsset)) throw new Error("Invalid verified horizontal textile dimension");
           if(hasInvalidVerifiedViewerTileHeight(tileAsset)) throw new Error("Invalid verified vertical textile dimension");
           const tileHeightMm=resolveViewerTileHeightMm(tileAsset)??tileMm;
           const normalUrl=panel.garment==="shirt"?shirtNormalMap:trouserNormalMap;
