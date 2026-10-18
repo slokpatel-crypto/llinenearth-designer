@@ -35,6 +35,46 @@ def candidate_sleeve_inboard_mm(panel, body_height_ratio, requested_mm):
     return (requested_mm if panel == "ShirtSleeveLFabric" else -requested_mm) * fade
 
 
+
+def optimistic_sleeve_spacing_budget(current_spacing_mm, applied_mm_per_sleeve, *,
+                                     target_mm=500.0, tolerance_mm=36.0):
+    """Upper bound on what the REMAINING cloth-only contour can achieve.
+
+    At best, another delta mm inboard on EACH sleeve reduces centre spacing
+    by 2*delta; actual taper and body-skin collision repairs can do LESS.
+    This is deliberately not body pose inference, a fit certificate or
+    permission to exceed the original 22-mm cloth-only displacement cap.
+    """
+    values = (current_spacing_mm, applied_mm_per_sleeve, target_mm, tolerance_mm)
+    if any(isinstance(value, (str, bytes, bool))
+           or not isinstance(value, (int, float))
+           or not math.isfinite(value) for value in values):
+        raise ValueError("Sleeve contour budget needs finite numeric millimetres")
+    if (current_spacing_mm < 0 or not 0 <= applied_mm_per_sleeve <= MAX_INBOARD_MM
+            or target_mm <= 0 or not 0 <= tolerance_mm <= target_mm):
+        raise ValueError("Sleeve contour budget exceeds immutable fit bounds")
+    remaining = MAX_INBOARD_MM - applied_mm_per_sleeve
+    best_case = max(0.0, current_spacing_mm - 2.0 * remaining)
+    upper = target_mm + tolerance_mm
+    lower = target_mm - tolerance_mm
+    required_inboard = max(0.0, (current_spacing_mm - upper) / 2.0)
+    # This says only whether the remaining capped contour COULD cross the
+    # guide numerically; it is never a collision-free geometry assertion.
+    reachable = lower <= current_spacing_mm and best_case <= upper
+    return {
+        "measuredCurrentSpacingMm": round(current_spacing_mm, 3),
+        "guideBandMm": [round(lower, 3), round(upper, 3)],
+        "remainingContourBudgetMmPerSleeve": round(remaining, 3),
+        "requiredExtraMmPerSleeveAtFullEffect": round(required_inboard, 3),
+        "optimisticMinimumSpacingMm": round(best_case, 3),
+        "guideNumericallyReachableWithinExistingContourCap": reachable,
+        "fullDisplacementEffectAssumedOnlyAsOptimisticBound": True,
+        "originalBodyPosePreserved": True,
+        "bodyContactOrFitApproved": False,
+        "productionApproved": False,
+    }
+
+
 def source_arm_band_geometry(points_xyz, *, guide_z_m, side,
                              source_center_x_m=0.0,
                              min_lateral_offset_m=0.155, band_half_height_m=0.06):
