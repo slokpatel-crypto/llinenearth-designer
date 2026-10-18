@@ -103,6 +103,41 @@ class CandidateUvAuditTests(unittest.TestCase):
                     points, center_xy=(0, 0)
                 )
 
+    def test_metric_tangent_face_chart_preserves_3d_surface_scale(self):
+        # Vertical YZ fabric: XZ fallback would collapse U to zero, whereas
+        # orthonormal local tangent UV keeps real dimensions in metres.
+        quad = [(0.1, 0.0, 0.7), (0.1, .02, 0.7),
+                (0.1, .02, .74), (0.1, 0, .74)]
+        mapped = audit.metric_tangent_chart_uv(quad)
+        result = audit.audit_uv_triangles([
+            ((quad[0], quad[1], quad[2]), (mapped[0], mapped[1], mapped[2])),
+            ((quad[0], quad[2], quad[3]), (mapped[0], mapped[2], mapped[3])),
+        ])
+        self.assertTrue(result["candidateUvTopologyPass"])
+        self.assertAlmostEqual(result["medianUvAreaPerSquareMetre"], 1.0, places=5)
+        self.assertFalse(result["physicalFabricRepeatVerified"])
+
+    def test_metric_tangent_chart_survives_cylinder_axis_singularity(self):
+        # The source's four rejected sleeve faces have 203-326 degree angle
+        # spans. This geometry-only chart avoids a discontinuous polar angle.
+        import math
+        angles = [0, .25*math.pi, .75*math.pi, -.75*math.pi]
+        points = [(math.cos(a)*.03, math.sin(a)*.03, z)
+                  for a,z in zip(angles, (.5, .51, .54, .53))]
+        mapped = audit.metric_tangent_chart_uv(points)
+        self.assertEqual(len(mapped), 4)
+        self.assertTrue(all(math.isfinite(n) for uv in mapped for n in uv))
+        # Does NOT claim continuity across separate face charts or supplier grain.
+        self.assertNotEqual(mapped[1], mapped[0])
+
+    def test_metric_tangent_chart_rejects_degenerate_or_invalid_source(self):
+        for points in ([(0, 0, 0), (1, 0, 0), (2, 0, 0)],
+                       [(0, 0, 0), (0, 0, 0), (0, 0, 0)],
+                       [(0, 0, 0), (1, 0, 0), (0, float("nan"), 1)],
+                       [(0, 0, 0), (1, 0, 0), (0, True, 1)]):
+            with self.subTest(points=points), self.assertRaises(ValueError):
+                audit.metric_tangent_chart_uv(points)
+
     def test_valid_uv_is_not_a_physical_fabric_certificate(self):
         result = audit.audit_uv_triangles([(XYZ, UV)])
         self.assertTrue(result["candidateUvTopologyPass"])
