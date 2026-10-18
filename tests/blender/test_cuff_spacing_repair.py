@@ -37,8 +37,14 @@ right_before = tuple(tuple(vertex.co) for vertex in right.data.vertices)
 result = author.try_collision_safe_cuff_spacing(body, 0, 1, 22.0)
 assert result["nativeWorldSpaceCollisionFree"] is True, result
 assert result["selectedMmPerSleeve"] == 22.0, result
-assert all(abs(v.co.x - (original[0] + .022)) < 1e-6 for v, original in zip(left.data.vertices, left_before))
-assert all(abs(v.co.x - (original[0] - .022)) < 1e-6 for v, original in zip(right.data.vertices, right_before))
+# Upper sleeve vertices fade smoothly back to the unchanged shoulder, so
+# only the low cuff band receives the full requested 22-mm displacement.
+for obj, positions in ((left, left_before), (right, right_before)):
+    for vertex, original in zip(obj.data.vertices, positions):
+        delta = author.candidate_sleeve_inboard_mm(obj.name, original[2], 22.0) / 1000.0
+        assert abs(vertex.co.x - (original[0] + delta)) < 1e-6
+        assert abs(vertex.co.y - original[1]) < 1e-6
+        assert abs(vertex.co.z - original[2]) < 1e-6
 assert tuple(tuple(vertex.co) for vertex in body.data.vertices) == source_before
 assert result["productionApproved"] is False and result["photographicPoseApproved"] is False
 
