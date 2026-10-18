@@ -777,6 +777,49 @@ class CandidateUvAuditTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             audit.audit_uv_triangles([(XYZ, UV)], min_uv_area=0)
 
+    def test_distortion_surface_coverage_is_not_biased_by_triangle_count(self):
+        # Identical cloth surfaces can be triangulated differently. A raw
+        # percentage of *triangles* is not a physical distortion coverage.
+        good = (XYZ, UV)
+        bad_xyz = ((0, 0, 4), (2, 0, 4), (0, 0, 5))
+        bad_uv = ((0, 0), (4, 0), (0, .5))
+        whole = audit.audit_uv_triangles([good, (bad_xyz, bad_uv)])
+        mid_xyz, mid_uv = (1, 0, 4), (2, 0)
+        split = audit.audit_uv_triangles([
+            good,
+            ((bad_xyz[0], mid_xyz, bad_xyz[2]),
+             (bad_uv[0], mid_uv, bad_uv[2])),
+            ((mid_xyz, bad_xyz[1], bad_xyz[2]),
+             (mid_uv, bad_uv[1], bad_uv[2])),
+        ])
+        self.assertEqual(whole["uvTrianglesAnisotropyOver2"], 1)
+        self.assertEqual(split["uvTrianglesAnisotropyOver2"], 2)
+        self.assertAlmostEqual(whole["uvMeasuredSurfaceAreaM2"], 1.5)
+        self.assertAlmostEqual(whole["uvDistortedSurfaceAreaM2"], 1)
+        self.assertEqual(whole["uvDistortedSurfacePct"], 66.67)
+        self.assertEqual(whole["uvDistortedSurfacePct"], split["uvDistortedSurfacePct"])
+        self.assertEqual(whole["uvDistortionHeightBands"][0]["distortedTriangleCount"], 0)
+        self.assertEqual(whole["uvDistortionHeightBands"][4]["distortedSurfacePct"], 100)
+        self.assertEqual(whole["uvSourceZExtentMetres"], [0, 5])
+        self.assertFalse(whole["physicalFabricRepeatVerified"])
+        self.assertFalse(split["productionApproved"])
+
+    def test_uv_distortion_height_bands_handle_flat_and_unusable_meshes(self):
+        # Zero vertical span is valid for a horizontal swatch face.
+        flat_xyz = ((0, 0, 0), (1, 0, 0), (0, 1, 0))
+        flat = audit.audit_uv_triangles([(flat_xyz, ((0, 0), (1, 0), (0, 1)))])
+        self.assertEqual(flat["uvDistortedSurfacePct"], 0)
+        self.assertEqual(flat["uvDistortionHeightBands"][0]["validTriangleCount"], 1)
+        self.assertEqual(flat["uvDistortionHeightBands"][4]["validTriangleCount"], 0)
+        self.assertIsNone(flat["uvDistortionHeightBands"][4]["distortedSurfacePct"])
+        # A fully collapsed mapping yields zero independently measured
+        # *usable* UV area; it cannot be called 0%-distorted or approved.
+        collapsed = audit.audit_uv_triangles([(XYZ, ((0, 0),) * 3)])
+        self.assertIsNone(collapsed["uvDistortedSurfacePct"])
+        self.assertEqual(collapsed["uvMeasuredSurfaceAreaM2"], 0)
+        self.assertTrue(collapsed["candidateUvMetricDistortionReviewRequired"])
+        self.assertFalse(collapsed["candidateUvTopologyPass"])
+
     def test_density_tracks_surface_units(self):
         result = audit.audit_uv_triangles([(XYZ, UV)])
         self.assertAlmostEqual(result["medianUvAreaPerSquareMetre"], 1)
