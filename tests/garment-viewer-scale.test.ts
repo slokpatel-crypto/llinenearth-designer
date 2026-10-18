@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { canPaintGarmentPanelMaterial, applyViewerTextureUvTransform, garmentPanelTextureScale, garmentPanelTexturePreparationKey, prepareGarmentPanelUvTransforms, garmentPanelTextureScaleEvidence, garmentUvRepeatsForUnits, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
+import { canPaintGarmentPanelMaterial, canApplyViewerTextureUvTransform, applyViewerTextureUvTransform, garmentPanelTextureScale, garmentPanelTexturePreparationKey, prepareGarmentPanelUvTransforms, garmentPanelTextureScaleEvidence, garmentUvRepeatsForUnits, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
 
 
 test("the complete six-panel texture adapter must be paintable before any visible update",()=>{
@@ -294,4 +294,57 @@ test("missing sampler capabilities cannot silently paint the wrong textile perio
     setOffset:()=>{},
   }},transform),false);
   assert.equal(mutated,false,"No partial sampler writes before capability validation");
+});
+
+test("base and procedural normal textures must BOTH preflight before any UV mutation",()=>{
+  let changed=0;
+  const sampler=()=>({
+    setScale:(_s:{u:number;v:number})=>{changed++;},
+    setOffset:(_o:{u:number;v:number})=>{changed++;},
+    setRotation:(_r:number)=>{changed++;},
+  });
+  const base={sampler:sampler()};
+  const normal={sampler:sampler()};
+  const cloth={scale:{u:14.5,v:39},offset:{u:.1,v:-.2},rotation:Math.PI/4};
+  const weave={...cloth,scale:{u:19.575,v:52.65}};
+  const broken={sampler:{setScale:(_s:{u:number;v:number})=>{changed++;}}};
+  assert.equal(canApplyViewerTextureUvTransform(base,cloth),true);
+  assert.equal(canApplyViewerTextureUvTransform(broken,weave),false);
+  // This mirrors the render preflight: neither texture may have mutated.
+  if(canApplyViewerTextureUvTransform(base,cloth)&&canApplyViewerTextureUvTransform(broken,weave)){
+    applyViewerTextureUvTransform(base,cloth);
+    applyViewerTextureUvTransform(broken,weave);
+  }
+  assert.equal(changed,0);
+  assert.equal(canApplyViewerTextureUvTransform(normal,weave),true);
+  assert.equal(applyViewerTextureUvTransform(base,cloth),true);
+  assert.equal(applyViewerTextureUvTransform(normal,weave),true);
+  assert.equal(changed,6);
+});
+
+test("a malformed UV transform never partially updates a model-viewer sampler",()=>{
+  let writes=0;
+  const texture={sampler:{
+    setScale:(_scale:{u:number;v:number})=>{writes++;},
+    setOffset:(_offset:{u:number;v:number})=>{writes++;},
+    setRotation:(_rotation:number)=>{writes++;},
+  }};
+  const valid={scale:{u:12,v:15},offset:{u:0,v:0},rotation:0};
+  const invalid=[
+    {...valid,scale:{u:Infinity,v:15}},
+    {...valid,scale:{u:-3,v:15}},
+    {...valid,scale:{u:101,v:15}},
+    {...valid,offset:{u:NaN,v:0}},
+    {...valid,offset:{u:12,v:0}},
+    {...valid,rotation:Infinity},
+    {...valid,rotation:7},
+    {scale:null,offset:valid.offset,rotation:0},
+    {scale:valid.scale,offset:null,rotation:0},
+  ];
+  for(const sample of invalid){
+    assert.equal(applyViewerTextureUvTransform(texture,sample as typeof valid),false);
+    assert.equal(writes,0);
+  }
+  assert.equal(applyViewerTextureUvTransform(texture,valid),true);
+  assert.equal(writes,3);
 });
