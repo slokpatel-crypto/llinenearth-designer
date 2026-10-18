@@ -153,6 +153,10 @@ def scene_source_provenance(scene):
         )
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", source["verifiedAt"]):
         raise RuntimeError("Source verifiedAt must use YYYY-MM-DD.")
+    try:
+        date.fromisoformat(source["verifiedAt"])
+    except ValueError as error:
+        raise RuntimeError("Source verifiedAt is not a real calendar date.") from error
 
     # Version is useful evidence but the web contract only requires name/license/date.
     if source.get("version"):
