@@ -23,7 +23,7 @@ from mathutils.bvhtree import BVHTree
 # Blender. It must not be mistaken for a material-calibrated cloth simulation.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from drape_preview_math import MAX_PREVIEW_RELIEF_MM, candidate_drape_offset_mm
-from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical_metric_face_uv, cylindrical_ambiguous_face_diagnostic, metric_tangent_chart_uv, audit_shared_uv_edges, phase_align_cylindrical_charts, align_metric_tangent_charts, classify_unapproved_uv_seams
+from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical_metric_face_uv, cylindrical_ambiguous_face_diagnostic, metric_tangent_chart_uv, audit_shared_uv_edges, phase_align_cylindrical_charts, align_metric_tangent_charts, classify_unapproved_uv_seams, estimate_source_tube_radius_m
 from region_islands import keep_ankle_connected_faces
 from sleeve_stance_math import MAX_INBOARD_MM, candidate_sleeve_inboard_mm
 from leg_stance_math import MAX_INBOARD_MM as MAX_LEG_INBOARD_MM, candidate_leg_inboard_mm, candidate_inner_seam_relief_mm
@@ -795,12 +795,9 @@ def planar_grain_uv(obj):
         max_y = max(vertex.co.y for vertex in mesh.vertices)
         max_x = max(vertex.co.x for vertex in mesh.vertices)
         cx, cy = (min_x + max_x) * 0.5, (min_y + max_y) * 0.5
-        radial_distances = sorted(
-            math.hypot(vertex.co.x - cx, vertex.co.y - cy) for vertex in mesh.vertices
+        radius_m = estimate_source_tube_radius_m(
+            [tuple(vertex.co) for vertex in mesh.vertices]
         )
-        radius_m = radial_distances[len(radial_distances) // 2]
-        if radius_m <= 0.015:
-            raise RuntimeError(f"Degenerate source tube for candidate UV: {obj.name}")
         fallback_faces = 0
         fallback_receipts = []
         unapproved_tangent_indices = []
