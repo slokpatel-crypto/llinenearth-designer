@@ -440,6 +440,7 @@ def planar_grain_uv(obj):
         radius_m = radial_distances[len(radial_distances) // 2]
         if radius_m <= 0.015:
             raise RuntimeError(f"Degenerate source tube for candidate UV: {obj.name}")
+        fallback_faces = 0
         for polygon in mesh.polygons:
             loops = tuple(polygon.loop_indices)
             xyz = [
@@ -448,12 +449,27 @@ def planar_grain_uv(obj):
                  mesh.vertices[mesh.loops[i].vertex_index].co.z)
                 for i in loops
             ]
-            uv_points = cylindrical_metric_face_uv(
-                xyz, center_xy=(cx, cy), radius_m=radius_m, origin_z=min_z
-            )
+            try:
+                uv_points = cylindrical_metric_face_uv(
+                    xyz, center_xy=(cx, cy), radius_m=radius_m, origin_z=min_z
+                )
+            except ValueError as error:
+                # A non-tubular source polygon can span both sides of the
+                # estimated arm/leg axis. Do NOT invent a full-wrap seam there:
+                # fall back to the already validated metre XZ projection and
+                # expose the face count as an unapproved UV topology deficit.
+                if "ambiguous half-cylinder seam" not in str(error):
+                    raise
+                fallback_faces += 1
+                uv_points = [
+                    metric_planar_uv(point, origin_x=min_x, origin_z=min_z)
+                    for point in xyz
+                ]
             for i, uv_point in zip(loops, uv_points):
                 uv_layer.data[i].uv = uv_point
         obj["linen_earth_uv_geometry_radius_estimate_mm"] = round(radius_m * 1000, 3)
+        obj["linen_earth_uv_mixed_projection_fallback_faces"] = fallback_faces
+        obj["linen_earth_uv_seam_certified"] = False
         method = "uncalibrated_metric_cylindrical_tube"
     else:
         for polygon in mesh.polygons:
