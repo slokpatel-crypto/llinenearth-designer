@@ -12,9 +12,9 @@ def resolve_panel_uv_units(panel_values):
     values = list(panel_values)
     if len(values) != 6:
         raise ValueError("Exactly six garment-panel UV unit receipts are required")
-    normalized = [str(value).strip() if value is not None else "" for value in values]
-    if not any(normalized):
+    if all(value is None for value in values):
         return None  # Legacy exporter compatibility, not a physical scale certificate.
+    normalized = [value.strip() if isinstance(value, str) else "" for value in values]
     if any(not value for value in normalized):
         raise ValueError("Mixed declared and missing panel UV unit receipts")
     if len(set(normalized)) != 1:
