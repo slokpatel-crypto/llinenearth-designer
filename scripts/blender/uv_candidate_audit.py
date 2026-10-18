@@ -240,6 +240,83 @@ def audit_shared_uv_edges(faces, *, tolerance_m=1e-5, sample_limit=12):
     }
 
 
+
+def phase_align_cylindrical_charts(faces, *, radius_m, excluded_face_indices=(), tolerance_m=1e-5):
+    """Remove only proven full-turn U offsets between adjacent cylindrical faces.
+
+    The radius is geometry-estimated, NOT supplier measured. A constant
+    integer-circumference shift preserves metre texture density and cannot
+    repair a tangent chart, twisted face or cut seam. Those remain unapproved.
+    """
+    from collections import defaultdict, deque
+
+    if (isinstance(radius_m, (str, bytes, bool))
+            or not isinstance(radius_m, (int, float))
+            or not math.isfinite(radius_m) or radius_m <= 1e-5):
+        raise ValueError("Phase stitching needs finite positive tube radius")
+    # Includes complete topology and finite-coordinate validation.
+    initial = audit_shared_uv_edges(faces, tolerance_m=tolerance_m)
+    ignored = set(excluded_face_indices)
+    if any(isinstance(i, bool) or not isinstance(i, int) or i < 0 or i >= len(faces)
+           for i in ignored):
+        raise ValueError("Phase excluded face indices must refer to real polygons")
+    period = 2 * math.pi * radius_m
+    edges = defaultdict(list)
+    for face_index, face in enumerate(faces):
+        if face_index in ignored:
+            continue
+        for a, b in zip(face, face[1:] + face[:1]):
+            key = (min(a[0], b[0]), max(a[0], b[0]))
+            edges[key].append((face_index, {a[0]: a[1], b[0]: b[1]}))
+    adjacency = defaultdict(list)
+    alignable_edges = 0
+    for edge, entries in edges.items():
+        if len(entries) != 2:
+            continue
+        (left_i, left), (right_i, right) = entries
+        du = [left[i][0] - right[i][0] for i in edge]
+        dv = [abs(left[i][1] - right[i][1]) for i in edge]
+        turns = round(sum(du) / len(du) / period)
+        if all(abs(d - turns * period) <= tolerance_m for d in du) and max(dv) <= tolerance_m:
+            adjacency[left_i].append((right_i, turns))
+            adjacency[right_i].append((left_i, -turns))
+            alignable_edges += 1
+    face_turns = {}
+    phase_cycle_conflicts = 0
+    for root in range(len(faces)):
+        if root in face_turns or root in ignored:
+            continue
+        face_turns[root] = 0
+        queue = deque([root])
+        while queue:
+            face_index = queue.popleft()
+            for neighbor, offset in adjacency[face_index]:
+                expected = face_turns[face_index] + offset
+                if neighbor not in face_turns:
+                    face_turns[neighbor] = expected
+                    queue.append(neighbor)
+                elif face_turns[neighbor] != expected:
+                    phase_cycle_conflicts += 1
+    aligned = [
+        [(vid, (uv[0] + face_turns.get(i, 0) * period, uv[1]))
+         for vid, uv in face]
+        for i, face in enumerate(faces)
+    ]
+    after = audit_shared_uv_edges(aligned, tolerance_m=tolerance_m)
+    return aligned, {
+        "geometryEstimatedCircumferenceMm": round(period * 1000, 5),
+        "phaseShiftedFaces": sum(1 for value in face_turns.values() if value != 0),
+        "phaseAlignableInteriorEdges": alignable_edges,
+        "phaseCycleConflicts": phase_cycle_conflicts,
+        "excludedUnapprovedFaceCharts": len(ignored),
+        "unapprovedInteriorUvSeamsBefore": initial["unapprovedInteriorUvSeams"],
+        "unapprovedInteriorUvSeamsAfter": after["unapprovedInteriorUvSeams"],
+        "supplierRepeatVerified": False,
+        "supplierGrainVerified": False,
+        "productionApproved": False,
+    }
+
+
 def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-12):
     """Triangles: iterable of (three XYZ triples, three UV pairs). Fail closed."""
     if not (math.isfinite(min_uv_area) and min_uv_area > 0
