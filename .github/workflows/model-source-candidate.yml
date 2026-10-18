@@ -58,10 +58,19 @@ jobs:
           echo "$PWD/blender-4.5.14-linux-x64" >> "$GITHUB_PATH"
 
       - name: Verify independent Blender world-space contact regression
-        run: blender --background --factory-startup --python tests/blender/test_world_collision_bvh.py
+        run: blender --background --factory-startup --python-exit-code 1 --python tests/blender/test_world_collision_bvh.py
+
+      - name: Verify native collision-free trouser gap rollback
+        run: blender --background --factory-startup --python-exit-code 1 --python tests/blender/test_leg_gap_rollback.py
+
+      - name: Verify native crotch-seam contact repair and full XYZ rollback
+        run: blender --background --factory-startup --python-exit-code 1 --python tests/blender/test_crotch_seam_repair.py
+
+      - name: Verify source-preserving cuff stance repair and rollback
+        run: blender --background --factory-startup --python-exit-code 1 --python tests/blender/test_cuff_spacing_repair.py
 
       - name: Verify Blender contact spatial evidence without changing geometry
-        run: blender --background --factory-startup --python tests/blender/test_contact_height_diagnostics.py
+        run: blender --background --factory-startup --python-exit-code 1 --python tests/blender/test_contact_height_diagnostics.py
 
       - name: Download pinned CC0 realistic human body source
         run: npm run garment:model-base:fetch
@@ -71,7 +80,7 @@ jobs:
 
       - name: Verify photo lock does not approve a different CC0 model source
         run: |
-          blender --background .cache/linen-earth/linen-earth-officewear-body-base.blend \
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-body-base.blend \
             --python tests/blender/test_source_photo_identity_provenance.py
 
       - name: Author body-attached candidate shirt / trouser relief
@@ -83,21 +92,21 @@ jobs:
         run: |
           mkdir -p artifacts/model-qa
           set -o pipefail
-          blender --background .cache/linen-earth/linen-earth-officewear-authored.blend \
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend \
             --python scripts/blender/preflight-linen-earth-officewear.py \
             | tee artifacts/model-qa/scene-preflight.log
 
       - name: Render full four-angle QA for structurally passing candidate
         if: steps.scene_preflight.outcome == 'success'
         run: |
-          blender --background .cache/linen-earth/linen-earth-officewear-authored.blend \
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend \
             --python scripts/blender/render-linen-earth-model-qa.py -- \
             --output-dir artifacts/model-qa --width 576 --height 864 --samples 24
 
       - name: Render diagnostic four-angle QA for rejected candidate
         if: steps.scene_preflight.outcome != 'success'
         run: |
-          blender --background .cache/linen-earth/linen-earth-officewear-authored.blend \
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend \
             --python scripts/blender/render-linen-earth-model-qa.py -- \
             --output-dir artifacts/model-qa --width 480 --height 640 --samples 8
 

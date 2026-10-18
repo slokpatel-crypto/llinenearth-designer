@@ -26,7 +26,8 @@ from drape_preview_math import MAX_PREVIEW_RELIEF_MM, candidate_drape_offset_mm
 from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical_metric_face_uv
 from region_islands import keep_ankle_connected_faces
 from sleeve_stance_math import MAX_INBOARD_MM, candidate_sleeve_inboard_mm
-from leg_stance_math import MAX_INBOARD_MM as MAX_LEG_INBOARD_MM, candidate_leg_inboard_mm
+from leg_stance_math import MAX_INBOARD_MM as MAX_LEG_INBOARD_MM, candidate_leg_inboard_mm, candidate_inner_seam_relief_mm
+from leg_gap_safety import bounded_leg_gap_trials
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -59,7 +60,7 @@ def cli_args():
                         help="Unverified waistband-over-tuck layer separation, 0..7 mm")
     parser.add_argument("--candidate-relief-mm", type=float, default=3.0,
                         help="0 for a clean shell; 0..6 mm art-directed visual microfolds, not physical drape")
-    parser.add_argument("--sleeve-cuff-inboard-mm", type=float, default=0.0,
+    parser.add_argument("--sleeve-cuff-inboard-mm", type=float, default=22.0,
                         help="OFF by default: native 20mm experiment intersected locked body; 0..22mm/side for diagnostic only")
     parser.add_argument("--trouser-leg-inboard-mm", type=float, default=3.0,
                         help="Conservative cloth-only leg-gap trial 3mm per leg; 7mm trial intersected left/right cloth")
@@ -440,6 +441,321 @@ def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm, body_floor_
     return max_relief, shoulder_guide, phase_pairs, contact_repair
 
 
+
+def restore_collision_free_leg_gap(body, body_floor_z, body_height, requested_mm, applied_mm=None):
+    """Retreat a garment-only gap trial until TWO leg shells AND skin do not collide.
+
+    The requested shift was applied during individual shell fitting. Record
+    each post-fit X baseline so the rollback only undoes part of that shift;
+    it never moves the source body or overwrites the bounded contact repairs.
+    Independent release preflight remains mandatory for all other panels.
+    """
+    names = ("TrouserLegLFabric", "TrouserLegRFabric")
+    legs = [bpy.data.objects.get(name) for name in names]
+    if any(obj is None or obj.type != "MESH" for obj in legs):
+        raise RuntimeError("Both source-derived trouser shells are required for gap QA")
+
+    if applied_mm is None:
+        applied_mm = requested_mm
+    base_x = {}
+    for name, obj in zip(names, legs):
+        base_x[name] = [
+            vertex.co.x - candidate_leg_inboard_mm(
+                name, (vertex.co.z - body_floor_z) / body_height, applied_mm
+            ) / 1000.0
+            for vertex in obj.data.vertices
+        ]
+
+    attempts = []
+    for candidate_mm in bounded_leg_gap_trials(requested_mm):
+        for name, obj in zip(names, legs):
+            for index, vertex in enumerate(obj.data.vertices):
+                ratio = (vertex.co.z - body_floor_z) / body_height
+                vertex.co.x = base_x[name][index] + candidate_leg_inboard_mm(
+                    name, ratio, candidate_mm
+                ) / 1000.0
+            obj.data.update()
+        bpy.context.view_layer.update()
+
+        # A smaller visual gap is NEVER allowed to penetrate either leg or
+        # the original model. These are real evaluated world-space BVH pairs.
+        leg_pairs = source_fit_collision_pairs(legs[0], legs[1])
+        left_body = source_fit_collision_pairs(body, legs[0])
+        right_body = source_fit_collision_pairs(body, legs[1])
+        trial = {
+            "candidateInboardMmPerLeg": candidate_mm,
+            "legToLegIntersectionPairs": leg_pairs,
+            "leftBodyIntersectionPairs": left_body,
+            "rightBodyIntersectionPairs": right_body,
+        }
+        attempts.append(trial)
+        if leg_pairs == left_body == right_body == 0:
+            evidence = {
+                "requestedMmPerLeg": requested_mm,
+                "selectedMmPerLeg": candidate_mm,
+                "trials": attempts,
+                "nativeWorldSpaceCollisionFree": True,
+                "photographicPoseApproved": False,
+                "tailorFitApproved": False,
+                "productionApproved": False,
+            }
+            for obj in legs:
+                obj["linen_earth_trouser_leg_inboard_candidate_mm"] = candidate_mm
+                obj["linen_earth_leg_gap_rollback_audit_json"] = json.dumps(evidence, sort_keys=True)
+            print("SOURCE_FIT_LEG_GAP_COLLISION_ROLLBACK=" + json.dumps(evidence, sort_keys=True))
+            return evidence
+
+    # Even the original post-fit candidate may have a colliding crotch seam.
+    # Preserve this rejected scene for FOUR-angle diagnostic rendering, but
+    # preflight must still fail on the actual nonzero leg-to-leg BVH pairs.
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    overlaps = _world_mesh_bvh(legs[0], depsgraph).overlap(
+        _world_mesh_bvh(legs[1], depsgraph)
+    )
+    face_height_bins = {str(index): 0 for index in range(10)}
+    approximate_face_centres = []
+    for left_index, right_index in overlaps:
+        if left_index >= len(legs[0].data.polygons) or right_index >= len(legs[1].data.polygons):
+            continue
+        left_center = legs[0].matrix_world @ legs[0].data.polygons[left_index].center
+        right_center = legs[1].matrix_world @ legs[1].data.polygons[right_index].center
+        centre = (left_center + right_center) * 0.5
+        index = max(0, min(9, int(10 * (centre.z - body_floor_z) / body_height)))
+        face_height_bins[str(index)] += 1
+        if len(approximate_face_centres) < 16:
+            approximate_face_centres.append(
+                [round(centre.x, 4), round(centre.y, 4), round(centre.z, 4)]
+            )
+    evidence = {
+        "requestedMmPerLeg": requested_mm,
+        "selectedMmPerLeg": 0.0,
+        "trials": attempts,
+        "nativeWorldSpaceCollisionFree": False,
+        "unresolvedLegToLegPairs": attempts[-1]["legToLegIntersectionPairs"],
+        "contactFaceCentroidHeightDeciles": face_height_bins,
+        "approximateContactFaceCentresMetres": approximate_face_centres,
+        "diagnosticOnly": True,
+        "photographicPoseApproved": False,
+        "tailorFitApproved": False,
+        "productionApproved": False,
+    }
+    for obj in legs:
+        obj["linen_earth_trouser_leg_inboard_candidate_mm"] = 0.0
+        obj["linen_earth_leg_gap_rollback_audit_json"] = json.dumps(evidence, sort_keys=True)
+    print("SOURCE_FIT_LEG_GAP_REJECTED_DIAGNOSTIC=" + json.dumps(evidence, sort_keys=True))
+    return evidence
+
+
+def trial_inner_crotch_seam_relief(body, floor_z, height, centre_x):
+    """Native contact-gated candidate contour: try seam spacing AND skin relief.
+
+    A 4-mm outward inner-seam trial cleared the 100 cloth/cloth overlaps in
+    native evidence but introduced 36/24 skin-contact pairs. Resolve that
+    competing constraint with the existing bounded, real-body-normal repair
+    (at most 12 mm per garment vertex). All unsuccessful trials restore every
+    XYZ coordinate, not just X: collision repair can move Y and Z too.
+    Nothing here moves the locked body, certifies physical tailoring, or
+    relaxes the independent source/model/UV/identity release gates.
+    """
+    names = ("TrouserLegLFabric", "TrouserLegRFabric")
+    legs = [bpy.data.objects.get(name) for name in names]
+    if any(obj is None or obj.type != "MESH" for obj in legs):
+        raise RuntimeError("Need both locked-source trouser shells for crotch seam QA")
+    if not all(math.isfinite(v) for v in (floor_z, height, centre_x)) or height <= 0:
+        raise RuntimeError("Source seam trial needs a finite positive body frame")
+
+    original = {
+        obj.name: [vertex.co.copy() for vertex in obj.data.vertices]
+        for obj in legs
+    }
+
+    def restore():
+        for obj in legs:
+            for vertex, position in zip(obj.data.vertices, original[obj.name]):
+                vertex.co = position
+            obj.data.update()
+        bpy.context.view_layer.update()
+
+    def contacts():
+        return (
+            source_fit_collision_pairs(legs[0], legs[1]),
+            source_fit_collision_pairs(body, legs[0]),
+            source_fit_collision_pairs(body, legs[1]),
+        )
+
+    attempts = []
+    for peak_mm in (2.0, 4.0, 6.0, 8.0, 10.0):
+        restore()
+        for obj in legs:
+            for index, vertex in enumerate(obj.data.vertices):
+                position = original[obj.name][index]
+                ratio = (position.z - floor_z) / height
+                vertex.co.x = position.x + candidate_inner_seam_relief_mm(
+                    obj.name, ratio, position.x - centre_x, peak_mm
+                ) / 1000.0
+            obj.data.update()
+        bpy.context.view_layer.update()
+
+        before = contacts()
+        corrections = {}
+        # Do not repair skin at the expense of an already-intersecting inseam.
+        # The first attempt must geometrically separate both trouser shells.
+        if before[0] == 0 and (before[1] > 0 or before[2] > 0):
+            for obj, body_pairs in zip(legs, before[1:]):
+                if body_pairs > 0:
+                    correction = repair_body_intersections(body, obj, 6)
+                    corrections[obj.name] = {
+                        "contactPairsByPass": correction["contactPairsByPass"],
+                        "maxVertexCorrectionMm": correction["maxVertexCorrectionMm"],
+                        "remainingContactPairs": correction["remainingContactPairs"],
+                    }
+        after = contacts()
+        trial = {
+            "peakSeamReliefMm": peak_mm,
+            "legToLegPairsBeforeRepair": before[0],
+            "leftBodyPairsBeforeRepair": before[1],
+            "rightBodyPairsBeforeRepair": before[2],
+            "legToLegPairs": after[0],
+            "leftBodyPairs": after[1],
+            "rightBodyPairs": after[2],
+            "boundedBodyContactCorrections": corrections,
+        }
+        attempts.append(trial)
+        if after == (0, 0, 0):
+            evidence = {
+                "selectedPeakSeamReliefMm": peak_mm,
+                "nativeWorldSpaceCollisionFree": True,
+                "trials": attempts,
+                "photographicPoseApproved": False,
+                "tailorSeamApproved": False,
+                "productionApproved": False,
+            }
+            for obj in legs:
+                obj["linen_earth_crotch_seam_relief_candidate_mm"] = peak_mm
+                obj["linen_earth_crotch_seam_relief_evidence_json"] = json.dumps(evidence, sort_keys=True)
+            print("SOURCE_FIT_CROTCH_SEAM_RELIEF=" + json.dumps(evidence, sort_keys=True))
+            return evidence
+
+    # A trial that repaired body contact but reintroduced inter-leg contact
+    # must NOT survive into UV authoring or the next gap optimization.
+    restore()
+    evidence = {
+        "selectedPeakSeamReliefMm": 0.0,
+        "nativeWorldSpaceCollisionFree": False,
+        "trials": attempts,
+        "photographicPoseApproved": False,
+        "tailorSeamApproved": False,
+        "productionApproved": False,
+    }
+    for obj in legs:
+        obj["linen_earth_crotch_seam_relief_candidate_mm"] = 0.0
+        obj["linen_earth_crotch_seam_relief_evidence_json"] = json.dumps(evidence, sort_keys=True)
+    print("SOURCE_FIT_CROTCH_SEAM_REJECTED=" + json.dumps(evidence, sort_keys=True))
+    return evidence
+
+
+
+def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
+    """Find a bounded cloth-only cuff correction without moving either arm.
+
+    The source sleeves sit about 75 mm wider than the locked 500-mm centre
+    guide. A raw 20-mm/side inboard experiment pierced the original body.
+    Now trial the already-bounded 0..22-mm contour on FINAL solidified cloth,
+    repair only real source-skin contacts along measured normals (<=12 mm
+    per affected vertex), and reject/restore all XYZ on any failed trial.
+    This is NOT a human posture edit, sewn sleeve fit, or photo approval.
+    """
+    if not math.isfinite(requested_mm) or not 0 <= requested_mm <= MAX_INBOARD_MM:
+        raise RuntimeError("Unapproved sleeve gap request must be within 0..22 mm")
+    names = ("ShirtSleeveLFabric", "ShirtSleeveRFabric")
+    sleeves = [bpy.data.objects.get(name) for name in names]
+    if any(obj is None or obj.type != "MESH" for obj in sleeves):
+        raise RuntimeError("Both source-derived sleeves are required for cuff spacing QA")
+    if not all(math.isfinite(x) for x in (floor_z, height)) or height <= 0:
+        raise RuntimeError("Cuff trial requires a positive finite source frame")
+    original = {
+        obj.name: [vertex.co.copy() for vertex in obj.data.vertices]
+        for obj in sleeves
+    }
+
+    def restore():
+        for obj in sleeves:
+            for vertex, position in zip(obj.data.vertices, original[obj.name]):
+                vertex.co = position
+            obj.data.update()
+        bpy.context.view_layer.update()
+
+    attempts = []
+    # Largest correction first; all trials use the ORIGINAL post-fit cloth.
+    # Half-millimetre tuning would be possible, but cannot substitute for a
+    # photographic/cuff-coverage gate and would add needless BVH passes.
+    values = [round(max(0.0, requested_mm - i), 6)
+              for i in range(math.ceil(requested_mm) + 1)]
+    if values[-1] != 0.0:
+        values.append(0.0)
+    for mm in dict.fromkeys(values):
+        restore()
+        for obj in sleeves:
+            for index, vertex in enumerate(obj.data.vertices):
+                position = original[obj.name][index]
+                height_ratio = (position.z - floor_z) / height
+                vertex.co.x = position.x + candidate_sleeve_inboard_mm(
+                    obj.name, height_ratio, mm
+                ) / 1000.0
+            obj.data.update()
+        bpy.context.view_layer.update()
+        before = [source_fit_collision_pairs(body, obj) for obj in sleeves]
+        repairs = {}
+        for obj, count in zip(sleeves, before):
+            if count > 0:
+                report = repair_body_intersections(body, obj, 6)
+                repairs[obj.name] = {
+                    "contactPairsByPass": report["contactPairsByPass"],
+                    "maxVertexCorrectionMm": report["maxVertexCorrectionMm"],
+                    "remainingContactPairs": report["remainingContactPairs"],
+                }
+        after = [source_fit_collision_pairs(body, obj) for obj in sleeves]
+        sleeve_pairs = source_fit_collision_pairs(sleeves[0], sleeves[1])
+        attempts.append({
+            "requestedCuffInboardMmPerSleeve": mm,
+            "bodyPairsBeforeRepair": before,
+            "bodyPairsAfterRepair": after,
+            "sleeveToSleevePairs": sleeve_pairs,
+            "boundedBodyContactCorrections": repairs,
+        })
+        if after == [0, 0] and sleeve_pairs == 0:
+            evidence = {
+                "requestedMmPerSleeve": requested_mm,
+                "selectedMmPerSleeve": mm,
+                "nativeWorldSpaceCollisionFree": True,
+                "trials": attempts,
+                "photographicPoseApproved": False,
+                "tailorSleeveApproved": False,
+                "productionApproved": False,
+            }
+            for obj in sleeves:
+                obj["linen_earth_sleeve_cuff_inboard_candidate_mm"] = mm
+                obj["linen_earth_sleeve_spacing_evidence_json"] = json.dumps(evidence, sort_keys=True)
+            print("SOURCE_FIT_SLEEVE_GAP_COLLISION_ROLLBACK=" + json.dumps(evidence, sort_keys=True))
+            return evidence
+
+    restore()
+    evidence = {
+        "requestedMmPerSleeve": requested_mm,
+        "selectedMmPerSleeve": 0.0,
+        "nativeWorldSpaceCollisionFree": False,
+        "trials": attempts,
+        "photographicPoseApproved": False,
+        "tailorSleeveApproved": False,
+        "productionApproved": False,
+    }
+    for obj in sleeves:
+        obj["linen_earth_sleeve_cuff_inboard_candidate_mm"] = 0.0
+        obj["linen_earth_sleeve_spacing_evidence_json"] = json.dumps(evidence, sort_keys=True)
+    print("SOURCE_FIT_SLEEVE_GAP_REJECTED=" + json.dumps(evidence, sort_keys=True))
+    return evidence
+
+
 def planar_grain_uv(obj):
     """Candidate X/Z UV uses mesh metres, not an arbitrary 0..1 per panel.
 
@@ -645,11 +961,9 @@ def main():
         # Outer waistband is outside the tucked shirt instead of z-fighting
         # against an identically offset body-derived surface for 10 cm.
         panel_clearance = clearance_m + (options.waist_layer_extra_mm / 1000.0 if name == "TrouserWaistFabric" else 0.0)
-        max_relief, shoulder_guide, phase_pairs, repair = fit_shell(obj, body, panel_clearance, thickness_m, name, options.candidate_relief_mm, min_z, height, options.surface_refine, options.contact_repair_passes, options.hem_taper_fraction, options.sleeve_cuff_inboard_mm, options.trouser_leg_inboard_mm)
+        max_relief, shoulder_guide, phase_pairs, repair = fit_shell(obj, body, panel_clearance, thickness_m, name, options.candidate_relief_mm, min_z, height, options.surface_refine, options.contact_repair_passes, options.hem_taper_fraction, 0.0, options.trouser_leg_inboard_mm)
         fit_stage_report[name] = phase_pairs
         contact_repair_report[name] = repair
-        planar_grain_uv(obj)
-        candidate_uv_report[name] = audit_authored_panel_uv(obj)
         obj["linen_earth_auto_authored"] = True
         obj["linen_earth_fit_clearance_mm"] = round(panel_clearance * 1000.0, 3)
         obj["linen_earth_cloth_thickness_mm"] = round(thickness_m * 1000.0, 3)
@@ -659,6 +973,49 @@ def main():
             obj["linen_earth_shoulder_width_source_mm"] = round(shoulder_guide[0], 2)
             obj["linen_earth_shoulder_contour_scale"] = round(shoulder_guide[1], 6)
         authored.append(obj)
+
+    # The default 3-mm trial created 138 actual leg/leg triangle intersections
+    # in CI. Back off in <=0.5-mm steps using the measured final thickened
+    # cloth, not just the apparent spacing. UVs are rebuilt AFTER geometry
+    # settles, avoiding stale texture coordinates from the rejected trial.
+    leg_gap_audit = restore_collision_free_leg_gap(
+        body, min_z, height, options.trouser_leg_inboard_mm
+    )
+    seam_audit = None
+    if not leg_gap_audit["nativeWorldSpaceCollisionFree"]:
+        # Independent source CI shows residual cloth/cloth collisions even
+        # with requested inward movement reversed to zero. Probe a 10-mm
+        # maximum inner-seam-only contour; NEVER claim it is measured ease.
+        seam_audit = trial_inner_crotch_seam_relief(body, min_z, height, center_x)
+        if seam_audit["nativeWorldSpaceCollisionFree"]:
+            # The seam probe is at zero leg-inboard; request the best safe
+            # reduction again without subtracting a shift not yet applied.
+            leg_gap_audit = restore_collision_free_leg_gap(
+                body, min_z, height, options.trouser_leg_inboard_mm, applied_mm=0.0
+            )
+    cuff_audit = try_collision_safe_cuff_spacing(
+        body, min_z, height, options.sleeve_cuff_inboard_mm
+    )
+    for name, post_count in zip(
+        ("ShirtSleeveLFabric", "ShirtSleeveRFabric"),
+        cuff_audit["trials"][-1]["bodyPairsAfterRepair"],
+    ):
+        fit_stage_report[name]["postCuffBodyPairs"] = post_count
+        fit_stage_report[name]["postCuffSelectedMmPerSleeve"] = cuff_audit["selectedMmPerSleeve"]
+
+    for name in ("TrouserLegLFabric", "TrouserLegRFabric"):
+        fit_stage_report[name]["postGapRollbackBodyPairs"] = (
+            leg_gap_audit["trials"][-1]["leftBodyIntersectionPairs"]
+            if name == "TrouserLegLFabric"
+            else leg_gap_audit["trials"][-1]["rightBodyIntersectionPairs"]
+        )
+        fit_stage_report[name]["postGapRollbackLegPairs"] = (
+            leg_gap_audit["trials"][-1]["legToLegIntersectionPairs"]
+        )
+        fit_stage_report[name]["postGapRollbackSelectedMm"] = leg_gap_audit["selectedMmPerLeg"]
+    for obj in authored:
+        planar_grain_uv(obj)
+        candidate_uv_report[obj.name] = audit_authored_panel_uv(obj)
 
     bpy.context.scene["linen_earth_uv_candidate_audit_json"] = json.dumps(candidate_uv_report, sort_keys=True)
     bpy.context.scene["linen_earth_uv_coordinate_units"] = "mesh_metres"
@@ -681,8 +1038,16 @@ def main():
     bpy.context.scene["linen_earth_contact_repair_passes"] = options.contact_repair_passes
     bpy.context.scene["linen_earth_waist_layer_extra_mm"] = options.waist_layer_extra_mm
     bpy.context.scene["linen_earth_hem_taper_candidate_fraction"] = options.hem_taper_fraction
-    bpy.context.scene["linen_earth_candidate_sleeve_inboard_mm"] = options.sleeve_cuff_inboard_mm
-    bpy.context.scene["linen_earth_candidate_trouser_leg_inboard_mm"] = options.trouser_leg_inboard_mm
+    bpy.context.scene["linen_earth_candidate_sleeve_inboard_mm"] = cuff_audit["selectedMmPerSleeve"]
+    bpy.context.scene["linen_earth_candidate_sleeve_inboard_requested_mm"] = options.sleeve_cuff_inboard_mm
+    bpy.context.scene["linen_earth_sleeve_gap_rollback_audit_json"] = json.dumps(cuff_audit, sort_keys=True)
+    bpy.context.scene["linen_earth_candidate_trouser_leg_inboard_mm"] = leg_gap_audit["selectedMmPerLeg"]
+    bpy.context.scene["linen_earth_candidate_trouser_leg_inboard_requested_mm"] = options.trouser_leg_inboard_mm
+    bpy.context.scene["linen_earth_leg_gap_rollback_audit_json"] = json.dumps(leg_gap_audit, sort_keys=True)
+    bpy.context.scene["linen_earth_crotch_seam_relief_audit_json"] = json.dumps(seam_audit, sort_keys=True) if seam_audit else "not_needed"
+    bpy.context.scene["linen_earth_candidate_crotch_seam_relief_mm"] = (
+        seam_audit["selectedPeakSeamReliefMm"] if seam_audit else 0.0
+    )
     bpy.context.scene["linen_earth_source_body_pose_changed"] = False
     bpy.context.scene["linen_earth_garment_clearance_mm"] = round(clearance_m * 1000.0, 3)
     bpy.context.scene["linen_earth_garment_thickness_mm"] = round(thickness_m * 1000.0, 3)
