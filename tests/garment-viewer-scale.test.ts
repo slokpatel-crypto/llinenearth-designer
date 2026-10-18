@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { garmentPanelTextureScale, garmentPanelTexturePreparationKey, prepareGarmentPanelUvTransforms, garmentPanelTextureScaleEvidence, garmentUvRepeatsForUnits, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
+import { applyViewerTextureUvTransform, garmentPanelTextureScale, garmentPanelTexturePreparationKey, prepareGarmentPanelUvTransforms, garmentPanelTextureScaleEvidence, garmentUvRepeatsForUnits, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
 
 
 test("physical-scale resolution never coerces unreviewed JSON strings",()=>{
@@ -243,4 +243,32 @@ test("legacy prototype retains its explicitly approximate bounded scale only",()
   assert.deepEqual(legacy?.[0].scale,{u:80,v:39});
   // Production with declared units must refuse the same clamped repeat.
   assert.equal(prepareGarmentPanelUvTransforms("panel_normalized",[valid]),null);
+});
+
+test("physical colour sampler must apply scale, phase offset, and rotation atomically",()=>{
+  const calls:string[]=[];
+  const transform={scale:{u:14.5,v:39},offset:{u:.25,v:-.1},rotation:Math.PI/4};
+  const sampler={
+    setScale:(v:{u:number;v:number})=>{assert.deepEqual(v,transform.scale);calls.push("scale");},
+    setOffset:(v:{u:number;v:number})=>{assert.deepEqual(v,transform.offset);calls.push("offset");},
+    setRotation:(v:number)=>{assert.equal(v,transform.rotation);calls.push("rotation");},
+  };
+  assert.equal(applyViewerTextureUvTransform({sampler},transform),true);
+  assert.deepEqual(calls,["scale","offset","rotation"]);
+});
+
+test("missing sampler capabilities cannot silently paint the wrong textile period",()=>{
+  const transform={scale:{u:25,v:50},offset:{u:0,v:0},rotation:0};
+  for(const texture of [
+    undefined,null,{}, {sampler:null},
+    {sampler:{setScale:()=>{}}},
+    {sampler:{setOffset:()=>{},setRotation:()=>{}}},
+    {sampler:{setScale:()=>{},setOffset:()=>{}}},
+  ]) assert.equal(applyViewerTextureUvTransform(texture,transform),false);
+  let mutated=false;
+  assert.equal(applyViewerTextureUvTransform({sampler:{
+    setScale:()=>{mutated=true;},
+    setOffset:()=>{},
+  }},transform),false);
+  assert.equal(mutated,false,"No partial sampler writes before capability validation");
 });

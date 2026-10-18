@@ -226,3 +226,29 @@ export function prepareGarmentPanelUvTransforms(
   }
   return plans;
 }
+
+/**
+ * model-viewer exposes UV sampler setters on the loaded texture. A texture
+ * lacking one must NEVER be painted as if a physical textile repeat, grain
+ * offset, or rotation were successfully applied. Check the COMPLETE adapter
+ * before any mutation to prevent a partial scale/phase update.
+ */
+export function applyViewerTextureUvTransform(
+  texture:{
+    sampler?:{
+      setScale?:(scale:{u:number;v:number})=>void;
+      setOffset?:(offset:{u:number;v:number})=>void;
+      setRotation?:(rotation:number)=>void;
+    }|null;
+  }|null|undefined,
+  transform:Pick<GarmentPanelUvPreparation,"scale"|"offset"|"rotation">,
+):boolean {
+  const sampler=texture?.sampler;
+  if(!sampler||typeof sampler.setScale!=="function"
+    ||typeof sampler.setOffset!=="function"
+    ||typeof sampler.setRotation!=="function") return false;
+  sampler.setScale(transform.scale);
+  sampler.setOffset(transform.offset);
+  sampler.setRotation(transform.rotation);
+  return true;
+}

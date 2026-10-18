@@ -6,7 +6,7 @@ import {
   GARMENT_PANEL_SPECS,
   PROTOTYPE_MODEL_ID,
 } from "@/lib/garment-viewer-prototype";
-import { garmentPanelTexturePreparationKey, prepareGarmentPanelUvTransforms, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
+import { applyViewerTextureUvTransform, garmentPanelTexturePreparationKey, prepareGarmentPanelUvTransforms, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
 import { validateGarmentViewerModelContract, validateGarmentViewerModelManifest, type GarmentViewerModelContractResult, type GarmentViewerModelManifest, type GarmentViewerManifestValidation } from "@/lib/garment-viewer-model-contract";
 import { GARMENT_VIEWER_LATENCY_STORAGE_KEY, garmentViewerAssetIdentityKey, type GarmentViewerAssetIdentity } from "@/lib/garment-viewer-readiness";
 import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
@@ -858,9 +858,11 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
             viewer.createTexture!(fabric.image),
             normalUrl ? viewer.createTexture!(normalUrl) : Promise.resolve(null),
           ]);
-          texture.sampler?.setScale?.(scale);
-          texture.sampler?.setOffset?.(offset);
-          texture.sampler?.setRotation?.(rotation);
+          // The base-colour texture MUST support all three UV controls.
+          // An unsupported WebGL adapter cannot silently paint an unscaled
+          // tile while the UI claims a measured real-world fabric repeat.
+          if(!applyViewerTextureUvTransform(texture,{scale,offset,rotation}))
+            throw new Error("3D texture sampler cannot apply measured UV scale/phase");
           normal?.sampler?.setScale?.({u:clamp(scale.u*1.35,.35,100),v:clamp(scale.v*1.35,.35,100)});
           normal?.sampler?.setOffset?.(offset);
           normal?.sampler?.setRotation?.(rotation);
