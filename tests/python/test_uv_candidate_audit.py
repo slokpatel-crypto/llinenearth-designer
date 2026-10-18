@@ -76,6 +76,33 @@ class CandidateUvAuditTests(unittest.TestCase):
                 points[:3], center_xy=(0, 0), radius_m=0, origin_z=0
             )
 
+    def test_ambiguous_seam_evidence_preserves_source_metric_bounds(self):
+        import math
+        angles = [0, .25 * math.pi, .75 * math.pi, -.75 * math.pi]
+        points = [(math.cos(a)*.1, math.sin(a)*.1, z)
+                  for a, z in zip(angles, (.70, .74, .81, .84))]
+        with self.assertRaisesRegex(ValueError, "ambiguous half-cylinder"):
+            audit.cylindrical_metric_face_uv(
+                points, center_xy=(0, 0), radius_m=.1, origin_z=0
+            )
+        evidence = audit.cylindrical_ambiguous_face_diagnostic(
+            points, center_xy=(0, 0)
+        )
+        self.assertGreaterEqual(evidence["angularSpanDegrees"], 180)
+        self.assertEqual(evidence["zRangeMetres"], [.7, .84])
+        self.assertEqual(evidence["vertexCount"], 4)
+        self.assertFalse(evidence["fabricGrainVerified"])
+        self.assertFalse(evidence["productionApproved"])
+
+    def test_ambiguous_face_spatial_evidence_rejects_bad_source_points(self):
+        for points in ([(0, 0, 0)], [(0, 1, 2), (1, 2, 3), (1, 2, float("nan"))],
+                       [(0, 1, 2), (1, 2, 3), (True, 0, 1)],
+                       [(0, 1), (1, 2, 3), (1, 0, 2)]):
+            with self.subTest(points=points), self.assertRaises(ValueError):
+                audit.cylindrical_ambiguous_face_diagnostic(
+                    points, center_xy=(0, 0)
+                )
+
     def test_valid_uv_is_not_a_physical_fabric_certificate(self):
         result = audit.audit_uv_triangles([(XYZ, UV)])
         self.assertTrue(result["candidateUvTopologyPass"])
