@@ -281,31 +281,8 @@ def phase_align_cylindrical_charts(faces, *, radius_m, excluded_face_indices=(),
             adjacency[left_i].append((right_i, turns))
             adjacency[right_i].append((left_i, -turns))
             alignable_edges += 1
-    face_turns = {}
-    phase_cycle_conflicts = 0
-    for root in range(len(faces)):
-        if root in face_turns or root in ignored:
-            continue
-        face_turns[root] = 0
-        queue = deque([root])
-        while queue:
-            face_index = queue.popleft()
-            for neighbor, offset in adjacency[face_index]:
-                expected = face_turns[face_index] + offset
-                if neighbor not in face_turns:
-                    face_turns[neighbor] = expected
-                    queue.append(neighbor)
-                elif face_turns[neighbor] != expected:
-                    phase_cycle_conflicts += 1
-    aligned = [
-        [(vid, (uv[0] + face_turns.get(i, 0) * period, uv[1]))
-         for vid, uv in face]
-        for i, face in enumerate(faces)
-    ]
-    after = audit_shared_uv_edges(aligned, tolerance_m=tolerance_m)
-
     def continuous_source_edges(mesh_faces):
-        """Protect every pre-existing continuous edge, including excluded charts."""
+        """Protect every pre-existing continuous source edge, including exclusions."""
         shared = defaultdict(list)
         for face in mesh_faces:
             for a, b in zip(face, face[1:] + face[:1]):
@@ -317,33 +294,78 @@ def phase_align_cylindrical_charts(faces, *, radius_m, excluded_face_indices=(),
         }
 
     before_continuous = continuous_source_edges(faces)
-    after_continuous = continuous_source_edges(aligned)
-    broken_good_edges = len(before_continuous - after_continuous)
-    # A phase graph may contain inconsistent full-turn cycles; choosing a
-    # spanning tree would silently create a new tear. Equally, aligning a tube
-    # must not tear an already continuous edge on an excluded tangent chart.
-    rejection = (
-        "inconsistent_phase_cycle" if phase_cycle_conflicts else
-        "previously_continuous_edge_broken" if broken_good_edges else
-        "uv_seam_count_increased" if after["unapprovedInteriorUvSeams"] >
-        initial["unapprovedInteriorUvSeams"] else None
-    )
-    if rejection:
-        aligned = [[(vid, tuple(uv)) for vid, uv in face] for face in faces]
-        after = initial
+    # Components are independent only under the *proven integer phase*
+    # adjacency graph. Rejection of one component must never erase a valid,
+    # disjoint correction elsewhere on a sleeve/leg. Each component trial is
+    # committed only after a full, real shared-mesh-edge audit.
+    visited = set()
+    components = []
+    phase_cycle_conflicts = 0
+    for root in range(len(faces)):
+        if root in visited or root in ignored:
+            continue
+        turns = {root: 0}
+        visited.add(root)
+        queue = deque([root])
+        conflicts = 0
+        while queue:
+            face_index = queue.popleft()
+            for neighbor, offset in adjacency[face_index]:
+                expected = turns[face_index] + offset
+                if neighbor not in turns:
+                    turns[neighbor] = expected
+                    visited.add(neighbor)
+                    queue.append(neighbor)
+                elif turns[neighbor] != expected:
+                    conflicts += 1
+        phase_cycle_conflicts += conflicts
+        components.append((turns, conflicts))
+
+    aligned = [[(vid, tuple(uv)) for vid, uv in face] for face in faces]
+    current_audit = initial
+    accepted_shifts = {}
+    accepted_components = 0
+    rejected_components = []
+    protected_edge_regressions = 0
+    for turns, conflicts in components:
+        if conflicts:
+            rejected_components.append("inconsistent_phase_cycle")
+            continue
+        shifted = {index: turn for index, turn in turns.items() if turn != 0}
+        if not shifted:
+            continue
+        tentative = list(aligned)
+        for index, turn in shifted.items():
+            tentative[index] = [
+                (vid, (uv[0] + turn*period, uv[1])) for vid, uv in faces[index]
+            ]
+        trial_audit = audit_shared_uv_edges(tentative, tolerance_m=tolerance_m)
+        torn_protected = len(before_continuous - continuous_source_edges(tentative))
+        protected_edge_regressions += torn_protected
+        if torn_protected:
+            rejected_components.append("previously_continuous_edge_broken")
+        elif trial_audit["unapprovedInteriorUvSeams"] > current_audit["unapprovedInteriorUvSeams"]:
+            rejected_components.append("uv_seam_count_increased")
+        else:
+            aligned = tentative
+            current_audit = trial_audit
+            accepted_shifts.update(shifted)
+            accepted_components += 1
+
     return aligned, {
         "geometryEstimatedCircumferenceMm": round(period * 1000, 5),
-        "phaseShiftedFaces": 0 if rejection else sum(
-            1 for value in face_turns.values() if value != 0
-        ),
+        "phaseShiftedFaces": len(accepted_shifts),
         "phaseAlignableInteriorEdges": alignable_edges,
         "phaseCycleConflicts": phase_cycle_conflicts,
-        "phaseCandidateRolledBack": rejection is not None,
-        "phaseRollbackReason": rejection,
-        "wouldBreakPreviouslyContinuousSourceEdges": broken_good_edges,
+        "phaseCandidateRolledBack": bool(rejected_components),
+        "phaseRollbackReason": rejected_components[0] if rejected_components else None,
+        "phaseRejectedComponents": len(rejected_components),
+        "phaseAcceptedComponents": accepted_components,
+        "phaseRollbackReasons": rejected_components[:12],
+        "wouldBreakPreviouslyContinuousSourceEdges": protected_edge_regressions,
         "excludedUnapprovedFaceCharts": len(ignored),
         "unapprovedInteriorUvSeamsBefore": initial["unapprovedInteriorUvSeams"],
-        "unapprovedInteriorUvSeamsAfter": after["unapprovedInteriorUvSeams"],
+        "unapprovedInteriorUvSeamsAfter": current_audit["unapprovedInteriorUvSeams"],
         "supplierRepeatVerified": False,
         "supplierGrainVerified": False,
         "productionApproved": False,
