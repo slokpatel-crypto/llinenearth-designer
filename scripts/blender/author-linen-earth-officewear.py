@@ -503,12 +503,45 @@ def restore_collision_free_leg_gap(body, body_floor_z, body_height, requested_mm
             print("SOURCE_FIT_LEG_GAP_COLLISION_ROLLBACK=" + json.dumps(evidence, sort_keys=True))
             return evidence
 
-    # A fully reverted 0-mm trial may still overlap due to a bad source shell.
-    # Do not report a nominal gap improvement or export a broken replacement.
-    raise RuntimeError(
-        "No zero-contact garment leg-gap candidate, even at 0 mm. "
-        "Real BVH trials: " + json.dumps(attempts, sort_keys=True)
+    # Even the original post-fit candidate may have a colliding crotch seam.
+    # Preserve this rejected scene for FOUR-angle diagnostic rendering, but
+    # preflight must still fail on the actual nonzero leg-to-leg BVH pairs.
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    overlaps = _world_mesh_bvh(legs[0], depsgraph).overlap(
+        _world_mesh_bvh(legs[1], depsgraph)
     )
+    face_height_bins = {str(index): 0 for index in range(10)}
+    approximate_face_centres = []
+    for left_index, right_index in overlaps:
+        if left_index >= len(legs[0].data.polygons) or right_index >= len(legs[1].data.polygons):
+            continue
+        left_center = legs[0].matrix_world @ legs[0].data.polygons[left_index].center
+        right_center = legs[1].matrix_world @ legs[1].data.polygons[right_index].center
+        centre = (left_center + right_center) * 0.5
+        index = max(0, min(9, int(10 * (centre.z - body_floor_z) / body_height)))
+        face_height_bins[str(index)] += 1
+        if len(approximate_face_centres) < 16:
+            approximate_face_centres.append(
+                [round(centre.x, 4), round(centre.y, 4), round(centre.z, 4)]
+            )
+    evidence = {
+        "requestedMmPerLeg": requested_mm,
+        "selectedMmPerLeg": 0.0,
+        "trials": attempts,
+        "nativeWorldSpaceCollisionFree": False,
+        "unresolvedLegToLegPairs": attempts[-1]["legToLegIntersectionPairs"],
+        "contactFaceCentroidHeightDeciles": face_height_bins,
+        "approximateContactFaceCentresMetres": approximate_face_centres,
+        "diagnosticOnly": True,
+        "photographicPoseApproved": False,
+        "tailorFitApproved": False,
+        "productionApproved": False,
+    }
+    for obj in legs:
+        obj["linen_earth_trouser_leg_inboard_candidate_mm"] = 0.0
+        obj["linen_earth_leg_gap_rollback_audit_json"] = json.dumps(evidence, sort_keys=True)
+    print("SOURCE_FIT_LEG_GAP_REJECTED_DIAGNOSTIC=" + json.dumps(evidence, sort_keys=True))
+    return evidence
 
 
 def planar_grain_uv(obj):
@@ -737,8 +770,14 @@ def main():
         body, min_z, height, options.trouser_leg_inboard_mm
     )
     for name in ("TrouserLegLFabric", "TrouserLegRFabric"):
-        fit_stage_report[name]["postGapRollbackBodyPairs"] = 0
-        fit_stage_report[name]["postGapRollbackLegPairs"] = 0
+        fit_stage_report[name]["postGapRollbackBodyPairs"] = (
+            leg_gap_audit["trials"][-1]["leftBodyIntersectionPairs"]
+            if name == "TrouserLegLFabric"
+            else leg_gap_audit["trials"][-1]["rightBodyIntersectionPairs"]
+        )
+        fit_stage_report[name]["postGapRollbackLegPairs"] = (
+            leg_gap_audit["trials"][-1]["legToLegIntersectionPairs"]
+        )
         fit_stage_report[name]["postGapRollbackSelectedMm"] = leg_gap_audit["selectedMmPerLeg"]
     for obj in authored:
         planar_grain_uv(obj)
