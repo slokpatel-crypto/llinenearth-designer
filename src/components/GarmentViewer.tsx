@@ -6,7 +6,7 @@ import {
   GARMENT_PANEL_SPECS,
   PROTOTYPE_MODEL_ID,
 } from "@/lib/garment-viewer-prototype";
-import { applyViewerTextureUvTransform, garmentPanelTexturePreparationKey, prepareGarmentPanelUvTransforms, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
+import { canPaintGarmentPanelMaterial, applyViewerTextureUvTransform, garmentPanelTexturePreparationKey, prepareGarmentPanelUvTransforms, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
 import { validateGarmentViewerModelContract, validateGarmentViewerModelManifest, type GarmentViewerModelContractResult, type GarmentViewerModelManifest, type GarmentViewerManifestValidation } from "@/lib/garment-viewer-model-contract";
 import { GARMENT_VIEWER_LATENCY_STORAGE_KEY, garmentViewerAssetIdentityKey, type GarmentViewerAssetIdentity } from "@/lib/garment-viewer-readiness";
 import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
@@ -879,8 +879,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         // One missing material would otherwise be silently skipped while the
         // other five panels and "success" state were committed. Fail the entire
         // pass before mutating ANY visible fabric or material cache.
-        if(materials.some((material)=>!material))
-          throw new Error("Required garment panel did not hydrate");
+        if(materials.some((material)=>!canPaintGarmentPanelMaterial(material)))
+          throw new Error("Required garment panel is missing a paintable texture slot");
         preparedTextureRef.current=new Map(prepared.map((entry)=>[
           entry.panel.material,
           {texture:entry.texture,normal:entry.normal,garment:entry.panel.garment,key:entry.key},
