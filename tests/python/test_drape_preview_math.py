@@ -51,6 +51,20 @@ class CandidateDrapeProfileTests(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         module.candidate_drape_offset_mm("ShirtTorsoFabric", *values)
 
+
+    def test_mirrored_panel_centerline_is_smooth(self):
+        # A folded mirrored surface must not introduce a cusp on its centreline.
+        # This checks the numeric one-sided derivative at a small step.
+        h = 0.0001
+        for panel in ("ShirtSleeveLFabric", "ShirtSleeveRFabric",
+                      "TrouserLegLFabric", "TrouserLegRFabric"):
+            left = module.candidate_drape_offset_mm(panel, -h, 0.43)
+            mid = module.candidate_drape_offset_mm(panel, 0, 0.43)
+            right = module.candidate_drape_offset_mm(panel, h, 0.43)
+            self.assertAlmostEqual(left, right, places=10)
+            self.assertLess(abs((right - mid) / h), 0.01)
+            self.assertLess(abs((mid - left) / h), 0.01)
+
     def test_mirrored_pairs_use_identical_candidate_relief(self):
         for a,b in (("ShirtSleeveLFabric","ShirtSleeveRFabric"),("TrouserLegLFabric","TrouserLegRFabric")):
             for x in (-0.8,-0.2,0.0,0.4,0.8):
