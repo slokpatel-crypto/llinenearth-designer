@@ -212,3 +212,24 @@ test("invalid garment-panel JSON entries cannot pass the physical-scale manifest
   },"LE-OFFICEWEAR-V1");
   assert.equal(valid.valid,true);
 });
+
+test("model source verification calendar date must be real, not merely YYYY-MM-DD shaped",()=>{
+  const panels=Object.fromEntries(REQUIRED_GARMENT_VIEWER_MATERIALS.map((name)=>[name,{widthMm:300,heightMm:600}]));
+  const base={
+    version:GARMENT_VIEWER_CONTRACT_VERSION,
+    modelId:"LE-OFFICEWEAR-V1",
+    referenceHeightMm:1727,
+    modelIdentity:MODEL_IDENTITY,
+    panels,
+  };
+  const checked=(verifiedAt:string)=>validateGarmentViewerModelManifest({
+    ...base,source:{name:"Verified source",license:"CC0",verifiedAt},
+  },"LE-OFFICEWEAR-V1");
+  assert.equal(checked("2024-02-29").valid,true);
+  for(const invalidDate of ["2026-02-29","2026-02-31","2026-04-31","2026-13-01","2026-00-01","2026-1-01","not verified"]){
+    const result=checked(invalidDate);
+    assert.equal(result.valid,false,invalidDate);
+    assert.equal(result.sourceReady,false,invalidDate);
+    assert(result.reasons.some(reason=>reason.includes("source provenance")),invalidDate);
+  }
+});
