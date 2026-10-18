@@ -23,7 +23,7 @@ from mathutils.bvhtree import BVHTree
 # Blender. It must not be mistaken for a material-calibrated cloth simulation.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from drape_preview_math import MAX_PREVIEW_RELIEF_MM, candidate_drape_offset_mm
-from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical_metric_face_uv, cylindrical_ambiguous_face_diagnostic, metric_tangent_chart_uv, audit_shared_uv_edges
+from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical_metric_face_uv, cylindrical_ambiguous_face_diagnostic, metric_tangent_chart_uv, audit_shared_uv_edges, phase_align_cylindrical_charts
 from region_islands import keep_ankle_connected_faces
 from sleeve_stance_math import MAX_INBOARD_MM, candidate_sleeve_inboard_mm
 from leg_stance_math import MAX_INBOARD_MM as MAX_LEG_INBOARD_MM, candidate_leg_inboard_mm, candidate_inner_seam_relief_mm
@@ -803,6 +803,7 @@ def planar_grain_uv(obj):
             raise RuntimeError(f"Degenerate source tube for candidate UV: {obj.name}")
         fallback_faces = 0
         fallback_receipts = []
+        unapproved_tangent_indices = []
         for polygon in mesh.polygons:
             loops = tuple(polygon.loop_indices)
             xyz = [
@@ -823,6 +824,7 @@ def planar_grain_uv(obj):
                 if "ambiguous half-cylinder seam" not in str(error):
                     raise
                 fallback_faces += 1
+                unapproved_tangent_indices.append(polygon.index)
                 receipt = cylindrical_ambiguous_face_diagnostic(
                     xyz, center_xy=(cx, cy)
                 )
@@ -832,6 +834,27 @@ def planar_grain_uv(obj):
                 uv_points = metric_tangent_chart_uv(xyz)
             for i, uv_point in zip(loops, uv_points):
                 uv_layer.data[i].uv = uv_point
+        # Adjacent cylindrical faces can differ by an arbitrary full-turn U
+        # origin. Align ONLY numerically exact circumference shifts along
+        # genuine shared source edges. Tangent fallback charts are excluded.
+        # Remaining seam breaks stay visible and release-blocking.
+        chart_faces = [
+            [
+                (mesh.loops[i].vertex_index, tuple(uv_layer.data[i].uv))
+                for i in polygon.loop_indices
+            ]
+            for polygon in mesh.polygons
+        ]
+        aligned_faces, phase_report = phase_align_cylindrical_charts(
+            chart_faces, radius_m=radius_m,
+            excluded_face_indices=unapproved_tangent_indices,
+        )
+        for polygon, face in zip(mesh.polygons, aligned_faces):
+            for loop_index, (_, uv_xy) in zip(polygon.loop_indices, face):
+                uv_layer.data[loop_index].uv = uv_xy
+        obj["linen_earth_uv_phase_alignment_evidence_json"] = json.dumps(
+            phase_report, sort_keys=True
+        )
         obj["linen_earth_uv_geometry_radius_estimate_mm"] = round(radius_m * 1000, 3)
         obj["linen_earth_uv_mixed_projection_fallback_faces"] = fallback_faces
         obj["linen_earth_uv_unapproved_local_tangent_chart_faces"] = fallback_faces
