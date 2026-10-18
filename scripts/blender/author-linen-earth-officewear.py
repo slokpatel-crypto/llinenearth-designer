@@ -912,7 +912,9 @@ def audit_authored_panel_uv(obj):
     for tri in mesh.loop_triangles:
         xyz = tuple(tuple(mesh.vertices[mesh.loops[i].vertex_index].co) for i in tri.loops)
         uv_coords = tuple(tuple(uv.data[i].uv) for i in tri.loops)
-        triangles.append((xyz, uv_coords))
+        triangles.append((xyz, uv_coords, tri.polygon_index))
+    # Source polygon IDs survive stable evaluated triangulation. Keep a
+    # bounded face-level hotspot inventory for targeted unapproved chart work.
     result = audit_uv_triangles(triangles)
     faces = [
         [
