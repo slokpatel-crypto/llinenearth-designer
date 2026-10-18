@@ -303,11 +303,44 @@ def phase_align_cylindrical_charts(faces, *, radius_m, excluded_face_indices=(),
         for i, face in enumerate(faces)
     ]
     after = audit_shared_uv_edges(aligned, tolerance_m=tolerance_m)
+
+    def continuous_source_edges(mesh_faces):
+        """Protect every pre-existing continuous edge, including excluded charts."""
+        shared = defaultdict(list)
+        for face in mesh_faces:
+            for a, b in zip(face, face[1:] + face[:1]):
+                key = (min(a[0], b[0]), max(a[0], b[0]))
+                shared[key].append({a[0]: a[1], b[0]: b[1]})
+        return {
+            edge for edge, uses in shared.items() if len(uses) == 2
+            and max(math.dist(uses[0][vid], uses[1][vid]) for vid in edge) <= tolerance_m
+        }
+
+    before_continuous = continuous_source_edges(faces)
+    after_continuous = continuous_source_edges(aligned)
+    broken_good_edges = len(before_continuous - after_continuous)
+    # A phase graph may contain inconsistent full-turn cycles; choosing a
+    # spanning tree would silently create a new tear. Equally, aligning a tube
+    # must not tear an already continuous edge on an excluded tangent chart.
+    rejection = (
+        "inconsistent_phase_cycle" if phase_cycle_conflicts else
+        "previously_continuous_edge_broken" if broken_good_edges else
+        "uv_seam_count_increased" if after["unapprovedInteriorUvSeams"] >
+        initial["unapprovedInteriorUvSeams"] else None
+    )
+    if rejection:
+        aligned = [[(vid, tuple(uv)) for vid, uv in face] for face in faces]
+        after = initial
     return aligned, {
         "geometryEstimatedCircumferenceMm": round(period * 1000, 5),
-        "phaseShiftedFaces": sum(1 for value in face_turns.values() if value != 0),
+        "phaseShiftedFaces": 0 if rejection else sum(
+            1 for value in face_turns.values() if value != 0
+        ),
         "phaseAlignableInteriorEdges": alignable_edges,
         "phaseCycleConflicts": phase_cycle_conflicts,
+        "phaseCandidateRolledBack": rejection is not None,
+        "phaseRollbackReason": rejection,
+        "wouldBreakPreviouslyContinuousSourceEdges": broken_good_edges,
         "excludedUnapprovedFaceCharts": len(ignored),
         "unapprovedInteriorUvSeamsBefore": initial["unapprovedInteriorUvSeams"],
         "unapprovedInteriorUvSeamsAfter": after["unapprovedInteriorUvSeams"],
@@ -485,6 +518,7 @@ def classify_unapproved_uv_seams(faces, *, radius_m, tangent_face_indices=(),
         "nonPeriodicUvTear": 0,
     }
     sample = []
+    classified_source_edges = []
     for edge, uses in edge_uses.items():
         if len(uses) != 2:
             continue
@@ -507,6 +541,7 @@ def classify_unapproved_uv_seams(faces, *, radius_m, tangent_face_indices=(),
         else:
             classification = "nonPeriodicUvTear"
         counts[classification] += 1
+        classified_source_edges.append((edge, classification))
         if len(sample) < sample_limit:
             sample.append({
                 "sourceEdgeVertices": list(edge),
@@ -517,12 +552,63 @@ def classify_unapproved_uv_seams(faces, *, radius_m, tangent_face_indices=(),
             })
     if sum(counts.values()) != topology["unapprovedInteriorUvSeams"]:
         raise RuntimeError("UV cut classification lost a genuine shared-edge discontinuity")
+
+    # Real cut-placement work needs the entire connected edge topology rather
+    # than the first few sample tears. Connected components are computed on
+    # SOURCE VERTEX IDs, separately by failure class. These are diagnostic
+    # chains only: a branching tear is not an approved garment seam.
+    class_groups = {name: 0 for name in counts}
+    chain_shape_counts = {"openPath": 0, "closedLoopCandidate": 0, "branched": 0}
+    chain_samples = []
+    for name in counts:
+        same_class = sorted(edge for edge, classification in classified_source_edges
+                            if classification == name)
+        incident = defaultdict(set)
+        for edge in same_class:
+            for vertex in edge:
+                incident[vertex].add(edge)
+        remaining = set(same_class)
+        while remaining:
+            seed = min(remaining)
+            component, pending = set(), [seed]
+            while pending:
+                edge = pending.pop()
+                if edge not in remaining:
+                    continue
+                remaining.remove(edge)
+                component.add(edge)
+                for vertex in edge:
+                    pending.extend(sorted(incident[vertex] & remaining))
+            degree = defaultdict(int)
+            for edge in component:
+                for vertex in edge:
+                    degree[vertex] += 1
+            ends = sorted(vertex for vertex, value in degree.items() if value == 1)
+            forks = sorted(vertex for vertex, value in degree.items() if value > 2)
+            shape = ("branched" if forks or len(ends) not in (0, 2)
+                     else "closedLoopCandidate" if not ends else "openPath")
+            chain_shape_counts[shape] += 1
+            class_groups[name] += 1
+            if len(chain_samples) < sample_limit:
+                chain_samples.append({
+                    "classification": name,
+                    "edgeCount": len(component),
+                    "sourceVertexCount": len(degree),
+                    "openEndSourceVertices": ends[:sample_limit],
+                    "forkSourceVertices": forks[:sample_limit],
+                    "chainShape": shape,
+                    "sourceEdgeSamples": [list(edge) for edge in sorted(component)[:sample_limit]],
+                    "seamPlacementApproved": False,
+                })
     return {
         "unapprovedInteriorUvSeams": topology["unapprovedInteriorUvSeams"],
         "geometryEstimatedPeriodMm": round(period*1000, 5),
         "nearUnapprovedTangentChart": counts["nearUnapprovedTangentChart"],
         "exactFullTurnCutCandidates": counts["exactFullTurnCutCandidate"],
         "nonPeriodicUvTears": counts["nonPeriodicUvTear"],
+        "sourceSeamGroupCountByClass": class_groups,
+        "sourceSeamChainShapes": chain_shape_counts,
+        "sourceSeamChainSamples": chain_samples,
         "unapprovedSourceEdgeSamples": sample,
         "sourceNonManifoldEdges": topology["nonManifoldEdges"],
         "cutPlacementApproved": False,
