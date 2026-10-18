@@ -317,6 +317,135 @@ def phase_align_cylindrical_charts(faces, *, radius_m, excluded_face_indices=(),
     }
 
 
+
+def align_metric_tangent_charts(faces, *, tangent_face_indices, tolerance_m=1e-5,
+                                max_rotation_degrees=8.0):
+    """Conservatively join local metric charts without changing texture scale.
+
+    An ambiguous cylinder-axis face receives its own metre-scale tangent chart.
+    Only a rigid 2D rotation/translation may attach it to an ALREADY anchored
+    neighbour, and only when both actual shared-edge endpoints coincide and
+    no previously continuous edge is broken. An eight-degree rotation limit
+    avoids silently rewriting the intended vertical grain. This is a UV
+    continuity experiment, never permission to label textile grain verified.
+    """
+    import collections
+
+    before = audit_shared_uv_edges(faces, tolerance_m=tolerance_m)
+    if (isinstance(max_rotation_degrees, (str, bytes, bool))
+            or not isinstance(max_rotation_degrees, (int, float))
+            or not math.isfinite(max_rotation_degrees)
+            or not 0 <= max_rotation_degrees <= 15):
+        raise ValueError("Metric tangent chart rotation must be finite in [0,15] degrees")
+    try:
+        tangent_indices = set(tangent_face_indices)
+    except TypeError as error:
+        raise ValueError("Metric tangent indices must be an iterable of polygon indices") from error
+    if any(isinstance(i, bool) or not isinstance(i, int) or i < 0 or i >= len(faces)
+           for i in tangent_indices):
+        raise ValueError("Metric tangent indices must refer to existing polygons")
+    working = [[(vid, (float(uv[0]), float(uv[1]))) for vid, uv in face]
+               for face in faces]
+
+    def report(aligned, rejected_topology=False):
+        after = audit_shared_uv_edges(working, tolerance_m=tolerance_m)
+        return working, {
+            "originalUnapprovedInteriorUvSeams": before["unapprovedInteriorUvSeams"],
+            "remainingUnapprovedInteriorUvSeams": after["unapprovedInteriorUvSeams"],
+            "tangentChartFaces": len(tangent_indices),
+            "rigidlyAlignedTangentChartFaces": len(aligned),
+            "alignedSourcePolygonIndices": sorted(aligned),
+            "unresolvedTangentChartFaces": len(tangent_indices - aligned),
+            "nonManifoldTopologyRejected": rejected_topology,
+            "supplierRepeatVerified": False,
+            "supplierGrainVerified": False,
+            "seamLayoutApproved": False,
+            "productionApproved": False,
+        }
+
+    # Never edit charts on ambiguous edge adjacency. Genuine nonmanifold
+    # geometry must be repaired upstream instead of masked by UV changes.
+    if before["nonManifoldEdges"]:
+        return report(set(), rejected_topology=True)
+
+    edge_uses = collections.defaultdict(list)
+    for i, face in enumerate(working):
+        for (a, _), (b, _) in zip(face, face[1:] + face[:1]):
+            edge_uses[(min(a, b), max(a, b))].append(i)
+    neighbours = collections.defaultdict(list)
+    for edge, indices in edge_uses.items():
+        if len(indices) == 2:
+            a, b = indices
+            neighbours[a].append((b, edge))
+            neighbours[b].append((a, edge))
+
+    def corners(index):
+        return dict(working[index])
+
+    def edge_jump(index, other, edge, overrides=None):
+        mine = overrides if overrides is not None else corners(index)
+        theirs = corners(other)
+        return max(math.dist(mine[vertex], theirs[vertex]) for vertex in edge)
+
+    aligned = set()
+    pending = set(tangent_indices)
+    # Each iteration locks at most one face to the already-anchored chart
+    # network. No metric UV scale change, reflection or unconstrained warp.
+    while pending:
+        best = None
+        for index in sorted(pending):
+            original = corners(index)
+            for neighbour, edge in neighbours[index]:
+                if neighbour in pending:
+                    continue
+                anchor = corners(neighbour)
+                a, b = edge
+                sx, sy = original[b][0]-original[a][0], original[b][1]-original[a][1]
+                tx, ty = anchor[b][0]-anchor[a][0], anchor[b][1]-anchor[a][1]
+                src_length, target_length = math.hypot(sx, sy), math.hypot(tx, ty)
+                if (src_length <= tolerance_m or target_length <= tolerance_m
+                        or abs(src_length-target_length) > tolerance_m):
+                    continue
+                theta = math.atan2(sx*ty-sy*tx, sx*tx+sy*ty)
+                degrees = abs(math.degrees(theta))
+                if degrees > max_rotation_degrees:
+                    continue
+                cos_t, sin_t = math.cos(theta), math.sin(theta)
+                rotated_a = (cos_t*original[a][0]-sin_t*original[a][1],
+                             sin_t*original[a][0]+cos_t*original[a][1])
+                offset = (anchor[a][0]-rotated_a[0], anchor[a][1]-rotated_a[1])
+                changed = {
+                    vid: (cos_t*uv[0]-sin_t*uv[1]+offset[0],
+                          sin_t*uv[0]+cos_t*uv[1]+offset[1])
+                    for vid, uv in original.items()
+                }
+                if edge_jump(index, neighbour, edge, changed) > tolerance_m:
+                    continue
+                before_bad = after_bad = 0
+                broken_good_edge = False
+                for other, shared_edge in neighbours[index]:
+                    previous = edge_jump(index, other, shared_edge)
+                    resulting = edge_jump(index, other, shared_edge, changed)
+                    if previous <= tolerance_m and resulting > tolerance_m:
+                        broken_good_edge = True
+                        break
+                    before_bad += previous > tolerance_m
+                    after_bad += resulting > tolerance_m
+                gain = before_bad - after_bad
+                if broken_good_edge or gain <= 0:
+                    continue
+                score = (gain, -degrees, -index, -neighbour)
+                if best is None or score > best[0]:
+                    best = (score, index, changed)
+        if best is None:
+            break
+        _, index, changed = best
+        working[index] = [(vid, changed[vid]) for vid, _ in working[index]]
+        pending.remove(index)
+        aligned.add(index)
+    return report(aligned)
+
+
 def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-12):
     """Triangles: iterable of (three XYZ triples, three UV pairs). Fail closed."""
     if not (math.isfinite(min_uv_area) and min_uv_area > 0
