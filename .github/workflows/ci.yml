@@ -26,6 +26,8 @@ jobs:
       - run: npm run quality
       - name: Verify Blender helper syntax without requiring a render farm
         run: python3 -m py_compile scripts/blender/*.py
+      - name: Guard Blender candidate authoring without native assets
+        run: python3 -m unittest discover -s tests -p 'test_blender_authoring_safety.py' -v
       - run: npm test
       - run: npm run eval:engine
       - run: npm run eval:preview-performance
