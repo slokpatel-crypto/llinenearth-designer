@@ -249,12 +249,24 @@ def viewer_manifest_path(output_path):
 
 
 def write_viewer_manifest(output_path, height, source, model_identity, panel_spec):
+    # Source-authored metric UVs MUST be declared to the web viewer; otherwise
+    # fabric repeat is double-scaled by old panel-width multiplication.
+    # Untagged legacy scenes keep the pre-existing normalized-panel behavior.
+    uv_units = str(bpy.context.scene.get("linen_earth_uv_coordinate_units", "normalized_panel"))
+    if uv_units not in ("normalized_panel", "mesh_metres"):
+        raise RuntimeError("Unknown UV coordinate units: cannot safely export model texture scale.")
+    if uv_units == "mesh_metres":
+        for name in GARMENT_OBJECTS:
+            panel = bpy.data.objects.get(name)
+            if panel is None or panel.get("linen_earth_uv_coordinate_units") != "mesh_metres":
+                raise RuntimeError(f"{name} lacks matching metre UV provenance; export blocked.")
     payload = {
         "version": CONTRACT_VERSION,
         "modelId": MODEL_ID,
         "referenceHeightMm": round(height * 1000),
         "modelIdentity": model_identity,
         "source": source,
+        "uvCoordinateUnits": uv_units,
         "panels": panel_spec["panels"],
     }
     if panel_spec.get("cameraOrbits"):

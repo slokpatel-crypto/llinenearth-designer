@@ -48,8 +48,14 @@ try{
     manifestPath,
     modelId,
     ready,
-    mode:candidateMode ? "engineering_candidate" : "production_approval",
-    productionApproved:!candidateMode&&ready,
+    mode:candidateMode ? "engineering_candidate" : "structural_export_check",
+    // A GLB with a valid manifest is structurally inspectable, NOT approved
+    // for customer use. Only independent photo parity, cloth/UV, supplier
+    // measurements, tailor review and owner release can supply that evidence.
+    productionApproved:false,
+    ownerPhotoParityApproved:false,
+    tailorFitApproved:false,
+    supplierPhysicalRepeatVerified:false,
     model,
     manifest,
   },null,2));

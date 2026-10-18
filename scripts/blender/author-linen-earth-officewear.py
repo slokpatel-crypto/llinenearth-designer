@@ -23,6 +23,10 @@ from mathutils.bvhtree import BVHTree
 # Blender. It must not be mistaken for a material-calibrated cloth simulation.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from drape_preview_math import MAX_PREVIEW_RELIEF_MM, candidate_drape_offset_mm
+from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical_metric_face_uv
+from region_islands import keep_ankle_connected_faces
+from sleeve_stance_math import MAX_INBOARD_MM, candidate_sleeve_inboard_mm
+from leg_stance_math import MAX_INBOARD_MM as MAX_LEG_INBOARD_MM, candidate_leg_inboard_mm
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -55,6 +59,10 @@ def cli_args():
                         help="Unverified waistband-over-tuck layer separation, 0..7 mm")
     parser.add_argument("--candidate-relief-mm", type=float, default=3.0,
                         help="0 for a clean shell; 0..6 mm art-directed visual microfolds, not physical drape")
+    parser.add_argument("--sleeve-cuff-inboard-mm", type=float, default=0.0,
+                        help="OFF by default: native 20mm experiment intersected locked body; 0..22mm/side for diagnostic only")
+    parser.add_argument("--trouser-leg-inboard-mm", type=float, default=3.0,
+                        help="Conservative cloth-only leg-gap trial 3mm per leg; 7mm trial intersected left/right cloth")
     return parser.parse_args(argv)
 
 
@@ -86,19 +94,33 @@ def selected_shell(body, name, predicate):
     matrix = body.matrix_world
     inverse = matrix.inverted()
     selected = []
-    used = set()
+    selected_z = []
 
     for polygon in source_mesh.polygons:
         world_center = matrix @ polygon.center
         if not predicate(world_center):
             continue
-        indices = tuple(polygon.vertices)
-        selected.append(indices)
-        used.update(indices)
+        selected.append(tuple(polygon.vertices))
+        selected_z.append(world_center.z)
 
     if not selected:
         raise RuntimeError(f"No body surface polygons matched garment region: {name}")
 
+    excluded_islands = 0
+    if name.startswith("TrouserLeg"):
+        frame = body_frame(body)
+        try:
+            retained = keep_ankle_connected_faces(
+                selected, selected_z,
+                ankle_z_max=frame["minZ"] + frame["height"] * 0.16,
+                thigh_z_min=frame["minZ"] + frame["height"] * 0.475,
+            )
+        except ValueError as error:
+            raise RuntimeError(f"Unsafe trouser-leg source segmentation for {name}: {error}") from error
+        excluded_islands = len(selected) - len(retained)
+        selected = [selected[index] for index in retained]
+
+    used = {index for face in selected for index in face}
     ordered = sorted(used)
     remap = {old: index for index, old in enumerate(ordered)}
     vertices = [matrix @ source_mesh.vertices[index].co for index in ordered]
@@ -118,6 +140,9 @@ def selected_shell(body, name, predicate):
         collection = bpy.data.collections.new(EXPORT_COLLECTION)
         bpy.context.scene.collection.children.link(collection)
     collection.objects.link(obj)
+    if name.startswith("TrouserLeg"):
+        obj["linen_earth_excluded_disconnected_leg_faces"] = excluded_islands
+        obj["linen_earth_leg_source_island_rule"] = "shared_edges_ankle_to_thigh_candidate_only"
 
     material = bpy.data.materials.get(name) or bpy.data.materials.new(name=name)
     material.use_nodes = True
@@ -342,7 +367,7 @@ def repair_body_intersections(body, shell, max_passes):
     }
 
 
-def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm, body_floor_z, body_height, surface_refine, repair_passes, hem_taper_fraction):
+def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm, body_floor_z, body_height, surface_refine, repair_passes, hem_taper_fraction, sleeve_cuff_inboard_mm, trouser_leg_inboard_mm):
     phase_pairs = {"source_surface": source_fit_collision_pairs(body, obj)}
     if surface_refine:
         # SIMPLE subdivides existing source faces without moving the body-derived
@@ -371,9 +396,34 @@ def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm, body_floor_
     shoulder_guide = None
     if panel == "ShirtTorsoFabric":
         shoulder_guide = fit_shirt_shoulder_to_locked_guide(obj, body_floor_z, body_height)
+    if panel.startswith("ShirtSleeve") and sleeve_cuff_inboard_mm > 0:
+        # Correct only the experimental garment silhouette, not skin, hands or
+        # original reference geometry. A true arm pose change needs model/owner
+        # signoff. Native BVH + cuff silhouette gates still apply unchanged.
+        for vertex in obj.data.vertices:
+            ratio = (vertex.co.z - body_floor_z) / body_height
+            dx_mm = candidate_sleeve_inboard_mm(panel, ratio, sleeve_cuff_inboard_mm)
+            vertex.co.x += dx_mm / 1000.0
+        obj.data.update()
+        bpy.context.view_layer.update()
+        phase_pairs["candidate_inboard_cuff"] = source_fit_collision_pairs(body, obj)
+    obj["linen_earth_sleeve_cuff_inboard_candidate_mm"] = (
+        sleeve_cuff_inboard_mm if panel.startswith("ShirtSleeve") else 0.0
+    )
     hem_taper_mm = (taper_candidate_trouser_hem(obj, body_floor_z, body_height, hem_taper_fraction)
                     if panel.startswith("TrouserLeg") else 0.0)
     obj["linen_earth_hem_taper_candidate_max_move_mm"] = hem_taper_mm
+    if panel.startswith("TrouserLeg") and trouser_leg_inboard_mm > 0:
+        for vertex in obj.data.vertices:
+            ratio = (vertex.co.z - body_floor_z) / body_height
+            dx_mm = candidate_leg_inboard_mm(panel, ratio, trouser_leg_inboard_mm)
+            vertex.co.x += dx_mm / 1000.0
+        obj.data.update()
+        bpy.context.view_layer.update()
+        phase_pairs["candidate_leg_inboard"] = source_fit_collision_pairs(body, obj)
+    obj["linen_earth_trouser_leg_inboard_candidate_mm"] = (
+        trouser_leg_inboard_mm if panel.startswith("TrouserLeg") else 0.0
+    )
     max_relief = sculpt_unverified_preview_relief(obj, panel, relief_mm)
     phase_pairs["candidate_relief"] = source_fit_collision_pairs(body, obj)
 
@@ -391,23 +441,97 @@ def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm, body_floor_
 
 
 def planar_grain_uv(obj):
+    """Candidate X/Z UV uses mesh metres, not an arbitrary 0..1 per panel.
+
+    A stripe must not double in width merely because the sleeve shell is
+    narrower than the torso. The geometric planar projection is still NOT
+    cylindrical grain calibration, fabric-mill repeat or approved drape.
+    """
     mesh = obj.data
+    if not mesh.vertices:
+        raise RuntimeError(f"Cannot UV-map an empty garment shell: {obj.name}")
     if not mesh.uv_layers:
         uv_layer = mesh.uv_layers.new(name="UVMap")
     else:
         uv_layer = mesh.uv_layers.active
-    xs = [vertex.co.x for vertex in mesh.vertices]
-    zs = [vertex.co.z for vertex in mesh.vertices]
-    min_x, max_x = min(xs), max(xs)
-    min_z, max_z = min(zs), max(zs)
-    span_x = max(max_x - min_x, 1e-6)
-    span_z = max(max_z - min_z, 1e-6)
-    for polygon in mesh.polygons:
-        for loop_index in polygon.loop_indices:
-            vertex = mesh.vertices[mesh.loops[loop_index].vertex_index]
-            u = (vertex.co.x - min_x) / span_x
-            v = (vertex.co.z - min_z) / span_z
-            uv_layer.data[loop_index].uv = (u, v)
+    min_x = min(vertex.co.x for vertex in mesh.vertices)
+    min_z = min(vertex.co.z for vertex in mesh.vertices)
+    tubular = "Sleeve" in obj.name or "TrouserLeg" in obj.name
+    if tubular:
+        # Sleeve/leg are narrow vertical tubes. XY-angle * metre-radius avoids
+        # flattening the back/sides to almost zero U density in an XZ projection.
+        # Radius is a geometry ESTIMATE: never convert to measured textile scale.
+        min_y = min(vertex.co.y for vertex in mesh.vertices)
+        max_y = max(vertex.co.y for vertex in mesh.vertices)
+        max_x = max(vertex.co.x for vertex in mesh.vertices)
+        cx, cy = (min_x + max_x) * 0.5, (min_y + max_y) * 0.5
+        radial_distances = sorted(
+            math.hypot(vertex.co.x - cx, vertex.co.y - cy) for vertex in mesh.vertices
+        )
+        radius_m = radial_distances[len(radial_distances) // 2]
+        if radius_m <= 0.015:
+            raise RuntimeError(f"Degenerate source tube for candidate UV: {obj.name}")
+        fallback_faces = 0
+        for polygon in mesh.polygons:
+            loops = tuple(polygon.loop_indices)
+            xyz = [
+                (mesh.vertices[mesh.loops[i].vertex_index].co.x,
+                 mesh.vertices[mesh.loops[i].vertex_index].co.y,
+                 mesh.vertices[mesh.loops[i].vertex_index].co.z)
+                for i in loops
+            ]
+            try:
+                uv_points = cylindrical_metric_face_uv(
+                    xyz, center_xy=(cx, cy), radius_m=radius_m, origin_z=min_z
+                )
+            except ValueError as error:
+                # A non-tubular source polygon can span both sides of the
+                # estimated arm/leg axis. Do NOT invent a full-wrap seam there:
+                # fall back to the already validated metre XZ projection and
+                # expose the face count as an unapproved UV topology deficit.
+                if "ambiguous half-cylinder seam" not in str(error):
+                    raise
+                fallback_faces += 1
+                uv_points = [
+                    metric_planar_uv(point, origin_x=min_x, origin_z=min_z)
+                    for point in xyz
+                ]
+            for i, uv_point in zip(loops, uv_points):
+                uv_layer.data[i].uv = uv_point
+        obj["linen_earth_uv_geometry_radius_estimate_mm"] = round(radius_m * 1000, 3)
+        obj["linen_earth_uv_mixed_projection_fallback_faces"] = fallback_faces
+        obj["linen_earth_uv_seam_certified"] = False
+        method = "uncalibrated_metric_cylindrical_tube"
+    else:
+        for polygon in mesh.polygons:
+            for loop_index in polygon.loop_indices:
+                vertex = mesh.vertices[mesh.loops[loop_index].vertex_index]
+                uv_layer.data[loop_index].uv = metric_planar_uv(
+                    (vertex.co.x, vertex.co.y, vertex.co.z),
+                    origin_x=min_x, origin_z=min_z,
+                )
+        method = "uncalibrated_metric_xz_planar"
+    obj["linen_earth_uv_coordinate_units"] = "mesh_metres"
+    obj["linen_earth_uv_method"] = method
+    obj["linen_earth_supplier_repeat_verified"] = False
+    obj["linen_earth_grain_direction_verified"] = False
+
+
+def audit_authored_panel_uv(obj):
+    """Record source-projection UV defects; never certify textile pattern scale."""
+    mesh = obj.data
+    mesh.calc_loop_triangles()
+    uv = mesh.uv_layers.active
+    if uv is None:
+        raise RuntimeError(f"Candidate panel has no UV layer: {obj.name}")
+    triangles = []
+    for tri in mesh.loop_triangles:
+        xyz = tuple(tuple(mesh.vertices[mesh.loops[i].vertex_index].co) for i in tri.loops)
+        uv_coords = tuple(tuple(uv.data[i].uv) for i in tri.loops)
+        triangles.append((xyz, uv_coords))
+    result = audit_uv_triangles(triangles)
+    obj["linen_earth_uv_candidate_audit_json"] = json.dumps(result, sort_keys=True)
+    return result
 
 
 def main():
@@ -422,6 +546,10 @@ def main():
         raise RuntimeError("Candidate body-contact repair must use between 0 and 6 bounded passes.")
     if not math.isfinite(options.hem_taper_fraction) or not 0 <= options.hem_taper_fraction <= 0.12:
         raise RuntimeError("Candidate hem taper must be finite and within 0 to 12 percent.")
+    if not math.isfinite(options.trouser_leg_inboard_mm) or not 0 <= options.trouser_leg_inboard_mm <= MAX_LEG_INBOARD_MM:
+        raise RuntimeError("Unverified leg spacing adjustment must stay within 0..8 mm per shell.")
+    if not math.isfinite(options.sleeve_cuff_inboard_mm) or not 0 <= options.sleeve_cuff_inboard_mm <= MAX_INBOARD_MM:
+        raise RuntimeError("Unverified sleeve cuff shift must be within 0..22 mm, not an approved body pose.")
     if not math.isfinite(options.waist_layer_extra_mm) or not 0 <= options.waist_layer_extra_mm <= 7:
         raise RuntimeError("Unverified tuck/waist layer separation must be between 0 and 7 mm.")
     if options.clearance_mm + options.waist_layer_extra_mm > 18:
@@ -511,15 +639,17 @@ def main():
     authored = []
     fit_stage_report = {}
     contact_repair_report = {}
+    candidate_uv_report = {}
     for name, predicate in regions.items():
         obj = selected_shell(body, name, predicate)
         # Outer waistband is outside the tucked shirt instead of z-fighting
         # against an identically offset body-derived surface for 10 cm.
         panel_clearance = clearance_m + (options.waist_layer_extra_mm / 1000.0 if name == "TrouserWaistFabric" else 0.0)
-        max_relief, shoulder_guide, phase_pairs, repair = fit_shell(obj, body, panel_clearance, thickness_m, name, options.candidate_relief_mm, min_z, height, options.surface_refine, options.contact_repair_passes, options.hem_taper_fraction)
+        max_relief, shoulder_guide, phase_pairs, repair = fit_shell(obj, body, panel_clearance, thickness_m, name, options.candidate_relief_mm, min_z, height, options.surface_refine, options.contact_repair_passes, options.hem_taper_fraction, options.sleeve_cuff_inboard_mm, options.trouser_leg_inboard_mm)
         fit_stage_report[name] = phase_pairs
         contact_repair_report[name] = repair
         planar_grain_uv(obj)
+        candidate_uv_report[name] = audit_authored_panel_uv(obj)
         obj["linen_earth_auto_authored"] = True
         obj["linen_earth_fit_clearance_mm"] = round(panel_clearance * 1000.0, 3)
         obj["linen_earth_cloth_thickness_mm"] = round(thickness_m * 1000.0, 3)
@@ -530,6 +660,12 @@ def main():
             obj["linen_earth_shoulder_contour_scale"] = round(shoulder_guide[1], 6)
         authored.append(obj)
 
+    bpy.context.scene["linen_earth_uv_candidate_audit_json"] = json.dumps(candidate_uv_report, sort_keys=True)
+    bpy.context.scene["linen_earth_uv_coordinate_units"] = "mesh_metres"
+    bpy.context.scene["linen_earth_uv_method"] = "uncalibrated_metric_xz_torso_waist_cylindrical_sleeves_legs"
+    bpy.context.scene["linen_earth_uv_supplier_repeat_verified"] = False
+    bpy.context.scene["linen_earth_uv_grain_direction_verified"] = False
+    print("SOURCE_FIT_UV_TOPOLOGY_UNAPPROVED=" + json.dumps(candidate_uv_report, sort_keys=True))
     bpy.context.scene["linen_earth_contact_repair_json"] = json.dumps(contact_repair_report, sort_keys=True)
     print("SOURCE_FIT_BOUNDED_CONTACT_REPAIR=" + json.dumps(contact_repair_report, sort_keys=True))
     bpy.context.scene["linen_earth_fit_collision_stages_json"] = json.dumps(fit_stage_report, sort_keys=True)
@@ -538,11 +674,16 @@ def main():
     bpy.context.scene["linen_earth_garment_authoring_method"] = "locked-body-surface-shell-v2-bounded-preview-folds"
     bpy.context.scene["linen_earth_drape_provenance"] = "art_directed_unverified_visual_candidate"
     bpy.context.scene["linen_earth_measured_fabric_physics"] = False
+    bpy.context.scene["linen_earth_production_approved"] = False
+    bpy.context.scene["linen_earth_photo_parity_verified"] = False
     bpy.context.scene["linen_earth_preview_relief_requested_mm"] = options.candidate_relief_mm
     bpy.context.scene["linen_earth_surface_refine_level"] = options.surface_refine
     bpy.context.scene["linen_earth_contact_repair_passes"] = options.contact_repair_passes
     bpy.context.scene["linen_earth_waist_layer_extra_mm"] = options.waist_layer_extra_mm
     bpy.context.scene["linen_earth_hem_taper_candidate_fraction"] = options.hem_taper_fraction
+    bpy.context.scene["linen_earth_candidate_sleeve_inboard_mm"] = options.sleeve_cuff_inboard_mm
+    bpy.context.scene["linen_earth_candidate_trouser_leg_inboard_mm"] = options.trouser_leg_inboard_mm
+    bpy.context.scene["linen_earth_source_body_pose_changed"] = False
     bpy.context.scene["linen_earth_garment_clearance_mm"] = round(clearance_m * 1000.0, 3)
     bpy.context.scene["linen_earth_garment_thickness_mm"] = round(thickness_m * 1000.0, 3)
 

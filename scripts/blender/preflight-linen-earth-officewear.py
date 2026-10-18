@@ -453,6 +453,13 @@ def main():
                 f"{name} has {stats['uvCollapsedTriangles']} collapsed UV triangles; "
                 "no real stripe/check physical pattern scale can be approved from this surface."
             )
+        uv_fallback_faces = int(obj.get("linen_earth_uv_mixed_projection_fallback_faces", 0))
+        entry["candidateUvFallbackFaces"] = uv_fallback_faces
+        if uv_fallback_faces > 0:
+            reasons.append(
+                f"{name} uses {uv_fallback_faces} uncalibrated planar UV fallback faces "
+                "on a cylindrical garment; resolve genuine seams before production."
+            )
         if stats["degenerateRatio"] > MAX_DEGENERATE_FACE_RATIO:
             reasons.append(
                 f"{name} has too many zero-area/degenerate faces: "
@@ -501,6 +508,22 @@ def main():
                 reasons.append(
                     f"{key} has {count} intersecting triangle pairs; production garment/body boundaries must be clean."
                 )
+
+        # Garment-vs-garment contact matters even when neither garment
+        # penetrates the source body. Two trouser legs must remain distinct:
+        # shortening the requested leg gap must not create fabric collisions.
+        leg_to_leg = intersection_pair_count(
+            bpy.data.objects.get("TrouserLegLFabric"),
+            bpy.data.objects.get("TrouserLegRFabric"),
+        )
+        boundary_intersections["garmentLegToLeg"] = leg_to_leg
+        if leg_to_leg is None:
+            reasons.append("Could not evaluate real left/right trouser fabric separation.")
+        elif leg_to_leg > 0:
+            reasons.append(
+                f"Left/right trouser fabric shells cross at {leg_to_leg} triangle pairs; "
+                "leg-gap correction must not create self-intersecting cloth."
+            )
 
         tuck_overlap = intersection_pair_count(
             bpy.data.objects.get("ShirtTorsoFabric"),
@@ -591,6 +614,54 @@ def main():
                     "more than 32 mm from actual trouser geometry."
                 )
 
+    # An inboard cuff may satisfy hand-guide spacing numerically yet float
+    # through empty space beside the unchanged scanned arm. Reject that trick:
+    # measure actual skin-to-sleeve surface gaps on BOTH real forearms.
+    # This is independent of the existing BVH intersection/spacing gates.
+    forearm_sleeve_coverage = {}
+    if body is not None and body_height:
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        evaluated_body = body.evaluated_get(depsgraph)
+        body_mesh = evaluated_body.to_mesh()
+        try:
+            skin_points = [evaluated_body.matrix_world @ vert.co for vert in body_mesh.vertices]
+        finally:
+            evaluated_body.to_mesh_clear()
+        floor_z = min(point.z for point in world_bounds(body))
+        for panel, side in (("ShirtSleeveLFabric", -1), ("ShirtSleeveRFabric", 1)):
+            cloth = bpy.data.objects.get(panel)
+            cloth_bvh = evaluated_world_bvh(cloth, depsgraph) if cloth and cloth.type == "MESH" else None
+            samples = 0
+            detached = 0
+            maximum_gap_mm = 0.0
+            if cloth_bvh is not None:
+                for point in skin_points:
+                    height_ratio = (point.z - floor_z) / body_height
+                    signed_x = point.x * side
+                    # Confine scan samples to the forearm below the shoulder,
+                    # above deliberately bare hands and lateral to the torso.
+                    if not (0.59 <= height_ratio <= 0.72 and 0.18 <= signed_x <= 0.46):
+                        continue
+                    samples += 1
+                    nearest = cloth_bvh.find_nearest(point)
+                    distance_mm = nearest[3] * 1000 if nearest else float("inf")
+                    maximum_gap_mm = max(maximum_gap_mm, distance_mm)
+                    if distance_mm > 28.0:
+                        detached += 1
+            forearm_sleeve_coverage[panel] = {
+                "sampledSkinVertices": samples,
+                "detachedOver28Mm": detached,
+                "maxNearestClothGapMm": round(maximum_gap_mm, 2) if math.isfinite(maximum_gap_mm) else None,
+                "thresholdMm": 28.0,
+            }
+            if samples < 20:
+                reasons.append(f"{panel} has insufficient real forearm coverage samples.")
+            elif detached:
+                reasons.append(
+                    f"{panel} leaves {detached}/{samples} sampled scanned forearm points "
+                    "more than 28 mm from real sleeve geometry."
+                )
+
     report = {
         "gate": "linen-earth-officewear-scene-preflight-v1",
         "ready": len(reasons) == 0,
@@ -617,6 +688,7 @@ def main():
         "boundaryIntersections": boundary_intersections,
         "anatomicalRegionIntrusions": anatomy_region_hits,
         "lowerLegCoverage": lower_leg_coverage,
+        "forearmSleeveCoverage": forearm_sleeve_coverage,
         "requiredGarmentObjects": list(GARMENT_OBJECTS),
         "objects": objects,
         "totals": {

@@ -161,3 +161,21 @@ test("wrong model identity fails production manifest",()=>{
   assert.equal(drifted.valid,false);
   assert(drifted.reasons.some((reason)=>reason.includes("handCenterSpacing")));
 });
+
+test("model manifest declares metric UV explicitly but preserves absent legacy contracts",()=>{
+  const panels=Object.fromEntries(REQUIRED_GARMENT_VIEWER_MATERIALS.map(name=>[name,{widthMm:300,heightMm:600}]));
+  const base={
+    version:GARMENT_VIEWER_CONTRACT_VERSION,
+    modelId:"LE-OFFICEWEAR-V1",
+    referenceHeightMm:1727,
+    modelIdentity:MODEL_IDENTITY,
+    source:{name:"Blender Human Base Meshes",license:"CC0",verifiedAt:"2026-10-05"},
+    panels,
+  };
+  assert.equal(validateGarmentViewerModelManifest(base,"LE-OFFICEWEAR-V1").valid,true);
+  assert.equal(validateGarmentViewerModelManifest({...base,uvCoordinateUnits:"normalized_panel"},"LE-OFFICEWEAR-V1").valid,true);
+  assert.equal(validateGarmentViewerModelManifest({...base,uvCoordinateUnits:"mesh_metres"},"LE-OFFICEWEAR-V1").valid,true);
+  const unknown=validateGarmentViewerModelManifest({...base,uvCoordinateUnits:"centimetres"},"LE-OFFICEWEAR-V1");
+  assert.equal(unknown.valid,false);
+  assert(unknown.reasons.some(reason=>reason.includes("Unknown garment UV unit")));
+});

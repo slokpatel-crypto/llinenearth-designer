@@ -99,6 +99,8 @@ export type GarmentViewerModelManifest = {
     };
   };
   source?:GarmentViewerAssetSource;
+  /** Geometry-space UVs for source-derived Blender garments; absent = legacy panel-normalized. */
+  uvCoordinateUnits?:"normalized_panel"|"mesh_metres";
   panels: Record<string,{widthMm:number;heightMm:number;offsetU?:number;offsetV?:number;rotationDeg?:number}>;
   cameraOrbits?: Partial<Record<"front"|"three-quarter"|"side"|"back",string>>;
 };
@@ -117,6 +119,11 @@ export function validateGarmentViewerModelManifest(value:unknown,expectedModelId
   if(!value || typeof value!=="object") return {valid:false,sourceReady:false,source:null,missingPanels:[...REQUIRED_GARMENT_VIEWER_MATERIALS],invalidPanels:[],reasons:["Manifest is missing or invalid."]};
   const manifest=value as Partial<GarmentViewerModelManifest>;
   if(manifest.version!==GARMENT_VIEWER_CONTRACT_VERSION) reasons.push("Manifest contract version does not match the viewer.");
+  if(manifest.uvCoordinateUnits!==undefined
+    && manifest.uvCoordinateUnits!=="normalized_panel"
+    && manifest.uvCoordinateUnits!=="mesh_metres") {
+    reasons.push("Unknown garment UV unit system; only normalized_panel and mesh_metres are supported.");
+  }
   if(!String(manifest.modelId||"").trim()) reasons.push("Manifest modelId is required.");
   else if(expectedModelId && manifest.modelId!==expectedModelId) reasons.push(`Manifest modelId ${manifest.modelId} does not match ${expectedModelId}.`);
   if(!Number.isFinite(manifest.referenceHeightMm)||Number(manifest.referenceHeightMm)<1400||Number(manifest.referenceHeightMm)>2200) reasons.push("Reference height must be between 1400 and 2200 mm.");

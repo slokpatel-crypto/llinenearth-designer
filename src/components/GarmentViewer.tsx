@@ -819,7 +819,10 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
             viewer.createTexture!(fabric.image),
             normalUrl ? viewer.createTexture!(normalUrl) : Promise.resolve(null),
           ]);
-          const scale=garmentPanelTextureScale(panel.widthMm,panel.heightMm,tileMm);
+          const scale=garmentPanelTextureScale(
+            panel.widthMm,panel.heightMm,tileMm,
+            modelManifest?.uvCoordinateUnits ?? "normalized_panel",
+          );
           const offset={u:Number(panel.offsetU)||0,v:Number(panel.offsetV)||0};
           const rotation=(Number(panel.rotationDeg)||0)*Math.PI/180;
           texture.sampler?.setScale?.(scale);
@@ -870,7 +873,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       }
     };
     void apply();
-  },[modelReady,materialPipelineReady,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract,modelSrc,assetIdentityKey]);
+  },[modelReady,materialPipelineReady,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,modelManifest?.uvCoordinateUnits,productionManifestReady,modelContract,modelSrc,assetIdentityKey]);
 
   useEffect(()=>{
     if(!modelReady || !materialPipelineReady) return;
