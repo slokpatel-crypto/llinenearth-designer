@@ -58,10 +58,13 @@ jobs:
           echo "$PWD/blender-4.5.14-linux-x64" >> "$GITHUB_PATH"
 
       - name: Verify independent Blender world-space contact regression
-        run: blender --background --factory-startup --python tests/blender/test_world_collision_bvh.py
+        run: blender --background --factory-startup --python-exit-code 1 --python tests/blender/test_world_collision_bvh.py
+
+      - name: Verify native collision-free trouser gap rollback
+        run: blender --background --factory-startup --python-exit-code 1 --python tests/blender/test_leg_gap_rollback.py
 
       - name: Verify Blender contact spatial evidence without changing geometry
-        run: blender --background --factory-startup --python tests/blender/test_contact_height_diagnostics.py
+        run: blender --background --factory-startup --python-exit-code 1 --python tests/blender/test_contact_height_diagnostics.py
 
       - name: Download pinned CC0 realistic human body source
         run: npm run garment:model-base:fetch
