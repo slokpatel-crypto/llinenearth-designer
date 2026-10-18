@@ -41,6 +41,41 @@ class CandidateUvAuditTests(unittest.TestCase):
         self.assertAlmostEqual(result["medianUvAreaPerSquareMetre"], 0.001)
         self.assertFalse(result["physicalFabricRepeatVerified"])
 
+    def test_cylinder_arc_maps_quarter_turn_to_metres(self):
+        import math
+        points = [(0.1, 0.0, 0.0), (0.0, 0.1, 0.0),
+                  (0.0, 0.1, 0.05)]
+        uv = audit.cylindrical_metric_face_uv(
+            points, center_xy=(0.0, 0.0), radius_m=0.1, origin_z=0
+        )
+        self.assertAlmostEqual(uv[1][0] - uv[0][0], math.pi * 0.05)
+        self.assertAlmostEqual(uv[2][1] - uv[1][1], 0.05)
+
+    def test_cylinder_face_crosses_angle_seam_without_long_texture_jump(self):
+        import math
+        radius = 0.1
+        angles = [math.pi - 0.10, -math.pi + 0.10, -math.pi + 0.15]
+        points = [(radius * math.cos(a), radius * math.sin(a), i * 0.01)
+                  for i, a in enumerate(angles)]
+        uv = audit.cylindrical_metric_face_uv(
+            points, center_xy=(0.0, 0.0), radius_m=radius, origin_z=0
+        )
+        self.assertAlmostEqual(uv[1][0] - uv[0][0], 0.02, places=6)
+        self.assertLess(max(p[0] for p in uv)-min(p[0] for p in uv), 0.04)
+
+    def test_cylinder_rejects_ambiguous_polygon_and_invalid_radius(self):
+        import math
+        angles = [0, 0.25 * math.pi, 0.75 * math.pi, -0.75 * math.pi]
+        points = [(math.cos(a), math.sin(a), 0.1) for a in angles]
+        with self.assertRaises(ValueError):
+            audit.cylindrical_metric_face_uv(
+                points, center_xy=(0, 0), radius_m=0.1, origin_z=0
+            )
+        with self.assertRaises(ValueError):
+            audit.cylindrical_metric_face_uv(
+                points[:3], center_xy=(0, 0), radius_m=0, origin_z=0
+            )
+
     def test_valid_uv_is_not_a_physical_fabric_certificate(self):
         result = audit.audit_uv_triangles([(XYZ, UV)])
         self.assertTrue(result["candidateUvTopologyPass"])
