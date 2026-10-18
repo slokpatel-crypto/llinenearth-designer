@@ -12,6 +12,10 @@ import sys
 import bpy
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from uv_candidate_audit import audit_shared_uv_edges
 
 EXPORT_COLLECTION = "LinenEarthExport"
 REFERENCE_BODY = "Body"
@@ -94,7 +98,24 @@ def evaluated_mesh_stats(obj):
                 dvy = coords[2].y - coords[0].y
                 if abs(dux * dvy - duy * dvx) <= 1e-10:
                     uv_collapsed += 1
+        seam_audit = None
+        seam_audit_error = None
+        if uv_channel is not None:
+            try:
+                seam_audit = audit_shared_uv_edges([
+                    [
+                        (mesh.loops[i].vertex_index, tuple(uv_channel.data[i].uv))
+                        for i in polygon.loop_indices
+                    ]
+                    for polygon in mesh.polygons
+                ])
+            except ValueError as exc:
+                # Invalid source topology/UVs are release failures, but keep
+                # producing the independent multi-panel diagnostic report.
+                seam_audit_error = str(exc)
         return {
+            "uvSharedEdgeAudit": seam_audit,
+            "uvSharedEdgeAuditError": seam_audit_error,
             "uvCollapsedTriangles": uv_collapsed,
             "uvNonFiniteTriangles": uv_nonfinite,
             "vertices": vertices,
@@ -453,6 +474,24 @@ def main():
                 f"{name} has {stats['uvCollapsedTriangles']} collapsed UV triangles; "
                 "no real stripe/check physical pattern scale can be approved from this surface."
             )
+        seam_audit = stats["uvSharedEdgeAudit"]
+        if stats["uvSharedEdgeAuditError"]:
+            reasons.append(
+                f"{name} failed independent UV seam topology audit: "
+                f"{stats['uvSharedEdgeAuditError']}."
+            )
+        elif seam_audit is not None:
+            if seam_audit["unapprovedInteriorUvSeams"] > 0:
+                reasons.append(
+                    f"{name} has {seam_audit['unapprovedInteriorUvSeams']} unreviewed "
+                    "shared-edge UV discontinuities on real garment topology; "
+                    "authored fabric seam placement, repeat and grain need review."
+                )
+            if seam_audit["nonManifoldEdges"] > 0:
+                reasons.append(
+                    f"{name} has {seam_audit['nonManifoldEdges']} nonmanifold "
+                    "source edges; UV chart continuation is ambiguous."
+                )
         uv_fallback_faces = int(obj.get("linen_earth_uv_mixed_projection_fallback_faces", 0))
         uv_tangent_faces = int(obj.get("linen_earth_uv_unapproved_local_tangent_chart_faces", 0))
         entry["candidateUvFallbackFaces"] = uv_fallback_faces
