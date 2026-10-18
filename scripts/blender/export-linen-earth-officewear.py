@@ -13,6 +13,7 @@
 # It prepares an already-approved body/garment scene for the web GLB contract.
 
 import argparse
+from datetime import date
 import json
 import math
 import os
