@@ -845,10 +845,10 @@ class CandidateUvAuditTests(unittest.TestCase):
 
         for invalid in (
             lambda r: r.pop("uvDistortionHeightBands"),
-            lambda r: r["uvDistortionHeightBands"][3].update({"distortedSurfacePct": 0}),
-            lambda r: r["uvDistortionHeightBands"][3].update({"distortedTriangleCount": 0}),
+            lambda r: r["uvDistortionHeightBands"][4].update({"distortedSurfacePct": 0}),
+            lambda r: r["uvDistortionHeightBands"][4].update({"distortedTriangleCount": 0}),
             lambda r: r["uvDistortionHeightBands"][0].update({"heightBandPct": [60, 80]}),
-            lambda r: r["uvDistortionHeightBands"][3].update({"distortedAreaM2": float("nan")}),
+            lambda r: r["uvDistortionHeightBands"][4].update({"distortedAreaM2": float("nan")}),
             lambda r: r.update({"uvSourceZExtentMetres": [0, 4.2]}),
             lambda r: r.update({"candidateUvMetricDistortionReviewRequired": False}),
             lambda r: r.update({"candidateUvTopologyPass": "True"}),
@@ -861,11 +861,11 @@ class CandidateUvAuditTests(unittest.TestCase):
         # A tiny scene-file coordinate-rounding drift is tolerated but a
         # changed local damage extent, even with unchanged global total, is not.
         rounded = deepcopy(source)
-        rounded["uvDistortionHeightBands"][3]["distortedAreaM2"] += .000001
+        rounded["uvDistortionHeightBands"][4]["distortedAreaM2"] += .000001
         self.assertTrue(audit.validate_independent_uv_hotspots(
             source, rounded)["evaluatedSourceUvHotspotProvenanceConsistent"])
         shifted = deepcopy(source)
-        shifted["uvDistortionHeightBands"][3]["distortedAreaM2"] -= .01
+        shifted["uvDistortionHeightBands"][4]["distortedAreaM2"] -= .01
         with self.assertRaisesRegex(ValueError, "area mismatch"):
             audit.validate_independent_uv_hotspots(source, shifted)
 
