@@ -764,6 +764,66 @@ class CandidateUvAuditTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "source polygon"):
             audit.audit_uv_triangles([(XYZ, UV, 0, 42)])
 
+    def test_independent_indexed_uv_hotspot_receipt_rejects_spoofing(self):
+        from copy import deepcopy
+        bad_uv = ((0, 0), (2, 0), (0, .5))
+        items = [(XYZ, bad_uv, 1), (XYZ, bad_uv, 7), (XYZ, UV, 11)]
+        authored = audit.audit_uv_triangles(items)
+        independent = deepcopy(authored)
+        independent["uvMeasuredSurfaceAreaM2"] += .000001
+        proof = audit.validate_independent_uv_hotspots(authored, independent)
+        self.assertTrue(proof["evaluatedSourceUvHotspotProvenanceConsistent"])
+        self.assertEqual(proof["sharedSampledSourcePolygonsVerified"], 2)
+        self.assertFalse(proof["supplierGrainVerified"])
+        self.assertFalse(proof["productionApproved"])
+
+        altered = deepcopy(authored)
+        altered["distortedSourcePolygonCount"] += 1
+        with self.assertRaises(ValueError):
+            audit.validate_independent_uv_hotspots(altered, authored)
+
+        altered = deepcopy(authored)
+        altered["distortedSourcePolygonSamples"][0]["sourcePolygonIndex"] = 99
+        altered["distortedSourcePolygonSamples"][1]["sourcePolygonIndex"] = 100
+        with self.assertRaisesRegex(ValueError, "matching source polygon"):
+            audit.validate_independent_uv_hotspots(altered, authored)
+
+        altered = deepcopy(authored)
+        altered["uvDistortedSurfaceAreaM2"] += .001
+        with self.assertRaisesRegex(ValueError, "uvDistortedSurfaceAreaM2"):
+            audit.validate_independent_uv_hotspots(altered, authored)
+
+        altered = deepcopy(authored)
+        altered["distortedSourcePolygonSamples"][0]["distortedTriangleCount"] += 1
+        with self.assertRaisesRegex(ValueError, "distortedTriangleCount"):
+            audit.validate_independent_uv_hotspots(altered, authored)
+
+        altered = deepcopy(authored)
+        altered["supplierGrainVerified"] = True
+        with self.assertRaisesRegex(ValueError, "approval"):
+            audit.validate_independent_uv_hotspots(altered, authored)
+
+        altered = deepcopy(authored)
+        altered["distortedSourcePolygonSamples"] = []
+        altered["distortedSourcePolygonSamplesOmitted"] = 2
+        with self.assertRaisesRegex(ValueError, "Missing source polygon"):
+            audit.validate_independent_uv_hotspots(altered, authored)
+
+        for tolerance in (True, -1, 0.5, float("nan"), "0.01"):
+            with self.subTest(tolerance=tolerance), self.assertRaises(ValueError):
+                audit.validate_independent_uv_hotspots(
+                    authored, authored, max_coverage_delta_pct=tolerance
+                )
+
+    def test_independent_indexed_uv_receipt_works_for_valid_unstretched_mesh(self):
+        good = audit.audit_uv_triangles([(XYZ, UV, 12)])
+        proof = audit.validate_independent_uv_hotspots(good, good)
+        self.assertEqual(good["distortedSourcePolygonCount"], 0)
+        self.assertEqual(proof["sharedSampledSourcePolygonsVerified"], 0)
+        self.assertFalse(proof["productionApproved"])
+        with self.assertRaisesRegex(ValueError, "Missing indexed"):
+            audit.validate_independent_uv_hotspots(audit.audit_uv_triangles([(XYZ, UV)]), good)
+
     def test_metric_jacobian_detects_area_preserving_stripe_distortion(self):
         # Double U / halve V has unchanged UV area, but fabric features
         # change shape fourfold. An area-only test misses this failure.
