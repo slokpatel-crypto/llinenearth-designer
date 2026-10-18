@@ -156,6 +156,19 @@ export function fitOutcomeSignalFor(
     ||!Array.isArray(book.buckets)) return {score:0,evidence:0,summary:"Post-fitting evidence is still collecting."};
   if(book.totalReviews<3) return {score:0,evidence:book.totalReviews,summary:"Post-fitting evidence is still collecting."};
   const trustworthy=book.buckets.filter((bucket)=>reliableFitOutcomeBucket(bucket,book.totalReviews));
+  // Every independently valid bucket can still be part of an impossible
+  // *collection*. A persisted duplicate key or two disjoint groups claiming
+  // more completed fittings than the book has reviews must not double-count
+  // the same customer's outcome or inflate fit confidence.
+  const keys=new Set<string>();
+  let represented=0;
+  for(const bucket of trustworthy){
+    if(keys.has(bucket.key)||bucket.total>book.totalReviews-represented){
+      return {score:0,evidence:0,summary:"Stored fitting totals require operator revalidation."};
+    }
+    keys.add(bucket.key);
+    represented+=bucket.total;
+  }
   const key=fitOutcomeKey({occasion:input.occasion,shirtFit:input.style.shirtFit,trouser:input.style.trouser,torso:input.proportion.torso,seat:input.proportion.seat});
   const bucket=trustworthy.find((b)=>b.key===key&&b.total>=3);
   if(bucket) {
