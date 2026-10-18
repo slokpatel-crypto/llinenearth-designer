@@ -109,6 +109,21 @@ class SleeveStanceTests(unittest.TestCase):
                     spacing, used, target_mm=target, tolerance_mm=tolerance
                 )
 
+    def test_sleeve_refinement_probes_only_between_native_contact_results(self):
+        probes = module.bounded_sleeve_cuff_refinement_trials(12.0, 11.0)
+        self.assertEqual(probes, (11.75, 11.5, 11.25))
+        self.assertTrue(all(11 < v < 12 for v in probes))
+        self.assertEqual(module.bounded_sleeve_cuff_refinement_trials(12, 11, subdivisions=2),
+                         (11.5,))
+        for unsafe, safe in ((11, 11), (10, 11), (12.1, 11), (23, 22),
+                             (1, -1), (float("nan"), 0), ("12", 11),
+                             (12, True), (11.000000001, 11)):
+            with self.subTest(unsafe=unsafe, safe=safe), self.assertRaises(ValueError):
+                module.bounded_sleeve_cuff_refinement_trials(unsafe, safe)
+        for divisions in (1, 9, 2.5, True):
+            with self.subTest(divisions=divisions), self.assertRaises(ValueError):
+                module.bounded_sleeve_cuff_refinement_trials(12, 11, subdivisions=divisions)
+
     def test_unsafe_requests_fail_closed(self):
         for panel, ratio, shift in [
             ("ShirtTorsoFabric", 0.54, 20),
