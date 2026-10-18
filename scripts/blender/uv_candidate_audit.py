@@ -56,6 +56,46 @@ def cylindrical_metric_face_uv(points_xyz, *, center_xy, radius_m, origin_z):
             for angle, point in zip(unwrapped, points_xyz)]
 
 
+
+def cylindrical_ambiguous_face_diagnostic(points_xyz, *, center_xy):
+    """Describe rejected UV face geometry without inventing a cloth seam.
+
+    The result describes real mesh-space XYZ bounds and the estimated
+    cylindrical angle span. It is not an unwrap, grain alignment, supplier
+    measurement, photo certificate or reason to bypass a failed preflight.
+    """
+    if len(points_xyz) < 3 or len(center_xy) != 2:
+        raise ValueError("Ambiguous face receipt requires >=3 XYZ vertices and XY centre")
+    values = [*center_xy]
+    for p in points_xyz:
+        if len(p) != 3:
+            raise ValueError("Ambiguous face receipt requires 3D coordinates")
+        values.extend(p)
+    if any(isinstance(v, (str, bytes, bool)) or not isinstance(v, (int, float))
+           or not math.isfinite(v) for v in values):
+        raise ValueError("Ambiguous face receipt requires finite metric coordinates")
+    cx, cy = center_xy
+    angles = [math.atan2(p[1] - cy, p[0] - cx) for p in points_xyz]
+    initial = angles[0]
+    unwrapped = [initial] + [
+        initial + math.atan2(math.sin(a - initial), math.cos(a - initial))
+        for a in angles[1:]
+    ]
+    return {
+        "vertexCount": len(points_xyz),
+        "angularSpanDegrees": round(math.degrees(max(unwrapped) - min(unwrapped)), 2),
+        "xRangeMetres": [round(min(p[0] for p in points_xyz), 5),
+                         round(max(p[0] for p in points_xyz), 5)],
+        "yRangeMetres": [round(min(p[1] for p in points_xyz), 5),
+                         round(max(p[1] for p in points_xyz), 5)],
+        "zRangeMetres": [round(min(p[2] for p in points_xyz), 5),
+                         round(max(p[2] for p in points_xyz), 5)],
+        "supplierRepeatVerified": False,
+        "fabricGrainVerified": False,
+        "productionApproved": False,
+    }
+
+
 def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-12):
     """Triangles: iterable of (three XYZ triples, three UV pairs). Fail closed."""
     if not (math.isfinite(min_uv_area) and min_uv_area > 0
