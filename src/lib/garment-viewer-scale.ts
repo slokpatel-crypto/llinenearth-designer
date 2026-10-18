@@ -254,22 +254,47 @@ export function canPaintGarmentPanelMaterial(material: unknown): boolean {
     && typeof paint.setRoughnessFactor==="function";
 }
 
-export function applyViewerTextureUvTransform(
-  texture:{
-    sampler?:{
-      setScale?:(scale:{u:number;v:number})=>void;
-      setOffset?:(offset:{u:number;v:number})=>void;
-      setRotation?:(rotation:number)=>void;
-    }|null;
-  }|null|undefined,
-  transform:Pick<GarmentPanelUvPreparation,"scale"|"offset"|"rotation">,
+type ViewerUvTexture={
+  sampler?:{
+    setScale?:(scale:{u:number;v:number})=>void;
+    setOffset?:(offset:{u:number;v:number})=>void;
+    setRotation?:(rotation:number)=>void;
+  }|null;
+};
+type ViewerUvTransform=Pick<GarmentPanelUvPreparation,"scale"|"offset"|"rotation">;
+
+/**
+ * A texture can exist and still have a non-operational or incomplete sampler.
+ * Validate BOTH the adapter and all finite geometry values before changing
+ * even the first UV property; callers must also preflight the optional normal
+ * map before applying either map so the two textures retain coherent phase.
+ */
+export function canApplyViewerTextureUvTransform(
+  texture:ViewerUvTexture|null|undefined,
+  transform:ViewerUvTransform,
 ):boolean {
   const sampler=texture?.sampler;
   if(!sampler||typeof sampler.setScale!=="function"
     ||typeof sampler.setOffset!=="function"
     ||typeof sampler.setRotation!=="function") return false;
-  sampler.setScale(transform.scale);
-  sampler.setOffset(transform.offset);
-  sampler.setRotation(transform.rotation);
+  if(!transform||!transform.scale||!transform.offset) return false;
+  const {u,v}=transform.scale;
+  const {u:offsetU,v:offsetV}=transform.offset;
+  return [u,v,offsetU,offsetV,transform.rotation].every((value)=>
+    typeof value==="number"&&Number.isFinite(value))
+    &&u>=.35&&u<=100&&v>=.35&&v<=100
+    &&Math.abs(offsetU)<=10&&Math.abs(offsetV)<=10
+    &&Math.abs(transform.rotation)<=2*Math.PI+1e-10;
+}
+
+export function applyViewerTextureUvTransform(
+  texture:ViewerUvTexture|null|undefined,
+  transform:ViewerUvTransform,
+):boolean {
+  if(!canApplyViewerTextureUvTransform(texture,transform)) return false;
+  const sampler=texture!.sampler!;
+  sampler.setScale!(transform.scale);
+  sampler.setOffset!(transform.offset);
+  sampler.setRotation!(transform.rotation);
   return true;
 }
