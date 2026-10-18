@@ -23,7 +23,7 @@ from mathutils.bvhtree import BVHTree
 # Blender. It must not be mistaken for a material-calibrated cloth simulation.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from drape_preview_math import MAX_PREVIEW_RELIEF_MM, candidate_drape_offset_mm
-from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical_metric_face_uv, cylindrical_ambiguous_face_diagnostic
+from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical_metric_face_uv, cylindrical_ambiguous_face_diagnostic, metric_tangent_chart_uv
 from region_islands import keep_ankle_connected_faces
 from sleeve_stance_math import MAX_INBOARD_MM, candidate_sleeve_inboard_mm
 from leg_stance_math import MAX_INBOARD_MM as MAX_LEG_INBOARD_MM, candidate_leg_inboard_mm, candidate_inner_seam_relief_mm
@@ -802,10 +802,10 @@ def planar_grain_uv(obj):
                     xyz, center_xy=(cx, cy), radius_m=radius_m, origin_z=min_z
                 )
             except ValueError as error:
-                # A non-tubular source polygon can span both sides of the
-                # estimated arm/leg axis. Do NOT invent a full-wrap seam there:
-                # fall back to the already validated metre XZ projection and
-                # expose the face count as an unapproved UV topology deficit.
+                # A near-axis source quad can exceed half a cylindrical turn.
+                # An XZ projection compresses the true 3D face there. Build a
+                # separate metre-scale tangent chart, retaining its unapproved
+                # seam flag until neighbouring chart continuity is authored.
                 if "ambiguous half-cylinder seam" not in str(error):
                     raise
                 fallback_faces += 1
@@ -813,15 +813,14 @@ def planar_grain_uv(obj):
                     xyz, center_xy=(cx, cy)
                 )
                 receipt["sourcePolygonIndex"] = polygon.index
+                receipt["mapping"] = "metric_tangent_face_chart_requires_seam_stitch"
                 fallback_receipts.append(receipt)
-                uv_points = [
-                    metric_planar_uv(point, origin_x=min_x, origin_z=min_z)
-                    for point in xyz
-                ]
+                uv_points = metric_tangent_chart_uv(xyz)
             for i, uv_point in zip(loops, uv_points):
                 uv_layer.data[i].uv = uv_point
         obj["linen_earth_uv_geometry_radius_estimate_mm"] = round(radius_m * 1000, 3)
         obj["linen_earth_uv_mixed_projection_fallback_faces"] = fallback_faces
+        obj["linen_earth_uv_unapproved_local_tangent_chart_faces"] = fallback_faces
         obj["linen_earth_uv_fallback_spatial_evidence_json"] = json.dumps({
             "faceCount": fallback_faces,
             "sourcePolygonIndices": [face["sourcePolygonIndex"] for face in fallback_receipts],
@@ -831,7 +830,7 @@ def planar_grain_uv(obj):
             "productionApproved": False,
         }, sort_keys=True)
         obj["linen_earth_uv_seam_certified"] = False
-        method = "uncalibrated_metric_cylindrical_tube"
+        method = "uncalibrated_metric_cylindrical_plus_local_tangent_seam_charts"
     else:
         for polygon in mesh.polygons:
             for loop_index in polygon.loop_indices:
