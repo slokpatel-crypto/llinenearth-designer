@@ -24,6 +24,11 @@ export function resolveViewerTileWidthMm(
   // JSON input is untrusted: a numeric-looking string is not a measured
   // supplier dimension and must not be coerced into a physical-scale claim.
   const width=asset?.tileRealWidthMm;
+  // A malformed explicit *verified* width must not be silently overwritten
+  // with an unrelated runtime estimate. Legacy missing width may still use
+  // the declared repeat calibration below.
+  if(asset?.scaleApproximate===false && width!=null
+    && (typeof width!=="number" || !Number.isFinite(width) || width<=0)) return null;
   if(asset?.scaleApproximate===false && typeof width==="number"
     && Number.isFinite(width) && width>0) return width;
 
@@ -46,6 +51,17 @@ export function resolveViewerTileHeightMm(asset:ViewerTileScaleAsset|undefined):
   if(asset?.scaleApproximate!==false) return null;
   const height=asset.tileRealHeightMm;
   return typeof height==="number" && Number.isFinite(height) && height>0 ? height : null;
+}
+
+/**
+ * A genuinely absent V dimension is legacy square-tile data, but a present
+ * malformed measured height is not. Refuse rendering a counterfeit physical
+ * vertical repeat instead of silently treating it as the U width.
+ */
+export function hasInvalidVerifiedViewerTileHeight(asset:ViewerTileScaleAsset|undefined):boolean {
+  if(asset?.scaleApproximate!==false || asset.tileRealHeightMm==null) return false;
+  const height=asset.tileRealHeightMm;
+  return typeof height!=="number" || !Number.isFinite(height) || height<=0;
 }
 
 /**
