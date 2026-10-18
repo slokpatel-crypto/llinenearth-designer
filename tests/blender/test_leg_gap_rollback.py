@@ -22,7 +22,9 @@ def cube(name, center, dimensions):
     obj = bpy.context.object
     obj.name = name
     obj.dimensions = dimensions
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    # Real source garment shells have identity transforms and world-space vertices.
+    # Apply the synthetic fixture's location too so the tested contract matches.
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     obj.data.update()
     bpy.context.view_layer.update()
     return obj
