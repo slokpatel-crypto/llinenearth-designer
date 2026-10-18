@@ -15,7 +15,7 @@ from mathutils.bvhtree import BVHTree
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from uv_candidate_audit import audit_shared_uv_edges
+from uv_candidate_audit import audit_shared_uv_edges, classify_unapproved_uv_seams
 
 EXPORT_COLLECTION = "LinenEarthExport"
 REFERENCE_BODY = "Body"
@@ -100,22 +100,53 @@ def evaluated_mesh_stats(obj):
                     uv_collapsed += 1
         seam_audit = None
         seam_audit_error = None
+        source_cut_report = None
+        source_cut_error = None
         if uv_channel is not None:
             try:
-                seam_audit = audit_shared_uv_edges([
+                evaluated_source_faces = [
                     [
                         (mesh.loops[i].vertex_index, tuple(uv_channel.data[i].uv))
                         for i in polygon.loop_indices
                     ]
                     for polygon in mesh.polygons
-                ])
-            except ValueError as exc:
-                # Invalid source topology/UVs are release failures, but keep
-                # producing the independent multi-panel diagnostic report.
+                ]
+                seam_audit = audit_shared_uv_edges(evaluated_source_faces)
+                if obj.name.startswith(("ShirtSleeve", "TrouserLeg")):
+                    # Rebuild the candidate-cut classification from the ACTUAL
+                    # evaluated source geometry; do not accept authoring JSON
+                    # as an independent mesh verification or sewn-seam approval.
+                    radius_mm = obj.get("linen_earth_uv_geometry_radius_estimate_mm")
+                    if (isinstance(radius_mm, (bool, str, bytes))
+                            or not isinstance(radius_mm, (float, int))
+                            or not math.isfinite(radius_mm) or radius_mm <= .01):
+                        raise ValueError("Missing valid candidate tube radius provenance")
+                    spatial = json.loads(str(obj.get(
+                        "linen_earth_uv_fallback_spatial_evidence_json", ""
+                    )))
+                    if not isinstance(spatial, dict) or not isinstance(
+                            spatial.get("sourcePolygonIndices"), list):
+                        raise ValueError("Missing actual tangent chart source polygon indices")
+                    source_cut_report = classify_unapproved_uv_seams(
+                        evaluated_source_faces,
+                        radius_m=radius_mm / 1000,
+                        tangent_face_indices=spatial["sourcePolygonIndices"],
+                        source_vertex_positions=[tuple(vertex.co)
+                                                 for vertex in mesh.vertices],
+                    )
+                    if (source_cut_report["unapprovedInteriorUvSeams"] !=
+                            seam_audit["unapprovedInteriorUvSeams"]):
+                        raise ValueError("Independent source seam topology counts disagree")
+            except (ValueError, TypeError, RuntimeError, KeyError) as exc:
+                # Invalid source topology and missing cut provenance are
+                # explicit release failures, but keep other panel diagnostics.
                 seam_audit_error = str(exc)
+                source_cut_error = str(exc)
         return {
             "uvSharedEdgeAudit": seam_audit,
             "uvSharedEdgeAuditError": seam_audit_error,
+            "uvIndependentSourceCutReport": source_cut_report,
+            "uvIndependentSourceCutError": source_cut_error,
             "uvCollapsedTriangles": uv_collapsed,
             "uvNonFiniteTriangles": uv_nonfinite,
             "vertices": vertices,
@@ -475,6 +506,20 @@ def main():
                 "no real stripe/check physical pattern scale can be approved from this surface."
             )
         seam_audit = stats["uvSharedEdgeAudit"]
+        if stats["uvIndependentSourceCutError"]:
+            reasons.append(
+                f"{name} lacks independently verified source-cut geometry evidence: "
+                f"{stats['uvIndependentSourceCutError']}."
+            )
+        elif stats["uvIndependentSourceCutReport"] is not None:
+            source_cuts = stats["uvIndependentSourceCutReport"]
+            # These metrics describe mesh-edge lengths and topology only.
+            # Even a clean numerical report has no supplier or tailor signoff.
+            if source_cuts["zeroLengthSourceUvTearEdges"] > 0:
+                reasons.append(
+                    f"{name} has {source_cuts['zeroLengthSourceUvTearEdges']} "
+                    "zero-length UV tear edges in actual garment geometry."
+                )
         if stats["uvSharedEdgeAuditError"]:
             reasons.append(
                 f"{name} failed independent UV seam topology audit: "
