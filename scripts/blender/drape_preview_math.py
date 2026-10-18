@@ -48,8 +48,10 @@ def candidate_drape_offset_mm(
     if peak_mm == 0:
         return 0.0
     fade = _edge_fade(vertical) * _edge_fade((lateral + 1.0) / 2.0)
-    # Same wave on mirrored left/right pieces; never alter identity asymmetrically.
-    x = abs(lateral) if ("Sleeve" in panel or "Leg" in panel) else lateral
+    # Smooth even cross-panel phase on mirrored pieces: unlike abs(lateral),
+    # lateral² has zero derivative at the centre and cannot introduce a sharp
+    # artificial ridge in the middle of a sleeve or trouser leg.
+    x = lateral * lateral if ("Sleeve" in panel or "Leg" in panel) else lateral
     if panel == "ShirtTorsoFabric":
         wave = math.sin(math.tau * (2.2 * x + 0.6 * vertical))
         gravity = 0.45 + 0.55 * (1.0 - vertical)
