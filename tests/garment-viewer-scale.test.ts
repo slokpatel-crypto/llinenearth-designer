@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { garmentPanelTextureScale, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
+import { garmentPanelTextureScale, garmentPanelTextureScaleEvidence, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
 
 test("verified render tile width stays authoritative",()=>{
   assert.equal(resolveViewerTileWidthMm(
@@ -52,4 +52,28 @@ test("panel UV scale preserves one physical tile size across unequal garment pan
 test("invalid panel geometry falls back safely",()=>{
   assert.deepEqual(garmentPanelTextureScale(0,540,40),{u:1,v:1});
   assert.deepEqual(garmentPanelTextureScale(180,540,0),{u:1,v:1});
+});
+
+test("physical repeat audit distinguishes exact scale from safety clamping",()=>{
+  const exact=garmentPanelTextureScaleEvidence(580,780,40);
+  assert.equal(exact.exactScaleWithinRendererLimits,true);
+  assert.equal(exact.reason,"exact_within_limits");
+  assert.deepEqual(exact.rawRepeats,{u:14.5,v:19.5});
+
+  const clamped=garmentPanelTextureScaleEvidence(9000,780,40);
+  assert.equal(clamped.reason,"renderer_clamped_repeat");
+  assert.equal(clamped.exactScaleWithinRendererLimits,false);
+  assert.equal(clamped.rawRepeats?.u,225);
+  assert.equal(clamped.applied.u,80);
+
+  const missing=garmentPanelTextureScaleEvidence(0,780,40);
+  assert.equal(missing.reason,"missing_physical_dimensions");
+  assert.equal(missing.exactScaleWithinRendererLimits,false);
+  assert.equal(missing.rawRepeats,null);
+});
+
+test("repeat exactness uses the unchanged inclusive renderer limits",()=>{
+  assert.equal(garmentPanelTextureScaleEvidence(35,8000,100).exactScaleWithinRendererLimits,true);
+  assert.equal(garmentPanelTextureScaleEvidence(34,8000,100).exactScaleWithinRendererLimits,false);
+  assert.equal(garmentPanelTextureScaleEvidence(35,8001,100).exactScaleWithinRendererLimits,false);
 });
