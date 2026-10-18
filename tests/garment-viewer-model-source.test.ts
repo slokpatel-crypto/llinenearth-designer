@@ -284,7 +284,10 @@ test("rapid fabric selections cannot commit a superseded asynchronous garment ma
   // Never paint five panels, call the sixth missing, and report success.
   const hydrated=source.indexOf("if(materials.some((material)=>!canPaintGarmentPanelMaterial(material)))",ready);
   const cached=source.indexOf("preparedTextureRef.current=new Map",hydrated);
-  assert.ok(hydrated>active&&cached>hydrated&&mutate>cached);
+  // Cache becomes reusable only AFTER all six material paint calls succeed.
+  // A rejected partial paint cannot poison the next fabric selection's cache.
+  assert.ok(hydrated>active&&mutate>hydrated&&cached>mutate&&revision>cached);
+  assert.match(source.slice(hydrated,mutate),/missing a paintable normal-map slot/);
   assert.match(source.slice(active,mutate),/Required garment panel is missing a paintable texture slot/);
   assert.ok(source.includes("return ()=>{if(applyToken.current===token) applyToken.current++;};"));
   // Errors from a superseded selection must not clear timing or state.
