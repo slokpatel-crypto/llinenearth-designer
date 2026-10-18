@@ -43,6 +43,35 @@ class LegStanceTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     module.candidate_leg_inboard_mm(panel, ratio, delta)
 
+    def test_inner_crotch_seam_relief_is_local_and_opposes_crossing_shells(self):
+        l=module.candidate_inner_seam_relief_mm("TrouserLegLFabric", .46, -.005, 8)
+        r=module.candidate_inner_seam_relief_mm("TrouserLegRFabric", .46, .005, 8)
+        self.assertLess(l, 0)
+        self.assertGreater(r, 0)
+        self.assertAlmostEqual(abs(l), r)
+        self.assertLessEqual(r, 8)
+        for ratio in (.1, .3, .38, .56, .8):
+            self.assertAlmostEqual(
+                module.candidate_inner_seam_relief_mm("TrouserLegLFabric", ratio, 0, 8), 0
+            )
+        self.assertAlmostEqual(
+            module.candidate_inner_seam_relief_mm("TrouserLegLFabric", .46, -.1, 8), 0
+        )
+
+    def test_inner_seam_relief_fails_closed_on_unbounded_inputs(self):
+        for panel, ratio, x, peak in [
+            ("ShirtTorsoFabric", .46, 0, 8),
+            ("TrouserLegLFabric", float("nan"), 0, 8),
+            ("TrouserLegLFabric", .46, float("inf"), 8),
+            ("TrouserLegRFabric", .46, 0, 10.01),
+            ("TrouserLegRFabric", .46, 0, -1),
+            ("TrouserLegRFabric", True, 0, 8),
+        ]:
+            with self.subTest(panel=panel, ratio=ratio, x=x, peak=peak):
+                with self.assertRaises(ValueError):
+                    module.candidate_inner_seam_relief_mm(panel, ratio, x, peak)
+
+
 
 if __name__ == "__main__":
     unittest.main()
