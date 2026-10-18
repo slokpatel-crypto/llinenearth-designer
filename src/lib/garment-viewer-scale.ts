@@ -233,6 +233,27 @@ export function prepareGarmentPanelUvTransforms(
  * offset, or rotation were successfully applied. Check the COMPLETE adapter
  * before any mutation to prevent a partial scale/phase update.
  */
+/**
+ * Hydration alone does not guarantee a paintable material. Reject a missing
+ * base-colour slot or incomplete material adapter before updating any panel:
+ * optional chaining must never turn a missing sixth texture slot into success.
+ */
+export function canPaintGarmentPanelMaterial(material: unknown): boolean {
+  if(!material || typeof material!=="object") return false;
+  const pbr=(material as {pbrMetallicRoughness?:unknown}).pbrMetallicRoughness;
+  if(!pbr || typeof pbr!=="object") return false;
+  const paint=pbr as {
+    baseColorTexture?:{setTexture?:unknown}|null;
+    setBaseColorFactor?:unknown;
+    setMetallicFactor?:unknown;
+    setRoughnessFactor?:unknown;
+  };
+  return typeof paint.baseColorTexture?.setTexture==="function"
+    && typeof paint.setBaseColorFactor==="function"
+    && typeof paint.setMetallicFactor==="function"
+    && typeof paint.setRoughnessFactor==="function";
+}
+
 export function applyViewerTextureUvTransform(
   texture:{
     sampler?:{
