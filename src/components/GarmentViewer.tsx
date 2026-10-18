@@ -844,17 +844,19 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           return {panel,texture,normal};
         }));
         if(token!==applyToken.current) return;
+        // Resolve EVERY material before changing any visible garment panel.
+        // This avoids a mixed old/new outfit if the customer swaps fabric
+        // while one model-viewer material is still hydrating.
+        const materials=await Promise.all(prepared.map((entry)=>
+          ensureViewerMaterialLoaded(materialByName(viewer,entry.panel.material))
+        ));
+        if(token!==applyToken.current) return;
         preparedTextureRef.current=new Map(prepared.map((entry)=>[
           entry.panel.material,
           {texture:entry.texture,normal:entry.normal,garment:entry.panel.garment},
         ]));
-        for(const entry of prepared){
-          // Model-viewer material hydration is asynchronous; a later fabric
-          // selection may supersede this one DURING the await. Never allow the
-          // old selection to overwrite a newly chosen colour or print.
-          if(token!==applyToken.current) return;
-          const material=await ensureViewerMaterialLoaded(materialByName(viewer,entry.panel.material));
-          if(token!==applyToken.current) return;
+        for(const [index,entry] of prepared.entries()){
+          const material=materials[index];
           if(!material) continue;
           material.pbrMetallicRoughness.setBaseColorFactor([1,1,1,1]);
           material.pbrMetallicRoughness.setMetallicFactor(0);
