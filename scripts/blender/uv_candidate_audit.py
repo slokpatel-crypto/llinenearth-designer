@@ -1029,8 +1029,8 @@ def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-1
     for cell in height_bins:
         area = cell["surfaceAreaM2"]
         cell["distortedSurfacePct"] = round(100.0 * cell["distortedAreaM2"] / area, 2) if area else None
-        cell["surfaceAreaM2"] = round(area, 8)
-        cell["distortedAreaM2"] = round(cell["distortedAreaM2"], 8)
+        cell["surfaceAreaM2"] = round(area, 12)
+        cell["distortedAreaM2"] = round(cell["distortedAreaM2"], 12)
     densities.sort()
     median = densities[len(densities)//2] if densities else None
     # Relative area-scale variance can flag inconsistent pattern density even
@@ -1050,8 +1050,8 @@ def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-1
         return values[min(len(values)-1, math.ceil(.95*len(values))-1)]
 
     return {
-        "uvMeasuredSurfaceAreaM2": round(measured_area_m2, 8),
-        "uvDistortedSurfaceAreaM2": round(distorted_area_m2, 8),
+        "uvMeasuredSurfaceAreaM2": round(measured_area_m2, 12),
+        "uvDistortedSurfaceAreaM2": round(distorted_area_m2, 12),
         "uvDistortedSurfacePct": (round(100.0 * distorted_area_m2 / measured_area_m2, 2)
                                   if measured_area_m2 else None),
         "uvDistortionHeightBands": height_bins,
