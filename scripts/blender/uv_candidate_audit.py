@@ -978,10 +978,15 @@ def validate_independent_uv_hotspots(authored, evaluated, *,
             raise ValueError("Source polygon hotspot inventory/sample count mismatch")
         return entries
     author_samples, evaluated_samples = sample_map(authored), sample_map(evaluated)
+    if len(author_samples) != len(evaluated_samples):
+        raise ValueError("Missing source polygon UV hotspot samples")
+    shared_samples = author_samples.keys() & evaluated_samples.keys()
+    if author_samples and not shared_samples:
+        raise ValueError("No independently matching source polygon UV hotspots")
     # Top face ordering can legitimately flip for near-equal areas after
     # saved-scene float32 rounding. Do not assert rank-order equivalence,
     # but never allow an independently *shared* sampled face to be forged.
-    for index in author_samples.keys() & evaluated_samples.keys():
+    for index in shared_samples:
         author, independent = author_samples[index], evaluated_samples[index]
         for key in ("validTriangleCount", "distortedTriangleCount"):
             if (isinstance(author.get(key), bool) or not isinstance(author.get(key), int)
