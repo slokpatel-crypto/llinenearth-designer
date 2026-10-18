@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { garmentPanelTextureScale, garmentPanelTextureScaleEvidence, garmentUvRepeatsForUnits, hasInvalidVerifiedViewerTileHeight, resolveViewerTileHeightMm, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
+import { garmentPanelTextureScale, garmentPanelTextureScaleEvidence, garmentUvRepeatsForUnits, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
 
 
 test("physical-scale resolution never coerces unreviewed JSON strings",()=>{
@@ -174,5 +174,15 @@ test("legacy square tile remains allowed, malformed explicit verified vertical d
   assert.equal(hasInvalidVerifiedViewerTileHeight({scaleApproximate:false,tileRealHeightMm:24}),false);
   for(const height of [0,-2,NaN,Infinity,"24",true]){
     assert.equal(hasInvalidVerifiedViewerTileHeight({scaleApproximate:false,tileRealHeightMm:height as number}),true);
+  }
+});
+
+
+test("explicit malformed horizontal measurements are rejected before visual texture allocation",()=>{
+  assert.equal(hasInvalidVerifiedViewerTileWidth({scaleApproximate:false,tileRealWidthMm:40}),false);
+  assert.equal(hasInvalidVerifiedViewerTileWidth({scaleApproximate:false,tileRealWidthMm:null}),false);
+  assert.equal(hasInvalidVerifiedViewerTileWidth({scaleApproximate:true,tileRealWidthMm:0}),false);
+  for(const width of [0,-20,Infinity,NaN,"40",true]) {
+    assert.equal(hasInvalidVerifiedViewerTileWidth({scaleApproximate:false,tileRealWidthMm:width as number}),true);
   }
 });
