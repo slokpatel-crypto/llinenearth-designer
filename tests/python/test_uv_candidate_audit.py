@@ -441,6 +441,34 @@ class CandidateUvAuditTests(unittest.TestCase):
         self.assertEqual(mixed["sourceSeamChainSamples"], [])
         self.assertEqual(sum(mixed["sourceSeamGroupCountByClass"].values()), 2)
 
+    def test_uv_seam_graph_identifies_branch_without_certifying_sewing(self):
+        # Three actual shared source edges meet at vertex 0; their different
+        # nonperiodic UV origins do not become three approved stitch lines.
+        faces = [
+            [(0, (0, 0)), (1, (.02, 0)), (2, (0, .02))],
+            [(0, (.01, 0)), (2, (0, .03)), (3, (.02, .02))],
+            [(0, (.02, 0)), (3, (.03, .02)), (1, (.02, .01))],
+        ]
+        graph = audit.classify_unapproved_uv_seams(faces, radius_m=.1)
+        self.assertEqual(graph["nonPeriodicUvTears"], 3)
+        self.assertEqual(graph["sourceSeamChainShapes"]["branched"], 1)
+        self.assertEqual(graph["sourceSeamChainSamples"][0]["forkSourceVertices"], [0])
+        self.assertFalse(graph["cutPlacementApproved"])
+
+    def test_uv_seam_closed_loop_stays_an_unapproved_candidate(self):
+        faces = [
+            [(1, (0, 0)), (2, (.02, 0)), (3, (.01, .02))],
+            [(2, (.03, 0)), (1, (.01, 0)), (4, (.01, -.02))],
+            [(3, (.02, .02)), (2, (.03, 0)), (5, (.03, .03))],
+            [(1, (.01, 0)), (3, (.02, .02)), (6, (-.01, .02))],
+        ]
+        graph = audit.classify_unapproved_uv_seams(faces, radius_m=.1)
+        self.assertEqual(graph["nonPeriodicUvTears"], 3)
+        self.assertEqual(graph["sourceSeamChainShapes"]["closedLoopCandidate"], 1)
+        self.assertEqual(graph["sourceSeamChainSamples"][0]["edgeCount"], 3)
+        self.assertEqual(graph["sourceSeamChainSamples"][0]["openEndSourceVertices"], [])
+        self.assertFalse(graph["sourceSeamChainSamples"][0]["seamPlacementApproved"])
+
     def test_valid_uv_is_not_a_physical_fabric_certificate(self):
         result = audit.audit_uv_triangles([(XYZ, UV)])
         self.assertTrue(result["candidateUvTopologyPass"])
