@@ -858,9 +858,15 @@ def planar_grain_uv(obj):
         obj["linen_earth_uv_tangent_alignment_evidence_json"] = json.dumps(
             tangent_report, sort_keys=True
         )
+        # Real current garment vertex positions in metres: report how long
+        # candidate UV cut chains actually are and whether they run axially.
+        # Neither these geometric lengths nor verticality prove fabric grain.
         uv_cut_classification = classify_unapproved_uv_seams(
             aligned_faces, radius_m=radius_m,
-            tangent_face_indices=unapproved_tangent_indices
+            tangent_face_indices=unapproved_tangent_indices,
+            source_vertex_positions=[
+                tuple(vertex.co) for vertex in mesh.vertices
+            ],
         )
         obj["linen_earth_uv_cut_classification_json"] = json.dumps(
             uv_cut_classification, sort_keys=True
