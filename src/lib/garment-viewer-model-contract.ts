@@ -84,6 +84,8 @@ export type GarmentViewerModelManifest = {
   version: typeof GARMENT_VIEWER_CONTRACT_VERSION;
   modelId: string;
   referenceHeightMm: number;
+  /** Explicit when importing non-legacy authored GLBs. Missing means legacy panel UV mapping. */
+  uvCoordinateUnits?:"panel_normalized"|"mesh_metres";
   modelIdentity?:{
     id:string;
     referenceImage:string;
@@ -146,6 +148,11 @@ export function validateGarmentViewerModelManifest(value:unknown,expectedModelId
     ...(String(rawSource?.licenseUrl||"").trim()?{licenseUrl:String(rawSource?.licenseUrl).trim()}:{}),
   }:null;
   if(manifest.modelId!==PROTOTYPE_MODEL_ID&&!sourceReady) reasons.push("Model source provenance is required: source name, license and YYYY-MM-DD verification date.");
+  if(manifest.uvCoordinateUnits!==undefined
+    && manifest.uvCoordinateUnits!=="panel_normalized"
+    && manifest.uvCoordinateUnits!=="mesh_metres") {
+    reasons.push("Manifest UV coordinate units must be panel_normalized or mesh_metres.");
+  }
   const panels=manifest.panels&&typeof manifest.panels==="object"?manifest.panels:{};
   const missingPanels=REQUIRED_GARMENT_VIEWER_MATERIALS.filter((name)=>!(name in panels));
   const invalidPanels=REQUIRED_GARMENT_VIEWER_MATERIALS.filter((name)=>{
