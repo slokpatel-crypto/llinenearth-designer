@@ -8,6 +8,20 @@ from __future__ import annotations
 import math
 
 
+def metric_planar_uv(point_xyz, *, origin_x, origin_z):
+    """Return geometry-only X/Z UV in mesh metres, not per-panel 0..1.
+
+    Not a calibration for grain, real fabric repeat, curved cylinders or hems.
+    """
+    if len(point_xyz) != 3:
+        raise ValueError("Expected one 3D garment vertex")
+    if any(isinstance(value, (str, bytes, bool)) or not isinstance(value, (int, float))
+           or not math.isfinite(value)
+           for value in (*point_xyz, origin_x, origin_z)):
+        raise ValueError("Metric UV projection needs finite numeric coordinates")
+    return (point_xyz[0] - origin_x, point_xyz[2] - origin_z)
+
+
 def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-12):
     """Triangles: iterable of (three XYZ triples, three UV pairs). Fail closed."""
     if not (math.isfinite(min_uv_area) and min_uv_area > 0
