@@ -142,3 +142,32 @@ percentage remains invariant while the raw triangle count changes.
 Status: unapproved engineering draft on PR #311; do not merge or deploy.
 Actual source-Blender and separate CI/browser checks must be read on the
 matching HEAD before claiming any success.
+
+## Continued Task 1 — bounded sleeve spacing infeasibility receipt (2026-10-18)
+
+The actual native source-Blender run previously found **563.4 mm**
+candidate sleeve-centre spacing after the best body-contact-free
+**11 mm per sleeve** contour adjustment. The unchanged photographed
+reference permits **500 ± 36 mm**, i.e. at most **536 mm**. Existing
+candidate code caps inward sleeve contour movement at **22 mm/side**.
+
+The new independent optimistic_sleeve_spacing_budget checks a deliberately
+favourable theoretical bound: the 11 mm/side remaining would reduce measured
+spacing by **at most 22 mm**, producing **541.4 mm**, still **5.4 mm**
+above the reference's upper tolerance. Matching 536 mm requires at least
+**13.7 mm additional inboard movement per sleeve at full effect**, which
+exceeds the 11 mm/side remaining contour budget. On the real geometry,
+the source-body contacts and vertical taper make this optimistic bound
+even less certain of feasibility. This math does not approve enlarging the
+contour budget, altering body/hands, moving sleeves through the skin, or
+inventing a new model.
+
+The evaluated source-Blender preflight now writes this advisory contour
+receipt beside the independently observed sleeve spacing when the
+left/right authored displacement metadata agrees. A missing or contradictory
+receipt grants nothing; the **original fit and collision gates remain
+mandatory**. Standalone regressions exercise the locked 563.4-mm case,
+numerically reachable but physically unapproved examples, already-too-narrow
+cases and invalid data. The next genuine shape correction must respect the
+existing source identity and human/tailor approval. PR #311 stays **DRAFT,
+no merge or deployment**.
