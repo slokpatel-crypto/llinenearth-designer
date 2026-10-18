@@ -260,3 +260,18 @@ test("explicit Blender UV units require a measured panel sidecar before candidat
   assert.match(viewer,/modelManifest\?\.uvCoordinateUnits/);
   assert.match(viewer,/garmentUvRepeatsForUnits/);
 });
+
+test("rapid fabric selections cannot commit a superseded asynchronous garment material pass",()=>{
+  const source=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  const preparation=source.indexOf("const prepared=await Promise.all(panelSpecs.map");
+  const ready=source.indexOf("const materials=await Promise.all(prepared.map",preparation);
+  const active=source.indexOf("if(token!==applyToken.current) return;",ready);
+  const mutate=source.indexOf("for(const [index,entry] of prepared.entries())",active);
+  const revision=source.indexOf("setTextureRevision((value)=>value+1);",mutate);
+  assert.ok(preparation>0&&ready>preparation&&active>ready&&mutate>active&&revision>mutate);
+  // All material promises settle BEFORE the synchronous visible update.
+  assert.doesNotMatch(source.slice(mutate,revision),/\\bawait\\b/);
+  assert.match(source,/return \\(\\)=>\\{if\\(applyToken\\.current===token\\) applyToken\\.current\\+\\+;\\};/);
+  // Errors from a superseded selection must not clear timing or state.
+  assert.match(source,/if\\(token===applyToken\\.current\\)\\{\\s*interactionStartedAt\\.current=null;/);
+});
