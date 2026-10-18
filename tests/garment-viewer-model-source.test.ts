@@ -249,3 +249,14 @@ test("opaque garment alternatives use binary alpha cutouts instead of blending h
   assert(exporter.includes('MODEL_ID="LE-OFFICEWEAR-V1"'));
   assert(exporter.includes('const garmentPanels=['));
 });
+
+test("explicit Blender UV units require a measured panel sidecar before candidate GLB export",()=>{
+  const source=readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
+  assert.match(source,/uv_coordinate_units = resolve_panel_uv_units/);
+  assert.match(source,/if uv_coordinate_units is not None and panel_spec is None:/);
+  assert.match(source,/unit-ambiguous GLB/);
+  assert.match(source,/payload\["uvCoordinateUnits"\] = uv_coordinate_units/);
+  const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  assert.match(viewer,/modelManifest\?\.uvCoordinateUnits/);
+  assert.match(viewer,/garmentUvRepeatsForUnits/);
+});
