@@ -33,3 +33,49 @@ def candidate_sleeve_inboard_mm(panel, body_height_ratio, requested_mm):
         )
         fade = t * t * (3.0 - 2.0 * t)
     return (requested_mm if panel == "ShirtSleeveLFabric" else -requested_mm) * fade
+
+
+def source_arm_band_geometry(points_xyz, *, guide_z_m, side,
+                             source_center_x_m=0.0,
+                             min_lateral_offset_m=0.155, band_half_height_m=0.06):
+    """Measure the original BODY arm-side envelope at the cuff guide height.
+
+    This keeps the scanned body untouched and reports only a lateral band
+    centre derived from actual world-space source vertices, NOT an anatomical
+    hand-joint location or permission to alter the locked model pose. Cuff
+    cloth shifting away from a measured arm shell can be collision-unsafe.
+    """
+    controls = (guide_z_m, source_center_x_m,
+                min_lateral_offset_m, band_half_height_m)
+    if (isinstance(side, bool) or side not in (-1, 1)
+            or any(isinstance(v, (str, bytes, bool))
+                   or not isinstance(v, (int, float)) or not math.isfinite(v)
+                   for v in controls)
+            or not 0 < min_lateral_offset_m <= .5
+            or not 0 < band_half_height_m <= .12):
+        raise ValueError("Body arm-band reference needs finite bounded guides")
+    leftmost = math.inf
+    rightmost = -math.inf
+    n = 0
+    for xyz in points_xyz:
+        if len(xyz) != 3 or any(
+            isinstance(v, (str, bytes, bool)) or not isinstance(v, (int, float))
+            or not math.isfinite(v) for v in xyz
+        ):
+            raise ValueError("Body arm-band source positions need finite XYZ")
+        x, _, z = xyz
+        if (abs(z-guide_z_m) <= band_half_height_m and
+                side*(x-source_center_x_m) >= min_lateral_offset_m):
+            leftmost = min(leftmost, x)
+            rightmost = max(rightmost, x)
+            n += 1
+    if n < 4:
+        return None
+    return {
+        "sourceSideBandCentreXMm": round((leftmost+rightmost)*500.0, 4),
+        "sourceSideBandWidthMm": round((rightmost-leftmost)*1000.0, 4),
+        "sampledSourceVertexCount": n,
+        "anatomicalJointCentreMeasured": False,
+        "photoPoseApproved": False,
+        "productionApproved": False,
+    }
