@@ -63,6 +63,9 @@ jobs:
       - name: Verify native collision-free trouser gap rollback
         run: blender --background --factory-startup --python-exit-code 1 --python tests/blender/test_leg_gap_rollback.py
 
+      - name: Verify native crotch-seam contact repair and full XYZ rollback
+        run: blender --background --factory-startup --python-exit-code 1 --python tests/blender/test_crotch_seam_repair.py
+
       - name: Verify Blender contact spatial evidence without changing geometry
         run: blender --background --factory-startup --python-exit-code 1 --python tests/blender/test_contact_height_diagnostics.py
 
