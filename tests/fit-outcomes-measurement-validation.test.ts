@@ -72,10 +72,10 @@ test("unknown seat data cannot boost a customer with a measured seat proportion"
 });
 
 test("seat-waist readings already requiring tailor review never become confident learning labels",()=>{
-  const otherwiseValid={shirt:{chest:102,waist:84},pants:{waist:82,seat:158}};
+  const otherwiseValid={shirt:{chest:102,waist:84},pants:{waist:82,seat:157}};
   assert.deepEqual(fitOutcomeProportionFromMeasurements(otherwiseValid),
     {torso:"tapered",seat:"pronounced"});
-  const contradictory={...otherwiseValid,pants:{waist:82,seat:158.01}};
+  const contradictory={...otherwiseValid,pants:{waist:82,seat:157.01}};
   assert.deepEqual(fitOutcomeProportionFromMeasurements(contradictory),
     {torso:"tapered",seat:"unknown"});
   assert.deepEqual(fitOutcomeProportionFromMeasurements({
