@@ -171,3 +171,49 @@ numerically reachable but physically unapproved examples, already-too-narrow
 cases and invalid data. The next genuine shape correction must respect the
 existing source identity and human/tailor approval. PR #311 stays **DRAFT,
 no merge or deployment**.
+
+## Next Task 2 — real source-polygon UV hot spots and independent receipt integrity
+
+Official native Blender source QA on the previous HEAD
+[run 39143402993](https://github.com/slokpatel-crypto/llinenearth-designer/actions/runs/39143402993)
+confirmed the original garment texture problem was real, not merely a test
+fixture. Approximate surface-area-weighted metric distortion flagged:
+
+| Original source garment | Distorted usable 3D cloth area |
+| --- | ---: |
+| Shirt torso | 20.87% |
+| Left / right shirt sleeves | 45.55% / 45.21% |
+| Trouser waist | 28.40% |
+| Left / right trouser legs | 17.24% / 17.39% |
+
+These percentages mean only that at least one of the *software diagnostic*
+conditions is met (more than twofold principal UV anisotropy or greater than
+50% principal local length error). They are not textile inspection,
+supplier-certified weave/repeat, tailoring measurements or proof of drape.
+
+The next candidate-only work retains actual Blender source
+`triangle.polygon_index` for every independently evaluated UV triangle.
+It groups multiple triangles belonging to the **same source polygon**,
+records exact affected garment surface area and vertical geometry bounds,
+and samples the worst first dozen polygon IDs. Full source face totals and
+omitted-sample counts stay available even when sample_limit=0. It requires
+either indexed records for *all* source triangles or none; spoofed mixed
+provenance, boolean indices, nonfinite values, oversize sample caps and
+invalid IDs fail closed. The author also saves the evidence without changing
+vertices or UV coordinates.
+
+Critically, the **separate evaluated-mesh Blender preflight** now rebuilds
+the face-attributed hot spots from genuine current geometry, compares
+source IDs, complete counts, independently measured surface area and shared
+face evidence against the author's stored UV receipt, and rejects stale or
+fabricated source receipts. A small bounded tolerance covers only persistence
+rounding; no seam, physical fit or fabric-accuracy limit is loosened.
+Regressions include split source polygons, unsampled source IDs, forged
+face IDs, altered measured area and false supplier approval.
+
+This stage makes future face-level chart decisions measurable; **it does not
+sew a real seam, change cloth UV mapping, straighten scanned human arms,
+fix the immutable sleeve spacing, or approve photoreal results**. Preserve the
+original model and source-body pose. The candidate remains in draft PR #311,
+without merging or deploying. Only cite terminal matching-head CI/browser/
+native Blender runs as verification.
