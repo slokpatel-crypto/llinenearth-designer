@@ -446,6 +446,92 @@ def align_metric_tangent_charts(faces, *, tangent_face_indices, tolerance_m=1e-5
     return report(aligned)
 
 
+
+def classify_unapproved_uv_seams(faces, *, radius_m, tangent_face_indices=(),
+                                 tolerance_m=1e-5, sample_limit=16):
+    """Partition REAL shared-edge UV tears; every candidate cut stays unapproved.
+
+    A valid full-turn jump is topologically unlike an arbitrary texture tear:
+    the same integer circumference must separate BOTH shared UV endpoints and
+    neither V coordinate may drift. A tangent-chart edge remains separate even
+    if the jump happens to resemble a cylinder seam. Nothing here establishes
+    a sewn seam, factory grain or actual material repeat.
+    """
+    from collections import defaultdict
+
+    topology = audit_shared_uv_edges(faces, tolerance_m=tolerance_m,
+                                     sample_limit=sample_limit)
+    if (isinstance(radius_m, (bool, str, bytes))
+            or not isinstance(radius_m, (int, float))
+            or not math.isfinite(radius_m) or radius_m <= 1e-5):
+        raise ValueError("UV cut classifier needs a finite geometry tube radius")
+    try:
+        tangent_indices = set(tangent_face_indices)
+    except TypeError as error:
+        raise ValueError("Tangent chart indices must be iterable") from error
+    if any(isinstance(i, bool) or not isinstance(i, int) or i < 0 or i >= len(faces)
+           for i in tangent_indices):
+        raise ValueError("Invalid source tangent chart face index")
+    period = 2*math.pi*radius_m
+    edge_uses = defaultdict(list)
+    for face_index, face in enumerate(faces):
+        for (v1, uv1), (v2, uv2) in zip(face, face[1:] + face[:1]):
+            edge_uses[(min(v1, v2), max(v1, v2))].append(
+                (face_index, {v1: uv1, v2: uv2})
+            )
+    counts = {
+        "nearUnapprovedTangentChart": 0,
+        "exactFullTurnCutCandidate": 0,
+        "nonPeriodicUvTear": 0,
+    }
+    sample = []
+    for edge, uses in edge_uses.items():
+        if len(uses) != 2:
+            continue
+        (left_index, left), (right_index, right) = uses
+        delta_u = [left[vertex][0] - right[vertex][0] for vertex in edge]
+        delta_v = [left[vertex][1] - right[vertex][1] for vertex in edge]
+        jump = max(math.hypot(du, dv) for du, dv in zip(delta_u, delta_v))
+        if jump <= tolerance_m:
+            continue
+        turns = round(sum(delta_u) / 2 / period)
+        is_full_turn = (
+            turns != 0
+            and all(abs(du - turns*period) <= tolerance_m for du in delta_u)
+            and all(abs(dv) <= tolerance_m for dv in delta_v)
+        )
+        if left_index in tangent_indices or right_index in tangent_indices:
+            classification = "nearUnapprovedTangentChart"
+        elif is_full_turn:
+            classification = "exactFullTurnCutCandidate"
+        else:
+            classification = "nonPeriodicUvTear"
+        counts[classification] += 1
+        if len(sample) < sample_limit:
+            sample.append({
+                "sourceEdgeVertices": list(edge),
+                "sourcePolygonIndices": [left_index, right_index],
+                "classification": classification,
+                "integerCircumferenceTurns": turns if is_full_turn else None,
+                "maxUvEndpointJumpMm": round(jump*1000, 5),
+            })
+    if sum(counts.values()) != topology["unapprovedInteriorUvSeams"]:
+        raise RuntimeError("UV cut classification lost a genuine shared-edge discontinuity")
+    return {
+        "unapprovedInteriorUvSeams": topology["unapprovedInteriorUvSeams"],
+        "geometryEstimatedPeriodMm": round(period*1000, 5),
+        "nearUnapprovedTangentChart": counts["nearUnapprovedTangentChart"],
+        "exactFullTurnCutCandidates": counts["exactFullTurnCutCandidate"],
+        "nonPeriodicUvTears": counts["nonPeriodicUvTear"],
+        "unapprovedSourceEdgeSamples": sample,
+        "sourceNonManifoldEdges": topology["nonManifoldEdges"],
+        "cutPlacementApproved": False,
+        "supplierRepeatVerified": False,
+        "supplierGrainVerified": False,
+        "productionApproved": False,
+    }
+
+
 def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-12):
     """Triangles: iterable of (three XYZ triples, three UV pairs). Fail closed."""
     if not (math.isfinite(min_uv_area) and min_uv_area > 0
