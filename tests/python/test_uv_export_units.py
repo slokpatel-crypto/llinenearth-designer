@@ -22,6 +22,9 @@ class UvExportUnitsTests(unittest.TestCase):
             ["mesh_metres"] * 5 + [None],
             ["mesh_metres"] * 3 + ["panel_normalized"] * 3,
             ["texels"] * 6,
+            [""] * 6,
+            [" "] * 6,
+            [False] * 6,
             ["mesh_metres"] * 5,
             [],
         ):
