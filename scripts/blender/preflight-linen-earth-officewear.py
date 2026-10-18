@@ -509,6 +509,22 @@ def main():
                     f"{key} has {count} intersecting triangle pairs; production garment/body boundaries must be clean."
                 )
 
+        # Garment-vs-garment contact matters even when neither garment
+        # penetrates the source body. Two trouser legs must remain distinct:
+        # shortening the requested leg gap must not create fabric collisions.
+        leg_to_leg = intersection_pair_count(
+            bpy.data.objects.get("TrouserLegLFabric"),
+            bpy.data.objects.get("TrouserLegRFabric"),
+        )
+        boundary_intersections["garmentLegToLeg"] = leg_to_leg
+        if leg_to_leg is None:
+            reasons.append("Could not evaluate real left/right trouser fabric separation.")
+        elif leg_to_leg > 0:
+            reasons.append(
+                f"Left/right trouser fabric shells cross at {leg_to_leg} triangle pairs; "
+                "leg-gap correction must not create self-intersecting cloth."
+            )
+
         tuck_overlap = intersection_pair_count(
             bpy.data.objects.get("ShirtTorsoFabric"),
             bpy.data.objects.get("TrouserWaistFabric"),
