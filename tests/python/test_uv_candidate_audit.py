@@ -804,6 +804,17 @@ class CandidateUvAuditTests(unittest.TestCase):
         self.assertFalse(whole["physicalFabricRepeatVerified"])
         self.assertFalse(split["productionApproved"])
 
+    def test_microscopic_valid_uv_area_is_not_rounded_to_zero(self):
+        # The public audit permits triangles just above 1e-12 m². A report
+        # must not print 0.0 m² beside a nonzero distorted percentage.
+        micro_xyz = ((0, 0, 0), (2e-6, 0, 0), (0, 0, 2e-6))
+        micro_uv = ((0, 0), (4e-6, 0), (0, 1e-6))
+        result = audit.audit_uv_triangles([(micro_xyz, micro_uv)])
+        self.assertAlmostEqual(result["uvMeasuredSurfaceAreaM2"], 2e-12)
+        self.assertAlmostEqual(result["uvDistortedSurfaceAreaM2"], 2e-12)
+        self.assertEqual(result["uvDistortedSurfacePct"], 100.0)
+        self.assertEqual(result["uvDistortionHeightBands"][1]["distortedSurfacePct"], 100)
+
     def test_uv_distortion_height_bands_handle_flat_and_unusable_meshes(self):
         # Zero vertical span is valid for a horizontal swatch face.
         flat_xyz = ((0, 0, 0), (1, 0, 0), (0, 1, 0))
