@@ -270,8 +270,9 @@ test("rapid fabric selections cannot commit a superseded asynchronous garment ma
   const revision=source.indexOf("setTextureRevision((value)=>value+1);",mutate);
   assert.ok(preparation>0&&ready>preparation&&active>ready&&mutate>active&&revision>mutate);
   // All material promises settle BEFORE the synchronous visible update.
-  assert.doesNotMatch(source.slice(mutate,revision),/\\bawait\\b/);
-  assert.match(source,/return \\(\\)=>\\{if\\(applyToken\\.current===token\\) applyToken\\.current\\+\\+;\\};/);
+  assert.equal(source.slice(mutate,revision).includes("await "),false);
+  assert.ok(source.includes("return ()=>{if(applyToken.current===token) applyToken.current++;};"));
   // Errors from a superseded selection must not clear timing or state.
-  assert.match(source,/if\\(token===applyToken\\.current\\)\\{\\s*interactionStartedAt\\.current=null;/);
+  assert.ok(source.includes("if(token===applyToken.current){") &&
+    source.includes("interactionStartedAt.current=null;"));
 });
