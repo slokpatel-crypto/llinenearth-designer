@@ -131,7 +131,7 @@ test("individually plausible but globally duplicated fitting groups cannot doubl
   const second={...first,key:"Formal::regular::straight::balanced::balanced",torso:"balanced"};
   const book={version:"designer-fit-outcomes-v1" as const,totalReviews:5,
     usableBuckets:2,buckets:[first,second]};
-  assert.equal(fitOutcomeSignalFor(input,{...book,buckets:[first],totalReviews:5}).evidence,3);
+  assert.equal(fitOutcomeSignalFor(input,{...book,buckets:[first],totalReviews:5,usableBuckets:1}).evidence,3);
   const overcounted=fitOutcomeSignalFor(input,book);
   assert.equal(overcounted.score,0);
   assert.equal(overcounted.evidence,0);
