@@ -883,8 +883,12 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         }
         setError("");
       }catch{
-        interactionStartedAt.current=null;
-        if(token===applyToken.current)setError("Fabric texture application failed. The base 3D model is still available.");
+        // A cancelled texture request belongs to an older selection and must
+        // not clear the latency clock or replace an error for the latest one.
+        if(token===applyToken.current){
+          interactionStartedAt.current=null;
+          setError("Fabric texture application failed. The base 3D model is still available.");
+        }
       }
     };
     void apply();
