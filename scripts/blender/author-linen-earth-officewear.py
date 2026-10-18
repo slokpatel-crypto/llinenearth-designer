@@ -26,6 +26,7 @@ from drape_preview_math import MAX_PREVIEW_RELIEF_MM, candidate_drape_offset_mm
 from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical_metric_face_uv
 from region_islands import keep_ankle_connected_faces
 from sleeve_stance_math import MAX_INBOARD_MM, candidate_sleeve_inboard_mm
+from leg_stance_math import MAX_INBOARD_MM as MAX_LEG_INBOARD_MM, candidate_leg_inboard_mm
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -60,6 +61,8 @@ def cli_args():
                         help="0 for a clean shell; 0..6 mm art-directed visual microfolds, not physical drape")
     parser.add_argument("--sleeve-cuff-inboard-mm", type=float, default=20.0,
                         help="Experimental cloth-only cuff shift, 0..22mm/side; never moves hands or certifies pose")
+    parser.add_argument("--trouser-leg-inboard-mm", type=float, default=7.0,
+                        help="Experimental inward trouser shell shaping, 0..8mm/leg, no body movement")
     return parser.parse_args(argv)
 
 
@@ -364,7 +367,7 @@ def repair_body_intersections(body, shell, max_passes):
     }
 
 
-def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm, body_floor_z, body_height, surface_refine, repair_passes, hem_taper_fraction, sleeve_cuff_inboard_mm):
+def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm, body_floor_z, body_height, surface_refine, repair_passes, hem_taper_fraction, sleeve_cuff_inboard_mm, trouser_leg_inboard_mm):
     phase_pairs = {"source_surface": source_fit_collision_pairs(body, obj)}
     if surface_refine:
         # SIMPLE subdivides existing source faces without moving the body-derived
@@ -410,6 +413,17 @@ def fit_shell(obj, body, clearance_m, thickness_m, panel, relief_mm, body_floor_
     hem_taper_mm = (taper_candidate_trouser_hem(obj, body_floor_z, body_height, hem_taper_fraction)
                     if panel.startswith("TrouserLeg") else 0.0)
     obj["linen_earth_hem_taper_candidate_max_move_mm"] = hem_taper_mm
+    if panel.startswith("TrouserLeg") and trouser_leg_inboard_mm > 0:
+        for vertex in obj.data.vertices:
+            ratio = (vertex.co.z - body_floor_z) / body_height
+            dx_mm = candidate_leg_inboard_mm(panel, ratio, trouser_leg_inboard_mm)
+            vertex.co.x += dx_mm / 1000.0
+        obj.data.update()
+        bpy.context.view_layer.update()
+        phase_pairs["candidate_leg_inboard"] = source_fit_collision_pairs(body, obj)
+    obj["linen_earth_trouser_leg_inboard_candidate_mm"] = (
+        trouser_leg_inboard_mm if panel.startswith("TrouserLeg") else 0.0
+    )
     max_relief = sculpt_unverified_preview_relief(obj, panel, relief_mm)
     phase_pairs["candidate_relief"] = source_fit_collision_pairs(body, obj)
 
@@ -532,6 +546,8 @@ def main():
         raise RuntimeError("Candidate body-contact repair must use between 0 and 6 bounded passes.")
     if not math.isfinite(options.hem_taper_fraction) or not 0 <= options.hem_taper_fraction <= 0.12:
         raise RuntimeError("Candidate hem taper must be finite and within 0 to 12 percent.")
+    if not math.isfinite(options.trouser_leg_inboard_mm) or not 0 <= options.trouser_leg_inboard_mm <= MAX_LEG_INBOARD_MM:
+        raise RuntimeError("Unverified leg spacing adjustment must stay within 0..8 mm per shell.")
     if not math.isfinite(options.sleeve_cuff_inboard_mm) or not 0 <= options.sleeve_cuff_inboard_mm <= MAX_INBOARD_MM:
         raise RuntimeError("Unverified sleeve cuff shift must be within 0..22 mm, not an approved body pose.")
     if not math.isfinite(options.waist_layer_extra_mm) or not 0 <= options.waist_layer_extra_mm <= 7:
@@ -629,7 +645,7 @@ def main():
         # Outer waistband is outside the tucked shirt instead of z-fighting
         # against an identically offset body-derived surface for 10 cm.
         panel_clearance = clearance_m + (options.waist_layer_extra_mm / 1000.0 if name == "TrouserWaistFabric" else 0.0)
-        max_relief, shoulder_guide, phase_pairs, repair = fit_shell(obj, body, panel_clearance, thickness_m, name, options.candidate_relief_mm, min_z, height, options.surface_refine, options.contact_repair_passes, options.hem_taper_fraction, options.sleeve_cuff_inboard_mm)
+        max_relief, shoulder_guide, phase_pairs, repair = fit_shell(obj, body, panel_clearance, thickness_m, name, options.candidate_relief_mm, min_z, height, options.surface_refine, options.contact_repair_passes, options.hem_taper_fraction, options.sleeve_cuff_inboard_mm, options.trouser_leg_inboard_mm)
         fit_stage_report[name] = phase_pairs
         contact_repair_report[name] = repair
         planar_grain_uv(obj)
@@ -666,6 +682,7 @@ def main():
     bpy.context.scene["linen_earth_waist_layer_extra_mm"] = options.waist_layer_extra_mm
     bpy.context.scene["linen_earth_hem_taper_candidate_fraction"] = options.hem_taper_fraction
     bpy.context.scene["linen_earth_candidate_sleeve_inboard_mm"] = options.sleeve_cuff_inboard_mm
+    bpy.context.scene["linen_earth_candidate_trouser_leg_inboard_mm"] = options.trouser_leg_inboard_mm
     bpy.context.scene["linen_earth_source_body_pose_changed"] = False
     bpy.context.scene["linen_earth_garment_clearance_mm"] = round(clearance_m * 1000.0, 3)
     bpy.context.scene["linen_earth_garment_thickness_mm"] = round(thickness_m * 1000.0, 3)
