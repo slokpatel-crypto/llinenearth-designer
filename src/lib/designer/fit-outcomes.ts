@@ -137,14 +137,14 @@ export function fitOutcomeSignalFor(
 
   // If the exact body-proportion bucket is still sparse, a larger style-level
   // sample may break ties only. It is deliberately capped below the exact signal.
-  // A stored \"unknown\" proportion comes from missing or invalid body measurements.
+  // A stored "unknown" proportion comes from missing or invalid body measurements.
   // It is not a physical match for an independently known customer shape, so
   // it must not boost a style-level fit recommendation for measured customers.
   // Known-but-different proportions can still provide a *weak* cut-family tie-break.
   const related=book.buckets.filter((b)=>b.occasion===input.occasion
     && b.shirtFit===input.style.shirtFit&&b.trouser===input.style.trouser
-    && (input.proportion.torso===\"unknown\" || b.torso!==\"unknown\")
-    && (input.proportion.seat===\"unknown\" || b.seat!==\"unknown\"));
+    && (input.proportion.torso==="unknown" || b.torso!=="unknown")
+    && (input.proportion.seat==="unknown" || b.seat!=="unknown"));
   const clean=related.reduce((sum,b)=>sum+b.clean,0);
   const minor=related.reduce((sum,b)=>sum+b.minor,0);
   const major=related.reduce((sum,b)=>sum+b.major,0);
