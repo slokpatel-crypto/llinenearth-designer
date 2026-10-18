@@ -15,7 +15,7 @@ from mathutils.bvhtree import BVHTree
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from uv_candidate_audit import audit_shared_uv_edges, classify_unapproved_uv_seams, validate_recomputed_source_cut_evidence
+from uv_candidate_audit import audit_shared_uv_edges, classify_unapproved_uv_seams, validate_recomputed_source_cut_evidence, verify_evaluated_tube_radius_m
 from sleeve_stance_math import source_arm_band_geometry
 
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -104,6 +104,7 @@ def evaluated_mesh_stats(obj):
         source_cut_report = None
         source_cut_error = None
         source_cut_integrity = None
+        radius_integrity = None
         if uv_channel is not None:
             try:
                 evaluated_source_faces = [
@@ -119,10 +120,10 @@ def evaluated_mesh_stats(obj):
                     # evaluated source geometry; do not accept authoring JSON
                     # as an independent mesh verification or sewn-seam approval.
                     radius_mm = obj.get("linen_earth_uv_geometry_radius_estimate_mm")
-                    if (isinstance(radius_mm, (bool, str, bytes))
-                            or not isinstance(radius_mm, (float, int))
-                            or not math.isfinite(radius_mm) or radius_mm <= .01):
-                        raise ValueError("Missing valid candidate tube radius provenance")
+                    radius_integrity = verify_evaluated_tube_radius_m(
+                        [tuple(vertex.co) for vertex in mesh.vertices],
+                        radius_mm,
+                    )
                     spatial = json.loads(str(obj.get(
                         "linen_earth_uv_fallback_spatial_evidence_json", ""
                     )))
@@ -160,6 +161,7 @@ def evaluated_mesh_stats(obj):
             "uvIndependentSourceCutReport": source_cut_report,
             "uvIndependentSourceCutError": source_cut_error,
             "uvIndependentSourceCutIntegrity": source_cut_integrity,
+            "uvIndependentTubeRadiusIntegrity": radius_integrity,
             "uvCollapsedTriangles": uv_collapsed,
             "uvNonFiniteTriangles": uv_nonfinite,
             "vertices": vertices,
