@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { garmentPanelTextureScale, garmentPanelTextureScaleEvidence, garmentUvRepeatsForUnits, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
+import { garmentPanelTextureScale, garmentPanelTexturePreparationKey, garmentPanelTextureScaleEvidence, garmentUvRepeatsForUnits, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
 
 
 test("physical-scale resolution never coerces unreviewed JSON strings",()=>{
@@ -185,4 +185,16 @@ test("explicit malformed horizontal measurements are rejected before visual text
   for(const width of [0,-20,Infinity,NaN,"40",true]) {
     assert.equal(hasInvalidVerifiedViewerTileWidth({scaleApproximate:false,tileRealWidthMm:width as number}),true);
   }
+});
+
+
+test("texture re-use signature preserves unchanged opposite garment and isolates UV/model changes",()=>{
+  const original={modelKey:"model-a",panelMaterial:"TrouserLegLFabric",
+    fabricUrl:"/cloth/taupe.png",normalUrl:"data:normal",u:25,v:50,offsetU:0,offsetV:0,rotation:0};
+  const key=garmentPanelTexturePreparationKey(original);
+  assert.equal(key,garmentPanelTexturePreparationKey({...original}));
+  for(const change of [
+    {fabricUrl:"/cloth/cream.png"},{modelKey:"model-b"},{panelMaterial:"TrouserLegRFabric"},
+    {u:20},{v:49},{offsetU:0.1},{offsetV:0.1},{rotation:1},{normalUrl:"data:other-normal"},
+  ]) assert.notEqual(key,garmentPanelTexturePreparationKey({...original,...change}));
 });
