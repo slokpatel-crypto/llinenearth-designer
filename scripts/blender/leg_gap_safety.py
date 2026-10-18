@@ -35,3 +35,26 @@ def bounded_leg_gap_trials(requested_mm, *, step_mm=0.5):
     # Zero may duplicate due to rounding at the final boundary.
     return tuple(value for index, value in enumerate(values)
                  if index == 0 or value != values[index - 1])
+
+
+
+def bounded_leg_gap_refinement_trials(unsafe_above_mm, safe_below_mm, *, subdivisions=4):
+    """Probe only the bracket BETWEEN one rejected and one BVH-safe shift.
+
+    Coarse <=0.5-mm rollback can miss a slightly narrower still-safe trouser
+    stance. These candidates are ordered closer to the rejected geometry first,
+    but each MUST undergo independent cloth/cloth and cloth/body BVH checks in
+    Blender. This cannot infer safety from monotonicity or change body pose.
+    """
+    values = (unsafe_above_mm, safe_below_mm)
+    if any(isinstance(v, (bool, str, bytes)) or not isinstance(v, (int, float))
+           or not math.isfinite(v) for v in values):
+        raise ValueError("Refinement needs finite numeric source shifts")
+    if (not 0 <= safe_below_mm < unsafe_above_mm <= MAX_INBOARD_MM
+            or unsafe_above_mm-safe_below_mm > 1.0):
+        raise ValueError("Refinement needs a bounded rejected/safe bracket")
+    if isinstance(subdivisions, bool) or not isinstance(subdivisions, int) or not 2 <= subdivisions <= 8:
+        raise ValueError("Refinement subdivisions must be an integer from 2 to 8")
+    return tuple(round(
+        unsafe_above_mm - (unsafe_above_mm-safe_below_mm)*step/subdivisions, 6
+    ) for step in range(1, subdivisions))
