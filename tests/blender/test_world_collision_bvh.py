@@ -28,7 +28,9 @@ for vertex in body.data.vertices:
 body.data.update()
 bpy.context.view_layer.update()
 
-bpy.ops.mesh.primitive_cube_add(size=1, location=(0.35, 0.0, 0.0))
+# Offset Y and Z as well as X: coincident top/side faces yield BVH
+# coplanarity ambiguities, not a reliable genuine triangle crossing fixture.
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0.35, 0.1, 0.15))
 garment = bpy.context.object
 garment.name = "TEST_GARMENT_WORLD_SPACE"
 
