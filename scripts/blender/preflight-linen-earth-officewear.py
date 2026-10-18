@@ -98,6 +98,7 @@ def evaluated_mesh_stats(obj):
                         tuple(tuple(mesh.vertices[mesh.loops[i].vertex_index].co)
                               for i in triangle.loops),
                         tuple(tuple(uv_channel.data[i].uv) for i in triangle.loops),
+                        triangle.polygon_index,
                     )
                     for triangle in mesh.loop_triangles
                 ])
