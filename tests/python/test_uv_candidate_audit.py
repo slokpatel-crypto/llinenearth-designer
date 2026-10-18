@@ -568,6 +568,90 @@ class CandidateUvAuditTests(unittest.TestCase):
                     faces, radius_m=.1, source_vertex_positions=positions
                 )
 
+    def test_complete_source_cut_inventory_is_not_sample_limited(self):
+        import math
+        wrap = 2*math.pi*.1
+        # Two disconnected real source-edge cuts. Nothing from the second
+        # component may disappear when the human-facing sample budget is zero.
+        base = [
+            [(0, (0, 0)), (1, (.02, 0)), (2, (.02, .05))],
+            [(2, (.02-wrap, .05)), (1, (.02-wrap, 0)),
+             (3, (.04-wrap, .05))],
+        ]
+        other = [[(vid+10, uv) for vid, uv in face] for face in base]
+        xyz = [(0., 0., 0.)]*14
+        for offset, edge_height in ((0, .05), (10, .03)):
+            xyz[offset] = (0., 0., 0.)
+            xyz[offset+1] = (.02, 0., 0.)
+            xyz[offset+2] = (.02, 0., edge_height)
+            xyz[offset+3] = (.04, 0., edge_height)
+        result = audit.classify_unapproved_uv_seams(
+            base + other, radius_m=.1, source_vertex_positions=xyz,
+            sample_limit=0,
+        )
+        metrics = result["sourceSeamGroupMetricsByClass"]["exactFullTurnCutCandidate"]
+        self.assertEqual(result["sourceSeamChainSamples"], [])
+        self.assertEqual(result["unapprovedSourceEdgeSamples"], [])
+        self.assertEqual(result["sourceSeamGroupsOmittedFromSamples"], 2)
+        self.assertEqual(metrics["groupCount"], 2)
+        self.assertEqual(metrics["edgeCount"], 2)
+        self.assertEqual(metrics["branchedGroupCount"], 0)
+        self.assertEqual(metrics["maxJunctionDegree"], 1)
+        self.assertEqual(metrics["totalPathLengthMm"], 80)
+        self.assertEqual(metrics["longestPathLengthMm"], 50)
+        self.assertEqual(metrics["maxZSpanMm"], 50)
+        self.assertFalse(result["cutPlacementApproved"])
+        # UV-only evidence must NEVER invent metre-based seam extents.
+        no_xyz = audit.classify_unapproved_uv_seams(base + other, radius_m=.1)
+        self.assertIsNone(no_xyz["sourceSeamGroupMetricsByClass"]
+                          ["exactFullTurnCutCandidate"]["totalPathLengthMm"])
+
+    def test_independent_source_cut_receipt_catches_hidden_group_tampering(self):
+        import math
+        from copy import deepcopy
+        wrap = 2*math.pi*.1
+        faces = [
+            [(0, (0, 0)), (1, (.02, 0)), (2, (.02, .05))],
+            [(2, (.02-wrap, .05)), (1, (.02-wrap, 0)),
+             (3, (.04-wrap, .05))],
+        ]
+        xyz = [(0, 0, 0), (.02, 0, 0), (.02, 0, .05), (.04, 0, .05)]
+        authored = audit.classify_unapproved_uv_seams(
+            faces, radius_m=.1, source_vertex_positions=xyz, sample_limit=0
+        )
+        evaluated = deepcopy(authored)
+        # Tiny differences from Blender float32 vertices are explicitly
+        # bounded, not mistaken for manufacturer scale measurements.
+        evaluated["sourceMetricEdgeLengthByClassMm"]["exactFullTurnCutCandidate"] += .05
+        evidence = audit.validate_recomputed_source_cut_evidence(authored, evaluated)
+        self.assertTrue(evidence["sourceCutProvenanceConsistent"])
+        self.assertAlmostEqual(evidence["maxSourceCutMetricDeltaMm"], .05)
+        self.assertFalse(evidence["supplierGrainVerified"])
+        self.assertFalse(evidence["productionApproved"])
+        altered = deepcopy(authored)
+        altered["sourceSeamGroupMetricsByClass"]["exactFullTurnCutCandidate"]["edgeCount"] += 1
+        with self.assertRaisesRegex(ValueError, "edgeCount"):
+            audit.validate_recomputed_source_cut_evidence(altered, authored)
+        altered = deepcopy(authored)
+        altered["sourceSeamGroupMetricsByClass"]["exactFullTurnCutCandidate"]["totalPathLengthMm"] += 1
+        with self.assertRaisesRegex(ValueError, "totalPathLengthMm"):
+            audit.validate_recomputed_source_cut_evidence(altered, authored)
+        altered = deepcopy(authored)
+        altered["sourceSeamChainShapes"]["openPath"] += 1
+        with self.assertRaisesRegex(ValueError, "sourceSeamChainShapes"):
+            audit.validate_recomputed_source_cut_evidence(altered, authored)
+        altered = deepcopy(authored)
+        altered["supplierGrainVerified"] = True
+        with self.assertRaises(ValueError):
+            audit.validate_recomputed_source_cut_evidence(altered, authored)
+        for tolerance in (-1, .251, float("nan"), True):
+            with self.subTest(tolerance=tolerance), self.assertRaises(ValueError):
+                audit.validate_recomputed_source_cut_evidence(
+                    authored, authored, metric_tolerance_mm=tolerance
+                )
+        with self.assertRaises(ValueError):
+            audit.validate_recomputed_source_cut_evidence({}, authored)
+
     def test_valid_uv_is_not_a_physical_fabric_certificate(self):
         result = audit.audit_uv_triangles([(XYZ, UV)])
         self.assertTrue(result["candidateUvTopologyPass"])
