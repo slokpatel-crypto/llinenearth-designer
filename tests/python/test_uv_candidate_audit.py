@@ -806,7 +806,7 @@ class CandidateUvAuditTests(unittest.TestCase):
         altered = deepcopy(authored)
         altered["distortedSourcePolygonSamples"] = []
         altered["distortedSourcePolygonSamplesOmitted"] = 2
-        with self.assertRaisesRegex(ValueError, "Missing source polygon"):
+        with self.assertRaisesRegex(ValueError, "distortedSourcePolygonSamplesOmitted"):
             audit.validate_independent_uv_hotspots(altered, authored)
 
         for tolerance in (True, -1, 0.5, float("nan"), "0.01"):
