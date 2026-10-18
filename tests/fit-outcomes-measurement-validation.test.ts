@@ -121,3 +121,40 @@ test("corrupt persisted fitting counters and mismatched recommendation keys cann
   assert.equal(fitOutcomeSignalFor(input,{...book,totalReviews:NaN}).score,0);
   assert.equal(fitOutcomeSignalFor(input,{...book,buckets:null as unknown as typeof book.buckets}).score,0);
 });
+
+test("individually plausible but globally duplicated fitting groups cannot double-count reviews",()=>{
+  const input={occasion:"Formal" as const,style:{shirtFit:"regular",trouser:"straight"},
+    proportion:{torso:"tapered",seat:"balanced"}};
+  const first={key:"Formal::regular::straight::tapered::balanced",
+    occasion:"Formal" as const,shirtFit:"regular",trouser:"straight",
+    torso:"tapered",seat:"balanced",clean:3,minor:0,major:0,total:3};
+  const second={...first,key:"Formal::regular::straight::balanced::balanced",torso:"balanced"};
+  const book={version:"designer-fit-outcomes-v1" as const,totalReviews:5,
+    usableBuckets:2,buckets:[first,second]};
+  assert.equal(fitOutcomeSignalFor(input,{...book,buckets:[first],totalReviews:5}).evidence,3);
+  const overcounted=fitOutcomeSignalFor(input,book);
+  assert.equal(overcounted.score,0);
+  assert.equal(overcounted.evidence,0);
+  assert.match(overcounted.summary,/revalidation/i);
+
+  const doubled=fitOutcomeSignalFor(input,{...book,totalReviews:6,buckets:[first,{...first}]});
+  assert.equal(doubled.score,0);
+  assert.equal(doubled.evidence,0);
+  assert.match(doubled.summary,/revalidation/i);
+});
+
+test("legitimate distinct fitting groups may use fewer than total recorded reviews",()=>{
+  const book=aggregateFitOutcomes([
+    ...Array.from({length:4},(_,i)=>({type:"operator_note",source:"operator",
+      payload:{subtype:"designer_fit_outcome",recommendationId:`tailor-${i}`,
+        verdict:"clean_first_fit",occasion:"Formal",shirtFit:"regular",trouser:"straight",
+        torso:"tapered",seat:"balanced",areas:[]}})),
+    {type:"operator_note",source:"operator",payload:{subtype:"designer_fit_outcome",
+      recommendationId:"other",verdict:"major_alteration",occasion:"Casual",
+      shirtFit:"slim",trouser:"wide",torso:"straight",seat:"balanced",areas:[]}},
+  ]);
+  const signal=fitOutcomeSignalFor({occasion:"Formal",style:{shirtFit:"regular",trouser:"straight"},
+    proportion:{torso:"tapered",seat:"balanced"}},book);
+  assert.equal(signal.evidence,4);
+  assert.ok(signal.score>0);
+});
