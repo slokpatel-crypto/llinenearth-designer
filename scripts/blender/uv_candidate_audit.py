@@ -952,6 +952,12 @@ def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-1
     anisotropies = []
     metric_deviations = []
     severely_anisotropic = severely_rescaled = 0
+    # Each triangle contributes its ACTUAL 3D surface area, not one vote per
+    # triangle; aggressive remeshing must not hide a badly stretched region.
+    # Height bands localize defects without assuming textile grain direction.
+    distortion_surface = []
+    z_min, z_max = float("inf"), float("-inf")
+    distorted_area_m2 = measured_area_m2 = 0.0
     for xyz, uv in triangles:
         if len(xyz) != 3 or len(uv) != 3 or any(len(v) != 3 for v in xyz) or any(len(v) != 2 for v in uv):
             raise ValueError("Expected three XYZ and three UV points per triangle")
@@ -960,6 +966,8 @@ def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-1
                or not math.isfinite(v) for v in flat):
             raise ValueError("UV audit needs finite numeric mesh/UV coordinates")
         total += 1
+        z_min = min(z_min, *(point[2] for point in xyz))
+        z_max = max(z_max, *(point[2] for point in xyz))
         a, b, c = xyz
         ab = [b[i] - a[i] for i in range(3)]
         ac = [c[i] - a[i] for i in range(3)]
@@ -988,10 +996,41 @@ def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-1
             raise ValueError("Nonfinite UV principal metric distortion")
         anisotropies.append(ratio)
         metric_deviations.append(deviation)
-        severely_anisotropic += ratio > 2.0
-        severely_rescaled += deviation > 0.5
+        is_anisotropic = ratio > 2.0
+        is_rescaled = deviation > 0.5
+        severely_anisotropic += is_anisotropic
+        severely_rescaled += is_rescaled
+        distorted = is_anisotropic or is_rescaled
+        measured_area_m2 += surface_area
+        if distorted:
+            distorted_area_m2 += surface_area
+        distortion_surface.append((sum(point[2] for point in xyz) / 3.0,
+                                   surface_area, distorted))
     if not total:
         raise ValueError("No evaluated UV triangles; candidate must fail closed")
+    if not math.isfinite(measured_area_m2) or not math.isfinite(distorted_area_m2):
+        raise ValueError("UV metric surface coverage overflow")
+    height_bins = [
+        {"heightBandPct": [index * 20, (index + 1) * 20],
+         "validTriangleCount": 0, "distortedTriangleCount": 0,
+         "surfaceAreaM2": 0.0, "distortedAreaM2": 0.0}
+        for index in range(5)
+    ]
+    for centroid_z, area, distorted in distortion_surface:
+        # A flat horizontal garment panel has no Z extent: use the bottom
+        # bin deterministically rather than divide by zero.
+        band = min(4, max(0, int(5 * (centroid_z - z_min) / (z_max - z_min)))) if z_max > z_min else 0
+        cell = height_bins[band]
+        cell["validTriangleCount"] += 1
+        cell["surfaceAreaM2"] += area
+        if distorted:
+            cell["distortedTriangleCount"] += 1
+            cell["distortedAreaM2"] += area
+    for cell in height_bins:
+        area = cell["surfaceAreaM2"]
+        cell["distortedSurfacePct"] = round(100.0 * cell["distortedAreaM2"] / area, 2) if area else None
+        cell["surfaceAreaM2"] = round(area, 8)
+        cell["distortedAreaM2"] = round(cell["distortedAreaM2"], 8)
     densities.sort()
     median = densities[len(densities)//2] if densities else None
     # Relative area-scale variance can flag inconsistent pattern density even
@@ -1011,6 +1050,12 @@ def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-1
         return values[min(len(values)-1, math.ceil(.95*len(values))-1)]
 
     return {
+        "uvMeasuredSurfaceAreaM2": round(measured_area_m2, 8),
+        "uvDistortedSurfaceAreaM2": round(distorted_area_m2, 8),
+        "uvDistortedSurfacePct": (round(100.0 * distorted_area_m2 / measured_area_m2, 2)
+                                  if measured_area_m2 else None),
+        "uvDistortionHeightBands": height_bins,
+        "uvSourceZExtentMetres": [round(z_min, 5), round(z_max, 5)],
         "p95UvMetricAnisotropy": p95(anisotropies),
         "p95UvMetricStretchDeviation": p95(metric_deviations),
         "uvTrianglesAnisotropyOver2": severely_anisotropic,
