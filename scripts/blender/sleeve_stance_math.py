@@ -69,7 +69,7 @@ def optimistic_sleeve_spacing_budget(current_spacing_mm, applied_mm_per_sleeve, 
         "optimisticMinimumSpacingMm": round(best_case, 3),
         "guideNumericallyReachableWithinExistingContourCap": reachable,
         "fullDisplacementEffectAssumedOnlyAsOptimisticBound": True,
-        "originalBodyPosePreserved": True,
+        "bodyPoseNotEvaluatedByNumericBudget": True,
         "bodyContactOrFitApproved": False,
         "productionApproved": False,
     }
