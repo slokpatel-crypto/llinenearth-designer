@@ -6,7 +6,7 @@ import {
   GARMENT_PANEL_SPECS,
   PROTOTYPE_MODEL_ID,
 } from "@/lib/garment-viewer-prototype";
-import { garmentPanelTextureScale, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
+import { garmentPanelTextureScale, garmentUvRepeatsForUnits, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
 import { validateGarmentViewerModelContract, validateGarmentViewerModelManifest, type GarmentViewerModelContractResult, type GarmentViewerModelManifest, type GarmentViewerManifestValidation } from "@/lib/garment-viewer-model-contract";
 import { GARMENT_VIEWER_LATENCY_STORAGE_KEY, garmentViewerAssetIdentityKey, type GarmentViewerAssetIdentity } from "@/lib/garment-viewer-readiness";
 import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
@@ -819,7 +819,13 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
             viewer.createTexture!(fabric.image),
             normalUrl ? viewer.createTexture!(normalUrl) : Promise.resolve(null),
           ]);
-          const scale=garmentPanelTextureScale(panel.widthMm,panel.heightMm,tileMm);
+          // Legacy live-model GLBs use one normalized UV span per panel.
+          // A new source-authored metre-UV GLB must declare its convention in
+          // the validated manifest; never apply a normalized repeat factor to it.
+          const scale=modelManifest?.uvCoordinateUnits
+            ? garmentUvRepeatsForUnits(modelManifest.uvCoordinateUnits,panel.widthMm,panel.heightMm,tileMm)
+            : garmentPanelTextureScale(panel.widthMm,panel.heightMm,tileMm);
+          if(!scale) throw new Error("Unknown or renderer-clamped candidate physical fabric scale");
           const offset={u:Number(panel.offsetU)||0,v:Number(panel.offsetV)||0};
           const rotation=(Number(panel.rotationDeg)||0)*Math.PI/180;
           texture.sampler?.setScale?.(scale);
@@ -870,7 +876,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       }
     };
     void apply();
-  },[modelReady,materialPipelineReady,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelContract,modelSrc,assetIdentityKey]);
+  },[modelReady,materialPipelineReady,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelManifest,modelContract,modelSrc,assetIdentityKey]);
 
   useEffect(()=>{
     if(!modelReady || !materialPipelineReady) return;

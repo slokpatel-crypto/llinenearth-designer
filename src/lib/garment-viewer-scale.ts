@@ -78,3 +78,35 @@ export function garmentPanelTextureScaleEvidence(
   }
   return {applied,exactScaleWithinRendererLimits:true,rawRepeats,reason:"exact_within_limits"};
 }
+
+
+export type GarmentUvCoordinateUnits="panel_normalized"|"mesh_metres"|"unknown";
+
+/**
+ * Translate a real tile width into repeat factors for the actual authored UV
+ * units, without silently accepting a normalized-vs-metre convention mismatch.
+ *
+ * This only proves unit consistency. Planar projection distortion, garment
+ * seams, supplier repeat, drape and photo parity remain independently unverified.
+ * Never enable the experimental metric-UV scene based on this helper alone.
+ */
+export function garmentUvRepeatsForUnits(
+  uvUnits:GarmentUvCoordinateUnits,
+  widthMm:number,
+  heightMm:number,
+  tileWidthMm:number,
+):{u:number;v:number}|null {
+  if(!Number.isFinite(widthMm)||widthMm<=0
+    ||!Number.isFinite(heightMm)||heightMm<=0
+    ||!Number.isFinite(tileWidthMm)||tileWidthMm<=0) return null;
+  if(uvUnits==="panel_normalized") {
+    const evidence=garmentPanelTextureScaleEvidence(widthMm,heightMm,tileWidthMm);
+    return evidence.exactScaleWithinRendererLimits ? evidence.applied : null;
+  }
+  if(uvUnits==="mesh_metres") {
+    const repeatsPerMetre=1000/tileWidthMm;
+    if(!Number.isFinite(repeatsPerMetre)||repeatsPerMetre<.35||repeatsPerMetre>80) return null;
+    return {u:repeatsPerMetre,v:repeatsPerMetre};
+  }
+  return null;
+}

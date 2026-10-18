@@ -22,6 +22,9 @@ import sys
 
 import bpy
 from mathutils import Vector
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from uv_export_units import resolve_panel_uv_units
 
 MODEL_ID = "LE-OFFICEWEAR-V1"
 CONTRACT_VERSION = "linen-earth-garment-viewer-v2"
@@ -248,7 +251,7 @@ def viewer_manifest_path(output_path):
     return root + ".viewer.json"
 
 
-def write_viewer_manifest(output_path, height, source, model_identity, panel_spec):
+def write_viewer_manifest(output_path, height, source, model_identity, panel_spec, uv_coordinate_units):
     payload = {
         "version": CONTRACT_VERSION,
         "modelId": MODEL_ID,
@@ -257,6 +260,8 @@ def write_viewer_manifest(output_path, height, source, model_identity, panel_spe
         "source": source,
         "panels": panel_spec["panels"],
     }
+    if uv_coordinate_units is not None:
+        payload["uvCoordinateUnits"] = uv_coordinate_units
     if panel_spec.get("cameraOrbits"):
         payload["cameraOrbits"] = panel_spec["cameraOrbits"]
 
@@ -297,11 +302,22 @@ def main():
     source = scene_source_provenance(bpy.context.scene) if panel_spec else None
     model_identity = scene_model_identity(bpy.context.scene) if panel_spec else None
     collection, height = validate_scene(args.collection, args.reference_body)
+    # Never export a GLB whose panel UV unit conventions disagree. An all-legacy
+    # scene may omit the metadata; a metre-UV candidate cannot silently do so.
+    uv_coordinate_units = resolve_panel_uv_units([
+        bpy.data.objects[name].get("linen_earth_uv_coordinate_units")
+        for name in GARMENT_OBJECTS
+    ])
+    if uv_coordinate_units is not None and panel_spec is None:
+        raise RuntimeError(
+            "Explicit source UV coordinate units require --panel-spec and a matching "
+            ".viewer.json sidecar; cannot export a unit-ambiguous GLB."
+        )
     export_glb(collection, args.output)
 
     manifest_path = None
     if panel_spec and source:
-        manifest_path = write_viewer_manifest(args.output, height, source, model_identity, panel_spec)
+        manifest_path = write_viewer_manifest(args.output, height, source, model_identity, panel_spec, uv_coordinate_units)
 
     print(f"Linen Earth model exported: {os.path.abspath(args.output)}")
     print(f"Model ID: {MODEL_ID}")
