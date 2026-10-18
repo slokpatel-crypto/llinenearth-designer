@@ -61,8 +61,8 @@ def cli_args():
                         help="0 for a clean shell; 0..6 mm art-directed visual microfolds, not physical drape")
     parser.add_argument("--sleeve-cuff-inboard-mm", type=float, default=0.0,
                         help="OFF by default: native 20mm experiment intersected locked body; 0..22mm/side for diagnostic only")
-    parser.add_argument("--trouser-leg-inboard-mm", type=float, default=7.0,
-                        help="Experimental inward trouser shell shaping, 0..8mm/leg, no body movement")
+    parser.add_argument("--trouser-leg-inboard-mm", type=float, default=3.0,
+                        help="Conservative cloth-only leg-gap trial 3mm per leg; 7mm trial intersected left/right cloth")
     return parser.parse_args(argv)
 
 
