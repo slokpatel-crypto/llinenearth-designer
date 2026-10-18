@@ -108,3 +108,37 @@ must reach terminal conclusions before pass/fail claims. The existing body
 identity/pose, garment geometry, unapproved UV seam counts and measured sleeve
 centre spacing were not altered by this instrumentation. Preserve draft
 status and **do not merge or deploy**.
+
+## Continued Task 2 — area-weighted source UV deformation localization (2026-10-18)
+
+A seam-free UV area audit still permits cloth-distorting stretch/shear. The
+previous independent triangle counts identify this, but triangle density is
+not surface coverage: subdividing a broken triangle could arbitrarily inflate
+the count without increasing the damaged garment area. Candidate-only audit
+now also reports:
+
+- Usable scanned-cloth area in square metres and the **union** of its
+  triangles with local principal anisotropy >2 or metric stretch error >50%;
+  one triangle over both limits is counted in that union **once**.
+- Surface-area-weighted distorted percentage, rather than the misleading
+  percentage of triangulated faces.
+- Five deterministic normalized local-Z bands (0–20% through 80–100%),
+  recording genuine surface-area coverage, distorted area and face counts.
+  The independent evaluated-Blender release preflight identifies the height
+  band with the largest distorted *area*, not merely the most triangles.
+- A flat-Z panel is handled without division by zero; fully collapsed UVs
+  report **unmeasurable** coverage, never a fictitious zero-percent distortion
+  success. Invalid source values and overflow continue to fail closed.
+
+These Z regions are **diagnostic source geometry only**. They are neither
+tailored sewing-seam positions nor evidence of weft/warp orientation, supplier
+repeat, garment drape, photograph likeness or model-body change. Coverage
+percentages never lower or waive the existing per-triangle distortion,
+shared-edge, original-scan collision, cuff-spacing, model identity, mobile
+render, human-review or supplier-data gates. Tests use a physically identical
+bad surface with one triangle and with two triangles, verifying the area
+percentage remains invariant while the raw triangle count changes.
+
+Status: unapproved engineering draft on PR #311; do not merge or deploy.
+Actual source-Blender and separate CI/browser checks must be read on the
+matching HEAD before claiming any success.
