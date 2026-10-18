@@ -138,6 +138,58 @@ class CandidateUvAuditTests(unittest.TestCase):
             with self.subTest(points=points), self.assertRaises(ValueError):
                 audit.metric_tangent_chart_uv(points)
 
+
+    def test_adjacent_uv_faces_share_source_edge_without_seam(self):
+        faces = [
+            [(0, (0.0, 0.0)), (1, (.02, 0.0)), (2, (.02, .05))],
+            [(2, (.02, .05)), (1, (.02, 0.0)), (3, (.04, .05))],
+        ]
+        r = audit.audit_shared_uv_edges(faces)
+        self.assertEqual(r["sharedInteriorEdges"], 1)
+        self.assertEqual(r["boundaryEdges"], 4)
+        self.assertEqual(r["unapprovedInteriorUvSeams"], 0)
+        self.assertTrue(r["topologicalUvContinuityPass"])
+        self.assertFalse(r["supplierGrainVerified"])
+
+    def test_face_local_origin_is_reported_as_real_uv_seam(self):
+        faces = [
+            [(0, (0.0, 0.0)), (1, (.02, 0.0)), (2, (.02, .05))],
+            [(2, (0.0, 0.0)), (1, (0.0, -.05)), (3, (.02, -.05))],
+        ]
+        r = audit.audit_shared_uv_edges(faces)
+        self.assertEqual(r["unapprovedInteriorUvSeams"], 1)
+        self.assertAlmostEqual(r["maxInteriorUvJumpMm"], (0.02**2 + 0.05**2)**.5 * 1000, places=4)
+        self.assertEqual(r["sampleUnapprovedSeams"][0]["sourceEdgeVertices"], [1, 2])
+        self.assertFalse(r["topologicalUvContinuityPass"])
+        self.assertFalse(r["productionApproved"])
+
+    def test_nonmanifold_shared_uv_edge_is_never_an_approved_chart(self):
+        faces = [
+            [(0, (0, 0)), (1, (.02, 0)), (2, (0, .02))],
+            [(1, (.02, 0)), (0, (0, 0)), (3, (0, -.02))],
+            [(0, (0, 0)), (1, (.02, 0)), (4, (.01, .02))],
+        ]
+        r = audit.audit_shared_uv_edges(faces)
+        self.assertEqual(r["nonManifoldEdges"], 1)
+        self.assertFalse(r["topologicalUvContinuityPass"])
+
+    def test_uv_seam_audit_rejects_bad_topology_and_nonmetric_inputs(self):
+        bad_faces = (
+            [],
+            [[(0, (0, 0)), (1, (1, 0))]],
+            [[(0, (0, 0)), (0, (1, 0)), (2, (1, 1))]],
+            [[(True, (0, 0)), (1, (1, 0)), (2, (1, 1))]],
+            [[(0, (0, 0)), (1, (float("nan"), 0)), (2, (1, 1))]],
+            [[(0, (0, 0)), (1, ("0.1", 0)), (2, (1, 1))]],
+        )
+        for faces in bad_faces:
+            with self.subTest(faces=faces), self.assertRaises(ValueError):
+                audit.audit_shared_uv_edges(faces)
+        for kwargs in ({"tolerance_m": 0}, {"tolerance_m": float("inf")},
+                       {"sample_limit": -1}, {"sample_limit": True}):
+            with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                audit.audit_shared_uv_edges([[(0, (0, 0)), (1, (1, 0)), (2, (1, 1))]], **kwargs)
+
     def test_valid_uv_is_not_a_physical_fabric_certificate(self):
         result = audit.audit_uv_triangles([(XYZ, UV)])
         self.assertTrue(result["candidateUvTopologyPass"])
