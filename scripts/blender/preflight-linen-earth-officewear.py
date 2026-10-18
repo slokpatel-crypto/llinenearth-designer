@@ -15,7 +15,7 @@ from mathutils.bvhtree import BVHTree
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from uv_candidate_audit import audit_shared_uv_edges, classify_unapproved_uv_seams
+from uv_candidate_audit import audit_shared_uv_edges, classify_unapproved_uv_seams, validate_recomputed_source_cut_evidence
 from sleeve_stance_math import source_arm_band_geometry
 
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -103,6 +103,7 @@ def evaluated_mesh_stats(obj):
         seam_audit_error = None
         source_cut_report = None
         source_cut_error = None
+        source_cut_integrity = None
         if uv_channel is not None:
             try:
                 evaluated_source_faces = [
@@ -138,6 +139,16 @@ def evaluated_mesh_stats(obj):
                     if (source_cut_report["unapprovedInteriorUvSeams"] !=
                             seam_audit["unapprovedInteriorUvSeams"]):
                         raise ValueError("Independent source seam topology counts disagree")
+                    # Only the evaluated Blender mesh establishes real
+                    # source-cut lengths. Reject missing/stale authoring
+                    # receipts or altered seams even when first 16 samples
+                    # look identical. Float32 scene rounding is bounded.
+                    authored_cut = json.loads(str(obj.get(
+                        "linen_earth_uv_cut_classification_json", ""
+                    )))
+                    source_cut_integrity = validate_recomputed_source_cut_evidence(
+                        authored_cut, source_cut_report
+                    )
             except (ValueError, TypeError, RuntimeError, KeyError) as exc:
                 # Invalid source topology and missing cut provenance are
                 # explicit release failures, but keep other panel diagnostics.
@@ -148,6 +159,7 @@ def evaluated_mesh_stats(obj):
             "uvSharedEdgeAuditError": seam_audit_error,
             "uvIndependentSourceCutReport": source_cut_report,
             "uvIndependentSourceCutError": source_cut_error,
+            "uvIndependentSourceCutIntegrity": source_cut_integrity,
             "uvCollapsedTriangles": uv_collapsed,
             "uvNonFiniteTriangles": uv_nonfinite,
             "vertices": vertices,
