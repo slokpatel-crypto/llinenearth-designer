@@ -153,19 +153,24 @@ export function validateGarmentViewerModelManifest(value:unknown,expectedModelId
     && manifest.uvCoordinateUnits!=="mesh_metres") {
     reasons.push("Manifest UV coordinate units must be panel_normalized or mesh_metres.");
   }
-  const panels=manifest.panels&&typeof manifest.panels==="object"?manifest.panels:{};
+  // Panel measurements come from a JSON sidecar. A present-but-null (or false)
+  // panel used to evade both the missing and invalid checks and could crash the
+  // texture renderer. Never coerce string/boolean phase controls to numbers:
+  // physical scale and seam alignment must use explicitly numeric receipts.
+  const panels=manifest.panels&&typeof manifest.panels==="object"&&!Array.isArray(manifest.panels)?manifest.panels:{};
   const missingPanels=REQUIRED_GARMENT_VIEWER_MATERIALS.filter((name)=>!(name in panels));
+  const dimension=(value:unknown,max:number)=>typeof value==="number"&&Number.isFinite(value)&&value>0&&value<=max;
+  const phase=(value:unknown,max:number)=>value===undefined||(typeof value==="number"&&Number.isFinite(value)&&Math.abs(value)<=max);
   const invalidPanels=REQUIRED_GARMENT_VIEWER_MATERIALS.filter((name)=>{
-    const panel=(panels as Record<string,{widthMm?:unknown;heightMm?:unknown;offsetU?:unknown;offsetV?:unknown;rotationDeg?:unknown}>)[name];
-    if(!panel) return false;
-    const offsetU=panel.offsetU===undefined?0:Number(panel.offsetU);
-    const offsetV=panel.offsetV===undefined?0:Number(panel.offsetV);
-    const rotationDeg=panel.rotationDeg===undefined?0:Number(panel.rotationDeg);
-    return !Number.isFinite(panel.widthMm)||Number(panel.widthMm)<=0||Number(panel.widthMm)>2000
-      || !Number.isFinite(panel.heightMm)||Number(panel.heightMm)<=0||Number(panel.heightMm)>2500
-      || !Number.isFinite(offsetU)||Math.abs(offsetU)>10
-      || !Number.isFinite(offsetV)||Math.abs(offsetV)>10
-      || !Number.isFinite(rotationDeg)||Math.abs(rotationDeg)>360;
+    if(!(name in panels)) return false;
+    const panel=(panels as Record<string,unknown>)[name];
+    if(!panel||typeof panel!=="object"||Array.isArray(panel)) return true;
+    const fields=panel as Record<string,unknown>;
+    return !dimension(fields.widthMm,2000)
+      || !dimension(fields.heightMm,2500)
+      || !phase(fields.offsetU,10)
+      || !phase(fields.offsetV,10)
+      || !phase(fields.rotationDeg,360);
   });
   if(missingPanels.length) reasons.push(`Manifest is missing panel dimensions for: ${missingPanels.join(", ")}.`);
   if(invalidPanels.length) reasons.push(`Manifest has invalid panel dimensions for: ${invalidPanels.join(", ")}.`);
