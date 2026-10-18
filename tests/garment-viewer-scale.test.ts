@@ -86,9 +86,9 @@ test("metric-UV garments use a single millimetre tile basis irrespective of garm
   assert.deepEqual(sleeve,torso);
   assert.deepEqual(leg,torso);
   // One UV metre * 25 repeats = 25 tiles; .58m * 25 = 14.5 physical tiles.
-  assert.equal(.58*torso.u,580/40);
-  assert.equal(.18*sleeve.u,180/40);
-  assert.equal(.93*leg.v,930/40);
+  assert(Math.abs(.58*torso.u-580/40)<1e-10);
+  assert(Math.abs(.18*sleeve.u-180/40)<1e-10);
+  assert(Math.abs(.93*leg.v-930/40)<1e-10);
 });
 
 test("UV contract evidence cannot certify unmeasured or clamped metric repeat",()=>{
