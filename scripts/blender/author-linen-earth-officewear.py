@@ -23,6 +23,7 @@ from mathutils.bvhtree import BVHTree
 # Blender. It must not be mistaken for a material-calibrated cloth simulation.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from drape_preview_math import MAX_PREVIEW_RELIEF_MM, candidate_drape_offset_mm
+from uv_candidate_audit import audit_uv_triangles
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -410,6 +411,23 @@ def planar_grain_uv(obj):
             uv_layer.data[loop_index].uv = (u, v)
 
 
+def audit_authored_panel_uv(obj):
+    """Record source-projection UV defects; never certify textile pattern scale."""
+    mesh = obj.data
+    mesh.calc_loop_triangles()
+    uv = mesh.uv_layers.active
+    if uv is None:
+        raise RuntimeError(f"Candidate panel has no UV layer: {obj.name}")
+    triangles = []
+    for tri in mesh.loop_triangles:
+        xyz = tuple(tuple(mesh.vertices[mesh.loops[i].vertex_index].co) for i in tri.loops)
+        uv_coords = tuple(tuple(uv.data[i].uv) for i in tri.loops)
+        triangles.append((xyz, uv_coords))
+    result = audit_uv_triangles(triangles)
+    obj["linen_earth_uv_candidate_audit_json"] = json.dumps(result, sort_keys=True)
+    return result
+
+
 def main():
     options = cli_args()
     if not math.isfinite(options.candidate_relief_mm) or not 0 <= options.candidate_relief_mm <= MAX_PREVIEW_RELIEF_MM:
@@ -511,6 +529,7 @@ def main():
     authored = []
     fit_stage_report = {}
     contact_repair_report = {}
+    candidate_uv_report = {}
     for name, predicate in regions.items():
         obj = selected_shell(body, name, predicate)
         # Outer waistband is outside the tucked shirt instead of z-fighting
@@ -520,6 +539,7 @@ def main():
         fit_stage_report[name] = phase_pairs
         contact_repair_report[name] = repair
         planar_grain_uv(obj)
+        candidate_uv_report[name] = audit_authored_panel_uv(obj)
         obj["linen_earth_auto_authored"] = True
         obj["linen_earth_fit_clearance_mm"] = round(panel_clearance * 1000.0, 3)
         obj["linen_earth_cloth_thickness_mm"] = round(thickness_m * 1000.0, 3)
@@ -530,6 +550,9 @@ def main():
             obj["linen_earth_shoulder_contour_scale"] = round(shoulder_guide[1], 6)
         authored.append(obj)
 
+    bpy.context.scene["linen_earth_uv_candidate_audit_json"] = json.dumps(candidate_uv_report, sort_keys=True)
+    bpy.context.scene["linen_earth_uv_supplier_repeat_verified"] = False
+    print("SOURCE_FIT_UV_TOPOLOGY_UNAPPROVED=" + json.dumps(candidate_uv_report, sort_keys=True))
     bpy.context.scene["linen_earth_contact_repair_json"] = json.dumps(contact_repair_report, sort_keys=True)
     print("SOURCE_FIT_BOUNDED_CONTACT_REPAIR=" + json.dumps(contact_repair_report, sort_keys=True))
     bpy.context.scene["linen_earth_fit_collision_stages_json"] = json.dumps(fit_stage_report, sort_keys=True)
