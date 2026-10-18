@@ -703,6 +703,67 @@ class CandidateUvAuditTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             audit.validate_recomputed_source_cut_evidence({}, authored)
 
+    def test_metric_hotspots_aggregate_source_faces_before_sampling(self):
+        # Two real Blender triangles may belong to the SAME source polygon.
+        # Count genuine source faces, not arbitrary triangulation subdivisions.
+        bad_xyz = ((0, 0, 4), (2, 0, 4), (0, 0, 5))
+        bad_uv = ((0, 0), (4, 0), (0, .5))
+        middle_xyz, middle_uv = (1, 0, 4), (2, 0)
+        triangles = [
+            (XYZ, UV, 3),
+            ((bad_xyz[0], middle_xyz, bad_xyz[2]),
+             (bad_uv[0], middle_uv, bad_uv[2]), 17),
+            ((middle_xyz, bad_xyz[1], bad_xyz[2]),
+             (middle_uv, bad_uv[1], bad_uv[2]), 17),
+        ]
+        result = audit.audit_uv_triangles(triangles, source_face_sample_limit=1)
+        self.assertTrue(result["sourceFaceAttributionAvailable"])
+        self.assertEqual(result["distortedSourcePolygonCount"], 1)
+        self.assertEqual(result["distortedSourcePolygonSamplesOmitted"], 0)
+        receipt = result["distortedSourcePolygonSamples"][0]
+        self.assertEqual(receipt["sourcePolygonIndex"], 17)
+        self.assertEqual(receipt["validTriangleCount"], 2)
+        self.assertEqual(receipt["distortedTriangleCount"], 2)
+        self.assertEqual(receipt["distortedAreaM2"], 1.0)
+        self.assertEqual(receipt["surfaceAreaM2"], 1.0)
+        self.assertEqual((receipt["zMinMetres"], receipt["zMaxMetres"]), (4, 5))
+        self.assertGreater(receipt["maxMetricAnisotropy"], 2)
+        self.assertEqual(result["uvDistortedSurfacePct"], 66.67)
+        self.assertFalse(result["supplierGrainVerified"])
+        self.assertFalse(result["productionApproved"])
+
+    def test_hotspot_samples_can_hide_examples_but_not_inventory(self):
+        bad_uv = ((0, 0), (2, 0), (0, .5))
+        r = audit.audit_uv_triangles([
+            (XYZ, bad_uv, 9), (XYZ, bad_uv, 2), (XYZ, bad_uv, 4)
+        ], source_face_sample_limit=0)
+        self.assertEqual(r["distortedSourcePolygonCount"], 3)
+        self.assertEqual(r["distortedSourcePolygonSamples"], [])
+        self.assertEqual(r["distortedSourcePolygonSamplesOmitted"], 3)
+        r = audit.audit_uv_triangles([
+            (XYZ, bad_uv, 9), (XYZ, bad_uv, 2), (XYZ, bad_uv, 4)
+        ], source_face_sample_limit=2)
+        self.assertEqual([x["sourcePolygonIndex"] for x in r["distortedSourcePolygonSamples"]],
+                         [2, 4])
+        self.assertEqual(r["distortedSourcePolygonSamplesOmitted"], 1)
+        legacy = audit.audit_uv_triangles([(XYZ, bad_uv)])
+        self.assertFalse(legacy["sourceFaceAttributionAvailable"])
+        self.assertIsNone(legacy["distortedSourcePolygonCount"])
+        self.assertIsNone(legacy["distortedSourcePolygonSamplesOmitted"])
+        self.assertEqual(legacy["distortedSourcePolygonSamples"], [])
+
+    def test_hotspot_provenance_rejects_noninteger_mixed_and_invalid_limits(self):
+        for index in (True, -1, 1.0, "4", float("nan")):
+            with self.subTest(index=index), self.assertRaises(ValueError):
+                audit.audit_uv_triangles([(XYZ, UV, index)])
+        for cap in (True, -1, 33, 1.0, "10"):
+            with self.subTest(cap=cap), self.assertRaises(ValueError):
+                audit.audit_uv_triangles([(XYZ, UV, 0)], source_face_sample_limit=cap)
+        with self.assertRaisesRegex(ValueError, "Mixed attributed"):
+            audit.audit_uv_triangles([(XYZ, UV, 1), (XYZ, UV)])
+        with self.assertRaisesRegex(ValueError, "source polygon"):
+            audit.audit_uv_triangles([(XYZ, UV, 0, 42)])
+
     def test_metric_jacobian_detects_area_preserving_stripe_distortion(self):
         # Double U / halve V has unchanged UV area, but fabric features
         # change shape fourfold. An area-only test misses this failure.
