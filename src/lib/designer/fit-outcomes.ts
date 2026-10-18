@@ -127,13 +127,36 @@ export function aggregateFitOutcomes(events:EventLike[]):FitOutcomeBook{
   return {version:"designer-fit-outcomes-v1",totalReviews:latest.size,usableBuckets:values.filter((b)=>b.total>=3).length,buckets:values};
 }
 
+/**
+ * Stored/operator-provided aggregates may be stale, edited or malformed.
+ * Corrupt counters must never manufacture evidence for a cutting recipe.
+ * This is numerical trust only, NOT approval of customer measurements.
+ */
+function reliableFitOutcomeBucket(value:unknown, totalReviews:number):value is FitOutcomeBucket{
+  if(!value||typeof value!=="object") return false;
+  const bucket=value as FitOutcomeBucket;
+  if(!OCCASIONS.has(bucket.occasion)
+    ||typeof bucket.shirtFit!=="string"||!bucket.shirtFit.trim()
+    ||typeof bucket.trouser!=="string"||!bucket.trouser.trim()
+    ||!["tapered","balanced","straight","unknown"].includes(bucket.torso)
+    ||!["pronounced","balanced","unknown"].includes(bucket.seat)
+    ||bucket.key!==fitOutcomeKey(bucket)) return false;
+  if(![bucket.clean,bucket.minor,bucket.major,bucket.total].every(
+    (count)=>Number.isSafeInteger(count)&&count>=0
+  )) return false;
+  return bucket.total>0&&bucket.total<=totalReviews
+    &&bucket.clean+bucket.minor+bucket.major===bucket.total;
+}
+
 export function fitOutcomeSignalFor(
   input:{occasion:OccasionTier;style:Pick<DesignerStyle,"shirtFit"|"trouser">;proportion:{torso:string;seat:string}},
   book?:FitOutcomeBook|null,
 ):FitOutcomeSignal{
-  if(!book||book.totalReviews<3) return {score:0,evidence:book?.totalReviews||0,summary:"Post-fitting evidence is still collecting."};
+  if(!book||!Number.isSafeInteger(book.totalReviews)||book.totalReviews<3
+    ||!Array.isArray(book.buckets)) return {score:0,evidence:0,summary:"Post-fitting evidence is still collecting."};
+  const trustworthy=book.buckets.filter((bucket)=>reliableFitOutcomeBucket(bucket,book.totalReviews));
   const key=fitOutcomeKey({occasion:input.occasion,shirtFit:input.style.shirtFit,trouser:input.style.trouser,torso:input.proportion.torso,seat:input.proportion.seat});
-  const bucket=book.buckets.find((b)=>b.key===key&&b.total>=3);
+  const bucket=trustworthy.find((b)=>b.key===key&&b.total>=3);
   if(bucket) {
     const quality=(bucket.clean + bucket.minor*.35 - bucket.major)/bucket.total;
     const score=Math.max(-4,Math.min(4,Math.round(quality*4*10)/10));
@@ -146,7 +169,7 @@ export function fitOutcomeSignalFor(
   // It is not a physical match for an independently known customer shape, so
   // it must not boost a style-level fit recommendation for measured customers.
   // Known-but-different proportions can still provide a *weak* cut-family tie-break.
-  const related=book.buckets.filter((b)=>b.occasion===input.occasion
+  const related=trustworthy.filter((b)=>b.occasion===input.occasion
     && b.shirtFit===input.style.shirtFit&&b.trouser===input.style.trouser
     && (input.proportion.torso==="unknown" || b.torso!=="unknown")
     && (input.proportion.seat==="unknown" || b.seat!=="unknown"));
