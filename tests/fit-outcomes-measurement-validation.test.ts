@@ -158,3 +158,29 @@ test("legitimate distinct fitting groups may use fewer than total recorded revie
   assert.equal(signal.evidence,4);
   assert.ok(signal.score>0);
 });
+
+test("fit evidence is fail-closed when any stored bucket or aggregate summary is inconsistent",()=>{
+  const input={occasion:"Formal" as const,style:{shirtFit:"regular",trouser:"straight"},
+    proportion:{torso:"tapered",seat:"balanced"}};
+  const first={key:"Formal::regular::straight::tapered::balanced",
+    occasion:"Formal" as const,shirtFit:"regular",trouser:"straight",
+    torso:"tapered",seat:"balanced",clean:3,minor:0,major:0,total:3};
+  const other={...first,key:"Casual::regular::straight::straight::balanced",
+    occasion:"Casual" as const,torso:"straight",total:1,clean:1};
+  const book={version:"designer-fit-outcomes-v1" as const,totalReviews:4,
+    usableBuckets:1,buckets:[first,other]};
+  assert.equal(fitOutcomeSignalFor(input,book).evidence,3);
+  const badBooks=[
+    {...book,buckets:[first,{...other,clean:Infinity}]},
+    {...book,buckets:[first,{...other,key:"mismatched-key"}]},
+    {...book,buckets:[first,null as unknown as typeof first]},
+    {...book,usableBuckets:2},
+    {...book,usableBuckets:-1},
+    {...book,version:"unknown-version" as typeof book.version},
+  ];
+  for(const corrupt of badBooks){
+    const signal=fitOutcomeSignalFor(input,corrupt);
+    assert.equal(signal.score,0,"Cannot recommend tailoring from a partially corrupt book");
+    assert.equal(signal.evidence,0,"Cannot cite unverified aggregate evidence");
+  }
+});
