@@ -74,7 +74,7 @@ jobs:
 
       - name: Verify photo lock does not approve a different CC0 model source
         run: |
-          blender --background .cache/linen-earth/linen-earth-officewear-body-base.blend \
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-body-base.blend \
             --python tests/blender/test_source_photo_identity_provenance.py
 
       - name: Author body-attached candidate shirt / trouser relief
@@ -86,21 +86,21 @@ jobs:
         run: |
           mkdir -p artifacts/model-qa
           set -o pipefail
-          blender --background .cache/linen-earth/linen-earth-officewear-authored.blend \
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend \
             --python scripts/blender/preflight-linen-earth-officewear.py \
             | tee artifacts/model-qa/scene-preflight.log
 
       - name: Render full four-angle QA for structurally passing candidate
         if: steps.scene_preflight.outcome == 'success'
         run: |
-          blender --background .cache/linen-earth/linen-earth-officewear-authored.blend \
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend \
             --python scripts/blender/render-linen-earth-model-qa.py -- \
             --output-dir artifacts/model-qa --width 576 --height 864 --samples 24
 
       - name: Render diagnostic four-angle QA for rejected candidate
         if: steps.scene_preflight.outcome != 'success'
         run: |
-          blender --background .cache/linen-earth/linen-earth-officewear-authored.blend \
+          blender --background --python-exit-code 1 .cache/linen-earth/linen-earth-officewear-authored.blend \
             --python scripts/blender/render-linen-earth-model-qa.py -- \
             --output-dir artifacts/model-qa --width 480 --height 640 --samples 8
 
