@@ -96,7 +96,9 @@ export function garmentUvRepeatsForUnits(
   heightMm:number,
   tileWidthMm:number,
 ):{u:number;v:number}|null {
-  if(!Number.isFinite(tileWidthMm)||tileWidthMm<=0) return null;
+  if(!Number.isFinite(widthMm)||widthMm<=0
+    ||!Number.isFinite(heightMm)||heightMm<=0
+    ||!Number.isFinite(tileWidthMm)||tileWidthMm<=0) return null;
   if(uvUnits==="panel_normalized") {
     const evidence=garmentPanelTextureScaleEvidence(widthMm,heightMm,tileWidthMm);
     return evidence.exactScaleWithinRendererLimits ? evidence.applied : null;
