@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { garmentPanelTextureScale, garmentPanelTextureScaleEvidence, garmentUvRepeatsForUnits, resolveViewerTileHeightMm, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
+import { garmentPanelTextureScale, garmentPanelTextureScaleEvidence, garmentUvRepeatsForUnits, hasInvalidVerifiedViewerTileHeight, resolveViewerTileHeightMm, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
 
 
 test("physical-scale resolution never coerces unreviewed JSON strings",()=>{
@@ -155,4 +155,24 @@ test("invalid and clamped rectangular textile dimensions fail closed independent
   assert.equal(garmentUvRepeatsForUnits("panel_normalized",580,780,40,NaN),null);
   assert.equal(garmentPanelTextureScaleEvidence(580,780,40,5).reason,"renderer_clamped_repeat");
   assert.deepEqual(garmentPanelTextureScaleEvidence(580,780,40,20).rawRepeats,{u:14.5,v:39});
+});
+
+
+test("malformed measured U dimension cannot be re-labelled from fallback runtime calibration",()=>{
+  const runtime={physicalScaleStatus:"declared_repeat" as const,repeatMm:20};
+  for(const width of [0,-1,NaN,Infinity,"40",false]) {
+    assert.equal(resolveViewerTileWidthMm({scaleApproximate:false,tileRealWidthMm:width as number,
+      repeatPeriodPx:32},runtime),null);
+  }
+  assert.equal(resolveViewerTileWidthMm({scaleApproximate:false,tileRealWidthMm:null,repeatPeriodPx:32},runtime),160);
+});
+
+test("legacy square tile remains allowed, malformed explicit verified vertical dimension fails closed",()=>{
+  assert.equal(hasInvalidVerifiedViewerTileHeight({scaleApproximate:false,tileRealHeightMm:null}),false);
+  assert.equal(hasInvalidVerifiedViewerTileHeight({scaleApproximate:false}),false);
+  assert.equal(hasInvalidVerifiedViewerTileHeight({scaleApproximate:true,tileRealHeightMm:0}),false);
+  assert.equal(hasInvalidVerifiedViewerTileHeight({scaleApproximate:false,tileRealHeightMm:24}),false);
+  for(const height of [0,-2,NaN,Infinity,"24",true]){
+    assert.equal(hasInvalidVerifiedViewerTileHeight({scaleApproximate:false,tileRealHeightMm:height as number}),true);
+  }
 });
