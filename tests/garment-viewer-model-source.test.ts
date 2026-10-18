@@ -258,17 +258,27 @@ test("explicit Blender UV units require a measured panel sidecar before candidat
   assert.match(source,/payload\["uvCoordinateUnits"\] = uv_coordinate_units/);
   const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
   assert.match(viewer,/modelManifest\?\.uvCoordinateUnits/);
-  assert.match(viewer,/garmentUvRepeatsForUnits/);
+  assert.match(viewer,/prepareGarmentPanelUvTransforms\(/);
+  const scale=readFileSync("src/lib/garment-viewer-scale.ts","utf8");
+  // Physical repeat conversion moved to a pure, all-panel preflight helper.
+  assert.match(scale,/garmentUvRepeatsForUnits\(units,/);
+  assert.match(scale,/if\(!scale\|\|/);
 });
 
 test("rapid fabric selections cannot commit a superseded asynchronous garment material pass",()=>{
   const source=readFileSync("src/components/GarmentViewer.tsx","utf8");
-  const preparation=source.indexOf("const prepared=await Promise.all(panelSpecs.map");
+  const preflight=source.indexOf("const transforms=prepareGarmentPanelUvTransforms(");
+  const preparation=source.indexOf("const prepared=await Promise.all(candidates.map",preflight);
+  const allocate=source.indexOf("viewer.createTexture!(fabric.image)",preparation);
   const ready=source.indexOf("const materials=await Promise.all(prepared.map",preparation);
   const active=source.indexOf("if(token!==applyToken.current) return;",ready);
   const mutate=source.indexOf("for(const [index,entry] of prepared.entries())",active);
   const revision=source.indexOf("setTextureRevision((value)=>value+1);",mutate);
-  assert.ok(preparation>0&&ready>preparation&&active>ready&&mutate>active&&revision>mutate);
+  assert.ok(preflight>0&&preparation>preflight&&allocate>preparation
+    &&ready>allocate&&active>ready&&mutate>active&&revision>mutate);
+  // The entire set of UV dimensions is validated before the first GPU
+  // texture allocation. No async allocation can start for a malformed panel.
+  assert.match(source.slice(preflight,preparation),/if\(!transforms\) throw/);
   // All material promises settle BEFORE the synchronous visible update.
   assert.equal(source.slice(mutate,revision).includes("await "),false);
   assert.ok(source.includes("return ()=>{if(applyToken.current===token) applyToken.current++;};"));
