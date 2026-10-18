@@ -44,12 +44,17 @@ def cylindrical_metric_face_uv(points_xyz, *, center_xy, radius_m, origin_z):
 
     cx, cy = center_xy
     angles = [math.atan2(point[1] - cy, point[0] - cx) for point in points_xyz]
-    initial_angle = angles[0]
-    unwrapped = [initial_angle] + [
-        initial_angle + math.atan2(math.sin(a - initial_angle),
-                                   math.cos(a - initial_angle))
-        for a in angles[1:]
-    ]
+    # Anchor the one necessary cylindrical cut deterministically at -pi.
+    # Unwrapping relative to points_xyz[0] made neighbouring triangles select
+    # OPPOSITE 2*pi phases when their vertex order differed; the same 40-mm
+    # stripe then jumped by an entire tube circumference along a shared edge.
+    # Faces straddling the cut all unwrap into the positive angular sector,
+    # independent of first vertex or winding. This is still candidate UV only.
+    if max(angles) - min(angles) > math.pi:
+        unwrapped = [angle + 2 * math.pi if angle < 0 else angle
+                     for angle in angles]
+    else:
+        unwrapped = angles
     if max(unwrapped) - min(unwrapped) >= math.pi:
         raise ValueError("Candidate UV polygon crosses an ambiguous half-cylinder seam")
     return [(radius_m * angle, point[2] - origin_z)
