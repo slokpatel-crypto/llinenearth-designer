@@ -1,5 +1,5 @@
 import type { DesignerStyle, OccasionTier } from "@/lib/designer/engine";
-import { SEAT_WAIST_REVIEW_DELTA_CM } from "@/lib/designer/measurement-consistency";
+import { SEAT_WAIST_REVIEW_DELTA_CM } from "./measurement-consistency.ts";
 
 export type FitOutcomeVerdict = "clean_first_fit" | "minor_alteration" | "major_alteration";
 export type FitOutcomeArea =
