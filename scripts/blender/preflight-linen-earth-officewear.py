@@ -16,6 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from uv_candidate_audit import audit_shared_uv_edges, classify_unapproved_uv_seams
+from sleeve_stance_math import source_arm_band_geometry
 
 EXPORT_COLLECTION = "LinenEarthExport"
 REFERENCE_BODY = "Body"
@@ -424,6 +425,47 @@ def main():
     right_sleeve_width = width_at_z(bpy.data.objects.get("ShirtSleeveRFabric"), right_hand_z, 0.060)
     sleeve_spacing = abs(right_sleeve_center - left_sleeve_center) if left_sleeve_center is not None and right_sleeve_center is not None else None
     cuff_width_asymmetry = abs(left_sleeve_width - right_sleeve_width) if left_sleeve_width is not None and right_sleeve_width is not None else None
+    # Diagnose the still-wide cuffs against the unchanged real BODY scan,
+    # without adjusting either skin or the model identity tolerance. A body
+    # lateral surface-band centre is explicitly NOT a hand joint measurement.
+    left_body_arm_band = right_body_arm_band = None
+    if body is not None and body.type == "MESH" and left_hand_z is not None and right_hand_z is not None:
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        evaluated_body = body.evaluated_get(depsgraph)
+        body_mesh = evaluated_body.to_mesh()
+        try:
+            body_world = evaluated_body.matrix_world
+            original_body_xyz = [tuple(body_world @ vertex.co) for vertex in body_mesh.vertices]
+            body_span = world_bounds(body)
+            body_center_x = (min(v.x for v in body_span) + max(v.x for v in body_span))*0.5
+            left_body_arm_band = source_arm_band_geometry(
+                original_body_xyz, guide_z_m=left_hand_z, side=-1,
+                source_center_x_m=body_center_x,
+            )
+            right_body_arm_band = source_arm_band_geometry(
+                original_body_xyz, guide_z_m=right_hand_z, side=1,
+                source_center_x_m=body_center_x,
+            )
+        except ValueError as exc:
+            warnings.append(f"Unchanged source arm-band geometry could not be sampled: {exc}")
+        finally:
+            evaluated_body.to_mesh_clear()
+    identity_measurements["sourceBodyArmBandsGeometryOnly"] = {
+        "left": left_body_arm_band,
+        "right": right_body_arm_band,
+        "anatomicalPoseApproved": False,
+    }
+    identity_measurements["sleeveVsSourceBandCentreOffsetMm"] = {
+        "left": (round(left_sleeve_center-left_body_arm_band["sourceSideBandCentreXMm"], 2)
+                 if left_body_arm_band is not None and left_sleeve_center is not None else None),
+        "right": (round(right_sleeve_center-right_body_arm_band["sourceSideBandCentreXMm"], 2)
+                  if right_body_arm_band is not None and right_sleeve_center is not None else None),
+    }
+    identity_measurements["sourceBodyArmBandSpacingMm"] = (
+        round(abs(right_body_arm_band["sourceSideBandCentreXMm"] -
+                  left_body_arm_band["sourceSideBandCentreXMm"]), 2)
+        if left_body_arm_band is not None and right_body_arm_band is not None else None
+    )
     identity_measurements["sleeveCenterSpacingMm"] = round(sleeve_spacing, 2) if sleeve_spacing is not None else None
     identity_measurements["cuffWidthAsymmetryMm"] = round(cuff_width_asymmetry, 2) if cuff_width_asymmetry is not None else None
     if sleeve_spacing is None:
