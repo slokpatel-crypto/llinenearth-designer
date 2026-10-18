@@ -152,10 +152,19 @@ export function fitOutcomeSignalFor(
   input:{occasion:OccasionTier;style:Pick<DesignerStyle,"shirtFit"|"trouser">;proportion:{torso:string;seat:string}},
   book?:FitOutcomeBook|null,
 ):FitOutcomeSignal{
-  if(!book||!Number.isSafeInteger(book.totalReviews)||book.totalReviews<0
+  if(!book||book.version!=="designer-fit-outcomes-v1"
+    ||!Number.isSafeInteger(book.totalReviews)||book.totalReviews<0
+    ||!Number.isSafeInteger(book.usableBuckets)||book.usableBuckets<0
     ||!Array.isArray(book.buckets)) return {score:0,evidence:0,summary:"Post-fitting evidence is still collecting."};
   if(book.totalReviews<3) return {score:0,evidence:book.totalReviews,summary:"Post-fitting evidence is still collecting."};
-  const trustworthy=book.buckets.filter((bucket)=>reliableFitOutcomeBucket(bucket,book.totalReviews));
+  // Never drop malformed rows and then award confidence from the remaining
+  // data: the aggregate itself may have been tampered with or partially
+  // corrupted. Preserve the stored record, but require operator revalidation.
+  if(book.buckets.some((bucket)=>!reliableFitOutcomeBucket(bucket,book.totalReviews))
+    ||book.usableBuckets!==book.buckets.filter((bucket)=>bucket.total>=3).length){
+    return {score:0,evidence:0,summary:"Stored fitting totals require operator revalidation."};
+  }
+  const trustworthy=book.buckets;
   // Every independently valid bucket can still be part of an impossible
   // *collection*. A persisted duplicate key or two disjoint groups claiming
   // more completed fittings than the book has reviews must not double-count
