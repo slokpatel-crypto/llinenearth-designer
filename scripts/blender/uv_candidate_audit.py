@@ -908,19 +908,57 @@ def validate_recomputed_source_cut_evidence(authored, independent, *,
     }
 
 
+def metric_uv_triangle_stretches(xyz, uv):
+    """Principal UV/mesh length ratios; metric QA, never cloth authentication.
+
+    Use an orthonormal frame on the *actual* 3D triangle, not its XY or XZ
+    projection. Singular values expose stretch/shear that a UV-area-only
+    audit misses (e.g. U doubled while V halved preserves UV area).
+    """
+    a, b, c = xyz
+    edge1 = tuple(b[i] - a[i] for i in range(3))
+    edge2 = tuple(c[i] - a[i] for i in range(3))
+    first = math.sqrt(sum(value * value for value in edge1))
+    if not math.isfinite(first) or first <= 1e-12:
+        raise ValueError("UV metric distortion needs nondegenerate 3D edges")
+    x2 = sum(edge1[i] * edge2[i] for i in range(3)) / first
+    height2 = sum(value * value for value in edge2) - x2 * x2
+    height = math.sqrt(max(0.0, height2))
+    if not math.isfinite(height) or height <= 1e-12:
+        raise ValueError("UV metric distortion needs positive 3D triangle area")
+    du1, dv1 = uv[1][0] - uv[0][0], uv[1][1] - uv[0][1]
+    du2, dv2 = uv[2][0] - uv[0][0], uv[2][1] - uv[0][1]
+    j11, j21 = du1 / first, dv1 / first
+    j12, j22 = (du2 - x2 * j11) / height, (dv2 - x2 * j21) / height
+    trace = j11*j11 + j12*j12 + j21*j21 + j22*j22
+    det = abs(j11*j22 - j12*j21)
+    if not math.isfinite(trace) or not math.isfinite(det):
+        raise ValueError("Nonfinite local UV metric mapping")
+    largest = math.sqrt(max(0.0, (trace + math.sqrt(max(0.0, trace*trace - 4*det*det))) / 2))
+    if not math.isfinite(largest) or largest <= 0:
+        raise ValueError("Invalid local UV metric scale")
+    smallest = det / largest
+    return smallest, largest
+
+
 def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-12):
     """Triangles: iterable of (three XYZ triples, three UV pairs). Fail closed."""
-    if not (math.isfinite(min_uv_area) and min_uv_area > 0
-            and math.isfinite(min_surface_area_m2) and min_surface_area_m2 > 0):
-        raise ValueError("Area thresholds must be finite and positive")
+    if any(isinstance(v, (str, bytes, bool)) or not isinstance(v, (float, int))
+           or not math.isfinite(v) or v <= 0
+           for v in (min_uv_area, min_surface_area_m2)):
+        raise ValueError("Area thresholds must be finite positive numbers")
     total = collapsed = degenerate = 0
     densities = []
+    anisotropies = []
+    metric_deviations = []
+    severely_anisotropic = severely_rescaled = 0
     for xyz, uv in triangles:
         if len(xyz) != 3 or len(uv) != 3 or any(len(v) != 3 for v in xyz) or any(len(v) != 2 for v in uv):
             raise ValueError("Expected three XYZ and three UV points per triangle")
-        flat = [float(v) for point in (*xyz, *uv) for v in point]
-        if not all(math.isfinite(v) for v in flat):
-            raise ValueError("UV audit cannot accept nonfinite coordinates")
+        flat = [v for point in (*xyz, *uv) for v in point]
+        if any(isinstance(v, (str, bytes, bool)) or not isinstance(v, (int, float))
+               or not math.isfinite(v) for v in flat):
+            raise ValueError("UV audit needs finite numeric mesh/UV coordinates")
         total += 1
         a, b, c = xyz
         ab = [b[i] - a[i] for i in range(3)]
@@ -932,10 +970,26 @@ def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-1
             continue
         u0, u1, u2 = uv
         uv_area = 0.5 * abs((u1[0]-u0[0])*(u2[1]-u0[1]) - (u2[0]-u0[0])*(u1[1]-u0[1]))
+        if not math.isfinite(surface_area) or not math.isfinite(uv_area):
+            raise ValueError("UV area overflow from invalid mesh projection")
         if uv_area <= min_uv_area:
             collapsed += 1
             continue
-        densities.append(uv_area / surface_area)
+        density = uv_area / surface_area
+        if not math.isfinite(density):
+            raise ValueError("Nonfinite UV surface density")
+        densities.append(density)
+        smallest, largest = metric_uv_triangle_stretches(xyz, uv)
+        if smallest <= 0:
+            raise ValueError("Nonpositive UV principal metric stretch")
+        ratio = largest / smallest
+        deviation = max(abs(largest - 1), abs(smallest - 1))
+        if not math.isfinite(ratio) or not math.isfinite(deviation):
+            raise ValueError("Nonfinite UV principal metric distortion")
+        anisotropies.append(ratio)
+        metric_deviations.append(deviation)
+        severely_anisotropic += ratio > 2.0
+        severely_rescaled += deviation > 0.5
     if not total:
         raise ValueError("No evaluated UV triangles; candidate must fail closed")
     densities.sort()
@@ -950,7 +1004,20 @@ def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-1
         relative_deviation[min(len(relative_deviation)-1, math.ceil(.95 * len(relative_deviation))-1)]
         if relative_deviation else None
     )
+    def p95(values):
+        if not values:
+            return None
+        values = sorted(values)
+        return values[min(len(values)-1, math.ceil(.95*len(values))-1)]
+
     return {
+        "p95UvMetricAnisotropy": p95(anisotropies),
+        "p95UvMetricStretchDeviation": p95(metric_deviations),
+        "uvTrianglesAnisotropyOver2": severely_anisotropic,
+        "uvTrianglesMetricScaleDeviationOver50Pct": severely_rescaled,
+        "candidateUvMetricDistortionReviewRequired": bool(
+            severely_anisotropic or severely_rescaled or collapsed or degenerate
+        ),
         "triangleCount": total,
         "collapsedUvTriangles": collapsed,
         "degenerateSurfaceTriangles": degenerate,
