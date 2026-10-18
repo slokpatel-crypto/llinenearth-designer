@@ -4,7 +4,7 @@ import sys
 import unittest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "scripts/blender"))
-from leg_gap_safety import bounded_leg_gap_trials
+from leg_gap_safety import bounded_leg_gap_trials, bounded_leg_gap_refinement_trials
 
 
 class LegGapRollbackTests(unittest.TestCase):
@@ -16,6 +16,24 @@ class LegGapRollbackTests(unittest.TestCase):
         trials = bounded_leg_gap_trials(1.3)
         self.assertEqual(trials, (1.3, 0.8, 0.3, 0.0))
         self.assertTrue(all(a > b for a, b in zip(trials, trials[1:])))
+
+    def test_safe_submillimetre_refinement_never_crosses_rejected_contact(self):
+        candidates = bounded_leg_gap_refinement_trials(3.5, 3.0)
+        self.assertEqual(candidates, (3.375, 3.25, 3.125))
+        self.assertTrue(all(3.0 < p < 3.5 for p in candidates))
+        self.assertEqual(bounded_leg_gap_refinement_trials(3.5, 3.0, subdivisions=2),
+                         (3.25,))
+
+    def test_refinement_refuses_invalid_contact_brackets(self):
+        for unsafe, safe in (
+            (3, 3), (2.5, 3), (8.1, 8), (1.5, 0), (-1, -2),
+            (float("nan"), 1), (2, float("inf")), ("3.5", 3), (True, 0),
+        ):
+            with self.subTest(unsafe=unsafe, safe=safe), self.assertRaises(ValueError):
+                bounded_leg_gap_refinement_trials(unsafe, safe)
+        for divisions in (1, 9, 2.5, True, "4"):
+            with self.subTest(divisions=divisions), self.assertRaises(ValueError):
+                bounded_leg_gap_refinement_trials(3.5, 3, subdivisions=divisions)
 
     def test_zero_is_legal_and_does_not_move_body(self):
         self.assertEqual(bounded_leg_gap_trials(0), (0.0,))
