@@ -54,13 +54,19 @@ const AREAS=new Set<FitOutcomeArea>([
 ]);
 
 function txt(value:unknown,max=120){return String(value??"").trim().slice(0,max);}
+// Learning buckets must not be inferred from malformed or unit-confused
+// historical measurements. This is only a software validity guard, not a
+// claim that any customer's real body measurements have been verified.
+function validBodyCm(value:unknown):value is number {
+  return typeof value==="number" && Number.isFinite(value) && value>0 && value<=350;
+}
 function torsoBucket(chest?:number,waist?:number){
-  if(!chest||!waist) return "unknown" as const;
+  if(!validBodyCm(chest)||!validBodyCm(waist)) return "unknown" as const;
   const delta=chest-waist;
   return delta>=18 ? "tapered" as const : delta<=6 ? "straight" as const : "balanced" as const;
 }
 function seatBucket(seat?:number,waist?:number){
-  if(!seat||!waist) return "unknown" as const;
+  if(!validBodyCm(seat)||!validBodyCm(waist)) return "unknown" as const;
   return seat-waist>=24 ? "pronounced" as const : "balanced" as const;
 }
 
