@@ -43,6 +43,16 @@ class CandidateUvAuditTests(unittest.TestCase):
     def test_density_tracks_surface_units(self):
         result = audit.audit_uv_triangles([(XYZ, UV)])
         self.assertAlmostEqual(result["medianUvAreaPerSquareMetre"], 1)
+        self.assertAlmostEqual(result["p95RelativeUvDensityDeviation"], 0)
+
+    def test_uv_density_variance_is_reported_without_false_approval(self):
+        # Same UV area on a physically larger triangle means inconsistent
+        # projection density; it must be observable but NEVER supplier-approved.
+        wide_xyz = ((0,0,0), (2,0,0), (0,0,1))
+        result = audit.audit_uv_triangles([(XYZ, UV), (wide_xyz, UV)])
+        self.assertGreater(result["p95RelativeUvDensityDeviation"], 0)
+        self.assertFalse(result["physicalFabricRepeatVerified"])
+        self.assertFalse(result["productionApproved"])
 
 
 if __name__ == "__main__":
