@@ -50,3 +50,31 @@ export function garmentPanelTextureScale(
     v:clamp(heightMm/tileWidthMm,.35,80),
   };
 }
+
+
+/**
+ * Exactness receipt for the existing bounded preview renderer.
+ * A visually rendered tile is NOT physically exact if renderer safety clamps
+ * changed its authored repeat count, or if physical dimensions are unknown.
+ * This is diagnostic-only and does not alter production scale or permissions.
+ */
+export function garmentPanelTextureScaleEvidence(
+  widthMm:number,
+  heightMm:number,
+  tileWidthMm:number,
+):{
+  applied:{u:number;v:number};
+  exactScaleWithinRendererLimits:boolean;
+  rawRepeats:{u:number;v:number}|null;
+  reason:"exact_within_limits"|"missing_physical_dimensions"|"renderer_clamped_repeat";
+} {
+  const applied=garmentPanelTextureScale(widthMm,heightMm,tileWidthMm);
+  if(!Number.isFinite(widthMm)||widthMm<=0||!Number.isFinite(heightMm)||heightMm<=0||!Number.isFinite(tileWidthMm)||tileWidthMm<=0) {
+    return {applied,exactScaleWithinRendererLimits:false,rawRepeats:null,reason:"missing_physical_dimensions"};
+  }
+  const rawRepeats={u:widthMm/tileWidthMm,v:heightMm/tileWidthMm};
+  if(rawRepeats.u<.35||rawRepeats.u>80||rawRepeats.v<.35||rawRepeats.v>80) {
+    return {applied,exactScaleWithinRendererLimits:false,rawRepeats,reason:"renderer_clamped_repeat"};
+  }
+  return {applied,exactScaleWithinRendererLimits:true,rawRepeats,reason:"exact_within_limits"};
+}
