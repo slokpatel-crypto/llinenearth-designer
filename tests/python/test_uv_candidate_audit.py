@@ -441,6 +441,38 @@ class CandidateUvAuditTests(unittest.TestCase):
         self.assertEqual(mixed["sourceSeamChainSamples"], [])
         self.assertEqual(sum(mixed["sourceSeamGroupCountByClass"].values()), 2)
 
+    def test_valid_uv_phase_component_survives_unrelated_unsafe_cycle(self):
+        import math
+        period = 2 * math.pi * .1
+        unsafe_ring = [
+            [(0, (0, 0)), (1, (0, 0)), (4, (0, .1)), (3, (0, .1))],
+            [(1, (-period, 0)), (2, (0, 0)),
+             (5, (0, .1)), (4, (-period, .1))],
+            [(2, (-period, 0)), (0, (period, 0)),
+             (3, (period, .1)), (5, (-period, .1))],
+        ]
+        safe_pair = [
+            [(10, (0, 0)), (11, (.02, 0)), (12, (.02, .05))],
+            [(12, (.02-period, .05)), (11, (.02-period, 0)),
+             (13, (.04-period, .05))],
+        ]
+        faces = unsafe_ring + safe_pair
+        before = audit.audit_shared_uv_edges(faces)
+        accepted, report = audit.phase_align_cylindrical_charts(
+            faces, radius_m=.1
+        )
+        self.assertEqual(accepted[:3], unsafe_ring)
+        self.assertEqual(accepted[3], safe_pair[0])
+        self.assertAlmostEqual(accepted[4][0][1][0], .02, places=7)
+        self.assertEqual(report["phaseRejectedComponents"], 1)
+        self.assertEqual(report["phaseAcceptedComponents"], 1)
+        self.assertEqual(report["phaseShiftedFaces"], 1)
+        self.assertTrue(report["phaseCandidateRolledBack"])
+        self.assertEqual(report["phaseRollbackReason"], "inconsistent_phase_cycle")
+        self.assertEqual(report["unapprovedInteriorUvSeamsAfter"],
+                         before["unapprovedInteriorUvSeams"]-1)
+        self.assertFalse(report["productionApproved"])
+
     def test_uv_seam_graph_identifies_branch_without_certifying_sewing(self):
         # Three actual shared source edges meet at vertex 0; their different
         # nonperiodic UV origins do not become three approved stitch lines.
