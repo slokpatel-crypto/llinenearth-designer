@@ -235,6 +235,86 @@ class CandidateUvAuditTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             audit.phase_align_cylindrical_charts(faces, radius_m=.1, excluded_face_indices=[2])
 
+
+    def test_metric_tangent_chart_safe_translation_closes_shared_edge(self):
+        faces = [
+            [(0, (0.0, 0.0)), (1, (.02, 0.0)), (2, (.02, .05))],
+            [(2, (0.0, 0.0)), (1, (0.0, -.05)), (3, (.02, 0.0))],
+        ]
+        corrected, evidence = audit.align_metric_tangent_charts(
+            faces, tangent_face_indices=[1]
+        )
+        self.assertEqual(evidence["originalUnapprovedInteriorUvSeams"], 1)
+        self.assertEqual(evidence["remainingUnapprovedInteriorUvSeams"], 0)
+        self.assertEqual(evidence["rigidlyAlignedTangentChartFaces"], 1)
+        self.assertTrue(audit.audit_shared_uv_edges(corrected)["topologicalUvContinuityPass"])
+        self.assertAlmostEqual(
+            ((corrected[1][1][1][0]-corrected[1][0][1][0])**2
+             +(corrected[1][1][1][1]-corrected[1][0][1][1])**2)**.5, .05
+        )
+        self.assertFalse(evidence["supplierGrainVerified"])
+        self.assertFalse(evidence["seamLayoutApproved"])
+        self.assertFalse(evidence["productionApproved"])
+
+    def test_metric_chart_rigid_alignment_preserves_area_and_bounded_rotation(self):
+        import math
+        angle = math.radians(5)
+        def shifted(uv):
+            return (math.cos(angle)*uv[0]-math.sin(angle)*uv[1]+.3,
+                    math.sin(angle)*uv[0]+math.cos(angle)*uv[1]-.4)
+        original = [
+            [(0, (0, 0)), (1, (.02, 0)), (2, (.02, .05))],
+            [(2, shifted((.02, .05))), (1, shifted((.02, 0))),
+             (3, shifted((.04, .05)))],
+        ]
+        corrected, evidence = audit.align_metric_tangent_charts(
+            original, tangent_face_indices=[1]
+        )
+        self.assertEqual(evidence["rigidlyAlignedTangentChartFaces"], 1)
+        self.assertEqual(evidence["remainingUnapprovedInteriorUvSeams"], 0)
+        self.assertAlmostEqual(math.dist(corrected[1][0][1], corrected[1][2][1]),
+                               math.dist(original[1][0][1], original[1][2][1]), places=10)
+        unchanged, rejected = audit.align_metric_tangent_charts(
+            original, tangent_face_indices=[1], max_rotation_degrees=4
+        )
+        self.assertEqual(unchanged, original)
+        self.assertEqual(rejected["unresolvedTangentChartFaces"], 1)
+
+    def test_metric_chart_stitch_never_stretches_edge_or_approves_grain(self):
+        faces = [
+            [(0, (0, 0)), (1, (.02, 0)), (2, (.02, .05))],
+            [(2, (0, 0)), (1, (0, -.07)), (3, (.02, 0))],
+        ]
+        unchanged, evidence = audit.align_metric_tangent_charts(
+            faces, tangent_face_indices=[1]
+        )
+        self.assertEqual(unchanged, faces)
+        self.assertEqual(evidence["remainingUnapprovedInteriorUvSeams"], 1)
+        self.assertFalse(evidence["supplierRepeatVerified"])
+        for kwargs in (
+            {"max_rotation_degrees": float("inf")},
+            {"max_rotation_degrees": 16},
+            {"max_rotation_degrees": True},
+            {"tangent_face_indices": [-1]},
+            {"tangent_face_indices": [2]},
+            {"tangent_face_indices": [True]},
+        ):
+            with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                audit.align_metric_tangent_charts(faces, **kwargs)
+
+    def test_nonmanifold_geometry_never_receives_tangent_chart_stitch(self):
+        faces = [
+            [(0, (0, 0)), (1, (.02, 0)), (2, (.01, .03))],
+            [(1, (0, 0)), (0, (-.02, 0)), (3, (0, .03))],
+            [(0, (0, 0)), (1, (.02, 0)), (4, (.01, -.03))],
+        ]
+        unchanged, evidence = audit.align_metric_tangent_charts(
+            faces, tangent_face_indices=[1]
+        )
+        self.assertEqual(unchanged, faces)
+        self.assertTrue(evidence["nonManifoldTopologyRejected"])
+        self.assertEqual(evidence["rigidlyAlignedTangentChartFaces"], 0)
+
     def test_valid_uv_is_not_a_physical_fabric_certificate(self):
         result = audit.audit_uv_triangles([(XYZ, UV)])
         self.assertTrue(result["candidateUvTopologyPass"])
