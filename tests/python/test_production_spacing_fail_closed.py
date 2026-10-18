@@ -21,6 +21,13 @@ class SpacingMeasurementGateTests(unittest.TestCase):
             self.source,
         )
 
+    def test_inboard_cuffs_cannot_fake_fit_by_floating_off_scanned_arm(self):
+        self.assertIn('"forearmSleeveCoverage": forearm_sleeve_coverage', self.source)
+        self.assertIn('distance_mm > 28.0', self.source)
+        self.assertIn('nearest = cloth_bvh.find_nearest(point)', self.source)
+        self.assertIn('reasons.append(f"{panel} has insufficient real forearm coverage samples.")', self.source)
+        self.assertIn('reasons.append(', self.source)
+
     def test_missing_trouser_spacing_is_blocking(self):
         self.assertIn(
             'reasons.append("Could not sample trouser leg-center spacing from production geometry; spacing gate cannot pass without measurement.")',
