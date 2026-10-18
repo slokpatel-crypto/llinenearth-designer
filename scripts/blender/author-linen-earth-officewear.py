@@ -547,42 +547,81 @@ def restore_collision_free_leg_gap(body, body_floor_z, body_height, requested_mm
 
 
 def trial_inner_crotch_seam_relief(body, floor_z, height, centre_x):
-    """Native BVH-only relief experiment for actual midline crotch intersections.
+    """Native contact-gated candidate contour: try seam spacing AND skin relief.
 
-    Source native evidence located the remaining unshifted 100 overlap pairs
-    around z=0.74..0.84 metres, x near zero. The hip/inner-seam test leaves
-    body, knee and hem unchanged. It does NOT create a tailored sewn inseam.
-    Every tested displacement must clear skin AND both cloth shells.
+    A 4-mm outward inner-seam trial cleared the 100 cloth/cloth overlaps in
+    native evidence but introduced 36/24 skin-contact pairs. Resolve that
+    competing constraint with the existing bounded, real-body-normal repair
+    (at most 12 mm per garment vertex). All unsuccessful trials restore every
+    XYZ coordinate, not just X: collision repair can move Y and Z too.
+    Nothing here moves the locked body, certifies physical tailoring, or
+    relaxes the independent source/model/UV/identity release gates.
     """
     names = ("TrouserLegLFabric", "TrouserLegRFabric")
     legs = [bpy.data.objects.get(name) for name in names]
     if any(obj is None or obj.type != "MESH" for obj in legs):
         raise RuntimeError("Need both locked-source trouser shells for crotch seam QA")
-    base_x = {obj.name: [vertex.co.x for vertex in obj.data.vertices]
-              for obj in legs}
-    attempts = []
-    for peak_mm in (2.0, 4.0, 6.0, 8.0, 10.0):
+    if not all(math.isfinite(v) for v in (floor_z, height, centre_x)) or height <= 0:
+        raise RuntimeError("Source seam trial needs a finite positive body frame")
+
+    original = {
+        obj.name: [vertex.co.copy() for vertex in obj.data.vertices]
+        for obj in legs
+    }
+
+    def restore():
         for obj in legs:
-            for index, vertex in enumerate(obj.data.vertices):
-                ratio = (vertex.co.z - floor_z) / height
-                vertex.co.x = base_x[obj.name][index] + (
-                    candidate_inner_seam_relief_mm(
-                        obj.name, ratio, base_x[obj.name][index] - centre_x, peak_mm
-                    ) / 1000.0
-                )
+            for vertex, position in zip(obj.data.vertices, original[obj.name]):
+                vertex.co = position
             obj.data.update()
         bpy.context.view_layer.update()
-        leg_pairs = source_fit_collision_pairs(legs[0], legs[1])
-        left_body = source_fit_collision_pairs(body, legs[0])
-        right_body = source_fit_collision_pairs(body, legs[1])
+
+    def contacts():
+        return (
+            source_fit_collision_pairs(legs[0], legs[1]),
+            source_fit_collision_pairs(body, legs[0]),
+            source_fit_collision_pairs(body, legs[1]),
+        )
+
+    attempts = []
+    for peak_mm in (2.0, 4.0, 6.0, 8.0, 10.0):
+        restore()
+        for obj in legs:
+            for index, vertex in enumerate(obj.data.vertices):
+                position = original[obj.name][index]
+                ratio = (position.z - floor_z) / height
+                vertex.co.x = position.x + candidate_inner_seam_relief_mm(
+                    obj.name, ratio, position.x - centre_x, peak_mm
+                ) / 1000.0
+            obj.data.update()
+        bpy.context.view_layer.update()
+
+        before = contacts()
+        corrections = {}
+        # Do not repair skin at the expense of an already-intersecting inseam.
+        # The first attempt must geometrically separate both trouser shells.
+        if before[0] == 0 and (before[1] > 0 or before[2] > 0):
+            for obj, body_pairs in zip(legs, before[1:]):
+                if body_pairs > 0:
+                    correction = repair_body_intersections(body, obj, 6)
+                    corrections[obj.name] = {
+                        "contactPairsByPass": correction["contactPairsByPass"],
+                        "maxVertexCorrectionMm": correction["maxVertexCorrectionMm"],
+                        "remainingContactPairs": correction["remainingContactPairs"],
+                    }
+        after = contacts()
         trial = {
             "peakSeamReliefMm": peak_mm,
-            "legToLegPairs": leg_pairs,
-            "leftBodyPairs": left_body,
-            "rightBodyPairs": right_body,
+            "legToLegPairsBeforeRepair": before[0],
+            "leftBodyPairsBeforeRepair": before[1],
+            "rightBodyPairsBeforeRepair": before[2],
+            "legToLegPairs": after[0],
+            "leftBodyPairs": after[1],
+            "rightBodyPairs": after[2],
+            "boundedBodyContactCorrections": corrections,
         }
         attempts.append(trial)
-        if leg_pairs == left_body == right_body == 0:
+        if after == (0, 0, 0):
             evidence = {
                 "selectedPeakSeamReliefMm": peak_mm,
                 "nativeWorldSpaceCollisionFree": True,
@@ -597,12 +636,9 @@ def trial_inner_crotch_seam_relief(body, floor_z, height, centre_x):
             print("SOURCE_FIT_CROTCH_SEAM_RELIEF=" + json.dumps(evidence, sort_keys=True))
             return evidence
 
-    # Do not leave an ineffective deformation hidden in the 3D candidate.
-    for obj in legs:
-        for index, vertex in enumerate(obj.data.vertices):
-            vertex.co.x = base_x[obj.name][index]
-        obj.data.update()
-    bpy.context.view_layer.update()
+    # A trial that repaired body contact but reintroduced inter-leg contact
+    # must NOT survive into UV authoring or the next gap optimization.
+    restore()
     evidence = {
         "selectedPeakSeamReliefMm": 0.0,
         "nativeWorldSpaceCollisionFree": False,
