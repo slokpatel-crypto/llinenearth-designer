@@ -46,7 +46,7 @@ assert result["productionApproved"] is False
 
 # Force a regression to persistently report body contact. During each trial
 # simulate legitimate bounded body-normal repair that changes ALL coordinates,
-# not only X. The rollback must restore original XYZ even after five attempts.
+# not only X. The rollback must restore original XYZ even after all bounded falloff trials.
 original = {
     obj.name: tuple(tuple(vertex.co) for vertex in obj.data.vertices)
     for obj in (left, right)
@@ -82,7 +82,7 @@ finally:
 
 assert rejected["nativeWorldSpaceCollisionFree"] is False, rejected
 assert rejected["selectedPeakSeamReliefMm"] == 0
-assert len(rejected["trials"]) == 5
+assert len(rejected["trials"]) == 14
 assert all(trial["boundedBodyContactCorrections"] for trial in rejected["trials"])
 for obj in (left, right):
     assert tuple(tuple(vertex.co) for vertex in obj.data.vertices) == original[obj.name], (
