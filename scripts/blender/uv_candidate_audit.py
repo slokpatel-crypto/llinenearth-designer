@@ -22,6 +22,40 @@ def metric_planar_uv(point_xyz, *, origin_x, origin_z):
     return (point_xyz[0] - origin_x, point_xyz[2] - origin_z)
 
 
+def cylindrical_metric_face_uv(points_xyz, *, center_xy, radius_m, origin_z):
+    """Geometry-estimated circumferential U / vertical V for ONE mesh face.
+
+    Unwrap +/-pi at the face seam using per-loop UVs. The reference radius is
+    obtained from the authored shell geometry, NOT supplier fabric dimensions.
+    A face spanning over half a revolution is ambiguous and must fail closed.
+    """
+    if len(points_xyz) < 3 or len(center_xy) != 2:
+        raise ValueError("Expected at least three XYZ vertices and XY centre")
+    values = [*center_xy, radius_m, origin_z]
+    for point in points_xyz:
+        if len(point) != 3:
+            raise ValueError("Cylindrical UV requires full 3D vertex coordinates")
+        values.extend(point)
+    if any(isinstance(v, (str, bytes, bool)) or not isinstance(v, (int, float))
+           or not math.isfinite(v) for v in values):
+        raise ValueError("Cylindrical UV requires finite numeric metric coordinates")
+    if radius_m <= 1e-5:
+        raise ValueError("Degenerate cylindrical UV geometry radius")
+
+    cx, cy = center_xy
+    angles = [math.atan2(point[1] - cy, point[0] - cx) for point in points_xyz]
+    initial_angle = angles[0]
+    unwrapped = [initial_angle] + [
+        initial_angle + math.atan2(math.sin(a - initial_angle),
+                                   math.cos(a - initial_angle))
+        for a in angles[1:]
+    ]
+    if max(unwrapped) - min(unwrapped) >= math.pi:
+        raise ValueError("Candidate UV polygon crosses an ambiguous half-cylinder seam")
+    return [(radius_m * angle, point[2] - origin_z)
+            for angle, point in zip(unwrapped, points_xyz)]
+
+
 def audit_uv_triangles(triangles, *, min_uv_area=1e-12, min_surface_area_m2=1e-12):
     """Triangles: iterable of (three XYZ triples, three UV pairs). Fail closed."""
     if not (math.isfinite(min_uv_area) and min_uv_area > 0
