@@ -37,8 +37,8 @@ right_before = tuple(tuple(vertex.co) for vertex in right.data.vertices)
 result = author.try_collision_safe_cuff_spacing(body, 0, 1, 22.0)
 assert result["nativeWorldSpaceCollisionFree"] is True, result
 assert result["selectedMmPerSleeve"] == 22.0, result
-assert all(tuple(v.co)[0] == original[0] + .022 for v, original in zip(left.data.vertices, left_before))
-assert all(tuple(v.co)[0] == original[0] - .022 for v, original in zip(right.data.vertices, right_before))
+assert all(abs(v.co.x - (original[0] + .022)) < 1e-6 for v, original in zip(left.data.vertices, left_before))
+assert all(abs(v.co.x - (original[0] - .022)) < 1e-6 for v, original in zip(right.data.vertices, right_before))
 assert tuple(tuple(vertex.co) for vertex in body.data.vertices) == source_before
 assert result["productionApproved"] is False and result["photographicPoseApproved"] is False
 
