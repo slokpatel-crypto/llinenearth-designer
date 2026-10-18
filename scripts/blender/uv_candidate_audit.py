@@ -628,6 +628,20 @@ def classify_unapproved_uv_seams(faces, *, radius_m, tangent_face_indices=(),
     class_groups = {name: 0 for name in counts}
     chain_shape_counts = {"openPath": 0, "closedLoopCandidate": 0, "branched": 0}
     chain_samples = []
+    # Samples are intentionally capped, but the inventory below is COMPLETE:
+    # all source-edge groups contribute to physical-geometry diagnostics.
+    group_metrics = {
+        name: {
+            "groupCount": 0,
+            "edgeCount": 0,
+            "branchedGroupCount": 0,
+            "maxJunctionDegree": 0,
+            "totalPathLengthMm": 0.0 if positions is not None else None,
+            "longestPathLengthMm": 0.0 if positions is not None else None,
+            "maxZSpanMm": 0.0 if positions is not None else None,
+        }
+        for name in counts
+    }
     for name in counts:
         same_class = sorted(edge for edge, classification in classified_source_edges
                             if classification == name)
@@ -657,6 +671,27 @@ def classify_unapproved_uv_seams(faces, *, radius_m, tangent_face_indices=(),
                      else "closedLoopCandidate" if not ends else "openPath")
             chain_shape_counts[shape] += 1
             class_groups[name] += 1
+            inventory = group_metrics[name]
+            inventory["groupCount"] += 1
+            inventory["edgeCount"] += len(component)
+            inventory["branchedGroupCount"] += int(shape == "branched")
+            inventory["maxJunctionDegree"] = max(
+                inventory["maxJunctionDegree"], max(degree.values())
+            )
+            if positions is not None:
+                # Compute against ALL source edges, not just displayed chains.
+                metric = [source_edge_metric(edge) for edge in component]
+                length_m = sum(v[0] for v in metric)
+                vertical_m = sum(v[1] for v in metric)
+                zs = [positions[vid][2] for vid in degree]
+                z_span_m = max(zs) - min(zs)
+                inventory["totalPathLengthMm"] += length_m*1000
+                inventory["longestPathLengthMm"] = max(
+                    inventory["longestPathLengthMm"], length_m*1000
+                )
+                inventory["maxZSpanMm"] = max(
+                    inventory["maxZSpanMm"], z_span_m*1000
+                )
             if len(chain_samples) < sample_limit:
                 chain_sample = {
                     "classification": name,
@@ -669,18 +704,20 @@ def classify_unapproved_uv_seams(faces, *, radius_m, tangent_face_indices=(),
                     "seamPlacementApproved": False,
                 }
                 if positions is not None:
-                    metric = [source_edge_metric(edge) for edge in component]
-                    length_m = sum(v[0] for v in metric)
-                    vertical_m = sum(v[1] for v in metric)
-                    zs = [positions[vid][2] for vid in degree]
                     chain_sample.update({
                         "geometryPathLengthMm": round(length_m*1000, 4),
-                        "geometryZSpanMm": round((max(zs)-min(zs))*1000, 4),
+                        "geometryZSpanMm": round(z_span_m*1000, 4),
                         "geometryVerticalEdgeFraction": (
                             round(vertical_m/length_m, 5) if length_m > 1e-10 else None
                         ),
                     })
                 chain_samples.append(chain_sample)
+    if sum(entry["edgeCount"] for entry in group_metrics.values()) != sum(counts.values()):
+        raise RuntimeError("Source cut graph inventory lost shared-mesh UV tear edges")
+    if positions is not None:
+        for entry in group_metrics.values():
+            for key in ("totalPathLengthMm", "longestPathLengthMm", "maxZSpanMm"):
+                entry[key] = round(entry[key], 4)
     return {
         "unapprovedInteriorUvSeams": topology["unapprovedInteriorUvSeams"],
         "geometryEstimatedPeriodMm": round(period*1000, 5),
@@ -690,6 +727,10 @@ def classify_unapproved_uv_seams(faces, *, radius_m, tangent_face_indices=(),
         "sourceSeamGroupCountByClass": class_groups,
         "sourceSeamChainShapes": chain_shape_counts,
         "sourceSeamChainSamples": chain_samples,
+        "sourceSeamGroupMetricsByClass": group_metrics,
+        "sourceSeamGroupsOmittedFromSamples": (
+            sum(class_groups.values()) - len(chain_samples)
+        ),
         "sourceMetricGeometryAvailable": positions is not None,
         "sourceGeometryCoordinateUnits": "mesh_metres" if positions is not None else None,
         "sourceMetricEdgeLengthByClassMm": (
@@ -707,6 +748,93 @@ def classify_unapproved_uv_seams(faces, *, radius_m, tangent_face_indices=(),
         "sourceNonManifoldEdges": topology["nonManifoldEdges"],
         "cutPlacementApproved": False,
         "supplierRepeatVerified": False,
+        "supplierGrainVerified": False,
+        "productionApproved": False,
+    }
+
+
+
+def validate_recomputed_source_cut_evidence(authored, independent, *,
+                                            metric_tolerance_mm=0.25):
+    """Fail closed when author UV-cut receipts disagree with evaluated mesh.
+
+    This verifies two *software* observations of the same source garment,
+    including every unsampled seam-cut component. It NEVER approves seams,
+    physical grain, source identity, real fabric dimensions or drape.
+    Blender float32 UV/mesh storage can cause sub-millimetre rounding, so
+    independent metric totals are compared within an explicit tight budget.
+    """
+    if (isinstance(metric_tolerance_mm, (bool, str, bytes))
+            or not isinstance(metric_tolerance_mm, (int, float))
+            or not math.isfinite(metric_tolerance_mm)
+            or not 0 <= metric_tolerance_mm <= 0.25):
+        raise ValueError("Source cut comparison needs a <=0.25 mm finite tolerance")
+    if not isinstance(authored, dict) or not isinstance(independent, dict):
+        raise ValueError("Source cut receipts must be nonempty report dictionaries")
+    exact_fields = (
+        "unapprovedInteriorUvSeams", "nearUnapprovedTangentChart",
+        "exactFullTurnCutCandidates", "nonPeriodicUvTears",
+        "sourceSeamGroupCountByClass", "sourceSeamChainShapes",
+        "sourceMetricGeometryAvailable", "sourceGeometryCoordinateUnits",
+        "zeroLengthSourceUvTearEdges", "sourceNonManifoldEdges",
+        "cutPlacementApproved", "supplierRepeatVerified",
+        "supplierGrainVerified", "productionApproved",
+    )
+    for field in exact_fields:
+        if field not in authored or field not in independent:
+            raise ValueError(f"Missing source cut provenance field: {field}")
+        if authored[field] != independent[field]:
+            raise ValueError(f"Authored and independent source cut {field} disagree")
+    if any(report["sourceMetricGeometryAvailable"] is not True
+           or report["sourceGeometryCoordinateUnits"] != "mesh_metres"
+           or any(report[approval] is not False for approval in (
+               "cutPlacementApproved", "supplierRepeatVerified",
+               "supplierGrainVerified", "productionApproved"
+           )) for report in (authored, independent)):
+        raise ValueError("Source cut provenance cannot certify physical fabric or approval")
+    max_delta = 0.0
+
+    def compare_metric(label, first, second):
+        nonlocal max_delta
+        if any(isinstance(v, (str, bytes, bool))
+               or not isinstance(v, (int, float)) or not math.isfinite(v)
+               or v < 0 for v in (first, second)):
+            raise ValueError(f"Invalid finite source cut metric: {label}")
+        delta = abs(first - second)
+        if delta > metric_tolerance_mm:
+            raise ValueError(f"Authored and independent {label} differ by {delta:.4f} mm")
+        max_delta = max(max_delta, delta)
+
+    for key in ("sourceMetricEdgeLengthByClassMm",
+                "sourceMetricVerticalRiseByClassMm"):
+        a, b = authored.get(key), independent.get(key)
+        if (not isinstance(a, dict) or not isinstance(b, dict)
+                or set(a) != set(b)):
+            raise ValueError(f"Missing or mismatched source cut metric keys: {key}")
+        for name in a:
+            compare_metric(key + "." + name, a[name], b[name])
+
+    a_groups = authored.get("sourceSeamGroupMetricsByClass")
+    b_groups = independent.get("sourceSeamGroupMetricsByClass")
+    if (not isinstance(a_groups, dict) or not isinstance(b_groups, dict)
+            or set(a_groups) != set(b_groups)):
+        raise ValueError("Source cut groups missing from authoring or independent QA")
+    for name in a_groups:
+        a, b = a_groups[name], b_groups[name]
+        if not isinstance(a, dict) or not isinstance(b, dict):
+            raise ValueError("Malformed source cut group inventory")
+        for key in ("groupCount", "edgeCount", "branchedGroupCount", "maxJunctionDegree"):
+            if key not in a or key not in b or a[key] != b[key]:
+                raise ValueError(f"Authored and independent {name}.{key} disagree")
+        for key in ("totalPathLengthMm", "longestPathLengthMm", "maxZSpanMm"):
+            if key not in a or key not in b:
+                raise ValueError(f"Source cut extent absent: {name}.{key}")
+            compare_metric(name + "." + key, a[key], b[key])
+
+    return {
+        "sourceCutProvenanceConsistent": True,
+        "maxSourceCutMetricDeltaMm": round(max_delta, 4),
+        "independentEvaluatedMeshRequired": True,
         "supplierGrainVerified": False,
         "productionApproved": False,
     }
