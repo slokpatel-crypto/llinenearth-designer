@@ -831,6 +831,44 @@ class CandidateUvAuditTests(unittest.TestCase):
                     authored, authored, max_coverage_delta_pct=tolerance
                 )
 
+    def test_independent_height_band_receipt_rejects_hidden_distortion_tampering(self):
+        from copy import deepcopy
+        # A repaired global area cannot justify hiding one damaged Z region.
+        good = (XYZ, UV, 1)
+        bad_xyz = ((0, 0, 3), (2, 0, 3), (0, 0, 4))
+        bad_uv = ((0, 0), (4, 0), (0, .5))
+        source = audit.audit_uv_triangles([good, (bad_xyz, bad_uv, 2)])
+        self.assertEqual(
+            audit.validate_independent_uv_hotspots(source, source)
+            ["evaluatedSourceUvHotspotProvenanceConsistent"], True,
+        )
+
+        for invalid in (
+            lambda r: r.pop("uvDistortionHeightBands"),
+            lambda r: r["uvDistortionHeightBands"][3].update({"distortedSurfacePct": 0}),
+            lambda r: r["uvDistortionHeightBands"][3].update({"distortedTriangleCount": 0}),
+            lambda r: r["uvDistortionHeightBands"][0].update({"heightBandPct": [60, 80]}),
+            lambda r: r["uvDistortionHeightBands"][3].update({"distortedAreaM2": float("nan")}),
+            lambda r: r.update({"uvSourceZExtentMetres": [0, 4.2]}),
+            lambda r: r.update({"candidateUvMetricDistortionReviewRequired": False}),
+            lambda r: r.update({"candidateUvTopologyPass": "True"}),
+        ):
+            forged = deepcopy(source)
+            invalid(forged)
+            with self.subTest(forgery=forged), self.assertRaises(ValueError):
+                audit.validate_independent_uv_hotspots(forged, source)
+
+        # A tiny scene-file coordinate-rounding drift is tolerated but a
+        # changed local damage extent, even with unchanged global total, is not.
+        rounded = deepcopy(source)
+        rounded["uvDistortionHeightBands"][3]["distortedAreaM2"] += .000001
+        self.assertTrue(audit.validate_independent_uv_hotspots(
+            source, rounded)["evaluatedSourceUvHotspotProvenanceConsistent"])
+        shifted = deepcopy(source)
+        shifted["uvDistortionHeightBands"][3]["distortedAreaM2"] -= .01
+        with self.assertRaisesRegex(ValueError, "area mismatch"):
+            audit.validate_independent_uv_hotspots(source, shifted)
+
     def test_independent_indexed_uv_receipt_works_for_valid_unstretched_mesh(self):
         good = audit.audit_uv_triangles([(XYZ, UV, 12)])
         proof = audit.validate_independent_uv_hotspots(good, good)
