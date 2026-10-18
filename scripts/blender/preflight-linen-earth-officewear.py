@@ -15,7 +15,7 @@ from mathutils.bvhtree import BVHTree
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from uv_candidate_audit import audit_shared_uv_edges, classify_unapproved_uv_seams, validate_recomputed_source_cut_evidence, verify_evaluated_tube_radius_m
+from uv_candidate_audit import audit_shared_uv_edges, audit_uv_triangles, classify_unapproved_uv_seams, validate_recomputed_source_cut_evidence, verify_evaluated_tube_radius_m
 from sleeve_stance_math import source_arm_band_geometry
 
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -87,7 +87,22 @@ def evaluated_mesh_stats(obj):
         uv_collapsed = 0
         uv_nonfinite = 0
         uv_channel = mesh.uv_layers.active
+        metric_uv_scan = None
+        metric_uv_scan_error = None
         if uv_channel is not None:
+            try:
+                # Independent, evaluated 3D triangle geometry: unlike triangle
+                # area alone, this catches U/V stretch tradeoffs and shear.
+                metric_uv_scan = audit_uv_triangles([
+                    (
+                        tuple(tuple(mesh.vertices[mesh.loops[i].vertex_index].co)
+                              for i in triangle.loops),
+                        tuple(tuple(uv_channel.data[i].uv) for i in triangle.loops),
+                    )
+                    for triangle in mesh.loop_triangles
+                ])
+            except (ValueError, OverflowError, ZeroDivisionError) as exc:
+                metric_uv_scan_error = str(exc)
             for triangle in mesh.loop_triangles:
                 coords = [uv_channel.data[loop_idx].uv for loop_idx in triangle.loops]
                 if any(not math.isfinite(axis) for uv in coords for axis in uv):
@@ -156,6 +171,8 @@ def evaluated_mesh_stats(obj):
                 seam_audit_error = str(exc)
                 source_cut_error = str(exc)
         return {
+            "uvIndependentMetricDistortionScan": metric_uv_scan,
+            "uvIndependentMetricDistortionError": metric_uv_scan_error,
             "uvSharedEdgeAudit": seam_audit,
             "uvSharedEdgeAuditError": seam_audit_error,
             "uvIndependentSourceCutReport": source_cut_report,
@@ -560,6 +577,21 @@ def main():
             reasons.append(
                 f"{name} has {stats['uvCollapsedTriangles']} collapsed UV triangles; "
                 "no real stripe/check physical pattern scale can be approved from this surface."
+            )
+        # A UV map can have perfect area and still stretch checks/stripes:
+        # independent 3D Jacobian length evidence must not be lost.
+        metric_scan = stats["uvIndependentMetricDistortionScan"]
+        if stats["uvIndependentMetricDistortionError"]:
+            reasons.append(
+                f"{name} failed independent metre-UV distortion verification: "
+                f"{stats['uvIndependentMetricDistortionError']}."
+            )
+        elif metric_scan is not None and metric_scan["candidateUvMetricDistortionReviewRequired"]:
+            reasons.append(
+                f"{name} needs true texture metric review: "
+                f"{metric_scan['uvTrianglesAnisotropyOver2']} triangles exceed 2x anisotropy; "
+                f"{metric_scan['uvTrianglesMetricScaleDeviationOver50Pct']} exceed "
+                "50% local mesh-metre stretch deviation. Textile scale is unapproved."
             )
         seam_audit = stats["uvSharedEdgeAudit"]
         if stats["uvIndependentSourceCutError"]:
