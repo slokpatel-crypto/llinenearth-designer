@@ -23,7 +23,7 @@ from mathutils.bvhtree import BVHTree
 # Blender. It must not be mistaken for a material-calibrated cloth simulation.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from drape_preview_math import MAX_PREVIEW_RELIEF_MM, candidate_drape_offset_mm
-from uv_candidate_audit import audit_uv_triangles
+from uv_candidate_audit import audit_uv_triangles, metric_planar_uv
 from region_islands import keep_ankle_connected_faces
 
 BODY_NAME = "Body"
@@ -428,9 +428,10 @@ def planar_grain_uv(obj):
     for polygon in mesh.polygons:
         for loop_index in polygon.loop_indices:
             vertex = mesh.vertices[mesh.loops[loop_index].vertex_index]
-            u = vertex.co.x - min_x
-            v = vertex.co.z - min_z
-            uv_layer.data[loop_index].uv = (u, v)
+            uv_layer.data[loop_index].uv = metric_planar_uv(
+                (vertex.co.x, vertex.co.y, vertex.co.z),
+                origin_x=min_x, origin_z=min_z,
+            )
     obj["linen_earth_uv_coordinate_units"] = "mesh_metres"
     obj["linen_earth_uv_method"] = "uncalibrated_metric_xz_planar"
     obj["linen_earth_supplier_repeat_verified"] = False
