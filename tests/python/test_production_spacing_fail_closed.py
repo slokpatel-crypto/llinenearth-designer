@@ -28,5 +28,28 @@ class SpacingMeasurementGateTests(unittest.TestCase):
         )
 
 
+    def test_missing_silhouette_measurements_are_blocking(self):
+        self.assertIn(
+            'reasons.append(f"Could not sample {key} from garment geometry; identity-fit gate cannot pass without measurement.")',
+            self.source,
+        )
+
+    def test_missing_centerline_measurements_are_blocking(self):
+        self.assertIn(
+            'reasons.append(f"Could not sample {key} for garment centerline QA; production fit cannot pass.")',
+            self.source,
+        )
+
+    def test_missing_symmetry_measurements_are_blocking(self):
+        self.assertIn(
+            'reasons.append("Could not calculate left/right cuff-zone width symmetry; production fit cannot pass.")',
+            self.source,
+        )
+        self.assertIn(
+            'reasons.append("Could not calculate left/right trouser hem symmetry; production fit cannot pass.")',
+            self.source,
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
