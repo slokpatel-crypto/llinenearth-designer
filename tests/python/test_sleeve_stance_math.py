@@ -79,6 +79,36 @@ class SleeveStanceTests(unittest.TestCase):
                     [point]*4, guide_z_m=.9, side=-1
                 )
 
+    def test_current_sleeve_gap_cannot_reach_lock_with_remaining_cap(self):
+        # Source-locked current accepted result is 563.4 mm after 11 mm of
+        # the existing 22-mm per-side contour; an ideal full additional
+        # 11 mm/side would still be 541.4 mm (>500+36).
+        result = module.optimistic_sleeve_spacing_budget(563.4, 11)
+        self.assertEqual(result["remainingContourBudgetMmPerSleeve"], 11)
+        self.assertEqual(result["optimisticMinimumSpacingMm"], 541.4)
+        self.assertEqual(result["requiredExtraMmPerSleeveAtFullEffect"], 13.7)
+        self.assertFalse(result["guideNumericallyReachableWithinExistingContourCap"])
+        self.assertFalse(result["bodyContactOrFitApproved"])
+        self.assertFalse(result["productionApproved"])
+
+    def test_sleeve_budget_never_equates_numeric_reach_to_real_fit(self):
+        result = module.optimistic_sleeve_spacing_budget(542, 11)
+        self.assertTrue(result["guideNumericallyReachableWithinExistingContourCap"])
+        self.assertFalse(result["bodyContactOrFitApproved"])
+        self.assertFalse(result["productionApproved"])
+        result = module.optimistic_sleeve_spacing_budget(450, 11)
+        self.assertFalse(result["guideNumericallyReachableWithinExistingContourCap"])
+        for spacing, used, target, tolerance in (
+            (float("nan"), 0, 500, 36), (563, True, 500, 36),
+            (563, 23, 500, 36), (563, -1, 500, 36),
+            (563, 11, -1, 36), (563, 11, 500, 600),
+            ("563", 11, 500, 36),
+        ):
+            with self.subTest(spacing=spacing, used=used), self.assertRaises(ValueError):
+                module.optimistic_sleeve_spacing_budget(
+                    spacing, used, target_mm=target, tolerance_mm=tolerance
+                )
+
     def test_unsafe_requests_fail_closed(self):
         for panel, ratio, shift in [
             ("ShirtTorsoFabric", 0.54, 20),
