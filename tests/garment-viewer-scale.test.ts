@@ -1,7 +1,30 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyViewerTextureUvTransform, garmentPanelTextureScale, garmentPanelTexturePreparationKey, prepareGarmentPanelUvTransforms, garmentPanelTextureScaleEvidence, garmentUvRepeatsForUnits, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
+import { canPaintGarmentPanelMaterial, applyViewerTextureUvTransform, garmentPanelTextureScale, garmentPanelTexturePreparationKey, prepareGarmentPanelUvTransforms, garmentPanelTextureScaleEvidence, garmentUvRepeatsForUnits, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm } from "../src/lib/garment-viewer-scale.ts";
 
+
+test("the complete six-panel texture adapter must be paintable before any visible update",()=>{
+  const full=()=>({
+    pbrMetallicRoughness:{
+      baseColorTexture:{setTexture:(_texture:unknown)=>{}},
+      setBaseColorFactor:(_value:unknown)=>{},
+      setMetallicFactor:(_value:number)=>{},
+      setRoughnessFactor:(_value:number)=>{},
+    },
+  });
+  const six=Array.from({length:6},full);
+  assert.equal(six.every(canPaintGarmentPanelMaterial),true);
+  for(const broken of [
+    null,undefined,{},{pbrMetallicRoughness:{}},
+    {...full(),pbrMetallicRoughness:{...full().pbrMetallicRoughness,baseColorTexture:null}},
+    {...full(),pbrMetallicRoughness:{...full().pbrMetallicRoughness,baseColorTexture:{}}},
+    {...full(),pbrMetallicRoughness:{...full().pbrMetallicRoughness,setRoughnessFactor:"unavailable"}},
+  ]){
+    assert.equal(canPaintGarmentPanelMaterial(broken),false);
+    assert.equal([...six.slice(0,5),broken].every(canPaintGarmentPanelMaterial),false,
+      "One non-paintable panel invalidates the full outfit");
+  }
+});
 
 test("physical-scale resolution never coerces unreviewed JSON strings",()=>{
   const declared={physicalScaleStatus:"declared_repeat" as const,repeatMm:20};
