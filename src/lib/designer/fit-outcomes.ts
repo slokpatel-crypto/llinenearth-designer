@@ -54,7 +54,13 @@ const AREAS=new Set<FitOutcomeArea>([
   "trouser_waist","trouser_seat","trouser_thigh","trouser_rise","trouser_length",
 ]);
 
-function txt(value:unknown,max=120){return String(value??"").trim().slice(0,max);}
+// Operator log values are untrusted persisted JSON. Coercing arrays or numbers
+// to strings (or truncating long IDs) could create apparently valid reviews
+// and could merge unrelated records under one shortened ID.
+function txt(value:unknown,max=120){
+  if(typeof value!=="string"||value.length>max) return "";
+  return value.trim();
+}
 // Learning buckets must not be inferred from malformed or unit-confused
 // historical measurements. This is only a software validity guard, not a
 // claim that any customer's real body measurements have been verified.
@@ -106,6 +112,9 @@ export function parseFitOutcome(event:EventLike):FitOutcomeReview|null{
     ? p.areas.map((value)=>txt(value,40) as FitOutcomeArea).filter((value)=>AREAS.has(value)).slice(0,10)
     : [];
   if(!recommendationId||!VERDICTS.has(verdict)||!OCCASIONS.has(occasion)||!shirtFit||!trouser) return null;
+  // Keys are historically persisted as ::-joined fields. Do not allow a
+  // delimiter inside a field to collide with a distinct style's bucket key.
+  if(shirtFit.includes("::")||trouser.includes("::")) return null;
   if(!["tapered","balanced","straight","unknown"].includes(torso)) return null;
   if(!["pronounced","balanced","unknown"].includes(seat)) return null;
   return {recommendationId,verdict,occasion,shirtFit,trouser,proportion:{torso,seat},areas};
@@ -138,6 +147,7 @@ function reliableFitOutcomeBucket(value:unknown, totalReviews:number):value is F
   if(!OCCASIONS.has(bucket.occasion)
     ||typeof bucket.shirtFit!=="string"||!bucket.shirtFit.trim()
     ||typeof bucket.trouser!=="string"||!bucket.trouser.trim()
+    ||bucket.shirtFit.includes("::")||bucket.trouser.includes("::")
     ||!["tapered","balanced","straight","unknown"].includes(bucket.torso)
     ||!["pronounced","balanced","unknown"].includes(bucket.seat)
     ||bucket.key!==fitOutcomeKey(bucket)) return false;
@@ -156,7 +166,6 @@ export function fitOutcomeSignalFor(
     ||!Number.isSafeInteger(book.totalReviews)||book.totalReviews<0
     ||!Number.isSafeInteger(book.usableBuckets)||book.usableBuckets<0
     ||!Array.isArray(book.buckets)) return {score:0,evidence:0,summary:"Post-fitting evidence is still collecting."};
-  if(book.totalReviews<3) return {score:0,evidence:book.totalReviews,summary:"Post-fitting evidence is still collecting."};
   // Never drop malformed rows and then award confidence from the remaining
   // data: the aggregate itself may have been tampered with or partially
   // corrupted. Preserve the stored record, but require operator revalidation.
@@ -178,6 +187,10 @@ export function fitOutcomeSignalFor(
     keys.add(bucket.key);
     represented+=bucket.total;
   }
+  // Even a sparse book must be validated before its review count is
+  // displayed as evidence. A two-review book can still contain forged
+  // metadata or impossible counters and must not claim two real fittings.
+  if(book.totalReviews<3) return {score:0,evidence:book.totalReviews,summary:"Post-fitting evidence is still collecting."};
   const key=fitOutcomeKey({occasion:input.occasion,shirtFit:input.style.shirtFit,trouser:input.style.trouser,torso:input.proportion.torso,seat:input.proportion.seat});
   const bucket=trustworthy.find((b)=>b.key===key&&b.total>=3);
   if(bucket) {
