@@ -8,6 +8,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 PREFLIGHT = ROOT / "scripts" / "blender" / "preflight-linen-earth-officewear.py"
+SOURCE_AUTHOR = ROOT / "scripts" / "blender" / "author-linen-earth-officewear.py"
 
 
 class SpacingMeasurementGateTests(unittest.TestCase):
@@ -62,6 +63,25 @@ class SpacingMeasurementGateTests(unittest.TestCase):
             'reasons.append("Could not calculate left/right trouser hem symmetry; production fit cannot pass.")',
             self.source,
         )
+
+    def test_final_contact_receipts_inspect_restored_geometry(self):
+        author = SOURCE_AUTHOR.read_text(encoding="utf-8")
+        start = author.index("cuff_audit = try_collision_safe_cuff_spacing(")
+        end = author.index("for obj in authored:", start)
+        section = author[start:end]
+        self.assertNotIn('["trials"][-1]', section)
+        for marker in (
+            "sleeve_contact_final = [source_fit_collision_pairs(body, obj)",
+            "leg_contact_final = [source_fit_collision_pairs(body, obj)",
+            "sleeve_mutual_final = source_fit_collision_pairs(",
+            "leg_mutual_final = source_fit_collision_pairs(",
+            'cuff_audit["nativeWorldSpaceCollisionFree"]',
+            'leg_gap_audit["nativeWorldSpaceCollisionFree"]',
+            "Restored cuff snapshot failed final independent BVH contact recheck",
+            "Restored leg-gap snapshot failed final independent BVH contact recheck",
+        ):
+            self.assertIn(marker, section)
+
 
 
 if __name__ == "__main__":
