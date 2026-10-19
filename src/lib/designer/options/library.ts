@@ -229,23 +229,42 @@ export const GARMENT_OPTION_LIBRARY:readonly GarmentOption[]=[...seededOptions,.
 // across collar, fit, cuff, trouser and rule evaluations. Preserve first-ID
 // wins even if a malformed future dataset slips past the library validator.
 const OPTION_BY_ID=new Map<string,GarmentOption>();
+// Group and legacy-label selection previously rescanned the entire catalog on
+// every render. Index once without normalizing IDs or labels: historical
+// first-match precedence and case-sensitive labels must remain unchanged.
+const OPTIONS_BY_GROUP=new Map<GarmentOptionGroup,GarmentOption[]>();
+const FIRST_LEGACY_BY_GROUP=new Map<GarmentOptionGroup,Map<string,GarmentOption>>();
+const SELECTABLE_LEGACY_LABELS=new Map<GarmentOptionGroup,string[]>();
 for(const option of GARMENT_OPTION_LIBRARY) {
   if(!OPTION_BY_ID.has(option.id)) OPTION_BY_ID.set(option.id,option);
+  const matching=OPTIONS_BY_GROUP.get(option.group)||[];
+  matching.push(option);
+  OPTIONS_BY_GROUP.set(option.group,matching);
+  if(option.legacyLabel!==undefined) {
+    const firstLabels=FIRST_LEGACY_BY_GROUP.get(option.group)||new Map<string,GarmentOption>();
+    if(!firstLabels.has(option.legacyLabel)) firstLabels.set(option.legacyLabel,option);
+    FIRST_LEGACY_BY_GROUP.set(option.group,firstLabels);
+    if(option.legacyLabel && option.legacySelectable!==false) {
+      const labels=SELECTABLE_LEGACY_LABELS.get(option.group)||[];
+      labels.push(option.legacyLabel);
+      SELECTABLE_LEGACY_LABELS.set(option.group,labels);
+    }
+  }
 }
 
 export function optionsFor(group:GarmentOptionGroup) {
-  return GARMENT_OPTION_LIBRARY.filter((option)=>option.group===group);
+  // Return a fresh array, as the former .filter() API did. A caller may sort
+  // or splice options for display without corrupting shared lookup order.
+  return [...(OPTIONS_BY_GROUP.get(group)||[])];
 }
 export function optionById(id:string) {
   return OPTION_BY_ID.get(id) || null;
 }
 export function legacyOptionByLabel(group:GarmentOptionGroup,label:string) {
-  return GARMENT_OPTION_LIBRARY.find((option)=>option.group===group && option.legacyLabel===label) || null;
+  return FIRST_LEGACY_BY_GROUP.get(group)?.get(label) || null;
 }
 export function legacyLabelsFor(group:GarmentOptionGroup) {
-  return GARMENT_OPTION_LIBRARY
-    .filter((option)=>option.group===group && option.legacyLabel && option.legacySelectable!==false)
-    .map((option)=>option.legacyLabel as string);
+  return [...(SELECTABLE_LEGACY_LABELS.get(group)||[])];
 }
 
 export function validateGarmentOptionLibrary() {
@@ -257,7 +276,7 @@ export function validateGarmentOptionLibrary() {
     ids.add(option.id);
     if(option.formality===null && !option.formalityNullReason) errors.push(`Missing formality reason: ${option.id}`);
     for(const ref of [...(option.pairsWith||[]),...(option.avoidWith||[])]) {
-      if(!GARMENT_OPTION_LIBRARY.some((candidate)=>candidate.id===ref)) errors.push(`Unknown option reference ${ref} from ${option.id}`);
+      if(!OPTION_BY_ID.has(ref)) errors.push(`Unknown option reference ${ref} from ${option.id}`);
     }
   }
   return errors;
