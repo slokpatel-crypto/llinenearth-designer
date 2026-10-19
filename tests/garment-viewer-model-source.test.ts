@@ -268,29 +268,27 @@ test("explicit Blender UV units require a measured panel sidecar before candidat
 test("rapid fabric selections cannot commit a superseded asynchronous garment material pass",()=>{
   const source=readFileSync("src/components/GarmentViewer.tsx","utf8");
   const preflight=source.indexOf("const transforms=prepareGarmentPanelUvTransforms(");
-  const preparation=source.indexOf("const prepared=await Promise.all(candidates.map",preflight);
-  const allocate=source.indexOf("viewer.createTexture!(fabric.image)",preparation);
-  const ready=source.indexOf("const materials=await Promise.all(prepared.map",preparation);
+  const ready=source.indexOf("const materials=await Promise.all(candidates.map",preflight);
   const active=source.indexOf("if(token!==applyToken.current) return;",ready);
-  const mutate=source.indexOf("for(const [index,entry] of prepared.entries())",active);
-  const revision=source.indexOf("setTextureRevision((value)=>value+1);",mutate);
-  assert.ok(preflight>0&&preparation>preflight&&allocate>preparation
-    &&ready>allocate&&active>ready&&mutate>active&&revision>mutate);
-  // The entire set of UV dimensions is validated before the first GPU
-  // texture allocation. No async allocation can start for a malformed panel.
-  assert.match(source.slice(preflight,preparation),/if\(!transforms\) throw/);
-  // All material promises settle BEFORE the synchronous visible update.
+  const hydrated=source.indexOf("if(materials.some((material)=>!canPaintGarmentPanelMaterial(material)))",active);
+  const preparation=source.indexOf("const prepared=await Promise.all(candidates.map",hydrated);
+  const allocate=source.indexOf("viewer.createTexture!(fabric.image)",preparation);
+  const postAllocateActive=source.indexOf("if(token!==applyToken.current) return;",allocate);
+  const mutate=source.indexOf("for(const [index,entry] of prepared.entries())",postAllocateActive);
+  const cached=source.indexOf("preparedTextureRef.current=new Map",mutate);
+  const revision=source.indexOf("setTextureRevision((value)=>value+1);",cached);
+  // Both the source UV contract and the paintable six-material adapter must
+  // pass before any asynchronous GPU allocation. An unsupported sixth panel
+  // cannot allocate five good textures and then silently drop a swatch.
+  assert.ok(preflight>0&&ready>preflight&&active>ready&&hydrated>active
+    &&preparation>hydrated&&allocate>preparation&&postAllocateActive>allocate
+    &&mutate>postAllocateActive&&cached>mutate&&revision>cached);
+  assert.match(source.slice(preflight,ready),/if\(!transforms\) throw/);
+  assert.match(source.slice(hydrated,preparation),/missing a paintable normal-map slot/);
+  assert.match(source.slice(active,preparation),/Required garment panel is missing a paintable texture slot/);
+  // Synchronous material updates are committed only after all async work.
   assert.equal(source.slice(mutate,revision).includes("await "),false);
-  // Never paint five panels, call the sixth missing, and report success.
-  const hydrated=source.indexOf("if(materials.some((material)=>!canPaintGarmentPanelMaterial(material)))",ready);
-  const cached=source.indexOf("preparedTextureRef.current=new Map",hydrated);
-  // Cache becomes reusable only AFTER all six material paint calls succeed.
-  // A rejected partial paint cannot poison the next fabric selection's cache.
-  assert.ok(hydrated>active&&mutate>hydrated&&cached>mutate&&revision>cached);
-  assert.match(source.slice(hydrated,mutate),/missing a paintable normal-map slot/);
-  assert.match(source.slice(active,mutate),/Required garment panel is missing a paintable texture slot/);
   assert.ok(source.includes("return ()=>{if(applyToken.current===token) applyToken.current++;};"));
-  // Errors from a superseded selection must not clear timing or state.
   assert.ok(source.includes("if(token===applyToken.current){") &&
     source.includes("interactionStartedAt.current=null;"));
 });
@@ -302,5 +300,5 @@ test("verified model must never silently lose a prepared weave-normal texture",(
   const gpu=source.indexOf("viewer.createTexture!(fabric.image)",prepare);
   assert.ok(prepare>=0 && reject>prepare && gpu>reject,
     "Both normal maps must be verified before any 3D texture allocation");
-  assert.match(source,/prepared\.some\(\(entry,index\)=>!entry\.normal\s*\|\| !canPaintGarmentPanelNormalMaterial\(materials\[index\]\)\)/);
+  assert.match(source,/candidates\.some\(\(candidate,index\)=>!candidate\.normalUrl\s*\|\| !canPaintGarmentPanelNormalMaterial\(materials\[index\]\)\)/);
 });
