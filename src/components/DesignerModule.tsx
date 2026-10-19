@@ -11,6 +11,7 @@ import {
   type DesignerClimate, type DesignerContext, type DesignerFabric, type DesignerIntention, type DesignerRecommendation, type DesignerStyle, type OccasionTier,
 } from "@/lib/designer/engine";
 import { DESIGNER_FASHION_FACTS, DESIGNER_RESEARCH } from "@/lib/designer/research";
+import { readTitanFabricHandoff } from "@/lib/titan/fabric-handoff";
 import { createStyleSessionId, recordStyleMemoryEvent } from "@/lib/browser-style-memory";
 import { PhotoOutfitPreview, type CreativeVisualCheck } from "@/components/PhotoOutfitPreview";
 import { photoPreviewSupportForChoice } from "@/lib/designer/photo-preview-support";
@@ -341,6 +342,11 @@ export function DesignerModule() {
       // photographed model opens as the Director's actual result.
       const params = new URLSearchParams(window.location.search);
       const fromDirector = params.get("from") === "style-director";
+      // A validated TITAN handoff replaces just ONE cloth selection. Preserve
+      // all other saved draft fields and the separate Style Director handoff.
+      const titanFabric = !fromDirector ? readTitanFabricHandoff(window.location.search) : null;
+      if (titanFabric?.kind === "shirt") nextShirtId = titanFabric.fabricId;
+      if (titanFabric?.kind === "trouser") nextPantId = titanFabric.fabricId;
       setDirectorHandoff(fromDirector);
       if(fromDirector) nextStyleSpec=undefined;
 
