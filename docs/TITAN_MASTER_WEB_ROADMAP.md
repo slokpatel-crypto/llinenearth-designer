@@ -117,3 +117,13 @@ Do not replace testing with concept renders, inflate progress percentages, claim
 - A garment-tab switch now resets a stale search filter, preventing the previous garment's search text from hiding all the new garment options.
 - Node tests exhaustively cover all catalogue anchors, each suggestion's actual IDs/role, deterministic output, non-mutation, bad IDs and intended patterned/plain paths. Chromium QA checks forward and reverse pairs, touch target size, no replacement of the anchor, saved draft isolation, and search reset.
 - Keep this branch stacked on unreleased share-link PR #316. Matching-head CI/build, real-browser artifacts, owner acceptance and all physical/native gates remain required. No merge/deploy.
+
+
+### 19 October — device-only reference lookbook (stacked draft)
+
+- Opt-in **save, reopen and remove** for at most six combinations of actual existing shirt/trouser catalogue IDs. Each card shows separate source swatch photographs (with the existing honest missing-photo fallback), **never** a fabricated garment render.
+- Only a namespaced browser-local `linen-earth:titan-reference-lookbook:v1` entry is written, and **only after a click**. A strict versioned decoder rejects invalid schemas, unknown or swapped IDs, extra fields, duplicate references and oversized payloads. There is no server write, authenticated account save, stock reservation, paid AI or customer-attribute storage.
+- A saved reference persists across refresh on the **same device**; it is never automatically applied to the Designer or current outfit slots. Explicit **Reopen** updates the two ephemeral TITAN slots; Remove deletes only the selected bookmark and leaves the current selections untouched. Storage-denied browsers show an error rather than claiming success. Other browser tabs re-read the same local reference list.
+- Touch-friendly controls, keyboard focus, responsive source-photo cards and live status messages. Node validation covers all extant catalogue combinations, schema tampering, capacity, deduplication, nonmutation and save/remove. Chromium checks save/reload/reopen/remove and that the existing Designer draft was never mutated.
+- Source-of-truth remains the existing catalogue and maintained Designer. This convenience feature does **not** count as an account-sync workflow, realistic 3D outfit, verified stock, supplier repeat, verified colour, physical drape, model/UV release approval or tailor fitting.
+- This work is stacked on the still-unreleased `/titan` branches. CI/build/real-device QA, physical/native quality gates, privacy and owner signoff must complete before any merge, homepage cutover or production deployment.
