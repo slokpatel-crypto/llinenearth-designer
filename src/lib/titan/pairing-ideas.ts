@@ -42,7 +42,7 @@ function trousersForShirt(fabric: TitanFabricReference): readonly Recipe[] {
     { id: TROUSER_BEIGE, title: "Warm neutral", reason: "An alternative plain beige reference that keeps the printed or checked shirt as the visual feature." },
     { id: TROUSER_SLATE, title: "Cool neutral", reason: "A plain slate-grey reference for another visual comparison." },
   ];
-  if (/black|maroon|stresa|boulder|saffron/i.test(fabric.colorName)) return [
+  if (/black|maroon|stresa|boulder|saffron/i.test(fabric.name)) return [
     { id: TROUSER_LIGHT, title: "Light neutral", reason: "Compare this shirt with a light-cream trouser reference." },
     { id: TROUSER_BEIGE, title: "Warm neutral", reason: "Try a beige trouser swatch as a second editorial starting point." },
     { id: TROUSER_SLATE, title: "Cool neutral", reason: "Try a slate-grey trouser swatch as a third editorial starting point." },
@@ -55,12 +55,12 @@ function trousersForShirt(fabric: TitanFabricReference): readonly Recipe[] {
 }
 
 function shirtsForTrouser(fabric: TitanFabricReference): readonly Recipe[] {
-  if (/beige|taupe|cream|platinum/i.test(fabric.colorName)) return [
+  if (/beige|taupe|cream|platinum/i.test(fabric.name)) return [
     { id: SHIRT_SKY, title: "Blue shirting", reason: "Explore a plain sky-blue shirting reference with this trouser colourway." },
     { id: SHIRT_MAROON, title: "Deep accent", reason: "Explore a maroon shirting reference as a visibly different editorial choice." },
     { id: SHIRT_GREY, title: "Light neutral", reason: "Compare the catalogue's light-grey plain shirting." },
   ];
-  if (/blue|chambray/i.test(fabric.colorName)) return [
+  if (/blue|chambray/i.test(fabric.name)) return [
     { id: SHIRT_OFFWHITE, title: "Pale shirting", reason: "An offwhite plain shirting reference against the selected blue trouser swatch." },
     { id: SHIRT_PINK, title: "Soft accent", reason: "Compare an oyster-pink plain shirting reference." },
     { id: SHIRT_GREY, title: "Neutral alternative", reason: "Compare a light-grey shirting reference." },
