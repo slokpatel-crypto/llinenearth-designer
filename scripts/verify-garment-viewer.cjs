@@ -141,8 +141,10 @@ async function verifyViewport(browser, width) {
     if(stageLabel.includes("ENGINEERING CANDIDATE")){
       assert.match(await viewer.getAttribute("src"),/^\/models\/linen-earth-officewear-v1\.glb$/,
         "procedural M7 candidate must remain the real source lab GLB, never a substitute person");
-      assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-model-readiness"),"contract_ready");
     }
+    // The scene contract is an asynchronous model-viewer hydration result.
+    // Require it AFTER the existing bounded real-scene load wait, rather than
+    // falsely failing a healthy cold Chromium run while readiness is "loading".
     await page.waitForFunction(()=>{
       const model=document.querySelector("model-viewer");
       const shell=document.querySelector(".garmentViewerShell");
@@ -150,6 +152,10 @@ async function verifyViewport(browser, width) {
         && ["prototype","contract_ready"].includes(shell?.getAttribute("data-model-readiness"))
         && !document.querySelector(".garmentViewerError");
     },null,{timeout:90000,polling:100});
+    if(stageLabel.includes("ENGINEERING CANDIDATE")){
+      assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-model-readiness"),"contract_ready",
+        "candidate must finish the genuine material contract before browser QA passes");
+    }
     qaStage("real prototype model loaded; production proof deliberately not claimed");
     const materials=await viewer.evaluate(element=>element.model?.materials?.map(material=>material.name)||[]);
     for(const name of ["ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric","TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric"]){
