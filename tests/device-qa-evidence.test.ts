@@ -119,6 +119,10 @@ test("viewport parser rejects implausible evidence",()=>{
 import {
   previewDeviceClassForViewport,
   summarizePreviewPerformanceForDeviceClass,
+  recordPreviewPerformance,
+  readPreviewPerformanceSamplesForDeviceClass,
+  readPreviewPerformanceSummaryForDeviceClass,
+  PREVIEW_PERFORMANCE_STORAGE_KEY,
   type PreviewPerformanceSample,
 } from "../src/lib/designer/preview-performance-client.ts";
 
@@ -175,4 +179,31 @@ test("one 2-second frozen frame cannot pass minimum-sample device acceptance via
   assert.equal(evaluation.performancePass,false);
   assert.equal(evaluation.accepted,false);
   assert.equal(evaluation.maxMs,2000);
+});
+
+test("real telemetry writer stamps viewport class and reader isolates same-tab classes",()=>{
+  const oldWindow=Object.getOwnPropertyDescriptor(globalThis,"window");
+  const oldStorage=Object.getOwnPropertyDescriptor(globalThis,"sessionStorage");
+  const storage=new Map<string,string>();
+  try{
+    Object.defineProperty(globalThis,"window",{configurable:true,value:{innerWidth:390}});
+    Object.defineProperty(globalThis,"sessionStorage",{configurable:true,value:{
+      getItem:(key:string)=>storage.get(key)||null,
+      setItem:(key:string,value:string)=>{storage.set(key,value);},
+    }});
+    recordPreviewPerformance("view",45);
+    Object.defineProperty(globalThis,"window",{configurable:true,value:{innerWidth:1440}});
+    recordPreviewPerformance("view",220);
+    assert.equal(readPreviewPerformanceSamplesForDeviceClass("mobile").length,1);
+    assert.equal(readPreviewPerformanceSamplesForDeviceClass("desktop").length,1);
+    assert.equal(readPreviewPerformanceSummaryForDeviceClass("mobile").maxMs,45);
+    assert.equal(readPreviewPerformanceSummaryForDeviceClass("desktop").maxMs,220);
+    const raw=JSON.parse(storage.get(PREVIEW_PERFORMANCE_STORAGE_KEY)||"[]") as PreviewPerformanceSample[];
+    assert.deepEqual(raw.map((item)=>item.deviceClass),["mobile","desktop"]);
+  }finally{
+    if(oldWindow) Object.defineProperty(globalThis,"window",oldWindow);
+    else Reflect.deleteProperty(globalThis,"window");
+    if(oldStorage) Object.defineProperty(globalThis,"sessionStorage",oldStorage);
+    else Reflect.deleteProperty(globalThis,"sessionStorage");
+  }
 });
