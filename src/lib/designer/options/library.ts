@@ -224,11 +224,20 @@ const researchedTypeOptions:GarmentOption[]=[
 
 export const GARMENT_OPTION_LIBRARY:readonly GarmentOption[]=[...seededOptions,...researchedTypeOptions];
 
+// Preview geometry and Style Director ask for several option parameters per
+// interaction. The previous O(N) scan on every lookup multiplied that work
+// across collar, fit, cuff, trouser and rule evaluations. Preserve first-ID
+// wins even if a malformed future dataset slips past the library validator.
+const OPTION_BY_ID=new Map<string,GarmentOption>();
+for(const option of GARMENT_OPTION_LIBRARY) {
+  if(!OPTION_BY_ID.has(option.id)) OPTION_BY_ID.set(option.id,option);
+}
+
 export function optionsFor(group:GarmentOptionGroup) {
   return GARMENT_OPTION_LIBRARY.filter((option)=>option.group===group);
 }
 export function optionById(id:string) {
-  return GARMENT_OPTION_LIBRARY.find((option)=>option.id===id) || null;
+  return OPTION_BY_ID.get(id) || null;
 }
 export function legacyOptionByLabel(group:GarmentOptionGroup,label:string) {
   return GARMENT_OPTION_LIBRARY.find((option)=>option.group===group && option.legacyLabel===label) || null;
