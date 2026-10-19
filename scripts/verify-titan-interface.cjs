@@ -182,7 +182,7 @@ async function checkViewport(width) {
       })));
       const trouser = width === 768;
       if (trouser) await page.getByRole("button", { name: "Trouser cloth" }).click();
-      const chosen = trouser ? "linen-suiting-beige" : "linen-plain-60-sky-blue";
+      const chosen = trouser ? "linen-suiting-orchid" : "linen-plain-60-sky-blue";
       const source = trouser ? "trouser" : "shirt";
       const link = page.locator(`.titanFabricCard[href="/designer-studio?source=titan&kind=${source}&fabric=${chosen}"]`);
       await link.scrollIntoViewIfNeeded();
