@@ -48,6 +48,18 @@ async function checkViewport(width) {
     assert.equal(await page.locator(".titanFabricCard").count(), 1, "Catalogue search must narrow real swatch data");
     await fabricSearch.fill("");
     assert.equal(await page.locator(".titanFabricCard").count(), 8, "Clearing search restores the initial collection");
+    // Progressive discovery must avoid mounting every catalogue image at once.
+    // A second batch is available on request, and both filters and collapse
+    // restore the light eight-item initial view without touching saved looks.
+    await page.getByRole("button", { name: /Load next 8 references/ }).click();
+    assert.equal(await page.locator(".titanFabricCard").count(), 16, "Loading more adds one bounded image batch");
+    await fabricSearch.fill("sky blue");
+    assert.equal(await page.locator(".titanFabricCard").count(), 1, "Search resets pagination to matched results");
+    await fabricSearch.fill("");
+    assert.equal(await page.locator(".titanFabricCard").count(), 8, "Clearing search restores an eight-item initial batch");
+    await page.getByRole("button", { name: /Load next 8 references/ }).click();
+    await page.getByRole("button", { name: /Show fewer references/ }).click();
+    assert.equal(await page.locator(".titanFabricCard").count(), 8, "Collapse never discards catalogue entries");
     // Comparison is a real accessible two-slot shortlist, never a simulated
     // physical colour/scale claim. Selecting a swatch here must not write a
     // saved design, call a paid provider or change the Designer counterpart.
@@ -141,7 +153,7 @@ async function checkViewport(width) {
 
     // Every visible navigation entry must be large enough to use on a phone,
     // tablet or desktop; screenshots alone cannot prove pointer ergonomics.
-    const targets = await page.locator(".titanHeaderCta, .titanNav a, .titanMenuButton, .titanMobileNavPanel a, .titanOccasionLink, .titanButton, .titanTextLink, .titanFooter nav a, .titanFabricCompareButton, .titanFabricComparisonClear, .titanFabricComparisonDetails a, .titanFabricOutfitSelect, .titanOutfitSlotText button, .titanOutfitBuildCta").evaluateAll(nodes =>
+    const targets = await page.locator(".titanHeaderCta, .titanNav a, .titanMenuButton, .titanMobileNavPanel a, .titanOccasionLink, .titanButton, .titanTextLink, .titanFooter nav a, .titanFabricShowMore, .titanFabricCompareButton, .titanFabricComparisonClear, .titanFabricComparisonDetails a, .titanFabricOutfitSelect, .titanOutfitSlotText button, .titanOutfitBuildCta").evaluateAll(nodes =>
       nodes.filter(node => node.getClientRects().length > 0)
         .map(node => ({ text: node.textContent.trim().slice(0, 50), height: node.getBoundingClientRect().height }))
     );
