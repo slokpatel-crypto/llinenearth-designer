@@ -532,3 +532,14 @@ Architecture and product decisions that must persist across coding sessions.
 **Compatibility:** no schema/database migration; existing saved Designer designs, model identity IDs, source photographs and versioned option contracts are unchanged. Internal prototype rendering remains available to engineers, never as evidence of a completed realistic model. Passing structural preflight is still not visual realism approval, verified textile scale, tailor fit approval or deployment authorization.
 
 **Next engineering gate:** exact single identity body mesh, production garment/drape fit and UV evidence, independent front/3-4/side/back visual comparisons, verified supplier physical scale and tailor approval before customer-facing 3D promotion.
+
+
+## 2026-10-19 — TITAN catalogue preview passes only one proven fabric ID
+
+**Decision:** an isolated `/titan` catalogue explorer may read authored `FABRIC_STOCK` swatches and direct customers into the maintained `/designer-studio`, but it may not create or interpret product physical measurements, stock confirmations, fabricated render images, or its own garment/design record.
+
+**Data contract:** `source=titan&kind=shirt|trouser&fabric=<catalogue-id>` is accepted only when there is exactly one of each query key, no extras, and the ID belongs to the specified real garment category. Parsing fails closed on duplicate or unknown values. The customer Designer first recovers its existing draft, then updates the **one explicitly selected garment**; the other garment, occasion, cut, fit context and measurements remain untouched. The separate verified Style Director handoff keeps precedence and cannot be impersonated by this query shape.
+
+**Quality/performance boundary:** filter/search is browser-local and deterministic. The preview uses existing swatch images; it does not call paid rendering providers or label the static `inStock` catalogue field as verified stock. The Designer's calibrated operator catalogue and downstream measurement/physical-signoff gates remain authoritative. Browser regression covers shirt and trouser deep links with retained saved-draft counterparts; unit tests reject cross-garment and ambiguous handoffs.
+
+**Compatibility/migration:** no database or saved-design schema changes, new dependency, model identity change, or homepage cutover. This remains a draft UI pilot until matching-HEAD CI/browser QA, owner review and all relevant native/source-model gates pass. Do not merge or deploy automatically.
