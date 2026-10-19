@@ -44,6 +44,14 @@ A failing gate is a development task, **not** a justification to remove it, lowe
 - No replacement mannequin, no new AI-render API, no changes to signed-off garment geometry or deployed homepage.
 - Keep the route out of search results until the full experience is approved.
 
+### 19 October — functional navigation and occasion quick-start
+
+- Customer routes stay on the **original implementation**: desktop navigation now becomes a keyboard-operable phone disclosure (Escape returns focus to its trigger; outside click closes it; mobile breakpoint retains all four destinations).
+- The isolated TITAN entry route now supports six **actual** Style Director first-step occasions. Selecting one carries only that verified occasion into the maintained Style Director, where the remaining questions, stock checks and deterministic outfit logic continue unchanged.
+- The Style Director consumes a TITAN handoff only for a **single, exact, allowlisted** occasion from TITAN. Unknown or duplicate values cannot prefill customer state. **Start over** clears the accepted URL handoff and restarts at the first question.
+- Updated Chromium checks cover 320px/390px/768px/1440px navigation, mobile disclosure Escape/outside-click, six quick-start links, a real cross-route occasion prefill and reset. Added Node contract tests for valid, malformed and duplicated prefill strings.
+- No model geometry, fabric data, customer records, stock, operator approval or deployed homepage was modified; no external AI is needed for navigation or selection. **Matching-HEAD CI/browser success still must be verified**; these changes are draft-only.
+
 ### QA checklist
 
 - [x] Source implementation exists on a separate draft branch.
