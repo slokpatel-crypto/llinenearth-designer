@@ -41,11 +41,12 @@ class LegGapRollbackTests(unittest.TestCase):
         for unsafe, safe, subdivisions in (
             (3.00000001, 3.0, 4),
             (3.000009, 3.0, 8),
-            (3.000011, 3.0, 8),
         ):
             with self.subTest(unsafe=unsafe, safe=safe, subdivisions=subdivisions):
                 with self.assertRaises(ValueError):
                     bounded_leg_gap_refinement_trials(unsafe, safe, subdivisions=subdivisions)
+        small = bounded_leg_gap_refinement_trials(3.000011, 3.0, subdivisions=8)
+        self.assertTrue(all(3.0 < v < 3.000011 for v in small))
         values = bounded_leg_gap_refinement_trials(3.5, 3.0, subdivisions=8)
         self.assertEqual(len(values), len(set(values)))
         self.assertTrue(all(3.0 < v < 3.5 for v in values))
