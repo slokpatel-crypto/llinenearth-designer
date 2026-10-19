@@ -342,11 +342,15 @@ export function DesignerModule() {
       // photographed model opens as the Director's actual result.
       const params = new URLSearchParams(window.location.search);
       const fromDirector = params.get("from") === "style-director";
-      // A validated TITAN handoff replaces just ONE cloth selection. Preserve
-      // all other saved draft fields and the separate Style Director handoff.
+      // TITAN changes only explicitly chosen fabric(s), after restoring the
+      // draft. Preserve fit, style, measurements and Style Director precedence.
       const titanFabric = !fromDirector ? readTitanFabricHandoff(window.location.search) : null;
       if (titanFabric?.kind === "shirt") nextShirtId = titanFabric.fabricId;
       if (titanFabric?.kind === "trouser") nextPantId = titanFabric.fabricId;
+      if (titanFabric?.kind === "pair") {
+        nextShirtId = titanFabric.shirtId;
+        nextPantId = titanFabric.trouserId;
+      }
       setDirectorHandoff(fromDirector);
       if(fromDirector) nextStyleSpec=undefined;
 
