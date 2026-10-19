@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import TitanHeaderNavigation from "./titan-header-navigation";
+import TitanFabricExplorer from "./titan-fabric-explorer";
 import { TITAN_OCCASIONS, titanOccasionHref } from "@/lib/titan/occasion-handoff";
 import { BRAND_LOGO_SRC, BRAND_LOGO_SIZE } from "@/lib/brand-logo-data";
 import { titanDevelopmentTrack, titanJourneys, titanQuickLinks } from "@/lib/titan/navigation";
@@ -82,6 +83,17 @@ export default function TitanStudioPage() {
               </Link>
             ))}
           </div>
+        </section>
+
+        <section id="titan-fabrics" className="titanSection titanFabricSection" aria-labelledby="titan-fabrics-title">
+          <div className="titanSectionIntro">
+            <div>
+              <p className="titanOverline">FABRIC IS THE BEGINNING</p>
+              <h2 id="titan-fabrics-title">Discover your cloth.<br/><em>Build from the real catalogue.</em></h2>
+            </div>
+            <p>Browse Linen Earth's existing shirting and trouser swatches. Select a reference to carry that fabric into the working Designer Studio.</p>
+          </div>
+          <TitanFabricExplorer />
         </section>
 
         <section id="titan-journeys" className="titanSection titanJourneys" aria-labelledby="titan-journeys-title">
