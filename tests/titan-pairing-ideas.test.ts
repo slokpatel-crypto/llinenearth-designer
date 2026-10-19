@@ -52,3 +52,21 @@ test("TITAN trouser alternatives use genuine plain/printed shirt options where i
   ]);
   assert.equal(suggestTitanPairings("trouser", "linen-suiting-beige")[0].shirtId, "linen-plain-60-sky-blue");
 });
+
+
+test("TITAN editorial colour-family branches use the exposed catalogue name, not an absent field", () => {
+  // Regression: TITAN_FABRIC_CATALOG stores `name`, not `colorName`.
+  // Without this contract, both sides silently fall through to default lists.
+  assert.deepEqual(
+    suggestTitanPairings("shirt", "linen-plain-60-jute-maroon").map(item => item.trouserId),
+    ["linen-suiting-light-cream", "linen-suiting-beige", "linen-suiting-slate-gray"],
+  );
+  assert.deepEqual(
+    suggestTitanPairings("trouser", "linen-suiting-denim-blue").map(item => item.shirtId),
+    ["linen-plain-60-jute-offwhite", "linen-plain-60-oyster-pink", "linen-plain-60-light-grey"],
+  );
+  assert.deepEqual(
+    suggestTitanPairings("trouser", "linen-suiting-beige").map(item => item.shirtId),
+    ["linen-plain-60-sky-blue", "linen-plain-60-jute-maroon", "linen-plain-60-light-grey"],
+  );
+});
