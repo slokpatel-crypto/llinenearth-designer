@@ -535,6 +535,11 @@
   margin-top: 14px; padding-top: 12px; border-top: 1px solid #d9d4ca;
   color: #3b593b; font-size: 12px; font-weight: 700;
 }
+.titanFabricPagination {
+  display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 12px;
+  margin-top: 21px;
+}
+.titanFabricPagination .titanFabricShowMore { margin: 0; }
 .titanFabricShowMore {
   display: flex; align-items: center; gap: 18px; min-height: 46px;
   margin: 21px auto 0; padding: 10px 23px; border: 1px solid #4c5b4c;
