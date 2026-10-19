@@ -552,3 +552,11 @@ Architecture and product decisions that must persist across coding sessions.
 **Truth boundary:** photos may have different illumination, white balance, zoom and magnification. Therefore the component must label the comparison **visual only**, never infer verified colour differences, pattern-repeat dimensions, handfeel or fabric drape, and never suggest a source photograph is production-calibrated. The 2-item limit, stale/cross-garment rejection, 44px controls, responsive layout and deterministic navigation must remain tested.
 
 **Release:** remains on the independent unmerged /titan pilot. CI, browser evidence, original model photo/native Blender gates, supplier calibration, tailor approval and owner acceptance cannot be waived.
+
+## 2026-10-19 — TITAN outfit pair explicitly transfers two real fabric IDs
+
+**Decision:** TITAN lets customers choose one existing shirting and one trouser reference in a two-slot outfit builder. These are original, uncalibrated catalogue images, not a fabric-drape render of the model; the choice lives only in page state until explicit navigation to the maintained Designer.
+
+**Contract:** Accept either the original `source=titan&kind=<shirt|trouser>&fabric=<id>` (one garment) or the new `source=titan&shirt=<shirt-id>&trouser=<trouser-id>` (exactly two). Every parameter must occur once, and both garment IDs must be present in their authentic respective catalogue. Reject unknown, duplicate, mixed, incomplete or spoofed URLs. Designer draft recovery precedes explicit fabric overrides; all other draft fields are preserved. Style Director remains separate and authoritative.
+
+**Release:** No new mannequin, generator charge, database mutation, fabricated physical stock/colour claims or homepage cutover. Browser and Node regression are required, as are the independent model/UV, supplier, tailoring and owner approval gates.
