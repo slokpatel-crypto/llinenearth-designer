@@ -851,7 +851,11 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           const {panel,fabric,normalUrl}=candidate;
           const {scale,offset,rotation}=transforms[index];
           const key=garmentPanelTexturePreparationKey({
-            modelKey:modelUrl,panelMaterial:panel.material,fabricUrl:fabric.image,normalUrl,
+            // A new verified garment asset may reuse the same URL. Key its
+            // texture cache by the locked asset receipt as well as the URL,
+            // so old GPU sampler objects never survive a model revision.
+            modelKey:JSON.stringify([modelUrl,assetIdentityKey]),
+            panelMaterial:panel.material,fabricUrl:fabric.image,normalUrl,
             u:scale.u,v:scale.v,offsetU:offset.u,offsetV:offset.v,rotation,
           });
           // An unchanged trouser panel can reuse its independently prepared
