@@ -149,7 +149,7 @@ export function aggregateFitOutcomes(events:EventLike[]):FitOutcomeBook{
       ||event.type!=="operator_note"||event.source!=="operator") continue;
     const payload=event.payload;
     if(!payload||typeof payload!=="object"||Array.isArray(payload)
-      ||payload.subtype!=="designer_fit_outcome") continue;
+      ||txt(payload.subtype,80)!=="designer_fit_outcome") continue;
     const id=payload.recommendationId;
     if(typeof id==="string"&&id.length>0&&id.length<=160&&id===id.trim()) latest.delete(id);
   }
