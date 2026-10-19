@@ -294,3 +294,13 @@ test("rapid fabric selections cannot commit a superseded asynchronous garment ma
   assert.ok(source.includes("if(token===applyToken.current){") &&
     source.includes("interactionStartedAt.current=null;"));
 });
+
+test("verified model must never silently lose a prepared weave-normal texture",()=>{
+  const source=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  const prepare=source.indexOf("const trouserNormalMap=createLinenNormalMap");
+  const reject=source.indexOf('if(modelManifest?.uvCoordinateUnits && (!shirtNormalMap || !trouserNormalMap))',prepare);
+  const gpu=source.indexOf("viewer.createTexture!(fabric.image)",prepare);
+  assert.ok(prepare>=0 && reject>prepare && gpu>reject,
+    "Both normal maps must be verified before any 3D texture allocation");
+  assert.match(source,/prepared\.some\(\(entry,index\)=>!entry\.normal\s*\|\| !canPaintGarmentPanelNormalMaterial\(materials\[index\]\)\)/);
+});
