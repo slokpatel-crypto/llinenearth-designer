@@ -85,7 +85,11 @@ async function checkViewport(width) {
       assert.ok(allowedPaths.has(href), `Unexpected customer route ${href}`);
     }
     const cta = page.getByRole("link", { name: /Design your outfit/i });
+    // Check real keyboard focus, not programmatic pointer-modality focus:
+    // :focus-visible is intentionally absent after pointer input.
     await cta.focus();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Shift+Tab");
     assert.equal(await cta.evaluate(node => document.activeElement === node), true);
     assert.notEqual(await cta.evaluate(node => getComputedStyle(node).outlineStyle), "none");
 
