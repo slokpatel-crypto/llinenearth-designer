@@ -171,6 +171,18 @@ export function fitOutcomeSignalFor(
   input:{occasion:OccasionTier;style:Pick<DesignerStyle,"shirtFit"|"trouser">;proportion:{torso:string;seat:string}},
   book?:FitOutcomeBook|null,
 ):FitOutcomeSignal{
+  // Saved designer drafts and imported inputs are untrusted at runtime. A
+  // separator inside a style field can otherwise collide with a different
+  // five-part bucket key and claim an unrelated customer's successful fit.
+  if(!input||!input.style||!input.proportion||!OCCASIONS.has(input.occasion)
+    ||typeof input.style.shirtFit!=="string"||txt(input.style.shirtFit)!==input.style.shirtFit
+    ||!input.style.shirtFit||input.style.shirtFit.includes("::")
+    ||typeof input.style.trouser!=="string"||txt(input.style.trouser)!==input.style.trouser
+    ||!input.style.trouser||input.style.trouser.includes("::")
+    ||!["tapered","balanced","straight","unknown"].includes(input.proportion.torso)
+    ||!["pronounced","balanced","unknown"].includes(input.proportion.seat)){
+    return {score:0,evidence:0,summary:"Candidate style fields require revalidation."};
+  }
   if(!book||book.version!=="designer-fit-outcomes-v1"
     ||!Number.isSafeInteger(book.totalReviews)||book.totalReviews<0
     ||!Number.isSafeInteger(book.usableBuckets)||book.usableBuckets<0
