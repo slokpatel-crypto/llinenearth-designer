@@ -1,7 +1,9 @@
-import { PREVIEW_PERFORMANCE_TARGET_MS } from "./preview-performance-client.ts";
+import { PREVIEW_PERFORMANCE_TARGET_MS, previewDeviceClassForViewport } from "./preview-performance-client.ts";
 
 export const DEVICE_QA_EVIDENCE_VERSION="designer-device-qa-v2";
 export const DEVICE_QA_MIN_SAMPLES=12;
+// Instant preview must not conceal a multi-second stall inside a passing p95.
+export const DEVICE_QA_MAX_FRAME_MS=1000;
 export const DEVICE_QA_TARGET_P95_MS=PREVIEW_PERFORMANCE_TARGET_MS;
 export const DEVICE_QA_CHECK_KEYS=[
   "fourViews",
@@ -18,6 +20,7 @@ export type DeviceQaEvaluation={
   deviceClassValid:boolean;
   samples:number;
   p95Ms:number|null;
+  maxMs:number|null;
   performancePass:boolean;
   visualPass:boolean;
   accepted:boolean;
@@ -29,8 +32,7 @@ export type DeviceQaEvaluation={
 function round(value:number){return Math.round(value*10)/10;}
 
 export function classifyDeviceQaViewport(width:number):DeviceQaClass|null {
-  if(!Number.isFinite(width)||width<=0) return null;
-  return width<=720?"mobile":width<=1100?"tablet":"desktop";
+  return previewDeviceClassForViewport(width);
 }
 
 export function parseDeviceQaViewport(value:unknown){
@@ -45,12 +47,16 @@ export function parseDeviceQaViewport(value:unknown){
 }
 
 export function summarizeDeviceQaDurations(values:unknown){
-  const durations=Array.isArray(values)
-    ? values.map(Number).filter((value)=>Number.isFinite(value)&&value>=0&&value<=10000).slice(-120).sort((a,b)=>a-b)
-    : [];
-  if(!durations.length) return {samples:0,p95Ms:null as number|null};
+  // Reject the whole sample series rather than quietly discarding stalled
+  // frames (>10s), nonnumeric JSON values or corrupt samples. Filtering them
+  // could lower p95 enough to falsely mark a device as production-ready.
+  if(!Array.isArray(values)||values.some((value)=>
+    typeof value!=="number"||!Number.isFinite(value)||value<0||value>10000
+  )) return {samples:0,p95Ms:null as number|null,maxMs:null as number|null};
+  const durations=[...values.slice(-120)].sort((a,b)=>a-b);
+  if(!durations.length) return {samples:0,p95Ms:null as number|null,maxMs:null as number|null};
   const index=Math.min(durations.length-1,Math.floor((durations.length-1)*.95));
-  return {samples:durations.length,p95Ms:round(durations[index])};
+  return {samples:durations.length,p95Ms:round(durations[index]),maxMs:round(durations.at(-1)!)};
 }
 
 export function evaluateDeviceQaEvidence(payload:Record<string,unknown>):DeviceQaEvaluation {
@@ -62,7 +68,8 @@ export function evaluateDeviceQaEvidence(payload:Record<string,unknown>):DeviceQ
   const performancePass=
     performance.samples>=DEVICE_QA_MIN_SAMPLES&&
     performance.p95Ms!==null&&
-    performance.p95Ms<DEVICE_QA_TARGET_P95_MS;
+    performance.p95Ms<DEVICE_QA_TARGET_P95_MS&&
+    performance.maxMs!==null&&performance.maxMs<DEVICE_QA_MAX_FRAME_MS;
 
   const sourceChecks=payload.checks&&typeof payload.checks==="object"&&!Array.isArray(payload.checks)
     ? payload.checks as Record<string,unknown>
@@ -79,6 +86,7 @@ export function evaluateDeviceQaEvidence(payload:Record<string,unknown>):DeviceQ
     deviceClassValid,
     samples:performance.samples,
     p95Ms:performance.p95Ms,
+    maxMs:performance.maxMs,
     performancePass,
     visualPass,
     accepted,
