@@ -85,3 +85,10 @@ Do not replace testing with concept renders, inflate progress percentages, claim
 - The comparison is intentionally **visual only**. Physical colour in calibrated lighting, repeat scale, material composition, drape, stock and supplier details remain unverified unless independently evidenced. No generated swatches or invented properties.
 - Pure transition tests enforce the two-item limit, reject stale / wrong-garment IDs and prevent implicit selection replacement. Chromium regression exercises comparison, keyboard-sized controls, original swatch image decoding, garment switching and clear behavior at 320/390/768/1440px.
 - Customer records, saved drafts, source model identity, deployed homepage, paid-AI integrations and existing 3D workflows remain unchanged. **No merge/deploy**; matching-head CI and browser evidence still required.
+
+### 19 October — explicit shirt/trouser pair builder (draft)
+
+- Choose one real **shirting reference and trouser reference** in the isolated two-slot outfit builder on `/titan`. The browser-local choices survive garment-tab switching and display original source swatch images; they are **not** a simulated finished garment, physical drape or calibrated colour claim.
+- Only an explicit click transfers both allowlisted IDs with `?source=titan&shirt=<id>&trouser=<id>` to the existing Designer. The Designer recovers the saved draft, then updates **only those two garments**. It retains occasion, styling, fit, body profile, measurements and the independent Style Director handoff.
+- Unknown, duplicated, mixed, swapped or incomplete query keys fail closed; legacy single-garment transfer still preserves the complementary garment. No database schema, pricing, supplier-stock promise, model identity, paid renderer, main homepage or deployed customer record changes.
+- Node tests cover strict parser round-trips/rejections. Chromium regression tests a true shirt/trouser selection, cross-tab persistence, actual Designer selection, image decoding and 44px controls. Matching-head CI and owner review remain mandatory.
