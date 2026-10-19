@@ -12,7 +12,7 @@ const base = process.env.LINEN_BROWSER_QA_URL || "http://127.0.0.1:3000";
 const out = path.resolve("artifacts/preview-lifecycle/titan");
 const widths = [320, 390, 768, 1440];
 const allowedPaths = new Set(["/designer-studio", "/style-director", "/measurements", "/account"]);
-const summary = { route: "/titan", status: "pilot", viewports: [], navigations: [], providerCalls: [], consoleErrors: [] };
+const summary = { route: "/titan", status: "pilot", viewports: [], navigations: [], handoffs: [], providerCalls: [], consoleErrors: [] };
 let browser;
 
 async function checkViewport(width) {
@@ -38,6 +38,7 @@ async function checkViewport(width) {
     assert.equal(await page.title(), "The Linen Earth Studio | TITAN");
     assert.equal(await page.locator('meta[name="robots"]').getAttribute("content"), "noindex, nofollow", "pilot must not be indexed");
     assert.equal(await page.locator(".titanJourneyCard").count(), 3);
+    assert.equal(await page.locator(".titanOccasionLink").count(), 6, "Six actual Style Director occasions must be offered");
 
     // Real keyboard skip behaviour, not just a decorative anchor.
     const skip = page.getByRole("link", { name: "Skip to main content" });
@@ -75,6 +76,7 @@ async function checkViewport(width) {
       nodes
         .map(node => node.getAttribute("href"))
         .filter(href => href && href.startsWith("/") && href !== "/")
+        .map(href => new URL(href, window.location.origin).pathname)
     );
     assert.ok(routeLinks.length >= 10, "TITAN must link to functional customer routes");
     for (const href of routeLinks) {
@@ -87,7 +89,7 @@ async function checkViewport(width) {
 
     // Every visible navigation entry must be large enough to use on a phone,
     // tablet or desktop; screenshots alone cannot prove pointer ergonomics.
-    const targets = await page.locator(".titanHeaderCta, .titanNav a, .titanMenuButton, .titanMobileNavPanel a, .titanButton, .titanTextLink, .titanFooter nav a").evaluateAll(nodes =>
+    const targets = await page.locator(".titanHeaderCta, .titanNav a, .titanMenuButton, .titanMobileNavPanel a, .titanOccasionLink, .titanButton, .titanTextLink, .titanFooter nav a").evaluateAll(nodes =>
       nodes.filter(node => node.getClientRects().length > 0)
         .map(node => ({ text: node.textContent.trim().slice(0, 50), height: node.getBoundingClientRect().height }))
     );
@@ -165,6 +167,20 @@ async function checkViewport(width) {
     await page.waitForURL(url => url.pathname === destination, { timeout: 15000 });
     assert.equal(new URL(page.url()).pathname, destination);
     summary.navigations.push({ width, destination, passed: true });
+    if (width === 390) {
+      // Verify real cross-route state, not just a well-formed URL: Work is
+      // prefilled once, the remaining five questions still run, and Start over
+      // actually returns to the untouched first question.
+      await page.goto(`${base}/titan`, { waitUntil: "domcontentloaded" });
+      await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+      await page.locator('.titanOccasionLink[href*="occasion=Work"]').click();
+      await page.waitForURL(url => url.pathname === "/style-director" && url.searchParams.get("occasion") === "Work", { timeout: 15000 });
+      await page.getByRole("heading", { name: "How should you feel in it?" }).waitFor({ timeout: 15000 });
+      await page.getByRole("button", { name: /Start over/i }).click();
+      await page.getByRole("heading", { name: /No forms/i }).waitFor({ timeout: 15000 });
+      assert.equal(new URL(page.url()).searchParams.has("occasion"), false, "Start over must clear prefill query");
+      summary.handoffs.push({ occasion: "Work", prefilled: true, reset: true });
+    }
   } catch (error) {
     await page.screenshot({ path: path.join(out, `titan-failure-${width}.png`), fullPage: true, animations: "disabled" }).catch(() => {});
     throw error;
