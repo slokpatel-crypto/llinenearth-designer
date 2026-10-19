@@ -134,6 +134,9 @@ async function checkViewport(width) {
     await page.waitForURL(url => url.pathname === destination, { timeout: 15000 });
     assert.equal(new URL(page.url()).pathname, destination);
     summary.navigations.push({ width, destination, passed: true });
+  } catch (error) {
+    await page.screenshot({ path: path.join(out, `titan-failure-${width}.png`), fullPage: true, animations: "disabled" }).catch(() => {});
+    throw error;
   } finally {
     await context.close();
   }
@@ -152,7 +155,11 @@ async function main() {
     await browser.close();
   }
 }
-main().catch(error => {
-  process.stderr.write(`TITAN smoke failed: ${error.stack || error}\n`);
+main().catch(async error => {
+  const detail = error.stack || String(error);
+  summary.failure = detail;
+  await fs.mkdir(out, { recursive: true });
+  await fs.writeFile(path.join(out, "summary.json"), JSON.stringify(summary, null, 2) + "\n");
+  process.stderr.write(`TITAN smoke failed: ${detail}\n`);
   process.exitCode = 1;
 });
