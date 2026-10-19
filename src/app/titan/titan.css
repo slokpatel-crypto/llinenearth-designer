@@ -750,3 +750,58 @@
   color: #394a3c; font: 700 12px/1.5 Arial, Helvetica, sans-serif;
   text-align: center;
 }
+
+
+/* TITAN reference lookbook: explicit, device-only catalogue bookmarks. */
+.titanLookbookSaveButton {
+  min-height: 50px; margin-top: 19px; padding: 13px 21px;
+  border: 1px solid #625240; background: #64513d; color: #fff;
+  font: 700 12px/1.5 Arial, Helvetica, sans-serif; cursor: pointer;
+}
+.titanLookbookSaveButton:disabled { cursor: not-allowed; background: #e0ddd4; color: #465247; border-color: #aab0a4; }
+.titanLookbookSaveButton:focus-visible,
+.titanLookbookCardActions button:focus-visible { outline: 3px solid #805d43; outline-offset: 3px; }
+.titanLookbook {
+  margin-top: 28px; padding: clamp(16px, 3vw, 28px);
+  border: 1px solid #c2bfaf; background: #f1efe5;
+}
+.titanLookbookHeading {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  flex-wrap: wrap; gap: 12px;
+}
+.titanLookbookHeading h3 { font: clamp(24px, 2.8vw, 33px)/1.2 Georgia,serif; margin-top: 5px; }
+.titanLookbookHeading > p { color: #435445; font: 700 12px Arial,Helvetica,sans-serif; }
+.titanLookbookHelp {
+  max-width: 850px; margin-top: 13px; color: #475448; font-size: 12px; line-height: 1.7;
+}
+.titanLookbookGrid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px; margin-top: 18px;
+}
+.titanLookbookCard { min-width: 0; padding: 13px; background: #fffdf8; border: 1px solid #c9c6b8; }
+.titanLookbookImages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.titanLookbookPhoto { position: relative; width: 100%; aspect-ratio: 2 / 1; overflow: hidden; }
+.titanLookbookPhoto img { object-fit: cover; }
+.titanLookbookNames { display: grid; gap: 6px; padding: 12px 1px; overflow-wrap: anywhere; }
+.titanLookbookNames p { font-size: 12px; line-height: 1.55; color: #314737; }
+.titanLookbookNames strong { color: #283b2e; }
+.titanLookbookCardActions { display: flex; flex-wrap: wrap; gap: 8px; }
+.titanLookbookCardActions button {
+  min-height: 48px; padding: 11px 14px; cursor: pointer;
+  font: 700 12px/1.4 Arial,Helvetica,sans-serif;
+  border: 1px solid #3f5544; color: #fff; background: #34493a;
+}
+.titanLookbookCardActions button:last-child {
+  background: transparent; color: #34493a;
+}
+.titanLookbookCardActions button:hover { filter: brightness(.9); }
+.titanLookbookEmpty { margin-top: 16px; padding: 18px; border: 1px dashed #a6ac9c; color: #46574a; font-size: 12px; }
+.titanLookbookStatus { min-height: 20px; margin-top: 12px; font-size: 12px; font-weight: 700; color: #34503b; }
+@media (max-width: 760px) { .titanLookbookGrid { grid-template-columns: 1fr; } }
+@media (max-width: 450px) {
+  .titanOutfitActions > .titanLookbookSaveButton { width: 100%; }
+  .titanLookbookCardActions button { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .titanLookbookCardActions button, .titanLookbookSaveButton { transition: none; }
+}
