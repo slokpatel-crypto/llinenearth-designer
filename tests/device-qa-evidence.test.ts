@@ -115,3 +115,48 @@ test("viewport parser rejects implausible evidence",()=>{
   assert.equal(parseDeviceQaViewport("99x100").deviceClass,null);
   assert.equal(parseDeviceQaViewport("mobile").deviceClass,null);
 });
+
+import {
+  previewDeviceClassForViewport,
+  summarizePreviewPerformanceForDeviceClass,
+  type PreviewPerformanceSample,
+} from "../src/lib/designer/preview-performance-client.ts";
+
+test("device-specific performance excludes legacy and cross-device interaction samples",()=>{
+  assert.equal(previewDeviceClassForViewport(390),"mobile");
+  assert.equal(previewDeviceClassForViewport(820),"tablet");
+  assert.equal(previewDeviceClassForViewport(1440),"desktop");
+  assert.equal(previewDeviceClassForViewport(0),null);
+  const samples:PreviewPerformanceSample[]=[
+    ...Array.from({length:12},(_,i)=>({kind:"view" as const,durationMs:40+i,at:i,deviceClass:"mobile" as const})),
+    ...Array.from({length:12},(_,i)=>({kind:"view" as const,durationMs:120+i,at:i,deviceClass:"desktop" as const})),
+    ...Array.from({length:12},(_,i)=>({kind:"view" as const,durationMs:20+i,at:i})),
+  ];
+  const mobile=summarizePreviewPerformanceForDeviceClass(samples,"mobile");
+  const desktop=summarizePreviewPerformanceForDeviceClass(samples,"desktop");
+  const tablet=summarizePreviewPerformanceForDeviceClass(samples,"tablet");
+  assert.equal(mobile.samples,12);
+  assert.equal(mobile.withinTarget,true);
+  assert.equal(desktop.samples,12);
+  assert.equal(desktop.withinTarget,false);
+  assert.equal(tablet.samples,0);
+  assert.equal(tablet.withinTarget,null);
+});
+
+test("device acceptance rejects corrupt sample series instead of filtering away slow or forged frames",()=>{
+  const good=Array.from({length:12},()=>45);
+  assert.equal(summarizeDeviceQaDurations(good).samples,12);
+  for(const bad of [null, "35", true, -1, Infinity, NaN, 10001, {}]){
+    const summary=summarizeDeviceQaDurations([...good,bad]);
+    assert.equal(summary.samples,0);
+    assert.equal(summary.p95Ms,null);
+  }
+  const checks={fourViews:true,controlsLegible:true,noOverflow:true,
+    fabricReadable:true,modelStable:true};
+  const declined=evaluateDeviceQaEvidence({
+    version:DEVICE_QA_EVIDENCE_VERSION,deviceClass:"mobile",viewport:"390x844",
+    sampleDurationsMs:[...good,10001],checks,
+  });
+  assert.equal(declined.performancePass,false);
+  assert.equal(declined.accepted,false);
+});
