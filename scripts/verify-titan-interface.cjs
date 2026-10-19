@@ -248,7 +248,12 @@ async function checkViewport(width) {
       assert.equal(await page.locator(".titanOutfitBuildCta").count(), 0);
       await page.getByRole("button", { name: "Trouser cloth" }).click();
       assert.equal(await page.locator(".titanOutfitSlot img").count(), 1, "Shirt choice must survive tab switch");
-      await page.locator(`.titanFabricTile:has(.titanFabricCard[href="/designer-studio?source=titan&kind=trouser&fabric=${trouser}"]) .titanFabricOutfitSelect`).click();
+      // The default grid deliberately shows only eight references. Search for
+      // the exact real trouser cloth instead of assuming it is on page one.
+      await page.getByRole("searchbox", { name: "Find by colour or pattern" }).fill("beige");
+      const matchingTrouser = page.locator(`.titanFabricTile:has(.titanFabricCard[href="/designer-studio?source=titan&kind=trouser&fabric=${trouser}"]) .titanFabricOutfitSelect`);
+      assert.equal(await matchingTrouser.count(), 1, "Catalogue search must expose the chosen real trouser");
+      await matchingTrouser.click();
       assert.equal(await page.locator(".titanOutfitSlot img").count(), 2);
       for (const img of await page.locator(".titanOutfitSlot img").all()) {
         await img.scrollIntoViewIfNeeded();
