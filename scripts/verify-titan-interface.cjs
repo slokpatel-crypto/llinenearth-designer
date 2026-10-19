@@ -68,6 +68,41 @@ async function checkViewport(width) {
     assert.ok(targets.length >= 10, "Expected maintained functional navigation controls");
     assert.deepEqual(targets.filter(target => target.height < 44), [], "Navigation target must be at least 44px high");
 
+    // Enforce readable *computed* contrast, including small secondary copy.
+    // Hardcoded CSS screenshots cannot detect all future low-contrast edits.
+    const contrast = await page.evaluate(() => {
+      const pairs = [
+        [".titanHeroMeta", ".titanHeroCopy"],
+        [".titanJourneys .titanSectionIntro > p", ".titanJourneys"],
+        [".titanJourneyContent p", ".titanJourneyCard"],
+        [".titanExperienceContent > p:not(.titanOverline)", ".titanExperience"],
+        [".titanProcessList p", ".titanExperience"],
+        [".titanExperienceStamp span", ".titanExperienceStamp"],
+        [".titanTrack p", ".titanTrack"],
+        [".titanTrackNumber", ".titanTrack"],
+        [".titanFooterBrand span", ".titanFooter"],
+        [".titanFooter > p", ".titanFooter"],
+      ];
+      const luminance = value => {
+        const rgb = (value.match(/[\\d.]+/g) || []).slice(0, 3).map(Number);
+        if (rgb.length !== 3 || rgb.some(x => !Number.isFinite(x))) throw Error(`Invalid computed colour ${value}`);
+        const channels = rgb.map(n => {
+          const x = n / 255;
+          return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+      };
+      return pairs.map(([selector, background]) => {
+        const element = document.querySelector(selector);
+        const surface = document.querySelector(background);
+        if (!element || !surface) throw Error(`Missing contrast target ${selector} / ${background}`);
+        const fg = luminance(getComputedStyle(element).color);
+        const bg = luminance(getComputedStyle(surface).backgroundColor);
+        return { selector, ratio: Math.round((Math.max(fg, bg) + .05) / (Math.min(fg, bg) + .05) * 100) / 100 };
+      });
+    });
+    assert.deepEqual(contrast.filter(entry => entry.ratio < 4.5), [], "Small text must meet WCAG AA 4.5:1 computed contrast");
+
     const broken = [];
     for (const img of await page.locator(".titan img").all()) {
       await img.scrollIntoViewIfNeeded();
