@@ -705,6 +705,44 @@
   .titanOutfitBuildCta { display: flex; }
 }
 
+/* Deterministic editorial complement choices; actual source swatches only. */
+.titanPairingIdeas {
+  margin-top: 22px; padding: clamp(14px, 2.5vw, 22px);
+  border: 1px solid #bfc5b6; background: #f7f6ef;
+}
+.titanPairingHeading h4 { font: clamp(22px, 2.3vw, 29px)/1.2 Georgia, serif; margin: 6px 0 8px; }
+.titanPairingHeading > p:last-child {
+  color: #465446; font: 13px/1.65 Arial, Helvetica, sans-serif; max-width: 790px;
+}
+.titanPairingGrid {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px;
+}
+.titanPairingCard {
+  min-width: 0; display: flex; flex-direction: column; background: #fffdf8;
+  border: 1px solid #c8c8bd;
+}
+.titanPairingPhoto { position: relative; width: 100%; aspect-ratio: 2 / 1; overflow: hidden; }
+.titanPairingPhoto img { object-fit: cover; }
+.titanPairingCardCopy {
+  display: flex; flex: 1; flex-direction: column; align-items: flex-start;
+  min-width: 0; padding: 14px; gap: 8px;
+}
+.titanPairingCardCopy > strong { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #54573d; }
+.titanPairingCardCopy h5 { font: 21px/1.25 Georgia, serif; overflow-wrap: anywhere; }
+.titanPairingCardCopy span { color: #515b4d; font-size: 11px; line-height: 1.5; }
+.titanPairingCardCopy p { color: #3d4c40; font-size: 12px; line-height: 1.6; flex: 1; }
+.titanPairingCardCopy button {
+  width: 100%; min-height: 48px; padding: 12px; border: 1px solid #34493a;
+  background: #34493a; color: #fff; cursor: pointer;
+  font: 700 12px/1.5 Arial, Helvetica, sans-serif;
+}
+.titanPairingCardCopy button:hover { background: #263a2d; }
+.titanPairingCardCopy button:focus-visible { outline: 3px solid #805d43; outline-offset: 3px; }
+.titanPairingCaution { margin-top: 14px; color: #435244; font-size: 11px; line-height: 1.7; }
+@media (max-width: 800px) { .titanPairingGrid { grid-template-columns: 1fr; } .titanPairingCard { flex-direction: row; } .titanPairingPhoto { flex: 0 0 34%; width: 34%; aspect-ratio: auto; min-height: 170px; } }
+@media (max-width: 380px) { .titanPairingCard { flex-direction: column; } .titanPairingPhoto { width: 100%; min-height: 0; aspect-ratio: 2 / 1; } }
+@media (prefers-reduced-motion: reduce) { .titanPairingCardCopy button { transition: none; } }
+
 /* Failed original reference photos remain honest and non-blocking. */
 .titanFabricPhotoFallback {
   position: absolute; inset: 0; display: flex; align-items: center;
