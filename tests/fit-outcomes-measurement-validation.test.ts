@@ -309,3 +309,46 @@ test("separator-injected candidate cannot impersonate a real reviewed cut-family
     assert.match(signal.summary,/revalidation/i);
   }
 });
+
+test("canonical operator IDs and style labels cannot be merged by whitespace normalization",()=>{
+  const event={type:"operator_note",source:"operator",payload:{
+    subtype:"designer_fit_outcome",recommendationId:"fitting-01",
+    verdict:"clean_first_fit",occasion:"Formal",shirtFit:"regular",
+    trouser:"straight",torso:"tapered",seat:"balanced",areas:[],
+  }};
+  assert.ok(parseFitOutcome(event));
+  for(const field of ["recommendationId","shirtFit","trouser"] as const){
+    for(const changed of [" "+event.payload[field],event.payload[field]+" "]){
+      assert.equal(parseFitOutcome({...event,payload:{...event.payload,[field]:changed}}),null,
+        `${field} must retain canonical identity; silent trimming aliases records`);
+    }
+  }
+  const valid=Array.from({length:3},(_,i)=>({...event,
+    payload:{...event.payload,recommendationId:`fitting-${i}`}}));
+  const invalid={...event,payload:{...event.payload,recommendationId:" fitting-0 "}};
+  const book=aggregateFitOutcomes([...valid,invalid]);
+  assert.equal(book.totalReviews,3);
+  assert.equal(fitOutcomeSignalFor({occasion:"Formal",style:{shirtFit:"regular",trouser:"straight"},
+    proportion:{torso:"tapered",seat:"balanced"}},book).evidence,3);
+});
+
+test("noncanonical stored bucket labels fail entire fitting-book integrity check",()=>{
+  const input={occasion:"Formal" as const,style:{shirtFit:"regular",trouser:"straight"},
+    proportion:{torso:"tapered",seat:"balanced"}};
+  const good={key:"Formal::regular::straight::tapered::balanced",
+    occasion:"Formal" as const,shirtFit:"regular",trouser:"straight",
+    torso:"tapered",seat:"balanced",clean:3,minor:0,major:0,total:3};
+  for(const field of ["shirtFit","trouser"] as const){
+    for(const changed of [" "+good[field],good[field]+" "]){
+      const corrupted={...good,[field]:changed};
+      const book={version:"designer-fit-outcomes-v1" as const,totalReviews:6,
+        usableBuckets:2,buckets:[good,{...corrupted,
+          key:[corrupted.occasion,corrupted.shirtFit,corrupted.trouser,
+            corrupted.torso,corrupted.seat].join("::")}]};
+      const result=fitOutcomeSignalFor(input,book);
+      assert.equal(result.score,0);
+      assert.equal(result.evidence,0);
+      assert.match(result.summary,/revalidation/i);
+    }
+  }
+});
