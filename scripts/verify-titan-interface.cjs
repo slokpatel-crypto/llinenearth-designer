@@ -75,7 +75,7 @@ async function checkViewport(width) {
     assert.equal(await page.locator(".titanFabricComparisonItem").count(), 1, "Trouser comparison must use that garment's catalogue");
     await page.getByRole("button", { name: "Clear comparison" }).click();
     assert.equal(await page.locator(".titanFabricComparisonItem").count(), 0, "Clear comparison must leave no items");
-    await page.getByRole("button", { name: "Shirting" }).click();
+    await page.getByRole("button", { name: "Shirting", exact: true }).click();
     assert.equal(await page.locator(".titanFabricCard").count(), 8, "Shirting catalogue still works after reset");
     assert.equal(await page.locator(".titanOutfitSlot").count(), 2, "One builder slot per garment");
     assert.equal(await page.locator(".titanOutfitBuildCta").count(), 0, "Incomplete outfit cannot transfer");
@@ -251,6 +251,7 @@ async function checkViewport(width) {
       await page.locator(`.titanFabricTile:has(.titanFabricCard[href="/designer-studio?source=titan&kind=trouser&fabric=${trouser}"]) .titanFabricOutfitSelect`).click();
       assert.equal(await page.locator(".titanOutfitSlot img").count(), 2);
       for (const img of await page.locator(".titanOutfitSlot img").all()) {
+        await img.scrollIntoViewIfNeeded();
         await img.evaluate(node => node.decode());
         assert.ok(await img.evaluate(node => node.naturalWidth > 0));
       }
@@ -266,7 +267,12 @@ async function checkViewport(width) {
         document.querySelector("#designer-shirt")?.value === shirt
         && document.querySelector("#designer-pant")?.value === trouser,
         { shirt, trouser }, { timeout: 15000 });
-      summary.handoffs.push({ source: "titan-outfit-pair", shirt, trouser, explicitBoth: true });
+      assert.equal(await page.locator('input[name="designerOccasion"][value="Casual"]').isChecked(), true,
+        "Outfit transfer cannot override saved occasion");
+      assert.equal(await page.getByLabel("Style mood").inputValue(), "Balanced", "Style mood remains saved");
+      assert.equal(await page.getByLabel("Climate").inputValue(), "Hot / humid", "Climate remains saved");
+      summary.handoffs.push({ source: "titan-outfit-pair", shirt, trouser, explicitBoth: true,
+        existingOccasionAndPreferencesPreserved: true });
       await page.goto(`${base}/titan`, { waitUntil: "domcontentloaded" });
       await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
     }
