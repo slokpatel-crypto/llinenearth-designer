@@ -62,6 +62,18 @@ class LegGapRollbackTests(unittest.TestCase):
             with self.subTest(step=value), self.assertRaises(ValueError):
                 bounded_leg_gap_trials(3, step_mm=value)
 
+    def test_native_bvh_trial_count_is_bounded_against_tiny_steps(self):
+        for step in (1e-12, 1e-6, 0.124999):
+            with self.subTest(step=step), self.assertRaises(ValueError):
+                bounded_leg_gap_trials(8, step_mm=step)
+        with self.assertRaises(ValueError):
+            bounded_leg_gap_trials(1e-8)
+        samples = bounded_leg_gap_trials(8, step_mm=0.125)
+        self.assertLessEqual(len(samples), 65)
+        self.assertEqual(samples[0], 8)
+        self.assertEqual(samples[-1], 0)
+        self.assertTrue(all(a > b for a, b in zip(samples, samples[1:])))
+
     def test_never_increase_requested_shift_to_meet_visual_target(self):
         for requested in (0.1, 0.5, 1, 3.01, 8):
             trials = bounded_leg_gap_trials(requested)
