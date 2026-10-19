@@ -37,7 +37,7 @@ test("an invalid garment dimension does not contaminate an independently valid b
   );
 });
 
-import {aggregateFitOutcomes,fitOutcomeSignalFor} from "../src/lib/designer/fit-outcomes.ts";
+import {aggregateFitOutcomes,fitOutcomeSignalFor,parseFitOutcome} from "../src/lib/designer/fit-outcomes.ts";
 
 test("unmeasured or corrupt profiles cannot improve a measured customer's fit-learning signal",()=>{
   const event=(id:string,torso:string,seat:string,verdict:string)=>({
@@ -182,5 +182,51 @@ test("fit evidence is fail-closed when any stored bucket or aggregate summary is
     const signal=fitOutcomeSignalFor(input,corrupt);
     assert.equal(signal.score,0,"Cannot recommend tailoring from a partially corrupt book");
     assert.equal(signal.evidence,0,"Cannot cite unverified aggregate evidence");
+  }
+});
+
+
+test("operator fitting events must have genuine bounded strings, never JSON-to-string coercion",()=>{
+  const event={type:"operator_note",source:"operator",payload:{
+    subtype:"designer_fit_outcome",recommendationId:"fitting-01",
+    verdict:"clean_first_fit",occasion:"Formal",shirtFit:"regular",
+    trouser:"straight",torso:"tapered",seat:"balanced",areas:[],
+  }};
+  assert.equal(parseFitOutcome(event)?.recommendationId,"fitting-01");
+  for(const field of ["subtype","recommendationId","verdict","occasion","shirtFit","trouser","torso","seat"] as const){
+    const value=event.payload[field];
+    assert.equal(parseFitOutcome({...event,payload:{...event.payload,[field]:[value]}}),null,
+      `${field}: a JSON array must not coerce into a valid operator review`);
+  }
+  assert.equal(parseFitOutcome({...event,payload:{...event.payload,recommendationId:1234}}),null);
+  assert.equal(parseFitOutcome({...event,payload:{...event.payload,recommendationId:"x".repeat(161)}}),null);
+  assert.equal(parseFitOutcome({...event,payload:{...event.payload,shirtFit:"x".repeat(121)}}),null);
+  assert.equal(parseFitOutcome({...event,payload:{...event.payload,shirtFit:"regular::wide"}}),null);
+  assert.equal(parseFitOutcome({...event,payload:{...event.payload,trouser:"straight::tapered"}}),null);
+});
+
+test("sparse stored books cannot claim review evidence until all metadata passes integrity checks",()=>{
+  const input={occasion:"Formal" as const,style:{shirtFit:"regular",trouser:"straight"},
+    proportion:{torso:"tapered",seat:"balanced"}};
+  const first={key:"Formal::regular::straight::tapered::balanced",
+    occasion:"Formal" as const,shirtFit:"regular",trouser:"straight",
+    torso:"tapered",seat:"balanced",clean:2,minor:0,major:0,total:2};
+  const book={version:"designer-fit-outcomes-v1" as const,totalReviews:2,
+    usableBuckets:0,buckets:[first]};
+  const valid=fitOutcomeSignalFor(input,book);
+  assert.equal(valid.score,0);
+  assert.equal(valid.evidence,2);
+  for(const corrupt of [
+    {...book,buckets:[{...first,clean:5}]},
+    {...book,buckets:[{...first,key:"corrupted"}]},
+    {...book,buckets:[{...first,shirtFit:"reg::ular",
+      key:"Formal::reg::ular::straight::tapered::balanced"}]},
+    {...book,buckets:[first,{...first}]},
+    {...book,usableBuckets:1},
+  ]){
+    const signal=fitOutcomeSignalFor(input,corrupt);
+    assert.equal(signal.score,0);
+    assert.equal(signal.evidence,0,"unverified sparse counts are not evidence");
+    assert.match(signal.summary,/revalidation/i);
   }
 });
