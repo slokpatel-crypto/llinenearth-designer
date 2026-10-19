@@ -39,6 +39,15 @@ async function checkViewport(width) {
     assert.equal(await page.locator('meta[name="robots"]').getAttribute("content"), "noindex, nofollow", "pilot must not be indexed");
     assert.equal(await page.locator(".titanJourneyCard").count(), 3);
     assert.equal(await page.locator(".titanOccasionLink").count(), 6, "Six actual Style Director occasions must be offered");
+    assert.ok(await page.locator(".titanFabricCard").count() >= 8, "Real catalogue swatches must be browsable");
+    assert.equal(await page.locator('.titanFabricKinds button[aria-pressed="true"]').textContent(), "Shirting");
+    // Local filters do not call an image-generation provider or change the
+    // customer's saved wardrobe selections merely by browsing.
+    const fabricSearch = page.getByRole("searchbox", { name: "Find by colour or pattern" });
+    await fabricSearch.fill("sky blue");
+    assert.equal(await page.locator(".titanFabricCard").count(), 1, "Catalogue search must narrow real swatch data");
+    await fabricSearch.fill("");
+    assert.equal(await page.locator(".titanFabricCard").count(), 8, "Clearing search restores the initial collection");
 
     // Real keyboard skip behaviour, not just a decorative anchor.
     const skip = page.getByRole("link", { name: "Skip to main content" });
@@ -160,6 +169,39 @@ async function checkViewport(width) {
 
     // Follow a real customer CTA to prove Next.js routing is functional;
     // checking href strings alone would not catch client navigation failures.
+
+    if (width === 390 || width === 768) {
+      // End-to-end cloth selection: keep the other saved garment untouched.
+      // TITAN must not pretend the catalogue is physically stock-verified.
+      await page.evaluate(() => localStorage.setItem("linen-earth:real-designer-draft:v2", JSON.stringify({
+        shirtId: "linen-plain-60-peach",
+        pantId: "linen-suiting-dark-grey",
+        occasion: "Casual",
+        climate: "Hot / humid",
+        intention: "Balanced",
+      })));
+      const trouser = width === 768;
+      if (trouser) await page.getByRole("button", { name: "Trouser cloth" }).click();
+      const chosen = trouser ? "linen-suiting-beige" : "linen-plain-60-sky-blue";
+      const source = trouser ? "trouser" : "shirt";
+      const link = page.locator(`.titanFabricCard[href="/designer-studio?source=titan&kind=${source}&fabric=${chosen}"]`);
+      await link.scrollIntoViewIfNeeded();
+      await link.click();
+      await page.waitForURL(url => url.pathname === "/designer-studio" && url.searchParams.get("fabric") === chosen, { timeout: 15000 });
+      await page.waitForFunction(({ expectedShirt, expectedPant }) =>
+        document.querySelector("#designer-shirt")?.value === expectedShirt
+        && document.querySelector("#designer-pant")?.value === expectedPant,
+        {
+          expectedShirt: trouser ? "linen-plain-60-peach" : chosen,
+          expectedPant: trouser ? chosen : "linen-suiting-dark-grey",
+        },
+        { timeout: 15000 }
+      );
+      summary.handoffs.push({ source: "titan-fabric", kind: source, selected: chosen, savedCounterpartPreserved: true });
+      await page.goto(`${base}/titan`, { waitUntil: "domcontentloaded" });
+      await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+    }
+
     const destination = width === 320 ? "/measurements" : width === 390 ? "/designer-studio" : width === 768 ? "/style-director" : "/account";
     if (width === 320) {
       await menu.click();
