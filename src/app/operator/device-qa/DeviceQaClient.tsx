@@ -75,7 +75,7 @@ export default function DeviceQaClient(){
   const deviceClass=classify(viewport.width||1024);
   const allChecks=CHECKS.every((item)=>checks[item.key]);
   const performanceReady=summary.samples>=12 && summary.p95Ms!==null && summary.maxMs!==null;
-  const latencyPass=performanceReady && summary.withinTarget===true && summary.maxMs!<DEVICE_QA_MAX_FRAME_MS;
+  const latencyPass=performanceReady && summary.withinTarget===true && summary.maxMs!==null && summary.maxMs<DEVICE_QA_MAX_FRAME_MS;
   const accepted=Boolean(latencyPass && allChecks);
   const previous=history?.latest?.[deviceClass]||null;
   const coverage=useMemo(()=>["mobile","tablet","desktop"].map((kind)=>({
