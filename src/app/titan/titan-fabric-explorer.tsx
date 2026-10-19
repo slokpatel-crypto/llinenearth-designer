@@ -43,11 +43,14 @@ export default function TitanFabricExplorer() {
   const [comparedIds, setComparedIds] = useState<string[]>([]);
   const [outfitShirtId, setOutfitShirtId] = useState<string | null>(null);
   const [outfitTrouserId, setOutfitTrouserId] = useState<string | null>(null);
+  const [shareOrigin, setShareOrigin] = useState("");
+  const [shareCopyResult, setShareCopyResult] = useState<string | null>(null);
 
   // A shared link restores *reference choices* only, never a design, user
   // account, measurement, stock claim or saved Designer draft. Invalid links
   // leave both slots empty and do not trigger a Designer handoff.
   useEffect(() => {
+    setShareOrigin(window.location.origin);
     const shared = readTitanSharedOutfit(window.location.search);
     if (!shared) return;
     setOutfitShirtId(shared.shirtId);
@@ -55,6 +58,18 @@ export default function TitanFabricExplorer() {
   }, []);
   const outfitShirt = TITAN_FABRIC_CATALOG.find(fabric => fabric.kind === "shirt" && fabric.id === outfitShirtId);
   const outfitTrouser = TITAN_FABRIC_CATALOG.find(fabric => fabric.kind === "trouser" && fabric.id === outfitTrouserId);
+  const shareHref = outfitShirt && outfitTrouser ? titanOutfitShareHref(outfitShirt.id, outfitTrouser.id) : null;
+
+  async function copyOutfitReferenceLink() {
+    if (!shareHref) return;
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(new URL(shareHref, window.location.origin).href);
+      setShareCopyResult(shareHref);
+    } catch {
+      setShareCopyResult("manual");
+    }
+  }
   const comparisons = useMemo(
     () => comparedIds.map(id => TITAN_FABRIC_CATALOG.find(fabric => fabric.kind === kind && fabric.id === id)).filter(
       (fabric): fabric is (typeof TITAN_FABRIC_CATALOG)[number] => Boolean(fabric)
@@ -251,13 +266,31 @@ export default function TitanFabricExplorer() {
               <Link className="titanOutfitBuildCta" href={titanOutfitPairHref(outfitShirt.id, outfitTrouser.id)}>
                 Open both fabrics in Designer Studio <span aria-hidden="true">↗</span>
               </Link>
-              <Link className="titanOutfitShareCta" href={titanOutfitShareHref(outfitShirt.id, outfitTrouser.id)}>
+              <Link className="titanOutfitShareCta" href={shareHref!}>
                 Open shareable cloth-pair link <span aria-hidden="true">↗</span>
               </Link>
             </div>
+            <div className="titanOutfitShareTools">
+              <label className="titanOutfitShareField">
+                Share these two cloth references
+                <input className="titanOutfitShareInput" type="text" readOnly
+                  value={`${shareOrigin}${shareHref}`}
+                  onFocus={event => event.currentTarget.select()}
+                  aria-label="Shareable outfit reference link" />
+              </label>
+              <button type="button" className="titanOutfitCopyButton"
+                onClick={() => void copyOutfitReferenceLink()}>
+                Copy link
+              </button>
+            </div>
+            {shareCopyResult === shareHref ? (
+              <p className="titanOutfitCopyStatus" role="status">Cloth-pair link copied.</p>
+            ) : shareCopyResult === "manual" ? (
+              <p className="titanOutfitCopyStatus" role="status">Copy the link from the field above.</p>
+            ) : null}
             <p className="titanOutfitShareHelp">
-              This link reopens the same two reference swatches on TITAN; copy the page
-              address to share. It does not share account details, measurements or a saved design.
+              The link always reflects your current two choices. It reopens catalogue references,
+              not account details, measurements or a saved design.
             </p>
           </>
         ) : (
