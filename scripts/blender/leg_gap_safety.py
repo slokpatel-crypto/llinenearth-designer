@@ -51,10 +51,19 @@ def bounded_leg_gap_refinement_trials(unsafe_above_mm, safe_below_mm, *, subdivi
            or not math.isfinite(v) for v in values):
         raise ValueError("Refinement needs finite numeric source shifts")
     if (not 0 <= safe_below_mm < unsafe_above_mm <= MAX_INBOARD_MM
-            or unsafe_above_mm-safe_below_mm > 1.0):
-        raise ValueError("Refinement needs a bounded rejected/safe bracket")
+            or unsafe_above_mm-safe_below_mm > 1.0
+            or unsafe_above_mm-safe_below_mm <= 0.00001):
+        raise ValueError("Refinement needs a resolvable bounded rejected/safe bracket")
     if isinstance(subdivisions, bool) or not isinstance(subdivisions, int) or not 2 <= subdivisions <= 8:
         raise ValueError("Refinement subdivisions must be an integer from 2 to 8")
-    return tuple(round(
+    candidates = tuple(round(
         unsafe_above_mm - (unsafe_above_mm-safe_below_mm)*step/subdivisions, 6
     ) for step in range(1, subdivisions))
+    # Rounded, submicron contact trials must remain STRICTLY inside the actual
+    # failed/safe BVH bracket. Returning a rounded endpoint could falsely
+    # label an already rejected contact as a fresh refinement candidate.
+    if not all(safe_below_mm < value < unsafe_above_mm for value in candidates):
+        raise ValueError("Rounded leg refinement escaped the source contact bracket")
+    if not all(a > b for a, b in zip(candidates, candidates[1:])):
+        raise ValueError("Leg refinement produced duplicate BVH candidates")
+    return candidates
