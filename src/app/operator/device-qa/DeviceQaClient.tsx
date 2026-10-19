@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   PREVIEW_PERFORMANCE_TARGET_MS,
-  readPreviewPerformanceSamples,
-  readPreviewPerformanceSummary,
+  readPreviewPerformanceSamplesForDeviceClass,
+  readPreviewPerformanceSummaryForDeviceClass,
+  previewDeviceClassForViewport,
   type PreviewPerformanceSummary,
 } from "@/lib/designer/preview-performance-client";
 import { DEVICE_QA_EVIDENCE_VERSION } from "@/lib/designer/device-qa-evidence";
@@ -37,11 +38,12 @@ const CHECKS:Array<{key:CheckKey;label:string;detail:string}>=[
 ];
 
 function classify(width:number):DeviceClass{
-  return width<=720?"mobile":width<=1100?"tablet":"desktop";
+  return previewDeviceClassForViewport(width)||"tablet";
 }
 
 export default function DeviceQaClient(){
-  const [summary,setSummary]=useState<PreviewPerformanceSummary>(()=>readPreviewPerformanceSummary());
+  const [summary,setSummary]=useState<PreviewPerformanceSummary>(()=>
+    readPreviewPerformanceSummaryForDeviceClass(classify(typeof window==="undefined"?1024:window.innerWidth)));
   const [history,setHistory]=useState<HistoryPayload|null>(null);
   const [checks,setChecks]=useState<Record<CheckKey,boolean>>({
     fourViews:false,controlsLegible:false,noOverflow:false,fabricReadable:false,modelStable:false,
@@ -61,7 +63,7 @@ export default function DeviceQaClient(){
   useEffect(()=>{
     const update=()=>{
       setViewport({width:window.innerWidth,height:window.innerHeight,dpr:window.devicePixelRatio||1});
-      setSummary(readPreviewPerformanceSummary());
+      setSummary(readPreviewPerformanceSummaryForDeviceClass(classify(window.innerWidth)));
     };
     update();
     void loadHistory();
@@ -101,7 +103,7 @@ export default function DeviceQaClient(){
             viewport:`${viewport.width}x${viewport.height}`,
             dpr:viewport.dpr,
             samples:summary.samples,
-            sampleDurationsMs:readPreviewPerformanceSamples().map((item)=>item.durationMs),
+            sampleDurationsMs:readPreviewPerformanceSamplesForDeviceClass(deviceClass).map((item)=>item.durationMs),
             medianMs:summary.medianMs,
             p95Ms:summary.p95Ms,
             maxMs:summary.maxMs,
@@ -147,8 +149,8 @@ export default function DeviceQaClient(){
           <span><small>CPU THREADS</small><b>{typeof navigator!=="undefined" ? navigator.hardwareConcurrency||"—" : "—"}</b></span>
           <span><small>TARGET</small><b>p95 &lt; {PREVIEW_PERFORMANCE_TARGET_MS} ms</b></span>
         </div>
-        <p className="deviceQaInstruction">Use <b>Open Designer Studio</b> in this same tab. Switch fabrics/cuts/body/view at least 12 times, inspect all four views, then return here. Session samples survive same-tab navigation.</p>
-        <button className="deviceRefresh" type="button" onClick={()=>setSummary(readPreviewPerformanceSummary())}>Refresh local measurements</button>
+        <p className="deviceQaInstruction">Use <b>Open Designer Studio</b> in this same tab and device class. Switch fabrics/cuts/body/view at least 12 times, inspect all four views, then return here. Earlier samples without device-class provenance cannot certify this device; record fresh interactions. Session samples survive same-tab navigation.</p>
+        <button className="deviceRefresh" type="button" onClick={()=>setSummary(readPreviewPerformanceSummaryForDeviceClass(deviceClass))}>Refresh local measurements</button>
       </article>
 
       <article className="deviceQaPanel">
