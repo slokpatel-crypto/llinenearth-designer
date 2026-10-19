@@ -45,16 +45,41 @@ export function titanFabricHref(kind: TitanFabricKind, fabricId: string): string
   return `/designer-studio?source=titan&kind=${kind}&fabric=${encodeURIComponent(fabricId)}`;
 }
 
+/** A deliberate outfit pair may transfer exactly one real fabric per garment. */
+export function titanOutfitPairHref(shirtId: string, trouserId: string): string {
+  if (!TITAN_FABRIC_CATALOG.some(fabric => fabric.kind === "shirt" && fabric.id === shirtId)
+    || !TITAN_FABRIC_CATALOG.some(fabric => fabric.kind === "trouser" && fabric.id === trouserId)) {
+    throw new Error("Both outfit fabrics must be genuine TITAN references for their respective garments.");
+  }
+  return `/designer-studio?source=titan&shirt=${encodeURIComponent(shirtId)}&trouser=${encodeURIComponent(trouserId)}`;
+}
+
+export type TitanFabricHandoff =
+  | { kind: TitanFabricKind; fabricId: string }
+  | { kind: "pair"; shirtId: string; trouserId: string };
+
 /**
- * Fail-closed: accepting a link replaces ONE requested garment's fabric only,
+ * Fail-closed: one fabric replaces its requested garment only; a pair updates
+ * both explicitly chosen fabrics, never measurements, styling or body profile.
+ * Style Director links remain separate and authoritative.
  * never a saved trouser/shirt counterpart, measurement, cut or account record.
  * A Style Director / other deep link cannot masquerade as this fabric handoff.
  */
-export function readTitanFabricHandoff(search: string): { kind: TitanFabricKind; fabricId: string } | null {
+export function readTitanFabricHandoff(search: string): TitanFabricHandoff | null {
   const params = new URLSearchParams(search);
-  if ([...params.keys()].some(key => !["source", "kind", "fabric"].includes(key))) return null;
-  if (["source", "kind", "fabric"].some(key => params.getAll(key).length !== 1)) return null;
-  if (params.get("source") !== "titan") return null;
+  if (params.get("source") !== "titan" || params.getAll("source").length !== 1) return null;
+  const isSingle = params.has("kind") || params.has("fabric");
+  const required = isSingle ? ["source", "kind", "fabric"] : ["source", "shirt", "trouser"];
+  if ([...params.keys()].some(key => !required.includes(key))) return null;
+  if (required.some(key => params.getAll(key).length !== 1)) return null;
+  if (!isSingle) {
+    const shirtId = params.get("shirt");
+    const trouserId = params.get("trouser");
+    if (!shirtId || !trouserId) return null;
+    if (!TITAN_FABRIC_CATALOG.some(fabric => fabric.kind === "shirt" && fabric.id === shirtId)
+      || !TITAN_FABRIC_CATALOG.some(fabric => fabric.kind === "trouser" && fabric.id === trouserId)) return null;
+    return { kind: "pair", shirtId, trouserId };
+  }
   const kind = params.get("kind");
   const fabricId = params.get("fabric");
   if (kind !== "shirt" && kind !== "trouser") return null;
