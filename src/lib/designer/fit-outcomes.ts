@@ -171,9 +171,9 @@ export function fitOutcomeSignalFor(
   input:{occasion:OccasionTier;style:Pick<DesignerStyle,"shirtFit"|"trouser">;proportion:{torso:string;seat:string}},
   book?:FitOutcomeBook|null,
 ):FitOutcomeSignal{
-  // Saved designer drafts and imported inputs are untrusted at runtime. A
-  // separator inside a style field can otherwise collide with a different
-  // five-part bucket key and claim an unrelated customer's successful fit.
+  // Saved designer drafts and imported inputs are untrusted at runtime.
+  // Reject ambiguous delimiter-joined fields and malformed proportions rather
+  // than treating unsupported candidate identity as reviewable fit evidence.
   if(!input||!input.style||!input.proportion||!OCCASIONS.has(input.occasion)
     ||typeof input.style.shirtFit!=="string"||txt(input.style.shirtFit)!==input.style.shirtFit
     ||!input.style.shirtFit||input.style.shirtFit.includes("::")
