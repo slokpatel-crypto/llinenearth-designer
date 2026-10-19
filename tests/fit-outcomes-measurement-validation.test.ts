@@ -439,3 +439,44 @@ test("only finite centimetre numbers generate comparative garment-measurement cl
     assert(!issues.some(issue=>issue.id===id),
       `${id} cannot be inferred by coercing corrupted centimetre strings`);
 });
+
+test("malformed replacement of an existing fitting cannot resurrect a favorable old review",()=>{
+  const makeReview=(id:string)=>({type:"operator_note",source:"operator",payload:{
+    subtype:"designer_fit_outcome",recommendationId:id,
+    verdict:"clean_first_fit",occasion:"Formal",shirtFit:"regular",
+    trouser:"straight",torso:"tapered",seat:"balanced",areas:[],
+  }});
+  const initial=[makeReview("cut-01"),makeReview("cut-02"),makeReview("cut-03")];
+  const query={occasion:"Formal" as const,style:{shirtFit:"regular",trouser:"straight"},
+    proportion:{torso:"tapered",seat:"balanced"}};
+  const before=aggregateFitOutcomes(initial);
+  assert.equal(before.totalReviews,3);
+  assert.ok(fitOutcomeSignalFor(query,before).score>0);
+  const rejectedEdit={...makeReview("cut-01"),payload:{
+    ...makeReview("cut-01").payload,areas:["invalid_new_fit_area"],
+  }};
+  assert.equal(parseFitOutcome(rejectedEdit),null);
+  const revoked=aggregateFitOutcomes([...initial,rejectedEdit]);
+  assert.equal(revoked.totalReviews,2,"last operator write for the same ID must supersede the earlier fitting");
+  assert.equal(fitOutcomeSignalFor(query,revoked).score,0);
+  const restored=aggregateFitOutcomes([...initial,rejectedEdit,makeReview("cut-01")]);
+  assert.equal(restored.totalReviews,3);
+  assert.ok(fitOutcomeSignalFor(query,restored).score>0);
+});
+
+test("unrelated and unidentifiable invalid events cannot erase other fitting reviews",()=>{
+  const genuine={type:"operator_note",source:"operator",payload:{
+    subtype:"designer_fit_outcome",recommendationId:"cut-01",
+    verdict:"clean_first_fit",occasion:"Formal",shirtFit:"regular",
+    trouser:"straight",torso:"tapered",seat:"balanced",areas:[],
+  }};
+  const unrelated={...genuine,payload:{...genuine.payload,
+    subtype:"not_a_fitting_review",areas:["unrecognized"]}};
+  const ambiguousId={...genuine,payload:{...genuine.payload,
+    recommendationId:" cut-01 ",areas:["unrecognized"]}};
+  const nonOperator={...genuine,source:"customer",
+    payload:{...genuine.payload,areas:["unrecognized"]}};
+  const book=aggregateFitOutcomes([genuine,unrelated,ambiguousId,nonOperator]);
+  assert.equal(book.totalReviews,1);
+  assert.equal(book.buckets[0].clean,1);
+});
