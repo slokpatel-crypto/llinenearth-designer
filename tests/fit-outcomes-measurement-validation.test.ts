@@ -401,3 +401,41 @@ test("a sparse book with phantom review metadata cannot cite nonexistent fitting
   assert.equal(result.evidence,0);
   assert.match(result.summary,/revalidation/i);
 });
+
+test("corrupted saved measurement sections warn instead of crashing or silently passing",async()=>{
+  const {reviewMeasurementConsistency}=await import("../src/lib/designer/measurement-consistency.ts");
+  assert.deepEqual(reviewMeasurementConsistency(null),[]);
+  for(const input of [
+    42,[],{}, {shirt:null,pants:{}},{shirt:{},pants:null},
+    {shirt:[],pants:{}},{shirt:{},pants:[]},
+  ]){
+    const issues=reviewMeasurementConsistency(input as never);
+    assert.equal(issues.length,1);
+    assert.equal(issues[0].id,"MEASURE-INVALID");
+    assert.equal(issues[0].severity,"warning");
+  }
+});
+
+test("only finite centimetre numbers generate comparative garment-measurement claims",async()=>{
+  const {reviewMeasurementConsistency}=await import("../src/lib/designer/measurement-consistency.ts");
+  const baseline={version:1 as const,unit:"cm" as const,updatedAt:"2026-10-19",
+    shirt:{chest:105,neck:41,waist:85},
+    pants:{waist:81,seat:107,inseam:77,outseam:104,frontRise:30},
+  };
+  assert.deepEqual(reviewMeasurementConsistency(baseline),[]);
+  const numericContradiction={...baseline,shirt:{...baseline.shirt,neck:106},
+    pants:{...baseline.pants,inseam:106,frontRise:105,seat:160}};
+  const ids=reviewMeasurementConsistency(numericContradiction).map(issue=>issue.id);
+  for(const id of ["MEASURE-NECK-CHEST","MEASURE-SEAM-ORDER","MEASURE-RISE-ORDER","MEASURE-SEAT-WAIST"])
+    assert(ids.includes(id));
+  const corrupted={...baseline,
+    shirt:{...baseline.shirt,neck:"106" as unknown as number},
+    pants:{...baseline.pants,inseam:"106" as unknown as number,
+      frontRise:"105" as unknown as number,seat:"160" as unknown as number},
+  };
+  const issues=reviewMeasurementConsistency(corrupted);
+  assert(issues.some(issue=>issue.id==="MEASURE-INVALID"));
+  for(const id of ["MEASURE-NECK-CHEST","MEASURE-SEAM-ORDER","MEASURE-RISE-ORDER","MEASURE-SEAT-WAIST"])
+    assert(!issues.some(issue=>issue.id===id),
+      `${id} cannot be inferred by coercing corrupted centimetre strings`);
+});
