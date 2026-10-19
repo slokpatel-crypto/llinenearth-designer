@@ -1,0 +1,374 @@
+/* TITAN preview: deliberately isolated from the live site's many legacy CSS layers.
+ * No edits to the original Real Model Designer or its model/texture state. */
+.titan {
+  --titan-ink: #202521;
+  --titan-earth: #805d43;
+  --titan-olive: #59624b;
+  --titan-muted: #77796f;
+  --titan-line: #ddd7cb;
+  --titan-paper: #f8f6ef;
+  --titan-milk: #eeeae0;
+  width: 100%;
+  min-height: 100vh;
+  color: var(--titan-ink);
+  background: var(--titan-paper);
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.5;
+  isolation: isolate;
+  overflow: clip;
+}
+.titan *, .titan *::before, .titan *::after { box-sizing: border-box; }
+.titan a { color: inherit; }
+.titan a:focus-visible {
+  outline: 3px solid var(--titan-earth);
+  outline-offset: 4px;
+}
+.titan h1, .titan h2, .titan h3, .titan p { margin: 0; }
+.titan h1, .titan h2, .titan h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -.045em;
+}
+.titan h1 em, .titan h2 em { font-weight: 400; color: var(--titan-earth); }
+.titanSkip {
+  position: absolute;
+  left: 18px;
+  top: -70px;
+  z-index: 202;
+  padding: 10px 16px;
+  background: #fff;
+  font-weight: 700;
+}
+.titanSkip:focus { top: 12px; }
+.titanAnnouncement {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 7px clamp(18px, 4.6vw, 76px);
+  background: #303d31;
+  color: #f1eee6;
+  font-size: 9px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.titanHeader {
+  position: relative;
+  z-index: 10;
+  min-height: 86px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 26px;
+  padding: 14px clamp(18px, 4.6vw, 76px);
+  border-bottom: 1px solid var(--titan-line);
+  background: rgba(248,246,239,.97);
+}
+.titanIdentity {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 162px;
+  height: 56px;
+  background: #fff;
+  flex: 0 0 auto;
+}
+.titanIdentity img { width: 100%; height: 100%; object-fit: contain; }
+.titanNav { display: flex; flex-wrap: wrap; align-items: center; gap: clamp(15px, 2.2vw, 38px); }
+.titanNav a { font-size: 12px; font-weight: 600; transition: color .2s ease; }
+.titanNav a:hover, .titanFooter a:hover { color: var(--titan-earth); }
+.titanHeaderCta {
+  display: inline-flex;
+  gap: 25px;
+  align-items: center;
+  justify-content: space-between;
+  white-space: nowrap;
+  padding: 14px 18px;
+  background: #333e33;
+  color: white!important;
+  border-radius: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background .2s ease, transform .2s ease;
+}
+.titanHeaderCta:hover { background: #566750; transform: translateY(-2px); }
+.titanHero {
+  display: grid;
+  grid-template-columns: 1.02fr .98fr;
+  min-height: 690px;
+  max-width: 1800px;
+  margin-inline: auto;
+}
+.titanHeroCopy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(50px, 7vw, 110px) clamp(24px, 5.5vw, 100px);
+  background:
+    radial-gradient(ellipse at 90% 10%, rgba(214,197,162,.26), transparent 47%),
+    var(--titan-paper);
+}
+.titanKicker, .titanOverline {
+  color: var(--titan-olive);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .21em;
+  text-transform: uppercase;
+}
+.titanKicker { display: flex; align-items: center; gap: 12px; }
+.titanKickerMark {
+  display: inline-block;
+  width: 24px;
+  height: 1px;
+  background: var(--titan-earth);
+}
+.titanHero h1 {
+  margin-top: 32px;
+  font-size: clamp(56px, 5.85vw, 108px);
+  line-height: .99;
+}
+.titanHeroDescription {
+  max-width: 495px;
+  margin-top: 34px!important;
+  color: #62675f;
+  line-height: 1.8;
+  font-size: clamp(14px, 1.1vw, 17px);
+}
+.titanHeroActions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 34px; }
+.titanButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 191px;
+  gap: 20px;
+  padding: 15px 20px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid #343d33;
+  border-radius: 2px;
+  transition: background .22s ease, transform .22s ease, color .22s ease;
+}
+.titanButton:hover { transform: translateY(-3px); }
+.titanButtonPrimary { background: #303c32; color: white!important; }
+.titanButtonPrimary:hover { background: #536751; }
+.titanButtonSecondary { background: transparent; color: var(--titan-ink); }
+.titanButtonSecondary:hover { background: var(--titan-milk); }
+.titanHeroMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 53px;
+  color: #808175;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .15em;
+}
+.titanHeroMeta i { width: 3px; height: 3px; border-radius: 50%; background: var(--titan-earth); }
+.titanHeroVisual { min-height: 690px; position: relative; overflow: hidden; background: #e6dfd1; }
+.titanHeroPhoto { object-fit: cover; object-position: 50% 19%; transition: transform .7s ease; }
+.titanHeroVisual:hover .titanHeroPhoto { transform: scale(1.035); }
+.titanHeroPhotoFade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 63%, rgba(23,25,22,.58));
+}
+.titanHeroPhotoLabel {
+  position: absolute;
+  left: 36px;
+  bottom: 34px;
+  display: grid;
+  gap: 7px;
+  color: white;
+}
+.titanHeroPhotoLabel span { font-size: 10px; letter-spacing: .17em; }
+.titanHeroPhotoLabel strong { font: 400 27px Georgia,serif; }
+.titanHeroIndex {
+  position: absolute;
+  right: 24px;
+  top: 24px;
+  padding: 8px 12px;
+  background: rgba(248,246,239,.89);
+  color: #3c443c;
+  font-size: 10px;
+  letter-spacing: .13em;
+}
+.titanSection { padding: clamp(76px, 8vw, 125px) clamp(20px, 5.5vw, 100px); }
+.titanSectionIntro {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 35px;
+  max-width: 1500px;
+  margin: 0 auto 39px;
+}
+.titanSectionIntro h2 { font-size: clamp(40px, 4.35vw, 72px); line-height: 1.07; margin-top: 14px; }
+.titanSectionIntro>p { max-width: 350px; color: #71746b; line-height: 1.8; font-size: 13px; }
+.titanJourneys { background: #eeebe3; }
+.titanJourneyGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 18px;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+.titanJourneyCard {
+  display: block;
+  background: #f8f6f0;
+  border: 1px solid #e2ddd3;
+  overflow: hidden;
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+.titanJourneyCard:hover { transform: translateY(-6px); box-shadow: 0 20px 45px rgba(38,42,35,.1); }
+.titanJourneyImage { position: relative; height: clamp(240px, 25vw, 365px); overflow: hidden; background: #e1ded5; }
+.titanJourneyImage img { object-fit: cover; object-position: center 25%; transition: transform .45s ease; }
+.titanJourneyCard:hover .titanJourneyImage img { transform: scale(1.045); }
+.titanJourneyNumber {
+  position: absolute;
+  left: 18px;
+  top: 18px;
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 35px;
+  background: rgba(249,247,239,.95);
+  color: #3e4b3e;
+  font: 16px Georgia,serif;
+}
+.titanJourneyContent { padding: 25px 25px 29px; }
+.titanJourneyContent h3 { margin: 10px 0 8px; font-size: clamp(26px, 2.4vw, 39px); line-height: 1.04; }
+.titanJourneyContent p { min-height: 67px; color: #73756b; line-height: 1.7; font-size: 12px; }
+.titanJourneyContent strong {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 22px;
+  padding-top: 17px;
+  border-top: 1px solid #ded7cb;
+  color: #455540;
+  font-size: 12px;
+}
+.titanExperience {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 680px;
+  background: #e8e7dc;
+}
+.titanExperienceContent { padding: clamp(68px,7vw,110px) clamp(28px,6vw,110px); }
+.titanExperienceContent h2 { margin-top: 20px; font-size: clamp(43px,4.3vw,75px); line-height: 1.07; }
+.titanExperienceContent>p:not(.titanOverline) {
+  max-width: 580px;
+  margin-top: 25px;
+  line-height: 1.85;
+  color: #686d62;
+  font-size: 14px;
+}
+.titanProcessList { margin: 28px 0 30px; padding: 0; list-style: none; border-top: 1px solid #d0d0c1; }
+.titanProcessList li { display: grid; grid-template-columns: 38px 1fr; gap: 20px; padding: 16px 0; border-bottom: 1px solid #d0d0c1; }
+.titanProcessList li>span { font-family: Georgia,serif; font-size: 21px; color: #9b8568; }
+.titanProcessList strong { display: block; font-size: 13px; }
+.titanProcessList p { font-size: 12px; color: #797b72; margin-top: 3px; }
+.titanTextLink { display: inline-flex; gap: 18px; border-bottom: 1px solid #6e775e; padding-bottom: 7px; font-weight: 700; font-size: 12px; }
+.titanExperienceVisual { min-height: 650px; position: relative; background: #d4d4c7; overflow: hidden; }
+.titanExperienceVisual img { object-fit: cover; object-position: center 30%; }
+.titanExperienceStamp {
+  position: absolute;
+  right: 22px;
+  bottom: 20px;
+  display: grid;
+  gap: 3px;
+  max-width: 210px;
+  padding: 17px 20px;
+  background: #f8f6ef;
+  color: #47503d;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .13em;
+}
+.titanExperienceStamp span { font-size: 9px; color: #8f937f; }
+.titanEngineering { background: #f9f7f1; }
+.titanEngineering .titanSectionIntro h2 { font-size: clamp(40px,4.1vw,67px); }
+.titanTrackGrid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; max-width: 1500px; margin-inline: auto; }
+.titanTrack { position: relative; min-height: 245px; padding: 28px; border: 1px solid #dad8cd; background: #fff; }
+.titanTrackNumber { font: 23px Georgia,serif; color: #a8a38f; }
+.titanTrack h3 { margin: 18px 0 11px; font-size: 25px; }
+.titanTrack p { color: #777a71; font-size: 12px; line-height: 1.7; max-width: 340px; }
+.titanTrackState { display: inline-block; margin-top: 21px; color: #80614d; font-weight: 700; letter-spacing: .14em; font-size: 9px; }
+.titanClosing { padding: 100px 24px; text-align: center; background: #333e33; color: white; }
+.titanClosing .titanOverline { color: #b0bca8; }
+.titanClosing h2 { margin-top: 18px; font-size: clamp(50px,6vw,86px); letter-spacing: -.04em; }
+.titanClosing h2 em { color: #d1c6b0; }
+.titanClosing>p:not(.titanOverline) { max-width: 530px; margin: 18px auto 25px; color: #c5ccc2; font-size: 14px; line-height: 1.8; }
+.titanButtonLight { min-width: 225px; background: #f9f7f1; color: #283129!important; border-color: #f9f7f1; }
+.titanButtonLight:hover { background: #e9e1d2; }
+.titanFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 35px clamp(20px,5vw,85px);
+  background: #f2eee5;
+  border-top: 1px solid #dcd6ca;
+}
+.titanFooterBrand { display: grid; gap: 3px; }
+.titanFooterBrand strong { font: 26px Georgia,serif; }
+.titanFooterBrand span, .titanFooter>p { font-size: 11px; color: #858278; }
+.titanFooter>p { max-width: 245px; line-height: 1.7; }
+.titanFooter nav { display: flex; flex-wrap: wrap; gap: 12px 19px; max-width: 460px; font-size: 11px; font-weight: 700; }
+@media (max-width: 1080px) {
+  .titanHeader { gap: 14px; }
+  .titanNav { gap: 16px; }
+  .titanHero h1 { font-size: clamp(54px,6.2vw,78px); }
+}
+@media (max-width: 860px) {
+  .titanAnnouncement span:last-child { display: none; }
+  .titanHeader { flex-wrap: wrap; justify-content: space-between; gap: 14px; }
+  .titanNav { order: 3; width: 100%; padding-top: 12px; border-top: 1px solid #e5dfd3; justify-content: space-between; }
+  .titanHero { grid-template-columns: 1fr; }
+  .titanHeroCopy { padding: 70px clamp(22px,6vw,70px); }
+  .titanHeroVisual { min-height: 610px; }
+  .titanSectionIntro { align-items: start; }
+  .titanJourneyGrid, .titanTrackGrid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .titanJourneyCard:last-child { grid-column: 1/-1; }
+  .titanExperience { grid-template-columns: 1fr; }
+  .titanExperienceVisual { min-height: 500px; }
+}
+@media (max-width: 560px) {
+  .titanAnnouncement { font-size: 8px; justify-content: center; }
+  .titanHeader { padding: 12px 17px; min-height: 68px; }
+  .titanIdentity { width: 122px; height: 45px; }
+  .titanHeaderCta { padding: 12px; font-size: 11px; gap: 10px; }
+  .titanNav { gap: 10px 14px; justify-content: center; }
+  .titanNav a { font-size: 10px; }
+  .titanHeroCopy { padding: 66px 23px 54px; }
+  .titanHero h1 { font-size: clamp(43px,10.8vw,65px); margin-top: 25px; }
+  .titanHeroDescription { margin-top: 22px!important; }
+  .titanHeroActions { display: grid; }
+  .titanHeroMeta { gap: 8px; font-size: 8px; margin-top: 27px; }
+  .titanHeroVisual { min-height: 475px; }
+  .titanHeroPhotoLabel { left: 18px; bottom: 18px; }
+  .titanHeroPhotoLabel strong { font-size: 23px; }
+  .titanSection { padding: 65px 18px; }
+  .titanSectionIntro { display: block; }
+  .titanSectionIntro h2 { font-size: 42px; }
+  .titanSectionIntro>p { margin-top: 20px; }
+  .titanJourneyGrid, .titanTrackGrid { grid-template-columns: 1fr; }
+  .titanJourneyCard:last-child { grid-column: auto; }
+  .titanJourneyImage { height: 290px; }
+  .titanJourneyContent p { min-height: auto; }
+  .titanExperienceContent { padding: 65px 22px; }
+  .titanExperienceContent h2 { font-size: 47px; }
+  .titanExperienceVisual { min-height: 435px; }
+  .titanClosing { padding: 72px 20px; }
+  .titanClosing h2 { font-size: 51px; }
+  .titanFooter { display: grid; gap: 26px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .titan *, .titan *::before, .titan *::after {
+    transition-duration: 0.01ms!important;
+    animation-duration: 0.01ms!important;
+  }
+}
