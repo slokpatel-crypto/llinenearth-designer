@@ -134,7 +134,25 @@ export function parseFitOutcome(event:EventLike):FitOutcomeReview|null{
 
 export function aggregateFitOutcomes(events:EventLike[]):FitOutcomeBook{
   const latest=new Map<string,FitOutcomeReview>();
-  for(const event of events){const review=parseFitOutcome(event);if(review) latest.set(review.recommendationId,review);}
+  for(const event of events){
+    const review=parseFitOutcome(event);
+    if(review){
+      latest.set(review.recommendationId,review);
+      continue;
+    }
+    // The operator log is append-only and an updated fitting note replaces
+    // earlier notes for the same recommendation. A later malformed edit must
+    // revoke the older score, not silently resurrect favorable old evidence.
+    // Only a canonical, identifiable fitting event can revoke a review;
+    // unrelated notes and records without a usable ID remain ignored.
+    if(!event||typeof event!=="object"||Array.isArray(event)
+      ||event.type!=="operator_note"||event.source!=="operator") continue;
+    const payload=event.payload;
+    if(!payload||typeof payload!=="object"||Array.isArray(payload)
+      ||payload.subtype!=="designer_fit_outcome") continue;
+    const id=payload.recommendationId;
+    if(typeof id==="string"&&id.length>0&&id.length<=160&&id===id.trim()) latest.delete(id);
+  }
   const buckets=new Map<string,FitOutcomeBucket>();
   for(const review of latest.values()){
     const key=fitOutcomeKey({occasion:review.occasion,shirtFit:review.shirtFit,trouser:review.trouser,torso:review.proportion.torso,seat:review.proportion.seat});
