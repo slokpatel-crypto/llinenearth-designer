@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { readTitanSharedOutfit, titanOutfitShareHref } from "@/lib/titan/outfit-share";
+import { suggestTitanPairings } from "@/lib/titan/pairing-ideas";
 import {
   TITAN_FABRIC_CATALOG, findTitanFabrics, titanFabricCollections, titanFabricHref,
   toggleTitanComparedFabrics, titanOutfitPairHref, type TitanFabricKind,
@@ -60,6 +61,13 @@ export default function TitanFabricExplorer() {
   const outfitShirt = TITAN_FABRIC_CATALOG.find(fabric => fabric.kind === "shirt" && fabric.id === outfitShirtId);
   const outfitTrouser = TITAN_FABRIC_CATALOG.find(fabric => fabric.kind === "trouser" && fabric.id === outfitTrouserId);
   const shareHref = outfitShirt && outfitTrouser ? titanOutfitShareHref(outfitShirt.id, outfitTrouser.id) : null;
+  // Propose the complementary garment only when exactly one garment has
+  // been chosen. Never override an already-complete manual customer pair.
+  const pairingIdeas = useMemo(
+    () => outfitShirt && !outfitTrouser ? suggestTitanPairings("shirt", outfitShirt.id)
+      : outfitTrouser && !outfitShirt ? suggestTitanPairings("trouser", outfitTrouser.id) : [],
+    [outfitShirt?.id, outfitTrouser?.id],
+  );
 
   async function copyOutfitReferenceLink() {
     if (!shareHref) return;
@@ -265,6 +273,41 @@ export default function TitanFabricExplorer() {
             );
           })}
         </div>
+        {pairingIdeas.length > 0 && (
+          <section className="titanPairingIdeas" aria-labelledby="titan-pairing-ideas-title">
+            <div className="titanPairingHeading">
+              <p className="titanOverline">CURATED FROM OUR REAL CATALOGUE</p>
+              <h4 id="titan-pairing-ideas-title">Discover a complementary cloth</h4>
+              <p>Three optional editorial directions for your unfilled garment.
+                Your selected cloth stays unchanged until you choose a pair.</p>
+            </div>
+            <div className="titanPairingGrid">
+              {pairingIdeas.map(idea => (
+                <article className="titanPairingCard" key={idea.id}>
+                  <div className="titanPairingPhoto" style={{ backgroundColor: idea.counterpart.hex }}>
+                    <TitanReferencePhoto key={idea.counterpart.id} fabric={idea.counterpart}
+                      alt={`${idea.counterpart.name} catalogue reference`} sizes="(max-width: 700px) 30vw, 180px" />
+                  </div>
+                  <div className="titanPairingCardCopy">
+                    <strong>{idea.title}</strong>
+                    <h5>{idea.counterpart.name}</h5>
+                    <span>{idea.counterpart.line} · {idea.counterpart.pattern}</span>
+                    <p>{idea.reason}</p>
+                    <button type="button"
+                      aria-label={`Use ${idea.counterpart.name} with the chosen ${outfitShirt ? "shirt" : "trouser"} reference`}
+                      onClick={() => {
+                        setOutfitShirtId(idea.shirtId);
+                        setOutfitTrouserId(idea.trouserId);
+                      }}>Use this cloth pair</button>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <p className="titanPairingCaution">Editorial catalogue ideas only.
+              The Style Director remains the dedicated styling workflow. Exact colour,
+              fabric compatibility, stock and fit have not been physically validated.</p>
+          </section>
+        )}
         {outfitShirt && outfitTrouser ? (
           <>
             <div className="titanOutfitActions">
