@@ -5,6 +5,7 @@ import { fromLegacyStyle } from "../src/lib/designer/style-spec-v2.ts";
 import { GARMENT_OPTION_LIBRARY } from "../src/lib/designer/options/library.ts";
 import { modelGeometry } from "../src/lib/designer/live-preview.ts";
 import { evaluateCrossGarmentRules } from "../src/lib/designer/rules/evaluator.ts";
+import { PREVIEW_BENCHMARK_VIEWS, PREVIEW_BENCHMARK_BUILDS, PREVIEW_BENCHMARK_COHORTS, previewBenchmarkWarmupSample } from "../src/lib/designer/preview-performance-cohorts.ts";
 
 const baseline=fromLegacyStyle({
   collar:"Point (Standard) Collar",
@@ -55,20 +56,22 @@ for(const option of GARMENT_OPTION_LIBRARY){
     legacy:{...baseline.legacy},
   };
   if(key in spec[side]) spec[side][key]=option.id;
-  for(const view of ["front","back"]){
-    for(const build of ["slim","regular","athletic","broad"]) run(spec,view,build);
+  for(const view of PREVIEW_BENCHMARK_VIEWS){
+    for(const build of PREVIEW_BENCHMARK_BUILDS) run(spec,view,build);
   }
 }
 
 // Warm baseline loops approximate rapid customer option switching.
-for(let i=0;i<1200;i++) run(baseline,i%2?"front":"back",["slim","regular","athletic","broad"][i%4]);
+for(let i=0;i<1200;i++) {
+  const {view,build}=previewBenchmarkWarmupSample(i);
+  run(baseline,view,build);
+}
 
 const sorted=[...samples].sort((a,b)=>a-b);
 const percentile=(p)=>sorted[Math.min(sorted.length-1,Math.floor((sorted.length-1)*p))]||0;
 // Aggregate p95 can hide a regression affecting just one view/body build.
 // Require each well-sampled cohort to pass the SAME 100-ms CPU-only budget.
-const expectedCohorts=["front","back"].flatMap((view)=>
-  ["slim","regular","athletic","broad"].map((build)=>`${view}/${build}`));
+const expectedCohorts=PREVIEW_BENCHMARK_COHORTS;
 const cohorts=Object.fromEntries(expectedCohorts.map((key)=>{
   const sortedSamples=[...(cohortSamples.get(key)||[])].sort((a,b)=>a-b);
   const p95=sortedSamples[Math.min(sortedSamples.length-1,Math.floor((sortedSamples.length-1)*.95))];
