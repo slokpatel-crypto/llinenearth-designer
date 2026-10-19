@@ -107,3 +107,13 @@ Do not replace testing with concept renders, inflate progress percentages, claim
 - If clipboard access is denied or unsupported, the actual, fully qualified current link receives keyboard focus and is selected for manual copying; fallback success messages are keyed to the precise selected pair and cannot misreport a previous pair.
 - Browser QA now exercises permission-denied copying, selected manual fallback text and isolation of stale comparison/filter state across a shared-link navigation, in addition to direct reload and invalid garment-role links.
 - These safeguards preserve all earlier feature and model contracts. They neither validate physical stock nor make the candidate production-ready. Matching-head workflows and explicit release approval remain required.
+
+### 19 October — deterministic, catalogue-only pairing guidance (stacked draft)
+
+- A customer who selects **exactly one** existing shirt or trouser swatch on `/titan` sees three editorial references for the missing garment. Each suggestion uses a real, correctly typed catalogue ID and an auditable plain-text rule; no generated image, per-visit AI API or fabricated supplier measurement.
+- Pure `suggestTitanPairings` rules are deterministic, fail closed for unknown or swapped garment IDs, and intentionally **do not** claim calibrated colour matching, measured drape, physical stock, fit approval, or Style Director authority. The current valid catalogue provides three distinct suggestions for each existing shirt or trouser entry.
+- Suggestions are explicitly **opt-in**. The selected anchor fabric remains unchanged; the user must click a 48px target to complete the two slots. No choice silently overwrites an already complete pair or persists to a saved Designer draft, measurement, account, customer profile or database.
+- The existing explicit Designer handoff remains unchanged. Initial image references are original catalogue swatches with the unavailable-photo fallback. Phone, tablet and desktop layout maintain readable explanatory text, with no paid renderer.
+- A garment-tab switch now resets a stale search filter, preventing the previous garment's search text from hiding all the new garment options.
+- Node tests exhaustively cover all catalogue anchors, each suggestion's actual IDs/role, deterministic output, non-mutation, bad IDs and intended patterned/plain paths. Chromium QA checks forward and reverse pairs, touch target size, no replacement of the anchor, saved draft isolation, and search reset.
+- Keep this branch stacked on unreleased share-link PR #316. Matching-head CI/build, real-browser artifacts, owner acceptance and all physical/native gates remain required. No merge/deploy.
