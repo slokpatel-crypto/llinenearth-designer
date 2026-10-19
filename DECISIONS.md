@@ -543,3 +543,12 @@ Architecture and product decisions that must persist across coding sessions.
 **Quality/performance boundary:** filter/search is browser-local and deterministic. The preview uses existing swatch images; it does not call paid rendering providers or label the static `inStock` catalogue field as verified stock. The Designer's calibrated operator catalogue and downstream measurement/physical-signoff gates remain authoritative. Browser regression covers shirt and trouser deep links with retained saved-draft counterparts; unit tests reject cross-garment and ambiguous handoffs.
 
 **Compatibility/migration:** no database or saved-design schema changes, new dependency, model identity change, or homepage cutover. This remains a draft UI pilot until matching-HEAD CI/browser QA, owner review and all relevant native/source-model gates pass. Do not merge or deploy automatically.
+
+
+## 2026-10-19 — TITAN swatch comparison cannot imply physical parity
+
+**Decision:** the pilot may show two catalogue reference photos side-by-side within the same garment category to help customers shortlist fabrics. It must keep reference IDs exact and transfer only via the pre-existing safe single-fabric Designer handoff. Comparison itself is browser-local and never changes saved outfits, stock ledgers, measurements or operator data.
+
+**Truth boundary:** photos may have different illumination, white balance, zoom and magnification. Therefore the component must label the comparison **visual only**, never infer verified colour differences, pattern-repeat dimensions, handfeel or fabric drape, and never suggest a source photograph is production-calibrated. The 2-item limit, stale/cross-garment rejection, 44px controls, responsive layout and deterministic navigation must remain tested.
+
+**Release:** remains on the independent unmerged /titan pilot. CI, browser evidence, original model photo/native Blender gates, supplier calibration, tailor approval and owner acceptance cannot be waived.
