@@ -295,6 +295,9 @@ async function checkViewport(width) {
         configurable: true, value: { writeText: async () => { throw Error("Clipboard permission denied"); } },
       }));
       await page.getByRole("button", { name: "Copy link" }).click();
+      await page.waitForFunction(() =>
+        document.querySelector(".titanOutfitCopyStatus")?.textContent?.includes("Copy the link from the field above"),
+        null, { timeout: 10000 });
       assert.match(await page.locator(".titanOutfitCopyStatus").textContent(),
         /Copy the link from the field above/,
         "Denied clipboard writes must expose a usable manual fallback");
