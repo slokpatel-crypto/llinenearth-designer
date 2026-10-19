@@ -108,7 +108,7 @@ export default function TitanFabricExplorer() {
   const outfitTrouser = TITAN_FABRIC_CATALOG.find(fabric => fabric.kind === "trouser" && fabric.id === outfitTrouserId);
   const shareHref = outfitShirt && outfitTrouser ? titanOutfitShareHref(outfitShirt.id, outfitTrouser.id) : null;
   const alreadySaved = Boolean(outfitShirt && outfitTrouser && savedPairs.some(pair =>
-    pair.shirtId === outfitShirt.id && pair.trouserId === outfitTrouser.id));
+    pair.shirtId === outfitShirtId && pair.trouserId === outfitTrouserId));
   // Propose the complementary garment only when exactly one garment has
   // been chosen. Never override an already-complete manual customer pair.
   const pairingIdeas = useMemo(
