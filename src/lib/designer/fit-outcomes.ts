@@ -212,9 +212,16 @@ export function fitOutcomeSignalFor(
     keys.add(bucket.key);
     represented+=bucket.total;
   }
-  // Even a sparse book must be validated before its review count is
-  // displayed as evidence. A two-review book can still contain forged
-  // metadata or impossible counters and must not claim two real fittings.
+  // The aggregation contract emits exactly one bucket for every unique
+  // validated fitting review. A persisted book claiming more reviews than the
+  // sum of its buckets is incomplete or has fabricated summary metadata.
+  // Neither case permits a score: hidden/missing reviews might contradict
+  // the apparently clean matching group.
+  if(represented!==book.totalReviews){
+    return {score:0,evidence:0,summary:"Stored fitting totals require operator revalidation."};
+  }
+  // Even a small book must pass this complete-record reconciliation before
+  // its review count can appear as evidence.
   if(book.totalReviews<3) return {score:0,evidence:book.totalReviews,summary:"Post-fitting evidence is still collecting."};
   const key=fitOutcomeKey({occasion:input.occasion,shirtFit:input.style.shirtFit,trouser:input.style.trouser,torso:input.proportion.torso,seat:input.proportion.seat});
   const bucket=trustworthy.find((b)=>b.key===key&&b.total>=3);
