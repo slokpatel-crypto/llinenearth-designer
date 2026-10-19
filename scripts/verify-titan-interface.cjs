@@ -48,6 +48,27 @@ async function checkViewport(width) {
     assert.equal(await page.locator(".titanFabricCard").count(), 1, "Catalogue search must narrow real swatch data");
     await fabricSearch.fill("");
     assert.equal(await page.locator(".titanFabricCard").count(), 8, "Clearing search restores the initial collection");
+    // Comparison is a real accessible two-slot shortlist, never a simulated
+    // physical colour/scale claim. Selecting a swatch here must not write a
+    // saved design, call a paid provider or change the Designer counterpart.
+    const compareButtons = page.locator(".titanFabricCompareButton");
+    assert.equal(await compareButtons.count(), 8);
+    await compareButtons.nth(0).click();
+    assert.equal(await page.locator(".titanFabricComparisonItem").count(), 1);
+    assert.equal(await compareButtons.nth(0).getAttribute("aria-pressed"), "true");
+    await compareButtons.nth(1).click();
+    assert.equal(await page.locator(".titanFabricComparisonItem").count(), 2);
+    assert.equal(await page.locator(".titanFabricComparisonDetails a[href^='/designer-studio?source=titan']").count(), 2);
+    assert.equal(await compareButtons.nth(2).isDisabled(), true, "Third fabric must not silently displace a choice");
+    const shortListStatus = await page.locator(".titanFabricCompareStatus").textContent();
+    assert.match(shortListStatus, /2 of 2 references selected/);
+    await compareButtons.nth(0).click();
+    assert.equal(await page.locator(".titanFabricComparisonItem").count(), 1, "Selected fabric can be removed");
+    await compareButtons.nth(0).click();
+    await page.getByRole("button", { name: "Trouser cloth" }).click();
+    assert.equal(await page.locator(".titanFabricComparisonItem").count(), 0, "Changing garment resets the comparison");
+    await page.getByRole("button", { name: "Shirting" }).click();
+    assert.equal(await page.locator(".titanFabricCard").count(), 8, "Shirting catalogue still works after reset");
 
     // Real keyboard skip behaviour, not just a decorative anchor.
     const skip = page.getByRole("link", { name: "Skip to main content" });
@@ -104,7 +125,7 @@ async function checkViewport(width) {
 
     // Every visible navigation entry must be large enough to use on a phone,
     // tablet or desktop; screenshots alone cannot prove pointer ergonomics.
-    const targets = await page.locator(".titanHeaderCta, .titanNav a, .titanMenuButton, .titanMobileNavPanel a, .titanOccasionLink, .titanButton, .titanTextLink, .titanFooter nav a").evaluateAll(nodes =>
+    const targets = await page.locator(".titanHeaderCta, .titanNav a, .titanMenuButton, .titanMobileNavPanel a, .titanOccasionLink, .titanButton, .titanTextLink, .titanFooter nav a, .titanFabricCompareButton, .titanFabricComparisonClear, .titanFabricComparisonDetails a").evaluateAll(nodes =>
       nodes.filter(node => node.getClientRects().length > 0)
         .map(node => ({ text: node.textContent.trim().slice(0, 50), height: node.getBoundingClientRect().height }))
     );
