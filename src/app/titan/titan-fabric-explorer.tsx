@@ -32,11 +32,13 @@ function TitanReferencePhoto({ fabric, alt, sizes }: {
  * fabric imagery or a promise of physical stock. Choice is carried into the
  * maintained Designer Studio, which applies its own calibrated catalogue.
  */
+const FABRIC_PAGE_SIZE = 8;
+
 export default function TitanFabricExplorer() {
   const [kind, setKind] = useState<TitanFabricKind>("shirt");
   const [collection, setCollection] = useState("All");
   const [search, setSearch] = useState("");
-  const [expanded, setExpanded] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(FABRIC_PAGE_SIZE);
   const [comparedIds, setComparedIds] = useState<string[]>([]);
   const [outfitShirtId, setOutfitShirtId] = useState<string | null>(null);
   const [outfitTrouserId, setOutfitTrouserId] = useState<string | null>(null);
@@ -49,12 +51,12 @@ export default function TitanFabricExplorer() {
   );
   const collections = useMemo(() => titanFabricCollections(kind), [kind]);
   const matching = useMemo(() => findTitanFabrics(kind, collection, search), [kind, collection, search]);
-  const visible = expanded ? matching : matching.slice(0, 8);
+  const visible = matching.slice(0, visibleCount);
 
   function chooseKind(next: TitanFabricKind) {
     setKind(next);
     setCollection("All");
-    setExpanded(false);
+    setVisibleCount(FABRIC_PAGE_SIZE);
     setComparedIds([]);
   }
 
@@ -70,19 +72,19 @@ export default function TitanFabricExplorer() {
         </fieldset>
         <label className="titanFabricField">
           Collection
-          <select value={collection} onChange={event => { setCollection(event.target.value); setExpanded(false); }}>
+          <select value={collection} onChange={event => { setCollection(event.target.value); setVisibleCount(FABRIC_PAGE_SIZE); }}>
             <option value="All">All collections</option>
             {collections.map(line => <option key={line} value={line}>{line}</option>)}
           </select>
         </label>
         <label className="titanFabricField titanFabricSearch">
           Find by colour or pattern
-          <input value={search} onChange={event => { setSearch(event.target.value); setExpanded(false); }}
+          <input value={search} onChange={event => { setSearch(event.target.value); setVisibleCount(FABRIC_PAGE_SIZE); }}
             type="search" maxLength={100} placeholder="e.g. blue, stripe, linen" />
         </label>
       </div>
       <div className="titanFabricResultsHeader">
-        <p role="status" aria-live="polite">{matching.length} catalogue {matching.length === 1 ? "reference" : "references"}</p>
+        <p role="status" aria-live="polite">Showing {visible.length} of {matching.length} catalogue {matching.length === 1 ? "reference" : "references"}</p>
         <span>Stock, actual colour and physical repeat need confirmation.</span>
       </div>
       {visible.length > 0 ? (
@@ -128,15 +130,20 @@ export default function TitanFabricExplorer() {
       ) : (
         <p className="titanFabricEmpty" role="status">No catalogue matches. Try another collection or search term.</p>
       )}
-      {!expanded && matching.length > 8 && (
-        <button type="button" className="titanFabricShowMore" onClick={() => setExpanded(true)}>
-          Show all {matching.length} references <span aria-hidden="true">↓</span>
-        </button>
-      )}
-      {expanded && matching.length > 8 && (
-        <button type="button" className="titanFabricShowMore" onClick={() => setExpanded(false)}>
-          Show fewer references <span aria-hidden="true">↑</span>
-        </button>
+      {matching.length > FABRIC_PAGE_SIZE && (
+        <div className="titanFabricPagination">
+          {visible.length < matching.length && (
+            <button type="button" className="titanFabricShowMore"
+              onClick={() => setVisibleCount(previous => Math.min(previous + FABRIC_PAGE_SIZE, matching.length))}>
+              Load next {Math.min(FABRIC_PAGE_SIZE, matching.length - visible.length)} references <span aria-hidden="true">↓</span>
+            </button>
+          )}
+          {visibleCount > FABRIC_PAGE_SIZE && (
+            <button type="button" className="titanFabricShowMore" onClick={() => setVisibleCount(FABRIC_PAGE_SIZE)}>
+              Show fewer references <span aria-hidden="true">↑</span>
+            </button>
+          )}
+        </div>
       )}
       {comparisons.length > 0 && (
         <section id="titan-fabric-comparison" className="titanFabricComparison" aria-labelledby="titan-fabric-compare-title">
