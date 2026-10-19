@@ -35,7 +35,7 @@ export default function TitanStudioPage() {
         </Link>
       </header>
 
-      <main id="titan-main">
+      <main id="titan-main" tabIndex={-1}>
         <section className="titanHero" aria-labelledby="titan-heading">
           <div className="titanHeroCopy">
             <p className="titanKicker"><span className="titanKickerMark" /> THE ART OF DRESSING WELL</p>
