@@ -564,3 +564,66 @@
 @media (prefers-reduced-motion: reduce) {
   .titanFabricCard { transition-duration: 0.01ms!important; }
 }
+
+
+/* TITAN: catalogue-only, same-category comparison. Never imply measured parity. */
+.titanFabricTile { display: flex; min-width: 0; flex-direction: column; }
+.titanFabricTile > .titanFabricCard { flex: 1; }
+.titanFabricCompareButton {
+  min-height: 44px; width: 100%; padding: 11px 10px; cursor: pointer;
+  background: #e5e6dc; color: #233b2c; border: 1px solid #afb5a8;
+  border-top: 0; font: 700 12px/1.35 Arial, Helvetica, sans-serif;
+}
+.titanFabricCompareButton[aria-pressed="true"] { background: #344c3a; color: #fff; border-color: #344c3a; }
+.titanFabricCompareButton:disabled { cursor: not-allowed; color: #595e53; opacity: .65; }
+.titanFabricCompareButton:focus-visible,
+.titanFabricComparisonClear:focus-visible,
+.titanFabricComparisonDetails a:focus-visible {
+  outline: 3px solid #805d43; outline-offset: 3px;
+}
+.titanFabricComparison {
+  margin-top: 28px; padding: 22px; border: 1px solid #b1b6a4;
+  background: #f0efe7;
+}
+.titanFabricComparisonHeading {
+  display: flex; gap: 16px; flex-wrap: wrap; align-items: center; justify-content: space-between;
+}
+.titanFabricComparisonHeading h3 { font: 26px/1.25 Georgia, serif; margin: 6px 0 0; }
+.titanFabricComparisonClear {
+  min-height: 44px; border: 1px solid #405841; color: #2c412e; background: transparent;
+  padding: 10px 18px; font: 700 12px Arial, Helvetica, sans-serif; cursor: pointer;
+}
+.titanFabricCompareStatus { color: #455347; margin: 12px 0 16px; font-size: 13px; }
+.titanFabricComparisonGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 15px; }
+.titanFabricComparisonItem { min-width: 0; display: grid; grid-template-columns: minmax(0, 130px) minmax(0,1fr); gap: 14px; background: #fffdf8; border: 1px solid #c8c6ba; padding: 12px; }
+.titanFabricComparisonImage { position: relative; aspect-ratio: 1; min-width: 0; overflow: hidden; }
+.titanFabricComparisonImage img { object-fit: cover; }
+.titanFabricComparisonDetails { min-width: 0; overflow-wrap: anywhere; }
+.titanFabricComparisonDetails h4 { font: 22px/1.2 Georgia, serif; }
+.titanFabricComparisonDetails p { margin: 8px 0 10px; color: #4a584b; font-size: 12px; line-height: 1.5; }
+.titanFabricComparisonDetails a {
+  display: inline-flex; align-items: center; min-height: 44px; gap: 8px;
+  color: #20442d; text-underline-offset: 3px; font: 700 12px Arial, Helvetica, sans-serif;
+}
+.titanFabricComparisonPlaceholder {
+  min-width: 0; min-height: 150px; border: 1px dashed #919b8e;
+  display: flex; gap: 12px; align-items: center; justify-content: center; padding: 20px;
+  color: #536155; background: #e9eae2;
+}
+.titanFabricComparisonPlaceholder span { font: 32px Georgia, serif; }
+.titanFabricComparisonPlaceholder p { max-width: 220px; font-size: 12px; }
+.titanFabricComparisonWarning {
+  margin-top: 14px; color: #405143; font-size: 12px; line-height: 1.65;
+}
+@media (max-width: 940px) {
+  .titanFabricComparisonGrid { grid-template-columns: 1fr; }
+}
+@media (max-width: 620px) {
+  .titanFabricComparison { padding: 14px; }
+  .titanFabricComparisonItem { grid-template-columns: minmax(0, 90px) minmax(0,1fr); gap: 10px; }
+  .titanFabricComparisonDetails h4 { font-size: 18px; }
+  .titanFabricComparisonPlaceholder { min-height: 100px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .titanFabricCompareButton, .titanFabricComparisonClear { transition: none; }
+}
