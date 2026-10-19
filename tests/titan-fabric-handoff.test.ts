@@ -3,7 +3,7 @@ import test from "node:test";
 import { FABRIC_STOCK } from "../src/lib/fabric-stock.ts";
 import {
   TITAN_FABRIC_CATALOG, findTitanFabrics, readTitanFabricHandoff,
-  titanFabricCollections, titanFabricHref,
+  titanFabricCollections, titanFabricHref, toggleTitanComparedFabrics,
 } from "../src/lib/titan/fabric-handoff.ts";
 
 test("TITAN displays real catalogue IDs and source-backed swatch paths only", () => {
@@ -60,4 +60,20 @@ test("Catalogue discovery filters the real stock without introducing false avail
   assert.equal(findTitanFabrics("shirt", "Linen Print 60 Lea", "").every(fabric => fabric.line === "Linen Print 60 Lea"), true);
   assert.ok(findTitanFabrics("shirt", "All", "SKY blue").some(fabric => fabric.id === "linen-plain-60-sky-blue"));
   assert.deepEqual(findTitanFabrics("trouser", "All", "sky blue"), []);
+});
+
+test("TITAN compares at most two real cloths within one garment without design mutation", () => {
+  const shirtA = "linen-plain-60-sky-blue";
+  const shirtB = "linen-plain-60-peach";
+  const shirtC = "linen-plain-60-stresa";
+  const trouser = "linen-suiting-beige";
+  assert.deepEqual(toggleTitanComparedFabrics("shirt", [], shirtA), [shirtA]);
+  assert.deepEqual(toggleTitanComparedFabrics("shirt", [shirtA], shirtB), [shirtA, shirtB]);
+  assert.deepEqual(toggleTitanComparedFabrics("shirt", [shirtA, shirtB], shirtC), [shirtA, shirtB], "Third item cannot replace a shortlist silently");
+  assert.deepEqual(toggleTitanComparedFabrics("shirt", [shirtA, shirtB], shirtA), [shirtB], "A selected item can be removed");
+  assert.deepEqual(toggleTitanComparedFabrics("shirt", [shirtA], shirtA), [], "Selection toggles off");
+  assert.deepEqual(toggleTitanComparedFabrics("shirt", [shirtA], trouser), [shirtA], "Cross-garment item rejected");
+  assert.deepEqual(toggleTitanComparedFabrics("trouser", [shirtA], trouser), [trouser], "Stale shirt selection cannot cross to trouser mode");
+  assert.deepEqual(toggleTitanComparedFabrics("shirt", [shirtA, shirtA, "invalid", shirtB], shirtC), [shirtA, shirtB], "Corrupt or duplicate state cleaned without exceeding cap");
+  assert.equal(titanFabricHref("shirt", shirtA), "/designer-studio?source=titan&kind=shirt&fabric=linen-plain-60-sky-blue");
 });
