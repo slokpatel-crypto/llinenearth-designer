@@ -1,16 +1,19 @@
 import styleVariants from "../garment-viewer-style-variants.json" with { type:"json" };
 import { futureGarmentOptionsFor } from "./future-garment-options.ts";
+import type { ModelLayerSlot } from "./model-layer-contract.ts";
 
 export type GarmentCategoryStatus="live"|"planned";
 
 export type GarmentCategoryDefinition={
-  id:"shirt"|"trouser"|"blazer"|"suit";
+  id:"shirt"|"trouser"|"blazer"|"suit"|"waistcoat"|"accessories";
   label:string;
   status:GarmentCategoryStatus;
   stageLabel:string;
   description:string;
   typeExamples:string[];
   detailFamilies:string[];
+  /** Logical model slots only; planned slots have no approved 3D assets. */
+  layerSlots:readonly ModelLayerSlot[];
 };
 
 const shirtTypeExamples=styleVariants.shirtTypes.map((option)=>option.label);
@@ -21,6 +24,7 @@ const suitTypeExamples=futureGarmentOptionsFor("suit.type").map((option)=>option
 export const GARMENT_CATEGORY_LIBRARY:GarmentCategoryDefinition[]=[
   {
     id:"shirt",
+    layerSlots:["shirt"],
     label:"Shirt",
     status:"live",
     stageLabel:"3D tailoring variants live",
@@ -30,6 +34,7 @@ export const GARMENT_CATEGORY_LIBRARY:GarmentCategoryDefinition[]=[
   },
   {
     id:"trouser",
+    layerSlots:["trouser"],
     label:"Trouser",
     status:"live",
     stageLabel:"3D tailoring variants live",
@@ -39,6 +44,7 @@ export const GARMENT_CATEGORY_LIBRARY:GarmentCategoryDefinition[]=[
   },
   {
     id:"blazer",
+    layerSlots:["blazer"],
     label:"Blazer",
     status:"planned",
     stageLabel:"Future garment block",
@@ -48,12 +54,33 @@ export const GARMENT_CATEGORY_LIBRARY:GarmentCategoryDefinition[]=[
   },
   {
     id:"suit",
+    layerSlots:["shirt","trouser","blazer"],
     label:"Suit",
     status:"planned",
     stageLabel:"Future coordinated look",
     description:"Planned as a linked jacket-and-trouser system with shared fabric, proportion and formality rules.",
     typeExamples:suitTypeExamples,
     detailFamilies:["Jacket","Trouser","Lapel","Vent","Waistcoat","Button stance","Trouser pairing"],
+  },
+  {
+    id:"waistcoat",
+    layerSlots:["waistcoat"],
+    label:"Waistcoat",
+    status:"planned",
+    stageLabel:"Future middle garment layer",
+    description:"A separately fitted torso layer over the shirt and under a jacket; no approved source mesh or cloth calibration yet.",
+    typeExamples:["Single-breasted waistcoat","Double-breasted waistcoat"],
+    detailFamilies:["Neckline","Front closure","Length","Pocket","Back strap"],
+  },
+  {
+    id:"accessories",
+    layerSlots:["tie","pocket-square","belt"],
+    label:"Accessories",
+    status:"planned",
+    stageLabel:"Future attachable detail layers",
+    description:"Separate neck, chest-pocket and waistband attachments to the same locked mannequin; not selectable 3D accessories yet.",
+    typeExamples:["Tie","Pocket square","Belt"],
+    detailFamilies:["Placement","Proportion","Material","Colour","Fastening"],
   },
 ];
 
