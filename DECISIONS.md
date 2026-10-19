@@ -569,3 +569,11 @@ Architecture and product decisions that must persist across coding sessions.
 **No implicit mutation:** a shared page initially restores only two ephemeral UI slots after a strict duplicate/unknown-key and garment-role check. The user must explicitly click the maintained Designer link before any existing draft fabric choices are overridden. No measurements, address, style profile, customer identifier, operator inventory truth, supplier dimensions, fabricated garment preview or rendered image is serialized in the link.
 
 **Release scope:** stacked on the isolated, unmerged `/titan` prototype; unit and real Chromium QA are mandatory. This does not remove existing physical-fabric calibration, native scene/UV/sleeve, photo identity, human-tailor or final approval gates.
+
+## 2026-10-19 — TITAN pairing suggestions are editorial reference choices (draft)
+
+**Decision:** Introduce a pure, locally evaluated, zero-paid-AI catalogue pairing rule for the *missing* garment only, shown after selecting one real shirt or one real trouser. The rule uses existing authored names and pattern descriptors, not an assumed physical colour measurement, stock status, drape computation or invented outfit image. Style Director keeps authority over the final styling/tailoring workflow.
+
+**Consent boundary:** Users explicitly choose a suggested pair. A complete manually chosen outfit is never replaced by suggestions. Selection only updates the two ephemeral TITAN slots; existing Designer drafts, stored measurements, customer profiles, operator inventory, database writes and paid API flows remain unchanged. A separate explicit Designer CTA is needed to apply the new fabric IDs to a saved draft.
+
+**Engineering gate:** Reject unknown and wrong-garment catalogue references. Require deterministic exhaustive Node regressions and browser evidence for both shirt-first and trouser-first journeys, non-mutation and accessible phone targets. This is a stacked, unapproved TITAN interface draft. Release gates, verified physical data and model identity are unchanged.
