@@ -48,6 +48,12 @@ async function checkViewport(width) {
     assert.equal(await page.locator(".titanFabricCard").count(), 1, "Catalogue search must narrow real swatch data");
     await fabricSearch.fill("");
     assert.equal(await page.locator(".titanFabricCard").count(), 8, "Clearing search restores the initial collection");
+    await fabricSearch.fill("never-a-real-fabric");
+    assert.equal(await page.locator(".titanFabricCard").count(), 0);
+    await page.getByRole("button", { name: "Trouser cloth" }).click();
+    assert.equal(await fabricSearch.inputValue(), "", "Changing garment must clear a stale search");
+    assert.equal(await page.locator(".titanFabricCard").count(), 8, "Opposite garment should be immediately browsable");
+    await page.getByRole("button", { name: "Shirting", exact: true }).click();
     // Progressive discovery must avoid mounting every catalogue image at once.
     // A second batch is available on request, and both filters and collapse
     // restore the light eight-item initial view without touching saved looks.
@@ -258,6 +264,26 @@ async function checkViewport(width) {
       const trouser = "linen-suiting-beige";
       await page.locator(`.titanFabricTile:has(.titanFabricCard[href="/designer-studio?source=titan&kind=shirt&fabric=${shirt}"]) .titanFabricOutfitSelect`).click();
       assert.equal(await page.locator(".titanOutfitBuildCta").count(), 0);
+      assert.equal(await page.locator(".titanPairingCard").count(), 3,
+        "One real shirt must expose three catalogue-based trouser starting points");
+      const existingDesignerDraft = await page.evaluate(() => localStorage.getItem("linen-earth:real-designer-draft:v2"));
+      const suggestedTrouser = page.locator(".titanPairingCard").first();
+      assert.match(await suggestedTrouser.textContent(), /Dark Grey/);
+      assert.ok((await suggestedTrouser.locator("button").boundingBox()).height >= 44,
+        "Pairing selection must be touch accessible");
+      await suggestedTrouser.getByRole("button", { name: /Use Dark Grey with the chosen shirt reference/ }).click();
+      assert.equal(await page.locator(".titanOutfitSlot img").count(), 2,
+        "Choosing an editorial suggestion fills only the missing garment");
+      assert.equal(await page.evaluate(() => localStorage.getItem("linen-earth:real-designer-draft:v2")),
+        existingDesignerDraft, "Editorial suggestions cannot mutate the saved Designer draft");
+      assert.equal(await page.locator(".titanOutfitBuildCta").getAttribute("href"),
+        `/designer-studio?source=titan&shirt=${shirt}&trouser=linen-suiting-dark-grey`,
+        "The manually chosen shirt must be preserved exactly");
+      assert.equal(await page.locator(".titanPairingCard").count(), 0,
+        "Do not offer overriding suggestions when an explicit pair is complete");
+      await page.getByRole("button", { name: /Remove Dark Grey trouser from outfit/ }).click();
+      assert.equal(await page.locator(".titanPairingCard").count(), 3,
+        "Removing the suggested complementary cloth must restore opt-in choices");
       await page.getByRole("button", { name: "Trouser cloth" }).click();
       assert.equal(await page.locator(".titanOutfitSlot img").count(), 1, "Shirt choice must survive tab switch");
       // The default grid deliberately shows only eight references. Search for
@@ -347,6 +373,22 @@ async function checkViewport(width) {
         existingOccasionAndPreferencesPreserved: true });
       await page.goto(`${base}/titan`, { waitUntil: "domcontentloaded" });
       await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+    }
+
+    if (width === 320) {
+      // Reverse pairing direction on a real narrow phone viewport.
+      await page.getByRole("button", { name: "Trouser cloth" }).click();
+      await page.locator(".titanFabricOutfitSelect").first().click();
+      const chosenTrouser = await page.locator(".titanOutfitSlot").nth(1).locator(".titanOutfitSlotText p").textContent();
+      assert.equal(await page.locator(".titanPairingCard").count(), 3,
+        "A chosen trouser needs three real, distinct shirting alternatives");
+      await page.locator(".titanPairingCardCopy button").first().click();
+      assert.equal(await page.locator(".titanOutfitSlot img").count(), 2);
+      assert.equal(await page.locator(".titanOutfitSlot").nth(1).locator(".titanOutfitSlotText p").textContent(),
+        chosenTrouser, "Suggested shirt must preserve the chosen trouser");
+      assert.equal(await page.locator(".titanPairingCard").count(), 0);
+      summary.handoffs.push({ source: "titan-editorial-pairings", viewport: width,
+        reverseGarmentAnchorPreserved: true, physicalClaims: false });
     }
 
     const destination = width === 320 ? "/measurements" : width === 390 ? "/designer-studio" : width === 768 ? "/style-director" : "/account";
