@@ -847,6 +847,19 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         );
         if(!transforms) throw new Error("Invalid, unmeasured or renderer-clamped fabric UV scale");
         if(token!==applyToken.current) return;
+        // Hydrate and validate all six paintable material slots BEFORE
+        // GPU allocation. An incomplete GLB cannot leak orphan textures
+        // during repeated swatch changes.
+        const materials=await Promise.all(candidates.map((candidate)=>
+          ensureViewerMaterialLoaded(materialByName(viewer,candidate.panel.material))
+        ));
+        if(token!==applyToken.current) return;
+        if(materials.some((material)=>!canPaintGarmentPanelMaterial(material)))
+          throw new Error("Required garment panel is missing a paintable texture slot");
+        if(modelManifest?.uvCoordinateUnits
+          && candidates.some((candidate,index)=>!candidate.normalUrl
+            || !canPaintGarmentPanelNormalMaterial(materials[index])))
+          throw new Error("Required garment panel is missing a paintable normal-map slot");
         const prepared=await Promise.all(candidates.map(async(candidate,index)=>{
           const {panel,fabric,normalUrl}=candidate;
           const {scale,offset,rotation}=transforms[index];
@@ -890,23 +903,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         // Resolve EVERY material before changing any visible garment panel.
         // This avoids a mixed old/new outfit if the customer swaps fabric
         // while one model-viewer material is still hydrating.
-        const materials=await Promise.all(prepared.map((entry)=>
-          ensureViewerMaterialLoaded(materialByName(viewer,entry.panel.material))
-        ));
-        if(token!==applyToken.current) return;
-        // One missing material would otherwise be silently skipped while the
-        // other five panels and "success" state were committed. Fail the entire
-        // pass before mutating ANY visible fabric or material cache.
-        if(materials.some((material)=>!canPaintGarmentPanelMaterial(material)))
-          throw new Error("Required garment panel is missing a paintable texture slot");
-        // A declared UV unit contract is a production-oriented metric claim.
-        // Never publish a six-panel texture revision with a silently missing
-        // weave-normal slot, but retain colour-only support in the explicitly
-        // approximate legacy prototype path (which may lack that GLB slot).
-        if(modelManifest?.uvCoordinateUnits
-          && prepared.some((entry,index)=>!entry.normal
-            || !canPaintGarmentPanelNormalMaterial(materials[index])))
-          throw new Error("Required garment panel is missing a paintable normal-map slot");
+        // All materials passed the pre-allocation check; apply only the
+        // latest prepared fabric selection after its token guard.
         for(const [index,entry] of prepared.entries()){
           const material=materials[index];
           if(!material) throw new Error("Required garment material vanished before paint");
