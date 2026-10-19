@@ -821,6 +821,10 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       try{
         const shirtNormalMap=createLinenNormalMap(drapeNormalStrength(shirt));
         const trouserNormalMap=createLinenNormalMap(drapeNormalStrength(trouser));
+        // A physically declared GLB must not quietly downgrade to colour-only
+        // rendering when the browser cannot generate the required weave normal.
+        if(modelManifest?.uvCoordinateUnits && (!shirtNormalMap || !trouserNormalMap))
+          throw new Error("Required fabric normal-map preparation failed");
         // Synchronous, all-panel preflight must complete before even the FIRST
         // asynchronous createTexture call. Do not allocate part of an outfit
         // when a later panel or a measured tile has malformed metadata.
@@ -896,8 +900,8 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         // weave-normal slot, but retain colour-only support in the explicitly
         // approximate legacy prototype path (which may lack that GLB slot).
         if(modelManifest?.uvCoordinateUnits
-          && materials.some((material,index)=>Boolean(prepared[index]?.normal)
-            && !canPaintGarmentPanelNormalMaterial(material)))
+          && prepared.some((entry,index)=>!entry.normal
+            || !canPaintGarmentPanelNormalMaterial(materials[index])))
           throw new Error("Required garment panel is missing a paintable normal-map slot");
         for(const [index,entry] of prepared.entries()){
           const material=materials[index];
