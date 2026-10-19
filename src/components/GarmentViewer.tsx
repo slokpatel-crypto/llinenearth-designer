@@ -6,7 +6,7 @@ import {
   GARMENT_PANEL_SPECS,
   PROTOTYPE_MODEL_ID,
 } from "@/lib/garment-viewer-prototype";
-import { garmentPanelTextureScale, garmentUvRepeatsForUnits, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
+import { canPaintGarmentPanelMaterial, canPaintGarmentPanelNormalMaterial, canApplyViewerTextureUvTransform, applyViewerTextureUvTransform, garmentPanelTexturePreparationKey, prepareGarmentPanelUvTransforms, hasInvalidVerifiedViewerTileHeight, hasInvalidVerifiedViewerTileWidth, resolveViewerTileHeightMm, resolveViewerTileWidthMm, type ViewerRuntimeRenderScale } from "@/lib/garment-viewer-scale";
 import { validateGarmentViewerModelContract, validateGarmentViewerModelManifest, type GarmentViewerModelContractResult, type GarmentViewerModelManifest, type GarmentViewerManifestValidation } from "@/lib/garment-viewer-model-contract";
 import { GARMENT_VIEWER_LATENCY_STORAGE_KEY, garmentViewerAssetIdentityKey, type GarmentViewerAssetIdentity } from "@/lib/garment-viewer-readiness";
 import { GARMENT_CATEGORY_LIBRARY } from "@/lib/designer/garment-category-library";
@@ -91,6 +91,7 @@ type DesignerDraftRecipe={
 type FabricTileManifest={
   assets?:Record<string,{
     tileRealWidthMm?:number|null;
+    tileRealHeightMm?:number|null;
     repeatPeriodPx?:number|null;
     scaleApproximate?:boolean;
     renderAssetVersion?:string;
@@ -123,8 +124,14 @@ function drapeRoughnessOffset(fabric:GarmentViewerFabric|undefined) {
   const drape=fabricDrapeClass(fabric);
   return drape==="fluid"?-.08:drape==="soft"?-.04:drape==="structured"?.04:0;
 }
+// Drape classes use a small fixed strength vocabulary. Reusing their
+// procedural weave PNG avoids doing 4,096 pixel writes and PNG encoding on
+// every instant-preview fabric choice. No physical weave/drape is inferred.
+const normalMapDataUrls=new Map<number,string>();
 function createLinenNormalMap(strength=1) {
-  if(typeof document==="undefined") return "";
+  if(typeof document==="undefined" || !Number.isFinite(strength)) return "";
+  const cached=normalMapDataUrls.get(strength);
+  if(cached!==undefined) return cached;
   const canvas=document.createElement("canvas");
   canvas.width=64;canvas.height=64;
   const ctx=canvas.getContext("2d");
@@ -142,7 +149,10 @@ function createLinenNormalMap(strength=1) {
     }
   }
   ctx.putImageData(image,0,0);
-  return canvas.toDataURL("image/png");
+  const dataUrl=canvas.toDataURL("image/png");
+  if(normalMapDataUrls.size>=6) normalMapDataUrls.clear();
+  normalMapDataUrls.set(strength,dataUrl);
+  return dataUrl;
 }
 
 function materialByName(viewer:ModelViewerElement,name:string) {
@@ -378,7 +388,7 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
   const normalMapRef=useRef("");
   const applyToken=useRef(0);
   const interactionStartedAt=useRef<number|null>(null);
-  const preparedTextureRef=useRef(new Map<string,{texture:ViewerTexture;normal:ViewerTexture|null;garment:"shirt"|"trouser"}>());
+  const preparedTextureRef=useRef(new Map<string,{texture:ViewerTexture;normal:ViewerTexture|null;garment:"shirt"|"trouser";key:string}>());
   const visibleGarmentMaterialsRef=useRef(new Set(GARMENT_PANEL_SPECS.map((panel)=>panel.material)));
   const visibleButtonMaterialsRef=useRef(new Set<string>());
   const visibleSkinArmMaterialRef=useRef<string|null>(null);
@@ -811,39 +821,93 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
       try{
         const shirtNormalMap=createLinenNormalMap(drapeNormalStrength(shirt));
         const trouserNormalMap=createLinenNormalMap(drapeNormalStrength(trouser));
-        const prepared=await Promise.all(panelSpecs.map(async(panel)=>{
+        // A physically declared GLB must not quietly downgrade to colour-only
+        // rendering when the browser cannot generate the required weave normal.
+        if(modelManifest?.uvCoordinateUnits && (!shirtNormalMap || !trouserNormalMap))
+          throw new Error("Required fabric normal-map preparation failed");
+        // Synchronous, all-panel preflight must complete before even the FIRST
+        // asynchronous createTexture call. Do not allocate part of an outfit
+        // when a later panel or a measured tile has malformed metadata.
+        const candidates=panelSpecs.map((panel)=>{
           const fabric=panel.garment==="shirt"?shirt:trouser;
           const tileMm=panel.garment==="shirt"?shirtTileMm:trouserTileMm;
+          const tileAsset=tileManifest.assets?.[fabric.tileKey];
+          if(hasInvalidVerifiedViewerTileWidth(tileAsset)) throw new Error("Invalid verified horizontal textile dimension");
+          if(hasInvalidVerifiedViewerTileHeight(tileAsset)) throw new Error("Invalid verified vertical textile dimension");
+          const tileHeightMm=resolveViewerTileHeightMm(tileAsset)??tileMm;
           const normalUrl=panel.garment==="shirt"?shirtNormalMap:trouserNormalMap;
+          return {panel,fabric,normalUrl,uv:{
+            material:panel.material,widthMm:panel.widthMm,heightMm:panel.heightMm,
+            tileWidthMm:tileMm,tileHeightMm,
+            offsetU:panel.offsetU,offsetV:panel.offsetV,rotationDeg:panel.rotationDeg,
+          }};
+        });
+        const transforms=prepareGarmentPanelUvTransforms(
+          modelManifest?.uvCoordinateUnits??null,candidates.map((candidate)=>candidate.uv),
+        );
+        if(!transforms) throw new Error("Invalid, unmeasured or renderer-clamped fabric UV scale");
+        if(token!==applyToken.current) return;
+        // Hydrate and validate all six paintable material slots BEFORE
+        // GPU allocation. An incomplete GLB cannot leak orphan textures
+        // during repeated swatch changes.
+        const materials=await Promise.all(candidates.map((candidate)=>
+          ensureViewerMaterialLoaded(materialByName(viewer,candidate.panel.material))
+        ));
+        if(token!==applyToken.current) return;
+        if(materials.some((material)=>!canPaintGarmentPanelMaterial(material)))
+          throw new Error("Required garment panel is missing a paintable texture slot");
+        if(modelManifest?.uvCoordinateUnits
+          && candidates.some((candidate,index)=>!candidate.normalUrl
+            || !canPaintGarmentPanelNormalMaterial(materials[index])))
+          throw new Error("Required garment panel is missing a paintable normal-map slot");
+        const prepared=await Promise.all(candidates.map(async(candidate,index)=>{
+          const {panel,fabric,normalUrl}=candidate;
+          const {scale,offset,rotation}=transforms[index];
+          const key=garmentPanelTexturePreparationKey({
+            // A new verified garment asset may reuse the same URL. Key its
+            // texture cache by the locked asset receipt as well as the URL,
+            // so old GPU sampler objects never survive a model revision.
+            modelKey:JSON.stringify([modelUrl,assetIdentityKey]),
+            panelMaterial:panel.material,fabricUrl:fabric.image,normalUrl,
+            u:scale.u,v:scale.v,offsetU:offset.u,offsetV:offset.v,rotation,
+          });
+          // An unchanged trouser panel can reuse its independently prepared
+          // sampler when only the shirt's fabric or repeat changes.
+          const previous=preparedTextureRef.current.get(panel.material);
+          if(previous?.key===key) return {panel,texture:previous.texture,normal:previous.normal,key};
           const [texture,normal]=await Promise.all([
             viewer.createTexture!(fabric.image),
             normalUrl ? viewer.createTexture!(normalUrl) : Promise.resolve(null),
           ]);
-          // Legacy live-model GLBs use one normalized UV span per panel.
-          // A new source-authored metre-UV GLB must declare its convention in
-          // the validated manifest; never apply a normalized repeat factor to it.
-          const scale=modelManifest?.uvCoordinateUnits
-            ? garmentUvRepeatsForUnits(modelManifest.uvCoordinateUnits,panel.widthMm,panel.heightMm,tileMm)
-            : garmentPanelTextureScale(panel.widthMm,panel.heightMm,tileMm);
-          if(!scale) throw new Error("Unknown or renderer-clamped candidate physical fabric scale");
-          const offset={u:Number(panel.offsetU)||0,v:Number(panel.offsetV)||0};
-          const rotation=(Number(panel.rotationDeg)||0)*Math.PI/180;
-          texture.sampler?.setScale?.(scale);
-          texture.sampler?.setOffset?.(offset);
-          texture.sampler?.setRotation?.(rotation);
-          normal?.sampler?.setScale?.({u:clamp(scale.u*1.35,.35,100),v:clamp(scale.v*1.35,.35,100)});
-          normal?.sampler?.setOffset?.(offset);
-          normal?.sampler?.setRotation?.(rotation);
-          return {panel,texture,normal};
+          // The base-colour texture MUST support all three UV controls.
+          // An unsupported WebGL adapter cannot silently paint an unscaled
+          // tile while the UI claims a measured real-world fabric repeat.
+          const textileUv={scale,offset,rotation};
+          const normalUv={
+            scale:{u:clamp(scale.u*1.35,.35,100),v:clamp(scale.v*1.35,.35,100)},
+            offset,rotation,
+          };
+          // A partially implemented normal sampler previously skipped the
+          // phase/scale setters silently. The coarse weave then slid relative
+          // to the visible cloth when changing panels or fabric dimensions.
+          // Reject BOTH adapters before changing either sampler.
+          if(!canApplyViewerTextureUvTransform(texture,textileUv)
+            ||(normal && !canApplyViewerTextureUvTransform(normal,normalUv)))
+            throw new Error("3D base/normal texture samplers cannot apply coherent UV scale/phase");
+          if(!applyViewerTextureUvTransform(texture,textileUv)
+            ||(normal && !applyViewerTextureUvTransform(normal,normalUv)))
+            throw new Error("3D texture UV sampler rejected a validated scale/phase");
+          return {panel,texture,normal,key};
         }));
         if(token!==applyToken.current) return;
-        preparedTextureRef.current=new Map(prepared.map((entry)=>[
-          entry.panel.material,
-          {texture:entry.texture,normal:entry.normal,garment:entry.panel.garment},
-        ]));
-        for(const entry of prepared){
-          const material=await ensureViewerMaterialLoaded(materialByName(viewer,entry.panel.material));
-          if(!material) continue;
+        // Resolve EVERY material before changing any visible garment panel.
+        // This avoids a mixed old/new outfit if the customer swaps fabric
+        // while one model-viewer material is still hydrating.
+        // All materials passed the pre-allocation check; apply only the
+        // latest prepared fabric selection after its token guard.
+        for(const [index,entry] of prepared.entries()){
+          const material=materials[index];
+          if(!material) throw new Error("Required garment material vanished before paint");
           material.pbrMetallicRoughness.setBaseColorFactor([1,1,1,1]);
           material.pbrMetallicRoughness.setMetallicFactor(0);
           const fabric=entry.panel.garment==="shirt"?shirt:trouser;
@@ -851,6 +915,13 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
           material.pbrMetallicRoughness.baseColorTexture?.setTexture(entry.texture);
           if(entry.normal) material.normalTexture?.setTexture(entry.normal);
         }
+        // Cache only fully painted outfits. A graphics-adapter setter can
+        // throw despite capability preflight, and must not cause a failed
+        // half-paint to be advertised as a reusable committed texture set.
+        preparedTextureRef.current=new Map(prepared.map((entry)=>[
+          entry.panel.material,
+          {texture:entry.texture,normal:entry.normal,garment:entry.panel.garment,key:entry.key},
+        ]));
         setTextureRevision((value)=>value+1);
         if(interactionStartedAt.current!==null && modelSrc && assetIdentityKey && modelContract?.readiness==="contract_ready"){
           const duration=performance.now()-interactionStartedAt.current;
@@ -871,12 +942,19 @@ export default function GarmentViewer({shirtFabrics,trouserFabrics,modelSrc=null
         }
         setError("");
       }catch{
-        interactionStartedAt.current=null;
-        if(token===applyToken.current)setError("Fabric texture application failed. The base 3D model is still available.");
+        // A cancelled texture request belongs to an older selection and must
+        // not clear the latency clock or replace an error for the latest one.
+        if(token===applyToken.current){
+          interactionStartedAt.current=null;
+          setError("Fabric texture application failed. The base 3D model is still available.");
+        }
       }
     };
     void apply();
-  },[modelReady,materialPipelineReady,shirt,trouser,shirtTileMm,trouserTileMm,panelSpecs,productionManifestReady,modelManifest,modelContract,modelSrc,assetIdentityKey]);
+    // Cancels an in-flight texture/material pass when the viewer unmounts
+    // or its dependencies change, even before the next render effect starts.
+    return ()=>{if(applyToken.current===token) applyToken.current++;};
+  },[modelReady,materialPipelineReady,shirt,trouser,shirtTileMm,trouserTileMm,tileManifest,panelSpecs,productionManifestReady,modelManifest,modelContract,modelSrc,modelUrl,assetIdentityKey]);
 
   useEffect(()=>{
     if(!modelReady || !materialPipelineReady) return;

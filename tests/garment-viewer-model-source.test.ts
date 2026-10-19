@@ -258,5 +258,47 @@ test("explicit Blender UV units require a measured panel sidecar before candidat
   assert.match(source,/payload\["uvCoordinateUnits"\] = uv_coordinate_units/);
   const viewer=readFileSync("src/components/GarmentViewer.tsx","utf8");
   assert.match(viewer,/modelManifest\?\.uvCoordinateUnits/);
-  assert.match(viewer,/garmentUvRepeatsForUnits/);
+  assert.match(viewer,/prepareGarmentPanelUvTransforms\(/);
+  const scale=readFileSync("src/lib/garment-viewer-scale.ts","utf8");
+  // Physical repeat conversion moved to a pure, all-panel preflight helper.
+  assert.match(scale,/garmentUvRepeatsForUnits\(units,/);
+  assert.match(scale,/if\(!scale\|\|/);
+});
+
+test("rapid fabric selections cannot commit a superseded asynchronous garment material pass",()=>{
+  const source=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  const preflight=source.indexOf("const transforms=prepareGarmentPanelUvTransforms(");
+  const ready=source.indexOf("const materials=await Promise.all(candidates.map",preflight);
+  const active=source.indexOf("if(token!==applyToken.current) return;",ready);
+  const hydrated=source.indexOf("if(materials.some((material)=>!canPaintGarmentPanelMaterial(material)))",active);
+  const preparation=source.indexOf("const prepared=await Promise.all(candidates.map",hydrated);
+  const allocate=source.indexOf("viewer.createTexture!(fabric.image)",preparation);
+  const postAllocateActive=source.indexOf("if(token!==applyToken.current) return;",allocate);
+  const mutate=source.indexOf("for(const [index,entry] of prepared.entries())",postAllocateActive);
+  const cached=source.indexOf("preparedTextureRef.current=new Map",mutate);
+  const revision=source.indexOf("setTextureRevision((value)=>value+1);",cached);
+  // Both the source UV contract and the paintable six-material adapter must
+  // pass before any asynchronous GPU allocation. An unsupported sixth panel
+  // cannot allocate five good textures and then silently drop a swatch.
+  assert.ok(preflight>0&&ready>preflight&&active>ready&&hydrated>active
+    &&preparation>hydrated&&allocate>preparation&&postAllocateActive>allocate
+    &&mutate>postAllocateActive&&cached>mutate&&revision>cached);
+  assert.match(source.slice(preflight,ready),/if\(!transforms\) throw/);
+  assert.match(source.slice(hydrated,preparation),/missing a paintable normal-map slot/);
+  assert.match(source.slice(active,preparation),/Required garment panel is missing a paintable texture slot/);
+  // Synchronous material updates are committed only after all async work.
+  assert.equal(source.slice(mutate,revision).includes("await "),false);
+  assert.ok(source.includes("return ()=>{if(applyToken.current===token) applyToken.current++;};"));
+  assert.ok(source.includes("if(token===applyToken.current){") &&
+    source.includes("interactionStartedAt.current=null;"));
+});
+
+test("verified model must never silently lose a prepared weave-normal texture",()=>{
+  const source=readFileSync("src/components/GarmentViewer.tsx","utf8");
+  const prepare=source.indexOf("const trouserNormalMap=createLinenNormalMap");
+  const reject=source.indexOf('if(modelManifest?.uvCoordinateUnits && (!shirtNormalMap || !trouserNormalMap))',prepare);
+  const gpu=source.indexOf("viewer.createTexture!(fabric.image)",prepare);
+  assert.ok(prepare>=0 && reject>prepare && gpu>reject,
+    "Both normal maps must be verified before any 3D texture allocation");
+  assert.match(source,/candidates\.some\(\(candidate,index\)=>!candidate\.normalUrl\s*\|\| !canPaintGarmentPanelNormalMaterial\(materials\[index\]\)\)/);
 });
