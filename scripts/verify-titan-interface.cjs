@@ -300,6 +300,36 @@ async function checkViewport(width) {
       }
       const pairHref = `/designer-studio?source=titan&shirt=${shirt}&trouser=${trouser}`;
       assert.equal(await page.locator(".titanOutfitBuildCta").getAttribute("href"), pairHref);
+      // A device-only bookmark is opt-in, reloadable, removable, and separate
+      // from the maintained authenticated Designer draft and source model.
+      const lookbookKey = "linen-earth:titan-reference-lookbook:v1";
+      assert.equal(await page.locator(".titanLookbookCard").count(), 0);
+      const originalDraft = await page.evaluate(() => localStorage.getItem("linen-earth:real-designer-draft:v2"));
+      const saveButton = page.getByRole("button", { name: "Save this pair on this device" });
+      assert.ok((await saveButton.boundingBox()).height >= 44, "Local save must have a phone-friendly target");
+      await saveButton.click();
+      assert.equal(await page.locator(".titanLookbookCard").count(), 1);
+      assert.equal(await page.getByRole("button", { name: "Saved on this device" }).isDisabled(), true);
+      assert.deepEqual(await page.evaluate(key => JSON.parse(localStorage.getItem(key)), lookbookKey),
+        { version: 1, pairs: [{ shirtId: shirt, trouserId: trouser }] });
+      assert.equal(await page.evaluate(() => localStorage.getItem("linen-earth:real-designer-draft:v2")),
+        originalDraft, "Saving a public cloth reference must not write the customer Designer draft");
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+      assert.equal(await page.locator(".titanLookbookCard").count(), 1, "Local reference should survive browser reload");
+      assert.equal(await page.locator(".titanOutfitSlot img").count(), 0,
+        "Reload must not silently load bookmarked cloths into the current selection");
+      await page.locator(".titanLookbookCardActions button").first().click();
+      assert.equal(await page.locator(".titanOutfitBuildCta").getAttribute("href"), pairHref,
+        "Explicit reopen must restore exactly the stored public reference IDs");
+      assert.equal(await page.locator(".titanLookbookCardActions button").first().boundingBox().then(b => b.height >= 44), true);
+      await page.locator(".titanLookbookCardActions button").last().click();
+      assert.equal(await page.locator(".titanLookbookCard").count(), 0);
+      assert.deepEqual(await page.evaluate(key => JSON.parse(localStorage.getItem(key)).pairs, lookbookKey), []);
+      assert.equal(await page.locator(".titanOutfitBuildCta").getAttribute("href"), pairHref,
+        "Removing a bookmark must not silently change the live outfit");
+      summary.handoffs.push({ source: "titan-device-lookbook", saved: true,
+        persistedAcrossReload: true, removed: true, designerDraftPreserved: true });
       // Reopen a shared outfit in a fresh page load. A link contains only two
       // real swatch IDs, never the customer's stored Designer measurements.
       const shareHref = `/titan?source=outfit&shirt=${shirt}&trouser=${trouser}#titan-outfit-builder`;
