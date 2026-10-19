@@ -77,3 +77,11 @@ A failing gate is a development task, **not** a justification to remove it, lowe
 When the owner says **Continue**, take the **highest-priority independent, currently unblocked engineering task**, examine the latest branch/PR state, implement actual changes, test them, and report files/commit/tests/blockers. Aim for 30–60 minutes of useful development where session/tool limits permit; elapsed time itself is not a substitute for tangible code or verified QA.
 
 Do not replace testing with concept renders, inflate progress percentages, claim unverified CI outcomes, or merge/deploy unfinished 3D.
+
+
+### 19 October — two-swatch discovery comparison (draft)
+
+- The `/titan` catalogue explorer now offers a same-garment, two-reference visual comparison of existing swatch photos. Customers can shortlist, remove, clear, switch between shirting/trouser cloth, and choose either exact ID in the maintained Designer Studio.
+- The comparison is intentionally **visual only**. Physical colour in calibrated lighting, repeat scale, material composition, drape, stock and supplier details remain unverified unless independently evidenced. No generated swatches or invented properties.
+- Pure transition tests enforce the two-item limit, reject stale / wrong-garment IDs and prevent implicit selection replacement. Chromium regression exercises comparison, keyboard-sized controls, original swatch image decoding, garment switching and clear behavior at 320/390/768/1440px.
+- Customer records, saved drafts, source model identity, deployed homepage, paid-AI integrations and existing 3D workflows remain unchanged. **No merge/deploy**; matching-head CI and browser evidence still required.
