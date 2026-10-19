@@ -46,7 +46,7 @@ assert result["productionApproved"] is False
 
 # Force a regression to persistently report body contact. During each trial
 # simulate legitimate bounded body-normal repair that changes ALL coordinates,
-# not only X. The rollback must restore original XYZ even after five attempts.
+# not only X. The rollback must restore original XYZ even after all bounded falloff trials.
 original = {
     obj.name: tuple(tuple(vertex.co) for vertex in obj.data.vertices)
     for obj in (left, right)
@@ -82,11 +82,70 @@ finally:
 
 assert rejected["nativeWorldSpaceCollisionFree"] is False, rejected
 assert rejected["selectedPeakSeamReliefMm"] == 0
-assert len(rejected["trials"]) == 5
+assert len(rejected["trials"]) == 14
 assert all(trial["boundedBodyContactCorrections"] for trial in rejected["trials"])
 for obj in (left, right):
     assert tuple(tuple(vertex.co) for vertex in obj.data.vertices) == original[obj.name], (
         "Rejected garment seam trial retained a Y/Z correction: " + obj.name
     )
 assert tuple(tuple(vertex.co) for vertex in body.data.vertices) == body_before
+# Test the separate leg-gap coarse-to-fine transition with a deterministic
+# simulated collision boundary on ACTUAL Blender mesh transforms. This checks
+# that a failed fine trial never remains on the garment and the locked source
+# body remains byte-for-byte unchanged; source-scene BVH is tested separately.
+sample_index = next(i for i, vertex in enumerate(left.data.vertices)
+                    if abs(author.candidate_leg_inboard_mm(
+                        left.name, vertex.co.z, 1.0)) > .01)
+start_x = left.data.vertices[sample_index].co.x
+unit_factor = author.candidate_leg_inboard_mm(
+    left.name, left.data.vertices[sample_index].co.z, 1.0)
+
+
+def bounded_simulated_contact(one, two):
+    if one is left and two is right:
+        actual_mm = (left.data.vertices[sample_index].co.x-start_x)*1000/unit_factor
+        return 1 if actual_mm > 3.2 else 0
+    return 0
+
+
+try:
+    author.source_fit_collision_pairs = bounded_simulated_contact
+    refined = author.restore_collision_free_leg_gap(
+        body, 0.0, 1.0, 3.5, applied_mm=0.0
+    )
+finally:
+    author.source_fit_collision_pairs = physical_pairs
+assert refined["nativeWorldSpaceCollisionFree"] is True, refined
+assert refined["coarseSafeMmPerLeg"] == 3.0, refined
+assert refined["selectedMmPerLeg"] == 3.125, refined
+assert refined["fineProbesRequested"] == [3.375, 3.25, 3.125]
+assert refined["trials"][-1]["candidateInboardMmPerLeg"] == 3.125
+assert refined["trials"][-1]["legToLegIntersectionPairs"] == 0
+assert tuple(tuple(vertex.co) for vertex in body.data.vertices) == body_before
+assert refined["tailorFitApproved"] is False
+assert refined["productionApproved"] is False
+
+# Reject every fine probe after one valid coarse shift: the final mesh
+# MUST return to that accepted coarse stance, not the last colliding 3.125 mm.
+def reject_fine_probes(one, two):
+    if one is left and two is right:
+        actual_mm = (left.data.vertices[sample_index].co.x-start_x)*1000/unit_factor
+        return 1 if actual_mm > 3.01 else 0
+    return 0
+
+
+try:
+    author.source_fit_collision_pairs = reject_fine_probes
+    coarse_only = author.restore_collision_free_leg_gap(
+        body, 0.0, 1.0, 3.5, applied_mm=3.125
+    )
+finally:
+    author.source_fit_collision_pairs = physical_pairs
+assert coarse_only["nativeWorldSpaceCollisionFree"] is True, coarse_only
+assert coarse_only["selectedMmPerLeg"] == 3.0, coarse_only
+assert coarse_only["trials"][-1]["candidateInboardMmPerLeg"] == 3.0
+assert coarse_only["trials"][-1]["legToLegIntersectionPairs"] == 0
+assert abs((left.data.vertices[sample_index].co.x-start_x)*1000/unit_factor-3.0) < .0001
+assert tuple(tuple(vertex.co) for vertex in body.data.vertices) == body_before
+
 print("LINEN_EARTH_NATIVE_CROTCH_SEAM_CONTACT_REPAIR: PASS")

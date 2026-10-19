@@ -23,11 +23,11 @@ from mathutils.bvhtree import BVHTree
 # Blender. It must not be mistaken for a material-calibrated cloth simulation.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from drape_preview_math import MAX_PREVIEW_RELIEF_MM, candidate_drape_offset_mm
-from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical_metric_face_uv
+from uv_candidate_audit import audit_uv_triangles, metric_planar_uv, cylindrical_metric_face_uv, cylindrical_ambiguous_face_diagnostic, metric_tangent_chart_uv, audit_shared_uv_edges, phase_align_cylindrical_charts, align_metric_tangent_charts, classify_unapproved_uv_seams, estimate_source_tube_radius_m
 from region_islands import keep_ankle_connected_faces
-from sleeve_stance_math import MAX_INBOARD_MM, candidate_sleeve_inboard_mm
+from sleeve_stance_math import MAX_INBOARD_MM, candidate_sleeve_inboard_mm, bounded_sleeve_cuff_refinement_trials
 from leg_stance_math import MAX_INBOARD_MM as MAX_LEG_INBOARD_MM, candidate_leg_inboard_mm, candidate_inner_seam_relief_mm
-from leg_gap_safety import bounded_leg_gap_trials
+from leg_gap_safety import bounded_leg_gap_trials, bounded_leg_gap_refinement_trials
 
 BODY_NAME = "Body"
 EXPORT_COLLECTION = "LinenEarthExport"
@@ -467,7 +467,10 @@ def restore_collision_free_leg_gap(body, body_floor_z, body_height, requested_mm
         ]
 
     attempts = []
-    for candidate_mm in bounded_leg_gap_trials(requested_mm):
+
+    def evaluate_trial(candidate_mm):
+        # Always start with the SAME post-fitting XYZ base. Failed probes
+        # must never accumulate a previous contour or alter body coordinates.
         for name, obj in zip(names, legs):
             for index, vertex in enumerate(obj.data.vertices):
                 ratio = (vertex.co.z - body_floor_z) / body_height
@@ -476,23 +479,52 @@ def restore_collision_free_leg_gap(body, body_floor_z, body_height, requested_mm
                 ) / 1000.0
             obj.data.update()
         bpy.context.view_layer.update()
-
-        # A smaller visual gap is NEVER allowed to penetrate either leg or
-        # the original model. These are real evaluated world-space BVH pairs.
-        leg_pairs = source_fit_collision_pairs(legs[0], legs[1])
-        left_body = source_fit_collision_pairs(body, legs[0])
-        right_body = source_fit_collision_pairs(body, legs[1])
         trial = {
             "candidateInboardMmPerLeg": candidate_mm,
-            "legToLegIntersectionPairs": leg_pairs,
-            "leftBodyIntersectionPairs": left_body,
-            "rightBodyIntersectionPairs": right_body,
+            "legToLegIntersectionPairs": source_fit_collision_pairs(legs[0], legs[1]),
+            "leftBodyIntersectionPairs": source_fit_collision_pairs(body, legs[0]),
+            "rightBodyIntersectionPairs": source_fit_collision_pairs(body, legs[1]),
         }
         attempts.append(trial)
-        if leg_pairs == left_body == right_body == 0:
+        return trial
+
+    def collision_free(trial):
+        return (trial["legToLegIntersectionPairs"] ==
+                trial["leftBodyIntersectionPairs"] ==
+                trial["rightBodyIntersectionPairs"] == 0)
+
+    last_rejected_mm = None
+    for candidate_mm in bounded_leg_gap_trials(requested_mm):
+        trial = evaluate_trial(candidate_mm)
+        if collision_free(trial):
+            selected_mm = candidate_mm
+            coarse_safe_mm = candidate_mm
+            refinement_candidates = ()
+            if last_rejected_mm is not None:
+                # The 0.5-mm coarse rollback may leave a visibly unnecessary
+                # remainder. Make at most three smaller, physical-BVH-checked
+                # probes within the last rejected/safe bracket. A failed probe
+                # is NEVER treated as numerically or physically safe.
+                refinement_candidates = bounded_leg_gap_refinement_trials(
+                    last_rejected_mm, candidate_mm
+                )
+                for refined_mm in refinement_candidates:
+                    refined_trial = evaluate_trial(refined_mm)
+                    if collision_free(refined_trial):
+                        selected_mm = refined_mm
+                        break
+            if attempts[-1]["candidateInboardMmPerLeg"] != selected_mm:
+                # The final rejected fine probe changed real mesh positions.
+                # Reapply and independently remeasure the accepted candidate;
+                # never leave the scene at its last rejected trial.
+                restored_trial = evaluate_trial(selected_mm)
+                if not collision_free(restored_trial):
+                    raise RuntimeError("Previously safe trouser fit did not survive BVH restoration")
             evidence = {
                 "requestedMmPerLeg": requested_mm,
-                "selectedMmPerLeg": candidate_mm,
+                "coarseSafeMmPerLeg": coarse_safe_mm,
+                "selectedMmPerLeg": selected_mm,
+                "fineProbesRequested": list(refinement_candidates),
                 "trials": attempts,
                 "nativeWorldSpaceCollisionFree": True,
                 "photographicPoseApproved": False,
@@ -500,10 +532,11 @@ def restore_collision_free_leg_gap(body, body_floor_z, body_height, requested_mm
                 "productionApproved": False,
             }
             for obj in legs:
-                obj["linen_earth_trouser_leg_inboard_candidate_mm"] = candidate_mm
+                obj["linen_earth_trouser_leg_inboard_candidate_mm"] = selected_mm
                 obj["linen_earth_leg_gap_rollback_audit_json"] = json.dumps(evidence, sort_keys=True)
             print("SOURCE_FIT_LEG_GAP_COLLISION_ROLLBACK=" + json.dumps(evidence, sort_keys=True))
             return evidence
+        last_rejected_mm = candidate_mm
 
     # Even the original post-fit candidate may have a colliding crotch seam.
     # Preserve this rejected scene for FOUR-angle diagnostic rendering, but
@@ -584,14 +617,25 @@ def trial_inner_crotch_seam_relief(body, floor_z, height, centre_x):
         )
 
     attempts = []
-    for peak_mm in (2.0, 4.0, 6.0, 8.0, 10.0):
+    # Keep the measured default 65-mm taper trials first. If those cannot
+    # separate cloth without touching source skin, try smaller/larger LOCAL
+    # falloff footprints before rejecting the candidate. Every trial restores
+    # full XYZ and is independently checked against both real leg/body BVHs.
+    # These are experiments, never a bypass of the zero-contact rule.
+    contours = [(peak, .065) for peak in (2.0, 4.0, 6.0, 8.0, 10.0)]
+    contours += [
+        (peak, taper) for taper in (.03, .045, .08)
+        for peak in (3.0, 4.0, 5.0)
+    ]
+    for peak_mm, taper_width_m in contours:
         restore()
         for obj in legs:
             for index, vertex in enumerate(obj.data.vertices):
                 position = original[obj.name][index]
                 ratio = (position.z - floor_z) / height
                 vertex.co.x = position.x + candidate_inner_seam_relief_mm(
-                    obj.name, ratio, position.x - centre_x, peak_mm
+                    obj.name, ratio, position.x - centre_x, peak_mm,
+                    taper_width_m=taper_width_m
                 ) / 1000.0
             obj.data.update()
         bpy.context.view_layer.update()
@@ -612,6 +656,7 @@ def trial_inner_crotch_seam_relief(body, floor_z, height, centre_x):
         after = contacts()
         trial = {
             "peakSeamReliefMm": peak_mm,
+            "contourTaperWidthMm": round(taper_width_m * 1000, 3),
             "legToLegPairsBeforeRepair": before[0],
             "leftBodyPairsBeforeRepair": before[1],
             "rightBodyPairsBeforeRepair": before[2],
@@ -624,6 +669,7 @@ def trial_inner_crotch_seam_relief(body, floor_z, height, centre_x):
         if after == (0, 0, 0):
             evidence = {
                 "selectedPeakSeamReliefMm": peak_mm,
+                "selectedContourTaperWidthMm": round(taper_width_m * 1000, 3),
                 "nativeWorldSpaceCollisionFree": True,
                 "trials": attempts,
                 "photographicPoseApproved": False,
@@ -641,6 +687,7 @@ def trial_inner_crotch_seam_relief(body, floor_z, height, centre_x):
     restore()
     evidence = {
         "selectedPeakSeamReliefMm": 0.0,
+        "selectedContourTaperWidthMm": None,
         "nativeWorldSpaceCollisionFree": False,
         "trials": attempts,
         "photographicPoseApproved": False,
@@ -656,51 +703,52 @@ def trial_inner_crotch_seam_relief(body, floor_z, height, centre_x):
 
 
 def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
-    """Find a bounded cloth-only cuff correction without moving either arm.
+    """Independently contact-gated cloth-only sleeve correction.
 
-    The source sleeves sit about 75 mm wider than the locked 500-mm centre
-    guide. A raw 20-mm/side inboard experiment pierced the original body.
-    Now trial the already-bounded 0..22-mm contour on FINAL solidified cloth,
-    repair only real source-skin contacts along measured normals (<=12 mm
-    per affected vertex), and reject/restore all XYZ on any failed trial.
-    This is NOT a human posture edit, sewn sleeve fit, or photo approval.
+    Probe at 1-mm resolution, then sample ONLY the last measured rejected/safe
+    bracket at submillimetre resolution. Rebuild every trial from untouched
+    post-fit garment XYZ; keep the original human/body pose immutable. A fine
+    candidate is never called safe from arithmetic alone: repair and remeasure
+    both sleeve/body and sleeve/sleeve world-space BVH contacts every time.
     """
-    if not math.isfinite(requested_mm) or not 0 <= requested_mm <= MAX_INBOARD_MM:
-        raise RuntimeError("Unapproved sleeve gap request must be within 0..22 mm")
+    required = (requested_mm, floor_z, height)
+    if any(isinstance(v, (bool, str, bytes)) or not isinstance(v, (int, float))
+           or not math.isfinite(v) for v in required):
+        raise RuntimeError("Cuff trial requires finite numeric source-frame values")
+    if not 0 <= requested_mm <= MAX_INBOARD_MM or height <= 0:
+        raise RuntimeError("Cuff trial exceeds 0..22 mm contour or source-frame bounds")
     names = ("ShirtSleeveLFabric", "ShirtSleeveRFabric")
     sleeves = [bpy.data.objects.get(name) for name in names]
     if any(obj is None or obj.type != "MESH" for obj in sleeves):
         raise RuntimeError("Both source-derived sleeves are required for cuff spacing QA")
-    if not all(math.isfinite(x) for x in (floor_z, height)) or height <= 0:
-        raise RuntimeError("Cuff trial requires a positive finite source frame")
     original = {
         obj.name: [vertex.co.copy() for vertex in obj.data.vertices]
         for obj in sleeves
     }
 
-    def restore():
+    def restore(source):
         for obj in sleeves:
-            for vertex, position in zip(obj.data.vertices, original[obj.name]):
+            if len(obj.data.vertices) != len(source[obj.name]):
+                raise RuntimeError("Source sleeve topology changed during a contact trial")
+            for vertex, position in zip(obj.data.vertices, source[obj.name]):
                 vertex.co = position
             obj.data.update()
         bpy.context.view_layer.update()
 
-    attempts = []
-    # Largest correction first; all trials use the ORIGINAL post-fit cloth.
-    # Half-millimetre tuning would be possible, but cannot substitute for a
-    # photographic/cuff-coverage gate and would add needless BVH passes.
-    values = [round(max(0.0, requested_mm - i), 6)
-              for i in range(math.ceil(requested_mm) + 1)]
-    if values[-1] != 0.0:
-        values.append(0.0)
-    for mm in dict.fromkeys(values):
-        restore()
+    def snapshot():
+        return {obj.name: [vertex.co.copy() for vertex in obj.data.vertices]
+                for obj in sleeves}
+
+    def evaluate(mm):
+        # A rejected repair may have changed X, Y and Z, not only horizontal
+        # spacing. Every candidate starts from the same source-locked shell.
+        restore(original)
         for obj in sleeves:
             for index, vertex in enumerate(obj.data.vertices):
                 position = original[obj.name][index]
-                height_ratio = (position.z - floor_z) / height
+                ratio = (position.z - floor_z) / height
                 vertex.co.x = position.x + candidate_sleeve_inboard_mm(
-                    obj.name, height_ratio, mm
+                    obj.name, ratio, mm
                 ) / 1000.0
             obj.data.update()
         bpy.context.view_layer.update()
@@ -716,35 +764,66 @@ def try_collision_safe_cuff_spacing(body, floor_z, height, requested_mm):
                 }
         after = [source_fit_collision_pairs(body, obj) for obj in sleeves]
         sleeve_pairs = source_fit_collision_pairs(sleeves[0], sleeves[1])
-        attempts.append({
+        evidence = {
             "requestedCuffInboardMmPerSleeve": mm,
             "bodyPairsBeforeRepair": before,
             "bodyPairsAfterRepair": after,
             "sleeveToSleevePairs": sleeve_pairs,
             "boundedBodyContactCorrections": repairs,
-        })
-        if after == [0, 0] and sleeve_pairs == 0:
-            evidence = {
-                "requestedMmPerSleeve": requested_mm,
-                "selectedMmPerSleeve": mm,
-                "nativeWorldSpaceCollisionFree": True,
-                "trials": attempts,
-                "photographicPoseApproved": False,
-                "tailorSleeveApproved": False,
-                "productionApproved": False,
-            }
-            for obj in sleeves:
-                obj["linen_earth_sleeve_cuff_inboard_candidate_mm"] = mm
-                obj["linen_earth_sleeve_spacing_evidence_json"] = json.dumps(evidence, sort_keys=True)
-            print("SOURCE_FIT_SLEEVE_GAP_COLLISION_ROLLBACK=" + json.dumps(evidence, sort_keys=True))
-            return evidence
+        }
+        return evidence, after == [0, 0] and sleeve_pairs == 0
 
-    restore()
+    values = [round(max(0.0, requested_mm-i), 6)
+              for i in range(math.ceil(requested_mm)+1)]
+    if values[-1] != 0.0:
+        values.append(0.0)
+    attempts = []
+    last_rejected = None
+    for mm in dict.fromkeys(values):
+        trial, safe = evaluate(mm)
+        attempts.append(trial)
+        if not safe:
+            last_rejected = mm
+            continue
+
+        selected_mm = mm
+        safe_positions = snapshot()
+        # Every fine candidate is separately contact-checked. Never assume
+        # monotonically improving clearance as cloth moves towards the body.
+        if last_rejected is not None and last_rejected > mm:
+            for fine_mm in bounded_sleeve_cuff_refinement_trials(last_rejected, mm):
+                fine_trial, fine_safe = evaluate(fine_mm)
+                attempts.append(fine_trial)
+                if fine_safe:
+                    selected_mm = fine_mm
+                    safe_positions = snapshot()
+                    break
+        # Failed fine probes may alter all XYZ through normal-direction
+        # repairs. Commit ONLY the last independently safe full XYZ snapshot.
+        restore(safe_positions)
+        evidence = {
+            "requestedMmPerSleeve": requested_mm,
+            "selectedMmPerSleeve": selected_mm,
+            "nativeWorldSpaceCollisionFree": True,
+            "trials": attempts,
+            "submillimetreContactRefinementAttempted": last_rejected is not None,
+            "photographicPoseApproved": False,
+            "tailorSleeveApproved": False,
+            "productionApproved": False,
+        }
+        for obj in sleeves:
+            obj["linen_earth_sleeve_cuff_inboard_candidate_mm"] = selected_mm
+            obj["linen_earth_sleeve_spacing_evidence_json"] = json.dumps(evidence, sort_keys=True)
+        print("SOURCE_FIT_SLEEVE_GAP_COLLISION_ROLLBACK=" + json.dumps(evidence, sort_keys=True))
+        return evidence
+
+    restore(original)
     evidence = {
         "requestedMmPerSleeve": requested_mm,
         "selectedMmPerSleeve": 0.0,
         "nativeWorldSpaceCollisionFree": False,
         "trials": attempts,
+        "submillimetreContactRefinementAttempted": False,
         "photographicPoseApproved": False,
         "tailorSleeveApproved": False,
         "productionApproved": False,
@@ -781,13 +860,12 @@ def planar_grain_uv(obj):
         max_y = max(vertex.co.y for vertex in mesh.vertices)
         max_x = max(vertex.co.x for vertex in mesh.vertices)
         cx, cy = (min_x + max_x) * 0.5, (min_y + max_y) * 0.5
-        radial_distances = sorted(
-            math.hypot(vertex.co.x - cx, vertex.co.y - cy) for vertex in mesh.vertices
+        radius_m = estimate_source_tube_radius_m(
+            [tuple(vertex.co) for vertex in mesh.vertices]
         )
-        radius_m = radial_distances[len(radial_distances) // 2]
-        if radius_m <= 0.015:
-            raise RuntimeError(f"Degenerate source tube for candidate UV: {obj.name}")
         fallback_faces = 0
+        fallback_receipts = []
+        unapproved_tangent_indices = []
         for polygon in mesh.polygons:
             loops = tuple(polygon.loop_indices)
             xyz = [
@@ -801,23 +879,78 @@ def planar_grain_uv(obj):
                     xyz, center_xy=(cx, cy), radius_m=radius_m, origin_z=min_z
                 )
             except ValueError as error:
-                # A non-tubular source polygon can span both sides of the
-                # estimated arm/leg axis. Do NOT invent a full-wrap seam there:
-                # fall back to the already validated metre XZ projection and
-                # expose the face count as an unapproved UV topology deficit.
+                # A near-axis source quad can exceed half a cylindrical turn.
+                # An XZ projection compresses the true 3D face there. Build a
+                # separate metre-scale tangent chart, retaining its unapproved
+                # seam flag until neighbouring chart continuity is authored.
                 if "ambiguous half-cylinder seam" not in str(error):
                     raise
                 fallback_faces += 1
-                uv_points = [
-                    metric_planar_uv(point, origin_x=min_x, origin_z=min_z)
-                    for point in xyz
-                ]
+                unapproved_tangent_indices.append(polygon.index)
+                receipt = cylindrical_ambiguous_face_diagnostic(
+                    xyz, center_xy=(cx, cy)
+                )
+                receipt["sourcePolygonIndex"] = polygon.index
+                receipt["mapping"] = "metric_tangent_face_chart_requires_seam_stitch"
+                fallback_receipts.append(receipt)
+                uv_points = metric_tangent_chart_uv(xyz)
             for i, uv_point in zip(loops, uv_points):
                 uv_layer.data[i].uv = uv_point
+        # Adjacent cylindrical faces can differ by an arbitrary full-turn U
+        # origin. Align ONLY numerically exact circumference shifts along
+        # genuine shared source edges. Tangent fallback charts are excluded.
+        # Remaining seam breaks stay visible and release-blocking.
+        chart_faces = [
+            [
+                (mesh.loops[i].vertex_index, tuple(uv_layer.data[i].uv))
+                for i in polygon.loop_indices
+            ]
+            for polygon in mesh.polygons
+        ]
+        aligned_faces, phase_report = phase_align_cylindrical_charts(
+            chart_faces, radius_m=radius_m,
+            excluded_face_indices=unapproved_tangent_indices,
+        )
+        aligned_faces, tangent_report = align_metric_tangent_charts(
+            aligned_faces, tangent_face_indices=unapproved_tangent_indices
+        )
+        for polygon, face in zip(mesh.polygons, aligned_faces):
+            for loop_index, (_, uv_xy) in zip(polygon.loop_indices, face):
+                uv_layer.data[loop_index].uv = uv_xy
+        obj["linen_earth_uv_tangent_alignment_evidence_json"] = json.dumps(
+            tangent_report, sort_keys=True
+        )
+        # Real current garment vertex positions in metres: report how long
+        # candidate UV cut chains actually are and whether they run axially.
+        # Neither these geometric lengths nor verticality prove fabric grain.
+        uv_cut_classification = classify_unapproved_uv_seams(
+            aligned_faces, radius_m=radius_m,
+            tangent_face_indices=unapproved_tangent_indices,
+            source_vertex_positions=[
+                tuple(vertex.co) for vertex in mesh.vertices
+            ],
+        )
+        obj["linen_earth_uv_cut_classification_json"] = json.dumps(
+            uv_cut_classification, sort_keys=True
+        )
+        print("SOURCE_FIT_UV_CUT_CLASSIFICATION=" + obj.name + ":" +
+              json.dumps(uv_cut_classification, sort_keys=True))
+        obj["linen_earth_uv_phase_alignment_evidence_json"] = json.dumps(
+            phase_report, sort_keys=True
+        )
         obj["linen_earth_uv_geometry_radius_estimate_mm"] = round(radius_m * 1000, 3)
         obj["linen_earth_uv_mixed_projection_fallback_faces"] = fallback_faces
+        obj["linen_earth_uv_unapproved_local_tangent_chart_faces"] = fallback_faces
+        obj["linen_earth_uv_fallback_spatial_evidence_json"] = json.dumps({
+            "faceCount": fallback_faces,
+            "sourcePolygonIndices": [face["sourcePolygonIndex"] for face in fallback_receipts],
+            "sampledFaceBounds": fallback_receipts[:12],
+            "originalSourceModelPreserved": True,
+            "seamLayoutApproved": False,
+            "productionApproved": False,
+        }, sort_keys=True)
         obj["linen_earth_uv_seam_certified"] = False
-        method = "uncalibrated_metric_cylindrical_tube"
+        method = "uncalibrated_metric_cylindrical_plus_local_tangent_seam_charts"
     else:
         for polygon in mesh.polygons:
             for loop_index in polygon.loop_indices:
@@ -844,8 +977,20 @@ def audit_authored_panel_uv(obj):
     for tri in mesh.loop_triangles:
         xyz = tuple(tuple(mesh.vertices[mesh.loops[i].vertex_index].co) for i in tri.loops)
         uv_coords = tuple(tuple(uv.data[i].uv) for i in tri.loops)
-        triangles.append((xyz, uv_coords))
+        triangles.append((xyz, uv_coords, tri.polygon_index))
+    # Source polygon IDs survive stable evaluated triangulation. Keep a
+    # bounded face-level hotspot inventory for targeted unapproved chart work.
     result = audit_uv_triangles(triangles)
+    faces = [
+        [
+            (mesh.loops[loop_index].vertex_index, tuple(uv.data[loop_index].uv))
+            for loop_index in polygon.loop_indices
+        ]
+        for polygon in mesh.polygons
+    ]
+    seam_audit = audit_shared_uv_edges(faces)
+    result["sharedEdgeContinuity"] = seam_audit
+    obj["linen_earth_uv_shared_edge_audit_json"] = json.dumps(seam_audit, sort_keys=True)
     obj["linen_earth_uv_candidate_audit_json"] = json.dumps(result, sort_keys=True)
     return result
 
@@ -996,26 +1141,43 @@ def main():
     cuff_audit = try_collision_safe_cuff_spacing(
         body, min_z, height, options.sleeve_cuff_inboard_mm
     )
-    for name, post_count in zip(
-        ("ShirtSleeveLFabric", "ShirtSleeveRFabric"),
-        cuff_audit["trials"][-1]["bodyPairsAfterRepair"],
+    # The final attempted fine probe is not necessarily the SAFE snapshot.
+    # Recompute source-world BVH contacts on the restored, actually retained
+    # meshes. Never record the last rejected trial as the final garment state.
+    sleeves = [bpy.data.objects[name] for name in
+               ("ShirtSleeveLFabric", "ShirtSleeveRFabric")]
+    legs = [bpy.data.objects[name] for name in
+            ("TrouserLegLFabric", "TrouserLegRFabric")]
+    sleeve_contact_final = [source_fit_collision_pairs(body, obj) for obj in sleeves]
+    sleeve_mutual_final = source_fit_collision_pairs(sleeves[0], sleeves[1])
+    leg_contact_final = [source_fit_collision_pairs(body, obj) for obj in legs]
+    leg_mutual_final = source_fit_collision_pairs(legs[0], legs[1])
+    for obj, post_count in zip(sleeves, sleeve_contact_final):
+        fit_stage_report[obj.name]["postCuffBodyPairs"] = post_count
+        fit_stage_report[obj.name]["postCuffSelectedMmPerSleeve"] = cuff_audit["selectedMmPerSleeve"]
+        fit_stage_report[obj.name]["postCuffSleevePairs"] = sleeve_mutual_final
+    for obj, post_count in zip(legs, leg_contact_final):
+        fit_stage_report[obj.name]["postGapRollbackBodyPairs"] = post_count
+        fit_stage_report[obj.name]["postGapRollbackLegPairs"] = leg_mutual_final
+        fit_stage_report[obj.name]["postGapRollbackSelectedMm"] = leg_gap_audit["selectedMmPerLeg"]
+    # A claimed collision-free rollback MUST describe the retained mesh, not
+    # merely one safe intermediate probe: release remains closed on mismatch.
+    if cuff_audit["nativeWorldSpaceCollisionFree"] and (
+        sleeve_contact_final != [0, 0] or sleeve_mutual_final != 0
     ):
-        fit_stage_report[name]["postCuffBodyPairs"] = post_count
-        fit_stage_report[name]["postCuffSelectedMmPerSleeve"] = cuff_audit["selectedMmPerSleeve"]
-
-    for name in ("TrouserLegLFabric", "TrouserLegRFabric"):
-        fit_stage_report[name]["postGapRollbackBodyPairs"] = (
-            leg_gap_audit["trials"][-1]["leftBodyIntersectionPairs"]
-            if name == "TrouserLegLFabric"
-            else leg_gap_audit["trials"][-1]["rightBodyIntersectionPairs"]
-        )
-        fit_stage_report[name]["postGapRollbackLegPairs"] = (
-            leg_gap_audit["trials"][-1]["legToLegIntersectionPairs"]
-        )
-        fit_stage_report[name]["postGapRollbackSelectedMm"] = leg_gap_audit["selectedMmPerLeg"]
+        raise RuntimeError("Restored cuff snapshot failed final independent BVH contact recheck")
+    if leg_gap_audit["nativeWorldSpaceCollisionFree"] and (
+        leg_contact_final != [0, 0] or leg_mutual_final != 0
+    ):
+        raise RuntimeError("Restored leg-gap snapshot failed final independent BVH contact recheck")
     for obj in authored:
         planar_grain_uv(obj)
         candidate_uv_report[obj.name] = audit_authored_panel_uv(obj)
+    uv_seam_evidence = {
+        obj.name: json.loads(obj["linen_earth_uv_fallback_spatial_evidence_json"])
+        for obj in authored if "linen_earth_uv_fallback_spatial_evidence_json" in obj
+    }
+    print("SOURCE_FIT_UV_SEAM_SPATIAL_EVIDENCE=" + json.dumps(uv_seam_evidence, sort_keys=True))
 
     bpy.context.scene["linen_earth_uv_candidate_audit_json"] = json.dumps(candidate_uv_report, sort_keys=True)
     bpy.context.scene["linen_earth_uv_coordinate_units"] = "mesh_metres"

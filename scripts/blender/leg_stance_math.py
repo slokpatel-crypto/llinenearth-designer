@@ -36,7 +36,7 @@ def candidate_leg_inboard_mm(panel, height_ratio, requested_mm):
 MAX_INNER_SEAM_RELIEF_MM = 10.0
 
 
-def candidate_inner_seam_relief_mm(panel, height_ratio, x_from_midline_m, peak_mm):
+def candidate_inner_seam_relief_mm(panel, height_ratio, x_from_midline_m, peak_mm, *, taper_width_m=0.065):
     """Small garment-only OUTBOARD displacement around the crotch seam.
 
     Applies solely to the inner-leg overlap band seen in native mesh evidence
@@ -47,10 +47,11 @@ def candidate_inner_seam_relief_mm(panel, height_ratio, x_from_midline_m, peak_m
         raise ValueError("Only source trouser legs may receive inner-seam relief")
     if any(isinstance(v, (str, bytes, bool)) or not isinstance(v, (int, float))
            or not math.isfinite(v)
-           for v in (height_ratio, x_from_midline_m, peak_mm)):
+           for v in (height_ratio, x_from_midline_m, peak_mm, taper_width_m)):
         raise ValueError("Inner seam candidate needs finite numeric coordinates")
-    if not 0 <= height_ratio <= 1 or not 0 <= peak_mm <= MAX_INNER_SEAM_RELIEF_MM:
-        raise ValueError("Inner seam candidate outside approved geometry-only bound")
+    if (not 0 <= height_ratio <= 1 or not 0 <= peak_mm <= MAX_INNER_SEAM_RELIEF_MM
+            or not 0.015 <= taper_width_m <= 0.09):
+        raise ValueError("Inner seam candidate outside bounded geometry-only contour")
 
     def smoothstep(t):
         t = min(1.0, max(0.0, t))
@@ -58,6 +59,6 @@ def candidate_inner_seam_relief_mm(panel, height_ratio, x_from_midline_m, peak_m
 
     lower = smoothstep((height_ratio - .39) / .05)
     upper = smoothstep((.55 - height_ratio) / .05)
-    near_midline = 1.0 - smoothstep((abs(x_from_midline_m) - .015) / .065)
+    near_midline = 1.0 - smoothstep((abs(x_from_midline_m) - .015) / taper_width_m)
     amount = peak_mm * lower * upper * near_midline
     return -amount if panel == "TrouserLegLFabric" else amount

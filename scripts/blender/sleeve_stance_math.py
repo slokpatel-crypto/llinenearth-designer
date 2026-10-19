@@ -33,3 +33,118 @@ def candidate_sleeve_inboard_mm(panel, body_height_ratio, requested_mm):
         )
         fade = t * t * (3.0 - 2.0 * t)
     return (requested_mm if panel == "ShirtSleeveLFabric" else -requested_mm) * fade
+
+
+
+def optimistic_sleeve_spacing_budget(current_spacing_mm, applied_mm_per_sleeve, *,
+                                     target_mm=500.0, tolerance_mm=36.0):
+    """Upper bound on what the REMAINING cloth-only contour can achieve.
+
+    At best, another delta mm inboard on EACH sleeve reduces centre spacing
+    by 2*delta; actual taper and body-skin collision repairs can do LESS.
+    This is deliberately not body pose inference, a fit certificate or
+    permission to exceed the original 22-mm cloth-only displacement cap.
+    """
+    values = (current_spacing_mm, applied_mm_per_sleeve, target_mm, tolerance_mm)
+    if any(isinstance(value, (str, bytes, bool))
+           or not isinstance(value, (int, float))
+           or not math.isfinite(value) for value in values):
+        raise ValueError("Sleeve contour budget needs finite numeric millimetres")
+    if (current_spacing_mm < 0 or not 0 <= applied_mm_per_sleeve <= MAX_INBOARD_MM
+            or target_mm <= 0 or not 0 <= tolerance_mm <= target_mm):
+        raise ValueError("Sleeve contour budget exceeds immutable fit bounds")
+    remaining = MAX_INBOARD_MM - applied_mm_per_sleeve
+    best_case = max(0.0, current_spacing_mm - 2.0 * remaining)
+    upper = target_mm + tolerance_mm
+    lower = target_mm - tolerance_mm
+    required_inboard = max(0.0, (current_spacing_mm - upper) / 2.0)
+    # This says only whether the remaining capped contour COULD cross the
+    # guide numerically; it is never a collision-free geometry assertion.
+    reachable = lower <= current_spacing_mm and best_case <= upper
+    return {
+        "measuredCurrentSpacingMm": round(current_spacing_mm, 3),
+        "guideBandMm": [round(lower, 3), round(upper, 3)],
+        "remainingContourBudgetMmPerSleeve": round(remaining, 3),
+        "requiredExtraMmPerSleeveAtFullEffect": round(required_inboard, 3),
+        "optimisticMinimumSpacingMm": round(best_case, 3),
+        "guideNumericallyReachableWithinExistingContourCap": reachable,
+        "fullDisplacementEffectAssumedOnlyAsOptimisticBound": True,
+        "bodyPoseNotEvaluatedByNumericBudget": True,
+        "bodyContactOrFitApproved": False,
+        "productionApproved": False,
+    }
+
+
+def source_arm_band_geometry(points_xyz, *, guide_z_m, side,
+                             source_center_x_m=0.0,
+                             min_lateral_offset_m=0.155, band_half_height_m=0.06):
+    """Measure the original BODY arm-side envelope at the cuff guide height.
+
+    This keeps the scanned body untouched and reports only a lateral band
+    centre derived from actual world-space source vertices, NOT an anatomical
+    hand-joint location or permission to alter the locked model pose. Cuff
+    cloth shifting away from a measured arm shell can be collision-unsafe.
+    """
+    controls = (guide_z_m, source_center_x_m,
+                min_lateral_offset_m, band_half_height_m)
+    if (isinstance(side, bool) or side not in (-1, 1)
+            or any(isinstance(v, (str, bytes, bool))
+                   or not isinstance(v, (int, float)) or not math.isfinite(v)
+                   for v in controls)
+            or not 0 < min_lateral_offset_m <= .5
+            or not 0 < band_half_height_m <= .12):
+        raise ValueError("Body arm-band reference needs finite bounded guides")
+    leftmost = math.inf
+    rightmost = -math.inf
+    n = 0
+    for xyz in points_xyz:
+        if len(xyz) != 3 or any(
+            isinstance(v, (str, bytes, bool)) or not isinstance(v, (int, float))
+            or not math.isfinite(v) for v in xyz
+        ):
+            raise ValueError("Body arm-band source positions need finite XYZ")
+        x, _, z = xyz
+        if (abs(z-guide_z_m) <= band_half_height_m and
+                side*(x-source_center_x_m) >= min_lateral_offset_m):
+            leftmost = min(leftmost, x)
+            rightmost = max(rightmost, x)
+            n += 1
+    if n < 4:
+        return None
+    return {
+        "sourceSideBandCentreXMm": round((leftmost+rightmost)*500.0, 4),
+        "sourceSideBandWidthMm": round((rightmost-leftmost)*1000.0, 4),
+        "sampledSourceVertexCount": n,
+        "anatomicalJointCentreMeasured": False,
+        "photoPoseApproved": False,
+        "productionApproved": False,
+    }
+
+
+def bounded_sleeve_cuff_refinement_trials(unsafe_above_mm, safe_below_mm, *, subdivisions=4):
+    """Only probe in the independently BVH-measured rejected/safe bracket.
+
+    A coarse 1-mm rollback can conceal a further safe submillimetre cloth
+    correction. These descending probes are *not* proof of monotonic body
+    clearance: every candidate needs a fresh two-sleeve/world-space BVH test.
+    Never move the source human or increase the existing 22-mm contour cap.
+    """
+    values = (unsafe_above_mm, safe_below_mm)
+    if any(isinstance(v, (bool, str, bytes)) or not isinstance(v, (int, float))
+           or not math.isfinite(v) for v in values):
+        raise ValueError("Sleeve refinement needs finite numeric shifts")
+    if (not 0 <= safe_below_mm < unsafe_above_mm <= MAX_INBOARD_MM
+            or unsafe_above_mm - safe_below_mm > 1.000001
+            or unsafe_above_mm - safe_below_mm <= 0.00001):
+        raise ValueError("Sleeve refinement needs a resolvable <=1-mm contact bracket")
+    if (isinstance(subdivisions, bool) or not isinstance(subdivisions, int)
+            or not 2 <= subdivisions <= 8):
+        raise ValueError("Sleeve refinement subdivisions must be 2..8")
+    candidates = tuple(round(
+        unsafe_above_mm - (unsafe_above_mm-safe_below_mm)*step/subdivisions, 6
+    ) for step in range(1, subdivisions))
+    if not all(safe_below_mm < value < unsafe_above_mm for value in candidates):
+        raise ValueError("Sleeve refinement precision must stay inside source bracket")
+    if not all(a > b for a, b in zip(candidates, candidates[1:])):
+        raise ValueError("Sleeve refinement has duplicate measured candidates")
+    return candidates

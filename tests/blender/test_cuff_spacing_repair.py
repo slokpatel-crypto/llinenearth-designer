@@ -91,4 +91,53 @@ for obj in (left, right):
         "Sleeve rollback did not restore all XYZ coordinates"
     )
 assert tuple(tuple(vertex.co) for vertex in body.data.vertices) == source_before
+
+# The source-body mock rejects any candidate above 11.5 mm per sleeve.
+# This produces a genuine coarse BVH bracket (12 unsafe, 11 safe). A finer
+# candidate at 11.75 mm is rejected after intentionally disturbing Y/Z;
+# the 11.5-mm independently tested pass must leave NO rejected XYZ behind.
+coarse_start = {
+    obj.name: tuple(tuple(vertex.co) for vertex in obj.data.vertices)
+    for obj in (left, right)
+}
+def contact_bracket(first, second):
+    if first is not body:
+        return 0
+    origin = coarse_start[second.name][0]
+    vertex = second.data.vertices[0]
+    effect = abs(author.candidate_sleeve_inboard_mm(second.name, origin[2], 1.0))
+    movement_mm = abs(vertex.co.x - origin[0]) * 1000 / effect
+    return 1 if movement_mm > 11.5001 else 0
+
+def perturb_failed_sleeve(_body, obj, _passes):
+    for vertex in obj.data.vertices:
+        vertex.co.y += .004
+        vertex.co.z += .003
+    obj.data.update()
+    bpy.context.view_layer.update()
+    return {
+        "contactPairsByPass": [1],
+        "maxVertexCorrectionMm": 5.0,
+        "remainingContactPairs": 1,
+    }
+
+try:
+    author.source_fit_collision_pairs = contact_bracket
+    author.repair_body_intersections = perturb_failed_sleeve
+    refined = author.try_collision_safe_cuff_spacing(body, 0, 1, 22.0)
+finally:
+    author.source_fit_collision_pairs = actual_contact
+    author.repair_body_intersections = actual_repair
+assert refined["nativeWorldSpaceCollisionFree"] is True, refined
+assert refined["selectedMmPerSleeve"] == 11.5, refined
+assert refined["submillimetreContactRefinementAttempted"] is True, refined
+assert any(t["requestedCuffInboardMmPerSleeve"] == 11.75 for t in refined["trials"])
+for obj in (left, right):
+    for vertex, origin in zip(obj.data.vertices, coarse_start[obj.name]):
+        expected = author.candidate_sleeve_inboard_mm(obj.name, origin[2], 11.5) / 1000
+        assert abs(vertex.co.x - (origin[0] + expected)) < 1e-6
+        assert abs(vertex.co.y - origin[1]) < 1e-6, "Rejected fine trial leaked Y"
+        assert abs(vertex.co.z - origin[2]) < 1e-6, "Rejected fine trial leaked Z"
+assert tuple(tuple(vertex.co) for vertex in body.data.vertices) == source_before
+
 print("LINEN_EARTH_NATIVE_CUFF_SPACING_REPAIR: PASS")

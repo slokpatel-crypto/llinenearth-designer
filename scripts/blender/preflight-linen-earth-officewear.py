@@ -12,6 +12,11 @@ import sys
 import bpy
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from uv_candidate_audit import audit_shared_uv_edges, audit_uv_triangles, classify_unapproved_uv_seams, validate_recomputed_source_cut_evidence, verify_evaluated_tube_radius_m, validate_independent_uv_hotspots
+from sleeve_stance_math import source_arm_band_geometry, optimistic_sleeve_spacing_budget
 
 EXPORT_COLLECTION = "LinenEarthExport"
 REFERENCE_BODY = "Body"
@@ -82,7 +87,32 @@ def evaluated_mesh_stats(obj):
         uv_collapsed = 0
         uv_nonfinite = 0
         uv_channel = mesh.uv_layers.active
+        metric_uv_scan = None
+        metric_uv_scan_error = None
+        hotspot_integrity = None
+        hotspot_integrity_error = None
         if uv_channel is not None:
+            try:
+                # Independent, evaluated 3D triangle geometry: unlike triangle
+                # area alone, this catches U/V stretch tradeoffs and shear.
+                metric_uv_scan = audit_uv_triangles([
+                    (
+                        tuple(tuple(mesh.vertices[mesh.loops[i].vertex_index].co)
+                              for i in triangle.loops),
+                        tuple(tuple(uv_channel.data[i].uv) for i in triangle.loops),
+                        triangle.polygon_index,
+                    )
+                    for triangle in mesh.loop_triangles
+                ])
+                authored_uv = json.loads(str(obj.get(
+                    "linen_earth_uv_candidate_audit_json", ""
+                )))
+                hotspot_integrity = validate_independent_uv_hotspots(
+                    authored_uv, metric_uv_scan
+                )
+            except (ValueError, TypeError, OverflowError, ZeroDivisionError, KeyError) as exc:
+                metric_uv_scan_error = str(exc)
+                hotspot_integrity_error = str(exc)
             for triangle in mesh.loop_triangles:
                 coords = [uv_channel.data[loop_idx].uv for loop_idx in triangle.loops]
                 if any(not math.isfinite(axis) for uv in coords for axis in uv):
@@ -94,7 +124,73 @@ def evaluated_mesh_stats(obj):
                 dvy = coords[2].y - coords[0].y
                 if abs(dux * dvy - duy * dvx) <= 1e-10:
                     uv_collapsed += 1
+        seam_audit = None
+        seam_audit_error = None
+        source_cut_report = None
+        source_cut_error = None
+        source_cut_integrity = None
+        radius_integrity = None
+        if uv_channel is not None:
+            try:
+                evaluated_source_faces = [
+                    [
+                        (mesh.loops[i].vertex_index, tuple(uv_channel.data[i].uv))
+                        for i in polygon.loop_indices
+                    ]
+                    for polygon in mesh.polygons
+                ]
+                seam_audit = audit_shared_uv_edges(evaluated_source_faces)
+                if obj.name.startswith(("ShirtSleeve", "TrouserLeg")):
+                    # Rebuild the candidate-cut classification from the ACTUAL
+                    # evaluated source geometry; do not accept authoring JSON
+                    # as an independent mesh verification or sewn-seam approval.
+                    radius_mm = obj.get("linen_earth_uv_geometry_radius_estimate_mm")
+                    radius_integrity = verify_evaluated_tube_radius_m(
+                        [tuple(vertex.co) for vertex in mesh.vertices],
+                        radius_mm,
+                    )
+                    spatial = json.loads(str(obj.get(
+                        "linen_earth_uv_fallback_spatial_evidence_json", ""
+                    )))
+                    if not isinstance(spatial, dict) or not isinstance(
+                            spatial.get("sourcePolygonIndices"), list):
+                        raise ValueError("Missing actual tangent chart source polygon indices")
+                    source_cut_report = classify_unapproved_uv_seams(
+                        evaluated_source_faces,
+                        radius_m=radius_mm / 1000,
+                        tangent_face_indices=spatial["sourcePolygonIndices"],
+                        source_vertex_positions=[tuple(vertex.co)
+                                                 for vertex in mesh.vertices],
+                    )
+                    if (source_cut_report["unapprovedInteriorUvSeams"] !=
+                            seam_audit["unapprovedInteriorUvSeams"]):
+                        raise ValueError("Independent source seam topology counts disagree")
+                    # Only the evaluated Blender mesh establishes real
+                    # source-cut lengths. Reject missing/stale authoring
+                    # receipts or altered seams even when first 16 samples
+                    # look identical. Float32 scene rounding is bounded.
+                    authored_cut = json.loads(str(obj.get(
+                        "linen_earth_uv_cut_classification_json", ""
+                    )))
+                    source_cut_integrity = validate_recomputed_source_cut_evidence(
+                        authored_cut, source_cut_report
+                    )
+            except (ValueError, TypeError, RuntimeError, KeyError) as exc:
+                # Invalid source topology and missing cut provenance are
+                # explicit release failures, but keep other panel diagnostics.
+                seam_audit_error = str(exc)
+                source_cut_error = str(exc)
         return {
+            "uvIndependentMetricDistortionScan": metric_uv_scan,
+            "uvIndependentMetricDistortionError": metric_uv_scan_error,
+            "uvIndependentSourceHotspotIntegrity": hotspot_integrity,
+            "uvIndependentSourceHotspotError": hotspot_integrity_error,
+            "uvSharedEdgeAudit": seam_audit,
+            "uvSharedEdgeAuditError": seam_audit_error,
+            "uvIndependentSourceCutReport": source_cut_report,
+            "uvIndependentSourceCutError": source_cut_error,
+            "uvIndependentSourceCutIntegrity": source_cut_integrity,
+            "uvIndependentTubeRadiusIntegrity": radius_integrity,
             "uvCollapsedTriangles": uv_collapsed,
             "uvNonFiniteTriangles": uv_nonfinite,
             "vertices": vertices,
@@ -372,6 +468,76 @@ def main():
     right_sleeve_width = width_at_z(bpy.data.objects.get("ShirtSleeveRFabric"), right_hand_z, 0.060)
     sleeve_spacing = abs(right_sleeve_center - left_sleeve_center) if left_sleeve_center is not None and right_sleeve_center is not None else None
     cuff_width_asymmetry = abs(left_sleeve_width - right_sleeve_width) if left_sleeve_width is not None and right_sleeve_width is not None else None
+    # Diagnose the still-wide cuffs against the unchanged real BODY scan,
+    # without adjusting either skin or the model identity tolerance. A body
+    # lateral surface-band centre is explicitly NOT a hand joint measurement.
+    left_body_arm_band = right_body_arm_band = None
+    if body is not None and body.type == "MESH" and left_hand_z is not None and right_hand_z is not None:
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        evaluated_body = body.evaluated_get(depsgraph)
+        body_mesh = evaluated_body.to_mesh()
+        try:
+            body_world = evaluated_body.matrix_world
+            original_body_xyz = [tuple(body_world @ vertex.co) for vertex in body_mesh.vertices]
+            body_span = world_bounds(body)
+            body_center_x = (min(v.x for v in body_span) + max(v.x for v in body_span))*0.5
+            left_body_arm_band = source_arm_band_geometry(
+                original_body_xyz, guide_z_m=left_hand_z, side=-1,
+                source_center_x_m=body_center_x,
+            )
+            right_body_arm_band = source_arm_band_geometry(
+                original_body_xyz, guide_z_m=right_hand_z, side=1,
+                source_center_x_m=body_center_x,
+            )
+        except ValueError as exc:
+            warnings.append(f"Unchanged source arm-band geometry could not be sampled: {exc}")
+        finally:
+            evaluated_body.to_mesh_clear()
+    identity_measurements["sourceBodyArmBandsGeometryOnly"] = {
+        "left": left_body_arm_band,
+        "right": right_body_arm_band,
+        "anatomicalPoseApproved": False,
+    }
+    identity_measurements["sleeveVsSourceBandCentreOffsetMm"] = {
+        "left": (round(left_sleeve_center-left_body_arm_band["sourceSideBandCentreXMm"], 2)
+                 if left_body_arm_band is not None and left_sleeve_center is not None else None),
+        "right": (round(right_sleeve_center-right_body_arm_band["sourceSideBandCentreXMm"], 2)
+                  if right_body_arm_band is not None and right_sleeve_center is not None else None),
+    }
+    identity_measurements["sourceBodyArmBandSpacingMm"] = (
+        round(abs(right_body_arm_band["sourceSideBandCentreXMm"] -
+                  left_body_arm_band["sourceSideBandCentreXMm"]), 2)
+        if left_body_arm_band is not None and right_body_arm_band is not None else None
+    )
+    # Quantify whether even the ideal remaining bounded contour could reach
+    # the locked photographed hand-spacing guide. This is optimistic arithmetic
+    # on measured garment spacing plus candidate metadata, NOT clearance or
+    # permission to shift a sleeve through the unchanged source-body skin.
+    selected_contour_mm = []
+    for panel_name in ("ShirtSleeveLFabric", "ShirtSleeveRFabric"):
+        sleeve_obj = bpy.data.objects.get(panel_name)
+        candidate_mm = (sleeve_obj.get("linen_earth_sleeve_cuff_inboard_candidate_mm")
+                        if sleeve_obj is not None else None)
+        if (isinstance(candidate_mm, (int, float)) and not isinstance(candidate_mm, bool)
+                and math.isfinite(candidate_mm) and 0 <= candidate_mm <= 22):
+            selected_contour_mm.append(float(candidate_mm))
+    budget = None
+    if (sleeve_spacing is not None and len(selected_contour_mm) == 2
+            and abs(selected_contour_mm[0] - selected_contour_mm[1]) <= 0.001):
+        budget = optimistic_sleeve_spacing_budget(
+            sleeve_spacing, selected_contour_mm[0],
+            target_mm=EXPECTED_IDENTITY_TARGETS_MM["handCenterSpacing"],
+            tolerance_mm=36.0,
+        )
+        if not budget["guideNumericallyReachableWithinExistingContourCap"]:
+            warnings.append(
+                "Optimistic sleeve contour budget cannot reach the locked hand-spacing "
+                f"guide: even full remaining <=22 mm/side contour effect leaves "
+                f"{budget['optimisticMinimumSpacingMm']:.1f} mm; "
+                f"guide upper limit is {budget['guideBandMm'][1]:.1f} mm. "
+                "This does not authorize body edits or new sleeve collisions."
+            )
+    identity_measurements["sleeveContourOptimisticBudgetNotFitApproval"] = budget
     identity_measurements["sleeveCenterSpacingMm"] = round(sleeve_spacing, 2) if sleeve_spacing is not None else None
     identity_measurements["cuffWidthAsymmetryMm"] = round(cuff_width_asymmetry, 2) if cuff_width_asymmetry is not None else None
     if sleeve_spacing is None:
@@ -453,9 +619,87 @@ def main():
                 f"{name} has {stats['uvCollapsedTriangles']} collapsed UV triangles; "
                 "no real stripe/check physical pattern scale can be approved from this surface."
             )
+        # A UV map can have perfect area and still stretch checks/stripes:
+        # independent 3D Jacobian length evidence must not be lost.
+        metric_scan = stats["uvIndependentMetricDistortionScan"]
+        if stats["uvIndependentMetricDistortionError"]:
+            reasons.append(
+                f"{name} failed independent metre-UV distortion verification: "
+                f"{stats['uvIndependentMetricDistortionError']}."
+            )
+        elif metric_scan is not None and metric_scan["candidateUvMetricDistortionReviewRequired"]:
+            # Report the *real distorted surface coverage*, rather than
+            # letting uneven triangulation hide problems in a percentage of
+            # faces. Find the Z band with the largest affected cloth area.
+            bands = metric_scan["uvDistortionHeightBands"]
+            coverage = metric_scan["uvDistortedSurfacePct"]
+            if coverage is None:
+                coverage_label = "unmeasurable (no usable UV surface)"
+                zone_label = "no valid region available to localize"
+            elif coverage == 0:
+                coverage_label = "0.00% of usable UV surface"
+                zone_label = "no qualifying metric-distortion region (other UV defects may exist)"
+            else:
+                worst = max(bands, key=lambda band: band["distortedAreaM2"])
+                span = worst["heightBandPct"]
+                coverage_label = f"{coverage:.2f}%"
+                zone_label = f"largest damaged-area local height zone {span[0]}–{span[1]}%"
+            reasons.append(
+                f"{name} needs true texture metric review: "
+                f"{metric_scan['uvTrianglesAnisotropyOver2']} triangles exceed 2x anisotropy; "
+                f"{metric_scan['uvTrianglesMetricScaleDeviationOver50Pct']} exceed "
+                "50% local mesh-metre stretch deviation; "
+                f"UV distortion coverage: {coverage_label}; "
+                f"{zone_label}. Textile scale is unapproved."
+            )
+        seam_audit = stats["uvSharedEdgeAudit"]
+        if stats["uvIndependentSourceCutError"]:
+            reasons.append(
+                f"{name} lacks independently verified source-cut geometry evidence: "
+                f"{stats['uvIndependentSourceCutError']}."
+            )
+        elif stats["uvIndependentSourceCutReport"] is not None:
+            source_cuts = stats["uvIndependentSourceCutReport"]
+            # These metrics describe mesh-edge lengths and topology only.
+            # Even a clean numerical report has no supplier or tailor signoff.
+            if source_cuts["zeroLengthSourceUvTearEdges"] > 0:
+                reasons.append(
+                    f"{name} has {source_cuts['zeroLengthSourceUvTearEdges']} "
+                    "zero-length UV tear edges in actual garment geometry."
+                )
+        if stats["uvSharedEdgeAuditError"]:
+            reasons.append(
+                f"{name} failed independent UV seam topology audit: "
+                f"{stats['uvSharedEdgeAuditError']}."
+            )
+        elif seam_audit is not None:
+            if seam_audit["unapprovedInteriorUvSeams"] > 0:
+                reasons.append(
+                    f"{name} has {seam_audit['unapprovedInteriorUvSeams']} unreviewed "
+                    "shared-edge UV discontinuities on real garment topology; "
+                    "authored fabric seam placement, repeat and grain need review."
+                )
+            if seam_audit["inconsistentWindingEdges"] > 0:
+                reasons.append(
+                    f"{name} has {seam_audit['inconsistentWindingEdges']} shared garment "
+                    "edges with matching face traversal direction; UV agreement "
+                    "cannot certify an incorrectly wound cloth shell."
+                )
+            if seam_audit["nonManifoldEdges"] > 0:
+                reasons.append(
+                    f"{name} has {seam_audit['nonManifoldEdges']} nonmanifold "
+                    "source edges; UV chart continuation is ambiguous."
+                )
         uv_fallback_faces = int(obj.get("linen_earth_uv_mixed_projection_fallback_faces", 0))
+        uv_tangent_faces = int(obj.get("linen_earth_uv_unapproved_local_tangent_chart_faces", 0))
         entry["candidateUvFallbackFaces"] = uv_fallback_faces
-        if uv_fallback_faces > 0:
+        entry["candidateUvTangentChartFaces"] = uv_tangent_faces
+        if uv_tangent_faces > 0:
+            reasons.append(
+                f"{name} uses {uv_tangent_faces} unapproved local metric tangent UV charts "
+                "on a cylindrical garment; stitch and verify true pattern seams before production."
+            )
+        elif uv_fallback_faces > 0:
             reasons.append(
                 f"{name} uses {uv_fallback_faces} uncalibrated planar UV fallback faces "
                 "on a cylindrical garment; resolve genuine seams before production."

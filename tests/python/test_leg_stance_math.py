@@ -58,6 +58,27 @@ class LegStanceTests(unittest.TestCase):
             module.candidate_inner_seam_relief_mm("TrouserLegLFabric", .46, -.1, 8), 0
         )
 
+
+    def test_crotch_seam_taper_variants_only_adjust_local_cloth(self):
+        outer = module.candidate_inner_seam_relief_mm(
+            "TrouserLegLFabric", .46, .06, 4, taper_width_m=.065
+        )
+        narrow = module.candidate_inner_seam_relief_mm(
+            "TrouserLegLFabric", .46, .06, 4, taper_width_m=.03
+        )
+        self.assertLess(outer, 0)
+        self.assertEqual(narrow, 0)
+        for taper in (.03, .045, .065, .08):
+            for ratio in (.10, .35, .60, .90):
+                self.assertEqual(module.candidate_inner_seam_relief_mm(
+                    "TrouserLegRFabric", ratio, .01, 5, taper_width_m=taper
+                ), 0)
+        for taper in (-1, 0, .014, .091, float("nan"), True):
+            with self.subTest(taper=taper), self.assertRaises(ValueError):
+                module.candidate_inner_seam_relief_mm(
+                    "TrouserLegRFabric", .46, .01, 5, taper_width_m=taper
+                )
+
     def test_inner_seam_relief_fails_closed_on_unbounded_inputs(self):
         for panel, ratio, x, peak in [
             ("ShirtTorsoFabric", .46, 0, 8),
