@@ -577,3 +577,12 @@ Architecture and product decisions that must persist across coding sessions.
 **Consent boundary:** Users explicitly choose a suggested pair. A complete manually chosen outfit is never replaced by suggestions. Selection only updates the two ephemeral TITAN slots; existing Designer drafts, stored measurements, customer profiles, operator inventory, database writes and paid API flows remain unchanged. A separate explicit Designer CTA is needed to apply the new fabric IDs to a saved draft.
 
 **Engineering gate:** Reject unknown and wrong-garment catalogue references. Require deterministic exhaustive Node regressions and browser evidence for both shirt-first and trouser-first journeys, non-mutation and accessible phone targets. This is a stacked, unapproved TITAN interface draft. Release gates, verified physical data and model identity are unchanged.
+
+
+## 2026-10-19 — TITAN device-only lookbook is not the existing saved-design service
+
+**Decision:** Let customers optionally bookmark up to six pairs of existing public shirt/trouser catalogue reference IDs on their own device while the new `/titan` prototype remains unreleased. The schema is deliberately tiny and versioned (`linen-earth:titan-reference-lookbook:v1`); strict allowlisting excludes injected profile/measurement/stock/product fields, swapped garment IDs and old-format data. An explicit click is required to write a pair or reopen one.
+
+**Boundaries:** Browser storage is not authenticated, server-backed or cross-device and can be cleared. It does not update the Designer draft, measurement profile, source model, inventory, supplier data, Style Director decisions or any order. A reopened pair changes only two ephemeral TITAN selections and still requires the existing Designer CTA to apply it. Storage failures are visible, not silently reported as success.
+
+**Verification and release:** Exhaustive catalogue tests and real browser save/reload/reopen/remove checks must pass on the exact branch HEAD. Preserve all identity, source 3D, native preflight, fabric provenance and owner acceptance gates; **draft only, no merge or deployment**.
