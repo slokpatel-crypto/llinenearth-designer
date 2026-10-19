@@ -273,3 +273,34 @@ test("oversized persisted tailoring style strings fail aggregate integrity prefl
   assert.equal(signal.evidence,0);
   assert.match(signal.summary,/revalidation/i);
 });
+
+test("separator-injected candidate cannot impersonate a real reviewed cut-family bucket",()=>{
+  const bucket={key:"Formal::regular::straight::tapered::balanced",
+    occasion:"Formal" as const,shirtFit:"regular",trouser:"straight",
+    torso:"tapered",seat:"balanced",clean:3,minor:0,major:0,total:3};
+  const book={version:"designer-fit-outcomes-v1" as const,totalReviews:3,
+    usableBuckets:1,buckets:[bucket]};
+  const genuine={occasion:"Formal" as const,style:{shirtFit:"regular",trouser:"straight"},
+    proportion:{torso:"tapered",seat:"balanced"}};
+  assert.equal(fitOutcomeSignalFor(genuine,book).evidence,3);
+  const forged={occasion:"Formal" as const,
+    style:{shirtFit:"regular::straight",trouser:"tapered"},
+    proportion:{torso:"balanced",seat:""}};
+  // Unsanitized delimiter concatenation would be indistinguishable from
+  // the legitimate five-field key, inflating a nonmatching customer's score.
+  assert.equal(["Formal",forged.style.shirtFit,forged.style.trouser,
+    forged.proportion.torso,forged.proportion.seat].join("::"),bucket.key);
+  for(const malformed of [
+    forged,
+    {...genuine,style:{...genuine.style,shirtFit:" regular"}},
+    {...genuine,style:{...genuine.style,trouser:"straight "}},
+    {...genuine,style:{...genuine.style,trouser:"x".repeat(121)}},
+    {...genuine,proportion:{...genuine.proportion,seat:"invented"}},
+    null,
+  ]){
+    const signal=fitOutcomeSignalFor(malformed as Parameters<typeof fitOutcomeSignalFor>[0],book);
+    assert.equal(signal.score,0);
+    assert.equal(signal.evidence,0);
+    assert.match(signal.summary,/revalidation/i);
+  }
+});
