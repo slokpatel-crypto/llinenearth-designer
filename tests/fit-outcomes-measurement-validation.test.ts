@@ -286,12 +286,17 @@ test("separator-injected candidate cannot impersonate a real reviewed cut-family
   const forged={occasion:"Formal" as const,
     style:{shirtFit:"regular::straight",trouser:"tapered"},
     proportion:{torso:"balanced",seat:""}};
-  // Unsanitized delimiter concatenation would be indistinguishable from
-  // the legitimate five-field key, inflating a nonmatching customer's score.
+  // Two different malformed candidates serialize to the same ambiguous
+  // key. Neither must be considered a validated style or body-proportion.
+  const alternate={occasion:"Formal" as const,
+    style:{shirtFit:"regular",trouser:"straight::tapered"},
+    proportion:{torso:"balanced",seat:""}};
   assert.equal(["Formal",forged.style.shirtFit,forged.style.trouser,
-    forged.proportion.torso,forged.proportion.seat].join("::"),bucket.key);
+    forged.proportion.torso,forged.proportion.seat].join("::"),
+    ["Formal",alternate.style.shirtFit,alternate.style.trouser,
+      alternate.proportion.torso,alternate.proportion.seat].join("::"));
   for(const malformed of [
-    forged,
+    forged,alternate,
     {...genuine,style:{...genuine.style,shirtFit:" regular"}},
     {...genuine,style:{...genuine.style,trouser:"straight "}},
     {...genuine,style:{...genuine.style,trouser:"x".repeat(121)}},
