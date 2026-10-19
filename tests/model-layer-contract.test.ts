@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { LINEN_EARTH_MODEL_IDENTITY_ID } from "../src/lib/designer/model-identity.ts";
+import { GARMENT_CATEGORY_LIBRARY } from "../src/lib/designer/garment-category-library.ts";
 import {
   MODEL_LAYER_PLAN_VERSION, MODEL_LAYER_SLOTS, resolveModelLayerPlan,
   type ModelLayerSlot, type OutfitComposition,
@@ -106,6 +107,26 @@ test("Every subset stays deterministic and never claims certified geometry or ph
         for (const layer of result.layers) {
           assert.ok(layer.prerequisites.every(dep => selected.includes(dep)));
         }
+      }
+    }
+  }
+});
+
+test("Existing Designer and 3D roadmap categories map to the same extension registry without enabling new renderers", () => {
+  const byId = new Map(GARMENT_CATEGORY_LIBRARY.map(item => [item.id, item]));
+  assert.deepEqual(byId.get("shirt")?.layerSlots, ["shirt"]);
+  assert.deepEqual(byId.get("trouser")?.layerSlots, ["trouser"]);
+  assert.deepEqual(byId.get("blazer")?.layerSlots, ["blazer"]);
+  assert.deepEqual(byId.get("suit")?.layerSlots, ["shirt", "trouser", "blazer"]);
+  assert.deepEqual(byId.get("waistcoat")?.layerSlots, ["waistcoat"]);
+  assert.deepEqual(byId.get("accessories")?.layerSlots, ["tie", "pocket-square", "belt"]);
+  for (const category of GARMENT_CATEGORY_LIBRARY) {
+    assert.ok(category.layerSlots.length > 0);
+    for (const slot of category.layerSlots) {
+      const descriptor = MODEL_LAYER_SLOTS.find(layer => layer.slot === slot);
+      assert.ok(descriptor, "Garment cards must map to real logical slots.");
+      if (descriptor.implementation === "new-asset-required") {
+        assert.equal(category.status, "planned", "Never mark an unverified garment extension live.");
       }
     }
   }
