@@ -25,8 +25,12 @@ def bounded_leg_gap_trials(requested_mm, *, step_mm=0.5):
     if (isinstance(step_mm, (str, bytes, bool))
             or not isinstance(step_mm, (int, float))
             or not math.isfinite(step_mm)
-            or not 0 < step_mm <= 1):
-        raise ValueError("Leg rollback step must be finite and within (0, 1] mm")
+            or not 0.125 <= step_mm <= 1):
+        # Each native trial rebuilds and checks source-scene BVH contacts.
+        # Subprecision input must not create millions of near-identical probes.
+        raise ValueError("Leg rollback step must be finite and within [0.125, 1] mm")
+    if requested_mm > 0 and round(requested_mm, 6) == 0:
+        raise ValueError("Leg rollback request is smaller than geometry precision")
 
     values = [round(max(0.0, requested_mm - index * step_mm), 6)
               for index in range(math.ceil(requested_mm / step_mm) + 1)]
