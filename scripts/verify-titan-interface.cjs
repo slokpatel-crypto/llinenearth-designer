@@ -153,7 +153,7 @@ async function checkViewport(width) {
 
     // Every visible navigation entry must be large enough to use on a phone,
     // tablet or desktop; screenshots alone cannot prove pointer ergonomics.
-    const targets = await page.locator(".titanHeaderCta, .titanNav a, .titanMenuButton, .titanMobileNavPanel a, .titanOccasionLink, .titanButton, .titanTextLink, .titanFooter nav a, .titanFabricShowMore, .titanFabricCompareButton, .titanFabricComparisonClear, .titanFabricComparisonDetails a, .titanFabricOutfitSelect, .titanOutfitSlotText button, .titanOutfitBuildCta").evaluateAll(nodes =>
+    const targets = await page.locator(".titanHeaderCta, .titanNav a, .titanMenuButton, .titanMobileNavPanel a, .titanOccasionLink, .titanButton, .titanTextLink, .titanFooter nav a, .titanFabricShowMore, .titanFabricCompareButton, .titanFabricComparisonClear, .titanFabricComparisonDetails a, .titanFabricOutfitSelect, .titanOutfitSlotText button, .titanOutfitBuildCta, .titanOutfitShareCta").evaluateAll(nodes =>
       nodes.filter(node => node.getClientRects().length > 0)
         .map(node => ({ text: node.textContent.trim().slice(0, 50), height: node.getBoundingClientRect().height }))
     );
@@ -274,6 +274,24 @@ async function checkViewport(width) {
       }
       const pairHref = `/designer-studio?source=titan&shirt=${shirt}&trouser=${trouser}`;
       assert.equal(await page.locator(".titanOutfitBuildCta").getAttribute("href"), pairHref);
+      // Reopen a shared outfit in a fresh page load. A link contains only two
+      // real swatch IDs, never the customer's stored Designer measurements.
+      const shareHref = `/titan?source=outfit&shirt=${shirt}&trouser=${trouser}#titan-outfit-builder`;
+      assert.equal(await page.locator(".titanOutfitShareCta").getAttribute("href"), shareHref);
+      await page.locator(".titanOutfitShareCta").click();
+      await page.waitForURL(url => url.pathname === "/titan" && url.searchParams.get("source") === "outfit", { timeout: 15000 });
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForFunction(() => document.querySelectorAll(".titanOutfitSlot img").length === 2, null, { timeout: 15000 });
+      assert.equal(await page.locator(".titanOutfitBuildCta").getAttribute("href"), pairHref,
+        "A reopened share link must restore the original exact shirt and trouser pair");
+      await page.goto(`${base}/titan?source=outfit&shirt=${trouser}&trouser=${shirt}`, { waitUntil: "domcontentloaded" });
+      await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+      assert.equal(await page.locator(".titanOutfitSlot img").count(), 0,
+        "Swapped garment IDs must not prefill a customer outfit");
+      await page.goto(`${base}${shareHref}`, { waitUntil: "domcontentloaded" });
+      await page.waitForFunction(() => document.querySelectorAll(".titanOutfitSlot img").length === 2, null, { timeout: 15000 });
+      summary.handoffs.push({ source: "titan-shared-reference-pair", shirt, trouser,
+        reloaded: true, crossGarmentRejected: true });
       await page.evaluate(() => localStorage.setItem("linen-earth:real-designer-draft:v2", JSON.stringify({
         shirtId: "linen-plain-60-peach", pantId: "linen-suiting-dark-grey",
         occasion: "Casual", climate: "Hot / humid", intention: "Balanced",
