@@ -95,6 +95,9 @@ export default function TitanFabricExplorer() {
   function chooseKind(next: TitanFabricKind) {
     setKind(next);
     setCollection("All");
+    // A search for blue shirting should not hide every trouser swatch after
+    // switching garment tabs or pressing "Browse trousers" from the builder.
+    setSearch("");
     setVisibleCount(FABRIC_PAGE_SIZE);
     setComparedIds([]);
   }
