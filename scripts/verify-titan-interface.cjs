@@ -289,8 +289,31 @@ async function checkViewport(width) {
       assert.match(await page.locator(".titanOutfitCopyStatus").textContent(),
         /Cloth-pair link copied|Copy the link from the field/,
         "Clipboard success or an explicit manual fallback is required");
+      // Simulate denied clipboard permission, not merely an absent clipboard.
+      // The exact absolute link must become selected for manual copying.
+      await page.evaluate(() => Object.defineProperty(navigator, "clipboard", {
+        configurable: true, value: { writeText: async () => { throw Error("Clipboard permission denied"); } },
+      }));
+      await page.getByRole("button", { name: "Copy link" }).click();
+      assert.match(await page.locator(".titanOutfitCopyStatus").textContent(),
+        /Copy the link from the field above/,
+        "Denied clipboard writes must expose a usable manual fallback");
+      assert.equal(await shareInput.evaluate(node => node.selectionEnd - node.selectionStart),
+        absoluteShare.length, "Clipboard fallback must select the full current URL");
+
+      // A same-path shared link must be a real navigation: Next's default
+      // soft navigation would retain an unrelated comparison and search state
+      // instead of rehydrating from the exact public reference link.
+      await page.locator(".titanFabricCompareButton").first().click();
+      assert.equal(await page.locator(".titanFabricComparisonItem").count(), 1);
       await page.locator(".titanOutfitShareCta").click();
       await page.waitForURL(url => url.pathname === "/titan" && url.searchParams.get("source") === "outfit", { timeout: 15000 });
+      await page.waitForFunction(() => document.querySelectorAll(".titanOutfitSlot img").length === 2, null, { timeout: 15000 });
+      assert.equal(await page.locator(".titanFabricComparisonItem").count(), 0,
+        "Opening a same-route share link must not retain a private comparison shortlist");
+      assert.equal(await page.getByRole("searchbox", { name: "Find by colour or pattern" }).inputValue(), "",
+        "Share links must open a fresh catalogue, not leaked local search state");
+      assert.equal(await page.locator(".titanOutfitBuildCta").getAttribute("href"), pairHref);
       await page.reload({ waitUntil: "domcontentloaded" });
       await page.waitForFunction(() => document.querySelectorAll(".titanOutfitSlot img").length === 2, null, { timeout: 15000 });
       assert.equal(await page.locator(".titanOutfitBuildCta").getAttribute("href"), pairHref,
