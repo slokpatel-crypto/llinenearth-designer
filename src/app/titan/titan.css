@@ -76,7 +76,14 @@
 }
 .titanIdentity img { width: 100%; height: 100%; object-fit: contain; }
 .titanNav { display: flex; flex-wrap: wrap; align-items: center; gap: clamp(15px, 2.2vw, 38px); }
-.titanNav a { font-size: 12px; font-weight: 600; transition: color .2s ease; }
+.titanNav a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  transition: color .2s ease;
+}
 .titanNav a:hover, .titanFooter a:hover { color: var(--titan-earth); }
 .titanHeaderCta {
   display: inline-flex;
@@ -84,6 +91,7 @@
   align-items: center;
   justify-content: space-between;
   white-space: nowrap;
+  min-height: 44px;
   padding: 14px 18px;
   background: #333e33;
   color: white!important;
@@ -160,7 +168,7 @@
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 53px;
-  color: #808175;
+  color: #5e6358;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: .15em;
@@ -270,7 +278,7 @@
 .titanProcessList li>span { font-family: Georgia,serif; font-size: 21px; color: #9b8568; }
 .titanProcessList strong { display: block; font-size: 13px; }
 .titanProcessList p { font-size: 12px; color: #797b72; margin-top: 3px; }
-.titanTextLink { display: inline-flex; gap: 18px; border-bottom: 1px solid #6e775e; padding-bottom: 7px; font-weight: 700; font-size: 12px; }
+.titanTextLink { display: inline-flex; align-items: center; min-height: 44px; gap: 18px; border-bottom: 1px solid #6e775e; padding-block: 8px; font-weight: 700; font-size: 12px; }
 .titanExperienceVisual { min-height: 650px; position: relative; background: #d4d4c7; overflow: hidden; }
 .titanExperienceVisual img { object-fit: cover; object-position: center 30%; }
 .titanExperienceStamp {
@@ -292,7 +300,7 @@
 .titanEngineering .titanSectionIntro h2 { font-size: clamp(40px,4.1vw,67px); }
 .titanTrackGrid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; max-width: 1500px; margin-inline: auto; }
 .titanTrack { position: relative; min-height: 245px; padding: 28px; border: 1px solid #dad8cd; background: #fff; }
-.titanTrackNumber { font: 23px Georgia,serif; color: #a8a38f; }
+.titanTrackNumber { font: 23px Georgia,serif; color: #666a5e; }
 .titanTrack h3 { margin: 18px 0 11px; font-size: 25px; }
 .titanTrack p { color: #777a71; font-size: 12px; line-height: 1.7; max-width: 340px; }
 .titanTrackState { display: inline-block; margin-top: 21px; color: #80614d; font-weight: 700; letter-spacing: .14em; font-size: 9px; }
@@ -315,9 +323,10 @@
 }
 .titanFooterBrand { display: grid; gap: 3px; }
 .titanFooterBrand strong { font: 26px Georgia,serif; }
-.titanFooterBrand span, .titanFooter>p { font-size: 11px; color: #858278; }
+.titanFooterBrand span, .titanFooter>p { font-size: 11px; color: #5f6259; }
 .titanFooter>p { max-width: 245px; line-height: 1.7; }
-.titanFooter nav { display: flex; flex-wrap: wrap; gap: 12px 19px; max-width: 460px; font-size: 11px; font-weight: 700; }
+.titanFooter nav { display: flex; flex-wrap: wrap; gap: 4px 19px; max-width: 460px; font-size: 11px; font-weight: 700; }
+.titanFooter nav a { display: inline-flex; min-height: 44px; align-items: center; }
 @media (max-width: 1080px) {
   .titanHeader { gap: 14px; }
   .titanNav { gap: 16px; }
@@ -342,7 +351,7 @@
   .titanIdentity { width: 122px; height: 45px; }
   .titanHeaderCta { padding: 12px; font-size: 11px; gap: 10px; }
   .titanNav { gap: 10px 14px; justify-content: center; }
-  .titanNav a { font-size: 10px; }
+  .titanNav a { font-size: 11px; padding-inline: 3px; }
   .titanHeroCopy { padding: 66px 23px 54px; }
   .titanHero h1 { font-size: clamp(43px,10.8vw,65px); margin-top: 25px; }
   .titanHeroDescription { margin-top: 22px!important; }
