@@ -98,8 +98,12 @@ export function fitOutcomeKey(input:{
 }
 
 export function parseFitOutcome(event:EventLike):FitOutcomeReview|null{
-  if(event.type!=="operator_note"||event.source!=="operator") return null;
-  const p=event.payload||{};
+  // Operator logs are persisted JSON: reject arrays, nulls and primitives
+  // before dereferencing a field or treating corrupt records as fit evidence.
+  if(!event||typeof event!=="object"||Array.isArray(event)
+    ||event.type!=="operator_note"||event.source!=="operator") return null;
+  const p=event.payload;
+  if(!p||typeof p!=="object"||Array.isArray(p)) return null;
   if(txt(p.subtype,80)!=="designer_fit_outcome") return null;
   const recommendationId=txt(p.recommendationId,160);
   const verdict=txt(p.verdict,40) as FitOutcomeVerdict;
@@ -108,9 +112,14 @@ export function parseFitOutcome(event:EventLike):FitOutcomeReview|null{
   const trouser=txt(p.trouser,120);
   const torso=txt(p.torso,30) as FitOutcomeReview["proportion"]["torso"];
   const seat=txt(p.seat,30) as FitOutcomeReview["proportion"]["seat"];
-  const areas=Array.isArray(p.areas)
-    ? p.areas.map((value)=>txt(value,40) as FitOutcomeArea).filter((value)=>AREAS.has(value)).slice(0,10)
-    : [];
+  // Filtering/truncating bad area entries silently changes the operator's
+  // actual fitting record. Keep legacy omitted area lists, but fail closed
+  // for any malformed, oversized or duplicate explicitly supplied list.
+  if(p.areas!==undefined && !Array.isArray(p.areas)) return null;
+  const rawAreas=p.areas===undefined ? [] : p.areas as unknown[];
+  if(rawAreas.length>10) return null;
+  const areas=rawAreas.map((value)=>txt(value,40) as FitOutcomeArea);
+  if(areas.some((area)=>!AREAS.has(area))||new Set(areas).size!==areas.length) return null;
   if(!recommendationId||!VERDICTS.has(verdict)||!OCCASIONS.has(occasion)||!shirtFit||!trouser) return null;
   // Keys are historically persisted as ::-joined fields. Do not allow a
   // delimiter inside a field to collide with a distinct style's bucket key.
@@ -145,8 +154,8 @@ function reliableFitOutcomeBucket(value:unknown, totalReviews:number):value is F
   if(!value||typeof value!=="object") return false;
   const bucket=value as FitOutcomeBucket;
   if(!OCCASIONS.has(bucket.occasion)
-    ||typeof bucket.shirtFit!=="string"||!bucket.shirtFit.trim()
-    ||typeof bucket.trouser!=="string"||!bucket.trouser.trim()
+    ||typeof bucket.shirtFit!=="string"||!bucket.shirtFit.trim()||bucket.shirtFit.length>120
+    ||typeof bucket.trouser!=="string"||!bucket.trouser.trim()||bucket.trouser.length>120
     ||bucket.shirtFit.includes("::")||bucket.trouser.includes("::")
     ||!["tapered","balanced","straight","unknown"].includes(bucket.torso)
     ||!["pronounced","balanced","unknown"].includes(bucket.seat)
