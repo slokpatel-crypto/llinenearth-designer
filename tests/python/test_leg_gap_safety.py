@@ -35,6 +35,21 @@ class LegGapRollbackTests(unittest.TestCase):
             with self.subTest(divisions=divisions), self.assertRaises(ValueError):
                 bounded_leg_gap_refinement_trials(3.5, 3, subdivisions=divisions)
 
+    def test_refinement_rejects_subprecision_and_nonunique_rounded_contacts(self):
+        # Each native BVH trial must be a genuinely distinct point INSIDE
+        # the independently measured unsafe/safe contact bracket.
+        for unsafe, safe, subdivisions in (
+            (3.00000001, 3.0, 4),
+            (3.000009, 3.0, 8),
+            (3.000011, 3.0, 8),
+        ):
+            with self.subTest(unsafe=unsafe, safe=safe, subdivisions=subdivisions):
+                with self.assertRaises(ValueError):
+                    bounded_leg_gap_refinement_trials(unsafe, safe, subdivisions=subdivisions)
+        values = bounded_leg_gap_refinement_trials(3.5, 3.0, subdivisions=8)
+        self.assertEqual(len(values), len(set(values)))
+        self.assertTrue(all(3.0 < v < 3.5 for v in values))
+
     def test_zero_is_legal_and_does_not_move_body(self):
         self.assertEqual(bounded_leg_gap_trials(0), (0.0,))
 
