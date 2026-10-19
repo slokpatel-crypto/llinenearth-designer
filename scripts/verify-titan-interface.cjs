@@ -84,7 +84,7 @@ async function checkViewport(width) {
         [".titanFooter > p", ".titanFooter"],
       ];
       const luminance = value => {
-        const rgb = (value.match(/[\\d.]+/g) || []).slice(0, 3).map(Number);
+        const rgb = (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
         if (rgb.length !== 3 || rgb.some(x => !Number.isFinite(x))) throw Error(`Invalid computed colour ${value}`);
         const channels = rgb.map(n => {
           const x = n / 255;
