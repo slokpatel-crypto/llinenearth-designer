@@ -419,6 +419,22 @@ async function checkViewport(width) {
       assert.equal(await page.locator(".titanPairingCard").count(), 0);
       summary.handoffs.push({ source: "titan-editorial-pairings", viewport: width,
         reverseGarmentAnchorPreserved: true, physicalClaims: false });
+      // Manually tampered browser storage must not inject catalogue selections
+      // or quietly copy personal fields into a public reference lookbook.
+      await page.evaluate(() => localStorage.setItem("linen-earth:titan-reference-lookbook:v1", JSON.stringify({
+        version: 1, pairs: [{
+          shirtId: "linen-plain-60-sky-blue", trouserId: "linen-suiting-beige",
+          measurement: "never-store-personal-measurements",
+        }],
+      })));
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+      assert.equal(await page.locator(".titanLookbookCard").count(), 0,
+        "Unknown personal fields in saved-reference storage must fail closed");
+      assert.equal(await page.locator(".titanOutfitSlot img").count(), 0,
+        "Tampered browser storage must never silently fill the garment slots");
+      summary.handoffs.push({ source: "titan-device-lookbook", viewport: width,
+        tamperedStorageRejected: true, automaticDesignerMutation: false });
     }
 
     const destination = width === 320 ? "/measurements" : width === 390 ? "/designer-studio" : width === 768 ? "/style-director" : "/account";
