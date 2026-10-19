@@ -532,3 +532,31 @@ Architecture and product decisions that must persist across coding sessions.
 **Compatibility:** no schema/database migration; existing saved Designer designs, model identity IDs, source photographs and versioned option contracts are unchanged. Internal prototype rendering remains available to engineers, never as evidence of a completed realistic model. Passing structural preflight is still not visual realism approval, verified textile scale, tailor fit approval or deployment authorization.
 
 **Next engineering gate:** exact single identity body mesh, production garment/drape fit and UV evidence, independent front/3-4/side/back visual comparisons, verified supplier physical scale and tailor approval before customer-facing 3D promotion.
+
+
+## 2026-10-19 — TITAN catalogue preview passes only one proven fabric ID
+
+**Decision:** an isolated `/titan` catalogue explorer may read authored `FABRIC_STOCK` swatches and direct customers into the maintained `/designer-studio`, but it may not create or interpret product physical measurements, stock confirmations, fabricated render images, or its own garment/design record.
+
+**Data contract:** `source=titan&kind=shirt|trouser&fabric=<catalogue-id>` is accepted only when there is exactly one of each query key, no extras, and the ID belongs to the specified real garment category. Parsing fails closed on duplicate or unknown values. The customer Designer first recovers its existing draft, then updates the **one explicitly selected garment**; the other garment, occasion, cut, fit context and measurements remain untouched. The separate verified Style Director handoff keeps precedence and cannot be impersonated by this query shape.
+
+**Quality/performance boundary:** filter/search is browser-local and deterministic. The preview uses existing swatch images; it does not call paid rendering providers or label the static `inStock` catalogue field as verified stock. The Designer's calibrated operator catalogue and downstream measurement/physical-signoff gates remain authoritative. Browser regression covers shirt and trouser deep links with retained saved-draft counterparts; unit tests reject cross-garment and ambiguous handoffs.
+
+**Compatibility/migration:** no database or saved-design schema changes, new dependency, model identity change, or homepage cutover. This remains a draft UI pilot until matching-HEAD CI/browser QA, owner review and all relevant native/source-model gates pass. Do not merge or deploy automatically.
+
+
+## 2026-10-19 — TITAN swatch comparison cannot imply physical parity
+
+**Decision:** the pilot may show two catalogue reference photos side-by-side within the same garment category to help customers shortlist fabrics. It must keep reference IDs exact and transfer only via the pre-existing safe single-fabric Designer handoff. Comparison itself is browser-local and never changes saved outfits, stock ledgers, measurements or operator data.
+
+**Truth boundary:** photos may have different illumination, white balance, zoom and magnification. Therefore the component must label the comparison **visual only**, never infer verified colour differences, pattern-repeat dimensions, handfeel or fabric drape, and never suggest a source photograph is production-calibrated. The 2-item limit, stale/cross-garment rejection, 44px controls, responsive layout and deterministic navigation must remain tested.
+
+**Release:** remains on the independent unmerged /titan pilot. CI, browser evidence, original model photo/native Blender gates, supplier calibration, tailor approval and owner acceptance cannot be waived.
+
+## 2026-10-19 — TITAN outfit pair explicitly transfers two real fabric IDs
+
+**Decision:** TITAN lets customers choose one existing shirting and one trouser reference in a two-slot outfit builder. These are original, uncalibrated catalogue images, not a fabric-drape render of the model; the choice lives only in page state until explicit navigation to the maintained Designer.
+
+**Contract:** Accept either the original `source=titan&kind=<shirt|trouser>&fabric=<id>` (one garment) or the new `source=titan&shirt=<shirt-id>&trouser=<trouser-id>` (exactly two). Every parameter must occur once, and both garment IDs must be present in their authentic respective catalogue. Reject unknown, duplicate, mixed, incomplete or spoofed URLs. Designer draft recovery precedes explicit fabric overrides; all other draft fields are preserved. Style Director remains separate and authoritative.
+
+**Release:** No new mannequin, generator charge, database mutation, fabricated physical stock/colour claims or homepage cutover. Browser and Node regression are required, as are the independent model/UV, supplier, tailoring and owner approval gates.

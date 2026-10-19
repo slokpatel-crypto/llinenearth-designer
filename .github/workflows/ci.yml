@@ -69,6 +69,7 @@ jobs:
           # This 12m cap does NOT relax the strict 20s native first-frame SLA.
           # Prototype-only mode exits after a lighter interactive smoke gate.
           timeout --signal=TERM --kill-after=10s 12m node scripts/verify-garment-viewer.cjs
+          node scripts/verify-titan-interface.cjs
           node scripts/verify-premium-atelier.cjs
           node scripts/verify-designer-advisor.cjs
           node scripts/verify-photo-form.cjs
