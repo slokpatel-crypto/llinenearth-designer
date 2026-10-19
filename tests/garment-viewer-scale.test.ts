@@ -357,3 +357,22 @@ test("production 3D normal-map slot cannot silently drop a prepared weave textur
     {normalTexture:{setTexture:false}},
   ]) assert.equal(canPaintGarmentPanelNormalMaterial(invalid),false);
 });
+
+test("asset fingerprint changes even at a stable GLB URL invalidate per-panel GPU samplers",()=>{
+  const fabric={panelMaterial:"ShirtTorsoFabric",fabricUrl:"/fabric/cream.png",
+    normalUrl:"/fabric/cream-normal.png",u:25,v:25,offsetU:0,offsetV:0,rotation:0};
+  const a=garmentPanelTexturePreparationKey({...fabric,
+    modelKey:JSON.stringify(["/models/officewear.glb","asset-receipt-a"])});
+  const b=garmentPanelTexturePreparationKey({...fabric,
+    modelKey:JSON.stringify(["/models/officewear.glb","asset-receipt-b"])});
+  assert.notEqual(a,b,"new model bytes/identity cannot reuse a mutable sampler from the prior asset");
+  assert.equal(a,garmentPanelTexturePreparationKey({...fabric,
+    modelKey:JSON.stringify(["/models/officewear.glb","asset-receipt-a"])}));
+});
+
+test("live six-panel renderer binds its texture reuse key to verified asset identity",async()=>{
+  const {readFileSync}=await import("node:fs");
+  const source=readFileSync(new URL("../src/components/GarmentViewer.tsx",import.meta.url),"utf8");
+  assert.match(source,/modelKey:JSON\.stringify\(\[modelUrl,assetIdentityKey\]\)/,
+    "texture cache must change if an asset receipt changes under a stable URL");
+});
