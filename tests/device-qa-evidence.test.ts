@@ -160,3 +160,19 @@ test("device acceptance rejects corrupt sample series instead of filtering away 
   assert.equal(declined.performancePass,false);
   assert.equal(declined.accepted,false);
 });
+
+test("one 2-second frozen frame cannot pass minimum-sample device acceptance via p95 masking",()=>{
+  const timings=[...Array.from({length:11},()=>45),2000];
+  const summary=summarizeDeviceQaDurations(timings);
+  // The historical floor-rank p95 can exclude this one worst frame.
+  assert.equal(summary.p95Ms,45);
+  assert.equal(summary.maxMs,2000);
+  const evaluation=evaluateDeviceQaEvidence({
+    version:DEVICE_QA_EVIDENCE_VERSION,deviceClass:"mobile",viewport:"390x844",
+    sampleDurationsMs:timings,
+    checks:{fourViews:true,controlsLegible:true,noOverflow:true,fabricReadable:true,modelStable:true},
+  });
+  assert.equal(evaluation.performancePass,false);
+  assert.equal(evaluation.accepted,false);
+  assert.equal(evaluation.maxMs,2000);
+});
