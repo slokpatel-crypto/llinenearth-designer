@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { readTitanSharedOutfit, titanOutfitShareHref } from "@/lib/titan/outfit-share";
 import {
   TITAN_FABRIC_CATALOG, findTitanFabrics, titanFabricCollections, titanFabricHref,
   toggleTitanComparedFabrics, titanOutfitPairHref, type TitanFabricKind,
@@ -42,6 +43,16 @@ export default function TitanFabricExplorer() {
   const [comparedIds, setComparedIds] = useState<string[]>([]);
   const [outfitShirtId, setOutfitShirtId] = useState<string | null>(null);
   const [outfitTrouserId, setOutfitTrouserId] = useState<string | null>(null);
+
+  // A shared link restores *reference choices* only, never a design, user
+  // account, measurement, stock claim or saved Designer draft. Invalid links
+  // leave both slots empty and do not trigger a Designer handoff.
+  useEffect(() => {
+    const shared = readTitanSharedOutfit(window.location.search);
+    if (!shared) return;
+    setOutfitShirtId(shared.shirtId);
+    setOutfitTrouserId(shared.trouserId);
+  }, []);
   const outfitShirt = TITAN_FABRIC_CATALOG.find(fabric => fabric.kind === "shirt" && fabric.id === outfitShirtId);
   const outfitTrouser = TITAN_FABRIC_CATALOG.find(fabric => fabric.kind === "trouser" && fabric.id === outfitTrouserId);
   const comparisons = useMemo(
@@ -190,7 +201,7 @@ export default function TitanFabricExplorer() {
           </p>
         </section>
       )}
-      <section className="titanOutfitBuilder" aria-labelledby="titan-outfit-title">
+      <section id="titan-outfit-builder" className="titanOutfitBuilder" aria-labelledby="titan-outfit-title">
         <div className="titanOutfitBuilderHeading">
           <div>
             <p className="titanOverline">YOUR CLOTH PAIR</p>
@@ -235,9 +246,20 @@ export default function TitanFabricExplorer() {
           })}
         </div>
         {outfitShirt && outfitTrouser ? (
-          <Link className="titanOutfitBuildCta" href={titanOutfitPairHref(outfitShirt.id, outfitTrouser.id)}>
-            Open both fabrics in Designer Studio <span aria-hidden="true">↗</span>
-          </Link>
+          <>
+            <div className="titanOutfitActions">
+              <Link className="titanOutfitBuildCta" href={titanOutfitPairHref(outfitShirt.id, outfitTrouser.id)}>
+                Open both fabrics in Designer Studio <span aria-hidden="true">↗</span>
+              </Link>
+              <Link className="titanOutfitShareCta" href={titanOutfitShareHref(outfitShirt.id, outfitTrouser.id)}>
+                Open shareable cloth-pair link <span aria-hidden="true">↗</span>
+              </Link>
+            </div>
+            <p className="titanOutfitShareHelp">
+              This link reopens the same two reference swatches on TITAN; copy the page
+              address to share. It does not share account details, measurements or a saved design.
+            </p>
+          </>
         ) : (
           <p className="titanOutfitHelp">Select one shirt fabric and one trouser fabric to continue with both in the existing designer.</p>
         )}
