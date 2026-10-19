@@ -6,7 +6,26 @@ import { useMemo, useState } from "react";
 import {
   TITAN_FABRIC_CATALOG, findTitanFabrics, titanFabricCollections, titanFabricHref,
   toggleTitanComparedFabrics, titanOutfitPairHref, type TitanFabricKind,
+  type TitanFabricReference,
 } from "@/lib/titan/fabric-handoff";
+
+/** Hide a failed reference photo rather than showing a broken-image icon or
+ * substituting a fabricated/uncalibrated textile. Fabric ID remains selectable.
+ * key={fabric.id} resets the failure state if the actual reference changes. */
+function TitanReferencePhoto({ fabric, alt, sizes }: {
+  fabric: TitanFabricReference; alt: string; sizes: string;
+}) {
+  const [unavailable, setUnavailable] = useState(false);
+  if (unavailable) {
+    return (
+      <span className="titanFabricPhotoFallback" role="img"
+        aria-label={`Reference photograph unavailable for ${fabric.name}`}>
+        Reference photo unavailable
+      </span>
+    );
+  }
+  return <Image src={fabric.image} alt={alt} fill sizes={sizes} onError={() => setUnavailable(true)} />;
+}
 
 /**
  * An actual searchable preview of the existing catalogue, not generated
@@ -75,8 +94,9 @@ export default function TitanFabricExplorer() {
                 <Link className="titanFabricCard" href={titanFabricHref(kind, fabric.id)}
                   aria-label={`Select ${fabric.name} ${kind} fabric in Designer Studio`}>
                   <div className="titanFabricImage" style={{ backgroundColor: fabric.hex }}>
-                    <Image src={fabric.image} alt={`${fabric.name} · ${fabric.pattern} catalogue swatch`}
-                      fill sizes="(max-width: 560px) 44vw, (max-width: 860px) 30vw, 20vw" />
+                    <TitanReferencePhoto key={fabric.id} fabric={fabric}
+                      alt={`${fabric.name} · ${fabric.pattern} catalogue swatch`}
+                      sizes="(max-width: 560px) 44vw, (max-width: 860px) 30vw, 20vw" />
                   </div>
                   <div className="titanFabricInfo">
                     <span>{fabric.line}</span>
@@ -138,8 +158,9 @@ export default function TitanFabricExplorer() {
             {comparisons.map(fabric => (
               <article key={fabric.id} className="titanFabricComparisonItem">
                 <div className="titanFabricComparisonImage" style={{ backgroundColor: fabric.hex }}>
-                  <Image src={fabric.image} alt={`${fabric.name} catalogue swatch for comparison`}
-                    fill sizes="(max-width: 620px) 44vw, 30vw" />
+                  <TitanReferencePhoto key={fabric.id} fabric={fabric}
+                    alt={`${fabric.name} catalogue swatch for comparison`}
+                    sizes="(max-width: 620px) 44vw, 30vw" />
                 </div>
                 <div className="titanFabricComparisonDetails">
                   <h4>{fabric.name}</h4>
@@ -178,8 +199,9 @@ export default function TitanFabricExplorer() {
             return (
               <article key={slot} className="titanOutfitSlot">
                 <div className="titanOutfitSlotMedia">
-                  {fabric ? <Image src={fabric.image} alt={`${fabric.name} ${slot} catalogue photo`}
-                    fill sizes="(max-width: 620px) 30vw, 140px" /> : <span aria-hidden="true">{slot === "shirt" ? "01" : "02"}</span>}
+                  {fabric ? <TitanReferencePhoto key={fabric.id} fabric={fabric}
+                    alt={`${fabric.name} ${slot} catalogue photo`}
+                    sizes="(max-width: 620px) 30vw, 140px" /> : <span aria-hidden="true">{slot === "shirt" ? "01" : "02"}</span>}
                 </div>
                 <div className="titanOutfitSlotText">
                   <strong>{slot === "shirt" ? "Shirting" : "Trouser cloth"}</strong>
