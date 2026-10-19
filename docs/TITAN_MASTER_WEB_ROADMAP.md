@@ -92,3 +92,18 @@ Do not replace testing with concept renders, inflate progress percentages, claim
 - Only an explicit click transfers both allowlisted IDs with `?source=titan&shirt=<id>&trouser=<id>` to the existing Designer. The Designer recovers the saved draft, then updates **only those two garments**. It retains occasion, styling, fit, body profile, measurements and the independent Style Director handoff.
 - Unknown, duplicated, mixed, swapped or incomplete query keys fail closed; legacy single-garment transfer still preserves the complementary garment. No database schema, pricing, supplier-stock promise, model identity, paid renderer, main homepage or deployed customer record changes.
 - Node tests cover strict parser round-trips/rejections. Chromium regression tests a true shirt/trouser selection, cross-tab persistence, actual Designer selection, image decoding and 44px controls. Matching-head CI and owner review remain mandatory.
+
+### 19 October — shareable two-cloth shortlist (stacked draft)
+
+- Customers can reopen exactly one existing shirt reference and one existing trouser reference through a TITAN URL. This is **not** a share of a saved outfit, measurements, profile or price, and does not call a paid renderer.
+- Link generation reuses the real Designer's catalogue-role validation. Import accepts only one each of `source=outfit`, `shirt=<catalogue-id>`, and `trouser=<catalogue-id>` with no extra or duplicate keys; invalid and cross-role references never prefill either slot.
+- An explicit subsequent click into Designer Studio continues to use the existing strict `source=titan` garment-pair handoff. Merely opening a shared link does not mutate customer drafts, measurements, accounts, fabric inventory or styling state.
+- Node tests enumerate all authored valid shirt/trouser pair combinations and reject malformed inputs. Chromium QA verifies a real shared-page reload, restored IDs and rejection of swapped garments at phone width, as well as 44px share-link tap targets.
+- Stack this work on unreleased draft TITAN PR #315; matching-HEAD CI/browser runs, security/privacy review and owner acceptance are required before integration. No homepage cutover, 3D signoff, merge or deployment is authorized.
+
+### 19 October — shared-link navigation and clipboard hardening
+
+- A cloth-pair share link deliberately performs a real document navigation to the **same** unreleased `/titan` route. Unlike a client-side same-path transition, it must revalidate the query and reconstruct exactly the two public references while discarding any transient comparison/search state.
+- If clipboard access is denied or unsupported, the actual, fully qualified current link receives keyboard focus and is selected for manual copying; fallback success messages are keyed to the precise selected pair and cannot misreport a previous pair.
+- Browser QA now exercises permission-denied copying, selected manual fallback text and isolation of stale comparison/filter state across a shared-link navigation, in addition to direct reload and invalid garment-role links.
+- These safeguards preserve all earlier feature and model contracts. They neither validate physical stock nor make the candidate production-ready. Matching-head workflows and explicit release approval remain required.

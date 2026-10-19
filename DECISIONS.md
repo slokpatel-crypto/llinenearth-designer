@@ -560,3 +560,12 @@ Architecture and product decisions that must persist across coding sessions.
 **Contract:** Accept either the original `source=titan&kind=<shirt|trouser>&fabric=<id>` (one garment) or the new `source=titan&shirt=<shirt-id>&trouser=<trouser-id>` (exactly two). Every parameter must occur once, and both garment IDs must be present in their authentic respective catalogue. Reject unknown, duplicate, mixed, incomplete or spoofed URLs. Designer draft recovery precedes explicit fabric overrides; all other draft fields are preserved. Style Director remains separate and authoritative.
 
 **Release:** No new mannequin, generator charge, database mutation, fabricated physical stock/colour claims or homepage cutover. Browser and Node regression are required, as are the independent model/UV, supplier, tailoring and owner approval gates.
+
+
+## 2026-10-19 — TITAN shared links are public cloth references only (draft)
+
+**Decision:** a TITAN shortlist can be shared through a public URL containing two exact, allowlisted catalogue IDs, one shirt and one trouser, with the explicit `source=outfit` marker. It is strictly separate from `source=titan` Designer handoffs, Style Director responses and account/saved-design records.
+
+**No implicit mutation:** a shared page initially restores only two ephemeral UI slots after a strict duplicate/unknown-key and garment-role check. The user must explicitly click the maintained Designer link before any existing draft fabric choices are overridden. No measurements, address, style profile, customer identifier, operator inventory truth, supplier dimensions, fabricated garment preview or rendered image is serialized in the link.
+
+**Release scope:** stacked on the isolated, unmerged `/titan` prototype; unit and real Chromium QA are mandatory. This does not remove existing physical-fabric calibration, native scene/UV/sleeve, photo identity, human-tailor or final approval gates.

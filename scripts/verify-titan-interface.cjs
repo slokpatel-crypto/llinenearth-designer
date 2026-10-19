@@ -153,7 +153,7 @@ async function checkViewport(width) {
 
     // Every visible navigation entry must be large enough to use on a phone,
     // tablet or desktop; screenshots alone cannot prove pointer ergonomics.
-    const targets = await page.locator(".titanHeaderCta, .titanNav a, .titanMenuButton, .titanMobileNavPanel a, .titanOccasionLink, .titanButton, .titanTextLink, .titanFooter nav a, .titanFabricShowMore, .titanFabricCompareButton, .titanFabricComparisonClear, .titanFabricComparisonDetails a, .titanFabricOutfitSelect, .titanOutfitSlotText button, .titanOutfitBuildCta").evaluateAll(nodes =>
+    const targets = await page.locator(".titanHeaderCta, .titanNav a, .titanMenuButton, .titanMobileNavPanel a, .titanOccasionLink, .titanButton, .titanTextLink, .titanFooter nav a, .titanFabricShowMore, .titanFabricCompareButton, .titanFabricComparisonClear, .titanFabricComparisonDetails a, .titanFabricOutfitSelect, .titanOutfitSlotText button, .titanOutfitBuildCta, .titanOutfitShareCta, .titanOutfitCopyButton, .titanOutfitShareInput").evaluateAll(nodes =>
       nodes.filter(node => node.getClientRects().length > 0)
         .map(node => ({ text: node.textContent.trim().slice(0, 50), height: node.getBoundingClientRect().height }))
     );
@@ -274,6 +274,61 @@ async function checkViewport(width) {
       }
       const pairHref = `/designer-studio?source=titan&shirt=${shirt}&trouser=${trouser}`;
       assert.equal(await page.locator(".titanOutfitBuildCta").getAttribute("href"), pairHref);
+      // Reopen a shared outfit in a fresh page load. A link contains only two
+      // real swatch IDs, never the customer's stored Designer measurements.
+      const shareHref = `/titan?source=outfit&shirt=${shirt}&trouser=${trouser}#titan-outfit-builder`;
+      assert.equal(await page.locator(".titanOutfitShareCta").getAttribute("href"), shareHref);
+      const absoluteShare = new URL(shareHref, base).href;
+      await page.waitForFunction(expected => document.querySelector(".titanOutfitShareInput")?.value === expected,
+        absoluteShare, { timeout: 10000 });
+      const shareInput = page.getByRole("textbox", { name: "Shareable outfit reference link" });
+      await shareInput.focus();
+      assert.equal(await shareInput.evaluate(node => node.selectionEnd - node.selectionStart),
+        absoluteShare.length, "Focused link must be selectable when clipboard is unavailable");
+      await page.getByRole("button", { name: "Copy link" }).click();
+      assert.match(await page.locator(".titanOutfitCopyStatus").textContent(),
+        /Cloth-pair link copied|Copy the link from the field/,
+        "Clipboard success or an explicit manual fallback is required");
+      // Simulate denied clipboard permission, not merely an absent clipboard.
+      // The exact absolute link must become selected for manual copying.
+      await page.evaluate(() => Object.defineProperty(navigator, "clipboard", {
+        configurable: true, value: { writeText: async () => { throw Error("Clipboard permission denied"); } },
+      }));
+      await page.getByRole("button", { name: "Copy link" }).click();
+      await page.waitForFunction(() =>
+        document.querySelector(".titanOutfitCopyStatus")?.textContent?.includes("Copy the link from the field above"),
+        null, { timeout: 10000 });
+      assert.match(await page.locator(".titanOutfitCopyStatus").textContent(),
+        /Copy the link from the field above/,
+        "Denied clipboard writes must expose a usable manual fallback");
+      assert.equal(await shareInput.evaluate(node => node.selectionEnd - node.selectionStart),
+        absoluteShare.length, "Clipboard fallback must select the full current URL");
+
+      // A same-path shared link must be a real navigation: Next's default
+      // soft navigation would retain an unrelated comparison and search state
+      // instead of rehydrating from the exact public reference link.
+      await page.locator(".titanFabricCompareButton").first().click();
+      assert.equal(await page.locator(".titanFabricComparisonItem").count(), 1);
+      await page.locator(".titanOutfitShareCta").click();
+      await page.waitForURL(url => url.pathname === "/titan" && url.searchParams.get("source") === "outfit", { timeout: 15000 });
+      await page.waitForFunction(() => document.querySelectorAll(".titanOutfitSlot img").length === 2, null, { timeout: 15000 });
+      assert.equal(await page.locator(".titanFabricComparisonItem").count(), 0,
+        "Opening a same-route share link must not retain a private comparison shortlist");
+      assert.equal(await page.getByRole("searchbox", { name: "Find by colour or pattern" }).inputValue(), "",
+        "Share links must open a fresh catalogue, not leaked local search state");
+      assert.equal(await page.locator(".titanOutfitBuildCta").getAttribute("href"), pairHref);
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForFunction(() => document.querySelectorAll(".titanOutfitSlot img").length === 2, null, { timeout: 15000 });
+      assert.equal(await page.locator(".titanOutfitBuildCta").getAttribute("href"), pairHref,
+        "A reopened share link must restore the original exact shirt and trouser pair");
+      await page.goto(`${base}/titan?source=outfit&shirt=${trouser}&trouser=${shirt}`, { waitUntil: "domcontentloaded" });
+      await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+      assert.equal(await page.locator(".titanOutfitSlot img").count(), 0,
+        "Swapped garment IDs must not prefill a customer outfit");
+      await page.goto(`${base}${shareHref}`, { waitUntil: "domcontentloaded" });
+      await page.waitForFunction(() => document.querySelectorAll(".titanOutfitSlot img").length === 2, null, { timeout: 15000 });
+      summary.handoffs.push({ source: "titan-shared-reference-pair", shirt, trouser,
+        reloaded: true, crossGarmentRejected: true });
       await page.evaluate(() => localStorage.setItem("linen-earth:real-designer-draft:v2", JSON.stringify({
         shirtId: "linen-plain-60-peach", pantId: "linen-suiting-dark-grey",
         occasion: "Casual", climate: "Hot / humid", intention: "Balanced",
