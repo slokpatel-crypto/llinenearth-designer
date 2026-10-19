@@ -3,7 +3,7 @@ import test from "node:test";
 import { FABRIC_STOCK } from "../src/lib/fabric-stock.ts";
 import {
   TITAN_FABRIC_CATALOG, findTitanFabrics, readTitanFabricHandoff,
-  titanFabricCollections, titanFabricHref, toggleTitanComparedFabrics,
+  titanFabricCollections, titanFabricHref, titanOutfitPairHref, toggleTitanComparedFabrics,
 } from "../src/lib/titan/fabric-handoff.ts";
 
 test("TITAN displays real catalogue IDs and source-backed swatch paths only", () => {
@@ -76,4 +76,39 @@ test("TITAN compares at most two real cloths within one garment without design m
   assert.deepEqual(toggleTitanComparedFabrics("trouser", [shirtA], trouser), [trouser], "Stale shirt selection cannot cross to trouser mode");
   assert.deepEqual(toggleTitanComparedFabrics("shirt", [shirtA, shirtA, "invalid", shirtB], shirtC), [shirtA, shirtB], "Corrupt or duplicate state cleaned without exceeding cap");
   assert.equal(titanFabricHref("shirt", shirtA), "/designer-studio?source=titan&kind=shirt&fabric=linen-plain-60-sky-blue");
+});
+
+test("TITAN can build a real shirt + trouser pair with exact role constraints", () => {
+  const href = titanOutfitPairHref("linen-plain-60-sky-blue", "linen-suiting-beige");
+  assert.equal(href, "/designer-studio?source=titan&shirt=linen-plain-60-sky-blue&trouser=linen-suiting-beige");
+  assert.deepEqual(readTitanFabricHandoff(new URL(href, "https://example.test").search), {
+    kind: "pair", shirtId: "linen-plain-60-sky-blue", trouserId: "linen-suiting-beige",
+  });
+  const trouser = TITAN_FABRIC_CATALOG.find(entry => entry.kind === "trouser");
+  assert.ok(trouser);
+  for (const fabric of TITAN_FABRIC_CATALOG.filter(entry => entry.kind === "shirt").slice(0, 8)) {
+    assert.deepEqual(readTitanFabricHandoff(new URL(titanOutfitPairHref(fabric.id, trouser.id), "https://example.test").search),
+      { kind: "pair", shirtId: fabric.id, trouserId: trouser.id });
+  }
+  assert.throws(() => titanOutfitPairHref("linen-suiting-beige", "linen-plain-60-sky-blue"));
+  assert.throws(() => titanOutfitPairHref("linen-plain-60-sky-blue", "invalid"));
+  assert.throws(() => titanOutfitPairHref("invalid", "linen-suiting-beige"));
+});
+
+test("Pair links reject duplicates, extra keys, swapped garments and spoofing", () => {
+  for (const query of [
+    "?source=titan&shirt=linen-plain-60-sky-blue",
+    "?source=titan&trouser=linen-suiting-beige",
+    "?source=titan&shirt=linen-suiting-beige&trouser=linen-plain-60-sky-blue",
+    "?source=titan&shirt=linen-plain-60-sky-blue&trouser=invalid",
+    "?source=titan&shirt=invalid&trouser=linen-suiting-beige",
+    "?source=titan&shirt=linen-plain-60-sky-blue&shirt=linen-plain-60-peach&trouser=linen-suiting-beige",
+    "?source=titan&shirt=linen-plain-60-sky-blue&trouser=linen-suiting-beige&trouser=linen-suiting-orchid",
+    "?source=titan&source=titan&shirt=linen-plain-60-sky-blue&trouser=linen-suiting-beige",
+    "?source=titan&kind=shirt&shirt=linen-plain-60-sky-blue&trouser=linen-suiting-beige",
+    "?source=titan&fabric=linen-plain-60-sky-blue&shirt=linen-plain-60-sky-blue&trouser=linen-suiting-beige",
+    "?source=titan&shirt=linen-plain-60-sky-blue&trouser=linen-suiting-beige&from=style-director",
+    "?source=other&shirt=linen-plain-60-sky-blue&trouser=linen-suiting-beige",
+    "?source=titan&shirt=%3Cscript%3E&trouser=linen-suiting-beige",
+  ]) assert.equal(readTitanFabricHandoff(query), null, query);
 });
