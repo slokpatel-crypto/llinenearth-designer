@@ -52,6 +52,14 @@ A failing gate is a development task, **not** a justification to remove it, lowe
 - Updated Chromium checks cover 320px/390px/768px/1440px navigation, mobile disclosure Escape/outside-click, six quick-start links, a real cross-route occasion prefill and reset. Added Node contract tests for valid, malformed and duplicated prefill strings.
 - No model geometry, fabric data, customer records, stock, operator approval or deployed homepage was modified; no external AI is needed for navigation or selection. **Matching-HEAD CI/browser success still must be verified**; these changes are draft-only.
 
+### 19 October — working catalogue discovery, no synthetic product truth
+
+- The isolated TITAN page now offers real, searchable Linen Earth shirt/trouser catalogue swatches and collection filters, using the **existing** fabric data and original images only. The preview **does not** claim stock availability, verified physical colour, repeat millimetres or tailoring fit.
+- Choosing a swatch transfers its exact allowlisted `fabric` ID and garment category to the maintained `/designer-studio`. The existing Designer restores the customer's previous draft then changes **only the explicitly requested shirt or trouser**, while the complementary fabric, occasion, style and measurement context are preserved. A Style Director handoff remains independently authoritative.
+- Duplicate, unsupported, cross-garment or externally supplied query parameters fail closed; no auto-paid rendering or new provider credentials are introduced.
+- Node regressions validate catalogue source IDs, filter output, exact URL round-trips and reject corrupted links. Chromium QA checks search/filter UI, actual shirt and trouser transfers with a saved draft, image decoding and responsive layouts.
+- Match the **final branch HEAD**, CI/browser artifacts and owner requirements before any verification or cutover claim. This is an **unreleased draft only**.
+
 ### QA checklist
 
 - [x] Source implementation exists on a separate draft branch.
