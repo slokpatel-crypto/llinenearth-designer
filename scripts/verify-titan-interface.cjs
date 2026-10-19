@@ -80,7 +80,13 @@ async function checkViewport(width) {
 
     // Real keyboard skip behaviour, not just a decorative anchor.
     const skip = page.getByRole("link", { name: "Skip to main content" });
+    // Pointer selection above leaves Chromium in pointer modality. Prove
+    // keyboard-visible focus through real Tab navigation rather than
+    // asserting that a programmatic pointer-focus should show an outline.
     await skip.focus();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Shift+Tab");
+    assert.equal(await skip.evaluate(node => document.activeElement === node), true);
     assert.notEqual(await skip.evaluate(node => getComputedStyle(node).outlineStyle), "none");
     await skip.press("Enter");
     assert.equal(await page.locator("#titan-main").evaluate(node => document.activeElement === node), true, "Skip must move keyboard focus into main");
