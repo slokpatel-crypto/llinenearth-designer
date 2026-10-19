@@ -59,6 +59,7 @@ jobs:
             sleep 1
           done
           curl --fail --silent http://127.0.0.1:3000/designer-studio > /dev/null
+          node scripts/verify-titan-interface.cjs
           node scripts/verify-deep-engine-fabric-discovery.cjs
           node scripts/verify-designer-advisor.cjs
           node scripts/verify-photo-form.cjs
@@ -66,7 +67,6 @@ jobs:
           node scripts/verify-preview-lifecycle.cjs
           node scripts/verify-style-director-lifecycle.cjs
           node scripts/verify-style-director-handoff.cjs
-          node scripts/verify-titan-interface.cjs
       - name: Save real evidence and pending fabric QA
         if: always()
         uses: actions/upload-artifact@v4
