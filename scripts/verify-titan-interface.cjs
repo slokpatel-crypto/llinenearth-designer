@@ -65,7 +65,9 @@ async function checkViewport(width) {
       assert.equal(await menu.getAttribute("aria-expanded"), "false", "Escape must dismiss the menu");
       assert.equal(await menu.evaluate(node => document.activeElement === node), true, "Escape restores menu focus");
       await menu.click();
-      await page.locator(".titanHero h1").click();
+      // Use an unobstructed, noninteractive surface outside the menu.
+      // Skip-link focus may scroll the heading under the site's header.
+      await page.locator(".titanAnnouncement").click({ position: { x: 5, y: 5 } });
       assert.equal(await menu.getAttribute("aria-expanded"), "false", "Outside click must dismiss menu");
     } else {
       assert.equal(await menu.count(), 0, "Desktop must not show an unnecessary mobile menu button");
