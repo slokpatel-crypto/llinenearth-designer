@@ -6,6 +6,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { readTitanSharedOutfit, titanOutfitShareHref } from "@/lib/titan/outfit-share";
 import { suggestTitanPairings } from "@/lib/titan/pairing-ideas";
 import {
+  TITAN_LOOKBOOK_KEY, TITAN_LOOKBOOK_LIMIT, addTitanLookbookPair,
+  readTitanLookbook, removeTitanLookbookPair, serializeTitanLookbook,
+  type TitanLookbookPair,
+} from "@/lib/titan/reference-lookbook";
+import {
   TITAN_FABRIC_CATALOG, findTitanFabrics, titanFabricCollections, titanFabricHref,
   toggleTitanComparedFabrics, titanOutfitPairHref, type TitanFabricKind,
   type TitanFabricReference,
@@ -47,6 +52,9 @@ export default function TitanFabricExplorer() {
   const [shareOrigin, setShareOrigin] = useState("");
   const [shareCopyResult, setShareCopyResult] = useState<string | null>(null);
   const shareInputRef = useRef<HTMLInputElement>(null);
+  const [savedPairs, setSavedPairs] = useState<TitanLookbookPair[]>([]);
+  const [lookbookLoaded, setLookbookLoaded] = useState(false);
+  const [lookbookStatus, setLookbookStatus] = useState("");
 
   // A shared link restores *reference choices* only, never a design, user
   // account, measurement, stock claim or saved Designer draft. Invalid links
@@ -58,9 +66,49 @@ export default function TitanFabricExplorer() {
     setOutfitShirtId(shared.shirtId);
     setOutfitTrouserId(shared.trouserId);
   }, []);
+  // Saved cloth references live only on this browser/device; importing them
+  // never changes authenticated Designer drafts or sends customer data.
+  useEffect(() => {
+    try {
+      setSavedPairs(readTitanLookbook(window.localStorage.getItem(TITAN_LOOKBOOK_KEY)));
+    } catch {
+      setLookbookStatus("This browser has blocked local saving.");
+    }
+    setLookbookLoaded(true);
+    const updateFromOtherTab = (event: StorageEvent) => {
+      if (event.key !== TITAN_LOOKBOOK_KEY) return;
+      setSavedPairs(readTitanLookbook(event.newValue));
+      setLookbookStatus("Saved references updated from another tab.");
+    };
+    window.addEventListener("storage", updateFromOtherTab);
+    return () => window.removeEventListener("storage", updateFromOtherTab);
+  }, []);
+
+  function persistSavedPairs(next: TitanLookbookPair[], success: string) {
+    try {
+      window.localStorage.setItem(TITAN_LOOKBOOK_KEY, serializeTitanLookbook(next));
+      setSavedPairs(next);
+      setLookbookStatus(success);
+    } catch {
+      setLookbookStatus("Could not save on this device. Existing choices were not changed.");
+    }
+  }
+
+  function saveCurrentPair() {
+    if (!lookbookLoaded || !outfitShirt || !outfitTrouser) return;
+    const next = addTitanLookbookPair(savedPairs, { shirtId: outfitShirt.id, trouserId: outfitTrouser.id });
+    if (next.length === savedPairs.length) {
+      setLookbookStatus("This pair is already saved, or the six-pair limit has been reached.");
+      return;
+    }
+    persistSavedPairs(next, "Pair saved on this device only.");
+  }
+
   const outfitShirt = TITAN_FABRIC_CATALOG.find(fabric => fabric.kind === "shirt" && fabric.id === outfitShirtId);
   const outfitTrouser = TITAN_FABRIC_CATALOG.find(fabric => fabric.kind === "trouser" && fabric.id === outfitTrouserId);
   const shareHref = outfitShirt && outfitTrouser ? titanOutfitShareHref(outfitShirt.id, outfitTrouser.id) : null;
+  const alreadySaved = Boolean(outfitShirt && outfitTrouser && savedPairs.some(pair =>
+    pair.shirtId === outfitShirt.id && pair.trouserId === outfitTrouser.id));
   // Propose the complementary garment only when exactly one garment has
   // been chosen. Never override an already-complete manual customer pair.
   const pairingIdeas = useMemo(
@@ -320,6 +368,12 @@ export default function TitanFabricExplorer() {
               {/* A shared URL points back to this same route. A document navigation
                   revalidates its query and restores the reference pair instead
                   of retaining stale transient state from a Next client Link. */}
+              <button type="button" className="titanLookbookSaveButton"
+                disabled={!lookbookLoaded || alreadySaved || savedPairs.length >= TITAN_LOOKBOOK_LIMIT}
+                onClick={saveCurrentPair}>
+                {alreadySaved ? "Saved on this device" : savedPairs.length >= TITAN_LOOKBOOK_LIMIT
+                  ? "Saved-pair limit reached" : "Save this pair on this device"}
+              </button>
               <a className="titanOutfitShareCta" href={shareHref!}>
                 Open shareable cloth-pair link <span aria-hidden="true">↗</span>
               </a>
@@ -355,6 +409,64 @@ export default function TitanFabricExplorer() {
           Stock, exact colour, repeat scale and physical fit still need verification. No design is
           saved or changed by browsing; opening Designer Studio applies the two explicit choices.
         </p>
+      </section>
+      <section className="titanLookbook" aria-labelledby="titan-lookbook-title">
+        <div className="titanLookbookHeading">
+          <div>
+            <p className="titanOverline">YOUR REFERENCE LOOKBOOK</p>
+            <h3 id="titan-lookbook-title">Saved cloth pairs</h3>
+          </div>
+          <p>{savedPairs.length} of {TITAN_LOOKBOOK_LIMIT} saved</p>
+        </div>
+        <p className="titanLookbookHelp">
+          Bookmark pairs of existing catalogue swatches on this device. These are not
+          account-synced saved designs or physical outfit previews. Clearing your
+          browser storage removes them. Reopening a pair changes only this page.
+        </p>
+        {lookbookLoaded && savedPairs.length > 0 ? (
+          <div className="titanLookbookGrid">
+            {savedPairs.map(pair => {
+              const shirt = TITAN_FABRIC_CATALOG.find(f => f.kind === "shirt" && f.id === pair.shirtId);
+              const trouser = TITAN_FABRIC_CATALOG.find(f => f.kind === "trouser" && f.id === pair.trouserId);
+              if (!shirt || !trouser) return null;
+              return (
+                <article className="titanLookbookCard" key={shirt.id + ":" + trouser.id}>
+                  <div className="titanLookbookImages">
+                    {[shirt, trouser].map(fabric => (
+                      <div className="titanLookbookPhoto" key={fabric.id} style={{ backgroundColor: fabric.hex }}>
+                        <TitanReferencePhoto key={fabric.id} fabric={fabric}
+                          alt={`${fabric.name} original catalogue swatch`} sizes="(max-width: 640px) 42vw, 160px" />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="titanLookbookNames">
+                    <p><strong>Shirt:</strong> {shirt.name}</p>
+                    <p><strong>Trouser:</strong> {trouser.name}</p>
+                  </div>
+                  <div className="titanLookbookCardActions">
+                    <button type="button" onClick={() => {
+                      setOutfitShirtId(pair.shirtId);
+                      setOutfitTrouserId(pair.trouserId);
+                      setLookbookStatus("Reference pair reopened on this page; the Designer draft is unchanged.");
+                    }} aria-label={`Reopen ${shirt.name} and ${trouser.name} cloth pair`}>
+                      Reopen pair
+                    </button>
+                    <button type="button" onClick={() => persistSavedPairs(
+                      removeTitanLookbookPair(savedPairs, pair), "Reference pair removed from this device.",
+                    )} aria-label={`Remove saved ${shirt.name} and ${trouser.name} pair`}>
+                      Remove
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="titanLookbookEmpty">
+            {lookbookLoaded ? "No cloth pairs saved on this device yet." : "Checking saved references on this device…"}
+          </p>
+        )}
+        <p className="titanLookbookStatus" role="status" aria-live="polite">{lookbookStatus}</p>
       </section>
       <p className="titanFabricDisclaimer">
         These are genuine catalogue reference images, not scale-calibrated product photographs.
