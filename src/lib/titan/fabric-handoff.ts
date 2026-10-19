@@ -61,9 +61,8 @@ export type TitanFabricHandoff =
 /**
  * Fail-closed: one fabric replaces its requested garment only; a pair updates
  * both explicitly chosen fabrics, never measurements, styling or body profile.
- * Style Director links remain separate and authoritative.
- * never a saved trouser/shirt counterpart, measurement, cut or account record.
- * A Style Director / other deep link cannot masquerade as this fabric handoff.
+ * Style Director links remain separate and authoritative. No unknown or
+ * mixed query shape can impersonate either approved handoff.
  */
 export function readTitanFabricHandoff(search: string): TitanFabricHandoff | null {
   const params = new URLSearchParams(search);
