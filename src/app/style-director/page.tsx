@@ -10,6 +10,7 @@ import { customerPhotoCalibrationIdentity, fetchCustomerPhotoCalibration } from 
 import { createPreviewRequestScope } from "@/lib/designer/preview-request-scope";
 import { selectedLookQaPassed } from "@/lib/designer/selected-look-qa";
 import { optionById } from "@/lib/designer/options/library";
+import { readTitanOccasion } from "@/lib/titan/occasion-handoff";
 import "./style-director.css";
 
 type StepKey = keyof StyleDirectorAnswers;
@@ -63,6 +64,15 @@ export default function StyleDirectorPage() {
   const [renderCalibrationIdentity,setRenderCalibrationIdentity] = useState<string|null>(null);
   const [currentCalibrationIdentity,setCurrentCalibrationIdentity] = useState<string|null>(null);
   const [error,setError] = useState("");
+  // A deliberate, allowlisted TITAN quick-start skips only the answered
+  // occasion prompt. Every remaining customer choice and validation still runs.
+  useEffect(() => {
+    const occasion = readTitanOccasion(window.location.search);
+    if (!occasion) return;
+    setAnswers(current => Object.keys(current).length ? current : { occasion });
+    setIndex(current => current === 0 ? 1 : current);
+  }, []);
+
   const step = steps[index];
   const complete = looks.length > 0;
   const selectedLook = looks[selected];
@@ -196,6 +206,14 @@ export default function StyleDirectorPage() {
   }
 
   function reset() {
+    // Starting over also clears a consumed TITAN handoff, so browser refresh
+    // cannot unexpectedly skip the first question again.
+    if (readTitanOccasion(window.location.search)) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("source");
+      url.searchParams.delete("occasion");
+      window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+    }
     journeyScope.invalidate(); renderScope.invalidate();
     setJourneyEpoch((epoch)=>epoch+1);
     setIndex(0); setAnswers({}); setLooks([]); setSelected(0);
