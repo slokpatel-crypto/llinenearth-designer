@@ -45,6 +45,19 @@ export type FitOutcomeSignal = {
   summary:string;
 };
 
+export type StoredFitOutcomePayload = {
+  subtype:"designer_fit_outcome";
+  recommendationId:string;
+  verdict:FitOutcomeVerdict;
+  occasion:OccasionTier;
+  shirtFit:string;
+  trouser:string;
+  torso:FitOutcomeReview["proportion"]["torso"];
+  seat:FitOutcomeReview["proportion"]["seat"];
+  areas:FitOutcomeArea[];
+  note:string;
+};
+
 type EventLike={type:string;source?:string;payload?:Record<string,unknown>};
 
 const OCCASIONS=new Set<OccasionTier>(["Casual","Smart-Casual","Semi-Formal","Formal"]);
@@ -81,6 +94,56 @@ function seatBucket(seat?:number,waist?:number){
   return seat-waist>=24 ? "pronounced" as const : "balanced" as const;
 }
 
+function reviewFromPayload(value:unknown):FitOutcomeReview|null{
+  if(!value||typeof value!=="object"||Array.isArray(value)) return null;
+  const p=value as Record<string,unknown>;
+  // The storage boundary must retain exact identity. Trimming a submitted ID
+  // or style label would let a malformed write alias an existing fitting and
+  // later replace its evidence under the append-only latest-write contract.
+  if(p.subtype!=="designer_fit_outcome") return null;
+  const recommendationId=txt(p.recommendationId,160);
+  const verdict=txt(p.verdict,40) as FitOutcomeVerdict;
+  const occasion=txt(p.occasion,40) as OccasionTier;
+  const shirtFit=txt(p.shirtFit,120);
+  const trouser=txt(p.trouser,120);
+  const torso=txt(p.torso,30) as FitOutcomeReview["proportion"]["torso"];
+  const seat=txt(p.seat,30) as FitOutcomeReview["proportion"]["seat"];
+  if(p.areas!==undefined && !Array.isArray(p.areas)) return null;
+  const rawAreas=p.areas===undefined ? [] : p.areas as unknown[];
+  if(rawAreas.length>10) return null;
+  const areas=rawAreas.map((item)=>txt(item,40) as FitOutcomeArea);
+  if(areas.some((area)=>!AREAS.has(area))||new Set(areas).size!==areas.length) return null;
+  if(!recommendationId||!VERDICTS.has(verdict)||!OCCASIONS.has(occasion)||!shirtFit||!trouser) return null;
+  if(p.recommendationId!==recommendationId||p.shirtFit!==shirtFit||p.trouser!==trouser) return null;
+  if(shirtFit.includes("::")||trouser.includes("::")) return null;
+  if(!["tapered","balanced","straight","unknown"].includes(torso)) return null;
+  if(!["pronounced","balanced","unknown"].includes(seat)) return null;
+  return {recommendationId,verdict,occasion,shirtFit,trouser,proportion:{torso,seat},areas};
+}
+
+/**
+ * Validate the exact payload before it is persisted by the memory API. This
+ * intentionally rejects malformed area lists and identity aliases instead of
+ * filtering/trimming them into a different, apparently trustworthy review.
+ */
+export function fitOutcomePayloadForStorage(value:unknown):StoredFitOutcomePayload|null{
+  const review=reviewFromPayload(value);
+  if(!review) return null;
+  const payload=value as Record<string,unknown>;
+  return {
+    subtype:"designer_fit_outcome",
+    recommendationId:review.recommendationId,
+    verdict:review.verdict,
+    occasion:review.occasion,
+    shirtFit:review.shirtFit,
+    trouser:review.trouser,
+    torso:review.proportion.torso,
+    seat:review.proportion.seat,
+    areas:review.areas,
+    note:txt(payload.note,500),
+  };
+}
+
 export function fitOutcomeProportionFromMeasurements(measurements?:{
   shirt?:{chest?:number;waist?:number};
   pants?:{waist?:number;seat?:number};
@@ -102,34 +165,7 @@ export function parseFitOutcome(event:EventLike):FitOutcomeReview|null{
   // before dereferencing a field or treating corrupt records as fit evidence.
   if(!event||typeof event!=="object"||Array.isArray(event)
     ||event.type!=="operator_note"||event.source!=="operator") return null;
-  const p=event.payload;
-  if(!p||typeof p!=="object"||Array.isArray(p)) return null;
-  if(txt(p.subtype,80)!=="designer_fit_outcome") return null;
-  const recommendationId=txt(p.recommendationId,160);
-  const verdict=txt(p.verdict,40) as FitOutcomeVerdict;
-  const occasion=txt(p.occasion,40) as OccasionTier;
-  const shirtFit=txt(p.shirtFit,120);
-  const trouser=txt(p.trouser,120);
-  const torso=txt(p.torso,30) as FitOutcomeReview["proportion"]["torso"];
-  const seat=txt(p.seat,30) as FitOutcomeReview["proportion"]["seat"];
-  // Filtering/truncating bad area entries silently changes the operator's
-  // actual fitting record. Keep legacy omitted area lists, but fail closed
-  // for any malformed, oversized or duplicate explicitly supplied list.
-  if(p.areas!==undefined && !Array.isArray(p.areas)) return null;
-  const rawAreas=p.areas===undefined ? [] : p.areas as unknown[];
-  if(rawAreas.length>10) return null;
-  const areas=rawAreas.map((value)=>txt(value,40) as FitOutcomeArea);
-  if(areas.some((area)=>!AREAS.has(area))||new Set(areas).size!==areas.length) return null;
-  if(!recommendationId||!VERDICTS.has(verdict)||!OCCASIONS.has(occasion)||!shirtFit||!trouser) return null;
-  // IDs and style labels are persisted join keys, not display text. Trimming
-  // them would merge two independently recorded reviews into one identity.
-  if(p.recommendationId!==recommendationId||p.shirtFit!==shirtFit||p.trouser!==trouser) return null;
-  // Keys are historically persisted as ::-joined fields. Do not allow a
-  // delimiter inside a field to collide with a distinct style's bucket key.
-  if(shirtFit.includes("::")||trouser.includes("::")) return null;
-  if(!["tapered","balanced","straight","unknown"].includes(torso)) return null;
-  if(!["pronounced","balanced","unknown"].includes(seat)) return null;
-  return {recommendationId,verdict,occasion,shirtFit,trouser,proportion:{torso,seat},areas};
+  return reviewFromPayload(event.payload);
 }
 
 export function aggregateFitOutcomes(events:EventLike[]):FitOutcomeBook{

@@ -1384,11 +1384,11 @@ console.log("Designer casebook gate passed: operator-reviewed cases are aggregat
 
 
 const fitOutcomeModel = fs.readFileSync("src/lib/designer/fit-outcomes.ts","utf8");
-for (const token of ["designer-fit-outcomes-v1","clean_first_fit","minor_alteration","major_alteration","aggregateFitOutcomes","fitOutcomeSignalFor","total>=4"]) {
+for (const token of ["designer-fit-outcomes-v1","clean_first_fit","minor_alteration","major_alteration","aggregateFitOutcomes","fitOutcomeSignalFor","fitOutcomePayloadForStorage","rawAreas.length>10","new Set(areas).size!==areas.length","total>=4"]) {
   if (!fitOutcomeModel.includes(token)) throw new Error(`Designer first-fit outcome regression: fit-outcomes missing ${token}`);
 }
 const fitOutcomeMemory = fs.readFileSync("src/app/api/memory/event/route.ts","utf8");
-for (const token of ['subtype === "designer_fit_outcome"',"allowedAreas","clean_first_fit","major_alteration"]) {
+for (const token of ['subtype === "designer_fit_outcome"',"fitOutcomePayloadForStorage(payload)"]) {
   if (!fitOutcomeMemory.includes(token)) throw new Error(`Designer first-fit outcome regression: memory route missing ${token}`);
 }
 const fitOutcomeApi = fs.readFileSync("src/app/api/designer/casebook/route.ts","utf8");

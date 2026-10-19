@@ -37,7 +37,7 @@ test("an invalid garment dimension does not contaminate an independently valid b
   );
 });
 
-import {aggregateFitOutcomes,fitOutcomeSignalFor,parseFitOutcome} from "../src/lib/designer/fit-outcomes.ts";
+import {aggregateFitOutcomes,fitOutcomePayloadForStorage,fitOutcomeSignalFor,parseFitOutcome} from "../src/lib/designer/fit-outcomes.ts";
 
 test("unmeasured or corrupt profiles cannot improve a measured customer's fit-learning signal",()=>{
   const event=(id:string,torso:string,seat:string,verdict:string)=>({
@@ -487,4 +487,37 @@ test("unrelated and unidentifiable invalid events cannot erase other fitting rev
   const book=aggregateFitOutcomes([genuine,unrelated,ambiguousId,nonOperator]);
   assert.equal(book.totalReviews,1);
   assert.equal(book.buckets[0].clean,1);
+});
+
+const storagePayload={subtype:"designer_fit_outcome",recommendationId:"cut-01",
+  verdict:"clean_first_fit",occasion:"Formal",shirtFit:"regular",trouser:"straight",
+  torso:"tapered",seat:"balanced",areas:["shirt_sleeve"],note:"  cuff checked  "};
+
+test("memory write validation preserves a canonical fitting payload",()=>{
+  assert.deepEqual(fitOutcomePayloadForStorage(storagePayload),{
+    ...storagePayload,note:"cuff checked",
+  });
+});
+
+test("memory write validation cannot trim an ambiguous fitting identity into an existing record",()=>{
+  for(const field of ["recommendationId","shirtFit","trouser"] as const){
+    for(const value of [` ${storagePayload[field]}`,`${storagePayload[field]} `]){
+      assert.equal(fitOutcomePayloadForStorage({...storagePayload,[field]:value}),null);
+    }
+  }
+  assert.equal(fitOutcomePayloadForStorage({...storagePayload,shirtFit:"regular::straight"}),null);
+});
+
+test("memory write validation rejects malformed fitting areas instead of filtering them",()=>{
+  for(const areas of ["shirt_sleeve",["shirt_sleeve","invented"],
+    ["shirt_sleeve","shirt_sleeve"],Array(11).fill("shirt_sleeve")]){
+    assert.equal(fitOutcomePayloadForStorage({...storagePayload,areas}),null);
+  }
+});
+
+test("memory API uses the shared fail-closed fitting validator",async()=>{
+  const {readFile}=await import("node:fs/promises");
+  const source=await readFile("src/app/api/memory/event/route.ts","utf8");
+  assert.match(source,/return fitOutcomePayloadForStorage\(payload\)/);
+  assert.doesNotMatch(source,/payload\.areas\.map\([^\n]+\.filter/);
 });
