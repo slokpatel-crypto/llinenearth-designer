@@ -121,6 +121,9 @@ export function parseFitOutcome(event:EventLike):FitOutcomeReview|null{
   const areas=rawAreas.map((value)=>txt(value,40) as FitOutcomeArea);
   if(areas.some((area)=>!AREAS.has(area))||new Set(areas).size!==areas.length) return null;
   if(!recommendationId||!VERDICTS.has(verdict)||!OCCASIONS.has(occasion)||!shirtFit||!trouser) return null;
+  // IDs and style labels are persisted join keys, not display text. Trimming
+  // them would merge two independently recorded reviews into one identity.
+  if(p.recommendationId!==recommendationId||p.shirtFit!==shirtFit||p.trouser!==trouser) return null;
   // Keys are historically persisted as ::-joined fields. Do not allow a
   // delimiter inside a field to collide with a distinct style's bucket key.
   if(shirtFit.includes("::")||trouser.includes("::")) return null;
@@ -156,6 +159,7 @@ function reliableFitOutcomeBucket(value:unknown, totalReviews:number):value is F
   if(!OCCASIONS.has(bucket.occasion)
     ||typeof bucket.shirtFit!=="string"||!bucket.shirtFit.trim()||bucket.shirtFit.length>120
     ||typeof bucket.trouser!=="string"||!bucket.trouser.trim()||bucket.trouser.length>120
+    ||bucket.shirtFit!==bucket.shirtFit.trim()||bucket.trouser!==bucket.trouser.trim()
     ||bucket.shirtFit.includes("::")||bucket.trouser.includes("::")
     ||!["tapered","balanced","straight","unknown"].includes(bucket.torso)
     ||!["pronounced","balanced","unknown"].includes(bucket.seat)
