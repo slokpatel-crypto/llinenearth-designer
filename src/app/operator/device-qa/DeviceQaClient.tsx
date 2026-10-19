@@ -9,7 +9,7 @@ import {
   previewDeviceClassForViewport,
   type PreviewPerformanceSummary,
 } from "@/lib/designer/preview-performance-client";
-import { DEVICE_QA_EVIDENCE_VERSION } from "@/lib/designer/device-qa-evidence";
+import { DEVICE_QA_EVIDENCE_VERSION, DEVICE_QA_MAX_FRAME_MS } from "@/lib/designer/device-qa-evidence";
 
 type DeviceClass="mobile"|"tablet"|"desktop";
 type CheckKey="fourViews"|"controlsLegible"|"noOverflow"|"fabricReadable"|"modelStable";
@@ -74,8 +74,9 @@ export default function DeviceQaClient(){
 
   const deviceClass=classify(viewport.width||1024);
   const allChecks=CHECKS.every((item)=>checks[item.key]);
-  const performanceReady=summary.samples>=12 && summary.p95Ms!==null;
-  const accepted=Boolean(performanceReady && summary.withinTarget===true && allChecks);
+  const performanceReady=summary.samples>=12 && summary.p95Ms!==null && summary.maxMs!==null;
+  const latencyPass=performanceReady && summary.withinTarget===true && summary.maxMs!<DEVICE_QA_MAX_FRAME_MS;
+  const accepted=Boolean(latencyPass && allChecks);
   const previous=history?.latest?.[deviceClass]||null;
   const coverage=useMemo(()=>["mobile","tablet","desktop"].map((kind)=>({
     kind,
@@ -147,21 +148,21 @@ export default function DeviceQaClient(){
           <span><small>VIEWPORT</small><b>{viewport.width} × {viewport.height}</b></span>
           <span><small>PIXEL RATIO</small><b>{viewport.dpr.toFixed(2)}</b></span>
           <span><small>CPU THREADS</small><b>{typeof navigator!=="undefined" ? navigator.hardwareConcurrency||"—" : "—"}</b></span>
-          <span><small>TARGET</small><b>p95 &lt; {PREVIEW_PERFORMANCE_TARGET_MS} ms</b></span>
+          <span><small>TARGET</small><b>p95 &lt; {PREVIEW_PERFORMANCE_TARGET_MS} ms, max &lt; {DEVICE_QA_MAX_FRAME_MS} ms</b></span>
         </div>
         <p className="deviceQaInstruction">Use <b>Open Designer Studio</b> in this same tab and device class. Switch fabrics/cuts/body/view at least 12 times, inspect all four views, then return here. Earlier samples without device-class provenance cannot certify this device; record fresh interactions. Session samples survive same-tab navigation.</p>
         <button className="deviceRefresh" type="button" onClick={()=>setSummary(readPreviewPerformanceSummaryForDeviceClass(deviceClass))}>Refresh local measurements</button>
       </article>
 
       <article className="deviceQaPanel">
-        <div className="deviceQaPanelHead"><span>02 / OBSERVED LATENCY</span><strong>{performanceReady?(summary.withinTarget?"PASS":"REVIEW"):"NEEDS SAMPLES"}</strong></div>
+        <div className="deviceQaPanelHead"><span>02 / OBSERVED LATENCY</span><strong>{performanceReady?(latencyPass?"PASS":"REVIEW"):"NEEDS SAMPLES"}</strong></div>
         <div className="deviceMetrics">
           <span><small>SAMPLES</small><b>{summary.samples}</b></span>
           <span><small>MEDIAN</small><b>{summary.medianMs ?? "—"} ms</b></span>
           <span><small>P95</small><b>{summary.p95Ms ?? "—"} ms</b></span>
           <span><small>MAX</small><b>{summary.maxMs ?? "—"} ms</b></span>
         </div>
-        <p>{performanceReady?summary.withinTarget?"Observed browser interaction is within the current 100 ms p95 target.":"Observed p95 exceeds the current interaction target; record as review and investigate on this device.":`Collect at least ${Math.max(0,12-summary.samples)} more option/view/body interactions before device acceptance.`}</p>
+        <p>{performanceReady?latencyPass?"Observed interaction meets the 100 ms p95 and 1,000 ms maximum-frame targets.":"Observed p95 or maximum interaction latency exceeds the target; record as review and investigate on this device.":`Collect at least ${Math.max(0,12-summary.samples)} more option/view/body interactions before device acceptance.`}</p>
       </article>
     </section>
 
