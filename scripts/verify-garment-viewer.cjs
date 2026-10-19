@@ -138,18 +138,28 @@ async function verifyViewport(browser, width) {
     await referenceImage.waitFor({state:"visible"});
     assert.match(await referenceImage.getAttribute("src"),/studio-tucked\.webp$/);
     assert.match(await page.locator(".garmentViewerReference").innerText(),/linen-earth-studio-model-v1/);
-    if(stageLabel.includes("ENGINEERING CANDIDATE")){
+    const isEngineeringCandidate=stageLabel.includes("ENGINEERING CANDIDATE");
+    if(isEngineeringCandidate){
       assert.match(await viewer.getAttribute("src"),/^\/models\/linen-earth-officewear-v1\.glb$/,
         "procedural M7 candidate must remain the real source lab GLB, never a substitute person");
-      assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-model-readiness"),"contract_ready");
     }
-    await page.waitForFunction(()=>{
+    // Readiness is set asynchronously after React/model-viewer hydration.
+    // Do not assert "contract_ready" BEFORE the await. A real candidate
+    // still MUST become contract_ready with >=6 loaded materials; merely
+    // reaching "prototype" or observing a DOM element cannot make it pass.
+    await page.waitForFunction((requiresCandidateContract)=>{
       const model=document.querySelector("model-viewer");
       const shell=document.querySelector(".garmentViewerShell");
+      const readiness=shell?.getAttribute("data-model-readiness");
       return Boolean(model?.loaded) && (model.model?.materials?.length||0)>=6
-        && ["prototype","contract_ready"].includes(shell?.getAttribute("data-model-readiness"))
+        && (requiresCandidateContract
+          ? readiness==="contract_ready"
+          : ["prototype","contract_ready"].includes(readiness))
         && !document.querySelector(".garmentViewerError");
-    },null,{timeout:90000,polling:100});
+    },isEngineeringCandidate,{timeout:90000,polling:100});
+    if(isEngineeringCandidate){
+      assert.equal(await page.locator(".garmentViewerShell").getAttribute("data-model-readiness"),"contract_ready");
+    }
     qaStage("real prototype model loaded; production proof deliberately not claimed");
     const materials=await viewer.evaluate(element=>element.model?.materials?.map(material=>material.name)||[]);
     for(const name of ["ShirtTorsoFabric","ShirtSleeveLFabric","ShirtSleeveRFabric","TrouserWaistFabric","TrouserLegLFabric","TrouserLegRFabric"]){
