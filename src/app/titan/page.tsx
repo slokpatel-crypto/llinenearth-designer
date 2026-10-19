@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import TitanHeaderNavigation from "./titan-header-navigation";
+import { TITAN_OCCASIONS, titanOccasionHref } from "@/lib/titan/occasion-handoff";
 import { BRAND_LOGO_SRC, BRAND_LOGO_SIZE } from "@/lib/brand-logo-data";
 import { titanDevelopmentTrack, titanJourneys, titanQuickLinks } from "@/lib/titan/navigation";
 import "./titan.css";
@@ -65,6 +66,21 @@ export default function TitanStudioPage() {
               <strong>Fabric. Shape. Identity.</strong>
             </div>
             <div className="titanHeroIndex" aria-hidden="true">01 / 03</div>
+          </div>
+        </section>
+
+        <section className="titanOccasionSection" aria-labelledby="titan-occasion-title">
+          <div className="titanOccasionHeading">
+            <p className="titanOverline">A SHORTER PATH TO YOUR STYLE</p>
+            <h2 id="titan-occasion-title">What are you dressing for?</h2>
+            <p>Choose your occasion to continue in the existing Style Director. The first answer carries across; no paid AI render is needed to start.</p>
+          </div>
+          <div className="titanOccasionOptions" aria-label="Start Style Director by occasion">
+            {TITAN_OCCASIONS.map((occasion) => (
+              <Link key={occasion} href={titanOccasionHref(occasion)} className="titanOccasionLink">
+                {occasion}<span aria-hidden="true">↗</span>
+              </Link>
+            ))}
           </div>
         </section>
 
