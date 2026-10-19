@@ -77,6 +77,8 @@ async function checkViewport(width) {
     assert.equal(await page.locator(".titanFabricComparisonItem").count(), 0, "Clear comparison must leave no items");
     await page.getByRole("button", { name: "Shirting" }).click();
     assert.equal(await page.locator(".titanFabricCard").count(), 8, "Shirting catalogue still works after reset");
+    assert.equal(await page.locator(".titanOutfitSlot").count(), 2, "One builder slot per garment");
+    assert.equal(await page.locator(".titanOutfitBuildCta").count(), 0, "Incomplete outfit cannot transfer");
 
     // Real keyboard skip behaviour, not just a decorative anchor.
     const skip = page.getByRole("link", { name: "Skip to main content" });
@@ -139,7 +141,7 @@ async function checkViewport(width) {
 
     // Every visible navigation entry must be large enough to use on a phone,
     // tablet or desktop; screenshots alone cannot prove pointer ergonomics.
-    const targets = await page.locator(".titanHeaderCta, .titanNav a, .titanMenuButton, .titanMobileNavPanel a, .titanOccasionLink, .titanButton, .titanTextLink, .titanFooter nav a, .titanFabricCompareButton, .titanFabricComparisonClear, .titanFabricComparisonDetails a").evaluateAll(nodes =>
+    const targets = await page.locator(".titanHeaderCta, .titanNav a, .titanMenuButton, .titanMobileNavPanel a, .titanOccasionLink, .titanButton, .titanTextLink, .titanFooter nav a, .titanFabricCompareButton, .titanFabricComparisonClear, .titanFabricComparisonDetails a, .titanFabricOutfitSelect, .titanOutfitSlotText button, .titanOutfitBuildCta").evaluateAll(nodes =>
       nodes.filter(node => node.getClientRects().length > 0)
         .map(node => ({ text: node.textContent.trim().slice(0, 50), height: node.getBoundingClientRect().height }))
     );
@@ -233,6 +235,38 @@ async function checkViewport(width) {
         { timeout: 15000 }
       );
       summary.handoffs.push({ source: "titan-fabric", kind: source, selected: chosen, savedCounterpartPreserved: true });
+      await page.goto(`${base}/titan`, { waitUntil: "domcontentloaded" });
+      await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+    }
+
+    if (width === 390) {
+      // Two-category selection survives tab switches and transfers both
+      // explicit fabric IDs to the maintained Designer, never the whole draft.
+      const shirt = "linen-plain-60-sky-blue";
+      const trouser = "linen-suiting-beige";
+      await page.locator(`.titanFabricTile:has(.titanFabricCard[href="/designer-studio?source=titan&kind=shirt&fabric=${shirt}"]) .titanFabricOutfitSelect`).click();
+      assert.equal(await page.locator(".titanOutfitBuildCta").count(), 0);
+      await page.getByRole("button", { name: "Trouser cloth" }).click();
+      assert.equal(await page.locator(".titanOutfitSlot img").count(), 1, "Shirt choice must survive tab switch");
+      await page.locator(`.titanFabricTile:has(.titanFabricCard[href="/designer-studio?source=titan&kind=trouser&fabric=${trouser}"]) .titanFabricOutfitSelect`).click();
+      assert.equal(await page.locator(".titanOutfitSlot img").count(), 2);
+      for (const img of await page.locator(".titanOutfitSlot img").all()) {
+        await img.evaluate(node => node.decode());
+        assert.ok(await img.evaluate(node => node.naturalWidth > 0));
+      }
+      const pairHref = `/designer-studio?source=titan&shirt=${shirt}&trouser=${trouser}`;
+      assert.equal(await page.locator(".titanOutfitBuildCta").getAttribute("href"), pairHref);
+      await page.evaluate(() => localStorage.setItem("linen-earth:real-designer-draft:v2", JSON.stringify({
+        shirtId: "linen-plain-60-peach", pantId: "linen-suiting-dark-grey",
+        occasion: "Casual", climate: "Hot / humid", intention: "Balanced",
+      })));
+      await page.locator(".titanOutfitBuildCta").click();
+      await page.waitForURL(url => url.pathname === "/designer-studio" && url.searchParams.get("shirt") === shirt && url.searchParams.get("trouser") === trouser, { timeout: 15000 });
+      await page.waitForFunction(({ shirt, trouser }) =>
+        document.querySelector("#designer-shirt")?.value === shirt
+        && document.querySelector("#designer-pant")?.value === trouser,
+        { shirt, trouser }, { timeout: 15000 });
+      summary.handoffs.push({ source: "titan-outfit-pair", shirt, trouser, explicitBoth: true });
       await page.goto(`${base}/titan`, { waitUntil: "domcontentloaded" });
       await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
     }
