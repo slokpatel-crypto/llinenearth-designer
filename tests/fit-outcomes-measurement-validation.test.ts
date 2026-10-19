@@ -131,7 +131,10 @@ test("individually plausible but globally duplicated fitting groups cannot doubl
   const second={...first,key:"Formal::regular::straight::balanced::balanced",torso:"balanced"};
   const book={version:"designer-fit-outcomes-v1" as const,totalReviews:5,
     usableBuckets:2,buckets:[first,second]};
-  assert.equal(fitOutcomeSignalFor(input,{...book,buckets:[first],totalReviews:5,usableBuckets:1}).evidence,3);
+  const incomplete=fitOutcomeSignalFor(input,{...book,buckets:[first],totalReviews:5,usableBuckets:1});
+  assert.equal(incomplete.score,0);
+  assert.equal(incomplete.evidence,0);
+  assert.match(incomplete.summary,/revalidation/i);
   const overcounted=fitOutcomeSignalFor(input,book);
   assert.equal(overcounted.score,0);
   assert.equal(overcounted.evidence,0);
@@ -351,4 +354,50 @@ test("noncanonical stored bucket labels fail entire fitting-book integrity check
       assert.match(result.summary,/revalidation/i);
     }
   }
+});
+
+test("persisted first-fit summaries reconcile every reviewed outcome, not only favorable buckets",()=>{
+  const event=(id:string,verdict:string,occasion:string)=>({
+    type:"operator_note",source:"operator",payload:{
+      subtype:"designer_fit_outcome",recommendationId:id,verdict,occasion,
+      shirtFit:"regular",trouser:"straight",torso:"tapered",seat:"balanced",areas:[],
+    },
+  });
+  const book=aggregateFitOutcomes([
+    ...Array.from({length:3},(_,i)=>event(`clean-${i}`,"clean_first_fit","Formal")),
+    event("different-occasion","major_alteration","Casual"),
+  ]);
+  const input={occasion:"Formal" as const,style:{shirtFit:"regular",trouser:"straight"},
+    proportion:{torso:"tapered",seat:"balanced"}};
+  assert.equal(book.totalReviews,4);
+  assert.equal(book.buckets.reduce((sum,b)=>sum+b.total,0),4);
+  assert.equal(fitOutcomeSignalFor(input,book).evidence,3);
+  for(const incomplete of [
+    {...book,buckets:book.buckets.filter(b=>b.occasion==="Formal")},
+    {...book,totalReviews:5},
+    {...book,totalReviews:3},
+    {...book,buckets:[] as typeof book.buckets,usableBuckets:0},
+  ]){
+    const result=fitOutcomeSignalFor(input,incomplete);
+    assert.equal(result.score,0,"Incomplete or contradictory totals cannot recommend a cut");
+    assert.equal(result.evidence,0,"Unrepresented fittings cannot count as validated evidence");
+    assert.match(result.summary,/revalidation/i);
+  }
+});
+
+test("a sparse book with phantom review metadata cannot cite nonexistent fitting evidence",()=>{
+  const input={occasion:"Formal" as const,style:{shirtFit:"regular",trouser:"straight"},
+    proportion:{torso:"tapered",seat:"balanced"}};
+  const event={type:"operator_note",source:"operator",payload:{
+    subtype:"designer_fit_outcome",recommendationId:"single-01",
+    verdict:"clean_first_fit",occasion:"Formal",shirtFit:"regular",
+    trouser:"straight",torso:"tapered",seat:"balanced",areas:[],
+  }};
+  const real=aggregateFitOutcomes([event]);
+  assert.equal(fitOutcomeSignalFor(input,real).evidence,1);
+  const phantom={...real,totalReviews:2};
+  const result=fitOutcomeSignalFor(input,phantom);
+  assert.equal(result.score,0);
+  assert.equal(result.evidence,0);
+  assert.match(result.summary,/revalidation/i);
 });
