@@ -61,3 +61,21 @@ export function readTitanFabricHandoff(search: string): { kind: TitanFabricKind;
   if (!fabricId || !TITAN_FABRIC_CATALOG.some(fabric => fabric.kind === kind && fabric.id === fabricId)) return null;
   return { kind, fabricId };
 }
+
+/**
+ * Two-way visual shortlist, not a physical colour / scale comparison. Keep
+ * selection inside one garment category and fail closed on stale or foreign
+ * IDs; there is no design mutation until the customer chooses a Designer link.
+ */
+export function toggleTitanComparedFabrics(
+  kind: TitanFabricKind,
+  selectedIds: readonly string[],
+  fabricId: string,
+): string[] {
+  const allowed = new Set(TITAN_FABRIC_CATALOG.filter(fabric => fabric.kind === kind).map(fabric => fabric.id));
+  if (!allowed.has(fabricId)) return selectedIds.filter(id => allowed.has(id)).slice(0, 2);
+  const clean = [...new Set(selectedIds.filter(id => allowed.has(id)))].slice(0, 2);
+  if (clean.includes(fabricId)) return clean.filter(id => id !== fabricId);
+  if (clean.length === 2) return clean;
+  return [...clean, fabricId];
+}
