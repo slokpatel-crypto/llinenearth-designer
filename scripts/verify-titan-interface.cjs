@@ -48,6 +48,12 @@ async function checkViewport(width) {
     assert.equal(await page.locator(".titanFabricCard").count(), 1, "Catalogue search must narrow real swatch data");
     await fabricSearch.fill("");
     assert.equal(await page.locator(".titanFabricCard").count(), 8, "Clearing search restores the initial collection");
+    await fabricSearch.fill("never-a-real-fabric");
+    assert.equal(await page.locator(".titanFabricCard").count(), 0);
+    await page.getByRole("button", { name: "Trouser cloth" }).click();
+    assert.equal(await fabricSearch.inputValue(), "", "Changing garment must clear a stale search");
+    assert.equal(await page.locator(".titanFabricCard").count(), 8, "Opposite garment should be immediately browsable");
+    await page.getByRole("button", { name: "Shirting", exact: true }).click();
     // Progressive discovery must avoid mounting every catalogue image at once.
     // A second batch is available on request, and both filters and collapse
     // restore the light eight-item initial view without touching saved looks.
@@ -260,6 +266,7 @@ async function checkViewport(width) {
       assert.equal(await page.locator(".titanOutfitBuildCta").count(), 0);
       assert.equal(await page.locator(".titanPairingCard").count(), 3,
         "One real shirt must expose three catalogue-based trouser starting points");
+      const existingDesignerDraft = await page.evaluate(() => localStorage.getItem("linen-earth:real-designer-draft:v2"));
       const suggestedTrouser = page.locator(".titanPairingCard").first();
       assert.match(await suggestedTrouser.textContent(), /Dark Grey/);
       assert.ok((await suggestedTrouser.locator("button").boundingBox()).height >= 44,
@@ -267,6 +274,8 @@ async function checkViewport(width) {
       await suggestedTrouser.getByRole("button", { name: /Use Dark Grey with the chosen shirt reference/ }).click();
       assert.equal(await page.locator(".titanOutfitSlot img").count(), 2,
         "Choosing an editorial suggestion fills only the missing garment");
+      assert.equal(await page.evaluate(() => localStorage.getItem("linen-earth:real-designer-draft:v2")),
+        existingDesignerDraft, "Editorial suggestions cannot mutate the saved Designer draft");
       assert.equal(await page.locator(".titanOutfitBuildCta").getAttribute("href"),
         `/designer-studio?source=titan&shirt=${shirt}&trouser=linen-suiting-dark-grey`,
         "The manually chosen shirt must be preserved exactly");
