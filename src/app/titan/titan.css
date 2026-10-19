@@ -676,3 +676,11 @@
   .titanOutfitSlotText p { font-size: 18px; }
   .titanOutfitBuildCta { display: flex; }
 }
+
+/* Failed original reference photos remain honest and non-blocking. */
+.titanFabricPhotoFallback {
+  position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; padding: 12px; background: #dedbd0;
+  color: #394a3c; font: 700 12px/1.5 Arial, Helvetica, sans-serif;
+  text-align: center;
+}
