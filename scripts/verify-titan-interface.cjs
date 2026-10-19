@@ -65,8 +65,16 @@ async function checkViewport(width) {
     await compareButtons.nth(0).click();
     assert.equal(await page.locator(".titanFabricComparisonItem").count(), 1, "Selected fabric can be removed");
     await compareButtons.nth(0).click();
+    for (const image of await page.locator(".titanFabricComparisonImage img").all()) {
+      await image.evaluate(img => img.decode());
+      assert.ok(await image.evaluate(img => img.naturalWidth > 0), "Compared source swatches must decode");
+    }
     await page.getByRole("button", { name: "Trouser cloth" }).click();
     assert.equal(await page.locator(".titanFabricComparisonItem").count(), 0, "Changing garment resets the comparison");
+    await page.locator(".titanFabricCompareButton").first().click();
+    assert.equal(await page.locator(".titanFabricComparisonItem").count(), 1, "Trouser comparison must use that garment's catalogue");
+    await page.getByRole("button", { name: "Clear comparison" }).click();
+    assert.equal(await page.locator(".titanFabricComparisonItem").count(), 0, "Clear comparison must leave no items");
     await page.getByRole("button", { name: "Shirting" }).click();
     assert.equal(await page.locator(".titanFabricCard").count(), 8, "Shirting catalogue still works after reset");
 
