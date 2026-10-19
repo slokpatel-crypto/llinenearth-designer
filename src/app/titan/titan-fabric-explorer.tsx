@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { readTitanSharedOutfit, titanOutfitShareHref } from "@/lib/titan/outfit-share";
 import {
   TITAN_FABRIC_CATALOG, findTitanFabrics, titanFabricCollections, titanFabricHref,
@@ -45,6 +45,7 @@ export default function TitanFabricExplorer() {
   const [outfitTrouserId, setOutfitTrouserId] = useState<string | null>(null);
   const [shareOrigin, setShareOrigin] = useState("");
   const [shareCopyResult, setShareCopyResult] = useState<string | null>(null);
+  const shareInputRef = useRef<HTMLInputElement>(null);
 
   // A shared link restores *reference choices* only, never a design, user
   // account, measurement, stock claim or saved Designer draft. Invalid links
@@ -67,7 +68,11 @@ export default function TitanFabricExplorer() {
       await navigator.clipboard.writeText(new URL(shareHref, window.location.origin).href);
       setShareCopyResult(shareHref);
     } catch {
-      setShareCopyResult("manual");
+      // Clipboard permission can be denied on mobile or insecure contexts.
+      // Expose a selected real URL for keyboard/touch copying, not a dead button.
+      shareInputRef.current?.focus();
+      shareInputRef.current?.select();
+      setShareCopyResult(`manual:${shareHref}`);
     }
   }
   const comparisons = useMemo(
@@ -266,14 +271,17 @@ export default function TitanFabricExplorer() {
               <Link className="titanOutfitBuildCta" href={titanOutfitPairHref(outfitShirt.id, outfitTrouser.id)}>
                 Open both fabrics in Designer Studio <span aria-hidden="true">↗</span>
               </Link>
-              <Link className="titanOutfitShareCta" href={shareHref!}>
+              {/* A shared URL points back to this same route. A document navigation
+                  revalidates its query and restores the reference pair instead
+                  of retaining stale transient state from a Next client Link. */}
+              <a className="titanOutfitShareCta" href={shareHref!}>
                 Open shareable cloth-pair link <span aria-hidden="true">↗</span>
-              </Link>
+              </a>
             </div>
             <div className="titanOutfitShareTools">
               <label className="titanOutfitShareField">
                 Share these two cloth references
-                <input className="titanOutfitShareInput" type="text" readOnly
+                <input ref={shareInputRef} className="titanOutfitShareInput" type="text" readOnly
                   value={`${shareOrigin}${shareHref}`}
                   onFocus={event => event.currentTarget.select()}
                   aria-label="Shareable outfit reference link" />
@@ -285,7 +293,7 @@ export default function TitanFabricExplorer() {
             </div>
             {shareCopyResult === shareHref ? (
               <p className="titanOutfitCopyStatus" role="status">Cloth-pair link copied.</p>
-            ) : shareCopyResult === "manual" ? (
+            ) : shareCopyResult === `manual:${shareHref}` ? (
               <p className="titanOutfitCopyStatus" role="status">Copy the link from the field above.</p>
             ) : null}
             <p className="titanOutfitShareHelp">
