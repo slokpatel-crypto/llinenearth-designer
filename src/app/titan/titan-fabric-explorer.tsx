@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   TITAN_FABRIC_CATALOG, findTitanFabrics, titanFabricCollections, titanFabricHref,
-  toggleTitanComparedFabrics, type TitanFabricKind,
+  toggleTitanComparedFabrics, titanOutfitPairHref, type TitanFabricKind,
 } from "@/lib/titan/fabric-handoff";
 
 /**
@@ -19,6 +19,10 @@ export default function TitanFabricExplorer() {
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [comparedIds, setComparedIds] = useState<string[]>([]);
+  const [outfitShirtId, setOutfitShirtId] = useState<string | null>(null);
+  const [outfitTrouserId, setOutfitTrouserId] = useState<string | null>(null);
+  const outfitShirt = TITAN_FABRIC_CATALOG.find(fabric => fabric.kind === "shirt" && fabric.id === outfitShirtId);
+  const outfitTrouser = TITAN_FABRIC_CATALOG.find(fabric => fabric.kind === "trouser" && fabric.id === outfitTrouserId);
   const comparisons = useMemo(
     () => comparedIds.map(id => TITAN_FABRIC_CATALOG.find(fabric => fabric.kind === kind && fabric.id === id)).filter(
       (fabric): fabric is (typeof TITAN_FABRIC_CATALOG)[number] => Boolean(fabric)
@@ -87,6 +91,16 @@ export default function TitanFabricExplorer() {
                   onClick={() => setComparedIds(previous => toggleTitanComparedFabrics(kind, previous, fabric.id))}>
                   {selected ? "✓ In comparison" : "Compare swatch"}
                 </button>
+                <button type="button" className="titanFabricOutfitSelect"
+                  aria-pressed={kind === "shirt" ? outfitShirtId === fabric.id : outfitTrouserId === fabric.id}
+                  aria-label={`${kind === "shirt" ? "Choose as shirt" : "Choose as trouser"}: ${fabric.name}`}
+                  onClick={() => {
+                    if (kind === "shirt") setOutfitShirtId(previous => previous === fabric.id ? null : fabric.id);
+                    else setOutfitTrouserId(previous => previous === fabric.id ? null : fabric.id);
+                  }}>
+                  {(kind === "shirt" ? outfitShirtId : outfitTrouserId) === fabric.id
+                    ? "✓ In your outfit" : `Choose as ${kind === "shirt" ? "shirt" : "trouser"}`}
+                </button>
               </div>
             );
           })}
@@ -148,6 +162,62 @@ export default function TitanFabricExplorer() {
           </p>
         </section>
       )}
+      <section className="titanOutfitBuilder" aria-labelledby="titan-outfit-title">
+        <div className="titanOutfitBuilderHeading">
+          <div>
+            <p className="titanOverline">YOUR CLOTH PAIR</p>
+            <h3 id="titan-outfit-title">Build a two-piece outfit</h3>
+          </div>
+          <p role="status" aria-live="polite">
+            {(outfitShirt ? 1 : 0) + (outfitTrouser ? 1 : 0)} of 2 garments chosen
+          </p>
+        </div>
+        <div className="titanOutfitSlots">
+          {(["shirt", "trouser"] as const).map(slot => {
+            const fabric = slot === "shirt" ? outfitShirt : outfitTrouser;
+            return (
+              <article key={slot} className="titanOutfitSlot">
+                <div className="titanOutfitSlotMedia">
+                  {fabric ? <Image src={fabric.image} alt={`${fabric.name} ${slot} catalogue photo`}
+                    fill sizes="(max-width: 620px) 30vw, 140px" /> : <span aria-hidden="true">{slot === "shirt" ? "01" : "02"}</span>}
+                </div>
+                <div className="titanOutfitSlotText">
+                  <strong>{slot === "shirt" ? "Shirting" : "Trouser cloth"}</strong>
+                  {fabric ? (
+                    <>
+                      <p>{fabric.name}</p>
+                      <span>{fabric.line}</span>
+                      <button type="button" onClick={() => {
+                        if (slot === "shirt") setOutfitShirtId(null);
+                        else setOutfitTrouserId(null);
+                      }} aria-label={`Remove ${fabric.name} ${slot} from outfit`}>Remove cloth</button>
+                    </>
+                  ) : (
+                    <>
+                      <p>No cloth selected</p>
+                      <button type="button" onClick={() => chooseKind(slot)}>
+                        Browse {slot === "shirt" ? "shirting" : "trousers"}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+        {outfitShirt && outfitTrouser ? (
+          <Link className="titanOutfitBuildCta" href={titanOutfitPairHref(outfitShirt.id, outfitTrouser.id)}>
+            Open both fabrics in Designer Studio <span aria-hidden="true">↗</span>
+          </Link>
+        ) : (
+          <p className="titanOutfitHelp">Select one shirt fabric and one trouser fabric to continue with both in the existing designer.</p>
+        )}
+        <p className="titanOutfitCaution">
+          This pairs two real catalogue references, not a calibrated photo of a finished outfit.
+          Stock, exact colour, repeat scale and physical fit still need verification. No design is
+          saved or changed by browsing; opening Designer Studio applies the two explicit choices.
+        </p>
+      </section>
       <p className="titanFabricDisclaimer">
         These are genuine catalogue reference images, not scale-calibrated product photographs.
         Selecting a cloth opens the existing Designer Studio; the actual availability,
