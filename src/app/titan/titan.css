@@ -477,3 +477,90 @@
   .titanOccasionOptions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .titanOccasionLink { min-height: 52px; padding: 11px 13px; font-size: 12px; }
 }
+
+
+/* TITAN cloth discovery: existing catalogue imagery; no generated textures. */
+.titanFabricSection { background: #f8f6ef; }
+.titanFabricExplorer { max-width: 1500px; margin: 0 auto; }
+.titanFabricToolbar {
+  display: flex; align-items: end; flex-wrap: wrap; gap: 16px 22px;
+  padding: 19px 22px; background: #ebe7dc; border: 1px solid #d4d0c4;
+}
+.titanFabricKinds { min-width: 230px; padding: 0; margin: 0; border: 0; }
+.titanFabricKinds legend, .titanFabricField {
+  display: grid; gap: 8px; color: #40503f; font-size: 12px; font-weight: 700;
+}
+.titanFabricKinds > div { display: flex; gap: 5px; }
+.titanFabricKinds button {
+  flex: 1; min-height: 46px; padding: 10px 16px; background: #f8f6ef;
+  color: #2a382f; border: 1px solid #b0b4a5; border-radius: 2px;
+  font: inherit; font-size: 12px; cursor: pointer;
+}
+.titanFabricKinds button[aria-pressed="true"] {
+  color: #fff; background: #354539; border-color: #354539;
+}
+.titanFabricKinds button:focus-visible, .titanFabricField :is(select,input):focus-visible,
+.titanFabricShowMore:focus-visible { outline: 3px solid #805d43; outline-offset: 3px; }
+.titanFabricField { flex: 1 1 180px; }
+.titanFabricField :is(select,input) {
+  width: 100%; min-height: 46px; padding: 9px 14px; background: #fffdf8;
+  color: #263129; border: 1px solid #aba99e; border-radius: 2px;
+  font: 400 14px Arial, Helvetica, sans-serif;
+}
+.titanFabricField select { cursor: pointer; }
+.titanFabricSearch { flex: 1.35 1 220px; }
+.titanFabricResultsHeader {
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 9px;
+  margin: 22px 0 15px; font-size: 12px;
+}
+.titanFabricResultsHeader p { font-weight: 700; }
+.titanFabricResultsHeader > span { color: #586151; }
+.titanFabricGrid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 16px; }
+.titanFabricCard {
+  min-width: 0; display: block; overflow: hidden; background: #f1eee5;
+  border: 1px solid #ded8cb; text-decoration: none;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.titanFabricCard:hover { transform: translateY(-3px); box-shadow: 0 12px 22px rgba(34,40,30,.1); }
+.titanFabricImage { width: 100%; aspect-ratio: 1.18; position: relative; overflow: hidden; }
+.titanFabricImage img { object-fit: cover; width: 100%; height: 100%; }
+.titanFabricInfo { padding: 14px 16px 17px; }
+.titanFabricInfo > span:first-child {
+  display: block; color: #62685b; font-size: 10px; font-weight: 700; line-height: 1.5;
+}
+.titanFabricInfo strong { display: block; margin-top: 5px; font: 24px/1.14 Georgia,serif; }
+.titanFabricInfo p { min-height: 18px; margin-top: 7px; color: #586155; font-size: 12px; }
+.titanFabricCardAction {
+  display: flex; justify-content: space-between; gap: 10px; align-items: center;
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid #d9d4ca;
+  color: #3b593b; font-size: 12px; font-weight: 700;
+}
+.titanFabricShowMore {
+  display: flex; align-items: center; gap: 18px; min-height: 46px;
+  margin: 21px auto 0; padding: 10px 23px; border: 1px solid #4c5b4c;
+  background: transparent; color: #2d4031; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.titanFabricShowMore:hover { background: #ebe8dd; }
+.titanFabricEmpty { padding: 36px; border: 1px solid #ddd5c7; }
+.titanFabricDisclaimer {
+  max-width: 830px; margin: 18px auto 0!important; color: #626659;
+  font-size: 11px; line-height: 1.7; text-align: center;
+}
+@media (max-width: 960px) {
+  .titanFabricGrid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
+@media (max-width: 620px) {
+  .titanFabricToolbar { padding: 15px; }
+  .titanFabricKinds { width: 100%; }
+  .titanFabricGrid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+  .titanFabricInfo { padding: 12px 11px 15px; }
+  .titanFabricInfo strong { font-size: 20px; }
+  .titanFabricInfo > span:first-child { font-size: 9px; }
+}
+@media (max-width: 360px) {
+  .titanFabricKinds button { padding-inline: 6px; }
+  .titanFabricInfo strong { font-size: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .titanFabricCard { transition-duration: 0.01ms!important; }
+}
