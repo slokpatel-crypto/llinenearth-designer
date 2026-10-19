@@ -381,3 +381,60 @@
     animation-duration: 0.01ms!important;
   }
 }
+
+/* TITAN narrow-screen disclosure: retains every existing customer destination
+ * without the cramped multi-row navigation on phones. */
+.titanMobileNav { display: none; }
+.titanMenuButton {
+  min-width: 90px;
+  min-height: 44px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #525c4d;
+  border-radius: 2px;
+  background: #f8f6ef;
+  color: #28342c;
+  font: 700 12px Arial, Helvetica, sans-serif;
+  cursor: pointer;
+}
+.titanMenuButton span { font-size: 19px; line-height: 1; }
+.titanMenuButton:hover { background: #eae8dd; }
+.titanMenuButton:focus-visible {
+  outline: 3px solid var(--titan-earth);
+  outline-offset: 4px;
+}
+@media (max-width: 860px) {
+  .titanNav { display: none; }
+  .titanMobileNav { display: block; }
+  .titanMobileNavPanel {
+    position: absolute;
+    left: 18px;
+    right: 18px;
+    top: calc(100% - 1px);
+    display: grid;
+    padding: 8px;
+    border: 1px solid #c7c6b9;
+    background: #f8f6ef;
+    box-shadow: 0 16px 35px rgba(26, 32, 26, .19);
+    z-index: 15;
+  }
+  .titanMobileNavPanel a {
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+    padding: 12px 15px;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .titanMobileNavPanel a:hover, .titanMobileNavPanel a:focus-visible { background: #e9e5da; }
+}
+@media (max-width: 560px) {
+  .titanHeader { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 12px; }
+  .titanIdentity { grid-column: 1; grid-row: 1; }
+  .titanMobileNav { grid-column: 2; grid-row: 1; }
+  .titanHeaderCta { grid-column: 1 / -1; grid-row: 2; justify-content: center; }
+  .titanMobileNavPanel { left: 12px; right: 12px; }
+}
