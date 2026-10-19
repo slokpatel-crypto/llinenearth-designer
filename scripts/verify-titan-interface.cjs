@@ -10,7 +10,7 @@ if (!runtime) throw new Error("Set LINEN_BROWSER_QA_RUNTIME");
 const { chromium } = createRequire(path.join(runtime, "package.json"))("playwright");
 const base = process.env.LINEN_BROWSER_QA_URL || "http://127.0.0.1:3000";
 const out = path.resolve("artifacts/preview-lifecycle/titan");
-const widths = [390, 768, 1440];
+const widths = [320, 390, 768, 1440];
 const allowedPaths = new Set(["/designer-studio", "/style-director", "/measurements", "/account"]);
 const summary = { route: "/titan", status: "pilot", viewports: [], navigations: [], providerCalls: [], consoleErrors: [] };
 let browser;
@@ -46,6 +46,31 @@ async function checkViewport(width) {
     await skip.press("Enter");
     assert.equal(await page.locator("#titan-main").evaluate(node => document.activeElement === node), true, "Skip must move keyboard focus into main");
 
+    // The compact header must remain fully operable with pointer and keyboard.
+    // Unlike a screenshot, these checks verify disclosure state and escape focus.
+    const menu = page.getByRole("button", { name: "Menu", exact: true });
+    if (width <= 860) {
+      assert.equal(await menu.isVisible(), true, "Mobile navigation disclosure must be visible");
+      assert.equal(await menu.getAttribute("aria-expanded"), "false");
+      await menu.click();
+      const expanded = page.getByRole("button", { name: "Close", exact: true });
+      assert.equal(await expanded.getAttribute("aria-expanded"), "true");
+      const items = page.getByRole("navigation", { name: "TITAN mobile navigation" }).getByRole("link");
+      assert.equal(await items.count(), 4, "Mobile menu must keep all desktop destinations");
+      for (const item of await items.all()) {
+        assert.ok((await item.boundingBox()).height >= 44, "Mobile menu links need 44px targets");
+      }
+      await expanded.press("Escape");
+      assert.equal(await menu.getAttribute("aria-expanded"), "false", "Escape must dismiss the menu");
+      assert.equal(await menu.evaluate(node => document.activeElement === node), true, "Escape restores menu focus");
+      await menu.click();
+      await page.locator(".titanHero h1").click();
+      assert.equal(await menu.getAttribute("aria-expanded"), "false", "Outside click must dismiss menu");
+    } else {
+      assert.equal(await menu.count(), 0, "Desktop must not show an unnecessary mobile menu button");
+      assert.equal(await page.getByRole("navigation", { name: "TITAN navigation" }).isVisible(), true);
+    }
+
     const routeLinks = await page.locator(".titan a[href]").evaluateAll(nodes =>
       nodes
         .map(node => node.getAttribute("href"))
@@ -62,10 +87,11 @@ async function checkViewport(width) {
 
     // Every visible navigation entry must be large enough to use on a phone,
     // tablet or desktop; screenshots alone cannot prove pointer ergonomics.
-    const targets = await page.locator(".titanHeaderCta, .titanNav a, .titanButton, .titanTextLink, .titanFooter nav a").evaluateAll(nodes =>
-      nodes.map(node => ({ text: node.textContent.trim().slice(0, 50), height: node.getBoundingClientRect().height }))
+    const targets = await page.locator(".titanHeaderCta, .titanNav a, .titanMenuButton, .titanMobileNavPanel a, .titanButton, .titanTextLink, .titanFooter nav a").evaluateAll(nodes =>
+      nodes.filter(node => node.getClientRects().length > 0)
+        .map(node => ({ text: node.textContent.trim().slice(0, 50), height: node.getBoundingClientRect().height }))
     );
-    assert.ok(targets.length >= 10, "Expected maintained functional navigation controls");
+    assert.ok(targets.length >= 8, "Expected maintained functional navigation controls");
     assert.deepEqual(targets.filter(target => target.height < 44), [], "Navigation target must be at least 44px high");
 
     // Enforce readable *computed* contrast, including small secondary copy.
@@ -126,11 +152,16 @@ async function checkViewport(width) {
 
     // Follow a real customer CTA to prove Next.js routing is functional;
     // checking href strings alone would not catch client navigation failures.
-    const destination = width === 390 ? "/designer-studio" : width === 768 ? "/style-director" : "/account";
-    const link = width === 390 ? page.getByRole("link", { name: /Design your outfit/i })
-      : width === 768 ? page.getByRole("link", { name: /Explore style direction/i })
-      : page.locator('.titanNav a[href="/account"]');
-    await link.click();
+    const destination = width === 320 ? "/measurements" : width === 390 ? "/designer-studio" : width === 768 ? "/style-director" : "/account";
+    if (width === 320) {
+      await menu.click();
+      await page.locator('.titanMobileNavPanel a[href="/measurements"]').click();
+    } else {
+      const link = width === 390 ? page.getByRole("link", { name: /Design your outfit/i })
+        : width === 768 ? page.getByRole("link", { name: /Explore style direction/i })
+        : page.locator('.titanNav a[href="/account"]');
+      await link.click();
+    }
     await page.waitForURL(url => url.pathname === destination, { timeout: 15000 });
     assert.equal(new URL(page.url()).pathname, destination);
     summary.navigations.push({ width, destination, passed: true });
