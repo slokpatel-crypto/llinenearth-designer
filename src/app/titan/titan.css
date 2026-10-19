@@ -438,3 +438,42 @@
   .titanHeaderCta { grid-column: 1 / -1; grid-row: 2; justify-content: center; }
   .titanMobileNavPanel { left: 12px; right: 12px; }
 }
+
+/* Real, allowlisted handoff to Style Director's first questionnaire answer. */
+.titanOccasionSection {
+  display: grid;
+  grid-template-columns: minmax(230px, 1fr) minmax(0, 1.35fr);
+  align-items: center;
+  gap: clamp(20px, 4vw, 70px);
+  padding: clamp(45px, 6vw, 82px) clamp(20px, 5.5vw, 100px);
+  border-top: 1px solid var(--titan-line);
+  background: #e8e6db;
+}
+.titanOccasionHeading { max-width: 550px; }
+.titanOccasionHeading h2 { margin-top: 12px; font-size: clamp(34px, 3.8vw, 60px); line-height: 1.1; }
+.titanOccasionHeading > p:last-child { max-width: 430px; margin-top: 15px; color: #5f6259; font-size: 13px; line-height: 1.8; }
+.titanOccasionOptions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.titanOccasionLink {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-height: 63px;
+  padding: 13px 16px;
+  border: 1px solid #bbb9aa;
+  background: #f8f6ef;
+  color: #293c2e;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background .2s ease, transform .2s ease;
+}
+.titanOccasionLink span { color: #73563c; }
+.titanOccasionLink:hover { background: #fff; transform: translateY(-2px); }
+@media (max-width: 860px) {
+  .titanOccasionSection { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .titanOccasionOptions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .titanOccasionLink { min-height: 52px; padding: 11px 13px; font-size: 12px; }
+}
