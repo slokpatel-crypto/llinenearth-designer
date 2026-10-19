@@ -459,6 +459,14 @@ test("malformed replacement of an existing fitting cannot resurrect a favorable 
   const revoked=aggregateFitOutcomes([...initial,rejectedEdit]);
   assert.equal(revoked.totalReviews,2,"last operator write for the same ID must supersede the earlier fitting");
   assert.equal(fitOutcomeSignalFor(query,revoked).score,0);
+  // Older operator logs normalize their subtype labels. An invalid edit in
+  // that legacy shape still supersedes the earlier favorable evidence.
+  const legacyEdit={...rejectedEdit,payload:{...rejectedEdit.payload,
+    subtype:" designer_fit_outcome "}};
+  assert.equal(parseFitOutcome(legacyEdit),null);
+  const legacyRevoked=aggregateFitOutcomes([...initial,legacyEdit]);
+  assert.equal(legacyRevoked.totalReviews,2);
+  assert.equal(fitOutcomeSignalFor(query,legacyRevoked).score,0);
   const restored=aggregateFitOutcomes([...initial,rejectedEdit,makeReview("cut-01")]);
   assert.equal(restored.totalReviews,3);
   assert.ok(fitOutcomeSignalFor(query,restored).score>0);
