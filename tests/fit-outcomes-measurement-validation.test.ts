@@ -230,3 +230,46 @@ test("sparse stored books cannot claim review evidence until all metadata passes
     assert.match(signal.summary,/revalidation/i);
   }
 });
+
+
+test("corrupt operator event shapes cannot crash fitting aggregation or forge scored reviews",()=>{
+  const valid={type:"operator_note",source:"operator",payload:{
+    subtype:"designer_fit_outcome",recommendationId:"valid-01",
+    verdict:"clean_first_fit",occasion:"Formal",shirtFit:"regular",
+    trouser:"straight",torso:"tapered",seat:"balanced",
+  }};
+  const corrupt=[
+    null,undefined,42,"operator_note",[],{...valid,payload:null},
+    {...valid,payload:[]},{...valid,payload:"designer_fit_outcome"},
+    {...valid,payload:{...valid.payload,areas:"shirt_sleeve"}},
+    {...valid,payload:{...valid.payload,areas:["shirt_sleeve","shirt_sleeve"]}},
+    {...valid,payload:{...valid.payload,areas:["shirt_sleeve","not_a_fit_area"]}},
+    {...valid,payload:{...valid.payload,areas:Array(11).fill("shirt_sleeve")}},
+    {...valid,payload:{...valid.payload,areas:[["shirt_sleeve"]]}},
+  ];
+  for(const event of corrupt){
+    assert.equal(parseFitOutcome(event as never),null,
+      "Malformed JSON event and area data must not be silently corrected into a review");
+  }
+  assert.deepEqual(parseFitOutcome(valid)?.areas,[]);
+  assert.deepEqual(parseFitOutcome({...valid,payload:{...valid.payload,
+    areas:["shirt_sleeve","trouser_length"]}})?.areas,["shirt_sleeve","trouser_length"]);
+  const onlyValid=aggregateFitOutcomes([...corrupt,valid] as never[]);
+  assert.equal(onlyValid.totalReviews,1);
+});
+
+test("oversized persisted tailoring style strings fail aggregate integrity preflight",()=>{
+  const input={occasion:"Formal" as const,style:{shirtFit:"regular",trouser:"straight"},
+    proportion:{torso:"tapered",seat:"balanced"}};
+  const good={key:"Formal::regular::straight::tapered::balanced",
+    occasion:"Formal" as const,shirtFit:"regular",trouser:"straight",
+    torso:"tapered",seat:"balanced",clean:3,minor:0,major:0,total:3};
+  const book={version:"designer-fit-outcomes-v1" as const,totalReviews:6,
+    usableBuckets:2,buckets:[good,{
+      ...good,shirtFit:"x".repeat(121),key:"Formal::"+"x".repeat(121)+"::straight::tapered::balanced",
+    }]};
+  const signal=fitOutcomeSignalFor(input,book);
+  assert.equal(signal.score,0);
+  assert.equal(signal.evidence,0);
+  assert.match(signal.summary,/revalidation/i);
+});
