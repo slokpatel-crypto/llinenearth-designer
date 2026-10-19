@@ -1141,23 +1141,35 @@ def main():
     cuff_audit = try_collision_safe_cuff_spacing(
         body, min_z, height, options.sleeve_cuff_inboard_mm
     )
-    for name, post_count in zip(
-        ("ShirtSleeveLFabric", "ShirtSleeveRFabric"),
-        cuff_audit["trials"][-1]["bodyPairsAfterRepair"],
+    # The final attempted fine probe is not necessarily the SAFE snapshot.
+    # Recompute source-world BVH contacts on the restored, actually retained
+    # meshes. Never record the last rejected trial as the final garment state.
+    sleeves = [bpy.data.objects[name] for name in
+               ("ShirtSleeveLFabric", "ShirtSleeveRFabric")]
+    legs = [bpy.data.objects[name] for name in
+            ("TrouserLegLFabric", "TrouserLegRFabric")]
+    sleeve_contact_final = [source_fit_collision_pairs(body, obj) for obj in sleeves]
+    sleeve_mutual_final = source_fit_collision_pairs(sleeves[0], sleeves[1])
+    leg_contact_final = [source_fit_collision_pairs(body, obj) for obj in legs]
+    leg_mutual_final = source_fit_collision_pairs(legs[0], legs[1])
+    for obj, post_count in zip(sleeves, sleeve_contact_final):
+        fit_stage_report[obj.name]["postCuffBodyPairs"] = post_count
+        fit_stage_report[obj.name]["postCuffSelectedMmPerSleeve"] = cuff_audit["selectedMmPerSleeve"]
+        fit_stage_report[obj.name]["postCuffSleevePairs"] = sleeve_mutual_final
+    for obj, post_count in zip(legs, leg_contact_final):
+        fit_stage_report[obj.name]["postGapRollbackBodyPairs"] = post_count
+        fit_stage_report[obj.name]["postGapRollbackLegPairs"] = leg_mutual_final
+        fit_stage_report[obj.name]["postGapRollbackSelectedMm"] = leg_gap_audit["selectedMmPerLeg"]
+    # A claimed collision-free rollback MUST describe the retained mesh, not
+    # merely one safe intermediate probe: release remains closed on mismatch.
+    if cuff_audit["nativeWorldSpaceCollisionFree"] and (
+        sleeve_contact_final != [0, 0] or sleeve_mutual_final != 0
     ):
-        fit_stage_report[name]["postCuffBodyPairs"] = post_count
-        fit_stage_report[name]["postCuffSelectedMmPerSleeve"] = cuff_audit["selectedMmPerSleeve"]
-
-    for name in ("TrouserLegLFabric", "TrouserLegRFabric"):
-        fit_stage_report[name]["postGapRollbackBodyPairs"] = (
-            leg_gap_audit["trials"][-1]["leftBodyIntersectionPairs"]
-            if name == "TrouserLegLFabric"
-            else leg_gap_audit["trials"][-1]["rightBodyIntersectionPairs"]
-        )
-        fit_stage_report[name]["postGapRollbackLegPairs"] = (
-            leg_gap_audit["trials"][-1]["legToLegIntersectionPairs"]
-        )
-        fit_stage_report[name]["postGapRollbackSelectedMm"] = leg_gap_audit["selectedMmPerLeg"]
+        raise RuntimeError("Restored cuff snapshot failed final independent BVH contact recheck")
+    if leg_gap_audit["nativeWorldSpaceCollisionFree"] and (
+        leg_contact_final != [0, 0] or leg_mutual_final != 0
+    ):
+        raise RuntimeError("Restored leg-gap snapshot failed final independent BVH contact recheck")
     for obj in authored:
         planar_grain_uv(obj)
         candidate_uv_report[obj.name] = audit_authored_panel_uv(obj)
