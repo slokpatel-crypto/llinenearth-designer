@@ -66,6 +66,7 @@ jobs:
           node scripts/verify-preview-lifecycle.cjs
           node scripts/verify-style-director-lifecycle.cjs
           node scripts/verify-style-director-handoff.cjs
+          node scripts/verify-titan-interface.cjs
       - name: Save real evidence and pending fabric QA
         if: always()
         uses: actions/upload-artifact@v4
