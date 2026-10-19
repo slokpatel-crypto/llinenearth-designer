@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import TitanHeaderNavigation from "./titan-header-navigation";
 import { BRAND_LOGO_SRC, BRAND_LOGO_SIZE } from "@/lib/brand-logo-data";
 import { titanDevelopmentTrack, titanJourneys, titanQuickLinks } from "@/lib/titan/navigation";
 import "./titan.css";
@@ -24,12 +25,7 @@ export default function TitanStudioPage() {
         <Link href="/" className="titanIdentity" aria-label="Linen Earth homepage">
           <Image src={BRAND_LOGO_SRC} alt="Linen Earth" {...BRAND_LOGO_SIZE} unoptimized />
         </Link>
-        <nav className="titanNav" aria-label="TITAN navigation">
-          <a href="#titan-journeys">Explore</a>
-          <a href="#titan-process">Our approach</a>
-          <Link href="/measurements">Measurements</Link>
-          <Link href="/account">My account</Link>
-        </nav>
+        <TitanHeaderNavigation />
         <Link href="/designer-studio" className="titanHeaderCta">
           Enter the designer <span aria-hidden="true">↗</span>
         </Link>
