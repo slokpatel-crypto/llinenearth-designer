@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   MODEL_LAYER_SLOTS,
   type ModelLayerSlot,
@@ -16,6 +16,10 @@ import {
   addTitanLayerPlan, readTitanLayerPlanLibrary,
   removeTitanLayerPlan, serializeTitanLayerPlanLibrary,
 } from "@/lib/titan/layer-plan-library";
+
+import {
+  readTitanLayerShare, titanLayerShareHref, TITAN_LAYER_SHARE_PARAMETER,
+} from "@/lib/titan/layer-plan-share";
 
 const STARTING_PLAN: EditableModelLayerPlan = {
   version: 1,
@@ -52,6 +56,26 @@ export default function TitanLayerPlanner() {
   const [savedPlans, setSavedPlans] = useState<readonly EditableModelLayerPlan[]>([]);
   const [libraryState, setLibraryState] = useState<"loading" | "ready" | "invalid" | "blocked">("loading");
   const [libraryMessage, setLibraryMessage] = useState("");
+  const [shareOrigin, setShareOrigin] = useState("");
+  const [showSharedLink, setShowSharedLink] = useState(false);
+  const [shareMessage, setShareMessage] = useState("");
+  const shareInput = useRef<HTMLInputElement>(null);
+
+  // A shared URL stages a logical outfit only. It never loads an accessory
+  // GLB, applies a plan, touches Designer drafts or updates saved bookmarks.
+  useEffect(() => {
+    setShareOrigin(window.location.origin);
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has(TITAN_LAYER_SHARE_PARAMETER)) return;
+    const shared = readTitanLayerShare(window.location.search);
+    if (!shared) {
+      setMessage("This layer-plan link is invalid or unsupported. Your current outfit remains unchanged.");
+      return;
+    }
+    setDraftSlots([...shared.layers]);
+    setDraftComposition(shared.composition);
+    setMessage("Shared plan opened as an unapplied draft. Review the layers, then choose Apply layer plan.");
+  }, []);
 
   // Browser storage is an explicitly opted-in library, NOT saved Designer
   // state. Never apply restored plans or mutate a fabric/material/model.
@@ -141,6 +165,23 @@ export default function TitanLayerPlanner() {
     }
   }
 
+  async function copyLayerLink() {
+    const href = titanLayerShareHref(appliedPlan);
+    if (!shareOrigin || !href) {
+      setShareMessage("This garment plan cannot be shared.");
+      return;
+    }
+    const url = new URL(href, shareOrigin).href;
+    setShowSharedLink(true);
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(url);
+      setShareMessage("Share link copied. This is a garment plan only, not a 3D render or saved design.");
+    } catch {
+      setShareMessage("Automatic copying is blocked. Select and copy the complete link below.");
+    }
+  }
+
   function toggleSlot(slot: ModelLayerSlot, selected: boolean) {
     setDraftSlots(previous => selected
       ? previous.includes(slot) ? previous : [...previous, slot]
@@ -158,6 +199,8 @@ export default function TitanLayerPlanner() {
     setDraftSlots([...STARTING_PLAN.layers]);
     setDraftComposition(STARTING_PLAN.composition);
     setMessage("Reset to shirt and trousers. No saved design was changed.");
+    setShowSharedLink(false);
+    setShareMessage("");
   }
 
   function commitPlan(event: FormEvent<HTMLFormElement>) {
@@ -189,6 +232,8 @@ export default function TitanLayerPlanner() {
     setDraftSlots([...result.plan.layers]);
     setDraftComposition(result.plan.composition);
     setMessage("Valid layer plan applied locally. No garment asset, fabric, model or saved design was changed.");
+    setShowSharedLink(false);
+    setShareMessage("");
   }
 
   const hasUnappliedChanges = draftComposition !== appliedPlan.composition
@@ -260,6 +305,24 @@ export default function TitanLayerPlanner() {
               </li>
             ))}
           </ol>
+          <div className="titanLayerPlannerShare">
+            <button type="button" className="titanLayerPlannerShareButton"
+              onClick={copyLayerLink} disabled={!shareOrigin}>
+              Copy applied plan link
+            </button>
+            <p>Share a garment-layer arrangement without measurements, cloth images or personal data.
+              The recipient must explicitly apply the staged plan.</p>
+            <p role="status" aria-live="polite" className="titanLayerPlannerShareFeedback">{shareMessage}</p>
+            {showSharedLink && (
+              <label>
+                Layer-plan reference URL
+                <input type="text" readOnly ref={shareInput}
+                  aria-label="Layer plan share URL"
+                  value={shareOrigin + (titanLayerShareHref(appliedPlan) ?? "")}
+                  onFocus={() => shareInput.current?.select()} />
+              </label>
+            )}
+          </div>
           <p className="titanLayerPlannerBoundary">Only explicitly bookmarked plans remain on this device.
             No layer can activate unapproved geometry, change the model identity, confirm stock or certify tailoring fit.</p>
           <div className="titanLayerPlannerLibrary" aria-labelledby="titan-layer-bookmarks-title">
