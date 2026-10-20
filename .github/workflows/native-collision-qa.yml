@@ -1,0 +1,46 @@
+name: Native garment collision QA
+
+on:
+  pull_request:
+    paths:
+      - "scripts/blender/**"
+      - "tests/blender/**"
+      - ".github/workflows/native-collision-qa.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-collision-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  collisions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native runtime libraries
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --no-install-recommends -y libx11-6 libxi6 libxrender1 libxxf86vm1 libxfixes3 libxcursor1 libxrandr2 libxinerama1 libgl1 libsm6
+      - name: Download and verify pinned Blender 4.2 runtime
+        working-directory: ${{ runner.temp }}
+        run: |
+          curl --fail --location --retry 2 --max-time 180 https://download.blender.org/release/Blender4.2/blender-4.2.0-linux-x64.tar.xz --output blender.tar.xz
+          echo '4f4fd7646af01f6fee9d420408318381a6e52571268eb7cf9cd5033bd9e7a359  blender.tar.xz' | sha256sum --check --strict
+          tar -xJf blender.tar.xz
+      - name: Verify evaluated world-space boundaries in native Blender
+        run: |
+          mkdir -p artifacts/native-collision
+          set -o pipefail
+          "${{ runner.temp }}/blender-4.2.0-linux-x64/blender" --background --factory-startup --python-exit-code 1 --python tests/blender/test_scene_collisions.py 2>&1 | tee artifacts/native-collision/tests.log
+      - name: Preserve native regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-collision-regressions
+          path: artifacts/native-collision
+          if-no-files-found: ignore
+          retention-days: 14
