@@ -150,3 +150,27 @@ Do not replace testing with concept renders, inflate progress percentages, claim
 - Added pure, bounded, versioned logical layer/composition transactions. Coordinated suit/accessory edits apply together only when the final existing plan is valid; otherwise the prior normalized plan is returned intact.
 - Never silently add prerequisite clothes, drop dependent accessories, downgrade suit composition, repair corrupt prior state or accept duplicate targets/injected assets or physical claims. No customer UI, saved-design, actual mesh, identity or database mutation.
 - Explicit added/removed IDs, no-op detection and v1 plan round-trips support future controlled extension editing. All valid existing layer/composition states are checked against the canonical validator, with atomic removal/restore and malformed-command regressions. Production approval is always false; independent asset/native/physical/browser gates and no-merge/no-deploy remain unchanged.
+
+
+### 20 October — reversible concept-only garment layer planner
+
+- `/titan` now includes a **planning-only** interface for all seven canonical
+  garment slots on the **existing** Linen Earth model identity. It uses the
+  versioned `applyModelLayerEdits` engine from the stacked engineering branch.
+- An explicit **Apply layer plan** action submits every changed selection and
+  composition in one transaction. No auto-parent insertion, secret accessory
+  removal or one-step suit downgrade. Invalid prerequisites keep the last
+  valid plan intact while leaving the draft editable; **Discard edits** restores
+  only that valid plan, **Reset plan** returns to separate shirt + trousers.
+- All three compositions and every addon category have accessible controls and
+  a responsive, read-only layer-order summary. Actual Chromium regression in
+  `verify-titan-interface.cjs` checks a two-piece suit, failed parent removal,
+  edit discard, three-piece suit and reset at 320/390/768/1440px.
+- **Strict boundary:** this is a UI for a local logical plan, NOT a rendered
+  suit/waistcoat/accessory, quote, saved customer record, measurement, stock
+  claim or physically tailored look. The original model photograph and viewer
+  are not touched. No GLB is loaded, saved design is changed, network/paid AI
+  call is required, or production approval is implied.
+- The draft is stacked on #320; no homepage activation, merge or deployment
+  without full matching-head CI/Chromium tests and independent native model,
+  asset, calibrated fabric and owner/tailor release evidence.
