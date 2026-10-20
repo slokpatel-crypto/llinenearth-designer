@@ -144,3 +144,9 @@ Do not replace testing with concept renders, inflate progress percentages, claim
 - Assembly wrapper v1 is engineering-only; it does not migrate saved designs, load assets, establish physical fit or certify the original body. Every report retains `productionApproved: false`; assembly reports explicitly retain `baseModelChecked: false`. See `MODEL_LAYER_ASSET_PREFLIGHT.md`.
 - Fixed sparse-array bypasses and froze canonical attachment descriptors; added comprehensive corruption, byte-mutation, whole-plan, CLI/hash and aggregate-budget regressions. Strict repository typechecking also covers the older operational tests that Next's production checker skips.
 - No replacement model, invented cloth evidence, paid AI requirement, customer-facing mesh activation, merge or deployment. Native Blender, physical textile/tailor and real-browser release evidence remain independent requirements.
+
+### 20 October — transactional addon composition editing (stacked draft)
+
+- Added pure, bounded, versioned logical layer/composition transactions. Coordinated suit/accessory edits apply together only when the final existing plan is valid; otherwise the prior normalized plan is returned intact.
+- Never silently add prerequisite clothes, drop dependent accessories, downgrade suit composition, repair corrupt prior state or accept duplicate targets/injected assets or physical claims. No customer UI, saved-design, actual mesh, identity or database mutation.
+- Explicit added/removed IDs, no-op detection and v1 plan round-trips support future controlled extension editing. All valid existing layer/composition states are checked against the canonical validator, with atomic removal/restore and malformed-command regressions. Production approval is always false; independent asset/native/physical/browser gates and no-merge/no-deploy remain unchanged.

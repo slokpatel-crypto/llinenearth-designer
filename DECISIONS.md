@@ -596,3 +596,9 @@ Architecture and product decisions that must persist across coding sessions.
 **Compatibility:** new engineering-only assembly wrapper v1 (`version`, existing `plan`, full `assets` registrations); no persistence/database migration, new mannequin, customer asset activation or paid AI. Sparse arrays now fail closed in legacy layer/registration parsers; canonical descriptors/prerequisites are runtime-frozen so callers cannot mutate later validation. Existing valid JSON inputs retain their behavior. Export profile and independent native/physical/browser acceptance are documented in `docs/MODEL_LAYER_ASSET_PREFLIGHT.md`.
 
 **Verification boundary:** synthetic fixture tests do not supply a garment, fabric measurement, source license, calibrated UV/drape, photo parity, native Blender approval or tailor signoff. These independent gates remain mandatory. Keep the draft unmerged and undeployed.
+
+## 2026-10-20 — Atomic logical garment edits preserve the last valid plan
+
+**Decision:** apply explicit layer/composition changes as one validated transaction. No implicit parent additions, accessory deletions, suit downgrades or partial edits. A rejected request returns the previous normalized plan; corrupt previous state is rejected without inventing a recovery outfit. Duplicate target edits and injected geometry/measurement/approval fields fail closed.
+
+**Compatibility:** the new engineering-only edit request v1 (`version`, `actions`) returns the existing layer-plan v1 shape and explicit added/removed slots. It does not touch customer drafts, persisted data, the current model, fabric/stock or assets. An accepted logical edit is not a loaded or production-approved garment. Required asset-byte, native, physical and owner/tailor gates remain independent; no migration, dependency, merge or deploy.
