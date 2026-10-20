@@ -15,6 +15,12 @@ const allowedPaths = new Set(["/designer-studio", "/style-director", "/measureme
 const summary = { route: "/titan", status: "pilot", viewports: [], navigations: [], handoffs: [], providerCalls: [], consoleErrors: [] };
 let browser;
 
+async function waitForLocalReferences(page) {
+  // DOMContentLoaded/intro dismissal do not prove the storage useEffect ran.
+  // Keep persistence and corruption assertions strict after actual restoration.
+  await page.locator('.titanLookbook[aria-busy="false"]').waitFor({ state: "visible", timeout: 8000 });
+}
+
 async function checkViewport(width) {
   const reducedMotion = width === 1440 ? "no-preference" : "reduce";
   const context = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion });
@@ -33,6 +39,7 @@ async function checkViewport(width) {
     const response = await page.goto(`${base}/titan`, { waitUntil: "domcontentloaded" });
     assert.equal(response.status(), 200, "TITAN page must respond successfully");
     await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+    await waitForLocalReferences(page);
     await page.getByRole("heading", { name: /Considered cloth/i }).waitFor();
 
     assert.equal(await page.title(), "The Linen Earth Studio | TITAN");
@@ -255,6 +262,7 @@ async function checkViewport(width) {
       summary.handoffs.push({ source: "titan-fabric", kind: source, selected: chosen, savedCounterpartPreserved: true });
       await page.goto(`${base}/titan`, { waitUntil: "domcontentloaded" });
       await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+      await waitForLocalReferences(page);
     }
 
     if (width === 390) {
@@ -303,6 +311,7 @@ async function checkViewport(width) {
       // A device-only bookmark is opt-in, reloadable, removable, and separate
       // from the maintained authenticated Designer draft and source model.
       const lookbookKey = "linen-earth:titan-reference-lookbook:v1";
+      await waitForLocalReferences(page);
       assert.equal(await page.locator(".titanLookbookCard").count(), 0);
       const originalDraft = await page.evaluate(() => localStorage.getItem("linen-earth:real-designer-draft:v2"));
       const saveButton = page.getByRole("button", { name: "Save this pair on this device" });
@@ -316,6 +325,7 @@ async function checkViewport(width) {
         originalDraft, "Saving a public cloth reference must not write the customer Designer draft");
       await page.reload({ waitUntil: "domcontentloaded" });
       await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+      await waitForLocalReferences(page);
       assert.equal(await page.locator(".titanLookbookCard").count(), 1, "Local reference should survive browser reload");
       assert.equal(await page.locator(".titanOutfitSlot img").count(), 0,
         "Reload must not silently load bookmarked cloths into the current selection");
@@ -379,6 +389,7 @@ async function checkViewport(width) {
         "A reopened share link must restore the original exact shirt and trouser pair");
       await page.goto(`${base}/titan?source=outfit&shirt=${trouser}&trouser=${shirt}`, { waitUntil: "domcontentloaded" });
       await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+      await waitForLocalReferences(page);
       assert.equal(await page.locator(".titanOutfitSlot img").count(), 0,
         "Swapped garment IDs must not prefill a customer outfit");
       await page.goto(`${base}${shareHref}`, { waitUntil: "domcontentloaded" });
@@ -403,6 +414,7 @@ async function checkViewport(width) {
         existingOccasionAndPreferencesPreserved: true });
       await page.goto(`${base}/titan`, { waitUntil: "domcontentloaded" });
       await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+      await waitForLocalReferences(page);
     }
 
     if (width === 320) {
@@ -429,6 +441,7 @@ async function checkViewport(width) {
       })));
       await page.reload({ waitUntil: "domcontentloaded" });
       await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+      await waitForLocalReferences(page);
       assert.equal(await page.locator(".titanLookbookCard").count(), 0,
         "Unknown personal fields in saved-reference storage must fail closed");
       assert.equal(await page.locator(".titanOutfitSlot img").count(), 0,
@@ -456,6 +469,7 @@ async function checkViewport(width) {
       // actually returns to the untouched first question.
       await page.goto(`${base}/titan`, { waitUntil: "domcontentloaded" });
       await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+      await waitForLocalReferences(page);
       await page.locator('.titanOccasionLink[href*="occasion=Work"]').click();
       await page.waitForURL(url => url.pathname === "/style-director" && url.searchParams.get("occasion") === "Work", { timeout: 15000 });
       await page.getByRole("heading", { name: "How should you feel in it?" }).waitFor({ timeout: 15000 });
