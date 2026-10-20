@@ -602,3 +602,19 @@ Architecture and product decisions that must persist across coding sessions.
 **Decision:** apply explicit layer/composition changes as one validated transaction. No implicit parent additions, accessory deletions, suit downgrades or partial edits. A rejected request returns the previous normalized plan; corrupt previous state is rejected without inventing a recovery outfit. Duplicate target edits and injected geometry/measurement/approval fields fail closed.
 
 **Compatibility:** the new engineering-only edit request v1 (`version`, `actions`) returns the existing layer-plan v1 shape and explicit added/removed slots. It does not touch customer drafts, persisted data, the current model, fabric/stock or assets. An accepted logical edit is not a loaded or production-approved garment. Required asset-byte, native, physical and owner/tailor gates remain independent; no migration, dependency, merge or deploy.
+
+
+## TITAN wardrobe layer planner (2026-10-20, draft)
+
+The unreleased `/titan` page may expose the canonical model-layer transaction
+contract as a **local, non-rendering planning interface**. It cannot modify
+the existing six-panel model, its photographic source, material bindings,
+inventory, saved Designer/account data or customer orders. An invalid garment
+combination rejects the complete submitted edit and retains the last valid
+plan, and reverting an uncommitted draft cannot rewrite saved state.
+
+The interface is **not** permission to load extension GLBs or claim physical
+fit. Engineering registrations and exact-byte native candidate checks from
+#319, followed by production Blender, UV, photo identity, measured drape,
+real-device and tailor/owner review, are still mandatory before actual garments
+are displayed. Do not merge the stacked TITAN PRs or deploy.
