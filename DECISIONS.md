@@ -630,3 +630,14 @@ are displayed. Do not merge the stacked TITAN PRs or deploy.
 - No name, body measurements, fabric choice, model asset, customer ID, approval claim, server/API sync, AI credits or GLB activation is persisted. The device may be shared; bookmarks are not private account storage and can be cleared by browser cleanup.
 - Release QA: all valid layer compositions and combinations in unit tests; real browser save/reload/restore/delete, incompatible-version protection and Designer state isolation at 320/390/768/1440px. Native model, measured textile, fit and owner/tailor certification remain separately blocked.
 - Remains stacked on draft #321 and its unreleased TITAN chain. **NO MERGE / NO DEPLOY.**
+
+
+## TITAN private-content-free layer-plan reference links (2026-10-20, DRAFT)
+
+- Follow-on to unreleased TITAN garment bookmark branch (#322), using one canonical, finite, independently tested **seven-slot logical plan** on the same locked model identity.
+- A share link encodes no cloth/fabric selection or account data: only `/titan?layer-plan=v1-C-HH`, with composition index 0–2 and a two-hex-digit canonical bitmask for seven fixed garment slots. Tokens are deterministic and versioned; any ordering change requires v2. Public links are not private saved designs.
+- Exact token parsing rejects duplicate parameter values, unsupported versions, noncanonical hexadecimal, missing prerequisite garments, invalid suit compositions and malformed/oversized queries. Other query fields (such as the separate existing shared fabric pair) cannot inject layer state.
+- Opening an accepted link merely stages garment checkboxes/composition as an unapplied local draft. An invalid link leaves default applied outfit and draft intact with visible feedback. No auto-apply, no saved-bookmark write and no activation of any unapproved geometry.
+- Sharing requires the user to click **Copy applied plan link**. If clipboard permissions are blocked, display a select-and-copy URL field. Changes to the active plan hide any stale previously displayed share URL.
+- Browser and Node coverage must prove all valid canonical combinations, malformed tokens, explicit apply, preserved Designer draft, mobile focus/targets and no paid-provider calls. Do not claim independent photographic/Blender/source model approval based on this logic.
+- **DRAFT ONLY.** Stacked on #322, #321 and the unreleased TITAN chain. No merge, deployment or release authorisation.
