@@ -122,7 +122,7 @@ async function checkViewport(width) {
       "Unknown store version must remain intact until explicit clearing");
     await layerPlanner.getByRole("button", { name: "Clear unreadable bookmarks" }).click();
     assert.equal(await page.evaluate(key => localStorage.getItem(key), libraryKey), null);
-    assert.equal(await page.evaluate(key => localStorage.getItem(key), designerKey), "designer-marker-unchanged");
+    assert.equal(await page.evaluate(key => localStorage.getItem(key), designerKey), designerSnapshot);
 
     assert.equal(await page.locator(".titanOccasionLink").count(), 6, "Six actual Style Director occasions must be offered");
     assert.ok(await page.locator(".titanFabricCard").count() >= 8, "Real catalogue swatches must be browsable");
