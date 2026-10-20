@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import {
   MODEL_LAYER_SLOTS,
   type ModelLayerSlot,
@@ -62,7 +62,7 @@ export default function TitanLayerPlanner() {
     setMessage("Reset to shirt and trousers. No saved design was changed.");
   }
 
-  function commitPlan(event: React.FormEvent<HTMLFormElement>) {
+  function commitPlan(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     // Only changed fields go into a single atomic transaction. Nothing can
     // silently insert a missing parent, drop an accessory or downgrade a suit.
