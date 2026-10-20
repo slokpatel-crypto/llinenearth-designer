@@ -40,7 +40,7 @@ test("harvest dry-run never requires the API key or creates claimed research", a
   const planned = await runHarvest();
   assert.equal(planned.dryRun, true);
   assert.equal(planned.packCount, 8);
-  assert.deepEqual(planned.packs, KNOWLEDGE_PACKS.map((pack) => pack.id));
+  assert.deepEqual(planned.packs, KNOWLEDGE_PACKS.map((pack: { id: string }) => pack.id));
 });
 
 test("harvest rejects fabricated provenance levels and duplicate IDs", () => {

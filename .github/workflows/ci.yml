@@ -41,6 +41,8 @@ jobs:
           path: artifacts/fabric-calibration-worksheet.csv
           retention-days: 14
       - run: npm run build
+      - name: Type-check source and operational regression tests
+        run: npx tsc --noEmit --incremental false
       - name: Load immutable photographic regression baseline
         run: git fetch --depth=1 origin 5126ebb6f82179b7fe25106e71f234248af3a677
       - name: Install pinned browser verification runtime

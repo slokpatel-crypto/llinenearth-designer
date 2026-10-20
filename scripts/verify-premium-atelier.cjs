@@ -196,12 +196,26 @@ async function run() {
         await page.goto(base + '/designer-studio', { waitUntil: 'networkidle' });
         await page.locator('#designerCreativeLab').waitFor();
         const garmentScope=page.locator('.newDesignerGarmentScope article');
-        assert.equal(await garmentScope.count(),4,'Designer garment scope must show shirt, trouser, blazer and suit');
+        assert.equal(await garmentScope.count(),6,'Designer garment scope must retain both current garments and all four planned extension families');
+        assert.deepEqual(await garmentScope.evaluateAll(nodes=>nodes.map(node=>({
+          label:node.querySelector('div > strong')?.textContent?.trim(),
+          status:node.dataset.status,
+          controls:node.querySelectorAll('select,input,button,a[href]').length,
+        }))),[
+          {label:'Shirt',status:'live',controls:1},
+          {label:'Trouser',status:'live',controls:1},
+          {label:'Blazer',status:'planned',controls:0},
+          {label:'Suit',status:'planned',controls:0},
+          {label:'Waistcoat',status:'planned',controls:0},
+          {label:'Accessories',status:'planned',controls:0},
+        ],'Only the original shirt/trouser controls may be active; future garments remain non-selectable');
         const scopeText=await garmentScope.allTextContents();
         assert.ok(scopeText.some(value=>/Shirt/.test(value)&&/CURRENT/.test(value)),'shirt must stay current');
         assert.ok(scopeText.some(value=>/Trouser/.test(value)&&/CURRENT/.test(value)),'trouser must stay current');
         assert.ok(scopeText.some(value=>/Blazer/.test(value)&&/FUTURE/.test(value)),'blazer must stay future');
         assert.ok(scopeText.some(value=>/Suit/.test(value)&&/FUTURE/.test(value)),'suit must stay future');
+        assert.ok(scopeText.some(value=>/Waistcoat/.test(value)&&/FUTURE/.test(value)),'waistcoat must stay future');
+        assert.ok(scopeText.some(value=>/Accessories/.test(value)&&/FUTURE/.test(value)),'accessories must stay future');
         summary.checks.push('designer garment scope shows current and future categories before cloth');
         assert.equal(await page.locator('.brandSignature').count(), 0, 'homepage brand film is removed on studio navigation');
         assert.equal(await page.locator('.brandIntro').count(), 0, 'intro does not replay on same-session navigation');
