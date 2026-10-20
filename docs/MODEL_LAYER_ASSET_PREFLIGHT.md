@@ -120,3 +120,20 @@ Coverage includes all five slots, packed/interleaved data, all index widths,
 every truncation of a test GLB, malformed binary/metadata, graph and namespace
 errors, symlink substitutions, budgets, 1,000 seeded mutations, all 384 logical
 plans and deterministic whole-stack reports.
+
+## Atomic logical edits
+
+`applyModelLayerEdits(currentPlan, {version: 1, actions: [...]})` is an
+engineering-only pure function. Actions are exact `set-slot` objects
+(`type`, known `slot`, boolean `selected`) or exact `set-composition` objects
+(`type`, known `composition`). Each target may occur once; a batch has at most
+seven slot edits plus one composition edit. Add/remove related garments and
+change suit composition in the same transaction.
+
+The whole final plan is validated before acceptance. Failure returns the previous
+normalized plan with `applied: false`, `changed: false` and no partial slot changes;
+corrupt previous state returns `plan: null`. Nothing is silently added, deleted,
+downgraded, saved, loaded or approved. Idempotent explicit actions return
+`applied: true`, `changed: false`. Valid results use the existing plan v1 shape,
+round-trip through its parser and detach caller-owned arrays. This is a logical
+editing API for future controlled integration, not a newly enabled customer 3D UI.
