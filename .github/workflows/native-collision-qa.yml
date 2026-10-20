@@ -1,4 +1,4 @@
-name: Native garment collision and export QA
+name: Native garment geometry and export QA
 
 on:
   pull_request:
@@ -45,6 +45,10 @@ jobs:
         run: |
           set -o pipefail
           "${{ runner.temp }}/blender-4.2.0-linux-x64/blender" --background --factory-startup --python-exit-code 1 --python tests/blender/test_scene_exports.py 2>&1 | tee artifacts/native-collision/exports.log
+      - name: Verify native garment UV data and evaluated mesh coordinates
+        run: |
+          set -o pipefail
+          "${{ runner.temp }}/blender-4.2.0-linux-x64/blender" --background --factory-startup --python-exit-code 1 --python tests/blender/test_scene_uv.py 2>&1 | tee artifacts/native-collision/uv.log
       - name: Preserve native regression evidence
         if: always()
         uses: actions/upload-artifact@v4
