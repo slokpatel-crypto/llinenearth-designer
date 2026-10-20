@@ -75,7 +75,12 @@ async function checkViewport(width) {
     const designerKey = "linen-earth:real-designer-draft:v2";
     await page.waitForFunction(() => document.querySelector(".titanLayerPlannerSave")?.disabled === false);
     assert.equal(await page.evaluate(key => localStorage.getItem(key), libraryKey), null);
-    await page.evaluate(key => localStorage.setItem(key, "designer-marker-unchanged"), designerKey);
+    const designerSnapshot = JSON.stringify({
+      shirtId: "linen-plain-60-peach", pantId: "linen-suiting-dark-grey",
+      occasion: "Casual", climate: "Hot / humid", intention: "Balanced",
+    });
+    await page.evaluate(({ key, value }) => localStorage.setItem(key, value),
+      { key: designerKey, value: designerSnapshot });
     await layerPlanner.getByRole("button", { name: "Save applied plan" }).click();
     assert.equal(await layerPlanner.locator(".titanLayerPlannerSavedList li").count(), 1);
     assert.deepEqual(await page.evaluate(key => JSON.parse(localStorage.getItem(key)).plans[0], libraryKey),
@@ -102,7 +107,7 @@ async function checkViewport(width) {
     assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 3);
     await layerPlanner.getByRole("button", { name: "Remove saved layer plan 1" }).click();
     assert.equal(await layerPlanner.locator(".titanLayerPlannerSavedList li").count(), 1);
-    assert.equal(await page.evaluate(key => localStorage.getItem(key), designerKey), "designer-marker-unchanged",
+    assert.equal(await page.evaluate(key => localStorage.getItem(key), designerKey), designerSnapshot,
       "Layer library must not rewrite Designer draft");
     // An incompatible/corrupt store may never be silently reinterpreted or
     // overwritten, and deletion requires a separate deliberate user click.
