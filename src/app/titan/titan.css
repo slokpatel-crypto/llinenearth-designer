@@ -805,3 +805,80 @@
 @media (prefers-reduced-motion: reduce) {
   .titanLookbookCardActions button, .titanLookbookSaveButton { transition: none; }
 }
+
+
+/* Unreleased outfit-planning-only extension: no GLB/model preview activation. */
+.titanLayerPlanner {
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: clamp(50px, 6vw, 100px) clamp(18px, 5vw, 90px);
+  background: #f0ece2;
+}
+.titanLayerPlannerHeading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 32px;
+  margin-bottom: 32px;
+}
+.titanLayerPlannerHeading h2 {
+  margin-top: 12px;
+  font-size: clamp(32px, 4vw, 57px);
+  line-height: 1.12;
+}
+.titanLayerPlannerHeading > p { max-width: 480px; font-size: 14px; color: #565d53; line-height: 1.7; }
+.titanLayerPlannerLayout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(280px, .75fr); gap: 20px; align-items: start; }
+.titanLayerPlannerForm, .titanLayerPlannerSummary {
+  padding: clamp(20px, 3vw, 36px);
+  background: #fffdf8;
+  border: 1px solid #d4cfc4;
+  min-width: 0;
+}
+.titanLayerPlannerForm fieldset { border: 0; padding: 0; margin: 0 0 27px; min-width: 0; }
+.titanLayerPlannerForm legend { margin-bottom: 13px; font-size: 14px; font-weight: 700; color: #293429; }
+.titanLayerPlannerChoices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.titanLayerPlannerChoice, .titanLayerPlannerCompositions label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 11px 12px;
+  border: 1px solid #d7d3ca;
+  background: #fbfaf5;
+  cursor: pointer;
+}
+.titanLayerPlannerChoice input, .titanLayerPlannerCompositions input { flex: 0 0 auto; accent-color: #405542; width: 19px; height: 19px; }
+.titanLayerPlannerChoice span { display: grid; gap: 3px; min-width: 0; }
+.titanLayerPlannerChoice strong { font-size: 13px; }
+.titanLayerPlannerChoice small { font-size: 11px; color: #656c61; }
+.titanLayerPlannerCompositions { display: flex; flex-wrap: wrap; gap: 9px; }
+.titanLayerPlannerCompositions label { font-size: 12px; font-weight: 600; }
+.titanLayerPlannerHint, .titanLayerPlannerBoundary {
+  font-size: 12px; line-height: 1.7; color: #545d53;
+}
+.titanLayerPlannerActions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 20px; }
+.titanLayerPlannerActions button { min-height: 48px; border: 1px solid #4b5d4a; padding: 11px 17px; background: transparent; color: #263326; font-size: 12px; font-weight: 700; cursor: pointer; }
+.titanLayerPlannerActions button:first-child { background: #384c3b; color: white; }
+.titanLayerPlannerActions button:disabled { opacity: .48; cursor: not-allowed; }
+.titanLayerPlannerFeedback { min-height: 38px; margin-top: 16px!important; font-size: 12px; line-height: 1.6; color: #3e4b3f; }
+.titanLayerPlannerSummary h3 { font-size: 28px; margin: 12px 0; }
+.titanLayerPlannerComposition { display: inline-block; padding: 6px 11px; background: #e6e8df; font-size: 12px; font-weight: 700; }
+.titanLayerPlannerStack { margin: 20px 0; padding: 0; list-style: none; counter-reset: layer; }
+.titanLayerPlannerStack li { counter-increment: layer; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 7px; border-top: 1px solid #dfddd5; padding: 14px 0; }
+.titanLayerPlannerStack li::before { content: counter(layer, decimal-leading-zero); font-size: 10px; color: #8d785b; }
+.titanLayerPlannerStack li span { flex: 1 0 40%; font-size: 14px; font-weight: 700; }
+.titanLayerPlannerStack li small { max-width: 50%; text-align: right; font-size: 11px; color: #586457; }
+.titanLayerPlannerBoundary { border-top: 1px solid #dfddd5; padding-top: 16px; }
+.titanLayerPlannerForm input:focus-visible, .titanLayerPlannerActions button:focus-visible {
+  outline: 3px solid #805d43; outline-offset: 3px;
+}
+@media (max-width: 860px) {
+  .titanLayerPlannerHeading { flex-direction: column; align-items: start; }
+  .titanLayerPlannerLayout { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 460px) {
+  .titanLayerPlannerChoices { grid-template-columns: minmax(0, 1fr); }
+  .titanLayerPlannerCompositions { display: grid; }
+  .titanLayerPlannerCompositions label { width: 100%; }
+  .titanLayerPlannerActions button { flex: 1 1 auto; }
+}

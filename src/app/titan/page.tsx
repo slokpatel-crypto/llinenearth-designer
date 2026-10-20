@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import TitanHeaderNavigation from "./titan-header-navigation";
 import TitanFabricExplorer from "./titan-fabric-explorer";
+import TitanLayerPlanner from "./titan-layer-planner";
 import { TITAN_OCCASIONS, titanOccasionHref } from "@/lib/titan/occasion-handoff";
 import { BRAND_LOGO_SRC, BRAND_LOGO_SIZE } from "@/lib/brand-logo-data";
 import { titanDevelopmentTrack, titanJourneys, titanQuickLinks } from "@/lib/titan/navigation";
@@ -95,6 +96,8 @@ export default function TitanStudioPage() {
           </div>
           <TitanFabricExplorer />
         </section>
+
+        <TitanLayerPlanner />
 
         <section id="titan-journeys" className="titanSection titanJourneys" aria-labelledby="titan-journeys-title">
           <div className="titanSectionIntro">

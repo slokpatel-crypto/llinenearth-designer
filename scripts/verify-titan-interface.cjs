@@ -45,6 +45,30 @@ async function checkViewport(width) {
     assert.equal(await page.title(), "The Linen Earth Studio | TITAN");
     assert.equal(await page.locator('meta[name="robots"]').getAttribute("content"), "noindex, nofollow", "pilot must not be indexed");
     assert.equal(await page.locator(".titanJourneyCard").count(), 3);
+    // Planning-only jacket/waistcoat/addon interactions must retain the existing
+    // model; invalid dependent changes roll back as one unit, even at 320px.
+    const layerPlanner = page.locator("#titan-layer-planner");
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2);
+    await layerPlanner.getByRole("checkbox", { name: /Blazer/ }).check();
+    await layerPlanner.getByRole("radio", { name: "Two-piece suit" }).check();
+    await layerPlanner.getByRole("button", { name: "Apply layer plan" }).click();
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 3);
+    assert.equal(await layerPlanner.locator("[data-titan-composition]").getAttribute("data-titan-composition"), "two-piece-suit");
+    await layerPlanner.getByRole("checkbox", { name: /Blazer/ }).uncheck();
+    await layerPlanner.getByRole("button", { name: "Apply layer plan" }).click();
+    assert.match(await layerPlanner.locator(".titanLayerPlannerFeedback").textContent(), /requires blazer/i);
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 3, "Rejected plan must keep every applied garment");
+    await layerPlanner.getByRole("button", { name: "Discard edits" }).click();
+    assert.equal(await layerPlanner.getByRole("checkbox", { name: /Blazer/ }).isChecked(), true);
+    await layerPlanner.getByRole("checkbox", { name: /Waistcoat/ }).check();
+    await layerPlanner.getByRole("radio", { name: "Three-piece suit" }).check();
+    await layerPlanner.getByRole("button", { name: "Apply layer plan" }).click();
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 4);
+    assert.equal(await layerPlanner.locator("[data-titan-composition]").getAttribute("data-titan-composition"), "three-piece-suit");
+    await layerPlanner.getByRole("button", { name: "Reset plan" }).click();
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2);
+    assert.equal(await layerPlanner.locator("[data-titan-composition]").getAttribute("data-titan-composition"), "separates");
+
     assert.equal(await page.locator(".titanOccasionLink").count(), 6, "Six actual Style Director occasions must be offered");
     assert.ok(await page.locator(".titanFabricCard").count() >= 8, "Real catalogue swatches must be browsable");
     assert.equal(await page.locator('.titanFabricKinds button[aria-pressed="true"]').textContent(), "Shirting");
