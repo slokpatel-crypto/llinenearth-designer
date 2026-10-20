@@ -632,6 +632,14 @@ are displayed. Do not merge the stacked TITAN PRs or deploy.
 - Remains stacked on draft #321 and its unreleased TITAN chain. **NO MERGE / NO DEPLOY.**
 
 
+## Native garment UV usability before export (2026-10-20, DRAFT)
+
+- An active UV-map name is insufficient evidence that a garment can carry a texture. Scene preflight now inspects actual evaluated mesh vertices, every UV map's loops and triangulated UV areas. Any non-finite vertex, non-finite UV coordinate or exactly collapsed UV triangle is a blocking reason before export. A good active map cannot hide an unusable first/render or secondary coordinate set.
+- Existing scene-preflight-v1 fields are preserved. Additive per-object metrics are `nonFiniteVertices`, `uvLoops`, `nonFiniteUvLoops`, `collapsedUvTriangles` and detailed `uvMaps` (including each name and render flag). UV totals aggregate all coordinate sets. Missing UV maps still fail through the existing active-map requirement; no synthetic coordinates are inserted and no source mesh, UV map or model photograph is rewritten.
+- Exact zero area is rejected without an arbitrary UV density threshold. Finite tiled coordinates outside 0..1, mirrored islands and small but nonzero UV triangles remain supported. These checks establish coordinate usability only, not calibrated repeat size, grain direction, seam alignment, visual likeness, physical drape or tailor approval.
+- Native Blender regressions cover real attribute buffers (including NaN/infinity), collinear/collapsed maps, quad triangulation, modifier-generated faces, preserved source geometry, and blocking scene-report reasons. The existing checksum-pinned native workflow retains collision/export checks and adds UV tests.
+- No new dependency, UI activation, saved-design/schema migration or replacement model is introduced. Prior native candidate reports must be regenerated; previously accepted unusable UV data now fails. Stacked draft only; no merge or deployment.
+
 ## Native export errors cannot reuse prior candidate validation (2026-10-20, DRAFT)
 
 - The production export runner now supplies Blender's `--python-exit-code 1` before `--python`. Blender 4.2 can otherwise log an uncaught Python exception and exit zero, allowing the Node runner to validate an old GLB and announce a successful export even after the current scene preflight rejected it. Process errors, signals and nonzero statuses stop before the structural validator.

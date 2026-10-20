@@ -74,16 +74,49 @@ def evaluated_mesh_stats(obj):
         polygons = len(mesh.polygons)
         triangles = len(mesh.loop_triangles)
         degenerate = sum(1 for polygon in mesh.polygons if not math.isfinite(polygon.area) or polygon.area <= 1e-10)
+        non_finite_vertices = sum(
+            1 for vertex in mesh.vertices if not all(math.isfinite(value) for value in vertex.co)
+        )
         uv_layers = len(mesh.uv_layers)
-        uv_name = mesh.uv_layers.active.name if mesh.uv_layers.active else None
+        active_uv = mesh.uv_layers.active
+        uv_name = active_uv.name if active_uv else None
+        uv_maps = []
+        # Blender can export multiple coordinate sets. A valid active map
+        # must not hide an unusable first/render map or another exported set.
+        for layer in mesh.uv_layers:
+            non_finite_uv_loops = sum(
+                1 for loop in layer.data if not all(math.isfinite(value) for value in loop.uv)
+            )
+            collapsed_uv_triangles = 0
+            for triangle in mesh.loop_triangles:
+                a, b, c = (layer.data[index].uv for index in triangle.loops)
+                if not all(math.isfinite(value) for point in (a, b, c) for value in point):
+                    continue
+                # Exact collapse only: no invented fabric scale, minimum UV
+                # density, 0..1 clamp, or ban on deliberately mirrored islands.
+                signed_area_twice = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+                if signed_area_twice == 0:
+                    collapsed_uv_triangles += 1
+            uv_maps.append({
+                "name": layer.name,
+                "activeRender": bool(layer.active_render),
+                "uvLoops": len(layer.data),
+                "nonFiniteUvLoops": non_finite_uv_loops,
+                "collapsedUvTriangles": collapsed_uv_triangles,
+            })
         return {
             "vertices": vertices,
             "polygons": polygons,
             "triangles": triangles,
             "degenerateFaces": degenerate,
             "degenerateRatio": (degenerate / polygons) if polygons else 1.0,
+            "nonFiniteVertices": non_finite_vertices,
             "uvLayers": uv_layers,
             "activeUv": uv_name,
+            "uvLoops": sum(layer["uvLoops"] for layer in uv_maps),
+            "nonFiniteUvLoops": sum(layer["nonFiniteUvLoops"] for layer in uv_maps),
+            "collapsedUvTriangles": sum(layer["collapsedUvTriangles"] for layer in uv_maps),
+            "uvMaps": uv_maps,
         }
     finally:
         evaluated.to_mesh_clear()
@@ -444,6 +477,12 @@ def main():
             reasons.append(f"{name} has empty or non-renderable geometry.")
         if stats["uvLayers"] <= 0 or not stats["activeUv"]:
             reasons.append(f"{name} needs an active UV map.")
+        if stats["nonFiniteVertices"]:
+            reasons.append(f"{name} has {stats['nonFiniteVertices']} non-finite evaluated vertices.")
+        if stats["nonFiniteUvLoops"]:
+            reasons.append(f"{name} has {stats['nonFiniteUvLoops']} non-finite UV loops.")
+        if stats["collapsedUvTriangles"]:
+            reasons.append(f"{name} has {stats['collapsedUvTriangles']} collapsed UV triangles; unwrap usable garment coordinates before export.")
         if stats["degenerateRatio"] > MAX_DEGENERATE_FACE_RATIO:
             reasons.append(
                 f"{name} has too many zero-area/degenerate faces: "
