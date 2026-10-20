@@ -410,7 +410,7 @@ export default function TitanFabricExplorer() {
           saved or changed by browsing; opening Designer Studio applies the two explicit choices.
         </p>
       </section>
-      <section className="titanLookbook" aria-labelledby="titan-lookbook-title">
+      <section className="titanLookbook" aria-labelledby="titan-lookbook-title" aria-busy={!lookbookLoaded}>
         <div className="titanLookbookHeading">
           <div>
             <p className="titanOverline">YOUR REFERENCE LOOKBOOK</p>
