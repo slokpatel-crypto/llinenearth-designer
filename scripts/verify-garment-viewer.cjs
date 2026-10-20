@@ -511,6 +511,16 @@ async function verifyViewport(browser, width) {
   assert.ok(garmentText.some((value)=>/Trouser/.test(value)&&/LIVE/.test(value)&&/Pleated Trouser/.test(value)),"trouser types must be visible");
   assert.ok(garmentText.some((value)=>/Blazer/.test(value)&&/FUTURE/.test(value)&&/Single-Breasted 2-Button/.test(value)),"future blazer types must be visible");
   assert.ok(garmentText.some((value)=>/Suit/.test(value)&&/FUTURE/.test(value)&&/3-Piece Suit/.test(value)),"future suit types must be visible");
+  assert.ok(garmentText.some((value)=>/Waistcoat/.test(value)&&/FUTURE/.test(value)&&/Single-breasted waistcoat/.test(value)),"future waistcoat types must be visible");
+  assert.ok(garmentText.some((value)=>/Accessories/.test(value)&&/FUTURE/.test(value)&&/Pocket square/.test(value)),"future accessories must be visible");
+  assert.deepEqual(await page.locator('.garmentTypeGrid article').evaluateAll(nodes=>nodes.map(node=>({
+    label:node.querySelector('div > strong')?.textContent?.trim(),status:node.dataset.status,
+  }))),[
+    {label:'Shirt',status:'live'},{label:'Trouser',status:'live'},
+    {label:'Blazer',status:'planned'},{label:'Suit',status:'planned'},
+    {label:'Waistcoat',status:'planned'},{label:'Accessories',status:'planned'},
+  ],'3D roadmap must keep all future addon families separate from live shirt/trouser');
+  assert.equal(await page.locator('.garmentTypeGrid article[data-status="planned"] select,.garmentTypeGrid article[data-status="planned"] button,.garmentTypeGrid article[data-status="planned"] input,.garmentTypeGrid article[data-status="planned"] a[href]').count(),0,'Unapproved 3D addons must not expose activation controls');
 
   const styleSelects = page.locator(".garmentStyleControlGrid select");
   assert.equal(await styleSelects.count(), 23, "M7.46 must expose twenty-three live tailoring controls");
