@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   MODEL_LAYER_SLOTS,
   type ModelLayerSlot,
@@ -10,6 +10,12 @@ import {
   applyModelLayerEdits,
   type EditableModelLayerPlan,
 } from "@/lib/designer/model-layer-edits";
+
+import {
+  TITAN_LAYER_PLANS_KEY, TITAN_LAYER_PLANS_LIMIT,
+  addTitanLayerPlan, readTitanLayerPlanLibrary,
+  removeTitanLayerPlan, serializeTitanLayerPlanLibrary,
+} from "@/lib/titan/layer-plan-library";
 
 const STARTING_PLAN: EditableModelLayerPlan = {
   version: 1,
@@ -42,6 +48,98 @@ export default function TitanLayerPlanner() {
   const [draftSlots, setDraftSlots] = useState<readonly ModelLayerSlot[]>(STARTING_PLAN.layers);
   const [draftComposition, setDraftComposition] = useState<OutfitComposition>("separates");
   const [message, setMessage] = useState("Choose garment layers, then apply a complete plan.");
+
+  const [savedPlans, setSavedPlans] = useState<readonly EditableModelLayerPlan[]>([]);
+  const [libraryState, setLibraryState] = useState<"loading" | "ready" | "invalid" | "blocked">("loading");
+  const [libraryMessage, setLibraryMessage] = useState("");
+
+  // Browser storage is an explicitly opted-in library, NOT saved Designer
+  // state. Never apply restored plans or mutate a fabric/material/model.
+  useEffect(() => {
+    function load(raw: string | null) {
+      const data = readTitanLayerPlanLibrary(raw);
+      setSavedPlans(data.plans);
+      setLibraryState(data.ok ? "ready" : "invalid");
+      if (!data.ok) setLibraryMessage("Existing layer bookmarks are unreadable. They were not overwritten.");
+    }
+    try { load(window.localStorage.getItem(TITAN_LAYER_PLANS_KEY)); }
+    catch {
+      setLibraryState("blocked");
+      setLibraryMessage("Browser storage is blocked; no saved plan was changed.");
+    }
+    function handleStorage(event: StorageEvent) {
+      if (event.key !== TITAN_LAYER_PLANS_KEY && event.key !== null) return;
+      try {
+        load(window.localStorage.getItem(TITAN_LAYER_PLANS_KEY));
+        if (event.key !== null) setLibraryMessage("Layer bookmarks updated in another tab.");
+      } catch {
+        setLibraryState("blocked");
+        setLibraryMessage("Browser storage became unavailable.");
+      }
+    }
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  function writeLibrary(
+    edit: (current: readonly EditableModelLayerPlan[]) => {
+      changed: boolean; plans: readonly EditableModelLayerPlan[]; reason?: string
+    },
+    success: string,
+  ) {
+    if (libraryState !== "ready") return;
+    try {
+      // Read immediately before writing; do not overwrite another tab's new
+      // bookmarks or clear an unknown/future version behind its back.
+      const current = readTitanLayerPlanLibrary(window.localStorage.getItem(TITAN_LAYER_PLANS_KEY));
+      if (!current.ok) {
+        setSavedPlans([]);
+        setLibraryState("invalid");
+        setLibraryMessage("Stored bookmarks changed or became unreadable. Nothing was overwritten.");
+        return;
+      }
+      const next = edit(current.plans);
+      setSavedPlans(current.plans);
+      if (!next.changed) {
+        setLibraryMessage(next.reason ?? "No saved plan changed.");
+        return;
+      }
+      window.localStorage.setItem(TITAN_LAYER_PLANS_KEY, serializeTitanLayerPlanLibrary(next.plans));
+      setSavedPlans(next.plans);
+      setLibraryMessage(success);
+    } catch {
+      setLibraryState("blocked");
+      setLibraryMessage("Could not write local bookmarks. Existing plans were not changed.");
+    }
+  }
+
+  function saveAppliedPlan() {
+    writeLibrary(current => addTitanLayerPlan(current, appliedPlan), "Applied plan bookmarked on this device.");
+  }
+
+  function removeSavedPlan(plan: EditableModelLayerPlan) {
+    writeLibrary(current => removeTitanLayerPlan(current, plan), "Bookmark removed from this device.");
+  }
+
+  function stageSavedPlan(plan: EditableModelLayerPlan) {
+    setDraftSlots([...plan.layers]);
+    setDraftComposition(plan.composition);
+    setMessage("Saved plan loaded as an unapplied draft. Select Apply layer plan to use it locally.");
+  }
+
+  function clearUnreadableLibrary() {
+    if (libraryState !== "invalid") return;
+    try {
+      // Explicit user action only. Corrupt/future data is never auto-deleted.
+      window.localStorage.removeItem(TITAN_LAYER_PLANS_KEY);
+      setSavedPlans([]);
+      setLibraryState("ready");
+      setLibraryMessage("Unreadable local bookmarks cleared at your request.");
+    } catch {
+      setLibraryState("blocked");
+      setLibraryMessage("Browser could not clear these bookmarks.");
+    }
+  }
 
   function toggleSlot(slot: ModelLayerSlot, selected: boolean) {
     setDraftSlots(previous => selected
@@ -162,8 +260,43 @@ export default function TitanLayerPlanner() {
               </li>
             ))}
           </ol>
-          <p className="titanLayerPlannerBoundary">Nothing is saved or shared. This plan cannot activate
-            unapproved geometry, change the existing model identity, confirm stock or certify tailoring fit.</p>
+          <p className="titanLayerPlannerBoundary">Only explicitly bookmarked plans remain on this device.
+            No layer can activate unapproved geometry, change the model identity, confirm stock or certify tailoring fit.</p>
+          <div className="titanLayerPlannerLibrary" aria-labelledby="titan-layer-bookmarks-title">
+            <h4 id="titan-layer-bookmarks-title">Your device-only layer bookmarks</h4>
+            <p>Save up to {TITAN_LAYER_PLANS_LIMIT} valid outfit plans. Only garment slot IDs are stored here,
+              never measurements, fabric choices or Designer drafts. Restoring a bookmark fills the draft only.</p>
+            <button type="button" onClick={saveAppliedPlan} disabled={libraryState !== "ready"}
+              className="titanLayerPlannerSave">Save applied plan</button>
+            <p className="titanLayerPlannerLibraryFeedback" role="status" aria-live="polite">
+              {libraryState === "loading" ? "Loading device bookmarks…" : libraryMessage ||
+                (libraryState === "ready" ? `${savedPlans.length} of ${TITAN_LAYER_PLANS_LIMIT} plans saved.` :
+                  "Local storage is unavailable.")}
+            </p>
+            {libraryState === "invalid" && (
+              <button type="button" className="titanLayerPlannerClear" onClick={clearUnreadableLibrary}>
+                Clear unreadable bookmarks
+              </button>
+            )}
+            {libraryState === "ready" && savedPlans.length > 0 && (
+              <ul className="titanLayerPlannerSavedList">
+                {savedPlans.map((plan, index) => (
+                  <li key={JSON.stringify([plan.composition, plan.layers])}>
+                    <div>
+                      <strong>{COMPOSITIONS.find(kind => kind.id === plan.composition)?.name}</strong>
+                      <small>{plan.layers.map(slot => LABELS[slot]).join(" · ")}</small>
+                    </div>
+                    <div className="titanLayerPlannerSavedActions">
+                      <button type="button" onClick={() => stageSavedPlan(plan)}
+                        aria-label={`Load saved layer plan ${index + 1} as draft`}>Load draft</button>
+                      <button type="button" onClick={() => removeSavedPlan(plan)}
+                        aria-label={`Remove saved layer plan ${index + 1}`}>Remove</button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </div>
     </section>
