@@ -124,6 +124,44 @@ async function checkViewport(width) {
     assert.equal(await page.evaluate(key => localStorage.getItem(key), libraryKey), null);
     assert.equal(await page.evaluate(key => localStorage.getItem(key), designerKey), designerSnapshot);
 
+    // Share is opt-in and contains only the applied logical garment plan.
+    // No share link triggers 3D generation, saved Designer mutation or order.
+    await layerPlanner.getByRole("button", { name: "Copy applied plan link" }).click();
+    assert.equal(await layerPlanner.getByRole("textbox", { name: "Layer plan share URL" }).inputValue(),
+      `${base}/titan?layer-plan=v1-0-03`);
+    if (width === 390) {
+      await page.goto(`${base}/titan?layer-plan=v1-2-33`, { waitUntil: "domcontentloaded" });
+      await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+      await waitForLocalReferences(page);
+      await page.getByRole("checkbox", { name: /Blazer/ }).waitFor();
+      await page.waitForFunction(() =>
+        document.querySelector(".titanLayerPlannerFeedback")?.textContent.includes("Shared plan opened"));
+      assert.equal(await layerPlanner.getByRole("checkbox", { name: /Blazer/ }).isChecked(), true);
+      assert.equal(await layerPlanner.getByRole("checkbox", { name: /Waistcoat/ }).isChecked(), true);
+      assert.equal(await layerPlanner.getByRole("radio", { name: "Three-piece suit" }).isChecked(), true);
+      assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2,
+        "Shared link must not automatically change the applied layer plan");
+      await layerPlanner.getByRole("button", { name: "Apply layer plan" }).click();
+      assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 4);
+      await layerPlanner.getByRole("button", { name: "Copy applied plan link" }).click();
+      assert.match(await layerPlanner.getByRole("textbox", { name: "Layer plan share URL" }).inputValue(),
+        /\\?layer-plan=v1-2-33$/);
+      assert.equal(await page.evaluate(key => localStorage.getItem(key), designerKey), designerSnapshot,
+        "Shared layer link may not change the Designer account/draft");
+
+      await page.goto(`${base}/titan?layer-plan=v1-1-03`, { waitUntil: "domcontentloaded" });
+      await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+      await waitForLocalReferences(page);
+      await page.waitForFunction(() =>
+        document.querySelector(".titanLayerPlannerFeedback")?.textContent.includes("invalid or unsupported"));
+      assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2);
+      assert.equal(await layerPlanner.getByRole("checkbox", { name: /Blazer/ }).isChecked(), false);
+      assert.equal(await page.evaluate(key => localStorage.getItem(key), designerKey), designerSnapshot);
+      await page.goto(`${base}/titan`, { waitUntil: "domcontentloaded" });
+      await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+      await waitForLocalReferences(page);
+    }
+
     assert.equal(await page.locator(".titanOccasionLink").count(), 6, "Six actual Style Director occasions must be offered");
     assert.ok(await page.locator(".titanFabricCard").count() >= 8, "Real catalogue swatches must be browsable");
     assert.equal(await page.locator('.titanFabricKinds button[aria-pressed="true"]').textContent(), "Shirting");
@@ -245,7 +283,7 @@ async function checkViewport(width) {
 
     // Every visible navigation entry must be large enough to use on a phone,
     // tablet or desktop; screenshots alone cannot prove pointer ergonomics.
-    const targets = await page.locator(".titanHeaderCta, .titanNav a, .titanMenuButton, .titanMobileNavPanel a, .titanOccasionLink, .titanButton, .titanTextLink, .titanFooter nav a, .titanFabricShowMore, .titanFabricCompareButton, .titanFabricComparisonClear, .titanFabricComparisonDetails a, .titanFabricOutfitSelect, .titanOutfitSlotText button, .titanOutfitBuildCta, .titanOutfitShareCta, .titanOutfitCopyButton, .titanOutfitShareInput, .titanLayerPlannerLibrary button").evaluateAll(nodes =>
+    const targets = await page.locator(".titanHeaderCta, .titanNav a, .titanMenuButton, .titanMobileNavPanel a, .titanOccasionLink, .titanButton, .titanTextLink, .titanFooter nav a, .titanFabricShowMore, .titanFabricCompareButton, .titanFabricComparisonClear, .titanFabricComparisonDetails a, .titanFabricOutfitSelect, .titanOutfitSlotText button, .titanOutfitBuildCta, .titanOutfitShareCta, .titanOutfitCopyButton, .titanOutfitShareInput, .titanLayerPlannerLibrary button, .titanLayerPlannerShareButton, .titanLayerPlannerShare input").evaluateAll(nodes =>
       nodes.filter(node => node.getClientRects().length > 0)
         .map(node => ({ text: node.textContent.trim().slice(0, 50), height: node.getBoundingClientRect().height }))
     );

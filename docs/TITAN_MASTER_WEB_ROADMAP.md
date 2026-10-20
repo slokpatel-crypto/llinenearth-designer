@@ -174,3 +174,12 @@ Do not replace testing with concept renders, inflate progress percentages, claim
 - The draft is stacked on #320; no homepage activation, merge or deployment
   without full matching-head CI/Chromium tests and independent native model,
   asset, calibrated fabric and owner/tailor release evidence.
+
+
+### 20 October — versioned local bookmarks and shareable outfit-layer references (stacked drafts)
+
+- A new, **explicit-only device bookmark** library supports up to six logically valid garment compositions without touching real saved Designer drafts. Each v1 entry is only composition plus canonical garment IDs, independent of cloth, body, customer and asset data. Reload shows a list but does not apply any stored outfit. Strict schema/version/byte budgets reject poisoned/future storage; clearing unreadable data is an explicit action.
+- A new **shareable editorial plan link** (`/titan?layer-plan=v1-C-HH`) contains only the seven-slot canonical bitmask and suit composition ID. Pure round-trip tests enumerate every valid composition. Duplicate/malformed/unsupported or physically impossible link values cannot cause a plan update.
+- Received shared links populate an **unapplied local draft**; the customer must explicitly click Apply to change the temporary layer plan. The link never gives a new accessory asset a rendering license, never writes Designer/local bookmarks automatically and never certifies model fit, physical drape, fabric stock or order readiness.
+- Copy action includes accessible manual URL fallback, mobile touch controls and real-browser checks at 320/390/768/1440px. Build and browser verification must pass on each exact draft HEAD before considering changes integrated.
+- Draft-only work remains stacked on unreleased TITAN branches. Next real model milestone remains verified garment assets + native Blender/UV seams + fabric provenance + four-angle identity + tailor approval. **No merge or production deployment.**
