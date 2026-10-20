@@ -276,7 +276,7 @@ def export_glb(collection, output_path):
 
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
 
-    bpy.ops.export_scene.gltf(
+    result = bpy.ops.export_scene.gltf(
         filepath=os.path.abspath(output_path),
         export_format="GLB",
         use_selection=True,
@@ -288,6 +288,8 @@ def export_glb(collection, output_path):
         export_cameras=False,
         export_lights=False,
     )
+    if result != {"FINISHED"}:
+        raise RuntimeError(f"GLB export did not finish: {result!r}. Viewer manifest was not written.")
 
 
 def main():

@@ -20,6 +20,7 @@ function requireFile(label,value){
 function run(command,args){
   const result=spawnSync(command,args,{stdio:"inherit",env:process.env});
   if(result.error) fail(command+" could not start: "+result.error.message);
+  if(result.signal) fail(command+" was terminated by signal "+result.signal+".");
   if(result.status!==0) fail(command+" exited with status "+result.status+".");
 }
 
@@ -31,6 +32,9 @@ if(!existsSync(exporter)) fail("Blender exporter is missing: "+exporter);
 
 run("blender",[
   "--background",scenePath,
+  // Blender otherwise reports Python exceptions but may still exit zero,
+  // allowing validation of a stale GLB from an earlier successful export.
+  "--python-exit-code","1",
   "--python",exporter,
   "--",
   "--output",outputPath,
