@@ -1,10 +1,12 @@
-name: Native garment collision QA
+name: Native garment collision and export QA
 
 on:
   pull_request:
     paths:
       - "scripts/blender/**"
+      - "scripts/build-production-garment-model.mjs"
       - "tests/blender/**"
+      - "tests/production-garment-export-cli.test.ts"
       - ".github/workflows/native-collision-qa.yml"
   workflow_dispatch:
 
@@ -21,6 +23,9 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Install native runtime libraries
         run: |
           sudo apt-get update -qq
@@ -36,6 +41,10 @@ jobs:
           mkdir -p artifacts/native-collision
           set -o pipefail
           "${{ runner.temp }}/blender-4.2.0-linux-x64/blender" --background --factory-startup --python-exit-code 1 --python tests/blender/test_scene_collisions.py 2>&1 | tee artifacts/native-collision/tests.log
+      - name: Verify native export failures cannot validate a stale candidate
+        run: |
+          set -o pipefail
+          "${{ runner.temp }}/blender-4.2.0-linux-x64/blender" --background --factory-startup --python-exit-code 1 --python tests/blender/test_scene_exports.py 2>&1 | tee artifacts/native-collision/exports.log
       - name: Preserve native regression evidence
         if: always()
         uses: actions/upload-artifact@v4

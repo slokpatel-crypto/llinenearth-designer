@@ -632,6 +632,13 @@ are displayed. Do not merge the stacked TITAN PRs or deploy.
 - Remains stacked on draft #321 and its unreleased TITAN chain. **NO MERGE / NO DEPLOY.**
 
 
+## Native export errors cannot reuse prior candidate validation (2026-10-20, DRAFT)
+
+- The production export runner now supplies Blender's `--python-exit-code 1` before `--python`. Blender 4.2 can otherwise log an uncaught Python exception and exit zero, allowing the Node runner to validate an old GLB and announce a successful export even after the current scene preflight rejected it. Process errors, signals and nonzero statuses stop before the structural validator.
+- The GLB exporter requires the operator to return exactly `FINISHED`. Cancelled or incomplete operations raise a Python error before the viewer manifest or success message is written. A successful export still proceeds through the existing independent GLB/manifest validator; its failures remain fatal.
+- Process-level Node regressions cover a stale candidate after a Python failure, nonzero exits, signals, missing executable, downstream validation failure and exact paths containing spaces. Native Blender regressions reproduce the actual preflight-exception/zero-exit failure using an empty scene and prove that the previous candidate/manifest remain unchanged and downstream validation is never called. The downstream marker is a test double, not a GLB or physical-model approval.
+- The checksum-pinned native CI workflow now includes these export regressions with Node 22. No new dependency, customer data/schema change, output-path migration, model replacement or rendering activation is introduced. Existing successful invocation and separate structural validation remain supported. This change propagates exporter failures; it does not make two output-file writes transactional or certify a production model. Stacked draft only; no merge or deployment.
+
 ## Native body/garment collision coordinates (2026-10-20, DRAFT)
 
 - Scene preflight now copies evaluated mesh triangles through the evaluated world matrix before building BVHs. Independent object-local BVHs can report false contact or miss real contact when the body and garment have different translations, parenting, constraints or modifiers. The existing 0.5 mm BVH epsilon is preserved in scene metres; body contacts still allow zero pairs and the tucked waist still allows at most 120.
