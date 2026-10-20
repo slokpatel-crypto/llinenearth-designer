@@ -24,7 +24,7 @@ export type ModelLayerDescriptor = Readonly<{
  * A suit is a composition of blazer + trouser (+ waistcoat), never an
  * additional whole-body mesh over a trouser or a separate human model.
  */
-export const MODEL_LAYER_SLOTS: readonly ModelLayerDescriptor[] = [
+export const MODEL_LAYER_SLOTS: readonly ModelLayerDescriptor[] = Object.freeze(([
   { slot: "shirt", anchor: "torso", order: 10, prerequisites: [], implementation: "existing-preview" },
   { slot: "trouser", anchor: "pelvis", order: 15, prerequisites: [], implementation: "existing-preview" },
   { slot: "belt", anchor: "pelvis", order: 20, prerequisites: ["trouser"], implementation: "new-asset-required" },
@@ -32,7 +32,9 @@ export const MODEL_LAYER_SLOTS: readonly ModelLayerDescriptor[] = [
   { slot: "waistcoat", anchor: "torso", order: 30, prerequisites: ["shirt"], implementation: "new-asset-required" },
   { slot: "blazer", anchor: "torso", order: 40, prerequisites: ["shirt"], implementation: "new-asset-required" },
   { slot: "pocket-square", anchor: "blazer-chest", order: 50, prerequisites: ["blazer"], implementation: "new-asset-required" },
-];
+] satisfies ModelLayerDescriptor[]).map(descriptor => Object.freeze({
+  ...descriptor, prerequisites: Object.freeze([...descriptor.prerequisites]),
+})));
 
 const SLOT_BY_ID = new Map<ModelLayerSlot, ModelLayerDescriptor>(
   MODEL_LAYER_SLOTS.map(descriptor => [descriptor.slot, descriptor]),
@@ -79,7 +81,7 @@ export function resolveModelLayerPlan(input: unknown): ModelLayerPlan {
   }
   const composition = raw.composition as OutfitComposition;
   if (!Array.isArray(raw.layers) || raw.layers.length > MODEL_LAYER_SLOTS.length
-    || !raw.layers.every(item => typeof item === "string" && SLOT_BY_ID.has(item as ModelLayerSlot))
+    || !Array.from(raw.layers).every(item => typeof item === "string" && SLOT_BY_ID.has(item as ModelLayerSlot))
     || new Set(raw.layers).size !== raw.layers.length) {
     return invalid("Layers must be distinct known garment slots.");
   }

@@ -67,7 +67,7 @@ export function inspectModelLayerAssetRegistration(value: unknown): LayerAssetIn
     return reject("Extension must declare between 1 and 24 independent material slots.");
   }
   const prefix = "LAYER_" + slot.slot.toUpperCase().replace(/-/g, "_") + "_";
-  if (!raw.materialSlots.every(item =>
+  if (!Array.from(raw.materialSlots).every(item =>
     typeof item === "string" && item.length <= 80
     && item.startsWith(prefix) && /^[A-Z][A-Z0-9_]+$/.test(item)
   ) || new Set(raw.materialSlots).size !== raw.materialSlots.length) {

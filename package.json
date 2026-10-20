@@ -26,6 +26,8 @@
     "eval:designer-snapshots": "node --experimental-strip-types scripts/eval-phase10-designer-snapshots.mjs",
     "eval:preview-performance": "node --experimental-strip-types scripts/eval-preview-performance.mjs",
     "garment:model-check": "node --experimental-strip-types scripts/check-garment-viewer-model.mjs",
+    "garment:layer-check": "node --experimental-strip-types scripts/check-model-layer-asset.mjs",
+    "garment:outfit-check": "node --experimental-strip-types scripts/check-model-layer-assembly.mjs",
     "garment:model:build": "node scripts/build-garment-viewer-model.mjs",
     "garment:model-base:fetch": "python3 scripts/blender/bootstrap-human-base-meshes.py",
     "garment:model-body:prepare": "blender --background --factory-startup --python scripts/blender/prepare-linen-earth-body.py -- --asset-root .cache/linen-earth/blender-human-base-meshes-v1.4.1 --output .cache/linen-earth/linen-earth-officewear-body-base.blend",
@@ -46,6 +48,7 @@
     "@types/node": "22.10.0",
     "@types/react": "19.0.3",
     "@types/react-dom": "19.0.2",
+    "gltf-validator": "2.0.0-dev.3.10",
     "typescript": "5.9.2"
   },
   "overrides": {

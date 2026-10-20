@@ -56,6 +56,7 @@ test("locked handoff retains full advanced shirt/trouser options, physical targe
   assert.equal(packet.construction.styleSpec?.shirt.sleeve,"half_sleeve");
   assert.equal(packet.construction.styleSpec?.shirt.cuff,"open_short_hem_cuff");
   assert.equal(packet.construction.styleSpec?.pant.fit,"korean_straight_wide");
+  assert.ok(packet.construction.context);
   assert.equal(packet.construction.context.occasion,"Smart-Casual");
   assert.equal(packet.construction.shirt.finishedTargets[0].finishedCm.min,103);
   assert.equal(packet.production.clothEstimate.shirtMetres,null);

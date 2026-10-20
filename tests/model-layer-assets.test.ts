@@ -100,3 +100,8 @@ test("Additional garments cannot silently reuse original six shirt/trouser mater
       JSON.stringify(materialSlots));
   }
 });
+
+test("Sparse material slot arrays cannot register an undeclared panel", () => {
+  const base = candidate(future.find(item => item.slot === "blazer")!);
+  assert.equal(inspectModelLayerAssetRegistration({ ...base, materialSlots: new Array(1) }).valid, false);
+});

@@ -586,3 +586,13 @@ Architecture and product decisions that must persist across coding sessions.
 **Boundaries:** Browser storage is not authenticated, server-backed or cross-device and can be cleared. It does not update the Designer draft, measurement profile, source model, inventory, supplier data, Style Director decisions or any order. A reopened pair changes only two ephemeral TITAN selections and still requires the existing Designer CTA to apply it. Storage failures are visible, not silently reported as success.
 
 **Verification and release:** Exhaustive catalogue tests and real browser save/reload/reopen/remove checks must pass on the exact branch HEAD. Preserve all identity, source 3D, native preflight, fabric provenance and owner acceptance gates; **draft only, no merge or deployment**.
+
+## 2026-10-20 — Byte-level preflight for single-model garment extensions
+
+**Decision:** candidate registration is necessary but insufficient. Add a narrow, baked-static GLB inspector and read-only file/whole-outfit CLIs. Preserve the canonical model, original six-material model inspector, all existing customer routes and saved-design contracts. Passing JSON, geometry or glTF schema validation can never grant production approval.
+
+**Implementation:** exact binary ranges/alignment, finite geometry/normals/UVs, nondegenerate triangles, actual material use and namespace, reachable scene graphs, baked model-local transforms, safe local paths and per-file/combined extension budgets. Pin the independent Khronos `gltf-validator@2.0.0-dev.3.10` as a development dependency with locked integrity; it is not imported into customer code. Reports bind raw/normalized registrations and asset bytes with SHA-256, keep deterministic bounded diagnostics, and always return `productionApproved: false`. Whole-outfit bundles require every selected future slot once and explicitly leave `baseModelChecked: false`.
+
+**Compatibility:** new engineering-only assembly wrapper v1 (`version`, existing `plan`, full `assets` registrations); no persistence/database migration, new mannequin, customer asset activation or paid AI. Sparse arrays now fail closed in legacy layer/registration parsers; canonical descriptors/prerequisites are runtime-frozen so callers cannot mutate later validation. Existing valid JSON inputs retain their behavior. Export profile and independent native/physical/browser acceptance are documented in `docs/MODEL_LAYER_ASSET_PREFLIGHT.md`.
+
+**Verification boundary:** synthetic fixture tests do not supply a garment, fabric measurement, source license, calibrated UV/drape, photo parity, native Blender approval or tailor signoff. These independent gates remain mandatory. Keep the draft unmerged and undeployed.

@@ -18,7 +18,7 @@ test("unverified configured GLB never masquerades as the real studio model",()=>
 
 test("realistic model source plan stays aligned with the production GarmentViewer contract",()=>{
   const plan=readFileSync("docs/REALISTIC_MODEL_SOURCE_PLAN.md","utf8");
-  const exporter=readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8","utf8");
+  const exporter=readFileSync("scripts/blender/export-linen-earth-officewear.py","utf8");
   for(const token of [
     "Blender Human Base Meshes",
     "MakeHuman / MPFB",
@@ -60,7 +60,7 @@ test("Blender exporter refuses silent body scaling and requires garment UVs",()=
 
 test("Blender base source bootstrap stays pinned, licensed and non-promotional",()=>{
   const bootstrap=readFileSync("scripts/blender/bootstrap-human-base-meshes.py","utf8");
-  const packageJson=readFileSync("package.json","utf8","utf8");
+  const packageJson=readFileSync("package.json","utf8");
   for(const token of [
     'BUNDLE_VERSION = "1.4.1"',
     'BUNDLE_LICENSE = "CC0"',
@@ -73,7 +73,7 @@ test("Blender base source bootstrap stays pinned, licensed and non-promotional",
 });
 
 test("realistic body intake is explicit, licensed and does not fake garment geometry",()=>{
-  const prepare=readFileSync("scripts/blender/prepare-linen-earth-body.py","utf8","utf8");
+  const prepare=readFileSync("scripts/blender/prepare-linen-earth-body.py","utf8");
   for(const token of [
     'TARGET_HEIGHT_M = 1.727',
     'SOURCE_VERSION = "1.4.1"',
@@ -166,7 +166,7 @@ test("Blender scene preflight verifies canonical identity guide geometry",()=>{
 });
 
 test("Blender scene preflight catches structural garment quality risks without requiring watertight clothing",()=>{
-  const preflight=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8","utf8");
+  const preflight=readFileSync("scripts/blender/preflight-linen-earth-officewear.py","utf8");
   for(const token of [
     "linen-earth-officewear-scene-preflight-v1",
     "evaluated_mesh_stats",

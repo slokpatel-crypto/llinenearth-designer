@@ -10,6 +10,24 @@ import {
 const plan = (layers: readonly string[], composition: OutfitComposition = "separates") =>
   resolveModelLayerPlan({ version: MODEL_LAYER_PLAN_VERSION, composition, layers });
 
+test("Sparse layer selections cannot create valid empty or incomplete assemblies", () => {
+  const hole = new Array<string>(1);
+  for (const layers of [hole, ["shirt", ...hole]]) {
+    assert.equal(plan(layers).valid, false);
+  }
+});
+
+test("A returned plan cannot mutate future attachment requirements or the canonical slot registry", () => {
+  const result = plan(["shirt", "blazer"]);
+  const blazer = result.layers.find(item => item.slot === "blazer")!;
+  assert.ok(Object.isFrozen(MODEL_LAYER_SLOTS));
+  assert.ok(Object.isFrozen(blazer)); assert.ok(Object.isFrozen(blazer.prerequisites));
+  assert.equal(Reflect.set(blazer, "anchor", "pelvis"), false);
+  assert.throws(() => Array.prototype.pop.call(blazer.prerequisites), TypeError);
+  assert.equal(plan(["blazer"]).valid, false);
+  assert.equal(plan(["shirt", "blazer"]).valid, true);
+});
+
 test("The extension registry preserves one canonical studio model and uniquely ordered garment slots", () => {
   assert.equal(LINEN_EARTH_MODEL_IDENTITY_ID, "linen-earth-studio-model-v1");
   assert.deepEqual(MODEL_LAYER_SLOTS.slice(0, 2).map(layer => layer.slot), ["shirt", "trouser"]);
