@@ -52,20 +52,25 @@ async function open(width, reducedMotion = 'no-preference', javaScriptEnabled = 
     assert.ok(openingHold.logo < .01 && openingHold.glow < .01 && openingHold.threads, `opening remains white at one second: ${JSON.stringify(openingHold)}`);
     assert.ok(openingHold.logoEnd >= 2500 && openingHold.logoEnd <= 3000 && openingHold.end <= 3000, 'logo and opening finish in the requested three-second window');
     await page.locator('.brandIntro').screenshot({ path: path.join(out, `intro-white-${width}.png`) });
-    // Resume actual CSS motion after the precise white-hold sampling; still
-    // verify that the logo appears naturally within the same finite entrance.
+    // Sample the real CSS tracks at t=2600ms as well. Sampling two explicit
+    // animation frames avoids falsely failing (or hanging on) a slow CI host
+    // whose wall-clock scheduling skipped a very short reveal window.
     await page.locator('.brandIntro').evaluate(n => {
-      for (const animation of n.getAnimations({ subtree: true })) animation.play();
+      for (const animation of n.getAnimations({ subtree: true })) animation.currentTime = 2600;
     });
-    await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.brandIntro img')).opacity) > .95);
+    const revealedOpacity = await page.locator('.brandIntro img').evaluate(n => Number(getComputedStyle(n).opacity));
+    assert.ok(revealedOpacity > .95, `Logo must be visible at t=2600ms: ${revealedOpacity}`);
     const openingSpacing = await page.locator('.brandIntro').evaluate(n => ({
       rule: n.querySelector('.introLogoRule').getBoundingClientRect().bottom,
       caption: n.querySelector('p').getBoundingClientRect().top,
     }));
     assert.ok(openingSpacing.caption >= openingSpacing.rule + 4, `caption clears the decorative rule at ${width}px`);
     await page.locator('.brandIntro').screenshot({ path: path.join(out, `intro-${width}.png`) });
+    await page.locator('.brandIntro').evaluate(n => {
+      for (const animation of n.getAnimations({ subtree: true })) animation.play();
+    });
   }
-  await page.locator('.brandIntro').waitFor({ state: 'hidden' });
+  await page.locator('.brandIntro').waitFor({ state: 'hidden', timeout: 8000 });
   await page.locator('.gatewayHeroActions').waitFor();
   await page.locator('.atelierBrand img').evaluate(image => image.decode());
   await page.locator('.gatewayHeroModel img').evaluate(image => image.decode());
