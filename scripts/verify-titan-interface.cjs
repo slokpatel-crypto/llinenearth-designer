@@ -69,6 +69,61 @@ async function checkViewport(width) {
     assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2);
     assert.equal(await layerPlanner.locator("[data-titan-composition]").getAttribute("data-titan-composition"), "separates");
 
+    // A device-only bookmark is saved only on an explicit click; reload never
+    // applies it to the active outfit or writes an existing Designer draft.
+    const libraryKey = "linen-earth:titan-layer-plans:v1";
+    const designerKey = "linen-earth:real-designer-draft:v2";
+    await page.waitForFunction(() => document.querySelector(".titanLayerPlannerSave")?.disabled === false);
+    assert.equal(await page.evaluate(key => localStorage.getItem(key), libraryKey), null);
+    const designerSnapshot = JSON.stringify({
+      shirtId: "linen-plain-60-peach", pantId: "linen-suiting-dark-grey",
+      occasion: "Casual", climate: "Hot / humid", intention: "Balanced",
+    });
+    await page.evaluate(({ key, value }) => localStorage.setItem(key, value),
+      { key: designerKey, value: designerSnapshot });
+    await layerPlanner.getByRole("button", { name: "Save applied plan" }).click();
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerSavedList li").count(), 1);
+    assert.deepEqual(await page.evaluate(key => JSON.parse(localStorage.getItem(key)).plans[0], libraryKey),
+      { version: 1, composition: "separates", layers: ["shirt", "trouser"] });
+    await layerPlanner.getByRole("checkbox", { name: /Blazer/ }).check();
+    await layerPlanner.getByRole("radio", { name: "Two-piece suit" }).check();
+    await layerPlanner.getByRole("button", { name: "Apply layer plan" }).click();
+    await layerPlanner.getByRole("button", { name: "Save applied plan" }).click();
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerSavedList li").count(), 2);
+    await layerPlanner.getByRole("button", { name: "Save applied plan" }).click();
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerSavedList li").count(), 2,
+      "Saving the same outfit must not add a duplicate");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+    await waitForLocalReferences(page);
+    await page.waitForFunction(() => document.querySelectorAll(".titanLayerPlannerSavedList li").length === 2);
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2,
+      "Saved outfit is never automatically applied on reload");
+    await layerPlanner.getByRole("button", { name: "Load saved layer plan 2 as draft" }).click();
+    assert.equal(await layerPlanner.getByRole("checkbox", { name: /Blazer/ }).isChecked(), true);
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 2,
+      "Loading stages changes; applied plan is untouched until Apply");
+    await layerPlanner.getByRole("button", { name: "Apply layer plan" }).click();
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerStack li").count(), 3);
+    await layerPlanner.getByRole("button", { name: "Remove saved layer plan 1" }).click();
+    assert.equal(await layerPlanner.locator(".titanLayerPlannerSavedList li").count(), 1);
+    assert.equal(await page.evaluate(key => localStorage.getItem(key), designerKey), designerSnapshot,
+      "Layer library must not rewrite Designer draft");
+    // An incompatible/corrupt store may never be silently reinterpreted or
+    // overwritten, and deletion requires a separate deliberate user click.
+    await page.evaluate(key => localStorage.setItem(key,
+      JSON.stringify({ version: 2, plans: [{ version: 1, composition: "separates", layers: ["shirt"] }] })), libraryKey);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.locator(".brandIntro").waitFor({ state: "hidden", timeout: 8000 });
+    await waitForLocalReferences(page);
+    await layerPlanner.getByRole("button", { name: "Clear unreadable bookmarks" }).waitFor();
+    assert.equal(await layerPlanner.getByRole("button", { name: "Save applied plan" }).isDisabled(), true);
+    assert.equal(await page.evaluate(key => JSON.parse(localStorage.getItem(key)).version, libraryKey), 2,
+      "Unknown store version must remain intact until explicit clearing");
+    await layerPlanner.getByRole("button", { name: "Clear unreadable bookmarks" }).click();
+    assert.equal(await page.evaluate(key => localStorage.getItem(key), libraryKey), null);
+    assert.equal(await page.evaluate(key => localStorage.getItem(key), designerKey), designerSnapshot);
+
     assert.equal(await page.locator(".titanOccasionLink").count(), 6, "Six actual Style Director occasions must be offered");
     assert.ok(await page.locator(".titanFabricCard").count() >= 8, "Real catalogue swatches must be browsable");
     assert.equal(await page.locator('.titanFabricKinds button[aria-pressed="true"]').textContent(), "Shirting");
@@ -190,7 +245,7 @@ async function checkViewport(width) {
 
     // Every visible navigation entry must be large enough to use on a phone,
     // tablet or desktop; screenshots alone cannot prove pointer ergonomics.
-    const targets = await page.locator(".titanHeaderCta, .titanNav a, .titanMenuButton, .titanMobileNavPanel a, .titanOccasionLink, .titanButton, .titanTextLink, .titanFooter nav a, .titanFabricShowMore, .titanFabricCompareButton, .titanFabricComparisonClear, .titanFabricComparisonDetails a, .titanFabricOutfitSelect, .titanOutfitSlotText button, .titanOutfitBuildCta, .titanOutfitShareCta, .titanOutfitCopyButton, .titanOutfitShareInput").evaluateAll(nodes =>
+    const targets = await page.locator(".titanHeaderCta, .titanNav a, .titanMenuButton, .titanMobileNavPanel a, .titanOccasionLink, .titanButton, .titanTextLink, .titanFooter nav a, .titanFabricShowMore, .titanFabricCompareButton, .titanFabricComparisonClear, .titanFabricComparisonDetails a, .titanFabricOutfitSelect, .titanOutfitSlotText button, .titanOutfitBuildCta, .titanOutfitShareCta, .titanOutfitCopyButton, .titanOutfitShareInput, .titanLayerPlannerLibrary button").evaluateAll(nodes =>
       nodes.filter(node => node.getClientRects().length > 0)
         .map(node => ({ text: node.textContent.trim().slice(0, 50), height: node.getBoundingClientRect().height }))
     );

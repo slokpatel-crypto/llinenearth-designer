@@ -28,7 +28,18 @@ async function open(width, reducedMotion = 'no-preference', javaScriptEnabled = 
   await page.goto(base, { waitUntil: 'domcontentloaded' });
   if (javaScriptEnabled && reducedMotion === 'no-preference') {
     await page.locator('.brandIntro img').waitFor({ state: 'visible' });
-    await page.waitForFunction(() => document.querySelector('.brandIntro')?.getAnimations().some(a => Number(a.currentTime) >= 1000));
+    // Browser startup/screenshot load may let the entire 1.2s white hold
+    // elapse before the assertion executes. Sample the REAL CSS keyframes at
+    // exactly t=1000ms using the Web Animations API, rather than asking a
+    // late asynchronous poll to represent "one second".
+    await page.locator('.brandIntro').evaluate(n => {
+      const animations = n.getAnimations({ subtree: true });
+      if (animations.length < 4) throw Error('Missing branded opening animation tracks');
+      for (const animation of animations) {
+        animation.pause();
+        animation.currentTime = 1000;
+      }
+    });
     const openingHold = await page.locator('.brandIntro').evaluate(n => ({
       background: getComputedStyle(n).backgroundColor,
       logo: Number(getComputedStyle(n.querySelector('img')).opacity),
@@ -41,15 +52,25 @@ async function open(width, reducedMotion = 'no-preference', javaScriptEnabled = 
     assert.ok(openingHold.logo < .01 && openingHold.glow < .01 && openingHold.threads, `opening remains white at one second: ${JSON.stringify(openingHold)}`);
     assert.ok(openingHold.logoEnd >= 2500 && openingHold.logoEnd <= 3000 && openingHold.end <= 3000, 'logo and opening finish in the requested three-second window');
     await page.locator('.brandIntro').screenshot({ path: path.join(out, `intro-white-${width}.png`) });
-    await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.brandIntro img')).opacity) > .95);
+    // Sample the real CSS tracks at t=2600ms as well. Sampling two explicit
+    // animation frames avoids falsely failing (or hanging on) a slow CI host
+    // whose wall-clock scheduling skipped a very short reveal window.
+    await page.locator('.brandIntro').evaluate(n => {
+      for (const animation of n.getAnimations({ subtree: true })) animation.currentTime = 2600;
+    });
+    const revealedOpacity = await page.locator('.brandIntro img').evaluate(n => Number(getComputedStyle(n).opacity));
+    assert.ok(revealedOpacity > .95, `Logo must be visible at t=2600ms: ${revealedOpacity}`);
     const openingSpacing = await page.locator('.brandIntro').evaluate(n => ({
       rule: n.querySelector('.introLogoRule').getBoundingClientRect().bottom,
       caption: n.querySelector('p').getBoundingClientRect().top,
     }));
     assert.ok(openingSpacing.caption >= openingSpacing.rule + 4, `caption clears the decorative rule at ${width}px`);
     await page.locator('.brandIntro').screenshot({ path: path.join(out, `intro-${width}.png`) });
+    await page.locator('.brandIntro').evaluate(n => {
+      for (const animation of n.getAnimations({ subtree: true })) animation.play();
+    });
   }
-  await page.locator('.brandIntro').waitFor({ state: 'hidden' });
+  await page.locator('.brandIntro').waitFor({ state: 'hidden', timeout: 8000 });
   await page.locator('.gatewayHeroActions').waitFor();
   await page.locator('.atelierBrand img').evaluate(image => image.decode());
   await page.locator('.gatewayHeroModel img').evaluate(image => image.decode());

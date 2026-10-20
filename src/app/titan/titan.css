@@ -882,3 +882,43 @@
   .titanLayerPlannerCompositions label { width: 100%; }
   .titanLayerPlannerActions button { flex: 1 1 auto; }
 }
+
+
+/* Opt-in wardrobe bookmarks: reference IDs only, independent of Designer save. */
+.titanLayerPlannerLibrary { border-top: 1px solid #dfddd5; margin-top: 18px; padding-top: 23px; }
+.titanLayerPlannerLibrary h4 { font-size: 18px; margin: 0 0 9px; color: #293429; }
+.titanLayerPlannerLibrary > p { font-size: 12px; line-height: 1.65; color: #505c51; }
+.titanLayerPlannerLibrary button {
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid #4b5d4a;
+  color: #263326;
+  background: #fffdf8;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.titanLayerPlannerLibrary .titanLayerPlannerSave { background: #384c3b; color: #fff; margin-top: 9px; }
+.titanLayerPlannerLibrary button:disabled { opacity: .48; cursor: not-allowed; }
+.titanLayerPlannerLibrary button:focus-visible { outline: 3px solid #805d43; outline-offset: 3px; }
+.titanLayerPlannerLibraryFeedback { min-height: 22px; margin: 10px 0!important; }
+.titanLayerPlannerClear { border-color: #855c45!important; }
+.titanLayerPlannerSavedList { padding: 0; margin: 20px 0 0; list-style: none; }
+.titanLayerPlannerSavedList li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-top: 1px solid #dfddd5;
+  padding: 14px 0;
+}
+.titanLayerPlannerSavedList li > div:first-child { flex: 1 1 180px; min-width: 0; }
+.titanLayerPlannerSavedList strong { display: block; font-size: 13px; }
+.titanLayerPlannerSavedList small { display: block; margin-top: 4px; color: #505c51; font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+.titanLayerPlannerSavedActions { display: flex; flex-wrap: wrap; gap: 7px; }
+@media (max-width: 460px) {
+  .titanLayerPlannerSavedActions { width: 100%; }
+  .titanLayerPlannerSavedActions button { flex: 1 1 0; }
+}
