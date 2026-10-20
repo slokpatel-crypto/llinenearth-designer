@@ -93,15 +93,56 @@ def material_slot_names(obj):
     return [slot.material.name if slot.material else "" for slot in obj.material_slots]
 
 
+def world_surface_tree(obj, depsgraph):
+    """Copy evaluated triangles into one shared frame, releasing temporary meshes.
+
+    Object BVHs have independent local frames. Comparing those directly ignores
+    translation, parenting, constraints and evaluated transforms. World-space
+    triangles also keep the existing 0.5 mm epsilon in scene metres.
+    """
+    evaluated = obj.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        if mesh is None:
+            return None
+        mesh.calc_loop_triangles()
+        vertices = [evaluated.matrix_world @ vertex.co for vertex in mesh.vertices]
+        triangles = [tuple(triangle.vertices) for triangle in mesh.loop_triangles]
+        if not vertices or not triangles:
+            return None
+        if any(not all(math.isfinite(value) for value in vertex) for vertex in vertices):
+            raise ValueError(f"{obj.name} has non-finite evaluated world coordinates.")
+        return BVHTree.FromPolygons(vertices, triangles, all_triangles=True, epsilon=0.0005)
+    finally:
+        evaluated.to_mesh_clear()
+
+
 def intersection_pair_count(left, right):
     if left is None or right is None or left.type != "MESH" or right.type != "MESH":
         return None
     depsgraph = bpy.context.evaluated_depsgraph_get()
-    left_tree = BVHTree.FromObject(left, depsgraph, epsilon=0.0005)
-    right_tree = BVHTree.FromObject(right, depsgraph, epsilon=0.0005)
+    left_tree = world_surface_tree(left, depsgraph)
+    right_tree = world_surface_tree(right, depsgraph)
     if left_tree is None or right_tree is None:
         return None
     return len(left_tree.overlap(right_tree))
+
+
+def checked_boundary_intersections(key, left, right, allowed_pairs, reasons):
+    """An unavailable collision check cannot count as a clean export boundary."""
+    try:
+        count = intersection_pair_count(left, right)
+    except (RuntimeError, ValueError) as error:
+        reasons.append(f"Could not evaluate intersection QA for {key}: {error}")
+        return None
+    if count is None:
+        reasons.append(f"Could not evaluate intersection QA for {key}.")
+    elif count > allowed_pairs:
+        reasons.append(
+            f"{key} has {count} intersecting triangle pairs; "
+            f"allowed maximum is {allowed_pairs}. Clean the garment boundary before production export."
+        )
+    return count
 
 
 def guide_world_points(obj):
@@ -439,27 +480,17 @@ def main():
             ("bodyTrouserLegR", body, bpy.data.objects.get("TrouserLegRFabric"), 0),
         )
         for key, left_obj, right_obj, allowed_pairs in boundary_pairs:
-            count = intersection_pair_count(left_obj, right_obj)
-            boundary_intersections[key] = count
-            if count is None:
-                warnings.append(f"Could not evaluate intersection QA for {key}.")
-            elif count > allowed_pairs:
-                reasons.append(
-                    f"{key} has {count} intersecting triangle pairs; production garment/body boundaries must be clean."
-                )
+            boundary_intersections[key] = checked_boundary_intersections(
+                key, left_obj, right_obj, allowed_pairs, reasons,
+            )
 
-        tuck_overlap = intersection_pair_count(
+        boundary_intersections["shirtTrouserTuck"] = checked_boundary_intersections(
+            "shirtTrouserTuck",
             bpy.data.objects.get("ShirtTorsoFabric"),
             bpy.data.objects.get("TrouserWaistFabric"),
+            120,
+            reasons,
         )
-        boundary_intersections["shirtTrouserTuck"] = tuck_overlap
-        if tuck_overlap is None:
-            warnings.append("Could not evaluate tucked shirt/trouser overlap.")
-        elif tuck_overlap > 120:
-            reasons.append(
-                f"Tucked shirt/trouser junction has {tuck_overlap} intersecting triangle pairs; "
-                "clean the waist overlap before production export."
-            )
 
     report = {
         "gate": "linen-earth-officewear-scene-preflight-v1",
@@ -477,6 +508,7 @@ def main():
         "identityGuideMeasurementsMm": guide_measurements,
         "identityFitMeasurementsMm": identity_measurements,
         "boundaryIntersections": boundary_intersections,
+        "boundaryCoordinateSpace": "evaluated-world-metres",
         "requiredGarmentObjects": list(GARMENT_OBJECTS),
         "objects": objects,
         "totals": {

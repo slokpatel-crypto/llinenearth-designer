@@ -632,6 +632,13 @@ are displayed. Do not merge the stacked TITAN PRs or deploy.
 - Remains stacked on draft #321 and its unreleased TITAN chain. **NO MERGE / NO DEPLOY.**
 
 
+## Native body/garment collision coordinates (2026-10-20, DRAFT)
+
+- Scene preflight now copies evaluated mesh triangles through the evaluated world matrix before building BVHs. Independent object-local BVHs can report false contact or miss real contact when the body and garment have different translations, parenting, constraints or modifiers. The existing 0.5 mm BVH epsilon is preserved in scene metres; body contacts still allow zero pairs and the tucked waist still allows at most 120.
+- Missing, empty or uncomputable boundary geometry blocks export instead of merely generating a warning. Non-finite world coordinates also block the boundary check. Temporary evaluated meshes are released on success and failure; no scene object, mesh, material or canonical model photograph is modified by preflight.
+- Native Blender 4.2 regressions cover intersecting/separated transforms, shared rotation/nonuniform scale, parent and constraint transforms, modifier-generated geometry, quad triangulation, existing thresholds and error/cleanup paths. A separate read-only CI workflow downloads the official SHA-256-pinned Blender runtime and preserves its test output. These synthetic fixtures are never exported as customer model assets.
+- Compatibility: the existing scene-preflight-v1 fields remain intact; `boundaryCoordinateSpace: evaluated-world-metres` is additive. No saved design, asset registration, database or customer UI migration is required. Previous candidate reports must be regenerated; this is a geometry correctness fix, not proof of model identity, measured cloth/drape, visual likeness or tailor acceptance. Stacked draft only; no merge or deployment.
+
 ## TITAN private-content-free layer-plan reference links (2026-10-20, DRAFT)
 
 - Follow-on to unreleased TITAN garment bookmark branch (#322), using one canonical, finite, independently tested **seven-slot logical plan** on the same locked model identity.
