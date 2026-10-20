@@ -618,3 +618,15 @@ fit. Engineering registrations and exact-byte native candidate checks from
 #319, followed by production Blender, UV, photo identity, measured drape,
 real-device and tailor/owner review, are still mandatory before actual garments
 are displayed. Do not merge the stacked TITAN PRs or deploy.
+
+
+## TITAN opt-in device-only garment-layer bookmarks (2026-10-20, DRAFT)
+
+- Follow-on to unreleased wardrobe layer planner (#321), NOT a change to the production Designer Studio or locked human identity.
+- A customer may explicitly bookmark at most **six** canonical v1 logical outfit plans on the current browser/device. Storage key is `linen-earth:titan-layer-plans:v1`; payload is exactly `{version:1,plans:[{version:1,composition,layers}]}`.
+- On reload, bookmarks appear but **are never auto-applied**. Load stages a pending draft, and the existing atomic v1 transaction must still be explicitly applied. Saves use last valid applied plan, not uncommitted selections.
+- Reject invalid compositions, unknown/duplicate/noncanonical garment slots, invalid prerequisites, unsupported versions, injection fields, duplicate entries, and oversized payloads in full. Never truncate/repair corrupt stored data on startup or save; explicit "Clear unreadable bookmarks" is required to discard it.
+- Read device storage again before each mutation, recover updates from other tabs, and commit React state only after localStorage success. Storage failures do not claim a save or mutate a designer draft.
+- No name, body measurements, fabric choice, model asset, customer ID, approval claim, server/API sync, AI credits or GLB activation is persisted. The device may be shared; bookmarks are not private account storage and can be cleared by browser cleanup.
+- Release QA: all valid layer compositions and combinations in unit tests; real browser save/reload/restore/delete, incompatible-version protection and Designer state isolation at 320/390/768/1440px. Native model, measured textile, fit and owner/tailor certification remain separately blocked.
+- Remains stacked on draft #321 and its unreleased TITAN chain. **NO MERGE / NO DEPLOY.**
