@@ -22,11 +22,23 @@ async function waitForLocalReferences(page) {
 }
 
 async function expectFabricCount(page, expected, reason) {
-  // A controlled React search input is applied asynchronously after Playwright
-  // fill/click. Poll for the actual rendered result rather than a stale frame.
-  await page.waitForFunction(count =>
-    document.querySelectorAll(".titanFabricCard").length === count,
-    expected, { timeout: 8000 });
+  // React search / filter results should settle after fill or click. A real
+  // mismatch must fail with enough DOM evidence to distinguish a lost typed
+  // value, incorrect catalogue result, and a racing garment-tab reset.
+  try {
+    await page.waitForFunction(count =>
+      document.querySelectorAll(".titanFabricCard").length === count,
+      expected, { timeout: 8000 });
+  } catch (error) {
+    const observed = await page.evaluate(() => ({
+      cards: document.querySelectorAll(".titanFabricCard").length,
+      search: document.querySelector(".titanFabricSearch input")?.value,
+      collection: document.querySelector(".titanFabricField select")?.value,
+      kind: document.querySelector('.titanFabricKinds button[aria-pressed="true"]')?.textContent,
+      results: document.querySelector(".titanFabricResultsHeader p")?.textContent,
+    }));
+    throw new Error(`${reason}: expected ${expected}; observed ${JSON.stringify(observed)}; ${String(error)}`);
+  }
   assert.equal(await page.locator(".titanFabricCard").count(), expected, reason);
 }
 
